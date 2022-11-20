@@ -1,0 +1,1 @@
+pub type Context<T> = Result<T, Response>;
