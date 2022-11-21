@@ -1,18 +1,18 @@
 use std::collections::HashMap;
 use async_std::{
     sync::Arc,
+    task::block_on,
     io::{ReadExt, WriteExt},
     net::{TcpStream, TcpListener},
     stream::StreamExt, task,
 };
-use futures::channel::mpsc;
-
+use futures::Future;
 use crate::{
     context::Context,
     components::{consts::BUF_SIZE, method::Method},
     request::Request,
     response::Response,
-    utils::parse::parse_stream
+    utils::{parse::parse_stream, validation, }
 };
 
 
@@ -22,17 +22,97 @@ pub struct Server(
         fn(Request) -> Context<Response>,
     >
 );
+pub struct ServerSetting {
+    map: HashMap<
+        (Method, &'static str, bool),
+        fn(Request) -> Context<Response>,
+    >,
+    errors: Vec<String>,
+}
+
+
+impl ServerSetting {
+    pub fn serve_on(&self, address: &'static str) -> Context<()> {
+        if !self.errors.is_empty() {
+            return Response::SetUpError(&self.errors)
+        }
+        let server = Server(self.map.clone());
+        let tcp_address = validation::tcp_address(address);
+        block_on(server.serve_on(tcp_address))
+    }
+
+    #[allow(non_snake_case)]
+    pub fn GET(&mut self,
+        path_string: &'static str,
+        handler:     fn(Request) -> Context<Response>,
+    ) -> &mut Self {
+        self.add_handler(Method::GET, path_string, handler)
+    }
+    #[allow(non_snake_case)]
+    pub fn POST(&mut self,
+        path_string: &'static str,
+        handler:     fn(Request) -> Context<Response>,
+    ) -> &mut Self {
+        self.add_handler(Method::POST, path_string, handler)
+    }
+    #[allow(non_snake_case)]
+    pub fn PATCH(&mut self,
+        path_string: &'static str,
+        handler:     fn(Request) -> Context<Response>,
+    ) -> &mut Self {
+        self.add_handler(Method::PATCH, path_string, handler)
+    }
+    #[allow(non_snake_case)]
+    pub fn DELETE(&mut self,
+        path_string: &'static str,
+        handler:     fn(Request) -> Context<Response>,
+    ) -> &mut Self {
+        self.add_handler(Method::DELETE, path_string, handler)
+    }
+
+    fn add_handler(&mut self,
+        method:      Method,
+        path_string: &'static str,
+        handler:     fn(Request) -> Context<Response>,
+    ) -> &mut Self {
+        // ===============================================================
+        // TODO: vaidate path string here
+        // ===============================================================
+
+        let (path, has_param) =
+            if let Some((path, _param_name)) = path_string.rsplit_once("/:") {
+                (path, true)
+            } else {
+                (path_string, false)
+            };
+
+        
+        if self.map.insert(
+            (method, &path, has_param), handler
+        ).is_some() {
+            self.errors.push(format!("handler for `{method} {path_string}` is resistered duplicatedly"))
+        }
+
+        self
+    }
+}
 impl Server {
+    pub fn setup() -> ServerSetting {
+        ServerSetting {
+            map:    HashMap::new(),
+            errors: Vec::new(),
+        }
+    }
+
     async fn serve_on(self, tcp_address: String) -> Context<()> {
         let listener = TcpListener::bind(tcp_address).await?;
         let mut incoming = listener.incoming();
 
-        // let (receiver, sender) = mpsc::unbounded();
         let handler_map = Arc::new(self.0);
 
         while let Some(stream) = incoming.next().await {
             let stream = stream?;
-            let handle = task::spawn(
+            task::spawn(
                 handle_stream(stream, Arc::clone(&handler_map))
             );
         }
