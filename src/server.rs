@@ -16,22 +16,31 @@ use crate::{
 };
 
 
-pub struct Server(
+pub struct Server<
+    H: Fn(Request) -> F + Send + Sync + 'static + Clone,
+    F: Future<Output = Context<Response>> + Send + 'static,
+>(
     HashMap<
         (Method, &'static str, bool),
-        fn(Request) -> Context<Response>,
+        H,
     >
 );
-pub struct ServerSetting {
+pub struct ServerSetting<
+    H: Fn(Request) -> F + Send + Sync + 'static + Clone,
+    F: Future<Output = Context<Response>> + Send + 'static,
+> {
     map: HashMap<
         (Method, &'static str, bool),
-        fn(Request) -> Context<Response>,
+        H,
     >,
     errors: Vec<String>,
 }
 
 
-impl ServerSetting {
+impl<
+    H: Fn(Request) -> F + Send + Sync + 'static + Clone,
+    F: Future<Output = Context<Response>> + Send + 'static,
+> ServerSetting<H, F> {
     pub fn serve_on(&self, address: &'static str) -> Context<()> {
         if !self.errors.is_empty() {
             return Response::SetUpError(&self.errors)
@@ -44,28 +53,28 @@ impl ServerSetting {
     #[allow(non_snake_case)]
     pub fn GET(&mut self,
         path_string: &'static str,
-        handler:     fn(Request) -> Context<Response>,
+        handler:     H,
     ) -> &mut Self {
         self.add_handler(Method::GET, path_string, handler)
     }
     #[allow(non_snake_case)]
     pub fn POST(&mut self,
         path_string: &'static str,
-        handler:     fn(Request) -> Context<Response>,
+        handler:     H,
     ) -> &mut Self {
         self.add_handler(Method::POST, path_string, handler)
     }
     #[allow(non_snake_case)]
     pub fn PATCH(&mut self,
         path_string: &'static str,
-        handler:     fn(Request) -> Context<Response>,
+        handler:     H,
     ) -> &mut Self {
         self.add_handler(Method::PATCH, path_string, handler)
     }
     #[allow(non_snake_case)]
     pub fn DELETE(&mut self,
         path_string: &'static str,
-        handler:     fn(Request) -> Context<Response>,
+        handler:     H,
     ) -> &mut Self {
         self.add_handler(Method::DELETE, path_string, handler)
     }
@@ -73,7 +82,7 @@ impl ServerSetting {
     fn add_handler(&mut self,
         method:      Method,
         path_string: &'static str,
-        handler:     fn(Request) -> Context<Response>,
+        handler:     H,
     ) -> &mut Self {
         // ===============================================================
         // TODO: vaidate path string here
@@ -96,8 +105,12 @@ impl ServerSetting {
         self
     }
 }
-impl Server {
-    pub fn setup() -> ServerSetting {
+impl<
+    H: Fn(Request) -> F + Send + Sync + 'static + Clone,
+    F: Future<Output = Context<Response>> + Send + 'static
+>
+    Server<H, F> {
+    pub fn setup() -> ServerSetting<H, F> {
         ServerSetting {
             map:    HashMap::new(),
             errors: Vec::new(),
@@ -121,18 +134,21 @@ impl Server {
     }
 }
 
-async fn handle_stream(
+async fn handle_stream<
+    H: Fn(Request) -> F + Send + Sync + 'static + Clone,
+    F: Future<Output = Context<Response>> + Send + 'static
+>(
     mut stream: TcpStream,
     handler_map: Arc<HashMap<
         (Method, &'static str, bool),
-        fn(Request) -> Context<Response>,
+        H,
     >>,
 ) -> Context<()> {
     let mut buffer = [b' '; BUF_SIZE];
     stream.read(&mut buffer).await?;
 
     let (method, path_str, request) = parse_stream(&buffer)?;
-    match handle_request(handler_map, method, path_str, request) {
+    match handle_request(handler_map, method, path_str, request).await {
         Ok(res)  => res,
         Err(res) => res,
     }.write_to_stream(
@@ -142,10 +158,14 @@ async fn handle_stream(
     stream.flush().await?;
     Ok(())
 }
-fn handle_request<'path>(
+async fn handle_request<
+    'path,
+    H: Fn(Request) -> F + Send + Sync + 'static + Clone,
+    F: Future<Output = Context<Response>> + Send + 'static
+>(
     handler_map: Arc<HashMap<
         (Method, &'static str, bool),
-        fn(Request) -> Context<Response>,
+        H,
     >>,
     method:      Method,
     path_str:    &'path str,
@@ -174,7 +194,7 @@ fn handle_request<'path>(
             request.param = Some(param);
             handler
         };
-    handler(request)
+    handler(request).await
 }
 
 
