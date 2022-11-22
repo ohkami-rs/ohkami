@@ -6,41 +6,31 @@ use async_std::{
     net::{TcpStream, TcpListener},
     stream::StreamExt, task,
 };
-use futures::Future;
 use crate::{
     context::Context,
     components::{consts::BUF_SIZE, method::Method},
     request::Request,
     response::Response,
-    utils::{parse::parse_stream, validation, }
+    utils::{parse::parse_stream, validation}
 };
 
 
-pub struct Server<
-    H: Fn(Request) -> F + Send + Sync + 'static + Clone,
-    F: Future<Output = Context<Response>> + Send + 'static,
->(
+pub struct Server(
     HashMap<
         (Method, &'static str, bool),
-        H,
+        fn(Request) -> Context<Response>,
     >
 );
-pub struct ServerSetting<
-    H: Fn(Request) -> F + Send + Sync + 'static + Clone,
-    F: Future<Output = Context<Response>> + Send + 'static,
-> {
+pub struct ServerSetting{
     map: HashMap<
         (Method, &'static str, bool),
-        H,
+        fn(Request) -> Context<Response>,
     >,
     errors: Vec<String>,
 }
 
 
-impl<
-    H: Fn(Request) -> F + Send + Sync + 'static + Clone,
-    F: Future<Output = Context<Response>> + Send + 'static,
-> ServerSetting<H, F> {
+impl ServerSetting {
     pub fn serve_on(&self, address: &'static str) -> Context<()> {
         if !self.errors.is_empty() {
             return Response::SetUpError(&self.errors)
@@ -53,28 +43,28 @@ impl<
     #[allow(non_snake_case)]
     pub fn GET(&mut self,
         path_string: &'static str,
-        handler:     H,
+        handler:     fn(Request) -> Context<Response>,
     ) -> &mut Self {
         self.add_handler(Method::GET, path_string, handler)
     }
     #[allow(non_snake_case)]
     pub fn POST(&mut self,
         path_string: &'static str,
-        handler:     H,
+        handler:     fn(Request) -> Context<Response>,
     ) -> &mut Self {
         self.add_handler(Method::POST, path_string, handler)
     }
     #[allow(non_snake_case)]
     pub fn PATCH(&mut self,
         path_string: &'static str,
-        handler:     H,
+        handler:     fn(Request) -> Context<Response>,
     ) -> &mut Self {
         self.add_handler(Method::PATCH, path_string, handler)
     }
     #[allow(non_snake_case)]
     pub fn DELETE(&mut self,
         path_string: &'static str,
-        handler:     H,
+        handler:     fn(Request) -> Context<Response>,
     ) -> &mut Self {
         self.add_handler(Method::DELETE, path_string, handler)
     }
@@ -82,7 +72,7 @@ impl<
     fn add_handler(&mut self,
         method:      Method,
         path_string: &'static str,
-        handler:     H,
+        handler:     fn(Request) -> Context<Response>,
     ) -> &mut Self {
         // ===============================================================
         // TODO: vaidate path string here
@@ -105,12 +95,8 @@ impl<
         self
     }
 }
-impl<
-    H: Fn(Request) -> F + Send + Sync + 'static + Clone,
-    F: Future<Output = Context<Response>> + Send + 'static
->
-    Server<H, F> {
-    pub fn setup() -> ServerSetting<H, F> {
+impl Server {
+    pub fn setup() -> ServerSetting {
         ServerSetting {
             map:    HashMap::new(),
             errors: Vec::new(),
@@ -134,14 +120,11 @@ impl<
     }
 }
 
-async fn handle_stream<
-    H: Fn(Request) -> F + Send + Sync + 'static + Clone,
-    F: Future<Output = Context<Response>> + Send + 'static
->(
+async fn handle_stream(
     mut stream: TcpStream,
     handler_map: Arc<HashMap<
         (Method, &'static str, bool),
-        H,
+        fn(Request) -> Context<Response>,
     >>,
 ) -> Context<()> {
     let mut buffer = [b' '; BUF_SIZE];
@@ -158,14 +141,10 @@ async fn handle_stream<
     stream.flush().await?;
     Ok(())
 }
-async fn handle_request<
-    'path,
-    H: Fn(Request) -> F + Send + Sync + 'static + Clone,
-    F: Future<Output = Context<Response>> + Send + 'static
->(
+async fn handle_request<'path>(
     handler_map: Arc<HashMap<
         (Method, &'static str, bool),
-        H,
+        fn(Request) -> Context<Response>,
     >>,
     method:      Method,
     path_str:    &'path str,
@@ -194,7 +173,7 @@ async fn handle_request<
             request.param = Some(param);
             handler
         };
-    handler(request).await
+    handler(request)
 }
 
 
