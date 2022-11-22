@@ -1,41 +1,38 @@
-use std::{collections::HashMap, pin::Pin, task::Poll};
-
-use async_http::Request;
+#![feature(trait_alias)]
+use std::collections::HashMap;
 use futures::Future;
 
 
-fn main() {
+fn main() -> Result<(), String> {
     let m = Map::new();
-    // let s = sample2;
-
-    m.resister(sample2);
+    m.resister(handler);
+    let res = async_std::task::block_on(m.run(1))?;
+    println!("{res}");
+    Ok(())
 }
 
-trait Handler {}
+trait Handler<F> = Fn() -> F
+where F: Future<Output = usize>;
 
-struct Map(
+struct Map<'h>(
     usize,
     HashMap<
         usize,
-        fn(Request) -> Res
+        &'h dyn Fn() -> dyn Future<Output = usize>
     >
-);impl Map {
+);impl<'h> Map<'h> {
     fn new() -> Self {
         Self(0, HashMap::new())
     }
-    fn resister(&mut self, f: fn(Request) -> Res) {
+    fn resister<F>(&mut self, f: dyn Handler<F>) {
         self.0 += 1;
         self.1.insert(self.0, f);
     }
-}
-
-struct Res(usize);
-impl Future for Res {
-    type Output = usize;
-    fn poll(self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> Poll<Self::Output> {
-        Poll::Ready(self.0)
+    async fn run(&self, id: usize) -> usize {// Result<usize, String> {
+        let handler = self.1.get(&id).unwrap();
+        // Ok(handler().await)
+        handler().await
     }
 }
 
-async fn sample1<'r>(_: Request<'r>) -> Pin<Box<i32>> { Box::pin(100) }
-async fn sample2<'r>(_: Request<'r>) -> Res { Res(200) }
+async fn handler() -> usize { 2 }
