@@ -3,7 +3,6 @@ use once_cell::sync::Lazy;
 use serde::Serialize;
 use sqlx::FromRow;
 
-
 static DB_URL: Lazy<String> = Lazy::new(|| format!(
     "postgres://{}:{}@{}:{}/{}",
     std::env::var("POSTGRES_HOST").unwrap(),
@@ -20,13 +19,11 @@ fn main() -> Result<()> {
             .connect(&DB_URL)
             .await
     })?;
-
     Server::setup()
         .connection_pool(pool)
         .GET("/users/:id", get_user_user_id)
         .serve_on(":3000")
 }
-
 
 #[derive(FromRow, Serialize)]
 struct User {
@@ -53,3 +50,4 @@ fn get_user_user_id(ctx: Context) -> Result<Response> {
         JSON::from_struct(&user)?
     )
 }
+
