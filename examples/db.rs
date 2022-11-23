@@ -39,7 +39,7 @@ fn get_user_user_id(ctx: Context) -> Result<Response> {
 
     let user = useDB(async {
         sqlx::query_as::<_, User>(
-            "SELECT * from users WHERE id = $1"
+            "SELECT * FROM users WHERE id = $1"
         )
         .bind(user_id as i64)
         .fetch_one(ctx.pool.unwrap())
