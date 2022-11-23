@@ -5,6 +5,7 @@ use crate::response::ResponseFormat;
 pub(crate) enum Status {
     SetUpError,
     OK                  = 200,
+    Created             = 201,
     BadRequest          = 400,
     NotFound            = 404,
     InternalServerError = 500,
@@ -28,6 +29,7 @@ impl ResponseFormat for Status {
             Self::NotFound => "404 NotFound",
             Self::NotImplemented => "501 NotImplemented",
             Self::OK => "200 OK",
+            Self::Created => "201 Created",
         }
     }
 }

@@ -1,4 +1,4 @@
-use crate::Response;
+use crate::response::Response;
 
 
 pub type Result<T> = std::result::Result<T, Response>;
@@ -26,5 +26,10 @@ impl From<serde_json::Error> for Response {
 impl From<std::str::Utf8Error> for Response {
     fn from(value: std::str::Utf8Error) -> Self {
         Self::InternalServerError(value.to_string() + ": caused by UTF-8 handling")
+    }
+}
+impl From<sqlx::Error> for Response {
+    fn from(value: sqlx::Error) -> Self {
+        Self::InternalServerError(value.to_string() + ": caused by DB handling")
     }
 }

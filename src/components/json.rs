@@ -1,6 +1,6 @@
 use serde::{Serialize, Deserialize};
 use crate::{
-    response::ResponseFormat, Response
+    response::{ResponseFormat, Response}
 };
 
 

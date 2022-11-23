@@ -73,10 +73,19 @@ Keep-Alive: timeout=5
     #[allow(non_snake_case)]
     pub fn OK(body: JSON) -> Result<Self> {
         Ok(Self {
-            status:  Status::OK,
-            body: Body::json(body),
+            status: Status::OK,
+            body:   Body::json(body),
         })
     }
+    #[allow(non_snake_case)]
+    pub fn Created(body: JSON) -> Result<Self> {
+        Ok(Self {
+            status: Status::Created,
+            body:   Body::json(body),
+        })
+    }
+
+
     #[allow(non_snake_case)]
     pub fn NotFound<Msg: ToString>(msg: Msg) -> Self {
         Self {
