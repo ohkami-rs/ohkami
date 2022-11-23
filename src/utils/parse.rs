@@ -1,13 +1,12 @@
 use crate::{
     components::{consts::BUF_SIZE, method::Method, json::JSON},
     response::Response,
-    request::Request,
-    context::Context,
+    context::Context, result::Result,
 };
 
 pub(crate) fn parse_stream(
     buffer: &[u8; BUF_SIZE]
-) -> Context<(Method, &str, Request)> {
+) -> Result<(Method, &str, Context)> {
     let mut lines = std::str::from_utf8(buffer)?
         .trim_end()
         .lines();
@@ -19,7 +18,8 @@ pub(crate) fn parse_stream(
         if line.is_empty() {break}
     }
 
-    let request = Request {
+    let request_context = Context {
+        pool:  &None,
         param: None,
         body:
             if let Some(request_body) = lines.next() {
@@ -27,10 +27,10 @@ pub(crate) fn parse_stream(
             } else {None}
     };
 
-    Ok((method, path, request))
+    Ok((method, path, request_context))
 }
 
-fn parse_request_line(line: &str) -> Context<(Method, &str)> {
+fn parse_request_line(line: &str) -> Result<(Method, &str)> {
     if line.is_empty() {
         return Err(Response::BadRequest("can't find request status line"))
     }

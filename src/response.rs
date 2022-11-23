@@ -2,11 +2,10 @@
 use async_std::{net::TcpStream, io::WriteExt};
 use chrono::Utc;
 use crate::{
-    context::Context,
     components::{
         status::Status,
         json::JSON
-    },
+    }, result::Result,
 };
 
 
@@ -27,7 +26,6 @@ pub struct Response {
                 Self::text(text) => text.len(),
             }
         }
-        
     }
 
 pub(crate) trait ResponseFormat {
@@ -63,7 +61,7 @@ Keep-Alive: timeout=5
 
 
     #[allow(non_snake_case)]
-    pub(crate) fn SetUpError(messages: &Vec<String>) -> Context<()> {
+    pub(crate) fn SetUpError(messages: &Vec<String>) -> Result<()> {
         Err(Self {
             status: Status::SetUpError,
             body:   Body::text(messages.iter().fold(
@@ -73,7 +71,7 @@ Keep-Alive: timeout=5
     }
 
     #[allow(non_snake_case)]
-    pub fn OK(body: JSON) -> Context<Self> {
+    pub fn OK(body: JSON) -> Result<Self> {
         Ok(Self {
             status:  Status::OK,
             body: Body::json(body),

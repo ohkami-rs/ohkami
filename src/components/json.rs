@@ -1,17 +1,16 @@
 use serde::{Serialize, Deserialize};
 use crate::{
-    context::Context,
-    response::ResponseFormat
+    response::ResponseFormat, Response
 };
 
 
 #[derive(Debug)]
 pub struct JSON(String);
 impl<'d> JSON {
-    pub fn from_struct<S: Serialize>(value: &S) -> Context<Self> {
+    pub fn from_struct<S: Serialize>(value: &S) -> Result<Self, Response> {
         Ok(Self(serde_json::to_string(value)?))
     }
-    pub fn to_struct<D: Deserialize<'d>>(&'d self) -> Context<D> {
+    pub fn to_struct<D: Deserialize<'d>>(&'d self) -> Result<D, Response> {
         Ok(serde_json::from_str(&self.0)?)
     }
 

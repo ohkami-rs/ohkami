@@ -6,65 +6,75 @@ use async_std::{
     net::{TcpStream, TcpListener},
     stream::StreamExt, task,
 };
+use sqlx::{postgres::PgPoolOptions, PgPool};
 use crate::{
+    components::{consts::{BUF_SIZE}, method::Method},
     context::Context,
-    components::{consts::BUF_SIZE, method::Method},
-    request::Request,
     response::Response,
-    utils::{parse::parse_stream, validation}
+    utils::{parse::parse_stream, validation}, result::Result
 };
 
 
-pub struct Server(
-    HashMap<
+pub struct Server {
+    map: HashMap<
         (Method, &'static str, bool),
-        fn(Request) -> Context<Response>,
-    >
-);
+        fn(Context) -> Result<Response>,
+    >,
+    pool: Option<PgPool>,
+}
 pub struct ServerSetting{
     map: HashMap<
         (Method, &'static str, bool),
-        fn(Request) -> Context<Response>,
+        fn(Context) -> Result<Response>,
     >,
+    pool:   Option<PgPool>,
     errors: Vec<String>,
 }
 
 
 impl ServerSetting {
-    pub fn serve_on(&self, address: &'static str) -> Context<()> {
+    pub fn serve_on(&self, address: &'static str) -> Result<()> {
         if !self.errors.is_empty() {
             return Response::SetUpError(&self.errors)
         }
-        let server = Server(self.map.clone());
+        let server = Server {
+            map:  self.map.clone(),
+            pool: self.pool.clone(),
+        };
         let tcp_address = validation::tcp_address(address);
         block_on(server.serve_on(tcp_address))
+    }
+    
+    pub fn connection_pool(&mut self, pool: PgPool) -> &mut Self {
+        self.pool = Some(pool);
+        self
     }
 
     #[allow(non_snake_case)]
     pub fn GET(&mut self,
         path_string: &'static str,
-        handler:     fn(Request) -> Context<Response>,
+        handler:     fn(Context) -> Result<Response>,
     ) -> &mut Self {
         self.add_handler(Method::GET, path_string, handler)
     }
     #[allow(non_snake_case)]
     pub fn POST(&mut self,
         path_string: &'static str,
-        handler:     fn(Request) -> Context<Response>,
+        handler:     fn(Context) -> Result<Response>,
     ) -> &mut Self {
         self.add_handler(Method::POST, path_string, handler)
     }
     #[allow(non_snake_case)]
     pub fn PATCH(&mut self,
         path_string: &'static str,
-        handler:     fn(Request) -> Context<Response>,
+        handler:     fn(Context) -> Result<Response>,
     ) -> &mut Self {
         self.add_handler(Method::PATCH, path_string, handler)
     }
     #[allow(non_snake_case)]
     pub fn DELETE(&mut self,
         path_string: &'static str,
-        handler:     fn(Request) -> Context<Response>,
+        handler:     fn(Context) -> Result<Response>,
     ) -> &mut Self {
         self.add_handler(Method::DELETE, path_string, handler)
     }
@@ -72,7 +82,7 @@ impl ServerSetting {
     fn add_handler(&mut self,
         method:      Method,
         path_string: &'static str,
-        handler:     fn(Request) -> Context<Response>,
+        handler:     fn(Context) -> Result<Response>,
     ) -> &mut Self {
         // ===============================================================
         // TODO: vaidate path string here
@@ -99,20 +109,22 @@ impl Server {
     pub fn setup() -> ServerSetting {
         ServerSetting {
             map:    HashMap::new(),
+            pool:   None,
             errors: Vec::new(),
         }
     }
 
-    async fn serve_on(self, tcp_address: String) -> Context<()> {
+    async fn serve_on(self, tcp_address: String) -> Result<()> {
+        let handler_map = Arc::new(self.map);
+        let connection_pool = Arc::new(self.pool);
+
         let listener = TcpListener::bind(tcp_address).await?;
         let mut incoming = listener.incoming();
-
-        let handler_map = Arc::new(self.0);
 
         while let Some(stream) = incoming.next().await {
             let stream = stream?;
             task::spawn(
-                handle_stream(stream, Arc::clone(&handler_map))
+                handle_stream(stream, Arc::clone(&handler_map), Arc::clone(&connection_pool))
             );
         }
 
@@ -124,14 +136,17 @@ async fn handle_stream(
     mut stream: TcpStream,
     handler_map: Arc<HashMap<
         (Method, &'static str, bool),
-        fn(Request) -> Context<Response>,
+        fn(Context) -> Result<Response>,
     >>,
-) -> Context<()> {
+    connection_pool: Arc<Option<PgPool>>,
+) -> Result<()> {
     let mut buffer = [b' '; BUF_SIZE];
     stream.read(&mut buffer).await?;
 
-    let (method, path_str, request) = parse_stream(&buffer)?;
-    match handle_request(handler_map, method, path_str, request).await {
+    let (method, path_str, mut context) = parse_stream(&buffer)?;
+    context.pool = &*connection_pool;
+
+    match handle_request(handler_map, method, path_str, context).await {
         Ok(res)  => res,
         Err(res) => res,
     }.write_to_stream(
@@ -141,15 +156,15 @@ async fn handle_stream(
     stream.flush().await?;
     Ok(())
 }
-async fn handle_request<'path>(
+async fn handle_request<'pool, 'path>(
     handler_map: Arc<HashMap<
         (Method, &'static str, bool),
-        fn(Request) -> Context<Response>,
+        fn(Context) -> Result<Response>,
     >>,
-    method:      Method,
-    path_str:    &'path str,
-    mut request: Request<'path>,
-) -> Context<Response> {
+    method:   Method,
+    path_str: &'path str,
+    mut request_context: Context<'pool, 'path>,
+) -> Result<Response> {
     let handler = 
         if let Some(handler) = handler_map.get(&(method, path_str, false)) {
             handler
@@ -170,62 +185,8 @@ async fn handle_request<'path>(
                         ))
                     }
                 )?;
-            request.param = Some(param);
+            request_context.param = Some(param);
             handler
         };
-    handler(request)
+    handler(request_context)
 }
-
-
-/*
-#![allow(unused)]
-fn main() {
-extern crate async_std;
-use async_std::{
-    net::{TcpListener, ToSocketAddrs},
-    prelude::*,
-    task,
-};
-
-type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
-
-use async_std::{
-    io::BufReader,
-    net::TcpStream,
-};
-
-async fn accept_loop(addr: impl ToSocketAddrs) -> Result<()> {
-    let listener = TcpListener::bind(addr).await?;
-    let mut incoming = listener.incoming();
-    while let Some(stream) = incoming.next().await {
-        let stream = stream?;
-        println!("Accepting from: {}", stream.peer_addr()?);
-        let _handle = task::spawn(connection_loop(stream)); // 1
-    }
-    Ok(())
-}
-
-async fn connection_loop(stream: TcpStream) -> Result<()> {
-    let reader = BufReader::new(&stream); // 2
-    let mut lines = reader.lines();
-
-    let name = match lines.next().await { // 3
-        None => Err("peer disconnected immediately")?,
-        Some(line) => line?,
-    };
-    println!("name = {}", name);
-
-    while let Some(line) = lines.next().await { // 4
-        let line = line?;
-        let (dest, msg) = match line.find(':') { // 5
-            None => continue,
-            Some(idx) => (&line[..idx], line[idx + 1 ..].trim()),
-        };
-        let dest: Vec<String> = dest.split(',').map(|name| name.trim().to_string()).collect();
-        let msg: String = msg.to_string();
-    }
-    Ok(())
-}
-}
-
-*/

@@ -1,8 +1,6 @@
 use std::fmt::Display;
-
 use crate::{
-    context::Context,
-    response::Response
+    response::Response, result::Result
 };
 
 
@@ -16,7 +14,7 @@ pub(crate) enum Method {
 }
 
 impl Method {
-    pub(crate) fn parse(string: &str) -> Context<Self> {
+    pub(crate) fn parse(string: &str) -> Result<Self> {
         match string {
             "GET"    => Ok(Self::GET),
             "POST"   => Ok(Self::POST),

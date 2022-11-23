@@ -1,29 +1,22 @@
-use crate::response::Response;
+use serde::Deserialize;
+use sqlx::PgPool;
+use crate::{
+    components::json::JSON,
+    response::Response, result::Result,
+};
 
-pub type Context<T> = Result<T, Response>;
 
-impl From<std::io::Error> for Response {
-    fn from(value: std::io::Error) -> Self {
-        Self::InternalServerError(value.to_string() + ": caused by I/O")
-    }
+pub struct Context<'pool, 'param> {
+    pub pool:        &'pool Option<PgPool>,
+    pub param:       Option<&'param str>,
+    pub(crate) body: Option<JSON>,
 }
-impl From<serde_json::Error> for Response {
-    fn from(value: serde_json::Error) -> Self {
-        Self::InternalServerError(value.to_string() + ": caused by json handling :: " + {
-            if value.is_data() {
-                "invalid json data"
-            } else if value.is_eof() {
-                "unexpected end of line"
-            } else if value.is_io() {
-                "about io"
-            } else {  // value.is_syntax()
-                "wrong json syntax"
-            }
-        })
-    }
-} 
-impl From<std::str::Utf8Error> for Response {
-    fn from(value: std::str::Utf8Error) -> Self {
-        Self::InternalServerError(value.to_string() + ": caused by UTF-8 handling")
+
+impl<'d, 'pool, 'param> Context<'pool, 'param> {
+    pub fn request_body<D: Deserialize<'d>>(&'d self) -> Result<D> {
+        let json = self.body.as_ref()
+            .ok_or_else(|| Response::BadRequest("expected request body"))?;
+        let json_struct = json.to_struct()?;
+        Ok(json_struct)
     }
 }
