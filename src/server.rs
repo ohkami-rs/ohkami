@@ -6,7 +6,7 @@ use async_std::{
     net::{TcpStream, TcpListener},
     stream::StreamExt, task,
 };
-use sqlx::{postgres::PgPoolOptions, PgPool};
+use sqlx::PgPool;
 use crate::{
     components::{consts::{BUF_SIZE}, method::Method},
     context::Context,
@@ -144,7 +144,7 @@ async fn handle_stream(
     stream.read(&mut buffer).await?;
 
     let (method, path_str, mut context) = parse_stream(&buffer)?;
-    context.pool = &*connection_pool;
+    context.pool = connection_pool.as_ref().as_ref();
 
     match handle_request(handler_map, method, path_str, context).await {
         Ok(res)  => res,
@@ -156,14 +156,14 @@ async fn handle_stream(
     stream.flush().await?;
     Ok(())
 }
-async fn handle_request<'pool, 'path>(
+async fn handle_request<'ctx>(
     handler_map: Arc<HashMap<
         (Method, &'static str, bool),
         fn(Context) -> Result<Response>,
     >>,
     method:   Method,
-    path_str: &'path str,
-    mut request_context: Context<'pool, 'path>,
+    path_str: &'ctx str,
+    mut request_context: Context<'ctx>,
 ) -> Result<Response> {
     let handler = 
         if let Some(handler) = handler_map.get(&(method, path_str, false)) {

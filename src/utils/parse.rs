@@ -19,7 +19,7 @@ pub(crate) fn parse_stream(
     }
 
     let request_context = Context {
-        pool:  &None,
+        pool:  None,
         param: None,
         body:
             if let Some(request_body) = lines.next() {
