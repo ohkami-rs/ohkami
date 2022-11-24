@@ -12,9 +12,10 @@ fn hello(_: Context) -> Result<Response> {
         JSON::from("Hello!")
     )
 }
+
 fn sleepy_hello(ctx: Context) -> Result<Response> {
     let sleep_time = ctx.param
-        .else_response(|| Response::BadRequest("expected sleeping duration as path parameter."))?;
+        .else_response(|| Response::BadRequest("Expected sleeping duration as path parameter."))?;
     (sleep_time < 30)
         .else_response(|| Response::BadRequest("Sorry, please request a sleeping duration (sec) less than 30."))?;
     
