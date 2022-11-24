@@ -16,7 +16,7 @@ pub(crate) fn is_valid_path(path_str: &str) -> bool {
 
     let Some(tail) = path_parts.next_back() else {return false};
     if tail.starts_with(':') {
-        if !tail.len() > 1 || !is_valid_path_part(&tail[1..]) {return false}
+        if !(tail.len() > 1) || !is_valid_path_part(&tail[1..]) {return false}
     } else {
         if !is_valid_path_part(tail) {return false}
     }
@@ -28,7 +28,7 @@ pub(crate) fn is_valid_path(path_str: &str) -> bool {
     true
 }
 fn is_valid_path_part(path_part_str: &str) -> bool {
-    if !path_part_str.len() > 0 {return false}
+    if !(path_part_str.len() > 0) {return false}
     for ch in path_part_str.chars() {
         match ch {
             'a'..='z' | '_' => (),
@@ -43,33 +43,22 @@ fn is_valid_path_part(path_part_str: &str) -> bool {
 mod test {
     use super::is_valid_path;
 
-    const OK_CASES: [&str; 5] = [
-        "/",
-        "/api",
-        "/api/:id",
-        "/:number",
-        "/api/users/:id",
-    ];
-    const BAD_CASES: [&str; 6] = [
-        "//",
-        "/api/",
-        "/:id/",
-        ":id",
-        "api/",
-        "/:",
-    ];
-
     #[test]
     fn validate_ok_paths() {
-        for ok_path in &OK_CASES {
-            assert!(is_valid_path(ok_path))
-        }
+        assert!(is_valid_path("/"));
+        assert!(is_valid_path("/api"));
+        assert!(is_valid_path("/api/:id"));
+        assert!(is_valid_path("/:number"));
+        assert!(is_valid_path("/api/users/:id"));
     }
     #[test]
     fn validate_bad_paths() {
-        for bad_path in &BAD_CASES {
-            assert_eq!(is_valid_path(bad_path), false)
-        }
+        assert_eq!(is_valid_path("//"), false);
+        assert_eq!(is_valid_path("/api/"), false);
+        assert_eq!(is_valid_path("/:id/"), false);
+        assert_eq!(is_valid_path(":id"), false);
+        assert_eq!(is_valid_path("api/"), false);
+        assert_eq!(is_valid_path("/:"), false);
     }
 }
 
@@ -89,11 +78,11 @@ mod pre_test {
     fn logic_in_fn_is_valid_path_part_has_no_problem() {
         assert!("a".len() > 0);
         assert!((|| {
-            if !"a".len() > 0 {return false}
+            if !("a".len() > 0) {return false}
             true
         })());
         assert!((|| {
-            if !"a".len() > 0 {return false}
+            if !("a".len() > 0) {return false}
             for ch in "a".chars() {
                 match ch {
                     'a'..='z' | '_' => (),
