@@ -15,7 +15,7 @@ use crate::{
     response::Response,
     result::Result,
     utils::{
-        parse::parse_stream, validation
+        parse::parse_stream, validation::{self, is_valid_path}
     },
 };
 
@@ -47,7 +47,9 @@ impl ServerSetting {
             pool: self.pool.clone(),
         };
         let tcp_address = validation::tcp_address(address);
-        block_on(server.serve_on(tcp_address))
+        block_on(
+            server.serve_on(tcp_address)
+        )
     }
     
     pub fn connection_pool(&mut self, pool: PgPool) -> &mut Self {
@@ -89,9 +91,10 @@ impl ServerSetting {
         path_string: &'static str,
         handler:     fn(Context) -> Result<Response>,
     ) -> &mut Self {
-        // ===============================================================
-        // TODO: vaidate path string here
-        // ===============================================================
+        if !is_valid_path(path_string) {
+            self.errors.push(format!("`{path_string}` is invalid as path."));
+            return self
+        }
 
         let (path, has_param) =
             if let Some((path, _param_name)) = path_string.rsplit_once("/:") {
