@@ -8,10 +8,15 @@ use async_std::{
 };
 use sqlx::PgPool;
 use crate::{
-    components::{consts::{BUF_SIZE}, method::Method},
+    components::{
+        consts::BUF_SIZE, method::Method
+    },
     context::Context,
     response::Response,
-    utils::{parse::parse_stream, validation}, result::Result
+    result::Result,
+    utils::{
+        parse::parse_stream, validation
+    },
 };
 
 
@@ -165,28 +170,19 @@ async fn handle_request<'ctx>(
     path_str: &'ctx str,
     mut request_context: Context<'ctx>,
 ) -> Result<Response> {
-    let handler = 
-        if let Some(handler) = handler_map.get(&(method, path_str, false)) {
-            handler
-        } else {
-            let (path, param) = path_str.rsplit_once('/')
-                .ok_or_else(|| Response::BadRequest(format!(
-                    "invalid request path format: {path_str}"
-                )))?;
-            let handler = handler_map.get(&(method, path, true))
-                .ok_or_else(||
-                    if let Some(_) = handler_map.get(&(method, path_str, true)) {
-                        Response::BadRequest(format!(
-                            "expected a path parameter"
-                        ))
-                    } else {
-                        Response::NotFound(format!(
-                            "handler for `{method} {path_str}` is not found"
-                        ))
-                    }
-                )?;
+    let (path, param) = {
+        let (rest, tail) = path_str.rsplit_once('/').unwrap();
+        if let Ok(param) = tail.parse::<u32>() {
             request_context.param = Some(param);
-            handler
-        };
+            (rest, Some(param))
+        } else {
+            (path_str, None)
+        }
+    };
+
+    let handler = handler_map
+        .get(&(method, path, param.is_some()))
+        .ok_or_else(|| Response::NotFound(format!("handler for `{method} {path_str}` is not found")))?;
+
     handler(request_context)
 }

@@ -11,7 +11,7 @@ pub(crate) mod utils;
 pub mod prelude {
     pub use super::{
         server::Server,
-        result::Result,
+        result::{Result, ElseResponse, ElseResponseWithErr},
         context::Context,
         response::Response,
         components::json::JSON,

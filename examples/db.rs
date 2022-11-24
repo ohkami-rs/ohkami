@@ -33,9 +33,7 @@ struct User {
 
 fn get_user_user_id(ctx: Context) -> Result<Response> {
     let user_id = ctx.param
-        .ok_or_else(|| Response::BadRequest("expected user id as path parameter"))?
-        .parse::<u32>()
-        .map_err(|_| Response::BadRequest("invalid user id"))?;
+        .else_response(|| Response::BadRequest("expected user id as path parameter"))?;
 
     let user = useDB(async {
         sqlx::query_as::<_, User>(

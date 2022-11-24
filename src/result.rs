@@ -3,6 +3,35 @@ use crate::response::Response;
 
 pub type Result<T> = std::result::Result<T, Response>;
 
+pub trait ElseResponse {
+    type Expect;
+    fn else_response<F: FnOnce() -> Response>(self, err: F) -> Result<Self::Expect>;
+}
+impl<T> ElseResponse for Option<T> {
+    type Expect = T;
+    fn else_response<F: FnOnce() -> Response>(self, err: F) -> Result<Self::Expect> {
+        self.ok_or_else(err)
+    }
+}
+impl ElseResponse for bool {
+    type Expect = ();
+    fn else_response<F: FnOnce() -> Response>(self, err: F) -> Result<Self::Expect> {
+        self.then_some(()).ok_or_else(err)
+    }
+}
+
+pub trait ElseResponseWithErr<E> {
+    type Expect;
+    fn else_response<F: FnOnce(E) -> Response>(self, err: F) -> Result<Self::Expect>;
+}
+impl<T, E> ElseResponseWithErr<E> for std::result::Result<T, E> {
+    type Expect = T;
+    fn else_response<F: FnOnce(E) -> Response>(self, err: F) -> Result<Self::Expect> {
+        self.map_err(err)
+    }
+}
+
+
 impl From<std::io::Error> for Response {
     fn from(value: std::io::Error) -> Self {
         Self::InternalServerError(value.to_string() + ": caused by I/O")
