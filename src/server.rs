@@ -182,10 +182,10 @@ async fn handle_stream(
     };
 
     if let Err(err) = response.write_to_stream(&mut stream).await {
-        eprintln!("failed to write response: {err}")
+        eprintln!("failed to write response: {}", err)
     }
     if let Err(err) = stream.flush().await {
-        eprintln!("failed to flush stream: {err}")   
+        eprintln!("failed to flush stream: {}", err)   
     }
 }
 
@@ -207,7 +207,12 @@ async fn setup_response(
     ) = parse_stream(&buffer, allow_origin)?;
 
     context.pool = connection_pool.as_ref().as_ref();
-    handle_request(handler_map, method, path_str, context).await
+    handle_request(
+        handler_map,
+        method,
+        path_str,
+        context
+    ).await
 }
 
 async fn handle_request<'ctx>(
