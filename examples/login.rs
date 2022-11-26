@@ -39,9 +39,10 @@ struct LoginRequest {
 }
 
 fn post_login(ctx: Context) -> Result<Response> {
-    let request_body = ctx.request_body::<LoginRequest>()?;
+    let request_body = ctx.request_body::<LoginRequest>()
+        .else_response(|res| res.error_context("Can't get email and password"))?;
     (request_body.email.len() > 0 && request_body.password.len() > 0)
-        .else_response(|| Response::BadRequest("empty email or password"))?;
+        .else_response(|| Response::BadRequest("Empty email or password"))?;
     
     let _user = useDB(async {
         sqlx::query_as::<_, User>("SELECT * from users WHERE email = $1")
@@ -49,6 +50,7 @@ fn post_login(ctx: Context) -> Result<Response> {
             .fetch_one(ctx.pool())
             .await
     })?;
+    
     // Hash the password in `request body` and check if it equals to the password in `user`.
 
     let token = "sample_new_token_for_this_user";

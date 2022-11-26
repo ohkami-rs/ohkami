@@ -41,6 +41,20 @@ impl ResponseFormat for Body {
 }
 
 impl Response {
+    pub fn error_context<Msg: ToString>(mut self, msg: Msg) -> Self {
+        use Status::*;
+        match self.status {
+            OK | Created => unreachable!(),
+            _ => match self.body {
+                Body::json(_) => unreachable!(),
+                Body::text(ref mut t) => {
+                    *t += &format!("{}: ", msg.to_string());
+                    self
+                }
+            }
+        }
+    }
+
     pub(crate) async fn write_to_stream(self, stream: &mut TcpStream) -> async_std::io::Result<usize> {
         stream.write(format!(
 "HTTP/1.1 {}
@@ -58,7 +72,6 @@ Keep-Alive: timeout=5
             self.body.response_format(),
         ).as_bytes()).await
     }
-
 
     #[allow(non_snake_case)]
     pub(crate) fn SetUpError(messages: &Vec<String>) -> Result<()> {
