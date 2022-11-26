@@ -7,7 +7,7 @@ use crate::{
 
 
 pub struct Context<'ctx> {
-    pub pool:        Option<&'ctx PgPool>,
+    pub(crate) pool: Option<&'ctx PgPool>,
     pub param:       Option<u32>,  // Option<&'ctx str>,
     pub(crate) body: Option<JSON>,
 }
@@ -18,5 +18,8 @@ impl<'d, 'ctx> Context<'ctx> {
             .ok_or_else(|| Response::BadRequest("expected request body"))?;
         let json_struct = json.to_struct()?;
         Ok(json_struct)
+    }
+    pub fn pool(&self) -> &PgPool {
+        self.pool.unwrap()
     }
 }

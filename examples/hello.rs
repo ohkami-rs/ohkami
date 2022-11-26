@@ -1,4 +1,4 @@
-use async_http::prelude::*;
+use cobalt::prelude::*;
 
 fn main() -> Result<()> {
     Server::setup()

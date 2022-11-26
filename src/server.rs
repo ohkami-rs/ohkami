@@ -52,7 +52,7 @@ impl ServerSetting {
         )
     }
     
-    pub fn connection_pool(&mut self, pool: PgPool) -> &mut Self {
+    pub fn db_connection_pool(&mut self, pool: PgPool) -> &mut Self {
         self.pool = Some(pool);
         self
     }

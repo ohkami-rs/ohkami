@@ -1,4 +1,4 @@
-use async_http::prelude::*;
+use cobalt::prelude::*;
 use once_cell::sync::Lazy;
 use serde::Serialize;
 use sqlx::FromRow;
@@ -20,7 +20,7 @@ fn main() -> Result<()> {
             .await
     })?;
     Server::setup()
-        .connection_pool(pool)
+        .db_connection_pool(pool)
         .GET("/users/:id", get_user_user_id)
         .serve_on(":3000")
 }
@@ -40,7 +40,7 @@ fn get_user_user_id(ctx: Context) -> Result<Response> {
             "SELECT * FROM users WHERE id = $1"
         )
         .bind(user_id as i64)
-        .fetch_one(ctx.pool.unwrap())
+        .fetch_one(ctx.pool())
         .await
     })?;
 
