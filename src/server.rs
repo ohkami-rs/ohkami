@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use async_std::{
     sync::Arc,
     task::block_on,
@@ -9,7 +9,7 @@ use async_std::{
 use sqlx::PgPool;
 use crate::{
     components::{
-        consts::BUF_SIZE, method::Method
+        consts::BUF_SIZE, method::Method, cors::CORS
     },
     context::Context,
     response::Response,
@@ -26,32 +26,46 @@ pub struct Server {
         fn(Context) -> Result<Response>,
     >,
     pool: Option<PgPool>,
+    cors: CorsSetting,
 }
-pub struct ServerSetting{
+pub struct ServerSetting<'cors> {
     map: HashMap<
         (Method, &'static str, bool),
         fn(Context) -> Result<Response>,
     >,
     pool:   Option<PgPool>,
+    cors:   CORS<'cors>,
     errors: Vec<String>,
+}
+struct CorsSetting {
+    origins: HashSet<&'static str>
 }
 
 
-impl ServerSetting {
+impl<'cors> ServerSetting<'cors> {
     pub fn serve_on(&self, address: &'static str) -> Result<()> {
         if !self.errors.is_empty() {
             return Response::SetUpError(&self.errors)
         }
+
         let server = Server {
             map:  self.map.clone(),
             pool: self.pool.clone(),
+            cors: CorsSetting {
+                origins: HashSet::from_iter(self.cors.allow_origins.clone().to_vec().into_iter()),
+            }
         };
+
         let tcp_address = validation::tcp_address(address);
         block_on(
             server.serve_on(tcp_address)
         )
     }
     
+    pub fn cors(&mut self, cors: CORS<'cors>) -> &mut Self {
+        self.cors = cors;
+        self
+    }
     pub fn db_connection_pool(&mut self, pool: PgPool) -> &mut Self {
         self.pool = Some(pool);
         self
@@ -114,10 +128,11 @@ impl ServerSetting {
     }
 }
 impl Server {
-    pub fn setup() -> ServerSetting {
+    pub fn setup<'cors>() -> ServerSetting<'cors> {
         ServerSetting {
             map:    HashMap::new(),
             pool:   None,
+            cors:   CORS::default(),
             errors: Vec::new(),
         }
     }
@@ -125,6 +140,7 @@ impl Server {
     async fn serve_on(self, tcp_address: String) -> Result<()> {
         let handler_map = Arc::new(self.map);
         let connection_pool = Arc::new(self.pool);
+        let allow_origin = Arc::new(self.cors.origins);
 
         let listener = TcpListener::bind(tcp_address).await?;
         let mut incoming = listener.incoming();
@@ -132,13 +148,19 @@ impl Server {
         while let Some(stream) = incoming.next().await {
             let stream = stream?;
             task::spawn(
-                handle_stream(stream, Arc::clone(&handler_map), Arc::clone(&connection_pool))
+                handle_stream(
+                    stream,
+                    Arc::clone(&handler_map),
+                    Arc::clone(&connection_pool),
+                    Arc::clone(&allow_origin),
+                )
             );
         }
 
         Ok(())
     }
 }
+
 
 async fn handle_stream(
     mut stream: TcpStream,
@@ -147,23 +169,47 @@ async fn handle_stream(
         fn(Context) -> Result<Response>,
     >>,
     connection_pool: Arc<Option<PgPool>>,
-) -> Result<()> {
-    let mut buffer = [b' '; BUF_SIZE];
-    stream.read(&mut buffer).await?;
-
-    let (method, path_str, mut context) = parse_stream(&buffer)?;
-    context.pool = connection_pool.as_ref().as_ref();
-
-    match handle_request(handler_map, method, path_str, context).await {
+    allow_origin: Arc<HashSet<&'static str>>,
+) {
+    let response = match setup_response(
+        &mut stream,
+        allow_origin,
+        connection_pool,
+        handler_map,
+    ).await {
         Ok(res)  => res,
         Err(res) => res,
-    }.write_to_stream(
-        &mut stream
-    ).await?;
+    };
 
-    stream.flush().await?;
-    Ok(())
+    if let Err(err) = response.write_to_stream(&mut stream).await {
+        eprintln!("failed to write response: {err}")
+    }
+    if let Err(err) = stream.flush().await {
+        eprintln!("failed to flush stream: {err}")   
+    }
 }
+
+async fn setup_response(
+    stream: &mut TcpStream,
+    allow_origin: Arc<HashSet<&'static str>>,
+    connection_pool: Arc<Option<PgPool>>,
+    handler_map: Arc<HashMap<
+        (Method, &'static str, bool),
+        fn(Context) -> Result<Response>,
+    >>,
+) -> Result<Response> {
+    let mut buffer = [b' '; BUF_SIZE];
+    stream.read(&mut buffer).await?;
+    let (
+        method,
+        path_str,
+        mut context
+    ) = parse_stream(&buffer, allow_origin)?;
+
+    context.pool = connection_pool.as_ref().as_ref();
+    handle_request(handler_map, method, path_str, context).await
+}
+
 async fn handle_request<'ctx>(
     handler_map: Arc<HashMap<
         (Method, &'static str, bool),

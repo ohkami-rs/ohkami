@@ -1,12 +1,19 @@
+use std::{sync::Arc, collections::HashSet};
+
 use crate::{
     components::{consts::BUF_SIZE, method::Method, json::JSON},
     response::Response,
     context::Context, result::Result,
 };
 
-pub(crate) fn parse_stream(
-    buffer: &[u8; BUF_SIZE]
-) -> Result<(Method, &str, Context)> {
+pub(crate) fn parse_stream<'buf>(
+    buffer: &'buf [u8; BUF_SIZE],
+    allow_origin: Arc<HashSet<&'static str>>,
+) -> Result<(
+    Method,
+    &'buf str,
+    Context<'buf>
+)> {
     let mut lines = std::str::from_utf8(buffer)?
         .trim_end()
         .lines();
@@ -16,6 +23,16 @@ pub(crate) fn parse_stream(
 
     while let Some(line) = lines.next() {
         if line.is_empty() {break}
+
+        if line.starts_with("Origin: ") {
+            let origin = &line[8..];
+            if !allow_origin.contains(origin) {
+                return Err(Response::Forbidden("that origin is not allowed"))
+            }
+            break  // 今のところ Origin 以外見ないので
+        }
+
+        // TODO: handle BasicAuth
     }
 
     let request_context = Context {

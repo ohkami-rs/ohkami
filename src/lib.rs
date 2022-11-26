@@ -1,12 +1,12 @@
+#![feature(try_blocks)]
+
 pub mod server;
 pub mod result;
 pub mod context;
 pub mod response;
 pub mod db;
-
-pub(crate) mod components;
+pub mod components;
 pub(crate) mod utils;
-
 
 pub mod prelude {
     pub use super::{

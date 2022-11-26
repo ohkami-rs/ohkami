@@ -116,15 +116,22 @@ Keep-Alive: timeout=5
     #[allow(non_snake_case)]
     pub fn InternalServerError<Msg: ToString>(msg: Msg) -> Self {
         Self {
-            status:  Status::InternalServerError,
-            body:    Body::text(msg.to_string()),
+            status: Status::InternalServerError,
+            body:   Body::text(msg.to_string()),
         }
     }
     #[allow(non_snake_case)]
     pub fn NotImplemented<Msg: ToString>(msg: Msg) -> Self {
         Self {
-            status:  Status::NotImplemented,
-            body:    Body::text(msg.to_string()),
+            status: Status::NotImplemented,
+            body:   Body::text(msg.to_string()),
+        }
+    }
+    #[allow(non_snake_case)]
+    pub fn Forbidden<Msg: ToString>(msg: Msg) -> Self {
+        Self {
+            status: Status::Forbidden,
+            body:   Body::text(msg.to_string()),
         }
     }
 }

@@ -1,4 +1,5 @@
-use cobalt::prelude::*;
+use std::default::Default;
+use cobalt::{prelude::*, components::cors::CORS};
 use once_cell::sync::Lazy;
 use serde::Deserialize;
 use sqlx::FromRow;
@@ -21,6 +22,10 @@ fn main() -> Result<()> {
     })?;
 
     Server::setup()
+        .cors(CORS {
+            allow_origins: &["http://localhost:3000"],
+            ..Default::default()
+        })
         .db_connection_pool(pool)
         .POST("/login", post_login)
         .serve_on(":3000")
@@ -50,7 +55,7 @@ fn post_login(ctx: Context) -> Result<Response> {
             .fetch_one(ctx.pool())
             .await
     })?;
-    
+
     // Hash the password in `request body` and check if it equals to the password in `user`.
 
     let token = "sample_new_token_for_this_user";
