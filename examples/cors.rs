@@ -1,11 +1,13 @@
 use cobalt::{prelude::*, components::cors::CORS};
 
 fn main() -> Result<()> {
-    Server::setup()
-        .cors(CORS {
+    Server::setup_with(Config {
+        cors: CORS {
             allow_origins: &["http://localhost:8000"],
             ..Default::default()
-        })
+        },
+        ..Default::default()
+    })
         .GET("/", hello)
         .serve_on(":5000")
 }

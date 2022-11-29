@@ -19,8 +19,10 @@ fn main() -> Result<()> {
             .connect(&DB_URL)
             .await
     })?;
-    Server::setup()
-        .db_connection_pool(pool)
+    Server::setup_with(Config {
+        db_connection_pool: Some(pool),
+        ..Default::default()
+    })
         .GET("/users/:id", get_user_user_id)
         .serve_on(":3000")
 }

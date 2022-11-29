@@ -39,6 +39,20 @@ pub struct ServerSetting {
 }
 
 
+pub struct Config {
+    pub cors: CORS,
+    pub db_connection_pool: Option<PgPool>,
+}
+impl Default for Config {
+    fn default() -> Self {
+        Self {
+            cors: CORS::default(),
+            db_connection_pool: None,
+        }
+    }
+}
+
+
 impl ServerSetting {
     pub fn serve_on(&self, address: &'static str) -> Result<()> {
         if !self.errors.is_empty() {
@@ -55,15 +69,6 @@ impl ServerSetting {
         block_on(
             server.serve_on(tcp_address)
         )
-    }
-    
-    pub fn cors(&mut self, cors: CORS) -> &mut Self {
-        self.cors = cors;
-        self
-    }
-    pub fn db_connection_pool(&mut self, pool: PgPool) -> &mut Self {
-        self.pool = Some(pool);
-        self
     }
 
     #[allow(non_snake_case)]
@@ -129,6 +134,14 @@ impl Server {
             pool:   None,
             cors:   CORS::default(),
             errors: Vec::new(),
+        }
+    }
+    pub fn setup_with(config: Config) -> ServerSetting {
+        ServerSetting {
+            map:    HashMap::new(),
+            pool:   config.db_connection_pool,
+            cors:   config.cors,
+            errors: Vec::new()
         }
     }
 
