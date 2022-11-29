@@ -11,6 +11,7 @@ use crate::{
 
 #[derive(Debug)]
 pub struct Response {
+    additional_headers: String,
     status: Status,
     body:   Body,
 }
@@ -63,19 +64,25 @@ Content-Type: {}; charset=utf-8
 Content-Length: {}
 Date: {}
 Keep-Alive: timeout=5
-
+{}
 {}",
             self.status.response_format(),
             self.status.content_type(),
             self.body.content_length(),
             Utc::now().to_rfc2822(),
+            self.additional_headers,
             self.body.response_format(),
         ).as_bytes()).await
+    }
+    pub(crate) fn add_header(&mut self, header_string: &String) {
+        self.additional_headers += header_string;
+        self.additional_headers += "\n";
     }
 
     #[allow(non_snake_case)]
     pub(crate) fn SetUpError(messages: &Vec<String>) -> Result<()> {
         Err(Self {
+            additional_headers: String::new(),
             status: Status::SetUpError,
             body:   Body::text(messages.iter().fold(
                 String::new(), |a, b| a + b + "\n"
@@ -86,6 +93,7 @@ Keep-Alive: timeout=5
     #[allow(non_snake_case)]
     pub fn OK(body: JSON) -> Result<Self> {
         Ok(Self {
+            additional_headers: String::new(),
             status: Status::OK,
             body:   Body::json(body),
         })
@@ -93,6 +101,7 @@ Keep-Alive: timeout=5
     #[allow(non_snake_case)]
     pub fn Created(body: JSON) -> Result<Self> {
         Ok(Self {
+            additional_headers: String::new(),
             status: Status::Created,
             body:   Body::json(body),
         })
@@ -102,6 +111,7 @@ Keep-Alive: timeout=5
     #[allow(non_snake_case)]
     pub fn NotFound<Msg: ToString>(msg: Msg) -> Self {
         Self {
+            additional_headers: String::new(),
             status: Status::NotFound,
             body:   Body::text(msg.to_string()),
         }
@@ -109,6 +119,7 @@ Keep-Alive: timeout=5
     #[allow(non_snake_case)]
     pub fn BadRequest<Msg: ToString>(msg: Msg) -> Self {
         Self {
+            additional_headers: String::new(),
             status: Status::BadRequest,
             body:   Body::text(msg.to_string())
         }
@@ -116,6 +127,7 @@ Keep-Alive: timeout=5
     #[allow(non_snake_case)]
     pub fn InternalServerError<Msg: ToString>(msg: Msg) -> Self {
         Self {
+            additional_headers: String::new(),
             status: Status::InternalServerError,
             body:   Body::text(msg.to_string()),
         }
@@ -123,6 +135,7 @@ Keep-Alive: timeout=5
     #[allow(non_snake_case)]
     pub fn NotImplemented<Msg: ToString>(msg: Msg) -> Self {
         Self {
+            additional_headers: String::new(),
             status: Status::NotImplemented,
             body:   Body::text(msg.to_string()),
         }
@@ -130,6 +143,7 @@ Keep-Alive: timeout=5
     #[allow(non_snake_case)]
     pub fn Forbidden<Msg: ToString>(msg: Msg) -> Self {
         Self {
+            additional_headers: String::new(),
             status: Status::Forbidden,
             body:   Body::text(msg.to_string()),
         }

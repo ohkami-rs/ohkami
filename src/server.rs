@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use async_std::{
     sync::Arc,
     task::block_on,
@@ -26,23 +26,20 @@ pub struct Server {
         fn(Context) -> Result<Response>,
     >,
     pool: Option<PgPool>,
-    cors: CorsSetting,
+    cors: CORS,
 }
-pub struct ServerSetting<'cors> {
+pub struct ServerSetting {
     map: HashMap<
         (Method, &'static str, bool),
         fn(Context) -> Result<Response>,
     >,
     pool:   Option<PgPool>,
-    cors:   CORS<'cors>,
+    cors:   CORS,
     errors: Vec<String>,
 }
-struct CorsSetting {
-    origins: HashSet<&'static str>
-}
 
 
-impl<'cors> ServerSetting<'cors> {
+impl ServerSetting {
     pub fn serve_on(&self, address: &'static str) -> Result<()> {
         if !self.errors.is_empty() {
             return Response::SetUpError(&self.errors)
@@ -51,9 +48,7 @@ impl<'cors> ServerSetting<'cors> {
         let server = Server {
             map:  self.map.clone(),
             pool: self.pool.clone(),
-            cors: CorsSetting {
-                origins: HashSet::from_iter(self.cors.allow_origins.clone().to_vec().into_iter()),
-            }
+            cors: self.cors.clone(),
         };
 
         let tcp_address = validation::tcp_address(address);
@@ -62,7 +57,7 @@ impl<'cors> ServerSetting<'cors> {
         )
     }
     
-    pub fn cors(&mut self, cors: CORS<'cors>) -> &mut Self {
+    pub fn cors(&mut self, cors: CORS) -> &mut Self {
         self.cors = cors;
         self
     }
@@ -128,7 +123,7 @@ impl<'cors> ServerSetting<'cors> {
     }
 }
 impl Server {
-    pub fn setup<'cors>() -> ServerSetting<'cors> {
+    pub fn setup() -> ServerSetting {
         ServerSetting {
             map:    HashMap::new(),
             pool:   None,
@@ -140,7 +135,13 @@ impl Server {
     async fn serve_on(self, tcp_address: String) -> Result<()> {
         let handler_map = Arc::new(self.map);
         let connection_pool = Arc::new(self.pool);
-        let allow_origin = Arc::new(self.cors.origins);
+        let allow_origin_str = Arc::new(
+            if self.cors.allow_origins.is_empty() {
+                String::new()
+            } else {
+                format!("Access-Control-Allow-Origin: {}", self.cors.allow_origins.join(" "))
+            }
+        );
 
         let listener = TcpListener::bind(tcp_address).await?;
         let mut incoming = listener.incoming();
@@ -152,7 +153,7 @@ impl Server {
                     stream,
                     Arc::clone(&handler_map),
                     Arc::clone(&connection_pool),
-                    Arc::clone(&allow_origin),
+                    Arc::clone(&allow_origin_str),
                 )
             );
         }
@@ -169,17 +170,18 @@ async fn handle_stream(
         fn(Context) -> Result<Response>,
     >>,
     connection_pool: Arc<Option<PgPool>>,
-    allow_origin: Arc<HashSet<&'static str>>,
+    allow_origin_str: Arc<String>,
 ) {
-    let response = match setup_response(
+    let mut response = match setup_response(
         &mut stream,
-        allow_origin,
         connection_pool,
         handler_map,
     ).await {
         Ok(res)  => res,
         Err(res) => res,
     };
+
+    response.add_header(&*allow_origin_str);
 
     if let Err(err) = response.write_to_stream(&mut stream).await {
         eprintln!("failed to write response: {}", err)
@@ -191,7 +193,6 @@ async fn handle_stream(
 
 async fn setup_response(
     stream: &mut TcpStream,
-    allow_origin: Arc<HashSet<&'static str>>,
     connection_pool: Arc<Option<PgPool>>,
     handler_map: Arc<HashMap<
         (Method, &'static str, bool),
@@ -204,7 +205,9 @@ async fn setup_response(
         method,
         path_str,
         mut context
-    ) = parse_stream(&buffer, allow_origin)?;
+    ) = parse_stream(
+        &buffer
+    )?;
 
     context.pool = connection_pool.as_ref().as_ref();
     handle_request(

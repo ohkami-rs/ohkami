@@ -1,12 +1,12 @@
 use std::default;
 
 #[derive(Clone)]
-pub struct CORS<'cors> {
-    pub allow_origins: &'cors [&'static str],
+pub struct CORS {
+    pub allow_origins: &'static [&'static str],
     pub _private: ()
 }
 
-impl<'cors> default::Default for CORS<'cors> {
+impl default::Default for CORS {
     fn default() -> Self {
         Self {
             allow_origins: &[],
