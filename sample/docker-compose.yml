@@ -1,0 +1,36 @@
+# ref: https://qiita.com/yagince/items/ffbff7d15420be1fc411
+version: '3'
+
+services:
+  server:
+    build:
+      context: ..
+      dockerfile: ./sample/Dockerfile
+    env_file:
+      - ./.env
+    container_name: server
+    command: bash
+    tty: true
+    volumes:
+      - ../src/:/app/src/
+      - ../Cargo.toml:/app/Cargo.toml
+      - ../examples/:/app/examples
+    ports:
+      - 3000:3000
+#     depends_on:
+#       - db
+# 
+#   db:
+#     env_file:
+#       - ./.env
+#     image: postgres:12.3-alpine
+#     container_name: db
+#     ports:
+#       - 5433:5432
+#     volumes:
+#       - ./init:/docker-entrypoint-initdb.d
+#       - pgdata:/var/lib/postgresql/data
+# 
+# volumes:
+#   pgdata:
+#     driver: local

@@ -194,7 +194,9 @@ async fn handle_stream(
         Err(res) => res,
     };
 
-    response.add_header(&*allow_origin_str);
+    if !allow_origin_str.is_empty() {
+        response.add_header(&*allow_origin_str)
+    }
 
     if let Err(err) = response.write_to_stream(&mut stream).await {
         eprintln!("failed to write response: {}", err)
