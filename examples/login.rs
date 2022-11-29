@@ -1,4 +1,4 @@
-use ohkami::prelude::*;
+use ohkami::{prelude::*, json};
 use once_cell::sync::Lazy;
 use serde::Deserialize;
 use sqlx::FromRow;
@@ -57,6 +57,6 @@ fn post_login(ctx: Context) -> Result<Response> {
 
     let token = "sample_new_token_for_this_user";
     Response::OK(
-        JSON::from(format!("{{ \"token\": \"{token}\" }}"))
+        json!{"token": token}
     )
 }

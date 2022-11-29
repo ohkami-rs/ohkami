@@ -1,7 +1,5 @@
 use serde::{Serialize, Deserialize};
-use crate::{
-    response::{ResponseFormat, Response}
-};
+use crate::response::{ResponseFormat, Response};
 
 
 #[derive(Debug)]
@@ -14,7 +12,7 @@ impl<'d> JSON {
         Ok(serde_json::from_str(&self.0)?)
     }
 
-    pub(crate) fn from_str_unchecked(str: &str) -> Self {
+    pub fn from_str_unchecked(str: &str) -> Self {
         Self(str.to_owned())
     }
     pub(crate) fn content_length(&self) -> usize {
@@ -32,4 +30,17 @@ impl<S: ToString> From<S> for JSON {
     fn from(value: S) -> Self {
         Self(value.to_string())
     }
+}
+
+
+#[macro_export]
+macro_rules! json {
+    ($key1:literal : $value1:expr $(, $key:literal : $value:expr)*) => {
+        JSON::from(
+            String::from("{")
+            + &format!("\"{}\":{:?}", $key1, $value1)
+            $( + &format!(",\"{}\":{:?}", $key, $value) )*
+            + "}"
+        )
+    };
 }
