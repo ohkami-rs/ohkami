@@ -20,8 +20,10 @@ fn main() -> Result<()> {
             .await
     })?;
 
-    Server::setup()
-        .db_connection_pool(pool)
+    Server::setup_with(Config {
+        db_connection_pool: Some(pool),
+        ..Default::default()
+    })
         .POST("/login", post_login)
         .serve_on(":3000")
 }

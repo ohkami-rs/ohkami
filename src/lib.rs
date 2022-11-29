@@ -10,7 +10,7 @@ pub(crate) mod utils;
 
 pub mod prelude {
     pub use super::{
-        server::Server,
+        server::{Server, Config},
         result::{Result, ElseResponse, ElseResponseWithErr},
         context::Context,
         response::Response,
