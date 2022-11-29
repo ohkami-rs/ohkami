@@ -25,8 +25,8 @@ pub(crate) fn parse_stream<'buf>(
     }
 
     let request_context = Context {
-        pool:  None,
-        param: None,
+        pool:       None,
+        path_param: None,
         body:
             if let Some(request_body) = lines.next() {
                 Some(JSON::from_str_unchecked(request_body))

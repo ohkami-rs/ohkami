@@ -243,7 +243,7 @@ async fn handle_request<'ctx>(
     let (path, param) = {
         let (rest, tail) = path_str.rsplit_once('/').unwrap();
         if let Ok(param) = tail.parse::<u32>() {
-            request_context.param = Some(param);
+            request_context.path_param = Some(param);
             (rest, Some(param))
         } else {
             (path_str, None)

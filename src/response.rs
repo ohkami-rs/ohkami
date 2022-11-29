@@ -148,4 +148,12 @@ Keep-Alive: timeout=5
             body:   Body::text(msg.to_string()),
         }
     }
+    #[allow(non_snake_case)]
+    pub fn Unauthorized<Msg: ToString>(msg: Msg) -> Self {
+        Self {
+            additional_headers: String::new(),
+            status: Status::Unauthorized,
+            body:   Body::text(msg.to_string()),
+        }
+    }
 }

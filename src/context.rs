@@ -8,7 +8,7 @@ use crate::{
 
 pub struct Context<'ctx> {
     pub(crate) pool: Option<&'ctx PgPool>,
-    pub param:       Option<u32>,  // Option<&'ctx str>,
+    pub path_param:  Option<u32>,  // Option<&'ctx str>,
     pub(crate) body: Option<JSON>,
 }
 
