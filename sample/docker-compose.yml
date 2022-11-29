@@ -9,7 +9,7 @@ services:
     env_file:
       - ./.env
     container_name: server
-    command: bash
+    command: cargo run --example hello
     tty: true
     volumes:
       - ../src/:/app/src/
@@ -23,7 +23,7 @@ services:
 #   db:
 #     env_file:
 #       - ./.env
-#     image: postgres:12.3-alpine
+#     image: postgres:15.1-alpine
 #     container_name: db
 #     ports:
 #       - 5433:5432

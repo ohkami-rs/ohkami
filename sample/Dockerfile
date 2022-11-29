@@ -1,4 +1,4 @@
-FROM rust:1.48.0-slim-buster
+FROM rust:1.65.0-slim-buster
 
 ENV CARGO_TARGET_DIR=/tmp/target \
     DEBIAN_FRONTEND=noninteractive \
@@ -6,9 +6,12 @@ ENV CARGO_TARGET_DIR=/tmp/target \
     LANG=ja_JP.utf8
 
 RUN apt update && apt install -y \
+    ca-certificates \
     locales \
     libpq-dev \
     gnupg \
+    apt-transport-https\
+    libssl-dev \
     pkg-config \
     curl \
     build-essential \
@@ -19,4 +22,5 @@ RUN apt update && apt install -y \
 
 WORKDIR /app
 
-CMD [ "cargo", "run", "--example", "hello" ]
+# CMD [ "cargo", "run", "--example", "hello" ]
+CMD [ "echo", "hello" ]

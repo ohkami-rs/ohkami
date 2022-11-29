@@ -1,5 +1,3 @@
-#![feature(try_blocks)]
-
 pub mod server;
 pub mod result;
 pub mod context;

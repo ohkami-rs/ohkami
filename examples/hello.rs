@@ -4,7 +4,7 @@ fn main() -> Result<()> {
     Server::setup()
         .GET("/", hello)
         .GET("/sleepy/:time", sleepy_hello)
-        .serve_on(":3000")
+        .serve_on("0.0.0.0:3000")
 }
 
 fn hello(_: Context) -> Result<Response> {
