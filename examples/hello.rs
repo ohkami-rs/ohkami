@@ -1,4 +1,4 @@
-use cobalt::prelude::*;
+use ohkami::prelude::*;
 
 fn main() -> Result<()> {
     Server::setup()

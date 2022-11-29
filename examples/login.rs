@@ -1,4 +1,4 @@
-use cobalt::prelude::*;
+use ohkami::prelude::*;
 use once_cell::sync::Lazy;
 use serde::Deserialize;
 use sqlx::FromRow;
