@@ -4,9 +4,13 @@ use crate::{
     context::Context, result::Result,
 };
 
-pub(crate) fn parse_stream(
-    buffer: &[u8; BUF_SIZE]
-) -> Result<(Method, &str, Context)> {
+pub(crate) fn parse_stream<'buf>(
+    buffer: &'buf [u8; BUF_SIZE]
+) -> Result<(
+    Method,
+    &'buf str,
+    Context<'buf>
+)> {
     let mut lines = std::str::from_utf8(buffer)?
         .trim_end()
         .lines();
@@ -16,6 +20,8 @@ pub(crate) fn parse_stream(
 
     while let Some(line) = lines.next() {
         if line.is_empty() {break}
+
+        // TODO: handle BasicAuth
     }
 
     let request_context = Context {
