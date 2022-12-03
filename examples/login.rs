@@ -5,10 +5,10 @@ use sqlx::FromRow;
 
 static DB_URL: Lazy<String> = Lazy::new(|| format!(
     "postgres://{}:{}@{}:{}/{}",
-    std::env::var("POSTGRES_HOST").unwrap(),
-    std::env::var("POSTGRES_PORT").unwrap(),
     std::env::var("POSTGRES_USER").unwrap(),
     std::env::var("POSTGRES_PASSWORD").unwrap(),
+    std::env::var("POSTGRES_HOST").unwrap(),
+    std::env::var("POSTGRES_PORT").unwrap(),
     std::env::var("POSTGRES_DB").unwrap(),
 ));
 
@@ -25,7 +25,7 @@ fn main() -> Result<()> {
         ..Default::default()
     })
         .POST("/login", post_login)
-        .serve_on(":3000")
+        .serve_on("0.0.0.0:3000")
 }
 
 #[derive(FromRow)]

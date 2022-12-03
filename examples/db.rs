@@ -3,23 +3,21 @@ use once_cell::sync::Lazy;
 use serde::Serialize;
 use sqlx::FromRow;
 
-static DB_URL: Lazy<String> = Lazy::new(|| format!(
-    "postgres://{}:{}@{}:{}/{}",
-    std::env::var("POSTGRES_HOST").unwrap(),
-    std::env::var("POSTGRES_PORT").unwrap(),
-    std::env::var("POSTGRES_USER").unwrap(),
-    std::env::var("POSTGRES_PASSWORD").unwrap(),
-    std::env::var("POSTGRES_DB").unwrap(),
-));
+static DB_URL: Lazy<String> = Lazy::new(|| {
+    format!("postgres://{}:{}@{}:{}/{}",
+        std::env::var("POSTGRES_USER").unwrap(),
+        std::env::var("POSTGRES_PASSWORD").unwrap(),
+        std::env::var("POSTGRES_HOST").unwrap(),
+        std::env::var("POSTGRES_PORT").unwrap(),
+        std::env::var("POSTGRES_DB").unwrap(),
+    )
+});
 
 fn main() -> Result<()> {
-    // ========================================================
-    println!("DB_URL: {DB_URL}");
-    // ========================================================
     let pool = useDB(async {
         sqlx::postgres::PgPoolOptions::new()
             .max_connections(20)
-            .connect(&DB_URL)
+            .connect(DB_URL.as_str())
             .await
     })?;
     Server::setup_with(Config {

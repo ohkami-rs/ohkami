@@ -1,19 +1,19 @@
 FROM rust:1.65.0 as builder
+ENV CARGO_TARGET_DIR=/tmp/target
 WORKDIR /app
 COPY ./Cargo.toml ./Cargo.toml
 COPY ./Cargo.lock ./Cargo.lock
-RUN touch ./src/main.rs \
+RUN mkdir src \
+ && touch ./src/main.rs \
  && echo 'fn main() {}' > ./src/main.rs \
  && cargo build --release \
- && rm src/*.rs
+ && rm src/main.rs
 COPY ./src ./src
-RUN cargo build --release --example db \
- && mv ./
-
+COPY ./examples ./examples 
+RUN cargo build --release --locked --example db
 
 FROM debian:buster-slim
-ENV CARGO_TARGET_DIR=/tmp/target \
-    LC_CTYPE=ja_JP.utf8 \
+ENV LC_CTYPE=ja_JP.utf8 \
     LANG=ja_JP.utf8
 RUN apt update && apt install -y \
     ca-certificates \
