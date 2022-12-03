@@ -13,6 +13,9 @@ static DB_URL: Lazy<String> = Lazy::new(|| format!(
 ));
 
 fn main() -> Result<()> {
+    // ========================================================
+    println!("DB_URL: {DB_URL}");
+    // ========================================================
     let pool = useDB(async {
         sqlx::postgres::PgPoolOptions::new()
             .max_connections(20)
@@ -24,7 +27,7 @@ fn main() -> Result<()> {
         ..Default::default()
     })
         .GET("/users/:id", get_user_user_id)
-        .serve_on(":3000")
+        .serve_on("0.0.0.0:3000")
 }
 
 #[derive(FromRow, Serialize)]

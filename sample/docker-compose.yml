@@ -9,7 +9,6 @@ services:
     env_file:
       - ./.env
     container_name: server
-    command: cargo run --example hello
     tty: true
     volumes:
       - ../src/:/app/src/
@@ -17,20 +16,20 @@ services:
       - ../examples/:/app/examples
     ports:
       - 3000:3000
-#     depends_on:
-#       - db
-# 
-#   db:
-#     env_file:
-#       - ./.env
-#     image: postgres:15.1-alpine
-#     container_name: db
-#     ports:
-#       - 5433:5432
-#     volumes:
-#       - ./init:/docker-entrypoint-initdb.d
-#       - pgdata:/var/lib/postgresql/data
-# 
-# volumes:
-#   pgdata:
-#     driver: local
+    depends_on:
+      - db
+
+  db:
+    env_file:
+      - ./.env
+    image: postgres:15.1-alpine
+    container_name: db
+    ports:
+      - 5432:5432
+    volumes:
+      - ./init:/docker-entrypoint-initdb.d
+      - data:/var/lib/postgresql/data
+
+volumes:
+  data:
+    driver: local
