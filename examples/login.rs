@@ -25,7 +25,7 @@ fn main() -> Result<()> {
         ..Default::default()
     })
         .POST("/login", post_login)
-        .serve_on("0.0.0.0:3000")
+        .serve_on(":3000")
 }
 
 #[derive(FromRow)]
