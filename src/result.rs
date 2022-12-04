@@ -57,6 +57,8 @@ impl From<std::str::Utf8Error> for Response {
         Self::InternalServerError(value.to_string() + ": caused by UTF-8 handling")
     }
 }
+
+#[cfg(any(feature = "postgres", feature = "mysql"))]
 impl From<sqlx::Error> for Response {
     fn from(value: sqlx::Error) -> Self {
         if let Some(db_error) = value.as_database_error() {

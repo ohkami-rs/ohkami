@@ -13,6 +13,7 @@ pub mod prelude {
         context::Context,
         response::Response,
         components::json::JSON,
-        db::useDB,
     };
+    #[cfg(any(feature = "postgres", feature = "mysql"))]
+    pub use super::db::useDB;
 }

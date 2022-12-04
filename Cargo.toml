@@ -1,20 +1,23 @@
+[workspace]
+members = [
+    ".",
+    "examples/db",
+]
+
 [package]
 name = "ohkami"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-sqlx = { version = "0.6", features = ["runtime-async-std-native-tls", "postgres"] }
+sqlx = { version = "0.6", default-feature = false , optional = true }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 chrono = "0.4"
 futures = "0.3"
 async-std = "1"
 
-[dev-dependencies]
-once_cell = "1.16.0"
-
 [features]
 default  = []
-postgres = []
-mysql    = []
+postgres = ["sqlx?/postgres"]
+mysql    = ["sqlx?/mysql"]
