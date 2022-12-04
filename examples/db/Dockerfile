@@ -11,7 +11,7 @@ RUN mkdir ./src \
  && cargo build \
  && rm ./src/main.rs
 COPY ./examples/db/rust/src/main.rs ./src/main.rs
-RUN cargo build --release
+RUN cargo build --locked
 
 FROM debian:buster-slim
 ENV LC_CTYPE=ja_JP.utf8 \
@@ -30,5 +30,5 @@ RUN apt update && apt install -y \
     wget \
  && echo "ja_JP UTF-8" > /etc/locale.gen \
  && locale-gen
-COPY --from=builder /tmp/target/release/db .
+COPY --from=builder /tmp/target/debug/db .
 CMD [ "./db" ]
