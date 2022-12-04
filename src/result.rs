@@ -51,7 +51,7 @@ impl From<serde_json::Error> for Response {
             }
         })
     }
-} 
+}
 impl From<std::str::Utf8Error> for Response {
     fn from(value: std::str::Utf8Error) -> Self {
         Self::InternalServerError(value.to_string() + ": caused by UTF-8 handling")

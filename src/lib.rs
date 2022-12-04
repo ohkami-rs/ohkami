@@ -1,5 +1,7 @@
+#[cfg(all(not(feature = "sqlx"), any(feature = "postgres", feature = "mysql")))]
+compile_error!("feature `postgres` or `mysql` can't be enebled without enabling `sqlx` feature");
 #[cfg(all(feature = "postgres", feature = "mysql"))]
-compile_error!("feature `postgres` and `mysql` can't be enabled at the same time");
+compile_error!("`postgres` feature and `mysql` feature can't be enabled at the same time");
 
 pub mod server;
 pub mod result;
