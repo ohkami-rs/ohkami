@@ -2,17 +2,17 @@ version: '3'
 
 services:
   server:
-    build:
-      context: ..
-      dockerfile: ./sample/Dockerfile
-    env_file:
-      - ./.env
     container_name: server
     tty: true
+    env_file:
+      - ./.env
     ports:
       - 3000:3000
     depends_on:
       - db
+    build:
+      context: ../..
+      dockerfile: ./examples/db/Dockerfile
 
   db:
     env_file:

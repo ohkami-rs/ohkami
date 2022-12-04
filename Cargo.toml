@@ -1,8 +1,8 @@
-[workspace]
-members = [
-    ".",
-    "examples/db",
-]
+# [workspace]
+# members = [
+#     ".",
+#     "examples/simple",
+# ]
 
 [package]
 name = "ohkami"

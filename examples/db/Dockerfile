@@ -1,17 +1,17 @@
 FROM rust:1.65.0 as builder
 ENV CARGO_TARGET_DIR=/tmp/target
 WORKDIR /app
-COPY ./Cargo.toml ./Cargo.toml
-COPY ./Cargo.lock ./Cargo.lock
-COPY ./examples ./examples
-RUN mkdir src \
- && touch ./src/main.rs \
+COPY ./Cargo.toml ./ohkami/Cargo.toml
+COPY ./Cargo.lock ./ohkami/Cargo.lock
+COPY ./src ./ohkami/src
+COPY ./examples/db/rust/Cargo.toml ./Cargo.toml
+COPY ./examples/db/rust/Cargo.lock ./Cargo.lock
+RUN mkdir ./src \
  && echo 'fn main() {}' > ./src/main.rs \
- && cargo build --release \
- && rm src/main.rs
-COPY ./src ./src
-RUN cd ./examples/db/ \
- && cargo build --release --locked
+ && cargo build \
+ && rm ./src/main.rs
+COPY ./examples/db/rust/src/main.rs ./src/main.rs
+RUN cargo build --release
 
 FROM debian:buster-slim
 ENV LC_CTYPE=ja_JP.utf8 \
