@@ -3,13 +3,13 @@ ENV CARGO_TARGET_DIR=/tmp/target
 WORKDIR /app
 COPY ./Cargo.toml ./Cargo.toml
 COPY ./Cargo.lock ./Cargo.lock
+COPY ./examples ./examples
 RUN mkdir src \
  && touch ./src/main.rs \
  && echo 'fn main() {}' > ./src/main.rs \
  && cargo build --release \
  && rm src/main.rs
 COPY ./src ./src
-COPY ./examples ./examples 
 RUN cd ./examples/db/ \
  && cargo build --release --locked
 

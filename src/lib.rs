@@ -1,3 +1,6 @@
+#[cfg(all(feature = "postgres", feature = "mysql"))]
+compile_error!("feature `postgres` and `mysql` can't be enabled at the same time");
+
 pub mod server;
 pub mod result;
 pub mod context;
