@@ -17,7 +17,7 @@ pub(crate) enum Status {
 impl Status {
     pub(crate) fn content_type(&self) -> &'static str {
         match self {
-            Self::OK => "application/json",
+            Self::OK | Self::Created => "application/json",
             _ => "text/plain",
         }
     }

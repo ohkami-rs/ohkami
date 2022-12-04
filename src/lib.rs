@@ -1,3 +1,6 @@
+#[cfg(all(feature = "postgres", feature = "mysql"))]
+compile_error!("feature `postgres` and `mysql` can't be enabled at the same time");
+
 pub mod server;
 pub mod result;
 pub mod context;
@@ -13,6 +16,7 @@ pub mod prelude {
         context::Context,
         response::Response,
         components::json::JSON,
-        db::useDB,
     };
+    #[cfg(any(feature = "postgres", feature = "mysql"))]
+    pub use super::db::useDB;
 }

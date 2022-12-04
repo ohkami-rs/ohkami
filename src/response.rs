@@ -1,11 +1,11 @@
-
 use async_std::{net::TcpStream, io::WriteExt};
 use chrono::Utc;
 use crate::{
     components::{
         status::Status,
         json::JSON
-    }, result::Result,
+    },
+    result::Result,
 };
 
 
@@ -80,14 +80,14 @@ Keep-Alive: timeout=5
     }
 
     #[allow(non_snake_case)]
-    pub(crate) fn SetUpError(messages: &Vec<String>) -> Result<()> {
-        Err(Self {
+    pub(crate) fn SetUpError(messages: &Vec<String>) -> Self {
+        Self {
             additional_headers: String::new(),
             status: Status::SetUpError,
             body:   Body::text(messages.iter().fold(
                 String::new(), |a, b| a + b + "\n"
             ))
-        })
+        }
     }
 
     #[allow(non_snake_case)]

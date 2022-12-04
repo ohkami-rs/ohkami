@@ -1,0 +1,10 @@
+[package]
+name = "db"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+once_cell = "1.16.0"
+ohkami = { path = "../../", features = ["sqlx", "postgres"] }
+serde = "1.0"
+sqlx = "0.6"

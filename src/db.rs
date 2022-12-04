@@ -1,11 +1,8 @@
-use futures::Future;
-
-use crate::prelude::Result;
-
+#[cfg(any(feature = "postgres", feature = "mysql"))]
 #[allow(non_snake_case)]
-pub fn useDB<T, F: Future<Output = sqlx::Result<T>>>(
+pub fn useDB<T, F: futures::Future<Output = sqlx::Result<T>>>(
     db_future: F
-) -> Result<T> {
+) -> crate::result::Result<T> {
     async_std::task::block_on(async {
         Ok(db_future.await?)
     })

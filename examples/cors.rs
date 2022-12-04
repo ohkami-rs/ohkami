@@ -9,7 +9,7 @@ fn main() -> Result<()> {
         ..Default::default()
     })
         .GET("/", hello)
-        .serve_on("0.0.0.0:5000")
+        .serve_on(":5000")
 }
 
 fn hello(_: Context) -> Result<Response> {
