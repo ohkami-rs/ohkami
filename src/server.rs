@@ -56,7 +56,7 @@ impl Default for Config {
 impl ServerSetting {
     pub fn serve_on(&self, address: &'static str) -> Result<()> {
         if !self.errors.is_empty() {
-            return Response::SetUpError(&self.errors)
+            return Err(Response::SetUpError(&self.errors))
         }
 
         let server = Server {

@@ -15,4 +15,6 @@ async-std = "1"
 once_cell = "1.16.0"
 
 [features]
-default = []
+default  = []
+postgres = []
+mysql    = []

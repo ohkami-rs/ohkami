@@ -59,6 +59,10 @@ impl From<std::str::Utf8Error> for Response {
 }
 impl From<sqlx::Error> for Response {
     fn from(value: sqlx::Error) -> Self {
-        Self::InternalServerError(value.to_string() + ": caused by DB handling")
+        if let Some(db_error) = value.as_database_error() {
+            Self::InternalServerError(db_error.message().to_string() + ": caused by DB handling")
+        } else {
+            Self::SetUpError(&vec![value.to_string() + "caused by DB setup"])
+        }
     }
 }
