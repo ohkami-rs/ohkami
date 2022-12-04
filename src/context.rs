@@ -9,6 +9,7 @@ pub struct Context {
     pub path_param:  Option<u32>,  // Option<&'ctx str>,
     pub(crate) body: Option<JSON>,
 }
+#[cfg(not(any(feature = "postgres", feature = "mysql")))]
 impl<'d> Context {
     pub fn request_body<D: Deserialize<'d>>(&'d self) -> Result<D> {
         let json = self.body.as_ref()
