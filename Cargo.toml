@@ -10,7 +10,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-sqlx = { version = "0.6", default-feature = false, features = ["runtime-async-std-native-tls"] }
+sqlx = { version = "0.6", default-feature = false, optional = true }
 serde = "1.0"
 serde_json = "1.0"
 chrono = "0.4"
@@ -19,5 +19,6 @@ async-std = "1"
 
 [features]
 default  = []
-postgres = ["sqlx/postgres"]
-mysql    = ["sqlx/mysql"]
+sqlx     = ["dep:sqlx"]
+postgres = ["sqlx?/runtime-async-std-native-tls", "sqlx?/postgres"]
+mysql    = ["sqlx?/runtime-async-std-native-tls", "sqlx?/mysql"]
