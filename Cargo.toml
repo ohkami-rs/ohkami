@@ -10,7 +10,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-sqlx = { version = "0.6", default-feature = false, optional = true }
+sqlx = { version = "0.6", default-features = false, optional = true }
 serde = "1.0"
 serde_json = "1.0"
 chrono = "0.4"

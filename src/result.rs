@@ -61,10 +61,6 @@ impl From<std::str::Utf8Error> for Response {
 #[cfg(any(feature = "postgres", feature = "mysql"))]
 impl From<sqlx::Error> for Response {
     fn from(value: sqlx::Error) -> Self {
-        if let Some(db_error) = value.as_database_error() {
-            Self::InternalServerError(db_error.message().to_string() + ": caused by DB handling")
-        } else {
-            Self::SetUpError(&vec![value.to_string() + "caused by DB setup"])
-        }
+        Self::InternalServerError(value.to_string() + ": caused by DB handling")
     }
 }
