@@ -10,7 +10,8 @@ RUN mkdir src \
  && rm src/main.rs
 COPY ./src ./src
 COPY ./examples ./examples 
-RUN cargo build --release --locked --example db
+RUN cd ./examples/db/ \
+ && cargo build --release --locked
 
 FROM debian:buster-slim
 ENV LC_CTYPE=ja_JP.utf8 \
@@ -29,5 +30,5 @@ RUN apt update && apt install -y \
     wget \
  && echo "ja_JP UTF-8" > /etc/locale.gen \
  && locale-gen
-COPY --from=builder /tmp/target/release/examples/db .
+COPY --from=builder /tmp/target/release/db .
 CMD [ "./db" ]
