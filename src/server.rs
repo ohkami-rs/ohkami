@@ -30,6 +30,7 @@ pub struct Server {
     >,
     cors: CORS,
 }
+#[derive(Debug)]
 pub struct ServerSetting {
     map: HashMap<
         (Method, &'static str, bool),
@@ -59,9 +60,14 @@ impl Default for Config {
 }
 
 impl ServerSetting {
+
+    #[tracing::instrument]
     pub fn serve_on(&self, address: &'static str) -> Result<()> {
         if !self.errors.is_empty() {
-            return Err(Response::SetUpError(&self.errors))
+            tracing::error!("[server] got a SetupError:");
+            for error in &self.errors {
+                tracing::error!("[server] {}", error)
+            }
         }
 
         let server = Server {
@@ -72,9 +78,12 @@ impl ServerSetting {
             pool: self.pool.clone(),
         };
 
-        let tcp_address = validation::tcp_address(address);
+        tracing::info!("[server] started seving on {}...", address);
+
         block_on(
-            server.serve_on(tcp_address)
+            server.serve_on(
+                validation::tcp_address(address)
+            )
         )
     }
 
@@ -210,11 +219,15 @@ async fn handle_stream(
         response.add_header(&*allow_origin_str)
     }
 
+    tracing::debug!("[server] generated a response: {:?}", &response);
+
     if let Err(err) = response.write_to_stream(&mut stream).await {
-        eprintln!("failed to write response: {}", err)
+        tracing::error!("[server] failed to write response: {}", err);
+        return
     }
     if let Err(err) = stream.flush().await {
-        eprintln!("failed to flush stream: {}", err)   
+        tracing::error!("[server] failed to flush stream: {}", err);
+        return
     }
 }
 #[cfg(feature = "sqlx")]
@@ -240,11 +253,15 @@ async fn handle_stream(
         response.add_header(&*allow_origin_str)
     }
 
+    tracing::debug!("[server] generated a response: {:?}", &response);
+
     if let Err(err) = response.write_to_stream(&mut stream).await {
-        eprintln!("failed to write response: {}", err)
+        tracing::error!("[server] failed to write response: {}", err);
+        return
     }
     if let Err(err) = stream.flush().await {
-        eprintln!("failed to flush stream: {}", err)   
+        tracing::error!("[server] failed to flush stream: {}", err);
+        return
     }
 }
 

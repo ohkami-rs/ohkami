@@ -49,7 +49,10 @@ pub(crate) fn parse_stream<'buf>(
         .trim_end()
         .lines();
 
-    let request_line = lines.next().ok_or_else(|| Response::BadRequest("empty request"))?;
+    let request_line = lines.next()
+        .ok_or_else(|| Response::BadRequest("empty request"))?;
+
+    tracing::debug!("[server] got a request: {}", request_line);
     let (method, path) = parse_request_line(request_line)?;
 
     while let Some(line) = lines.next() {

@@ -79,16 +79,16 @@ Keep-Alive: timeout=5
         self.additional_headers += "\n";
     }
 
-    #[allow(non_snake_case)]
-    pub(crate) fn SetUpError(messages: &Vec<String>) -> Self {
-        Self {
-            additional_headers: String::new(),
-            status: Status::SetUpError,
-            body:   Body::text(messages.iter().fold(
-                String::new(), |a, b| a + b + "\n"
-            ))
-        }
-    }
+    // #[allow(non_snake_case)]
+    // pub(crate) fn SetUpError(messages: &Vec<String>) -> Self {
+    //     Self {
+    //         additional_headers: String::new(),
+    //         status: Status::SetUpError,
+    //         body:   Body::text(messages.iter().fold(
+    //             String::new(), |a, b| a + b + "\n"
+    //         ))
+    //     }
+    // }
 
     #[allow(non_snake_case)]
     pub fn OK(body: JSON) -> Result<Self> {

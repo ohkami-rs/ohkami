@@ -3,7 +3,6 @@ use crate::response::ResponseFormat;
 
 #[derive(Debug)]
 pub(crate) enum Status {
-    SetUpError,
     OK                  = 200,
     Created             = 201,
     BadRequest          = 400,
@@ -25,7 +24,7 @@ impl Status {
 
 impl ResponseFormat for Status {
     fn response_format(&self) -> &'static str {
-        match self { Self::SetUpError => unreachable!(),
+        match self {
             Self::BadRequest => "400 Bad Request",
             Self::InternalServerError => "500 Internal Server Error",
             Self::NotFound => "404 Not Found",
