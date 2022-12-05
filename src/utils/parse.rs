@@ -4,7 +4,7 @@ use crate::{
     context::Context, result::Result,
 };
 
-#[cfg(any(feature = "postgres", feature = "mysql"))]
+#[cfg(feature = "sqlx")]
 pub(crate) fn parse_stream<'buf>(
     buffer: &'buf [u8; BUF_SIZE]
 ) -> Result<(
@@ -25,10 +25,10 @@ pub(crate) fn parse_stream<'buf>(
         // TODO: handle BasicAuth
     }
 
-    #[cfg(any(feature = "postgres", feature = "mysql"))]
+    #[cfg(feature = "sqlx")]
     let request_context = Context {
-        pool:       None,
-        path_param: None,
+        pool:  None,
+        param: None,
         body:
             if let Some(request_body) = lines.next() {
                 Some(JSON::from_str_unchecked(request_body))
@@ -37,13 +37,13 @@ pub(crate) fn parse_stream<'buf>(
 
     Ok((method, path, request_context))
 }
-#[cfg(not(any(feature = "postgres", feature = "mysql")))]
+#[cfg(not(feature = "sqlx"))]
 pub(crate) fn parse_stream<'buf>(
     buffer: &'buf [u8; BUF_SIZE]
 ) -> Result<(
     Method,
     &'buf str,
-    Context
+    Context,
 )> {
     let mut lines = std::str::from_utf8(buffer)?
         .trim_end()
@@ -62,7 +62,7 @@ pub(crate) fn parse_stream<'buf>(
     }
 
     let request_context = Context {
-        path_param: None,
+        param: None,
         body:
             if let Some(request_body) = lines.next() {
                 Some(JSON::from_str_unchecked(request_body))

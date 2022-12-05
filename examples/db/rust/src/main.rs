@@ -39,7 +39,7 @@ struct User {
 }
 
 fn get_user_userid(ctx: Context) -> Result<Response> {
-    let user_id = ctx.path_param
+    let user_id = ctx.param
         .else_response(|| Response::BadRequest("Expected user id as path parameter"))?;
 
     let user = useDB(async {
@@ -59,7 +59,7 @@ fn get_user_userid(ctx: Context) -> Result<Response> {
 fn sleepy_get_user_userid(ctx: Context) -> Result<Response> {
     std::thread::sleep(std::time::Duration::from_secs(2));
 
-    let user_id = ctx.path_param
+    let user_id = ctx.param
         .else_response(|| Response::BadRequest("Expected user id as path parameter"))?;
 
     let user = useDB(async {
