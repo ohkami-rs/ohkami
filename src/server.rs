@@ -63,9 +63,9 @@ impl Default for Config {
 
 impl ServerSetting {
 
-    // #[tracing::instrument(
-    //     name = "server setting"
-    // )]
+    #[tracing::instrument(
+        name = "server setting"
+    )]
     pub fn serve_on(&self, address: &'static str) -> Result<()> {
         if !self.errors.is_empty() {
             tracing::error!("got a SetupError:");
@@ -87,9 +87,10 @@ impl ServerSetting {
         block_on(
             server.serve_on(
                 validation::tcp_address(address)
-            ).instrument(
-                tracing::debug_span!("server")
             )
+            // .instrument(
+            //     tracing::debug_span!("server")
+            // )
         )
     }
 
@@ -170,9 +171,9 @@ impl Server {
         }
     }
 
-    // #[tracing::instrument(
-    //     name = "server"
-    // )]
+    #[tracing::instrument(
+        name = "server"
+    )]
     async fn serve_on(self, tcp_address: String) -> Result<()> {
         let handler_map = Arc::new(self.map);
         let allow_origin_str = Arc::new(
@@ -199,9 +200,10 @@ impl Server {
 
                     #[cfg(feature = "sqlx")]
                     Arc::clone(&connection_pool),
-                ).instrument(
-                    tracing::debug_span!("handle stream")
                 )
+                // .instrument(
+                //     tracing::debug_span!("handle stream")
+                // )
             );
         }
 
@@ -210,9 +212,9 @@ impl Server {
 }
 
 #[cfg(not(feature = "sqlx"))]
-// #[tracing::instrument(
-//     name = "server"
-// )]
+#[tracing::instrument(
+    name = "server"
+)]
 async fn handle_stream(
     mut stream: TcpStream,
     handler_map: Arc<HashMap<

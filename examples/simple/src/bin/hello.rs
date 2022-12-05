@@ -1,7 +1,9 @@
 use ohkami::prelude::*;
 
 fn main() -> Result<()> {
-    tracing_subscriber::fmt().init();
+    tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::TRACE)
+        .init();
 
     Server::setup()
         .GET("/", hello)
