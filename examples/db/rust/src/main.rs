@@ -20,10 +20,13 @@ fn main() -> Result<()> {
             .connect(DB_URL.as_str())
             .await
     })?;
-    Server::setup_with(Config {
+
+    let config = Config {
         db_connection_pool: Some(pool),
         ..Default::default()
-    })
+    };
+
+    Server::setup_with(config)
         .GET("/api/users/:id", get_user_userid)
         .GET("/api/sleepy/users/:id", sleepy_get_user_userid)
         .serve_on(":3000")
