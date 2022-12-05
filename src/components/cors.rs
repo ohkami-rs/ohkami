@@ -1,6 +1,6 @@
 use std::default;
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct CORS {
     pub allow_origins: &'static [&'static str],
     pub _private: ()
