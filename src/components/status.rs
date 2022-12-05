@@ -25,14 +25,14 @@ impl Status {
 impl ResponseFormat for Status {
     fn response_format(&self) -> &'static str {
         match self {
-            Self::BadRequest => "400 Bad Request",
+            Self::BadRequest          => "400 Bad Request",
             Self::InternalServerError => "500 Internal Server Error",
-            Self::NotFound => "404 Not Found",
-            Self::Forbidden => "403 Forbidden",
-            Self::Unauthorized => "401 Unauthorized",
-            Self::NotImplemented => "501 Not Implemented",
-            Self::OK => "200 OK",
-            Self::Created => "201 Created",
+            Self::NotFound            => "404 Not Found",
+            Self::Forbidden           => "403 Forbidden",
+            Self::Unauthorized        => "401 Unauthorized",
+            Self::NotImplemented      => "501 Not Implemented",
+            Self::OK                  => "200 OK",
+            Self::Created             => "201 Created",
         }
     }
 }

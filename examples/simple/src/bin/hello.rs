@@ -1,6 +1,8 @@
 use ohkami::prelude::*;
 
 fn main() -> Result<()> {
+    tracing_subscriber::fmt().init();
+
     Server::setup()
         .GET("/", hello)
         .GET("/sleepy/:time", sleepy_hello)

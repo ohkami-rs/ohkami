@@ -5,6 +5,7 @@ use async_std::{
     net::{TcpStream, TcpListener},
     stream::StreamExt, task,
 };
+use tracing::Instrument;
 use std::collections::HashMap;
 use crate::{
     components::{
@@ -23,6 +24,7 @@ use sqlx::PgPool as ConnectionPool;
 #[cfg(feature = "mysql")]
 use sqlx::MySqlPool as ConnectionPool;
 
+#[derive(Debug)]
 pub struct Server {
     map: HashMap<
         (Method, &'static str, bool),
@@ -61,12 +63,14 @@ impl Default for Config {
 
 impl ServerSetting {
 
-    #[tracing::instrument]
+    // #[tracing::instrument(
+    //     name = "server setting"
+    // )]
     pub fn serve_on(&self, address: &'static str) -> Result<()> {
         if !self.errors.is_empty() {
-            tracing::error!("[server] got a SetupError:");
+            tracing::error!("got a SetupError:");
             for error in &self.errors {
-                tracing::error!("[server] {}", error)
+                tracing::error!("{}", error)
             }
         }
 
@@ -78,11 +82,13 @@ impl ServerSetting {
             pool: self.pool.clone(),
         };
 
-        tracing::info!("[server] started seving on {}...", address);
+        tracing::info!("started seving on {}...", address);
 
         block_on(
             server.serve_on(
                 validation::tcp_address(address)
+            ).instrument(
+                tracing::debug_span!("server")
             )
         )
     }
@@ -164,6 +170,9 @@ impl Server {
         }
     }
 
+    // #[tracing::instrument(
+    //     name = "server"
+    // )]
     async fn serve_on(self, tcp_address: String) -> Result<()> {
         let handler_map = Arc::new(self.map);
         let allow_origin_str = Arc::new(
@@ -190,6 +199,8 @@ impl Server {
 
                     #[cfg(feature = "sqlx")]
                     Arc::clone(&connection_pool),
+                ).instrument(
+                    tracing::debug_span!("handle stream")
                 )
             );
         }
@@ -199,6 +210,9 @@ impl Server {
 }
 
 #[cfg(not(feature = "sqlx"))]
+// #[tracing::instrument(
+//     name = "server"
+// )]
 async fn handle_stream(
     mut stream: TcpStream,
     handler_map: Arc<HashMap<
@@ -219,18 +233,21 @@ async fn handle_stream(
         response.add_header(&*allow_origin_str)
     }
 
-    tracing::debug!("[server] generated a response: {:?}", &response);
+    tracing::debug!("generated a response: {:?}", &response);
 
     if let Err(err) = response.write_to_stream(&mut stream).await {
-        tracing::error!("[server] failed to write response: {}", err);
+        tracing::error!("failed to write response: {}", err);
         return
     }
     if let Err(err) = stream.flush().await {
-        tracing::error!("[server] failed to flush stream: {}", err);
+        tracing::error!("failed to flush stream: {}", err);
         return
     }
 }
 #[cfg(feature = "sqlx")]
+// #[tracing::instrument(
+//     name = "server"
+// )]
 async fn handle_stream(
     mut stream: TcpStream,
     handler_map: Arc<HashMap<
@@ -253,14 +270,14 @@ async fn handle_stream(
         response.add_header(&*allow_origin_str)
     }
 
-    tracing::debug!("[server] generated a response: {:?}", &response);
+    tracing::debug!("generated a response: {:?}", &response);
 
     if let Err(err) = response.write_to_stream(&mut stream).await {
-        tracing::error!("[server] failed to write response: {}", err);
+        tracing::error!("failed to write response: {}", err);
         return
     }
     if let Err(err) = stream.flush().await {
-        tracing::error!("[server] failed to flush stream: {}", err);
+        tracing::error!("failed to flush stream: {}", err);
         return
     }
 }

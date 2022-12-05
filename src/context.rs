@@ -10,6 +10,7 @@ use sqlx::PgPool as ConnectionPool;
 use sqlx::MySqlPool as ConnectionPool;
 
 #[cfg(not(feature = "sqlx"))]
+#[derive(Debug)]
 pub struct Context {
     pub       param: Option<u32>,  // Option<&'ctx str>,
     pub(crate) body: Option<JSON>,
@@ -25,6 +26,7 @@ impl<'d> Context {
 }
 
 #[cfg(feature = "sqlx")]
+#[derive(Debug)]
 pub struct Context<'ctx> {
     pub(crate) pool: Option<&'ctx ConnectionPool>,
     pub       param: Option<u32>,  // Option<&'ctx str>,
