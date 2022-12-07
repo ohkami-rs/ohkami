@@ -14,7 +14,11 @@ static DB_URL: Lazy<String> = Lazy::new(|| {
 });
 
 fn main() -> Result<()> {
-    let pool = useDB(async {
+    // tracing_subscriber::fmt()
+    //     .with_max_level(tracing::Level::DEBUG)
+    //     .init();
+
+    let db_connection_pool = useDB(async {
         sqlx::postgres::PgPoolOptions::new()
             .max_connections(20)
             .connect(DB_URL.as_str())
@@ -22,7 +26,7 @@ fn main() -> Result<()> {
     })?;
 
     let config = Config {
-        db_connection_pool: Some(pool),
+        db_connection_pool,
         ..Default::default()
     };
 
@@ -38,38 +42,30 @@ struct User {
     name: String,
 }
 
-fn get_user_userid(ctx: Context) -> Result<Response> {
+async fn get_user_userid(ctx: Context) -> Result<Response> {
     let user_id = ctx.param
         .else_response(|| Response::BadRequest("Expected user id as path parameter"))?;
 
-    let user = useDB(async {
-        sqlx::query_as::<_, User>(
-            "SELECT * FROM users WHERE id = $1"
-        )
+    let user = sqlx::query_as::<_, User>("SELECT id, name FROM users WHERE id = $1")
         .bind(user_id as i64)
         .fetch_one(ctx.pool())
-        .await
-    })?;
+        .await?;
 
     Response::OK(
         JSON::from_struct(&user)?
     )
 }
 
-fn sleepy_get_user_userid(ctx: Context) -> Result<Response> {
+async fn sleepy_get_user_userid(ctx: Context) -> Result<Response> {
     std::thread::sleep(std::time::Duration::from_secs(2));
 
     let user_id = ctx.param
         .else_response(|| Response::BadRequest("Expected user id as path parameter"))?;
 
-    let user = useDB(async {
-        sqlx::query_as::<_, User>(
-            "SELECT * FROM users WHERE id = $1"
-        )
+    let user = sqlx::query_as::<_, User>("SELECT id, name FROM users WHERE id = $1")
         .bind(user_id as i64)
         .fetch_one(ctx.pool())
-        .await
-    })?;
+        .await?;
 
     Response::OK(
         JSON::from_struct(&user)?

@@ -30,5 +30,5 @@ RUN apt update && apt install -y \
     wget \
  && echo "ja_JP UTF-8" > /etc/locale.gen \
  && locale-gen
-COPY --from=builder /tmp/target/debug/db .
-CMD [ "./db" ]
+COPY --from=builder /tmp/target/debug/db ./
+ENTRYPOINT [ "./db" ]

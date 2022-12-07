@@ -19,27 +19,37 @@ use crate::{
     },
 };
 
-#[cfg(feature = "potgres")]
-use sqlx::PgPool as ConnectionPool;
+#[cfg(feature = "postgres")]
+use sqlx::postgres::{
+    PgPool as ConnectionPool,
+    PgPoolOptions as PoolOption,
+};
 #[cfg(feature = "mysql")]
-use sqlx::MySqlPool as ConnectionPool;
+use sqlx::mysql::{
+    MySqlPool as ConnectionPool,
+    MySqlPoolOptions as PoolOption,
+};
 
+#[cfg(not(feature = "sqlx"))]
+type Handler = Box<dyn Fn(Context) -> Pin<Box<dyn Future<Output=Result<Response>> + Send >> + Send + Sync>;
+#[cfg(feature = "sqlx")]
+type Handler = Box<dyn Fn(Context) -> Pin<Box<dyn Future<Output=Result<Response>> + Send >> + Send + Sync>;
 
 pub struct Server {
     map: HashMap<
         (Method, &'static str, /*with param tailing or not*/bool),
-        Box<dyn Fn(Context) -> Pin<Box<dyn Future<Output=Result<Response>> + Send >> + Send + Sync>
+        Handler,
     >,
     cors: CORS,
 
     #[cfg(feature = "sqlx")]
-    pool:   Option<ConnectionPool>,
+    pool: ConnectionPool,
 }
 pub struct Config {
     pub cors: CORS,
 
     #[cfg(feature = "sqlx")]
-    pub db_connection_pool: Option<ConnectionPool>,
+    pub db_connection_pool: ConnectionPool,
 }
 impl Default for Config {
     fn default() -> Self {
@@ -47,19 +57,17 @@ impl Default for Config {
             cors: CORS::default(),
 
             #[cfg(feature = "sqlx")]
-            db_connection_pool: None,
+            db_connection_pool: PoolOption::default().connect_lazy("").unwrap(),
         }
     }
 }
 
 impl Server {
+    #[cfg(not(feature = "sqlx"))]
     pub fn setup() -> Self {
         Self {
             map:    HashMap::new(),
             cors:   CORS::default(),
-   
-            #[cfg(feature = "sqlx")]
-            pool:   None,
         }
     }
     pub fn setup_with(config: Config) -> Self {
@@ -70,46 +78,6 @@ impl Server {
             #[cfg(feature = "sqlx")]
             pool:   config.db_connection_pool,
         }
-    }
-
-    #[tracing::instrument(
-        name = "server setting",
-        skip(self)
-    )]
-    pub fn serve_on(self, address: &'static str) -> Result<()> {
-        tracing::info!("started seving on {}...", address);
-        let tcp_address = validation::tcp_address(address);
-
-        let allow_origin_str = Arc::new(
-            if self.cors.allow_origins.is_empty() {
-                String::new()
-            } else {
-                format!("Access-Control-Allow-Origin: {}", self.cors.allow_origins.join(" "))
-            }
-        );
-        
-        #[cfg(feature = "sqlx")]
-        let connection_pool = Arc::new(self.pool);
-        
-        let handler_map = Arc::new(self.map);
-
-        block_on(async {
-            let listener = TcpListener::bind(tcp_address).await?;
-            while let Some(stream) = listener.incoming().next().await {
-                let stream = stream?;
-                task::spawn(
-                    handle_stream(
-                        stream,
-                        Arc::clone(&handler_map),
-                        Arc::clone(&allow_origin_str),
-                        
-                        #[cfg(feature = "sqlx")]
-                        Arc::clone(&connection_pool),
-                    )
-                );
-            }
-            Ok(())
-        })
     }
 
     #[allow(non_snake_case)]
@@ -141,7 +109,9 @@ impl Server {
         self.add_handler(Method::DELETE, path_string, handler)
     }
 
-    fn add_handler<Fut: Future<Output = Result<Response>> + Send + 'static>(mut self,
+    fn add_handler<#[cfg(feature = "sqlx")] 'ctx,
+        Fut: Future<Output = Result<Response>> + Send + 'static,
+    >(mut self,
         method:      Method,
         path_string: &'static str,
         handler:     fn(Context) -> Fut,
@@ -165,18 +135,58 @@ impl Server {
 
         self
     }
+
+    // #[tracing::instrument(
+    //     name = "server setting",
+    //     skip(self)
+    // )]
+    pub fn serve_on(self, address: &'static str) -> Result<()> {
+        tracing::info!("started seving on {}...", address);
+        let tcp_address = validation::tcp_address(address);
+
+        let allow_origin_str = Arc::new(
+            if self.cors.allow_origins.is_empty() {
+                String::new()
+            } else {
+                format!("Access-Control-Allow-Origin: {}", self.cors.allow_origins.join(" "))
+            }
+        );
+
+        let handler_map = Arc::new(self.map);
+
+        #[cfg(feature = "sqlx")]
+        let connection_pool = Arc::new(self.pool);
+
+        block_on(async {
+            let listener = TcpListener::bind(tcp_address).await?;
+            while let Some(stream) = listener.incoming().next().await {
+                let stream = stream?;
+                task::spawn(
+                    handle_stream(
+                        stream,
+                        Arc::clone(&handler_map),
+                        Arc::clone(&allow_origin_str),
+                        
+                        #[cfg(feature = "sqlx")]
+                        Arc::clone(&connection_pool),
+                    )
+                );
+            }
+            Ok(())
+        })
+    }
 }
 
 #[cfg(not(feature = "sqlx"))]
-#[tracing::instrument(
-    name = "server",
-    skip(handler_map)
-)]
+// #[tracing::instrument(
+//     name = "server",
+//     skip(handler_map)
+// )]
 async fn handle_stream(
     mut stream: TcpStream,
     handler_map: Arc<HashMap<
         (Method, &'static str, bool),
-        Box<dyn Fn(Context) -> Pin<Box<dyn Future<Output=Result<Response>> + Send >> + Send + Sync>,
+        Handler,
     >>,
     allow_origin_str: Arc<String>,
 ) {
@@ -204,17 +214,18 @@ async fn handle_stream(
     }
 }
 #[cfg(feature = "sqlx")]
-#[tracing::instrument(
-    name = "server"
-)]
+// #[tracing::instrument(
+//     name = "server",
+//     skip(handler_map)
+// )]
 async fn handle_stream(
     mut stream: TcpStream,
     handler_map: Arc<HashMap<
         (Method, &'static str, bool),
-        Box<dyn Handler>,
+        Handler,
     >>,
     allow_origin_str: Arc<String>,
-    connection_pool:  Arc<Option<ConnectionPool>>,
+    connection_pool:  Arc<ConnectionPool>,
 ) {
     let mut response = match setup_response(
         &mut stream,
@@ -246,7 +257,7 @@ async fn setup_response(
     stream: &mut TcpStream,
     handler_map: Arc<HashMap<
         (Method, &'static str, bool),
-        Box<dyn Fn(Context) -> Pin<Box<dyn Future<Output=Result<Response>> + Send >> + Send + Sync>
+        Handler
     >>,
 ) -> Result<Response> {
     let mut buffer = [b' '; BUF_SIZE];
@@ -271,9 +282,9 @@ async fn setup_response(
     stream: &mut TcpStream,
     handler_map: Arc<HashMap<
         (Method, &'static str, bool),
-        Box<dyn Handler>
+        Handler
     >>,
-    connection_pool: Arc<Option<ConnectionPool>>,
+    connection_pool: Arc<ConnectionPool>,
 ) -> Result<Response> {
     let mut buffer = [b' '; BUF_SIZE];
     stream.read(&mut buffer).await?;
@@ -282,10 +293,9 @@ async fn setup_response(
         path_str,
         context
     ) = parse_stream(
-        &buffer
+        &buffer,
+        connection_pool
     )?;
-
-    context.pool = connection_pool.as_ref().as_ref();
 
     handle_request(
         handler_map,
@@ -295,13 +305,13 @@ async fn setup_response(
     ).await
 }
 
-async fn handle_request<'ctx>(
+async fn handle_request<'req>(
     handler_map: Arc<HashMap<
         (Method, &'static str, bool),
-        Box<dyn Fn(Context) -> Pin<Box<dyn Future<Output=Result<Response>> + Send >> + Send + Sync>
+        Handler
     >>,
     method:   Method,
-    path_str: &'ctx str,
+    path_str: &'req str,
     mut request_context: Context,
 ) -> Result<Response> {
     let (path, param) = {

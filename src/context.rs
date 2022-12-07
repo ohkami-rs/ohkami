@@ -1,3 +1,5 @@
+use async_std::sync::Arc;
+
 use serde::Deserialize;
 use crate::{
     components::json::JSON,
@@ -27,13 +29,13 @@ impl<'d> Context {
 
 #[cfg(feature = "sqlx")]
 #[derive(Debug)]
-pub struct Context<'ctx> {
-    pub(crate) pool: Option<&'ctx ConnectionPool>,
+pub struct Context {
+    pub(crate) pool: Arc<ConnectionPool>,
     pub       param: Option<u32>,  // Option<&'ctx str>,
     pub(crate) body: Option<JSON>,
 }
 #[cfg(feature = "sqlx")]
-impl<'d, 'ctx> Context<'ctx> {
+impl<'d> Context {
     pub fn request_body<D: Deserialize<'d>>(&'d self) -> Result<D> {
         let json = self.body.as_ref()
             .ok_or_else(|| Response::BadRequest("expected request body"))?;
@@ -41,6 +43,6 @@ impl<'d, 'ctx> Context<'ctx> {
         Ok(json_struct)
     }
     pub fn pool(&self) -> &ConnectionPool {
-        self.pool.unwrap()
+        &*self.pool
     }
 }
