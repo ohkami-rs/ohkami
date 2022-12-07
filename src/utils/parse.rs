@@ -1,4 +1,6 @@
+#[cfg(feature = "sqlx")]
 use async_std::sync::Arc;
+
 use crate::{
     components::{consts::BUF_SIZE, method::Method, json::JSON},
     response::Response,

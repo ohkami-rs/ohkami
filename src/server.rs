@@ -57,7 +57,7 @@ impl Default for Config {
             cors: CORS::default(),
 
             #[cfg(feature = "sqlx")]
-            db_connection_pool: PoolOption::default().connect_lazy("").unwrap(),
+            db_connection_pool: PoolOption::default().connect_lazy("/").unwrap(),
         }
     }
 }

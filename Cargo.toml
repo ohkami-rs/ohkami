@@ -21,10 +21,10 @@ tracing-subscriber = "0.3"
 
 [features]
 ### for debug ###
-default  = ["sqlx", "postgres"]
+# default  = ["sqlx", "postgres"]
 #################
 
-# default = []
+default = []
 sqlx     = ["dep:sqlx"]
 postgres = ["sqlx?/runtime-async-std-native-tls", "sqlx?/postgres"]
 mysql    = ["sqlx?/runtime-async-std-native-tls", "sqlx?/mysql"]

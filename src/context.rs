@@ -1,3 +1,4 @@
+#[cfg(feature = "sqlx")]
 use async_std::sync::Arc;
 
 use serde::Deserialize;

@@ -5,18 +5,18 @@ use sqlx::FromRow;
 
 static DB_URL: Lazy<String> = Lazy::new(|| {
     format!("postgres://{}:{}@{}:{}/{}",
-        std::env::var("POSTGRES_USER").unwrap(),
-        std::env::var("POSTGRES_PASSWORD").unwrap(),
-        std::env::var("POSTGRES_HOST").unwrap(),
-        std::env::var("POSTGRES_PORT").unwrap(),
-        std::env::var("POSTGRES_DB").unwrap(),
+        "postgres",// std::env::var("POSTGRES_USER").unwrap(),
+        "password",// std::env::var("POSTGRES_PASSWORD").unwrap(),
+        "localhost",// std::env::var("POSTGRES_HOST").unwrap(),
+        5432,// std::env::var("POSTGRES_PORT").unwrap(),
+        "sample",// std::env::var("POSTGRES_DB").unwrap(),
     )
 });
 
 fn main() -> Result<()> {
-    // tracing_subscriber::fmt()
-    //     .with_max_level(tracing::Level::DEBUG)
-    //     .init();
+    tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::DEBUG)
+        .init();
 
     let db_connection_pool = useDB(async {
         sqlx::postgres::PgPoolOptions::new()

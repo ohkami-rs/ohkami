@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-ohkami = { path = "./ohkami", features = ["sqlx", "postgres"] }
+ohkami = { path = "../../../", features = ["sqlx", "postgres"] }
 once_cell = "1.16.0"
 serde = "1.0"
 sqlx = "0.6"
