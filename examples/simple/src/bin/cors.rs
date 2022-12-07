@@ -13,7 +13,7 @@ fn main() -> Result<()> {
         .serve_on(":5000")
 }
 
-fn hello(_: Context) -> Result<Response> {
+async fn hello(_: Context) -> Result<Response> {
     Response::OK(
         JSON::from("Hello!")
     )
