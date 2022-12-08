@@ -46,12 +46,21 @@ pub struct Server {
     pool: ConnectionPool,
 }
 
-pub struct Config<'url> {
+pub struct Config<#[cfg(feature = "sqlx")] 'url> {
     pub cors: CORS,
 
     #[cfg(feature = "sqlx")]
     pub connection_pool_of: (PoolOptions, &'url str),
 }
+#[cfg(not(feature = "sqlx"))]
+impl Default for Config {
+    fn default() -> Self {
+        Self {
+            cors: CORS::default(),
+        }
+    }
+}
+#[cfg(feature = "sqlx")]
 impl<'url> Default for Config<'url> {
     fn default() -> Self {
         Self {
@@ -70,7 +79,9 @@ impl Server {
         }
     }
     pub fn setup_with(config: Config) -> Self {
+        #[cfg(feature = "sqlx")]
         let (pool_options, url) = config.connection_pool_of;
+        #[cfg(feature = "sqlx")]
         let err_msg = format!("Can't connect to DB at {url} with {pool_options:?}. If you won't deal with any database, you shouldn't enable `sqlx` flag");
 
         Self {
