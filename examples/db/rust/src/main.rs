@@ -5,11 +5,11 @@ use sqlx::FromRow;
 
 static DB_URL: Lazy<String> = Lazy::new(|| {
     format!("postgres://{}:{}@{}:{}/{}",
-        "postgres",// std::env::var("POSTGRES_USER").unwrap(),
-        "password",// std::env::var("POSTGRES_PASSWORD").unwrap(),
-        "localhost",// std::env::var("POSTGRES_HOST").unwrap(),
-        5432,// std::env::var("POSTGRES_PORT").unwrap(),
-        "sample",// std::env::var("POSTGRES_DB").unwrap(),
+        std::env::var("POSTGRES_USER").unwrap(),
+        std::env::var("POSTGRES_PASSWORD").unwrap(),
+        std::env::var("POSTGRES_HOST").unwrap(),
+        std::env::var("POSTGRES_PORT").unwrap(),
+        std::env::var("POSTGRES_DB").unwrap(),
     )
 });
 
@@ -18,16 +18,12 @@ fn main() -> Result<()> {
         .with_max_level(tracing::Level::DEBUG)
         .init();
 
-    let db_connection_pool = useDB(async {
-        sqlx::postgres::PgPoolOptions::new()
-            .max_connections(20)
-            .connect(DB_URL.as_str())
-            .await
-    })?;
+    let pool_options = sqlx::postgres::PgPoolOptions::new()
+        .max_connections(20);
 
     let config = Config {
-        db_connection_pool,
-        ..Default::default()
+        connection_pool_of: (pool_options, DB_URL.as_str()),
+        ..Config::default()
     };
 
     Server::setup_with(config)

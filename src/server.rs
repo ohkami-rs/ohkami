@@ -22,12 +22,12 @@ use crate::{
 #[cfg(feature = "postgres")]
 use sqlx::postgres::{
     PgPool as ConnectionPool,
-    PgPoolOptions as PoolOption,
+    PgPoolOptions as PoolOptions,
 };
 #[cfg(feature = "mysql")]
 use sqlx::mysql::{
     MySqlPool as ConnectionPool,
-    MySqlPoolOptions as PoolOption,
+    MySqlPoolOptions as PoolOptions,
 };
 
 #[cfg(not(feature = "sqlx"))]
@@ -45,19 +45,18 @@ pub struct Server {
     #[cfg(feature = "sqlx")]
     pool: ConnectionPool,
 }
-pub struct Config {
+
+pub struct Config<'url> {
     pub cors: CORS,
 
     #[cfg(feature = "sqlx")]
-    pub db_connection_pool: ConnectionPool,
+    pub connection_pool_of: (PoolOptions, &'url str),//Option<ConnectionPool>,
 }
-impl Default for Config {
+impl<'url> Default for Config<'url> {
     fn default() -> Self {
         Self {
-            cors: CORS::default(),
-
-            #[cfg(feature = "sqlx")]
-            db_connection_pool: PoolOption::default().connect_lazy("/").unwrap(),
+            cors:               CORS::default(),
+            connection_pool_of: (PoolOptions::new(), "empty URL"),
         }
     }
 }
@@ -71,12 +70,15 @@ impl Server {
         }
     }
     pub fn setup_with(config: Config) -> Self {
+        let (pool_options, url) = config.connection_pool_of;
+        let err_msg = format!("Can't connect to DB at {url} with {pool_options:?}. If you won't deal with any database, you shouldn't enable `sqlx` flag");
+
         Self {
-            map:    HashMap::new(),
-            cors:   config.cors,
+            map:  HashMap::new(),
+            cors: config.cors,
 
             #[cfg(feature = "sqlx")]
-            pool:   config.db_connection_pool,
+            pool: block_on(pool_options.connect(url)).expect(&err_msg)
         }
     }
 
