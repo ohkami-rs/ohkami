@@ -19,16 +19,3 @@ pub mod prelude {
         components::json::JSON,
     };
 }
-
-#[cfg(feature = "postlude")]
-pub mod postlude {
-    pub use serde;
-
-    pub mod tracing {
-        pub use tracing;
-        pub use tracing_subscriber;
-    }
-
-    #[cfg(feature = "sqlx")]
-    pub use sqlx;
-}

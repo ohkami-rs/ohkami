@@ -1,12 +1,7 @@
+use ohkami::prelude::*;
 use once_cell::sync::Lazy;
-use ohkami::{
-    prelude::*,
-    postlude::{
-        tracing::*,
-        serde::Serialize,
-        sqlx::FromRow,
-    }
-};
+use serde::Serialize;
+use sqlx::FromRow;
 
 static DB_URL: Lazy<String> = Lazy::new(|| {
     format!("postgres://{}:{}@{}:{}/{}",

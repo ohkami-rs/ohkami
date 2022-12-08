@@ -1,8 +1,4 @@
-use ohkami::{
-    prelude::*,
-    postlude::tracing::*,
-    components::cors::CORS
-};
+use ohkami::{prelude::*, components::cors::CORS};
 
 fn main() -> Result<()> {
     tracing_subscriber::fmt()
