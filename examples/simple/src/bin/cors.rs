@@ -1,6 +1,6 @@
 use ohkami::{
     prelude::*,
-    postlude::tracing_subscriber,
+    postlude::log::*,
     components::cors::CORS
 };
 

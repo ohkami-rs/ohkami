@@ -1,4 +1,7 @@
-use ohkami::{prelude::*, postlude::tracing_subscriber};
+use ohkami::{
+    prelude::*,
+    postlude::log::*,
+};
 
 fn main() -> Result<()> {
     tracing_subscriber::fmt()

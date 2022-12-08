@@ -22,10 +22,12 @@ pub mod prelude {
 
 #[cfg(feature = "postlude")]
 pub mod postlude {
-    pub use tracing;
-    pub use tracing_subscriber;
-
     pub use serde;
+
+    pub mod log {
+        pub use tracing;
+        pub use tracing_subscriber;
+    }
 
     #[cfg(feature = "sqlx")]
     pub use sqlx;
