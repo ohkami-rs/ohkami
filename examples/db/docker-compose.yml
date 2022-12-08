@@ -3,16 +3,17 @@ version: '3'
 services:
   server:
     container_name: server
+    build:
+      context: ../..
+      dockerfile: ./examples/db/Dockerfile
     tty: true
     env_file:
       - ./.env
     ports:
       - 3000:3000
     depends_on:
-      - db
-    build:
-      context: ../..
-      dockerfile: ./examples/db/Dockerfile
+      db:
+        condition: service_healthy
 
   db:
     env_file:
@@ -24,6 +25,12 @@ services:
     volumes:
       - ./init:/docker-entrypoint-initdb.d
       - data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready --username=postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      # start_period: 30s
 
 volumes:
   data:

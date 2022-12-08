@@ -5,7 +5,8 @@ use async_std::{
     net::{TcpStream, TcpListener},
     stream::StreamExt, task,
 };
-use std::collections::HashMap;
+use std::{collections::HashMap, pin::Pin};
+use futures::Future;
 use crate::{
     components::{
         consts::BUF_SIZE, method::Method, cors::CORS
@@ -18,118 +19,107 @@ use crate::{
     },
 };
 
-#[cfg(feature = "potgres")]
-use sqlx::PgPool as ConnectionPool;
+#[cfg(feature = "postgres")]
+use sqlx::postgres::{
+    PgPool as ConnectionPool,
+    PgPoolOptions as PoolOptions,
+};
 #[cfg(feature = "mysql")]
-use sqlx::MySqlPool as ConnectionPool;
+use sqlx::mysql::{
+    MySqlPool as ConnectionPool,
+    MySqlPoolOptions as PoolOptions,
+};
 
-#[derive(Debug)]
+#[cfg(not(feature = "sqlx"))]
+type Handler = Box<dyn Fn(Context) -> Pin<Box<dyn Future<Output=Result<Response>> + Send >> + Send + Sync>;
+#[cfg(feature = "sqlx")]
+type Handler = Box<dyn Fn(Context) -> Pin<Box<dyn Future<Output=Result<Response>> + Send >> + Send + Sync>;
+
 pub struct Server {
     map: HashMap<
-        (Method, &'static str, bool),
-        fn(Context) -> Result<Response>,
+        (Method, &'static str, /*with param tailing or not*/bool),
+        Handler,
     >,
     cors: CORS,
-}
-#[derive(Debug)]
-pub struct ServerSetting {
-    map: HashMap<
-        (Method, &'static str, bool),
-        fn(Context) -> Result<Response>,
-    >,
-    cors:   CORS,
-    errors: Vec<String>,
 
     #[cfg(feature = "sqlx")]
-    pool:   Option<ConnectionPool>,
+    pool: ConnectionPool,
 }
-pub struct Config {
+
+pub struct Config<'url> {
     pub cors: CORS,
 
     #[cfg(feature = "sqlx")]
-    pub db_connection_pool: Option<ConnectionPool>,
+    pub connection_pool_of: (PoolOptions, &'url str),//Option<ConnectionPool>,
 }
-impl Default for Config {
+impl<'url> Default for Config<'url> {
     fn default() -> Self {
         Self {
-            cors: CORS::default(),
-
-            #[cfg(feature = "sqlx")]
-            db_connection_pool: None,
+            cors:               CORS::default(),
+            connection_pool_of: (PoolOptions::new(), "empty URL"),
         }
     }
 }
 
-impl ServerSetting {
-
-    #[tracing::instrument(
-        name = "server setting"
-    )]
-    pub fn serve_on(&self, address: &'static str) -> Result<()> {
-        if !self.errors.is_empty() {
-            tracing::error!("got a SetupError:");
-            for error in &self.errors {
-                tracing::error!("{}", error)
-            }
+impl Server {
+    #[cfg(not(feature = "sqlx"))]
+    pub fn setup() -> Self {
+        Self {
+            map:    HashMap::new(),
+            cors:   CORS::default(),
         }
+    }
+    pub fn setup_with(config: Config) -> Self {
+        let (pool_options, url) = config.connection_pool_of;
+        let err_msg = format!("Can't connect to DB at {url} with {pool_options:?}. If you won't deal with any database, you shouldn't enable `sqlx` flag");
 
-        let server = Server {
-            map:  self.map.clone(),
-            cors: self.cors.clone(),
+        Self {
+            map:  HashMap::new(),
+            cors: config.cors,
 
             #[cfg(feature = "sqlx")]
-            pool: self.pool.clone(),
-        };
-
-        tracing::info!("started seving on {}...", address);
-
-        block_on(
-            server.serve_on(
-                validation::tcp_address(address)
-            )
-            // .instrument(
-            //     tracing::debug_span!("server")
-            // )
-        )
+            pool: block_on(pool_options.connect(url)).expect(&err_msg)
+        }
     }
 
     #[allow(non_snake_case)]
-    pub fn GET(&mut self,
+    pub fn GET<Fut: Future<Output = Result<Response>> + Send + 'static>(self,
         path_string: &'static str,
-        handler:     fn(Context) -> Result<Response>,
-    ) -> &mut Self {
+        handler:     fn(Context) -> Fut,
+    ) -> Self {
         self.add_handler(Method::GET, path_string, handler)
     }
     #[allow(non_snake_case)]
-    pub fn POST(&mut self,
+    pub fn POST<Fut: Future<Output = Result<Response>> + Send + 'static>(self,
         path_string: &'static str,
-        handler:     fn(Context) -> Result<Response>,
-    ) -> &mut Self {
+        handler:     fn(Context) -> Fut,
+    ) -> Self {
         self.add_handler(Method::POST, path_string, handler)
     }
     #[allow(non_snake_case)]
-    pub fn PATCH(&mut self,
+    pub fn PATCH<Fut: Future<Output = Result<Response>> + Send + 'static>(self,
         path_string: &'static str,
-        handler:     fn(Context) -> Result<Response>,
-    ) -> &mut Self {
+        handler:     fn(Context) -> Fut,
+    ) -> Self {
         self.add_handler(Method::PATCH, path_string, handler)
     }
     #[allow(non_snake_case)]
-    pub fn DELETE(&mut self,
+    pub fn DELETE<Fut: Future<Output = Result<Response>> + Send + 'static>(self,
         path_string: &'static str,
-        handler:     fn(Context) -> Result<Response>,
-    ) -> &mut Self {
+        handler:     fn(Context) -> Fut,
+    ) -> Self {
         self.add_handler(Method::DELETE, path_string, handler)
     }
 
-    fn add_handler(&mut self,
+    fn add_handler<#[cfg(feature = "sqlx")] 'ctx,
+        Fut: Future<Output = Result<Response>> + Send + 'static,
+    >(mut self,
         method:      Method,
         path_string: &'static str,
-        handler:     fn(Context) -> Result<Response>,
-    ) -> &mut Self {
+        handler:     fn(Context) -> Fut,
+    ) -> Self {
         if !is_valid_path(path_string) {
-            self.errors.push(format!("`{path_string}` is invalid as path."));
-            return self
+            panic!("`{path_string}` is invalid as path.");
         }
 
         let (path, has_param) =
@@ -140,41 +130,22 @@ impl ServerSetting {
             };
 
         if self.map.insert(
-            (method, &path, has_param), handler
+            (method, &path, has_param), Box::new(move |ctx| Box::pin(handler(ctx)))
         ).is_some() {
-            self.errors.push(format!("handler for `{method} {path_string}` is resistered duplicatedly"))
+            panic!("handler for `{method} {path_string}` is resistered duplicatedly");
         }
 
         self
     }
-}
-impl Server {
-    pub fn setup() -> ServerSetting {
-        ServerSetting {
-            map:    HashMap::new(),
-            cors:   CORS::default(),
-            errors: Vec::new(),
 
-            #[cfg(feature = "sqlx")]
-            pool:   None,
-        }
-    }
-    pub fn setup_with(config: Config) -> ServerSetting {
-        ServerSetting {
-            map:    HashMap::new(),
-            cors:   config.cors,
-            errors: Vec::new(),
+    // #[tracing::instrument(
+    //     name = "server setting",
+    //     skip(self)
+    // )]
+    pub fn serve_on(self, address: &'static str) -> Result<()> {
+        tracing::info!("started seving on {}...", address);
+        let tcp_address = validation::tcp_address(address);
 
-            #[cfg(feature = "sqlx")]
-            pool:   config.db_connection_pool,
-        }
-    }
-
-    #[tracing::instrument(
-        name = "server"
-    )]
-    async fn serve_on(self, tcp_address: String) -> Result<()> {
-        let handler_map = Arc::new(self.map);
         let allow_origin_str = Arc::new(
             if self.cors.allow_origins.is_empty() {
                 String::new()
@@ -183,42 +154,41 @@ impl Server {
             }
         );
 
+        let handler_map = Arc::new(self.map);
+
         #[cfg(feature = "sqlx")]
         let connection_pool = Arc::new(self.pool);
 
-        let listener = TcpListener::bind(tcp_address).await?;
-        let mut incoming = listener.incoming();
-
-        while let Some(stream) = incoming.next().await {
-            let stream = stream?;
-            task::spawn(
-                handle_stream(
-                    stream,
-                    Arc::clone(&handler_map),
-                    Arc::clone(&allow_origin_str),
-
-                    #[cfg(feature = "sqlx")]
-                    Arc::clone(&connection_pool),
-                )
-                // .instrument(
-                //     tracing::debug_span!("handle stream")
-                // )
-            );
-        }
-
-        Ok(())
+        block_on(async {
+            let listener = TcpListener::bind(tcp_address).await?;
+            while let Some(stream) = listener.incoming().next().await {
+                let stream = stream?;
+                task::spawn(
+                    handle_stream(
+                        stream,
+                        Arc::clone(&handler_map),
+                        Arc::clone(&allow_origin_str),
+                        
+                        #[cfg(feature = "sqlx")]
+                        Arc::clone(&connection_pool),
+                    )
+                );
+            }
+            Ok(())
+        })
     }
 }
 
 #[cfg(not(feature = "sqlx"))]
-#[tracing::instrument(
-    name = "server"
-)]
+// #[tracing::instrument(
+//     name = "server",
+//     skip(handler_map)
+// )]
 async fn handle_stream(
     mut stream: TcpStream,
     handler_map: Arc<HashMap<
         (Method, &'static str, bool),
-        fn(Context) -> Result<Response>,
+        Handler,
     >>,
     allow_origin_str: Arc<String>,
 ) {
@@ -247,16 +217,17 @@ async fn handle_stream(
 }
 #[cfg(feature = "sqlx")]
 // #[tracing::instrument(
-//     name = "server"
+//     name = "server",
+//     skip(handler_map)
 // )]
 async fn handle_stream(
     mut stream: TcpStream,
     handler_map: Arc<HashMap<
         (Method, &'static str, bool),
-        fn(Context) -> Result<Response>,
+        Handler,
     >>,
     allow_origin_str: Arc<String>,
-    connection_pool:  Arc<Option<ConnectionPool>>,
+    connection_pool:  Arc<ConnectionPool>,
 ) {
     let mut response = match setup_response(
         &mut stream,
@@ -288,7 +259,7 @@ async fn setup_response(
     stream: &mut TcpStream,
     handler_map: Arc<HashMap<
         (Method, &'static str, bool),
-        fn(Context) -> Result<Response>,
+        Handler
     >>,
 ) -> Result<Response> {
     let mut buffer = [b' '; BUF_SIZE];
@@ -313,9 +284,9 @@ async fn setup_response(
     stream: &mut TcpStream,
     handler_map: Arc<HashMap<
         (Method, &'static str, bool),
-        fn(Context) -> Result<Response>,
+        Handler
     >>,
-    connection_pool: Arc<Option<ConnectionPool>>,
+    connection_pool: Arc<ConnectionPool>,
 ) -> Result<Response> {
     let mut buffer = [b' '; BUF_SIZE];
     stream.read(&mut buffer).await?;
@@ -324,10 +295,9 @@ async fn setup_response(
         path_str,
         context
     ) = parse_stream(
-        &buffer
+        &buffer,
+        connection_pool
     )?;
-
-    context.pool = connection_pool.as_ref().as_ref();
 
     handle_request(
         handler_map,
@@ -337,13 +307,13 @@ async fn setup_response(
     ).await
 }
 
-async fn handle_request<'ctx>(
+async fn handle_request<'req>(
     handler_map: Arc<HashMap<
         (Method, &'static str, bool),
-        fn(Context) -> Result<Response>,
+        Handler
     >>,
     method:   Method,
-    path_str: &'ctx str,
+    path_str: &'req str,
     mut request_context: Context,
 ) -> Result<Response> {
     let (path, param) = {
@@ -360,5 +330,5 @@ async fn handle_request<'ctx>(
         .get(&(method, path, param.is_some()))
         .ok_or_else(|| Response::NotFound(format!("handler for `{method} {path_str}` is not found")))?;
 
-    handler(request_context)
+    handler(request_context).await
 }

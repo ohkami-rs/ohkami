@@ -11,13 +11,13 @@ fn main() -> Result<()> {
         .serve_on(":3000")
 }
 
-fn hello(_: Context) -> Result<Response> {
+async fn hello(_: Context) -> Result<Response> {
     Response::OK(
         JSON::from("Hello!")
     )
 }
 
-fn sleepy_hello(ctx: Context) -> Result<Response> {
+async fn sleepy_hello(ctx: Context) -> Result<Response> {
     let sleep_time = ctx.param
         .else_response(|| Response::BadRequest("Expected sleeping duration as path parameter."))?;
     (sleep_time < 30)

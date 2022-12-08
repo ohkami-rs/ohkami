@@ -1,16 +1,25 @@
+#[cfg(feature = "sqlx")]
+use async_std::sync::Arc;
+
 use crate::{
     components::{consts::BUF_SIZE, method::Method, json::JSON},
     response::Response,
     context::Context, result::Result,
 };
 
+#[cfg(feature = "postgres")]
+use sqlx::PgPool as ConnectionPool;
+#[cfg(feature = "mysql")]
+use sqlx::MySqlPool as ConnectionPool;
+
 #[cfg(feature = "sqlx")]
 pub(crate) fn parse_stream<'buf>(
-    buffer: &'buf [u8; BUF_SIZE]
+    buffer: &'buf [u8; BUF_SIZE],
+    connection_pool: Arc<ConnectionPool>,
 ) -> Result<(
     Method,
     &'buf str,
-    Context<'buf>
+    Context
 )> {
     let mut lines = std::str::from_utf8(buffer)?
         .trim_end()
@@ -28,9 +37,8 @@ pub(crate) fn parse_stream<'buf>(
         // TODO: handle BasicAuth
     }
 
-    #[cfg(feature = "sqlx")]
     let request_context = Context {
-        pool:  None,
+        pool:  connection_pool,
         param: None,
         body:
             if let Some(request_body) = lines.next() {
