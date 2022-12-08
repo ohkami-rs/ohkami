@@ -1,6 +1,6 @@
 use ohkami::{
     prelude::*,
-    postlude::log::*,
+    postlude::tracing::*,
 };
 
 fn main() -> Result<()> {

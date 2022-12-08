@@ -24,7 +24,7 @@ pub mod prelude {
 pub mod postlude {
     pub use serde;
 
-    pub mod log {
+    pub mod tracing {
         pub use tracing;
         pub use tracing_subscriber;
     }

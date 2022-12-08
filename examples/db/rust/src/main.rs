@@ -2,7 +2,7 @@ use once_cell::sync::Lazy;
 use ohkami::{
     prelude::*,
     postlude::{
-        log::*,
+        tracing::*,
         serde::Serialize,
         sqlx::FromRow,
     }
