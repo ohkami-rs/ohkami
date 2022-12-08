@@ -5,5 +5,3 @@ edition = "2021"
 
 [dependencies]
 ohkami = { path = "../../" }
-tracing = "0.1"
-tracing-subscriber = "0.3"
