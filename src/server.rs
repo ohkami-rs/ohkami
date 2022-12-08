@@ -50,7 +50,7 @@ pub struct Config<'url> {
     pub cors: CORS,
 
     #[cfg(feature = "sqlx")]
-    pub connection_pool_of: (PoolOptions, &'url str),//Option<ConnectionPool>,
+    pub connection_pool_of: (PoolOptions, &'url str),
 }
 impl<'url> Default for Config<'url> {
     fn default() -> Self {
