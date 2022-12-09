@@ -312,8 +312,8 @@ async fn setup_response(
     stream.read(&mut buffer).await?;
     let (
         method,
-        path_str,
-        context
+        path,
+        context,
     ) = parse_stream(
         &buffer,
         connection_pool
@@ -322,7 +322,7 @@ async fn setup_response(
     handle_request(
         handler_map,
         method,
-        path_str,
+        path,
         context
     ).await
 }
@@ -333,22 +333,12 @@ async fn handle_request<'req>(
         Handler
     >>,
     method:   Method,
-    path_str: &'req str,
-    mut request_context: Context,
+    path:     &'req str,
+    context:  Context<'req>,
 ) -> Result<Response> {
-    let (path, param) = {
-        let (rest, tail) = path_str.rsplit_once('/').unwrap();
-        if let Ok(param) = tail.parse::<u32>() {
-            request_context.param = Some(param);
-            (rest, Some(param))
-        } else {
-            (path_str, None)
-        }
-    };
-
     let handler = handler_map
-        .get(&(method, path, param.is_some()))
-        .ok_or_else(|| Response::NotFound(format!("handler for `{method} {path_str}` is not found")))?;
+        .get(&(method, path, context.param.is_some()))
+        .ok_or_else(|| Response::NotFound(format!("handler for `{method} {path}` is not found")))?;
 
-    handler(request_context).await
+    handler(context).await
 }

@@ -39,7 +39,7 @@ struct User {
 }
 
 async fn get_user_userid(ctx: Context) -> Result<Response> {
-    let user_id = ctx.param
+    let user_id = ctx.param()
         .else_response(|| Response::BadRequest("Expected user id as path parameter"))?;
 
     let user = sqlx::query_as::<_, User>("SELECT id, name FROM users WHERE id = $1")
