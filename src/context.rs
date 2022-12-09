@@ -21,7 +21,7 @@ pub struct Context<'q> {
     #[cfg(feature = "sqlx")]
     pub(crate) pool:  Arc<ConnectionPool>,
 }
-#[cfg(feature = "sqlx")]
+
 impl<'d, 'q> Context<'q> {
     pub fn request_body<D: Deserialize<'d>>(&'d self) -> Result<D> {
         let json = self.body.as_ref()

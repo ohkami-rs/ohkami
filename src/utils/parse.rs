@@ -17,6 +17,7 @@ use sqlx::MySqlPool as ConnectionPool;
 
 pub(crate) fn parse_stream<'buf>(
     buffer: &'buf [u8; BUF_SIZE],
+    #[cfg(feature = "sqlx")]
     connection_pool: Arc<ConnectionPool>,
 ) -> Result<(
     Method,
