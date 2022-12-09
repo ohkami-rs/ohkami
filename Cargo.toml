@@ -20,7 +20,8 @@ tracing = "0.1"
 tracing-subscriber = "0.3"
 
 [features]
-default  = []
+# default  = []
+default = ["sqlx", "postgres"] # for debugging
 
 sqlx     = ["dep:sqlx"]
 postgres = ["sqlx?/runtime-async-std-native-tls", "sqlx?/postgres"]

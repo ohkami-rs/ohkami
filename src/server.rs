@@ -30,9 +30,6 @@ use sqlx::mysql::{
     MySqlPoolOptions as PoolOptions,
 };
 
-#[cfg(not(feature = "sqlx"))]
-type Handler = Box<dyn Fn(Context) -> Pin<Box<dyn Future<Output=Result<Response>> + Send >> + Send + Sync>;
-#[cfg(feature = "sqlx")]
 type Handler = Box<dyn Fn(Context) -> Pin<Box<dyn Future<Output=Result<Response>> + Send >> + Send + Sync>;
 
 pub struct Server {
@@ -50,7 +47,7 @@ pub struct Config<#[cfg(feature = "sqlx")] 'url> {
     pub cors: CORS,
 
     #[cfg(feature = "sqlx")]
-    pub connection_pool_of: (PoolOptions, &'url str),
+    pub db_profile: DBprofile<'url>,
 }
 #[cfg(not(feature = "sqlx"))]
 impl Default for Config {
@@ -64,8 +61,23 @@ impl Default for Config {
 impl<'url> Default for Config<'url> {
     fn default() -> Self {
         Self {
-            cors:               CORS::default(),
-            connection_pool_of: (PoolOptions::new(), "empty URL"),
+            cors:       CORS::default(),
+            db_profile: DBprofile::default(),
+        }
+    }
+}
+
+#[cfg(feature = "sqlx")]
+pub struct DBprofile<'url> {
+    pub pool_options: PoolOptions,
+    pub url:          &'url str,
+}
+#[cfg(feature = "sqlx")]
+impl<'url> Default for DBprofile<'url> {
+    fn default() -> Self {
+        Self {
+            pool_options: PoolOptions::default(),
+            url:          "empty url",
         }
     }
 }
@@ -80,16 +92,25 @@ impl Server {
     }
     pub fn setup_with(config: Config) -> Self {
         #[cfg(feature = "sqlx")]
-        let (pool_options, url) = config.connection_pool_of;
-        #[cfg(feature = "sqlx")]
-        let err_msg = format!("Can't connect to DB at {url} with {pool_options:?}. If you won't deal with any database, you shouldn't enable `sqlx` flag");
+        let pool = {
+            let DBprofile { pool_options, url } = config.db_profile;
+            let err_msg = format!("Can't connect to DB at {url} with {pool_options:?}. If you won't deal with any database, you shouldn't enable `sqlx` flag");
+
+            let pool_connection = block_on(pool_options.connect(url));
+            if pool_connection.is_err() {
+                tracing::error!(err_msg);
+                panic!()
+            }
+
+            pool_connection.unwrap()
+        };
 
         Self {
             map:  HashMap::new(),
             cors: config.cors,
 
             #[cfg(feature = "sqlx")]
-            pool: block_on(pool_options.connect(url)).expect(&err_msg)
+            pool
         }
     }
 
@@ -149,10 +170,6 @@ impl Server {
         self
     }
 
-    // #[tracing::instrument(
-    //     name = "server setting",
-    //     skip(self)
-    // )]
     pub fn serve_on(self, address: &'static str) -> Result<()> {
         tracing::info!("started seving on {}...", address);
         let tcp_address = validation::tcp_address(address);
@@ -191,10 +208,6 @@ impl Server {
 }
 
 #[cfg(not(feature = "sqlx"))]
-// #[tracing::instrument(
-//     name = "server",
-//     skip(handler_map)
-// )]
 async fn handle_stream(
     mut stream: TcpStream,
     handler_map: Arc<HashMap<
@@ -227,10 +240,6 @@ async fn handle_stream(
     }
 }
 #[cfg(feature = "sqlx")]
-// #[tracing::instrument(
-//     name = "server",
-//     skip(handler_map)
-// )]
 async fn handle_stream(
     mut stream: TcpStream,
     handler_map: Arc<HashMap<
