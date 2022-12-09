@@ -60,7 +60,7 @@ fn parse_request_line(
     line: &str
 ) -> Result<(Method, &str, Option<u32>, Option<HashMap<&str, &str>>)> {
     (!line.is_empty())
-        .else_response(|| Response::BadRequest("can't find request status line"));
+        .else_response(|| Response::BadRequest("can't find request status line"))?;
 
     let (method, path_str) = line
         .strip_suffix(" HTTP/1.1")
@@ -68,8 +68,8 @@ fn parse_request_line(
         .split_once(' ')
         .ok_or_else(|| Response::BadRequest("invalid request line format"))?;
 
-    let (path, query) = extract_query(path_str)?;
-    let (path, param) = extract_param(path_str)?;
+    let (path_part, query) = extract_query(path_str)?;
+    let (path, param) = extract_param(path_part)?;
 
     Ok((Method::parse(method)?, path, param, query))
 }
