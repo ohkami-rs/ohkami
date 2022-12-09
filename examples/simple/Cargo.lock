@@ -632,6 +632,8 @@ name = "simple"
 version = "0.1.0"
 dependencies = [
  "ohkami",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
