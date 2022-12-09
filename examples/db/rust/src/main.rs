@@ -38,7 +38,7 @@ struct User {
     name: String,
 }
 
-async fn get_user_userid(ctx: Context) -> Result<Response> {
+async fn get_user_userid(ctx: Context<'_>) -> Result<Response> {
     let user_id = ctx.param()
         .else_response(|| Response::BadRequest("Expected user id as path parameter"))?;
 

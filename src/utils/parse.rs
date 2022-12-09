@@ -59,7 +59,7 @@ pub(crate) fn parse_stream<'buf>(
 
 fn parse_request_line(
     line: &str
-) -> Result<(Method, &str, Option<u32>, Option<HashMap<&str, &str>>)> {
+) -> Result<(Method, &str, Option<u32>, Option<HashMap<*const u8, String>>)> {
     (!line.is_empty())
         .else_response(|| Response::BadRequest("can't find request status line"))?;
 
@@ -77,15 +77,17 @@ fn parse_request_line(
 
 fn extract_query(
     path_str: &str
-) -> Result<(&str, Option<HashMap<&str, &str>>)> {
+) -> Result<(&str, Option<HashMap<*const u8, String>>)> {
     let Some((path_part, query_part)) = path_str.split_once('?')
         else {return Ok((path_str, None))};
 
     let query = HashMap::from_iter(
-        query_part.split('?').map(|pair|
-            pair.split_once('=')
-                .ok_or_else(|| return Response::BadRequest("Invalid URI format")).unwrap()
-        )
+        query_part.split('?')
+            .map(|key_value| key_value
+                .split_once('=')
+                .map_or(None, |pair| Some((pair.0.as_ptr(), pair.1.to_owned())))
+                .expect("invalid query parameter format")///////////////////////////////////////
+            )
     );
 
     Ok((path_part, Some(query)))

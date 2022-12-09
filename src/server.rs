@@ -115,37 +115,35 @@ impl Server {
     }
 
     #[allow(non_snake_case)]
-    pub fn GET<Fut: Future<Output = Result<Response>> + Send + 'static>(self,
+    pub fn GET<'ctx, Fut: Future<Output = Result<Response>> + Send + 'static>(self,
         path_string: &'static str,
         handler:     fn(Context) -> Fut,
     ) -> Self {
         self.add_handler(Method::GET, path_string, handler)
     }
     #[allow(non_snake_case)]
-    pub fn POST<Fut: Future<Output = Result<Response>> + Send + 'static>(self,
+    pub fn POST<'ctx, Fut: Future<Output = Result<Response>> + Send + 'static>(self,
         path_string: &'static str,
         handler:     fn(Context) -> Fut,
     ) -> Self {
         self.add_handler(Method::POST, path_string, handler)
     }
     #[allow(non_snake_case)]
-    pub fn PATCH<Fut: Future<Output = Result<Response>> + Send + 'static>(self,
+    pub fn PATCH<'ctx, Fut: Future<Output = Result<Response>> + Send + 'static>(self,
         path_string: &'static str,
         handler:     fn(Context) -> Fut,
     ) -> Self {
         self.add_handler(Method::PATCH, path_string, handler)
     }
     #[allow(non_snake_case)]
-    pub fn DELETE<Fut: Future<Output = Result<Response>> + Send + 'static>(self,
+    pub fn DELETE<'ctx, Fut: Future<Output = Result<Response>> + Send + 'static>(self,
         path_string: &'static str,
         handler:     fn(Context) -> Fut,
     ) -> Self {
         self.add_handler(Method::DELETE, path_string, handler)
     }
 
-    fn add_handler<#[cfg(feature = "sqlx")] 'ctx,
-        Fut: Future<Output = Result<Response>> + Send + 'static,
-    >(mut self,
+    fn add_handler<'ctx, Fut: Future<Output = Result<Response>> + Send + 'static>(mut self,
         method:      Method,
         path_string: &'static str,
         handler:     fn(Context) -> Fut,
@@ -162,7 +160,7 @@ impl Server {
             };
 
         if self.map.insert(
-            (method, &path, has_param), Box::new(move |ctx| Box::pin(handler(ctx)))
+            (method, &path, has_param), Box::new(move |ctx: Context| Box::pin(handler(ctx)))
         ).is_some() {
             panic!("handler for `{method} {path_string}` is resistered duplicatedly");
         }
@@ -334,7 +332,7 @@ async fn handle_request<'req>(
     >>,
     method:   Method,
     path:     &'req str,
-    context:  Context<'req>,
+    context:  Context,
 ) -> Result<Response> {
     let handler = handler_map
         .get(&(method, path, context.param.is_some()))
