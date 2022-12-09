@@ -1,8 +1,7 @@
-use std::collections::HashMap;
 use serde::Deserialize;
 use crate::{
-    components::json::JSON,
-    response::Response, result::Result,
+    components::{json::JSON, consts::HASH_TABLE_SIZE},
+    response::Response, result::Result, utils::hash::hash,
 };
 
 #[cfg(feature = "sqlx")]
@@ -14,15 +13,15 @@ use sqlx::MySqlPool as ConnectionPool;
 
 
 pub struct Context {
-    pub(crate) param: Option<u32>,  // Option<&'ctx str>,
+    pub(crate) param: Option<u32>,
     pub(crate) body:  Option<JSON>,
-    pub(crate) query: Option<HashMap<*const u8, String>>,//[String; HASH_TABLE_SIZE]>,
+    pub(crate) query: [Option<String>; HASH_TABLE_SIZE],
 
     #[cfg(feature = "sqlx")]
     pub(crate) pool:  Arc<ConnectionPool>,
 }
 
-impl<'d, 'q> Context {
+impl<'d> Context {
     pub fn request_body<D: Deserialize<'d>>(&'d self) -> Result<D> {
         let json = self.body.as_ref()
             .ok_or_else(|| Response::BadRequest("expected request body"))?;
@@ -33,8 +32,7 @@ impl<'d, 'q> Context {
         self.param
     }
     pub fn query(&self, key: &str) -> Option<&str> {
-        self.query.as_ref()?
-            .get(&key.as_ptr()).map(|s| &**s)
+        self.query[hash(key)].as_ref().map(|value| &**value)
     }
 
     #[cfg(feature = "sqlx")]
@@ -55,7 +53,7 @@ mod test {
         assert_eq!(abc.as_ptr(), abc2.as_ptr());
 
         let string = String::from("abcdef");
-        let string2 = String::from("abcdef");
+        // let string2 = String::from("abcdef");
         assert_eq!(string, "abcdef");
     }
 

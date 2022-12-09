@@ -1,18 +1,20 @@
-use std::collections::HashMap;
+use std::vec;
 
 #[cfg(feature = "sqlx")]
 use async_std::sync::Arc;
 
 use crate::{
-    components::{consts::BUF_SIZE, method::Method, json::JSON},
+    components::{consts::{BUF_SIZE, HASH_TABLE_SIZE}, method::Method, json::JSON},
     response::Response,
-    context::Context, result::{Result, ElseResponse},
+    context::Context, result::{Result, ElseResponse, ElseResponseWithErr},
 };
 
 #[cfg(feature = "postgres")]
 use sqlx::PgPool as ConnectionPool;
 #[cfg(feature = "mysql")]
 use sqlx::MySqlPool as ConnectionPool;
+
+use super::hash::hash;
 
 
 pub(crate) fn parse_stream<'buf>(
@@ -59,7 +61,7 @@ pub(crate) fn parse_stream<'buf>(
 
 fn parse_request_line(
     line: &str
-) -> Result<(Method, &str, Option<u32>, Option<HashMap<*const u8, String>>)> {
+) -> Result<(Method, &str, Option<u32>, [Option<String>; HASH_TABLE_SIZE])> {
     (!line.is_empty())
         .else_response(|| Response::BadRequest("can't find request status line"))?;
 
@@ -77,20 +79,26 @@ fn parse_request_line(
 
 fn extract_query(
     path_str: &str
-) -> Result<(&str, Option<HashMap<*const u8, String>>)> {
+) -> Result<(&str, [Option<String>; HASH_TABLE_SIZE])> {
+    let mut hash_table =
+        TryInto::<[Option<String>; HASH_TABLE_SIZE]>::try_into(
+            vec::from_elem(None, HASH_TABLE_SIZE)
+        ).else_response(|_| Response::InternalServerError("Failed in type casting"))?;
+
     let Some((path_part, query_part)) = path_str.split_once('?')
-        else {return Ok((path_str, None))};
+        else {return Ok((path_str, hash_table))};
 
-    let query = HashMap::from_iter(
-        query_part.split('?')
-            .map(|key_value| key_value
-                .split_once('=')
-                .map_or(None, |pair| Some((pair.0.as_ptr(), pair.1.to_owned())))
-                .expect("invalid query parameter format")///////////////////////////////////////
-            )
-    );
+    query_part.split('&')
+        .map(|key_value| key_value
+            .split_once('=')
+            //.map_or(None, |pair| Some((hash(pair.0), pair.1.to_owned())))
+            .expect("invalid query parameter format")///////////////////////////////////////
+        )
+        .for_each(|(key, value)|
+            hash_table[hash(key)] = Some(value.to_owned())
+        );
 
-    Ok((path_part, Some(query)))
+    Ok((path_part, hash_table))
 }
 
 fn extract_param(
