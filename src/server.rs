@@ -13,7 +13,7 @@ use crate::{
     },
     context::Context,
     response::Response,
-    result::Result,
+    result::{Result, ElseResponse},
     utils::{
         parse::parse_stream, validation::{self, is_valid_path}
     },
@@ -336,7 +336,7 @@ async fn handle_request<'req>(
 ) -> Result<Response> {
     let handler = handler_map
         .get(&(method, path, context.param.is_some()))
-        .ok_or_else(|| Response::NotFound(format!("handler for `{method} {path}` is not found")))?;
+        .ores(|| Response::NotFound(format!("handler for `{method} {path}` is not found")))?;
 
     handler(context).await
 }

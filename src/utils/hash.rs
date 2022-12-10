@@ -19,7 +19,7 @@ pub(crate) struct StringHashMap(
         Ok(Self(
             TryInto::<[Option<String>; HASH_TABLE_SIZE]>::try_into(
                 std::vec::from_elem(None, HASH_TABLE_SIZE)
-            ).else_response(|_| Response::InternalServerError("Failed in type casting"))?
+            ).ores(|_| Response::InternalServerError("Failed in type casting"))?
         ))
     }
     pub fn get(&self, key: &str) -> Option<&str> {
