@@ -1,7 +1,9 @@
 use serde::Deserialize;
 use crate::{
-    components::{json::JSON, consts::HASH_TABLE_SIZE},
-    response::Response, result::Result, utils::hash::hash,
+    result::{Result, ElseResponse},
+    utils::hash::StringHashMap,
+    components::json::JSON,
+    response::Response,
 };
 
 #[cfg(feature = "sqlx")]
@@ -15,7 +17,7 @@ use sqlx::MySqlPool as ConnectionPool;
 pub struct Context {
     pub(crate) param: Option<u32>,
     pub(crate) body:  Option<JSON>,
-    pub(crate) query: [Option<String>; HASH_TABLE_SIZE],
+    pub(crate) query: Option<StringHashMap>,
 
     #[cfg(feature = "sqlx")]
     pub(crate) pool:  Arc<ConnectionPool>,
@@ -24,7 +26,7 @@ pub struct Context {
 impl<'d> Context {
     pub fn request_body<D: Deserialize<'d>>(&'d self) -> Result<D> {
         let json = self.body.as_ref()
-            .ok_or_else(|| Response::BadRequest("expected request body"))?;
+            .else_response(|| Response::BadRequest("expected request body"))?;
         let json_struct = json.to_struct()?;
         Ok(json_struct)
     }
@@ -32,7 +34,9 @@ impl<'d> Context {
         self.param
     }
     pub fn query(&self, key: &str) -> Option<&str> {
-        self.query[hash(key)].as_ref().map(|value| &**value)
+        // self.query[hash(key)].as_ref().map(|value| &**value)
+        self.query.as_ref()?
+            .get(key)
     }
 
     #[cfg(feature = "sqlx")]
