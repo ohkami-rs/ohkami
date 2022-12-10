@@ -31,7 +31,7 @@ pub(crate) fn parse_stream<'buf>(
         .lines();
 
     let request_line = lines.next()
-        .ok_or_else(|| Response::BadRequest("empty request"))?;
+        .else_response(|| Response::BadRequest("empty request"))?;
     
     tracing::debug!("got a request: {}", request_line);
     let (
@@ -67,9 +67,9 @@ fn parse_request_line(
 
     let (method, path_str) = line
         .strip_suffix(" HTTP/1.1")
-        .ok_or_else(|| Response::NotImplemented("I can't handle protocols other than `HTTP/1.1`"))?
+        .else_response(|| Response::NotImplemented("I can't handle protocols other than `HTTP/1.1`"))?
         .split_once(' ')
-        .ok_or_else(|| Response::BadRequest("invalid request line format"))?;
+        .else_response(|| Response::BadRequest("invalid request line format"))?;
 
     let (path_part, query) = extract_query(path_str)?;
     let (path, param) = extract_param(path_part)?;
