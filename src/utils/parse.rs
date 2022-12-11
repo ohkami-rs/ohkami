@@ -29,7 +29,7 @@ pub(crate) fn parse_stream<'buf>(
         .lines();
 
     let request_line = lines.next()
-        .ores(|| Response::BadRequest("empty request"))?;
+        ._else(|| Response::BadRequest("empty request"))?;
     
     tracing::debug!("got a request: {}", request_line);
     let (
@@ -61,13 +61,13 @@ fn parse_request_line(
     line: &str
 ) -> Result<(Method, &str, Option<u32>, Option<StringHashMap>)> { // [Option<String>; HASH_TABLE_SIZE])> {
     (!line.is_empty())
-        .ores(|| Response::BadRequest("can't find request status line"))?;
+        ._else(|| Response::BadRequest("can't find request status line"))?;
 
     let (method, path_str) = line
         .strip_suffix(" HTTP/1.1")
-        .ores(|| Response::NotImplemented("I can't handle protocols other than `HTTP/1.1`"))?
+        ._else(|| Response::NotImplemented("I can't handle protocols other than `HTTP/1.1`"))?
         .split_once(' ')
-        .ores(|| Response::BadRequest("invalid request line format"))?;
+        ._else(|| Response::BadRequest("invalid request line format"))?;
 
     let (path_part, query) = extract_query(path_str)?;
     let (path, param) = extract_param(path_part)?;

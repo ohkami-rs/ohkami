@@ -14,10 +14,6 @@ static DB_URL: Lazy<String> = Lazy::new(|| {
 });
 
 fn main() -> Result<()> {
-    // tracing_subscriber::fmt()
-    //     .with_max_level(tracing::Level::DEBUG)
-    //     .init();
-
     let config = Config {
         db_profile: DBprofile {
             pool_options: PgPoolOptions::new().max_connections(20),
@@ -40,7 +36,7 @@ struct User {
 
 async fn get_user_userid(ctx: Context) -> Result<Response> {
     let user_id = ctx.param()
-        .ores(|| Response::BadRequest("Expected user id as path parameter"))?;
+        ._else(|| Response::BadRequest("Expected user id as path parameter"))?;
 
     let user = sqlx::query_as::<_, User>("SELECT id, name FROM users WHERE id = $1")
         .bind(user_id as i64)
@@ -56,7 +52,7 @@ async fn sleepy_get_user_userid(ctx: Context) -> Result<Response> {
     std::thread::sleep(std::time::Duration::from_secs(2));
 
     let user_id = ctx.param()
-        .ores(|| Response::BadRequest("Expected user id as path parameter"))?;
+        ._else(|| Response::BadRequest("Expected user id as path parameter"))?;
 
     let user = sqlx::query_as::<_, User>("SELECT id, name FROM users WHERE id = $1")
         .bind(user_id as i64)

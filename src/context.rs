@@ -26,7 +26,7 @@ pub struct Context {
 impl<'d> Context {
     pub fn request_body<D: Deserialize<'d>>(&'d self) -> Result<D> {
         let json = self.body.as_ref()
-            .ores(|| Response::BadRequest("expected request body"))?;
+            ._else(|| Response::BadRequest("expected request body"))?;
         let json_struct = json.to_struct()?;
         Ok(json_struct)
     }
