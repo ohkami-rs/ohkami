@@ -5,8 +5,7 @@ use async_std::{
     net::{TcpStream, TcpListener},
     stream::StreamExt, task,
 };
-use std::{collections::HashMap, pin::Pin};
-use futures::Future;
+use std::{collections::HashMap, pin::Pin, future::Future};
 use crate::{
     components::{
         consts::BUF_SIZE, method::Method, cors::CORS

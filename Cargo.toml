@@ -14,7 +14,6 @@ sqlx = { version = "0.6", default-features = false, optional = true }
 serde = "1.0"
 serde_json = "1.0"
 chrono = "0.4"
-futures = "0.3"
 async-std = "1"
 tracing = "0.1"
 tracing-subscriber = "0.3"
