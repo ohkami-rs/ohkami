@@ -14,9 +14,9 @@ static DB_URL: Lazy<String> = Lazy::new(|| {
 });
 
 fn main() -> Result<()> {
-    tracing_subscriber::fmt()
-        .with_max_level(tracing::Level::DEBUG)
-        .init();
+    // tracing_subscriber::fmt()
+    //     .with_max_level(tracing::Level::DEBUG)
+    //     .init();
 
     let pool_options = sqlx::postgres::PgPoolOptions::new()
         .max_connections(20);
