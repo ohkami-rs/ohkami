@@ -1,4 +1,5 @@
 use std::fmt::Write;
+use ohkami::prelude::Body;
 use serde::Serialize;
 use sqlx::FromRow;
 
@@ -10,9 +11,22 @@ pub(crate) struct WorldRow {
 }
 
 #[derive(FromRow, Serialize)]
-pub(crate) struct Fortune<'msg> {
-    id:     i32,
-    message: &'msg str
+pub(crate) struct Fortune {
+    pub id:     i32,
+    pub message: String
+}
+pub(crate) fn html_from(mut fortunes: Vec<Fortune>) -> Body {
+    fortunes.sort_unstable_by(|it, next|
+        it.message.cmp(&next.message)
+    );
+
+    Body::text_html(fortunes
+        .into_iter()
+        .fold(
+            String::from("<!DOCTYPE html><html><head><title>Fortunes</title></head><body><table><tr><th>id</th><th>message</th></tr>"),
+            |it, next| it + &format!("<tr><td>{}</td><td>{}</td></tr>", next.id, next.message)
+        ) + "</table></body></html>"
+    )
 }
 
 pub(crate) fn random_i32() -> i32 {

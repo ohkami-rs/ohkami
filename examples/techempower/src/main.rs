@@ -1,7 +1,7 @@
 mod components; use components::{
-    WorldRow, Fortune,
+    WorldRow, Fortune, html_from,
     random_i32,
-    PREPARE_GET_WORLD, PREPARE_GET_FORTUNE, PREPARE_UPDATE_WORLDS,
+    PREPARE_GET_WORLD, PREPARE_GET_FORTUNE, PREPARE_UPDATE_WORLDS, 
 };
 
 use ohkami::{prelude::*, json};
@@ -19,7 +19,7 @@ fn main() -> Result<()> {
 
     Server::setup_with(config)
         .GET("/json",      move |_| async {Response::OK(json!("message": "Hello, World!"))})
-        .GET("/plaintext", move |_| async {todo!("require: OK response with `Content-Type: text/plain`")})
+        .GET("/plaintext", move |_| async {Response::OK(Body::text("Hello, World!"))})
         .GET("/db",        get_db)
         .GET("/fortunes",  get_fortunes)
         .GET("/queries",   get_queries)
@@ -37,7 +37,15 @@ async fn get_db(ctx: Context) -> Result<Response> {
 }
 
 async fn get_fortunes(ctx: Context) -> Result<Response> {
-    todo!("require: OK response with `Content-Type: text/html`")
+    let mut fortunes = sqlx::query_as::<_, Fortune>(PREPARE_GET_FORTUNE)
+        .fetch_all(ctx.pool())
+        .await?;
+    fortunes.push(Fortune {
+        id:      0,
+        message: "Additional fortune added at request time.".into(),
+    });
+
+    Response::OK(html_from(fortunes))
 }
 
 async fn get_queries(ctx: Context) -> Result<Response> {

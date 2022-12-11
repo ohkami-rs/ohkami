@@ -15,19 +15,40 @@ pub struct Response {
     status: Status,
     body:   Body,
 }
-    #[derive(Debug)]
-    #[allow(non_camel_case_types)]
-    enum Body {
-        json(JSON),
-        text(String),
-    } impl Body {
-        fn content_length(&self) -> usize {
-            match self {
-                Self::json(json) => json.content_length(),
-                Self::text(text) => text.len(),
-            }
+
+#[derive(Debug)]
+#[allow(non_camel_case_types)]
+pub enum Body {
+    application_json(JSON),
+    text_plain(String),
+    text_html(String),
+} impl Body {
+    pub fn text(text: &str) -> Self {
+        Self::text_plain(text.to_owned())
+    }
+    pub fn html(html: &str) -> Self {
+        Self::text_html(html.to_owned())
+    }
+
+    fn content_type(&self) -> &'static str {
+        match self {
+            Self::application_json(_) => "application/json",
+            Self::text_plain(_) => "text/plain",
+            Self::text_html(_) => "text/html",
         }
     }
+    fn content_length(&self) -> usize {
+        match self {
+            Self::application_json(json) => json.content_length(),
+            Self::text_plain(text) => text.len(),
+            Self::text_html(html) => html.len(),
+        }
+    }
+} impl Into<Body> for JSON {
+    fn into(self) -> Body {
+        Body::application_json(self)
+    }
+}
 
 pub(crate) trait ResponseFormat {
     fn response_format(&self) -> &str;
@@ -35,8 +56,9 @@ pub(crate) trait ResponseFormat {
 impl ResponseFormat for Body {
     fn response_format(&self) -> &str {
         match self {
-            Self::json(json) => json.response_format(),
-            Self::text(text) => text.as_str(),
+            Self::application_json(json) => json.response_format(),
+            Self::text_plain(text) => text.as_str(),
+            Self::text_html(html) => html.as_str(),
         }
     }
 }
@@ -47,11 +69,15 @@ impl Response {
         match self.status {
             OK | Created => unreachable!(),
             _ => match self.body {
-                Body::json(_) => unreachable!(),
-                Body::text(ref mut t) => {
+                Body::application_json(_) => unreachable!(),
+                Body::text_plain(ref mut t) => {
                     *t += &format!("{}: ", msg.to_string());
                     self
-                }
+                },
+                Body::text_html(ref mut t) => {
+                    *t += &format!("{}: ", msg.to_string());
+                    self
+                },
             }
         }
     }
@@ -67,7 +93,7 @@ Keep-Alive: timeout=5
 {}
 {}",
             self.status.response_format(),
-            self.status.content_type(),
+            self.body.content_type(),
             self.body.content_length(),
             Utc::now().to_rfc2822(),
             self.additional_headers,
@@ -79,23 +105,12 @@ Keep-Alive: timeout=5
         self.additional_headers += "\n";
     }
 
-    // #[allow(non_snake_case)]
-    // pub(crate) fn SetUpError(messages: &Vec<String>) -> Self {
-    //     Self {
-    //         additional_headers: String::new(),
-    //         status: Status::SetUpError,
-    //         body:   Body::text(messages.iter().fold(
-    //             String::new(), |a, b| a + b + "\n"
-    //         ))
-    //     }
-    // }
-
     #[allow(non_snake_case)]
-    pub fn OK(body: JSON) -> Result<Self> {
+    pub fn OK<B: Into<Body>>(body: B) -> Result<Self> {
         Ok(Self {
             additional_headers: String::new(),
             status: Status::OK,
-            body:   Body::json(body),
+            body:   body.into(),
         })
     }
     #[allow(non_snake_case)]
@@ -103,17 +118,16 @@ Keep-Alive: timeout=5
         Ok(Self {
             additional_headers: String::new(),
             status: Status::Created,
-            body:   Body::json(body),
+            body:   Body::application_json(body),
         })
     }
-
 
     #[allow(non_snake_case)]
     pub fn NotFound<Msg: ToString>(msg: Msg) -> Self {
         Self {
             additional_headers: String::new(),
             status: Status::NotFound,
-            body:   Body::text(msg.to_string()),
+            body:   Body::text_plain(msg.to_string()),
         }
     }
     #[allow(non_snake_case)]
@@ -121,7 +135,7 @@ Keep-Alive: timeout=5
         Self {
             additional_headers: String::new(),
             status: Status::BadRequest,
-            body:   Body::text(msg.to_string())
+            body:   Body::text_plain(msg.to_string())
         }
     }
     #[allow(non_snake_case)]
@@ -129,7 +143,7 @@ Keep-Alive: timeout=5
         Self {
             additional_headers: String::new(),
             status: Status::InternalServerError,
-            body:   Body::text(msg.to_string()),
+            body:   Body::text_plain(msg.to_string()),
         }
     }
     #[allow(non_snake_case)]
@@ -137,7 +151,7 @@ Keep-Alive: timeout=5
         Self {
             additional_headers: String::new(),
             status: Status::NotImplemented,
-            body:   Body::text(msg.to_string()),
+            body:   Body::text_plain(msg.to_string()),
         }
     }
     #[allow(non_snake_case)]
@@ -145,7 +159,7 @@ Keep-Alive: timeout=5
         Self {
             additional_headers: String::new(),
             status: Status::Forbidden,
-            body:   Body::text(msg.to_string()),
+            body:   Body::text_plain(msg.to_string()),
         }
     }
     #[allow(non_snake_case)]
@@ -153,7 +167,7 @@ Keep-Alive: timeout=5
         Self {
             additional_headers: String::new(),
             status: Status::Unauthorized,
-            body:   Body::text(msg.to_string()),
+            body:   Body::text_plain(msg.to_string()),
         }
     }
 }

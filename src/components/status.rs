@@ -13,15 +13,6 @@ pub(crate) enum Status {
     NotImplemented      = 501,
 }
 
-impl Status {
-    pub(crate) fn content_type(&self) -> &'static str {
-        match self {
-            Self::OK | Self::Created => "application/json",
-            _ => "text/plain",
-        }
-    }
-}
-
 impl ResponseFormat for Status {
     fn response_format(&self) -> &'static str {
         match self {

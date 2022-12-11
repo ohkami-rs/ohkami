@@ -15,7 +15,7 @@ pub mod prelude {
         server::{Server, Config},
         result::{Result, ElseResponse, ElseResponseWithErr},
         context::Context,
-        response::Response,
+        response::{Response, Body},
         components::json::JSON,
     };
 
