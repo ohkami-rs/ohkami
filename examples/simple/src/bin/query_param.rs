@@ -1,9 +1,9 @@
 use ohkami::prelude::*;
 
 fn main() -> Result<()> {
-    tracing_subscriber::fmt()
-        .with_max_level(tracing::Level::DEBUG)
-        .init();
+    // tracing_subscriber::fmt()
+    //     .with_max_level(tracing::Level::DEBUG)
+    //     .init();
 
     Server::setup()
         .GET("/annoying_hello", annoying_hello)

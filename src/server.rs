@@ -5,6 +5,7 @@ use async_std::{
     net::{TcpStream, TcpListener},
     stream::StreamExt, task,
 };
+use tracing_subscriber::fmt::SubscriberBuilder;
 use std::{collections::HashMap, pin::Pin, future::Future};
 use crate::{
     components::{
@@ -44,6 +45,7 @@ pub struct Server {
 
 pub struct Config<#[cfg(feature = "sqlx")] 'url> {
     pub cors: CORS,
+    pub log_subscribe: Option<SubscriberBuilder>,
 
     #[cfg(feature = "sqlx")]
     pub db_profile: DBprofile<'url>,
@@ -52,7 +54,8 @@ pub struct Config<#[cfg(feature = "sqlx")] 'url> {
 impl Default for Config {
     fn default() -> Self {
         Self {
-            cors: CORS::default(),
+            cors:          CORS::default(),
+            log_subscribe: Some(tracing_subscriber::fmt().with_max_level(tracing::Level::DEBUG)),
         }
     }
 }
@@ -60,8 +63,9 @@ impl Default for Config {
 impl<'url> Default for Config<'url> {
     fn default() -> Self {
         Self {
-            cors:       CORS::default(),
-            db_profile: DBprofile::default(),
+            cors:          CORS::default(),
+            log_subscribe: Some(tracing_subscriber::fmt().with_max_level(tracing::Level::DEBUG)),
+            db_profile:    DBprofile::default(),
         }
     }
 }
@@ -84,12 +88,22 @@ impl<'url> Default for DBprofile<'url> {
 impl Server {
     #[cfg(not(feature = "sqlx"))]
     pub fn setup() -> Self {
+        let default_config = Config::default();
+
+        if let Some(subscriber) = default_config.log_subscribe {
+            subscriber.init()
+        }
+
         Self {
-            map:    HashMap::new(),
-            cors:   CORS::default(),
+            map:  HashMap::new(),
+            cors: default_config.cors,
         }
     }
     pub fn setup_with(config: Config) -> Self {
+        if let Some(subscriber) = config.log_subscribe {
+            subscriber.init()
+        }
+
         #[cfg(feature = "sqlx")]
         let pool = {
             let DBprofile { pool_options, url } = config.db_profile;

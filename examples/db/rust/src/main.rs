@@ -1,7 +1,7 @@
 use ohkami::prelude::*;
 use once_cell::sync::Lazy;
 use serde::Serialize;
-use sqlx::FromRow;
+use sqlx::{FromRow, postgres::PgPoolOptions};
 
 static DB_URL: Lazy<String> = Lazy::new(|| {
     format!("postgres://{}:{}@{}:{}/{}",
@@ -14,15 +14,15 @@ static DB_URL: Lazy<String> = Lazy::new(|| {
 });
 
 fn main() -> Result<()> {
-    tracing_subscriber::fmt()
-        .with_max_level(tracing::Level::DEBUG)
-        .init();
-
-    let pool_options = sqlx::postgres::PgPoolOptions::new()
-        .max_connections(20);
+    // tracing_subscriber::fmt()
+    //     .with_max_level(tracing::Level::DEBUG)
+    //     .init();
 
     let config = Config {
-        connection_pool_of: (pool_options, DB_URL.as_str()),
+        db_profile: DBprofile {
+            pool_options: PgPoolOptions::new().max_connections(20),
+            url:          DB_URL.as_str(),
+        },
         ..Config::default()
     };
 
@@ -55,7 +55,7 @@ async fn get_user_userid(ctx: Context) -> Result<Response> {
 async fn sleepy_get_user_userid(ctx: Context) -> Result<Response> {
     std::thread::sleep(std::time::Duration::from_secs(2));
 
-    let user_id = ctx.param
+    let user_id = ctx.param()
         .ores(|| Response::BadRequest("Expected user id as path parameter"))?;
 
     let user = sqlx::query_as::<_, User>("SELECT id, name FROM users WHERE id = $1")

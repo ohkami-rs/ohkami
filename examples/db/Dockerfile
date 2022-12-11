@@ -11,7 +11,7 @@ RUN mkdir ./src \
  && cargo build \
  && rm ./src/main.rs
 COPY ./examples/db/rust/src/main.rs ./src/main.rs
-RUN cargo build --locked --release
+RUN cargo build --release
 
 FROM debian:buster-slim
 ENV LC_CTYPE=ja_JP.utf8 \

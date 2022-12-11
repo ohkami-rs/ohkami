@@ -18,4 +18,9 @@ pub mod prelude {
         response::Response,
         components::json::JSON,
     };
+
+    #[cfg(feature = "sqlx")]
+    pub use super::{
+        server::DBprofile,
+    };
 }
