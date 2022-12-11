@@ -1,7 +1,7 @@
 use ohkami::prelude::*;
 use once_cell::sync::Lazy;
 use serde::Serialize;
-use sqlx::FromRow;
+use sqlx::{FromRow, postgres::PgPoolOptions};
 
 static DB_URL: Lazy<String> = Lazy::new(|| {
     format!("postgres://{}:{}@{}:{}/{}",
@@ -18,11 +18,11 @@ fn main() -> Result<()> {
     //     .with_max_level(tracing::Level::DEBUG)
     //     .init();
 
-    let pool_options = sqlx::postgres::PgPoolOptions::new()
-        .max_connections(20);
-
     let config = Config {
-        connection_pool_of: (pool_options, DB_URL.as_str()),
+        db_profile: DBprofile {
+            pool_options: PgPoolOptions::new().max_connections(20),
+            url:          DB_URL.as_str(),
+        },
         ..Config::default()
     };
 

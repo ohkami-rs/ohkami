@@ -10,6 +10,7 @@ fn main() -> Result<()> {
             allow_origins: &["http://localhost:8000"],
             ..Default::default()
         },
+        ..Config::default()
     };
 
     Server::setup_with(config)
