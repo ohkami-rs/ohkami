@@ -3,9 +3,9 @@ pub(crate) mod consts {
 
     pub const RAND_RANGE: RangeInclusive<usize>  = 1..=10000;
 
-    pub const PREPARE_GET_WORLD:    &'static str = "SELECT id, randomnumber FROM world WHERE id = $1";
-    pub const PREPARE_GET_FORTUNE:  &'static str = "SELECT id, message FROM fortune";
-    pub const PREPARE_UPDATE_WORLD: &'static str = "UPDATE world SET randomnumber = $1 WHERE id = $2 RETURNUNG id, randomnumber";
+    pub const GET_WORLD_STATEMENT:    &'static str = "SELECT id, randomnumber FROM world WHERE id = $1";
+    pub const GET_FORTUNE_STATEMENT:  &'static str = "SELECT id, message FROM fortune";
+    pub const UPDATE_WORLD_STATEMENT: &'static str = "UPDATE world SET randomnumber = $1 WHERE id = $2 RETURNUNG id, randomnumber";
 
     pub const DB_URL:              &'static str  = "postgres://benchmarkdbuser:benchmarkdbpass@tfb-database/hello_world?sslmode=disable";
     pub const MAX_CONNECTIONS:     u32           = 10000;

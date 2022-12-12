@@ -1,6 +1,6 @@
 mod components; use components::{
     consts::{
-        DB_URL, PREPARE_GET_WORLD, PREPARE_GET_FORTUNE, PREPARE_UPDATE_WORLD, MAX_CONNECTIONS,
+        DB_URL, GET_WORLD_STATEMENT, GET_FORTUNE_STATEMENT, UPDATE_WORLD_STATEMENT, MAX_CONNECTIONS,
     },
     models::{
         World, Fortune,
@@ -34,7 +34,7 @@ fn main() -> Result<()> {
 
 async fn get_db(ctx: Context) -> Result<Response> {
     let id = random_i32(&mut rand::thread_rng());
-    let world = sqlx::query_as::<_, World>(PREPARE_GET_WORLD)
+    let world = sqlx::query_as::<_, World>(GET_WORLD_STATEMENT)
         .bind(id)
         .fetch_one(ctx.pool())
         .await?;
@@ -42,7 +42,7 @@ async fn get_db(ctx: Context) -> Result<Response> {
 }
 
 async fn get_fortunes(ctx: Context) -> Result<Response> {
-    let mut fortunes = sqlx::query_as::<_, Fortune>(PREPARE_GET_FORTUNE)
+    let mut fortunes = sqlx::query_as::<_, Fortune>(GET_FORTUNE_STATEMENT)
         .fetch_all(ctx.pool())
         .await?;
     fortunes.push(Fortune {
@@ -66,7 +66,7 @@ async fn get_queries(ctx: Context) -> Result<Response> {
     for _ in 0..count {
         let random_id = 1;//random_i32(&mut generator);
         worlds.push(
-            sqlx::query_as::<_, World>(PREPARE_GET_WORLD)
+            sqlx::query_as::<_, World>(GET_WORLD_STATEMENT)
                 .bind(random_id)
                 .fetch_one(ctx.pool())
                 .await?
@@ -89,7 +89,7 @@ async fn get_updates(ctx: Context) -> Result<Response> {
         let random_id = 1;//random_i32(&mut generator);
         let new_random_number = 1;//random_i32(&mut generator);
         worlds.push(
-            sqlx::query_as::<_, World>(PREPARE_UPDATE_WORLD)
+            sqlx::query_as::<_, World>(UPDATE_WORLD_STATEMENT)
                 .bind(new_random_number)
                 .bind(random_id)
                 .fetch_one(ctx.pool())
