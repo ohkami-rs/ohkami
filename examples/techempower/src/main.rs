@@ -1,9 +1,14 @@
 mod components; use components::{
-    WorldRow, Fortune, html_from,
-    random_i32,
-    PREPARE_GET_WORLD, PREPARE_GET_FORTUNE, PREPARE_UPDATE_WORLDS, 
+    consts::{
+        DB_URL, PREPARE_GET_WORLD, PREPARE_GET_FORTUNE, PREPARE_UPDATE_WORLD, MAX_CONNECTIONS,
+    },
+    models::{
+        World, Fortune,
+    },
+    functions::{
+        random_i32, html_from,
+    },
 };
-
 use ohkami::{prelude::*, json};
 use sqlx::postgres::PgPoolOptions;
 
@@ -11,8 +16,8 @@ use sqlx::postgres::PgPoolOptions;
 fn main() -> Result<()> {
     let config = Config {
         db_profile: DBprofile {
-            pool_options: PgPoolOptions::new().max_connections(10000),
-            url:          "postgres://benchmarkdbuser:benchmarkdbpass@tfb-database/ohkami",
+            pool_options: PgPoolOptions::new().max_connections(MAX_CONNECTIONS),
+            url:          DB_URL,
         },
         ..Default::default()
     };
@@ -28,8 +33,8 @@ fn main() -> Result<()> {
 }
 
 async fn get_db(ctx: Context) -> Result<Response> {
-    let id = random_i32();
-    let world = sqlx::query_as::<_, WorldRow>(PREPARE_GET_WORLD)
+    let id = random_i32(&mut rand::thread_rng());
+    let world = sqlx::query_as::<_, World>(PREPARE_GET_WORLD)
         .bind(id)
         .fetch_one(ctx.pool())
         .await?;
@@ -44,18 +49,53 @@ async fn get_fortunes(ctx: Context) -> Result<Response> {
         id:      0,
         message: "Additional fortune added at request time.".into(),
     });
+    fortunes.sort_unstable_by(|it, next| it.message.cmp(&next.message));
 
     Response::OK(html_from(fortunes))
 }
 
 async fn get_queries(ctx: Context) -> Result<Response> {
-    let q = ctx.query("q").unwrap().parse::<u32>().unwrap();
-    // let worlds = 
-    todo!()
+    let count = {
+        let queries = ctx.query("queries").unwrap_or("1").parse::<u32>().unwrap_or(1);
+        if queries < 1 {1} else if 500 < queries {500} else {queries}
+    } as usize;
+
+    let mut worlds = Vec::with_capacity(count);
+    //let mut generator = rand::thread_rng();////////////////////////////////// <-------------- NOT `Send`
+
+    for _ in 0..count {
+        let random_id = 1;//random_i32(&mut generator);
+        worlds.push(
+            sqlx::query_as::<_, World>(PREPARE_GET_WORLD)
+                .bind(random_id)
+                .fetch_one(ctx.pool())
+                .await?
+        )
+    }
+
+    Response::OK(JSON::from_struct(&worlds)?)
 }
 
 async fn get_updates(ctx: Context) -> Result<Response> {
-    let q = ctx.query("q").unwrap().parse::<u32>().unwrap();
-    todo!()
+    let count = {
+        let queries = ctx.query("queries").unwrap_or("1").parse::<u32>().unwrap_or(1);
+        if queries < 1 {1} else if 500 < queries {500} else {queries}
+    } as usize;
 
+    let mut worlds = Vec::with_capacity(count);
+    //let mut generator = rand::thread_rng();////////////////////////////////// <-------------- NOT `Send`
+
+    for _ in 0..count {
+        let random_id = 1;//random_i32(&mut generator);
+        let new_random_number = 1;//random_i32(&mut generator);
+        worlds.push(
+            sqlx::query_as::<_, World>(PREPARE_UPDATE_WORLD)
+                .bind(new_random_number)
+                .bind(random_id)
+                .fetch_one(ctx.pool())
+                .await?
+        )
+    }
+
+    Response::OK(JSON::from_struct(&worlds)?)
 }
