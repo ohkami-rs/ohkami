@@ -17,8 +17,8 @@ pub(crate) mod models {
     }
     #[derive(FromRow, Serialize)]
     pub struct Fortune {
-        pub id:     i32,
-        pub message: String
+        pub id:      i32,
+        pub message: String,
     }
 }
 

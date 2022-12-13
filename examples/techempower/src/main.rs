@@ -24,14 +24,14 @@ fn main() -> Result<()> {
     Server::setup_with(config)
         .GET("/json",      |_| async {Response::OK(json!("message": "Hello, World!"))})
         .GET("/plaintext", |_| async {Response::OK(Body::text("Hello, World!"))})
-        .GET("/db",        db)
-        .GET("/fortunes",  fortunes)
-        .GET("/queries",   queries)
-        .GET("/updates",   updates)
+        .GET("/db",        handle_db)
+        .GET("/fortunes",  handle_fortunes)
+        .GET("/queries",   handle_queries)
+        .GET("/updates",   handle_updates)
         .serve_on(":3000")
 }
 
-async fn db(ctx: Context) -> Result<Response> {
+async fn handle_db(ctx: Context) -> Result<Response> {
     let id = random_i32();
     let world = sqlx::query_as::<_, World>("SELECT id, randomnumber FROM world WHERE id = $1")
         .bind(id)
@@ -40,7 +40,7 @@ async fn db(ctx: Context) -> Result<Response> {
     Response::OK(JSON::from_struct(&world)?)
 }
 
-async fn fortunes(ctx: Context) -> Result<Response> {
+async fn handle_fortunes(ctx: Context) -> Result<Response> {
     let mut fortunes = sqlx::query_as::<_, Fortune>("SELECT id, message FROM fortune")
         .fetch_all(ctx.pool())
         .await?;
@@ -52,7 +52,7 @@ async fn fortunes(ctx: Context) -> Result<Response> {
     Response::OK(html_from(fortunes))
 }
 
-async fn queries(ctx: Context) -> Result<Response> {
+async fn handle_queries(ctx: Context) -> Result<Response> {
     let count = {
         let queries = ctx.query("queries").unwrap_or("1").parse::<u32>().unwrap_or(1);
         if queries < 1 {1} else if 500 < queries {500} else {queries}
@@ -69,7 +69,7 @@ async fn queries(ctx: Context) -> Result<Response> {
     Response::OK(JSON::from_struct(&worlds)?)
 }
 
-async fn updates(ctx: Context) -> Result<Response> {
+async fn handle_updates(ctx: Context) -> Result<Response> {
     let count = {
         let queries = ctx.query("queries").unwrap_or("1").parse::<u32>().unwrap_or(1);
         if queries < 1 {1} else if 500 < queries {500} else {queries}
