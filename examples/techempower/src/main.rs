@@ -1,3 +1,5 @@
+use ohkami::{prelude::*, json};
+use sqlx::postgres::PgPoolOptions;
 mod components; use components::{
     consts::{
         DB_URL, GET_WORLD_STATEMENT, GET_FORTUNE_STATEMENT, UPDATE_WORLD_STATEMENT, MAX_CONNECTIONS,
@@ -9,9 +11,6 @@ mod components; use components::{
         random_i32, random_i32s, html_from,
     },
 };
-use ohkami::{prelude::*, json};
-use sqlx::postgres::PgPoolOptions;
-
 
 fn main() -> Result<()> {
     let config = Config {
