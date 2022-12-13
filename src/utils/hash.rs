@@ -6,11 +6,15 @@ use crate::{
 const HASH_SIZE: usize = 1000000009;
 const PRIME:     usize = 29;
 
-const fn alphabet_index(ch: &u8) -> usize {(*ch - b'a') as usize}
+const fn alphabet_index(ch: &u8) -> usize {
+    (*ch - b'a') as usize
+}
 fn hash(key: &str) -> usize {
-    key.as_bytes().into_iter().rfold(0, |hash, ch|
-        (hash * PRIME + alphabet_index(ch)) % HASH_SIZE
-    )
+    key.as_bytes()
+        .into_iter()
+        .rfold(0, |hash, ch|
+            (hash * PRIME + alphabet_index(ch)) % HASH_SIZE
+        )
 }
 
 pub(crate) struct StringHashMap(
