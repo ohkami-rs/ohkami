@@ -59,7 +59,7 @@ pub(crate) fn parse_stream<'buf>(
 
 fn parse_request_line(
     line: &str
-) -> Result<(Method, &str, Option<u32>, Option<StringHashMap>)> { // [Option<String>; HASH_TABLE_SIZE])> {
+) -> Result<(Method, &str, Option<u32>, Option<StringHashMap>)> {
     (!line.is_empty())
         ._else(|| Response::BadRequest("can't find request status line"))?;
 
@@ -77,7 +77,7 @@ fn parse_request_line(
 
 fn extract_query(
     path_str: &str
-) -> Result<(&str, Option<StringHashMap>)> { // [Option<String>; HASH_TABLE_SIZE])> {
+) -> Result<(&str, Option<StringHashMap>)> {
     let Some((path_part, query_part)) = path_str.split_once('?')
         else {return Ok((path_str, None))};
 
@@ -85,8 +85,7 @@ fn extract_query(
     query_part.split('&')
         .map(|key_value| key_value
             .split_once('=')
-            //.map_or(None, |pair| Some((hash(pair.0), pair.1.to_owned())))
-            .expect("invalid query parameter format")///////////////////////////////////////
+            .expect("invalid query parameter format")
         )
         .for_each(|(key, value)|
             map.insert(key, value.to_owned())
