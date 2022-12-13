@@ -2,11 +2,6 @@ pub(crate) mod consts {
     use std::ops::RangeInclusive;
 
     pub const RAND_RANGE: RangeInclusive<usize>  = 1..=10000;
-
-    pub const GET_WORLD_STATEMENT:    &'static str = "SELECT id, randomnumber FROM world WHERE id = $1";
-    pub const GET_FORTUNE_STATEMENT:  &'static str = "SELECT id, message FROM fortune";
-    pub const UPDATE_WORLD_STATEMENT: &'static str = "UPDATE world SET randomnumber = $1 WHERE id = $2 RETURNUNG id, randomnumber";
-
     pub const DB_URL:              &'static str  = "postgres://benchmarkdbuser:benchmarkdbpass@tfb-database/hello_world?sslmode=disable";
     pub const MAX_CONNECTIONS:     u32           = 10000;
 }
@@ -20,7 +15,6 @@ pub(crate) mod models {
         id:           i32,
         randomnumber: i32,
     }
-
     #[derive(FromRow, Serialize)]
     pub struct Fortune {
         pub id:     i32,
@@ -33,6 +27,17 @@ pub(crate) mod functions {
     use ohkami::response::Body;
     use super::{models::Fortune, consts::RAND_RANGE};
 
+    pub fn random_i32() -> i32 {
+        rand::thread_rng().gen_range(RAND_RANGE) as i32
+    }
+    pub fn random_i32s(n: usize) -> std::vec::IntoIter<i32> {
+        let mut generator = rand::thread_rng();
+        let mut i32s = Vec::with_capacity(n);
+        for _ in 0..n {
+            i32s.push(generator.gen_range(RAND_RANGE) as i32)
+        }
+        i32s.into_iter()
+    }
     pub fn html_from(fortunes: Vec<Fortune>) -> Body {
         Body::text_html(fortunes
             .into_iter()
@@ -41,18 +46,5 @@ pub(crate) mod functions {
                 |it, next| it + &format!("<tr><td>{}</td><td>{}</td></tr>", next.id, next.message)
             ) + "</table></body></html>"
         )
-    }
-
-    pub fn random_i32() -> i32 {
-        rand::thread_rng().gen_range(RAND_RANGE) as i32
-    }
-
-    pub fn random_i32s(n: usize) -> std::vec::IntoIter<i32> {
-        let mut generator = rand::thread_rng();
-        let mut i32s = Vec::with_capacity(n);
-        for _ in 0..n {
-            i32s.push(generator.gen_range(RAND_RANGE) as i32)
-        }
-        i32s.into_iter()
     }
 }

@@ -2,7 +2,7 @@ use ohkami::{prelude::*, json};
 use sqlx::postgres::PgPoolOptions;
 mod components; use components::{
     consts::{
-        DB_URL, GET_WORLD_STATEMENT, GET_FORTUNE_STATEMENT, UPDATE_WORLD_STATEMENT, MAX_CONNECTIONS,
+        DB_URL, MAX_CONNECTIONS,
     },
     models::{
         World, Fortune,
@@ -24,24 +24,24 @@ fn main() -> Result<()> {
     Server::setup_with(config)
         .GET("/json",      |_| async {Response::OK(json!("message": "Hello, World!"))})
         .GET("/plaintext", |_| async {Response::OK(Body::text("Hello, World!"))})
-        .GET("/db",        get_db)
-        .GET("/fortunes",  get_fortunes)
-        .GET("/queries",   get_queries)
-        .GET("/updates",   get_updates)
+        .GET("/db",        db)
+        .GET("/fortunes",  fortunes)
+        .GET("/queries",   queries)
+        .GET("/updates",   updates)
         .serve_on(":3000")
 }
 
-async fn get_db(ctx: Context) -> Result<Response> {
+async fn db(ctx: Context) -> Result<Response> {
     let id = random_i32();
-    let world = sqlx::query_as::<_, World>(GET_WORLD_STATEMENT)
+    let world = sqlx::query_as::<_, World>("SELECT id, randomnumber FROM world WHERE id = $1")
         .bind(id)
         .fetch_one(ctx.pool())
         .await?;
     Response::OK(JSON::from_struct(&world)?)
 }
 
-async fn get_fortunes(ctx: Context) -> Result<Response> {
-    let mut fortunes = sqlx::query_as::<_, Fortune>(GET_FORTUNE_STATEMENT)
+async fn fortunes(ctx: Context) -> Result<Response> {
+    let mut fortunes = sqlx::query_as::<_, Fortune>("SELECT id, message FROM fortune")
         .fetch_all(ctx.pool())
         .await?;
     fortunes.push(Fortune {
@@ -52,7 +52,7 @@ async fn get_fortunes(ctx: Context) -> Result<Response> {
     Response::OK(html_from(fortunes))
 }
 
-async fn get_queries(ctx: Context) -> Result<Response> {
+async fn queries(ctx: Context) -> Result<Response> {
     let count = {
         let queries = ctx.query("queries").unwrap_or("1").parse::<u32>().unwrap_or(1);
         if queries < 1 {1} else if 500 < queries {500} else {queries}
@@ -60,7 +60,7 @@ async fn get_queries(ctx: Context) -> Result<Response> {
     let mut worlds = Vec::with_capacity(count);
     for id in random_i32s(count) {
         worlds.push(
-            sqlx::query_as::<_, World>(GET_WORLD_STATEMENT)
+            sqlx::query_as::<_, World>("SELECT id, randomnumber FROM world WHERE id = $1")
                 .bind(id)
                 .fetch_one(ctx.pool())
                 .await?
@@ -69,7 +69,7 @@ async fn get_queries(ctx: Context) -> Result<Response> {
     Response::OK(JSON::from_struct(&worlds)?)
 }
 
-async fn get_updates(ctx: Context) -> Result<Response> {
+async fn updates(ctx: Context) -> Result<Response> {
     let count = {
         let queries = ctx.query("queries").unwrap_or("1").parse::<u32>().unwrap_or(1);
         if queries < 1 {1} else if 500 < queries {500} else {queries}
@@ -79,7 +79,7 @@ async fn get_updates(ctx: Context) -> Result<Response> {
     for id in random_i32s(count) {
         let randomnumber = new_randomnumbers.next().unwrap();
         worlds.push(
-            sqlx::query_as::<_, World>(UPDATE_WORLD_STATEMENT)
+            sqlx::query_as::<_, World>("UPDATE world SET randomnumber = $1 WHERE id = $2 RETURNUNG id, randomnumber")
                 .bind(randomnumber)
                 .bind(id)
                 .fetch_one(ctx.pool())
