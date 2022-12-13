@@ -15,7 +15,7 @@ async fn annoying_hello(ctx: Context) -> Result<Response> {
         ._else(|| Response::BadRequest("Sorry, `count` must be less than 10."))?;
     let name = ctx.query("name")
         ._else(|| Response::BadRequest("Expected query parameter `name`."))?;
-    
-    let message = format!("Hello, {}!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!", &name).repeat(count);
-    Response::OK(JSON::from(message))
+    Response::OK(Body::text(
+        format!("Hello, {}!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!", &name).repeat(count)
+    ))
 }

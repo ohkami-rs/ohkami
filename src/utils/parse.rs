@@ -48,7 +48,7 @@ pub(crate) fn parse_stream<'buf>(
     let request_context = Context {
         param,
         query,
-        body: lines.next().map(|request_body| JSON::from_str_unchecked(request_body)),
+        body: lines.next().map(|request_body| JSON::from_str(request_body)),
 
         #[cfg(feature = "sqlx")]
         pool:  connection_pool,

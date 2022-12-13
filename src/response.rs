@@ -23,11 +23,11 @@ pub enum Body {
     text_plain(String),
     text_html(String),
 } impl Body {
-    pub fn text(text: &str) -> Self {
-        Self::text_plain(text.to_owned())
+    pub fn text<Str: ToString>(text: Str) -> Self {
+        Self::text_plain(text.to_string())
     }
-    pub fn html(html: &str) -> Self {
-        Self::text_html(html.to_owned())
+    pub fn html<Str: ToString>(html: Str) -> Self {
+        Self::text_html(html.to_string())
     }
 
     fn content_type(&self) -> &'static str {

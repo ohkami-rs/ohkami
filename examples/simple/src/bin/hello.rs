@@ -2,15 +2,9 @@ use ohkami::prelude::*;
 
 fn main() -> Result<()> {
     Server::setup()
-        .GET("/", hello)
+        .GET("/", |_| async {Response::OK(Body::text("Hello!"))})
         .GET("/sleepy/:time", sleepy_hello)
         .serve_on(":3000")
-}
-
-async fn hello(_: Context) -> Result<Response> {
-    Response::OK(
-        JSON::from("Hello!")
-    )
 }
 
 async fn sleepy_hello(ctx: Context) -> Result<Response> {

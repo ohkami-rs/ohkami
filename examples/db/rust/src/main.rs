@@ -43,9 +43,7 @@ async fn get_user_userid(ctx: Context) -> Result<Response> {
         .fetch_one(ctx.pool())
         .await?;
 
-    Response::OK(
-        JSON::from_struct(&user)?
-    )
+    Response::OK(JSON::from_struct(&user)?)
 }
 
 async fn sleepy_get_user_userid(ctx: Context) -> Result<Response> {
@@ -59,7 +57,5 @@ async fn sleepy_get_user_userid(ctx: Context) -> Result<Response> {
         .fetch_one(ctx.pool())
         .await?;
 
-    Response::OK(
-        JSON::from_struct(&user)?
-    )
+    Response::OK(JSON::from_struct(&user)?)
 }
