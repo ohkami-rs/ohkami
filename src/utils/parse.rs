@@ -72,7 +72,7 @@ fn parse_request_line(
     let (path_part, query) = extract_query(path_str)?;
     let (path, param) = extract_param(path_part)?;
 
-    Ok((Method::parse(method)?, path, param, query))
+    Ok((Method::parse(method)?, path.trim_end_matches('/'), param, query))
 }
 
 fn extract_query(

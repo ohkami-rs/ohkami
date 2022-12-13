@@ -173,7 +173,7 @@ impl Server {
             };
 
         if self.map.insert(
-            (method, &path, has_param), Box::new(move |ctx: Context| Box::pin(handler(ctx)))
+            (method, &path.trim_end_matches('/'), has_param), Box::new(move |ctx: Context| Box::pin(handler(ctx)))
         ).is_some() {
             panic!("handler for `{method} {path_string}` is resistered duplicatedly");
         }
