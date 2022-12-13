@@ -29,8 +29,8 @@ pub(crate) mod models {
 }
 
 pub(crate) mod functions {
+    use rand::Rng;
     use ohkami::response::Body;
-    use rand::{Rng, rngs::ThreadRng};
     use super::{models::Fortune, consts::RAND_RANGE};
 
     pub fn html_from(fortunes: Vec<Fortune>) -> Body {
@@ -43,8 +43,17 @@ pub(crate) mod functions {
         )
     }
 
-    pub fn random_i32(generator: &mut ThreadRng) -> i32 {
-        generator.gen_range(RAND_RANGE) as i32
+    pub fn random_i32() -> i32 {
+        rand::thread_rng().gen_range(RAND_RANGE) as i32
+    }
+
+    pub fn random_i32s(n: usize) -> std::vec::IntoIter<i32> {
+        let mut generator = rand::thread_rng();
+        let mut i32s = Vec::with_capacity(n);
+        for _ in 0..n {
+            i32s.push(generator.gen_range(RAND_RANGE) as i32)
+        }
+        i32s.into_iter()
     }
 }
 
