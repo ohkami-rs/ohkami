@@ -88,6 +88,7 @@ impl Response {
 Connection: Keep-Alive
 Content-Type: {}; charset=utf-8
 Content-Length: {}
+Server: ohkami
 Date: {}
 Keep-Alive: timeout=5
 {}
