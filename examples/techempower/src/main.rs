@@ -28,7 +28,7 @@ fn main() -> Result<()> {
         .GET("/fortunes",  handle_fortunes)
         .GET("/queries",   handle_queries)
         .GET("/updates",   handle_updates)
-        .serve_on(":3000")
+        .serve_on(":8080")
 }
 
 async fn handle_db(ctx: Context) -> Result<Response> {
