@@ -30,7 +30,7 @@ impl ResponseFormat for JSON {
 #[macro_export]
 macro_rules! json {
     ($key1:literal : $value1:expr $(, $key:literal : $value:expr)*) => {
-        JSON::from(
+        JSON::from_str(
             String::from("{")
             + &format!("\"{}\":{:?}", $key1, $value1)
             $( + &format!(",\"{}\":{:?}", $key, $value) )*
