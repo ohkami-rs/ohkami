@@ -27,9 +27,7 @@ use ohkami::prelude::*;
 
 fn main() -> Result<()> {
     Server::setup()
-        .GET("/", |_| async {
-            Response::OK(Body::text("Hello, world!"))
-        })
+        .GET("/", |_| async {Response::OK(Body::text("Hello, world!"))})
         .serve_on(":3000")
 }
 ```
