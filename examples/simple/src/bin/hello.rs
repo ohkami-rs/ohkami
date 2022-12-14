@@ -15,7 +15,5 @@ async fn sleepy_hello(ctx: Context) -> Result<Response> {
     
     std::thread::sleep(std::time::Duration::from_secs(sleep_time as u64));
 
-    Response::OK(
-        JSON::from_str("Hello, I'm sleepy...")
-    )
+    Response::OK(Body::text("Hello, I'm sleepy..."))
 }
