@@ -42,4 +42,4 @@ ohkami is on very early stage now. Please wait to use ohkami for any produntions
 <br/>
 
 ## License
-This project is under MIT LICENSE ([LICENSE-MIT](https://github.com/kana-rus/ohkami/tree/main/LICENSE-MIT) or [https://opensource.org/licenses/MIT](https://opensource.org/licenses/MIT)).
+This project is under MIT LICENSE ([LICENSE-MIT](https://github.com/kana-rus/ohkami/blob/main/LICENSE-MIT) or [https://opensource.org/licenses/MIT](https://opensource.org/licenses/MIT)).
