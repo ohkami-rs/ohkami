@@ -38,7 +38,7 @@ fn main() -> Result<()> {
 <br/>
 
 ## Development
-ohkami is on very early stage now. Please wait to use ohkami for any produntions.
+ohkami is on very early stage now. Please don't use for any produntions.
 
 <br/>
 
