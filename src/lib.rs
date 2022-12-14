@@ -1,3 +1,5 @@
+#![doc(html_root_url = "https://docs.rs/ohkami/0.1.1")]
+
 #[cfg(all(not(feature = "sqlx"), any(feature = "postgres", feature = "mysql")))]
 compile_error!("feature `postgres` or `mysql` can't be enebled without enabling `sqlx` feature");
 #[cfg(all(feature = "postgres", feature = "mysql"))]
