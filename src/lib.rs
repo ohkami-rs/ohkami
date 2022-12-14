@@ -1,4 +1,4 @@
-#![doc(html_root_url = "https://docs.rs/ohkami/0.1.2")]
+#![doc(html_root_url = "https://docs.rs/ohkami/0.1.3")]
 
 #[cfg(all(not(feature = "sqlx"), any(feature = "postgres", feature = "mysql")))]
 compile_error!("feature `postgres` or `mysql` can't be enebled without enabling `sqlx` feature");
@@ -22,7 +22,5 @@ pub mod prelude {
     };
 
     #[cfg(feature = "sqlx")]
-    pub use super::{
-        server::DBprofile,
-    };
+    pub use super::server::DBprofile;
 }
