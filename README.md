@@ -1,4 +1,6 @@
-<h1 style="text-align: center;">ohkami</h1>
+<div align="center">
+    <h1>ohkami</h1>
+</div>
 
 ohkami *- [狼] means wolf in Japanese -* is **simple** and **non macro-based** web framework for Rust.
 
