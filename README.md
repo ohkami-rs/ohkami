@@ -17,8 +17,7 @@ ohkami *- [狼] means wolf in Japanese -* is **simple** and **non macro-based** 
 
 ```toml
 [dependencies]
-ohkami = { git = "https://github.com/kana-rus/ohkami", version = "0.1" }
-# publishing to crates.io is in progress
+ohkami = "0.1"
 ```
 
 2. Write your first code with ohkami:
