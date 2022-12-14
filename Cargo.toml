@@ -2,6 +2,15 @@
 name = "ohkami"
 version = "0.1.0"
 edition = "2021"
+authors = ["kanarus <kanarus786@gmail.com>"]
+description = "simple and non macro-based web framework"
+documentation = "https://docs.rs/ohkami/"
+homepage = "https://crates.io/crates/ohkami"
+repository = "https://github.com/kana-rus/ohkami"
+readme = "README.md"
+keywords = ["simple", "async", "web", "server"]
+categories = ["web-programming::http-server"]
+license = "MIT"
 
 [dependencies]
 sqlx = { version = "0.6", default-features = false, optional = true }
@@ -14,8 +23,6 @@ tracing-subscriber = "0.3"
 
 [features]
 default  = []
-# default = ["sqlx", "postgres"] # for debugging
-
 sqlx     = ["dep:sqlx"]
 postgres = ["sqlx?/runtime-async-std-native-tls", "sqlx?/postgres"]
 mysql    = ["sqlx?/runtime-async-std-native-tls", "sqlx?/mysql"]
