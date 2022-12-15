@@ -16,7 +16,7 @@ use crate::{
     result::{Result, ElseResponse},
     utils::{
         parse::parse_request_lines, validation::{self, is_valid_path}, buffer::Buffer
-    },
+    }, prelude::Body,
 };
 
 #[cfg(feature = "postgres")]
@@ -282,7 +282,8 @@ async fn setup_response(
         buffer.lines()?
     )?;
 
-    let handler =
+    let handler = {
+        // let path = path.clone();
         match handler_map.get(&(method, path, /*false*/)) {
             Some(handler) => {
                 param_range = None; //
@@ -295,7 +296,8 @@ async fn setup_response(
             ))._else(|| Response::NotFound(format!(
                 "handler for `{method} {path}` is not found"
             )))?
-        };
+        }
+    };
 
     let context = Context::build(
         buffer,
@@ -307,7 +309,8 @@ async fn setup_response(
         connection_pool
     );
 
-    handler(context).await
+    // handler(context).await
+    todo!()
 }
 
 // async fn handle_request<'req>(
