@@ -1,7 +1,6 @@
 use std::{str::{self, Lines}, ops::{Index, Range}};
 use async_std::{net::TcpStream, io::ReadExt};
-use crate::{result::Result, components::method::Method};
-use super::{map::RangeMap, parse::parse_stream_lines};
+use crate::result::Result;
 
 const BUF_SIZE: usize = 1024;
 
@@ -16,6 +15,12 @@ pub(crate) struct Buffer(
     pub fn lines(&self) -> Result<Lines> {
         Ok(str::from_utf8(&self.0)?.lines())
     }
+    pub fn read_str(&self, range: Range<usize>) -> &str {
+        let target_bytes = &self[range];
+        unsafe {
+            std::str::from_utf8_unchecked(target_bytes)
+        }
+    } 
     // pub fn parse(
     //     &self
     // ) -> Result<(Method, &str, RangeMap, RangeMap)> {
