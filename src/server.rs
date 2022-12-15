@@ -219,7 +219,6 @@ impl Server {
     }
 }
 
-#[cfg(not(feature = "sqlx"))]
 async fn handle_stream(
     mut stream: TcpStream,
     handler_map: Arc<HashMap<
@@ -227,43 +226,15 @@ async fn handle_stream(
         Handler,
     >>,
     allow_origin_str: Arc<String>,
-) {
-    let mut response = match setup_response(
-        &mut stream,
-        handler_map,
-    ).await {
-        Ok(res)  => res,
-        Err(res) => res,
-    };
 
-    if !allow_origin_str.is_empty() {
-        response.add_header(&*allow_origin_str)
-    }
-
-    tracing::debug!("generated a response: {:?}", &response);
-
-    if let Err(err) = response.write_to_stream(&mut stream).await {
-        tracing::error!("failed to write response: {}", err);
-        return
-    }
-    if let Err(err) = stream.flush().await {
-        tracing::error!("failed to flush stream: {}", err);
-        return
-    }
-}
-#[cfg(feature = "sqlx")]
-async fn handle_stream(
-    mut stream: TcpStream,
-    handler_map: Arc<HashMap<
-        (Method, &'static str, bool),
-        Handler,
-    >>,
-    allow_origin_str: Arc<String>,
+    #[cfg(feature = "sqlx")]
     connection_pool:  Arc<ConnectionPool>,
 ) {
     let mut response = match setup_response(
         &mut stream,
         handler_map,
+
+        #[cfg(feature = "sqlx")]
         connection_pool,
     ).await {
         Ok(res)  => res,
@@ -286,38 +257,14 @@ async fn handle_stream(
     }
 }
 
-#[cfg(not(feature = "sqlx"))]
 async fn setup_response(
     stream: &mut TcpStream,
     handler_map: Arc<HashMap<
         (Method, &'static str, bool),
         Handler
     >>,
-) -> Result<Response> {
-    let mut buffer = [b' '; BUF_SIZE];
-    stream.read(&mut buffer).await?;
-    let (
-        method,
-        path_str,
-        context
-    ) = parse_stream(
-        &buffer
-    )?;
-
-    handle_request(
-        handler_map,
-        method,
-        path_str,
-        context
-    ).await
-}
-#[cfg(feature = "sqlx")]
-async fn setup_response(
-    stream: &mut TcpStream,
-    handler_map: Arc<HashMap<
-        (Method, &'static str, bool),
-        Handler
-    >>,
+    
+    #[cfg(feature = "sqlx")]
     connection_pool: Arc<ConnectionPool>,
 ) -> Result<Response> {
     let mut buffer = [b' '; BUF_SIZE];
@@ -328,6 +275,8 @@ async fn setup_response(
         context,
     ) = parse_stream(
         &buffer,
+
+        #[cfg(feature = "sqlx")]
         connection_pool
     )?;
 
