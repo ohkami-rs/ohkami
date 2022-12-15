@@ -1,4 +1,4 @@
-use std::ops::Range;
+use std::ops::RangeInclusive;
 use serde::Deserialize;
 use crate::{
     result::{Result, ElseResponse},
@@ -19,7 +19,7 @@ pub struct Context {
     buffer: Buffer,
 
     pub(crate) body:        Option<JSON>,
-    pub(crate) param_range: Option<Range<usize>>,
+    pub(crate) param_range: Option<RangeInclusive<usize>>,
     pub(crate) query_range: Option<RangeMap>,
 
     #[cfg(feature = "sqlx")]
@@ -43,6 +43,26 @@ impl<'d> Context {
     #[cfg(feature = "sqlx")]
     pub fn pool(&self) -> &ConnectionPool {
         &*self.pool
+    }
+
+    pub(crate) fn build(
+        buffer: Buffer,
+        body: Option<JSON>,
+        param_range: Option<RangeInclusive<usize>>,
+        query_range: Option<RangeMap>,
+
+        #[cfg(feature = "sqlx")]
+        connection_pool: Arc<ConnectionPool>,
+    ) -> Self {
+        Self {
+            buffer,
+            body,
+            param_range,
+            query_range,
+
+            #[cfg(feature = "sqlx")]
+            pool: connection_pool,
+        }
     }
 }
 

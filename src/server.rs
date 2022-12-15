@@ -1,7 +1,7 @@
 use async_std::{
     sync::Arc,
     task::block_on,
-    io::{ReadExt, WriteExt},
+    io::WriteExt,
     net::{TcpStream, TcpListener},
     stream::StreamExt, task,
 };
@@ -9,13 +9,13 @@ use tracing_subscriber::fmt::SubscriberBuilder;
 use std::{collections::HashMap, pin::Pin, future::Future};
 use crate::{
     components::{
-        consts::BUF_SIZE, method::Method, cors::CORS
+        method::Method, cors::CORS
     },
     context::Context,
     response::Response,
     result::{Result, ElseResponse},
     utils::{
-        parse::{parse_stream, parse_request_line}, validation::{self, is_valid_path}, buffer::Buffer
+        parse::parse_request_lines, validation::{self, is_valid_path}, buffer::Buffer
     },
 };
 
@@ -34,7 +34,7 @@ type Handler = Box<dyn Fn(Context) -> Pin<Box<dyn Future<Output=Result<Response>
 
 pub struct Server {
     map: HashMap<
-        (Method, &'static str, /*with param tailing or not*/bool),
+        (Method, &'static str, /* /*with param tailing or not*/bool */),
         Handler,
     >,
     cors: CORS,
@@ -165,15 +165,15 @@ impl Server {
             panic!("`{path_string}` is invalid as path.");
         }
 
-        let (path, has_param) =
+        let path = // (path, has_param) =
             if let Some((path, _param_name)) = path_string.rsplit_once("/:") {
-                (path, true)
+                path // (path, true)
             } else {
-                (path_string, false)
+                path_string // (path_string, false)
             };
 
         if self.map.insert(
-            (method, &path.trim_end_matches('/'), has_param),
+            (method, &path.trim_end_matches('/'), /*has_param*/),
             Box::new(move |ctx: Context| Box::pin(handler(ctx)))
         ).is_some() {
             panic!("handler for `{method} {path_string}` is resistered duplicatedly");
@@ -222,7 +222,7 @@ impl Server {
 async fn handle_stream(
     mut stream: TcpStream,
     handler_map: Arc<HashMap<
-        (Method, &'static str, bool),
+        (Method, &'static str, /*bool*/),
         Handler,
     >>,
     allow_origin_str: Arc<String>,
@@ -260,7 +260,7 @@ async fn handle_stream(
 async fn setup_response(
     stream: &mut TcpStream,
     handler_map: Arc<HashMap<
-        (Method, &'static str, bool),
+        (Method, &'static str, /*bool*/),
         Handler
     >>,
 
@@ -269,43 +269,60 @@ async fn setup_response(
 ) -> Result<Response> {
     let buffer = Buffer::new(stream).await?;
 
-    let mut lines = buffer.lines()?;
+    // let mut lines = buffer.lines()?;
     let (
         method,
         path,
-        param,
-        query
-    ) = parse_request_line(&mut lines)?;
+        mut param_range,
+        query_range,
+        // headers,
+        body
+    ) = parse_request_lines(
+        // &mut lines
+        buffer.lines()?
+    )?;
+
+    let handler =
+        match handler_map.get(&(method, path, /*false*/)) {
+            Some(handler) => {
+                param_range = None; //
+                handler
+            },
+            None => handler_map.get(&(
+                method,
+                path.rsplit_once('/').unwrap(/*---*/).0, // <------------------- //
+                // true
+            ))._else(|| Response::NotFound(format!(
+                "handler for `{method} {path}` is not found"
+            )))?
+        };
 
     let context = Context::build(
-        lines,
         buffer,
-        param, query,
+        body,
+        param_range,
+        query_range,
 
         #[cfg(feature = "sqlx")]
         connection_pool
     );
 
-    handle_request(
-        handler_map,
-        method,
-        path,
-        context
-    ).await
-}
-
-async fn handle_request<'req>(
-    handler_map: Arc<HashMap<
-        (Method, &'static str, bool),
-        Handler
-    >>,
-    method:   Method,
-    path:     &'req str,
-    context:  Context,
-) -> Result<Response> {
-    let handler = handler_map
-        .get(&(method, path, context.param.is_some()))
-        ._else(|| Response::NotFound(format!("handler for `{method} {path}` is not found")))?;
-
     handler(context).await
 }
+
+// async fn handle_request<'req>(
+//     handler_map: Arc<HashMap<
+//         (Method, &'static str, bool),
+//         Handler
+//     >>,
+//     method:   Method,
+//     path:     &'req str,
+//     context:  Context,
+// ) -> Result<Response> {
+//     let handler = handler_map
+//         .get(&(method, path, context.param.is_some()))
+//         ._else(|| Response::NotFound(format!("handler for `{method} {path}` is not found")))?;
+// 
+//     handler(context).await
+// }
+// 

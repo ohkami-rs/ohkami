@@ -1,4 +1,4 @@
-use std::ops::Range;
+use std::ops::RangeInclusive;
 use super::buffer::Buffer;
 // use crate::{response::Response, result::{Result, ElseResponseWithErr}};
 // use super::{hash::{TABLE_SIZE, linear_congruential_hash}, buffer::Buffer};
@@ -26,12 +26,12 @@ use super::buffer::Buffer;
 
 pub(crate) const RANGE_MAP_SIZE: usize = 4;
 pub(crate) struct RangeMap(
-    [Option<(Range<usize>, Range<usize>)>; 4]
+    [Option<(RangeInclusive<usize>, RangeInclusive<usize>)>; 4]
 ); impl RangeMap {
     pub fn new() -> Self {
         Self([None, None, None, None])
     }
-    pub fn insert(&mut self, index: usize, key: Range<usize>, value: Range<usize>) {
+    pub fn insert(&mut self, index: usize, key: RangeInclusive<usize>, value: RangeInclusive<usize>) {
         self.0[index] = Some((key, value))
     }
     pub fn read_match_part_of_buffer(

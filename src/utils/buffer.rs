@@ -1,4 +1,4 @@
-use std::{str::{self, Lines}, ops::{Index, Range}};
+use std::{str::{self, Lines}, ops::{Index, RangeInclusive}};
 use async_std::{net::TcpStream, io::ReadExt};
 use crate::result::Result;
 
@@ -13,9 +13,9 @@ pub(crate) struct Buffer(
         Ok(Self(buffer))
     }
     pub fn lines(&self) -> Result<Lines> {
-        Ok(str::from_utf8(&self.0)?.lines())
+        Ok(str::from_utf8(&self.0)?.trim_end().lines())
     }
-    pub fn read_str(&self, range: Range<usize>) -> &str {
+    pub fn read_str(&self, range: RangeInclusive<usize>) -> &str {
         let target_bytes = &self[range];
         unsafe {
             std::str::from_utf8_unchecked(target_bytes)
@@ -28,9 +28,9 @@ pub(crate) struct Buffer(
     // }
 }
 
-impl Index<Range<usize>> for Buffer {
+impl Index<RangeInclusive<usize>> for Buffer {
     type Output = [u8];
-    fn index(&self, range: Range<usize>) -> &Self::Output {
+    fn index(&self, range: RangeInclusive<usize>) -> &Self::Output {
         &self.0[range]
     }
 }
