@@ -1,65 +1,68 @@
-#[cfg(feature = "sqlx")]
-use async_std::sync::Arc;
-
+use std::str::Lines;
 use crate::{
-    components::{consts::BUF_SIZE, method::Method, json::JSON},
+    components::{method::Method, json::JSON},
     response::Response,
-    context::Context, result::{Result, ElseResponse},
+    context::Context,
+    result::{Result, ElseResponse},
+    utils::map::RangeMap,
 };
 
+#[cfg(feature = "sqlx")]
+use async_std::sync::Arc;
 #[cfg(feature = "postgres")]
 use sqlx::PgPool as ConnectionPool;
 #[cfg(feature = "mysql")]
 use sqlx::MySqlPool as ConnectionPool;
 
-use super::hash::StringHashMap;
 
 
-pub(crate) fn parse_stream<'buf>(
-    buffer: &'buf [u8; BUF_SIZE],
-    #[cfg(feature = "sqlx")]
-    connection_pool: Arc<ConnectionPool>,
-) -> Result<(
-    Method,
-    &'buf str,
-    Context
-)> {
-    let mut lines = std::str::from_utf8(buffer)?
-        .trim_end()
-        .lines();
+// pub(crate) fn parse_stream<'buf>(
+//     buffer: &'buf [u8; BUF_SIZE],
+//     #[cfg(feature = "sqlx")]
+//     connection_pool: Arc<ConnectionPool>,
+// ) -> Result<(
+//     Method,
+//     &'buf str,
+//     Context
+// )> {
+//     let mut lines = std::str::from_utf8(buffer)?
+//         .trim_end()
+//         .lines();
+// 
+//     let request_line = lines.next()
+//         ._else(|| Response::BadRequest("empty request"))?;
+//     
+//     tracing::debug!("got a request: {}", request_line);
+//     let (
+//         method,
+//         path,
+//         param,
+//         query
+//     ) = parse_request_line(request_line)?;
+// 
+//     while let Some(line) = lines.next() {
+//         if line.is_empty() {break}
+// 
+//         // TODO: handle BasicAuth
+//     }
+// 
+//     let request_context = Context {
+//         param,
+//         query,
+//         body: lines.next().map(|request_body| JSON::from_str(request_body)),
+// 
+//         #[cfg(feature = "sqlx")]
+//         pool:  connection_pool,
+//     };
+// 
+//     Ok((method, path, request_context))
+// }
 
-    let request_line = lines.next()
+pub fn parse_request_line<'l>(
+    lines: &'l mut Lines
+) -> Result<(Method, &'l str, Option<RangeMap>, Option<RangeMap>)> {
+    let line = lines.next()
         ._else(|| Response::BadRequest("empty request"))?;
-    
-    tracing::debug!("got a request: {}", request_line);
-    let (
-        method,
-        path,
-        param,
-        query
-    ) = parse_request_line(request_line)?;
-
-    while let Some(line) = lines.next() {
-        if line.is_empty() {break}
-
-        // TODO: handle BasicAuth
-    }
-
-    let request_context = Context {
-        param,
-        query,
-        body: lines.next().map(|request_body| JSON::from_str(request_body)),
-
-        #[cfg(feature = "sqlx")]
-        pool:  connection_pool,
-    };
-
-    Ok((method, path, request_context))
-}
-
-fn parse_request_line(
-    line: &str
-) -> Result<(Method, &str, Option<u32>, Option<StringHashMap>)> {
     (!line.is_empty())
         ._else(|| Response::BadRequest("can't find request status line"))?;
 
@@ -77,11 +80,11 @@ fn parse_request_line(
 
 fn extract_query(
     path_str: &str
-) -> Result<(&str, Option<StringHashMap>)> {
+) -> Result<(&str, Option<RangeMap>)> {
     let Some((path_part, query_part)) = path_str.split_once('?')
         else {return Ok((path_str, None))};
 
-    let mut map = StringHashMap::new()?;
+    let mut map = RangeMap::new()?;
     query_part.split('&')
         .map(|key_value| key_value
             .split_once('=')
@@ -95,7 +98,7 @@ fn extract_query(
 
 fn extract_param(
     path_str: &str
-) -> Result<(&str, Option<u32>)> {
+) -> Result<(&str, Option<RangeMap>)> {
     let (rest, tail) = path_str.rsplit_once('/').unwrap();
     if let Ok(param) = tail.parse::<u32>() {
         Ok((rest, Some(param)))

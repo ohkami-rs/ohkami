@@ -15,7 +15,7 @@ use crate::{
     response::Response,
     result::{Result, ElseResponse},
     utils::{
-        parse::parse_stream, validation::{self, is_valid_path}
+        parse::{parse_stream, parse_request_line}, validation::{self, is_valid_path}, buffer::Buffer
     },
 };
 
@@ -263,22 +263,28 @@ async fn setup_response(
         (Method, &'static str, bool),
         Handler
     >>,
-    
+
     #[cfg(feature = "sqlx")]
     connection_pool: Arc<ConnectionPool>,
 ) -> Result<Response> {
-    let mut buffer = [b' '; BUF_SIZE];
-    stream.read(&mut buffer).await?;
+    let buffer = Buffer::new(stream).await?;
+
+    let mut lines = buffer.lines()?;
     let (
         method,
         path,
-        context,
-    ) = parse_stream(
-        &buffer,
+        param,
+        query
+    ) = parse_request_line(&mut lines)?;
+
+    let context = Context::build(
+        lines,
+        buffer,
+        param, query,
 
         #[cfg(feature = "sqlx")]
         connection_pool
-    )?;
+    );
 
     handle_request(
         handler_map,

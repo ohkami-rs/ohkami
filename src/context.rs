@@ -1,7 +1,7 @@
 use serde::Deserialize;
 use crate::{
     result::{Result, ElseResponse},
-    utils::hash::StringHashMap,
+    utils::{hash::StringHashMap, map::RangeMap, buffer::Buffer},
     components::json::JSON,
     response::Response,
 };
@@ -15,9 +15,11 @@ use sqlx::MySqlPool as ConnectionPool;
 
 
 pub struct Context {
-    pub(crate) param: Option<u32>,
+    buffer: Buffer,
+
     pub(crate) body:  Option<JSON>,
-    pub(crate) query: Option<StringHashMap>,
+    pub(crate) param: Option<RangeMap>,
+    pub(crate) query: Option<RangeMap>,
 
     #[cfg(feature = "sqlx")]
     pub(crate) pool:  Arc<ConnectionPool>,
@@ -30,7 +32,7 @@ impl<'d> Context {
         let json_struct = json.to_struct()?;
         Ok(json_struct)
     }
-    pub fn param(&self) -> Option<u32> {
+    pub fn param(&self, key: &str) -> Option<&str> {
         self.param
     }
     pub fn query(&self, key: &str) -> Option<&str> {
