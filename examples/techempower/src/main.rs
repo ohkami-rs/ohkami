@@ -37,7 +37,7 @@ async fn handle_db(ctx: Context) -> Result<Response> {
         .bind(id)
         .fetch_one(ctx.pool())
         .await?;
-    Response::OK(JSON::from_struct(&world)?)
+    Response::OK(JSON(&world)?)
 }
 
 async fn handle_fortunes(ctx: Context) -> Result<Response> {
@@ -66,7 +66,7 @@ async fn handle_queries(ctx: Context) -> Result<Response> {
                 .await?
         )
     }
-    Response::OK(JSON::from_struct(&worlds)?)
+    Response::OK(JSON(&worlds)?)
 }
 
 async fn handle_updates(ctx: Context) -> Result<Response> {
@@ -86,5 +86,5 @@ async fn handle_updates(ctx: Context) -> Result<Response> {
                 .await?
         )
     }
-    Response::OK(JSON::from_struct(&worlds)?)
+    Response::OK(JSON(&worlds)?)
 }
