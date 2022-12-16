@@ -30,16 +30,16 @@ pub(crate) fn parse_request_lines(
     (!line.is_empty())
         ._else(|| Response::BadRequest("can't find request status line"))?;
 
-    let (method, path_str) = line
+    let (method_str, path_str) = line
         .strip_suffix(" HTTP/1.1")
         ._else(|| Response::NotImplemented("I can't handle protocols other than `HTTP/1.1`"))?
         .split_once(' ')
         ._else(|| Response::BadRequest("invalid request line format"))?;
 
-    tracing::info!("got a request: {} {}", method, path_str);
+    tracing::info!("got a request: {} {}", method_str, path_str);
 
-    let (path, query) = extract_query(path_str, method.len() + 1/*' '*/)?;
-    let /*(path, param)*/ param = extract_param(path, method.len() + 1/*' '*/);
+    let (path, query) = extract_query(path_str, method_str.len() - 1/*' '*/)?;
+    let /*(path, param)*/ param = extract_param(path, method_str.len() - 1/*' '*/);
 
     while let Some(line) = lines.next() {
         /*
@@ -51,7 +51,7 @@ pub(crate) fn parse_request_lines(
     let body = lines.next().map(|line| JSON::from_str(line));
 
     Ok((
-        Method::parse(method)?,
+        Method::parse(method_str)?,
         (if path=="/" {path} else {path.trim_end_matches('/')}).to_owned(),
         param,
         query,
@@ -72,18 +72,15 @@ fn extract_query(
         );
     
     let mut map = RangeMap::new();
-    let mut count = 0;
-    let (index, read_pos) = (0, offset + path_part.len() + 1/*'?'*/);
-    for (key, value) in queries {
-        count += 1; (count <= RANGE_MAP_SIZE)._else(||
+    let read_pos = offset + path_part.len() + 1/*'?'*/;
+    for (i, (key, value)) in queries.enumerate() {
+        (i < RANGE_MAP_SIZE)._else(||
             Response::BadRequest("Sorry, I can't handle more than 4 query params")
         )?;
-
-        let (key, value) = (
+        map.insert(i,
             BufRange::new(read_pos+1, read_pos+key.len()),
             BufRange::new(read_pos+key.len()+1/*'='*/ +1, read_pos+key.len()+1/*'='*/ +value.len()),
         );
-        map.insert(index, key, value)
     }
 
     Ok((path_part, Some(map)))
@@ -94,7 +91,7 @@ fn extract_param(
 ) -> Option<BufRange> {
     if path.ends_with('/') {return None}
     Some(BufRange::new(
-        offset+1 + path.rfind('/')? + 1,
+        offset+1 + path.rfind('/')?+1 + 1,
         offset+1 + path.len()
     ))
 }

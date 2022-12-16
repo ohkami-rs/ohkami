@@ -55,10 +55,11 @@ pub(crate) struct RangeMap(
         let mut fmt = String::from("[");
         for pair in &self.0 {
             let Some((key_range, value_range)) = pair.as_ref() else {break};
+            fmt += "`";
             fmt += buffer.read_str(key_range);
-            fmt += "=";
+            fmt += "`: `";
             fmt += buffer.read_str(value_range);
-            fmt += ", ";
+            fmt += "`, ";
         }
         fmt + "]"
     }
