@@ -6,13 +6,6 @@ use crate::{
     utils::{buffer::BufRange, map::{RangeMap, RANGE_MAP_SIZE}},
 };
 
-#[cfg(feature = "sqlx")]
-use async_std::sync::Arc;
-#[cfg(feature = "postgres")]
-use sqlx::PgPool as ConnectionPool;
-#[cfg(feature = "mysql")]
-use sqlx::MySqlPool as ConnectionPool;
-
 
 pub(crate) fn parse_request_lines(
     // lines: &'l mut Lines

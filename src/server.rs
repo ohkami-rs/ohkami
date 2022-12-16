@@ -307,7 +307,7 @@ async fn setup_response(
         query_range,
 
         #[cfg(feature = "sqlx")]
-        connection_pool
+        pool: connection_pool,
     };
 
     tracing::debug!("context: {:#?}", context);
