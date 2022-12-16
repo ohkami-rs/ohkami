@@ -3,7 +3,7 @@ use crate::{
     components::{method::Method, json::JSON},
     response::Response,
     result::{Result, ElseResponse},
-    utils::map::{RangeMap, RANGE_MAP_SIZE},
+    utils::{buffer::BufRange, map::{RangeMap, RANGE_MAP_SIZE}},
 };
 
 #[cfg(feature = "sqlx")]
@@ -12,8 +12,6 @@ use async_std::sync::Arc;
 use sqlx::PgPool as ConnectionPool;
 #[cfg(feature = "mysql")]
 use sqlx::MySqlPool as ConnectionPool;
-
-use super::map::BufRange;
 
 
 pub(crate) fn parse_request_lines(
@@ -37,6 +35,8 @@ pub(crate) fn parse_request_lines(
         ._else(|| Response::NotImplemented("I can't handle protocols other than `HTTP/1.1`"))?
         .split_once(' ')
         ._else(|| Response::BadRequest("invalid request line format"))?;
+
+    tracing::info!("got a request: {} {}", method, path_str);
 
     let (path, query) = extract_query(path_str, method.len() + 1/*' '*/)?;
     let /*(path, param)*/ param = extract_param(path, method.len() + 1/*' '*/);

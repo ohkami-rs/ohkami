@@ -1,10 +1,9 @@
-use std::{str::{self, Lines}, ops::Index};
+use std::{str::{self, Lines}, ops::{Index, RangeInclusive}};
 use async_std::{net::TcpStream, io::ReadExt};
 use crate::result::Result;
 
-use super::map::BufRange;
-
 const BUF_SIZE: usize = 1024;
+
 
 pub(crate) struct Buffer(
     [u8; BUF_SIZE]
@@ -24,10 +23,21 @@ pub(crate) struct Buffer(
         }
     } 
 }
-
 impl Index<BufRange> for Buffer {
     type Output = [u8];
     fn index(&self, range: BufRange) -> &Self::Output {
         &self.0[range.as_range()]
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct BufRange(
+    usize, usize
+); impl BufRange {
+    pub fn new(start: usize, end: usize) -> Self {
+        Self(start, end)
+    }
+    pub fn as_range(&self) -> RangeInclusive<usize> {
+        self.0..=self.1
     }
 }

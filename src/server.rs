@@ -245,7 +245,7 @@ async fn handle_stream(
         response.add_header(&*allow_origin_str)
     }
 
-    tracing::debug!("generated a response: {:?}", &response);
+    tracing::info!("generated a response: {:?}", &response);
 
     if let Err(err) = response.write_to_stream(&mut stream).await {
         tracing::error!("failed to write response: {}", err);
@@ -309,6 +309,8 @@ async fn setup_response(
         #[cfg(feature = "sqlx")]
         connection_pool
     };
+
+    tracing::debug!("context: {:#?}", context);
 
     handler(context).await
 }

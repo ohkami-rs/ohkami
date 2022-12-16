@@ -1,7 +1,9 @@
+use std::fmt::Debug;
+
 use serde::Deserialize;
 use crate::{
     result::{Result, ElseResponse},
-    utils::{map::{RangeMap, BufRange}, buffer::Buffer},
+    utils::{map::RangeMap, buffer::{Buffer, BufRange}},
     components::json::JSON,
     response::Response,
 };
@@ -42,6 +44,21 @@ impl<'d> Context {
     #[cfg(feature = "sqlx")]
     pub fn pool(&self) -> &ConnectionPool {
         &*self.pool
+    }
+}
+
+impl Debug for Context {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f,
+"param: {:?} (range: {:?}),
+query: {:?} (range: {:?}),
+body: {:?}",
+            self.param(),
+            self.param_range,
+            self.query_range.as_ref().map(|map| map.debug_fmt_with(&self.buffer)),
+            self.query_range,
+            self.body,
+        )
     }
 }
 

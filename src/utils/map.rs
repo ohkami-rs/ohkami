@@ -1,5 +1,4 @@
-use std::ops::RangeInclusive;
-use super::buffer::Buffer;
+use super::buffer::{Buffer, BufRange};
 // use crate::{response::Response, result::{Result, ElseResponseWithErr}};
 // use super::{hash::{TABLE_SIZE, linear_congruential_hash}, buffer::Buffer};
 // 
@@ -24,22 +23,11 @@ use super::buffer::Buffer;
 //     }
 // }
 
-#[derive(Clone, Copy)]
-pub(crate) struct BufRange(
-    usize, usize
-); impl BufRange {
-    pub fn new(start: usize, end: usize) -> Self {
-        Self(start, end)
-    }
-    pub fn as_range(&self) -> RangeInclusive<usize> {
-        self.0..=self.1
-    }
-}
-
 
 pub(crate) const RANGE_MAP_SIZE: usize = 4;
+#[derive(Debug)]
 pub(crate) struct RangeMap(
-    [Option<(BufRange, BufRange)>; 4]
+    [Option<(BufRange, BufRange)>; RANGE_MAP_SIZE]
 ); impl RangeMap {
     pub fn new() -> Self {
         Self([None, None, None, None])
@@ -62,4 +50,18 @@ pub(crate) struct RangeMap(
         }
         None
     }
+
+    pub fn debug_fmt_with(&self, buffer: &Buffer) -> String {
+        let mut fmt = String::from("[");
+        for pair in &self.0 {
+            let Some((key_range, value_range)) = pair.as_ref() else {break};
+            fmt += buffer.read_str(key_range);
+            fmt += "=";
+            fmt += buffer.read_str(value_range);
+            fmt += ", ";
+        }
+        fmt + "]"
+    }
 }
+
+
