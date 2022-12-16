@@ -8,12 +8,14 @@ fn main() -> Result<()> {
 
 async fn sleepy_hello(ctx: Context) -> Result<Response> {
     let sleep_time = ctx.param()
-        ._else(|| Response::BadRequest("Expected sleeping duration as path parameter."))?;
+        ._else(|| Response::BadRequest("Expected sleeping duration as path parameter."))?
+        .parse::<u64>()
+        ._else(|_| Response::BadRequest("`time` must be a zero or positive integer."))?;
     (sleep_time < 30)
         ._else(|| Response::BadRequest("Sorry, please request a sleeping duration (sec) less than 30."))?;
     
     std::thread::sleep(
-        std::time::Duration::from_secs(sleep_time as u64)
+        std::time::Duration::from_secs(sleep_time)
     );
 
     Response::OK(Body::text("Hello, I'm sleepy..."))
