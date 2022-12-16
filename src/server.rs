@@ -269,8 +269,6 @@ async fn setup_response(
 ) -> Result<Response> {
     let buffer = Buffer::new(stream).await?;
 
-    // let mut lines = buffer.lines()?;
-    let lines = buffer.lines()?;
     let (
         method,
         path,
@@ -279,20 +277,22 @@ async fn setup_response(
         // headers,
         body
     ) = parse_request_lines(
-        // &mut lines
-        // buffer.lines()?
-        lines
+        buffer.lines()?
     )?;
 
     let handler = {
-        match handler_map.get(&(method, &path, /*false*/)) {
+        match handler_map.get(&(
+            method,
+            &path,
+            /*false*/
+        )) {
             Some(handler) => {
                 param_range = None; //
                 handler
             },
             None => handler_map.get(&(
                 method,
-                &path.rsplit_once('/').unwrap(/*---*/).0, // <------------------- //
+                &path.rsplit_once('/').unwrap_or(("", "")).0,
                 // true
             ))._else(|| Response::NotFound(format!(
                 "handler for `{method} {path}` is not found"

@@ -52,7 +52,7 @@ pub(crate) fn parse_request_lines(
 
     Ok((
         Method::parse(method)?,
-        path.trim_end_matches('/').to_owned(),
+        (if path=="/" {path} else {path.trim_end_matches('/')}).to_owned(),
         param,
         query,
         body
