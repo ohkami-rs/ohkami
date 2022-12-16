@@ -17,7 +17,7 @@ async fn annoying_hello(ctx: Context) -> Result<Response> {
     let name = ctx.query("name")
         ._else(|| Response::BadRequest("Expected query parameter `name`."))?;
         
-    Response::OK(Body::text(
-        format!("Hello, {}!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!", &name).repeat(count)
-    ))
+    Response::OK(format!(
+        "Hello, {}!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!", &name).repeat(count)
+    )
 }
