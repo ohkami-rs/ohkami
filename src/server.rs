@@ -1,7 +1,7 @@
 use async_std::{
     sync::Arc,
     task::block_on,
-    io::{ReadExt, WriteExt},
+    io::WriteExt,
     net::{TcpStream, TcpListener},
     stream::StreamExt, task,
 };
@@ -9,13 +9,13 @@ use tracing_subscriber::fmt::SubscriberBuilder;
 use std::{collections::HashMap, pin::Pin, future::Future};
 use crate::{
     components::{
-        consts::BUF_SIZE, method::Method, cors::CORS
+        method::Method, cors::CORS
     },
     context::Context,
     response::Response,
     result::{Result, ElseResponse},
     utils::{
-        parse::parse_stream, validation::{self, is_valid_path}
+        parse::parse_request_lines, validation::{self, is_valid_path}, buffer::Buffer
     },
 };
 
@@ -34,7 +34,7 @@ type Handler = Box<dyn Fn(Context) -> Pin<Box<dyn Future<Output=Result<Response>
 
 pub struct Server {
     map: HashMap<
-        (Method, &'static str, /*with param tailing or not*/bool),
+        (Method, &'static str, /* /*with param tailing or not*/bool */),
         Handler,
     >,
     cors: CORS,
@@ -165,15 +165,15 @@ impl Server {
             panic!("`{path_string}` is invalid as path.");
         }
 
-        let (path, has_param) =
+        let path = // (path, has_param) =
             if let Some((path, _param_name)) = path_string.rsplit_once("/:") {
-                (path, true)
+                path // (path, true)
             } else {
-                (path_string, false)
+                path_string // (path_string, false)
             };
 
         if self.map.insert(
-            (method, &path.trim_end_matches('/'), has_param),
+            (method, &path.trim_end_matches('/'), /*has_param*/),
             Box::new(move |ctx: Context| Box::pin(handler(ctx)))
         ).is_some() {
             panic!("handler for `{method} {path_string}` is resistered duplicatedly");
@@ -219,51 +219,22 @@ impl Server {
     }
 }
 
-#[cfg(not(feature = "sqlx"))]
 async fn handle_stream(
     mut stream: TcpStream,
     handler_map: Arc<HashMap<
-        (Method, &'static str, bool),
+        (Method, &'static str, /*bool*/),
         Handler,
     >>,
     allow_origin_str: Arc<String>,
-) {
-    let mut response = match setup_response(
-        &mut stream,
-        handler_map,
-    ).await {
-        Ok(res)  => res,
-        Err(res) => res,
-    };
 
-    if !allow_origin_str.is_empty() {
-        response.add_header(&*allow_origin_str)
-    }
-
-    tracing::debug!("generated a response: {:?}", &response);
-
-    if let Err(err) = response.write_to_stream(&mut stream).await {
-        tracing::error!("failed to write response: {}", err);
-        return
-    }
-    if let Err(err) = stream.flush().await {
-        tracing::error!("failed to flush stream: {}", err);
-        return
-    }
-}
-#[cfg(feature = "sqlx")]
-async fn handle_stream(
-    mut stream: TcpStream,
-    handler_map: Arc<HashMap<
-        (Method, &'static str, bool),
-        Handler,
-    >>,
-    allow_origin_str: Arc<String>,
+    #[cfg(feature = "sqlx")]
     connection_pool:  Arc<ConnectionPool>,
 ) {
     let mut response = match setup_response(
         &mut stream,
         handler_map,
+
+        #[cfg(feature = "sqlx")]
         connection_pool,
     ).await {
         Ok(res)  => res,
@@ -274,7 +245,7 @@ async fn handle_stream(
         response.add_header(&*allow_origin_str)
     }
 
-    tracing::debug!("generated a response: {:?}", &response);
+    tracing::info!("generated a response: {:?}", &response);
 
     if let Err(err) = response.write_to_stream(&mut stream).await {
         tracing::error!("failed to write response: {}", err);
@@ -286,71 +257,60 @@ async fn handle_stream(
     }
 }
 
-#[cfg(not(feature = "sqlx"))]
 async fn setup_response(
     stream: &mut TcpStream,
     handler_map: Arc<HashMap<
-        (Method, &'static str, bool),
+        (Method, &'static str, /*bool*/),
         Handler
     >>,
-) -> Result<Response> {
-    let mut buffer = [b' '; BUF_SIZE];
-    stream.read(&mut buffer).await?;
-    let (
-        method,
-        path_str,
-        context
-    ) = parse_stream(
-        &buffer
-    )?;
 
-    handle_request(
-        handler_map,
-        method,
-        path_str,
-        context
-    ).await
-}
-#[cfg(feature = "sqlx")]
-async fn setup_response(
-    stream: &mut TcpStream,
-    handler_map: Arc<HashMap<
-        (Method, &'static str, bool),
-        Handler
-    >>,
+    #[cfg(feature = "sqlx")]
     connection_pool: Arc<ConnectionPool>,
 ) -> Result<Response> {
-    let mut buffer = [b' '; BUF_SIZE];
-    stream.read(&mut buffer).await?;
+    let buffer = Buffer::new(stream).await?;
+
     let (
         method,
         path,
-        context,
-    ) = parse_stream(
-        &buffer,
-        connection_pool
+        mut param_range,
+        query_range,
+        // headers,
+        body
+    ) = parse_request_lines(
+        buffer.lines()?
     )?;
 
-    handle_request(
-        handler_map,
-        method,
-        path,
-        context
-    ).await
-}
+    let handler = {
+        match handler_map.get(&(
+            method,
+            &path,
+            /*false*/
+        )) {
+            Some(handler) => {
+                param_range = None; //
+                handler
+            },
+            None => handler_map.get(&(
+                method,
+                &path.rsplit_once('/').unwrap_or(("", "")).0,
+                // true
+            ))._else(|| Response::NotFound(format!(
+                "handler for `{method} {path}` is not found"
+            )))?
+        }
+    };
 
-async fn handle_request<'req>(
-    handler_map: Arc<HashMap<
-        (Method, &'static str, bool),
-        Handler
-    >>,
-    method:   Method,
-    path:     &'req str,
-    context:  Context,
-) -> Result<Response> {
-    let handler = handler_map
-        .get(&(method, path, context.param.is_some()))
-        ._else(|| Response::NotFound(format!("handler for `{method} {path}` is not found")))?;
+    let context = Context {
+        buffer,
+        body,
+        param_range,
+        query_range,
+
+        #[cfg(feature = "sqlx")]
+        connection_pool
+    };
+
+    tracing::debug!("context: {:#?}", context);
 
     handler(context).await
 }
