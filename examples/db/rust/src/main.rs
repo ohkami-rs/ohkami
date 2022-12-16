@@ -36,7 +36,9 @@ struct User {
 
 async fn get_user_userid(ctx: Context) -> Result<Response> {
     let user_id = ctx.param()
-        ._else(|| Response::BadRequest("Expected user id as path parameter"))?;
+        ._else(|| Response::BadRequest("Expected user id as path parameter"))?
+        .parse::<i64>()
+        ._else(|| Response::BadRequest("path parameter must be an interger"))?;
 
     let user = sqlx::query_as::<_, User>("SELECT id, name FROM users WHERE id = $1")
         .bind(user_id as i64)
@@ -50,7 +52,9 @@ async fn sleepy_get_user_userid(ctx: Context) -> Result<Response> {
     std::thread::sleep(std::time::Duration::from_secs(2));
 
     let user_id = ctx.param()
-        ._else(|| Response::BadRequest("Expected user id as path parameter"))?;
+        ._else(|| Response::BadRequest("Expected user id as path parameter"))?
+        .parse::<i64>()
+        ._else(|| Response::BadRequest("path parameter must be an interger"))?;
 
     let user = sqlx::query_as::<_, User>("SELECT id, name FROM users WHERE id = $1")
         .bind(user_id as i64)

@@ -1,7 +1,9 @@
+use std::fmt::Debug;
+
 use serde::Deserialize;
 use crate::{
     result::{Result, ElseResponse},
-    utils::hash::StringHashMap,
+    utils::{map::RangeMap, buffer::{Buffer, BufRange}},
     components::json::JSON,
     response::Response,
 };
@@ -15,9 +17,11 @@ use sqlx::MySqlPool as ConnectionPool;
 
 
 pub struct Context {
-    pub(crate) param: Option<u32>,
-    pub(crate) body:  Option<JSON>,
-    pub(crate) query: Option<StringHashMap>,
+    pub(crate) buffer: Buffer,
+
+    pub(crate) body:        Option<JSON>,
+    pub(crate) param_range: Option<BufRange>,
+    pub(crate) query_range: Option<RangeMap>,
 
     #[cfg(feature = "sqlx")]
     pub(crate) pool:  Arc<ConnectionPool>,
@@ -30,16 +34,31 @@ impl<'d> Context {
         let json_struct = json.to_struct()?;
         Ok(json_struct)
     }
-    pub fn param(&self) -> Option<u32> {
-        self.param
+    pub fn param(&self/*, key: &str*/) -> Option<&str> {
+        Some(self.buffer.read_str(self.param_range.as_ref()?))
     }
     pub fn query(&self, key: &str) -> Option<&str> {
-        self.query.as_ref()?.get(key)
+        self.query_range.as_ref()?.read_match_part_of_buffer(key, &self.buffer)
     }
 
     #[cfg(feature = "sqlx")]
     pub fn pool(&self) -> &ConnectionPool {
         &*self.pool
+    }
+}
+
+impl Debug for Context {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "
+param: {:?} (range: {:?}),
+query: {:?} (range: {:?}),
+body: {:?}",
+            self.param(),
+            self.param_range,
+            self.query_range.as_ref().map(|map| map.debug_fmt_with(&self.buffer)),
+            self.query_range,
+            self.body,
+        )
     }
 }
 

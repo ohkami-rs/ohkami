@@ -1,105 +1,98 @@
-#[cfg(feature = "sqlx")]
-use async_std::sync::Arc;
-
+use std::str::Lines;
 use crate::{
-    components::{consts::BUF_SIZE, method::Method, json::JSON},
+    components::{method::Method, json::JSON},
     response::Response,
-    context::Context, result::{Result, ElseResponse},
+    result::{Result, ElseResponse},
+    utils::{buffer::BufRange, map::{RangeMap, RANGE_MAP_SIZE}},
 };
 
+#[cfg(feature = "sqlx")]
+use async_std::sync::Arc;
 #[cfg(feature = "postgres")]
 use sqlx::PgPool as ConnectionPool;
 #[cfg(feature = "mysql")]
 use sqlx::MySqlPool as ConnectionPool;
 
-use super::hash::StringHashMap;
 
-
-pub(crate) fn parse_stream<'buf>(
-    buffer: &'buf [u8; BUF_SIZE],
-    #[cfg(feature = "sqlx")]
-    connection_pool: Arc<ConnectionPool>,
+pub(crate) fn parse_request_lines(
+    // lines: &'l mut Lines
+    mut lines: Lines
 ) -> Result<(
     Method,
-    &'buf str,
-    Context
+    String/*path*/,
+    Option<BufRange>/*path param*/,
+    Option<RangeMap>/*query param*/,
+    // headers,
+    Option<JSON>/*request body*/,
 )> {
-    let mut lines = std::str::from_utf8(buffer)?
-        .trim_end()
-        .lines();
-
-    let request_line = lines.next()
+    let line = lines.next()
         ._else(|| Response::BadRequest("empty request"))?;
-    
-    tracing::debug!("got a request: {}", request_line);
-    let (
-        method,
-        path,
-        param,
-        query
-    ) = parse_request_line(request_line)?;
-
-    while let Some(line) = lines.next() {
-        if line.is_empty() {break}
-
-        // TODO: handle BasicAuth
-    }
-
-    let request_context = Context {
-        param,
-        query,
-        body: lines.next().map(|request_body| JSON::from_str(request_body)),
-
-        #[cfg(feature = "sqlx")]
-        pool:  connection_pool,
-    };
-
-    Ok((method, path, request_context))
-}
-
-fn parse_request_line(
-    line: &str
-) -> Result<(Method, &str, Option<u32>, Option<StringHashMap>)> {
     (!line.is_empty())
         ._else(|| Response::BadRequest("can't find request status line"))?;
 
-    let (method, path_str) = line
+    let (method_str, path_str) = line
         .strip_suffix(" HTTP/1.1")
         ._else(|| Response::NotImplemented("I can't handle protocols other than `HTTP/1.1`"))?
         .split_once(' ')
         ._else(|| Response::BadRequest("invalid request line format"))?;
 
-    let (path_part, query) = extract_query(path_str)?;
-    let (path, param) = extract_param(path_part)?;
+    tracing::info!("got a request: {} {}", method_str, path_str);
 
-    Ok((Method::parse(method)?, path.trim_end_matches('/'), param, query))
+    let (path, query) = extract_query(path_str, method_str.len() - 1/*' '*/)?;
+    let /*(path, param)*/ param = extract_param(path, method_str.len() - 1/*' '*/);
+
+    while let Some(line) = lines.next() {
+        /*
+            TODO: header parsing
+        */
+        if line.is_empty() {break}
+    }
+
+    let body = lines.next().map(|line| JSON::from_str(line));
+
+    Ok((
+        Method::parse(method_str)?,
+        (if path=="/" {path} else {path.trim_end_matches('/')}).to_owned(),
+        param,
+        query,
+        body
+    ))
 }
-
 fn extract_query(
-    path_str: &str
-) -> Result<(&str, Option<StringHashMap>)> {
+    path_str: &str,
+    offset:   usize,
+) -> Result<(&str, Option<RangeMap>)> {
     let Some((path_part, query_part)) = path_str.split_once('?')
         else {return Ok((path_str, None))};
-
-    let mut map = StringHashMap::new()?;
-    query_part.split('&')
+    
+    let queries = query_part.split('&')
         .map(|key_value| key_value
             .split_once('=')
             .expect("invalid query parameter format")
-        )
-        .for_each(|(key, value)|
-            map.insert(key, value.to_owned())
         );
+    
+    let mut map = RangeMap::new();
+    let mut read_pos = offset + path_part.len() + 1/*'?'*/ + 1;
+    for (i, (key, value)) in queries.enumerate() {
+        (i < RANGE_MAP_SIZE)._else(||
+            Response::BadRequest("Sorry, I can't handle more than 4 query params")
+        )?;
+        map.insert(i,
+            BufRange::new(read_pos+1, read_pos+key.len()),
+            BufRange::new(read_pos+key.len()+1/*'='*/ +1, read_pos+key.len()+1/*'='*/ +value.len()),
+        );
+        read_pos += key.len()+1/*'='*/ +value.len() + 1
+    }
+
     Ok((path_part, Some(map)))
 }
-
 fn extract_param(
-    path_str: &str
-) -> Result<(&str, Option<u32>)> {
-    let (rest, tail) = path_str.rsplit_once('/').unwrap();
-    if let Ok(param) = tail.parse::<u32>() {
-        Ok((rest, Some(param)))
-    } else {
-        Ok((path_str, None))
-    }
+    path:   &str,
+    offset: usize
+) -> Option<BufRange> {
+    if path.ends_with('/') {return None}
+    Some(BufRange::new(
+        offset+1 + path.rfind('/')?+1 + 1,
+        offset+1 + path.len()
+    ))
 }
