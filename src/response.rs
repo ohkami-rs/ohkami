@@ -44,9 +44,21 @@ pub enum Body {
             Self::text_html(html) => html.len(),
         }
     }
-} impl Into<Body> for Json {
+}
+
+impl Into<Body> for Json {
     fn into(self) -> Body {
         Body::application_json(self)
+    }
+}
+impl Into<Body> for String {
+    fn into(self) -> Body {
+        Body::text_plain(self)
+    }
+}
+impl Into<Body> for &str {
+    fn into(self) -> Body {
+        Body::text_plain(self.to_owned())
     }
 }
 

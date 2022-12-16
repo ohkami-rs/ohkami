@@ -10,6 +10,6 @@ fn main() -> Result<()> {
     };
 
     Server::setup_with(config)
-        .GET("/", |_| async {Response::OK(Body::text("Hello!"))})
+        .GET("/", |_| async {Response::OK("Hello!")})
         .serve_on(":5000")
 }

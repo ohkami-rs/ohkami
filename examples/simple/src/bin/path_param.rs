@@ -18,5 +18,5 @@ async fn sleepy_hello(ctx: Context) -> Result<Response> {
         std::time::Duration::from_secs(sleep_time)
     );
 
-    Response::OK(Body::text("Hello, I'm sleepy..."))
+    Response::OK("Hello, I'm sleepy...")
 }
