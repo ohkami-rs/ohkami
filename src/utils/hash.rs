@@ -19,13 +19,14 @@
 //         )
 // }
 
-const BIG_PRIME:  usize = 1212121;
-pub(super) const TABLE_SIZE: usize = 2357;
-
-pub(super) fn linear_congruential_hash(key: &str) -> usize {
-    key.as_bytes()
-        .into_iter()
-        .fold(0, |hash, byte|
-            (hash * BIG_PRIME + *byte as usize) % TABLE_SIZE
-        )
-}
+// const BIG_PRIME:  usize = 1212121;
+// pub(super) const TABLE_SIZE: usize = 2357;
+// 
+// pub(super) fn linear_congruential_hash(key: &str) -> usize {
+//     key.as_bytes()
+//         .into_iter()
+//         .fold(0, |hash, byte|
+//             (hash * BIG_PRIME + *byte as usize) % TABLE_SIZE
+//         )
+// }
+// 

@@ -16,7 +16,7 @@ use crate::{
     result::{Result, ElseResponse},
     utils::{
         parse::parse_request_lines, validation::{self, is_valid_path}, buffer::Buffer
-    }, prelude::Body,
+    },
 };
 
 #[cfg(feature = "postgres")]
@@ -270,6 +270,7 @@ async fn setup_response(
     let buffer = Buffer::new(stream).await?;
 
     // let mut lines = buffer.lines()?;
+    let lines = buffer.lines()?;
     let (
         method,
         path,
@@ -279,19 +280,19 @@ async fn setup_response(
         body
     ) = parse_request_lines(
         // &mut lines
-        buffer.lines()?
+        // buffer.lines()?
+        lines
     )?;
 
     let handler = {
-        // let path = path.clone();
-        match handler_map.get(&(method, path, /*false*/)) {
+        match handler_map.get(&(method, &path, /*false*/)) {
             Some(handler) => {
                 param_range = None; //
                 handler
             },
             None => handler_map.get(&(
                 method,
-                path.rsplit_once('/').unwrap(/*---*/).0, // <------------------- //
+                &path.rsplit_once('/').unwrap(/*---*/).0, // <------------------- //
                 // true
             ))._else(|| Response::NotFound(format!(
                 "handler for `{method} {path}` is not found"
@@ -299,7 +300,7 @@ async fn setup_response(
         }
     };
 
-    let context = Context::build(
+    let context = Context {
         buffer,
         body,
         param_range,
@@ -307,25 +308,7 @@ async fn setup_response(
 
         #[cfg(feature = "sqlx")]
         connection_pool
-    );
+    };
 
-    // handler(context).await
-    todo!()
+    handler(context).await
 }
-
-// async fn handle_request<'req>(
-//     handler_map: Arc<HashMap<
-//         (Method, &'static str, bool),
-//         Handler
-//     >>,
-//     method:   Method,
-//     path:     &'req str,
-//     context:  Context,
-// ) -> Result<Response> {
-//     let handler = handler_map
-//         .get(&(method, path, context.param.is_some()))
-//         ._else(|| Response::NotFound(format!("handler for `{method} {path}` is not found")))?;
-// 
-//     handler(context).await
-// }
-// 

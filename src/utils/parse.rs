@@ -1,4 +1,4 @@
-use std::{str::Lines, ops::RangeInclusive};
+use std::str::Lines;
 use crate::{
     components::{method::Method, json::JSON},
     response::Response,
@@ -13,14 +13,16 @@ use sqlx::PgPool as ConnectionPool;
 #[cfg(feature = "mysql")]
 use sqlx::MySqlPool as ConnectionPool;
 
+use super::map::BufRange;
 
-pub fn parse_request_lines(
+
+pub(crate) fn parse_request_lines(
     // lines: &'l mut Lines
     mut lines: Lines
 ) -> Result<(
     Method,
-    &str/*path*/,
-    Option<RangeInclusive<usize>>/*path param*/,
+    String/*path*/,
+    Option<BufRange>/*path param*/,
     Option<RangeMap>/*query param*/,
     // headers,
     Option<JSON>/*request body*/,
@@ -50,7 +52,7 @@ pub fn parse_request_lines(
 
     Ok((
         Method::parse(method)?,
-        path.trim_end_matches('/'),
+        path.trim_end_matches('/').to_owned(),
         param,
         query,
         body
@@ -64,19 +66,22 @@ fn extract_query(
         else {return Ok((path_str, None))};
     
     let queries = query_part.split('&')
-    .map(|key_value| key_value
-        .split_once('=')
-        .expect("invalid query parameter format")
-    );
-    (queries.count() <= RANGE_MAP_SIZE)
-        ._else(|| Response::BadRequest("Sorry, I can't handle more than 4 query params"))?;
+        .map(|key_value| key_value
+            .split_once('=')
+            .expect("invalid query parameter format")
+        );
     
     let mut map = RangeMap::new();
-    let (mut index, mut read_pos) = (0, offset + path_part.len() + 1/*'?'*/);
+    let mut count = 0;
+    let (index, read_pos) = (0, offset + path_part.len() + 1/*'?'*/);
     for (key, value) in queries {
+        count += 1; (count <= RANGE_MAP_SIZE)._else(||
+            Response::BadRequest("Sorry, I can't handle more than 4 query params")
+        )?;
+
         let (key, value) = (
-            (read_pos+1)..=(read_pos+key.len()),
-            (read_pos+key.len()+1/*'='*/ +1)..=(read_pos+key.len()+1/*'='*/ +value.len()),
+            BufRange::new(read_pos+1, read_pos+key.len()),
+            BufRange::new(read_pos+key.len()+1/*'='*/ +1, read_pos+key.len()+1/*'='*/ +value.len()),
         );
         map.insert(index, key, value)
     }
@@ -86,12 +91,12 @@ fn extract_query(
 fn extract_param(
     path:   &str,
     offset: usize
-) -> Option<RangeInclusive<usize>> {
+) -> Option<BufRange> {
     if path.ends_with('/') {return None}
-    Some(
-            offset+1 + path.rfind('/')? + 1
-        ..= offset+1 + path.len()
-    )
+    Some(BufRange::new(
+        offset+1 + path.rfind('/')? + 1,
+        offset+1 + path.len()
+    ))
 }
 
 

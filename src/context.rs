@@ -1,8 +1,7 @@
-use std::ops::RangeInclusive;
 use serde::Deserialize;
 use crate::{
     result::{Result, ElseResponse},
-    utils::{map::RangeMap, buffer::Buffer},
+    utils::{map::{RangeMap, BufRange}, buffer::Buffer},
     components::json::JSON,
     response::Response,
 };
@@ -16,10 +15,10 @@ use sqlx::MySqlPool as ConnectionPool;
 
 
 pub struct Context {
-    buffer: Buffer,
+    pub(crate) buffer: Buffer,
 
     pub(crate) body:        Option<JSON>,
-    pub(crate) param_range: Option<RangeInclusive<usize>>,
+    pub(crate) param_range: Option<BufRange>,
     pub(crate) query_range: Option<RangeMap>,
 
     #[cfg(feature = "sqlx")]
@@ -34,35 +33,15 @@ impl<'d> Context {
         Ok(json_struct)
     }
     pub fn param(&self/*, key: &str*/) -> Option<&str> {
-        Some(self.buffer.read_str(self.param_range?))
+        Some(self.buffer.read_str(self.param_range.as_ref()?))
     }
     pub fn query(&self, key: &str) -> Option<&str> {
-        self.query_range?.read_match_part_of_buffer(key, &self.buffer)
+        self.query_range.as_ref()?.read_match_part_of_buffer(key, &self.buffer)
     }
 
     #[cfg(feature = "sqlx")]
     pub fn pool(&self) -> &ConnectionPool {
         &*self.pool
-    }
-
-    pub(crate) fn build(
-        buffer: Buffer,
-        body: Option<JSON>,
-        param_range: Option<RangeInclusive<usize>>,
-        query_range: Option<RangeMap>,
-
-        #[cfg(feature = "sqlx")]
-        connection_pool: Arc<ConnectionPool>,
-    ) -> Self {
-        Self {
-            buffer,
-            body,
-            param_range,
-            query_range,
-
-            #[cfg(feature = "sqlx")]
-            pool: connection_pool,
-        }
     }
 }
 
