@@ -72,7 +72,7 @@ fn extract_query(
         );
     
     let mut map = RangeMap::new();
-    let read_pos = offset + path_part.len() + 1/*'?'*/;
+    let mut read_pos = offset + path_part.len() + 1/*'?'*/ + 1;
     for (i, (key, value)) in queries.enumerate() {
         (i < RANGE_MAP_SIZE)._else(||
             Response::BadRequest("Sorry, I can't handle more than 4 query params")
@@ -81,6 +81,7 @@ fn extract_query(
             BufRange::new(read_pos+1, read_pos+key.len()),
             BufRange::new(read_pos+key.len()+1/*'='*/ +1, read_pos+key.len()+1/*'='*/ +value.len()),
         );
+        read_pos += key.len()+1/*'='*/ +value.len() + 1
     }
 
     Ok((path_part, Some(map)))
@@ -95,15 +96,3 @@ fn extract_param(
         offset+1 + path.len()
     ))
 }
-
-
-// pub(crate) fn read_request_body(lines: &mut Lines) -> Option<JSON> {
-//     // ==========================
-//     // TODO: performe this in header parsing
-//     while let Some(line) = lines.next() {
-//         if line.is_empty() {break}
-//     }
-//     // ==========================
-// 
-//     lines.next().map(|body| JSON::from_str(body))
-// }

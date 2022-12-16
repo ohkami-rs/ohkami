@@ -71,11 +71,11 @@ impl Response {
             _ => match self.body {
                 Body::application_json(_) => unreachable!(),
                 Body::text_plain(ref mut t) => {
-                    *t += &format!("{}: ", msg.to_string());
+                    *t = format!("{}: ", msg.to_string()) + t;
                     self
                 },
                 Body::text_html(ref mut t) => {
-                    *t += &format!("{}: ", msg.to_string());
+                    *t = format!("{}: ", msg.to_string()) + t;
                     self
                 },
             }
