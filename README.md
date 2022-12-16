@@ -9,6 +9,8 @@ ohkami *- [狼] means wolf in Japanese -* is **simple** and **non macro-based** 
 ## Features
 - *simple*: Less things to learn / Less code to write / Less time to hesitate.
 - *non macro-based*: No need for using macros.
+- async handlers
+- easy error handling
 
 <br/>
 
@@ -37,7 +39,7 @@ fn main() -> Result<()> {
 <br/>
 
 ## Development
-ohkami is on **very early stage** now, so not for any producntion use.
+ohkami is on **very early stage** now and not for producntion use.
 
 <br/>
 
