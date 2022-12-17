@@ -151,37 +151,45 @@ impl Server {
         }
     }
 
-    /// Add a handler for `GET /*path*/ HTTP/1.1`
+    /// Add a handler for `GET /*path*/ HTTP/1.1`. valid path:
+    /// - starts with `/`
+    /// - contains only \[a-z, A-Z, _ \] in each section
     #[allow(non_snake_case)]
     pub fn GET<'ctx, Fut: Future<Output = Result<Response>> + Send + 'static>(self,
-        path_string: &'static str,
-        handler:     fn(Context) -> Fut,
+        path:    &'static str,
+        handler: fn(Context) -> Fut,
     ) -> Self {
-        self.add_handler(Method::GET, path_string, handler)
+        self.add_handler(Method::GET, path, handler)
     }
-    /// Add a handler for `POST /*path*/ HTTP/1.1`
+    /// Add a handler for `POST /*path*/ HTTP/1.1`. valid path:
+    /// - starts with `/`
+    /// - contains only \[a-z, A-Z, _ \] in each section
     #[allow(non_snake_case)]
     pub fn POST<'ctx, Fut: Future<Output = Result<Response>> + Send + 'static>(self,
-        path_string: &'static str,
-        handler:     fn(Context) -> Fut,
+        path:    &'static str,
+        handler: fn(Context) -> Fut,
     ) -> Self {
-        self.add_handler(Method::POST, path_string, handler)
+        self.add_handler(Method::POST, path, handler)
     }
-    /// Add a handler for `PATCH /*path*/ HTTP/1.1`
+    /// Add a handler for `PATCH /*path*/ HTTP/1.1`. valid path:
+    /// - starts with `/`
+    /// - contains only \[a-z, A-Z, _ \] in each section
     #[allow(non_snake_case)]
     pub fn PATCH<'ctx, Fut: Future<Output = Result<Response>> + Send + 'static>(self,
-        path_string: &'static str,
-        handler:     fn(Context) -> Fut,
+        path:    &'static str,
+        handler: fn(Context) -> Fut,
     ) -> Self {
-        self.add_handler(Method::PATCH, path_string, handler)
+        self.add_handler(Method::PATCH, path, handler)
     }
-    /// Add a handler for `DELETE /*path*/ HTTP/1.1`
+    /// Add a handler for `DELETE /*path*/ HTTP/1.1`. valid path:
+    /// - starts with `/`
+    /// - contains only \[a-z, A-Z, _ \] in each section
     #[allow(non_snake_case)]
     pub fn DELETE<'ctx, Fut: Future<Output = Result<Response>> + Send + 'static>(self,
-        path_string: &'static str,
-        handler:     fn(Context) -> Fut,
+        path:    &'static str,
+        handler: fn(Context) -> Fut,
     ) -> Self {
-        self.add_handler(Method::DELETE, path_string, handler)
+        self.add_handler(Method::DELETE, path, handler)
     }
 
     fn add_handler<'ctx, Fut: Future<Output = Result<Response>> + Send + 'static>(mut self,
