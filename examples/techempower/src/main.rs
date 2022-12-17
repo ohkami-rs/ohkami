@@ -1,15 +1,9 @@
 use ohkami::{prelude::*, json};
 use sqlx::postgres::PgPoolOptions;
 mod components; use components::{
-    consts::{
-        DB_URL, MAX_CONNECTIONS,
-    },
-    models::{
-        World, Fortune,
-    },
-    functions::{
-        random_i32, random_i32s, html_from,
-    },
+    consts::{DB_URL, MAX_CONNECTIONS},
+    models::{World, Fortune},
+    functions::{random_i32, random_i32s, html_from},
 };
 
 fn main() -> Result<()> {
@@ -37,7 +31,7 @@ async fn handle_db(ctx: Context) -> Result<Response> {
         .bind(id)
         .fetch_one(ctx.pool())
         .await?;
-    Response::OK(JSON(&world)?)
+    Response::OK(json(&world)?)
 }
 
 async fn handle_fortunes(ctx: Context) -> Result<Response> {
@@ -66,7 +60,7 @@ async fn handle_queries(ctx: Context) -> Result<Response> {
                 .await?
         )
     }
-    Response::OK(JSON(&worlds)?)
+    Response::OK(json(&worlds)?)
 }
 
 async fn handle_updates(ctx: Context) -> Result<Response> {
@@ -86,5 +80,5 @@ async fn handle_updates(ctx: Context) -> Result<Response> {
                 .await?
         )
     }
-    Response::OK(JSON(&worlds)?)
+    Response::OK(json(&worlds)?)
 }

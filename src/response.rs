@@ -3,7 +3,7 @@ use chrono::Utc;
 use crate::{
     components::{
         status::Status,
-        json::Json
+        json::JSON,
     },
     result::Result,
 };
@@ -19,7 +19,7 @@ pub struct Response {
 #[derive(Debug)]
 #[allow(non_camel_case_types)]
 pub enum Body {
-    application_json(Json),
+    application_json(JSON),
     text_plain(String),
     text_html(String),
 } impl Body {
@@ -46,7 +46,7 @@ pub enum Body {
     }
 }
 
-impl Into<Body> for Json {
+impl Into<Body> for JSON {
     fn into(self) -> Body {
         Body::application_json(self)
     }
@@ -127,7 +127,7 @@ Keep-Alive: timeout=5
         })
     }
     #[allow(non_snake_case)]
-    pub fn Created(body: Json) -> Result<Self> {
+    pub fn Created(body: JSON) -> Result<Self> {
         Ok(Self {
             additional_headers: String::new(),
             status: Status::Created,

@@ -1,6 +1,6 @@
 use std::str::Lines;
 use crate::{
-    components::{method::Method, json::{Json, JSON}},
+    components::{method::Method, json::{json, JSON}},
     response::Response,
     result::{Result, ElseResponse},
     utils::{buffer::BufRange, map::{RangeMap, RANGE_MAP_SIZE}},
@@ -16,7 +16,7 @@ pub(crate) fn parse_request_lines(
     Option<BufRange>/*path param*/,
     Option<RangeMap>/*query param*/,
     // headers,
-    Option<Json>/*request body*/,
+    Option<JSON>/*request body*/,
 )> {
     let line = lines.next()
         ._else(|| Response::BadRequest("empty request"))?;
@@ -41,7 +41,7 @@ pub(crate) fn parse_request_lines(
         if line.is_empty() {break}
     }
 
-    let body = lines.next().map(|line| JSON(&line).unwrap());
+    let body = lines.next().map(|line| json(&line).unwrap());
 
     Ok((
         Method::parse(method_str)?,

@@ -3,14 +3,14 @@ use crate::{response::ResponseFormat, result::Result};
 
 
 #[allow(non_snake_case)]
-pub fn JSON<S: Serialize>(data: S) -> Result<Json> {
-    Ok(Json(serde_json::to_string(&data)?))
+pub fn json<S: Serialize>(data: S) -> Result<JSON> {
+    Ok(JSON(serde_json::to_string(&data)?))
 }
 
 #[derive(Debug)]
-pub struct Json(String);
-impl<'d> Json {
-    pub(crate) fn to_struct<D: Deserialize<'d>>(&'d self) -> Result<D> {
+pub struct JSON(String);
+impl<'d> JSON {
+    pub fn to_struct<D: Deserialize<'d>>(&'d self) -> Result<D> {
         Ok(serde_json::from_str(&self.0)?)
     }
     pub(crate) fn content_length(&self) -> usize {
@@ -18,7 +18,7 @@ impl<'d> Json {
     }
 }
 
-impl ResponseFormat for Json {
+impl ResponseFormat for JSON {
     fn response_format(&self) -> &str {
         self.0.as_str()
     }
@@ -28,7 +28,7 @@ impl ResponseFormat for Json {
 #[macro_export]
 macro_rules! json {
     ($key1:literal : $value1:expr $(, $key:literal : $value:expr)*) => {
-        JSON(
+        json(
             String::from("{")
             + &format!("\"{}\":{:?}", $key1, $value1)
             $( + &format!(",\"{}\":{:?}", $key, $value) )*

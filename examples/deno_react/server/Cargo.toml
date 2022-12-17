@@ -1,0 +1,8 @@
+[package]
+name = "server"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+ohkami = { version = "0.1", features = ["sqlx", "postgres"] }
+serde = { version = "1.0", features = ["derive"] }

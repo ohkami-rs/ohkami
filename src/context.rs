@@ -4,7 +4,7 @@ use serde::Deserialize;
 use crate::{
     result::{Result, ElseResponse},
     utils::{map::RangeMap, buffer::{Buffer, BufRange}},
-    components::json::Json,
+    components::json::JSON,
     response::Response,
 };
 
@@ -19,7 +19,7 @@ use sqlx::MySqlPool as ConnectionPool;
 pub struct Context {
     pub(crate) buffer: Buffer,
 
-    pub(crate) body:        Option<Json>,
+    pub(crate) body:        Option<JSON>,
     pub(crate) param_range: Option<BufRange>,
     pub(crate) query_range: Option<RangeMap>,
 
