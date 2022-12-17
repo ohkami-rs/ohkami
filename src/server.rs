@@ -151,9 +151,16 @@ impl Server {
         }
     }
 
-    /// Add a handler for `GET /*path*/ HTTP/1.1`. valid path:
+    /// Add a handler to request `GET /*path*/ HTTP/1.1`. valid path format:
+    /// 
     /// - starts with `/`
     /// - contains only \[a-z, A-Z, _ \] in each section
+    /// 
+    /// In current ohkami, **only final section** can be path param `:{name}` like
+    /// ```no_run
+    /// Server::setup()
+    ///     .GET("/api/users/:id", handler)
+    /// ```
     #[allow(non_snake_case)]
     pub fn GET<'ctx, Fut: Future<Output = Result<Response>> + Send + 'static>(self,
         path:    &'static str,
@@ -161,9 +168,17 @@ impl Server {
     ) -> Self {
         self.add_handler(Method::GET, path, handler)
     }
-    /// Add a handler for `POST /*path*/ HTTP/1.1`. valid path:
+
+    /// Add a handler to request `POST /*path*/ HTTP/1.1`. valid path format:
+    /// 
     /// - starts with `/`
     /// - contains only \[a-z, A-Z, _ \] in each section
+    /// 
+    /// In current ohkami, **only final section** can be path param `:{name}` like
+    /// ```no_run
+    /// Server::setup()
+    ///     .POST("/api/users/:id", handler)
+    /// ```
     #[allow(non_snake_case)]
     pub fn POST<'ctx, Fut: Future<Output = Result<Response>> + Send + 'static>(self,
         path:    &'static str,
@@ -171,9 +186,17 @@ impl Server {
     ) -> Self {
         self.add_handler(Method::POST, path, handler)
     }
-    /// Add a handler for `PATCH /*path*/ HTTP/1.1`. valid path:
+
+    /// Add a handler to request `PATCH /*path*/ HTTP/1.1`. valid path format:
+    /// 
     /// - starts with `/`
     /// - contains only \[a-z, A-Z, _ \] in each section
+    /// 
+    /// In current ohkami, **only final section** can be path param `:{name}` like
+    /// ```no_run
+    /// Server::setup()
+    ///     .PATCH("/api/users/:id", handler)
+    /// ```
     #[allow(non_snake_case)]
     pub fn PATCH<'ctx, Fut: Future<Output = Result<Response>> + Send + 'static>(self,
         path:    &'static str,
@@ -181,9 +204,17 @@ impl Server {
     ) -> Self {
         self.add_handler(Method::PATCH, path, handler)
     }
-    /// Add a handler for `DELETE /*path*/ HTTP/1.1`. valid path:
+
+    /// Add a handler to request `DELETE /*path*/ HTTP/1.1`. valid path format:
+    /// 
     /// - starts with `/`
     /// - contains only \[a-z, A-Z, _ \] in each section
+    /// 
+    /// In current ohkami, **only final section** can be path param `:{name}` like
+    /// ```no_run
+    /// Server::setup()
+    ///     .DELETE("/api/users/:id", handler)
+    /// ```
     #[allow(non_snake_case)]
     pub fn DELETE<'ctx, Fut: Future<Output = Result<Response>> + Send + 'static>(self,
         path:    &'static str,
@@ -218,7 +249,10 @@ impl Server {
         self
     }
 
-    /// Start listening and serving on given TCP address (if it failed, returns error).
+    /// Start listening and serving on given TCP address (if it failed, returns error).\
+    /// - `":{port}"` (like `":3000"`) is interpret as `"0.0.0.0:{port}"`
+    /// - `"localhost:{port}"` (like `"localhost:8080"`) is interpret as `"127.0.0.1:{port}"`
+    /// - other formats are interpret as raw TCP address
     pub fn serve_on(self, address: &'static str) -> Result<()> {
         let allow_origin_str = Arc::new(
             if self.cors.allow_origins.is_empty() {
