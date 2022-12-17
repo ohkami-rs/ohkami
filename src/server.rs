@@ -32,6 +32,7 @@ use sqlx::mysql::{
 
 type Handler = Box<dyn Fn(Context) -> Pin<Box<dyn Future<Output=Result<Response>> + Send >> + Send + Sync>;
 
+/// Type of ohkami's server instance
 pub struct Server {
     map: HashMap<
         (Method, &'static str, /* /*with param tailing or not*/bool */),
@@ -42,7 +43,28 @@ pub struct Server {
     #[cfg(feature = "sqlx")]
     pool: ConnectionPool,
 }
-
+/// Configurations of `Server`. In current version, this holds
+/// 
+/// - `cors: CORS`,
+/// - `log_subscribe: Option<SubscriberBuilder>`,
+/// - `db_profile: DBprofile<'url>` (if feature = "sqlx")
+/// 
+/// Here, `log_subscribe`'s default value is
+/// ```no_run
+/// Some(tracing_subscriber::fmt().with_max_level(tracing::Level::DEBUG))
+/// ```
+/// When you'd like to customize this, add `tracing` and `tracing_subscriber` in your dependencies to write custom config like
+/// ```no_run
+/// fn main() -> Result<()> {
+///     let config = Config {
+///         log_subscribe:
+///             Some(tracing_subscriber::fmt()
+///                 .with_max_level(tracing::Level::TRACE)
+///             ),
+///         ..Default::default()
+///     };
+/// }
+/// ```
 pub struct Config<#[cfg(feature = "sqlx")] 'url> {
     pub cors: CORS,
     pub log_subscribe: Option<SubscriberBuilder>,
@@ -86,6 +108,7 @@ impl<'url> Default for DBprofile<'url> {
 }
 
 impl Server {
+    /// Just a shortcut of `setup_with(Config::default())`
     #[cfg(not(feature = "sqlx"))]
     pub fn setup() -> Self {
         let default_config = Config::default();
@@ -99,6 +122,7 @@ impl Server {
             cors: default_config.cors,
         }
     }
+    /// Initialize `Server` with given configuratoin. This **automatically performe `subscriber.init()`** if config's `log_subscribe` isn't `None`, so **DON'T write it in your `main` function**.
     pub fn setup_with(config: Config) -> Self {
         if let Some(subscriber) = config.log_subscribe {
             subscriber.init()
@@ -127,6 +151,7 @@ impl Server {
         }
     }
 
+    /// Add a handler for `GET /*path*/ HTTP/1.1`
     #[allow(non_snake_case)]
     pub fn GET<'ctx, Fut: Future<Output = Result<Response>> + Send + 'static>(self,
         path_string: &'static str,
@@ -134,6 +159,7 @@ impl Server {
     ) -> Self {
         self.add_handler(Method::GET, path_string, handler)
     }
+    /// Add a handler for `POST /*path*/ HTTP/1.1`
     #[allow(non_snake_case)]
     pub fn POST<'ctx, Fut: Future<Output = Result<Response>> + Send + 'static>(self,
         path_string: &'static str,
@@ -141,6 +167,7 @@ impl Server {
     ) -> Self {
         self.add_handler(Method::POST, path_string, handler)
     }
+    /// Add a handler for `PATCH /*path*/ HTTP/1.1`
     #[allow(non_snake_case)]
     pub fn PATCH<'ctx, Fut: Future<Output = Result<Response>> + Send + 'static>(self,
         path_string: &'static str,
@@ -148,6 +175,7 @@ impl Server {
     ) -> Self {
         self.add_handler(Method::PATCH, path_string, handler)
     }
+    /// Add a handler for `DELETE /*path*/ HTTP/1.1`
     #[allow(non_snake_case)]
     pub fn DELETE<'ctx, Fut: Future<Output = Result<Response>> + Send + 'static>(self,
         path_string: &'static str,
@@ -182,10 +210,8 @@ impl Server {
         self
     }
 
+    /// Start listening and serving on given TCP address (if it failed, returns error).
     pub fn serve_on(self, address: &'static str) -> Result<()> {
-        tracing::info!("started seving on {}...", address);
-        let tcp_address = validation::tcp_address(address);
-
         let allow_origin_str = Arc::new(
             if self.cors.allow_origins.is_empty() {
                 String::new()
@@ -200,7 +226,10 @@ impl Server {
         let connection_pool = Arc::new(self.pool);
 
         block_on(async {
-            let listener = TcpListener::bind(tcp_address).await?;
+            let listener = TcpListener::bind(
+                validation::tcp_address(address)
+            ).await?;
+            tracing::info!("started seving on {}...", address);
             while let Some(stream) = listener.incoming().next().await {
                 let stream = stream?;
                 task::spawn(

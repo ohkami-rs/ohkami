@@ -15,7 +15,7 @@ use sqlx::PgPool as ConnectionPool;
 #[cfg(feature = "mysql")]
 use sqlx::MySqlPool as ConnectionPool;
 
-
+/// Type of context of a HTTP request.
 pub struct Context {
     pub(crate) buffer: Buffer,
 
@@ -28,19 +28,23 @@ pub struct Context {
 }
 
 impl<'d> Context {
+    /// Try deserialize the reuqest body into Rust struct that implements `serde::Deserialize`, and return `Result</* that struct */>`. If request doesn't have body, this returns `Err(Response)` of "Bad Request".
     pub fn body<D: Deserialize<'d>>(&'d self) -> Result<D> {
         let json = self.body.as_ref()
             ._else(|| Response::BadRequest("expected request body"))?;
         let json_struct = json.to_struct()?;
         Ok(json_struct)
     }
+    /// Return `Option<&str>` that holds path parameter in the request (if not, returns `None`). Current ohkami can only handle a single path param **at the end of the path**, so this method doesn't take `key` as argument. This will be fixed in futunre version.
     pub fn param(&self/*, key: &str*/) -> Option<&str> {
         Some(self.buffer.read_str(self.param_range.as_ref()?))
     }
+    /// Return `Option<&str>` holding a query parameter in the request whose key matchs the argument. If no key matchs it, returns `None`.
     pub fn query(&self, key: &str) -> Option<&str> {
         self.query_range.as_ref()?.read_match_part_of_buffer(key, &self.buffer)
     }
 
+    /// Return a reference of `PgPool` (if feature = "postgres") or `MySqlPool` (if feature = "mysql").
     #[cfg(feature = "sqlx")]
     pub fn pool(&self) -> &ConnectionPool {
         &*self.pool

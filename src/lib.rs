@@ -18,7 +18,7 @@ pub mod prelude {
         result::{Result, ElseResponse, ElseResponseWithErr},
         context::Context,
         response::{Response, Body},
-        components::json::json,
+        components::json::{json, JSON},
     };
 
     #[cfg(feature = "sqlx")]
