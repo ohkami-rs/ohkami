@@ -38,6 +38,53 @@ fn main() -> Result<()> {
 
 <br/>
 
+## Snippets
+### get path param
+```rust
+let param: Option<&str> = ctx.param();
+// current ohkami only supports single path param at the end of a path
+```
+### get query param
+```rust
+let query: Option<&str> = ctx.query("key");
+```
+### deserialize request body
+```rust
+let body: Result<D> = ctx.body::<D>();
+```
+### return OK response with `text/plain`
+```rust
+Response::OK("Hello, world!")
+```
+### return OK response with `application/json`
+```rust
+Response::OK(JSON("Hello, world!"))
+```
+```rust
+Response::OK(json!("ok": true))
+```
+```rust
+Response::OK(json(user)?) // serialize Rust value into JSON
+```
+### error handling
+```rust
+let count = ctx.query("count")
+    ._else(|| Response::BadRequest("expected query param `count`"))?
+    .parse::<usize>()
+    ._else(|_| Response::BadRequest("`count` must be an integer"))?;
+```
+```rust
+let user = ctx.body::<User>()?;
+// `Response` implements `From<serde_json::Error>`
+
+// or, you can add an error context message:
+let user = ctx.body::<User>()
+    ._else(|e| e.error_context("failed to get user data"))?;
+```
+
+
+<br/>
+
 ## Development
 ohkami is on **very early stage** now and not for producntion use.
 
