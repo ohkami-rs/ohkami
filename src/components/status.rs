@@ -1,7 +1,7 @@
 use crate::response::ResponseFormat;
 
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub(crate) enum Status {
     OK                  = 200,
     Created             = 201,

@@ -22,6 +22,14 @@ pub(crate) struct Buffer(
             std::str::from_utf8_unchecked(target_bytes)
         }
     } 
+
+    pub(crate) async fn from_http_request_str(request: String) -> Self {
+        let mut buffer = [b' '; BUF_SIZE];
+        let mut request = request.as_bytes();
+        assert!(request.len() <= BUF_SIZE, "ohkami can't handle request that's larger than {BUF_SIZE} bytes");
+        request.read(&mut buffer).await.expect("failed to read request");
+        Self(buffer)
+    }
 }
 impl Index<BufRange> for Buffer {
     type Output = [u8];

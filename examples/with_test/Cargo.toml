@@ -1,0 +1,8 @@
+[package]
+name = "with_test"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+ohkami = { path = "../../" }
+once_cell = "1.16.0"
