@@ -29,7 +29,9 @@ pub fn json<S: Serialize>(data: S) -> Result<JSON> {
 
 /// Type of raw json data in TCP stream.
 #[derive(Debug)]
-pub struct JSON(String);
+pub struct JSON(
+    pub String
+);
 impl<'d> JSON {
     /// Try deserializing self into Rust struct implementing `serde::Deserialize` and return `Result</* that struct */>`.\
     /// \* To deserialize request body, ohkami users **should use** `Context::body<D>`. `to_struct` may be used to deserialize String read from, for example, static `.json` file.
