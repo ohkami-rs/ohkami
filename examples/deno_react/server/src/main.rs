@@ -6,7 +6,7 @@ use once_cell::sync::Lazy;
 #[derive(Serialize, Deserialize)]
 struct Dinosaur {
     name:        String,
-    sexcription: String,
+    description: String,
 }
 
 static DATA_STR: Lazy<String> = Lazy::new(|| {
@@ -17,11 +17,15 @@ static DATA_STR: Lazy<String> = Lazy::new(|| {
     buffer.read_to_string(&mut data).expect("failed to read data from buffer");
     data
 });
-static DATA: Lazy<Vec<Dinosaur>> = Lazy::new(||
-    json(DATA_STR.as_str()).unwrap()
+static DATA: Lazy<Vec<Dinosaur>> = Lazy::new(|| {
+    let mut raw = JSON(DATA_STR.to_string())
         .to_struct::<Vec<Dinosaur>>()
-        .expect("failed to deserilize data")
-);
+        .expect("failed to deserilize data");
+    for data in &mut raw {
+        (*data.name).make_ascii_lowercase() // convert to lower case in advance
+    }
+    raw
+});
 
 fn main() -> Result<()> {
     Server::setup()
@@ -32,8 +36,7 @@ fn main() -> Result<()> {
 }
 
 async fn get_one_by_name(ctx: Context) -> Result<Response> {
-    let name = ctx.param().unwrap()
-        .to_ascii_lowercase();
+    let name = ctx.param().unwrap().to_ascii_lowercase();
     let index = DATA
         .binary_search_by_key(&name.as_str(), |data| &data.name)
         ._else(|_| Response::BadRequest("No dinosaurs found"))?;
