@@ -10,7 +10,7 @@ use crate::{
 
 
 /// Type of HTTP response
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Response {
     additional_headers: String,
     status: Status,
@@ -18,7 +18,7 @@ pub struct Response {
 }
 
 /// Type of HTTP response body
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 #[allow(non_camel_case_types)]
 pub enum Body {
     application_json(JSON),

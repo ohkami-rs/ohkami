@@ -1,4 +1,4 @@
-#![doc(html_root_url = "https://docs.rs/ohkami/0.1.11")]
+#![doc(html_root_url = "https://docs.rs/ohkami/0.2.0")]
 
 #[cfg(all(not(feature = "sqlx"), any(feature = "postgres", feature = "mysql")))]
 compile_error!("feature `postgres` or `mysql` can't be enebled without enabling `sqlx` feature");
@@ -10,6 +10,7 @@ pub mod result;
 pub mod context;
 pub mod response;
 pub mod components;
+pub mod test_system;
 pub(crate) mod utils;
 
 pub mod prelude {

@@ -6,7 +6,7 @@ use crate::{
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash,
 Clone, Copy)]
-pub(crate) enum Method {
+pub enum Method {
     GET,
     POST,
     PATCH,

@@ -1,0 +1,24 @@
+use ohkami::prelude::*;
+
+fn server() -> Server {
+    Server::setup()
+        .GET("/", |_| async {Response::OK("Hello!")})
+}
+fn main() -> Result<()> {
+    server().serve_on(":3000")
+}
+
+#[cfg(test)]
+mod test {
+    use ohkami::{server::Server, test_system::{Request, Method}, response::Response};
+    use once_cell::sync::Lazy;
+
+    static SERVER: Lazy<Server> = Lazy::new(|| super::server());
+
+    #[test]
+    fn test_hello() {
+        let request = Request::new(Method::GET, "/");
+        (*SERVER).assert_to_be(&request, Response::OK("Hello!"));
+        (*SERVER).assert_not_to_be(&request, Err(Response::BadRequest("")));
+    }
+}

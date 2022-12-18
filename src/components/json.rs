@@ -28,7 +28,7 @@ pub fn json<S: Serialize>(data: S) -> Result<JSON> {
 }
 
 /// Type of raw json data in TCP stream.
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct JSON(
     pub String
 );
