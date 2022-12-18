@@ -129,7 +129,7 @@ fn main() -> Result<()> {
     server().serve_on(":3000")
 }
 ```
-2. write tests using `assert_to_be` , `assert_not_to_be`:
+2. write tests using `assert_to_res` , `assert_not_to_res`:
 ```rust
 #[cfg(test)]
 mod test {
