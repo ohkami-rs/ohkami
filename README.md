@@ -73,7 +73,6 @@ let count = ctx.query("count")?.parse::<usize>()
 ```
 ```rust
 let user = ctx.body::<User>()?;
-// `Response` implements `From<serde_json::Error>`
 
 // or, you can add an error context message:
 let user = ctx.body::<User>()
