@@ -39,9 +39,16 @@ impl<'d> Context {
     pub fn param(&self/*, key: &str*/) -> Option<&str> {
         Some(self.buffer.read_str(self.param_range.as_ref()?))
     }
-    /// Return `Option<&str>` holding a query parameter in the request whose key matchs the argument. If no key matchs it, returns `None`.
-    pub fn query(&self, key: &str) -> Option<&str> {
-        self.query_range.as_ref()?.read_match_part_of_buffer(key, &self.buffer)
+    /// Return `Result<&str>` holding a query parameter in the request whose key matchs the argument. If no key matchs it, returns `Err(Response::BadRequest(format!("expected query param {key}"))`.
+    /// ```no_run
+    /// let count = ctx.query("count")?;
+    /// ```
+    pub fn query(&self, key: &str) -> Result<&str> {
+        self.query_range
+            .as_ref()
+            ._else(|| Response::BadRequest(format!("expected query param `{key}`")))?
+            .read_match_part_of_buffer(key, &self.buffer)
+            ._else(|| Response::BadRequest(format!("expected query param `{key}`")))
     }
 
     /// Return a reference of `PgPool` (if feature = "postgres") or `MySqlPool` (if feature = "mysql").

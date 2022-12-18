@@ -46,7 +46,7 @@ let param: Option<&str> = ctx.param();
 ```
 ### get query param
 ```rust
-let query: Option<&str> = ctx.query("key");
+let query: Result<&str> = ctx.query("key");
 ```
 ### deserialize request body
 ```rust
@@ -68,9 +68,7 @@ Response::OK(json(user)?) // serialize Rust value into JSON
 ```
 ### error handling
 ```rust
-let count = ctx.query("count")
-    ._else(|| Response::BadRequest("expected query param `count`"))?
-    .parse::<usize>()
+let count = ctx.query("count")?.parse::<usize>()
     ._else(|_| Response::BadRequest("`count` must be an integer"))?;
 ```
 ```rust
@@ -80,6 +78,14 @@ let user = ctx.body::<User>()?;
 // or, you can add an error context message:
 let user = ctx.body::<User>()
     ._else(|e| e.error_context("failed to get user data"))?;
+
+// or discard original error:
+let user = ctx.body::<User>()
+    ._else(|_| Response::InternalServerError("can't get user"))?;
+```
+### assert boolean condition
+```rust
+(count < 10)._else(|| Response::BadRequest("`count` must be less than 10"))
 ```
 ### log config
 ```rust
@@ -109,7 +115,7 @@ let config = Config {
 ```rust
 let user = sqlx::query_as::<_, User>(
     "SELECT id, name FROM users WHERE id = $1"
-).bind(user_id as i64)
+).bind(1)
     .fetch_one(ctx.pool())
     .await?; // `Response` implements `sqlx::Error`
 ```
