@@ -290,7 +290,7 @@ impl Server {
         })
     }
 
-    pub fn assert_to_be(&self, request: &Request, expected_response: Result<Response>) {
+    pub fn assert_to_res(&self, request: &Request, expected_response: Result<Response>) {
         let actual_response = block_on(async {
             consume_buffer(
                 request.into_request_buffer().await,
@@ -299,7 +299,7 @@ impl Server {
         });
         assert_eq!(actual_response, expected_response)
     }
-    pub fn assert_not_to_be(&self, request: &Request, expected_response: Result<Response>) {
+    pub fn assert_not_to_res(&self, request: &Request, expected_response: Result<Response>) {
         let actual_response = block_on(async {
             consume_buffer(
                 request.into_request_buffer().await,
