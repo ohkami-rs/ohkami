@@ -118,6 +118,34 @@ let user = sqlx::query_as::<_, User>(
     .fetch_one(ctx.pool())
     .await?; // `Response` implements `From<sqlx::Error>`
 ```
+### tests
+1. split server-setup and running:
+```rust
+fn server() -> Server {
+    Server::setup()
+        .GET("/", |_| async {Response::OK("Hello!")})
+}
+fn main() -> Result<()> {
+    server().serve_on(":3000")
+}
+```
+2. write tests using `assert_to_be` , `assert_not_to_be`:
+```rust
+#[cfg(test)]
+mod test {
+    use ohkami::{server::Server, test_system::{Request, Method}, response::Response};
+    use once_cell::sync::Lazy;
+
+    static SERVER: Lazy<Server> = Lazy::new(|| super::server());
+
+    #[test]
+    fn test_hello() {
+        let request = Request::new(Method::GET, "/");
+        (*SERVER).assert_to_be(&request, Response::OK("Hello!"));
+        (*SERVER).assert_not_to_be(&request, Err(Response::BadRequest("")));
+    }
+}
+```
 
 <br/>
 
