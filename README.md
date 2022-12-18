@@ -81,7 +81,38 @@ let user = ctx.body::<User>()?;
 let user = ctx.body::<User>()
     ._else(|e| e.error_context("failed to get user data"))?;
 ```
-
+### log config
+```rust
+fn main() -> Result<()> {
+    let config = Config {
+        log_subscribe:
+            Some(tracing_subscriber::fmt()
+                .with_max_level(tracing::Level::TRACE)
+            ),
+        ..Default::default()
+    }
+    Server::setup_with(config)
+        .GET("/", |_| async {Response::OK("Hello!")})
+}
+```
+### DB config
+```rust
+let config = Config {
+    db_profile: DBprofile {
+        pool_options: PgPoolOptions::new().max_connections(20),
+        url:          DB_URL.as_str(),
+    },
+    ..Config::default()
+};
+```
+### use sqlx
+```rust
+let user = sqlx::query_as::<_, User>(
+    "SELECT id, name FROM users WHERE id = $1"
+).bind(user_id as i64)
+    .fetch_one(ctx.pool())
+    .await?; // `Response` implements `sqlx::Error`
+```
 
 <br/>
 
