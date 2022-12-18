@@ -108,7 +108,7 @@ let config = Config {
         pool_options: PgPoolOptions::new().max_connections(20),
         url:          DB_URL.as_str(),
     },
-    ..Config::default()
+    ..Default::default()
 };
 ```
 ### use sqlx
@@ -117,7 +117,7 @@ let user = sqlx::query_as::<_, User>(
     "SELECT id, name FROM users WHERE id = $1"
 ).bind(1)
     .fetch_one(ctx.pool())
-    .await?; // `Response` implements `sqlx::Error`
+    .await?; // `Response` implements `From<sqlx::Error>`
 ```
 
 <br/>

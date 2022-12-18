@@ -1,6 +1,6 @@
 [package]
 name = "ohkami"
-version = "0.1.10"
+version = "0.1.11"
 edition = "2021"
 authors = ["kanarus <kanarus786@gmail.com>"]
 description = "simple and non macro-based web framework"
