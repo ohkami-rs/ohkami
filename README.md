@@ -95,7 +95,7 @@ fn main() -> Result<()> {
                 .with_max_level(tracing::Level::TRACE)
             ),
         ..Default::default()
-    }
+    };
     Server::setup_with(config)
         .GET("/", |_| async {Response::OK("Hello!")})
 }
