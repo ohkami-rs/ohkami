@@ -1,10 +1,10 @@
 use serde::Serialize;
 use crate::{
-    components::method::Method,
     utils::{map::RANGE_MAP_SIZE, buffer::Buffer}
 };
+pub use crate::components::method::Method;
 
-
+#[allow(unused)]
 pub struct Request {
     method: Method,
     uri:    &'static str,
@@ -35,7 +35,8 @@ pub struct Request {
         self
     }
 
-    pub(crate) async fn into_request_buffer(self) -> Buffer {
+    #[allow(unused)]
+    pub(crate) async fn into_request_buffer(&self) -> Buffer {
         let request_uri = {
             let mut uri = self.uri.to_owned();
             if self.query[0].is_some() {
@@ -60,7 +61,7 @@ pub struct Request {
                 self.method,
                 request_uri,
             );
-            if let Some(body) = self.body {
+            if let Some(body) = &self.body {
                 raw_request.push('\n');
                 raw_request += &body
             }

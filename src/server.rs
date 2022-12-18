@@ -16,7 +16,8 @@ use crate::{
     result::{Result, ElseResponse},
     utils::{
         parse::parse_request_lines, validation::{self, is_valid_path}, buffer::Buffer
-    }, test_system::Request,
+    },
+    test_system::Request,
 };
 
 #[cfg(feature = "postgres")]
@@ -289,7 +290,7 @@ impl Server {
         })
     }
 
-    pub fn test(&self, request: Request, expected_response: Result<Response>) {
+    pub fn assert_to_be(&self, request: &Request, expected_response: Result<Response>) {
         let actual_response = block_on(async {
             consume_buffer(
                 request.into_request_buffer().await,
@@ -297,6 +298,15 @@ impl Server {
             ).await
         });
         assert_eq!(actual_response, expected_response)
+    }
+    pub fn assert_not_to_be(&self, request: &Request, expected_response: Result<Response>) {
+        let actual_response = block_on(async {
+            consume_buffer(
+                request.into_request_buffer().await,
+                &self.map
+            ).await
+        });
+        assert_ne!(actual_response, expected_response)
     }
 }
 
