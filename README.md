@@ -66,10 +66,12 @@ Response::OK(json!("ok": true))
 ```rust
 Response::OK(json(user)?) // serialize Rust value into JSON
 ```
-### handle error
+### handle errors
 ```rust
 let count = ctx.query("count")?.parse::<usize>()
     ._else(|_| Response::BadRequest("`count` must be an integer"))?;
+    // or
+    ._else(|_| Response::BadRequest(None))?;
 ```
 ```rust
 let user = ctx.body::<User>()?;
@@ -81,10 +83,12 @@ let user = ctx.body::<User>()
 // or discard original error:
 let user = ctx.body::<User>()
     ._else(|_| Response::InternalServerError("can't get user"))?;
+    // or
+    ._else(|_| Response::InternalServerError(None))?;
 ```
 ### assert boolean condition
 ```rust
-(count < 10)._else(|| Response::BadRequest("`count` must be less than 10"))
+(count < 10)._else(|| Response::BadRequest("`count` must be less than 10" /* or `None` */))
 ```
 ### log config
 ```rust
