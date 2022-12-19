@@ -17,7 +17,6 @@ use crate::{
     utils::{
         parse::parse_request_lines, validation::{self, is_valid_path}, buffer::Buffer
     },
-    test_system::Request,
 };
 
 #[cfg(feature = "postgres")]
@@ -35,7 +34,7 @@ pub(crate) type Handler = Box<dyn Fn(Context) -> Pin<Box<dyn Future<Output=Resul
 
 /// Type of ohkami's server instance
 pub struct Server {
-    map: HashMap<
+    pub(crate) map: HashMap<
         (Method, &'static str, /*with param tailing or not*/bool),
         Handler,
     >,
@@ -289,26 +288,6 @@ impl Server {
             Ok(())
         })
     }
-
-
-    pub fn assert_to_res<R: ExpectedResponse>(&self, request: &Request, expected_response: R) {
-        let actual_response = block_on(async {
-            consume_buffer(
-                request.into_request_buffer().await,
-                &self.map
-            ).await
-        });
-        assert_eq!(actual_response, expected_response.as_response())
-    }
-    pub fn assert_not_to_res<R: ExpectedResponse>(&self, request: &Request, expected_response: R) {
-        let actual_response = block_on(async {
-            consume_buffer(
-                request.into_request_buffer().await,
-                &self.map
-            ).await
-        });
-        assert_ne!(actual_response, expected_response.as_response())
-    }
 }
 
 pub trait ExpectedResponse {fn as_response(self) -> Result<Response>;}
@@ -368,7 +347,7 @@ async fn setup_response(
     consume_buffer(buffer, &*handler_map).await
 }
 
-async fn consume_buffer(
+pub(crate) async fn consume_buffer(
     buffer: Buffer,
     handler_map: &HashMap<
         (Method, &'static str, bool),

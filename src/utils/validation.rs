@@ -96,6 +96,11 @@ mod pre_test {
 
     #[test]
     fn how_fn_split_works() {
+        let mut case = "/".split('/');
+        assert_eq!(case.next(), Some(""));
+        assert_eq!(case.next(), Some(""));
+        assert_eq!(case.next(), None);
+
         let mut case = "/api".split('/');
         assert_eq!(case.next(), Some(""));
         assert_eq!(case.next(), Some("api"));
