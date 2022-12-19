@@ -1,6 +1,5 @@
 use crate::components::json::JSON;
-
-use super::format::ResponseFormat;
+use super::{format::ResponseFormat, message::Message};
 
 
 /// Type of HTTP response body
@@ -13,13 +12,13 @@ pub enum Body {
 } impl Body {
     /// Generate a `Body` that holds `text/plain` response body.
     /// Types that implment `ToString` can be this' argument.
-    pub fn text<Str: ToString>(text: Str) -> Self {
-        Self::text_plain(text.to_string())
+    pub fn text<Msg: Message>(text: Msg) -> Self {
+        Self::text_plain(text.as_message())
     }
     /// Generate a `Body` that holds `text/html` response body.
     /// Types that implment `ToString` can be this' argument.
-    pub fn html<Str: ToString>(html: Str) -> Self {
-        Self::text_html(html.to_string())
+    pub fn html<Msg: Message>(html: Msg) -> Self {
+        Self::text_html(html.as_message())
     }
 
     pub(crate) fn content_type(&self) -> &'static str {
@@ -63,3 +62,8 @@ impl ResponseFormat for Body {
         }
     }
 }
+
+
+pub trait ResponseBody {fn as_body(self) -> Option<Body>;}
+impl ResponseBody for Body {fn as_body(self) -> Option<Body> {Some(self)}}
+impl ResponseBody for Option<Body> {fn as_body(self) -> Option<Body> {self}}
