@@ -3,10 +3,16 @@ use chrono::Utc;
 use crate::{
     components::{
         status::Status,
-        json::JSON,
+        json::JSON, headers::Header,
     },
     result::Result,
 };
+
+pub(crate) mod body;
+use body::Body;
+
+pub(crate) mod format;
+use format::ResponseFormat;
 
 
 /// Type of HTTP response
@@ -15,73 +21,7 @@ pub struct Response {
     additional_headers: String,
     status: Status,
     body:   Body,
-}
-
-/// Type of HTTP response body
-#[derive(Debug, PartialEq)]
-#[allow(non_camel_case_types)]
-pub enum Body {
-    application_json(JSON),
-    text_plain(String),
-    text_html(String),
-} impl Body {
-    /// Generate a `Body` that holds `text/plain` response body.
-    /// Types that implment `ToString` can be this' argument.
-    pub fn text<Str: ToString>(text: Str) -> Self {
-        Self::text_plain(text.to_string())
-    }
-    /// Generate a `Body` that holds `text/html` response body.
-    /// Types that implment `ToString` can be this' argument.
-    pub fn html<Str: ToString>(html: Str) -> Self {
-        Self::text_html(html.to_string())
-    }
-
-    fn content_type(&self) -> &'static str {
-        match self {
-            Self::application_json(_) => "application/json",
-            Self::text_plain(_) => "text/plain",
-            Self::text_html(_) => "text/html",
-        }
-    }
-    fn content_length(&self) -> usize {
-        match self {
-            Self::application_json(json) => json.content_length(),
-            Self::text_plain(text) => text.len(),
-            Self::text_html(html) => html.len(),
-        }
-    }
-}
-
-impl Into<Body> for JSON {
-    fn into(self) -> Body {
-        Body::application_json(self)
-    }
-}
-impl Into<Body> for String {
-    fn into(self) -> Body {
-        Body::text_plain(self)
-    }
-}
-impl Into<Body> for &str {
-    fn into(self) -> Body {
-        Body::text_plain(self.to_owned())
-    }
-}
-
-pub(crate) trait ResponseFormat {
-    fn response_format(&self) -> &str;
-}
-impl ResponseFormat for Body {
-    fn response_format(&self) -> &str {
-        match self {
-            Self::application_json(json) => json.response_format(),
-            Self::text_plain(text) => text.as_str(),
-            Self::text_html(html) => html.as_str(),
-        }
-    }
-}
-
-impl Response {
+} impl Response {
     /// Add error context message to an existing `Response` in `Err`.
     /// ```no_run
     /// let requested_user = ctx.body::<User>()
@@ -124,8 +64,9 @@ Keep-Alive: timeout=5
             self.body.response_format(),
         ).as_bytes()).await
     }
-    pub(crate) fn add_header(&mut self, header_string: &String) {
-        self.additional_headers += header_string;
+    pub(crate) fn add_header(&mut self, key: Header, value: &String) {
+        self.additional_headers += key.response_format();
+        self.additional_headers += value;
         self.additional_headers += "\n";
     }
 

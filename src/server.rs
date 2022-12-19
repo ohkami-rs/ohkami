@@ -9,7 +9,7 @@ use tracing_subscriber::fmt::SubscriberBuilder;
 use std::{collections::HashMap, pin::Pin, future::Future};
 use crate::{
     components::{
-        method::Method, cors::CORS
+        method::Method, cors::CORS, headers::Header
     },
     context::Context,
     response::Response,
@@ -255,11 +255,11 @@ impl Server {
     /// - `"localhost:{port}"` (like `"localhost:8080"`) is interpret as `"127.0.0.1:{port}"`
     /// - other formats are interpret as raw TCP address
     pub fn serve_on(self, address: &'static str) -> Result<()> {
-        let allow_origin_str = Arc::new(
+        let allow_origins_str = Arc::new(
             if self.cors.allow_origins.is_empty() {
                 String::new()
             } else {
-                format!("Access-Control-Allow-Origin: {}", self.cors.allow_origins.join(" "))
+                self.cors.allow_origins.join(" ")
             }
         );
 
@@ -279,7 +279,7 @@ impl Server {
                     handle_stream(
                         stream,
                         Arc::clone(&handler_map),
-                        Arc::clone(&allow_origin_str),
+                        Arc::clone(&allow_origins_str),
                         
                         #[cfg(feature = "sqlx")]
                         Arc::clone(&connection_pool),
@@ -290,25 +290,31 @@ impl Server {
         })
     }
 
-    pub fn assert_to_res(&self, request: &Request, expected_response: Result<Response>) {
+
+    pub fn assert_to_res<R: ExpectedResponse>(&self, request: &Request, expected_response: R) {
         let actual_response = block_on(async {
             consume_buffer(
                 request.into_request_buffer().await,
                 &self.map
             ).await
         });
-        assert_eq!(actual_response, expected_response)
+        assert_eq!(actual_response, expected_response.as_response())
     }
-    pub fn assert_not_to_res(&self, request: &Request, expected_response: Result<Response>) {
+    pub fn assert_not_to_res<R: ExpectedResponse>(&self, request: &Request, expected_response: R) {
         let actual_response = block_on(async {
             consume_buffer(
                 request.into_request_buffer().await,
                 &self.map
             ).await
         });
-        assert_ne!(actual_response, expected_response)
+        assert_ne!(actual_response, expected_response.as_response())
     }
 }
+
+pub trait ExpectedResponse {fn as_response(self) -> Result<Response>;}
+impl ExpectedResponse for Response {fn as_response(self) -> Result<Response> {Err(self)}}
+impl ExpectedResponse for Result<Response> {fn as_response(self) -> Result<Response> {self}}
+
 
 async fn handle_stream(
     mut stream: TcpStream,
@@ -333,7 +339,7 @@ async fn handle_stream(
     };
 
     if !allow_origin_str.is_empty() {
-        response.add_header(&*allow_origin_str)
+        response.add_header(Header::AccessControlAllowOrigin, &*allow_origin_str)
     }
 
     tracing::info!("generated a response: {:?}", &response);

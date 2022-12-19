@@ -142,7 +142,7 @@ mod test {
     fn test_hello() {
         let request = Request::new(Method::GET, "/");
         (*SERVER).assert_to_res(&request, Response::OK("Hello!"));
-        (*SERVER).assert_not_to_res(&request, Err(Response::BadRequest("")));
+        (*SERVER).assert_not_to_res(&request, Response::BadRequest(""));
     }
 }
 ```
