@@ -41,6 +41,22 @@ impl<'p> Router<'p> {
             path_pattern, handler
         )
     }
+    pub fn search(&self,
+        method:       Method,
+        request_path: &'p str,
+    ) -> Option<&Handler> {
+        let mut path = request_path.split('/');
+        { path.next(); }
+
+        let tree = match method {
+            Method::GET    => &self.GET,
+            Method::POST   => &self.POST,
+            Method::PATCH  => &self.PATCH,
+            Method::DELETE => &self.DELETE,
+        };
+
+        tree.search(path)
+    }
 }
 
 #[derive(PartialEq, Debug)]
@@ -56,7 +72,6 @@ enum Pattern<'p> {
             p => Self::Str(p),
         }
     }
-
     fn matches(&self, section: &str) -> bool {
         let pattern = Pattern::from(section);
         match self {
@@ -90,6 +105,25 @@ struct Node<'p> {
             pattern:  Pattern::from(section),
             handler:  None,
             children: Vec::new(),
+        }
+    }
+
+    fn search(&self, mut path: Split<'p, char>) -> Option<&Handler> {
+        if let Some(section) = path.next() {
+            if let Some(child) = 'search: {
+                for child in &self.children {
+                    if child.pattern.matches(section) {
+                        break 'search Some(child)
+                    }
+                }
+                None
+            } {
+                child.search(path)
+            } else {
+                None
+            }
+        } else {
+            self.handler.as_ref()
         }
     }
 
@@ -155,6 +189,9 @@ struct Node<'p> {
 }
 
 
+// to run tests,
+// - commentout `Server::Handler` in `use::crate::{}`
+// - uncommentout `type Handler = usize`
 #[cfg(test)]
 mod test_resister {
     #![allow(unused)]
