@@ -32,14 +32,19 @@ impl<'p> Router<'p> {
         path_pattern: &'static str,
         handler:      Handler,
     ) -> std::result::Result<(), String> {
-        match method {
+        let err_msg = format!("path pattern `{path_pattern}` is resistred duplicatedly");
+
+        let mut path = path_pattern.split('/');
+        { path.next(); }
+
+        let tree = match method {
             Method::GET    => &mut self.GET,
             Method::POST   => &mut self.POST,
             Method::PATCH  => &mut self.PATCH,
             Method::DELETE => &mut self.DELETE,
-        }.register(
-            path_pattern, handler
-        )
+        };
+        
+        tree.register(path, handler, err_msg)
     }
     pub fn search(&self,
         method:       Method,
@@ -128,18 +133,6 @@ struct Node<'p> {
     }
 
     fn register(&mut self,
-        path:    &'p str, // already validated
-        handler: Handler,
-    ) -> std::result::Result<(), String> {
-        let err_msg = format!("path pattern `{path}` is resistred duplicatedly");
-
-        let mut path = path.split('/');
-        { path.next(); /* all valid paths start with '/' , so if they are split by '/',
-        the result ( Split<'_, char> ) starts with Some(""). Here discard this */ }
-
-        self._register(path, handler, err_msg)
-    }
-    fn _register(&mut self,
         mut path: Split<'p, char>,
         handler:  Handler,
         err_msg:  String,
@@ -153,7 +146,7 @@ struct Node<'p> {
                 }
                 None
             } {
-                child._register(path, handler, err_msg)
+                child.register(path, handler, err_msg)
 
             } else {
                 let mut new_branch = Node::new(section);
