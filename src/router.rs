@@ -1,4 +1,3 @@
-use std::str::Split;
 use crate::{
     components::method::Method,
     // === actual Handler ===
@@ -7,8 +6,14 @@ use crate::{
 };
 
 // === mock for test ===
-type Handler = usize;
+pub(self) type Handler = usize;
 // =====================
+
+mod pattern;
+
+mod node;
+use node::Node;
+
 
 #[derive(PartialEq, Debug)]
 #[allow(non_snake_case)]
@@ -64,122 +69,8 @@ impl<'p> Router<'p> {
     }
 }
 
-#[derive(PartialEq, Debug)]
-enum Pattern<'p> {
-    Any,
-    Str(&'p str),
-    Param(&'p str),
-} impl<'p> Pattern<'p> {
-    fn from(section: &'p str) -> Self {
-        match section {
-            "*" => Self::Any,
-            p if p.starts_with(':') => Self::Param(&p[1..]),
-            p => Self::Str(p),
-        }
-    }
-    fn matches(&self, section: &str) -> bool {
-        let pattern = Pattern::from(section);
-        match self {
-            Pattern::Any => true,
-            Pattern::Param(_) => pattern.is_param(),
-            Pattern::Str(p) => p == &section,
-        }
-    }
-    fn is_param(&self) -> bool {
-        match self {
-            Pattern::Param(_) => true,
-            _ => false,
-        }
-    }
-    fn is_str(&self) -> bool {
-        match self {
-            Pattern::Str(_) => true,
-            _ => false,
-        }
-    }
-}
 
-#[derive(PartialEq, Debug)]
-struct Node<'p> {
-    pattern:  Pattern<'p>,
-    handler:  Option<Handler>,
-    children: Vec<Node<'p>>,
-} impl<'p> Node<'p> {
-    fn new(section: &'p str) -> Self {
-        Self {
-            pattern:  Pattern::from(section),
-            handler:  None,
-            children: Vec::new(),
-        }
-    }
 
-    fn search(&self, mut path: Split<'p, char>) -> Option<&Handler> {
-        if let Some(section) = path.next() {
-            if let Some(child) = 'search: {
-                for child in &self.children {
-                    if child.pattern.matches(section) {
-                        break 'search Some(child)
-                    }
-                }
-                None
-            } {
-                child.search(path)
-            } else {
-                None
-            }
-        } else {
-            self.handler.as_ref()
-        }
-    }
-
-    fn register(&mut self,
-        mut path: Split<'p, char>,
-        handler:  Handler,
-        err_msg:  String,
-    ) -> std::result::Result<(), String> {
-        if let Some(section) = path.next() {
-            if let Some(child) = 'search: {
-                for child in &mut self.children {
-                    if child.pattern.matches(section) {
-                        break 'search Some(child)
-                    }
-                }
-                None
-            } {
-                child.register(path, handler, err_msg)
-
-            } else {
-                let mut new_branch = Node::new(section);
-                new_branch.attach(path, handler);
-                self.children.push(new_branch);
-                Ok(())
-            }
-
-        } else {
-            Err(err_msg)
-        }
-    }
-
-    fn attach(&mut self,
-        path:    Split<'p, char>,
-        handler: Handler,
-    ) {
-        let path = path.rev().collect::<Vec<_>>();
-        self._attach(path, handler)
-    }
-    fn _attach(&mut self,
-        mut path: Vec<&'p str>,
-        handler:  Handler,
-    ) {
-        if let Some(section) = path.pop() {
-            let mut new_node = Node::new(section);
-            new_node._attach(path, handler);
-            self.children.push(new_node)
-        } else {
-            self.handler = Some(handler)
-        }
-    }
-}
 
 
 // to run tests,
@@ -189,7 +80,7 @@ struct Node<'p> {
 mod test_resister {
     #![allow(unused)]
     use crate::{test_system::Method::*, context::Context, response::Response, result::Result};
-    use super::{Router, Node, Pattern};
+    use super::{Router, Node, pattern::Pattern};
 
     #[test]
     fn register_one_1() {
