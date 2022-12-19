@@ -22,8 +22,8 @@ impl<Msg: Message> ErrorMessage for Msg {
         Some(Body::text_plain(self.as_message()))
     }
 }
-impl<Msg: Message> ErrorMessage for Option<Msg> {
+impl ErrorMessage for Option<String> {
     fn as_message(self) -> Option<Body> {
-        self.map(|msg| Body::text_plain(msg.as_message()))
+        self.map(|msg| Body::text_plain(msg))
     }
 }

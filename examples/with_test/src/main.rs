@@ -10,7 +10,7 @@ fn main() -> Result<()> {
 
 #[cfg(test)]
 mod test {
-    use ohkami::{server::Server, test_system::{Request, Method}, response::Response};
+    use ohkami::{server::Server, response::Response, test_system::{Request, Method}};
     use once_cell::sync::Lazy;
 
     static SERVER: Lazy<Server> = Lazy::new(|| super::server());
@@ -19,6 +19,6 @@ mod test {
     fn test_hello() {
         let request = Request::new(Method::GET, "/");
         (*SERVER).assert_to_res(&request, Response::OK("Hello!"));
-        (*SERVER).assert_not_to_res(&request, Response::BadRequest(""));
+        (*SERVER).assert_not_to_res(&request, Response::BadRequest(None));
     }
 }

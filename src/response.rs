@@ -131,7 +131,7 @@ Keep-Alive: timeout=5
     pub fn BadRequest<Msg: ErrorMessage>(msg: Msg) -> Self {
         Self {
             additional_headers: String::new(),
-            status: Status::BadRequest,
+            status:             Status::BadRequest,
             body:               msg.as_message(),
         }
     }

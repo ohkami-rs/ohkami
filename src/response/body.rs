@@ -65,5 +65,5 @@ impl ResponseFormat for Body {
 
 
 pub trait ResponseBody {fn as_body(self) -> Option<Body>;}
-impl ResponseBody for Body {fn as_body(self) -> Option<Body> {Some(self)}}
-impl ResponseBody for Option<Body> {fn as_body(self) -> Option<Body> {self}}
+impl<B: Into<Body>> ResponseBody for B {fn as_body(self) -> Option<Body> {Some(self.into())}}
+impl<B: Into<Body>> ResponseBody for Option<B> {fn as_body(self) -> Option<Body> {self.map(|body| body.into())}}
