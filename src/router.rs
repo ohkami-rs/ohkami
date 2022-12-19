@@ -1,10 +1,16 @@
 use std::str::Split;
-
 use crate::{
-    server::Handler,
+    // server::Handler,
     components::method::Method,
 };
 
+
+// === mock for test ===
+type Handler = usize;
+// =====================
+
+
+#[derive(PartialEq, Debug)]
 #[allow(non_snake_case)]
 pub(crate) struct Router<'p> {
     GET:    Node<'p>,
@@ -37,6 +43,7 @@ impl<'p> Router<'p> {
     }
 }
 
+#[derive(PartialEq, Debug)]
 enum Pattern<'p> {
     Any,
     Str(&'p str),
@@ -72,6 +79,7 @@ enum Pattern<'p> {
     }
 }
 
+#[derive(PartialEq, Debug)]
 struct Node<'p> {
     pattern:  Pattern<'p>,
     handler:  Option<Handler>,
@@ -143,5 +151,45 @@ struct Node<'p> {
         } else {
             self.handler = Some(handler)
         }
+    }
+}
+
+
+#[cfg(test)]
+mod test {
+    #![allow(unused)]
+    use crate::{test_system::Method, context::Context, response::Response, result::Result};
+    use super::{Router, Node, Pattern};
+
+    #[test]
+    fn register_1() {
+        let mock_handler_1 = 100;
+
+        let mut router = Router::new();
+        router.register(
+            Method::GET,
+            "/",
+            mock_handler_1
+        );
+
+        assert_eq!(
+            router,
+            Router {
+                GET: Node {
+                    pattern:  Pattern::Str(""),
+                    handler:  None,
+                    children: vec![
+                        Node {
+                            pattern:  Pattern::Str(""),
+                            handler:  Some(mock_handler_1),
+                            children: vec![]
+                        }
+                    ],
+                },
+                POST:   Node::new(""),
+                PATCH:  Node::new(""),
+                DELETE: Node::new(""),
+            }
+        )
     }
 }
