@@ -19,14 +19,14 @@ pub struct Request {
             body:  None,
         }
     }
-    pub fn query(mut self, query: (&'static str, &'static str)) -> Self {
+    pub fn query(mut self, key: &'static str, value: &'static str) -> Self {
         let index = 'index: {
             for (i, q) in self.query.iter().enumerate() {
                 if q.is_none() {break 'index i}
             }
             panic!("Current ohkami can't handle more than {RANGE_MAP_SIZE} query params");
         };
-        self.query[index] = Some(query);
+        self.query[index] = Some((key, value));
         self
     }
     pub fn body<S: Serialize>(mut self, body: S) -> Self {

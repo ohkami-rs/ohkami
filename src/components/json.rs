@@ -1,5 +1,5 @@
 use serde::{Serialize, Deserialize};
-use crate::{response::ResponseFormat, result::Result};
+use crate::{result::Result, response::format::ResponseFormat};
 
 
 /// Try serializing a struct implementing `serde::Serialize` and return `Result<JSON>`.

@@ -1,4 +1,4 @@
-use crate::response::ResponseFormat;
+use crate::response::format::ResponseFormat;
 
 
 #[derive(Debug, PartialEq)]
