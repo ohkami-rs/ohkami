@@ -12,6 +12,7 @@ pub mod response;
 pub mod components;
 pub mod test_system;
 pub(crate) mod utils;
+pub(crate) mod router;
 
 pub mod prelude {
     pub use super::{

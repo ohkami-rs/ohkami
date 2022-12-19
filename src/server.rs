@@ -31,7 +31,7 @@ use sqlx::mysql::{
     MySqlPoolOptions as PoolOptions,
 };
 
-type Handler = Box<dyn Fn(Context) -> Pin<Box<dyn Future<Output=Result<Response>> + Send >> + Send + Sync>;
+pub(crate) type Handler = Box<dyn Fn(Context) -> Pin<Box<dyn Future<Output=Result<Response>> + Send >> + Send + Sync>;
 
 /// Type of ohkami's server instance
 pub struct Server {
