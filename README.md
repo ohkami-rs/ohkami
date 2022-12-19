@@ -66,7 +66,7 @@ Response::OK(json!("ok": true))
 ```rust
 Response::OK(json(user)?) // serialize Rust value into JSON
 ```
-### error handling
+### handle error
 ```rust
 let count = ctx.query("count")?.parse::<usize>()
     ._else(|_| Response::BadRequest("`count` must be an integer"))?;
@@ -118,7 +118,7 @@ let user = sqlx::query_as::<_, User>(
     .fetch_one(ctx.pool())
     .await?; // `Response` implements `From<sqlx::Error>`
 ```
-### tests
+### test responses
 1. split server-setup and running:
 ```rust
 fn server() -> Server {
@@ -150,7 +150,7 @@ mod test {
 <br/>
 
 ## Development
-ohkami is on **very early stage** now and not for producntion use.
+ohkami is on early stage now and not for producntion use.
 
 <br/>
 
