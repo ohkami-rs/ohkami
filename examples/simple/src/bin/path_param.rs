@@ -6,16 +6,12 @@ fn main() -> Result<()> {
         .serve_on(":3000")
 }
 
-async fn sleepy_hello(ctx: Context) -> Result<Response> {
-    let sleep_time = ctx.param()
-        ._else(|| Response::BadRequest("Expected sleeping duration as path parameter."))?
-        .parse::<u64>()
-        ._else(|_| Response::BadRequest("`time` must be a zero or positive integer."))?;
-    (sleep_time < 30)
+async fn sleepy_hello(_: Context, time: usize) -> Result<Response> {
+    (time < 30)
         ._else(|| Response::BadRequest("Sorry, please request a sleeping duration (sec) less than 30."))?;
     
     std::thread::sleep(
-        std::time::Duration::from_secs(sleep_time)
+        std::time::Duration::from_secs(time as u64)
     );
 
     Response::OK("Hello, I'm sleepy...")
