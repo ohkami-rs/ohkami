@@ -1,3 +1,8 @@
+/* to run this test, go to ../router.rs and
+   - commentout `server::Handler` in `use::crate::{}`
+   - uncommentout `pub(self) type Handler = usize;`
+   - uncomment out `#[derive(Debug, PartialEq)]` in ./node.rs and ../router.rs
+
 #![cfg(test)]
 #![allow(unused)]
 
@@ -273,3 +278,5 @@ fn register_three_2() {
         }
     )
 }
+
+*/

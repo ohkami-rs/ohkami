@@ -1,12 +1,14 @@
 use crate::{
     components::method::Method, utils::map::StrMap, result::Result,
+};
+pub(self) use crate::{
     // === actual Handler ===
-    // server::Handler,
+    server::Handler,
     // ======================
 };
 
 // === mock for test ===
-pub(self) type Handler = usize;
+// pub(self) type Handler = usize;
 // =====================
 
 mod pattern;
@@ -18,7 +20,7 @@ mod test_resister;
 mod test_search;
 
 
-#[derive(PartialEq, Debug)]
+// #[derive(PartialEq, Debug)]
 #[allow(non_snake_case)]
 pub(crate) struct Router<'p> {
     GET:    Node<'p>,

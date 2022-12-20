@@ -16,7 +16,7 @@ use crate::{
     result::{Result, ElseResponse},
     utils::{
         parse::parse_request_lines, validation::{self, is_valid_path}, buffer::Buffer
-    },
+    }, router::Router,
 };
 
 #[cfg(feature = "postgres")]
@@ -34,10 +34,7 @@ pub(crate) type Handler = Box<dyn Fn(Context) -> Pin<Box<dyn Future<Output=Resul
 
 /// Type of ohkami's server instance
 pub struct Server {
-    pub(crate) map: HashMap<
-        (Method, &'static str, /*with param tailing or not*/bool),
-        Handler,
-    >,
+    pub(crate) map: Router<'static>,
     cors: CORS,
 
     #[cfg(feature = "sqlx")]
@@ -118,7 +115,7 @@ impl Server {
         }
 
         Self {
-            map:  HashMap::new(),
+            map:  Router::new(),
             cors: default_config.cors,
         }
     }
@@ -143,7 +140,7 @@ impl Server {
         };
 
         Self {
-            map:  HashMap::new(),
+            map:  Router::new(),
             cors: config.cors,
 
             #[cfg(feature = "sqlx")]
@@ -239,11 +236,12 @@ impl Server {
                 (path_string, false)
             };
 
-        if self.map.insert(
-            (method, (if path == "/" {"/"} else {&path.trim_end_matches('/')}), has_param),
+        if let Err(msg) = self.map.register(
+            method,
+            if path == "/" {"/"} else {&path.trim_end_matches('/')},
             Box::new(move |ctx: Context| Box::pin(handler(ctx)))
-        ).is_some() {
-            panic!("handler for `{method} {path_string}` is resistered duplicatedly");
+        ) {
+            panic!("{msg}")
         }
 
         self
@@ -297,10 +295,7 @@ impl ExpectedResponse for Result<Response> {fn as_response(self) -> Result<Respo
 
 async fn handle_stream(
     mut stream: TcpStream,
-    handler_map: Arc<HashMap<
-        (Method, &'static str, bool),
-        Handler,
-    >>,
+    handler_map: Arc<Router<'static>>,
     allow_origin_str: Arc<String>,
 
     #[cfg(feature = "sqlx")]
@@ -335,10 +330,7 @@ async fn handle_stream(
 
 async fn setup_response(
     stream: &mut TcpStream,
-    handler_map: Arc<HashMap<
-        (Method, &'static str, bool),
-        Handler
-    >>,
+    handler_map: Arc<Router<'static>>,
 
     #[cfg(feature = "sqlx")]
     connection_pool: Arc<ConnectionPool>,
@@ -349,10 +341,7 @@ async fn setup_response(
 
 pub(crate) async fn consume_buffer(
     buffer: Buffer,
-    handler_map: &HashMap<
-        (Method, &'static str, bool),
-        Handler
-    >,
+    handler_map: &Router<'static>,
 ) -> Result<Response> {
     let (
         method,
@@ -365,25 +354,7 @@ pub(crate) async fn consume_buffer(
         buffer.lines()?
     )?;
 
-    let handler = {
-        match handler_map.get(&(
-            method,
-            &path,
-            false
-        )) {
-            Some(handler) => {
-                param_range = None; //
-                handler
-            },
-            None => handler_map.get(&(
-                method,
-                &path.rsplit_once('/').unwrap_or(("", "")).0,
-                true
-            ))._else(|| Response::NotFound(format!(
-                "handler for `{method} {path}` is not found"
-            )))?
-        }
-    };
+    let (handler, params) = handler_map.search(method, &path)?;
 
     let context = Context {
         buffer,

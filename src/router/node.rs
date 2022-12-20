@@ -1,9 +1,8 @@
 use std::str::Split;
 use crate::{utils::map::StrMap, result::{Result, ElseResponse}, response::Response};
-
 use super::{pattern::Pattern, Handler};
 
-#[derive(PartialEq, Debug)]
+// #derive[Debug, PartialEq]
 pub(super) struct Node<'p> {
     pub(super) pattern:  Pattern<'p>,
     pub(super) handler:  Option<Handler>,
