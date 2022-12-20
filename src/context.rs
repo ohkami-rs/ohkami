@@ -1,5 +1,4 @@
 use std::fmt::Debug;
-
 use serde::Deserialize;
 use crate::{
     result::{Result, ElseResponse},

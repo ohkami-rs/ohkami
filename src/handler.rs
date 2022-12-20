@@ -26,8 +26,11 @@ where
         Box::new(move |ctx, params|
             match params.get(0) {
                 Some(range) => {
-                    let param = ctx.buffer.read_str(&range).parse::<usize>().unwrap();
-                    Box::pin(self(ctx, param))
+                    let parsed = ctx.buffer.read_str(&range).parse::<usize>();
+                    match parsed {
+                        Ok(param) => Box::pin(self(ctx, param)),
+                        Err(_) => Box::pin(async {Err(Response::BadRequest("format of path param is wrong"))})
+                    }
                 },
                 None => unreachable!(/* --- */),
             }
