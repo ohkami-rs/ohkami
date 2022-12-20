@@ -68,4 +68,12 @@ pub struct RangeList {
         let list = self.list.as_ref();
         Some((list[0]?, list[1]?))
     }
+    pub(crate) fn get3(&self) -> Option<(BufRange, BufRange, BufRange)> {
+        let list = self.list.as_ref();
+        Some((list[0]?, list[1]?, list[2]?))
+    }
+    pub(crate) fn get4(&self) -> Option<(BufRange, BufRange, BufRange, BufRange)> {
+        let list = self.list.as_ref();
+        Some((list[0]?, list[1]?, list[2]?, list[3]?))
+    }
 }
