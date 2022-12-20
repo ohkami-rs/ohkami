@@ -38,9 +38,30 @@ where
     }
 }
 
+impl<F, Fut> Handler<String> for F
+where
+    F:   Fn(Context, String) -> Fut + Send + Sync + 'static,
+    Fut: Future<Output=Result<Response>> + Send + 'static
+{
+    fn into_handlefunc(self) -> HandleFunc {
+        Box::new(move |ctx, params|
+            match params.get(0) {
+                Some(range) => {
+                    let param = ctx.buffer.read_str(&range).to_owned();
+                    Box::pin(self(ctx, param))
+                },
+                None => unreachable!(/* --- */),
+            }
+        )
+    }
+}
+
+
 pub trait Param {}
 impl Param for () {}
 impl Param for usize {}
+impl Param for String {}
+
 
 #[cfg(test)]
 mod test {
