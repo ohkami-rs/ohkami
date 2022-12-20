@@ -66,3 +66,21 @@ pub(crate) struct RangeMap(
 }
 
 
+pub(crate) const STR_MAP_SIZE: usize = 4;
+pub(crate) struct StrMap<'s> {
+    count: usize,
+    map:   [Option<(&'s str, &'s str)>; STR_MAP_SIZE]
+} impl<'s> StrMap<'s> {
+    pub fn new() -> Self {
+        Self {
+            count: 0,
+            map:   [None, None, None, None]
+        }
+    }
+    pub fn insert(&mut self, key: &str, value: &str) -> std::result::Result<(), ()> {
+        if self.count == 4 {return Err(())}
+        self.map[self.count] = Some((key, value));
+        self.count += 1;
+        Ok(())
+    }
+}

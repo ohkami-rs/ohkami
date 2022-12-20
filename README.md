@@ -86,6 +86,10 @@ let user = ctx.body::<User>()
     // or
     ._else(|_| Response::InternalServerError(None))?;
 ```
+### handle Option values
+```rust
+let handler = self.handler.as_ref()._else(|| Response::NotFound(None))?;
+```
 ### assert boolean condition
 ```rust
 (count < 10)._else(|| Response::BadRequest("`count` must be less than 10" /* or `None` */))

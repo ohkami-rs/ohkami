@@ -2,7 +2,7 @@
 pub(super) enum Pattern<'p> {
     Any,
     Str(&'p str),
-    Param(&'p str),
+    Param(&'p str /* param name */),
 } impl<'p> Pattern<'p> {
     pub fn from(section: &'p str) -> Self {
         match section {
@@ -11,12 +11,11 @@ pub(super) enum Pattern<'p> {
             p => Self::Str(p),
         }
     }
-    pub fn matches(&self, section: &str) -> bool {
-        let pattern = Pattern::from(section);
+    pub fn matches(&self, section: &str) -> (bool, Option<(&'p str, &'p str)>) {
         match self {
-            Pattern::Any => true,
-            Pattern::Param(_) => pattern.is_param(),
-            Pattern::Str(p) => p == &section,
+            Pattern::Any => (true, None),
+            Pattern::Str(p) => (p == &section, None),
+            Pattern::Param(name) => (true, Some((name, section))),
         }
     }
     fn is_param(&self) -> bool {

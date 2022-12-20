@@ -1,5 +1,5 @@
 use crate::{
-    components::method::Method,
+    components::method::Method, utils::map::StrMap,
     // === actual Handler ===
     // server::Handler,
     // ======================
@@ -55,7 +55,7 @@ impl<'p> Router<'p> {
     pub fn search(&self,
         method:       Method,
         request_path: &'p str,
-    ) -> Option<&Handler> {
+    ) -> Option<(&Handler, StrMap)> {
         let mut path = request_path.split('/');
         { path.next(); }
 
@@ -66,6 +66,7 @@ impl<'p> Router<'p> {
             Method::DELETE => &self.DELETE,
         };
 
-        tree.search(path)
+        let mut params = StrMap::new();
+        tree.search(path, params)
     }
 }

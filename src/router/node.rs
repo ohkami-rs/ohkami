@@ -1,4 +1,6 @@
 use std::str::Split;
+use crate::{utils::map::StrMap, result::{Result, ElseResponse}, response::Response};
+
 use super::{pattern::Pattern, Handler};
 
 #[derive(PartialEq, Debug)]
@@ -15,11 +17,15 @@ pub(super) struct Node<'p> {
         }
     }
 
-    pub fn search(&self, mut path: Split<'p, char>) -> Option<&Handler> {
+    pub fn search(&self,
+        mut path: Split<'p, char>,
+        mut params: StrMap
+    ) -> Result<(&Handler, StrMap)> {
         if let Some(section) = path.next() {
             if let Some(child) = 'search: {
                 for child in &self.children {
-                    if child.pattern.matches(section) {
+                    let (is_match, param) = child.pattern.matches(section);
+                    if is_match {
                         break 'search Some(child)
                     }
                 }
@@ -27,10 +33,13 @@ pub(super) struct Node<'p> {
             } {
                 child.search(path)
             } else {
-                None
+                Err(Response::NotFound(None))
             }
         } else {
-            self.handler.as_ref()
+            Ok((
+                self.handler.as_ref()._else(|| Response::NotFound(None))?,
+                params
+            ))
         }
     }
 
