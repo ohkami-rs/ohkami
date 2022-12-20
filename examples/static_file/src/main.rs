@@ -35,10 +35,9 @@ fn main() -> Result<()> {
         .serve_on(":8000")
 }
 
-async fn get_one_by_name(ctx: Context) -> Result<Response> {
-    let name = ctx.param().unwrap().to_ascii_lowercase();
+async fn get_one_by_name(_: Context, name: String) -> Result<Response> {
     let index = DATA
-        .binary_search_by_key(&name.as_str(), |data| &data.name)
+        .binary_search_by_key(&name.to_ascii_lowercase().as_str(), |data| &data.name)
         ._else(|_| Response::BadRequest("No dinosaurs found"))?;
     Response::OK(json(&DATA[index])?)
 }

@@ -3,17 +3,13 @@ use crate::{
     components::{method::Method, json::{json, JSON}},
     response::Response,
     result::{Result, ElseResponse},
-    utils::{buffer::BufRange, map::{RangeMap, RANGE_MAP_SIZE}},
+    utils::{buffer::BufRange, range::{RangeMap, RANGE_COLLECTION_SIZE}},
 };
 
 
-pub(crate) fn parse_request_lines(
-    // lines: &'l mut Lines
-    mut lines: Lines
-) -> Result<(
+pub(crate) fn parse_request_lines(mut lines: Lines) -> Result<(
     Method,
     String/*path*/,
-    Option<BufRange>/*path param*/,
     Option<RangeMap>/*query param*/,
     // headers,
     Option<JSON>/*request body*/,
@@ -32,7 +28,6 @@ pub(crate) fn parse_request_lines(
     tracing::info!("got a request: {} {}", method_str, path_str);
 
     let (path, query) = extract_query(path_str, method_str.len() - 1/*' '*/)?;
-    let /*(path, param)*/ param = extract_param(path, method_str.len() - 1/*' '*/);
 
     while let Some(line) = lines.next() {
         /*
@@ -46,7 +41,7 @@ pub(crate) fn parse_request_lines(
     Ok((
         Method::parse(method_str)?,
         (if path=="/" {path} else {path.trim_end_matches('/')}).to_owned(),
-        param,
+        // param,
         query,
         body
     ))
@@ -67,7 +62,7 @@ fn extract_query(
     let mut map = RangeMap::new();
     let mut read_pos = offset + path_part.len() + 1/*'?'*/ + 1;
     for (i, (key, value)) in queries.enumerate() {
-        (i < RANGE_MAP_SIZE)._else(||
+        (i < RANGE_COLLECTION_SIZE)._else(||
             Response::BadRequest("Sorry, I can't handle more than 4 query params")
         )?;
         map.insert(i,
@@ -78,14 +73,4 @@ fn extract_query(
     }
 
     Ok((path_part, Some(map)))
-}
-fn extract_param(
-    path:   &str,
-    offset: usize
-) -> Option<BufRange> {
-    if path.ends_with('/') {return None}
-    Some(BufRange::new(
-        offset+1 + path.rfind('/')?+1 + 1,
-        offset+1 + path.len()
-    ))
 }

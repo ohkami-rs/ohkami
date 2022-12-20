@@ -6,18 +6,18 @@ use async_std::{
     stream::StreamExt, task,
 };
 use tracing_subscriber::fmt::SubscriberBuilder;
-use std::{collections::HashMap, pin::Pin, future::Future};
 use crate::{
     components::{
         method::Method, cors::CORS, headers::Header
     },
     context::Context,
     response::Response,
-    result::{Result, ElseResponse},
+    result::Result,
     utils::{
         parse::parse_request_lines, validation::{self, is_valid_path}, buffer::Buffer
     },
-    test_system::Request,
+    router::Router,
+    handler::{Handler, Param},
 };
 
 #[cfg(feature = "postgres")]
@@ -31,14 +31,10 @@ use sqlx::mysql::{
     MySqlPoolOptions as PoolOptions,
 };
 
-type Handler = Box<dyn Fn(Context) -> Pin<Box<dyn Future<Output=Result<Response>> + Send >> + Send + Sync>;
 
 /// Type of ohkami's server instance
 pub struct Server {
-    map: HashMap<
-        (Method, &'static str, /*with param tailing or not*/bool),
-        Handler,
-    >,
+    pub(crate) map: Router<'static>,
     cors: CORS,
 
     #[cfg(feature = "sqlx")]
@@ -119,7 +115,7 @@ impl Server {
         }
 
         Self {
-            map:  HashMap::new(),
+            map:  Router::new(),
             cors: default_config.cors,
         }
     }
@@ -144,7 +140,7 @@ impl Server {
         };
 
         Self {
-            map:  HashMap::new(),
+            map:  Router::new(),
             cors: config.cors,
 
             #[cfg(feature = "sqlx")]
@@ -154,99 +150,91 @@ impl Server {
 
     /// Add a handler to request `GET /*path*/ HTTP/1.1`. valid path format:
     /// 
-    /// - starts with `/`
-    /// - contains only \[a-z, A-Z, _ \] in each section
+    /// `/ | (/:?[a-z, A-Z, _ ]+)+`
     /// 
-    /// In current ohkami, **only final section** can be path param `:{name}` like
+    /// Sections starting with `:` are a path parameters.
+    /// 
     /// ```no_run
     /// Server::setup()
     ///     .GET("/api/users/:id", handler)
     /// ```
     #[allow(non_snake_case)]
-    pub fn GET<'ctx, Fut: Future<Output = Result<Response>> + Send + 'static>(self,
+    pub fn GET<H: Handler<P>, P: Param>(self,
         path:    &'static str,
-        handler: fn(Context) -> Fut,
+        handler: H,
     ) -> Self {
         self.add_handler(Method::GET, path, handler)
     }
 
     /// Add a handler to request `POST /*path*/ HTTP/1.1`. valid path format:
     /// 
-    /// - starts with `/`
-    /// - contains only \[a-z, A-Z, _ \] in each section
+    /// `/ | (/:?[a-z, A-Z, _ ]+)+`
     /// 
-    /// In current ohkami, **only final section** can be path param `:{name}` like
+    /// Sections starting with `:` are a path parameters.
+    /// 
     /// ```no_run
     /// Server::setup()
     ///     .POST("/api/users/:id", handler)
     /// ```
     #[allow(non_snake_case)]
-    pub fn POST<'ctx, Fut: Future<Output = Result<Response>> + Send + 'static>(self,
+    pub fn POST<H: Handler<P>, P: Param>(self,
         path:    &'static str,
-        handler: fn(Context) -> Fut,
+        handler: H,
     ) -> Self {
         self.add_handler(Method::POST, path, handler)
     }
 
     /// Add a handler to request `PATCH /*path*/ HTTP/1.1`. valid path format:
     /// 
-    /// - starts with `/`
-    /// - contains only \[a-z, A-Z, _ \] in each section
+    /// `/ | (/:?[a-z, A-Z, _ ]+)+`
     /// 
-    /// In current ohkami, **only final section** can be path param `:{name}` like
+    /// Sections starting with `:` are a path parameters.
+    /// 
     /// ```no_run
     /// Server::setup()
     ///     .PATCH("/api/users/:id", handler)
     /// ```
     #[allow(non_snake_case)]
-    pub fn PATCH<'ctx, Fut: Future<Output = Result<Response>> + Send + 'static>(self,
+    pub fn PATCH<H: Handler<P>, P: Param>(self,
         path:    &'static str,
-        handler: fn(Context) -> Fut,
+        handler: H,
     ) -> Self {
         self.add_handler(Method::PATCH, path, handler)
     }
 
     /// Add a handler to request `DELETE /*path*/ HTTP/1.1`. valid path format:
     /// 
-    /// - starts with `/`
-    /// - contains only \[a-z, A-Z, _ \] in each section
+    /// `/ | (/:?[a-z, A-Z, _ ]+)+`
     /// 
-    /// In current ohkami, **only final section** can be path param `:{name}` like
+    /// Sections starting with `:` are a path parameters.
+    /// 
     /// ```no_run
     /// Server::setup()
     ///     .DELETE("/api/users/:id", handler)
     /// ```
     #[allow(non_snake_case)]
-    pub fn DELETE<'ctx, Fut: Future<Output = Result<Response>> + Send + 'static>(self,
+    pub fn DELETE<H: Handler<P>, P: Param>(self,
         path:    &'static str,
-        handler: fn(Context) -> Fut,
+        handler: H,
     ) -> Self {
         self.add_handler(Method::DELETE, path, handler)
     }
 
-    fn add_handler<'ctx, Fut: Future<Output = Result<Response>> + Send + 'static>(mut self,
-        method:      Method,
-        path_string: &'static str,
-        handler:     fn(Context) -> Fut,
+    fn add_handler<H: Handler<P>, P: Param>(mut self,
+        method:  Method,
+        path:    &'static str,
+        handler: H,
     ) -> Self {
-        if !is_valid_path(path_string) {
-            panic!("`{path_string}` is invalid as path.");
+        if !is_valid_path(path) {
+            panic!("`{path}` is invalid as path.");
         }
-
-        let (path, has_param) =
-            if let Some((path, _param_name)) = path_string.rsplit_once("/:") {
-                (path, true)
-            } else {
-                (path_string, false)
-            };
-
-        if self.map.insert(
-            (method, (if path == "/" {"/"} else {&path.trim_end_matches('/')}), has_param),
-            Box::new(move |ctx: Context| Box::pin(handler(ctx)))
-        ).is_some() {
-            panic!("handler for `{method} {path_string}` is resistered duplicatedly");
+        if let Err(msg) = self.map.register(
+            method,
+            if path == "/" {"/"} else {&path.trim_end_matches('/')},
+            handler.into_handlefunc()
+        ) {
+            panic!("{msg}")
         }
-
         self
     }
 
@@ -289,26 +277,6 @@ impl Server {
             Ok(())
         })
     }
-
-
-    pub fn assert_to_res<R: ExpectedResponse>(&self, request: &Request, expected_response: R) {
-        let actual_response = block_on(async {
-            consume_buffer(
-                request.into_request_buffer().await,
-                &self.map
-            ).await
-        });
-        assert_eq!(actual_response, expected_response.as_response())
-    }
-    pub fn assert_not_to_res<R: ExpectedResponse>(&self, request: &Request, expected_response: R) {
-        let actual_response = block_on(async {
-            consume_buffer(
-                request.into_request_buffer().await,
-                &self.map
-            ).await
-        });
-        assert_ne!(actual_response, expected_response.as_response())
-    }
 }
 
 pub trait ExpectedResponse {fn as_response(self) -> Result<Response>;}
@@ -318,10 +286,7 @@ impl ExpectedResponse for Result<Response> {fn as_response(self) -> Result<Respo
 
 async fn handle_stream(
     mut stream: TcpStream,
-    handler_map: Arc<HashMap<
-        (Method, &'static str, bool),
-        Handler,
-    >>,
+    handler_map: Arc<Router<'static>>,
     allow_origin_str: Arc<String>,
 
     #[cfg(feature = "sqlx")]
@@ -356,10 +321,7 @@ async fn handle_stream(
 
 async fn setup_response(
     stream: &mut TcpStream,
-    handler_map: Arc<HashMap<
-        (Method, &'static str, bool),
-        Handler
-    >>,
+    handler_map: Arc<Router<'static>>,
 
     #[cfg(feature = "sqlx")]
     connection_pool: Arc<ConnectionPool>,
@@ -368,17 +330,13 @@ async fn setup_response(
     consume_buffer(buffer, &*handler_map).await
 }
 
-async fn consume_buffer(
-    buffer: Buffer,
-    handler_map: &HashMap<
-        (Method, &'static str, bool),
-        Handler
-    >,
+pub(crate) async fn consume_buffer(
+    buffer:      Buffer,
+    handler_map: &Router<'static>,
 ) -> Result<Response> {
     let (
         method,
         path,
-        mut param_range,
         query_range,
         // headers,
         body
@@ -386,37 +344,23 @@ async fn consume_buffer(
         buffer.lines()?
     )?;
 
-    let handler = {
-        match handler_map.get(&(
-            method,
-            &path,
-            false
-        )) {
-            Some(handler) => {
-                param_range = None; //
-                handler
-            },
-            None => handler_map.get(&(
-                method,
-                &path.rsplit_once('/').unwrap_or(("", "")).0,
-                true
-            ))._else(|| Response::NotFound(format!(
-                "handler for `{method} {path}` is not found"
-            )))?
-        }
-    };
+    let (
+        handler,
+        params
+    ) = handler_map.search(
+        method,
+        &path
+    )?;
 
     let context = Context {
         buffer,
         body,
-        param_range,
         query_range,
-
         #[cfg(feature = "sqlx")]
         pool: connection_pool,
     };
 
     tracing::debug!("context: {:#?}", context);
 
-    handler(context).await
+    handler(context, params).await
 }
