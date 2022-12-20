@@ -150,10 +150,10 @@ impl Server {
 
     /// Add a handler to request `GET /*path*/ HTTP/1.1`. valid path format:
     /// 
-    /// - starts with `/`
-    /// - contains only \[a-z, A-Z, _ \] in each section
+    /// - each sectoin starts with `/`
+    /// - each non-param section is a string of `[a-z, A-Z, _ ]+`
+    /// - each param section is a string of `:[a-z, A-Z, _ ]+`
     /// 
-    /// In current ohkami, **only final section** can be path param `:{name}` like
     /// ```no_run
     /// Server::setup()
     ///     .GET("/api/users/:id", handler)
@@ -168,10 +168,10 @@ impl Server {
 
     /// Add a handler to request `POST /*path*/ HTTP/1.1`. valid path format:
     /// 
-    /// - starts with `/`
-    /// - contains only \[a-z, A-Z, _ \] in each section
+    /// - each sectoin starts with `/`
+    /// - each non-param section is a string of `[a-z, A-Z, _ ]+`
+    /// - each param section is a string of `:[a-z, A-Z, _ ]+`
     /// 
-    /// In current ohkami, **only final section** can be path param `:{name}` like
     /// ```no_run
     /// Server::setup()
     ///     .POST("/api/users/:id", handler)
@@ -186,10 +186,10 @@ impl Server {
 
     /// Add a handler to request `PATCH /*path*/ HTTP/1.1`. valid path format:
     /// 
-    /// - starts with `/`
-    /// - contains only \[a-z, A-Z, _ \] in each section
+    /// - each sectoin starts with `/`
+    /// - each non-param section is a string of `[a-z, A-Z, _ ]+`
+    /// - each param section is a string of `:[a-z, A-Z, _ ]+`
     /// 
-    /// In current ohkami, **only final section** can be path param `:{name}` like
     /// ```no_run
     /// Server::setup()
     ///     .PATCH("/api/users/:id", handler)
@@ -204,10 +204,10 @@ impl Server {
 
     /// Add a handler to request `DELETE /*path*/ HTTP/1.1`. valid path format:
     /// 
-    /// - starts with `/`
-    /// - contains only \[a-z, A-Z, _ \] in each section
+    /// - each sectoin starts with `/`
+    /// - each non-param section is a string of `[a-z, A-Z, _ ]+`
+    /// - each param section is a string of `:[a-z, A-Z, _ ]+`
     /// 
-    /// In current ohkami, **only final section** can be path param `:{name}` like
     /// ```no_run
     /// Server::setup()
     ///     .DELETE("/api/users/:id", handler)
