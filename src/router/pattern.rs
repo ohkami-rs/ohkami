@@ -21,7 +21,7 @@ pub(super) enum Pattern<'p> {
     pub fn is(&self, another: &Self) -> bool {
         match self {
             Self::Any => another.is_any(),
-            Self::Str(_) => another.is_str(),
+            Self::Str(p) => p == &another.as_str(),
             Self::Param(_) => another.is_param(),
         }
     }
@@ -31,10 +31,10 @@ pub(super) enum Pattern<'p> {
             _ => false,
         }
     }
-    fn is_str(&self) -> bool {
+    fn as_str(&self) -> &str {
         match self {
-            Pattern::Str(_) => true,
-            _ => false,
+            Pattern::Str(p) => p,
+            _ => unreachable!("`as_str` was called by Pattern other than `Str`"),
         }
     }
     fn is_any(&self) -> bool {

@@ -29,10 +29,10 @@ pub(crate) struct Router<'p> {
 impl<'p> Router<'p> {
     pub fn new() -> Self {
         Self {
-            GET:    Node::new(Pattern::Param("")),
-            POST:   Node::new(Pattern::Param("")),
-            PATCH:  Node::new(Pattern::Param("")),
-            DELETE: Node::new(Pattern::Param("")),
+            GET:    Node::new(Pattern::Str("")),
+            POST:   Node::new(Pattern::Str("")),
+            PATCH:  Node::new(Pattern::Str("")),
+            DELETE: Node::new(Pattern::Str("")),
         }
     }
     pub fn register(&mut self,
