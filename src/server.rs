@@ -150,9 +150,9 @@ impl Server {
 
     /// Add a handler to request `GET /*path*/ HTTP/1.1`. valid path format:
     /// 
-    /// - each sectoin starts with `/`
-    /// - each non-param section is a string of `[a-z, A-Z, _ ]+`
-    /// - each param section is a string of `:[a-z, A-Z, _ ]+`
+    /// `/ | (/:?[a-z, A-Z, _ ]+)+`
+    /// 
+    /// Sections starting with `:` are a path parameters.
     /// 
     /// ```no_run
     /// Server::setup()
@@ -168,9 +168,9 @@ impl Server {
 
     /// Add a handler to request `POST /*path*/ HTTP/1.1`. valid path format:
     /// 
-    /// - each sectoin starts with `/`
-    /// - each non-param section is a string of `[a-z, A-Z, _ ]+`
-    /// - each param section is a string of `:[a-z, A-Z, _ ]+`
+    /// `/ | (/:?[a-z, A-Z, _ ]+)+`
+    /// 
+    /// Sections starting with `:` are a path parameters.
     /// 
     /// ```no_run
     /// Server::setup()
@@ -186,9 +186,9 @@ impl Server {
 
     /// Add a handler to request `PATCH /*path*/ HTTP/1.1`. valid path format:
     /// 
-    /// - each sectoin starts with `/`
-    /// - each non-param section is a string of `[a-z, A-Z, _ ]+`
-    /// - each param section is a string of `:[a-z, A-Z, _ ]+`
+    /// `/ | (/:?[a-z, A-Z, _ ]+)+`
+    /// 
+    /// Sections starting with `:` are a path parameters.
     /// 
     /// ```no_run
     /// Server::setup()
@@ -204,9 +204,9 @@ impl Server {
 
     /// Add a handler to request `DELETE /*path*/ HTTP/1.1`. valid path format:
     /// 
-    /// - each sectoin starts with `/`
-    /// - each non-param section is a string of `[a-z, A-Z, _ ]+`
-    /// - each param section is a string of `:[a-z, A-Z, _ ]+`
+    /// `/ | (/:?[a-z, A-Z, _ ]+)+`
+    /// 
+    /// Sections starting with `:` are a path parameters.
     /// 
     /// ```no_run
     /// Server::setup()
