@@ -19,7 +19,7 @@ ohkami *- [狼] means wolf in Japanese -* is **simple** and **non macro-based** 
 
 ```toml
 [dependencies]
-ohkami = "0.2"
+ohkami = "0.3"
 ```
 
 2. Write your first code with ohkami:
@@ -44,7 +44,7 @@ fn main() -> Result<()> {
 let name: Result<&str> = ctx.query::<&str>("name");
 ```
 ```rust
-let count: Result<usize> = ctx,query::<usize>("count");
+let count: Result<usize> = ctx.query::<usize>("count");
 ```
 ### deserialize request body
 ```rust
@@ -90,10 +90,10 @@ let handler = self.handler.as_ref()._else(|| Response::NotFound(None))?;
 ```rust
 fn main() -> Result<()> {
     let config = Config {
-        log_subscribe:
-            Some(tracing_subscriber::fmt()
+        log_subscribe: Some(
+            tracing_subscriber::fmt()
                 .with_max_level(tracing::Level::TRACE)
-            ),
+        ),
         ..Default::default()
     };
     Server::setup_with(config)
@@ -126,6 +126,7 @@ fn main() -> Result<()> {
         .GET("/api/:dinosaur", get_one_by_name)
         .serve_on(":8000")
 }
+
 async fn get_one_by_name(_: Context, name: String) -> Result<Response> {
     let index = DATA
         .binary_search_by_key(&name.to_ascii_lowercase().as_str(), |data| &data.name)
@@ -135,23 +136,32 @@ async fn get_one_by_name(_: Context, name: String) -> Result<Response> {
 ```
 ```rust
 fn main() -> Result<()> {
-    let config = Config {
-        db_profile: DBprofile {
-            pool_options: PgPoolOptions::new().max_connections(20),
-            url:          DB_URL.as_str(),
-        },
-        ..Default::default()
-    };
-    Server::setup_with(config)
-        .GET("/services/:region/api/users/:id")
-        .serve_on(":8080")
+    Server::setup()
+        .GET("/sleepy/:time", sleepy_hello)
+        .GET("/sleepy/:time/:name", sleepy_hello_with_name)
+        .serve_on(":3000")
 }
-async fn get_user_userid(ctx: Context, region: String, id: i64) -> Result<Response> {
-    // ...
+
+async fn sleepy_hello(_: Context, time: u64) -> Result<Response> {
+    (time < 30)
+        ._else(|| Response::BadRequest("sleeping time (sec) must be less than 30."))?;
+    std::thread::sleep(
+        std::time::Duration::from_secs(time)
+    );
+    Response::OK("Hello, I'm sleepy...")
+}
+
+async fn sleepy_hello_with_name(_: Context, time: u64, name: String) -> Result<Response> {
+    (time < 30)
+        ._else(|| Response::BadRequest("sleeping time (sec) must be less than 30."))?;
+    std::thread::sleep(
+        std::time::Duration::from_secs(time)
+    );
+    Response::OK(format!("Hello {name},,, I'm extremely sleepy..."))
 }
 ```
-### test responses
-1. split server-setup and running:
+### test server
+1. split setup process from `main` function:
 ```rust
 fn server() -> Server {
     Server::setup()
@@ -182,7 +192,8 @@ mod test {
 <br/>
 
 ## Development
-ohkami is on early stage now and not for producntion use.
+ohkami is on early stage now and not for producntion use.\
+Please give me your feedback! [GetHub issue](https://github.com/kana-rus/ohkami/issues)
 
 <br/>
 

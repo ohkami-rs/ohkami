@@ -22,7 +22,5 @@ async fn sleepy_hello_with_name(_: Context, time: u64, name: String) -> Result<R
     std::thread::sleep(
         std::time::Duration::from_secs(time)
     );
-    Response::OK(format!(
-        "Hello {name},,, I'm extremely sleepy..."
-    ))
+    Response::OK(format!("Hello {name},,, I'm extremely sleepy..."))
 }
