@@ -39,16 +39,33 @@ fn main() -> Result<()> {
 <br/>
 
 ## Snippets
-### get query param
+### handle query param
 ```rust
 let name: Result<&str> = ctx.query::<&str>("name");
 ```
 ```rust
 let count: Result<usize> = ctx.query::<usize>("count");
 ```
-### deserialize request body
+### handle request body
 ```rust
 let body: Result<D> = ctx.body::<D>();
+```
+### handle path params
+```rust
+fn main() -> Result<()> {
+    Server::setup()
+        .GET("/sleepy/:time/:name", sleepy_hello_with_name)
+        .serve_on(":3000")
+}
+
+async fn sleepy_hello_with_name(_: Context, time: u64, name: String) -> Result<Response> {
+    (time < 30)
+        ._else(|| Response::BadRequest("sleeping time (sec) must be less than 30."))?;
+    std::thread::sleep(
+        std::time::Duration::from_secs(time)
+    );
+    Response::OK(format!("Hello {name}, I'm extremely sleepy..."))
+}
 ```
 ### return OK response with `text/plain`
 ```rust
@@ -117,48 +134,6 @@ let user = sqlx::query_as::<_, User>(
 ).bind(1)
     .fetch_one(ctx.pool())
     .await?; // `Response` implements `From<sqlx::Error>`
-```
-### handle path params
-```rust
-fn main() -> Result<()> {
-    Server::setup()
-        .GET("/", |_| async {Response::OK("Welcome to dinosaur API!")})
-        .GET("/api/:dinosaur", get_one_by_name)
-        .serve_on(":8000")
-}
-
-async fn get_one_by_name(_: Context, name: String) -> Result<Response> {
-    let index = DATA
-        .binary_search_by_key(&name.to_ascii_lowercase().as_str(), |data| &data.name)
-        ._else(|_| Response::BadRequest("No dinosaurs found"))?;
-    Response::OK(json(&DATA[index])?)
-}
-```
-```rust
-fn main() -> Result<()> {
-    Server::setup()
-        .GET("/sleepy/:time", sleepy_hello)
-        .GET("/sleepy/:time/:name", sleepy_hello_with_name)
-        .serve_on(":3000")
-}
-
-async fn sleepy_hello(_: Context, time: u64) -> Result<Response> {
-    (time < 30)
-        ._else(|| Response::BadRequest("sleeping time (sec) must be less than 30."))?;
-    std::thread::sleep(
-        std::time::Duration::from_secs(time)
-    );
-    Response::OK("Hello, I'm sleepy...")
-}
-
-async fn sleepy_hello_with_name(_: Context, time: u64, name: String) -> Result<Response> {
-    (time < 30)
-        ._else(|| Response::BadRequest("sleeping time (sec) must be less than 30."))?;
-    std::thread::sleep(
-        std::time::Duration::from_secs(time)
-    );
-    Response::OK(format!("Hello {name},,, I'm extremely sleepy..."))
-}
 ```
 ### test server
 1. split setup process from `main` function:
