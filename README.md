@@ -193,7 +193,7 @@ mod test {
 
 ## Development
 ohkami is on early stage now and not for producntion use.\
-Please give me your feedback! [GetHub issue](https://github.com/kana-rus/ohkami/issues)
+Please give me your feedback! → [GetHub issue](https://github.com/kana-rus/ohkami/issues)
 
 <br/>
 
