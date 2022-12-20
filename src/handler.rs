@@ -3,7 +3,7 @@ use crate::{response::Response, result::Result, context::Context, utils::map::Ra
 
 
 pub(crate) type HandleFunc = Box<dyn Fn(Context, RangeList) -> Pin<Box<dyn Future<Output=Result<Response>> + Send >> + Send + Sync>;
-pub(crate) trait Handler<P: Param> {
+pub trait Handler<P: Param> {
     fn into_handlefunc(self) -> HandleFunc;
 }
 
@@ -35,10 +35,9 @@ where
     }
 }
 
-pub(crate) trait Param {}
+pub trait Param {}
 impl Param for () {}
 impl Param for usize {}
-
 
 #[cfg(test)]
 mod test {

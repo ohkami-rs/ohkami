@@ -68,7 +68,7 @@ pub(crate) struct RangeMap(
     }
 }
 
-pub(crate) struct RangeList {
+pub struct RangeList {
     count: usize,
     list:  [Option<BufRange>; RANGE_COLLECTION_SIZE],
 } impl RangeList {
@@ -78,14 +78,14 @@ pub(crate) struct RangeList {
             list:  [None, None, None, None],
         }
     }
-    pub fn push(&mut self, range: BufRange) -> Result<()> {
+    pub(crate) fn push(&mut self, range: BufRange) -> Result<()> {
         (self.count < RANGE_COLLECTION_SIZE)
             ._else(|| Response::NotImplemented("Current ohkami can't handle more than 4 path params"))?;
         self.list[self.count] = Some(range);
         self.count += 1;
         Ok(())
     }
-    pub fn get(&self, index: usize) -> Option<BufRange> {
+    pub(crate) fn get(&self, index: usize) -> Option<BufRange> {
         self.list.as_ref()[index]
     }
 }

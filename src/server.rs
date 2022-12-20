@@ -6,7 +6,6 @@ use async_std::{
     stream::StreamExt, task,
 };
 use tracing_subscriber::fmt::SubscriberBuilder;
-use std::{pin::Pin, future::Future};
 use crate::{
     components::{
         method::Method, cors::CORS, headers::Header
@@ -32,7 +31,6 @@ use sqlx::mysql::{
     MySqlPoolOptions as PoolOptions,
 };
 
-pub(crate) type _Handler = Box<dyn Fn(Context) -> Pin<Box<dyn Future<Output=Result<Response>> + Send >> + Send + Sync>;
 
 /// Type of ohkami's server instance
 pub struct Server {
@@ -161,9 +159,9 @@ impl Server {
     ///     .GET("/api/users/:id", handler)
     /// ```
     #[allow(non_snake_case)]
-    pub fn GET<'ctx, Fut: Future<Output = Result<Response>> + Send + 'static>(self,
+    pub fn GET<H: Handler<P>, P: Param>(self,
         path:    &'static str,
-        handler: fn(Context) -> Fut,
+        handler: H,
     ) -> Self {
         self.add_handler(Method::GET, path, handler)
     }
@@ -179,9 +177,9 @@ impl Server {
     ///     .POST("/api/users/:id", handler)
     /// ```
     #[allow(non_snake_case)]
-    pub fn POST<'ctx, Fut: Future<Output = Result<Response>> + Send + 'static>(self,
+    pub fn POST<H: Handler<P>, P: Param>(self,
         path:    &'static str,
-        handler: fn(Context) -> Fut,
+        handler: H,
     ) -> Self {
         self.add_handler(Method::POST, path, handler)
     }
@@ -197,9 +195,9 @@ impl Server {
     ///     .PATCH("/api/users/:id", handler)
     /// ```
     #[allow(non_snake_case)]
-    pub fn PATCH<'ctx, Fut: Future<Output = Result<Response>> + Send + 'static>(self,
+    pub fn PATCH<H: Handler<P>, P: Param>(self,
         path:    &'static str,
-        handler: fn(Context) -> Fut,
+        handler: H,
     ) -> Self {
         self.add_handler(Method::PATCH, path, handler)
     }
@@ -215,17 +213,17 @@ impl Server {
     ///     .DELETE("/api/users/:id", handler)
     /// ```
     #[allow(non_snake_case)]
-    pub fn DELETE<'ctx, Fut: Future<Output = Result<Response>> + Send + 'static>(self,
+    pub fn DELETE<H: Handler<P>, P: Param>(self,
         path:    &'static str,
-        handler: fn(Context) -> Fut,
+        handler: H,
     ) -> Self {
         self.add_handler(Method::DELETE, path, handler)
     }
 
     fn add_handler<H: Handler<P>, P: Param>(mut self,
-        method:      Method,
-        path: &'static str,
-        handler:     H,
+        method:  Method,
+        path:    &'static str,
+        handler: H,
     ) -> Self {
         if !is_valid_path(path) {
             panic!("`{path}` is invalid as path.");
