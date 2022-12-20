@@ -6,7 +6,7 @@ use async_std::{
     stream::StreamExt, task,
 };
 use tracing_subscriber::fmt::SubscriberBuilder;
-use std::{collections::HashMap, pin::Pin, future::Future};
+use std::{pin::Pin, future::Future};
 use crate::{
     components::{
         method::Method, cors::CORS, headers::Header
@@ -16,7 +16,7 @@ use crate::{
     result::{Result, ElseResponse},
     utils::{
         parse::parse_request_lines, validation::{self, is_valid_path}, buffer::Buffer, map::RangeList, 
-    }, router::Router,
+    }, router::Router, handler::{Handler, Param},
 };
 
 #[cfg(feature = "postgres")]
@@ -30,7 +30,7 @@ use sqlx::mysql::{
     MySqlPoolOptions as PoolOptions,
 };
 
-pub(crate) type Handler = Box<dyn Fn(Context) -> Pin<Box<dyn Future<Output=Result<Response>> + Send >> + Send + Sync>;
+pub(crate) type _Handler = Box<dyn Fn(Context) -> Pin<Box<dyn Future<Output=Result<Response>> + Send >> + Send + Sync>;
 
 /// Type of ohkami's server instance
 pub struct Server {
@@ -220,10 +220,10 @@ impl Server {
         self.add_handler(Method::DELETE, path, handler)
     }
 
-    fn add_handler<'ctx, Fut: Future<Output = Result<Response>> + Send + 'static>(mut self,
+    fn add_handler<H: Handler<P>, P: Param>(mut self,
         method:      Method,
         path_string: &'static str,
-        handler:     fn(Context) -> Fut,
+        handler:     H,
     ) -> Self {
         if !is_valid_path(path_string) {
             panic!("`{path_string}` is invalid as path.");
@@ -239,7 +239,7 @@ impl Server {
         if let Err(msg) = self.map.register(
             method,
             if path == "/" {"/"} else {&path.trim_end_matches('/')},
-            Box::new(move |ctx: Context| Box::pin(handler(ctx)))
+            handler.into_handlefunc()
         ) {
             panic!("{msg}")
         }
@@ -346,7 +346,6 @@ pub(crate) async fn consume_buffer(
     let (
         method,
         path,
-        // mut param_range,
         query_range,
         // headers,
         body
@@ -362,19 +361,15 @@ pub(crate) async fn consume_buffer(
         &path
     )?;
 
-    let params = RangeList::new();
-
     let context = Context {
         buffer,
-
         body,
         query_range,
-
         #[cfg(feature = "sqlx")]
         pool: connection_pool,
     };
 
     tracing::debug!("context: {:#?}", context);
 
-    handler(context).await
+    handler(context, params).await
 }

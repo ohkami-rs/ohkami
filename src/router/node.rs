@@ -1,11 +1,11 @@
 use std::str::Split;
-use crate::{utils::{map::RangeList, buffer::BufRange}, result::{Result, ElseResponse}, response::Response};
-use super::{pattern::Pattern, Handler};
+use crate::{utils::{map::RangeList, buffer::BufRange}, result::{Result, ElseResponse}, response::Response, handler::HandleFunc};
+use super::{pattern::Pattern,};
 
 // #derive[Debug, PartialEq]
 pub(super) struct Node<'p> {
     pub(super) pattern:  Pattern<'p>,
-    pub(super) handler:  Option<Handler>,
+    pub(super) handler:  Option<HandleFunc>,
     pub(super) children: Vec<Node<'p>>,
 } impl<'p> Node<'p> {
     pub fn new(pattern: Pattern<'p>) -> Self {
@@ -20,7 +20,7 @@ pub(super) struct Node<'p> {
         mut path:   Split<'p, char>,
         mut params: RangeList,
         read_pos:   usize,
-    ) -> Result<(&Handler, RangeList)> {
+    ) -> Result<(&HandleFunc, RangeList)> {
         if let Some(section) = path.next() {
             if let Some(child) = 'search: {
                 for child in &self.children {
@@ -48,7 +48,7 @@ pub(super) struct Node<'p> {
 
     pub fn register(&mut self,
         mut path: Split<'p, char>,
-        handler:  Handler,
+        handler:  HandleFunc,
         err_msg:  String,
     ) -> std::result::Result<(), String> {
         if let Some(section) = path.next() {
@@ -77,14 +77,14 @@ pub(super) struct Node<'p> {
 
     fn attach(&mut self,
         path:    Split<'p, char>,
-        handler: Handler,
+        handler: HandleFunc,
     ) {
         let path = path.rev().collect::<Vec<_>>();
         self._attach(path, handler)
     }
     fn _attach(&mut self,
         mut path: Vec<&'p str>,
-        handler:  Handler,
+        handler:  HandleFunc,
     ) {
         if let Some(section) = path.pop() {
             let mut new_node = Node::new(Pattern::from(section));

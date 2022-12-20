@@ -1,10 +1,5 @@
 use crate::{
-    components::method::Method, utils::map::RangeList, result::Result,
-};
-pub(self) use crate::{
-    // === actual Handler ===
-    server::Handler,
-    // ======================
+    components::method::Method, utils::map::RangeList, result::Result, handler::HandleFunc,
 };
 
 // === mock for test ===
@@ -40,7 +35,7 @@ impl<'p> Router<'p> {
     pub fn register(&mut self,
         method:       Method,
         path_pattern: &'static str,
-        handler:      Handler,
+        handler:      HandleFunc,
     ) -> std::result::Result<(), String> {
         let err_msg = format!("path pattern `{path_pattern}` is resistred duplicatedly");
 
@@ -59,7 +54,7 @@ impl<'p> Router<'p> {
     pub fn search(&self,
         method:       Method,
         request_path: &'p str,
-    ) -> Result<(&Handler, RangeList)> {
+    ) -> Result<(&HandleFunc, RangeList)> {
         let mut path = request_path.split('/');
         { path.next(); }
 
