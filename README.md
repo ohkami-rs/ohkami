@@ -39,14 +39,12 @@ fn main() -> Result<()> {
 <br/>
 
 ## Snippets
-### get path param
-```rust
-let param: Option<&str> = ctx.param();
-// current ohkami only supports single path param at the end of a path
-```
 ### get query param
 ```rust
-let query: Result<&str> = ctx.query("key");
+let name: Result<&str> = ctx.query::<&str>("name");
+```
+```rust
+let count: Result<usize> = ctx,query::<usize>("count");
 ```
 ### deserialize request body
 ```rust
@@ -67,12 +65,6 @@ Response::OK(json!("ok": true))
 Response::OK(json(user)?) // serialize Rust value into JSON
 ```
 ### handle errors
-```rust
-let count = ctx.query("count")?.parse::<usize>()
-    ._else(|_| Response::BadRequest("`count` must be an integer"))?;
-    // or
-    ._else(|_| Response::BadRequest(None))?;
-```
 ```rust
 let user = ctx.body::<User>()?;
 
@@ -125,6 +117,38 @@ let user = sqlx::query_as::<_, User>(
 ).bind(1)
     .fetch_one(ctx.pool())
     .await?; // `Response` implements `From<sqlx::Error>`
+```
+### handle path params
+```rust
+fn main() -> Result<()> {
+    Server::setup()
+        .GET("/", |_| async {Response::OK("Welcome to dinosaur API!")})
+        .GET("/api/:dinosaur", get_one_by_name)
+        .serve_on(":8000")
+}
+async fn get_one_by_name(_: Context, name: String) -> Result<Response> {
+    let index = DATA
+        .binary_search_by_key(&name.to_ascii_lowercase().as_str(), |data| &data.name)
+        ._else(|_| Response::BadRequest("No dinosaurs found"))?;
+    Response::OK(json(&DATA[index])?)
+}
+```
+```rust
+fn main() -> Result<()> {
+    let config = Config {
+        db_profile: DBprofile {
+            pool_options: PgPoolOptions::new().max_connections(20),
+            url:          DB_URL.as_str(),
+        },
+        ..Default::default()
+    };
+    Server::setup_with(config)
+        .GET("/services/:region/api/users/:id")
+        .serve_on(":8080")
+}
+async fn get_user_userid(ctx: Context, region: String, id: i64) -> Result<Response> {
+    // ...
+}
 ```
 ### test responses
 1. split server-setup and running:

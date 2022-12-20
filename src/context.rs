@@ -4,7 +4,7 @@ use crate::{
     result::{Result, ElseResponse},
     utils::{range::RangeMap, buffer::Buffer},
     components::json::JSON,
-    response::Response,
+    response::Response, prelude::ElseResponseWithErr,
 };
 
 #[cfg(feature = "sqlx")]
@@ -41,12 +41,14 @@ impl<'d> Context {
     /// ```no_run
     /// let count = ctx.query("count")?;
     /// ```
-    pub fn query(&self, key: &str) -> Result<&str> {
-        self.query_range
-            .as_ref()
-            ._else(|| Response::BadRequest(format!("expected query param `{key}`")))?
-            .read_match_part_of_buffer(key, &self.buffer)
-            ._else(|| Response::BadRequest(format!("expected query param `{key}`")))
+    pub fn query<'ctx, Q: Query<'ctx>>(&'ctx self, key: &str) -> Result<Q> {
+        Query::parse(
+            self.query_range
+                .as_ref()
+                ._else(|| Response::BadRequest(format!("expected query param `{key}`")))?
+                .read_match_part_of_buffer(key, &self.buffer)
+                ._else(|| Response::BadRequest(format!("expected query param `{key}`")))?
+        )
     }
 
     /// Return a reference of `PgPool` (if feature = "postgres") or `MySqlPool` (if feature = "mysql").
@@ -55,6 +57,12 @@ impl<'d> Context {
         &*self.pool
     }
 }
+
+pub trait Query<'q> {fn parse(q: &'q str) -> Result<Self> where Self: Sized;}
+impl<'q> Query<'q> for &'q str {fn parse(q: &'q str) -> Result<Self> {Ok(q)}}
+impl<'q> Query<'q> for u64 {fn parse(q: &'q str) -> Result<Self> {q.parse()._else(|_| Response::BadRequest("format of query parameter is wrong"))}}
+impl<'q> Query<'q> for i64 {fn parse(q: &'q str) -> Result<Self> {q.parse()._else(|_| Response::BadRequest("format of query parameter is wrong"))}}
+impl<'q> Query<'q> for usize {fn parse(q: &'q str) -> Result<Self> {q.parse()._else(|_| Response::BadRequest("format of query parameter is wrong"))}}
 
 impl Debug for Context {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

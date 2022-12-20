@@ -331,7 +331,7 @@ async fn setup_response(
 }
 
 pub(crate) async fn consume_buffer(
-    buffer: Buffer,
+    buffer:      Buffer,
     handler_map: &Router<'static>,
 ) -> Result<Response> {
     let (
