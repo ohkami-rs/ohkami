@@ -19,21 +19,24 @@ pub(super) struct Node<'p> {
     pub fn search(&self,
         mut path:   Split<'p, char>,
         mut params: RangeList,
-        read_pos:   usize,
+        mut read_pos:   usize,
     ) -> Result<(&HandleFunc, RangeList)> {
         if let Some(section) = path.next() {
+            read_pos += 1 /* skip '/' */;
             if let Some(child) = 'search: {
                 for child in &self.children {
                     if child.pattern.matches(section) {
                         if child.pattern.is_param() {
-                            params.push(BufRange::new(read_pos, read_pos + section.len()))?
+                            let range = BufRange::new(read_pos + 1, read_pos + section.len());
+                            tracing::debug!("path param: `{}` (range: {:?})", section, range);
+                            params.push(range)?;
                         }
                         break 'search Some(child)
                     }
                 }
                 None
             } {
-                child.search(path, params, read_pos + section.len() + 1)
+                child.search(path, params, read_pos + section.len())
             } else {
                 Err(Response::NotFound(None))
             }

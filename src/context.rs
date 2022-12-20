@@ -67,11 +67,8 @@ impl<'q> Query<'q> for usize {fn parse(q: &'q str) -> Result<Self> {q.parse()._e
 impl Debug for Context {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "
-param: {:?} (range: {:?}),
 query: {:?} (range: {:?}),
 body: {:?}",
-            "unimplemented", // self.param(),
-            "unimplemented", // self.param_range,
             self.query_range.as_ref().map(|map| map.debug_fmt_with(&self.buffer)),
             self.query_range,
             self.body,
