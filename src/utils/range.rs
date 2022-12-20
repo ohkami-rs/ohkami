@@ -61,7 +61,11 @@ pub struct RangeList {
         self.count += 1;
         Ok(())
     }
-    pub(crate) fn get(&self, index: usize) -> Option<BufRange> {
-        self.list.as_ref()[index]
+    pub(crate) fn get1(&self) -> Option<BufRange> {
+        self.list.as_ref()[0]
+    }
+    pub(crate) fn get2(&self) -> Option<(BufRange, BufRange)> {
+        let list = self.list.as_ref();
+        Some((list[0]?, list[1]?))
     }
 }
