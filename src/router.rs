@@ -70,7 +70,6 @@ impl<'p> Router<'p> {
             Method::DELETE => &self.DELETE,
         };
 
-        let mut params = StrMap::new();
-        tree.search(path, params)
+        tree.search(path, StrMap::new())
     }
 }

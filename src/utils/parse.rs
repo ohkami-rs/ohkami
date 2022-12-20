@@ -13,7 +13,7 @@ pub(crate) fn parse_request_lines(
 ) -> Result<(
     Method,
     String/*path*/,
-    Option<BufRange>/*path param*/,
+    // Option<BufRange>/*path param*/,
     Option<RangeMap>/*query param*/,
     // headers,
     Option<JSON>/*request body*/,
@@ -32,7 +32,7 @@ pub(crate) fn parse_request_lines(
     tracing::info!("got a request: {} {}", method_str, path_str);
 
     let (path, query) = extract_query(path_str, method_str.len() - 1/*' '*/)?;
-    let /*(path, param)*/ param = extract_param(path, method_str.len() - 1/*' '*/);
+    // let /*(path, param)*/ param = extract_param(path, method_str.len() - 1/*' '*/);
 
     while let Some(line) = lines.next() {
         /*
@@ -46,7 +46,7 @@ pub(crate) fn parse_request_lines(
     Ok((
         Method::parse(method_str)?,
         (if path=="/" {path} else {path.trim_end_matches('/')}).to_owned(),
-        param,
+        // param,
         query,
         body
     ))

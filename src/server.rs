@@ -15,7 +15,7 @@ use crate::{
     response::Response,
     result::{Result, ElseResponse},
     utils::{
-        parse::parse_request_lines, validation::{self, is_valid_path}, buffer::Buffer
+        parse::parse_request_lines, validation::{self, is_valid_path}, buffer::Buffer, map::StrMap
     }, router::Router,
 };
 
@@ -346,7 +346,7 @@ pub(crate) async fn consume_buffer(
     let (
         method,
         path,
-        mut param_range,
+        // mut param_range,
         query_range,
         // headers,
         body
@@ -354,12 +354,23 @@ pub(crate) async fn consume_buffer(
         buffer.lines()?
     )?;
 
-    let (handler, params) = handler_map.search(method, &path)?;
+    let (
+        handler,
+        params
+    ) = handler_map.search(
+        method,
+        &path
+    )?;
+
+    let params = StrMap::new();
 
     let context = Context {
         buffer,
+
+        // param_range,
+        params,
+
         body,
-        param_range,
         query_range,
 
         #[cfg(feature = "sqlx")]
