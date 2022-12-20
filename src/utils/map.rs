@@ -1,3 +1,5 @@
+use crate::{result::{Result, ElseResponse}, response::Response};
+
 use super::buffer::{Buffer, BufRange};
 // use crate::{response::Response, result::{Result, ElseResponseWithErr}};
 // use super::{hash::{TABLE_SIZE, linear_congruential_hash}, buffer::Buffer};
@@ -77,8 +79,9 @@ pub(crate) struct StrMap<'s> {
             map:   [None, None, None, None]
         }
     }
-    pub fn insert(&mut self, key: &str, value: &str) -> std::result::Result<(), ()> {
-        if self.count == 4 {return Err(())}
+    pub fn push(&mut self, key: &'s str, value: &'s str) -> Result<()> {
+        (self.count == 4)
+            ._else(|| Response::NotImplemented("Current ohkami can't handle more than 4 path params"))?;
         self.map[self.count] = Some((key, value));
         self.count += 1;
         Ok(())

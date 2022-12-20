@@ -9,9 +9,9 @@ pub(super) struct Node<'p> {
     pub(super) handler:  Option<Handler>,
     pub(super) children: Vec<Node<'p>>,
 } impl<'p> Node<'p> {
-    pub fn new(section: &'p str) -> Self {
+    pub fn new(pattern: Pattern<'p>) -> Self {
         Self {
-            pattern:  Pattern::from(section),
+            pattern,
             handler:  None,
             children: Vec::new(),
         }
@@ -19,19 +19,22 @@ pub(super) struct Node<'p> {
 
     pub fn search(&self,
         mut path: Split<'p, char>,
-        mut params: StrMap
+        mut params: StrMap<'p>
     ) -> Result<(&Handler, StrMap)> {
         if let Some(section) = path.next() {
             if let Some(child) = 'search: {
                 for child in &self.children {
                     let (is_match, param) = child.pattern.matches(section);
+                    if let Some((key, value)) = param {
+                        params.push(key, value)?
+                    }
                     if is_match {
                         break 'search Some(child)
                     }
                 }
                 None
             } {
-                child.search(path)
+                child.search(path, params)
             } else {
                 Err(Response::NotFound(None))
             }
@@ -49,9 +52,10 @@ pub(super) struct Node<'p> {
         err_msg:  String,
     ) -> std::result::Result<(), String> {
         if let Some(section) = path.next() {
+            let pattern = Pattern::from(section);
             if let Some(child) = 'search: {
                 for child in &mut self.children {
-                    if child.pattern.matches(section) {
+                    if child.pattern.is(&pattern) {
                         break 'search Some(child)
                     }
                 }
@@ -60,7 +64,7 @@ pub(super) struct Node<'p> {
                 child.register(path, handler, err_msg)
 
             } else {
-                let mut new_branch = Node::new(section);
+                let mut new_branch = Node::new(pattern);
                 new_branch.attach(path, handler);
                 self.children.push(new_branch);
                 Ok(())
@@ -83,7 +87,7 @@ pub(super) struct Node<'p> {
         handler:  Handler,
     ) {
         if let Some(section) = path.pop() {
-            let mut new_node = Node::new(section);
+            let mut new_node = Node::new(Pattern::from(section));
             new_node._attach(path, handler);
             self.children.push(new_node)
         } else {

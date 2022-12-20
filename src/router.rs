@@ -1,5 +1,5 @@
 use crate::{
-    components::method::Method, utils::map::StrMap,
+    components::method::Method, utils::map::StrMap, result::Result,
     // === actual Handler ===
     // server::Handler,
     // ======================
@@ -11,6 +11,8 @@ pub(self) type Handler = usize;
 
 mod pattern;
 mod node; use node::Node;
+
+use self::pattern::Pattern;
 
 mod test_resister;
 mod test_search;
@@ -27,10 +29,10 @@ pub(crate) struct Router<'p> {
 impl<'p> Router<'p> {
     pub fn new() -> Self {
         Self {
-            GET:    Node::new(""),
-            POST:   Node::new(""),
-            PATCH:  Node::new(""),
-            DELETE: Node::new(""),
+            GET:    Node::new(Pattern::Param("")),
+            POST:   Node::new(Pattern::Param("")),
+            PATCH:  Node::new(Pattern::Param("")),
+            DELETE: Node::new(Pattern::Param("")),
         }
     }
     pub fn register(&mut self,
@@ -55,7 +57,7 @@ impl<'p> Router<'p> {
     pub fn search(&self,
         method:       Method,
         request_path: &'p str,
-    ) -> Option<(&Handler, StrMap)> {
+    ) -> Result<(&Handler, StrMap)> {
         let mut path = request_path.split('/');
         { path.next(); }
 

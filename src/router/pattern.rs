@@ -11,11 +11,18 @@ pub(super) enum Pattern<'p> {
             p => Self::Str(p),
         }
     }
-    pub fn matches(&self, section: &str) -> (bool, Option<(&'p str, &'p str)>) {
+    pub fn matches(&self, section: &'p str) -> (bool, Option<(&'p str, &'p str)>) {
         match self {
             Pattern::Any => (true, None),
             Pattern::Str(p) => (p == &section, None),
             Pattern::Param(name) => (true, Some((name, section))),
+        }
+    }
+    pub fn is(&self, another: &Self) -> bool {
+        match self {
+            Self::Any => another.is_any(),
+            Self::Str(_) => another.is_str(),
+            Self::Param(_) => another.is_param(),
         }
     }
     fn is_param(&self) -> bool {
@@ -27,6 +34,12 @@ pub(super) enum Pattern<'p> {
     fn is_str(&self) -> bool {
         match self {
             Pattern::Str(_) => true,
+            _ => false,
+        }
+    }
+    fn is_any(&self) -> bool {
+        match self {
+            Pattern::Any => true,
             _ => false,
         }
     }
