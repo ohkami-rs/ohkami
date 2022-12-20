@@ -1,6 +1,6 @@
 use std::str::Split;
 use crate::{utils::{map::RangeList, buffer::BufRange}, result::{Result, ElseResponse}, response::Response, handler::HandleFunc};
-use super::{pattern::Pattern,};
+use super::pattern::Pattern;
 
 // #derive[Debug, PartialEq]
 pub(super) struct Node<'p> {
@@ -24,11 +24,10 @@ pub(super) struct Node<'p> {
         if let Some(section) = path.next() {
             if let Some(child) = 'search: {
                 for child in &self.children {
-                    let (is_match, param) = child.pattern.matches(section);
-                    if let Some(param) = param {
-                        params.push(BufRange::new(read_pos, read_pos + section.len()))?
-                    }
-                    if is_match {
+                    if child.pattern.matches(section) {
+                        if child.pattern.is_param() {
+                            params.push(BufRange::new(read_pos, read_pos + section.len()))?
+                        }
                         break 'search Some(child)
                     }
                 }

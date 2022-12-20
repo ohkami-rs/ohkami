@@ -13,10 +13,12 @@ use crate::{
     },
     context::Context,
     response::Response,
-    result::{Result, ElseResponse},
+    result::Result,
     utils::{
-        parse::parse_request_lines, validation::{self, is_valid_path}, buffer::Buffer, map::RangeList, 
-    }, router::Router, handler::{Handler, Param},
+        parse::parse_request_lines, validation::{self, is_valid_path}, buffer::Buffer
+    },
+    router::Router,
+    handler::{Handler, Param},
 };
 
 #[cfg(feature = "postgres")]
@@ -222,20 +224,12 @@ impl Server {
 
     fn add_handler<H: Handler<P>, P: Param>(mut self,
         method:      Method,
-        path_string: &'static str,
+        path: &'static str,
         handler:     H,
     ) -> Self {
-        if !is_valid_path(path_string) {
-            panic!("`{path_string}` is invalid as path.");
+        if !is_valid_path(path) {
+            panic!("`{path}` is invalid as path.");
         }
-
-        let (path, has_param) =
-            if let Some((path, _param_name)) = path_string.rsplit_once("/:") {
-                (path, true)
-            } else {
-                (path_string, false)
-            };
-
         if let Err(msg) = self.map.register(
             method,
             if path == "/" {"/"} else {&path.trim_end_matches('/')},
@@ -243,7 +237,6 @@ impl Server {
         ) {
             panic!("{msg}")
         }
-
         self
     }
 

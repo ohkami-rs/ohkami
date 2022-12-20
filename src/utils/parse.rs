@@ -7,13 +7,9 @@ use crate::{
 };
 
 
-pub(crate) fn parse_request_lines(
-    // lines: &'l mut Lines
-    mut lines: Lines
-) -> Result<(
+pub(crate) fn parse_request_lines(mut lines: Lines) -> Result<(
     Method,
     String/*path*/,
-    // Option<BufRange>/*path param*/,
     Option<RangeMap>/*query param*/,
     // headers,
     Option<JSON>/*request body*/,
@@ -32,7 +28,6 @@ pub(crate) fn parse_request_lines(
     tracing::info!("got a request: {} {}", method_str, path_str);
 
     let (path, query) = extract_query(path_str, method_str.len() - 1/*' '*/)?;
-    // let /*(path, param)*/ param = extract_param(path, method_str.len() - 1/*' '*/);
 
     while let Some(line) = lines.next() {
         /*
@@ -78,14 +73,4 @@ fn extract_query(
     }
 
     Ok((path_part, Some(map)))
-}
-fn extract_param(
-    path:   &str,
-    offset: usize
-) -> Option<BufRange> {
-    if path.ends_with('/') {return None}
-    Some(BufRange::new(
-        offset+1 + path.rfind('/')?+1 + 1,
-        offset+1 + path.len()
-    ))
 }
