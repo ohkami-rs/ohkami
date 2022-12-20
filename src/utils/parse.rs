@@ -3,7 +3,7 @@ use crate::{
     components::{method::Method, json::{json, JSON}},
     response::Response,
     result::{Result, ElseResponse},
-    utils::{buffer::BufRange, map::{RangeMap, RANGE_MAP_SIZE}},
+    utils::{buffer::BufRange, map::{RangeMap, RANGE_COLLECTION_SIZE}},
 };
 
 
@@ -67,7 +67,7 @@ fn extract_query(
     let mut map = RangeMap::new();
     let mut read_pos = offset + path_part.len() + 1/*'?'*/ + 1;
     for (i, (key, value)) in queries.enumerate() {
-        (i < RANGE_MAP_SIZE)._else(||
+        (i < RANGE_COLLECTION_SIZE)._else(||
             Response::BadRequest("Sorry, I can't handle more than 4 query params")
         )?;
         map.insert(i,

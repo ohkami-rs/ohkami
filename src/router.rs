@@ -1,5 +1,5 @@
 use crate::{
-    components::method::Method, utils::map::StrMap, result::Result,
+    components::method::Method, utils::map::RangeList, result::Result,
 };
 pub(self) use crate::{
     // === actual Handler ===
@@ -59,9 +59,11 @@ impl<'p> Router<'p> {
     pub fn search(&self,
         method:       Method,
         request_path: &'p str,
-    ) -> Result<(&Handler, StrMap)> {
+    ) -> Result<(&Handler, RangeList)> {
         let mut path = request_path.split('/');
         { path.next(); }
+
+        let offset = method.len();
 
         let tree = match method {
             Method::GET    => &self.GET,
@@ -70,6 +72,6 @@ impl<'p> Router<'p> {
             Method::DELETE => &self.DELETE,
         };
 
-        tree.search(path, StrMap::new())
+        tree.search(path, RangeList::new(), offset)
     }
 }

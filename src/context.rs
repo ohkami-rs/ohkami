@@ -3,7 +3,7 @@ use std::fmt::Debug;
 use serde::Deserialize;
 use crate::{
     result::{Result, ElseResponse},
-    utils::{map::{RangeMap, StrMap}, buffer::{Buffer, BufRange}},
+    utils::{map::{RangeMap, RangeList}, buffer::Buffer},
     components::json::JSON,
     response::Response,
 };
@@ -17,10 +17,7 @@ use sqlx::MySqlPool as ConnectionPool;
 
 /// Type of context of a HTTP request.
 pub struct Context {
-    pub(crate) buffer: Buffer,
-
-    // pub(crate) param_range: Option<BufRange>,
-    pub(crate) params: StrMap<'static>,
+    pub(crate) buffer:      Buffer,
 
     pub(crate) body:        Option<JSON>,
     pub(crate) query_range: Option<RangeMap>,
@@ -30,10 +27,6 @@ pub struct Context {
 }
 
 impl<'d> Context {
-    pub fn param(&self, key: &str) -> Result<&str> {
-        
-    }
-
     /// Try deserialize the reuqest body into Rust struct that implements `serde::Deserialize`, and return `Result</* that struct */>`. If request doesn't have body, this returns `Err(Response)` of "Bad Request".
     pub fn body<D: Deserialize<'d>>(&'d self) -> Result<D> {
         let json = self.body.as_ref()

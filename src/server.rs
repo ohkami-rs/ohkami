@@ -15,7 +15,7 @@ use crate::{
     response::Response,
     result::{Result, ElseResponse},
     utils::{
-        parse::parse_request_lines, validation::{self, is_valid_path}, buffer::Buffer, map::StrMap
+        parse::parse_request_lines, validation::{self, is_valid_path}, buffer::Buffer, map::RangeList, 
     }, router::Router,
 };
 
@@ -362,13 +362,10 @@ pub(crate) async fn consume_buffer(
         &path
     )?;
 
-    let params = StrMap::new();
+    let params = RangeList::new();
 
     let context = Context {
         buffer,
-
-        // param_range,
-        params,
 
         body,
         query_range,

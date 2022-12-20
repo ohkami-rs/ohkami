@@ -26,10 +26,11 @@ use super::buffer::{Buffer, BufRange};
 // }
 
 
-pub(crate) const RANGE_MAP_SIZE: usize = 4;
+pub(crate) const RANGE_COLLECTION_SIZE: usize = 4;
+
 #[derive(Debug)]
 pub(crate) struct RangeMap(
-    [Option<(BufRange, BufRange)>; RANGE_MAP_SIZE]
+    [Option<(BufRange, BufRange)>; RANGE_COLLECTION_SIZE]
 ); impl RangeMap {
     pub fn new() -> Self {
         Self([None, None, None, None])
@@ -67,24 +68,50 @@ pub(crate) struct RangeMap(
     }
 }
 
-
-pub(crate) const STR_MAP_SIZE: usize = 4;
-#[derive(Debug, PartialEq)]
-pub(crate) struct StrMap<'s> {
-    pub(crate) count: usize,
-    pub(crate) map:   [Option<(&'s str, &'s str)>; STR_MAP_SIZE]
-} impl<'s> StrMap<'s> {
+pub(crate) struct RangeList {
+    count: usize,
+    list:  [Option<BufRange>; RANGE_COLLECTION_SIZE],
+} impl RangeList {
     pub fn new() -> Self {
         Self {
             count: 0,
-            map:   [None, None, None, None]
+            list:  [None, None, None, None],
         }
     }
-    pub fn push(&mut self, key: &'s str, value: &'s str) -> Result<()> {
-        (self.count < 4)
+    pub fn push(&mut self, range: BufRange) -> Result<()> {
+        (self.count < RANGE_COLLECTION_SIZE)
             ._else(|| Response::NotImplemented("Current ohkami can't handle more than 4 path params"))?;
-        self.map[self.count] = Some((key, value));
+        self.list[self.count] = Some(range);
         self.count += 1;
         Ok(())
     }
+    pub fn get(&self, index: usize) -> Option<BufRange> {
+        self.list.as_ref()[index]
+    }
 }
+
+
+// pub(crate) const STR_MAP_SIZE: usize = 4;
+// #[derive(Debug, PartialEq)]
+// pub(crate) struct StrMap<'s> {
+//     pub(crate) count: usize,
+//     pub(crate) map:   [Option<(&'s str, &'s str)>; STR_MAP_SIZE]
+// } impl<'s> StrMap<'s> {
+//     pub fn new() -> Self {
+//         Self {
+//             count: 0,
+//             map:   [None, None, None, None]
+//         }
+//     }
+//     pub fn push(&mut self, key: &'s str, value: &'s str) -> Result<()> {
+//         (self.count < 4)
+//             ._else(|| Response::NotImplemented("Current ohkami can't handle more than 4 path params"))?;
+//         self.map[self.count] = Some((key, value));
+//         self.count += 1;
+//         Ok(())
+//     }
+//     pub fn get(&self, index: usize) -> Result<(&str, &str)> {
+//         self.map[index]
+//             ._else(|| Response::BadRequest("format of path parameter is wrong"))
+//     }
+// }

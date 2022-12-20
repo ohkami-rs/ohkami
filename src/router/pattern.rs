@@ -1,33 +1,33 @@
 #[derive(PartialEq, Debug)]
 pub(super) enum Pattern<'p> {
     Any,
+    Param,
     Str(&'p str),
-    Param(&'p str /* param name */),
 } impl<'p> Pattern<'p> {
     pub fn from(section: &'p str) -> Self {
         match section {
             "*" => Self::Any,
-            p if p.starts_with(':') => Self::Param(&p[1..]),
+            p if p.starts_with(':') => Self::Param,
             p => Self::Str(p),
         }
     }
-    pub fn matches(&self, section: &'p str) -> (bool, Option<(&'p str, &'p str)>) {
+    pub fn matches(&self, section: &'p str) -> (bool, Option<&'p str>) {
         match self {
             Pattern::Any => (true, None),
             Pattern::Str(p) => (p == &section, None),
-            Pattern::Param(name) => (true, Some((name, section))),
+            Pattern::Param => (true, Some(section)),
         }
     }
     pub fn is(&self, another: &Self) -> bool {
         match self {
             Self::Any => another.is_any(),
             Self::Str(p) => p == &another.as_str(),
-            Self::Param(_) => another.is_param(),
+            Self::Param => another.is_param(),
         }
     }
     fn is_param(&self) -> bool {
         match self {
-            Pattern::Param(_) => true,
+            Pattern::Param => true,
             _ => false,
         }
     }
