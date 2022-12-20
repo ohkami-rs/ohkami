@@ -25,9 +25,9 @@ fn register_one_1() {
                     }
                 ],
             },
-            POST:   Node::new(""),
-            PATCH:  Node::new(""),
-            DELETE: Node::new(""),
+            POST:   Node::new(Pattern::Str("")),
+            PATCH:  Node::new(Pattern::Str("")),
+            DELETE: Node::new(Pattern::Str("")),
         }
     )
 }
@@ -50,9 +50,9 @@ fn register_one_2() {
                     }
                 ],
             },
-            POST:   Node::new(""),
-            PATCH:  Node::new(""),
-            DELETE: Node::new(""),
+            POST:   Node::new(Pattern::Str("")),
+            PATCH:  Node::new(Pattern::Str("")),
+            DELETE: Node::new(Pattern::Str("")),
         }
     )
 }
@@ -87,8 +87,8 @@ fn register_two_pararel_1() {
                     }
                 ],
             },
-            PATCH:  Node::new(""),
-            DELETE: Node::new(""),
+            PATCH:  Node::new(Pattern::Str("")),
+            DELETE: Node::new(Pattern::Str("")),
         }
     )
 }
@@ -123,8 +123,8 @@ fn register_two_pararel_2() {
                     }
                 ],
             },
-            PATCH:  Node::new(""),
-            DELETE: Node::new(""),
+            PATCH:  Node::new(Pattern::Str("")),
+            DELETE: Node::new(Pattern::Str("")),
         }
     )
 }
@@ -153,9 +153,9 @@ fn register_two_pararel_3() {
                     },
                 ],
             },
-            POST:   Node::new(""),
-            PATCH:  Node::new(""),
-            DELETE: Node::new(""),
+            POST:   Node::new(Pattern::Str("")),
+            PATCH:  Node::new(Pattern::Str("")),
+            DELETE: Node::new(Pattern::Str("")),
         }
     )
 }
@@ -186,9 +186,9 @@ fn register_two_nested_1() {
                     }
                 ],
             },
-            POST:   Node::new(""),
-            PATCH:  Node::new(""),
-            DELETE: Node::new(""),
+            POST:   Node::new(Pattern::Str("")),
+            PATCH:  Node::new(Pattern::Str("")),
+            DELETE: Node::new(Pattern::Str("")),
         }
     )
 }
@@ -224,9 +224,9 @@ fn register_three_1() {
                     }
                 ],
             },
-            POST:   Node::new(""),
-            PATCH:  Node::new(""),
-            DELETE: Node::new(""),
+            POST:   Node::new(Pattern::Str("")),
+            PATCH:  Node::new(Pattern::Str("")),
+            DELETE: Node::new(Pattern::Str("")),
         }
     )
 }
@@ -268,8 +268,8 @@ fn register_three_2() {
                     }
                 ],
             },
-            PATCH:  Node::new(""),
-            DELETE: Node::new(""),
+            PATCH:  Node::new(Pattern::Str("")),
+            DELETE: Node::new(Pattern::Str("")),
         }
     )
 }

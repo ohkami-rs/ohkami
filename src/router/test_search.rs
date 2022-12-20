@@ -2,7 +2,7 @@
 #![allow(unused)]
 
 use super::Router;
-use crate::test_system::Method::*;
+use crate::{test_system::Method::*, utils::map::StrMap};
 
 #[test]
 fn search_one_1() {
@@ -13,7 +13,7 @@ fn search_one_1() {
 
     assert_eq!(
         router.search(GET, "/"),
-        Some(&mock_handler)
+        Ok((&mock_handler, StrMap::new()))
     )
 }
 #[test]
@@ -25,7 +25,7 @@ fn search_one_2() {
 
     assert_eq!(
         router.search(GET, "/api"),
-        Some(&mock_handler)
+        Ok((&mock_handler, StrMap::new()))
     )
 }
 
@@ -39,11 +39,11 @@ fn search_two_pararel_1() {
 
     assert_eq!(
         router.search(GET, "/api"),
-        Some(&mock_handler_1)
+        Ok((&mock_handler_1, StrMap::new()))
     );
     assert_eq!(
         router.search(POST, "/api"),
-        Some(&mock_handler_2)
+        Ok((&mock_handler_2, StrMap::new()))
     );
 }
 #[test]
@@ -56,11 +56,11 @@ fn search_two_pararel_2() {
 
     assert_eq!(
         router.search(GET, "/api"),
-        Some(&mock_handler_1)
+        Ok((&mock_handler_1, StrMap::new()))
     );
     assert_eq!(
         router.search(GET, "/api_v2"),
-        Some(&mock_handler_2)
+        Ok((&mock_handler_2, StrMap::new()))
     );
 }
 
@@ -74,11 +74,11 @@ fn search_two_nested() {
 
     assert_eq!(
         router.search(GET, "/api"),
-        Some(&mock_handler_1)
+        Ok((&mock_handler_1, StrMap::new()))
     );
     assert_eq!(
         router.search(GET, "/api/users"),
-        Some(&mock_handler_2)
+        Ok((&mock_handler_2, StrMap::new()))
     );
 }
 
@@ -92,10 +92,10 @@ fn search_with_param() {
 
     assert_eq!(
         router.search(GET, "/api"),
-        Some(&mock_handler_1)
+        Ok((&mock_handler_1, StrMap::new()))
     );
     assert_eq!(
         router.search(GET, "/api/2"),
-        Some(&mock_handler_2)
+        Ok((&mock_handler_2, StrMap::new()))
     );
 }

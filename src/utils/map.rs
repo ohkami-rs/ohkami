@@ -69,6 +69,7 @@ pub(crate) struct RangeMap(
 
 
 pub(crate) const STR_MAP_SIZE: usize = 4;
+#[derive(Debug, PartialEq)]
 pub(crate) struct StrMap<'s> {
     count: usize,
     map:   [Option<(&'s str, &'s str)>; STR_MAP_SIZE]
