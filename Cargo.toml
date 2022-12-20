@@ -8,7 +8,7 @@ documentation = "https://docs.rs/ohkami/"
 homepage = "https://crates.io/crates/ohkami"
 repository = "https://github.com/kana-rus/ohkami"
 readme = "README.md"
-keywords = ["simple", "async", "web", "server"]
+keywords = ["simple", "async", "web", "server", "framework"]
 categories = ["web-programming::http-server"]
 license = "MIT"
 

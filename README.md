@@ -2,13 +2,13 @@
     <h1>ohkami</h1>
 </div>
 
-ohkami *- [狼] means wolf in Japanese -* is **simple** and **non macro-based** web framework for Rust.
+ohkami *- [狼] means wolf in Japanese -* is **simple** and **macro free** web framework for Rust.
 
 <br/>
 
 ## Features
 - *simple*: Less things to learn / Less code to write / Less time to hesitate.
-- *non macro-based*: No need for using macros.
+- *macro free*: No need for using macros.
 - async handlers
 - easy error handling
 
