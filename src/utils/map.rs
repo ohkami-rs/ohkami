@@ -71,8 +71,8 @@ pub(crate) struct RangeMap(
 pub(crate) const STR_MAP_SIZE: usize = 4;
 #[derive(Debug, PartialEq)]
 pub(crate) struct StrMap<'s> {
-    count: usize,
-    map:   [Option<(&'s str, &'s str)>; STR_MAP_SIZE]
+    pub(crate) count: usize,
+    pub(crate) map:   [Option<(&'s str, &'s str)>; STR_MAP_SIZE]
 } impl<'s> StrMap<'s> {
     pub fn new() -> Self {
         Self {
@@ -81,7 +81,7 @@ pub(crate) struct StrMap<'s> {
         }
     }
     pub fn push(&mut self, key: &'s str, value: &'s str) -> Result<()> {
-        (self.count == 4)
+        (self.count < 4)
             ._else(|| Response::NotImplemented("Current ohkami can't handle more than 4 path params"))?;
         self.map[self.count] = Some((key, value));
         self.count += 1;

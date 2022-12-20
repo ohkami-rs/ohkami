@@ -82,20 +82,58 @@ fn search_two_nested() {
     );
 }
 
-// #[test]
-// fn search_with_param() {
-//     let (mock_handler_1, mock_handler_2) = (100, 200);
-// 
-//     let mut router = Router::new();
-//     router.register(GET, "/api", mock_handler_1);
-//     router.register(GET, "/api/:id", mock_handler_2);
-// 
-//     assert_eq!(
-//         router.search(GET, "/api"),
-//         Ok((&mock_handler_1, StrMap::new()))
-//     );
-//     assert_eq!(
-//         router.search(GET, "/api/2"),
-//         Ok((&mock_handler_2, StrMap::new()))
-//     );
-// }
+#[test]
+fn search_with_param_1() {
+    let (mock_handler_1, mock_handler_2) = (100, 200);
+
+    let mut router = Router::new();
+    router.register(GET, "/api", mock_handler_1);
+    router.register(GET, "/api/:id", mock_handler_2);
+
+    assert_eq!(
+        router.search(GET, "/api"),
+        Ok((
+            &mock_handler_1,
+            StrMap::new()
+        ))
+    );
+    assert_eq!(
+        router.search(GET, "/api/2"),
+        Ok((
+            &mock_handler_2,
+            StrMap {
+                count: 1,
+                map: [Some(("id", "2")), None, None, None]
+            }
+        ))
+    );
+}
+#[test]
+fn search_with_param_2() {
+    let (mock_handler_1, mock_handler_2) = (100, 200);
+
+    let mut router = Router::new();
+    router.register(GET, "/api", mock_handler_1);
+    router.register(GET, "/api/:version/users/:id", mock_handler_2);
+
+    assert_eq!(
+        router.search(GET, "/api"),
+        Ok((
+            &mock_handler_1,
+            StrMap::new()
+        ))
+    );
+    assert_eq!(
+        router.search(GET, "/api/1/users/3"),
+        Ok((
+            &mock_handler_2,
+            StrMap {
+                count: 2,
+                map: [Some(("version", "1")), Some(("id", "3")), None, None]
+            }
+        ))
+    );
+}
+
+
+
