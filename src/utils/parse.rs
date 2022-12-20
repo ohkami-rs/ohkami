@@ -3,7 +3,7 @@ use crate::{
     components::{method::Method, json::{json, JSON}},
     response::Response,
     result::{Result, ElseResponse},
-    utils::{buffer::BufRange, map::{RangeMap, RANGE_COLLECTION_SIZE}},
+    utils::{buffer::BufRange, range::{RangeMap, RANGE_COLLECTION_SIZE}},
 };
 
 

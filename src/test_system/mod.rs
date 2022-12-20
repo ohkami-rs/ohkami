@@ -1,7 +1,7 @@
 use async_std::task::block_on;
 use serde::Serialize;
 use crate::{
-    utils::{map::RANGE_COLLECTION_SIZE, buffer::Buffer}, server::{ExpectedResponse, Server, consume_buffer}
+    utils::{range::RANGE_COLLECTION_SIZE, buffer::Buffer}, server::{ExpectedResponse, Server, consume_buffer}
 };
 pub use crate::components::method::Method;
 

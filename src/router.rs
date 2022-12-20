@@ -1,5 +1,5 @@
 use crate::{
-    components::method::Method, utils::map::RangeList, result::Result, handler::HandleFunc,
+    components::method::Method, utils::range::RangeList, result::Result, handler::HandleFunc,
 };
 
 // === mock for test ===

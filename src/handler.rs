@@ -1,5 +1,5 @@
 use std::{future::Future, pin::Pin};
-use crate::{response::Response, result::Result, context::Context, utils::map::RangeList};
+use crate::{response::Response, result::Result, context::Context, utils::range::RangeList};
 
 
 pub(crate) type HandleFunc = Box<dyn Fn(Context, RangeList) -> Pin<Box<dyn Future<Output=Result<Response>> + Send >> + Send + Sync>;

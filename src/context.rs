@@ -3,7 +3,7 @@ use std::fmt::Debug;
 use serde::Deserialize;
 use crate::{
     result::{Result, ElseResponse},
-    utils::{map::RangeMap, buffer::Buffer},
+    utils::{range::RangeMap, buffer::Buffer},
     components::json::JSON,
     response::Response,
 };
