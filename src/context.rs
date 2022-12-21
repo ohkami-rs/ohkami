@@ -33,11 +33,7 @@ impl<'d> Context {
         let json_struct = json.to_struct()?;
         Ok(json_struct)
     }
-    /// Return `Option<&str>` that holds path parameter in the request (if not, returns `None`). Current ohkami can only handle a single path param **at the end of the path**, so this method doesn't take `key` as argument. This will be fixed in futunre version.
-    // pub fn param(&self/*, key: &str*/) -> Option<&str> {
-    //     Some(self.buffer.read_str(self.param_range.as_ref()?))
-    // }
-    /// Return `Result<&str>` holding a query parameter in the request whose key matchs the argument. If no key matchs it, returns `Err(Response::BadRequest(format!("expected query param {key}"))`.
+    /// Return `Result< &str | u64 | i64 | usize >` that holds query parameter whose key matches the argument (`Err`: if param string can't be parsed).
     /// ```no_run
     /// let count = ctx.query("count")?;
     /// ```

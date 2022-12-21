@@ -54,10 +54,10 @@ pub struct Server {
 /// ```no_run
 /// fn main() -> Result<()> {
 ///     let config = Config {
-///         log_subscribe:
-///             Some(tracing_subscriber::fmt()
+///         log_subscribe: Some(
+///             tracing_subscriber::fmt()
 ///                 .with_max_level(tracing::Level::TRACE)
-///             ),
+///         ),
 ///         ..Default::default()
 ///     };
 /// }
@@ -119,7 +119,7 @@ impl Server {
             cors: default_config.cors,
         }
     }
-    /// Initialize `Server` with given configuratoin. This **automatically performe `subscriber.init()`** if config's `log_subscribe` isn't `None`, so **DON'T write it in your `main` function**.
+    /// Initialize `Server` with given configuratoin. This **automatically performe `subscriber.init()`** if config's `log_subscribe` is `Some`, so **DON'T write it in your `main` function**.
     pub fn setup_with(config: Config) -> Self {
         if let Some(subscriber) = config.log_subscribe {
             subscriber.init()

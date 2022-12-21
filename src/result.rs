@@ -19,21 +19,14 @@ pub trait ElseResponse {
     /// 
     /// `Err` value is calculated **only if** called by `None` or `false`.
     /// This is quite useful in error handling like
+    /// 
     /// ```no_run
-    /// async fn handler(ctx: Context) -> Result<Response> {
-    ///     let sleep_time = ctx.param()
-    ///         ._else(|| Response::BadRequest("Expected sleeping duration as path parameter."))?
-    ///         .parse::<u64>()
-    ///         ._else(|_| Response::BadRequest("`time` must be a zero or positive integer."))?;
-    ///     (sleep_time < 30)
-    ///         ._else(|| Response::BadRequest("Sorry, please request a sleeping duration (sec) less than 30."))?;
-    ///     
-    ///     std::thread::sleep(
-    ///         std::time::Duration::from_secs(sleep_time)
-    ///     );
-    ///     
-    ///     Response::OK("Hello, I'm sleepy...")
-    /// }
+    /// let handler = self.handler.as_ref()._else(|| Response::NotFound(None))?;
+    /// 
+    /// (count < 10)
+    ///     ._else(|| Response::BadRequest("`count` must be less than 10"))?;
+    ///     // or
+    ///     ._else(|| Response::BadRequest(None))?;
     /// ```
     fn _else<F: FnOnce() -> Response>(self, err: F) -> Result<Self::Expect>;
 }
@@ -52,17 +45,21 @@ impl ElseResponse for bool {
 
 pub trait ElseResponseWithErr<E> {
     type Expect;
-    /// Convert `std::result::Result<T, E>` to `Result<T>`. `Err` value is calculated **only if** original `std::result::Result` is `Err`, and this calculation can use that `Err` like
+    /// Convert `std::result::Result<T, E>` into `Result<T>`.
+    /// `Err` value is calculated **only if** called by `None` or `false`.
+    /// 
     /// ```no_run
-    /// let sleep_time = ctx.param().unwrap()
-    ///         .parse::<u64>()
-    ///         ._else(|err| Response::BadRequest(err.to_string()))?;
-    /// ```
-    /// If you discard one, use `_` :
-    /// ```no_run
-    /// let sleep_time = ctx.param().unwrap()
-    ///         .parse::<u64>()
-    ///         ._else(|_| Response::BadRequest("`time` must be a zero or positive integer."))?;
+    /// let user = ctx.body::<User>()?;
+    /// 
+    /// // or, you can add an error context message:
+    /// let user = ctx.body::<User>()
+    ///     ._else(|e| e.error_context("failed to get user data"))?;
+    /// 
+    /// // or discard original error:
+    /// let user = ctx.body::<User>()
+    ///     ._else(|_| Response::InternalServerError("can't get user"))?;
+    ///     // or
+    ///     ._else(|_| Response::InternalServerError(None))?;
     /// ```
     fn _else<F: FnOnce(E) -> Response>(self, err: F) -> Result<Self::Expect>;
 }
