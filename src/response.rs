@@ -1,9 +1,8 @@
 use async_std::{net::TcpStream, io::WriteExt};
-use chrono::Utc;
 use crate::{
     components::{
         status::Status,
-        json::JSON, headers::Header,
+        json::JSON, headers::Header, time::now_fmt,
     },
     result::Result,
 };
@@ -70,7 +69,7 @@ Keep-Alive: timeout=5
                     self.status.response_format(),
                     body.content_type(),
                     body.content_length(),
-                    Utc::now().to_rfc2822(),
+                    now_fmt(),
                     self.additional_headers,
                     body.response_format(),
                 ),
@@ -84,7 +83,7 @@ Keep-Alive: timeout=5
 {}
 ",
                     self.status.response_format(),
-                    Utc::now().to_rfc2822(),
+                    now_fmt(),
                     self.additional_headers,
                 ),
             }
