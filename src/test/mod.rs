@@ -1,4 +1,6 @@
 use async_std::task::block_on;
+#[cfg(feature = "sqlx")]
+use async_std::sync::Arc;
 use serde::Serialize;
 use crate::{
     utils::{range::RANGE_COLLECTION_SIZE, buffer::Buffer}, server::{ExpectedResponse, Server, consume_buffer}
@@ -14,7 +16,10 @@ pub trait Test {
         let actual_response = block_on(async {
             consume_buffer(
                 request.into_request_buffer().await,
-                &self.map
+                &self.map,
+
+                #[cfg(feature = "sqlx")]
+                Arc::clone(&self.pool)
             ).await
         });
         assert_eq!(actual_response, expected_response.as_response())
@@ -23,7 +28,10 @@ pub trait Test {
         let actual_response = block_on(async {
             consume_buffer(
                 request.into_request_buffer().await,
-                &self.map
+                &self.map,
+
+                #[cfg(feature = "sqlx")]
+                Arc::clone(&self.pool)
             ).await
         });
         assert_ne!(actual_response, expected_response.as_response())

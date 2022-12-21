@@ -34,11 +34,11 @@ use sqlx::mysql::{
 
 /// Type of ohkami's server instance
 pub struct Server {
-    pub(crate) map: Router<'static>,
+    pub(crate) map:  Router<'static>,
     cors: CORS,
 
     #[cfg(feature = "sqlx")]
-    pool: ConnectionPool,
+    pub(crate) pool: Arc<ConnectionPool>,
 }
 /// Configurations of `Server`. In current version, this holds
 /// 
@@ -144,7 +144,7 @@ impl Server {
             cors: config.cors,
 
             #[cfg(feature = "sqlx")]
-            pool
+            pool: Arc::new(pool)
         }
     }
 
@@ -267,9 +267,6 @@ impl Server {
 
         let handler_map = Arc::new(self.map);
 
-        #[cfg(feature = "sqlx")]
-        let connection_pool = Arc::new(self.pool);
-
         block_on(async {
             let listener = TcpListener::bind(
                 validation::tcp_address(address)
@@ -284,7 +281,7 @@ impl Server {
                         Arc::clone(&allow_origins_str),
                         
                         #[cfg(feature = "sqlx")]
-                        Arc::clone(&connection_pool),
+                        Arc::clone(&self.pool),
                     )
                 );
             }
@@ -341,12 +338,21 @@ async fn setup_response(
     connection_pool: Arc<ConnectionPool>,
 ) -> Result<Response> {
     let buffer = Buffer::new(stream).await?;
-    consume_buffer(buffer, &*handler_map).await
+    consume_buffer(
+        buffer,
+        &*handler_map,
+        
+        #[cfg(feature = "sqlx")]
+        connection_pool.clone(),
+    ).await
 }
 
 pub(crate) async fn consume_buffer(
-    buffer:      Buffer,
-    handler_map: &Router<'static>,
+    buffer:          Buffer,
+    handler_map:     &Router<'static>,
+
+    #[cfg(feature = "sqlx")]
+    connection_pool: Arc<ConnectionPool>,
 ) -> Result<Response> {
     let (
         method,
@@ -370,6 +376,7 @@ pub(crate) async fn consume_buffer(
         buffer,
         body,
         query_range,
+
         #[cfg(feature = "sqlx")]
         pool: connection_pool,
     };
