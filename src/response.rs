@@ -126,7 +126,7 @@ Keep-Alive: timeout=5
             body:               msg.as_message(),
         }
     }
-    /// Generate `Response` value that represents a HTTP response of `400 Not Found`.
+    /// Generate `Response` value that represents a HTTP response of `400 Bad Request`.
     #[allow(non_snake_case)]
     pub fn BadRequest<Msg: ErrorMessage>(msg: Msg) -> Self {
         Self {

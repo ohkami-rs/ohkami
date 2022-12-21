@@ -8,56 +8,63 @@ pub(crate) fn tcp_address(address_str: &'static str) -> String {
     }
 }
 
-pub(crate) fn is_valid_path(path_str: &str) -> bool {
-    if !path_str.starts_with('/') {return false}
-    if path_str.len() == 1 {return true}
+pub(crate) fn valid_path(path_str: &str) -> (bool, u8) {
+    if !path_str.starts_with('/') {return (false, 0)}
+    if path_str.len() == 1 {return (true, 0)}
     
+    let mut path_param_count: u8 = 0;
+
     for section in path_str[1..].split('/') {
-        if !is_valid_section(section) {
-            return false
-        }
+        let (is_valid, is_param) = valid_section(section);
+        if is_param {path_param_count += 1}
+        if !is_valid {return (false, path_param_count)}
     }
 
-    true
+    (true, path_param_count)
 }
-fn is_valid_section(section: &str) -> bool {
+fn valid_section(section: &str) -> (bool, bool/* is param */) {
+    let mut is_param = false;
+
     let section = if section.starts_with(':') {
-        if section.len() == 1 {return false}
+        is_param = true;
+
+        if section.len() < 2 {return (false, false)}
         &section[1..]
     } else {
-        if section.len() == 0 {return false}
+        if section.len() < 1 {return (false, false)}
         section
     };
     for ch in section.chars() {
         match ch {
             'a'..='z' | '_' => (),
-            _ => return false,
+            _ => return (false, is_param),
         }
     }
-    true
+
+    (true, is_param)
 }
 
 
 #[cfg(test)]
 mod test {
-    use super::is_valid_path;
+    use super::valid_path;
 
     #[test]
     fn validate_ok_paths() {
-        assert!(is_valid_path("/"));
-        assert!(is_valid_path("/api"));
-        assert!(is_valid_path("/api/:id"));
-        assert!(is_valid_path("/:number"));
-        assert!(is_valid_path("/api/users/:id"));
-        assert!(is_valid_path("/sleepy/:time/:name"));
+        assert_eq!(valid_path("/"), (true, 0));
+        assert_eq!(valid_path("/api"), (true, 0));
+        assert_eq!(valid_path("/api/:id"), (true, 1));
+        assert_eq!(valid_path("/:number"), (true, 1));
+        assert_eq!(valid_path("/api/users/:id"), (true, 1));
+        assert_eq!(valid_path("/sleepy/:time/:name"), (true, 2));
     }
     #[test]
     fn validate_bad_paths() {
-        assert_eq!(is_valid_path("//"), false);
-        assert_eq!(is_valid_path("/api/"), false);
-        assert_eq!(is_valid_path("/:id/"), false);
-        assert_eq!(is_valid_path(":id"), false);
-        assert_eq!(is_valid_path("api/"), false);
-        assert_eq!(is_valid_path("/:"), false);
+        assert_eq!(valid_path("//").0, false);
+        assert_eq!(valid_path("/api/").0, false);
+        assert_eq!(valid_path("/:id/").0, false);
+        assert_eq!(valid_path(":id").0, false);
+        assert_eq!(valid_path("api/").0, false);
+        assert_eq!(valid_path("/:").0, false);
     }
 }

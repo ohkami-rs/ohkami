@@ -6,7 +6,7 @@ pub(crate) type HandleFunc = Box<dyn Fn(Context, RangeList) -> Pin<Box<dyn Futur
 
 pub trait Param {}
 pub trait Handler<P: Param> {
-    fn into_handlefunc(self) -> HandleFunc;
+    fn into_handlefunc(self) -> (HandleFunc, u8/*path param num*/);
 }
 
 impl Param for () {}
@@ -15,8 +15,11 @@ where
 F:   Fn() -> Fut + Send + Sync + 'static,
 Fut: Future<Output=Result<Response>> + Send + 'static
 {
-    fn into_handlefunc(self) -> HandleFunc {
-        Box::new(move |_, _| Box::pin(self()))
+    fn into_handlefunc(self) -> (HandleFunc, u8) {
+        (
+            Box::new(move |_, _| Box::pin(self())),
+            0
+        )
     }
 }
 impl Param for Context {}
@@ -25,8 +28,11 @@ where
 F:   Fn(Context) -> Fut + Send + Sync + 'static,
 Fut: Future<Output=Result<Response>> + Send + 'static
 {
-    fn into_handlefunc(self) -> HandleFunc {
-        Box::new(move |ctx, _| Box::pin(self(ctx)))
+    fn into_handlefunc(self) -> (HandleFunc, u8) {
+        (
+            Box::new(move |ctx, _| Box::pin(self(ctx))),
+            0
+        )
     }
 }
 
@@ -36,16 +42,16 @@ where
 F:   Fn(String) -> Fut + Send + Sync + 'static,
 Fut: Future<Output=Result<Response>> + Send + 'static
 {
-    fn into_handlefunc(self) -> HandleFunc {
-        Box::new(move |ctx, params|
+    fn into_handlefunc(self) -> (HandleFunc, u8) {
+        (Box::new(move |ctx, params|
             match params.get1() {
                 Some(range) => {
                     let param = ctx.buffer.read_str(&range).to_owned();
                     Box::pin(self(param))
                 },
-                None => unreachable!(/* --- */),
+                None => unreachable!(/* already validated in Server::add_handler */),
             }
-        )
+        ), 1)
     }
 }
 impl Param for (Context, String) {}
@@ -54,16 +60,16 @@ where
 F:   Fn(Context, String) -> Fut + Send + Sync + 'static,
 Fut: Future<Output=Result<Response>> + Send + 'static
 {
-    fn into_handlefunc(self) -> HandleFunc {
-        Box::new(move |ctx, params|
+    fn into_handlefunc(self) -> (HandleFunc, u8) {
+        (Box::new(move |ctx, params|
             match params.get1() {
                 Some(range) => {
                     let param = ctx.buffer.read_str(&range).to_owned();
                     Box::pin(self(ctx, param))
                 },
-                None => unreachable!(/* --- */),
+                None => unreachable!(/* already validated in Server::add_handler */),
             }
-        )
+        ), 1)
     }
 }
 
@@ -76,8 +82,8 @@ macro_rules! impl_handler_with_int {
                 F:   Fn($int_type) -> Fut + Send + Sync + 'static,
                 Fut: Future<Output=Result<Response>> + Send + 'static
             {
-                fn into_handlefunc(self) -> HandleFunc {
-                    Box::new(move |ctx, params|
+                fn into_handlefunc(self) -> (HandleFunc, u8) {
+                    (Box::new(move |ctx, params|
                         match params.get1() {
                             Some(range) => {
                                 let parsed = ctx.buffer.read_str(&range).parse::<$int_type>();
@@ -86,9 +92,9 @@ macro_rules! impl_handler_with_int {
                                     _ => Box::pin(async {Err(Response::BadRequest("format of path param is wrong"))})
                                 }
                             },
-                            None => unreachable!(/* --- */),
+                            None => unreachable!(/* already validated in Server::add_handler */),
                         }
-                    )
+                    ), 1)
                 }
             }
             impl Param for (Context, $int_type) {}
@@ -97,8 +103,8 @@ macro_rules! impl_handler_with_int {
                 F:   Fn(Context, $int_type) -> Fut + Send + Sync + 'static,
                 Fut: Future<Output=Result<Response>> + Send + 'static
             {
-                fn into_handlefunc(self) -> HandleFunc {
-                    Box::new(move |ctx, params|
+                fn into_handlefunc(self) -> (HandleFunc, u8) {
+                    (Box::new(move |ctx, params|
                         match params.get1() {
                             Some(range) => {
                                 let parsed = ctx.buffer.read_str(&range).parse::<$int_type>();
@@ -107,9 +113,9 @@ macro_rules! impl_handler_with_int {
                                     _ => Box::pin(async {Err(Response::BadRequest("format of path param is wrong"))})
                                 }
                             },
-                            None => unreachable!(/* --- */),
+                            None => unreachable!(/* already validated in Server::add_handler */),
                         }
-                    )
+                    ), 1)
                 }
             }
         )*
@@ -125,8 +131,8 @@ macro_rules! impl_handler_with_2ints {
                 F:   Fn($int1, $int2) -> Fut + Send + Sync + 'static,
                 Fut: Future<Output=Result<Response>> + Send + 'static
             {
-                fn into_handlefunc(self) -> HandleFunc {
-                    Box::new(move |ctx, params|
+                fn into_handlefunc(self) -> (HandleFunc, u8) {
+                    (Box::new(move |ctx, params|
                         match params.get2() {
                             Some((range1, range2)) => {
                                 let parsed1 = ctx.buffer.read_str(&range1).parse::<$int1>();
@@ -136,9 +142,9 @@ macro_rules! impl_handler_with_2ints {
                                     _ => Box::pin(async {Err(Response::BadRequest("format of path param is wrong"))})
                                 }
                             },
-                            None => unreachable!(/* --- */),
+                            None => unreachable!(/* already validated in Server::add_handler */),
                         }
-                    )
+                    ), 2)
                 }
             }
             impl Param for (Context, $int1, $int2) {}
@@ -147,8 +153,8 @@ macro_rules! impl_handler_with_2ints {
                 F:   Fn(Context, $int1, $int2) -> Fut + Send + Sync + 'static,
                 Fut: Future<Output=Result<Response>> + Send + 'static
             {
-                fn into_handlefunc(self) -> HandleFunc {
-                    Box::new(move |ctx, params|
+                fn into_handlefunc(self) -> (HandleFunc, u8) {
+                    (Box::new(move |ctx, params|
                         match params.get2() {
                             Some((range1, range2)) => {
                                 let parsed1 = ctx.buffer.read_str(&range1).parse::<$int1>();
@@ -158,9 +164,9 @@ macro_rules! impl_handler_with_2ints {
                                     _ => Box::pin(async {Err(Response::BadRequest("format of path param is wrong"))})
                                 }
                             },
-                            None => unreachable!(/* --- */),
+                            None => unreachable!(/* already validated in Server::add_handler */),
                         }
-                    )
+                    ), 2)
                 }
             }
         )*
@@ -188,7 +194,7 @@ macro_rules! impl_handler_with_2ints {
 //                 F:   Fn(Context, $int1, $int2, $int3) -> Fut + Send + Sync + 'static,
 //                 Fut: Future<Output=Result<Response>> + Send + 'static
 //             {
-//                 fn into_handlefunc(self) -> HandleFunc {
+//                 fn into_handlefunc(self) -> (HandleFunc, u8) {
 //                     Box::new(move |ctx, params|
 //                         match params.get3() {
 //                             Some((range1, range2, range3)) => {
@@ -200,7 +206,7 @@ macro_rules! impl_handler_with_2ints {
 //                                     _ => Box::pin(async {Err(Response::BadRequest("format of path param is wrong"))})
 //                                 }
 //                             },
-//                             None => unreachable!(/* --- */),
+//                             None => unreachable!(/* already validated in Server::add_handler */),
 //                         }
 //                     )
 //                 }
@@ -218,8 +224,8 @@ macro_rules! impl_handler_with_string_int {
                 F:   Fn(Context, String, $int) -> Fut + Send + Sync + 'static,
                 Fut: Future<Output=Result<Response>> + Send + 'static
             {
-                fn into_handlefunc(self) -> HandleFunc {
-                    Box::new(move |ctx, params|
+                fn into_handlefunc(self) -> (HandleFunc, u8) {
+                    (Box::new(move |ctx, params|
                         match params.get2() {
                             Some((range_string, range_int)) => {
                                 let parsed = ctx.buffer.read_str(&range_int).parse::<$int>();
@@ -231,9 +237,9 @@ macro_rules! impl_handler_with_string_int {
                                     _ => Box::pin(async {Err(Response::BadRequest("format of path param is wrong"))})
                                 }
                             },
-                            None => unreachable!(/* --- */),
+                            None => unreachable!(/* already validated in Server::add_handler */),
                         }
-                    )
+                    ), 2)
                 }
             }
 
@@ -243,8 +249,8 @@ macro_rules! impl_handler_with_string_int {
                 F:   Fn(Context, $int, String) -> Fut + Send + Sync + 'static,
                 Fut: Future<Output=Result<Response>> + Send + 'static
             {
-                fn into_handlefunc(self) -> HandleFunc {
-                    Box::new(move |ctx, params|
+                fn into_handlefunc(self) -> (HandleFunc, u8) {
+                    (Box::new(move |ctx, params|
                         match params.get2() {
                             Some((range_int, range_string)) => {
                                 let parsed = ctx.buffer.read_str(&range_int).parse::<$int>();
@@ -256,9 +262,9 @@ macro_rules! impl_handler_with_string_int {
                                     _ => Box::pin(async {Err(Response::BadRequest("format of path param is wrong"))})
                                 }
                             },
-                            None => unreachable!(/* --- */),
+                            None => unreachable!(/* already validated in Server::add_handler */),
                         }
-                    )
+                    ), 2)
                 }
             }
         )*
@@ -285,7 +291,7 @@ mod test {
             Self(Vec::new())
         }
         fn push<H: Handler<P> + 'static, P: Param>(&mut self, handler: H) {
-            self.0.push(handler.into_handlefunc())
+            self.0.push(handler.into_handlefunc().0)
         }
     }
 

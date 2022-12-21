@@ -14,7 +14,7 @@ use crate::{
     response::Response,
     result::Result,
     utils::{
-        parse::parse_request_lines, validation::{self, is_valid_path}, buffer::Buffer
+        parse::parse_request_lines, validation, buffer::Buffer
     },
     router::Router,
     handler::{Handler, Param},
@@ -225,16 +225,30 @@ impl Server {
         path:    &'static str,
         handler: H,
     ) -> Self {
-        if !is_valid_path(path) {
+        let (
+            is_valid_path,
+            param_count
+        ) = validation::valid_path(path);
+        if !is_valid_path {
             panic!("`{path}` is invalid as path.");
         }
+
+        let (
+            handler,
+            expect_param_num
+        ) = handler.into_handlefunc();
+        if param_count < expect_param_num {
+            panic!("handler for `{path}` expects {expect_param_num} path params, this is more than actual ones {param_count}!")
+        }
+
         if let Err(msg) = self.map.register(
             method,
             if path == "/" {"/"} else {&path.trim_end_matches('/')},
-            handler.into_handlefunc()
+            handler
         ) {
             panic!("{msg}")
         }
+
         self
     }
 
