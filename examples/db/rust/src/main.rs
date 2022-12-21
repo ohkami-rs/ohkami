@@ -34,32 +34,16 @@ struct User {
     name: String,
 }
 
-async fn get_user_userid(ctx: Context) -> Result<Response> {
-    let user_id = ctx.param()
-        ._else(|| Response::BadRequest("Expected user id as path parameter"))?
-        .parse::<i64>()
-        ._else(|_| Response::BadRequest("path parameter must be an interger"))?;
-
-    let user = sqlx::query_as::<_, User>("SELECT id, name FROM users WHERE id = $1")
-        .bind(user_id as i64)
+async fn get_user_userid(ctx: Context, id: i64) -> Result<Response> {
+    let user = sqlx::query_as::<_, User>(
+        "SELECT id, name FROM users WHERE id = $1"
+    ).bind(id)
         .fetch_one(ctx.pool())
         .await?;
-
     Response::OK(json(&user)?)
 }
 
-async fn sleepy_get_user_userid(ctx: Context) -> Result<Response> {
+async fn sleepy_get_user_userid(ctx: Context, id: i64) -> Result<Response> {
     std::thread::sleep(std::time::Duration::from_secs(2));
-
-    let user_id = ctx.param()
-        ._else(|| Response::BadRequest("Expected user id as path parameter"))?
-        .parse::<i64>()
-        ._else(|_| Response::BadRequest("path parameter must be an interger"))?;
-
-    let user = sqlx::query_as::<_, User>("SELECT id, name FROM users WHERE id = $1")
-        .bind(user_id as i64)
-        .fetch_one(ctx.pool())
-        .await?;
-
-    Response::OK(json(&user)?)
+    get_user_userid(ctx, id).await
 }

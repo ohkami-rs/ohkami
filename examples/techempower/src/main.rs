@@ -27,15 +27,18 @@ fn main() -> Result<()> {
 
 async fn handle_db(ctx: Context) -> Result<Response> {
     let id = random_i32();
-    let world = sqlx::query_as::<_, World>("SELECT id, randomnumber FROM world WHERE id = $1")
-        .bind(id)
+    let world = sqlx::query_as::<_, World>(
+        "SELECT id, randomnumber FROM world WHERE id = $1"
+    ).bind(id)
         .fetch_one(ctx.pool())
         .await?;
     Response::OK(json(&world)?)
 }
 
 async fn handle_fortunes(ctx: Context) -> Result<Response> {
-    let mut fortunes = sqlx::query_as::<_, Fortune>("SELECT id, message FROM fortune")
+    let mut fortunes = sqlx::query_as::<_, Fortune>(
+        "SELECT id, message FROM fortune"
+    )
         .fetch_all(ctx.pool())
         .await?;
     fortunes.push(Fortune {
@@ -48,14 +51,15 @@ async fn handle_fortunes(ctx: Context) -> Result<Response> {
 
 async fn handle_queries(ctx: Context) -> Result<Response> {
     let count = {
-        let queries = ctx.query("q").unwrap_or("1").parse::<u32>().unwrap_or(1);
+        let queries = ctx.query::<&str>("q").unwrap_or("1").parse::<u32>().unwrap_or(1);
         if queries < 1 {1} else if 500 < queries {500} else {queries}
     } as usize;
     let mut worlds = Vec::with_capacity(count);
     for id in random_i32s(count) {
         worlds.push(
-            sqlx::query_as::<_, World>("SELECT id, randomnumber FROM world WHERE id = $1")
-                .bind(id)
+            sqlx::query_as::<_, World>(
+                "SELECT id, randomnumber FROM world WHERE id = $1"
+            ).bind(id)
                 .fetch_one(ctx.pool())
                 .await?
         )
@@ -65,7 +69,7 @@ async fn handle_queries(ctx: Context) -> Result<Response> {
 
 async fn handle_updates(ctx: Context) -> Result<Response> {
     let count = {
-        let queries = ctx.query("q").unwrap_or("1").parse::<u32>().unwrap_or(1);
+        let queries = ctx.query::<&str>("q").unwrap_or("1").parse::<u32>().unwrap_or(1);
         if queries < 1 {1} else if 500 < queries {500} else {queries}
     } as usize;
     let mut worlds = Vec::with_capacity(count);
@@ -73,9 +77,9 @@ async fn handle_updates(ctx: Context) -> Result<Response> {
     for id in random_i32s(count) {
         let randomnumber = new_randomnumbers.next().unwrap();
         worlds.push(
-            sqlx::query_as::<_, World>("UPDATE world SET randomnumber = $1 WHERE id = $2 RETURNUNG id, randomnumber")
-                .bind(randomnumber)
-                .bind(id)
+            sqlx::query_as::<_, World>(
+                "UPDATE world SET randomnumber = $1 WHERE id = $2 RETURNUNG id, randomnumber"
+            ).bind(randomnumber).bind(id)
                 .fetch_one(ctx.pool())
                 .await?
         )
