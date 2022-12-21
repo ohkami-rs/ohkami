@@ -36,7 +36,7 @@ fn main() -> Result<()> {
 }
 ```
 
-3. If you're interested in ohkami, learn more by [examples](https://github.com/kana-rus/ohkami/tree/main/examples) and [documentation](https://docs.rs/ohkami/latest/ohkami/)!
+3. If you're interested in ohkami, learn more by [examples](https://github.com/kana-rus/ohkami/tree/main/examples) and [documentation](https://docs.rs/ohkami/latest/ohkami/) !
 
 <br/>
 
@@ -125,7 +125,7 @@ fn main() -> Result<()> {
         ..Default::default()
     };
     Server::setup_with(config)
-        .GET("/", |_| async {Response::OK("Hello!")})
+        .GET("/", || async {Response::OK("Hello!")})
 }
 ```
 ### DB config
