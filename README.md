@@ -39,26 +39,30 @@ fn main() -> Result<()> {
 <br/>
 
 ## Snippets
-### handle query param
+### handle query params
 ```rust
-let name: Result<&str> = ctx.query::<&str>("name");
+let name = ctx.query::<&str>("name")?;
+// if presumable, `::<&str>` isn't needed
 ```
 ```rust
-let count: Result<usize> = ctx.query::<usize>("count");
+let count = ctx.query::<usize>("count")?;
+// if presumable, `::<usize>` isn't needed
 ```
 ### handle request body
 ```rust
-let body: Result<D> = ctx.body::<D>();
+let body = ctx.body::<D>()?;
+// if presumable, `::<D>` isn't needed
+// `D` has to be `serde::Deserialize`
 ```
 ### handle path params
 ```rust
 fn main() -> Result<()> {
     Server::setup()
-        .GET("/sleepy/:time/:name", sleepy_hello_with_name)
+        .GET("/sleepy/:time/:name", sleepy_hello)
         .serve_on(":3000")
 }
 
-async fn sleepy_hello_with_name(_: Context, time: u64, name: String) -> Result<Response> {
+async fn sleepy_hello(_: Context, time: u64, name: String) -> Result<Response> {
     (time < 30)
         ._else(|| Response::BadRequest("sleeping time (sec) must be less than 30."))?;
     std::thread::sleep(
@@ -79,7 +83,9 @@ Response::OK(JSON("Hello, world!"))
 Response::OK(json!("ok": true))
 ```
 ```rust
-Response::OK(json(user)?) // serialize Rust value into JSON
+Response::OK(json(user)?)
+// serialize Rust value into JSON
+// value's type has to be `serde::Serialize`
 ```
 ### handle errors
 ```rust
@@ -101,7 +107,10 @@ let handler = self.handler.as_ref()._else(|| Response::NotFound(None))?;
 ```
 ### assert boolean condition
 ```rust
-(count < 10)._else(|| Response::BadRequest("`count` must be less than 10" /* or `None` */))
+(count < 10)
+    ._else(|| Response::BadRequest("`count` must be less than 10"))?;
+    // or
+    ._else(|| Response::BadRequest(None))?;
 ```
 ### log config
 ```rust
