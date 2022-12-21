@@ -3,15 +3,24 @@ use crate::{response::Response, result::Result, context::Context, utils::range::
 
 
 pub(crate) type HandleFunc = Box<dyn Fn(Context, RangeList) -> Pin<Box<dyn Future<Output=Result<Response>> + Send >> + Send + Sync>;
-pub trait Param {}
 
+pub trait Param {}
 pub trait Handler<P: Param> {
     fn into_handlefunc(self) -> HandleFunc;
 }
 
-
 impl Param for () {}
 impl<F, Fut> Handler<()> for F
+where
+F:   Fn() -> Fut + Send + Sync + 'static,
+Fut: Future<Output=Result<Response>> + Send + 'static
+{
+    fn into_handlefunc(self) -> HandleFunc {
+        Box::new(move |_, _| Box::pin(self()))
+    }
+}
+impl Param for Context {}
+impl<F, Fut> Handler<Context> for F
 where
 F:   Fn(Context) -> Fut + Send + Sync + 'static,
 Fut: Future<Output=Result<Response>> + Send + 'static
@@ -23,6 +32,24 @@ Fut: Future<Output=Result<Response>> + Send + 'static
 
 impl Param for String {}
 impl<F, Fut> Handler<String> for F
+where
+F:   Fn(String) -> Fut + Send + Sync + 'static,
+Fut: Future<Output=Result<Response>> + Send + 'static
+{
+    fn into_handlefunc(self) -> HandleFunc {
+        Box::new(move |ctx, params|
+            match params.get1() {
+                Some(range) => {
+                    let param = ctx.buffer.read_str(&range).to_owned();
+                    Box::pin(self(param))
+                },
+                None => unreachable!(/* --- */),
+            }
+        )
+    }
+}
+impl Param for (Context, String) {}
+impl<F, Fut> Handler<(Context, String)> for F
 where
 F:   Fn(Context, String) -> Fut + Send + Sync + 'static,
 Fut: Future<Output=Result<Response>> + Send + 'static
@@ -45,6 +72,27 @@ macro_rules! impl_handler_with_int {
         $(
             impl Param for $int_type {}
             impl<F, Fut> Handler<$int_type> for F
+            where
+                F:   Fn($int_type) -> Fut + Send + Sync + 'static,
+                Fut: Future<Output=Result<Response>> + Send + 'static
+            {
+                fn into_handlefunc(self) -> HandleFunc {
+                    Box::new(move |ctx, params|
+                        match params.get1() {
+                            Some(range) => {
+                                let parsed = ctx.buffer.read_str(&range).parse::<$int_type>();
+                                match parsed {
+                                    Ok(param) => Box::pin(self(param)),
+                                    _ => Box::pin(async {Err(Response::BadRequest("format of path param is wrong"))})
+                                }
+                            },
+                            None => unreachable!(/* --- */),
+                        }
+                    )
+                }
+            }
+            impl Param for (Context, $int_type) {}
+            impl<F, Fut> Handler<(Context, $int_type)> for F
             where
                 F:   Fn(Context, $int_type) -> Fut + Send + Sync + 'static,
                 Fut: Future<Output=Result<Response>> + Send + 'static
@@ -73,6 +121,28 @@ macro_rules! impl_handler_with_2ints {
         $(
             impl Param for ($int1, $int2) {}
             impl<F, Fut> Handler<($int1, $int2)> for F
+            where
+                F:   Fn($int1, $int2) -> Fut + Send + Sync + 'static,
+                Fut: Future<Output=Result<Response>> + Send + 'static
+            {
+                fn into_handlefunc(self) -> HandleFunc {
+                    Box::new(move |ctx, params|
+                        match params.get2() {
+                            Some((range1, range2)) => {
+                                let parsed1 = ctx.buffer.read_str(&range1).parse::<$int1>();
+                                let parsed2 = ctx.buffer.read_str(&range2).parse::<$int2>();
+                                match (parsed1, parsed2) {
+                                    (Ok(param1), Ok(param2)) => Box::pin(self(param1, param2)),
+                                    _ => Box::pin(async {Err(Response::BadRequest("format of path param is wrong"))})
+                                }
+                            },
+                            None => unreachable!(/* --- */),
+                        }
+                    )
+                }
+            }
+            impl Param for (Context, $int1, $int2) {}
+            impl<F, Fut> Handler<(Context, $int1, $int2)> for F
             where
                 F:   Fn(Context, $int1, $int2) -> Fut + Send + Sync + 'static,
                 Fut: Future<Output=Result<Response>> + Send + 'static
