@@ -16,8 +16,8 @@ fn main() -> Result<()> {
     };
 
     Server::setup_with(config)
-        .GET("/json",      |_| async {Response::OK(json!("message": "Hello, World!"))})
-        .GET("/plaintext", |_| async {Response::OK("Hello, World!")})
+        .GET("/json",      || async {Response::OK(json!("message": "Hello, World!"))})
+        .GET("/plaintext", || async {Response::OK("Hello, World!")})
         .GET("/db",        handle_db)
         .GET("/fortunes",  handle_fortunes)
         .GET("/queries",   handle_queries)
