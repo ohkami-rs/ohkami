@@ -1,0 +1,18 @@
+name: check
+on: [push]
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        example: [db/rust, simple, static_file, techempower, with_test]
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - name: move to example directory
+        run:  cd ./examples/${{ matrix.example }}
+      - uses: actions-rs/cargo@v1
+        with:
+          command: check
