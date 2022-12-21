@@ -5,6 +5,6 @@ edition = "2021"
 
 [dependencies]
 ohkami = { git = "https://github.com/kana-rus/ohkami", features = ["sqlx", "postgres"] }
-serde = { versoin = "1.0", features = ["derive"] }
+serde = { version = "1.0", features = ["derive"] }
 sqlx = "0.6"
 rand = "0.8.5"
