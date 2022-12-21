@@ -105,7 +105,10 @@ let user = ctx.body::<User>()
 ```
 ### handle Option values
 ```rust
-let handler = self.handler.as_ref()._else(|| Response::NotFound(None))?;
+let handler = self.handler.as_ref()
+    ._else(|| Response::NotFound("handler not found"))?;
+    // or
+    ._else(|| Response::NotFound(None))?;
 ```
 ### assert boolean conditions
 ```rust
@@ -153,15 +156,16 @@ fn server() -> Server {
     Server::setup()
         .GET("/", || async {Response::OK("Hello!")})
 }
+
 fn main() -> Result<()> {
     server().serve_on(":3000")
 }
 ```
-2. write tests using `assert_to_res` , `assert_not_to_res`:
+2. import `test::Test` and others, and write tests using `assert_to_res` , `assert_not_to_res`:
 ```rust
 #[cfg(test)]
 mod test {
-    use ohkami::{server::Server, response::Response, test_system::{Test, Request, Method}};
+    use ohkami::{server::Server, response::Response, test::{Test, Request, Method}};
     use once_cell::sync::Lazy;
 
     static SERVER: Lazy<Server> = Lazy::new(|| super::server());
