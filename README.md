@@ -29,12 +29,14 @@ use ohkami::prelude::*;
 
 fn main() -> Result<()> {
     Server::setup()
-        .GET("/", || async {Response::OK("Hello, world!")})
+        .GET("/", || async {
+            Response::OK("Hello, world!")
+        })
         .serve_on(":3000")
 }
 ```
 
-3. If you're interested in ohkami, learn more by [examples](https://github.com/kana-rus/ohkami/tree/main/examples) and [documentations](https://docs.rs/ohkami/latest/ohkami/)!
+3. If you're interested in ohkami, learn more by [examples](https://github.com/kana-rus/ohkami/tree/main/examples) and [documentation](https://docs.rs/ohkami/latest/ohkami/)!
 
 <br/>
 
@@ -105,7 +107,7 @@ let user = ctx.body::<User>()
 ```rust
 let handler = self.handler.as_ref()._else(|| Response::NotFound(None))?;
 ```
-### assert boolean condition
+### assert boolean conditions
 ```rust
 (count < 10)
     ._else(|| Response::BadRequest("`count` must be less than 10"))?;
@@ -144,7 +146,7 @@ let user = sqlx::query_as::<_, User>(
     .fetch_one(ctx.pool())
     .await?; // `Response` implements `From<sqlx::Error>`
 ```
-### test server
+### test
 1. split setup process from `main` function:
 ```rust
 fn server() -> Server {
