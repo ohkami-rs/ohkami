@@ -44,16 +44,16 @@ fn main() -> Result<()> {
 ### handle query params
 ```rust
 let name = ctx.query::<&str>("name")?;
-// when presumable, `::<&str>` isn't needed
+// `::<&str>` isn't needed when it's presumable
 ```
 ```rust
 let count = ctx.query::<usize>("count")?;
-// when presumable, `::<usize>` isn't needed
+// `::<usize>` isn't needed when it's presumable
 ```
 ### handle request body
 ```rust
 let body = ctx.body::<D>()?;
-// when presumable, `::<D>` isn't needed
+// `::<D>` isn't needed when it's presumable
 // `D` has to be `serde::Deserialize`
 ```
 ### handle path params
