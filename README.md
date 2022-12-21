@@ -29,7 +29,7 @@ use ohkami::prelude::*;
 
 fn main() -> Result<()> {
     Server::setup()
-        .GET("/", |_| async {Response::OK("Hello, world!")})
+        .GET("/", || async {Response::OK("Hello, world!")})
         .serve_on(":3000")
 }
 ```
@@ -62,7 +62,7 @@ fn main() -> Result<()> {
         .serve_on(":3000")
 }
 
-async fn sleepy_hello(_: Context, time: u64, name: String) -> Result<Response> {
+async fn sleepy_hello(time: u64, name: String) -> Result<Response> {
     (time < 30)
         ._else(|| Response::BadRequest("sleeping time (sec) must be less than 30."))?;
     std::thread::sleep(
@@ -149,7 +149,7 @@ let user = sqlx::query_as::<_, User>(
 ```rust
 fn server() -> Server {
     Server::setup()
-        .GET("/", |_| async {Response::OK("Hello!")})
+        .GET("/", || async {Response::OK("Hello!")})
 }
 fn main() -> Result<()> {
     server().serve_on(":3000")

@@ -221,6 +221,54 @@ macro_rules! impl_handler_with_string_int {
             impl Param for (String, $int) {}
             impl<F, Fut> Handler<(String, $int)> for F
             where
+                F:   Fn(String, $int) -> Fut + Send + Sync + 'static,
+                Fut: Future<Output=Result<Response>> + Send + 'static
+            {
+                fn into_handlefunc(self) -> (HandleFunc, u8) {
+                    (Box::new(move |ctx, params|
+                        match params.get2() {
+                            Some((range_string, range_int)) => {
+                                let parsed = ctx.buffer.read_str(&range_int).parse::<$int>();
+                                match parsed {
+                                    Ok(param) => {
+                                        let string = ctx.buffer.read_str(&range_string).to_owned();
+                                        Box::pin(self(string, param))
+                                    },
+                                    _ => Box::pin(async {Err(Response::BadRequest("format of path param is wrong"))})
+                                }
+                            },
+                            None => unreachable!(/* already validated in Server::add_handler */),
+                        }
+                    ), 2)
+                }
+            }
+            impl Param for ($int, String) {}
+            impl<F, Fut> Handler<($int, String)> for F
+            where
+                F:   Fn($int, String) -> Fut + Send + Sync + 'static,
+                Fut: Future<Output=Result<Response>> + Send + 'static
+            {
+                fn into_handlefunc(self) -> (HandleFunc, u8) {
+                    (Box::new(move |ctx, params|
+                        match params.get2() {
+                            Some((range_int, range_string)) => {
+                                let parsed = ctx.buffer.read_str(&range_int).parse::<$int>();
+                                match parsed {
+                                    Ok(int) => {
+                                        let string = ctx.buffer.read_str(&range_string).to_owned();
+                                        Box::pin(self(int, string))
+                                    },
+                                    _ => Box::pin(async {Err(Response::BadRequest("format of path param is wrong"))})
+                                }
+                            },
+                            None => unreachable!(/* already validated in Server::add_handler */),
+                        }
+                    ), 2)
+                }
+            }
+            impl Param for (Context, String, $int) {}
+            impl<F, Fut> Handler<(Context, String, $int)> for F
+            where
                 F:   Fn(Context, String, $int) -> Fut + Send + Sync + 'static,
                 Fut: Future<Output=Result<Response>> + Send + 'static
             {
@@ -242,9 +290,8 @@ macro_rules! impl_handler_with_string_int {
                     ), 2)
                 }
             }
-
-            impl Param for ($int, String) {}
-            impl<F, Fut> Handler<($int, String)> for F
+            impl Param for (Context, $int, String) {}
+            impl<F, Fut> Handler<(Context, $int, String)> for F
             where
                 F:   Fn(Context, $int, String) -> Fut + Send + Sync + 'static,
                 Fut: Future<Output=Result<Response>> + Send + 'static

@@ -7,7 +7,7 @@ fn main() -> Result<()> {
         .serve_on(":3000")
 }
 
-async fn sleepy_hello(_: Context, time: u64) -> Result<Response> {
+async fn sleepy_hello(time: u64) -> Result<Response> {
     (time < 30)
         ._else(|| Response::BadRequest("sleeping time (sec) must be less than 30."))?;
     std::thread::sleep(
@@ -16,7 +16,7 @@ async fn sleepy_hello(_: Context, time: u64) -> Result<Response> {
     Response::OK("Hello, I'm sleepy...")
 }
 
-async fn sleepy_hello_with_name(_: Context, time: u64, name: String) -> Result<Response> {
+async fn sleepy_hello_with_name(time: u64, name: String) -> Result<Response> {
     (time < 30)
         ._else(|| Response::BadRequest("sleeping time (sec) must be less than 30."))?;
     std::thread::sleep(
