@@ -51,9 +51,9 @@ async fn handle_fortunes(ctx: Context) -> Result<Response> {
 
 async fn handle_queries(ctx: Context) -> Result<Response> {
     let count = {
-        let queries = ctx.query::<&str>("q").unwrap_or("1").parse::<u32>().unwrap_or(1);
+        let queries = ctx.query::<&str>("q").unwrap_or("1").parse::<usize>().unwrap_or(1);
         if queries < 1 {1} else if 500 < queries {500} else {queries}
-    } as usize;
+    };
     let mut worlds = Vec::with_capacity(count);
     for id in random_i32s(count) {
         worlds.push(
@@ -69,9 +69,9 @@ async fn handle_queries(ctx: Context) -> Result<Response> {
 
 async fn handle_updates(ctx: Context) -> Result<Response> {
     let count = {
-        let queries = ctx.query::<&str>("q").unwrap_or("1").parse::<u32>().unwrap_or(1);
+        let queries = ctx.query::<&str>("q").unwrap_or("1").parse::<usize>().unwrap_or(1);
         if queries < 1 {1} else if 500 < queries {500} else {queries}
-    } as usize;
+    };
     let mut worlds = Vec::with_capacity(count);
     let mut new_randomnumbers = random_i32s(count);
     for id in random_i32s(count) {
