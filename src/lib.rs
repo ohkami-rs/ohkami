@@ -9,6 +9,7 @@ pub mod server;
 pub mod result;
 pub mod context;
 pub mod response;
+pub mod middleware;
 pub mod components;
 pub mod test;
 pub(crate) mod utils;

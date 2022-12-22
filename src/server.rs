@@ -17,7 +17,7 @@ use crate::{
         parse::parse_request_lines, validation, buffer::Buffer
     },
     router::Router,
-    handler::{Handler, Param},
+    handler::{Handler, Param}, middleware::Middleware,
 };
 
 #[cfg(feature = "postgres")]
@@ -66,6 +66,8 @@ pub struct Config<#[cfg(feature = "sqlx")] 'url> {
     pub cors: CORS,
     pub log_subscribe: Option<SubscriberBuilder>,
 
+    middleware: Middleware,
+
     #[cfg(feature = "sqlx")]
     pub db_profile: DBprofile<'url>,
 }
@@ -75,6 +77,7 @@ impl Default for Config {
         Self {
             cors:          CORS::default(),
             log_subscribe: Some(tracing_subscriber::fmt().with_max_level(tracing::Level::DEBUG)),
+            middleware:    Middleware::init(),
         }
     }
 }
@@ -85,6 +88,7 @@ impl<'url> Default for Config<'url> {
             cors:          CORS::default(),
             log_subscribe: Some(tracing_subscriber::fmt().with_max_level(tracing::Level::DEBUG)),
             db_profile:    DBprofile::default(),
+            middleware:    Middleware::init(),
         }
     }
 }
@@ -384,4 +388,23 @@ pub(crate) async fn consume_buffer(
     tracing::debug!("context: {:#?}", context);
 
     handler(context, params).await
+}
+
+
+#[cfg(test)]
+mod test {
+    use crate::prelude::*;
+
+    #[test]
+    fn basic_use() {
+        let config = Config {
+            log_subscribe: None,
+            ..Default::default()
+        };
+
+        Server::setup_with(config)
+            .GET("/", || async {
+                Response::OK("Hello!")
+            });
+    }
 }
