@@ -77,6 +77,14 @@ struct ServerSetting {
     config:     Config,
     middleware: Middleware,
 }
+impl Default for ServerSetting {
+    fn default() -> Self {
+        Self {
+            config:     Config::default(),
+            middleware: Middleware::default(),
+        }
+    }
+}
 ```
 2. Change the signature of `setup_with` to take an argument implementing `IntoServerSetting`：
 ```rust
