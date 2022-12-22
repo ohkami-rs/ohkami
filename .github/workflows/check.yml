@@ -14,4 +14,4 @@ jobs:
       - name: run check
         run: |
           cd ./examples/${{ matrix.example }}
-          && cargo check
+          cargo check
