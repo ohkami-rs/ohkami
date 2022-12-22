@@ -8,17 +8,10 @@ jobs:
         example: [db/rust, simple, static_file, techempower, with_test]
     steps:
       - uses: actions/checkout@v3
-
-      - run:  ls
-
-      - name: move to example directory
-        run:  cd ./examples/${{ matrix.example }}
-
-      - run:  ls
-
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
-      - uses: actions-rs/cargo@v1
-        with:
-          command: check
+      - name: run check
+        run: |
+          cd ./examples/${{ matrix.example }}
+          && cargo check
