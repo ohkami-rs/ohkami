@@ -12,8 +12,8 @@ pub trait Handler<P: Param> {
 impl Param for () {}
 impl<F, Fut> Handler<()> for F
 where
-F:   Fn() -> Fut + Send + Sync + 'static,
-Fut: Future<Output=Result<Response>> + Send + 'static
+    F:   Fn() -> Fut + Send + Sync + 'static,
+    Fut: Future<Output=Result<Response>> + Send + 'static
 {
     fn into_handlefunc(self) -> (HandleFunc, u8) {
         (
@@ -25,8 +25,8 @@ Fut: Future<Output=Result<Response>> + Send + 'static
 impl Param for Context {}
 impl<F, Fut> Handler<Context> for F
 where
-F:   Fn(Context) -> Fut + Send + Sync + 'static,
-Fut: Future<Output=Result<Response>> + Send + 'static
+    F:   Fn(Context) -> Fut + Send + Sync + 'static,
+    Fut: Future<Output=Result<Response>> + Send + 'static
 {
     fn into_handlefunc(self) -> (HandleFunc, u8) {
         (
@@ -39,8 +39,8 @@ Fut: Future<Output=Result<Response>> + Send + 'static
 impl Param for String {}
 impl<F, Fut> Handler<String> for F
 where
-F:   Fn(String) -> Fut + Send + Sync + 'static,
-Fut: Future<Output=Result<Response>> + Send + 'static
+    F:   Fn(String) -> Fut + Send + Sync + 'static,
+    Fut: Future<Output=Result<Response>> + Send + 'static
 {
     fn into_handlefunc(self) -> (HandleFunc, u8) {
         (Box::new(move |ctx, params|
@@ -57,8 +57,8 @@ Fut: Future<Output=Result<Response>> + Send + 'static
 impl Param for (Context, String) {}
 impl<F, Fut> Handler<(Context, String)> for F
 where
-F:   Fn(Context, String) -> Fut + Send + Sync + 'static,
-Fut: Future<Output=Result<Response>> + Send + 'static
+    F:   Fn(Context, String) -> Fut + Send + Sync + 'static,
+    Fut: Future<Output=Result<Response>> + Send + 'static
 {
     fn into_handlefunc(self) -> (HandleFunc, u8) {
         (Box::new(move |ctx, params|
@@ -178,11 +178,14 @@ macro_rules! impl_handler_with_2ints {
 );
 
 /*
-    HAVE TO COME UP WITH MORE EFFICIENT WAY for
+    HAVE TO come up with MORE EFFICIENT WAY for
+
     - 3ints
     - 4ints
     - string_2ints
     - string_3ints
+
+    But, how many services need more than 2 path parameters?
 */
 
 // macro_rules! impl_handler_with_3ints {
