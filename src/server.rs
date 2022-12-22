@@ -66,8 +66,6 @@ pub struct Config<#[cfg(feature = "sqlx")] 'url> {
     pub cors: CORS,
     pub log_subscribe: Option<SubscriberBuilder>,
 
-    middleware: Middleware,
-
     #[cfg(feature = "sqlx")]
     pub db_profile: DBprofile<'url>,
 }
@@ -77,7 +75,6 @@ impl Default for Config {
         Self {
             cors:          CORS::default(),
             log_subscribe: Some(tracing_subscriber::fmt().with_max_level(tracing::Level::DEBUG)),
-            middleware:    Middleware::init(),
         }
     }
 }
@@ -88,7 +85,6 @@ impl<'url> Default for Config<'url> {
             cors:          CORS::default(),
             log_subscribe: Some(tracing_subscriber::fmt().with_max_level(tracing::Level::DEBUG)),
             db_profile:    DBprofile::default(),
-            middleware:    Middleware::init(),
         }
     }
 }
