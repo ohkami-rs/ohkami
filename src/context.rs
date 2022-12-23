@@ -33,6 +33,7 @@ impl<'d> Context {
         let json_struct = json.to_struct()?;
         Ok(json_struct)
     }
+    
     /// Return `Result< &str | u64 | i64 | usize >` that holds query parameter whose key matches the argument (`Err`: if param string can't be parsed).
     /// ```no_run
     /// let count = ctx.query("count")?;
