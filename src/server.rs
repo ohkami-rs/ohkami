@@ -34,7 +34,7 @@ use sqlx::mysql::{
 
 /// Type of ohkami's server instance
 pub struct Server {
-    pub(crate) map:  Router<'static>,
+    pub(crate) router:  Router<'static>,
     cors: CORS,
 
     #[cfg(feature = "sqlx")]
@@ -115,8 +115,8 @@ impl Server {
         }
 
         Self {
-            map:  Router::new(),
-            cors: default_config.cors,
+            router: Router::new(),
+            cors:   default_config.cors,
         }
     }
     /// Initialize `Server` with given configuratoin. This **automatically performe `subscriber.init()`** if config's `log_subscribe` is `Some`, so **DON'T write it in your `main` function**.
@@ -140,8 +140,8 @@ impl Server {
         };
 
         Self {
-            map:  Router::new(),
-            cors: config.cors,
+            router: Router::new(),
+            cors:   config.cors,
 
             #[cfg(feature = "sqlx")]
             pool: Arc::new(pool)
@@ -241,7 +241,7 @@ impl Server {
             panic!("handler for `{path}` expects {expect_param_num} path params, this is more than actual ones {param_count}!")
         }
 
-        if let Err(msg) = self.map.register(
+        if let Err(msg) = self.router.register(
             method,
             if path == "/" {"/"} else {&path.trim_end_matches('/')},
             handler
@@ -265,7 +265,7 @@ impl Server {
             }
         );
 
-        let handler_map = Arc::new(self.map);
+        let router = Arc::new(self.router);
 
         block_on(async {
             let listener = TcpListener::bind(
@@ -277,7 +277,7 @@ impl Server {
                 task::spawn(
                     handle_stream(
                         stream,
-                        Arc::clone(&handler_map),
+                        Arc::clone(&router),
                         Arc::clone(&allow_origins_str),
                         
                         #[cfg(feature = "sqlx")]
@@ -297,7 +297,7 @@ impl ExpectedResponse for Result<Response> {fn as_response(self) -> Result<Respo
 
 async fn handle_stream(
     mut stream: TcpStream,
-    handler_map: Arc<Router<'static>>,
+    router: Arc<Router<'static>>,
     allow_origin_str: Arc<String>,
 
     #[cfg(feature = "sqlx")]
@@ -305,7 +305,7 @@ async fn handle_stream(
 ) {
     let mut response = match setup_response(
         &mut stream,
-        handler_map,
+        router,
 
         #[cfg(feature = "sqlx")]
         connection_pool,
@@ -332,7 +332,7 @@ async fn handle_stream(
 
 async fn setup_response(
     stream: &mut TcpStream,
-    handler_map: Arc<Router<'static>>,
+    router: Arc<Router<'static>>,
 
     #[cfg(feature = "sqlx")]
     connection_pool: Arc<ConnectionPool>,
@@ -340,7 +340,7 @@ async fn setup_response(
     let buffer = Buffer::new(stream).await?;
     consume_buffer(
         buffer,
-        &*handler_map,
+        &*router,
         
         #[cfg(feature = "sqlx")]
         connection_pool.clone(),
@@ -349,7 +349,7 @@ async fn setup_response(
 
 pub(crate) async fn consume_buffer(
     buffer:          Buffer,
-    handler_map:     &Router<'static>,
+    router:     &Router<'static>,
 
     #[cfg(feature = "sqlx")]
     connection_pool: Arc<ConnectionPool>,
@@ -367,7 +367,7 @@ pub(crate) async fn consume_buffer(
     let (
         handler,
         params
-    ) = handler_map.search(
+    ) = router.search(
         method,
         &path
     )?;
