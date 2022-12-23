@@ -72,7 +72,19 @@ impl<'p> Router<'p> {
 
     pub fn apply(&mut self, middlware: Middleware) {
         for (path, func) in middlware.0 {
+
+            /* -- TODO --
             
+                Apply `func` to all handlers in nodes that match `path`.
+                This `apply` will be just
+
+                ```
+                handler = Box::new(|ctx, range_list| Box::pin(async {
+                    func(&mut ctx).await();
+                    handler().await
+                }));
+                ```
+            */
         }
     }
 }

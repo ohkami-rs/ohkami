@@ -3,8 +3,8 @@ use serde::Deserialize;
 use crate::{
     result::{Result, ElseResponse, ElseResponseWithErr},
     utils::{range::RangeMap, buffer::Buffer},
-    components::{json::JSON, status::Status},
-    response::{Response, message::Message, body::Body},
+    components::{json::JSON, status::Status, headers::AdditionalHeader},
+    response::{Response, message::Message, body::Body, format::ResponseFormat},
 };
 
 #[cfg(feature = "sqlx")]
@@ -58,6 +58,10 @@ impl Context {
             status: Status::Created,
             body: Some(Body::application_json(created))
         })
+    }
+
+    pub fn header(&mut self, key: AdditionalHeader, value: &'static str) {
+        self.additional_headers += &(key.response_format().to_owned() + value + "\n")
     }
 
     /// Return a reference of `PgPool` (if feature = "postgres") or `MySqlPool` (if feature = "mysql").
