@@ -1,5 +1,5 @@
 use crate::{
-    components::method::Method, utils::range::RangeList, result::Result, handler::HandleFunc,
+    components::method::Method, utils::range::RangeList, result::Result, handler::HandleFunc, setting::Middleware,
 };
 
 // === mock for test ===
@@ -68,5 +68,11 @@ impl<'p> Router<'p> {
         };
 
         tree.search(path, RangeList::new(), offset)
+    }
+
+    pub fn apply(&mut self, middlware: Middleware) {
+        for (path, func) in middlware.0 {
+            
+        }
     }
 }

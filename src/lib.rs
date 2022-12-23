@@ -19,6 +19,7 @@ pub(crate) mod setting;
 pub mod prelude {
     pub use super::{
         server::Server,
+        setting::{Config, Middleware},
         result::{Result, ElseResponse, ElseResponseWithErr},
         context::Context,
         response::{Response, body::Body},

@@ -17,7 +17,7 @@ use crate::{
         parse::parse_request_lines, validation, buffer::Buffer
     },
     router::Router,
-    handler::{Handler, Param}, setting::{IntoServerSetting, ServerSetting}
+    handler::{Handler, Param}, setting::{IntoServerSetting, ServerSetting, Middleware}
 };
 
 #[cfg(feature = "postgres")]
@@ -34,11 +34,14 @@ use sqlx::mysql::{
 
 /// Type of ohkami's server instance
 pub struct Server {
-    pub(crate) router:  Router<'static>,
+    pub(crate) router: Router<'static>,
     cors: CORS,
 
     #[cfg(feature = "sqlx")]
     pub(crate) pool: Arc<ConnectionPool>,
+
+    setup_errors: Vec<String>,
+    middleware: Middleware,
 }
 
 
@@ -70,6 +73,9 @@ impl Server {
         Self {
             router: Router::new(),
             cors:   config.cors,
+
+            setup_errors: Vec::new(),
+            middleware,
         }
     }
     /// Initialize `Server` with given configuratoin. This **automatically performe `subscriber.init()`** if config's `log_subscribe` is `Some`, so **DON'T write it in your `main` function**.
@@ -102,7 +108,10 @@ impl Server {
             cors:   config.cors,
 
             #[cfg(feature = "sqlx")]
-            pool: Arc::new(pool)
+            pool: Arc::new(pool),
+
+            setup_errors: Vec::new(),
+            middleware,
         }
     }
 
@@ -188,7 +197,7 @@ impl Server {
             param_count
         ) = validation::valid_request_path(path);
         if !is_valid_path {
-            panic!("`{path}` is invalid as path.");
+            self.setup_errors.push(format!("`{path}` is invalid as path."));
         }
 
         let (
@@ -196,7 +205,7 @@ impl Server {
             expect_param_num
         ) = handler.into_handlefunc();
         if param_count < expect_param_num {
-            panic!("handler for `{path}` expects {expect_param_num} path params, this is more than actual ones {param_count}!")
+            self.setup_errors.push(format!("handler for `{path}` expects {expect_param_num} path params, this is more than actual ones {param_count}!"))
         }
 
         if let Err(msg) = self.router.register(
@@ -204,7 +213,7 @@ impl Server {
             if path == "/" {"/"} else {&path.trim_end_matches('/')},
             handler
         ) {
-            panic!("{msg}")
+            self.setup_errors.push(format!("{msg}"))
         }
 
         self
@@ -215,6 +224,26 @@ impl Server {
     /// - `"localhost:{port}"` (like `"localhost:8080"`) is interpret as `"127.0.0.1:{port}"`
     /// - other formats are interpret as raw TCP address
     pub fn serve_on(self, address: &'static str) -> Result<()> {
+        if ! self.setup_errors.is_empty() {
+            return Err(Response::InternalServerError(
+                self.setup_errors
+                    .into_iter()
+                    .fold(
+                        String::new(),
+                        |it, next| it + &next + "\n"
+                    )
+            ))
+        }
+        drop(self.setup_errors);
+
+        let router = Arc::new({
+            let mut router = self.router;
+            if ! self.middleware.is_empty() {
+                router.apply(self.middleware)
+            }
+            router
+        });
+
         let allow_origins_str = Arc::new(
             if self.cors.allow_origins.is_empty() {
                 String::new()
@@ -223,13 +252,13 @@ impl Server {
             }
         );
 
-        let router = Arc::new(self.router);
-
         block_on(async {
             let listener = TcpListener::bind(
                 validation::tcp_address(address)
             ).await?;
+
             tracing::info!("started seving on {}...", address);
+
             while let Some(stream) = listener.incoming().next().await {
                 let stream = stream?;
                 task::spawn(
@@ -306,8 +335,8 @@ async fn setup_response(
 }
 
 pub(crate) async fn consume_buffer(
-    buffer:          Buffer,
-    router:     &Router<'static>,
+    buffer: Buffer,
+    router: &Router<'static>,
 
     #[cfg(feature = "sqlx")]
     connection_pool: Arc<ConnectionPool>,

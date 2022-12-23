@@ -39,7 +39,7 @@ where
 }
 
 pub struct Middleware(
-    Vec<(/*route*/&'static str, MiddlewareFunc)>
+    pub(crate) Vec<(/*route*/&'static str, MiddlewareFunc)>
 ); impl Middleware {
     pub fn init() -> Self {
         Self(Vec::new())
@@ -48,5 +48,8 @@ pub struct Middleware(
     pub(crate) fn merge(mut self, mut another: Self) -> Self {
         self.0.append(&mut another.0);
         Self(self.0)
+    }
+    pub(crate) fn is_empty(&self) -> bool {
+        self.0.is_empty()
     }
 }
