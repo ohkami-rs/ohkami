@@ -1,5 +1,5 @@
 use std::{pin::Pin, future::Future};
-use crate::context::Context;
+use crate::{context::Context, handler::HandleFunc};
 
 type MiddlewareFunc = Box<dyn Fn(&mut Context) -> Pin<Box<dyn Future<Output=()>>>>;
 
@@ -51,5 +51,8 @@ pub struct Middleware(
     }
     pub(crate) fn is_empty(&self) -> bool {
         self.0.is_empty()
+    }
+    pub(crate) fn apply(self, handler: HandleFunc) -> HandleFunc {
+        
     }
 }

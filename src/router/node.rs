@@ -17,9 +17,9 @@ pub(super) struct Node<'p> {
     }
 
     pub fn search(&self,
-        mut path:   Split<'p, char>,
-        mut params: RangeList,
-        mut read_pos:   usize,
+        mut path:     Split<'p, char>,
+        mut params:   RangeList,
+        mut read_pos: usize,
     ) -> Result<(&HandleFunc, RangeList)> {
         if let Some(section) = path.next() {
             read_pos += 1 /* skip '/' */;
