@@ -1,10 +1,10 @@
 use std::fmt::Debug;
 use serde::Deserialize;
 use crate::{
-    result::{Result, ElseResponse},
+    result::{Result, ElseResponse, ElseResponseWithErr},
     utils::{range::RangeMap, buffer::Buffer},
-    components::json::JSON,
-    response::Response, prelude::ElseResponseWithErr
+    components::{json::JSON, status::Status},
+    response::{Response, message::Message, body::Body},
 };
 
 #[cfg(feature = "sqlx")]
@@ -16,16 +16,57 @@ use sqlx::MySqlPool as ConnectionPool;
 
 /// Type of context of a HTTP request.
 pub struct Context {
-    pub(crate) buffer:      Buffer,
-
-    pub(crate) body:        Option<JSON>,
-    pub(crate) query_range: Option<RangeMap>,
+    pub req: RequestContext,
+    pub(crate) additional_headers: String,
 
     #[cfg(feature = "sqlx")]
     pub(crate) pool:  Arc<ConnectionPool>,
 }
+pub struct RequestContext {
+    pub(crate) buffer:      Buffer,
 
-impl<'d> Context {
+    pub(crate) body:        Option<JSON>,
+    pub(crate) query_range: Option<RangeMap>,
+    // pub(crate) headers: ...
+}
+
+impl Context {
+    pub fn text<Msg: Message>(self, text: Msg) -> Result<Response> {
+        Ok(Response {
+            additional_headers: self.additional_headers,
+            status: Status::OK,
+            body: Some(Body::text_plain(text.as_message()))
+        })
+    }
+    pub fn json(self, json: JSON) -> Result<Response> {
+        Ok(Response {
+            additional_headers: self.additional_headers,
+            status: Status::OK,
+            body: Some(Body::application_json(json))
+        })
+    }
+    pub fn html<HTML: Message>(self, html: HTML) -> Result<Response> {
+        Ok(Response {
+            additional_headers: self.additional_headers,
+            status: Status::OK,
+            body: Some(Body::text_html(html.as_message()))
+        })
+    }
+    pub fn created(self, created: JSON) -> Result<Response> {
+        Ok(Response {
+            additional_headers: self.additional_headers,
+            status: Status::Created,
+            body: Some(Body::application_json(created))
+        })
+    }
+
+    /// Return a reference of `PgPool` (if feature = "postgres") or `MySqlPool` (if feature = "mysql").
+    #[cfg(feature = "sqlx")]
+    pub fn pool(&self) -> &ConnectionPool {
+        &*self.pool
+    }
+}
+impl<'d> RequestContext {
     /// Try deserialize the reuqest body into Rust struct that implements `serde::Deserialize`, and return `Result</* that struct */>`. If request doesn't have body, this returns `Err(Response)` of "Bad Request".
     pub fn body<D: Deserialize<'d>>(&'d self) -> Result<D> {
         let json = self.body.as_ref()
@@ -47,12 +88,6 @@ impl<'d> Context {
                 ._else(|| Response::BadRequest(format!("expected query param `{key}`")))?
         )
     }
-
-    /// Return a reference of `PgPool` (if feature = "postgres") or `MySqlPool` (if feature = "mysql").
-    #[cfg(feature = "sqlx")]
-    pub fn pool(&self) -> &ConnectionPool {
-        &*self.pool
-    }
 }
 
 pub trait Query<'q> {fn parse(q: &'q str) -> Result<Self> where Self: Sized;}
@@ -66,9 +101,9 @@ impl Debug for Context {
         write!(f, "
 query: {:?} (range: {:?}),
 body: {:?}",
-            self.query_range.as_ref().map(|map| map.debug_fmt_with(&self.buffer)),
-            self.query_range,
-            self.body,
+            self.req.query_range.as_ref().map(|map| map.debug_fmt_with(&self.req.buffer)),
+            self.req.query_range,
+            self.req.body,
         )
     }
 }

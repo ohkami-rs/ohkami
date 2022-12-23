@@ -13,7 +13,7 @@ use body::Body;
 pub(crate) mod format;
 use format::ResponseFormat;
 
-mod message;
+pub(crate) mod message;
 use message::Message;
 
 use self::{body::ResponseBody, message::ErrorMessage};
@@ -22,9 +22,9 @@ use self::{body::ResponseBody, message::ErrorMessage};
 /// Type of HTTP response
 #[derive(Debug, PartialEq)]
 pub struct Response {
-    additional_headers: String,
-    status: Status,
-    body:   Option<Body>,
+    pub(crate) additional_headers: String,
+    pub(crate) status: Status,
+    pub(crate) body:   Option<Body>,
 } impl Response {
     /// Add error context message to an existing `Response` in `Err`.
     /// ```no_run

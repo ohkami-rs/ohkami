@@ -8,7 +8,7 @@ fn main() -> Result<()> {
 
 async fn annoying_hello(ctx: Context) -> Result<Response> {
     let name: &str = ctx.query("name")?;
-    let count = ctx.query("count")?;
+    let count = ctx.req.query("count")?;
     (count < 10)
         ._else(|| Response::BadRequest("Sorry, `count` must be less than 10."))?;
     Response::OK(format!(

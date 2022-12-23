@@ -10,7 +10,7 @@ use crate::{
     components::{
         method::Method, cors::CORS, headers::Header
     },
-    context::Context,
+    context::{Context, RequestContext},
     response::Response,
     result::Result,
     utils::{
@@ -40,6 +40,7 @@ pub struct Server {
     #[cfg(feature = "sqlx")]
     pub(crate) pool: Arc<ConnectionPool>,
 }
+
 /// Configurations of `Server`. In current version, this holds
 /// 
 /// - `cors: CORS`,
@@ -373,10 +374,13 @@ pub(crate) async fn consume_buffer(
     )?;
 
     let context = Context {
-        buffer,
-        body,
-        query_range,
-
+        req: RequestContext {
+            buffer,
+            body,
+            query_range,
+        },
+        additional_headers: String::new(),
+        
         #[cfg(feature = "sqlx")]
         pool: connection_pool,
     };

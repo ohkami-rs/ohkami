@@ -14,7 +14,7 @@ struct User {
 }
 
 async fn only_whose_name_starts_with_j_can_login(ctx: Context) -> Result<Response> {
-    let requested_user = ctx.body::<User>()
+    let requested_user = ctx.req.body::<User>()
         ._else(|err| err.error_context("can't deserialize user"))?;
     (requested_user.name.starts_with('j'))
         ._else(|| Response::Forbidden(

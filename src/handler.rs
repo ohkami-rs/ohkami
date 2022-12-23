@@ -46,7 +46,7 @@ where
         (Box::new(move |ctx, params|
             match params.get1() {
                 Some(range) => {
-                    let param = ctx.buffer.read_str(&range).to_owned();
+                    let param = ctx.req.buffer.read_str(&range).to_owned();
                     Box::pin(self(param))
                 },
                 None => unreachable!(/* already validated in Server::add_handler */),
@@ -64,7 +64,7 @@ where
         (Box::new(move |ctx, params|
             match params.get1() {
                 Some(range) => {
-                    let param = ctx.buffer.read_str(&range).to_owned();
+                    let param = ctx.req.buffer.read_str(&range).to_owned();
                     Box::pin(self(ctx, param))
                 },
                 None => unreachable!(/* already validated in Server::add_handler */),
@@ -86,7 +86,7 @@ macro_rules! impl_handler_with_int {
                     (Box::new(move |ctx, params|
                         match params.get1() {
                             Some(range) => {
-                                let parsed = ctx.buffer.read_str(&range).parse::<$int_type>();
+                                let parsed = ctx.req.buffer.read_str(&range).parse::<$int_type>();
                                 match parsed {
                                     Ok(param) => Box::pin(self(param)),
                                     _ => Box::pin(async {Err(Response::BadRequest("format of path param is wrong"))})
@@ -107,7 +107,7 @@ macro_rules! impl_handler_with_int {
                     (Box::new(move |ctx, params|
                         match params.get1() {
                             Some(range) => {
-                                let parsed = ctx.buffer.read_str(&range).parse::<$int_type>();
+                                let parsed = ctx.req.buffer.read_str(&range).parse::<$int_type>();
                                 match parsed {
                                     Ok(param) => Box::pin(self(ctx, param)),
                                     _ => Box::pin(async {Err(Response::BadRequest("format of path param is wrong"))})
@@ -135,8 +135,8 @@ macro_rules! impl_handler_with_2ints {
                     (Box::new(move |ctx, params|
                         match params.get2() {
                             Some((range1, range2)) => {
-                                let parsed1 = ctx.buffer.read_str(&range1).parse::<$int1>();
-                                let parsed2 = ctx.buffer.read_str(&range2).parse::<$int2>();
+                                let parsed1 = ctx.req.buffer.read_str(&range1).parse::<$int1>();
+                                let parsed2 = ctx.req.buffer.read_str(&range2).parse::<$int2>();
                                 match (parsed1, parsed2) {
                                     (Ok(param1), Ok(param2)) => Box::pin(self(param1, param2)),
                                     _ => Box::pin(async {Err(Response::BadRequest("format of path param is wrong"))})
@@ -157,8 +157,8 @@ macro_rules! impl_handler_with_2ints {
                     (Box::new(move |ctx, params|
                         match params.get2() {
                             Some((range1, range2)) => {
-                                let parsed1 = ctx.buffer.read_str(&range1).parse::<$int1>();
-                                let parsed2 = ctx.buffer.read_str(&range2).parse::<$int2>();
+                                let parsed1 = ctx.req.buffer.read_str(&range1).parse::<$int1>();
+                                let parsed2 = ctx.req.buffer.read_str(&range2).parse::<$int2>();
                                 match (parsed1, parsed2) {
                                     (Ok(param1), Ok(param2)) => Box::pin(self(ctx, param1, param2)),
                                     _ => Box::pin(async {Err(Response::BadRequest("format of path param is wrong"))})
@@ -201,9 +201,9 @@ macro_rules! impl_handler_with_2ints {
 //                     Box::new(move |ctx, params|
 //                         match params.get3() {
 //                             Some((range1, range2, range3)) => {
-//                                 let parsed1 = ctx.buffer.read_str(&range1).parse::<$int1>();
-//                                 let parsed2 = ctx.buffer.read_str(&range2).parse::<$int2>();
-//                                 let parsed2 = ctx.buffer.read_str(&range3).parse::<$int3>();
+//                                 let parsed1 = ctx.req.buffer.read_str(&range1).parse::<$int1>();
+//                                 let parsed2 = ctx.req.buffer.read_str(&range2).parse::<$int2>();
+//                                 let parsed2 = ctx.req.buffer.read_str(&range3).parse::<$int3>();
 //                                 match (parsed1, parsed2, parsed3) {
 //                                     (Ok(param1), Ok(param2), Ok(param3)) => Box::pin(self(ctx, param1, param2, param3)),
 //                                     _ => Box::pin(async {Err(Response::BadRequest("format of path param is wrong"))})
@@ -231,10 +231,10 @@ macro_rules! impl_handler_with_string_int {
                     (Box::new(move |ctx, params|
                         match params.get2() {
                             Some((range_string, range_int)) => {
-                                let parsed = ctx.buffer.read_str(&range_int).parse::<$int>();
+                                let parsed = ctx.req.buffer.read_str(&range_int).parse::<$int>();
                                 match parsed {
                                     Ok(param) => {
-                                        let string = ctx.buffer.read_str(&range_string).to_owned();
+                                        let string = ctx.req.buffer.read_str(&range_string).to_owned();
                                         Box::pin(self(string, param))
                                     },
                                     _ => Box::pin(async {Err(Response::BadRequest("format of path param is wrong"))})
@@ -255,10 +255,10 @@ macro_rules! impl_handler_with_string_int {
                     (Box::new(move |ctx, params|
                         match params.get2() {
                             Some((range_int, range_string)) => {
-                                let parsed = ctx.buffer.read_str(&range_int).parse::<$int>();
+                                let parsed = ctx.req.buffer.read_str(&range_int).parse::<$int>();
                                 match parsed {
                                     Ok(int) => {
-                                        let string = ctx.buffer.read_str(&range_string).to_owned();
+                                        let string = ctx.req.buffer.read_str(&range_string).to_owned();
                                         Box::pin(self(int, string))
                                     },
                                     _ => Box::pin(async {Err(Response::BadRequest("format of path param is wrong"))})
@@ -279,10 +279,10 @@ macro_rules! impl_handler_with_string_int {
                     (Box::new(move |ctx, params|
                         match params.get2() {
                             Some((range_string, range_int)) => {
-                                let parsed = ctx.buffer.read_str(&range_int).parse::<$int>();
+                                let parsed = ctx.req.buffer.read_str(&range_int).parse::<$int>();
                                 match parsed {
                                     Ok(param) => {
-                                        let string = ctx.buffer.read_str(&range_string).to_owned();
+                                        let string = ctx.req.buffer.read_str(&range_string).to_owned();
                                         Box::pin(self(ctx, string, param))
                                     },
                                     _ => Box::pin(async {Err(Response::BadRequest("format of path param is wrong"))})
@@ -303,10 +303,10 @@ macro_rules! impl_handler_with_string_int {
                     (Box::new(move |ctx, params|
                         match params.get2() {
                             Some((range_int, range_string)) => {
-                                let parsed = ctx.buffer.read_str(&range_int).parse::<$int>();
+                                let parsed = ctx.req.buffer.read_str(&range_int).parse::<$int>();
                                 match parsed {
                                     Ok(int) => {
-                                        let string = ctx.buffer.read_str(&range_string).to_owned();
+                                        let string = ctx.req.buffer.read_str(&range_string).to_owned();
                                         Box::pin(self(ctx, int, string))
                                     },
                                     _ => Box::pin(async {Err(Response::BadRequest("format of path param is wrong"))})
