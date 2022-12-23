@@ -1,5 +1,9 @@
-mod config; pub use config::Config;
-mod middleware; pub use middleware::Middleware;
+mod config;
+mod middleware;
+
+pub use config::Config;
+pub use middleware::Middleware;
+pub(crate) use middleware::MiddlewareFunc;
 
 pub struct ServerSetting {
     pub(crate) config: Config,

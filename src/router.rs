@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use crate::{
     components::method::Method, utils::range::RangeList, result::Result, handler::HandleFunc, setting::Middleware,
 };
@@ -17,14 +19,14 @@ mod test_search;
 
 // #[derive(PartialEq, Debug)]
 #[allow(non_snake_case)]
-pub(crate) struct Router<'p> {
-    GET:    Node<'p>,
-    POST:   Node<'p>,
-    PATCH:  Node<'p>,
-    DELETE: Node<'p>,
+pub(crate) struct Router {
+    GET:    Node,
+    POST:   Node,
+    PATCH:  Node,
+    DELETE: Node,
 }
-impl<'p> Router<'p> {
-    pub fn new() -> Self {
+impl Router {
+    pub(crate) fn new() -> Self {
         Self {
             GET:    Node::new(Pattern::Str("")),
             POST:   Node::new(Pattern::Str("")),
@@ -32,9 +34,10 @@ impl<'p> Router<'p> {
             DELETE: Node::new(Pattern::Str("")),
         }
     }
-    pub fn register(&mut self,
+
+    pub(crate) fn register(&mut self,
         method:       Method,
-        path_pattern: &'static str,
+        path_pattern: &'static str /* already validated */,
         handler:      HandleFunc,
     ) -> std::result::Result<(), String> {
         let err_msg = format!("path pattern `{path_pattern}` is resistred duplicatedly");
@@ -49,11 +52,11 @@ impl<'p> Router<'p> {
             Method::DELETE => &mut self.DELETE,
         };
         
-        tree.register(path, handler, err_msg)
+        tree.register_handler(path, handler, err_msg)
     }
-    pub fn search(&self,
+    pub(crate) fn search<'req>(&self,
         method:       Method,
-        request_path: &'p str,
+        request_path: &'req str,
     ) -> Result<(&HandleFunc, RangeList)> {
         let mut path = request_path.split('/');
         { path.next(); }
@@ -67,24 +70,19 @@ impl<'p> Router<'p> {
             Method::DELETE => &self.DELETE,
         };
 
-        tree.search(path, RangeList::new(), offset)
+        tree.search_handler(path, RangeList::new(), offset)
     }
 
-    pub fn apply(&mut self, middlware: Middleware) {
-        for (path, func) in middlware.0 {
-
-            /* -- TODO --
-            
-                Apply `func` to all handlers in nodes that match `path`.
-                This `apply` will be just
-
-                ```
-                handler = Box::new(|ctx, range_list| Box::pin(async {
-                    func(&mut ctx).await();
-                    handler().await
-                }));
-                ```
-            */
+    pub(crate) fn apply(&mut self, middlware: Middleware) {
+        for (method, path, func) in middlware.0 {
+            match method {
+                Method::GET    => &mut self.GET,
+                Method::POST   => &mut self.POST,
+                Method::PATCH  => &mut self.PATCH,
+                Method::DELETE => &mut self.DELETE,
+            }.register_middleware_func(
+                path, func
+            )
         }
     }
 }

@@ -34,7 +34,7 @@ use sqlx::mysql::{
 
 /// Type of ohkami's server instance
 pub struct Server {
-    pub(crate) router: Router<'static>,
+    pub(crate) router: Router,
     cors: CORS,
 
     #[cfg(feature = "sqlx")]
@@ -284,7 +284,7 @@ impl ExpectedResponse for Result<Response> {fn as_response(self) -> Result<Respo
 
 async fn handle_stream(
     mut stream: TcpStream,
-    router: Arc<Router<'static>>,
+    router: Arc<Router>,
     allow_origin_str: Arc<String>,
 
     #[cfg(feature = "sqlx")]
@@ -319,7 +319,7 @@ async fn handle_stream(
 
 async fn setup_response(
     stream: &mut TcpStream,
-    router: Arc<Router<'static>>,
+    router: Arc<Router>,
 
     #[cfg(feature = "sqlx")]
     connection_pool: Arc<ConnectionPool>,
@@ -336,7 +336,7 @@ async fn setup_response(
 
 pub(crate) async fn consume_buffer(
     buffer: Buffer,
-    router: &Router<'static>,
+    router: &Router,
 
     #[cfg(feature = "sqlx")]
     connection_pool: Arc<ConnectionPool>,

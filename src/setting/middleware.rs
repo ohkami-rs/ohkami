@@ -1,17 +1,21 @@
 use std::{pin::Pin, future::Future};
-use crate::context::Context;
+use crate::{context::Context, test::Method};
 
-type MiddlewareFunc = Box<dyn Fn(&mut Context) -> Pin<Box<dyn Future<Output=()>>>>;
+pub(crate) type MiddlewareFunc = Box<dyn Fn(&mut Context) -> Pin<Box<dyn Future<Output=()> + Send>> + Send + Sync>;
+trait MiddlewareClone:
+    Fn(&mut Context) -> Pin<Box<dyn Future<Output=()> + Send>> + Send + Sync
+    + Clone
+{}
 
-trait MiddlewareArg {}
-trait MiddlewareProcess<Arg: MiddlewareArg> {
+pub trait MiddlewareArg {}
+pub trait MiddlewareProcess<Arg: MiddlewareArg> {
     fn into_middleware_func(self) -> MiddlewareFunc;
 }
 impl MiddlewareArg for () {}
 impl<F, Fut> MiddlewareProcess<()> for F
 where
-    F:   Fn() -> Fut + 'static,
-    Fut: Future<Output=()> + 'static,
+    F:   Fn() -> Fut + Send + Sync + 'static,
+    Fut: Future<Output=()> + Send + 'static,
 {
     fn into_middleware_func(self) -> MiddlewareFunc {
         Box::new(move |_| Box::pin(self()))
@@ -20,8 +24,8 @@ where
 impl MiddlewareArg for (&Context,) {}
 impl<F, Fut> MiddlewareProcess<(&Context,)> for F
 where
-    F:   Fn(&Context) -> Fut + 'static,
-    Fut: Future<Output=()> + 'static,
+    F:   Fn(&Context) -> Fut + Send + Sync + 'static,
+    Fut: Future<Output=()> + Send + 'static,
 {
     fn into_middleware_func(self) -> MiddlewareFunc {
         Box::new(move |ctx| Box::pin(self(ctx)))
@@ -30,8 +34,8 @@ where
 impl MiddlewareArg for &Context {}
 impl<F, Fut> MiddlewareProcess<&Context> for F
 where
-    F:   Fn(&mut Context) -> Fut + 'static,
-    Fut: Future<Output=()> + 'static,
+    F:   Fn(&mut Context) -> Fut + Send + Sync + 'static,
+    Fut: Future<Output=()> + Send + 'static,
 {
     fn into_middleware_func(self) -> MiddlewareFunc {
         Box::new(move |ctx| Box::pin(self(ctx)))
@@ -39,10 +43,18 @@ where
 }
 
 pub struct Middleware(
-    pub(crate) Vec<(/*route*/&'static str, MiddlewareFunc)>
+    pub(crate) Vec<(Method,/*route*/&'static str, MiddlewareFunc)>
 ); impl Middleware {
     pub fn init() -> Self {
         Self(Vec::new())
+    }
+    #[allow(non_snake_case)]
+    pub fn ANY<P: MiddlewareProcess<Arg> + Clone, Arg: MiddlewareArg>(mut self, route: &'static str, proccess: P) -> Self {
+        self.0.push((Method::GET, route, proccess.clone().into_middleware_func()));
+        self.0.push((Method::POST, route, proccess.clone().into_middleware_func()));
+        self.0.push((Method::PATCH, route, proccess.clone().into_middleware_func()));
+        self.0.push((Method::DELETE, route, proccess.clone().into_middleware_func()));
+        self
     }
 
     pub(crate) fn merge(mut self, mut another: Self) -> Self {
