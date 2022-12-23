@@ -17,7 +17,7 @@ use crate::{
         parse::parse_request_lines, validation, buffer::Buffer
     },
     router::Router,
-    handler::{Handler, Param}, middleware::Middleware,
+    handler::{Handler, Param}
 };
 
 #[cfg(feature = "postgres")]
