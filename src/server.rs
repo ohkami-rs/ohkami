@@ -228,7 +228,7 @@ impl Server {
         let (
             is_valid_path,
             param_count
-        ) = validation::valid_path(path);
+        ) = validation::valid_request_path(path);
         if !is_valid_path {
             panic!("`{path}` is invalid as path.");
         }
