@@ -1,4 +1,4 @@
-#![doc(html_root_url = "https://docs.rs/ohkami/0.3.4")]
+#![doc(html_root_url = "https://docs.rs/ohkami/0.4.0")]
 
 #[cfg(all(not(feature = "sqlx"), any(feature = "postgres", feature = "mysql")))]
 compile_error!("feature `postgres` or `mysql` can't be enebled without enabling `sqlx` feature");
@@ -9,16 +9,16 @@ pub mod server;
 pub mod result;
 pub mod context;
 pub mod response;
-pub mod middleware;
 pub mod components;
 pub mod test;
 pub(crate) mod utils;
 pub(crate) mod router;
 pub(crate) mod handler;
+pub(crate) mod setting;
 
 pub mod prelude {
     pub use super::{
-        server::{Server, Config},
+        server::Server,
         result::{Result, ElseResponse, ElseResponseWithErr},
         context::Context,
         response::{Response, body::Body},

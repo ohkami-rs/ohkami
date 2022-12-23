@@ -44,4 +44,9 @@ pub struct Middleware(
     pub fn init() -> Self {
         Self(Vec::new())
     }
+
+    pub(crate) fn merge(mut self, mut another: Self) -> Self {
+        self.0.append(&mut another.0);
+        Self(self.0)
+    }
 }

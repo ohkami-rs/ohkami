@@ -2,7 +2,7 @@ use async_std::{net::TcpStream, io::WriteExt};
 use crate::{
     components::{
         status::Status,
-        json::JSON, headers::Header, time::now_fmt,
+        json::JSON, headers::AdditionalHeader, time::now_fmt,
     },
     result::Result,
 };
@@ -89,7 +89,7 @@ Keep-Alive: timeout=5
             }
         .as_bytes()).await
     }
-    pub(crate) fn add_header(&mut self, key: Header, value: &String) {
+    pub(crate) fn add_header(&mut self, key: AdditionalHeader, value: &String) {
         self.additional_headers += key.response_format();
         self.additional_headers += value;
         self.additional_headers += "\n";

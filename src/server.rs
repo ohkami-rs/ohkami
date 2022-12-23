@@ -8,7 +8,7 @@ use async_std::{
 use tracing_subscriber::fmt::SubscriberBuilder;
 use crate::{
     components::{
-        method::Method, cors::CORS, headers::Header
+        method::Method, cors::CORS, headers::AdditionalHeader
     },
     context::{Context, RequestContext},
     response::Response,
@@ -17,7 +17,7 @@ use crate::{
         parse::parse_request_lines, validation, buffer::Buffer
     },
     router::Router,
-    handler::{Handler, Param}
+    handler::{Handler, Param}, setting::{IntoServerSetting, ServerSetting}
 };
 
 #[cfg(feature = "postgres")]
@@ -41,54 +41,6 @@ pub struct Server {
     pub(crate) pool: Arc<ConnectionPool>,
 }
 
-/// Configurations of `Server`. In current version, this holds
-/// 
-/// - `cors: CORS`,
-/// - `log_subscribe: Option<SubscriberBuilder>`,
-/// - `db_profile: DBprofile<'url>` (if feature = "sqlx")
-/// 
-/// Here, `log_subscribe`'s default value is
-/// ```no_run
-/// Some(tracing_subscriber::fmt().with_max_level(tracing::Level::DEBUG))
-/// ```
-/// When you'd like to customize this, add `tracing` and `tracing_subscriber` in your dependencies to write custom config like
-/// ```no_run
-/// fn main() -> Result<()> {
-///     let config = Config {
-///         log_subscribe: Some(
-///             tracing_subscriber::fmt()
-///                 .with_max_level(tracing::Level::TRACE)
-///         ),
-///         ..Default::default()
-///     };
-/// }
-/// ```
-pub struct Config<#[cfg(feature = "sqlx")] 'url> {
-    pub cors: CORS,
-    pub log_subscribe: Option<SubscriberBuilder>,
-
-    #[cfg(feature = "sqlx")]
-    pub db_profile: DBprofile<'url>,
-}
-#[cfg(not(feature = "sqlx"))]
-impl Default for Config {
-    fn default() -> Self {
-        Self {
-            cors:          CORS::default(),
-            log_subscribe: Some(tracing_subscriber::fmt().with_max_level(tracing::Level::DEBUG)),
-        }
-    }
-}
-#[cfg(feature = "sqlx")]
-impl<'url> Default for Config<'url> {
-    fn default() -> Self {
-        Self {
-            cors:          CORS::default(),
-            log_subscribe: Some(tracing_subscriber::fmt().with_max_level(tracing::Level::DEBUG)),
-            db_profile:    DBprofile::default(),
-        }
-    }
-}
 
 #[cfg(feature = "sqlx")]
 pub struct DBprofile<'url> {
@@ -109,19 +61,24 @@ impl Server {
     /// Just a shortcut of `setup_with(Config::default())`
     #[cfg(not(feature = "sqlx"))]
     pub fn setup() -> Self {
-        let default_config = Config::default();
+        let ServerSetting { config, middleware } = ServerSetting::default();
 
-        if let Some(subscriber) = default_config.log_subscribe {
+        if let Some(subscriber) = config.log_subscribe {
             subscriber.init()
         }
 
         Self {
             router: Router::new(),
-            cors:   default_config.cors,
+            cors:   config.cors,
         }
     }
     /// Initialize `Server` with given configuratoin. This **automatically performe `subscriber.init()`** if config's `log_subscribe` is `Some`, so **DON'T write it in your `main` function**.
-    pub fn setup_with(config: Config) -> Self {
+    pub fn setup_with<ISS: IntoServerSetting>(setting: ISS) -> Self {
+        let ServerSetting { 
+            config,
+            middleware,
+        } = setting.into_setting();
+
         if let Some(subscriber) = config.log_subscribe {
             subscriber.init()
         }
@@ -316,7 +273,7 @@ async fn handle_stream(
     };
 
     if !allow_origin_str.is_empty() {
-        response.add_header(Header::AccessControlAllowOrigin, &*allow_origin_str)
+        response.add_header(AdditionalHeader::AccessControlAllowOrigin, &*allow_origin_str)
     }
 
     tracing::info!("generated a response: {:?}", &response);
@@ -393,7 +350,7 @@ pub(crate) async fn consume_buffer(
 
 #[cfg(test)]
 mod test {
-    use crate::prelude::*;
+    use crate::{prelude::*, setting::Config};
 
     #[test]
     fn basic_use() {
