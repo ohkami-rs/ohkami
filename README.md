@@ -76,16 +76,16 @@ fn main() -> Result<()> {
 ## Snippets
 ### handle query params
 ```rust
-let name = ctx.query::<&str>("name")?;
+let name = ctx.req.query::<&str>("name")?;
 // `::<&str>` isn't needed when it's presumable
 ```
 ```rust
-let count = ctx.query::<usize>("count")?;
+let count = ctx.req..query::<usize>("count")?;
 // `::<usize>` isn't needed when it's presumable
 ```
 ### handle request body
 ```rust
-let body = ctx.body::<D>()?;
+let body = ctx.req.body::<D>()?;
 // `::<D>` isn't needed when it's presumable
 // `D` has to be `serde::Deserialize`
 ```
@@ -109,29 +109,40 @@ async fn sleepy_hello(time: u64, name: String) -> Result<Response> {
 ### return OK response with `text/plain`
 ```rust
 Response::OK("Hello, world!")
+// without Context
+```
+```rust
+ctx.text("Hello, world!")
+// with Context
 ```
 ### return OK response with `application/json`
 ```rust
 Response::OK(JSON("Hello, world!"))
+// or
+ctx.json(JSON("Hello, world!"))
 ```
 ```rust
 Response::OK(json!("ok": true))
+// or
+ctx.json(json!("ok": true))
 ```
 ```rust
 Response::OK(json(user)?)
+//or
+ctx.json(json(user)?)
 // serialize Rust value into JSON
 // value's type has to be `serde::Serialize`
 ```
 ### handle errors
 ```rust
-let user = ctx.body::<User>()?;
+let user = ctx.req.body::<User>()?;
 
 // or, you can add an error context message:
-let user = ctx.body::<User>()
+let user = ctx.req.body::<User>()
     ._else(|e| e.error_context("failed to get user data"))?;
 
 // or discard original error:
-let user = ctx.body::<User>()
+let user = ctx.req.body::<User>()
     ._else(|_| Response::InternalServerError("can't get user"))?;
     // or
     ._else(|_| Response::InternalServerError(None))?;
