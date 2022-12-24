@@ -67,9 +67,11 @@ fn main() -> Result<()> {
             Response::OK("Hello!")
         })
         .serve_on("localhost:3000")
+}
 ```
-- "Middleware function" is just a function that takes one of nothing, `&Context`, `&mut Context` as its argumennt and returns nothing ( e.g. `()` ).
-- Middleware funcs is **inserted before** handler works, so current middleware funcs are executed only when **the handler exists** ( e.g. In the code above for example, `tracing::info()!` will NOT executed for a request `POST /` because no handler for this is found ). *This design may be changed in future version.*
+- "Middleware function" is just a function that takes one of nothing, `&Context`, `&mut Context` as its argument and returns `()`. You can register some pairs of such a function and a route ( where it works ) in a `Middleware`.
+- Middleware funcs is **inserted before** handler works, so middleware funcs are executed only when **the handler exists** ( e.g. In the code above for example, `tracing::info("Hello, middleware")!` will NOT executed for a request `POST /` because no handler for this is found ).
+- *Current design may be changed in future version.*
 
 <br/>
 
