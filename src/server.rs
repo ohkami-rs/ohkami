@@ -223,7 +223,15 @@ impl Server {
     /// - `":{port}"` (like `":3000"`) is interpret as `"0.0.0.0:{port}"`
     /// - `"localhost:{port}"` (like `"localhost:8080"`) is interpret as `"127.0.0.1:{port}"`
     /// - other formats are interpret as raw TCP address
-    pub fn serve_on(self, address: &'static str) -> Result<()> {
+    pub fn serve_on(mut self, address: &'static str) -> Result<()> {
+        let router = Arc::new({
+            let applied_router = self.router.apply(self.middleware);
+            if let Err(msg) = &applied_router {
+                self.setup_errors.push(msg.to_owned())
+            }
+            applied_router.unwrap()
+        });
+
         if ! self.setup_errors.is_empty() {
             return Err(Response::InternalServerError(
                 self.setup_errors
@@ -235,14 +243,6 @@ impl Server {
             ))
         }
         drop(self.setup_errors);
-
-        let router = Arc::new({
-            let mut router = self.router;
-            if ! self.middleware.is_empty() {
-                router.apply(self.middleware)
-            }
-            router
-        });
 
         let allow_origins_str = Arc::new(
             if self.cors.allow_origins.is_empty() {

@@ -73,16 +73,16 @@ impl Router {
         tree.search_handler(path, RangeList::new(), offset)
     }
 
-    pub(crate) fn apply(&mut self, middlware: Middleware) {
-        for (method, path, func) in middlware.0 {
+    pub(crate) fn apply(mut self, middlware: Middleware) -> std::result::Result<Self, String> {
+        for (method, route, func) in middlware.0 {
+            let error_msg = format!("middleware func just for `{method} {route}` is registered duplicatedly");
             match method {
-                Method::GET    => &mut self.GET,
-                Method::POST   => &mut self.POST,
-                Method::PATCH  => &mut self.PATCH,
-                Method::DELETE => &mut self.DELETE,
-            }.register_middleware_func(
-                path, func
-            )
+                Method::GET    => self.GET = self.GET.register_middleware_func(route, func, error_msg)?,
+                Method::POST   => self.POST = self.POST.register_middleware_func(route, func, error_msg)?,
+                Method::PATCH  => self.PATCH = self.PATCH.register_middleware_func(route, func, error_msg)?,
+                Method::DELETE => self.DELETE = self.DELETE.register_middleware_func(route, func, error_msg)?,
+            }
         }
+        Ok(self)
     }
 }

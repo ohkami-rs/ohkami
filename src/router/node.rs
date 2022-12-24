@@ -1,20 +1,29 @@
-use std::{str::Split, rc::Rc};
+use std::str::Split;
 use crate::{utils::{range::RangeList, buffer::BufRange}, result::{Result, ElseResponse}, response::Response, handler::HandleFunc, setting::MiddlewareFunc};
 use super::pattern::Pattern;
 
+pub(super) struct MiddlewareRegister {
+    just: Option<MiddlewareFunc>,
+    pproccess: Vec<MiddlewareFunc>,
+} impl MiddlewareRegister {
+    fn new() -> Self {
+        Self { just: None, pproccess: Vec::new() }
+    }
+}
+
 // #derive[Debug, PartialEq]
 pub(super) struct Node {
-    pub(super) pattern:     Pattern,
-    pub(super) handler:     Option<HandleFunc>,
-    pub(super) middlewares: Vec<MiddlewareFunc>,
-    pub(super) children:    Vec<Node>,
+    pub(super) pattern:    Pattern,
+    pub(super) handler:    Option<HandleFunc>,
+    pub(super) middleware: MiddlewareRegister,
+    pub(super) children:   Vec<Node>,
 } impl Node {
     pub fn new(pattern: Pattern) -> Self {
         Self {
             pattern,
-            handler:     None,
-            middlewares: Vec::new(),
-            children:    Vec::new(),
+            handler:    None,
+            middleware: MiddlewareRegister::new(),
+            children:   Vec::new(),
         }
     }
 
@@ -98,30 +107,30 @@ pub(super) struct Node {
         }
     }
 
-    pub(super) fn register_middleware_func(&mut self,
+    pub(super) fn register_middleware_func(mut self,
         path:            &'static str /* already validated */,
         middleware_func: MiddlewareFunc,
-    ) {
+        err_msg:         String,
+    ) -> std::result::Result<Self, String> {
         if path.ends_with('*') {
-            let apply_root = self.search_apply_root(
-                path.trim_end_matches('*')[1..].split('/')
-            );
-
-            // ====================
-            // TODO
-            // - clone はできないが、apply root に置いておいて search 時に通ったものを順次実行すれば良さそう
-            // - 問題は「他の route の途中部分として現れうる route 」を 〜/* ではなく just route として指定された場合.
-            //   これについては「通ったら実行される」と「そこでストップした場合のみ実行される」を区別するしかないか？
-            //   その場合、１node が持てる just route middleware func は１つなので、handler と同様 register で Result を返す
-            // ====================
+            if let Some(apply_root) = self.search_apply_root(
+                (path.trim_end_matches('*'))[1..].split('/')
+            ) {
+                apply_root.middleware.pproccess.push(middleware_func)
+            }
 
         } else {
             if let Some(target) = self.search_apply_root(
                 path[1..].split('/')
             ) {
-                target.middlewares.push(middleware_func)
+                if target.middleware.just.is_some() {
+                    return Err(err_msg)
+                }
+                target.middleware.just = Some(middleware_func)
             }
         }
+
+        Ok(self)
     }
     fn search_apply_root(&mut self, mut path: Split<'static, char>) -> Option<&mut Self> {
         if let Some(section) = path.next() {

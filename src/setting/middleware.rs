@@ -56,6 +56,26 @@ pub struct Middleware(
         self.0.push((Method::DELETE, route, proccess.clone().into_middleware_func()));
         self
     }
+    #[allow(non_snake_case)]
+    pub fn GET<P: MiddlewareProcess<Arg>, Arg: MiddlewareArg>(mut self, route: &'static str, proccess: P) -> Self {
+        self.0.push((Method::GET, route, proccess.into_middleware_func()));
+        self
+    }
+    #[allow(non_snake_case)]
+    pub fn POST<P: MiddlewareProcess<Arg>, Arg: MiddlewareArg>(mut self, route: &'static str, proccess: P) -> Self {
+        self.0.push((Method::POST, route, proccess.into_middleware_func()));
+        self
+    }
+    #[allow(non_snake_case)]
+    pub fn PATCH<P: MiddlewareProcess<Arg>, Arg: MiddlewareArg>(mut self, route: &'static str, proccess: P) -> Self {
+        self.0.push((Method::PATCH, route, proccess.into_middleware_func()));
+        self
+    }
+    #[allow(non_snake_case)]
+    pub fn DELETE<P: MiddlewareProcess<Arg>, Arg: MiddlewareArg>(mut self, route: &'static str, proccess: P) -> Self {
+        self.0.push((Method::DELETE, route, proccess.into_middleware_func()));
+        self
+    }
 
     pub(crate) fn merge(mut self, mut another: Self) -> Self {
         self.0.append(&mut another.0);
