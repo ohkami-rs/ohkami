@@ -1,5 +1,5 @@
 use std::{pin::Pin, future::Future};
-use crate::{context::Context, test::Method};
+use crate::{context::Context, test::Method, utils::validation};
 
 pub(crate) type MiddlewareFunc = Box<dyn Fn(&mut Context) -> Pin<Box<dyn Future<Output=()> + Send>> + Send + Sync>;
 trait MiddlewareClone:
@@ -42,46 +42,93 @@ where
     }
 }
 
-pub struct Middleware(
-    pub(crate) Vec<(Method,/*route*/&'static str, MiddlewareFunc)>
-); impl Middleware {
+pub struct Middleware {
+    pub(crate) proccess:     Vec<(Method, /*route*/&'static str, MiddlewareFunc)>,
+    pub(crate) setup_errors: Vec<String>,
+} impl Middleware {
     pub fn init() -> Self {
-        Self(Vec::new())
+        Self {
+            proccess: Vec::new(),
+            setup_errors: Vec::new(),
+        }
     }
     #[allow(non_snake_case)]
-    pub fn ANY<P: MiddlewareProcess<Arg> + Clone, Arg: MiddlewareArg>(mut self, route: &'static str, proccess: P) -> Self {
-        self.0.push((Method::GET, route, proccess.clone().into_middleware_func()));
-        self.0.push((Method::POST, route, proccess.clone().into_middleware_func()));
-        self.0.push((Method::PATCH, route, proccess.clone().into_middleware_func()));
-        self.0.push((Method::DELETE, route, proccess.clone().into_middleware_func()));
+    pub fn ANY<P: MiddlewareProcess<Arg> + Clone, Arg: MiddlewareArg>(
+        mut self,
+        route: &'static str,
+        proccess: P,
+    ) -> Self {
+        if ! validation::valid_middleware_route(route) {
+            self.setup_errors.push(
+                format!("middleware route `{route}` is invalid")
+            )
+        }
+        self.proccess.push((Method::GET, route, proccess.clone().into_middleware_func()));
+        self.proccess.push((Method::POST, route, proccess.clone().into_middleware_func()));
+        self.proccess.push((Method::PATCH, route, proccess.clone().into_middleware_func()));
+        self.proccess.push((Method::DELETE, route, proccess.clone().into_middleware_func()));
         self
     }
     #[allow(non_snake_case)]
-    pub fn GET<P: MiddlewareProcess<Arg>, Arg: MiddlewareArg>(mut self, route: &'static str, proccess: P) -> Self {
-        self.0.push((Method::GET, route, proccess.into_middleware_func()));
+    pub fn GET<P: MiddlewareProcess<Arg>, Arg: MiddlewareArg>(
+        mut self,
+        route: &'static str,
+        proccess: P,
+    ) -> Self {
+        if ! validation::valid_middleware_route(route) {
+            self.setup_errors.push(
+                format!("middleware route `{route}` is invalid")
+            )
+        }
+        self.proccess.push((Method::GET, route, proccess.into_middleware_func()));
         self
     }
     #[allow(non_snake_case)]
-    pub fn POST<P: MiddlewareProcess<Arg>, Arg: MiddlewareArg>(mut self, route: &'static str, proccess: P) -> Self {
-        self.0.push((Method::POST, route, proccess.into_middleware_func()));
+    pub fn POST<P: MiddlewareProcess<Arg>, Arg: MiddlewareArg>(
+        mut self,
+        route: &'static str,
+        proccess: P,
+    ) -> Self {
+        if ! validation::valid_middleware_route(route) {
+            self.setup_errors.push(
+                format!("middleware route `{route}` is invalid")
+            )
+        }
+        self.proccess.push((Method::POST, route, proccess.into_middleware_func()));
         self
     }
     #[allow(non_snake_case)]
-    pub fn PATCH<P: MiddlewareProcess<Arg>, Arg: MiddlewareArg>(mut self, route: &'static str, proccess: P) -> Self {
-        self.0.push((Method::PATCH, route, proccess.into_middleware_func()));
+    pub fn PATCH<P: MiddlewareProcess<Arg>, Arg: MiddlewareArg>(
+        mut self,
+        route: &'static str,
+        proccess: P,
+    ) -> Self {
+        if ! validation::valid_middleware_route(route) {
+            self.setup_errors.push(
+                format!("middleware route `{route}` is invalid")
+            )
+        }
+        self.proccess.push((Method::PATCH, route, proccess.into_middleware_func()));
         self
     }
     #[allow(non_snake_case)]
-    pub fn DELETE<P: MiddlewareProcess<Arg>, Arg: MiddlewareArg>(mut self, route: &'static str, proccess: P) -> Self {
-        self.0.push((Method::DELETE, route, proccess.into_middleware_func()));
+    pub fn DELETE<P: MiddlewareProcess<Arg>, Arg: MiddlewareArg>(
+        mut self,
+        route: &'static str,
+        proccess: P,
+    ) -> Self {
+        if ! validation::valid_middleware_route(route) {
+            self.setup_errors.push(
+                format!("middleware route `{route}` is invalid")
+            )
+        }
+        self.proccess.push((Method::DELETE, route, proccess.into_middleware_func()));
         self
     }
 
     pub(crate) fn merge(mut self, mut another: Self) -> Self {
-        self.0.append(&mut another.0);
-        Self(self.0)
-    }
-    pub(crate) fn is_empty(&self) -> bool {
-        self.0.is_empty()
+        self.proccess.append(&mut another.proccess);
+        self.setup_errors.append(&mut another.setup_errors);
+        self
     }
 }

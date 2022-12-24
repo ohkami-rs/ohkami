@@ -77,7 +77,14 @@ impl Router {
     }
 
     pub(crate) fn apply(mut self, middlware: Middleware) -> std::result::Result<Self, String> {
-        for (method, route, func) in middlware.0 {
+        if ! middlware.setup_errors.is_empty() {
+            return Err(
+                middlware.setup_errors
+                    .into_iter()
+                    .fold(String::new(), |it, next| it + &next + "\n")
+            )
+        }
+        for (method, route, func) in middlware.proccess {
             let error_msg = format!("middleware func just for `{method} {route}` is registered duplicatedly");
             match method {
                 Method::GET    => self.GET = self.GET.register_middleware_func(route, func, error_msg)?,

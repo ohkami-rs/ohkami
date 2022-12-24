@@ -5,7 +5,6 @@ use async_std::{
     net::{TcpStream, TcpListener},
     stream::StreamExt, task,
 };
-use tracing_subscriber::fmt::SubscriberBuilder;
 use crate::{
     components::{
         method::Method, cors::CORS, headers::AdditionalHeader
@@ -236,10 +235,7 @@ impl Server {
             return Err(Response::InternalServerError(
                 self.setup_errors
                     .into_iter()
-                    .fold(
-                        String::new(),
-                        |it, next| it + &next + "\n"
-                    )
+                    .fold(String::new(), |it, next| it + &next + "\n")
             ))
         }
         drop(self.setup_errors);
