@@ -5,19 +5,18 @@ use async_std::{
     net::{TcpStream, TcpListener},
     stream::StreamExt, task,
 };
-use tracing_subscriber::fmt::SubscriberBuilder;
 use crate::{
     components::{
-        method::Method, cors::CORS, headers::Header
+        method::Method, cors::CORS, headers::AdditionalHeader
     },
-    context::Context,
+    context::{Context, RequestContext},
     response::Response,
     result::Result,
     utils::{
         parse::parse_request_lines, validation, buffer::Buffer
     },
     router::Router,
-    handler::{Handler, Param},
+    handler::{Handler, Param}, setting::{IntoServerSetting, ServerSetting, Middleware}
 };
 
 #[cfg(feature = "postgres")]
@@ -34,60 +33,16 @@ use sqlx::mysql::{
 
 /// Type of ohkami's server instance
 pub struct Server {
-    pub(crate) map:  Router<'static>,
+    pub(crate) router: Router,
     cors: CORS,
 
     #[cfg(feature = "sqlx")]
     pub(crate) pool: Arc<ConnectionPool>,
-}
-/// Configurations of `Server`. In current version, this holds
-/// 
-/// - `cors: CORS`,
-/// - `log_subscribe: Option<SubscriberBuilder>`,
-/// - `db_profile: DBprofile<'url>` (if feature = "sqlx")
-/// 
-/// Here, `log_subscribe`'s default value is
-/// ```no_run
-/// Some(tracing_subscriber::fmt().with_max_level(tracing::Level::DEBUG))
-/// ```
-/// When you'd like to customize this, add `tracing` and `tracing_subscriber` in your dependencies to write custom config like
-/// ```no_run
-/// fn main() -> Result<()> {
-///     let config = Config {
-///         log_subscribe: Some(
-///             tracing_subscriber::fmt()
-///                 .with_max_level(tracing::Level::TRACE)
-///         ),
-///         ..Default::default()
-///     };
-/// }
-/// ```
-pub struct Config<#[cfg(feature = "sqlx")] 'url> {
-    pub cors: CORS,
-    pub log_subscribe: Option<SubscriberBuilder>,
 
-    #[cfg(feature = "sqlx")]
-    pub db_profile: DBprofile<'url>,
+    setup_errors: Vec<String>,
+    middleware_register: Middleware,
 }
-#[cfg(not(feature = "sqlx"))]
-impl Default for Config {
-    fn default() -> Self {
-        Self {
-            cors:          CORS::default(),
-            log_subscribe: Some(tracing_subscriber::fmt().with_max_level(tracing::Level::DEBUG)),
-        }
-    }
-}
-#[cfg(feature = "sqlx")]
-impl<'url> Default for Config<'url> {
-    fn default() -> Self {
-        Self {
-            cors:          CORS::default(),
-            log_subscribe: Some(tracing_subscriber::fmt().with_max_level(tracing::Level::DEBUG)),
-            db_profile:    DBprofile::default(),
-        }
-    }
-}
+
 
 #[cfg(feature = "sqlx")]
 pub struct DBprofile<'url> {
@@ -108,19 +63,27 @@ impl Server {
     /// Just a shortcut of `setup_with(Config::default())`
     #[cfg(not(feature = "sqlx"))]
     pub fn setup() -> Self {
-        let default_config = Config::default();
+        let ServerSetting { config, middleware } = ServerSetting::default();
 
-        if let Some(subscriber) = default_config.log_subscribe {
+        if let Some(subscriber) = config.log_subscribe {
             subscriber.init()
         }
 
         Self {
-            map:  Router::new(),
-            cors: default_config.cors,
+            router: Router::new(),
+            cors:   config.cors,
+
+            setup_errors: Vec::new(),
+            middleware_register: middleware,
         }
     }
     /// Initialize `Server` with given configuratoin. This **automatically performe `subscriber.init()`** if config's `log_subscribe` is `Some`, so **DON'T write it in your `main` function**.
-    pub fn setup_with(config: Config) -> Self {
+    pub fn setup_with<ISS: IntoServerSetting>(setting: ISS) -> Self {
+        let ServerSetting { 
+            config,
+            middleware,
+        } = setting.into_setting();
+
         if let Some(subscriber) = config.log_subscribe {
             subscriber.init()
         }
@@ -140,11 +103,14 @@ impl Server {
         };
 
         Self {
-            map:  Router::new(),
-            cors: config.cors,
+            router: Router::new(),
+            cors:   config.cors,
 
             #[cfg(feature = "sqlx")]
-            pool: Arc::new(pool)
+            pool: Arc::new(pool),
+
+            setup_errors: Vec::new(),
+            middleware_register: middleware,
         }
     }
 
@@ -228,9 +194,9 @@ impl Server {
         let (
             is_valid_path,
             param_count
-        ) = validation::valid_path(path);
+        ) = validation::valid_request_path(path);
         if !is_valid_path {
-            panic!("`{path}` is invalid as path.");
+            self.setup_errors.push(format!("`{path}` is invalid as path."));
         }
 
         let (
@@ -238,15 +204,15 @@ impl Server {
             expect_param_num
         ) = handler.into_handlefunc();
         if param_count < expect_param_num {
-            panic!("handler for `{path}` expects {expect_param_num} path params, this is more than actual ones {param_count}!")
+            self.setup_errors.push(format!("handler for `{path}` expects {expect_param_num} path params, this is more than actual ones {param_count}!"))
         }
 
-        if let Err(msg) = self.map.register(
+        if let Err(msg) = self.router.register(
             method,
             if path == "/" {"/"} else {&path.trim_end_matches('/')},
             handler
         ) {
-            panic!("{msg}")
+            self.setup_errors.push(format!("{msg}"))
         }
 
         self
@@ -256,7 +222,24 @@ impl Server {
     /// - `":{port}"` (like `":3000"`) is interpret as `"0.0.0.0:{port}"`
     /// - `"localhost:{port}"` (like `"localhost:8080"`) is interpret as `"127.0.0.1:{port}"`
     /// - other formats are interpret as raw TCP address
-    pub fn serve_on(self, address: &'static str) -> Result<()> {
+    pub fn serve_on(mut self, address: &'static str) -> Result<()> {
+        let router = Arc::new({
+            let applied_router = self.router.apply(self.middleware_register);
+            if let Err(msg) = &applied_router {
+                self.setup_errors.push(msg.to_owned())
+            }
+            applied_router.unwrap()
+        });
+
+        if ! self.setup_errors.is_empty() {
+            return Err(Response::InternalServerError(
+                self.setup_errors
+                    .into_iter()
+                    .fold(String::new(), |it, next| it + &next + "\n")
+            ))
+        }
+        drop(self.setup_errors);
+
         let allow_origins_str = Arc::new(
             if self.cors.allow_origins.is_empty() {
                 String::new()
@@ -265,19 +248,19 @@ impl Server {
             }
         );
 
-        let handler_map = Arc::new(self.map);
-
         block_on(async {
             let listener = TcpListener::bind(
                 validation::tcp_address(address)
             ).await?;
+
             tracing::info!("started seving on {}...", address);
+
             while let Some(stream) = listener.incoming().next().await {
                 let stream = stream?;
                 task::spawn(
                     handle_stream(
                         stream,
-                        Arc::clone(&handler_map),
+                        Arc::clone(&router),
                         Arc::clone(&allow_origins_str),
                         
                         #[cfg(feature = "sqlx")]
@@ -297,7 +280,7 @@ impl ExpectedResponse for Result<Response> {fn as_response(self) -> Result<Respo
 
 async fn handle_stream(
     mut stream: TcpStream,
-    handler_map: Arc<Router<'static>>,
+    router: Arc<Router>,
     allow_origin_str: Arc<String>,
 
     #[cfg(feature = "sqlx")]
@@ -305,7 +288,7 @@ async fn handle_stream(
 ) {
     let mut response = match setup_response(
         &mut stream,
-        handler_map,
+        router,
 
         #[cfg(feature = "sqlx")]
         connection_pool,
@@ -315,7 +298,7 @@ async fn handle_stream(
     };
 
     if !allow_origin_str.is_empty() {
-        response.add_header(Header::AccessControlAllowOrigin, &*allow_origin_str)
+        response.add_header(AdditionalHeader::AccessControlAllowOrigin, &*allow_origin_str)
     }
 
     tracing::info!("generated a response: {:?}", &response);
@@ -332,7 +315,7 @@ async fn handle_stream(
 
 async fn setup_response(
     stream: &mut TcpStream,
-    handler_map: Arc<Router<'static>>,
+    router: Arc<Router>,
 
     #[cfg(feature = "sqlx")]
     connection_pool: Arc<ConnectionPool>,
@@ -340,7 +323,7 @@ async fn setup_response(
     let buffer = Buffer::new(stream).await?;
     consume_buffer(
         buffer,
-        &*handler_map,
+        &*router,
         
         #[cfg(feature = "sqlx")]
         connection_pool.clone(),
@@ -348,8 +331,8 @@ async fn setup_response(
 }
 
 pub(crate) async fn consume_buffer(
-    buffer:          Buffer,
-    handler_map:     &Router<'static>,
+    buffer: Buffer,
+    router: &Router,
 
     #[cfg(feature = "sqlx")]
     connection_pool: Arc<ConnectionPool>,
@@ -366,22 +349,52 @@ pub(crate) async fn consume_buffer(
 
     let (
         handler,
-        params
-    ) = handler_map.search(
+        params,
+        middleware_proccess,
+        middleware_just,
+    ) = router.search(
         method,
         &path
     )?;
 
-    let context = Context {
-        buffer,
-        body,
-        query_range,
-
+    let mut context = Context {
+        req: RequestContext {
+            buffer,
+            body,
+            query_range,
+        },
+        additional_headers: String::new(),
+        
         #[cfg(feature = "sqlx")]
         pool: connection_pool,
     };
 
     tracing::debug!("context: {:#?}", context);
 
+    for proccess in middleware_proccess {
+        proccess(&mut context).await
+    }
+    if let Some(pre_handle) = middleware_just {
+        pre_handle(&mut context).await
+    }
     handler(context, params).await
+}
+
+
+#[cfg(test)]
+mod test {
+    use crate::{prelude::*, setting::Config};
+
+    #[test]
+    fn basic_use() {
+        let config = Config {
+            log_subscribe: None,
+            ..Default::default()
+        };
+
+        Server::setup_with(config)
+            .GET("/", || async {
+                Response::OK("Hello!")
+            });
+    }
 }

@@ -2,7 +2,7 @@ use async_std::{net::TcpStream, io::WriteExt};
 use crate::{
     components::{
         status::Status,
-        json::JSON, headers::Header, time::now_fmt,
+        json::JSON, headers::AdditionalHeader, time::now_fmt,
     },
     result::Result,
 };
@@ -13,7 +13,7 @@ use body::Body;
 pub(crate) mod format;
 use format::ResponseFormat;
 
-mod message;
+pub(crate) mod message;
 use message::Message;
 
 use self::{body::ResponseBody, message::ErrorMessage};
@@ -22,9 +22,9 @@ use self::{body::ResponseBody, message::ErrorMessage};
 /// Type of HTTP response
 #[derive(Debug, PartialEq)]
 pub struct Response {
-    additional_headers: String,
-    status: Status,
-    body:   Option<Body>,
+    pub(crate) additional_headers: String,
+    pub(crate) status: Status,
+    pub(crate) body:   Option<Body>,
 } impl Response {
     /// Add error context message to an existing `Response` in `Err`.
     /// ```no_run
@@ -89,7 +89,7 @@ Keep-Alive: timeout=5
             }
         .as_bytes()).await
     }
-    pub(crate) fn add_header(&mut self, key: Header, value: &String) {
+    pub(crate) fn add_header(&mut self, key: AdditionalHeader, value: &String) {
         self.additional_headers += key.response_format();
         self.additional_headers += value;
         self.additional_headers += "\n";

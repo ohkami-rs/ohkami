@@ -19,7 +19,7 @@ ohkami *- [狼] means wolf in Japanese -* is **simple** and **macro free** web f
 
 ```toml
 [dependencies]
-ohkami = "0.3"
+ohkami = "0.4"
 ```
 
 2. Write your first code with ohkami:
@@ -37,6 +37,41 @@ fn main() -> Result<()> {
 ```
 
 3. If you're interested in ohkami, learn more by [examples](https://github.com/kana-rus/ohkami/tree/main/examples) and [documentation](https://docs.rs/ohkami/latest/ohkami/) !
+
+<br/>
+
+## 0.3 → 0.4
+Added experimental support for **middleware**s：
+
+```rust
+fn main() -> Result<()> {
+    let config = Config {
+        log_subscribe: Some(
+            tracing_subscriber::fmt()
+                .with_max_level(
+                    tracing::Level::TRACE
+                )
+        ),
+        ..Default::default()
+    };
+
+    let middleware = Middleware::init()
+        .ANY("/*", || async {
+            tracing::info!("Hello, middleware!")
+        });
+
+    let thirdparty_middleware = some_crate::x;
+
+    Server::setup_with(config.and(middleware).and(x))
+        .GET("/", || async {
+            Response::OK("Hello!")
+        })
+        .serve_on("localhost:3000")
+}
+```
+- "Middleware function" is just a function that takes one of nothing, `&Context`, `&mut Context` as its argument and returns `()`. You can register some pairs of such a function and a route ( where it works ) in a `Middleware`.
+- Middleware funcs is **inserted before** handler works, so middleware funcs are executed only when **the handler exists** ( e.g. In the code above for example, `tracing::info("Hello, middleware")!` will NOT executed for a request `POST /` because no handler for this is found ).
+- *Current design may be changed in future version.*
 
 <br/>
 
@@ -148,6 +183,45 @@ let user = sqlx::query_as::<_, User>(
 ).bind(1)
     .fetch_one(ctx.pool())
     .await?; // `Response` implements `From<sqlx::Error>`
+```
+### use middlewares
+```rust
+fn main() -> Result<()> {
+    let middleware = Middleware::init()
+        .ANY("/*", || async {
+            tracing::info!("Hello, middleware!")
+        });
+
+    Server::setup_with(middleware)
+        .GET("/", || async {
+            Response::OK("Hello!")
+        })
+        .serve_on("localhost:3000")
+}
+```
+```rust
+fn main() -> Result<()> {
+    let config = Config {
+        log_subscribe: Some(
+            tracing_subscriber::fmt()
+                .with_max_level(tracing::Level::TRACE)
+        ),
+        ..Default::default()
+    };
+
+    let middleware = Middleware::init()
+        .ANY("/*", || async {
+            tracing::info!("Hello, middleware!")
+        });
+
+    let thirdparty_middleware = some_external_crate::x;
+
+    Server::setup_with(config.and(middleware).and(x))
+        .GET("/", || async {
+            Response::OK("Hello!")
+        })
+        .serve_on("localhost:3000")
+}
 ```
 ### test
 1. split setup process from `main` function:

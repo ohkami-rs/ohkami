@@ -16,7 +16,7 @@ pub trait Test {
         let actual_response = block_on(async {
             consume_buffer(
                 request.into_request_buffer().await,
-                &self.map,
+                &self.router,
 
                 #[cfg(feature = "sqlx")]
                 Arc::clone(&self.pool)
@@ -28,7 +28,7 @@ pub trait Test {
         let actual_response = block_on(async {
             consume_buffer(
                 request.into_request_buffer().await,
-                &self.map,
+                &self.router,
 
                 #[cfg(feature = "sqlx")]
                 Arc::clone(&self.pool)

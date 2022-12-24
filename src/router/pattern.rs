@@ -1,17 +1,17 @@
 #[derive(PartialEq, Debug)]
-pub(super) enum Pattern<'p> {
+pub(super) enum Pattern {
     Any,
     Param,
-    Str(&'p str),
-} impl<'p> Pattern<'p> {
-    pub fn from(section: &'p str) -> Self {
+    Str(&'static str),
+} impl Pattern {
+    pub fn from(section: &'static str) -> Self {
         match section {
             "*" => Self::Any,
             p if p.starts_with(':') => Self::Param,
             p => Self::Str(p),
         }
     }
-    pub fn matches(&self, section: &'p str) -> bool {
+    pub fn matches(&self, section: &str) -> bool {
         match self {
             Pattern::Any => true,
             Pattern::Str(p) => p == &section,
