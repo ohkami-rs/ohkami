@@ -53,9 +53,10 @@ fn main() -> Result<()> {
         ..Default::default()
     };
 
-    let middleware = Middleware::init()
-        .ANY("/*", || async {
+    let middleware = Middleware::new()
+        .ANY("/*", |c| async {
             tracing::info!("Hello, middleware!")
+            c
         });
 
     let thirdparty_middleware = some_crate::x;
@@ -67,7 +68,7 @@ fn main() -> Result<()> {
         .serve_on("localhost:3000")
 }
 ```
-- "Middleware function" is just a function that takes one of nothing, `&Context` or `&mut Context` as its argument and returns `()`. You can register such functions with their routes ( where they should work ) in a `Middleware`.
+- "Middleware function" is just a function that takes `Context` or `mut Context` as its argument and returns `Context`. You can register such functions with their routes ( where they should work ) in a `Middleware`.
 - Middleware funcs is **inserted before** handler works, so middleware funcs are executed only when **the handler exists** ( e.g. In the code above for example, `tracing::info("Hello, middleware")!` will NOT executed for a request `POST /` because no handler for this is found ).
 - *Current design may be changed in future version.*
 
@@ -76,16 +77,16 @@ fn main() -> Result<()> {
 ## Snippets
 ### handle query params
 ```rust
-let name = ctx.req.query::<&str>("name")?;
+let name = c.req.query::<&str>("name")?;
 // `::<&str>` isn't needed when it's presumable
 ```
 ```rust
-let count = ctx.req..query::<usize>("count")?;
+let count = c.req.query::<usize>("count")?;
 // `::<usize>` isn't needed when it's presumable
 ```
 ### handle request body
 ```rust
-let body = ctx.req.body::<D>()?;
+let body = c.req.body::<D>()?;
 // `::<D>` isn't needed when it's presumable
 // `D` has to be `serde::Deserialize`
 ```
@@ -112,37 +113,37 @@ Response::OK("Hello, world!")
 // without Context
 ```
 ```rust
-ctx.text("Hello, world!")
+c.OK("Hello, world!")
 // with Context
 ```
 ### return OK response with `application/json`
 ```rust
 Response::OK(JSON("Hello, world!"))
 // or
-ctx.json(JSON("Hello, world!"))
+c.OK(JSON("Hello, world!"))
 ```
 ```rust
 Response::OK(json!("ok": true))
 // or
-ctx.json(json!("ok": true))
+c.OK(json!("ok": true))
 ```
 ```rust
 Response::OK(json(user)?)
 //or
-ctx.json(json(user)?)
+c.OK(json(user)?)
 // serialize Rust value into JSON
 // value's type has to be `serde::Serialize`
 ```
 ### handle errors
 ```rust
-let user = ctx.req.body::<User>()?;
+let user = c.req.body::<User>()?;
 
 // or, you can add an error context message:
-let user = ctx.req.body::<User>()
+let user = c.req.body::<User>()
     ._else(|e| e.error_context("failed to get user data"))?;
 
 // or discard original error:
-let user = ctx.req.body::<User>()
+let user = c.req.body::<User>()
     ._else(|_| Response::InternalServerError("can't get user"))?;
     // or
     ._else(|_| Response::InternalServerError(None))?;
@@ -190,15 +191,16 @@ let config = Config {
 let user = sqlx::query_as::<_, User>(
     "SELECT id, name FROM users WHERE id = $1"
 ).bind(1)
-    .fetch_one(ctx.pool())
+    .fetch_one(c.pool())
     .await?; // `Response` implements `From<sqlx::Error>`
 ```
 ### use middlewares
 ```rust
 fn main() -> Result<()> {
-    let middleware = Middleware::init()
-        .ANY("/*", || async {
+    let middleware = Middleware::new()
+        .ANY("/*", |c| async {
             tracing::info!("Hello, middleware!")
+            c
         });
 
     Server::setup_with(middleware)
@@ -218,9 +220,10 @@ fn main() -> Result<()> {
         ..Default::default()
     };
 
-    let middleware = Middleware::init()
-        .ANY("/*", || async {
+    let middleware = Middleware::new()
+        .ANY("/*", |c| async {
             tracing::info!("Hello, middleware!")
+            c
         });
 
     let thirdparty_middleware = some_external_crate::x;

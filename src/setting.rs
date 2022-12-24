@@ -20,7 +20,7 @@ impl Default for ServerSetting {
     fn default() -> Self {
         Self {
             config: Config::default(),
-            middleware: Middleware::init(),
+            middleware: Middleware::new(),
         }
     }
 }
@@ -38,7 +38,7 @@ impl IntoServerSetting for Config {
     fn into_setting(self) -> ServerSetting {
         ServerSetting {
             config: self,
-            middleware: Middleware::init(),
+            middleware: Middleware::new(),
         }
     }
 }

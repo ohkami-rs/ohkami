@@ -4,7 +4,7 @@ use crate::{
     result::{Result, ElseResponse, ElseResponseWithErr},
     utils::{range::RangeMap, buffer::Buffer},
     components::{json::JSON, status::Status, headers::AdditionalHeader},
-    response::{Response, message::Message, body::Body, format::ResponseFormat},
+    response::{Response, message::ErrorMessage, body::{Body, ResponseBody}, format::ResponseFormat},
 };
 
 #[cfg(feature = "sqlx")]
@@ -31,33 +31,82 @@ pub struct RequestContext {
 }
 
 impl Context {
-    pub fn text<Msg: Message>(self, text: Msg) -> Result<Response> {
+    #[allow(non_snake_case)]
+    pub fn OK<B: ResponseBody>(self, body: B) -> Result<Response> {
         Ok(Response {
             additional_headers: self.additional_headers,
             status: Status::OK,
-            body: Some(Body::text_plain(text.as_message()))
+            body: body.as_body()
         })
     }
-    pub fn json(self, json: JSON) -> Result<Response> {
-        Ok(Response {
-            additional_headers: self.additional_headers,
-            status: Status::OK,
-            body: Some(Body::application_json(json))
-        })
-    }
-    pub fn html<HTML: Message>(self, html: HTML) -> Result<Response> {
-        Ok(Response {
-            additional_headers: self.additional_headers,
-            status: Status::OK,
-            body: Some(Body::text_html(html.as_message()))
-        })
-    }
-    pub fn created(self, created: JSON) -> Result<Response> {
+    #[allow(non_snake_case)]
+    pub fn Created(self, created: JSON) -> Result<Response> {
         Ok(Response {
             additional_headers: self.additional_headers,
             status: Status::Created,
             body: Some(Body::application_json(created))
         })
+    }
+
+    /// Generate `Response` value that represents a HTTP response of `404 Not Found`.
+    /// `String`, `&str` or `Option<String>` can be argument of this.
+    #[allow(non_snake_case)]
+    pub fn NotFound<Msg: ErrorMessage>(&self, msg: Msg) -> Response {
+        Response {
+            additional_headers: self.additional_headers.to_owned(),
+            status: Status::NotFound,
+            body:   msg.as_message()
+        }
+    }
+    /// Generate `Response` value that represents a HTTP response of `400 Bad Request`.
+    /// `String`, `&str` or `Option<String>` can be argument of this.
+    #[allow(non_snake_case)]
+    pub fn BadRequest<Msg: ErrorMessage>(&self, msg: Msg) -> Response {
+        Response {
+            additional_headers: self.additional_headers.to_owned(),
+            status:             Status::BadRequest,
+            body:               msg.as_message(),
+        }
+    }
+    /// Generate `Response` value that represents a HTTP response of `500 Internal Server Error`.
+    /// `String`, `&str` or `Option<String>` can be argument of this.
+    #[allow(non_snake_case)]
+    pub fn InternalServerError<Msg: ErrorMessage>(&self, msg: Msg) -> Response {
+        Response {
+            additional_headers: self.additional_headers.to_owned(),
+            status:             Status::InternalServerError,
+            body:               msg.as_message(),
+        }
+    }
+    /// Generate `Response` value that represents a HTTP response of `501 Not Implemented`.
+    /// `String`, `&str` or `Option<String>` can be argument of this.
+    #[allow(non_snake_case)]
+    pub fn NotImplemented<Msg: ErrorMessage>(&self, msg: Msg) -> Response {
+        Response {
+            additional_headers: self.additional_headers.to_owned(),
+            status:             Status::NotImplemented,
+            body:               msg.as_message(),
+        }
+    }
+    /// Generate `Response` value that represents a HTTP response of `403 Forbidden`.
+    /// `String`, `&str` or `Option<String>` can be argument of this.
+    #[allow(non_snake_case)]
+    pub fn Forbidden<Msg: ErrorMessage>(&self, msg: Msg) -> Response {
+        Response {
+            additional_headers: self.additional_headers.to_owned(),
+            status:             Status::Forbidden,
+            body:               msg.as_message(),
+        }
+    }
+    /// Generate `Response` value that represents a HTTP response of `401 Unauthorized`.
+    /// `String`, `&str` or `Option<String>` can be argument of this.
+    #[allow(non_snake_case)]
+    pub fn Unauthorized<Msg: ErrorMessage>(&self, msg: Msg) -> Response {
+        Response {
+            additional_headers: self.additional_headers.to_owned(),
+            status:             Status::Unauthorized,
+            body:               msg.as_message(),
+        }
     }
 
     pub fn header(&mut self, key: AdditionalHeader, value: &'static str) {
@@ -103,8 +152,10 @@ impl<'q> Query<'q> for usize {fn parse(q: &'q str) -> Result<Self> {q.parse()._e
 impl Debug for Context {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "
+additional_headers: {:?},
 query: {:?} (range: {:?}),
 body: {:?}",
+            self.additional_headers,
             self.req.query_range.as_ref().map(|map| map.debug_fmt_with(&self.req.buffer)),
             self.req.query_range,
             self.req.body,

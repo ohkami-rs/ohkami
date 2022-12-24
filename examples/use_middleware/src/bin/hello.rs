@@ -1,9 +1,10 @@
 use ohkami::prelude::*;
 
 fn main() -> Result<()> {
-    let middleware = Middleware::init()
-        .ANY("/*", || async {
-            tracing::info!("Hello, middleware!")
+    let middleware = Middleware::new()
+        .ANY("/*", |c| async {
+            tracing::info!("Hello, middleware!");
+            c
         });
 
     Server::setup_with(middleware)

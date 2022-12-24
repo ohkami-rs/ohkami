@@ -369,14 +369,17 @@ pub(crate) async fn consume_buffer(
         pool: connection_pool,
     };
 
-    tracing::debug!("context: {:#?}", context);
-
     for proccess in middleware_proccess {
-        proccess(&mut context).await
+        context = proccess(context).await;
+        tracing::debug!("proccess!");
     }
     if let Some(pre_handle) = middleware_just {
-        pre_handle(&mut context).await
+        context = pre_handle(context).await;
+        tracing::debug!("pre_handle!");
     }
+
+    tracing::debug!("context: {:#?}", context);
+
     handler(context, params).await
 }
 

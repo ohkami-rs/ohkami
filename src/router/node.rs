@@ -121,21 +121,23 @@ pub(super) struct Node {
     }
 
     pub(super) fn register_middleware_func(mut self,
-        path:            &'static str /* already validated */,
+        route:           &'static str /* already validated */,
         middleware_func: MiddlewareFunc,
         err_msg:         String,
     ) -> std::result::Result<Self, String> {
-        if path.ends_with('*') {
-            if let Some(apply_root) = self.search_apply_root(
-                (path.trim_end_matches('*'))[1..].split('/')
-            ) {
+        if route.ends_with("/*") {
+            let mut route = (route.trim_end_matches("/*")).split('/');
+            { route.next(); }
+
+            if let Some(apply_root) = self.search_apply_root(route) {
                 apply_root.middleware.pproccess.push(middleware_func)
             }
 
         } else {
-            if let Some(target) = self.search_apply_root(
-                path[1..].split('/')
-            ) {
+            let mut route = route.trim_end_matches('/').split('/');
+            { route.next(); }
+
+            if let Some(target) = self.search_apply_root(route) {
                 if target.middleware.just.is_some() {
                     return Err(err_msg)
                 }

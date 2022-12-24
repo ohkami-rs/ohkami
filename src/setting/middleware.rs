@@ -1,41 +1,52 @@
 use std::{pin::Pin, future::Future};
 use crate::{context::Context, test::Method, utils::validation};
 
-pub(crate) type MiddlewareFunc = Box<dyn Fn(&mut Context) -> Pin<Box<dyn Future<Output=()> + Send>> + Send + Sync>;
-trait MiddlewareClone:
-    Fn(&mut Context) -> Pin<Box<dyn Future<Output=()> + Send>> + Send + Sync
-    + Clone
-{}
+// pub(crate) type MiddlewareFunc = Box<dyn Fn(&mut Context) -> Pin<Box<dyn Future<Output=()> + Send>> + Send + Sync>;
+pub(crate) type MiddlewareFunc = Box<dyn Fn(Context) -> Pin<Box<dyn Future<Output=Context> + Send>> + Send + Sync>;
+// trait MiddlewareClone:
+//     Fn(&mut Context) -> Pin<Box<dyn Future<Output=()> + Send>> + Send + Sync
+//     + Clone
+// {}
 
 pub trait MiddlewareArg {}
 pub trait MiddlewareProcess<Arg: MiddlewareArg> {
     fn into_middleware_func(self) -> MiddlewareFunc;
 }
-impl MiddlewareArg for () {}
-impl<F, Fut> MiddlewareProcess<()> for F
+// impl MiddlewareArg for () {}
+// impl<F, Fut> MiddlewareProcess<()> for F
+// where
+//     F:   Fn() -> Fut + Send + Sync + 'static,
+//     Fut: Future<Output=()> + Send + 'static,
+// {
+//     fn into_middleware_func(self) -> MiddlewareFunc {
+//         Box::new(move |_| Box::pin(self()))
+//     }
+// }
+// impl MiddlewareArg for (&Context,) {}
+// impl<F, Fut> MiddlewareProcess<(&Context,)> for F
+// where
+//     F:   Fn(&Context) -> Fut + Send + Sync + 'static,
+//     Fut: Future<Output=()> + Send + 'static,
+// {
+//     fn into_middleware_func(self) -> MiddlewareFunc {
+//         Box::new(move |ctx| Box::pin(self(ctx)))
+//     }
+// }
+// impl MiddlewareArg for &Context {}
+// impl<F, Fut> MiddlewareProcess<&Context> for F
+// where
+//     F:   Fn(&mut Context) -> Fut + Send + Sync + 'static,
+//     Fut: Future<Output=()> + Send + 'static,
+// {
+//     fn into_middleware_func(self) -> MiddlewareFunc {
+//         Box::new(move |ctx| Box::pin(self(ctx)))
+//     }
+// }
+impl MiddlewareArg for Context {}
+impl<F, Fut> MiddlewareProcess<Context> for F
 where
-    F:   Fn() -> Fut + Send + Sync + 'static,
-    Fut: Future<Output=()> + Send + 'static,
-{
-    fn into_middleware_func(self) -> MiddlewareFunc {
-        Box::new(move |_| Box::pin(self()))
-    }
-}
-impl MiddlewareArg for (&Context,) {}
-impl<F, Fut> MiddlewareProcess<(&Context,)> for F
-where
-    F:   Fn(&Context) -> Fut + Send + Sync + 'static,
-    Fut: Future<Output=()> + Send + 'static,
-{
-    fn into_middleware_func(self) -> MiddlewareFunc {
-        Box::new(move |ctx| Box::pin(self(ctx)))
-    }
-}
-impl MiddlewareArg for &Context {}
-impl<F, Fut> MiddlewareProcess<&Context> for F
-where
-    F:   Fn(&mut Context) -> Fut + Send + Sync + 'static,
-    Fut: Future<Output=()> + Send + 'static,
+    F:   Fn(Context) -> Fut + Send + Sync + 'static,
+    Fut: Future<Output = Context> + Send + 'static,
 {
     fn into_middleware_func(self) -> MiddlewareFunc {
         Box::new(move |ctx| Box::pin(self(ctx)))
@@ -46,7 +57,7 @@ pub struct Middleware {
     pub(crate) proccess:     Vec<(Method, /*route*/&'static str, MiddlewareFunc)>,
     pub(crate) setup_errors: Vec<String>,
 } impl Middleware {
-    pub fn init() -> Self {
+    pub fn new() -> Self {
         Self {
             proccess: Vec::new(),
             setup_errors: Vec::new(),
@@ -130,5 +141,39 @@ pub struct Middleware {
         self.proccess.append(&mut another.proccess);
         self.setup_errors.append(&mut another.setup_errors);
         self
+    }
+}
+
+
+#[cfg(test)]
+mod test {
+    use crate::{prelude::*, components::headers::AdditionalHeader::*};
+
+    async fn cors(mut c: Context) -> Context {
+        c.header(AccessControlAllowOrigin, "localhost:8000");
+        c
+    }
+
+    #[test]
+    fn server() {
+        let middleware = Middleware::new()
+            .ANY("/api/*", cors);
+
+        Server::setup_with(middleware)
+            .GET("/api", hello)
+            .GET("/api/sleepy", sleepy_hello);
+    }
+
+    async fn hello(c: Context) -> Result<Response> {
+        c.OK("Hello!")
+    }
+
+    async fn sleepy_hello(c: Context, time: u64) -> Result<Response> {
+        (time < 10)
+            ._else(|| c.BadRequest("`time` must be less than 10"))?;
+        std::thread::sleep(
+            std::time::Duration::from_secs(time)
+        );
+        c.OK("Hello, I'm sleepy...")
     }
 }
