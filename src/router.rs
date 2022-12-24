@@ -1,7 +1,5 @@
-use std::rc::Rc;
-
 use crate::{
-    components::method::Method, utils::range::RangeList, result::Result, handler::HandleFunc, setting::Middleware,
+    components::method::Method, utils::range::RangeList, result::Result, handler::HandleFunc, setting::{Middleware, MiddlewareFunc},
 };
 
 // === mock for test ===
@@ -57,7 +55,12 @@ impl Router {
     pub(crate) fn search<'req>(&self,
         method:       Method,
         request_path: &'req str,
-    ) -> Result<(&HandleFunc, RangeList)> {
+    ) -> Result<(
+        &HandleFunc,
+        RangeList,
+        Vec<&MiddlewareFunc>,
+        Option<&MiddlewareFunc>,
+    )> {
         let mut path = request_path.split('/');
         { path.next(); }
 
@@ -70,7 +73,7 @@ impl Router {
             Method::DELETE => &self.DELETE,
         };
 
-        tree.search_handler(path, RangeList::new(), offset)
+        tree.search(path, RangeList::new(), offset, Vec::new())
     }
 
     pub(crate) fn apply(mut self, middlware: Middleware) -> std::result::Result<Self, String> {

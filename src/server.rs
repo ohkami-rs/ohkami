@@ -41,7 +41,7 @@ pub struct Server {
     pub(crate) pool: Arc<ConnectionPool>,
 
     setup_errors: Vec<String>,
-    middleware: Middleware,
+    middleware_register: Middleware,
 }
 
 
@@ -75,7 +75,7 @@ impl Server {
             cors:   config.cors,
 
             setup_errors: Vec::new(),
-            middleware,
+            middleware_register: middleware,
         }
     }
     /// Initialize `Server` with given configuratoin. This **automatically performe `subscriber.init()`** if config's `log_subscribe` is `Some`, so **DON'T write it in your `main` function**.
@@ -111,7 +111,7 @@ impl Server {
             pool: Arc::new(pool),
 
             setup_errors: Vec::new(),
-            middleware,
+            middleware_register: middleware,
         }
     }
 
@@ -225,7 +225,7 @@ impl Server {
     /// - other formats are interpret as raw TCP address
     pub fn serve_on(mut self, address: &'static str) -> Result<()> {
         let router = Arc::new({
-            let applied_router = self.router.apply(self.middleware);
+            let applied_router = self.router.apply(self.middleware_register);
             if let Err(msg) = &applied_router {
                 self.setup_errors.push(msg.to_owned())
             }
@@ -353,13 +353,15 @@ pub(crate) async fn consume_buffer(
 
     let (
         handler,
-        params
+        params,
+        middleware_proccess,
+        middleware_just,
     ) = router.search(
         method,
         &path
     )?;
 
-    let context = Context {
+    let mut context = Context {
         req: RequestContext {
             buffer,
             body,
@@ -373,6 +375,12 @@ pub(crate) async fn consume_buffer(
 
     tracing::debug!("context: {:#?}", context);
 
+    for proccess in middleware_proccess {
+        proccess(&mut context).await
+    }
+    if let Some(pre_handle) = middleware_just {
+        pre_handle(&mut context).await
+    }
     handler(context, params).await
 }
 

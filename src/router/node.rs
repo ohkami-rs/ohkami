@@ -27,11 +27,17 @@ pub(super) struct Node {
         }
     }
 
-    pub fn search_handler<'req>(&self,
+    pub fn search<'tree, 'req>(&'tree self,
         mut path:     Split<'req, char>,
         mut params:   RangeList,
         mut read_pos: usize,
-    ) -> Result<(&HandleFunc, RangeList)> {
+        mut middleware_process: Vec<&'tree MiddlewareFunc>,
+    ) -> Result<(
+        &'tree HandleFunc,
+        RangeList,
+        Vec<&'tree MiddlewareFunc>,
+        Option<&'tree MiddlewareFunc>,
+    )> {
         if let Some(section) = path.next() {
             read_pos += 1 /* skip '/' */;
             if let Some(child) = 'search: {
@@ -42,19 +48,26 @@ pub(super) struct Node {
                             tracing::debug!("path param: `{}` (range: {:?})", section, range);
                             params.push(range)?;
                         }
+                        if ! child.middleware.pproccess.is_empty() {
+                            for proceess in &child.middleware.pproccess {
+                                middleware_process.push(proceess)
+                            }
+                        }
                         break 'search Some(child)
                     }
                 }
                 None
             } {
-                child.search_handler(path, params, read_pos + section.len())
+                child.search(path, params, read_pos + section.len(), middleware_process)
             } else {
                 Err(Response::NotFound(None))
             }
         } else {
             Ok((
                 self.handler.as_ref()._else(|| Response::NotFound(None))?,
-                params
+                params,
+                middleware_process,
+                self.middleware.just.as_ref()
             ))
         }
     }
