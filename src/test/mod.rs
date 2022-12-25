@@ -5,7 +5,7 @@ use async_std::task::block_on;
 use async_std::sync::Arc;
 use serde::{Serialize, Deserialize};
 use crate::{
-    utils::{range::RANGE_COLLECTION_SIZE, buffer::Buffer}, server::{ExpectedResponse, Server, consume_buffer}, prelude::{Result, Response, JSON}
+    utils::{range::RANGE_COLLECTION_SIZE, buffer::Buffer, string::unescaped}, server::{ExpectedResponse, Server, consume_buffer}, prelude::{Result, Response, JSON}
 };
 pub use crate::components::method::Method;
 
@@ -93,7 +93,7 @@ pub struct Request {
         self
     }
     pub fn body<S: Serialize>(mut self, body: S) -> Self {
-        let body = serde_json::to_string(&body).expect("can't serialize given body as a JSON");
+        let body = unescaped(serde_json::to_string(&body).expect("can't serialize given body as a JSON"));
         self.body = Some(body);
         self
     }
