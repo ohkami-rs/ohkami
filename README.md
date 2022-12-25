@@ -41,7 +41,8 @@ fn main() -> Result<()> {
 <br/>
 
 ## 0.3 → 0.4
-Added experimental support for **middleware**s：
+Added experimental support for **middleware**s：\
+(＊ 0.4.1 → 0.4.2： fixed bugs around this)
 
 ```rust
 fn main() -> Result<()> {
@@ -54,7 +55,7 @@ fn main() -> Result<()> {
     };
 
     let middleware = Middleware::new()
-        .ANY("/*", |c| async {
+        .ANY("*", |c| async {
             tracing::info!("Hello, middleware!")
             c
         });
@@ -198,7 +199,7 @@ let user = sqlx::query_as::<_, User>(
 ```rust
 fn main() -> Result<()> {
     let middleware = Middleware::new()
-        .ANY("/*", |c| async {
+        .ANY("*", |c| async {
             tracing::info!("Hello, middleware!")
             c
         });
