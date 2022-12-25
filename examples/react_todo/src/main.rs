@@ -50,8 +50,6 @@ mod test {
         let req = Request::new(Method::POST, "/users")
                 .body("{\"username\": \"Taro\"}");
 
-        let res = (&SERVER).oneshot(&req);
-
-        res.unwrap().
+        let res = (&SERVER).oneshot_json(&req);
     }
 }

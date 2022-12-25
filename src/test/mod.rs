@@ -14,7 +14,7 @@ pub trait Test {
     fn assert_to_res<R: ExpectedResponse>(&self, request: &Request, expected: R);
     fn assert_not_to_res<R: ExpectedResponse>(&self, request: &Request, expected: R);
     fn oneshot_res(&self, request: &Request) -> Response;
-    fn oneshot_json(self, request: &Request) -> JSON;
+    fn oneshot_json(&self, request: &Request) -> JSON;
 } impl Test for Server {
     fn assert_to_res<R: ExpectedResponse>(&self, request: &Request, expected_response: R) {
         let actual_response = block_on(async {
@@ -51,7 +51,7 @@ pub trait Test {
             ).await
         }).unwrap()
     }
-    fn oneshot_json(self, request: &Request) -> JSON {
+    fn oneshot_json(&self, request: &Request) -> JSON {
         block_on(async {
             consume_buffer(
                 request.into_request_buffer().await,
