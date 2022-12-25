@@ -73,7 +73,13 @@ impl Router {
             Method::DELETE => &self.DELETE,
         };
 
-        tree.search(path, RangeList::new(), offset, Vec::new())
+        let mut proccess = Vec::new();
+        for p in &tree.middleware.proccess {
+            tracing::debug!("root pushed!");
+            proccess.push(p)
+        }
+
+        tree.search(path, RangeList::new(), offset, proccess)
     }
 
     pub(crate) fn apply(mut self, middlware: Middleware) -> std::result::Result<Self, String> {
@@ -85,6 +91,8 @@ impl Router {
             )
         }
         for (method, route, func) in middlware.proccess {
+            tracing::debug!("apply!");
+
             let error_msg = format!("middleware func just for `{method} {route}` is registered duplicatedly");
             match method {
                 Method::GET    => self.GET = self.GET.register_middleware_func(route, func, error_msg)?,

@@ -85,6 +85,18 @@ mod test {
     use super::{valid_request_path, valid_middleware_route};
 
     #[test]
+    fn how_str_split_works() {
+        let mut case = "/".split('/');
+        assert_eq!(case.next(), Some(""));
+        assert_eq!(case.next(), Some(""));
+        assert_eq!(case.next(), None);
+
+        let mut case = "".split('/');
+        assert_eq!(case.next(), Some(""));
+        assert_eq!(case.next(), None);
+    }
+
+    #[test]
     fn validate_ok_request_paths() {
         assert_eq!(valid_request_path("/"), (true, 0));
         assert_eq!(valid_request_path("/api"), (true, 0));

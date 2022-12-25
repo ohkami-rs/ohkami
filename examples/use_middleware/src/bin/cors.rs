@@ -2,7 +2,8 @@ use ohkami::prelude::*;
 
 fn main() -> Result<()> {
     let middleware = Middleware::new()
-        .ANY("/*", middleware::cors);
+        .ANY("/*", middleware::cors)
+        .ANY("/api/*", middleware::hello);
 
     Server::setup_with(middleware)
         .GET("/api", handler::hello)
@@ -12,6 +13,11 @@ fn main() -> Result<()> {
 
 mod middleware {
     use ohkami::{prelude::*, components::headers::AdditionalHeader::*};
+
+    pub async fn hello(c: Context) -> Context {
+        tracing::debug!("Hello, middleware!");
+        c
+    }
 
     pub async fn cors(mut c: Context) -> Context {
         c.header(AccessControlAllowOrigin, "localhost:8000");

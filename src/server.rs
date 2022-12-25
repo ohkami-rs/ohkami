@@ -209,7 +209,7 @@ impl Server {
 
         if let Err(msg) = self.router.register(
             method,
-            if path == "/" {"/"} else {&path.trim_end_matches('/')},
+            &path.trim_end_matches('/'),
             handler
         ) {
             self.setup_errors.push(format!("{msg}"))
