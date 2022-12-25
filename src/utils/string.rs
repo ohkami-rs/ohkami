@@ -1,15 +1,11 @@
 pub(crate) fn unescaped(s: String) -> String {
     let mut unescaped = String::with_capacity(s.len());
-    let mut esc = false;
-    for ch in s.chars() {
-        if ch == '\\' {
-            esc = true;
-            continue
-        } else if esc {
-            esc = false;
-            continue
-        } else {
-            unescaped.push(ch)
+    let mut chars = s.chars().peekable();
+    while let Some(ch) = chars.next() {
+        match ch {
+            '"' => {chars.next();},
+            '\\' => unescaped.push(chars.next().unwrap()),
+            _ => unescaped.push(ch),
         }
     }
     unescaped
@@ -19,7 +15,7 @@ pub(crate) fn unescaped(s: String) -> String {
 mod test {
     use super::unescaped;
 
-    #[test]
+    #[test] // ???
     fn test_unescaped() {
         let case = String::from("\"{\\\"username\\\": \\\"Taro\\\"}\"");
         let expected = String::from("{\"username\": \"Taro\"}");
