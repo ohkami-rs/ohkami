@@ -3,7 +3,7 @@ use async_std::task::block_on;
 use async_std::sync::Arc;
 use serde::Serialize;
 use crate::{
-    utils::{range::RANGE_COLLECTION_SIZE, buffer::Buffer}, server::{ExpectedResponse, Server, consume_buffer}
+    utils::{range::RANGE_COLLECTION_SIZE, buffer::Buffer}, server::{ExpectedResponse, Server, consume_buffer}, prelude::{Result, Response}
 };
 pub use crate::components::method::Method;
 
@@ -11,6 +11,7 @@ pub use crate::components::method::Method;
 pub trait Test {
     fn assert_to_res<R: ExpectedResponse>(&self, request: &Request, expected: R);
     fn assert_not_to_res<R: ExpectedResponse>(&self, request: &Request, expected: R);
+    fn oneshot(&self, request: &Request) -> Result<Response>;
 } impl Test for Server {
     fn assert_to_res<R: ExpectedResponse>(&self, request: &Request, expected_response: R) {
         let actual_response = block_on(async {
@@ -35,6 +36,17 @@ pub trait Test {
             ).await
         });
         assert_ne!(actual_response, expected_response.as_response())
+    }
+    fn oneshot(&self, request: &Request) -> Result<Response> {
+        block_on(async {
+            consume_buffer(
+                request.into_request_buffer().await,
+                &self.router,
+
+                #[cfg(feature = "sqlx")]
+                Arc::clone(&self.pool)
+            ).await
+        })
     }
 }
 

@@ -1,8 +1,8 @@
 use std::str::Lines;
 use crate::{
-    components::{method::Method, json::{json, JSON}},
     response::Response,
     result::{Result, ElseResponse},
+    components::{method::Method, json::JSON},
     utils::{buffer::BufRange, range::{RangeMap, RANGE_COLLECTION_SIZE}},
 };
 

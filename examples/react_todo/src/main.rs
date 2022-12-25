@@ -7,7 +7,7 @@ use ohkami::{
     server::Server, prelude::Config,
 };
 
-fn main() -> Result<()> {
+fn server() -> Server {
     let config = Config {
         log_subscribe: Some(
             tracing_subscriber::fmt()
@@ -19,5 +19,44 @@ fn main() -> Result<()> {
     Server::setup_with(config)
         .GET("/",       root)
         .POST("/users", create_user)
-        .serve_on(":3000")
+}
+
+fn main() -> Result<()> {
+    server().serve_on(":3000")
+}
+
+#[cfg(test)]
+mod test {
+    use once_cell::sync::Lazy;
+    use crate::models::user::User;
+    use ohkami::{
+        test::{Test, Request, Method},
+        components::json::json,
+        response::Response, server::Server,
+    };
+
+    static SERVER: Lazy<Server> = Lazy::new(|| super::server());
+
+    #[test]
+    fn should_return_hello_world() {
+        (*SERVER).assert_to_res(
+            &Request::new(Method::GET, "/"),
+            Response::OK("Hello, World!")
+        )
+    }
+
+    #[test]
+    fn should_return_user_data() {
+        let req = Request::new(Method::POST, "/users")
+                .body("{\"username\": \"Taro\"}");
+
+        let res = Response::Created(
+            json(User {
+                id:   1337,
+                name: "Taro".into(),
+            }).expect("can't deserialize")
+        );
+
+        (*SERVER).assert_to_res(&req, res)
+    }
 }
