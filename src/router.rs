@@ -18,6 +18,7 @@ mod test_search;
 // #[derive(PartialEq, Debug)]
 #[allow(non_snake_case)]
 pub(crate) struct Router {
+    root_middleware_proc: Vec<MiddlewareFunc>,
     GET:    Node,
     POST:   Node,
     PATCH:  Node,
@@ -26,10 +27,11 @@ pub(crate) struct Router {
 impl Router {
     pub(crate) fn new() -> Self {
         Self {
-            GET:    Node::new(Pattern::Str("")),
-            POST:   Node::new(Pattern::Str("")),
-            PATCH:  Node::new(Pattern::Str("")),
-            DELETE: Node::new(Pattern::Str("")),
+            root_middleware_proc: Vec::new(),
+            GET:    Node::new(Pattern::Nil),
+            POST:   Node::new(Pattern::Nil),
+            PATCH:  Node::new(Pattern::Nil),
+            DELETE: Node::new(Pattern::Nil),
         }
     }
 
@@ -38,7 +40,10 @@ impl Router {
         path_pattern: &'static str /* already validated */,
         handler:      HandleFunc,
     ) -> std::result::Result<(), String> {
-        let err_msg = format!("path pattern `{path_pattern}` is resistred duplicatedly");
+        let err_msg = format!(
+            "path pattern `{}` is resistred duplicatedly",
+            if path_pattern == "" {"/"} else {path_pattern}
+        );
 
         let mut path = path_pattern.split('/');
         { path.next(); }
@@ -73,13 +78,12 @@ impl Router {
             Method::DELETE => &self.DELETE,
         };
 
-        // let mut proccess = Vec::new();
-        // for p in &tree.middleware.proccess {
-        //     tracing::debug!("root pushed!");
-        //     proccess.push(p)
-        // }
+        let mut middleware_proccess = Vec::new();
+        for proc in &self.root_middleware_proc {
+            middleware_proccess.push(proc)
+        }
 
-        tree.search(path, RangeList::new(), offset, Vec::new()) // proccess)
+        tree.search(path, RangeList::new(), offset, middleware_proccess)
     }
 
     pub(crate) fn apply(mut self, middlware: Middleware) -> std::result::Result<Self, String> {
@@ -90,15 +94,22 @@ impl Router {
                     .fold(String::new(), |it, next| it + &next + "\n")
             )
         }
+
         for (method, route, func) in middlware.proccess {
             let error_msg = format!("middleware func just for `{method} {route}` is registered duplicatedly");
-            match method {
-                Method::GET    => self.GET = self.GET.register_middleware_func(route, func, error_msg)?,
-                Method::POST   => self.POST = self.POST.register_middleware_func(route, func, error_msg)?,
-                Method::PATCH  => self.PATCH = self.PATCH.register_middleware_func(route, func, error_msg)?,
-                Method::DELETE => self.DELETE = self.DELETE.register_middleware_func(route, func, error_msg)?,
+
+            if route == "*" {
+                self.root_middleware_proc.push(func)
+            } else {
+                match method {
+                    Method::GET    => self.GET = self.GET.register_middleware_func(route, func, error_msg)?,
+                    Method::POST   => self.POST = self.POST.register_middleware_func(route, func, error_msg)?,
+                    Method::PATCH  => self.PATCH = self.PATCH.register_middleware_func(route, func, error_msg)?,
+                    Method::DELETE => self.DELETE = self.DELETE.register_middleware_func(route, func, error_msg)?,
+                }
             }
         }
+
         Ok(self)
     }
 }

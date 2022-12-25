@@ -2,10 +2,12 @@ use ohkami::prelude::*;
 
 fn main() -> Result<()> {
     let middleware = Middleware::new()
+        .ANY("*", |c| async {tracing::info!("request!"); c})
         .ANY("/*", middleware::cors)
         .ANY("/api/*", middleware::hello);
 
     Server::setup_with(middleware)
+        .GET("/", handler::hello)
         .GET("/api", handler::hello)
         .GET("/api/sleepy/:time", handler::sleepy_hello)
         .serve_on("localhost:3000")

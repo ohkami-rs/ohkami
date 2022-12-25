@@ -1,26 +1,25 @@
 #[derive(PartialEq, Debug)]
 pub(super) enum Pattern {
-    Any,
+    Nil,
     Param,
     Str(&'static str),
 } impl Pattern {
     pub fn from(section: &'static str) -> Self {
         match section {
-            "*" => Self::Any,
             p if p.starts_with(':') => Self::Param,
             p => Self::Str(p),
         }
     }
     pub fn matches(&self, section: &str) -> bool {
         match self {
-            Pattern::Any => true,
+            Pattern::Nil => false,
             Pattern::Str(p) => p == &section,
             Pattern::Param => true,
         }
     }
     pub fn is(&self, another: &Self) -> bool {
         match self {
-            Self::Any => another.is_any(),
+            Self::Nil => another.is_nil(),
             Self::Str(p) => p == &another.as_str(),
             Self::Param => another.is_param(),
         }
@@ -37,9 +36,9 @@ pub(super) enum Pattern {
             _ => unreachable!("`as_str` was called by Pattern other than `Str`"),
         }
     }
-    fn is_any(&self) -> bool {
+    pub(super) fn is_nil(&self) -> bool {
         match self {
-            Pattern::Any => true,
+            Pattern::Nil => true,
             _ => false,
         }
     }

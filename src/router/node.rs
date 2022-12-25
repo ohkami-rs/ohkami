@@ -55,11 +55,14 @@ pub(super) struct Node {
                     }
                 }
                 None
+
             } {
                 child.search(path, params, read_pos + section.len(), middleware_process)
+
             } else {
                 Err(Response::NotFound(None))
             }
+            
         } else {
             Ok((
                 self.handler.as_ref()._else(|| Response::NotFound(None))?,
@@ -95,7 +98,12 @@ pub(super) struct Node {
             }
 
         } else {
-            Err(err_msg)
+            if self.pattern.is_nil() {
+                self.handler = Some(handler);
+                Ok(())
+            } else {
+                Err(err_msg)
+            }
         }
     }
     fn attach(&mut self,
@@ -154,8 +162,10 @@ pub(super) struct Node {
                     }
                 }
                 None
+
             } {
                 child.search_apply_root(path)
+
             } else {
                 None
             }

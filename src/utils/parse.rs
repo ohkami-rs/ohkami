@@ -40,7 +40,7 @@ pub(crate) fn parse_request_lines(mut lines: Lines) -> Result<(
 
     Ok((
         Method::parse(method_str)?,
-        (if path=="/" {path} else {path.trim_end_matches('/')}).to_owned(),
+        path.trim_end_matches('/').to_owned(),
         // param,
         query,
         body
