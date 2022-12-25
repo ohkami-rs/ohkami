@@ -1,5 +1,5 @@
 use ohkami::{prelude::*, json};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 fn main() -> Result<()> {
     Server::setup()
@@ -7,10 +7,11 @@ fn main() -> Result<()> {
         .serve_on(":3000")
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
+#[allow(unused)]
 struct User {
-    name:      String,
-    _password: String,
+    name:     String,
+    password: String,
 }
 
 async fn only_whose_name_starts_with_j_can_login(ctx: Context) -> Result<Response> {
@@ -22,4 +23,26 @@ async fn only_whose_name_starts_with_j_can_login(ctx: Context) -> Result<Respons
         ))?;
         
     Response::OK(json!("ok": true))
+}
+
+#[cfg(test)]
+mod test {
+    use ohkami::{prelude::*, json, test::{Test, Request, Method}};
+    use super::{only_whose_name_starts_with_j_can_login, User};
+
+    #[test]
+    fn test_api_login_j() {
+        let server = Server::setup()
+            .POST("/api/login_j", only_whose_name_starts_with_j_can_login);
+
+        server.assert_to_res(
+            &Request::new(Method::POST, "/api/login_j")
+                .body(User {
+                    name:     "jTaro".into(),
+                    password: "iamjtaro".into(),
+                }),
+                // .body("{name:jTaro, password:iamjtaro}"),
+            Response::OK(json!("ok": true))
+        )
+    }
 }

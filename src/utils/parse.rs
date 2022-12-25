@@ -36,7 +36,7 @@ pub(crate) fn parse_request_lines(mut lines: Lines) -> Result<(
         if line.is_empty() {break}
     }
 
-    let body = lines.next().map(|line| json(&line).unwrap());
+    let body = lines.next().map(|line| JSON(line.to_owned()));
 
     Ok((
         Method::parse(method_str)?,

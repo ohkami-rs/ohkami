@@ -42,7 +42,7 @@ fn main() -> Result<()> {
 
 ## 0.3 → 0.4
 Added experimental support for **middleware**s：\
-(＊ 0.4.1 → 0.4.3： fixed bugs around this)
+(＊ 0.4.1 → 0.4.3： fixed bugs around this)\
 (＊ 0.4.3 → 0.4.4： fixed `*` handling)
 
 ```rust
