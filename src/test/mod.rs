@@ -1,11 +1,9 @@
-use std::fmt::Debug;
-
 use async_std::task::block_on;
 #[cfg(feature = "sqlx")]
 use async_std::sync::Arc;
-use serde::{Serialize, Deserialize};
+use serde::Serialize;
 use crate::{
-    utils::{range::RANGE_COLLECTION_SIZE, buffer::Buffer, string::unescaped}, server::{ExpectedResponse, Server, consume_buffer}, prelude::{Result, Response, JSON}
+    utils::{range::RANGE_COLLECTION_SIZE, buffer::Buffer, string::unescaped}, server::{ExpectedResponse, Server, consume_buffer}, prelude::{Response, JSON}
 };
 pub use crate::components::method::Method;
 
