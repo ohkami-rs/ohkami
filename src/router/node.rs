@@ -43,20 +43,12 @@ pub(super) struct Node {
             if let Some(child) = 'search: {
                 for child in &self.children {
                     if child.pattern.matches(section) {
-
-                        tracing::debug!("search visited: {section}");
-                        tracing::debug!("just: {}", if child.middleware.just.is_some() {"exists"} else {"no"});
-                        tracing::debug!("proccess: {}", child.middleware.proccess.len());
-
                         if child.pattern.is_param() {
                             let range = BufRange::new(read_pos + 1, read_pos + section.len());
                             tracing::debug!("path param: `{}` (range: {:?})", section, range);
                             params.push(range)?;
                         }
                         for proceess in &self.middleware.proccess {
-
-                            tracing::debug!("pushed!");
-
                             middleware_process.push(proceess)
                         }
                         break 'search Some(child)
@@ -136,9 +128,6 @@ pub(super) struct Node {
             { route.next(); }
 
             if let Some(apply_root) = self.search_apply_root(route) {
-
-                tracing::debug!("proccess pushed!");
-
                 apply_root.middleware.proccess.push(middleware_func)
             }
 
@@ -150,9 +139,6 @@ pub(super) struct Node {
                 if target.middleware.just.is_some() {
                     return Err(err_msg)
                 }
-
-                tracing::debug!("just pushed!");
-
                 target.middleware.just = Some(middleware_func)
             }
         }
@@ -164,9 +150,6 @@ pub(super) struct Node {
             if let Some(child) = 'search: {
                 for child in &mut self.children {
                     if child.pattern.matches(section) {
-
-                        tracing::debug!("search_apply_root visited: {section}");
-
                         break 'search Some(child)
                     }
                 }
@@ -174,11 +157,9 @@ pub(super) struct Node {
             } {
                 child.search_apply_root(path)
             } else {
-                tracing::debug!("search_apply_root returned None");
                 None
             }
         } else {
-            tracing::debug!("search_apply_root returned `{:?}`", self.pattern);
             Some(self)
         }
     }

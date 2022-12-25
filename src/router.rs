@@ -91,8 +91,6 @@ impl Router {
             )
         }
         for (method, route, func) in middlware.proccess {
-            tracing::debug!("apply!");
-
             let error_msg = format!("middleware func just for `{method} {route}` is registered duplicatedly");
             match method {
                 Method::GET    => self.GET = self.GET.register_middleware_func(route, func, error_msg)?,

@@ -371,11 +371,9 @@ pub(crate) async fn consume_buffer(
 
     for proccess in middleware_proccess {
         context = proccess(context).await;
-        tracing::debug!("proccess!");
     }
     if let Some(pre_handle) = middleware_just {
         context = pre_handle(context).await;
-        tracing::debug!("pre_handle!");
     }
 
     tracing::debug!("context: {:#?}", context);
