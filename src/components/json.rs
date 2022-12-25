@@ -1,3 +1,5 @@
+use std::fmt::Debug;
+
 use serde::{Serialize, Deserialize};
 use crate::{result::Result, response::format::ResponseFormat};
 
@@ -28,7 +30,7 @@ pub fn json<S: Serialize>(data: S) -> Result<JSON> {
 }
 
 /// Type of raw json data in TCP stream.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct JSON(
     pub String
 );
@@ -46,8 +48,15 @@ impl<'d> JSON {
     pub fn to_struct<D: Deserialize<'d>>(&'d self) -> Result<D> {
         Ok(serde_json::from_str(&self.0)?)
     }
+
     pub(crate) fn content_length(&self) -> usize {
         self.0.len()
+    }
+    pub(crate) fn assert_body_eq<D: Deserialize<'d> + PartialEq + Debug>(&'d self, another: D) {
+        assert_eq!(
+            serde_json::from_str::<D>(&self.0).expect("can't seserialize"),
+            another
+        )
     }
 }
 

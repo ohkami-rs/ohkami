@@ -52,6 +52,12 @@ pub struct Response {
             }
         }
     }
+    pub(crate) fn body_json(self) -> JSON {
+        match self.body.expect("body: None") {
+            Body::application_json(json) => json,
+            _ => panic!("body is not a JSON"),
+        }
+    }
 
     pub(crate) async fn write_to_stream(self, stream: &mut TcpStream) -> async_std::io::Result<usize> {
         stream.write(

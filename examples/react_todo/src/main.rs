@@ -50,13 +50,8 @@ mod test {
         let req = Request::new(Method::POST, "/users")
                 .body("{\"username\": \"Taro\"}");
 
-        let res = Response::Created(
-            json(User {
-                id:   1337,
-                name: "Taro".into(),
-            }).expect("can't deserialize")
-        );
+        let res = (&SERVER).oneshot(&req);
 
-        (*SERVER).assert_to_res(&req, res)
+        res.unwrap().
     }
 }
