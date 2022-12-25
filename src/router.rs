@@ -18,20 +18,18 @@ mod test_search;
 // #[derive(PartialEq, Debug)]
 #[allow(non_snake_case)]
 pub(crate) struct Router {
-    root_middleware_proc: Vec<MiddlewareFunc>,
-    GET:    Node,
-    POST:   Node,
-    PATCH:  Node,
-    DELETE: Node,
+    GET:    (Vec<MiddlewareFunc>, Node),
+    POST:   (Vec<MiddlewareFunc>, Node),
+    PATCH:  (Vec<MiddlewareFunc>, Node),
+    DELETE: (Vec<MiddlewareFunc>, Node),
 }
 impl Router {
     pub(crate) fn new() -> Self {
         Self {
-            root_middleware_proc: Vec::new(),
-            GET:    Node::new(Pattern::Nil),
-            POST:   Node::new(Pattern::Nil),
-            PATCH:  Node::new(Pattern::Nil),
-            DELETE: Node::new(Pattern::Nil),
+            GET:    (Vec::new(), Node::new(Pattern::Nil)),
+            POST:   (Vec::new(), Node::new(Pattern::Nil)),
+            PATCH:  (Vec::new(), Node::new(Pattern::Nil)),
+            DELETE: (Vec::new(), Node::new(Pattern::Nil)),
         }
     }
 
@@ -49,10 +47,10 @@ impl Router {
         { path.next(); }
 
         let tree = match method {
-            Method::GET    => &mut self.GET,
-            Method::POST   => &mut self.POST,
-            Method::PATCH  => &mut self.PATCH,
-            Method::DELETE => &mut self.DELETE,
+            Method::GET    => &mut self.GET.1,
+            Method::POST   => &mut self.POST.1,
+            Method::PATCH  => &mut self.PATCH.1,
+            Method::DELETE => &mut self.DELETE.1,
         };
         
         tree.register_handler(path, handler, err_msg)
@@ -71,7 +69,7 @@ impl Router {
 
         let offset = method.len();
 
-        let tree = match method {
+        let (init_proc, tree) = match method {
             Method::GET    => &self.GET,
             Method::POST   => &self.POST,
             Method::PATCH  => &self.PATCH,
@@ -79,7 +77,7 @@ impl Router {
         };
 
         let mut middleware_proccess = Vec::new();
-        for proc in &self.root_middleware_proc {
+        for proc in init_proc {
             middleware_proccess.push(proc)
         }
 
@@ -99,13 +97,18 @@ impl Router {
             let error_msg = format!("middleware func just for `{method} {route}` is registered duplicatedly");
 
             if route == "*" {
-                self.root_middleware_proc.push(func)
+                match method {
+                    Method::GET    => self.GET.0.push(func),
+                    Method::POST   => self.POST.0.push(func),
+                    Method::PATCH  => self.PATCH.0.push(func),
+                    Method::DELETE => self.DELETE.0.push(func),
+                }
             } else {
                 match method {
-                    Method::GET    => self.GET = self.GET.register_middleware_func(route, func, error_msg)?,
-                    Method::POST   => self.POST = self.POST.register_middleware_func(route, func, error_msg)?,
-                    Method::PATCH  => self.PATCH = self.PATCH.register_middleware_func(route, func, error_msg)?,
-                    Method::DELETE => self.DELETE = self.DELETE.register_middleware_func(route, func, error_msg)?,
+                    Method::GET    => self.GET.1 = self.GET.1.register_middleware_func(route, func, error_msg)?,
+                    Method::POST   => self.POST.1 = self.POST.1.register_middleware_func(route, func, error_msg)?,
+                    Method::PATCH  => self.PATCH.1 = self.PATCH.1.register_middleware_func(route, func, error_msg)?,
+                    Method::DELETE => self.DELETE.1 = self.DELETE.1.register_middleware_func(route, func, error_msg)?,
                 }
             }
         }
