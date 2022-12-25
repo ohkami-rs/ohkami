@@ -52,15 +52,17 @@ pub trait Test {
         }).unwrap()
     }
     fn oneshot_json(&self, request: &Request) -> JSON {
-        block_on(async {
+        match block_on(async {
             consume_buffer(
                 request.into_request_buffer().await,
                 &self.router,
                 #[cfg(feature = "sqlx")]
                 Arc::clone(&self.pool)
             ).await
-        }).unwrap()
-            .body_json()
+        }) {
+            Ok(res) => res,
+            Err(res) => res,
+        }.body_json()
     }
 }
 

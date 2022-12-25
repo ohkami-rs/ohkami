@@ -31,7 +31,6 @@ mod test {
     use crate::models::user::User;
     use ohkami::{
         test::{Test, Request, Method},
-        components::json::json,
         response::Response, server::Server,
     };
 
@@ -50,6 +49,13 @@ mod test {
         let req = Request::new(Method::POST, "/users")
                 .body("{\"username\": \"Taro\"}");
 
-        let res = (&SERVER).oneshot_json(&req);
+        let res = (&SERVER).oneshot_json(&req)
+            .to_struct::<User>()
+            .expect("request body isn't User");
+
+        assert_eq!(res, User {
+            id:   1337,
+            name: "Taro".into(),
+        })
     }
 }
