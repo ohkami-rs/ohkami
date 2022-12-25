@@ -14,6 +14,11 @@ ohkami *- [狼] means wolf in Japanese -* is **simple** and **macro free** web f
 
 <br/>
 
+## 0.4.4 → 0.4.5
+fixed bug around request body (JSON) handling
+
+<br/>
+
 ## Quick start
 1. Add dependencies:
 
@@ -41,9 +46,7 @@ fn main() -> Result<()> {
 <br/>
 
 ## 0.3 → 0.4
-Added experimental support for **middleware**s：\
-(＊ 0.4.1 → 0.4.3： fixed bugs around this)\
-(＊ 0.4.3 → 0.4.4： fixed `*` handling)
+Added experimental support for **middleware**s：
 
 ```rust
 fn main() -> Result<()> {
