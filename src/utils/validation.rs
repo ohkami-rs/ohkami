@@ -50,6 +50,8 @@ fn valid_request_path_section(section: &str) -> (bool, bool/* is param */) {
    / ([a-z, A-Z, _ ]+/)* \*?
 */
 pub(crate) fn valid_middleware_route(route: &'static str) -> bool {
+    if route == "*" {return true}
+    
     if !route.starts_with('/') {return false}
     if route.len() == 1 /* e.g. route == "/" */ {return true}
 
@@ -118,6 +120,7 @@ mod test {
 
     #[test]
     fn validate_ok_middleware_routes() {
+        assert!(valid_middleware_route("*"));
         assert!(valid_middleware_route("/"));
         assert!(valid_middleware_route("/*"));
         assert!(valid_middleware_route("/api/*"));
@@ -125,7 +128,6 @@ mod test {
     }
     #[test]
     fn validate_bad_middleware_routes() {
-        assert!( ! valid_middleware_route("*"));
         assert!( ! valid_middleware_route("/*/api"));
         assert!( ! valid_middleware_route(""));
         assert!( ! valid_middleware_route("//*"));

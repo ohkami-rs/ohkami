@@ -73,13 +73,13 @@ impl Router {
             Method::DELETE => &self.DELETE,
         };
 
-        let mut proccess = Vec::new();
-        for p in &tree.middleware.proccess {
-            tracing::debug!("root pushed!");
-            proccess.push(p)
-        }
+        // let mut proccess = Vec::new();
+        // for p in &tree.middleware.proccess {
+        //     tracing::debug!("root pushed!");
+        //     proccess.push(p)
+        // }
 
-        tree.search(path, RangeList::new(), offset, proccess)
+        tree.search(path, RangeList::new(), offset, Vec::new()) // proccess)
     }
 
     pub(crate) fn apply(mut self, middlware: Middleware) -> std::result::Result<Self, String> {

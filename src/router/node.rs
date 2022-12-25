@@ -53,7 +53,7 @@ pub(super) struct Node {
                             tracing::debug!("path param: `{}` (range: {:?})", section, range);
                             params.push(range)?;
                         }
-                        for proceess in &child.middleware.proccess {
+                        for proceess in &self.middleware.proccess {
 
                             tracing::debug!("pushed!");
 
