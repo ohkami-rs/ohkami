@@ -46,7 +46,7 @@ pub trait Test {
         assert_ne!(actual_response, expected_response.as_response())
     }
     fn oneshot_res(&self, request: &Request) -> Response {
-        block_on(async {
+        match block_on(async {
             consume_buffer(
                 request.into_request_buffer().await,
                 &self.router,
@@ -54,7 +54,10 @@ pub trait Test {
                 #[cfg(feature = "sqlx")]
                 Arc::clone(&self.pool)
             ).await
-        }).unwrap()
+        }) {
+            Ok(res) => res,
+            Err(res) => res,
+        }
     }
     fn oneshot_json(&self, request: &Request) -> JSON {
         match block_on(async {
