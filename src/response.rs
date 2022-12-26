@@ -24,7 +24,7 @@ use self::{body::ResponseBody, message::ErrorMessage};
 pub struct Response {
     pub(crate) additional_headers: String,
     pub status: Status,
-    pub(crate) body:   Option<Body>,
+    pub body:   Option<Body>,
 } impl Response {
     /// Add error context message to an existing `Response` in `Err`.
     /// ```no_run

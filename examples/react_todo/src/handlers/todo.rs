@@ -1,16 +1,20 @@
 use ohkami::{
     prelude::{Context, json},
     response::Response,
-    result::{Result, ElseResponse},
+    result::{Result, ElseResponse, ElseResponseWithErr},
     components::json::JSON, json
 };
+use validator::Validate;
 use crate::{
     models::{todo::{CreateTodo, UpdateTodo}, repository::TodoRepository},
     TODO_STORE
 };
 
 pub(crate) async fn create_todo(c: Context) -> Result<Response> {
-    let todo = TODO_STORE.create(c.req.body::<CreateTodo>()?);
+    let payload = c.req.body::<CreateTodo>()?;
+    payload.validate()
+        ._else(|e| c.BadRequest(format!("Invalid request: {}", e.to_string())))?;
+    let todo = TODO_STORE.create(payload);
     c.Created(json(todo)?)
 }
 

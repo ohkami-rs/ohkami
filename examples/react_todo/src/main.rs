@@ -52,7 +52,7 @@ mod test {
 
     #[test]
     fn should_return_hello_world() {
-        (*SERVER).assert_to_res(
+        SERVER.assert_to_res(
             &Request::new(GET, "/"),
             Response::OK("Hello, World!")
         )
@@ -63,7 +63,7 @@ mod test {
         let req = Request::new(POST, "/users")
             .body(r#"{ "username": "Taro" }"#);
 
-        let res = (&SERVER).oneshot_json(&req)
+        let res = SERVER.oneshot_json(&req)
             .to_struct::<User>()
             .expect("request body isn't User");
 
@@ -116,5 +116,13 @@ mod test {
         let req = Request::new(DELETE, "/todos/1");
         let res = (*SERVER).oneshot_res(&req);
         assert_eq!(res.status, Status::OK);
+    }
+
+    #[test]
+    fn todo_validation() {
+        let req = Request::new(POST, "/todos")
+            .body(r#"{ "text": "" }"#);
+        let res = SERVER.oneshot_res(&req);
+        assert_eq!(res, );
     }
 }

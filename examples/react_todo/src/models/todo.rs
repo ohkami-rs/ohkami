@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use validator::Validate;
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
 pub(crate) struct Todo {
@@ -15,13 +16,15 @@ pub(crate) struct Todo {
     }
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Validate)]
 pub(crate) struct CreateTodo {
+    #[validate(length(min = 1, max = 100))]
     pub text: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Validate)]
 pub(crate) struct UpdateTodo {
+    #[validate(length(min = 1, max = 100))]
     pub text:      Option<String>,
     pub completed: Option<bool>,
 }
