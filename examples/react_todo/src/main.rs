@@ -39,7 +39,7 @@ fn main() -> Result<()> {
 }
 
 #[cfg(test)]
-mod test {
+mod crud {
     use crate::models::{user::User, todo::Todo};
 
     use once_cell::sync::Lazy;
@@ -117,7 +117,17 @@ mod test {
         let res = (*SERVER).oneshot_res(&req);
         assert_eq!(res.status, Status::OK);
     }
+}
 
+#[cfg(test)]
+mod validatrion {
+    use once_cell::sync::Lazy;
+    use ohkami::{
+        test::{Test, Request, Method::*, Status},
+        server::Server,
+    };
+
+    static SERVER: Lazy<Server> = Lazy::new(|| super::server());
     #[test]
     fn todo_validation() {
         // too short (empty) text

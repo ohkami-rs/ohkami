@@ -5,6 +5,7 @@ use async_std::{
     net::{TcpStream, TcpListener},
     stream::StreamExt, task,
 };
+use tracing_subscriber::fmt::SubscriberBuilder;
 use crate::{
     components::{
         method::Method, cors::CORS, headers::AdditionalHeader
@@ -35,6 +36,7 @@ use sqlx::mysql::{
 pub struct Server {
     pub(crate) router: Router,
     cors: CORS,
+    log_subscribe: Option<SubscriberBuilder>,
 
     #[cfg(feature = "sqlx")]
     pub(crate) pool: Arc<ConnectionPool>,
@@ -65,13 +67,10 @@ impl Server {
     pub fn setup() -> Self {
         let ServerSetting { config, middleware } = ServerSetting::default();
 
-        if let Some(subscriber) = config.log_subscribe {
-            subscriber.init()
-        }
-
         Self {
             router: Router::new(),
             cors:   config.cors,
+            log_subscribe: config.log_subscribe,
 
             setup_errors: Vec::new(),
             middleware_register: middleware,
@@ -83,10 +82,6 @@ impl Server {
             config,
             middleware,
         } = setting.into_setting();
-
-        if let Some(subscriber) = config.log_subscribe {
-            subscriber.init()
-        }
 
         #[cfg(feature = "sqlx")]
         let pool = {
@@ -105,6 +100,7 @@ impl Server {
         Self {
             router: Router::new(),
             cors:   config.cors,
+            log_subscribe: config.log_subscribe,
 
             #[cfg(feature = "sqlx")]
             pool: Arc::new(pool),
@@ -223,6 +219,10 @@ impl Server {
     /// - `"localhost:{port}"` (like `"localhost:8080"`) is interpret as `"127.0.0.1:{port}"`
     /// - other formats are interpret as raw TCP address
     pub fn serve_on(mut self, address: &'static str) -> Result<()> {
+        if let Some(subscriber) = self.log_subscribe {
+            subscriber.init();
+        }
+
         let router = Arc::new({
             let applied_router = self.router.apply(self.middleware_register);
             if let Err(msg) = &applied_router {
