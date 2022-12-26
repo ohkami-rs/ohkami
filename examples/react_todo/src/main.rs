@@ -39,7 +39,7 @@ fn main() -> Result<()> {
 }
 
 #[cfg(test)]
-mod crud {
+mod test {
     use crate::models::{user::User, todo::Todo};
 
     use once_cell::sync::Lazy;
@@ -77,6 +77,21 @@ mod crud {
     fn todo_http_crud_senario() {
         let sample_todo_1 = Todo::new(1, String::from("sample todo text 1"));
         let sample_todo_2 = Todo::new(2, String::from("sample todo text 2"));
+
+
+        // too short (empty) text
+        let req = Request::new(POST, "/todos")
+            .body(r#"{ "text": "" }"#);
+        let res = SERVER.oneshot_res(&req);
+        assert_eq!(res.status, Status::BadRequest);
+
+        // too long (longer than 100) text
+        let long_text = "1234567890".repeat(12);
+        let req = Request::new(POST, "/todos")
+            .body(format!(r#"{{ "text": "{long_text}" }}"#));
+        let res = SERVER.oneshot_res(&req);
+        assert_eq!(res.status, Status::BadRequest);
+        
 
         // create
         let req = Request::new(POST, "/todos")
@@ -116,37 +131,5 @@ mod crud {
         let req = Request::new(DELETE, "/todos/1");
         let res = (*SERVER).oneshot_res(&req);
         assert_eq!(res.status, Status::OK);
-    }
-}
-
-#[cfg(test)]
-mod validatrion {
-    use once_cell::sync::Lazy;
-    use ohkami::{
-        test::{Test, Request, Method::*, Status},
-        server::Server,
-    };
-
-    static SERVER: Lazy<Server> = Lazy::new(|| super::server());
-    #[test]
-    fn todo_validation() {
-        // too short (empty) text
-        let req = Request::new(POST, "/todos")
-            .body(r#"{ "text": "" }"#);
-        let res = SERVER.oneshot_res(&req);
-        assert_eq!(res.status, Status::BadRequest);
-
-        // valid text
-        let req = Request::new(POST, "/todos")
-            .body(r#"{ "text": "sample text" }"#);
-        let res = SERVER.oneshot_res(&req);
-        assert_eq!(res.status, Status::Created);
-
-        // too long (longer than 100) text
-        let long_text = "1234567890".repeat(12);
-        let req = Request::new(POST, "/todos")
-            .body(format!(r#"{{ "text": "{long_text}" }}"#));
-        let res = SERVER.oneshot_res(&req);
-        assert_eq!(res.status, Status::BadRequest);
     }
 }

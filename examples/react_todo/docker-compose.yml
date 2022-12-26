@@ -1,0 +1,25 @@
+version: "3.7"
+
+x-environment: &environment
+  POSTGRES_USER: postgres
+  POSTGRES_PASSWORD: postgres
+  POSTGRES_HOST: postgres
+  POSTGRES_PORT: 5432
+  POSTGRES_DB: postgres
+  PGSSLMODE: disable
+
+services:
+  postgres:
+    image: postgres:12.3-alpine
+    container_name: postgres
+    environment: *environment
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./migrations/:/docker-entrypoint-initdb.d/
+
+volumes:
+  pgdata:
+    driver: local
+  
