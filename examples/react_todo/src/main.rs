@@ -120,9 +120,23 @@ mod test {
 
     #[test]
     fn todo_validation() {
+        // too short (empty) text
         let req = Request::new(POST, "/todos")
             .body(r#"{ "text": "" }"#);
         let res = SERVER.oneshot_res(&req);
-        assert_eq!(res, );
+        assert_eq!(res.status, Status::BadRequest);
+
+        // valid text
+        let req = Request::new(POST, "/todos")
+            .body(r#"{ "text": "sample text" }"#);
+        let res = SERVER.oneshot_res(&req);
+        assert_eq!(res.status, Status::Created);
+
+        // too long (longer than 100) text
+        let long_text = "1234567890".repeat(12);
+        let req = Request::new(POST, "/todos")
+            .body(format!(r#"{{ "text": "{long_text}" }}"#));
+        let res = SERVER.oneshot_res(&req);
+        assert_eq!(res.status, Status::BadRequest);
     }
 }

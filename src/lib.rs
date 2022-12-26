@@ -22,7 +22,7 @@ pub mod prelude {
         setting::{Config, Middleware},
         result::{Result, ElseResponse, ElseResponseWithErr},
         context::Context,
-        response::{Response, body::Body},
+        response::Response,
         components::json::{json, JSON},
     };
 

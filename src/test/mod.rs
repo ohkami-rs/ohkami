@@ -6,9 +6,12 @@ use crate::{
     utils::{range::RANGE_COLLECTION_SIZE, buffer::Buffer, string::unescaped}, server::{ExpectedResponse, Server, consume_buffer}, prelude::{Response, JSON}
 };
 
-pub use crate::components::{
-    method::Method,
-    status::Status,
+pub use crate::{
+    components::{
+        method::Method,
+        status::Status,
+    },
+    response::body::Body,
 };
 
 
