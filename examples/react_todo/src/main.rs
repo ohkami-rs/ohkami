@@ -40,7 +40,7 @@ fn main() -> Result<()> {
 
 #[cfg(test)]
 mod test {
-    use crate::{models::{user::User, todo::Todo}, TODO_STORE};
+    use crate::models::{user::User, todo::Todo};
 
     use once_cell::sync::Lazy;
     use ohkami::{
@@ -74,84 +74,47 @@ mod test {
     }
 
     #[test]
-    fn should_create_todo() {
-        let expected = Todo::new(1, String::from("should_create_todo"));
+    fn todo_http_crud_senario() {
+        let sample_todo_1 = Todo::new(1, String::from("sample todo text 1"));
+        let sample_todo_2 = Todo::new(2, String::from("sample todo text 2"));
 
-        let mut lock = TODO_STORE.write_store_ref();
-        lock.clear();
-
+        // create
         let req = Request::new(POST, "/todos")
-            .body(r#"{ "text": "should_create_todo" }"#);
-        let res = (&SERVER).oneshot_json(&req)
+            .body(r#"{ "text": "sample todo text 1" }"#);
+        let res = SERVER.oneshot_json(&req)
             .to_struct::<Todo>()
             .expect("response isn't a Todo");
+        assert_eq!(res, sample_todo_1);
 
-        assert_eq!(res, expected)
-    }
-
-    #[test]
-    fn should_find_todo() {
-        let expected = Todo::new(1, String::from("should_find_todo"));
-
-        let mut lock = TODO_STORE.write_store_ref();
-        lock.clear();
-        lock.insert(1, expected.clone());
-
+        // find
         let req = Request::new(GET, "/todos/1");
-        let res = (&SERVER).oneshot_json(&req)
+        let res = SERVER.oneshot_json(&req)
             .to_struct::<Todo>()
             .expect("response isn't a Todo");
-        
-        assert_eq!(res, expected)
-    }
+        assert_eq!(res, sample_todo_1);
 
-    #[test]
-    fn should_get_all_todos() {
-        let expected = vec![
-            Todo::new(1, String::from("should_get_all_todo_1")),
-            Todo::new(2, String::from("should_get_all_todo_2")),
-        ];
-
-        let mut lock = TODO_STORE.write_store_ref();
-        lock.clear();
-        lock.insert(1, expected[0].clone());
-        lock.insert(2, expected[1].clone());
-
+        // all
+        SERVER.oneshot_res(
+            &Request::new(POST, "/todos").body(r#"{ "text": "sample todo text 2" }"#)
+        );
         let req = Request::new(GET, "/todos");
-        let res = (*SERVER).oneshot_json(&req)
+        let mut res = SERVER.oneshot_json(&req)
             .to_struct::<Vec<Todo>>()
             .expect("response isn't a Vec<Todo>");
+        res.sort_by_key(|todo| todo.id); //
+        assert_eq!(res, vec![sample_todo_1, sample_todo_2]);
 
-        assert_eq!(res, expected);
-    }
-
-    #[test]
-    fn should_update_todo() {
-        let expected = Todo::new(1, String::from("should_update_todo"));
-        let before = Todo::new(1, String::from("before_update_todo"));
-
-        let mut lock = TODO_STORE.write_store_ref();
-        lock.clear();
-        lock.insert(1, before);
-
+        // update
         let req = Request::new(PATCH, "/todos/1")
-            .body(r#"{ "text": "should_update_todo" }"#);
-        let res = (*SERVER).oneshot_json(&req)
+            .body(r#"{ "text": "updated text" }"#);
+        let res = SERVER.oneshot_json(&req)
             .to_struct::<Todo>()
             .expect("response isn't a Todo");
+        assert_eq!(res, Todo::new(1, String::from("updated text")));
 
-        assert_eq!(res, expected)
-    }
-
-    #[test]
-    fn should_delete_todo() {
-        let mut lock = TODO_STORE.write_store_ref();
-        lock.clear();
-        lock.insert(1, Todo::new(1, String::from("should_delete_todo")));
-
+        // delete
         let req = Request::new(DELETE, "/todos/1");
         let res = (*SERVER).oneshot_res(&req);
-
-        assert_eq!(res.status, Status::OK)
+        assert_eq!(res.status, Status::OK);
     }
 }

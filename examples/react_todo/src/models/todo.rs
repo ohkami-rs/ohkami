@@ -20,6 +20,7 @@ pub(crate) struct CreateTodo {
     pub text: String,
 }
 
+#[derive(Deserialize)]
 pub(crate) struct UpdateTodo {
     pub text:      Option<String>,
     pub completed: Option<bool>,
