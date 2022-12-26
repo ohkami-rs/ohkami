@@ -21,10 +21,10 @@ pub(crate) struct TodoStore(
         Self(Arc::default())
     }
 
-    fn write_store_ref(&self) -> RwLockWriteGuard<HashMap<i32, Todo>> {
+    pub fn write_store_ref(&self) -> RwLockWriteGuard<HashMap<i32, Todo>> {
         self.0.write().unwrap(/* --- */)
     }
-    fn read_store_ref(&self) -> RwLockReadGuard<HashMap<i32, Todo>> {
+    pub fn read_store_ref(&self) -> RwLockReadGuard<HashMap<i32, Todo>> {
         self.0.read().unwrap(/* === */)
     }
 }

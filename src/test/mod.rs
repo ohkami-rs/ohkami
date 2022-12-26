@@ -5,7 +5,11 @@ use serde::Serialize;
 use crate::{
     utils::{range::RANGE_COLLECTION_SIZE, buffer::Buffer, string::unescaped}, server::{ExpectedResponse, Server, consume_buffer}, prelude::{Response, JSON}
 };
-pub use crate::components::method::Method;
+
+pub use crate::components::{
+    method::Method,
+    status::Status,
+};
 
 
 pub trait Test {

@@ -2,7 +2,7 @@ use crate::response::format::ResponseFormat;
 
 
 #[derive(Debug, PartialEq)]
-pub(crate) enum Status {
+pub enum Status {
     OK                  = 200,
     Created             = 201,
     BadRequest          = 400,

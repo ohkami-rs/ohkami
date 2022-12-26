@@ -23,7 +23,7 @@ use self::{body::ResponseBody, message::ErrorMessage};
 #[derive(Debug, PartialEq)]
 pub struct Response {
     pub(crate) additional_headers: String,
-    pub(crate) status: Status,
+    pub status: Status,
     pub(crate) body:   Option<Body>,
 } impl Response {
     /// Add error context message to an existing `Response` in `Err`.
