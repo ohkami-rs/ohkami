@@ -1,11 +1,16 @@
 mod models;
 mod handlers;
 
-use handlers::{root, user::create_user};
+use handlers::{root, user::create_user, todo::create_todo};
+use models::repository::TodoStore;
+
+use once_cell::sync::Lazy;
 use ohkami::{
-    result::Result,
     server::Server, prelude::Config,
+    result::Result,
 };
+
+static TODO_STORE: Lazy<TodoStore> = Lazy::new(|| TodoStore::new());
 
 fn server() -> Server {
     let config = Config {
@@ -19,6 +24,7 @@ fn server() -> Server {
     Server::setup_with(config)
         .GET("/",       root)
         .POST("/users", create_user)
+        .POST("/todos", create_todo)
 }
 
 fn main() -> Result<()> {
@@ -27,8 +33,9 @@ fn main() -> Result<()> {
 
 #[cfg(test)]
 mod test {
-    use once_cell::sync::Lazy;
     use crate::models::user::User;
+
+    use once_cell::sync::Lazy;
     use ohkami::{
         test::{Test, Request, Method},
         response::Response, server::Server,

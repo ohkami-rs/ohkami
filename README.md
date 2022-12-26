@@ -60,7 +60,7 @@ fn main() -> Result<()> {
 
     let middleware = Middleware::new()
         .ANY("*", |c| async {
-            tracing::info!("Hello, middleware!")
+            tracing::info!("Hello, middleware!");
             c
         });
 
@@ -204,7 +204,7 @@ let user = sqlx::query_as::<_, User>(
 fn main() -> Result<()> {
     let middleware = Middleware::new()
         .ANY("*", |c| async {
-            tracing::info!("Hello, middleware!")
+            tracing::info!("Hello, middleware!");
             c
         });
 
@@ -227,7 +227,7 @@ fn main() -> Result<()> {
 
     let middleware = Middleware::new()
         .ANY("/*", |c| async {
-            tracing::info!("Hello, middleware!")
+            tracing::info!("Hello, middleware!");
             c
         });
 
