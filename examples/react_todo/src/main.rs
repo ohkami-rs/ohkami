@@ -44,7 +44,7 @@ mod test {
 
     use once_cell::sync::Lazy;
     use ohkami::{
-        test::{Test, Request, Method::*},
+        test::{Test, Request, Method::*, Status},
         response::Response, server::Server,
     };
 
@@ -151,5 +151,7 @@ mod test {
 
         let req = Request::new(DELETE, "/todos/1");
         let res = (*SERVER).oneshot_res(&req);
+
+        assert_eq!(res.status, Status::OK)
     }
 }

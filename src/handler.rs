@@ -120,7 +120,7 @@ macro_rules! impl_handler_with_int {
             }
         )*
     };
-} impl_handler_with_int!(u64 usize i64);
+} impl_handler_with_int!(u64 usize i64 i32);
 
 macro_rules! impl_handler_with_2ints {
     ( $( ($int1:ty, $int2:ty) )* ) => {
