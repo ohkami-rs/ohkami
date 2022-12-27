@@ -61,17 +61,25 @@ let count = c.req.query::<usize>("count")?;
 fn main() -> Result<()> {
     Server::setup()
         .GET("/api/users", reflect)
+        .GET("/api/users/name", reflect_name)
         .serve_on(":3000")
 }
 
 #[derive(Serialize)]
-struct JSON {
-    id: i64,
+struct User {
+    id:   i64,
     name: String,
 }
 
-async fn reflect(body: JSON<User>) -> Result<Response> {
-    Response::OK(body)
+async fn reflect(user: JSON<User>) -> Result<Response> {
+    Response::OK(user)
+}
+
+async fn reflect_name(user: JSON<User>) -> Result<Response> {
+    let name = user.name;
+    // `JSON` implements `Deref`
+
+    Response::OK(name)
 }
 ```
 ### handle path params
@@ -120,16 +128,23 @@ c.OK(json(user)?)
 ```
 ### handle errors
 ```rust
-let user = c.req.body::<User>()?;
+make_ohkami_result()?;
 
 // or, you can add an error context message:
-let user = c.req.body::<User>()
+make_ohkami_result()
     ._else(|e| e.error_context("failed to get user data"))?;
 
 // or discard original error:
-let user = c.req.body::<User>()
+make_ohkami_result()
     ._else(|_| Response::InternalServerError("can't get user"))?;
     // or
+    ._else(|_| Response::InternalServerError(None))?;
+```
+```rust
+make_some_error() // can't use `?`
+    ._else(|e| Response::InternalServerError(e.to_string()))?;
+
+make_some_error()
     ._else(|_| Response::InternalServerError(None))?;
 ```
 ### handle Option values
