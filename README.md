@@ -14,18 +14,12 @@ ohkami *- [狼] means wolf in Japanese -* is **simple** and **macro free** web f
 
 <br/>
 
-## 0.4 → 0.5
-- `struct JSON(String)` -> `enum JSON<T> { Ser(String), De(T) }`
-- reuqest body `JSON<T>` as handler arg
-
-<br/>
-
 ## Quick start
 1. Add dependencies:
 
 ```toml
 [dependencies]
-ohkami = "0.5.0"
+ohkami = "0.6.0"
 ```
 
 2. Write your first code with ohkami:
