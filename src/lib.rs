@@ -23,10 +23,8 @@ pub mod prelude {
         result::{Result, ElseResponse, ElseResponseWithErr},
         context::Context,
         response::Response,
-        components::json::{/*json,*/ JSON},
+        components::json::{JSON, json},
     };
-    /// re-export of serde::{Serialize, Deserialize}
-    pub use serde::{Serialize, Deserialize};
 
     #[cfg(feature = "sqlx")]
     pub use super::server::DBprofile;

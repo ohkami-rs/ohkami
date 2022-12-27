@@ -111,7 +111,7 @@ Keep-Alive: timeout=5
         Ok(Self {
             additional_headers: String::new(),
             status:             Status::OK,
-            body:               body.as_body(),
+            body:               body.as_body()?,
         })
     }
     /// Generate `Result<Response>` value that represents a HTTP response of `201 Created`.

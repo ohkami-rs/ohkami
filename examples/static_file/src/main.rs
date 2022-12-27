@@ -18,11 +18,11 @@ static DATA_STR: Lazy<String> = Lazy::new(|| {
     data
 });
 static DATA: Lazy<Vec<Dinosaur>> = Lazy::new(|| {
-    let mut raw = JSON(DATA_STR.to_string())
-        .to_struct::<Vec<Dinosaur>>()
+    let mut raw: Vec<Dinosaur> = JSON::Ser(DATA_STR.to_string())
+        .de()
         .expect("failed to deserilize data");
     for data in &mut raw {
-        (*data.name).make_ascii_lowercase() // convert to lower case in advance
+        (data.name).make_ascii_lowercase() // convert to lower case in advance
     }
     raw
 });

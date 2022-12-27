@@ -36,7 +36,7 @@ impl Context {
         Ok(Response {
             additional_headers: self.additional_headers,
             status: Status::OK,
-            body: body.as_body()
+            body: body.as_body()?
         })
     }
     #[allow(non_snake_case)]

@@ -1,6 +1,6 @@
 use std::fmt::Debug;
 use serde::{Serialize, Deserialize};
-use crate::result::Result;
+use crate::{result::Result, response::body::Body};
 
 
 #[derive(Debug, PartialEq, Clone)]
@@ -23,6 +23,12 @@ pub enum JSON<T: Serialize + for <'d> Deserialize<'d>> {
 }
 
 
+pub fn json<T: Serialize>(value: T) -> Result<Body> {
+    Ok(Body::application_json(
+        serde_json::to_string(&value)?
+    ))
+}
+
 /// Utility macro to create `Body::application_json` value from some pair(s) of key-value(s).
 /// ```no_run
 /// let result = json!{"ok": true};
@@ -32,10 +38,9 @@ pub enum JSON<T: Serialize + for <'d> Deserialize<'d>> {
 /// ```
 #[macro_export]
 macro_rules! json {
-    {$key1:literal : $value1:expr $(, $key:literal : $value:expr)*} => {
+    {$($key:literal : $value:expr),*} => {
         crate::response::body::Body::application_json(
             String::from("{")
-            + &format!("\"{}\":{:?}", $key1, $value1)
             $( + &format!(",\"{}\":{:?}", $key, $value) )*
             + "}"
         )
