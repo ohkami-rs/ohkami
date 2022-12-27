@@ -69,6 +69,6 @@ mod test {
     #[test]
     fn de() {
         let _    = JSON::<T>::Ser(String::new()).de().unwrap();
-        let _: T = JSON::Ser(String::new()).de().unwrap();
+        // let _: T = JSON::Ser(String::new()).de().unwrap();
     }
 }
