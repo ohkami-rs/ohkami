@@ -36,7 +36,16 @@ impl ServerSetting<'_> {
     }
 }
 
-
+#[cfg(not(feature = "sqlx"))]
+impl Default for ServerSetting {
+    fn default() -> Self {
+        Self {
+            config: Config::default(),
+            middleware: Middleware::new(),
+        }
+    }
+}
+#[cfg(feature = "sqlx")]
 impl Default for ServerSetting<'_> {
     fn default() -> Self {
         Self {

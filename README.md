@@ -15,7 +15,7 @@ ohkami *- [狼] means wolf in Japanese -* is **simple** and **macro free** web f
 <br/>
 
 ## 0.4 → 0.5
-- `struct JSON` -> `enum JSON<T>`
+- `struct JSON(String)` -> `enum JSON<T> { Ser(String), De(T) }`
 - reuqest body `JSON<T>` as handler arg
 
 <br/>

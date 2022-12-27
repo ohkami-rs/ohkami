@@ -73,13 +73,30 @@ impl Server {
         }
     }
     /// Initialize `Server` with given configuratoin. This **automatically performe `subscriber.init()`** if config's `log_subscribe` is `Some`, so **DON'T write it in your `main` function**.
+    pub fn setup_with<ISS: IntoServerSetting>(setting: ISS) -> Self {
+        let ServerSetting { 
+            config,
+            middleware,
+        } = setting.into_setting();
+
+        Self {
+            router: Router::new(),
+            log_subscribe: config.log_subscribe,
+
+            #[cfg(feature = "sqlx")]
+            pool: Arc::new(pool),
+
+            setup_errors: Vec::new(),
+            middleware_register: middleware,
+        }
+    }
+    #[cfg(feature = "sqlx")]
     pub fn setup_with<'db_url, ISS: IntoServerSetting<'db_url>>(setting: ISS) -> Self {
         let ServerSetting { 
             config,
             middleware,
         } = setting.into_setting();
 
-        #[cfg(feature = "sqlx")]
         let pool = {
             let DBprofile { options, url } = config.db_profile;
             let err_msg = format!("Can't connect to DB at {url} with {options:?}. If you won't deal with any database, you shouldn't enable `sqlx` flag");
