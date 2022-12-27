@@ -1,6 +1,5 @@
 #[macro_use]
 pub mod json;
-pub mod cors;
 pub mod headers;
 pub(crate) mod time;
 pub(crate) mod method;

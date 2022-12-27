@@ -1,4 +1,4 @@
-#![doc(html_root_url = "https://docs.rs/ohkami/0.4.5")]
+#![doc(html_root_url = "https://docs.rs/ohkami/0.5.0")]
 
 #[cfg(all(not(feature = "sqlx"), any(feature = "postgres", feature = "mysql")))]
 compile_error!("feature `postgres` or `mysql` can't be enebled without enabling `sqlx` feature");
@@ -22,8 +22,8 @@ pub mod prelude {
         setting::{Config, Middleware},
         result::{Result, ElseResponse, ElseResponseWithErr},
         context::Context,
-        response::Response,
-        components::json::{json, JSON},
+        response::{Response, body::Body},
+        components::json::{JSON, json},
     };
 
     #[cfg(feature = "sqlx")]

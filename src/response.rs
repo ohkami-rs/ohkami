@@ -1,8 +1,11 @@
 use async_std::{net::TcpStream, io::WriteExt};
+use serde::{Serialize, Deserialize};
 use crate::{
     components::{
         status::Status,
-        json::JSON, headers::AdditionalHeader, time::now_fmt,
+        json::JSON,
+        time::now_fmt,
+        // headers::AdditionalHeader,
     },
     result::Result,
 };
@@ -52,9 +55,11 @@ pub struct Response {
             }
         }
     }
-    pub(crate) fn body_json(self) -> JSON {
+
+    /// for test use
+    pub(crate) fn body_json<T: Serialize + for <'d> Deserialize<'d>>(self) -> JSON<T> {
         match self.body.expect("body: None") {
-            Body::application_json(json) => json,
+            Body::application_json(json) => JSON::Ser(json),
             other => panic!("body is not a JSON: {other:?}"),
         }
     }
@@ -95,11 +100,14 @@ Keep-Alive: timeout=5
             }
         .as_bytes()).await
     }
-    pub(crate) fn add_header(&mut self, key: AdditionalHeader, value: &String) {
-        self.additional_headers += key.response_format();
-        self.additional_headers += value;
-        self.additional_headers += "\n";
-    }
+    
+    /*
+        pub(crate) fn add_header(&mut self, key: AdditionalHeader, value: &String) {
+            self.additional_headers += key.response_format();
+            self.additional_headers += value;
+            self.additional_headers += "\n";
+        }
+    */
 
     /// Generate `Result<Response>` value that represents a HTTP response of `200 OK`. `JSON`, `String`, `&str`, or `Option` of them can be argument of this.\
     /// You can directly return `Response::OK(/* something */)` from a handler because this is already wrapped in `Result::Ok`.
@@ -108,17 +116,17 @@ Keep-Alive: timeout=5
         Ok(Self {
             additional_headers: String::new(),
             status:             Status::OK,
-            body:               body.as_body(),
+            body:               body.as_body()?,
         })
     }
     /// Generate `Result<Response>` value that represents a HTTP response of `201 Created`.
     /// You can directly return `Response::Created(/* something */)` from a handler because this is already wrapped in `Result::Ok`.
     #[allow(non_snake_case)]
-    pub fn Created(body: JSON) -> Result<Self> {
+    pub fn Created<T: Serialize + for <'d> Deserialize<'d>>(body: JSON<T>) -> Result<Self> {
         Ok(Self {
             additional_headers: String::new(),
             status:             Status::Created,
-            body:               Some(Body::application_json(body)),
+            body:               Some(Body::application_json(body.ser()?)),
         })
     }
 

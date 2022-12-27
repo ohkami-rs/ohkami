@@ -1,4 +1,6 @@
-use crate::components::json::JSON;
+use serde::{Serialize, Deserialize};
+
+use crate::{components::json::JSON, prelude::Result};
 use super::{format::ResponseFormat, message::Message};
 
 
@@ -6,7 +8,7 @@ use super::{format::ResponseFormat, message::Message};
 #[derive(Debug, PartialEq)]
 #[allow(non_camel_case_types)]
 pub enum Body {
-    application_json(JSON),
+    application_json(String),
     text_plain(String),
     text_html(String),
 } impl Body {
@@ -30,18 +32,18 @@ pub enum Body {
     }
     pub(crate) fn content_length(&self) -> usize {
         match self {
-            Self::application_json(json) => json.content_length(),
+            Self::application_json(json) => json.len(),
             Self::text_plain(text) => text.len(),
             Self::text_html(html) => html.len(),
         }
     }
 }
 
-impl Into<Body> for JSON {
-    fn into(self) -> Body {
-        Body::application_json(self)
-    }
-}
+// impl<T: Serialize + for <'d> Deserialize<'d>> Into<Body> for JSON<T> {
+//     fn into(self) -> Body {
+//         Body::application_json(self.ser().unwrap_or_else(|_| String::new()))
+//     }
+// }
 impl Into<Body> for String {
     fn into(self) -> Body {
         Body::text_plain(self)
@@ -56,7 +58,7 @@ impl Into<Body> for &str {
 impl ResponseFormat for Body {
     fn response_format(&self) -> &str {
         match self {
-            Self::application_json(json) => json.response_format(),
+            Self::application_json(json_str) => json_str.as_str(),
             Self::text_plain(text) => text.as_str(),
             Self::text_html(html) => html.as_str(),
         }
@@ -64,6 +66,11 @@ impl ResponseFormat for Body {
 }
 
 
-pub trait ResponseBody {fn as_body(self) -> Option<Body>;}
-impl<B: Into<Body>> ResponseBody for B {fn as_body(self) -> Option<Body> {Some(self.into())}}
-impl<B: Into<Body>> ResponseBody for Option<B> {fn as_body(self) -> Option<Body> {self.map(|body| body.into())}}
+pub trait ResponseBody {fn as_body(self) -> Result<Option<Body>>;}
+impl<B: Into<Body>> ResponseBody for B {fn as_body(self) -> Result<Option<Body>> {Ok(Some(self.into()))}}
+impl<B: Into<Body>> ResponseBody for Option<B> {fn as_body(self) -> Result<Option<Body>> {Ok(self.map(|body| body.into()))}}
+impl<T: Serialize + for <'d> Deserialize<'d>> ResponseBody for JSON<T> {
+    fn as_body(self) -> Result<Option<Body>> {
+        Ok(Some(Body::application_json(self.ser()?)))
+    }
+}

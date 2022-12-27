@@ -1,5 +1,7 @@
 use tracing_subscriber::fmt::SubscriberBuilder;
-use crate::components::cors::CORS;
+
+#[cfg(feature = "sqlx")]
+use crate::server::DBprofile;
 
 /// Configurations of `Server`. In current version, this holds
 /// 
@@ -24,7 +26,6 @@ use crate::components::cors::CORS;
 /// }
 /// ```
 pub struct Config<#[cfg(feature = "sqlx")] 'url> {
-    pub cors: CORS,
     pub log_subscribe: Option<SubscriberBuilder>,
 
     #[cfg(feature = "sqlx")]
@@ -34,7 +35,6 @@ pub struct Config<#[cfg(feature = "sqlx")] 'url> {
 impl Default for Config {
     fn default() -> Self {
         Self {
-            cors:          CORS::default(),
             log_subscribe: Some(tracing_subscriber::fmt().with_max_level(tracing::Level::DEBUG)),
         }
     }
@@ -43,7 +43,6 @@ impl Default for Config {
 impl<'url> Default for Config<'url> {
     fn default() -> Self {
         Self {
-            cors:          CORS::default(),
             log_subscribe: Some(tracing_subscriber::fmt().with_max_level(tracing::Level::DEBUG)),
             db_profile:    DBprofile::default(),
         }

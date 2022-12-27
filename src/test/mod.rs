@@ -1,7 +1,7 @@
 use async_std::task::block_on;
 #[cfg(feature = "sqlx")]
 use async_std::sync::Arc;
-use serde::Serialize;
+use serde::{Serialize, Deserialize};
 use crate::{
     utils::{range::RANGE_COLLECTION_SIZE, buffer::Buffer, string::unescaped}, server::{ExpectedResponse, Server, consume_buffer}, prelude::{Response, JSON}
 };
@@ -19,7 +19,7 @@ pub trait Test {
     fn assert_to_res<R: ExpectedResponse>(&self, request: &Request, expected: R);
     fn assert_not_to_res<R: ExpectedResponse>(&self, request: &Request, expected: R);
     fn oneshot_res(&self, request: &Request) -> Response;
-    fn oneshot_json(&self, request: &Request) -> JSON;
+    fn oneshot_json<T: Serialize + for <'d> Deserialize<'d>>(&self, request: &Request) -> JSON<T>;
 } impl Test for Server {
     fn assert_to_res<R: ExpectedResponse>(&self, request: &Request, expected_response: R) {
         let actual_response = block_on(async {
@@ -59,7 +59,7 @@ pub trait Test {
             Err(res) => res,
         }
     }
-    fn oneshot_json(&self, request: &Request) -> JSON {
+    fn oneshot_json<T: Serialize + for <'d> Deserialize<'d>>(&self, request: &Request) -> JSON<T> {
         match block_on(async {
             consume_buffer(
                 request.into_request_buffer().await,

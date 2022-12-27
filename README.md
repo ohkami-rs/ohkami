@@ -14,8 +14,9 @@ ohkami *- [狼] means wolf in Japanese -* is **simple** and **macro free** web f
 
 <br/>
 
-## 0.4.4 → 0.4.5
-fixed bug around request body (JSON) handling
+## 0.4 → 0.5
+- `struct JSON(String)` -> `enum JSON<T> { Ser(String), De(T) }`
+- reuqest body `JSON<T>` as handler arg
 
 <br/>
 
@@ -24,7 +25,7 @@ fixed bug around request body (JSON) handling
 
 ```toml
 [dependencies]
-ohkami = "0.4"
+ohkami = "0.5.0"
 ```
 
 2. Write your first code with ohkami:
@@ -45,40 +46,6 @@ fn main() -> Result<()> {
 
 <br/>
 
-## 0.3 → 0.4
-Added experimental support for **middleware**s：
-
-```rust
-fn main() -> Result<()> {
-    let config = Config {
-        log_subscribe: Some(
-            tracing_subscriber::fmt()
-                .with_max_level(tracing::Level::TRACE)
-        ),
-        ..Default::default()
-    };
-
-    let middleware = Middleware::new()
-        .ANY("*", |c| async {
-            tracing::info!("Hello, middleware!");
-            c
-        });
-
-    let thirdparty_middleware = some_crate::x;
-
-    Server::setup_with(config.and(middleware).and(x))
-        .GET("/", || async {
-            Response::OK("Hello!")
-        })
-        .serve_on("localhost:3000")
-}
-```
-- "Middleware function" is just a function that takes `Context` or `mut Context` as its argument and returns `Context`. You can register such functions with their routes ( where they should work ) in a `Middleware`.
-- Middleware funcs is **inserted before** handler works, so middleware funcs are executed only when **the handler exists** ( e.g. In the code above for example, `tracing::info("Hello, middleware")!` will NOT executed for a request `POST /` because no handler for this is found ).
-- *Current design may be changed in future version.*
-
-<br/>
-
 ## Snippets
 ### handle query params
 ```rust
@@ -91,16 +58,36 @@ let count = c.req.query::<usize>("count")?;
 ```
 ### handle request body
 ```rust
-let body = c.req.body::<D>()?;
-// `::<D>` isn't needed when it's presumable
-// `D` has to be `serde::Deserialize`
+fn main() -> Result<()> {
+    Server::setup()
+        .GET("/api/users", reflect)
+        .GET("/api/users/name", reflect_name)
+        .serve_on(":3000")
+}
+
+#[derive(Serialize, Deserialize)]
+struct User {
+    id:   i64,
+    name: String,
+}
+
+async fn reflect(user: JSON<User>) -> Result<Response> {
+    Response::OK(user)
+}
+
+async fn reflect_name(user: JSON<User>) -> Result<Response> {
+    let name = user.name;
+    // `JSON` implements `Deref`
+
+    Response::OK(name)
+}
 ```
 ### handle path params
 ```rust
 fn main() -> Result<()> {
     Server::setup()
         .GET("/sleepy/:time/:name", sleepy_hello)
-        .serve_on(":3000")
+        .serve_on("localhost:8080")
 }
 
 async fn sleepy_hello(time: u64, name: String) -> Result<Response> {
@@ -123,34 +110,38 @@ c.OK("Hello, world!")
 ```
 ### return OK response with `application/json`
 ```rust
-Response::OK(JSON("Hello, world!"))
+Response::OK(json!{"ok": true})
 // or
-c.OK(JSON("Hello, world!"))
+c.OK(json!{"ok": true})
 ```
 ```rust
-Response::OK(json!("ok": true))
-// or
-c.OK(json!("ok": true))
-```
-```rust
+Response::OK(json("Hello!")?)
 Response::OK(json(user)?)
 //or
+c.OK(json("Hello!")?)
 c.OK(json(user)?)
-// serialize Rust value into JSON
-// value's type has to be `serde::Serialize`
+// `json()` serializes Rust value into JSON
+// value has to implemant `serde::Serialize`
 ```
 ### handle errors
 ```rust
-let user = c.req.body::<User>()?;
+make_ohkami_result()?;
 
 // or, you can add an error context message:
-let user = c.req.body::<User>()
+make_ohkami_result()
     ._else(|e| e.error_context("failed to get user data"))?;
 
 // or discard original error:
-let user = c.req.body::<User>()
+make_ohkami_result()
     ._else(|_| Response::InternalServerError("can't get user"))?;
     // or
+    ._else(|_| Response::InternalServerError(None))?;
+```
+```rust
+make_some_error() // can't use `?`
+    ._else(|e| Response::InternalServerError(e.to_string()))?;
+
+make_some_error()
     ._else(|_| Response::InternalServerError(None))?;
 ```
 ### handle Option values
@@ -252,7 +243,7 @@ fn main() -> Result<()> {
     server().serve_on(":3000")
 }
 ```
-2. import `test::Test` and others, and write tests using `assert_to_res` , `assert_not_to_res`:
+2. import `test::Test` and other utils
 ```rust
 #[cfg(test)]
 mod test {
@@ -264,8 +255,8 @@ mod test {
     #[test]
     fn test_hello() {
         let request = Request::new(Method::GET, "/");
-        (*SERVER).assert_to_res(&request, Response::OK("Hello!"));
-        (*SERVER).assert_not_to_res(&request, Response::BadRequest(None));
+        SERVER.assert_to_res(&request, Response::OK("Hello!"));
+        SERVER.assert_not_to_res(&request, Response::BadRequest(None));
     }
 }
 ```
@@ -274,9 +265,9 @@ mod test {
 
 ## Development
 ohkami is on early stage now and not for producntion use.\
-Please give me your feedback! → [GetHub issue](https://github.com/kana-rus/ohkami/issues)
+Please give me your feedback ! → [GetHub issue](https://github.com/kana-rus/ohkami/issues)
 
 <br/>
 
 ## License
-This project is under MIT LICENSE ([LICENSE-MIT](https://github.com/kana-rus/ohkami/blob/main/LICENSE-MIT) or [https://opensource.org/licenses/MIT](https://opensource.org/licenses/MIT)).
+This project is licensed under MIT LICENSE ([LICENSE-MIT](https://github.com/kana-rus/ohkami/blob/main/LICENSE-MIT) or [https://opensource.org/licenses/MIT](https://opensource.org/licenses/MIT)).

@@ -7,9 +7,7 @@ use async_std::{
 };
 use tracing_subscriber::fmt::SubscriberBuilder;
 use crate::{
-    components::{
-        method::Method, cors::CORS, headers::AdditionalHeader
-    },
+    components::method::Method,
     context::{Context, RequestContext},
     response::Response,
     result::Result,
@@ -35,7 +33,6 @@ use sqlx::mysql::{
 /// Type of ohkami's server instance
 pub struct Server {
     pub(crate) router: Router,
-    cors: CORS,
     log_subscribe: Option<SubscriberBuilder>,
 
     #[cfg(feature = "sqlx")]
@@ -48,15 +45,15 @@ pub struct Server {
 
 #[cfg(feature = "sqlx")]
 pub struct DBprofile<'url> {
-    pub pool_options: PoolOptions,
-    pub url:          &'url str,
+    pub options: PoolOptions,
+    pub url:     &'url str,
 }
 #[cfg(feature = "sqlx")]
 impl<'url> Default for DBprofile<'url> {
     fn default() -> Self {
         Self {
-            pool_options: PoolOptions::default(),
-            url:          "empty url",
+            options: PoolOptions::default(),
+            url:     "empty url",
         }
     }
 }
@@ -69,7 +66,6 @@ impl Server {
 
         Self {
             router: Router::new(),
-            cors:   config.cors,
             log_subscribe: config.log_subscribe,
 
             setup_errors: Vec::new(),
@@ -83,12 +79,29 @@ impl Server {
             middleware,
         } = setting.into_setting();
 
-        #[cfg(feature = "sqlx")]
-        let pool = {
-            let DBprofile { pool_options, url } = config.db_profile;
-            let err_msg = format!("Can't connect to DB at {url} with {pool_options:?}. If you won't deal with any database, you shouldn't enable `sqlx` flag");
+        Self {
+            router: Router::new(),
+            log_subscribe: config.log_subscribe,
 
-            let pool_connection = block_on(pool_options.connect(url));
+            #[cfg(feature = "sqlx")]
+            pool: Arc::new(pool),
+
+            setup_errors: Vec::new(),
+            middleware_register: middleware,
+        }
+    }
+    #[cfg(feature = "sqlx")]
+    pub fn setup_with<'db_url, ISS: IntoServerSetting<'db_url>>(setting: ISS) -> Self {
+        let ServerSetting { 
+            config,
+            middleware,
+        } = setting.into_setting();
+
+        let pool = {
+            let DBprofile { options, url } = config.db_profile;
+            let err_msg = format!("Can't connect to DB at {url} with {options:?}. If you won't deal with any database, you shouldn't enable `sqlx` flag");
+
+            let pool_connection = block_on(options.connect(url));
             if pool_connection.is_err() {
                 tracing::error!(err_msg);
                 panic!()
@@ -99,7 +112,6 @@ impl Server {
 
         Self {
             router: Router::new(),
-            cors:   config.cors,
             log_subscribe: config.log_subscribe,
 
             #[cfg(feature = "sqlx")]
@@ -240,14 +252,6 @@ impl Server {
         }
         drop(self.setup_errors);
 
-        let allow_origins_str = Arc::new(
-            if self.cors.allow_origins.is_empty() {
-                String::new()
-            } else {
-                self.cors.allow_origins.join(" ")
-            }
-        );
-
         block_on(async {
             let listener = TcpListener::bind(
                 validation::tcp_address(address)
@@ -261,7 +265,6 @@ impl Server {
                     handle_stream(
                         stream,
                         Arc::clone(&router),
-                        Arc::clone(&allow_origins_str),
                         
                         #[cfg(feature = "sqlx")]
                         Arc::clone(&self.pool),
@@ -281,12 +284,11 @@ impl ExpectedResponse for Result<Response> {fn as_response(self) -> Result<Respo
 async fn handle_stream(
     mut stream: TcpStream,
     router: Arc<Router>,
-    allow_origin_str: Arc<String>,
 
     #[cfg(feature = "sqlx")]
     connection_pool:  Arc<ConnectionPool>,
 ) {
-    let mut response = match setup_response(
+    let response = match setup_response(
         &mut stream,
         router,
 
@@ -296,10 +298,6 @@ async fn handle_stream(
         Ok(res)  => res,
         Err(res) => res,
     };
-
-    if !allow_origin_str.is_empty() {
-        response.add_header(AdditionalHeader::AccessControlAllowOrigin, &*allow_origin_str)
-    }
 
     tracing::info!("generated a response: {:?}", &response);
 
@@ -360,7 +358,7 @@ pub(crate) async fn consume_buffer(
     let mut context = Context {
         req: RequestContext {
             buffer,
-            body,
+            // body,
             query_range,
         },
         additional_headers: String::new(),
@@ -378,7 +376,7 @@ pub(crate) async fn consume_buffer(
 
     tracing::debug!("context: {:#?}", context);
 
-    handler(context, params).await
+    handler(context, params, body).await
 }
 
 

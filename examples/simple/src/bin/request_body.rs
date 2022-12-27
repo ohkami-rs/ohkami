@@ -1,6 +1,7 @@
 use ohkami::{prelude::*, json};
 use serde::{Deserialize, Serialize};
 
+
 fn main() -> Result<()> {
     Server::setup()
         .POST("/api/login_j", only_whose_name_starts_with_j_can_login)
@@ -14,15 +15,12 @@ struct User {
     password: String,
 }
 
-async fn only_whose_name_starts_with_j_can_login(ctx: Context) -> Result<Response> {
-    let requested_user = ctx.req.body::<User>()
-        ._else(|err| err.error_context("can't deserialize user"))?;
-    (requested_user.name.starts_with('j'))
+async fn only_whose_name_starts_with_j_can_login(payload: JSON<User>) -> Result<Response> {
+    (payload.name.starts_with('j'))
         ._else(|| Response::Forbidden(
             "Noooo!! Only first user whose name starts with 'j' can login by this endpoint!"
         ))?;
-        
-    Response::OK(json!("ok": true))
+    Response::OK(json! {"ok": true})
 }
 
 #[cfg(test)]
@@ -41,8 +39,7 @@ mod test {
                     name:     "jTaro".into(),
                     password: "iamjtaro".into(),
                 }),
-                // .body("{name:jTaro, password:iamjtaro}"),
-            Response::OK(json!("ok": true))
+            Response::OK(json! {"ok": true})
         )
     }
 }

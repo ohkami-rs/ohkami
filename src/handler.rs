@@ -1,8 +1,15 @@
 use std::{future::Future, pin::Pin};
-use crate::{response::Response, result::Result, context::Context, utils::range::RangeList};
+use serde::{Serialize, Deserialize};
+use crate::{
+    response::Response,
+    result::Result,
+    context::Context,
+    utils::range::RangeList,
+    components::json::JSON
+};
 
 
-pub(crate) type HandleFunc = Box<dyn Fn(Context, RangeList) -> Pin<Box<dyn Future<Output=Result<Response>> + Send >> + Send + Sync>;
+pub(crate) type HandleFunc = Box<dyn Fn(Context, RangeList, Option<String>) -> Pin<Box<dyn Future<Output=Result<Response>> + Send >> + Send + Sync>;
 
 pub trait Param {}
 pub trait Handler<P: Param> {
@@ -17,11 +24,12 @@ where
 {
     fn into_handlefunc(self) -> (HandleFunc, u8) {
         (
-            Box::new(move |_, _| Box::pin(self())),
+            Box::new(move |_, _, _| Box::pin(self())),
             0
         )
     }
 }
+
 impl Param for Context {}
 impl<F, Fut> Handler<Context> for F
 where
@@ -30,12 +38,11 @@ where
 {
     fn into_handlefunc(self) -> (HandleFunc, u8) {
         (
-            Box::new(move |ctx, _| Box::pin(self(ctx))),
+            Box::new(move |ctx, _, _| Box::pin(self(ctx))),
             0
         )
     }
 }
-
 impl Param for String {}
 impl<F, Fut> Handler<String> for F
 where
@@ -43,7 +50,7 @@ where
     Fut: Future<Output=Result<Response>> + Send + 'static
 {
     fn into_handlefunc(self) -> (HandleFunc, u8) {
-        (Box::new(move |ctx, params|
+        (Box::new(move |ctx, params, _|
             match params.get1() {
                 Some(range) => {
                     let param = ctx.req.buffer.read_str(&range).to_owned();
@@ -54,6 +61,26 @@ where
         ), 1)
     }
 }
+impl<T: Serialize + for <'d> Deserialize<'d>> Param for JSON<T> {}
+impl<F, Fut, T> Handler<JSON<T>> for F
+where
+    F:   Fn(JSON<T>) -> Fut + Send + Sync + 'static,
+    Fut: Future<Output=Result<Response>> + Send + 'static,
+    T:   Serialize + for <'d> Deserialize<'d>
+{
+    fn into_handlefunc(self) -> (HandleFunc, u8/*path param num*/) {
+        (Box::new(move |_, _, raw_json|
+            match raw_json {
+                Some(string) => match serde_json::from_str(&string) {
+                    Ok(deserialized) => Box::pin(self(JSON::De(deserialized))),
+                    Err(_) => Box::pin(async {Err(Response::BadRequest("Invalid request body"))}),
+                },
+                None => Box::pin(async {Err(Response::BadRequest("Expected a request body"))})
+            }
+        ), 1)
+    }
+}
+
 impl Param for (Context, String) {}
 impl<F, Fut> Handler<(Context, String)> for F
 where
@@ -61,7 +88,7 @@ where
     Fut: Future<Output=Result<Response>> + Send + 'static
 {
     fn into_handlefunc(self) -> (HandleFunc, u8) {
-        (Box::new(move |ctx, params|
+        (Box::new(move |ctx, params, _|
             match params.get1() {
                 Some(range) => {
                     let param = ctx.req.buffer.read_str(&range).to_owned();
@@ -70,6 +97,25 @@ where
                 None => unreachable!(/* already validated in Server::add_handler */),
             }
         ), 1)
+    }
+}
+impl<T: Serialize + for <'d> Deserialize<'d>> Param for (Context, JSON<T>) {}
+impl<F, Fut, T> Handler<(Context, JSON<T>)> for F
+where
+    F:   Fn(Context, JSON<T>) -> Fut + Send + Sync + 'static,
+    Fut: Future<Output=Result<Response>> + Send + 'static,
+    T:   Serialize + for <'d> Deserialize<'d>
+{
+    fn into_handlefunc(self) -> (HandleFunc, u8/*path param num*/) {
+        (Box::new(move |c, _, raw_json|
+            match raw_json {
+                Some(string) => match serde_json::from_str(&string) {
+                    Ok(deserialized) => Box::pin(self(c, JSON::De(deserialized))),
+                    Err(_) => Box::pin(async {Err(Response::BadRequest("Invalid request body"))}),
+                },
+                None => Box::pin(async {Err(Response::BadRequest("Expected a request body"))})
+            }
+        ), 0)
     }
 }
 
@@ -83,7 +129,7 @@ macro_rules! impl_handler_with_int {
                 Fut: Future<Output=Result<Response>> + Send + 'static
             {
                 fn into_handlefunc(self) -> (HandleFunc, u8) {
-                    (Box::new(move |ctx, params|
+                    (Box::new(move |ctx, params, _|
                         match params.get1() {
                             Some(range) => {
                                 let parsed = ctx.req.buffer.read_str(&range).parse::<$int_type>();
@@ -104,12 +150,69 @@ macro_rules! impl_handler_with_int {
                 Fut: Future<Output=Result<Response>> + Send + 'static
             {
                 fn into_handlefunc(self) -> (HandleFunc, u8) {
-                    (Box::new(move |ctx, params|
+                    (Box::new(move |ctx, params, _|
                         match params.get1() {
                             Some(range) => {
                                 let parsed = ctx.req.buffer.read_str(&range).parse::<$int_type>();
                                 match parsed {
                                     Ok(param) => Box::pin(self(ctx, param)),
+                                    _ => Box::pin(async {Err(Response::BadRequest("format of path param is wrong"))})
+                                }
+                            },
+                            None => unreachable!(/* already validated in Server::add_handler */),
+                        }
+                    ), 1)
+                }
+            }
+
+            impl<T: Serialize + for <'d> Deserialize<'d>> Param for (Context, $int_type, JSON<T>) {}
+            impl<F, Fut, T> Handler<(Context, $int_type, JSON<T>)> for F
+            where
+                F:   Fn(Context, $int_type, JSON<T>) -> Fut + Send + Sync + 'static,
+                Fut: Future<Output=Result<Response>> + Send + 'static,
+                T:   Serialize + for <'d> Deserialize<'d>
+            {
+                fn into_handlefunc(self) -> (HandleFunc, u8) {
+                    (Box::new(move |ctx, params, raw_json|
+                        match params.get1() {
+                            Some(range) => {
+                                let parsed = ctx.req.buffer.read_str(&range).parse::<$int_type>();
+                                match parsed {
+                                    Ok(param) => match raw_json {
+                                        Some(string) => match serde_json::from_str(&string) {
+                                            Ok(deserialized) => Box::pin(self(ctx, param, JSON::De(deserialized))),
+                                            Err(_) => Box::pin(async {Err(Response::BadRequest("Invalid request body"))}),
+                                        },
+                                        None => Box::pin(async {Err(Response::BadRequest("expected a request body"))})
+                                    },
+                                    _ => Box::pin(async {Err(Response::BadRequest("format of path param is wrong"))})
+                                }
+                            },
+                            None => unreachable!(/* already validated in Server::add_handler */),
+                        }
+                    ), 1)
+                }
+            }
+            impl<T: Serialize + for <'d> Deserialize<'d>> Param for ($int_type, JSON<T>) {}
+            impl<F, Fut, T> Handler<($int_type, JSON<T>)> for F
+            where
+                F:   Fn($int_type, JSON<T>) -> Fut + Send + Sync + 'static,
+                Fut: Future<Output=Result<Response>> + Send + 'static,
+                T:   Serialize + for <'d> Deserialize<'d>
+            {
+                fn into_handlefunc(self) -> (HandleFunc, u8) {
+                    (Box::new(move |ctx, params, raw_json|
+                        match params.get1() {
+                            Some(range) => {
+                                let parsed = ctx.req.buffer.read_str(&range).parse::<$int_type>();
+                                match parsed {
+                                    Ok(param) => match raw_json {
+                                        Some(string) => match serde_json::from_str(&string) {
+                                            Ok(deserialized) => Box::pin(self(param, JSON::De(deserialized))),
+                                            Err(_) => Box::pin(async {Err(Response::BadRequest("Invalid request body"))}),
+                                        },
+                                        None => Box::pin(async {Err(Response::BadRequest("expected a request body"))})
+                                    },
                                     _ => Box::pin(async {Err(Response::BadRequest("format of path param is wrong"))})
                                 }
                             },
@@ -132,7 +235,7 @@ macro_rules! impl_handler_with_2ints {
                 Fut: Future<Output=Result<Response>> + Send + 'static
             {
                 fn into_handlefunc(self) -> (HandleFunc, u8) {
-                    (Box::new(move |ctx, params|
+                    (Box::new(move |ctx, params, _|
                         match params.get2() {
                             Some((range1, range2)) => {
                                 let parsed1 = ctx.req.buffer.read_str(&range1).parse::<$int1>();
@@ -154,7 +257,7 @@ macro_rules! impl_handler_with_2ints {
                 Fut: Future<Output=Result<Response>> + Send + 'static
             {
                 fn into_handlefunc(self) -> (HandleFunc, u8) {
-                    (Box::new(move |ctx, params|
+                    (Box::new(move |ctx, params, _|
                         match params.get2() {
                             Some((range1, range2)) => {
                                 let parsed1 = ctx.req.buffer.read_str(&range1).parse::<$int1>();
@@ -228,7 +331,7 @@ macro_rules! impl_handler_with_string_int {
                 Fut: Future<Output=Result<Response>> + Send + 'static
             {
                 fn into_handlefunc(self) -> (HandleFunc, u8) {
-                    (Box::new(move |ctx, params|
+                    (Box::new(move |ctx, params, _|
                         match params.get2() {
                             Some((range_string, range_int)) => {
                                 let parsed = ctx.req.buffer.read_str(&range_int).parse::<$int>();
@@ -252,7 +355,7 @@ macro_rules! impl_handler_with_string_int {
                 Fut: Future<Output=Result<Response>> + Send + 'static
             {
                 fn into_handlefunc(self) -> (HandleFunc, u8) {
-                    (Box::new(move |ctx, params|
+                    (Box::new(move |ctx, params, _|
                         match params.get2() {
                             Some((range_int, range_string)) => {
                                 let parsed = ctx.req.buffer.read_str(&range_int).parse::<$int>();
@@ -276,7 +379,7 @@ macro_rules! impl_handler_with_string_int {
                 Fut: Future<Output=Result<Response>> + Send + 'static
             {
                 fn into_handlefunc(self) -> (HandleFunc, u8) {
-                    (Box::new(move |ctx, params|
+                    (Box::new(move |ctx, params, _|
                         match params.get2() {
                             Some((range_string, range_int)) => {
                                 let parsed = ctx.req.buffer.read_str(&range_int).parse::<$int>();
@@ -300,7 +403,7 @@ macro_rules! impl_handler_with_string_int {
                 Fut: Future<Output=Result<Response>> + Send + 'static
             {
                 fn into_handlefunc(self) -> (HandleFunc, u8) {
-                    (Box::new(move |ctx, params|
+                    (Box::new(move |ctx, params, _|
                         match params.get2() {
                             Some((range_int, range_string)) => {
                                 let parsed = ctx.req.buffer.read_str(&range_int).parse::<$int>();
@@ -324,15 +427,10 @@ macro_rules! impl_handler_with_string_int {
 
 #[cfg(test)]
 mod test {
-    use crate::{context::Context, response::Response, result::Result, components::json::JSON, json};
+    use crate::{context::Context, response::{Response, body::Body}, result::Result, json, prelude::JSON};
     use super::{Handler, Param, HandleFunc};
+    use serde::{Serialize, Deserialize};
 
-    async fn a(_: Context) -> Result<Response> {
-        Response::OK(None::<JSON>)
-    }
-    async fn b(_: Context, id: usize) -> Result<Response> {
-        Response::OK(json!("id": id))
-    }
 
     struct Handlers(
         Vec<HandleFunc>
@@ -345,11 +443,36 @@ mod test {
         }
     }
 
+    async fn a(_: Context) -> Result<Response> {
+        Response::OK("Hello!")
+    }
+    async fn b(_: Context, id: usize) -> Result<Response> {
+        Response::OK(json!("id": id))
+    }
+
+    #[derive(Serialize, Deserialize)]
+    struct User {
+        id:   i64,
+        name: String,
+    }
+    async fn c(payload: JSON<User>) -> Result<Response> {
+        Response::Created(payload)
+    }
+
+
     #[test]
     fn different_signature_handlers() {
         let mut handlers = Handlers::new();
 
         handlers.push(a);
         handlers.push(b);
+    }
+
+    #[test]
+    fn handle_payload() {
+        let mut handlers = Handlers::new();
+
+        handlers.push(c);
+        // handlers.push(a);
     }
 }
