@@ -60,7 +60,7 @@ where
 impl<T: Serialize + for <'d> Deserialize<'d>> Param for JSON<T> {}
 impl<F, Fut, T> Handler<JSON<T>> for F
 where
-    F:   Fn(T) -> Fut + Send + Sync + 'static,
+    F:   Fn(JSON<T>) -> Fut + Send + Sync + 'static,
     Fut: Future<Output=Result<Response>> + Send + 'static,
     T:   Serialize + for <'d> Deserialize<'d>
 {
@@ -68,7 +68,7 @@ where
         (Box::new(move |_, _, raw_json|
             match raw_json {
                 Some(string) => match JSON::Ser(string).de() {
-                    Ok(json) => Box::pin(self(json)),
+                    Ok(deserialized) => Box::pin(self(JSON::De(deserialized))),
                     Err(_) => Box::pin(async {Err(Response::BadRequest("Invalid request body"))}),
                 },
                 None => Box::pin(async {Err(Response::BadRequest("Expected a request body"))})
@@ -347,15 +347,10 @@ macro_rules! impl_handler_with_string_int {
 
 #[cfg(test)]
 mod test {
-    use crate::{context::Context, response::Response, result::Result, json};
+    use crate::{context::Context, response::Response, result::Result, json, prelude::JSON};
     use super::{Handler, Param, HandleFunc};
+    use serde::{Serialize, Deserialize};
 
-    async fn a(_: Context) -> Result<Response> {
-        Response::OK("Hello!")
-    }
-    async fn b(_: Context, id: usize) -> Result<Response> {
-        Response::OK(json!("id": id))
-    }
 
     struct Handlers(
         Vec<HandleFunc>
@@ -368,11 +363,36 @@ mod test {
         }
     }
 
+    async fn a(_: Context) -> Result<Response> {
+        Response::OK("Hello!")
+    }
+    async fn b(_: Context, id: usize) -> Result<Response> {
+        Response::OK(json!("id": id))
+    }
+
+    #[derive(Serialize, Deserialize)]
+    struct User {
+        id:   i64,
+        name: String,
+    }
+    async fn c(payload: JSON<User>) -> Result<Response> {
+        Response::Created(payload)
+    }
+
+
     #[test]
     fn different_signature_handlers() {
         let mut handlers = Handlers::new();
 
         handlers.push(a);
         handlers.push(b);
+    }
+
+    #[test]
+    fn handle_payload() {
+        let mut handlers = Handlers::new();
+
+        handlers.push(c);
+        // handlers.push(a);
     }
 }

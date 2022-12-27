@@ -14,7 +14,7 @@ license = "MIT"
 
 [dependencies]
 sqlx = { version = "0.6", default-features = false, optional = true }
-serde = "1.0"
+serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 chrono = "0.4"
 async-std = "1"
