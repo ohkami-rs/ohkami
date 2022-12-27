@@ -1,4 +1,4 @@
-use std::fmt::Debug;
+use std::{fmt::Debug, ops::Deref};
 use serde::{Serialize, Deserialize};
 use crate::{result::Result, response::body::Body};
 
@@ -18,6 +18,16 @@ pub enum JSON<T: Serialize + for <'d> Deserialize<'d>> {
         match self {
             Self::De(d) => Ok(d),
             Self::Ser(s) => Ok(serde_json::from_str(&s)?),
+        }
+    }
+}
+
+impl<T: Serialize + for <'d> Deserialize<'d>> Deref for JSON<T> {
+    type Target = T;
+    fn deref(&self) -> &Self::Target {
+        match self {
+            Self::De(t) => t,
+            Self::Ser(_) => unimplemented!(),
         }
     }
 }

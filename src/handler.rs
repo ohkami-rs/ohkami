@@ -65,7 +65,7 @@ where
     fn into_handlefunc(self) -> (HandleFunc, u8/*path param num*/) {
         (Box::new(move |_, _, raw_json|
             match raw_json {
-                Some(string) => match JSON::Ser(string).de() {
+                Some(string) => match serde_json::from_str(&string) {
                     Ok(deserialized) => Box::pin(self(JSON::De(deserialized))),
                     Err(_) => Box::pin(async {Err(Response::BadRequest("Invalid request body"))}),
                 },
@@ -103,7 +103,7 @@ where
     fn into_handlefunc(self) -> (HandleFunc, u8/*path param num*/) {
         (Box::new(move |c, _, raw_json|
             match raw_json {
-                Some(string) => match JSON::Ser(string).de() {
+                Some(string) => match serde_json::from_str(&string) {
                     Ok(deserialized) => Box::pin(self(c, JSON::De(deserialized))),
                     Err(_) => Box::pin(async {Err(Response::BadRequest("Invalid request body"))}),
                 },
@@ -173,7 +173,7 @@ macro_rules! impl_handler_with_int {
                                 let parsed = ctx.req.buffer.read_str(&range).parse::<$int_type>();
                                 match parsed {
                                     Ok(param) => match raw_json {
-                                        Some(string) => match JSON::Ser(string).de() {
+                                        Some(string) => match serde_json::from_str(&string) {
                                             Ok(deserialized) => Box::pin(self(ctx, param, JSON::De(deserialized))),
                                             Err(_) => Box::pin(async {Err(Response::BadRequest("Invalid request body"))}),
                                         },
@@ -201,7 +201,7 @@ macro_rules! impl_handler_with_int {
                                 let parsed = ctx.req.buffer.read_str(&range).parse::<$int_type>();
                                 match parsed {
                                     Ok(param) => match raw_json {
-                                        Some(string) => match JSON::Ser(string).de() {
+                                        Some(string) => match serde_json::from_str(&string) {
                                             Ok(deserialized) => Box::pin(self(param, JSON::De(deserialized))),
                                             Err(_) => Box::pin(async {Err(Response::BadRequest("Invalid request body"))}),
                                         },

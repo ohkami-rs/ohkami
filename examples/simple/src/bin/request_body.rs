@@ -1,7 +1,6 @@
 use ohkami::{prelude::*, json};
 use serde::{Deserialize, Serialize};
 
-use ohkami::prelude::Body;
 
 fn main() -> Result<()> {
     Server::setup()
@@ -16,15 +15,11 @@ struct User {
     password: String,
 }
 
-async fn only_whose_name_starts_with_j_can_login(
-    ctx: Context, payload: JSON<User>
-) -> Result<Response> {
-    let req_user = payload.de()?;
-    (req_user.name.starts_with('j'))
+async fn only_whose_name_starts_with_j_can_login(payload: JSON<User>) -> Result<Response> {
+    (payload.name.starts_with('j'))
         ._else(|| Response::Forbidden(
             "Noooo!! Only first user whose name starts with 'j' can login by this endpoint!"
         ))?;
-        
     Response::OK(json! {"ok": true})
 }
 
@@ -44,8 +39,7 @@ mod test {
                     name:     "jTaro".into(),
                     password: "iamjtaro".into(),
                 }),
-                // .body("{name:jTaro, password:iamjtaro}"),
-            Response::OK(json!("ok": true))
+            Response::OK(json! {"ok": true})
         )
     }
 }
