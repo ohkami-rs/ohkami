@@ -121,7 +121,7 @@ Response::OK(json(user)?)
 c.OK(json("Hello!")?)
 c.OK(json(user)?)
 // `json()` serializes Rust value into JSON
-// value's type has to be `serde::Serialize`
+// value has to implemant `serde::Serialize`
 ```
 ### handle errors
 ```rust
@@ -243,7 +243,7 @@ fn main() -> Result<()> {
     server().serve_on(":3000")
 }
 ```
-2. import `test::Test` and others, and write tests using `assert_to_res` , `assert_not_to_res`:
+2. import `test::Test` and other utils
 ```rust
 #[cfg(test)]
 mod test {
@@ -255,8 +255,8 @@ mod test {
     #[test]
     fn test_hello() {
         let request = Request::new(Method::GET, "/");
-        (*SERVER).assert_to_res(&request, Response::OK("Hello!"));
-        (*SERVER).assert_not_to_res(&request, Response::BadRequest(None));
+        SERVER.assert_to_res(&request, Response::OK("Hello!"));
+        SERVER.assert_not_to_res(&request, Response::BadRequest(None));
     }
 }
 ```
@@ -265,9 +265,9 @@ mod test {
 
 ## Development
 ohkami is on early stage now and not for producntion use.\
-Please give me your feedback! → [GetHub issue](https://github.com/kana-rus/ohkami/issues)
+Please give me your feedback ! → [GetHub issue](https://github.com/kana-rus/ohkami/issues)
 
 <br/>
 
 ## License
-This project is under MIT LICENSE ([LICENSE-MIT](https://github.com/kana-rus/ohkami/blob/main/LICENSE-MIT) or [https://opensource.org/licenses/MIT](https://opensource.org/licenses/MIT)).
+This project is licensed under MIT LICENSE ([LICENSE-MIT](https://github.com/kana-rus/ohkami/blob/main/LICENSE-MIT) or [https://opensource.org/licenses/MIT](https://opensource.org/licenses/MIT)).
