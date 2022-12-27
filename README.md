@@ -65,7 +65,7 @@ fn main() -> Result<()> {
         .serve_on(":3000")
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 struct User {
     id:   i64,
     name: String,
