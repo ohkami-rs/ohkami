@@ -1,8 +1,28 @@
 use std::fmt::Debug;
-
 use serde::{Serialize, Deserialize};
-use crate::{result::Result, response::format::ResponseFormat};
+use crate::result::Result;
 
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum JSON<T: Serialize + for <'d> Deserialize<'d>> {
+    Ser(String),
+    De(T),
+} impl<T: Serialize + for <'d> Deserialize<'d>> JSON<T> {
+    pub fn ser(self) -> Result<String> {
+        match self {
+            Self::Ser(s) => Ok(s),
+            Self::De(d) => Ok(serde_json::to_string(&d)?),
+        }
+    }
+    pub fn de(self) -> Result<T> {
+        match self {
+            Self::De(d) => Ok(d),
+            Self::Ser(s) => Ok(serde_json::from_str(&s)?),
+        }
+    }
+}
+
+/*
 
 /// Try serializing a struct implementing `serde::Serialize` and return `Result<JSON>`.
 /// ```no_run
@@ -54,12 +74,13 @@ impl<'d> JSON {
     }
 }
 
-impl ResponseFormat for JSON {
-    fn response_format(&self) -> &str {
-        self.0.as_str()
-    }
-}
+*/
 
+// impl<T: Serialize + for <'d> Deserialize<'d>> ResponseFormat for JSON<T> {
+//     fn response_format(&self) -> &str {
+//         self.ser().unwrap_or_else(|_| String::new()).as_str()
+//     }
+// }
 
 /// Utility macro to create `JSON` value from some pair(s) of key-value(s).
 /// ```no_run
@@ -71,7 +92,7 @@ impl ResponseFormat for JSON {
 #[macro_export]
 macro_rules! json {
     ($key1:literal : $value1:expr $(, $key:literal : $value:expr)*) => {
-        JSON(
+        crate::response::body::Body::application_json(
             String::from("{")
             + &format!("\"{}\":{:?}", $key1, $value1)
             $( + &format!(",\"{}\":{:?}", $key, $value) )*

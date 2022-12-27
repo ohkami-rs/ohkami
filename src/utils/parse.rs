@@ -2,7 +2,7 @@ use std::str::Lines;
 use crate::{
     response::Response,
     result::{Result, ElseResponse},
-    components::{method::Method, json::JSON},
+    components::method::Method,
     utils::{buffer::BufRange, range::{RangeMap, RANGE_COLLECTION_SIZE}},
 };
 
@@ -12,7 +12,7 @@ pub(crate) fn parse_request_lines(mut lines: Lines) -> Result<(
     String/*path*/,
     Option<RangeMap>/*query param*/,
     // headers,
-    Option<JSON>/*request body*/,
+    Option<String>/*request body*/,
 )> {
     let line = lines.next()
         ._else(|| Response::BadRequest("empty request"))?;
@@ -36,7 +36,7 @@ pub(crate) fn parse_request_lines(mut lines: Lines) -> Result<(
         if line.is_empty() {break}
     }
 
-    let body = lines.next().map(|line| JSON(line.to_owned()));
+    let body = lines.next().map(|s| s.to_owned());
 
     Ok((
         Method::parse(method_str)?,

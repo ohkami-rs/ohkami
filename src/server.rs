@@ -360,7 +360,7 @@ pub(crate) async fn consume_buffer(
     let mut context = Context {
         req: RequestContext {
             buffer,
-            body,
+            // body,
             query_range,
         },
         additional_headers: String::new(),
@@ -378,7 +378,7 @@ pub(crate) async fn consume_buffer(
 
     tracing::debug!("context: {:#?}", context);
 
-    handler(context, params).await
+    handler(context, params, body).await
 }
 
 

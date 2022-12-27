@@ -14,8 +14,9 @@ ohkami *- [狼] means wolf in Japanese -* is **simple** and **macro free** web f
 
 <br/>
 
-## 0.4.4 → 0.4.5
-fixed bug around request body (JSON) handling
+# 0.4 → 0.5
+- `struct JSON` -> `enum JSON<T>`
+- reuqest body `JSON<T>` as handler arg
 
 <br/>
 
@@ -24,7 +25,7 @@ fixed bug around request body (JSON) handling
 
 ```toml
 [dependencies]
-ohkami = "0.4"
+ohkami = "0.5.0"
 ```
 
 2. Write your first code with ohkami:
@@ -45,40 +46,6 @@ fn main() -> Result<()> {
 
 <br/>
 
-## 0.3 → 0.4
-Added experimental support for **middleware**s：
-
-```rust
-fn main() -> Result<()> {
-    let config = Config {
-        log_subscribe: Some(
-            tracing_subscriber::fmt()
-                .with_max_level(tracing::Level::TRACE)
-        ),
-        ..Default::default()
-    };
-
-    let middleware = Middleware::new()
-        .ANY("*", |c| async {
-            tracing::info!("Hello, middleware!");
-            c
-        });
-
-    let thirdparty_middleware = some_crate::x;
-
-    Server::setup_with(config.and(middleware).and(x))
-        .GET("/", || async {
-            Response::OK("Hello!")
-        })
-        .serve_on("localhost:3000")
-}
-```
-- "Middleware function" is just a function that takes `Context` or `mut Context` as its argument and returns `Context`. You can register such functions with their routes ( where they should work ) in a `Middleware`.
-- Middleware funcs is **inserted before** handler works, so middleware funcs are executed only when **the handler exists** ( e.g. In the code above for example, `tracing::info("Hello, middleware")!` will NOT executed for a request `POST /` because no handler for this is found ).
-- *Current design may be changed in future version.*
-
-<br/>
-
 ## Snippets
 ### handle query params
 ```rust
@@ -91,16 +58,28 @@ let count = c.req.query::<usize>("count")?;
 ```
 ### handle request body
 ```rust
-let body = c.req.body::<D>()?;
-// `::<D>` isn't needed when it's presumable
-// `D` has to be `serde::Deserialize`
+fn main() -> Result<()> {
+    Server::setup()
+        .GET("/api/users", reflect)
+        .serve_on(":3000")
+}
+
+#[derive(Serialize)]
+struct JSON {
+    id: i64,
+    name: String,
+}
+
+async fn reflect(body: JSON<User>) -> Result<Response> {
+    Response::OK(body)
+}
 ```
 ### handle path params
 ```rust
 fn main() -> Result<()> {
     Server::setup()
         .GET("/sleepy/:time/:name", sleepy_hello)
-        .serve_on(":3000")
+        .serve_on("localhost:8080")
 }
 
 async fn sleepy_hello(time: u64, name: String) -> Result<Response> {

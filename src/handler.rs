@@ -1,8 +1,10 @@
 use std::{future::Future, pin::Pin};
-use crate::{response::Response, result::Result, context::Context, utils::range::RangeList};
+use serde::{Serialize, Deserialize};
+
+use crate::{response::Response, result::Result, context::Context, utils::range::RangeList, prelude::JSON};
 
 
-pub(crate) type HandleFunc = Box<dyn Fn(Context, RangeList) -> Pin<Box<dyn Future<Output=Result<Response>> + Send >> + Send + Sync>;
+pub(crate) type HandleFunc = Box<dyn Fn(Context, RangeList, Option<String>) -> Pin<Box<dyn Future<Output=Result<Response>> + Send >> + Send + Sync>;
 
 pub trait Param {}
 pub trait Handler<P: Param> {
@@ -17,7 +19,7 @@ where
 {
     fn into_handlefunc(self) -> (HandleFunc, u8) {
         (
-            Box::new(move |_, _| Box::pin(self())),
+            Box::new(move |_, _, _| Box::pin(self())),
             0
         )
     }
@@ -30,7 +32,7 @@ where
 {
     fn into_handlefunc(self) -> (HandleFunc, u8) {
         (
-            Box::new(move |ctx, _| Box::pin(self(ctx))),
+            Box::new(move |ctx, _, _| Box::pin(self(ctx))),
             0
         )
     }
@@ -43,7 +45,7 @@ where
     Fut: Future<Output=Result<Response>> + Send + 'static
 {
     fn into_handlefunc(self) -> (HandleFunc, u8) {
-        (Box::new(move |ctx, params|
+        (Box::new(move |ctx, params, _|
             match params.get1() {
                 Some(range) => {
                     let param = ctx.req.buffer.read_str(&range).to_owned();
@@ -54,6 +56,27 @@ where
         ), 1)
     }
 }
+
+impl<T: Serialize + for <'d> Deserialize<'d>> Param for JSON<T> {}
+impl<F, Fut, T> Handler<JSON<T>> for F
+where
+    F:   Fn(T) -> Fut + Send + Sync + 'static,
+    Fut: Future<Output=Result<Response>> + Send + 'static,
+    T:   Serialize + for <'d> Deserialize<'d>
+{
+    fn into_handlefunc(self) -> (HandleFunc, u8/*path param num*/) {
+        (Box::new(move |_, _, raw_json|
+            match raw_json {
+                Some(string) => match JSON::Ser(string).de() {
+                    Ok(json) => Box::pin(self(json)),
+                    Err(_) => Box::pin(async {Err(Response::BadRequest("Invalid request body"))}),
+                },
+                None => Box::pin(async {Err(Response::BadRequest("Expected a request body"))})
+            }
+        ), 1)
+    }
+}
+
 impl Param for (Context, String) {}
 impl<F, Fut> Handler<(Context, String)> for F
 where
@@ -61,7 +84,7 @@ where
     Fut: Future<Output=Result<Response>> + Send + 'static
 {
     fn into_handlefunc(self) -> (HandleFunc, u8) {
-        (Box::new(move |ctx, params|
+        (Box::new(move |ctx, params, _|
             match params.get1() {
                 Some(range) => {
                     let param = ctx.req.buffer.read_str(&range).to_owned();
@@ -83,7 +106,7 @@ macro_rules! impl_handler_with_int {
                 Fut: Future<Output=Result<Response>> + Send + 'static
             {
                 fn into_handlefunc(self) -> (HandleFunc, u8) {
-                    (Box::new(move |ctx, params|
+                    (Box::new(move |ctx, params, _|
                         match params.get1() {
                             Some(range) => {
                                 let parsed = ctx.req.buffer.read_str(&range).parse::<$int_type>();
@@ -104,7 +127,7 @@ macro_rules! impl_handler_with_int {
                 Fut: Future<Output=Result<Response>> + Send + 'static
             {
                 fn into_handlefunc(self) -> (HandleFunc, u8) {
-                    (Box::new(move |ctx, params|
+                    (Box::new(move |ctx, params, _|
                         match params.get1() {
                             Some(range) => {
                                 let parsed = ctx.req.buffer.read_str(&range).parse::<$int_type>();
@@ -132,7 +155,7 @@ macro_rules! impl_handler_with_2ints {
                 Fut: Future<Output=Result<Response>> + Send + 'static
             {
                 fn into_handlefunc(self) -> (HandleFunc, u8) {
-                    (Box::new(move |ctx, params|
+                    (Box::new(move |ctx, params, _|
                         match params.get2() {
                             Some((range1, range2)) => {
                                 let parsed1 = ctx.req.buffer.read_str(&range1).parse::<$int1>();
@@ -154,7 +177,7 @@ macro_rules! impl_handler_with_2ints {
                 Fut: Future<Output=Result<Response>> + Send + 'static
             {
                 fn into_handlefunc(self) -> (HandleFunc, u8) {
-                    (Box::new(move |ctx, params|
+                    (Box::new(move |ctx, params, _|
                         match params.get2() {
                             Some((range1, range2)) => {
                                 let parsed1 = ctx.req.buffer.read_str(&range1).parse::<$int1>();
@@ -228,7 +251,7 @@ macro_rules! impl_handler_with_string_int {
                 Fut: Future<Output=Result<Response>> + Send + 'static
             {
                 fn into_handlefunc(self) -> (HandleFunc, u8) {
-                    (Box::new(move |ctx, params|
+                    (Box::new(move |ctx, params, _|
                         match params.get2() {
                             Some((range_string, range_int)) => {
                                 let parsed = ctx.req.buffer.read_str(&range_int).parse::<$int>();
@@ -252,7 +275,7 @@ macro_rules! impl_handler_with_string_int {
                 Fut: Future<Output=Result<Response>> + Send + 'static
             {
                 fn into_handlefunc(self) -> (HandleFunc, u8) {
-                    (Box::new(move |ctx, params|
+                    (Box::new(move |ctx, params, _|
                         match params.get2() {
                             Some((range_int, range_string)) => {
                                 let parsed = ctx.req.buffer.read_str(&range_int).parse::<$int>();
@@ -276,7 +299,7 @@ macro_rules! impl_handler_with_string_int {
                 Fut: Future<Output=Result<Response>> + Send + 'static
             {
                 fn into_handlefunc(self) -> (HandleFunc, u8) {
-                    (Box::new(move |ctx, params|
+                    (Box::new(move |ctx, params, _|
                         match params.get2() {
                             Some((range_string, range_int)) => {
                                 let parsed = ctx.req.buffer.read_str(&range_int).parse::<$int>();
@@ -300,7 +323,7 @@ macro_rules! impl_handler_with_string_int {
                 Fut: Future<Output=Result<Response>> + Send + 'static
             {
                 fn into_handlefunc(self) -> (HandleFunc, u8) {
-                    (Box::new(move |ctx, params|
+                    (Box::new(move |ctx, params, _|
                         match params.get2() {
                             Some((range_int, range_string)) => {
                                 let parsed = ctx.req.buffer.read_str(&range_int).parse::<$int>();
@@ -324,11 +347,11 @@ macro_rules! impl_handler_with_string_int {
 
 #[cfg(test)]
 mod test {
-    use crate::{context::Context, response::Response, result::Result, components::json::JSON, json};
+    use crate::{context::Context, response::Response, result::Result, json};
     use super::{Handler, Param, HandleFunc};
 
     async fn a(_: Context) -> Result<Response> {
-        Response::OK(None::<JSON>)
+        Response::OK("Hello!")
     }
     async fn b(_: Context, id: usize) -> Result<Response> {
         Response::OK(json!("id": id))
