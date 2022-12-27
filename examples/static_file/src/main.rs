@@ -18,7 +18,7 @@ static DATA_STR: Lazy<String> = Lazy::new(|| {
     data
 });
 static DATA: Lazy<Vec<Dinosaur>> = Lazy::new(|| {
-    let mut raw: Vec<Dinosaur> = JSON::Ser(DATA_STR.to_string())
+    let mut raw = JSON::<Vec<Dinosaur>>::Ser(DATA_STR.to_string())
         .de()
         .expect("failed to deserilize data");
     for data in &mut raw {
