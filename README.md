@@ -14,7 +14,7 @@ ohkami *- [狼] means wolf in Japanese -* is **simple** and **macro free** web f
 
 <br/>
 
-# 0.4 → 0.5
+## 0.4 → 0.5
 - `struct JSON` -> `enum JSON<T>`
 - reuqest body `JSON<T>` as handler arg
 
@@ -110,20 +110,17 @@ c.OK("Hello, world!")
 ```
 ### return OK response with `application/json`
 ```rust
-Response::OK(JSON("Hello, world!"))
+Response::OK(json!{"ok": true})
 // or
-c.OK(JSON("Hello, world!"))
+c.OK(json!{"ok": true})
 ```
 ```rust
-Response::OK(json!("ok": true))
-// or
-c.OK(json!("ok": true))
-```
-```rust
+Response::OK(json("Hello!")?)
 Response::OK(json(user)?)
 //or
+c.OK(json("Hello!")?)
 c.OK(json(user)?)
-// serialize Rust value into JSON
+// `json()` serializes Rust value into JSON
 // value's type has to be `serde::Serialize`
 ```
 ### handle errors
