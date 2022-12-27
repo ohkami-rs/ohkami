@@ -1,6 +1,12 @@
 use std::{future::Future, pin::Pin};
 use serde::{Serialize, Deserialize};
-use crate::{response::Response, result::Result, context::Context, utils::range::RangeList, prelude::JSON};
+use crate::{
+    response::Response,
+    result::Result,
+    context::Context,
+    utils::range::RangeList,
+    components::json::JSON
+};
 
 
 pub(crate) type HandleFunc = Box<dyn Fn(Context, RangeList, Option<String>) -> Pin<Box<dyn Future<Output=Result<Response>> + Send >> + Send + Sync>;
@@ -421,7 +427,7 @@ macro_rules! impl_handler_with_string_int {
 
 #[cfg(test)]
 mod test {
-    use crate::{context::Context, response::Response, result::Result, json, prelude::JSON};
+    use crate::{context::Context, response::{Response, body::Body}, result::Result, json, prelude::JSON};
     use super::{Handler, Param, HandleFunc};
     use serde::{Serialize, Deserialize};
 
