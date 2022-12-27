@@ -1,7 +1,7 @@
 use ohkami::prelude::*;
 
 fn server() -> Server {
-    Server::setup()
+    Server::default()
         .GET("/", || async {Response::OK("Hello!")})
 }
 fn main() -> Result<()> {
@@ -18,7 +18,7 @@ mod test {
     #[test]
     fn test_hello() {
         let request = Request::new(Method::GET, "/");
-        (*SERVER).assert_to_res(&request, Response::OK("Hello!"));
-        (*SERVER).assert_not_to_res(&request, Response::BadRequest(None));
+        SERVER.assert_to_res(&request, Response::OK("Hello!"));
+        SERVER.assert_not_to_res(&request, Response::BadRequest(None));
     }
 }

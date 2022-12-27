@@ -34,7 +34,7 @@ ohkami = "0.5.0"
 use ohkami::prelude::*;
 
 fn main() -> Result<()> {
-    Server::setup()
+    Server::default()
         .GET("/", || async {
             Response::OK("Hello, world!")
         })
@@ -59,7 +59,7 @@ let count = c.req.query::<usize>("count")?;
 ### handle request body
 ```rust
 fn main() -> Result<()> {
-    Server::setup()
+    Server::default()
         .GET("/api/users", reflect)
         .GET("/api/users/name", reflect_name)
         .serve_on(":3000")
@@ -85,7 +85,7 @@ async fn reflect_name(user: JSON<User>) -> Result<Response> {
 ### handle path params
 ```rust
 fn main() -> Result<()> {
-    Server::setup()
+    Server::default()
         .GET("/sleepy/:time/:name", sleepy_hello)
         .serve_on("localhost:8080")
 }
@@ -168,7 +168,7 @@ fn main() -> Result<()> {
         ),
         ..Default::default()
     };
-    Server::setup_with(config)
+    Server::new(config)
         .GET("/", || async {Response::OK("Hello!")})
 }
 ```
@@ -176,8 +176,8 @@ fn main() -> Result<()> {
 ```rust
 let config = Config {
     db_profile: DBprofile {
-        pool_options: PgPoolOptions::new().max_connections(20),
-        url:          DB_URL.as_str(),
+        options: PgPoolOptions::new().max_connections(20),
+        url:     DB_URL.as_str(),
     },
     ..Default::default()
 };
@@ -199,7 +199,7 @@ fn main() -> Result<()> {
             c
         });
 
-    Server::setup_with(middleware)
+    Server::new(middleware)
         .GET("/", || async {
             Response::OK("Hello!")
         })
@@ -224,7 +224,7 @@ fn main() -> Result<()> {
 
     let thirdparty_middleware = some_external_crate::x;
 
-    Server::setup_with(config.and(middleware).and(x))
+    Server::new(config.and(middleware).and(x))
         .GET("/", || async {
             Response::OK("Hello!")
         })
@@ -235,7 +235,7 @@ fn main() -> Result<()> {
 1. split setup process from `main` function:
 ```rust
 fn server() -> Server {
-    Server::setup()
+    Server::default()
         .GET("/", || async {Response::OK("Hello!")})
 }
 

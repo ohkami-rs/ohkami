@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 
 fn main() -> Result<()> {
-    Server::setup()
+    Server::default()
         .POST("/api/login_j", only_whose_name_starts_with_j_can_login)
         .serve_on(":3000")
 }

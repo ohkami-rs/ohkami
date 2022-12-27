@@ -6,7 +6,7 @@ fn main() -> Result<()> {
         .ANY("/*", middleware::cors)
         .ANY("/api/*", middleware::hello);
 
-    Server::setup_with(middleware)
+    Server::with(middleware)
         .GET("/", handler::hello)
         .GET("/api", handler::hello)
         .GET("/api/sleepy/:time", handler::sleepy_hello)

@@ -1,7 +1,7 @@
 use ohkami::prelude::*;
 
 fn main() -> Result<()> {
-    Server::setup()
+    Server::default()
         .GET("/sleepy/:time", sleepy_hello)
         .GET("/sleepy/:time/:name", sleepy_hello_with_name)
         .serve_on(":3000")

@@ -28,7 +28,7 @@ static DATA: Lazy<Vec<Dinosaur>> = Lazy::new(|| {
 });
 
 fn main() -> Result<()> {
-    Server::setup()
+    Server::default()
         .GET("/", || async {Response::OK("Welcome to dinosaur API!")})
         .GET("/api", || async {Response::OK(DATA_STR.as_str())})
         .GET("/api/:dinosaur", get_one_by_name)

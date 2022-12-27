@@ -153,14 +153,9 @@ impl<'q> Query<'q> for usize {fn parse(q: &'q str) -> Result<Self> {q.parse()._e
 
 impl Debug for Context {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "
-additional_headers: {:?},
-query: {:?} (range: {:?}),
-",
-            self.additional_headers,
+        write!(f, "query: {:?} (range: {:?})",
             self.req.query_range.as_ref().map(|map| map.debug_fmt_with(&self.req.buffer)),
             self.req.query_range,
-            // self.req.body,
         )
     }
 }

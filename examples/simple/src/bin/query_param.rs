@@ -1,7 +1,7 @@
 use ohkami::prelude::*;
 
 fn main() -> Result<()> {
-    Server::setup()
+    Server::default()
         .GET("/annoying_hello", annoying_hello)
         .serve_on(":3000")
 }

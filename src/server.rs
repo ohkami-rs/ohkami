@@ -38,7 +38,7 @@ pub struct Server {
     #[cfg(feature = "sqlx")]
     pub(crate) pool: Arc<ConnectionPool>,
 
-    setup_errors: Vec<String>,
+    pub(crate) setup_errors: Vec<String>,
     middleware_register: Middleware,
 }
 
@@ -58,22 +58,27 @@ impl<'url> Default for DBprofile<'url> {
     }
 }
 
-impl Server {
-    /// Just a shortcut of `setup_with(Config::default())`
-    #[cfg(not(feature = "sqlx"))]
-    pub fn setup() -> Self {
-        let ServerSetting { config, middleware } = ServerSetting::default();
+#[cfg(not(feature = "sqlx"))]
+impl Default for Server {
+    fn default() -> Self {
+        let ServerSetting {
+            config,
+            middleware
+        } = ServerSetting::default();
 
         Self {
             router: Router::new(),
             log_subscribe: config.log_subscribe,
-
             setup_errors: Vec::new(),
             middleware_register: middleware,
         }
     }
-    /// Initialize `Server` with given configuratoin. This **automatically performe `subscriber.init()`** if config's `log_subscribe` is `Some`, so **DON'T write it in your `main` function**.
-    pub fn setup_with<ISS: IntoServerSetting>(setting: ISS) -> Self {
+}
+
+impl Server {
+    /// Initialize `Server` with given configuratoin.
+    #[cfg(not(feature = "sqlx"))]
+    pub fn with<ISS: IntoServerSetting>(setting: ISS) -> Self {
         let ServerSetting { 
             config,
             middleware,
@@ -82,16 +87,12 @@ impl Server {
         Self {
             router: Router::new(),
             log_subscribe: config.log_subscribe,
-
-            #[cfg(feature = "sqlx")]
-            pool: Arc::new(pool),
-
             setup_errors: Vec::new(),
             middleware_register: middleware,
         }
     }
     #[cfg(feature = "sqlx")]
-    pub fn setup_with<'db_url, ISS: IntoServerSetting<'db_url>>(setting: ISS) -> Self {
+    pub fn with<'db_url, ISS: IntoServerSetting<'db_url>>(setting: ISS) -> Self {
         let ServerSetting { 
             config,
             middleware,
@@ -244,11 +245,10 @@ impl Server {
         });
 
         if ! self.setup_errors.is_empty() {
-            return Err(Response::InternalServerError(
-                self.setup_errors
-                    .into_iter()
-                    .fold(String::new(), |it, next| it + &next + "\n")
-            ))
+            for err in self.setup_errors {
+                tracing::error!(err)
+            }
+            return Err(Response::InternalServerError("can't serve"))
         }
         drop(self.setup_errors);
 
@@ -374,7 +374,7 @@ pub(crate) async fn consume_buffer(
         context = pre_handle(context).await;
     }
 
-    tracing::debug!("context: {:#?}", context);
+    tracing::debug!("{:?}", context);
 
     handler(context, params, body).await
 }
@@ -391,7 +391,7 @@ mod test {
             ..Default::default()
         };
 
-        Server::setup_with(config)
+        Server::with(config)
             .GET("/", || async {
                 Response::OK("Hello!")
             });

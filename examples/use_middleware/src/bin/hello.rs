@@ -7,7 +7,7 @@ fn main() -> Result<()> {
             c
         });
 
-    Server::setup_with(middleware)
+    Server::with(middleware)
         .GET("/", || async {
             Response::OK("Hello!")
         })

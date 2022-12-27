@@ -16,11 +16,15 @@ pub use crate::{
 
 
 pub trait Test {
+    fn can_serve(&self);
     fn assert_to_res<R: ExpectedResponse>(&self, request: &Request, expected: R);
     fn assert_not_to_res<R: ExpectedResponse>(&self, request: &Request, expected: R);
     fn oneshot_res(&self, request: &Request) -> Response;
     fn oneshot_json<T: Serialize + for <'d> Deserialize<'d>>(&self, request: &Request) -> JSON<T>;
 } impl Test for Server {
+    fn can_serve(&self) {
+        assert!(self.setup_errors.is_empty())
+    }
     fn assert_to_res<R: ExpectedResponse>(&self, request: &Request, expected_response: R) {
         let actual_response = block_on(async {
             consume_buffer(

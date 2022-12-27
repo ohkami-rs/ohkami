@@ -159,7 +159,7 @@ mod test {
         let middleware = Middleware::new()
             .ANY("/api/*", cors);
 
-        Server::setup_with(middleware)
+        Server::with(middleware)
             .GET("/api", hello)
             .GET("/api/sleepy", sleepy_hello);
     }

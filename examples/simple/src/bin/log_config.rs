@@ -9,7 +9,7 @@ fn main() -> Result<()> {
         ..Default::default()
     };
 
-    Server::setup_with(config)
+    Server::with(config)
         .GET("/", || async {Response::OK("Hello!")})
         .serve_on(":5000")
 }
