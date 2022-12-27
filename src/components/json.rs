@@ -56,19 +56,3 @@ macro_rules! json {
         )
     };
 }
-
-
-#[cfg(test)]
-mod test {
-    use serde::{Serialize, Deserialize};
-    use super::JSON;
-
-    #[derive(Serialize, Deserialize)]
-    struct T;
-
-    #[test]
-    fn de() {
-        let _    = JSON::<T>::Ser(String::new()).de().unwrap();
-        // let _: T = JSON::Ser(String::new()).de().unwrap();
-    }
-}
