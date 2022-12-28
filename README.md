@@ -43,12 +43,9 @@ fn main() -> Result<()> {
 ## Snippets
 ### handle query params
 ```rust
-let name = c.req.query::<&str>("name")?;
-// `::<&str>` isn't needed when it's presumable
-```
-```rust
-let count = c.req.query::<usize>("count")?;
-// `::<usize>` isn't needed when it's presumable
+let name: &str = c.req.query("name")?;
+
+let count: usize = c.req.query("count")?;
 ```
 ### handle request body
 ```rust
@@ -142,8 +139,8 @@ c.OK(json!{"ok": true})
 Response::OK(json("Hello!")?)
 Response::OK(json(user)?)
 //or
-c.OK(json("Hello!")?)
-c.OK(json(user)?)
+c.OK(json("Hello!"))
+c.OK(json(user))
 // `json()` serializes Rust value into JSON
 // value has to implemant `serde::Serialize`
 ```
@@ -162,10 +159,10 @@ make_ohkami_result()
     ._else(|_| Response::InternalServerError(None))?;
 ```
 ```rust
-make_some_error() // can't use `?`
+make_some_result(/* can't use `?` */)
     ._else(|e| Response::InternalServerError(e.to_string()))?;
 
-make_some_error()
+make_some_result()
     ._else(|_| Response::InternalServerError(None))?;
 ```
 ### handle Option values

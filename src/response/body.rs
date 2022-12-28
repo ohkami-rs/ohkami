@@ -74,3 +74,8 @@ impl<T: Serialize + for <'d> Deserialize<'d>> ResponseBody for JSON<T> {
         Ok(Some(Body::application_json(self.ser()?)))
     }
 }
+impl<T: Serialize + for <'d> Deserialize<'d>> ResponseBody for Result<JSON<T>> {
+    fn as_body(self) -> Result<Option<Body>> {
+        Ok(Some(Body::application_json(self?.ser()?)))
+    }
+}
