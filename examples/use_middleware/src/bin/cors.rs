@@ -6,11 +6,11 @@ fn main() -> Result<()> {
         .ANY("/*", middleware::cors)
         .ANY("/api/*", middleware::hello);
 
-    Server::with(middleware)
+    Ohkami::with(middleware)
         .GET("/", handler::hello)
         .GET("/api", handler::hello)
         .GET("/api/sleepy/:time", handler::sleepy_hello)
-        .serve_on("localhost:3000")
+        .howl("localhost:3000")
 }
 
 mod middleware {

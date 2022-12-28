@@ -28,11 +28,11 @@ static DATA: Lazy<Vec<Dinosaur>> = Lazy::new(|| {
 });
 
 fn main() -> Result<()> {
-    Server::default()
+    Ohkami::default()
         .GET("/", || async {Response::OK("Welcome to dinosaur API!")})
         .GET("/api", || async {Response::OK(DATA_STR.as_str())})
         .GET("/api/:dinosaur", get_one_by_name)
-        .serve_on(":8000")
+        .howl(":8000")
 }
 
 async fn get_one_by_name(name: String) -> Result<Response> {

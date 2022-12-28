@@ -9,7 +9,7 @@ fn main() -> Result<()> {
         ..Default::default()
     };
 
-    Server::with(config)
+    Ohkami::with(config)
         .GET("/", || async {Response::OK("Hello!")})
-        .serve_on(":5000")
+        .howl(":5000")
 }

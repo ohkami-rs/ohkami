@@ -1,7 +1,7 @@
 use ohkami::prelude::*;
 
 fn main() -> Result<()> {
-    Server::default()
+    Ohkami::default()
         .GET("/", || async {Response::OK("Hello!")})
-        .serve_on(":3000")
+        .howl(":3000")
 }

@@ -8,14 +8,14 @@ struct User {
 }
 
 fn main() -> Result<()> {
-    Server::default()
+    Ohkami::default()
         .GET("/", || async {
             Response::OK("Hello!")
         })
         .route("/api",
             GET(hello_api).POST(reflect)
         )
-        .serve_on(":3000")
+        .howl(":3000")
 }
 
 async fn hello_api() -> Result<Response> {

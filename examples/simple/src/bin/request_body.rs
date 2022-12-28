@@ -3,9 +3,9 @@ use serde::{Deserialize, Serialize};
 
 
 fn main() -> Result<()> {
-    Server::default()
+    Ohkami::default()
         .POST("/api/login_j", only_whose_name_starts_with_j_can_login)
-        .serve_on(":3000")
+        .howl(":3000")
 }
 
 #[derive(Deserialize, Serialize)]

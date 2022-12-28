@@ -1,9 +1,9 @@
 use ohkami::prelude::*;
 
 fn main() -> Result<()> {
-    Server::default()
+    Ohkami::default()
         .GET("/annoying_hello", annoying_hello)
-        .serve_on(":3000")
+        .howl(":3000")
 }
 
 async fn annoying_hello(ctx: Context) -> Result<Response> {

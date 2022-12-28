@@ -7,9 +7,9 @@ fn main() -> Result<()> {
             c
         });
 
-    Server::with(middleware)
+    Ohkami::with(middleware)
         .GET("/", || async {
             Response::OK("Hello!")
         })
-        .serve_on("localhost:3000")
+        .howl("localhost:3000")
 }

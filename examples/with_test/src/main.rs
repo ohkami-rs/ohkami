@@ -1,19 +1,19 @@
 use ohkami::prelude::*;
 
 fn server() -> Server {
-    Server::default()
+    Ohkami::default()
         .GET("/", || async {Response::OK("Hello!")})
 }
 fn main() -> Result<()> {
-    server().serve_on(":3000")
+    server().howl(":3000")
 }
 
 #[cfg(test)]
 mod test {
-    use ohkami::{server::Server, response::Response, test::{Test, Request, Method}};
+    use ohkami::{server::Ohkami, response::Response, test::{Test, Request, Method}};
     use once_cell::sync::Lazy;
 
-    static SERVER: Lazy<Server> = Lazy::new(|| super::server());
+    static SERVER: Lazy<Ohkami> = Lazy::new(|| super::server());
 
     #[test]
     fn test_hello() {

@@ -28,11 +28,11 @@ ohkami = "0.6.0"
 use ohkami::prelude::*;
 
 fn main() -> Result<()> {
-    Server::default()
+    Ohkami::default()
         .GET("/", || async {
             Response::OK("Hello, world!")
         })
-        .serve_on(":3000")
+        .howl(":3000")
 }
 ```
 
@@ -50,10 +50,10 @@ let count: usize = c.req.query("count")?;
 ### handle request body
 ```rust
 fn main() -> Result<()> {
-    Server::default()
+    Ohkami::default()
         .GET("/api/users", reflect)
         .GET("/api/users/name", reflect_name)
-        .serve_on(":3000")
+        .howl(":3000")
 }
 
 #[derive(Serialize, Deserialize)]
@@ -76,9 +76,9 @@ async fn reflect_name(user: JSON<User>) -> Result<Response> {
 ### handle path params
 ```rust
 fn main() -> Result<()> {
-    Server::default()
+    Ohkami::default()
         .GET("/sleepy/:time/:name", sleepy_hello)
-        .serve_on("localhost:8080")
+        .howl("localhost:8080")
 }
 
 async fn sleepy_hello(time: u64, name: String) -> Result<Response> {
@@ -105,14 +105,14 @@ struct User {
 }
 
 fn main() -> Result<()> {
-    Server::default()
+    Ohkami::default()
         .GET("/", || async {
             Response::OK("Hello!")
         })
         .route("/api",
             GET(hello_api).POST(reflect)
         )
-        .serve_on(":3000")
+        .howl(":3000")
 }
 
 async fn hello_api() -> Result<Response> {
@@ -192,7 +192,7 @@ fn main() -> Result<()> {
         ),
         ..Default::default()
     };
-    Server::new(config)
+    Ohkami::new(config)
         .GET("/", || async {Response::OK("Hello!")})
 }
 ```
@@ -223,11 +223,11 @@ fn main() -> Result<()> {
             c
         });
 
-    Server::new(middleware)
+    Ohkami::new(middleware)
         .GET("/", || async {
             Response::OK("Hello!")
         })
-        .serve_on("localhost:3000")
+        .howl("localhost:3000")
 }
 ```
 ```rust
@@ -248,30 +248,30 @@ fn main() -> Result<()> {
 
     let thirdparty_middleware = some_external_crate::x;
 
-    Server::new(config.and(middleware).and(x))
+    Ohkami::new(config.and(middleware).and(x))
         .GET("/", || async {
             Response::OK("Hello!")
         })
-        .serve_on("localhost:3000")
+        .howl("localhost:3000")
 }
 ```
 ### test
 1. split setup process from `main` function:
 ```rust
 fn server() -> Server {
-    Server::default()
+    Ohkami::default()
         .GET("/", || async {Response::OK("Hello!")})
 }
 
 fn main() -> Result<()> {
-    server().serve_on(":3000")
+    server().howl(":3000")
 }
 ```
 2. import `test::Test` and other utils
 ```rust
 #[cfg(test)]
 mod test {
-    use ohkami::{server::Server, response::Response, test::{Test, Request, Method}};
+    use ohkami::{Ohkami::Server, response::Response, test::{Test, Request, Method}};
     use once_cell::sync::Lazy;
 
     static SERVER: Lazy<Server> = Lazy::new(|| super::server());
