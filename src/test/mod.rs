@@ -3,7 +3,7 @@ use async_std::task::block_on;
 use async_std::sync::Arc;
 use serde::{Serialize, Deserialize};
 use crate::{
-    utils::{range::RANGE_COLLECTION_SIZE, buffer::Buffer, string::unescaped}, server::{Server, consume_buffer}, prelude::{Response, JSON, Result}
+    utils::{range::RANGE_COLLECTION_SIZE, buffer::Buffer, string::unescaped}, server::{Ohkami, consume_buffer}, prelude::{Response, JSON, Result}
 };
 
 pub use crate::{
@@ -25,7 +25,7 @@ pub trait Test {
     fn assert_not_to_res<R: ExpectedResponse>(&self, request: &Request, expected: R);
     fn oneshot_res(&self, request: &Request) -> Response;
     fn oneshot_json<T: Serialize + for <'d> Deserialize<'d>>(&self, request: &Request) -> JSON<T>;
-} impl Test for Server {
+} impl Test for Ohkami {
     fn can_serve(&self) {
         assert!(self.setup_errors.is_empty())
     }

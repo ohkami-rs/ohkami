@@ -31,7 +31,7 @@ use sqlx::mysql::{
 
 
 /// Type of ohkami's server instance
-pub struct Server {
+pub struct Ohkami {
     pub(crate) router: Router,
     log_subscribe: Option<SubscriberBuilder>,
 
@@ -59,7 +59,7 @@ impl<'url> Default for DBprofile<'url> {
 }
 
 #[cfg(not(feature = "sqlx"))]
-impl Default for Server {
+impl Default for Ohkami {
     fn default() -> Self {
         let ServerSetting {
             config,
@@ -75,8 +75,8 @@ impl Default for Server {
     }
 }
 
-impl Server {
-    /// Initialize `Server` with given configuratoin.
+impl Ohkami {
+    /// Initialize `Ohkami` with given configuratoin.
     #[cfg(not(feature = "sqlx"))]
     pub fn with<ISS: IntoServerSetting>(setting: ISS) -> Self {
         let ServerSetting { 
@@ -130,7 +130,7 @@ impl Server {
     /// Sections starting with `:` are a path parameters.
     /// 
     /// ```no_run
-    /// Server::setup()
+    /// Ohkami::setup()
     ///     .GET("/api/users/:id", handler)
     /// ```
     #[allow(non_snake_case)]
@@ -148,7 +148,7 @@ impl Server {
     /// Sections starting with `:` are a path parameters.
     /// 
     /// ```no_run
-    /// Server::setup()
+    /// Ohkami::setup()
     ///     .POST("/api/users/:id", handler)
     /// ```
     #[allow(non_snake_case)]
@@ -292,7 +292,7 @@ impl Server {
     /// - `":{port}"` (like `":3000"`) is interpret as `"0.0.0.0:{port}"`
     /// - `"localhost:{port}"` (like `"localhost:8080"`) is interpret as `"127.0.0.1:{port}"`
     /// - other formats are interpret as raw TCP address
-    pub fn serve_on(mut self, address: &'static str) -> Result<()> {
+    pub fn howl(mut self, address: &'static str) -> Result<()> {
         if let Some(subscriber) = self.log_subscribe {
             subscriber.init();
         }
@@ -448,7 +448,7 @@ mod test {
             ..Default::default()
         };
 
-        Server::with(config)
+        Ohkami::with(config)
             .GET("/", || async {
                 Response::OK("Hello!")
             });

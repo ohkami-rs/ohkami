@@ -92,8 +92,11 @@ async fn sleepy_hello(time: u64, name: String) -> Result<Response> {
 ```
 ### grouping handlers on the same path (like axum)
 ```rust
-use ohkami::{prelude::*, group::*};
 use serde::{Serialize, Deserialize};
+use ohkami::{
+    prelude::*,
+    group::{GET, POST} // import this
+};
 
 #[derive(Serialize, Deserialize)]
 struct User {

@@ -18,7 +18,7 @@ pub(crate) mod setting;
 
 pub mod prelude {
     pub use super::{
-        server::Server,
+        server::Ohkami,
         setting::{Config, Middleware},
         result::{Result, ElseResponse, ElseResponseWithErr},
         context::Context,
