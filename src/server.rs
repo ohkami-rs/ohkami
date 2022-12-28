@@ -213,7 +213,7 @@ impl Ohkami {
             expect_param_num
         ) = handler.into_handlefunc();
         if param_count < expect_param_num {
-            self.setup_errors.push(format!("handler for `{path}` expects {expect_param_num} path params, this is more than actual ones: ({param_count})"))
+            self.setup_errors.push(format!("handler for `{method} {path}` expects {expect_param_num} path params, this is more than actual ones: ({param_count})"))
         }
 
         if let Err(msg) = self.router.register(
@@ -245,7 +245,7 @@ impl Ohkami {
         } = group;
 
         if param_count < max_param_count {
-            self.setup_errors.push(format!("handler for `{path}` expects {max_param_count} path params, this is more than actual ones: ({param_count})"))
+            self.setup_errors.push(format!("handlers for `{path}` expect {max_param_count} path params, this is more than actual ones: ({param_count})"))
         }
 
         if let Some(handler) = GET  {
