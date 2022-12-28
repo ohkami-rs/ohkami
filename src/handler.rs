@@ -1,3 +1,5 @@
+pub mod group;
+
 use std::{future::Future, pin::Pin};
 use serde::{Serialize, Deserialize};
 use crate::{

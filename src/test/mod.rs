@@ -3,7 +3,7 @@ use async_std::task::block_on;
 use async_std::sync::Arc;
 use serde::{Serialize, Deserialize};
 use crate::{
-    utils::{range::RANGE_COLLECTION_SIZE, buffer::Buffer, string::unescaped}, server::{ExpectedResponse, Server, consume_buffer}, prelude::{Response, JSON}
+    utils::{range::RANGE_COLLECTION_SIZE, buffer::Buffer, string::unescaped}, server::{Server, consume_buffer}, prelude::{Response, JSON, Result}
 };
 
 pub use crate::{
@@ -14,6 +14,10 @@ pub use crate::{
     response::body::Body,
 };
 
+
+pub trait ExpectedResponse {fn as_response(self) -> Result<Response>;}
+impl ExpectedResponse for Response {fn as_response(self) -> Result<Response> {Err(self)}}
+impl ExpectedResponse for Result<Response> {fn as_response(self) -> Result<Response> {self}}
 
 pub trait Test {
     fn can_serve(&self);

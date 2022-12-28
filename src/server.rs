@@ -15,7 +15,7 @@ use crate::{
         parse::parse_request_lines, validation, buffer::Buffer
     },
     router::Router,
-    handler::{Handler, Param}, setting::{IntoServerSetting, ServerSetting, Middleware}
+    handler::{Handler, Param, group::HandlerGroup}, setting::{IntoServerSetting, ServerSetting, Middleware}
 };
 
 #[cfg(feature = "postgres")]
@@ -213,7 +213,7 @@ impl Server {
             expect_param_num
         ) = handler.into_handlefunc();
         if param_count < expect_param_num {
-            self.setup_errors.push(format!("handler for `{path}` expects {expect_param_num} path params, this is more than actual ones {param_count}!"))
+            self.setup_errors.push(format!("handler for `{path}` expects {expect_param_num} path params, this is more than actual ones: ({param_count})"))
         }
 
         if let Err(msg) = self.router.register(
@@ -222,6 +222,67 @@ impl Server {
             handler
         ) {
             self.setup_errors.push(format!("{msg}"))
+        }
+
+        self
+    }
+
+    pub fn route(mut self, path: &'static str, group: HandlerGroup) -> Self {
+        let (
+            is_valid_path,
+            param_count
+        ) = validation::valid_request_path(path);
+        if !is_valid_path {
+            self.setup_errors.push(format!("`{path}` is invalid as path."));
+        }
+
+        let HandlerGroup {
+            max_param_count,
+            GET,
+            POST,
+            PATCH,
+            DELETE,
+        } = group;
+
+        if param_count < max_param_count {
+            self.setup_errors.push(format!("handler for `{path}` expects {max_param_count} path params, this is more than actual ones: ({param_count})"))
+        }
+
+        if let Some(handler) = GET  {
+            if let Err(msg) = self.router.register(
+                Method::GET,
+                &path.trim_end_matches('/'),
+                handler
+            ) {
+                self.setup_errors.push(format!("{msg}"))
+            }
+        }
+        if let Some(handler) = POST  {
+            if let Err(msg) = self.router.register(
+                Method::POST,
+                &path.trim_end_matches('/'),
+                handler
+            ) {
+                self.setup_errors.push(format!("{msg}"))
+            }
+        }
+        if let Some(handler) = PATCH  {
+            if let Err(msg) = self.router.register(
+                Method::PATCH,
+                &path.trim_end_matches('/'),
+                handler
+            ) {
+                self.setup_errors.push(format!("{msg}"))
+            }
+        }
+        if let Some(handler) = DELETE  {
+            if let Err(msg) = self.router.register(
+                Method::DELETE,
+                &path.trim_end_matches('/'),
+                handler
+            ) {
+                self.setup_errors.push(format!("{msg}"))
+            }
         }
 
         self
@@ -275,10 +336,6 @@ impl Server {
         })
     }
 }
-
-pub trait ExpectedResponse {fn as_response(self) -> Result<Response>;}
-impl ExpectedResponse for Response {fn as_response(self) -> Result<Response> {Err(self)}}
-impl ExpectedResponse for Result<Response> {fn as_response(self) -> Result<Response> {self}}
 
 
 async fn handle_stream(
