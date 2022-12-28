@@ -93,6 +93,36 @@ async fn sleepy_hello(time: u64, name: String) -> Result<Response> {
     Response::OK(format!("Hello {name}, I'm extremely sleepy..."))
 }
 ```
+### grouping handlers on the same path (like axum)
+```rust
+use ohkami::{prelude::*, group::*};
+use serde::{Serialize, Deserialize};
+
+#[derive(Serialize, Deserialize)]
+struct User {
+    id:   usize,
+    name: String,
+}
+
+fn main() -> Result<()> {
+    Server::default()
+        .GET("/", || async {
+            Response::OK("Hello!")
+        })
+        .route("/api",
+            GET(hello_api).POST(reflect)
+        )
+        .serve_on(":3000")
+}
+
+async fn hello_api() -> Result<Response> {
+    Response::OK("Hello, api!")
+}
+
+async fn reflect(payload: JSON<User>) -> Result<Response> {
+    Response::OK(payload)
+}
+```
 ### return OK response with `text/plain`
 ```rust
 Response::OK("Hello, world!")

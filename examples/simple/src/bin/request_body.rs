@@ -30,7 +30,7 @@ mod test {
 
     #[test]
     fn test_api_login_j() {
-        let server = Server::setup()
+        let server = Server::default()
             .POST("/api/login_j", only_whose_name_starts_with_j_can_login);
 
         server.assert_to_res(

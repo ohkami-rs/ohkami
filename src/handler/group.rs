@@ -46,7 +46,7 @@ pub struct HandlerGroup {
     }
 }
 
-#[allow(non_snake_case)]
+#[allow(non_snake_case, unused)]
 pub fn GET<H: Handler<P>, P: Param>(handler: H) -> HandlerGroup {
     let (handler, param_count) = handler.into_handlefunc();
     HandlerGroup {
@@ -57,7 +57,7 @@ pub fn GET<H: Handler<P>, P: Param>(handler: H) -> HandlerGroup {
         DELETE: None,
     }
 }
-#[allow(non_snake_case)]
+#[allow(non_snake_case, unused)]
 pub fn POST<H: Handler<P>, P: Param>(handler: H) -> HandlerGroup {
     let (handler, param_count) = handler.into_handlefunc();
     HandlerGroup {
@@ -68,7 +68,7 @@ pub fn POST<H: Handler<P>, P: Param>(handler: H) -> HandlerGroup {
         DELETE: None,
     }
 }
-#[allow(non_snake_case)]
+#[allow(non_snake_case, unused)]
 pub fn PATCH<H: Handler<P>, P: Param>(handler: H) -> HandlerGroup {
     let (handler, param_count) = handler.into_handlefunc();
     HandlerGroup {
@@ -79,7 +79,7 @@ pub fn PATCH<H: Handler<P>, P: Param>(handler: H) -> HandlerGroup {
         DELETE: None,
     }
 }
-#[allow(non_snake_case)]
+#[allow(non_snake_case, unused)]
 pub fn DELETE<H: Handler<P>, P: Param>(handler: H) -> HandlerGroup {
     let (handler, param_count) = handler.into_handlefunc();
     HandlerGroup {

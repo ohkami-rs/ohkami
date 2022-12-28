@@ -29,3 +29,5 @@ pub mod prelude {
     #[cfg(feature = "sqlx")]
     pub use super::server::DBprofile;
 }
+
+pub use handler::group;
