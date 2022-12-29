@@ -156,8 +156,12 @@ impl<'d> RequestContext {
     }
 
     /// key: &'static str | Header
-    pub fn header<K: HeaderKey>(&self, key: K) -> Option<&str> {
-        self.headers.get(key, &self.buffer)
+    pub fn header<K: HeaderKey>(&self, key: K) -> Result<&str> {
+        let key_str = key.as_key_str();
+        self.headers.get(key_str, &self.buffer)
+            ._else(|| Response::InternalServerError(
+                format!("Header `{}` was not found", key_str)
+            ))
     }
 }
 

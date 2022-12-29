@@ -125,16 +125,11 @@ async fn reflect(payload: JSON<User>) -> Result<Response> {
 ```
 ### parse request headers
 ```rust
-let host = c.req.header(Header::Host)
-           // or
-           c.req.header("Host")
-
-    ._else(|| /* error response */)?;
+let host = c.req.header(Header::Host)?;
 ```
 ```rust
 async fn reflect_header_custom(c: Context) -> Result<Response> {
-    let custom_header_value = c.req.header("X-Custom")
-        ._else(|| c.BadRequest("header `X-Custom` was not found"))?;
+    let custom_header_value = c.req.header("X-Custom")?;
     c.OK(format!("`X-Custom`'s value is {custom_header_value}"))
 }
 ```
@@ -175,8 +170,8 @@ Response::OK(json!{"ok": true})
 c.OK(json!{"ok": true})
 ```
 ```rust
-Response::OK(json("Hello!")?)
-Response::OK(json(user)?)
+Response::OK(json("Hello!"))
+Response::OK(json(user))
 //or
 c.OK(json("Hello!"))
 c.OK(json(user))
