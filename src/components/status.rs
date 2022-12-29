@@ -5,6 +5,7 @@ use crate::response::format::ResponseFormat;
 pub enum Status {
     OK                  = 200,
     Created             = 201,
+    NoContent           = 204,
     BadRequest          = 400,
     Unauthorized        = 401,
     Forbidden           = 403,
@@ -24,6 +25,7 @@ impl ResponseFormat for Status {
             Self::NotImplemented      => "501 Not Implemented",
             Self::OK                  => "200 OK",
             Self::Created             => "201 Created",
+            Self::NoContent           => "204 No Content",
         }
     }
 }

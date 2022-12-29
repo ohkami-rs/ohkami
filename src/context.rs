@@ -3,8 +3,8 @@ use serde::{Deserialize, Serialize};
 use crate::{
     result::{Result, ElseResponse, ElseResponseWithErr},
     utils::{range::RangeMap, buffer::Buffer},
-    components::{json::JSON, status::Status, headers::{AdditionalHeader, HeaderMap, HeaderKey}},
-    response::{Response, message::ErrorMessage, body::{Body, ResponseBody}, format::ResponseFormat},
+    components::{json::JSON, status::Status, headers::{HeaderMap, HeaderKey}},
+    response::{Response, message::ErrorMessage, body::{Body, ResponseBody}},
 };
 
 #[cfg(feature = "sqlx")]
@@ -45,6 +45,14 @@ impl Context {
             additional_headers: self.additional_headers.to_owned(),
             status: Status::Created,
             body: Some(Body::application_json(created.ser()?))
+        })
+    }
+    #[allow(non_snake_case)]
+    pub fn NoContent() -> Result<Response> {
+        Ok(Response {
+            additional_headers: String::new(),
+            status: Status::Created,
+            body: None
         })
     }
 
@@ -109,8 +117,11 @@ impl Context {
         }
     }
 
-    pub fn header(&mut self, key: AdditionalHeader, value: &'static str) {
-        self.additional_headers += &(key.response_format().to_owned() + value + "\n")
+    pub fn header<Key: HeaderKey>(&mut self, key: Key, value: &'static str) {
+        self.additional_headers += key.as_key_str();
+        self.additional_headers += ": ";
+        self.additional_headers += value;
+        self.additional_headers += "\n"
     }
 
     /// Return a reference of `PgPool` (if feature = "postgres") or `MySqlPool` (if feature = "mysql").
@@ -160,7 +171,7 @@ impl<'q> Query<'q> for usize {fn parse(q: &'q str) -> Result<Self> {q.parse()._e
 
 impl Debug for Context {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "query: {:?} (range: {:?}){}",
+        write!(f, "query: {:?} (range: {:?}), {}",
             self.req.query_range.as_ref().map(|map| map.debug_fmt_with(&self.req.buffer)),
             self.req.query_range,
             self.req.headers.debug_fmt_with(&self.req.buffer),

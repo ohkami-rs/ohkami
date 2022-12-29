@@ -1,7 +1,5 @@
-use crate::{
-    response::format::ResponseFormat,
-    utils::buffer::{BufRange, Buffer}
-};
+use crate::utils::buffer::{BufRange, Buffer};
+
 
 /// for request headers
 pub(crate) struct HeaderMap(
@@ -47,6 +45,7 @@ pub enum Header {
     AcceptEncoding,
     AcceptLanguage,
     Authorization,
+    ContentType,
     Expect,
     From,
     Host,
@@ -71,6 +70,12 @@ pub enum Header {
     Server,
     Vary,
 
+    AccessControlAllowOrigin,
+    AccessControlAllowMethods,
+    AccessControlAllowHeaders,
+    AccessControlAllowCredentials,
+    AccessControlMaxAge,
+
     // general
     CacheControl,
     Connection,
@@ -86,6 +91,7 @@ pub enum Header {
             Self::AcceptEncoding => "Accept-Encoding",
             Self::AcceptLanguage => "Accept-Language",
             Self::Authorization => "Authorization",
+            Self::ContentType => "Content-Type",
             Self::Expect => "Expect",
             Self::From => "From",
             Self::Host => "Host",
@@ -109,6 +115,12 @@ pub enum Header {
             Self::Server => "Server",
             Self::Vary => "Vary",
 
+            Self::AccessControlAllowOrigin => "Access-Control-Allow-Origin",
+            Self::AccessControlAllowMethods => "Access-Control-Allow-Methods",
+            Self::AccessControlAllowHeaders => "Access-Control-Allow-Headers",
+            Self::AccessControlAllowCredentials => "Access-Control-Allow-Credentials",
+            Self::AccessControlMaxAge => "Access-Control-Max-Age",
+
             Self::CacheControl => "Cache-Control",
             Self::Connection => "Connection",
             Self::Date => "Date",
@@ -116,30 +128,6 @@ pub enum Header {
             Self::TransferEncoding => "Transfer-Encoding",
             Self::Via => "Via",
             Self::Warning => "Warning",
-        }
-    }
-}
-
-
-
-
-
-
-
-
-
-
-
-
-pub enum AdditionalHeader {
-    AccessControlAllowOrigin,
-    // ...
-}
-
-impl ResponseFormat for AdditionalHeader {
-    fn response_format(&self) -> &str {
-        match self {
-            AdditionalHeader::AccessControlAllowOrigin => "Access-Control-Allow-Origin: ",
         }
     }
 }

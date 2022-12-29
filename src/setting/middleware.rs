@@ -147,10 +147,10 @@ pub struct Middleware {
 
 #[cfg(test)]
 mod test {
-    use crate::{prelude::*, components::headers::AdditionalHeader::*};
+    use crate::prelude::*;
 
     async fn cors(mut c: Context) -> Context {
-        c.header(AccessControlAllowOrigin, "localhost:8000");
+        c.header(Header::AccessControlAllowOrigin, "localhost:8000");
         c
     }
 

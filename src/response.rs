@@ -129,6 +129,16 @@ Keep-Alive: timeout=5
             body:               Some(Body::application_json(body.ser()?)),
         })
     }
+    /// Generate `Result<Response>` value that represents a HTTP response of `204 No Content`.
+    /// You can directly return `Response::Created(/* something */)` from a handler because this is already wrapped in `Result::Ok`.
+    #[allow(non_snake_case)]
+    pub fn NoContent() -> Result<Self> {
+        Ok(Self {
+            additional_headers: String::new(),
+            status:             Status::Created,
+            body:               None,
+        })
+    }
 
     /// Generate `Response` value that represents a HTTP response of `404 Not Found`.
     /// `String`, `&str` or `Option<String>` can be argument of this.
