@@ -14,7 +14,8 @@ fn main() -> Result<()> {
 }
 
 mod middleware {
-    use ohkami::{prelude::*, components::headers::AdditionalHeader::*};
+    use ohkami::prelude::*;
+    use Header::AccessControlAllowOrigin;
 
     pub async fn hello(c: Context) -> Context {
         tracing::debug!("Hello, middleware!");

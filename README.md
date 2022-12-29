@@ -153,8 +153,11 @@ async fn cors(c: Context) -> Context {
     c
 }
 
-let middleware = Middleware::new()
-    .ANY("/api/*", cors);
+fn main() -> Result<()> {
+    let middleware = Middleware::new()
+        .ANY("/api/*", cors);
+        
+    // ...
 ```
 ### return OK response with `text/plain`
 ```rust
