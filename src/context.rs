@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     result::{Result, ElseResponse, ElseResponseWithErr},
     utils::{range::RangeMap, buffer::Buffer},
-    components::{json::JSON, status::Status, headers::AdditionalHeader},
+    components::{json::JSON, status::Status, headers::{AdditionalHeader, HeaderMap, HeaderKey}},
     response::{Response, message::ErrorMessage, body::{Body, ResponseBody}, format::ResponseFormat},
 };
 
@@ -27,7 +27,7 @@ pub struct RequestContext {
 
     // pub(crate) body:        Option<JSON>,
     pub(crate) query_range: Option<RangeMap>,
-    // pub(crate) headers: ...
+    pub(crate) headers:     HeaderMap,
 }
 
 impl Context {
@@ -143,6 +143,10 @@ impl<'d> RequestContext {
                 ._else(|| Response::BadRequest(format!("expected query param `{key}`")))?
         )
     }
+
+    pub fn header<K: HeaderKey>(&self, key: K) -> Option<&str> {
+        self.headers.get(key, &self.buffer)
+    }
 }
 
 pub trait Query<'q> {fn parse(q: &'q str) -> Result<Self> where Self: Sized;}
@@ -153,9 +157,11 @@ impl<'q> Query<'q> for usize {fn parse(q: &'q str) -> Result<Self> {q.parse()._e
 
 impl Debug for Context {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "query: {:?} (range: {:?})",
+        write!(f, "query: {:?} (range: {:?})
+{:?}",
             self.req.query_range.as_ref().map(|map| map.debug_fmt_with(&self.req.buffer)),
             self.req.query_range,
+            self.req.headers.debug_fmt_with(&self.req.buffer),
         )
     }
 }

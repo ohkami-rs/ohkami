@@ -2,7 +2,7 @@ use std::str::Lines;
 use crate::{
     response::Response,
     result::{Result, ElseResponse},
-    components::method::Method,
+    components::{method::Method, headers::HeaderMap},
     utils::{buffer::BufRange, range::{RangeMap, RANGE_COLLECTION_SIZE}},
 };
 
@@ -11,7 +11,7 @@ pub(crate) fn parse_request_lines(mut lines: Lines) -> Result<(
     Method,
     String/*path*/,
     Option<RangeMap>/*query param*/,
-    // headers,
+    HeaderMap,
     Option<String>/*request body*/,
 )> {
     let line = lines.next()
@@ -29,11 +29,18 @@ pub(crate) fn parse_request_lines(mut lines: Lines) -> Result<(
 
     let (path, query) = extract_query(path_str, method_str.len() - 1/*' '*/)?;
 
+    let mut header_map = HeaderMap::new();
+    let mut offset = line.len() + 1/*'\n'*/;
     while let Some(line) = lines.next() {
-        /*
-            TODO: header parsing
-        */
         if line.is_empty() {break}
+
+        let colon = line.find(':').unwrap();
+        header_map.push(
+            BufRange::new(offset, offset+colon-1),
+            BufRange::new(offset+colon+1/*' '*/+1, offset+line.len())
+        );
+
+        offset += line.len() + 1/*'\n'*/
     }
 
     let body = lines.next().map(|s| s.to_owned());
@@ -43,6 +50,7 @@ pub(crate) fn parse_request_lines(mut lines: Lines) -> Result<(
         path.trim_end_matches('/').to_owned(),
         // param,
         query,
+        header_map,
         body
     ))
 }

@@ -396,7 +396,7 @@ pub(crate) async fn consume_buffer(
         method,
         path,
         query_range,
-        // headers,
+        headers,
         body
     ) = parse_request_lines(
         buffer.lines()?
@@ -416,6 +416,7 @@ pub(crate) async fn consume_buffer(
         req: RequestContext {
             buffer,
             // body,
+            headers,
             query_range,
         },
         additional_headers: String::new(),
