@@ -123,6 +123,21 @@ async fn reflect(payload: JSON<User>) -> Result<Response> {
     Response::OK(payload)
 }
 ```
+### parse request headers
+```rust
+let host = c.req.header(Header::Host)
+           // or
+           c.req.header("Host")
+
+    ._else(|| /* error response */)?;
+```
+```rust
+async fn reflect_header_custom(c: Context) -> Result<Response> {
+    let custom_header_value = c.req.header("X-Custom")
+        ._else(|| c.BadRequest("header `X-Custom` was not found"))?;
+    c.OK(format!("`X-Custom`'s value is {custom_header_value}"))
+}
+```
 ### return OK response with `text/plain`
 ```rust
 Response::OK("Hello, world!")
