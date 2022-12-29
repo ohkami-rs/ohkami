@@ -1,6 +1,6 @@
 use ohkami::prelude::*;
 
-fn server() -> Server {
+fn server() -> Ohkami {
     Ohkami::default()
         .GET("/", || async {Response::OK("Hello!")})
 }
