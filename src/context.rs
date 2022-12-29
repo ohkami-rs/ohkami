@@ -32,17 +32,17 @@ pub struct RequestContext {
 
 impl Context {
     #[allow(non_snake_case)]
-    pub fn OK<B: ResponseBody>(self, body: B) -> Result<Response> {
+    pub fn OK<B: ResponseBody>(&self, body: B) -> Result<Response> {
         Ok(Response {
-            additional_headers: self.additional_headers,
+            additional_headers: self.additional_headers.to_owned(),
             status: Status::OK,
             body: body.as_body()?
         })
     }
     #[allow(non_snake_case)]
-    pub fn Created<T: Serialize + for <'d> Deserialize<'d>>(self, created: JSON<T>) -> Result<Response> {
+    pub fn Created<T: Serialize + for <'d> Deserialize<'d>>(&self, created: JSON<T>) -> Result<Response> {
         Ok(Response {
-            additional_headers: self.additional_headers,
+            additional_headers: self.additional_headers.to_owned(),
             status: Status::Created,
             body: Some(Body::application_json(created.ser()?))
         })
@@ -130,7 +130,7 @@ impl<'d> RequestContext {
         }
     */
     
-    /// Return `Result< &str | u64 | i64 | usize >` that holds query parameter whose key matches the argument (`Err`: if param string can't be parsed).
+    /// Return `Result< &str | u8 | u64 | i32 | i64 | usize >` that holds query parameter whose key matches the argument (`Err`: if param string can't be parsed).
     /// ```no_run
     /// let count = ctx.query("count")?;
     /// ```
@@ -144,6 +144,7 @@ impl<'d> RequestContext {
         )
     }
 
+    /// key: &'static str | Header
     pub fn header<K: HeaderKey>(&self, key: K) -> Option<&str> {
         self.headers.get(key, &self.buffer)
     }
@@ -151,14 +152,15 @@ impl<'d> RequestContext {
 
 pub trait Query<'q> {fn parse(q: &'q str) -> Result<Self> where Self: Sized;}
 impl<'q> Query<'q> for &'q str {fn parse(q: &'q str) -> Result<Self> {Ok(q)}}
+impl<'q> Query<'q> for u8 {fn parse(q: &'q str) -> Result<Self> {q.parse()._else(|_| Response::BadRequest("format of query parameter is wrong"))}}
 impl<'q> Query<'q> for u64 {fn parse(q: &'q str) -> Result<Self> {q.parse()._else(|_| Response::BadRequest("format of query parameter is wrong"))}}
 impl<'q> Query<'q> for i64 {fn parse(q: &'q str) -> Result<Self> {q.parse()._else(|_| Response::BadRequest("format of query parameter is wrong"))}}
+impl<'q> Query<'q> for i32 {fn parse(q: &'q str) -> Result<Self> {q.parse()._else(|_| Response::BadRequest("format of query parameter is wrong"))}}
 impl<'q> Query<'q> for usize {fn parse(q: &'q str) -> Result<Self> {q.parse()._else(|_| Response::BadRequest("format of query parameter is wrong"))}}
 
 impl Debug for Context {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "query: {:?} (range: {:?})
-{:?}",
+        write!(f, "query: {:?} (range: {:?}){}",
             self.req.query_range.as_ref().map(|map| map.debug_fmt_with(&self.req.buffer)),
             self.req.query_range,
             self.req.headers.debug_fmt_with(&self.req.buffer),

@@ -28,7 +28,10 @@ pub(crate) struct HeaderMap(
         self.0.iter().fold(
             String::new(),
             |it, (key_range, value_range)| {
-                it + buffer.read_str(key_range) + ": " + buffer.read_str(value_range) + "\n"
+                it + "\n" +
+                "`" + buffer.read_str(key_range) + "`" +
+                ": " +
+                "`" + buffer.read_str(value_range) + "`"
             }
         )
     }

@@ -25,22 +25,22 @@ pub(crate) fn parse_request_lines(mut lines: Lines) -> Result<(
         .split_once(' ')
         ._else(|| Response::BadRequest("invalid request line format"))?;
 
-    tracing::info!("got a request: {} {}", method_str, path_str);
+    tracing::info!("request: {} {}", method_str, path_str);
 
     let (path, query) = extract_query(path_str, method_str.len() - 1/*' '*/)?;
 
     let mut header_map = HeaderMap::new();
-    let mut offset = line.len() + 1/*'\n'*/;
+    let mut offset = line.len() + 2/*'\r\n'*/;
     while let Some(line) = lines.next() {
         if line.is_empty() {break}
 
         let colon = line.find(':').unwrap();
         header_map.push(
             BufRange::new(offset, offset+colon-1),
-            BufRange::new(offset+colon+1/*' '*/+1, offset+line.len())
+            BufRange::new(offset+colon+1/*' '*/+1, offset+line.len()-1)
         );
 
-        offset += line.len() + 1/*'\n'*/
+        offset += line.len() + 2/*'\r\n'*/
     }
 
     let body = lines.next().map(|s| s.to_owned());

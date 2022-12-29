@@ -318,7 +318,7 @@ impl Ohkami {
                 validation::tcp_address(address)
             ).await?;
 
-            tracing::info!("started seving on {}...", address);
+            tracing::info!("started serving on {}...", address);
 
             while let Some(stream) = listener.incoming().next().await {
                 let stream = stream?;
@@ -356,7 +356,7 @@ async fn handle_stream(
         Err(res) => res,
     };
 
-    tracing::info!("generated a response: {:?}", &response);
+    tracing::info!("{:?}", &response);
 
     if let Err(err) = response.write_to_stream(&mut stream).await {
         tracing::error!("failed to write response: {}", err);
