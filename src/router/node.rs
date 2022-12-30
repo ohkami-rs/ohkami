@@ -39,13 +39,13 @@ pub(super) struct Node {
         Option<&'tree MiddlewareFunc>,
     )> {
         if let Some(section) = path.next() {
-            read_pos += 1 /* skip '/' */;
+            read_pos += 1 /*'/'*/;
             if let Some(child) = 'search: {
                 for child in &self.children {
                     if child.pattern.matches(section) {
                         if child.pattern.is_param() {
                             let range = BufRange::new(read_pos + 1, read_pos + section.len());
-                            tracing::debug!("path param: `{}` (range: {:?})", section, range);
+                            tracing::debug!("path param: `{}`", section);
                             params.push(range)?;
                         }
                         for proceess in &self.middleware.proccess {

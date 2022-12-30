@@ -3,7 +3,7 @@ use async_std::task::block_on;
 use async_std::sync::Arc;
 use serde::{Serialize, Deserialize};
 use crate::{
-    utils::{range::RANGE_COLLECTION_SIZE, buffer::Buffer, string::unescaped}, server::{Ohkami, consume_buffer}, prelude::{Response, JSON, Result}
+    utils::{range::RANGE_MAP_SIZE, buffer::Buffer, string::unescaped}, server::{Ohkami, consume_buffer}, prelude::{Response, JSON, Result}
 };
 
 pub use crate::{
@@ -87,7 +87,7 @@ pub trait Test {
 pub struct Request {
     method: Method,
     uri:    &'static str,
-    query:  [Option<(&'static str, &'static str)>; RANGE_COLLECTION_SIZE],
+    query:  [Option<(&'static str, &'static str)>; RANGE_MAP_SIZE],
     body:   Option<String>,
 } impl Request {
     pub fn new(method: Method, uri: &'static str) -> Self {
@@ -103,7 +103,7 @@ pub struct Request {
             for (i, q) in self.query.iter().enumerate() {
                 if q.is_none() {break 'index i}
             }
-            panic!("Current ohkami can't handle more than {RANGE_COLLECTION_SIZE} query params");
+            panic!("Current ohkami can't handle more than {RANGE_MAP_SIZE} query params");
         };
         self.query[index] = Some((key, value));
         self

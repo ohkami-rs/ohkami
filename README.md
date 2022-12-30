@@ -223,7 +223,7 @@ fn main() -> Result<()> {
         ),
         ..Default::default()
     };
-    Ohkami::new(config)
+    Ohkami::with(config)
         .GET("/", || async {Response::OK("Hello!")})
 }
 ```
@@ -254,7 +254,7 @@ fn main() -> Result<()> {
             c
         });
 
-    Ohkami::new(middleware)
+    Ohkami::with(middleware)
         .GET("/", || async {
             Response::OK("Hello!")
         })
@@ -279,7 +279,7 @@ fn main() -> Result<()> {
 
     let thirdparty_middleware = some_external_crate::x;
 
-    Ohkami::new(config.and(middleware).and(x))
+    Ohkami::with(config.and(middleware).and(x))
         .GET("/", || async {
             Response::OK("Hello!")
         })

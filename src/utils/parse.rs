@@ -3,7 +3,7 @@ use crate::{
     response::Response,
     result::{Result, ElseResponse},
     components::{method::Method, headers::HeaderMap},
-    utils::{buffer::BufRange, range::{RangeMap, RANGE_COLLECTION_SIZE}},
+    utils::{buffer::BufRange, range::{RangeMap, RANGE_MAP_SIZE}},
 };
 
 
@@ -70,8 +70,8 @@ fn extract_query(
     let mut map = RangeMap::new();
     let mut read_pos = offset + path_part.len() + 1/*'?'*/ + 1;
     for (i, (key, value)) in queries.enumerate() {
-        (i < RANGE_COLLECTION_SIZE)._else(||
-            Response::BadRequest("Sorry, I can't handle more than 4 query params")
+        (i < RANGE_MAP_SIZE)._else(||
+            Response::BadRequest(format!("Sorry, ohkami doesn't handle more than {} query params", RANGE_MAP_SIZE))
         )?;
         map.insert(i,
             BufRange::new(read_pos+1, read_pos+key.len()),

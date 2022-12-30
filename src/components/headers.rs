@@ -27,9 +27,9 @@ pub(crate) struct HeaderMap(
             String::new(),
             |it, (key_range, value_range)| {
                 it + "\n" +
-                "`" + buffer.read_str(key_range) + "`" +
+                buffer.read_str(key_range) +
                 ": " +
-                "`" + buffer.read_str(value_range) + "`"
+                buffer.read_str(value_range)
             }
         )
     }

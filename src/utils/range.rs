@@ -2,11 +2,11 @@ use crate::{result::{Result, ElseResponse}, response::Response};
 use super::buffer::{Buffer, BufRange};
 
 
-pub(crate) const RANGE_COLLECTION_SIZE: usize = 4;
+pub(crate) const RANGE_MAP_SIZE: usize = 4;
 
 #[derive(Debug)]
 pub(crate) struct RangeMap(
-    [Option<(BufRange, BufRange)>; RANGE_COLLECTION_SIZE]
+    [Option<(BufRange, BufRange)>; RANGE_MAP_SIZE]
 ); impl RangeMap {
     pub(crate) fn new() -> Self {
         Self([None, None, None, None])
@@ -44,18 +44,20 @@ pub(crate) struct RangeMap(
     }
 }
 
+pub(crate) const RANGE_LIST_SIZE: usize = 2;
+
 pub struct RangeList {
     count: usize,
-    list:  [Option<BufRange>; RANGE_COLLECTION_SIZE],
+    list:  [Option<BufRange>; RANGE_LIST_SIZE],
 } impl RangeList {
     pub(crate) fn new() -> Self {
         Self {
             count: 0,
-            list:  [None, None, None, None],
+            list:  [None, None],
         }
     }
     pub(crate) fn push(&mut self, range: BufRange) -> Result<()> {
-        (self.count < RANGE_COLLECTION_SIZE)
+        (self.count < RANGE_LIST_SIZE)
             ._else(|| Response::NotImplemented("Current ohkami can't handle more than 4 path params"))?;
         self.list[self.count] = Some(range);
         self.count += 1;
@@ -68,12 +70,4 @@ pub struct RangeList {
         let list = self.list.as_ref();
         Some((list[0]?, list[1]?))
     }
-    // pub(crate) fn get3(&self) -> Option<(BufRange, BufRange, BufRange)> {
-    //     let list = self.list.as_ref();
-    //     Some((list[0]?, list[1]?, list[2]?))
-    // }
-    // pub(crate) fn get4(&self) -> Option<(BufRange, BufRange, BufRange, BufRange)> {
-    //     let list = self.list.as_ref();
-    //     Some((list[0]?, list[1]?, list[2]?, list[3]?))
-    // }
 }
