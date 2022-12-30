@@ -214,6 +214,7 @@ let handler = self.handler.as_ref()
     ._else(|| Response::BadRequest(None))?;
 ```
 ### log config
+add `tracing` and `tracing_subscriber` to your `Cargo.toml`.
 ```rust
 fn main() -> Result<()> {
     let config = Config {
@@ -228,6 +229,9 @@ fn main() -> Result<()> {
 }
 ```
 ### DB config
+eneble one of following pairs of features：
+- `sqlx` and `postgres`
+- `sqlx` and `mysql`
 ```rust
 let config = Config {
     db_profile: DBprofile {
@@ -238,6 +242,9 @@ let config = Config {
 };
 ```
 ### use sqlx
+eneble one of following pairs of features：
+- `sqlx` and `postgres`
+- `sqlx` and `mysql`
 ```rust
 let user = sqlx::query_as::<_, User>(
     "SELECT id, name FROM users WHERE id = $1"
