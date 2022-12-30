@@ -2,10 +2,10 @@ use crate::utils::buffer::{BufRange, Buffer};
 
 
 /// for request headers
-pub(crate) struct HeaderMap(
+pub(crate) struct HeaderRangeMap(
     Vec<(BufRange, BufRange)>
-); impl HeaderMap {
-    pub fn get<'buf, K: HeaderKey>(&self, key: K, buffer: &'buf Buffer) -> Option<&'buf str> {
+); impl HeaderRangeMap {
+    pub(crate) fn get<'buf, K: HeaderKey>(&self, key: K, buffer: &'buf Buffer) -> Option<&'buf str> {
         let key = key.as_key_str();
         for (key_range, value_range) in &self.0 {
             if buffer.read_str(key_range) == key {

@@ -2,7 +2,7 @@ use std::str::Lines;
 use crate::{
     response::Response,
     result::{Result, ElseResponse},
-    components::{method::Method, headers::HeaderMap},
+    components::{method::Method, headers::HeaderRangeMap},
     utils::{buffer::BufRange, range::{RangeMap, RANGE_MAP_SIZE}},
 };
 
@@ -11,7 +11,7 @@ pub(crate) fn parse_request_lines(mut lines: Lines) -> Result<(
     Method,
     String/*path*/,
     Option<RangeMap>/*query param*/,
-    HeaderMap,
+    HeaderRangeMap,
     Option<String>/*request body*/,
 )> {
     let line = lines.next()
@@ -29,7 +29,7 @@ pub(crate) fn parse_request_lines(mut lines: Lines) -> Result<(
 
     let (path, query) = extract_query(path_str, method_str.len() - 1/*' '*/)?;
 
-    let mut header_map = HeaderMap::new();
+    let mut header_map = HeaderRangeMap::new();
     let mut offset = line.len() + 2/*'\r\n'*/;
     while let Some(line) = lines.next() {
         if line.is_empty() {break}

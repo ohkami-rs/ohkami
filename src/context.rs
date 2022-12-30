@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     result::{Result, ElseResponse, ElseResponseWithErr},
     utils::{range::RangeMap, buffer::Buffer},
-    components::{json::JSON, status::Status, headers::{HeaderMap, HeaderKey}},
+    components::{json::JSON, status::Status, headers::{HeaderRangeMap, HeaderKey}},
     response::{Response, message::ErrorMessage, body::{Body, ResponseBody}},
 };
 
@@ -27,7 +27,7 @@ pub struct RequestContext {
 
     // pub(crate) body:        Option<JSON>,
     pub(crate) query_range: Option<RangeMap>,
-    pub(crate) headers:     HeaderMap,
+    pub(crate) headers:     HeaderRangeMap,
 }
 
 impl Context {

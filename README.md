@@ -19,7 +19,7 @@ ohkami *- [狼] means wolf in Japanese -* is **simple** and **macro free** web f
 
 ```toml
 [dependencies]
-ohkami = "0.6.3"
+ohkami = "0.6.4"
 ```
 
 2. Write your first code with ohkami:
@@ -296,7 +296,7 @@ fn main() -> Result<()> {
 ### test
 1. split setup process from `main` function:
 ```rust
-fn server() -> Server {
+fn server() -> Ohkami {
     Ohkami::default()
         .GET("/", || async {Response::OK("Hello!")})
 }
