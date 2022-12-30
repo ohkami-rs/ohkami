@@ -289,39 +289,10 @@ macro_rules! impl_handler_with_2ints {
     - 4ints
     - string_2ints
     - string_3ints
+    - ...
 
     But, how many services need more than 2 path parameters?
 */
-
-// macro_rules! impl_handler_with_3ints {
-//     ( $( ($int1:ty, $int2:ty, $int3:ty) )* ) => {
-//         $(
-//             impl Param for ($int1, $int2, $int3) {}
-//             impl<F, Fut> Handler<($int1, $int2, $int3)> for F
-//             where
-//                 F:   Fn(Context, $int1, $int2, $int3) -> Fut + Send + Sync + 'static,
-//                 Fut: Future<Output=Result<Response>> + Send + 'static
-//             {
-//                 fn into_handlefunc(self) -> (HandleFunc, u8) {
-//                     Box::new(move |ctx, params|
-//                         match params.get3() {
-//                             Some((range1, range2, range3)) => {
-//                                 let parsed1 = ctx.req.buffer.read_str(&range1).parse::<$int1>();
-//                                 let parsed2 = ctx.req.buffer.read_str(&range2).parse::<$int2>();
-//                                 let parsed2 = ctx.req.buffer.read_str(&range3).parse::<$int3>();
-//                                 match (parsed1, parsed2, parsed3) {
-//                                     (Ok(param1), Ok(param2), Ok(param3)) => Box::pin(self(ctx, param1, param2, param3)),
-//                                     _ => Box::pin(async {Err(Response::BadRequest("format of path param is wrong"))})
-//                                 }
-//                             },
-//                             None => unreachable!(/* already validated in Server::add_handler */),
-//                         }
-//                     )
-//                 }
-//             }
-//         )*
-//     };
-// }
 
 macro_rules! impl_handler_with_string_int {
     ( $($int:ty)* ) => {
