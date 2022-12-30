@@ -53,6 +53,7 @@ where
     }
 }
 
+/// A set of ohkami's middlewares
 pub struct Middleware {
     pub(crate) proccess:     Vec<(Method, /*route*/&'static str, MiddlewareFunc)>,
     pub(crate) setup_errors: Vec<String>,
@@ -63,6 +64,8 @@ pub struct Middleware {
             setup_errors: Vec::new(),
         }
     }
+
+    /// Add a middleware func for requests of any methods to given path
     #[allow(non_snake_case)]
     pub fn ANY<P: MiddlewareProcess<Arg> + Clone, Arg: MiddlewareArg>(
         mut self,
@@ -80,6 +83,8 @@ pub struct Middleware {
         self.proccess.push((Method::DELETE, route, proccess.clone().into_middleware_func()));
         self
     }
+
+    /// Add a middleware func for requests of GET requests to given path
     #[allow(non_snake_case)]
     pub fn GET<P: MiddlewareProcess<Arg>, Arg: MiddlewareArg>(
         mut self,
@@ -94,6 +99,8 @@ pub struct Middleware {
         self.proccess.push((Method::GET, route, proccess.into_middleware_func()));
         self
     }
+
+    /// Add a middleware func for requests of POST requests to given path
     #[allow(non_snake_case)]
     pub fn POST<P: MiddlewareProcess<Arg>, Arg: MiddlewareArg>(
         mut self,
@@ -108,6 +115,8 @@ pub struct Middleware {
         self.proccess.push((Method::POST, route, proccess.into_middleware_func()));
         self
     }
+
+    /// Add a middleware func for requests of PATCH requests to given path
     #[allow(non_snake_case)]
     pub fn PATCH<P: MiddlewareProcess<Arg>, Arg: MiddlewareArg>(
         mut self,
@@ -122,6 +131,8 @@ pub struct Middleware {
         self.proccess.push((Method::PATCH, route, proccess.into_middleware_func()));
         self
     }
+
+    /// Add a middleware func for requests of DELETE requests to given path
     #[allow(non_snake_case)]
     pub fn DELETE<P: MiddlewareProcess<Arg>, Arg: MiddlewareArg>(
         mut self,

@@ -31,6 +31,9 @@ pub struct RequestContext {
 }
 
 impl Context {
+    /// Generate `Response` value that represents a HTTP response `200 OK` wrapped in `Ok()`. body:
+    /// - `String` | `&str` => `text/plain`
+    /// - `JSON` | `Result<JSON>` => `application/json`
     #[allow(non_snake_case)]
     pub fn OK<B: ResponseBody>(&self, body: B) -> Result<Response> {
         Ok(Response {
@@ -39,6 +42,7 @@ impl Context {
             body: body.as_body()?
         })
     }
+    /// Generate `Response` value that represents a HTTP response `201 Created` wrapped in `Ok()`.
     #[allow(non_snake_case)]
     pub fn Created<T: Serialize + for <'d> Deserialize<'d>>(&self, created: JSON<T>) -> Result<Response> {
         Ok(Response {
@@ -47,6 +51,7 @@ impl Context {
             body: Some(Body::application_json(created.ser()?))
         })
     }
+    /// Generate `Response` value that represents a HTTP response `204 No Content` wrapped in `Ok()`.
     #[allow(non_snake_case)]
     pub fn NoContent() -> Result<Response> {
         Ok(Response {
@@ -117,6 +122,7 @@ impl Context {
         }
     }
 
+    /// Add response header of `{key}: {value}`. key: &'static str | Header
     pub fn header<Key: HeaderKey>(&mut self, key: Key, value: &'static str) {
         self.additional_headers += key.as_key_str();
         self.additional_headers += ": ";
@@ -155,7 +161,7 @@ impl<'d> RequestContext {
         )
     }
 
-    /// key: &'static str | Header
+    /// Get value of the request header if it exists. key: &'static str | Header
     pub fn header<K: HeaderKey>(&self, key: K) -> Result<&str> {
         let key_str = key.as_key_str();
         self.headers.get(key_str, &self.buffer)

@@ -227,6 +227,29 @@ impl Ohkami {
         self
     }
 
+    /// Add handlers to requests to `path` (like axum). Be sure to import items `ohkami::group::{/* here */}` to make a group：
+    /// ```no_run
+    /// use ohkami::{
+    ///     prelude::*,
+    ///     group::{GET, POST} // import this
+    /// };
+    /// 
+    /// fn main() -> Result<()> {
+    ///     Ohkami::default()
+    ///         .route("/api",
+    ///             GET(hello_api).POST(reflect)
+    ///         )
+    ///         .howl(":3000")
+    /// }
+    /// 
+    /// async fn hello_api() -> Result<Response> {
+    ///     /* --- */
+    /// }
+    /// 
+    /// async fn reflect(payload: JSON<User>) -> Result<Response> {
+    ///     /* --- */
+    /// }
+    /// ```
     pub fn route(mut self, path: &'static str, group: HandlerGroup) -> Self {
         let (
             is_valid_path,
@@ -288,7 +311,7 @@ impl Ohkami {
         self
     }
 
-    /// Start listening and serving on given TCP address (if it failed, returns error).\
+    /// Start listening and serving on given TCP address (if it failed, returns error).
     /// - `":{port}"` (like `":3000"`) is interpret as `"0.0.0.0:{port}"`
     /// - `"localhost:{port}"` (like `"localhost:8080"`) is interpret as `"127.0.0.1:{port}"`
     /// - other formats are interpret as raw TCP address

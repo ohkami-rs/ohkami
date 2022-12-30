@@ -8,12 +8,29 @@ pub enum JSON<T: Serialize + for <'d> Deserialize<'d>> {
     Ser(String),
     De(T),
 } impl<T: Serialize + for <'d> Deserialize<'d>> JSON<T> {
+    /// ```no_run
+    /// {
+    ///     match self {
+    ///         Self::Ser(s) => Ok(s),
+    ///         Self::De(d) => Ok(serde_json::to_string(&d)?),
+    ///     }
+    /// }
+    /// ```
     pub fn ser(self) -> Result<String> {
         match self {
             Self::Ser(s) => Ok(s),
             Self::De(d) => Ok(serde_json::to_string(&d)?),
         }
     }
+
+    /// ```no_run
+    /// {
+    ///     match self {
+    ///         Self::De(d) => Ok(d),
+    ///         Self::Ser(s) => Ok(serde_json::from_str(&s)?),
+    ///     }
+    /// }
+    /// ```
     pub fn de(self) -> Result<T> {
         match self {
             Self::De(d) => Ok(d),
@@ -32,7 +49,10 @@ impl<T: Serialize + for <'d> Deserialize<'d>> Deref for JSON<T> {
     }
 }
 
-
+/// Try serializing the value.
+/// ```no_run
+/// c.OK(json(user))
+/// ```
 pub fn json<T: Serialize>(value: T) -> Result<Body> {
     Ok(Body::application_json(
         serde_json::to_string(&value)?

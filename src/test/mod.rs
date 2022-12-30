@@ -20,15 +20,15 @@ impl ExpectedResponse for Response {fn as_response(self) -> Result<Response> {Er
 impl ExpectedResponse for Result<Response> {fn as_response(self) -> Result<Response> {self}}
 
 pub trait Test {
-    fn can_serve(&self);
+    /// Asserts that the server returns expected response to the request.
     fn assert_to_res<R: ExpectedResponse>(&self, request: &Request, expected: R);
+    /// Asserts that the server DOESN'T return the response to the request.
     fn assert_not_to_res<R: ExpectedResponse>(&self, request: &Request, expected: R);
+    /// Performs one-time handling and returns a `Response`
     fn oneshot_res(&self, request: &Request) -> Response;
+    /// Performs one-time handling and asserts the response includes a response body of `application/json`. If so, returns the `JSON`.
     fn oneshot_json<T: Serialize + for <'d> Deserialize<'d>>(&self, request: &Request) -> JSON<T>;
 } impl Test for Ohkami {
-    fn can_serve(&self) {
-        assert!(self.setup_errors.is_empty())
-    }
     fn assert_to_res<R: ExpectedResponse>(&self, request: &Request, expected_response: R) {
         let actual_response = block_on(async {
             consume_buffer(
