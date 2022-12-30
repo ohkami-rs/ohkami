@@ -19,7 +19,7 @@ ohkami *- [狼] means wolf in Japanese -* is **simple** and **macro free** web f
 
 ```toml
 [dependencies]
-ohkami = "0.6.2"
+ohkami = "0.6.3"
 ```
 
 2. Write your first code with ohkami:
