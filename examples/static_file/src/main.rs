@@ -32,7 +32,7 @@ fn main() -> Result<()> {
         .GET("/", || async {Response::OK("Welcome to dinosaur API!")})
         .GET("/api", || async {Response::OK(DATA_STR.as_str())})
         .GET("/api/:dinosaur", get_one_by_name)
-        .howl(":8000")
+        .howl(":8080")
 }
 
 async fn get_one_by_name(name: String) -> Result<Response> {
