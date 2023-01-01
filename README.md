@@ -15,7 +15,8 @@ ohkami *- [狼] means wolf in Japanese -* is **simple** and **macro free** web f
 <br/>
 
 ## 0.6.4 → 0.6.5
-fixed `json!` macro implementation
+- fixed `json!` macro implementation
+- changed testing module: `test` -> `testing`
 
 <br/>
 
