@@ -10,7 +10,7 @@ fn main() -> Result<()> {
 
 #[cfg(test)]
 mod test {
-    use ohkami::{server::Ohkami, response::Response, test::{Test, Request, Method}};
+    use ohkami::{server::Ohkami, response::Response, testing::{Test, Request, Method}};
     use once_cell::sync::Lazy;
 
     static SERVER: Lazy<Ohkami> = Lazy::new(|| super::server());

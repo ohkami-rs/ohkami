@@ -1,5 +1,5 @@
 use std::{pin::Pin, future::Future};
-use crate::{context::Context, test::Method, utils::validation};
+use crate::{context::Context, testing::Method, utils::validation};
 
 // pub(crate) type MiddlewareFunc = Box<dyn Fn(&mut Context) -> Pin<Box<dyn Future<Output=()> + Send>> + Send + Sync>;
 pub(crate) type MiddlewareFunc = Box<dyn Fn(Context) -> Pin<Box<dyn Future<Output=Context> + Send>> + Send + Sync>;

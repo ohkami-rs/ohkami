@@ -284,7 +284,7 @@ fn main() -> Result<()> {
     };
 
     let middleware = Middleware::new()
-        .ANY("/*", |c| async {
+        .ANY("*", |c| async {
             tracing::info!("Hello, middleware!");
             c
         });

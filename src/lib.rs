@@ -10,7 +10,7 @@ pub mod result;
 pub mod context;
 pub mod response;
 pub mod components;
-pub mod test;
+pub mod testing;
 pub(crate) mod utils;
 pub(crate) mod router;
 pub(crate) mod handler;

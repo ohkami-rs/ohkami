@@ -25,7 +25,7 @@ async fn only_whose_name_starts_with_j_can_login(payload: JSON<User>) -> Result<
 
 #[cfg(test)]
 mod test {
-    use ohkami::{prelude::*, json, test::{Test, Request, Method}};
+    use ohkami::{prelude::*, json, testing::{Test, Request, Method}};
     use super::{only_whose_name_starts_with_j_can_login, User};
 
     #[test]
