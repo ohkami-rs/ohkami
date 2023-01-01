@@ -14,12 +14,17 @@ ohkami *- [狼] means wolf in Japanese -* is **simple** and **macro free** web f
 
 <br/>
 
+## 0.6.4 → 0.6.5
+fixed `json!` macro implementation
+
+<br/>
+
 ## Quick start
 1. Add dependencies:
 
 ```toml
 [dependencies]
-ohkami = "0.6.4"
+ohkami = "0.6.5"
 ```
 
 2. Write your first code with ohkami:
