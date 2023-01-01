@@ -315,10 +315,10 @@ fn main() -> Result<()> {
 ```rust
 #[cfg(test)]
 mod test {
-    use ohkami::{Ohkami::Server, response::Response, testing::{Test, Request, Method}};
+    use ohkami::{Ohkami, response::Response, testing::{Test, Request, Method}};
     use once_cell::sync::Lazy;
 
-    static SERVER: Lazy<Server> = Lazy::new(|| super::server());
+    static SERVER: Lazy<Ohkami> = Lazy::new(|| super::server());
 
     #[test]
     fn test_hello() {
