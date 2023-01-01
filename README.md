@@ -311,7 +311,7 @@ fn main() -> Result<()> {
     server().howl(":3000")
 }
 ```
-2. import `test::Test` and other utils
+2. import `testing::Test` and other utils
 ```rust
 #[cfg(test)]
 mod test {
