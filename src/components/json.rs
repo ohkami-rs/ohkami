@@ -68,9 +68,10 @@ pub fn json<T: Serialize>(value: T) -> Result<Body> {
 /// ```
 #[macro_export]
 macro_rules! json {
-    {$($key:literal : $value:expr),*} => {
+    {$key1:literal : $value1: expr $(, $key:literal : $value:expr)*} => {
         Body::application_json(
             String::from("{")
+            + &format!("\"{}\":{:?}", $key1, $value1)
             $( + &format!(",\"{}\":{:?}", $key, $value) )*
             + "}"
         )
