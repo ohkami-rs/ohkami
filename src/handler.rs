@@ -79,7 +79,7 @@ where
                 },
                 None => Box::pin(async {Err(Response::BadRequest("Expected a request body"))})
             }
-        ), 1)
+        ), 0)
     }
 }
 
