@@ -2,7 +2,7 @@ use std::{str::{self, Lines}, ops::{Index, RangeInclusive}};
 use async_std::{net::TcpStream, io::ReadExt};
 use crate::result::Result;
 
-const BUF_SIZE: usize = 1024;
+const BUF_SIZE: usize = 512;
 
 
 pub(crate) struct Buffer(
