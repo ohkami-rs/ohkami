@@ -123,7 +123,7 @@ impl Context {
     }
 
     /// Add response header of `{key}: {value}`. key: &'static str | Header
-    pub fn header<Key: HeaderKey>(&mut self, key: Key, value: &'static str) {
+    pub fn add_header<Key: HeaderKey>(&mut self, key: Key, value: &'static str) {
         self.additional_headers += key.as_key_str();
         self.additional_headers += ": ";
         self.additional_headers += value;
