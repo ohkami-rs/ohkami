@@ -3,7 +3,7 @@ use crate::{
     response::Response,
     result::{Result, ElseResponse},
     components::{method::Method, headers::HeaderRangeMap},
-    utils::{buffer::BufRange, range::{RangeMap, RANGE_MAP_SIZE}},
+    utils::{buffer::BufRange, range::{RangeMap, RANGE_MAP_SIZE}}, prelude::Body,
 };
 
 
@@ -12,7 +12,7 @@ pub(crate) fn parse_request_lines(mut lines: Lines) -> Result<(
     String/*path*/,
     Option<RangeMap>/*query param*/,
     HeaderRangeMap,
-    Option<String>/*request body*/,
+    Option<Body>/*request body*/,
 )> {
     let line = lines.next()
         ._else(|| Response::BadRequest("empty request"))?;
@@ -31,6 +31,7 @@ pub(crate) fn parse_request_lines(mut lines: Lines) -> Result<(
 
     let mut header_map = HeaderRangeMap::new();
     let mut offset = line.len() + 2/*'\r\n'*/;
+    let mut is_json = false;
     while let Some(line) = lines.next() {
         if line.is_empty() {break}
 
@@ -40,15 +41,28 @@ pub(crate) fn parse_request_lines(mut lines: Lines) -> Result<(
             BufRange::new(offset+colon+1/*' '*/+1, offset+line.len()-1)
         );
 
+        if !is_json
+        && &line[..colon]=="Content-Type"
+        && &line[colon+2..colon+2+16]=="application/json" {
+            is_json = true
+        }
+
         offset += line.len() + 2/*'\r\n'*/
     }
 
-    let body = lines.next().map(|s| s.to_owned());
+    let body = lines.next()
+        .map(|s| {
+            let content = s.to_owned();
+            if is_json {
+                Body::application_json(content)
+            } else {
+                Body::text_plain(content)
+            }
+        });
 
     Ok((
         Method::parse(method_str)?,
         path.trim_end_matches('/').to_owned(),
-        // param,
         query,
         header_map,
         body

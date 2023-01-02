@@ -15,7 +15,7 @@ use crate::{
         parse::parse_request_lines, validation, buffer::Buffer
     },
     router::Router,
-    handler::{Handler, Param, group::HandlerGroup}, setting::{IntoServerSetting, ServerSetting, Middleware}
+    handler::{Handler, Param, group::HandlerGroup}, setting::{IntoServerSetting, ServerSetting, Middleware}, prelude::Body
 };
 
 #[cfg(feature = "postgres")]
@@ -425,6 +425,18 @@ pub(crate) async fn consume_buffer(
         buffer.lines()?
     )?;
 
+    let mut context = Context {
+        req: RequestContext {
+            buffer,
+            headers,
+            query_range,
+        },
+        additional_headers: String::new(),
+        
+        #[cfg(feature = "sqlx")]
+        pool: connection_pool,
+    };
+
     let (
         handler,
         params,
@@ -435,29 +447,23 @@ pub(crate) async fn consume_buffer(
         &path
     )?;
 
-    let mut context = Context {
-        req: RequestContext {
-            buffer,
-            // body,
-            headers,
-            query_range,
-        },
-        additional_headers: String::new(),
-        
-        #[cfg(feature = "sqlx")]
-        pool: connection_pool,
-    };
-
     for proccess in middleware_proccess {
         context = proccess(context).await;
     }
     if let Some(pre_handle) = middleware_just {
         context = pre_handle(context).await;
     }
-
     tracing::debug!("{:?}", context);
 
-    handler(context, params, body).await
+    match body {
+        Some(Body::text_plain(_)) | Some(Body::text_html(_)) => Err(
+            Response::NotImplemented(
+                "Current ohkami can only handle `application/json` as request body"
+            )
+        ),
+        Some(Body::application_json(string)) => handler(context, params, Some(string)).await,
+        None => handler(context, params, None).await,
+    }
 }
 
 
@@ -473,8 +479,8 @@ mod test {
         };
 
         Ohkami::with(config)
-            .GET("/", || async {
-                Response::OK("Hello!")
+            .GET("/", |c: Context| async move {
+                c.OK("Hello!")
             });
     }
 }

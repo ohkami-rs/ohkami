@@ -14,9 +14,8 @@ ohkami *- [狼] means wolf in Japanese -* is **simple** and **macro free** web f
 
 <br/>
 
-## 0.6.4 → 0.6.5
-- fixed `json!` macro implementation
-- changed testing module: `test` -> `testing`
+## 0.6.5 → 0.6.6
+- fixed to handle request body as JSON only when request headers contain `Content-Type: application/json`
 
 <br/>
 
@@ -25,7 +24,7 @@ ohkami *- [狼] means wolf in Japanese -* is **simple** and **macro free** web f
 
 ```toml
 [dependencies]
-ohkami = "0.6.5"
+ohkami = "0.6.6"
 ```
 
 2. Write your first code with ohkami:
@@ -160,7 +159,7 @@ fn main() -> Result<()> {
 
     // ...
 ```
-### return OK response with `text/plain`
+### OK response with `text/plain`
 ```rust
 Response::OK("Hello, world!")
 // without Context
@@ -169,7 +168,7 @@ Response::OK("Hello, world!")
 c.OK("Hello, world!")
 // with Context
 ```
-### return OK response with `application/json`
+### OK response with `application/json`
 ```rust
 Response::OK(json!{"ok": true})
 // or
