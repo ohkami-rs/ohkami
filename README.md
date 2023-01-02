@@ -48,6 +48,8 @@ fn main() -> Result<()> {
 ## Snippets
 ### handle query params
 ```rust
+// c: Context
+
 let name: &str = c.req.query("name")?;
 
 let count: usize = c.req.query("count")?;
