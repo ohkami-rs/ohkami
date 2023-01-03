@@ -6,7 +6,7 @@ pub(crate) struct User {
     pub name: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Serialize, Deserialize)]
 pub(crate) struct CreateUser {
     pub username: String,
 }

@@ -400,7 +400,7 @@ macro_rules! impl_handler_with_string_int {
 
 #[cfg(test)]
 mod test {
-    use crate::{context::Context, response::{Response, body::Body}, result::Result, json, prelude::JSON};
+    use crate::{context::Context, response::{Response, body::Body}, result::Result, json, components::json::{json, JSON}};
     use super::{Handler, Param, HandleFunc};
     use serde::{Serialize, Deserialize};
 
@@ -420,7 +420,10 @@ mod test {
         Response::OK("Hello!")
     }
     async fn b(_: Context, id: usize) -> Result<Response> {
-        Response::OK(json!("id": id))
+        Response::OK(json! {"id": id})
+    }
+    async fn b2(_: Context, id: String) -> Result<Response> {
+        Response::Created(json(id))
     }
 
     #[derive(Serialize, Deserialize)]

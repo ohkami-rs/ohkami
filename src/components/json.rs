@@ -77,3 +77,28 @@ macro_rules! json {
         )
     };
 }
+
+
+
+#[cfg(test)]
+mod test {
+    use serde::{Serialize, Deserialize};
+
+    use crate::prelude::{Response, Result};
+
+    use super::JSON;
+
+    #[derive(Serialize, Deserialize)]
+    struct User {
+        id:   i64,
+        name: String,
+    }
+
+    async fn h1(payload: JSON<User>) -> Result<Response> {
+        Response::Created(payload)
+    }
+    async fn h2(payload: JSON<User>) -> Result<Response> {
+        let user: User = payload.de()?;
+        Response::NoContent()
+    }
+}

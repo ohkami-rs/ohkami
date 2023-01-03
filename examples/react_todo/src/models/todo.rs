@@ -16,13 +16,13 @@ pub(crate) struct Todo {
     }
 }
 
-#[derive(Deserialize, Validate)]
+#[derive(Serialize, Deserialize, Validate)]
 pub(crate) struct CreateTodo {
     #[validate(length(min = 1, max = 100))]
     pub text: String,
 }
 
-#[derive(Deserialize, Validate)]
+#[derive(Serialize, Deserialize, Validate)]
 pub(crate) struct UpdateTodo {
     #[validate(length(min = 1, max = 100))]
     pub text:      Option<String>,
