@@ -2,7 +2,7 @@
 members = [
     "ohkami",
     "ohkami_macros",
-],
+]
 exclude = [
     "examples/*"
 ]
