@@ -5,7 +5,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        example: [db/rust, simple, static_file, techempower, with_test, use_middleware]
+        example: [db, simple, static_file, techempower, with_test, use_middleware]
     steps:
       - uses: actions/checkout@v3
       - uses: actions-rs/toolchain@v1
