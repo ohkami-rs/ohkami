@@ -2,5 +2,4 @@
 members = [
     "ohkami",
     "ohkami_macros",
-    "examples"
 ]
