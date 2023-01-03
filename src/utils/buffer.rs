@@ -1,22 +1,31 @@
 use std::{str::{self, Lines}, ops::{Index, RangeInclusive}};
 use async_std::{net::TcpStream, io::ReadExt};
-use crate::result::Result;
 
 const BUF_SIZE: usize = 512;
-
 
 pub(crate) struct Buffer(
     [u8; BUF_SIZE]
 ); impl Buffer {
-    pub async fn new(stream: &mut TcpStream) -> Result<Self> {
+    pub async fn new(stream: &mut TcpStream) -> Self {
         let mut buffer = [b' '; BUF_SIZE];
-        stream.read(&mut buffer).await?;
-        Ok(Self(buffer))
+        match stream.read(&mut buffer).await {
+            Ok(_) => Self(buffer),
+            Err(err) => {
+                tracing::error!("failed to read TcpStream");
+                panic!("err: {}", err.to_string())
+            }
+        }
     }
-    pub fn lines(&self) -> Result<Lines> {
-        Ok(str::from_utf8(&self.0)?.trim_end().lines())
+    pub fn lines(&self) -> Lines {
+        match std::str::from_utf8(&self.0) {
+            Ok(string) => string.trim_end().lines(),
+            Err(err) => {
+                tracing::error!("invalid TcpStream format");
+                panic!("err: {}", err.to_string())
+            }
+        }
     }
-    pub fn read_str(&self, range: &BufRange) -> &str {
+    pub(crate) fn read_str(&self, range: &BufRange) -> &str {
         let target_bytes = &self[*range];
         unsafe {
             std::str::from_utf8_unchecked(target_bytes)

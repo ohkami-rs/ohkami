@@ -122,11 +122,11 @@ Keep-Alive: timeout=5
     /// Generate `Result<Response>` value that represents a HTTP response of `201 Created`.
     /// You can directly return `Response::Created(/* something */)` from a handler because this is already wrapped in `Result::Ok`.
     #[allow(non_snake_case)]
-    pub fn Created<T: Serialize + for <'d> Deserialize<'d>>(body: JSON<T>) -> Result<Self> {
+    pub fn Created<B: Into<Result<Body>>>(body: B) -> Result<Self> {
         Ok(Self {
             additional_headers: String::new(),
             status:             Status::Created,
-            body:               Some(Body::application_json(body.ser()?)),
+            body:               Some(body.into()?),
         })
     }
     /// Generate `Result<Response>` value that represents a HTTP response of `204 No Content`.

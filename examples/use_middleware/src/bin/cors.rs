@@ -23,8 +23,7 @@ mod middleware {
     }
 
     pub async fn cors(mut c: Context) -> Context {
-        c.header(AccessControlAllowOrigin, "localhost:8000");
-        tracing::debug!("by cors(): context: {c:#?}");
+        c.add_header(AccessControlAllowOrigin, "localhost:8000");
         c
     } 
 }

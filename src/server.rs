@@ -12,7 +12,7 @@ use crate::{
     response::Response,
     result::Result,
     utils::{
-        parse::parse_request_lines, validation, buffer::Buffer
+        parse::parse_request, validation, buffer::Buffer
     },
     router::Router,
     response::body::Body,
@@ -400,7 +400,7 @@ async fn setup_response(
     #[cfg(feature = "sqlx")]
     connection_pool: Arc<ConnectionPool>,
 ) -> Result<Response> {
-    let buffer = Buffer::new(stream).await?;
+    let buffer = Buffer::new(stream).await;
     consume_buffer(
         buffer,
         &*router,
@@ -423,8 +423,8 @@ pub(crate) async fn consume_buffer(
         query_range,
         headers,
         body
-    ) = parse_request_lines(
-        buffer.lines()?
+    ) = parse_request(
+        buffer.lines()
     )?;
 
     let mut context = Context {

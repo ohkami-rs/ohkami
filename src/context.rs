@@ -1,9 +1,8 @@
 use std::fmt::Debug;
-use serde::{Deserialize, Serialize};
 use crate::{
     result::{Result, ElseResponse, ElseResponseWithErr},
     utils::{range::RangeMap, buffer::Buffer},
-    components::{json::JSON, status::Status, headers::{HeaderRangeMap, HeaderKey}},
+    components::{status::Status, headers::{HeaderRangeMap, HeaderKey}},
     response::{Response, message::ErrorMessage, body::{Body, ResponseBody}},
 };
 
@@ -44,11 +43,11 @@ impl Context {
     }
     /// Generate `Response` value that represents a HTTP response `201 Created` wrapped in `Ok()`.
     #[allow(non_snake_case)]
-    pub fn Created<T: Serialize + for <'d> Deserialize<'d>>(&self, created: JSON<T>) -> Result<Response> {
+    pub fn Created<B: Into<Result<Body>>>(&self, body: B) -> Result<Response> {
         Ok(Response {
             additional_headers: self.additional_headers.to_owned(),
-            status: Status::Created,
-            body: Some(Body::application_json(created.ser()?))
+            status:             Status::Created,
+            body:               Some(body.into()?),
         })
     }
     /// Generate `Response` value that represents a HTTP response `204 No Content` wrapped in `Ok()`.
@@ -123,7 +122,7 @@ impl Context {
     }
 
     /// Add response header of `{key}: {value}`. key: &'static str | Header
-    pub fn header<Key: HeaderKey>(&mut self, key: Key, value: &'static str) {
+    pub fn add_header<Key: HeaderKey>(&mut self, key: Key, value: &'static str) {
         self.additional_headers += key.as_key_str();
         self.additional_headers += ": ";
         self.additional_headers += value;

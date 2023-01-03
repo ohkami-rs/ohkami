@@ -142,16 +142,16 @@ async fn reflect_header_custom(c: Context) -> Result<Response> {
 ```
 ### add response headers
 ```rust
-c.header(Header::AccessControlAllowOrigin, "mydomain:8000");
+c.add_header(Header::AccessControlAllowOrigin, "mydomain:8000");
 // or
-c.header("Access-Control-Allow-Origin", "mydomain:8000");
+c.add_header("Access-Control-Allow-Origin", "mydomain:8000");
 ```
 ```rust
 use ohkami::prelude::*;
 use Header::{AccessControlAllowOrigin};
 
 async fn cors(c: Context) -> Context {
-    c.header(AccessControlAllowOrigin, "mydomain:8000");
+    c.add_header(AccessControlAllowOrigin, "mydomain:8000");
     c
 }
 

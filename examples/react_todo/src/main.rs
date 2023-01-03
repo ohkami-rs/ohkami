@@ -6,13 +6,13 @@ use models::repository::TodoStore;
 
 use once_cell::sync::Lazy;
 use ohkami::{
-    server::Server, prelude::Config,
+    server::Ohkami, prelude::Config,
     result::Result,
 };
 
 static TODO_STORE: Lazy<TodoStore> = Lazy::new(|| TodoStore::new());
 
-fn server() -> Server {
+fn server() -> Ohkami {
     let config = Config {
         log_subscribe: Some(
             tracing_subscriber::fmt()
@@ -21,9 +21,8 @@ fn server() -> Server {
         ..Default::default()
     };
 
-    Server::setup_with(config)
+    Ohkami::with(config)
         .GET("/", root)
-
         .POST("/users", create_user)
 
         .GET( "/todos", all_todo)
@@ -35,7 +34,7 @@ fn server() -> Server {
 }
 
 fn main() -> Result<()> {
-    server().serve_on(":3000")
+    server().howl(":3000")
 }
 
 #[cfg(test)]
@@ -44,11 +43,11 @@ mod test {
 
     use once_cell::sync::Lazy;
     use ohkami::{
-        test::{Test, Request, Method::*, Status},
-        response::Response, server::Server,
+        testing::{Test, Request, Method::*, Status},
+        response::Response, server::Ohkami,
     };
 
-    static SERVER: Lazy<Server> = Lazy::new(|| super::server());
+    static SERVER: Lazy<Ohkami> = Lazy::new(|| super::server());
 
     #[test]
     fn should_return_hello_world() {
@@ -63,8 +62,8 @@ mod test {
         let req = Request::new(POST, "/users")
             .body(r#"{ "username": "Taro" }"#);
 
-        let res = SERVER.oneshot_json(&req)
-            .to_struct::<User>()
+        let res = SERVER.oneshot_json::<User>(&req)
+            .de()
             .expect("request body isn't User");
 
         assert_eq!(res, User {
@@ -96,15 +95,15 @@ mod test {
         // create
         let req = Request::new(POST, "/todos")
             .body(r#"{ "text": "sample todo text 1" }"#);
-        let res = SERVER.oneshot_json(&req)
-            .to_struct::<Todo>()
+        let res = SERVER.oneshot_json::<Todo>(&req)
+            .de()
             .expect("response isn't a Todo");
         assert_eq!(res, sample_todo_1);
 
         // find
         let req = Request::new(GET, "/todos/1");
-        let res = SERVER.oneshot_json(&req)
-            .to_struct::<Todo>()
+        let res = SERVER.oneshot_json::<Todo>(&req)
+            .de()
             .expect("response isn't a Todo");
         assert_eq!(res, sample_todo_1);
 
@@ -113,8 +112,8 @@ mod test {
             &Request::new(POST, "/todos").body(r#"{ "text": "sample todo text 2" }"#)
         );
         let req = Request::new(GET, "/todos");
-        let mut res = SERVER.oneshot_json(&req)
-            .to_struct::<Vec<Todo>>()
+        let mut res = SERVER.oneshot_json::<Vec<Todo>>(&req)
+            .de()
             .expect("response isn't a Vec<Todo>");
         res.sort_by_key(|todo| todo.id); //
         assert_eq!(res, vec![sample_todo_1, sample_todo_2]);
@@ -122,8 +121,8 @@ mod test {
         // update
         let req = Request::new(PATCH, "/todos/1")
             .body(r#"{ "text": "updated text" }"#);
-        let res = SERVER.oneshot_json(&req)
-            .to_struct::<Todo>()
+        let res = SERVER.oneshot_json::<Todo>(&req)
+            .de()
             .expect("response isn't a Todo");
         assert_eq!(res, Todo::new(1, String::from("updated text")));
 

@@ -7,7 +7,7 @@ use crate::{
 };
 
 
-pub(crate) fn parse_request_lines(mut lines: Lines) -> Result<(
+pub(crate) fn parse_request(mut lines: Lines) -> Result<(
     Method,
     String/*path*/,
     Option<RangeMap>/*query param*/,
@@ -16,8 +16,6 @@ pub(crate) fn parse_request_lines(mut lines: Lines) -> Result<(
 )> {
     let line = lines.next()
         ._else(|| Response::BadRequest("empty request"))?;
-    (!line.is_empty())
-        ._else(|| Response::BadRequest("can't find request status line"))?;
 
     let (method_str, path_str) = line
         .strip_suffix(" HTTP/1.1")

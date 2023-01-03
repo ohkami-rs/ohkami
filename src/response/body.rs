@@ -39,11 +39,11 @@ pub enum Body {
     }
 }
 
-// impl<T: Serialize + for <'d> Deserialize<'d>> Into<Body> for JSON<T> {
-//     fn into(self) -> Body {
-//         Body::application_json(self.ser().unwrap_or_else(|_| String::new()))
-//     }
-// }
+impl<T: Serialize + for <'d> Deserialize<'d>> Into<Body> for JSON<T> {
+    fn into(self) -> Body {
+        Body::application_json(self.ser().unwrap_or_else(|_| String::new()))
+    }
+}
 impl Into<Body> for String {
     fn into(self) -> Body {
         Body::text_plain(self)
@@ -69,13 +69,26 @@ impl ResponseFormat for Body {
 pub trait ResponseBody {fn as_body(self) -> Result<Option<Body>>;}
 impl<B: Into<Body>> ResponseBody for B {fn as_body(self) -> Result<Option<Body>> {Ok(Some(self.into()))}}
 impl<B: Into<Body>> ResponseBody for Option<B> {fn as_body(self) -> Result<Option<Body>> {Ok(self.map(|body| body.into()))}}
-impl<T: Serialize + for <'d> Deserialize<'d>> ResponseBody for JSON<T> {
-    fn as_body(self) -> Result<Option<Body>> {
-        Ok(Some(Body::application_json(self.ser()?)))
-    }
-}
 impl<T: Serialize + for <'d> Deserialize<'d>> ResponseBody for Result<JSON<T>> {
     fn as_body(self) -> Result<Option<Body>> {
-        Ok(Some(Body::application_json(self?.ser()?)))
+        let payload = self?;
+        Ok(Some(Body::application_json(payload.ser()?)))
+    }
+}
+impl ResponseBody for Result<Body> {
+    fn as_body(self) -> Result<Option<Body>> {
+        self.map(|body| Some(body))
+    }
+}
+
+
+impl<T: Serialize + for <'d> Deserialize<'d>> Into<Result<Body>> for JSON<T> {
+    fn into(self) -> Result<Body> {
+        Ok(Body::application_json(self.ser()?))
+    }
+}
+impl Into<Result<Body>> for Body {
+    fn into(self) -> Result<Body> {
+        Ok(self)   
     }
 }

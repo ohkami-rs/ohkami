@@ -161,7 +161,7 @@ mod test {
     use crate::prelude::*;
 
     async fn cors(mut c: Context) -> Context {
-        c.header(Header::AccessControlAllowOrigin, "localhost:8000");
+        c.add_header(Header::AccessControlAllowOrigin, "localhost:8000");
         c
     }
 
