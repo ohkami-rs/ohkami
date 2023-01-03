@@ -4,5 +4,11 @@ members = [
     "ohkami_macros",
 ]
 exclude = [
-    "examples/*"
+    "examples/db",
+    "examples/react_todo",
+    "simple",
+    "static_file",
+    "techempower",
+    "use_middleware",
+    "with_test"
 ]
