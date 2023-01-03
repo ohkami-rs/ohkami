@@ -4,13 +4,13 @@ WORKDIR /app
 COPY ./Cargo.toml ./ohkami/Cargo.toml
 COPY ./Cargo.lock ./ohkami/Cargo.lock
 COPY ./src ./ohkami/src
-COPY ./examples/db/rust/Cargo.toml ./Cargo.toml
-COPY ./examples/db/rust/Cargo.lock ./Cargo.lock
+COPY ./examples/db/Cargo.toml ./Cargo.toml
+COPY ./examples/db/Cargo.lock ./Cargo.lock
 RUN mkdir ./src \
  && echo 'fn main() {}' > ./src/main.rs \
  && cargo build \
  && rm ./src/main.rs
-COPY ./examples/db/rust/src/main.rs ./src/main.rs
+COPY ./examples/db/src/main.rs ./src/main.rs
 RUN cargo build --release
 
 FROM debian:buster-slim
