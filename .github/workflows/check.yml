@@ -13,5 +13,5 @@ jobs:
           toolchain: stable
       - name: run check
         run: |
-          cd ./examples/${{ matrix.example }}
+          cd ./ohkami/examples/${{ matrix.example }}
           cargo check

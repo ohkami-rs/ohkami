@@ -2,13 +2,11 @@
 members = [
     "ohkami",
     "ohkami_macros",
-]
-exclude = [
-    "examples/db",
-    "examples/react_todo",
-    "simple",
-    "static_file",
-    "techempower",
-    "use_middleware",
-    "with_test"
+    "ohkami/examples/react_todo",
+    "ohkami/examples/db",
+    "ohkami/examples/simple",
+    "ohkami/examples/static_file",
+    "ohkami/examples/techempower",
+    "ohkami/examples/use_middleware",
+    "ohkami/examples/with_test"
 ]
