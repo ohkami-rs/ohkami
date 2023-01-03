@@ -3,6 +3,11 @@ use serde::{Serialize, Deserialize};
 use crate::{result::Result, response::body::Body};
 
 
+pub trait Json<'j>: Serialize + Deserialize<'j> {
+    fn ser(self) -> String;
+    fn de(string: &str) -> Self;
+}
+
 #[derive(Debug, PartialEq, Clone)]
 pub enum JSON<T: Serialize + for <'d> Deserialize<'d>> {
     Ser(String),
@@ -100,5 +105,36 @@ mod test {
     async fn _h2(payload: JSON<User>) -> Result<Response> {
         let _user: User = payload.de()?;
         Response::NoContent()
+    }
+}
+
+#[cfg(test)]
+mod test_json {
+    use super::Json;
+    use ohkami_macros::Json;
+    use serde::{Serialize, Deserialize};
+
+    #[derive(Json, Serialize, Deserialize, Debug, PartialEq)]
+    struct User {
+        id:   u64,
+        name: String,
+    }
+
+    #[test]
+    fn json_user() {
+        let sample_user = User {
+            id: 1,
+            name: "jsoner".into()
+        };
+        assert_eq!(<User as Json>::de(r#"
+            {
+                "id": 1,
+                "name": "jsoner"
+            }
+        "#), sample_user);
+        assert_eq!(
+            sample_user.ser(),
+            String::from(r#"{"id":1,"name":"jsoner"}"#)
+        );
     }
 }
