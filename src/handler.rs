@@ -422,7 +422,7 @@ mod test {
     async fn b(_: Context, id: usize) -> Result<Response> {
         Response::OK(json! {"id": id})
     }
-    async fn b2(_: Context, id: String) -> Result<Response> {
+    async fn _b2(_: Context, id: String) -> Result<Response> {
         Response::Created(json(id))
     }
 

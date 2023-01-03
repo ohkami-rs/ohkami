@@ -94,11 +94,11 @@ mod test {
         name: String,
     }
 
-    async fn h1(payload: JSON<User>) -> Result<Response> {
+    async fn _h1(payload: JSON<User>) -> Result<Response> {
         Response::Created(payload)
     }
-    async fn h2(payload: JSON<User>) -> Result<Response> {
-        let user: User = payload.de()?;
+    async fn _h2(payload: JSON<User>) -> Result<Response> {
+        let _user: User = payload.de()?;
         Response::NoContent()
     }
 }

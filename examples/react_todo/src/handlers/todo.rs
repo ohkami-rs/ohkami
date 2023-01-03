@@ -20,7 +20,7 @@ pub(crate) async fn create_todo(c: Context, payload: JSON<CreateTodo>) -> Result
 pub(crate) async fn find_todo(c: Context, id: i32) -> Result<Response> {
     let todo = TODO_STORE.find(id)
         ._else(|| c.NotFound("Todo not found"))?;
-    c.OK(json(todo)?)
+    c.OK(json(todo))
 }
 
 pub(crate) async fn all_todo(c: Context) -> Result<Response> {
