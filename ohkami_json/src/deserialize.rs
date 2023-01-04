@@ -49,7 +49,7 @@ macro_rules! impl_for_int {
         )*
     };
 } impl_for_int!(
-    u8 u16 u32 u64 u128 usize i8 i16 i32 i64 i128
+    u8 u16 u32 u64 u128 usize i8 i16 i32 i64 i128 isize
 );
 
 impl<D: Deserialize> Deserialize for Vec<D> {
@@ -62,7 +62,7 @@ impl<D: Deserialize> Deserialize for Vec<D> {
                 Some(' ') => {string.next();},
                 _ => {
                     ret.push(<D as Deserialize>::_deserialize(string)?);
-                    string.next_if_eq(&',')?;
+                    string.next_if_eq(&',');
                 }
             }
         }
@@ -110,6 +110,11 @@ mod test {
             <Vec<u8> as Deserialize>::deserialize("[]").unwrap(),
             vec![]
         );
+        {
+            let mut case = "[1,2,3]@".chars().peekable();
+            <Vec<u8> as Deserialize>::_deserialize(&mut case);
+            assert_eq!(case.collect::<String>(), "@");
+        }
         assert_eq!(
             <Vec<u8> as Deserialize>::deserialize("[1,2,3]").unwrap(),
             vec![1,2,3]
