@@ -1,4 +1,3 @@
-#![feature(iter_next_chunk)]
 mod serialize;
 mod deserialize;
 

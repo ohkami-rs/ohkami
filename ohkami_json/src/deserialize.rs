@@ -23,9 +23,18 @@ impl Deserialize for String {
 
 impl Deserialize for bool {
     fn _deserialize(string: &mut Peekable<Chars>) -> Option<Self> {
-        match string.next_chunk::<4>() {
-            Ok(['t','r','u','e']) => Some(true),
-            Ok(['f','a','l','s']) => (string.next()==Some('e')).then_some(false),
+        match string.next() {
+            Some('t') => Some(
+                string.next() == Some('r') &&
+                string.next() == Some('u') &&
+                string.next() == Some('e')
+            ),
+            Some('f') => Some(!(
+                string.next() == Some('a') &&
+                string.next() == Some('l') &&
+                string.next() == Some('s') &&
+                string.next() == Some('e')
+            )),
             _ => None
         }
     }
