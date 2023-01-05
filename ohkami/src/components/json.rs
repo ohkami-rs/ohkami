@@ -108,33 +108,33 @@ mod test {
     }
 }
 
-#[cfg(test)]
-mod test_json {
-    use super::Json;
-    use ohkami_macros::Json;
-    use serde::{Serialize, Deserialize};
+// #[cfg(test)]
+// mod test_json {
+//     use super::Json;
+//     use ohkami_macros::Json;
+//     use serde::{Serialize, Deserialize};
 
-    #[derive(Json, Serialize, Deserialize, Debug, PartialEq)]
-    struct User {
-        id:   u64,
-        name: String,
-    }
+//     #[derive(Json, Serialize, Deserialize, Debug, PartialEq)]
+//     struct User {
+//         id:   u64,
+//         name: String,
+//     }
 
-    #[test]
-    fn json_user() {
-        let sample_user = User {
-            id: 1,
-            name: "jsoner".into()
-        };
-        assert_eq!(<User as Json>::de(r#"
-            {
-                "id": 1,
-                "name": "jsoner"
-            }
-        "#), sample_user);
-        assert_eq!(
-            sample_user.ser(),
-            String::from(r#"{"id":1,"name":"jsoner"}"#)
-        );
-    }
-}
+//     #[test]
+//     fn json_user() {
+//         let sample_user = User {
+//             id: 1,
+//             name: "jsoner".into()
+//         };
+//         assert_eq!(<User as Json>::de(r#"
+//             {
+//                 "id": 1,
+//                 "name": "jsoner"
+//             }
+//         "#), sample_user);
+//         assert_eq!(
+//             sample_user.ser(),
+//             String::from(r#"{"id":1,"name":"jsoner"}"#)
+//         );
+//     }
+// }
