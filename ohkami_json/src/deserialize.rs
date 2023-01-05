@@ -24,17 +24,17 @@ impl Deserialize for String {
 impl Deserialize for bool {
     fn _deserialize(string: &mut Peekable<Chars>) -> Option<Self> {
         match string.next() {
-            Some('t') => Some(
+            Some('t') => (
                 string.next() == Some('r') &&
                 string.next() == Some('u') &&
                 string.next() == Some('e')
-            ),
-            Some('f') => Some(!(
+            ).then_some(true),
+            Some('f') => (
                 string.next() == Some('a') &&
                 string.next() == Some('l') &&
                 string.next() == Some('s') &&
                 string.next() == Some('e')
-            )),
+            ).then_some(false),
             _ => None
         }
     }
