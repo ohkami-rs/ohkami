@@ -2,7 +2,7 @@ pub trait Serialize {
     fn serialize(&self) -> String;
 }
 
-impl Serialize for &'static str {
+impl Serialize for &str {
     fn serialize(&self) -> String {
         format!(r#""{self}""#)
     }
@@ -35,17 +35,19 @@ macro_rules! impl_for_int {
 
 impl<S: Serialize> Serialize for Vec<S> {
     fn serialize(&self) -> String {
-        self.into_iter().fold(
+        let mut s = self.into_iter().fold(
             String::from("["),
-            |it, next| it + &next.serialize()
-        ) + "]"
+            |it, next| it + &next.serialize() + ","
+        );
+        s.pop(); s + "]"
     }
 }
 impl<S: Serialize, const N: usize> Serialize for [S; N] {
     fn serialize(&self) -> String {
-        self.into_iter().fold(
+        let mut s = self.into_iter().fold(
             String::from("["),
-            |it, next| it + &next.serialize()
-        ) + "]"
+            |it, next| it + &next.serialize() + ","
+        );
+        s.pop(); s + "]"
     }
 }
