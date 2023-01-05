@@ -14,7 +14,6 @@ pub trait JSON: Sized {
 #[cfg(test)]
 mod test {
     use std::{iter::Peekable, str::Chars};
-
     use crate::{JSON, serialize::Serialize, deserialize::Deserialize};
 
     #[derive(Debug, PartialEq)]
@@ -94,7 +93,7 @@ mod test {
             assert!(<User as JSON>::deserialize(r#"{id:1,"name":"abc"}"#).is_none());
             assert!(<User as JSON>::deserialize(r#"{"id":"1","name":"abc"}"#).is_none());
             assert!(<User as JSON>::deserialize(r#"{"id":1}"#).is_none());
-            assert!(<User as JSON>::deserialize(r#"{"id":1, "name":"abc", "id": 2}"#).is_none());
+            assert!(<User as JSON>::deserialize(r#"{"id":1, "name":"abc", "id":2}"#).is_none());
         }
     }
 }
