@@ -1,60 +1,100 @@
+use std::{iter::Peekable, str::Chars};
+
 mod serialize;
 mod deserialize;
 
 pub trait JSON: Sized {
     fn serialize(&self) -> String;
-    fn deserialize(string: &str) -> Result<Self, &str>;
+    fn deserialize(string: &str) -> Option<Self> {
+        Self::_deserialize(&mut string.chars().peekable())
+    }
+    fn _deserialize(string: &mut Peekable<Chars>) -> Option<Self>;
 }
 
 #[cfg(test)]
-mod simple_types {
-    use crate::JSON;
+mod test {
+    use std::{iter::Peekable, str::Chars};
 
-    #[derive(PartialEq, Debug)]
-    struct MyInt(
-        usize
-    );
-    impl JSON for MyInt {
+    use crate::{JSON, serialize::Serialize, deserialize::Deserialize};
+
+    #[derive(Debug, PartialEq)]
+    struct User {
+        id:   u64,
+        name: String,
+    }
+    impl JSON for User {
         fn serialize(&self) -> String {
-            self.0.to_string()
+            format!(r#"{{"id":{},"name":{}}}"#,
+                <u64 as Serialize>::serialize(&self.id),
+                <String as Serialize>::serialize(&self.name),
+            )
         }
-        fn deserialize(string: &str) -> Result<Self, &str> {
-            match string.parse::<usize>() {
-                Ok(int) => Ok(Self(int)),
-                Err(_) => Err(string)
+        fn _deserialize(string: &mut Peekable<Chars>) -> Option<Self> {
+            let (mut id, mut name) = (None, None);
+
+            string.next_if_eq(&'{')?;
+            loop {
+                match string.peek()? {
+                    '}' => {
+                        string.next();
+                        return (
+                            string.next().is_none() &&
+                            id.is_some() &&
+                            name.is_some()
+                        ).then(|| User {
+                            id:   id.unwrap(),
+                            name: name.unwrap(),
+                        })
+                    },
+                    _ => match <String as Deserialize>::_deserialize(string)?.as_str() {
+                        "id" => {
+                            string.next_if_eq(&':')?;
+                            string.next_if_eq(&' ');
+                            if id.replace(<u64 as Deserialize>::_deserialize(string)?)
+                                .is_some() {return None}
+                            string.next_if_eq(&',');
+                            string.next_if_eq(&' ');
+                        },
+                        "name" => {
+                            string.next_if_eq(&':')?;
+                            string.next_if_eq(&' ');
+                            if name.replace(<String as Deserialize>::_deserialize(string)?)
+                                .is_some() {return None}
+                            string.next_if_eq(&',');
+                            string.next_if_eq(&' ');
+                        },
+                        _ => return None,
+                    },
+                }
             }
         }
     }
-    #[test]
-    fn json_int() {
-        let case = MyInt(123);
-        assert_eq!(case.serialize(), "123");
-        assert_eq!(<MyInt as JSON>::deserialize("123").unwrap(), case);
-    }
+    #[test] #[allow(unused_labels)]
+    fn json_user() {
+        let case = User {
+            id:   1,
+            name: String::from("abc"),
+        };
 
-    #[derive(PartialEq, Debug)]
-    struct MyString(
-        String
-    );
-    impl JSON for MyString {
-        fn serialize(&self) -> String {
-            format!(r#""{}""#, self.0)
+        'serialize: {
+            assert_eq!(case.serialize(), r#"{"id":1,"name":"abc"}"#);
         }
-        fn deserialize(string: &str) -> Result<Self, &str> {
-            if string.starts_with('"')
-            && string.ends_with('"') {
-                Ok(Self(string[1..string.len()-1].to_owned()))
-            } else {
-                Err(string)
-            }
+        
+        'deserialize: {
+            let mut string = r#"{"id":1,"name":"abc"}"#.chars().peekable();
+            let d = <User as JSON>::_deserialize(&mut string);
+            assert_eq!(string.collect::<String>(), "");
+            assert_eq!(d.as_ref(), Some(&case));
+
+            let mut string = r#"{"id": 1, "name": "abc"}"#.chars().peekable();
+            let d = <User as JSON>::_deserialize(&mut string);
+            assert_eq!(string.collect::<String>(), "");
+            assert_eq!(d.as_ref(), Some(&case));
+
+            assert!(<User as JSON>::deserialize(r#"{id:1,"name":"abc"}"#).is_none());
+            assert!(<User as JSON>::deserialize(r#"{"id":"1","name":"abc"}"#).is_none());
+            assert!(<User as JSON>::deserialize(r#"{"id":1}"#).is_none());
+            assert!(<User as JSON>::deserialize(r#"{"id":1, "name":"abc", "id": 2}"#).is_none());
         }
-    }
-    #[test]
-    fn json_str() {
-        let case = MyString(String::from("string!!!"));
-        assert_eq!(case.serialize(), r#""string!!!""#);
-        assert_ne!(case.serialize(), r#"string!!!"#);
-        assert_eq!(<MyString as JSON>::deserialize(r#""string!!!""#).unwrap(), case);
-        assert!(<MyString as JSON>::deserialize(r#"string!!!"#).is_err());
     }
 }

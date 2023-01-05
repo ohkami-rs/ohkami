@@ -111,6 +111,8 @@ mod test {
             <bool as Deserialize>::deserialize("false").unwrap(),
             false
         );
+        assert!(<bool as Deserialize>::deserialize("truu").is_none());
+        assert!(<bool as Deserialize>::deserialize("falsu").is_none());
     }
 
     #[test]
