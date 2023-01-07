@@ -1,7 +1,7 @@
 use std::{iter::Peekable, str::Chars};
 
-mod serialize;
-mod deserialize;
+mod serialize; pub use serialize::Serialize;
+mod deserialize; pub use deserialize::Deserialize;
 
 pub trait JSON: Sized {
     fn serialize(&self) -> String;

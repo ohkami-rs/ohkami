@@ -31,34 +31,14 @@ pub(crate) fn serializing_expr(ident: &Ident, ty: &Type) -> TokenStream {
     match ty_str.as_str() {
         "u8"|"u16"|"u32"|"u64"|"u128"|"usize"|
         "i8"|"i16"|"i32"|"i64"|"i128"|"isize"|
-        "bool" => quote!{
-            self.#ident.to_string()
-        },
-        "String"|"&str" => quote!{
-            format!(r#""{}""#, self.#ident)
-        },
         "Vec<u8>"|"Vec<u16>"|"Vec<u32>"|"Vec<u64>"|"Vec<u128>"|"Vec<usize>"|
         "Vec<i8>"|"Vec<i16>"|"Vec<i32>"|"Vec<i64>"|"Vec<i128>"|"Vec<isize>"|
-        "Vec<bool>" => quote!{
-            {
-                let mut s = self.#ident.into_iter().fold(
-                    String::from("["),
-                    |it, next| it + &next.to_string() + ","
-                );
-                s.pop(); s + "]"
-            }
-        },
-        "Vec<String>"|"Vec<&str>" => quote!{
-            {
-                let mut s = self.#ident.into_iter().fold(
-                    String::from("["),
-                    |it, next| it + &format!(r#""{}""#, next) + ","
-                );
-                s.pop(); s + "]"
-            }
+        "bool"|"Vec<bool>"|
+        "String"|"<&str>"|"Vec<String>"|"Vec<&str>" => quote!{
+            <#ty as ohkami_json::Serialize>::serialize(&self.#ident)
         },
         _ => quote!{
-            <ty as JSON>::serialize(&self.#ident)
+            <#ty as JSON>::serialize(&self.#ident)
         }
     }
 }

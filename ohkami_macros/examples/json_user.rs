@@ -10,9 +10,7 @@ fn main() {
     let ser = user.serialize();
     println!("serialized: {ser}");
 
-    let mut case = r#"
-        {"id": 1, "name": "Taro"}
-    "#.chars().peekable();
+    let mut case = r#"{"id": 1, "name": "Taro"}"#.chars().peekable();
     let de = <User as JSON>::_deserialize(&mut case);
 
     let case_str = case.collect::<String>();
