@@ -2,32 +2,28 @@ use proc_macro2::{Ident, TokenStream};
 use quote::{ToTokens, quote};
 use syn::Type;
 
-pub(crate) fn serialize_fmt_and_args(items: &Vec<(Ident, Type)>) -> (TokenStream, TokenStream) {
-    let fmt_raw = {
-        let mut fmt_raw = String::new();
-        for (ident, _) in items {
-            fmt_raw += &format!(r#""{ident}":{{}},"#)
-        }
-        fmt_raw.trim_end_matches(',').to_owned()
-    };
-    let fmt = {
-        let mut fmt = TokenStream::new();
-        quote!(r).to_tokens(&mut fmt);
-        quote!(#).to_tokens(&mut fmt);
-        quote!(#fmt_raw).to_tokens(&mut fmt);
-        quote!(#).to_tokens(&mut fmt);
-        fmt
-    };
+pub(crate) fn serialize_process(items: &Vec<(Ident, Type)>) -> TokenStream {
+    let mut items = items.clone();
+    let mut add_serialized_fields = TokenStream::new();
 
-    let args = {
-        let mut args = TokenStream::new();
-        for (ident, ty) in items {
-            serializing_expr(ident, ty).to_tokens(&mut args);
-        }
-        args
-    };
+    let (ident_1, ty_1) = &items.pop().unwrap();
+    let key_1 = format!(r#""{ident_1}":"#);
+    let value_1 = serializing_expr(ident_1, ty_1);
+    quote!{s += #key_1;}.to_tokens(&mut add_serialized_fields);
+    quote!{s += &#value_1;}.to_tokens(&mut add_serialized_fields);
 
-    (fmt, args)
+    for (ident, ty) in &items {
+        let key = format!(r#","{ident}":"#);
+        let value = serializing_expr(ident, ty);
+        quote!{s += #key;}.to_tokens(&mut add_serialized_fields);
+        quote!{s += &#value;}.to_tokens(&mut add_serialized_fields);
+    }
+
+    quote!{
+        let mut s = String::from("{");
+        #add_serialized_fields
+        s + "}"
+    }
 }
 
 pub(crate) fn serializing_expr(ident: &Ident, ty: &Type) -> TokenStream {
@@ -36,10 +32,10 @@ pub(crate) fn serializing_expr(ident: &Ident, ty: &Type) -> TokenStream {
         "u8"|"u16"|"u32"|"u64"|"u128"|"usize"|
         "i8"|"i16"|"i32"|"i64"|"i128"|"isize"|
         "bool" => quote!{
-            self.#ident.to_string(),
+            self.#ident.to_string()
         },
         "String"|"&str" => quote!{
-            format!(r#""{}""#, self.#ident),
+            format!(r#""{}""#, self.#ident)
         },
         "Vec<u8>"|"Vec<u16>"|"Vec<u32>"|"Vec<u64>"|"Vec<u128>"|"Vec<usize>"|
         "Vec<i8>"|"Vec<i16>"|"Vec<i32>"|"Vec<i64>"|"Vec<i128>"|"Vec<isize>"|
@@ -50,7 +46,7 @@ pub(crate) fn serializing_expr(ident: &Ident, ty: &Type) -> TokenStream {
                     |it, next| it + &next.to_string() + ","
                 );
                 s.pop(); s + "]"
-            },
+            }
         },
         "Vec<String>"|"Vec<&str>" => quote!{
             {
@@ -59,10 +55,28 @@ pub(crate) fn serializing_expr(ident: &Ident, ty: &Type) -> TokenStream {
                     |it, next| it + &format!(r#""{}""#, next) + ","
                 );
                 s.pop(); s + "]"
-            },
+            }
         },
         _ => quote!{
-            <ty as JSON>::serialize(&self.#ident),
+            <ty as JSON>::serialize(&self.#ident)
         }
+    }
+}
+
+
+#[cfg(test)]
+mod test {
+    use quote::{format_ident, quote};
+    use syn::Type;
+
+    use super::serializing_expr;
+
+    #[test]
+    fn test_serializing_expr() {
+        let case = serializing_expr(
+            &format_ident!("id"),
+            &Type::Verbatim(quote!{ u64 })
+        );
+        assert_eq!(case.to_string(), "self . id . to_string () ,")
     }
 }

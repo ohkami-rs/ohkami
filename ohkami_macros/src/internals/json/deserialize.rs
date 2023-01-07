@@ -37,7 +37,7 @@ pub(crate) fn deserialize_struct(struct_name: &Ident, items: &Vec<(Ident, Type)>
 
         for (ident, _) in items {
             quote!{
-                && #ident.is_none()
+                && #ident.is_some()
             }.to_tokens(&mut validator);
 
             quote!{
@@ -69,11 +69,12 @@ pub(crate) fn deserialize_struct(struct_name: &Ident, items: &Vec<(Ident, Type)>
                     let mut ret = String::new();
                     while let Some(ch) = string.next() {
                         match ch {
-                            '"' => break 'string ret,
+                            '"' => break 'string Some(ret),
                             _ => ret.push(ch),
                         }
                     }
-                }.as_str() {
+                    None
+                }?.as_str() {
                     #field_deserializers
                     _ => return None
                 },
@@ -91,11 +92,12 @@ fn deserialize_field(ty: &Type) -> TokenStream {
                 let mut ret = String::new();
                 while let Some(ch) = string.next() {
                     match ch {
-                        '"' => break 'string ret,
+                        '"' => break 'string Some(ret),
                         _ => ret.push(ch),
                     }
                 }
-            },
+                None
+            }?,
         },
         "Vec<String>" => quote!{
             'vec_string: {
@@ -111,11 +113,12 @@ fn deserialize_field(ty: &Type) -> TokenStream {
                                 let mut ret = String::new();
                                 while let Some(ch) = string.next() {
                                     match ch {
-                                        '"' => break 'string ret,
+                                        '"' => break 'string Some(ret),
                                         _ => ret.push(ch),
                                     }
                                 }
-                            });
+                                None
+                            }?);
                             string.next_if_eq(&',');
                         }
                     }
@@ -128,14 +131,14 @@ fn deserialize_field(ty: &Type) -> TokenStream {
                     string.next() == Some('r') &&
                     string.next() == Some('u') &&
                     string.next() == Some('e')
-                ).then_some(true)?,
+                ).then_some(true),
                 Some('f') => (
                     string.next() == Some('a') &&
                     string.next() == Some('l') &&
                     string.next() == Some('s') &&
                     string.next() == Some('e')
-                ).then_some(false)?,
-                _ => return None
+                ).then_some(false),
+                _ => None
             }?,
         },
         "Vec<bool>" => quote!{
