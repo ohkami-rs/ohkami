@@ -16,7 +16,7 @@ ohkami *- [狼] means wolf in Japanese -* is **simple** and **macro free** web f
 
 ## 0.6 → 0.7
 Add `JSON` attribute that means "I can be handled as JSON". This uses `serde`'s derive macros internally, so `serde = { version = "1.0", features = ["derive"] }` is neede in your Cargo.toml for this.\
-Only structs that implements have this attribute can be passed to handlers as reuqest body.
+Only structs that has this attribute can be passed to handlers as reuqest body.
 
 ```rust
 use ohkami::prelude::*;
@@ -188,6 +188,19 @@ c.OK("Hello, world!")
 Response::OK(json!{"ok": true})
 // or
 c.OK(json!{"ok": true})
+```
+```rust
+#[JSON]
+struct User {
+    id:   u64,
+    name: String,
+}
+```
+```rust
+let user = User { id: 1, name: String::from("John") };
+Response::OK(user)
+// or
+c.OK(user)
 ```
 ### handle errors
 ```rust
