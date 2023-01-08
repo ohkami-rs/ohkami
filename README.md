@@ -56,7 +56,7 @@ fn main() -> Result<()> {
 }
 ```
 
-3. If you're interested in ohkami, learn more by [examples](https://github.com/kana-rus/ohkami/tree/main/examples) and [documentation](https://docs.rs/ohkami/latest/ohkami/) !
+3. If you're interested in ohkami, learn more by [examples](https://github.com/kana-rus/ohkami/tree/main/ohkami/examples) and [documentation](https://docs.rs/ohkami/latest/ohkami/) !
 
 <br/>
 
