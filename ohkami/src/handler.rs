@@ -1,7 +1,6 @@
 pub mod group;
 
 use std::{future::Future, pin::Pin};
-use serde::{Serialize, Deserialize};
 use crate::{
     response::Response,
     result::Result,
@@ -400,10 +399,8 @@ macro_rules! impl_handler_with_string_int {
 
 #[cfg(test)]
 mod test {
-    use crate::{context::Context, response::{Response, body::Body}, result::Result, json};
+    use crate::{context::Context, response::{Response, body::Body}, result::Result, json, JSON};
     use super::{Handler, Param, HandleFunc};
-    use serde::{Serialize, Deserialize};
-
 
     struct Handlers(
         Vec<HandleFunc>
@@ -423,14 +420,14 @@ mod test {
         Response::OK(json! {"id": id})
     }
 
-    // #[derive(Serialize, Deserialize)]
-    // struct User {
-    //     id:   i64,
-    //     name: String,
-    // }
-    // async fn c(payload: JSON<User>) -> Result<Response> {
-    //     Response::Created(payload)
-    // }
+    #[derive(serde::Serialize, serde::Deserialize)]
+    struct User {
+        id:   i64,
+        name: String,
+    } impl<'j> crate::components::json::Json<'j> for User {}
+    async fn c(payload: User) -> Result<Response> {
+        Response::Created(payload)
+    }
 
 
     #[test]
@@ -445,6 +442,6 @@ mod test {
     fn handle_payload() {
         let mut handlers = Handlers::new();
 
-        // handlers.push(c);
+        handlers.push(c);
     }
 }

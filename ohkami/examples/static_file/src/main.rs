@@ -1,9 +1,8 @@
 use std::{io::{BufReader, Read}, fs::File};
-use serde::{Serialize, Deserialize};
 use ohkami::prelude::*;
 use once_cell::sync::Lazy;
 
-#[derive(Serialize, Deserialize)]
+#[JSON]
 struct Dinosaur {
     name:        String,
     description: String,
@@ -18,8 +17,7 @@ static DATA_STR: Lazy<String> = Lazy::new(|| {
     data
 });
 static DATA: Lazy<Vec<Dinosaur>> = Lazy::new(|| {
-    let mut raw = JSON::<Vec<Dinosaur>>::Ser(DATA_STR.to_string())
-        .de()
+    let mut raw = <>
         .expect("failed to deserilize data");
     for data in &mut raw {
         (data.name).make_ascii_lowercase() // convert to lower case in advance

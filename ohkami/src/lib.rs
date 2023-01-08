@@ -25,6 +25,7 @@ pub mod prelude {
         response::{Response, body::Body},
         components::headers::Header,
     };
+    pub use ohkami_macros::JSON;
 
     #[cfg(feature = "sqlx")]
     pub use super::server::DBprofile;

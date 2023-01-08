@@ -3,7 +3,7 @@ use crate::{
     result::{Result, ElseResponse, ElseResponseWithErr},
     utils::{range::RangeMap, buffer::Buffer},
     components::{status::Status, headers::{HeaderRangeMap, HeaderKey}},
-    response::{Response, message::ErrorMessage, body::{Body, IntoOK, IntoCreated,}},
+    response::{Response, message::ErrorMessage, body::{IntoOK, IntoCreated,}},
 };
 
 #[cfg(feature = "sqlx")]
