@@ -20,6 +20,11 @@ pub enum Body {
     pub fn html<Msg: Message>(html: Msg) -> Self {
         Self::text_html(html.as_message())
     }
+    /// Generate a `Body` that holds `application/json` response body.
+    /// Types that implment `ToString` can be this' argument.
+    pub fn json<Msg: Message>(text: Msg) -> Self {
+        Self::application_json(text.as_message())
+    }
 
     pub(crate) fn content_type(&self) -> &'static str {
         match self {
@@ -48,7 +53,7 @@ impl ResponseFormat for Body {
 }
 
 
-pub(crate) trait IntoOK {fn into_ok(self) -> Result<Option<Body>>;}
+pub trait IntoOK {fn into_ok(self) -> Result<Option<Body>>;}
 
 impl IntoOK for String {
     fn into_ok(self) -> Result<Option<Body>> {
@@ -101,8 +106,24 @@ impl<J: for <'j> Json<'j>> IntoOK for Result<J> {
     }
 }
 
+impl IntoOK for Body {
+    fn into_ok(self) -> Result<Option<Body>> {
+        Ok(Some(self))
+    }
+}
+impl IntoOK for Option<Body> {
+    fn into_ok(self) -> Result<Option<Body>> {
+        Ok(self)
+    }
+}
+impl IntoOK for Result<Body> {
+    fn into_ok(self) -> Result<Option<Body>> {
+        Ok(Some(self?))
+    }
+}
 
-pub(crate) trait IntoCreated {fn into_created(self) -> Result<Body>;}
+
+pub trait IntoCreated {fn into_created(self) -> Result<Body>;}
 
 impl<J: for <'j> Json<'j>> IntoCreated for J {
     fn into_created(self) -> Result<Body> {
@@ -112,5 +133,16 @@ impl<J: for <'j> Json<'j>> IntoCreated for J {
 impl<J: for <'j> Json<'j>> IntoCreated for Result<J> {
     fn into_created(self) -> Result<Body> {
         Ok(Body::application_json(self?.ser()?))
+    }
+}
+
+impl IntoCreated for Body {
+    fn into_created(self) -> Result<Body> {
+        Ok(self)
+    }
+}
+impl IntoCreated for Result<Body> {
+    fn into_created(self) -> Result<Body> {
+        self
     }
 }

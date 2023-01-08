@@ -4,7 +4,7 @@ pub trait Json<'j>: serde::Serialize + serde::Deserialize<'j> {
     fn ser(&self) -> Result<String> {
         Ok(serde_json::to_string(self)?)
     }
-    fn de(string: &str) -> Result<Self> {
+    fn de(string: &'j str) -> Result<Self> {
         Ok(serde_json::from_str(string)?)
     }
 }
