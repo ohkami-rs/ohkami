@@ -3,8 +3,7 @@ use serde::{Serialize, Deserialize};
 use crate::{
     components::{
         status::Status,
-        json::JSON,
-        time::now_fmt,
+        time::now_fmt, json::Json,
         // headers::AdditionalHeader,
     },
     result::Result,
@@ -19,7 +18,7 @@ use format::ResponseFormat;
 pub(crate) mod message;
 use message::Message;
 
-use self::{body::ResponseBody, message::ErrorMessage};
+use self::{message::ErrorMessage, body::{IntoOK, IntoCreated}};
 
 
 /// Type of HTTP response
@@ -57,9 +56,10 @@ pub struct Response {
     }
 
     /// for test use
-    pub(crate) fn body_json<T: Serialize + for <'d> Deserialize<'d>>(self) -> JSON<T> {
+    pub(crate) fn body_json<J: for <'j> Json<'j>>(self) -> J {
         match self.body.expect("body: None") {
-            Body::application_json(json) => JSON::Ser(json),
+            Body::application_json(json_str) => serde_json::from_str(&json_str)
+                .expect(&format!("can't deserialize: {json_str}")),
             other => panic!("body is not a JSON: {other:?}"),
         }
     }
@@ -112,21 +112,21 @@ Keep-Alive: timeout=5
     /// Generate `Result<Response>` value that represents a HTTP response of `200 OK`. `JSON`, `String`, `&str`, or `Option` of them can be argument of this.\
     /// You can directly return `Response::OK(/* something */)` from a handler because this is already wrapped in `Result::Ok`.
     #[allow(non_snake_case)]
-    pub fn OK<B: ResponseBody>(body: B) -> Result<Self> {
+    pub fn OK<B: IntoOK>(body: B) -> Result<Self> {
         Ok(Self {
             additional_headers: String::new(),
             status:             Status::OK,
-            body:               body.as_body()?,
+            body:               body.into_ok()?,
         })
     }
     /// Generate `Result<Response>` value that represents a HTTP response of `201 Created`.
     /// You can directly return `Response::Created(/* something */)` from a handler because this is already wrapped in `Result::Ok`.
     #[allow(non_snake_case)]
-    pub fn Created<B: Into<Result<Body>>>(body: B) -> Result<Self> {
+    pub fn Created<B: IntoCreated>(body: B) -> Result<Self> {
         Ok(Self {
             additional_headers: String::new(),
             status:             Status::Created,
-            body:               Some(body.into()?),
+            body:               Some(body.into_created()?),
         })
     }
     /// Generate `Result<Response>` value that represents a HTTP response of `204 No Content`.

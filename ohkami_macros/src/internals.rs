@@ -1,14 +1,23 @@
 use proc_macro2::TokenStream;
-use syn::Error;
 use quote::quote;
 
-mod json; use self::json::{
+#[allow(non_snake_case)]
+pub(super) fn JSON(struct_stream: TokenStream) -> TokenStream {
+    quote!{
+        #[derive(serde::Serialize, serde::Deserialize, ohkami::components::json::Json)]
+        #struct_stream
+    }
+}
+
+/*
+
+use syn::Error;
+mod ohkami_json; use self::ohkami_json::{
     serialize::serialize_process,
     deserialize::deserialize_struct,
 };
 
-
-pub(super) fn derive_json(struct_stream: TokenStream) -> Result<TokenStream, Error> {
+pub(super) fn derive_ohkami_json(struct_stream: TokenStream) -> Result<TokenStream, Error> {
     let struct_stream = syn::parse2::<syn::ItemStruct>(struct_stream)?;
     let ident = struct_stream.ident;
 
@@ -37,3 +46,5 @@ pub(super) fn derive_json(struct_stream: TokenStream) -> Result<TokenStream, Err
         })
     }
 }
+
+*/

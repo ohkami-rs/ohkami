@@ -1,3 +1,7 @@
+fn main() {}
+
+/*
+
 use ohkami_macros::JSON;
 use ohkami_json::JSON;
 
@@ -131,3 +135,5 @@ struct User {
 //         }
 //     }
 // }
+
+*/

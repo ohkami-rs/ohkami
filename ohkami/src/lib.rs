@@ -23,10 +23,7 @@ pub mod prelude {
         result::{Result, ElseResponse, ElseResponseWithErr},
         context::Context,
         response::{Response, body::Body},
-        components::{
-            json::{JSON, json},
-            headers::Header,
-        },
+        components::{headers::Header},
     };
 
     #[cfg(feature = "sqlx")]
@@ -34,3 +31,5 @@ pub mod prelude {
 }
 
 pub use handler::group;
+
+pub use ohkami_macros::JSON;
