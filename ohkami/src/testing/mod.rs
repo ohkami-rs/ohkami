@@ -1,7 +1,7 @@
 use async_std::task::block_on;
 #[cfg(feature = "sqlx")]
 use async_std::sync::Arc;
-use serde::{Serialize, Deserialize};
+use serde::{Serialize};
 use crate::{
     utils::{range::RANGE_MAP_SIZE, buffer::Buffer, string::unescaped}, server::{Ohkami, consume_buffer}, prelude::{Response, Result}, components::json::Json
 };

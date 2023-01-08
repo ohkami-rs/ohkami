@@ -1,4 +1,4 @@
-use crate::{components::json::Json, prelude::Result};
+use crate::{components::json::{Json, JsonResponse, JsonResponseLabel}, prelude::Result};
 use super::{message::Message, format::ResponseFormat};
 
 
@@ -53,46 +53,48 @@ impl ResponseFormat for Body {
 }
 
 
-pub trait IntoOK {fn into_ok(self) -> Result<Option<Body>>;}
 
-impl IntoOK for String {
+
+pub trait IntoOK<OkParam> {fn into_ok(self) -> Result<Option<Body>>;}
+
+impl IntoOK<String> for String {
     fn into_ok(self) -> Result<Option<Body>> {
         Ok(Some(Body::text_plain(self)))
     }
 }
-impl IntoOK for Option<String> {
+impl IntoOK<Option<String>> for Option<String> {
     fn into_ok(self) -> Result<Option<Body>> {
         Ok(self.map(|string| Body::text_plain(string)))
     }
 }
-impl IntoOK for Result<String> {
+impl IntoOK<Result<String>> for Result<String> {
     fn into_ok(self) -> Result<Option<Body>> {
         Ok(Some(Body::text_plain(self?)))
     }
 }
 
-impl IntoOK for &str {
+impl IntoOK<&str> for &str {
     fn into_ok(self) -> Result<Option<Body>> {
         Ok(Some(Body::text_plain(self.to_owned())))
     }
 }
-impl IntoOK for Option<&str> {
+impl IntoOK<Option<&str>> for Option<&str> {
     fn into_ok(self) -> Result<Option<Body>> {
         Ok(self.map(|string| Body::text_plain(string.to_owned())))
     }
 }
-impl IntoOK for Result<&str> {
+impl IntoOK<Result<&str>> for Result<&str> {
     fn into_ok(self) -> Result<Option<Body>> {
         Ok(Some(Body::text_plain(self?.to_owned())))
     }
 }
 
-impl<J: for <'j> Json<'j>> IntoOK for J {
+impl<L: JsonResponseLabel, J: JsonResponse<L>> IntoOK<L> for J {
     fn into_ok(self) -> Result<Option<Body>> {
         Ok(Some(Body::application_json(self.ser()?)))
     }
 }
-impl<J: for <'j> Json<'j>> IntoOK for Option<J> {
+impl<L: JsonResponseLabel, J: JsonResponse<L>> IntoOK<Option<L>> for Option<J> {
     fn into_ok(self) -> Result<Option<Body>> {
         match self {
             Some(json) => Ok(Some(Body::application_json(json.ser()?))),
@@ -100,27 +102,29 @@ impl<J: for <'j> Json<'j>> IntoOK for Option<J> {
         }
     }
 }
-impl<J: for <'j> Json<'j>> IntoOK for Result<J> {
+impl<L: JsonResponseLabel, J: JsonResponse<L>> IntoOK<Result<L>> for Result<J> {
     fn into_ok(self) -> Result<Option<Body>> {
         Ok(Some(Body::application_json(self?.ser()?)))
     }
 }
 
-impl IntoOK for Body {
+impl IntoOK<Body> for Body {
     fn into_ok(self) -> Result<Option<Body>> {
         Ok(Some(self))
     }
 }
-impl IntoOK for Option<Body> {
+impl IntoOK<Body> for Option<Body> {
     fn into_ok(self) -> Result<Option<Body>> {
         Ok(self)
     }
 }
-impl IntoOK for Result<Body> {
+impl IntoOK<Body> for Result<Body> {
     fn into_ok(self) -> Result<Option<Body>> {
         Ok(Some(self?))
     }
 }
+
+
 
 
 pub trait IntoCreated {fn into_created(self) -> Result<Body>;}

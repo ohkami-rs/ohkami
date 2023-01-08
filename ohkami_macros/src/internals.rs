@@ -8,7 +8,7 @@ pub(super) fn JSON(struct_stream: TokenStream) -> Result<TokenStream, Error> {
         = syn::parse2(struct_stream.clone())?;
 
     Ok(quote!{
-        impl<'j> ohkami::components::json::Json<'j> for #ident #generics {}
+        impl<'j> ohkami::components::json::Json<'j> for #ident {}
 
         #[derive(serde::Serialize, serde::Deserialize)]
         #struct_stream

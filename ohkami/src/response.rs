@@ -1,5 +1,4 @@
 use async_std::{net::TcpStream, io::WriteExt};
-use serde::{Serialize, Deserialize};
 use crate::{
     components::{
         status::Status,
@@ -112,7 +111,7 @@ Keep-Alive: timeout=5
     /// Generate `Result<Response>` value that represents a HTTP response of `200 OK`. `JSON`, `String`, `&str`, or `Option` of them can be argument of this.\
     /// You can directly return `Response::OK(/* something */)` from a handler because this is already wrapped in `Result::Ok`.
     #[allow(non_snake_case)]
-    pub fn OK<B: IntoOK>(body: B) -> Result<Self> {
+    pub fn OK<From, B: IntoOK<From>>(body: B) -> Result<Self> {
         Ok(Self {
             additional_headers: String::new(),
             status:             Status::OK,

@@ -399,7 +399,7 @@ macro_rules! impl_handler_with_string_int {
 
 #[cfg(test)]
 mod test {
-    use crate::{context::Context, response::{Response, body::Body}, result::Result, json, JSON};
+    use crate::{context::Context, response::{Response, body::Body}, result::Result, json};
     use super::{Handler, Param, HandleFunc};
 
     struct Handlers(

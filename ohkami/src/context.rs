@@ -34,7 +34,7 @@ impl Context {
     /// - `String` | `&str` => `text/plain`
     /// - `JSON` | `Result<JSON>` => `application/json`
     #[allow(non_snake_case)]
-    pub fn OK<B: IntoOK>(&self, body: B) -> Result<Response> {
+    pub fn OK<From, B: IntoOK<From>>(&self, body: B) -> Result<Response> {
         Ok(Response {
             additional_headers: self.additional_headers.to_owned(),
             status:             Status::OK,

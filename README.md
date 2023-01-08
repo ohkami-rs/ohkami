@@ -14,8 +14,8 @@ ohkami *- [狼] means wolf in Japanese -* is **simple** and **macro free** web f
 
 <br/>
 
-## 0.6.5 → 0.6.6
-- fixed to handle request body as JSON only when request headers contain `Content-Type: application/json`
+## 0.6 → 0.7
+- Add `JSON` attribute that means "I can be handled as JSON". This uses `serde`'s derive macros internally, so `serde = { version = "1.0", features = ["derive"] }` is neede in your Cargo.toml for this.
 
 <br/>
 
@@ -24,7 +24,7 @@ ohkami *- [狼] means wolf in Japanese -* is **simple** and **macro free** web f
 
 ```toml
 [dependencies]
-ohkami = "0.6.6"
+ohkami = "0.7.0"
 ```
 
 2. Write your first code with ohkami:
@@ -63,20 +63,18 @@ fn main() -> Result<()> {
         .howl(":3000")
 }
 
-#[derive(Serialize, Deserialize)]
+#[JSON]
 struct User {
     id:   i64,
     name: String,
 }
 
-async fn reflect(user: JSON<User>) -> Result<Response> {
+async fn reflect(user: User) -> Result<Response> {
     Response::OK(user)
 }
 
-async fn reflect_name(user: JSON<User>) -> Result<Response> {
+async fn reflect_name(user: User) -> Result<Response> {
     let name = user.name;
-    // `JSON` implements `Deref`
-
     Response::OK(name)
 }
 ```
@@ -105,7 +103,7 @@ use ohkami::{
     group::{GET, POST} // import this
 };
 
-#[derive(Serialize, Deserialize)]
+#[JSON]
 struct User {
     id:   usize,
     name: String,
@@ -126,7 +124,7 @@ async fn hello_api() -> Result<Response> {
     Response::OK("Hello, api!")
 }
 
-async fn reflect(payload: JSON<User>) -> Result<Response> {
+async fn reflect(payload: User) -> Result<Response> {
     Response::OK(payload)
 }
 ```
