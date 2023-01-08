@@ -1,12 +1,12 @@
-use serde::{Serialize, Deserialize};
+use ohkami::JSON;
 
-#[derive(Serialize, Deserialize, PartialEq, Debug)]
+#[derive(PartialEq, Debug)]#[JSON]
 pub(crate) struct User {
     pub id:   u64,
     pub name: String,
 }
 
-#[derive(Serialize, Deserialize)]
+#[JSON]
 pub(crate) struct CreateUser {
     pub username: String,
 }
