@@ -15,7 +15,22 @@ ohkami *- [狼] means wolf in Japanese -* is **simple** and **macro free** web f
 <br/>
 
 ## 0.6 → 0.7
-- Add `JSON` attribute that means "I can be handled as JSON". This uses `serde`'s derive macros internally, so `serde = { version = "1.0", features = ["derive"] }` is neede in your Cargo.toml for this.
+Add `JSON` attribute that means "I can be handled as JSON". This uses `serde`'s derive macros internally, so `serde = { version = "1.0", features = ["derive"] }` is neede in your Cargo.toml for this.\
+Only structs that implements have this attribute can be passed to handlers as reuqest body.
+
+```rust
+use ohkami::prelude::*;
+
+#[JSON]
+struct User {
+    id:   u64,
+    name: String,
+}
+
+async fn handler(c: Context, payload: User) -> Result<Response> {
+    // ...
+}
+```
 
 <br/>
 
@@ -174,15 +189,6 @@ Response::OK(json!{"ok": true})
 // or
 c.OK(json!{"ok": true})
 ```
-```rust
-Response::OK(json("Hello!"))
-Response::OK(json(user))
-//or
-c.OK(json("Hello!"))
-c.OK(json(user))
-// `json()` serializes Rust value into JSON
-// value has to implemant `serde::Serialize`
-```
 ### handle errors
 ```rust
 make_ohkami_result()?;
@@ -321,9 +327,8 @@ mod test {
 
     #[test]
     fn test_hello() {
-        let request = Request::new(Method::GET, "/");
-        SERVER.assert_to_res(&request, Response::OK("Hello!"));
-        SERVER.assert_not_to_res(&request, Response::BadRequest(None));
+        let req = Request::new(Method::GET, "/");
+        SERVER.assert_to_res(&req, Response::OK("Hello!"));
     }
 }
 ```
@@ -331,7 +336,7 @@ mod test {
 <br/>
 
 ## Development
-ohkami is on early stage now and not for producntion use.\
+ohkami is not for producntion use.\
 Please give me your feedback ! → [GetHub issue](https://github.com/kana-rus/ohkami/issues)
 
 <br/>

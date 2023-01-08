@@ -4,6 +4,9 @@ use syn::{Error, ItemStruct};
 
 #[allow(non_snake_case)]
 pub(super) fn JSON(struct_stream: TokenStream) -> Result<TokenStream, Error> {
+
+    #[allow(unused)] //
+
     let ItemStruct { ident, generics, .. }
         = syn::parse2(struct_stream.clone())?;
 
