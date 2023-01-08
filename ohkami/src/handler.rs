@@ -1,13 +1,12 @@
 pub mod group;
 
 use std::{future::Future, pin::Pin};
-use serde::{Serialize, Deserialize};
 use crate::{
     response::Response,
     result::Result,
     context::Context,
     utils::range::RangeList,
-    components::json::JSON
+    components::json::Json,
 };
 
 
@@ -63,19 +62,19 @@ where
         ), 1)
     }
 }
-impl<T: Serialize + for <'d> Deserialize<'d>> Param for JSON<T> {}
-impl<F, Fut, T> Handler<JSON<T>> for F
+impl<J: for <'j> Json<'j>> Param for J {}
+impl<F, Fut, J> Handler<J> for F
 where
-    F:   Fn(JSON<T>) -> Fut + Send + Sync + 'static,
+    F:   Fn(J) -> Fut + Send + Sync + 'static,
     Fut: Future<Output=Result<Response>> + Send + 'static,
-    T:   Serialize + for <'d> Deserialize<'d>
+    J:   for <'j> Json<'j>
 {
     fn into_handlefunc(self) -> (HandleFunc, u8/*path param num*/) {
         (Box::new(move |_, _, raw_json|
             match raw_json {
                 Some(string) => match serde_json::from_str(&string) {
-                    Ok(deserialized) => Box::pin(self(JSON::De(deserialized))),
-                    Err(_) => Box::pin(async {Err(Response::BadRequest("Invalid request body"))}),
+                    Ok(deserialized) => Box::pin(self(deserialized)),
+                    Err(_) => Box::pin(async move {Err(Response::BadRequest(format!("Invalid request body: {string:?}")))}),
                 },
                 None => Box::pin(async {Err(Response::BadRequest("Expected a request body"))})
             }
@@ -101,19 +100,19 @@ where
         ), 1)
     }
 }
-impl<T: Serialize + for <'d> Deserialize<'d>> Param for (Context, JSON<T>) {}
-impl<F, Fut, T> Handler<(Context, JSON<T>)> for F
+impl<J: for <'j> Json<'j>> Param for (Context, J) {}
+impl<F, Fut, J> Handler<(Context, J)> for F
 where
-    F:   Fn(Context, JSON<T>) -> Fut + Send + Sync + 'static,
+    F:   Fn(Context, J) -> Fut + Send + Sync + 'static,
     Fut: Future<Output=Result<Response>> + Send + 'static,
-    T:   Serialize + for <'d> Deserialize<'d>
+    J:   for <'j> Json<'j>
 {
     fn into_handlefunc(self) -> (HandleFunc, u8/*path param num*/) {
         (Box::new(move |c, _, raw_json|
             match raw_json {
                 Some(string) => match serde_json::from_str(&string) {
-                    Ok(deserialized) => Box::pin(self(c, JSON::De(deserialized))),
-                    Err(_) => Box::pin(async {Err(Response::BadRequest("Invalid request body"))}),
+                    Ok(deserialized) => Box::pin(self(c, deserialized)),
+                    Err(_) => Box::pin(async move {Err(Response::BadRequest(format!("Invalid request body: {string:?}")))}),
                 },
                 None => Box::pin(async {Err(Response::BadRequest("Expected a request body"))})
             }
@@ -167,12 +166,12 @@ macro_rules! impl_handler_with_int {
                 }
             }
 
-            impl<T: Serialize + for <'d> Deserialize<'d>> Param for (Context, $int_type, JSON<T>) {}
-            impl<F, Fut, T> Handler<(Context, $int_type, JSON<T>)> for F
+            impl<J: for <'j> Json<'j>> Param for (Context, $int_type, J) {}
+            impl<F, Fut, J> Handler<(Context, $int_type, J)> for F
             where
-                F:   Fn(Context, $int_type, JSON<T>) -> Fut + Send + Sync + 'static,
+                F:   Fn(Context, $int_type, J) -> Fut + Send + Sync + 'static,
                 Fut: Future<Output=Result<Response>> + Send + 'static,
-                T:   Serialize + for <'d> Deserialize<'d>
+                J:   for <'j> Json<'j>
             {
                 fn into_handlefunc(self) -> (HandleFunc, u8) {
                     (Box::new(move |ctx, params, raw_json|
@@ -182,8 +181,8 @@ macro_rules! impl_handler_with_int {
                                 match parsed {
                                     Ok(param) => match raw_json {
                                         Some(string) => match serde_json::from_str(&string) {
-                                            Ok(deserialized) => Box::pin(self(ctx, param, JSON::De(deserialized))),
-                                            Err(_) => Box::pin(async {Err(Response::BadRequest("Invalid request body"))}),
+                                            Ok(deserialized) => Box::pin(self(ctx, param, deserialized)),
+                                            Err(_) => Box::pin(async move {Err(Response::BadRequest(format!("Invalid request body: {string:?}")))}),
                                         },
                                         None => Box::pin(async {Err(Response::BadRequest("expected a request body"))})
                                     },
@@ -195,12 +194,12 @@ macro_rules! impl_handler_with_int {
                     ), 1)
                 }
             }
-            impl<T: Serialize + for <'d> Deserialize<'d>> Param for ($int_type, JSON<T>) {}
-            impl<F, Fut, T> Handler<($int_type, JSON<T>)> for F
+            impl<J: for <'j> Json<'j>> Param for ($int_type, J) {}
+            impl<F, Fut, J> Handler<($int_type, J)> for F
             where
-                F:   Fn($int_type, JSON<T>) -> Fut + Send + Sync + 'static,
+                F:   Fn($int_type, J) -> Fut + Send + Sync + 'static,
                 Fut: Future<Output=Result<Response>> + Send + 'static,
-                T:   Serialize + for <'d> Deserialize<'d>
+                J:   for <'j> Json<'j>
             {
                 fn into_handlefunc(self) -> (HandleFunc, u8) {
                     (Box::new(move |ctx, params, raw_json|
@@ -210,8 +209,8 @@ macro_rules! impl_handler_with_int {
                                 match parsed {
                                     Ok(param) => match raw_json {
                                         Some(string) => match serde_json::from_str(&string) {
-                                            Ok(deserialized) => Box::pin(self(param, JSON::De(deserialized))),
-                                            Err(_) => Box::pin(async {Err(Response::BadRequest("Invalid request body"))}),
+                                            Ok(deserialized) => Box::pin(self(param, deserialized)),
+                                            Err(_) => Box::pin(async move {Err(Response::BadRequest(format!("Invalid request body: {string:?}")))}),
                                         },
                                         None => Box::pin(async {Err(Response::BadRequest("expected a request body"))})
                                     },
@@ -400,10 +399,8 @@ macro_rules! impl_handler_with_string_int {
 
 #[cfg(test)]
 mod test {
-    use crate::{context::Context, response::{Response, body::Body}, result::Result, json, components::json::{json, JSON}};
+    use crate::{context::Context, response::{Response, body::Body}, result::Result, json};
     use super::{Handler, Param, HandleFunc};
-    use serde::{Serialize, Deserialize};
-
 
     struct Handlers(
         Vec<HandleFunc>
@@ -422,16 +419,13 @@ mod test {
     async fn b(_: Context, id: usize) -> Result<Response> {
         Response::OK(json! {"id": id})
     }
-    async fn _b2(_: Context, id: String) -> Result<Response> {
-        Response::Created(json(id))
-    }
 
-    #[derive(Serialize, Deserialize)]
+    #[derive(serde::Serialize, serde::Deserialize)]
     struct User {
         id:   i64,
         name: String,
-    }
-    async fn c(payload: JSON<User>) -> Result<Response> {
+    } impl<'j> crate::components::json::Json<'j> for User {}
+    async fn c(payload: User) -> Result<Response> {
         Response::Created(payload)
     }
 
@@ -449,6 +443,5 @@ mod test {
         let mut handlers = Handlers::new();
 
         handlers.push(c);
-        // handlers.push(a);
     }
 }

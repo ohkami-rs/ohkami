@@ -1,63 +1,33 @@
-use std::{fmt::Debug, ops::Deref};
-use serde::{Serialize, Deserialize};
-use crate::{result::Result, response::body::Body};
+use crate::prelude::Result;
 
 
-#[derive(Debug, PartialEq, Clone)]
-pub enum JSON<T: Serialize + for <'d> Deserialize<'d>> {
-    Ser(String),
-    De(T),
-} impl<T: Serialize + for <'d> Deserialize<'d>> JSON<T> {
-    /// ```no_run
-    /// {
-    ///     match self {
-    ///         Self::Ser(s) => Ok(s),
-    ///         Self::De(d) => Ok(serde_json::to_string(&d)?),
-    ///     }
-    /// }
-    /// ```
-    pub fn ser(self) -> Result<String> {
-        match self {
-            Self::Ser(s) => Ok(s),
-            Self::De(d) => Ok(serde_json::to_string(&d)?),
-        }
+pub trait Json<'j>: serde::Serialize + serde::Deserialize<'j> {
+    fn ser(&self) -> Result<String> {
+        Ok(serde_json::to_string(self)?)
     }
+    fn de(string: &'j str) -> Result<Self> {
+        Ok(serde_json::from_str(string)?)
+    }
+}
+impl <'i, J: for <'j> Json<'j>> Json<'i> for Vec<J> {}
 
-    /// ```no_run
-    /// {
-    ///     match self {
-    ///         Self::De(d) => Ok(d),
-    ///         Self::Ser(s) => Ok(serde_json::from_str(&s)?),
-    ///     }
-    /// }
-    /// ```
-    pub fn de(self) -> Result<T> {
-        match self {
-            Self::De(d) => Ok(d),
-            Self::Ser(s) => Ok(serde_json::from_str(&s)?),
-        }
+
+pub trait JsonResponse<L: JsonResponseLabel> {fn ser(&self) -> Result<String>;}
+pub trait JsonResponseLabel {}
+
+impl JsonResponseLabel for () {}
+impl<J: for <'j> Json<'j>> JsonResponse<()> for J {
+    fn ser(&self) -> Result<String> {
+        self.ser()
+    }
+}
+impl JsonResponseLabel for &() {}
+impl<J: for <'j> Json<'j>> JsonResponse<&()> for &J {
+    fn ser(&self) -> Result<String> {
+        Ok(serde_json::to_string(self)?)
     }
 }
 
-impl<T: Serialize + for <'d> Deserialize<'d>> Deref for JSON<T> {
-    type Target = T;
-    fn deref(&self) -> &Self::Target {
-        match self {
-            Self::De(t) => t,
-            Self::Ser(_) => unimplemented!(),
-        }
-    }
-}
-
-/// Try serializing the value.
-/// ```no_run
-/// c.OK(json(user))
-/// ```
-pub fn json<T: Serialize>(value: T) -> Result<Body> {
-    Ok(Body::application_json(
-        serde_json::to_string(&value)?
-    ))
-}
 
 /// Utility macro to create `Body::application_json` value from some pair(s) of key-value(s).
 /// ```no_run
@@ -79,26 +49,20 @@ macro_rules! json {
 }
 
 
-
 #[cfg(test)]
 mod test {
     use serde::{Serialize, Deserialize};
-
-    use crate::prelude::{Response, Result};
-
-    use super::JSON;
+    use crate::prelude::Response;
+    use super::Json;
 
     #[derive(Serialize, Deserialize)]
     struct User {
-        id:   i64,
+        id:   u64,
         name: String,
-    }
+    } impl<'j> Json<'j> for User {}
 
-    async fn _h1(payload: JSON<User>) -> Result<Response> {
-        Response::Created(payload)
-    }
-    async fn _h2(payload: JSON<User>) -> Result<Response> {
-        let _user: User = payload.de()?;
-        Response::NoContent()
+    fn _ref_json() {
+        let user = User {id: 1, name: String::from("Taro")};
+        let _ = Response::OK(&user);
     }
 }

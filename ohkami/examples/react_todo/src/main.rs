@@ -60,11 +60,9 @@ mod test {
     #[test]
     fn should_return_user_data() {
         let req = Request::new(POST, "/users")
+            .header("Content-Type", "application/json")
             .body(r#"{ "username": "Taro" }"#);
-
-        let res = SERVER.oneshot_json::<User>(&req)
-            .de()
-            .expect("request body isn't User");
+        let res = SERVER.oneshot_json::<User>(&req);
 
         assert_eq!(res, User {
             id:   1337,
@@ -80,6 +78,7 @@ mod test {
 
         // too short (empty) text
         let req = Request::new(POST, "/todos")
+            .header("Content-Type", "application/json")
             .body(r#"{ "text": "" }"#);
         let res = SERVER.oneshot_res(&req);
         assert_eq!(res.status, Status::BadRequest);
@@ -87,6 +86,7 @@ mod test {
         // too long (longer than 100) text
         let long_text = "1234567890".repeat(12);
         let req = Request::new(POST, "/todos")
+            .header("Content-Type", "application/json")
             .body(format!(r#"{{ "text": "{long_text}" }}"#));
         let res = SERVER.oneshot_res(&req);
         assert_eq!(res.status, Status::BadRequest);
@@ -94,36 +94,32 @@ mod test {
 
         // create
         let req = Request::new(POST, "/todos")
+            .header("Content-Type", "application/json")
             .body(r#"{ "text": "sample todo text 1" }"#);
-        let res = SERVER.oneshot_json::<Todo>(&req)
-            .de()
-            .expect("response isn't a Todo");
+        let res = SERVER.oneshot_json::<Todo>(&req);
         assert_eq!(res, sample_todo_1);
 
         // find
         let req = Request::new(GET, "/todos/1");
-        let res = SERVER.oneshot_json::<Todo>(&req)
-            .de()
-            .expect("response isn't a Todo");
+        let res = SERVER.oneshot_json::<Todo>(&req);
         assert_eq!(res, sample_todo_1);
 
         // all
         SERVER.oneshot_res(
-            &Request::new(POST, "/todos").body(r#"{ "text": "sample todo text 2" }"#)
+            &Request::new(POST, "/todos")
+                .header("Content-Type", "application/json")
+                .body(r#"{ "text": "sample todo text 2" }"#)
         );
         let req = Request::new(GET, "/todos");
-        let mut res = SERVER.oneshot_json::<Vec<Todo>>(&req)
-            .de()
-            .expect("response isn't a Vec<Todo>");
+        let mut res = SERVER.oneshot_json::<Vec<Todo>>(&req);
         res.sort_by_key(|todo| todo.id); //
         assert_eq!(res, vec![sample_todo_1, sample_todo_2]);
 
         // update
         let req = Request::new(PATCH, "/todos/1")
+            .header("Content-Type", "application/json")
             .body(r#"{ "text": "updated text" }"#);
-        let res = SERVER.oneshot_json::<Todo>(&req)
-            .de()
-            .expect("response isn't a Todo");
+        let res = SERVER.oneshot_json::<Todo>(&req);
         assert_eq!(res, Todo::new(1, String::from("updated text")));
 
         // delete

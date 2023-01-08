@@ -1,9 +1,8 @@
 use std::{io::{BufReader, Read}, fs::File};
-use serde::{Serialize, Deserialize};
-use ohkami::prelude::*;
+use ohkami::{prelude::*, components::json::Json};
 use once_cell::sync::Lazy;
 
-#[derive(Serialize, Deserialize)]
+#[JSON]
 struct Dinosaur {
     name:        String,
     description: String,
@@ -18,8 +17,7 @@ static DATA_STR: Lazy<String> = Lazy::new(|| {
     data
 });
 static DATA: Lazy<Vec<Dinosaur>> = Lazy::new(|| {
-    let mut raw = JSON::<Vec<Dinosaur>>::Ser(DATA_STR.to_string())
-        .de()
+    let mut raw = <Vec<Dinosaur> as Json>::de(&DATA_STR)
         .expect("failed to deserilize data");
     for data in &mut raw {
         (data.name).make_ascii_lowercase() // convert to lower case in advance
@@ -35,9 +33,9 @@ fn main() -> Result<()> {
         .howl(":8080")
 }
 
-async fn get_one_by_name(name: String) -> Result<Response> {
+async fn get_one_by_name(c: Context, name: String) -> Result<Response> {
     let index = DATA
         .binary_search_by_key(&name.to_ascii_lowercase().as_str(), |data| &data.name)
         ._else(|_| Response::BadRequest("No dinosaurs found"))?;
-    Response::OK(json(&DATA[index])?)
+    c.OK(&DATA[index])
 }

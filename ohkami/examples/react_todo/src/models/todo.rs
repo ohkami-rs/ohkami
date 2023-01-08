@@ -1,7 +1,7 @@
-use serde::{Deserialize, Serialize};
+use ohkami::JSON;
 use validator::Validate;
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Debug)]#[JSON]
 pub(crate) struct Todo {
     pub id:        i32,
     pub text:      String,
@@ -16,13 +16,13 @@ pub(crate) struct Todo {
     }
 }
 
-#[derive(Serialize, Deserialize, Validate)]
+#[derive(Validate)]#[JSON]
 pub(crate) struct CreateTodo {
     #[validate(length(min = 1, max = 100))]
     pub text: String,
 }
 
-#[derive(Serialize, Deserialize, Validate)]
+#[derive(Validate)]#[JSON]
 pub(crate) struct UpdateTodo {
     #[validate(length(min = 1, max = 100))]
     pub text:      Option<String>,

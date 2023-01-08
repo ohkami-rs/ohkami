@@ -1,7 +1,5 @@
-use serde::{Serialize, Deserialize};
-
-use crate::{components::json::JSON, prelude::Result};
-use super::{format::ResponseFormat, message::Message};
+use crate::{components::json::{Json, JsonResponse, JsonResponseLabel}, prelude::Result};
+use super::{message::Message, format::ResponseFormat};
 
 
 /// Type of HTTP response body
@@ -22,6 +20,11 @@ pub enum Body {
     pub fn html<Msg: Message>(html: Msg) -> Self {
         Self::text_html(html.as_message())
     }
+    /// Generate a `Body` that holds `application/json` response body.
+    /// Types that implment `ToString` can be this' argument.
+    pub fn json<Msg: Message>(text: Msg) -> Self {
+        Self::application_json(text.as_message())
+    }
 
     pub(crate) fn content_type(&self) -> &'static str {
         match self {
@@ -39,22 +42,6 @@ pub enum Body {
     }
 }
 
-impl<T: Serialize + for <'d> Deserialize<'d>> Into<Body> for JSON<T> {
-    fn into(self) -> Body {
-        Body::application_json(self.ser().unwrap_or_else(|_| String::new()))
-    }
-}
-impl Into<Body> for String {
-    fn into(self) -> Body {
-        Body::text_plain(self)
-    }
-}
-impl Into<Body> for &str {
-    fn into(self) -> Body {
-        Body::text_plain(self.to_owned())
-    }
-}
-
 impl ResponseFormat for Body {
     fn response_format(&self) -> &str {
         match self {
@@ -66,29 +53,100 @@ impl ResponseFormat for Body {
 }
 
 
-pub trait ResponseBody {fn as_body(self) -> Result<Option<Body>>;}
-impl<B: Into<Body>> ResponseBody for B {fn as_body(self) -> Result<Option<Body>> {Ok(Some(self.into()))}}
-impl<B: Into<Body>> ResponseBody for Option<B> {fn as_body(self) -> Result<Option<Body>> {Ok(self.map(|body| body.into()))}}
-impl<T: Serialize + for <'d> Deserialize<'d>> ResponseBody for Result<JSON<T>> {
-    fn as_body(self) -> Result<Option<Body>> {
-        let payload = self?;
-        Ok(Some(Body::application_json(payload.ser()?)))
+
+
+pub trait IntoOK<OkParam> {fn into_ok(self) -> Result<Option<Body>>;}
+
+impl IntoOK<String> for String {
+    fn into_ok(self) -> Result<Option<Body>> {
+        Ok(Some(Body::text_plain(self)))
     }
 }
-impl ResponseBody for Result<Body> {
-    fn as_body(self) -> Result<Option<Body>> {
-        self.map(|body| Some(body))
+impl IntoOK<Option<String>> for Option<String> {
+    fn into_ok(self) -> Result<Option<Body>> {
+        Ok(self.map(|string| Body::text_plain(string)))
+    }
+}
+impl IntoOK<Result<String>> for Result<String> {
+    fn into_ok(self) -> Result<Option<Body>> {
+        Ok(Some(Body::text_plain(self?)))
+    }
+}
+
+impl IntoOK<&str> for &str {
+    fn into_ok(self) -> Result<Option<Body>> {
+        Ok(Some(Body::text_plain(self.to_owned())))
+    }
+}
+impl IntoOK<Option<&str>> for Option<&str> {
+    fn into_ok(self) -> Result<Option<Body>> {
+        Ok(self.map(|string| Body::text_plain(string.to_owned())))
+    }
+}
+impl IntoOK<Result<&str>> for Result<&str> {
+    fn into_ok(self) -> Result<Option<Body>> {
+        Ok(Some(Body::text_plain(self?.to_owned())))
+    }
+}
+
+impl<L: JsonResponseLabel, J: JsonResponse<L>> IntoOK<L> for J {
+    fn into_ok(self) -> Result<Option<Body>> {
+        Ok(Some(Body::application_json(self.ser()?)))
+    }
+}
+impl<L: JsonResponseLabel, J: JsonResponse<L>> IntoOK<Option<L>> for Option<J> {
+    fn into_ok(self) -> Result<Option<Body>> {
+        match self {
+            Some(json) => Ok(Some(Body::application_json(json.ser()?))),
+            None => Ok(None),
+        }
+    }
+}
+impl<L: JsonResponseLabel, J: JsonResponse<L>> IntoOK<Result<L>> for Result<J> {
+    fn into_ok(self) -> Result<Option<Body>> {
+        Ok(Some(Body::application_json(self?.ser()?)))
+    }
+}
+
+impl IntoOK<Body> for Body {
+    fn into_ok(self) -> Result<Option<Body>> {
+        Ok(Some(self))
+    }
+}
+impl IntoOK<Body> for Option<Body> {
+    fn into_ok(self) -> Result<Option<Body>> {
+        Ok(self)
+    }
+}
+impl IntoOK<Body> for Result<Body> {
+    fn into_ok(self) -> Result<Option<Body>> {
+        Ok(Some(self?))
     }
 }
 
 
-impl<T: Serialize + for <'d> Deserialize<'d>> Into<Result<Body>> for JSON<T> {
-    fn into(self) -> Result<Body> {
+
+
+pub trait IntoCreated {fn into_created(self) -> Result<Body>;}
+
+impl<J: for <'j> Json<'j>> IntoCreated for J {
+    fn into_created(self) -> Result<Body> {
         Ok(Body::application_json(self.ser()?))
     }
 }
-impl Into<Result<Body>> for Body {
-    fn into(self) -> Result<Body> {
-        Ok(self)   
+impl<J: for <'j> Json<'j>> IntoCreated for Result<J> {
+    fn into_created(self) -> Result<Body> {
+        Ok(Body::application_json(self?.ser()?))
+    }
+}
+
+impl IntoCreated for Body {
+    fn into_created(self) -> Result<Body> {
+        Ok(self)
+    }
+}
+impl IntoCreated for Result<Body> {
+    fn into_created(self) -> Result<Body> {
+        self
     }
 }

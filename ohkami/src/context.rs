@@ -3,7 +3,7 @@ use crate::{
     result::{Result, ElseResponse, ElseResponseWithErr},
     utils::{range::RangeMap, buffer::Buffer},
     components::{status::Status, headers::{HeaderRangeMap, HeaderKey}},
-    response::{Response, message::ErrorMessage, body::{Body, ResponseBody}},
+    response::{Response, message::ErrorMessage, body::{IntoOK, IntoCreated,}},
 };
 
 #[cfg(feature = "sqlx")]
@@ -34,20 +34,20 @@ impl Context {
     /// - `String` | `&str` => `text/plain`
     /// - `JSON` | `Result<JSON>` => `application/json`
     #[allow(non_snake_case)]
-    pub fn OK<B: ResponseBody>(&self, body: B) -> Result<Response> {
+    pub fn OK<From, B: IntoOK<From>>(&self, body: B) -> Result<Response> {
         Ok(Response {
             additional_headers: self.additional_headers.to_owned(),
-            status: Status::OK,
-            body: body.as_body()?
+            status:             Status::OK,
+            body:               body.into_ok()?,
         })
     }
     /// Generate `Response` value that represents a HTTP response `201 Created` wrapped in `Ok()`.
     #[allow(non_snake_case)]
-    pub fn Created<B: Into<Result<Body>>>(&self, body: B) -> Result<Response> {
+    pub fn Created<B: IntoCreated>(&self, body: B) -> Result<Response> {
         Ok(Response {
             additional_headers: self.additional_headers.to_owned(),
             status:             Status::Created,
-            body:               Some(body.into()?),
+            body:               Some(body.into_created()?),
         })
     }
     /// Generate `Response` value that represents a HTTP response `204 No Content` wrapped in `Ok()`.

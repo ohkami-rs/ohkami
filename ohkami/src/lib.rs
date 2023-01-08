@@ -1,4 +1,4 @@
-#![doc(html_root_url = "https://docs.rs/ohkami/0.6.6")]
+#![doc(html_root_url = "https://docs.rs/ohkami/0.7.0")]
 
 #[cfg(all(not(feature = "sqlx"), any(feature = "postgres", feature = "mysql")))]
 compile_error!("feature `postgres` or `mysql` can't be enebled without enabling `sqlx` feature");
@@ -23,14 +23,14 @@ pub mod prelude {
         result::{Result, ElseResponse, ElseResponseWithErr},
         context::Context,
         response::{Response, body::Body},
-        components::{
-            json::{JSON, json},
-            headers::Header,
-        },
+        components::headers::Header,
     };
+    pub use ohkami_macros::JSON;
 
     #[cfg(feature = "sqlx")]
     pub use super::server::DBprofile;
 }
 
 pub use handler::group;
+
+pub use ohkami_macros::JSON;

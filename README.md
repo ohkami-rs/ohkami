@@ -14,8 +14,23 @@ ohkami *- [狼] means wolf in Japanese -* is **simple** and **macro free** web f
 
 <br/>
 
-## 0.6.5 → 0.6.6
-- fixed to handle request body as JSON only when request headers contain `Content-Type: application/json`
+## 0.6 → 0.7
+Add `JSON` attribute that means "I can be handled as JSON". This uses `serde`'s derive macros internally, so `serde = { version = "1.0", features = ["derive"] }` is neede in your Cargo.toml for this.\
+Only structs that implements have this attribute can be passed to handlers as reuqest body.
+
+```rust
+use ohkami::prelude::*;
+
+#[JSON]
+struct User {
+    id:   u64,
+    name: String,
+}
+
+async fn handler(c: Context, payload: User) -> Result<Response> {
+    // ...
+}
+```
 
 <br/>
 
@@ -24,7 +39,7 @@ ohkami *- [狼] means wolf in Japanese -* is **simple** and **macro free** web f
 
 ```toml
 [dependencies]
-ohkami = "0.6.6"
+ohkami = "0.7.0"
 ```
 
 2. Write your first code with ohkami:
@@ -63,20 +78,18 @@ fn main() -> Result<()> {
         .howl(":3000")
 }
 
-#[derive(Serialize, Deserialize)]
+#[JSON]
 struct User {
     id:   i64,
     name: String,
 }
 
-async fn reflect(user: JSON<User>) -> Result<Response> {
+async fn reflect(user: User) -> Result<Response> {
     Response::OK(user)
 }
 
-async fn reflect_name(user: JSON<User>) -> Result<Response> {
+async fn reflect_name(user: User) -> Result<Response> {
     let name = user.name;
-    // `JSON` implements `Deref`
-
     Response::OK(name)
 }
 ```
@@ -105,7 +118,7 @@ use ohkami::{
     group::{GET, POST} // import this
 };
 
-#[derive(Serialize, Deserialize)]
+#[JSON]
 struct User {
     id:   usize,
     name: String,
@@ -126,7 +139,7 @@ async fn hello_api() -> Result<Response> {
     Response::OK("Hello, api!")
 }
 
-async fn reflect(payload: JSON<User>) -> Result<Response> {
+async fn reflect(payload: User) -> Result<Response> {
     Response::OK(payload)
 }
 ```
@@ -175,15 +188,6 @@ c.OK("Hello, world!")
 Response::OK(json!{"ok": true})
 // or
 c.OK(json!{"ok": true})
-```
-```rust
-Response::OK(json("Hello!"))
-Response::OK(json(user))
-//or
-c.OK(json("Hello!"))
-c.OK(json(user))
-// `json()` serializes Rust value into JSON
-// value has to implemant `serde::Serialize`
 ```
 ### handle errors
 ```rust
@@ -323,9 +327,8 @@ mod test {
 
     #[test]
     fn test_hello() {
-        let request = Request::new(Method::GET, "/");
-        SERVER.assert_to_res(&request, Response::OK("Hello!"));
-        SERVER.assert_not_to_res(&request, Response::BadRequest(None));
+        let req = Request::new(Method::GET, "/");
+        SERVER.assert_to_res(&req, Response::OK("Hello!"));
     }
 }
 ```
@@ -333,7 +336,7 @@ mod test {
 <br/>
 
 ## Development
-ohkami is on early stage now and not for producntion use.\
+ohkami is not for producntion use.\
 Please give me your feedback ! → [GetHub issue](https://github.com/kana-rus/ohkami/issues)
 
 <br/>

@@ -1,9 +1,9 @@
 use async_std::task::block_on;
 #[cfg(feature = "sqlx")]
 use async_std::sync::Arc;
-use serde::{Serialize, Deserialize};
+use serde::{Serialize};
 use crate::{
-    utils::{range::RANGE_MAP_SIZE, buffer::Buffer, string::unescaped}, server::{Ohkami, consume_buffer}, prelude::{Response, JSON, Result}
+    utils::{range::RANGE_MAP_SIZE, buffer::Buffer, string::unescaped}, server::{Ohkami, consume_buffer}, prelude::{Response, Result}, components::{json::Json, headers::HeaderKey}
 };
 
 pub use crate::{
@@ -27,7 +27,7 @@ pub trait Test {
     /// Performs one-time handling and returns a `Response`
     fn oneshot_res(&self, request: &Request) -> Response;
     /// Performs one-time handling and asserts the response includes a response body of `application/json`. If so, returns the `JSON`.
-    fn oneshot_json<T: Serialize + for <'d> Deserialize<'d>>(&self, request: &Request) -> JSON<T>;
+    fn oneshot_json<J: for <'j> Json<'j>>(&self, request: &Request) -> J;
 } impl Test for Ohkami {
     fn assert_to_res<R: ExpectedResponse>(&self, request: &Request, expected_response: R) {
         let actual_response = block_on(async {
@@ -67,7 +67,7 @@ pub trait Test {
             Err(res) => res,
         }
     }
-    fn oneshot_json<T: Serialize + for <'d> Deserialize<'d>>(&self, request: &Request) -> JSON<T> {
+    fn oneshot_json<J: for <'j> Json<'j>>(&self, request: &Request) -> J {
         match block_on(async {
             consume_buffer(
                 request.into_request_buffer().await,
@@ -85,17 +85,19 @@ pub trait Test {
 
 #[allow(unused)]
 pub struct Request {
-    method: Method,
-    uri:    &'static str,
-    query:  [Option<(&'static str, &'static str)>; RANGE_MAP_SIZE],
-    body:   Option<String>,
+    method:  Method,
+    uri:     &'static str,
+    query:   [Option<(&'static str, &'static str)>; RANGE_MAP_SIZE],
+    headers: String,
+    body:    Option<String>,
 } impl Request {
     pub fn new(method: Method, uri: &'static str) -> Self {
         Self {
             method,
             uri,
-            query: [None, None, None, None],
-            body:  None,
+            query:   [None, None, None, None],
+            headers: String::new(),
+            body:    None,
         }
     }
     pub fn query(mut self, key: &'static str, value: &'static str) -> Self {
@@ -106,6 +108,13 @@ pub struct Request {
             panic!("Current ohkami can't handle more than {RANGE_MAP_SIZE} query params");
         };
         self.query[index] = Some((key, value));
+        self
+    }
+    pub fn header<K: HeaderKey>(mut self, key: K, value: &'static str) -> Self {
+        self.headers += key.as_key_str();
+        self.headers += ": ";
+        self.headers += value;
+        self.headers += "\r\n";
         self
     }
     pub fn body<S: Serialize>(mut self, body: S) -> Self {
@@ -136,9 +145,10 @@ pub struct Request {
         let request_str = {
             let mut raw_request = format!(
 "{} {} HTTP/1.1
-",
+{}",
                 self.method,
                 request_uri,
+                self.headers,
             );
             if let Some(body) = &self.body {
                 raw_request.push('\n');

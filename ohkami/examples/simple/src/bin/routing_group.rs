@@ -1,7 +1,6 @@
 use ohkami::{prelude::*, group::*};
-use serde::{Serialize, Deserialize};
 
-#[derive(Serialize, Deserialize)]
+#[JSON]
 struct User {
     id:   usize,
     name: String,
@@ -22,6 +21,6 @@ async fn hello_api() -> Result<Response> {
     Response::OK("Hello, api!")
 }
 
-async fn reflect(payload: JSON<User>) -> Result<Response> {
+async fn reflect(payload: User) -> Result<Response> {
     Response::OK(payload)
 }
