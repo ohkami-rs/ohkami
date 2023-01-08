@@ -2,6 +2,11 @@
 name = "ohkami_macros"
 version = "0.1.0"
 edition = "2021"
+authors = ["kanarus <kanarus786@gmail.com>"]
+description = "proc macros for ohkami"
+keywords = ["ohkami", "web", "framework", "macro"]
+categories = ["rust-patterns"]
+license = "MIT"
 
 [lib]
 proc-macro = true
