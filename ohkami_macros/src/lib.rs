@@ -19,8 +19,10 @@ mod internals;
 /// ```
 #[proc_macro_attribute]
 #[allow(non_snake_case)]
-pub fn JSON(struct_stream: TokenStream, _: TokenStream) -> TokenStream {
-    internals::JSON(struct_stream.into()).into()
+pub fn JSON( _: TokenStream, struct_stream: TokenStream) -> TokenStream {
+    internals::JSON(struct_stream.into())
+        .unwrap_or_else(|err| err.into_compile_error())
+        .into()
 }
 
 // #[proc_macro_derive(JSON)]

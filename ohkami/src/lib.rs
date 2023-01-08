@@ -23,7 +23,7 @@ pub mod prelude {
         result::{Result, ElseResponse, ElseResponseWithErr},
         context::Context,
         response::{Response, body::Body},
-        components::{headers::Header},
+        components::headers::Header,
     };
 
     #[cfg(feature = "sqlx")]

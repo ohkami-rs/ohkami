@@ -1,12 +1,18 @@
 use proc_macro2::TokenStream;
 use quote::quote;
+use syn::{Error, ItemStruct};
 
 #[allow(non_snake_case)]
-pub(super) fn JSON(struct_stream: TokenStream) -> TokenStream {
-    quote!{
-        #[derive(serde::Serialize, serde::Deserialize, ohkami::components::json::Json)]
+pub(super) fn JSON(struct_stream: TokenStream) -> Result<TokenStream, Error> {
+    let ItemStruct { ident, generics, .. }
+        = syn::parse2(struct_stream.clone())?;
+
+    Ok(quote!{
+        impl<'j> ohkami::components::json::Json<'j> for #ident #generics {}
+
+        #[derive(serde::Serialize, serde::Deserialize)]
         #struct_stream
-    }
+    })
 }
 
 /*
