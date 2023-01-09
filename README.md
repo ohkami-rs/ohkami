@@ -372,7 +372,7 @@ mod test {
 <br/>
 
 ## Development
-ohkami is not for producntion use.\
+ohkami is not for producntion use now.\
 Please give me your feedback ! → [GetHub issue](https://github.com/kana-rus/ohkami/issues)
 
 <br/>

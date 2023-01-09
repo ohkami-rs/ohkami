@@ -1,47 +1,14 @@
 use std::{pin::Pin, future::Future};
 use crate::{context::Context, testing::Method, utils::validation};
 
-// pub(crate) type MiddlewareFunc = Box<dyn Fn(&mut Context) -> Pin<Box<dyn Future<Output=()> + Send>> + Send + Sync>;
+
 pub(crate) type MiddlewareFunc = Box<dyn Fn(Context) -> Pin<Box<dyn Future<Output=Context> + Send>> + Send + Sync>;
-// trait MiddlewareClone:
-//     Fn(&mut Context) -> Pin<Box<dyn Future<Output=()> + Send>> + Send + Sync
-//     + Clone
-// {}
 
 pub trait MiddlewareArg {}
 pub trait MiddlewareProcess<Arg: MiddlewareArg> {
     fn into_middleware_func(self) -> MiddlewareFunc;
 }
-// impl MiddlewareArg for () {}
-// impl<F, Fut> MiddlewareProcess<()> for F
-// where
-//     F:   Fn() -> Fut + Send + Sync + 'static,
-//     Fut: Future<Output=()> + Send + 'static,
-// {
-//     fn into_middleware_func(self) -> MiddlewareFunc {
-//         Box::new(move |_| Box::pin(self()))
-//     }
-// }
-// impl MiddlewareArg for (&Context,) {}
-// impl<F, Fut> MiddlewareProcess<(&Context,)> for F
-// where
-//     F:   Fn(&Context) -> Fut + Send + Sync + 'static,
-//     Fut: Future<Output=()> + Send + 'static,
-// {
-//     fn into_middleware_func(self) -> MiddlewareFunc {
-//         Box::new(move |ctx| Box::pin(self(ctx)))
-//     }
-// }
-// impl MiddlewareArg for &Context {}
-// impl<F, Fut> MiddlewareProcess<&Context> for F
-// where
-//     F:   Fn(&mut Context) -> Fut + Send + Sync + 'static,
-//     Fut: Future<Output=()> + Send + 'static,
-// {
-//     fn into_middleware_func(self) -> MiddlewareFunc {
-//         Box::new(move |ctx| Box::pin(self(ctx)))
-//     }
-// }
+
 impl MiddlewareArg for Context {}
 impl<F, Fut> MiddlewareProcess<Context> for F
 where
