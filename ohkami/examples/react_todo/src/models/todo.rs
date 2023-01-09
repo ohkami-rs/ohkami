@@ -1,7 +1,7 @@
-use ohkami::JSON;
+use ohkami::macros::JSON;
 use validator::Validate;
 
-#[derive(Clone, PartialEq, Debug)]#[JSON]
+#[derive(JSON, Clone, PartialEq, Debug)]
 pub(crate) struct Todo {
     pub id:        i32,
     pub text:      String,
@@ -16,13 +16,13 @@ pub(crate) struct Todo {
     }
 }
 
-#[derive(Validate)]#[JSON]
+#[derive(JSON, Validate)]
 pub(crate) struct CreateTodo {
     #[validate(length(min = 1, max = 100))]
     pub text: String,
 }
 
-#[derive(Validate)]#[JSON]
+#[derive(JSON, Validate)]
 pub(crate) struct UpdateTodo {
     #[validate(length(min = 1, max = 100))]
     pub text:      Option<String>,

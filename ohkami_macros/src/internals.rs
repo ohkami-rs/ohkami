@@ -2,58 +2,38 @@ use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{Error, ItemStruct};
 
-#[allow(non_snake_case)]
-pub(super) fn JSON(struct_stream: TokenStream) -> Result<TokenStream, Error> {
+// #[allow(non_snake_case)]
+// pub(super) fn JSON(struct_stream: TokenStream) -> Result<TokenStream, Error> {
+// 
+//     #[allow(unused)] //
+// 
+//     let ItemStruct { ident, generics, .. }
+//         = syn::parse2(struct_stream.clone())?;
+// 
+//     Ok(quote!{
+//         impl<'j> ohkami::components::json::Json<'j> for #ident {}
+// 
+//         #[derive(serde::Serialize, serde::Deserialize)]
+//         #struct_stream
+//     })
+// }
 
-    #[allow(unused)] //
+pub(super) fn derive_json(serde_derived_struct: TokenStream) -> Result<TokenStream, Error> {
+    #[allow(unused)] // generics ...
 
     let ItemStruct { ident, generics, .. }
-        = syn::parse2(struct_stream.clone())?;
+        = syn::parse2(serde_derived_struct.clone())?;
 
     Ok(quote!{
         impl<'j> ohkami::components::json::Json<'j> for #ident {}
 
         #[derive(serde::Serialize, serde::Deserialize)]
-        #struct_stream
+        #[ohkami::macros::consume_struct]
+        #serde_derived_struct
     })
 }
 
-/*
-
-use syn::Error;
-mod ohkami_json; use self::ohkami_json::{
-    serialize::serialize_process,
-    deserialize::deserialize_struct,
-};
-
-pub(super) fn derive_ohkami_json(struct_stream: TokenStream) -> Result<TokenStream, Error> {
-    let struct_stream = syn::parse2::<syn::ItemStruct>(struct_stream)?;
-    let ident = struct_stream.ident;
-
-    if struct_stream.semi_token.is_some() {
-        unimplemented!()
-    } else {
-        let fields = struct_stream.fields;
-        let items = {
-            let mut items = Vec::with_capacity(fields.len());
-            for field in fields {items.push((field.ident.unwrap(), field.ty));}
-            items
-        };
-
-        let serialize_process = serialize_process(&items);
-        let deserialized_struct = deserialize_struct(&ident, &items);
-
-        Ok(quote!{
-            impl JSON for #ident {
-                fn serialize(&self) -> String {
-                    #serialize_process
-                }
-                fn _deserialize(string: &mut std::iter::Peekable<std::str::Chars>) -> Option<Self> {
-                    #deserialized_struct
-                }
-            }
-        })
-    }
+pub(super) fn consume_struct(serde_derived_struct: TokenStream) -> Result<TokenStream, Error> {
+    let _: ItemStruct = syn::parse2(serde_derived_struct)?;
+    Ok(TokenStream::new())
 }
-
-*/

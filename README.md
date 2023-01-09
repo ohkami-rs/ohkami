@@ -14,21 +14,14 @@ ohkami *- [狼] means wolf in Japanese -* is **simple** and **macro free** web f
 
 <br/>
 
-## 0.6 → 0.7
-Add `JSON` attribute that means "I can be handled as JSON". This uses `serde`'s derive macros internally, so `serde = { version = "1.0", features = ["derive"] }` is neede in your Cargo.toml for this.\
-Only structs that has this attribute can be passed to handlers as reuqest body.
+## 0.7.0 → 0.7.2
+I successed in making `JSON` into a **derive macro**!!!
 
 ```rust
-use ohkami::prelude::*;
-
-#[JSON]
-struct User {
-    id:   u64,
-    name: String,
-}
-
-async fn handler(c: Context, payload: User) -> Result<Response> {
-    // ...
+#[derive(JSON, PartialEq, Debug)]
+pub(crate) struct User {
+    pub id:   u64,
+    pub name: String,
 }
 ```
 
@@ -78,7 +71,7 @@ fn main() -> Result<()> {
         .howl(":3000")
 }
 
-#[JSON]
+#[derive(JSON)]
 struct User {
     id:   i64,
     name: String,
@@ -118,7 +111,7 @@ use ohkami::{
     group::{GET, POST} // import this
 };
 
-#[JSON]
+#[derive(JSON)]
 struct User {
     id:   usize,
     name: String,
@@ -190,14 +183,13 @@ Response::OK(json!{"ok": true})
 c.OK(json!{"ok": true})
 ```
 ```rust
-#[JSON]
+#[derive(JSON)]
 struct User {
     id:   u64,
     name: String,
 }
-
-// ...
-
+```
+```rust
 let user = User { id: 1, name: String::from("John") };
 
 Response::OK(user)

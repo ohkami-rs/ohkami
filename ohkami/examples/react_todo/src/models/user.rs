@@ -1,12 +1,12 @@
-use ohkami::JSON;
+use ohkami::macros::JSON;
 
-#[derive(PartialEq, Debug)]#[JSON]
+#[derive(JSON, PartialEq, Debug)]
 pub(crate) struct User {
     pub id:   u64,
     pub name: String,
 }
 
-#[JSON]
+#[derive(JSON)]
 pub(crate) struct CreateUser {
     pub username: String,
 }

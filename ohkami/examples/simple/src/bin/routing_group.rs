@@ -1,6 +1,6 @@
 use ohkami::{prelude::*, group::*};
 
-#[JSON]
+#[derive(JSON)]
 struct User {
     id:   usize,
     name: String,

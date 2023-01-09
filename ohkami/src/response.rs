@@ -99,16 +99,8 @@ Keep-Alive: timeout=5
             }
         .as_bytes()).await
     }
-    
-    /*
-        pub(crate) fn add_header(&mut self, key: AdditionalHeader, value: &String) {
-            self.additional_headers += key.response_format();
-            self.additional_headers += value;
-            self.additional_headers += "\n";
-        }
-    */
 
-    /// Generate `Result<Response>` value that represents a HTTP response of `200 OK`. `JSON`, `String`, `&str`, or `Option` of them can be argument of this.\
+    /// Generate `Result<Response>` value that represents a HTTP response of `200 OK`. `JSON`, `String`, `&str`, `Option<one of them>`, or `Result<one of them>` can be argument of this.\
     /// You can directly return `Response::OK(/* something */)` from a handler because this is already wrapped in `Result::Ok`.
     #[allow(non_snake_case)]
     pub fn OK<From, B: IntoOK<From>>(body: B) -> Result<Self> {
@@ -118,7 +110,7 @@ Keep-Alive: timeout=5
             body:               body.into_ok()?,
         })
     }
-    /// Generate `Result<Response>` value that represents a HTTP response of `201 Created`.
+    /// Generate `Result<Response>` value that represents a HTTP response of `201 Created`. `JSON` or `Option<JSON>` can be argument of this.\
     /// You can directly return `Response::Created(/* something */)` from a handler because this is already wrapped in `Result::Ok`.
     #[allow(non_snake_case)]
     pub fn Created<B: IntoCreated>(body: B) -> Result<Self> {

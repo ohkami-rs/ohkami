@@ -1,4 +1,4 @@
-#![doc(html_root_url = "https://docs.rs/ohkami/0.7.1")]
+#![doc(html_root_url = "https://docs.rs/ohkami/0.7.2")]
 
 #[cfg(all(not(feature = "sqlx"), any(feature = "postgres", feature = "mysql")))]
 compile_error!("feature `postgres` or `mysql` can't be enebled without enabling `sqlx` feature");
@@ -33,4 +33,6 @@ pub mod prelude {
 
 pub use handler::group;
 
-pub use ohkami_macros::JSON;
+pub mod macros {
+    pub use ohkami_macros::{JSON, consume_struct};
+}
