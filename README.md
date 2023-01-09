@@ -32,7 +32,7 @@ pub(crate) struct User {
 
 ```toml
 [dependencies]
-ohkami = "0.7.0"
+ohkami = "0.7.3"
 ```
 
 2. Write your first code with ohkami:
