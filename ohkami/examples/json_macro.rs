@@ -6,5 +6,4 @@ struct User {
     name: String,
 }
 
-
 fn main() {}
