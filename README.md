@@ -14,14 +14,43 @@ ohkami *- [狼] means wolf in Japanese -* is **simple** and **macro free** web f
 
 <br/>
 
-## 0.7.0 → 0.7.2
-I successed in making `JSON` into a **derive macro**!!!
+## 0.7 → 0.8
+Reorganized middleware system and added **after**-handling middleware：
 
 ```rust
-#[derive(JSON, PartialEq, Debug)]
-pub(crate) struct User {
-    pub id:   u64,
-    pub name: String,
+fn main() -> Result<()> {
+    let middleware = Middleware::new()
+        .beforeGET("/", async |c| {
+            tracing::info!("Helllo, middleware!");
+            c
+        })
+        .afterANY("/", async |res| {
+            res.add_header(
+                Header::AccessControlAllowOrigin,
+                "mydomain:8000"
+            );
+            res
+        });
+
+    // this works the same as
+
+    let before_middlewre = Middleware::before()
+        .GET("/", async |c| {
+            tracing::info!("Helllo, middleware!");
+            c
+        });
+    let after_middleware = Middleware::after()
+        .ANY("/", async |res| {
+            res.add_header(
+                Header::AccessControlAllowOrigin,
+                "mydomain:8000"
+            );
+            res
+        });
+
+    let middleware = before_middleware.and(after_middleware);
+
+    // you can build middleware in any way you like
 }
 ```
 
@@ -32,7 +61,7 @@ pub(crate) struct User {
 
 ```toml
 [dependencies]
-ohkami = "0.7.3"
+ohkami = "0.8.0"
 ```
 
 2. Write your first code with ohkami:
@@ -154,16 +183,16 @@ c.add_header("Access-Control-Allow-Origin", "mydomain:8000");
 ```
 ```rust
 use ohkami::prelude::*;
-use Header::{AccessControlAllowOrigin};
+use ohkami::Header::AccessControlAllowOrigin;
 
-async fn cors(c: Context) -> Context {
-    c.add_header(AccessControlAllowOrigin, "mydomain:8000");
-    c
+async fn cors(mut res: Response) -> Response {
+    res.add_header(AccessControlAllowOrigin, "mydomain:8000");
+    res
 }
 
 fn main() -> Result<()> {
-    let middleware = Middleware::new()
-        .ANY("/api/*", cors);
+    let my_middleware = Middleware::new()
+        .afterANY("/api/*", cors);
 
     // ...
 ```
