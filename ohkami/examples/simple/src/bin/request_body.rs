@@ -7,7 +7,7 @@ fn main() -> Result<()> {
         .howl(":3000")
 }
 
-#[JSON]
+#[derive(JSON)]
 #[allow(unused)]
 struct User {
     name:     String,

@@ -25,7 +25,7 @@ pub mod prelude {
         response::{Response, body::Body},
         components::headers::Header,
     };
-    pub use ohkami_macros::{JSON, consume_struct};
+    pub use ohkami_macros::JSON;
 
     #[cfg(feature = "sqlx")]
     pub use super::server::DBprofile;
@@ -33,4 +33,6 @@ pub mod prelude {
 
 pub use handler::group;
 
-pub use ohkami_macros::{JSON, consume_struct};
+pub mod macros {
+    pub use ohkami_macros::{JSON, consume_struct};
+}

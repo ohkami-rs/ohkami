@@ -2,7 +2,7 @@ use std::{io::{BufReader, Read}, fs::File};
 use ohkami::{prelude::*, components::json::Json};
 use once_cell::sync::Lazy;
 
-#[JSON]
+#[derive(JSON)]
 struct Dinosaur {
     name:        String,
     description: String,

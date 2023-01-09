@@ -19,7 +19,7 @@ use syn::{Error, ItemStruct};
 // }
 
 pub(super) fn derive_json(serde_derived_struct: TokenStream) -> Result<TokenStream, Error> {
-    #[allow(unused)] //
+    #[allow(unused)] // generics ...
 
     let ItemStruct { ident, generics, .. }
         = syn::parse2(serde_derived_struct.clone())?;
@@ -28,7 +28,7 @@ pub(super) fn derive_json(serde_derived_struct: TokenStream) -> Result<TokenStre
         impl<'j> ohkami::components::json::Json<'j> for #ident {}
 
         #[derive(serde::Serialize, serde::Deserialize)]
-        #[consume_struct]
+        #[ohkami::macros::consume_struct]
         #serde_derived_struct
     })
 }

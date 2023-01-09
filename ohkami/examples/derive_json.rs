@@ -1,8 +1,8 @@
-use ohkami_macros::{NewJSON, consume_struct};
+use ohkami::macros::JSON;
 
-#[derive(NewJSON)]
+#[derive(PartialEq, JSON)]
 struct User {
-    id:   u64,
+    id: u64,
     name: String,
 }
 
