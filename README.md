@@ -191,6 +191,7 @@ struct User {
 ```
 ```rust
 let user = User { id: 1, name: String::from("John") };
+
 Response::OK(user)
 // or
 c.OK(user)
