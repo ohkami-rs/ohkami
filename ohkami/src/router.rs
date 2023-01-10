@@ -108,6 +108,10 @@ impl Router {
                 }
                 drop(store)
             } else {
+                // let err_msg = format!("Failed to resister a before-handling middleware function for `{} {route}`. Please report this: https://github.com/kana-rus/ohkami/issues",
+                //     if );
+                // let warn_msg = format!("A before-handling middleware function for `{} {route}` won't work to any reuqest. No handlerthat matches this is resistered.",
+                //     if );
                 match method {
                     Method::GET    => self.GET.0 = self.GET.0.register_before_middleware(route, store)?,
                     Method::POST   => self.POST.0 = self.POST.0.register_before_middleware(route, store)?,
