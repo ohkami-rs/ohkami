@@ -1,122 +1,271 @@
 use std::{pin::Pin, future::Future};
-use crate::{context::Context, testing::Method, utils::validation};
+use crate::{context::Context, testing::Method, utils::validation, prelude::Response};
 
 
-pub(crate) type MiddlewareFunc = Box<dyn Fn(Context) -> Pin<Box<dyn Future<Output=Context> + Send>> + Send + Sync>;
+// pub(crate) type MiddlewareFunc = Box<dyn Fn(Context) -> Pin<Box<dyn Future<Output=Context> + Send>> + Send + Sync>;
+// 
+// pub trait MiddlewareArg {}
+// pub trait MiddlewareProcess<Arg: MiddlewareArg> {
+//     fn into_middleware_func(self) -> MiddlewareFunc;
+// }
+// 
+// impl MiddlewareArg for Context {}
+// impl<F, Fut> MiddlewareProcess<Context> for F
+// where
+//     F:   Fn(Context) -> Fut + Send + Sync + 'static,
+//     Fut: Future<Output = Context> + Send + 'static,
+// {
+//     fn into_middleware_func(self) -> MiddlewareFunc {
+//         Box::new(move |ctx| Box::pin(self(ctx)))
+//     }
+// }
+// 
 
-pub trait MiddlewareArg {}
-pub trait MiddlewareProcess<Arg: MiddlewareArg> {
-    fn into_middleware_func(self) -> MiddlewareFunc;
+const MIDDLEWARE_STORE_SIZE: usize = 16; // methos ごとに分かれてるのでまあ足りるかなと
+
+pub(crate) struct BeforeMiddlewareStore(Vec::<
+    Box<dyn Fn(Context) -> Pin<Box<dyn Future<Output=Context> + Send>> + Send + Sync>
+>); impl BeforeMiddlewareStore {
+    fn store<
+        F:   Clone + Fn(Context) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = Context> + Send + 'static,
+    >(f: F) -> Self {
+        Self(vec![
+            Box::new(move|ctx|Box::pin((f.clone())(ctx))),Box::new(move|ctx|Box::pin((f.clone())(ctx))),
+            Box::new(move|ctx|Box::pin((f.clone())(ctx))),Box::new(move|ctx|Box::pin((f.clone())(ctx))),
+            Box::new(move|ctx|Box::pin((f.clone())(ctx))),Box::new(move|ctx|Box::pin((f.clone())(ctx))),
+            Box::new(move|ctx|Box::pin((f.clone())(ctx))),Box::new(move|ctx|Box::pin((f.clone())(ctx))),
+            Box::new(move|ctx|Box::pin((f.clone())(ctx))),Box::new(move|ctx|Box::pin((f.clone())(ctx))),
+            Box::new(move|ctx|Box::pin((f.clone())(ctx))),Box::new(move|ctx|Box::pin((f.clone())(ctx))),
+            Box::new(move|ctx|Box::pin((f.clone())(ctx))),Box::new(move|ctx|Box::pin((f.clone())(ctx))),
+            Box::new(move|ctx|Box::pin((f.clone())(ctx))),Box::new(move|ctx|Box::pin((f.clone())(ctx))),
+        ])
+    }
 }
 
-impl MiddlewareArg for Context {}
-impl<F, Fut> MiddlewareProcess<Context> for F
-where
-    F:   Fn(Context) -> Fut + Send + Sync + 'static,
-    Fut: Future<Output = Context> + Send + 'static,
-{
-    fn into_middleware_func(self) -> MiddlewareFunc {
-        Box::new(move |ctx| Box::pin(self(ctx)))
+pub(crate) struct AfterMiddlewareStore(Vec::<
+    Box<dyn Fn(Response) -> Pin<Box<dyn Future<Output=Response> + Send>> + Send + Sync>
+>); impl AfterMiddlewareStore {
+    fn store<
+        F:   Clone + Fn(Response) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = Response> + Send + 'static,
+    >(f: F) -> Self {
+        Self(vec![
+            Box::new(move|res|Box::pin((f.clone())(res))),Box::new(move|res|Box::pin((f.clone())(res))),
+            Box::new(move|res|Box::pin((f.clone())(res))),Box::new(move|res|Box::pin((f.clone())(res))),
+            Box::new(move|res|Box::pin((f.clone())(res))),Box::new(move|res|Box::pin((f.clone())(res))),
+            Box::new(move|res|Box::pin((f.clone())(res))),Box::new(move|res|Box::pin((f.clone())(res))),
+            Box::new(move|res|Box::pin((f.clone())(res))),Box::new(move|res|Box::pin((f.clone())(res))),
+            Box::new(move|res|Box::pin((f.clone())(res))),Box::new(move|res|Box::pin((f.clone())(res))),
+            Box::new(move|res|Box::pin((f.clone())(res))),Box::new(move|res|Box::pin((f.clone())(res))),
+            Box::new(move|res|Box::pin((f.clone())(res))),Box::new(move|res|Box::pin((f.clone())(res))),
+        ])
     }
 }
 
 /// A set of ohkami's middlewares
 pub struct Middleware {
-    pub(crate) proccess:     Vec<(Method, /*route*/&'static str, MiddlewareFunc)>,
+    pub(crate) before:       Vec<(Method, /*route*/&'static str, BeforeMiddlewareStore)>,
+    pub(crate) after:        Vec<(Method, /*route*/&'static str, AfterMiddlewareStore)>,
     pub(crate) setup_errors: Vec<String>,
 } impl Middleware {
     pub fn new() -> Self {
         Self {
-            proccess: Vec::new(),
+            before:       Vec::new(),
+            after:        Vec::new(),
             setup_errors: Vec::new(),
         }
     }
 
     /// Add a middleware func for requests of any methods to given path
     #[allow(non_snake_case)]
-    pub fn ANY<P: MiddlewareProcess<Arg> + Clone, Arg: MiddlewareArg>(
-        mut self,
+    pub fn beforeANY<
+        F:   Clone + Fn(Context) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = Context> + Send + 'static,
+    >(
+        mut    self,
         route: &'static str,
-        proccess: P,
+        f:     F,
     ) -> Self {
         if ! validation::valid_middleware_route(route) {
             self.setup_errors.push(
                 format!("middleware route `{route}` is invalid")
             )
         }
-        self.proccess.push((Method::GET, route, proccess.clone().into_middleware_func()));
-        self.proccess.push((Method::POST, route, proccess.clone().into_middleware_func()));
-        self.proccess.push((Method::PATCH, route, proccess.clone().into_middleware_func()));
-        self.proccess.push((Method::DELETE, route, proccess.clone().into_middleware_func()));
+        self.before.push((Method::GET, route, BeforeMiddlewareStore::store(f.clone())));
+        self.before.push((Method::POST, route, BeforeMiddlewareStore::store(f.clone())));
+        self.before.push((Method::PATCH, route, BeforeMiddlewareStore::store(f.clone())));
+        self.before.push((Method::DELETE, route, BeforeMiddlewareStore::store(f.clone())));
+        self
+    }
+    #[allow(non_snake_case)]
+    pub fn afterANY<
+        F:   Clone + Fn(Response) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = Response> + Send + 'static,
+    >(
+        mut    self,
+        route: &'static str,
+        f:     F,
+    ) -> Self {
+        if ! validation::valid_middleware_route(route) {
+            self.setup_errors.push(
+                format!("middleware route `{route}` is invalid")
+            )
+        }
+        self.after.push((Method::GET, route, AfterMiddlewareStore::store(f.clone())));
+        self.after.push((Method::POST, route, AfterMiddlewareStore::store(f.clone())));
+        self.after.push((Method::PATCH, route, AfterMiddlewareStore::store(f.clone())));
+        self.after.push((Method::DELETE, route, AfterMiddlewareStore::store(f.clone())));
         self
     }
 
     /// Add a middleware func for requests of GET requests to given path
     #[allow(non_snake_case)]
-    pub fn GET<P: MiddlewareProcess<Arg>, Arg: MiddlewareArg>(
+    pub fn beforeGET<
+        F:   Clone + Fn(Context) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = Context> + Send + 'static,
+    >(
         mut self,
         route: &'static str,
-        proccess: P,
+        f:     F,
     ) -> Self {
         if ! validation::valid_middleware_route(route) {
             self.setup_errors.push(
                 format!("middleware route `{route}` is invalid")
             )
         }
-        self.proccess.push((Method::GET, route, proccess.into_middleware_func()));
+        self.before.push((Method::GET, route, BeforeMiddlewareStore::store(f)));
+        self
+    }
+    #[allow(non_snake_case)]
+    pub fn afterGET<
+        F:   Clone + Fn(Response) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = Response> + Send + 'static,
+    >(
+        mut self,
+        route: &'static str,
+        f:     F,
+    ) -> Self {
+        if ! validation::valid_middleware_route(route) {
+            self.setup_errors.push(
+                format!("middleware route `{route}` is invalid")
+            )
+        }
+        self.after.push((Method::GET, route, AfterMiddlewareStore::store(f)));
         self
     }
 
     /// Add a middleware func for requests of POST requests to given path
     #[allow(non_snake_case)]
-    pub fn POST<P: MiddlewareProcess<Arg>, Arg: MiddlewareArg>(
+    pub fn beforePOST<
+        F:   Clone + Fn(Context) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = Context> + Send + 'static,
+    >(
         mut self,
         route: &'static str,
-        proccess: P,
+        f:     F,
     ) -> Self {
         if ! validation::valid_middleware_route(route) {
             self.setup_errors.push(
                 format!("middleware route `{route}` is invalid")
             )
         }
-        self.proccess.push((Method::POST, route, proccess.into_middleware_func()));
+        self.before.push((Method::POST, route, BeforeMiddlewareStore::store(f)));
+        self
+    }
+    #[allow(non_snake_case)]
+    pub fn afterPOST<
+        F:   Clone + Fn(Response) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = Response> + Send + 'static,
+    >(
+        mut self,
+        route: &'static str,
+        f:     F,
+    ) -> Self {
+        if ! validation::valid_middleware_route(route) {
+            self.setup_errors.push(
+                format!("middleware route `{route}` is invalid")
+            )
+        }
+        self.after.push((Method::POST, route, AfterMiddlewareStore::store(f)));
         self
     }
 
     /// Add a middleware func for requests of PATCH requests to given path
     #[allow(non_snake_case)]
-    pub fn PATCH<P: MiddlewareProcess<Arg>, Arg: MiddlewareArg>(
+    pub fn beforePATCH<
+        F:   Clone + Fn(Context) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = Context> + Send + 'static,
+    >(
         mut self,
         route: &'static str,
-        proccess: P,
+        f:     F,
     ) -> Self {
         if ! validation::valid_middleware_route(route) {
             self.setup_errors.push(
                 format!("middleware route `{route}` is invalid")
             )
         }
-        self.proccess.push((Method::PATCH, route, proccess.into_middleware_func()));
+        self.before.push((Method::PATCH, route, BeforeMiddlewareStore::store(f)));
+        self
+    }
+    #[allow(non_snake_case)]
+    pub fn afterPATCH<
+        F:   Clone + Fn(Response) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = Response> + Send + 'static,
+    >(
+        mut self,
+        route: &'static str,
+        f:     F,
+    ) -> Self {
+        if ! validation::valid_middleware_route(route) {
+            self.setup_errors.push(
+                format!("middleware route `{route}` is invalid")
+            )
+        }
+        self.after.push((Method::PATCH, route, AfterMiddlewareStore::store(f)));
         self
     }
 
     /// Add a middleware func for requests of DELETE requests to given path
     #[allow(non_snake_case)]
-    pub fn DELETE<P: MiddlewareProcess<Arg>, Arg: MiddlewareArg>(
+    pub fn beforeDELETE<
+        F:   Clone + Fn(Context) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = Context> + Send + 'static,
+    >(
         mut self,
         route: &'static str,
-        proccess: P,
+        f:     F,
     ) -> Self {
         if ! validation::valid_middleware_route(route) {
             self.setup_errors.push(
                 format!("middleware route `{route}` is invalid")
             )
         }
-        self.proccess.push((Method::DELETE, route, proccess.into_middleware_func()));
+        self.before.push((Method::DELETE, route, BeforeMiddlewareStore::store(f)));
+        self
+    }
+    #[allow(non_snake_case)]
+    pub fn afterDELETE<
+        F:   Clone + Fn(Response) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = Response> + Send + 'static,
+    >(
+        mut self,
+        route: &'static str,
+        f:     F,
+    ) -> Self {
+        if ! validation::valid_middleware_route(route) {
+            self.setup_errors.push(
+                format!("middleware route `{route}` is invalid")
+            )
+        }
+        self.after.push((Method::DELETE, route, AfterMiddlewareStore::store(f)));
         self
     }
 
     pub(crate) fn merge(mut self, mut another: Self) -> Self {
-        self.proccess.append(&mut another.proccess);
+        self.before.append(&mut another.before);
+        self.after.append(&mut another.after);
         self.setup_errors.append(&mut another.setup_errors);
         self
     }
@@ -135,7 +284,7 @@ mod test {
     #[test]
     fn server() {
         let middleware = Middleware::new()
-            .ANY("/api/*", cors);
+            .beforeANY("/api/*", cors);
 
         Ohkami::with(middleware)
             .GET("/api", hello)

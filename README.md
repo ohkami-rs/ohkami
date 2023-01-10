@@ -34,23 +34,22 @@ fn main() -> Result<()> {
 
     // this works the same as
 
-    let before_middlewre = Middleware::before()
-        .GET("/", async |c| {
-            tracing::info!("Helllo, middleware!");
-            c
-        });
-    let after_middleware = Middleware::after()
-        .ANY("/", async |res| {
-            res.add_header(
-                Header::AccessControlAllowOrigin,
-                "mydomain:8000"
-            );
-            res
-        });
+    // let before_middlewre = Middleware::before()
+    //     .GET("/", async |c| {
+    //         tracing::info!("Helllo, middleware!");
+    //         c
+    //     });
+    // let after_middleware = Middleware::after()
+    //     .ANY("/", async |res| {
+    //         res.add_header(
+    //             Header::AccessControlAllowOrigin,
+    //             "mydomain:8000"
+    //         );
+    //         res
+    //     });
+    // let middleware = before_middleware.and(after_middleware);
 
-    let middleware = before_middleware.and(after_middleware);
-
-    // you can build middleware in any way you like
+    // you can build middlewares in any way you like
 }
 ```
 
