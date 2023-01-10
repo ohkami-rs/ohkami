@@ -100,9 +100,9 @@ pub struct Middleware {
                 format!("middleware route `{route}` is invalid")
             )
         }
-        self.before.push((Method::GET, route, BeforeMiddlewareStore::store(f.clone())));
-        self.before.push((Method::POST, route, BeforeMiddlewareStore::store(f.clone())));
-        self.before.push((Method::PATCH, route, BeforeMiddlewareStore::store(f.clone())));
+        self.before.push((Method::GET,    route, BeforeMiddlewareStore::store(f.clone())));
+        self.before.push((Method::POST,   route, BeforeMiddlewareStore::store(f.clone())));
+        self.before.push((Method::PATCH,  route, BeforeMiddlewareStore::store(f.clone())));
         self.before.push((Method::DELETE, route, BeforeMiddlewareStore::store(f.clone())));
         self
     }

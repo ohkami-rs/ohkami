@@ -108,14 +108,11 @@ impl Router {
                 }
                 drop(store)
             } else {
-                let err_msg = format!(
-                    "Failed to resister before-handling middleware func for route `{route}`. If you got this error, please report to https://github.com/kana-rus/ohkami/issues"
-                );
                 match method {
-                    Method::GET    => self.GET.0 = self.GET.0.register_before_middleware(route, store, err_msg)?,
-                    Method::POST   => self.POST.0 = self.POST.0.register_before_middleware(route, store, err_msg)?,
-                    Method::PATCH  => self.PATCH.0 = self.PATCH.0.register_before_middleware(route, store, err_msg)?,
-                    Method::DELETE => self.DELETE.0 = self.DELETE.0.register_before_middleware(route, store, err_msg)?,
+                    Method::GET    => self.GET.0 = self.GET.0.register_before_middleware(route, store)?,
+                    Method::POST   => self.POST.0 = self.POST.0.register_before_middleware(route, store)?,
+                    Method::PATCH  => self.PATCH.0 = self.PATCH.0.register_before_middleware(route, store)?,
+                    Method::DELETE => self.DELETE.0 = self.DELETE.0.register_before_middleware(route, store)?,
                 }
             }
         }
@@ -130,14 +127,11 @@ impl Router {
                 }
                 drop(store)
             } else {
-                let err_msg = format!(
-                    "Failed to resister after-handling middleware func for route `{route}`. If you got this error, please report to https://github.com/kana-rus/ohkami/issues"
-                );
                 match method {
-                    Method::GET    => self.GET.0 = self.GET.0.register_after_middleware(route, store, err_msg)?,
-                    Method::POST   => self.POST.0 = self.POST.0.register_after_middleware(route, store, err_msg)?,
-                    Method::PATCH  => self.PATCH.0 = self.PATCH.0.register_after_middleware(route, store, err_msg)?,
-                    Method::DELETE => self.DELETE.0 = self.DELETE.0.register_after_middleware(route, store, err_msg)?,
+                    Method::GET    => self.GET.0 = self.GET.0.register_after_middleware(route, store)?,
+                    Method::POST   => self.POST.0 = self.POST.0.register_after_middleware(route, store)?,
+                    Method::PATCH  => self.PATCH.0 = self.PATCH.0.register_after_middleware(route, store)?,
+                    Method::DELETE => self.DELETE.0 = self.DELETE.0.register_after_middleware(route, store)?,
                 }
             }
         }

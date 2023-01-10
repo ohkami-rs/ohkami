@@ -129,15 +129,19 @@ pub(super) struct Node {
     pub(super) fn register_before_middleware(mut self,
         route: &'static str /* already validated */,
         mut middleware_store: BeforeMiddlewareStore,
-        err_msg:  String,
     ) -> std::result::Result<Self, String> {
+        let err_msg = format!("Failed to resister before-handling middleware func for route `{route}`. If you got this error, please report to https://github.com/kana-rus/ohkami/issues");
+        let warn_msg = format!("Before-handling middleware func for route `{route}` won't work for any request. No handler is resisterd for path that matches this route.");
+
         if route.ends_with("/*") {
             let mut route = route.trim_end_matches("/*").split('/');
             { route.next(); }
 
-            let Some(root) = self.search_apply_root(route) else {return Ok(self)};
-            root.apply_before_to_all_child(middleware_store, err_msg)?;
-
+            if let Some(root) = self.search_apply_root(route) {
+                root.apply_before_to_all_child(middleware_store, err_msg)?;
+            } else {
+                tracing::warn!(warn_msg)
+            }
         } else {
             let mut route = route.split('/');
             { route.next(); }
@@ -146,6 +150,8 @@ pub(super) struct Node {
                 target.before.push(
                     middleware_store.pop().ok_or(err_msg)?
                 )
+            } else {
+                tracing::warn!(warn_msg)
             }
         }
 
@@ -154,23 +160,27 @@ pub(super) struct Node {
     pub(super) fn register_after_middleware(mut self,
         route: &'static str /* already validated */,
         mut middleware_store: AfterMiddlewareStore,
-        err_msg:  String,
     ) -> std::result::Result<Self, String> {
+        let err_msg = format!("Failed to resister before-handling middleware func for route `{route}`. If you got this error, please report to https://github.com/kana-rus/ohkami/issues");
+        let warn_msg = format!("Before-handling middleware func for route `{route}` won't work for any request. No handler is resisterd for path that matches this route.");
+
         if route.ends_with("/*") {
             let mut route = route.trim_end_matches("/*").split('/');
             { route.next(); }
 
-            let Some(root) = self.search_apply_root(route) else {return Ok(self)};
-            root.apply_after_to_all_child(middleware_store, err_msg)?;
-
+            if let Some(root) = self.search_apply_root(route) {
+                root.apply_after_to_all_child(middleware_store, err_msg)?;
+            } else {
+                tracing::warn!(warn_msg)
+            }
         } else {
             let mut route = route.split('/');
             { route.next(); }
 
             if let Some(target) = self.search_apply_root(route) {
-                target.after.push(
-                    middleware_store.pop().ok_or(err_msg)?
-                )
+                target.after.push(middleware_store.pop().ok_or(err_msg)?)
+            } else {
+                tracing::warn!(warn_msg)
             }
         }
 
