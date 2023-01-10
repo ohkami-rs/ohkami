@@ -3,7 +3,7 @@ use crate::{
     utils::range::RangeList,
     result::Result,
     handler::HandleFunc,
-    setting::{Middleware, MiddlewareFunc},
+    setting::{Middleware, AfterMiddleware, BeforeMiddleware},
 };
 
 // === mock for test ===
@@ -22,18 +22,18 @@ mod test_search;
 // #[derive(PartialEq, Debug)]
 #[allow(non_snake_case)]
 pub(crate) struct Router {
-    GET:    (Vec<MiddlewareFunc>, Node),
-    POST:   (Vec<MiddlewareFunc>, Node),
-    PATCH:  (Vec<MiddlewareFunc>, Node),
-    DELETE: (Vec<MiddlewareFunc>, Node),
+    GET:    (Node, Vec<BeforeMiddleware>, Vec<AfterMiddleware>),
+    POST:   (Node, Vec<BeforeMiddleware>, Vec<AfterMiddleware>),
+    PATCH:  (Node, Vec<BeforeMiddleware>, Vec<AfterMiddleware>),
+    DELETE: (Node, Vec<BeforeMiddleware>, Vec<AfterMiddleware>),
 }
 impl Router {
     pub(crate) fn new() -> Self {
         Self {
-            GET:    (Vec::new(), Node::new(Pattern::Nil)),
-            POST:   (Vec::new(), Node::new(Pattern::Nil)),
-            PATCH:  (Vec::new(), Node::new(Pattern::Nil)),
-            DELETE: (Vec::new(), Node::new(Pattern::Nil)),
+            GET:    (Node::new(Pattern::Nil), Vec::new(), Vec::new()),
+            POST:   (Node::new(Pattern::Nil), Vec::new(), Vec::new()),
+            PATCH:  (Node::new(Pattern::Nil), Vec::new(), Vec::new()),
+            DELETE: (Node::new(Pattern::Nil), Vec::new(), Vec::new()),
         }
     }
 
@@ -51,10 +51,10 @@ impl Router {
         { path.next(); }
 
         let tree = match method {
-            Method::GET    => &mut self.GET.1,
-            Method::POST   => &mut self.POST.1,
-            Method::PATCH  => &mut self.PATCH.1,
-            Method::DELETE => &mut self.DELETE.1,
+            Method::GET    => &mut self.GET.0,
+            Method::POST   => &mut self.POST.0,
+            Method::PATCH  => &mut self.PATCH.0,
+            Method::DELETE => &mut self.DELETE.0,
         };
         
         tree.register_handler(path, handler, err_msg)
@@ -65,27 +65,28 @@ impl Router {
     ) -> Result<(
         &HandleFunc,
         RangeList,
-        Vec<&MiddlewareFunc>,
-        Option<&MiddlewareFunc>,
+        Vec<&BeforeMiddleware>,
+        Vec<&AfterMiddleware>,
     )> {
         let mut path = request_path.split('/');
         { path.next(); }
 
         let offset = method.len();
 
-        let (init_proc, tree) = match method {
+        let (tree, init_before, init_after) = match method {
             Method::GET    => &self.GET,
             Method::POST   => &self.POST,
             Method::PATCH  => &self.PATCH,
             Method::DELETE => &self.DELETE,
         };
 
-        let mut middleware_proccess = Vec::new();
-        for proc in init_proc {
-            middleware_proccess.push(proc)
-        }
+        let mut before_middleware = Vec::with_capacity(init_before.len());
+        for f in init_before {before_middleware.push(f)}
 
-        tree.search(path, RangeList::new(), offset, middleware_proccess)
+        let mut after_middleware = Vec::with_capacity(init_after.len());
+        for f in init_after {after_middleware.push(f)}
+
+        tree.search(path, RangeList::new(), offset, before_middleware, after_middleware)
     }
 
     pub(crate) fn apply(mut self, middlware: Middleware) -> std::result::Result<Self, String> {
@@ -97,22 +98,46 @@ impl Router {
             )
         }
 
-        for (method, route, func) in middlware.proccess {
-            let error_msg = format!("middleware func just for `{method} {route}` is registered duplicatedly");
-
+        for (method, route, mut store) in middlware.before {
             if route == "*" {
                 match method {
-                    Method::GET    => self.GET.0.push(func),
-                    Method::POST   => self.POST.0.push(func),
-                    Method::PATCH  => self.PATCH.0.push(func),
-                    Method::DELETE => self.DELETE.0.push(func),
+                    Method::GET    => self.GET.1.push(store.pop().unwrap()),
+                    Method::POST   => self.POST.1.push(store.pop().unwrap()),
+                    Method::PATCH  => self.PATCH.1.push(store.pop().unwrap()),
+                    Method::DELETE => self.DELETE.1.push(store.pop().unwrap()),
                 }
+                drop(store)
             } else {
+                let err_msg = format!(
+                    "Failed to resister before-handling middleware func for route `{route}`. If you got this error, please report to https://github.com/kana-rus/ohkami/issues"
+                );
                 match method {
-                    Method::GET    => self.GET.1 = self.GET.1.register_middleware_func(route, func, error_msg)?,
-                    Method::POST   => self.POST.1 = self.POST.1.register_middleware_func(route, func, error_msg)?,
-                    Method::PATCH  => self.PATCH.1 = self.PATCH.1.register_middleware_func(route, func, error_msg)?,
-                    Method::DELETE => self.DELETE.1 = self.DELETE.1.register_middleware_func(route, func, error_msg)?,
+                    Method::GET    => self.GET.0 = self.GET.0.register_before_middleware(route, store, err_msg)?,
+                    Method::POST   => self.POST.0 = self.POST.0.register_before_middleware(route, store, err_msg)?,
+                    Method::PATCH  => self.PATCH.0 = self.PATCH.0.register_before_middleware(route, store, err_msg)?,
+                    Method::DELETE => self.DELETE.0 = self.DELETE.0.register_before_middleware(route, store, err_msg)?,
+                }
+            }
+        }
+
+        for (method, route, mut store) in middlware.after {
+            if route == "*" {
+                match method {
+                    Method::GET    => self.GET.2.push(store.pop().unwrap()),
+                    Method::POST   => self.POST.2.push(store.pop().unwrap()),
+                    Method::PATCH  => self.PATCH.2.push(store.pop().unwrap()),
+                    Method::DELETE => self.DELETE.2.push(store.pop().unwrap()),
+                }
+                drop(store)
+            } else {
+                let err_msg = format!(
+                    "Failed to resister after-handling middleware func for route `{route}`. If you got this error, please report to https://github.com/kana-rus/ohkami/issues"
+                );
+                match method {
+                    Method::GET    => self.GET.0 = self.GET.0.register_after_middleware(route, store, err_msg)?,
+                    Method::POST   => self.POST.0 = self.POST.0.register_after_middleware(route, store, err_msg)?,
+                    Method::PATCH  => self.PATCH.0 = self.PATCH.0.register_after_middleware(route, store, err_msg)?,
+                    Method::DELETE => self.DELETE.0 = self.DELETE.0.register_after_middleware(route, store, err_msg)?,
                 }
             }
         }

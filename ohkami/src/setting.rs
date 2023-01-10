@@ -3,8 +3,10 @@ mod middleware;
 
 pub use config::Config;
 pub use middleware::Middleware;
-pub(crate) use middleware::MiddlewareFunc;
-
+pub(crate) use middleware::{
+    BeforeMiddleware, BeforeMiddlewareStore,
+    AfterMiddleware, AfterMiddlewareStore,
+};
 
 #[cfg(not(feature = "sqlx"))]
 pub struct ServerSetting {

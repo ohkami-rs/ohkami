@@ -23,9 +23,9 @@ use crate::{context::Context, testing::Method, utils::validation, prelude::Respo
 
 const MIDDLEWARE_STORE_SIZE: usize = 16; // methos ごとに分かれてるのでまあ足りるかなと
 
-pub(crate) struct BeforeMiddlewareStore(Vec::<
-    Box<dyn Fn(Context) -> Pin<Box<dyn Future<Output=Context> + Send>> + Send + Sync>
->); impl BeforeMiddlewareStore {
+pub(crate) type BeforeMiddleware = Box<dyn Fn(Context) -> Pin<Box<dyn Future<Output=Context> + Send>> + Send + Sync>;
+pub(crate) struct BeforeMiddlewareStore(Vec::<BeforeMiddleware>);
+impl BeforeMiddlewareStore {
     fn store<
         F:   Clone + Fn(Context) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = Context> + Send + 'static,
@@ -41,11 +41,13 @@ pub(crate) struct BeforeMiddlewareStore(Vec::<
             Box::new(move|ctx|Box::pin((f.clone())(ctx))),Box::new(move|ctx|Box::pin((f.clone())(ctx))),
         ])
     }
+    pub(crate) fn pop(&mut self) -> Option<BeforeMiddleware> {
+        self.0.pop()
+    }
 }
 
-pub(crate) struct AfterMiddlewareStore(Vec::<
-    Box<dyn Fn(Response) -> Pin<Box<dyn Future<Output=Response> + Send>> + Send + Sync>
->); impl AfterMiddlewareStore {
+pub(crate) type AfterMiddleware = Box<dyn Fn(Response) -> Pin<Box<dyn Future<Output=Response> + Send>> + Send + Sync>;
+pub(crate) struct AfterMiddlewareStore(Vec::<AfterMiddleware>); impl AfterMiddlewareStore {
     fn store<
         F:   Clone + Fn(Response) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = Response> + Send + 'static,
@@ -60,6 +62,9 @@ pub(crate) struct AfterMiddlewareStore(Vec::<
             Box::new(move|res|Box::pin((f.clone())(res))),Box::new(move|res|Box::pin((f.clone())(res))),
             Box::new(move|res|Box::pin((f.clone())(res))),Box::new(move|res|Box::pin((f.clone())(res))),
         ])
+    }
+    pub(crate) fn pop(&mut self) -> Option<AfterMiddleware> {
+        self.0.pop()
     }
 }
 
