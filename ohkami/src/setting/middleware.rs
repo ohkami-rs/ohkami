@@ -2,26 +2,7 @@ use std::{pin::Pin, future::Future};
 use crate::{context::Context, testing::Method, utils::validation, prelude::Response};
 
 
-// pub(crate) type MiddlewareFunc = Box<dyn Fn(Context) -> Pin<Box<dyn Future<Output=Context> + Send>> + Send + Sync>;
-// 
-// pub trait MiddlewareArg {}
-// pub trait MiddlewareProcess<Arg: MiddlewareArg> {
-//     fn into_middleware_func(self) -> MiddlewareFunc;
-// }
-// 
-// impl MiddlewareArg for Context {}
-// impl<F, Fut> MiddlewareProcess<Context> for F
-// where
-//     F:   Fn(Context) -> Fut + Send + Sync + 'static,
-//     Fut: Future<Output = Context> + Send + 'static,
-// {
-//     fn into_middleware_func(self) -> MiddlewareFunc {
-//         Box::new(move |ctx| Box::pin(self(ctx)))
-//     }
-// }
-// 
-
-const MIDDLEWARE_STORE_SIZE: usize = 16; // methos ごとに分かれてるのでまあ足りるかなと
+// const MIDDLEWARE_STORE_SIZE: usize = 16; // methos ごとに分かれてるのでまあ足りるかなと
 
 pub(crate) type BeforeMiddleware = Box<dyn Fn(Context) -> Pin<Box<dyn Future<Output=Context> + Send>> + Send + Sync>;
 pub(crate) struct BeforeMiddlewareStore(Vec::<BeforeMiddleware>);
@@ -30,15 +11,26 @@ impl BeforeMiddlewareStore {
         F:   Clone + Fn(Context) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = Context> + Send + 'static,
     >(f: F) -> Self {
+        let (
+            f1,  f2,  f3,  f4,
+            f5,  f6,  f7,  f8,
+            f9,  f10, f11, f12,
+            f13, f14, f15, f16,
+        ) = (
+            f.clone(), f.clone(), f.clone(), f.clone(),
+            f.clone(), f.clone(), f.clone(), f.clone(),
+            f.clone(), f.clone(), f.clone(), f.clone(),
+            f.clone(), f.clone(), f.clone(), f.clone(),
+        );
         Self(vec![
-            Box::new(move|ctx|Box::pin((f.clone())(ctx))),Box::new(move|ctx|Box::pin((f.clone())(ctx))),
-            Box::new(move|ctx|Box::pin((f.clone())(ctx))),Box::new(move|ctx|Box::pin((f.clone())(ctx))),
-            Box::new(move|ctx|Box::pin((f.clone())(ctx))),Box::new(move|ctx|Box::pin((f.clone())(ctx))),
-            Box::new(move|ctx|Box::pin((f.clone())(ctx))),Box::new(move|ctx|Box::pin((f.clone())(ctx))),
-            Box::new(move|ctx|Box::pin((f.clone())(ctx))),Box::new(move|ctx|Box::pin((f.clone())(ctx))),
-            Box::new(move|ctx|Box::pin((f.clone())(ctx))),Box::new(move|ctx|Box::pin((f.clone())(ctx))),
-            Box::new(move|ctx|Box::pin((f.clone())(ctx))),Box::new(move|ctx|Box::pin((f.clone())(ctx))),
-            Box::new(move|ctx|Box::pin((f.clone())(ctx))),Box::new(move|ctx|Box::pin((f.clone())(ctx))),
+            Box::new(move |ctx| Box::pin(f1(ctx))),  Box::new(move |ctx| Box::pin(f2(ctx))),
+            Box::new(move |ctx| Box::pin(f3(ctx))),  Box::new(move |ctx| Box::pin(f4(ctx))),
+            Box::new(move |ctx| Box::pin(f5(ctx))),  Box::new(move |ctx| Box::pin(f6(ctx))),
+            Box::new(move |ctx| Box::pin(f7(ctx))),  Box::new(move |ctx| Box::pin(f8(ctx))),
+            Box::new(move |ctx| Box::pin(f9(ctx))),  Box::new(move |ctx| Box::pin(f10(ctx))),
+            Box::new(move |ctx| Box::pin(f11(ctx))), Box::new(move |ctx| Box::pin(f12(ctx))),
+            Box::new(move |ctx| Box::pin(f13(ctx))), Box::new(move |ctx| Box::pin(f14(ctx))),
+            Box::new(move |ctx| Box::pin(f15(ctx))), Box::new(move |ctx| Box::pin(f16(ctx))),
         ])
     }
     pub(crate) fn pop(&mut self) -> Option<BeforeMiddleware> {
@@ -52,15 +44,26 @@ pub(crate) struct AfterMiddlewareStore(Vec::<AfterMiddleware>); impl AfterMiddle
         F:   Clone + Fn(Response) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = Response> + Send + 'static,
     >(f: F) -> Self {
+        let (
+            f1,  f2,  f3,  f4,
+            f5,  f6,  f7,  f8,
+            f9,  f10, f11, f12,
+            f13, f14, f15, f16,
+        ) = (
+            f.clone(), f.clone(), f.clone(), f.clone(),
+            f.clone(), f.clone(), f.clone(), f.clone(),
+            f.clone(), f.clone(), f.clone(), f.clone(),
+            f.clone(), f.clone(), f.clone(), f.clone(),
+        );
         Self(vec![
-            Box::new(move|res|Box::pin((f.clone())(res))),Box::new(move|res|Box::pin((f.clone())(res))),
-            Box::new(move|res|Box::pin((f.clone())(res))),Box::new(move|res|Box::pin((f.clone())(res))),
-            Box::new(move|res|Box::pin((f.clone())(res))),Box::new(move|res|Box::pin((f.clone())(res))),
-            Box::new(move|res|Box::pin((f.clone())(res))),Box::new(move|res|Box::pin((f.clone())(res))),
-            Box::new(move|res|Box::pin((f.clone())(res))),Box::new(move|res|Box::pin((f.clone())(res))),
-            Box::new(move|res|Box::pin((f.clone())(res))),Box::new(move|res|Box::pin((f.clone())(res))),
-            Box::new(move|res|Box::pin((f.clone())(res))),Box::new(move|res|Box::pin((f.clone())(res))),
-            Box::new(move|res|Box::pin((f.clone())(res))),Box::new(move|res|Box::pin((f.clone())(res))),
+            Box::new(move |res| Box::pin(f1(res))),  Box::new(move |res| Box::pin(f2(res))),
+            Box::new(move |res| Box::pin(f3(res))),  Box::new(move |res| Box::pin(f4(res))),
+            Box::new(move |res| Box::pin(f5(res))),  Box::new(move |res| Box::pin(f6(res))),
+            Box::new(move |res| Box::pin(f7(res))),  Box::new(move |res| Box::pin(f8(res))),
+            Box::new(move |res| Box::pin(f9(res))),  Box::new(move |res| Box::pin(f10(res))),
+            Box::new(move |res| Box::pin(f11(res))), Box::new(move |res| Box::pin(f12(res))),
+            Box::new(move |res| Box::pin(f13(res))), Box::new(move |res| Box::pin(f14(res))),
+            Box::new(move |res| Box::pin(f15(res))), Box::new(move |res| Box::pin(f16(res))),
         ])
     }
     pub(crate) fn pop(&mut self) -> Option<AfterMiddleware> {

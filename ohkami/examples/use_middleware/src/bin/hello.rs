@@ -2,7 +2,7 @@ use ohkami::prelude::*;
 
 fn main() -> Result<()> {
     let middleware = Middleware::new()
-        .ANY("/*", |c| async {
+        .beforeANY("/*", |c| async {
             tracing::info!("Hello, middleware!");
             c
         });

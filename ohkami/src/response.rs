@@ -2,7 +2,7 @@ use async_std::{net::TcpStream, io::WriteExt};
 use crate::{
     components::{
         status::Status,
-        time::now_fmt, json::Json,
+        time::now_fmt, json::Json, headers::HeaderKey,
         // headers::AdditionalHeader,
     },
     result::Result,
@@ -52,6 +52,14 @@ pub struct Response {
                 },
             }
         }
+    }
+
+    /// Add response header of `{key}: {value}`. key: &'static str | Header
+    pub fn add_header<Key: HeaderKey>(&mut self, key: Key, value: &'static str) {
+        self.additional_headers += key.as_key_str();
+        self.additional_headers += ": ";
+        self.additional_headers += value;
+        self.additional_headers += "\n"
     }
 
     /// for test use
