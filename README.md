@@ -68,7 +68,7 @@ fn main() -> Result<()> {
 
 <br/>
 
-### signature of handler
+## signature of handler
 ```rust
 async fn ( Context?, path_param_1?, path_param_2?, impl JSON? ) -> Result<Response>
 
@@ -76,7 +76,6 @@ async fn ( Context?, path_param_1?, path_param_2?, impl JSON? ) -> Result<Respon
 ```
 - path param：`String | usize | u64 | usize | i64 | i32`
 - Current ohkami doesn't handle more than 2 path parameters. This design may change in future version.
-
 
 ## Snippets
 ### handle query params
@@ -86,6 +85,26 @@ async fn ( Context?, path_param_1?, path_param_2?, impl JSON? ) -> Result<Respon
 let name: &str = c.req.query("name")?;
 
 let count: usize = c.req.query("count")?;
+```
+### handle path params
+```rust
+use std::{thread::sleep, time::Duration};
+
+fn main() -> Result<()> {
+    Ohkami::default()
+        .GET("/sleepy/:time/:name", sleepy_hello)
+        .howl("localhost:8080")
+}
+
+async fn sleepy_hello(time: u64, name: String) -> Result<Response> {
+    (time < 30)
+        ._else(|| Response::BadRequest(
+            "sleeping time (sec) must be less than 30."
+        ))?;
+        
+    sleep(Duration::from_secs(time));
+    Response::OK(format!("Hello {name}, I'm extremely sleepy..."))
+}
 ```
 ### handle request body
 Add `serde = { version = "1.0", features = ["derive"] }` in your dependencies
@@ -103,25 +122,6 @@ async fn reflect(user: User) -> Result<Response> {
 async fn reflect_name(user: User) -> Result<Response> {
     let name = user.name;
     Response::OK(name)
-}
-```
-### handle path params
-```rust
-use std::{thread::sleep, time::Duration};
-
-fn main() -> Result<()> {
-    Ohkami::default()
-        .GET("/sleepy/:time/:name", sleepy_hello)
-        .howl("localhost:8080")
-}
-
-async fn sleepy_hello(time: u64, name: String) -> Result<Response> {
-    (time < 30)
-        ._else(|| Response::BadRequest(
-            "sleeping time (sec) must be less than 30."
-        ))?;
-    sleep(Duration::from_secs(time));
-    Response::OK(format!("Hello {name}, I'm extremely sleepy..."))
 }
 ```
 ### grouping handlers on the same path (like axum)
