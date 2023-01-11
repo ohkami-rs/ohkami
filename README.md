@@ -68,6 +68,16 @@ fn main() -> Result<()> {
 
 <br/>
 
+### signature of handler
+```rust
+async fn ( Context?, path_param_1?, path_param_2?, impl JSON? ) -> Result<Response>
+
+// `?` means "this is optional".
+```
+- path param：`String | usize | u64 | usize | i64 | i32`
+- Current ohkami doesn't handle more than 2 path parameters. This design may change in future version.
+
+
 ## Snippets
 ### handle query params
 ```rust
@@ -78,14 +88,8 @@ let name: &str = c.req.query("name")?;
 let count: usize = c.req.query("count")?;
 ```
 ### handle request body
+Add `serde = { version = "1.0", features = ["derive"] }` in your dependencies
 ```rust
-fn main() -> Result<()> {
-    Ohkami::default()
-        .GET("/api/users", reflect)
-        .GET("/api/users/name", reflect_name)
-        .howl(":3000")
-}
-
 #[derive(JSON)]
 struct User {
     id:   i64,
@@ -103,6 +107,8 @@ async fn reflect_name(user: User) -> Result<Response> {
 ```
 ### handle path params
 ```rust
+use std::{thread::sleep, time::Duration};
+
 fn main() -> Result<()> {
     Ohkami::default()
         .GET("/sleepy/:time/:name", sleepy_hello)
@@ -111,25 +117,15 @@ fn main() -> Result<()> {
 
 async fn sleepy_hello(time: u64, name: String) -> Result<Response> {
     (time < 30)
-        ._else(|| Response::BadRequest("sleeping time (sec) must be less than 30."))?;
-    std::thread::sleep(
-        std::time::Duration::from_secs(time)
-    );
+        ._else(|| Response::BadRequest(
+            "sleeping time (sec) must be less than 30."
+        ))?;
+    sleep(Duration::from_secs(time));
     Response::OK(format!("Hello {name}, I'm extremely sleepy..."))
 }
 ```
-### signature of handler function
-```rust
-async fn ( Context?, path_param_1?, path_param_2?, impl JSON? ) -> Result<Response>
-
-// `?` means "this is optional".
-```
-- path param：`String | usize | u64 | usize | i64 | i32`
-- Current ohkami doesn't handle more than 2 path parameters. This design may change in future version.
-
 ### grouping handlers on the same path (like axum)
 ```rust
-use serde::{Serialize, Deserialize};
 use ohkami::{
     prelude::*,
     group::{GET, POST} // import this
@@ -160,12 +156,12 @@ async fn reflect(payload: User) -> Result<Response> {
     Response::OK(payload)
 }
 ```
-### parse request headers
+### get request headers
 ```rust
 let host = c.req.header(Header::Host)?;
 ```
 ```rust
-async fn reflect_header_custom(c: Context) -> Result<Response> {
+async fn reflect_xcustom_header_value(c: Context) -> Result<Response> {
     let custom_header_value = c.req.header("X-Custom")?;
     c.OK(format!("`X-Custom`'s value is {custom_header_value}"))
 }
@@ -175,6 +171,8 @@ async fn reflect_header_custom(c: Context) -> Result<Response> {
 c.add_header(Header::AccessControlAllowOrigin, "mydomain:8000");
 // or
 c.add_header("Access-Control-Allow-Origin", "mydomain:8000");
+
+// `Response` also has the same method
 ```
 ```rust
 use ohkami::prelude::*;
@@ -194,11 +192,9 @@ fn main() -> Result<()> {
 ### OK response with `text/plain`
 ```rust
 Response::OK("Hello, world!")
-// without Context
 ```
 ```rust
 c.OK("Hello, world!")
-// with Context
 ```
 ### OK response with `application/json`
 ```rust
@@ -256,7 +252,7 @@ let handler = self.handler.as_ref()
     ._else(|| Response::BadRequest(None))?;
 ```
 ### log config
-add `tracing` and `tracing_subscriber` to your `Cargo.toml`.
+Add `tracing` and `tracing_subscriber` in your `dependencies`.
 ```rust
 fn main() -> Result<()> {
     let config = Config {
@@ -271,7 +267,7 @@ fn main() -> Result<()> {
 }
 ```
 ### DB config
-eneble one of following pairs of features：
+Eneble one of following pairs of features：
 - `sqlx` and `postgres`
 - `sqlx` and `mysql`
 ```rust
@@ -284,7 +280,7 @@ let config = Config {
 };
 ```
 ### use sqlx
-eneble one of following pairs of features：
+Eneble one of following pairs of features：
 - `sqlx` and `postgres`
 - `sqlx` and `mysql`
 ```rust
@@ -340,7 +336,9 @@ fn main() -> Result<()> {
 ```rust
 fn server() -> Ohkami {
     Ohkami::default()
-        .GET("/", || async {Response::OK("Hello!")})
+        .GET("/", || async {
+            Response::OK("Hello!")
+        })
 }
 
 fn main() -> Result<()> {
