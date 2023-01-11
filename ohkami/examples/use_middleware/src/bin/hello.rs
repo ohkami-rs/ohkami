@@ -11,5 +11,8 @@ fn main() -> Result<()> {
         .GET("/", || async {
             Response::OK("Hello!")
         })
+        .GET("/night", || async {
+            Response::OK("Good morning!")
+        })
         .howl("localhost:3000")
 }

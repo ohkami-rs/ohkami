@@ -378,7 +378,7 @@ async fn handle_stream(
         connection_pool,
     ).await;
 
-    tracing::info!("{:?}", &response);
+    tracing::info!("{:#?}", &response);
 
     if let Err(err) = response.write_to_stream(&mut stream).await {
         tracing::error!("failed to write response: {}", err);
@@ -450,7 +450,7 @@ pub(crate) async fn consume_buffer(
     )?;
 
     for proccess in before_middleware {
-        context = proccess(context).await;
+        context = proccess(context).await
     }
     tracing::debug!("{:?}", context);
 
@@ -462,7 +462,7 @@ pub(crate) async fn consume_buffer(
 }
 
 /// just for ease in `consume_buffer` implementation
-async fn applied(handle_result: Result<Response>, after_middleware: Vec<&AfterMiddleware>) -> Result<Response> {
+async fn applied(handle_result: Result<Response>, after_middleware: &Vec<AfterMiddleware>) -> Result<Response> {
     match handle_result {
         Ok(mut res) => {
             for proc in after_middleware {

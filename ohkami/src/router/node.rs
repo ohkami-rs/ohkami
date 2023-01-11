@@ -31,13 +31,13 @@ pub(super) struct Node {
         mut path:     Split<'req, char>,
         mut params:   RangeList,
         mut read_pos: usize,
-        mut before:   Vec<&'tree BeforeMiddleware>,
-        mut after:    Vec<&'tree AfterMiddleware>,
+        // mut before:   Vec<&'tree BeforeMiddleware>,
+        // mut after:    Vec<&'tree AfterMiddleware>,
     ) -> Result<(
         &'tree HandleFunc,
         RangeList,
-        Vec<&'tree BeforeMiddleware>,
-        Vec<&'tree AfterMiddleware>,
+        &'tree Vec<BeforeMiddleware>,
+        &'tree Vec<AfterMiddleware>,
     )> {
         if let Some(section) = path.next() {
             read_pos += 1 /*'/'*/;
@@ -49,15 +49,15 @@ pub(super) struct Node {
                             tracing::debug!("path param: `{}`", section);
                             params.push(range)?;
                         }
-                        for proc in &self.before {before.push(proc)}
-                        for proc in &self.after {after.push(proc)}
+                        // for proc in &self.before {before.push(proc)}
+                        // for proc in &self.after {after.push(proc)}
                         break 'search Some(child)
                     }
                 }
                 None
 
             } {
-                child.search(path, params, read_pos + section.len(), before, after)
+                child.search(path, params, read_pos + section.len(), )//before, after)
 
             } else {
                 Err(Response::NotFound(None))
@@ -67,8 +67,8 @@ pub(super) struct Node {
             Ok((
                 self.handler.as_ref()._else(|| Response::NotFound(None))?,
                 params,
-                before,
-                after,
+                &self.before,
+                &self.after,
             ))
         }
     }
@@ -132,7 +132,9 @@ pub(super) struct Node {
         err_msg:  String,
         // warn_msg: String,
     ) -> std::result::Result<Self, String> {
-        if route.ends_with("/*") {
+        if route == "*" {
+            self.apply_before_to_me_and_all_child(store, err_msg)?;
+        } else if route.ends_with("/*") {
             let mut route = route.trim_end_matches("/*").split('/');
             { route.next(); }
 
@@ -164,7 +166,9 @@ pub(super) struct Node {
         err_msg:  String,
         // warn_msg: String,
     ) -> std::result::Result<Self, String> {
-        if route.ends_with("/*") {
+        if route == "*" {
+            self.apply_after_to_me_and_all_child(store, err_msg)?;
+        } else if route.ends_with("/*") {
             let mut route = route.trim_end_matches("/*").split('/');
             { route.next(); }
 

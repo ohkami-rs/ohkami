@@ -22,18 +22,18 @@ mod test_search;
 // #[derive(PartialEq, Debug)]
 #[allow(non_snake_case)]
 pub(crate) struct Router {
-    GET:    (Node, Vec<BeforeMiddleware>, Vec<AfterMiddleware>),
-    POST:   (Node, Vec<BeforeMiddleware>, Vec<AfterMiddleware>),
-    PATCH:  (Node, Vec<BeforeMiddleware>, Vec<AfterMiddleware>),
-    DELETE: (Node, Vec<BeforeMiddleware>, Vec<AfterMiddleware>),
+    GET:    Node,
+    POST:   Node,
+    PATCH:  Node,
+    DELETE: Node,
 }
 impl Router {
     pub(crate) fn new() -> Self {
         Self {
-            GET:    (Node::new(Pattern::Nil), Vec::new(), Vec::new()),
-            POST:   (Node::new(Pattern::Nil), Vec::new(), Vec::new()),
-            PATCH:  (Node::new(Pattern::Nil), Vec::new(), Vec::new()),
-            DELETE: (Node::new(Pattern::Nil), Vec::new(), Vec::new()),
+            GET:    Node::new(Pattern::Nil),
+            POST:   Node::new(Pattern::Nil),
+            PATCH:  Node::new(Pattern::Nil),
+            DELETE: Node::new(Pattern::Nil),
         }
     }
 
@@ -51,10 +51,10 @@ impl Router {
         { path.next(); }
 
         let tree = match method {
-            Method::GET    => &mut self.GET.0,
-            Method::POST   => &mut self.POST.0,
-            Method::PATCH  => &mut self.PATCH.0,
-            Method::DELETE => &mut self.DELETE.0,
+            Method::GET    => &mut self.GET,
+            Method::POST   => &mut self.POST,
+            Method::PATCH  => &mut self.PATCH,
+            Method::DELETE => &mut self.DELETE,
         };
         
         tree.register_handler(path, handler, err_msg)
@@ -65,28 +65,22 @@ impl Router {
     ) -> Result<(
         &HandleFunc,
         RangeList,
-        Vec<&BeforeMiddleware>,
-        Vec<&AfterMiddleware>,
+        &Vec<BeforeMiddleware>,
+        &Vec<AfterMiddleware>,
     )> {
         let mut path = request_path.split('/');
         { path.next(); }
 
         let offset = method.len();
 
-        let (tree, init_before, init_after) = match method {
+        match method {
             Method::GET    => &self.GET,
             Method::POST   => &self.POST,
             Method::PATCH  => &self.PATCH,
             Method::DELETE => &self.DELETE,
-        };
-
-        let mut before_middleware = Vec::with_capacity(init_before.len());
-        for f in init_before {before_middleware.push(f)}
-
-        let mut after_middleware = Vec::with_capacity(init_after.len());
-        for f in init_after {after_middleware.push(f)}
-
-        tree.search(path, RangeList::new(), offset, before_middleware, after_middleware)
+        }.search(
+            path, RangeList::new(), offset
+        )
     }
 
     pub(crate) fn apply(mut self, middlware: Middleware) -> std::result::Result<Self, String> {
@@ -98,49 +92,29 @@ impl Router {
             )
         }
 
-        for (method, route, mut store, is_from_any) in middlware.before {
-            if route == "*" {
-                match method {
-                    Method::GET    => self.GET.1.push(store.pop().unwrap()),
-                    Method::POST   => self.POST.1.push(store.pop().unwrap()),
-                    Method::PATCH  => self.PATCH.1.push(store.pop().unwrap()),
-                    Method::DELETE => self.DELETE.1.push(store.pop().unwrap()),
-                }
-                drop(store)
-            } else {
-                let err_msg = format!("Failed to resister a before-handling middleware function for `{} {route}`. Please report this: https://github.com/kana-rus/ohkami/issues",
-                    if is_from_any {"{any method}".to_owned()} else {method.to_string()});
-                // let warn_msg = format!("A before-handling middleware function for `{} {route}` won't work to any reuqest. No handlerthat matches this is resistered.",
-                //     if is_from_any {"{any method}".to_owned()} else {method.to_string()});
-                match method {
-                    Method::GET    => self.GET.0 = self.GET.0.register_before_middleware(route, store, err_msg, /*warn_msg*/)?,
-                    Method::POST   => self.POST.0 = self.POST.0.register_before_middleware(route, store, err_msg, /*warn_msg*/)?,
-                    Method::PATCH  => self.PATCH.0 = self.PATCH.0.register_before_middleware(route, store, err_msg, /*warn_msg*/)?,
-                    Method::DELETE => self.DELETE.0 = self.DELETE.0.register_before_middleware(route, store, err_msg, /*warn_msg*/)?,
-                }
+        for (method, route, store, is_from_any) in middlware.before {
+            let err_msg = format!("Failed to resister a before-handling middleware function for `{} {route}`. Please report this: https://github.com/kana-rus/ohkami/issues",
+                if is_from_any {"{any method}".to_owned()} else {method.to_string()});
+            // let warn_msg = format!("A before-handling middleware function for `{} {route}` won't work to any reuqest. No handlerthat matches this is resistered.",
+            //     if is_from_any {"{any method}".to_owned()} else {method.to_string()});
+            match method {
+                Method::GET    => self.GET = self.GET.register_before_middleware(route, store, err_msg, /*warn_msg*/)?,
+                Method::POST   => self.POST = self.POST.register_before_middleware(route, store, err_msg, /*warn_msg*/)?,
+                Method::PATCH  => self.PATCH = self.PATCH.register_before_middleware(route, store, err_msg, /*warn_msg*/)?,
+                Method::DELETE => self.DELETE = self.DELETE.register_before_middleware(route, store, err_msg, /*warn_msg*/)?,
             }
         }
 
-        for (method, route, mut store, is_from_any) in middlware.after {
-            if route == "*" {
-                match method {
-                    Method::GET    => self.GET.2.push(store.pop().unwrap()),
-                    Method::POST   => self.POST.2.push(store.pop().unwrap()),
-                    Method::PATCH  => self.PATCH.2.push(store.pop().unwrap()),
-                    Method::DELETE => self.DELETE.2.push(store.pop().unwrap()),
-                }
-                drop(store)
-            } else {
-                let err_msg = format!("Failed to resister a before-handling middleware function for `{} {route}`. Please report this: https://github.com/kana-rus/ohkami/issues",
-                    if is_from_any {"{any method}".to_owned()} else {method.to_string()});
-                // let warn_msg = format!("A before-handling middleware function for `{} {route}` won't work to any reuqest. No handlerthat matches this is resistered.",
-                //     if is_from_any {"{any method}".to_owned()} else {method.to_string()});
-                match method {
-                    Method::GET    => self.GET.0 = self.GET.0.register_after_middleware(route, store, err_msg, /*warn_msg*/)?,
-                    Method::POST   => self.POST.0 = self.POST.0.register_after_middleware(route, store, err_msg, /*warn_msg*/)?,
-                    Method::PATCH  => self.PATCH.0 = self.PATCH.0.register_after_middleware(route, store, err_msg, /*warn_msg*/)?,
-                    Method::DELETE => self.DELETE.0 = self.DELETE.0.register_after_middleware(route, store, err_msg, /*warn_msg*/)?,
-                }
+        for (method, route, store, is_from_any) in middlware.after {
+            let err_msg = format!("Failed to resister a before-handling middleware function for `{} {route}`. Please report this: https://github.com/kana-rus/ohkami/issues",
+                if is_from_any {"{any method}".to_owned()} else {method.to_string()});
+            // let warn_msg = format!("A before-handling middleware function for `{} {route}` won't work to any reuqest. No handlerthat matches this is resistered.",
+            //     if is_from_any {"{any method}".to_owned()} else {method.to_string()});
+            match method {
+                Method::GET    => self.GET = self.GET.register_after_middleware(route, store, err_msg, /*warn_msg*/)?,
+                Method::POST   => self.POST = self.POST.register_after_middleware(route, store, err_msg, /*warn_msg*/)?,
+                Method::PATCH  => self.PATCH = self.PATCH.register_after_middleware(route, store, err_msg, /*warn_msg*/)?,
+                Method::DELETE => self.DELETE = self.DELETE.register_after_middleware(route, store, err_msg, /*warn_msg*/)?,
             }
         }
 
