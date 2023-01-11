@@ -129,10 +129,9 @@ pub(super) struct Node {
     pub(super) fn register_before_middleware(mut self,
         route: &'static str /* already validated */,
         mut store: BeforeMiddlewareStore,
+        err_msg:  String,
+        // warn_msg: String,
     ) -> std::result::Result<Self, String> {
-        let err_msg = format!("Failed to resister before-handling middleware func for route `{route}`. If you got this error, please report to https://github.com/kana-rus/ohkami/issues");
-        let warn_msg = format!("Before-handling middleware func for route `{route}` won't work for any request. No handler is resisterd for path that matches this route.");
-
         if route.ends_with("/*") {
             let mut route = route.trim_end_matches("/*").split('/');
             { route.next(); }
@@ -142,7 +141,7 @@ pub(super) struct Node {
                     store = child.apply_before_to_me_and_all_child(store, err_msg.clone())?
                 }
             } else {
-                tracing::warn!(warn_msg)
+                // tracing::warn!(warn_msg)
             }
         } else {
             let mut route = route.split('/');
@@ -153,7 +152,7 @@ pub(super) struct Node {
                     store.pop().ok_or(err_msg)?
                 )
             } else {
-                tracing::warn!(warn_msg)
+                // tracing::warn!(warn_msg)
             }
         }
 
@@ -162,10 +161,9 @@ pub(super) struct Node {
     pub(super) fn register_after_middleware(mut self,
         route: &'static str /* already validated */,
         mut store: AfterMiddlewareStore,
+        err_msg:  String,
+        // warn_msg: String,
     ) -> std::result::Result<Self, String> {
-        let err_msg = format!("Failed to resister after-handling middleware func for route `{route}`. If you got this error, please report to https://github.com/kana-rus/ohkami/issues");
-        let warn_msg = format!("After-handling middleware func for route `{route}` won't work for any request. No handler is resisterd for path that matches this route.");
-
         if route.ends_with("/*") {
             let mut route = route.trim_end_matches("/*").split('/');
             { route.next(); }
@@ -175,7 +173,7 @@ pub(super) struct Node {
                     store = child.apply_after_to_me_and_all_child(store, err_msg.clone())?
                 }
             } else {
-                tracing::warn!(warn_msg)
+                // tracing::warn!(warn_msg)
             }
         } else {
             let mut route = route.split('/');
@@ -184,7 +182,7 @@ pub(super) struct Node {
             if let Some(target) = self.search_apply_root(route) {
                 target.after.push(store.pop().ok_or(err_msg)?)
             } else {
-                tracing::warn!(warn_msg)
+                // tracing::warn!(warn_msg)
             }
         }
 

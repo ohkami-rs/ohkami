@@ -98,7 +98,7 @@ impl Router {
             )
         }
 
-        for (method, route, mut store) in middlware.before {
+        for (method, route, mut store, is_from_any) in middlware.before {
             if route == "*" {
                 match method {
                     Method::GET    => self.GET.1.push(store.pop().unwrap()),
@@ -108,20 +108,20 @@ impl Router {
                 }
                 drop(store)
             } else {
-                // let err_msg = format!("Failed to resister a before-handling middleware function for `{} {route}`. Please report this: https://github.com/kana-rus/ohkami/issues",
-                //     if );
+                let err_msg = format!("Failed to resister a before-handling middleware function for `{} {route}`. Please report this: https://github.com/kana-rus/ohkami/issues",
+                    if is_from_any {"{any method}".to_owned()} else {method.to_string()});
                 // let warn_msg = format!("A before-handling middleware function for `{} {route}` won't work to any reuqest. No handlerthat matches this is resistered.",
-                //     if );
+                //     if is_from_any {"{any method}".to_owned()} else {method.to_string()});
                 match method {
-                    Method::GET    => self.GET.0 = self.GET.0.register_before_middleware(route, store)?,
-                    Method::POST   => self.POST.0 = self.POST.0.register_before_middleware(route, store)?,
-                    Method::PATCH  => self.PATCH.0 = self.PATCH.0.register_before_middleware(route, store)?,
-                    Method::DELETE => self.DELETE.0 = self.DELETE.0.register_before_middleware(route, store)?,
+                    Method::GET    => self.GET.0 = self.GET.0.register_before_middleware(route, store, err_msg, /*warn_msg*/)?,
+                    Method::POST   => self.POST.0 = self.POST.0.register_before_middleware(route, store, err_msg, /*warn_msg*/)?,
+                    Method::PATCH  => self.PATCH.0 = self.PATCH.0.register_before_middleware(route, store, err_msg, /*warn_msg*/)?,
+                    Method::DELETE => self.DELETE.0 = self.DELETE.0.register_before_middleware(route, store, err_msg, /*warn_msg*/)?,
                 }
             }
         }
 
-        for (method, route, mut store) in middlware.after {
+        for (method, route, mut store, is_from_any) in middlware.after {
             if route == "*" {
                 match method {
                     Method::GET    => self.GET.2.push(store.pop().unwrap()),
@@ -131,11 +131,15 @@ impl Router {
                 }
                 drop(store)
             } else {
+                let err_msg = format!("Failed to resister a before-handling middleware function for `{} {route}`. Please report this: https://github.com/kana-rus/ohkami/issues",
+                    if is_from_any {"{any method}".to_owned()} else {method.to_string()});
+                // let warn_msg = format!("A before-handling middleware function for `{} {route}` won't work to any reuqest. No handlerthat matches this is resistered.",
+                //     if is_from_any {"{any method}".to_owned()} else {method.to_string()});
                 match method {
-                    Method::GET    => self.GET.0 = self.GET.0.register_after_middleware(route, store)?,
-                    Method::POST   => self.POST.0 = self.POST.0.register_after_middleware(route, store)?,
-                    Method::PATCH  => self.PATCH.0 = self.PATCH.0.register_after_middleware(route, store)?,
-                    Method::DELETE => self.DELETE.0 = self.DELETE.0.register_after_middleware(route, store)?,
+                    Method::GET    => self.GET.0 = self.GET.0.register_after_middleware(route, store, err_msg, /*warn_msg*/)?,
+                    Method::POST   => self.POST.0 = self.POST.0.register_after_middleware(route, store, err_msg, /*warn_msg*/)?,
+                    Method::PATCH  => self.PATCH.0 = self.PATCH.0.register_after_middleware(route, store, err_msg, /*warn_msg*/)?,
+                    Method::DELETE => self.DELETE.0 = self.DELETE.0.register_after_middleware(route, store, err_msg, /*warn_msg*/)?,
                 }
             }
         }

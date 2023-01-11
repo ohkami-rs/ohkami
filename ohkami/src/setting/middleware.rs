@@ -73,8 +73,8 @@ pub(crate) struct AfterMiddlewareStore(Vec::<AfterMiddleware>); impl AfterMiddle
 
 /// A set of ohkami's middlewares
 pub struct Middleware {
-    pub(crate) before:       Vec<(Method, /*route*/&'static str, BeforeMiddlewareStore)>,
-    pub(crate) after:        Vec<(Method, /*route*/&'static str, AfterMiddlewareStore)>,
+    pub(crate) before:       Vec<(Method, /*route*/&'static str, BeforeMiddlewareStore, /*is from ANY*/bool)>,
+    pub(crate) after:        Vec<(Method, /*route*/&'static str, AfterMiddlewareStore, /*is from ANY*/bool)>,
     pub(crate) setup_errors: Vec<String>,
 } impl Middleware {
     pub fn new() -> Self {
@@ -100,10 +100,10 @@ pub struct Middleware {
                 format!("middleware route `{route}` is invalid")
             )
         }
-        self.before.push((Method::GET,    route, BeforeMiddlewareStore::store(f.clone())));
-        self.before.push((Method::POST,   route, BeforeMiddlewareStore::store(f.clone())));
-        self.before.push((Method::PATCH,  route, BeforeMiddlewareStore::store(f.clone())));
-        self.before.push((Method::DELETE, route, BeforeMiddlewareStore::store(f.clone())));
+        self.before.push((Method::GET,    route, BeforeMiddlewareStore::store(f.clone()), true));
+        self.before.push((Method::POST,   route, BeforeMiddlewareStore::store(f.clone()), true));
+        self.before.push((Method::PATCH,  route, BeforeMiddlewareStore::store(f.clone()), true));
+        self.before.push((Method::DELETE, route, BeforeMiddlewareStore::store(f.clone()), true));
         self
     }
     #[allow(non_snake_case)]
@@ -120,10 +120,10 @@ pub struct Middleware {
                 format!("middleware route `{route}` is invalid")
             )
         }
-        self.after.push((Method::GET, route, AfterMiddlewareStore::store(f.clone())));
-        self.after.push((Method::POST, route, AfterMiddlewareStore::store(f.clone())));
-        self.after.push((Method::PATCH, route, AfterMiddlewareStore::store(f.clone())));
-        self.after.push((Method::DELETE, route, AfterMiddlewareStore::store(f.clone())));
+        self.after.push((Method::GET,    route, AfterMiddlewareStore::store(f.clone()), true));
+        self.after.push((Method::POST,   route, AfterMiddlewareStore::store(f.clone()), true));
+        self.after.push((Method::PATCH,  route, AfterMiddlewareStore::store(f.clone()), true));
+        self.after.push((Method::DELETE, route, AfterMiddlewareStore::store(f.clone()), true));
         self
     }
 
@@ -142,7 +142,7 @@ pub struct Middleware {
                 format!("middleware route `{route}` is invalid")
             )
         }
-        self.before.push((Method::GET, route, BeforeMiddlewareStore::store(f)));
+        self.before.push((Method::GET, route, BeforeMiddlewareStore::store(f), false));
         self
     }
     #[allow(non_snake_case)]
@@ -159,7 +159,7 @@ pub struct Middleware {
                 format!("middleware route `{route}` is invalid")
             )
         }
-        self.after.push((Method::GET, route, AfterMiddlewareStore::store(f)));
+        self.after.push((Method::GET, route, AfterMiddlewareStore::store(f), false));
         self
     }
 
@@ -178,7 +178,7 @@ pub struct Middleware {
                 format!("middleware route `{route}` is invalid")
             )
         }
-        self.before.push((Method::POST, route, BeforeMiddlewareStore::store(f)));
+        self.before.push((Method::POST, route, BeforeMiddlewareStore::store(f), false));
         self
     }
     #[allow(non_snake_case)]
@@ -195,7 +195,7 @@ pub struct Middleware {
                 format!("middleware route `{route}` is invalid")
             )
         }
-        self.after.push((Method::POST, route, AfterMiddlewareStore::store(f)));
+        self.after.push((Method::POST, route, AfterMiddlewareStore::store(f), false));
         self
     }
 
@@ -214,7 +214,7 @@ pub struct Middleware {
                 format!("middleware route `{route}` is invalid")
             )
         }
-        self.before.push((Method::PATCH, route, BeforeMiddlewareStore::store(f)));
+        self.before.push((Method::PATCH, route, BeforeMiddlewareStore::store(f), false));
         self
     }
     #[allow(non_snake_case)]
@@ -231,7 +231,7 @@ pub struct Middleware {
                 format!("middleware route `{route}` is invalid")
             )
         }
-        self.after.push((Method::PATCH, route, AfterMiddlewareStore::store(f)));
+        self.after.push((Method::PATCH, route, AfterMiddlewareStore::store(f), false));
         self
     }
 
@@ -250,7 +250,7 @@ pub struct Middleware {
                 format!("middleware route `{route}` is invalid")
             )
         }
-        self.before.push((Method::DELETE, route, BeforeMiddlewareStore::store(f)));
+        self.before.push((Method::DELETE, route, BeforeMiddlewareStore::store(f), false));
         self
     }
     #[allow(non_snake_case)]
@@ -267,7 +267,7 @@ pub struct Middleware {
                 format!("middleware route `{route}` is invalid")
             )
         }
-        self.after.push((Method::DELETE, route, AfterMiddlewareStore::store(f)));
+        self.after.push((Method::DELETE, route, AfterMiddlewareStore::store(f), false));
         self
     }
 
