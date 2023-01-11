@@ -2,9 +2,12 @@ use ohkami::prelude::*;
 
 fn main() -> Result<()> {
     let middleware = Middleware::new()
-        .ANY("*", |c| async {tracing::info!("request!"); c})
-        .ANY("/*", middleware::cors)
-        .ANY("/api/*", middleware::hello);
+        .beforeANY("*", |c| async {
+            tracing::info!("got request!");
+            c
+        })
+        .beforeANY("/api/*", middleware::hello)
+        .afterANY("/*", middleware::cors);
 
     Ohkami::with(middleware)
         .GET("/", handler::hello)
@@ -22,9 +25,9 @@ mod middleware {
         c
     }
 
-    pub async fn cors(mut c: Context) -> Context {
-        c.add_header(AccessControlAllowOrigin, "localhost:8000");
-        c
+    pub async fn cors(mut res: Response) -> Response {
+        res.add_header(AccessControlAllowOrigin, "localhost:8000");
+        res
     } 
 }
 

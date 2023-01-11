@@ -17,7 +17,7 @@ use crate::{
     router::Router,
     response::body::Body,
     handler::{Handler, Param, group::HandlerGroup},
-    setting::{IntoServerSetting, ServerSetting, Middleware},
+    setting::{IntoServerSetting, ServerSetting, Middleware, AfterMiddleware},
 };
 
 #[cfg(feature = "postgres")]
@@ -370,18 +370,15 @@ async fn handle_stream(
     #[cfg(feature = "sqlx")]
     connection_pool:  Arc<ConnectionPool>,
 ) {
-    let response = match setup_response(
+    let response = setup_response(
         &mut stream,
         router,
 
         #[cfg(feature = "sqlx")]
         connection_pool,
-    ).await {
-        Ok(res)  => res,
-        Err(res) => res,
-    };
+    ).await;
 
-    tracing::info!("{:?}", &response);
+    tracing::info!("{:#?}", &response);
 
     if let Err(err) = response.write_to_stream(&mut stream).await {
         tracing::error!("failed to write response: {}", err);
@@ -399,15 +396,18 @@ async fn setup_response(
 
     #[cfg(feature = "sqlx")]
     connection_pool: Arc<ConnectionPool>,
-) -> Result<Response> {
+) -> Response {
     let buffer = Buffer::new(stream).await;
-    consume_buffer(
+    match consume_buffer(
         buffer,
         &*router,
         
         #[cfg(feature = "sqlx")]
         connection_pool.clone(),
-    ).await
+    ).await {
+        Ok(res) => res,
+        Err(res) => res,
+    }
 }
 
 pub(crate) async fn consume_buffer(
@@ -442,29 +442,40 @@ pub(crate) async fn consume_buffer(
     let (
         handler,
         params,
-        middleware_proccess,
-        middleware_just,
+        before_middleware,
+        after_middleware,
     ) = router.search(
         method,
         &path
     )?;
 
-    for proccess in middleware_proccess {
-        context = proccess(context).await;
-    }
-    if let Some(pre_handle) = middleware_just {
-        context = pre_handle(context).await;
+    for proccess in before_middleware {
+        context = proccess(context).await
     }
     tracing::debug!("{:?}", context);
 
-    match body {
-        Some(Body::text_plain(_)) | Some(Body::text_html(_)) => Err(
-            Response::NotImplemented(
-                "Current ohkami can only handle `application/json` as request body"
-            )
-        ),
+    applied(match body {
         Some(Body::application_json(string)) => handler(context, params, Some(string)).await,
         None => handler(context, params, None).await,
+        Some(_) => Err(Response::NotImplemented("Current ohkami can only handle `application/json` as request body")),
+    }, after_middleware).await
+}
+
+/// just for ease in `consume_buffer` implementation
+async fn applied(handle_result: Result<Response>, after_middleware: &Vec<AfterMiddleware>) -> Result<Response> {
+    match handle_result {
+        Ok(mut res) => {
+            for proc in after_middleware {
+                res = proc(res).await
+            }
+            Ok(res)
+        },
+        Err(mut res) => {
+            for proc in after_middleware {
+                res = proc(res).await
+            }
+            Err(res)
+        },
     }
 }
 

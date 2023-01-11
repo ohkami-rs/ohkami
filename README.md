@@ -14,16 +14,31 @@ ohkami *- [狼] means wolf in Japanese -* is **simple** and **macro free** web f
 
 <br/>
 
-## 0.7.0 → 0.7.2
-I successed in making `JSON` into a **derive macro**!!!
+## 0.7 → 0.8
+Reorganized middleware system and added **after**-handling middleware：
 
 ```rust
-#[derive(JSON, PartialEq, Debug)]
-pub(crate) struct User {
-    pub id:   u64,
-    pub name: String,
+fn main() -> Result<()> {
+    let middleware = Middleware::new()
+        .beforeGET("/", async |c| {
+            tracing::info!("Helllo, middleware!");
+            c
+        })
+        .afterANY("/api/*", async |res| {
+            res.add_header(
+                Header::AccessControlAllowOrigin,
+                "mydomain:8000"
+            );
+            res
+        });
+    
+    // ...
 }
 ```
+
+- Before-handling middleware takes `Context` and returns `Context`
+- After-handling middlware takes `Response` and returns `Response`
+- Middleware routes can use wildcard ( `*` ). In current ohkami, wildcard **doesn't** match empty string (for example, `/api/*` matches `/api/users` and doesn't match `/api` or `/api/`). This design may change in future version.
 
 <br/>
 
@@ -32,7 +47,7 @@ pub(crate) struct User {
 
 ```toml
 [dependencies]
-ohkami = "0.7.3"
+ohkami = "0.8.0"
 ```
 
 2. Write your first code with ohkami:
@@ -103,6 +118,15 @@ async fn sleepy_hello(time: u64, name: String) -> Result<Response> {
     Response::OK(format!("Hello {name}, I'm extremely sleepy..."))
 }
 ```
+### signature of handler function
+```rust
+async fn ( Context?, path_param_1?, path_param_2?, impl JSON? ) -> Result<Response>
+
+// `?` means "this is optional".
+```
+- path param：`String | usize | u64 | usize | i64 | i32`
+- Current ohkami doesn't handle more than 2 path parameters. This design may change in future version.
+
 ### grouping handlers on the same path (like axum)
 ```rust
 use serde::{Serialize, Deserialize};
@@ -154,16 +178,16 @@ c.add_header("Access-Control-Allow-Origin", "mydomain:8000");
 ```
 ```rust
 use ohkami::prelude::*;
-use Header::{AccessControlAllowOrigin};
+use ohkami::Header::AccessControlAllowOrigin;
 
-async fn cors(c: Context) -> Context {
-    c.add_header(AccessControlAllowOrigin, "mydomain:8000");
-    c
+async fn cors(mut res: Response) -> Response {
+    res.add_header(AccessControlAllowOrigin, "mydomain:8000");
+    res
 }
 
 fn main() -> Result<()> {
-    let middleware = Middleware::new()
-        .ANY("/api/*", cors);
+    let my_middleware = Middleware::new()
+        .afterANY("/api/*", cors);
 
     // ...
 ```
@@ -343,7 +367,7 @@ mod test {
 <br/>
 
 ## Development
-ohkami is not for producntion use.\
+ohkami is not for producntion use now.\
 Please give me your feedback ! → [GetHub issue](https://github.com/kana-rus/ohkami/issues)
 
 <br/>

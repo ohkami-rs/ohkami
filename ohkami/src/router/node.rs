@@ -1,29 +1,29 @@
 use std::str::Split;
-use crate::{utils::{range::RangeList, buffer::BufRange}, result::{Result, ElseResponse}, response::Response, handler::HandleFunc, setting::MiddlewareFunc};
 use super::pattern::Pattern;
+use crate::{
+    utils::{range::RangeList, buffer::BufRange},
+    result::{Result, ElseResponse},
+    response::Response,
+    handler::HandleFunc,
+    setting::{AfterMiddleware, BeforeMiddleware, BeforeMiddlewareStore, AfterMiddlewareStore},
+};
 
-pub(super) struct MiddlewareRegister {
-    pub(super) just: Option<MiddlewareFunc>,
-    pub(super) proccess: Vec<MiddlewareFunc>,
-} impl MiddlewareRegister {
-    fn new() -> Self {
-        Self { just: None, proccess: Vec::new() }
-    }
-}
 
 // #derive[Debug, PartialEq]
 pub(super) struct Node {
-    pub(super) pattern:    Pattern,
-    pub(super) handler:    Option<HandleFunc>,
-    pub(super) middleware: MiddlewareRegister,
-    pub(super) children:   Vec<Node>,
+    pub(super) pattern:  Pattern,
+    pub(super) handler:  Option<HandleFunc>,
+    pub(crate) before:   Vec<BeforeMiddleware>,
+    pub(super) after:    Vec<AfterMiddleware>,
+    pub(super) children: Vec<Node>,
 } impl Node {
     pub fn new(pattern: Pattern) -> Self {
         Self {
             pattern,
-            handler:    None,
-            middleware: MiddlewareRegister::new(),
-            children:   Vec::new(),
+            handler:  None,
+            before:   Vec::new(),
+            after:    Vec::new(),
+            children: Vec::new(),
         }
     }
 
@@ -31,12 +31,13 @@ pub(super) struct Node {
         mut path:     Split<'req, char>,
         mut params:   RangeList,
         mut read_pos: usize,
-        mut middleware_process: Vec<&'tree MiddlewareFunc>,
+        // mut before:   Vec<&'tree BeforeMiddleware>,
+        // mut after:    Vec<&'tree AfterMiddleware>,
     ) -> Result<(
         &'tree HandleFunc,
         RangeList,
-        Vec<&'tree MiddlewareFunc>,
-        Option<&'tree MiddlewareFunc>,
+        &'tree Vec<BeforeMiddleware>,
+        &'tree Vec<AfterMiddleware>,
     )> {
         if let Some(section) = path.next() {
             read_pos += 1 /*'/'*/;
@@ -48,16 +49,15 @@ pub(super) struct Node {
                             tracing::debug!("path param: `{}`", section);
                             params.push(range)?;
                         }
-                        for proceess in &self.middleware.proccess {
-                            middleware_process.push(proceess)
-                        }
+                        // for proc in &self.before {before.push(proc)}
+                        // for proc in &self.after {after.push(proc)}
                         break 'search Some(child)
                     }
                 }
                 None
 
             } {
-                child.search(path, params, read_pos + section.len(), middleware_process)
+                child.search(path, params, read_pos + section.len(), )//before, after)
 
             } else {
                 Err(Response::NotFound(None))
@@ -67,13 +67,13 @@ pub(super) struct Node {
             Ok((
                 self.handler.as_ref()._else(|| Response::NotFound(None))?,
                 params,
-                middleware_process,
-                self.middleware.just.as_ref()
+                &self.before,
+                &self.after,
             ))
         }
     }
 
-    pub fn register_handler(&mut self,
+    pub(super) fn register_handler(&mut self,
         mut path: Split<'static, char>,
         handler:  HandleFunc,
         err_msg:  String,
@@ -126,33 +126,73 @@ pub(super) struct Node {
         }
     }
 
-    pub(super) fn register_middleware_func(mut self,
-        route:           &'static str /* already validated */,
-        middleware_func: MiddlewareFunc,
-        err_msg:         String,
+    pub(super) fn register_before_middleware(mut self,
+        route: &'static str /* already validated */,
+        mut store: BeforeMiddlewareStore,
+        err_msg:  String,
+        // warn_msg: String,
     ) -> std::result::Result<Self, String> {
-        if route.ends_with("/*") {
+        if route == "*" {
+            self.apply_before_to_me_and_all_child(store, err_msg)?;
+        } else if route.ends_with("/*") {
             let mut route = route.trim_end_matches("/*").split('/');
             { route.next(); }
 
-            if let Some(apply_root) = self.search_apply_root(route) {
-                apply_root.middleware.proccess.push(middleware_func)
+            if let Some(root) = self.search_apply_root(route) {
+                for child in &mut root.children {
+                    store = child.apply_before_to_me_and_all_child(store, err_msg.clone())?
+                }
+            } else {
+                // tracing::warn!(warn_msg)
             }
-
         } else {
             let mut route = route.split('/');
             { route.next(); }
 
             if let Some(target) = self.search_apply_root(route) {
-                if target.middleware.just.is_some() {
-                    return Err(err_msg)
-                }
-                target.middleware.just = Some(middleware_func)
+                target.before.push(
+                    store.pop().ok_or(err_msg)?
+                )
+            } else {
+                // tracing::warn!(warn_msg)
             }
         }
 
         Ok(self)
     }
+    pub(super) fn register_after_middleware(mut self,
+        route: &'static str /* already validated */,
+        mut store: AfterMiddlewareStore,
+        err_msg:  String,
+        // warn_msg: String,
+    ) -> std::result::Result<Self, String> {
+        if route == "*" {
+            self.apply_after_to_me_and_all_child(store, err_msg)?;
+        } else if route.ends_with("/*") {
+            let mut route = route.trim_end_matches("/*").split('/');
+            { route.next(); }
+
+            if let Some(root) = self.search_apply_root(route) {
+                for child in &mut root.children {
+                    store = child.apply_after_to_me_and_all_child(store, err_msg.clone())?
+                }
+            } else {
+                // tracing::warn!(warn_msg)
+            }
+        } else {
+            let mut route = route.split('/');
+            { route.next(); }
+
+            if let Some(target) = self.search_apply_root(route) {
+                target.after.push(store.pop().ok_or(err_msg)?)
+            } else {
+                // tracing::warn!(warn_msg)
+            }
+        }
+
+        Ok(self)
+    }
+
     fn search_apply_root(&mut self, mut path: Split<'static, char>) -> Option<&mut Self> {
         if let Some(section) = path.next() {
             if let Some(child) = 'search: {
@@ -172,5 +212,30 @@ pub(super) struct Node {
         } else {
             Some(self)
         }
+    }
+
+    fn apply_before_to_me_and_all_child(&mut self,
+        mut store: BeforeMiddlewareStore,
+        err_msg:   String,
+    ) -> std::result::Result<BeforeMiddlewareStore, String> {
+        self.before.push(store.pop().ok_or_else(|| err_msg.clone())?);
+
+        for child in &mut self.children {
+            store = child.apply_before_to_me_and_all_child(store, err_msg.clone())?
+        }
+
+        Ok(store)
+    }
+    fn apply_after_to_me_and_all_child(&mut self,
+        mut store: AfterMiddlewareStore,
+        err_msg:   String,
+    ) -> std::result::Result<AfterMiddlewareStore, String> {
+        self.after.push(store.pop().ok_or_else(|| err_msg.clone())?);
+
+        for child in &mut self.children {
+            store = child.apply_after_to_me_and_all_child(store, err_msg.clone())?
+        }
+
+        Ok(store)
     }
 }
