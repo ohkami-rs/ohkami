@@ -24,34 +24,21 @@ fn main() -> Result<()> {
             tracing::info!("Helllo, middleware!");
             c
         })
-        .afterANY("/", async |res| {
+        .afterANY("/api/*", async |res| {
             res.add_header(
                 Header::AccessControlAllowOrigin,
                 "mydomain:8000"
             );
             res
         });
-
-    // this works the same as
-
-    // let before_middlewre = Middleware::before()
-    //     .GET("/", async |c| {
-    //         tracing::info!("Helllo, middleware!");
-    //         c
-    //     });
-    // let after_middleware = Middleware::after()
-    //     .ANY("/", async |res| {
-    //         res.add_header(
-    //             Header::AccessControlAllowOrigin,
-    //             "mydomain:8000"
-    //         );
-    //         res
-    //     });
-    // let middleware = before_middleware.and(after_middleware);
-
-    // you can build middlewares in any way you like
+    
+    // ...
 }
 ```
+
+- Before-handling middleware takes `Context` and returns `Context`
+- After-handling middlware takes `Response` and returns `Response`
+- Middleware routes can use wildcard ( `*` ). In current ohkami, wildcard **doesn't** match empty string (for example, `/api/*` matches `/api/users` and doesn't match `/api` or `/api/`). This design may change in future version.
 
 <br/>
 
@@ -131,6 +118,15 @@ async fn sleepy_hello(time: u64, name: String) -> Result<Response> {
     Response::OK(format!("Hello {name}, I'm extremely sleepy..."))
 }
 ```
+### signature of handler function
+```rust
+async fn ( Context?, path_param_1?, path_param_2?, impl JSON? ) -> Result<Response>
+
+// `?` means "this is optional".
+```
+- path param：`String | usize | u64 | usize | i64 | i32`
+- Current ohkami doesn't handle more than 2 path parameters. This design may change in future version.
+
 ### grouping handlers on the same path (like axum)
 ```rust
 use serde::{Serialize, Deserialize};
