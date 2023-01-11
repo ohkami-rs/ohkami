@@ -103,11 +103,11 @@ async fn sleepy_hello(time: u64, name: String) -> Result<Response> {
         ))?;
         
     sleep(Duration::from_secs(time));
-    Response::OK(format!("Hello {name}, I'm extremely sleepy..."))
+    Response::OK(format!("Hello {name}, I'm so sleepy..."))
 }
 ```
 ### handle request body
-Add `serde = { version = "1.0", features = ["derive"] }` in your dependencies
+Add `serde = { version = "1.0", features = ["derive"] }` in your dependencies ( `JSON` uses it internally )
 ```rust
 #[derive(JSON)]
 struct User {
@@ -124,7 +124,7 @@ async fn reflect_name(user: User) -> Result<Response> {
     Response::OK(name)
 }
 ```
-### grouping handlers on the same path (like axum)
+### group handlers (like axum)
 ```rust
 use ohkami::{
     prelude::*,
@@ -208,8 +208,9 @@ struct User {
     id:   u64,
     name: String,
 }
-```
-```rust
+
+// ...
+
 let user = User { id: 1, name: String::from("John") };
 
 Response::OK(user)
@@ -239,7 +240,7 @@ make_some_result()
 ```
 ### handle Option values
 ```rust
-let handler = self.handler.as_ref()
+let handler = self.handler
     ._else(|| Response::NotFound("handler not found"))?;
     // or
     ._else(|| Response::NotFound(None))?;
