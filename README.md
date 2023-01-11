@@ -295,7 +295,7 @@ let user = sqlx::query_as::<_, User>(
 ```rust
 fn main() -> Result<()> {
     let middleware = Middleware::new()
-        .ANY("*", |c| async {
+        .beforeANY("*", |c| async {
             tracing::info!("Hello, middleware!");
             c
         });
@@ -318,7 +318,7 @@ fn main() -> Result<()> {
     };
 
     let middleware = Middleware::new()
-        .ANY("*", |c| async {
+        .beforeANY("*", |c| async {
             tracing::info!("Hello, middleware!");
             c
         });
