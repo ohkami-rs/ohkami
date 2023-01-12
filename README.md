@@ -107,7 +107,7 @@ async fn sleepy_hello(time: u64, name: String) -> Result<Response> {
 }
 ```
 ### handle request body
-Add `serde = { version = "1.0", features = ["derive"] }` in your dependencies ( `JSON` uses it internally )
+Add `serde = { version = "1.0", features = ["derive"] }` in your dependencies ( `JSON` requires it internally )
 ```rust
 #[derive(JSON)]
 struct User {
