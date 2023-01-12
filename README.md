@@ -38,7 +38,7 @@ fn main() -> Result<()> {
 
 - Before-handling middleware takes `Context` and returns `Context`
 - After-handling middlware takes `Response` and returns `Response`
-- Middleware routes can use wildcard ( `*` ). In current ohkami, wildcard **doesn't** match empty string (for example, `/api/*` matches `/api/users` and doesn't match `/api` or `/api/`). This design may change in future version.
+- Middleware routes can use wildcard ( `*` ). In current ohkami, wildcard **doesn't** match empty string (for example, `/api/*` matches `/api/users` and doesn't match `/api`). This design may change in future version.
 
 <br/>
 
@@ -260,6 +260,13 @@ fn main() -> Result<()> {
         log_subscribe: Some(
             tracing_subscriber::fmt()
                 .with_max_level(tracing::Level::TRACE)
+
+            /* default value:
+
+            tracing_subscriber::fmt()
+                .with_mac_level(tracing::Level::DEBUG)
+
+            */
         ),
         ..Default::default()
     };
