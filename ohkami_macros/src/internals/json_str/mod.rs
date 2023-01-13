@@ -2,19 +2,21 @@ mod number;
 mod object;
 mod parse;
 mod build;
+mod serialize_fmt;
 
 use std::fmt::Debug;
 
-use object::Map;
+use object::Object;
 use number::Number;
+use proc_macro2::Ident;
 
 pub(super) enum JsonStr {
     Num(Number),
     Str(String),
     Bool(bool),
     Array(Vec<JsonStr>),
-    Var(String),
-    Object(Map),
+    Var(Ident),
+    Object(Object),
 }
 
 impl Debug for JsonStr {
