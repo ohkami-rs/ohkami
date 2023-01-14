@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-use crate::{components::json::{Json, JsonResponse, JsonResponseLabel}, prelude::Result};
+use crate::{components::json::{JSON, JsonResponse, JsonResponseLabel}, prelude::Result};
 use super::{message::Message, format::ResponseFormat};
 
 
@@ -156,12 +156,12 @@ impl IntoOK<Body> for Result<Body> {
 
 pub trait IntoCreated {fn into_created(self) -> Result<Body>;}
 
-impl<J: for <'j> Json<'j>> IntoCreated for J {
+impl<J: for <'j> JSON<'j>> IntoCreated for J {
     fn into_created(self) -> Result<Body> {
         Ok(Body::application_json(Cow::Owned(self.ser()?)))
     }
 }
-impl<J: for <'j> Json<'j>> IntoCreated for Result<J> {
+impl<J: for <'j> JSON<'j>> IntoCreated for Result<J> {
     fn into_created(self) -> Result<Body> {
         Ok(Body::application_json(Cow::Owned(self?.ser()?)))
     }

@@ -3,7 +3,7 @@ use async_std::task::block_on;
 use async_std::sync::Arc;
 use serde::{Serialize};
 use crate::{
-    utils::{range::RANGE_MAP_SIZE, buffer::Buffer, string::unescaped}, server::{Ohkami, consume_buffer}, prelude::{Response, Result}, components::{json::Json, headers::HeaderKey}
+    utils::{range::RANGE_MAP_SIZE, buffer::Buffer, string::unescaped}, server::{Ohkami, consume_buffer}, prelude::{Response, Result}, components::{json::JSON, headers::HeaderKey}
 };
 
 pub use crate::{
@@ -27,7 +27,7 @@ pub trait Test {
     /// Performs one-time handling and returns a `Response`
     fn oneshot_res(&self, request: &Request) -> Response;
     /// Performs one-time handling and asserts the response includes a response body of `application/json`. If so, returns the `JSON`.
-    fn oneshot_json<J: for <'j> Json<'j>>(&self, request: &Request) -> J;
+    fn oneshot_json<J: for <'j> JSON<'j>>(&self, request: &Request) -> J;
 } impl Test for Ohkami {
     fn assert_to_res<R: ExpectedResponse>(&self, request: &Request, expected_response: R) {
         let actual_response = block_on(async {
@@ -67,7 +67,7 @@ pub trait Test {
             Err(res) => res,
         }
     }
-    fn oneshot_json<J: for <'j> Json<'j>>(&self, request: &Request) -> J {
+    fn oneshot_json<J: for <'j> JSON<'j>>(&self, request: &Request) -> J {
         match block_on(async {
             consume_buffer(
                 request.into_request_buffer().await,

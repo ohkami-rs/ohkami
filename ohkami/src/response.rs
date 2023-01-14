@@ -4,8 +4,7 @@ use async_std::{net::TcpStream, io::WriteExt};
 use crate::{
     components::{
         status::Status,
-        time::now_fmt, json::Json, headers::HeaderKey,
-        // headers::AdditionalHeader,
+        time::now_fmt, json::JSON, headers::HeaderKey,
     },
     result::Result,
 };
@@ -83,7 +82,7 @@ pub struct Response {
     }
 
     /// for test use
-    pub(crate) fn body_json<J: for <'j> Json<'j>>(self) -> J {
+    pub(crate) fn body_json<J: for <'j> JSON<'j>>(self) -> J {
         match self.body.expect("body: None") {
             Body::application_json(json_str) => serde_json::from_str(&json_str)
                 .expect(&format!("can't deserialize: {json_str}")),

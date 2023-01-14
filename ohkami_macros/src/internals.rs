@@ -13,7 +13,7 @@ pub(super) fn derive_json(serde_derived_struct: TokenStream) -> Result<TokenStre
         = syn::parse2(serde_derived_struct.clone())?;
 
     Ok(quote!{
-        impl<'j> ohkami::components::json::Json<'j> for #ident {}
+        impl<'j> ohkami::components::json::JSON<'j> for #ident {}
 
         #[derive(serde::Serialize, serde::Deserialize)]
         #[ohkami::macros::consume_struct]
