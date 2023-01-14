@@ -6,7 +6,11 @@ impl Build for JsonStr {
     fn build(self) -> proc_macro2::TokenStream {
         match self {
             Self::Bool(boolean) => {
-                if boolean {quote!("true")} else {quote!("false")}
+                if boolean {quote!{
+                    std::borrow::Cow::Borrowed("true")
+                }} else {quote!{
+                    std::borrow::Cow::Borrowed("false")
+                }}
             },
             Self::Num(number) => {
                 let num_str = match number {
@@ -14,24 +18,28 @@ impl Build for JsonStr {
                     Number::Negative(n) => n.to_string(),
                     Number::Float(f) => f.to_string(),
                 };
-                quote!(#num_str)
+                quote!{
+                    std::borrow::Cow::Borrowed(#num_str)
+                }
             },
             Self::Str(string) => {
                 let quoted_str = format!(r#""{string}""#);
-                quote!(#quoted_str)
+                quote!{
+                    std::borrow::Cow::Borrowed(#quoted_str)
+                }
             },
             Self::Var(var) => quote!{
-                #var.ser()?
+                std::borrow::Cow::Owned(ohkami::components::json::ser(#var)?)
             },
             Self::Array(array) => {
                 let (fmt, args) = array.serialize_fmt();
                 if args.is_empty() {
                     quote!{
-                        #fmt
+                        std::borrow::Cow::Borrowed(#fmt)
                     }
                 } else {
                     quote!{
-                        format!(#fmt, #args)
+                        std::borrow::Cow::Owned(format!(#fmt, #args))
                     }
                 }
             },
@@ -40,11 +48,11 @@ impl Build for JsonStr {
                 if args.is_empty() {
                     let fmt = &fmt[1..fmt.len()-1];
                     quote!{
-                        #fmt
+                        std::borrow::Cow::Borrowed(#fmt)
                     }
                 } else {
                     quote!{
-                        format!(#fmt, #args)
+                        std::borrow::Cow::Owned(format!(#fmt, #args))
                     }
                 }
             },

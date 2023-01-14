@@ -399,7 +399,9 @@ macro_rules! impl_handler_with_string_int {
 
 #[cfg(test)]
 mod test {
-    use crate::{context::Context, response::{Response, body::Body}, result::Result, json};
+    use std::borrow::Cow;
+
+    use crate::{context::Context, response::Response, result::Result, prelude::Body};
     use super::{Handler, Param, HandleFunc};
 
     struct Handlers(
@@ -417,7 +419,7 @@ mod test {
         Response::OK("Hello!")
     }
     async fn b(_: Context, id: usize) -> Result<Response> {
-        Response::OK(json! {"id": id})
+        Response::OK(Body::application_json(Cow::Owned(format!(r#""id":{id}"#))))
     }
 
     #[derive(serde::Serialize, serde::Deserialize)]

@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use crate::{components::json::{Json, JsonResponse, JsonResponseLabel}, prelude::Result};
 use super::{message::Message, format::ResponseFormat};
 
@@ -6,9 +8,9 @@ use super::{message::Message, format::ResponseFormat};
 #[derive(Debug, PartialEq)]
 #[allow(non_camel_case_types)]
 pub enum Body {
-    application_json(String),
-    text_plain(String),
-    text_html(String),
+    application_json(Cow<'static, str>),
+    text_plain(Cow<'static, str>),
+    text_html(Cow<'static, str>),
 } impl Body {
     /// Generate a `Body` that holds `text/plain` response body.
     /// Types that implment `ToString` can be this' argument.
@@ -45,9 +47,18 @@ pub enum Body {
 impl ResponseFormat for Body {
     fn response_format(&self) -> &str {
         match self {
-            Self::application_json(json_str) => json_str.as_str(),
-            Self::text_plain(text) => text.as_str(),
-            Self::text_html(html) => html.as_str(),
+            Self::application_json(json_str) => match json_str {
+                Cow::Borrowed(str) => str,
+                Cow::Owned(string) => &string,
+            },
+            Self::text_plain(text) => match text {
+                Cow::Borrowed(str) => str,
+                Cow::Owned(string) => &string,
+            },
+            Self::text_html(html) => match html {
+                Cow::Borrowed(str) => str,
+                Cow::Owned(string) => &string,
+            },
         }
     }
 }
@@ -59,52 +70,68 @@ pub trait IntoOK<OkParam> {fn into_ok(self) -> Result<Option<Body>>;}
 
 impl IntoOK<String> for String {
     fn into_ok(self) -> Result<Option<Body>> {
-        Ok(Some(Body::text_plain(self)))
+        Ok(Some(Body::text_plain(Cow::Owned(self))))
     }
 }
 impl IntoOK<Option<String>> for Option<String> {
     fn into_ok(self) -> Result<Option<Body>> {
-        Ok(self.map(|string| Body::text_plain(string)))
+        Ok(self.map(|string| Body::text_plain(Cow::Owned(string))))
     }
 }
 impl IntoOK<Result<String>> for Result<String> {
     fn into_ok(self) -> Result<Option<Body>> {
-        Ok(Some(Body::text_plain(self?)))
+        Ok(Some(Body::text_plain(Cow::Owned(self?))))
     }
 }
 
-impl IntoOK<&str> for &str {
+
+impl IntoOK<&String> for &String {
     fn into_ok(self) -> Result<Option<Body>> {
-        Ok(Some(Body::text_plain(self.to_owned())))
+        Ok(Some(Body::text_plain(Cow::Owned(self.to_owned()))))
     }
 }
-impl IntoOK<Option<&str>> for Option<&str> {
+impl IntoOK<&'static str> for &'static str {
     fn into_ok(self) -> Result<Option<Body>> {
-        Ok(self.map(|string| Body::text_plain(string.to_owned())))
+        Ok(Some(Body::text_plain(Cow::Borrowed(self))))
     }
 }
-impl IntoOK<Result<&str>> for Result<&str> {
+impl IntoOK<Option<&String>> for Option<&String> {
     fn into_ok(self) -> Result<Option<Body>> {
-        Ok(Some(Body::text_plain(self?.to_owned())))
+        Ok(self.map(|string| Body::text_plain(Cow::Owned(string.to_owned()))))
+    }
+}
+impl IntoOK<Option<&'static str>> for Option<&'static str> {
+    fn into_ok(self) -> Result<Option<Body>> {
+        Ok(self.map(|string| Body::text_plain(Cow::Borrowed(string))))
+    }
+}
+impl IntoOK<Result<&String>> for Result<&String> {
+    fn into_ok(self) -> Result<Option<Body>> {
+        Ok(Some(Body::text_plain(Cow::Owned(self?.to_owned()))))
+    }
+}
+impl IntoOK<Result<&'static str>> for Result<&'static str> {
+    fn into_ok(self) -> Result<Option<Body>> {
+        Ok(Some(Body::text_plain(Cow::Borrowed(self?))))
     }
 }
 
 impl<L: JsonResponseLabel, J: JsonResponse<L>> IntoOK<L> for J {
     fn into_ok(self) -> Result<Option<Body>> {
-        Ok(Some(Body::application_json(self.ser()?)))
+        Ok(Some(Body::application_json(Cow::Owned(self.ser()?))))
     }
 }
 impl<L: JsonResponseLabel, J: JsonResponse<L>> IntoOK<Option<L>> for Option<J> {
     fn into_ok(self) -> Result<Option<Body>> {
         match self {
-            Some(json) => Ok(Some(Body::application_json(json.ser()?))),
+            Some(json) => Ok(Some(Body::application_json(Cow::Owned(json.ser()?)))),
             None => Ok(None),
         }
     }
 }
 impl<L: JsonResponseLabel, J: JsonResponse<L>> IntoOK<Result<L>> for Result<J> {
     fn into_ok(self) -> Result<Option<Body>> {
-        Ok(Some(Body::application_json(self?.ser()?)))
+        Ok(Some(Body::application_json(Cow::Owned(self?.ser()?))))
     }
 }
 
@@ -131,12 +158,12 @@ pub trait IntoCreated {fn into_created(self) -> Result<Body>;}
 
 impl<J: for <'j> Json<'j>> IntoCreated for J {
     fn into_created(self) -> Result<Body> {
-        Ok(Body::application_json(self.ser()?))
+        Ok(Body::application_json(Cow::Owned(self.ser()?)))
     }
 }
 impl<J: for <'j> Json<'j>> IntoCreated for Result<J> {
     fn into_created(self) -> Result<Body> {
-        Ok(Body::application_json(self?.ser()?))
+        Ok(Body::application_json(Cow::Owned(self?.ser()?)))
     }
 }
 

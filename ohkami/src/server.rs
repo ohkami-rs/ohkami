@@ -15,7 +15,6 @@ use crate::{
         parse::parse_request, validation, buffer::Buffer
     },
     router::Router,
-    response::body::Body,
     handler::{Handler, Param, group::HandlerGroup},
     setting::{IntoServerSetting, ServerSetting, Middleware, AfterMiddleware},
 };
@@ -455,9 +454,8 @@ pub(crate) async fn consume_buffer(
     tracing::debug!("{:?}", context);
 
     applied(match body {
-        Some(Body::application_json(string)) => handler(context, params, Some(string)).await,
+        Some(string) => handler(context, params, Some(string)).await,
         None => handler(context, params, None).await,
-        Some(_) => Err(Response::NotImplemented("Current ohkami can only handle `application/json` as request body")),
     }, after_middleware).await
 }
 

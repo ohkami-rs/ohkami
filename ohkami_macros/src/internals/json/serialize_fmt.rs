@@ -18,7 +18,7 @@ impl SerializeFmt for Object {
                     JsonStr::Var(name) => {
                         map_str += &format!(r#""{key}":{{}},"#);
                         args.extend(quote!{
-                            #name.ser()?,
+                            ohkami::components::json::ser(#name)?,
                         })
                     },
                     JsonStr::Object(obj) => {
@@ -48,7 +48,7 @@ impl SerializeFmt for Vec<JsonStr> {
                     JsonStr::Var(name) => {
                         elems_str += "{},";
                         args.extend(quote!{
-                            #name,
+                            ohkami::components::json::ser(#name)?,
                         })
                     },
                     JsonStr::Object(obj) => {

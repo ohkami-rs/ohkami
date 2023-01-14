@@ -26,7 +26,15 @@ pub(super) fn consume_struct(serde_derived_struct: TokenStream) -> Result<TokenS
     Ok(TokenStream::new())
 }
 
-mod json_str;
-pub(super) fn json_str(content: TokenStream) -> Result<TokenStream, Error> {
-    Ok(syn::parse2::<json_str::JsonStr>(content)?.build())
+mod json;
+fn json_str(content: TokenStream) -> Result<TokenStream, Error> {
+    Ok(syn::parse2::<json::JsonStr>(content)?.build())
+}
+pub(super) fn json(content: TokenStream) -> Result<TokenStream, Error> {
+    let json_str = json_str(content)?;
+    Ok(quote!{
+        ohkami::prelude::Body::application_json(
+            #json_str
+        )
+    })
 }

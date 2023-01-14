@@ -67,7 +67,7 @@ impl Context {
         Response {
             additional_headers: self.additional_headers.to_owned(),
             status: Status::NotFound,
-            body:   msg.as_message()
+            body:   msg.as_error_message()
         }
     }
     /// Generate `Response` value that represents a HTTP response of `400 Bad Request`.
@@ -77,7 +77,7 @@ impl Context {
         Response {
             additional_headers: self.additional_headers.to_owned(),
             status:             Status::BadRequest,
-            body:               msg.as_message(),
+            body:               msg.as_error_message(),
         }
     }
     /// Generate `Response` value that represents a HTTP response of `500 Internal Server Error`.
@@ -87,7 +87,7 @@ impl Context {
         Response {
             additional_headers: self.additional_headers.to_owned(),
             status:             Status::InternalServerError,
-            body:               msg.as_message(),
+            body:               msg.as_error_message(),
         }
     }
     /// Generate `Response` value that represents a HTTP response of `501 Not Implemented`.
@@ -97,7 +97,7 @@ impl Context {
         Response {
             additional_headers: self.additional_headers.to_owned(),
             status:             Status::NotImplemented,
-            body:               msg.as_message(),
+            body:               msg.as_error_message(),
         }
     }
     /// Generate `Response` value that represents a HTTP response of `403 Forbidden`.
@@ -107,7 +107,7 @@ impl Context {
         Response {
             additional_headers: self.additional_headers.to_owned(),
             status:             Status::Forbidden,
-            body:               msg.as_message(),
+            body:               msg.as_error_message(),
         }
     }
     /// Generate `Response` value that represents a HTTP response of `401 Unauthorized`.
@@ -117,7 +117,7 @@ impl Context {
         Response {
             additional_headers: self.additional_headers.to_owned(),
             status:             Status::Unauthorized,
-            body:               msg.as_message(),
+            body:               msg.as_error_message(),
         }
     }
 

@@ -3,7 +3,7 @@ use crate::{
     response::Response,
     result::{Result, ElseResponse},
     components::{method::Method, headers::HeaderRangeMap},
-    utils::{buffer::BufRange, range::{RangeMap, RANGE_MAP_SIZE}}, prelude::Body,
+    utils::{buffer::BufRange, range::{RangeMap, RANGE_MAP_SIZE}},
 };
 
 
@@ -12,7 +12,7 @@ pub(crate) fn parse_request(mut lines: Lines) -> Result<(
     String/*path*/,
     Option<RangeMap>/*query param*/,
     HeaderRangeMap,
-    Option<Body>/*request body*/,
+    Option<String>/*request body*/,
 )> {
     let line = lines.next()
         ._else(|| Response::BadRequest("empty request"))?;
@@ -48,15 +48,15 @@ pub(crate) fn parse_request(mut lines: Lines) -> Result<(
         offset += line.len() + 2/*'\r\n'*/
     }
 
-    let body = lines.next()
-        .map(|s| {
-            let content = s.to_owned();
-            if is_json {
-                Body::application_json(content)
-            } else {
-                Body::text_plain(content)
-            }
-        });
+    let body = if is_json {
+        Some(
+            lines.next()
+                ._else(|| Response::BadRequest("Headers has `Content-Type: application/json` but no request body was found"))?
+                .to_owned()
+        )
+    } else {
+        None
+    };
 
     Ok((
         Method::parse(method_str)?,

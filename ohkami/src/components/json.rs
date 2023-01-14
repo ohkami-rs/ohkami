@@ -1,5 +1,11 @@
 use crate::prelude::Result;
 
+pub fn ser<S: serde::Serialize>(s: &S) -> Result<String> {
+    Ok(serde_json::to_string(s)?)
+}
+pub fn de<'de, D: serde::Deserialize<'de>>(str: &'de str) -> Result<D> {
+    Ok(serde_json::from_str(str)?)
+}
 
 pub trait Json<'j>: serde::Serialize + serde::Deserialize<'j> {
     fn ser(&self) -> Result<String> {
@@ -26,26 +32,6 @@ impl<J: for <'j> Json<'j>> JsonResponse<&()> for &J {
     fn ser(&self) -> Result<String> {
         Ok(serde_json::to_string(self)?)
     }
-}
-
-
-/// Utility macro to create `Body::application_json` value from some pair(s) of key-value(s).
-/// ```no_run
-/// let result = json!{"ok": true};
-/// ```
-/// ```no_run
-/// let res = json!{"token": "abcxyz", "expires": "2022-01-01 00:00"};
-/// ```
-#[macro_export]
-macro_rules! json {
-    {$key1:literal : $value1: expr $(, $key:literal : $value:expr)*} => {
-        Body::application_json(
-            String::from("{")
-            + &format!("\"{}\":{:?}", $key1, $value1)
-            $( + &format!(",\"{}\":{:?}", $key, $value) )*
-            + "}"
-        )
-    };
 }
 
 

@@ -1,8 +1,8 @@
 use ohkami::{
-    prelude::{Context, Body},
+    macros::json,
+    context::Context,
     response::Response,
     result::{Result, ElseResponse, ElseResponseWithErr},
-    json
 };
 use validator::Validate;
 use crate::{
@@ -35,5 +35,5 @@ pub(crate) async fn update_todo(c: Context, id: i32, payload: UpdateTodo) -> Res
 
 pub(crate) async fn delete_todo(c: Context, id: i32) -> Result<Response> {
     TODO_STORE.delete(id)?;
-    c.OK(json! {"ok": true})
+    c.OK(json!({"ok": true}))
 }
