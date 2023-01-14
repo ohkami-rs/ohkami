@@ -1,8 +1,6 @@
 use quote::quote;
-
 use crate::internals::Build;
-
-use super::{JsonStr, number::Number};
+use super::{JsonStr, number::Number, serialize_fmt::SerializeFmt};
 
 impl Build for JsonStr {
     fn build(self) -> proc_macro2::TokenStream {
@@ -22,7 +20,19 @@ impl Build for JsonStr {
                 let quoted_str = format!(r#"{string}"#);
                 quote!(#quoted_str)
             },
-            Self::Var(var) => {},
+            Self::Var(var) => quote!{
+                format!("{:?}", #var)
+            },
+            Self::Array(array) => {
+                let array_str = format!("{array:?}");
+                quote!(#array_str)
+            },
+            Self::Object(object) => {
+                let (fmt, args) = object.serialize_fmt();
+                quote!{
+                    format!(#fmt, #args)
+                }
+            },
         }
     }
 }

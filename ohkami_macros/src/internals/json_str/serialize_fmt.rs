@@ -3,12 +3,12 @@ use quote::quote;
 
 use super::{object::Object, JsonStr};
 
-trait SerializeFmt {
-    fn fmt(self) -> (String, TokenStream);
+pub(crate)trait SerializeFmt {
+    fn serialize_fmt(self) -> (String, TokenStream);
 }
 
 impl SerializeFmt for Object {
-    fn fmt(self) -> (String, TokenStream) {
+    fn serialize_fmt(mut self) -> (String, TokenStream) {
         let mut args = TokenStream::new();
         let fmt = {
             let mut map_str = String::new();
@@ -22,9 +22,9 @@ impl SerializeFmt for Object {
                         })
                     },
                     JsonStr::Object(obj) => {
-                        let (fmt, args) = obj.fmt();
+                        let (fmt, new_args) = obj.serialize_fmt();
                         map_str += &format!(r#""{key}":{fmt}"#);
-                        args.extend(args)
+                        args.extend(new_args)
                     },
                     other => map_str += &format!(r#""{key}":{other:?},"#),
                 }

@@ -10,13 +10,30 @@ use object::Object;
 use number::Number;
 use proc_macro2::Ident;
 
-pub(super) enum JsonStr {
+pub(crate) enum JsonStr {
     Num(Number),
     Str(String),
     Bool(bool),
     Array(Vec<JsonStr>),
     Var(Ident),
     Object(Object),
+}
+
+impl Clone for JsonStr {
+    fn clone(&self) -> Self {
+        match self {
+            Self::Array(array) => Self::Array(array.clone()),
+            Self::Bool(boolean) => Self::Bool(boolean.clone()),
+            Self::Num(number) => Self::Num(match number {
+                Number::Float(f) => Number::Float(f.clone()),
+                Number::Negative(n) => Number::Negative(n.clone()),
+                Number::Positive(p) => Number::Positive(p.clone()),
+            }),
+            Self::Str(string) => Self::Str(string.clone()),
+            Self::Var(name) => Self::Var(name.clone()),
+            Self::Object(object) => Self::Object(Object(object.0.clone())),
+        }
+    }
 }
 
 impl Debug for JsonStr {

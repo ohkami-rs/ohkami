@@ -1,17 +1,9 @@
 use std::fmt::Debug;
 
-pub(super) enum Number {
+pub(crate) enum Number {
     Positive(usize),
     Negative(isize),
     Float(f64),
-} impl Number {
-    pub(super) fn to_string(self) -> String {
-        match self {
-            Self::Positive(p) => p.to_string(),
-            Self::Negative(n) => n.to_string(),
-            Self::Float(f) => f.to_string(),
-        }
-    }
 }
 
 impl Debug for Number {

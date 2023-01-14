@@ -1,25 +1,13 @@
 use std::{collections::BTreeMap, fmt::Debug};
 use super::JsonStr;
 
-pub(super) struct Object(
-    pub(crate) BTreeMap<&'static str, JsonStr>
-); impl Object {
-    fn var_indexes(&self) -> Vec<usize> {
-        let mut indexes = Vec::new();
-        for (i, (key, value)) in self.0.iter().enumerate() {
-            match value {
-                JsonStr::Var(_) => indexes.push(i),
-                _ => (),
-            }
-        }
-        indexes
-    }
-}
+pub(crate) struct Object(
+    pub(crate) BTreeMap<String, JsonStr>
+);
 
 impl Debug for Object {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let map = self.0;
-        let len = map.len();
+        let mut map = self.0.clone();
 
         write!(f, "{{{}}}", 'content: {
             let mut content = String::new();
