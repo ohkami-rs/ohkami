@@ -42,7 +42,7 @@ fn main() -> Result<()> {
 
 <br/>
 
-## 0.8.0 → 0.8.1
+## 0.8.2
 Improved `json!` macro：
 
 ```rust
@@ -66,7 +66,7 @@ Response::OK(json!({"id": id}))
 
 ```toml
 [dependencies]
-ohkami = "0.8.1"
+ohkami = "0.8.2"
 ```
 
 2. Write your first code with ohkami:
