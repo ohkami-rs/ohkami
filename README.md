@@ -42,12 +42,31 @@ fn main() -> Result<()> {
 
 <br/>
 
+## 0.8.0 → 0.8.1
+Improved `json!` macro：
+
+```rust
+json!(100)
+```
+```rust
+json!("Hello, world!")
+```
+```rust
+json!({"ok": true})
+```
+```rust
+let id = 324;
+Response::OK(json!({"id": id}))
+```
+
+<br/>
+
 ## Quick start
 1. Add dependencies:
 
 ```toml
 [dependencies]
-ohkami = "0.8.0"
+ohkami = "0.8.1"
 ```
 
 2. Write your first code with ohkami:
@@ -198,10 +217,19 @@ c.OK("Hello, world!")
 ```
 ### OK response with `application/json`
 ```rust
-Response::OK(json!{"ok": true})
-// or
-c.OK(json!{"ok": true})
+Response::OK(json!({"ok": true}))
+
+c.OK(json!(100))
+
+c.OK(json!("Hello, world!"))
 ```
+```rust
+async fn reflect_id(id: u64) -> Result<Response> {
+    Response::OK(json!{"id": id})
+}
+```
+
+`OK` can take `JSON`-derived value directly：
 ```rust
 #[derive(JSON)]
 struct User {
