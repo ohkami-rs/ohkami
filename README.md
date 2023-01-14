@@ -89,7 +89,7 @@ fn main() -> Result<()> {
 
 ## signature of handler
 ```rust
-async fn ( Context ?, path_param_1 ?, path_param_2 ?, impl JSON ? ) -> Result<Response>
+async fn ( Context?, {path_param_1}?, {path_param_2}?, impl JSON? ) -> Result<Response>
 
 // `?` means "this is optional".
 ```
