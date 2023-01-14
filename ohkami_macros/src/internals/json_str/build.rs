@@ -17,20 +17,35 @@ impl Build for JsonStr {
                 quote!(#num_str)
             },
             Self::Str(string) => {
-                let quoted_str = format!(r#"{string}"#);
+                let quoted_str = format!(r#""{string}""#);
                 quote!(#quoted_str)
             },
             Self::Var(var) => quote!{
-                format!("{:?}", #var)
+                #var.ser()?
             },
             Self::Array(array) => {
-                let array_str = format!("{array:?}");
-                quote!(#array_str)
+                let (fmt, args) = array.serialize_fmt();
+                if args.is_empty() {
+                    quote!{
+                        #fmt
+                    }
+                } else {
+                    quote!{
+                        format!(#fmt, #args)
+                    }
+                }
             },
             Self::Object(object) => {
                 let (fmt, args) = object.serialize_fmt();
-                quote!{
-                    format!(#fmt, #args)
+                if args.is_empty() {
+                    let fmt = &fmt[1..fmt.len()-1];
+                    quote!{
+                        #fmt
+                    }
+                } else {
+                    quote!{
+                        format!(#fmt, #args)
+                    }
                 }
             },
         }

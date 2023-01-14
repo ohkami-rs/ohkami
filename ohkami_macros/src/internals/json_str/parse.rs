@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use syn::{parse::Parse, token, Ident, Lit, braced, punctuated::Punctuated };
+use syn::{parse::Parse, token, Ident, Lit, braced, punctuated::Punctuated, bracketed };
 use super::{JsonStr, number::Number, object::Object};
 
 impl Parse for JsonStr {
@@ -16,6 +16,17 @@ impl Parse for JsonStr {
             }
 
             Ok(Self::Object(object))
+        } else if input.peek(token::Bracket) {
+            let elems;
+            bracketed!(elems in input);
+            let elems: Punctuated<JsonStr, token::Comma> = elems.parse_terminated(JsonStr::parse)?;
+
+            let mut array = Vec::with_capacity(elems.len());
+            for json_str in elems {
+                array.push(json_str)
+            }
+
+            Ok(Self::Array(array))
         } else if input.peek(Ident) {
             let ident = input.parse::<Ident>()?;
             Ok(Self::Var(ident))
@@ -35,7 +46,7 @@ impl Parse for JsonStr {
                 _ => Err(input.error("Expected one of bool, float, int or str lieral"))
             }
         } else {
-            Err(input.error("Expected one of literal, varialble, object (map)"))
+            Err(input.error("Expected one of literal, varialble, array, object (map)"))
         }
     }
 }

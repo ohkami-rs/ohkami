@@ -16,9 +16,9 @@ impl SerializeFmt for Object {
             while let Some((key, value)) = self.0.pop_first() {
                 match value {
                     JsonStr::Var(name) => {
-                        map_str += &format!(r#""{key}":{{:?}},"#);
+                        map_str += &format!(r#""{key}":{{}},"#);
                         args.extend(quote!{
-                            #name,
+                            #name.ser()?,
                         })
                     },
                     JsonStr::Object(obj) => {
@@ -30,7 +30,38 @@ impl SerializeFmt for Object {
                 }
             }
 
-            format!("{{{}}}", map_str.trim_end_matches(","))
+            format!("{{{{{}}}}}", map_str.trim_end_matches(","))
+        };
+
+        (fmt, args)
+    }
+}
+
+impl SerializeFmt for Vec<JsonStr> {
+    fn serialize_fmt(self) -> (String, TokenStream) {
+        let mut args = TokenStream::new();
+        let fmt = {
+            let mut elems_str = String::new();
+
+            for elem in self {
+                match elem {
+                    JsonStr::Var(name) => {
+                        elems_str += "{},";
+                        args.extend(quote!{
+                            #name,
+                        })
+                    },
+                    JsonStr::Object(obj) => {
+                        let (fmt, obj_args) = obj.serialize_fmt();
+                        let fmt = &fmt[1..fmt.len()-1];
+                        elems_str += &format!("{fmt},");
+                        args.extend(obj_args)
+                    },
+                    other => elems_str += &format!("{other:?},"),
+                }
+            }
+
+            format!("[{}]", elems_str.trim_end_matches(","))
         };
 
         (fmt, args)
