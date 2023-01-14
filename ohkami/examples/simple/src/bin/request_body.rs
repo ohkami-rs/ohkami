@@ -1,4 +1,4 @@
-use ohkami::{prelude::*, json};
+use ohkami::prelude::*;
 
 
 fn main() -> Result<()> {
@@ -19,12 +19,12 @@ async fn only_whose_name_starts_with_j_can_login(payload: User) -> Result<Respon
         ._else(|| Response::Forbidden(
             "Noooo!! Only first user whose name starts with 'j' can login by this endpoint!"
         ))?;
-    Response::OK(json! {"ok": true})
+    Response::OK(json!({"ok": true}))
 }
 
 #[cfg(test)]
 mod test {
-    use ohkami::{prelude::*, json, testing::{Test, Request, Method}};
+    use ohkami::{prelude::*, testing::{Test, Request, Method}};
     use super::{only_whose_name_starts_with_j_can_login, User};
 
     #[test]
@@ -38,7 +38,7 @@ mod test {
                     name:     "jTaro".into(),
                     password: "iamjtaro".into(),
                 }),
-            Response::OK(json! {"ok": true})
+            Response::OK(json!({"ok": true}))
         )
     }
 }

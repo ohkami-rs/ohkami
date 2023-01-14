@@ -6,7 +6,7 @@ use crate::{
     result::Result,
     context::Context,
     utils::range::RangeList,
-    components::json::Json,
+    components::json::JSON,
 };
 
 
@@ -62,12 +62,12 @@ where
         ), 1)
     }
 }
-impl<J: for <'j> Json<'j>> Param for J {}
+impl<J: for <'j> JSON<'j>> Param for J {}
 impl<F, Fut, J> Handler<J> for F
 where
     F:   Fn(J) -> Fut + Send + Sync + 'static,
     Fut: Future<Output=Result<Response>> + Send + 'static,
-    J:   for <'j> Json<'j>
+    J:   for <'j> JSON<'j>
 {
     fn into_handlefunc(self) -> (HandleFunc, u8/*path param num*/) {
         (Box::new(move |_, _, raw_json|
@@ -100,12 +100,12 @@ where
         ), 1)
     }
 }
-impl<J: for <'j> Json<'j>> Param for (Context, J) {}
+impl<J: for <'j> JSON<'j>> Param for (Context, J) {}
 impl<F, Fut, J> Handler<(Context, J)> for F
 where
     F:   Fn(Context, J) -> Fut + Send + Sync + 'static,
     Fut: Future<Output=Result<Response>> + Send + 'static,
-    J:   for <'j> Json<'j>
+    J:   for <'j> JSON<'j>
 {
     fn into_handlefunc(self) -> (HandleFunc, u8/*path param num*/) {
         (Box::new(move |c, _, raw_json|
@@ -166,12 +166,12 @@ macro_rules! impl_handler_with_int {
                 }
             }
 
-            impl<J: for <'j> Json<'j>> Param for (Context, $int_type, J) {}
+            impl<J: for <'j> JSON<'j>> Param for (Context, $int_type, J) {}
             impl<F, Fut, J> Handler<(Context, $int_type, J)> for F
             where
                 F:   Fn(Context, $int_type, J) -> Fut + Send + Sync + 'static,
                 Fut: Future<Output=Result<Response>> + Send + 'static,
-                J:   for <'j> Json<'j>
+                J:   for <'j> JSON<'j>
             {
                 fn into_handlefunc(self) -> (HandleFunc, u8) {
                     (Box::new(move |ctx, params, raw_json|
@@ -194,12 +194,12 @@ macro_rules! impl_handler_with_int {
                     ), 1)
                 }
             }
-            impl<J: for <'j> Json<'j>> Param for ($int_type, J) {}
+            impl<J: for <'j> JSON<'j>> Param for ($int_type, J) {}
             impl<F, Fut, J> Handler<($int_type, J)> for F
             where
                 F:   Fn($int_type, J) -> Fut + Send + Sync + 'static,
                 Fut: Future<Output=Result<Response>> + Send + 'static,
-                J:   for <'j> Json<'j>
+                J:   for <'j> JSON<'j>
             {
                 fn into_handlefunc(self) -> (HandleFunc, u8) {
                     (Box::new(move |ctx, params, raw_json|
@@ -399,7 +399,9 @@ macro_rules! impl_handler_with_string_int {
 
 #[cfg(test)]
 mod test {
-    use crate::{context::Context, response::{Response, body::Body}, result::Result, json};
+    use std::borrow::Cow;
+
+    use crate::{context::Context, response::Response, result::Result, prelude::Body};
     use super::{Handler, Param, HandleFunc};
 
     struct Handlers(
@@ -417,14 +419,14 @@ mod test {
         Response::OK("Hello!")
     }
     async fn b(_: Context, id: usize) -> Result<Response> {
-        Response::OK(json! {"id": id})
+        Response::OK(Body::application_json(Cow::Owned(format!(r#""id":{id}"#))))
     }
 
     #[derive(serde::Serialize, serde::Deserialize)]
     struct User {
         id:   i64,
         name: String,
-    } impl<'j> crate::components::json::Json<'j> for User {}
+    } impl<'j> crate::components::json::JSON<'j> for User {}
     async fn c(payload: User) -> Result<Response> {
         Response::Created(payload)
     }

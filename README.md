@@ -42,12 +42,31 @@ fn main() -> Result<()> {
 
 <br/>
 
+## 0.8.0 → 0.8.1
+Improved `json!` macro：
+
+```rust
+json!(100)
+```
+```rust
+json!("Hello, world!")
+```
+```rust
+json!({"ok": true})
+```
+```rust
+let id = 324;
+Response::OK(json!({"id": id}))
+```
+
+<br/>
+
 ## Quick start
 1. Add dependencies:
 
 ```toml
 [dependencies]
-ohkami = "0.8.0"
+ohkami = "0.8.1"
 ```
 
 2. Write your first code with ohkami:
@@ -70,7 +89,7 @@ fn main() -> Result<()> {
 
 ## signature of handler
 ```rust
-async fn ( Context?, path_param_1?, path_param_2?, impl JSON? ) -> Result<Response>
+async fn ( Context?, {path param 1}?, {path param 2}?, {impl JSON}? ) -> Result<Response>
 
 // `?` means "this is optional".
 ```
@@ -107,7 +126,7 @@ async fn sleepy_hello(time: u64, name: String) -> Result<Response> {
 }
 ```
 ### handle request body
-Add `serde = { version = "1.0", features = ["derive"] }` in your dependencies ( `JSON` uses it internally )
+Add `serde = { version = "1.0", features = ["derive"] }` in your dependencies ( `JSON` requires it internally )
 ```rust
 #[derive(JSON)]
 struct User {
@@ -198,10 +217,19 @@ c.OK("Hello, world!")
 ```
 ### OK response with `application/json`
 ```rust
-Response::OK(json!{"ok": true})
-// or
-c.OK(json!{"ok": true})
+Response::OK(json!({"ok": true}))
+
+c.OK(json!(100))
+
+c.OK(json!("Hello, world!"))
 ```
+```rust
+async fn reflect_id(id: u64) -> Result<Response> {
+    Response::OK(json!{"id": id})
+}
+```
+
+`OK` can take `JSON`-derived value directly：
 ```rust
 #[derive(JSON)]
 struct User {

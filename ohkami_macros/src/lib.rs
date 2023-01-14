@@ -34,3 +34,10 @@ pub fn derive_json(struct_stream: TokenStream) -> TokenStream {
         .unwrap_or_else(|err| err.into_compile_error())
         .into()
 }
+
+#[proc_macro]
+pub fn json(content: TokenStream) -> TokenStream {
+    internals::json(content.into())
+        .unwrap_or_else(|err| err.into_compile_error())
+        .into()
+}

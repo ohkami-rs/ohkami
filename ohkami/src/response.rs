@@ -1,9 +1,10 @@
+use std::borrow::Cow;
+
 use async_std::{net::TcpStream, io::WriteExt};
 use crate::{
     components::{
         status::Status,
-        time::now_fmt, json::Json, headers::HeaderKey,
-        // headers::AdditionalHeader,
+        time::now_fmt, json::JSON, headers::HeaderKey,
     },
     result::Result,
 };
@@ -39,11 +40,29 @@ pub struct Response {
             _ => match self.body {
                 Some(Body::application_json(_)) => unreachable!(),
                 Some(Body::text_plain(ref mut t)) => {
-                    *t = format!("{}: ", msg.as_message()) + t;
+                    match t {
+                        Cow::Owned(string) => match msg.as_message() {
+                            Cow::Borrowed(msg_str) => *string += msg_str,
+                            Cow::Owned(msg_string) => *string += &msg_string,
+                        },
+                        Cow::Borrowed(str) => *t = Cow::Owned(match msg.as_message() {
+                            Cow::Borrowed(msg_str) => msg_str.to_owned() + ": " + str,
+                            Cow::Owned(msg_string) => msg_string + ": " + str,
+                        }),
+                    }
                     self
                 },
                 Some(Body::text_html(ref mut t)) => {
-                    *t = format!("{}: ", msg.as_message()) + t;
+                    match t {
+                        Cow::Owned(string) => match msg.as_message() {
+                            Cow::Borrowed(msg_str) => *string += msg_str,
+                            Cow::Owned(msg_string) => *string += &msg_string,
+                        },
+                        Cow::Borrowed(str) => *t = Cow::Owned(match msg.as_message() {
+                            Cow::Borrowed(msg_str) => msg_str.to_owned() + ": " + str,
+                            Cow::Owned(msg_string) => msg_string + ": " + str,
+                        }),
+                    }
                     self
                 },
                 None => {
@@ -63,7 +82,7 @@ pub struct Response {
     }
 
     /// for test use
-    pub(crate) fn body_json<J: for <'j> Json<'j>>(self) -> J {
+    pub(crate) fn body_json<J: for <'j> JSON<'j>>(self) -> J {
         match self.body.expect("body: None") {
             Body::application_json(json_str) => serde_json::from_str(&json_str)
                 .expect(&format!("can't deserialize: {json_str}")),
@@ -146,7 +165,7 @@ Keep-Alive: timeout=5
         Self {
             additional_headers: String::new(),
             status:             Status::NotFound,
-            body:               msg.as_message(),
+            body:               msg.as_error_message(),
         }
     }
     /// Generate `Response` value that represents a HTTP response of `400 Bad Request`.
@@ -156,7 +175,7 @@ Keep-Alive: timeout=5
         Self {
             additional_headers: String::new(),
             status:             Status::BadRequest,
-            body:               msg.as_message(),
+            body:               msg.as_error_message(),
         }
     }
     /// Generate `Response` value that represents a HTTP response of `500 Internal Server Error`.
@@ -166,7 +185,7 @@ Keep-Alive: timeout=5
         Self {
             additional_headers: String::new(),
             status:             Status::InternalServerError,
-            body:               msg.as_message(),
+            body:               msg.as_error_message(),
         }
     }
     /// Generate `Response` value that represents a HTTP response of `501 Not Implemented`.
@@ -176,7 +195,7 @@ Keep-Alive: timeout=5
         Self {
             additional_headers: String::new(),
             status:             Status::NotImplemented,
-            body:               msg.as_message(),
+            body:               msg.as_error_message(),
         }
     }
     /// Generate `Response` value that represents a HTTP response of `403 Forbidden`.
@@ -186,7 +205,7 @@ Keep-Alive: timeout=5
         Self {
             additional_headers: String::new(),
             status:             Status::Forbidden,
-            body:               msg.as_message(),
+            body:               msg.as_error_message(),
         }
     }
     /// Generate `Response` value that represents a HTTP response of `401 Unauthorized`.
@@ -196,7 +215,7 @@ Keep-Alive: timeout=5
         Self {
             additional_headers: String::new(),
             status:             Status::Unauthorized,
-            body:               msg.as_message(),
+            body:               msg.as_error_message(),
         }
     }
 }

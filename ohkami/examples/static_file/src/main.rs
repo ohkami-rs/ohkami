@@ -1,5 +1,5 @@
 use std::{io::{BufReader, Read}, fs::File};
-use ohkami::{prelude::*, components::json::Json};
+use ohkami::{prelude::*, components::json::JSON};
 use once_cell::sync::Lazy;
 
 #[derive(JSON)]
@@ -17,7 +17,7 @@ static DATA_STR: Lazy<String> = Lazy::new(|| {
     data
 });
 static DATA: Lazy<Vec<Dinosaur>> = Lazy::new(|| {
-    let mut raw = <Vec<Dinosaur> as Json>::de(&DATA_STR)
+    let mut raw = <Vec<Dinosaur> as JSON>::de(&DATA_STR)
         .expect("failed to deserilize data");
     for data in &mut raw {
         (data.name).make_ascii_lowercase() // convert to lower case in advance
