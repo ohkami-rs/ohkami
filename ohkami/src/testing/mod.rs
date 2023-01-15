@@ -1,9 +1,12 @@
 use async_std::task::block_on;
-#[cfg(feature = "sqlx")]
-use async_std::sync::Arc;
+use async_std::sync::{Arc, Mutex};
 use serde::{Serialize};
 use crate::{
-    utils::{range::RANGE_MAP_SIZE, buffer::Buffer, string::unescaped}, server::{Ohkami, consume_buffer}, prelude::{Response, Result}, components::{json::JSON, headers::HeaderKey}
+    utils::{range::RANGE_MAP_SIZE, buffer::Buffer, string::unescaped},
+    server::{Ohkami, consume_buffer},
+    prelude::{Response, Result},
+    components::{json::JSON, headers::HeaderKey},
+    context::store::Store,
 };
 
 pub use crate::{
@@ -34,6 +37,7 @@ pub trait Test {
             consume_buffer(
                 request.into_request_buffer().await,
                 &self.router,
+                Arc::new(Mutex::new(Store::new())),
 
                 #[cfg(feature = "sqlx")]
                 Arc::clone(&self.pool)
@@ -46,6 +50,7 @@ pub trait Test {
             consume_buffer(
                 request.into_request_buffer().await,
                 &self.router,
+                Arc::new(Mutex::new(Store::new())),
 
                 #[cfg(feature = "sqlx")]
                 Arc::clone(&self.pool)
@@ -58,6 +63,7 @@ pub trait Test {
             consume_buffer(
                 request.into_request_buffer().await,
                 &self.router,
+                Arc::new(Mutex::new(Store::new())),
 
                 #[cfg(feature = "sqlx")]
                 Arc::clone(&self.pool)
@@ -72,6 +78,8 @@ pub trait Test {
             consume_buffer(
                 request.into_request_buffer().await,
                 &self.router,
+                Arc::new(Mutex::new(Store::new())),
+                
                 #[cfg(feature = "sqlx")]
                 Arc::clone(&self.pool)
             ).await

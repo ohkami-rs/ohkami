@@ -1,4 +1,5 @@
 use std::fmt::Debug;
+use async_std::sync::{Arc, Mutex};
 use crate::{
     result::{Result, ElseResponse, ElseResponseWithErr},
     utils::{range::RangeMap, buffer::Buffer},
@@ -6,16 +7,18 @@ use crate::{
     response::{Response, message::ErrorMessage, body::{IntoOK, IntoCreated,}},
 };
 
-#[cfg(feature = "sqlx")]
-use async_std::sync::Arc;
 #[cfg(feature = "postgres")]
 use sqlx::PgPool as ConnectionPool;
 #[cfg(feature = "mysql")]
 use sqlx::MySqlPool as ConnectionPool;
 
+pub mod store;
+use self::store::Store;
+
 /// Type of context of a HTTP request.
 pub struct Context {
-    pub req: RequestContext,
+    pub req:   RequestContext,
+    pub store: Arc<Mutex<Store>>,
     pub(crate) additional_headers: String,
 
     #[cfg(feature = "sqlx")]
