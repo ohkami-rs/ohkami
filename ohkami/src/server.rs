@@ -1,5 +1,5 @@
 use async_std::{
-    sync::Arc,
+    sync::{Arc, Mutex},
     task::block_on,
     io::WriteExt,
     net::{TcpStream, TcpListener},
@@ -8,7 +8,7 @@ use async_std::{
 use tracing_subscriber::fmt::SubscriberBuilder;
 use crate::{
     components::method::Method,
-    context::{Context, RequestContext},
+    context::{Context, RequestContext, store::Store},
     response::Response,
     result::Result,
     utils::{
@@ -350,6 +350,7 @@ impl Ohkami {
                     handle_stream(
                         stream,
                         Arc::clone(&router),
+                        Arc::new(Mutex::new(Store::new())),
                         
                         #[cfg(feature = "sqlx")]
                         Arc::clone(&self.pool),
@@ -365,6 +366,7 @@ impl Ohkami {
 async fn handle_stream(
     mut stream: TcpStream,
     router: Arc<Router>,
+    store:  Arc<Mutex<Store>>,
 
     #[cfg(feature = "sqlx")]
     connection_pool:  Arc<ConnectionPool>,
@@ -372,6 +374,7 @@ async fn handle_stream(
     let response = setup_response(
         &mut stream,
         router,
+        store,
 
         #[cfg(feature = "sqlx")]
         connection_pool,
@@ -392,6 +395,7 @@ async fn handle_stream(
 async fn setup_response(
     stream: &mut TcpStream,
     router: Arc<Router>,
+    store:  Arc<Mutex<Store>>,
 
     #[cfg(feature = "sqlx")]
     connection_pool: Arc<ConnectionPool>,
@@ -400,6 +404,7 @@ async fn setup_response(
     match consume_buffer(
         buffer,
         &*router,
+        store,
         
         #[cfg(feature = "sqlx")]
         connection_pool.clone(),
@@ -412,6 +417,7 @@ async fn setup_response(
 pub(crate) async fn consume_buffer(
     buffer: Buffer,
     router: &Router,
+    store:  Arc<Mutex<Store>>,
 
     #[cfg(feature = "sqlx")]
     connection_pool: Arc<ConnectionPool>,
@@ -433,6 +439,7 @@ pub(crate) async fn consume_buffer(
             query_range,
         },
         additional_headers: String::new(),
+        store,
         
         #[cfg(feature = "sqlx")]
         pool: connection_pool,

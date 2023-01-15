@@ -38,25 +38,28 @@ fn main() -> Result<()> {
 
 - Before-handling middleware takes `Context` and returns `Context`
 - After-handling middlware takes `Response` and returns `Response`
-- Middleware routes can use wildcard ( `*` ). In current ohkami, wildcard **doesn't** match empty string (for example, `/api/*` matches `/api/users` and doesn't match `/api`). This design may change in future version.
+- Middleware routes can use wildcard ( `*` ). In current ohkami, wildcard **doesn't** match empty string. This design may change in future version.
 
 <br/>
 
-## 0.8.2
-Improved `json!` macro：
+## 0.8.3
+Added `Context::store` (experimentally)：
 
 ```rust
-json!(100)
-```
-```rust
-json!("Hello, world!")
-```
-```rust
-json!({"ok": true})
-```
-```rust
-let id = 324;
-Response::OK(json!({"id": id}))
+async fn handler(c: Context, id: u64) -> Result<Response> {
+    let cache = c.store().await;
+
+    let object = match cache.get(&id.to_string()) {
+        Some(name) => Object::new(name),
+        None => sqlx::query_as::<_, Object>(
+            "SELECT id, name FROM table WHERE id = $1"
+        ).bind(id)
+            .fetch_one(ctx.pool())
+            .await?
+    };
+
+    c.OK(object)
+}
 ```
 
 <br/>
@@ -66,7 +69,7 @@ Response::OK(json!({"id": id}))
 
 ```toml
 [dependencies]
-ohkami = "0.8.2"
+ohkami = "0.8.3"
 ```
 
 2. Write your first code with ohkami:
