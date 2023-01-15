@@ -328,6 +328,7 @@ impl Ohkami {
             }
             applied_router.unwrap()
         });
+        let store = Arc::new(Mutex::new(Store::new()));
 
         if ! self.setup_errors.is_empty() {
             for err in self.setup_errors {
@@ -350,7 +351,7 @@ impl Ohkami {
                     handle_stream(
                         stream,
                         Arc::clone(&router),
-                        Arc::new(Mutex::new(Store::new())),
+                        Arc::clone(&store),
                         
                         #[cfg(feature = "sqlx")]
                         Arc::clone(&self.pool),
