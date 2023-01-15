@@ -50,7 +50,7 @@ async fn handler(c: Context, id: u64) -> Result<Response> {
     let cache = c.store().await;
 
     let object = match cache.get(&id.to_string()) {
-        Some(name) => Object::new(name),
+        Some(name) => Object::new(id, name),
         None => sqlx::query_as::<_, Object>(
             "SELECT id, name FROM table WHERE id = $1"
         ).bind(id)
