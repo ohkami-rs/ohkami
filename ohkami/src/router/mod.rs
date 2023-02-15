@@ -2,7 +2,7 @@ use crate::{
     components::method::Method,
     utils::range::RangeList,
     result::Result,
-    handler::HandleFunc,
+    handler::HandleFunc, fang::Fangs,
 };
 
 // === mock for test ===
@@ -81,41 +81,41 @@ impl Router {
         )
     }
 
-    pub(crate) fn apply(mut self, middlware: Middleware) -> std::result::Result<Self, String> {
-        if ! middlware.setup_errors.is_empty() {
-            return Err(
-                middlware.setup_errors
-                    .into_iter()
-                    .fold(String::new(), |it, next| it + &next + "\n")
-            )
-        }
-
-        for (method, route, store, is_from_any) in middlware.before {
-            let err_msg = format!("Failed to resister a before-handling middleware function for `{} {route}`. Please report this: https://github.com/kana-rus/ohkami/issues",
-                if is_from_any {"{any method}".to_owned()} else {method.to_string()});
-            // let warn_msg = format!("A before-handling middleware function for `{} {route}` won't work to any reuqest. No handlerthat matches this is resistered.",
-            //     if is_from_any {"{any method}".to_owned()} else {method.to_string()});
-            match method {
-                Method::GET    => self.GET = self.GET.register_before_middleware(route, store, err_msg, /*warn_msg*/)?,
-                Method::POST   => self.POST = self.POST.register_before_middleware(route, store, err_msg, /*warn_msg*/)?,
-                Method::PATCH  => self.PATCH = self.PATCH.register_before_middleware(route, store, err_msg, /*warn_msg*/)?,
-                Method::DELETE => self.DELETE = self.DELETE.register_before_middleware(route, store, err_msg, /*warn_msg*/)?,
-            }
-        }
-
-        for (method, route, store, is_from_any) in middlware.after {
-            let err_msg = format!("Failed to resister a before-handling middleware function for `{} {route}`. Please report this: https://github.com/kana-rus/ohkami/issues",
-                if is_from_any {"{any method}".to_owned()} else {method.to_string()});
-            // let warn_msg = format!("A before-handling middleware function for `{} {route}` won't work to any reuqest. No handlerthat matches this is resistered.",
-            //     if is_from_any {"{any method}".to_owned()} else {method.to_string()});
-            match method {
-                Method::GET    => self.GET = self.GET.register_after_middleware(route, store, err_msg, /*warn_msg*/)?,
-                Method::POST   => self.POST = self.POST.register_after_middleware(route, store, err_msg, /*warn_msg*/)?,
-                Method::PATCH  => self.PATCH = self.PATCH.register_after_middleware(route, store, err_msg, /*warn_msg*/)?,
-                Method::DELETE => self.DELETE = self.DELETE.register_after_middleware(route, store, err_msg, /*warn_msg*/)?,
-            }
-        }
-
-        Ok(self)
+    pub(crate) fn apply(mut self, fangs: Fangs) -> std::result::Result<Self, String> {
+        // if ! middlware.setup_errors.is_empty() {
+        //     return Err(
+        //         middlware.setup_errors
+        //             .into_iter()
+        //             .fold(String::new(), |it, next| it + &next + "\n")
+        //     )
+        // }
+// 
+        // for (method, route, store, is_from_any) in middlware.before {
+        //     let err_msg = format!("Failed to resister a before-handling middleware function for `{} {route}`. Please report this: https://github.com/kana-rus/ohkami/issues",
+        //         if is_from_any {"{any method}".to_owned()} else {method.to_string()});
+        //     // let warn_msg = format!("A before-handling middleware function for `{} {route}` won't work to any reuqest. No handlerthat matches this is resistered.",
+        //     //     if is_from_any {"{any method}".to_owned()} else {method.to_string()});
+        //     match method {
+        //         Method::GET    => self.GET = self.GET.register_before_middleware(route, store, err_msg, /*warn_msg*/)?,
+        //         Method::POST   => self.POST = self.POST.register_before_middleware(route, store, err_msg, /*warn_msg*/)?,
+        //         Method::PATCH  => self.PATCH = self.PATCH.register_before_middleware(route, store, err_msg, /*warn_msg*/)?,
+        //         Method::DELETE => self.DELETE = self.DELETE.register_before_middleware(route, store, err_msg, /*warn_msg*/)?,
+        //     }
+        // }
+// 
+        // for (method, route, store, is_from_any) in middlware.after {
+        //     let err_msg = format!("Failed to resister a before-handling middleware function for `{} {route}`. Please report this: https://github.com/kana-rus/ohkami/issues",
+        //         if is_from_any {"{any method}".to_owned()} else {method.to_string()});
+        //     // let warn_msg = format!("A before-handling middleware function for `{} {route}` won't work to any reuqest. No handlerthat matches this is resistered.",
+        //     //     if is_from_any {"{any method}".to_owned()} else {method.to_string()});
+        //     match method {
+        //         Method::GET    => self.GET = self.GET.register_after_middleware(route, store, err_msg, /*warn_msg*/)?,
+        //         Method::POST   => self.POST = self.POST.register_after_middleware(route, store, err_msg, /*warn_msg*/)?,
+        //         Method::PATCH  => self.PATCH = self.PATCH.register_after_middleware(route, store, err_msg, /*warn_msg*/)?,
+        //         Method::DELETE => self.DELETE = self.DELETE.register_after_middleware(route, store, err_msg, /*warn_msg*/)?,
+        //     }
+        // }
+// 
+        // Ok(self)
     }
 }

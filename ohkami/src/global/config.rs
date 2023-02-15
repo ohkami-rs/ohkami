@@ -11,17 +11,6 @@ pub struct OhkamiConfig {
     connection_pool: ConnectionPool,
 }
 
-const _: (/* Config impls */) = {
-    impl<T: RefUnwindSafe + UnwindSafe> RefUnwindSafe for Config {}
-    impl<T: UnwindSafe> UnwindSafe for Config {}
-
-    impl Default for Config {
-        fn default() -> Self {
-            Self(UnsafeCell::new(OhkamiConfig::default()))
-        }
-    }
-};
-
 const _: (/* OhkamiConfig impls */) = {
     impl Default for OhkamiConfig {
         fn default() -> Self {
@@ -32,3 +21,15 @@ const _: (/* OhkamiConfig impls */) = {
         }
     }
 };
+
+impl<T: RefUnwindSafe + UnwindSafe> RefUnwindSafe for Config {}
+impl<T: UnwindSafe> UnwindSafe for Config {}
+
+impl Default for Config {
+    fn default() -> Self {
+        Self(UnsafeCell::new(OhkamiConfig::default()))
+    }
+}
+
+
+

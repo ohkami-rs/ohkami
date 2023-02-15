@@ -8,13 +8,20 @@ pub struct RequestHeaders<'buf>(
 pub struct ResponseHeaders(
     String // BTreeMap<&'static str, string>
 );
-
+impl<'buf> RequestHeaders<'buf> {
+        #[inline] pub(crate) fn new() -> Self {
+            Self(BTreeMap::new())
+        }
+        pub(crate) fn insert(&mut self, (key, value): (&'buf str, &'buf str)) {
+            self.0.insert(key, value)
+        }
+    }
 const _: (/* RequestHeaders impls */) = {
-    // impl From
+    
 
     impl<'buf> Index for RequestHeaders<'buf> {
         type Output = Result<&'buf str>;
-        fn index(&self, key: &str) -> &Self::Output {
+        #[inline] fn index(&self, key: &str) -> &Self::Output {
             self.0.get(key)
         }
     }

@@ -8,15 +8,15 @@ use async_std::{
 use tracing_subscriber::fmt::SubscriberBuilder;
 use crate::{
     components::method::Method,
-    context::{Context, RequestContext, store::Store},
+    // context::{Context, RequestContext, store::Store},
     response::Response,
     result::Result,
     utils::{
         parse::parse_request, validation, buffer::Buffer
     },
     router::Router,
-    handler::{Handler, Param, group::HandlerGroup},
-    setting::{IntoServerSetting, ServerSetting, Middleware, AfterMiddleware},
+    handler::{Handler, Param}, fang::Fangs,
+    // setting::{IntoServerSetting, ServerSetting, Middleware, AfterMiddleware},
 };
 
 #[cfg(feature = "postgres")]
@@ -34,44 +34,33 @@ use sqlx::mysql::{
 /// Type of ohkami's server instance
 pub struct Ohkami {
     pub(crate) router: Router,
-    log_subscribe: Option<SubscriberBuilder>,
-
-    #[cfg(feature = "sqlx")]
-    pub(crate) pool: Arc<ConnectionPool>,
-
+    pub(crate) fangs:  Option<Fangs>,
     pub(crate) setup_errors: Vec<String>,
-    middleware_register: Middleware,
 }
 
 
-#[cfg(feature = "sqlx")]
-pub struct DBprofile<'url> {
-    pub options: PoolOptions,
-    pub url:     &'url str,
-}
-#[cfg(feature = "sqlx")]
-impl<'url> Default for DBprofile<'url> {
-    fn default() -> Self {
-        Self {
-            options: PoolOptions::default(),
-            url:     "empty url",
-        }
-    }
-}
-
+// #[cfg(feature = "sqlx")]
+// pub struct DBprofile<'url> {
+//     pub options: PoolOptions,
+//     pub url:     &'url str,
+// }
+// #[cfg(feature = "sqlx")]
+// impl<'url> Default for DBprofile<'url> {
+//     fn default() -> Self {
+//         Self {
+//             options: PoolOptions::default(),
+//             url:     "empty url",
+//         }
+//     }
+// }
+// 
 #[cfg(not(feature = "sqlx"))]
 impl Default for Ohkami {
     fn default() -> Self {
-        let ServerSetting {
-            config,
-            middleware
-        } = ServerSetting::default();
-
         Self {
             router: Router::new(),
-            log_subscribe: config.log_subscribe,
+            fangs:  None,
             setup_errors: Vec::new(),
-            middleware_register: middleware,
         }
     }
 }
@@ -79,17 +68,11 @@ impl Default for Ohkami {
 impl Ohkami {
     /// Initialize `Ohkami` with given configuratoin.
     #[cfg(not(feature = "sqlx"))]
-    pub fn with<ISS: IntoServerSetting>(setting: ISS) -> Self {
-        let ServerSetting { 
-            config,
-            middleware,
-        } = setting.into_setting();
-
+    pub fn with(fangs: Fangs) -> Self {
         Self {
             router: Router::new(),
-            log_subscribe: config.log_subscribe,
+            fangs:  Some(fangs),
             setup_errors: Vec::new(),
-            middleware_register: middleware,
         }
     }
     #[cfg(feature = "sqlx")]

@@ -1,19 +1,13 @@
 use std::str::Lines;
 use crate::{
     response::Response,
-    result::{Result, ElseResponse},
-    components::{method::Method, },
-    utils::{buffer::BufRange, range::{RangeMap, RANGE_MAP_SIZE}},
+    result::ElseResponse,
+    components::{method::Method, headers::RequestHeaders},
+    utils::{buffer::BufRange, range::{RangeMap, RANGE_MAP_SIZE}}, request::RawRequest,
 };
 
 
-pub(crate) fn parse_request(mut lines: Lines) -> Result<(
-    Method,
-    String/*path*/,
-    Option<RangeMap>/*query param*/,
-    HeaderRangeMap,
-    Option<String>/*request body*/,
-)> {
+pub(crate) fn parse_request<'buf>(mut lines: Lines<'buf>) -> Result<RawRequest<'buf>, ()> {
     let line = lines.next()
         ._else(|| Response::BadRequest("empty request"))?;
 
@@ -27,7 +21,7 @@ pub(crate) fn parse_request(mut lines: Lines) -> Result<(
 
     let (path, query) = extract_query(path_str, method_str.len() - 1/*' '*/)?;
 
-    let mut header_map = HeaderRangeMap::new();
+    let mut header_map = RequestHeaders::new();
     let mut offset = line.len() + 2/*'\r\n'*/;
     let mut is_json = false;
     while let Some(line) = lines.next() {
@@ -69,7 +63,7 @@ pub(crate) fn parse_request(mut lines: Lines) -> Result<(
 fn extract_query(
     path_str: &str,
     offset:   usize,
-) -> Result<(&str, Option<RangeMap>)> {
+) -> std::result::Result<(&str, Option<RangeMap>)> {
     let Some((path_part, query_part)) = path_str.split_once('?')
         else {return Ok((path_str, None))};
     
