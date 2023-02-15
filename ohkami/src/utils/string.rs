@@ -1,3 +1,8 @@
+use std::borrow::Cow;
+
+#[allow(non_camel_case_types)]
+pub(crate) struct string(Cow<'static, str>);
+
 pub(crate) fn unescaped(s: String) -> String {
     let mut unescaped = String::with_capacity(s.len());
     let mut chars = s.chars();

@@ -9,29 +9,29 @@ pub mod server;
 pub mod result;
 pub mod context;
 pub mod response;
+pub mod request;
 pub mod components;
 pub mod testing;
+pub mod fang;
+pub mod global;
 pub(crate) mod utils;
 pub(crate) mod router;
 pub(crate) mod handler;
-pub(crate) mod setting;
+// pub(crate) mod setting;
 
 pub mod prelude {
     pub use super::{
         server::Ohkami,
-        setting::{Config, Middleware},
+        // setting::{Config, Middleware},
         result::{Result, ElseResponse, ElseResponseWithErr},
         context::Context,
         response::{Response, body::Body},
-        components::headers::Header,
     };
     pub use ohkami_macros::{JSON, json};
 
     #[cfg(feature = "sqlx")]
     pub use super::server::DBprofile;
 }
-
-pub use handler::group;
 
 pub mod macros {
     pub use ohkami_macros::{JSON, consume_struct, json};

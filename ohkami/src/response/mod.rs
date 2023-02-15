@@ -4,7 +4,7 @@ use async_std::{net::TcpStream, io::WriteExt};
 use crate::{
     components::{
         status::Status,
-        time::now_fmt, json::JSON, headers::HeaderKey,
+        time::now_fmt, json::JSON, headers::ResponseHeaders,
     },
     result::Result,
 };
@@ -20,6 +20,17 @@ use message::Message;
 
 use self::{message::ErrorMessage, body::{IntoOK, IntoCreated}};
 
+
+pub struct ResponseWriter {
+    buffer: ResponseHeaders,
+    stream: TcpStream,
+}
+#[allow(non_snake_case)]
+impl ResponseWriter {
+    pub fn OK(&mut self, ) {
+
+    }
+}
 
 /// Type of HTTP response
 #[derive(Debug, PartialEq)]
@@ -73,13 +84,13 @@ pub struct Response {
         }
     }
 
-    /// Add response header of `{key}: {value}`. key: &'static str | Header
-    pub fn add_header<Key: HeaderKey>(&mut self, key: Key, value: &'static str) {
-        self.additional_headers += key.as_key_str();
-        self.additional_headers += ": ";
-        self.additional_headers += value;
-        self.additional_headers += "\n"
-    }
+    // /// Add response header of `{key}: {value}`. key: &'static str | Header
+    // pub fn add_header<Key: HeaderKey>(&mut self, key: Key, value: &'static str) {
+    //     self.additional_headers += key.as_key_str();
+    //     self.additional_headers += ": ";
+    //     self.additional_headers += value;
+    //     self.additional_headers += "\n"
+    // }
 
     /// for test use
     pub(crate) fn body_json<J: for <'j> JSON<'j>>(self) -> J {

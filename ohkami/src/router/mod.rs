@@ -3,20 +3,18 @@ use crate::{
     utils::range::RangeList,
     result::Result,
     handler::HandleFunc,
-    setting::{Middleware, AfterMiddleware, BeforeMiddleware},
 };
 
 // === mock for test ===
 // pub(self) type Handler = usize;
 // =====================
 
+pub(crate) mod path;
 mod pattern;
 mod node; use node::Node;
 
 use self::pattern::Pattern;
 
-mod test_resister;
-mod test_search;
 
 
 // #[derive(PartialEq, Debug)]
@@ -65,8 +63,8 @@ impl Router {
     ) -> Result<(
         &HandleFunc,
         RangeList,
-        &Vec<BeforeMiddleware>,
-        &Vec<AfterMiddleware>,
+        // &Vec<BeforeMiddleware>,
+        // &Vec<AfterMiddleware>,
     )> {
         let mut path = request_path.split('/');
         { path.next(); }

@@ -1,43 +1,30 @@
-use crate::utils::buffer::{BufRange, Buffer};
+use std::{collections::BTreeMap, ops::Index, borrow::Cow};
+use crate::{prelude::Result, utils::string::string};
 
 
-/// for request headers
-pub(crate) struct HeaderRangeMap(
-    Vec<(BufRange, BufRange)>
-); impl HeaderRangeMap {
-    pub(crate) fn get<'buf, K: HeaderKey>(&self, key: K, buffer: &'buf Buffer) -> Option<&'buf str> {
-        let key = key.as_key_str();
-        for (key_range, value_range) in &self.0 {
-            if buffer.read_str(key_range) == key {
-                return Some(buffer.read_str(value_range))
-            }
+pub struct RequestHeaders<'buf>(
+    BTreeMap<&'buf str, Cow<'buf, str>>
+);
+pub struct ResponseHeaders(
+    String // BTreeMap<&'static str, string>
+);
+
+const _: (/* RequestHeaders impls */) = {
+    // impl From
+
+    impl<'buf> Index for RequestHeaders<'buf> {
+        type Output = Result<&'buf str>;
+        fn index(&self, key: &str) -> &Self::Output {
+            self.0.get(key)
         }
-        None
     }
+};
 
-    pub(crate) fn new() -> Self {
-        Self(Vec::new())
-    }
-    pub(crate) fn push(&mut self, key_range: BufRange, value_range: BufRange) {
-        self.0.push((key_range, value_range))
-    }
+const _: (/* ResponseHeaders impls */) = {
+    impl ResponseHeaders {
 
-    pub(crate) fn debug_fmt_with(&self, buffer: &Buffer) -> String {
-        self.0.iter().fold(
-            String::new(),
-            |it, (key_range, value_range)| {
-                it + "\n" +
-                buffer.read_str(key_range) +
-                ": " +
-                buffer.read_str(value_range)
-            }
-        )
     }
-}
-
-pub trait HeaderKey {fn as_key_str(self) -> &'static str;}
-impl HeaderKey for &'static str {fn as_key_str(self) -> &'static str {self}}
-impl HeaderKey for Header {fn as_key_str(self) -> &'static str {self.as_str()}}
+};
 
 pub enum Header {
     // request

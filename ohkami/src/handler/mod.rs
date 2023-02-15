@@ -1,5 +1,3 @@
-pub mod group;
-
 use std::{future::Future, pin::Pin};
 use crate::{
     response::Response,

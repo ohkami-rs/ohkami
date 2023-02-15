@@ -2,7 +2,7 @@ use std::str::Lines;
 use crate::{
     response::Response,
     result::{Result, ElseResponse},
-    components::{method::Method, headers::HeaderRangeMap},
+    components::{method::Method, },
     utils::{buffer::BufRange, range::{RangeMap, RANGE_MAP_SIZE}},
 };
 

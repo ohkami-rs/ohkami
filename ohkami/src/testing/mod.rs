@@ -5,7 +5,7 @@ use crate::{
     utils::{range::RANGE_MAP_SIZE, buffer::Buffer, string::unescaped},
     server::{Ohkami, consume_buffer},
     prelude::{Response, Result},
-    components::{json::JSON, headers::HeaderKey},
+    components::{json::JSON, header_map::HeaderKey},
     context::store::Store,
 };
 
