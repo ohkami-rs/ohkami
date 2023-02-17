@@ -46,8 +46,6 @@ async fn main() -> Result<(), Error> {
 }
 ```
 
-3. If you're interested in ohkami, learn more by [examples](https://github.com/kana-rus/ohkami/tree/main/ohkami/examples) and [documentation](https://docs.rs/ohkami/latest/ohkami/) !
-
 <br/>
 
 ## Snippets
@@ -104,16 +102,17 @@ async fn my_fang(c: &mut Context,
 }
 ```
 
-`Fangs` can be combined by `.and(/* another */)`. This enables using thirdparties' fangs easily：
+`Fangs` can be combined by `.and(/* another */)`：
 ```rust
-use external_crate::x_fangs;
-
 #[main]
 async fn main() -> Result<()> {
     let my_fangs = Fangs::new()
-        .ANY("/api/*", my_fang);
+        .ANY("/*", my_fang);
 
-    Ohkami::with(my_fangs.and(x_fangs))
+    let auth_fangs = Fangs::new()
+        .ANY("/api/*", external_crate::auth_fang);
+
+    Ohkami::with(my_fangs.and(auth_fangs))
         .handle([
     
     // ...
