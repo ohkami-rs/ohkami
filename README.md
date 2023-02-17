@@ -2,7 +2,7 @@
     <h1>ohkami</h1>
 </div>
 
-### ＊This README is development draft for me. So codes in "snippets" don't work yet.
+### ＊This README is development draft for me. So codes in "Quick start" or "Snippets" don't work yet.
 
 ohkami *- [狼] means wolf in Japanese -* is **simple** and **macro free** web framework for **nightly** Rust.
 
