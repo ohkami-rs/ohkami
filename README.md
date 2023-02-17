@@ -161,7 +161,7 @@ async fn main() -> Result<()> {
 async fn main() -> Result<()> {
     let pool = PoolOptions::new()
         .max_connection(20)
-        .connect("")
+        .connect("db_url")
         .await?;
 
     CONFIG
