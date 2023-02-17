@@ -150,7 +150,7 @@ bool / Option
 ```rust
 async fn handler(c: Context,
     Path(id): Path<usize>
-) -> HandleResult {
+) -> Response</* ... */> {
     (id < 1000)
         ._else(|| c.BadRequest("`id` must be less than 1000."))?;
 
@@ -162,7 +162,7 @@ Result
 ```rust
 async fn handler(c: Context,
     Query([q]): Query<["q"]>
-) -> HandleResult {
+) -> Response</* ... */> {
     let q: u8 = q.parse()
         ._else(|err| c.BadRequest(format!(
             "can't parse `q`: {}",
@@ -211,7 +211,7 @@ async fn main() -> Result<()> {
     ]).howl(":3000").await
 }
 
-async fn sample_handler(c: Context) -> HandleResult {
+async fn sample_handler(c: Context) -> Response</* ... */> {
     let user = sqlx::query_as::<_, User>(
         "SELECT id, name FROM users WHERE id = $1"
     ).bind(1)
