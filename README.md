@@ -186,12 +186,15 @@ async fn main() -> Result<()> {
     // ...
 }
 ```
-### use DB by sqlx
-1. Add sqlx to your `Cargo.toml`.
-2. Eneble one of：
-- `sqlx-postgres`
-- `sqlx-mysql`
-- `deadpool-postgres`
+### use DB
+ohkami supports using `sqlx` and `deadpool` to handle connection pool.
+- sqlx：
+1. Add sqlx to your `dependencies`.
+2. Eneble one of `sqlx-postgres`, `sqlx-mysql` feature.
+
+- deadpool：
+1. Add deadpool to your `dependencies`.
+2. Enable `deadpool-postgres` feature.
 ```rust
 // this sample uses `sqlx-postgres`
 
