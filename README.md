@@ -16,7 +16,7 @@ ohkami *- [狼] means wolf in Japanese -* is **simple** and **macro free** web f
 <br/>
 
 ## Quick start
-1. Add dependencies:
+1. Add to `dependencies`:
 
 ```toml
 [dependencies]
@@ -29,20 +29,20 @@ ohkami = "0.9.0"
 ```rust
 use ohkami::prelude::*;
 
-#[main]
-async fn main() -> Result<(), Error> {
-    Ohkami::default().handle([
-        "/"      .GET(hello),
-        "/api/hc".GET(health_check),
-    ]).howl(":3000").await
-}
-
 async fn hello(c: Context) -> Response<&'static str> {
     c.OK("Hello!")
 }
 
 async fn health_check(c: Context) -> Response<()> {
     c.NoContent()
+}
+
+#[main]
+async fn main() -> Result<(), Error> {
+    Ohkami::default().handle([
+        "/"      .GET(hello),
+        "/api/hc".GET(health_check),
+    ]).howl(":3000").await
 }
 ```
 
