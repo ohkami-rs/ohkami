@@ -178,6 +178,8 @@ async fn sample_handler(c: Context) -> HandleResult {
     ).bind(1)
         .fetch_one(c.pool())
         .await?;
+
+    // ...
 }
 ```
 ### test
