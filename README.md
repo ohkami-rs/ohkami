@@ -37,11 +37,11 @@ async fn main() -> Result<(), Error> {
     ]).howl(":3000").await
 }
 
-async fn hello(c: Context) -> HandleResult {
+async fn hello(c: Context) -> Response<&'static str> {
     c.OK("Hello!")
 }
 
-async fn health_check(c: Context) -> HandleResult {
+async fn health_check(c: Context) -> Response<()> {
     c.NoContent()
 }
 ```
@@ -63,7 +63,7 @@ async fn main() -> Result<()> {
 async fn handler(c: Context,
     Path((p1, p2)):  Path<(usize, String)>,
     Query([q1, q1]): Query<["q1", "q2"]>,
-) -> HandleResult {
+) -> Response</* ... */> {
     // ...
 }
 ```
@@ -78,7 +78,7 @@ struct User {
 
 async fn reflect_user_name(c: Context,
     Body(user): Body<User>
-) -> HandleResult {
+) -> Response<String> {
     c.OK(user.name)
 }
 ```
@@ -99,12 +99,51 @@ async fn main() -> Result<()> {
 
 async fn my_fang(c: &mut Context,
     Header([content_type]): Header<["Content-Type"]>
-) -> HandleResult {
+) -> Response</* ... */> {
     // ...
 }
 ```
 
-Fangs can be combine by `.and(/* another */)`. This enables
+`Fangs` can be combine by `.and(/* another */)`. This enables use thirdparties' fangs easily：
+```rust
+use external_crate::x_fangs;
+
+#[main]
+async fn main() -> Result<()> {
+    let my_fangs = Fangs::new()
+        .ANY("/api/*", my_fang);
+
+    Ohkami::with(my_fangs.and(x_fangs))
+        .handle([
+    
+    // ...
+}
+```
+
+### pack of Ohkamis
+```rust
+#[main]
+async fn main() -> Result<()> {
+    // ...
+
+    let users = Ohkami::with(users_fangs).handle([
+        "/".POST(create_user),
+        "/:id"
+            .GET(get_user)
+            .PATCH(update_user)
+            .DELETE(delete_user),
+    ]);
+
+    let tasks = Ohkami::with(tasks_fangs).handle([
+        // ...
+
+    Ohkami::default().handle([
+        "/hc"       .GET(health_check),
+        "/api/users".by(users),
+        "/api/tasks".by(tasks),
+    ]).howl(":5000").await
+}
+```
 
 ### error response
 bool / Option
