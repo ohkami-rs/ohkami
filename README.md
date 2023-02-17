@@ -104,7 +104,7 @@ async fn my_fang(c: &mut Context,
 }
 ```
 
-`Fangs` can be combine by `.and(/* another */)`. This enables use thirdparties' fangs easily：
+`Fangs` can be combined by `.and(/* another */)`. This enables using thirdparties' fangs easily：
 ```rust
 use external_crate::x_fangs;
 
