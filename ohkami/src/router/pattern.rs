@@ -1,5 +1,5 @@
 #[derive(PartialEq, Debug)]
-pub(super) enum Pattern {
+pub(crate) enum Pattern {
     Nil,
     Param,
     Str(&'static str),

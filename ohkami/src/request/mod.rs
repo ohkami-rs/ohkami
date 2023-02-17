@@ -1,18 +1,16 @@
-use crate::{components::{headers::RequestHeaders, method::Method}, router::path::Path};
+use crate::{components::headers::RequestHeaders};
 
 pub mod query;
 pub mod path;
 pub mod body;
 
 pub trait FromRequest {
-
+    fn from_request<'buf>(request: &Request<'buf>) -> Self;
 }
 
-
-pub(crate) struct RawRequest<'buf> {
-    pub(crate) method:  Method,
-    pub(crate) path:    Path<'buf>,
-    pub(crate) queries: &'buf str,
-    pub(crate) headers: RequestHeaders<'buf>,
-    pub(crate) body:    Option<&'buf str>,
+pub(crate) struct Request<'buf> {
+    pub path:    Path<'buf>,
+    pub queries: &'buf str,
+    pub headers: RequestHeaders<'buf>,
+    pub body:    Option<&'buf str>,
 }

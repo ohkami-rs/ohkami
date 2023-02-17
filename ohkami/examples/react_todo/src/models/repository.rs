@@ -1,5 +1,5 @@
 use std::{collections::HashMap, sync::{Arc, RwLock, RwLockWriteGuard, RwLockReadGuard}};
-use ohkami::{result::{Result, ElseResponse}, response::Response};
+use ohkami::{error::{Result, ElseResponse}, response::Response};
 
 use super::todo::{Todo, CreateTodo, UpdateTodo};
 

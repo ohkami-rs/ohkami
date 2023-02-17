@@ -2,7 +2,7 @@ pub(crate) mod user;
 pub(crate) mod todo;
 
 use ohkami::{
-    result::Result,
+    error::Result,
     context::Context,
     response::Response,
 };

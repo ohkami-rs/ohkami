@@ -1,18 +1,37 @@
-use std::fmt::Debug;
-use async_std::sync::{Arc, Mutex, MutexGuard};
-use crate::{
-    result::{Result, ElseResponse, ElseResponseWithErr},
-    utils::{range::RangeMap, buffer::Buffer},
-    components::{status::Status},
-    response::{Response, message::ErrorMessage, body::{IntoOK, IntoCreated,}},
-};
+mod store;
 
-#[cfg(feature = "postgres")]
+use self::store::Store;
+use async_std::sync::{Arc, Mutex};
+use crate::response::header::ResponseHeaders;
+
+#[cfg(feature="sqlx-postgres")]
 use sqlx::PgPool as ConnectionPool;
-#[cfg(feature = "mysql")]
+#[cfg(feature="sqlx-mysql")]
 use sqlx::MySqlPool as ConnectionPool;
 
-pub struct Context();
+
+pub struct Context {
+    #[cfg(any(feature="sqlx-postgres", feature="sqlx-musql", feature="deadpool-postgres"))]
+    pub(crate) connection_pool: Arc<ConnectionPool>,
+
+    pub(crate) cache: Arc<Mutex<Store>>,
+    pub(crate) additional_headers: ResponseHeaders,
+}
+
+impl Context {
+    pub fn get_cache(&self, key: &'static str) ->
+    pub fn add_header(&mut self, key: &'static str, value: &'static str) {
+        self.additional_headers.add(key, value)
+    }
+}
+
+#[allow(non_snake_case)]
+impl Context {
+    pub fn OK(&self, body: ) {
+
+    }
+}
+
 
 // pub mod store;
 // use self::store::Store;

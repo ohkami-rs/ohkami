@@ -1,7 +1,7 @@
 use std::str::Lines;
 use crate::{
     response::Response,
-    result::ElseResponse,
+    error::ElseResponse,
     components::{method::Method, headers::RequestHeaders},
     utils::{buffer::BufRange, range::{RangeMap, RANGE_MAP_SIZE}}, request::RawRequest,
 };

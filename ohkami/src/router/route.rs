@@ -1,30 +1,23 @@
 use std::str::Split;
 
-pub(crate) type Route = Path<'static>;
-pub(crate) struct Path<'p>(
-    Vec<Split<'p, char>>
-); impl<'p> Path<'p> {
-    pub(crate) fn handler(route: Vec<&'static str>) -> std::result::Result<Self, String> {
-        is_valid_handler_route(route)?;
-        Ok(Self(
-            todo!()
-        ))
-    }
-    pub(crate) fn fang(route: &'static str) -> std::result::Result<Self, String> {
-        is_valid_fang_route(route)?;
-        Ok(Self(vec![{
-            let mut route = route
-                .trim_end_matches('/')
-                .split('/');
-            {route.next();}
-            route
-        }]))
+pub(crate) struct HandlerRoute {
+    param_count: u8,
+    route:       Split<'static, char>,
+}
+pub trait Route {fn into_handler_route(self) -> crate::Result<HandlerRoute>;}
+impl Route for &'static str {
+    #[inline] fn into_handler_route(self) -> crate::Result<HandlerRoute> {
+        is_valid_handler_route(&self)?;
+        Ok({
+            let mut split =  self.trim_end_matches('/').split('/');
+            split.next();
+            split
+        })
     }
 }
 
-
 ///    / | (/:?[a-z, A-Z, _ ]+)+
-#[inline] fn is_valid_handler_route(route: &str) -> std::result::Result<u8/* param count */, String> {
+#[inline] fn is_valid_handler_route(route: &str) -> crate::Result<u8/* param count */> {
     if !route.starts_with('/') {return (false, 0)}
     if route.len() == 1 /* e.g. path.str == "/" */ {return (true, 0)}
     
@@ -38,7 +31,7 @@ pub(crate) struct Path<'p>(
 
     (true, path_param_count)
 }
-#[inline] fn is_valid_handler_route_section(section: &str) -> std::result::Result<bool/* is param */, String> {
+#[inline] fn is_valid_handler_route_section(section: &str) -> crate::Result<bool/* is param */> {
     let mut is_param = false;
 
     let section = if section.starts_with(':') {
@@ -61,7 +54,7 @@ pub(crate) struct Path<'p>(
 
 
 ///   / ([a-z, A-Z, _ ]+/)* \*?
-#[inline] fn is_valid_fang_route(route: &'static str) -> std::result::Result<(), String> {
+#[inline] fn is_valid_fang_route(route: &'static str) -> crate::Result<()> {
     if route == "*" {return Ok(())}
     
     if !route.starts_with('/') {return Err(format!("fang route `{route}` doesn't starts with `/`"))}
@@ -79,7 +72,7 @@ pub(crate) struct Path<'p>(
 
     Ok(())
 }
-#[inline] fn is_valid_fang_route_section(section: &str) -> std::result::Result<(), String> {
+#[inline] fn is_valid_fang_route_section(section: &str) -> crate::Result<()> {
     if section.len() < 1 {return Err(format!("empty route section"))}
 
     for ch in section.chars() {

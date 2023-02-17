@@ -1,6 +1,6 @@
 use std::fmt::Display;
 use crate::{
-    response::Response, result::Result
+    response::Response, error::Result
 };
 
 

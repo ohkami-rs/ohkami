@@ -1,26 +1,28 @@
 use std::str::Split;
-use super::pattern::Pattern;
+use super::{pattern::Pattern, children::Children};
 use crate::{
     utils::{range::RangeList, buffer::BufRange},
-    result::{Result, ElseResponse},
+    error::{ElseResponse},
     response::Response,
-    handler::HandleFunc, fang::Fangs,
+    fang::Fangs,
 };
 
 
 // #derive[Debug, PartialEq]
 pub(super) struct Node {
-    pub(super) pattern:  Pattern,
-    pub(super) handler:  Option<HandleFunc>,
-    pub(crate) fangs:    Fangs,
-    pub(super) children: Vec<Node>,
-} impl Node {
+    pub(super) pattern:     Pattern,
+    pub(super) handle_func: Option<HandleFunc>,
+    pub(crate) fangs:       Fangs,
+    pub(super) children:    Children,
+}
+
+impl Node {
     pub fn new(pattern: Pattern) -> Self {
         Self {
             pattern,
-            handler:  None,
-            fangs:    Fangs::new(),
-            children: Vec::new(),
+            handle_func:  None,
+            fangs:        Fangs::new(),
+            children:     Vec::new(),
         }
     }
 

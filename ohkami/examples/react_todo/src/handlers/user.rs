@@ -1,6 +1,6 @@
 use ohkami::{
     context::Context,
-    result::Result,
+    error::Result,
     response::Response,
 };
 use crate::models::user::{User, CreateUser};

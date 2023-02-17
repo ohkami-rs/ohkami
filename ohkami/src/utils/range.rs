@@ -1,4 +1,4 @@
-use crate::{result::{Result, ElseResponse}, response::Response};
+use crate::{error::{Result, ElseResponse}, response::Response};
 use super::buffer::{Buffer, BufRange};
 
 

@@ -7,7 +7,7 @@ use models::repository::TodoStore;
 use once_cell::sync::Lazy;
 use ohkami::{
     server::Ohkami, prelude::Config,
-    result::Result,
+    error::Result,
 };
 
 static TODO_STORE: Lazy<TodoStore> = Lazy::new(|| TodoStore::new());

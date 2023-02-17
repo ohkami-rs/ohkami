@@ -2,7 +2,7 @@ use ohkami::{
     macros::json,
     context::Context,
     response::Response,
-    result::{Result, ElseResponse, ElseResponseWithErr},
+    error::{Result, ElseResponse, ElseResponseWithErr},
 };
 use validator::Validate;
 use crate::{

@@ -5,9 +5,6 @@ use crate::{prelude::Result, utils::string::string};
 pub struct RequestHeaders<'buf>(
     BTreeMap<&'buf str, Cow<'buf, str>>
 );
-pub struct ResponseHeaders(
-    String // BTreeMap<&'static str, string>
-);
 impl<'buf> RequestHeaders<'buf> {
         #[inline] pub(crate) fn new() -> Self {
             Self(BTreeMap::new())
@@ -17,8 +14,6 @@ impl<'buf> RequestHeaders<'buf> {
         }
     }
 const _: (/* RequestHeaders impls */) = {
-    
-
     impl<'buf> Index for RequestHeaders<'buf> {
         type Output = Result<&'buf str>;
         #[inline] fn index(&self, key: &str) -> &Self::Output {
@@ -27,11 +22,6 @@ const _: (/* RequestHeaders impls */) = {
     }
 };
 
-const _: (/* ResponseHeaders impls */) = {
-    impl ResponseHeaders {
-
-    }
-};
 
 pub enum Header {
     // request
