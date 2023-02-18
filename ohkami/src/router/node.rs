@@ -1,7 +1,7 @@
 use std::str::Split;
 use super::{pattern::Pattern, children::Children};
 use crate::{
-    utils::{range::RangeList, buffer::BufRange},
+    utils::{buffer::BufRange},
     error::{ElseResponse},
     response::Response,
     fang::Fangs,

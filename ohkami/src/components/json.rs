@@ -1,5 +1,3 @@
-use crate::prelude::Result;
-
 pub fn ser<S: serde::Serialize>(s: &S) -> Result<String> {
     Ok(serde_json::to_string(s)?)
 }

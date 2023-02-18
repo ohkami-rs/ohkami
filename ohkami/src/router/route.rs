@@ -4,15 +4,34 @@ pub(crate) struct HandlerRoute {
     param_count: u8,
     route:       Split<'static, char>,
 }
-pub trait Route {fn into_handler_route(self) -> crate::Result<HandlerRoute>;}
+pub(crate) struct FangRoute(
+    Split<'static, char>
+);
+
+pub trait Route {
+    fn into_handler_route(self) -> crate::Result<HandlerRoute>;
+    fn into_fang_route(self) -> crate::Result<FangRoute>;
+}
 impl Route for &'static str {
     #[inline] fn into_handler_route(self) -> crate::Result<HandlerRoute> {
-        is_valid_handler_route(&self)?;
-        Ok({
-            let mut split =  self.trim_end_matches('/').split('/');
+        let param_count = is_valid_handler_route(&self)?;
+        
+        Ok(HandlerRoute {
+            param_count,
+            route: {
+                let mut split =  self.trim_end_matches('/').split('/');
+                split.next();
+                split
+            }
+        })
+    }
+    #[inline] fn into_fang_route(self) -> crate::Result<FangRoute> {
+        is_valid_fang_route(&self)?;
+        Ok(FangRoute({
+            let mut split = self.trim_end_matches('/').split('/');
             split.next();
             split
-        })
+        }))
     }
 }
 
@@ -53,7 +72,7 @@ impl Route for &'static str {
 }
 
 
-///   / ([a-z, A-Z, _ ]+/)* \*?
+/// \*  |  / ([a-z, A-Z, _ ]+/)* \*?
 #[inline] fn is_valid_fang_route(route: &'static str) -> crate::Result<()> {
     if route == "*" {return Ok(())}
     

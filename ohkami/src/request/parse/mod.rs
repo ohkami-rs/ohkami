@@ -1,12 +1,12 @@
-use std::str::Lines;
-use crate::{
-    response::Response,
-    error::ElseResponse,
-    components::{method::Method, headers::RequestHeaders},
-    utils::{buffer::BufRange, range::{RangeMap, RANGE_MAP_SIZE}}, request::RawRequest,
-};
+mod method;
 
+use super::Request;
 
+pub(super) fn parse_request<'buf>(buf: &'buf [u8]) -> crate::Result<Request<'buf>> {
+    
+}
+
+/*
 pub(crate) fn parse_request<'buf>(mut lines: Lines<'buf>) -> Result<RawRequest<'buf>, ()> {
     let line = lines.next()
         ._else(|| Response::BadRequest("empty request"))?;
@@ -88,3 +88,5 @@ fn extract_query(
 
     Ok((path_part, Some(map)))
 }
+
+*/
