@@ -68,7 +68,7 @@ impl Context {
 }
 
 macro_rules! impl_error_responses {
-    ($( $name:ident ),*) => {
+    {$( $name:ident ),*} => {
         $(
             impl Context {
                 #[allow(non_snake_case)]
@@ -83,14 +83,14 @@ macro_rules! impl_error_responses {
             }
         )*
     };
-} impl_error_responses!(
+} impl_error_responses! {
     BadRequest,
     Unauthorized,
     Forbidden,
     NotFound,
     InternalServerError,
     NotImplemented
-);
+}
 
 
 // pub mod store;
