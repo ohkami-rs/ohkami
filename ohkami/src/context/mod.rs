@@ -4,6 +4,7 @@ use crate::{response::{Response, components::{header::ResponseHeaders, body::{Te
 use self::store::Store;
 use async_std::sync::{Arc, Mutex};
 
+use serde::Serialize;
 #[cfg(feature="sqlx-postgres")]
 use sqlx::PgPool as ConnectionPool;
 #[cfg(feature="sqlx-mysql")]
@@ -30,7 +31,7 @@ impl Context {
 #[allow(non_snake_case)]
 impl Context {
     #[inline] pub fn text<T: Text>(&self, body: T) -> Response<T> {
-        Response::from(
+        Response::with_body(
             Status::OK,
             ContentType::text_plain,
             &self.additional_headers,
@@ -38,7 +39,7 @@ impl Context {
         )
     }
     #[inline] pub fn html<H: Html>(&self, body: H) -> Response<H> {
-        Response::from(
+        Response::with_body(
             Status::OK,
             ContentType::text_html,
             &self.additional_headers,
@@ -46,14 +47,50 @@ impl Context {
         )
     }
     #[inline] pub fn json<L: JsonResponseLabel, J: JsonResponse<L>>(&self, body: J) -> Response<J> {
-        Response::from(
+        Response::with_body(
             Status::OK,
             ContentType::application_json,
             &self.additional_headers,
             body
         )
     }
+    #[inline] pub fn Created<L: JsonResponseLabel, J: JsonResponse<L>>(&self, body: J) -> Response<J> {
+        Response::with_body(
+            Status::Created,
+            ContentType::application_json,
+            &self.additional_headers,
+            body
+        )
+    }
+    #[inline] pub fn NoContent(&self) -> Response<()> {
+        Response::no_content(&self.additional_headers)
+    }
 }
+
+macro_rules! impl_error_responses {
+    ($( $name:ident ),*) => {
+        $(
+            impl Context {
+                #[allow(non_snake_case)]
+                #[inline] pub fn $name<T: Serialize, Msg: Text>(&self, message: Msg) -> Response<T> {
+                    Response::with_body(
+                        Status::$name,
+                        ContentType::text_plain,
+                        &self.additional_headers,
+                        message
+                    )
+                }
+            }
+        )*
+    };
+} impl_error_responses!(
+    BadRequest,
+    Unauthorized,
+    Forbidden,
+    NotFound,
+    InternalServerError,
+    NotImplemented
+);
 
 
 // pub mod store;

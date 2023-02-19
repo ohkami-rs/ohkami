@@ -25,13 +25,13 @@ pub struct ErrResponse(
 impl<T: Serialize> Try for Response<T> {
     type Residual = ErrResponse;
     type Output = OkResponse<T>;
-    fn branch(self) -> ControlFlow<Self::Residual, Self::Output> {
+    #[inline] fn branch(self) -> ControlFlow<Self::Residual, Self::Output> {
         match self {
             Self::Err(err_res) => ControlFlow::Break(err_res),
             Self::Ok(ok_res) => ControlFlow::Continue(ok_res),
         }
     }
-    fn from_output(output: Self::Output) -> Self {
+    #[inline] fn from_output(output: Self::Output) -> Self {
         Self::Ok(output)
     }
 }
@@ -41,7 +41,7 @@ impl<T: Serialize> FromResidual<ErrResponse> for Response<T> {
 }
 
 impl<T: Serialize> Response<T> {
-    #[inline] pub(crate) fn from(
+    #[inline] pub(crate) fn with_body(
         status: Status,
         content_type: ContentType,
         additional_headers: &ResponseHeaders,
@@ -81,5 +81,23 @@ failed to serialize
                 additional_headers
             )))
         }
+    }
+
+}
+
+impl Response<()> {
+    #[inline] pub(crate) fn no_content(
+        additional_headers: &ResponseHeaders
+    ) -> Self {
+        Self::Ok(OkResponse(format!(
+"HTTP/1.1 204 No Content
+Connection: Keep-Alive
+Keep-Alive: timeout=5
+Date: {}
+{}
+",
+            now(),
+            additional_headers.0
+        ), PhantomData))
     }
 }
