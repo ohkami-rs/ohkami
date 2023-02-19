@@ -9,13 +9,13 @@ use self::pattern::Pattern;
 
 // #[derive(PartialEq, Debug)]
 #[allow(non_snake_case)]
-pub(crate) struct Router {
-    GET:    Node,
-    POST:   Node,
-    PATCH:  Node,
-    DELETE: Node,
+pub(crate) struct Router<'router> {
+    GET:    Node<'router>,
+    POST:   Node<'router>,
+    PATCH:  Node<'router>,
+    DELETE: Node<'router>,
 }
-impl Router {
+impl<'router> Router<'router> {
     pub(crate) fn new() -> Self {
         Self {
             GET:    Node::new(Pattern::Nil),

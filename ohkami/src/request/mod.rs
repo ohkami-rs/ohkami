@@ -1,5 +1,5 @@
 mod from_request;
-mod parse;
+pub(crate) mod parse;
 
 use std::{collections::BTreeMap, str::Split};
 use crate::error::Error;

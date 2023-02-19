@@ -2,7 +2,7 @@
     <h1>ohkami</h1>
 </div>
 
-### ＊This README is working draft for me. So codes in "Quick start" or "Snippets" don't work yet.<br/>
+### ＊This README is my working draft. So codes in "Quick start" or "Snippets" don't work yet.<br/>
 
 ohkami *- [狼] means wolf in Japanese -* is **simple** and **macro free** web framework for **nightly** Rust.
 
@@ -41,7 +41,7 @@ async fn health_check(c: Context) -> Response<()> {
 
 #[main]
 async fn main() -> Result<(), Error> {
-    Ohkami::default().handle([
+    Ohkami::default([
         "/"      .GET(hello),
         "/api/hc".GET(health_check),
     ]).howl(":3000").await
@@ -55,7 +55,7 @@ async fn main() -> Result<(), Error> {
 ```rust
 #[main]
 async fn main() -> Result<()> {
-    Ohkami::default().handle([
+    Ohkami::default([
         "/api/users/:id".GET(handler)
     ]).howl("localhost:5000").await
 }
@@ -90,7 +90,7 @@ async fn main() -> Result<()> {
     let fangs = Fangs::new()
         .ANY("/api/*", my_fang);
 
-    Ohkami::with(fangs).handle([
+    Ohkami::with(fangs, [
         "/"         .GET(route),
         "/hc"       .GET(health_check),
         "/api/users".GET(get_users).POST(create_user)
@@ -104,30 +104,13 @@ async fn my_fang(c: &mut Context,
 }
 ```
 
-`Fangs` can be combined by `.and(/* another */)`：
-```rust
-#[main]
-async fn main() -> Result<()> {
-    let my_fangs = Fangs::new()
-        .ANY("/*", my_fang);
-
-    let auth_fangs = Fangs::new()
-        .ANY("/api/*", external_crate::auth_fang);
-
-    Ohkami::with(my_fangs.and(auth_fangs))
-        .handle([
-    
-    // ...
-}
-```
-
 ### pack of Ohkamis
 ```rust
 #[main]
 async fn main() -> Result<()> {
     // ...
 
-    let users = Ohkami::with(users_fangs).handle([
+    let users = Ohkami::with(users_fangs, [
         "/".POST(create_user),
         "/:id"
             .GET(get_user)
@@ -135,10 +118,10 @@ async fn main() -> Result<()> {
             .DELETE(delete_user),
     ]);
 
-    let tasks = Ohkami::with(tasks_fangs).handle([
+    let tasks = Ohkami::with(tasks_fangs, [
         // ...
 
-    Ohkami::default().handle([
+    Ohkami::default(, [
         "/hc"       .GET(health_check),
         "/api/users".by(users),
         "/api/tasks".by(tasks),
@@ -210,7 +193,7 @@ async fn main() -> Result<()> {
     CONFIG
         .connection_pool(pool);
 
-    Ohkami::default().handle([
+    Ohkami::default([
         "sample".GET(sample_handler)
     ]).howl(":3000").await
 }

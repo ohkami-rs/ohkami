@@ -3,11 +3,11 @@ use super::node::Node;
 
 const ARRAY_SIZE: usize = 8;
 
-pub(super) struct Children {
-    array:    [Option<Node>; ARRAY_SIZE],
+pub(super) struct Children<'router> {
+    array:    [Option<Node<'router>>; ARRAY_SIZE],
     next_pos: usize,
 }
-impl Children {
+impl<'router> Children<'router> {
     pub(super) fn new() -> Self {
         Self {
             array: [

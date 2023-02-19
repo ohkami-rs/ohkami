@@ -1,10 +1,11 @@
 mod status;
 pub(crate) mod ok;
 pub(crate) mod err;
+pub(crate) mod body;
 pub(crate) mod header;
 
 use serde::Serialize;
-use std::ops::{ControlFlow, Try};
+use std::ops::{ControlFlow, Try, FromResidual};
 use self::{ok::OkResponse, err::ErrResponse};
 
 pub enum Response<T: Serialize> {
@@ -24,4 +25,8 @@ impl<T: Serialize> Try for Response<T> {
     fn from_output(output: Self::Output) -> Self {
         Self::Ok(output)
     }
+}
+
+impl<T: Serialize> FromResidual<ErrResponse> for Response<T> {
+
 }

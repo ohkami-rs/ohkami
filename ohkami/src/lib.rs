@@ -1,5 +1,8 @@
 #![feature(try_trait_v2)]
 
+#![allow(incomplete_features)]
+#![feature(adt_const_params)]
+
 #![doc(html_root_url = "https://docs.rs/ohkami/0.8.3")]
 
 #[cfg(all(not(feature = "sqlx"), any(feature = "postgres", feature = "mysql")))]
@@ -15,11 +18,9 @@ pub mod request;
 pub mod components;
 // pub mod testing;
 pub mod fang;
-pub mod config;
 pub(crate) mod utils;
 pub(crate) mod router;
 pub(crate) mod handler;
-// pub(crate) mod setting;
 
 pub type Result<T> = std::result::Result<T, error::Error>;
 

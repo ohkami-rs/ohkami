@@ -1,4 +1,4 @@
-mod method;
+pub(crate) mod method;
 
 use super::Request;
 
