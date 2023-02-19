@@ -32,9 +32,9 @@ sqlx-mysql    = ["dep:sqlx", "sqlx?/runtime-async-std-native-tls", "sqlx?/mysql"
 # deadpool-postgres = [] : WIP
 
 ### debug1:
-default = [sqlx-postgres]
+default = ["sqlx-postgres"]
 ### debug2:
-# default = [deadpool-postgres]
+# default = ["deadpool-postgres"]
 
 ### future plan:
 # default = [async_std]
