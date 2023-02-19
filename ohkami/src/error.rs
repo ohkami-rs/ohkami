@@ -1,4 +1,4 @@
-use crate::response::err::ErrResponse;
+use crate::response::ErrResponse;
 
 pub enum Error {
     IO(String),

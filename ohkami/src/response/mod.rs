@@ -1,17 +1,26 @@
-mod status;
-pub(crate) mod ok;
-pub(crate) mod err;
-pub(crate) mod body;
-pub(crate) mod header;
+pub(crate) mod components;
 
 use serde::Serialize;
-use std::ops::{ControlFlow, Try, FromResidual};
-use self::{ok::OkResponse, err::ErrResponse};
+use std::{ops::{ControlFlow, Try, FromResidual}, marker::PhantomData};
+use self::{components::{
+    status::Status,
+    content_type::ContentType,
+    header::ResponseHeaders,
+    time::now,
+}};
 
 pub enum Response<T: Serialize> {
     Ok(OkResponse<T>),
     Err(ErrResponse),
 }
+struct OkResponse<T: Serialize>(
+    String,
+    PhantomData<fn() -> T>
+);
+pub struct ErrResponse(
+    String
+);
+
 
 impl<T: Serialize> Try for Response<T> {
     type Residual = ErrResponse;
@@ -29,4 +38,48 @@ impl<T: Serialize> Try for Response<T> {
 
 impl<T: Serialize> FromResidual<ErrResponse> for Response<T> {
 
+}
+
+impl<T: Serialize> Response<T> {
+    #[inline] pub(crate) fn from(
+        status: Status,
+        content_type: ContentType,
+        additional_headers: &ResponseHeaders,
+        body: T,
+    ) -> Self {
+        match serde_json::to_string(&body) {
+            Ok(body) => Self::Ok(OkResponse(format!(
+"HTTP/1.1 {}
+Connection: Keep-Alive
+Keep-Alive: timeout=5
+Content-Type: {}; charset=UTF-8
+Content-Length: {}
+Date: {}
+{}
+{}
+",
+                status.as_str(),
+                content_type.as_str(),
+                body.len(),
+                now(),
+                additional_headers,
+                body
+            ), PhantomData)),
+
+            Err(_) => Self::Err(ErrResponse(format!(
+"HTTP/1.1 {}
+Connection: Keep-Alive
+Keep-Alive: timeout=5
+Content-Type: text/plain; charset=UTF-8
+Content-Length: 19
+Date: {}
+{}
+failed to serialize
+",
+                status.as_str(),
+                now(),
+                additional_headers
+            )))
+        }
+    }
 }

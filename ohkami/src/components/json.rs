@@ -5,6 +5,8 @@
 //     Ok(serde_json::from_str(str)?)
 // }
 
+use serde::Serialize;
+
 pub trait JSON<'j>: serde::Serialize + serde::Deserialize<'j> {
     fn ser(&self) -> crate::Result<String> {
         Ok(serde_json::to_string(self)?)
@@ -16,7 +18,7 @@ pub trait JSON<'j>: serde::Serialize + serde::Deserialize<'j> {
 impl <'i, J: for <'j> JSON<'j>> JSON<'i> for Vec<J> {}
 
 
-pub trait JsonResponse<L: JsonResponseLabel> {fn ser(&self) -> crate::Result<String>;}
+pub trait JsonResponse<L: JsonResponseLabel>: Serialize {fn ser(&self) -> crate::Result<String>;}
 pub trait JsonResponseLabel {}
 
 impl JsonResponseLabel for () {}

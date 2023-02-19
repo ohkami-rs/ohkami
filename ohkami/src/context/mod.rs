@@ -1,10 +1,9 @@
 pub(crate) mod store;
 
-use crate::{response::{Response, body::Text, ok::OkResponse, header::ResponseHeaders, err::ErrResponse}, components::json::{ser, JsonResponse}};
+use crate::{response::{Response, components::{header::ResponseHeaders, body::{Text, Html}, status::Status, content_type::ContentType}}, components::json::{JsonResponse, JsonResponseLabel}};
 use self::store::Store;
 use async_std::sync::{Arc, Mutex};
 
-use chrono::Utc;
 #[cfg(feature="sqlx-postgres")]
 use sqlx::PgPool as ConnectionPool;
 #[cfg(feature="sqlx-mysql")]
@@ -28,114 +27,31 @@ impl Context {
     }
 }
 
-#[inline] fn now() -> String {
-    let mut now_str = Utc::now().to_rfc2822(); // like `Wed, 21 Dec 2022 10:16:52 +0000`
-    match now_str.len() {
-        30 => now_str.replace_range(25.., "GMT"),
-        31 => now_str.replace_range(26.., "GMT"),
-         _ => unreachable!()
-    }
-    now_str
-}
 #[allow(non_snake_case)]
 impl Context {
     #[inline] pub fn text<T: Text>(&self, body: T) -> Response<T> {
-        match ser(&body) {
-            Ok(body) => Response::Ok(OkResponse(format!(
-"HTTP/1.1 200 OK
-Connection: Keep-Alive
-Keep-Alive: timeout=5
-Content-Type: text/plain; charset=UTF-8
-Content-Length: {}
-Date: {}
-{}
-{}
-",
-                body.len(),
-                now(),
-                &self.additional_headers.0,
-                body
-            ))),
-            Err(err) => Response::Err(ErrResponse(format!(
-"HTTP/1.1 500 Internal-Server-Error
-Connection: Keep-Alive
-Keep-Alive: timeout=5
-Content-Type: text/plain; charset=UTF-8
-Content-Length: 19
-Date: {}
-{}
-failed to serialize
-",
-                now(),
-                self.additional_headers.0,
-            ))),
-        }
+        Response::from(
+            Status::OK,
+            ContentType::text_plain,
+            &self.additional_headers,
+            body
+        )
     }
-
-    #[inline] pub fn html<T: Text>(&self, body: T) -> Response<T> {
-        match ser(&body) {
-            Ok(body) => Response::Ok(OkResponse(format!(
-"HTTP/1.1 200 OK
-Connection: Keep-Alive
-Keep-Alive: timeout=5
-Content-Type: text/html; charset=UTF-8
-Content-Length: {}
-Date: {}
-{}
-{}
-",
-                body.len(),
-                now(),
-                &self.additional_headers.0,
-                body
-            ))),
-            Err(err) => Response::Err(ErrResponse(format!(
-"HTTP/1.1 500 Internal-Server-Error
-Connection: Keep-Alive
-Keep-Alive: timeout=5
-Content-Type: text/plain; charset=UTF-8
-Content-Length: 19
-Date: {}
-{}
-failed to serialize
-",
-                now(),
-                self.additional_headers.0,
-            ))),
-        }
+    #[inline] pub fn html<H: Html>(&self, body: H) -> Response<H> {
+        Response::from(
+            Status::OK,
+            ContentType::text_html,
+            &self.additional_headers,
+            body
+        )
     }
-
-    #[inline] pub fn json<J, T: JsonResponse<J>>(&self, body: T) -> Response<T> {
-        match ser(&body) {
-            Ok(body) => Response::Ok(OkResponse(format!(
-"HTTP/1.1 200 OK
-Connection: Keep-Alive
-Keep-Alive: timeout=5
-Content-Type: application/json; charset=UTF-8
-Content-Length: {}
-Date: {}
-{}
-{}
-",
-                body.len(),
-                now(),
-                &self.additional_headers.0,
-                body
-            ))),
-            Err(err) => Response::Err(ErrResponse(format!(
-"HTTP/1.1 500 Internal-Server-Error
-Connection: Keep-Alive
-Keep-Alive: timeout=5
-Content-Type: text/plain; charset=UTF-8
-Content-Length: 19
-Date: {}
-{}
-failed to serialize
-",
-                now(),
-                self.additional_headers.0,
-            ))),
-        }
+    #[inline] pub fn json<L: JsonResponseLabel, J: JsonResponse<L>>(&self, body: J) -> Response<J> {
+        Response::from(
+            Status::OK,
+            ContentType::application_json,
+            &self.additional_headers,
+            body
+        )
     }
 }
 
