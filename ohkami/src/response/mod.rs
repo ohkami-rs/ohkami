@@ -6,7 +6,7 @@ use self::{components::{
     status::Status,
     content_type::ContentType,
     header::ResponseHeaders,
-    time::now,
+    time::now, body::Text,
 }};
 
 pub enum Response<T: Serialize> {
@@ -35,9 +35,10 @@ impl<T: Serialize> Try for Response<T> {
         Self::Ok(output)
     }
 }
-
 impl<T: Serialize> FromResidual<ErrResponse> for Response<T> {
-
+    fn from_residual(residual: ErrResponse) -> Self {
+        Self::Err(residual)
+    }
 }
 
 impl<T: Serialize> Response<T> {
@@ -62,7 +63,7 @@ Date: {}
                 content_type.as_str(),
                 body.len(),
                 now(),
-                additional_headers,
+                additional_headers.0,
                 body
             ), PhantomData)),
 
@@ -78,11 +79,35 @@ failed to serialize
 ",
                 status.as_str(),
                 now(),
-                additional_headers
+                additional_headers.0
             )))
         }
     }
 
+    #[inline]
+    pub(crate) fn error<Msg: Text>(
+        status: Status,
+        additional_headers: &ResponseHeaders,
+        message: Msg,
+    ) -> Self {
+        let message = message.as_str();
+        Self::Err(ErrResponse(format!(
+"HTTP/1.1 {}
+Connection: Keep-Alive
+Keep-Alive: timeout=5
+Content-Type: text/plain; charset=UTF-8
+Content-Length: {}
+Date: {}
+{}
+{}
+",
+            status.as_str(),
+            message.len(),
+            now(),
+            additional_headers.0,
+            message
+        )))
+    }
 }
 
 impl Response<()> {

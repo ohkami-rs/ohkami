@@ -1,9 +1,12 @@
+use std::fmt::Display;
+
 use crate::response::ErrResponse;
 
 pub enum Error {
     IO(String),
     ConstValue(String),
     Validation(String),
+    Others(String),
 }
 impl Error {
     pub(crate) fn in_const_value(const_name: &'static str) -> Self {
@@ -12,6 +15,23 @@ impl Error {
         ))
     }
 }
+const _: (/* Error impls */) = {
+    impl Display for Error {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            writeln!(f, "{}", match self {
+                Self::IO(msg) => msg,
+                Self::ConstValue(msg) => msg,
+                Self::Validation(msg) => msg,
+                Self::Others(msg) => msg,
+            })
+        }
+    }
+    impl From<std::io::Error> for Error {
+        fn from(value: std::io::Error) -> Self {
+            Self::IO(format!("{value}"))
+        }
+    }
+};
 
 pub trait ElseResponse {
     type Expect;

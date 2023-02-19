@@ -1,4 +1,5 @@
 use std::str::Split;
+use crate::error::Error;
 
 pub(crate) struct HandlerRoute {
     param_count: u8,
@@ -37,38 +38,36 @@ impl Route for &'static str {
 
 ///    / | (/:?[a-z, A-Z, _ ]+)+
 #[inline] fn is_valid_handler_route(route: &str) -> crate::Result<u8/* param count */> {
-    if !route.starts_with('/') {return (false, 0)}
-    if route.len() == 1 /* e.g. path.str == "/" */ {return (true, 0)}
+    if !route.starts_with('/') {return Err(Error::Validation(format!("route `{route}` doesn't start with `/`")))}
+    if route.len() == 1 /* e.g. path.str == "/" */ {return Ok(0)}
     
     let mut path_param_count: u8 = 0;
-
     for section in route[1..].split('/') {
-        let (is_valid, is_param) = is_valid_handler_route_section(section);
-        if is_param {path_param_count += 1}
-        if !is_valid {return (false, path_param_count)}
+        if is_valid_handler_route_section(section)? {
+            path_param_count += 1
+        }
     }
-
-    (true, path_param_count)
+    Ok(path_param_count)
 }
 #[inline] fn is_valid_handler_route_section(section: &str) -> crate::Result<bool/* is param */> {
     let mut is_param = false;
 
     let section = if section.starts_with(':') {
         is_param = true;
-        if section.len() < 2 {return (false, false)}
+        if section.len() < 2 {return Err(Error::Validation(format!("`:` is not valid route section")))}
         &section[1..]
     } else {
-        if section.len() < 1 {return (false, false)}
+        if section.len() < 1 {return Err(Error::Validation(format!("empty route section")))}
         section
     };
     for ch in section.chars() {
         match ch {
             'a'..='z' | 'A'..='Z' | '_' => (),
-            _ => return (false, is_param),
+            _ => return Err(Error::Validation(format!("section `{section}` contains invalid charactor: `{ch}`. route section can contains: 'a'..='z' | 'A'..='Z' | '_'"))),
         }
     }
 
-    (true, is_param)
+    Ok(is_param)
 }
 
 
@@ -76,7 +75,7 @@ impl Route for &'static str {
 #[inline] fn is_valid_fang_route(route: &'static str) -> crate::Result<()> {
     if route == "*" {return Ok(())}
     
-    if !route.starts_with('/') {return Err(format!("fang route `{route}` doesn't starts with `/`"))}
+    if !route.starts_with('/') {return Err(Error::Validation(format!("fang route `{route}` doesn't starts with `/`")))}
     if route.len() == 1 /* e.g. route == "/" */ {return Ok(())}
 
     let route = if route.ends_with("/*") {
@@ -86,18 +85,18 @@ impl Route for &'static str {
 
     for section in route[1..].split('/') {
         is_valid_fang_route_section(section)
-            .map_err(|err_msg| format!("{err_msg}: in fang route `{route}`"))?
+            .map_err(|err_msg| Error::Validation(format!("{err_msg}: in fang route `{route}`")))?
     }
 
     Ok(())
 }
 #[inline] fn is_valid_fang_route_section(section: &str) -> crate::Result<()> {
-    if section.len() < 1 {return Err(format!("empty route section"))}
+    if section.len() < 1 {return Err(Error::Validation(format!("empty route section")))}
 
     for ch in section.chars() {
         match ch {
             'a'..='z' | 'A'..='Z' | '_' => (),
-            _ => return Err(format!("section `{section}` contains invalid charactor: `{ch}`"))
+            _ => return Err(Error::Validation(format!("section `{section}` contains invalid charactor: `{ch}`")))
         }
     }
 

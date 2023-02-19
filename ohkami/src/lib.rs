@@ -5,10 +5,19 @@
 
 #![doc(html_root_url = "https://docs.rs/ohkami/0.8.3")]
 
-#[cfg(all(not(feature = "sqlx"), any(feature = "postgres", feature = "mysql")))]
-compile_error!("feature `postgres` or `mysql` can't be enebled without enabling `sqlx` feature");
-#[cfg(all(feature = "postgres", feature = "mysql"))]
-compile_error!("`postgres` feature and `mysql` feature can't be enabled at the same time");
+#[cfg(any(
+    all(feature="sqlx-postgres", feature="sqlx-mysql"),
+    all(feature="sqlx-postgres", feature="deadpool-postgres"),
+    all(feature="sqlx-mysql", feature="deadpool-postgres"),
+))]
+compile_error!("any two of features
+
+- sqlx-postgres
+- sqlx-mysql
+- deadpool-postgres
+
+can be enabled at once.
+");
 
 pub mod ohkami;
 pub mod error;
@@ -29,12 +38,9 @@ pub mod prelude {
         // ohkami::Ohkami,
         error::{ElseResponse, ElseResponseWithErr},
         context::Context,
-        response::{Response},
+        response::Response,
     };
     pub use ohkami_macros::{JSON, json};
-
-    #[cfg(feature = "sqlx")]
-    pub use super::server::DBprofile;
 }
 
 pub mod macros {

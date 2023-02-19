@@ -1,14 +1,26 @@
 pub(crate) mod store;
 
-use crate::{response::{Response, components::{header::ResponseHeaders, body::{Text, Html}, status::Status, content_type::ContentType}}, components::json::{JsonResponse, JsonResponseLabel}};
-use self::store::Store;
 use async_std::sync::{Arc, Mutex};
-
 use serde::Serialize;
+use self::store::Store;
+use crate::{
+    components::json::{JsonResponse, JsonResponseLabel},
+    response::{
+        Response, components::{
+            header::ResponseHeaders,
+            body::{Text, Html},
+            status::Status,
+            content_type::ContentType,
+        }
+    },
+};
+
 #[cfg(feature="sqlx-postgres")]
 use sqlx::PgPool as ConnectionPool;
 #[cfg(feature="sqlx-mysql")]
 use sqlx::MySqlPool as ConnectionPool;
+#[cfg(feature="deadpool-postgres")]
+const _: (/* WIP */) = {};
 
 
 pub struct Context {
@@ -20,9 +32,11 @@ pub struct Context {
 }
 
 impl Context {
-    #[inline] pub fn get_cache(&self, key: &'static str) -> Option<&String> {
-
+    #[inline] pub fn get_cache(&self, key: &'static str) -> Option<&str> {
+        self.cache.try_lock()?
+            .get(key)
     }
+
     #[inline] pub fn set_header(&mut self, key: &'static str, value: &'static str) {
         self.additional_headers.set(key, value)
     }
@@ -73,9 +87,8 @@ macro_rules! impl_error_responses {
             impl Context {
                 #[allow(non_snake_case)]
                 #[inline] pub fn $name<T: Serialize, Msg: Text>(&self, message: Msg) -> Response<T> {
-                    Response::with_body(
+                    Response::error(
                         Status::$name,
-                        ContentType::text_plain,
                         &self.additional_headers,
                         message
                     )

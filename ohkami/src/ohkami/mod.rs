@@ -10,7 +10,7 @@ pub struct Ohkami<'router> {
 }
 
 impl<'router> Ohkami<'router> {
-    #[inline] pub fn new<const N: usize>(handlers: [Handler; N]) -> Self {
+    #[inline] pub fn default<const N: usize>(handlers: [Handler; N]) -> Self {
         let mut router = Router::new();
         for handler in handlers {
             router.register(handler)
@@ -27,7 +27,9 @@ impl<'router> Ohkami<'router> {
     }
 
     pub async fn howl(mut self, tcp_address: &'static str) -> crate::Result<()> {
-        if let Some(subscriber) = CONFIG.0.get_mut().log_subscribe {
+        let config = CONFIG.try_unwrap()?;
+
+        if let Some(subscriber) = &(&*(CONFIG.0)).try_lock().unwrap().log_subscribe {
             subscriber.init()
         }
 
@@ -42,7 +44,7 @@ impl<'router> Ohkami<'router> {
             }
         };
 
-        let listener = TcpListener::bind(address).await?;
+        let listener = TcpListener::bind(&address).await?;
         tracing::info!("Ohkami started on {address}");
 
         while let Some(stream) = listener.incoming().next().await {
