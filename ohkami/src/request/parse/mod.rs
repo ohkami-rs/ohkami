@@ -2,7 +2,7 @@ pub(crate) mod method;
 
 use super::Request;
 
-pub(super) fn parse_request<'buf>(buf: &'buf [u8]) -> crate::Result<Request<'buf>> {
+pub(super) fn parse_request<'buf>(buf: &'buf [u8]) -> crate::Result<Request> {
     
 }
 

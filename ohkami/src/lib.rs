@@ -24,7 +24,6 @@ pub mod error;
 pub mod context;
 pub mod response;
 pub mod request;
-pub mod components;
 // pub mod testing;
 pub mod fang;
 pub(crate) mod utils;

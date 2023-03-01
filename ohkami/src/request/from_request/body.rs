@@ -1,3 +1,3 @@
-use crate::components::json::JSON;
+use serde::Deserialize;
 
-pub struct Body<B: for <'j> JSON<'j>>(B);
+pub struct Body<B: for <'b> Deserialize<'b>>(B);

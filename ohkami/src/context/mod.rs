@@ -4,7 +4,6 @@ use async_std::sync::{Arc, Mutex};
 use serde::Serialize;
 use self::store::Store;
 use crate::{
-    components::json::{JsonResponse, JsonResponseLabel},
     response::{
         Response, components::{
             header::ResponseHeaders,
@@ -60,7 +59,7 @@ impl Context {
             body
         )
     }
-    #[inline] pub fn json<L: JsonResponseLabel, J: JsonResponse<L>>(&self, body: J) -> Response<J> {
+    #[inline] pub fn json<B: Serialize>(&self, body: B) -> Response<B> {
         Response::with_body(
             Status::OK,
             ContentType::application_json,
@@ -68,7 +67,7 @@ impl Context {
             body
         )
     }
-    #[inline] pub fn Created<L: JsonResponseLabel, J: JsonResponse<L>>(&self, body: J) -> Response<J> {
+    #[inline] pub fn Created<B: Serialize>(&self, body: B) -> Response<B> {
         Response::with_body(
             Status::Created,
             ContentType::application_json,

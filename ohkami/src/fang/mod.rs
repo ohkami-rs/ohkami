@@ -1,14 +1,14 @@
 use std::{pin::Pin, future::Future};
-use crate::{router::route::FangRoute, response::ErrResponse, context::Context, request::{Request, parse::method::Method}};
+use crate::{response::ErrResponse, context::Context, request::{Request, parse::method::Method}};
 
-pub struct Fangs<'buf>(Vec<(
+pub struct Fangs(Vec<(
     Method,
-    FangRoute,
-    Fang<'buf>,
+    &'static str,
+    Fang,
 )>);
-pub(crate) type Fang<'buf> =
+pub(crate) type Fang =
     Box<dyn
-        Fn(Context, Request<'buf>) -> Pin<
+        Fn(Context, Request) -> Pin<
             Box<dyn
                 Future<Output = Result<(Context, Request), ErrResponse>>
                 + Send
@@ -17,7 +17,7 @@ pub(crate) type Fang<'buf> =
     >
 ;
 
-impl<'buf> Fangs<'buf> {
+impl Fangs {
     pub(crate) fn new() -> Self {
         Self(Vec::new())
     }

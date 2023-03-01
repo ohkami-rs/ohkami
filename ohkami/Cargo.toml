@@ -25,18 +25,16 @@ tracing-subscriber = "0.3"
 once_cell = "1.17"
 
 [features]
-# default = []
+default = ["runtime_async-std"]
 
-sqlx-postgres = ["dep:sqlx", "sqlx?/runtime-async-std-native-tls", "sqlx?/postgres"]
-sqlx-mysql    = ["dep:sqlx", "sqlx?/runtime-async-std-native-tls", "sqlx?/mysql"]
-# deadpool-postgres = [] : WIP
+runtime_tokio = []
+runtime_async-std = []
+
+db_sqlx-postgres = ["dep:sqlx", "sqlx?/runtime-async-std-native-tls", "sqlx?/postgres"]
+db_sqlx-mysql    = ["dep:sqlx", "sqlx?/runtime-async-std-native-tls", "sqlx?/mysql"]
+db_deadpool-postgres = []
 
 ### debug1:
-default = ["sqlx-postgres"]
+# default = []
 ### debug2:
-# default = ["deadpool-postgres"]
-
-### future plan:
-# default = [async_std]
-# async_std = []
-# tokio = []
+# default = []

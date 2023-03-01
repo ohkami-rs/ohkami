@@ -5,11 +5,11 @@ use config::CONFIG;
 use tracing_subscriber::util::SubscriberInitExt;
 use crate::{router::Router, fang::Fangs, handler::Handler, context::store::Store};
 
-pub struct Ohkami<'router> {
-    router: Router<'router>,
+pub struct Ohkami {
+    router: Router,
 }
 
-impl<'router> Ohkami<'router> {
+impl Ohkami {
     #[inline] pub fn default<const N: usize>(handlers: [Handler; N]) -> Self {
         let mut router = Router::new();
         for handler in handlers {
