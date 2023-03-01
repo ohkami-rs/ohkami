@@ -1,11 +1,11 @@
 #![allow(non_snake_case)]
-mod trie_tree; use std::ops::Range;
+mod trie_tree;
 
 use trie_tree::{TrieTree, TrieNode};
-
 use crate::{
+    fang::Fang,
+    request::PathParams,
     handler::{HandleFunc, Handler},
-    request::{REQUEST_BUFFER_SIZE, Request, PATH_PARAMS_LIMIT}, fang::Fang,
 };
 
 
@@ -35,13 +35,13 @@ pub(crate) struct Router {
     ) -> Option<(
         &HandleFunc,
         &&'static [Fang],
-        [Option<Range<usize>>; PATH_PARAMS_LIMIT],
+        PathParams,
     )> {
         match request_method {
-            "GET" => self.GET.search(request_path),
-            "POST" => self.POST.search(request_path),
-            "PATCH" => self.PATCH.search(request_path),
-            "DELETE" => self.DELETE.search(request_path),
+            "GET" => self.GET.search(request_path, PathParams::new()),
+            "POST" => self.POST.search(request_path, PathParams::new()),
+            "PATCH" => self.PATCH.search(request_path, PathParams::new()),
+            "DELETE" => self.DELETE.search(request_path, PathParams::new()),
             _ => return None
         }
     }
@@ -63,3 +63,19 @@ enum Pattern {
     Param,
 }
 
+
+const _: () = {
+    impl Node {
+        fn search<'req>(
+            &self,
+            mut request_path: &'req str,
+            mut path_params:  PathParams,
+        ) -> Option<(
+            &HandleFunc,
+            &&'static [Fang],
+            PathParams,
+        )> {
+            
+        }
+    }
+};
