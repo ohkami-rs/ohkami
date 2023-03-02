@@ -1,5 +1,4 @@
 use std::fmt::Display;
-use crate::response::Response;
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash,
 Clone, Copy)]
@@ -11,13 +10,16 @@ pub enum Method {
 }
 
 impl Method {
-    pub(crate) fn parse(string: &str) -> crate::Result<Self> {
+    pub(crate) fn parse(string: &str) -> Self {
         match string {
-            "GET"    => Ok(Self::GET),
-            "POST"   => Ok(Self::POST),
-            "PATCH"  => Ok(Self::PATCH),
-            "DELETE" => Ok(Self::DELETE),
-            _ => Err(Response::BadRequest(format!("invalid request method: `{string}`"))),
+            "GET"    => Self::GET,
+            "POST"   => Self::POST,
+            "PATCH"  => Self::PATCH,
+            "DELETE" => Self::DELETE,
+            _ => {
+                tracing::error!("unknown method: {string}");
+                panic!()
+            },
         }
     }
     pub(crate) fn len(&self) -> usize {

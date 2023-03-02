@@ -1,4 +1,4 @@
-#![feature(try_trait_v2)]
+#![feature(try_trait_v2, byte_slice_trim_ascii)]
 
 #![allow(incomplete_features)]
 #![feature(adt_const_params)]

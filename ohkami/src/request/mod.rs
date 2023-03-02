@@ -43,4 +43,16 @@ pub(crate) struct QueryParams {
 pub(crate) struct Headers {
     headers: [Option<(Range<usize>, Range<usize>)>; HEADERS_LIMIT],
     next:    u8,
+} impl Headers {
+    #[inline] pub(crate) fn new() -> Self {
+        Self {
+            next:    0,
+            headers: [
+                None, None, None, None, None, None, None, None,
+                None, None, None, None, None, None, None, None,
+                None, None, None, None, None, None, None, None,
+                None, None, None, None, None, None, None, None,
+            ],
+        }
+    }
 }
