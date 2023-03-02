@@ -1,23 +1,23 @@
 use std::{pin::Pin, future::Future};
 use crate::{response::ErrResponse, context::Context, request::{Request, parse::method::Method}};
 
-pub struct Fangs(Vec<(
+pub struct Fangs<'buf>(Vec<(
     Method,
     &'static str,
-    Fang,
+    Fang<'buf>,
 )>);
-pub(crate) type Fang =
+pub(crate) type Fang<'buf> =
     Box<dyn
-        Fn(Context, Request) -> Pin<
+        Fn(Context, Request<'buf>) -> Pin<
             Box<dyn
-                Future<Output = Result<(Context, Request), ErrResponse>>
+                Future<Output = Result<(Context, Request<'buf>), ErrResponse>>
                 + Send
             >
         > + Send + Sync
     >
 ;
 
-impl Fangs {
+impl<'buf> Fangs<'buf> {
     pub(crate) fn new() -> Self {
         Self(Vec::new())
     }

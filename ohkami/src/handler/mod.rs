@@ -4,17 +4,17 @@ use std::{pin::Pin, future::Future};
 use crate::{context::Context, request::Request};
 
 #[allow(non_snake_case)]
-pub(crate) struct Handler {
+pub(crate) struct Handler<'buf> {
     route:  &'static str,
-    GET:    Option<HandleFunc>,
-    POST:   Option<HandleFunc>,
-    PATCH:  Option<HandleFunc>,
-    DELETE: Option<HandleFunc>,
+    GET:    Option<HandleFunc<'buf>>,
+    POST:   Option<HandleFunc<'buf>>,
+    PATCH:  Option<HandleFunc<'buf>>,
+    DELETE: Option<HandleFunc<'buf>>,
 }
 
-pub(crate) type HandleFunc =
+pub(crate) type HandleFunc<'buf> =
     Box<dyn
-        Fn(Context, Request) -> Pin<
+        Fn(Context, Request<'buf>) -> Pin<
             Box<dyn
                 Future<Output = crate::Result<()>>
                 + Send

@@ -30,7 +30,7 @@ pub(crate) struct Router {
 
     #[inline] pub(crate) fn search<'req>(
         &self,
-        request_method: &'req str,
+        request_method: Method,
         request_path:   &'req str,
     ) -> Option<(
         &HandleFunc,
@@ -47,12 +47,12 @@ pub(crate) struct Router {
     }
 }
 
-struct Node {
+struct Node<'router> {
     patterns:    &'static [Pattern],
     fangs:       &'static [Fang],
-    handle_func: Option<HandleFunc>,
-    children:    &'static [Node],
-} impl Node {
+    handle_func: Option<HandleFunc<'router>>,
+    children:    Vec<Node<'router>>,
+} impl<'router> Node<'router> {
     fn radixized(trie_node: TrieNode) -> Self {
 
     }
@@ -65,13 +65,13 @@ enum Pattern {
 
 
 const _: () = {
-    impl Node {
+    impl<'router> Node<'router> {
         fn search<'req>(
             &self,
             mut request_path: &'req str,
             mut path_params:  PathParams,
         ) -> Option<(
-            &HandleFunc,
+            &HandleFunc<'router>,
             &&'static [Fang],
             PathParams,
         )> {
