@@ -1,15 +1,34 @@
-use std::ops::Range;
+mod node; pub(super) use node::TrieNode;
+mod pattern; pub(super) use pattern::TriePattern;
 
-pub(super) struct TrieTree {
+use crate::handler::Handler;
 
-}
+use super::Router;
 
-pub(super) struct TrieNode {
+#[allow(non_snake_case)]
+pub(crate) struct TrieTree<'router> {
+    GET: TrieNode<'router>,
+    POST: TrieNode<'router>,
+    PATCH: TrieNode<'router>,
+    DELETE: TrieNode<'router>,
+} impl<'router> TrieTree<'router> {
+    pub(crate) fn new<const N: usize>(handlers: [Handler<'router>; N]) -> Self {
+        let mut tree = Self {
+            GET: TrieNode::root(),
+            POST: TrieNode::root(),
+            PATCH: TrieNode::root(),
+            DELETE: TrieNode::root(),
+        };
+        for Handler { route, GET, POST, PATCH, DELETE } in handlers {
+            if let Some(func) = GET {tree.GET.register(route, func)}
+            if let Some(func) = POST {tree.POST.register(route, func)}
+            if let Some(func) = PATCH {tree.PATCH.register(route, func)}
+            if let Some(func) = DELETE {tree.DELETE.register(route, func)}
+        }
+        tree
+    }
 
-}
-
-pub(super) enum Pattern {
-    Section { route_str: &'static str, range: Range<usize> },
-    Param,
-    Nil,
+    pub(crate) fn build(self) -> Router {
+        
+    }
 }

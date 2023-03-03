@@ -3,10 +3,10 @@ mod config;
 use async_std::{net::TcpListener, stream::StreamExt, task};
 use config::CONFIG;
 use tracing_subscriber::util::SubscriberInitExt;
-use crate::{router::Router, fang::Fangs, handler::Handler, context::store::Store};
+use crate::{router::{trie_tree::TrieTree}, fang::Fangs, handler::Handler, context::store::Store};
 
-pub struct Ohkami {
-    router: Router,
+pub struct Ohkami<'router> {
+    router: TrieTree<'router>,
 }
 
 impl Ohkami {
