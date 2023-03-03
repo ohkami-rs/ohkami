@@ -18,18 +18,17 @@ use super::{QueryParams, Headers, REQUEST_BUFFER_SIZE};
     todo!()
 }
 
-#[inline] fn method_path_query<'buf>(lines: &mut Lines<'buf>) -> (/*method*/&'buf str, /*path*/&'buf str, QueryParams) {
+#[inline] fn method_path_query<'buf>(lines: &mut Lines<'buf>) -> (/*method*/&'buf str, /*path*/&'buf str, QueryParams<'buf>) {
     let (method_path, _) = lines.next().unwrap().rsplit_once(' ').unwrap();
     let (method, path) = method_path.split_once(' ').unwrap();
     let (path, query) = extract_query(path);
     (method, path, query)
 }
 #[inline] fn extract_query<'buf>(path: &'buf str) -> (/*path*/&'buf str, QueryParams) {
-    let mut query = QueryParams::new();
-    if let Some((path, query_str)) = path.split_once('&') {
-        (path, QueryParams::/* TODO */)
+    if let Some((path, query_str)) = path.split_once('?') {
+        (path, QueryParams::parse(query_str))
     } else {
-        (path, query)
+        (path, QueryParams::new())
     }
 }
 #[inline] fn headers_body<'buf>(lines: &mut Lines<'buf>) -> (Headers<'buf>, Option<&'buf str>) {
@@ -40,7 +39,7 @@ use super::{QueryParams, Headers, REQUEST_BUFFER_SIZE};
             todo!(/* return Headers imediately */)
         }; if next_line.is_empty() {
             if let Some(body) = lines.next() {
-                return (headers, /* ... */)
+                return (headers, Some(body))
             } else {
                 return (headers, None)
             }

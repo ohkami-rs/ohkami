@@ -1,20 +1,22 @@
 pub mod into_handlefunc;
 
 use std::{pin::Pin, future::Future};
+use async_std::net::TcpStream;
+
 use crate::{context::Context, request::Request};
 
 #[allow(non_snake_case)]
-pub(crate) struct Handler<'buf> {
+pub(crate) struct Handler<'router> {
     route:  &'static str,
-    GET:    Option<HandleFunc<'buf>>,
-    POST:   Option<HandleFunc<'buf>>,
-    PATCH:  Option<HandleFunc<'buf>>,
-    DELETE: Option<HandleFunc<'buf>>,
+    GET:    Option<HandleFunc<'router>>,
+    POST:   Option<HandleFunc<'router>>,
+    PATCH:  Option<HandleFunc<'router>>,
+    DELETE: Option<HandleFunc<'router>>,
 }
 
-pub(crate) type HandleFunc<'buf> =
+pub(crate) type HandleFunc<'router> =
     Box<dyn
-        Fn(Context, Request<'buf>) -> Pin<
+        Fn(TcpStream, Context, Request<'router>) -> Pin<
             Box<dyn
                 Future<Output = crate::Result<()>>
                 + Send

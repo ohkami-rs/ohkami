@@ -1,5 +1,6 @@
 pub(crate) mod components;
 
+use async_std::{net::TcpStream, io::WriteExt};
 use serde::Serialize;
 use std::{ops::{ControlFlow, Try, FromResidual}, marker::PhantomData};
 use self::{components::{
@@ -8,6 +9,7 @@ use self::{components::{
     header::ResponseHeaders,
     time::now, body::Text,
 }};
+
 
 pub enum Response<T: Serialize> {
     Ok(OkResponse<T>),
@@ -20,7 +22,6 @@ struct OkResponse<T: Serialize>(
 pub struct ErrResponse(
     String
 );
-
 
 impl<T: Serialize> Try for Response<T> {
     type Residual = ErrResponse;
@@ -36,8 +37,20 @@ impl<T: Serialize> Try for Response<T> {
     }
 }
 impl<T: Serialize> FromResidual<ErrResponse> for Response<T> {
-    fn from_residual(residual: ErrResponse) -> Self {
+    #[inline] fn from_residual(residual: ErrResponse) -> Self {
         Self::Err(residual)
+    }
+}
+
+
+impl<T: Serialize> Response<T> {
+    #[inline] pub(crate) async fn send(self, mut stream: TcpStream) -> crate::Result<()> {
+        stream.write_all(
+            match self {
+                Self::Ok(o)  => o.0,
+                Self::Err(e) => e.0,
+            }.as_bytes()
+        ).await.map_err(|err| crate::error::Error::IO(err.to_string()))
     }
 }
 

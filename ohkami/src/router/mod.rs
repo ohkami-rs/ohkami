@@ -9,12 +9,12 @@ use crate::{
 };
 
 
-pub(crate) struct Router {
-    GET: Node,
-    POST: Node,
-    PATCH: Node,
-    DELETE: Node,
-} impl Router {
+pub(crate) struct Router<'router> {
+    GET: Node<'router>,
+    POST: Node<'router>,
+    PATCH: Node<'router>,
+    DELETE: Node<'router>,
+} impl<'router> Router<'router> {
     pub(crate) fn new<const N: usize>(handlers: [Handler; N]) -> Self {
         let mut trie_tree = TrieTree::new();
         for handler in handlers {
@@ -49,7 +49,7 @@ pub(crate) struct Router {
 
 struct Node<'router> {
     patterns:    &'static [Pattern],
-    fangs:       &'static [Fang],
+    fangs:       Vec<Fang<'router>>,
     handle_func: Option<HandleFunc<'router>>,
     children:    Vec<Node<'router>>,
 } impl<'router> Node<'router> {
