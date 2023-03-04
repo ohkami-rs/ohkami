@@ -14,28 +14,24 @@ use crate::{
     },
 };
 
-#[cfg(feature="sqlx-postgres")]
-use sqlx::PgPool as ConnectionPool;
-#[cfg(feature="sqlx-mysql")]
-use sqlx::MySqlPool as ConnectionPool;
-#[cfg(feature="deadpool-postgres")]
-const _: (/* WIP */) = {};
-
 
 pub struct Context {
-    #[cfg(any(feature="sqlx-postgres", feature="sqlx-musql", feature="deadpool-postgres"))]
-    pub(crate) connection_pool: Arc<ConnectionPool>,
-
     pub(crate) cache: Arc<Mutex<Store>>,
     pub(crate) additional_headers: ResponseHeaders,
 }
 
 impl Context {
+    #[inline] pub(crate) fn new(store: Arc<Mutex<Store>>) -> Self {
+        Self {
+            cache: store,
+            additional_headers: ResponseHeaders::new(),
+        }
+    }
+
     #[inline] pub fn get_cache(&self, key: &'static str) -> Option<&str> {
         self.cache.try_lock()?
             .get(key)
     }
-
     #[inline] pub fn set_header(&mut self, key: &'static str, value: &'static str) {
         self.additional_headers.set(key, value)
     }

@@ -1,11 +1,10 @@
 pub mod route; 
 pub(crate) mod trie_tree;
 
-use trie_tree::{TrieTree, TrieNode};
 use crate::{
     fang::Fang,
     request::PathParams,
-    handler::{HandleFunc, Handler},
+    handler::HandleFunc,
 };
 
 pub(crate) struct Router<'router> {
@@ -13,16 +12,16 @@ pub(crate) struct Router<'router> {
     POST: Node<'router>,
     PATCH: Node<'router>,
     DELETE: Node<'router>,
-} impl<'router> Router<'router> {
-    #[inline] pub(crate) fn search<'req>(
-        &self,
+} impl<'req, 'router: 'req> Router<'router> {
+    #[inline] pub(crate) fn search(
+        &'req self,
         request_method: &'req str,
         request_path:   &'req str,
-    ) -> Option<(
-        &Vec<Fang<'router>>,
-        &HandleFunc<'router>,
+    ) -> (
+        Vec<&'req Fang<'req>>,
         PathParams<'req>,
-    )> {
+        Option<&'req HandleFunc<'req>>,
+    ) {
         match request_method {
             "GET" => self.GET.search(request_path, PathParams::new()),
             "POST" => self.POST.search(request_path, PathParams::new()),
@@ -49,11 +48,11 @@ const _: () = {
             &self,
             mut request_path: &'req str,
             mut path_params:  PathParams,
-        ) -> Option<(
-            &Vec<Fang<'router>>,
-            &HandleFunc<'router>,
-            PathParams<'router>,
-        )> {
+        ) -> (
+            Vec<&Fang<'router>>,
+            PathParams<'req>,
+            Option<&HandleFunc<'router>>,
+        ) {
 
         }
     }

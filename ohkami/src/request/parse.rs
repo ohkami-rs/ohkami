@@ -1,15 +1,15 @@
 use std::str::Lines;
 use super::{QueryParams, Headers, REQUEST_BUFFER_SIZE};
 
-#[inline] pub(super) fn parse_request<'buf>(
-    buffer: [u8; REQUEST_BUFFER_SIZE]
-) -> crate::Result<(
+#[inline] pub(crate) fn parse_request<'buf>(
+    buffer: &'buf [u8; REQUEST_BUFFER_SIZE]
+) -> (
     /*method*/&'buf str,
     /*path*/&'buf str,
     QueryParams<'buf>,
     Headers<'buf>,
     Option<&'buf str>,
-)> {
+) {
     let mut lines = unsafe {std::str::from_utf8_unchecked(buffer.trim_ascii_end())}.lines();
 
     let (method, path, query) = method_path_query(&mut lines);

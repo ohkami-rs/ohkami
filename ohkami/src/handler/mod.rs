@@ -17,7 +17,7 @@ pub(crate) type HandleFunc<'router> =
     Box<dyn
         Fn(TcpStream, Context, Request<'router>) -> Pin<
             Box<dyn
-                Future<Output = crate::Result<()>>
+                Future<Output = ()>
                 + Send
             >
         > + Send + Sync

@@ -26,7 +26,6 @@ pub mod response;
 pub mod request;
 // pub mod testing;
 pub mod fang;
-pub(crate) mod utils;
 pub(crate) mod router;
 pub(crate) mod handler;
 

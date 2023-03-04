@@ -16,7 +16,7 @@ where
     fn into_handlefunc(self) -> HandleFunc<'router> {
         Box::new(move |stream, c, _| Box::pin(async {
             let response = self(c).await;
-            response.send(stream).await
+            response.send(&mut stream).await
         }))
     }
 }

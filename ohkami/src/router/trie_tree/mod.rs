@@ -1,7 +1,7 @@
 mod node; pub(super) use node::TrieNode;
 mod pattern; pub(super) use pattern::TriePattern;
 
-use crate::handler::Handler;
+use crate::{handler::Handler, fang::Fangs};
 
 use super::Router;
 
@@ -27,8 +27,11 @@ pub(crate) struct TrieTree<'router> {
         }
         tree
     }
+    pub(crate) fn apply(&mut self, fangs: Fangs<'router>) {
+        compile_error!("TODO")
+    }
 
-    pub(crate) fn build(self) -> Router {
+    pub(crate) fn into_radix(self) -> Router<'router> {
         
     }
 }

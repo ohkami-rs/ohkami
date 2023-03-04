@@ -44,13 +44,15 @@ impl<T: Serialize> FromResidual<ErrResponse> for Response<T> {
 
 
 impl<T: Serialize> Response<T> {
-    #[inline] pub(crate) async fn send(self, mut stream: TcpStream) -> crate::Result<()> {
-        stream.write_all(
+    #[inline] pub(crate) async fn send(self, stream: &mut TcpStream) {
+        if let Err(e) = stream.write_all(
             match self {
                 Self::Ok(o)  => o.0,
                 Self::Err(e) => e.0,
             }.as_bytes()
-        ).await.map_err(|err| crate::error::Error::IO(err.to_string()))
+        ).await {
+            tracing::error!("{e}"); panic!()
+        }
     }
 }
 
@@ -76,7 +78,7 @@ Date: {}
                 content_type.as_str(),
                 body.len(),
                 now(),
-                additional_headers.0,
+                additional_headers.as_str(),
                 body
             ), PhantomData)),
 
@@ -92,7 +94,7 @@ failed to serialize
 ",
                 status.as_str(),
                 now(),
-                additional_headers.0
+                additional_headers.as_str()
             )))
         }
     }
@@ -117,7 +119,7 @@ Date: {}
             status.as_str(),
             message.len(),
             now(),
-            additional_headers.0,
+            additional_headers.as_str(),
             message
         )))
     }
@@ -135,7 +137,7 @@ Date: {}
 {}
 ",
             now(),
-            additional_headers.0
+            additional_headers.as_str()
         ), PhantomData))
     }
 }

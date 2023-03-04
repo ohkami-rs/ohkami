@@ -8,7 +8,7 @@ pub trait Route {
 }
 
 pub struct HandleRoute(
-    VecDeque<Pattern>
+    VecDeque<super::Pattern>
 );
 
 pub struct FangRoute(

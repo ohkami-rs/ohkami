@@ -1,5 +1,5 @@
-mod from_request;
-mod parse;
+pub mod from_request;
+pub mod parse;
 
 pub(crate) const REQUEST_BUFFER_SIZE: usize = 1024;
 pub(crate) const PATH_PARAMS_LIMIT  : usize = 2;
@@ -7,7 +7,6 @@ pub(crate) const QUERY_PARAMS_LIMIT : usize = 4;
 pub(crate) const HEADERS_LIMIT      : usize = 32;
 
 pub struct Request<'buf> {
-    buffer: [u8; REQUEST_BUFFER_SIZE],
     pub(crate) path_params:  PathParams<'buf>,
     pub(crate) query_params: QueryParams<'buf>,
     pub(crate) headers:      Headers<'buf>,
