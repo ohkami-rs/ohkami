@@ -10,10 +10,9 @@ use async_std::{
 use crate::{
     fang::Fangs,
     handler::Handler,
-    response::Response,
     context::{store::Store, Context},
     router::{trie_tree::TrieTree, Router},
-    request::{REQUEST_BUFFER_SIZE, parse::parse_request, Request},
+    request::{REQUEST_BUFFER_SIZE, Request},
 };
 
 pub struct Ohkami<'router> {
@@ -63,29 +62,20 @@ impl Ohkami<'static> {
     cache:      Arc<Mutex<Store>>,
     router:     Arc<Router<'router>>,
 ) {
-    let mut c = Context::new(stream, cache);
-
     let mut buffer = [b' '; REQUEST_BUFFER_SIZE];
     if let Err(e) = stream.read(&mut buffer).await {
         tracing::error!("{e}"); panic!()
     }
 
+    let c = Context::new(stream, cache);
     let request = Request::parse(&buffer);
-    
-    let (
-        fangs, path_params, handle_func
-    ) = router.search(
 
-        method,
-        path,
-    );
-    let request = Request {
-        path_params,
-        query_params,
-        headers,
-        body,
-    };
-    if let Some(handle_func) = handle_func {
-        handle_func(stream, c, request).await
+    match router.search(c, request) {
+        (c, request, Some((handle_func, path_params))) => {
+            handle_func(c, request, path_params).await
+        },
+        (c, request, None) => {
+            
+        },
     }
 }

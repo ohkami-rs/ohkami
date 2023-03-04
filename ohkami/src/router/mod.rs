@@ -16,19 +16,23 @@ pub(crate) struct Router<'router> {
 } impl<'req, 'router: 'req> Router<'router> {
     #[inline] pub(crate) fn search(
         &'req self,
-        c: &'req mut Context,
-        request: &'req Request<'req>,
-    ) -> Option<(
-        &'req HandleFunc<'req>,
-        PathParams<'req>,
-    )> {
+        c: Context,
+        request: Request<'req>,
+    ) -> (
+        Context,
+        Request<'req>,
+        Option<(
+            &'req HandleFunc<'req>,
+            PathParams<'req>,
+        )>
+    ) {
         let path_params = PathParams::new();
         match request.method {
             "GET" => self.GET.search(request.path, c, request, path_params),
             "POST" => self.POST.search(request.path, c, request, path_params),
             "PATCH" => self.PATCH.search(request.path, c, request, path_params),
             "DELETE" => self.DELETE.search(request.path, c, request, path_params),
-            _ => return None
+            _ => return (c, request, None)
         }
     }
 }
@@ -48,13 +52,17 @@ const _: () = {
         #[inline] fn search(
             &self,
             mut path: &'req str,
-            c: &'req Context,
-            request: &'req Request<'req>,
+            c: Context,
+            request: Request<'req>,
             mut path_params: PathParams,
-        ) -> Option<(
-            &'req HandleFunc<'req>,
-            PathParams<'req>,
-        )> {
+        ) -> (
+            Context,
+            Request,
+            Option<(
+                &'req HandleFunc<'req>,
+                PathParams<'req>,
+            )>
+        ) {
 
         }
     }

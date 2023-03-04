@@ -14,9 +14,9 @@ where
     T:   Serialize,
 {
     fn into_handlefunc(self) -> HandleFunc<'router> {
-        Box::new(move |stream, c, _| Box::pin(async {
+        Box::new(move |c, _, _| Box::pin(async {
             let response = self(c).await;
-            response.send(&mut stream).await
+            response.send(&mut c.stream).await
         }))
     }
 }
