@@ -1,18 +1,12 @@
 pub mod from_request;
 pub mod parse;
 
-pub(crate) const REQUEST_BUFFER_SIZE: usize = 1024;
+
+compile_error!(r"
+- PathParams は HandleFunc と一緒に見つかる特別扱い枠とする
+- IntoHandleFunc の実装でもあらゆる impl FromRequest な型と同列に扱う
+");
 pub(crate) const PATH_PARAMS_LIMIT  : usize = 2;
-pub(crate) const QUERY_PARAMS_LIMIT : usize = 4;
-pub(crate) const HEADERS_LIMIT      : usize = 32;
-
-pub struct Request<'buf> {
-    pub(crate) path_params:  PathParams<'buf>,
-    pub(crate) query_params: QueryParams<'buf>,
-    pub(crate) headers:      Headers<'buf>,
-    pub(crate) body:         Option<&'buf str>,
-}
-
 pub(crate) struct PathParams<'buf> {
     params: [Option<&'buf str>; PATH_PARAMS_LIMIT],
     next:   u8,
@@ -23,6 +17,19 @@ pub(crate) struct PathParams<'buf> {
             next:   0,
         }
     }
+}
+
+
+pub(crate) const REQUEST_BUFFER_SIZE: usize = 1024;
+pub(crate) const QUERY_PARAMS_LIMIT : usize = 4;
+pub(crate) const HEADERS_LIMIT      : usize = 32;
+
+pub struct Request<'buf> {
+    pub(crate) method:       &'buf str,
+    pub(crate) path:         &'buf str,
+    pub(crate) query_params: QueryParams<'buf>,
+    pub(crate) headers:      Headers<'buf>,
+    pub(crate) body:         Option<&'buf str>,
 }
 
 pub(crate) struct QueryParams<'buf> {

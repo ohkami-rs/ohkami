@@ -1,6 +1,6 @@
 pub(crate) mod store;
 
-use async_std::sync::{Arc, Mutex};
+use async_std::{sync::{Arc, Mutex}, net::TcpStream};
 use serde::Serialize;
 use self::store::Store;
 use crate::{
@@ -16,14 +16,16 @@ use crate::{
 
 
 pub struct Context {
+    pub(crate) stream: TcpStream,
     pub(crate) cache: Arc<Mutex<Store>>,
     pub(crate) additional_headers: ResponseHeaders,
 }
 
 impl Context {
-    #[inline] pub(crate) fn new(store: Arc<Mutex<Store>>) -> Self {
+    #[inline] pub(crate) fn new(stream: TcpStream, cache: Arc<Mutex<Store>>) -> Self {
         Self {
-            cache: store,
+            stream,
+            cache,
             additional_headers: ResponseHeaders::new(),
         }
     }
