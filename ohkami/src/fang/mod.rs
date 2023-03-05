@@ -2,7 +2,6 @@ use std::{pin::Pin, future::Future};
 use crate::{context::Context, request::Request};
 
 pub struct Fangs<'router>(Vec<(
-    &'static str/* method */,
     &'static str/* route */,
     Fang<'router>,
 )>);

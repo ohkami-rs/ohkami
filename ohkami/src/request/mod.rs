@@ -17,6 +17,14 @@ pub(crate) struct PathParams<'buf> {
             next:   0,
         }
     }
+    #[inline] pub(crate) fn push(&mut self, param: &'buf str) {
+        if self.next == PATH_PARAMS_LIMIT as u8 {
+            tracing::error!("ohkami can't handle more than {PATH_PARAMS_LIMIT} path params")
+        } else {
+            self.params[self.next as usize].replace(param);
+            self.next += 1
+        }
+    }
 }
 
 

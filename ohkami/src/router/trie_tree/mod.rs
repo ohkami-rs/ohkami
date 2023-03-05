@@ -1,8 +1,7 @@
-mod node; pub(super) use node::TrieNode;
-mod pattern; pub(super) use pattern::TriePattern;
+mod node; pub(crate) use node::TrieNode;
+mod pattern; pub(crate) use pattern::TriePattern;
 
 use crate::{handler::Handler, fang::Fangs};
-
 use super::Router;
 
 #[allow(non_snake_case)]

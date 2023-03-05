@@ -1,7 +1,7 @@
 use crate::{fang::Fang, handler::HandleFunc, router::route::Route};
 use super::pattern::TriePattern::{self, *};
 
-pub(in super::super) struct TrieNode<'router> {
+pub(crate) struct TrieNode<'router> {
     pattern:     TriePattern,
     fangs:       Vec<Fang<'router>>,
     handle_func: Option<HandleFunc<'router>>,

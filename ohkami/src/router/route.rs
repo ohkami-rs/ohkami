@@ -1,16 +1,52 @@
 use std::{ops::Range, collections::VecDeque};
-use super::Pattern;
+use crate::handler::{Handler, HandleFunc};
 
 
-pub trait Route {
+pub trait Route: Sized {
     fn into_handle_route(self) -> HandleRoute;
     fn into_fang_route(self)   -> FangRoute;
+
+    fn GET<'router>(self, handle_func: HandleFunc<'router>) -> Handler<'router> {
+        Handler {
+            route: self.into_handle_route(),
+            GET: Some(handle_func),
+            POST: None,
+            PATCH: None,
+            DELETE: None,
+        }
+    }
+    fn POST<'router>(self, handle_func: HandleFunc<'router>) -> Handler<'router> {
+        Handler {
+            route: self.into_handle_route(),
+            GET: None,
+            POST: Some(handle_func),
+            PATCH: None,
+            DELETE: None,
+        }
+    }
+    fn PATCH<'router>(self, handle_func: HandleFunc<'router>) -> Handler<'router> {
+        Handler {
+            route: self.into_handle_route(),
+            GET: None,
+            POST: None,
+            PATCH: Some(handle_func),
+            DELETE: None,
+        }
+    }
+    fn DELETE<'router>(self, handle_func: HandleFunc<'router>) -> Handler<'router> {
+        Handler {
+            route: self.into_handle_route(),
+            GET: None,
+            POST: None,
+            PATCH: None,
+            DELETE: Some(handle_func),
+        }
+    }
 }
 
 pub struct HandleRoute(
-    VecDeque<super::Pattern>
+    VecDeque<super::trie_tree::TriePattern>
 );
-
 pub struct FangRoute(
     VecDeque<FangRoutePattern>
 ); pub(super) enum FangRoutePattern {
@@ -24,7 +60,8 @@ impl Route for &'static str {
     fn into_handle_route(self) -> HandleRoute {
         
     }
-    fn into_fang_route(self)   -> FangRoute {
+
+    fn into_fang_route(self) -> FangRoute {
         
     }
 }
@@ -32,7 +69,7 @@ impl Route for &'static str {
 
 const _: (/* HandleRoute impls */) = {
     impl Iterator for HandleRoute {
-        type Item = Pattern;
+        type Item = super::trie_tree::TriePattern;
         fn next(&mut self) -> Option<Self::Item> {
             self.0.pop_front()
         }

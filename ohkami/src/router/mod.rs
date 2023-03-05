@@ -8,6 +8,7 @@ use crate::{
     request::{PathParams, Request},
 };
 
+
 pub(crate) struct Router<'router> {
     GET: Node<'router>,
     POST: Node<'router>,
@@ -47,6 +48,7 @@ enum Pattern {
     Param,
 }
 
+
 const _: () = {
     impl<'req, 'router: 'req> Node<'router> {
         #[inline] fn search(
@@ -63,7 +65,31 @@ const _: () = {
                 PathParams<'req>,
             )>
         ) {
+            for pattern in self.patterns {
+                if path.is_empty() {return (c, request, None)}
+                match pattern {
+                    Pattern::Str(s) => path = match path.strip_prefix(s) {
+                        Some(rem) => rem,
+                        None => return (c, request, None)
+                    },
+                    Pattern::Param => match path[1..].find('/') {
+                        Some(len) => {
+                            path_params.push(&path[1..1+len]);
+                            path = &path[1+len..]
+                        },
+                        None => {
+                            path_params.push(&path[1..]);
+                            path = ""
+                        },
+                    },
+                }
+            }
 
+            if path.is_empty() {
+                
+            } else {
+
+            }
         }
     }
 };
