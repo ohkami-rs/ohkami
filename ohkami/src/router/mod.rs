@@ -9,12 +9,12 @@ use crate::{
 };
 
 
-pub(crate) struct Router<'router> {
-    GET: Node<'router>,
-    POST: Node<'router>,
-    PATCH: Node<'router>,
-    DELETE: Node<'router>,
-} impl<'req> Router<'req> {
+pub(crate) struct Router<'req, 'router: 'req> {
+    GET: Node<'req, 'router>,
+    POST: Node<'req, 'router>,
+    PATCH: Node<'req, 'router>,
+    DELETE: Node<'req, 'router>,
+} impl<'req, 'router: 'req> Router<'req, 'router> {
     #[inline] pub(crate) async fn handle(
         &'req self,
         mut c: Context,
@@ -30,12 +30,12 @@ pub(crate) struct Router<'router> {
         }
     }
 }
-struct Node<'router> {
+struct Node<'req, 'router: 'req> {
     patterns:    &'router [(Pattern, Option</* combibed */Fang<'router>>)],
     handle_func: Option<HandleFunc<'router>>,
-    children:    &'router [Node<'router>],
-} impl<'router> Node<'router> {
-    #[inline] fn matchable_child(&self, current_path: &str) -> Option<&Self> {
+    children:    &'router [Node<'req, 'router>],
+} impl<'req, 'router: 'req> Node<'req, 'router> {
+    #[inline] fn matchable_child(&'req self, current_path: &'req str) -> Option<&'req Self> {
         for child in self.children {
             match child.patterns.first()?.0 {
                 Pattern::Param  => return Some(child),
@@ -51,10 +51,10 @@ enum Pattern {
 }
 
 
-enum Handle<'req> {
+enum Handle<'req, 'router: 'req> {
     Fin,
     Continue(
-        &'req Node<'req>,
+        &'req Node<'req, 'router>,
         /* path */&'req str,
         Context,
         Request<'req>,
@@ -69,7 +69,7 @@ const _: () = {
     */
     use Handle::*;
 
-    impl<'req> Node<'req> {
+    impl<'req, 'router: 'req> Node<'req, 'router> {
         #[inline] async fn handle(&'req self,
             mut path: &'req str,
             mut c: Context,
@@ -80,18 +80,17 @@ const _: () = {
             loop {
                 (search_root, path, c, request, path_params) = match search_root._handle(path, c, request, path_params).await {
                     Fin => return,
-                    Continue(_search_root, _path, _c, _request, _path_params) => (_search_root, _path, _c, _request, _path_params)
+                    Continue(_search_root, _path, _c, _request, _path_params) => (_search_root, _path, _c, _request, _path_params),
                 }
             }
         }
-
         #[inline] async fn _handle(
             &'req self,
             mut path: &'req str,
             mut c: Context,
             mut request: Request<'req>,
             mut path_params: PathParams<'req>,
-        ) -> Handle<'req> {
+        ) -> Handle<'req, 'router> {
             for (pattern, fang) in self.patterns {
                 if path.is_empty() {c.NotFound::<(), _>("").send(&mut c.stream); return Fin}
                 match pattern {

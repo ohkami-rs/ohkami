@@ -57,10 +57,11 @@ impl Ohkami<'static> {
     }
 }
 
-#[inline] async fn handle<'req>(
+
+#[inline] async fn handle<'req, 'router: 'req>(
     mut stream: TcpStream,
     cache:      Arc<Mutex<Store>>,
-    router:     Arc<Router<'req>>,
+    router:     Arc<Router<'req, 'router>>,
 ) {
     let mut buffer = [b' '; REQUEST_BUFFER_SIZE];
     if let Err(e) = stream.read(&mut buffer).await {

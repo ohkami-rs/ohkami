@@ -1,7 +1,7 @@
 use std::str::Lines;
 use super::{QueryParams, Headers, REQUEST_BUFFER_SIZE, Request};
 
-impl<'buf> Request<'buf> {
+impl<'req: 'buf, 'buf> Request<'req> {
     #[inline] pub(crate) fn parse(buffer: &'buf [u8; REQUEST_BUFFER_SIZE]) -> Self {
         let mut lines = unsafe {std::str::from_utf8_unchecked(buffer.trim_ascii_end())}.lines();
 
@@ -12,7 +12,7 @@ impl<'buf> Request<'buf> {
     }
 }
 
-#[inline] fn method_path_query<'buf>(lines: &mut Lines<'buf>) -> (/*method*/&'buf str, /*path*/&'buf str, QueryParams<'buf>) {
+#[inline] fn method_path_query<'buf>(lines: &'buf mut Lines<'buf>) -> (/*method*/&'buf str, /*path*/&'buf str, QueryParams<'buf>) {
     let (method_path, _) = lines.next().unwrap().rsplit_once(' ').unwrap();
     let (method, path) = method_path.split_once(' ').unwrap();
     let (path, query) = extract_query(path);
@@ -31,7 +31,7 @@ impl<'buf> Request<'buf> {
         (path, queries)
     }
 }
-#[inline] fn headers_body<'buf>(lines: &mut Lines<'buf>) -> (Headers<'buf>, Option<&'buf str>) {
+#[inline] fn headers_body<'buf>(lines: &'buf mut Lines<'buf>) -> (Headers<'buf>, Option<&'buf str>) {
     let mut headers = Headers::new();
 
     while let Some(next_line) = lines.next() {
