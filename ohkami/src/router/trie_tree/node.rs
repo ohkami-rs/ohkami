@@ -1,4 +1,4 @@
-use crate::{fang::Fang, handler::HandleFunc, router::route::Route};
+use crate::{fang::Fang, handler::{HandleFunc, HandleRoute}};
 use super::pattern::TriePattern::{self, *};
 
 pub(crate) struct TrieNode<'router> {
@@ -15,8 +15,7 @@ pub(crate) struct TrieNode<'router> {
             children:    vec![],
         }
     }
-    pub(super) fn register(&mut self, route: &'static str, handle_func: HandleFunc<'router>) {
-        let route = route.into_handle_route();
+    pub(super) fn register(&mut self, route: HandleRoute, handle_func: HandleFunc<'router>) {
         
     }
 }
