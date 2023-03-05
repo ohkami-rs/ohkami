@@ -74,8 +74,8 @@ impl Ohkami<'static> {
         (c, request, Some((handle_func, path_params))) => {
             handle_func(c, request, path_params).await
         },
-        (c, request, None) => {
-            
+        (mut c, request, None) => {
+            c.NotFound::<(), _>("").send(&mut c.stream).await
         },
     }
 }

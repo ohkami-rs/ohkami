@@ -6,7 +6,7 @@ compile_error!(r"
 - PathParams は HandleFunc と一緒に見つかる特別扱い枠とする
 - IntoHandleFunc の実装でもあらゆる impl FromRequest な型と同列に扱う
 ");
-pub(crate) const PATH_PARAMS_LIMIT  : usize = 2;
+pub(crate) const PATH_PARAMS_LIMIT  : usize  = 2;
 pub(crate) struct PathParams<'buf> {
     params: [Option<&'buf str>; PATH_PARAMS_LIMIT],
     next:   u8,
@@ -42,6 +42,14 @@ pub(crate) struct QueryParams<'buf> {
             next:   0,
         }
     }
+    #[inline] pub(crate) fn push(&mut self, key: &'buf str, value: &'buf str) {
+        if self.next == QUERY_PARAMS_LIMIT as u8 {
+            tracing::error!("ohkami can't handle more than {QUERY_PARAMS_LIMIT} query parameters")
+        } else {
+            self.params[self.next as usize].replace((key, value));
+            self.next += 1
+        }
+    }
 }
 
 pub(crate) struct Headers<'buf> {
@@ -57,6 +65,14 @@ pub(crate) struct Headers<'buf> {
                 None, None, None, None, None, None, None, None,
                 None, None, None, None, None, None, None, None,
             ],
+        }
+    }
+    #[inline] pub(crate) fn append(&mut self, key: &'buf str, value: &'buf str) {
+        if self.next == HEADERS_LIMIT as u8 {
+            tracing::error!("ohkami can't handle more than {HEADERS_LIMIT} request headers")
+        } else {
+            self.headers[self.next as usize].replace((key, value));
+            self.next += 1
         }
     }
 }
