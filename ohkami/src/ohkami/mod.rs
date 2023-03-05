@@ -57,10 +57,10 @@ impl Ohkami<'static> {
     }
 }
 
-#[inline] async fn handle<'router>(
+#[inline] async fn handle<'req>(
     mut stream: TcpStream,
     cache:      Arc<Mutex<Store>>,
-    router:     Arc<Router<'router>>,
+    router:     Arc<Router<'req>>,
 ) {
     let mut buffer = [b' '; REQUEST_BUFFER_SIZE];
     if let Err(e) = stream.read(&mut buffer).await {
@@ -70,12 +70,5 @@ impl Ohkami<'static> {
     let c = Context::new(stream, cache);
     let request = Request::parse(&buffer);
 
-    match router.search(c, request) {
-        (c, request, Some((handle_func, path_params))) => {
-            handle_func(c, request, path_params).await
-        },
-        (mut c, request, None) => {
-            c.NotFound::<(), _>("").send(&mut c.stream).await
-        },
-    }
+    router.handle(c, request).await
 }
