@@ -41,15 +41,25 @@ impl Ohkami<'static> {
             }
         };
         
-        let store = Arc::new(Mutex::new(Store::new()));
-        let router = Arc::new(self.router.into_radix());
+        let store = Arc::new(
+            Mutex::new(
+                Store::new()
+            )
+        );
+        let router: &'static Router = {
+            Box::leak(
+                Box::new(
+                    self.router.into_radix()
+                )
+            )
+        };
 
         let listener = TcpListener::bind(&address).await?;
         tracing::info!("ohkami started on {address}");
 
         while let Some(Ok(stream)) = listener.incoming().next().await {
             task::spawn(
-                handle(stream, Arc::clone(&store), Arc::clone(&router))
+                handle(stream, Arc::clone(&store), router)//Arc::clone(&router))
             );
         }
 
@@ -58,10 +68,10 @@ impl Ohkami<'static> {
 }
 
 
-#[inline] async fn handle<'req, 'router: 'req>(
+#[inline] async fn handle<'req>(
     mut stream: TcpStream,
     cache:      Arc<Mutex<Store>>,
-    router:     Arc<Router<'req, 'router>>,
+    router:     &'static Router<'req>,
 ) {
     let mut buffer = [b' '; REQUEST_BUFFER_SIZE];
     if let Err(e) = stream.read(&mut buffer).await {
@@ -71,5 +81,7 @@ impl Ohkami<'static> {
     let c = Context::new(stream, cache);
     let request = Request::parse(&buffer);
 
-    router.handle(c, request).await
+    (&*router).handle(c, request).await;
+
+    return
 }

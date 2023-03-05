@@ -10,8 +10,8 @@ pub(crate) struct TrieTree<'router> {
     POST: TrieNode<'router>,
     PATCH: TrieNode<'router>,
     DELETE: TrieNode<'router>,
-} impl<'router> TrieTree<'router> {
-    pub(crate) fn new<const N: usize>(handlers: [Handler<'router>; N]) -> Self {
+} impl<'req> TrieTree<'req> {
+    pub(crate) fn new<const N: usize>(handlers: [Handler<'req>; N]) -> Self {
         let mut tree = Self {
             GET: TrieNode::root(),
             POST: TrieNode::root(),
@@ -26,11 +26,11 @@ pub(crate) struct TrieTree<'router> {
         }
         tree
     }
-    pub(crate) fn apply(&mut self, fangs: Fangs<'router>) {
+    pub(crate) fn apply(&mut self, fangs: Fangs<'req>) {
         compile_error!("TODO")
     }
 
-    pub(crate) fn into_radix(self) -> Router<'router> {
+    pub(crate) fn into_radix(self) -> Router<'req> {
         
     }
 }

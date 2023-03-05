@@ -9,12 +9,12 @@ use crate::{
 };
 
 
-pub(crate) struct Router<'req, 'router: 'req> {
-    GET: Node<'req, 'router>,
-    POST: Node<'req, 'router>,
-    PATCH: Node<'req, 'router>,
-    DELETE: Node<'req, 'router>,
-} impl<'req, 'router: 'req> Router<'req, 'router> {
+pub(crate) struct Router<'req> {
+    GET: Node<'req>,
+    POST: Node<'req>,
+    PATCH: Node<'req>,
+    DELETE: Node<'req>,
+} impl<'req> Router<'req> {
     #[inline] pub(crate) async fn handle(
         &'req self,
         mut c: Context,
@@ -30,11 +30,11 @@ pub(crate) struct Router<'req, 'router: 'req> {
         }
     }
 }
-struct Node<'req, 'router: 'req> {
-    patterns:    &'router [(Pattern, Option</* combibed */Fang<'router>>)],
-    handle_func: Option<HandleFunc<'router>>,
-    children:    &'router [Node<'req, 'router>],
-} impl<'req, 'router: 'req> Node<'req, 'router> {
+struct Node<'req> {
+    patterns:    &'req [(Pattern, Option</* combibed */Fang<'req>>)],
+    handle_func: Option<HandleFunc<'req>>,
+    children:    &'req [Node<'req>],
+} impl<'req> Node<'req> {
     #[inline] fn matchable_child(&'req self, current_path: &'req str) -> Option<&'req Self> {
         for child in self.children {
             match child.patterns.first()?.0 {
@@ -51,10 +51,10 @@ enum Pattern {
 }
 
 
-enum Handle<'req, 'router: 'req> {
+enum Handle<'req> {
     Fin,
     Continue(
-        &'req Node<'req, 'router>,
+        &'req Node<'req>,
         /* path */&'req str,
         Context,
         Request<'req>,
@@ -69,7 +69,7 @@ const _: () = {
     */
     use Handle::*;
 
-    impl<'req, 'router: 'req> Node<'req, 'router> {
+    impl<'req> Node<'req> {
         #[inline] async fn handle(&'req self,
             mut path: &'req str,
             mut c: Context,
@@ -90,7 +90,7 @@ const _: () = {
             mut c: Context,
             mut request: Request<'req>,
             mut path_params: PathParams<'req>,
-        ) -> Handle<'req, 'router> {
+        ) -> Handle<'req> {
             for (pattern, fang) in self.patterns {
                 if path.is_empty() {c.NotFound::<(), _>("").send(&mut c.stream); return Fin}
                 match pattern {
