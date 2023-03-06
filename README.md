@@ -68,9 +68,10 @@ async fn handler(c: Context,
 }
 ```
 ### handle request body
-Add `serde = { version = "1.0", features = ["derive"] }` in your dependencies ( `JSON` requires it internally )
 ```rust
-#[derive(JSON)]
+use serde::Deserialize;
+
+#[derive(Deserialize)]
 struct User {
     id:   i64,
     name: String,
@@ -88,13 +89,15 @@ ohkami's middlewares are called "**fang**s".
 #[main]
 async fn main() -> Result<()> {
     let fangs = Fangs::new()
-        .ANY("/api/*", my_fang);
+        .before("/api/*", my_fang);
 
-    Ohkami::with(fangs, [
-        "/"         .GET(route),
-        "/hc"       .GET(health_check),
-        "/api/users".GET(get_users).POST(create_user)
-    ]).howl(":8080").await
+    Ohkami::with(fangs,
+        [
+            "/"         .GET(route),
+            "/hc"       .GET(health_check),
+            "/api/users".GET(get_users).POST(create_user),
+        ]
+    ).howl(":8080").await
 }
 
 async fn my_fang(c: &mut Context,
@@ -121,7 +124,7 @@ async fn main() -> Result<()> {
     let tasks = Ohkami::with(tasks_fangs, [
         // ...
 
-    Ohkami::default(, [
+    Ohkami::default([
         "/hc"       .GET(health_check),
         "/api/users".by(users),
         "/api/tasks".by(tasks),

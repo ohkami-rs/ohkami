@@ -1,4 +1,3 @@
-#![allow(non_snake_case)]
 pub mod into_fang;
 pub mod route;
 
@@ -7,13 +6,10 @@ use crate::{context::Context, request::Request};
 use self::route::FangsRoute;
 
 
-pub struct Fangs<'req> {
-    route: FangsRoute,
-    GET: Fang<'req>,
-    POST: Fang<'req>,
-    PATCH: Fang<'req>,
-    DELETE: Fang<'req>,
-}
+pub struct Fangs<'req, const N: usize>([(
+    FangsRoute,
+    Vec<Fang<'req>>,
+); N]);
 pub type Fang<'req> =
     Box<dyn
         Fn(Context, Request<'req>) -> Pin<

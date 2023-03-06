@@ -2,7 +2,7 @@ use std::{collections::VecDeque, ops::Range};
 
 
 pub trait FangRoute {
-    fn 
+    fn bite<const N: usize>(self, )
 }
 
 pub(super) struct FangsRoute(
