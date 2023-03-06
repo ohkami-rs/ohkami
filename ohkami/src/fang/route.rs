@@ -2,11 +2,11 @@ use std::{collections::VecDeque, ops::Range};
 use crate::router::trie_tree::pattern::validate_section;
 
 
-#[derive(PartialEq, Eq, Hash)]
+#[derive(PartialEq, Eq, Hash, Clone)]
 pub(super) struct FangsRoute(
     VecDeque<FangRoutePattern>
 );
-#[derive(PartialEq, Eq, Hash)]
+#[derive(PartialEq, Eq, Hash, Clone)]
 enum FangRoutePattern {
     Section {range: Range<usize>, route_str: &'static str},
     Param,

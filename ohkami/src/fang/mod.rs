@@ -42,3 +42,21 @@ fn combine<'req>(this: &'req Fang<'req>, another: &'req Fang<'req>) -> Fang<'req
         (c, request)
     }))
 }
+
+
+const _: (/* Fangs impls */) = {
+    impl<'req> Clone for Fangs<'req> {
+        fn clone(&self) -> Self {
+            let mut fangs = HashMap::<FangsRoute, Fang<'req>>::new();
+            for (route, fang) in self.0.iter() {
+                fangs.insert(
+                    route.clone(),
+                    Box::new(|c, request| Box::pin(async {
+                        fang(c, request).await
+                    }))
+                );
+            }
+            Self(fangs)
+        }
+    }
+};

@@ -9,7 +9,7 @@ use async_std::{
 };
 use crate::{
     fang::Fangs,
-    handler::Handler,
+    handler::Handlers,
     context::{store::Store, Context},
     router::{trie_tree::TrieTree, Router},
     request::{REQUEST_BUFFER_SIZE, Request},
@@ -20,11 +20,11 @@ pub struct Ohkami<'router> {
 }
 
 impl Ohkami<'static> {
-    pub fn default<const N: usize>(handlers: [Handler; N]) -> Self {
+    pub fn default<const N: usize>(handlers: [Handlers; N]) -> Self {
         let mut router = TrieTree::new(handlers);
         Self { router }
     }
-    pub fn with<const N: usize>(fangs: Fangs, handlers: [Handler; N]) -> Self {
+    pub fn with<const N: usize>(fangs: Fangs, handlers: [Handlers; N]) -> Self {
         let mut router = TrieTree::new(handlers);
         router.apply(fangs);
         Self { router }
