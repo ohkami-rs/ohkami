@@ -1,5 +1,5 @@
-mod node; pub(crate) use node::TrieNode;
-mod pattern; pub(crate) use pattern::TriePattern;
+pub(crate) mod node; pub(crate) use node::TrieNode;
+pub(crate) mod pattern; pub(crate) use pattern::TriePattern;
 
 use crate::{handler::Handler, fang::Fangs};
 use super::Router;

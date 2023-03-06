@@ -1,15 +1,17 @@
 pub mod into_fang;
 pub mod route;
 
-use std::{pin::Pin, future::Future};
+use std::{pin::Pin, future::Future, collections::HashMap};
 use crate::{context::Context, request::Request};
-use self::route::FangsRoute;
+use self::{route::FangsRoute, into_fang::IntoFang};
 
 
-pub struct Fangs<'req, const N: usize>([(
-    FangsRoute,
-    Vec<Fang<'req>>,
-); N]);
+pub struct Fangs<'req>(
+    HashMap<
+        FangsRoute,
+        Fang<'req>,
+    >
+);
 pub type Fang<'req> =
     Box<dyn
         Fn(Context, Request<'req>) -> Pin<
@@ -21,20 +23,22 @@ pub type Fang<'req> =
     >
 ;
 
-pub(crate) fn combine<'req>(this: &'req Fang<'req>, another: &'req Fang<'req>) -> Fang<'req> {
+
+impl<'req> Fangs<'req> {
+    pub fn new() -> Self {
+        Fangs(HashMap::new())
+    }
+    pub fn before<F: IntoFang<'req>>(mut self, route: &'static str, fang: F) -> Self {
+        self.0.entry(FangsRoute::parse(route))
+            .and_modify(|f| *f = combine(f, &fang.into_fang()))
+            .or_insert(fang.into_fang());
+        self
+    }
+}
+fn combine<'req>(this: &'req Fang<'req>, another: &'req Fang<'req>) -> Fang<'req> {
     Box::new(|c, request| Box::pin(async {
         (c, request) = this(c, request).await;
         (c, request) = another(c, request).await;
         (c, request)
     }))
-}
-
-impl<'req> Fangs<'req> {
-    pub fn bite<const N: usize>(fangs: [Fang<'req>; N]) -> Self {
-        let mut fangs = vec![];
-        for fang in fangs {
-            fangs.push(fang)
-        }
-        Self(fangs)
-    }
 }

@@ -10,21 +10,19 @@ pub(crate) enum TriePattern {
         if section.starts_with(':') {
             let param_name = &section[1..];
             if let Err(msg) = validate_section(param_name) {
-                tracing::error!("path parameter `{param_name}` in route `{route_str}` is invalid: \"{msg}\"");
-                panic!()
+                panic!("path parameter `{param_name}` in route `{route_str}` is invalid: \"{msg}\"");
             }
             Self::Param
         } else {
             if let Err(msg) = validate_section(section) {
-                tracing::error!("section `{section}` in route `route_str` is invalid: \"{msg}\"");
-                panic!()
+                panic!("section `{section}` in route `{route_str}` is invalid: \"{msg}\"");
             }
             Self::Section { route_str, range }
         }
     }
 }
 
-fn validate_section(section: &str) -> Result<(), &'static str> {
+pub(crate) fn validate_section(section: &str) -> Result<(), &'static str> {
     match section.len() {
         0 => Err("empty string"),
         1 => match section.chars().next().unwrap() {
