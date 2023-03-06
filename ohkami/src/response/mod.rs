@@ -61,7 +61,7 @@ impl<T: Serialize> Response<T> {
         status: Status,
         content_type: ContentType,
         additional_headers: &ResponseHeaders,
-        body: T,
+        body: &str,
     ) -> Self {
         match serde_json::to_string(&body) {
             Ok(body) => Self::Ok(OkResponse(format!(

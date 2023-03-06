@@ -1,7 +1,7 @@
 #![feature(try_trait_v2, byte_slice_trim_ascii)]
 
 #![allow(incomplete_features)]
-#![feature(adt_const_params)]
+#![feature(adt_const_params, specialization)]
 
 #![doc(html_root_url = "https://docs.rs/ohkami/0.8.3")]
 

@@ -4,7 +4,7 @@ pub(crate) mod trie_tree;
 use crate::{
     fang::Fang,
     context::Context,
-    handler::HandleFunc,
+    handler::Handler,
     request::{PathParams, Request},
 };
 
@@ -32,7 +32,7 @@ pub(crate) struct Router<'req> {
 }
 struct Node<'req> {
     patterns:    &'req [(Pattern, Option</* combibed */Fang<'req>>)],
-    handle_func: Option<HandleFunc<'req>>,
+    handle_func: Option<Handler<'req>>,
     children:    &'req [Node<'req>],
 } impl<'req> Node<'req> {
     #[inline] fn matchable_child(&'req self, current_path: &'req str) -> Option<&'req Self> {
