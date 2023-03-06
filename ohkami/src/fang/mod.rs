@@ -1,11 +1,15 @@
+pub mod into_fang;
+pub mod route;
+
 use std::{pin::Pin, future::Future};
 use crate::{context::Context, request::Request};
+use self::into_fang::IntoFang;
 
 pub struct Fangs<'req>(Vec<(
     &'static str/* route */,
     Fang<'req>,
 )>);
-pub(crate) type Fang<'req> =
+pub type Fang<'req> =
     Box<dyn
         Fn(Context, Request<'req>) -> Pin<
             Box<dyn
@@ -25,7 +29,9 @@ pub(crate) fn combine<'req>(this: &'req Fang<'req>, another: &'req Fang<'req>) -
 }
 
 impl<'req> Fangs<'req> {
-    pub(crate) fn new() -> Self {
-        Self(Vec::new())
+    pub fn bite<const N: usize>(fangs: [dyn IntoFang<'req>; N]) -> Self {
+        let mut fangs = vec![];
+
+        Self(fangs)
     }
 }

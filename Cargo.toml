@@ -2,11 +2,5 @@
 members = [
     "ohkami",
     "ohkami_macros",
-    "ohkami/examples/react_todo",
-    "ohkami/examples/db",
-    "ohkami/examples/simple",
-    "ohkami/examples/static_file",
-    "ohkami/examples/techempower",
-    "ohkami/examples/use_middleware",
-    "ohkami/examples/with_test"
 ]
+

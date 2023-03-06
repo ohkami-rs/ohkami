@@ -1,3 +1,7 @@
+use std::collections::VecDeque;
+
+use crate::router::trie_tree::TriePattern;
+
 use super::{HandleRoute, HandleFunc, Handler};
 
 
@@ -44,6 +48,23 @@ pub trait Route: Sized {
 
 impl Route for &'static str {
     fn into_handle_route(self) -> HandleRoute {
-        
+        if !self.starts_with('/') {
+            tracing::error!("route `{self}` doesn't start with `/`");
+            panic!()
+        }
+
+        let mut patterns = VecDeque::new();
+        if self == "/" {
+            return HandleRoute(patterns)
+        }
+
+        let mut pos = 1;
+        for len in self[1..].split('/').map(|s| s.len()) {
+            patterns.push_back(
+                TriePattern::parse(pos..pos+len, self)
+            );
+            pos += len + 1;
+        }
+        HandleRoute(patterns)
     }
 }
