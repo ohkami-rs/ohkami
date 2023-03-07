@@ -8,6 +8,7 @@ pub trait Route: Sized {
     fn POST<'req>(self, handle_func: Handler<'req>) -> Handlers<'req>;
     fn PATCH<'req>(self, handle_func: Handler<'req>) -> Handlers<'req>;
     fn DELETE<'req>(self, handle_func: Handler<'req>) -> Handlers<'req>;
+    fn by<'req>(self, handlers: Handlers<'req>) -> Handlers<'req>;
 } impl Route for &'static str {
     fn GET<'req>(self, handle_func: Handler<'req>) -> Handlers<'req> {
         Handlers {
@@ -45,6 +46,15 @@ pub trait Route: Sized {
             DELETE: Some(handle_func),
         }
     }
+    fn by<'req>(self, child: Handlers<'req>) -> Handlers<'req> {
+        Handlers {
+            route: HandleRoute::parse(self).merge(child.route),
+            GET: child.GET,
+            POST: child.POST,
+            PATCH: child.PATCH,
+            DELETE: child.DELETE,
+        }
+    }
 }
 pub struct HandleRoute(
     VecDeque<TriePattern>
@@ -68,6 +78,12 @@ pub struct HandleRoute(
             pos += len + 1;
         }
         HandleRoute(patterns)
+    }
+    fn merge(self, child: Self) -> Self {
+        for p in child {
+            self.0.push_back(p)
+        }
+        self
     }
 } const _: (/* HandleRoute impls */) = {
     impl Iterator for HandleRoute {
