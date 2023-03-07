@@ -35,12 +35,35 @@ impl<'req> Fangs<'req> {
         self
     }
 }
-fn combine<'req>(this: &'req Fang<'req>, another: &'req Fang<'req>) -> Fang<'req> {
+pub(crate) fn combine<'req>(this: &'req Fang<'req>, child: &'req Fang<'req>) -> Fang<'req> {
     Box::new(|c, request| Box::pin(async {
         (c, request) = this(c, request).await;
-        (c, request) = another(c, request).await;
+        (c, request) = child(c, request).await;
         (c, request)
     }))
+}
+pub(crate) fn combine_optional<'req>(this: Option<&'req Fang<'req>>, child: Option<&'req Fang<'req>>) -> Option<Fang<'req>> {
+    match (this, child) {
+        (Some(this_fang), Some(child_fang)) => Some(
+            Box::new(|c, request| Box::pin(async {
+                (c, request) = this_fang(c, request).await;
+                (c, request) = child_fang(c, request).await;
+                (c, request)
+            }))
+        ),
+        (Some(this_fang), None) => Some(
+            Box::new(|c, request| Box::pin(
+                this_fang(c, request)
+            ))
+        ),
+        (None, Some(child_fang)) => Some(
+            Box::new(|c, request| Box::pin(
+                child_fang(c, request)
+            ))
+        ),
+        (None, None) => None,
+    }
+    
 }
 
 

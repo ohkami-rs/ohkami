@@ -38,6 +38,7 @@ struct Node<'req> {
     #[inline] fn matchable_child(&'req self, current_path: &'req str) -> Option<&'req Self> {
         for child in self.children {
             match child.patterns.first()?.0 {
+                Pattern::Nil    => unreachable!(),
                 Pattern::Param  => return Some(child),
                 Pattern::Str(s) => if current_path.starts_with(s) {return Some(child)}
             }
@@ -48,6 +49,7 @@ struct Node<'req> {
 enum Pattern {
     Str(&'static str),
     Param,
+    Nil,
 }
 
 

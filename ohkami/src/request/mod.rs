@@ -2,10 +2,6 @@ pub mod from_request;
 pub mod parse;
 
 
-compile_error!(r"
-- PathParams は HandleFunc と一緒に見つかる特別扱い枠とする
-- IntoHandleFunc の実装でもあらゆる impl FromRequest な型と同列に扱う
-");
 pub(crate) const PATH_PARAMS_LIMIT  : usize  = 2;
 pub(crate) struct PathParams<'buf> {
     params: [Option<&'buf str>; PATH_PARAMS_LIMIT],
