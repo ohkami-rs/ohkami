@@ -1,13 +1,13 @@
 use std::{collections::VecDeque, ops::Range};
-use crate::router::trie_tree::pattern::validate_section;
+use crate::router::trie_tree::{pattern::validate_section, TriePattern};
 
 
 #[derive(PartialEq, Eq, Hash, Clone)]
-pub(super) struct FangsRoute(
+pub struct FangsRoute(
     VecDeque<FangRoutePattern>
 );
 #[derive(PartialEq, Eq, Hash, Clone)]
-enum FangRoutePattern {
+pub(crate) enum FangRoutePattern {
     Section {range: Range<usize>, route_str: &'static str},
     Param,
     AnyAfter,
@@ -26,6 +26,14 @@ enum FangRoutePattern {
                 panic!()
             }
             Self::Section { route_str, range }
+        }
+    }
+
+    pub(crate) fn into_trie(self) -> TriePattern {
+        match self {
+            Self::AnyAfter => unreachable!(),
+            Self::Param => TriePattern::Param,
+            Self::Section { range, route_str } => TriePattern::Section { route_str, range },
         }
     }
 }
@@ -47,3 +55,13 @@ impl FangsRoute {
         })
     }
 }
+
+
+const _: (/* FangsRoute impls */) = {
+    impl Iterator for FangsRoute {
+        type Item = FangRoutePattern;
+        fn next(&mut self) -> Option<Self::Item> {
+            self.0.pop_front()
+        }
+    }
+};

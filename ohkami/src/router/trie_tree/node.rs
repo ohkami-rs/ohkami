@@ -1,7 +1,7 @@
 use super::pattern::TriePattern::{self, *};
 use crate::{
     router::Node,
-    fang::{Fang, Fangs, combine_optional},
+    fang::{Fang, Fangs, combine_optional, route::{FangsRoute, FangRoutePattern}},
     handler::{Handler, route::HandlerRoute},
 };
 
@@ -32,10 +32,8 @@ pub(crate) struct TrieNode<'router> {
     }
     pub(super) fn apply(&mut self, fangs: Fangs<'req>) {
         for (route, fang) in fangs {
-            
+            self.register_fang(route, fang)
         }
-
-        compile_error!("TODO")
     }
     pub(super) fn into_radix(mut self) -> Node<'req> {
         let mut patterns = vec![(self.pattern.clone(), self.fang)];
@@ -65,6 +63,35 @@ pub(crate) struct TrieNode<'router> {
                 }
             }
             None
+        }
+
+        fn register_fang(&mut self, route: FangsRoute, fang: Fang<'req>) {
+            if let Some(next_pattern) = route.next() {
+
+                let pattern = match next_pattern {
+                    FangRoutePattern::AnyAfter => {
+                        self.fang = combine_optional(self.fang.as_ref(), Some(&fang));
+                        return
+                    }
+                    section_or_param => section_or_param.into_trie()
+                };
+
+                if let Some(child) = self.matchablle_child_mut(&pattern) {
+                    child.register_fang(route, fang)
+                } else {
+                    let mut child = TrieNode::new(pattern);
+                    child.register_fang(route, fang);
+                    self.children.push(child)
+                }
+
+            } else {
+
+                unreachable!("
+                    - `FangsRoute`s have to end with an `_::AnyAfter` variant
+                    - `regisiter_fang` returns when it found `_::AmyAfter`    
+                ")
+
+            }
         }
 
         fn merge_single_child(
