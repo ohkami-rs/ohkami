@@ -82,4 +82,24 @@ const _: (/* Fangs impls */) = {
             Self(fangs)
         }
     }
+
+    impl<'req> IntoIterator for Fangs<'req> {
+        type IntoIter = <
+            HashMap<
+                FangsRoute,
+                Fang<'req>
+            > as IntoIterator>
+        ::IntoIter;
+
+        type Item = <
+            HashMap<
+                FangsRoute,
+                Fang<'req>
+            > as IntoIterator
+        >::Item;
+
+        fn into_iter(self) -> Self::IntoIter {
+            self.0.into_iter()
+        }
+    }
 };

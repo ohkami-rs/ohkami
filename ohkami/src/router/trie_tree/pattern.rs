@@ -36,12 +36,19 @@ pub(crate) enum TriePattern {
             _ => false,
         }
     }
+    pub(crate) fn is_param(&self) -> bool {
+        match self {
+            Self::Param => true,
+            _ => false,
+        }
+    }
     pub(crate) fn is_nil(&self) -> bool {
         match self {
             Self::Nil => true,
             _ => false,
         }
     }
+
     pub(crate) fn get_section(&self) -> Option<(/*route_str*/&'static str, /*range*/&Range<usize>)> {
         match self {
             Self::Section { route_str, range } => Some((route_str, range)),
@@ -54,6 +61,11 @@ pub(crate) enum TriePattern {
             _ => None,
         }
     }
+    fn get_section_str(&self) -> Option<&str> {
+        self.get_section()
+            .map(|(route, range)| &route[range.clone()])
+    }
+
     pub(super) fn merge_sections(&mut self, child_pattern: Self) {
         let Some((this_route, this_range)) = self.get_section_mut() else {return};
         let Some((child_route, child_range)) = child_pattern.get_section() else {return};
@@ -61,6 +73,13 @@ pub(crate) enum TriePattern {
         if this_route == child_route
         && this_range.end == child_range.start {
             this_range.end = child_range.end
+        }
+    }
+    pub(super) fn matches(&self, other: &TriePattern) -> bool {
+        match self {
+            Self::Nil => other.is_nil(),
+            Self::Param => other.is_param(),
+            _ => self.get_section_str() == other.get_section_str(),
         }
     }
 }

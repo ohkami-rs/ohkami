@@ -7,10 +7,10 @@ use crate::{
     context::Context,
     request::{Request, PathParams},
 };
-use route::HandleRoute;
+use route::HandlerRoute;
 
 pub struct Handlers<'router> {
-    pub(crate) route:  HandleRoute,
+    pub(crate) route:  HandlerRoute,
     pub(crate) GET:    Option<Handler<'router>>,
     pub(crate) POST:   Option<Handler<'router>>,
     pub(crate) PATCH:  Option<Handler<'router>>,

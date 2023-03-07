@@ -12,7 +12,7 @@ pub trait Route: Sized {
 } impl Route for &'static str {
     fn GET<'req>(self, handle_func: Handler<'req>) -> Handlers<'req> {
         Handlers {
-            route: HandleRoute::parse(self),
+            route: HandlerRoute::parse(self),
             GET: Some(handle_func),
             POST: None,
             PATCH: None,
@@ -21,7 +21,7 @@ pub trait Route: Sized {
     }
     fn POST<'req>(self, handle_func: Handler<'req>) -> Handlers<'req> {
         Handlers {
-            route: HandleRoute::parse(self),
+            route: HandlerRoute::parse(self),
             GET: None,
             POST: Some(handle_func),
             PATCH: None,
@@ -30,7 +30,7 @@ pub trait Route: Sized {
     }
     fn PATCH<'req>(self, handle_func: Handler<'req>) -> Handlers<'req> {
         Handlers {
-            route: HandleRoute::parse(self),
+            route: HandlerRoute::parse(self),
             GET: None,
             POST: None,
             PATCH: Some(handle_func),
@@ -39,7 +39,7 @@ pub trait Route: Sized {
     }
     fn DELETE<'req>(self, handle_func: Handler<'req>) -> Handlers<'req> {
         Handlers {
-            route: HandleRoute::parse(self),
+            route: HandlerRoute::parse(self),
             GET: None,
             POST: None,
             PATCH: None,
@@ -48,7 +48,7 @@ pub trait Route: Sized {
     }
     fn by<'req>(self, child: Handlers<'req>) -> Handlers<'req> {
         Handlers {
-            route: HandleRoute::parse(self).merge(child.route),
+            route: HandlerRoute::parse(self).merge(child.route),
             GET: child.GET,
             POST: child.POST,
             PATCH: child.PATCH,
@@ -56,9 +56,9 @@ pub trait Route: Sized {
         }
     }
 }
-pub struct HandleRoute(
+pub struct HandlerRoute(
     VecDeque<TriePattern>
-); impl HandleRoute {
+); impl HandlerRoute {
     fn parse(route_str: &'static str) -> Self {
         if !route_str.starts_with('/') {
             tracing::error!("route `{route_str}` doesn't start with `/`");
@@ -67,7 +67,7 @@ pub struct HandleRoute(
 
         let mut patterns = VecDeque::new();
         if route_str == "/" {
-            return HandleRoute(patterns)
+            return HandlerRoute(patterns)
         }
 
         let mut pos = 1;
@@ -77,7 +77,7 @@ pub struct HandleRoute(
             );
             pos += len + 1;
         }
-        HandleRoute(patterns)
+        HandlerRoute(patterns)
     }
     fn merge(self, child: Self) -> Self {
         for p in child {
@@ -85,8 +85,8 @@ pub struct HandleRoute(
         }
         self
     }
-} const _: (/* HandleRoute impls */) = {
-    impl Iterator for HandleRoute {
+} const _: (/* HandlerRoute impls */) = {
+    impl Iterator for HandlerRoute {
         type Item = TriePattern;
         fn next(&mut self) -> Option<Self::Item> {
             self.0.pop_front()

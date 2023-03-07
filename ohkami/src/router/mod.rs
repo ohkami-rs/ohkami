@@ -32,7 +32,7 @@ pub(crate) struct Router<'req> {
 }
 struct Node<'req> {
     patterns:    &'req [(Pattern, Option</* combibed */Fang<'req>>)],
-    handle_func: Option<Handler<'req>>,
+    handler:     Option<Handler<'req>>,
     children:    &'req [Node<'req>],
 } impl<'req> Node<'req> {
     #[inline] fn matchable_child(&'req self, current_path: &'req str) -> Option<&'req Self> {
@@ -102,9 +102,9 @@ const _: () = {
                 }
     
                 if path.is_empty() {
-                    match &self.handle_func {
+                    match &self.handler {
                         None => return c.NotFound::<(), _>("").send(&mut c.stream).await,
-                        Some(handle_func) => return handle_func(c, request, path_params).await,
+                        Some(handler) => return handler(c, request, path_params).await,
                     }
                 } else {
                     match self.matchable_child(path) {
