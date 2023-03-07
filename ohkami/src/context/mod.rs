@@ -31,7 +31,7 @@ impl Context {
     }
 
     #[inline] pub fn get_cache(&self, key: &'static str) -> Option<&str> {
-        self.cache.try_lock()?
+        (&(self.cache.try_lock()?))
             .get(key)
     }
     #[inline] pub fn set_header(&mut self, key: &'static str, value: &'static str) {
@@ -57,12 +57,12 @@ impl Context {
             body.as_str()
         )
     }
-    #[inline] pub fn json<J: Json>(&self, body: J) -> Response<J> {
+    #[inline] pub fn json<'j, J: Json<'j>>(&self, body: J) -> Response<J> {
         Response::with_body(
             Status::OK,
             ContentType::application_json,
             &self.additional_headers,
-            body.as_str()
+            &body.as_str()
         )
     }
     #[inline] pub fn Created<B: Serialize>(&self, body: B) -> Response<B> {

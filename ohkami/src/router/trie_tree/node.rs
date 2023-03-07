@@ -88,7 +88,7 @@ pub(crate) struct TrieNode<'router> {
 
                 unreachable!("
                     - `FangsRoute`s have to end with an `_::AnyAfter` variant
-                    - `regisiter_fang` returns when it found `_::AmyAfter`    
+                    - `regisiter_fang` returns when it found `_::AnyAfter`    
                 ")
 
             }
