@@ -9,14 +9,14 @@ pub trait IntoHandler<'router> {
 
 impl<'router, F, Fut, T> IntoHandler<'router> for F
 where
-    F:   Fn(Context) -> Fut + Send + Sync + 'static,
-    Fut: Future<Output = Response<T>> + Send + 'static,
+    F:   Fn(Context) -> Fut + Send + Sync + 'router,
+    Fut: Future<Output = Response<T>> + Send + 'router,
     T:   Serialize,
 {
     fn into_handlefunc(self) -> Handler<'router> {
-        Box::new(move |c, _, _| Box::pin(async {
+        Box::new(move |mut stream, c, _, _| Box::pin(async {
             let response = self(c).await;
-            response.send(&mut c.stream).await
+            response.send(&mut stream).await
         }))
     }
 }

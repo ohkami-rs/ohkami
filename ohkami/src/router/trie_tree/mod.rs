@@ -6,11 +6,11 @@ use super::Router;
 
 
 #[allow(non_snake_case)]
-pub(crate) struct TrieTree<'router> {
-    GET: TrieNode<'router>,
-    POST: TrieNode<'router>,
-    PATCH: TrieNode<'router>,
-    DELETE: TrieNode<'router>,
+pub(crate) struct TrieTree<'req> {
+    GET: TrieNode<'req>,
+    POST: TrieNode<'req>,
+    PATCH: TrieNode<'req>,
+    DELETE: TrieNode<'req>,
 } impl<'req> TrieTree<'req> {
     pub(crate) fn new<const N: usize>(handlers: [Handlers<'req>; N]) -> Self {
         let mut tree = Self {

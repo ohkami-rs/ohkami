@@ -1,8 +1,8 @@
 use std::str::Lines;
 use super::{QueryParams, Headers, REQUEST_BUFFER_SIZE, Request};
 
-impl<'req: 'buf, 'buf> Request<'req> {
-    #[inline] pub(crate) fn parse(buffer: &'buf [u8; REQUEST_BUFFER_SIZE]) -> Self {
+impl<'req> Request<'req> {
+    #[inline] pub(crate) fn parse(buffer: &'req [u8; REQUEST_BUFFER_SIZE]) -> Request<'req> {
         let mut lines = unsafe {std::str::from_utf8_unchecked(buffer.trim_ascii_end())}.lines();
 
         let (method, path, query_params) = method_path_query(&mut lines);

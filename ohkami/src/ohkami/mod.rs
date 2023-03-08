@@ -15,16 +15,16 @@ use crate::{
     request::{REQUEST_BUFFER_SIZE, Request},
 };
 
-pub struct Ohkami<'router> {
-    router: TrieTree<'router>,
+pub struct Ohkami<'req> {
+    router: TrieTree<'req>,
 }
 
 impl Ohkami<'static> {
-    pub fn default<const N: usize>(handlers: [Handlers; N]) -> Self {
-        let mut router = TrieTree::new(handlers);
+    pub fn default<const N: usize>(handlers: [Handlers<'static>; N]) -> Self {
+        let router = TrieTree::new(handlers);
         Self { router }
     }
-    pub fn with<const N: usize>(fangs: Fangs, handlers: [Handlers; N]) -> Self {
+    pub fn with<const N: usize>(fangs: Fangs<'static>, handlers: [Handlers<'static>; N]) -> Self {
         let mut router = TrieTree::new(handlers);
         router.apply(fangs);
         Self { router }
@@ -46,12 +46,14 @@ impl Ohkami<'static> {
                 Store::new()
             )
         );
-        let router: &'static Router = {
-            Box::leak(
+
+        let router = {
+            let router: &'static Router = Box::leak(
                 Box::new(
                     self.router.into_radix()
                 )
-            )
+            );
+            router// Arc::new(router)
         };
 
         let listener = TcpListener::bind(&address).await?;
@@ -59,7 +61,7 @@ impl Ohkami<'static> {
 
         while let Some(Ok(stream)) = listener.incoming().next().await {
             task::spawn(
-                handle(stream, Arc::clone(&store), router)//Arc::clone(&router))
+                handle(stream, Arc::clone(&store), router)
             );
         }
 
@@ -71,17 +73,15 @@ impl Ohkami<'static> {
 #[inline] async fn handle<'req>(
     mut stream: TcpStream,
     cache:      Arc<Mutex<Store>>,
-    router:     &'static Router<'req>,
+    router:     &'req Router<'req>,
 ) {
     let mut buffer = [b' '; REQUEST_BUFFER_SIZE];
     if let Err(e) = stream.read(&mut buffer).await {
         tracing::error!("{e}"); panic!()
     }
 
-    let c = Context::new(stream, cache);
+    let c = Context::new(cache);
     let request = Request::parse(&buffer);
 
-    (&*router).handle(c, request).await;
-
-    return
+    router.handle(c, stream, request).await
 }

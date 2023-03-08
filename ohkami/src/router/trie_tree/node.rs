@@ -6,11 +6,11 @@ use crate::{
 };
 
 
-pub(crate) struct TrieNode<'router> {
+pub(crate) struct TrieNode<'req> {
     pattern:     TriePattern,
-    fang:        Option<Fang<'router>>,
-    handler:     Option<Handler<'router>>,
-    children:    Vec<TrieNode<'router>>,
+    fang:        Option<Fang<'req>>,
+    handler:     Option<Handler<'req>>,
+    children:    Vec<TrieNode<'req>>,
 } impl<'req> TrieNode<'req> {
     pub(super) fn root() -> Self {
         Self::new(

@@ -13,7 +13,7 @@ pub(crate) enum FangRoutePattern {
     AnyAfter,
 } impl FangRoutePattern {
     fn parse_section(range: Range<usize>, route_str: &'static str) -> Self {
-        let section = &route_str[range];
+        let section = &route_str[range.clone()];
         if section.starts_with(':') {
             let param_name = &section[1..];
             if let Err(msg) = validate_section(param_name) {

@@ -16,23 +16,23 @@ use crate::{
 
 
 pub struct Context {
-    pub(crate) stream: TcpStream,
     pub(crate) cache: Arc<Mutex<Store>>,
     pub(crate) additional_headers: ResponseHeaders,
 }
 
 impl Context {
-    #[inline] pub(crate) fn new(stream: TcpStream, cache: Arc<Mutex<Store>>) -> Self {
+    #[inline] pub(crate) fn new(cache: Arc<Mutex<Store>>) -> Self {
         Self {
-            stream,
             cache,
             additional_headers: ResponseHeaders::new(),
         }
     }
 
     #[inline] pub fn get_cache(&self, key: &'static str) -> Option<&str> {
-        (&(self.cache.try_lock()?))
-            .get(key)
+        (&(self.cache.try_lock()?)
+            .get(key))
+            .as_ref()
+            .map(|ref_ref_s| *ref_ref_s)
     }
     #[inline] pub fn set_header(&mut self, key: &'static str, value: &'static str) {
         self.additional_headers.set(key, value)

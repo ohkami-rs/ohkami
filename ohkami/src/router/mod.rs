@@ -1,6 +1,7 @@
 #![allow(non_snake_case)]
 pub(crate) mod trie_tree;
 
+use async_std::{sync::Arc, net::TcpStream};
 use crate::{
     fang::Fang,
     context::Context,
@@ -14,20 +15,22 @@ pub(crate) struct Router<'req> {
     POST: Node<'req>,
     PATCH: Node<'req>,
     DELETE: Node<'req>,
-} impl<'req> Router<'req> {
+} impl<'req, 'buf: 'req> Router<'req> {
     #[inline] pub(crate) async fn handle(
         &'req self,
-        mut c: Context,
-        request: Request<'req>,
+        c: Context,
+        mut stream: TcpStream,
+        request: Request<'buf>,
     ) {
         let path_params = PathParams::new();
-        match request.method {
-            "GET" => self.GET.handle(request.path, c, request, path_params).await,
-            "POST" => self.POST.handle(request.path, c, request, path_params).await,
-            "PATCH" => self.PATCH.handle(request.path, c, request, path_params).await,
-            "DELETE" => self.DELETE.handle(request.path, c, request, path_params).await,
-            other => c.NotImplemented::<(), _>(format!("unknown method: {other}")).send(&mut c.stream).await
-        }
+        let result = match request.method {
+            "GET" => self.GET.handle(request.path, c, stream, request, path_params).await,
+            "POST" => self.POST.handle(request.path, c, stream, request, path_params).await,
+            "PATCH" => self.PATCH.handle(request.path, c, stream, request, path_params).await,
+            "DELETE" => self.DELETE.handle(request.path, c, stream, request, path_params).await,
+            other => c.NotImplemented::<(), _>(format!("unknown method: {other}")).send(&mut stream).await
+        };
+        result
     }
 }
 struct Node<'req> {
@@ -60,27 +63,22 @@ const _: () = {
         consider using the `async_recursion` crate: https://crates.io/crates/async_recursion
     */
 
-    impl<'req> Node<'req> {
+    impl<'req, 'buf: 'req> Node<'req> {
         #[inline] async fn handle(&'req self,
             mut path: &'req str,
             mut c: Context,
-            mut request: Request<'req>,
+            mut stream: TcpStream,
+            mut request: Request<'buf>,
             mut path_params: PathParams<'req>,
         ) {
             let mut search_root = self;
-            // loop {
-            //     (search_root, path, c, request, path_params) = match search_root._handle(path, c, request, path_params).await {
-            //         Fin => return,
-            //         Continue(_search_root, _path, _c, _request, _path_params) => (_search_root, _path, _c, _request, _path_params),
-            //     }
-            // }
 
             loop {
                 for (pattern, fang) in search_root.patterns {
-                    if path.is_empty() {return c.NotFound::<(), _>("").send(&mut c.stream).await}
+                    if path.is_empty() {return c.NotFound::<(), _>("").send(&mut stream).await}
                     match pattern {
                         Pattern::Str(s) => path = match path.strip_prefix(s) {
-                            None => return c.NotFound::<(), _>("").send(&mut c.stream).await,
+                            None => return c.NotFound::<(), _>("").send(&mut stream).await,
                             Some(rem) => {
                                 if let Some(fang) = fang {
                                     (c, request) = fang(c, request).await;
@@ -103,12 +101,12 @@ const _: () = {
     
                 if path.is_empty() {
                     match &self.handler {
-                        None => return c.NotFound::<(), _>("").send(&mut c.stream).await,
-                        Some(handler) => return handler(c, request, path_params).await,
+                        None => return c.NotFound::<(), _>("").send(&mut stream).await,
+                        Some(handler) => return handler(stream, c, request, path_params).await,
                     }
                 } else {
                     match self.matchable_child(path) {
-                        None => return c.NotFound::<(), _>("").send(&mut c.stream).await,
+                        None => return c.NotFound::<(), _>("").send(&mut stream).await,
                         Some(child) => search_root = child,
                     }
                 }

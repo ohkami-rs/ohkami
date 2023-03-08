@@ -7,6 +7,7 @@ use crate::{
     context::Context,
     request::{Request, PathParams},
 };
+use async_std::net::TcpStream;
 use route::HandlerRoute;
 
 pub struct Handlers<'router> {
@@ -18,12 +19,12 @@ pub struct Handlers<'router> {
 }
 pub(crate) type Handler<'router> =
     Box<dyn
-        Fn(Context, Request<'router>, PathParams<'router>) -> Pin<
+        Fn(TcpStream, Context, Request<'router>, PathParams<'router>) -> Pin<
             Box<dyn
                 Future<Output = ()>
-                + Send
+                + Send + 'router
             >
-        > + Send + Sync
+        > + Send + Sync + 'router
     >
 ;
 

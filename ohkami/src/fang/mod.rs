@@ -17,9 +17,9 @@ pub type Fang<'req> =
         Fn(Context, Request<'req>) -> Pin<
             Box<dyn
                 Future<Output = (Context, Request<'req>)>
-                + Send
+                + Send + 'req
             >
-        > + Send + Sync
+        > + Send + Sync + 'req
     >
 ;
 
@@ -36,7 +36,7 @@ impl<'req> Fangs<'req> {
     }
 }
 pub(crate) fn combine<'req>(this: &'req Fang<'req>, child: &'req Fang<'req>) -> Fang<'req> {
-    Box::new(|c, request| Box::pin(async {
+    Box::new(|mut c, mut request| Box::pin(async {
         (c, request) = this(c, request).await;
         (c, request) = child(c, request).await;
         (c, request)
@@ -45,7 +45,7 @@ pub(crate) fn combine<'req>(this: &'req Fang<'req>, child: &'req Fang<'req>) -> 
 pub(crate) fn combine_optional<'req>(this: Option<&'req Fang<'req>>, child: Option<&'req Fang<'req>>) -> Option<Fang<'req>> {
     match (this, child) {
         (Some(this_fang), Some(child_fang)) => Some(
-            Box::new(|c, request| Box::pin(async {
+            Box::new(|mut c, mut request| Box::pin(async {
                 (c, request) = this_fang(c, request).await;
                 (c, request) = child_fang(c, request).await;
                 (c, request)
