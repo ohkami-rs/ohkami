@@ -1,7 +1,7 @@
 #![allow(non_snake_case)]
 pub(crate) mod trie_tree;
 
-use async_std::{sync::Arc, net::TcpStream};
+use async_std::net::TcpStream;
 use crate::{
     fang::Fang,
     context::Context,
@@ -10,17 +10,17 @@ use crate::{
 };
 
 
-pub(crate) struct Router<'req> {
-    GET: Node<'req>,
-    POST: Node<'req>,
-    PATCH: Node<'req>,
-    DELETE: Node<'req>,
-} impl<'req, 'buf: 'req> Router<'req> {
+pub(crate) struct Router<'router> {
+    GET: Node<'router>,
+    POST: Node<'router>,
+    PATCH: Node<'router>,
+    DELETE: Node<'router>,
+} impl<'req> Router<'req> {
     #[inline] pub(crate) async fn handle(
         &'req self,
         c: Context,
         mut stream: TcpStream,
-        request: Request<'buf>,
+        request: Request<'req>,
     ) {
         let path_params = PathParams::new();
         let result = match request.method {
@@ -37,7 +37,7 @@ struct Node<'req> {
     patterns:    &'req [(Pattern, Option</* combibed */Fang<'req>>)],
     handler:     Option<Handler<'req>>,
     children:    &'req [Node<'req>],
-} impl<'req> Node<'req> {
+} impl<'req, 'buf: 'req> Node<'buf> {
     #[inline] fn matchable_child(&'req self, current_path: &'req str) -> Option<&'req Self> {
         for child in self.children {
             match child.patterns.first()?.0 {
@@ -63,7 +63,7 @@ const _: () = {
         consider using the `async_recursion` crate: https://crates.io/crates/async_recursion
     */
 
-    impl<'req, 'buf: 'req> Node<'req> {
+    impl<'req: 'buf, 'buf> Node<'buf> {
         #[inline] async fn handle(&'req self,
             mut path: &'req str,
             mut c: Context,
