@@ -6,13 +6,13 @@ use super::Router;
 
 
 #[allow(non_snake_case)]
-pub(crate) struct TrieTree<'req> {
-    GET: TrieNode<'req>,
-    POST: TrieNode<'req>,
-    PATCH: TrieNode<'req>,
-    DELETE: TrieNode<'req>,
-} impl<'req> TrieTree<'req> {
-    pub(crate) fn new<const N: usize>(handlers: [Handlers<'req>; N]) -> Self {
+pub(crate) struct TrieTree {
+    GET: TrieNode,
+    POST: TrieNode,
+    PATCH: TrieNode,
+    DELETE: TrieNode,
+} impl TrieTree {
+    pub(crate) fn new<const N: usize>(handlers: [Handlers; N]) -> Self {
         let mut tree = Self {
             GET: TrieNode::root(),
             POST: TrieNode::root(),
@@ -27,14 +27,14 @@ pub(crate) struct TrieTree<'req> {
         }
         tree
     }
-    pub(crate) fn apply(&mut self, fangs: Fangs<'req>) {
+    pub(crate) fn apply(&mut self, fangs: Fangs) {
         // abc order
         self.DELETE.apply(fangs.clone());
         self.GET.apply(fangs.clone());
         self.PATCH.apply(fangs.clone());
         self.POST.apply(fangs);
     }
-    pub(crate) fn into_radix(self) -> Router<'req> {
+    pub(crate) fn into_radix(self) -> Router {
         Router {
             GET: self.GET.into_radix(),
             POST: self.POST.into_radix(),

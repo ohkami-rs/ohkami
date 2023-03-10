@@ -10,38 +10,38 @@ use crate::{
 use async_std::net::TcpStream;
 use route::HandlerRoute;
 
-pub struct Handlers<'router> {
+pub struct Handlers {
     pub(crate) route:  HandlerRoute,
-    pub(crate) GET:    Option<Handler<'router>>,
-    pub(crate) POST:   Option<Handler<'router>>,
-    pub(crate) PATCH:  Option<Handler<'router>>,
-    pub(crate) DELETE: Option<Handler<'router>>,
+    pub(crate) GET:    Option<Handler>,
+    pub(crate) POST:   Option<Handler>,
+    pub(crate) PATCH:  Option<Handler>,
+    pub(crate) DELETE: Option<Handler>,
 }
-pub(crate) type Handler<'router> =
+pub(crate) type Handler =
     Box<dyn
-        Fn(TcpStream, Context, Request<'router>, PathParams<'router>) -> Pin<
+        Fn(TcpStream, Context, Request, PathParams) -> Pin<
             Box<dyn
                 Future<Output = ()>
-                + Send + 'router
+                + Send + 'static
             >
-        > + Send + Sync + 'router
+        > + Send + Sync + 'static
     >
 ;
 
-impl<'router> Handlers<'router> {
-    pub fn GET(mut self, handle_func: Handler<'router>) -> Self {
+impl Handlers {
+    pub fn GET(mut self, handle_func: Handler) -> Self {
         self.GET.replace(handle_func);
         self
     }
-    pub fn POST(mut self, handle_func: Handler<'router>) -> Self {
+    pub fn POST(mut self, handle_func: Handler) -> Self {
         self.POST.replace(handle_func);
         self
     }
-    pub fn PATCH(mut self, handle_func: Handler<'router>) -> Self {
+    pub fn PATCH(mut self, handle_func: Handler) -> Self {
         self.PATCH.replace(handle_func);
         self
     }
-    pub fn DELETE(mut self, handle_func: Handler<'router>) -> Self {
+    pub fn DELETE(mut self, handle_func: Handler) -> Self {
         self.DELETE.replace(handle_func);
         self
     }

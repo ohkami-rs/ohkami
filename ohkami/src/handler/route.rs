@@ -4,13 +4,13 @@ use super::{Handlers, Handler};
 
 
 pub trait Route: Sized {
-    fn GET<'req>(self, handle_func: Handler<'req>) -> Handlers<'req>;
-    fn POST<'req>(self, handle_func: Handler<'req>) -> Handlers<'req>;
-    fn PATCH<'req>(self, handle_func: Handler<'req>) -> Handlers<'req>;
-    fn DELETE<'req>(self, handle_func: Handler<'req>) -> Handlers<'req>;
-    fn by<'req>(self, handlers: Handlers<'req>) -> Handlers<'req>;
+    fn GET(self, handle_func: Handler) -> Handlers;
+    fn POST(self, handle_func: Handler) -> Handlers;
+    fn PATCH(self, handle_func: Handler) -> Handlers;
+    fn DELETE(self, handle_func: Handler) -> Handlers;
+    fn by(self, handlers: Handlers) -> Handlers;
 } impl Route for &'static str {
-    fn GET<'req>(self, handle_func: Handler<'req>) -> Handlers<'req> {
+    fn GET(self, handle_func: Handler) -> Handlers {
         Handlers {
             route: HandlerRoute::parse(self),
             GET: Some(handle_func),
@@ -19,7 +19,7 @@ pub trait Route: Sized {
             DELETE: None,
         }
     }
-    fn POST<'req>(self, handle_func: Handler<'req>) -> Handlers<'req> {
+    fn POST(self, handle_func: Handler) -> Handlers {
         Handlers {
             route: HandlerRoute::parse(self),
             GET: None,
@@ -28,7 +28,7 @@ pub trait Route: Sized {
             DELETE: None,
         }
     }
-    fn PATCH<'req>(self, handle_func: Handler<'req>) -> Handlers<'req> {
+    fn PATCH(self, handle_func: Handler) -> Handlers {
         Handlers {
             route: HandlerRoute::parse(self),
             GET: None,
@@ -37,7 +37,7 @@ pub trait Route: Sized {
             DELETE: None,
         }
     }
-    fn DELETE<'req>(self, handle_func: Handler<'req>) -> Handlers<'req> {
+    fn DELETE(self, handle_func: Handler) -> Handlers {
         Handlers {
             route: HandlerRoute::parse(self),
             GET: None,
@@ -46,7 +46,7 @@ pub trait Route: Sized {
             DELETE: Some(handle_func),
         }
     }
-    fn by<'req>(self, child: Handlers<'req>) -> Handlers<'req> {
+    fn by(self, child: Handlers) -> Handlers {
         Handlers {
             route: HandlerRoute::parse(self).merge(child.route),
             GET: child.GET,

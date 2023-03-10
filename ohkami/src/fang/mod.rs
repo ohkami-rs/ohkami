@@ -6,43 +6,43 @@ use crate::{context::Context, request::Request};
 use self::{route::FangsRoute, into_fang::IntoFang};
 
 
-pub struct Fangs<'req>(
+pub struct Fangs(
     HashMap<
         FangsRoute,
-        Fang<'req>,
+        Fang,
     >
 );
-pub type Fang<'req> =
+pub type Fang =
     Box<dyn
-        Fn(Context, Request<'req>) -> Pin<
+        Fn(Context, Request) -> Pin<
             Box<dyn
-                Future<Output = (Context, Request<'req>)>
-                + Send + 'req
+                Future<Output = (Context, Request)>
+                + Send + 'static
             >
-        > + Send + Sync + 'req
+        > + Send + Sync + 'static
     >
 ;
 
 
-impl<'req> Fangs<'req> {
+impl Fangs {
     pub fn new() -> Self {
         Fangs(HashMap::new())
     }
-    pub fn before<F: IntoFang<'req>>(mut self, route: &'static str, fang: F) -> Self {
+    pub fn before<F: IntoFang>(mut self, route: &'static str, fang: F) -> Self {
         self.0.entry(FangsRoute::parse(route))
             .and_modify(|f| *f = combine(f, &fang.into_fang()))
             .or_insert(fang.into_fang());
         self
     }
 }
-pub(crate) fn combine<'req>(this: &'req Fang<'req>, child: &'req Fang<'req>) -> Fang<'req> {
+pub(crate) fn combine(this: &Fang, child: &Fang) -> Fang {
     Box::new(|mut c, mut request| Box::pin(async {
         (c, request) = this(c, request).await;
         (c, request) = child(c, request).await;
         (c, request)
     }))
 }
-pub(crate) fn combine_optional<'req>(this: Option<&'req Fang<'req>>, child: Option<&'req Fang<'req>>) -> Option<Fang<'req>> {
+pub(crate) fn combine_optional(this: Option<&Fang>, child: Option<&Fang>) -> Option<Fang> {
     match (this, child) {
         (Some(this_fang), Some(child_fang)) => Some(
             Box::new(|mut c, mut request| Box::pin(async {
@@ -68,9 +68,9 @@ pub(crate) fn combine_optional<'req>(this: Option<&'req Fang<'req>>, child: Opti
 
 
 const _: (/* Fangs impls */) = {
-    impl<'req> Clone for Fangs<'req> {
+    impl Clone for Fangs {
         fn clone(&self) -> Self {
-            let mut fangs = HashMap::<FangsRoute, Fang<'req>>::new();
+            let mut fangs = HashMap::<FangsRoute, Fang>::new();
             for (route, fang) in self.0.iter() {
                 fangs.insert(
                     route.clone(),
@@ -83,18 +83,18 @@ const _: (/* Fangs impls */) = {
         }
     }
 
-    impl<'req> IntoIterator for Fangs<'req> {
+    impl IntoIterator for Fangs {
         type IntoIter = <
             HashMap<
                 FangsRoute,
-                Fang<'req>
+                Fang
             > as IntoIterator>
         ::IntoIter;
 
         type Item = <
             HashMap<
                 FangsRoute,
-                Fang<'req>
+                Fang
             > as IntoIterator
         >::Item;
 

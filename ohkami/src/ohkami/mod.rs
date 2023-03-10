@@ -16,15 +16,15 @@ use crate::{
 };
 
 pub struct Ohkami {
-    router: TrieTree<'static>,
+    router: TrieTree,
 }
 
 impl Ohkami {
-    pub fn default<const N: usize>(handlers: [Handlers<'static>; N]) -> Self {
+    pub fn default<const N: usize>(handlers: [Handlers; N]) -> Self {
         let router = TrieTree::new(handlers);
         Self { router }
     }
-    pub fn with<const N: usize>(fangs: Fangs<'static>, handlers: [Handlers<'static>; N]) -> Self {
+    pub fn with<const N: usize>(fangs: Fangs, handlers: [Handlers; N]) -> Self {
         let mut router = TrieTree::new(handlers);
         router.apply(fangs);
         Self { router }
@@ -60,7 +60,7 @@ impl Ohkami {
         while let Some(Ok(stream)) = listener.incoming().next().await {
             task::spawn({
                 let buffer = [b' '; REQUEST_BUFFER_SIZE];
-                handle(stream, buffer, Arc::clone(&store), &*Arc::clone(&router))
+                handle(stream, buffer, Arc::clone(&store), Arc::clone(&router))
             });
         }
 
@@ -69,11 +69,11 @@ impl Ohkami {
 }
 
 
-#[inline] async fn handle<'req>(
+#[inline] async fn handle(
     mut stream: TcpStream,
     mut buffer: [u8; REQUEST_BUFFER_SIZE],
     store:      Arc<Mutex<Store>>,
-    router:     &'req Router<'req>,
+    router:     Arc<Router>,
 ) {
     let c = Context::new(store);
     let request = {

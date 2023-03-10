@@ -1,5 +1,5 @@
 use super::Fang;
 
-pub trait IntoFang<'req> {
-    fn into_fang(self) -> Fang<'req>;
+pub trait IntoFang {
+    fn into_fang(self) -> Fang;
 }

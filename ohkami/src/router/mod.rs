@@ -6,39 +6,38 @@ use crate::{
     fang::Fang,
     context::Context,
     handler::Handler,
-    request::{PathParams, Request},
+    request::{PathParams, Request, Method},
 };
 
 
-pub(crate) struct Router<'router> {
-    GET: Node<'router>,
-    POST: Node<'router>,
-    PATCH: Node<'router>,
-    DELETE: Node<'router>,
-} impl<'req> Router<'req> {
+pub(crate) struct Router {
+    GET: Node,
+    POST: Node,
+    PATCH: Node,
+    DELETE: Node,
+} impl Router {
     #[inline] pub(crate) async fn handle(
-        &'req self,
+        &self,
         c: Context,
         mut stream: TcpStream,
-        request: Request<'req>,
+        request: Request,
     ) {
         let path_params = PathParams::new();
         let result = match request.method {
-            "GET" => self.GET.handle(request.path, c, stream, request, path_params).await,
-            "POST" => self.POST.handle(request.path, c, stream, request, path_params).await,
-            "PATCH" => self.PATCH.handle(request.path, c, stream, request, path_params).await,
-            "DELETE" => self.DELETE.handle(request.path, c, stream, request, path_params).await,
-            other => c.NotImplemented::<(), _>(format!("unknown method: {other}")).send(&mut stream).await
+            Method::GET => self.GET.handle(&(request.path().to_owned()), c, stream, request, path_params).await,
+            Method::POST => self.POST.handle(&(request.path().to_owned()), c, stream, request, path_params).await,
+            Method::PATCH => self.PATCH.handle(&(request.path().to_owned()), c, stream, request, path_params).await,
+            Method::DELETE => self.DELETE.handle(&(request.path().to_owned()), c, stream, request, path_params).await,
         };
         result
     }
 }
-struct Node<'req> {
-    patterns:    &'req [(Pattern, Option</* combibed */Fang<'req>>)],
-    handler:     Option<Handler<'req>>,
-    children:    &'req [Node<'req>],
-} impl<'req, 'buf: 'req> Node<'buf> {
-    #[inline] fn matchable_child(&'req self, current_path: &'req str) -> Option<&'req Self> {
+struct Node {
+    patterns: &'static [(Pattern, Option</* combibed */Fang>)],
+    handler:  Option</* AfterFangs-combined */Handler>,
+    children: &'static [Node],
+} impl Node {
+    #[inline] fn matchable_child(&self, current_path: &str) -> Option<&Self> {
         for child in self.children {
             match child.patterns.first()?.0 {
                 Pattern::Nil    => unreachable!(),
@@ -63,13 +62,13 @@ const _: () = {
         consider using the `async_recursion` crate: https://crates.io/crates/async_recursion
     */
 
-    impl<'req: 'buf, 'buf> Node<'buf> {
-        #[inline] async fn handle(&'req self,
-            mut path: &'req str,
+    impl Node {
+        #[inline] async fn handle(&self,
+            mut path: &str,
             mut c: Context,
             mut stream: TcpStream,
-            mut request: Request<'buf>,
-            mut path_params: PathParams<'req>,
+            mut request: Request,
+            mut path_params: PathParams,
         ) {
             let mut search_root = self;
 

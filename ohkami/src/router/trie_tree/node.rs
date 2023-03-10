@@ -6,18 +6,18 @@ use crate::{
 };
 
 
-pub(crate) struct TrieNode<'req> {
+pub(crate) struct TrieNode {
     pattern:     TriePattern,
-    fang:        Option<Fang<'req>>,
-    handler:     Option<Handler<'req>>,
-    children:    Vec<TrieNode<'req>>,
-} impl<'req> TrieNode<'req> {
+    fang:        Option<Fang>,
+    handler:     Option<Handler>,
+    children:    Vec<TrieNode>,
+} impl TrieNode {
     pub(super) fn root() -> Self {
         Self::new(
             TriePattern::Nil
         )
     }
-    pub(super) fn register(&mut self, mut route: HandlerRoute, handler: Handler<'req>) {
+    pub(super) fn register(&mut self, mut route: HandlerRoute, handler: Handler) {
         if let Some(next_pattern) = route.next() {
             if let Some(child) = self.matchablle_child_mut(&next_pattern) {
                 child.register(route, handler)
@@ -30,12 +30,12 @@ pub(crate) struct TrieNode<'req> {
             self.handler.replace(handler);
         }
     }
-    pub(super) fn apply(&mut self, fangs: Fangs<'req>) {
+    pub(super) fn apply(&mut self, fangs: Fangs) {
         for (route, fang) in fangs {
             self.register_fang(route, fang)
         }
     }
-    pub(super) fn into_radix(mut self) -> Node<'req> {
+    pub(super) fn into_radix(mut self) -> Node {
         let mut patterns = vec![(self.pattern.clone(), self.fang)];
         (self, patterns) = Self::merge_single_child(self, patterns);
 
@@ -46,7 +46,7 @@ pub(crate) struct TrieNode<'req> {
         }
     }
 } const _: () = {
-    impl<'req> TrieNode<'req> {
+    impl TrieNode {
         fn new(pattern: TriePattern) -> Self {
             Self {
                 pattern,
@@ -65,7 +65,7 @@ pub(crate) struct TrieNode<'req> {
             None
         }
 
-        fn register_fang(&mut self, route: FangsRoute, fang: Fang<'req>) {
+        fn register_fang(&mut self, route: FangsRoute, fang: Fang) {
             if let Some(next_pattern) = route.next() {
 
                 let pattern = match next_pattern {
@@ -96,10 +96,10 @@ pub(crate) struct TrieNode<'req> {
 
         fn merge_single_child(
             mut self,
-            mut patterns: Vec<(TriePattern, Option<Fang<'req>>)>,
+            mut patterns: Vec<(TriePattern, Option<Fang>)>,
         ) -> (
             Self,
-            Vec<(TriePattern, Option<Fang<'req>>)>,
+            Vec<(TriePattern, Option<Fang>)>,
         ) {
             let (this_pattern, this_fang) = &mut patterns.last_mut().unwrap();
 

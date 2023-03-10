@@ -3,17 +3,17 @@ pub mod parse;
 
 
 pub(crate) const PATH_PARAMS_LIMIT  : usize  = 2;
-pub(crate) struct PathParams<'buf> {
-    params: [Option<&'buf str>; PATH_PARAMS_LIMIT],
+pub(crate) struct PathParams {
+    params: [Option<BufRange>; PATH_PARAMS_LIMIT],
     next:   u8,
-} impl<'buf> PathParams<'buf> {
+} impl PathParams {
     #[inline] pub(crate) fn new() -> Self {
         Self {
             params: [None, None],
             next:   0,
         }
     }
-    #[inline] pub(crate) fn push(&mut self, param: &'buf str) {
+    #[inline] pub(crate) fn push(&mut self, param: BufRange) {
         if self.next == PATH_PARAMS_LIMIT as u8 {
             tracing::error!("ohkami can't handle more than {PATH_PARAMS_LIMIT} path params")
         } else {
@@ -28,6 +28,8 @@ pub(crate) const REQUEST_BUFFER_SIZE: usize = 1024;
 pub(crate) const QUERY_PARAMS_LIMIT : usize = 4;
 pub(crate) const HEADERS_LIMIT      : usize = 32;
 
+pub(crate) type BufRange = std::ops::Range<usize>;
+
 pub struct Request {
     pub(crate) buffer: [u8; REQUEST_BUFFER_SIZE],
     pub(crate) method:  Method,
@@ -35,8 +37,14 @@ pub struct Request {
     pub(crate) queries: QueryParams,
     pub(crate) headers: Headers,
     pub(crate) body:    Option<BufRange>,
+} impl Request {
+    pub fn path(&self) -> &str {
+        unsafe{std::str::from_utf8_unchecked(
+            &self.buffer[self.path]
+        )}
+    }
 }
-pub(crate) type BufRange = std::ops::Range<usize>;
+
 
 pub enum Method {
     GET,
