@@ -1,7 +1,7 @@
 use super::{QueryParams, Headers, REQUEST_BUFFER_SIZE, Request, Method, Buffer};
 
 impl Request {
-    pub fn parse_directly(buffer: [u8; REQUEST_BUFFER_SIZE]) -> Self {
+    pub fn parse(buffer: [u8; REQUEST_BUFFER_SIZE]) -> Self {
         let mut start = 0;
 
         let method = {

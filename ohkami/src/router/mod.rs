@@ -72,26 +72,33 @@ const _: () = {
         ) {
             let mut search_root = self;
 
+            let mut section_start = 0;
+            let path_len = path.len();
+
             loop {
                 for (pattern, fang) in search_root.patterns {
                     if path.is_empty() {return c.NotFound::<(), _>("").send(&mut stream).await}
                     match pattern {
-                        Pattern::Str(s) => path = match path.strip_prefix(s) {
-                            None => return c.NotFound::<(), _>("").send(&mut stream).await,
-                            Some(rem) => {
-                                if let Some(fang) = fang {
-                                    (c, request) = fang(c, request).await;
-                                }
-                                rem
-                            },
+                        Pattern::Str(s) => {
+                            section_start += s.len() + 1/*'/'*/ + 1;
+                            path = match path.strip_prefix(s) {
+                                None => return c.NotFound::<(), _>("").send(&mut stream).await,
+                                Some(rem) => {
+                                    if let Some(fang) = fang {
+                                        (c, request) = fang(c, request).await;
+                                    }
+                                    rem
+                                },
+                            }
                         },
                         Pattern::Param => match path[1..].find('/') {
                             Some(len) => {
-                                path_params.push(&path[1..1+len]);
-                                path = &path[1+len..]
+                                path_params.push(section_start..(section_start+len));
+                                section_start += len + 1/*'/'*/;
+                                path = &path[1+len..];
                             },
                             None => {
-                                path_params.push(&path[1..]);
+                                path_params.push(section_start..path_len);
                                 path = ""
                             },
                         },

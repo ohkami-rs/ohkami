@@ -79,7 +79,7 @@ pub struct HandlerRoute(
         }
         HandlerRoute(patterns)
     }
-    fn merge(self, child: Self) -> Self {
+    fn merge(mut self, child: Self) -> Self {
         for p in child {
             self.0.push_back(p)
         }

@@ -29,12 +29,23 @@ pub(crate) struct PathParams {
             self.next += 1
         }
     }
+
+    #[inline] pub fn next<'req>(&mut self, request: &'req Request) -> Option<&'req str> {
+        let path = request.path();
+        match self.params[0].take() {
+            Some(range) => Some(&path[range]),
+            None => match self.params[1].take() {
+                Some(range) => Some(&path[range]),
+                None => None,
+            }
+        }
+    }
 }
 
 
 pub struct Request {
-    pub(crate) buffer: Buffer,
-    method:  Method,
+    buffer:  Buffer,
+    pub method:  Method,
     path:    BufRange,
     queries: QueryParams,
     headers: Headers,
@@ -90,7 +101,7 @@ pub(crate) struct Buffer(
 };
 
 
-enum Method {
+pub(crate) enum Method {
     GET, POST, PATCH, DELETE,
 } impl Method {
     #[inline] fn parse_bytes(bytes: &[u8]) -> Self {
