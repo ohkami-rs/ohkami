@@ -65,12 +65,14 @@ pub(crate) struct TrieNode {
             None
         }
 
-        fn register_fang(&mut self, route: FangsRoute, fang: Fang) {
+        fn register_fang(&mut self, mut route: FangsRoute, fang: Fang) {
             if let Some(next_pattern) = route.next() {
 
                 let pattern = match next_pattern {
                     FangRoutePattern::AnyAfter => {
-                        self.fang = combine_optional(self.fang.as_ref(), Some(&fang));
+                        let current_fang = &mut self.fang;
+                        let new_fang = combine_optional(current_fang.take(), Some(fang));
+                        *current_fang = new_fang;
                         return
                     }
                     section_or_param => section_or_param.into_trie()
@@ -112,7 +114,8 @@ pub(crate) struct TrieNode {
                 if this_pattern.is_section() && child_pattern.is_section() {
                     this_pattern.merge_sections(child_pattern);
 
-                    *this_fang = combine_optional(this_fang.as_ref(), child_fang.as_ref());
+                    let new_fang = combine_optional(this_fang.take(), child_fang);
+                    *this_fang = new_fang
                 } else if this_pattern.is_nil() {
                     *this_pattern = child_pattern
                 } else {

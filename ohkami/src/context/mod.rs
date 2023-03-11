@@ -1,6 +1,6 @@
 pub(crate) mod store;
 
-use async_std::{sync::{Arc, Mutex}, net::TcpStream};
+use async_std::{sync::{Arc, Mutex, MutexGuard}};
 use serde::Serialize;
 use self::store::Store;
 use crate::{
@@ -28,11 +28,8 @@ impl Context {
         }
     }
 
-    #[inline] pub fn get_cache(&self, key: &'static str) -> Option<&str> {
-        (&(self.cache.try_lock()?)
-            .get(key))
-            .as_ref()
-            .map(|ref_ref_s| *ref_ref_s)
+    #[inline] pub async fn cache(&self) -> MutexGuard<Store> {
+        self.cache.lock().await
     }
     #[inline] pub fn set_header(&mut self, key: &'static str, value: &'static str) {
         self.additional_headers.set(key, value)

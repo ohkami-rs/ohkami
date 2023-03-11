@@ -7,15 +7,11 @@ pub struct Store(
     pub(crate) fn new() -> Self {
         Self(HashMap::default())
     }
-
     pub fn get(&self, key: &str) -> Option<&str> {
         self.0.get(key).map(|s| s.as_str())
     }
-    pub fn insert(&mut self, key: String, value: String) -> Option<String> {
-        self.0.insert(key, value)
-    }
-    pub fn clear(&mut self) {
-        self.0.clear()
+    pub fn set<S: ToString>(&mut self, key: S, value: S) -> Option<String> {
+        self.0.insert(key.to_string(), value.to_string())
     }
     pub fn entry(&mut self, key: String) -> Entry<String, String> {
         self.0.entry(key)
@@ -32,9 +28,8 @@ mod test {
     fn use_store() {
         let store = Arc::new(Mutex::new(Store::new()));
         async_std::task::block_on(async {
-
             store.lock().await
-                .insert(format!("k1"), format!("v1"));
+                .set("k1", "v1");
             assert_eq!(
                 store.lock().await.get("k1"),
                 Some("v1")

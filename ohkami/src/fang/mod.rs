@@ -28,21 +28,28 @@ impl Fangs {
     pub fn new() -> Self {
         Fangs(HashMap::new())
     }
-    pub fn before<F: IntoFang>(mut self, route: &'static str, fang: F) -> Self {
-        self.0.entry(FangsRoute::parse(route))
-            .and_modify(|f| *f = combine(f, &fang.into_fang()))
-            .or_insert(fang.into_fang());
+    pub fn before<F: IntoFang + Clone + Sync + Send>(mut self, route: &'static str, fang: F) -> Self {
+        let route = FangsRoute::parse(route);
+        match self.0.remove(&route) {
+            None => {self.0.insert(route, fang.clone().into_fang());},
+            Some(f) => {
+                self.0.insert(route, Box::new(|mut c, mut request| Box::pin(async {
+                    (c, request) = f(c, request).await;
+                    fang.into_fang()(c, request).await
+                })));
+            },
+        }
         self
     }
 }
-pub(crate) fn combine(this: &Fang, child: &Fang) -> Fang {
-    Box::new(|mut c, mut request| Box::pin(async {
+pub(crate) fn combine(this: Fang, child: Fang) -> Fang {
+    Box::new(move |mut c, mut request| Box::pin(async {
         (c, request) = this(c, request).await;
         (c, request) = child(c, request).await;
         (c, request)
     }))
 }
-pub(crate) fn combine_optional(this: Option<&Fang>, child: Option<&Fang>) -> Option<Fang> {
+pub(crate) fn combine_optional(this: Option<Fang>, child: Option<Fang>) -> Option<Fang> {
     match (this, child) {
         (Some(this_fang), Some(child_fang)) => Some(
             Box::new(|mut c, mut request| Box::pin(async {
