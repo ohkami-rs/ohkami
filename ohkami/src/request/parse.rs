@@ -1,121 +1,111 @@
-use super::{QueryParams, Headers, REQUEST_BUFFER_SIZE, Request, Method, BufRange};
+use super::{QueryParams, Headers, REQUEST_BUFFER_SIZE, Request, Method, Buffer};
 
 impl Request {
-    #[inline] pub(crate) fn parse(buffer: [u8; REQUEST_BUFFER_SIZE]) -> Request {
+    pub fn parse_directly(buffer: [u8; REQUEST_BUFFER_SIZE]) -> Self {
         let mut start = 0;
 
         let method = {
             let mut end = start;
             for b in &buffer[start..] {
                 if *b == b' ' {break}
-                end += 1;
+                end += 1
             }
-            let method = Method::parse(&buffer[start..end]);
+            let method = Method::parse_bytes(&buffer[start..end]);
             start = end + 1;
             method
         };
 
-        let mut queries = QueryParams::new();
+        let mut have_queries = false;
         let path = {
-            let mut queries_start = start;
             let mut end = start;
             for b in &buffer[start..] {
-                end += 1;
                 match b {
-                    b'?' => {queries_start = end + 1; break},
+                    b'?' => {have_queries = true; break},
                     b' ' => break,
-                    _ => (),
+                    _ => end += 1
                 }
             }
-            let path = BufRange {start, end};
-
-            if queries_start > start {
-                start = queries_start;
-
-                loop {
-                    let mut is_final = false;
-
-                    let key = {
-                        let mut end = start;
-                        for b in &buffer[start..] {
-                            end += 1;
-                            if *b == b'=' {break}
-                        }
-                        BufRange {start, end}
-                    };
-                    let value = {
-                        let mut end = start;
-                        for b in &buffer[start..] {
-                            end += 1;
-                            match b {
-                                b' ' => {is_final = true; break},
-                                b'&' => {break},
-                                _ => (),
-                            }
-                        }
-                        BufRange {start, end}
-                    };
-
-                    queries.push(key, value);
-                    if is_final {break}
-                }
-            }
-            
-            start = end + 1/* ' ' */;
+            let path = start..end;
+            start = end + 1;
             path
         };
 
-        let _/* HTTP version */ = {
-            let mut end = start;
-            for b in &buffer[start..] {
-                if *b == b'\r' {break}
-                end += 1 ;
+        let mut queries = QueryParams::new(); if have_queries {
+            let mut query_start = start;
+            loop {
+                let mut is_final = false;
+
+                let mut eq = query_start;
+                for b in &buffer[query_start..] {
+                    if *b == b'=' {
+                        break
+                    } else {eq += 1}
+                }
+
+                let mut end = eq + 1;
+                for b in &buffer[end..] {
+                    match b {
+                        b' ' => {is_final = true; break},
+                        b'&' => break,
+                        _ => end += 1
+                    }
+                }
+
+                queries.push(
+                    query_start..eq,
+                    (eq+1)..end
+                );
+                query_start = end + 1/*' ' or '&'*/;
+                if is_final {break}
             }
-            start = end + 1 + 1/* '\n' */;
-        };
-
-        let mut headers = Headers::new();
-        let mut body = None;
-        loop {
-            if start >= REQUEST_BUFFER_SIZE
-            || buffer[start] == b' ' {
-                break
-            } else if buffer[start] == b'\r' {
-                start += 1/* '\n' */ + 1;
-
-                let mut end = start;
-                for b in &buffer[start..] {
-                    if *b == b'\r' {break}
-                    end += 1
-                }
-                body.replace(BufRange {start, end});
-            }
-
-            let key = {
-                let mut end = start;
-                for b in &buffer[start..] {
-                    if *b == b':' {break}
-                    end += 1
-                }
-                let key = BufRange {start, end};
-                start = end + 1 + 1/* ' ' */;
-                key
-            };
-
-            let value = {
-                let mut end = start;
-                for b in &buffer[start..] {
-                    if *b == b'\r' {break}
-                    end += 1
-                }
-                let value = BufRange {start, end};
-                start = end + 1 + 1/* '\n' */;
-                value
-            };
-
-            headers.append(key, value)
+            start = query_start
         }
 
-        Self { buffer, method, path, queries, headers, body }
+        let _/*HTTP version*/ = {
+            for b in &buffer[start..] {
+                start += 1;
+                if *b == b'\n' {break}
+            }
+        };
+
+        let mut headers = Headers::new(); {
+            let mut header_start = start;
+            loop {
+                if buffer[header_start] == b'\r' {break}
+
+                let mut colon = header_start;
+                for b in &buffer[header_start..] {
+                    if *b == b':' {
+                        break
+                    } else {colon += 1}
+                }
+
+                let mut end = colon + 1/*' '*/ + 1;
+                for b in &buffer[end..] {
+                    if *b == b'\r' {
+                        break
+                    } else {end += 1}
+                }
+
+                headers.append(
+                    header_start..colon,
+                    (colon+1/*' '*/+1)..end
+                );
+                header_start = end + 1/*'\n'*/ + 1
+            }
+            start = header_start + 1/*'\n'*/ + 1
+        };
+
+        let body = (buffer[start] != 0).then_some({
+            let mut end = start;
+            for b in &buffer[start..] {
+                if *b == 0 {
+                    break
+                } else {end += 1}
+            }
+            start..end
+        });
+
+        Self { buffer:Buffer(buffer), method, path, queries, headers, body }
     }
 }

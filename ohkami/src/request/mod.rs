@@ -1,8 +1,16 @@
 pub mod from_request;
 pub mod parse;
 
+use std::ops::Index;
+type BufRange = std::ops::Range<usize>;
 
-pub(crate) const PATH_PARAMS_LIMIT  : usize  = 2;
+
+pub(crate) const REQUEST_BUFFER_SIZE: usize = 1024;
+pub(crate) const QUERY_PARAMS_LIMIT : usize = 4;
+pub(crate) const PATH_PARAMS_LIMIT  : usize = 2;
+pub(crate) const HEADERS_LIMIT      : usize = 32;
+
+
 pub(crate) struct PathParams {
     params: [Option<BufRange>; PATH_PARAMS_LIMIT],
     next:   u8,
@@ -24,58 +32,91 @@ pub(crate) struct PathParams {
 }
 
 
-pub(crate) const REQUEST_BUFFER_SIZE: usize = 1024;
-pub(crate) const QUERY_PARAMS_LIMIT : usize = 4;
-pub(crate) const HEADERS_LIMIT      : usize = 32;
-
-pub(crate) type BufRange = std::ops::Range<usize>;
-
 pub struct Request {
-    pub(crate) buffer: [u8; REQUEST_BUFFER_SIZE],
-    pub(crate) method:  Method,
-    pub(crate) path:    BufRange,
-    pub(crate) queries: QueryParams,
-    pub(crate) headers: Headers,
-    pub(crate) body:    Option<BufRange>,
+    pub(crate) buffer: Buffer,
+    method:  Method,
+    path:    BufRange,
+    queries: QueryParams,
+    headers: Headers,
+    body:    Option<BufRange>,
 } impl Request {
-    pub fn path(&self) -> &str {
-        unsafe{std::str::from_utf8_unchecked(
-            &self.buffer[self.path]
-        )}
+    #[inline] pub fn path(&self) -> &str {
+        &self.buffer[&self.path]
+    }
+    #[inline] pub fn query(&self, key: &str) -> Option<&str> {
+        let QueryParams { params, next } = &self.queries;
+        for k_v in &params[..*next as usize] {
+            let (k, v) = k_v.as_ref().unwrap();
+            if &self.buffer[k] == key {
+                return Some(&self.buffer[v])
+            }
+        }
+        None
+    }
+    #[inline] pub fn header(&self, key: &str) -> Option<&str> {
+        let Headers { headers, next } = &self.headers;
+        for k_v in &headers[..*next as usize] {
+            let (k, v) = k_v.as_ref().unwrap();
+            if &self.buffer[k] == key {
+                return Some(&self.buffer[v])
+            }
+        }
+        None
+    }
+    #[inline] pub fn body(&self) -> Option<&str> {
+        Some(&self.buffer[(&self.body).as_ref()?])
     }
 }
 
+pub(crate) struct Buffer(
+    [u8; REQUEST_BUFFER_SIZE]
+); const _: () = {
+    impl Index<BufRange> for Buffer {
+        type Output = str;
+        fn index(&self, range: BufRange) -> &Self::Output {
+            unsafe {std::str::from_utf8_unchecked(
+                &self.0[range]
+            )}
+        }
+    }
+    impl<'r> Index<&'r BufRange> for Buffer {
+        type Output = str;
+        fn index(&self, range: &'r BufRange) -> &Self::Output {
+            unsafe {std::str::from_utf8_unchecked(
+                &self.0[range.start..range.end]
+            )}
+        }
+    }
+};
 
-pub enum Method {
-    GET,
-    POST,
-    PATCH,
-    DELETE,
+
+enum Method {
+    GET, POST, PATCH, DELETE,
 } impl Method {
-    pub(crate) fn parse(bytes: &[u8]) -> Self {
+    #[inline] fn parse_bytes(bytes: &[u8]) -> Self {
         match bytes {
             b"GET" => Self::GET,
             b"POST" => Self::POST,
             b"PATCH" => Self::PATCH,
             b"DELETE" => Self::DELETE,
-            _ => panic!("unknown method: {}", unsafe{ std::str::from_utf8_unchecked(bytes) })
+            _ => panic!("unknown method: `{}`", unsafe {std::str::from_utf8_unchecked(bytes)})
         }
     }
 }
 
-pub(crate) struct QueryParams {
+struct QueryParams {
     params: [Option<(BufRange, BufRange)>; QUERY_PARAMS_LIMIT],
     next:   u8,
 } impl QueryParams {
-    #[inline] pub(crate) fn new() -> Self {
+    #[inline] fn new() -> Self {
         Self {
             params: [None, None, None, None],
             next:   0,
         }
     }
-    #[inline] pub(crate) fn push(&mut self, key: BufRange, value: BufRange) {
+    #[inline] fn push(&mut self, key: BufRange, value: BufRange) {
         if self.next == QUERY_PARAMS_LIMIT as u8 {
-            tracing::error!("ohkami can't handle more than {QUERY_PARAMS_LIMIT} query parameters")
+            panic!("ohkami can't handle more than {QUERY_PARAMS_LIMIT} query parameters")
         } else {
             self.params[self.next as usize].replace((key, value));
             self.next += 1
@@ -83,11 +124,11 @@ pub(crate) struct QueryParams {
     }
 }
 
-pub(crate) struct Headers {
+struct Headers {
     headers: [Option<(BufRange, BufRange)>; HEADERS_LIMIT],
     next:    u8,
 } impl Headers {
-    #[inline] pub(crate) fn new() -> Self {
+    #[inline] fn new() -> Self {
         Self {
             next:    0,
             headers: [
@@ -98,9 +139,9 @@ pub(crate) struct Headers {
             ],
         }
     }
-    #[inline] pub(crate) fn append(&mut self, key: BufRange, value: BufRange) {
+    #[inline] fn append(&mut self, key: BufRange, value: BufRange) {
         if self.next == HEADERS_LIMIT as u8 {
-            tracing::error!("ohkami can't handle more than {HEADERS_LIMIT} request headers")
+            panic!("ohkami can't handle more than {HEADERS_LIMIT} request headers")
         } else {
             self.headers[self.next as usize].replace((key, value));
             self.next += 1
