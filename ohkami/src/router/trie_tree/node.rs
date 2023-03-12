@@ -1,14 +1,14 @@
 use super::pattern::TriePattern::{self, *};
 use crate::{
     router::Node,
-    fang::{Fang, Fangs, combine_optional, route::{FangsRoute, FangRoutePattern}},
+    fang::{Fang, Fangs, route::{FangsRoute, FangRoutePattern}},
     handler::{Handler, route::HandlerRoute},
 };
 
 
 pub(crate) struct TrieNode {
     pattern:     TriePattern,
-    fang:        Option<Fang>,
+    fang:        Vec<Fang>,
     handler:     Option<Handler>,
     children:    Vec<TrieNode>,
 } impl TrieNode {

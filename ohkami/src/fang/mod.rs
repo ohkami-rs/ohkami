@@ -9,7 +9,7 @@ use self::{route::FangsRoute, into_fang::IntoFang};
 pub struct Fangs(
     HashMap<
         FangsRoute,
-        Fang,
+        Vec<Fang>,
     >
 );
 pub type Fang =
@@ -28,62 +28,30 @@ impl Fangs {
     pub fn new() -> Self {
         Fangs(HashMap::new())
     }
-    pub fn before<F: IntoFang + Clone + Sync + Send>(mut self, route: &'static str, fang: F) -> Self {
-        let route = FangsRoute::parse(route);
-        match self.0.remove(&route) {
-            None => {self.0.insert(route, fang.clone().into_fang());},
-            Some(f) => {
-                self.0.insert(route, Box::new(|mut c, mut request| Box::pin(async {
-                    (c, request) = f(c, request).await;
-                    fang.into_fang()(c, request).await
-                })));
-            },
-        }
+    pub fn before<A, F: IntoFang<A> + Clone + Sync + Send + 'static>(mut self, route: &'static str, fang: F) -> Self {
+        self.0.entry(FangsRoute::parse(route))
+            .and_modify(|f| f.push(fang.into_fang()))
+            .or_insert(vec![fang.into_fang()]);
         self
     }
-}
-pub(crate) fn combine(this: Fang, child: Fang) -> Fang {
-    Box::new(move |mut c, mut request| Box::pin(async {
-        (c, request) = this(c, request).await;
-        (c, request) = child(c, request).await;
-        (c, request)
-    }))
-}
-pub(crate) fn combine_optional(this: Option<Fang>, child: Option<Fang>) -> Option<Fang> {
-    match (this, child) {
-        (Some(this_fang), Some(child_fang)) => Some(
-            Box::new(|mut c, mut request| Box::pin(async {
-                (c, request) = this_fang(c, request).await;
-                (c, request) = child_fang(c, request).await;
-                (c, request)
-            }))
-        ),
-        (Some(this_fang), None) => Some(
-            Box::new(|c, request| Box::pin(
-                this_fang(c, request)
-            ))
-        ),
-        (None, Some(child_fang)) => Some(
-            Box::new(|c, request| Box::pin(
-                child_fang(c, request)
-            ))
-        ),
-        (None, None) => None,
-    }
-    
 }
 
 
 const _: (/* Fangs impls */) = {
     impl Clone for Fangs {
         fn clone(&self) -> Self {
-            let mut fangs = HashMap::<FangsRoute, Fang>::new();
-            for (route, fang) in self.0.iter() {
+            let mut fangs = HashMap::<FangsRoute, Vec<Fang>>::new();
+            for (route, vec_fang) in self.0.iter() {
+                let mut new_vec = Vec::with_capacity(vec_fang.len());
+                for fang in vec_fang {
+                    let new_fang: Fang = Box::new(|c, request| Box::pin(
+                        fang(c, request)
+                    ));
+                    new_vec.push(new_fang)
+                }
                 fangs.insert(
                     route.clone(),
-                    Box::new(|c, request| Box::pin(async {
-                        fang(c, request).await
-                    }))
+                    new_vec
                 );
             }
             Self(fangs)
@@ -94,14 +62,14 @@ const _: (/* Fangs impls */) = {
         type IntoIter = <
             HashMap<
                 FangsRoute,
-                Fang
+                Vec<Fang>
             > as IntoIterator>
         ::IntoIter;
 
         type Item = <
             HashMap<
                 FangsRoute,
-                Fang
+                Vec<Fang>
             > as IntoIterator
         >::Item;
 
