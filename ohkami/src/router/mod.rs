@@ -19,7 +19,7 @@ pub(crate) struct Router {
     #[inline] pub(crate) async fn handle(
         &self,
         c: Context,
-        mut stream: TcpStream,
+        stream:  TcpStream,
         request: Request,
     ) {
         let path_params = PathParams::new();
@@ -33,13 +33,13 @@ pub(crate) struct Router {
     }
 }
 struct Node {
-    patterns: &'static [(Pattern, Option</* combibed */Fang>)],
+    sections: &'static [Section],
     handler:  Option</* AfterFangs-combined */Handler>,
     children: &'static [Node],
 } impl Node {
     #[inline] fn matchable_child(&self, current_path: &str) -> Option<&Self> {
         for child in self.children {
-            match child.patterns.first()?.0 {
+            match child.sections.first()?.pattern {
                 Pattern::Nil    => unreachable!(),
                 Pattern::Param  => return Some(child),
                 Pattern::Str(s) => if current_path.starts_with(s) {return Some(child)}
@@ -48,7 +48,10 @@ struct Node {
         None
     }
 }
-enum Pattern {
+struct Section {
+    pattern: Pattern,
+    fangs:   &'static [Fang],
+} enum Pattern {
     Str(&'static str),
     Param,
     Nil,
@@ -72,19 +75,25 @@ const _: () = {
         ) {
             let mut search_root = self;
 
-            let mut section_start = 0;
+            let mut section_start = 1/*skip initial '/'*/;
             let path_len = path.len();
 
             loop {
-                for (pattern, fang) in search_root.patterns {
+                for Section{pattern, fangs} in search_root.sections {
                     if path.is_empty() {return c.NotFound::<(), _>("").send(&mut stream).await}
                     match pattern {
+                        Pattern::Nil => {
+                            for fang in *fangs {
+                                (c, request) = fang(c, request).await
+                            }
+                            break
+                        },
                         Pattern::Str(s) => {
                             section_start += s.len() + 1/*'/'*/ + 1;
                             path = match path.strip_prefix(s) {
                                 None => return c.NotFound::<(), _>("").send(&mut stream).await,
                                 Some(rem) => {
-                                    if let Some(fang) = fang {
+                                    for fang in *fangs {
                                         (c, request) = fang(c, request).await;
                                     }
                                     rem

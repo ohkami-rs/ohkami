@@ -8,7 +8,7 @@ use crate::{
 
 pub(crate) struct TrieNode {
     pattern:     TriePattern,
-    fang:        Vec<Fang>,
+    fangs:       Vec<Fang>,
     handler:     Option<Handler>,
     children:    Vec<TrieNode>,
 } impl TrieNode {
@@ -31,18 +31,37 @@ pub(crate) struct TrieNode {
         }
     }
     pub(super) fn apply(&mut self, fangs: Fangs) {
-        for (route, fang) in fangs {
-            self.register_fang(route, fang)
+        for (route, vec_fang) in fangs {
+            self.register_fangs(route, vec_fang)
         }
     }
     pub(super) fn into_radix(mut self) -> Node {
-        let mut patterns = vec![(self.pattern.clone(), self.fang)];
-        (self, patterns) = Self::merge_single_child(self, patterns);
+        let self_fangs: Vec<Fang> = {
+            let mut v = Vec::with_capacity(self.fangs.len());
+            for fang in &self.fangs {
+                let fang: Fang = Box::new(move |c, request| Box::pin(
+                    fang(c, request)
+                ));
+                v.push(fang)
+            }
+            v
+        };
+
+        let mut sections = vec![(self.pattern.clone(), self_fangs)];
+        (self, sections) = Self::merge_single_child(self, sections);
 
         Node {
-            patterns: Box::leak(patterns.into_iter().map(|(pat, fang)| (pat.into_radix(), fang)).collect()),
             handler:  self.handler,
             children: Box::leak(self.children.into_iter().map(|c| c.into_radix()).collect()),
+            sections:
+                Box::leak(sections
+                    .into_iter()
+                    .map(|(pat, fangs)| super::super::Section {
+                        pattern: pat.into_radix(),
+                        fangs:   fangs.leak(),
+                    })
+                    .collect()
+                ),
         }
     }
 } const _: () = {
@@ -50,7 +69,7 @@ pub(crate) struct TrieNode {
         fn new(pattern: TriePattern) -> Self {
             Self {
                 pattern,
-                fang :    None,
+                fangs :   vec![],
                 handler:  None,
                 children: vec![],
             }
@@ -65,24 +84,22 @@ pub(crate) struct TrieNode {
             None
         }
 
-        fn register_fang(&mut self, mut route: FangsRoute, fang: Fang) {
+        fn register_fangs(&mut self, mut route: FangsRoute, fangs: Vec<Fang>) {
             if let Some(next_pattern) = route.next() {
 
                 let pattern = match next_pattern {
                     FangRoutePattern::AnyAfter => {
-                        let current_fang = &mut self.fang;
-                        let new_fang = combine_optional(current_fang.take(), Some(fang));
-                        *current_fang = new_fang;
+                        self.fangs = fangs;
                         return
                     }
                     section_or_param => section_or_param.into_trie()
                 };
 
                 if let Some(child) = self.matchablle_child_mut(&pattern) {
-                    child.register_fang(route, fang)
+                    child.register_fangs(route, fangs)
                 } else {
                     let mut child = TrieNode::new(pattern);
-                    child.register_fang(route, fang);
+                    child.register_fangs(route, fangs);
                     self.children.push(child)
                 }
 
@@ -98,38 +115,34 @@ pub(crate) struct TrieNode {
 
         fn merge_single_child(
             mut self,
-            mut patterns: Vec<(TriePattern, Option<Fang>)>,
+            mut sections: Vec<(TriePattern, Vec<Fang>)>,
         ) -> (
             Self,
-            Vec<(TriePattern, Option<Fang>)>,
+            Vec<(TriePattern, Vec<Fang>)>,
         ) {
-            let (this_pattern, this_fang) = &mut patterns.last_mut().unwrap();
+            let (this_pattern, this_fangs) = &mut sections.last_mut().unwrap();
 
             if self.children.len() == 1
             && self.handler.is_none() {
 
                 let child = self.children.pop().unwrap();
-                let (child_pattern, child_fang) = (child.pattern.clone(), child.fang);
+                let (child_pattern, child_fangs) = (child.pattern.clone(), child.fangs);
 
                 if this_pattern.is_section() && child_pattern.is_section() {
                     this_pattern.merge_sections(child_pattern);
-
-                    let new_fang = combine_optional(this_fang.take(), child_fang);
-                    *this_fang = new_fang
+                    this_fangs.extend(child_fangs);
                 } else if this_pattern.is_nil() {
                     *this_pattern = child_pattern
                 } else {
-                    patterns.push((child_pattern, child_fang))
+                    sections.push((child_pattern, child_fangs))
                 }
 
                 self.children = child.children;
                 self.handler = child.handler;
-                Self::merge_single_child(self, patterns)
+                Self::merge_single_child(self, sections)
 
             } else {
-
-                (self, patterns)
-
+                (self, sections)
             }
         }
     }

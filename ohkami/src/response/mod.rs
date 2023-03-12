@@ -15,7 +15,7 @@ pub enum Response<T: Serialize> {
     Ok(OkResponse<T>),
     Err(ErrResponse),
 }
-struct OkResponse<T: Serialize>(
+pub struct OkResponse<T: Serialize>(
     String,
     PhantomData<fn() -> T>
 );

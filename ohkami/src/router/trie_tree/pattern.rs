@@ -7,8 +7,8 @@ pub(crate) enum TriePattern {
     Param,
     Nil,
 } impl TriePattern {
-    pub(crate) fn parse(range: Range<usize>, route_str: &str) -> Self {
-        let section = &route_str[range];
+    pub(crate) fn parse(range: Range<usize>, route_str: &'static str) -> Self {
+        let section = &route_str[range.clone()];
         if section.starts_with(':') {
             let param_name = &section[1..];
             if let Err(msg) = validate_section(param_name) {
@@ -92,7 +92,7 @@ pub(crate) fn validate_section(section: &str) -> Result<(), &'static str> {
             _ => Err("route section or path param's name must starts with 'a'..='z' | 'A'..='Z'"),
         },
         _ => {
-            let chars = section.chars();
+            let mut chars = section.chars();
             match chars.next().unwrap() {
                 'a'..='z' | 'A'..='Z' => (),
                 _ => return Err("route section or path param's name must start with 'a'..='z' | 'A'..='Z'"),
