@@ -41,7 +41,7 @@ async fn health_check(c: Context) -> Response<()> {
 
 #[main]
 async fn main() -> Result<(), Error> {
-    Ohkami::default([
+    Ohkami::new([
         "/"      .GET(hello),
         "/api/hc".GET(health_check),
     ]).howl(":3000").await
@@ -53,34 +53,63 @@ async fn main() -> Result<(), Error> {
 ## Snippets
 ### handle path/query params
 ```rust
+use ohkami::prelude::*;
+use ohkami::request::QueryParams;
+
 #[main]
 async fn main() -> Result<()> {
-    Ohkami::default([
-        "/api/users/:id".GET(handler)
+    Ohkami::new([
+        "/api/users/:id"
+            .GET(get_user)
+            .POST(create_user)
     ]).howl("localhost:5000").await
 }
 
-async fn handler(c: Context,
-    Path((p1, p2)):  Path<(usize, String)>,
-    Query([q1, q1]): Query<["q1", "q2"]>,
-) -> Response</* ... */> {
+#[QueryParams]
+struct GetUserQuery {
+    q: u64,
+}
+
+async fn get_user(c: Context, id: usize,
+    query: GetUserQuery
+) -> Response<User> {
+
     // ...
 }
 ```
 ### handle request body
 ```rust
-use serde::Deserialize;
+use ohkami::prelude::*;
+use ohkami::RequestBody;
 
-#[derive(Deserialize)]
-struct User {
-    id:   i64,
-    name: String,
+#[RequestBody(JSON)]
+struct CreateUserRequest {
+    name:     String,
+    password: String,
 }
 
-async fn reflect_user_name(c: Context,
-    Body(user): Body<User>
-) -> Response<String> {
-    c.OK(user.name)
+async fn create_user(c: Context,
+    req: CreateUserRequest
+) -> Response<()> {
+
+    // ...
+
+    c.OK(())
+}
+
+#[RequestBody(Form)]
+struct LoginInput {
+    name:     String,
+    password: String,
+}
+
+async fn post_login(c: Context,
+    input: LoginInput
+) -> Response<JWT> {
+
+    // ...
+
+    c.OK(token)
 }
 ```
 ### use middlewares
@@ -91,18 +120,20 @@ async fn main() -> Result<()> {
     let fangs = Fangs::new()
         .before("/api/*", my_fang);
 
-    Ohkami::with(fangs,
-        [
-            "/"         .GET(route),
-            "/hc"       .GET(health_check),
-            "/api/users".GET(get_users).POST(create_user),
-        ]
-    ).howl(":8080").await
+    Ohkami::with(fangs, [
+        "/"
+            .GET(route),
+        "/hc"
+            .GET(health_check),
+        "/api/users"
+            .GET(get_users)
+            .POST(create_user),
+    ]).howl(":8080").await
 }
 
-async fn my_fang(c: &mut Context,
-    Header([content_type]): Header<["Content-Type"]>
-) -> Response</* ... */> {
+async fn my_fang(
+    c: mut Context
+) -> Result<Context, Response> {
     // ...
 }
 ```
@@ -113,31 +144,30 @@ async fn my_fang(c: &mut Context,
 async fn main() -> Result<()> {
     // ...
 
-    let users = Ohkami::with(users_fangs, [
-        "/".POST(create_user),
+    let users_ohkami = Ohkami::with(users_fangs, [
+        "/"
+            .POST(create_user),
         "/:id"
             .GET(get_user)
             .PATCH(update_user)
             .DELETE(delete_user),
     ]);
 
-    let tasks = Ohkami::with(tasks_fangs, [
+    let tasks_ohkami = Ohkami::with(tasks_fangs, [
         // ...
 
-    Ohkami::default([
+    Ohkami::new([
         "/hc"       .GET(health_check),
-        "/api/users".by(users),
-        "/api/tasks".by(tasks),
+        "/api/users".by(users_ohkami),
+        "/api/tasks".by(tasks_ohkami),
     ]).howl(":5000").await
 }
 ```
 
-### error response
+### error handling
 bool / Option
 ```rust
-async fn handler(c: Context,
-    Path(id): Path<usize>
-) -> Response</* ... */> {
+async fn handler(c: Context, id: usize) -> Response</* ... */> {
     (id < 1000)
         ._else(|| c.BadRequest("`id` must be less than 1000."))?;
 
@@ -147,57 +177,43 @@ async fn handler(c: Context,
 
 Result
 ```rust
-async fn handler(c: Context,
-    Query([q]): Query<["q"]>
-) -> Response</* ... */> {
-    let q: u8 = q.parse()
-        ._else(|err| c.BadRequest(format!(
-            "can't parse `q`: {}",
+async fn handler(c: Context) -> Response</* ... */> {
+    make_result()
+        ._else(|err| c.InternalServerError(
             err.to_string()
-        )))?;
-
-    // or
-
-    let q: u8 = q.should_parse(c)?;
+        ))?;
 }
 ```
 ### global configuration
 ```rust
 #[main]
 async fn main() -> Result<()> {
-    CONFIG
+    ohkami::setup(|conf| conf
         .log_subscribe(
             tracing_subscriber::fmt()
                 .with_max_level(tracing::Level::TRACE)
-        );
+        )
+    );
 
     // ...
 }
 ```
 ### use DB
-ohkami supports using `sqlx` and `deadpool` to handle connection pool.
-- sqlx：
-1. Add sqlx to your `dependencies`.
-2. Eneble one of `sqlx-postgres`, `sqlx-mysql` feature.
-
-- deadpool：
-1. Add deadpool to your `dependencies`.
-2. Enable `deadpool-postgres` feature.
 ```rust
-// this sample uses `sqlx-postgres`
-
 #[main]
 async fn main() -> Result<()> {
     let pool = PoolOptions::new()
-        .max_connection(20)
+        .max_connections(20)
         .connect("db_url")
         .await?;
 
-    CONFIG
-        .connection_pool(pool);
+    ohkami::setup(|config| config
+        .connection_pool(pool)
+    );
 
-    Ohkami::default([
-        "sample".GET(sample_handler)
+    Ohkami::new([
+        "/sample"
+            .GET(sample_handler)
     ]).howl(":3000").await
 }
 
@@ -211,11 +227,39 @@ async fn sample_handler(c: Context) -> Response</* ... */> {
     // ...
 }
 ```
+<br/>
+
+```rust
+#[main]
+async fn main() -> Result<()> {
+    let q = Qujila("db_url")
+        .max_connections(20)
+        .await?;
+
+    ohkami::setup(|config| config
+        .connection_pool(q)
+    );
+
+    Ohkami::new([
+        "/sample"
+            .GET(sample_handler)
+    ]).howl(":3000").await
+}
+
+async fn sample_handler(c: Context) -> Response</* ... */> {
+    let user = c.qujila().First::<User>()
+        .WHERE(|u| u.id.eq(1))
+        .await?;
+
+    // ...
+}
+```
+
 ### test
 1. Split setup process from `main` function:
 ```rust
 fn setup() -> Ohkami {
-    Ohkami::default().handle([
+    Ohkami::new([
         "/".GET(move |c: Context| async {
             c.OK("Hello!")
         })
