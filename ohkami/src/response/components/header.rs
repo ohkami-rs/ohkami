@@ -4,7 +4,7 @@ pub(crate) struct ResponseHeaders(
     #[inline] pub(crate) fn new() -> Self {
         Self(String::new())
     }
-    #[inline] pub(crate) fn set(&mut self, key: &'static str, value: &'static str) {
+    #[inline] pub(crate) fn append(&mut self, key: &'static str, value: &'static str) {
         self.0 += key;
         self.0 += ": ";
         self.0 += value;

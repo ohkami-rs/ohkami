@@ -31,8 +31,14 @@ impl Context {
     #[inline] pub async fn cache(&self) -> MutexGuard<Store> {
         self.cache.lock().await
     }
-    #[inline] pub fn set_header(&mut self, key: &'static str, value: &'static str) {
-        self.additional_headers.set(key, value)
+    #[inline(always)] pub fn append_header(&mut self, key: &'static str, value: &'static str) {
+        self.additional_headers.append(key, value)
+    }
+    /// Read request header of the key if exists
+    pub fn read_header(&self, key: &'static str) -> Option<&str> {
+
+        todo!()
+
     }
 }
 

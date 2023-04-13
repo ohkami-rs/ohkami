@@ -58,7 +58,6 @@ async fn handler(c: Context,
     ( path_param_1: $PathType1,   )?
     ( path_param_2: $PathType2,   )?
     ( query_params: $QueryType,   )?
-    ( some_headers: $HeadersType, )?
     ( request_body: $BodyType,    )?
 ) -> Response<$OkResponseType> {
     // ...
@@ -67,13 +66,6 @@ async fn handler(c: Context,
 (
     #[QueryParams]
     struct $QueryType {
-        // ...
-    }
-)?
-
-(
-    #[RequestHeaders]
-    struct $HeadersType {
         // ...
     }
 )?
@@ -159,7 +151,7 @@ async fn main() -> Result<()> {
 
     Ohkami::with(fangs, [
         "/"
-            .GET(route),
+            .GET(root),
         "/hc"
             .GET(health_check),
         "/api/users"
@@ -246,7 +238,7 @@ async fn main() -> Result<()> {
         .connect("db_url")
         .await?;
 
-    ohkami::setup(|conf| conf
+    ohkami::config(|conf| conf
         .connection_pool(pool)
     );
 
