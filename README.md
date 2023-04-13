@@ -188,7 +188,7 @@ async fn handler(c: Context) -> Response</* ... */> {
 ```rust
 #[main]
 async fn main() -> Result<()> {
-    ohkami::setup(|conf| conf
+    ohkami::config(|conf| conf
         .log_subscribe(
             tracing_subscriber::fmt()
                 .with_max_level(tracing::Level::TRACE)
@@ -207,7 +207,7 @@ async fn main() -> Result<()> {
         .connect("db_url")
         .await?;
 
-    ohkami::setup(|config| config
+    ohkami::setup(|conf| conf
         .connection_pool(pool)
     );
 
@@ -236,7 +236,7 @@ async fn main() -> Result<()> {
         .max_connections(20)
         .await?;
 
-    ohkami::setup(|config| config
+    ohkami::config(|conf| conf
         .connection_pool(q)
     );
 
