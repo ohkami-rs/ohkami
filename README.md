@@ -51,6 +51,41 @@ async fn main() -> Result<(), Error> {
 <br/>
 
 ## Snippets
+
+### handler format
+```rust
+async fn handler(c: Context,
+    ( path_param_1: $PathType1,   )?
+    ( path_param_2: $PathType2,   )?
+    ( query_params: $QueryType,   )?
+    ( some_headers: $HeadersType, )?
+    ( request_body: $BodyType,    )?
+) -> Response<$OkResponseType> {
+    // ...
+}
+
+(
+    #[QueryParams]
+    struct $QueryType {
+        // ...
+    }
+)?
+
+(
+    #[RequestHeaders]
+    struct $HeadersType {
+        // ...
+    }
+)?
+
+(
+    #[RequestBody( JSON | Form )]
+    struct $BodyType {
+        // ...
+    }
+)?
+```
+
 ### handle path/query params
 ```rust
 use ohkami::prelude::*;
@@ -77,6 +112,7 @@ async fn get_user(c: Context, id: usize,
     // ...
 }
 ```
+
 ### handle request body
 ```rust
 use ohkami::prelude::*;
@@ -112,6 +148,7 @@ async fn post_login(c: Context,
     c.OK(token)
 }
 ```
+
 ### use middlewares
 ohkami's middlewares are called "**fang**s".
 ```rust
@@ -184,6 +221,7 @@ async fn handler(c: Context) -> Response</* ... */> {
         ))?;
 }
 ```
+
 ### global configuration
 ```rust
 #[main]
@@ -198,6 +236,7 @@ async fn main() -> Result<()> {
     // ...
 }
 ```
+
 ### use DB
 ```rust
 #[main]
