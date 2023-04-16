@@ -246,7 +246,7 @@ async fn main() -> Result<()> {
         "/api/users"
             .POST(create_user),
         "/api/users/:id"
-            .GET(update_user),
+            .UPDATE(update_user),
     ]).howl(":3000").await
 }
 ```
