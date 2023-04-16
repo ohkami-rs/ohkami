@@ -257,7 +257,7 @@ use ohkami::prelude::*;
 use ohkami::RequestBody;
 
 use crate::schema::User;
-use qujila::query::{count, create, update};
+use qujila::query::{Count, Create, Update};
 
 #[RequestBody(JSON @ Self::validate)]
 struct CreateUserRequest {
@@ -280,16 +280,16 @@ async fn create_user(c: Context,
         name, password
     } = payload;
 
-    if count!(User).WHERE(|u| [
-        u.name.eq(name),
-        u.password.eq(hash_func(password)),
-    ]).await? != 0 {
+    if Count!(User).WHERE(|u|
+        u.name.eq(name) &
+        u.password.eq(hash_func(password))
+    ).await? != 0 {
         return c.InternalServerError(
             "user already exists"
         )
     }
 
-    let created_user = create!(User {
+    let created_user = Create!(User {
         name,
         password: hash_func(password),
     }).await?;
@@ -314,7 +314,7 @@ struct UpdateUserRequest {
 async fn update_user(c: Context, id: usize,
     payload: UpdateUserRequest
 ) -> Response<()> {
-    update!(User)
+    Update!(User)
         .WHERE(|u| u.id.eq(id))
         .SET(|u| u
             .name_optional(payload.name)
