@@ -63,7 +63,7 @@ async fn $handler(c: Context,
 ### handle path/query params
 ```rust
 use ohkami::prelude::*;
-use ohkami::request::QueryParams;
+use ohkami::QueryParams;
 
 #[main]
 async fn main() -> Result<()> {
