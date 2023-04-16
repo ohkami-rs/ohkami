@@ -77,7 +77,8 @@ struct GetUserQuery {
     q: u64,
 }
 
-async fn get_user(c: Context, id: usize,
+async fn get_user(c: Context,
+    (id,): (usize,),
     query: GetUserQuery
 ) -> Response<User> {
 
@@ -317,7 +318,8 @@ struct UpdateUserRequest {
     }
 }
 
-async fn update_user(c: Context, id: usize,
+async fn update_user(c: Context,
+    (id,): (usize,),
     payload: UpdateUserRequest
 ) -> Response<()> {
     update!(User)
