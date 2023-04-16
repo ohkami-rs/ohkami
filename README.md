@@ -83,6 +83,7 @@ async fn get_user(c: Context,
 ) -> Response<User> {
 
     // ...
+
 }
 ```
 
@@ -201,21 +202,10 @@ async fn main() -> Result<()> {
 ```
 
 ### error handling
-bool / Option
-```rust
-async fn handler(c: Context, id: usize) -> Response</* ... */> {
-    (id < 1000)
-        ._else(|| c.BadRequest("`id` must be less than 1000."))?;
-
-    //...
-}
-```
-
-Result
 ```rust
 async fn handler(c: Context) -> Response</* ... */> {
     make_result()
-        ._else(|err| c.InternalServerError(
+        .catch(|err| c.InternalServerError(
             err.to_string()
         ))?;
 }
@@ -245,7 +235,7 @@ use crate::handler::{
 
 #[main]
 async fn main() -> Result<()> {
-    qujila::config(std::env::var("DB_URL"))
+    qujila::spawn(std::env::var("DB_URL"))
         .max_connections(20)
         .await?;
 
@@ -288,8 +278,8 @@ async fn create_user(c: Context,
     } = payload;
 
     if Count!(User).WHERE(|u|
-        u.name.eq(name) &
-        u.password.eq(hash_func(password))
+        u.name.eq(&name) &
+        u.password.eq(hash_func(&password))
     ).await? != 0 {
         return c.InternalServerError(
             "user already exists"
@@ -298,7 +288,7 @@ async fn create_user(c: Context,
 
     let created_user = Create!(User {
         name,
-        password: hash_func(password),
+        password: hash_func(&password),
     }).await?;
 
     c.Created(created_user)
@@ -320,10 +310,10 @@ struct UpdateUserRequest {
 
 async fn update_user(c: Context,
     (id,): (usize,),
-    payload: UpdateUserRequest
+    payload: UpdateUserRequest,
 ) -> Response<()> {
     update!(User)
-        .WHERE(|u| u.id.eq(id))
+        .WHERE(|u| u.id.eq(&id))
         .SET(|u| u
             .name_optional(payload.name)
             .password_optional(
@@ -333,37 +323,6 @@ async fn update_user(c: Context,
         .await?;
 
     c.OK(())
-}
-```
-
-### test
-1. Split setup process from `main` function:
-```rust
-fn setup() -> Ohkami {
-    Ohkami::new([
-        "/".GET(move |c: Context| async {
-            c.OK("Hello!")
-        })
-    ])
-}
-
-#[main]
-fn main() -> Result<()> {
-    setup().howl(":3000")
-}
-```
-2. import `testing::Test` and other utils
-```rust
-#[cfg(test)]
-mod test {
-    use ohkami::{Ohkami, response::Response, testing::{Test, Request}};
-
-    #[test]
-    fn test_hello() {
-        let req = Request::GET("/");
-        super::setup()
-            .assert_to_res(&req, Response::OK("Hello!"));
-    }
 }
 ```
 
