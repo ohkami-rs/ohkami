@@ -205,7 +205,7 @@ async fn handler(c: Context, id: usize) -> Response</* ... */> {
 ```
 
 Result
-```rust
+```rustループバック
 async fn handler(c: Context) -> Response</* ... */> {
     make_result()
         ._else(|err| c.InternalServerError(
@@ -264,10 +264,13 @@ struct CreateUserRequest {
     name:     String,
     password: String,
 } impl CreateUserRequest {
-    fn validate(
-        &self,
-        c: Context,
-    ) -> Result
+    fn validate(&self) -> Result<()> {
+        if &self.password == "password" {
+            Err(Error::validation("crazy password!!!"))
+        } else {
+            Ok(())
+        }
+    }
 }
 
 async fn create_user(c: Context,
@@ -279,9 +282,7 @@ async fn create_user(c: Context,
 
     if count!(User).WHERE(|u| [
         u.name.eq(name),
-        u.password.eq(
-            hash_func(password)
-        ),
+        u.password.eq(hash_func(password)),
     ]).await? != 0 {
         return c.InternalServerError(
             "user already exists"
@@ -296,26 +297,29 @@ async fn create_user(c: Context,
     c.Created(created_user)
 }
 
-#[RequestBody(JSON)]
+#[RequestBody(JSON @ Self::validate)]
 struct UpdateUserRequest {
     name:     Option<String>,
     password: Option<String>,
+} impl UpdateUserRequest {
+    fn validate(&self) -> Result<()> {
+        if self.password.contains("password") {
+            Err(Error::validation("crazy password!!!"))
+        } else {
+            Ok(())
+        }
+    }
 }
 
-async fn update_user(c: Context,
-    req: UpdateUserRequest
+async fn update_user(c: Context, id: usize,
+    payload: UpdateUserRequest
 ) -> Response<()> {
-    if req.password.contains("password") {
-        return c.BadRequest(
-            "crazy password!!!"
-        )
-    }
-
     update!(User)
+        .WHERE(|u| u.id.eq(id))
         .SET(|u| u
-            .name_optional(req.name)
+            .name_optional(payload.name)
             .password_optional(
-                req.password.map(hash_func)
+                payload.password.map(hash_func)
             )
         )
         .await?;
