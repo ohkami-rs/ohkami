@@ -257,7 +257,7 @@ use ohkami::prelude::*;
 use ohkami::RequestBody;
 
 use crate::schema::User;
-use qujila::query::{Count, Create, Update};
+use qujila::query::{Count, Create, update};
 
 #[RequestBody(JSON @ Self::validate)]
 struct CreateUserRequest {
@@ -314,7 +314,7 @@ struct UpdateUserRequest {
 async fn update_user(c: Context, id: usize,
     payload: UpdateUserRequest
 ) -> Response<()> {
-    Update!(User)
+    update!(User)
         .WHERE(|u| u.id.eq(id))
         .SET(|u| u
             .name_optional(payload.name)
@@ -348,12 +348,12 @@ fn main() -> Result<()> {
 ```rust
 #[cfg(test)]
 mod test {
-    use ohkami::{Ohkami, response::Response, testing::{Test, Request, Method}};
+    use ohkami::{Ohkami, response::Response, testing::{Test, Request}};
     use once_cell::sync::Lazy;
 
     #[test]
     fn test_hello() {
-        let req = Request::new(Method::GET, "/");
+        let req = Request::GET("/");
         super::setup()
             .assert_to_res(&req, Response::OK("Hello!"));
     }
