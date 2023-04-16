@@ -55,10 +55,10 @@ async fn main() -> Result<(), Error> {
 ### handler format
 ```rust
 async fn handler(c: Context,
-    ( path_param_1: $PathType1,   )?
-    ( path_param_2: $PathType2,   )?
-    ( query_params: $QueryType,   )?
-    ( request_body: $BodyType,    )?
+    ( path_param_1: $PathType1, )?
+    ( path_param_2: $PathType2, )?
+    ( query_params: $QueryType, )?
+    ( request_body: $BodyType,  )?
 ) -> Response<$OkResponseType> {
     // ...
 }
@@ -218,71 +218,109 @@ async fn handler(c: Context) -> Response</* ... */> {
 ```rust
 #[main]
 async fn main() -> Result<()> {
-    ohkami::config(|conf| conf
+    ohkami::config()
         .log_subscribe(
             tracing_subscriber::fmt()
                 .with_max_level(tracing::Level::TRACE)
-        )
-    );
+        );
 
     // ...
 }
 ```
 
 ### use DB
+`main.rs`
 ```rust
+use ohkami::prelude::*;
+use crate::handler::{
+    users::*,
+};
+
 #[main]
 async fn main() -> Result<()> {
-    let pool = PoolOptions::new()
+    qujila::config(std::env::var("DB_URL"))
         .max_connections(20)
-        .connect("db_url")
         .await?;
-
-    ohkami::config(|conf| conf
-        .connection_pool(pool)
-    );
 
     Ohkami::new([
-        "/sample"
-            .GET(sample_handler)
+        "/api/users"
+            .POST(create_user),
+        "/api/users/:id"
+            .GET(update_user),
     ]).howl(":3000").await
-}
-
-async fn sample_handler(c: Context) -> Response</* ... */> {
-    let user = sqlx::query_as::<_, User>(
-        "SELECT id, name FROM users WHERE id = $1"
-    ).bind(1)
-        .fetch_one(c.pool())
-        .await?;
-
-    // ...
 }
 ```
-<br/>
 
+`handler/users.rs`
 ```rust
-#[main]
-async fn main() -> Result<()> {
-    let q = Qujila("db_url")
-        .max_connections(20)
-        .await?;
+use ohkami::prelude::*;
+use ohkami::RequestBody;
 
-    ohkami::config(|conf| conf
-        .connection_pool(q)
-    );
+use crate::schema::User;
+use qujila::query::{count, create, update};
 
-    Ohkami::new([
-        "/sample"
-            .GET(sample_handler)
-    ]).howl(":3000").await
+#[RequestBody(JSON @ Self::validate)]
+struct CreateUserRequest {
+    name:     String,
+    password: String,
+} impl CreateUserRequest {
+    fn validate(
+        &self,
+        c: Context,
+    ) -> Result
 }
 
-async fn sample_handler(c: Context) -> Response</* ... */> {
-    let user = c.qujila().First::<User>()
-        .WHERE(|u| u.id.eq(1))
+async fn create_user(c: Context,
+    payload: CreateUserRequest
+) -> Response<User> {
+    let CreateUserRequest {
+        name, password
+    } = payload;
+
+    if count!(User).WHERE(|u| [
+        u.name.eq(name),
+        u.password.eq(
+            hash_func(password)
+        ),
+    ]).await? != 0 {
+        return c.InternalServerError(
+            "user already exists"
+        )
+    }
+
+    let created_user = create!(User {
+        name,
+        password: hash_func(password),
+    }).await?;
+
+    c.Created(created_user)
+}
+
+#[RequestBody(JSON)]
+struct UpdateUserRequest {
+    name:     Option<String>,
+    password: Option<String>,
+}
+
+async fn update_user(c: Context,
+    req: UpdateUserRequest
+) -> Response<()> {
+    if req.password.contains("password") {
+        return c.BadRequest(
+            "crazy password!!!"
+        )
+    }
+
+    update!(User)
+        .SET(|u| u
+            .name_optional(req.name)
+            .password_optional(
+                req.password.map(hash_func)
+            )
+        )
         .await?;
 
-    // ...
+    c.OK(())
 }
 ```
 
