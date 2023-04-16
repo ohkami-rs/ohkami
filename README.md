@@ -211,7 +211,7 @@ use ohkami::CatchError; // <--
 
 async fn handler(c: Context) -> Response</* ... */> {
     make_result()
-        .catch(|err| c.IntOK(())ernalServerError(
+        .catch(|err| c.InternalServerError(
             err.to_string()
         ))?;
 }
@@ -294,7 +294,7 @@ use qujila::Query; /*
         Delete, delete,
     },
 */ /*
-    - CamelCase returns Result<Model> or Result<Vec<Model>>
+    - CamelCase returns Result<Model | int> or Result<Vec<Model | int>>
     - snake_case returns Result<()>
 */
 
@@ -387,12 +387,6 @@ async fn delete_user(
     }
 }
 ```
-
-<br/>
-
-## Development
-ohkami is not for producntion use yet.\
-Please give me your feedback ! → [GetHub issue](https://github.com/kana-rus/ohkami/issues)
 
 <br/>
 
