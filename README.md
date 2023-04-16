@@ -140,6 +140,32 @@ async fn post_login(c: Context,
     c.OK(token)
 }
 ```
+You can register validating function：
+```rust
+#[RequestBody(JSON @ Self::validate)]
+struct CreateUserRequest {
+    name: String,
+    password: String,
+} impl CreateUserRequest {
+    fn validate(&self) -> Result<()> {
+        if self.name.is_empty()
+        || self.password.is_empty() {
+            return Err(Error::validation(
+                "name or password is empty"
+            ))
+        }
+
+        if &self.password == "password" {
+            return Err(Error::valdation(
+                "dangerous password"
+            ))
+        }
+
+        Ok(())
+    }
+}
+```
+`validator` crate will be also available for this.
 
 ### use middlewares
 ohkami's middlewares are called "**fang**s".
@@ -205,7 +231,7 @@ async fn handler(c: Context, id: usize) -> Response</* ... */> {
 ```
 
 Result
-```rustループバック
+```rust
 async fn handler(c: Context) -> Response</* ... */> {
     make_result()
         ._else(|err| c.InternalServerError(
