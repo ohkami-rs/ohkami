@@ -74,7 +74,7 @@ async fn main() -> Result<()> {
 
 #[QueryParams]
 struct GetUserQuery {
-    q: u64,
+    q: Option<u64>,
 }
 
 async fn get_user(c: Context,
@@ -357,7 +357,6 @@ fn main() -> Result<()> {
 #[cfg(test)]
 mod test {
     use ohkami::{Ohkami, response::Response, testing::{Test, Request}};
-    use once_cell::sync::Lazy;
 
     #[test]
     fn test_hello() {
