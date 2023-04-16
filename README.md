@@ -2,9 +2,9 @@
     <h1>ohkami</h1>
 </div>
 
-### ＊This README is my working draft. So codes in "Quick start" or "Snippets" don't work yet.<br/>
+### ＊This README is my working draft. So codes in "Quick start" or "Samples" don't work yet.<br/>
 
-ohkami *- [狼] means wolf in Japanese -* is **ergonomic** web framework for **nightly** Rust.
+ohkami *- [狼] means wolf in Japanese -* is **ergonomic** **macro free** web framework for **nightly** Rust.
 
 <br/>
 
@@ -41,7 +41,7 @@ async fn main() -> Result<()> {
 
 <br/>
 
-## Snippets
+## Samples
 
 ### handler format
 ```rust
@@ -203,6 +203,9 @@ async fn main() -> Result<()> {
 
 ### error handling
 ```rust
+use ohkami::prelude::*;
+use ohkami::CatchError; // <--
+
 async fn handler(c: Context) -> Response</* ... */> {
     make_result()
         .catch(|err| c.InternalServerError(
@@ -226,7 +229,20 @@ async fn main() -> Result<()> {
 ```
 
 ### use DB
-`main.rs`
+`src/schema.rs`
+```rust
+qujila::schema! {
+    User {
+        id:         __ID__,
+        name:       VARCHAR(20) where NOT_NULL,
+        password:   VARCHAR(64) where NOT_NULL,
+        created_at: __CARETED_AT__,
+        updated_at: __UPDATED_AT__,
+    }
+}
+```
+
+`src/main.rs`
 ```rust
 use ohkami::prelude::*;
 use crate::handler::{
@@ -243,18 +259,20 @@ async fn main() -> Result<()> {
         "/api/users"
             .POST(create_user),
         "/api/users/:id"
-            .PATCH(update_user),
+            .GET(get_user)
+            .PATCH(update_user)
+            .DELETE(delete_user),
     ]).howl(":3000").await
 }
 ```
 
-`handler/users.rs`
+`src/handler/users.rs`
 ```rust
 use ohkami::prelude::*;
 use ohkami::RequestBody;
 
 use crate::schema::User;
-use qujila::query::{Count, Create, update};
+use qujila::Create;
 
 #[RequestBody(JSON @ Self::validate)]
 struct CreateUserRequest {
@@ -277,7 +295,7 @@ async fn create_user(c: Context,
         name, password
     } = payload;
 
-    if Count!(User).WHERE(|u|
+    if User::Count(|u|
         u.name.eq(&name) &
         u.password.eq(hash_func(&password))
     ).await? != 0 {
@@ -286,12 +304,22 @@ async fn create_user(c: Context,
         )
     }
 
-    let created_user = Create!(User {
+    let created_user = User::Create {
         name,
         password: hash_func(&password),
-    }).await?;
+    }.await?;
 
     c.Created(created_user)
+}
+
+async fn get_user(
+    c: Context, id: usize
+) -> Response<User> {
+    c.OK(
+        User::First(|u|
+            u.id.eq(id)
+        ).await?
+    )
 }
 
 #[RequestBody(JSON @ Self::validate)]
@@ -312,8 +340,7 @@ async fn update_user(c: Context,
     (id,): (usize,),
     payload: UpdateUserRequest,
 ) -> Response<()> {
-    update!(User)
-        .WHERE(|u| u.id.eq(&id))
+    User::update(|u| u.id.eq(id))
         .SET(|u| u
             .name_optional(payload.name)
             .password_optional(
@@ -323,6 +350,17 @@ async fn update_user(c: Context,
         .await?;
 
     c.OK(())
+}
+
+async fn delete_user(
+    c: Context, id: usize
+) -> Response<()> {
+    if User::Count(|u| u.id.eq(&id)).await? != 1 {
+        c.InternalServerError("user not single")
+    } else {
+        User::delete(|u| u.id.eq(&id)).await?;
+        c.OK(())
+    }
 }
 ```
 
