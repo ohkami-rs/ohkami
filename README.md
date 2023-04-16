@@ -272,7 +272,17 @@ use ohkami::prelude::*;
 use ohkami::RequestBody;
 
 use crate::schema::User;
-use qujila::Create;
+use qujila::Query; /*
+    type Create,
+    fn {
+        Count,
+        First,
+        All,
+        Create, create,
+        Update, update,
+        Delete, delete,
+    },
+*/
 
 #[RequestBody(JSON @ Self::validate)]
 struct CreateUserRequest {
