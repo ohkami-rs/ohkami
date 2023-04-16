@@ -233,7 +233,7 @@ Add `qujila` to dependencies：
 ```toml
 [dependencies]
 ohkami = "0.9"
-qujila = "0.1" # <--
+qujila = { version = "0.1", features = ["postgres"] }
 ```
 
 `src/schema.rs`
