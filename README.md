@@ -41,9 +41,7 @@ async fn main() -> Result<()> {
 
 <br/>
 
-## Samples
-
-### handler format
+## handler format
 ```rust
 async fn $handler(c: Context,
     (
@@ -57,6 +55,10 @@ async fn $handler(c: Context,
     // ...
 }
 ```
+
+<br/>
+
+## Samples
 
 ### handle path/query params
 ```rust
