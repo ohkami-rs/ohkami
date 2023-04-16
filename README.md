@@ -273,12 +273,13 @@ use ohkami::RequestBody;
 
 use crate::schema::User;
 use qujila::Query; /*
-    type Create,
+    type {
+        Create, create
+    }
     fn {
         Count,
         First,
         All,
-        Create, create,
         Update, update,
         Delete, delete,
     },
