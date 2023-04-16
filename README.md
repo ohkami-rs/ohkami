@@ -229,6 +229,13 @@ async fn main() -> Result<()> {
 ```
 
 ### use DB
+Add `qujila` to dependencies：
+```toml
+[dependencies]
+ohkami = "0.9"
+qujila = "0.1" # <--
+```
+
 `src/schema.rs`
 ```rust
 qujila::schema! {
@@ -283,6 +290,9 @@ use qujila::Query; /*
         Update, update,
         Delete, delete,
     },
+*/ /*
+    - CamelCase returns Result<Model> or Result<Vec<Model>>
+    - snake_case returns Result<()>
 */
 
 #[RequestBody(JSON @ Self::validate)]
