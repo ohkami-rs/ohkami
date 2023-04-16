@@ -68,7 +68,7 @@ async fn main() -> Result<()> {
     Ohkami::new([
         "/api/users/:id"
             .GET(get_user)
-            .POST(create_user)
+            .PATCH(update_user)
     ]).howl("localhost:5000").await
 }
 
