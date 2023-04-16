@@ -217,20 +217,6 @@ async fn handler(c: Context) -> Response</* ... */> {
 }
 ```
 
-### global configuration
-```rust
-#[main]
-async fn main() -> Result<()> {
-    ohkami::config()
-        .log_subscribe(
-            tracing_subscriber::fmt()
-                .with_max_level(tracing::Level::TRACE)
-        );
-
-    // ...
-}
-```
-
 ### use DB
 Add `qujila` to dependencies：
 ```toml
@@ -261,7 +247,7 @@ use crate::handler::{
 
 #[main]
 async fn main() -> Result<()> {
-    qujila::spawn(std::env::var("DB_URL"))
+    qujila::spawn("DB_URL")
         .max_connections(20)
         .await?;
 
