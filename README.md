@@ -54,28 +54,17 @@ async fn main() -> Result<(), Error> {
 
 ### handler format
 ```rust
-async fn handler(c: Context,
-    ( path_param_1: $PathType1, )?
-    ( path_param_2: $PathType2, )?
-    ( query_params: $QueryType, )?
-    ( request_body: $BodyType,  )?
+async fn $handler(c: Context,
+    (
+        $path_param: $PathType1,
+        | ($path_param,): ($PathType,),
+        | ($p1, $p2): ($P1, $P2),
+    )?
+    ( $query_params: $QueryType, )?
+    ( $request_body: $BodyType,  )?
 ) -> Response<$OkResponseType> {
     // ...
 }
-
-(
-    #[QueryParams]
-    struct $QueryType {
-        // ...
-    }
-)?
-
-(
-    #[RequestBody( JSON | Form )]
-    struct $BodyType {
-        // ...
-    }
-)?
 ```
 
 ### handle path/query params
