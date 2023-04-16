@@ -4,7 +4,12 @@
 
 ### ＊This README is my working draft. So codes in "Quick start" or "Samples" don't work yet.<br/>
 
-ohkami *- [狼] means wolf in Japanese -* is **ergonomic** **macro free** web framework for **nightly** Rust.
+ohkami *- [狼] wolf in Japanese -* is **ergonomic** web framework for **nightly** Rust.
+
+## Features
+- *nightly only, ergonomic APIs*
+- *macro free*
+- *multi runtime*：`tokio`, `async-std`, `lunatic (in future)`
 
 <br/>
 
@@ -13,7 +18,7 @@ ohkami *- [狼] means wolf in Japanese -* is **ergonomic** **macro free** web fr
 
 ```toml
 [dependencies]
-ohkami = "0.9.0"
+ohkami = { version = "0.9.0", features = ["tokio"] }
 ```
 (And, if needed, change your Rust toolchains into **nightly** ones)
 
@@ -221,8 +226,8 @@ async fn handler(c: Context) -> Response</* ... */> {
 Add `qujila` to dependencies：
 ```toml
 [dependencies]
-ohkami = "0.9"
-qujila = { version = "0.1", features = ["postgres"] }
+ohkami = { version = "0.9", features = ["tokio"] }
+qujila = { version = "0.1", features = ["tokio-postgres"] }
 ```
 
 `src/schema.rs`
