@@ -4,16 +4,7 @@
 
 ### ＊This README is my working draft. So codes in "Quick start" or "Snippets" don't work yet.<br/>
 
-ohkami *- [狼] means wolf in Japanese -* is **simple** and **macro free** web framework for **nightly** Rust.
-
-<br/>
-
-## Features
-- *simple*: Less things to learn / Less code to write / Less time to hesitate.
-- *macro free*: No need for using macros.
-- *nightly only*
-- async handlers
-- easy error handling
+ohkami *- [狼] means wolf in Japanese -* is **ergonomic** web framework for **nightly** Rust.
 
 <br/>
 
@@ -24,7 +15,7 @@ ohkami *- [狼] means wolf in Japanese -* is **simple** and **macro free** web f
 [dependencies]
 ohkami = "0.9.0"
 ```
-(And, if needed, change your Rust toolchains into nightly ones)
+(And, if needed, change your Rust toolchains into **nightly** ones)
 
 2. Write your first code with ohkami：
 
@@ -40,10 +31,10 @@ async fn health_check(c: Context) -> Response<()> {
 }
 
 #[main]
-async fn main() -> Result<(), Error> {
+async fn main() -> Result<()> {
     Ohkami::new([
-        "/"      .GET(hello),
-        "/api/hc".GET(health_check),
+        "/"  .GET(hello),
+        "/hc".GET(health_check),
     ]).howl(":3000").await
 }
 ```
