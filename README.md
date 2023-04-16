@@ -23,7 +23,7 @@ ohkami = "0.9.0"
 use ohkami::prelude::*;
 
 async fn hello(c: Context) -> Response<&'static str> {
-    c.OK("Hello!")
+    c.text("Hello!")
 }
 
 async fn health_check(c: Context) -> Response<()> {
@@ -84,6 +84,7 @@ async fn get_user(c: Context,
 
     // ...
 
+    c.json(found_user)
 }
 ```
 
@@ -104,7 +105,7 @@ async fn create_user(c: Context,
 
     // ...
 
-    c.OK(())
+    c.NoContent()
 }
 
 #[RequestBody(Form)]
@@ -119,7 +120,7 @@ async fn post_login(c: Context,
 
     // ...
 
-    c.OK(token)
+    c.json(token)
 }
 ```
 You can register validating function：
@@ -208,7 +209,7 @@ use ohkami::CatchError; // <--
 
 async fn handler(c: Context) -> Response</* ... */> {
     make_result()
-        .catch(|err| c.InternalServerError(
+        .catch(|err| c.IntOK(())ernalServerError(
             err.to_string()
         ))?;
 }
@@ -336,7 +337,7 @@ async fn create_user(c: Context,
 async fn get_user(
     c: Context, id: usize
 ) -> Response<User> {
-    c.OK(
+    c.json(
         User::First(|u|
             u.id.eq(id)
         ).await?
@@ -370,7 +371,7 @@ async fn update_user(c: Context,
         )
         .await?;
 
-    c.OK(())
+    c.NoContent()
 }
 
 async fn delete_user(
@@ -380,7 +381,7 @@ async fn delete_user(
         c.InternalServerError("user not single")
     } else {
         User::delete(|u| u.id.eq(&id)).await?;
-        c.OK(())
+        c.NoContent()
     }
 }
 ```
