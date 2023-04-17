@@ -127,14 +127,16 @@ async fn post_login(c: Context,
 
     // ...
 
-    c.json(token)
+    c.json(f!({
+        "token": token
+    }))
 }
 ```
 You can register validating function：
 ```rust
 #[RequestBody(JSON @ Self::validate)]
 struct CreateUserRequest {
-    name: String,
+    name:     String,
     password: String,
 } impl CreateUserRequest {
     fn validate(&self) -> Result<()> {
@@ -166,10 +168,8 @@ async fn main() -> Result<()> {
         .before("/api/*", my_fang);
 
     Ohkami::with(fangs, [
-        "/"
-            .GET(root),
-        "/hc"
-            .GET(health_check),
+        "/"  .GET(root),
+        "/hc".GET(health_check),
         "/api/users"
             .GET(get_users)
             .POST(create_user),
@@ -217,7 +217,7 @@ use ohkami::CatchError; // <--
 async fn handler(c: Context) -> Response</* ... */> {
     make_result()
         .catch(|err| c.InternalServerError(
-            err.to_string()
+            f!("Got error: {err}")
         ))?;
 }
 ```
@@ -277,14 +277,17 @@ use qujila::Query; /*
     type {
         Create, create
     }
+    
     fn {
         number,
-        First,
         All,
+        Only,
+        First,
+        Search,
         Update, update,
         Delete, delete,
     },
-*/ /*
+
     - CamelCase returns Result<$Model> or Result<Vec<$Model>>
     - snakecase returns Result<() | usize>
 */
@@ -319,7 +322,7 @@ async fn create_user(c: Context,
         )
     }
 
-    let created_user = User::Create {
+    let created_user = User::Create{
         name,
         password: hash_func(&password),
     }.await?;
@@ -327,13 +330,9 @@ async fn create_user(c: Context,
     c.Created(created_user)
 }
 
-async fn get_user(
-    c: Context, id: usize
-) -> Response<User> {
+async fn get_user(c: Context, id: usize) -> Response<User> {
     c.json(
-        User::First(|u|
-            u.id.eq(id)
-        ).await?
+        User::First(|u| u.id.eq(id)).await?
     )
 }
 
@@ -356,13 +355,12 @@ async fn update_user(c: Context,
     payload: UpdateUserRequest,
 ) -> Response<()> {
     User::update(|u| u.id.eq(id))
-        .SET(|u| u
+        .set(|u| u
             .name_optional(payload.name)
             .password_optional(
                 payload.password.map(hash_func)
             )
-        )
-        .await?;
+        ).await?;
 
     c.NoContent()
 }
