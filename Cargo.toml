@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "ohkami",
+    "ohkami_lib",
     "ohkami_macros",
 ]
 

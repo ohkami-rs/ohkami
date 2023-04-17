@@ -1,0 +1,7 @@
+[package]
+name = "ohkami_lib"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+ohkami_macros = { version = "0.2", path = "../ohkami_macros" }
