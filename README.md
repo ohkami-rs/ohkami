@@ -7,8 +7,8 @@
 ohkami *- [狼] wolf in Japanese -* is **ergonomic** web framework for **nightly** Rust.
 
 ## Features
-- *nightly only, ergonomic APIs*
-- *macro free*
+- *nightly only*
+- *macro free, ergonomic APIs*
 - *multi runtime*：`tokio`, `async-std`, `lunatic (in future)`
 
 <br/>
@@ -237,7 +237,7 @@ qujila::schema! {
         id:         __ID__,
         name:       VARCHAR(20) where NOT_NULL,
         password:   VARCHAR(64) where NOT_NULL,
-        created_at: __CARETED_AT__,
+        created_at: __CREATED_AT__,
         updated_at: __UPDATED_AT__,
     }
 }
@@ -278,15 +278,15 @@ use qujila::Query; /*
         Create, create
     }
     fn {
-        Count,
+        number,
         First,
         All,
         Update, update,
         Delete, delete,
     },
 */ /*
-    - CamelCase returns Result<Model | int> or Result<Vec<Model | int>>
-    - snake_case returns Result<()>
+    - CamelCase returns Result<$Model> or Result<Vec<$Model>>
+    - snakecase returns Result<() | usize>
 */
 
 #[RequestBody(JSON @ Self::validate)]
@@ -310,7 +310,7 @@ async fn create_user(c: Context,
         name, password
     } = payload;
 
-    if User::Count(|u|
+    if User::number(|u|
         u.name.eq(&name) &
         u.password.eq(hash_func(&password))
     ).await? != 0 {
@@ -370,7 +370,7 @@ async fn update_user(c: Context,
 async fn delete_user(
     c: Context, id: usize
 ) -> Response<()> {
-    if User::Count(|u| u.id.eq(&id)).await? != 1 {
+    if User::number(|u| u.id.eq(&id)).await? != 1 {
         c.InternalServerError("user not single")
     } else {
         User::delete(|u| u.id.eq(&id)).await?;
@@ -382,4 +382,4 @@ async fn delete_user(
 <br/>
 
 ## License
-This project is licensed under MIT LICENSE ([LICENSE-MIT](https://github.com/kana-rus/ohkami/blob/main/LICENSE-MIT) or [https://opensource.org/licenses/MIT](https://opensource.org/licenses/MIT)).
+ohkami is licensed under MIT LICENSE ([LICENSE-MIT](https://github.com/kana-rus/ohkami/blob/main/LICENSE-MIT) or [https://opensource.org/licenses/MIT](https://opensource.org/licenses/MIT)).
