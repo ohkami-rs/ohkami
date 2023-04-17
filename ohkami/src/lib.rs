@@ -3,44 +3,62 @@
 #![allow(incomplete_features)]
 #![feature(adt_const_params, specialization)]
 
-#![doc(html_root_url = "https://docs.rs/ohkami/0.8.3")]
+#![doc(html_root_url = "https://docs.rs/ohkami/0.9.0")]
 
-#[cfg(any(
-    all(feature="sqlx-postgres", feature="sqlx-mysql"),
-    all(feature="sqlx-postgres", feature="deadpool-postgres"),
-    all(feature="sqlx-mysql", feature="deadpool-postgres"),
-))]
-compile_error!("any two of features
+#[cfg(all(
+    feature="async-std",
+    feature="tokio",
+    feature="lunatic",
+))] compile_error!("any two of features
 
-- sqlx-postgres
-- sqlx-mysql
-- deadpool-postgres
+- `tokio`
+- `async-std`
+- `lunatic`
 
 can be enabled at once.
 ");
 
-pub mod ohkami;
-pub mod error;
-pub mod context;
-pub mod response;
-pub mod request;
-// pub mod testing;
-pub mod fang;
-pub(crate) mod router;
-pub(crate) mod handler;
+mod ohkami;
+pub use ohkami::Ohkami;
+
+mod error;
+pub use error::{Error, CatchError};
+
+mod context;
+pub use context::Context;
+
+mod response;
+pub use response::Response;
+
+mod request;
+pub use request::{Request, from_request::FromRequest};
+
+mod fang;
+pub use fang::{Fang, Fangs, FangsRoute, IntoFang};
+pub(crate) use fang::FangRoutePattern;
+
+mod router;
+pub(crate) use router::{Router, trie_tree::TrieTree};
+
+mod handler;
+pub use handler::route::Route;
+pub(crate) use handler::{Handler};
 
 pub type Result<T> = std::result::Result<T, error::Error>;
 
 pub mod prelude {
     pub use super::{
-        // ohkami::Ohkami,
-        error::{ElseResponse, ElseResponseWithErr},
-        context::Context,
-        response::Response,
+        Error,
+        Context,
+        Response,
+        Result,
     };
-    pub use ohkami_macros::{JSON, json};
 }
 
-pub mod macros {
-    pub use ohkami_macros::{JSON, consume_struct, json};
+pub mod utils {
+    pub use ohkami_lib::{f};
+}
+
+pub mod __ {
+    pub use ohkami_macros::{json};
 }

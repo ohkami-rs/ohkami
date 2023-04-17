@@ -1,5 +1,3 @@
-mod config;
-
 use async_std::{
     task,
     io::ReadExt,

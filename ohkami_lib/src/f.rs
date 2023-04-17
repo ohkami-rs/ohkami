@@ -4,6 +4,6 @@ macro_rules! f {
         format!($string $(, $arg)*)
     };
     ({ $( $key:literal : $value:expr ),+ }) => {
-        ohkami::macros::json!({ $( $key : $value ),+ })
+        ohkami::utils::json!({ $( $key : $value ),+ })
     };
 }

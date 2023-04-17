@@ -1,9 +1,12 @@
-pub mod into_fang;
-pub mod route;
+mod into_fang;
+pub use into_fang::IntoFang;
+
+mod route;
+pub use route::FangsRoute;
+pub(crate) use route::FangRoutePattern;
 
 use std::{pin::Pin, future::Future, collections::HashMap};
 use crate::{context::Context, request::Request};
-use self::{route::FangsRoute, into_fang::IntoFang};
 
 
 pub struct Fangs(

@@ -1,5 +1,4 @@
 use std::fmt::Display;
-
 use crate::response::ErrResponse;
 
 pub enum Error {
@@ -33,30 +32,13 @@ const _: (/* Error impls */) = {
     }
 };
 
-pub trait ElseResponse {
+pub trait CatchError<E> {
     type Expect;
-    fn _else<F: FnOnce() -> ErrResponse>(self, error_response: F) -> Result<Self::Expect, ErrResponse>;
+    fn catch<F: FnOnce(E) -> ErrResponse>(self, error_response: F) -> Result<Self::Expect, ErrResponse>;
 }
-impl<T> ElseResponse for Option<T> {
+impl<T, E> CatchError<E> for std::result::Result<T, E> {
     type Expect = T;
-    #[inline] fn _else<F: FnOnce() -> ErrResponse>(self, error_response: F) -> Result<Self::Expect, ErrResponse> {
-        self.ok_or_else(error_response)
-    }
-}
-impl ElseResponse for bool {
-    type Expect = ();
-    #[inline] fn _else<F: FnOnce() -> ErrResponse>(self, error_response: F) -> Result<Self::Expect, ErrResponse> {
-        self.then(|| ()).ok_or_else(error_response)
-    }
-}
-
-pub trait ElseResponseWithErr<E> {
-    type Expect;
-    fn _else<F: FnOnce(E) -> ErrResponse>(self, error_response: F) -> Result<Self::Expect, ErrResponse>;
-}
-impl<T, E> ElseResponseWithErr<E> for std::result::Result<T, E> {
-    type Expect = T;
-    #[inline] fn _else<F: FnOnce(E) -> ErrResponse>(self, error_response: F) -> Result<Self::Expect, ErrResponse> {
+    #[inline] fn catch<F: FnOnce(E) -> ErrResponse>(self, error_response: F) -> Result<Self::Expect, ErrResponse> {
         self.map_err(error_response)
     }
 }
