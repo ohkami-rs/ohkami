@@ -17,8 +17,12 @@ ohkami *- [狼] wolf in Japanese -* is **ergonomic** web framework for **nightly
 1. Add to `dependencies`:
 
 ```toml
+# this sample uses `tokio` runtime.
+# you can choose `async-std` (and `lunatic` in future) instead.
+
 [dependencies]
 ohkami = { version = "0.9.0", features = ["tokio"] }
+tokio = { version = "1.27", fetures = ["full"] }
 ```
 (And, if needed, change your Rust toolchains into **nightly** ones)
 
@@ -35,7 +39,7 @@ async fn health_check(c: Context) -> Response<()> {
     c.NoContent()
 }
 
-#[main]
+#[tokio::main]
 async fn main() -> Result<()> {
     Ohkami::new([
         "/"  .GET(hello),
@@ -70,7 +74,7 @@ async fn $handler(c: Context,
 use ohkami::prelude::*;
 use ohkami::QueryParams;
 
-#[main]
+#[tokio::main]
 async fn main() -> Result<()> {
     Ohkami::new([
         "/api/users/:id"
@@ -162,7 +166,7 @@ struct CreateUserRequest {
 ### use middlewares
 ohkami's middlewares are called "**fang**s".
 ```rust
-#[main]
+#[tokio::main]
 async fn main() -> Result<()> {
     let fangs = Fangs::new()
         .before("/api/*", my_fang);
@@ -185,7 +189,7 @@ async fn my_fang(
 
 ### pack of Ohkamis
 ```rust
-#[main]
+#[tokio::main]
 async fn main() -> Result<()> {
     // ...
 
@@ -226,8 +230,9 @@ async fn handler(c: Context) -> Response</* ... */> {
 Add `qujila` to dependencies：
 ```toml
 [dependencies]
+tokio = { version = "1.27", features = ["full"] }
 ohkami = { version = "0.9", features = ["tokio"] }
-qujila = { version = "0.1", features = ["tokio-postgres"] }
+qujila = { version = "0.1", features = ["tokio", "postgres"] }
 ```
 
 `src/schema.rs`
@@ -250,7 +255,7 @@ use crate::handler::{
     users::*,
 };
 
-#[main]
+#[tokio::main]
 async fn main() -> Result<()> {
     qujila::spawn("DB_URL")
         .max_connections(20)
@@ -313,27 +318,23 @@ async fn create_user(c: Context,
         name, password
     } = payload;
 
-    if User::number(|u|
+    if User(|u|
         u.name.eq(&name) &
         u.password.eq(hash_func(&password))
-    ).await? != 0 {
-        return c.InternalServerError(
-            "user already exists"
-        )
+    ).exists().await? {
+        c.InternalServerError("user already exists")
+    } else {
+        let new_user = User::Create{
+            name,
+            password: hash_func(&password),
+        }.await?;
+        c.Created(new_user)
     }
-
-    let created_user = User::Create{
-        name,
-        password: hash_func(&password),
-    }.await?;
-
-    c.Created(created_user)
 }
 
 async fn get_user(c: Context, id: usize) -> Response<User> {
-    c.json(
-        User::First(|u| u.id.eq(id)).await?
-    )
+    let user = User(|u| u.id).Single().await?;
+    c.json(user)
 }
 
 #[RequestBody(JSON @ Self::validate)]
@@ -354,24 +355,28 @@ async fn update_user(c: Context,
     (id,): (usize,),
     payload: UpdateUserRequest,
 ) -> Response<()> {
-    User::update(|u| u.id.eq(id))
-        .set(|u| u
+    let target = User(|u| u.id.eq(id));
+    if !target.exists().await? {
+        c.InternalServerError("user not found")
+    } else {
+        target.update(|u| u
             .name_optional(payload.name)
             .password_optional(
                 payload.password.map(hash_func)
             )
         ).await?;
-
-    c.NoContent()
+        c.NoContent()
+    }
 }
 
 async fn delete_user(
     c: Context, id: usize
 ) -> Response<()> {
-    if User::number(|u| u.id.eq(&id)).await? != 1 {
+    let target = User(|u| u.id.eq(id));
+    if !target.is_single().await? != 1 {
         c.InternalServerError("user not single")
     } else {
-        User::delete(|u| u.id.eq(&id)).await?;
+        target.delete().await?;
         c.NoContent()
     }
 }
