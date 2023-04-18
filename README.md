@@ -247,6 +247,9 @@ qujila::schema! {
     }
 }
 ```
+```sh
+$ qujila sync ＜DB URL＞
+```
 
 `src/main.rs`
 ```rust
@@ -276,26 +279,7 @@ async fn main() -> Result<()> {
 ```rust
 use ohkami::prelude::*;
 use ohkami::RequestBody;
-
 use crate::schema::User;
-use qujila::Query; /*
-    type {
-        Create, create
-    }
-    
-    fn {
-        number,
-        All,
-        Only,
-        First,
-        Search,
-        Update, update,
-        Delete, delete,
-    },
-
-    - CamelCase returns Result<$Model> or Result<Vec<$Model>>
-    - snakecase returns Result<() | usize>
-*/
 
 #[RequestBody(JSON @ Self::validate)]
 struct CreateUserRequest {
@@ -318,22 +302,22 @@ async fn create_user(c: Context,
         name, password
     } = payload;
 
-    if User(|u|
+    if User::exists(|u| u
         u.name.eq(&name) &
         u.password.eq(hash_func(&password))
-    ).exists().await? {
+    ).await? {
         c.InternalServerError("user already exists")
     } else {
-        let new_user = User::Create{
-            name,
-            password: hash_func(&password),
-        }.await?;
+        let new_user = User::Create(|u| u
+            .name(name)
+            .password(hash_func(&password))
+        ).await?;
         c.Created(new_user)
     }
 }
 
 async fn get_user(c: Context, id: usize) -> Response<User> {
-    let user = User(|u| u.id).Single().await?;
+    let user = User::Single(|u| u.id.eq(id)).await?;
     c.json(user)
 }
 
@@ -353,18 +337,17 @@ struct UpdateUserRequest {
 
 async fn update_user(c: Context,
     (id,): (usize,),
-    payload: UpdateUserRequest,
+    UpdateUserRequest {
+        name, password
+    }: UpdateUserRequest,
 ) -> Response<()> {
-    let target = User(|u| u.id.eq(id));
-    if !target.exists().await? {
-        c.InternalServerError("user not found")
+    if User::not_sinle(|u| u.id.eq(id)).await? {
+        c.InternalServerError("user is not single")
     } else {
-        target.update(|u| u
-            .name_optional(payload.name)
-            .password_optional(
-                payload.password.map(hash_func)
-            )
-        ).await?;
+        User::update(|u| u.id.eq(id))
+            .option_name(name)
+            .option_password(password.map(hash_func))
+            .await?;
         c.NoContent()
     }
 }
@@ -372,11 +355,10 @@ async fn update_user(c: Context,
 async fn delete_user(
     c: Context, id: usize
 ) -> Response<()> {
-    let target = User(|u| u.id.eq(id));
-    if !target.is_single().await? != 1 {
+    if User::isnt_single(|u| u.id.eq(id)).await? {
         c.InternalServerError("user not single")
     } else {
-        target.delete().await?;
+        User::delete(|u| u.id.eq(id)).await?;
         c.NoContent()
     }
 }
