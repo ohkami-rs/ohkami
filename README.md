@@ -465,6 +465,84 @@ async fn delete_user(c: Context, id: usize) -> Response<()> {
 }
 ```
 
+**draft**
+
+`src/handler/tasks.rs`
+```rust
+use ohkami::{prelude::*, RequestBody};
+use schema::{DB, Task};
+
+#[RequestBody(JSON)]
+struct GetTasksRequest {
+    user_id: usize,
+    client_latest_id: usize,
+}
+
+pub async fn get_tasks(c: Context,
+    payload: GetTaskRequest
+) -> Response<Vec<Task>> {
+    let GetTasksRequest{ user_id, client_latest_id } = payload;
+
+    let tasks = DB.tasks(|t|
+        t.user_id.eq(user_id) &
+        t.deleted_at.is_null() &
+        t.id.gt(client_latest_id)
+    ).All()
+        .LIMIT(100)
+        .ORDER_ASC(|t| t.created_at)
+        .await?;
+
+    c.json(tasks)
+}
+
+#[RequestBody(JSON)]
+struct CreateTaskRequest {
+    title: String,
+    description: Option<String>,
+}
+
+pub async fn create_task(c: Context,
+    payload: CreateTaskRequest
+) -> Response<usize> {
+    let CreateTaskRequest{ title, description } = paylaod;
+
+    let created_task = DB.tasks.Create()
+        .title(title)
+        .description(description)
+        .await?;
+
+    c.json(f!({ "id": created_task.id }))
+}
+
+#[RequestBody(JSON)]
+struct UpdateTaskRequest {
+    title: Option<String>,
+    description: Option<String>,
+}
+
+pub async fn update_task(c: Context,
+    (id,): (usize,),
+    payload: UpdateTaskRequest,
+) -> Response<()> {
+    let target = DB.tasks(|t| t.id.eq(id));
+
+    if target.not_exists().await? {
+        c.InternalServerError("task not found")
+    } else {
+        let UpdaterTaskRequest{ title, description } = payload;
+
+        let updater = target.update()
+            .set_description(description);
+        if let Some(new_title) = title {
+            updater.set_title(new_title)
+        }
+        updater.await?;
+
+        c.NoContent()
+    }
+}
+```
+
 <br/>
 
 ## License
