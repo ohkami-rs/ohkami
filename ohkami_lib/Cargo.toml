@@ -5,3 +5,13 @@ edition = "2021"
 
 [dependencies]
 ohkami_macros = { version = "0.2", path = "../ohkami_macros" }
+
+# tokio = { optional = true, version = "", features = ["full"] }
+async-std = { optional = true, version = "1" }
+
+[features]
+default = ["async-std"]
+
+# tokio = ["dep:tokio"]
+async-std = ["dep:async-std"]
+# lunatic = []
