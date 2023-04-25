@@ -1,42 +1,32 @@
-use std::{sync::OnceLock, panic::RefUnwindSafe, ops::Deref, future::Future};
+use crate::f;
 
-use async_std::task::block_on;
-
-pub struct Global<T, F: FnOnce()->T + Clone = fn()->T> {
-    value: OnceLock<T>,
-    initializer: F,
+pub struct Global<T> {
+    value: std::sync::OnceLock<T>,
+    init:  fn() -> T,
 }
-impl<T, F: FnOnce()->T + Clone> Global<T, F> {
-    pub const fn new(initializer: F) -> Self {
-        Self { initializer, value: OnceLock::new() }
-    }
-    pub const fn wait<
-        Fut:  Future<Output = T>,
-        Init: FnOnce()->Fut,
-    >(initializer: F) -> Self {
-        fn f() -> T {
-            block_on(initializer())
-        }
-        Self {
-            value: OnceLock::new(),
-            initializer: || block_on(initializer()),
-        }
+impl<T> Global<T> {
+    #[inline] pub const fn new(init: fn()->T) -> Self {
+        Self { value: std::sync::OnceLock::new(), init }
     }
 }
 const _: () = {
-    impl<T, F: FnOnce()->T + Clone> RefUnwindSafe for Global<T, F> {}
-
-    impl<T, F: FnOnce()->T + Clone> Deref for Global<T, F> {
+    impl<T> std::ops::Deref for Global<T> {
         type Target = T;
         fn deref(&self) -> &Self::Target {
-            self.value.get_or_init(|| self.initializer.clone()())
+            self.value.get_or_init(self.init)
         }
     }
 };
 
 
+#[cfg(test)]
+mod __example__ {use super::Global;
 
-// trait Initializer<F; > {
-//     fn initialize(&self) -> 
-// }
-// 
+    static S: Global<String> = Global::new(|| String::from("Hello, world!"));
+
+    #[test]
+    fn s_ref() {
+        let s_ref: &String = &S;
+        assert_eq!(s_ref, "Hello, world!");
+    }
+}
