@@ -56,7 +56,7 @@ pub mod prelude {
 }
 
 pub mod utils {
-    pub use ohkami_lib::{f};
+    pub use ohkami_lib::{f, Global};
 }
 
 pub mod __ {
