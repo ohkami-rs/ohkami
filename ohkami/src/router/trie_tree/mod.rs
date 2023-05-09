@@ -2,16 +2,21 @@ pub(crate) mod node; pub(crate) use node::TrieNode;
 pub(crate) mod pattern; pub(crate) use pattern::TriePattern;
 
 use crate::{handler::Handlers, fang::Fangs};
-use super::Router;
+use super::{Router, radix_tree::RadixTree};
 
 
+/*===== definitions =====*/
 #[allow(non_snake_case)]
 pub(crate) struct TrieTree {
     GET: TrieNode,
     POST: TrieNode,
     PATCH: TrieNode,
     DELETE: TrieNode,
-} impl TrieTree {
+}
+
+
+/*===== buidlers =====*/
+impl TrieTree {
     pub(crate) fn new<const N: usize>(handlers: [Handlers; N]) -> Self {
         let mut tree = Self {
             GET: TrieNode::root(),
@@ -34,12 +39,12 @@ pub(crate) struct TrieTree {
         self.PATCH.apply(fangs.clone());
         self.POST.apply(fangs);
     }
-    pub(crate) fn into_radix(self) -> Router {
-        Router {
-            GET: self.GET.into_radix(),
-            POST: self.POST.into_radix(),
-            PATCH: self.PATCH.into_radix(),
-            DELETE: self.DELETE.into_radix(),
-        }
+}
+
+
+/*===== mutation =====*/
+impl TrieTree {
+    pub(crate) fn into_radix(self) -> RadixTree {
+
     }
 }

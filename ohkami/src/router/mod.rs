@@ -28,10 +28,10 @@ enum Pattern {
 }
 
 struct Procs {
-    GET:    &'static [(&'static [&'static Fang], Handler)],
-    POST:   &'static [(&'static [&'static Fang], Handler)],
-    PATCH:  &'static [(&'static [&'static Fang], Handler)],
-    DELETE: &'static [(&'static [&'static Fang], Handler)],
+    GET:    &'static [(&'static [Fang], Handler)],
+    POST:   &'static [(&'static [Fang], Handler)],
+    PATCH:  &'static [(&'static [Fang], Handler)],
+    DELETE: &'static [(&'static [Fang], Handler)],
 }
 
 
@@ -72,7 +72,7 @@ impl Procs {
         &self,
         method: &Method,
         id: usize,
-    ) -> (&[& Fang], Handler) {
+    ) -> (&[Fang], Handler) {
         match method {
             Method::GET => self.GET[id],
             Method::POST => self.POST[id],
@@ -87,37 +87,57 @@ impl Node {
         let path_len = path.len();
         let mut param_section_start = 1/* skip initial '/' */;
 
-        for pattern in self.patterns {
-            path = path.strip_prefix('/')?;
-            match pattern {
-                Pattern::Str(s) => {
-                    path = path.strip_prefix(s)?;
-                    param_section_start += s.len() + 1/* '/' */ + 1;
-                }
-                Pattern::Param  => {
-                    match path.find('/') {
-                        Some(rem_len) => {
-                            path = &path[rem_len+1..];
-                            path_params.push(param_section_start..(param_section_start+rem_len));
-                            param_section_start += rem_len + 1/* skip '/' */;
-                        }
-                        None => {
-                            path_params.push(param_section_start..path_len);
-                            path = "";
+        let mut search_target = self;
+        loop {
+            for pattern in search_target.patterns {
+                path = path.strip_prefix('/')?;
+                match pattern {
+                    Pattern::Str(s) => {
+                        path = path.strip_prefix(s)?;
+                        param_section_start += s.len() + 1/* '/' */;
+                    }
+                    Pattern::Param  => {
+                        match path.find('/') {
+                            Some(rem_len) => {
+                                path = &path[rem_len+1..];
+                                path_params.push(param_section_start..(param_section_start+rem_len));
+                                param_section_start += rem_len + 1/* skip '/' */;
+                            }
+                            None => {
+                                path = "";
+                                path_params.push(param_section_start..path_len);
+                            }
                         }
                     }
                 }
             }
-        }
 
-        if path.is_empty() {
-            Some((self.id?, path_params))
-        } else {
-            self.matchable_child(path)?.search(path, path_params)
+            if path.is_empty() {
+                return Some((search_target.id?, path_params))
+            } else {
+                search_target = search_target.matchable_child(path)?
+            }
         }
     }
 
-    fn matchable_child(&self, path: &str) -> Option<&Self> {
-        
+    #[inline(always)] fn matchable_child(&self, path: &str) -> Option<&Self> {
+        for child in self.children {
+            if child.patterns.first()?.is_matchable_to(path) {
+                return Some(child)
+            }
+        }
+        None
+    }
+}
+
+impl Pattern {
+    #[inline(always)] fn is_matchable_to(&self, path: &str) -> bool {
+        match self {
+            Self::Param  => true,
+            Self::Str(s) => match path.find('/') {
+                Some(slash) => &path[..slash] == *s,
+                None        => path == *s,
+            },
+        }
     }
 }
