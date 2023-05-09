@@ -15,7 +15,7 @@ pub(crate) struct PathParams {
     params: [Option<BufRange>; PATH_PARAMS_LIMIT],
     next:   u8,
 } impl PathParams {
-    #[inline] pub(crate) fn new() -> Self {
+    #[inline(always)] pub(crate) fn new() -> Self {
         Self {
             params: [None, None],
             next:   0,
@@ -45,14 +45,17 @@ pub(crate) struct PathParams {
 
 pub struct Request {
     buffer:  Buffer,
-    pub method:  Method,
+    method:  Method,
     path:    BufRange,
     queries: QueryParams,
     headers: Headers,
     body:    Option<BufRange>,
 } impl Request {
-    #[inline] pub fn path(&self) -> &str {
+    #[inline(always)] pub fn path(&self) -> &str {
         &self.buffer[&self.path]
+    }
+    #[inline(always)] pub fn method(&self) -> &Method {
+        &self.method
     }
     #[inline] pub fn query(&self, key: &str) -> Option<&str> {
         let QueryParams { params, next } = &self.queries;
