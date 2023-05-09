@@ -1,64 +1,80 @@
+/*===== global settings =====*/
+#![doc(html_root_url = "https://docs.rs/ohkami/0.9.0")]
+
 #![feature(try_trait_v2, byte_slice_trim_ascii)]
 
 #![allow(incomplete_features)]
 #![feature(adt_const_params, specialization)]
 
-#![doc(html_root_url = "https://docs.rs/ohkami/0.9.0")]
 
+/*===== feature management =====*/
 #[cfg(all(
     feature="async-std",
     feature="tokio",
-    feature="lunatic",
 ))] compile_error!("any two of features
 
 - `tokio`
 - `async-std`
-- `lunatic`
 
 can be enabled at once.
 ");
 
+
+/*===== modules =====*/
 mod ohkami;
-pub use ohkami::Ohkami;
-
 mod error;
-pub use error::{Error, CatchError};
-
 mod context;
-pub use context::Context;
-
 mod response;
-pub use response::Response;
-
 mod request;
-pub use request::{Request, from_request::FromRequest};
-
 mod fang;
-pub use fang::{Fang, Fangs, FangsRoute, IntoFang};
-pub(crate) use fang::FangRoutePattern;
-
 mod router;
-pub(crate) use router::{Router, trie_tree::TrieTree};
-
 mod handler;
-pub use handler::route::Route;
-pub(crate) use handler::{Handler};
 
-pub type Result<T> = std::result::Result<T, error::Error>;
 
+/*===== public private =====*/
+pub mod __ {
+    pub use ohkami_macros::{json};
+}
+
+
+/*===== utils =====*/
+pub mod utils {
+    pub type Result<T> = std::result::Result<T, crate::error::Error>;
+    
+    #[macro_export]
+    macro_rules! f {
+        ($string:literal $(, $arg:expr)*) => {
+            format!($string $(, $arg)*)
+        };
+        ({ $( $content:tt )+ }) => {
+            ohkami::__::json!({ $( $content )+ })
+        };
+    }    
+}
+
+
+/*===== prelude =====*/
 pub mod prelude {
     pub use super::{
         Error,
         Context,
         Response,
-        Result,
+        utils::Result,
     };
 }
 
-pub mod utils {
-    pub use ohkami_lib::{f, Global};
-}
 
-pub mod __ {
-    pub use ohkami_macros::{json};
-}
+/*===== in-crate reexport =====*/
+pub(crate) use handler::{Handler};
+pub(crate) use fang::FangRoutePattern;
+pub(crate) use router::{Router, trie_tree::TrieTree};
+
+
+/*===== public reexport =====*/
+pub use ohkami::Ohkami;
+pub use error::{Error, CatchError};
+pub use context::Context;
+pub use response::Response;
+pub use request::{Request, from_request::FromRequest};
+pub use fang::{Fang, Fangs, FangsRoute, IntoFang};
+pub use handler::route::Route;
