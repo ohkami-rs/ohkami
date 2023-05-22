@@ -33,7 +33,6 @@ impl TrieTree {
         tree
     }
     pub(crate) fn apply(&mut self, fangs: Fangs) {
-        // abc order
         self.DELETE.apply(fangs.clone());
         self.GET.apply(fangs.clone());
         self.PATCH.apply(fangs.clone());

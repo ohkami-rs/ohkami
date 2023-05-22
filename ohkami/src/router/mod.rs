@@ -1,5 +1,5 @@
 mod trie_tree;
-mod radix_tree;
+// mod radix_tree;
 
 use async_std::net::TcpStream;
 use crate::{Fang, handler::Handler, Context, Request, request::{Method, PathParams}};
@@ -7,31 +7,20 @@ use crate::{Fang, handler::Handler, Context, Request, request::{Method, PathPara
 
 /*===== definitions =====*/
 pub(crate) struct Router {
-    tree:  Tree,
-    procs: Procs,
-}
-
-struct Tree {
     GET:    Node,
     POST:   Node,
     PATCH:  Node,
     DELETE: Node,
 }
 struct Node {
-    id: Option<usize>,
+    handler:  Option<Handler>,
     patterns: &'static [Pattern],
+    fangs:    &'static [Fang],
     children: &'static [Node],
 }
 enum Pattern {
     Str(&'static str),
     Param,
-}
-
-struct Procs {
-    GET:    &'static [(&'static [Fang], Handler)],
-    POST:   &'static [(&'static [Fang], Handler)],
-    PATCH:  &'static [(&'static [Fang], Handler)],
-    DELETE: &'static [(&'static [Fang], Handler)],
 }
 
 
@@ -43,47 +32,31 @@ impl Router {
         mut stream: TcpStream,
         mut request: Request,
     ) {
-        let Some((id, path_params)) = self.search(request.method(), request.path()) else {
+        let Some((target, params)) = self.search(request.method(), request.path()) else {
             c.NotFound::<(), _>("").send(&mut stream);
             return;
         };
-        let (fangs, handler) = unsafe {self.procs.get(request.method(), id)};
 
-        for fang in fangs {
+        for fang in target.fangs {
             (c, request) = fang(c, request).await
         }
-        handler(stream, c, request, path_params).await
+        let handler = unsafe {(&target.handler).as_ref().unwrap_unchecked()} ;
+        handler(stream, c, request, params).await
     }
 
-    #[inline(always)] fn search(&self, method: &Method, path: &str) -> Option<(/* id */usize, PathParams)> {
+    #[inline(always)] fn search(&self, method: &Method, path: &str) -> Option<(&Node, PathParams)> {
         let path_params = PathParams::new();
         match method {
-            Method::GET => self.tree.GET.search(path, path_params),
-            Method::POST => self.tree.POST.search(path, path_params),
-            Method::PATCH => self.tree.PATCH.search(path, path_params),
-            Method::DELETE => self.tree.DELETE.search(path, path_params),
+            Method::GET => self.GET.search(path, path_params),
+            Method::POST => self.POST.search(path, path_params),
+            Method::PATCH => self.PATCH.search(path, path_params),
+            Method::DELETE => self.DELETE.search(path, path_params),
         }
     }
-}
-
-impl Procs {
-    /// without checking if `method` and `id` is valid
-    #[inline(always)] unsafe fn get(
-        &self,
-        method: &Method,
-        id: usize,
-    ) -> (&[Fang], Handler) {
-        match method {
-            Method::GET => self.GET[id],
-            Method::POST => self.POST[id],
-            Method::PATCH => self.PATCH[id],
-            Method::DELETE => self.DELETE[id],
-        }
-    } 
 }
 
 impl Node {
-    fn search(&self, mut path: &str, mut path_params: PathParams) -> Option<(/* id */usize, PathParams)> {
+    fn search(&self, mut path: &str, mut path_params: PathParams) -> Option<(&Self, PathParams)> {
         let path_len = path.len();
         let mut param_section_start = 1/* skip initial '/' */;
 
@@ -112,7 +85,7 @@ impl Node {
                 }
             }
 
-            if path.is_empty() {
+            if path.is_empty()  {
                 return Some((search_target.id?, path_params))
             } else {
                 search_target = search_target.matchable_child(path)?

@@ -16,24 +16,6 @@ pub struct Fangs(
     >
 );
 
-// pub enum Fang {
-//     Before(Box<dyn
-//         Fn(Context, Request) -> Pin<
-//             Box<dyn
-//                 Future<Output = (Context, Request)>
-//                 + Send + 'static
-//             >
-//         > + Send + Sync + 'static
-//     >),
-//     After(Box<dyn
-//         Fn(Response<>) -> Pin<
-//             Box<dyn
-//                 Future<Output = Response<>>
-//                 + Send + 'static
-//             >
-//         > + Send + Sync + 'static
-//     >),
-// }
 pub type Fang = Box<dyn
     Fn(Context, Request) -> Pin<
         Box<dyn
