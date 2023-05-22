@@ -1,80 +1,39 @@
-/*===== global settings =====*/
-#![doc(html_root_url = "https://docs.rs/ohkami/0.9.0")]
+/*===== feature managements =====*/
+#[cfg(any(
+    all(feature="rt_tokio", feature="rt_async-std")
+))] compile_error!("
+    Can't activate multiple `rt_*` feature!
+");
 
-#![feature(try_trait_v2, byte_slice_trim_ascii)]
-
-#![allow(incomplete_features)]
-#![feature(adt_const_params, specialization)]
-
-
-/*===== feature management =====*/
-#[cfg(all(
-    feature="async-std",
-    feature="tokio",
-))] compile_error!("any two of features
-
-- `tokio`
-- `async-std`
-
-can be enabled at once.
+#[cfg(not(any(
+    feature="rt_tokio",
+    feature="rt_async-std",
+)))] compile_error!("
+    Activate 1 of `rt_*` features：
+    - rt_tokio
+    - rt_async-std
 ");
 
 
-/*===== modules =====*/
-mod ohkami;
-mod error;
+/*===== feature abstraction layer =====*/
+mod __feature__ {
+    #[cfg(feature="rt_tokio")]
+    pub(crate) use tokio::net::TcpStream as TcpStream;
+    #[cfg(feature="rt_async-std")]
+    pub(crate) use async_std::net::TcpStream as TcpStream;
+}
+
+
+/*===== modules (the lower is the low-layer (: not-depending on other modules)) =====*/
+mod handler;
+mod fang;
+
 mod context;
+
 mod response;
 mod request;
-mod fang;
-mod router;
-mod handler;
 
 
-/*===== public private =====*/
-pub mod __ {
-    pub use ohkami_macros::{json};
-}
-
-
-/*===== utils =====*/
-pub mod utils {
-    pub type Result<T> = std::result::Result<T, crate::error::Error>;
-    
-    #[macro_export]
-    macro_rules! f {
-        ($string:literal $(, $arg:expr)*) => {
-            format!($string $(, $arg)*)
-        };
-        ({ $( $content:tt )+ }) => {
-            ohkami::__::json!({ $( $content )+ })
-        };
-    }    
-}
-
-
-/*===== prelude =====*/
-pub mod prelude {
-    pub use super::{
-        Error,
-        Context,
-        Response,
-        utils::Result,
-    };
-}
-
-
-/*===== in-crate reexport =====*/
-pub(crate) use handler::{Handler};
-pub(crate) use fang::FangRoutePattern;
-pub(crate) use router::{Router, trie_tree::TrieTree};
-
-
-/*===== public reexport =====*/
-pub use ohkami::Ohkami;
-pub use error::{Error, CatchError};
+/*===== visibility managements =====*/
 pub use context::Context;
-pub use response::Response;
-pub use request::{Request, from_request::FromRequest};
-pub use fang::{Fang, Fangs, FangsRoute, IntoFang};
-pub use handler::route::Route;
+// pub use response::;
