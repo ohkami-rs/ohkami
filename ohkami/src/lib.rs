@@ -1,4 +1,4 @@
-/*===== feature managements =====*/
+/*===== crate features =====*/
 #[cfg(any(
     all(feature="rt_tokio", feature="rt_async-std")
 ))] compile_error!("
@@ -24,16 +24,15 @@ mod __feature__ {
 }
 
 
-/*===== modules (the lower is the low-layer (: not-depending on other modules)) =====*/
-mod handler;
-mod fang;
-
-mod context;
-
-mod response;
-mod request;
+/*===== modules =====*/
+mod layer0_lib;
+mod layer1_req_res;
+mod layer2_context;
+mod layer3_fang_handler;
+mod layer4_router;
+mod layer5_ohkami;
 
 
 /*===== visibility managements =====*/
-pub use context::Context;
+pub use layer2_context::Context;
 // pub use response::;
