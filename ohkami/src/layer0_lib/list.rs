@@ -6,7 +6,7 @@ pub(crate) struct List<T, const CAPACITY: usize> {
 macro_rules! prepare_capacity {
     ($cap:literal: [ $( $none:ident ),* ]) => {
         impl<T> List<T, $cap> {
-            pub(crate) fn new() -> Self {
+            #[inline(always)] pub(crate) const fn new() -> Self {
                 Self {
                     list: [ $( $none ),* ],
                     next: 0,
@@ -26,9 +26,9 @@ macro_rules! prepare_capacity {
 };
 
 impl<T, const CAPACITY: usize> List<T, CAPACITY> {
-    pub(crate) fn append(&mut self, element: T) {
+    #[inline(always)] pub(crate) fn append(&mut self, element: T) {
         if self.next == CAPACITY {
-            eprintln!("Buffer over flow");
+            panic!("Buffer over flow");
         } else {
             self.list[self.next].replace(element);
             self.next += 1;

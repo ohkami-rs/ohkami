@@ -1,12 +1,20 @@
-type BufRange = std::ops::Range<usize>;
+use crate::{
+    __feature__,
+    layer0_lib::{List, Method, BufRange, Buffer},
+};
 
 
-const PATH_PARAMS_LIMIT: usize = 4;
-pub(crate) struct PathParams {
-    params: [Option<BufRange>; PATH_PARAMS_LIMIT],
-    next:   usize,
+pub struct Request {
+    buffer:  Buffer,
+    method:  Method,
+    path:    BufRange,
+    queries: List<(BufRange, BufRange), 4>,
+    headers: List<(BufRange, BufRange), 32>,
+    body:    Option<BufRange>,
 }
-impl PathParams {
-    
-}
 
+impl Request {
+    pub(crate) async fn parse(stream: &mut __feature__::TcpStream) -> Self {
+        
+    }
+}
