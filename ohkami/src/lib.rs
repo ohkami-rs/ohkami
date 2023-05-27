@@ -21,6 +21,11 @@ mod __feature__ {
     pub(crate) use tokio::net::TcpStream as TcpStream;
     #[cfg(feature="rt_async-std")]
     pub(crate) use async_std::net::TcpStream as TcpStream;
+
+    #[cfg(feature="rt_tokio")]
+    pub(crate) use tokio::__TODO__ as StreamReader;
+    #[cfg(feature="rt_async-std")]
+    pub(crate) use async_std::io::ReadExt as StreamReader;
 }
 
 
@@ -34,5 +39,8 @@ mod layer5_ohkami;
 
 
 /*===== visibility managements =====*/
-pub use layer2_context::Context;
-// pub use response::;
+pub(crate) use layer1_req_res::{QUERIES_LIMIT, HEADERS_LIMIT};
+
+pub use layer0_lib::{Error};
+pub use layer1_req_res::{Request};
+pub use layer2_context::{Context};

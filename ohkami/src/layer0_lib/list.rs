@@ -4,8 +4,8 @@ pub(crate) struct List<T, const CAPACITY: usize> {
 }
 
 macro_rules! prepare_capacity {
-    ($cap:literal: [ $( $none:ident ),* ]) => {
-        impl<T> List<T, $cap> {
+    ($cap_name:ident: [ $( $none:ident ),* ]) => {
+        impl<T> List<T, $cap_name> {
             #[inline(always)] pub(crate) const fn new() -> Self {
                 Self {
                     list: [ $( $none ),* ],
@@ -15,9 +15,11 @@ macro_rules! prepare_capacity {
         }
     };
 } const _: () = {
-    prepare_capacity!(2: [None, None]);
-    prepare_capacity!(4: [None, None, None, None]);
-    prepare_capacity!(32: [
+    use crate::{QUERIES_LIMIT, HEADERS_LIMIT};
+    
+    // prepare_capacity!(2: [None, None]);
+    prepare_capacity!(QUERIES_LIMIT: [None, None, None, None]);
+    prepare_capacity!(HEADERS_LIMIT: [
         None, None, None, None, None, None, None, None,
         None, None, None, None, None, None, None, None,
         None, None, None, None, None, None, None, None,

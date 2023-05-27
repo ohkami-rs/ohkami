@@ -1,4 +1,5 @@
-pub(crate) enum Method {
+#[derive(Clone, Copy)]
+pub enum Method {
     GET,
     PUT,
     POST,
