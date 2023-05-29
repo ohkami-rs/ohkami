@@ -5,7 +5,6 @@ use crate::{
     layer0_lib::{List, Method, BufRange, Buffer, BUFFER_SIZE}
 };
 
-
 pub(crate) const QUERIES_LIMIT: usize = 4;
 pub(crate) const HEADERS_LIMIT: usize = 32;
 
@@ -58,3 +57,32 @@ impl Request {
         ))
     }
 }
+
+
+#[cfg(test)]
+struct DebugRequest {
+    method: Method,
+    path: &'static str,
+    queries: &'static [(&'static str, &'static str)],
+    headers: &'static [(&'static str, &'static str)],
+    body: Option<&'static str>,
+}
+#[cfg(test)]
+const _: () = {
+    impl DebugRequest {
+        pub(crate) fn assert_parsed_from(self, req_str: &'static str) {
+            let DebugRequest { method, path, queries, headers, body } = self;
+            let req = parse::parse(Buffer::from_raw_str(req_str));
+
+            assert_eq!(req.method(), method);
+            assert_eq!(req.path(), path);
+            assert_eq!(req.body(), body);
+            for (k, v) in queries {
+                assert_eq!(req.query(k), Some(*v))
+            }
+            for (k, v) in headers {
+                assert_eq!(req.header(k), Some(*v))
+            }
+        }
+    }
+};

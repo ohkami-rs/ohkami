@@ -37,3 +37,25 @@ impl<T, const CAPACITY: usize> List<T, CAPACITY> {
         }
     }
 }
+
+
+#[cfg(test)]
+const _: () = {
+    impl<T: PartialEq, const CAPACITY: usize> PartialEq for List<T, CAPACITY> {
+        fn eq(&self, other: &Self) -> bool {
+            let n = self.next;
+            if other.next != n {
+                return false
+            } else if n == 0 {
+                return true
+            }
+
+            for i in 0..n {
+                if self.list[i] != other.list[i] {
+                    return false
+                }
+            }
+            true
+        }
+    }
+};
