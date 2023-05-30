@@ -2,7 +2,7 @@ mod parse;
 
 use crate::{
     __feature__::{self, StreamReader}, Error,
-    layer0_lib::{List, Method, BufRange, Buffer, BUFFER_SIZE}
+    layer0_lib::{List, Method, BufRange, Buffer, BUFFER_SIZE, ContentType}
 };
 
 pub(crate) const QUERIES_LIMIT: usize = 4;
@@ -14,7 +14,7 @@ pub struct Request {
     path:    BufRange,
     queries: List<(BufRange, BufRange), QUERIES_LIMIT>,
     headers: List<(BufRange, BufRange), HEADERS_LIMIT>,
-    body:    Option<BufRange>,
+    body:    Option<(ContentType, BufRange)>,
 }
 
 impl Request {
@@ -34,7 +34,7 @@ impl Request {
     pub fn query(&self, key: &str) -> Option<&str> {
         let List { list, next } = &self.queries;
         for query in &list[..*next] {
-            let (key_range, value_range) = query.as_ref().unwrap();
+            let (key_range, value_range) = unsafe {query.assume_init_ref()};
             if &self.buffer[key_range] == key.as_bytes() {
                 return Some(&self.buffer.read_str(value_range))
             }
@@ -44,16 +44,18 @@ impl Request {
     pub fn header(&self, key: &str) -> Option<&str> {
         let List { list, next } = &self.headers;
         for header in &list[..*next] {
-            let (key_range, value_range) = header.as_ref().unwrap();
+            let (key_range, value_range) = unsafe {header.assume_init_ref()};
             if &self.buffer[key_range] == key.as_bytes() {
                 return Some(&self.buffer.read_str(value_range))
             }
         }
         None
     }
-    pub fn body(&self) -> Option<&str> {
-        Some(&self.buffer.read_str(
-            (&self.body).as_ref()?
+    pub fn body(&self) -> Option<(&ContentType, &str)> {
+        let (content_type, body_range) = (&self.body).as_ref()?;
+        Some((
+            content_type,
+            &self.buffer.read_str(body_range),
         ))
     }
 }
@@ -65,7 +67,7 @@ struct DebugRequest {
     path: &'static str,
     queries: &'static [(&'static str, &'static str)],
     headers: &'static [(&'static str, &'static str)],
-    body: Option<&'static str>,
+    body: Option<(ContentType, &'static str)>,
 }
 #[cfg(test)]
 const _: () = {
@@ -76,7 +78,7 @@ const _: () = {
 
             assert_eq!(req.method(), method);
             assert_eq!(req.path(), path);
-            assert_eq!(req.body(), body);
+            assert_eq!(req.body().map(|(ct, s)| (ct.clone(), s)), body);
             for (k, v) in queries {
                 assert_eq!(req.query(k), Some(*v))
             }

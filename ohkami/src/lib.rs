@@ -15,7 +15,7 @@
 ");
 
 
-/*===== feature abstraction layer =====*/
+/*===== dependency injection layer =====*/
 mod __feature__ {
     #[cfg(feature="rt_tokio")]
     pub(crate) use tokio::net::TcpStream as TcpStream;

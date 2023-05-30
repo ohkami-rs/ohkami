@@ -1,5 +1,5 @@
 use super::{Request, QUERIES_LIMIT, HEADERS_LIMIT};
-use crate::layer0_lib::{Buffer, Method, List};
+use crate::layer0_lib::{Buffer, Method, List, ContentType};
 
 
 pub(super) fn parse(buffer: Buffer) -> Request {
@@ -72,6 +72,7 @@ pub(super) fn parse(buffer: Buffer) -> Request {
         }
     };
 
+    let mut content_type = None;
     let mut headers = List::<_, {HEADERS_LIMIT}>::new(); {
         let mut header_start = start;
         loop {
@@ -96,10 +97,27 @@ pub(super) fn parse(buffer: Buffer) -> Request {
                 }
             }
 
-            headers.append((
-                header_start..colon,
-                (colon+1/* ' ' */+1)..end,
-            ));
+            if content_type.is_some() {
+                headers.append((
+                    header_start..colon,
+                    (colon+1/* ' ' */+1)..end,
+                ))
+            } else {
+                match &buffer[header_start..colon] {
+                    b"Content-Type" | b"content-type" => {
+                        content_type = ContentType::from_bytes(
+                            &buffer[(colon+1/* ' ' */+1)..end]
+                        );
+                    }
+                    _ => {
+                        headers.append((
+                            header_start..colon,
+                            (colon+1/* ' ' */+1)..end,
+                        ))
+                    }
+                }
+            }
+            
             header_start = end + 1/* '\n' */ + 1
         }
         start = header_start + 1/* '\n' */ + 1
@@ -113,7 +131,10 @@ pub(super) fn parse(buffer: Buffer) -> Request {
                 _ => end += 1,
             }
         }
-        start..end
+        (
+            content_type.expect("request body found but Content-Type was not found"),
+            start..end
+        )
     });
 
     Request {
@@ -167,7 +188,10 @@ Connection: Keep-Alive"
             ("Accept-Encoding", "gzip, deflate"),
             ("Connection", "Keep-Alive")
         ],
-        body: Some("licenseID=string&content=string&/paramsXML=string"),
+        body: Some((
+            ContentType::URLEncoded,
+            "licenseID=string&content=string&/paramsXML=string"
+        )),
     }.assert_parsed_from(
 "POST /cgi-bin/process.cgi HTTP/1.1\r
 User-Agent: Mozilla/4.0 (compatible; MSIE5.01; Windows NT)\r
