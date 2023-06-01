@@ -7,7 +7,7 @@ use std::{
 };
 use crate::{
     __dep__, __dep__::StreamWriter,
-    layer0_lib::{Status, ContentType},
+    layer0_lib::{Status, ContentType, AsStr},
 };
 
 
@@ -39,18 +39,21 @@ pub struct ErrorResponse(String);
     }
 }
 
-#[inline(always)] pub(crate) fn with_body<T: Serialize>(
+
+#[inline(always)] pub(crate) fn response_with_body_asstr<T: AsStr>(
     body: T,
     status: Status,
     headers: &ResponseHeaders,
 ) -> Response<T> {
     let __status__ = status.as_str();
     let __headers__ = headers.as_str();
-    let __body__ = serde_json::to_string(&body).expect("Failed to serialize");
+    let __body__ = body.as_str();
+    let cl = __body__.len();
 
     let response = format!(
 "HTTP/1.1 {__status__}\r
 {__headers__}\r
+Content-Length: {cl}\r
 \r
 {__body__}");
 
@@ -61,7 +64,31 @@ pub struct ErrorResponse(String);
     }
 }
 
-#[inline(always)] pub(crate) fn without_body(
+#[inline(always)] pub(crate) fn response_with_body<T: Serialize>(
+    body: T,
+    status: Status,
+    headers: &ResponseHeaders,
+) -> Response<T> {
+    let __status__ = status.as_str();
+    let __headers__ = headers.as_str();
+    let __body__ = serde_json::to_string(&body).expect("Failed to serialize");
+    let cl = __body__.len();
+
+    let response = format!(
+"HTTP/1.1 {__status__}\r
+{__headers__}\r
+Content-Length: {cl}\r
+\r
+{__body__}");
+
+    if status.is_error() {
+        Err(ErrorResponse(response))
+    } else {
+        Ok(OkResponse(response, PhantomData))
+    }
+}
+
+#[inline(always)] pub(crate) fn response_without_body(
     status: Status,
     headers: &ResponseHeaders
 ) -> Response<()> {
