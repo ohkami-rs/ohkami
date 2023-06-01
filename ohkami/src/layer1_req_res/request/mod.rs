@@ -1,7 +1,7 @@
 mod parse;
 
 use crate::{
-    __feature__::{self, StreamReader}, Error,
+    __dep__, Error,
     layer0_lib::{List, Method, BufRange, Buffer, BUFFER_SIZE, ContentType}
 };
 
@@ -18,7 +18,7 @@ pub struct Request {
 }
 
 impl Request {
-    pub(crate) async fn new(stream: &mut __feature__::TcpStream) -> Result<Self, Error> {
+    pub(crate) async fn new(stream: &mut __dep__::TcpStream) -> Result<Self, Error> {
         let buffer = Buffer::new(stream).await?;
         Ok(parse::parse(buffer))
     }

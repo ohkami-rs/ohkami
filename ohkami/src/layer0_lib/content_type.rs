@@ -30,4 +30,13 @@ impl ContentType {
             _ => unsafe {unreachable_unchecked()}
         }
     }
+
+    pub(crate) fn as_str(&self) -> &str {
+        match self {
+            Self::JSON => "application/json",
+            Self::Text => "text/plain",
+            Self::HTML => "text/html",
+            _ => unsafe {unreachable_unchecked()}
+        }
+    }
 }

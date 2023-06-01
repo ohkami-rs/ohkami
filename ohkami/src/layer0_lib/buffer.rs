@@ -1,5 +1,5 @@
 use std::ops::Index;
-use crate::{Error, __feature__::{TcpStream, StreamReader}};
+use crate::{Error, __dep__::{TcpStream, StreamReader}};
 
 pub(crate) const BUFFER_SIZE: usize = 1024;
 pub(crate) type BufRange = std::ops::Range<usize>;
