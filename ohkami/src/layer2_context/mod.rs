@@ -1,7 +1,9 @@
+#![allow(non_snake_case)]
+
 use serde::Serialize;
 use crate::{
     layer0_lib::{AsStr, Status},
-    layer1_req_res::{ResponseHeaders, Response, response_with_body, response_with_body_asstr, response_without_body},
+    layer1_req_res::{ResponseHeaders, Response, ErrorResponse, OkResponse},
 };
 
 
@@ -16,64 +18,65 @@ impl Context {
 }
 
 impl Context {
-    #[inline(always)] pub fn append(&mut self, key: &str, value: impl AsStr) {
-        self.headers.append(key, value)
-    }
-    #[inline(always)] pub fn set(&mut self, key: &str, value: impl AsStr) {
-        self.headers.set(key, value)
-    }
-    #[inline(always)] pub fn clear(&mut self, key: &str) {
-        self.headers.clear(key)
-    }
-}
-
-impl Context {
     #[inline(always)] pub fn text<Text: AsStr>(&mut self, text: Text) -> Response<Text> {
-        self.set("Content-Type", "text/plain");
-        response_with_body_asstr(
+        self.headers.set("Content-Type", "text/plain");
+        Ok(OkResponse::with_body_asstr(
             text,
             Status::OK,
             &self.headers,
-        )
+        ))
     }
     #[inline(always)] pub fn html<HTML: AsStr>(&mut self, html: HTML) -> Response<HTML> {
-        self.set("Content-Type", "text/html");
-        response_with_body_asstr(
+        self.headers.set("Content-Type", "text/html");
+        Ok(OkResponse::with_body_asstr(
             html,
             Status::OK,
             &self.headers,
-        )
+        ))
     }
     #[inline(always)] pub fn json<JSON: Serialize>(&mut self, json: JSON) -> Response<JSON> {
-        self.set("Content-Type", "application/json");
-        response_with_body(
+        self.headers.set("Content-Type", "application/json");
+        Ok(OkResponse::with_body(
             json,
             Status::OK,
             &self.headers,
-        )
+        ))
     }
 
     #[inline(always)] pub fn Created<Entity: Serialize>(&mut self, entity: Entity) -> Response<Entity> {
-        self.set("Content-Type", "application/json");
-        response_with_body(
+        self.headers.set("Content-Type", "application/json");
+        Ok(OkResponse::with_body(
             entity,
             Status::Created,
             &self.headers,
-        )
+        ))
     }
 
     #[inline(always)] pub fn NoContent(&mut self) -> Response<()> {
-        self.clear("Content-Type");
-        response_without_body(
+        self.headers.clear("Content-Type");
+        Ok(OkResponse::without_body(
             Status::NoContent,
             &self.headers,
-        )
+        ))
     }
 }
 
-impl Context {
-    #[inline(always)] pub fn BadRequest<T: Serialize, Content: AsStr>(&mut self, content: Content) -> Response<T> {
-        self.headers.append_if_not_has("Content-Type", "text/plain");
-    }
-}
-
+macro_rules! impl_error_response {
+    ($( $name:ident ),*) => {
+        impl Context {
+            $(
+                #[inline(always)] pub fn $name(&mut self) -> ErrorResponse {
+                    self.headers.clear("Content-Type");
+                    ErrorResponse::new(Status::$name, &self.headers)
+                }
+            )*
+        }
+    };
+} impl_error_response!(
+    BadRequest,
+    Unauthorized,
+    Forbidden,
+    NotFound,
+    InternalServerError,
+    NotImplemented
+);
