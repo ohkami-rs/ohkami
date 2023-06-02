@@ -4,12 +4,11 @@
 
 ### ＊This README is my working draft. So codes in "Quick start" or "Samples" don't work yet.<br/>
 
-ohkami *- [狼] wolf in Japanese -* is **ergonomic** web framework for **nightly** Rust.
+ohkami *- [狼] wolf in Japanese -* is **ergonomic** web framework for Rust.
 
 ## Features
-- *nightly only*
 - *macro free, ergonomic APIs*
-- *multi runtime*：`tokio`, `async-std`, `lunatic (in future)`
+- supporting *multi runtime*：`tokio`, `async-std` (Maybe more in future)
 
 <br/>
 
@@ -31,16 +30,16 @@ tokio = { version = "1.27", fetures = ["full"] }
 ```rust
 use ohkami::prelude::*;
 
-async fn hello(c: Context) -> Response<&'static str> {
+async fn hello(mut c: Context) -> Response<&'static str> {
     c.text("Hello!")
 }
 
-async fn health_check(c: Context) -> Response<()> {
+async fn health_check(mut c: Context) -> Response<()> {
     c.NoContent()
 }
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> Result<(), Error> {
     Ohkami::new([
         "/"  .GET(hello),
         "/hc".GET(health_check),
@@ -52,11 +51,9 @@ async fn main() -> Result<()> {
 
 ## handler format
 ```rust
-async fn $handler(c: Context,
+async fn $handler(mut c: Context,
     (
-        $path_param: $PathType1,
-        | ($path_param,): ($PathType,),
-        | ($p1, $p2): ($P1, $P2),
+        ($p1,): ($P1,) | ($p1, $p2): ($P1, $P2),
     )?
     ( $query_params: $QueryType, )?
     ( $request_body: $BodyType,  )?
@@ -83,12 +80,12 @@ async fn main() -> Result<()> {
     ]).howl("localhost:5000").await
 }
 
-#[QueryParams]
+#[Queries]
 struct GetUserQuery {
     q: Option<u64>,
 }
 
-async fn get_user(c: Context,
+async fn get_user(mut c: Context,
     (id,): (usize,),
     query: GetUserQuery
 ) -> Response<User> {
@@ -103,17 +100,17 @@ async fn get_user(c: Context,
 ```rust
 use ohkami::{
     prelude::*,
-    request::RequestBody,
-    utils::f,
+    Payload,
+    f,
 };
 
-#[RequestBody(JSON)]
+#[Payload(JSON)]
 struct CreateUserRequest {
     name:     String,
     password: String,
 }
 
-async fn create_user(c: Context,
+async fn create_user(mut c: Context,
     req: CreateUserRequest
 ) -> Response<()> {
 
@@ -122,13 +119,13 @@ async fn create_user(c: Context,
     c.NoContent()
 }
 
-#[RequestBody(Form)]
+#[Payload(Form)]
 struct LoginInput {
     name:     String,
     password: String,
 }
 
-async fn post_login(c: Context,
+async fn post_login(mut c: Context,
     input: LoginInput
 ) -> Response<JWT> {
 
@@ -141,7 +138,7 @@ async fn post_login(c: Context,
 ```
 You can register validating function：
 ```rust
-#[RequestBody(JSON @ Self::validate)]
+#[Payload(JSON @ Self::validate)]
 struct CreateUserRequest {
     name:     String,
     password: String,
@@ -170,7 +167,7 @@ struct CreateUserRequest {
 ohkami's middlewares are called "**fang**s".
 ```rust
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> Result<(), Error> {
     let fangs = Fangs::new()
         .before("/api/*", my_fang);
 
@@ -193,7 +190,7 @@ async fn my_fang(
 ### pack of Ohkamis
 ```rust
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> Result<(), Error> {
     // ...
 
     let users_ohkami = Ohkami::with(users_fangs, [
@@ -216,15 +213,15 @@ async fn main() -> Result<()> {
 }
 ```
 
-### easy error handling
+### error handling
 ```rust
 use ohkami::prelude::*;
-use ohkami::utils::{CatchError, f};
+use ohkami::f;
 
-async fn handler(c: Context) -> Response</* ... */> {
+async fn handler(mut c: Context) -> Response</* ... */> {
     make_result()
-        .catch(|err| c.InternalServerError(
-            f!("Got error: {err}")
+        .map_err(|e| c.InternalError().text(
+            f!("Got error: {e}")
         ))?;
 }
 ```

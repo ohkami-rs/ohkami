@@ -77,6 +77,11 @@ macro_rules! impl_error_response {
     Unauthorized,
     Forbidden,
     NotFound,
-    InternalServerError,
+    // InternalServerError, // too long
     NotImplemented
-);
+); impl Context {
+    #[inline(always)] pub fn InternalError(&mut self) -> ErrorResponse {
+        self.headers.clearContentType();
+        ErrorResponse::new(Status::InternalServerError, self.headers.others_than_ContentType())
+    }
+}

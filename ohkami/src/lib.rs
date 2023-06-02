@@ -1,7 +1,3 @@
-/*===== language features =====*/
-#![feature(try_trait_v2)]
-
-
 /*===== crate features =====*/
 #[cfg(any(
     all(feature="rt_tokio", feature="rt_async-std")
@@ -49,6 +45,7 @@ mod layer5_ohkami;
 
 /*===== visibility managements =====*/
 pub(crate) use layer1_req_res::{QUERIES_LIMIT, HEADERS_LIMIT};
+pub(crate) use layer3_fang_handler::{PATH_PARAMS_LIMIT};
 
 pub use layer0_lib::{Error};
 pub use layer1_req_res::{Request};

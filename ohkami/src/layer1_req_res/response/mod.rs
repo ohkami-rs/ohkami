@@ -26,12 +26,12 @@ pub struct ErrorResponse {
     let _: usize = make_result_1()?;
 
     let _: usize = make_result_2()
-        .map_err(|e| ErrorResponse{status_and_headers:todo!(), content:todo!()})?;
+        .map_err(|e| ErrorResponse{status_and_headers:String::new(), content:None})?;
 
     todo!()
 }
 
-#[inline] pub(crate) async fn send<T: Serialize>(
+pub(crate) async fn send<T: Serialize>(
     response: Response<T>,
     stream: &mut __dep__::TcpStream
 ) {

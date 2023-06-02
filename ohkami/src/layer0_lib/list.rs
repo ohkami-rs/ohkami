@@ -18,9 +18,9 @@ macro_rules! prepare_capacity {
         }
     };
 } const _: () = {
-    use crate::{QUERIES_LIMIT, HEADERS_LIMIT};
+    use crate::{PATH_PARAMS_LIMIT, QUERIES_LIMIT, HEADERS_LIMIT};
     
-    // prepare_capacity!(2: [None, None]);
+    prepare_capacity!(PATH_PARAMS_LIMIT: [uninit, uninit]);
     prepare_capacity!(QUERIES_LIMIT: [uninit, uninit, uninit, uninit]);
     prepare_capacity!(HEADERS_LIMIT: [
         uninit, uninit, uninit, uninit, uninit, uninit, uninit, uninit,

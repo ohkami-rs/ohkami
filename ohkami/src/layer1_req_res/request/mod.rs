@@ -1,15 +1,16 @@
 mod parse;
+mod from_request;
 
 use crate::{
     __dep__, Error,
-    layer0_lib::{List, Method, BufRange, Buffer, BUFFER_SIZE, ContentType}
+    layer0_lib::{List, Method, BufRange, Buffer, ContentType}
 };
 
 pub(crate) const QUERIES_LIMIT: usize = 4;
 pub(crate) const HEADERS_LIMIT: usize = 32;
 
 pub struct Request {
-    buffer:  Buffer,
+    pub(crate) buffer: Buffer,
     method:  Method,
     path:    BufRange,
     queries: List<(BufRange, BufRange), QUERIES_LIMIT>,
