@@ -2,7 +2,6 @@ mod headers; pub(crate) use headers::ResponseHeaders;
 
 use serde::Serialize;
 use std::{
-    ops::{Try, FromResidual, ControlFlow},
     marker::PhantomData,
     borrow::Cow,
 };
