@@ -41,7 +41,7 @@ pub struct ErrorResponse {
             let ErrorResponse { status_and_headers, content } = error_response;
             let mut response = status_and_headers;
             if let Some((content_type, body)) = content {
-                response.push('\r'); response.push('\n');
+                response.push_str("\r\nContent-Type: ");
                 response.push_str(content_type.as_str());
                 response.push('\r'); response.push('\n');
                 response.push('\r'); response.push('\n');
@@ -59,7 +59,7 @@ impl<T: AsStr> OkResponse<T> {
     #[inline(always)] pub(crate) fn with_body_asstr(
         body: T,
         status: Status,
-        headers: &ResponseHeaders,
+        headers: &mut ResponseHeaders,
     ) -> Self {
         let __status__ = status.as_str();
         let __headers__ = headers.as_str();
@@ -78,7 +78,7 @@ impl<T: Serialize> OkResponse<T> {
     #[inline(always)] pub(crate) fn with_body(
         body: T,
         status: Status,
-        headers: &ResponseHeaders,
+        headers: &mut ResponseHeaders,
     ) -> Self {
         let __status__ = status.as_str();
         let __headers__ = headers.as_str();
@@ -96,7 +96,7 @@ Content-Length: {cl}\r
 impl OkResponse<()> {
     #[inline(always)] pub(crate) fn without_body(
         status: Status,
-        headers: &ResponseHeaders
+        headers: &mut ResponseHeaders,
     ) -> Self {
         let __status__ = status.as_str();
         let __headers__ = headers.as_str();
@@ -111,10 +111,10 @@ impl OkResponse<()> {
 impl ErrorResponse {
     #[inline(always)] pub(crate) fn new(
         status: Status,
-        headers: &ResponseHeaders,
+        headers_other_than_content_type: &str,
     ) -> ErrorResponse {
         let __status__ = status.as_str();
-        let __headers__ = headers.as_str();
+        let __headers__ = headers_other_than_content_type.as_str();
 
         ErrorResponse {
             content: None,

@@ -2,7 +2,7 @@
 
 use serde::Serialize;
 use crate::{
-    layer0_lib::{AsStr, Status},
+    layer0_lib::{AsStr, Status, ContentType},
     layer1_req_res::{ResponseHeaders, Response, ErrorResponse, OkResponse},
 };
 
@@ -19,44 +19,44 @@ impl Context {
 
 impl Context {
     #[inline(always)] pub fn text<Text: AsStr>(&mut self, text: Text) -> Response<Text> {
-        self.headers.set("Content-Type", "text/plain");
+        self.headers.setContentType(ContentType::Text);
         Ok(OkResponse::with_body_asstr(
             text,
             Status::OK,
-            &self.headers,
+            &mut self.headers,
         ))
     }
     #[inline(always)] pub fn html<HTML: AsStr>(&mut self, html: HTML) -> Response<HTML> {
-        self.headers.set("Content-Type", "text/html");
+        self.headers.setContentType(ContentType::HTML);
         Ok(OkResponse::with_body_asstr(
             html,
             Status::OK,
-            &self.headers,
+            &mut self.headers,
         ))
     }
     #[inline(always)] pub fn json<JSON: Serialize>(&mut self, json: JSON) -> Response<JSON> {
-        self.headers.set("Content-Type", "application/json");
+        self.headers.setContentType(ContentType::JSON);
         Ok(OkResponse::with_body(
             json,
             Status::OK,
-            &self.headers,
+            &mut self.headers,
         ))
     }
 
     #[inline(always)] pub fn Created<Entity: Serialize>(&mut self, entity: Entity) -> Response<Entity> {
-        self.headers.set("Content-Type", "application/json");
+        self.headers.setContentType(ContentType::JSON);
         Ok(OkResponse::with_body(
             entity,
             Status::Created,
-            &self.headers,
+            &mut self.headers,
         ))
     }
 
     #[inline(always)] pub fn NoContent(&mut self) -> Response<()> {
-        self.headers.clear("Content-Type");
+        self.headers.clearContentType();
         Ok(OkResponse::without_body(
             Status::NoContent,
-            &self.headers,
+            &mut self.headers,
         ))
     }
 }
@@ -66,8 +66,8 @@ macro_rules! impl_error_response {
         impl Context {
             $(
                 #[inline(always)] pub fn $name(&mut self) -> ErrorResponse {
-                    self.headers.clear("Content-Type");
-                    ErrorResponse::new(Status::$name, &self.headers)
+                    self.headers.clearContentType();
+                    ErrorResponse::new(Status::$name, self.headers.others_than_ContentType())
                 }
             )*
         }
