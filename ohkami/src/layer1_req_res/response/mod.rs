@@ -2,8 +2,10 @@ mod headers; pub(crate) use headers::ResponseHeaders;
 
 use serde::Serialize;
 use std::{
-    marker::PhantomData,
     borrow::Cow,
+    marker::PhantomData,
+    ops::FromResidual,
+    convert::Infallible,
 };
 use crate::{
     __dep__, __dep__::StreamWriter,
@@ -11,120 +13,54 @@ use crate::{
 };
 
 
-pub type Response<T> = ::std::result::Result<OkResponse<T>, ErrorResponse>;
-pub struct OkResponse<T: Serialize>(String, PhantomData<T>);
-pub struct ErrorResponse {
-    status_and_headers: String,
-    content: Option<(ContentType, Cow<'static, str>)>
+// pub type Response<T> = ::std::result::Result<OkResponse<T>, ErrorResponse>;
+// pub struct OkResponse<T: Serialize>(String, PhantomData<T>);
+// pub struct ErrorResponse {
+//     status_and_headers: String,
+//     content: Option<(ContentType, Cow<'static, str>)>
+// }
+pub enum Response<T: Serialize> {
+    Ok(String, PhantomData<fn()->T>),
+    Err(ErrResponse),
 }
+pub struct ErrResponse {
+    status_and_headers: String,
+    content: Option<(ContentType, Cow<'static, str>)>,
+}
+const _: () = {
+    impl<T: Serialize> FromResidual<Result<Infallible, ErrResponse>> for Response<T> {
+        fn from_residual(result: Result<Infallible, ErrResponse>) -> Self {
+            Response::Err(result.expect_err("Can't convert Result::Ok(_) into Response"))
+        }
+    }
+};
 
 #[cfg(test)] fn __(
-    make_result_1: fn() -> Result<usize, ErrorResponse>,
+    make_result_1: fn() -> Result<usize, ErrResponse>,
     make_result_2: fn() -> Result<usize, std::io::Error>,
 ) -> Response<()> {
     let _: usize = make_result_1()?;
 
     let _: usize = make_result_2()
-        .map_err(|e| ErrorResponse{status_and_headers:String::new(), content:None})?;
+        .map_err(|e| ErrResponse { status_and_headers: String::new(), content: None })?;
 
     todo!()
 }
 
-pub(crate) async fn send<T: Serialize>(
-    response: Response<T>,
-    stream: &mut __dep__::TcpStream
-) {
-    if let Err(e) = stream.write_all(match response {
-        Ok(ok_response)     => ok_response.0,
-        Err(error_response) => {
-            let ErrorResponse { status_and_headers, content } = error_response;
-            let mut response = status_and_headers;
-            if let Some((content_type, body)) = content {
-                response.push_str("\r\nContent-Type: ");
-                response.push_str(content_type.as_str());
-                response.push('\r'); response.push('\n');
-                response.push('\r'); response.push('\n');
-                response.push_str(&body);
-            }
-            response
-        },
-    }.as_bytes()).await {
-        panic!("Failed to respond: {e}")
-    }
-}
-
-
-impl<T: AsStr> OkResponse<T> {
-    #[inline(always)] pub(crate) fn with_body_asstr(
-        body: T,
-        status: Status,
-        headers: &mut ResponseHeaders,
-    ) -> Self {
-        let __status__ = status.as_str();
-        let __headers__ = headers.as_str();
-        let __body__ = body.as_str();
-        let cl = __body__.len();
-
-        OkResponse(format!(
-"HTTP/1.1 {__status__}\r
-{__headers__}\r
-Content-Length: {cl}\r
-\r
-{__body__}"), PhantomData)
-    }
-}
-impl<T: Serialize> OkResponse<T> {
-    #[inline(always)] pub(crate) fn with_body(
-        body: T,
-        status: Status,
-        headers: &mut ResponseHeaders,
-    ) -> Self {
-        let __status__ = status.as_str();
-        let __headers__ = headers.as_str();
-        let __body__ = serde_json::to_string(&body).expect("Failed to serialize");
-        let cl = __body__.len();
-
-        OkResponse(format!(
-"HTTP/1.1 {__status__}\r
-{__headers__}\r
-Content-Length: {cl}\r
-\r
-{__body__}"), PhantomData)
-    }
-}
-impl OkResponse<()> {
-    #[inline(always)] pub(crate) fn without_body(
-        status: Status,
-        headers: &mut ResponseHeaders,
-    ) -> Self {
-        let __status__ = status.as_str();
-        let __headers__ = headers.as_str();
-
-        OkResponse(format!(
-"HTTP/1.1 {__status__}\r
-{__headers__}"), PhantomData)
-    }
-}
-
-
-impl ErrorResponse {
+impl ErrResponse {
     #[inline(always)] pub(crate) fn new(
         status: Status,
-        headers_other_than_content_type: &str,
-    ) -> ErrorResponse {
+        headers: &ResponseHeaders,
+    ) -> Self {
         let __status__ = status.as_str();
-        let __headers__ = headers_other_than_content_type.as_str();
+        let __headers__ = headers.as_str();
 
-        ErrorResponse {
-            content: None,
-            status_and_headers: format!(
-"HTTP/1.1 {__status__}\r
-{__headers__}"),
-        }
+        Self { status_and_headers: format!(
+            "HTTP/1.1 {__status__}\r\n\
+            {__headers__}"
+        ), content: None }
     }
-}
 
-impl ErrorResponse {
     #[inline(always)] pub fn text<Text: IntoCow<'static>>(mut self, text: Text) -> Self {
         self.content.replace((ContentType::Text, text.into_cow()));
         self
@@ -139,3 +75,172 @@ impl ErrorResponse {
         self
     }
 }
+
+impl<T: Serialize> Response<T> {
+    fn to_string(mut self) -> String {
+        match self {
+            Self::Ok(res, _) => res,
+            Self::Err(ErrResponse { status_and_headers, content:None }) => status_and_headers,
+            Self::Err(ErrResponse { status_and_headers: mut res, content: Some((content_type, body)) }) => {
+                res.push_str("\r\nContent-Type: ");
+                res.push_str(content_type.as_str());
+                res.push_str("\r\n\r\n");
+                res.push_str(&body);
+                res
+            }
+        }
+    }
+    #[inline(always)] pub(crate) async fn send(self, stream: &mut __dep__::TcpStream) {
+        if let Err(e) = stream.write_all(self.to_string().as_bytes()).await {
+            panic!("Failed to respond: {e}")
+        }
+    }
+}
+
+impl<T: AsStr> Response<T> {
+    #[inline(always)] pub(crate) fn ok_with_body_asstr(
+        body: T,
+        status: Status,
+        content_type: ContentType,
+        headers: &ResponseHeaders,
+    ) -> Self {
+        let __status__ = status.as_str();
+        let __headers__ = headers.as_str();
+        let __content_type__ = content_type.as_str();
+        let __body__ = body.as_str();
+        let __content_length__ = __body__.len();
+
+        Self::Ok(format!(
+            "HTTP/1.1 {__status__}\r\n\
+            {__headers__}\r\n\
+            Content-Type: {__content_type__}\r\n\
+            Content-Length: {__content_length__}\r\n\
+            \r\n\
+            {__body__}"
+        ), PhantomData)
+    }
+}
+impl<T: Serialize> Response<T> {
+    #[inline(always)] pub(crate) fn ok_with_body_json(
+        body: T,
+        status: Status,
+        headers: &ResponseHeaders,
+    ) -> Self {
+        let __status__ = status.as_str();
+        let __headers__ = headers.as_str();
+        let __body__ = serde_json::to_string(&body).expect("Failed to serialize");
+        let __content_length__ = __body__.len();
+
+        Self::Ok(format!(
+            "HTTP/1.1 {__status__}\r\n\
+            {__headers__}\r\n\
+            Content-Type: application/json\r\n\
+            Content-Length: {__content_length__}\r\n\
+            \r\n\
+            {__body__}"
+        ), PhantomData)
+    }
+}
+impl Response<()> {
+    #[inline(always)] pub(crate) fn ok_without_body(
+        status: Status,
+        headers: &ResponseHeaders,
+    ) -> Self {
+        let __status__ = status.as_str();
+        let __headers__ = headers.as_str();
+
+        Self::Ok(format!(
+            "HTTP/1.1 {__status__}\r\n\
+            {__headers__}"
+        ), PhantomData)
+    }
+}
+
+
+// 
+// impl<T: AsStr> OkResponse<T> {
+//     #[inline(always)] pub(crate) fn with_body_asstr(
+//         body: T,
+//         status: Status,
+//         headers: &mut ResponseHeaders,
+//     ) -> Self {
+//         let __status__ = status.as_str();
+//         let __headers__ = headers.as_str();
+//         let __body__ = body.as_str();
+//         let cl = __body__.len();
+// 
+//         OkResponse(format!(
+// "HTTP/1.1 {__status__}\r
+// {__headers__}\r
+// Content-Length: {cl}\r
+// \r
+// {__body__}"), PhantomData)
+//     }
+// }
+// impl<T: Serialize> OkResponse<T> {
+//     #[inline(always)] pub(crate) fn with_body(
+//         body: T,
+//         status: Status,
+//         headers: &mut ResponseHeaders,
+//     ) -> Self {
+//         let __status__ = status.as_str();
+//         let __headers__ = headers.as_str();
+//         let __body__ = serde_json::to_string(&body).expect("Failed to serialize");
+//         let cl = __body__.len();
+// 
+//         OkResponse(format!(
+// "HTTP/1.1 {__status__}\r
+// {__headers__}\r
+// Content-Length: {cl}\r
+// \r
+// {__body__}"), PhantomData)
+//     }
+// }
+// impl OkResponse<()> {
+//     #[inline(always)] pub(crate) fn without_body(
+//         status: Status,
+//         headers: &mut ResponseHeaders,
+//     ) -> Self {
+//         let __status__ = status.as_str();
+//         let __headers__ = headers.as_str();
+// 
+//         OkResponse(format!(
+// "HTTP/1.1 {__status__}\r
+// {__headers__}"), PhantomData)
+//     }
+// }
+// 
+// 
+// impl ErrorResponse {
+//     #[inline(always)] pub(crate) fn new(
+//         status: Status,
+//         headers_other_than_content_type: &str,
+//     ) -> ErrorResponse {
+//         let __status__ = status.as_str();
+//         let __headers__ = headers_other_than_content_type.as_str();
+// 
+//         ErrorResponse {
+//             content: None,
+//             status_and_headers: format!(
+// "HTTP/1.1 {__status__}\r
+// {__headers__}"),
+//         }
+//     }
+// }
+// 
+// impl ErrorResponse {
+//     #[inline(always)] pub fn text<Text: IntoCow<'static>>(mut self, text: Text) -> Self {
+//         self.content.replace((ContentType::Text, text.into_cow()));
+//         self
+//     }
+//     #[inline(always)] pub fn html<HTML: IntoCow<'static>>(mut self, html: HTML) -> Self {
+//         self.content.replace((ContentType::HTML, html.into_cow()));
+//         self
+//     }
+//     #[inline(always)] pub fn json<JSON: Serialize>(mut self, json: JSON) -> Self {
+//         let json = serde_json::to_string(&json).expect("Failed to serialize");
+//         self.content.replace((ContentType::JSON, Cow::Owned(json)));
+//         self
+//     }
+// }
+// 

@@ -3,7 +3,7 @@
 use serde::Serialize;
 use crate::{
     layer0_lib::{AsStr, Status, ContentType},
-    layer1_req_res::{ResponseHeaders, Response, ErrorResponse, OkResponse},
+    layer1_req_res::{ResponseHeaders, Response, ErrResponse},
 };
 
 
@@ -18,46 +18,43 @@ impl Context {
 }
 
 impl Context {
-    #[inline(always)] pub fn text<Text: AsStr>(&mut self, text: Text) -> Response<Text> {
-        self.headers.setContentType(ContentType::Text);
-        Ok(OkResponse::with_body_asstr(
+    #[inline(always)] pub fn text<Text: AsStr>(&self, text: Text) -> Response<Text> {
+        Response::ok_with_body_asstr(
             text,
             Status::OK,
-            &mut self.headers,
-        ))
+            ContentType::Text,
+            &self.headers,
+        )
     }
-    #[inline(always)] pub fn html<HTML: AsStr>(&mut self, html: HTML) -> Response<HTML> {
-        self.headers.setContentType(ContentType::HTML);
-        Ok(OkResponse::with_body_asstr(
+    #[inline(always)] pub fn html<HTML: AsStr>(&self, html: HTML) -> Response<HTML> {
+        Response::ok_with_body_asstr(
             html,
             Status::OK,
-            &mut self.headers,
-        ))
+            ContentType::HTML,
+            &self.headers,
+        )
     }
-    #[inline(always)] pub fn json<JSON: Serialize>(&mut self, json: JSON) -> Response<JSON> {
-        self.headers.setContentType(ContentType::JSON);
-        Ok(OkResponse::with_body(
+    #[inline(always)] pub fn json<JSON: Serialize>(&self, json: JSON) -> Response<JSON> {
+        Response::ok_with_body_json(
             json,
             Status::OK,
-            &mut self.headers,
-        ))
+            &self.headers,
+        )
     }
 
-    #[inline(always)] pub fn Created<Entity: Serialize>(&mut self, entity: Entity) -> Response<Entity> {
-        self.headers.setContentType(ContentType::JSON);
-        Ok(OkResponse::with_body(
+    #[inline(always)] pub fn Created<Entity: Serialize>(&self, entity: Entity) -> Response<Entity> {
+        Response::ok_with_body_json(
             entity,
             Status::Created,
-            &mut self.headers,
-        ))
+            &self.headers,
+        )
     }
 
-    #[inline(always)] pub fn NoContent(&mut self) -> Response<()> {
-        self.headers.clearContentType();
-        Ok(OkResponse::without_body(
+    #[inline(always)] pub fn NoContent(&self) -> Response<()> {
+        Response::ok_without_body(
             Status::NoContent,
-            &mut self.headers,
-        ))
+            &self.headers,
+        )
     }
 }
 
@@ -65,9 +62,8 @@ macro_rules! impl_error_response {
     ($( $name:ident ),*) => {
         impl Context {
             $(
-                #[inline(always)] pub fn $name(&mut self) -> ErrorResponse {
-                    self.headers.clearContentType();
-                    ErrorResponse::new(Status::$name, self.headers.others_than_ContentType())
+                #[inline(always)] pub fn $name(&self) -> ErrResponse {
+                    ErrResponse::new(Status::$name, &self.headers)
                 }
             )*
         }
@@ -77,11 +73,39 @@ macro_rules! impl_error_response {
     Unauthorized,
     Forbidden,
     NotFound,
-    // InternalServerError, // too long
+    // InternalServerError, // too long ↓
     NotImplemented
 ); impl Context {
-    #[inline(always)] pub fn InternalError(&mut self) -> ErrorResponse {
-        self.headers.clearContentType();
-        ErrorResponse::new(Status::InternalServerError, self.headers.others_than_ContentType())
+    #[inline(always)] pub fn InternalError(&self) -> ErrResponse {
+        ErrResponse::new(Status::InternalServerError, &self.headers)
+    }
+}
+
+
+
+
+#[cfg(test)] #[allow(unused)] mod __ {
+    use crate::{Context, Response};
+    use serde::Serialize;
+
+    #[derive(Serialize)]
+    struct User {
+        id: usize,
+        name: String,
+    }
+    impl User {
+        async fn create(name: impl ToString) -> Result<Self, std::io::Error> {
+            Ok(Self {
+                id: 42,
+                name: name.to_string(),
+            })
+        }
+    }
+
+    async fn create_user(c: Context) -> Response<User> {
+        let new_user = User::create("John").await
+            .map_err(|e| c.InternalError())?;
+
+        c.Created(new_user)
     }
 }

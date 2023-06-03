@@ -54,6 +54,26 @@ where
     fn into_handler(self) -> Handler<T> {
         Handler(
             Box::new(move |req, c, params| {
+                compile_error!(
+                    本当に serde_json::from〜 でいいのか？
+                    これって
+                    ```
+                    (literaly)
+                    "string"
+                    ```
+                    つまり
+                    ```
+                    "\"string\""
+                    ```
+                    が
+                    ```
+                    (expr)
+                    "string"
+                    ```
+                    になるやつでは
+
+                    ohkami 側で FromPath 的な trait を用意するのがよさそう
+                );
                 let p1 = serde_json::from_slice(
                     &req.buffer[
                         // SAFETY: Router の仕組み上, これが呼ばれた時点で
