@@ -35,8 +35,8 @@ mod response; pub use response::*;
         let mut headers = ResponseHeaders2::new();
         headers
             .Server("ohkami")
-            .AccessControlAllowOrigin("https://kanarusblog.software")
-            .CacheControl("no-store");
+            .CacheControl("no-store")
+            .AccessControlAllowOrigin("https://kanarusblog.software");
 
         let __now__ = crate::layer0_lib::now();
         assert_eq!(headers.to_string(), format!("\
