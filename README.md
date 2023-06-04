@@ -215,7 +215,7 @@ async fn main() -> Result<(), Error> {
 ```
 
 ### error handling
-Use **`.map_err(|e| c. /* error_name */())`**：
+Use **`.map_err(|e| c. /* error_name */())?`**：
 
 ```rust
 use ohkami::prelude::*;
