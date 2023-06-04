@@ -4,11 +4,11 @@
 
 ### ＊This README is my working draft. So codes in "Quick start" or "Samples" don't work yet.<br/>
 
-ohkami *- [狼] wolf in Japanese -* is **ergonomic** web framework for Rust.
+ohkami *- [狼] wolf in Japanese -* is **macro free** and **declarative** web framework for *nightly* Rust.
 
 ## Features
-- *macro free, ergonomic APIs*
-- supporting *multi runtime*：`tokio`, `async-std` (Maybe more in future)
+- *macro free, declarative APIs*
+- supporting *multi runtime*：`tokio`, `async-std` (and more in future)
 
 <br/>
 
@@ -17,24 +17,24 @@ ohkami *- [狼] wolf in Japanese -* is **ergonomic** web framework for Rust.
 
 ```toml
 # this sample uses `tokio` runtime.
-# you can choose `async-std` (and `lunatic` in future) instead.
+# you can choose `async-std` instead.
 
 [dependencies]
-ohkami = { version = "0.9.0", features = ["tokio"] }
+ohkami = { version = "0.9.0", features = ["rt_tokio"] }
 tokio = { version = "1.27", fetures = ["full"] }
 ```
-(And, if needed, change your Rust toolchains into **nightly** ones)
+(And check if your Rust toolchains are **nightly** ones)
 
 2. Write your first code with ohkami：
 
 ```rust
 use ohkami::prelude::*;
 
-async fn hello(mut c: Context) -> Response<&'static str> {
+async fn hello(c: Context) -> Response<&'static str> {
     c.text("Hello!")
 }
 
-async fn health_check(mut c: Context) -> Response<()> {
+async fn health_check(c: Context) -> Response<()> {
     c.NoContent()
 }
 
@@ -51,7 +51,7 @@ async fn main() -> Result<(), Error> {
 
 ## handler format
 ```rust
-async fn $handler(mut c: Context,
+async fn $handler((mut)? c: Context,
     (
         ($p1,): ($P1,) | ($p1, $p2): ($P1, $P2),
     )?
@@ -61,6 +61,7 @@ async fn $handler(mut c: Context,
     // ...
 }
 ```
+( If you'd like to alter some response headers in a handler, `c` needs to be `mut`. )
 
 <br/>
 
@@ -69,7 +70,7 @@ async fn $handler(mut c: Context,
 ### handle path/query params
 ```rust
 use ohkami::prelude::*;
-use ohkami::QueryParams;
+use ohkami::request::Queries;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -85,7 +86,7 @@ struct GetUserQuery {
     q: Option<u64>,
 }
 
-async fn get_user(mut c: Context,
+async fn get_user(c: Context,
     (id,): (usize,),
     query: GetUserQuery
 ) -> Response<User> {
@@ -100,8 +101,8 @@ async fn get_user(mut c: Context,
 ```rust
 use ohkami::{
     prelude::*,
-    Payload,
-    f,
+    request::Payload,
+    utils::f,
 };
 
 #[Payload(JSON)]
@@ -110,7 +111,7 @@ struct CreateUserRequest {
     password: String,
 }
 
-async fn create_user(mut c: Context,
+async fn create_user(c: Context,
     req: CreateUserRequest
 ) -> Response<()> {
 
@@ -125,7 +126,7 @@ struct LoginInput {
     password: String,
 }
 
-async fn post_login(mut c: Context,
+async fn post_login(c: Context,
     input: LoginInput
 ) -> Response<JWT> {
 
@@ -214,14 +215,15 @@ async fn main() -> Result<(), Error> {
 ```
 
 ### error handling
+Use **`.map_err(|e| c. /* error_name */())`**：
+
 ```rust
 use ohkami::prelude::*;
-use ohkami::f;
 
-async fn handler(mut c: Context) -> Response</* ... */> {
+async fn handler(c: Context) -> Response</* ... */> {
     make_result()
         .map_err(|e| c.InternalError().text(
-            f!("Got error: {e}")
+            format!("Got error: {e}")
         ))?;
 }
 ```
