@@ -1,5 +1,5 @@
 mod headers; pub(crate) use headers::ResponseHeaders;
-mod headers2;
+mod headers2; pub(crate) use headers2::ResponseHeaders as ResponseHeaders2;
 
 use serde::Serialize;
 use std::{

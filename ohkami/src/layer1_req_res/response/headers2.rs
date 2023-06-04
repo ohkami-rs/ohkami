@@ -20,13 +20,19 @@ macro_rules! ResponseHeaders {
         }
         impl ResponseHeaders {
             $(
-                $visibility fn $name<Value: HeaderValue>(&mut self, $arg: Value) -> &mut Self {
+                $visibility fn $name<Value: HeaderValue>(&mut self,
+                    $arg: Value) -> &mut Self {
                     self.$name.0 = $arg.into_header_value();
                     self
                 }
             )*
             pub(crate) fn to_string(&self) -> String {
-                let mut h = String::with_capacity(256);
+                let __now__ = crate::layer0_lib::now();
+                let mut h = format!("\
+                    Connection: Keep-Alive\r\n\
+                    Keep-Alive: timout=5\r\n\
+                    Date: {__now__}\r\n\
+                ");
                 $(
                     if let Some(value) = self.$name.0 {
                         h.push_str($key_literal);
@@ -36,12 +42,18 @@ macro_rules! ResponseHeaders {
                 )*
                 h.push('\r'); h.push('\n'); h
             }
+            pub(crate) fn new() -> Self {
+                Self {
+                    $(
+                        $name: Header(None),
+                    )*
+                }
+            }
         }
     };
 } ResponseHeaders! {
     // authentication
     "WWW-Authenticate: "                 pub WWWAuthenticate(challenge),
-    "Authorization: "                    pub Authorization(type_and_credentials),
 
     // cache
     "Age: "                              pub Age(seconds),
@@ -56,10 +68,6 @@ macro_rules! ResponseHeaders {
     "If-Modified-Since: "                pub IfModifiedSince(http_date),
     "If-Unmodified-Since: "              pub IfUnmodifiedSince(http_date),
     "Vary: "                             pub Vary(header_names),
-
-    // connection managing
-    "Connection: "                       pub Connection(close_or_headers),
-    "Keep-Alive: "                       pub KeepAlive(timeout_and_max),
 
     // cookie
     "Set-Cookie: "                       pub SetCookie(cookie_and_directives),
@@ -95,6 +103,5 @@ macro_rules! ResponseHeaders {
     "Trailer: "                          pub Trailer(header_names),
 
     // others
-    "Alt-Svc: "                          pub AltSvc(alternative_services),
-    "Date: "                             pub(crate) Date(now)
+    "Alt-Svc: "                          pub AltSvc(alternative_services)
 }

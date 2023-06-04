@@ -7,7 +7,6 @@ mod response; pub use response::*;
     use crate::Context;
     use super::Response;
 
-
     fn handler_1(mut c: Context) -> Response<()> {
         c.NoContent()
     }
@@ -26,5 +25,28 @@ mod response; pub use response::*;
             .map_err(|_| c.InternalError().text("got error in I/O"))?;
 
         c.Created(length)
+    }
+
+
+    #[test]
+    fn check_response_headers_2() {
+        use super::response::ResponseHeaders2;
+
+        let mut headers = ResponseHeaders2::new();
+        headers
+            .Server("ohkami")
+            .AccessControlAllowOrigin("https://kanarusblog.software")
+            .CacheControl("no-store");
+
+        let __now__ = crate::layer0_lib::now();
+        assert_eq!(headers.to_string(), format!("\
+            Connection: Keep-Alive\r\n\
+            Keep-Alive: timout=5\r\n\
+            Date: {__now__}\r\n\
+            Cache-Control: no-store\r\n\
+            Access-Control-Allow-Origin: https://kanarusblog.software\r\n\
+            Server: ohkami\r\n\
+            \r\n\
+        "))
     }
 }
