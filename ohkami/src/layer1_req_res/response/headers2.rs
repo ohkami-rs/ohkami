@@ -11,97 +11,106 @@ impl HeaderValue for Option<&'static str> {fn into_header_value(self) -> Option<
 
 macro_rules! ResponseHeaders {
     ($(
-        $key_literal:literal $visibility:vis $name:ident( $arg:ident )
-    ),*) => {
-        pub struct ResponseHeaders {
-            $(
-                $name: Header,
-            )*
+        $group:ident {
+            $( $key:literal $name:ident( $arg:ident ), )*
         }
+    )*) => {
+        pub struct ResponseHeaders {
+            $( $group: bool, )*
+            $($( $name: Header, )*)*
+        }
+
         impl ResponseHeaders {
-            $(
-                $visibility fn $name<Value: HeaderValue>(&mut self,
+            $($(
+                pub fn $name<Value: HeaderValue>(&mut self,
                     $arg: Value) -> &mut Self {
                     self.$name.0 = $arg.into_header_value();
                     self
                 }
-            )*
+            )*)*
+
+            pub(crate) fn new() -> Self {
+                Self {
+                    $( $group: false, )*
+                    $($( $name: Header(None), )*)*
+                }
+            }
+
             pub(crate) fn to_string(&self) -> String {
-                let __now__ = crate::layer0_lib::now();
                 let mut h = format!("\
                     Connection: Keep-Alive\r\n\
                     Keep-Alive: timout=5\r\n\
-                    Date: {__now__}\r\n\
-                ");
+                    Date: {}\r\n\
+                ", crate::layer0_lib::now());
+
                 $(
-                    if let Some(value) = self.$name.0 {
-                        h.push_str($key_literal);
-                        h.push_str(value);
-                        h.push('\r');h.push('\n')
+                    if self.$group {
+                        $(
+                            if let Some(value) = self.$name.0 {
+                                h.push_str($key);
+                                h.push_str(value);
+                                h.push('\r'); h.push('\n');
+                            }
+                        )*
                     }
                 )*
+
                 h.push('\r'); h.push('\n'); h
-            }
-            pub(crate) fn new() -> Self {
-                Self {
-                    $(
-                        $name: Header(None),
-                    )*
-                }
             }
         }
     };
 } ResponseHeaders! {
-    // authentication
-    "WWW-Authenticate: "                 pub WWWAuthenticate(challenge),
+    auth_cookie_security_context {
+        // authentication
+        "WWW-Authenticate: "                 WWWAuthenticate(challenge),
+        // cookie
+        "Set-Cookie: "                       SetCookie(cookie_and_directives),
+        // security
+        "X-Frame-Options: "                  XFrameOptions(DENY_or_SAMEORIGIN),
+        // response context
+        "Allow: "                            Allow(methods),
+        "Server: "                           Server(product),
+    }
 
-    // cache
-    "Age: "                              pub Age(seconds),
-    "Cache-Control: "                    pub CacheControl(cache_control),
-    "Expires: "                          pub Expires(http_date),
+    cache_proxy_redirect_others {
+        // cache
+        "Age: "                              Age(delta_seconds),
+        "Cache-Control: "                    CacheControl(cache_control),
+        "Expires: "                          Expires(http_date),
+        // proxy
+        "Via: "                              Via(via),
+        // redirect
+        "Location: "                         Location(url),
+        // others
+        "Alt-Srv: "                          AltSvc(alternative_services),
+    }
 
-    // conditions
-    "Last-Modified: "                    pub LastModified(http_date),
-    "E-Tag: "                            pub Etag(identical_string),
-    "If-Match: "                         pub IfMatch(etag_values),
-    "If-None-Match: "                    pub IfNoneMatch(etag_values),
-    "If-Modified-Since: "                pub IfModifiedSince(http_date),
-    "If-Unmodified-Since: "              pub IfUnmodifiedSince(http_date),
-    "Vary: "                             pub Vary(header_names),
+    conditions {
+        "Last-Modified: "                    LastModified(http_date),
+        "Etag: "                             Etag(identical_string),
+        "If-Match: "                         IfMatch(etag_values),
+        "If-None-Match: "                    IfNoneMatch(etag_values),
+        "If-Modified-Since: "                IfModifiedSince(http_date),
+        "If-Unmodified-Since: "              IfUnmodifiedSince(http_date),
+        "Vary: "                             Vary(header_names),
+    }
 
-    // cookie
-    "Set-Cookie: "                       pub SetCookie(cookie_and_directives),
+    cors {
+        "Access-Control-Allow-Origin: "      AccessControlAllowOrigin(origin),
+        "Access-Control-Allow-Credentials: " AccessControlAllowCredentials(true_if_needed),
+        "Access-Control-Allow-Headers: "     AccessControlAllowHeaders(headers),
+        "Access-Control-Allow-Methods: "     AccessControlAllowMethods(methods),
+        "Access-Control-Expose-Headers: : "  AccessControlExposeHeaders(headers),
+        "Access-Control-Max-Age: : "         AccessControlMaxAge(delta_seconds),
+    }
 
-    // cors
-    "Access-Control-Allow-Origin: "      pub AccessControlAllowOrigin(origin),
-    "Access-Control-Allow-Credentials: " pub AccessControlAllowCredentials(true_if_needed),
-    "Access-Control-Allow-Headers: "     pub AccessControlAllowHeaders(headers),
-    "Access-Control-Allow-Methods: "     pub AccessControlAllowMethods(methods),
-    "Access-Control-Expose-Headers: "    pub AccessControlExposeHeaders(headers),
-    "Access-Control-Max-Age: "           pub AccessControlMaxAge(delta_seconds),
-
-    // message body
-    "Content-Encoding: "                 pub ContentEncoding(algoeithm),
-    "Content-Language: "                 pub ContentLanguage(language_tag),
-    "Content-Location: "                 pub ContentLocation(url),
-
-    // proxy
-    "Via: "                              pub Via(via),
-
-    // redirect
-    "Location: "                         pub Location(url),
-
-    // response context
-    "Allow: "                            pub Allow(methods),
-    "Server: "                           pub Server(product),
-
-    // security
-    "X-Frame-Options: "                  pub XFrameOptions(DENY_or_SAMEORIGIN),
-
-    // reansfer encoding
-    "Transfer-Encoding: "                pub TransferEncoding(chunked_compress_deflate_gzip_identity),
-    "Trailer: "                          pub Trailer(header_names),
-
-    // others
-    "Alt-Svc: "                          pub AltSvc(alternative_services)
+    message_body_and_encoding {
+        // message body
+        "Content-Encoding: "                 ContentEncoding(algorithm),
+        "Content-Language: "                 ContentLanguage(language_tag),
+        "Content-Location: "                 ContentLocation(url),
+        // transfer encoding
+        "Tranfer-Encoding: "                 TransferEncoding(chunked_compress_deflate_gzip_identity),
+        "Trailer: "                          Trailer(header_names),
+    }
 }
