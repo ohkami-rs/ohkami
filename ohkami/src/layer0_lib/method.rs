@@ -6,6 +6,7 @@ pub enum Method {
     HEAD,
     PATCH,
     DELETE,
+    OPTIONS,
 }
 
 impl Method {
@@ -17,6 +18,7 @@ impl Method {
             b"HEAD" => Self::HEAD,
             b"PATCH" => Self::PATCH,
             b"DELETE" => Self::DELETE,
+            b"OPTIONS" => Self::OPTIONS,
             _ => unreachable!("unknown method: `{}`", unsafe {std::str::from_utf8_unchecked(bytes)})
         }
     }

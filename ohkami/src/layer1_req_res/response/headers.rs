@@ -3,14 +3,14 @@
 use crate::layer0_lib::{now, AsStr, ContentType};
 
 /// response headers other than `Content-*`
-pub(crate) struct ResponseHeaders(String);
+pub struct ResponseHeaders(String);
 
 impl ResponseHeaders {
     #[inline(always)] pub(crate) fn new() -> Self {
-        Self(String::from(
-            "Connection: Keep-Alive\r\n\
-            Keep-Alive: timeout=5"
-        ))
+        Self(String::from("\
+            Connection: Keep-Alive\r\n\
+            Keep-Alive: timeout=5\r\n\
+        "))
     }
 
     #[inline(always)] pub(crate) fn as_str(&self) -> &str {
@@ -19,16 +19,16 @@ impl ResponseHeaders {
 }
 
 impl ResponseHeaders {
-    #[inline] pub(crate) fn append(&mut self, key: &str, value: impl AsStr) {
-        self.0.push('\r');
-        self.0.push('\n');
+    #[inline] pub fn append(&mut self, key: &str, value: impl AsStr) {
         self.0.push_str(key);
         self.0.push(':');
         self.0.push(' ');
         self.0.push_str(value.as_str());
+        self.0.push('\r');
+        self.0.push('\n');
     }
 
-    pub(crate) fn clear(&mut self, key: &str) {
+    pub fn clear(&mut self, key: &str) {
         let mut pos = 0;
         for (k, v) in self.0.lines().map(|kv| unsafe {kv.split_once(':').unwrap_unchecked()}) {
             if k != key {
@@ -43,7 +43,7 @@ impl ResponseHeaders {
         }
     }
 
-    pub(crate) fn set(&mut self, key: &str, value: impl AsStr) {
+    pub fn set(&mut self, key: &str, value: impl AsStr) {
         let mut pos = 0;
         let mut v_range = None;
 

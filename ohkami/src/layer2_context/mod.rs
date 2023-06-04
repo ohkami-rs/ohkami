@@ -8,12 +8,12 @@ use crate::{
 
 
 pub struct Context {
-    headers: ResponseHeaders,
+    pub header: ResponseHeaders,
 }
 
 impl Context {
     #[inline(always)] pub(crate) fn new() -> Self {
-        Self { headers: ResponseHeaders::new() }
+        Self { header: ResponseHeaders::new() }
     }
 }
 
@@ -23,7 +23,7 @@ impl Context {
             text,
             Status::OK,
             ContentType::Text,
-            &self.headers,
+            &self.header,
         )
     }
     #[inline(always)] pub fn html<HTML: AsStr>(&self, html: HTML) -> Response<HTML> {
@@ -31,14 +31,14 @@ impl Context {
             html,
             Status::OK,
             ContentType::HTML,
-            &self.headers,
+            &self.header,
         )
     }
     #[inline(always)] pub fn json<JSON: Serialize>(&self, json: JSON) -> Response<JSON> {
         Response::ok_with_body_json(
             json,
             Status::OK,
-            &self.headers,
+            &self.header,
         )
     }
 
@@ -46,14 +46,14 @@ impl Context {
         Response::ok_with_body_json(
             entity,
             Status::Created,
-            &self.headers,
+            &self.header,
         )
     }
 
     #[inline(always)] pub fn NoContent(&self) -> Response<()> {
         Response::ok_without_body(
             Status::NoContent,
-            &self.headers,
+            &self.header,
         )
     }
 }
@@ -63,7 +63,7 @@ macro_rules! impl_error_response {
         impl Context {
             $(
                 #[inline(always)] pub fn $name(&self) -> ErrResponse {
-                    ErrResponse::new(Status::$name, &self.headers)
+                    ErrResponse::new(Status::$name, &self.header)
                 }
             )*
         }
@@ -77,7 +77,7 @@ macro_rules! impl_error_response {
     NotImplemented
 ); impl Context {
     #[inline(always)] pub fn InternalError(&self) -> ErrResponse {
-        ErrResponse::new(Status::InternalServerError, &self.headers)
+        ErrResponse::new(Status::InternalServerError, &self.header)
     }
 }
 
