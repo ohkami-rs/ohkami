@@ -22,8 +22,8 @@ macro_rules! ResponseHeaders {
 
         impl ResponseHeaders {
             $($(
-                pub fn $name<Value: HeaderValue>(&mut self,
-                    $arg: Value) -> &mut Self {
+                pub fn $name<Value: HeaderValue>(&mut self, $arg: Value) -> &mut Self {
+                    self.$group = true;
                     self.$name.0 = $arg.into_header_value();
                     self
                 }
@@ -87,7 +87,7 @@ macro_rules! ResponseHeaders {
 
     conditions {
         "Last-Modified: "                    LastModified(http_date),
-        "Etag: "                             Etag(identical_string),
+        "E-tag: "                            Etag(identical_string),
         "If-Match: "                         IfMatch(etag_values),
         "If-None-Match: "                    IfNoneMatch(etag_values),
         "If-Modified-Since: "                IfModifiedSince(http_date),
