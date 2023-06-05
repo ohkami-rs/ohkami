@@ -30,9 +30,9 @@ mod response; pub use response::*;
 
     #[test]
     fn check_response_headers_2() {
-        use super::response::ResponseHeaders2;
+        use super::response::ResponseHeaders;
 
-        let mut headers = ResponseHeaders2::new();
+        let mut headers = ResponseHeaders::new();
         headers
             .Server("ohkami")
             .CacheControl("no-store")

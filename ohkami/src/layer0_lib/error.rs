@@ -1,9 +1,20 @@
+use std::borrow::Cow;
+
+
 pub enum Error {
-    IO(String),
+    IO(Cow<'static, str>),
+    Parse(Cow<'static, str>),
 }
 
-impl From<std::io::Error> for Error {
-    fn from(value: std::io::Error) -> Self {
-        Self::IO(value.to_string())
+impl Error {
+    pub(crate) fn as_str(&self) -> &str {
+        match self {
+            Self::IO(cow) => &cow,
+            Self::Parse(cow) => &cow,
+        }
+    }
+
+    pub fn to_string(&self) -> String {
+        self.as_str().to_owned()
     }
 }

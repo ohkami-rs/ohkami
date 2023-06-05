@@ -1,4 +1,4 @@
-use std::ops::Index;
+use std::{ops::Index, borrow::Cow};
 use crate::{Error, __dep__::{TcpStream, StreamReader}};
 
 pub(crate) const BUFFER_SIZE: usize = 1024;
@@ -20,7 +20,8 @@ impl Buffer {
 
     pub(crate) async fn new(stream: &mut TcpStream) -> Result<Self, Error> {
         let mut raw_buffer = [b'\0'; BUFFER_SIZE];
-        stream.read(&mut raw_buffer).await?;
+        stream.read(&mut raw_buffer).await
+            .map_err(|e| Error::IO(Cow::Owned(e.to_string())))?;
         Ok(Self(raw_buffer))
     }
 

@@ -1,5 +1,5 @@
-mod headers; pub(crate) use headers::ResponseHeaders;
-mod headers2; pub(crate) use headers2::ResponseHeaders as ResponseHeaders2;
+// mod headers; pub(crate) use headers::ResponseHeaders;
+mod headers2; pub(crate) use headers2::ResponseHeaders;
 
 use serde::Serialize;
 use std::{
@@ -14,12 +14,6 @@ use crate::{
 };
 
 
-// pub type Response<T> = ::std::result::Result<OkResponse<T>, ErrorResponse>;
-// pub struct OkResponse<T: Serialize>(String, PhantomData<T>);
-// pub struct ErrorResponse {
-//     status_and_headers: String,
-//     content: Option<(ContentType, Cow<'static, str>)>
-// }
 pub enum Response<T: Serialize> {
     Ok(String, PhantomData<fn()->T>),
     Err(ErrResponse),
@@ -43,7 +37,7 @@ const _: () = {
     let _: usize = make_result_1()?;
 
     let _: usize = make_result_2()
-        .map_err(|e| ErrResponse { status_and_headers: String::new(), content: None })?;
+        .map_err(|_| ErrResponse { status_and_headers: String::new(), content: None })?;
 
     todo!()
 }
@@ -54,7 +48,7 @@ impl ErrResponse {
         headers: &ResponseHeaders,
     ) -> Self {
         let __status__ = status.as_str();
-        let __headers__ = headers.as_str();
+        let __headers__ = headers.to_string();
 
         Self { status_and_headers: format!(
             "HTTP/1.1 {__status__}\r\n\
@@ -78,7 +72,7 @@ impl ErrResponse {
 }
 
 impl<T: Serialize> Response<T> {
-    fn to_string(mut self) -> String {
+    fn to_string(self) -> String {
         match self {
             Self::Ok(res, _) => res,
             Self::Err(ErrResponse { status_and_headers, content:None }) => status_and_headers,
@@ -106,7 +100,7 @@ impl<T: AsStr> Response<T> {
         headers: &ResponseHeaders,
     ) -> Self {
         let __status__ = status.as_str();
-        let __headers__ = headers.as_str();
+        let __headers__ = headers.to_string();
         let __content_type__ = content_type.as_str();
         let __body__ = body.as_str();
         let __content_length__ = __body__.len();
@@ -128,7 +122,7 @@ impl<T: Serialize> Response<T> {
         headers: &ResponseHeaders,
     ) -> Self {
         let __status__ = status.as_str();
-        let __headers__ = headers.as_str();
+        let __headers__ = headers.to_string();
         let __body__ = serde_json::to_string(&body).expect("Failed to serialize");
         let __content_length__ = __body__.len();
 
@@ -148,7 +142,7 @@ impl Response<()> {
         headers: &ResponseHeaders,
     ) -> Self {
         let __status__ = status.as_str();
-        let __headers__ = headers.as_str();
+        let __headers__ = headers.to_string();
 
         Self::Ok(format!(
             "HTTP/1.1 {__status__}\r\n\
@@ -156,92 +150,3 @@ impl Response<()> {
         ), PhantomData)
     }
 }
-
-
-// 
-// impl<T: AsStr> OkResponse<T> {
-//     #[inline(always)] pub(crate) fn with_body_asstr(
-//         body: T,
-//         status: Status,
-//         headers: &mut ResponseHeaders,
-//     ) -> Self {
-//         let __status__ = status.as_str();
-//         let __headers__ = headers.as_str();
-//         let __body__ = body.as_str();
-//         let cl = __body__.len();
-// 
-//         OkResponse(format!(
-// "HTTP/1.1 {__status__}\r
-// {__headers__}\r
-// Content-Length: {cl}\r
-// \r
-// {__body__}"), PhantomData)
-//     }
-// }
-// impl<T: Serialize> OkResponse<T> {
-//     #[inline(always)] pub(crate) fn with_body(
-//         body: T,
-//         status: Status,
-//         headers: &mut ResponseHeaders,
-//     ) -> Self {
-//         let __status__ = status.as_str();
-//         let __headers__ = headers.as_str();
-//         let __body__ = serde_json::to_string(&body).expect("Failed to serialize");
-//         let cl = __body__.len();
-// 
-//         OkResponse(format!(
-// "HTTP/1.1 {__status__}\r
-// {__headers__}\r
-// Content-Length: {cl}\r
-// \r
-// {__body__}"), PhantomData)
-//     }
-// }
-// impl OkResponse<()> {
-//     #[inline(always)] pub(crate) fn without_body(
-//         status: Status,
-//         headers: &mut ResponseHeaders,
-//     ) -> Self {
-//         let __status__ = status.as_str();
-//         let __headers__ = headers.as_str();
-// 
-//         OkResponse(format!(
-// "HTTP/1.1 {__status__}\r
-// {__headers__}"), PhantomData)
-//     }
-// }
-// 
-// 
-// impl ErrorResponse {
-//     #[inline(always)] pub(crate) fn new(
-//         status: Status,
-//         headers_other_than_content_type: &str,
-//     ) -> ErrorResponse {
-//         let __status__ = status.as_str();
-//         let __headers__ = headers_other_than_content_type.as_str();
-// 
-//         ErrorResponse {
-//             content: None,
-//             status_and_headers: format!(
-// "HTTP/1.1 {__status__}\r
-// {__headers__}"),
-//         }
-//     }
-// }
-// 
-// impl ErrorResponse {
-//     #[inline(always)] pub fn text<Text: IntoCow<'static>>(mut self, text: Text) -> Self {
-//         self.content.replace((ContentType::Text, text.into_cow()));
-//         self
-//     }
-//     #[inline(always)] pub fn html<HTML: IntoCow<'static>>(mut self, html: HTML) -> Self {
-//         self.content.replace((ContentType::HTML, html.into_cow()));
-//         self
-//     }
-//     #[inline(always)] pub fn json<JSON: Serialize>(mut self, json: JSON) -> Self {
-//         let json = serde_json::to_string(&json).expect("Failed to serialize");
-//         self.content.replace((ContentType::JSON, Cow::Owned(json)));
-//         self
-//     }
-// }
-// 
