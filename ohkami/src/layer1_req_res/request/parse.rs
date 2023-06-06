@@ -123,7 +123,7 @@ pub(super) fn parse(buffer: Buffer) -> Request {
         start = header_start + 1/* '\n' */ + 1
     };
 
-    let body = (buffer[start] != 0).then(|| {
+    let payload = (buffer[start] != 0).then(|| {
         let mut end = start;
         for b in &buffer[start..] {
             match b {
@@ -143,7 +143,7 @@ pub(super) fn parse(buffer: Buffer) -> Request {
         path,
         queries,
         headers,
-        body
+        payload
     }
 }
 
@@ -165,7 +165,7 @@ fn check_request_parsing() {
             ("Accept-Encoding", "gzip, deflate"),
             ("Connection", "Keep-Alive"),
         ],
-        body: None
+        payload: None
     }.assert_parsed_from(
 "GET /hello.htm HTTP/1.1\r
 User-Agent: Mozilla/4.0 (compatible; MSIE5.01; Windows NT)\r
@@ -188,7 +188,7 @@ Connection: Keep-Alive"
             ("Accept-Encoding", "gzip, deflate"),
             ("Connection", "Keep-Alive")
         ],
-        body: Some((
+        payload: Some((
             ContentType::URLEncoded,
             "licenseID=string&content=string&/paramsXML=string"
         )),
@@ -215,7 +215,7 @@ licenseID=string&content=string&/paramsXML=string"
         headers: &[
             ("Host", "www.example.com")
         ],
-        body: None,
+        payload: None,
     }.assert_parsed_from(
 "GET /genapp/customers?name=Joe%20Bloggs&email=abc@email.com HTTP/1.1\r
 Host: www.example.com"

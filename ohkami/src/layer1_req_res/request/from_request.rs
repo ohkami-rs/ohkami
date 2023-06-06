@@ -1,13 +1,13 @@
 use std::borrow::Cow;
-use crate::Error;
+use crate::{Error, Request};
 
 
 pub trait Queries: Sized {
-    fn parse(bytes: &[u8]) -> Result<Self, Error>;
+    fn parse(req: &Request) -> Result<Self, Error>;
 }
 
 pub trait Payload: Sized {
-    fn parse(bytes: &[u8]) -> Result<Self, Error>;
+    fn parse(req: &Request) -> Result<Self, Error>;
 }
 
 pub trait PathParam: Sized {

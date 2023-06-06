@@ -15,7 +15,7 @@ pub struct Request {
     path:    BufRange,
     queries: List<(BufRange, BufRange), QUERIES_LIMIT>,
     headers: List<(BufRange, BufRange), HEADERS_LIMIT>,
-    body:    Option<(ContentType, BufRange)>,
+    payload: Option<(ContentType, BufRange)>,
 }
 
 impl Request {
@@ -52,8 +52,8 @@ impl Request {
         }
         None
     }
-    pub fn body(&self) -> Option<(&ContentType, &str)> {
-        let (content_type, body_range) = (&self.body).as_ref()?;
+    pub fn payload(&self) -> Option<(&ContentType, &str)> {
+        let (content_type, body_range) = (&self.payload).as_ref()?;
         Some((
             content_type,
             &self.buffer.read_str(body_range),
@@ -68,18 +68,18 @@ struct DebugRequest {
     path: &'static str,
     queries: &'static [(&'static str, &'static str)],
     headers: &'static [(&'static str, &'static str)],
-    body: Option<(ContentType, &'static str)>,
+    payload: Option<(ContentType, &'static str)>,
 }
 #[cfg(test)]
 const _: () = {
     impl DebugRequest {
         pub(crate) fn assert_parsed_from(self, req_str: &'static str) {
-            let DebugRequest { method, path, queries, headers, body } = self;
+            let DebugRequest { method, path, queries, headers, payload } = self;
             let req = parse::parse(Buffer::from_raw_str(req_str));
 
             assert_eq!(req.method(), method);
             assert_eq!(req.path(), path);
-            assert_eq!(req.body().map(|(ct, s)| (ct.clone(), s)), body);
+            assert_eq!(req.payload().map(|(ct, s)| (ct.clone(), s)), payload);
             for (k, v) in queries {
                 assert_eq!(req.query(k), Some(*v))
             }
