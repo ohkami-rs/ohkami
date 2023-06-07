@@ -1,4 +1,8 @@
-#![feature(try_trait_v2)]
+/*===== language features =====*/
+#![feature(
+    try_trait_v2,
+    fn_traits, unboxed_closures,
+)]
 
 
 /*===== crate features =====*/
