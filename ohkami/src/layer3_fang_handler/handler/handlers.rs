@@ -7,12 +7,12 @@ use super::{Handler, IntoHandler};
 
 pub struct Handlers {
     route: RouteSections,
-    GET: Option<Handler>,
-    PUT: Option<Handler>,
-    POST: Option<Handler>,
-    HEAD: Option<Handler>,
-    PATCH: Option<Handler>,
-    DELETE: Option<Handler>,
+    GET:     Option<Handler>,
+    PUT:     Option<Handler>,
+    POST:    Option<Handler>,
+    HEAD:    Option<Handler>,
+    PATCH:   Option<Handler>,
+    DELETE:  Option<Handler>,
     OPTIONS: Option<Handler>,
 } macro_rules! register {
     ($( $method:ident ),*) => {
@@ -33,12 +33,12 @@ pub trait Route {
     fn route(self) -> Handlers {
         Handlers {
             route: RouteSections::from_literal(self),
-            GET: None,
-            PUT: None,
-            POST: None,
-            HEAD: None,
-            PATCH: None,
-            DELETE: None,
+            GET:     None,
+            PUT:     None,
+            POST:    None,
+            HEAD:    None,
+            PATCH:   None,
+            DELETE:  None,
             OPTIONS: None,
         }
     }
