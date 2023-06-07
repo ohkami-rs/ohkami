@@ -1,5 +1,5 @@
+use serde::{Serialize};
 use std::{pin::Pin, future::Future};
-use serde::{Serialize, Deserialize};
 use crate::{
     Context, Request,
     layer0_lib::{List, BufRange},
@@ -9,6 +9,19 @@ use crate::{
 pub(crate) const PATH_PARAMS_LIMIT: usize = 2;
 type PathParams = List<BufRange, PATH_PARAMS_LIMIT>;
 
+// pub struct Handler2(
+//     Box<dyn
+//         Fn(Request, Context, PathParams) -> Pin<
+//             Box<dyn
+//                 Future<Output = Response<T>>
+//                 + Send + 'static
+//             >
+//         > + Send + Sync + 'static
+//     >
+// );
+// pub trait IntoHandler2<Args> {
+//     fn into_handler(self) -> Handler<T>;
+// }
 
 pub struct Handler<T: Serialize>(
     Box<dyn
@@ -117,6 +130,27 @@ const _: (/* Context and PathParam */) = {
     }
 };
 
+const _: (/* Context and Queries */) = {
+    impl<F, Fut, T, Q:Queries> IntoHandler<(Context, Q), T> for F
+    where
+        F:   Fn(Context, Q) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = Response<T>> + Send + Sync + 'static,
+        T:   serde::Serialize + Send + 'static,
+    {
+        fn into_handler(self) -> Handler<T> {
+            Handler(Box::new(move |req, c, _|
+                match <Q as Queries>::parse(&req) {
+                    Ok(q) => Box::pin(self(c, q)),
+                    Err(e) => {
+                        let res = Response::Err(c.BadRequest().text(e.to_string()));
+                        Box::pin(async {res})
+                    }
+                }
+            ))
+        }
+    }
+};
+
 const _: (/* Context and PathParam and Queries */) = {
     macro_rules! with_single_path_param_and_queries {
         ($( $param_type:ty ),*) => {$(
@@ -212,10 +246,152 @@ const _: (/* Context and PathParam and Queries */) = {
     }
 };
 
+const _: (/* Context and Payload */) = {
+    impl<F, Fut, T, P:Payload> IntoHandler<(Context, ((P,),)), T> for F
+    where
+        F:   Fn(Context, P) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = Response<T>> + Send + Sync + 'static,
+        T:   serde::Serialize + Send + 'static,
+    {
+        fn into_handler(self) -> Handler<T> {
+            Handler(Box::new(move |req, c, _|
+                match <P as Payload>::parse(&req) {
+                    Ok(p) => Box::pin(self(c, p)),
+                    Err(e) => {
+                        let res = Response::Err(c.BadRequest().text(e.to_string()));
+                        Box::pin(async {res})
+                    }
+                }
+            ))
+        }
+    }
+};
+
+const _: (/* Context and Queries and Payload */) = {
+    impl<F, Fut, T, Q:Queries, P:Payload> IntoHandler<(Context, Q, ((P,),)), T> for F
+    where
+        F:   Fn(Context, Q, P) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = Response<T>> + Send + Sync + 'static,
+        T:   serde::Serialize + Send + 'static,
+    {
+        fn into_handler(self) -> Handler<T> {
+            Handler(Box::new(move |req, c, _|
+                match <Q as Queries>::parse(&req) {
+                    Ok(q) => match <P as Payload>::parse(&req) {
+                        Ok(p) => Box::pin(self(c, q, p)),
+                        Err(e) => {
+                            let res = Response::Err(c.BadRequest().text(e.to_string()));
+                            Box::pin(async {res})
+                        }
+                    }
+                    Err(e) => {
+                        let res = Response::Err(c.BadRequest().text(e.to_string()));
+                        Box::pin(async {res})
+                    }
+                }
+            ))
+        }
+    }
+};
+const _: (/* Context and PathParam and Payload */) = {
+    macro_rules! with_single_path_param_and_payload {
+        ($( $param_type:ty ),*) => {$(
+            impl<F, Fut, T, P:Payload> IntoHandler<(Context, $param_type, ((P,),)), T> for F
+            where
+                F:   Fn(Context, $param_type, P) -> Fut + Send + Sync + 'static,
+                Fut: Future<Output = Response<T>> + Send + Sync + 'static,
+                T:   serde::Serialize + Send + 'static,
+            {
+                fn into_handler(self) -> Handler<T> {
+                    Handler(Box::new(move |req, c, params|
+                        // SAFETY: Due to the architecture of `Router`,
+                        // `params` has already `append`ed once before this code
+                        match <$param_type as PathParam>::parse(&req.buffer[unsafe {params.list[0].assume_init_ref()}]) {
+                            Ok(p1) => match <P as Payload>::parse(&req) {
+                                Ok(p) => Box::pin(self(c, p1, p)),
+                                Err(e) => {
+                                    let res = Response::Err(c.BadRequest().text(e.to_string()));
+                                    Box::pin(async {res})
+                                }
+                            } 
+                            Err(e) => {
+                                let res = Response::Err(c.BadRequest().text(e.to_string()));
+                                Box::pin(async {res})
+                            },
+                        }
+                    ))
+                }
+            }
+        )*};
+    } with_single_path_param_and_payload! {
+        &str, String, u8, u16, u32, u64, u128, usize
+    }
+
+    impl<F, Fut, T, P1:PathParam, P:Payload> IntoHandler<(Context, (P1,), ((P,),)), T> for F
+    where
+        F:   Fn(Context, (P1,), P) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = Response<T>> + Send + Sync + 'static,
+        T:   serde::Serialize + Send + 'static,
+    {
+        fn into_handler(self) -> Handler<T> {
+            Handler(Box::new(move |req, c, params|
+                // SAFETY: Due to the architecture of `Router`,
+                // `params` has already `append`ed once before this code
+                match <P1 as PathParam>::parse(&req.buffer[unsafe {params.list[0].assume_init_ref()}]) {
+                    Ok(p1) => match <P as Payload>::parse(&req) {
+                        Ok(p) => Box::pin(self(c, (p1,), p)),
+                        Err(e) => {
+                            let res = Response::Err(c.BadRequest().text(e.to_string()));
+                            Box::pin(async {res})
+                        }
+                    } 
+                    Err(e) => {
+                        let res = Response::Err(c.BadRequest().text(e.to_string()));
+                        Box::pin(async {res})
+                    },
+                }
+            ))
+        }
+    }
+
+    impl<F, Fut, T, P1:PathParam, P2:PathParam, P:Payload> IntoHandler<(Context, (P1, P2), ((P,),)), T> for F
+    where
+        F:   Fn(Context, (P1, P2), P) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = Response<T>> + Send + Sync + 'static,
+        T:   serde::Serialize + Send + 'static,
+    {
+        fn into_handler(self) -> Handler<T> {
+            Handler(Box::new(move |req, c, params|
+                // SAFETY: Due to the architecture of `Router`,
+                // `params` has already `append`ed twice before this code
+                match <P1 as PathParam>::parse(&req.buffer[unsafe {params.list[0].assume_init_ref()}]) {
+                    Ok(p1) => match <P2 as PathParam>::parse(&req.buffer[unsafe {params.list[1].assume_init_ref()}]) {
+                        Ok(p2) => match <P as Payload>::parse(&req) {
+                            Ok(p) => Box::pin(self(c, (p1, p2), p)),
+                            Err(e) => {
+                                let res = Response::Err(c.BadRequest().text(e.to_string()));
+                                Box::pin(async {res})
+                            }
+                        }
+                        Err(e) => {
+                            let res = Response::Err(c.BadRequest().text(e.to_string()));
+                            Box::pin(async {res})
+                        }
+                    }
+                    Err(e) => {
+                        let res = Response::Err(c.BadRequest().text(e.to_string()));
+                        Box::pin(async {res})
+                    },
+                }
+            ))
+        }
+    }
+};
+
 const _: (/* Context and PathParam and Queries and Payload */) = {
     macro_rules! with_single_path_param_and_queries_and_payload {
         ($( $param_type:ty ),*) => {$(
-            impl<F, Fut, T, Q:Queries, P:Payload> IntoHandler<(Context, $param_type, Q, P), T> for F
+            impl<F, Fut, T, Q:Queries, P:Payload> IntoHandler<(Context, $param_type, Q, ((P,),)), T> for F
             where
                 F:   Fn(Context, $param_type, Q, P) -> Fut + Send + Sync + 'static,
                 Fut: Future<Output = Response<T>> + Send + Sync + 'static,
@@ -252,7 +428,7 @@ const _: (/* Context and PathParam and Queries and Payload */) = {
         &str, String, u8, u16, u32, u64, u128, usize
     }
 
-    impl<F, Fut, T, P1:PathParam, Q:Queries, P:Payload> IntoHandler<(Context, (P1,), Q, P), T> for F
+    impl<F, Fut, T, P1:PathParam, Q:Queries, P:Payload> IntoHandler<(Context, (P1,), Q, ((P,),)), T> for F
     where
         F:   Fn(Context, (P1,), Q, P) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = Response<T>> + Send + Sync + 'static,
@@ -285,7 +461,7 @@ const _: (/* Context and PathParam and Queries and Payload */) = {
         }
     }
 
-    impl<F, Fut, T, P1:PathParam, P2:PathParam, Q:Queries, P:Payload> IntoHandler<(Context, (P1,P2), Q, P), T> for F
+    impl<F, Fut, T, P1:PathParam, P2:PathParam, Q:Queries, P:Payload> IntoHandler<(Context, (P1,P2), Q, ((P,),)), T> for F
     where
         F:   Fn(Context, (P1, P2), Q, P) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = Response<T>> + Send + Sync + 'static,
