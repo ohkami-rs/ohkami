@@ -2,11 +2,30 @@ use std::borrow::Cow;
 use crate::{Error, Request};
 
 
-pub trait Queries: Sized {
-    fn parse(req: &Request) -> Result<Self, Error>;
-}
-
-pub trait Payload: Sized {
+/// Implmented for structs you put
+/// 
+/// - `#[Queries]`
+/// - `#[Headers]`
+/// - `#[Payload(JSON)]`
+/// - `#[Payload(Form)]`
+/// - `#[Payload(URLEncoded)]`
+/// 
+/// <br/>
+/// 
+/// And, you can manually implement for any structs that can be extracted from request：
+/// 
+/// ```ignore
+/// struct HasPayload(bool);
+/// 
+/// impl FromRequest for HasPayload {
+///     fn parse(req: &Request) -> Result<Self, Error> {
+///         Ok(Self(
+///             req.payload.is_some()
+///         ))
+///     }
+/// }
+/// ```
+pub trait FromRequest: Sized {
     fn parse(req: &Request) -> Result<Self, Error>;
 }
 
@@ -35,7 +54,7 @@ pub trait PathParam: Sized {
         }
     }
 
-    macro_rules! unsigned_numbers {
+    macro_rules! unsigned_integers {
         ($( $unsigned_number_type:ty ),*) => {
             $(
                 impl PathParam for $unsigned_number_type {
@@ -59,7 +78,7 @@ pub trait PathParam: Sized {
                 }
             )*
         };
-    } unsigned_numbers! { u8, u16, u32, u64, u128, usize }
+    } unsigned_integers! { u8, u16, u32, u64, u128, usize }
 };
 
 
