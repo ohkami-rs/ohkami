@@ -200,19 +200,14 @@ macro_rules! Route {
 /// 
 /// ```
 /// async fn serve_with(fangs: Fangs) -> Result<(), Error> {
-///     let users_ohkami = Ohkami(
-///         route::<"/:id">
-///             .GET(get_user),
-///         route::<"/">
-///             .POST(create_user),
-///     );
+///     let users_ohkami = Ohkami
+///         .route::<"/:id">(GET(get_user))
+///         .route::<"/">(POST(create_user).PATCH(update_user));
 /// 
-///     Ohkami[fangs](
-///         route::<"/hc">
-///             .GET(health_check),
-///         route::<"/api/users">
-///             .by(users_ohkami),
-///     ).howl(3000).await
+///     Ohkami[fangs]
+///         .route::<"/hc">(GET(health_check))
+///         .route::<"/api/users">(users_ohkami)
+///         .howl(3000).await
 /// }
 /// ```
 /// 
@@ -220,18 +215,18 @@ macro_rules! Route {
 /// 
 /// ```
 /// async fn serve_with(fangs: Fangs) -> Result<(), Error> {
-///     let users_ohkami = Ohkami
-///         .route::<"/:id">(
-///             GET(get_user)
-///         )
-///         .route::<"/">(
-///             POST(create_user).PATCH(update_user)
-///         );
+///     let users_ohkami = Ohkami(
+///         route::<"/:id">
+///             .GET(get_user)
+///             .PATCH(update_user),
+///         route::<"/">
+///             .POST(create_user),
+///     );
 /// 
-///     Ohkami[fangs]
-///         .route::<"/hc">(GET(health_check))
-///         .route::<"/api/users">(users_ohkami)
-///         .howl(3000).await
+///     Ohkami[fangs](
+///         route::<"/hc">       .GET(health_check),
+///         route::<"/api/users">.by(users_ohkami),
+///     ).howl(3000).await
 /// }
 /// ```
 /// 
