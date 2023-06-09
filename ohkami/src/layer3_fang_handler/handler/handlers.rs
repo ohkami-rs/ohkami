@@ -179,3 +179,78 @@ macro_rules! Route {
         ];
     }
 }
+
+#[cfg(test)]
+/// <br/>
+/// 
+/// ```
+/// async fn serve_with(fangs: Fangs) -> Result<(), Error> {
+///     let users_ohkami = Ohkami
+///         .GET::<"/:id">(get_user)
+///         .POST::<"/">(create_user);
+/// 
+///     Ohkami[fangs]
+///         .GET::<"/hc">(health_check)
+///         .pack::<"/api/users">(users_ohkami)
+///         .howl(":3000").await
+/// }
+/// ```
+/// 
+/// <br/>
+/// 
+/// ```
+/// async fn serve_with(fangs: Fangs) -> Result<(), Error> {
+///     let users_ohkami = Ohkami(
+///         route::<"/:id">
+///             .GET(get_user),
+///         route::<"/">
+///             .POST(create_user),
+///     );
+/// 
+///     Ohkami[fangs](
+///         route::<"/hc">
+///             .GET(health_check),
+///         route::<"/api/users">
+///             .by(users_ohkami),
+///     ).howl(3000).await
+/// }
+/// ```
+/// 
+/// <br/>
+/// 
+/// ```
+/// async fn serve_with(fangs: Fangs) -> Result<(), Error> {
+///     let users_ohkami = Ohkami
+///         .route::<"/:id">(
+///             GET(get_user)
+///         )
+///         .route::<"/">(
+///             POST(create_user).PATCH(update_user)
+///         );
+/// 
+///     Ohkami[fangs]
+///         .route::<"/hc">(GET(health_check))
+///         .route::<"/api/users">(users_ohkami)
+///         .howl(3000).await
+/// }
+/// ```
+/// 
+/// <br/>
+/// 
+/// ```
+/// async fn serve_with(fangs: Fangs) -> Result<(), Error> {
+///     let users_ohkami = Ohkami(
+///         "/"
+///             .POST(create_user),
+///         "/:id"
+///             .GET(get_user)
+///             .PATCH(update_user),
+///     );
+/// 
+///     Ohkami[fangs](
+///         "/hc"       .GET(health_check),
+///         "/api/users".by(users_ohkami),
+///     ).howl(3000).await
+/// }
+/// ```
+mod ___ {}
