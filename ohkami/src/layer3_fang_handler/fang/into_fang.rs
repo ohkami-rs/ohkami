@@ -1,3 +1,5 @@
+#![allow(non_snake_case)]
+
 use std::future::Future;
 use super::Fang;
 use crate::{

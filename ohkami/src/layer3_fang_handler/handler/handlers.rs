@@ -201,8 +201,10 @@ macro_rules! Route {
 /// ```
 /// async fn serve_with(fangs: Fangs) -> Result<(), Error> {
 ///     let users_ohkami = Ohkami
-///         .route::<"/:id">(GET(get_user))
-///         .route::<"/">(POST(create_user).PATCH(update_user));
+///         .route::<"/:id">(
+///             GET(get_user))
+///         .route::<"/">(
+///             POST(create_user).PATCH(update_user));
 /// 
 ///     Ohkami[fangs]
 ///         .route::<"/hc">(GET(health_check))

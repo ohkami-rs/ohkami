@@ -4,6 +4,10 @@
     fn_traits, unboxed_closures,
 )]
 
+#![allow(incomplete_features)]
+#![feature(
+    adt_const_params,
+)]
 
 /*===== crate features =====*/
 #[cfg(any(
@@ -38,6 +42,11 @@ mod __dep__ {
     pub(crate) use tokio::__TODO__ as StreamWriter;
     #[cfg(feature="rt_async-std")]
     pub(crate) use async_std::io::WriteExt as StreamWriter;
+
+    #[cfg(feature="rt_tokio")]
+    pub(crate) use tokio::sync::Mutex as Mutex;
+    #[cfg(feature="rt_async-std")]
+    pub(crate) use async_std::sync::Mutex as Mutex;
 }
 
 
