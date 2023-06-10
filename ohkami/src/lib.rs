@@ -2,6 +2,7 @@
 #![feature(
     try_trait_v2,
     fn_traits, unboxed_closures,
+    generic_const_exprs,
 )]
 
 #![allow(incomplete_features)]

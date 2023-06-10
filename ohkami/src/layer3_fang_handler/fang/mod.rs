@@ -1,4 +1,3 @@
-mod fangs; pub use fangs::{Fangs};
 mod into_fang; pub use into_fang::{IntoFang};
 
 use std::{pin::Pin, future::Future};
@@ -17,11 +16,33 @@ pub enum Fang {
         >
     ),
 } impl Fang {
-    pub(crate) fn clone(self) -> (Self, Self) {
+    pub(crate) fn clone2(self) -> (Self, Self) {
         match self {
-            Self::Before(f) => {
-                let f: &'static _ = Box::leak(f);
+            Self::Before(f) => {let f: &'static _ = Box::leak(f);
                 (
+                    Self::Before(Box::new(|c, req| Box::pin(f(c, req)))),
+                    Self::Before(Box::new(|c, req| Box::pin(f(c, req)))),
+                )
+            }
+        }
+    }
+    pub(crate) fn clone3(self) -> (Self, Self, Self) {
+        match self {
+            Self::Before(f) => {let f: &'static _ = Box::leak(f);
+                (
+                    Self::Before(Box::new(|c, req| Box::pin(f(c, req)))),
+                    Self::Before(Box::new(|c, req| Box::pin(f(c, req)))),
+                    Self::Before(Box::new(|c, req| Box::pin(f(c, req)))),
+                )
+            }
+        }
+    }
+    pub(crate) fn clone4(self) -> (Self, Self, Self, Self) {
+        match self {
+            Self::Before(f) => {let f: &'static _ = Box::leak(f);
+                (
+                    Self::Before(Box::new(|c, req| Box::pin(f(c, req)))),
+                    Self::Before(Box::new(|c, req| Box::pin(f(c, req)))),
                     Self::Before(Box::new(|c, req| Box::pin(f(c, req)))),
                     Self::Before(Box::new(|c, req| Box::pin(f(c, req)))),
                 )

@@ -18,10 +18,13 @@ macro_rules! prepare_capacity {
         }
     };
 } const _: () = {
-    use crate::{PATH_PARAMS_LIMIT, QUERIES_LIMIT, HEADERS_LIMIT};
+    use crate::{PATH_PARAMS_LIMIT, QUERIES_LIMIT, HEADERS_LIMIT, layer5_ohkami::builder::FANGS_LIMIT};
     
     prepare_capacity!(PATH_PARAMS_LIMIT: [uninit, uninit]);
     prepare_capacity!(QUERIES_LIMIT: [uninit, uninit, uninit, uninit]);
+    prepare_capacity!(FANGS_LIMIT: [
+        uninit, uninit, uninit, uninit, uninit, uninit, uninit, uninit
+    ]);
     prepare_capacity!(HEADERS_LIMIT: [
         uninit, uninit, uninit, uninit, uninit, uninit, uninit, uninit,
         uninit, uninit, uninit, uninit, uninit, uninit, uninit, uninit,
@@ -41,6 +44,25 @@ impl<T, const CAPACITY: usize> List<T, CAPACITY> {
     }
 }
 
+
+const _: () = {
+    impl Copy for List<::std::any::TypeId, {crate::layer5_ohkami::builder::FANGS_LIMIT}> {}
+    impl Clone for List<::std::any::TypeId, {crate::layer5_ohkami::builder::FANGS_LIMIT}> {
+        fn clone(&self) -> Self {
+            let mut cloned = List::<::std::any::TypeId, {crate::layer5_ohkami::builder::FANGS_LIMIT}>::new();
+            if self.next == 0 {return cloned}
+
+            for elem in &self.list {
+                cloned.append(unsafe {
+                    elem
+                        .assume_init_ref()
+                        .clone()
+                });
+            }
+            cloned
+        }
+    }
+};
 
 #[cfg(test)]
 const _: () = {
