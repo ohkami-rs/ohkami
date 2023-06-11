@@ -1,4 +1,4 @@
-mod into_fang; pub use into_fang::{IntoFang};
+mod into_fang; pub use into_fang::{FrontFang};
 
 use std::{pin::Pin, future::Future};
 use crate::{Context, Request};
