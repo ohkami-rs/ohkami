@@ -17,6 +17,8 @@ where
     F:   Fn(&'req Context, &'req Request) -> Fut + Send + Sync + 'static,
     Fut: Future<Output = ()> + Send + 'static,
 {
+    // SAFETY: `Fang::Front`s should be executed
+    // **BEFORE** the handler by router
     fn into_fang(self) -> Fang {
         Fang::Before(Box::new(move |c, req| Box::pin({
             let out = unsafe {self(
