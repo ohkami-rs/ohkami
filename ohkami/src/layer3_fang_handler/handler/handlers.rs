@@ -1,6 +1,6 @@
 #![allow(non_snake_case)]
 
-use crate::layer3_fang_handler::RouteSections;
+use crate::{layer3_fang_handler::RouteSections, layer5_ohkami::Ohkami};
 use super::{Handler, IntoHandler};
 
 
@@ -39,12 +39,20 @@ macro_rules! Handlers {
     };
 } Handlers! { GET, PUT, POST, HEAD, PATCH, DELETE, OPTIONS }
 
+
+pub struct ByAnother {
+    route: RouteSections,
+    ohkami: Ohkami,
+}
+
+
 macro_rules! Route {
     ($( $method:ident ),*) => {
         pub trait Route {
             $(
                 fn $method<Args>(self, handler: impl IntoHandler<Args>) -> Handlers;
             )*
+            fn by(self, another: Ohkami) -> ByAnother;
         }
         impl Route for &'static str {
             $(
@@ -54,6 +62,12 @@ macro_rules! Route {
                     handlers
                 }
             )*
+            fn by(self, another: Ohkami) -> ByAnother {
+                ByAnother {
+                    route:  RouteSections::from_literal(self),
+                    ohkami: another,
+                }
+            }
         }
     };
 } Route! { GET, PUT, POST, HEAD, PATCH, DELETE, OPTIONS }

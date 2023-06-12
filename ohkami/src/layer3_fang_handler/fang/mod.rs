@@ -1,52 +1,51 @@
-mod into_fang; pub use into_fang::{FrontFang};
+mod fangs; pub(crate) use fangs::{Fangs}; pub use fangs::{public};
+mod into_fang; pub use into_fang::{IntoFrontFang};
 
-use std::{pin::Pin, future::Future};
+use std::{pin::Pin, future::Future, sync::Arc};
 use crate::{Context, Request};
 
 
+#[derive(Clone)]
 pub enum Fang {
-    Before(
-        Box<dyn
-            Fn(Context, Request) -> Pin<
+    Front(FrontFang)
+}
+
+pub struct FrontFang(
+    pub(crate) Arc<dyn
+        Fn(Context, Request) -> Pin<
+            Box<dyn
+                Future<Output = (Context, Request)>
+                + Send + 'static
+            >
+        > + Send + Sync + 'static
+    >
+); const _: () = {
+    impl Clone for FrontFang {
+        fn clone(&self) -> Self {
+            Self(Arc::clone(&self.0))
+        }
+    }
+
+    impl Fn<(Context, Request)> for FrontFang {
+        extern "rust-call" fn call(&self, (c, req): (Context, Request)) -> Self::Output {
+            (&self.0)(c, req)
+        }
+    } const _: (/* by */) = {
+        impl FnMut<(Context, Request)> for FrontFang {
+            extern "rust-call" fn call_mut(&mut self, (c, req): (Context, Request)) -> Self::Output {
+                (&self.0)(c, req)
+            }
+        }
+        impl FnOnce<(Context, Request)> for FrontFang {
+            type Output = Pin<
                 Box<dyn
                     Future<Output = (Context, Request)>
                     + Send + 'static
                 >
-            > + Send + Sync + 'static
-        >
-    ),
-} impl Fang {
-    pub(crate) fn clone2(self) -> (Self, Self) {
-        match self {
-            Self::Before(f) => {let f: &'static _ = Box::leak(f);
-                (
-                    Self::Before(Box::new(|c, req| Box::pin(f(c, req)))),
-                    Self::Before(Box::new(|c, req| Box::pin(f(c, req)))),
-                )
+            >;
+            extern "rust-call" fn call_once(self, (c, req): (Context, Request)) -> Self::Output {
+                (&*(self.0))(c, req)
             }
         }
-    }
-    pub(crate) fn clone3(self) -> (Self, Self, Self) {
-        match self {
-            Self::Before(f) => {let f: &'static _ = Box::leak(f);
-                (
-                    Self::Before(Box::new(|c, req| Box::pin(f(c, req)))),
-                    Self::Before(Box::new(|c, req| Box::pin(f(c, req)))),
-                    Self::Before(Box::new(|c, req| Box::pin(f(c, req)))),
-                )
-            }
-        }
-    }
-    pub(crate) fn clone4(self) -> (Self, Self, Self, Self) {
-        match self {
-            Self::Before(f) => {let f: &'static _ = Box::leak(f);
-                (
-                    Self::Before(Box::new(|c, req| Box::pin(f(c, req)))),
-                    Self::Before(Box::new(|c, req| Box::pin(f(c, req)))),
-                    Self::Before(Box::new(|c, req| Box::pin(f(c, req)))),
-                    Self::Before(Box::new(|c, req| Box::pin(f(c, req)))),
-                )
-            }
-        }
-    }
-}
+    };
+};
