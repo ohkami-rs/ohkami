@@ -4,17 +4,19 @@ use crate::{layer3_fang_handler::RouteSections, layer5_ohkami::Ohkami};
 use super::{Handler, IntoHandler};
 
 
-pub struct Handlers { route: RouteSections,
-    GET:     Option<Handler>,
-    PUT:     Option<Handler>,
-    POST:    Option<Handler>,
-    HEAD:    Option<Handler>,
-    PATCH:   Option<Handler>,
-    DELETE:  Option<Handler>,
-    OPTIONS: Option<Handler>,
+pub struct Handlers {
+    pub(crate) route:   RouteSections,
+    pub(crate) GET:     Option<Handler>,
+    pub(crate) PUT:     Option<Handler>,
+    pub(crate) POST:    Option<Handler>,
+    pub(crate) HEAD:    Option<Handler>,
+    pub(crate) PATCH:   Option<Handler>,
+    pub(crate) DELETE:  Option<Handler>,
+    pub(crate) OPTIONS: Option<Handler>,
 } impl Handlers {
     fn new(route_str: &'static str) -> Self {
-        Self { route: RouteSections::from_literal(route_str),
+        Self {
+            route:   RouteSections::from_literal(route_str),
             GET:     None,
             PUT:     None,
             POST:    None,

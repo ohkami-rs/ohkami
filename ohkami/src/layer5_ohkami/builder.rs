@@ -4,7 +4,7 @@ use crate::{layer3_fang_handler::{IntoFrontFang, Fang, Fangs}, Context, layer0_l
 
 mod without_fangs {
     use std::{ops::{Index, IndexMut}, any::Any, sync::MutexGuard};
-    use crate::{layer3_fang_handler::Fangs};
+    use crate::{layer3_fang_handler::{Fangs, Handlers, ByAnother}};
 
     /// <br/>
     /// 
@@ -33,43 +33,61 @@ mod without_fangs {
     /// ```
     pub struct Ohkami;
 
-    const _: (/* fangs-indexing */) = {
-        impl Index<Fangs> for Ohkami {
+    const _: (/* add Fangs */) = {
+        impl FnOnce<(Fangs,)> for Ohkami {
             type Output = super::with_fangs::Ohkami;
-            fn index(&self, fangs: Fangs) -> &Self::Output {
-                compile_error!("\
-                    Ohkami[fangs] と書きたいというだけの理由で leak するのは\
-                    さすがに無駄なコストすぎるきがする.\
-                    \n\n\
-                    Fangs なしなら
-                    \n\
-                    ```\n\
-                    Ohkami(\n\
-                    \0  \"/users\"\n\
-                    \0      .POST(create_user),\n\
-                    \0  \"/users/:id\"\n\
-                    \0      .GET(get_user_by_id)\n\
-                    \0      .PATCH(update_user),\n\
-                    )\n\
-                    ```\n\
-                    で, Fangs をつけたければ
-                    \n\
-                    ````\n\
-                    Ohkami(fangs)(\n\
-                    \0  \"/users\"\n\
-                    \0      .POST(create_user),\n\
-                    \0  \"/users/:id\"\n\
-                    \0      .GET(get_user_by_id)\n\
-                    \0      .PATCH(update_user),\n\
-                    )\n\
-                    ```\n\
-                    とする, でいいのでは
-                ");
-                Box::leak(Box::new(
-                    super::with_fangs::Ohkami{ fangs }
-                ))
+            extern "rust-call" fn call_once(self, (fangs,): (Fangs,)) -> Self::Output {
+                super::with_fangs::Ohkami {fangs}
             }
         }
+    };
+
+    // TODO!!!!
+    // const _: (/* only Handlerses */) = {
+    //     impl FnOnce<(Handlers,)> for Ohkami {
+    //         type Output = crate::layer5_ohkami::Ohkami;
+    //         extern "rust-call" fn call_once(self, (handlers1,): (Handlers,)) -> Self::Output {
+    //             crate::layer5_ohkami::Ohkami {fangs: vec![],
+    //                 handlers: vec![handlers1]
+    //             }
+    //         }
+    //     }
+    //     impl FnOnce<(Handlers, Handlers)> for Ohkami {
+    //         type Output = crate::layer5_ohkami::Ohkami;
+    //         extern "rust-call" fn call_once(self, (handlers1, handlers2): (Handlers, Handlers)) -> Self::Output {
+    //             crate::layer5_ohkami::Ohkami {fangs: vec![],
+    //                 handlers: vec![handlers1, handlers2]
+    //             }
+    //         }
+    //     }
+    //     impl FnOnce<(Handlers, Handlers, Handlers)> for Ohkami {
+    //         type Output = crate::layer5_ohkami::Ohkami;
+    //         extern "rust-call" fn call_once(self, (handlers1, handlers2, handlers3): (Handlers, Handlers, Handlers)) -> Self::Output {
+    //             crate::layer5_ohkami::Ohkami {fangs: vec![],
+    //                 handlers: vec![handlers1, handlers2, handlers3]
+    //             }
+    //         }
+    //     }
+    //     impl FnOnce<(Handlers, Handlers, Handlers, Handlers)> for Ohkami {
+    //         type Output = crate::layer5_ohkami::Ohkami;
+    //         extern "rust-call" fn call_once(self, (handlers1, handlers2, handlers3, handlers4): (Handlers, Handlers, Handlers, Handlers)) -> Self::Output {
+    //             crate::layer5_ohkami::Ohkami {fangs: vec![],
+    //                 handlers: vec![handlers1, handlers2, handlers3, handlers4]
+    //             }
+    //         }
+    //     }
+    // };
+// 
+    // TODO!!!!!
+    const _: (/* with ByAnother */) = {
+        // impl FnOnce<(ByAnother,)> for Ohkami {
+        //     type Output = crate::layer5_ohkami::Ohkami;
+        //     extern "rust-call" fn call_once(self, (by,): (ByAnother,)) -> Self::Output {
+        //         crate::layer5_ohkami::Ohkami {fangs: vec![],
+        //             handlers: vec![handlers]
+        //         }
+        //     }
+        // }
     };
 }
 

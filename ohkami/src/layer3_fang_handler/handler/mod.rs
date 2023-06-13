@@ -1,4 +1,4 @@
-mod handlers; pub use handlers::{Handlers};
+mod handlers; pub use handlers::{Handlers, ByAnother};
 mod into_handler; pub use into_handler::{IntoHandler};
 
 use serde::{Serialize};

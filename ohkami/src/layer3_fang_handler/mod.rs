@@ -4,14 +4,15 @@ mod handler; pub use handler::*;
 use std::{collections::VecDeque, str::Chars, iter::Peekable};
 
 
-pub struct RouteSections(
-    VecDeque<RouteSection>
-); impl RouteSections {
+pub struct RouteSections {
+    route: &'static [u8],
+    sections: VecDeque<RouteSection>
+} impl RouteSections {
     pub(crate) fn from_literal(route: &'static str) -> Self {
         if route.is_empty() {panic!("Found an empty route: `{route}`")}
         if !route.starts_with('/') {panic!("Routes must start with '/': `{route}`")}
 
-        if route == "/" {return Self(VecDeque::new())}
+        if route == "/" {return Self{ route: route.as_bytes(), sections: VecDeque::new()}}
 
         let mut sections = VecDeque::new();
         for section in {let mut s = route.split('/'); s.next(); s} {
@@ -21,12 +22,12 @@ pub struct RouteSections(
             };
             sections.push_back(section)
         }
-        Self(sections)
+        Self{ sections, route:route.as_bytes() }
     }
 }
 
 enum RouteSection {
-    Pattern(&'static str),
+    Static(&'static [u8]),
     Param,
 } impl RouteSection {
     pub(crate) fn from_literal(section: &'static str) -> Result<Self, String> {
@@ -69,7 +70,7 @@ enum RouteSection {
             },
             Some(c) => {
                 let _/* validation */ = valididate_section_name(section_chars)?;
-                Ok(Self::Pattern(section))
+                Ok(Self::Static(section.as_bytes()))
             }
         }
     }
