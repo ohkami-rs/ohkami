@@ -4,6 +4,7 @@ mod handler; pub use handler::*;
 use std::{collections::VecDeque, str::Chars, iter::Peekable};
 
 
+#[derive(Clone)]
 pub struct RouteSections {
     route: &'static [u8],
     sections: VecDeque<RouteSection>
@@ -26,6 +27,7 @@ pub struct RouteSections {
     }
 }
 
+#[derive(Clone)]
 enum RouteSection {
     Static(&'static [u8]),
     Param,

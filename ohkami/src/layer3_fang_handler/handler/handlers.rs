@@ -43,8 +43,8 @@ macro_rules! Handlers {
 
 
 pub struct ByAnother {
-    route: RouteSections,
-    ohkami: Ohkami,
+    pub(crate) route: RouteSections,
+    pub(crate) ohkami: Ohkami,
 }
 
 

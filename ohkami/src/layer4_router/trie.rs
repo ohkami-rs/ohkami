@@ -1,4 +1,4 @@
-use crate::layer3_fang_handler::{Handler, FrontFang, Handlers};
+use crate::layer3_fang_handler::{Handler, FrontFang, Handlers, ByAnother, RouteSections};
 type Range = std::ops::Range<usize>;
 
 
@@ -27,29 +27,76 @@ enum Pattern {
 }
 
 
-/*===== public impls =====*/
+/*===== impls =====*/
 impl TrieRouter {
     pub(crate) fn new() -> Self {
         Self {
-            GET: Node::root(),
-            PUT: Node::root(),
-            POST: Node::root(),
-            HEAD: Node::root(),
-            PATCH: Node::root(),
-            DELETE: Node::root(),
+            GET:     Node::root(),
+            PUT:     Node::root(),
+            POST:    Node::root(),
+            HEAD:    Node::root(),
+            PATCH:   Node::root(),
+            DELETE:  Node::root(),
             OPTIONS: Node::root(),
         }
     }
 
-    pub(crate) fn register_handlers(&mut self, handlers: Handlers) {
+    pub(crate) fn register_handlers(mut self, handlers: Handlers) -> Self {
         let Handlers { route, GET, PUT, POST, HEAD, PATCH, DELETE, OPTIONS } = handlers;
 
+        if let Some(handler) = GET {
+            self.GET.register_handler(route.clone(), handler)
+        }
+        if let Some(handler) = PUT {
+            self.PUT.register_handler(route.clone(), handler)
+        }
+        if let Some(handler) = POST {
+            self.POST.register_handler(route.clone(), handler)
+        }
+        if let Some(handler) = HEAD {
+            self.HEAD.register_handler(route.clone(), handler)
+        }
+        if let Some(handler) = PATCH {
+            self.PATCH.register_handler(route.clone(), handler)
+        }
+        if let Some(handler) = DELETE {
+            self.DELETE.register_handler(route.clone(), handler)
+        }
+        if let Some(handler) = OPTIONS {
+            self.OPTIONS.register_handler(route.clone(), handler)
+        }
+
+        self
+    }
+
+    pub(crate) fn merge_another(mut self, another: ByAnother) -> Self {
+        let ByAnother { route, ohkami } = another;
+        let another_routes = ohkami.routes;
+
+        self.GET.merge_node(another_routes.GET);
+        self.PUT.merge_node(another_routes.PUT);
+        self.POST.merge_node(another_routes.POST);
+        self.HEAD.merge_node(another_routes.HEAD);
+        self.PATCH.merge_node(another_routes.PATCH);
+        self.DELETE.merge_node(another_routes.DELETE);
+        self.OPTIONS.merge_node(another_routes.OPTIONS);
+        
+        self
+    }
+}
+
+impl Node {
+    fn register_handler(&mut self, route: RouteSections, handler: Handler) {
+        compile_error!(TODO)
+    }
+
+    fn merge_node(&mut self, another: Node) {
         compile_error!(TODO)
     }
 }
 
 
-/*===== internal impls =====*/
+/*===== utils =====*/
 impl Node {
     fn new(pattern: Pattern) -> Self {
         Self {

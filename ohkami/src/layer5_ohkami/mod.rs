@@ -4,7 +4,7 @@ use crate::{layer3_fang_handler::{Fang, Handlers}, layer4_router::TrieRouter};
 
 
 pub struct Ohkami {
-    routes: TrieRouter,
+    pub(crate) routes: TrieRouter,
 } impl Ohkami {
     pub(crate) fn new() -> Self {
         Self {
