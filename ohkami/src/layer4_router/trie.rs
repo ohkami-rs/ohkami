@@ -1,9 +1,9 @@
-use crate::layer3_fang_handler::{Handler, FrontFang, Handlers, ByAnother, RouteSections};
+use crate::layer3_fang_handler::{Handler, FrontFang, Handlers, ByAnother, RouteSections, Fang};
 type Range = std::ops::Range<usize>;
 
 
 /*===== defs =====*/
-pub(crate) struct TrieRouter {
+pub struct TrieRouter {
     GET: Node,
     PUT: Node,
     POST: Node,
@@ -22,7 +22,7 @@ struct Node {
 }
 
 enum Pattern {
-    Static{route: &'static [u8], range: Range},
+    Static{ route: &'static [u8], range: Range },
     Param,
 }
 
@@ -83,15 +83,34 @@ impl TrieRouter {
         
         self
     }
+
+    pub(crate) fn apply_fang(mut self, fang: Fang) -> Self {
+        self.GET.apply_fang(fang.clone());
+        self.PUT.apply_fang(fang.clone());
+        self.POST.apply_fang(fang.clone());
+        self.HEAD.apply_fang(fang.clone());
+        self.PATCH.apply_fang(fang.clone());
+        self.DELETE.apply_fang(fang.clone());
+        self.OPTIONS.apply_fang(fang.clone());
+
+        self
+    }
 }
 
 impl Node {
     fn register_handler(&mut self, route: RouteSections, handler: Handler) {
-        compile_error!(TODO)
+        // compile_error!(TODO)
+        todo!()
     }
 
     fn merge_node(&mut self, another: Node) {
-        compile_error!(TODO)
+        // compile_error!(TODO)
+        todo!()
+    }
+
+    fn apply_fang(&mut self, fang: Fang) {
+        // compile_error!(TODO)
+        todo!()
     }
 }
 

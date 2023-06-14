@@ -8,12 +8,12 @@ use crate::{
 };
 
 
-pub trait IntoFrontFang<Args, Output: Future<Output = ()>> {
+pub trait IntoFang<Args, Output> {
     fn into_fang(self) -> Fang;
 }
 
 const _: (/* only Context */) = {
-    impl<'req, F, Fut> IntoFrontFang<(&Context,), Fut> for F
+    impl<'req, F, Fut> IntoFang<(&Context,), Fut> for F
     where
         F:   Fn(&'req Context) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = ()> + Send + 'static,
@@ -29,7 +29,7 @@ const _: (/* only Context */) = {
             }))))
         }
     }
-    impl<'req, F, Fut> IntoFrontFang<(&mut Context,), Fut> for F
+    impl<'req, F, Fut> IntoFang<(&mut Context,), Fut> for F
     where
         F:   Fn(&'req mut Context) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = ()> + Send + 'static,
@@ -48,7 +48,7 @@ const _: (/* only Context */) = {
 };
 
 const _: (/* only Request */) = {
-    impl<'req, F, Fut> IntoFrontFang<(&Request,), Fut> for F
+    impl<'req, F, Fut> IntoFang<(&Request,), Fut> for F
     where
         F:   Fn(&'req Request) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = ()> + Send + 'static,
@@ -67,7 +67,7 @@ const _: (/* only Request */) = {
 };
 
 const _: (/* with Request */) = {
-    impl<'req, F, Fut> IntoFrontFang<(&Context, &Request), Fut> for F
+    impl<'req, F, Fut> IntoFang<(&Context, &Request), Fut> for F
     where
         F:   Fn(&'req Context, &'req Request) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = ()> + Send + 'static,
@@ -84,7 +84,7 @@ const _: (/* with Request */) = {
             }))))
         }
     }
-    impl<'req, F, Fut> IntoFrontFang<(&mut Context, &Request), Fut> for F
+    impl<'req, F, Fut> IntoFang<(&mut Context, &Request), Fut> for F
     where
         F:   Fn(&'req mut Context, &'req Request) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = ()> + Send + 'static,
