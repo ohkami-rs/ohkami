@@ -33,6 +33,7 @@ use crate::{layer4_router::TrieRouter, layer3_fang_handler::IntoFang};
 ///     ).howl(":3000").await
 /// }
 /// ```
+#[allow(non_snake_case)]
 pub fn Ohkami<G>(fangs: impl Fangs<G>) -> super::Ohkami {
     super::Ohkami {
         routes: fangs.apply(TrieRouter::new()),
@@ -43,6 +44,16 @@ pub fn Ohkami<G>(fangs: impl Fangs<G>) -> super::Ohkami {
     impl Fangs<()> for () {
         fn apply(self, routes: TrieRouter) -> TrieRouter {
             routes
+        }
+    }
+
+    impl<F1, Args1, Output1>
+        Fangs<((), Args1, Output1)> for F1
+    where
+        F1: IntoFang<Args1, Output1>,
+    {
+        fn apply(self, routes: TrieRouter) -> TrieRouter {
+            routes.apply_fang(self.into_fang())
         }
     }
 

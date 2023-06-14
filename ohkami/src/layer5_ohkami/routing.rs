@@ -2,6 +2,15 @@ use super::Ohkami;
 use crate::layer3_fang_handler::{Handlers, ByAnother};
 
 
+const _: (/* for comfortablity */) = {
+    impl FnOnce<()> for Ohkami {
+        type Output = Ohkami;
+        extern "rust-call" fn call_once(self, _: ()) -> Self::Output {
+            self
+        }
+    }
+};
+
 const _: (/* 1 item */) = {
     impl FnOnce<(Handlers,)> for Ohkami {
         type Output = Ohkami;
@@ -328,4 +337,12 @@ const _: (/* 4 items */) = {
             }
         }
     }
+};
+
+const _: (/* 5 items */) = {
+
+};
+
+const _: (/* 6 items */) = {
+
 };

@@ -68,4 +68,25 @@ pub(crate) use layer3_fang_handler::{PATH_PARAMS_LIMIT};
 pub use layer0_lib::{Error};
 pub use layer1_req_res::{Request, Response};
 pub use layer2_context::{Context};
-// pub use layer3_fang_handler::{public::Fangs};
+pub use layer3_fang_handler::{Route};
+pub use layer5_ohkami::{Ohkami};
+
+
+/*===== usavility =====*/
+#[cfg(test)] #[allow(unused)] async fn __() {
+// fangs
+    async fn add_server_header(c: &mut Context) {
+        c.header.Server("ohkami");
+    }
+
+// handlers
+    async fn health_check(c: Context) -> Response<()> {
+        c.NoContent()
+    }
+
+// run
+    let my_ohkami = Ohkami((add_server_header))(
+        "/hc"
+            .GET(health_check)
+    ).howl(":3000").await;
+}
