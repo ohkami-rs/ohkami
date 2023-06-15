@@ -19,9 +19,9 @@ pub struct Request {
 }
 
 impl Request {
-    pub(crate) async fn new(stream: &mut __dep__::TcpStream) -> Result<Self, Error> {
-        let buffer = Buffer::new(stream).await?;
-        Ok(parse::parse(buffer))
+    pub(crate) async fn new(stream: &mut __dep__::TcpStream) -> Self {
+        let buffer = Buffer::new(stream).await;
+        parse::parse(buffer)
     }
 }
 

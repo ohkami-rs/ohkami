@@ -18,11 +18,12 @@ impl Buffer {
         Self(raw_buffer)
     }
 
-    pub(crate) async fn new(stream: &mut TcpStream) -> Result<Self, Error> {
+    pub(crate) async fn new(stream: &mut TcpStream) -> Self {
         let mut raw_buffer = [b'\0'; BUFFER_SIZE];
-        stream.read(&mut raw_buffer).await
-            .map_err(|e| Error::IO(Cow::Owned(e.to_string())))?;
-        Ok(Self(raw_buffer))
+        if let Err(e) = stream.read(&mut raw_buffer).await {
+            panic!("Failed to read stream: {e}")
+        }
+        Self(raw_buffer)
     }
 
     pub(crate) fn read_str(&self, range: &BufRange) -> &str {

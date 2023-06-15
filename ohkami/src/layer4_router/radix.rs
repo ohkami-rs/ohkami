@@ -1,3 +1,6 @@
+use crate::{Request, Context};
+
+/*===== defs =====*/
 pub(crate) struct RadixRouter {
     GET: Node,
     PUT: Node,
@@ -9,5 +12,13 @@ pub(crate) struct RadixRouter {
 }
 
 struct Node {
-    
+
+}
+
+
+/*===== impls =====*/
+impl RadixRouter {
+    pub(crate) async fn handle(&self, c: Context, req: Request) {
+        todo!()
+    }
 }

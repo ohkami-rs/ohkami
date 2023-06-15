@@ -36,6 +36,11 @@ mod __dep__ {
     pub(crate) use async_std::net::TcpStream as TcpStream;
 
     #[cfg(feature="rt_tokio")]
+    pub(crate) use tokio::net::TcpListener as TcpListener;
+    #[cfg(feature="rt_async-std")]
+    pub(crate) use async_std::net::TcpListener as TcpListener;
+
+    #[cfg(feature="rt_tokio")]
     pub(crate) use tokio::__TODO__ as StreamReader;
     #[cfg(feature="rt_async-std")]
     pub(crate) use async_std::io::ReadExt as StreamReader;
@@ -46,9 +51,14 @@ mod __dep__ {
     pub(crate) use async_std::io::WriteExt as StreamWriter;
 
     #[cfg(feature="rt_tokio")]
-    pub(crate) use tokio::sync::Mutex as Mutex;
+    pub(crate) use tokio::__TODO__ as StreamIterater;
     #[cfg(feature="rt_async-std")]
-    pub(crate) use async_std::sync::Mutex as Mutex;
+    pub(crate) use async_std::stream::StreamExt as StreamIterater;
+
+    #[cfg(feature="rt_tokio")]
+    pub(crate) use tokio::task as task;
+    #[cfg(feature="rt_async-std")]
+    pub(crate) use async_std::task as task;
 }
 
 
@@ -85,8 +95,8 @@ pub use layer5_ohkami::{Ohkami};
     }
 
 // run
-    let my_ohkami = Ohkami((add_server_header))(
+    Ohkami::with(add_server_header)(
         "/hc"
-            .GET(health_check)
-    ).howl(":3000").await;
+            .GET(health_check)   
+    ).howl(3000).await;
 }

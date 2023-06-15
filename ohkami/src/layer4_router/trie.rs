@@ -95,6 +95,10 @@ impl TrieRouter {
 
         self
     }
+
+    pub(crate) fn into_radix(self) -> super::RadixRouter {
+        todo!()
+    }
 }
 
 impl Node {
