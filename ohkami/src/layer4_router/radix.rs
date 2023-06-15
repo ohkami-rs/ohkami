@@ -1,4 +1,12 @@
-use crate::{Request, Context};
+use crate::{
+    __dep__,
+    Request,
+    Context,
+    Response,
+    layer0_lib::{Method},
+    layer3_fang_handler::{Handler, FrontFang, PathParams},
+};
+
 
 /*===== defs =====*/
 pub(crate) struct RadixRouter {
@@ -12,13 +20,58 @@ pub(crate) struct RadixRouter {
 }
 
 struct Node {
+    pattern:  &'static [Pattern],
+    front:    &'static [FrontFang],
+    handler:  Option<Handler>,
+    children: Vec<Node>,
+}
 
+enum Pattern {
+    Static(&'static [u8]),
+    Param,
 }
 
 
 /*===== impls =====*/
 impl RadixRouter {
-    pub(crate) async fn handle(&self, c: Context, req: Request) {
-        todo!()
+    pub(crate) async fn handle(
+        &self,
+        mut c: Context,
+        mut req: Request,
+        mut stream: __dep__::TcpStream,
+    ) {
+        let Some((target, params)) = match req.method() {
+            Method::GET => &self.GET,
+            Method::PUT => &self.PUT,
+            Method::POST => &self.POST,
+            Method::HEAD => &self.HEAD,
+            Method::PATCH => &self.PATCH,
+            Method::DELETE => &self.DELETE,
+            Method::OPTIONS => &self.OPTIONS,
+        }.search(req.path()).await else {
+            return Response::<()>::Err(c.NotFound()).send(&mut stream).await
+        };
+
+        for front in target.front {
+            (c, req) = front(c, req).await;
+        }
+        let res = (unsafe{target.handler.as_ref().unwrap_unchecked()})(
+            req,
+            c,
+            params,
+        );
     }
+}
+
+impl Node {
+    async fn search(&self, path: &str) -> Option<(&Node, PathParams)> {
+        let params = PathParams::new();
+
+        let mut target = self;
+        loop {
+
+        }
+    }
+
+
 }

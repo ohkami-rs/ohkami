@@ -1,4 +1,4 @@
-use crate::layer3_fang_handler::{Handler, FrontFang, Handlers, ByAnother, RouteSections, Fang};
+use crate::layer3_fang_handler::{Handler, Handlers, ByAnother, RouteSections, Fang};
 type Range = std::ops::Range<usize>;
 
 
@@ -16,7 +16,7 @@ pub struct TrieRouter {
 struct Node {
     /// why Option: root nodes don't have pattern
     pattern:  Option<Pattern>,
-    fangs:    Vec<FrontFang>,
+    fangs:    Vec<Fang>,
     handler:  Option<Handler>,
     children: Vec<Node>,
 }

@@ -14,7 +14,7 @@ use crate::{
 };
 
 
-pub enum Response<T: Serialize> {
+pub enum Response<T: Serialize = ()> {
     Ok(String, PhantomData<fn()->T>),
     Err(ErrResponse),
 }

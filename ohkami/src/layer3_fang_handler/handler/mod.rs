@@ -10,7 +10,7 @@ use crate::{
 };
 
 pub(crate) const PATH_PARAMS_LIMIT: usize = 2;
-type PathParams = List<BufRange, PATH_PARAMS_LIMIT>;
+pub(crate) type PathParams = List<BufRange, PATH_PARAMS_LIMIT>;
 
 
 pub struct Handler(

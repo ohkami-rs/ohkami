@@ -3,7 +3,6 @@ mod routing;
 mod howl;
 
 use crate::{
-    layer3_fang_handler::{Fang, Handlers, IntoFang},
     layer4_router::TrieRouter,
 };
 
