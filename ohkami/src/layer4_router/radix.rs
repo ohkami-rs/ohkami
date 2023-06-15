@@ -55,11 +55,34 @@ impl RadixRouter {
         for front in target.front {
             (c, req) = front(c, req).await;
         }
-        let res = (unsafe{target.handler.as_ref().unwrap_unchecked()})(
-            req,
-            c,
-            params,
-        );
+
+        // Here I'd like to write just
+        // 
+        // ```
+        // let handler = unsafe{ target.handler.as_ref().unwrap_unchecked() };
+        // let res = handler(req, c, params) ...
+        // ```
+        // 
+        // but this causes annoying panic for rust-analyzer (v0.3.1549).
+        // 
+        // Based on the logs, it seems that:
+        // 
+        // 1. This `handler` is `&Handler` and I meen `handler(...)` is
+        //    calling `<Handler as **Fn**>::call`.
+        // 2. But rust-analyzer thinks this `handler(...)` is calling
+        //    `<Handler as **FnOnce**>::call_once`.
+        // 
+        // So I explicitly indicate 1. (Maybe this is fixed in future)
+        let /* mut */ res: Response = <Handler as Fn<(Request, Context, PathParams)>>::call(
+            // SAFETY: `Node::search` returns Some(_) only when its `handler` is Some
+            unsafe{ target.handler.as_ref().unwrap_unchecked() },
+            (req, c, params)
+        ).await;
+        /*
+            for back in target.back { ... }
+        */
+
+        res.send(&mut stream).await
     }
 }
 
