@@ -44,7 +44,7 @@ impl Ohkami {
             __dep__::task::spawn(async move {
                 let req = Request::new(&mut stream).await;
                 router.handle(c, req).await;
-            });
+            }).await;
         }
     }
 }
