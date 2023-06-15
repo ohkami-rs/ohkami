@@ -30,20 +30,20 @@ tokio = { version = "1.27", fetures = ["full"] }
 ```rust
 use ohkami::prelude::*;
 
-async fn hello(c: Context) -> Response<&'static str> {
-    c.text("Hello!")
-}
-
 async fn health_check(c: Context) -> Response<()> {
     c.NoContent()
 }
 
+async fn hello(c: Context, name: &str) -> Response<&str> {
+    c.text(format!("Hello, {name}!"))
+}
+
 #[tokio::main]
-async fn main() -> Result<(), Error> {
+async fn main() {
     Ohkami::new([
-        "/"  .GET(hello),
-        "/hc".GET(health_check),
-    ]).howl(":3000").await
+        "/hc"   .GET(health_check),
+        "/:name".GET(hello),
+    ]).howl(3000).await
 }
 ```
 
@@ -53,7 +53,9 @@ async fn main() -> Result<(), Error> {
 ```rust
 async fn $handler((mut)? c: Context,
     (
-        ($p1,): ($P1,) | ($p1, $p2): ($P1, $P2),
+        $p1: $P1
+        | ($p1,): ($P1,)
+        | ($p1, $p2): ($P1, $P2),
     )?
     ( $query_params: $QueryType, )?
     ( $request_body: $BodyType,  )?
@@ -128,7 +130,7 @@ struct LoginInput {
 
 async fn post_login(c: Context,
     input: LoginInput
-) -> Response<JWT> {
+) -> Response<JSON> {
 
     // ...
 
@@ -215,7 +217,7 @@ async fn main() -> Result<(), Error> {
 ```
 
 ### error handling
-Use **`.map_err(|e| c. /* error_name */())?`**：
+Use **`.map_err(|e| c. /* error_method */ )?`**：
 
 ```rust
 use ohkami::prelude::*;
