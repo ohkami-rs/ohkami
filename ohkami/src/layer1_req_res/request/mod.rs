@@ -2,7 +2,7 @@ mod from_request; pub use from_request::*;
 mod parse;
 
 use crate::{
-    __dep__, Error,
+    __dep__,
     layer0_lib::{List, Method, BufRange, Buffer, ContentType}
 };
 
@@ -26,13 +26,13 @@ impl Request {
 }
 
 impl Request {
-    pub fn method(&self) -> Method {
+    #[inline(always)] pub fn method(&self) -> Method {
         self.method
     }
-    pub fn path(&self) -> &str {
+    #[inline(always)] pub fn path(&self) -> &str {
         &self.buffer.read_str(&self.path)
     }
-    pub fn query(&self, key: &str) -> Option<&str> {
+    #[inline] pub fn query(&self, key: &str) -> Option<&str> {
         let List { list, next } = &self.queries;
         for query in &list[..*next] {
             let (key_range, value_range) = unsafe {query.assume_init_ref()};
@@ -42,7 +42,7 @@ impl Request {
         }
         None
     }
-    pub fn header(&self, key: &str) -> Option<&str> {
+    #[inline] pub fn header(&self, key: &str) -> Option<&str> {
         let List { list, next } = &self.headers;
         for header in &list[..*next] {
             let (key_range, value_range) = unsafe {header.assume_init_ref()};
@@ -52,7 +52,7 @@ impl Request {
         }
         None
     }
-    pub fn payload(&self) -> Option<(&ContentType, &str)> {
+    #[inline] pub fn payload(&self) -> Option<(&ContentType, &str)> {
         let (content_type, body_range) = (&self.payload).as_ref()?;
         Some((
             content_type,

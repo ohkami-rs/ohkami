@@ -11,7 +11,7 @@ use crate::{
 /// 
 /// ```ignore
 /// async fn main() -> Result<()> {
-///     let api_ohkami = Ohkami::new()(
+///     let api_ohkami = Ohkami(
 ///         "/users"
 ///             .POST(create_user),
 ///         "/users/:id"
@@ -19,9 +19,9 @@ use crate::{
 ///             .PATCH(update_user),
 ///     );
 /// 
-///     // No, no, I'd like to use `log` and `auth` fang...
+///     // I'd like to use `log` and `auth` fang...
 /// 
-///     let api_ohkami = Ohkami::with((auth, log))(
+///     let api_ohkami = Ohkami(auth, log, // <----
 ///         "/users"
 ///             .POST(create_user),
 ///         "/users/:id"
@@ -33,10 +33,10 @@ use crate::{
 ///     // `log` fang of the root ohkami below, but there's no problem
 ///     // because they are merged internally.)
 /// 
-///     Ohkami::with((log,))(
+///     Ohkami(log,
 ///         "/hc" .GET(health_check),
 ///         "/api".by(api_ohkami),
-///     ).howl(":3000").await
+///     ).howl(3000).await
 /// }
 /// ```
 pub struct Ohkami {
