@@ -95,8 +95,8 @@ pub use layer5_ohkami::{Ohkami};
     }
 
 // run
-    Ohkami::with(add_server_header)(
+    Ohkami.with(add_server_header)(
         "/hc"
-            .GET(health_check)   
-    ).howl(3000).await;
+            .GET(health_check)
+    ).howl(3000).await
 }

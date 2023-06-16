@@ -7,6 +7,9 @@ use crate::{
     Request, layer3_fang_handler::FrontFang,
 };
 
+fn __<Args, Output, F: IntoFang<Args, Output>>(f: F) {
+    let _: [&dyn IntoFang<Args, Output>; 1] = [&f];
+}
 
 pub trait IntoFang<Args, Output> {
     fn into_fang(self) -> Fang;

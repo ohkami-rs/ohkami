@@ -1,12 +1,14 @@
-use crate::{layer4_router::TrieRouter, layer3_fang_handler::IntoFang};
+use crate::{
+    layer3_fang_handler::{IntoFang, Fang},
+};
 
 
 pub trait Fangs<G>: Sized {
-    fn apply(self, routes: TrieRouter) -> TrieRouter;
+    fn collect(self) -> Vec<Fang>;
 } const _: () = {
     impl Fangs<()> for () {
-        fn apply(self, routes: TrieRouter) -> TrieRouter {
-            routes
+        fn collect(self) -> Vec<Fang> {
+            vec![]
         }
     }
 
@@ -15,8 +17,8 @@ pub trait Fangs<G>: Sized {
     where
         F1: IntoFang<Args1, Output1>,
     {
-        fn apply(self, routes: TrieRouter) -> TrieRouter {
-            routes.apply_fang(self.into_fang())
+        fn collect(self) -> Vec<Fang> {
+            vec![self.into_fang()]
         }
     }
 
@@ -25,8 +27,8 @@ pub trait Fangs<G>: Sized {
     where
         F1: IntoFang<Args1, Output1>,
     {
-        fn apply(self, routes: TrieRouter) -> TrieRouter {
-            routes.apply_fang(self.0.into_fang())
+        fn collect(self) -> Vec<Fang> {
+            vec![self.0.into_fang()]
         }
     }
 
@@ -36,10 +38,8 @@ pub trait Fangs<G>: Sized {
         F1: IntoFang<Args1, Output1>,
         F2: IntoFang<Args2, Output2>,
     {
-        fn apply(self, routes: TrieRouter) -> TrieRouter {
-            routes
-                .apply_fang(self.0.into_fang())
-                .apply_fang(self.1.into_fang())
+        fn collect(self) -> Vec<Fang> {
+            vec![self.0.into_fang(), self.1.into_fang()]
         }
     }
 
@@ -50,11 +50,8 @@ pub trait Fangs<G>: Sized {
         F2: IntoFang<Args2, Output2>,
         F3: IntoFang<Args3, Output3>,
     {
-        fn apply(self, routes: TrieRouter) -> TrieRouter {
-            routes
-                .apply_fang(self.0.into_fang())
-                .apply_fang(self.1.into_fang())
-                .apply_fang(self.2.into_fang())
+        fn collect(self) -> Vec<Fang> {
+            vec![self.0.into_fang(), self.1.into_fang(), self.2.into_fang()]
         }
     }
 
@@ -66,12 +63,8 @@ pub trait Fangs<G>: Sized {
         F3: IntoFang<Args3, Output3>,
         F4: IntoFang<Args4, Output4>,
     {
-        fn apply(self, routes: TrieRouter) -> TrieRouter {
-            routes
-                .apply_fang(self.0.into_fang())
-                .apply_fang(self.1.into_fang())
-                .apply_fang(self.2.into_fang())
-                .apply_fang(self.3.into_fang())
+        fn collect(self) -> Vec<Fang> {
+            vec![self.0.into_fang(), self.1.into_fang(), self.2.into_fang(), self.3.into_fang()]
         }
     }
 
@@ -84,13 +77,8 @@ pub trait Fangs<G>: Sized {
         F4: IntoFang<Args4, Output4>,
         F5: IntoFang<Args5, Output5>,
     {
-        fn apply(self, routes: TrieRouter) -> TrieRouter {
-            routes
-                .apply_fang(self.0.into_fang())
-                .apply_fang(self.1.into_fang())
-                .apply_fang(self.2.into_fang())
-                .apply_fang(self.3.into_fang())
-                .apply_fang(self.4.into_fang())
+        fn collect(self) -> Vec<Fang> {
+            vec![self.0.into_fang(), self.1.into_fang(), self.2.into_fang(), self.3.into_fang(), self.4.into_fang()]
         }
     }
 
@@ -104,14 +92,8 @@ pub trait Fangs<G>: Sized {
         F5: IntoFang<Args5, Output5>,
         F6: IntoFang<Args6, Output6>,
     {
-        fn apply(self, routes: TrieRouter) -> TrieRouter {
-            routes
-                .apply_fang(self.0.into_fang())
-                .apply_fang(self.1.into_fang())
-                .apply_fang(self.2.into_fang())
-                .apply_fang(self.3.into_fang())
-                .apply_fang(self.4.into_fang())
-                .apply_fang(self.5.into_fang())
+        fn collect(self) -> Vec<Fang> {
+            vec![self.0.into_fang(), self.1.into_fang(), self.2.into_fang(), self.3.into_fang(), self.4.into_fang(), self.5.into_fang()]
         }
     }
 };
