@@ -61,6 +61,12 @@ impl Request {
     }
 }
 
+impl Request {
+    #[inline(always)] pub(crate) fn path_bytes(&self) -> &[u8] {
+        &self.buffer[&self.path]
+    }
+}
+
 
 #[cfg(test)]
 struct DebugRequest {

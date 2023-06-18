@@ -90,7 +90,7 @@ pub use layer5_ohkami::{Ohkami};
     }
 
 // handlers
-    async fn health_check(c: Context) -> Response<()> {
+    async fn health_check(c: Context) -> Response {
         c.NoContent()
     }
 

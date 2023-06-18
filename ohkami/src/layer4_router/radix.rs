@@ -27,7 +27,7 @@ struct Node {
 }
 
 enum Pattern {
-    Static(&'static str),
+    Static(&'static [u8]),
     Param,
 }
 
@@ -48,7 +48,7 @@ impl RadixRouter {
             Method::PATCH   => &self.PATCH,
             Method::DELETE  => &self.DELETE,
             Method::OPTIONS => &self.OPTIONS,
-        }.search(req.path()) else {
+        }.search(req.path_bytes()) else {
             return Response::<()>::Err(c.NotFound()).send(&mut stream).await
         };
 
@@ -84,15 +84,13 @@ impl RadixRouter {
 
                 res.send(&mut stream).await
             }
-            None => {
-                Response::<()>::Err(c.NotFound()).send(&mut stream).await
-            }
+            None => Response::<()>::Err(c.NotFound()).send(&mut stream).await
         }
     }
 }
 
 impl Node {
-    fn search(&self, mut path: &str) -> Option<(&Node, PathParams)> {
+    fn search(&self, mut path: &[u8]) -> Option<(&Node, PathParams)> {
         let path_len = path.len();
 
         let mut params = PathParams::new();
@@ -101,23 +99,23 @@ impl Node {
         let mut target = self;
         loop {
             for pattern in target.patterns {
-                path = path.strip_prefix('/')?;
+                path = path.strip_prefix(&[b'/'])?;
                 match pattern {
                     Pattern::Static(s) => {
-                        path = path.strip_prefix(s)?;
+                        path = path.strip_prefix(*s)?;
                         param_start += s.len() + 1/* skip '/' */;
                     }
-                    Pattern::Param => match path.find('/') {
+                    Pattern::Param => match find(b'/', path) {
                         None => {
-                            path = "";
+                            path = &[];
                             params.append(param_start..path_len)
                         }
-                        Some(rem_len) => {
-                            path = &path[rem_len+1..];
-                            params.append(param_start..(param_start + rem_len));
-                            param_start += rem_len + 1/* skip '/' */;
+                        Some(slash) => {
+                            path = &path[slash+1..];
+                            params.append(param_start..(param_start + slash));
+                            param_start += slash + 1/* skip '/' */;
                         }
-                    }
+                    } 
                 }
             }
 
@@ -133,7 +131,7 @@ impl Node {
 
 /*===== utils =====*/
 impl Node {
-    #[inline(always)] fn matchable_child(&self, path: &str) -> Option<&Node> {
+    #[inline(always)] fn matchable_child(&self, path: &[u8]) -> Option<&Node> {
         for child in &self.children {
             if child.patterns.first()?.is_matchable_to(path) {
                 return Some(child)
@@ -144,13 +142,24 @@ impl Node {
 }
 
 impl Pattern {
-    #[inline(always)] fn is_matchable_to(&self, path: &str) -> bool {
+    #[inline(always)] fn is_matchable_to(&self, path: &[u8]) -> bool {
         match self {
             Self::Param => true,
-            Self::Static(s) => match path.find('/') {
+            Self::Static(s) => match find(b'/', path) {
                 Some(slach) => &path[..slach] == *s,
                 None        => path == *s,
             }
         }
     }
+}
+
+#[inline(always)] fn find(b: u8, path: &[u8]) -> Option<usize> {
+    let mut index = None;
+    for i in 0..(path.len()) {
+        if path[i] == b {
+            index = Some(i);
+            break
+        }
+    }
+    index
 }

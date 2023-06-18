@@ -2,6 +2,7 @@ mod fang; pub use fang::*;
 mod handler; pub use handler::*;
 
 use std::{collections::VecDeque, str::Chars, iter::Peekable};
+type Range = std::ops::Range<usize>;
 
 
 #[derive(Clone)]
@@ -16,26 +17,33 @@ pub struct RouteSections {
         if route == "/" {return Self{ route: route.as_bytes(), sections: VecDeque::new()}}
 
         let mut sections = VecDeque::new();
+        let mut section_start = 0;
         for section in {let mut s = route.split('/'); s.next(); s} {
-            let section = match RouteSection::from_literal(section) {
+            let section = match RouteSection::new(route.as_bytes(), section_start..(section_start + section.len())) {
                 Err(e) => panic!("{e}: `{route}`"),
-                Ok(rs) => rs
+                Ok(rs) => {section_start += section.len(); rs}
             };
             sections.push_back(section)
         }
         Self{ sections, route:route.as_bytes() }
     }
-}
+} const _: () = {
+    impl IntoIterator for RouteSections {
+        type Item = <VecDeque<RouteSection> as IntoIterator>::Item;
+        type IntoIter = <VecDeque<RouteSection> as IntoIterator>::IntoIter;
+        fn into_iter(self) -> Self::IntoIter {self.sections.into_iter()}
+    }
+};
 
 #[derive(Clone)]
-enum RouteSection {
-    Static(&'static [u8]),
+pub enum RouteSection {
+    Static{ route: &'static [u8], range: Range },
     Param,
 } impl RouteSection {
-    pub(crate) fn from_literal(section: &'static str) -> Result<Self, String> {
-        let mut section_chars = section.chars().peekable();
+    pub(crate) fn new(route: &'static [u8], range: Range) -> Result<Self, String> {
+        let mut section_chars = std::str::from_utf8(&route[range.clone()]).unwrap().chars().peekable();
 
-        fn valididate_section_name(mut name: Peekable<Chars>) -> Result<(), String> {
+        fn validate_section_name(mut name: Peekable<Chars>) -> Result<(), String> {
             let is_invalid_head_or_tail_char = |c: char| !/* NOT */ matches!(c,
                 '0'..='9' | 'a'..='z' | 'A'..='Z'
             );
@@ -67,14 +75,13 @@ enum RouteSection {
             None => Err(format!("Found an empty route section_chars")),
             Some(':') => {
                 let _/* colon */ = section_chars.next();
-                let _/* validation */ = valididate_section_name(section_chars)?;
+                let _/* validation */ = validate_section_name(section_chars)?;
                 Ok(Self::Param)
             },
-            Some(c) => {
-                let _/* validation */ = valididate_section_name(section_chars)?;
-                Ok(Self::Static(section.as_bytes()))
+            _ => {
+                let _/* validation */ = validate_section_name(section_chars)?;
+                Ok(Self::Static{ route, range })
             }
         }
     }
-
 }

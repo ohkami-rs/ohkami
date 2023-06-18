@@ -1,5 +1,18 @@
-use crate::layer3_fang_handler::{Handler, Handlers, ByAnother, RouteSections, Fang};
+use crate::{
+    layer3_fang_handler::{Handler, Handlers, ByAnother, RouteSections, RouteSection, Fang},
+};
+
 type Range = std::ops::Range<usize>;
+const _: () = {
+    impl Into<Pattern> for RouteSection {
+        fn into(self) -> Pattern {
+            match self {
+                RouteSection::Param => Pattern::Param,
+                RouteSection::Static{ route, range } => Pattern::Static { route, range }
+            }
+        }
+    }
+};
 
 
 /*===== defs =====*/
@@ -14,13 +27,14 @@ pub struct TrieRouter {
 }
 
 struct Node {
-    /// why Option: root nodes don't have pattern
+    /// Why Option: root node doesn't have pattern
     pattern:  Option<Pattern>,
     fangs:    Vec<Fang>,
     handler:  Option<Handler>,
     children: Vec<Node>,
 }
 
+#[derive(Clone)]
 enum Pattern {
     Static{ route: &'static [u8], range: Range },
     Param,
@@ -45,25 +59,25 @@ impl TrieRouter {
         let Handlers { route, GET, PUT, POST, HEAD, PATCH, DELETE, OPTIONS } = handlers;
 
         if let Some(handler) = GET {
-            self.GET.register_handler(route.clone(), handler)
+            self.GET.register_handler(route.clone().into_iter(), handler)
         }
         if let Some(handler) = PUT {
-            self.PUT.register_handler(route.clone(), handler)
+            self.PUT.register_handler(route.clone().into_iter(), handler)
         }
         if let Some(handler) = POST {
-            self.POST.register_handler(route.clone(), handler)
+            self.POST.register_handler(route.clone().into_iter(), handler)
         }
         if let Some(handler) = HEAD {
-            self.HEAD.register_handler(route.clone(), handler)
+            self.HEAD.register_handler(route.clone().into_iter(), handler)
         }
         if let Some(handler) = PATCH {
-            self.PATCH.register_handler(route.clone(), handler)
+            self.PATCH.register_handler(route.clone().into_iter(), handler)
         }
         if let Some(handler) = DELETE {
-            self.DELETE.register_handler(route.clone(), handler)
+            self.DELETE.register_handler(route.clone().into_iter(), handler)
         }
         if let Some(handler) = OPTIONS {
-            self.OPTIONS.register_handler(route.clone(), handler)
+            self.OPTIONS.register_handler(route.clone().into_iter(), handler)
         }
 
         self
@@ -73,13 +87,13 @@ impl TrieRouter {
         let ByAnother { route, ohkami } = another;
         let another_routes = ohkami.routes;
 
-        self.GET.merge_node(another_routes.GET);
-        self.PUT.merge_node(another_routes.PUT);
-        self.POST.merge_node(another_routes.POST);
-        self.HEAD.merge_node(another_routes.HEAD);
-        self.PATCH.merge_node(another_routes.PATCH);
-        self.DELETE.merge_node(another_routes.DELETE);
-        self.OPTIONS.merge_node(another_routes.OPTIONS);
+        self.GET.merge_node(route.clone(), another_routes.GET);
+        self.PUT.merge_node(route.clone(), another_routes.PUT);
+        self.POST.merge_node(route.clone(), another_routes.POST);
+        self.HEAD.merge_node(route.clone(), another_routes.HEAD);
+        self.PATCH.merge_node(route.clone(), another_routes.PATCH);
+        self.DELETE.merge_node(route.clone(), another_routes.DELETE);
+        self.OPTIONS.merge_node(route.clone(), another_routes.OPTIONS);
         
         self
     }
@@ -102,12 +116,25 @@ impl TrieRouter {
 }
 
 impl Node {
-    fn register_handler(&mut self, route: RouteSections, handler: Handler) {
-        // compile_error!(TODO)
-        todo!()
+    fn register_handler(&mut self, route: <RouteSections as IntoIterator>::IntoIter, handler: Handler) {
+        let mut route = route.into_iter();
+
+        match route.next() {
+            None => {self.handler.replace(handler);},
+            Some(pattern) => {
+                match self.machable_child_mut(pattern.clone().into()) {
+                    Some(child) => child.register_handler(route, handler),
+                    None => {
+                        let mut child = Node::new(pattern.into());
+                        child.register_handler(route, handler);
+                        self.children.push(child)
+                    }
+                }
+            }
+        }
     }
 
-    fn merge_node(&mut self, another: Node) {
+    fn merge_node(&mut self, merge_root: RouteSections, another: Node) {
         // compile_error!(TODO)
         todo!()
     }
@@ -138,9 +165,9 @@ impl Node {
         }
     }
 
-    fn machable_child_mut(&mut self, pattern: &Pattern) -> Option<&mut Node> {
+    fn machable_child_mut(&mut self, pattern: Pattern) -> Option<&mut Node> {
         for child in &mut self.children {
-            if child.pattern.as_ref().unwrap().matches(pattern) {
+            if child.pattern.as_ref().unwrap().matches(&pattern) {
                 return Some(child)
             }
         }
