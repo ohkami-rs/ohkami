@@ -1,5 +1,5 @@
 mod with_fangs;
-mod build; pub use build::{Ohkami};
+mod build;
 mod howl;
 
 use crate::{
@@ -11,7 +11,7 @@ use crate::{
 /// 
 /// ```ignore
 /// async fn main() -> Result<()> {
-///     let api_ohkami = Ohkami(
+///     let api_ohkami = Ohkami::new()(
 ///         "/users"
 ///             .POST(create_user),
 ///         "/users/:id"
@@ -21,7 +21,7 @@ use crate::{
 /// 
 ///     // I'd like to use `auth` and `log` fang...
 ///     
-///     let api_ohkami = Ohkami.with((auth, log))(
+///     let api_ohkami = Ohkami::with((auth, log))(
 ///         "/users"
 ///             .POST(create_user),
 ///         "/users/:id"
@@ -33,7 +33,7 @@ use crate::{
 ///     // `log` fang of the root ohkami below, but there's no problem
 ///     // because they are merged internally.)
 /// 
-///     Ohkami.with((log))(
+///     Ohkami::with((log))(
 ///         "/hc" .GET(health_check),
 ///         "/api".by(api_ohkami),
 ///     ).howl(3000).await
@@ -41,4 +41,18 @@ use crate::{
 /// ```
 pub struct Ohkami {
     pub(crate) routes: TrieRouter,
+}
+
+impl Ohkami {
+    pub fn new() -> Self {
+        Self { routes: TrieRouter::new() }
+    }
+
+    pub fn with<G>(fangs: impl with_fangs::Fangs<G>) -> Self {
+        let mut routes = TrieRouter::new();
+        for fang in fangs.collect() {
+            routes = routes.apply_fang(fang)
+        }
+        Self { routes }
+    }
 }

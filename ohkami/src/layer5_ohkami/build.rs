@@ -5,7 +5,7 @@ use crate::{
     layer4_router::{TrieRouter},
 };
 
-
+/*
 /// <br/>
 /// 
 /// ```ignore
@@ -56,7 +56,7 @@ mod with_fangs {
 
     pub struct Ohkami(pub(super) Vec<Fang>);
 }
-
+*/
 
 trait Rounting {
     fn apply(self, routes: TrieRouter) -> TrieRouter;
@@ -75,7 +75,7 @@ trait Rounting {
 
 macro_rules! init_routing {
     ($( $routing_item:ident ),*) => {
-        impl<$($routing_item: Rounting),*> FnOnce<($($routing_item,)*)> for init::Ohkami {
+        impl<$($routing_item: Rounting),*> FnOnce<($($routing_item,)*)> for super::Ohkami {
             type Output = super::Ohkami;
             extern "rust-call" fn call_once(self, ($($routing_item,)*): ($($routing_item,)*)) -> Self::Output {
                 let mut routes = TrieRouter::new();
@@ -95,31 +95,4 @@ macro_rules! init_routing {
     init_routing!(R1, R2, R3, R4, R5);
     init_routing!(R1, R2, R3, R4, R5, R6);
     init_routing!(R1, R2, R3, R4, R5, R6, R7);
-};
-
-macro_rules! with_fangs_routing {
-    ($( $routing_item:ident ),*) => {
-        impl<$($routing_item: Rounting),*> FnOnce<($($routing_item,)*)> for with_fangs::Ohkami {
-            type Output = super::Ohkami;
-            extern "rust-call" fn call_once(self, ($($routing_item,)*): ($($routing_item,)*)) -> Self::Output {
-                let mut routes = TrieRouter::new();
-                for fang in self.0 {
-                    routes = routes.apply_fang(fang);
-                }
-                $(
-                    routes = $routing_item.apply(routes);
-                )*
-                super::Ohkami{ routes }
-            }
-        }
-    };
-} const _: () = {
-    with_fangs_routing!();
-    with_fangs_routing!(R1);
-    with_fangs_routing!(R1, R2);
-    with_fangs_routing!(R1, R2, R3);
-    with_fangs_routing!(R1, R2, R3, R4);
-    with_fangs_routing!(R1, R2, R3, R4, R5);
-    with_fangs_routing!(R1, R2, R3, R4, R5, R6);
-    with_fangs_routing!(R1, R2, R3, R4, R5, R6, R7);
 };

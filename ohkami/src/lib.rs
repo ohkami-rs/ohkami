@@ -85,7 +85,7 @@ pub use layer5_ohkami::{Ohkami};
 /*===== usavility =====*/
 #[cfg(test)] #[allow(unused)] async fn __() {
 // fangs
-    async fn add_server_header(c: &mut Context) {
+    async fn server(c: &mut Context) {
         c.header.Server("ohkami");
     }
 
@@ -94,9 +94,15 @@ pub use layer5_ohkami::{Ohkami};
         c.NoContent()
     }
 
+    async fn hello(c: Context, name: &str) -> Response<String> {
+        c.text(format!("Hello, {name}!"))
+    }
+
 // run
-    Ohkami.with(add_server_header)(
+    Ohkami::with((server))(
         "/hc"
-            .GET(health_check)
+            .GET(health_check),
+        "/hello/:name"
+            .GET(hello),
     ).howl(3000).await
 }
