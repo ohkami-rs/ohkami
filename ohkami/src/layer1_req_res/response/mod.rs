@@ -1,5 +1,4 @@
-// mod headers; pub(crate) use headers::ResponseHeaders;
-mod headers2; pub(crate) use headers2::ResponseHeaders;
+mod headers; pub(crate) use headers::ResponseHeaders;
 
 use serde::Serialize;
 use std::{
