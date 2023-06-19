@@ -87,13 +87,13 @@ impl TrieRouter {
         let ByAnother { route, ohkami } = another;
         let another_routes = ohkami.routes;
 
-        self.GET.merge_node(route.clone(), another_routes.GET);
-        self.PUT.merge_node(route.clone(), another_routes.PUT);
-        self.POST.merge_node(route.clone(), another_routes.POST);
-        self.HEAD.merge_node(route.clone(), another_routes.HEAD);
-        self.PATCH.merge_node(route.clone(), another_routes.PATCH);
-        self.DELETE.merge_node(route.clone(), another_routes.DELETE);
-        self.OPTIONS.merge_node(route.clone(), another_routes.OPTIONS);
+        self.GET.merge_node(route.clone().into_iter(), another_routes.GET);
+        self.PUT.merge_node(route.clone().into_iter(), another_routes.PUT);
+        self.POST.merge_node(route.clone().into_iter(), another_routes.POST);
+        self.HEAD.merge_node(route.clone().into_iter(), another_routes.HEAD);
+        self.PATCH.merge_node(route.clone().into_iter(), another_routes.PATCH);
+        self.DELETE.merge_node(route.clone().into_iter(), another_routes.DELETE);
+        self.OPTIONS.merge_node(route.clone().into_iter(), another_routes.OPTIONS);
         
         self
     }
@@ -116,27 +116,34 @@ impl TrieRouter {
 }
 
 impl Node {
-    fn register_handler(&mut self, route: <RouteSections as IntoIterator>::IntoIter, handler: Handler) {
-        let mut route = route.into_iter();
-
+    fn register_handler(&mut self, mut route: <RouteSections as IntoIterator>::IntoIter, handler: Handler) {
         match route.next() {
             None => {self.handler.replace(handler);},
-            Some(pattern) => {
-                match self.machable_child_mut(pattern.clone().into()) {
-                    Some(child) => child.register_handler(route, handler),
-                    None => {
-                        let mut child = Node::new(pattern.into());
-                        child.register_handler(route, handler);
-                        self.children.push(child)
-                    }
+            Some(pattern) => match self.machable_child_mut(pattern.clone().into()) {
+                Some(child) => child.register_handler(route, handler),
+                None => {
+                    let mut child = Node::new(pattern.into());
+                    child.register_handler(route, handler);
+                    self.children.push(child)
                 }
             }
         }
     }
 
-    fn merge_node(&mut self, merge_root: RouteSections, another: Node) {
-        // compile_error!(TODO)
-        todo!()
+    fn merge_node(&mut self, mut route_to_merge_root: <RouteSections as IntoIterator>::IntoIter, another: Node) {
+        compile_error!("USE `merge_here`");
+
+        match route_to_merge_root.next() {
+            None => self.children.push(another),
+            Some(pattern) => match self.machable_child_mut(pattern.clone().into()) {
+                Some(child) => child.merge_node(route_to_merge_root, another),
+                None => {
+                    let mut new_child = Node::new(pattern.into());
+                    new_child.merge_node(route_to_merge_root, another);
+                    self.children.push(new_child)
+                }
+            }
+        }
     }
 
     fn apply_fang(&mut self, fang: Fang) {
@@ -164,6 +171,9 @@ impl Node {
             children: vec![],
         }
     }
+    fn is_root(&self) -> bool {
+        self.pattern.is_none()
+    }
 
     fn machable_child_mut(&mut self, pattern: Pattern) -> Option<&mut Node> {
         for child in &mut self.children {
@@ -172,6 +182,32 @@ impl Node {
             }
         }
         None
+    }
+
+    fn merge_here(&mut self, another: Node) -> Result<(), String> {
+        compile_error!("\
+            Make `Fang`s have `id` that indicates identity of `Fang` function:\n\
+            using\n\
+            ```\n\
+            fn id<F: Fn() -> Fut + 'static, Fut: Future<Output = ()>>(f: F) -> TypeId {\n\
+            \0    <F as Any>::type_id(&f)\n\
+            }\n\
+            ```\n\
+        ");
+        /*
+    pattern:  Option<Pattern>,
+    fangs:    Vec<Fang>,
+    handler:  Option<Handler>,
+    children: Vec<Node>,
+        */
+        let pattern = match (&self.pattern, &another.pattern) {
+            (None, None)                      => None,
+            (Some(p), None) | (None, Some(p)) => Some(p.clone()),
+            (Some(p1), Some(p2))              => p1.matches(p2).then_some(p1.clone()),
+        };
+        let fangs = ;
+
+        Ok(())
     }
 }
 

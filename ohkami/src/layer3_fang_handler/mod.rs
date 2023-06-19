@@ -21,7 +21,7 @@ pub struct RouteSections {
         for section in {let mut s = route.split('/'); s.next(); s} {
             let section = match RouteSection::new(route.as_bytes(), section_start..(section_start + section.len())) {
                 Err(e) => panic!("{e}: `{route}`"),
-                Ok(rs) => {section_start += section.len(); rs}
+                Ok(rs) => {section_start += section.len() + 1/* skip '/' */; rs}
             };
             sections.push_back(section)
         }
