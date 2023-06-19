@@ -105,8 +105,8 @@ macro_rules! ResponseHeaders {
         "Access-Control-Allow-Credentials: " AccessControlAllowCredentials(true_if_needed),
         "Access-Control-Allow-Headers: "     AccessControlAllowHeaders(headers),
         "Access-Control-Allow-Methods: "     AccessControlAllowMethods(methods),
-        "Access-Control-Expose-Headers: : "  AccessControlExposeHeaders(headers),
-        "Access-Control-Max-Age: : "         AccessControlMaxAge(delta_seconds),
+        "Access-Control-Expose-Headers: "    AccessControlExposeHeaders(headers),
+        "Access-Control-Max-Age: "           AccessControlMaxAge(delta_seconds),
     }
 
     message_body_and_encoding {
