@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use crate::{
     layer3_fang_handler::{Handler, Handlers, ByAnother, RouteSections, RouteSection, Fang},
 };
@@ -131,10 +133,8 @@ impl Node {
     }
 
     fn merge_node(&mut self, mut route_to_merge_root: <RouteSections as IntoIterator>::IntoIter, another: Node) {
-        compile_error!("USE `merge_here`");
-
         match route_to_merge_root.next() {
-            None => self.children.push(another),
+            None => if let Err(e) = self.merge_here(another) {panic!("Can't merge nodes: {e}")},
             Some(pattern) => match self.machable_child_mut(pattern.clone().into()) {
                 Some(child) => child.merge_node(route_to_merge_root, another),
                 None => {
@@ -147,8 +147,10 @@ impl Node {
     }
 
     fn apply_fang(&mut self, fang: Fang) {
-        // compile_error!(TODO)
-        todo!()
+        for child in &mut self.children {
+            child.apply_fang(fang.clone())
+        }
+        self.fangs.push(fang);
     }
 }
 
@@ -185,27 +187,38 @@ impl Node {
     }
 
     fn merge_here(&mut self, another: Node) -> Result<(), String> {
-        compile_error!("\
-            Make `Fang`s have `id` that indicates identity of `Fang` function:\n\
-            using\n\
-            ```\n\
-            fn id<F: Fn() -> Fut + 'static, Fut: Future<Output = ()>>(f: F) -> TypeId {\n\
-            \0    <F as Any>::type_id(&f)\n\
-            }\n\
-            ```\n\
-        ");
-        /*
-    pattern:  Option<Pattern>,
-    fangs:    Vec<Fang>,
-    handler:  Option<Handler>,
-    children: Vec<Node>,
-        */
-        let pattern = match (&self.pattern, &another.pattern) {
+        let Node {
+            pattern:  another_pattern,
+            fangs:    another_fangs,
+            handler:  another_handler,
+            children: another_children,
+        } = another;
+
+        self.pattern = match (&self.pattern, &another_pattern) {
             (None, None)                      => None,
             (Some(p), None) | (None, Some(p)) => Some(p.clone()),
             (Some(p1), Some(p2))              => p1.matches(p2).then_some(p1.clone()),
         };
-        let fangs = ;
+
+        for af in another_fangs {
+            if self.fangs.iter().find(|f| f.id() == af.id()).is_none() {
+                self.fangs.push(af)
+            }
+        }
+
+        if self.handler.is_none() {
+            if let Some(ah) = another_handler {
+                self.handler.replace(ah);
+            }
+        } else {
+            if another_handler.is_some() {
+                return Err(format!("COnflicting handler registeration"));
+            }
+        }
+
+        for ac in another_children {
+            self.children.push(ac)
+        }
 
         Ok(())
     }
