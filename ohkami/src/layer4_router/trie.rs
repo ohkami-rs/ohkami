@@ -113,7 +113,15 @@ impl TrieRouter {
     }
 
     pub(crate) fn into_radix(self) -> super::RadixRouter {
-        todo!()
+        super::RadixRouter {
+            GET:     self.GET.into_radix(),
+            PUT:     self.PUT.into_radix(),
+            POST:    self.POST.into_radix(),
+            HEAD:    self.HEAD.into_radix(),
+            PATCH:   self.PATCH.into_radix(),
+            DELETE:  self.DELETE.into_radix(),
+            OPTIONS: self.OPTIONS.into_radix(),
+        }
     }
 }
 
@@ -152,6 +160,54 @@ impl Node {
         }
         self.fangs.push(fang);
     }
+
+    fn into_radix(self) -> super::radix::Node {
+        let Node { pattern, mut fangs, mut handler, mut children } = self;
+
+        let mut patterns = match pattern {
+            None          => vec![],
+            Some(pattern) => vec![pattern],
+        };
+
+        if (children).len() == 1
+        && (handler.is_none() || children[0].handler.is_none()) {
+            let Node {
+                pattern:  child_pattern,
+                fangs:    child_fangs,
+                handler:  child_handler,
+                children: child_children,
+            } = children.pop(/* single child */).unwrap();
+
+            children = child_children;
+            
+            patterns.push(child_pattern.unwrap(/* `child` is not root */));
+
+            if handler.is_none() && child_handler.is_some() {
+                handler = child_handler
+            }
+
+            for cf in child_fangs {
+                if fangs.iter().all(|f| f.id() != cf.id()) {
+                    fangs.push(cf)
+                }
+            }
+        }
+
+        super::radix::Node {
+            handler,
+            children: children.into_iter().map(|c| c.into_radix()).collect(),
+            front: Box::leak(fangs
+                .into_iter().map(|f| match f {
+                    Fang::Front(f) => f,
+                }).collect()
+            ),
+            patterns: Box::leak(patterns
+                .into_iter()
+                .map(Pattern::into_radix)
+                .collect()
+            ),
+        }
+    }
 }
 
 
@@ -172,9 +228,6 @@ impl Node {
             fangs:    vec![],
             children: vec![],
         }
-    }
-    fn is_root(&self) -> bool {
-        self.pattern.is_none()
     }
 
     fn machable_child_mut(&mut self, pattern: Pattern) -> Option<&mut Node> {
@@ -201,7 +254,7 @@ impl Node {
         };
 
         for af in another_fangs {
-            if self.fangs.iter().find(|f| f.id() == af.id()).is_none() {
+            if self.fangs.iter().all(|f| f.id() != af.id()) {
                 self.fangs.push(af)
             }
         }
@@ -225,28 +278,28 @@ impl Node {
 }
 
 impl Pattern {
-    #[inline(always)] fn is_static(&self) -> bool {
-        match self {
-            Self::Static{..} => true,
-            _ => false,
-        }
-    }
-    #[inline(always)] fn is_param(&self) -> bool {
+    fn is_param(&self) -> bool {
         match self {
             Self::Param => true,
             Self::Static{..} => false,
         }
     }
-    #[inline(always)] fn as_static(&self) -> Option<&[u8]> {
+    fn as_static(&self) -> Option<&[u8]> {
         match self {
             Self::Param => None,
             Self::Static{ route, range } => Some(&route[(range.start)..(range.end)])
         }
     }
-    #[inline(always)] fn matches(&self, another: &Self) -> bool {
+    fn matches(&self, another: &Self) -> bool {
         match self {
             Self::Param => another.is_param(),
             Self::Static{..} => self.as_static() == another.as_static(),
+        }
+    }
+    fn into_radix(self) -> super::radix::Pattern {
+        match self {
+            Self::Param => super::radix::Pattern::Param,
+            Self::Static{ route, range } => super::radix::Pattern::Static(&route[range])
         }
     }
 }

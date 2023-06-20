@@ -10,23 +10,23 @@ use crate::{
 
 /*===== defs =====*/
 pub(crate) struct RadixRouter {
-    GET: Node,
-    PUT: Node,
-    POST: Node,
-    HEAD: Node,
-    PATCH: Node,
-    DELETE: Node,
-    OPTIONS: Node,
+    pub(super) GET: Node,
+    pub(super) PUT: Node,
+    pub(super) POST: Node,
+    pub(super) HEAD: Node,
+    pub(super) PATCH: Node,
+    pub(super) DELETE: Node,
+    pub(super) OPTIONS: Node,
 }
 
-struct Node {
-    patterns: &'static [Pattern],
-    front:    &'static [FrontFang],
-    handler:  Option<Handler>,
-    children: Vec<Node>,
+pub(super) struct Node {
+    pub(super) patterns: &'static [Pattern],
+    pub(super) front:    &'static [FrontFang],
+    pub(super) handler:  Option<Handler>,
+    pub(super) children: Vec<Node>,
 }
 
-enum Pattern {
+pub(super) enum Pattern {
     Static(&'static [u8]),
     Param,
 }
