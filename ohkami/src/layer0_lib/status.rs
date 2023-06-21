@@ -1,19 +1,25 @@
 pub(crate) enum Status {
-    OK                  = 200,
-    Created             = 201,
-    NoContent           = 204,
-    BadRequest          = 400,
-    Unauthorized        = 401,
-    Forbidden           = 403,
-    NotFound            = 404,
-    InternalServerError = 500,
-    NotImplemented      = 501,
+    OK,
+    Created,
+    NoContent,
+    MovedPermanently,
+    Found,
+    BadRequest,
+    Unauthorized,
+    Forbidden,
+    NotFound,
+    InternalServerError,
+    NotImplemented,
 } impl Status {
     #[inline(always)] pub(crate) const fn as_str(&self) -> &'static str {
         match self {
             Self::OK                  => "200 OK",
             Self::Created             => "201 Created",
             Self::NoContent           => "204 No Content",
+
+            Self::MovedPermanently    => "301 Moved Permanently",
+            Self::Found               => "302 Found",
+
             Self::BadRequest          => "400 Bad Request",
             Self::Unauthorized        => "401 Unauthorized",
             Self::Forbidden           => "403 Forbidden",
