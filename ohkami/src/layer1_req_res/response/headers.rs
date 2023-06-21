@@ -1,7 +1,7 @@
 /* ref: https://developer.mozilla.org/ja/docs/Web/HTTP/Headers */
 #![allow(non_snake_case)]
 
-use std::{collections::HashMap};
+use std::{collections::BTreeMap};
 
 
 struct Header(Option<&'static str>);
@@ -15,18 +15,18 @@ impl HeaderValue for Option<&'static str> {fn into_header_value(self) -> Option<
 macro_rules! ResponseHeaders {
     ($(
         $group:ident {
-            $( $key:literal $name:ident( $arg:ident ), )*
+            $( $key:literal $scope:vis $name:ident( $arg:ident ), )*
         }
     )*) => {
         pub struct ResponseHeaders {
             $( $group: bool, )*
             $($( $name: Header, )*)*
-            custom: HashMap<&'static str, &'static str>,
+            custom: BTreeMap<&'static str, &'static str>,
         }
 
         impl ResponseHeaders {
             $($(
-                pub fn $name(&mut self, $arg: impl HeaderValue) -> &mut Self {
+                $scope fn $name(&mut self, $arg: impl HeaderValue) -> &mut Self {
                     self.$group = true;
                     self.$name.0 = $arg.into_header_value();
                     self
@@ -37,7 +37,7 @@ macro_rules! ResponseHeaders {
                 Self {
                     $( $group: false, )*
                     $($( $name: Header(None), )*)*
-                    custom: HashMap::new()
+                    custom: BTreeMap::new()
                 }
             }
 
@@ -60,6 +60,13 @@ macro_rules! ResponseHeaders {
                     }
                 )*
 
+                for (k, v) in &self.custom {
+                    h.push_str(k);
+                    h.push(':'); h.push(' ');
+                    h.push_str(v);
+                    h.push('\r'); h.push('\n');
+                }
+
                 h.push('\r'); h.push('\n'); h
             }
         }
@@ -67,64 +74,70 @@ macro_rules! ResponseHeaders {
 } ResponseHeaders! {
     auth_cookie_security_context {
         // authentication
-        "WWW-Authenticate: "                 WWWAuthenticate(challenge),
+        "WWW-Authenticate: "                 pub(crate) WWWAuthenticate(challenge),
         // cookie
-        "Set-Cookie: "                       SetCookie(cookie_and_directives),
+        "Set-Cookie: "                       pub(crate) SetCookie(cookie_and_directives),
         // security
-        "X-Frame-Options: "                  XFrameOptions(DENY_or_SAMEORIGIN),
+        "X-Frame-Options: "                  pub(crate) XFrameOptions(DENY_or_SAMEORIGIN),
         // response context
-        "Allow: "                            Allow(methods),
-        "Server: "                           Server(product),
+        "Allow: "                            pub(crate) Allow(methods),
+        "Server: "                           pub Server(product),
     }
 
     cache_proxy_redirect_others {
         // cache
-        "Age: "                              Age(delta_seconds),
-        "Cache-Control: "                    CacheControl(cache_control),
-        "Expires: "                          Expires(http_date),
+        "Age: "                              pub(crate) Age(delta_seconds),
+        "Cache-Control: "                    pub(crate) CacheControl(cache_control),
+        "Expires: "                          pub(crate) Expires(http_date),
         // proxy
-        "Via: "                              Via(via),
+        "Via: "                              pub(crate) Via(via),
         // redirect
-        "Location: "                         Location(url),
+        "Location: "                         pub(crate) Location(url),
         // others
-        "Alt-Srv: "                          AltSvc(alternative_services),
+        "Alt-Srv: "                          pub(crate) AltSvc(alternative_services),
     }
 
     conditions {
-        "Last-Modified: "                    LastModified(http_date),
-        "E-tag: "                            Etag(identical_string),
-        "If-Match: "                         IfMatch(etag_values),
-        "If-None-Match: "                    IfNoneMatch(etag_values),
-        "If-Modified-Since: "                IfModifiedSince(http_date),
-        "If-Unmodified-Since: "              IfUnmodifiedSince(http_date),
-        "Vary: "                             Vary(header_names),
+        "Last-Modified: "                    pub(crate) LastModified(http_date),
+        "E-tag: "                            pub(crate) Etag(identical_string),
+        "If-Match: "                         pub(crate) IfMatch(etag_values),
+        "If-None-Match: "                    pub(crate) IfNoneMatch(etag_values),
+        "If-Modified-Since: "                pub(crate) IfModifiedSince(http_date),
+        "If-Unmodified-Since: "              pub(crate) IfUnmodifiedSince(http_date),
+        "Vary: "                             pub(crate) Vary(header_names),
     }
 
     cors {
-        "Access-Control-Allow-Origin: "      AccessControlAllowOrigin(origin),
-        "Access-Control-Allow-Credentials: " AccessControlAllowCredentials(true_if_needed),
-        "Access-Control-Allow-Headers: "     AccessControlAllowHeaders(headers),
-        "Access-Control-Allow-Methods: "     AccessControlAllowMethods(methods),
-        "Access-Control-Expose-Headers: "    AccessControlExposeHeaders(headers),
-        "Access-Control-Max-Age: "           AccessControlMaxAge(delta_seconds),
+        "Access-Control-Allow-Origin: "      pub(crate) AccessControlAllowOrigin(origin),
+        "Access-Control-Allow-Credentials: " pub(crate) AccessControlAllowCredentials(true_if_needed),
+        "Access-Control-Allow-Headers: "     pub(crate) AccessControlAllowHeaders(headers),
+        "Access-Control-Allow-Methods: "     pub(crate) AccessControlAllowMethods(methods),
+        "Access-Control-Expose-Headers: "    pub(crate) AccessControlExposeHeaders(headers),
+        "Access-Control-Max-Age: "           pub(crate) AccessControlMaxAge(delta_seconds),
     }
 
     message_body_and_encoding {
         // message body
-        "Content-Encoding: "                 ContentEncoding(algorithm),
-        "Content-Language: "                 ContentLanguage(language_tag),
-        "Content-Location: "                 ContentLocation(url),
+        "Content-Encoding: "                 pub(crate) ContentEncoding(algorithm),
+        "Content-Language: "                 pub(crate) ContentLanguage(language_tag),
+        "Content-Location: "                 pub(crate) ContentLocation(url),
         // transfer encoding
-        "Tranfer-Encoding: "                 TransferEncoding(chunked_compress_deflate_gzip_identity),
-        "Trailer: "                          Trailer(header_names),
+        "Tranfer-Encoding: "                 pub(crate) TransferEncoding(chunked_compress_deflate_gzip_identity),
+        "Trailer: "                          pub(crate) Trailer(header_names),
     }
 }
 
 impl ResponseHeaders {
     pub fn costom(&mut self, key: &'static str, value: impl HeaderValue) {
         match value.into_header_value() {
-            Some(value) => {self.custom.insert(key, value);}
-            None        => {self.custom.remove(key);}
+            Some(value) => {
+                self.custom.entry(key)
+                    .and_modify(|v| *v = value)
+                    .or_insert(value);
+            }
+            None => {
+                self.custom.remove(key);
+            }
         }
     }
 }

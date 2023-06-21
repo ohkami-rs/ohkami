@@ -7,7 +7,7 @@ type Range = std::ops::Range<usize>;
 
 #[derive(Clone)]
 pub struct RouteSections {
-    route: &'static [u8],
+    route:    &'static [u8],
     sections: VecDeque<RouteSection>
 } impl RouteSections {
     pub(crate) fn from_literal(route: &'static str) -> Self {

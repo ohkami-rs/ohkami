@@ -22,11 +22,4 @@ pub(crate) enum Status {
             Self::NotImplemented      => "501 Not Implemented",
         }
     }
-
-    #[inline(always)] pub(crate) const fn is_error(&self) -> bool {
-        match self {
-            Self::OK | Self::Created | Self::NoContent => false,
-            _ => true
-        }
-    }
 }

@@ -1,5 +1,3 @@
-use std::collections::HashSet;
-
 use crate::{
     layer3_fang_handler::{Handler, Handlers, ByAnother, RouteSections, RouteSection, Fang},
 };
@@ -170,17 +168,29 @@ impl Node {
         };
 
         if (children).len() == 1
-        && (handler.is_none() || children[0].handler.is_none()) {
+        && (handler.is_none() && children[0].handler.is_some()) {
             let Node {
                 pattern:  child_pattern,
                 fangs:    child_fangs,
                 handler:  child_handler,
                 children: child_children,
-            } = children.pop(/* single child */).unwrap();
+            } = children.pop(/* single child */).unwrap(/* `children` is empty here */);
 
             children = child_children;
             
-            patterns.push(child_pattern.unwrap(/* `child` is not root */));
+            let child_pattern = child_pattern.unwrap(/* `child` is not root */);
+            if patterns.last().is_some_and(|this| this.is_static())
+            && child_pattern.is_static() {
+                let (_, this_range) = patterns.pop(/*=== POPing here ===*/).unwrap().to_static().unwrap();
+                let (route, child_range) = child_pattern.to_static().unwrap();
+
+                patterns.push(Pattern::Static {
+                    route,
+                    range: (this_range.start..child_range.end),
+                })
+            } else {
+                patterns.push(child_pattern)
+            }
 
             if handler.is_none() && child_handler.is_some() {
                 handler = child_handler
@@ -284,18 +294,34 @@ impl Pattern {
             Self::Static{..} => false,
         }
     }
-    fn as_static(&self) -> Option<&[u8]> {
+    fn is_static(&self) -> bool {
+        match self {
+            Self::Static{..} => true,
+            Self::Param => false,
+        }
+    }
+
+    fn to_static(self) -> Option<(&'static [u8], Range)> {
+        match self {
+            Self::Param => None,
+            Self::Static{ route, range } => Some((route, range))
+        }
+    }
+
+    fn read_as_static(&self) -> Option<&[u8]> {
         match self {
             Self::Param => None,
             Self::Static{ route, range } => Some(&route[(range.start)..(range.end)])
         }
     }
+
     fn matches(&self, another: &Self) -> bool {
         match self {
             Self::Param => another.is_param(),
-            Self::Static{..} => self.as_static() == another.as_static(),
+            Self::Static{..} => self.read_as_static() == another.read_as_static(),
         }
     }
+
     fn into_radix(self) -> super::radix::Pattern {
         match self {
             Self::Param => super::radix::Pattern::Param,

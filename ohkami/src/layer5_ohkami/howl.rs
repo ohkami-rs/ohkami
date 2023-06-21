@@ -8,7 +8,7 @@ pub trait TCPAddress {
 } const _: () = {
     impl TCPAddress for u16 {
         fn parse(self) -> String {
-            if !(self <= 49151) {panic!("port must be 0 〜 49151")}
+            if self > 49151 {panic!("port must be 0 〜 49151")}
             format!("0.0.0.0:{self}")
         }
     }
