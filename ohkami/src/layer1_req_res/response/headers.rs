@@ -49,11 +49,17 @@ macro_rules! ResponseHeaders {
             }
 
             pub(crate) fn to_string(&self) -> String {
+                let __now__ = crate::layer0_lib::now();
+                let __cors__ = match crate::GLOBAL_FANGS.get() {
+                    None    => "",
+                    Some(h) => h.CORS,
+                };
                 let mut h = format!("\
                     Connection: Keep-Alive\r\n\
                     Keep-Alive: timout=5\r\n\
-                    Date: {}\r\n\
-                ", crate::layer0_lib::now());
+                    Date: {__now__}\r\n\
+                    {__cors__}
+                ", );
 
                 $(
                     if self.$group {
@@ -110,15 +116,6 @@ macro_rules! ResponseHeaders {
         "If-Modified-Since: "                pub(crate) IfModifiedSince(http_date),
         "If-Unmodified-Since: "              pub(crate) IfUnmodifiedSince(http_date),
         "Vary: "                             pub(crate) Vary(header_names),
-    }
-
-    cors {
-        "Access-Control-Allow-Origin: "      pub(crate) AccessControlAllowOrigin(origin),
-        "Access-Control-Allow-Credentials: " pub(crate) AccessControlAllowCredentials(true_if_needed),
-        "Access-Control-Allow-Headers: "     pub(crate) AccessControlAllowHeaders(headers),
-        "Access-Control-Allow-Methods: "     pub(crate) AccessControlAllowMethods(methods),
-        "Access-Control-Expose-Headers: "    pub(crate) AccessControlExposeHeaders(headers),
-        "Access-Control-Max-Age: "           pub(crate) AccessControlMaxAge(delta_seconds),
     }
 
     message_body_and_encoding {

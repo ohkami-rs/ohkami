@@ -2,14 +2,13 @@
 
 use std::sync::{OnceLock};
 
-
 pub(crate) static GLOBAL_FANGS: OnceLock<GlobalFangsImpl> = OnceLock::new();
 pub(crate) struct GlobalFangsImpl {
-    cors: &'static str,
+    pub(crate) CORS: &'static str,
 } impl From<GlobalFangs> for GlobalFangsImpl {
     fn from(value: GlobalFangs) -> Self {
         Self {
-            cors: (value.cors)(CORS::new()).into_static(),
+            CORS: (value.cors)(CORS::new()).into_static(),
         }
     }
 }
