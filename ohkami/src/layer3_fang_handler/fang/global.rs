@@ -4,7 +4,7 @@ use std::sync::{OnceLock};
 
 
 pub(crate) fn getGlobalFangs() -> &'static GlobalFangsImpl {
-    GLOBAL_FANGS.get_or_init(|| GlobalFangs::default().into())
+    GLOBAL_FANGS.get_or_init(|| GlobalFangs::new().into())
 }
 
 pub(crate) static GLOBAL_FANGS: OnceLock<GlobalFangsImpl> = OnceLock::new();
@@ -18,26 +18,57 @@ pub(crate) struct GlobalFangsImpl {
     }
 }
 
+/// <br/>
+/// 
 /// ```ignore
-/// {
-///     pub cors: fn(CORS) -> CORS
+/// use ohkami::{GlobalFangs, Route, Ohkami};
+/// use crate::handlers::{
+///     health_handler::{
+///         health_check,
+///     },
+///     user_handler::{
+///         create_user, get_user, update_user, delete_user,
+///     },
+/// };
+/// 
+/// #[tokio::main]
+/// async fn main() {
+///     GlobalFangs::new()
+///         .CORS(|c| c
+///             .AllowOrigin("https://myapp.example")
+///             .MaxAge("1024"))
+///         .apply();
+/// 
+///     Ohkami::new()(
+///         "/hc"
+///             .GET(health_check),
+///         "/api/users"
+///             .POST(create_user),
+///         "/api/users/:id"
+///             .GET(get_user)
+///             .PATCH(update_user)
+///             .DELETE(delete_user),
+///     ).howl(8080).await
 /// }
 /// ```
 pub struct GlobalFangs {
-    pub cors: fn(CORS) -> CORS,
-    // errors: , //for example rendering custom HTML for `NotFound` response
-}
-impl Default for GlobalFangs {
-    fn default() -> Self {
+    cors: fn(CORS) -> CORS,
+} impl GlobalFangs {
+    pub fn new() -> Self {
         Self {
-            cors: |new| new,
+            cors: |f| f,
         }
     }
-}
-impl GlobalFangs {
+
+    /// Apply this `GlobalFang` to entire the application
     pub fn apply(self) {
         GLOBAL_FANGS.set(self.into())
             .ok().expect("Failed to apply GlobalFangs")
+    }
+} impl GlobalFangs {
+    pub fn CORS(mut self, cors_config: fn(CORS) -> CORS) -> Self {
+        self.cors = cors_config;
+        self
     }
 }
 
