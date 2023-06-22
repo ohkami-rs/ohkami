@@ -2,6 +2,8 @@
 
 use std::sync::{OnceLock};
 
+use crate::layer1_req_res::ErrResponse;
+
 
 pub(crate) fn getGlobalFangs() -> &'static GlobalFangsImpl {
     GLOBAL_FANGS.get_or_init(|| GlobalFangs::new().into())
@@ -10,10 +12,12 @@ pub(crate) fn getGlobalFangs() -> &'static GlobalFangsImpl {
 pub(crate) static GLOBAL_FANGS: OnceLock<GlobalFangsImpl> = OnceLock::new();
 pub(crate) struct GlobalFangsImpl {
     pub(crate) CORS: &'static str,
+    pub(crate) NotFound: fn(ErrResponse) -> ErrResponse,
 } impl From<GlobalFangs> for GlobalFangsImpl {
     fn from(value: GlobalFangs) -> Self {
         Self {
             CORS: (value.cors)(CORS::new()).into_static(),
+            NotFound: value.custom_notfound,
         }
     }
 }
@@ -37,6 +41,12 @@ pub(crate) struct GlobalFangsImpl {
 ///         .CORS(|c| c
 ///             .AllowOrigin("https://myapp.example")
 ///             .MaxAge("1024"))
+///         .NotFound(|nf| nf
+///             .HTML(r#"
+///                 <html>
+///                     ...
+///                 </html>
+///             "#))
 ///         .apply();
 /// 
 ///     Ohkami::new()(
@@ -53,10 +63,12 @@ pub(crate) struct GlobalFangsImpl {
 /// ```
 pub struct GlobalFangs {
     cors: fn(CORS) -> CORS,
+    custom_notfound: fn(ErrResponse) -> ErrResponse,
 } impl GlobalFangs {
     pub fn new() -> Self {
         Self {
             cors: |f| f,
+            custom_notfound: |f| f,
         }
     }
 
@@ -68,6 +80,10 @@ pub struct GlobalFangs {
 } impl GlobalFangs {
     pub fn CORS(mut self, cors_config: fn(CORS) -> CORS) -> Self {
         self.cors = cors_config;
+        self
+    }
+    pub fn NotFound(mut self, custom_not_found: fn(ErrResponse) -> ErrResponse) -> Self {
+        self.custom_notfound = custom_not_found;
         self
     }
 }

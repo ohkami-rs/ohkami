@@ -89,12 +89,21 @@ macro_rules! impl_error_response {
     BadRequest,
     Unauthorized,
     Forbidden,
-    NotFound,
-    // InternalServerError, // too long ↓
+    // NotFound,            -- customizable by GlobalFangs ↓
+    // InternalServerError, -- too long name ↓
     NotImplemented
 ); impl Context {
     #[inline(always)] pub fn InternalError(&self) -> ErrResponse {
         ErrResponse::new(Status::InternalServerError, &self.headers)
+    }
+} impl Context {
+    #[inline(always)] pub(crate) fn NotFound(&self) -> ErrResponse {
+        (crate::getGlobalFangs().NotFound)(
+            ErrResponse::new(
+                Status::NotFound,
+                &self.headers,
+            )
+        )
     }
 }
 
@@ -216,7 +225,7 @@ macro_rules! impl_error_response {
         // custom
         c.headers.custom("X-MyApp-Cred", "abcdefg");
         c.headers.custom("MyApp-Data", "gfedcba");
-        assert_eq!(c.InternalError().text("I'm sorry fo").to_string(), format!("\
+        assert_eq!(c.InternalError().Text("I'm sorry fo").to_string(), format!("\
             HTTP/1.1 500 Internal Server Error\r\n\
             Content-Type: text/plain\r\n\
             Content-Length: 12\r\n\

@@ -73,15 +73,15 @@ impl ErrResponse {
         }
     }
 
-    #[inline(always)] pub fn text<Text: IntoCow<'static>>(mut self, text: Text) -> Self {
+    #[inline(always)] #[allow(non_snake_case)] pub fn Text<Text: IntoCow<'static>>(mut self, text: Text) -> Self {
         self.content.replace((ContentType::Text, text.into_cow()));
         self
     }
-    #[inline(always)] pub fn html<HTML: IntoCow<'static>>(mut self, html: HTML) -> Self {
+    #[inline(always)] #[allow(non_snake_case)] pub fn HTML<HTML: IntoCow<'static>>(mut self, html: HTML) -> Self {
         self.content.replace((ContentType::HTML, html.into_cow()));
         self
     }
-    #[inline(always)] pub fn json<JSON: Serialize>(mut self, json: JSON) -> Self {
+    #[inline(always)] #[allow(non_snake_case)] pub fn JSON<JSON: Serialize>(mut self, json: JSON) -> Self {
         let json = serde_json::to_string(&json).expect("Failed to serialize");
         self.content.replace((ContentType::JSON, Cow::Owned(json)));
         self

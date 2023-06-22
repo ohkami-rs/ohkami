@@ -46,7 +46,7 @@ const _: (/* PathParam */) = {
                                 async {res.await.into_unit()}
                             }),
                             Err(e) => Box::pin({
-                                let res = Response::Err(c.BadRequest().text(e.to_string()));
+                                let res = Response::Err(c.BadRequest().Text(e.to_string()));
                                 async {res}
                             }),
                         }
@@ -72,7 +72,7 @@ const _: (/* PathParam */) = {
                         async {res.await.into_unit()}
                     }),
                     Err(e) => Box::pin({
-                        let res = Response::Err(c.BadRequest().text(e.to_string()));
+                        let res = Response::Err(c.BadRequest().Text(e.to_string()));
                         async {res}
                     }),
                 }
@@ -96,7 +96,7 @@ const _: (/* PathParam */) = {
                         async {res.await.into_unit()}
                     }),
                     Err(e) => Box::pin({
-                        let res = Response::Err(c.BadRequest().text(e.to_string()));
+                        let res = Response::Err(c.BadRequest().Text(e.to_string()));
                         async {res}
                     }),
                 }
@@ -121,12 +121,12 @@ const _: (/* PathParam */) = {
                             async {res.await.into_unit()}
                         }),
                         Err(e) => Box::pin({
-                            let res = Response::Err(c.BadRequest().text(e.to_string()));
+                            let res = Response::Err(c.BadRequest().Text(e.to_string()));
                             async {res}
                         })
                     }
                     Err(e) => Box::pin({
-                        let res = Response::Err(c.BadRequest().text(e.to_string()));
+                        let res = Response::Err(c.BadRequest().Text(e.to_string()));
                         async {res}
                     }),
                 }
@@ -150,7 +150,7 @@ const _: (/* FromRequest items */) = {
                         async {res.await.into_unit()}
                     }),
                     Err(e) => Box::pin({
-                        let res = Response::Err(c.BadRequest().text(e.to_string()));
+                        let res = Response::Err(c.BadRequest().Text(e.to_string()));
                         async {res}
                     })
                 }
@@ -173,12 +173,12 @@ const _: (/* FromRequest items */) = {
                             async {res.await.into_unit()}
                         }),
                         Err(e) => Box::pin({
-                            let res = Response::Err(c.BadRequest().text(e.to_string()));
+                            let res = Response::Err(c.BadRequest().Text(e.to_string()));
                             async {res}
                         })
                     }
                     Err(e) => Box::pin({
-                        let res = Response::Err(c.BadRequest().text(e.to_string()));
+                        let res = Response::Err(c.BadRequest().Text(e.to_string()));
                         async {res}
                     })
                 }
@@ -202,17 +202,17 @@ const _: (/* FromRequest items */) = {
                                 async {res.await.into_unit()}
                             }),
                             Err(e) => Box::pin({
-                                let res = Response::Err(c.BadRequest().text(e.to_string()));
+                                let res = Response::Err(c.BadRequest().Text(e.to_string()));
                                 async {res}
                             })
                         }
                         Err(e) => Box::pin({
-                            let res = Response::Err(c.BadRequest().text(e.to_string()));
+                            let res = Response::Err(c.BadRequest().Text(e.to_string()));
                             async {res}
                         })
                     }
                     Err(e) => Box::pin({
-                        let res = Response::Err(c.BadRequest().text(e.to_string()));
+                        let res = Response::Err(c.BadRequest().Text(e.to_string()));
                         async {res}
                     })
                 }
@@ -241,12 +241,12 @@ const _: (/* single PathParam and FromRequest items */) = {
                                     async {res.await.into_unit()}
                                 }),
                                 Err(e) => Box::pin({
-                                    let res = Response::Err(c.BadRequest().text(e.to_string()));
+                                    let res = Response::Err(c.BadRequest().Text(e.to_string()));
                                     async {res}
                                 })
                             }
                             Err(e) => Box::pin({
-                                let res = Response::Err(c.BadRequest().text(e.to_string()));
+                                let res = Response::Err(c.BadRequest().Text(e.to_string()));
                                 async {res}
                             }),
                         }
@@ -272,17 +272,17 @@ const _: (/* single PathParam and FromRequest items */) = {
                                         async {res.await.into_unit()}
                                     }),
                                     Err(e) => Box::pin({
-                                        let res = Response::Err(c.BadRequest().text(e.to_string()));
+                                        let res = Response::Err(c.BadRequest().Text(e.to_string()));
                                         async {res}
                                     })
                                 }
                                 Err(e) => Box::pin({
-                                    let res = Response::Err(c.BadRequest().text(e.to_string()));
+                                    let res = Response::Err(c.BadRequest().Text(e.to_string()));
                                     async {res}
                                 })
                             }
                             Err(e) => Box::pin({
-                                let res = Response::Err(c.BadRequest().text(e.to_string()));
+                                let res = Response::Err(c.BadRequest().Text(e.to_string()));
                                 async {res}
                             }),
                         }
@@ -309,22 +309,22 @@ const _: (/* single PathParam and FromRequest items */) = {
                                             async {res.await.into_unit()}
                                         }),
                                         Err(e) => Box::pin({
-                                            let res = Response::Err(c.BadRequest().text(e.to_string()));
+                                            let res = Response::Err(c.BadRequest().Text(e.to_string()));
                                             async {res}
                                         })
                                     }
                                     Err(e) => Box::pin({
-                                        let res = Response::Err(c.BadRequest().text(e.to_string()));
+                                        let res = Response::Err(c.BadRequest().Text(e.to_string()));
                                         async {res}
                                     })
                                 }
                                 Err(e) => Box::pin({
-                                    let res = Response::Err(c.BadRequest().text(e.to_string()));
+                                    let res = Response::Err(c.BadRequest().Text(e.to_string()));
                                     async {res}
                                 })
                             }
                             Err(e) => Box::pin({
-                                let res = Response::Err(c.BadRequest().text(e.to_string()));
+                                let res = Response::Err(c.BadRequest().Text(e.to_string()));
                                 async {res}
                             }),
                         }
@@ -354,12 +354,12 @@ const _: (/* single PathParam and FromRequest items */) = {
                             async {res.await.into_unit()}
                         }),
                         Err(e) => Box::pin({
-                            let res = Response::Err(c.BadRequest().text(e.to_string()));
+                            let res = Response::Err(c.BadRequest().Text(e.to_string()));
                             async {res}
                         })
                     }
                     Err(e) => Box::pin({
-                        let res = Response::Err(c.BadRequest().text(e.to_string()));
+                        let res = Response::Err(c.BadRequest().Text(e.to_string()));
                         async {res}
                     }),
                 }
@@ -385,17 +385,17 @@ const _: (/* single PathParam and FromRequest items */) = {
                                 async {res.await.into_unit()}
                             }),
                             Err(e) => Box::pin({
-                                let res = Response::Err(c.BadRequest().text(e.to_string()));
+                                let res = Response::Err(c.BadRequest().Text(e.to_string()));
                                 async {res}
                             })
                         }
                         Err(e) => Box::pin({
-                            let res = Response::Err(c.BadRequest().text(e.to_string()));
+                            let res = Response::Err(c.BadRequest().Text(e.to_string()));
                             async {res}
                         })
                     }
                     Err(e) => Box::pin({
-                        let res = Response::Err(c.BadRequest().text(e.to_string()));
+                        let res = Response::Err(c.BadRequest().Text(e.to_string()));
                         async {res}
                     }),
                 }
@@ -422,22 +422,22 @@ const _: (/* single PathParam and FromRequest items */) = {
                                     async {res.await.into_unit()}
                                 }),
                                 Err(e) => Box::pin({
-                                    let res = Response::Err(c.BadRequest().text(e.to_string()));
+                                    let res = Response::Err(c.BadRequest().Text(e.to_string()));
                                     async {res}
                                 })
                             }
                             Err(e) => Box::pin({
-                                let res = Response::Err(c.BadRequest().text(e.to_string()));
+                                let res = Response::Err(c.BadRequest().Text(e.to_string()));
                                 async {res}
                             })
                         }
                         Err(e) => Box::pin({
-                            let res = Response::Err(c.BadRequest().text(e.to_string()));
+                            let res = Response::Err(c.BadRequest().Text(e.to_string()));
                             async {res}
                         })
                     }
                     Err(e) => Box::pin({
-                        let res = Response::Err(c.BadRequest().text(e.to_string()));
+                        let res = Response::Err(c.BadRequest().Text(e.to_string()));
                         async {res}
                     }),
                 }
@@ -464,12 +464,12 @@ const _: (/* one PathParam and FromRequest items */) = {
                                 async {res.await.into_unit()}
                             }),
                             Err(e) => Box::pin({
-                                let res = Response::Err(c.BadRequest().text(e.to_string()));
+                                let res = Response::Err(c.BadRequest().Text(e.to_string()));
                                 async {res}
                             })
                         }
                         Err(e) => Box::pin({
-                            let res = Response::Err(c.BadRequest().text(e.to_string()));
+                            let res = Response::Err(c.BadRequest().Text(e.to_string()));
                             async {res}
                         }),
                     }
@@ -495,17 +495,17 @@ const _: (/* one PathParam and FromRequest items */) = {
                                     async {res.await.into_unit()}
                                 }),
                                 Err(e) => Box::pin({
-                                    let res = Response::Err(c.BadRequest().text(e.to_string()));
+                                    let res = Response::Err(c.BadRequest().Text(e.to_string()));
                                     async {res}
                                 })
                             }
                             Err(e) => Box::pin({
-                                let res = Response::Err(c.BadRequest().text(e.to_string()));
+                                let res = Response::Err(c.BadRequest().Text(e.to_string()));
                                 async {res}
                             })
                         }
                         Err(e) => Box::pin({
-                            let res = Response::Err(c.BadRequest().text(e.to_string()));
+                            let res = Response::Err(c.BadRequest().Text(e.to_string()));
                             async {res}
                         }),
                     }
@@ -532,22 +532,22 @@ const _: (/* one PathParam and FromRequest items */) = {
                                         async {res.await.into_unit()}
                                     }),
                                     Err(e) => Box::pin({
-                                        let res = Response::Err(c.BadRequest().text(e.to_string()));
+                                        let res = Response::Err(c.BadRequest().Text(e.to_string()));
                                         async {res}
                                     })
                                 }
                                 Err(e) => Box::pin({
-                                    let res = Response::Err(c.BadRequest().text(e.to_string()));
+                                    let res = Response::Err(c.BadRequest().Text(e.to_string()));
                                     async {res}
                                 })
                             }
                             Err(e) => Box::pin({
-                                let res = Response::Err(c.BadRequest().text(e.to_string()));
+                                let res = Response::Err(c.BadRequest().Text(e.to_string()));
                                 async {res}
                             })
                         }
                         Err(e) => Box::pin({
-                            let res = Response::Err(c.BadRequest().text(e.to_string()));
+                            let res = Response::Err(c.BadRequest().Text(e.to_string()));
                             async {res}
                         }),
                     }
@@ -575,17 +575,17 @@ const _: (/* two PathParams and FromRequest items */) = {
                                 async {res.await.into_unit()}
                             }),
                             Err(e) => Box::pin({
-                                let res = Response::Err(c.BadRequest().text(e.to_string()));
+                                let res = Response::Err(c.BadRequest().Text(e.to_string()));
                                 async {res}
                             })
                         }
                         Err(e) => Box::pin({
-                            let res = Response::Err(c.BadRequest().text(e.to_string()));
+                            let res = Response::Err(c.BadRequest().Text(e.to_string()));
                             async {res}
                         })
                     } 
                     Err(e) => Box::pin({
-                        let res = Response::Err(c.BadRequest().text(e.to_string()));
+                        let res = Response::Err(c.BadRequest().Text(e.to_string()));
                         async {res}
                     }),
                 }
@@ -612,22 +612,22 @@ const _: (/* two PathParams and FromRequest items */) = {
                                     async {res.await.into_unit()}
                                 }),
                                 Err(e) => Box::pin({
-                                    let res = Response::Err(c.BadRequest().text(e.to_string()));
+                                    let res = Response::Err(c.BadRequest().Text(e.to_string()));
                                     async {res}
                                 })
                             }
                             Err(e) => Box::pin({
-                                let res = Response::Err(c.BadRequest().text(e.to_string()));
+                                let res = Response::Err(c.BadRequest().Text(e.to_string()));
                                 async {res}
                             })
                         }
                         Err(e) => Box::pin({
-                            let res = Response::Err(c.BadRequest().text(e.to_string()));
+                            let res = Response::Err(c.BadRequest().Text(e.to_string()));
                             async {res}
                         })
                     } 
                     Err(e) => Box::pin({
-                        let res = Response::Err(c.BadRequest().text(e.to_string()));
+                        let res = Response::Err(c.BadRequest().Text(e.to_string()));
                         async {res}
                     }),
                 }
@@ -655,27 +655,27 @@ const _: (/* two PathParams and FromRequest items */) = {
                                         async {res.await.into_unit()}
                                     }),
                                     Err(e) => Box::pin({
-                                        let res = Response::Err(c.BadRequest().text(e.to_string()));
+                                        let res = Response::Err(c.BadRequest().Text(e.to_string()));
                                         async {res}
                                     })
                                 }
                                 Err(e) => Box::pin({
-                                    let res = Response::Err(c.BadRequest().text(e.to_string()));
+                                    let res = Response::Err(c.BadRequest().Text(e.to_string()));
                                     async {res}
                                 })
                             }
                             Err(e) => Box::pin({
-                                let res = Response::Err(c.BadRequest().text(e.to_string()));
+                                let res = Response::Err(c.BadRequest().Text(e.to_string()));
                                 async {res}
                             })
                         }
                         Err(e) => Box::pin({
-                            let res = Response::Err(c.BadRequest().text(e.to_string()));
+                            let res = Response::Err(c.BadRequest().Text(e.to_string()));
                             async {res}
                         })
                     } 
                     Err(e) => Box::pin({
-                        let res = Response::Err(c.BadRequest().text(e.to_string()));
+                        let res = Response::Err(c.BadRequest().Text(e.to_string()));
                         async {res}
                     }),
                 }
