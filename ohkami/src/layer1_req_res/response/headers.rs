@@ -63,7 +63,7 @@ macro_rules! ResponseHeaders {
                     Connection: Keep-Alive\r\n\
                     Keep-Alive: timout=5\r\n\
                     Date: {__now__}\r\n\
-                    {__cors__}
+                    {__cors__}\
                 ", );
 
                 $(
@@ -115,7 +115,7 @@ macro_rules! ResponseHeaders {
 
     conditions {
         "Last-Modified: "                    pub(crate) LastModified(http_date),
-        "E-tag: "                            pub(crate) Etag(identical_string),
+        "ETag: "                             pub(crate) ETag(identical_string),
         "If-Match: "                         pub(crate) IfMatch(etag_values),
         "If-None-Match: "                    pub(crate) IfNoneMatch(etag_values),
         "If-Modified-Since: "                pub(crate) IfModifiedSince(http_date),
@@ -135,15 +135,17 @@ macro_rules! ResponseHeaders {
 }
 
 impl ResponseHeaders {
-    pub fn costom(&mut self, key: &'static str, value: impl HeaderValue) {
+    pub fn custom(&mut self, key: &'static str, value: impl HeaderValue) -> &mut Self {
         match value.into_header_value() {
             Some(value) => {
                 self.custom.entry(key)
                     .and_modify(|v| *v = value)
                     .or_insert(value);
+                self
             }
             None => {
                 self.custom.remove(key);
+                self
             }
         }
     }

@@ -101,28 +101,134 @@ macro_rules! impl_error_response {
 
 
 
-#[cfg(test)] #[allow(unused)] mod __ {
-    use crate::{Context, Response};
-    use serde::Serialize;
+#[cfg(test)] mod __ {use crate::Context;
+    #[test] fn test_context_change_header() {
+        let mut c = Context::new();
+        let __now__ = crate::layer0_lib::now();
 
-    #[derive(Serialize)]
-    struct User {
-        id: usize,
-        name: String,
+        // newly set
+        c.headers.Server("ohkami");
+        assert_eq!(c.headers.to_string(), format!("\
+            Connection: Keep-Alive\r\n\
+            Keep-Alive: timout=5\r\n\
+            Date: {__now__}\r\n\
+            Server: ohkami\r\n\
+        "));
+
+        c.headers.ETag("identidentidentident");
+        assert_eq!(c.headers.to_string(), format!("\
+            Connection: Keep-Alive\r\n\
+            Keep-Alive: timout=5\r\n\
+            Date: {__now__}\r\n\
+            Server: ohkami\r\n\
+            ETag: identidentidentident\r\n\
+        "));
+
+        // remove
+        c.headers.Server(None);
+        assert_eq!(c.headers.to_string(), format!("\
+            Connection: Keep-Alive\r\n\
+            Keep-Alive: timout=5\r\n\
+            Date: {__now__}\r\n\
+            ETag: identidentidentident\r\n\
+        "));
+
+        // update
+        c.headers.Server("ohkami2");
+        c.headers.ETag("new-etag");
+        assert_eq!(c.headers.to_string(), format!("\
+            Connection: Keep-Alive\r\n\
+            Keep-Alive: timout=5\r\n\
+            Date: {__now__}\r\n\
+            Server: ohkami2\r\n\
+            ETag: new-etag\r\n\
+        "));
+
+        // custom
+        c.headers.custom("X-MyApp-Cred", "abcdefg");
+        c.headers.custom("MyApp-Data", "gfedcba");
+        assert_eq!(c.headers.to_string(), format!("\
+            Connection: Keep-Alive\r\n\
+            Keep-Alive: timout=5\r\n\
+            Date: {__now__}\r\n\
+            Server: ohkami2\r\n\
+            ETag: new-etag\r\n\
+            MyApp-Data: gfedcba\r\n\
+            X-MyApp-Cred: abcdefg\r\n\
+        "));
     }
-    impl User {
-        async fn create(name: impl ToString) -> Result<Self, std::io::Error> {
-            Ok(Self {
-                id: 42,
-                name: name.to_string(),
-            })
-        }
-    }
 
-    async fn create_user(c: Context) -> Response<User> {
-        let new_user = User::create("John").await
-            .map_err(|e| c.InternalError())?;
+    #[test] fn test_context_generate_response() {
+        let mut c = Context::new();
+        let __now__ = crate::layer0_lib::now();
 
-        c.Created(new_user)
+        c.headers.Server("ohkami");
+        assert_eq!(c.Text("Hello, world!").to_string(), format!("\
+            HTTP/1.1 200 OK\r\n\
+            Content-Type: text/plain\r\n\
+            Content-Length: 13\r\n\
+            Connection: Keep-Alive\r\n\
+            Keep-Alive: timout=5\r\n\
+            Date: {__now__}\r\n\
+            Server: ohkami\r\n\
+            \r\n\
+            Hello, world!\
+        "));
+
+        c.headers.ETag("identidentidentident");
+        assert_eq!(c.Created(r#"{"id":42,"name":"kanarus","age":19}"#).to_string(), format!("\
+            HTTP/1.1 201 Created\r\n\
+            Content-Type: application/json\r\n\
+            Content-Length: 35\r\n\
+            Connection: Keep-Alive\r\n\
+            Keep-Alive: timout=5\r\n\
+            Date: {__now__}\r\n\
+            Server: ohkami\r\n\
+            ETag: identidentidentident\r\n\
+            \r\n\
+            {{\"id\":42,\"name\":\"kanarus\",\"age\":19}}\
+        "));
+
+        // remove
+        c.headers.Server(None);
+        assert_eq!(c.NoContent().to_string(), format!("\
+            HTTP/1.1 204 No Content\r\n\
+            Connection: Keep-Alive\r\n\
+            Keep-Alive: timout=5\r\n\
+            Date: {__now__}\r\n\
+            ETag: identidentidentident\r\n\
+            \r\n\
+        "));
+
+        // update
+        c.headers.Server("ohkami2");
+        c.headers.ETag("new-etag");
+        assert_eq!(c.BadRequest().to_string(), format!("\
+            HTTP/1.1 400 Bad Request
+            Connection: Keep-Alive\r\n\
+            Keep-Alive: timout=5\r\n\
+            Date: {__now__}\r\n\
+            Server: ohkami2\r\n\
+            ETag: new-etag\r\n\
+            \r\n\
+        "));
+
+        // custom
+        c.headers.custom("X-MyApp-Cred", "abcdefg");
+        c.headers.custom("MyApp-Data", "gfedcba");
+        assert_eq!(c.InternalError().text("I'm sorry fo").to_string(), format!("\
+            HTTP/1.1 500 Internal Server Error\r\n\
+            Content-Type: text/plain\r\n\
+            Content-Length: 12\r\n\
+            Connection: Keep-Alive\r\n\
+            Keep-Alive: timout=5\r\n\
+            Date: {__now__}\r\n\
+            Server: ohkami2\r\n\
+            ETag: new-etag\r\n\
+            MyApp-Data: gfedcba\r\n\
+            X-MyApp-Cred: abcdefg\r\n\
+            \r\n\
+            I'm sorry fo\
+        "));
     }
 }

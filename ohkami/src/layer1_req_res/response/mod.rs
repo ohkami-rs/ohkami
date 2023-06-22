@@ -54,6 +54,24 @@ impl ErrResponse {
             {__headers__}" // This ends with a `\r\n` line or empty
         ), content: None }
     }
+    #[inline] pub(crate) fn to_string(self) -> String {
+        match self {
+            ErrResponse { status_and_headers, content:None } => status_and_headers,
+            ErrResponse { status_and_headers: mut res, content: Some((content_type, body)) } => {
+                let __content_type__ = content_type.as_str();
+                let __content_length__ = body.len();
+
+                res.push_str(&format!("\
+                    Content-Type: {__content_type__}\r\n\
+                    Content-Length: {__content_length__}\r\n\
+                    \r\n\
+                    {body}\
+                "));
+
+                res
+            }
+        }
+    }
 
     #[inline(always)] pub fn text<Text: IntoCow<'static>>(mut self, text: Text) -> Self {
         self.content.replace((ContentType::Text, text.into_cow()));
@@ -71,23 +89,10 @@ impl ErrResponse {
 }
 
 impl<T: Serialize> Response<T> {
-    fn to_string(self) -> String {
+    #[inline] pub(crate) fn to_string(self) -> String {
         match self {
-            Self::Ok(res, _) => res,
-            Self::Err(ErrResponse { status_and_headers, content:None }) => status_and_headers,
-            Self::Err(ErrResponse { status_and_headers: mut res, content: Some((content_type, body)) }) => {
-                let __content_type__ = content_type.as_str();
-                let __content_length__ = body.len();
-
-                res.push_str(&format!("\
-                    Content-Type: {__content_type__}\r\n\
-                    Content-Length: {__content_length__}\r\n\
-                    \r\n\
-                    {body}\
-                "));
-
-                res
-            }
+            Self::Ok(res, _)   => res,
+            Self::Err(err_res) => err_res.to_string(),
         }
     }
     #[inline(always)] pub(crate) async fn send(self, stream: &mut __dep__::TcpStream) {

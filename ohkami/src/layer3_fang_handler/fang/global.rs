@@ -18,6 +18,11 @@ pub(crate) struct GlobalFangsImpl {
     }
 }
 
+/// ```ignore
+/// {
+///     pub cors: fn(CORS) -> CORS
+/// }
+/// ```
 pub struct GlobalFangs {
     pub cors: fn(CORS) -> CORS,
     // errors: , //for example rendering custom HTML for `NotFound` response
