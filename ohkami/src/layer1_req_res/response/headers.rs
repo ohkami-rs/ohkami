@@ -20,11 +20,19 @@ macro_rules! ResponseHeaders {
     )*) => {
         /// Headers in a response.
         /// 
+        /// <br/>
+        /// 
         /// - `Content-Type`
         /// - `Content-Length`
         /// - `Location`
         /// 
         /// are automatically managed by `ohkami`.
+        /// 
+        /// <br/>
+        /// 
+        /// - `Access-Control-*`
+        /// 
+        /// are configured by `GlobalFangs`.
         pub struct ResponseHeaders {
             $( $group: bool, )*
             $($( $name: Header, )*)*
