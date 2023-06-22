@@ -2,6 +2,11 @@
 
 use std::sync::{OnceLock};
 
+
+pub(crate) fn getGlobalFangs() -> &'static GlobalFangsImpl {
+    GLOBAL_FANGS.get_or_init(|| GlobalFangs::default().into())
+}
+
 pub(crate) static GLOBAL_FANGS: OnceLock<GlobalFangsImpl> = OnceLock::new();
 pub(crate) struct GlobalFangsImpl {
     pub(crate) CORS: &'static str,

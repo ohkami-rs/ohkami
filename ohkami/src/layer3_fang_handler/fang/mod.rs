@@ -1,5 +1,5 @@
 mod into_fang; pub use into_fang::{IntoFang};
-mod global; pub use global::{GlobalFangs}; pub(crate) use global::{GLOBAL_FANGS};
+mod global; pub use global::{GlobalFangs}; pub(crate) use global::{getGlobalFangs};
 
 use std::{pin::Pin, future::Future, sync::Arc, any::TypeId};
 use crate::{Context, Request};

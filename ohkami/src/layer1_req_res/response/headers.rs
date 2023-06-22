@@ -50,10 +50,7 @@ macro_rules! ResponseHeaders {
 
             pub(crate) fn to_string(&self) -> String {
                 let __now__ = crate::layer0_lib::now();
-                let __cors__ = match crate::GLOBAL_FANGS.get() {
-                    None    => "",
-                    Some(h) => h.CORS,
-                };
+                let __cors__ = crate::getGlobalFangs().CORS;
                 let mut h = format!("\
                     Connection: Keep-Alive\r\n\
                     Keep-Alive: timout=5\r\n\
