@@ -1,5 +1,5 @@
-// mod fangs; pub(crate) use fangs::{Fangs}; pub use fangs::{public};
 mod into_fang; pub use into_fang::{IntoFang};
+mod global;
 
 use std::{pin::Pin, future::Future, sync::Arc, any::TypeId};
 use crate::{Context, Request};
