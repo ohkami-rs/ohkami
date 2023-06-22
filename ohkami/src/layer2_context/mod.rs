@@ -8,37 +8,37 @@ use crate::{
 
 
 pub struct Context {
-    pub header: ResponseHeaders,
+    pub headers: ResponseHeaders,
 }
 
 impl Context {
     #[inline(always)] pub(crate) fn new() -> Self {
-        Self { header: ResponseHeaders::new() }
+        Self { headers: ResponseHeaders::new() }
     }
 }
 
 impl Context {
-    #[inline(always)] pub fn text<Text: AsStr>(&self, text: Text) -> Response<Text> {
+    #[inline(always)] pub fn Text<Text: AsStr>(&self, text: Text) -> Response<Text> {
         Response::ok_with_body_asstr(
             text,
             Status::OK,
             ContentType::Text,
-            &self.header,
+            &self.headers,
         )
     }
-    #[inline(always)] pub fn html<HTML: AsStr>(&self, html: HTML) -> Response<HTML> {
+    #[inline(always)] pub fn HTML<HTML: AsStr>(&self, html: HTML) -> Response<HTML> {
         Response::ok_with_body_asstr(
             html,
             Status::OK,
             ContentType::HTML,
-            &self.header,
+            &self.headers,
         )
     }
-    #[inline(always)] pub fn json<JSON: Serialize>(&self, json: JSON) -> Response<JSON> {
+    #[inline(always)] pub fn JSON<JSON: Serialize>(&self, json: JSON) -> Response<JSON> {
         Response::ok_with_body_json(
             json,
             Status::OK,
-            &self.header,
+            &self.headers,
         )
     }
 
@@ -46,14 +46,31 @@ impl Context {
         Response::ok_with_body_json(
             entity,
             Status::Created,
-            &self.header,
+            &self.headers,
         )
     }
 
     #[inline(always)] pub fn NoContent(&self) -> Response<()> {
         Response::ok_without_body(
             Status::NoContent,
-            &self.header,
+            &self.headers,
+        )
+    }
+}
+
+impl Context {
+    #[inline(always)] pub fn Redirect(&self, location: impl AsStr) -> Response {
+        Response::redirect(
+            location,
+            Status::Found,
+            &self.headers,
+        )
+    }
+    #[inline(always)] pub fn RedirectPermanently(&self, location: impl AsStr) -> Response {
+        Response::redirect(
+            location,
+            Status::MovedPermanently,
+            &self.headers,
         )
     }
 }
@@ -63,7 +80,7 @@ macro_rules! impl_error_response {
         impl Context {
             $(
                 #[inline(always)] pub fn $name(&self) -> ErrResponse {
-                    ErrResponse::new(Status::$name, &self.header)
+                    ErrResponse::new(Status::$name, &self.headers)
                 }
             )*
         }
@@ -77,7 +94,7 @@ macro_rules! impl_error_response {
     NotImplemented
 ); impl Context {
     #[inline(always)] pub fn InternalError(&self) -> ErrResponse {
-        ErrResponse::new(Status::InternalServerError, &self.header)
+        ErrResponse::new(Status::InternalServerError, &self.headers)
     }
 }
 

@@ -124,7 +124,7 @@ const _: (/* with Request */) = {
     }
 
     async fn add_server_header(c: &mut Context) {
-        c.header.Server("ohkami");
+        c.headers.Server("ohkami");
     }
 
     fn __() {

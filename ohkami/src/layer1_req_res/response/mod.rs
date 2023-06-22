@@ -106,9 +106,9 @@ impl<T: AsStr> Response<T> {
 
         Self::Ok(format!(
             "HTTP/1.1 {__status__}\r\n\
-            {__headers__}\r\n\
             Content-Type: {__content_type__}\r\n\
             Content-Length: {__content_length__}\r\n\
+            {__headers__}\
             \r\n\
             {__body__}"
         ), PhantomData)
@@ -127,15 +127,15 @@ impl<T: Serialize> Response<T> {
 
         Self::Ok(format!(
             "HTTP/1.1 {__status__}\r\n\
-            {__headers__}\r\n\
             Content-Type: application/json\r\n\
             Content-Length: {__content_length__}\r\n\
+            {__headers__}\
             \r\n\
             {__body__}"
         ), PhantomData)
     }
 }
-impl Response<()> {
+impl Response {
     #[inline(always)] pub(crate) fn ok_without_body(
         status: Status,
         headers: &ResponseHeaders,
@@ -145,7 +145,25 @@ impl Response<()> {
 
         Self::Ok(format!(
             "HTTP/1.1 {__status__}\r\n\
-            {__headers__}"
+            {__headers__}\
+            \r\n"
+        ), PhantomData)
+    }
+
+    #[inline(always)] pub(crate) fn redirect(
+        location: impl AsStr,
+        status: Status,
+        headers: &ResponseHeaders,
+    ) -> Self {
+        let __location__ = location.as_str();
+        let __status__ = status.as_str();
+        let __headers__ = headers.to_string();
+
+        Self::Ok(format!(
+            "HTTP/1.1 {__status__}\r\n\
+            Location: {__location__}\r\n\
+            {__headers__}\
+            \r\n"
         ), PhantomData)
     }
 }

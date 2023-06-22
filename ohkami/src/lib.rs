@@ -86,7 +86,7 @@ pub use layer5_ohkami::{Ohkami};
 #[cfg(test)] #[allow(unused)] async fn __() {
 // fangs
     async fn server(c: &mut Context) {
-        c.header.Server("ohkami");
+        c.headers.Server("ohkami");
     }
 
 // handlers
@@ -95,7 +95,7 @@ pub use layer5_ohkami::{Ohkami};
     }
 
     async fn hello(c: Context, name: &str) -> Response<String> {
-        c.text(format!("Hello, {name}!"))
+        c.Text(format!("Hello, {name}!"))
     }
 
 // run

@@ -66,8 +66,8 @@ macro_rules! ResponseHeaders {
                     h.push_str(v);
                     h.push('\r'); h.push('\n');
                 }
-
-                h.push('\r'); h.push('\n'); h
+                
+                h
             }
         }
     };
