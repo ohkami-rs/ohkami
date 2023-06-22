@@ -18,6 +18,13 @@ macro_rules! ResponseHeaders {
             $( $key:literal $scope:vis $name:ident( $arg:ident ), )*
         }
     )*) => {
+        /// Headers in a response.
+        /// 
+        /// - `Content-Type`
+        /// - `Content-Length`
+        /// - `Location`
+        /// 
+        /// are automatically managed by `ohkami`.
         pub struct ResponseHeaders {
             $( $group: bool, )*
             $($( $name: Header, )*)*
@@ -66,7 +73,7 @@ macro_rules! ResponseHeaders {
                     h.push_str(v);
                     h.push('\r'); h.push('\n');
                 }
-                
+
                 h
             }
         }
@@ -84,15 +91,13 @@ macro_rules! ResponseHeaders {
         "Server: "                           pub Server(product),
     }
 
-    cache_proxy_redirect_others {
+    cache_proxy_others {
         // cache
         "Age: "                              pub(crate) Age(delta_seconds),
         "Cache-Control: "                    pub(crate) CacheControl(cache_control),
         "Expires: "                          pub(crate) Expires(http_date),
         // proxy
         "Via: "                              pub(crate) Via(via),
-        // redirect
-        "Location: "                         pub(crate) Location(url),
         // others
         "Alt-Srv: "                          pub(crate) AltSvc(alternative_services),
     }

@@ -51,7 +51,7 @@ impl ErrResponse {
 
         Self { status_and_headers: format!(
             "HTTP/1.1 {__status__}\r\n\
-            {__headers__}"
+            {__headers__}" // This ends with a `\r\n` line or empty
         ), content: None }
     }
 
@@ -76,10 +76,16 @@ impl<T: Serialize> Response<T> {
             Self::Ok(res, _) => res,
             Self::Err(ErrResponse { status_and_headers, content:None }) => status_and_headers,
             Self::Err(ErrResponse { status_and_headers: mut res, content: Some((content_type, body)) }) => {
-                res.push_str("\r\nContent-Type: ");
-                res.push_str(content_type.as_str());
-                res.push_str("\r\n\r\n");
-                res.push_str(&body);
+                let __content_type__ = content_type.as_str();
+                let __content_length__ = body.len();
+
+                res.push_str(&format!("\
+                    Content-Type: {__content_type__}\r\n\
+                    Content-Length: {__content_length__}\r\n\
+                    \r\n\
+                    {body}\
+                "));
+
                 res
             }
         }
