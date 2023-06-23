@@ -51,12 +51,16 @@ impl ErrResponse {
 
         Self { status_and_headers: format!(
             "HTTP/1.1 {__status__}\r\n\
-            {__headers__}" // This ends with a `\r\n` line or empty
+            {__headers__}" //: a series of lines ending with "\r\n"
         ), content: None }
     }
     #[inline] pub(crate) fn to_string(self) -> String {
         match self {
-            ErrResponse { status_and_headers, content:None } => status_and_headers,
+            ErrResponse { status_and_headers: mut res, content:None } => {
+                res.push('\r');
+                res.push('\n');
+                res
+            }
             ErrResponse { status_and_headers: mut res, content: Some((content_type, body)) } => {
                 let __content_type__ = content_type.as_str();
                 let __content_length__ = body.len();

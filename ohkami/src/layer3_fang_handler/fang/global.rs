@@ -42,11 +42,7 @@ pub(crate) struct GlobalFangsImpl {
 ///             .AllowOrigin("https://myapp.example")
 ///             .MaxAge("1024"))
 ///         .NotFound(|nf| nf
-///             .HTML(r#"
-///                 <html>
-///                     ...
-///                 </html>
-///             "#))
+///             .HTML(include_str!("../404.html")))
 ///         .apply();
 /// 
 ///     Ohkami::new()(
