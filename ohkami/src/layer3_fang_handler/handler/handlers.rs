@@ -124,16 +124,16 @@ macro_rules! Route {
         name:     String,
         password: String,
     } impl FromRequest for CreateUser {
-        fn parse(req: &crate::Request) -> Result<Self, crate::Error> {
-            let (content_type, body) = req.payload().ok_or_else(|| Error::Parse(Cow::Borrowed("Payload expected")))?;
+        fn parse(req: &crate::Request) -> Result<Self, ::std::borrow::Cow<'static, str>> {
+            let (content_type, body) = req.payload().ok_or_else(|| Cow::Borrowed("Payload expected"))?;
             match content_type {
                 ContentType::JSON => (),
-                _ => return Err(Error::Parse(Cow::Borrowed("Payload expected"))),
+                _ => return Err(Cow::Borrowed("Payload expected")),
             }
 
             // reexport json parsing function : todo!()
             serde_json::from_str(body)
-                .map_err(|e| Error::Parse(Cow::Owned(e.to_string())))
+                .map_err(|e| Cow::Owned(e.to_string()))
         }
     }
 
@@ -157,16 +157,16 @@ macro_rules! Route {
         name:     Option<String>,
         password: Option<String>,
     } impl FromRequest for UpdateUser {
-        fn parse(req: &crate::Request) -> Result<Self, Error> {
-            let (content_type, body) = req.payload().ok_or_else(|| Error::Parse(Cow::Borrowed("Payload expected")))?;
+        fn parse(req: &crate::Request) -> Result<Self, ::std::borrow::Cow<'static, str>> {
+            let (content_type, body) = req.payload().ok_or_else(|| Cow::Borrowed("Payload expected"))?;
             match content_type {
                 ContentType::JSON => (),
-                _ => return Err(Error::Parse(Cow::Borrowed("Payload expected"))),
+                _ => return Err(Cow::Borrowed("Payload expected")),
             }
 
             // reexport json parsing function : todo!()
             serde_json::from_str(body)
-                .map_err(|e| Error::Parse(Cow::Owned(e.to_string())))
+                .map_err(|e| Cow::Owned(e.to_string()))
         }
     }
 
