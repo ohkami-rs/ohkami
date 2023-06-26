@@ -132,7 +132,7 @@ macro_rules! Route {
             }
 
             // reexport json parsing function : todo!()
-            serde_json::from_str(body)
+            serde_json::from_slice(body)
                 .map_err(|e| Cow::Owned(e.to_string()))
         }
     }
@@ -165,7 +165,7 @@ macro_rules! Route {
             }
 
             // reexport json parsing function : todo!()
-            serde_json::from_str(body)
+            serde_json::from_slice(body)
                 .map_err(|e| Cow::Owned(e.to_string()))
         }
     }

@@ -1,6 +1,7 @@
 mod from_request; pub use from_request::*;
 mod parse;
 
+use std::borrow::Cow;
 use crate::{
     __dep__,
     layer0_lib::{List, Method, BufRange, Buffer, ContentType}
@@ -32,12 +33,12 @@ impl Request {
     #[inline(always)] pub fn path(&self) -> &str {
         &self.buffer.read_str(&self.path)
     }
-    #[inline] pub fn query(&self, key: &str) -> Option<&str> {
+    #[inline] pub fn query<Value: FromBytes = &str>(&self, key: &str) -> Option<Result<Value, Cow<'static, str>>> {
         let List { list, next } = &self.queries;
         for query in &list[..*next] {
             let (key_range, value_range) = unsafe {query.assume_init_ref()};
             if &self.buffer[key_range] == key.as_bytes() {
-                return Some(&self.buffer.read_str(value_range))
+                return Some(Value::parse(&self.buffer[value_range]))
             }
         }
         None
@@ -52,11 +53,11 @@ impl Request {
         }
         None
     }
-    #[inline] pub fn payload(&self) -> Option<(&ContentType, &str)> {
+    #[inline] pub fn payload(&self) -> Option<(&ContentType, &[u8])> {
         let (content_type, body_range) = (&self.payload).as_ref()?;
         Some((
             content_type,
-            &self.buffer.read_str(body_range),
+            &self.buffer[body_range],
         ))
     }
 }
@@ -66,6 +67,8 @@ impl Request {
         &self.buffer[&self.path]
     }
 }
+
+
 
 
 #[cfg(test)]
@@ -85,9 +88,9 @@ const _: () = {
 
             assert_eq!(req.method(), method);
             assert_eq!(req.path(), path);
-            assert_eq!(req.payload().map(|(ct, s)| (ct.clone(), s)), payload);
+            assert_eq!(req.payload().map(|(ct, s)| (ct.clone(), std::str::from_utf8(s).unwrap())), payload);
             for (k, v) in queries {
-                assert_eq!(req.query(k), Some(*v))
+                assert_eq!(req.query(k), Some(Ok(*v)))
             }
             for (k, v) in headers {
                 assert_eq!(req.header(k), Some(*v))

@@ -29,10 +29,10 @@ pub trait FromRequest: Sized {
     fn parse(req: &Request) -> Result<Self, Cow<'static, str>>;
 }
 
-pub trait PathParam: Sized {
+pub trait FromBytes: Sized {
     fn parse(bytes: &[u8]) -> Result<Self, Cow<'static, str>>;
 } const _: () = {
-    impl PathParam for &str {
+    impl FromBytes for &str {
         fn parse(bytes: &[u8]) -> Result<Self, Cow<'static, str>> {
             // SAFETY:
             // - This str refers to `buffer` in `Request`
@@ -45,7 +45,7 @@ pub trait PathParam: Sized {
         }
     }
 
-    impl PathParam for String {
+    impl FromBytes for String {
         fn parse(bytes: &[u8]) -> Result<Self, Cow<'static, str>> {
             Ok(String::from(
                 std::str::from_utf8(bytes)
@@ -55,19 +55,19 @@ pub trait PathParam: Sized {
     }
 
     macro_rules! unsigned_integers {
-        ($( $unsigned_number_type:ty ),*) => {
+        ($( $unsigned_int:ty ),*) => {
             $(
-                impl PathParam for $unsigned_number_type {
+                impl FromBytes for $unsigned_int {
                     fn parse(bytes: &[u8]) -> Result<Self, Cow<'static, str>> {
                         if bytes.is_empty() {return Err(Cow::Borrowed("Expected a number nut found an empty string"))}
                         match bytes[0] {
                             b'-' => Err(Cow::Borrowed("Expected non-negative number but found negetive one")),
                             b'0' => Err(Cow::Borrowed("Expected a number but it starts with '0'")),
                             _ => {
-                                let mut value: $unsigned_number_type = 0;
+                                let mut value: $unsigned_int = 0;
                                 for d in bytes {
                                     match d {
-                                        0..=9 => value = value * 10 + *d as $unsigned_number_type,
+                                        0..=9 => value = value * 10 + *d as $unsigned_int,
                                         _ => return Err(Cow::Borrowed("Expected a number but it contains a non-digit charactor"))
                                     }
                                 }

@@ -81,6 +81,8 @@ pub use layer2_context     ::{Context};
 pub use layer3_fang_handler::{Route, GlobalFangs};
 pub use layer5_ohkami      ::{Ohkami};
 
+pub use ohkami_macros      ::{Queries};
+
 
 /*===== usavility =====*/
 #[cfg(test)] #[allow(unused)] async fn __() {

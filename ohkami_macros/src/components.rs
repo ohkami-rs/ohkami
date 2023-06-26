@@ -1,7 +1,24 @@
 use proc_macro2::{TokenStream, Span};
-use quote::format_ident;
+use quote::{format_ident, ToTokens};
 use syn::{Result, Error, parse2, ItemStruct, Attribute, PathSegment};
 
+
+pub(crate) enum Format {
+    JSON,
+    Form,
+} impl Format {
+    pub(crate) fn parse(tokens: TokenStream) -> Result<Self> {
+        match tokens.to_token_stream().to_string().as_str() {
+            "JSON" => Ok(Self::JSON),
+            "Form" => Ok(Self::Form),
+            _ => Err(Error::new(Span::call_site(), "\
+                Valid format: \n\
+                - `#[Payload(JSON)]` \n\
+                - `#[Payload(Form)]` \n\
+            "))
+        }
+    }
+}
 
 pub(crate) fn parse_struct(macro_name: &str, input: TokenStream) -> Result<ItemStruct> {
     let mut struct_tokens = parse2::<ItemStruct>(input)?;
