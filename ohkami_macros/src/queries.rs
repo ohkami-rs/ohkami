@@ -11,7 +11,7 @@ pub(super) fn Queries(data: TokenStream) -> Result<TokenStream> {
 
     let impl_from_request = {
         let struct_name = &data.ident;
-        let lifetime_params = &data.generics; // checked to only contains lifetimes in `parse_struct`
+        let lifetimes = &data.generics; // checked to only contains lifetimes in `parse_struct`
 
         let fields = data.fields.iter().map(|f| {
             let field_name = f.ident.as_ref().unwrap(/* already checked in `parse_struct` */);
@@ -33,7 +33,7 @@ pub(super) fn Queries(data: TokenStream) -> Result<TokenStream> {
         });
         
         quote!{
-            impl ::ohkami::FromRequest for #struct_name #lifetime_params {
+            impl #lifetimes ::ohkami::FromRequest for #struct_name #lifetimes {
                 fn parse(req: &::ohkami::Request) -> ::std::result::Result<Self, ::std::borrow::Cow<'static, str>> {
                     ::std::result::Result::Ok(Self {
                         #( #fields )*

@@ -3,7 +3,7 @@ use super::Handler;
 use crate::{
     Context,
     Response,
-    layer1_req_res::{FromRequest, FromBytes as PathParam},
+    layer1_req_res::{FromRequest, FromBuffer as PathParam},
 };
 
 

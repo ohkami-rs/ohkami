@@ -6,11 +6,13 @@ use syn::{Result, Error, parse2, ItemStruct, Attribute, PathSegment};
 pub(crate) enum Format {
     JSON,
     Form,
+    URLEncoded,
 } impl Format {
     pub(crate) fn parse(tokens: TokenStream) -> Result<Self> {
         match tokens.to_token_stream().to_string().as_str() {
-            "JSON" => Ok(Self::JSON),
-            "Form" => Ok(Self::Form),
+            "JSON"       => Ok(Self::JSON),
+            "Form"       => Ok(Self::Form),
+            "URLEncoded" => Ok(Self::URLEncoded),
             _ => Err(Error::new(Span::call_site(), "\
                 Valid format: \n\
                 - `#[Payload(JSON)]` \n\

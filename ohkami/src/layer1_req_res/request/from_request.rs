@@ -29,26 +29,26 @@ pub trait FromRequest: Sized {
     fn parse(req: &Request) -> Result<Self, Cow<'static, str>>;
 }
 
-pub trait FromBytes: Sized {
-    fn parse(bytes: &[u8]) -> Result<Self, Cow<'static, str>>;
+pub trait FromBuffer: Sized {
+    fn parse(buffer: &[u8]) -> Result<Self, Cow<'static, str>>;
 } const _: () = {
-    impl FromBytes for &str {
-        fn parse(bytes: &[u8]) -> Result<Self, Cow<'static, str>> {
+    impl FromBuffer for &str {
+        fn parse(buffer: &[u8]) -> Result<Self, Cow<'static, str>> {
             // SAFETY:
             // - This str refers to `buffer` in `Request`
             // - And, this str is visible to user **ONLY IN** the handler
             //   that is handling the request
             Ok(unsafe {std::mem::transmute(
-                std::str::from_utf8(bytes)
+                std::str::from_utf8(buffer)
                     .map_err(move |e| Cow::Owned(e.to_string()))?
             )})
         }
     }
 
-    impl FromBytes for String {
-        fn parse(bytes: &[u8]) -> Result<Self, Cow<'static, str>> {
+    impl FromBuffer for String {
+        fn parse(buffer: &[u8]) -> Result<Self, Cow<'static, str>> {
             Ok(String::from(
-                std::str::from_utf8(bytes)
+                std::str::from_utf8(buffer)
                     .map_err(move |e| Cow::Owned(e.to_string()))?
             ))
         }
@@ -57,15 +57,15 @@ pub trait FromBytes: Sized {
     macro_rules! unsigned_integers {
         ($( $unsigned_int:ty ),*) => {
             $(
-                impl FromBytes for $unsigned_int {
-                    fn parse(bytes: &[u8]) -> Result<Self, Cow<'static, str>> {
-                        if bytes.is_empty() {return Err(Cow::Borrowed("Expected a number nut found an empty string"))}
-                        match bytes[0] {
+                impl FromBuffer for $unsigned_int {
+                    fn parse(buffer: &[u8]) -> Result<Self, Cow<'static, str>> {
+                        if buffer.is_empty() {return Err(Cow::Borrowed("Expected a number nut found an empty string"))}
+                        match buffer[0] {
                             b'-' => Err(Cow::Borrowed("Expected non-negative number but found negetive one")),
                             b'0' => Err(Cow::Borrowed("Expected a number but it starts with '0'")),
                             _ => {
                                 let mut value: $unsigned_int = 0;
-                                for d in bytes {
+                                for d in buffer {
                                     match d {
                                         0..=9 => value = value * 10 + *d as $unsigned_int,
                                         _ => return Err(Cow::Borrowed("Expected a number but it contains a non-digit charactor"))

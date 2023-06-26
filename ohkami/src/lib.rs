@@ -81,7 +81,12 @@ pub use layer2_context     ::{Context};
 pub use layer3_fang_handler::{Route, GlobalFangs};
 pub use layer5_ohkami      ::{Ohkami};
 
-pub use ohkami_macros      ::{Queries};
+pub use ohkami_macros      ::{Queries, Payload};
+
+#[doc(hidden)]
+pub mod internal {
+    pub use crate::layer1_req_res::{parse_json};
+}
 
 
 /*===== usavility =====*/

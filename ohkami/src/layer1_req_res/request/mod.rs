@@ -1,11 +1,14 @@
 mod from_request; pub use from_request::*;
 mod parse;
+mod parse_payload; pub use parse_payload::*;
 
-use std::borrow::Cow;
+use std::{borrow::Cow};
+use percent_encoding::{percent_decode};
 use crate::{
     __dep__,
     layer0_lib::{List, Method, BufRange, Buffer, ContentType}
 };
+
 
 pub(crate) const QUERIES_LIMIT: usize = 4;
 pub(crate) const HEADERS_LIMIT: usize = 32;
@@ -27,18 +30,20 @@ impl Request {
 }
 
 impl Request {
-    #[inline(always)] pub fn method(&self) -> Method {
+    pub fn method(&self) -> Method {
         self.method
     }
-    #[inline(always)] pub fn path(&self) -> &str {
-        &self.buffer.read_str(&self.path)
+    pub fn path(&self) -> &str {
+        unsafe {std::mem::transmute(
+            &*percent_decode(&self.buffer[&self.path]).decode_utf8_lossy()
+        )}
     }
-    #[inline] pub fn query<Value: FromBytes = &str>(&self, key: &str) -> Option<Result<Value, Cow<'static, str>>> {
+    #[inline] pub fn query<Value: FromBuffer>(&self, key: &str) -> Option<Result<Value, Cow<'static, str>>> {
         let List { list, next } = &self.queries;
         for query in &list[..*next] {
             let (key_range, value_range) = unsafe {query.assume_init_ref()};
-            if &self.buffer[key_range] == key.as_bytes() {
-                return Some(Value::parse(&self.buffer[value_range]))
+            if key == percent_decode(&self.buffer[key_range]).decode_utf8_lossy() {
+                return Some(Value::parse((&*percent_decode(&self.buffer[value_range]).decode_utf8_lossy()).as_bytes()))
             }
         }
         None
