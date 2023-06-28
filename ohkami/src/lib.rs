@@ -85,7 +85,7 @@ pub use ohkami_macros      ::{Queries, Payload};
 
 #[doc(hidden)]
 pub mod internal {
-    pub use crate::layer1_req_res::{parse_json};
+    pub use crate::layer1_req_res::{parse_json, parse_urlencoded, FromBuffer};
 }
 
 
