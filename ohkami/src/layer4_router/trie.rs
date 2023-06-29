@@ -38,7 +38,16 @@ struct Node {
 enum Pattern {
     Static{ route: &'static [u8], range: Range },
     Param,
-}
+} const _: () = {
+    impl std::fmt::Debug for Pattern {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            match self {
+                Self::Param                   => f.write_str(":Param"),
+                Self::Static { route, range } => f.write_str(std::str::from_utf8(&route[range.clone()]).unwrap()),
+            }
+        }
+    }
+};
 
 
 /*===== impls =====*/
@@ -125,8 +134,10 @@ impl TrieRouter {
 
 impl Node {
     fn register_handler(&mut self, mut route: <RouteSections as IntoIterator>::IntoIter, handler: Handler) {
+        #[cfg(debug_assertions)] println!("[register_handler] route: {route:?}");
+
         match route.next() {
-            None => {self.handler.replace(handler);},
+            None => if self.handler.replace(handler).is_some() {panic!("Conflicting handler registeration")},
             Some(pattern) => match self.machable_child_mut(pattern.clone().into()) {
                 Some(child) => child.register_handler(route, handler),
                 None => {
@@ -167,7 +178,7 @@ impl Node {
             Some(pattern) => vec![pattern],
         };
 
-        if (children).len() == 1
+        if children.len() == 1
         && (handler.is_none() && children[0].handler.is_some()) {
             let Node {
                 pattern:  child_pattern,
@@ -177,10 +188,10 @@ impl Node {
             } = children.pop(/* single child */).unwrap(/* `children` is empty here */);
 
             children = child_children;
+            handler  = child_handler;
             
             let child_pattern = child_pattern.unwrap(/* `child` is not root */);
-            if patterns.last().is_some_and(|this| this.is_static())
-            && child_pattern.is_static() {
+            if patterns.last().is_some_and(|last| last.is_static()) && child_pattern.is_static() {
                 let (_, this_range) = patterns.pop(/*=== POPing here ===*/).unwrap().to_static().unwrap();
                 let (route, child_range) = child_pattern.to_static().unwrap();
 
@@ -192,9 +203,8 @@ impl Node {
                 patterns.push(child_pattern)
             }
 
-            if handler.is_none() && child_handler.is_some() {
-                handler = child_handler
-            }
+            #[cfg(debug_assertions)]
+            println!("[into_radix] merged patterns: {patterns:?}");
 
             for cf in child_fangs {
                 if fangs.iter().all(|f| f.id() != cf.id()) {
@@ -324,8 +334,8 @@ impl Pattern {
 
     fn into_radix(self) -> super::radix::Pattern {
         match self {
-            Self::Param => super::radix::Pattern::Param,
-            Self::Static{ route, range } => super::radix::Pattern::Static(&route[range])
+            Self::Param                  => super::radix::Pattern::Param,
+            Self::Static{ route, range } => super::radix::Pattern::Static(&route[range]),
         }
     }
 }

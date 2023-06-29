@@ -101,7 +101,7 @@ pub mod internal {
         c.NoContent()
     }
 
-    async fn hello(c: Context, name: &str) -> Response<String> {
+    async fn hello(c: Context, name: String) -> Response<String> {
         c.Text(format!("Hello, {name}!"))
     }
 

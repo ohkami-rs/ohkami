@@ -13,12 +13,12 @@ mod payload;
 /// use ohkami::Queries; // <-- import me
 /// 
 /// #[Query]
-/// struct HelloQuery<'name> {
-///     name:     &'name str,
+/// struct HelloQuery {
+///     name:     String,
 ///     n_repeat: Option<usize>,
 /// }
 /// 
-/// async fn hello<'q>(c: Context, queries: HelloQuery<'q>) -> Response<String> {
+/// async fn hello(c: Context, queries: HelloQuery) -> Response<String> {
 ///     let HelloQuery {name, n_repeat} = queries;
 /// 
 ///     let message = match n_repeat {
@@ -32,7 +32,7 @@ mod payload;
 /// 
 /// <br/>
 /// 
-/// - Possible value types : `&'lifetime str` `String` `u8` `u16` `u32` `u64` `u128` `usize` and `Option` of them.
+/// - Possible value types : `String` `u8` `u16` `u32` `u64` `u128` `usize` and `Option` of them.
 /// - NOT available for tuple struct ( like `struct S(usize, usize);` ) or tag struct ( like `struct X;` ).
 /// 
 /// If you need support for other structs or types, plaese let me know that in [GitHub issue](https://github.com/kana-rus/ohkami/issues) !
@@ -67,12 +67,12 @@ pub fn Query(_: proc_macro::TokenStream, data: proc_macro::TokenStream) -> proc_
 /// 
 /// #[Payload(JSON)]
 /// #[derive(serde::Deserialize)] // <-- This may be not required in future version
-/// struct HelloRequest<'name> {
-///     name:     &'name str,
+/// struct HelloRequest {
+///     name:     String,
 ///     n_repeat: Option<usize>,
 /// }
 /// 
-/// async fn hello<'q>(c: Context, body: HelloRequest<'q>) -> Response<String> {
+/// async fn hello(c: Context, body: HelloRequest) -> Response<String> {
 ///     let HelloRequest {name, n_repeat} = queries;
 /// 
 ///     let message = match n_repeat {
@@ -87,10 +87,9 @@ pub fn Query(_: proc_macro::TokenStream, data: proc_macro::TokenStream) -> proc_
 /// <br/>
 /// 
 /// - NOT available for tuple struct ( like `struct S(usize, usize);` ) or tag struct ( like `struct X;` ).
-/// - Possible value types : `&'lifetime str` `String` `u8` `u16` `u32` `u64` `u128` `usize` and `Option` of them.
+/// - Possible value types : `String` `u8` `u16` `u32` `u64` `u128` `usize` and `Option` of them.
 /// 
 /// If you need support for other structs or types, plaese let me know that in [GitHub issue](https://github.com/kana-rus/ohkami/issues) !
-
 #[proc_macro_attribute] #[allow(non_snake_case)]
 pub fn Payload(format: proc_macro::TokenStream, data: proc_macro::TokenStream) -> proc_macro::TokenStream {
     payload::Payload(format.into(), data.into())

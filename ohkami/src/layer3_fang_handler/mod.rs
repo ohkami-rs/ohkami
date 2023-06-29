@@ -6,6 +6,7 @@ type Range = std::ops::Range<usize>;
 
 
 #[derive(Clone)]
+#[cfg_attr(any(test, debug_assertions), derive(Debug))]
 pub struct RouteSections {
     route:    &'static [u8],
     sections: VecDeque<RouteSection>
@@ -17,8 +18,14 @@ pub struct RouteSections {
         if route == "/" {return Self{ route: route.as_bytes(), sections: VecDeque::new()}}
 
         let mut sections = VecDeque::new();
-        let mut section_start = 0;
+        let mut section_start = 1; /* skip initial '/' */
         for section in {let mut s = route.split('/'); s.next(); s} {
+            #[cfg(debug_assertions)] println!("section: '{section}' ('{}')",
+                std::str::from_utf8(
+                    &route.as_bytes()[section_start..(section_start + section.len())]
+                ).unwrap()
+            );
+
             let section = match RouteSection::new(route.as_bytes(), section_start..(section_start + section.len())) {
                 Err(e) => panic!("{e}: `{route}`"),
                 Ok(rs) => {section_start += section.len() + 1/* skip '/' */; rs}
@@ -84,4 +91,14 @@ pub enum RouteSection {
             }
         }
     }
-}
+} const _: () = {
+    #[cfg(any(test, debug_assertions))]
+    impl std::fmt::Debug for RouteSection {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            match self {
+                Self::Param                   => f.write_str(":Param"),
+                Self::Static { route, range } => f.write_str(std::str::from_utf8(&route[range.clone()]).unwrap()),
+            }
+        }
+    }
+};

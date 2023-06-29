@@ -9,13 +9,13 @@ struct CreateUserRequest1 {
     age:      u8,
 }
 
-#[Payload(JSON)]
-#[derive(serde::Deserialize)]
-struct CreateUserRequest2<'name, 'password> {
-    name:     &'name str,
-    password: &'password str,
-    age:      Option<u8>,
-}
+// #[Payload(JSON)]
+// #[derive(serde::Deserialize)]
+// struct CreateUserRequest2<'name, 'password> {
+//     name:     &'name str,
+//     password: &'password str,
+//     age:      Option<u8>,
+// }
 
 #[Payload(URLEncoded)]
 struct UpdateUserRequest1 {
@@ -31,11 +31,11 @@ struct UpdateUserRequest2 {
     age:      Option<u8>,
 }
 
-#[Payload(URLEncoded)]
-struct UpdateUserRequest3<'name, 'password> {
-    name:     &'name str,
-    password: &'password str,
-    age:      Option<u8>,
-}
+// #[Payload(URLEncoded)]
+// struct UpdateUserRequest3<'name, 'password> {
+//     name:     &'name str,
+//     password: &'password str,
+//     age:      Option<u8>,
+// }
 
 fn main() {}

@@ -58,27 +58,27 @@ const _: (/* PathParam */) = {
         String, u8, u16, u32, u64, u128, usize
     }
 
-    impl<'s, F, Fut, T> IntoHandler<(Context, (&str, Fut, T))> for F
-    where
-        F:   Fn(Context, &'s str) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Response<T>> + Send + Sync + 'static,
-        T:   serde::Serialize + Send + 'static,
-    {
-        fn into_handler(self) -> Handler {
-            Handler(Box::new(move |req, c, params|
-                match <&str as PathParam>::parse(&req.buffer[unsafe {params.list[0].assume_init_ref()}]) {
-                    Ok(p1) => Box::pin({
-                        let res = self(c, p1);
-                        async {res.await.into_unit()}
-                    }),
-                    Err(e) => Box::pin({
-                        let res = Response::Err(c.BadRequest().Text(e.to_string()));
-                        async {res}
-                    }),
-                }
-            ))
-        }
-    }
+    // impl<'s, F, Fut, T> IntoHandler<(Context, (&str, Fut, T))> for F
+    // where
+    //     F:   Fn(Context, &'s str) -> Fut + Send + Sync + 'static,
+    //     Fut: Future<Output = Response<T>> + Send + Sync + 'static,
+    //     T:   serde::Serialize + Send + 'static,
+    // {
+    //     fn into_handler(self) -> Handler {
+    //         Handler(Box::new(move |req, c, params|
+    //             match <&str as PathParam>::parse(&req.buffer[unsafe {params.list[0].assume_init_ref()}]) {
+    //                 Ok(p1) => Box::pin({
+    //                     let res = self(c, p1);
+    //                     async {res.await.into_unit()}
+    //                 }),
+    //                 Err(e) => Box::pin({
+    //                     let res = Response::Err(c.BadRequest().Text(e.to_string()));
+    //                     async {res}
+    //                 }),
+    //             }
+    //         ))
+    //     }
+    // }
 
     impl<F, Fut, T, P1:PathParam> IntoHandler<(Context, (P1,))> for F
     where
@@ -336,114 +336,114 @@ const _: (/* single PathParam and FromRequest items */) = {
         String, u8, u16, u32, u64, u128, usize
     }
 
-    /*===== &str =====*/
-    impl<'s, F, Fut, T, Item1:FromRequest> IntoHandler<(Context, (&str, Fut, T), Item1)> for F
-    where
-        F:   Fn(Context, &'s str, Item1) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Response<T>> + Send + Sync + 'static,
-        T:   serde::Serialize + Send + 'static,
-    {
-        fn into_handler(self) -> Handler {
-            Handler(Box::new(move |req, c, params|
-                // SAFETY: Due to the architecture of `Router`,
-                // `params` has already `append`ed once before this code
-                match <&str as PathParam>::parse(&req.buffer[unsafe {params.list[0].assume_init_ref()}]) {
-                    Ok(p1) => match Item1::parse(&req) {
-                        Ok(item1) => Box::pin({
-                            let res = self(c, p1, item1);
-                            async {res.await.into_unit()}
-                        }),
-                        Err(e) => Box::pin({
-                            let res = Response::Err(c.BadRequest().Text(e.to_string()));
-                            async {res}
-                        })
-                    }
-                    Err(e) => Box::pin({
-                        let res = Response::Err(c.BadRequest().Text(e.to_string()));
-                        async {res}
-                    }),
-                }
-            ))
-        }
-    }
-    
-    impl<'s, F, Fut, T, Item1:FromRequest, Item2:FromRequest> IntoHandler<(Context, (&str, Fut, T), Item1, Item2)> for F
-    where
-        F:   Fn(Context, &'s str, Item1, Item2) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Response<T>> + Send + Sync + 'static,
-        T:   serde::Serialize + Send + 'static,
-    {
-        fn into_handler(self) -> Handler {
-            Handler(Box::new(move |req, c, params|
-                // SAFETY: Due to the architecture of `Router`,
-                // `params` has already `append`ed once before this code
-                match <&str as PathParam>::parse(&req.buffer[unsafe {params.list[0].assume_init_ref()}]) {
-                    Ok(p1) => match Item1::parse(&req) {
-                        Ok(item1) => match Item2::parse(&req) {
-                            Ok(item2) => Box::pin({
-                                let res = self(c, p1, item1, item2);
-                                async {res.await.into_unit()}
-                            }),
-                            Err(e) => Box::pin({
-                                let res = Response::Err(c.BadRequest().Text(e.to_string()));
-                                async {res}
-                            })
-                        }
-                        Err(e) => Box::pin({
-                            let res = Response::Err(c.BadRequest().Text(e.to_string()));
-                            async {res}
-                        })
-                    }
-                    Err(e) => Box::pin({
-                        let res = Response::Err(c.BadRequest().Text(e.to_string()));
-                        async {res}
-                    }),
-                }
-            ))
-        }
-    }
-    
-    impl<'s, F, Fut, T, Item1:FromRequest, Item2:FromRequest, Item3:FromRequest> IntoHandler<(Context, (&str, Fut, T), Item1, Item2, Item3)> for F
-    where
-        F:   Fn(Context, &'s str, Item1, Item2, Item3) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Response<T>> + Send + Sync + 'static,
-        T:   serde::Serialize + Send + 'static,
-    {
-        fn into_handler(self) -> Handler {
-            Handler(Box::new(move |req, c, params|
-                // SAFETY: Due to the architecture of `Router`,
-                // `params` has already `append`ed once before this code
-                match <&str as PathParam>::parse(&req.buffer[unsafe {params.list[0].assume_init_ref()}]) {
-                    Ok(p1) => match Item1::parse(&req) {
-                        Ok(item1) => match Item2::parse(&req) {
-                            Ok(item2) => match Item3::parse(&req) {
-                                Ok(item3) => Box::pin({
-                                    let res = self(c, p1, item1, item2, item3);
-                                    async {res.await.into_unit()}
-                                }),
-                                Err(e) => Box::pin({
-                                    let res = Response::Err(c.BadRequest().Text(e.to_string()));
-                                    async {res}
-                                })
-                            }
-                            Err(e) => Box::pin({
-                                let res = Response::Err(c.BadRequest().Text(e.to_string()));
-                                async {res}
-                            })
-                        }
-                        Err(e) => Box::pin({
-                            let res = Response::Err(c.BadRequest().Text(e.to_string()));
-                            async {res}
-                        })
-                    }
-                    Err(e) => Box::pin({
-                        let res = Response::Err(c.BadRequest().Text(e.to_string()));
-                        async {res}
-                    }),
-                }
-            ))
-        }
-    }
+    // /*===== &str =====*/
+    // impl<'s, F, Fut, T, Item1:FromRequest> IntoHandler<(Context, (&str, Fut, T), Item1)> for F
+    // where
+    //     F:   Fn(Context, &'s str, Item1) -> Fut + Send + Sync + 'static,
+    //     Fut: Future<Output = Response<T>> + Send + Sync + 'static,
+    //     T:   serde::Serialize + Send + 'static,
+    // {
+    //     fn into_handler(self) -> Handler {
+    //         Handler(Box::new(move |req, c, params|
+    //             // SAFETY: Due to the architecture of `Router`,
+    //             // `params` has already `append`ed once before this code
+    //             match <&str as PathParam>::parse(&req.buffer[unsafe {params.list[0].assume_init_ref()}]) {
+    //                 Ok(p1) => match Item1::parse(&req) {
+    //                     Ok(item1) => Box::pin({
+    //                         let res = self(c, p1, item1);
+    //                         async {res.await.into_unit()}
+    //                     }),
+    //                     Err(e) => Box::pin({
+    //                         let res = Response::Err(c.BadRequest().Text(e.to_string()));
+    //                         async {res}
+    //                     })
+    //                 }
+    //                 Err(e) => Box::pin({
+    //                     let res = Response::Err(c.BadRequest().Text(e.to_string()));
+    //                     async {res}
+    //                 }),
+    //             }
+    //         ))
+    //     }
+    // }
+    // 
+    // impl<'s, F, Fut, T, Item1:FromRequest, Item2:FromRequest> IntoHandler<(Context, (&str, Fut, T), Item1, Item2)> for F
+    // where
+    //     F:   Fn(Context, &'s str, Item1, Item2) -> Fut + Send + Sync + 'static,
+    //     Fut: Future<Output = Response<T>> + Send + Sync + 'static,
+    //     T:   serde::Serialize + Send + 'static,
+    // {
+    //     fn into_handler(self) -> Handler {
+    //         Handler(Box::new(move |req, c, params|
+    //             // SAFETY: Due to the architecture of `Router`,
+    //             // `params` has already `append`ed once before this code
+    //             match <&str as PathParam>::parse(&req.buffer[unsafe {params.list[0].assume_init_ref()}]) {
+    //                 Ok(p1) => match Item1::parse(&req) {
+    //                     Ok(item1) => match Item2::parse(&req) {
+    //                         Ok(item2) => Box::pin({
+    //                             let res = self(c, p1, item1, item2);
+    //                             async {res.await.into_unit()}
+    //                         }),
+    //                         Err(e) => Box::pin({
+    //                             let res = Response::Err(c.BadRequest().Text(e.to_string()));
+    //                             async {res}
+    //                         })
+    //                     }
+    //                     Err(e) => Box::pin({
+    //                         let res = Response::Err(c.BadRequest().Text(e.to_string()));
+    //                         async {res}
+    //                     })
+    //                 }
+    //                 Err(e) => Box::pin({
+    //                     let res = Response::Err(c.BadRequest().Text(e.to_string()));
+    //                     async {res}
+    //                 }),
+    //             }
+    //         ))
+    //     }
+    // }
+    // 
+    // impl<'s, F, Fut, T, Item1:FromRequest, Item2:FromRequest, Item3:FromRequest> IntoHandler<(Context, (&str, Fut, T), Item1, Item2, Item3)> for F
+    // where
+    //     F:   Fn(Context, &'s str, Item1, Item2, Item3) -> Fut + Send + Sync + 'static,
+    //     Fut: Future<Output = Response<T>> + Send + Sync + 'static,
+    //     T:   serde::Serialize + Send + 'static,
+    // {
+    //     fn into_handler(self) -> Handler {
+    //         Handler(Box::new(move |req, c, params|
+    //             // SAFETY: Due to the architecture of `Router`,
+    //             // `params` has already `append`ed once before this code
+    //             match <&str as PathParam>::parse(&req.buffer[unsafe {params.list[0].assume_init_ref()}]) {
+    //                 Ok(p1) => match Item1::parse(&req) {
+    //                     Ok(item1) => match Item2::parse(&req) {
+    //                         Ok(item2) => match Item3::parse(&req) {
+    //                             Ok(item3) => Box::pin({
+    //                                 let res = self(c, p1, item1, item2, item3);
+    //                                 async {res.await.into_unit()}
+    //                             }),
+    //                             Err(e) => Box::pin({
+    //                                 let res = Response::Err(c.BadRequest().Text(e.to_string()));
+    //                                 async {res}
+    //                             })
+    //                         }
+    //                         Err(e) => Box::pin({
+    //                             let res = Response::Err(c.BadRequest().Text(e.to_string()));
+    //                             async {res}
+    //                         })
+    //                     }
+    //                     Err(e) => Box::pin({
+    //                         let res = Response::Err(c.BadRequest().Text(e.to_string()));
+    //                         async {res}
+    //                     })
+    //                 }
+    //                 Err(e) => Box::pin({
+    //                     let res = Response::Err(c.BadRequest().Text(e.to_string()));
+    //                     async {res}
+    //                 }),
+    //             }
+    //         ))
+    //     }
+    // }
 };
 
 const _: (/* one PathParam and FromRequest items */) = {

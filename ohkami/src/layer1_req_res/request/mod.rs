@@ -95,7 +95,7 @@ const _: () = {
             assert_eq!(req.path(), path);
             assert_eq!(req.payload().map(|(ct, s)| (ct.clone(), std::str::from_utf8(s).unwrap())), payload);
             for (k, v) in queries {
-                assert_eq!(req.query(k), Some(Ok(*v)))
+                assert_eq!(req.query::<String>(k), Some(Ok((*v).to_owned())))
             }
             for (k, v) in headers {
                 assert_eq!(req.header(k), Some(*v))

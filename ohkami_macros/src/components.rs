@@ -44,6 +44,12 @@ pub(crate) fn parse_struct(macro_name: &str, input: TokenStream) -> Result<ItemS
         )))
     }
 
+    if struct_tokens.generics.lifetimes().count() > 0 {
+        return Err(Error::new(Span::call_site(), format!(
+            "`#[{macro_name}]` doesn't support lifetime params"
+        )))
+    }
+
     struct_tokens.attrs = struct_tokens.attrs.into_iter()
         .filter(|attr| is_not(attr, macro_name))
         .collect();

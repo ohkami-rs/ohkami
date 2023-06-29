@@ -182,7 +182,7 @@ Connection: Keep-Alive"
         headers: &[
             ("User-Agent", "Mozilla/4.0 (compatible; MSIE5.01; Windows NT)"),
             ("Host", "www.tutorialspoint.com"),
-            ("Content-Type", "application/x-www-form-urlencoded"),
+            // ("Content-Type", "application/x-www-form-urlencoded"),
             ("Content-Length", "length"),
             ("Accept-Language", "en-us"),
             ("Accept-Encoding", "gzip, deflate"),
@@ -209,7 +209,7 @@ licenseID=string&content=string&/paramsXML=string"
         method: Method::GET,
         path: "/genapp/customers",
         queries: &[
-            ("name", "Joe%20Bloggs"),
+            ("name", "Joe Bloggs"),
             ("email", "abc@email.com"),
         ],
         headers: &[

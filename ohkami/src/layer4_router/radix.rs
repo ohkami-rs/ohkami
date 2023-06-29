@@ -29,7 +29,17 @@ pub(super) struct Node {
 pub(super) enum Pattern {
     Static(&'static [u8]),
     Param,
-}
+} const _: () = {
+    #[cfg(any(test, debug_assertions))]
+    impl std::fmt::Debug for Pattern {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            f.write_str(match self {
+                Self::Param         => ":Param",
+                Self::Static(bytes) => std::str::from_utf8(bytes).unwrap(),
+            })
+        }
+    }
+};
 
 
 /*===== impls =====*/
@@ -49,11 +59,20 @@ impl RadixRouter {
             Method::DELETE  => &self.DELETE,
             Method::OPTIONS => &self.OPTIONS,
         }.search(req.path_bytes()) else {
+            #[cfg(debug_assertions)]
+            println!("target Node not found");
+
             return Response::<()>::Err(c.NotFound()).send(&mut stream).await
         };
 
+        #[cfg(debug_assertions)]
+        println!("target Node found");
+
         match &target.handler {
             Some(handler) => {
+                #[cfg(debug_assertions)]
+                println!("handler found");
+
                 for front in target.front {
                     (c, req) = front(c, req).await;
                 }
@@ -98,8 +117,11 @@ impl Node {
 
         let mut target = self;
         loop {
+            #[cfg(debug_assertions)]
+            println!("patterns: {:?}", target.patterns);
+
             for pattern in target.patterns {
-                path = path.strip_prefix(&[b'/'])?;
+                path = path.strip_prefix(b"/")?;
                 match pattern {
                     Pattern::Static(s) => {
                         path = path.strip_prefix(*s)?;
@@ -122,6 +144,12 @@ impl Node {
             if path.is_empty() {
                 return Some((target, params))
             } else {
+                #[cfg(debug_assertions)]
+                match target.matchable_child(path) {
+                    None       => println!("matchable_child to path '{}': None", std::str::from_utf8(path).unwrap()),
+                    Some(node) => println!("matchable_child to path '{}': Some({:?})", std::str::from_utf8(path).unwrap(), node.patterns),
+                }
+
                 target = target.matchable_child(path)?
             }
         }
@@ -143,10 +171,11 @@ impl Node {
 
 impl Pattern {
     #[inline(always)] fn is_matchable_to(&self, path: &[u8]) -> bool {
+        let path = &path[1..]/* '/abc/def' -> 'abc/def' (to search pattern) */;
         match self {
-            Self::Param => true,
+            Self::Param     => true,
             Self::Static(s) => match find(b'/', path) {
-                Some(slach) => &path[..slach] == *s,
+                Some(slash) => &path[..slash] == *s,
                 None        => path == *s,
             }
         }

@@ -15,11 +15,11 @@ struct GetTasksQuery2 {
     name_end:   String,
 }
 
-#[Query]
-struct GetTasksQuery3<'ns, 'ne> {
-    limit:      usize,
-    name_start: &'ns str,
-    name_end:   &'ne str,
-}
+// #[Query]
+// struct GetTasksQuery3<'ns, 'ne> {
+//     limit:      usize,
+//     name_start: &'ns str,
+//     name_end:   &'ne str,
+// }
 
 fn main() {}

@@ -24,26 +24,26 @@ pub(super) fn Payload(format: TokenStream, data: TokenStream) -> Result<TokenStr
 
 fn impl_payload_json(data: &ItemStruct) -> Result<TokenStream> {
     let struct_name = &data.ident;
-    let lifetimes = &data.generics; // `parse_struct` checked this generics contains only lifetimes
+    // let lifetimes = &data.generics; // `parse_struct` checked this generics contains only lifetimes
 
-    let result_expr = if lifetimes.lifetimes().count() == 0 {
-        quote!{
-            ::std::result::Result::Ok(__payload__)
-        }
-    } else {
-        let req_lifetimes = lifetimes.lifetimes().map(|_| Lifetime::new("'req", Span::call_site()));
-        quote!{
-            ::std::result::Result::Ok(unsafe {
-                ::std::mem::transmute::<
-                    #struct_name<#( #req_lifetimes ),*>,
-                    #struct_name #lifetimes
-                >(__payload__)
-            })
-        }
-    };
+    // let result_expr = if lifetimes.lifetimes().count() == 0 {
+    //     quote!{
+    //         ::std::result::Result::Ok(__payload__)
+    //     }
+    // } else {
+    //     let req_lifetimes = lifetimes.lifetimes().map(|_| Lifetime::new("'req", Span::call_site()));
+    //     quote!{
+    //         ::std::result::Result::Ok(unsafe {
+    //             ::std::mem::transmute::<
+    //                 #struct_name<#( #req_lifetimes ),*>,
+    //                 #struct_name #lifetimes
+    //             >(__payload__)
+    //         })
+    //     }
+    // };
 
     Ok(quote!{
-        impl #lifetimes ::ohkami::FromRequest for #struct_name #lifetimes {
+        impl ::ohkami::FromRequest for #struct_name {
             fn parse<'req>(req: &'req ::ohkami::Request) -> ::std::result::Result<Self, ::std::borrow::Cow<'static, str>> {
                 let (content_type, payload) = req.payload()
                     .ok_or_else(|| ::std::borrow::Cow::Borrowed("Expected payload"))?;
@@ -51,7 +51,7 @@ fn impl_payload_json(data: &ItemStruct) -> Result<TokenStream> {
                     return ::std::result::Result::Err(::std::borrow::Cow::Borrowed("Expected payload of `Content-Type: application/json`"))
                 }
                 let __payload__ = ::ohkami::internal::parse_json(payload)?;
-                #result_expr
+                ::std::result::Result::Ok(__payload__)
             }
         }
     })
@@ -59,7 +59,7 @@ fn impl_payload_json(data: &ItemStruct) -> Result<TokenStream> {
 
 fn impl_payload_urlencoded(data: &ItemStruct) -> Result<TokenStream> {
     let struct_name = &data.ident;
-    let lifetimes = &data.generics; // `parse_struct` checked this generics contains only lifetimes
+    // let lifetimes = &data.generics; // `parse_struct` checked this generics contains only lifetimes
 
     let mut fields_data = Vec::<FieldData>::with_capacity(data.fields.len());
     struct FieldData {
@@ -163,7 +163,7 @@ fn impl_payload_urlencoded(data: &ItemStruct) -> Result<TokenStream> {
     };
 
     Ok(quote!{
-        impl #lifetimes ::ohkami::FromRequest for #struct_name #lifetimes {
+        impl ::ohkami::FromRequest for #struct_name {
             fn parse(req: &::ohkami::Request) -> ::std::result::Result<Self, ::std::borrow::Cow<'static, str>> {
                 let (content_type, payload) = req.payload()
                     .ok_or_else(|| ::std::borrow::Cow::Borrowed("Expected payload"))?;
