@@ -3,9 +3,10 @@ use percent_encoding::percent_decode;
 use serde::Deserialize;
 
 
-pub fn parse_json<'de, T: Deserialize<'de>>(buf: &'de [u8]) -> Result<T, Cow<'static, str>> {
-    serde_json::from_slice(buf)
-        .map_err(|e| Cow::Owned(e.to_string()))
+#[inline]
+pub fn parse_json<'req, T: Deserialize<'req>>(buf: &'req [u8]) -> Result<T, Cow<'static, str>> {
+        serde_json::from_slice(buf)
+            .map_err(|e| Cow::Owned(e.to_string()))
 }
 
 

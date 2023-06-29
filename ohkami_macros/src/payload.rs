@@ -1,5 +1,5 @@
-use proc_macro2::{TokenStream, Ident};
-use syn::{Result, ItemStruct, parse_str, Type};
+use proc_macro2::{TokenStream, Ident, Span};
+use syn::{Result, ItemStruct, parse_str, Type, Lifetime};
 use quote::{quote, ToTokens};
 
 use crate::components::*;
@@ -26,15 +26,32 @@ fn impl_payload_json(data: &ItemStruct) -> Result<TokenStream> {
     let struct_name = &data.ident;
     let lifetimes = &data.generics; // `parse_struct` checked this generics contains only lifetimes
 
+    let result_expr = if lifetimes.lifetimes().count() == 0 {
+        quote!{
+            ::std::result::Result::Ok(__payload__)
+        }
+    } else {
+        let req_lifetimes = lifetimes.lifetimes().map(|_| Lifetime::new("'req", Span::call_site()));
+        quote!{
+            ::std::result::Result::Ok(unsafe {
+                ::std::mem::transmute::<
+                    #struct_name<#( #req_lifetimes ),*>,
+                    #struct_name #lifetimes
+                >(__payload__)
+            })
+        }
+    };
+
     Ok(quote!{
         impl #lifetimes ::ohkami::FromRequest for #struct_name #lifetimes {
-            fn parse(req: &::ohkami::Request) -> ::std::result::Result<Self, ::std::borrow::Cow<'static, str>> {
+            fn parse<'req>(req: &'req ::ohkami::Request) -> ::std::result::Result<Self, ::std::borrow::Cow<'static, str>> {
                 let (content_type, payload) = req.payload()
                     .ok_or_else(|| ::std::borrow::Cow::Borrowed("Expected payload"))?;
                 if !content_type.is_json() {
                     return ::std::result::Result::Err(::std::borrow::Cow::Borrowed("Expected payload of `Content-Type: application/json`"))
                 }
-                ::ohkami::internal::parse_json(payload)
+                let __payload__ = ::ohkami::internal::parse_json(payload)?;
+                #result_expr
             }
         }
     })
@@ -54,10 +71,35 @@ fn impl_payload_urlencoded(data: &ItemStruct) -> Result<TokenStream> {
         let ident = field.ident.as_ref().unwrap(/* `parse_struct` checked fields is named */).clone();
         let (ty, is_optional) = {
             let mut stringified = field.ty.to_token_stream().to_string();
-            if stringified.starts_with("Option<") {
+            if stringified.starts_with("Option") {
                 stringified.pop(/* final '>' */);
                 (
-                    parse_str::<Type>(stringified.strip_prefix("Option<").unwrap())?,
+                    /*
+                        You know
+
+                            `Option<Inner>`
+                                |
+                                (.to_token_stream)
+                                |
+                            TokenStram {
+                                `Option`
+                             -> `<`
+                             -> `Inner`
+                             -> `>`
+                            }
+                                |
+                                (.to_string)
+                                |
+                            "Option < Inner >"
+                                    
+                        Take note that the string contains whitespaces as above:
+
+                        NOT
+                            "Option<"
+                        BUT
+                            "Option <"
+                    */
+                    parse_str::<Type>(stringified.strip_prefix("Option <").unwrap())?,
                     true,
                 )
             } else {
@@ -73,7 +115,7 @@ fn impl_payload_urlencoded(data: &ItemStruct) -> Result<TokenStream> {
     let declaring_exprs = {
         let exprs = fields_data.iter().map(|FieldData { ident, ty, .. }| {
             quote!{
-                let mut #ident = ::std::option::Option<#ty>::None;
+                let mut #ident = ::std::option::Option::<#ty>::None;
             }
         });
 
@@ -84,17 +126,17 @@ fn impl_payload_urlencoded(data: &ItemStruct) -> Result<TokenStream> {
 
     let parsing_expr = {
         let arms = fields_data.iter().map(|FieldData { ident, ty, .. }| {
-            let ident_asstr = ident.to_string();
+            let ident_str = ident.to_string();
             quote!{
-                #ident_asstr => #ident.replace(<#ty as ::ohkami::internal::FromBuffer>::parse(v.as_bytes())?)
+                #ident_str => #ident.replace(<#ty as ::ohkami::internal::FromBuffer>::parse(v.as_bytes())?)
                     .map_or(::std::result::Result::Ok(()), |_|
-                        ::std::result::Result::Err(::std::borrow::Cow::Borrowed(concat!("duplicated key: `", #ident,"`")))
+                        ::std::result::Result::Err(::std::borrow::Cow::Borrowed(concat!("duplicated key: `", #ident_str,"`")))
                     )?,
             }
         });
 
         quote!{
-            for (k, v) in ::ohkami::internal::parse_payload(payload) {
+            for (k, v) in ::ohkami::internal::parse_urlencoded(payload) {
                 match &*k {
                     #( #arms )*
                     unexpected => return ::std::result::Result::Err(::std::borrow::Cow::Owned(format!("unexpected key: `{unexpected}`")))
@@ -108,7 +150,8 @@ fn impl_payload_urlencoded(data: &ItemStruct) -> Result<TokenStream> {
             if *is_optional {
                 quote!{ #ident, }
             } else {
-                quote!{ #ident: #ident.ok_or_else(|| ::std::borrow::Cow::Borrowed(concat!("`", #ident, "` is not found")))?, }
+                let ident_str = ident.to_string();
+                quote!{ #ident: #ident.ok_or_else(|| ::std::borrow::Cow::Borrowed(concat!("`", #ident_str, "` is not found")))?, }
             }
         });
 

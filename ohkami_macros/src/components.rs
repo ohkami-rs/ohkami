@@ -16,7 +16,8 @@ pub(crate) enum Format {
             _ => Err(Error::new(Span::call_site(), "\
                 Valid format: \n\
                 - `#[Payload(JSON)]` \n\
-                - `#[Payload(Form)]` \n\
+                - `#[Payload(URLEncoded)]` \n\
+                - `#[Payload(Form)]` (NOT implemented) \n\
             "))
         }
     }
