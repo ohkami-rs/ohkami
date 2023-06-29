@@ -1,6 +1,5 @@
+#![allow(unused)]
 use ohkami::Payload;
-
-fn main() {}
 
 #[Payload(JSON)]
 #[derive(serde::Deserialize)]
@@ -38,3 +37,5 @@ struct UpdateUserRequest3<'name, 'password> {
     password: &'password str,
     age:      Option<u8>,
 }
+
+fn main() {}
