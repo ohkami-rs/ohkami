@@ -1,36 +1,37 @@
-use ohkami::{
-    Context, Response, Ohkami, Route,
-    Query,
-};
+mod handler {
+    use ohkami::{Context, Response, Query};
 
-
-async fn health_check(c: Context) -> Response {
-    c.NoContent()
-}
-
-
-#[Query]
-struct HelloQuery<'name> {
-    name:   &'name str,
-    repeat: Option<usize>,
-}
-
-async fn hello<'q>(c: Context, query: HelloQuery<'q>) -> Response<String> {
-    let HelloQuery { name, repeat } = query;
-    let message = format!("Hello, {name}!").repeat(repeat.unwrap_or(0));
-    c.Text(message)
-}
-
-
-fn main() {
-    async fn serve() {
-        Ohkami::new()(
-            "/hc"
-                .GET(health_check),
-            "/hello"
-                .GET(hello),
-        ).howl(3000).await
+    pub async fn health_check(c: Context) -> Response {
+        c.NoContent()
     }
 
-    async_std::task::block_on(serve())
+    #[Query]
+    pub struct HelloQuery<'name> {
+        name:   &'name str,
+        repeat: Option<usize>,
+    }
+
+    pub async fn hello<'q>(c: Context, query: HelloQuery<'q>) -> Response<String> {
+        let HelloQuery { name, repeat } = query;
+        let message = format!("Hello, {name}!").repeat(repeat.unwrap_or(0));
+        c.Text(message)
+    }
+}
+
+mod server {
+    use ohkami::{Ohkami, Route};
+    use crate::handler as h;
+
+    pub async fn serve() {
+        Ohkami::new()(
+            "/hc"
+                .GET(h::health_check),
+            "/hello"
+                .GET(h::hello),
+        ).howl(3000).await
+    }
+}
+
+fn main() {
+    async_std::task::block_on(server::serve())
 }
