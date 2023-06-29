@@ -81,7 +81,7 @@ pub use layer2_context     ::{Context};
 pub use layer3_fang_handler::{Route, GlobalFangs};
 pub use layer5_ohkami      ::{Ohkami};
 
-pub use ohkami_macros      ::{Queries, Payload};
+pub use ohkami_macros      ::{Query, Payload};
 
 #[doc(hidden)]
 pub mod internal {
