@@ -2,7 +2,7 @@ name: test
 on: [pull_request]
 
 jobs:
-  run-test:
+  cargo-test:
     runs-on: ubuntu-latest
 
     strategy:

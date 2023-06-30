@@ -2,7 +2,7 @@ name: check
 on: [pull_request]
 
 jobs:
-  run-test:
+  carrgo-check:
     runs-on: ubuntu-latest
 
     strategy:
