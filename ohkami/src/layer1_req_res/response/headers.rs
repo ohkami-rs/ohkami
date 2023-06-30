@@ -65,8 +65,12 @@ macro_rules! ResponseHeaders {
                     Connection: Keep-Alive\r\n\
                     Keep-Alive: timout=5\r\n\
                     Date: {__now__}\r\n\
-                    {__cors__}\r\n\
-                ", );
+                    {__cors__}\
+                ", ); /*
+                    taske note:
+                        `__cors__` is a series of lines
+                        each of which ends with '\r\n'
+                */
 
                 $(
                     if self.$group {
