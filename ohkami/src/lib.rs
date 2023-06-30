@@ -2,8 +2,6 @@
 #![feature(
     try_trait_v2,
     fn_traits, unboxed_closures,
-    generic_const_exprs,
-    lazy_cell,
 )]
 
 #![allow(incomplete_features)]
