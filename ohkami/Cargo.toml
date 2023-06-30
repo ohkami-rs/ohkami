@@ -28,4 +28,4 @@ rt_tokio = ["dep:tokio"]
 rt_async-std = ["dep:async-std"]
 
 ##### DEBUG #####
-default = ["rt_tokio"]
+# default = ["rt_tokio"]
