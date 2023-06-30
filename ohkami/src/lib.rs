@@ -56,9 +56,7 @@ mod __dep__ {
     pub(crate) use async_std::io::WriteExt as AsyncWriter;
 
     #[cfg(feature="rt_async-std")]
-    pub(crate) use async_std::{
-        StreamExt,
-    };
+    pub(crate) use async_std::stream::StreamExt;
 }
 
 
