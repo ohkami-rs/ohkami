@@ -4,12 +4,11 @@
 
 ### ＊This README is my working draft. So codes in "Quick start" or "Samples" don't work yet.<br/>
 
-ohkami *- [狼] wolf in Japanese -* is **ergonomic** web framework for **nightly** Rust.
+ohkami *- [狼] wolf in Japanese -* is **macro free** and **declarative** web framework for *nightly* Rust.
 
 ## Features
-- *nightly only*
-- *macro free, ergonomic APIs*
-- *multi runtime*：`tokio`, `async-std`, `lunatic (in future)`
+- *macro free, declarative APIs*
+- supporting *multi runtime*：`tokio`, `async-std` (and more in future)
 
 <br/>
 
@@ -18,33 +17,33 @@ ohkami *- [狼] wolf in Japanese -* is **ergonomic** web framework for **nightly
 
 ```toml
 # this sample uses `tokio` runtime.
-# you can choose `async-std` (and `lunatic` in future) instead.
+# you can choose `async-std` instead.
 
 [dependencies]
-ohkami = { version = "0.9.0", features = ["tokio"] }
+ohkami = { version = "0.9.0", features = ["rt_tokio"] }
 tokio = { version = "1.27", fetures = ["full"] }
 ```
-(And, if needed, change your Rust toolchains into **nightly** ones)
+(And check if your Rust toolchains are **nightly** ones)
 
 2. Write your first code with ohkami：
 
 ```rust
 use ohkami::prelude::*;
 
-async fn hello(c: Context) -> Response<&'static str> {
-    c.text("Hello!")
-}
-
 async fn health_check(c: Context) -> Response<()> {
     c.NoContent()
 }
 
+async fn hello(c: Context, name: &str) -> Response<&str> {
+    c.text(format!("Hello, {name}!"))
+}
+
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() {
     Ohkami::new([
-        "/"  .GET(hello),
-        "/hc".GET(health_check),
-    ]).howl(":3000").await
+        "/hc"   .GET(health_check),
+        "/:name".GET(hello),
+    ]).howl(3000).await
 }
 ```
 
@@ -52,10 +51,10 @@ async fn main() -> Result<()> {
 
 ## handler format
 ```rust
-async fn $handler(c: Context,
+async fn $handler((mut)? c: Context,
     (
-        $path_param: $PathType1,
-        | ($path_param,): ($PathType,),
+        $p1: $P1
+        | ($p1,): ($P1,)
         | ($p1, $p2): ($P1, $P2),
     )?
     ( $query_params: $QueryType, )?
@@ -64,6 +63,7 @@ async fn $handler(c: Context,
     // ...
 }
 ```
+( If you'd like to alter some response headers in a handler, `c` needs to be `mut`. )
 
 <br/>
 
@@ -72,7 +72,7 @@ async fn $handler(c: Context,
 ### handle path/query params
 ```rust
 use ohkami::prelude::*;
-use ohkami::QueryParams;
+use ohkami::request::Queries;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -83,7 +83,7 @@ async fn main() -> Result<()> {
     ]).howl("localhost:5000").await
 }
 
-#[QueryParams]
+#[Queries]
 struct GetUserQuery {
     q: Option<u64>,
 }
@@ -103,11 +103,11 @@ async fn get_user(c: Context,
 ```rust
 use ohkami::{
     prelude::*,
-    request::RequestBody,
+    request::Payload,
     utils::f,
 };
 
-#[RequestBody(JSON)]
+#[Payload(JSON)]
 struct CreateUserRequest {
     name:     String,
     password: String,
@@ -122,7 +122,7 @@ async fn create_user(c: Context,
     c.NoContent()
 }
 
-#[RequestBody(Form)]
+#[Payload(Form)]
 struct LoginInput {
     name:     String,
     password: String,
@@ -130,7 +130,7 @@ struct LoginInput {
 
 async fn post_login(c: Context,
     input: LoginInput
-) -> Response<JWT> {
+) -> Response<JSON> {
 
     // ...
 
@@ -141,7 +141,7 @@ async fn post_login(c: Context,
 ```
 You can register validating function：
 ```rust
-#[RequestBody(JSON @ Self::validate)]
+#[Payload(JSON @ Self::validate)]
 struct CreateUserRequest {
     name:     String,
     password: String,
@@ -170,7 +170,7 @@ struct CreateUserRequest {
 ohkami's middlewares are called "**fang**s".
 ```rust
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> Result<(), Error> {
     let fangs = Fangs::new()
         .before("/api/*", my_fang);
 
@@ -193,7 +193,7 @@ async fn my_fang(
 ### pack of Ohkamis
 ```rust
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> Result<(), Error> {
     // ...
 
     let users_ohkami = Ohkami::with(users_fangs, [
@@ -216,15 +216,16 @@ async fn main() -> Result<()> {
 }
 ```
 
-### easy error handling
+### error handling
+Use **`.map_err(|e| c. /* error_method */ )?`**：
+
 ```rust
 use ohkami::prelude::*;
-use ohkami::utils::{CatchError, f};
 
 async fn handler(c: Context) -> Response</* ... */> {
     make_result()
-        .catch(|err| c.InternalServerError(
-            f!("Got error: {err}")
+        .map_err(|e| c.InternalError().text(
+            format!("Got error: {e}")
         ))?;
 }
 ```
