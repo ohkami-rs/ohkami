@@ -1,6 +1,8 @@
 /* ref: https://developer.mozilla.org/ja/docs/Web/HTTP/Headers */
 #![allow(non_snake_case)]
 
+#![allow(unused)] // until ....
+
 use std::{collections::BTreeMap};
 
 
@@ -63,7 +65,7 @@ macro_rules! ResponseHeaders {
                     Connection: Keep-Alive\r\n\
                     Keep-Alive: timout=5\r\n\
                     Date: {__now__}\r\n\
-                    {__cors__}\
+                    {__cors__}\r\n\
                 ", );
 
                 $(

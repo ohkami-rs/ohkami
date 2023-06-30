@@ -1,5 +1,5 @@
-use std::{ops::Index, borrow::Cow};
-use crate::{Error, __dep__::{TcpStream, StreamReader}};
+use std::{ops::Index};
+use crate::{__dep__::{TcpStream, AsyncReader}};
 
 pub(crate) const BUFFER_SIZE: usize = 1024;
 pub(crate) type BufRange = std::ops::Range<usize>;

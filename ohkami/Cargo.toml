@@ -15,7 +15,7 @@ license = "MIT"
 [dependencies]
 ohkami_macros = { version = "0.2", path = "../ohkami_macros" }
 
-tokio = { optional = true, version = "1", features = ["net"] }
+tokio = { optional = true, version = "1", features = ["net", "rt", "io-util"] }
 async-std = { optional = true, version = "1" }
 
 serde = { version = "1.0", features = ["derive"] }
@@ -28,4 +28,4 @@ rt_tokio = ["dep:tokio"]
 rt_async-std = ["dep:async-std"]
 
 ##### DEBUG #####
-default = ["rt_async-std"]
+default = ["rt_tokio"]

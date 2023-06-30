@@ -8,8 +8,8 @@ type Range = std::ops::Range<usize>;
 #[derive(Clone)]
 #[cfg_attr(any(test, debug_assertions), derive(Debug))]
 pub struct RouteSections {
-    route:    &'static [u8],
-    sections: VecDeque<RouteSection>
+    #[allow(unused)] route:    &'static [u8],
+    sections:                  VecDeque<RouteSection>,
 } impl RouteSections {
     pub(crate) fn from_literal(route: &'static str) -> Self {
         if route.is_empty() {panic!("Found an empty route: `{route}`")}

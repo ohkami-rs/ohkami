@@ -1,5 +1,5 @@
-use proc_macro2::{TokenStream, Ident, Span};
-use syn::{Result, ItemStruct, parse_str, Type, Lifetime};
+use proc_macro2::{TokenStream, Ident};
+use syn::{Result, ItemStruct, parse_str, Type};
 use quote::{quote, ToTokens};
 
 use crate::components::*;
@@ -24,24 +24,7 @@ pub(super) fn Payload(format: TokenStream, data: TokenStream) -> Result<TokenStr
 
 fn impl_payload_json(data: &ItemStruct) -> Result<TokenStream> {
     let struct_name = &data.ident;
-    // let lifetimes = &data.generics; // `parse_struct` checked this generics contains only lifetimes
-
-    // let result_expr = if lifetimes.lifetimes().count() == 0 {
-    //     quote!{
-    //         ::std::result::Result::Ok(__payload__)
-    //     }
-    // } else {
-    //     let req_lifetimes = lifetimes.lifetimes().map(|_| Lifetime::new("'req", Span::call_site()));
-    //     quote!{
-    //         ::std::result::Result::Ok(unsafe {
-    //             ::std::mem::transmute::<
-    //                 #struct_name<#( #req_lifetimes ),*>,
-    //                 #struct_name #lifetimes
-    //             >(__payload__)
-    //         })
-    //     }
-    // };
-
+    
     Ok(quote!{
         impl ::ohkami::FromRequest for #struct_name {
             fn parse<'req>(req: &'req ::ohkami::Request) -> ::std::result::Result<Self, ::std::borrow::Cow<'static, str>> {

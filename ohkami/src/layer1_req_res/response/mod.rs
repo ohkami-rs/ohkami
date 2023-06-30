@@ -8,7 +8,7 @@ use std::{
     convert::Infallible,
 };
 use crate::{
-    __dep__, __dep__::StreamWriter,
+    __dep__, __dep__::AsyncWriter,
     layer0_lib::{Status, ContentType, AsStr, IntoCow},
 };
 

@@ -1,6 +1,6 @@
 use proc_macro2::{TokenStream};
 use quote::{quote, ToTokens};
-use syn::{Result, parse, parse_str, Type};
+use syn::{Result, parse_str, Type};
 
 use crate::components::*;
 

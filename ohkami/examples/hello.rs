@@ -1,3 +1,6 @@
+#![allow(unused)]
+fn main() {}
+
 mod handlers {
     use ohkami::{Context, Response, Query};
 
@@ -30,8 +33,4 @@ mod server {
                 .GET(h::hello),
         ).howl(3000).await
     }
-}
-
-fn main() {
-    async_std::task::block_on(server::serve())
 }

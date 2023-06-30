@@ -41,24 +41,24 @@ mod __dep__ {
     pub(crate) use async_std::net::TcpListener as TcpListener;
 
     #[cfg(feature="rt_tokio")]
-    pub(crate) use tokio::__TODO__ as StreamReader;
-    #[cfg(feature="rt_async-std")]
-    pub(crate) use async_std::io::ReadExt as StreamReader;
-
-    #[cfg(feature="rt_tokio")]
-    pub(crate) use tokio::__TODO__ as StreamWriter;
-    #[cfg(feature="rt_async-std")]
-    pub(crate) use async_std::io::WriteExt as StreamWriter;
-
-    #[cfg(feature="rt_tokio")]
-    pub(crate) use tokio::__TODO__ as StreamIterater;
-    #[cfg(feature="rt_async-std")]
-    pub(crate) use async_std::stream::StreamExt as StreamIterater;
-
-    #[cfg(feature="rt_tokio")]
     pub(crate) use tokio::task as task;
     #[cfg(feature="rt_async-std")]
     pub(crate) use async_std::task as task;
+
+    #[cfg(feature="rt_tokio")]
+    pub(crate) use tokio::io::AsyncReadExt as AsyncReader;
+    #[cfg(feature="rt_async-std")]
+    pub(crate) use async_std::io::ReadExt as AsyncReader;
+
+    #[cfg(feature="rt_tokio")]
+    pub(crate) use tokio::io::AsyncWriteExt as AsyncWriter;
+    #[cfg(feature="rt_async-std")]
+    pub(crate) use async_std::io::WriteExt as AsyncWriter;
+
+    #[cfg(feature="rt_async-std")]
+    pub(crate) use async_std::{
+        StreamExt,
+    };
 }
 
 
