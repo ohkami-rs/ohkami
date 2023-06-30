@@ -1,4 +1,4 @@
-name: test
+name: check
 on: [pull_request]
 
 jobs:
@@ -20,5 +20,5 @@ jobs:
 
       - uses: actions-rs/cargo@v1
         with:
-          command: test
-          args: --lib --features rt_${{ matrix.rt }}
+          command: check
+          args: --features rt_${{ matrix.rt }}
