@@ -285,7 +285,7 @@ impl Node {
             }
         } else {
             if another_handler.is_some() {
-                return Err(format!("COnflicting handler registeration"));
+                return Err(format!("Conflicting handler registeration"));
             }
         }
 
