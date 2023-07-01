@@ -60,7 +60,7 @@ mod fang {
         let __path__   = req.path();
 
         tracing::info!("\
-            Gor request:\n\
+            Got request:\n\
             [ method ] {__method__}\n\
             [  path  ] {__path__}\n\
         ");
@@ -72,9 +72,13 @@ mod fang {
 async fn main() {
     use ohkami::{Ohkami, GlobalFangs, Route};
 
+    tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::INFO)
+        .init();
+
     GlobalFangs::new()
         .NotFound(|nf| nf
-            .Text("Noe resource for that request found")
+            .Text("No resource for that request found")
         )
         .apply();
 
@@ -84,6 +88,8 @@ async fn main() {
         "/json".
             POST(hello_handler::hello_by_json),
     );
+
+    tracing::info!("Started listening on http://localhost:3000");
 
     Ohkami::with((fang::log_request,))(
         "/hc" .GET(health_handler::health_check),
