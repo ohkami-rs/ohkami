@@ -61,12 +61,11 @@ mod fang {
 
         tracing::info!("\
             Gor request:\n\
-            [method] {__method__} \n\
-            [path]   {__path__} \n\
+            [ method ] {__method__}\n\
+            [  path  ] {__path__}\n\
         ");
     }
 }
-
 
 
 #[tokio::main]
