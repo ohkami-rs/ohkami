@@ -171,7 +171,9 @@ impl Node {
 
     fn apply_fang(&mut self, fang: Fang) {
         for child in &mut self.children {
-            child.apply_fang(fang.clone())
+            if child.handler.is_some() {
+                child.apply_fang(fang.clone())
+            }
         }
         self.fangs.push(fang);
     }
