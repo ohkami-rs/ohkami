@@ -30,7 +30,10 @@ macro_rules! build_routing {
                 $(
                     routes = $routing_item.apply(routes);
                 )*
-                super::Ohkami{ routes }
+                super::Ohkami{
+                    routes,
+                    fangs: Vec::new(),
+                }
             }
         }
     };

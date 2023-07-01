@@ -29,9 +29,13 @@ pub trait TCPAddress {
 
 impl Ohkami {
     pub async fn howl(self, address: impl TCPAddress) {
-        let router = Arc::new(
-            self.routes.into_radix()
-        );
+        let router = Arc::new({
+            let mut routes = self.routes;
+            for fang in self.fangs {
+                routes = routes.apply_fang(fang)
+            }
+            routes.into_radix()
+        });
         
         let listener = match __dep__::TcpListener::bind(address.parse()).await {
             Ok(listener) => listener,

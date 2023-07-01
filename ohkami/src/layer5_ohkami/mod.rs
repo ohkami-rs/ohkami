@@ -3,6 +3,7 @@ mod build;
 mod howl;
 
 use crate::{
+    layer3_fang_handler::Fang,
     layer4_router::TrieRouter,
 };
 
@@ -41,18 +42,23 @@ use crate::{
 /// ```
 pub struct Ohkami {
     pub(crate) routes: TrieRouter,
+
+    /// apply just before `howl`
+    pub(crate) fangs:  Vec<Fang>,
 }
 
 impl Ohkami {
     pub fn new() -> Self {
-        Self { routes: TrieRouter::new() }
+        Self {
+            routes: TrieRouter::new(),
+            fangs:  Vec::new(),
+        }
     }
 
     pub fn with<G>(fangs: impl with_fangs::Fangs<G>) -> Self {
-        let mut routes = TrieRouter::new();
-        for fang in fangs.collect() {
-            routes = routes.apply_fang(fang)
+        Self {
+            routes: TrieRouter::new(),
+            fangs:  fangs.collect(),
         }
-        Self { routes }
     }
 }
