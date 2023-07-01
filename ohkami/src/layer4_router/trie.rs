@@ -175,7 +175,9 @@ impl Node {
                 child.apply_fang(fang.clone())
             }
         }
-        self.fangs.push(fang);
+        if self.handler.is_some() {
+            self.fangs.push(fang)
+        }
     }
 
     fn into_radix(self) -> super::radix::Node {
