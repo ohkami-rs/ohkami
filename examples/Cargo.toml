@@ -1,0 +1,11 @@
+[workspace]
+members = [
+    "hello"
+]
+
+[workspace.dependencies]
+ohkami = { version = "0.9", path = "../ohkami", features = ["rt_tokio"] }
+tokio  = { version = "1", features = ["full"] }
+serde  = { version = "1", features = ["derive"] }
+tracing = "0.1"
+tracing-subscriber = "0.3"
