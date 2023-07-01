@@ -78,11 +78,6 @@ async fn main() {
         )
         .apply();
 
-    let health_ohkami = Ohkami::new()(
-        "/".
-            GET(health_handler::health_check)
-    );
-
     let hello_ohkami = Ohkami::with((fang::append_server,))(
         "/query".
             GET(hello_handler::hello_by_query),
@@ -91,7 +86,7 @@ async fn main() {
     );
 
     Ohkami::with((fang::log_request,))(
-        "/hc" .by(health_ohkami),
+        "/hc" .GET(health_handler::health_check),
         "/api".by(hello_ohkami),
     ).howl(3000).await
 }
