@@ -17,21 +17,21 @@ const _: () = {
 
 /*===== defs =====*/
 pub struct TrieRouter {
-    GET: Node,
-    PUT: Node,
-    POST: Node,
-    HEAD: Node,
-    PATCH: Node,
-    DELETE: Node,
-    OPTIONS: Node,
+    pub(super/* for test */) GET:     Node,
+    pub(super/* for test */) PUT:     Node,
+    pub(super/* for test */) POST:    Node,
+    pub(super/* for test */) HEAD:    Node,
+    pub(super/* for test */) PATCH:   Node,
+    pub(super/* for test */) DELETE:  Node,
+    pub(super/* for test */) OPTIONS: Node,
 }
 
 pub(super/* for test */) struct Node {
     /// Why Option: root node doesn't have pattern
-    pattern:  Option<Pattern>,
-    fangs:    Vec<Fang>,
-    handler:  Option<Handler>,
-    children: Vec<Node>,
+    pub(super/* for test */) pattern:  Option<Pattern>,
+    pub(super/* for test */) fangs:    Vec<Fang>,
+    pub(super/* for test */) handler:  Option<Handler>,
+    pub(super/* for test */) children: Vec<Node>,
 }
 
 #[derive(Clone)]
