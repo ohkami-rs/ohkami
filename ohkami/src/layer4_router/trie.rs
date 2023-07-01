@@ -26,7 +26,7 @@ pub struct TrieRouter {
     OPTIONS: Node,
 }
 
-struct Node {
+pub(super/* for test */) struct Node {
     /// Why Option: root node doesn't have pattern
     pattern:  Option<Pattern>,
     fangs:    Vec<Fang>,
@@ -35,7 +35,7 @@ struct Node {
 }
 
 #[derive(Clone)]
-enum Pattern {
+pub(super/* for test */) enum Pattern {
     Static{ route: &'static [u8], range: Range },
     Param,
 } const _: () = {
