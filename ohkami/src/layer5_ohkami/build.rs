@@ -1,6 +1,7 @@
 #![allow(non_snake_case, unused_mut)]
 
 use crate::{
+    Ohkami,
     layer3_fang_handler::{Handlers, ByAnother},
     layer4_router::{TrieRouter},
 };
@@ -23,14 +24,14 @@ trait Rounting {
 
 macro_rules! build_routing {
     ($( $routing_item:ident ),*) => {
-        impl<$($routing_item: Rounting),*> FnOnce<($($routing_item,)*)> for super::Ohkami {
-            type Output = super::Ohkami;
+        impl<$($routing_item: Rounting),*> FnOnce<($($routing_item,)*)> for Ohkami {
+            type Output = Ohkami;
             extern "rust-call" fn call_once(self, ($($routing_item,)*): ($($routing_item,)*)) -> Self::Output {
                 let mut routes = self.routes;
                 $(
                     routes = $routing_item.apply(routes);
                 )*
-                super::Ohkami{
+                Ohkami{
                     routes,
                     fangs: Vec::new(),
                 }

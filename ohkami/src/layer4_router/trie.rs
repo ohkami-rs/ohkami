@@ -94,7 +94,13 @@ impl TrieRouter {
 
     pub(crate) fn merge_another(mut self, another: ByAnother) -> Self {
         let ByAnother { route, ohkami } = another;
-        let another_routes = ohkami.routes;
+        let another_routes = {
+            let mut routes = ohkami.routes;
+            for fang in ohkami.fangs {
+                routes = routes.apply_fang(fang)
+            }
+            routes
+        };
 
         self.GET.merge_node(route.clone().into_iter(), another_routes.GET);
         self.PUT.merge_node(route.clone().into_iter(), another_routes.PUT);
