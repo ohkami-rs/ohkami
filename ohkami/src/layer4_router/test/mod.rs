@@ -39,7 +39,6 @@ use crate::layer3_fang_handler::{Fang, Handler};
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             f.debug_struct("Trie")
                 .field("GET", &self.GET)
-                .field("POST", &self.POST)
                 .finish()
         }
     }
@@ -48,15 +47,14 @@ use crate::layer3_fang_handler::{Fang, Handler};
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             match &self.pattern {
                 None => f.debug_struct("Node")
-                    .field("fangs", &self.fangs)
                     .field("handler", &self.handler)
+                    .field("fangs", &self.fangs)
                     .field("children", &self.children)
                     .finish(),
-                Some(p) => f.debug_struct("Node")
-                    .field("fangs", &self.fangs)
+                Some(p) => f.debug_struct(&format!("Node({p:?})"))
                     .field("handler", &self.handler)
+                    .field("fangs", &self.fangs)
                     .field("children", &self.children)
-                    .field("pattern", p)
                     .finish(),
             }
         }
@@ -64,16 +62,15 @@ use crate::layer3_fang_handler::{Fang, Handler};
 
     impl PartialEq for t::TrieRouter {
         fn eq(&self, other: &Self) -> bool {
-            self.GET == other.GET &&
-            self.POST == other.POST
+            self.GET == other.GET
         }
     }
 
     impl PartialEq for t::Node {
         fn eq(&self, other: &Self) -> bool {
-            self.pattern == other.pattern &&
-            self.handler == other.handler &&
-            self.fangs == other.fangs &&
+            self.pattern  == other.pattern  &&
+            self.handler  == other.handler  &&
+            self.fangs    == other.fangs    &&
             self.children == other.children
         }
     }

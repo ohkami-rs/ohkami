@@ -43,7 +43,9 @@ pub(super/* for test */) enum Pattern {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             match self {
                 Self::Param                   => f.write_str(":Param"),
-                Self::Static { route, range } => f.write_str(std::str::from_utf8(&route[range.clone()]).unwrap()),
+                Self::Static { route, range } => f.write_str(&format!(
+                    "'{}'", std::str::from_utf8(&route[range.clone()]).unwrap()
+                )),
             }
         }
     }
@@ -171,9 +173,7 @@ impl Node {
 
     fn apply_fang(&mut self, fang: Fang) {
         for child in &mut self.children {
-            if child.handler.is_some() {
-                child.apply_fang(fang.clone())
-            }
+            child.apply_fang(fang.clone())
         }
         if self.handler.is_some() {
             self.fangs.push(fang)

@@ -3,6 +3,23 @@ use super::super::trie::*;
 use Pattern::*;
 
 
+macro_rules! assert_eq {
+    ($left:ident, $right:ident) => {
+        if $left != $right {
+            panic!("\n\
+                \n\
+                ===== {}:{}:{} =====\n\
+                \n\
+                [left]\n\
+                {:#?}\n\
+                \n\
+                [right]\n\
+                {:#?}\n\
+            ", file!(), line!(), column!(), $left, $right)
+        }
+    };
+}
+
 async fn h(c: Context) -> Response {c.NoContent()}
 fn H() -> Handler {h.into_handler()}
 
@@ -25,8 +42,13 @@ async fn f3(req: &Request) {
 }
 fn F3() -> Fang {f3.into_fang()}
 
-fn root(handler: Option<fn()->Handler>, children: Vec<Node>) -> Node {
-    Node { pattern: None, fangs: vec![], handler: handler.map(|ih| ih()), children }
+fn root(handler: Option<fn()->Handler>, fangs: Vec<fn()->Fang>, children: Vec<Node>) -> Node {
+    Node {
+        pattern: None,
+        fangs:   fangs.into_iter().map(|i_f| i_f()).collect(),
+        handler: handler.map(|ih| ih()),
+        children
+    }
 }
 
 
@@ -45,7 +67,7 @@ fn root(handler: Option<fn()->Handler>, children: Vec<Node>) -> Node {
         .register_handlers("/api/xyz/zyx"      .GET(h));
 
     let correct = TrieRouter {
-        GET: root(Some(H), vec![
+        GET: root(Some(H), vec![], vec![
             node(Static{route: b"/abc", range: 1..4}, Some(H), vec![
                 node(Param, Some(H), vec![])
             ]),
@@ -66,24 +88,42 @@ fn root(handler: Option<fn()->Handler>, children: Vec<Node>) -> Node {
 
 
 #[test] fn test_apply_fang() {
-    fn node(pattern: Pattern, fangs: Vec<fn()->Fang>, children: Vec<Node>) -> Node {
+    fn node(pattern: Pattern, handler: Option<fn()->Handler>, fangs: Vec<fn()->Fang>, children: Vec<Node>) -> Node {
         Node {
             pattern: Some(pattern),
-            handler: None,
+            handler: handler.map(|ih| ih()),
             fangs: fangs.into_iter().map(|into_fang| into_fang()).collect(),
             children,
         }
     }
+
 
     let built = TrieRouter::new()
         .apply_fang(F1())
         .apply_fang(F2())
         .apply_fang(F3());
 
+    let correct = TrieRouter::new();
+
+    // F1, F2, F3 are not registered to any Node
+    // because no Node in `built` has handler
+    assert_eq!(built, correct);
+
+    
+    let built = TrieRouter::new()
+        .register_handlers("/"         .GET(h))
+        .register_handlers("/api/hello".GET(h))
+        .apply_fang(F1())
+        .apply_fang(F2());
+
     let correct = TrieRouter {
-        GET: root(None, vec![]),
+        GET: root(Some(H), vec![F1, F2], vec![
+            node(Static{route: b"/api/hello", range: 1..4}, None, vec![], vec![
+                node(Static{route: b"/api/hello", range: 5..10}, Some(H), vec![F1, F2], vec![])
+            ])
+        ]),
         ..TrieRouter::new()
     };
 
-    assert_eq!(built, correct)
+    assert_eq!(built, correct);
 }
