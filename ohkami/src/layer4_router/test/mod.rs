@@ -28,7 +28,7 @@ use crate::layer3_fang_handler::{Fang, Handler};
     }
 
     impl PartialEq for Handler {
-        fn eq(&self, other: &Self) -> bool {
+        fn eq(&self, _: &Self) -> bool {
             true
         }
     }
@@ -72,24 +72,6 @@ use crate::layer3_fang_handler::{Fang, Handler};
             self.handler  == other.handler  &&
             self.fangs    == other.fangs    &&
             self.children == other.children
-        }
-    }
-
-    impl PartialEq for t::Pattern {
-        fn eq(&self, other: &Self) -> bool {
-            match self {
-                Self::Param => match other {
-                    Self::Param => true,
-                    _ => false,
-                }
-                Self::Static{ route, range } => {
-                    let bytes = &route[range.clone()];
-                    match other {
-                        Self::Static{ route, range } => &route[range.clone()] == bytes,
-                        _ => false
-                    }
-                }
-            }
         }
     }
 };

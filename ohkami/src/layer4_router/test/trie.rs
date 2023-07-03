@@ -1,4 +1,6 @@
-use crate::{Context, Response, Route, layer3_fang_handler::{IntoHandler, Handler, Fang, IntoFang}, Request};
+use std::borrow::Cow;
+
+use crate::{Context, Response, Route, layer3_fang_handler::{IntoHandler, Handler, Fang, IntoFang}, Request, Ohkami};
 use super::super::trie::*;
 use Pattern::*;
 
@@ -42,6 +44,22 @@ async fn f3(req: &Request) {
 }
 fn F3() -> Fang {f3.into_fang()}
 
+fn node_static(pattern: &'static str, handler: Option<fn()->Handler>, fangs: Vec<fn()->Fang>, children: Vec<Node>) -> Node {
+    Node {
+        pattern: Some(Pattern::Static(Cow::Borrowed(pattern.as_bytes()))),
+        handler: handler.map(|ih| ih()),
+        fangs: fangs.into_iter().map(|into_fang| into_fang()).collect(),
+        children,
+    }
+}
+fn node_param(handler: Option<fn()->Handler>, fangs: Vec<fn()->Fang>, children: Vec<Node>) -> Node {
+    Node {
+        pattern: Some(Pattern::Param),
+        handler: handler.map(|ih| ih()),
+        fangs: fangs.into_iter().map(|into_fang| into_fang()).collect(),
+        children,
+    }
+}
 fn root(handler: Option<fn()->Handler>, fangs: Vec<fn()->Fang>, children: Vec<Node>) -> Node {
     Node {
         pattern: None,
@@ -53,10 +71,6 @@ fn root(handler: Option<fn()->Handler>, fangs: Vec<fn()->Fang>, children: Vec<No
 
 
 #[test] fn test_register_handlers() {
-    fn node(pattern: Pattern, handler: Option<fn()->Handler>, children: Vec<Node>) -> Node {
-        Node { pattern: Some(pattern), fangs: vec![], handler: handler.map(|ih| ih()), children }
-    }
-
     let built = TrieRouter::new()
         .register_handlers("/"                 .GET(h))
         .register_handlers("/abc"              .GET(h))
@@ -68,15 +82,15 @@ fn root(handler: Option<fn()->Handler>, fangs: Vec<fn()->Fang>, children: Vec<No
 
     let correct = TrieRouter {
         GET: root(Some(H), vec![], vec![
-            node(Static{route: b"/abc", range: 1..4}, Some(H), vec![
-                node(Param, Some(H), vec![])
+            node_static("abc", Some(H), vec![], vec![
+                node_param(Some(H), vec![], vec![])
             ]),
-            node(Static{route: b"/api/xyz", range: 1..4}, None, vec![
-                node(Static{route: b"/api/xyz", range: 5..8}, Some(H), vec![
-                    node(Static{route: b"/api/xyz/pqr", range: 9..12}, Some(H), vec![
-                        node(Static{route: b"/api/xyz/pqr/final", range: 13..18}, Some(H), vec![])
+            node_static("api", None, vec![], vec![
+                node_static("xyz", Some(H), vec![], vec![
+                    node_static("pqr", Some(H), vec![], vec![
+                        node_static("final", Some(H), vec![], vec![])
                     ]),
-                    node(Static{route: b"/api/xyz/zyx", range: 9..12}, Some(H), vec![])
+                    node_static("zyx", Some(H), vec![], vec![])
                 ])
             ])
         ]),
@@ -88,15 +102,7 @@ fn root(handler: Option<fn()->Handler>, fangs: Vec<fn()->Fang>, children: Vec<No
 
 
 #[test] fn test_apply_fang() {
-    fn node(pattern: Pattern, handler: Option<fn()->Handler>, fangs: Vec<fn()->Fang>, children: Vec<Node>) -> Node {
-        Node {
-            pattern: Some(pattern),
-            handler: handler.map(|ih| ih()),
-            fangs: fangs.into_iter().map(|into_fang| into_fang()).collect(),
-            children,
-        }
-    }
-
+    /*===== 1 =====*/
 
     let built = TrieRouter::new()
         .apply_fang(F1())
@@ -109,6 +115,8 @@ fn root(handler: Option<fn()->Handler>, fangs: Vec<fn()->Fang>, children: Vec<No
     // because no Node in `built` has handler
     assert_eq!(built, correct);
 
+
+    /*===== 2 =====*/
     
     let built = TrieRouter::new()
         .register_handlers("/"         .GET(h))
@@ -118,8 +126,159 @@ fn root(handler: Option<fn()->Handler>, fangs: Vec<fn()->Fang>, children: Vec<No
 
     let correct = TrieRouter {
         GET: root(Some(H), vec![F1, F2], vec![
-            node(Static{route: b"/api/hello", range: 1..4}, None, vec![], vec![
-                node(Static{route: b"/api/hello", range: 5..10}, Some(H), vec![F1, F2], vec![])
+            node_static("api", None, vec![], vec![
+                node_static("hello", Some(H), vec![F1, F2], vec![])
+            ])
+        ]),
+        ..TrieRouter::new()
+    };
+
+    assert_eq!(built, correct);
+
+
+    /*===== 3 =====*/
+
+    let built = TrieRouter::new()
+        .register_handlers("/"          .GET(h))
+        .register_handlers("/api/hello" .GET(h))
+        .register_handlers("/api/health".GET(h))
+        .apply_fang(F1())
+        .apply_fang(F2());
+
+    let correct = TrieRouter {
+        GET: root(Some(H), vec![F1, F2], vec![
+            node_static("api", None, vec![], vec![
+                node_static("hello", Some(H), vec![F1, F2], vec![]),
+                node_static("health", Some(H), vec![F1, F2], vec![])
+            ])
+        ]),
+        ..TrieRouter::new()
+    };
+
+    assert_eq!(built, correct);
+}
+
+
+#[test] fn merge_node_without_fangs() {
+    /*===== 1 =====*/
+    let built = TrieRouter::new()
+        .register_handlers("/hc" .GET(h))
+        .merge_another(    "/api".by(
+            Ohkami::new()(
+                "/users".GET(h),
+                "/tasks".GET(h),
+            )
+        ));
+    let correct = TrieRouter {
+        GET: root(None, vec![], vec![
+            node_static("hc", Some(H), vec![], vec![]),
+            node_static("api", None, vec![], vec![
+                node_static("users", Some(H), vec![], vec![]),
+                node_static("tasks", Some(H), vec![], vec![]),
+            ])
+        ]),
+        ..TrieRouter::new()
+    };
+    assert_eq!(built, correct);
+
+
+    /*===== 2 =====*/
+    let users_ohkami = Ohkami::new()(
+        "/".
+            GET(h),
+        "/:id".
+            GET(h),
+    );
+
+    let tasks_ohkami = Ohkami::new()(
+        "/:id".
+            GET(h),
+    );
+
+    let api_ohkami = Ohkami::new()(
+        "/users".by(users_ohkami),
+        "/tasks".by(tasks_ohkami),
+    );
+
+    let built = TrieRouter::new()
+        .register_handlers("/hc" .GET(h))
+        .merge_another(    "/api".by(api_ohkami));
+
+    let correct = TrieRouter {
+        GET: root(None, vec![], vec![
+            node_static("hc", Some(H), vec![], vec![]),
+            node_static("api", None, vec![], vec![
+                node_static("users", Some(H), vec![], vec![
+                    node_param(Some(H), vec![], vec![])
+                ]),
+                node_static("tasks", None, vec![], vec![
+                    node_param(Some(H), vec![], vec![])
+                ]),
+            ])
+        ]),
+        ..TrieRouter::new()
+    };
+
+    assert_eq!(built, correct);
+}
+
+
+#[test] fn merge_node_with_fangs() {
+    /*===== 1 =====*/
+    let built = TrieRouter::new()
+        .register_handlers("/hc" .GET(h))
+        .merge_another(    "/api".by(
+            Ohkami::with((f1, f2))(
+                "/users".GET(h),
+                "/tasks".GET(h),
+            )
+        ))
+        .apply_fang(F3());
+    let correct = TrieRouter {
+        GET: root(None, vec![], vec![
+            node_static("hc", Some(H), vec![F3], vec![]),
+            node_static("api", None, vec![], vec![
+                node_static("users", Some(H), vec![F1, F2, F3], vec![]),
+                node_static("tasks", Some(H), vec![F1, F2, F3], vec![]),
+            ])
+        ]),
+        ..TrieRouter::new()
+    };
+    assert_eq!(built, correct);
+
+
+    /*===== 2 =====*/
+    let users_ohkami = Ohkami::with((f1,))(
+        "/".
+            GET(h),
+        "/:id".
+            GET(h),
+    );
+
+    let tasks_ohkami = Ohkami::new()(
+        "/:id".
+            GET(h),
+    );
+
+    let api_ohkami = Ohkami::with((f2,))(
+        "/users".by(users_ohkami),
+        "/tasks".by(tasks_ohkami),
+    );
+
+    let built = TrieRouter::new()
+        .register_handlers("/hc" .GET(h))
+        .merge_another(    "/api".by(api_ohkami));
+
+    let correct = TrieRouter {
+        GET: root(None, vec![], vec![
+            node_static("hc", Some(H), vec![], vec![]),
+            node_static("api", None, vec![], vec![
+                node_static("users", Some(H), vec![F1, F2], vec![
+                    node_param(Some(H), vec![F1, F2], vec![])
+                ]),
+                node_static("tasks", None, vec![], vec![
+                    node_param(Some(H), vec![F2], vec![])
+                ]),
             ])
         ]),
         ..TrieRouter::new()

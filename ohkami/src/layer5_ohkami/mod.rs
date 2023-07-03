@@ -62,3 +62,13 @@ impl Ohkami {
         }
     }
 }
+
+impl Ohkami {
+    pub(crate) fn into_router(self) -> TrieRouter {
+        let Self { mut routes, fangs } = self;
+        for fang in fangs {
+            routes = routes.apply_fang(fang)
+        }
+        routes
+    }
+}

@@ -1,14 +1,14 @@
+use std::borrow::Cow;
 use crate::{
     layer3_fang_handler::{Handler, Handlers, ByAnother, RouteSections, RouteSection, Fang},
 };
 
-type Range = std::ops::Range<usize>;
 const _: () = {
     impl Into<Pattern> for RouteSection {
         fn into(self) -> Pattern {
             match self {
-                RouteSection::Param => Pattern::Param,
-                RouteSection::Static{ route, range } => Pattern::Static { route, range }
+                RouteSection::Param         => Pattern::Param,
+                RouteSection::Static(bytes) => Pattern::Static(Cow::Borrowed(bytes))
             }
         }
     }
@@ -36,16 +36,33 @@ pub(super/* for test */) struct Node {
 
 #[derive(Clone)]
 pub(super/* for test */) enum Pattern {
-    Static{ route: &'static [u8], range: Range },
+    Static(Cow<'static, [u8]>),
     Param,
 } const _: () = {
     impl std::fmt::Debug for Pattern {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             match self {
-                Self::Param                   => f.write_str(":Param"),
-                Self::Static { route, range } => f.write_str(&format!(
-                    "'{}'", std::str::from_utf8(&route[range.clone()]).unwrap()
+                Self::Param     => f.write_str(":Param"),
+                Self::Static(v) => f.write_str(&format!(
+                    "'{}'", std::str::from_utf8(&v).unwrap()
                 )),
+            }
+        }
+    }
+
+    impl PartialEq for Pattern {
+        fn eq(&self, other: &Self) -> bool {
+            match self {
+                Self::Param => match other {
+                    Self::Param => true,
+                    _ => false,
+                }
+                Self::Static(this_bytes) => {
+                    match other {
+                        Self::Static(other_bytes) => this_bytes == other_bytes,
+                        _ => false
+                    }
+                }
             }
         }
     }
@@ -96,13 +113,7 @@ impl TrieRouter {
 
     pub(crate) fn merge_another(mut self, another: ByAnother) -> Self {
         let ByAnother { route, ohkami } = another;
-        let another_routes = {
-            let mut routes = ohkami.routes;
-            for fang in ohkami.fangs {
-                routes = routes.apply_fang(fang)
-            }
-            routes
-        };
+        let another_routes = ohkami.into_router();
 
         self.GET.merge_node(route.clone().into_iter(), another_routes.GET);
         self.PUT.merge_node(route.clone().into_iter(), another_routes.PUT);
@@ -202,13 +213,13 @@ impl Node {
             
             let child_pattern = child_pattern.unwrap(/* `child` is not root */);
             if patterns.last().is_some_and(|last| last.is_static()) && child_pattern.is_static() {
-                let (_, this_range) = patterns.pop(/*=== POPing here ===*/).unwrap().to_static().unwrap();
-                let (route, child_range) = child_pattern.to_static().unwrap();
+                let last_pattern = patterns.pop(/*=== POPing here ===*/).unwrap();
+                let this_static  = last_pattern.to_static().unwrap();
+                let child_static = child_pattern.to_static().unwrap();
 
-                patterns.push(Pattern::Static {
-                    route,
-                    range: (this_range.start..child_range.end),
-                })
+                patterns.push(Pattern::Static(
+                    Cow::Owned([this_static, b"/", child_static].concat())
+                ))
             } else {
                 patterns.push(child_pattern)
             }
@@ -305,47 +316,64 @@ impl Node {
 
         Ok(())
     }
+
+    fn append_child(&mut self, child: Node) {
+        match child.pattern.expect("Invalid child node: Child node must have pattern") {
+            Pattern::Param => {
+                if self.children.is_empty() {
+                    self.children.push(child)
+                } else {
+                    let err = format!("Conflicting route definition: {}, pattern {:?} and {:?} can match",
+                        match self.pattern {
+                            None    => format!("For the first part of request path"),
+                            Some(p) => format!("After {p:?}"),
+                        },
+                        self.pattern.as_ref().unwrap(),
+                        self.children.first().unwrap().pattern.as
+                    );
+                    panic!("{err}")
+                }
+            },
+            Pattern::Static(bytes) => {
+
+            }
+        }
+    }
 }
 
 impl Pattern {
     fn is_param(&self) -> bool {
         match self {
             Self::Param => true,
-            Self::Static{..} => false,
+            Self::Static(_) => false,
         }
     }
     fn is_static(&self) -> bool {
         match self {
-            Self::Static{..} => true,
+            Self::Static(_) => true,
             Self::Param => false,
         }
     }
 
-    fn to_static(self) -> Option<(&'static [u8], Range)> {
+    fn to_static(&self) -> Option<&[u8]> {
         match self {
-            Self::Param => None,
-            Self::Static{ route, range } => Some((route, range))
-        }
-    }
-
-    fn read_as_static(&self) -> Option<&[u8]> {
-        match self {
-            Self::Param => None,
-            Self::Static{ route, range } => Some(&route[(range.start)..(range.end)])
+            Self::Param         => None,
+            Self::Static(bytes) => Some(&bytes)
         }
     }
 
     fn matches(&self, another: &Self) -> bool {
         match self {
             Self::Param => another.is_param(),
-            Self::Static{..} => self.read_as_static() == another.read_as_static(),
+            Self::Static{..} => self.to_static() == another.to_static(),
         }
     }
 
     fn into_radix(self) -> super::radix::Pattern {
         match self {
-            Self::Param                  => super::radix::Pattern::Param,
-            Self::Static{ route, range } => super::radix::Pattern::Static(&route[range]),
+            Self::Param                        => super::radix::Pattern::Param,
+            Self::Static(Cow::Borrowed(bytes)) => super::radix::Pattern::Static(bytes),
+            Self::Static(Cow::Owned(vec))      => super::radix::Pattern::Static(vec.leak()),
         }
     }
 }

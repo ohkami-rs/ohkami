@@ -2,53 +2,44 @@ mod fang; pub use fang::*;
 mod handler; pub use handler::*;
 
 use std::{collections::VecDeque, str::Chars, iter::Peekable};
-type Range = std::ops::Range<usize>;
 
 
 #[derive(Clone)]
 #[cfg_attr(any(test, debug_assertions), derive(Debug))]
-pub struct RouteSections {
-    #[allow(unused)] route:    &'static [u8],
-    sections:                  VecDeque<RouteSection>,
-} impl RouteSections {
+pub struct RouteSections(
+    VecDeque<RouteSection>
+); impl RouteSections {
     pub(crate) fn from_literal(route: &'static str) -> Self {
         if route.is_empty() {panic!("Found an empty route: `{route}`")}
         if !route.starts_with('/') {panic!("Routes must start with '/': `{route}`")}
 
-        if route == "/" {return Self{ route: route.as_bytes(), sections: VecDeque::new()}}
+        if route == "/" {return Self(VecDeque::new())}
 
         let mut sections = VecDeque::new();
-        let mut section_start = 1; /* skip initial '/' */
         for section in {let mut s = route.split('/'); s.next(); s} {
-            #[cfg(debug_assertions)] println!("section: '{section}' ('{}')",
-                std::str::from_utf8(
-                    &route.as_bytes()[section_start..(section_start + section.len())]
-                ).unwrap()
-            );
-
-            let section = match RouteSection::new(route.as_bytes(), section_start..(section_start + section.len())) {
+            let section = match RouteSection::new(section.as_bytes()) {
                 Err(e) => panic!("{e}: `{route}`"),
-                Ok(rs) => {section_start += section.len() + 1/* skip '/' */; rs}
+                Ok(rs) => rs,
             };
             sections.push_back(section)
         }
-        Self{ sections, route:route.as_bytes() }
+        Self(sections)
     }
 } const _: () = {
     impl IntoIterator for RouteSections {
         type Item = <VecDeque<RouteSection> as IntoIterator>::Item;
         type IntoIter = <VecDeque<RouteSection> as IntoIterator>::IntoIter;
-        fn into_iter(self) -> Self::IntoIter {self.sections.into_iter()}
+        fn into_iter(self) -> Self::IntoIter {self.0.into_iter()}
     }
 };
 
 #[derive(Clone)]
 pub enum RouteSection {
-    Static{ route: &'static [u8], range: Range },
+    Static(&'static [u8]),
     Param,
 } impl RouteSection {
-    pub(crate) fn new(route: &'static [u8], range: Range) -> Result<Self, String> {
-        let mut section_chars = std::str::from_utf8(&route[range.clone()]).unwrap().chars().peekable();
+    pub(crate) fn new(section_bytes: &'static [u8]) -> Result<Self, String> {
+        let mut section_chars = std::str::from_utf8(section_bytes).unwrap().chars().peekable();
 
         fn validate_section_name(mut name: Peekable<Chars>) -> Result<(), String> {
             let is_invalid_head_or_tail_char = |c: char| !/* NOT */ matches!(c,
@@ -87,7 +78,7 @@ pub enum RouteSection {
             },
             _ => {
                 let _/* validation */ = validate_section_name(section_chars)?;
-                Ok(Self::Static{ route, range })
+                Ok(Self::Static(section_bytes))
             }
         }
     }
@@ -96,8 +87,8 @@ pub enum RouteSection {
     impl std::fmt::Debug for RouteSection {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             match self {
-                Self::Param                   => f.write_str(":Param"),
-                Self::Static { route, range } => f.write_str(std::str::from_utf8(&route[range.clone()]).unwrap()),
+                Self::Param         => f.write_str(":Param"),
+                Self::Static(bytes) => f.write_str(std::str::from_utf8(bytes).unwrap()),
             }
         }
     }
