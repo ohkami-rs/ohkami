@@ -282,7 +282,7 @@ impl Node {
 
     fn merge_here(&mut self, another: Node) -> Result<(), String> {
         let Node {
-            pattern:  another_pattern,
+            pattern:  another_pattern, // <-- another は root node のはずなので必ず None では？？？
             fangs:    another_fangs,
             handler:  another_handler,
             children: another_children,
@@ -294,12 +294,6 @@ impl Node {
             (Some(p1), Some(p2))              => p1.matches(p2).then_some(p1.clone()),
         };
 
-        for af in another_fangs {
-            if self.fangs.iter().all(|f| f.id() != af.id()) {
-                self.fangs.push(af)
-            }
-        }
-
         if self.handler.is_none() {
             if let Some(ah) = another_handler {
                 self.handler.replace(ah);
@@ -310,33 +304,56 @@ impl Node {
             }
         }
 
+        for af in another_fangs {
+            self.append_fang(af)
+        }
+
         for ac in another_children {
-            self.children.push(ac)
+            self.append_child(ac)?
         }
 
         Ok(())
     }
 
-    fn append_child(&mut self, child: Node) {
-        match child.pattern.expect("Invalid child node: Child node must have pattern") {
+    fn append_child(&mut self, new_child: Node) -> Result<(), String> {
+        let __position__ = match self.pattern {
+            None    => format!("For the first part of route"),
+            Some(p) => format!("After {p:?}"),
+        };
+
+        match new_child.pattern.expect("Invalid child node: Child node must have pattern") {
             Pattern::Param => {
                 if self.children.is_empty() {
-                    self.children.push(child)
+                    self.children.push(new_child);
+                    Ok(())
+
                 } else {
-                    let err = format!("Conflicting route definition: {}, pattern {:?} and {:?} can match",
-                        match self.pattern {
-                            None    => format!("For the first part of request path"),
-                            Some(p) => format!("After {p:?}"),
-                        },
-                        self.pattern.as_ref().unwrap(),
-                        self.children.first().unwrap().pattern.as
-                    );
-                    panic!("{err}")
+                    let __conflicting_pattern__ = format!("{:?}", self.children.first().unwrap().pattern.as_ref().unwrap());
+                    Err(format!("Conflicting route definition: {__position__}, {{param}} and {__conflicting_pattern__} can match"))
                 }
             },
             Pattern::Static(bytes) => {
+                if self.children.iter().all(|c| c.pattern.as_ref().unwrap().is_static()) {
+                    if let Some(conflicting_child) = self.children.iter().find(|c| c.pattern.as_ref().unwrap().to_static().unwrap() == &*bytes) {
+                        Err(format!("Conflicting route definition: {__position__}, pattern '{}' are registered twice", std::str::from_utf8(&bytes).unwrap()))
 
+                    } else {
+                        self.children.push(new_child);
+                        Ok(())
+                    }
+
+                } else {
+                    let __pattern_to_append__ = format!("{:?}", new_child.pattern.as_ref().unwrap());
+                    Err(format!("Conflicting route definition: {__position__}, {{param}} and {__pattern_to_append__} can match"))
+                }
             }
+        }
+    }
+
+    fn append_fang(&mut self, new_fang: Fang) {
+        let new_fang_id = new_fang.id();
+        if self.fangs.iter().all(|f| f.id() != new_fang_id) {
+            self.fangs.push(new_fang)
         }
     }
 }
