@@ -87,25 +87,25 @@ impl TrieRouter {
         let Handlers { route, GET, PUT, POST, HEAD, PATCH, DELETE, OPTIONS } = handlers;
 
         if let Some(handler) = GET {
-            self.GET.register_handler(route.clone().into_iter(), handler)
+            if let Err(e) = self.GET.register_handler(route.clone().into_iter(), handler) {panic!("{e}")}
         }
         if let Some(handler) = PUT {
-            self.PUT.register_handler(route.clone().into_iter(), handler)
+            if let Err(e) = self.PUT.register_handler(route.clone().into_iter(), handler) {panic!("{e}")}
         }
         if let Some(handler) = POST {
-            self.POST.register_handler(route.clone().into_iter(), handler)
+            if let Err(e) = self.POST.register_handler(route.clone().into_iter(), handler) {panic!("{e}")}
         }
         if let Some(handler) = HEAD {
-            self.HEAD.register_handler(route.clone().into_iter(), handler)
+            if let Err(e) = self.HEAD.register_handler(route.clone().into_iter(), handler) {panic!("{e}")}
         }
         if let Some(handler) = PATCH {
-            self.PATCH.register_handler(route.clone().into_iter(), handler)
+            if let Err(e) = self.PATCH.register_handler(route.clone().into_iter(), handler) {panic!("{e}")}
         }
         if let Some(handler) = DELETE {
-            self.DELETE.register_handler(route.clone().into_iter(), handler)
+            if let Err(e) = self.DELETE.register_handler(route.clone().into_iter(), handler) {panic!("{e}")}
         }
         if let Some(handler) = OPTIONS {
-            self.OPTIONS.register_handler(route.clone().into_iter(), handler)
+            if let Err(e) = self.OPTIONS.register_handler(route.clone().into_iter(), handler) {panic!("{e}")}
         }
 
         self
@@ -115,13 +115,15 @@ impl TrieRouter {
         let ByAnother { route, ohkami } = another;
         let another_routes = ohkami.into_router();
 
-        self.GET.merge_node(route.clone().into_iter(), another_routes.GET);
-        self.PUT.merge_node(route.clone().into_iter(), another_routes.PUT);
-        self.POST.merge_node(route.clone().into_iter(), another_routes.POST);
-        self.HEAD.merge_node(route.clone().into_iter(), another_routes.HEAD);
-        self.PATCH.merge_node(route.clone().into_iter(), another_routes.PATCH);
-        self.DELETE.merge_node(route.clone().into_iter(), another_routes.DELETE);
-        self.OPTIONS.merge_node(route.clone().into_iter(), another_routes.OPTIONS);
+        #[cfg(test)] println!("{another_routes:#?}");
+
+        if let Err(e) = self.GET.merge_node(route.clone().into_iter(), another_routes.GET) {panic!("{e}")}
+        if let Err(e) = self.PUT.merge_node(route.clone().into_iter(), another_routes.PUT) {panic!("{e}")}
+        if let Err(e) = self.POST.merge_node(route.clone().into_iter(), another_routes.POST) {panic!("{e}")}
+        if let Err(e) = self.HEAD.merge_node(route.clone().into_iter(), another_routes.HEAD) {panic!("{e}")}
+        if let Err(e) = self.PATCH.merge_node(route.clone().into_iter(), another_routes.PATCH) {panic!("{e}")}
+        if let Err(e) = self.DELETE.merge_node(route.clone().into_iter(), another_routes.DELETE) {panic!("{e}")}
+        if let Err(e) = self.OPTIONS.merge_node(route.clone().into_iter(), another_routes.OPTIONS) {panic!("{e}")}
         
         self
     }
@@ -152,31 +154,39 @@ impl TrieRouter {
 }
 
 impl Node {
-    fn register_handler(&mut self, mut route: <RouteSections as IntoIterator>::IntoIter, handler: Handler) {
+    fn register_handler(&mut self, mut route: <RouteSections as IntoIterator>::IntoIter, handler: Handler) -> Result<(), String> {
         #[cfg(debug_assertions)] println!("[register_handler] route: {route:?}");
 
         match route.next() {
-            None => if self.handler.replace(handler).is_some() {panic!("Conflicting handler registeration")},
+            None => {
+                self.set_handler(handler)?;
+                Ok(())
+            }
             Some(pattern) => match self.machable_child_mut(pattern.clone().into()) {
                 Some(child) => child.register_handler(route, handler),
                 None => {
                     let mut child = Node::new(pattern.into());
-                    child.register_handler(route, handler);
-                    self.children.push(child)
+                    child.register_handler(route, handler)?;
+                    self.append_child(child)?;
+                    Ok(())
                 }
             }
         }
     }
 
-    fn merge_node(&mut self, mut route_to_merge_root: <RouteSections as IntoIterator>::IntoIter, another: Node) {
+    fn merge_node(&mut self, mut route_to_merge_root: <RouteSections as IntoIterator>::IntoIter, another: Node) -> Result<(), String> {
         match route_to_merge_root.next() {
-            None => if let Err(e) = self.merge_here(another) {panic!("Can't merge nodes: {e}")},
+            None => {
+                self.merge_here(another)?;
+                Ok(())
+            }
             Some(pattern) => match self.machable_child_mut(pattern.clone().into()) {
                 Some(child) => child.merge_node(route_to_merge_root, another),
                 None => {
                     let mut new_child = Node::new(pattern.into());
-                    new_child.merge_node(route_to_merge_root, another);
-                    self.children.push(new_child)
+                    new_child.merge_node(route_to_merge_root, another)?;
+                    self.append_child(new_child)?;
+                    Ok(())
                 }
             }
         }
@@ -187,7 +197,7 @@ impl Node {
             child.apply_fang(fang.clone())
         }
         if self.handler.is_some() {
-            self.fangs.push(fang)
+            self.append_fang(fang)
         }
     }
 
@@ -280,32 +290,53 @@ impl Node {
         None
     }
 
-    fn merge_here(&mut self, another: Node) -> Result<(), String> {
+    /// Called in following situation :
+    /// 
+    /// <br/>
+    /// 
+    /// ```ignore
+    /// TrieRouter::new()
+    ///     .register_handlers("/hc".GET(health_check))
+    ///     .register_handlers("/api".by(
+    ///         Ohkami::new()(
+    ///             "/"         .GET (hello),
+    ///             "/users"    .POST(create_user),
+    ///             "/users/:id".GET (get_user),
+    ///             "/tasks"    .GET (get_task),
+    ///         )
+    ///     ))
+    /// ```
+    /// 
+    /// <br/>
+    /// 
+    /// This must equals :
+    /// 
+    /// <br/>
+    /// 
+    /// ```ignore
+    /// TrieRouter::new()
+    ///     .register_handlers("/hc"           .GET (health_check))
+    ///     .register_handlers("/api"          .GET (hello))
+    ///     .register_handlers("/api/users"    .POST(create_user))
+    ///     .register_handlers("/api/users/:id".GET (get_user))
+    ///     .register_handlers("/api/tasks/:id".GET (get_task));
+    /// ```
+    fn merge_here(&mut self, another_root: Node) -> Result<(), String> {
         let Node {
-            pattern:  another_pattern, // <-- another は root node のはずなので必ず None では？？？
-            fangs:    another_fangs,
-            handler:  another_handler,
+            pattern:  None, // <-- another_root は root node のはずなので必ず None のはず
+            fangs:    another_root_fangs,
+            handler:  another_root_handler,
             children: another_children,
-        } = another;
-
-        self.pattern = match (&self.pattern, &another_pattern) {
-            (None, None)                      => None,
-            (Some(p), None) | (None, Some(p)) => Some(p.clone()),
-            (Some(p1), Some(p2))              => p1.matches(p2).then_some(p1.clone()),
+        } = another_root else {
+            panic!("Unexpectedly called `Node::merge_here` where `another_root` is not root node")
         };
 
-        if self.handler.is_none() {
-            if let Some(ah) = another_handler {
-                self.handler.replace(ah);
-            }
-        } else {
-            if another_handler.is_some() {
-                return Err(format!("Conflicting handler registeration"));
-            }
+        if let Some(new_handler) = another_root_handler {
+            self.set_handler(new_handler)?
         }
 
-        for af in another_fangs {
-            self.append_fang(af)
+        for arf in another_root_fangs {
+            self.append_fang(arf)
         }
 
         for ac in another_children {
@@ -314,14 +345,16 @@ impl Node {
 
         Ok(())
     }
+}
 
+impl Node {
     fn append_child(&mut self, new_child: Node) -> Result<(), String> {
-        let __position__ = match self.pattern {
+        let __position__ = match &self.pattern {
             None    => format!("For the first part of route"),
             Some(p) => format!("After {p:?}"),
         };
 
-        match new_child.pattern.expect("Invalid child node: Child node must have pattern") {
+        match new_child.pattern.as_ref().expect("Invalid child node: Child node must have pattern") {
             Pattern::Param => {
                 if self.children.is_empty() {
                     self.children.push(new_child);
@@ -334,7 +367,7 @@ impl Node {
             },
             Pattern::Static(bytes) => {
                 if self.children.iter().all(|c| c.pattern.as_ref().unwrap().is_static()) {
-                    if let Some(conflicting_child) = self.children.iter().find(|c| c.pattern.as_ref().unwrap().to_static().unwrap() == &*bytes) {
+                    if self.children.iter().find(|c| c.pattern.as_ref().unwrap().to_static().unwrap() == bytes.as_ref()).is_some() {
                         Err(format!("Conflicting route definition: {__position__}, pattern '{}' are registered twice", std::str::from_utf8(&bytes).unwrap()))
 
                     } else {
@@ -355,6 +388,14 @@ impl Node {
         if self.fangs.iter().all(|f| f.id() != new_fang_id) {
             self.fangs.push(new_fang)
         }
+    }
+
+    fn set_handler(&mut self, new_handler: Handler) -> Result<(), String> {
+        if self.handler.is_some() {
+            return Err(format!("Conflicting handler registering"))
+        }
+        self.handler = Some(new_handler);
+        Ok(())
     }
 }
 

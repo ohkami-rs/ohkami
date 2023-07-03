@@ -26,15 +26,11 @@ macro_rules! build_routing {
     ($( $routing_item:ident ),*) => {
         impl<$($routing_item: Rounting),*> FnOnce<($($routing_item,)*)> for Ohkami {
             type Output = Ohkami;
-            extern "rust-call" fn call_once(self, ($($routing_item,)*): ($($routing_item,)*)) -> Self::Output {
-                let mut routes = self.routes;
+            extern "rust-call" fn call_once(mut self, ($($routing_item,)*): ($($routing_item,)*)) -> Self::Output {
                 $(
-                    routes = $routing_item.apply(routes);
+                    self.routes = $routing_item.apply(self.routes);
                 )*
-                Ohkami{
-                    routes,
-                    fangs: Vec::new(),
-                }
+                self
             }
         }
     };
