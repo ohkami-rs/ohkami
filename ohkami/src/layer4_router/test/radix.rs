@@ -1,6 +1,9 @@
 use std::borrow::Cow;
-use crate::{Context, Response, Route, layer3_fang_handler::{IntoHandler, Handler, Fang, IntoFang, FrontFang}, Request, Ohkami};
-use super::super::{trie, radix};
+use radix::RadixRouter;
+use trie::TrieRouter;
+
+use crate::{Context, Response, layer3_fang_handler::{IntoHandler, Handler, Fang, IntoFang, FrontFang}, Request, Ohkami};
+use super::super::{trie, radix, radix::Pattern::*};
 
 
 macro_rules! assert_eq {
@@ -66,7 +69,6 @@ fn trie_root(handler: Option<fn()->Handler>, fangs: Vec<fn()->Fang>, children: V
 fn radix<
     const N_PATTERNS: usize,
     const N_FRONT:    usize,
-    const N_CHILDREN: usize,
 >(
     patterns: [radix::Pattern; N_PATTERNS],
     handler:  Option<fn()->Handler>,
@@ -81,8 +83,96 @@ fn radix<
     }
 }
 
+fn emptyRadixRouter() -> radix::RadixRouter {
+    radix::RadixRouter {
+        GET:     radix([], None, [], vec![]),
+        PUT:     radix([], None, [], vec![]),
+        POST:    radix([], None, [], vec![]),
+        HEAD:    radix([], None, [], vec![]),
+        PATCH:   radix([], None, [], vec![]),
+        DELETE:  radix([], None, [], vec![]),
+        OPTIONS: radix([], None, [], vec![]),
+    }
+}
 
-#[test] fn into_raidx() {
-    
+
+#[test] fn into_radix_without_fangs() {
+    /*===== 1 =====*/
+
+    let built = TrieRouter {
+        GET: trie_root(Some(H), vec![], vec![]),
+        ..TrieRouter::new()
+    }.into_radix();
+
+    let correct = RadixRouter {
+        GET: radix([], Some(H), [], vec![]),
+        ..emptyRadixRouter()
+    };
+
+    assert_eq!(built, correct);
+
+
+    /*===== 2 =====*/
+
+    let built = TrieRouter {
+        GET: trie_root(None, vec![], vec![
+            trie_static("hc",  Some(H), vec![], vec![]),
+            trie_static("api", None,    vec![], vec![
+                trie_static("hello", Some(H), vec![], vec![])
+            ])
+        ]),
+        ..TrieRouter::new()
+    }.into_radix();
+
+    let correct = RadixRouter {
+        GET: radix([], None, [], vec![
+            radix([Static(b"hc")],        Some(H), [], vec![]),
+            radix([Static(b"api/hello")], Some(H), [], vec![]),
+        ]),
+        ..emptyRadixRouter()
+    };
+
+    assert_eq!(built, correct);
+
+
+    /*===== 3 =====*/
+
+    let built = TrieRouter {
+        GET: trie_root(None, vec![], vec![
+            trie_static("hc",  Some(H), vec![], vec![]),
+            trie_static("api", None,    vec![], vec![
+                trie_static("hello", None, vec![], vec![
+                    trie_static("v1", None, vec![], vec![
+                        trie_static("with_repeat", None, vec![], vec![
+                            trie_param(Some(H), vec![], vec![])
+                        ])
+                    ])
+                ]),
+                trie_static("users", Some(H), vec![], vec![
+                    trie_param(Some(H), vec![], vec![])
+                ]),
+                trie_static("tasks", None, vec![], vec![
+                    trie_param(Some(H), vec![], vec![])
+                ])
+            ])
+        ]),
+        ..TrieRouter::new()
+    }.into_radix();
+
+    let correct = RadixRouter {
+        GET: radix([], None, [], vec![
+            radix([Static(b"hc")], Some(H), [], vec![]),
+            radix([Static(b"api")], None, [], vec![
+                radix([Static(b"hello/v1/with_repeat"), Param], Some(H), [], vec![]),
+                radix([Static(b"users")], Some(H), [], vec![
+                    radix([Param], Some(H), [], vec![])
+                ]),
+                radix([Static(b"tasks"), Param], Some(H), [], vec![])
+            ])
+        ]),
+        ..emptyRadixRouter()
+    };
+
+    assert_eq!(built, correct);
 }
 

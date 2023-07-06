@@ -209,8 +209,7 @@ impl Node {
             Some(pattern) => vec![pattern],
         };
 
-        if children.len() == 1
-        && (handler.is_none() && children[0].handler.is_some()) {
+        if children.len() == 1 && handler.is_none() {
             let Node {
                 pattern:  child_pattern,
                 fangs:    child_fangs,
@@ -229,13 +228,14 @@ impl Node {
 
                 patterns.push(Pattern::Static(
                     Cow::Owned([this_static, b"/", child_static].concat())
-                ))
+                ));
+
+                #[cfg(debug_assertions)]
+                println!("[into_radix] merged patterns: {patterns:?}");
+
             } else {
                 patterns.push(child_pattern)
             }
-
-            #[cfg(debug_assertions)]
-            println!("[into_radix] merged patterns: {patterns:?}");
 
             for cf in child_fangs {
                 if fangs.iter().all(|f| f.id() != cf.id()) {
