@@ -5,15 +5,17 @@ use std::{fmt::Debug};
 use super::{trie as t, radix as r};
 use crate::layer3_fang_handler::{Handler, Fang, FrontFang};
 
-fn eq_as_set(left: Vec<impl PartialEq>, right: Vec<impl PartialEq>) -> bool {
+fn eq_as_set<Item: Clone + PartialEq>(left: &Vec<Item>, right: &Vec<Item>) -> bool {
     let len = left.len();
     if right.len() != len {return false}
 
-    let right_idxs = (1..=len).collect::<Vec<_>>();
-
-    for (i, v) in &left {
-        right_idxs.
+    let mut right = right.clone();
+    for item in left {
+        let Some(pos) = right.iter().position(|i| i == item)
+            else {return false};
+        right.remove(pos);
     }
+    right.is_empty()
 }
 
 
@@ -96,9 +98,9 @@ fn eq_as_set(left: Vec<impl PartialEq>, right: Vec<impl PartialEq>) -> bool {
 
     impl PartialEq for t::Node {
         fn eq(&self, other: &Self) -> bool {
-            self.pattern  == other.pattern  &&
-            self.handler  == other.handler  &&
-            self.fangs    == other.fangs    &&
+            self.pattern  == other.pattern     &&
+            self.handler  == other.handler     &&
+            eq_as_set(&self.fangs, &other.fangs) &&
             self.children == other.children
         }
     }
@@ -132,9 +134,9 @@ fn eq_as_set(left: Vec<impl PartialEq>, right: Vec<impl PartialEq>) -> bool {
 
     impl PartialEq for r::Node {
         fn eq(&self, other: &Self) -> bool {
-            self.patterns == other.patterns &&
-            self.handler  == other.handler  &&
-            self.front    == other.front    &&
+            self.patterns == other.patterns                        &&
+            self.handler  == other.handler                         &&
+            eq_as_set(&self.front.to_vec(), &other.front.to_vec()) &&
             self.children == other.children
         }
     }
@@ -154,7 +156,7 @@ fn eq_as_set(left: Vec<impl PartialEq>, right: Vec<impl PartialEq>) -> bool {
         fn clone(&self) -> Self {
             match self {
                 Self::Param     => Self::Param,
-                Self::Static(s) => Self::Static(s.clone())
+                Self::Static(s) => Self::Static(s)
             }
         }
     }

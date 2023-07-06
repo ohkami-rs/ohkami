@@ -51,6 +51,10 @@ mod fang {
     use ohkami::{Context, Request};
 
     pub async fn append_server(c: &mut Context) {
+        tracing::info!("\
+            Called `append_server`\n\
+        ");
+
         c.headers
             .Server("ohkami");
     }
