@@ -6,7 +6,14 @@ use super::{trie as t, radix as r};
 use crate::layer3_fang_handler::{Handler, Fang, FrontFang};
 
 fn eq_as_set(left: Vec<impl PartialEq>, right: Vec<impl PartialEq>) -> bool {
-    let left_idx = (1..=left.);
+    let len = left.len();
+    if right.len() != len {return false}
+
+    let right_idxs = (1..=len).collect::<Vec<_>>();
+
+    for (i, v) in &left {
+        right_idxs.
+    }
 }
 
 
