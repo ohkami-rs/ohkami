@@ -209,7 +209,7 @@ impl Node {
             Some(pattern) => vec![pattern],
         };
 
-        if children.len() == 1 && handler.is_none() {
+        while children.len() == 1 && handler.is_none() {
             let Node {
                 pattern:  child_pattern,
                 fangs:    child_fangs,
