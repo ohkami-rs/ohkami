@@ -1,8 +1,9 @@
 mod trie;
+mod radix;
 
 use std::{fmt::Debug};
 use super::{trie as t, radix as r};
-use crate::layer3_fang_handler::{Fang, Handler};
+use crate::layer3_fang_handler::{Handler, Fang, FrontFang};
 
 #[cfg(test)] const _: () = {
     impl Debug for Fang {
@@ -21,6 +22,15 @@ use crate::layer3_fang_handler::{Fang, Handler};
         }
     }
 
+    impl Debug for FrontFang {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            f.debug_tuple("Front")
+            .field(&self.id)
+            .finish()
+        }
+    }
+
+
     impl PartialEq for Fang {
         fn eq(&self, other: &Self) -> bool {
             self.id() == other.id()
@@ -30,6 +40,12 @@ use crate::layer3_fang_handler::{Fang, Handler};
     impl PartialEq for Handler {
         fn eq(&self, _: &Self) -> bool {
             true
+        }
+    }
+
+    impl PartialEq for FrontFang {
+        fn eq(&self, other: &Self) -> bool {
+            self.id == other.id
         }
     }
 };
@@ -72,6 +88,62 @@ use crate::layer3_fang_handler::{Fang, Handler};
             self.handler  == other.handler  &&
             self.fangs    == other.fangs    &&
             self.children == other.children
+        }
+    }
+};
+
+#[cfg(test)] const _: () = {
+    impl Debug for r::RadixRouter {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            f.debug_struct("Radix")
+                .field("GET", &self.GET)
+                .finish()
+        }
+    }
+
+    impl Debug for r::Node {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            f.debug_struct(&format!("Node({:?})", &self.patterns))
+                .field("handler", &self.handler)
+                .field("front", &self.front)
+                .field("children", &self.children)
+                .finish()
+        }
+    }
+
+
+    impl PartialEq for r::RadixRouter {
+        fn eq(&self, other: &Self) -> bool {
+            self.GET == other.GET
+        }
+    }
+
+    impl PartialEq for r::Node {
+        fn eq(&self, other: &Self) -> bool {
+            self.patterns == other.patterns &&
+            self.handler  == other.handler  &&
+            self.front    == other.front    &&
+            self.children == other.children
+        }
+    }
+
+    impl PartialEq for r::Pattern {
+        fn eq(&self, other: &Self) -> bool {
+            match (self, other) {
+                (Self::Param,          Self::Param)           => true,
+                (Self::Static(self_s), Self::Static(other_s)) => self_s == other_s,
+                _                                             => false,
+            }
+        }
+    }
+
+
+    impl Clone for r::Pattern {
+        fn clone(&self) -> Self {
+            match self {
+                Self::Param     => Self::Param,
+                Self::Static(s) => Self::Static(s.clone())
+            }
         }
     }
 };

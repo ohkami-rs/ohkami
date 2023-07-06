@@ -1,8 +1,6 @@
 use std::borrow::Cow;
-
 use crate::{Context, Response, Route, layer3_fang_handler::{IntoHandler, Handler, Fang, IntoFang}, Request, Ohkami};
 use super::super::trie::*;
-use Pattern::*;
 
 
 macro_rules! assert_eq {
