@@ -109,7 +109,7 @@ impl RadixRouter {
 }
 
 impl Node {
-    fn search(&self, mut path: &[u8]) -> Option<(&Node, PathParams)> {
+    pub(super/* for test */) fn search(&self, mut path: &[u8]) -> Option<(&Node, PathParams)> {
         let path_len = path.len();
 
         let mut params = PathParams::new();
@@ -171,13 +171,9 @@ impl Node {
 
 impl Pattern {
     #[inline(always)] fn is_matchable_to(&self, path: &[u8]) -> bool {
-        let path = &path[1..]/* '/abc/def' -> 'abc/def' (to search pattern) */;
         match self {
             Self::Param     => true,
-            Self::Static(s) => match find(b'/', path) {
-                Some(slash) => &path[..slash] == *s,
-                None        => path == *s,
-            }
+            Self::Static(s) => (&path[1..]/* skip initial '/' */).starts_with(s),
         }
     }
 }

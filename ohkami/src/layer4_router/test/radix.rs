@@ -2,12 +2,12 @@ use std::borrow::Cow;
 use radix::RadixRouter;
 use trie::TrieRouter;
 
-use crate::{Context, Response, layer3_fang_handler::{IntoHandler, Handler, Fang, IntoFang, FrontFang}, Request, Ohkami};
+use crate::{Context, Response, layer3_fang_handler::{IntoHandler, Handler, Fang, IntoFang, FrontFang}, Request};
 use super::super::{trie, radix, radix::Pattern::*};
 
 
 macro_rules! assert_eq {
-    ($left:ident, $right:ident) => {
+    ($left:ident, $right:expr) => {
         if $left != $right {
             panic!("\n\
                 \n\
@@ -178,5 +178,52 @@ fn emptyRadixRouter() -> radix::RadixRouter {
 
 
 #[test] fn test_search() {
-    
+    macro_rules! assert_search {
+        ($router:ident {
+            $(
+                $path:literal => $expected:expr
+            )*
+        }) => {
+            $(
+                let (found, expected) = ($router.GET.search($path.as_bytes()).map(|(node, _)| node), $expected);
+                match found {
+                    None => assert_eq!(found, (&expected).as_ref()),
+                    Some(found_node) => {
+                        if found_node.handler.is_some() {
+                            assert_eq!(found, (&expected).as_ref())
+                        } else {
+                            ::std::assert_eq!(None, (&expected).as_ref());
+                        }
+                    }
+                }
+            )*
+        };
+    }
+
+
+    let router = RadixRouter {
+        GET: radix([], None, [], vec![
+            radix([Static(b"hc")], Some(H), [], vec![]),
+            radix([Static(b"api")], None, [], vec![
+                radix([Static(b"hello/v1/with_repeat"), Param], Some(H), [], vec![]),
+                radix([Static(b"users")], Some(H), [], vec![
+                    radix([Param], Some(H), [], vec![])
+                ]),
+                radix([Static(b"tasks"), Param], Some(H), [], vec![])
+            ])
+        ]),
+        ..emptyRadixRouter()
+    };
+
+    assert_search!(router {
+        "/hc"  => Some(radix([Static(b"hc")], Some(H), [], vec![]))
+        "/api" => None
+        "/api/hello/v1/with_repeat"     => None
+        "/api/hello/v1/with_repeat/100" => Some(radix([Static(b"hello/v1/with_repeat"), Param], Some(H), [], vec![]))
+        "/api/users"    => Some(radix([Static(b"users")], Some(H), [], vec![radix([Param], Some(H), [], vec![])]))
+        "/api/users/42" => Some(radix([Param], Some(H), [], vec![]))
+        "/" => None
+        "/api/tasks"         => None
+        "/api/tasks/3141592" => Some(radix([Static(b"tasks"), Param], Some(H), [], vec![]))
+    });
 }
