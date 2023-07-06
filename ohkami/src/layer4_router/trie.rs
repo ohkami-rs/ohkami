@@ -219,6 +219,11 @@ impl Node {
 
             children = child_children;
             handler  = child_handler;
+            for cf in child_fangs {
+                if fangs.iter().all(|f| f.id() != cf.id()) {
+                    fangs.push(cf)
+                }
+            }
             
             let child_pattern = child_pattern.unwrap(/* `child` is not root */);
             if patterns.last().is_some_and(|last| last.is_static()) && child_pattern.is_static() {
@@ -235,12 +240,6 @@ impl Node {
 
             } else {
                 patterns.push(child_pattern)
-            }
-
-            for cf in child_fangs {
-                if fangs.iter().all(|f| f.id() != cf.id()) {
-                    fangs.push(cf)
-                }
             }
         }
 

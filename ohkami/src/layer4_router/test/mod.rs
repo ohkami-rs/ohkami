@@ -5,6 +5,11 @@ use std::{fmt::Debug};
 use super::{trie as t, radix as r};
 use crate::layer3_fang_handler::{Handler, Fang, FrontFang};
 
+fn eq_as_set(left: Vec<impl PartialEq>, right: Vec<impl PartialEq>) -> bool {
+    let left_idx = (1..=left.);
+}
+
+
 #[cfg(test)] const _: () = {
     impl Debug for Fang {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

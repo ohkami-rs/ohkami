@@ -2,7 +2,7 @@ use std::borrow::Cow;
 use radix::RadixRouter;
 use trie::TrieRouter;
 
-use crate::{Context, Response, layer3_fang_handler::{IntoHandler, Handler, Fang, IntoFang, FrontFang}, Request};
+use crate::{Context, Response, layer3_fang_handler::{IntoHandler, Handler, Fang, IntoFang}, Request, Ohkami, Route};
 use super::super::{trie, radix, radix::Pattern::*};
 
 
@@ -72,12 +72,12 @@ fn radix<
 >(
     patterns: [radix::Pattern; N_PATTERNS],
     handler:  Option<fn()->Handler>,
-    front:    [FrontFang; N_FRONT],
+    front:    [fn()->Fang; N_FRONT],
     children: Vec<radix::Node>,
 ) -> radix::Node {
     radix::Node {
         patterns: patterns.to_vec().leak(),
-        front:    front.to_vec().leak(),
+        front:    front.map(|f| f().as_front()).to_vec().leak(),
         handler:  handler.map(|ih| ih()),
         children,
     }
@@ -177,6 +177,50 @@ fn emptyRadixRouter() -> radix::RadixRouter {
 }
 
 
+#[test] fn into_radix_with_fangs() {
+    let built = Ohkami::with((f1,))(
+        "/hc" .GET(h),
+        "/api".by(Ohkami::with((f2,))(
+            "/query".GET(h),
+        ))
+    ).into_router().into_radix();
+
+    let correct = RadixRouter {
+        GET: radix([], None, [], vec![
+            radix([Static(b"hc")],        Some(H), [F1],     vec![]),
+            radix([Static(b"api/query")], Some(H), [F1, F2], vec![]),
+        ]),
+        ..emptyRadixRouter()
+    };
+
+    assert_eq!(built, correct);
+}
+
+
+#[test] fn into_radix_using_by_another() {
+    let built = Ohkami::new()(
+        "/hc" .GET(h),
+        "/api".by(Ohkami::new()(
+            "/json" .GET(h),
+            "/query".GET(h),
+        ))
+    ).into_router().into_radix();
+
+    let correct = RadixRouter {
+        GET: radix([], None, [], vec![
+            radix([Static(b"hc")], Some(H), [], vec![]),
+            radix([Static(b"api")], None, [], vec![
+                radix([Static(b"json")], Some(H), [], vec![]),
+                radix([Static(b"query")], Some(H), [], vec![]),
+            ])
+        ]),
+        ..emptyRadixRouter()
+    };
+
+    assert_eq!(built, correct);
+}
+
+
 #[test] fn test_search() {
     macro_rules! assert_search {
         ($router:ident {
@@ -199,7 +243,6 @@ fn emptyRadixRouter() -> radix::RadixRouter {
             )*
         };
     }
-
 
     let router = RadixRouter {
         GET: radix([], None, [], vec![

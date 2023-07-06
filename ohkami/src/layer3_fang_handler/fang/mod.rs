@@ -14,6 +14,12 @@ pub enum Fang {
             Self::Front(ff) => &ff.id,
         }
     }
+
+    pub(crate) fn as_front(self) -> FrontFang {
+        match self {
+            Self::Front(ff) => ff,
+        }
+    }
 }
 
 pub struct FrontFang {
