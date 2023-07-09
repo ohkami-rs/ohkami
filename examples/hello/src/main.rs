@@ -19,6 +19,13 @@ mod hello_handler {
     pub async fn hello_by_query(c: Context,
         HelloQuery { name, repeat }: HelloQuery
     ) -> Response<String> {
+
+        tracing::info!("\
+            Called `hello_by_query`\n\
+            [current headers]\n\
+            {:?}
+        ", c.headers);
+
         let message = name.repeat(repeat.unwrap_or(1));
         c.Text(message)
     }
@@ -34,6 +41,13 @@ mod hello_handler {
     pub async fn hello_by_json(c: Context,
         HelloRequest { name, repeat }: HelloRequest
     ) -> Response<String> {
+
+        tracing::info!("\
+            Called `hello_by_query`\n\
+            [current headers]\n\
+            {:?}\
+        ", c.headers);
+        
         if name.is_empty() {
             return Response::Err(c
                 .BadRequest()
@@ -50,13 +64,17 @@ mod hello_handler {
 mod fang {
     use ohkami::{Context, Request};
 
-    pub async fn append_server(c: &mut Context) {
-        tracing::info!("\
-            Called `append_server`\n\
-        ");
-
+    pub async fn append_server(mut c: Context) -> Context {
         c.headers
             .Server("ohkami");
+
+        tracing::info!("\
+            Called `append_server`\n\
+            [current headers]\n\
+            {:?}\
+        ", c.headers);
+
+        c
     }
 
     pub async fn log_request(req: &Request) {

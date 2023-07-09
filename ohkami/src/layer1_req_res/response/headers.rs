@@ -156,3 +156,11 @@ impl ResponseHeaders {
         }
     }
 }
+
+const _: () = {
+    impl std::fmt::Debug for ResponseHeaders {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            f.write_str(&self.to_string())
+        }
+    }
+};

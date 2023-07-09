@@ -51,6 +51,23 @@ const _: (/* only Context */) = {
             })
         }
     }
+    impl<'req, F, Fut> IntoFang<((Context,), (Context,)), Fut> for F
+    where
+        F:   Fn(Context) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = Context> + Send + 'static,
+    {
+        // SAFETY: `Fang::Front`s should be executed
+        // **BEFORE** the handler by router
+        fn into_fang(self) -> Fang {
+            Fang::Front(FrontFang {
+                id: self.type_id(),
+                proc: Arc::new(move |c, req| Box::pin({
+                    let new_c = self(c);
+                    async {(new_c.await, req)}
+                }))
+            })
+        }
+    }
 };
 
 const _: (/* only Request */) = {

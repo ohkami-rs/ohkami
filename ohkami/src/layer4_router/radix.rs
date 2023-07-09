@@ -46,8 +46,8 @@ pub(super) enum Pattern {
 impl RadixRouter {
     pub(crate) async fn handle(
         &self,
-        mut c: Context,
-        mut req: Request,
+        mut c:      Context,
+        mut req:    Request,
         mut stream: __dep__::TcpStream,
     ) {
         let Some((target, params)) = match req.method() {
@@ -75,6 +75,12 @@ impl RadixRouter {
 
                 for front in target.front {
                     (c, req) = front(c, req).await;
+
+                    #[cfg(debug_assertions)]
+                    println!("\
+                        [headers: after called {:?}]\n\
+                        {:?}
+                    ", &front.id, &c.headers);
                 }
 
                 // Here I'd like to write just

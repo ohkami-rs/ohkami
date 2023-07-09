@@ -100,7 +100,15 @@ impl<T: Serialize> Response<T> {
         }
     }
     #[inline(always)] pub(crate) async fn send(self, stream: &mut __dep__::TcpStream) {
-        if let Err(e) = stream.write_all(self.to_string().as_bytes()).await {
+        let res = self.to_string();
+
+        #[cfg(debug_assertions)]
+        println!("\
+            [`res` just before send]\n\
+            {res}\
+        ");
+
+        if let Err(e) = stream.write_all(res.as_bytes()).await {
             panic!("Failed to respond: {e}")
         }
     }
@@ -118,6 +126,11 @@ impl<T: AsStr> Response<T> {
         let __content_type__ = content_type.as_str();
         let __body__ = body.as_str();
         let __content_length__ = __body__.len();
+
+        #[cfg(debug_assertions)] println!("\
+            [`__headers__` in `Reaponse::ok_with_body_asstr`]\n\
+            {__headers__}\
+        ");
 
         Self::Ok(format!(
             "HTTP/1.1 {__status__}\r\n\
@@ -139,6 +152,11 @@ impl<T: Serialize> Response<T> {
         let __headers__ = headers.to_string();
         let __body__ = serde_json::to_string(&body).expect("Failed to serialize");
         let __content_length__ = __body__.len();
+
+        #[cfg(debug_assertions)] println!("\
+            [`__headers__` in `Reaponse::ok_with_body_json`]\n\
+            {__headers__}\
+        ");
 
         Self::Ok(format!(
             "HTTP/1.1 {__status__}\r\n\
