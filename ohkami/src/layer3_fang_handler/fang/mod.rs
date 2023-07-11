@@ -1,67 +1,81 @@
 mod into_fang; pub use into_fang::{IntoFang};
 mod global; pub use global::{GlobalFangs}; pub(crate) use global::{getGlobalFangs};
 
-use std::{pin::Pin, future::Future, sync::Arc, any::TypeId};
-use crate::{Context, Request};
+use std::{any::TypeId, sync::Arc};
+use crate::{Context, Request, Response};
 
 
 #[derive(Clone)]
-pub enum Fang {
-    Front(FrontFang)
-} impl Fang {
+pub struct Fang {
+    id:   TypeId,
+    proc: FangProc,
+}
+#[derive(Clone)]
+pub enum FangProc {
+    Front(FrontFang),
+    Back (BackFang),
+}
+#[derive(Clone)]
+pub struct FrontFang(pub(crate) Arc<dyn
+    Fn(Context, Request) -> Result<(Context, Request), Response>
+>);
+#[derive(Clone)]
+pub struct BackFang(pub(crate) Arc<dyn
+    Fn(Response) -> Response
+>);
+
+
+impl Fang {
     pub(crate) fn id(&self) -> &TypeId {
-        match self {
-            Self::Front(ff) => &ff.id,
-        }
+        &self.id
     }
 
-    pub(crate) fn as_front(self) -> FrontFang {
-        match self {
-            Self::Front(ff) => ff,
+    pub(crate) fn into_front(self) -> FrontFang {
+        match self.proc {
+            FangProc::Front(f) => f,
+            FangProc::Back (_) => panic!("Called `into_front` for back fang")
+        }
+    }
+    pub(crate) fn into_back(self) -> BackFang {
+        match self.proc {
+            FangProc::Back (b) => b,
+            FangProc::Front(_) => panic!("Called `into_back` for front fang")
         }
     }
 }
 
-pub struct FrontFang {
-    pub(crate) id: TypeId,
-    pub(crate) proc: Arc<dyn
-        Fn(Context, Request) -> Pin<
-            Box<dyn
-                Future<Output = (Context, Request)>
-                + Send + 'static
-            >
-        > + Send + Sync + 'static
-    >
-} const _: () = {
-    impl Clone for FrontFang {
-        fn clone(&self) -> Self {
-            Self {
-                id: self.id.clone(),
-                proc: Arc::clone(&self.proc),
-            }
+impl Fn<(Context, Request)> for FrontFang {
+    extern "rust-call" fn call(&self, (c, req): (Context, Request)) -> Self::Output {
+        self.0(c, req)
+    }
+} const _: (/* by */) = {
+    impl FnOnce<(Context, Request)> for FrontFang {
+        type Output = Result<(Context, Request), Response>;
+        extern "rust-call" fn call_once(self, (c, req): (Context, Request)) -> Self::Output {
+            self.0(c, req)
         }
     }
+    impl FnMut<(Context, Request)> for FrontFang {
+        extern "rust-call" fn call_mut(&mut self, (c, req): (Context, Request)) -> Self::Output {
+            self.0(c, req)
+        }
+    }
+};
 
-    impl Fn<(Context, Request)> for FrontFang {
-        extern "rust-call" fn call(&self, (c, req): (Context, Request)) -> Self::Output {
-            (&self.proc)(c, req)
+impl Fn<(Response,)> for BackFang {
+    extern "rust-call" fn call(&self, (res,): (Response,)) -> Self::Output {
+        self.0(res)
+    }
+} const _: (/* by */) = {
+    impl FnOnce<(Response,)> for BackFang {
+        type Output = Response;
+        extern "rust-call" fn call_once(self, (res,): (Response,)) -> Self::Output {
+            self.0(res)
         }
-    } const _: (/* by */) = {
-        impl FnMut<(Context, Request)> for FrontFang {
-            extern "rust-call" fn call_mut(&mut self, (c, req): (Context, Request)) -> Self::Output {
-                (&self.proc)(c, req)
-            }
+    }
+    impl FnMut<(Response,)> for BackFang {
+        extern "rust-call" fn call_mut(&mut self, (res,): (Response,)) -> Self::Output {
+            self.0(res)
         }
-        impl FnOnce<(Context, Request)> for FrontFang {
-            type Output = Pin<
-                Box<dyn
-                    Future<Output = (Context, Request)>
-                    + Send + 'static
-                >
-            >;
-            extern "rust-call" fn call_once(self, (c, req): (Context, Request)) -> Self::Output {
-                (&*(self.proc))(c, req)
-            }
-        }
-    };
+    }
 };

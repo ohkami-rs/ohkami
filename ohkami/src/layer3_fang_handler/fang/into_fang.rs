@@ -4,148 +4,218 @@ use std::{future::Future, sync::Arc, any::Any};
 use super::{Fang};
 use crate::{
     Context,
-    Request, layer3_fang_handler::FrontFang,
+    Request,
+    Response,
+    layer3_fang_handler::{FrontFang, FangProc, BackFang},
 };
 
 
-pub trait IntoFang<Args, Output> {
+pub trait IntoFang<Args> {
     fn into_fang(self) -> Fang;
 }
 
-const _: (/* only Context */) = {
-    impl<'req, F, Fut> IntoFang<(&Context,), Fut> for F
-    where
-        F:   Fn(&'req Context) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = ()> + Send + 'static,
-    {
-        // SAFETY: `Fang::Front`s should be executed
-        // **BEFORE** the handler by router
+const _: (/* Front: not retuning Result */) = {
+    impl IntoFang<(&Context,)> for fn(&Context) {
         fn into_fang(self) -> Fang {
-            Fang::Front(FrontFang {
-                id: self.type_id(),
-                proc: Arc::new(move |c, req| Box::pin({
-                    let out = unsafe {self(
-                        std::mem::transmute::<_, &'req _>(&c)
-                    )};
-                    async {out.await; (c, req)}
-                })),
-            })
+            Fang {
+                id:   self.type_id(),
+                proc: FangProc::Front(FrontFang(Arc::new(
+                    move |c, req| {
+                        self(&c);
+                        Ok((c, req))
+                    }
+                ))),
+            }
         }
     }
-    impl<'req, F, Fut> IntoFang<(&mut Context,), Fut> for F
-    where
-        F:   Fn(&'req mut Context) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = ()> + Send + 'static,
-    {
-        // SAFETY: `Fang::Front`s should be executed
-        // **BEFORE** the handler by router
+
+    impl IntoFang<(&mut Context,)> for fn(&mut Context) {
         fn into_fang(self) -> Fang {
-            Fang::Front(FrontFang {
-                id: self.type_id(),
-                proc: Arc::new(move |mut c, req| Box::pin({
-                    let out = unsafe {self(
-                        std::mem::transmute::<_, &'req mut _>(&mut c)
-                    )};
-                    async {out.await; (c, req)}
-                }))
-            })
+            Fang {
+                id:   self.type_id(),
+                proc: FangProc::Front(FrontFang(Arc::new(
+                    move |mut c, req| {
+                        self(&mut c);
+                        Ok((c, req))
+                    }
+                ))),
+            }
         }
     }
-    impl<'req, F, Fut> IntoFang<((Context,), (Context,)), Fut> for F
-    where
-        F:   Fn(Context) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Context> + Send + 'static,
-    {
-        // SAFETY: `Fang::Front`s should be executed
-        // **BEFORE** the handler by router
+
+    impl IntoFang<(&Request,)> for fn(&Request) {
         fn into_fang(self) -> Fang {
-            Fang::Front(FrontFang {
-                id: self.type_id(),
-                proc: Arc::new(move |c, req| Box::pin({
-                    let new_c = self(c);
-                    async {(new_c.await, req)}
-                }))
-            })
+            Fang {
+                id:   self.type_id(),
+                proc: FangProc::Front(FrontFang(Arc::new(
+                    move |c, req| {
+                        self(&req);
+                        Ok((c, req))
+                    }
+                ))),
+            }
+        }
+    }
+
+    impl IntoFang<(&Context, &Request)> for fn(&Context, &Request) {
+        fn into_fang(self) -> Fang {
+            Fang {
+                id:   self.type_id(),
+                proc: FangProc::Front(FrontFang(Arc::new(
+                    move |c, req| {
+                        self(&c, &req);
+                        Ok((c, req))
+                    }
+                ))),
+            }
+        }
+    }
+
+    impl IntoFang<(&mut Context, &Request)> for fn(&mut Context, &Request) {
+        fn into_fang(self) -> Fang {
+            Fang {
+                id:   self.type_id(),
+                proc: FangProc::Front(FrontFang(Arc::new(
+                    move |mut c, req| {
+                        self(&mut c, &req);
+                        Ok((c, req))
+                    }
+                ))),
+            }
         }
     }
 };
 
-const _: (/* only Request */) = {
-    impl<'req, F, Fut> IntoFang<(&Request,), Fut> for F
-    where
-        F:   Fn(&'req Request) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = ()> + Send + 'static,
-    {
-        // SAFETY: `Fang::Front`s should be executed
-        // **BEFORE** the handler by router
+const _: (/* Front: returning Result */) = {
+    impl IntoFang<(&Context, ())> for fn(&Context) -> Result<(), Response> {
         fn into_fang(self) -> Fang {
-            Fang::Front(FrontFang {
-                id: self.type_id(),
-                proc: Arc::new(move |c, req| Box::pin({
-                    let out = unsafe {self(
-                        std::mem::transmute::<_, &'req _>(&req)
-                    )};
-                    async {out.await; (c, req)}
-                }))
-            })
+            Fang {
+                id:   self.type_id(),
+                proc: FangProc::Front(FrontFang(Arc::new(
+                    move |c, req| {
+                        self(&c)?;
+                        Ok((c, req))
+                    }
+                ))),
+            }
+        }
+    }
+
+    impl IntoFang<(&mut Context, ())> for fn(&mut Context) -> Result<(), Response> {
+        fn into_fang(self) -> Fang {
+            Fang {
+                id:   self.type_id(),
+                proc: FangProc::Front(FrontFang(Arc::new(
+                    move |mut c, req| {
+                        self(&mut c)?;
+                        Ok((c, req))
+                    }
+                ))),
+            }
+        }
+    }
+
+    impl IntoFang<(&Request, ())> for fn(&Request) -> Result<(), Response> {
+        fn into_fang(self) -> Fang {
+            Fang {
+                id:   self.type_id(),
+                proc: FangProc::Front(FrontFang(Arc::new(
+                    move |c, req| {
+                        self(&req)?;
+                        Ok((c, req))
+                    }
+                ))),
+            }
+        }
+    }
+
+    impl IntoFang<(&Context, &Request, ())> for fn(&Context, &Request) -> Result<(), Response> {
+        fn into_fang(self) -> Fang {
+            Fang {
+                id:   self.type_id(),
+                proc: FangProc::Front(FrontFang(Arc::new(
+                    move |c, req| {
+                        self(&c, &req)?;
+                        Ok((c, req))
+                    }
+                ))),
+            }
+        }
+    }
+
+    impl IntoFang<(&mut Context, &Request, ())> for fn(&mut Context, &Request) -> Result<(), Response> {
+        fn into_fang(self) -> Fang {
+            Fang {
+                id:   self.type_id(),
+                proc: FangProc::Front(FrontFang(Arc::new(
+                    move |mut c, req| {
+                        self(&mut c, &req)?;
+                        Ok((c, req))
+                    }
+                ))),
+            }
         }
     }
 };
 
-const _: (/* with Request */) = {
-    impl<'req, F, Fut> IntoFang<(&Context, &Request), Fut> for F
-    where
-        F:   Fn(&'req Context, &'req Request) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = ()> + Send + 'static,
-    {
-        // SAFETY: `Fang::Front`s should be executed
-        // **BEFORE** the handler by router
+const _: (/* Back */) = {
+    impl IntoFang<(&Response,)> for fn(&Response) {
         fn into_fang(self) -> Fang {
-            Fang::Front(FrontFang {
-                id: self.type_id(),
-                proc: Arc::new(move |c, req| Box::pin({
-                    let out = unsafe {self(
-                        std::mem::transmute::<_, &'req _>(&c),
-                        std::mem::transmute::<_, &'req _>(&req),
-                    )};
-                    async {out.await; (c, req)}
-                }))
-            })
+            Fang {
+                id:   self.type_id(),
+                proc: FangProc::Back(BackFang(Arc::new(
+                    move |res| {
+                        self(&res);
+                        res
+                    }
+                ))),
+            }
         }
     }
-    impl<'req, F, Fut> IntoFang<(&mut Context, &Request), Fut> for F
-    where
-        F:   Fn(&'req mut Context, &'req Request) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = ()> + Send + 'static,
-    {
-        // SAFETY: `Fang::Front`s should be executed
-        // **BEFORE** the handler by router
+
+    impl IntoFang<(&mut Response,)> for fn(&mut Response) {
         fn into_fang(self) -> Fang {
-            Fang::Front(FrontFang {
-                id: self.type_id(),
-                proc: Arc::new(move |mut c, req| Box::pin({
-                    let out = unsafe {self(
-                        std::mem::transmute::<_, &'req mut _>(&mut c),
-                        std::mem::transmute::<_, &'req _>(&req),
-                    )};
-                    async {out.await; (c, req)}
-                }))
-            })
+            Fang {
+                id:   self.type_id(),
+                proc: FangProc::Back(BackFang(Arc::new(
+                    move |mut res| {
+                        self(&mut res);
+                        res
+                    }
+                ))),
+            }
         }
     }
-};
 
-#[cfg(test)] #[allow(unused)] const _: () = {
-    async fn log(req: &Request) {
-        println!("requested: {} {}", req.method(), req.path())
+    impl IntoFang<(&Response, ())> for fn(&Response) -> Result<(), Response> {
+        fn into_fang(self) -> Fang {
+            Fang {
+                id:   self.type_id(),
+                proc: FangProc::Back(BackFang(Arc::new(
+                    move |res| {
+                        match self(&res) {
+                            Ok(_)  => res,
+                            Err(e) => e,
+                        }
+                    }
+                ))),
+            }
+        }
     }
 
-    async fn add_server_header(c: &mut Context) {
-        c.headers.Server("ohkami");
-    }
-
-    fn __() {
-        let log_fang = log  .into_fang();
-        let add_header_fang = add_server_header .into_fang();
+    impl IntoFang<(&mut Response, ())> for fn(&mut Response) -> Result<(), Response> {
+        fn into_fang(self) -> Fang {
+            Fang {
+                id:   self.type_id(),
+                proc: FangProc::Back(BackFang(Arc::new(
+                    move |mut res| {
+                        match self(&mut res) {
+                            Ok(_)  => res,
+                            Err(e) => e,
+                        }
+                    }
+                ))),
+            }
+        }
     }
 };
