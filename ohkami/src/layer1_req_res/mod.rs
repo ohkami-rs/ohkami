@@ -7,7 +7,7 @@ mod response; pub use response::*;
     use crate::Context;
     use super::Response;
 
-    fn handler_1(mut c: Context) -> Response<()> {
+    fn handler_1(mut c: Context) -> Response {
         c.NoContent()
     }
 
@@ -20,7 +20,7 @@ mod response; pub use response::*;
             Ok(Self { value: 42 })
         }
     }
-    fn handler_2(mut c: Context) -> Response<Length> {
+    fn handler_2(mut c: Context) -> Response {
         let length = Length::new()
             .map_err(|_| c.InternalError().Text("got error in I/O"))?;
 

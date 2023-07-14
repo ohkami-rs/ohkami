@@ -28,4 +28,7 @@ pub(crate) enum Status {
             Self::NotImplemented      => "501 Not Implemented",
         }
     }
+    #[inline(always)] pub(crate) const fn as_bytes(&self) -> &'static [u8] {
+        self.as_str().as_bytes()
+    }
 }

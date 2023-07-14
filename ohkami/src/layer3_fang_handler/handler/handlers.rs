@@ -54,7 +54,7 @@ macro_rules! Route {
             $(
                 fn $method<Args>(self, handler: impl IntoHandler<Args>) -> Handlers;
             )*
-            fn by(self, another: Ohkami) -> ByAnother;
+            fn By(self, another: Ohkami) -> ByAnother;
         }
         impl Route for &'static str {
             $(
@@ -64,7 +64,7 @@ macro_rules! Route {
                     handlers
                 }
             )*
-            fn by(self, another: Ohkami) -> ByAnother {
+            fn By(self, another: Ohkami) -> ByAnother {
                 ByAnother {
                     route:  RouteSections::from_literal(self),
                     ohkami: another,

@@ -101,7 +101,7 @@ impl Context {
         )
     }
 
-    #[inline(always)] pub fn Created<JSON: Serialize>(&self, entity: JSON) -> Response<JSON> {
+    #[inline(always)] pub fn Created<JSON: Serialize>(&self, entity: JSON) -> Response {
         Response::ok_with_body_json(
             entity,
             Status::Created,

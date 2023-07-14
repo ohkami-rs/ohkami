@@ -45,12 +45,16 @@ impl ContentType {
         }
     }
 
-    #[inline(always)] pub(crate) fn as_str(&self) -> &str {
+    #[inline(always)] pub(crate) const fn as_str(&self) -> &'static str {
         match self {
             Self::JSON => "application/json",
             Self::Text => "text/plain",
             Self::HTML => "text/html",
             _ => unsafe {unreachable_unchecked()}
         }
+    }
+
+    #[inline(always)] pub(crate) const fn as_bytes(&self) -> &'static [u8] {
+        self.as_str().as_bytes()
     }
 }
