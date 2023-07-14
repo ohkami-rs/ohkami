@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 use crate::{
-    layer3_fang_handler::{Handler, Handlers, ByAnother, RouteSections, RouteSection, Fang},
+    layer3_fang_handler::{Handler, Handlers, ByAnother, RouteSections, RouteSection, Fang, FangProc},
 };
 
 const _: () = {
@@ -115,7 +115,7 @@ impl TrieRouter {
         let ByAnother { route, ohkami } = another;
         let another_routes = ohkami.into_router();
 
-        #[cfg(test)] println!("{another_routes:#?}");
+        // #[cfg(test)] println!("{another_routes:#?}");
 
         if let Err(e) = self.GET.merge_node(route.clone().into_iter(), another_routes.GET) {panic!("{e}")}
         if let Err(e) = self.PUT.merge_node(route.clone().into_iter(), another_routes.PUT) {panic!("{e}")}
@@ -243,14 +243,19 @@ impl Node {
             }
         }
 
+        let (mut front, mut back) = (Vec::new(), Vec::new());
+        for f in fangs {
+            match f.proc {
+                FangProc::Front(ff) => front.push(ff),
+                FangProc::Back (bf) => back .push(bf),
+            }
+        }
+
         super::radix::Node {
             handler,
             children: children.into_iter().map(|c| c.into_radix()).collect(),
-            front: Box::leak(fangs
-                .into_iter().map(|f| match f {
-                    Fang::Front(f) => f,
-                }).collect()
-            ),
+            front: Box::leak(front.into_boxed_slice()),
+            back:  Box::leak(back .into_boxed_slice()),
             patterns: Box::leak(patterns
                 .into_iter()
                 .map(Pattern::into_radix)

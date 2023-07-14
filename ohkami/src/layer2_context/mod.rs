@@ -157,11 +157,9 @@ macro_rules! impl_error_response {
     }
 } impl Context {
     #[inline(always)] pub(crate) fn NotFound(&self) -> ErrResponse {
-        (crate::getGlobalFangs().NotFound)(
-            ErrResponse::new(
-                Status::NotFound,
-                &self.headers,
-            )
+        ErrResponse::new(
+            Status::NotFound,
+            &self.headers,
         )
     }
 }

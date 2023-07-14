@@ -4,7 +4,7 @@ use crate::{
     Context,
     Response,
     layer0_lib::{Method},
-    layer3_fang_handler::{Handler, FrontFang, PathParams},
+    layer3_fang_handler::{Handler, FrontFang, PathParams, BackFang},
 };
 
 
@@ -23,6 +23,7 @@ pub(super) struct Node {
     pub(super) patterns: &'static [Pattern],
     pub(super) front:    &'static [FrontFang],
     pub(super) handler:  Option<Handler>,
+    pub(super) back:     &'static [BackFang],
     pub(super) children: Vec<Node>,
 }
 
@@ -74,13 +75,16 @@ impl RadixRouter {
                 println!("handler found");
 
                 for front in target.front {
-                    (c, req) = front(c, req).await;
+                    (c, req) = match front(c, req) {
+                        Ok((c, req)) => (c, req),
+                        Err(err_res) => return err_res.send(&mut stream).await,
+                    };
 
                     #[cfg(debug_assertions)]
                     println!("\
-                        [headers: after called {:?}]\n\
+                        [headers: after called a front fang]\n\
                         {:?}
-                    ", &front.id, &c.headers);
+                    ", &c.headers);
                 }
 
                 // Here I'd like to write just
@@ -99,13 +103,11 @@ impl RadixRouter {
                 //    `<Handler as **FnOnce**>::call_once`.
                 // 
                 // So I explicitly indicate 1. (This may be fixed in future)
-                let /* mut */ res: Response = <Handler as Fn<(Request, Context, PathParams)>>::call(handler, (req, c, params)).await;
+                let mut res: Response = <Handler as Fn<(Request, Context, PathParams)>>::call(handler, (req, c, params)).await;
 
-                /*
                 for back in target.back {
-                    res = back(res).await;
+                    res = back(res);
                 }
-                */
 
                 res.send(&mut stream).await
             }

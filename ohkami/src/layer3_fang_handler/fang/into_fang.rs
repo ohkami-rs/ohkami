@@ -29,7 +29,10 @@ const _: (/* Front: not retuning Result */) = {
         }
     }
 
-    impl IntoFang<(&mut Context,)> for fn(&mut Context) {
+    impl<F> IntoFang<(&mut Context,)> for F
+    where
+        F: Fn(&mut Context) + Send + Sync + 'static,
+    {
         fn into_fang(self) -> Fang {
             Fang {
                 id:   self.type_id(),

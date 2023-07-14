@@ -12,8 +12,8 @@ pub trait Fangs<G>: Sized {
         }
     }
 
-    impl<F1, Args1, Output1>
-        Fangs<((), Args1, Output1)> for F1
+    impl<F1, Args1>
+        Fangs<Args1> for F1
     where
         F1: IntoFang<Args1>,
     {
@@ -22,8 +22,8 @@ pub trait Fangs<G>: Sized {
         }
     }
 
-    impl<F1, Args1, Output1>
-        Fangs<(Args1, Output1)> for (F1,)
+    impl<F1, Args1>
+        Fangs<(Args1,)> for (F1,)
     where
         F1: IntoFang<Args1>,
     {
@@ -32,8 +32,8 @@ pub trait Fangs<G>: Sized {
         }
     }
 
-    impl<F1, Args1, Output1, F2, Args2, Output2>
-        Fangs<(Args1, Output1, Args2, Output2)> for (F1, F2)
+    impl<F1, Args1, F2, Args2>
+        Fangs<(Args1, Args2)> for (F1, F2)
     where
         F1: IntoFang<Args1>,
         F2: IntoFang<Args2>,
@@ -43,8 +43,8 @@ pub trait Fangs<G>: Sized {
         }
     }
 
-    impl<F1, Args1, Output1, F2, Args2, Output2, F3, Args3, Output3>
-        Fangs<(Args1, Output1, Args2, Output2, Args3, Output3)> for (F1, F2, F3)
+    impl<F1, Args1, F2, Args2, F3, Args3>
+        Fangs<(Args1, Args2, Args3)> for (F1, F2, F3)
     where
         F1: IntoFang<Args1>,
         F2: IntoFang<Args2>,
@@ -55,8 +55,8 @@ pub trait Fangs<G>: Sized {
         }
     }
 
-    impl<F1, Args1, Output1, F2, Args2, Output2, F3, Args3, Output3, F4, Args4, Output4>
-        Fangs<(Args1, Output1, Args2, Output2, Args3, Output3, Args4, Output4)> for (F1, F2, F3, F4)
+    impl<F1, Args1, F2, Args2, F3, Args3, F4, Args4>
+        Fangs<(Args1, Args2, Args3, Args4)> for (F1, F2, F3, F4)
     where
         F1: IntoFang<Args1>,
         F2: IntoFang<Args2>,
@@ -68,8 +68,8 @@ pub trait Fangs<G>: Sized {
         }
     }
 
-    impl<F1, Args1, Output1, F2, Args2, Output2, F3, Args3, Output3, F4, Args4, Output4, F5, Args5, Output5>
-        Fangs<(Args1, Output1, Args2, Output2, Args3, Output3, Args4, Output4, Args5, Output5)> for (F1, F2, F3, F4, F5)
+    impl<F1, Args1, F2, Args2, F3, Args3, F4, Args4, F5, Args5>
+        Fangs<(Args1, Args2, Args3, Args4, Args5)> for (F1, F2, F3, F4, F5)
     where
         F1: IntoFang<Args1>,
         F2: IntoFang<Args2>,
@@ -82,8 +82,8 @@ pub trait Fangs<G>: Sized {
         }
     }
 
-    impl<F1, Args1, Output1, F2, Args2, Output2, F3, Args3, Output3, F4, Args4, Output4, F5, Args5, Output5, F6, Args6, Output6>
-        Fangs<(Args1, Output1, Args2, Output2, Args3, Output3, Args4, Output4, Args5, Output5, Args6, Output6)> for (F1, F2, F3, F4, F5, F6)
+    impl<F1, Args1, F2, Args2, F3, Args3, F4, Args4, F5, Args5, F6, Args6>
+        Fangs<(Args1, Args2, Args3, Args4, Args5, Args6)> for (F1, F2, F3, F4, F5, F6)
     where
         F1: IntoFang<Args1>,
         F2: IntoFang<Args2>,
