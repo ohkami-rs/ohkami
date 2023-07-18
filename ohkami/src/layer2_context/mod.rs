@@ -3,7 +3,7 @@
 use serde::Serialize;
 use crate::{
     layer0_lib::{AsStr, Status, ContentType},
-    layer1_req_res::{ResponseHeaders, Response, ErrResponse},
+    layer1_req_res::{ResponseHeaders, Response},
 };
 
 
@@ -77,60 +77,43 @@ impl Context {
 }
 
 impl Context {
-    #[inline(always)] pub fn Text<Text: AsStr>(&self, text: Text) -> Response<Text> {
-        Response::ok_with_body_asstr(
-            text,
-            Status::OK,
-            ContentType::Text,
-            &self.headers,
-        )
+    #[inline] pub fn OK(&self) -> Response {
+        Response {
+            status:  Status::OK,
+            headers: self.headers.to_string(),
+            content: None,
+        }
     }
-    #[inline(always)] pub fn HTML<HTML: AsStr>(&self, html: HTML) -> Response<HTML> {
-        Response::ok_with_body_asstr(
-            html,
-            Status::OK,
-            ContentType::HTML,
-            &self.headers,
-        )
+    #[inline] pub fn Created(&self) -> Response {
+        Response {
+            status:  Status::Created,
+            headers: self.headers.to_string(),
+            content: None,
+        }
     }
-    #[inline(always)] pub fn JSON<JSON: Serialize>(&self, json: JSON) -> Response<JSON> {
-        Response::ok_with_body_json(
-            json,
-            Status::OK,
-            &self.headers,
-        )
-    }
-
-    #[inline(always)] pub fn Created<JSON: Serialize>(&self, entity: JSON) -> Response {
-        Response::ok_with_body_json(
-            entity,
-            Status::Created,
-            &self.headers,
-        )
-    }
-
-    #[inline(always)] pub fn NoContent(&self) -> Response<()> {
-        Response::ok_without_body(
-            Status::NoContent,
-            &self.headers,
-        )
+    #[inline] pub fn NoContent(&self) -> Response {
+        Response {
+            status:  Status::NoContent,
+            headers: self.headers.to_string(),
+            content: None,
+        }
     }
 }
 
 impl Context {
-    #[inline(always)] pub fn Redirect(&self, location: impl AsStr) -> Response {
-        Response::redirect(
-            location,
-            Status::Found,
-            &self.headers,
-        )
+    #[inline] pub fn Redirect(&self, location: impl AsStr) -> Response {
+        Response {
+            status:  Status::Found,
+            headers: self.headers.to_string(),
+            content: None,
+        }
     }
-    #[inline(always)] pub fn RedirectPermanently(&self, location: impl AsStr) -> Response {
-        Response::redirect(
-            location,
-            Status::MovedPermanently,
-            &self.headers,
-        )
+    #[inline] pub fn RedirectPermanently(&self, location: impl AsStr) -> Response {
+        Response {
+            status:  Status::MovedPermanently,
+            headers: self.headers.to_string(),
+            content: None,
+        }
     }
 }
 
@@ -138,8 +121,12 @@ macro_rules! impl_error_response {
     ($( $name:ident ),*) => {
         impl Context {
             $(
-                #[inline(always)] pub fn $name(&self) -> ErrResponse {
-                    ErrResponse::new(Status::$name, &self.headers)
+                #[inline] pub fn $name(&self) -> Response {
+                    Response {
+                        status:  Status::$name,
+                        headers: self.headers.to_string(),
+                        content: None,
+                    }
                 }
             )*
         }
@@ -148,21 +135,10 @@ macro_rules! impl_error_response {
     BadRequest,
     Unauthorized,
     Forbidden,
-    // NotFound,            -- customizable by GlobalFangs, not pub ↓
-    // InternalServerError, -- too long name ↓
+    NotFound,
+    InternalServerError,
     NotImplemented
-); impl Context {
-    #[inline(always)] pub fn InternalError(&self) -> ErrResponse {
-        ErrResponse::new(Status::InternalServerError, &self.headers)
-    }
-} impl Context {
-    #[inline(always)] pub(crate) fn NotFound(&self) -> ErrResponse {
-        ErrResponse::new(
-            Status::NotFound,
-            &self.headers,
-        )
-    }
-}
+);
 
 
 
@@ -251,7 +227,7 @@ macro_rules! impl_error_response {
             name: &'static str,
             age:  u8,
         }
-        assert_eq!(c.Created(User{ id:42, name:"kanarus", age:19 }).to_string(), format!("\
+        assert_eq!(c.Created().json(User{ id:42, name:"kanarus", age:19 }).to_string(), format!("\
             HTTP/1.1 201 Created\r\n\
             Content-Type: application/json\r\n\
             Content-Length: 35\r\n\
@@ -272,7 +248,7 @@ macro_rules! impl_error_response {
                 "age", "id", "name"
             in response body.
         */
-        assert_eq!(c.Created(serde_json::json!({"id":42,"name":"kanarus","age":19})).to_string(), format!("\
+        assert_eq!(c.Created().json(serde_json::json!({"id":42,"name":"kanarus","age":19})).to_string(), format!("\
             HTTP/1.1 201 Created\r\n\
             Content-Type: application/json\r\n\
             Content-Length: 35\r\n\
@@ -294,7 +270,7 @@ macro_rules! impl_error_response {
                 {"id":42,"name":"kanarus","age":19}
             `#.
         */
-        assert_eq!(c.Created(r#"{"id":42,"name":"kanarus","age":19}"#).to_string(), format!("\
+        assert_eq!(c.Created().json(r#"{"id":42,"name":"kanarus","age":19}"#).to_string(), format!("\
             HTTP/1.1 201 Created\r\n\
             Content-Type: application/json\r\n\
             Content-Length: 45\r\n\

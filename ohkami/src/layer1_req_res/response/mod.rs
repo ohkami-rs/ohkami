@@ -54,3 +54,27 @@ impl Response {
         }
     }
 }
+
+impl Response {
+    pub fn text(mut self, text: impl IntoCow<'static>) -> Self {
+        self.content.replace((
+            ContentType::Text,
+            text.into_cow()
+        ));
+        self
+    }
+    pub fn html(mut self, html: impl IntoCow<'static>) -> Self {
+        self.content.replace((
+            ContentType::HTML,
+            html.into_cow()
+        ));
+        self
+    }
+    pub fn json(mut self, json: impl serde::Serialize) -> Self {
+        self.content.replace((
+            ContentType::JSON,
+            Cow::Owned(serde_json::to_string(&json).expect("Failed to serialize json"))
+        ));
+        self
+    }
+}
