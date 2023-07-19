@@ -1,12 +1,11 @@
 #![allow(non_snake_case)]
 
-use std::{future::Future, sync::Arc, any::Any};
-use super::{Fang};
+use std::{sync::Arc, any::Any};
 use crate::{
     Context,
     Request,
     Response,
-    layer3_fang_handler::{FrontFang, FangProc, BackFang},
+    layer3_fang_handler::{FrontFang, FangProc, BackFang, Fang},
 };
 
 
@@ -15,7 +14,8 @@ pub trait IntoFang<Args> {
 }
 
 const _: (/* Front: not retuning Result */) = {
-    impl IntoFang<(&Context,)> for fn(&Context) {
+    impl<F: Fn(&Context) + Send + Sync + 'static>
+    IntoFang<(&Context,)> for F {
         fn into_fang(self) -> Fang {
             Fang {
                 id:   self.type_id(),
@@ -29,10 +29,8 @@ const _: (/* Front: not retuning Result */) = {
         }
     }
 
-    impl<F> IntoFang<(&mut Context,)> for F
-    where
-        F: Fn(&mut Context) + Send + Sync + 'static,
-    {
+    impl<F: Fn(&mut Context) + Send + Sync + 'static>
+    IntoFang<(&mut Context,)> for F {
         fn into_fang(self) -> Fang {
             Fang {
                 id:   self.type_id(),
@@ -46,7 +44,8 @@ const _: (/* Front: not retuning Result */) = {
         }
     }
 
-    impl IntoFang<(&Request,)> for fn(&Request) {
+    impl<F: Fn(&Request) + Send + Sync + 'static>
+    IntoFang<(&Request,)> for F {
         fn into_fang(self) -> Fang {
             Fang {
                 id:   self.type_id(),
@@ -60,7 +59,8 @@ const _: (/* Front: not retuning Result */) = {
         }
     }
 
-    impl IntoFang<(&Context, &Request)> for fn(&Context, &Request) {
+    impl<F: Fn(&Context, &Request) + Send + Sync + 'static>
+    IntoFang<(&Context, &Request)> for F {
         fn into_fang(self) -> Fang {
             Fang {
                 id:   self.type_id(),
@@ -74,7 +74,8 @@ const _: (/* Front: not retuning Result */) = {
         }
     }
 
-    impl IntoFang<(&mut Context, &Request)> for fn(&mut Context, &Request) {
+    impl<F: Fn(&mut Context, &Request) + Send + Sync + 'static>
+    IntoFang<(&mut Context, &Request)> for F {
         fn into_fang(self) -> Fang {
             Fang {
                 id:   self.type_id(),
@@ -90,7 +91,8 @@ const _: (/* Front: not retuning Result */) = {
 };
 
 const _: (/* Front: returning Result */) = {
-    impl IntoFang<(&Context, ())> for fn(&Context) -> Result<(), Response> {
+    impl<F: Fn(&Context)->Result<(), Response> + Send + Sync + 'static>
+    IntoFang<(&Context, ())> for F {
         fn into_fang(self) -> Fang {
             Fang {
                 id:   self.type_id(),
@@ -104,7 +106,8 @@ const _: (/* Front: returning Result */) = {
         }
     }
 
-    impl IntoFang<(&mut Context, ())> for fn(&mut Context) -> Result<(), Response> {
+    impl<F: Fn(&mut Context)->Result<(), Response> + Send + Sync + 'static>
+    IntoFang<(&mut Context, ())> for F {
         fn into_fang(self) -> Fang {
             Fang {
                 id:   self.type_id(),
@@ -118,7 +121,8 @@ const _: (/* Front: returning Result */) = {
         }
     }
 
-    impl IntoFang<(&Request, ())> for fn(&Request) -> Result<(), Response> {
+    impl<F: Fn(&Request)->Result<(), Response> + Send + Sync + 'static>
+    IntoFang<(&Request, ())> for F {
         fn into_fang(self) -> Fang {
             Fang {
                 id:   self.type_id(),
@@ -132,7 +136,8 @@ const _: (/* Front: returning Result */) = {
         }
     }
 
-    impl IntoFang<(&Context, &Request, ())> for fn(&Context, &Request) -> Result<(), Response> {
+    impl<F: Fn(&Context, &Request)->Result<(), Response> + Send + Sync + 'static>
+    IntoFang<(&Context, &Request, ())> for F {
         fn into_fang(self) -> Fang {
             Fang {
                 id:   self.type_id(),

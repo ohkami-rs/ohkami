@@ -63,7 +63,7 @@ impl RadixRouter {
             #[cfg(debug_assertions)]
             println!("target Node not found");
 
-            return Response::<()>::Err(c.NotFound()).send(&mut stream).await
+            return c.NotFound().send(&mut stream).await
         };
 
         #[cfg(debug_assertions)]
@@ -111,7 +111,7 @@ impl RadixRouter {
 
                 res.send(&mut stream).await
             }
-            None => Response::<()>::Err(c.NotFound()).send(&mut stream).await
+            None => c.NotFound().send(&mut stream).await
         }
     }
 }

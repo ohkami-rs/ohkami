@@ -34,19 +34,6 @@ impl Fang {
     pub(crate) fn id(&self) -> &TypeId {
         &self.id
     }
-
-    pub(crate) fn into_front(self) -> FrontFang {
-        match self.proc {
-            FangProc::Front(f) => f,
-            FangProc::Back (_) => panic!("Called `into_front` for back fang")
-        }
-    }
-    pub(crate) fn into_back(self) -> BackFang {
-        match self.proc {
-            FangProc::Back (b) => b,
-            FangProc::Front(_) => panic!("Called `into_back` for front fang")
-        }
-    }
 }
 
 impl Fn<(Context, Request)> for FrontFang {

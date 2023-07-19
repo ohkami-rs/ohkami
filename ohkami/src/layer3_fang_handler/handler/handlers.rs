@@ -89,7 +89,7 @@ macro_rules! Route {
         layer1_req_res::FromRequest,
     };
 
-    async fn health_check(c: Context) -> Response<()> {
+    async fn health_check(c: Context) -> Response {
         c.NoContent()
     }
 
@@ -137,7 +137,7 @@ macro_rules! Route {
         }
     }
 
-    async fn create_user(c: Context, payload: CreateUser) -> Response<User> {
+    async fn create_user(c: Context, payload: CreateUser) -> Response {
         let CreateUser { name, password } = payload;
 
         mock::authenticate().await
@@ -146,9 +146,9 @@ macro_rules! Route {
         let id = mock::DB.insert_returning_id(CreateUser{
             name: name.clone(),
             password: password.clone(),
-        }).await.map_err(|e| c.InternalError())?;
+        }).await.map_err(|e| c.InternalServerError())?;
 
-        c.Created(User { id, name, password })
+        c.Created().json(User { id, name, password })
     }
 
     // #[Payload(JSON)] : todo()!
@@ -170,7 +170,7 @@ macro_rules! Route {
         }
     }
 
-    async fn update_user(c: Context, req: UpdateUser) -> Response<()> {
+    async fn update_user(c: Context, req: UpdateUser) -> Response {
         let UpdateUser { name, password } = req;
 
         mock::authenticate().await
@@ -179,7 +179,7 @@ macro_rules! Route {
         mock::DB.update_returning_id(UpdateUser {
             name: name.clone(),
             password: password.clone(),
-        }).await.map_err(|e| c.InternalError())?;
+        }).await.map_err(|e| c.InternalServerError())?;
 
         c.NoContent()
     }

@@ -7,7 +7,7 @@ use std::{
 };
 use crate::{
     __dep__, __dep__::AsyncWriter,
-    layer0_lib::{Status, ContentType, AsStr, IntoCow},
+    layer0_lib::{Status, ContentType, IntoCow},
 };
 
 
@@ -24,7 +24,7 @@ impl FromResidual<Result<Infallible, Response>> for Response {
 }
 
 impl Response {
-    fn into_bytes(self) -> Vec<u8> {
+    pub(crate) fn into_bytes(self) -> Vec<u8> {
         let Self { status, headers, content } = self;
         let (status, headers) = (status.as_bytes(), headers.as_bytes());
 

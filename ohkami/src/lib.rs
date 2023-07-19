@@ -98,15 +98,15 @@ pub mod internal {
         c.NoContent()
     }
 
-    async fn hello(c: Context, name: String) -> Response<String> {
-        c.Text(format!("Hello, {name}!"))
+    async fn hello(c: Context, name: String) -> Response {
+        c.OK().text(format!("Hello, {name}!"))
     }
 
 // run
     Ohkami::with((server))(
-        "/hc"
-            .GET(health_check),
-        "/hello/:name"
-            .GET(hello),
+        "/hc".
+            GET(health_check),
+        "/hello/:name".
+            GET(hello),
     ).howl(3000).await
 }

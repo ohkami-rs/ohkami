@@ -1,8 +1,7 @@
 #![allow(non_snake_case)]
 
-use serde::Serialize;
 use crate::{
-    layer0_lib::{AsStr, Status, ContentType},
+    layer0_lib::{AsStr, Status},
     layer1_req_res::{ResponseHeaders, Response},
 };
 
@@ -49,17 +48,17 @@ use crate::{
 /// async fn create_user(
 ///     c:    Context,
 ///     body: CreateUser,
-/// ) -> Response<User> {
+/// ) -> Response {
 ///     let created_id = insert_user_returing_id(
 ///         &body.name,
 ///         &body.password,
 ///     ).await /* Result<usize, MyError> */
 ///         .map_err(|e| c
-///             .InternalError()      // generate a `ErrResponse`
-///             .Text("in DB operation") // add message if needed
+///             .InternalServerError()
+///             .text("in DB operation")
 ///         )?; // early return in error cases
 /// 
-///     c.Created(User {
+///     c.Created().json(User {
 ///         id:       created_id,
 ///         name:     body.name,
 ///         password: body.password,
@@ -100,23 +99,6 @@ impl Context {
     }
 }
 
-impl Context {
-    #[inline] pub fn Redirect(&self, location: impl AsStr) -> Response {
-        Response {
-            status:  Status::Found,
-            headers: self.headers.to_string(),
-            content: None,
-        }
-    }
-    #[inline] pub fn RedirectPermanently(&self, location: impl AsStr) -> Response {
-        Response {
-            status:  Status::MovedPermanently,
-            headers: self.headers.to_string(),
-            content: None,
-        }
-    }
-}
-
 macro_rules! impl_error_response {
     ($( $name:ident ),*) => {
         impl Context {
@@ -139,6 +121,35 @@ macro_rules! impl_error_response {
     InternalServerError,
     NotImplemented
 );
+
+impl Context {
+    #[inline] pub fn redirect_to(&self, location: impl AsStr) -> Response {
+        let mut headers = self.headers.to_string();
+        headers.push_str("Location: ");
+        headers.push_str(location.as_str());
+        headers.push('\r');
+        headers.push('\n');
+
+        Response {
+            status:  Status::Found,
+            content: None,
+            headers,
+        }
+    }
+    #[inline] pub fn redirect_permanently(&self, location: impl AsStr) -> Response {
+        let mut headers = self.headers.to_string();
+        headers.push_str("Location: ");
+        headers.push_str(location.as_str());
+        headers.push('\r');
+        headers.push('\n');
+
+        Response {
+            status:  Status::MovedPermanently,
+            content: None,
+            headers,
+        }
+    }
+}
 
 
 
@@ -205,7 +216,7 @@ macro_rules! impl_error_response {
         let __now__ = crate::layer0_lib::now();
 
         c.headers.Server("ohkami");
-        assert_eq!(c.Text("Hello, world!").to_string(), format!("\
+        assert_eq!(c.OK().text("Hello, world!").into_bytes(), format!("\
             HTTP/1.1 200 OK\r\n\
             Content-Type: text/plain\r\n\
             Content-Length: 13\r\n\
@@ -215,7 +226,7 @@ macro_rules! impl_error_response {
             Server: ohkami\r\n\
             \r\n\
             Hello, world!\
-        "));
+        ").as_bytes());
 
         c.headers.ETag("identidentidentident");
 
@@ -227,7 +238,7 @@ macro_rules! impl_error_response {
             name: &'static str,
             age:  u8,
         }
-        assert_eq!(c.Created().json(User{ id:42, name:"kanarus", age:19 }).to_string(), format!("\
+        assert_eq!(c.Created().json(User{ id:42, name:"kanarus", age:19 }).into_bytes(), format!("\
             HTTP/1.1 201 Created\r\n\
             Content-Type: application/json\r\n\
             Content-Length: 35\r\n\
@@ -238,7 +249,7 @@ macro_rules! impl_error_response {
             ETag: identidentidentident\r\n\
             \r\n\
             {{\"id\":42,\"name\":\"kanarus\",\"age\":19}}\
-        "));
+        ").as_bytes());
 
         /* 
             `serde_json::Value::Object` uses `BTreeMap` for keys.
@@ -248,7 +259,7 @@ macro_rules! impl_error_response {
                 "age", "id", "name"
             in response body.
         */
-        assert_eq!(c.Created().json(serde_json::json!({"id":42,"name":"kanarus","age":19})).to_string(), format!("\
+        assert_eq!(c.Created().json(serde_json::json!({"id":42,"name":"kanarus","age":19})).into_bytes(), format!("\
             HTTP/1.1 201 Created\r\n\
             Content-Type: application/json\r\n\
             Content-Length: 35\r\n\
@@ -259,7 +270,7 @@ macro_rules! impl_error_response {
             ETag: identidentidentident\r\n\
             \r\n\
             {{\"age\":19,\"id\":42,\"name\":\"kanarus\"}}\
-        "));
+        ").as_bytes());
 
         /*
             This string "
@@ -270,7 +281,7 @@ macro_rules! impl_error_response {
                 {"id":42,"name":"kanarus","age":19}
             `#.
         */
-        assert_eq!(c.Created().json(r#"{"id":42,"name":"kanarus","age":19}"#).to_string(), format!("\
+        assert_eq!(c.Created().json(r#"{"id":42,"name":"kanarus","age":19}"#).into_bytes(), (format!("\
             HTTP/1.1 201 Created\r\n\
             Content-Type: application/json\r\n\
             Content-Length: 45\r\n\
@@ -280,21 +291,21 @@ macro_rules! impl_error_response {
             Server: ohkami\r\n\
             ETag: identidentidentident\r\n\
             \r\n\
-        ") + r##""{\"id\":42,\"name\":\"kanarus\",\"age\":19}""##);
+        ") + r##""{\"id\":42,\"name\":\"kanarus\",\"age\":19}""##).as_bytes());
 
         c.headers.Server(None);
-        assert_eq!(c.NoContent().to_string(), format!("\
+        assert_eq!(c.NoContent().into_bytes(), format!("\
             HTTP/1.1 204 No Content\r\n\
             Connection: Keep-Alive\r\n\
             Keep-Alive: timout=5\r\n\
             Date: {__now__}\r\n\
             ETag: identidentidentident\r\n\
             \r\n\
-        "));
+        ").as_bytes());
 
         c.headers.Server("ohkami2");
         c.headers.ETag("new-etag");
-        assert_eq!(c.BadRequest().to_string(), format!("\
+        assert_eq!(c.BadRequest().into_bytes(), format!("\
             HTTP/1.1 400 Bad Request\r\n\
             Connection: Keep-Alive\r\n\
             Keep-Alive: timout=5\r\n\
@@ -302,11 +313,11 @@ macro_rules! impl_error_response {
             Server: ohkami2\r\n\
             ETag: new-etag\r\n\
             \r\n\
-        "));
+        ").as_bytes());
 
         c.headers.custom("X-MyApp-Cred", "abcdefg");
         c.headers.custom("MyApp-Data", "gfedcba");
-        assert_eq!(c.InternalError().Text("I'm sorry fo").to_string(), format!("\
+        assert_eq!(c.InternalServerError().text("I'm sorry fo").into_bytes(), format!("\
             HTTP/1.1 500 Internal Server Error\r\n\
             Connection: Keep-Alive\r\n\
             Keep-Alive: timout=5\r\n\
@@ -319,6 +330,6 @@ macro_rules! impl_error_response {
             Content-Length: 12\r\n\
             \r\n\
             I'm sorry fo\
-        "));
+        ").as_bytes());
     }
 }

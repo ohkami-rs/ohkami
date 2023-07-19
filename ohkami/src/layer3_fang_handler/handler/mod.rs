@@ -1,8 +1,7 @@
 mod handlers; pub use handlers::{Handlers, ByAnother, Route};
 mod into_handler; pub use into_handler::{IntoHandler};
 
-use serde::{Serialize};
-use std::{pin::Pin, future::Future, marker::PhantomData};
+use std::{pin::Pin, future::Future};
 use crate::{
     Context, Request,
     layer0_lib::{List, BufRange},
@@ -17,21 +16,12 @@ pub struct Handler(
     Box<dyn
         Fn(Request, Context, PathParams) -> Pin<
             Box<dyn
-                Future<Output = Response<()>>
+                Future<Output = Response>
                 + Send + 'static
             >
         > + Send + Sync + 'static
     >
 ); const _: () = {
-    impl<T:Serialize> Response<T> {
-        pub(crate) fn into_unit(self) -> Response<()> {
-            match self {
-                Self::Ok(s, _) => Response::Ok(s, PhantomData),
-                Self::Err(err) => Response::Err(err),
-            }
-        }
-    }
-
     impl Fn<(Request, Context, PathParams)> for Handler {
         extern "rust-call" fn call(&self, (req, c, params): (Request, Context, PathParams)) -> Self::Output {
             self.0(req, c, params)
@@ -45,7 +35,7 @@ pub struct Handler(
         impl FnOnce<(Request, Context, PathParams)> for Handler {
             type Output = Pin<
                 Box<dyn
-                    Future<Output = Response<()>>
+                    Future<Output = Response>
                     + Send + 'static
                 >
             >;
