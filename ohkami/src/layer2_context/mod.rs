@@ -297,13 +297,13 @@ impl Context {
         c.headers.custom("MyApp-Data", "gfedcba");
         assert_eq!(std::str::from_utf8(&c.InternalServerError().text("I'm sorry fo").into_bytes()).unwrap(), format!("\
             HTTP/1.1 500 Internal Server Error\r\n\
+            Content-Type: text/plain\r\n\
+            Content-Length: 12\r\n\
             Date: {__now__}\r\n\
             Server: ohkami2\r\n\
             ETag: new-etag\r\n\
             MyApp-Data: gfedcba\r\n\
             X-MyApp-Cred: abcdefg\r\n\
-            Content-Type: text/plain\r\n\
-            Content-Length: 12\r\n\
             \r\n\
             I'm sorry fo\
         "));
