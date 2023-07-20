@@ -21,7 +21,7 @@ ohkami *- [狼] wolf in Japanese -* is **declarative** web framework for *nightl
 
 [dependencies]
 ohkami = { version = "0.9.0", features = ["rt_tokio"] }
-tokio  = { version = "1.27",  fetures = ["full"] }
+tokio  = { version = "1.27",  fetures  = ["full"] }
 ```
 (And check if your Rust toolchains are **nightly** ones)
 
