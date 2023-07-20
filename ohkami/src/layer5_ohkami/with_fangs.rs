@@ -9,6 +9,9 @@ pub trait Fangs<G>: Sized {
     impl Fangs<()> for () {
         fn collect(self) -> Vec<Fang> {
             vec![]
+                .into_iter()
+                .filter_map(|of| of)
+                .collect()
         }
     }
 
@@ -19,6 +22,9 @@ pub trait Fangs<G>: Sized {
     {
         fn collect(self) -> Vec<Fang> {
             vec![self.into_fang()]
+                .into_iter()
+                .filter_map(|of| of)
+                .collect()
         }
     }
 
@@ -29,6 +35,9 @@ pub trait Fangs<G>: Sized {
     {
         fn collect(self) -> Vec<Fang> {
             vec![self.0.into_fang()]
+                .into_iter()
+                .filter_map(|of| of)
+                .collect()
         }
     }
 
@@ -40,6 +49,9 @@ pub trait Fangs<G>: Sized {
     {
         fn collect(self) -> Vec<Fang> {
             vec![self.0.into_fang(), self.1.into_fang()]
+                .into_iter()
+                .filter_map(|of| of)
+                .collect()
         }
     }
 
@@ -52,6 +64,9 @@ pub trait Fangs<G>: Sized {
     {
         fn collect(self) -> Vec<Fang> {
             vec![self.0.into_fang(), self.1.into_fang(), self.2.into_fang()]
+                .into_iter()
+                .filter_map(|of| of)
+                .collect()
         }
     }
 
@@ -65,6 +80,9 @@ pub trait Fangs<G>: Sized {
     {
         fn collect(self) -> Vec<Fang> {
             vec![self.0.into_fang(), self.1.into_fang(), self.2.into_fang(), self.3.into_fang()]
+                .into_iter()
+                .filter_map(|of| of)
+                .collect()
         }
     }
 
@@ -79,6 +97,9 @@ pub trait Fangs<G>: Sized {
     {
         fn collect(self) -> Vec<Fang> {
             vec![self.0.into_fang(), self.1.into_fang(), self.2.into_fang(), self.3.into_fang(), self.4.into_fang()]
+                .into_iter()
+                .filter_map(|of| of)
+                .collect()
         }
     }
 
@@ -94,6 +115,9 @@ pub trait Fangs<G>: Sized {
     {
         fn collect(self) -> Vec<Fang> {
             vec![self.0.into_fang(), self.1.into_fang(), self.2.into_fang(), self.3.into_fang(), self.4.into_fang(), self.5.into_fang()]
+                .into_iter()
+                .filter_map(|of| of)
+                .collect()
         }
     }
 };

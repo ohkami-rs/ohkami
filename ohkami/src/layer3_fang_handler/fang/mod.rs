@@ -1,4 +1,5 @@
 mod into_fang; pub use into_fang::{IntoFang};
+mod builtin;   pub use builtin::{cors};
 
 use std::{any::TypeId, sync::Arc};
 use crate::{Context, Request, Response};

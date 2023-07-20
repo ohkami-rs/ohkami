@@ -10,14 +10,17 @@ use crate::{
 
 
 pub trait IntoFang<Args> {
-    fn into_fang(self) -> Fang;
+    /// Why Option: returns `None` when executing
+    /// some builtin fangs like `cors`. In other words,
+    /// this **internally executes** proc that returns `None`.
+    fn into_fang(self) -> Option<Fang>;
 }
 
 const _: (/* Front: not retuning Result */) = {
     impl<F: Fn(&Context) + Send + Sync + 'static>
     IntoFang<(&Context,)> for F {
-        fn into_fang(self) -> Fang {
-            Fang {
+        fn into_fang(self) -> Option<Fang> {
+            Some(Fang {
                 id:   self.type_id(),
                 proc: FangProc::Front(FrontFang(Arc::new(
                     move |c, req| {
@@ -25,14 +28,14 @@ const _: (/* Front: not retuning Result */) = {
                         Ok((c, req))
                     }
                 ))),
-            }
+            })
         }
     }
 
     impl<F: Fn(&mut Context) + Send + Sync + 'static>
     IntoFang<(&mut Context,)> for F {
-        fn into_fang(self) -> Fang {
-            Fang {
+        fn into_fang(self) -> Option<Fang> {
+            Some(Fang {
                 id:   self.type_id(),
                 proc: FangProc::Front(FrontFang(Arc::new(
                     move |mut c, req| {
@@ -40,14 +43,14 @@ const _: (/* Front: not retuning Result */) = {
                         Ok((c, req))
                     }
                 ))),
-            }
+            })
         }
     }
 
     impl<F: Fn(&Request) + Send + Sync + 'static>
     IntoFang<(&Request,)> for F {
-        fn into_fang(self) -> Fang {
-            Fang {
+        fn into_fang(self) -> Option<Fang> {
+            Some(Fang {
                 id:   self.type_id(),
                 proc: FangProc::Front(FrontFang(Arc::new(
                     move |c, req| {
@@ -55,14 +58,14 @@ const _: (/* Front: not retuning Result */) = {
                         Ok((c, req))
                     }
                 ))),
-            }
+            })
         }
     }
 
     impl<F: Fn(&Context, &Request) + Send + Sync + 'static>
     IntoFang<(&Context, &Request)> for F {
-        fn into_fang(self) -> Fang {
-            Fang {
+        fn into_fang(self) -> Option<Fang> {
+            Some(Fang {
                 id:   self.type_id(),
                 proc: FangProc::Front(FrontFang(Arc::new(
                     move |c, req| {
@@ -70,14 +73,14 @@ const _: (/* Front: not retuning Result */) = {
                         Ok((c, req))
                     }
                 ))),
-            }
+            })
         }
     }
 
     impl<F: Fn(&mut Context, &Request) + Send + Sync + 'static>
     IntoFang<(&mut Context, &Request)> for F {
-        fn into_fang(self) -> Fang {
-            Fang {
+        fn into_fang(self) -> Option<Fang> {
+            Some(Fang {
                 id:   self.type_id(),
                 proc: FangProc::Front(FrontFang(Arc::new(
                     move |mut c, req| {
@@ -85,7 +88,7 @@ const _: (/* Front: not retuning Result */) = {
                         Ok((c, req))
                     }
                 ))),
-            }
+            })
         }
     }
 };
@@ -93,8 +96,8 @@ const _: (/* Front: not retuning Result */) = {
 const _: (/* Front: returning Result */) = {
     impl<F: Fn(&Context)->Result<(), Response> + Send + Sync + 'static>
     IntoFang<(&Context, ())> for F {
-        fn into_fang(self) -> Fang {
-            Fang {
+        fn into_fang(self) -> Option<Fang> {
+            Some(Fang {
                 id:   self.type_id(),
                 proc: FangProc::Front(FrontFang(Arc::new(
                     move |c, req| {
@@ -102,14 +105,14 @@ const _: (/* Front: returning Result */) = {
                         Ok((c, req))
                     }
                 ))),
-            }
+            })
         }
     }
 
     impl<F: Fn(&mut Context)->Result<(), Response> + Send + Sync + 'static>
     IntoFang<(&mut Context, ())> for F {
-        fn into_fang(self) -> Fang {
-            Fang {
+        fn into_fang(self) -> Option<Fang> {
+            Some(Fang {
                 id:   self.type_id(),
                 proc: FangProc::Front(FrontFang(Arc::new(
                     move |mut c, req| {
@@ -117,14 +120,14 @@ const _: (/* Front: returning Result */) = {
                         Ok((c, req))
                     }
                 ))),
-            }
+            })
         }
     }
 
     impl<F: Fn(&Request)->Result<(), Response> + Send + Sync + 'static>
     IntoFang<(&Request, ())> for F {
-        fn into_fang(self) -> Fang {
-            Fang {
+        fn into_fang(self) -> Option<Fang> {
+            Some(Fang {
                 id:   self.type_id(),
                 proc: FangProc::Front(FrontFang(Arc::new(
                     move |c, req| {
@@ -132,14 +135,14 @@ const _: (/* Front: returning Result */) = {
                         Ok((c, req))
                     }
                 ))),
-            }
+            })
         }
     }
 
     impl<F: Fn(&Context, &Request)->Result<(), Response> + Send + Sync + 'static>
     IntoFang<(&Context, &Request, ())> for F {
-        fn into_fang(self) -> Fang {
-            Fang {
+        fn into_fang(self) -> Option<Fang> {
+            Some(Fang {
                 id:   self.type_id(),
                 proc: FangProc::Front(FrontFang(Arc::new(
                     move |c, req| {
@@ -147,13 +150,13 @@ const _: (/* Front: returning Result */) = {
                         Ok((c, req))
                     }
                 ))),
-            }
+            })
         }
     }
 
     impl IntoFang<(&mut Context, &Request, ())> for fn(&mut Context, &Request) -> Result<(), Response> {
-        fn into_fang(self) -> Fang {
-            Fang {
+        fn into_fang(self) -> Option<Fang> {
+            Some(Fang {
                 id:   self.type_id(),
                 proc: FangProc::Front(FrontFang(Arc::new(
                     move |mut c, req| {
@@ -161,15 +164,15 @@ const _: (/* Front: returning Result */) = {
                         Ok((c, req))
                     }
                 ))),
-            }
+            })
         }
     }
 };
 
 const _: (/* Back */) = {
     impl IntoFang<(&Response,)> for fn(&Response) {
-        fn into_fang(self) -> Fang {
-            Fang {
+        fn into_fang(self) -> Option<Fang> {
+            Some(Fang {
                 id:   self.type_id(),
                 proc: FangProc::Back(BackFang(Arc::new(
                     move |res| {
@@ -177,13 +180,13 @@ const _: (/* Back */) = {
                         res
                     }
                 ))),
-            }
+            })
         }
     }
 
     impl IntoFang<(&mut Response,)> for fn(&mut Response) {
-        fn into_fang(self) -> Fang {
-            Fang {
+        fn into_fang(self) -> Option<Fang> {
+            Some(Fang {
                 id:   self.type_id(),
                 proc: FangProc::Back(BackFang(Arc::new(
                     move |mut res| {
@@ -191,13 +194,13 @@ const _: (/* Back */) = {
                         res
                     }
                 ))),
-            }
+            })
         }
     }
 
     impl IntoFang<(&Response, ())> for fn(&Response) -> Result<(), Response> {
-        fn into_fang(self) -> Fang {
-            Fang {
+        fn into_fang(self) -> Option<Fang> {
+            Some(Fang {
                 id:   self.type_id(),
                 proc: FangProc::Back(BackFang(Arc::new(
                     move |res| {
@@ -207,13 +210,13 @@ const _: (/* Back */) = {
                         }
                     }
                 ))),
-            }
+            })
         }
     }
 
     impl IntoFang<(&mut Response, ())> for fn(&mut Response) -> Result<(), Response> {
-        fn into_fang(self) -> Fang {
-            Fang {
+        fn into_fang(self) -> Option<Fang> {
+            Some(Fang {
                 id:   self.type_id(),
                 proc: FangProc::Back(BackFang(Arc::new(
                     move |mut res| {
@@ -223,7 +226,7 @@ const _: (/* Back */) = {
                         }
                     }
                 ))),
-            }
+            })
         }
     }
 };

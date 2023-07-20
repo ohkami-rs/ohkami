@@ -1,9 +1,8 @@
 /* ref: https://developer.mozilla.org/ja/docs/Web/HTTP/Headers */
 #![allow(non_snake_case)]
-
 #![allow(unused)] // until ....
 
-use std::{collections::BTreeMap};
+use std::{collections::BTreeMap, sync::OnceLock};
 
 
 struct Header(Option<&'static str>);
@@ -13,6 +12,11 @@ pub trait HeaderValue {
 }
 impl HeaderValue for &'static str {fn into_header_value(self) -> Option<&'static str> {Some(self)}}
 impl HeaderValue for Option<&'static str> {fn into_header_value(self) -> Option<&'static str> {self}}
+
+
+/// set by builtin fang `CORS`
+pub(crate) static CORS: OnceLock<&'static str> = OnceLock::new();
+
 
 macro_rules! ResponseHeaders {
     ($(
@@ -59,12 +63,12 @@ macro_rules! ResponseHeaders {
             }
 
             pub(crate) fn to_string(&self) -> String {
-                let __now__ = crate::layer0_lib::now();
+                let __now__  = crate::layer0_lib::now();
+                let __cors__ = CORS.get_or_init(|| "");
                 let mut h = format!("\
-                    Connection: Keep-Alive\r\n\
-                    Keep-Alive: timout=5\r\n\
                     Date: {__now__}\r\n\
-                ", );
+                    {__cors__}\
+                ");
 
                 $(
                     if self.$group {
@@ -92,25 +96,25 @@ macro_rules! ResponseHeaders {
 } ResponseHeaders! {
     auth_cookie_security_context {
         // authentication
-        "WWW-Authenticate: "                 pub(crate) WWWAuthenticate(challenge),
+        "WWW-Authenticate: "                 pub WWWAuthenticate(challenge),
         // cookie
-        "Set-Cookie: "                       pub(crate) SetCookie(cookie_and_directives),
+        "Set-Cookie: "                       pub SetCookie(cookie_and_directives),
         // security
-        "X-Frame-Options: "                  pub(crate) XFrameOptions(DENY_or_SAMEORIGIN),
+        "X-Frame-Options: "                  pub XFrameOptions(DENY_or_SAMEORIGIN),
         // response context
-        "Allow: "                            pub(crate) Allow(methods),
+        "Allow: "                            pub Allow(methods),
         "Server: "                           pub Server(product),
     }
 
     cache_proxy_others {
         // cache
-        "Age: "                              pub(crate) Age(delta_seconds),
-        "Cache-Control: "                    pub(crate) CacheControl(cache_control),
-        "Expires: "                          pub(crate) Expires(http_date),
+        "Age: "                              pub Age(delta_seconds),
+        "Cache-Control: "                    pub CacheControl(cache_control),
+        "Expires: "                          pub Expires(http_date),
         // proxy
-        "Via: "                              pub(crate) Via(via),
+        "Via: "                              pub Via(via),
         // others
-        "Alt-Srv: "                          pub(crate) AltSvc(alternative_services),
+        "Alt-Srv: "                          pub AltSvc(alternative_services),
     }
 
     conditions {
@@ -125,12 +129,12 @@ macro_rules! ResponseHeaders {
 
     message_body_and_encoding {
         // message body
-        "Content-Encoding: "                 pub(crate) ContentEncoding(algorithm),
-        "Content-Language: "                 pub(crate) ContentLanguage(language_tag),
-        "Content-Location: "                 pub(crate) ContentLocation(url),
+        "Content-Encoding: "                 pub ContentEncoding(algorithm),
+        "Content-Language: "                 pub ContentLanguage(language_tag),
+        "Content-Location: "                 pub ContentLocation(url),
         // transfer encoding
-        "Tranfer-Encoding: "                 pub(crate) TransferEncoding(chunked_compress_deflate_gzip_identity),
-        "Trailer: "                          pub(crate) Trailer(header_names),
+        "Tranfer-Encoding: "                 pub TransferEncoding(chunked_compress_deflate_gzip_identity),
+        "Trailer: "                          pub Trailer(header_names),
     }
 }
 

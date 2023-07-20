@@ -117,17 +117,17 @@ pub struct Parse<'a> {
     let mut name = ::std::option::Option::<String>::None;
     let mut age  = ::std::option::Option::<u8>::None;
 
-    for (k, v) in crate::internal::parse_urlencoded(buf) {
+    for (k, v) in crate::__internal__::parse_urlencoded(buf) {
         match &*k {
-            "id"   => id.replace(<usize as crate::internal::FromBuffer>::parse(v.as_bytes())?)
+            "id"   => id.replace(<usize as crate::__internal__::FromBuffer>::parse(v.as_bytes())?)
                 .map_or(::std::result::Result::Ok(()), |_|
                     ::std::result::Result::Err(::std::borrow::Cow::Borrowed("duplicated key: `id`"))
                 )?,
-            "name" => name.replace(<String as crate::internal::FromBuffer>::parse(v.as_bytes())?)
+            "name" => name.replace(<String as crate::__internal__::FromBuffer>::parse(v.as_bytes())?)
                 .map_or(::std::result::Result::Ok(()), |_|
                     ::std::result::Result::Err(::std::borrow::Cow::Borrowed("duplicated key: `name`"))
                 )?,
-            "age"  => age.replace(<u8 as crate::internal::FromBuffer>::parse(v.as_bytes())?)
+            "age"  => age.replace(<u8 as crate::__internal__::FromBuffer>::parse(v.as_bytes())?)
                 .map_or(::std::result::Result::Ok(()), |_|
                     ::std::result::Result::Err(::std::borrow::Cow::Borrowed("duplicated key: `age`")),
                 )?,
@@ -152,17 +152,17 @@ pub struct Parse<'a> {
     let mut name = ::std::option::Option::<String>::None;
     let mut age  = ::std::option::Option::<u8>::None;
 
-    for (k, v) in crate::internal::parse_urlencoded(buf) {
+    for (k, v) in crate::__internal__::parse_urlencoded(buf) {
         match &*k {
-            "id"   => id.replace(<usize as crate::internal::FromBuffer>::parse(v.as_bytes())?)
+            "id"   => id.replace(<usize as crate::__internal__::FromBuffer>::parse(v.as_bytes())?)
                 .map_or(::std::result::Result::Ok(()), |_|
                     ::std::result::Result::Err(::std::borrow::Cow::Borrowed("duplicated key: `id`"))
                 )?,
-            "name" => name.replace(<String as crate::internal::FromBuffer>::parse(v.as_bytes())?)
+            "name" => name.replace(<String as crate::__internal__::FromBuffer>::parse(v.as_bytes())?)
                 .map_or(::std::result::Result::Ok(()), |_|
                     ::std::result::Result::Err(::std::borrow::Cow::Borrowed("duplicated key: `name`"))
                 )?,
-            "age"  => age.replace(<u8 as crate::internal::FromBuffer>::parse(v.as_bytes())?)
+            "age"  => age.replace(<u8 as crate::__internal__::FromBuffer>::parse(v.as_bytes())?)
                 .map_or(::std::result::Result::Ok(()), |_|
                     ::std::result::Result::Err(::std::borrow::Cow::Borrowed("duplicated key: `age`")),
                 )?,

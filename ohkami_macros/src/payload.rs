@@ -33,7 +33,7 @@ fn impl_payload_json(data: &ItemStruct) -> Result<TokenStream> {
                 if !content_type.is_json() {
                     return ::std::result::Result::Err(::std::borrow::Cow::Borrowed("Expected payload of `Content-Type: application/json`"))
                 }
-                let __payload__ = ::ohkami::internal::parse_json(payload)?;
+                let __payload__ = ::ohkami::__internal__::parse_json(payload)?;
                 ::std::result::Result::Ok(__payload__)
             }
         }
@@ -111,7 +111,7 @@ fn impl_payload_urlencoded(data: &ItemStruct) -> Result<TokenStream> {
         let arms = fields_data.iter().map(|FieldData { ident, ty, .. }| {
             let ident_str = ident.to_string();
             quote!{
-                #ident_str => #ident.replace(<#ty as ::ohkami::internal::FromBuffer>::parse(v.as_bytes())?)
+                #ident_str => #ident.replace(<#ty as ::ohkami::__internal__::FromBuffer>::parse(v.as_bytes())?)
                     .map_or(::std::result::Result::Ok(()), |_|
                         ::std::result::Result::Err(::std::borrow::Cow::Borrowed(concat!("duplicated key: `", #ident_str,"`")))
                     )?,
@@ -119,7 +119,7 @@ fn impl_payload_urlencoded(data: &ItemStruct) -> Result<TokenStream> {
         });
 
         quote!{
-            for (k, v) in ::ohkami::internal::parse_urlencoded(payload) {
+            for (k, v) in ::ohkami::__internal__::parse_urlencoded(payload) {
                 match &*k {
                     #( #arms )*
                     unexpected => return ::std::result::Result::Err(::std::borrow::Cow::Owned(format!("unexpected key: `{unexpected}`")))

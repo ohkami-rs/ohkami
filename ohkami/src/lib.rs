@@ -78,10 +78,13 @@ pub use layer2_context     ::{Context};
 pub use layer3_fang_handler::{Route};
 pub use layer5_ohkami      ::{Ohkami};
 
-pub use ohkami_macros      ::{Query, Payload};
+pub mod utils {
+    pub use crate::layer3_fang_handler::{cors};
+    pub use ohkami_macros             ::{Query, Payload};
+}
 
 #[doc(hidden)]
-pub mod internal {
+pub mod __internal__ {
     pub use crate::layer1_req_res::{parse_json, parse_urlencoded, FromBuffer};
 }
 
