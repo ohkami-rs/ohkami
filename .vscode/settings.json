@@ -1,0 +1,4 @@
+{
+    "rust-analyzer.showUnlinkedFileNotification": false,
+    "rust-analyzer.diagnostics.disabled": ["unused_braces"]
+}

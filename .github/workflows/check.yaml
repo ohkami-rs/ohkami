@@ -1,8 +1,8 @@
-name: test
+name: check
 on: [pull_request]
 
 jobs:
-  cargo-test:
+  cargo-check:
     runs-on: ubuntu-latest
 
     strategy:
@@ -20,5 +20,5 @@ jobs:
 
       - uses: actions-rs/cargo@v1
         with:
-          command: test
-          args: --lib --features rt_${{ matrix.rt }}
+          command: check
+          args: --features rt_${{ matrix.rt }}

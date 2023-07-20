@@ -1,9 +1,9 @@
 [package]
 name = "ohkami"
-version = "0.8.3"
+version = "0.9.0"
 edition = "2021"
 authors = ["kanarus <kanarus786@gmail.com>"]
-description = "simple and macro free web framework"
+description = "declarative web framework for nightly Rust"
 documentation = "https://docs.rs/ohkami/"
 homepage = "https://crates.io/crates/ohkami"
 repository = "https://github.com/kana-rus/ohkami"
@@ -13,18 +13,19 @@ categories = ["web-programming::http-server"]
 license = "MIT"
 
 [dependencies]
-ohkami_macros = { version = "0.2.0", path = "../ohkami_macros" }
-sqlx = { version = "0.6", default-features = false, optional = true }
+ohkami_macros = { version = "0.2", path = "../ohkami_macros" }
+
+tokio = { optional = true, version = "1", features = ["net", "rt", "io-util"] }
+async-std = { optional = true, version = "1" }
+
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 chrono = "0.4"
-async-std = "1"
-fxhash = "0.2"
-tracing = "0.1"
-tracing-subscriber = "0.3"
+percent-encoding = "2.2.0"
 
 [features]
-default  = []
-sqlx     = ["dep:sqlx"]
-postgres = ["sqlx?/runtime-async-std-native-tls", "sqlx?/postgres"]
-mysql    = ["sqlx?/runtime-async-std-native-tls", "sqlx?/mysql"]
+rt_tokio = ["dep:tokio"]
+rt_async-std = ["dep:async-std"]
+
+##### DEBUG #####
+# default = ["rt_async-std"]
