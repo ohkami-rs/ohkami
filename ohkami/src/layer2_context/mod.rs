@@ -206,7 +206,7 @@ impl Context {
         let __now__ = crate::layer0_lib::now();
 
         c.headers.Server("ohkami");
-        assert_eq!(c.OK().text("Hello, world!").into_bytes(), format!("\
+        assert_eq!(std::str::from_utf8(&c.OK().text("Hello, world!").into_bytes()).unwrap(), format!("\
             HTTP/1.1 200 OK\r\n\
             Content-Type: text/plain\r\n\
             Content-Length: 13\r\n\
@@ -214,7 +214,7 @@ impl Context {
             Server: ohkami\r\n\
             \r\n\
             Hello, world!\
-        ").as_bytes());
+        "));
 
         c.headers.ETag("identidentidentident");
 
@@ -226,7 +226,7 @@ impl Context {
             name: &'static str,
             age:  u8,
         }
-        assert_eq!(c.Created().json(User{ id:42, name:"kanarus", age:19 }).into_bytes(), format!("\
+        assert_eq!(std::str::from_utf8(&c.Created().json(User{ id:42, name:"kanarus", age:19 }).into_bytes()).unwrap(), format!("\
             HTTP/1.1 201 Created\r\n\
             Content-Type: application/json\r\n\
             Content-Length: 35\r\n\
@@ -235,7 +235,7 @@ impl Context {
             ETag: identidentidentident\r\n\
             \r\n\
             {{\"id\":42,\"name\":\"kanarus\",\"age\":19}}\
-        ").as_bytes());
+        "));
 
         /* 
             `serde_json::Value::Object` uses `BTreeMap` for keys.
@@ -245,7 +245,7 @@ impl Context {
                 "age", "id", "name"
             in response body.
         */
-        assert_eq!(c.Created().json(serde_json::json!({"id":42,"name":"kanarus","age":19})).into_bytes(), format!("\
+        assert_eq!(std::str::from_utf8(&c.Created().json(serde_json::json!({"id":42,"name":"kanarus","age":19})).into_bytes()).unwrap(), format!("\
             HTTP/1.1 201 Created\r\n\
             Content-Type: application/json\r\n\
             Content-Length: 35\r\n\
@@ -254,7 +254,7 @@ impl Context {
             ETag: identidentidentident\r\n\
             \r\n\
             {{\"age\":19,\"id\":42,\"name\":\"kanarus\"}}\
-        ").as_bytes());
+        "));
 
         /*
             This string "
@@ -265,7 +265,7 @@ impl Context {
                 {"id":42,"name":"kanarus","age":19}
             `#.
         */
-        assert_eq!(c.Created().json(r#"{"id":42,"name":"kanarus","age":19}"#).into_bytes(), (format!("\
+        assert_eq!(std::str::from_utf8(&c.Created().json(r#"{"id":42,"name":"kanarus","age":19}"#).into_bytes()).unwrap(), format!("\
             HTTP/1.1 201 Created\r\n\
             Content-Type: application/json\r\n\
             Content-Length: 45\r\n\
@@ -273,29 +273,29 @@ impl Context {
             Server: ohkami\r\n\
             ETag: identidentidentident\r\n\
             \r\n\
-        ") + r##""{\"id\":42,\"name\":\"kanarus\",\"age\":19}""##).as_bytes());
+        ") + r##""{\"id\":42,\"name\":\"kanarus\",\"age\":19}""##);
 
         c.headers.Server(None);
-        assert_eq!(c.NoContent().into_bytes(), format!("\
+        assert_eq!(std::str::from_utf8(&c.NoContent().into_bytes()).unwrap(), format!("\
             HTTP/1.1 204 No Content\r\n\
             Date: {__now__}\r\n\
             ETag: identidentidentident\r\n\
             \r\n\
-        ").as_bytes());
+        "));
 
         c.headers.Server("ohkami2");
         c.headers.ETag("new-etag");
-        assert_eq!(c.BadRequest().into_bytes(), format!("\
+        assert_eq!(std::str::from_utf8(&c.BadRequest().into_bytes()).unwrap(), format!("\
             HTTP/1.1 400 Bad Request\r\n\
             Date: {__now__}\r\n\
             Server: ohkami2\r\n\
             ETag: new-etag\r\n\
             \r\n\
-        ").as_bytes());
+        "));
 
         c.headers.custom("X-MyApp-Cred", "abcdefg");
         c.headers.custom("MyApp-Data", "gfedcba");
-        assert_eq!(c.InternalServerError().text("I'm sorry fo").into_bytes(), format!("\
+        assert_eq!(std::str::from_utf8(&c.InternalServerError().text("I'm sorry fo").into_bytes()).unwrap(), format!("\
             HTTP/1.1 500 Internal Server Error\r\n\
             Date: {__now__}\r\n\
             Server: ohkami2\r\n\
@@ -306,6 +306,6 @@ impl Context {
             Content-Length: 12\r\n\
             \r\n\
             I'm sorry fo\
-        ").as_bytes());
+        "));
     }
 }
