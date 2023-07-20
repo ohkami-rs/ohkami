@@ -70,7 +70,7 @@ mod layer5_ohkami;
 pub(crate) use layer1_req_res     ::{QUERIES_LIMIT, HEADERS_LIMIT};
 pub(crate) use layer3_fang_handler::{PATH_PARAMS_LIMIT};
 
-pub use layer0_lib         ::{Error};
+pub use layer0_lib         ::{Error, Status};
 pub use layer1_req_res     ::{Request, Response, FromRequest};
 pub use layer2_context     ::{Context};
 pub use layer3_fang_handler::{Route};
@@ -81,7 +81,7 @@ pub mod prelude {
 }
 
 pub mod utils {
-    pub use crate::layer3_fang_handler::{cors};
+    pub use crate::layer3_fang_handler::{cors, not_found};
     pub use ohkami_macros             ::{Query, Payload};
 }
 

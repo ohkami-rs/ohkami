@@ -8,7 +8,8 @@ mod health_handler {
 
 
 mod hello_handler {
-    use ohkami::{Context, Response, Query, Payload};
+    use ohkami::{Context, Response};
+    use ohkami::utils::{Payload, Query};
 
     #[Query]
     pub struct HelloQuery {
@@ -18,7 +19,7 @@ mod hello_handler {
 
     pub async fn hello_by_query(c: Context,
         HelloQuery { name, repeat }: HelloQuery
-    ) -> Response<String> {
+    ) -> Response {
 
         tracing::info!("\
             Called `hello_by_query`\n\
@@ -27,7 +28,7 @@ mod hello_handler {
         ", c.headers);
 
         let message = name.repeat(repeat.unwrap_or(1));
-        c.Text(message)
+        c.OK().text(message)
     }
 
 
@@ -40,7 +41,7 @@ mod hello_handler {
 
     pub async fn hello_by_json(c: Context,
         HelloRequest { name, repeat }: HelloRequest
-    ) -> Response<String> {
+    ) -> Response {
 
         tracing::info!("\
             Called `hello_by_query`\n\
@@ -49,22 +50,21 @@ mod hello_handler {
         ", c.headers);
         
         if name.is_empty() {
-            return Response::Err(c
+            return c
                 .BadRequest()
-                .Text("`name` mustn't be empty")
-            )
+                .text("`name` mustn't be empty")
         }
         
         let message = name.repeat(repeat.unwrap_or(1));
-        c.Text(message)
+        c.OK().text(message)
     }
 }
 
 
-mod fang {
+mod fangs {
     use ohkami::{Context, Request};
 
-    pub async fn append_server(mut c: Context) -> Context {
+    pub fn append_server(c: &mut Context) {
         c.headers
             .Server("ohkami");
 
@@ -73,11 +73,9 @@ mod fang {
             [current headers]\n\
             {:?}\
         ", c.headers);
-
-        c
     }
 
-    pub async fn log_request(req: &Request) {
+    pub fn log_request(req: &Request) {
         let __method__ = req.method();
         let __path__   = req.path();
 
@@ -92,19 +90,17 @@ mod fang {
 
 #[tokio::main]
 async fn main() {
-    use ohkami::{Ohkami, GlobalFangs, Route};
+    use ohkami::{Ohkami, Route};
+    use ohkami::utils::not_found;
 
     tracing_subscriber::fmt()
         .with_max_level(tracing::Level::INFO)
         .init();
 
-    GlobalFangs::new()
-        .NotFound(|nf| nf
-            .Text("No resource for that request found")
-        )
-        .apply();
-
-    let hello_ohkami = Ohkami::with((fang::append_server,))(
+    let hello_ohkami = Ohkami::with((
+        fangs::append_server,
+        not_found(|nf| nf.text("No resource for that request found")),
+    ))(
         "/query".
             GET(hello_handler::hello_by_query),
         "/json".
@@ -113,8 +109,8 @@ async fn main() {
 
     tracing::info!("Started listening on http://localhost:3000");
 
-    Ohkami::with((fang::log_request,))(
+    Ohkami::with((fangs::log_request,))(
         "/hc" .GET(health_handler::health_check),
-        "/api".by(hello_ohkami),
+        "/api".By(hello_ohkami),
     ).howl(3000).await
 }

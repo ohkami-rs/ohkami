@@ -154,7 +154,8 @@ const _: (/* Front: returning Result */) = {
         }
     }
 
-    impl IntoFang<(&mut Context, &Request, ())> for fn(&mut Context, &Request) -> Result<(), Response> {
+    impl<F: Fn(&mut Context, &Request) -> Result<(), Response> + Send + Sync + 'static>
+    IntoFang<(&mut Context, &Request, ())> for F {
         fn into_fang(self) -> Option<Fang> {
             Some(Fang {
                 id:   self.type_id(),
@@ -170,58 +171,29 @@ const _: (/* Front: returning Result */) = {
 };
 
 const _: (/* Back */) = {
-    impl IntoFang<(&Response,)> for fn(&Response) {
+    impl<F: Fn(Response)->Response + Send + Sync + 'static>
+    IntoFang<(&Response,)> for F {
         fn into_fang(self) -> Option<Fang> {
             Some(Fang {
                 id:   self.type_id(),
                 proc: FangProc::Back(BackFang(Arc::new(
                     move |res| {
-                        self(&res);
-                        res
+                        self(res)
                     }
                 ))),
             })
         }
     }
 
-    impl IntoFang<(&mut Response,)> for fn(&mut Response) {
-        fn into_fang(self) -> Option<Fang> {
-            Some(Fang {
-                id:   self.type_id(),
-                proc: FangProc::Back(BackFang(Arc::new(
-                    move |mut res| {
-                        self(&mut res);
-                        res
-                    }
-                ))),
-            })
-        }
-    }
-
-    impl IntoFang<(&Response, ())> for fn(&Response) -> Result<(), Response> {
+    impl<F: Fn(Response)->Result<Response, Response> + Send + Sync + 'static>
+    IntoFang<(&Response, ())> for F {
         fn into_fang(self) -> Option<Fang> {
             Some(Fang {
                 id:   self.type_id(),
                 proc: FangProc::Back(BackFang(Arc::new(
                     move |res| {
-                        match self(&res) {
-                            Ok(_)  => res,
-                            Err(e) => e,
-                        }
-                    }
-                ))),
-            })
-        }
-    }
-
-    impl IntoFang<(&mut Response, ())> for fn(&mut Response) -> Result<(), Response> {
-        fn into_fang(self) -> Option<Fang> {
-            Some(Fang {
-                id:   self.type_id(),
-                proc: FangProc::Back(BackFang(Arc::new(
-                    move |mut res| {
-                        match self(&mut res) {
-                            Ok(_)  => res,
+                        match self(res) {
+                            Ok (o) => o,
                             Err(e) => e,
                         }
                     }

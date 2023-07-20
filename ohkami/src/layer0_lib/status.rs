@@ -1,4 +1,4 @@
-pub(crate) enum Status {
+pub enum Status {
     OK,
     Created,
     NoContent,

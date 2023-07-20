@@ -13,7 +13,7 @@ use crate::{
 
 
 pub struct Response {
-    pub(crate) status:  Status,
+    pub status:         Status,
     pub(crate) headers: String,
     pub(crate) content: Option<(ContentType, Cow<'static, str>)>,
 }
