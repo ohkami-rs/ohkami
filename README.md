@@ -47,6 +47,8 @@ async fn main() {
 }
 ```
 
+<br/>
+
 ## Samples
 
 ### handle path/query params
@@ -90,6 +92,8 @@ async fn update_user(c: Context,
 ```
 Use tuple like `(verion, id): (u8, usize),` for multiple path params.
 
+<br/>
+
 ### handle request body
 ```rust
 use ohkami::{prelude::*, utils::Payload};
@@ -132,6 +136,8 @@ async fn post_login(c: Context,
 }
 ```
 
+<br/>
+
 ### use middlewares
 ohkami's middlewares are called "**fang**s".
 ```rust
@@ -152,6 +158,8 @@ async fn append_server(c: &mut Context) {
 }
 ```
 
+<br/>
+
 ### pack of Ohkamis
 ```rust
 #[tokio::main]
@@ -169,7 +177,7 @@ async fn main() {
 
     Ohkami::new()(
         "/hc"       .GET(health_check),
-        "/api/users".By(users_ohkami),
+        "/api/users".By(users_ohkami), // <-- nest by `By`
     ).howl(5000).await
 }
 ```
