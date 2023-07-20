@@ -1,12 +1,10 @@
+#![doc(html_root_url = "https://docs.rs/ohkami/")]
+
+
 /*===== language features =====*/
 #![feature(
     try_trait_v2,
     fn_traits, unboxed_closures,
-)]
-
-#![allow(incomplete_features)]
-#![feature(
-    adt_const_params,
 )]
 
 
