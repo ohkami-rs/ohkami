@@ -78,6 +78,10 @@ pub use layer2_context     ::{Context};
 pub use layer3_fang_handler::{Route};
 pub use layer5_ohkami      ::{Ohkami};
 
+pub mod prelude {
+    pub use crate::{Response, Context, Route, Ohkami};
+}
+
 pub mod utils {
     pub use crate::layer3_fang_handler::{cors};
     pub use ohkami_macros             ::{Query, Payload};

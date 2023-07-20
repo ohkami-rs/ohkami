@@ -34,7 +34,7 @@ async fn health_check(c: Context) -> Response {
     c.NoContent()
 }
 
-async fn hello(c: Context, name: String) -> Response<String> {
+async fn hello(c: Context, name: String) -> Response {
     c.text(format!("Hello, {name}!"))
 }
 
@@ -52,7 +52,7 @@ async fn main() {
 ### handle path/query params
 ```rust
 use ohkami::prelude::*;
-use ohkami::Query;
+use ohkami::utils::Query;
 
 #[tokio::main]
 async fn main() {
@@ -63,25 +63,36 @@ async fn main() {
     ).howl("localhost:5000").await
 }
 
-#[Query]
-struct GetUserQuery {
-    q: Option<u64>
-}
-
 async fn get_user(c: Context,
-    (id,): (usize,),
-    query: GetUserQuery,
-) -> Response<User> {
+    id: usize /* <-- path param */
+) -> Response {
 
     // ...
 
-    c.json(found_user)
+    c.OK().json(found_user)
+}
+
+
+#[Query]
+struct UpdateUserQuery {
+    q: Option<u64>
+}
+
+async fn update_user(c: Context,
+    id:    usize,        /* <-- path  params */
+    query: GetUserQuery, /* <-- query params */
+) -> Response {
+
+    // ...
+
+    c.NoContent()
 }
 ```
+Use tuple like `(verion, id): (u8, usize),` for multiple path params.
 
 ### handle request body
 ```rust
-use ohkami::{prelude::*, Payload};
+use ohkami::{prelude::*, utils::Payload};
 
 #[Payload(JSON)]
 struct CreateUserRequest {
@@ -111,13 +122,13 @@ struct Credential {
 
 async fn post_login(c: Context,
     input: LoginInput
-) -> Response<JSON> {
+) -> Response {
 
     // ...
 
     let token = // ...
 
-    c.JSON(Credential { token })
+    c.OK().json(Credential { token })
 }
 ```
 
@@ -125,8 +136,8 @@ async fn post_login(c: Context,
 ohkami's middlewares are called "**fang**s".
 ```rust
 #[tokio::main]
-async fn main() -> Result<(), Error> {
-    Ohkami::with(append_server)(
+async fn main() {
+    Ohkami::with((append_server))(
         "/"  .GET(root),
         "/hc".GET(health_check),
         "/api/users"
@@ -144,7 +155,7 @@ async fn append_server(c: &mut Context) {
 ### pack of Ohkamis
 ```rust
 #[tokio::main]
-async fn main() -> Result<(), Error> {
+async fn main() {
     // ...
 
     let users_ohkami = Ohkami::new()(
@@ -158,8 +169,8 @@ async fn main() -> Result<(), Error> {
 
     Ohkami::new()(
         "/hc"       .GET(health_check),
-        "/api/users".by(users_ohkami),
-    ).howl(":5000").await
+        "/api/users".By(users_ohkami),
+    ).howl(5000).await
 }
 ```
 
@@ -167,19 +178,15 @@ async fn main() -> Result<(), Error> {
 Use **`.map_err(|e| c. /* error_method */ )?`**：
 
 ```rust
-async fn handler(c: Context) -> Response</* ... */> {
+async fn handler1(c: Context) -> Response {
     make_result()
-        .map_err(|e| c.InternalError())?;
+        .map_err(|e| c.InternalServerError())?;
 }
-```
-You can add error message :
 
-```rust
-async fn handler(c: Context) -> Response</* ... */> {
-    make_result()
-        .map_err(|e| c.InternalError()
-            .Text(format!("Cause: {e}"))  // <--
-        )?;
+async fn handler2(c: Context) -> Response {
+    let user = generate_dummy_user()
+        .map_err(|e| c.InternalServerError()
+            .text("in `generate_dummy_user`"))?;
 }
 ```
 
