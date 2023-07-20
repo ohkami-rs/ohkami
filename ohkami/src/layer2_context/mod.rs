@@ -162,16 +162,12 @@ impl Context {
         // newly set
         c.headers.Server("ohkami");
         assert_eq!(c.headers.to_string(), format!("\
-            Connection: Keep-Alive\r\n\
-            Keep-Alive: timout=5\r\n\
             Date: {__now__}\r\n\
             Server: ohkami\r\n\
         "));
 
         c.headers.ETag("identidentidentident");
         assert_eq!(c.headers.to_string(), format!("\
-            Connection: Keep-Alive\r\n\
-            Keep-Alive: timout=5\r\n\
             Date: {__now__}\r\n\
             Server: ohkami\r\n\
             ETag: identidentidentident\r\n\
@@ -180,8 +176,6 @@ impl Context {
         // remove
         c.headers.Server(None);
         assert_eq!(c.headers.to_string(), format!("\
-            Connection: Keep-Alive\r\n\
-            Keep-Alive: timout=5\r\n\
             Date: {__now__}\r\n\
             ETag: identidentidentident\r\n\
         "));
@@ -190,8 +184,6 @@ impl Context {
         c.headers.Server("ohkami2");
         c.headers.ETag("new-etag");
         assert_eq!(c.headers.to_string(), format!("\
-            Connection: Keep-Alive\r\n\
-            Keep-Alive: timout=5\r\n\
             Date: {__now__}\r\n\
             Server: ohkami2\r\n\
             ETag: new-etag\r\n\
@@ -201,8 +193,6 @@ impl Context {
         c.headers.custom("X-MyApp-Cred", "abcdefg");
         c.headers.custom("MyApp-Data", "gfedcba");
         assert_eq!(c.headers.to_string(), format!("\
-            Connection: Keep-Alive\r\n\
-            Keep-Alive: timout=5\r\n\
             Date: {__now__}\r\n\
             Server: ohkami2\r\n\
             ETag: new-etag\r\n\
@@ -220,8 +210,6 @@ impl Context {
             HTTP/1.1 200 OK\r\n\
             Content-Type: text/plain\r\n\
             Content-Length: 13\r\n\
-            Connection: Keep-Alive\r\n\
-            Keep-Alive: timout=5\r\n\
             Date: {__now__}\r\n\
             Server: ohkami\r\n\
             \r\n\
@@ -242,8 +230,6 @@ impl Context {
             HTTP/1.1 201 Created\r\n\
             Content-Type: application/json\r\n\
             Content-Length: 35\r\n\
-            Connection: Keep-Alive\r\n\
-            Keep-Alive: timout=5\r\n\
             Date: {__now__}\r\n\
             Server: ohkami\r\n\
             ETag: identidentidentident\r\n\
@@ -263,8 +249,6 @@ impl Context {
             HTTP/1.1 201 Created\r\n\
             Content-Type: application/json\r\n\
             Content-Length: 35\r\n\
-            Connection: Keep-Alive\r\n\
-            Keep-Alive: timout=5\r\n\
             Date: {__now__}\r\n\
             Server: ohkami\r\n\
             ETag: identidentidentident\r\n\
@@ -285,8 +269,6 @@ impl Context {
             HTTP/1.1 201 Created\r\n\
             Content-Type: application/json\r\n\
             Content-Length: 45\r\n\
-            Connection: Keep-Alive\r\n\
-            Keep-Alive: timout=5\r\n\
             Date: {__now__}\r\n\
             Server: ohkami\r\n\
             ETag: identidentidentident\r\n\
@@ -296,8 +278,6 @@ impl Context {
         c.headers.Server(None);
         assert_eq!(c.NoContent().into_bytes(), format!("\
             HTTP/1.1 204 No Content\r\n\
-            Connection: Keep-Alive\r\n\
-            Keep-Alive: timout=5\r\n\
             Date: {__now__}\r\n\
             ETag: identidentidentident\r\n\
             \r\n\
@@ -307,8 +287,6 @@ impl Context {
         c.headers.ETag("new-etag");
         assert_eq!(c.BadRequest().into_bytes(), format!("\
             HTTP/1.1 400 Bad Request\r\n\
-            Connection: Keep-Alive\r\n\
-            Keep-Alive: timout=5\r\n\
             Date: {__now__}\r\n\
             Server: ohkami2\r\n\
             ETag: new-etag\r\n\
@@ -319,8 +297,6 @@ impl Context {
         c.headers.custom("MyApp-Data", "gfedcba");
         assert_eq!(c.InternalServerError().text("I'm sorry fo").into_bytes(), format!("\
             HTTP/1.1 500 Internal Server Error\r\n\
-            Connection: Keep-Alive\r\n\
-            Keep-Alive: timout=5\r\n\
             Date: {__now__}\r\n\
             Server: ohkami2\r\n\
             ETag: new-etag\r\n\
