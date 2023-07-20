@@ -21,7 +21,7 @@ ohkami *- [狼] wolf in Japanese -* is **declarative** web framework for *nightl
 
 [dependencies]
 ohkami = { version = "0.9.0", features = ["rt_tokio"] }
-tokio = { version = "1.27", fetures = ["full"] }
+tokio  = { version = "1.27",  fetures = ["full"] }
 ```
 (And check if your Rust toolchains are **nightly** ones)
 
@@ -57,9 +57,9 @@ use ohkami::utils::Query;
 #[tokio::main]
 async fn main() {
     Ohkami::new()(
-        "/api/users/:id"
-            .GET(get_user)
-            .PATCH(update_user)
+        "/api/users/:id".
+            GET(get_user).
+            PATCH(update_user),
     ).howl("localhost:5000").await
 }
 
@@ -99,7 +99,7 @@ struct CreateUserRequest {
     name:     String,
     password: String,
 }
-
+I
 async fn create_user(c: Context,
     req: CreateUserRequest
 ) -> Response {
@@ -140,9 +140,9 @@ async fn main() {
     Ohkami::with((append_server))(
         "/"  .GET(root),
         "/hc".GET(health_check),
-        "/api/users"
-            .GET(get_users)
-            .POST(create_user),
+        "/api/users".
+            GET(get_users).
+            POST(create_user),
     ).howl(":8080").await
 }
 
@@ -159,12 +159,12 @@ async fn main() {
     // ...
 
     let users_ohkami = Ohkami::new()(
-        "/"
-            .POST(create_user),
+        "/".
+            POST(create_user),
         "/:id"
-            .GET(get_user)
-            .PATCH(update_user)
-            .DELETE(delete_user),
+            GET(get_user).
+            PATCH(update_user).
+            DELETE(delete_user),
     );
 
     Ohkami::new()(
