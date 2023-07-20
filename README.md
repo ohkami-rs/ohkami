@@ -103,7 +103,7 @@ struct CreateUserRequest {
     name:     String,
     password: String,
 }
-I
+
 async fn create_user(c: Context,
     req: CreateUserRequest
 ) -> Response {
@@ -169,7 +169,7 @@ async fn main() {
     let users_ohkami = Ohkami::new()(
         "/".
             POST(create_user),
-        "/:id"
+        "/:id".
             GET(get_user).
             PATCH(update_user).
             DELETE(delete_user),
