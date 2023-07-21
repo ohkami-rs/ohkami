@@ -59,9 +59,6 @@ pub trait FromBuffer: Sized {
             $(
                 impl FromBuffer for $unsigned_int {
                     fn parse(buffer: &[u8]) -> Result<Self, Cow<'static, str>> {
-                        #[cfg(debug_assertions)]
-                        println!("[FromBuffer::parse] buffer: {:?}", buffer);
-
                         if buffer.is_empty() {return Err(Cow::Borrowed("Expected a number nut found an empty string"))}
                         match buffer[0] {
                             b'-' => Err(Cow::Borrowed("Expected non-negative number but found negetive one")),

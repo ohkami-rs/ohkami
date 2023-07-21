@@ -2,8 +2,6 @@
     <h1>ohkami</h1>
 </div>
 
-### ＊This README is my working draft. So codes in "Quick start" or "Samples" don't work yet.<br/>
-
 ohkami *- [狼] wolf in Japanese -* is **declarative** web framework for *nightly* Rust.
 
 ## Features
@@ -21,7 +19,7 @@ ohkami *- [狼] wolf in Japanese -* is **declarative** web framework for *nightl
 
 [dependencies]
 ohkami = { version = "0.9.0", features = ["rt_tokio"] }
-tokio  = { version = "1.27",  fetures  = ["full"] }
+tokio  = { version = "1",     fetures  = ["full"] }
 ```
 (And check if your Rust toolchains are **nightly** ones)
 
@@ -35,7 +33,7 @@ async fn health_check(c: Context) -> Response {
 }
 
 async fn hello(c: Context, name: String) -> Response {
-    c.text(format!("Hello, {name}!"))
+    c.OK().text(format!("Hello, {name}!"))
 }
 
 #[tokio::main]

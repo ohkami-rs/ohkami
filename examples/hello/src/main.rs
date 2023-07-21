@@ -20,7 +20,6 @@ mod hello_handler {
     pub async fn hello_by_query(c: Context,
         HelloQuery { name, repeat }: HelloQuery
     ) -> Response {
-
         tracing::info!("\
             Called `hello_by_query`\n\
             [current headers]\n\
@@ -42,7 +41,6 @@ mod hello_handler {
     pub async fn hello_by_json(c: Context,
         HelloRequest { name, repeat }: HelloRequest
     ) -> Response {
-
         tracing::info!("\
             Called `hello_by_query`\n\
             [current headers]\n\

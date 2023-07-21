@@ -31,7 +31,7 @@ pub(super) enum Pattern {
     Static(&'static [u8]),
     Param,
 } const _: () = {
-    #[cfg(any(test, debug_assertions))]
+    #[cfg(test)]
     impl std::fmt::Debug for Pattern {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             f.write_str(match self {
@@ -60,31 +60,16 @@ impl RadixRouter {
             Method::DELETE  => &self.DELETE,
             Method::OPTIONS => &self.OPTIONS,
         }.search(req.path_bytes()) else {
-            #[cfg(debug_assertions)]
-            println!("target Node not found");
-
             return c.NotFound().send(&mut stream).await
         };
 
-        #[cfg(debug_assertions)]
-        println!("target Node found");
-
         match &target.handler {
             Some(handler) => {
-                #[cfg(debug_assertions)]
-                println!("handler found");
-
                 for front in target.front {
                     (c, req) = match front(c, req) {
                         Ok((c, req)) => (c, req),
                         Err(err_res) => return err_res.send(&mut stream).await,
                     };
-
-                    #[cfg(debug_assertions)]
-                    println!("\
-                        [headers: after called a front fang]\n\
-                        {:?}
-                    ", &c.headers);
                 }
 
                 // Here I'd like to write just
@@ -125,9 +110,6 @@ impl Node {
 
         let mut target = self;
         loop {
-            #[cfg(debug_assertions)]
-            println!("patterns: {:?}", target.patterns);
-
             for pattern in target.patterns {
                 path = path.strip_prefix(b"/")?;
                 match pattern {
@@ -152,12 +134,6 @@ impl Node {
             if path.is_empty() {
                 return Some((target, params))
             } else {
-                #[cfg(debug_assertions)]
-                match target.matchable_child(path) {
-                    None       => println!("matchable_child to path '{}': None", std::str::from_utf8(path).unwrap()),
-                    Some(node) => println!("matchable_child to path '{}': Some({:?})", std::str::from_utf8(path).unwrap(), node.patterns),
-                }
-
                 target = target.matchable_child(path)?
             }
         }

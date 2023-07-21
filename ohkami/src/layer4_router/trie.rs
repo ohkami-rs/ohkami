@@ -155,8 +155,6 @@ impl TrieRouter {
 
 impl Node {
     fn register_handler(&mut self, mut route: <RouteSections as IntoIterator>::IntoIter, handler: Handler) -> Result<(), String> {
-        #[cfg(debug_assertions)] println!("[register_handler] route: {route:?}");
-
         match route.next() {
             None => {
                 self.set_handler(handler)?;
@@ -234,10 +232,6 @@ impl Node {
                 patterns.push(Pattern::Static(
                     Cow::Owned([this_static, b"/", child_static].concat())
                 ));
-
-                #[cfg(debug_assertions)]
-                println!("[into_radix] merged patterns: {patterns:?}");
-
             } else {
                 patterns.push(child_pattern)
             }

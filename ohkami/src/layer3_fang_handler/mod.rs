@@ -5,7 +5,7 @@ use std::{collections::VecDeque, str::Chars, iter::Peekable};
 
 
 #[derive(Clone)]
-#[cfg_attr(any(test, debug_assertions), derive(Debug))]
+#[cfg_attr(test, derive(Debug))]
 pub struct RouteSections(
     VecDeque<RouteSection>
 ); impl RouteSections {
@@ -83,7 +83,7 @@ pub enum RouteSection {
         }
     }
 } const _: () = {
-    #[cfg(any(test, debug_assertions))]
+    #[cfg(test)]
     impl std::fmt::Debug for RouteSection {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             match self {
