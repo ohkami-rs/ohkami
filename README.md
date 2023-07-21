@@ -192,12 +192,16 @@ Use **`.map_err(|e| c. /* error_method */ )?`** in most cases：
 async fn handler1(c: Context) -> Response {
     make_result()
         .map_err(|e| c.InternalServerError())?;
+
+    // ...
 }
 
 async fn handler2(c: Context) -> Response {
     let user = generate_dummy_user()
         .map_err(|e| c.InternalServerError()
             .text("in `generate_dummy_user`"))?;
+    
+    // ...
 }
 ```
 
