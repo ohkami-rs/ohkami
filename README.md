@@ -40,7 +40,7 @@ async fn hello(c: Context, name: String) -> Response {
 async fn main() {
     Ohkami::new()(
         "/hc"   .GET(health_check),
-        "/:name".GET(hello),
+        "/hello/:name".GET(hello),
     ).howl(3000).await
 }
 ```
@@ -80,7 +80,7 @@ struct UpdateUserQuery {
 }
 
 async fn update_user(c: Context,
-    id:    usize,        /* <-- path  params */
+    id:    usize,        /* <-- path  param */
     query: GetUserQuery, /* <-- query params */
 ) -> Response {
 
