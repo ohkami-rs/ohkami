@@ -39,7 +39,7 @@ async fn hello(c: Context, name: String) -> Response {
 #[tokio::main]
 async fn main() {
     Ohkami::new()(
-        "/hc"   .GET(health_check),
+        "/hc"         .GET(health_check),
         "/hello/:name".GET(hello),
     ).howl(3000).await
 }
