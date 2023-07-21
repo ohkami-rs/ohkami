@@ -54,6 +54,7 @@ async fn main() {
 use ohkami::prelude::*;
 use ohkami::utils::Query;
 
+
 #[tokio::main]
 async fn main() {
     Ohkami::new()(
@@ -96,6 +97,7 @@ Use tuple like `(verion, id): (u8, usize),` for multiple path params.
 ```rust
 use ohkami::{prelude::*, utils::Payload};
 
+
 #[Payload(JSON)]
 struct CreateUserRequest {
     name:     String,
@@ -110,6 +112,7 @@ async fn create_user(c: Context,
 
     c.NoContent()
 }
+
 
 #[Payload(URLEncoded)]
 struct LoginInput {
@@ -150,7 +153,7 @@ async fn main() {
     ).howl(":8080").await
 }
 
-async fn append_server(c: &mut Context) {
+fn append_server(c: &mut Context) {
     c.headers
         .Server("ohkami");
 }

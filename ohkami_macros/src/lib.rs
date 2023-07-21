@@ -10,7 +10,7 @@ mod payload;
 /// 
 /// ```ignore
 /// use ohkami::{Context, Response};
-/// use ohkami::Queries; // <-- import me
+/// use ohkami::utils::Queries; // <-- import me
 /// 
 /// #[Query]
 /// struct HelloQuery {
@@ -19,14 +19,14 @@ mod payload;
 /// }
 /// 
 /// async fn hello(c: Context, queries: HelloQuery) -> Response<String> {
-///     let HelloQuery {name, n_repeat} = queries;
+///     let HelloQuery { name, n_repeat } = queries;
 /// 
 ///     let message = match n_repeat {
 ///         None    => format!("Hello"),
 ///         Some(n) => format!("Hello, {name}! ").repeat(n),
 ///     };
 /// 
-///     c.Text(message)
+///     c.OK().text(message)
 /// }
 /// ```
 /// 
@@ -63,7 +63,7 @@ pub fn Query(_: proc_macro::TokenStream, data: proc_macro::TokenStream) -> proc_
 /// 
 /// ```ignore
 /// use ohkami::{Context, Response};
-/// use ohkami::Payload; // <-- import me
+/// use ohkami::utils::Payload; // <-- import me
 /// 
 /// #[Payload(JSON)]
 /// #[derive(serde::Deserialize)] // <-- This may be not required in future version
@@ -73,14 +73,14 @@ pub fn Query(_: proc_macro::TokenStream, data: proc_macro::TokenStream) -> proc_
 /// }
 /// 
 /// async fn hello(c: Context, body: HelloRequest) -> Response<String> {
-///     let HelloRequest {name, n_repeat} = queries;
+///     let HelloRequest { name, n_repeat } = queries;
 /// 
 ///     let message = match n_repeat {
 ///         None    => format!("Hello"),
 ///         Some(n) => format!("Hello, {name}! ").repeat(n),
 ///     };
 /// 
-///     c.Text(message)
+///     c.OK().text(message)
 /// }
 /// ```
 /// 
