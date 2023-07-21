@@ -183,8 +183,10 @@ async fn main() {
 }
 ```
 
+<br/>
+
 ### error handling
-Use **`.map_err(|e| c. /* error_method */ )?`**：
+Use **`.map_err(|e| c. /* error_method */ )?`** in most cases：
 
 ```rust
 async fn handler1(c: Context) -> Response {
