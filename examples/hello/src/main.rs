@@ -22,7 +22,7 @@ mod hello_handler {
     ) -> Response {
         tracing::info!("\
             Called `hello_by_query`\
-        ", c.headers);
+        ");
 
         let message = name.repeat(repeat.unwrap_or(1));
         c.OK().text(message)
@@ -41,7 +41,7 @@ mod hello_handler {
     ) -> Response {
         tracing::info!("\
             Called `hello_by_query`\
-        ", c.headers);
+        ");
         
         if name.is_empty() {
             return c
