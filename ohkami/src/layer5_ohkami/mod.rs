@@ -31,12 +31,12 @@ use crate::{
 ///     );
 /// 
 ///     // (Actually, this `log` fang of api_ohkami is duplicated with
-///     // `log` fang of the root ohkami below, but there's no problem
+///     // `log` fang of the root ohkami below, but it's no problem
 ///     // because they are merged internally.)
 /// 
 ///     Ohkami::with((log,))(
 ///         "/hc" .GET(health_check),
-///         "/api".by(api_ohkami),
+///         "/api".By(api_ohkami),
 ///     ).howl(3000).await
 /// }
 /// ```
@@ -45,12 +45,21 @@ use crate::{
 /// 
 /// ## fang schema
 /// - front
-///   - `(&{mut}Context) -> ()`
-///   - `(&{mut}Context, &Request) -> ()`
-///   - and returning `Result<(), Response>` version of them
+///   - `(&mut Context, Request) -> Request`
+///   - `(&mut Context, Request) -> Result<Request, Response>` (for early returning response)
 /// - back
 ///   - `(Response) -> Response`
-///   - `(Response) -> Result<Response, Response>`
+/// 
+/// ## handler schema
+/// - async (`Context`) -> `Response`
+/// - async (`Context`, {path_params}) -> `Response`
+/// - async (`Context`, some {impl `FromRequest`}s) -> `Response`
+/// - async (`Context`, {path_params}, some {impl `FromRequest`}s) -> `Response`
+/// 
+/// path_params :
+///   - `String`
+///   - `u8` ~ `u128`, `usize`
+///   - and tuple of them
 pub struct Ohkami {
     pub(crate) routes: TrieRouter,
 

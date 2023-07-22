@@ -12,6 +12,34 @@ use crate::{
 };
 
 
+/// # HTTP Response
+/// 
+/// Generated from `Context` and handlers must returns this.
+/// 
+/// ```ignore
+/// async fn hello(c: Context) -> Response {
+///     c
+///         .OK()           // generate Response
+///         .text("Hello!") // set content (text/plain)
+/// }
+/// ```
+/// <br/>
+/// 
+/// This impls `FromResidual<Result<Infallible, Self>>`, so you can use `.map_err` in most cases. 
+/// 
+/// ```ignore
+/// async fn create_user(c: Context,
+///     payload: CreateUserRequest
+/// ) -> Response {
+///     let new_user = insert_user_into_table(
+///         payload.name,
+///         payload.password)
+///         .await  // Result<User, ErrorFromTheDBLibrary>
+///         .map_err(|e| c.InternalServerError())?;
+/// 
+///     c.Created().json(new_user)
+/// }
+/// ```
 pub struct Response {
     pub status:         Status,
     pub(crate) headers: String,

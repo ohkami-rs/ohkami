@@ -21,9 +21,7 @@ mod hello_handler {
         HelloQuery { name, repeat }: HelloQuery
     ) -> Response {
         tracing::info!("\
-            Called `hello_by_query`\n\
-            [current headers]\n\
-            {:?}
+            Called `hello_by_query`\
         ", c.headers);
 
         let message = name.repeat(repeat.unwrap_or(1));
@@ -42,9 +40,7 @@ mod hello_handler {
         HelloRequest { name, repeat }: HelloRequest
     ) -> Response {
         tracing::info!("\
-            Called `hello_by_query`\n\
-            [current headers]\n\
-            {:?}\
+            Called `hello_by_query`\
         ", c.headers);
         
         if name.is_empty() {
@@ -62,7 +58,7 @@ mod hello_handler {
 mod fangs {
     use ohkami::{Context, Request};
 
-    pub fn append_server(c: &mut Context) {
+    pub fn append_server(c: &mut Context, req: Request) -> Request {
         c.headers
             .Server("ohkami");
 
@@ -71,9 +67,11 @@ mod fangs {
             [current headers]\n\
             {:?}\
         ", c.headers);
+
+        req
     }
 
-    pub fn log_request(req: &Request) {
+    pub fn log_request(_: &mut Context, req: Request) -> Request {
         let __method__ = req.method();
         let __path__   = req.path();
 
@@ -82,6 +80,8 @@ mod fangs {
             [ method ] {__method__}\n\
             [  path  ] {__path__}\n\
         ");
+
+        req
     }
 }
 

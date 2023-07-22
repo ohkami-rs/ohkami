@@ -24,6 +24,9 @@ use crate::{
 /// 
 ///     // generate a `Response`
 ///     c.NoContent()
+/// 
+///     // `Content-Type`, `Content-Length`, `Date`,
+///     // `Access-Control-*` are managed by ohkami.
 /// }
 /// ```
 /// 
@@ -40,6 +43,7 @@ use crate::{
 /// }
 /// 
 /// #[Payload(JSON)]
+/// #[derive(Serialize)]
 /// struct CreateUser {
 ///     name:     String,
 ///     password: String,
@@ -55,7 +59,7 @@ use crate::{
 ///     ).await /* Result<usize, MyError> */
 ///         .map_err(|e| c
 ///             .InternalServerError()
-///             .text("in DB operation")
+///             .text("in DB handling")
 ///         )?; // early return in error cases
 /// 
 ///     c.Created().json(User {

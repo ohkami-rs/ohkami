@@ -2,17 +2,18 @@ use std::borrow::Cow;
 use crate::{Request};
 
 
-/// Implmented for structs you put
+/// Represents "this is retirieved from `Request`".
 /// 
-/// - `#[Queries]`
-/// - `#[Headers]`
+/// - `#[Query]`
 /// - `#[Payload(JSON)]`
-/// - `#[Payload(Form)]`
 /// - `#[Payload(URLEncoded)]`
+/// - ( `#[Payload(Form)]` )
+/// 
+/// implement this automatically.
 /// 
 /// <br/>
 /// 
-/// And, you can manually implement for any structs that can be extracted from request：
+/// Of course, you can manually implement for any structs that can be extracted from request：
 /// 
 /// ```ignore
 /// struct HasPayload(bool);

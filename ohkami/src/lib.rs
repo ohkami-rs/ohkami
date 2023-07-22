@@ -83,6 +83,51 @@ pub mod prelude {
 pub mod utils {
     pub use crate::layer3_fang_handler::{cors, not_found};
     pub use ohkami_macros             ::{Query, Payload};
+
+    use crate::{Context, Request, Response};
+    /// Utility trait just to make writing `Fang`s easier :
+    /// 
+    /// ```ignore
+    /// use ohkami::prelude::*;
+    /// use ohkami::utils::Fang;
+    /// 
+    /// struct Log;
+    /// impl Fang for Log {
+    ///     // ↓ schema will be auto-completed ↓
+    ///     fn front(c: &mut Context, req: Request) -> Result<Request, Response> {
+    /// 
+    ///         // you only have to write what you do
+    /// 
+    ///         let (method, path) = (req.method(), req.path());
+    ///         tracing::info!("method: {method}, path: '{path}'");
+    /// 
+    ///         Ok(req)
+    ///     }
+    /// }
+    /// 
+    /// async fn main() {
+    ///     tracing_subscriber::fmt()
+    ///         /* ... config ... */.init();
+    /// 
+    ///     Ohkami::with((Log::front,))( // <----
+    ///         "/hello/:name".
+    ///             GET(move |c: Context, name: String| async {
+    ///                 c.OK().text("Hello, {name}!")
+    ///             })
+    ///     ).howl(8080).await
+    /// }
+    /// ```
+    pub trait Fang {
+        #[allow(unused)]
+        fn front(c: &mut Context, req: Request) -> Result<Request, Response> {
+            Ok(req)
+        }
+
+        #[allow(unused)]
+        fn back(res: Response) -> Response {
+            res
+        }
+    }
 }
 
 #[doc(hidden)]
@@ -94,8 +139,9 @@ pub mod __internal__ {
 /*===== usavility =====*/
 #[cfg(test)] #[allow(unused)] async fn __() {
 // fangs
-    fn server(c: &mut Context) {
+    fn server(c: &mut Context, req: Request) -> Request {
         c.headers.Server("ohkami");
+        req
     }
 
 // handlers

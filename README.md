@@ -18,7 +18,7 @@ ohkami *- [狼] wolf in Japanese -* is **declarative** web framework for *nightl
 # you can choose `async-std` instead.
 
 [dependencies]
-ohkami = { version = "0.9.0", features = ["rt_tokio"] }
+ohkami = { version = "0.9.1", features = ["rt_tokio"] }
 tokio  = { version = "1",     fetures  = ["full"] }
 ```
 (And check if your Rust toolchains are **nightly** ones)
@@ -28,20 +28,22 @@ tokio  = { version = "1",     fetures  = ["full"] }
 ```rust
 use ohkami::prelude::*;
 
-#[tokio::main]
-async fn main() {
-    Ohkami::new()(
-        "/hc"         .GET(health_check),
-        "/hello/:name".GET(hello),
-    ).howl(3000).await
-}
-
 async fn health_check(c: Context) -> Response {
     c.NoContent()
 }
 
 async fn hello(c: Context, name: String) -> Response {
     c.OK().text(format!("Hello, {name}!"))
+}
+
+#[tokio::main]
+async fn main() {
+    Ohkami::new()(
+        "/hc".
+            GET(health_check),
+        "/hello/:name".
+            GET(hello),
+    ).howl(3000).await
 }
 ```
 
