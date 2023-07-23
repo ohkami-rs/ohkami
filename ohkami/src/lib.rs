@@ -71,12 +71,16 @@ pub(crate) use layer1_req_res     ::{QUERIES_LIMIT, HEADERS_LIMIT};
 pub(crate) use layer3_fang_handler::{PATH_PARAMS_LIMIT};
 
 pub(crate) mod cors {
-    pub(crate) use crate::layer1_req_res::{
-        CORS, headers::{CORS, CORSAllowOrigin}
-    };
+    use std::sync::OnceLock;
+    pub(crate) use crate::layer0_lib::CORS;
+
+    /// set by builtin fang `CORS`
+    pub(crate) static CORS:            OnceLock<CORS>         = OnceLock::new();
+    #[allow(non_upper_case_globals)]
+    pub(crate) static CORSAllowOrigin: OnceLock<&'static str> = OnceLock::new();
 }
 
-pub use layer0_lib         ::{Error, Status, Method};
+pub use layer0_lib         ::{Status, Method};
 pub use layer1_req_res     ::{Request, Response, FromRequest};
 pub use layer2_context     ::{Context};
 pub use layer3_fang_handler::{Route};
@@ -87,7 +91,7 @@ pub mod prelude {
 }
 
 pub mod utils {
-    pub use crate::layer3_fang_handler::{cors, not_found};
+    pub use crate::layer3_fang_handler::{builtin::*};
     pub use ohkami_macros             ::{Query, Payload};
 
     use crate::{Context, Request, Response};
@@ -124,12 +128,10 @@ pub mod utils {
     /// }
     /// ```
     pub trait Fang {
-        #[allow(unused)]
-        fn front(c: &mut Context, req: Request) -> Result<Request, Response> {
+        fn front(#[allow(unused)] c: &mut Context, req: Request) -> Result<Request, Response> {
             Ok(req)
         }
 
-        #[allow(unused)]
         fn back(res: Response) -> Response {
             res
         }

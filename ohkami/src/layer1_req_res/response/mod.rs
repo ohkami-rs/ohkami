@@ -1,5 +1,5 @@
 pub(crate) mod headers; pub(crate) use headers::ResponseHeaders;
-           mod cors;    pub(crate) use cors::CORS;
+
 
 use std::{
     borrow::Cow,

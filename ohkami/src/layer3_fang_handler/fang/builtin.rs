@@ -7,11 +7,11 @@ pub fn cors(AllowOrigin: &'static str) -> crate::cors::CORS {
 }
 impl super::IntoFang<crate::cors::CORS> for crate::cors::CORS {
     fn into_fang(self) -> Option<super::Fang> {
-        if let Err(e) = crate::cors::CORSAllowOrigin.set(self.AllowOrigin) {
-            panic!("Can't set CORS config: {e}")
+        if let Err(_) = crate::cors::CORSAllowOrigin.set(self.AllowOrigin) {
+            panic!("Can't set CORS config")
         }
-        if let Err(e) = crate::cors::CORS.set(self.into_static()) {
-            panic!("Can't set CORS config: {e}")
+        if let Err(_) = crate::cors::CORS.set(self) {
+            panic!("Can't set CORS config")
         }
         None
     }

@@ -69,12 +69,8 @@ impl RadixRouter {
                 }.send(&mut stream).await
             }
             Method::OPTIONS => {
-                let __access_control_headers__ = CORS.get_or_init(|| "");
-                let __now__                    = now();
-                let headers = format!("\
-                    {__access_control_headers__}\
-                    {__now__}\r\n\
-                ");
+                let mut headers = CORS.get_or_init(|| CORS::empty()).to_string();
+                headers.push_str(&format!("Date: {}\r\n", now()));
                 return Response {
                     headers,
                     status:  Status::NoContent,

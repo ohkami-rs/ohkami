@@ -14,12 +14,6 @@ impl HeaderValue for &'static str {fn into_header_value(self) -> Option<&'static
 impl HeaderValue for Option<&'static str> {fn into_header_value(self) -> Option<&'static str> {self}}
 
 
-/// set by builtin fang `CORS`
-pub(crate) static CORS:            OnceLock<&'static str> = OnceLock::new();
-#[allow(non_upper_case_globals)]
-pub(crate) static CORSAllowOrigin: OnceLock<&'static str> = OnceLock::new();
-
-
 macro_rules! ResponseHeaders {
     ($(
         $group:ident {
@@ -66,10 +60,10 @@ macro_rules! ResponseHeaders {
 
             pub(crate) fn to_string(&self) -> String {
                 let __now__          = crate::layer0_lib::now();
-                let __allow_origin__ = CORSAllowOrigin.get_or_init(|| "");
+                let __allow_origin__ = crate::cors::CORSAllowOrigin.get_or_init(|| "");
                 let mut h = format!("\
                     Date: {__now__}\r\n\
-                    {__allow_origin__}\
+                    {__allow_origin__}\r\n\
                 ");
 
                 $(

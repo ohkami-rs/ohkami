@@ -78,7 +78,6 @@ macro_rules! Route {
     use serde::{Serialize, Deserialize};
     use super::{Handlers, Route};
     use crate::{
-        Error,
         Context,
         Response,
         layer0_lib::ContentType,
