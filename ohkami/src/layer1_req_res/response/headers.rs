@@ -3,6 +3,7 @@
 #![allow(unused)] // until ....
 
 use std::{collections::BTreeMap, sync::OnceLock};
+use crate::{layer0_lib::now};
 
 
 struct Header(Option<&'static str>);
@@ -59,12 +60,12 @@ macro_rules! ResponseHeaders {
             }
 
             pub(crate) fn to_string(&self) -> String {
-                let __now__          = crate::layer0_lib::now();
-                let __allow_origin__ = crate::cors::CORSAllowOrigin.get_or_init(|| "");
-                let mut h = format!("\
-                    Date: {__now__}\r\n\
-                    {__allow_origin__}\r\n\
-                ");
+                let mut h = format!("Date: {}\r\n", now());
+
+                let allow_origin = crate::cors::CORSAllowOrigin.get_or_init(|| "");
+                if !allow_origin.is_empty() {
+                    h.push_str(allow_origin);h.push('\r');h.push('\n');
+                }
 
                 $(
                     if self.$group {
