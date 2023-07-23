@@ -112,3 +112,21 @@ impl Response {
         self
     }
 }
+
+const _: () = {
+    impl std::fmt::Debug for Response {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            match &self.content {
+                None => f.debug_struct("Response")
+                    .field("status",  &self.status)
+                    .field("headers", &self.headers)
+                    .finish(),
+                Some((_, cow)) => f.debug_struct("Response")
+                    .field("status",  &self.status)
+                    .field("headers", &self.headers)
+                    .field("content", &*cow)
+                    .finish(),
+            }
+        }
+    }
+};

@@ -73,6 +73,54 @@ impl Request {
     }
 }
 
+const _: () = {
+    impl std::fmt::Debug for Request {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            let queires = {
+                let List { list, next } = &self.queries;
+                list[..*next].into_iter()
+                    .map(|cell| {
+                        let (k, v) = unsafe {cell.assume_init_ref()};
+                        format!("{} = {}",
+                            percent_decode(&self.buffer[k]).decode_utf8_lossy(),
+                            percent_decode(&self.buffer[v]).decode_utf8_lossy(),
+                        )
+                    })
+            }.collect::<Vec<_>>();
+
+            let headers = {
+                let List { list, next } = &self.headers;
+                list[..*next].into_iter()
+                    .map(|cell| {
+                        let (k, v) = unsafe {cell.assume_init_ref()};
+                        format!("{}: {}",
+                            self.buffer.read_str(k),
+                            self.buffer.read_str(v),
+                        )
+                    })
+            }.collect::<Vec<_>>();
+
+            if let Some((_, payload)) = self.payload() {
+                f.debug_struct("Request")
+                    .field("method",  &self.method)
+                    .field("path",    &self.path())
+                    .field("queries", &queires)
+                    .field("headers", &headers)
+                    .field("payload", &String::from_utf8_lossy(payload))
+                    .finish()
+
+            } else {
+                f.debug_struct("Request")
+                    .field("method",  &self.method)
+                    .field("path",    &self.path())
+                    .field("queries", &queires)
+                    .field("headers", &headers)
+                    .finish()
+            }
+        }
+    }
+};
+
 
 
 

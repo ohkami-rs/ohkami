@@ -1,4 +1,4 @@
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, PartialEq)]
 pub enum Method {
     GET,
     PUT,
@@ -24,16 +24,32 @@ impl Method {
     }
 }
 
-impl std::fmt::Display for Method {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(match self {
-            Self::GET     => "GET",
-            Self::PUT     => "PUT",
-            Self::POST    => "POST",
-            Self::PATCH   => "PATCH",
-            Self::DELETE  => "DELETE",
-            Self::HEAD    => "HEAD",
-            Self::OPTIONS => "OPTIONS",
-        })
+const _: () = {
+    impl std::fmt::Display for Method {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            f.write_str(match self {
+                Self::GET     => "GET",
+                Self::PUT     => "PUT",
+                Self::POST    => "POST",
+                Self::PATCH   => "PATCH",
+                Self::DELETE  => "DELETE",
+                Self::HEAD    => "HEAD",
+                Self::OPTIONS => "OPTIONS",
+            })
+        }
     }
-}
+    
+    impl std::fmt::Debug for Method {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            f.write_str(match self {
+                Self::GET     => "GET",
+                Self::PUT     => "PUT",
+                Self::POST    => "POST",
+                Self::PATCH   => "PATCH",
+                Self::DELETE  => "DELETE",
+                Self::HEAD    => "HEAD",
+                Self::OPTIONS => "OPTIONS",
+            })
+        }
+    }
+};

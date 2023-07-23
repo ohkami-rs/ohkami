@@ -22,9 +22,9 @@ ohkami *- [狼] wolf in Japanese -* is **declarative** web framework for *nightl
 
 [dependencies]
 ohkami = { version = "0.9.2", features = ["rt_tokio"] }
-tokio  = { version = "1",     fetures  = ["full"] }
+tokio  = { version = "1",     features = ["full"] }
 ```
-(And check if your Rust toolchains are **nightly** ones)
+(And ensure your Rust toolchains are **nightly** ones)
 
 2. Write your first code with ohkami：
 
@@ -148,9 +148,11 @@ async fn post_login(c: Context,
 ### use middlewares
 ohkami's middlewares are called "**fang**s".
 ```rust
+use ohkami::prelude::*;
+
 #[tokio::main]
 async fn main() {
-    Ohkami::with((append_server))(
+    Ohkami::with((append_server, log_response))(
         "/"  .GET(root),
         "/hc".GET(health_check),
         "/api/users".
@@ -163,6 +165,11 @@ fn append_server(c: &mut Context, req: Request) -> Request {
     c.headers
         .Server("ohkami");
     req
+}
+
+fn log_response(res: Response) -> Response {
+    println!("{res:?}");
+    res
 }
 ```
 

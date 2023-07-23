@@ -31,4 +31,10 @@ pub enum Status {
     #[inline(always)] pub(crate) const fn as_bytes(&self) -> &'static [u8] {
         self.as_str().as_bytes()
     }
-}
+} const _: () = {
+    impl std::fmt::Debug for Status {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            f.write_str(self.as_str())
+        }
+    }
+};
