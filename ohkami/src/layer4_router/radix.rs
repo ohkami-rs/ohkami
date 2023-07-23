@@ -1,22 +1,22 @@
 use crate::{
     __dep__,
+    Status,
     Request,
     Context,
     Response,
-    layer0_lib::{Method},
+    cors::CORS,
+    layer0_lib::{Method, now},
     layer3_fang_handler::{Handler, FrontFang, PathParams, BackFang},
 };
 
 
 /*===== defs =====*/
 pub(crate) struct RadixRouter {
-    pub(super) GET: Node,
-    pub(super) PUT: Node,
-    pub(super) POST: Node,
-    pub(super) HEAD: Node,
-    pub(super) PATCH: Node,
+    pub(super) GET:    Node,
+    pub(super) PUT:    Node,
+    pub(super) POST:   Node,
+    pub(super) PATCH:  Node,
     pub(super) DELETE: Node,
-    pub(super) OPTIONS: Node,
 }
 
 pub(super) struct Node {
@@ -47,61 +47,69 @@ pub(super) enum Pattern {
 impl RadixRouter {
     pub(crate) async fn handle(
         &self,
-        mut c:      Context,
-        mut req:    Request,
+        c:   Context,
+        req: Request,
         mut stream: __dep__::TcpStream,
     ) {
-        let Some((target, params)) = match req.method() {
-            Method::GET     => &self.GET,
-            Method::PUT     => &self.PUT,
-            Method::POST    => &self.POST,
-            Method::HEAD    => &self.HEAD,
-            Method::PATCH   => &self.PATCH,
-            Method::DELETE  => &self.DELETE,
-            Method::OPTIONS => &self.OPTIONS,
-        }.search(req.path_bytes()) else {
+        let path = req.path_bytes();
+        let Some((target, params)) = (match req.method() {
+            Method::GET     => self.GET.search(path),
+            Method::PUT     => self.PUT.search(path),
+            Method::POST    => self.POST.search(path),
+            Method::PATCH   => self.PATCH.search(path),
+            Method::DELETE  => self.DELETE.search(path),
+            Method::HEAD => {
+                let Some((target, params)) = self.GET.search(path)
+                    else {return c.NotFound().send(&mut stream).await};
+                let Response { headers, .. } = target.handle(c, req, params).await;
+                return Response {
+                    headers,
+                    status:  Status::NoContent,
+                    content: None,
+                }.send(&mut stream).await
+            }
+            Method::OPTIONS => {
+                let __access_control_headers__ = CORS.get_or_init(|| "");
+                let __now__                    = now();
+                let headers = format!("\
+                    {__access_control_headers__}\
+                    {__now__}\r\n\
+                ");
+                return Response {
+                    headers,
+                    status:  Status::NoContent,
+                    content: None,
+                }.send(&mut stream).await
+            }
+        }) else {
             return c.NotFound().send(&mut stream).await
         };
 
-        match &target.handler {
-            Some(handler) => {
-                for front in target.front {
-                    (c, req) = match front(c, req) {
-                        Ok((c, req)) => (c, req),
-                        Err(err_res) => return err_res.send(&mut stream).await,
-                    };
-                }
-
-                // Here I'd like to write just
-                // 
-                // ```
-                // let res = handler(req, c, params) ...
-                // ```
-                // 
-                // but this causes annoying panic for rust-analyzer (v0.3.1549).
-                // 
-                // Based on the logs, it seems that:
-                // 
-                // 1. This `handler` is `&Handler` and I meen `handler(...)` is
-                //    calling `<Handler as **Fn**>::call`.
-                // 2. But rust-analyzer thinks this `handler(...)` is calling
-                //    `<Handler as **FnOnce**>::call_once`.
-                // 
-                // So I explicitly indicate 1. (This may be fixed in future)
-                let mut res: Response = <Handler as Fn<(Request, Context, PathParams)>>::call(handler, (req, c, params)).await;
-
-                for back in target.back {
-                    res = back(res);
-                }
-
-                res.send(&mut stream).await
-            }
-            None => c.NotFound().send(&mut stream).await
-        }
+        target.handle(c, req, params).await.send(&mut stream).await
     }
 }
 
 impl Node {
+    #[inline] pub(super) async fn handle(&self,
+        mut c:   Context,
+        mut req: Request,
+        params:  PathParams,
+    ) -> Response {
+        match &self.handler {
+            Some(h) => {
+                for f in self.front {
+                    (c, req) = f(c, req)?
+                }
+                let mut res = h(req, c, params).await;
+                for b in self.back {
+                    res = b(res);
+                }
+                res
+            }
+            None => c.NotFound()
+        }
+    }
+
     pub(super/* for test */) fn search(&self, mut path: &[u8]) -> Option<(&Node, PathParams)> {
         let path_len = path.len();
 

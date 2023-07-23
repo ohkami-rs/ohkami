@@ -1,44 +1,40 @@
 #![allow(non_snake_case)]
 
+use crate::Method;
+
 
 pub struct CORS {
-    AllowOrigin:      Option<&'static str>,
-    AllowCredentials: Option<&'static str>,
-    AllowHeaders:     Option<&'static str>,
-    AllowMethods:     Option<&'static str>,
-    ExposeHeaders:    Option<&'static str>,
-    MaxAge:           Option<&'static str>,
+    pub(crate) AllowOrigin: &'static str,
+    AllowCredentials:       bool,
+    AllowHeaders:           Option<Vec<&'static str>>,
+    AllowMethods:           Option<Vec<Method>>,
+    MaxAge:                 Option<u32>,
 } impl CORS {
-    pub(crate) fn new() -> Self {
+    pub(crate) fn new(AllowOrigin: &'static str) -> Self {
         Self {
-            AllowOrigin:      None,
-            AllowCredentials: None,
+            AllowOrigin,
+            AllowCredentials: false,
             AllowHeaders:     None,
             AllowMethods:     None,
-            ExposeHeaders:    None,
             MaxAge:           None,
         }
     }
     pub(crate) fn into_static(self) -> &'static str {
         let headers = {
-            let mut h = String::new();
-            if let Some(value) = self.AllowOrigin {
-                h.push_str(&format!("Access-Control-Allow-Origin: {value}\r\n"));
+            let mut h = format!("Access-Control-Allow-Origin: {}\r\n", self.AllowOrigin);
+            if self.AllowCredentials {
+                h.push_str("Access-Control-Allow-Credentials: true\r\n");
             }
-            if let Some(value) = self.AllowCredentials {
-                h.push_str(&format!("Access-Control-Allow-Credentials: {value}\r\n"));
+            if let Some(seconds) = self.MaxAge {
+                h.push_str(&format!("Access-Control-Max-Age: {seconds}\r\n"));
             }
-            if let Some(value) = self.AllowHeaders {
-                h.push_str(&format!("Access-Control-Allow-Headers: {value}\r\n"));
+            if let Some(headers) = self.AllowHeaders {
+                let headers = headers.join(",");
+                h.push_str(&format!("Access-Control-Allow-Headers: {headers}\r\n"));
             }
-            if let Some(value) = self.AllowMethods {
-                h.push_str(&format!("Access-Control-Allow-Methods: {value}\r\n"));
-            }
-            if let Some(value) = self.ExposeHeaders {
-                h.push_str(&format!("Access-Control-Expose-Headers: {value}\r\n"));
-            }
-            if let Some(value) = self.MaxAge {
-                h.push_str(&format!("Access-Control-Max-Age: {value}\r\n"));
+            if let Some(methods) = self.AllowMethods {
+                let methods = methods.into_iter().map(|m| m.to_string()).collect::<Vec<_>>().join(",");
+                h.push_str(&format!("Access-Control-Allow-Methods: {methods}\r\n"));
             }
             h
         };
@@ -47,28 +43,20 @@ pub struct CORS {
 }
 
 impl CORS {
-    pub fn AllowOrigin(mut self, origin: &'static str) -> Self {
-        self.AllowOrigin.replace(origin);
+    pub fn AllowCredentials(mut self) -> Self {
+        self.AllowCredentials = true;
         self
     }
-    pub fn AllowCredentials(mut self, credentials: &'static str) -> Self {
-        self.AllowOrigin.replace(credentials);
+    pub fn AllowHeaders<const N: usize>(mut self, headers: [&'static str; N]) -> Self {
+        self.AllowHeaders.replace(headers.to_vec());
         self
     }
-    pub fn AllowHeaders(mut self, headers: &'static str) -> Self {
-        self.AllowOrigin.replace(headers);
+    pub fn AllowMethods<const N: usize>(mut self, methods: [crate::Method; N]) -> Self {
+        self.AllowMethods.replace(methods.to_vec());
         self
     }
-    pub fn AllowMethods(mut self, methods: &'static str) -> Self {
-        self.AllowOrigin.replace(methods);
-        self
-    }
-    pub fn ExposeHeaders(mut self, headers: &'static str) -> Self {
-        self.AllowOrigin.replace(headers);
-        self
-    }
-    pub fn MaxAge(mut self, delta_seconds: &'static str) -> Self {
-        self.AllowOrigin.replace(delta_seconds);
+    pub fn MaxAge(mut self, delta_seconds: u32) -> Self {
+        self.MaxAge.replace(delta_seconds);
         self
     }
 }
