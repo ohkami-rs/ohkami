@@ -155,9 +155,10 @@ async fn main() {
     ).howl(":8080").await
 }
 
-fn append_server(c: &mut Context) {
+fn append_server(c: &mut Context, req: Request) -> Request {
     c.headers
         .Server("ohkami");
+    req
 }
 ```
 
