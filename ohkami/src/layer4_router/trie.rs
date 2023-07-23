@@ -20,10 +20,8 @@ pub struct TrieRouter {
     pub(super/* for test */) GET:     Node,
     pub(super/* for test */) PUT:     Node,
     pub(super/* for test */) POST:    Node,
-    pub(super/* for test */) HEAD:    Node,
     pub(super/* for test */) PATCH:   Node,
     pub(super/* for test */) DELETE:  Node,
-    pub(super/* for test */) OPTIONS: Node,
 }
 
 pub(super/* for test */) struct Node {
@@ -76,15 +74,13 @@ impl TrieRouter {
             GET:     Node::root(),
             PUT:     Node::root(),
             POST:    Node::root(),
-            HEAD:    Node::root(),
             PATCH:   Node::root(),
             DELETE:  Node::root(),
-            OPTIONS: Node::root(),
         }
     }
 
     pub(crate) fn register_handlers(mut self, handlers: Handlers) -> Self {
-        let Handlers { route, GET, PUT, POST, HEAD, PATCH, DELETE, OPTIONS } = handlers;
+        let Handlers { route, GET, PUT, POST, PATCH, DELETE } = handlers;
 
         if let Some(handler) = GET {
             if let Err(e) = self.GET.register_handler(route.clone().into_iter(), handler) {panic!("{e}")}
@@ -95,17 +91,11 @@ impl TrieRouter {
         if let Some(handler) = POST {
             if let Err(e) = self.POST.register_handler(route.clone().into_iter(), handler) {panic!("{e}")}
         }
-        if let Some(handler) = HEAD {
-            if let Err(e) = self.HEAD.register_handler(route.clone().into_iter(), handler) {panic!("{e}")}
-        }
         if let Some(handler) = PATCH {
             if let Err(e) = self.PATCH.register_handler(route.clone().into_iter(), handler) {panic!("{e}")}
         }
         if let Some(handler) = DELETE {
             if let Err(e) = self.DELETE.register_handler(route.clone().into_iter(), handler) {panic!("{e}")}
-        }
-        if let Some(handler) = OPTIONS {
-            if let Err(e) = self.OPTIONS.register_handler(route.clone().into_iter(), handler) {panic!("{e}")}
         }
 
         self
@@ -120,10 +110,8 @@ impl TrieRouter {
         if let Err(e) = self.GET.merge_node(route.clone().into_iter(), another_routes.GET) {panic!("{e}")}
         if let Err(e) = self.PUT.merge_node(route.clone().into_iter(), another_routes.PUT) {panic!("{e}")}
         if let Err(e) = self.POST.merge_node(route.clone().into_iter(), another_routes.POST) {panic!("{e}")}
-        if let Err(e) = self.HEAD.merge_node(route.clone().into_iter(), another_routes.HEAD) {panic!("{e}")}
         if let Err(e) = self.PATCH.merge_node(route.clone().into_iter(), another_routes.PATCH) {panic!("{e}")}
         if let Err(e) = self.DELETE.merge_node(route.clone().into_iter(), another_routes.DELETE) {panic!("{e}")}
-        if let Err(e) = self.OPTIONS.merge_node(route.clone().into_iter(), another_routes.OPTIONS) {panic!("{e}")}
         
         self
     }
@@ -132,10 +120,8 @@ impl TrieRouter {
         self.GET.apply_fang(fang.clone());
         self.PUT.apply_fang(fang.clone());
         self.POST.apply_fang(fang.clone());
-        self.HEAD.apply_fang(fang.clone());
         self.PATCH.apply_fang(fang.clone());
         self.DELETE.apply_fang(fang.clone());
-        self.OPTIONS.apply_fang(fang.clone());
 
         self
     }
@@ -145,10 +131,8 @@ impl TrieRouter {
             GET:     self.GET.into_radix(),
             PUT:     self.PUT.into_radix(),
             POST:    self.POST.into_radix(),
-            HEAD:    self.HEAD.into_radix(),
             PATCH:   self.PATCH.into_radix(),
             DELETE:  self.DELETE.into_radix(),
-            OPTIONS: self.OPTIONS.into_radix(),
         }
     }
 }

@@ -9,10 +9,8 @@ pub struct Handlers {
     pub(crate) GET:     Option<Handler>,
     pub(crate) PUT:     Option<Handler>,
     pub(crate) POST:    Option<Handler>,
-    pub(crate) HEAD:    Option<Handler>,
     pub(crate) PATCH:   Option<Handler>,
     pub(crate) DELETE:  Option<Handler>,
-    pub(crate) OPTIONS: Option<Handler>,
 } impl Handlers {
     fn new(route_str: &'static str) -> Self {
         Self {
@@ -20,10 +18,8 @@ pub struct Handlers {
             GET:     None,
             PUT:     None,
             POST:    None,
-            HEAD:    None,
             PATCH:   None,
             DELETE:  None,
-            OPTIONS: None,
         }
     }
 }
@@ -39,7 +35,7 @@ macro_rules! Handlers {
             )*
         }
     };
-} Handlers! { GET, PUT, POST, HEAD, PATCH, DELETE, OPTIONS }
+} Handlers! { GET, PUT, POST, PATCH, DELETE }
 
 
 pub struct ByAnother {
@@ -72,7 +68,7 @@ macro_rules! Route {
             }
         }
     };
-} Route! { GET, PUT, POST, HEAD, PATCH, DELETE, OPTIONS }
+} Route! { GET, PUT, POST, PATCH, DELETE }
 
 
 

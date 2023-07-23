@@ -18,7 +18,7 @@ ohkami *- [狼] wolf in Japanese -* is **declarative** web framework for *nightl
 # you can choose `async-std` instead.
 
 [dependencies]
-ohkami = { version = "0.9.1", features = ["rt_tokio"] }
+ohkami = { version = "0.9.2", features = ["rt_tokio"] }
 tokio  = { version = "1",     fetures  = ["full"] }
 ```
 (And check if your Rust toolchains are **nightly** ones)
@@ -83,7 +83,7 @@ struct UpdateUserQuery {
 
 async fn update_user(c: Context,
     id:    usize,        /* <-- path  param */
-    query: GetUserQuery, /* <-- query params */
+    query: UpdateUserQuery, /* <-- query params */
 ) -> Response {
 
     // ...
@@ -107,7 +107,7 @@ struct CreateUserRequest {
 }
 
 async fn create_user(c: Context,
-    req: CreateUserRequest
+    body: CreateUserRequest
 ) -> Response {
 
     // ...
@@ -155,9 +155,10 @@ async fn main() {
     ).howl(":8080").await
 }
 
-fn append_server(c: &mut Context) {
+fn append_server(c: &mut Context, req: Request) -> Request {
     c.headers
         .Server("ohkami");
+    req
 }
 ```
 

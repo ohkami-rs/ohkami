@@ -1,13 +1,17 @@
 use crate::{Response, Status};
 
 
-pub fn cors() -> crate::layer1_req_res::CORS {
-    crate::layer1_req_res::CORS::new()
+#[allow(non_snake_case)]
+pub fn cors(AllowOrigin: &'static str) -> crate::cors::CORS {
+    crate::cors::CORS::new(AllowOrigin)
 }
-impl super::IntoFang<crate::layer1_req_res::CORS> for crate::layer1_req_res::CORS {
+impl super::IntoFang<crate::cors::CORS> for crate::cors::CORS {
     fn into_fang(self) -> Option<super::Fang> {
-        if let Err(e) = crate::layer1_req_res::headers::CORS.set(self.into_static()) {
-            panic!("Can't set CORS: {e}")
+        if let Err(e) = crate::cors::CORSAllowOrigin.set(self.AllowOrigin) {
+            panic!("Can't set CORS config: {e}")
+        }
+        if let Err(e) = crate::cors::CORS.set(self.into_static()) {
+            panic!("Can't set CORS config: {e}")
         }
         None
     }

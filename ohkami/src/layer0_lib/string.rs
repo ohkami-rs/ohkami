@@ -9,8 +9,8 @@ impl AsStr for &str {fn as_str(&self) -> &str {self}}
 impl AsStr for () {fn as_str(&self) -> &str {""}}
 
 
-pub trait IntoCow<'l> {
+pub trait IntoCows<'l> {
     fn into_cow(self) -> Cow<'l, str>;
 }
-impl IntoCow<'static> for &'static str {fn into_cow(self) -> Cow<'static, str> {Cow::Borrowed(self)}}
-impl IntoCow<'static> for String {fn into_cow(self) -> Cow<'static, str> {Cow::Owned(self)}}
+impl IntoCows<'static> for &'static str {fn into_cow(self) -> Cow<'static, str> {Cow::Borrowed(self)}}
+impl IntoCows<'static> for String {fn into_cow(self) -> Cow<'static, str> {Cow::Owned(self)}}

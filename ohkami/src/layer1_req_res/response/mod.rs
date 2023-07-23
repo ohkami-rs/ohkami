@@ -8,7 +8,7 @@ use std::{
 };
 use crate::{
     __dep__, __dep__::AsyncWriter,
-    layer0_lib::{Status, ContentType, IntoCow},
+    layer0_lib::{Status, ContentType, IntoCows},
 };
 
 
@@ -85,14 +85,19 @@ impl Response {
 }
 
 impl Response {
-    pub fn text(mut self, text: impl IntoCow<'static>) -> Self {
+    pub fn no_content(mut self) -> Self {
+        self.content.take();
+        self
+    }
+
+    pub fn text(mut self, text: impl IntoCows<'static>) -> Self {
         self.content.replace((
             ContentType::Text,
             text.into_cow()
         ));
         self
     }
-    pub fn html(mut self, html: impl IntoCow<'static>) -> Self {
+    pub fn html(mut self, html: impl IntoCows<'static>) -> Self {
         self.content.replace((
             ContentType::HTML,
             html.into_cow()
