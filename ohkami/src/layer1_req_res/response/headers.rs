@@ -3,6 +3,7 @@
 #![allow(unused)] // until ....
 
 use std::{collections::BTreeMap, sync::OnceLock};
+use crate::{layer0_lib::now};
 
 
 struct Header(Option<&'static str>);
@@ -12,12 +13,6 @@ pub trait HeaderValue {
 }
 impl HeaderValue for &'static str {fn into_header_value(self) -> Option<&'static str> {Some(self)}}
 impl HeaderValue for Option<&'static str> {fn into_header_value(self) -> Option<&'static str> {self}}
-
-
-/// set by builtin fang `CORS`
-pub(crate) static CORS:            OnceLock<&'static str> = OnceLock::new();
-#[allow(non_upper_case_globals)]
-pub(crate) static CORSAllowOrigin: OnceLock<&'static str> = OnceLock::new();
 
 
 macro_rules! ResponseHeaders {
@@ -65,12 +60,12 @@ macro_rules! ResponseHeaders {
             }
 
             pub(crate) fn to_string(&self) -> String {
-                let __now__          = crate::layer0_lib::now();
-                let __allow_origin__ = CORSAllowOrigin.get_or_init(|| "");
-                let mut h = format!("\
-                    Date: {__now__}\r\n\
-                    {__allow_origin__}\
-                ");
+                let mut h = format!("Date: {}\r\n", now());
+
+                let allow_origin = crate::cors::CORSAllowOrigin.get_or_init(|| "");
+                if !allow_origin.is_empty() {
+                    h.push_str(allow_origin);h.push('\r');h.push('\n');
+                }
 
                 $(
                     if self.$group {

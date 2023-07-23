@@ -101,6 +101,7 @@ use ohkami::{prelude::*, utils::Payload};
 
 
 #[Payload(JSON)]
+#[derive(serde::Deserialize)]
 struct CreateUserRequest {
     name:     String,
     password: String,
