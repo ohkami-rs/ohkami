@@ -8,6 +8,9 @@ ohkami *- [狼] wolf in Japanese -* is **declarative** web framework for *nightl
 - *macro free, declarative APIs*
 - supporting *multi runtime*：`tokio`, `async-std` (and more in future)
 
+<img align="right" alt="build check status of ohkami" src="https://github.com/kana-rus/ohkami/actions/workflows/check.yml/badge.svg"/>
+<img align="right" alt="test status of ohkami" src="https://github.com/kana-rus/ohkami/actions/workflows/test.yml/badge.svg"/>
+
 <br/>
 
 ## Quick start
