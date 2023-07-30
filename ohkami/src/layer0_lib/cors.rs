@@ -1,6 +1,6 @@
 #![allow(non_snake_case)]
 
-use crate::{Method, Context};
+use crate::{Method};
 
 
 pub(crate) enum AccessControlAllowOrigin {
