@@ -70,15 +70,23 @@ mod layer5_ohkami;
 pub(crate) use layer1_req_res     ::{QUERIES_LIMIT, HEADERS_LIMIT};
 pub(crate) use layer3_fang_handler::{PATH_PARAMS_LIMIT};
 
-pub(crate) mod cors {
+mod cors {
     use std::sync::OnceLock;
     pub(crate) use crate::layer0_lib::CORS;
 
     /// set by builtin fang `CORS`
-    pub(crate) static CORS:            OnceLock<CORS>         = OnceLock::new();
-    #[allow(non_upper_case_globals)]
-    pub(crate) static CORSAllowOrigin: OnceLock<&'static str> = OnceLock::new();
-}
+    static _CORS: OnceLock<Option<CORS>> = OnceLock::new();
+
+    #[allow(non_snake_case)]
+    pub(crate) fn setCORS(cors: CORS) -> Result<(), Option<CORS>> {
+        _CORS.set(Some(cors))
+    }
+
+    #[allow(non_snake_case)]
+    pub(crate) fn CORS() -> Option<&'static CORS> {
+        _CORS.get_or_init(|| None).as_ref()
+    }
+} pub(crate) use cors::*;
 
 pub use layer0_lib         ::{Status, Method, ContentType};
 pub use layer1_req_res     ::{Request, Response, FromRequest};

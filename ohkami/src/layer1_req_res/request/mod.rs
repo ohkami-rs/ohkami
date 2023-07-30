@@ -30,29 +30,25 @@ impl Request {
 }
 
 impl Request {
-    pub fn method(&self) -> Method {
+    #[inline] pub fn method(&self) -> Method {
         self.method
     }
-    pub fn path(&self) -> &str {
+    #[inline] pub fn path(&self) -> &str {
         unsafe {std::mem::transmute(
             &*percent_decode(&self.buffer[&self.path]).decode_utf8_lossy()
         )}
     }
     #[inline] pub fn query<Value: FromBuffer>(&self, key: &str) -> Option<Result<Value, Cow<'static, str>>> {
-        let List { list, next } = &self.queries;
-        for query in &list[..*next] {
-            let (key_range, value_range) = unsafe {query.assume_init_ref()};
-            if key == percent_decode(&self.buffer[key_range]).decode_utf8_lossy() {
-                return Some(Value::parse((&*percent_decode(&self.buffer[value_range]).decode_utf8_lossy()).as_bytes()))
+        for (key_range, value_range) in self.queries.iter() {
+            if key.eq_ignore_ascii_case(&percent_decode(&self.buffer[key_range]).decode_utf8_lossy()) {
+                return Some(Value::parse((&percent_decode(&self.buffer[value_range]).decode_utf8_lossy()).as_bytes()))
             }
         }
         None
     }
     #[inline] pub fn header(&self, key: &str) -> Option<&str> {
-        let List { list, next } = &self.headers;
-        for header in &list[..*next] {
-            let (key_range, value_range) = unsafe {header.assume_init_ref()};
-            if &self.buffer[key_range] == key.as_bytes() {
+        for (key_range, value_range) in self.headers.iter() {
+            if key.as_bytes().eq_ignore_ascii_case(&self.buffer[key_range]) {
                 return Some(&self.buffer.read_str(value_range))
             }
         }

@@ -85,7 +85,7 @@ impl Response {
 }
 
 impl Response {
-    pub fn no_content(mut self) -> Self {
+    pub fn drop_content(mut self) -> Self {
         self.content.take();
         self
     }

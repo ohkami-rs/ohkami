@@ -31,13 +31,20 @@ macro_rules! prepare_capacity {
 };
 
 impl<T, const CAPACITY: usize> List<T, CAPACITY> {
-    #[inline(always)] pub(crate) fn append(&mut self, element: T) {
+    #[inline] pub(crate) fn append(&mut self, element: T) {
         if self.next == CAPACITY {
             panic!("Buffer over flow");
         } else {
             self.list[self.next].write(element);
             self.next += 1;
         }
+    }
+
+    #[inline] pub(crate) fn iter(&self) -> impl Iterator<Item = &'_ T> {
+        let Self { list, next } = self;
+        (&list[..*next])
+            .into_iter()
+            .map(|mu| unsafe {mu.assume_init_ref()})
     }
 }
 

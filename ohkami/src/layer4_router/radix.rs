@@ -4,7 +4,6 @@ use crate::{
     Request,
     Context,
     Response,
-    cors::CORS,
     layer0_lib::{Method, now},
     layer3_fang_handler::{Handler, FrontFang, PathParams, BackFang},
 };
@@ -69,13 +68,51 @@ impl RadixRouter {
                 }.send(&mut stream).await
             }
             Method::OPTIONS => {
-                let mut headers = CORS.get_or_init(|| CORS::empty()).to_string();
-                headers.push_str(&format!("Date: {}\r\n", now()));
-                return Response {
+                let Some(cors) = crate::CORS() else {
+                    return c.InternalServerError().send(&mut stream).await
+                };
+
+                let headers = format!("\
+                    Date: {}\r\n\
+                    Vary: Origin\r\n\
+                    {}\
+                    \r\n\
+                ", now(), cors.to_string());
+
+                let send = |status: Status| Response {
+                    status,
                     headers,
-                    status:  Status::NoContent,
                     content: None,
-                }.send(&mut stream).await
+                }.send(&mut stream);
+
+                let Some(origin) = req.header("Origin") else {
+                    return send(Status::BadRequest).await
+                };
+                if !cors.AllowOrigin.matches(origin) {
+                    return send(Status::Forbidden).await
+                }
+
+                if let Some(request_method) = req.header("Access-Control-Request-Method") {
+                    let request_method = Method::from_bytes(request_method.as_bytes());
+                    match &cors.AllowMethods {
+                        None => return send(Status::Forbidden).await,
+                        Some(methods) => if !methods.contains(&request_method) {
+                            return send(Status::Forbidden).await
+                        }
+                    }
+                }
+
+                if let Some(request_headers) = req.header("Access-Control-Request-Headers") {
+                    let mut request_headers = request_headers.split(',').map(|h| h.trim_matches(' '));
+                    match &cors.AllowHeaders {
+                        None => return send(Status::Forbidden).await,
+                        Some(headers) => if !request_headers.all(|h| headers.contains(&h)) {
+                            return send(Status::Forbidden).await
+                        }
+                    }
+                }
+                
+                return send(Status::NoContent).await
             }
         }) else {
             return c.NotFound().send(&mut stream).await

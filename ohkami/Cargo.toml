@@ -1,6 +1,6 @@
 [package]
 name          = "ohkami"
-version       = "0.9.2"
+version       = "0.9.3"
 edition       = "2021"
 authors       = ["kanarus <kanarus786@gmail.com>"]
 description   = "declarative web framework for nightly Rust"
@@ -16,7 +16,7 @@ license       = "MIT"
 ohkami_macros    = { version  = "0.3", path = "../ohkami_macros" }
 tokio            = { optional = true,  version  = "1", features = ["net", "rt", "io-util"] }
 async-std        = { optional = true,  version  = "1" }
-serde            = { version  = "1.0", features = ["derive"] }
+serde            = "1.0"
 serde_json       = "1.0"
 chrono           = "0.4"
 percent-encoding = "2.2.0"
@@ -26,4 +26,4 @@ rt_tokio     = ["dep:tokio"]
 rt_async-std = ["dep:async-std"]
 
 ##### DEBUG #####
-# default = ["rt_async-std"]
+# default = ["rt_async-std", "serde/derive"]
