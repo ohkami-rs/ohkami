@@ -1,36 +1,53 @@
 #![allow(non_snake_case)]
 
-use crate::Method;
+use crate::{Method};
 
+
+pub(crate) enum AccessControlAllowOrigin {
+    Any,
+    Only(&'static str),
+} impl AccessControlAllowOrigin {
+    #[inline(always)] pub(crate) fn from_literal(lit: &'static str) -> Self {
+        match lit {
+            "*"    => Self::Any,
+            origin => Self::Only(origin),
+        }
+    }
+
+    #[inline(always)] pub(crate) const fn as_str(&self) -> &'static str {
+        match self {
+            Self::Any          => "*",
+            Self::Only(origin) => origin,
+        }
+    }
+
+    #[inline(always)] pub(crate) fn matches(&self, origin: &str) -> bool {
+        match self {
+            Self::Any     => true,
+            Self::Only(o) => *o == origin,
+        }
+    }
+}
 
 pub struct CORS {
-    pub(crate) AllowOrigin: &'static str,
-    AllowCredentials:       bool,
-    AllowHeaders:           Option<Vec<&'static str>>,
-    AllowMethods:           Option<Vec<Method>>,
-    MaxAge:                 Option<u32>,
+    pub(crate) AllowOrigin:      AccessControlAllowOrigin,
+    pub(crate) AllowCredentials: bool,
+    pub(crate) AllowHeaders:     Option<Vec<&'static str>>,
+    pub(crate) AllowMethods:     Option<Vec<Method>>,
+    pub(crate) MaxAge:           Option<u32>,
 } impl CORS {
-    pub(crate) fn empty() -> Self {
-        Self {
-            AllowOrigin:       "",
-            AllowCredentials: false,
-            AllowHeaders:     None,
-            AllowMethods:     None,
-            MaxAge:           None,
-        }
-    }
     pub(crate) fn new(AllowOrigin: &'static str) -> Self {
         Self {
-            AllowOrigin,
+            AllowOrigin:      AccessControlAllowOrigin::from_literal(AllowOrigin),
             AllowCredentials: false,
             AllowHeaders:     None,
             AllowMethods:     None,
             MaxAge:           None,
         }
     }
+
     pub(crate) fn to_string(&self) -> String {
-        let mut h = if self.AllowOrigin.is_empty() {return String::new()}
-            else {format!("Access-Control-Allow-Origin: {}\r\n", self.AllowOrigin)};
+        let mut h = format!("Access-Control-Allow-Origin: {}\r\n", self.AllowOrigin.as_str());
         if self.AllowCredentials {
             h.push_str("Access-Control-Allow-Credentials: true\r\n");
         }

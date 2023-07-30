@@ -62,9 +62,8 @@ macro_rules! ResponseHeaders {
             pub(crate) fn to_string(&self) -> String {
                 let mut h = format!("Date: {}\r\n", now());
 
-                let allow_origin = crate::cors::CORSAllowOrigin.get_or_init(|| "");
-                if !allow_origin.is_empty() {
-                    h.push_str(allow_origin);h.push('\r');h.push('\n');
+                if let Some(cors) = crate::CORS() {
+                    h.push_str(cors.AllowOrigin.as_str());h.push('\r');h.push('\n');
                 }
 
                 $(
