@@ -20,7 +20,7 @@ ohkami *- [狼] wolf in Japanese -* is **declarative** web framework for *nightl
 
 ```toml
 # this sample uses `tokio` runtime.
-# you can choose `async-std` instead.
+# you can choose `async-std` instead by "rt_async-std".
 
 [dependencies]
 ohkami = { version = "0.9.3", features = ["rt_tokio"] }
@@ -87,7 +87,7 @@ struct UpdateUserQuery {
 }
 
 async fn update_user(c: Context,
-    id:    usize,        /* <-- path  param */
+    id:    usize,           /* <-- path  param */
     query: UpdateUserQuery, /* <-- query params */
 ) -> Response {
 
@@ -106,7 +106,7 @@ use ohkami::{prelude::*, utils::Payload};
 
 
 #[Payload(JSON)]
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize)] // <-- This may not be needed in future version
 struct CreateUserRequest {
     name:     String,
     password: String,
@@ -214,8 +214,9 @@ async fn handler1(c: Context) -> Response {
 
 async fn handler2(c: Context) -> Response {
     let user = generate_dummy_user()
-        .map_err(|e| c.InternalServerError()
-            .text("in `generate_dummy_user`"))?;
+        .map_err(|e| c
+            .InternalServerError()
+            .text("in getting user"))?;
     
     // ...
 }
