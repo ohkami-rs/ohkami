@@ -4,7 +4,7 @@ use crate::{
     Request,
     Context,
     Response,
-    layer0_lib::{Method, now},
+    layer0_lib::{Method},
     layer3_fang_handler::{Handler, FrontFang, PathParams, BackFang},
 };
 
@@ -46,16 +46,16 @@ pub(super) enum Pattern {
 impl RadixRouter {
     pub(crate) async fn handle(
         &self,
-        c:   Context,
-        req: Request,
+        mut c: Context,
+        req:   Request,
         mut stream: __dep__::TcpStream,
     ) {
         let path = req.path_bytes();
         let Some((target, params)) = (match req.method() {
-            Method::GET     => self.GET.search(path),
-            Method::PUT     => self.PUT.search(path),
-            Method::POST    => self.POST.search(path),
-            Method::PATCH   => self.PATCH.search(path),
+            Method::GET     => self.GET   .search(path),
+            Method::PUT     => self.PUT   .search(path),
+            Method::POST    => self.POST  .search(path),
+            Method::PATCH   => self.PATCH .search(path),
             Method::DELETE  => self.DELETE.search(path),
             Method::HEAD => {
                 let Some((target, params)) = self.GET.search(path)
@@ -72,12 +72,9 @@ impl RadixRouter {
                     return c.InternalServerError().send(&mut stream).await
                 };
 
-                let headers = format!("\
-                    Date: {}\r\n\
-                    Vary: Origin\r\n\
-                    {}\
-                    \r\n\
-                ", now(), cors.to_string());
+                let headers = c.headers
+                    .Vary("Origin")
+                    .to_string();
 
                 let send = |status: Status| Response {
                     status,
@@ -89,6 +86,10 @@ impl RadixRouter {
                     return send(Status::BadRequest).await
                 };
                 if !cors.AllowOrigin.matches(origin) {
+                    return send(Status::Forbidden).await
+                }
+
+                if req.header("Authorization").is_some() && !cors.AllowCredentials {
                     return send(Status::Forbidden).await
                 }
 
@@ -128,11 +129,11 @@ impl Node {
         mut req: Request,
         params:  PathParams,
     ) -> Response {
+        for f in self.front {
+            (c, req) = f(c, req)?
+        }
         match &self.handler {
             Some(h) => {
-                for f in self.front {
-                    (c, req) = f(c, req)?
-                }
                 let mut res = h(req, c, params).await;
                 for b in self.back {
                     res = b(res);

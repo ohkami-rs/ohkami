@@ -7,6 +7,13 @@ pub(crate) enum AccessControlAllowOrigin {
     Any,
     Only(&'static str),
 } impl AccessControlAllowOrigin {
+    #[inline(always)] pub(crate) fn is_any(&self) -> bool {
+        match self {
+            Self::Any => true,
+            _ => false,
+        }
+    }
+
     #[inline(always)] pub(crate) fn from_literal(lit: &'static str) -> Self {
         match lit {
             "*"    => Self::Any,
@@ -68,6 +75,12 @@ pub struct CORS {
 
 impl CORS {
     pub fn AllowCredentials(mut self) -> Self {
+        if self.AllowOrigin.is_any() {
+            panic!("\
+                The value of the 'Access-Control-Allow-Origin' header in the response \
+                must not be the wildcard '*' when the request's credentials mode is 'include'.\
+            ")
+        }
         self.AllowCredentials = true;
         self
     }

@@ -7,9 +7,7 @@ pub fn cors(AllowOrigin: &'static str) -> crate::cors::CORS {
 }
 impl super::IntoFang<crate::cors::CORS> for crate::cors::CORS {
     fn into_fang(self) -> Option<super::Fang> {
-        if let Err(_) = crate::setCORS(self) {
-            panic!("Can't set CORS config")
-        }
+        crate::setCORS(self);
         None
     }
 }

@@ -75,16 +75,26 @@ mod cors {
     pub(crate) use crate::layer0_lib::CORS;
 
     /// set by builtin fang `CORS`
-    static _CORS: OnceLock<Option<CORS>> = OnceLock::new();
+    static _CORS:    OnceLock<Option<CORS>> = OnceLock::new();
+    static CORS_STR: OnceLock<&'static str> = OnceLock::new();
 
     #[allow(non_snake_case)]
-    pub(crate) fn setCORS(cors: CORS) -> Result<(), Option<CORS>> {
-        _CORS.set(Some(cors))
+    pub(crate) fn setCORS(cors: CORS) {
+        if CORS_STR.set(Box::leak(Box::new(cors.to_string()))).is_err() {
+            panic!("Can't set CORS config!")
+        }
+        if _CORS.set(Some(cors)).is_err() {
+            panic!("Can't set CORS config!")
+        }
     }
 
     #[allow(non_snake_case)]
     pub(crate) fn CORS() -> Option<&'static CORS> {
         _CORS.get_or_init(|| None).as_ref()
+    }
+    #[allow(non_snake_case)]
+    pub(crate) fn CORSstr() -> &'static str {
+        CORS_STR.get_or_init(|| "")
     }
 } pub(crate) use cors::*;
 

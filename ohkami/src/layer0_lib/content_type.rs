@@ -47,9 +47,9 @@ impl ContentType {
 
     #[inline(always)] pub(crate) const fn as_str(&self) -> &'static str {
         match self {
-            Self::JSON => "application/json",
-            Self::Text => "text/plain",
-            Self::HTML => "text/html",
+            Self::JSON => "application/json; charset=utf-8",
+            Self::Text => "text/plain; charset=utf-8",
+            Self::HTML => "text/html; charset=utf-8",
             _ => unsafe {unreachable_unchecked()}
         }
     }

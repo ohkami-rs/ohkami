@@ -3,7 +3,7 @@
 #![allow(unused)] // until ....
 
 use std::{collections::BTreeMap, sync::OnceLock};
-use crate::{layer0_lib::now};
+use crate::{layer0_lib::now, CORSstr};
 
 
 struct Header(Option<&'static str>);
@@ -22,20 +22,6 @@ macro_rules! ResponseHeaders {
         }
     )*) => {
         /// Headers in a response.
-        /// 
-        /// <br/>
-        /// 
-        /// - `Content-Type`
-        /// - `Content-Length`
-        /// - `Location`
-        /// 
-        /// are automatically managed by `ohkami`.
-        /// 
-        /// <br/>
-        /// 
-        /// - `Access-Control-*`
-        /// 
-        /// are configured by `GlobalFangs`.
         pub struct ResponseHeaders {
             $( $group: bool, )*
             $($( $name: Header, )*)*
@@ -63,7 +49,7 @@ macro_rules! ResponseHeaders {
                 let mut h = format!("Date: {}\r\n", now());
 
                 if let Some(cors) = crate::CORS() {
-                    h.push_str(cors.AllowOrigin.as_str());h.push('\r');h.push('\n');
+                    h.push_str(CORSstr());h.push('\r');h.push('\n');
                 }
 
                 $(
@@ -129,8 +115,8 @@ macro_rules! ResponseHeaders {
         "Content-Language: "                 pub ContentLanguage(language_tag),
         "Content-Location: "                 pub ContentLocation(url),
         // transfer encoding
-        "Tranfer-Encoding: "                 pub TransferEncoding(chunked_compress_deflate_gzip_identity),
-        "Trailer: "                          pub Trailer(header_names),
+        "Tranfer-Encoding: "                 pub(crate) TransferEncoding(chunked_compress_deflate_gzip_identity),
+        "Trailer: "                          pub(crate) Trailer(header_names),
     }
 }
 
