@@ -46,29 +46,26 @@ macro_rules! ResponseHeaders {
             }
 
             pub(crate) fn to_string(&self) -> String {
-                let mut h = format!("Date: {}\r\n", now());
+                let __now__ = now();
+                let __cors__ = CORSstr();
 
-                if let Some(cors) = crate::CORS() {
-                    h.push_str(CORSstr());h.push('\r');h.push('\n');
-                }
+                let mut h = format!("\
+                    Date: {__now__}\r\n\
+                    {__cors__}\
+                ");
 
                 $(
                     if self.$group {
                         $(
                             if let Some(value) = self.$name.0 {
-                                h.push_str($key);
-                                h.push_str(value);
-                                h.push('\r'); h.push('\n');
+                                h.push_str($key);h.push_str(value);h.push('\r'); h.push('\n');
                             }
                         )*
                     }
                 )*
 
                 for (k, v) in &self.custom {
-                    h.push_str(k);
-                    h.push(':'); h.push(' ');
-                    h.push_str(v);
-                    h.push('\r'); h.push('\n');
+                    h.push_str(k);h.push(':');h.push(' ');h.push_str(v);h.push('\r');h.push('\n');
                 }
 
                 h
