@@ -22,6 +22,19 @@ macro_rules! ResponseHeaders {
         }
     )*) => {
         /// Headers in a response.
+        /// 
+        /// In current version, this expects values are `&'static str` or `None`.
+        /// 
+        /// - `&'static str` sets the header value to it
+        /// - `None` removes the header value
+        /// 
+        /// <br/>
+        /// 
+        /// - Content-Type
+        /// - Content-Length
+        /// - Access-Control-*
+        /// 
+        /// are managed by ohkami and MUST NOT be set by `.custom` ( `.custom` has to be only used to set custom HTTP headers )
         pub struct ResponseHeaders {
             $( $group: bool, )*
             $($( $name: Header, )*)*
@@ -108,9 +121,9 @@ macro_rules! ResponseHeaders {
 
     message_body_and_encoding {
         // message body
-        "Content-Encoding: "                 pub ContentEncoding(algorithm),
         "Content-Language: "                 pub ContentLanguage(language_tag),
         "Content-Location: "                 pub ContentLocation(url),
+        "Content-Encoding: "                 pub(crate) ContentEncoding(algorithm),
         // transfer encoding
         "Tranfer-Encoding: "                 pub(crate) TransferEncoding(chunked_compress_deflate_gzip_identity),
         "Trailer: "                          pub(crate) Trailer(header_names),
@@ -118,6 +131,7 @@ macro_rules! ResponseHeaders {
 }
 
 impl ResponseHeaders {
+    /// set custom HTTP headers like `X-MyApp-Data: apple`
     pub fn custom(&mut self, key: &'static str, value: impl HeaderValue) -> &mut Self {
         match value.into_header_value() {
             Some(value) => {
