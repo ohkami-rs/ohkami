@@ -212,7 +212,7 @@ impl Context {
         c.headers.Server("ohkami");
         assert_eq!(std::str::from_utf8(&c.OK().text("Hello, world!").into_bytes()).unwrap(), format!("\
             HTTP/1.1 200 OK\r\n\
-            Content-Type: text/plain\r\n\
+            Content-Type: text/plain; charset=utf-8\r\n\
             Content-Length: 13\r\n\
             Date: {__now__}\r\n\
             Server: ohkami\r\n\
@@ -232,7 +232,7 @@ impl Context {
         }
         assert_eq!(std::str::from_utf8(&c.Created().json(User{ id:42, name:"kanarus", age:19 }).into_bytes()).unwrap(), format!("\
             HTTP/1.1 201 Created\r\n\
-            Content-Type: application/json\r\n\
+            Content-Type: application/json; charset=utf-8\r\n\
             Content-Length: 35\r\n\
             Date: {__now__}\r\n\
             Server: ohkami\r\n\
@@ -251,7 +251,7 @@ impl Context {
         */
         assert_eq!(std::str::from_utf8(&c.Created().json(serde_json::json!({"id":42,"name":"kanarus","age":19})).into_bytes()).unwrap(), format!("\
             HTTP/1.1 201 Created\r\n\
-            Content-Type: application/json\r\n\
+            Content-Type: application/json; charset=utf-8\r\n\
             Content-Length: 35\r\n\
             Date: {__now__}\r\n\
             Server: ohkami\r\n\
@@ -271,7 +271,7 @@ impl Context {
         */
         assert_eq!(std::str::from_utf8(&c.Created().json(r#"{"id":42,"name":"kanarus","age":19}"#).into_bytes()).unwrap(), format!("\
             HTTP/1.1 201 Created\r\n\
-            Content-Type: application/json\r\n\
+            Content-Type: application/json; charset=utf-8\r\n\
             Content-Length: 45\r\n\
             Date: {__now__}\r\n\
             Server: ohkami\r\n\
@@ -301,7 +301,7 @@ impl Context {
         c.headers.custom("MyApp-Data", "gfedcba");
         assert_eq!(std::str::from_utf8(&c.InternalServerError().text("I'm sorry fo").into_bytes()).unwrap(), format!("\
             HTTP/1.1 500 Internal Server Error\r\n\
-            Content-Type: text/plain\r\n\
+            Content-Type: text/plain; charset=utf-8\r\n\
             Content-Length: 12\r\n\
             Date: {__now__}\r\n\
             Server: ohkami2\r\n\

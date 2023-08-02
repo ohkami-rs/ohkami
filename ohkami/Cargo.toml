@@ -12,6 +12,9 @@ keywords         = ["declarative", "async", "web", "server", "framework"]
 categories       = ["web-programming::http-server"]
 license          = "MIT"
 
+[package.metadata.docs.rs]
+features = ["rt_tokio"]
+
 [dependencies]
 ohkami_macros    = { version = "0.3", path = "../ohkami_macros" }
 tokio            = { version = "1", optional = true, features = ["net", "rt", "io-util"] }
