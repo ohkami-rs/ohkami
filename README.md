@@ -2,7 +2,7 @@
     <h1>ohkami</h1>
 </div>
 
-ohkami *- [狼] wolf in Japanese -* is **declarative** web framework for *nightly* Rust.
+ohkami *- [狼] wolf in Japanese -* is **declarative** web framework for Rust.
 
 ## Features
 - *macro free, declarative APIs*
@@ -26,7 +26,6 @@ ohkami *- [狼] wolf in Japanese -* is **declarative** web framework for *nightl
 ohkami = { version = "0.9.3", features = ["rt_tokio"] }
 tokio  = { version = "1",     features = ["full"] }
 ```
-(And ensure your Rust toolchains are **nightly** ones)
 
 2. Write your first code with ohkami：
 
@@ -43,12 +42,12 @@ async fn hello(c: Context, name: String) -> Response {
 
 #[tokio::main]
 async fn main() {
-    Ohkami::new()(
-        "/hc".
-            GET(health_check),
-        "/hello/:name".
-            GET(hello),
-    ).howl(3000).await
+    Ohkami::new((
+        "/hc"
+            .GET(health_check),
+        "/hello/:name"
+            .GET(hello),
+    )).howl(3000).await
 }
 ```
 
@@ -64,11 +63,11 @@ use ohkami::utils::Query;
 
 #[tokio::main]
 async fn main() {
-    Ohkami::new()(
-        "/api/users/:id".
-            GET(get_user).
-            PATCH(update_user),
-    ).howl("localhost:5000").await
+    Ohkami::new((
+        "/api/users/:id"
+            .GET(get_user)
+            .PATCH(update_user)
+    )).howl("localhost:5000").await
 }
 
 async fn get_user(c: Context,
@@ -154,24 +153,30 @@ use ohkami::prelude::*;
 
 #[tokio::main]
 async fn main() {
-    Ohkami::with((append_server, log_response))(
+    Ohkami::<(AppendHeaders, Log)>::new((
         "/"  .GET(root),
         "/hc".GET(health_check),
-        "/api/users".
-            GET(get_users).
-            POST(create_user),
-    ).howl(":8080").await
+        "/api/users"
+            .GET(get_users)
+            .POST(create_user),
+    )).howl(":8080").await
 }
 
-fn append_server(c: &mut Context, req: Request) -> Request {
-    c.headers
-        .Server("ohkami");
-    req
+struct AppendHeaders;
+impl Fang for AppendHeaders {
+    fn front(c: &mut Context, req: Request) -> Result<Request, impl IntoResponse> {
+        c.headers
+            .Server("ohkami");
+        Ok(req)
+    }
 }
 
-fn log_response(res: Response) -> Response {
-    println!("{res:?}");
-    res
+struct Log;
+impl Fang for Log {
+    fn back(res: Response) -> Response {
+        println!("{res:?}");
+        res
+    }
 }
 ```
 
@@ -183,19 +188,19 @@ fn log_response(res: Response) -> Response {
 async fn main() {
     // ...
 
-    let users_ohkami = Ohkami::new()(
-        "/".
-            POST(create_user),
-        "/:id".
-            GET(get_user).
-            PATCH(update_user).
-            DELETE(delete_user),
-    );
+    let users_ohkami = Ohkami::new((
+        "/"
+            .POST(create_user),
+        "/:id"
+            .GET(get_user)
+            .PATCH(update_user)
+            .DELETE(delete_user),
+    ));
 
-    Ohkami::new()(
+    Ohkami::new((
         "/hc"       .GET(health_check),
         "/api/users".By(users_ohkami), // <-- nest by `By`
-    ).howl(5000).await
+    )).howl(5000).await
 }
 ```
 

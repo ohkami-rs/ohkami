@@ -4,16 +4,16 @@ version          = "0.9.3"
 edition          = "2021"
 authors          = ["kanarus <kanarus786@gmail.com>"]
 description      = "declarative web framework for nightly Rust"
-documentation    = "https://docs.rs/ohkami/"
+documentation    = "https://docs.rs/ohkami"
 homepage         = "https://crates.io/crates/ohkami"
 repository       = "https://github.com/kana-rus/ohkami"
 readme           = "../README.md"
 keywords         = ["declarative", "async", "web", "server", "framework"]
-categories       = ["web-programming::http-server"]
+categories       = ["asynchronous", "web-programming::http-server"]
 license          = "MIT"
 
 [package.metadata.docs.rs]
-features = ["rt_tokio"]
+features         = ["rt_tokio"]
 
 [dependencies]
 ohkami_macros    = { version = "0.3", path = "../ohkami_macros" }
@@ -29,4 +29,4 @@ rt_tokio         = ["dep:tokio"]
 rt_async-std     = ["dep:async-std"]
 
 ##### DEBUG #####
-# default = ["rt_async-std", "serde/derive"]
+default = ["rt_async-std", "serde/derive"]
