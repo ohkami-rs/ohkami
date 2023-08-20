@@ -1,9 +1,9 @@
-mod with_fangs;
+mod with_fangs; pub use with_fangs::{Fang};
 mod build;
 mod howl;
 
+use std::marker::PhantomData;
 use crate::{
-    layer3_fang_handler::Fang,
     layer4_router::TrieRouter,
 };
 
@@ -13,28 +13,28 @@ use crate::{
 /// ```ignore
 /// async fn main() {
 ///     let api_ohkami = Ohkami::new()(
-///         "/users".
-///             POST(create_user),
-///         "/users/:id".
-///             GET(get_user_by_id).
-///             PATCH(update_user),
+///         "/users"
+///             .POST(create_user),
+///         "/users/:id"
+///             .GET(get_user_by_id)
+///             .PATCH(update_user),
 ///     );
 /// 
-///     // I'd like to use `auth` and `log` fang...
+///     // I'd like to use `Auth` and `Log` fang...
 ///     
-///     let api_ohkami = Ohkami::with((auth, log))(
-///         "/users".
-///             POST(create_user),
-///         "/users/:id".
-///             GET(get_user_by_id).
-///             PATCH(update_user),
+///     let api_ohkami = Ohkami::<(Auth, Log)>::new(
+///         "/users"
+///             .POST(create_user),
+///         "/users/:id"
+///             .GET(get_user_by_id).
+///             .PATCH(update_user),
 ///     );
 /// 
-///     // (Actually, this `log` fang of api_ohkami is duplicated with
-///     // `log` fang of the root ohkami below, but it's no problem
-///     // because they are merged internally.)
+///     // And, actually, `Log` fang of api_ohkami is duplicated with
+///     // that of the root ohkami below, but it's no problem
+///     // because they are merged internally.
 /// 
-///     Ohkami::with((log,))(
+///     Ohkami::<(Log,)>::new(
 ///         "/hc" .GET(health_check),
 ///         "/api".By(api_ohkami),
 ///     ).howl(3000).await
@@ -44,11 +44,8 @@ use crate::{
 /// <br/>
 /// 
 /// ## fang schema
-/// - front
-///   - `(&mut Context, Request) -> Request`
-///   - `(&mut Context, Request) -> Result<Request, Response>` (for early returning response)
-/// - back
-///   - `(Response) -> Response`
+/// - front: `(&mut Context, Request) -> Result<Request, Response>`
+/// - back:  `(Response) -> Response`
 /// 
 /// ## handler schema
 /// - async (`Context`) -> `Response`
@@ -60,35 +57,28 @@ use crate::{
 ///   - `String`
 ///   - `u8` ~ `u128`, `usize`
 ///   - and tuple of them
-pub struct Ohkami {
+pub struct Ohkami<Fangs: with_fangs::Fangs = ()> {
     pub(crate) routes: TrieRouter,
 
-    /// apply just before `howl`
-    pub(crate) fangs:  Vec<Fang>,
+    /// apply just before merged to another or called `howl`
+    pub(crate) fangs:  PhantomData<fn()->Fangs>,
 }
 
-impl Ohkami {
-    pub fn new() -> Self {
+impl<Fangs: with_fangs::Fangs> Ohkami<Fangs> {
+    pub fn new<Routes: build::Routes>(routes: Routes) -> Self {
         Self {
-            routes: TrieRouter::new(),
-            fangs:  Vec::new(),
-        }
-    }
-
-    pub fn with<G>(fangs: impl with_fangs::Fangs<G>) -> Self {
-        Self {
-            routes: TrieRouter::new(),
-            fangs:  fangs.collect(),
+            routes: routes.apply(TrieRouter::new()),
+            fangs:  PhantomData,
         }
     }
 }
 
-impl Ohkami {
+impl<Fangs: with_fangs::Fangs> Ohkami<Fangs> {
     pub(crate) fn into_router(self) -> TrieRouter {
-        let Self { mut routes, fangs } = self;
-        for fang in fangs {
-            routes = routes.apply_fang(fang)
+        let mut router = self.routes;
+        for fang in Fangs::collect() {
+            router = router.apply_fang(fang)
         }
-        routes
+        router
     }
 }

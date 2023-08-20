@@ -1,5 +1,5 @@
 use std::sync::Arc;
-use super::Ohkami;
+use super::{Ohkami, with_fangs};
 use crate::{__dep__, Request, Context};
 #[cfg(feature="rt_async-std")] use crate::__dep__::StreamExt;
 
@@ -27,15 +27,9 @@ pub trait TCPAddress {
 };
 
 
-impl Ohkami {
+impl<Fangs: with_fangs::Fangs> Ohkami<Fangs> {
     pub async fn howl(self, address: impl TCPAddress) {
-        let router = Arc::new({
-            let mut routes = self.routes;
-            for fang in self.fangs {
-                routes = routes.apply_fang(fang)
-            }
-            routes.into_radix()
-        });
+        let router = Arc::new(self.into_router().into_radix());
         
         let listener = match __dep__::TcpListener::bind(address.parse()).await {
             Ok(listener) => listener,
