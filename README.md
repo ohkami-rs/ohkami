@@ -198,7 +198,7 @@ impl Fang for Log {
 `Fang::new` schema :
 
 - to make *back fang* : `Fn(Response) -> Response`
-- to make *front fang*: `Fn(&mut Context, Request) -> Request`, or `_ -> Result<Request, Response>` for early returning error response
+- to make *front fang* : `Fn(&mut Context, Request) -> Request`, or `_ -> Result<Request, Response>` for early returning error response
 
 <br/>
 
