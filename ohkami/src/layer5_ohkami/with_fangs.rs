@@ -1,6 +1,21 @@
 use crate::{Fang};
 
-
+  
+/// ## fang schema
+/// - to make *back fang* : `Fn(Response) -> Response`
+/// - to make *front fang* : `Fn(&mut Context, Request) -> Request`, or `_ -> Result<Request, Response>` for early returning error response
+/// 
+/// ```ignore
+/// struct Log;
+/// impl IntoFang for Log {
+///     fn bite(self) -> Fang {
+///         Fang::new(|res: Response| {
+///             println!("{res:?}");
+///             res
+///         })
+///     }
+/// }
+/// ```
 pub trait IntoFang {
     fn bite(self) -> Fang;
 }

@@ -23,13 +23,13 @@ use crate::{layer4_router::TrieRouter};
 /// struct Auth //...
 /// 
 /// async fn main() {
-///     let api_ohkami = Ohkami::new()(
-///         "/users"
-///             .POST(create_user),
-///         "/users/:id"
-///             .GET(get_user_by_id)
-///             .PATCH(update_user),
-///     );
+///     let api_ohkami = Ohkami::new((
+///         "/users".
+///             POST(create_user),
+///         "/users/:id".
+///             GET(get_user_by_id).
+///             PATCH(update_user),
+///     ));
 /// 
 ///     // I'd like to use `Auth` and `Log` fang...
 ///     
@@ -55,8 +55,8 @@ use crate::{layer4_router::TrieRouter};
 /// <br/>
 /// 
 /// ## fang schema
-/// - front: `(&mut Context, Request) -> Result<Request, Response>`
-/// - back:  `(Response) -> Response`
+/// - front: `Fn(&mut Context, Request) -> Result<Request, Response>`
+/// - back:  `Fn(Response) -> Response`
 /// 
 /// ## handler schema
 /// - async (`Context`) -> `Response`
@@ -79,9 +79,9 @@ impl Ohkami {
     /// `routes` is tuple of routing item :
     /// 
     /// ```ignore
-    /// "/route"
-    ///     .Method1(method1)
-    ///     .Method2(method2)
+    /// "/route".
+    ///     Method1(method1).
+    ///     Method2(method2)
     ///     //...
     /// ```
     pub fn new(routes: impl build::Routes) -> Self {
@@ -110,9 +110,9 @@ impl Ohkami {
     /// - `routes` is tuple of routing item :
     /// 
     /// ```ignore
-    /// "/route"
-    ///     .Method1(method1)
-    ///     .Method2(method2)
+    /// "/route".
+    ///     Method1(method1).
+    ///     Method2(method2)
     ///     //...
     /// ```
     pub fn with(fangs: impl with_fangs::Fangs, routes: impl build::Routes) -> Self {

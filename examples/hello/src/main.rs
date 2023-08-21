@@ -56,59 +56,66 @@ mod hello_handler {
 
 
 mod fangs {
-    use ohkami::{Context, Request};
+    use ohkami::{Context, Request, Fang, IntoFang};
 
-    pub fn append_server(c: &mut Context, req: Request) -> Request {
-        c.headers
-            .Server("ohkami");
+    pub struct AppendServer;
+    impl IntoFang for AppendServer {
+        fn bite(self) -> Fang {
+            Fang::new(|c: &mut Context, req: Request| {
+                c.headers
+                    .Server("ohkami");
 
-        tracing::info!("\
-            Called `append_server`\n\
-            [current headers]\n\
-            {:?}\
-        ", c.headers);
+                tracing::info!("\
+                    Called `append_server`\n\
+                    [current headers]\n\
+                    {:?}\
+                ", c.headers);
 
-        req
+                req
+            })
+        }
     }
 
-    pub fn log_request(_: &mut Context, req: Request) -> Request {
-        let __method__ = req.method();
-        let __path__   = req.path();
+    pub struct LogRequest;
+    impl IntoFang for LogRequest {
+        fn bite(self) -> Fang {
+            Fang::new(|_: &mut Context, req: Request| {
+                let __method__ = req.method();
+                let __path__   = req.path();
 
-        tracing::info!("\
-            Got request:\n\
-            [ method ] {__method__}\n\
-            [  path  ] {__path__}\n\
-        ");
+                tracing::info!("\
+                    Got request:\n\
+                    [ method ] {__method__}\n\
+                    [  path  ] {__path__}\n\
+                ");
 
-        req
+                req
+            })
+        }
     }
 }
 
 
 #[tokio::main]
 async fn main() {
-    use ohkami::{Ohkami, Route};
-    use ohkami::utils::not_found;
+    use ohkami::prelude::*;
+    use fangs::*;
 
     tracing_subscriber::fmt()
         .with_max_level(tracing::Level::INFO)
         .init();
 
-    let hello_ohkami = Ohkami::with((
-        fangs::append_server,
-        not_found(|nf| nf.text("No resource for that request found")),
-    ))(
+    let hello_ohkami = Ohkami::with((AppendServer, LogRequest), (
         "/query".
             GET(hello_handler::hello_by_query),
         "/json".
             POST(hello_handler::hello_by_json),
-    );
+    ));
 
     tracing::info!("Started listening on http://localhost:3000");
 
-    Ohkami::with((fangs::log_request,))(
+    Ohkami::with(LogRequest, (
         "/hc" .GET(health_handler::health_check),
         "/api".By(hello_ohkami),
-    ).howl(3000).await
+    )).howl(3000).await
 }

@@ -186,7 +186,7 @@ impl IntoFang for AppendHeaders {
 }
 
 struct Log;
-impl Fang for Log {
+impl IntoFang for Log {
     fn bite(self) -> Fang {
         Fang::new(|res: Response| {
             println!("{res:?}");
