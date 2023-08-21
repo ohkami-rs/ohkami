@@ -1,4 +1,4 @@
-#![doc(html_root_url = "https://docs.rs/ohkami/")]
+#![doc(html_root_url = "https://docs.rs/ohkami")]
 
 
 /*===== language features =====*/

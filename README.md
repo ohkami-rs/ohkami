@@ -32,11 +32,13 @@ tokio  = { version = "1",     features = ["full"] }
 ```rust
 use ohkami::prelude::*;
 
-async fn health_check(c: Context) -> Response {
+async fn health_check(c: Context) -> impl IntoResponse {
     c.NoContent()
 }
 
-async fn hello(c: Context, name: String) -> Response {
+async fn hello(c: Context,
+    name: String
+) -> impl IntoResponse {
     c.OK().text(format!("Hello, {name}!"))
 }
 
@@ -214,14 +216,14 @@ async fn main() {
 Use **`.map_err(|e| c. /* error_method */ )?`** in most cases：
 
 ```rust
-async fn handler1(c: Context) -> Response {
+async fn handler1(c: Context) -> impl IntoResponse {
     make_result()
         .map_err(|e| c.InternalServerError())?;
 
     // ...
 }
 
-async fn handler2(c: Context) -> Response {
+async fn handler2(c: Context) -> impl IntoResponse {
     let user = generate_dummy_user()
         .map_err(|e| c
             .InternalServerError()
