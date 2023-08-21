@@ -1,11 +1,8 @@
-mod with_fangs; pub use with_fangs::{Fang};
+mod with_fangs; pub use with_fangs::{IntoFang};
 mod build;
 mod howl;
 
-use std::marker::PhantomData;
-use crate::{
-    layer4_router::TrieRouter,
-};
+use crate::{layer4_router::TrieRouter};
 
 
 /// <br/>
@@ -57,26 +54,33 @@ use crate::{
 ///   - `String`
 ///   - `u8` ~ `u128`, `usize`
 ///   - and tuple of them
-pub struct Ohkami<Fangs: with_fangs::Fangs = ()> {
+pub struct Ohkami {
     pub(crate) routes: TrieRouter,
 
     /// apply just before merged to another or called `howl`
-    pub(crate) fangs:  PhantomData<fn()->Fangs>,
+    pub(crate) fangs:  Vec<crate::layer3_fang_handler::Fang>,
 }
 
-impl<Fangs: with_fangs::Fangs> Ohkami<Fangs> {
-    pub fn new<Routes: build::Routes>(routes: Routes) -> Self {
+impl Ohkami {
+    pub fn new(routes: impl build::Routes) -> Self {
         Self {
             routes: routes.apply(TrieRouter::new()),
-            fangs:  PhantomData,
+            fangs:  Vec::new(),
+        }
+    }
+
+    pub fn with(fangs: impl with_fangs::Fangs, routes: impl build::Routes) -> Self {
+        Self {
+            routes: routes.apply(TrieRouter::new()),
+            fangs:  fangs.collect(),
         }
     }
 }
 
-impl<Fangs: with_fangs::Fangs> Ohkami<Fangs> {
+impl Ohkami {
     pub(crate) fn into_router(self) -> TrieRouter {
         let mut router = self.routes;
-        for fang in Fangs::collect() {
+        for fang in self.fangs {
             router = router.apply_fang(fang)
         }
         router

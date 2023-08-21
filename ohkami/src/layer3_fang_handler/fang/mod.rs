@@ -36,6 +36,19 @@ impl Fang {
         &self.id
     }
 }
+impl Fang {
+    /// <br/>
+    /// 
+    /// available `f` signatures :
+    /// 
+    /// - to make *back fang* : `(Response) -> Response`
+    /// 
+    /// - to make *front fang*: `(&mut Context, Request) -> Request` or, return `Result<Request, Response>` instead of `Request` to early return error response
+    pub fn new<Args>(f: impl IntoFang<Args>) -> Self {
+        f.into_fang()
+            .unwrap()//
+    }
+}
 
 // impl Fn<(Context, Request)> for FrontFang {
 //     extern "rust-call" fn call(&self, (c, req): (Context, Request)) -> Self::Output {

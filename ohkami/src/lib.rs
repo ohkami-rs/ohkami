@@ -100,8 +100,8 @@ mod cors {
 pub use layer0_lib         ::{Status, Method, ContentType};
 pub use layer1_req_res     ::{Request, Response, FromRequest};
 pub use layer2_context     ::{Context};
-pub use layer3_fang_handler::{Route};
-pub use layer5_ohkami      ::{Ohkami, Fang};
+pub use layer3_fang_handler::{Fang, Route};
+pub use layer5_ohkami      ::{Ohkami, IntoFang};
 
 pub mod prelude {
     pub use crate::{Response, Context, Route, Ohkami};
@@ -122,10 +122,22 @@ pub mod __internal__ {
 #[cfg(test)] #[allow(unused)] async fn __() {
 // fangs
     struct AppendHeader;
-    impl Fang for AppendHeader {
-        fn front(#[allow(unused)] c: &mut Context, req: Request) -> Result<Request, Response> {
-            c.headers.Server("ohkami");
-            Ok(req)
+    impl IntoFang for AppendHeader {
+        fn bite(self) -> Fang {
+            Fang::new(|c: &mut Context, req: Request| {
+                c.headers.Server("ohkami");
+                req
+            })
+        }
+    }
+
+    struct Log;
+    impl IntoFang for Log {
+        fn bite(self) -> Fang {
+            Fang::new(|res: Response| {
+                println!("{res:?}");
+                res
+            })
         }
     }
 
@@ -139,7 +151,7 @@ pub mod __internal__ {
     }
 
 // run
-    Ohkami::<(AppendHeader,)>::new((
+    Ohkami::with((AppendHeader, Log), (
         "/hc".
             GET(health_check),
         "/hello/:name".

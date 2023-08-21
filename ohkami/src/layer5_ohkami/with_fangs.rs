@@ -1,50 +1,23 @@
-use std::any::Any;
-use crate::{
-    Context, Request, Response,
-    layer3_fang_handler::{IntoFang},
-};
+use crate::{Fang};
 
 
-pub trait Fang {
-    fn front(#[allow(unused)] c: &mut Context, req: Request) -> Result<Request, Response> {
-        Ok(req)
-    }
-
-    fn back(res: Response) -> Response {
-        res
-    }
-}
-
-struct EmptyFang;
-impl Fang for EmptyFang {}
-fn apply<F: Fang + 'static>(to: &mut Vec<crate::layer3_fang_handler::Fang>) {
-    let front = F::front;
-    if front.type_id() != EmptyFang::front.type_id() {
-        if let Some(proc) = front.into_fang() {
-            to.push(proc)
-        }
-    }
-
-    let back = F::back;
-    if back.type_id() != EmptyFang::back.type_id() {
-        if let Some(proc) = back.into_fang() {
-            to.push(proc)
-        }
-    }
+pub trait IntoFang {
+    fn bite(self) -> Fang;
 }
 
 pub trait Fangs {
-    fn collect() -> Vec<crate::layer3_fang_handler::Fang>;
+    fn collect(self) -> Vec<Fang>;
 } macro_rules! impl_for_tuple {
     ( $( $fang:ident ),* ) => {
-        impl<$( $fang:Fang+'static ),*> Fangs for ( $( $fang,)* ) {
+        impl<$( $fang: IntoFang ),*> Fangs for ( $( $fang,)* ) {
             #[allow(non_snake_case)]
-            fn collect() -> Vec<crate::layer3_fang_handler::Fang> {
+            fn collect(self) -> Vec<Fang> {
                 #[allow(unused_mut)]
                 let mut fangs = Vec::new();
+                let ( $( $fang, )* ) = self;
 
                 $(
-                    apply::<$fang>(&mut fangs);
+                    fangs.push($fang.bite());
                 )*
 
                 fangs

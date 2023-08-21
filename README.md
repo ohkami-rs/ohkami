@@ -153,7 +153,7 @@ use ohkami::prelude::*;
 
 #[tokio::main]
 async fn main() {
-    Ohkami::<(AppendHeaders, Log)>::new((
+    Ohkami::with((AppendHeaders, Log), (
         "/"  .GET(root),
         "/hc".GET(health_check),
         "/api/users"
@@ -163,19 +163,23 @@ async fn main() {
 }
 
 struct AppendHeaders;
-impl Fang for AppendHeaders {
-    fn front(c: &mut Context, req: Request) -> Result<Request, impl IntoResponse> {
-        c.headers
-            .Server("ohkami");
-        Ok(req)
+impl IntoFang for AppendHeaders {
+    fn bite(self) -> Fang {
+        Fang::new(|c: &mut Context, req: Request| {
+            c.headers
+                .Server("ohkami");
+            req
+        })
     }
 }
 
 struct Log;
 impl Fang for Log {
-    fn back(res: Response) -> Response {
-        println!("{res:?}");
-        res
+    fn bite(self) -> Fang {
+        Fang::new(|res: Response| {
+            println!("{res:?}");
+            res
+        })
     }
 }
 ```
