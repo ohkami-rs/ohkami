@@ -1,6 +1,7 @@
 [workspace]
 members = [
-    "hello"
+    "hello",
+    "quick_start"
 ]
 
 [workspace.dependencies]
@@ -9,4 +10,3 @@ tokio  = { version = "1", features = ["full"] }
 serde  = { version = "1", features = ["derive"] }
 tracing = "0.1"
 tracing-subscriber = "0.3"
-qjack = "0.1"

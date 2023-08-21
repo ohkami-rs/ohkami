@@ -59,7 +59,7 @@ $ cargo run
 ```sh
 $ curl http://localhost:3000/hc
 $ curl http://localhost:3000/hello/your_name
-your_name
+Hello, your_name!
 ```
 
 <br/>

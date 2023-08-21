@@ -1,11 +1,11 @@
 [package]
-name = "hello"
-version = "0.1.0"
-edition = "2021"
+name               = "hello"
+version            = "0.1.0"
+edition            = "2021"
 
 [dependencies]
-ohkami = { workspace = true }
-tokio  = { workspace = true }
-serde  = { workspace = true }
+ohkami             = { workspace = true }
+tokio              = { workspace = true }
+serde              = { workspace = true }
 tracing            = { workspace = true }
 tracing-subscriber = { workspace = true }
