@@ -16,41 +16,50 @@ ohkami *- [狼] wolf in Japanese -* is **declarative** web framework for Rust.
 <br/>
 
 ## Quick start
-1. Add to `dependencies`:
+1. Add to `dependencies` :
 
 ```toml
 # this sample uses `tokio` runtime.
-# you can choose `async-std` instead by "rt_async-std".
+# you can choose `async-std` instead by feature "rt_async-std".
 
 [dependencies]
 ohkami = { version = "0.9.3", features = ["rt_tokio"] }
 tokio  = { version = "1",     features = ["full"] }
 ```
 
-2. Write your first code with ohkami：
+2. Write your first code with ohkami :
 
 ```rust
 use ohkami::prelude::*;
 
-async fn health_check(c: Context) -> impl IntoResponse {
+async fn health_check(c: Context) -> Response {
     c.NoContent()
 }
 
-async fn hello(c: Context,
-    name: String
-) -> impl IntoResponse {
+async fn hello(c: Context, name: String) -> Response {
     c.OK().text(format!("Hello, {name}!"))
 }
 
 #[tokio::main]
 async fn main() {
     Ohkami::new((
-        "/hc"
-            .GET(health_check),
-        "/hello/:name"
-            .GET(hello),
+        "/hc".
+            GET(health_check),
+        "/hello/:name".
+            GET(hello),
     )).howl(3000).await
 }
+```
+
+3. Run and check the behavior :
+
+```sh
+$ cargo run
+```
+```sh
+$ curl http://localhost:3000/hc
+$ curl http://localhost:3000/hello/your_name
+your_name
 ```
 
 <br/>
@@ -66,9 +75,9 @@ use ohkami::utils::Query;
 #[tokio::main]
 async fn main() {
     Ohkami::new((
-        "/api/users/:id"
-            .GET(get_user)
-            .PATCH(update_user)
+        "/api/users/:id".
+            GET(get_user).
+            PATCH(update_user)
     )).howl("localhost:5000").await
 }
 
@@ -150,6 +159,7 @@ async fn post_login(c: Context,
 
 ### use middlewares
 ohkami's middlewares are called "**fang**s".
+
 ```rust
 use ohkami::prelude::*;
 
@@ -158,9 +168,9 @@ async fn main() {
     Ohkami::with((AppendHeaders, Log), (
         "/"  .GET(root),
         "/hc".GET(health_check),
-        "/api/users"
-            .GET(get_users)
-            .POST(create_user),
+        "/api/users".
+            GET(get_users).
+            POST(create_user),
     )).howl(":8080").await
 }
 
@@ -185,6 +195,10 @@ impl Fang for Log {
     }
 }
 ```
+`Fang::new` schema :
+
+- to make *back fang* : `Fn(Response) -> Response`
+- to make *front fang*: `Fn(&mut Context, Request) -> Request`, or `_ -> Result<Request, Response>` for early returning error response
 
 <br/>
 
@@ -195,41 +209,18 @@ async fn main() {
     // ...
 
     let users_ohkami = Ohkami::new((
-        "/"
-            .POST(create_user),
-        "/:id"
-            .GET(get_user)
-            .PATCH(update_user)
-            .DELETE(delete_user),
+        "/".
+            POST(create_user),
+        "/:id".
+            GET(get_user).
+            PATCH(update_user).
+            DELETE(delete_user),
     ));
 
     Ohkami::new((
         "/hc"       .GET(health_check),
         "/api/users".By(users_ohkami), // <-- nest by `By`
     )).howl(5000).await
-}
-```
-
-<br/>
-
-### error handling
-Use **`.map_err(|e| c. /* error_method */ )?`** in most cases：
-
-```rust
-async fn handler1(c: Context) -> impl IntoResponse {
-    make_result()
-        .map_err(|e| c.InternalServerError())?;
-
-    // ...
-}
-
-async fn handler2(c: Context) -> impl IntoResponse {
-    let user = generate_dummy_user()
-        .map_err(|e| c
-            .InternalServerError()
-            .text("in getting user"))?;
-    
-    // ...
 }
 ```
 

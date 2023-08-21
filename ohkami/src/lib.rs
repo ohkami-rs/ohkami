@@ -1,12 +1,6 @@
 #![doc(html_root_url = "https://docs.rs/ohkami")]
 
 
-/*===== language features =====*/
-#![feature(
-    try_trait_v2,
-)]
-
-
 /*===== crate features =====*/
 #[cfg(any(
     all(feature="rt_tokio", feature="rt_async-std")

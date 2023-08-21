@@ -21,8 +21,9 @@ mod response; pub use response::*;
         }
     }
     fn handler_2(mut c: Context) -> Response {
-        let length = Length::new()
-            .map_err(|_| c.InternalServerError().text("got error in I/O"))?;
+        let Ok(length) = Length::new() else {
+            return c.InternalServerError().text("got error in I/O")
+        };
 
         c.Created().json(length)
     }

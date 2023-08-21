@@ -1,11 +1,7 @@
 pub(crate) mod headers; pub(crate) use headers::ResponseHeaders;
 
 
-use std::{
-    borrow::Cow,
-    ops::FromResidual,
-    convert::Infallible,
-};
+use std::borrow::Cow;
 use crate::{
     __dep__, __dep__::AsyncWriter,
     layer0_lib::{Status, ContentType, IntoCows},
@@ -31,11 +27,12 @@ use crate::{
 /// async fn create_user(c: Context,
 ///     payload: CreateUserRequest
 /// ) -> Response {
-///     let new_user = insert_user_into_table(
+///     let Ok(new_user) = insert_user_into_table(
 ///         payload.name,
-///         payload.password)
-///         .await  // Result<User, ErrorFromTheDBLibrary>
-///         .map_err(|e| c.InternalServerError())?;
+///         payload.password
+///     ).await else {
+///         return c.InternalServerError()
+///     }
 /// 
 ///     c.Created().json(new_user)
 /// }
@@ -44,12 +41,6 @@ pub struct Response {
     pub status:         Status,
     pub(crate) headers: String,
     pub(crate) content: Option<(ContentType, Cow<'static, str>)>,
-}
-
-impl FromResidual<Result<Infallible, Response>> for Response {
-    fn from_residual(residual: Result<Infallible, Response>) -> Self {
-        unsafe { residual.unwrap_err_unchecked() }
-    }
 }
 
 impl Response {

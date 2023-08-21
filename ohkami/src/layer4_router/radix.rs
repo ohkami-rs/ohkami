@@ -130,7 +130,10 @@ impl Node {
         params:  PathParams,
     ) -> Response {
         for f in self.front {
-            (c, req) = f.0(c, req)?
+            (c, req) = match f.0(c, req) {
+                Ok((c, req)) => (c, req),
+                Err(err_res) => return err_res,
+            }
         }
         match &self.handler {
             Some(h) => {

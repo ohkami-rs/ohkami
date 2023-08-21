@@ -135,13 +135,14 @@ macro_rules! Route {
     async fn create_user(c: Context, payload: CreateUser) -> Response {
         let CreateUser { name, password } = payload;
 
-        mock::authenticate().await
-            .map_err(|e| c.Unauthorized())?;
+        if let Err(_) = mock::authenticate().await {
+            return c.Unauthorized()
+        }
 
-        let id = mock::DB.insert_returning_id(CreateUser{
+        let Ok(id) = mock::DB.insert_returning_id(CreateUser{
             name: name.clone(),
             password: password.clone(),
-        }).await.map_err(|e| c.InternalServerError())?;
+        }).await else {return c.InternalServerError()};
 
         c.Created().json(User { id, name, password })
     }
@@ -168,13 +169,14 @@ macro_rules! Route {
     async fn update_user(c: Context, req: UpdateUser) -> Response {
         let UpdateUser { name, password } = req;
 
-        mock::authenticate().await
-            .map_err(|e| c.Unauthorized())?;
+        if let Err(_) = mock::authenticate().await {
+            return c.Unauthorized()
+        }
 
-        mock::DB.update_returning_id(UpdateUser {
+        if let Err(_) = mock::DB.update_returning_id(UpdateUser {
             name: name.clone(),
             password: password.clone(),
-        }).await.map_err(|e| c.InternalServerError())?;
+        }).await {return c.InternalServerError()};
 
         c.NoContent()
     }
