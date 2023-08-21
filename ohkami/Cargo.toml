@@ -3,7 +3,7 @@ name             = "ohkami"
 version          = "0.9.3"
 edition          = "2021"
 authors          = ["kanarus <kanarus786@gmail.com>"]
-description      = "declarative web framework for nightly Rust"
+description      = "declarative web framework for Rust"
 documentation    = "https://docs.rs/ohkami"
 homepage         = "https://crates.io/crates/ohkami"
 repository       = "https://github.com/kana-rus/ohkami"
@@ -29,4 +29,4 @@ rt_tokio         = ["dep:tokio"]
 rt_async-std     = ["dep:async-std"]
 
 ##### DEBUG #####
-default = ["rt_async-std", "serde/derive"]
+# default = ["rt_async-std", "serde/derive"]
