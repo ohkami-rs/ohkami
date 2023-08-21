@@ -130,13 +130,16 @@ impl Node {
         params:  PathParams,
     ) -> Response {
         for f in self.front {
-            (c, req) = f(c, req)?
+            (c, req) = match f.0(c, req) {
+                Ok((c, req)) => (c, req),
+                Err(err_res) => return err_res,
+            }
         }
         match &self.handler {
             Some(h) => {
-                let mut res = h(req, c, params).await;
+                let mut res = h.0(req, c, params).await;
                 for b in self.back {
-                    res = b(res);
+                    res = b.0(res);
                 }
                 res
             }

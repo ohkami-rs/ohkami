@@ -1,11 +1,4 @@
-#![doc(html_root_url = "https://docs.rs/ohkami/")]
-
-
-/*===== language features =====*/
-#![feature(
-    try_trait_v2,
-    fn_traits, unboxed_closures,
-)]
+#![doc(html_root_url = "https://docs.rs/ohkami")]
 
 
 /*===== crate features =====*/
@@ -101,8 +94,8 @@ mod cors {
 pub use layer0_lib         ::{Status, Method, ContentType};
 pub use layer1_req_res     ::{Request, Response, FromRequest};
 pub use layer2_context     ::{Context};
-pub use layer3_fang_handler::{Route};
-pub use layer5_ohkami      ::{Ohkami};
+pub use layer3_fang_handler::{Fang, Route};
+pub use layer5_ohkami      ::{Ohkami, IntoFang};
 
 pub mod prelude {
     pub use crate::{Response, Context, Route, Ohkami};
@@ -111,49 +104,6 @@ pub mod prelude {
 pub mod utils {
     pub use crate::layer3_fang_handler::{builtin::*};
     pub use ohkami_macros             ::{Query, Payload};
-
-    use crate::{Context, Request, Response};
-    /// Utility trait just to make writing `Fang`s easier :
-    /// 
-    /// ```ignore
-    /// use ohkami::prelude::*;
-    /// use ohkami::utils::Fang;
-    /// 
-    /// struct Log;
-    /// impl Fang for Log {
-    ///     // ↓ schema will be auto-completed ↓
-    ///     fn front(c: &mut Context, req: Request) -> Result<Request, Response> {
-    /// 
-    ///         // you only have to write what you do
-    /// 
-    ///         let (method, path) = (req.method(), req.path());
-    ///         tracing::info!("method: {method}, path: '{path}'");
-    /// 
-    ///         Ok(req)
-    ///     }
-    /// }
-    /// 
-    /// async fn main() {
-    ///     tracing_subscriber::fmt()
-    ///         /* ... config ... */.init();
-    /// 
-    ///     Ohkami::with((Log::front,))( // <----
-    ///         "/hello/:name".
-    ///             GET(move |c: Context, name: String| async {
-    ///                 c.OK().text("Hello, {name}!")
-    ///             })
-    ///     ).howl(8080).await
-    /// }
-    /// ```
-    pub trait Fang {
-        fn front(#[allow(unused)] c: &mut Context, req: Request) -> Result<Request, Response> {
-            Ok(req)
-        }
-
-        fn back(res: Response) -> Response {
-            res
-        }
-    }
 }
 
 #[doc(hidden)]
@@ -165,9 +115,24 @@ pub mod __internal__ {
 /*===== usavility =====*/
 #[cfg(test)] #[allow(unused)] async fn __() {
 // fangs
-    fn server(c: &mut Context, req: Request) -> Request {
-        c.headers.Server("ohkami");
-        req
+    struct AppendHeader;
+    impl IntoFang for AppendHeader {
+        fn bite(self) -> Fang {
+            Fang::new(|c: &mut Context, req: Request| {
+                c.headers.Server("ohkami");
+                req
+            })
+        }
+    }
+
+    struct Log;
+    impl IntoFang for Log {
+        fn bite(self) -> Fang {
+            Fang::new(|res: Response| {
+                println!("{res:?}");
+                res
+            })
+        }
     }
 
 // handlers
@@ -180,10 +145,10 @@ pub mod __internal__ {
     }
 
 // run
-    Ohkami::with((server))(
+    Ohkami::with((AppendHeader, Log), (
         "/hc".
             GET(health_check),
         "/hello/:name".
             GET(hello),
-    ).howl(3000).await
+    )).howl(3000).await
 }

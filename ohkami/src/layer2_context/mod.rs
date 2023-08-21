@@ -53,14 +53,12 @@ use crate::{
 ///     c:    Context,
 ///     body: CreateUser,
 /// ) -> Response {
-///     let created_id = insert_user_returing_id(
+///     let Ok(created_id) = insert_user_returing_id(
 ///         &body.name,
 ///         &body.password,
-///     ).await /* Result<usize, MyError> */
-///         .map_err(|e| c
-///             .InternalServerError()
-///             .text("in DB handling")
-///         )?; // early return in error cases
+///     ).await else {
+///         return c.InternalServerError().text("in DB handling")
+///     };
 /// 
 ///     c.Created().json(User {
 ///         id:       created_id,

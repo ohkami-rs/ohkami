@@ -1,40 +1,51 @@
-mod with_fangs;
+mod with_fangs; pub use with_fangs::{IntoFang};
 mod build;
 mod howl;
 
-use crate::{
-    layer3_fang_handler::Fang,
-    layer4_router::TrieRouter,
-};
+use crate::{layer4_router::TrieRouter};
 
 
 /// <br/>
 /// 
 /// ```ignore
+/// use ohkami::prelude::*;
+/// 
+/// struct Log;
+/// impl IntoFang for Log {
+///     fn bite(self) -> Fang {
+///         Fang::new(|res: Response| {
+///             println!("{res:?}");
+///             res
+///         })
+///     }
+/// }
+/// 
+/// struct Auth //...
+/// 
 /// async fn main() {
 ///     let api_ohkami = Ohkami::new()(
-///         "/users".
-///             POST(create_user),
-///         "/users/:id".
-///             GET(get_user_by_id).
-///             PATCH(update_user),
+///         "/users"
+///             .POST(create_user),
+///         "/users/:id"
+///             .GET(get_user_by_id)
+///             .PATCH(update_user),
 ///     );
 /// 
-///     // I'd like to use `auth` and `log` fang...
+///     // I'd like to use `Auth` and `Log` fang...
 ///     
-///     let api_ohkami = Ohkami::with((auth, log))(
-///         "/users".
-///             POST(create_user),
-///         "/users/:id".
-///             GET(get_user_by_id).
-///             PATCH(update_user),
+///     let api_ohkami = Ohkami::with((Auth, Log), (
+///         "/users"
+///             .POST(create_user),
+///         "/users/:id"
+///             .GET(get_user_by_id).
+///             .PATCH(update_user),
 ///     );
 /// 
-///     // (Actually, this `log` fang of api_ohkami is duplicated with
-///     // `log` fang of the root ohkami below, but it's no problem
-///     // because they are merged internally.)
+///     // And, here `Log` fang of api_ohkami is duplicated with
+///     // that of the root ohkami below, but it's no problem
+///     // because they are merged internally.
 /// 
-///     Ohkami::with((log,))(
+///     Ohkami::with(Log, (
 ///         "/hc" .GET(health_check),
 ///         "/api".By(api_ohkami),
 ///     ).howl(3000).await
@@ -44,11 +55,8 @@ use crate::{
 /// <br/>
 /// 
 /// ## fang schema
-/// - front
-///   - `(&mut Context, Request) -> Request`
-///   - `(&mut Context, Request) -> Result<Request, Response>` (for early returning response)
-/// - back
-///   - `(Response) -> Response`
+/// - front: `(&mut Context, Request) -> Result<Request, Response>`
+/// - back:  `(Response) -> Response`
 /// 
 /// ## handler schema
 /// - async (`Context`) -> `Response`
@@ -63,21 +71,53 @@ use crate::{
 pub struct Ohkami {
     pub(crate) routes: TrieRouter,
 
-    /// apply just before `howl`
-    pub(crate) fangs:  Vec<Fang>,
+    /// apply just before merged to another or called `howl`
+    pub(crate) fangs:  Vec<crate::layer3_fang_handler::Fang>,
 }
 
 impl Ohkami {
-    pub fn new() -> Self {
+    /// `routes` is tuple of routing item :
+    /// 
+    /// ```ignore
+    /// "/route"
+    ///     .Method1(method1)
+    ///     .Method2(method2)
+    ///     //...
+    /// ```
+    pub fn new(routes: impl build::Routes) -> Self {
         Self {
-            routes: TrieRouter::new(),
+            routes: routes.apply(TrieRouter::new()),
             fangs:  Vec::new(),
         }
     }
 
-    pub fn with<G>(fangs: impl with_fangs::Fangs<G>) -> Self {
+    /// - `fangs` is an item that implements `IntoFang`, or tuple of such items :
+    /// 
+    /// ```ignore
+    /// struct Log;
+    /// impl IntoFang for Log {
+    ///     fn bite(self) -> Fang {
+    ///         Fang::new(|res: Response| {
+    ///             println!("{res:?}");
+    ///             res
+    ///         })
+    ///     }
+    /// }
+    /// ```
+    /// 
+    /// <br/>
+    /// 
+    /// - `routes` is tuple of routing item :
+    /// 
+    /// ```ignore
+    /// "/route"
+    ///     .Method1(method1)
+    ///     .Method2(method2)
+    ///     //...
+    /// ```
+    pub fn with(fangs: impl with_fangs::Fangs, routes: impl build::Routes) -> Self {
         Self {
-            routes: TrieRouter::new(),
+            routes: routes.apply(TrieRouter::new()),
             fangs:  fangs.collect(),
         }
     }
@@ -85,10 +125,10 @@ impl Ohkami {
 
 impl Ohkami {
     pub(crate) fn into_router(self) -> TrieRouter {
-        let Self { mut routes, fangs } = self;
-        for fang in fangs {
-            routes = routes.apply_fang(fang)
+        let mut router = self.routes;
+        for fang in self.fangs {
+            router = router.apply_fang(fang)
         }
-        routes
+        router
     }
 }

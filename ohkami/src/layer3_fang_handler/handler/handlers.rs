@@ -113,7 +113,6 @@ macro_rules! Route {
         }
     }
 
-    // #[Payload(JSON)] : todo()!
     #[derive(Deserialize)]
     struct CreateUser {
         name:     String,
@@ -135,18 +134,18 @@ macro_rules! Route {
     async fn create_user(c: Context, payload: CreateUser) -> Response {
         let CreateUser { name, password } = payload;
 
-        mock::authenticate().await
-            .map_err(|e| c.Unauthorized())?;
+        if let Err(_) = mock::authenticate().await {
+            return c.Unauthorized()
+        }
 
-        let id = mock::DB.insert_returning_id(CreateUser{
+        let Ok(id) = mock::DB.insert_returning_id(CreateUser{
             name: name.clone(),
             password: password.clone(),
-        }).await.map_err(|e| c.InternalServerError())?;
+        }).await else {return c.InternalServerError()};
 
         c.Created().json(User { id, name, password })
     }
 
-    // #[Payload(JSON)] : todo()!
     #[derive(Deserialize)]
     struct UpdateUser {
         name:     Option<String>,
@@ -159,7 +158,6 @@ macro_rules! Route {
                 _ => return Err(Cow::Borrowed("Payload expected")),
             }
 
-            // reexport json parsing function : todo!()
             serde_json::from_slice(body)
                 .map_err(|e| Cow::Owned(e.to_string()))
         }
@@ -168,13 +166,14 @@ macro_rules! Route {
     async fn update_user(c: Context, req: UpdateUser) -> Response {
         let UpdateUser { name, password } = req;
 
-        mock::authenticate().await
-            .map_err(|e| c.Unauthorized())?;
+        if let Err(_) = mock::authenticate().await {
+            return c.Unauthorized()
+        }
 
-        mock::DB.update_returning_id(UpdateUser {
+        if let Err(_) = mock::DB.update_returning_id(UpdateUser {
             name: name.clone(),
             password: password.clone(),
-        }).await.map_err(|e| c.InternalServerError())?;
+        }).await {return c.InternalServerError()};
 
         c.NoContent()
     }
@@ -190,75 +189,3 @@ macro_rules! Route {
         ];
     }
 }
-
-#[cfg(test)]
-/// <br/>
-/// 
-/// ```
-/// async fn serve_with(fangs: Fangs) -> Result<(), Error> {
-///     let users_ohkami = Ohkami
-///         .GET::<"/:id">(get_user)
-///         .POST::<"/">(create_user);
-/// 
-///     Ohkami[fangs]
-///         .GET::<"/hc">(health_check)
-///         .pack::<"/api/users">(users_ohkami)
-///         .howl(":3000").await
-/// }
-/// ```
-/// 
-/// <br/>
-/// 
-/// ```
-/// async fn serve_with(fangs: Fangs) -> Result<(), Error> {
-///     let users_ohkami = Ohkami
-///         .route::<"/:id">(
-///             GET(get_user))
-///         .route::<"/">(
-///             POST(create_user).PATCH(update_user));
-/// 
-///     Ohkami[fangs]
-///         .route::<"/hc">(GET(health_check))
-///         .route::<"/api/users">(users_ohkami)
-///         .howl(3000).await
-/// }
-/// ```
-/// 
-/// <br/>
-/// 
-/// ```
-/// async fn serve_with(fangs: Fangs) -> Result<(), Error> {
-///     let users_ohkami = Ohkami(
-///         route::<"/:id">
-///             .GET(get_user)
-///             .PATCH(update_user),
-///         route::<"/">
-///             .POST(create_user),
-///     );
-/// 
-///     Ohkami[fangs](
-///         route::<"/hc">       .GET(health_check),
-///         route::<"/api/users">.by(users_ohkami),
-///     ).howl(3000).await
-/// }
-/// ```
-/// 
-/// <br/>
-/// 
-/// ```
-/// async fn serve_with(fangs: Fangs) -> Result<(), Error> {
-///     let users_ohkami = Ohkami(
-///         "/"
-///             .POST(create_user),
-///         "/:id"
-///             .GET(get_user)
-///             .PATCH(update_user),
-///     );
-/// 
-///     Ohkami[fangs](
-///         "/hc"       .GET(health_check),
-///         "/api/users".by(users_ohkami),
-///     ).howl(3000).await
-/// }
-/// ```
-mod ___ {}

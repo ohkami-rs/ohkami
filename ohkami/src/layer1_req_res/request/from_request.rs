@@ -9,7 +9,7 @@ use crate::{Request};
 /// - `#[Payload(URLEncoded)]`
 /// - ( `#[Payload(Form)]` )
 /// 
-/// implement this automatically.
+/// implement this by default.
 /// 
 /// <br/>
 /// 
