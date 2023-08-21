@@ -35,7 +35,7 @@ impl Request {
     }
     #[inline] pub fn path(&self) -> &str {
         unsafe {std::mem::transmute(
-            &*percent_decode(&self.buffer[&self.path]).decode_utf8_lossy()
+            &*(percent_decode(&self.buffer[&self.path]).decode_utf8_lossy())
         )}
     }
     #[inline] pub fn query<Value: FromBuffer>(&self, key: &str) -> Option<Result<Value, Cow<'static, str>>> {

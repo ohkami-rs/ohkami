@@ -148,31 +148,39 @@ impl Node {
     }
 
     pub(super/* for test */) fn search(&self, mut path: &[u8]) -> Option<(&Node, PathParams)> {
-        let path_len = path.len();
+        let mut path_len = path.len();
+        if &path[path_len-1] == &b'/' {
+            path = &path[..path_len-1];
+            path_len -= 1;
+        }
 
         let mut params = PathParams::new();
-        let mut param_start = 1/* skip initial '/' */;
+        let mut section_start = 1/* skip initial '/' */;
 
         let mut target = self;
         loop {
             for pattern in target.patterns {
-                path = path.strip_prefix(b"/")?;
+                if &path[0] == &b'/' {path = &path[1..]} else {
+                    // At least one `pattern` to match is remained
+                    // but path doesn't start with '/'
+                    return None
+                }
                 match pattern {
                     Pattern::Static(s) => {
                         path = path.strip_prefix(*s)?;
-                        param_start += s.len() + 1/* skip '/' */;
+                        section_start += s.len() + 1/* skip '/' */;
                     }
                     Pattern::Param => match find(b'/', path) {
                         None => {
                             path = &[];
-                            params.append(param_start..path_len)
+                            params.append(section_start..path_len)
                         }
                         Some(slash) => {
                             path = &path[slash+1..];
-                            params.append(param_start..(param_start + slash));
-                            param_start += slash + 1/* skip '/' */;
+                            params.append(section_start..(section_start+slash));
+                            section_start += slash + 1/* skip '/' */;
                         }
-                    } 
+                    }
                 }
             }
 
@@ -188,7 +196,7 @@ impl Node {
 
 /*===== utils =====*/
 impl Node {
-    #[inline(always)] fn matchable_child(&self, path: &[u8]) -> Option<&Node> {
+    #[inline] fn matchable_child(&self, path: &[u8]) -> Option<&Node> {
         for child in &self.children {
             if child.patterns.first()?.is_matchable_to(path) {
                 return Some(child)
@@ -207,13 +215,11 @@ impl Pattern {
     }
 }
 
-#[inline(always)] fn find(b: u8, path: &[u8]) -> Option<usize> {
-    let mut index = None;
+#[inline] fn find(b: u8, path: &[u8]) -> Option<usize> {
     for i in 0..(path.len()) {
-        if path[i] == b {
-            index = Some(i);
-            break
+        if b == path[i] {
+            return Some(i)
         }
     }
-    index
+    None
 }

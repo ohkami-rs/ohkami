@@ -47,6 +47,18 @@ impl<T, const CAPACITY: usize> List<T, CAPACITY> {
             .map(|mu| unsafe {mu.assume_init_ref()})
     }
 }
+impl<T> List<T, 2> {
+    #[inline] pub(crate) fn assume_init_first(self) -> T {
+        if self.next == 0 {panic!("Called `assume_init_first` by `List` thats `next` is 0")}
+        let [maybe_uninit_1, _] = self.list;
+        unsafe {maybe_uninit_1.assume_init()}
+    }
+    #[inline] pub(crate) fn assume_init_extract(self) -> (T, T) {
+        if self.next != 2 {panic!("Called `assume_init_extract` by `List` thats `next` doesn't equals to CAPACITY")}
+        let [maybe_uninit_1, maybe_uninit_2] = self.list;
+        unsafe {(maybe_uninit_1.assume_init(), maybe_uninit_2.assume_init())}
+    }
+}
 
 
 #[cfg(test)]
