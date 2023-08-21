@@ -19,7 +19,7 @@ use crate::{layer4_router::TrieRouter};
 /// 
 ///     // I'd like to use `Auth` and `Log` fang...
 ///     
-///     let api_ohkami = Ohkami::<(Auth, Log)>::new(
+///     let api_ohkami = Ohkami::with((Auth, Log), (
 ///         "/users"
 ///             .POST(create_user),
 ///         "/users/:id"
@@ -31,7 +31,7 @@ use crate::{layer4_router::TrieRouter};
 ///     // that of the root ohkami below, but it's no problem
 ///     // because they are merged internally.
 /// 
-///     Ohkami::<(Log,)>::new(
+///     Ohkami::with(Log, (
 ///         "/hc" .GET(health_check),
 ///         "/api".By(api_ohkami),
 ///     ).howl(3000).await
