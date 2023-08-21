@@ -8,6 +8,20 @@ use crate::{layer4_router::TrieRouter};
 /// <br/>
 /// 
 /// ```ignore
+/// use ohkami::prelude::*;
+/// 
+/// struct Log;
+/// impl IntoFang for Log {
+///     fn bite(self) -> Fang {
+///         Fang::new(|res: Response| {
+///             println!("{res:?}");
+///             res
+///         })
+///     }
+/// }
+/// 
+/// struct Auth //...
+/// 
 /// async fn main() {
 ///     let api_ohkami = Ohkami::new()(
 ///         "/users"
@@ -27,7 +41,7 @@ use crate::{layer4_router::TrieRouter};
 ///             .PATCH(update_user),
 ///     );
 /// 
-///     // And, actually, `Log` fang of api_ohkami is duplicated with
+///     // And, here `Log` fang of api_ohkami is duplicated with
 ///     // that of the root ohkami below, but it's no problem
 ///     // because they are merged internally.
 /// 
@@ -62,6 +76,14 @@ pub struct Ohkami {
 }
 
 impl Ohkami {
+    /// `routes` is tuple of routing item :
+    /// 
+    /// ```ignore
+    /// "/route"
+    ///     .Method1(method1)
+    ///     .Method2(method2)
+    ///     //...
+    /// ```
     pub fn new(routes: impl build::Routes) -> Self {
         Self {
             routes: routes.apply(TrieRouter::new()),
@@ -69,6 +91,30 @@ impl Ohkami {
         }
     }
 
+    /// - `fangs` is an item that implements `IntoFang`, or tuple of such items :
+    /// 
+    /// ```ignore
+    /// struct Log;
+    /// impl IntoFang for Log {
+    ///     fn bite(self) -> Fang {
+    ///         Fang::new(|res: Response| {
+    ///             println!("{res:?}");
+    ///             res
+    ///         })
+    ///     }
+    /// }
+    /// ```
+    /// 
+    /// <br/>
+    /// 
+    /// - `routes` is tuple of routing item :
+    /// 
+    /// ```ignore
+    /// "/route"
+    ///     .Method1(method1)
+    ///     .Method2(method2)
+    ///     //...
+    /// ```
     pub fn with(fangs: impl with_fangs::Fangs, routes: impl build::Routes) -> Self {
         Self {
             routes: routes.apply(TrieRouter::new()),
