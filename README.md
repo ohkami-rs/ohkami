@@ -27,7 +27,7 @@ ohkami = { version = "0.9.3", features = ["rt_tokio"] }
 tokio  = { version = "1",     features = ["full"] }
 ```
 
-2. Write your first code with ohkami :
+2. Write your first code with ohkami : [eamples/quick_start](https://github.com/kana-rus/ohkami/blob/main/examples/quick_start/src/main.rs)
 
 ```rust
 use ohkami::prelude::*;
