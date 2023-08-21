@@ -22,27 +22,3 @@ pub struct Handler(
         > + Send + Sync + 'static
     >
 );
-// ); const _: () = {
-//     impl Fn<(Request, Context, PathParams)> for Handler {
-//         extern "rust-call" fn call(&self, (req, c, params): (Request, Context, PathParams)) -> Self::Output {
-//             self.0(req, c, params)
-//         }
-//     } const _: (/* with */) = {
-//         impl FnMut<(Request, Context, PathParams)> for Handler {
-//             extern "rust-call" fn call_mut(&mut self, (req, c, params): (Request, Context, PathParams)) -> Self::Output {
-//                 self.0(req, c, params)
-//             }
-//         }
-//         impl FnOnce<(Request, Context, PathParams)> for Handler {
-//             type Output = Pin<
-//                 Box<dyn
-//                     Future<Output = Response>
-//                     + Send + 'static
-//                 >
-//             >;
-//             extern "rust-call" fn call_once(self, (req, c, params): (Request, Context, PathParams)) -> Self::Output {
-//                 self.0(req, c, params)
-//             }
-//         }
-//     };
-// };

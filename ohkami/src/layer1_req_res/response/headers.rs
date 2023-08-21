@@ -34,7 +34,7 @@ macro_rules! ResponseHeaders {
         /// - Content-Length
         /// - Access-Control-*
         /// 
-        /// are managed by ohkami and MUST NOT be set by `.custom` ( `.custom` has to be only used to set custom HTTP headers )
+        /// are managed by ohkami and MUST NOT be set by `.custom` ( `.custom` has to be used **ONLY** to set custom HTTP headers )
         pub struct ResponseHeaders {
             $( $group: bool, )*
             $($( $name: Header, )*)*
