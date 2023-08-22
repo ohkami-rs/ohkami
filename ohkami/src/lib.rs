@@ -63,34 +63,6 @@ mod layer5_ohkami;
 pub(crate) use layer1_req_res     ::{QUERIES_LIMIT, HEADERS_LIMIT};
 pub(crate) use layer3_fang_handler::{PATH_PARAMS_LIMIT};
 
-mod cors {
-    use std::sync::OnceLock;
-    pub(crate) use crate::layer0_lib::CORS;
-
-    /// set by builtin fang `CORS`
-    static _CORS:    OnceLock<Option<CORS>> = OnceLock::new();
-    static CORS_STR: OnceLock<&'static str> = OnceLock::new();
-
-    #[allow(non_snake_case)]
-    pub(crate) fn setCORS(cors: CORS) {
-        if CORS_STR.set(Box::leak(Box::new(cors.to_string()))).is_err() {
-            panic!("Can't set CORS config!")
-        }
-        if _CORS.set(Some(cors)).is_err() {
-            panic!("Can't set CORS config!")
-        }
-    }
-
-    #[allow(non_snake_case)]
-    pub(crate) fn CORS() -> Option<&'static CORS> {
-        _CORS.get_or_init(|| None).as_ref()
-    }
-    #[allow(non_snake_case)]
-    pub(crate) fn CORSstr() -> &'static str {
-        CORS_STR.get_or_init(|| "")
-    }
-} pub(crate) use cors::*;
-
 pub use layer0_lib         ::{Status, Method, ContentType};
 pub use layer1_req_res     ::{Request, Response, FromRequest};
 pub use layer2_context     ::{Context};
@@ -118,7 +90,7 @@ pub mod __internal__ {
     struct AppendHeader;
     impl IntoFang for AppendHeader {
         fn bite(self) -> Fang {
-            Fang::new(|c: &mut Context, req: Request| {
+            Fang(|c: &mut Context, req: Request| {
                 c.headers.Server("ohkami");
                 req
             })
@@ -128,7 +100,7 @@ pub mod __internal__ {
     struct Log;
     impl IntoFang for Log {
         fn bite(self) -> Fang {
-            Fang::new(|res: Response| {
+            Fang(|res: Response| {
                 println!("{res:?}");
                 res
             })
@@ -145,7 +117,15 @@ pub mod __internal__ {
     }
 
 // run
-    Ohkami::with((AppendHeader, Log), (
+    Ohkami::with((
+        Log,
+        AppendHeader,
+        utils::cors("https://kanarusblog.software")
+            .AllowCredentials()
+            .AllowHeaders(["Content-Type"])
+            .AllowMethods([Method::GET, Method::PUT, Method::POST, Method::DELETE])
+            .MaxAge(3600)
+    ), (
         "/hc".
             GET(health_check),
         "/hello/:name".

@@ -3,7 +3,7 @@
 #![allow(unused)] // until ....
 
 use std::{collections::BTreeMap, sync::OnceLock};
-use crate::{layer0_lib::now, CORSstr};
+use crate::{layer0_lib::now};
 
 
 struct Header(Option<&'static str>);
@@ -39,6 +39,7 @@ macro_rules! ResponseHeaders {
             $( $group: bool, )*
             $($( $name: Header, )*)*
             custom: BTreeMap<&'static str, &'static str>,
+            cors_str: &'static str,
         }
 
         impl ResponseHeaders {
@@ -54,24 +55,29 @@ macro_rules! ResponseHeaders {
                 Self {
                     $( $group: false, )*
                     $($( $name: Header(None), )*)*
-                    custom: BTreeMap::new()
+                    custom: BTreeMap::new(),
+                    cors_str: ""
                 }
+            }
+
+            pub(crate) fn cors(&mut self, cors_str: &'static str) -> &mut Self {
+                self.cors_str = cors_str;
+                self
             }
 
             pub(crate) fn to_string(&self) -> String {
                 let __now__ = now();
-                let __cors__ = CORSstr();
 
                 let mut h = format!("\
                     Date: {__now__}\r\n\
-                    {__cors__}\
-                ");
+                    {}\
+                ", self.cors_str);
 
                 $(
                     if self.$group {
                         $(
                             if let Some(value) = self.$name.0 {
-                                h.push_str($key);h.push_str(value);h.push('\r'); h.push('\n');
+                                h.push_str($key);h.push_str(value);h.push('\r');h.push('\n');
                             }
                         )*
                     }

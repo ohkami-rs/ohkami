@@ -36,32 +36,32 @@ impl Fang {
         &self.id
     }
 }
-impl Fang {
-    /// <br/>
-    /// 
-    /// ## available `f` signatures
-    /// 
-    /// - to make *back fang* : `(Response) -> Response`
-    /// 
-    /// - to make *front fang*: `(&mut Context, Request) -> Request` or, return `Result<Request, Response>` instead of `Request` to early return error response
-    /// 
-    /// <br/>
-    /// 
-    /// ## exapmple
-    /// 
-    /// ```ignore
-    /// struct AppendHeader;
-    /// impl IntoFang for AppendHeader {
-    ///     fn bite(self) -> Fang {
-    ///         Fang::new(|c: &mut Context, req: Request| {
-    ///             c.header.Server("ohkami");
-    ///             req
-    ///         })
-    ///     }
-    /// }
-    /// ```
-    pub fn new<Args>(f: impl IntoFang<Args>) -> Self {
-        f.into_fang()
-            .unwrap()//
-    }
+
+/// <br/>
+/// 
+/// ## available `f` signatures
+/// 
+/// - to make *back fang* : `Fn(Response) -> Response`
+/// 
+/// - to make *front fang*: `Fn(&mut Context, Request) -> Request` or, return `Result<Request, Response>` instead of `Request` to early return error response
+/// 
+/// <br/>
+/// 
+/// ## exapmple
+/// 
+/// ```ignore
+/// struct AppendHeader;
+/// impl IntoFang for AppendHeader {
+///     fn bite(self) -> Fang {
+///         Fang(|c: &mut Context, req: Request| {
+///             c.header.Server("ohkami");
+///             req
+///         })
+///     }
+/// }
+/// ```
+#[allow(non_snake_case)]
+pub fn Fang<Args>(f: impl IntoFang<Args>) -> Fang {
+    f.into_fang()
+        .unwrap()//
 }

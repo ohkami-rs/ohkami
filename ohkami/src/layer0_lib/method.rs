@@ -10,7 +10,7 @@ pub enum Method {
 }
 
 impl Method {
-    #[inline(always)] pub(crate) fn from_bytes(bytes: &[u8]) -> Self {
+    #[inline] pub(crate) fn from_bytes(bytes: &[u8]) -> Self {
         match bytes {
             b"GET"     => Self::GET,
             b"PUT"     => Self::PUT,
@@ -21,6 +21,29 @@ impl Method {
             b"OPTIONS" => Self::OPTIONS,
             _ => unreachable!("unknown method: `{}`", unsafe {std::str::from_utf8_unchecked(bytes)})
         }
+    }
+}
+#[allow(non_snake_case)] impl Method {
+    #[inline(always)] pub fn isGET(&self) -> bool {
+        matches!(self, Method::GET)
+    }
+    #[inline(always)] pub fn isPUT(&self) -> bool {
+        matches!(self, Method::PUT)
+    }
+    #[inline(always)] pub fn isPOST(&self) -> bool {
+        matches!(self, Method::POST)
+    }
+    #[inline(always)] pub fn isPATCH(&self) -> bool {
+        matches!(self, Method::PATCH)
+    }
+    #[inline(always)] pub fn isDELETE(&self) -> bool {
+        matches!(self, Method::DELETE)
+    }
+    #[inline(always)] pub fn isHEAD(&self) -> bool {
+        matches!(self, Method::HEAD)
+    }
+    #[inline(always)] pub fn isOPTIONS(&self) -> bool {
+        matches!(self, Method::OPTIONS)
     }
 }
 

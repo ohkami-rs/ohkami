@@ -1,23 +1,27 @@
-use crate::{Response, Status};
-
+use std::sync::OnceLock;
+use crate::{
+    layer0_lib::CORS,
+    Context, Request, IntoFang,
+};
 
 #[allow(non_snake_case)]
-pub fn cors(AllowOrigin: &'static str) -> crate::cors::CORS {
-    crate::cors::CORS::new(AllowOrigin)
-}
-impl super::IntoFang<crate::cors::CORS> for crate::cors::CORS {
-    fn into_fang(self) -> Option<super::Fang> {
-        crate::setCORS(self);
-        None
-    }
+pub fn cors(AllowOrigin: &'static str) -> CORS {
+    CORS::new(AllowOrigin)
 }
 
+pub(crate) static CORS: OnceLock<(&'static str, CORS)> = OnceLock::new();
 
-pub fn not_found(proc: impl Fn(Response)->Response) -> impl Fn(Response)->Response {
-    move |res| {
-        match res.status {
-            Status::NotFound => proc(res),
-            _  => res
-        }
+impl IntoFang for CORS {
+    fn bite(self) -> crate::Fang {
+        CORS.set((Box::leak(self.to_string().into_boxed_str()), self)).ok();
+
+        crate::Fang(|c: &mut Context, req: Request| {
+            let (cors_str, _) = CORS.get().unwrap();
+            c.headers
+                .Vary("Origin")
+                .cors(cors_str);
+
+            req
+        })
     }
 }

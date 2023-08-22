@@ -1,7 +1,8 @@
-use crate::{Fang};
+use crate::{Fang, Method, Method::*};
 
   
 /// ## fang schema
+/// 
 /// - to make *back fang* : `Fn(Response) -> Response`
 /// - to make *front fang* : `Fn(&mut Context, Request) -> Request`, or `_ -> Result<Request, Response>` for early returning error response
 /// 
@@ -9,7 +10,7 @@ use crate::{Fang};
 /// struct Log;
 /// impl IntoFang for Log {
 ///     fn bite(self) -> Fang {
-///         Fang::new(|res: Response| {
+///         Fang(|res: Response| {
 ///             println!("{res:?}");
 ///             res
 ///         })
@@ -17,22 +18,23 @@ use crate::{Fang};
 /// }
 /// ```
 pub trait IntoFang {
+    const METHODS: &'static [Method] = &[GET, PUT, POST, PATCH, DELETE];
     fn bite(self) -> Fang;
 }
 
 pub trait Fangs {
-    fn collect(self) -> Vec<Fang>;
+    fn collect(self) -> Vec<(&'static [Method], Fang)>;
 } macro_rules! impl_for_tuple {
     ( $( $fang:ident ),* ) => {
         impl<$( $fang: IntoFang ),*> Fangs for ( $( $fang,)* ) {
             #[allow(non_snake_case)]
-            fn collect(self) -> Vec<Fang> {
+            fn collect(self) -> Vec<(&'static [Method], Fang)> {
                 #[allow(unused_mut)]
                 let mut fangs = Vec::new();
                 let ( $( $fang, )* ) = self;
 
                 $(
-                    fangs.push($fang.bite());
+                    fangs.push(($fang::METHODS, $fang.bite()));
                 )*
 
                 fangs
@@ -50,7 +52,7 @@ pub trait Fangs {
     impl_for_tuple!(F1, F2, F3, F4, F5, F6, F7);
     impl_for_tuple!(F1, F2, F3, F4, F5, F6, F7, F8);
 }; impl<F: IntoFang> Fangs for F {
-    fn collect(self) -> Vec<Fang> {
-        vec![self.bite()]
+    fn collect(self) -> Vec<(&'static [Method], Fang)> {
+        vec![(Self::METHODS, self.bite())]
     }
 }

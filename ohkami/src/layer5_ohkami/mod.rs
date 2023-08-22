@@ -2,7 +2,7 @@ mod with_fangs; pub use with_fangs::{IntoFang};
 mod build;
 mod howl;
 
-use crate::{layer4_router::TrieRouter};
+use crate::{layer4_router::TrieRouter, Method};
 
 
 /// <br/>
@@ -72,7 +72,7 @@ pub struct Ohkami {
     pub(crate) routes: TrieRouter,
 
     /// apply just before merged to another or called `howl`
-    pub(crate) fangs:  Vec<crate::layer3_fang_handler::Fang>,
+    pub(crate) fangs:  Vec<(&'static [Method], crate::layer3_fang_handler::Fang)>,
 }
 
 impl Ohkami {
@@ -126,8 +126,8 @@ impl Ohkami {
 impl Ohkami {
     pub(crate) fn into_router(self) -> TrieRouter {
         let mut router = self.routes;
-        for fang in self.fangs {
-            router = router.apply_fang(fang)
+        for (methods, fang) in self.fangs {
+            router = router.apply_fang(methods, fang)
         }
         router
     }

@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 use crate::{
-    layer3_fang_handler::{Handler, Handlers, ByAnother, RouteSections, RouteSection, Fang, FangProc},
+    layer3_fang_handler::{Handler, Handlers, ByAnother, RouteSections, RouteSection, Fang, FangProc}, Method,
 };
 
 const _: () = {
@@ -22,6 +22,8 @@ pub struct TrieRouter {
     pub(super/* for test */) POST:    Node,
     pub(super/* for test */) PATCH:   Node,
     pub(super/* for test */) DELETE:  Node,
+    pub(super) HEADfangs:    Vec<Fang>,
+    pub(super) OPTIONSfangs: Vec<Fang>,
 }
 
 pub(super/* for test */) struct Node {
@@ -76,6 +78,8 @@ impl TrieRouter {
             POST:    Node::root(),
             PATCH:   Node::root(),
             DELETE:  Node::root(),
+            HEADfangs:    Vec::new(),
+            OPTIONSfangs: Vec::new(),
         }
     }
 
@@ -105,23 +109,42 @@ impl TrieRouter {
         let ByAnother { route, ohkami } = another;
         let another_routes = ohkami.into_router();
 
-        // #[cfg(test)] println!("{another_routes:#?}");
-
         if let Err(e) = self.GET.merge_node(route.clone().into_iter(), another_routes.GET) {panic!("{e}")}
         if let Err(e) = self.PUT.merge_node(route.clone().into_iter(), another_routes.PUT) {panic!("{e}")}
         if let Err(e) = self.POST.merge_node(route.clone().into_iter(), another_routes.POST) {panic!("{e}")}
         if let Err(e) = self.PATCH.merge_node(route.clone().into_iter(), another_routes.PATCH) {panic!("{e}")}
         if let Err(e) = self.DELETE.merge_node(route.clone().into_iter(), another_routes.DELETE) {panic!("{e}")}
+
+        for af in another_routes.HEADfangs {
+            if self.HEADfangs.iter().all(|sf| af.id() != sf.id()) {
+                self.HEADfangs.push(af)
+            }
+        }
+        for af in another_routes.OPTIONSfangs {
+            if self.OPTIONSfangs.iter().all(|sf| af.id() != sf.id()) {
+                self.OPTIONSfangs.push(af)
+            }
+        }
         
         self
     }
 
-    pub(crate) fn apply_fang(mut self, fang: Fang) -> Self {
-        self.GET.apply_fang(fang.clone());
-        self.PUT.apply_fang(fang.clone());
-        self.POST.apply_fang(fang.clone());
-        self.PATCH.apply_fang(fang.clone());
-        self.DELETE.apply_fang(fang.clone());
+    pub(crate) fn apply_fang(mut self, methods: &'static [Method], fang: Fang) -> Self {
+        for method in methods {
+            match method {
+                Method::GET => self.GET.apply_fang(fang.clone()),
+                Method::PUT => self.PUT.apply_fang(fang.clone()),
+                Method::POST => self.POST.apply_fang(fang.clone()),
+                Method::PATCH => self.PATCH.apply_fang(fang.clone()),
+                Method::DELETE => self.DELETE.apply_fang(fang.clone()),
+                Method::HEAD => if self.HEADfangs.iter().all(|f| fang.id() != f.id()) {
+                    self.HEADfangs.push(fang.clone())
+                },
+                Method::OPTIONS => if self.OPTIONSfangs.iter().all(|f| fang.id() != f.id()) {
+                    self.OPTIONSfangs.push(fang.clone())
+                },
+            }
+        }
 
         self
     }
@@ -133,6 +156,26 @@ impl TrieRouter {
             POST:    self.POST.into_radix(),
             PATCH:   self.PATCH.into_radix(),
             DELETE:  self.DELETE.into_radix(),
+            HEADfangs: {
+                let (mut front, mut back) = (vec![], vec![]);
+                for f in self.HEADfangs {
+                    match f.proc {
+                        FangProc::Front(ff) => front.push(ff),
+                        FangProc::Back(bf)  => back .push(bf),
+                    }
+                }
+                (Box::leak(front.into_boxed_slice()), Box::leak(back.into_boxed_slice()))
+            },
+            OPTIONSfangs: {
+                let (mut front, mut back) = (vec![], vec![]);
+                for f in self.OPTIONSfangs {
+                    match f.proc {
+                        FangProc::Front(ff) => front.push(ff),
+                        FangProc::Back(bf)  => back .push(bf),
+                    }
+                }
+                (Box::leak(front.into_boxed_slice()), Box::leak(back.into_boxed_slice()))
+            }
         }
     }
 }
