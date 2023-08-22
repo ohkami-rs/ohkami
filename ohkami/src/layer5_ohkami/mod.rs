@@ -97,7 +97,7 @@ impl Ohkami {
     /// struct Log;
     /// impl IntoFang for Log {
     ///     fn bite(self) -> Fang {
-    ///         Fang::new(|res: Response| {
+    ///         Fang(|res: Response| {
     ///             println!("{res:?}");
     ///             res
     ///         })

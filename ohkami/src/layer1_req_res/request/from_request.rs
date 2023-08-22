@@ -33,19 +33,6 @@ pub trait FromRequest: Sized {
 pub trait FromBuffer: Sized {
     fn parse(buffer: &[u8]) -> Result<Self, Cow<'static, str>>;
 } const _: () = {
-    // impl FromBuffer for &str {
-    //     fn parse(buffer: &[u8]) -> Result<Self, Cow<'static, str>> {
-    //         // SAFETY:
-    //         // - This str refers to `buffer` in `Request`
-    //         // - And, this str is visible to user **ONLY IN** the handler
-    //         //   that is handling the request
-    //         Ok(unsafe {std::mem::transmute(
-    //             std::str::from_utf8(buffer)
-    //                 .map_err(move |e| Cow::Owned(e.to_string()))?
-    //         )})
-    //     }
-    // }
-
     impl FromBuffer for String {
         fn parse(buffer: &[u8]) -> Result<Self, Cow<'static, str>> {
             Ok(String::from(

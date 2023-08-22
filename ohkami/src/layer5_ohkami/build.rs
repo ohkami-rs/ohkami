@@ -46,27 +46,3 @@ pub trait Routes {
     impl_for_tuple!(R1, R2, R3, R4, R5, R6, R7);
     impl_for_tuple!(R1, R2, R3, R4, R5, R6, R7, R8);
 };
-
-// macro_rules! build_routing {
-//     ($( $routing_item:ident ),*) => {
-//         impl<$($routing_item: Rounting),*> FnOnce<($($routing_item,)*)> for Ohkami {
-//             type Output = Ohkami;
-//             extern "rust-call" fn call_once(mut self, ($($routing_item,)*): ($($routing_item,)*)) -> Self::Output {
-//                 $(
-//                     self.routes = $routing_item.apply(self.routes);
-//                 )*
-//                 self
-//             }
-//         }
-//     };
-// } const _: () = {
-//     build_routing!();
-//     build_routing!(R1);
-//     build_routing!(R1, R2);
-//     build_routing!(R1, R2, R3);
-//     build_routing!(R1, R2, R3, R4);
-//     build_routing!(R1, R2, R3, R4, R5);
-//     build_routing!(R1, R2, R3, R4, R5, R6);
-//     build_routing!(R1, R2, R3, R4, R5, R6, R7);
-// };
-// 

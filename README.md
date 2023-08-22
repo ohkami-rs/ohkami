@@ -177,7 +177,7 @@ async fn main() {
 struct AppendHeaders;
 impl IntoFang for AppendHeaders {
     fn bite(self) -> Fang {
-        Fang::new(|c: &mut Context, req: Request| {
+        Fang(|c: &mut Context, req: Request| {
             c.headers
                 .Server("ohkami");
             req
@@ -188,7 +188,7 @@ impl IntoFang for AppendHeaders {
 struct Log;
 impl IntoFang for Log {
     fn bite(self) -> Fang {
-        Fang::new(|res: Response| {
+        Fang(|res: Response| {
             println!("{res:?}");
             res
         })
