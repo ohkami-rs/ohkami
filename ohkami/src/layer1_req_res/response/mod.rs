@@ -10,7 +10,7 @@ use crate::{
 
 /// # HTTP Response
 /// 
-/// Generated from `Context` and handlers must returns this.
+/// Generated from `Context`. Handlers have to returns this.
 /// 
 /// ```
 /// use ohkami::prelude::*;
@@ -19,26 +19,6 @@ use crate::{
 ///     c
 ///         .OK()           // generate Response
 ///         .text("Hello!") // set content (text/plain)
-/// }
-/// ```
-/// <br/>
-/// 
-/// This impls `FromResidual<Result<Infallible, Self>>`, so you can use `.map_err` in most cases. 
-/// 
-/// ```ignore
-/// use ohkami::prelude::*;
-/// 
-/// async fn create_user(c: Context,
-///     payload: CreateUserRequest
-/// ) -> Response {
-///     let Ok(new_user) = insert_user_into_table(
-///         payload.name,
-///         payload.password
-///     ).await else {
-///         return c.InternalServerError()
-///     }
-/// 
-///     c.Created().json(new_user)
 /// }
 /// ```
 pub struct Response {
