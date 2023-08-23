@@ -23,7 +23,7 @@ ohkami *- [狼] wolf in Japanese -* is **declarative** web framework for Rust.
 # you can choose `async-std` instead by feature "rt_async-std".
 
 [dependencies]
-ohkami = { version = "0.9.3", features = ["rt_tokio"] }
+ohkami = { version = "0.9.4", features = ["rt_tokio"] }
 tokio  = { version = "1",     features = ["full"] }
 ```
 
@@ -163,17 +163,6 @@ ohkami's middlewares are called "**fang**s".
 ```rust
 use ohkami::prelude::*;
 
-#[tokio::main]
-async fn main() {
-    Ohkami::with((AppendHeaders, Log), (
-        "/"  .GET(root),
-        "/hc".GET(health_check),
-        "/api/users".
-            GET(get_users).
-            POST(create_user),
-    )).howl(":8080").await
-}
-
 struct AppendHeaders;
 impl IntoFang for AppendHeaders {
     fn bite(self) -> Fang {
@@ -194,6 +183,17 @@ impl IntoFang for Log {
         })
     }
 }
+#[tokio::main]
+async fn main() {
+    Ohkami::with((AppendHeaders, Log), (
+        "/"  .GET(root),
+        "/hc".GET(health_check),
+        "/api/users".
+            GET(get_users).
+            POST(create_user),
+    )).howl(":8080").await
+}
+
 ```
 `Fang::new` schema :
 
