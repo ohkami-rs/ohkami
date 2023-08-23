@@ -13,7 +13,7 @@ pub(super) fn Payload(format: TokenStream, data: TokenStream) -> Result<TokenStr
     let impl_payload = match format {
         Format::JSON       => impl_payload_json(&data),
         Format::URLEncoded => impl_payload_urlencoded(&data),
-        Format::Form       => impl_payload_form(&data),
+        Format::Form       => impl_payload_formdata(&data),
     }?;
 
     Ok(quote!{
@@ -163,7 +163,7 @@ fn impl_payload_urlencoded(data: &ItemStruct) -> Result<TokenStream> {
 }
 
 #[allow(unused)]
-fn impl_payload_form(data: &ItemStruct) -> Result<TokenStream> {
+fn impl_payload_formdata(data: &ItemStruct) -> Result<TokenStream> {
     
 
     Ok(quote!{

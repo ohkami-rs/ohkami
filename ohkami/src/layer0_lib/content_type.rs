@@ -6,7 +6,7 @@ pub enum ContentType {
     URLEncoded,
     Text,
     HTML,
-    Form {boundary: String},
+    Form { boundary: String },
 }
 
 impl ContentType {

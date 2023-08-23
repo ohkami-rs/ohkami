@@ -3,6 +3,7 @@ use percent_encoding::percent_decode;
 use serde::Deserialize;
 
 
+/*===== for #[Payload(JSON)] =====*/
 #[inline]
 pub fn parse_json<'req, T: Deserialize<'req>>(buf: &'req [u8]) -> Result<T, Cow<'static, str>> {
         serde_json::from_slice(buf)
@@ -10,6 +11,21 @@ pub fn parse_json<'req, T: Deserialize<'req>>(buf: &'req [u8]) -> Result<T, Cow<
 }
 
 
+/*===== for #[Payload(FormData)] =====*/
+pub enum FormPart {
+    Field { part_name: String, content: Vec<u8> },
+    File  { part_name: String, content: Vec<u8>, file_name: Option<String>, content_type: String, },
+}
+/// return
+/// 
+/// - `Some(PormPart)` if `buf` contains a form part
+/// - `None` if `buf` contains only `{boundary}--`
+pub fn parse_formpart(mut buf: &[u8], boundary: &str) -> Option<FormPart> {
+    todo!()
+}
+
+
+/*===== for #[Payload(URLEncoded)] =====*/
 /* Thanks: https://github.com/servo/rust-url/blob/master/form_urlencoded/src/lib.rs */
 
 /// Convert a byte string in the `application/x-www-form-urlencoded` syntax
@@ -103,6 +119,11 @@ pub struct Parse<'a> {
         }
     }
 };
+
+
+
+
+/*=====*/
 
 
 

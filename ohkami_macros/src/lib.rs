@@ -57,6 +57,8 @@ pub fn Query(_: proc_macro::TokenStream, data: proc_macro::TokenStream) -> proc_
 /// 
 /// <br/>
 /// 
+/// ### JSON
+/// 
 /// ```
 /// use ohkami::prelude::*;
 /// use ohkami::utils::Payload; // <-- import me
@@ -67,6 +69,10 @@ pub fn Query(_: proc_macro::TokenStream, data: proc_macro::TokenStream) -> proc_
 ///     name:     String,
 ///     n_repeat: Option<usize>,
 /// }
+/// /* expected payload examples :
+///     {"name":"your name"}
+///     {"name":"you_name","n_repeat":2}
+/// */
 /// 
 /// async fn hello(c: Context, body: HelloRequest) -> Response {
 ///     let HelloRequest { name, n_repeat } = queries;
@@ -82,10 +88,48 @@ pub fn Query(_: proc_macro::TokenStream, data: proc_macro::TokenStream) -> proc_
 /// 
 /// <br/>
 /// 
+/// ### URLEncoded
+/// ```
+/// use ohkami::prelude::*;
+/// use ohkami::utils::Payload; // <-- import me
+/// 
+/// #[Payload(URLEncoded)]
+/// struct HelloRequest {
+///     name:     String,
+///     n_repeat: Option<usize>,
+/// }
+/// /* expected payload examples :
+///     name=yourname
+///     name=yourname&n_repeat=2
+/// */
+/// ```
+/// 
+/// <br/>
+/// 
 /// - NOT available for tuple struct ( like `struct S(usize, usize);` ) or tag struct ( like `struct X;` ).
 /// - Possible value types : `String` `u8` `u16` `u32` `u64` `u128` `usize` and `Option` of them.
 /// 
-/// If you need support for other structs or types, plaese let me know that in [GitHub issue](https://github.com/kana-rus/ohkami/issues) !
+/// <br/>
+/// <hr/>
+/// <br/>
+/// 
+/// ### FormData
+/// 
+/// ```ignore
+/// use ohkami::prelude::*;
+/// use ohkami::utils::Payload; // <-- import me
+/// 
+/// #[Payload(FormData)]
+/// struct ProfileData {
+///     submitter: String,
+///     pics:      Vec<File>,
+/// }
+/// 
+/// 
+/// ```
+/// 
+/// - form part of kebab-case-name is handled by field of snake_case version of the name ( example: `name="submitter-name"` is handled by field `submitter_name` )
+/// 
 #[proc_macro_attribute] #[allow(non_snake_case)]
 pub fn Payload(format: proc_macro::TokenStream, data: proc_macro::TokenStream) -> proc_macro::TokenStream {
     payload::Payload(format.into(), data.into())
