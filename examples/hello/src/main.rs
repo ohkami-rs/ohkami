@@ -61,7 +61,7 @@ mod fangs {
     pub struct AppendServer;
     impl IntoFang for AppendServer {
         fn bite(self) -> Fang {
-            Fang::new(|c: &mut Context, req: Request| {
+            Fang(|c: &mut Context, req: Request| {
                 c.headers
                     .Server("ohkami");
 
@@ -79,7 +79,7 @@ mod fangs {
     pub struct LogRequest;
     impl IntoFang for LogRequest {
         fn bite(self) -> Fang {
-            Fang::new(|_: &mut Context, req: Request| {
+            Fang(|_: &mut Context, req: Request| {
                 let __method__ = req.method();
                 let __path__   = req.path();
 
