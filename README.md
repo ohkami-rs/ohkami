@@ -194,7 +194,7 @@ async fn main() {
 }
 
 ```
-`Fang::new` schema :
+`Fang` schema :
 
 - to make *back fang* : `Fn(Response) -> Response`
 - to make *front fang* : `Fn(&mut Context, Request) -> Request`, or `_ -> Result<Request, Response>` for early returning error response
