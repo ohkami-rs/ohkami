@@ -6,7 +6,7 @@ ohkami *- [狼] wolf in Japanese -* is **declarative** web framework for Rust.
 
 ## Features
 - *macro free, declarative APIs*
-- supporting *multi runtime*：`tokio`, `async-std` (and more in future)
+- *multi runtime* support：`tokio`, `async-std` (and more in future)
 
 <div align="right">
     <img alt="build check status of ohkami" src="https://github.com/kana-rus/ohkami/actions/workflows/check.yml/badge.svg"/>
@@ -19,8 +19,8 @@ ohkami *- [狼] wolf in Japanese -* is **declarative** web framework for Rust.
 1. Add to `dependencies` :
 
 ```toml
-# this sample uses `tokio` runtime.
-# you can choose `async-std` instead by feature "rt_async-std".
+# This sample uses `tokio` runtime.
+# You can choose `async-std` instead by feature "rt_async-std".
 
 [dependencies]
 ohkami = { version = "0.9.4", features = ["rt_tokio"] }
@@ -64,13 +64,12 @@ Hello, your_name!
 
 <br/>
 
-## Samples
+## Snippets
 
 ### handle path/query params
 ```rust
 use ohkami::prelude::*;
 use ohkami::utils::Query;
-
 
 #[tokio::main]
 async fn main() {
@@ -113,7 +112,6 @@ Use tuple like `(verion, id): (u8, usize),` for multiple path params.
 ### handle request body
 ```rust
 use ohkami::{prelude::*, utils::Payload};
-
 
 #[Payload(JSON)]
 #[derive(serde::Deserialize)] // <-- This may not be needed in future version
@@ -162,6 +160,7 @@ ohkami's middlewares are called "**fang**s".
 
 ```rust
 use ohkami::prelude::*;
+use ohkami::{Fang, IntoFang};
 
 struct AppendHeaders;
 impl IntoFang for AppendHeaders {
