@@ -132,12 +132,12 @@ impl TrieRouter {
     pub(crate) fn apply_fang(mut self, methods: &'static [Method], fang: Fang) -> Self {
         for method in methods {
             match method {
-                Method::GET => self.GET.apply_fang(fang.clone()),
-                Method::PUT => self.PUT.apply_fang(fang.clone()),
-                Method::POST => self.POST.apply_fang(fang.clone()),
-                Method::PATCH => self.PATCH.apply_fang(fang.clone()),
-                Method::DELETE => self.DELETE.apply_fang(fang.clone()),
-                Method::HEAD => if self.HEADfangs.iter().all(|f| fang.id() != f.id()) {
+                Method::GET     => self.GET   .apply_fang(fang.clone()),
+                Method::PUT     => self.PUT   .apply_fang(fang.clone()),
+                Method::POST    => self.POST  .apply_fang(fang.clone()),
+                Method::PATCH   => self.PATCH .apply_fang(fang.clone()),
+                Method::DELETE  => self.DELETE.apply_fang(fang.clone()),
+                Method::HEAD    => if self.HEADfangs.iter().all(|f| fang.id() != f.id()) {
                     self.HEADfangs.push(fang.clone())
                 },
                 Method::OPTIONS => if self.OPTIONSfangs.iter().all(|f| fang.id() != f.id()) {

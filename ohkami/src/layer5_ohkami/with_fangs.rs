@@ -21,7 +21,7 @@ use crate::{Fang, Method, Method::*};
 /// }
 /// ```
 pub trait IntoFang {
-    const METHODS: &'static [Method] = &[GET, PUT, POST, PATCH, DELETE];
+    const METHODS: &'static [Method] = &[GET, PUT, POST, PATCH, DELETE, HEAD, OPTIONS];
     fn bite(self) -> Fang;
 }
 

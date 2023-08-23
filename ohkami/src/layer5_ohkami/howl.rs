@@ -28,6 +28,11 @@ pub trait TCPAddress {
 
 
 impl Ohkami {
+    /// address :
+    /// 
+    /// - u16 `PORT` like `8080`
+    /// - literal `":{PORT}"` like `":5000"`
+    /// - literal `"localhost:{PORT}"` like `"localhost:3000"`
     pub async fn howl(self, address: impl TCPAddress) {
         let router = Arc::new(self.into_router().into_radix());
         
