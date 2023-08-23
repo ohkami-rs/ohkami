@@ -23,8 +23,8 @@ ohkami *- [狼] wolf in Japanese -* is **declarative** web framework for Rust.
 # You can choose `async-std` instead by feature "rt_async-std".
 
 [dependencies]
-ohkami = { version = "0.9.4", features = ["rt_tokio"] }
-tokio  = { version = "1",     features = ["full"] }
+ohkami = { version = "0.10.0", features = ["rt_tokio"] }
+tokio  = { version = "1",      features = ["full"] }
 ```
 
 2. Write your first code with ohkami : [eamples/quick_start](https://github.com/kana-rus/ohkami/blob/main/examples/quick_start/src/main.rs)

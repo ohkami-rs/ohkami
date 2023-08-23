@@ -1,6 +1,6 @@
 [package]
 name             = "ohkami"
-version          = "0.9.4"
+version          = "0.10.0"
 edition          = "2021"
 authors          = ["kanarus <kanarus786@gmail.com>"]
 description      = "declarative web framework for Rust"
@@ -16,7 +16,7 @@ license          = "MIT"
 features         = ["rt_tokio"]
 
 [dependencies]
-ohkami_macros    = { version = "0.3", path = "../ohkami_macros" }
+ohkami_macros    = { version = "0.4", path = "../ohkami_macros" }
 tokio            = { version = "1", optional = true, features = ["net", "rt", "io-util"] }
 async-std        = { version = "1", optional = true }
 serde            = "1.0"

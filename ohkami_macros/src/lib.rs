@@ -8,8 +8,8 @@ mod payload;
 /// 
 /// <br/>
 /// 
-/// ```ignore
-/// use ohkami::{Context, Response};
+/// ```
+/// use ohkami::prelude::*;
 /// use ohkami::utils::Queries; // <-- import me
 /// 
 /// #[Query]
@@ -18,7 +18,7 @@ mod payload;
 ///     n_repeat: Option<usize>,
 /// }
 /// 
-/// async fn hello(c: Context, queries: HelloQuery) -> Response<String> {
+/// async fn hello(c: Context, queries: HelloQuery) -> Response {
 ///     let HelloQuery { name, n_repeat } = queries;
 /// 
 ///     let message = match n_repeat {
@@ -51,18 +51,14 @@ pub fn Query(_: proc_macro::TokenStream, data: proc_macro::TokenStream) -> proc_
 /// 
 /// - `#[Payload(JSON)]` ( for `application/json` )
 /// - `#[Payload(URLEncoded)]` ( for `application/x-www-form-urlencoded` )
+/// - `#[Payload(FormData)]` ( for `multipart/form-data` )
+/// 
+/// In current version, `#[Payload(JSON)]` requires `serde::Deserialize`
 /// 
 /// <br/>
 /// 
-/// ### Notification :
-/// 
-/// - In current version, `#[Payload(JSON)]` requires the struct impls `serde::Deserialize`.
-/// - In current version, `#[Payload(Form)]` is not implemented yet. Please wait for development, or, if you need this imediately, you can implement and create a [Pull request](https://github.com/kana-rus/ohkami/pulls) !
-/// 
-/// <br/>
-/// 
-/// ```ignore
-/// use ohkami::{Context, Response};
+/// ```
+/// use ohkami::prelude::*;
 /// use ohkami::utils::Payload; // <-- import me
 /// 
 /// #[Payload(JSON)]
@@ -72,7 +68,7 @@ pub fn Query(_: proc_macro::TokenStream, data: proc_macro::TokenStream) -> proc_
 ///     n_repeat: Option<usize>,
 /// }
 /// 
-/// async fn hello(c: Context, body: HelloRequest) -> Response<String> {
+/// async fn hello(c: Context, body: HelloRequest) -> Response {
 ///     let HelloRequest { name, n_repeat } = queries;
 /// 
 ///     let message = match n_repeat {

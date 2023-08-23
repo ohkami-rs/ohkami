@@ -12,8 +12,8 @@ pub(super) fn Payload(format: TokenStream, data: TokenStream) -> Result<TokenStr
 
     let impl_payload = match format {
         Format::JSON       => impl_payload_json(&data),
-        Format::Form       => impl_payload_form(&data),
         Format::URLEncoded => impl_payload_urlencoded(&data),
+        Format::Form       => impl_payload_form(&data),
     }?;
 
     Ok(quote!{
@@ -75,7 +75,7 @@ fn impl_payload_urlencoded(data: &ItemStruct) -> Result<TokenStream> {
                                 |
                             "Option < Inner >"
                                     
-                        Take note that the string contains whitespaces as above:
+                        Take note that the string contains whitespaces as above; So it start with
 
                         NOT
                             "Option<"
@@ -162,8 +162,10 @@ fn impl_payload_urlencoded(data: &ItemStruct) -> Result<TokenStream> {
     })
 }
 
-#[allow(unused)] //
+#[allow(unused)]
 fn impl_payload_form(data: &ItemStruct) -> Result<TokenStream> {
+    
+
     Ok(quote!{
         unimplemented!("`#[Payload(Form)]` is not implemented yet. Please wait for development, or, if you need this imediately, you can implement and create a [Pull request](https://github.com/kana-rus/ohkami/pulls) !")
     })
