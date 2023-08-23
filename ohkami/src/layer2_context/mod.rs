@@ -10,8 +10,10 @@ use crate::{
 /// 
 /// <br/>
 /// 
-/// ```ignore
-/// async fn handler(c: Context) -> Response {
+/// ```
+/// use ohkami::prelude::*;
+/// 
+/// async fn handler(mut c: Context) -> Response {
 ///     // set header values
 ///     c.headers
 ///         .Server("ohkami")
@@ -35,7 +37,10 @@ use crate::{
 /// With error handling :
 /// 
 /// ```ignore
-/// #[derive(Serialize)]
+/// use ohkami::prelude::*;
+/// use ohkami::utils::Payload;
+/// 
+/// #[derive(serde::Serialize)]
 /// struct User {
 ///     id:       usize,
 ///     name:     String,
@@ -43,7 +48,7 @@ use crate::{
 /// }
 /// 
 /// #[Payload(JSON)]
-/// #[derive(Serialize)]
+/// #[derive(serde::Serialize)]
 /// struct CreateUser {
 ///     name:     String,
 ///     password: String,

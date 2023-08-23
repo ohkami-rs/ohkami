@@ -12,7 +12,9 @@ use crate::{
 /// 
 /// Generated from `Context` and handlers must returns this.
 /// 
-/// ```ignore
+/// ```
+/// use ohkami::prelude::*;
+/// 
 /// async fn hello(c: Context) -> Response {
 ///     c
 ///         .OK()           // generate Response
@@ -24,6 +26,8 @@ use crate::{
 /// This impls `FromResidual<Result<Infallible, Self>>`, so you can use `.map_err` in most cases. 
 /// 
 /// ```ignore
+/// use ohkami::prelude::*;
+/// 
 /// async fn create_user(c: Context,
 ///     payload: CreateUserRequest
 /// ) -> Response {

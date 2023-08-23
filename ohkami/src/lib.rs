@@ -66,11 +66,11 @@ pub(crate) use layer3_fang_handler::{PATH_PARAMS_LIMIT};
 pub use layer0_lib         ::{Status, Method, ContentType};
 pub use layer1_req_res     ::{Request, Response, FromRequest};
 pub use layer2_context     ::{Context};
-pub use layer3_fang_handler::{Fang, Route};
+pub use layer3_fang_handler::{Route, Fang};
 pub use layer5_ohkami      ::{Ohkami, IntoFang};
 
 pub mod prelude {
-    pub use crate::{Response, Context, Route, Ohkami};
+    pub use crate::{Request, Response, Context, Route, Ohkami};
 }
 
 pub mod utils {

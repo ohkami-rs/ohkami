@@ -9,19 +9,30 @@ use crate::{layer4_router::TrieRouter, Method};
 /// 
 /// ```ignore
 /// use ohkami::prelude::*;
+/// use ohkami::{Fang, IntoFang};
 /// 
 /// struct Log;
 /// impl IntoFang for Log {
 ///     fn bite(self) -> Fang {
-///         Fang::new(|res: Response| {
+///         Fang(|res: Response| {
 ///             println!("{res:?}");
 ///             res
 ///         })
 ///     }
 /// }
 /// 
-/// struct Auth //...
+/// struct Auth;
+/// impl IntoFang for Auth {
+///     fn bite(self) -> Fang {
+///         Fang(|c: &mut Context, req: Request| {
+///             // Do something...
 /// 
+///             Ok(req)
+///         })
+///     }
+/// }
+/// 
+/// #[tokio::main]
 /// async fn main() {
 ///     let api_ohkami = Ohkami::new((
 ///         "/users".
@@ -34,12 +45,12 @@ use crate::{layer4_router::TrieRouter, Method};
 ///     // I'd like to use `Auth` and `Log` fang...
 ///     
 ///     let api_ohkami = Ohkami::with((Auth, Log), (
-///         "/users"
-///             .POST(create_user),
-///         "/users/:id"
-///             .GET(get_user_by_id).
-///             .PATCH(update_user),
-///     );
+///         "/users".
+///             POST(create_user),
+///         "/users/:id".
+///             GET(get_user_by_id).
+///             PATCH(update_user),
+///     ));
 /// 
 ///     // And, here `Log` fang of api_ohkami is duplicated with
 ///     // that of the root ohkami below, but it's no problem
@@ -48,7 +59,7 @@ use crate::{layer4_router::TrieRouter, Method};
 ///     Ohkami::with(Log, (
 ///         "/hc" .GET(health_check),
 ///         "/api".By(api_ohkami),
-///     ).howl(3000).await
+///     )).howl(3000).await
 /// }
 /// ```
 /// 
@@ -93,7 +104,10 @@ impl Ohkami {
 
     /// - `fangs` is an item that implements `IntoFang`, or tuple of such items :
     /// 
-    /// ```ignore
+    /// ```
+    /// use ohkami::prelude::*;
+    /// use ohkami::{Fang, IntoFang};
+    /// 
     /// struct Log;
     /// impl IntoFang for Log {
     ///     fn bite(self) -> Fang {

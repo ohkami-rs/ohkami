@@ -47,14 +47,17 @@ impl Fang {
 /// 
 /// <br/>
 /// 
-/// ## exapmple
+/// ## example
 /// 
-/// ```ignore
+/// ```
+/// use ohkami::prelude::*;
+/// use ohkami::{IntoFang, Fang};
+/// 
 /// struct AppendHeader;
 /// impl IntoFang for AppendHeader {
 ///     fn bite(self) -> Fang {
 ///         Fang(|c: &mut Context, req: Request| {
-///             c.header.Server("ohkami");
+///             c.headers.Server("ohkami");
 ///             req
 ///         })
 ///     }
