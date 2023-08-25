@@ -13,8 +13,13 @@ pub fn parse_json<'req, T: Deserialize<'req>>(buf: &'req [u8]) -> Result<T, Cow<
 
 /*===== for #[Payload(FormData)] =====*/
 pub enum FormPart {
-    Field { part_name: String, content: Vec<u8> },
-    File  { part_name: String, content: Vec<u8>, file_name: Option<String>, content_type: String, },
+    Data(String),
+    File(File),
+}
+pub struct File {
+    file_name: String,
+    mime_type: String,
+    content:   Vec<u8>,
 }
 /// return
 /// 

@@ -121,14 +121,21 @@ pub fn Query(_: proc_macro::TokenStream, data: proc_macro::TokenStream) -> proc_
 /// 
 /// #[Payload(FormData)]
 /// struct ProfileData {
-///     submitter: String,
-///     pics:      Vec<File>,
+///     submitter_name: String,
+///     pics:           Vec<File>,
 /// }
-/// 
-/// 
+/// /* expected form :
+///     <form action="http://server.dom/cgi/handle" enctype="multiprt/form-data" method="post">
+///         What is your name? <input type="text" name="submitter-name" />
+///         What files are you sending? <input="file" name="pics" />
+///     </form>
+/// */ 
+///
 /// ```
 /// 
-/// - form part of kebab-case-name is handled by field of snake_case version of the name ( example: `name="submitter-name"` is handled by field `submitter_name` )
+/// - NOT available for tuple struct ( like `struct S(usize, usize);` ) or tag struct ( like `struct X;` ).
+/// - form part of kebab-case-name is handled by field of snake_case version of the name ( example: `name="submitter-name"` is handled by field `submitter_name` ).
+/// - Possible value types : `String` `File` `Vec<File>`.
 /// 
 #[proc_macro_attribute] #[allow(non_snake_case)]
 pub fn Payload(format: proc_macro::TokenStream, data: proc_macro::TokenStream) -> proc_macro::TokenStream {
