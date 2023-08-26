@@ -16,16 +16,57 @@ pub enum FormPart {
     Data(String),
     File(File),
 }
+
 pub struct File {
-    file_name: String,
+    name:      Option<String>,
     mime_type: String,
     content:   Vec<u8>,
+} impl File {
+    pub fn name(&self) -> Option<&str> {
+        self.name.as_ref().map(|s| s.as_str())
+    }
+    pub fn mime_type(&self) -> &str {
+        &self.mime_type
+    }
+    pub fn content(&self) -> &[u8] {
+        &self.content
+    }
 }
+
 /// return
 /// 
 /// - `Some(PormPart)` if `buf` contains a form part
 /// - `None` if `buf` contains only `{boundary}--`
 pub fn parse_formpart(mut buf: &[u8], boundary: &str) -> Option<FormPart> {
+    let boundary = boundary.as_bytes();
+
+    if &buf[..(boundary.len())] != boundary {panic!("Expected boundary")}
+    buf = &buf [(boundary.len())..];
+
+    match &buf[..2] {
+        b"\r\n" => buf = &buf[2..],
+        b"--"   => return None,
+        _ => panic!("Unexpected bytes after boundary")
+    }
+
+    match &buf[..(b"Content-Disposition: ".len())] {
+        b"Content-Disposition: " | b"content-disposition: " => buf = &buf[(b"Content-Disposition: ".len())..],
+        _ => panic!("Expected `Content-Disposition` header")
+    }
+
+    match &buf[0] {
+        b'f' => {
+            if &buf[..(b"form-data; name=\"".len())] != b"form-data; name=\"" {panic!("Expected `form-data; name=\"`")}
+            buf = &buf[b"form-data; name=\"".len()..]
+
+            
+        }
+        b'a' => {
+
+        }
+        _ => panic!("Expected `form-data` or `attachment` as `Content-Disposition` value")
+    }
+
     todo!()
 }
 

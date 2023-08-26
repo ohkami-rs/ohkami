@@ -86,6 +86,8 @@ pub fn Query(_: proc_macro::TokenStream, data: proc_macro::TokenStream) -> proc_
 /// }
 /// ```
 /// 
+/// - Requires that the struct implements `serde::Deserialize`
+/// 
 /// <br/>
 /// 
 /// ### URLEncoded
@@ -103,8 +105,6 @@ pub fn Query(_: proc_macro::TokenStream, data: proc_macro::TokenStream) -> proc_
 ///     name=yourname&n_repeat=2
 /// */
 /// ```
-/// 
-/// <br/>
 /// 
 /// - NOT available for tuple struct ( like `struct S(usize, usize);` ) or tag struct ( like `struct X;` ).
 /// - Possible value types : `String` `u8` `u16` `u32` `u64` `u128` `usize` and `Option` of them.
@@ -135,7 +135,7 @@ pub fn Query(_: proc_macro::TokenStream, data: proc_macro::TokenStream) -> proc_
 /// 
 /// - NOT available for tuple struct ( like `struct S(usize, usize);` ) or tag struct ( like `struct X;` ).
 /// - form part of kebab-case-name is handled by field of snake_case version of the name ( example: `name="submitter-name"` is handled by field `submitter_name` ).
-/// - Possible value types : `String` `File` `Vec<File>`.
+/// - Possible value types : `String` or `Vec<File>`.
 /// 
 #[proc_macro_attribute] #[allow(non_snake_case)]
 pub fn Payload(format: proc_macro::TokenStream, data: proc_macro::TokenStream) -> proc_macro::TokenStream {
