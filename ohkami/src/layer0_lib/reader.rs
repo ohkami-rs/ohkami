@@ -5,7 +5,7 @@ pub(crate) struct Reader<'b> {
     pub(crate) fn new(bytes: &'b [u8]) -> Self {
         Self { bytes, pos: 0 }
     }
-    pub(crate) fn bytes(&self) -> &[u8] {
+    #[inline] pub(crate) fn bytes(&self) -> &[u8] {
         &self.bytes[self.pos..]
     }
 } impl<'b> Reader<'b> {
@@ -19,10 +19,9 @@ pub(crate) struct Reader<'b> {
     }
     pub(crate) fn read_before(&mut self, byte: u8) -> Option<&'b [u8]> {
         let current_pos = self.pos;
-        /* `byte` は読み飛ばす */
         for b in &self.bytes[current_pos..] {
+            if &byte == b {return Some(&self.bytes[current_pos..(self.pos)])}
             self.pos += 1;
-            if &byte == b {return Some(&self.bytes[current_pos..(self.pos-1)])}
         }
         None
     }
@@ -30,9 +29,9 @@ pub(crate) struct Reader<'b> {
         {prefix == &self.bytes[(self.pos)..(self.pos + prefix.len())]}
             .then(|| self.pos += prefix.len())
     }
-    pub(crate) fn read_prefix_oneof<const N: usize>(&mut self, prefixes: [&[u8]; N]) -> Option<()> {
-        for prefix in prefixes {
-            if self.read_prefix(prefix).is_some() {return Some(())}
+    pub(crate) fn read_prefix_oneof<const N: usize>(&mut self, prefixes: [&[u8]; N]) -> Option<usize> {
+        for i in 0..(prefixes.len()) {
+            if self.read_prefix(&prefixes[i]).is_some() {return Some(i)}
         }
         None
     }
@@ -60,12 +59,12 @@ pub(crate) struct Reader<'b> {
         let mut r = Reader::new(b"Hello, world!");
         let read = r.read_before(b' ');
         assert_eq!(read,      Some(&b"Hello,"[..]));
-        assert_eq!(r.bytes(), b"world!");
+        assert_eq!(r.bytes(), b" world!");
 
         let mut r = Reader::new(b"Hello, world!");
         let read = r.read_before(b'o');
         assert_eq!(read,      Some(&b"Hell"[..]));
-        assert_eq!(r.bytes(), b", world!");
+        assert_eq!(r.bytes(), b"o, world!");
     }
 
     #[test] fn test_read_prefix() {

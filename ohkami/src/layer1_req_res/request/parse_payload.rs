@@ -1,6 +1,8 @@
-use std::borrow::Cow;
+use std::{borrow::Cow, hint::unreachable_unchecked};
 use percent_encoding::percent_decode;
 use serde::Deserialize;
+
+use crate::layer0_lib::Reader;
 
 
 /*===== for #[Payload(JSON)] =====*/
@@ -13,8 +15,8 @@ pub fn parse_json<'req, T: Deserialize<'req>>(buf: &'req [u8]) -> Result<T, Cow<
 
 /*===== for #[Payload(FormData)] =====*/
 pub enum FormPart {
-    Data(String),
-    File(File),
+    Data { name: String, content: String },
+    File { name: String, content: File },
 }
 
 pub struct File {
@@ -37,37 +39,25 @@ pub struct File {
 /// 
 /// - `Some(PormPart)` if `buf` contains a form part
 /// - `None` if `buf` contains only `{boundary}--`
-pub fn parse_formpart(mut buf: &[u8], boundary: &str) -> Option<FormPart> {
+pub fn parse_formpart(buf: &[u8], boundary: &str) -> Option<FormPart> {
     let boundary = boundary.as_bytes();
+    let mut r = Reader::new(buf);
 
-    if &buf[..(boundary.len())] != boundary {panic!("Expected boundary")}
-    buf = &buf [(boundary.len())..];
+    r.read_prefix(boundary).expect("Expected valid form-data boundary");
+    r.read_prefix(b"\r\n")?; // return None if this was `--`
 
-    match &buf[..2] {
-        b"\r\n" => buf = &buf[2..],
-        b"--"   => return None,
-        _ => panic!("Unexpected bytes after boundary")
-    }
-
-    match &buf[..(b"Content-Disposition: ".len())] {
-        b"Content-Disposition: " | b"content-disposition: " => buf = &buf[(b"Content-Disposition: ".len())..],
-        _ => panic!("Expected `Content-Disposition` header")
-    }
-
-    match &buf[0] {
-        b'f' => {
-            if &buf[..(b"form-data; name=\"".len())] != b"form-data; name=\"" {panic!("Expected `form-data; name=\"`")}
-            buf = &buf[b"form-data; name=\"".len()..]
+    r.read_prefix_oneof([b"Content-Disposition: ", b"content-disposition: "]).expect("Expected `Content-Disposition` header");
+    match r.read_prefix_oneof([b"form-data", b"attachment"]).expect("Expected `form-data` or `attachment` as `Content-Disposition` value") {
+        0 => {
+            r.read_prefix(b"; name=\"").expect("Expected name in form-data value");
+            let name = r.read_before(b'"').expect("Found \" not closing");
+            r.read_prefix(b"\"\r\n").unwrap();
 
             
         }
-        b'a' => {
-
-        }
-        _ => panic!("Expected `form-data` or `attachment` as `Content-Disposition` value")
+        1 => {}
+        _ => unsafe {unreachable_unchecked()}
     }
-
-    todo!()
 }
 
 
