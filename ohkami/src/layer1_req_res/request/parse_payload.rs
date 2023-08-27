@@ -29,6 +29,7 @@ pub struct FormPart {
 pub enum FormContent {
     Content(Content),
     File(File),
+    Files(Vec<File>),
 }
 
 pub struct Content {
@@ -69,28 +70,69 @@ pub struct File {
 /// return
 /// 
 /// - `Some(PormPart)` if `buf` contains a form part
-/// - `None` if `buf` contains only `{boundary}--`
+/// - `None` if `buf` contains only `{boundary}--`, or, `buf`
 pub fn parse_formpart(buf: &[u8], boundary: &str) -> Option<FormPart> {
     let boundary = boundary.as_bytes();
     let mut r = Reader::new(buf);
 
-    r.read_prefix(boundary).expect("Expected valid form-data boundary");
-    r.read_prefix(b"\r\n")?; // return None if this was `--`
+    r.read_(boundary).expect("Expected valid form-data boundary");
+    r.read_(b"\r\n")?; // return None if this was `--`
 
-    r.read_prefix_oneof([b"Content-Disposition: ", b"content-disposition: "]).expect("Expected `Content-Disposition` header");
-    match r.read_prefix_oneof([b"form-data", b"attachment"]).expect("Expected `form-data` or `attachment` as `Content-Disposition` value") {
-        0 => {
-            r.read_prefix(b"; name=\"").expect("Expected name in form-data value");
-            let name = r.read_before(b'"').expect("Found \" not closing");
-            r.read_prefix(b"\"\r\n").unwrap();
+    let mut name      = None;
+    let mut mime_type = format!("text/plain");
 
-            todo!()
+    match r.read_split_left(b':').unwrap() {
+        b"Content-Type" | b"content-type" => {r.read_split_left(b' ');
+            if r.read_(b"multipart/mixed").is_some() {
+                r.read_(b",").unwrap(); r.read_split_left(b' ');
+                r.read_(b"boundary=").expect("Expected `boundary=`");
+                let attachent_boundary = r.read_before(b'\r').unwrap();
+                r.read_(b"\r\n\r\n").unwrap();
+
+                let mut attachments = Vec::new();
+                while let Some(file) = parse_attachment(&mut r, attachent_boundary) {
+                    attachments.push(file)
+                }
+
+            } else {
+
+            }
         }
-        1 => {
-            todo!()
+        b"Content-Disposition" | b"content-disposition" => {r.read_split_left(b' ');
+            
         }
-        _ => unsafe {unreachable_unchecked()}
+        _ => panic!("Expected `Content-Type` or `Content-Disposition`")
     }
+}
+
+fn parse_attachment(r: &mut Reader, boundary: &[u8]) -> Option<File> {
+    r.read_(boundary).expect("Expected valid form-data boundary");
+    r.read_(b"\r\n")?; // return None if this was `--`
+
+    let mut file = File { name: None, mime_type: format!("text/plain"), content: vec![] };
+
+    while r.read_(b"\r\n").is_none() {
+        match r.read_split_left(b':').unwrap() {
+            b"Content-Type" | b"content-type" => {r.read(b' ');
+                let mime_type = r.read_before(b'\r').unwrap().to_vec();
+                file.mime_type = String::from_utf8(mime_type).expect("mime type is invalid UTF-8");
+                r.read_(b"\r\n").unwrap()
+            }
+            b"Content-Disposition" | b"content-disposition" => {r.read(b' ');
+                r.read_(b"attachment").expect("Expected `attachment`");
+                if r.read(b';').is_some() {r.read(b' ');
+                    r.read_(b"filename=\"").expect("Expected `filename`");
+                    let name = r.read_split_left(b'"').expect("Found '\"' not closing");
+                    file.name.replace(percent_decode(name).decode_utf8().expect("filename is invalid UTF-8").to_string());
+                    r.read_(b"\r\n").unwrap()
+                }
+            }
+            _ => ()
+        }
+    }
+
+    file.content = r.read_before_(boundary).unwrap().to_vec();
+    Some(file)
 }
 
 
