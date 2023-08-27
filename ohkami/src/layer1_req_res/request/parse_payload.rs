@@ -78,31 +78,42 @@ pub fn parse_formpart(buf: &[u8], boundary: &str) -> Option<FormPart> {
     r.read_(boundary).expect("Expected valid form-data boundary");
     r.read_(b"\r\n")?; // return None if this was `--`
 
-    let mut name      = None;
-    let mut mime_type = format!("text/plain");
+    let mut form_part = FormPart {
+        name:    String::new(),
+        content: FormContent::Content(Content {
+            mime_type: format!("text/plain"),
+            content:   vec![],
+        })
+    };
 
-    match r.read_split_left(b':').unwrap() {
-        b"Content-Type" | b"content-type" => {r.read_split_left(b' ');
-            if r.read_(b"multipart/mixed").is_some() {
-                r.read_(b",").unwrap(); r.read_split_left(b' ');
-                r.read_(b"boundary=").expect("Expected `boundary=`");
-                let attachent_boundary = r.read_before(b'\r').unwrap();
-                r.read_(b"\r\n\r\n").unwrap();
+    while r.read_(b"\r\n").is_some() {
+        match r.read_split_left(b':').unwrap() {
+            b"Content-Type" | b"content-type" => {r.read(b' ');
+                if r.read_(b"multipart/mixed").is_some() {
+                    r.read_(b",").unwrap(); r.read(b' ');
+                    r.read_(b"boundary=").expect("Expected `boundary=`");
+                    let attachent_boundary = r.read_before(b'\r').unwrap();
+                    r.read_(b"\r\n\r\n").unwrap();
 
-                let mut attachments = Vec::new();
-                while let Some(file) = parse_attachment(&mut r, attachent_boundary) {
-                    attachments.push(file)
+                    let mut attachments = Vec::new();
+                    while let Some(file) = parse_attachment(&mut r, attachent_boundary) {
+                        attachments.push(file)
+                    }
+                    form_part.content = FormContent::Files(attachments)
+
+                } else {
+
                 }
-
-            } else {
+            }
+            b"Content-Disposition" | b"content-disposition" => {r.read(b' ');
 
             }
+            _ => panic!("Expected `Content-Type` or `Content-Disposition`")
         }
-        b"Content-Disposition" | b"content-disposition" => {r.read_split_left(b' ');
-            
-        }
-        _ => panic!("Expected `Content-Type` or `Content-Disposition`")
     }
+
+    
+    Some(form_part)
 }
 
 fn parse_attachment(r: &mut Reader, boundary: &[u8]) -> Option<File> {
