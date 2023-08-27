@@ -14,9 +14,40 @@ pub fn parse_json<'req, T: Deserialize<'req>>(buf: &'req [u8]) -> Result<T, Cow<
 
 
 /*===== for #[Payload(FormData)] =====*/
-pub enum FormPart {
-    Data { name: String, content: String },
-    File { name: String, content: File },
+pub struct FormPart {
+    name:    String,
+    content: FormContent,
+} impl FormPart {
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+    pub fn into_content(self) -> FormContent {
+        self.content
+    }
+}
+
+pub enum FormContent {
+    Content(Content),
+    File(File),
+}
+
+pub struct Content {
+    mime_type: String,
+    content:   Vec<u8>,
+} impl Content {
+    pub fn mime_type(&self) -> &str {
+        &self.mime_type
+    }
+    pub fn content(&self) -> &[u8] {
+        &self.content
+    }
+} impl Content {
+    pub fn text(self) -> Result<String, ::std::string::FromUtf8Error> {
+        String::from_utf8(self.content)
+    }
+    pub unsafe fn text_unchecked(self) -> String {
+        String::from_utf8_unchecked(self.content)
+    }
 }
 
 pub struct File {
@@ -53,9 +84,11 @@ pub fn parse_formpart(buf: &[u8], boundary: &str) -> Option<FormPart> {
             let name = r.read_before(b'"').expect("Found \" not closing");
             r.read_prefix(b"\"\r\n").unwrap();
 
-            
+            todo!()
         }
-        1 => {}
+        1 => {
+            todo!()
+        }
         _ => unsafe {unreachable_unchecked()}
     }
 }
