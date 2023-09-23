@@ -1,8 +1,14 @@
-use std::{borrow::Cow, hint::unreachable_unchecked};
-use percent_encoding::percent_decode;
-use serde::Deserialize;
+use std::{borrow::Cow, format as f};
 
-use crate::layer0_lib::Reader;
+use serde::Deserialize;
+use byte_reader::Reader;
+use percent_encoding::percent_decode;
+
+fn __unreachable__() -> ! {
+    unsafe {std::hint::unreachable_unchecked()}
+}
+
+
 
 
 /*===== for #[Payload(JSON)] =====*/
@@ -11,6 +17,8 @@ pub fn parse_json<'req, T: Deserialize<'req>>(buf: &'req [u8]) -> Result<T, Cow<
         serde_json::from_slice(buf)
             .map_err(|e| Cow::Owned(e.to_string()))
 }
+
+
 
 
 /*===== for #[Payload(FormData)] =====*/
@@ -69,82 +77,111 @@ pub struct File {
 
 /// return
 /// 
-/// - `Some(PormPart)` if `buf` contains a form part
-/// - `None` if `buf` contains only `{boundary}--`, or, `buf`
+/// - `Some(FormPart)` if `buf` contains a form part
+/// - `None` if `buf` contains only `--boundary--`
 pub fn parse_formpart(buf: &[u8], boundary: &str) -> Option<FormPart> {
-    let boundary = boundary.as_bytes();
     let mut r = Reader::new(buf);
 
-    r.read_(boundary).expect("Expected valid form-data boundary");
-    r.read_(b"\r\n")?; // return None if this was `--`
+    r.consume(&f!("--{boundary}")).expect("Expected valid form-data boundary");
+    match r.consume_oneof(["\r\n", "--"]) {
+        Ok(0)  => (/* continue parsing */),
+        Ok(1)  => return None/* Here the `multipart/form-data` finished */,
+        Ok(_)  => __unreachable__(),
+        Err(e) => panic!("{e}")
+    }
 
-    let mut form_part = FormPart {
+    let mut this = FormPart {
         name:    String::new(),
         content: FormContent::Content(Content {
             mime_type: format!("text/plain"),
-            content:   vec![],
+            content:   Vec::new(),
         })
     };
 
-    while r.read_(b"\r\n").is_some() {
-        match r.read_split_left(b':').unwrap() {
-            b"Content-Type" | b"content-type" => {r.read(b' ');
-                if r.read_(b"multipart/mixed").is_some() {
-                    r.read_(b",").unwrap(); r.read(b' ');
-                    r.read_(b"boundary=").expect("Expected `boundary=`");
-                    let attachent_boundary = r.read_before(b'\r').unwrap();
-                    r.read_(b"\r\n\r\n").unwrap();
+    while let Ok(header) = r.read_kebab() {
+        if header.eq_ignore_ascii_case("Content-Type") {
+            r.consume(":").unwrap(); r.skip_whitespace();
 
-                    let mut attachments = Vec::new();
-                    while let Some(file) = parse_attachment(&mut r, attachent_boundary) {
-                        attachments.push(file)
-                    }
-                    form_part.content = FormContent::Files(attachments)
-
-                } else {
-
+            __TODO__
+        } else
+        if header.eq_ignore_ascii_case("Content-Disposition") {
+            r.consume(":").unwrap(); r.skip_whitespace();
+            match r.consume_oneof(["form-data", "attachment"]) {
+                Ok(0) => {
+                    r.consume(";").unwrap(); r.skip_whitespace();
+                    r.consume("name=").expect("Expected `name` in form part");
+                    this.name = r.read_string().unwrap();
                 }
+                Ok(1) => if r.consume(";").is_ok() {
+                    __TODO__
+                }
+                Ok(_)  => __unreachable__(), Err(e) => panic!("{e}")
             }
-            b"Content-Disposition" | b"content-disposition" => {r.read(b' ');
-
-            }
-            _ => panic!("Expected `Content-Type` or `Content-Disposition`")
+            r.consume("\r\n").unwrap();
         }
     }
 
+// 
+    // while r.(b"\r\n").is_some() {
+    //     match r.read_split_left(b':').unwrap() {
+    //         b"Content-Type" | b"content-type" => {r.read(b' ');
+    //             if r.read_(b"multipart/mixed").is_some() {
+    //                 r.read_(b",").unwrap(); r.read(b' ');
+    //                 r.read_(b"boundary=").expect("Expected `boundary=`");
+    //                 let attachent_boundary = r.read_before(b'\r').unwrap();
+    //                 r.read_(b"\r\n\r\n").unwrap();
+// 
+    //                 let mut attachments = Vec::new();
+    //                 while let Some(file) = parse_attachment(&mut r, attachent_boundary) {
+    //                     attachments.push(file)
+    //                 }
+    //                 form_part.content = FormContent::Files(attachments)
+// 
+    //             } else {
+// 
+    //             }
+    //         }
+    //         b"Content-Disposition" | b"content-disposition" => {r.read(b' ');
+// 
+    //         }
+    //         _ => panic!("Expected `Content-Type` or `Content-Disposition`")
+    //     }
+    // }
     
-    Some(form_part)
+    Some(this)
 }
 
-fn parse_attachment(r: &mut Reader, boundary: &[u8]) -> Option<File> {
-    r.read_(boundary).expect("Expected valid form-data boundary");
-    r.read_(b"\r\n")?; // return None if this was `--`
+// fn parse_attachment(r: &mut Reader<&[u8]>, boundary: &[u8]) -> Option<File> {
+//     r.read_(boundary).expect("Expected valid form-data boundary");
+//     r.read_(b"\r\n")?; // return None if this was `--`
+// 
+//     let mut file = File { name: None, mime_type: format!("text/plain"), content: vec![] };
+// 
+//     while r.read_(b"\r\n").is_none() {
+//         match r.read_split_left(b':').unwrap() {
+//             b"Content-Type" | b"content-type" => {r.read(b' ');
+//                 let mime_type = r.read_before(b'\r').unwrap().to_vec();
+//                 file.mime_type = String::from_utf8(mime_type).expect("mime type is invalid UTF-8");
+//                 r.read_(b"\r\n").unwrap()
+//             }
+//             b"Content-Disposition" | b"content-disposition" => {r.read(b' ');
+//                 r.read_(b"attachment").expect("Expected `attachment`");
+//                 if r.read(b';').is_some() {r.read(b' ');
+//                     r.read_(b"filename=\"").expect("Expected `filename`");
+//                     let name = r.read_split_left(b'"').expect("Found '\"' not closing");
+//                     file.name.replace(percent_decode(name).decode_utf8().expect("filename is invalid UTF-8").to_string());
+//                     r.read_(b"\r\n").unwrap()
+//                 }
+//             }
+//             _ => ()
+//         }
+//     }
+// 
+//     file.content = r.read_before_(boundary).unwrap().to_vec();
+//     Some(file)
+// }
 
-    let mut file = File { name: None, mime_type: format!("text/plain"), content: vec![] };
 
-    while r.read_(b"\r\n").is_none() {
-        match r.read_split_left(b':').unwrap() {
-            b"Content-Type" | b"content-type" => {r.read(b' ');
-                let mime_type = r.read_before(b'\r').unwrap().to_vec();
-                file.mime_type = String::from_utf8(mime_type).expect("mime type is invalid UTF-8");
-                r.read_(b"\r\n").unwrap()
-            }
-            b"Content-Disposition" | b"content-disposition" => {r.read(b' ');
-                r.read_(b"attachment").expect("Expected `attachment`");
-                if r.read(b';').is_some() {r.read(b' ');
-                    r.read_(b"filename=\"").expect("Expected `filename`");
-                    let name = r.read_split_left(b'"').expect("Found '\"' not closing");
-                    file.name.replace(percent_decode(name).decode_utf8().expect("filename is invalid UTF-8").to_string());
-                    r.read_(b"\r\n").unwrap()
-                }
-            }
-            _ => ()
-        }
-    }
-
-    file.content = r.read_before_(boundary).unwrap().to_vec();
-    Some(file)
-}
 
 
 /*===== for #[Payload(URLEncoded)] =====*/
