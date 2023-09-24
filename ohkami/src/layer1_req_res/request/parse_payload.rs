@@ -131,7 +131,10 @@ pub fn parse_formpart(buf: &[u8], boundary: &str) -> Option<FormPart> {
             r.consume("\r\n").unwrap();
         }
 
-        // ignore another header
+        else {// ignore the line
+            r.skip_while(|b| b != &b'\r');
+            r.consume("\r\n").unwrap();
+        }
     }
 
     if let Some(boundary_bytes) = mixed_boundary {
@@ -174,14 +177,33 @@ pub fn parse_formpart(buf: &[u8], boundary: &str) -> Option<FormPart> {
 
 fn parse_attachments(r: &mut Reader<&[u8]>, boundary: &[u8]) -> Vec<File> {
     let mut attachments = Vec::new();
-
     loop {
         r.consume("--").expect("Expected valid form-data boundary");
         r.consume(boundary).expect("Expected valid form-data boundary");
         if r.consume("\r\n").is_ok() {
             let mut file = File { name: None, mime_type: f!("text/plain"), content: vec![] };
             loop {
-                if r.consume("\r\n").is_ok() 
+                if r.consume("\r\n").is_ok() {break attachments.push(file)}
+
+                let header = r.read_kebab().expect("Expected `Content-Type` or `Content-Disposition`");
+                if header.eq_ignore_ascii_case("Content-Type") {
+                    r.consume(":").unwrap(); r.skip_whitespace();
+                    file.mime_type = String::from_utf8(
+                        r.read_while(|b| b != &b'\r').to_vec()
+                    ).expect("Invalid Content-Type");
+                    r.consume("\r\n").unwrap();
+                } else if header.eq_ignore_ascii_case("Content-Disposition") {
+                    r.consume(":").unwrap(); r.skip_whitespace();
+                    r.consume("attachment").expect("Expected `attachment`");
+                    if r.consume(";").is_ok() {r.skip_whitespace();
+                        r.consume("filename=").expect("Expected `filename=`");
+                        file.name = Some(r.read_string().expect("Invalid filename"));
+                        r.consume("\r\n").unwrap();
+                    }
+                } else {// ignore the line
+                    r.skip_while(|b| b != &b'\r');
+                    r.consume("\r\n").unwrap();
+                }
             }
         }
         r.consume("--").unwrap();
