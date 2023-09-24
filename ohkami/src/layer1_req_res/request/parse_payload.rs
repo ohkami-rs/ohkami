@@ -88,7 +88,7 @@ pub fn parse_formpart(buf: &[u8], boundary: &str) -> Option<FormPart> {
     let mut r = Reader::new(buf);
 
     r.consume("--").expect("Expected valid form-data boundary");
-    r.consume(&boundary).expect("Expected valid form-data boundary");
+    r.consume(boundary).expect("Expected valid form-data boundary");
     r.consume("\r\n").ok(/* return None if this wasn't `\r\n` (so was `--`) */)?;
 
     while r.consume("\r\n"/* `\r\n` just before body of this part */).is_err() {
@@ -134,8 +134,8 @@ pub fn parse_formpart(buf: &[u8], boundary: &str) -> Option<FormPart> {
         // ignore another header
     }
 
-    if let Some(boundary) = mixed_boundary {
-        let mut attachments = parse_attachments(&mut r, boundary);
+    if let Some(boundary_bytes) = mixed_boundary {
+        let mut attachments = parse_attachments(&mut r, boundary_bytes);
         let content = if attachments.len() == 1 {
             FormContent::File(unsafe {attachments.pop().unwrap_unchecked()})
         } else {
@@ -173,7 +173,20 @@ pub fn parse_formpart(buf: &[u8], boundary: &str) -> Option<FormPart> {
 }
 
 fn parse_attachments(r: &mut Reader<&[u8]>, boundary: &[u8]) -> Vec<File> {
-    
+    let mut attachments = Vec::new();
+
+    loop {
+        r.consume("--").expect("Expected valid form-data boundary");
+        r.consume(boundary).expect("Expected valid form-data boundary");
+        if r.consume("\r\n").is_ok() {
+            let mut file = File { name: None, mime_type: f!("text/plain"), content: vec![] };
+            loop {
+                if r.consume("\r\n").is_ok() 
+            }
+        }
+        r.consume("--").unwrap();
+        break attachments
+    }
 }
 
 fn is_end_boundary(line: &[u8], boundary: &str) -> bool {
@@ -187,6 +200,10 @@ fn is_end_boundary(line: &[u8], boundary: &str) -> bool {
 }
 
 
+#[cfg(test)] fn test_is_end_boundary() {
+    assert_eq!(is_end_boundary(b"--abcdef", "abcdef"), false);
+    assert_eq!(is_end_boundary(b"--abcdef--", "abcdef"), true);
+}
 
 
 
