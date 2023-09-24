@@ -80,29 +80,26 @@ pub struct File {
 /// - `Some(FormPart)` if `buf` contains a form part
 /// - `None` if `buf` contains only `--boundary--`
 pub fn parse_formpart(buf: &[u8], boundary: &str) -> Option<FormPart> {
+    let start_boundary = f!("--{boundary}");
+    let end_boundary   = f!("--{boundary}--");
+
     let mut r = Reader::new(buf);
+    let mut name      = String::new();
+    let mut mime_type = f!("text/plain");
+    let mut content   = Vec::new();
 
-    r.consume(&f!("--{boundary}")).expect("Expected valid form-data boundary");
-    match r.consume_oneof(["\r\n", "--"]) {
-        Ok(0)  => (/* continue parsing */),
-        Ok(1)  => return None/* Here the `multipart/form-data` finished */,
-        Ok(_)  => __unreachable__(),
-        Err(e) => panic!("{e}")
-    }
+    r.consume(&start_boundary).expect("Expected valid form-data boundary");
+    r.consume("\r\n").unwrap();
 
-    let mut this = FormPart {
-        name:    String::new(),
-        content: FormContent::Content(Content {
-            mime_type: format!("text/plain"),
-            content:   Vec::new(),
-        })
-    };
+    while r.consume("\r\n"/* `\r\n` just before body of this part */).is_err() {
+        let header = r.read_kebab().unwrap();
 
-    while let Ok(header) = r.read_kebab() {
         if header.eq_ignore_ascii_case("Content-Type") {
             r.consume(":").unwrap(); r.skip_whitespace();
 
             __TODO__
+
+            r.consume("\r\n").unwrap();
         } else
         if header.eq_ignore_ascii_case("Content-Disposition") {
             r.consume(":").unwrap(); r.skip_whitespace();
@@ -110,7 +107,7 @@ pub fn parse_formpart(buf: &[u8], boundary: &str) -> Option<FormPart> {
                 Ok(0) => {
                     r.consume(";").unwrap(); r.skip_whitespace();
                     r.consume("name=").expect("Expected `name` in form part");
-                    this.name = r.read_string().unwrap();
+                    name = r.read_string().unwrap();
                 }
                 Ok(1) => if r.consume(";").is_ok() {
                     __TODO__
@@ -119,36 +116,27 @@ pub fn parse_formpart(buf: &[u8], boundary: &str) -> Option<FormPart> {
             }
             r.consume("\r\n").unwrap();
         }
+        // ignore another header
     }
 
-// 
-    // while r.(b"\r\n").is_some() {
-    //     match r.read_split_left(b':').unwrap() {
-    //         b"Content-Type" | b"content-type" => {r.read(b' ');
-    //             if r.read_(b"multipart/mixed").is_some() {
-    //                 r.read_(b",").unwrap(); r.read(b' ');
-    //                 r.read_(b"boundary=").expect("Expected `boundary=`");
-    //                 let attachent_boundary = r.read_before(b'\r').unwrap();
-    //                 r.read_(b"\r\n\r\n").unwrap();
-// 
-    //                 let mut attachments = Vec::new();
-    //                 while let Some(file) = parse_attachment(&mut r, attachent_boundary) {
-    //                     attachments.push(file)
-    //                 }
-    //                 form_part.content = FormContent::Files(attachments)
-// 
-    //             } else {
-// 
-    //             }
-    //         }
-    //         b"Content-Disposition" | b"content-disposition" => {r.read(b' ');
-// 
-    //         }
-    //         _ => panic!("Expected `Content-Type` or `Content-Disposition`")
-    //     }
-    // }
+    loop {
+        let line = r.read_while(|b| b != &b'\r');
+        if line == end_boundary.as_bytes() {
+            r.consume("\r\n").ok(/* Maybe no `\r\n` if this is final part */);
+            break
+        }
+        
+        for b in line {content.push(*b)}
+        r.consume("\r\n").unwrap();
+    }
     
-    Some(this)
+    Some(FormPart {
+        name,
+        content: FormContent::Content(Content {
+            mime_type,
+            content,
+        })
+    })
 }
 
 // fn parse_attachment(r: &mut Reader<&[u8]>, boundary: &[u8]) -> Option<File> {
