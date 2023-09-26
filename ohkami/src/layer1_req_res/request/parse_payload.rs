@@ -79,85 +79,67 @@ pub struct File {
 /// 
 /// - `Some(FormPart)` if `buf` contains a form part
 /// - `None` if `buf` only contains end boundary `--boundary--`
-pub fn parse_formpart(buf: &[u8], boundary: &str) -> Option<FormPart> {
+pub fn parse_formpart(buf: &[u8], boundary: &str) -> Result<Option<FormPart>, &'static str> {
     let mut name           = String::new();
     let mut file_name      = None;
     let mut mime_type      = None;
     let mut mixed_boundary = None;
     
-    let mut r = Reader::new(buf);
+    let mut r = Reader::from(buf);
 
-    r.consume("--").expect("Expected valid form-data boundary");
-    r.consume(boundary).expect("Expected valid form-data boundary");
-    r.consume("\r\n")/* return None if this wasn't `\r\n` (so was `--`) */?;
-
-    while r.consume("\r\n"/* `\r\n` just before body of this part */).is_none() {
-        let header = r.read_kebab().unwrap();
-
-        if header.eq_ignore_ascii_case("Content-Type:") {
-            r.skip_whitespace();
-
+    read_start_boundary(&mut r, boundary)?;
+    
+    while r.consume("\r\n").is_none(/* The newline just before body of this part */) {
+        let header = r.read_kebab().ok_or_else(|| "Expected `Content-Type` or `Content-Dispisition`")?;
+        if header.eq_ignore_ascii_case("Content-Type:") {r.skip_whitespace();
             let content_type = r.read_while(|b| !matches!(b, b'\r' | b','));
             if content_type == b"multipart/mixed" {
-                r.consume(",").expect("Expected `boundary=\"...\"`");
+                r.consume(",").ok_or_else(|| "Expected `boundary=\"...\"`")?;
                 r.skip_whitespace();
-                r.consume("boundary").expect("Expected `boundary=\"...\"");
-                mixed_boundary = Some(r.read_while(|b| b != &b'\r'))
+                r.consume("boundary=").ok_or_else(|| "Expected `boundary=\"...\"")?;
+                mixed_boundary = Some(String::from_utf8(r.read_while(|b| b != &b'\r').to_vec()).map_err(|_| "Invalid filename")?);
             } else {
                 mime_type = Some(String::from_utf8(
                     content_type.to_vec()
-                ).expect("Invalid Content-Type"));
+                ).map_err(|_| "Invalid Content-Type")?);
             }
-
-            r.consume("\r\n").unwrap();
-        }
-
-        else if header.eq_ignore_ascii_case("Content-Disposition:") {
+        } else if header.eq_ignore_ascii_case("Content-Disposition:") {r.skip_whitespace();
+            r.consume("form-data").ok_or_else(|| "Expected `form-data`")?;
+            r.consume(";")        .ok_or_else(|| "Expected `name=\"...\"`")?;
             r.skip_whitespace();
-            match r.consume_oneof(["form-data", "attachment"]).expect("Expected `form-data` or `attchment`") {
-                0 => {
-                    r.consume(";").unwrap(); r.skip_whitespace();
-                    r.consume("name=").expect("Expected `name` in form part");
-                    name = r.read_string().unwrap();
-                }
-                1 => {
-                    if r.consume(";").is_some() {r.skip_whitespace();
-                        r.consume("filename=").expect("Expected `filename`");
-                        file_name = Some(r.read_string().unwrap());
-                    }
-                }
-                _  => __unreachable__()
+            r.consume("name=")    .ok_or_else(|| "Expected `name=\"...\"`")?;
+            name = r.read_string().ok_or_else(|| "Expected `name=\"...\"`")?;
+            if r.peek().unwrap() != &b'\r' {
+                r.skip_whitespace();
+                r.consume("filename=").ok_or_else(|| "Expected `filename=\"...\"`")?;
+                file_name = Some(r.read_string().ok_or_else(|| "Expected `filename=\"...\"`")?)
             }
-            r.consume("\r\n").unwrap();
-        }
-
-        else {// ignore the line
+        } else {// ignore the line
             r.skip_while(|b| b != &b'\r');
-            r.consume("\r\n").unwrap();
         }
+        r.consume("\r\n").unwrap();
     }
 
-    if let Some(boundary_bytes) = mixed_boundary {
-        let mut attachments = parse_attachments(&mut r, boundary_bytes);
+    if let Some(boundary) = mixed_boundary {
+        let mut attachments = parse_attachments(&mut r, &boundary)?;
         let content = if attachments.len() == 1 {
             FormContent::File(unsafe {attachments.pop().unwrap_unchecked()})
         } else {
             FormContent::Files(attachments)
         };
 
-        Some(FormPart { name, content })
+        Ok(Some(FormPart { name, content }))
     } else {
         let mut content = Vec::new(); loop {
             let line = r.read_while(|b| b != &b'\r');
 
             if is_end_boundary(line, boundary) {
-                r.consume("\r\n")?/* Maybe no `\r\n` if this is final part */;
+                r.consume("\r\n")/* Maybe no `\r\n` if this is final part */;
                 break
             }
             for b in line {content.push(*b)}
             r.consume("\r\n").unwrap();
         }
-
         let content = if let Some(file_name) = file_name {
             FormContent::File(File {
                 name:      Some(file_name),
@@ -171,33 +153,33 @@ pub fn parse_formpart(buf: &[u8], boundary: &str) -> Option<FormPart> {
             })
         };
 
-        Some(FormPart { name, content })
+        Ok(Some(FormPart { name, content }))
     } 
 }
 
-fn parse_attachments(r: &mut Reader<&[u8]>, boundary: &[u8]) -> Vec<File> {
+fn parse_attachments(r: &mut Reader<&[u8]>, boundary: &str) -> Result<Vec<File>, &'static str> {
     let mut attachments = Vec::new();
     loop {
-        r.consume("--").expect("Expected valid form-data boundary");
-        r.consume(boundary).expect("Expected valid form-data boundary");
+        r.consume("--").ok_or_else(|| "Expected valid form-data boundary")?;
+        r.consume(boundary).ok_or_else(|| "Expected valid form-data boundary")?;
         if r.consume("\r\n").is_some() {
             let mut file = File { name: None, mime_type: f!("text/plain"), content: vec![] };
             loop {
                 if r.consume("\r\n").is_some() {break attachments.push(file)}
 
-                let header = r.read_kebab().expect("Expected `Content-Type` or `Content-Disposition`");
+                let header = r.read_kebab().ok_or_else(|| "Expected `Content-Type` or `Content-Disposition`")?;
                 if header.eq_ignore_ascii_case("Content-Type") {
                     r.consume(":").unwrap(); r.skip_whitespace();
                     file.mime_type = String::from_utf8(
                         r.read_while(|b| b != &b'\r').to_vec()
-                    ).expect("Invalid Content-Type");
+                    ).map_err(|_| "Invalid Content-Type")?;
                     r.consume("\r\n").unwrap();
                 } else if header.eq_ignore_ascii_case("Content-Disposition") {
                     r.consume(":").unwrap(); r.skip_whitespace();
-                    r.consume("attachment").expect("Expected `attachment`");
+                    r.consume("attachment").ok_or_else(|| "Expected `attachment`")?;
                     if r.consume(";").is_some() {r.skip_whitespace();
-                        r.consume("filename=").expect("Expected `filename=`");
-                        file.name = Some(r.read_string().expect("Invalid filename"));
+                        r.consume("filename=").ok_or_else(|| "Expected `filename=`")?;
+                        file.name = Some(r.read_string().ok_or_else(|| "Invalid filename")?);
                         r.consume("\r\n").unwrap();
                     }
                 } else {// ignore the line
@@ -207,7 +189,7 @@ fn parse_attachments(r: &mut Reader<&[u8]>, boundary: &[u8]) -> Vec<File> {
             }
         }
         r.consume("--").unwrap();
-        break attachments
+        break Ok(attachments)
     }
 }
 
@@ -219,6 +201,22 @@ fn is_end_boundary(line: &[u8], boundary: &str) -> bool {
         raw(p, boundary.len()) == boundary.as_bytes() &&
         raw(p, 2) == &[b'-', b'-']
     }
+}
+
+fn read_start_boundary(r: &mut Reader<&[u8]>, boundary: &str) -> Result<(), &'static str> {
+    let err = || "Expected valid form-data boundary";
+    r.consume("--")    .ok_or_else(err)?;
+    r.consume(boundary).ok_or_else(err)?;
+    r.consume("\r\n")  .ok_or_else(err)?;
+    Ok(())
+}
+fn read_end_boundary(r: &mut Reader<&[u8]>, boundary: &str) -> Result<(), &'static str> {
+    let err = || "Expected valid form-data boundary";
+    r.consume("--")    .ok_or_else(err)?;
+    r.consume(boundary).ok_or_else(err)?;
+    r.consume("--")    .ok_or_else(err)?;
+    r.consume("\r\n");
+    Ok(())
 }
 
 
