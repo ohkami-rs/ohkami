@@ -217,7 +217,7 @@ pub(super/* for test */) fn parse_attachments(r: &mut Reader<&[u8]>, boundary: &
 /// <br/>
 /// 
 /// ```ignore
-/// \r\n|--
+/// \r\n
 /// header\r\n
 /// :
 /// header\r\n
@@ -231,12 +231,10 @@ pub(super/* for test */) fn parse_attachments(r: &mut Reader<&[u8]>, boundary: &
 /// If begining 2 bytes are `--` but `\r\n`, that's
 /// end-boundary and this returns `None`
 fn parse_attachment(r: &mut Reader<&[u8]>, boundary: &str) -> Result<Option<(File, bool)>, &'static str> {
-    if r.consume_oneof(["\r\n", "--"]).ok_or_else(EXPECTED_VALID_BOUNDARY)? == 1 {
-        return Ok(None)
-    }
-
     let mut file     = File { name: None, mime_type: f!("text/plain"), content: vec![] };
     let mut is_final = false;
+    
+    r.consume("\r\n").ok_or_else(EXPECTED_VALID_BOUNDARY)?;
     while r.consume("\r\n").is_none() {
         let header = r.read_kebab().ok_or_else(EXPECTED_VALID_HEADER)?;
         if header.eq_ignore_ascii_case("Content-Disposition") {
@@ -258,10 +256,18 @@ fn parse_attachment(r: &mut Reader<&[u8]>, boundary: &str) -> Result<Option<(Fil
         match check_as_boundary(line, boundary) {
             None => {
                 for b in line {file.content.push(*b)}
+                file.content.push(b'\r');
+                file.content.push(b'\n');
                 r.consume("\r\n").unwrap();
             }
-            Some(Boundary::Start) => break,
+            Some(Boundary::Start) => {
+                file.content.pop(/* b'\n' */);
+                file.content.pop(/* b'\r' */);
+                break
+            }
             Some(Boundary::End) => {
+                file.content.pop(/* b'\n' */);
+                file.content.pop(/* b'\r' */);
                 is_final = true;
                 r.consume("\r\n")/* Maybe no `\r\n` */;
                 break
