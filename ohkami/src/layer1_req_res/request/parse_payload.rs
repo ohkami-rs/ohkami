@@ -59,6 +59,7 @@ pub struct Content {
     }
 }
 
+#[cfg_attr(test, derive(PartialEq, Debug))]
 pub struct File {
     name:      Option<String>,
     mime_type: String,
@@ -138,9 +139,11 @@ pub fn parse_formpart(buf: &[u8], boundary: &str) -> Result<Option<FormPart>, &'
         let mut content = Vec::new(); loop {
             let line = r.read_while(|b| b != &b'\r');
 
-            if line.len() == 0 || is_end_boundary(line, boundary) {
+            if is_end_boundary(line, boundary) {
                 r.consume("\r\n")/* Maybe no `\r\n` if this is final part */;
                 break
+            } else if line.len() == 0 {
+                return Err("Unexpected end of form part")
             }
             for b in line {content.push(*b)}
             r.consume("\r\n").unwrap();
@@ -197,9 +200,9 @@ pub(super/* for test */) fn parse_attachments(r: &mut Reader<&[u8]>, boundary: &
                 let line = r.read_while(|b| b != &b'\r');
                 if is_end_boundary(line, boundary) {
                     r.consume("\r\n")/* Maybe no `\r\n` if this is final part */;
-                    break
+                    break attachments.push(file)
                 } else if line.len() == 0 {
-                    
+                    return Err("Unexpected end of attachments")
                 }
                 for b in line {
                     file.content.push(*b)
@@ -208,6 +211,98 @@ pub(super/* for test */) fn parse_attachments(r: &mut Reader<&[u8]>, boundary: &
         }
         r.consume("--").unwrap();
         break Ok(attachments)
+    }
+}
+
+/// <br/>
+/// 
+/// ```ignore
+/// \r\n|--
+/// header\r\n
+/// :
+/// header\r\n
+/// \r\n
+/// content\r\n
+/// :
+/// content\r\n
+/// --boundary(--)?
+/// ```
+/// 
+/// If begining 2 bytes are `--` but `\r\n`, that's
+/// end-boundary and this returns `None`
+fn parse_attachment(r: &mut Reader<&[u8]>, boundary: &str) -> Result<Option<(File, bool)>, &'static str> {
+    if r.consume_oneof(["\r\n", "--"]).ok_or_else(EXPECTED_VALID_BOUNDARY)? == 1 {
+        return Ok(None)
+    }
+
+    let mut file     = File { name: None, mime_type: f!("text/plain"), content: vec![] };
+    let mut is_final = false;
+    while r.consume("\r\n").is_none() {
+        let header = r.read_kebab().ok_or_else(EXPECTED_VALID_HEADER)?;
+        if header.eq_ignore_ascii_case("Content-Disposition") {
+            r.consume(": attachment").ok_or_else(EXPECTED_ATTACHMENT)?;
+            if r.consume("; ").is_some() {
+                r.consume("filename=").ok_or_else(EXPECTED_FILENAME)?;
+                file.name = Some(r.read_string().ok_or_else(EXPECTED_FILENAME)?);
+            }
+        } else if header.eq_ignore_ascii_case("Content-Type") {
+            r.consume(": ").ok_or_else(EXPECTED_VALID_HEADER)?;
+            file.mime_type = String::from_utf8(r.read_while(|b| b != &b'\r').to_vec()).map_err(|_| INVALID_FILENANE())?;
+        } else {// ignore this line
+            r.skip_while(|b| b != &b'\r')
+        }
+        r.consume("\r\n").unwrap();
+    }
+    while r.peek().is_some() {
+        let line = r.read_while(|b| b != &b'\r');
+        match check_as_boundary(line, boundary) {
+            None => {
+                for b in line {file.content.push(*b)}
+                r.consume("\r\n").unwrap();
+            }
+            Some(Boundary::Start) => break,
+            Some(Boundary::End) => {
+                is_final = true;
+                r.consume("\r\n")/* Maybe no `\r\n` */;
+                break
+            }
+        }
+    }
+
+    Ok(Some((file, is_final)))
+}
+
+enum Boundary {
+    Start,
+    End,
+}
+// fn read_boundary(r: &mut Reader<&[u8]>, boundary_str: &str) -> Result<Boundary, &'static str> {
+//     r.consume("--")        .ok_or_else(EXPECTED_VALID_BOUNDARY)?;
+//     r.consume(boundary_str).ok_or_else(EXPECTED_VALID_BOUNDARY)?;
+//     match 
+// }
+fn check_as_boundary(line: &[u8], boundary_str: &str) -> Option<Boundary> {
+    use std::slice::from_raw_parts as raw;
+    if line.len() == 2 + boundary_str.len() {
+        unsafe {let p = line.as_ptr();
+            raw(p, 2) == &[b'-', b'-'] &&
+            raw(p.add(2), boundary_str.len()) == boundary_str.as_bytes()
+        }.then_some(Boundary::Start)
+    } else if line.len() == 2 + boundary_str.len() + 2 {
+        unsafe {let p = line.as_ptr();
+            raw(p, 2) == &[b'-', b'-'] &&
+            raw(p.add(2), boundary_str.len()) == boundary_str.as_bytes() &&
+            raw(p.add(boundary_str.len()), 2) == &[b'-', b'-']
+        }.then_some(Boundary::End)
+    } else {None}
+}
+
+fn startswith_hyphen_hyphen_boundary(line: &[u8], boundary: &str) -> bool {
+    use std::slice::from_raw_parts as raw;
+    line.len() >= (2 + boundary.len()) && unsafe {
+        let p = line.as_ptr();
+        raw(p, 2) == &[b'-', b'-'] &&
+        raw(p, boundary.len()) == boundary.as_bytes()
     }
 }
 
@@ -248,6 +343,8 @@ fn is_end_boundary(line: &[u8], boundary: &str) -> bool {
 #[allow(non_snake_case)] const fn INVALID_CONTENT_TYPE() -> &'static str {
     "Invalid Content-Type"
 }
+
+
 
 
 /*===== for #[Payload(URLEncoded)] =====*/
