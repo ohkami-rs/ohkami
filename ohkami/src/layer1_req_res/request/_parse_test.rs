@@ -13,6 +13,6 @@ use std::format as f;
         Hello, world!\r\n\
         --{BOUNDARY}--
     ");
-    let mut r = Reader::from(case.as_bytes());
+    let mut r = Reader::new(case.as_bytes());
     assert_eq!(parse_attachments(&mut r, BOUNDARY), Ok(vec![]));
 }

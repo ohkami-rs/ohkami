@@ -86,7 +86,7 @@ pub fn parse_formpart(buf: &[u8], boundary: &str) -> Result<Option<FormPart>, &'
     let mut mime_type      = None;
     let mut mixed_boundary = None;
     
-    let mut r = Reader::from(buf);
+    let mut r = Reader::new(buf);
 
     r.consume("--")    .ok_or_else(EXPECTED_VALID_BOUNDARY)?;
     r.consume(boundary).ok_or_else(EXPECTED_VALID_BOUNDARY)?;
@@ -165,7 +165,7 @@ pub fn parse_formpart(buf: &[u8], boundary: &str) -> Result<Option<FormPart>, &'
     } 
 }
 
-pub(super/* for test */) fn parse_attachments(r: &mut Reader<&[u8]>, boundary: &str) -> Result<Vec<File>, &'static str> {
+pub(super/* for test */) fn parse_attachments(r: &mut Reader, boundary: &str) -> Result<Vec<File>, &'static str> {
     let mut attachments = Vec::new();
     loop {
         r.consume("--").ok_or_else(EXPECTED_VALID_BOUNDARY)?;
@@ -230,7 +230,7 @@ pub(super/* for test */) fn parse_attachments(r: &mut Reader<&[u8]>, boundary: &
 /// 
 /// If begining 2 bytes are `--` but `\r\n`, that's
 /// end-boundary and this returns `None`
-fn parse_attachment(r: &mut Reader<&[u8]>, boundary: &str) -> Result<Option<(File, bool)>, &'static str> {
+fn parse_attachment(r: &mut Reader, boundary: &str) -> Result<Option<(File, bool)>, &'static str> {
     let mut file     = File { name: None, mime_type: f!("text/plain"), content: vec![] };
     let mut is_final = false;
     
