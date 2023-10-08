@@ -6,6 +6,9 @@ use std::format as f;
 #[test] fn test_parse_attachment() {
     const BOUNDARY: &str = "abcdef";
 
+    let case = f!("--");
+    assert_eq!(parse_attachment(&mut Reader::new(case.as_bytes()), BOUNDARY).unwrap(), None);
+
     let case = f!("\
         \r\n\
         Content-Disposition: attachment; filename=\"file1.txt\"\r\n\
