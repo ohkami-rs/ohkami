@@ -59,11 +59,11 @@ pub struct Content {
     }
 }
 
-#[cfg_attr(test, derive(PartialEq, Debug))]
+#[cfg_attr(test, derive(PartialEq))]
 pub struct File {
-    name:      Option<String>,
-    mime_type: String,
-    content:   Vec<u8>,
+    pub(super/* for test */) name:      Option<String>,
+    pub(super/* for test */) mime_type: String,
+    pub(super/* for test */) content:   Vec<u8>,
 } impl File {
     pub fn name(&self) -> Option<&str> {
         self.name.as_ref().map(|s| s.as_str())
@@ -73,6 +73,20 @@ pub struct File {
     }
     pub fn content(&self) -> &[u8] {
         &self.content
+    }
+} #[cfg(test)] impl std::fmt::Debug for File {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut d = f.debug_struct("File");
+        let mut d = &mut d;
+        d = d.field("mime", &self.mime_type);
+        if let Some(name) = &self.name {
+            d = d.field("name", name)
+        }
+        match self.mime_type() {
+            "text/plain" => d = d.field("content", &String::from_utf8_lossy(self.content())),
+            _ => d = d.field("content", &self.content())
+        }
+        d.finish()
     }
 }
 
@@ -228,24 +242,24 @@ pub(super/* for test */) fn parse_attachments(r: &mut Reader, boundary: &str) ->
 /// --boundary(--)?
 /// ```
 /// 
-/// If begining 2 bytes are `--` but `\r\n`, that's
-/// end-boundary and this returns `None`
-fn parse_attachment(r: &mut Reader, boundary: &str) -> Result<Option<(File, bool)>, &'static str> {
-    let mut file     = File { name: None, mime_type: f!("text/plain"), content: vec![] };
+/// If begining 2 bytes are `--`, not `\r\n`, that means
+/// the previous line was the end-boundary and `parse_attachment` returns `None` in this case
+pub(super/* for test */) fn parse_attachment(r: &mut Reader, boundary: &str) -> Result<Option<(File, bool)>, &'static str> {
+    let (mut name, mut mime, mut content) = (None, None, vec![]);
     let mut is_final = false;
     
-    r.consume("\r\n").ok_or_else(EXPECTED_VALID_BOUNDARY)?;
+    if r.consume_oneof(["\r\n", "--"]).ok_or_else(EXPECTED_VALID_BOUNDARY)? == 1 {return Ok(None)}
     while r.consume("\r\n").is_none() {
         let header = r.read_kebab().ok_or_else(EXPECTED_VALID_HEADER)?;
         if header.eq_ignore_ascii_case("Content-Disposition") {
             r.consume(": attachment").ok_or_else(EXPECTED_ATTACHMENT)?;
             if r.consume("; ").is_some() {
                 r.consume("filename=").ok_or_else(EXPECTED_FILENAME)?;
-                file.name = Some(r.read_string().ok_or_else(EXPECTED_FILENAME)?);
+                name = Some(r.read_string().ok_or_else(EXPECTED_FILENAME)?);
             }
         } else if header.eq_ignore_ascii_case("Content-Type") {
             r.consume(": ").ok_or_else(EXPECTED_VALID_HEADER)?;
-            file.mime_type = String::from_utf8(r.read_while(|b| b != &b'\r').to_vec()).map_err(|_| INVALID_FILENANE())?;
+            mime = Some(String::from_utf8(r.read_while(|b| b != &b'\r').to_vec()).map_err(|_| INVALID_CONTENT_TYPE())?);
         } else {// ignore this line
             r.skip_while(|b| b != &b'\r')
         }
@@ -255,19 +269,19 @@ fn parse_attachment(r: &mut Reader, boundary: &str) -> Result<Option<(File, bool
         let line = r.read_while(|b| b != &b'\r');
         match check_as_boundary(line, boundary) {
             None => {
-                for b in line {file.content.push(*b)}
-                file.content.push(b'\r');
-                file.content.push(b'\n');
+                for b in line {content.push(*b)}
+                content.push(b'\r');
+                content.push(b'\n');
                 r.consume("\r\n").unwrap();
             }
             Some(Boundary::Start) => {
-                file.content.pop(/* b'\n' */);
-                file.content.pop(/* b'\r' */);
+                content.pop(/* b'\n' */);
+                content.pop(/* b'\r' */);
                 break
             }
             Some(Boundary::End) => {
-                file.content.pop(/* b'\n' */);
-                file.content.pop(/* b'\r' */);
+                content.pop(/* b'\n' */);
+                content.pop(/* b'\r' */);
                 is_final = true;
                 r.consume("\r\n")/* Maybe no `\r\n` */;
                 break
@@ -275,30 +289,30 @@ fn parse_attachment(r: &mut Reader, boundary: &str) -> Result<Option<(File, bool
         }
     }
 
-    Ok(Some((file, is_final)))
+    Ok(Some((File {
+        name,
+        content,
+        mime_type: mime.unwrap_or_else(DEFAULT_MIME_TYPE)
+    }, is_final)))
 }
 
 enum Boundary {
     Start,
     End,
 }
-// fn read_boundary(r: &mut Reader<&[u8]>, boundary_str: &str) -> Result<Boundary, &'static str> {
-//     r.consume("--")        .ok_or_else(EXPECTED_VALID_BOUNDARY)?;
-//     r.consume(boundary_str).ok_or_else(EXPECTED_VALID_BOUNDARY)?;
-//     match 
-// }
 fn check_as_boundary(line: &[u8], boundary_str: &str) -> Option<Boundary> {
     use std::slice::from_raw_parts as raw;
-    if line.len() == 2 + boundary_str.len() {
+    let (boundary, boundary_len) = (boundary_str.as_bytes(), boundary_str.len());
+    if line.len() == 2 + boundary_len {
         unsafe {let p = line.as_ptr();
             raw(p, 2) == &[b'-', b'-'] &&
-            raw(p.add(2), boundary_str.len()) == boundary_str.as_bytes()
+            raw(p.add(2), boundary_len) == boundary
         }.then_some(Boundary::Start)
-    } else if line.len() == 2 + boundary_str.len() + 2 {
+    } else if line.len() == 2 + boundary_len + 2 {
         unsafe {let p = line.as_ptr();
             raw(p, 2) == &[b'-', b'-'] &&
-            raw(p.add(2), boundary_str.len()) == boundary_str.as_bytes() &&
-            raw(p.add(boundary_str.len()), 2) == &[b'-', b'-']
+            raw(p.add(2), boundary_len) == boundary &&
+            raw(p.add(2 + boundary_len), 2) == &[b'-', b'-']
         }.then_some(Boundary::End)
     } else {None}
 }
@@ -348,6 +362,9 @@ fn is_end_boundary(line: &[u8], boundary: &str) -> bool {
 }
 #[allow(non_snake_case)] const fn INVALID_CONTENT_TYPE() -> &'static str {
     "Invalid Content-Type"
+}
+#[allow(non_snake_case)] fn DEFAULT_MIME_TYPE() -> String {
+    String::from("text/plain")
 }
 
 
