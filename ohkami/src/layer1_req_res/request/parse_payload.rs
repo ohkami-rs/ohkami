@@ -84,7 +84,7 @@ pub struct File {
         }
         match self.mime_type() {
             "text/plain" => d = d.field("content", &String::from_utf8_lossy(self.content())),
-            _ => d = d.field("content", &self.content())
+            _ => d = d.field("content", &self.content().escape_ascii().to_string())
         }
         d.finish()
     }

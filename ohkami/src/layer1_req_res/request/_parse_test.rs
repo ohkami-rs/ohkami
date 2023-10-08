@@ -20,4 +20,20 @@ use std::format as f;
             content:   Vec::from("Hello, world!"),
         }, false))
     );
+
+    let case = f!("\
+        \r\n\
+        Content-Disposition: attachment; filename=\"file2.html\"\r\n\
+        Content-Type: text/html\r\n\
+        \r\n\
+        <h1>Hello, world!</h1>\r\n\
+        --{BOUNDARY}--\r\n\
+    ");
+    assert_eq!(parse_attachment(&mut Reader::new(case.as_bytes()), BOUNDARY).unwrap(),
+        Some((File {
+            name:      Some(f!("file2.html")),
+            mime_type: f!("text/html"),
+            content:   Vec::from("<h1>Hello, world!</h1>"),
+        }, true))
+    );
 }
