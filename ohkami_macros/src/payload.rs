@@ -1,5 +1,5 @@
 use proc_macro2::{TokenStream, Ident};
-use syn::{Result, ItemStruct, parse_str, Type};
+use syn::{Result, ItemStruct, parse_str, Type, Field};
 use quote::{quote, ToTokens};
 
 use crate::components::*;
@@ -149,9 +149,9 @@ fn impl_payload_urlencoded(data: &ItemStruct) -> Result<TokenStream> {
         impl ::ohkami::FromRequest for #struct_name {
             fn parse(req: &::ohkami::Request) -> ::std::result::Result<Self, ::std::borrow::Cow<'static, str>> {
                 let (content_type, payload) = req.payload()
-                    .ok_or_else(|| ::std::borrow::Cow::Borrowed("Expected payload"))?;
+                    .ok_or_else(|| ::std::borrow::Cow::Borrowed("Expected a payload"))?;
                 if !content_type.is_urlencoded() {
-                    return ::std::result::Result::Err(::std::borrow::Cow::Borrowed("Expected payload of `Content-Type: application/x-www-form-urlencoded`"))
+                    return ::std::result::Result::Err(::std::borrow::Cow::Borrowed("Expected a `application/x-www-form-urlencoded` payload"))
                 }
 
                 #declaring_exprs
@@ -164,9 +164,27 @@ fn impl_payload_urlencoded(data: &ItemStruct) -> Result<TokenStream> {
 
 #[allow(unused)]
 fn impl_payload_formdata(data: &ItemStruct) -> Result<TokenStream> {
-    
+    let struct_name   = &data.ident;
+    let struct_fields = &data.fields;
+
+    let declaring_exprs = struct_fields.into_iter().map(|Field { ident, .. }| quote!{
+        let #ident = None;
+    });
+
+    __TODO__
 
     Ok(quote!{
-        unimplemented!("`#[Payload(Form)]` is not implemented yet. Please wait for development, or, if you need this imediately, you can implement and create a [Pull request](https://github.com/kana-rus/ohkami/pulls) !")
+        impl ::ohkami::FromRequest for #struct_name {
+            fn parse(req: &::ohkami::Request) -> ::std::result::Result<Self, ::std::borrow::Cow<'static, str>> {
+                let (content_type, payload) = req.payload()
+                    .ok_or_else(|| ::std::borrow::Cow::Borrowed("Expected a payload"))?;
+                let ::ohkami::ContentType::FormData { boundary } = content_type
+                    else {return ::std::result::Result::Err(::std::borrow::Cow::Borrowed("Expected a `multipart/form-data` payload"))};
+            
+                #( #declaring_exprs )*
+
+
+            }
+        }
     })
 }
