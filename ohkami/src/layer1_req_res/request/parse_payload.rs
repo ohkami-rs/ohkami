@@ -41,7 +41,7 @@ pub enum FormContent {
 }
 
 pub struct Content {
-    mime_type: String,
+    mime_type: Cow<'static, str>,
     content:   Vec<u8>,
 } impl Content {
     pub fn mime_type(&self) -> &str {
@@ -62,7 +62,7 @@ pub struct Content {
 #[cfg_attr(test, derive(PartialEq))]
 pub struct File {
     pub(super/* for test */) name:      Option<String>,
-    pub(super/* for test */) mime_type: String,
+    pub(super/* for test */) mime_type: Cow<'static, str>,
     pub(super/* for test */) content:   Vec<u8>,
 } impl File {
     pub fn name(&self) -> Option<&str> {
@@ -104,33 +104,23 @@ pub fn parse_formpart(buf: &[u8], boundary: &str) -> Result<Option<FormPart>, &'
 
     r.consume("--")    .ok_or_else(EXPECTED_VALID_BOUNDARY)?;
     r.consume(boundary).ok_or_else(EXPECTED_VALID_BOUNDARY)?;
-    if r.consume("\r\n").is_none() {
-        // This was `--boundary--` : an end boundary
-        return Ok(None)
-    }
+    if r.consume_oneof(["\r\n", "--"]).ok_or_else(EXPECTED_VALID_BOUNDARY)? == 1 {return Ok(None)}
     
     while r.consume("\r\n").is_none(/* The newline just before body of this part */) {
         let header = r.read_kebab().ok_or_else(EXPECTED_VALID_HEADER)?;
-        if header.eq_ignore_ascii_case("Content-Type:") {r.skip_while(|b| b==&b' ');
-            let content_type = r.read_while(|b| !matches!(b, b'\r' | b','));
-            if content_type == b"multipart/mixed" {
-                r.consume(",")        .ok_or_else(EXPECTED_BOUNDARY)?;
-                r.skip_while(|b| b==&b' ');
-                r.consume("boundary=").ok_or_else(EXPECTED_BOUNDARY)?;
-                mixed_boundary = Some(String::from_utf8(r.read_while(|b| b != &b'\r').to_vec()).map_err(|_| INVALID_FILENANE())?);
+        if header.eq_ignore_ascii_case("Content-Type") {
+            r.consume(": ").ok_or_else(EXPECTED_VALID_HEADER)?;
+            if r.consume("multipart/mixed").is_some() {
+                r.consume(", boundary=").ok_or_else(EXPECTED_BOUNDARY)?;
+                mixed_boundary = Some(String::from_utf8(r.read_while(|b| b != &b'\r').to_vec()).map_err(|_| INVALID_CONTENT_TYPE())?);
+                mime_type = Some(Cow::Borrowed("multipart/mixed"));
             } else {
-                mime_type = Some(String::from_utf8(
-                    content_type.to_vec()
-                ).map_err(|_| INVALID_CONTENT_TYPE())?);
+                mime_type = Some(Cow::Owned(String::from_utf8(r.read_while(|b| b != &b'\r').to_vec()).map_err(|_| INVALID_CONTENT_TYPE())?));
             }
         } else if header.eq_ignore_ascii_case("Content-Disposition:") {r.skip_while(|b| b==&b' ');
-            r.consume("form-data").ok_or_else(EXPECTED_FORMDATA_AND_NAME)?;
-            r.consume(";")        .ok_or_else(EXPECTED_FORMDATA_AND_NAME)?;
-            r.skip_while(|b| b==&b' ');
-            r.consume("name=")    .ok_or_else(EXPECTED_FORMDATA_AND_NAME)?;
+            r.consume("form-data; name=").ok_or_else(EXPECTED_FORMDATA_AND_NAME)?;
             name = r.read_string().ok_or_else(EXPECTED_FORMDATA_AND_NAME)?;
-            if r.peek().unwrap() != &b'\r' {
-                r.skip_while(|b| b==&b' ');
+            if r.consume("; ").is_some() {
                 r.consume("filename=").ok_or_else(EXPECTED_FILENAME)?;
                 file_name = Some(r.read_string().ok_or_else(EXPECTED_FILENAME)?)
             }
@@ -165,12 +155,12 @@ pub fn parse_formpart(buf: &[u8], boundary: &str) -> Result<Option<FormPart>, &'
         let content = if let Some(file_name) = file_name {
             FormContent::File(File {
                 name:      Some(file_name),
-                mime_type: mime_type.unwrap_or_else(|| f!("text/plain")),
+                mime_type: mime_type.unwrap_or_else(|| Cow::Borrowed("text/plain")),
                 content
             })
         } else {
             FormContent::Content(Content {
-                mime_type: mime_type.unwrap_or_else(|| f!("text/plain")),
+                mime_type: mime_type.unwrap_or_else(|| Cow::Borrowed("text/plain")),
                 content,
             })
         };
@@ -180,52 +170,15 @@ pub fn parse_formpart(buf: &[u8], boundary: &str) -> Result<Option<FormPart>, &'
 }
 
 pub(super/* for test */) fn parse_attachments(r: &mut Reader, boundary: &str) -> Result<Vec<File>, &'static str> {
+    r.consume("--").ok_or_else(EXPECTED_VALID_BOUNDARY)?;
+    r.consume(boundary).ok_or_else(EXPECTED_VALID_BOUNDARY)?;
+
     let mut attachments = Vec::new();
-    loop {
-        r.consume("--").ok_or_else(EXPECTED_VALID_BOUNDARY)?;
-        r.consume(boundary).ok_or_else(EXPECTED_VALID_BOUNDARY)?;
-        if r.consume("\r\n").is_some() {
-            let mut file = File { name: None, mime_type: f!("text/plain"), content: vec![] };
-            loop {
-                if r.consume("\r\n").is_some() {break}
-
-                let header = r.read_kebab().ok_or_else(EXPECTED_VALID_HEADER)?;
-                if header.eq_ignore_ascii_case("Content-Type") {
-                    r.consume(":").unwrap(); r.skip_while(|b| b==&b' ');
-                    file.mime_type = String::from_utf8(
-                        r.read_while(|b| b != &b'\r').to_vec()
-                    ).map_err(|_| INVALID_CONTENT_TYPE())?;
-                    r.consume("\r\n").unwrap();
-                } else if header.eq_ignore_ascii_case("Content-Disposition") {
-                    r.consume(":").unwrap(); r.skip_while(|b| b==&b' ');
-                    r.consume("attachment").ok_or_else(EXPECTED_ATTACHMENT)?;
-                    if r.consume(";").is_some() {r.skip_while(|b| b==&b' ');
-                        r.consume("filename=").ok_or_else(EXPECTED_FILENAME)?;
-                        file.name = Some(r.read_string().ok_or_else(INVALID_FILENANE)?);
-                        r.consume("\r\n").unwrap();
-                    }
-                } else {// ignore the line
-                    r.skip_while(|b| b != &b'\r');
-                    r.consume("\r\n").unwrap();
-                }
-            }
-
-            loop {
-                let line = r.read_while(|b| b != &b'\r');
-                if is_end_boundary(line, boundary) {
-                    r.consume("\r\n")/* Maybe no `\r\n` if this is final part */;
-                    break attachments.push(file)
-                } else if line.len() == 0 {
-                    return Err("Unexpected end of attachments")
-                }
-                for b in line {
-                    file.content.push(*b)
-                }
-            }
-        }
-        r.consume("--").unwrap();
-        break Ok(attachments)
+    while let Some((attachment, is_final)) = parse_attachment(r, boundary)? {
+        attachments.push(attachment);
+        if is_final {break}
     }
+    Ok(attachments)
 }
 
 /// <br/>
@@ -259,7 +212,7 @@ pub(super/* for test */) fn parse_attachment(r: &mut Reader, boundary: &str) -> 
             }
         } else if header.eq_ignore_ascii_case("Content-Type") {
             r.consume(": ").ok_or_else(EXPECTED_VALID_HEADER)?;
-            mime = Some(String::from_utf8(r.read_while(|b| b != &b'\r').to_vec()).map_err(|_| INVALID_CONTENT_TYPE())?);
+            mime = Some(Cow::Owned(String::from_utf8(r.read_while(|b| b != &b'\r').to_vec()).map_err(|_| INVALID_CONTENT_TYPE())?));
         } else {// ignore this line
             r.skip_while(|b| b != &b'\r')
         }
@@ -363,8 +316,8 @@ fn is_end_boundary(line: &[u8], boundary: &str) -> bool {
 #[allow(non_snake_case)] const fn INVALID_CONTENT_TYPE() -> &'static str {
     "Invalid Content-Type"
 }
-#[allow(non_snake_case)] fn DEFAULT_MIME_TYPE() -> String {
-    String::from("text/plain")
+#[allow(non_snake_case)] fn DEFAULT_MIME_TYPE() -> Cow<'static, str> {
+    Cow::Borrowed("text/plain")
 }
 
 
