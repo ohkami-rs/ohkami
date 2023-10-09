@@ -1,4 +1,4 @@
-use std::{borrow::Cow, format as f};
+use std::borrow::Cow;
 
 use serde::Deserialize;
 use byte_reader::Reader;
@@ -90,30 +90,52 @@ pub struct File {
     }
 }
 
-/// return
+pub fn parse_formparts(buf: &[u8], boundary: &str) -> Result<Vec<FormPart>, &'static str> {
+    let mut r = Reader::new(buf);
+
+    r.consume("--").ok_or_else(EXPECTED_VALID_BOUNDARY)?;
+    r.consume(boundary).ok_or_else(EXPECTED_VALID_BOUNDARY)?;
+
+    let mut parts = Vec::new();
+    while let Some((part, is_final)) = parse_formpart(&mut r, boundary)? {
+        parts.push(part);
+        if is_final {break}
+    }
+    Ok(parts)
+}
+
+/// <br/>
 /// 
-/// - `Some(FormPart)` if `buf` contains a form part
-/// - `None` if `buf` only contains end boundary `--boundary--`
-pub fn parse_formpart(buf: &[u8], boundary: &str) -> Result<Option<FormPart>, &'static str> {
+/// ```ignore
+/// \r\n
+/// header\r\n
+/// :
+/// header\r\n
+/// \r\n
+/// content\r\n
+/// :
+/// content\r\n
+/// --boundary(--)?
+/// ```
+/// 
+/// If leading 2 bytes are `--`, not `\r\n`, that means
+/// the previous line was the end-boundary and `parse_formpart` returns `None` in this case
+pub(super/* for test */) fn parse_formpart(r: &mut Reader, boundary: &str) -> Result<Option<(FormPart, bool/* is final */)>, &'static str> {
     let mut name           = String::new();
     let mut file_name      = None;
     let mut mime_type      = None;
     let mut mixed_boundary = None;
-    
-    let mut r = Reader::new(buf);
+    let mut is_final       = false;
 
-    r.consume("--")    .ok_or_else(EXPECTED_VALID_BOUNDARY)?;
-    r.consume(boundary).ok_or_else(EXPECTED_VALID_BOUNDARY)?;
-    if r.consume_oneof(["\r\n", "--"]).ok_or_else(EXPECTED_VALID_BOUNDARY)? == 1 {return Ok(None)}
-    
+    if r.consume_oneof(["\r\n", "--"]).ok_or_else(EXPECTED_VALID_BOUNDARY)? == 1 {return Ok(None)}    
     while r.consume("\r\n").is_none(/* The newline just before body of this part */) {
         let header = r.read_kebab().ok_or_else(EXPECTED_VALID_HEADER)?;
         if header.eq_ignore_ascii_case("Content-Type") {
             r.consume(": ").ok_or_else(EXPECTED_VALID_HEADER)?;
             if r.consume("multipart/mixed").is_some() {
-                r.consume(", boundary=").ok_or_else(EXPECTED_BOUNDARY)?;
-                mixed_boundary = Some(String::from_utf8(r.read_while(|b| b != &b'\r').to_vec()).map_err(|_| INVALID_CONTENT_TYPE())?);
                 mime_type = Some(Cow::Borrowed("multipart/mixed"));
+                r.consume(", boundary=").ok_or_else(EXPECTED_BOUNDARY)?;
+                mixed_boundary = Some(String::from_utf8(r.read_while(|b| b != &b'\r').to_vec()).map_err(|_| INVALID_BOUNDARY())?);
             } else {
                 mime_type = Some(Cow::Owned(String::from_utf8(r.read_while(|b| b != &b'\r').to_vec()).map_err(|_| INVALID_CONTENT_TYPE())?));
             }
@@ -122,7 +144,7 @@ pub fn parse_formpart(buf: &[u8], boundary: &str) -> Result<Option<FormPart>, &'
             name = r.read_string().ok_or_else(EXPECTED_FORMDATA_AND_NAME)?;
             if r.consume("; ").is_some() {
                 r.consume("filename=").ok_or_else(EXPECTED_FILENAME)?;
-                file_name = Some(r.read_string().ok_or_else(EXPECTED_FILENAME)?)
+                file_name = Some(r.read_string().ok_or_else(INVALID_FILENANE)?)
             }
         } else {// ignore the line
             r.skip_while(|b| b != &b'\r');
@@ -130,27 +152,42 @@ pub fn parse_formpart(buf: &[u8], boundary: &str) -> Result<Option<FormPart>, &'
         r.consume("\r\n").unwrap();
     }
 
-    if let Some(boundary) = mixed_boundary {
-        let mut attachments = parse_attachments(&mut r, &boundary)?;
+    if let Some(attachments_boundary) = mixed_boundary {
+        let mut attachments = parse_attachments(r, &attachments_boundary)?;
         let content = if attachments.len() == 1 {
             FormContent::File(unsafe {attachments.pop().unwrap_unchecked()})
         } else {
             FormContent::Files(attachments)
         };
 
-        Ok(Some(FormPart { name, content }))
-    } else {
-        let mut content = Vec::new(); loop {
-            let line = r.read_while(|b| b != &b'\r');
+        is_final = matches!(check_as_boundary(r.read_while(|b| b != &b'\r'), boundary).ok_or_else(EXPECTED_VALID_BOUNDARY)?, Boundary::End);
+        if is_final {r.consume("\r\n")/* Maybe no `\r\n` */;}
 
-            if is_end_boundary(line, boundary) {
-                r.consume("\r\n")/* Maybe no `\r\n` if this is final part */;
-                break
-            } else if line.len() == 0 {
-                return Err("Unexpected end of form part")
+        Ok(Some((FormPart { name, content }, is_final)))
+    } else {
+        let mut content = Vec::new();
+        while r.peek().is_some() {
+            let line = r.read_while(|b| b != &b'\r');
+            match check_as_boundary(line, boundary) {
+                None => {
+                    for b in line {content.push(*b)}
+                    content.push(b'\r');
+                    content.push(b'\n');
+                    r.consume("\r\n").unwrap();
+                }
+                Some(Boundary::Start) => {
+                    content.pop(/* b'\n' */);
+                    content.pop(/* b'\r' */);
+                    break
+                }
+                Some(Boundary::End) => {
+                    is_final = true;
+                    content.pop(/* b'\n' */);
+                    content.pop(/* b'\r' */);
+                    r.consume("\r\n")/* Maybe no `\r\n` */;
+                    break
+                }
             }
-            for b in line {content.push(*b)}
-            r.consume("\r\n").unwrap();
         }
         let content = if let Some(file_name) = file_name {
             FormContent::File(File {
@@ -165,7 +202,7 @@ pub fn parse_formpart(buf: &[u8], boundary: &str) -> Result<Option<FormPart>, &'
             })
         };
 
-        Ok(Some(FormPart { name, content }))
+        Ok(Some((FormPart { name, content }, is_final)))
     } 
 }
 
@@ -197,7 +234,7 @@ pub(super/* for test */) fn parse_attachments(r: &mut Reader, boundary: &str) ->
 /// 
 /// If begining 2 bytes are `--`, not `\r\n`, that means
 /// the previous line was the end-boundary and `parse_attachment` returns `None` in this case
-pub(super/* for test */) fn parse_attachment(r: &mut Reader, boundary: &str) -> Result<Option<(File, bool)>, &'static str> {
+pub(super/* for test */) fn parse_attachment(r: &mut Reader, boundary: &str) -> Result<Option<(File, bool/* is final */)>, &'static str> {
     let (mut name, mut mime, mut content) = (None, None, vec![]);
     let mut is_final = false;
     
@@ -208,7 +245,7 @@ pub(super/* for test */) fn parse_attachment(r: &mut Reader, boundary: &str) -> 
             r.consume(": attachment").ok_or_else(EXPECTED_ATTACHMENT)?;
             if r.consume("; ").is_some() {
                 r.consume("filename=").ok_or_else(EXPECTED_FILENAME)?;
-                name = Some(r.read_string().ok_or_else(EXPECTED_FILENAME)?);
+                name = Some(r.read_string().ok_or_else(INVALID_FILENANE)?);
             }
         } else if header.eq_ignore_ascii_case("Content-Type") {
             r.consume(": ").ok_or_else(EXPECTED_VALID_HEADER)?;
@@ -233,9 +270,9 @@ pub(super/* for test */) fn parse_attachment(r: &mut Reader, boundary: &str) -> 
                 break
             }
             Some(Boundary::End) => {
+                is_final = true;
                 content.pop(/* b'\n' */);
                 content.pop(/* b'\r' */);
-                is_final = true;
                 r.consume("\r\n")/* Maybe no `\r\n` */;
                 break
             }
@@ -270,25 +307,6 @@ fn check_as_boundary(line: &[u8], boundary_str: &str) -> Option<Boundary> {
     } else {None}
 }
 
-fn startswith_hyphen_hyphen_boundary(line: &[u8], boundary: &str) -> bool {
-    use std::slice::from_raw_parts as raw;
-    line.len() >= (2 + boundary.len()) && unsafe {
-        let p = line.as_ptr();
-        raw(p, 2) == &[b'-', b'-'] &&
-        raw(p, boundary.len()) == boundary.as_bytes()
-    }
-}
-
-fn is_end_boundary(line: &[u8], boundary: &str) -> bool {
-    use std::slice::from_raw_parts as raw;
-    line.len() == (2 + boundary.len() + 2) && unsafe {
-        let p = line.as_ptr();
-        raw(p, 2) == &[b'-', b'-'] &&
-        raw(p, boundary.len()) == boundary.as_bytes() &&
-        raw(p, 2) == &[b'-', b'-']
-    }
-}
-
 #[allow(non_snake_case)] const fn EXPECTED_VALID_BOUNDARY() -> &'static str {
     "Expected valid form-data boundary"
 }
@@ -301,9 +319,6 @@ fn is_end_boundary(line: &[u8], boundary: &str) -> bool {
 #[allow(non_snake_case)] const fn EXPECTED_BOUNDARY() -> &'static str {
     "Expected `boundary=\"...\"`"
 }
-#[allow(non_snake_case)] const fn EXPEXTED_CRLF() -> &'static str {
-    "Expected `\\r\\n`"
-}
 #[allow(non_snake_case)] const fn EXPECTED_VALID_HEADER() -> &'static str {
     "Expected `Content-Type` or `Content-Disposition`"
 }
@@ -315,6 +330,9 @@ fn is_end_boundary(line: &[u8], boundary: &str) -> bool {
 }
 #[allow(non_snake_case)] const fn INVALID_CONTENT_TYPE() -> &'static str {
     "Invalid Content-Type"
+}
+#[allow(non_snake_case)] const fn INVALID_BOUNDARY() -> &'static str {
+    "Invalid bonudary"
 }
 #[allow(non_snake_case)] fn DEFAULT_MIME_TYPE() -> Cow<'static, str> {
     Cow::Borrowed("text/plain")

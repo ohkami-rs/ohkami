@@ -101,5 +101,7 @@ use std::{format as f, borrow::Cow};
 }
 
 #[test] fn test_parse_formpart() {
+    const BONUDARY: &str = "a-boundary";
+
     todo!()
 }
