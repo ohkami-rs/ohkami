@@ -285,7 +285,7 @@ pub(super/* for test */) fn parse_attachment(r: &mut Reader, boundary: &str) -> 
                 is_final = true;
                 content.pop(/* b'\n' */);
                 content.pop(/* b'\r' */);
-                r.consume("\r\n")/* Maybe no `\r\n` */;
+                r.consume("\r\n").ok_or_else(EXPECTED_VALID_BOUNDARY)?;
                 break
             }
         }

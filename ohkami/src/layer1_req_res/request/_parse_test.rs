@@ -49,7 +49,7 @@ use std::{format as f, borrow::Cow};
             \"name\":\"Alice\",\r\n\
             \"age\":14\r\n\
         }}\r\n\
-        --{BOUNDARY}--\
+        --{BOUNDARY}--\r\n\
     ");
     assert_eq!(parse_attachment(&mut Reader::new(case.as_bytes()), BOUNDARY).unwrap(),
         Some((File {
@@ -121,23 +121,21 @@ use std::{format as f, borrow::Cow};
 }
 
 #[test] fn test_parse_formparts() {
-    const BOUNDARY: &str = "AaB03x";
-
-    let case = f!("\
-        --{BOUNDARY}\r\n\
+    let case = "\
+        --AaB03x\r\n\
         Content-Disposition: form-data; name=\"field1\"\r\n\
         \r\n\
         Joe Blow\r\n\
-        --{BOUNDARY}\r\n\
+        --AaB03x\r\n\
         content-type: application/json\r\n\
         content-DISPOSITION: form-data; name=\"user-data\"; filename=\"user.json\"\r\n\
         \r\n\
-        {{\r\n\
+        {\r\n\
             \"name\":\"kanarus\",\r\n\
             \"age\":20\r\n\
-        }}\r\n\
-        --{BOUNDARY}--\
-    "); assert_eq!(parse_formparts(case.as_bytes(), BOUNDARY).unwrap(), vec![
+        }\r\n\
+        --AaB03x--\
+    "; assert_eq!(parse_formparts(case.as_bytes(), "AaB03x").unwrap(), vec![
         FormPart {
             name: f!("field1"),
             data: FormData::Field(Field {
@@ -160,5 +158,63 @@ use std::{format as f, borrow::Cow};
                 }
             ])
         }
+    ]);
+
+    let case = f!("\
+        --AaB03x\r\n\
+        Content-Disposition: form-data; name=\"field1\"\r\n\
+        \r\n\
+        Joe Blow\r\n\
+        --AaB03x\r\n\
+        content-type: multipart/mixed, boundary=BbC04y\r\n\
+        content-DISPOSITION: form-data; name=\"pics\"\r\n\
+        \r\n\
+        --BbC04y\r\n\
+        Content-DIsposition: attachment; filename=\"attachment1.txt\"\r\n\
+        \r\n\
+        << This is the content of `attachment1.txt` >>\r\n\
+        --BbC04y\r\n\
+        content-disposition: attachment; filename=\"attachment2.gif\"\r\n\
+        Content-Transfer-Encoding: binary\r\n\
+        Content-Type: image/gif\r\n\
+        \r\n\
+        [[binarybinarybinarybinary]]\r\n\
+        --BbC04y--\r\n\
+        --AaB03x\r\n\
+        Content-Disposition: form-data; name=\"field2\"\r\n\
+        Content-Type: text/html\r\n\
+        \r\n\
+        <p>Hello, world!</p>\r\n\
+        --AaB03x--\
+    "); assert_eq!(parse_formparts(case.as_bytes(), "AaB03x").unwrap(), vec![
+        FormPart {
+            name: f!("field1"),
+            data: FormData::Field(Field {
+                mime_type: Cow::Borrowed("text/plain"),
+                content:   Vec::from("Joe Blow"),
+            })
+        },
+        FormPart {
+            name: f!("pics"),
+            data: FormData::Files(vec![
+                File {
+                    name:      Some(f!("attachment1.txt")),
+                    mime_type: Cow::Borrowed("text/plain"),
+                    content:   Vec::from("<< This is the content of `attachment1.txt` >>")
+                },
+                File {
+                    name:      Some(f!("attachment2.gif")),
+                    mime_type: Cow::Owned(f!("image/gif")),
+                    content:   Vec::from("[[binarybinarybinarybinary]]")
+                },
+            ])
+        },
+        FormPart {
+            name: f!("field2"),
+            data: FormData::Field(Field {
+                mime_type: Cow::Owned(f!("text/html")),
+                content:   Vec::from("<p>Hello, world!</p>"),
+            })
+        },
     ]);
 }
