@@ -1,4 +1,4 @@
-use super::{parse_formpart, parse_attachments, parse_attachment, File};
+use super::{parse_formparts, parse_formpart, parse_attachments, parse_attachment, File, Field, FormPart, FormData};
 use byte_reader::Reader;
 use std::{format as f, borrow::Cow};
 
@@ -101,7 +101,64 @@ use std::{format as f, borrow::Cow};
 }
 
 #[test] fn test_parse_formpart() {
-    const BONUDARY: &str = "a-boundary";
+    const BOUNDARY: &str = "AaB03x";
 
-    todo!()
+    let case = f!("\
+        \r\n\
+        Content-Disposition: form-data; name=\"field1\"\r\n\
+        \r\n\
+        Joe Blow\r\n\
+        --{BOUNDARY}\
+    "); assert_eq!(parse_formpart(&mut Reader::new(case.as_bytes()), BOUNDARY).unwrap(),
+        Some((FormPart {
+            name: f!("field1"),
+            data: FormData::Field(Field {
+                mime_type: Cow::Borrowed("text/plain"),
+                content:   Vec::from("Joe Blow"),
+            })
+        }, false))
+    );
+}
+
+#[test] fn test_parse_formparts() {
+    const BOUNDARY: &str = "AaB03x";
+
+    let case = f!("\
+        --{BOUNDARY}\r\n\
+        Content-Disposition: form-data; name=\"field1\"\r\n\
+        \r\n\
+        Joe Blow\r\n\
+        --{BOUNDARY}\r\n\
+        content-type: application/json\r\n\
+        content-DISPOSITION: form-data; name=\"user-data\"; filename=\"user.json\"\r\n\
+        \r\n\
+        {{\r\n\
+            \"name\":\"kanarus\",\r\n\
+            \"age\":20\r\n\
+        }}\r\n\
+        --{BOUNDARY}--\
+    "); assert_eq!(parse_formparts(case.as_bytes(), BOUNDARY).unwrap(), vec![
+        FormPart {
+            name: f!("field1"),
+            data: FormData::Field(Field {
+                mime_type: Cow::Borrowed("text/plain"),
+                content:   Vec::from("Joe Blow"),
+            })
+        },
+        FormPart {
+            name: f!("user-data"),
+            data: FormData::Files(vec![
+                File {
+                    name:      Some(f!("user.json")),
+                    mime_type: Cow::Owned(f!("application/json")),
+                    content:   Vec::from("\
+                        {\r\n\
+                            \"name\":\"kanarus\",\r\n\
+                            \"age\":20\r\n\
+                        }\
+                    ")
+                }
+            ])
+        }
+    ]);
 }
