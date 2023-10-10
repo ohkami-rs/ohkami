@@ -44,19 +44,19 @@ pub fn Query(_: proc_macro::TokenStream, data: proc_macro::TokenStream) -> proc_
 
 /// ## Request payload
 /// 
-/// <br/>
+/// - NOT available for tuple struct ( like `struct S(usize, usize);` ) or tag struct ( like `struct X;` ).
 /// 
 /// ### Valid format :
 /// 
 /// - `#[Payload(JSON)]` ( for `application/json` )
-/// - `#[Payload(URLEncoded)]` ( for `application/x-www-form-urlencoded` )
 /// - `#[Payload(FormData)]` ( for `multipart/form-data` )
-/// 
-/// In current version, `#[Payload(JSON)]` requires `serde::Deserialize`
+/// - `#[Payload(URLEncoded)]` ( for `application/x-www-form-urlencoded` )
 /// 
 /// <br/>
 /// 
 /// ### JSON
+/// 
+/// - Requires that the struct implements `serde::Deserialize`
 /// 
 /// ```
 /// use ohkami::prelude::*;
@@ -85,11 +85,10 @@ pub fn Query(_: proc_macro::TokenStream, data: proc_macro::TokenStream) -> proc_
 /// }
 /// ```
 /// 
-/// - Requires that the struct implements `serde::Deserialize`
-/// 
 /// <br/>
 /// 
 /// ### URLEncoded
+/// 
 /// ```
 /// use ohkami::prelude::*;
 /// use ohkami::utils::Payload; // <-- import me
@@ -105,16 +104,13 @@ pub fn Query(_: proc_macro::TokenStream, data: proc_macro::TokenStream) -> proc_
 /// */
 /// ```
 /// 
-/// - NOT available for tuple struct ( like `struct S(usize, usize);` ) or tag struct ( like `struct X;` ).
-/// - Possible value types : `String` `u8` `u16` `u32` `u64` `u128` `usize` and `Option` of them.
+/// - Available value types : `String` `u8` `u16` `u32` `u64` `u128` `usize` and `Option` of them.
 /// 
-/// <br/>
-/// <hr/>
 /// <br/>
 /// 
 /// ### FormData
 /// 
-/// ```ignore
+/// ```
 /// use ohkami::prelude::*;
 /// use ohkami::utils::Payload; // <-- import me
 /// 
@@ -132,9 +128,8 @@ pub fn Query(_: proc_macro::TokenStream, data: proc_macro::TokenStream) -> proc_
 ///
 /// ```
 /// 
-/// - NOT available for tuple struct ( like `struct S(usize, usize);` ) or tag struct ( like `struct X;` ).
-/// - form part of kebab-case-name is handled by field of snake_case version of the name ( example: `name="submitter-name"` is handled by field `submitter_name` ).
-/// - Possible value types : `String` or `File` or `Vec<File>`.
+/// - Available value types : `String` or `File` or `Vec<File>`.
+/// - Form part of kebab-case-name is handled by field of snake_case version of the name ( example: `name="submitter-name"` is handled by field `submitter_name` ).
 /// 
 #[proc_macro_attribute] #[allow(non_snake_case)]
 pub fn Payload(format: proc_macro::TokenStream, data: proc_macro::TokenStream) -> proc_macro::TokenStream {

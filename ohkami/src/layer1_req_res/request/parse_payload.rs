@@ -30,22 +30,22 @@ pub struct FormPart {
     pub fn name(&self) -> &str {
         &self.name
     }
-    pub fn into_field(self) -> Result<Field, &'static str> {
+    pub fn into_field(self) -> Result<Field, Cow<'static, str>> {
         match self.data {
             FormData::Field(field) => Ok(field),
-            FormData::Files(_) => Err("Expected a field but found files"),
+            FormData::Files(_) => Err(Cow::Borrowed("Expected a field but found files")),
         }
     }
-    pub fn into_files(self) -> Result<Vec<File>, &'static str> {
+    pub fn into_files(self) -> Result<Vec<File>, Cow<'static, str>> {
         match self.data {
             FormData::Files(files) => Ok(files),
-            FormData::Field(_) => Err("Expected files but found a field"),
+            FormData::Field(_) => Err(Cow::Borrowed("Expected files but found a field")),
         }
     }
-    pub fn into_file(self) -> Result<File, &'static str> {
+    pub fn into_file(self) -> Result<File, Cow<'static, str>> {
         match self.data {
-            FormData::Field(_)                         => Err("Expected files but found a field"),
-            FormData::Files(files) if files.len() == 0 => Err("Expected 1 or more files but found 0"),
+            FormData::Field(_)                         => Err(Cow::Borrowed("Expected files but found a field")),
+            FormData::Files(files) if files.len() == 0 => Err(Cow::Borrowed("Expected 1 or more files but found 0")),
             FormData::Files(files) => Ok(unsafe {files.into_iter().next().unwrap_unchecked()})
         }
     }
