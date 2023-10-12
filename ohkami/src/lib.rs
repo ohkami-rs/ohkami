@@ -74,6 +74,7 @@ pub mod prelude {
 }
 
 pub mod utils {
+    pub use crate::layer1_req_res     ::{File};
     pub use crate::layer3_fang_handler::{builtin::*};
     pub use ohkami_macros             ::{Query, Payload};
 }

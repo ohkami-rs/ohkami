@@ -27,10 +27,10 @@ pub struct FormPart {
     pub(super/* for test */) name: String,
     pub(super/* for test */) data: FormData,
 } impl FormPart {
-    pub fn name(&self) -> &str {
+    #[inline(always)] pub fn name(&self) -> &str {
         &self.name
     }
-    pub fn into_field(self) -> Result<Field, Cow<'static, str>> {
+    #[inline(always)] pub fn into_field(self) -> Result<Field, Cow<'static, str>> {
         match self.data {
             FormData::Field(field) => Ok(field),
             FormData::Files(_) => Err(Cow::Borrowed("Expected a field but found files")),
@@ -108,7 +108,7 @@ pub struct File {
     }
 }
 
-pub fn parse_formparts(buf: &[u8], boundary: &str) -> Result<Vec<FormPart>, &'static str> {
+pub fn parse_formparts(buf: &[u8], boundary: &str) -> Result<Vec<FormPart>, Cow<'static, str>> {
     let mut r = Reader::new(buf);
 
     r.consume("--").ok_or_else(EXPECTED_VALID_BOUNDARY)?;
@@ -523,5 +523,22 @@ pub struct Parse<'a> {
         id:   id.ok_or_else(|| ::std::borrow::Cow::Borrowed("`id` is not found"))?,
         name: name.ok_or_else(|| ::std::borrow::Cow::Borrowed("`name` is not found"))?,
         age:  age,
+    })
+}
+
+#[cfg(test)] #[allow(unused)] struct T3 {
+    account_name: String,
+}
+#[cfg(test)] fn __3(buf: &[u8], boundary: String) -> ::std::result::Result<T3, ::std::borrow::Cow<'static, str>> {
+    let mut account_name = ::std::option::Option::None;
+    for form_part in crate::__internal__::parse_formparts(buf, &boundary)? {
+        match form_part.name() {
+            "account-name" => account_name = ::std::option::Option::Some(
+                form_part.into_field()?.text().map_err(|e| ::std::borrow::Cow::Owned(format!("Invalid form text: {e}")))?),
+            unexpected => return ::std::result::Result::Err(::std::borrow::Cow::Owned(format!("unexpected part in form-data: `{unexpected}`")))
+        }
+    }
+    ::std::result::Result::Ok(T3 {
+        account_name: account_name.ok_or_else(|| ::std::borrow::Cow::Borrowed("`account_name` is not found"))?,
     })
 }

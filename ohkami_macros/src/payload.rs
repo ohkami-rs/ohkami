@@ -131,9 +131,9 @@ fn impl_payload_formdata(data: &ItemStruct) -> Result<TokenStream> {
         impl PartType {
             fn into_method_call(&self) -> TokenStream {
                 match self {
-                    Self::Field => quote!{ payload.into_field()?.text().map_err(|e| ::std::borrow::Cow::Owned(::std::format!("Invalid form text: {e}"))) },
-                    Self::Files => quote!{ payload.into_files() },
-                    Self::File  => quote!{ payload.into_file() },
+                    Self::Field => quote!{ form_part.into_field()?.text().map_err(|e| ::std::borrow::Cow::Owned(::std::format!("Invalid form text: {e}")))? },
+                    Self::Files => quote!{ form_part.into_files()? },
+                    Self::File  => quote!{ form_part.into_file()? },
                 }
             }
         }
@@ -141,11 +141,11 @@ fn impl_payload_formdata(data: &ItemStruct) -> Result<TokenStream> {
         let arms = fields_data.iter().map(|FieldData { ident, ty, .. }| {
             let part_name = ident.to_string().replace("_", "-");
 
-            let into_the_field = match &*ty.to_token_stream().to_string() {
-                "String"   => PartType::Field,
-                "Files"    => PartType::Files,
-                "File"     => PartType::File,
-                unexpected => return Err(syn::Error::new(Span::call_site(), &format!("Unexpected field type `{unexpected}` : `#[Payload(FormData)]` supports only `String`, `File` or `Vec<File>` as field type")))
+            let into_the_field = match &*ty.to_token_stream().to_string().split_ascii_whitespace().collect::<String>() {
+                "String" => PartType::Field,
+                "File" | "utils::File" | "ohkami::File" | "::ohkami::File" => PartType::File,
+                "Vec<File>" | "Vec<utils::File>" | "Vec<ohkami::utils::File>" | "Vec<::ohkami::utils::File>" => PartType::Files,
+                unexpected  => return Err(syn::Error::new(Span::call_site(), &format!("Unexpected field type `{unexpected}` : `#[Payload(FormData)]` supports only `String`, `File` or `Vec<File>` as field type")))
             }.into_method_call();
 
             Ok(quote!{
@@ -154,8 +154,8 @@ fn impl_payload_formdata(data: &ItemStruct) -> Result<TokenStream> {
         }).collect::<Result<Vec<_>>>()?;
 
         quote!{
-            for form_part in ::ohkami::__internal__::parse_formparts(payload) {
-                match &*form_part.name {
+            for form_part in ::ohkami::__internal__::parse_formparts(payload, &boundary)? {
+                match form_part.name() {
                     #( #arms )*
                     unexpected => return ::std::result::Result::Err(::std::borrow::Cow::Owned(::std::format!("unexpected part in form-data: `{unexpected}`")))
                 }
@@ -169,7 +169,7 @@ fn impl_payload_formdata(data: &ItemStruct) -> Result<TokenStream> {
                 quote!{ #ident, }
             } else {
                 let ident_str = ident.to_string();
-                quote!{ #ident: #ident.ok_or_else(|| ::std::borrow::Cow::Borrowed(::std::concat!("`", #ident_str, "` is not found")))?, }
+                quote!{ #ident: #ident.ok_or_else(|| ::std::borrow::Cow::Borrowed(::std::concat!("Field `", #ident_str, "` is not found in the form-data")))?, }
             }
         });
 
