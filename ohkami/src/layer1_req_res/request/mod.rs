@@ -16,13 +16,16 @@ pub(crate) const QUERIES_LIMIT: usize = 4;
 pub(crate) const HEADERS_LIMIT: usize = 32;
 
 pub struct Request {
-    pub(crate) buffer: Buffer,
+    _buffer: Buffer,
     method:  Method,
     path:    Slice,
     queries: List<(Slice, Slice), QUERIES_LIMIT>,
     headers: List<(Slice, Slice), HEADERS_LIMIT>,
     payload: Option<(ContentType, Slice)>,
-}
+} const _: () = {
+    unsafe impl Send for Request {}
+    unsafe impl Sync for Request {}
+};
 
 impl Request {
     pub(crate) async fn new(stream: &mut __dep__::TcpStream) -> Self {
@@ -80,8 +83,8 @@ const _: () = {
                     .map(|cell| {
                         let (k, v) = unsafe {cell.assume_init_ref()};
                         format!("{} = {}",
-                            percent_decode(k.into_bytes()).decode_utf8_lossy(),
-                            percent_decode(v.into_bytes()).decode_utf8_lossy(),
+                            percent_decode(unsafe {k.into_bytes()}).decode_utf8_lossy(),
+                            percent_decode(unsafe {v.into_bytes()}).decode_utf8_lossy(),
                         )
                     })
             }.collect::<Vec<_>>();
@@ -89,8 +92,8 @@ const _: () = {
             let headers = {
                 let List { list, next } = &self.headers;
                 list[..*next].into_iter()
-                    .map(|cell| {
-                        let (k, v) = unsafe {cell.assume_init_ref()};
+                    .map(|cell| unsafe {
+                        let (k, v) = cell.assume_init_ref();
                         format!("{}: {}",
                             std::str::from_utf8_unchecked(k.into_bytes()),
                             std::str::from_utf8_unchecked(v.into_bytes()),

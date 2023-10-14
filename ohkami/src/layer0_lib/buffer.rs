@@ -8,6 +8,7 @@ pub(crate) struct Buffer(
     Vec<u8>
 );
 
+#[allow(unused)]
 impl Buffer {
     #[cfg(test)] pub(crate) fn from_raw_str(req_str: &str) -> Self {
         let mut raw_buffer = Vec::with_capacity(BUFFER_SIZE);
@@ -18,8 +19,8 @@ impl Buffer {
     }
 
     pub(crate) async fn new(stream: &mut TcpStream) -> Self {
-        let mut raw_buffer = Vec::with_capacity(BUFFER_SIZE);
-        if let Err(e) = stream.read_to_end(&mut raw_buffer).await {
+        let mut raw_buffer = vec![b'0'; BUFFER_SIZE];
+        if let Err(e) = stream.read(&mut raw_buffer).await {
             panic!("Failed to read stream: {e}")
         }
         Self(raw_buffer)

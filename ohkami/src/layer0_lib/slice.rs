@@ -1,4 +1,5 @@
 /// MANUALLY HANDLE the *lifetime*
+#[derive(Clone, Copy)]
 pub(crate) struct Slice {
     head: *const u8,
     size: usize,

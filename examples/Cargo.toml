@@ -1,5 +1,6 @@
 [workspace]
-members = [
+resolver = "2"
+members  = [
     "form",
     "hello",
     "quick_start",

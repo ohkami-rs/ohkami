@@ -8,163 +8,49 @@ pub(super) fn parse(buffer: Buffer) -> Request {
     let mut r = Reader::new(buffer.as_bytes());
 
     let method = Method::from_bytes(r.read_while(|b| b != &b' '));
-    let path   = unsafe {Slice::from_bytes(r.read_while(|b| b != &b'?' && b != &b' '))};
+    r.consume(" ").unwrap();
+    
+    let path = unsafe {Slice::from_bytes(r.read_while(|b| b != &b'?' && b != &b' '))};
 
     let mut queries = List::<_, {QUERIES_LIMIT}>::new();
-    if r.peek().is_some_and(|b| b == &b'?') {
-        
-    }
-}
+    if r.consume_oneof([" ", "?"]).unwrap() == 1 {
+        while r.peek().is_some() {
+            let key = unsafe {Slice::from_bytes(r.read_while(|b| b != &b'='))};
+            r.consume("=").unwrap();
+            let val = unsafe {Slice::from_bytes(r.read_while(|b| b != &b'&' && b != &b' '))};
 
-pub(super) fn _parse(buffer: Buffer) -> Request {
-    let mut start = 0;
-
-    let method = {
-        let mut end = start;
-        for b in &buffer[start..] {
-            match b {
-                b' ' => break,
-                _ => end += 1,
-            }
+            queries.append((key, val));
+            if r.consume_oneof(["&", " "]).unwrap() == 1 {break}
         }
-        let method = Method::from_bytes(&buffer[start..end]);
-        start = end + 1;
-        method
-    };
-
-    let mut includes_queries = false;
-    let path = {
-        let mut end = start;
-        for b in &buffer[start..] {
-            match b {
-                b'?' => {includes_queries = true; break}
-                b' ' => break,
-                _ => end += 1,
-            }
-        }
-        let path = start..end;
-        start = end + 1;
-        path
-    };
-
-    let mut queries = List::<_, {QUERIES_LIMIT}>::new(); if includes_queries {
-        let mut query_start = start;
-        loop {
-            let mut is_final = false;
-
-            let mut eq = query_start;
-            for b in &buffer[query_start..] {
-                match *b {
-                    b'=' => break,
-                    _    => eq += 1,
-                }
-            }
-
-            let mut end = eq + 1;
-            for b in &buffer[end..] {
-                match b {
-                    b' ' => {is_final = true; break},
-                    b'&' => break,
-                    _ => end += 1,
-                }
-            }
-
-            queries.append((
-                query_start..eq,
-                (eq+1)..end,
-            ));
-            query_start = end + 1/* ' ' or '&' */;
-            if is_final {break}
-        }
-        start = query_start
     }
 
-    let _/* HTTP version */ = {
-        for b in &buffer[start..] {
-            start += 1;
-            if *b == b'\n' {break}
-        }
-    };
+    r.consume("HTTP/1.1\r\n").expect("Ohkami can only handle HTTP/1.1");
 
+    let mut headers      = List::<_, {HEADERS_LIMIT}>::new();
     let mut content_type = None;
-    let mut headers = List::<_, {HEADERS_LIMIT}>::new(); {
-        let mut header_start = start;
-        loop {
-            match buffer[header_start] {
-                b'\0' | b'\r' => break,
-                _ => (),
-            }
+    while r.consume("\r\n").is_none() {
+        let key = unsafe {Slice::from_bytes(r.read_while(|b| b != &b':'))};
+        r.consume(": ").unwrap();
+        let val = unsafe {Slice::from_bytes(r.read_while(|b| b != &b'\r'))};
+        r.consume("\r\n").unwrap();
 
-            let mut colon = header_start;
-            for b in &buffer[header_start..] {
-                match b {
-                    b':' => break,
-                    _ => colon += 1,
-                }
-            }
-
-            let mut end = colon + 1/* ' ' */ + 1;
-            for b in &buffer[end..] {
-                match b {
-                    b'\0' | b'\r' => break,
-                    _ => end += 1,
-                }
-            }
-
-            if content_type.is_some() {
-                headers.append((
-                    header_start..colon,
-                    (colon+1/* ' ' */+1)..end,
-                ))
-            } else {
-                match &buffer[header_start..colon] {
-                    b"Content-Type" | b"content-type" => {
-                        content_type = ContentType::from_bytes(
-                            &buffer[(colon+1/* ' ' */+1)..end]
-                        );
-                    }
-                    _ => {
-                        headers.append((
-                            header_start..colon,
-                            (colon+1/* ' ' */+1)..end,
-                        ))
-                    }
-                }
-            }
-            
-            header_start = end + 1/* '\n' */ + 1
-        }
-        start = header_start + 1/* '\n' */ + 1
-    };
-
-    let payload = (buffer.has_element_at(start)).then(|| {
-        let mut end = start;
-        for b in &buffer[start..] {
-            match b {
-                b'\0' => break,
-                _ => end += 1,
-            }
-        }
-        (
-            content_type.expect("request body found but Content-Type was not found"),
-            start..end
-        )
-    });
-
-    Request {
-        buffer,
-        method,
-        path,
-        queries,
-        headers,
-        payload
+        headers.append((key, val));
+        b"Content-Type".eq_ignore_ascii_case(unsafe {key.into_bytes()})
+            .then(|| content_type = ContentType::from_bytes(unsafe {val.into_bytes()}));
     }
+
+    let payload = r.peek().is_some().then(|| (
+        content_type.unwrap_or(ContentType::Text),
+        unsafe {Slice::from_bytes(r.read_while(|_| true))}
+    ));
+
+    Request { _buffer:buffer, method, path, queries, headers, payload }
 }
 
 
 
 
-#[cfg(test)]#[test]
+#[cfg(test)] #[test]
 fn check_request_parsing() {
     use super::DebugRequest;
 
@@ -180,14 +66,15 @@ fn check_request_parsing() {
             ("Connection", "Keep-Alive"),
         ],
         payload: None
-    }.assert_parsed_from(
-"GET /hello.htm HTTP/1.1\r
-User-Agent: Mozilla/4.0 (compatible; MSIE5.01; Windows NT)\r
-Host: www.tutorialspoint.com\r
-Accept-Language: en-us\r
-Accept-Encoding: gzip, deflate\r
-Connection: Keep-Alive"
-    );
+    }.assert_parsed_from("\
+        GET /hello.htm HTTP/1.1\r\n\
+        User-Agent: Mozilla/4.0 (compatible; MSIE5.01; Windows NT)\r\n\
+        Host: www.tutorialspoint.com\r\n\
+        Accept-Language: en-us\r\n\
+        Accept-Encoding: gzip, deflate\r\n\
+        Connection: Keep-Alive\r\n\
+        \r\n\
+    ");
 
     DebugRequest {
         method: Method::POST,
@@ -206,18 +93,18 @@ Connection: Keep-Alive"
             ContentType::URLEncoded,
             "licenseID=string&content=string&/paramsXML=string"
         )),
-    }.assert_parsed_from(
-"POST /cgi-bin/process.cgi HTTP/1.1\r
-User-Agent: Mozilla/4.0 (compatible; MSIE5.01; Windows NT)\r
-Host: www.tutorialspoint.com\r
-Content-Type: application/x-www-form-urlencoded\r
-Content-Length: length\r
-Accept-Language: en-us\r
-Accept-Encoding: gzip, deflate\r
-Connection: Keep-Alive\r
-\r
-licenseID=string&content=string&/paramsXML=string"
-    );
+    }.assert_parsed_from("\
+        POST /cgi-bin/process.cgi HTTP/1.1\r\n\
+        User-Agent: Mozilla/4.0 (compatible; MSIE5.01; Windows NT)\r\n\
+        Host: www.tutorialspoint.com\r\n\
+        Content-Type: application/x-www-form-urlencoded\r\n\
+        Content-Length: length\r\n\
+        Accept-Language: en-us\r\n\
+        Accept-Encoding: gzip, deflate\r\n\
+        Connection: Keep-Alive\r\n\
+        \r\n\
+        licenseID=string&content=string&/paramsXML=string\
+    ");
 
     DebugRequest {
         method: Method::GET,
@@ -230,8 +117,9 @@ licenseID=string&content=string&/paramsXML=string"
             ("Host", "www.example.com")
         ],
         payload: None,
-    }.assert_parsed_from(
-"GET /genapp/customers?name=Joe%20Bloggs&email=abc@email.com HTTP/1.1\r
-Host: www.example.com"
-    );
+    }.assert_parsed_from("\
+        GET /genapp/customers?name=Joe%20Bloggs&email=abc@email.com HTTP/1.1\r\n\
+        Host: www.example.com\r\n\
+        \r\n\
+    ");
 }
