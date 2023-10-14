@@ -92,7 +92,7 @@ pub struct File {
     pub fn content(&self) -> &[u8] {
         &self.content
     }
-} #[cfg(test)] impl std::fmt::Debug for File {
+} impl std::fmt::Debug for File {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut d = f.debug_struct("File");
         let mut d = &mut d;

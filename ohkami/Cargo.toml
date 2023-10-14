@@ -17,7 +17,7 @@ features         = ["rt_tokio"]
 
 [dependencies]
 ohkami_macros    = { version = "0.4", path = "../ohkami_macros" }
-tokio            = { version = "1", optional = true, features = ["net", "rt", "io-util"] }
+tokio            = { version = "1", optional = true, features = ["net", "rt", "io-util", "sync"] }
 async-std        = { version = "1", optional = true }
 serde            = "1.0"
 serde_json       = "1.0"
@@ -30,4 +30,4 @@ rt_tokio         = ["dep:tokio"]
 rt_async-std     = ["dep:async-std"]
 
 ##### DEBUG #####
-default = ["rt_async-std", "serde/derive"]
+default = ["rt_tokio", "serde/derive"]

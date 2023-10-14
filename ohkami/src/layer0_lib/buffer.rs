@@ -5,22 +5,21 @@ pub(crate) const BUFFER_SIZE: usize = 1024;
 pub(crate) type BufRange = std::ops::Range<usize>;
 
 pub(crate) struct Buffer(
-    [u8; BUFFER_SIZE]
+    Vec<u8>
 );
 
 impl Buffer {
-    #[cfg(test)]
-    pub(crate) fn from_raw_str(req_str: &str) -> Self {
-        let mut raw_buffer = [b'\0'; BUFFER_SIZE];
-        for (i, b) in req_str.as_bytes().into_iter().enumerate() {
-            raw_buffer[i] = *b
+    #[cfg(test)] pub(crate) fn from_raw_str(req_str: &str) -> Self {
+        let mut raw_buffer = Vec::with_capacity(BUFFER_SIZE);
+        for &b in req_str.as_bytes() {
+            raw_buffer.push(b)
         }
         Self(raw_buffer)
     }
 
     pub(crate) async fn new(stream: &mut TcpStream) -> Self {
-        let mut raw_buffer = [b'\0'; BUFFER_SIZE];
-        if let Err(e) = stream.read(&mut raw_buffer).await {
+        let mut raw_buffer = Vec::with_capacity(BUFFER_SIZE);
+        if let Err(e) = stream.read_to_end(&mut raw_buffer).await {
             panic!("Failed to read stream: {e}")
         }
         Self(raw_buffer)
@@ -32,6 +31,13 @@ impl Buffer {
                 &self.0[(range.start)..(range.end)]
             )
         }
+    }
+
+    #[inline] pub(crate) fn has_element_at(&self, index: usize) -> bool {
+        self.0.get(index).is_some()
+    }
+    #[inline] pub(crate) fn as_bytes(&self) -> &[u8] {
+        &self.0
     }
 }
 

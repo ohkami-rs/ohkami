@@ -1,5 +1,6 @@
 mod list; pub(crate) use list::{List};
 mod cors; pub use cors::{CORS};
+mod slice; pub(crate) use slice::Slice;
 mod status; pub use status::{Status};
 mod buffer; pub(crate) use buffer::{Buffer, BufRange};
 mod method; pub use method::{Method};

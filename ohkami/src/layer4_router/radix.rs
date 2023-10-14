@@ -48,16 +48,17 @@ pub(super) enum Pattern {
 impl RadixRouter {
     pub(crate) async fn handle(
         &self,
-        mut c:      Context,
-        mut req:    Request,
-        mut stream: __dep__::TcpStream,
+        mut c:   Context,
+        mut req: Request,
+        stream:  &mut __dep__::TcpStream,
     ) {
-        let Some((target, params)) = (match req.method() {
-            Method::GET     => self.GET   .search(req.path_bytes()),
-            Method::PUT     => self.PUT   .search(req.path_bytes()),
-            Method::POST    => self.POST  .search(req.path_bytes()),
-            Method::PATCH   => self.PATCH .search(req.path_bytes()),
-            Method::DELETE  => self.DELETE.search(req.path_bytes()),
+        let mut params = PathParams::new();
+        let Some(target) = (match req.method() {
+            Method::GET    => self.GET   .search(req.path_bytes(), &mut params),
+            Method::PUT    => self.PUT   .search(req.path_bytes(), &mut params),
+            Method::POST   => self.POST  .search(req.path_bytes(), &mut params),
+            Method::PATCH  => self.PATCH .search(req.path_bytes(), &mut params),
+            Method::DELETE => self.DELETE.search(req.path_bytes(), &mut params),
             
             Method::HEAD => {
                 let (front, back) = self.HEADfangs;
@@ -65,12 +66,12 @@ impl RadixRouter {
                 for ff in front {
                     (c, req) = match ff.0(c, req) {
                         Ok((c, req)) => (c, req),
-                        Err(err_res) => return err_res.send(&mut stream).await
+                        Err(err_res) => return err_res.send(stream).await
                     }
                 }
 
-                let Some((target, params)) = self.GET.search(req.path_bytes())
-                    else {return c.NotFound().send(&mut stream).await};
+                let Some(target) = self.GET.search(req.path_bytes(), &mut params)
+                    else {return c.NotFound().send(stream).await};
                 
                 let Response { headers, .. } = target.handle(c, req, params).await;
                 let mut res = Response {
@@ -83,11 +84,11 @@ impl RadixRouter {
                     res = bf.0(res)
                 }
 
-                return res.send(&mut stream).await
+                return res.send(stream).await
             }
             Method::OPTIONS => {
                 let Some((cors_str, cors)) = crate::layer3_fang_handler::builtin::CORS.get() else {
-                    return c.InternalServerError().send(&mut stream).await
+                    return c.InternalServerError().send(stream).await
                 };
 
                 let (front, back) = self.OPTIONSfangs;
@@ -95,42 +96,42 @@ impl RadixRouter {
                 for ff in front {
                     (c, req) = match ff.0(c, req) {
                         Ok((c, req)) => (c, req),
-                        Err(err_res) => return err_res.send(&mut stream).await
+                        Err(err_res) => return err_res.send(stream).await
                     }
                 }
                 c.headers.Vary("Origin").cors(cors_str);
 
                 {
                     let Some(origin) = req.header("Origin") else {
-                        return c.BadRequest().send(&mut stream).await
+                        return c.BadRequest().send(stream).await
                     };
                     if !cors.AllowOrigin.matches(origin) {
-                        return c.Forbidden().send(&mut stream).await
+                        return c.Forbidden().send(stream).await
                     }
 
                     if req.header("Authorization").is_some() && !cors.AllowCredentials {
-                        return c.Forbidden().send(&mut stream).await
+                        return c.Forbidden().send(stream).await
                     }
 
                     if let Some(request_method) = req.header("Access-Control-Request-Method") {
                         let Some(allow_methods) = cors.AllowMethods.as_ref() else {
-                            return c.Forbidden().send(&mut stream).await
+                            return c.Forbidden().send(stream).await
                         };
 
                         let request_method = Method::from_bytes(request_method.as_bytes());
                         if !allow_methods.contains(&request_method) {
-                            return c.Forbidden().send(&mut stream).await
+                            return c.Forbidden().send(stream).await
                         }
                     }
 
                     if let Some(request_headers) = req.header("Access-Control-Request-Headers") {
                         let Some(allow_headers) = cors.AllowHeaders.as_ref() else {
-                            return c.Forbidden().send(&mut stream).await
+                            return c.Forbidden().send(stream).await
                         };
 
                         let mut request_headers = request_headers.split(',').map(|h| h.trim_matches(' '));
                         if !request_headers.all(|h| allow_headers.contains(&h)) {
-                            return c.Forbidden().send(&mut stream).await
+                            return c.Forbidden().send(stream).await
                         }
                     }
                 }
@@ -141,13 +142,13 @@ impl RadixRouter {
                     res = bf.0(res)
                 }
                 
-                return res.send(&mut stream).await
+                return res.send(stream).await
             }
         }) else {
-            return c.NotFound().send(&mut stream).await
+            return c.NotFound().send(stream).await
         };
 
-        target.handle(c, req, params).await.send(&mut stream).await
+        target.handle(c, req, params).await.send(stream).await
     }
 }
 
@@ -175,21 +176,19 @@ impl Node {
         }
     }
 
-    pub(super/* for test */) fn search(&self, mut path: &[u8]) -> Option<(&Node, PathParams)> {
+    pub(super/* for test */) fn search(&self, mut path: &[u8], params: &mut PathParams) -> Option<&Node> {
         let mut path_len = path.len();
-        if &path[path_len-1] == &b'/' {
+        if path_len > 1 && &path[path_len-1] == &b'/' {
             path = &path[..path_len-1];
             path_len -= 1;
         }
 
-        let mut params = PathParams::new();
         let mut section_start = 1/* skip initial '/' */;
-
         let mut target = self;
         loop {
             for pattern in target.patterns {
                 if &path[0] == &b'/' {path = &path[1..]} else {
-                    // At least one `pattern` to match is remained
+                    // At least one `pattern` to match is remaining
                     // but path doesn't start with '/'
                     return None
                 }
@@ -213,7 +212,7 @@ impl Node {
             }
 
             if path.is_empty() {
-                return Some((target, params))
+                return Some(target)
             } else {
                 target = target.matchable_child(path)?
             }

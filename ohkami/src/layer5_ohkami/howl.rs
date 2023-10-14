@@ -54,19 +54,26 @@ impl Ohkami {
         
         #[cfg(feature="rt_tokio")]
         loop {
-            let mut stream = match listener.accept().await {
+            let stream = Arc::new(__dep__::Mutex::new(match listener.accept().await {
                 Ok((stream, _)) => stream,
-                Err(e)          => panic!("Failed to bind TCP listener: {e}"),
-            };
+                Err(e)          => panic!("Failed to accept TCP stream: {e}"),
+            }));
 
             let router = Arc::clone(&router);
             let c = Context::new();
 
-            if let Err(e) = __dep__::task::spawn(async move {
-                let req = Request::new(&mut stream).await;
-                router.handle(c, req, stream).await;
+            if let Err(e) = __dep__::task::spawn({
+                let handling_stream = stream.clone();
+                async move {
+                    let stream = &mut *handling_stream.lock().await;
+                    let req = Request::new(stream).await;
+                    router.handle(c, req, stream).await;
+                }
             }).await {
-                panic!("Fatal error: {e}")
+                println!("Fatal Error: {e}");
+                Context::new()
+                    .InternalServerError()
+                    .send(&mut *stream.lock().await).await
             }
         }
     }

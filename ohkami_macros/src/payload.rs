@@ -116,6 +116,11 @@ fn impl_payload_formdata(data: &ItemStruct) -> Result<TokenStream> {
     let struct_name = &data.ident;
     let fields_data = FieldData::collect_from_struct_fields(&data.fields)?;
 
+    // `#[Payload(FormData)]` doesn't accept optional fields
+    if fields_data.iter().any(|FieldData { is_optional, .. }| *is_optional) {
+        return Err(syn::Error::new(Span::mixed_site(), "`Option<_>` is not available in `#[Payload(FormData)]`"))
+    }
+
     let declaring_exprs = {
         let exprs = fields_data.iter().map(|FieldData { ident, .. }| quote!{
             let mut #ident = ::std::option::Option::None;

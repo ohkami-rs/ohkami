@@ -1,8 +1,22 @@
+use byte_reader::Reader;
+
 use super::{Request, QUERIES_LIMIT, HEADERS_LIMIT};
-use crate::layer0_lib::{Buffer, Method, List, ContentType};
+use crate::layer0_lib::{Buffer, Method, List, ContentType, Slice};
 
 
 pub(super) fn parse(buffer: Buffer) -> Request {
+    let mut r = Reader::new(buffer.as_bytes());
+
+    let method = Method::from_bytes(r.read_while(|b| b != &b' '));
+    let path   = unsafe {Slice::from_bytes(r.read_while(|b| b != &b'?' && b != &b' '))};
+
+    let mut queries = List::<_, {QUERIES_LIMIT}>::new();
+    if r.peek().is_some_and(|b| b == &b'?') {
+        
+    }
+}
+
+pub(super) fn _parse(buffer: Buffer) -> Request {
     let mut start = 0;
 
     let method = {
@@ -123,7 +137,7 @@ pub(super) fn parse(buffer: Buffer) -> Request {
         start = header_start + 1/* '\n' */ + 1
     };
 
-    let payload = (buffer[start] != 0).then(|| {
+    let payload = (buffer.has_element_at(start)).then(|| {
         let mut end = start;
         for b in &buffer[start..] {
             match b {

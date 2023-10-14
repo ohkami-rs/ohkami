@@ -68,7 +68,7 @@ pub(crate) enum Format {
             "JSON"       => Ok(Self::JSON),
             "URLEncoded" => Ok(Self::URLEncoded),
             "FormData"   => Ok(Self::Form),
-            _ => Err(Error::new(Span::call_site(), "\
+            _ => Err(Error::new(Span::mixed_site(), "\
                 Valid format: \n\
                 - `#[Payload(JSON)]` \n\
                 - `#[Payload(FormData)]` \n\

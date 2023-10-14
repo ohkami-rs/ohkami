@@ -21,6 +21,11 @@
 /*===== dependency injection layer =====*/
 mod __dep__ {
     #[cfg(feature="rt_tokio")]
+    pub(crate) use tokio::sync::Mutex;
+    #[cfg(feature="rt_async-std")]
+    pub(crate) use async_std::sync::Mutex;
+
+    #[cfg(feature="rt_tokio")]
     pub(crate) use tokio::net::TcpStream as TcpStream;
     #[cfg(feature="rt_async-std")]
     pub(crate) use async_std::net::TcpStream as TcpStream;
