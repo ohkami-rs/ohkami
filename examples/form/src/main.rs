@@ -15,7 +15,7 @@ async fn post_submit(c: Context, form_data: FormData) -> Response {
     println!("\n\
         ===== submit =====
         [account] {}\n\
-        [pictures] {} files (mime: {})\n\
+        [pictures] {} files (mime: [{}])\n\
         ==================",
         form_data.account_name,
         form_data.pics.len(),
