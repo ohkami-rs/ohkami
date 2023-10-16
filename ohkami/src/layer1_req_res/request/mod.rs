@@ -20,7 +20,7 @@ pub(crate) const HEADERS_LIMIT: usize = 32;
 
 pub struct Request {
     _metadata: [u8; METADATA_SIZE],
-    payload:   (ContentType, Vec<u8>),
+    payload:   Option<(ContentType, Vec<u8>)>,
     method:  Method,
     path:    Slice,
     queries: List<(Slice, Slice), QUERIES_LIMIT>,
@@ -35,22 +35,7 @@ impl Request {
         let mut _metadata = [b'0'; METADATA_SIZE];
         stream.read(&mut _metadata).await.unwrap();
 
-        // - Here `request`'s fields are fully set except for `.payload.1`
-        // - `.payload.1` is set as `vec![0; usize::min({Content-Length}, PAYLOAD_LIMIT)]`
-        let (mut reuqest, payload_starts_at) = Self::parse_metadata(&_metadata);
-
-        if !reuqest.payload.1.is_empty() {
-            reuqest.payload.1[..(METADATA_SIZE - payload_starts_at)]
-                .copy_from_slice(&_metadata[payload_starts_at..]);
-            stream.read_exact(reuqest.payload.1[(METADATA_SIZE - payload_starts_at)..]
-                .as_mut()).await.unwrap();
-        }
-
-        reuqest
-    }
-
-    fn parse_metadata(buffer: &[u8]) -> (Self, /*payload starting index*/usize) {
-        let mut r = Reader::new(buffer);
+        let mut r = Reader::new(&_metadata);
 
         let method = Method::from_bytes(r.read_while(|b| b != &b' '));
         r.consume(" ").unwrap();
@@ -71,25 +56,52 @@ impl Request {
 
         r.consume("HTTP/1.1\r\n").expect("Ohkami can only handle HTTP/1.1");
 
-        let mut headers      = List::<_, {HEADERS_LIMIT}>::new();
-        let mut content_type = None;
+        let mut headers = List::<_, {HEADERS_LIMIT}>::new();
+        let (mut content_type, mut content_length) = (None, 0usize);
         while r.consume("\r\n").is_none() {
-            let key = unsafe {Slice::from_bytes(r.read_while(|b| b != &b':'))};
+            let _key = r.read_while(|b| b != &b':');
+            let _content_flag = if _key.eq_ignore_ascii_case(b"Content-Type") {
+                Some(true)
+            } else if _key.eq_ignore_ascii_case(b"Content-Length") {
+                Some(false)
+            } else {None};
+            let key = unsafe {Slice::from_bytes(_key)};
+
             r.consume(": ").unwrap();
-            let val = unsafe {Slice::from_bytes(r.read_while(|b| b != &b'\r'))};
+
+            let _val = r.read_while(|b| b != &b'\r');
+            match _content_flag {None => (),
+                Some(true)  => (|| content_type   = ContentType::from_bytes(unsafe {_val}))(),
+                Some(false) => (|| content_length = _val.into_iter().fold(0, |len, d| 10*len + *d as usize))(),
+            }
+            let val = unsafe {Slice::from_bytes(_val)};
             r.consume("\r\n").unwrap();
 
             headers.append((key, val));
-            b"Content-Type".eq_ignore_ascii_case(unsafe {key.into_bytes()})
-                .then(|| content_type = ContentType::from_bytes(unsafe {val.into_bytes()}));
         }
 
-        let payload = r.peek().is_some().then(|| (
-            content_type.unwrap_or(ContentType::Text),
-            unsafe {Slice::from_bytes(r.read_while(|_| true))}
-        ));
+        let mut payload = None; if content_length > 0 {
+            payload = Some((
+                content_type.unwrap_or(ContentType::Text),
+                Request::read_payload(stream, &_metadata, r.index, content_length.min(PAYLOAD_LIMIT)).await
+            ))
+        }
 
-        Request { _buffer:buffer, method, path, queries, headers, payload }
+        Self { _metadata, payload, method, path, queries, headers }
+    }
+
+    async fn read_payload(
+        stream:    &mut TcpStream,
+        ref_metadata: &[u8],
+        starts_at:    usize,
+        size:         usize,
+    ) -> Vec<u8> {
+        let mut bytes = vec![0; size];
+        bytes[..(METADATA_SIZE - starts_at)]
+            .copy_from_slice(&ref_metadata[starts_at..]);
+        stream.read_exact(bytes[(METADATA_SIZE - starts_at)..]
+            .as_mut()).await.unwrap();
+        bytes
     }
 }
 
@@ -120,10 +132,7 @@ impl Request {
     }
     #[inline] pub fn payload(&self) -> Option<(&ContentType, &[u8])> {
         let (content_type, body) = (&self.payload).as_ref()?;
-        Some((
-            content_type,
-            unsafe {body.into_bytes()},
-        ))
+        Some((content_type, &body))
     }
 }
 
