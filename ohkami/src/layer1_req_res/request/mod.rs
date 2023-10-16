@@ -1,6 +1,5 @@
 mod parse_payload; pub use parse_payload::*;
 mod from_request;  pub use from_request::*;
-
 #[cfg(test)] mod _parse_test;
 
 use std::{borrow::Cow};
@@ -80,12 +79,10 @@ impl Request {
             headers.append((key, val));
         }
 
-        let mut payload = None; if content_length > 0 {
-            payload = Some((
-                content_type.unwrap_or(ContentType::Text),
-                Request::read_payload(stream, &_metadata, r.index, content_length.min(PAYLOAD_LIMIT)).await
-            ))
-        }
+        let payload = (content_length > 0).then_some((
+            content_type.unwrap_or(ContentType::Text),
+            Request::read_payload(stream, &_metadata, r.index, content_length.min(PAYLOAD_LIMIT)).await
+        ));
 
         Self { _metadata, payload, method, path, queries, headers }
     }
@@ -96,6 +93,8 @@ impl Request {
         starts_at:    usize,
         size:         usize,
     ) -> Vec<u8> {
+        assert!(starts_at <= METADATA_SIZE);
+
         let mut bytes = vec![0; size];
         bytes[..(METADATA_SIZE - starts_at)]
             .copy_from_slice(&ref_metadata[starts_at..]);
