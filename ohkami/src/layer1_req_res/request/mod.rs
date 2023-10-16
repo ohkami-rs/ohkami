@@ -6,7 +6,7 @@ use std::{borrow::Cow};
 use byte_reader::{Reader};
 use percent_encoding::{percent_decode};
 use crate::{
-    __dep__::{TcpStream, AsyncReader},
+    __dep__::{AsyncReader},
     layer0_lib::{List, Method, ContentType, Slice}
 };
 
@@ -24,13 +24,10 @@ pub struct Request {
     path:    Slice,
     queries: List<(Slice, Slice), QUERIES_LIMIT>,
     headers: List<(Slice, Slice), HEADERS_LIMIT>,
-} const _: () = {
-    unsafe impl Send for Request {}
-    unsafe impl Sync for Request {}
-};
+}
 
 impl Request {
-    pub(crate) async fn new(stream: &mut TcpStream) -> Self {
+    pub(crate) async fn new(stream: &mut (impl AsyncReader + Unpin)) -> Self {
         let mut _metadata = [b'0'; METADATA_SIZE];
         stream.read(&mut _metadata).await.unwrap();
 
@@ -70,7 +67,7 @@ impl Request {
 
             let _val = r.read_while(|b| b != &b'\r');
             match _content_flag {None => (),
-                Some(true)  => (|| content_type   = ContentType::from_bytes(unsafe {_val}))(),
+                Some(true)  => (|| content_type   = ContentType::from_bytes(_val))(),
                 Some(false) => (|| content_length = _val.into_iter().fold(0, |len, d| 10*len + *d as usize))(),
             }
             let val = unsafe {Slice::from_bytes(_val)};
@@ -79,21 +76,23 @@ impl Request {
             headers.append((key, val));
         }
 
-        let payload = (content_length > 0).then_some((
+        let payload = (content_length > 0).then_some({
+            let bytes = Request::read_payload(stream, &_metadata, r.index, content_length.min(PAYLOAD_LIMIT)).await;
+        (
             content_type.unwrap_or(ContentType::Text),
-            Request::read_payload(stream, &_metadata, r.index, content_length.min(PAYLOAD_LIMIT)).await
-        ));
+            bytes
+        )});
 
         Self { _metadata, payload, method, path, queries, headers }
     }
 
     async fn read_payload(
-        stream:    &mut TcpStream,
+        stream:       &mut (impl AsyncReader + Unpin),
         ref_metadata: &[u8],
         starts_at:    usize,
         size:         usize,
     ) -> Vec<u8> {
-        assert!(starts_at <= METADATA_SIZE);
+        #[cfg(debug_assertions)] assert!(starts_at <= METADATA_SIZE, "ohkami can't handle requests if the total size of status and headers exceeds {METADATA_SIZE} bytes");
 
         let mut bytes = vec![0; size];
         bytes[..(METADATA_SIZE - starts_at)]
@@ -184,37 +183,6 @@ const _: () = {
                     .field("queries", &queires)
                     .field("headers", &headers)
                     .finish()
-            }
-        }
-    }
-};
-
-
-
-
-#[cfg(test)]
-struct DebugRequest {
-    method: Method,
-    path: &'static str,
-    queries: &'static [(&'static str, &'static str)],
-    headers: &'static [(&'static str, &'static str)],
-    payload: Option<(ContentType, &'static str)>,
-}
-#[cfg(test)]
-const _: () = {
-    impl DebugRequest {
-        pub(crate) fn assert_parsed_from(self, req_str: &'static str) {
-            let DebugRequest { method, path, queries, headers, payload } = self;
-            let req = parse::parse(Buffer::from_raw_str(req_str));
-
-            assert_eq!(req.method(), method);
-            assert_eq!(req.path(), path);
-            assert_eq!(req.payload().map(|(ct, s)| (ct.clone(), std::str::from_utf8(s).unwrap())), payload);
-            for (k, v) in queries {
-                assert_eq!(req.query::<String>(k), Some(Ok((*v).to_owned())))
-            }
-            for (k, v) in headers {
-                assert_eq!(req.header(k), Some(*v))
             }
         }
     }

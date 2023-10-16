@@ -4,7 +4,7 @@ use crate::{
     Request,
     Context,
     Response,
-    layer0_lib::{Method},
+    layer0_lib::{Method, Slice},
     layer3_fang_handler::{Handler, FrontFang, PathParams, BackFang},
 };
 
@@ -177,13 +177,6 @@ impl Node {
     }
 
     pub(super/* for test */) fn search(&self, mut path: &[u8], params: &mut PathParams) -> Option<&Node> {
-        let mut path_len = path.len();
-        if path_len > 1 && &path[path_len-1] == &b'/' {
-            path = &path[..path_len-1];
-            path_len -= 1;
-        }
-
-        let mut section_start = 1/* skip initial '/' */;
         let mut target = self;
         loop {
             for pattern in target.patterns {
@@ -193,20 +186,11 @@ impl Node {
                     return None
                 }
                 match pattern {
-                    Pattern::Static(s) => {
-                        path = path.strip_prefix(*s)?;
-                        section_start += s.len() + 1/* skip '/' */;
-                    }
-                    Pattern::Param => match find(b'/', path) {
-                        None => {
-                            path = &[];
-                            params.append(section_start..path_len)
-                        }
-                        Some(slash) => {
-                            path = &path[slash+1..];
-                            params.append(section_start..(section_start+slash));
-                            section_start += slash + 1/* skip '/' */;
-                        }
+                    Pattern::Static(s) => path = path.strip_prefix(*s)?,
+                    Pattern::Param => {
+                        let (param, remaining) = split_next_section(path);
+                        params.append(unsafe {Slice::from_bytes(param)});
+                        path = remaining;
                     }
                 }
             }
@@ -242,11 +226,17 @@ impl Pattern {
     }
 }
 
-#[inline] fn find(b: u8, path: &[u8]) -> Option<usize> {
-    for i in 0..(path.len()) {
-        if b == path[i] {
-            return Some(i)
-        }
+#[inline] fn split_next_section(path: &[u8]) -> (&[u8], &[u8]) {
+    let len = path.len();
+    let mut slash = len; for i in 0..len {
+        if b'/' == path[i] {slash = i}
     }
-    None
+
+    let after_slash = (slash + 1/* skip `/` */).min(len/* considering: `path` ends with `/` */);
+    let ptr         = path.as_ptr();
+
+    unsafe {(
+        std::slice::from_raw_parts(ptr,                  slash),
+        std::slice::from_raw_parts(ptr.add(after_slash), len - after_slash),
+    )}
 }

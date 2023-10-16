@@ -10,4 +10,7 @@ pub(crate) struct Slice {
     #[inline(always)] pub(crate) unsafe fn into_bytes<'s>(self) -> &'s [u8] {
         std::slice::from_raw_parts(self.head, self.size)
     }
-}
+} const _: () = {
+    unsafe impl Send for Slice {}
+    unsafe impl Sync for Slice {}
+};
