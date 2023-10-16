@@ -1,36 +1,95 @@
-mod parse;
 mod parse_payload; pub use parse_payload::*;
 mod from_request;  pub use from_request::*;
 
 #[cfg(test)] mod _parse_test;
 
 use std::{borrow::Cow};
+use byte_reader::{Reader};
 use percent_encoding::{percent_decode};
 use crate::{
-    __dep__,
-    layer0_lib::{List, Method, Buffer, ContentType, Slice}
+    __dep__::{TcpStream, AsyncReader},
+    layer0_lib::{List, Method, ContentType, Slice}
 };
 
+pub(crate) const METADATA_SIZE: usize = 1024;
+pub(crate) const PAYLOAD_LIMIT: usize = 65536;
 
 pub(crate) const QUERIES_LIMIT: usize = 4;
 pub(crate) const HEADERS_LIMIT: usize = 32;
 
+
 pub struct Request {
-    _buffer: Buffer,
+    _metadata: [u8; METADATA_SIZE],
+    payload:   (ContentType, Vec<u8>),
     method:  Method,
     path:    Slice,
     queries: List<(Slice, Slice), QUERIES_LIMIT>,
     headers: List<(Slice, Slice), HEADERS_LIMIT>,
-    payload: Option<(ContentType, Slice)>,
 } const _: () = {
     unsafe impl Send for Request {}
     unsafe impl Sync for Request {}
 };
 
 impl Request {
-    pub(crate) async fn new(stream: &mut __dep__::TcpStream) -> Self {
-        let buffer = Buffer::new(stream).await;
-        parse::parse(buffer)
+    pub(crate) async fn new(stream: &mut TcpStream) -> Self {
+        let mut _metadata = [b'0'; METADATA_SIZE];
+        stream.read(&mut _metadata).await.unwrap();
+
+        // - Here `request`'s fields are fully set except for `.payload.1`
+        // - `.payload.1` is set as `vec![0; usize::min({Content-Length}, PAYLOAD_LIMIT)]`
+        let (mut reuqest, payload_starts_at) = Self::parse_metadata(&_metadata);
+
+        if !reuqest.payload.1.is_empty() {
+            reuqest.payload.1[..(METADATA_SIZE - payload_starts_at)]
+                .copy_from_slice(&_metadata[payload_starts_at..]);
+            stream.read_exact(reuqest.payload.1[(METADATA_SIZE - payload_starts_at)..]
+                .as_mut()).await.unwrap();
+        }
+
+        reuqest
+    }
+
+    fn parse_metadata(buffer: &[u8]) -> (Self, /*payload starting index*/usize) {
+        let mut r = Reader::new(buffer);
+
+        let method = Method::from_bytes(r.read_while(|b| b != &b' '));
+        r.consume(" ").unwrap();
+        
+        let path = unsafe {Slice::from_bytes(r.read_while(|b| b != &b'?' && b != &b' '))};
+
+        let mut queries = List::<_, {QUERIES_LIMIT}>::new();
+        if r.consume_oneof([" ", "?"]).unwrap() == 1 {
+            while r.peek().is_some() {
+                let key = unsafe {Slice::from_bytes(r.read_while(|b| b != &b'='))};
+                r.consume("=").unwrap();
+                let val = unsafe {Slice::from_bytes(r.read_while(|b| b != &b'&' && b != &b' '))};
+
+                queries.append((key, val));
+                if r.consume_oneof(["&", " "]).unwrap() == 1 {break}
+            }
+        }
+
+        r.consume("HTTP/1.1\r\n").expect("Ohkami can only handle HTTP/1.1");
+
+        let mut headers      = List::<_, {HEADERS_LIMIT}>::new();
+        let mut content_type = None;
+        while r.consume("\r\n").is_none() {
+            let key = unsafe {Slice::from_bytes(r.read_while(|b| b != &b':'))};
+            r.consume(": ").unwrap();
+            let val = unsafe {Slice::from_bytes(r.read_while(|b| b != &b'\r'))};
+            r.consume("\r\n").unwrap();
+
+            headers.append((key, val));
+            b"Content-Type".eq_ignore_ascii_case(unsafe {key.into_bytes()})
+                .then(|| content_type = ContentType::from_bytes(unsafe {val.into_bytes()}));
+        }
+
+        let payload = r.peek().is_some().then(|| (
+            content_type.unwrap_or(ContentType::Text),
+            unsafe {Slice::from_bytes(r.read_while(|_| true))}
+        ));
+
+        Request { _buffer:buffer, method, path, queries, headers, payload }
     }
 }
 

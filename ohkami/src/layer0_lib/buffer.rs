@@ -1,44 +1,22 @@
 use std::{ops::Index};
 use crate::{__dep__::{TcpStream, AsyncReader}};
 
-pub(crate) const BUFFER_SIZE: usize = 1024;
+pub(crate) const METADATA_SIZE: usize = 1024;
+pub(crate) const PAYLOAD_LIMIT: usize = 65536;
 pub(crate) type BufRange = std::ops::Range<usize>;
 
-pub(crate) struct Buffer(
-    Vec<u8>
-);
+pub(crate) struct Buffer {
+    metadata: [u8; METADATA_SIZE],
+    payload:  Vec<u8>,
+}
 
 #[allow(unused)]
 impl Buffer {
-    #[cfg(test)] pub(crate) fn from_raw_str(req_str: &str) -> Self {
-        let mut raw_buffer = Vec::with_capacity(BUFFER_SIZE);
-        for &b in req_str.as_bytes() {
-            raw_buffer.push(b)
+    pub(crate) fn new() -> Self {
+        Self {
+            metadata: [b'0'; METADATA_SIZE],
+            payload:  Vec::with_capacity(0),
         }
-        Self(raw_buffer)
-    }
-
-    pub(crate) async fn new(stream: &mut TcpStream) -> Self {
-        let mut raw_buffer = vec![b'0'; BUFFER_SIZE];
-        if let Err(e) = stream.read(&mut raw_buffer).await {
-            panic!("Failed to read stream: {e}")
-        }
-        Self(raw_buffer)
-    }
-
-    pub(crate) fn read_str(&self, range: &BufRange) -> &str {
-        unsafe {
-            std::str::from_utf8_unchecked(
-                &self.0[(range.start)..(range.end)]
-            )
-        }
-    }
-
-    #[inline] pub(crate) fn has_element_at(&self, index: usize) -> bool {
-        self.0.get(index).is_some()
-    }
-    #[inline] pub(crate) fn as_bytes(&self) -> &[u8] {
-        &self.0
     }
 }
 
