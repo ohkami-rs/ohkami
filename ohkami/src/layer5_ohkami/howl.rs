@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use super::{Ohkami};
-use crate::{__dep__, Request, Context};
-#[cfg(feature="rt_async-std")] use crate::__dep__::StreamExt;
+use crate::{__rt__, Request, Context};
+#[cfg(feature="rt_async-std")] use crate::__rt__::StreamExt;
 
 
 pub trait TCPAddress {
@@ -36,7 +36,7 @@ impl Ohkami {
     pub async fn howl(self, address: impl TCPAddress) {
         let router = Arc::new(self.into_router().into_radix());
         
-        let listener = match __dep__::TcpListener::bind(address.parse()).await {
+        let listener = match __rt__::TcpListener::bind(address.parse()).await {
             Ok(listener) => listener,
             Err(e)       => panic!("Failed to bind TCP listener: {e}"),
         };
@@ -46,15 +46,15 @@ impl Ohkami {
             let router = Arc::clone(&router);
             let c = Context::new();
 
-            __dep__::task::spawn(async move {
+            __rt__::task::spawn(async move {
                 let req = Request::new(&mut stream).await;
-                router.handle(c, req, stream).await;
-            }).await;
+                router.handle(c, req, &mut stream).await;
+            }).await
         }
         
         #[cfg(feature="rt_tokio")]
         loop {
-            let stream = Arc::new(__dep__::Mutex::new(
+            let stream = Arc::new(__rt__::Mutex::new(
                 match listener.accept().await {
                     Ok((stream, _)) => stream,
                     Err(e)          => panic!("Failed to accept TCP stream: {e}"),
@@ -64,7 +64,7 @@ impl Ohkami {
             let router = Arc::clone(&router);
             let c = Context::new();
 
-            if let Err(e) = __dep__::task::spawn({
+            if let Err(e) = __rt__::task::spawn({
                 let stream = stream.clone();
                 async move {
                     let stream = &mut *stream.lock().await;

@@ -1,5 +1,6 @@
 /// MANUALLY HANDLE the *lifetime*
 #[derive(Clone, Copy)]
+#[cfg_attr(test, derive(PartialEq))]
 pub(crate) struct Slice {
     head: *const u8,
     size: usize,

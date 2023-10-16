@@ -3,7 +3,7 @@ pub(crate) mod headers; pub(crate) use headers::ResponseHeaders;
 
 use std::borrow::Cow;
 use crate::{
-    __dep__, __dep__::AsyncWriter,
+    __rt__, __rt__::AsyncWriter,
     layer0_lib::{Status, ContentType, IntoCows},
 };
 
@@ -52,7 +52,7 @@ impl Response {
 }
 
 impl Response {
-    pub(crate) async fn send(self, stream: &mut __dep__::TcpStream) {
+    pub(crate) async fn send(self, stream: &mut __rt__::TcpStream) {
         if let Err(e) = stream.write_all(&self.into_bytes()).await {
             panic!("Failed to send response: {e}")
         }

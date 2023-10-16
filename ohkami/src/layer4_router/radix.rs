@@ -1,5 +1,5 @@
 use crate::{
-    __dep__,
+    __rt__,
     Status,
     Request,
     Context,
@@ -50,7 +50,7 @@ impl RadixRouter {
         &self,
         mut c:   Context,
         mut req: Request,
-        stream:  &mut __dep__::TcpStream,
+        stream:  &mut __rt__::TcpStream,
     ) {
         let mut params = PathParams::new();
         let Some(target) = (match req.method() {

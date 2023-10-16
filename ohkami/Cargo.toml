@@ -30,4 +30,4 @@ rt_tokio         = ["dep:tokio"]
 rt_async-std     = ["dep:async-std"]
 
 ##### DEBUG #####
-default = ["rt_tokio", "serde/derive"]
+default = ["rt_tokio", "serde/derive" , "tokio?/macros"]

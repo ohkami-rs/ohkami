@@ -1,12 +1,13 @@
 mod parse_payload; pub use parse_payload::*;
 mod from_request;  pub use from_request::*;
-#[cfg(test)] mod _parse_test;
+#[cfg(test)] mod _test_parse_payload;
+#[cfg(test)] mod _test_parse;
 
 use std::{borrow::Cow};
 use byte_reader::{Reader};
 use percent_encoding::{percent_decode};
 use crate::{
-    __dep__::{AsyncReader},
+    __rt__::{AsyncReader},
     layer0_lib::{List, Method, ContentType, Slice}
 };
 
@@ -16,18 +17,20 @@ pub(crate) const PAYLOAD_LIMIT: usize = 65536;
 pub(crate) const QUERIES_LIMIT: usize = 4;
 pub(crate) const HEADERS_LIMIT: usize = 32;
 
-
+#[cfg_attr(test, derive(PartialEq))]
 pub struct Request {
     _metadata: [u8; METADATA_SIZE],
     payload:   Option<(ContentType, Vec<u8>)>,
-    method:  Method,
-    path:    Slice,
-    queries: List<(Slice, Slice), QUERIES_LIMIT>,
-    headers: List<(Slice, Slice), HEADERS_LIMIT>,
+    method:    Method,
+    path:      Slice,
+    queries:   List<(Slice, Slice), QUERIES_LIMIT>,
+    headers:   List<(Slice, Slice), HEADERS_LIMIT>,
 }
 
 impl Request {
-    pub(crate) async fn new(stream: &mut (impl AsyncReader + Unpin)) -> Self {
+    pub(crate) async fn new(
+        stream: &mut (impl AsyncReader + Unpin)
+    ) -> Self {
         let mut _metadata = [b'0'; METADATA_SIZE];
         stream.read(&mut _metadata).await.unwrap();
 
