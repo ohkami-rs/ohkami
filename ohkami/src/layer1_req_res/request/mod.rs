@@ -11,7 +11,7 @@ use crate::{
     layer0_lib::{List, Method, ContentType, Slice}
 };
 
-pub(crate) const METADATA_SIZE: usize = 1024;
+pub(crate) const METADATA_SIZE: usize = 512;
 pub(crate) const PAYLOAD_LIMIT: usize = 65536;
 
 pub(crate) const QUERIES_LIMIT: usize = 4;
@@ -30,7 +30,7 @@ impl Request {
     pub(crate) async fn new(
         stream: &mut (impl AsyncReader + Unpin)
     ) -> Self {
-        let mut _metadata = [b'0'; METADATA_SIZE];
+        let mut _metadata = [0; METADATA_SIZE];
         stream.read(&mut _metadata).await.unwrap();
 
         let mut r = Reader::new(&_metadata);
@@ -70,7 +70,7 @@ impl Request {
             let _val = r.read_while(|b| b != &b'\r');
             match _content_flag {None => (),
                 Some(true)  => (|| content_type   = ContentType::from_bytes(_val))(),
-                Some(false) => (|| content_length = _val.into_iter().fold(0, |len, d| 10*len + *d as usize))(),
+                Some(false) => (|| content_length = _val.into_iter().fold(0, |len, d| 10*len + (*d-b'0') as usize))(),
             }
             let val = unsafe {Slice::from_bytes(_val)};
             r.consume("\r\n").unwrap();
@@ -96,10 +96,22 @@ impl Request {
         size:         usize,
     ) -> Vec<u8> {#[cfg(debug_assertions)] assert!(starts_at <= METADATA_SIZE, "ohkami can't handle requests if the total size of status and headers exceeds {METADATA_SIZE} bytes");
         let mut bytes = vec![0; size];
-        bytes[..(METADATA_SIZE - starts_at)]
-            .copy_from_slice(&ref_metadata[starts_at..]);
-        stream.read_exact(bytes[(METADATA_SIZE - starts_at)..]
-            .as_mut()).await.unwrap();
+
+        let mut size_of_payload_in_metadata = 0;
+        for &b in &ref_metadata[starts_at..] {
+            if b == 0 {break}
+            size_of_payload_in_metadata += 1
+        }
+
+        dbg!(size, size_of_payload_in_metadata);
+
+        bytes[..size_of_payload_in_metadata]
+            .copy_from_slice(&ref_metadata[starts_at..(starts_at + size_of_payload_in_metadata)]);
+
+        if let Some(read_fut) = (size > size_of_payload_in_metadata).then(|| async {
+            stream.read(bytes[size_of_payload_in_metadata..].as_mut()).await.unwrap();
+        }) {read_fut.await}
+
         bytes
     }
 }

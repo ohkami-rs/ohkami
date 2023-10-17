@@ -1,5 +1,5 @@
 use super::{Request, METADATA_SIZE};
-use crate::{__rt__, layer0_lib::{Slice, List, Method}};
+use crate::{__rt__, layer0_lib::{Slice, List, Method, ContentType}};
 
 macro_rules! assert_parse {
     ($case:expr, $expected:expr) => {
@@ -36,8 +36,7 @@ fn metadataize(input: &str) -> [u8; METADATA_SIZE] {
         Accept-Encoding: gzip, deflate\r\n\
         Connection: Keep-Alive\r\n\
         \r\n\
-    ";
-    assert_parse!(case,
+    "; assert_parse!(case,
         Request {_metadata: metadataize(case),
             method:  Method::GET,
             path:    unsafe {Slice::from_bytes(b"/hello.htm")},
@@ -50,6 +49,34 @@ fn metadataize(input: &str) -> [u8; METADATA_SIZE] {
                 ("Accept-Encoding", "gzip, deflate"),
             ]),
             payload: None,
+        }
+    );
+
+    let case = "\
+        POST /signup HTTP/1.1\r\n\
+        User-Agent: Mozilla/4.0\r\n\
+        Host: www.tutorialspoint.com\r\n\
+        Accept-Language: en-us\r\n\
+        Content-Type: application/json\r\n\
+        Content-Length: 27\r\n\
+        \r\n\
+        {\"name\":\"kanarus\",\"age\":20}\
+    "; assert_parse!(case,
+        Request {_metadata: metadataize(case),
+            method:  Method::POST,
+            path:    unsafe {Slice::from_bytes(b"/signup")},
+            queries: List::from([]),
+            headers: List::from([
+                ("Host",            "www.tutorialspoint.com"),
+                ("User-Agent",      "Mozilla/4.0"),
+                ("Accept-Language", "en-us"),
+                ("Content-Length",  "27"),
+                ("Content-Type",    "application/json"),
+            ]),
+            payload: Some((
+                ContentType::JSON,
+                Vec::from(r#"{"name":"kanarus","age":20}"#),
+            )),
         }
     );
 }
