@@ -80,7 +80,7 @@ impl Request {
 
         let payload = match (content_length > 0).then(|| async {(
             content_type.unwrap_or(ContentType::Text),
-            Request::read_payload(stream, &_metadata, dbg!(r.index), content_length.min(PAYLOAD_LIMIT)).await
+            Request::read_payload(stream, &_metadata, r.index, content_length.min(PAYLOAD_LIMIT)).await
         )}) {
             None    => None,
             Some(f) => Some(f.await),
