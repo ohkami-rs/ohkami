@@ -63,6 +63,9 @@ impl<T> List<T, 2> {
 
 #[cfg(test)]
 const _: () = {
+    use crate::{QUERIES_LIMIT, HEADERS_LIMIT};
+    use super::{Slice};
+
     impl<T: PartialEq, const CAPACITY: usize> PartialEq for List<T, CAPACITY> {
         fn eq(&self, other: &Self) -> bool {
             let n = self.next;
@@ -78,6 +81,27 @@ const _: () = {
                 }
             }
             true
+        }
+    }
+
+    impl<const LENGTH: usize> From<[(&'static str, &'static str); LENGTH]> for List<(Slice, Slice), {QUERIES_LIMIT}> {
+        fn from(array: [(&'static str, &'static str); LENGTH]) -> Self {
+            let mut this = Self::new(); for (key, val) in array {
+                this.append((
+                    unsafe {Slice::from_bytes(key.as_bytes())},
+                    unsafe {Slice::from_bytes(val.as_bytes())},
+                ))
+            } this
+        }
+    }
+    impl<const LENGTH: usize> From<[(&'static str, &'static str); LENGTH]> for List<(Slice, Slice), {HEADERS_LIMIT}> {
+        fn from(array: [(&'static str, &'static str); LENGTH]) -> Self {
+            let mut this = Self::new(); for (key, val) in array {
+                this.append((
+                    unsafe {Slice::from_bytes(key.as_bytes())},
+                    unsafe {Slice::from_bytes(val.as_bytes())},
+                ))
+            } this
         }
     }
 };

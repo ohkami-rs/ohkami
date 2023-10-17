@@ -17,14 +17,13 @@ pub(crate) const PAYLOAD_LIMIT: usize = 65536;
 pub(crate) const QUERIES_LIMIT: usize = 4;
 pub(crate) const HEADERS_LIMIT: usize = 32;
 
-#[cfg_attr(test, derive(PartialEq))]
-pub struct Request {
-    _metadata: [u8; METADATA_SIZE],
-    payload:   Option<(ContentType, Vec<u8>)>,
-    method:    Method,
-    path:      Slice,
-    queries:   List<(Slice, Slice), QUERIES_LIMIT>,
-    headers:   List<(Slice, Slice), HEADERS_LIMIT>,
+
+pub struct Request {_metadata: [u8; METADATA_SIZE],
+    method:  Method,
+    path:    Slice,
+    queries: List<(Slice, Slice), QUERIES_LIMIT>,
+    headers: List<(Slice, Slice), HEADERS_LIMIT>,
+    payload: Option<(ContentType, Vec<u8>)>,
 }
 
 impl Request {
@@ -56,7 +55,7 @@ impl Request {
         r.consume("HTTP/1.1\r\n").expect("Ohkami can only handle HTTP/1.1");
 
         let mut headers = List::<_, {HEADERS_LIMIT}>::new();
-        let (mut content_type, mut content_length) = (None, 0usize);
+        let (mut content_type, mut content_length) = (None, 0);
         while r.consume("\r\n").is_none() {
             let _key = r.read_while(|b| b != &b':');
             let _content_flag = if _key.eq_ignore_ascii_case(b"Content-Type") {
@@ -79,12 +78,13 @@ impl Request {
             headers.append((key, val));
         }
 
-        let payload = (content_length > 0).then_some({
-            let bytes = Request::read_payload(stream, &_metadata, r.index, content_length.min(PAYLOAD_LIMIT)).await;
-        (
+        let payload = match (content_length > 0).then(|| async {(
             content_type.unwrap_or(ContentType::Text),
-            bytes
-        )});
+            Request::read_payload(stream, &_metadata, dbg!(r.index), content_length.min(PAYLOAD_LIMIT)).await
+        )}) {
+            None    => None,
+            Some(f) => Some(f.await),
+        };
 
         Self { _metadata, payload, method, path, queries, headers }
     }
@@ -94,9 +94,7 @@ impl Request {
         ref_metadata: &[u8],
         starts_at:    usize,
         size:         usize,
-    ) -> Vec<u8> {
-        #[cfg(debug_assertions)] assert!(starts_at <= METADATA_SIZE, "ohkami can't handle requests if the total size of status and headers exceeds {METADATA_SIZE} bytes");
-
+    ) -> Vec<u8> {#[cfg(debug_assertions)] assert!(starts_at <= METADATA_SIZE, "ohkami can't handle requests if the total size of status and headers exceeds {METADATA_SIZE} bytes");
         let mut bytes = vec![0; size];
         bytes[..(METADATA_SIZE - starts_at)]
             .copy_from_slice(&ref_metadata[starts_at..]);
@@ -187,6 +185,35 @@ const _: () = {
                     .field("headers", &headers)
                     .finish()
             }
+        }
+    }
+};
+
+#[cfg(test)] const _: () = {
+    impl PartialEq for Request {
+        fn eq(&self, other: &Self) -> bool {
+            fn collect<const CAP: usize>(list: &List<(Slice, Slice), CAP>) -> Vec<(&str, &str)> {
+                let mut list = list.iter()
+                    .map(|(k, v)| unsafe {(
+                        std::str::from_utf8(k.into_bytes()).unwrap(),
+                        std::str::from_utf8(v.into_bytes()).unwrap(),
+                    )})
+                    .collect::<Vec<_>>();
+                list.sort_by(|(a, _), (b, _)| (a.to_ascii_lowercase()).cmp(&b.to_ascii_lowercase()));
+                list
+            }
+
+            let eq_ignore_key_case = |left: Vec<(&str, &str)>, right: Vec<(&str, &str)>| {
+                left.len() == right.len() &&
+                left.iter().zip(right)
+                    .all(|((k1, v1), (k2, v2))| k1.eq_ignore_ascii_case(k2) && v1 == &v2)
+            };
+
+            self.method == other.method &&
+            unsafe {self.path.into_bytes() == other.path.into_bytes()} &&
+            collect(&self.queries) == collect(&other.queries) &&
+            eq_ignore_key_case(collect(&self.headers), collect(&other.headers)) &&
+            self.payload == other.payload
         }
     }
 };

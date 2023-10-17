@@ -21,7 +21,7 @@
 /*===== runtime dependency injection layer =====*/
 mod __rt__ {
     #[cfg(feature="rt_tokio")]
-    pub(crate) use tokio::test;
+    #[allow(unused)] pub(crate) use tokio::test;
 
     #[cfg(feature="rt_tokio")]
     pub(crate) use tokio::sync::Mutex;
