@@ -8,7 +8,7 @@ use byte_reader::{Reader};
 use percent_encoding::{percent_decode};
 use crate::{
     __rt__::{AsyncReader},
-    layer0_lib::{List, Method, ContentType, Slice}
+    layer0_lib::{List, Method, ContentType, Slice, CowSlice}
 };
 
 pub(crate) const METADATA_SIZE: usize = 512;
@@ -23,7 +23,7 @@ pub struct Request {_metadata: [u8; METADATA_SIZE],
     path:    Slice,
     queries: List<(Slice, Slice), QUERIES_LIMIT>,
     headers: List<(Slice, Slice), HEADERS_LIMIT>,
-    payload: Option<(ContentType, Vec<u8>)>,
+    payload: Option<(ContentType, CowSlice)>,
 }
 
 impl Request {
@@ -94,7 +94,7 @@ impl Request {
         ref_metadata: &[u8],
         starts_at:    usize,
         size:         usize,
-    ) -> Vec<u8> {#[cfg(debug_assertions)] assert!(starts_at <= METADATA_SIZE, "ohkami can't handle requests if the total size of status and headers exceeds {METADATA_SIZE} bytes");
+    ) -> CowSlice {#[cfg(debug_assertions)] assert!(starts_at <= METADATA_SIZE, "ohkami can't handle requests if the total size of status and headers exceeds {METADATA_SIZE} bytes");
         let mut bytes = vec![0; size];
 
         let mut size_of_payload_in_metadata = 0;
@@ -143,7 +143,7 @@ impl Request {
     }
     #[inline] pub fn payload(&self) -> Option<(&ContentType, &[u8])> {
         let (content_type, body) = (&self.payload).as_ref()?;
-        Some((content_type, &body))
+        Some((content_type, unsafe {body.as_bytes()}))
     }
 }
 

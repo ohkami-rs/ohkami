@@ -1,6 +1,6 @@
 mod list; pub(crate) use list::{List};
 mod cors; pub use cors::{CORS};
-mod slice; pub(crate) use slice::Slice;
+mod slice; pub(crate) use slice::{Slice, CowSlice};
 mod status; pub use status::{Status};
 mod method; pub use method::{Method};
 mod string; pub(crate) use string::{AsStr, IntoCows};
