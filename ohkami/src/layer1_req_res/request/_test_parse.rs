@@ -5,6 +5,7 @@ macro_rules! assert_parse {
     ($case:expr, $expected:expr) => {
         let actual   = Request::new(&mut $case.as_bytes()).await;
         let expected = $expected;
+        let _ = async {println!("<assert_parse>")}.await;
         if actual != expected {
             panic!("\n\
                 =====  actual  =====\n\

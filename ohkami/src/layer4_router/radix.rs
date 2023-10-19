@@ -52,6 +52,12 @@ impl RadixRouter {
         mut req: Request,
         stream:  &mut __rt__::TcpStream,
     ) {
+        println!("\n[{}:{}]\n{}", file!(), line!(),
+            req._metadata.escape_ascii());
+        
+        println!("\n[{}:{}]\n{:#?}", file!(), line!(),
+            req);
+
         let mut params = PathParams::new();
         let Some(target) = (match req.method() {
             Method::GET    => self.GET   .search(req.path_bytes(), &mut params),

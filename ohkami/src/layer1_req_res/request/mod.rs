@@ -18,7 +18,7 @@ pub(crate) const QUERIES_LIMIT: usize = 4;
 pub(crate) const HEADERS_LIMIT: usize = 32;
 
 
-pub struct Request {_metadata: [u8; METADATA_SIZE],
+pub struct Request {pub(crate) _metadata: [u8; METADATA_SIZE],
     method:  Method,
     path:    Slice,
     queries: List<(Slice, Slice), QUERIES_LIMIT>,
@@ -39,6 +39,9 @@ impl Request {
         r.consume(" ").unwrap();
         
         let path = unsafe {Slice::from_bytes(r.read_while(|b| b != &b'?' && b != &b' '))};
+
+        println!("\n[{}:{}]\n{}", file!(), line!(),
+            unsafe {path.into_bytes()}.escape_ascii());
 
         let mut queries = List::<_, {QUERIES_LIMIT}>::new();
         if r.consume_oneof([" ", "?"]).unwrap() == 1 {
@@ -85,6 +88,12 @@ impl Request {
             None    => None,
             Some(f) => Some(f.await),
         };
+
+        for (k, v) in headers.iter() {
+            println!("\n[{}:{}]\n{} : {}", file!(), line!(),
+                unsafe {k.into_bytes().escape_ascii()},
+                unsafe {v.into_bytes().escape_ascii()});
+        }
 
         Self { _metadata, payload, method, path, queries, headers }
     }
