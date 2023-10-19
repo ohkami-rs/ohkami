@@ -95,24 +95,22 @@ impl Request {
         starts_at:    usize,
         size:         usize,
     ) -> CowSlice {#[cfg(debug_assertions)] assert!(starts_at <= METADATA_SIZE, "ohkami can't handle requests if the total size of status and headers exceeds {METADATA_SIZE} bytes");
-        let mut bytes = vec![0; size];
+        if starts_at + size <= METADATA_SIZE {
+            CowSlice::Ref(Slice {
+                head: ref_metadata[starts_at..].as_ptr(),
+                size,
+            })
+        } else {
+            (|| async move {
+            let mut bytes = vec![0; size];
+            let size_of_payload_in_metadata_bytes = METADATA_SIZE - starts_at;
 
-        let mut size_of_payload_in_metadata = 0;
-        for &b in &ref_metadata[starts_at..] {
-            if b == 0 {break}
-            size_of_payload_in_metadata += 1
+            bytes[..size_of_payload_in_metadata_bytes].copy_from_slice(&ref_metadata[starts_at..]);
+            stream.read(bytes[size_of_payload_in_metadata_bytes..].as_mut()).await.unwrap();
+
+            CowSlice::Own(bytes)
+            })().await
         }
-
-        dbg!(size, size_of_payload_in_metadata);
-
-        bytes[..size_of_payload_in_metadata]
-            .copy_from_slice(&ref_metadata[starts_at..(starts_at + size_of_payload_in_metadata)]);
-
-        if let Some(read_fut) = (size > size_of_payload_in_metadata).then(|| async {
-            stream.read(bytes[size_of_payload_in_metadata..].as_mut()).await.unwrap();
-        }) {read_fut.await}
-
-        bytes
     }
 }
 

@@ -1,8 +1,8 @@
 /// MANUALLY HANDLE the *lifetime*
 #[derive(Clone, Copy)]
 pub(crate) struct Slice {
-    head: *const u8,
-    size: usize,
+    pub(crate) head: *const u8,
+    pub(crate) size: usize,
 } impl Slice {
     #[inline] pub(crate) unsafe fn from_bytes(bytes: &[u8]) -> Self {
         Self { head: bytes.as_ptr(), size: bytes.len() }
@@ -25,20 +25,7 @@ pub(crate) enum CowSlice {
     }
 }
 
-
-impl Slice {
-    #[inline] pub(crate) fn cow(self) -> CowSlice {
-        CowSlice::Ref(self)
-    }
-}
-
 impl CowSlice {
-    #[inline] pub(crate) fn into_own(self) -> Self {
-        match self {
-            Self::Own(vec)   => Self::Own(vec),
-            Self::Ref(slice) => Self::Own(unsafe {slice.into_bytes()}.to_vec()),
-        }
-    }
     #[inline] pub(crate) unsafe fn as_bytes(&self) -> &[u8] {
         match self {
             Self::Own(vec)   => &vec,
