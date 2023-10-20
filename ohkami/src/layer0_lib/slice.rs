@@ -1,28 +1,41 @@
 // use std::ptr::NonNull;
 
+use std::ptr::NonNull;
+
 /// MANUALLY HANDLE the *lifetime*
 #[derive(Clone)]
 pub(crate) struct Slice {
-    pub(crate) head: Box<u8>,// NonNull<u8>,
-    pub(crate) size: usize,
+    head: Option<NonNull<u8>>,
+    size: usize,
 } impl Slice {
+    pub(crate) fn null() -> Self {
+        Self {
+            head: None,
+            size: 0,
+        }
+    }
+
     #[inline] pub(crate) unsafe fn new(head: *const u8, size: usize) -> Self {
         Self {
-            head: Box::from_raw(head as *mut u8),//NonNull::new_unchecked(head as *mut u8),
+            head: NonNull::new(head as *mut _),// Box::from_raw(head as *mut u8),//NonNull::new_unchecked(head as *mut u8),
             size,
         }
     }
     #[inline] pub(crate) unsafe fn from_bytes(bytes: &[u8]) -> Self {
         Self {
-            head: Box::from_raw(bytes.as_ptr() as *mut u8),// NonNull::new_unchecked(bytes.as_ptr() as *mut u8),
+            head: NonNull::new(bytes.as_ptr() as *mut _),//Box::from_raw(bytes.as_ptr() as *mut u8),// NonNull::new_unchecked(bytes.as_ptr() as *mut u8),
             size: bytes.len(),
         }
     }
-    #[inline] pub(crate) unsafe fn into_bytes<'s>(self) -> &'s [u8] {
-        std::slice::from_raw_parts(
-            Box::into_raw(self.head),//self.head,//.as_ptr(),
+    #[inline] pub(crate) unsafe fn as_bytes(&self) -> &[u8] {
+        self.head.map(|p| std::slice::from_raw_parts(
+            p.as_ptr(),
             self.size,
-        )
+        )).unwrap_or(&[])
+        // std::slice::from_raw_parts(
+        //     self.head.un,//Box::into_raw(self.head),//self.head,//.as_ptr(),
+        //     self.size,
+        // )
     }
 } const _: () = {
     unsafe impl Send for Slice {}
@@ -43,7 +56,7 @@ impl CowSlice {
     #[inline] pub(crate) unsafe fn as_bytes(&self) -> &[u8] {
         match self {
             Self::Own(vec)   => &vec,
-            Self::Ref(slice) => unsafe {slice.clone().into_bytes()},
+            Self::Ref(slice) => unsafe {slice.as_bytes()},
         }
     }
 }

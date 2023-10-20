@@ -28,9 +28,8 @@ async fn post_submit(c: Context, form_data: FormData) -> Response {
 struct Logger;
 impl IntoFang for Logger {
     fn bite(self) -> ohkami::Fang {
-        Fang(|_: &mut Context, req: Request| {
+        Fang(|_: &mut Context, req: &mut Request| {
             println!("[request] {} {}", req.method(), req.path());
-            req
         })
     }
 }

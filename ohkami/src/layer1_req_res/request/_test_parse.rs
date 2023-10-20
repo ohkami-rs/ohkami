@@ -1,20 +1,29 @@
+use std::pin::Pin;
+
 use super::{Request, METADATA_SIZE};
 use crate::{__rt__, layer0_lib::{Slice, List, Method, ContentType, CowSlice}};
 
 macro_rules! assert_parse {
     ($case:expr, $expected:expr) => {
-        let actual   = Request::new(&mut $case.as_bytes()).await;
+        let mut actual = Request::init();
+        let mut actual = unsafe {Pin::new_unchecked(&mut actual)};
+        actual.as_mut().read(&mut $case.as_bytes()).await;
+
         let expected = $expected;
+
         let _ = async {println!("<assert_parse>")}.await;
-        if actual != expected {
-            panic!("\n\
-                =====  actual  =====\n\
-                {actual:#?}\n\
-                \n\
-                ===== expected =====\n\
-                {expected:#?}\n\
-                \n\
-            ")
+
+        let __panic_message = format!("\n\
+            =====  actual  =====\n\
+            {actual:#?}\n\
+            \n\
+            ===== expected =====\n\
+            {expected:#?}\n\
+            \n\
+        ");
+
+        if actual.get_mut() != &expected {
+            panic!("{__panic_message}")
         }
     };
 }

@@ -3,7 +3,7 @@ mod from_request;  pub use from_request::*;
 #[cfg(test)] mod _test_parse_payload;
 #[cfg(test)] mod _test_parse;
 
-use std::{borrow::Cow};
+use std::{borrow::Cow, pin::Pin};
 use byte_reader::{Reader};
 use percent_encoding::{percent_decode};
 use crate::{
@@ -27,23 +27,33 @@ pub struct Request {pub(crate) _metadata: [u8; METADATA_SIZE],
 }
 
 impl Request {
-    pub(crate) async fn new(
-        stream: &mut (impl AsyncReader + Unpin)
-    ) -> Self {
-        let mut _metadata = [0; METADATA_SIZE];
-        stream.read(&mut _metadata).await.unwrap();
+    pub(crate) fn init() -> Self {
+        Self {_metadata: [0; METADATA_SIZE],
+            method:  Method::GET,
+            path:    Slice::null(),
+            queries: List::<(Slice, Slice), QUERIES_LIMIT>::new(),
+            headers: List::<(Slice, Slice), HEADERS_LIMIT>::new(),
+            payload: None,
+        }
+    }
 
-        let mut r = Reader::new(&_metadata);
+    pub(crate) async fn read(
+        mut self: Pin<&mut Self>,
+        stream:   &mut (impl AsyncReader + Unpin),
+    ) {
+        stream.read(&mut self._metadata).await.unwrap();
+
+        let mut r = Reader::new(&self._metadata);
 
         let method = Method::from_bytes(r.read_while(|b| b != &b' '));
         r.consume(" ").unwrap();
         
-        let path = unsafe {Slice::from_bytes(r.read_while(|b| b != &b'?' && b != &b' '))};
+       let path = unsafe {Slice::from_bytes(r.read_while(|b| b != &b'?' && b != &b' '))};
 
         // println!("\n[{}:{}]\n{}", file!(), line!(),
         //     unsafe {path.into_bytes()}.escape_ascii());
 
-        let mut queries = List::<_, {QUERIES_LIMIT}>::new();
+        let mut queries = List::<(Slice, Slice), QUERIES_LIMIT>::new();
         if r.consume_oneof([" ", "?"]).unwrap() == 1 {
             while r.peek().is_some() {
                 let key = unsafe {Slice::from_bytes(r.read_while(|b| b != &b'='))};
@@ -57,7 +67,7 @@ impl Request {
 
         r.consume("HTTP/1.1\r\n").expect("Ohkami can only handle HTTP/1.1");
 
-        let mut headers = List::<_, {HEADERS_LIMIT}>::new();
+        let mut headers = List::<(Slice, Slice), HEADERS_LIMIT>::new();
         let (mut content_type, mut content_length) = (None, 0);
         while r.consume("\r\n").is_none() {
             let _key = r.read_while(|b| b != &b':');
@@ -83,11 +93,17 @@ impl Request {
 
         let payload = match (content_length > 0).then(|| async {(
             content_type.unwrap_or(ContentType::Text),
-            Request::read_payload(stream, &_metadata, r.index, content_length.min(PAYLOAD_LIMIT)).await
+            Request::read_payload(stream, &self._metadata, r.index, content_length.min(PAYLOAD_LIMIT)).await
         )}) {
             None    => None,
             Some(f) => Some(f.await),
         };
+
+        self.method  = method;
+        self.path    = path;
+        self.queries = queries;
+        self.headers = headers;
+        self.payload = payload;
 
         // for (k, v) in headers.iter() {
         //     println!("\n[{}:{}]\n{} : {}", file!(), line!(),
@@ -95,7 +111,7 @@ impl Request {
         //         unsafe {v.into_bytes().escape_ascii()});
         // }
 
-        Self { _metadata, payload, method, path, queries, headers }
+        // Self { _metadata, payload, method, path, queries, headers }
     }
 
     async fn read_payload(
@@ -131,16 +147,16 @@ impl Request {
     }
     #[inline] pub fn query<Value: FromBuffer>(&self, key: &str) -> Option<Result<Value, Cow<'static, str>>> {
         for (k, v) in self.queries.iter() {
-            if key.eq_ignore_ascii_case(&percent_decode(unsafe {k.clone().into_bytes()}).decode_utf8_lossy()) {
-                return (|| Some(Value::parse((&percent_decode(unsafe {v.clone().into_bytes()}).decode_utf8_lossy()).as_bytes())))()
+            if key.eq_ignore_ascii_case(&percent_decode(unsafe {k.as_bytes()}).decode_utf8_lossy()) {
+                return (|| Some(Value::parse((&percent_decode(unsafe {v.as_bytes()}).decode_utf8_lossy()).as_bytes())))()
             }
         }
         None
     }
     #[inline] pub fn header(&self, key: &str) -> Option<&str> {
         for (k, v) in self.headers.iter() {
-            if key.as_bytes().eq_ignore_ascii_case(unsafe {k.clone().into_bytes()}) {
-                return (|| Some(unsafe {std::str::from_utf8_unchecked(v.clone().into_bytes())}))()
+            if key.as_bytes().eq_ignore_ascii_case(unsafe {k.as_bytes()}) {
+                return (|| Some(unsafe {std::str::from_utf8_unchecked(v.as_bytes())}))()
             }
         }
         None
@@ -153,7 +169,7 @@ impl Request {
 
 impl Request {
     #[inline(always)] pub(crate) fn path_bytes(&self) -> &[u8] {
-        unsafe {self.path.clone().into_bytes()}
+        unsafe {self.path.as_bytes()}
     }
 }
 
@@ -166,8 +182,8 @@ const _: () = {
                     .map(|cell| {
                         let (k, v) = unsafe {cell.assume_init_ref()};
                         format!("{} = {}",
-                            percent_decode(unsafe {k.clone().into_bytes()}).decode_utf8_lossy(),
-                            percent_decode(unsafe {v.clone().into_bytes()}).decode_utf8_lossy(),
+                            percent_decode(unsafe {k.as_bytes()}).decode_utf8_lossy(),
+                            percent_decode(unsafe {v.as_bytes()}).decode_utf8_lossy(),
                         )
                     })
             }.collect::<Vec<_>>();
@@ -178,8 +194,8 @@ const _: () = {
                     .map(|cell| unsafe {
                         let (k, v) = cell.assume_init_ref();
                         format!("{}: {}",
-                            std::str::from_utf8_unchecked(k.clone().into_bytes()),
-                            std::str::from_utf8_unchecked(v.clone().into_bytes()),
+                            std::str::from_utf8_unchecked(k.as_bytes()),
+                            std::str::from_utf8_unchecked(v.as_bytes()),
                         )
                     })
             }.collect::<Vec<_>>();
@@ -211,8 +227,8 @@ const _: () = {
             fn collect<const CAP: usize>(list: &List<(Slice, Slice), CAP>) -> Vec<(&str, &str)> {
                 let mut list = list.iter()
                     .map(|(k, v)| unsafe {(
-                        std::str::from_utf8(k.clone().into_bytes()).unwrap(),
-                        std::str::from_utf8(v.clone().into_bytes()).unwrap(),
+                        std::str::from_utf8(k.as_bytes()).unwrap(),
+                        std::str::from_utf8(v.as_bytes()).unwrap(),
                     )})
                     .collect::<Vec<_>>();
                 list.sort_by(|(a, _), (b, _)| (a.to_ascii_lowercase()).cmp(&b.to_ascii_lowercase()));
@@ -226,7 +242,7 @@ const _: () = {
             };
 
             self.method == other.method &&
-            unsafe {self.path.clone().into_bytes() == other.path.clone().into_bytes()} &&
+            unsafe {self.path.as_bytes() == other.path.as_bytes()} &&
             collect(&self.queries) == collect(&other.queries) &&
             eq_ignore_key_case(collect(&self.headers), collect(&other.headers)) &&
             self.payload == other.payload

@@ -49,7 +49,7 @@ impl RadixRouter {
     pub(crate) async fn handle(
         &self,
         mut c:   Context,
-        mut req: Request,
+        req:     &mut Request,
         stream:  &mut __rt__::TcpStream,
     ) {
         // println!("\n[{}:{}]\n{}", file!(), line!(),
@@ -69,8 +69,12 @@ impl RadixRouter {
                 let (front, back) = self.HEADfangs;
 
                 for ff in front {
-                    (c, req) = match ff.0(c, req) {
-                        Ok((c, req)) => (c, req),
+                    // (c, req) = match ff.0(c, req) {
+                    //     Ok((c, req)) => (c, req),
+                    //     Err(err_res) => return err_res.send(stream).await
+                    // }
+                    c = match ff.0(c, req) {
+                        Ok(c)        => c,
                         Err(err_res) => return err_res.send(stream).await
                     }
                 }
@@ -99,8 +103,12 @@ impl RadixRouter {
                 let (front, back) = self.OPTIONSfangs;
 
                 for ff in front {
-                    (c, req) = match ff.0(c, req) {
-                        Ok((c, req)) => (c, req),
+                    // (c, req) = match ff.0(c, req) {
+                    //     Ok((c, req)) => (c, req),
+                    //     Err(err_res) => return err_res.send(stream).await
+                    // }
+                    c = match ff.0(c, req) {
+                        Ok(c)        => c,
                         Err(err_res) => return err_res.send(stream).await
                     }
                 }
@@ -160,12 +168,12 @@ impl RadixRouter {
 impl Node {
     #[inline] pub(super) async fn handle(&self,
         mut c:   Context,
-        mut req: Request,
+        req:     &mut Request,
         params:  PathParams,
     ) -> Response {
         for f in self.front {
-            (c, req) = match f.0(c, req) {
-                Ok((c, req)) => (c, req),
+            c = match f.0(c, req) {
+                Ok(c)        => c,
                 Err(err_res) => return err_res,
             }
         }

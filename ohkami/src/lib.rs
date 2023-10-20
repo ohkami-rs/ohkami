@@ -66,9 +66,6 @@ mod layer5_ohkami;
 
 
 /*===== visibility managements =====*/
-pub(crate) use layer1_req_res     ::{QUERIES_LIMIT, HEADERS_LIMIT};
-pub(crate) use layer3_fang_handler::{PATH_PARAMS_LIMIT};
-
 pub use layer0_lib         ::{Status, Method, ContentType};
 pub use layer1_req_res     ::{Request, Response, FromRequest};
 pub use layer2_context     ::{Context};
@@ -102,9 +99,8 @@ pub mod __internal__ {
     struct AppendHeader;
     impl IntoFang for AppendHeader {
         fn bite(self) -> Fang {
-            Fang(|c: &mut Context, req: Request| {
+            Fang(|c: &mut Context, _: &mut Request| {
                 c.headers.Server("ohkami");
-                req
             })
         }
     }

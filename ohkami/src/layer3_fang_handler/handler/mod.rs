@@ -14,7 +14,7 @@ pub(crate) type PathParams = List<Slice, PATH_PARAMS_LIMIT>;
 
 pub struct Handler(
     pub(crate) Box<dyn
-        Fn(Request, Context, PathParams) -> Pin<
+        Fn(&mut Request, Context, PathParams) -> Pin<
             Box<dyn
                 Future<Output = Response>
                 + Send + 'static

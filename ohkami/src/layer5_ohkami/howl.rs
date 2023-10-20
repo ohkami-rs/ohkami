@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{sync::Arc, pin::Pin};
 use super::{Ohkami};
 use crate::{__rt__, Request, Context};
 #[cfg(feature="rt_async-std")] use crate::__rt__::StreamExt;
@@ -68,8 +68,12 @@ impl Ohkami {
                 let stream = stream.clone();
                 async move {
                     let stream = &mut *stream.lock().await;
-                    let req = Request::new(stream).await;
-                    router.handle(c, req, stream).await;
+
+                    let mut req = Request::init();
+                    let mut req = unsafe {Pin::new_unchecked(&mut req)};
+                    req.as_mut().read(stream).await;
+
+                    router.handle(c, req.get_mut(), stream).await;
                 }
             }).await {
                 println!("Fatal Error: {e}");

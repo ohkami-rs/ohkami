@@ -15,13 +15,11 @@ impl IntoFang for CORS {
     fn bite(self) -> crate::Fang {
         CORS.set((Box::leak(self.to_string().into_boxed_str()), self)).ok();
 
-        crate::Fang(|c: &mut Context, req: Request| {
+        crate::Fang(|c: &mut Context, _: &mut Request| {
             let (cors_str, _) = CORS.get().unwrap();
             c.headers
                 .Vary("Origin")
                 .cors(cors_str);
-
-            req
         })
     }
 }

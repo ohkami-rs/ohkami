@@ -17,7 +17,7 @@ pub enum FangProc {
 }
 #[derive(Clone)]
 pub struct FrontFang(pub(crate) Arc<dyn
-    Fn(Context, Request) -> Result<(Context, Request), Response>
+    Fn(Context, &mut Request) -> Result<Context, Response>
     + Send
     + Sync
     + 'static

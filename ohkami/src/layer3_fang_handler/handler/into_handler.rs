@@ -38,7 +38,7 @@ const _: (/* PathParam */) = {
             {
                 fn into_handler(self) -> Handler {
                     Handler(Box::new(move |_, c, params|
-                        match <$param_type as PathParam>::parse(unsafe {params.assume_init_first().into_bytes()}) {
+                        match <$param_type as PathParam>::parse(unsafe {params.assume_init_first().as_bytes()}) {
                             Ok(p1) => Box::pin({
                                 let res = self(c, p1);
                                 async {res.await}
@@ -65,7 +65,7 @@ const _: (/* PathParam */) = {
             Handler(Box::new(move |_, c, params|
                 // SAFETY: Due to the architecture of `Router`,
                 // `params` has already `append`ed once before this code
-                match <P1 as PathParam>::parse(unsafe {params.assume_init_first().into_bytes()}) {
+                match <P1 as PathParam>::parse(unsafe {params.assume_init_first().as_bytes()}) {
                     Ok(p1) => Box::pin({
                         let res = self(c, (p1,));
                         async {res.await}
@@ -89,8 +89,8 @@ const _: (/* PathParam */) = {
                 let (p1_range, p2_range) = params.assume_init_extract();
                 // SAFETY: Due to the architecture of `Router`,
                 // `params` has already `append`ed twice before this code
-                match <P1 as PathParam>::parse(unsafe {p1_range.into_bytes()}) {
-                    Ok(p1) => match <P2 as PathParam>::parse(unsafe {p2_range.into_bytes()}) {
+                match <P1 as PathParam>::parse(unsafe {p1_range.as_bytes()}) {
+                    Ok(p1) => match <P2 as PathParam>::parse(unsafe {p2_range.as_bytes()}) {
                         Ok(p2) => Box::pin({
                             let res = self(c, (p1, p2));
                             async {res.await}
@@ -205,7 +205,7 @@ const _: (/* single PathParam and FromRequest items */) = {
                     Handler(Box::new(move |req, c, params|
                         // SAFETY: Due to the architecture of `Router`,
                         // `params` has already `append`ed once before this code
-                        match <$param_type as PathParam>::parse(unsafe {params.assume_init_first().into_bytes()}) {
+                        match <$param_type as PathParam>::parse(unsafe {params.assume_init_first().as_bytes()}) {
                             Ok(p1) => match Item1::parse(&req) {
                                 Ok(item1) => Box::pin({
                                     let res = self(c, p1, item1);
@@ -234,7 +234,7 @@ const _: (/* single PathParam and FromRequest items */) = {
                     Handler(Box::new(move |req, c, params|
                         // SAFETY: Due to the architecture of `Router`,
                         // `params` has already `append`ed once before this code
-                        match <$param_type as PathParam>::parse(unsafe {params.assume_init_first().into_bytes()}) {
+                        match <$param_type as PathParam>::parse(unsafe {params.assume_init_first().as_bytes()}) {
                             Ok(p1) => match Item1::parse(&req) {
                                 Ok(item1) => match Item2::parse(&req) {
                                     Ok(item2) => Box::pin({
@@ -269,7 +269,7 @@ const _: (/* single PathParam and FromRequest items */) = {
                     Handler(Box::new(move |req, c, params|
                         // SAFETY: Due to the architecture of `Router`,
                         // `params` has already `append`ed once before this code
-                        match <$param_type as PathParam>::parse(unsafe {params.assume_init_first().into_bytes()}) {
+                        match <$param_type as PathParam>::parse(unsafe {params.assume_init_first().as_bytes()}) {
                             Ok(p1) => match Item1::parse(&req) {
                                 Ok(item1) => match Item2::parse(&req) {
                                     Ok(item2) => match Item3::parse(&req) {
@@ -316,7 +316,7 @@ const _: (/* one PathParam and FromRequest items */) = {
                 Handler(Box::new(move |req, c, params|
                     // SAFETY: Due to the architecture of `Router`,
                     // `params` has already `append`ed once before this code
-                    match P1::parse(unsafe {params.assume_init_first().into_bytes()}) {
+                    match P1::parse(unsafe {params.assume_init_first().as_bytes()}) {
                         Ok(p1) => match Item1::parse(&req) {
                             Ok(item1) => Box::pin({
                                 let res = self(c, (p1,), item1);
@@ -345,7 +345,7 @@ const _: (/* one PathParam and FromRequest items */) = {
                 Handler(Box::new(move |req, c, params|
                     // SAFETY: Due to the architecture of `Router`,
                     // `params` has already `append`ed once before this code
-                    match P1::parse(unsafe {params.assume_init_first().into_bytes()}) {
+                    match P1::parse(unsafe {params.assume_init_first().as_bytes()}) {
                         Ok(p1) => match Item1::parse(&req) {
                             Ok(item1) => match Item2::parse(&req) {
                                 Ok(item2) => Box::pin({
@@ -380,7 +380,7 @@ const _: (/* one PathParam and FromRequest items */) = {
                 Handler(Box::new(move |req, c, params|
                     // SAFETY: Due to the architecture of `Router`,
                     // `params` has already `append`ed once before this code
-                    match P1::parse(unsafe {params.assume_init_first().into_bytes()}) {
+                    match P1::parse(unsafe {params.assume_init_first().as_bytes()}) {
                         Ok(p1) => match Item1::parse(&req) {
                             Ok(item1) => match Item2::parse(&req) {
                                 Ok(item2) => match Item3::parse(&req) {
@@ -425,8 +425,8 @@ const _: (/* two PathParams and FromRequest items */) = {
 
                 // SAFETY: Due to the architecture of `Router`,
                 // `params` has already `append`ed twice before this code
-                match <P1 as PathParam>::parse(unsafe {p1_range.into_bytes()}) {
-                    Ok(p1) => match <P2 as PathParam>::parse(unsafe {p2_range.into_bytes()}) {
+                match <P1 as PathParam>::parse(unsafe {p1_range.as_bytes()}) {
+                    Ok(p1) => match <P2 as PathParam>::parse(unsafe {p2_range.as_bytes()}) {
                         Ok(p2) => match Item1::parse(&req) {
                             Ok(item1) => Box::pin({
                                 let res = self(c, (p1, p2), item1);
@@ -462,8 +462,8 @@ const _: (/* two PathParams and FromRequest items */) = {
 
                 // SAFETY: Due to the architecture of `Router`,
                 // `params` has already `append`ed twice before this code
-                match <P1 as PathParam>::parse(unsafe {p1_range.into_bytes()}) {
-                    Ok(p1) => match <P2 as PathParam>::parse(unsafe {p2_range.into_bytes()}) {
+                match <P1 as PathParam>::parse(unsafe {p1_range.as_bytes()}) {
+                    Ok(p1) => match <P2 as PathParam>::parse(unsafe {p2_range.as_bytes()}) {
                         Ok(p2) => match Item1::parse(&req) {
                             Ok(item1) => match Item2::parse(&req) {
                                 Ok(item2) => Box::pin({
@@ -505,8 +505,8 @@ const _: (/* two PathParams and FromRequest items */) = {
 
                 // SAFETY: Due to the architecture of `Router`,
                 // `params` has already `append`ed twice before this code
-                match <P1 as PathParam>::parse(unsafe {p1_range.into_bytes()}) {
-                    Ok(p1) => match <P2 as PathParam>::parse(unsafe {p2_range.into_bytes()}) {
+                match <P1 as PathParam>::parse(unsafe {p1_range.as_bytes()}) {
+                    Ok(p1) => match <P2 as PathParam>::parse(unsafe {p2_range.as_bytes()}) {
                         Ok(p2) => match Item1::parse(&req) {
                             Ok(item1) => match Item2::parse(&req) {
                                 Ok(item2) => match Item3::parse(&req) {
