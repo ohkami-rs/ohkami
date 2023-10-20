@@ -37,7 +37,7 @@ impl IntoFang for Logger {
 
 #[tokio::main]
 async fn main() {
-    Ohkami::with(Logger, (
+    Ohkami::new((//with(Logger, (
         "/form"  .GET(get_form),
         "/submit".POST(post_submit),
     )).howl(5000).await

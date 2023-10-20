@@ -1,14 +1,28 @@
+// use std::ptr::NonNull;
+
 /// MANUALLY HANDLE the *lifetime*
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub(crate) struct Slice {
-    pub(crate) head: *const u8,
+    pub(crate) head: Box<u8>,// NonNull<u8>,
     pub(crate) size: usize,
 } impl Slice {
+    #[inline] pub(crate) unsafe fn new(head: *const u8, size: usize) -> Self {
+        Self {
+            head: Box::from_raw(head as *mut u8),//NonNull::new_unchecked(head as *mut u8),
+            size,
+        }
+    }
     #[inline] pub(crate) unsafe fn from_bytes(bytes: &[u8]) -> Self {
-        Self { head: bytes.as_ptr(), size: bytes.len() }
+        Self {
+            head: Box::from_raw(bytes.as_ptr() as *mut u8),// NonNull::new_unchecked(bytes.as_ptr() as *mut u8),
+            size: bytes.len(),
+        }
     }
     #[inline] pub(crate) unsafe fn into_bytes<'s>(self) -> &'s [u8] {
-        std::slice::from_raw_parts(self.head, self.size)
+        std::slice::from_raw_parts(
+            Box::into_raw(self.head),//self.head,//.as_ptr(),
+            self.size,
+        )
     }
 } const _: () = {
     unsafe impl Send for Slice {}
@@ -29,7 +43,7 @@ impl CowSlice {
     #[inline] pub(crate) unsafe fn as_bytes(&self) -> &[u8] {
         match self {
             Self::Own(vec)   => &vec,
-            Self::Ref(slice) => unsafe {slice.into_bytes()},
+            Self::Ref(slice) => unsafe {slice.clone().into_bytes()},
         }
     }
 }
