@@ -178,7 +178,7 @@ use std::{format as f, borrow::Cow};
         Content-Transfer-Encoding: binary\r\n\
         Content-Type: image/gif\r\n\
         \r\n\
-        [[binarybinarybinarybinary]]\r\n\
+        [[binary\rbinary\rbinary\rbinary]]\r\n\
         --BbC04y--\r\n\
         --AaB03x\r\n\
         Content-Disposition: form-data; name=\"field2\"\r\n\
@@ -205,7 +205,7 @@ use std::{format as f, borrow::Cow};
                 File {
                     name:      Some(f!("attachment2.gif")),
                     mime_type: Cow::Owned(f!("image/gif")),
-                    content:   Vec::from("[[binarybinarybinarybinary]]")
+                    content:   Vec::from("[[binary\rbinary\rbinary\rbinary]]")
                 },
             ])
         },

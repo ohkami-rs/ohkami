@@ -12,7 +12,7 @@ use crate::{
 };
 
 pub(crate) const METADATA_SIZE: usize = 1024;
-pub(crate) const PAYLOAD_LIMIT: usize = 65536;
+pub(crate) const PAYLOAD_LIMIT: usize = 2_usize.pow(20);
 
 pub(crate) const QUERIES_LIMIT: usize = 4;
 pub(crate) const HEADERS_LIMIT: usize = 32;
@@ -43,6 +43,12 @@ impl Request {
     ) {
         stream.read(&mut self._metadata).await.unwrap();
         let mut r = Reader::new(&self._metadata);
+
+        println!("\n\
+            ===== _metadata =====\n\
+            {}\n\
+            =====================\n\
+        ", self._metadata.escape_ascii());
 
         let method = Method::from_bytes(r.read_while(|b| b != &b' '));
         r.consume(" ").unwrap();

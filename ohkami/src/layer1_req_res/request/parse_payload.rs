@@ -27,26 +27,33 @@ pub struct FormPart {
     pub(super/* for test */) name: String,
     pub(super/* for test */) data: FormData,
 } impl FormPart {
-    #[inline(always)] pub fn name(&self) -> &str {
+    #[inline] pub fn name(&self) -> &str {
         &self.name
     }
-    #[inline(always)] pub fn into_field(self) -> Result<Field, Cow<'static, str>> {
+    #[inline] pub fn into_field(self) -> Result<Field, Cow<'static, str>> {
         match self.data {
             FormData::Field(field) => Ok(field),
             FormData::Files(_) => Err(Cow::Borrowed("Expected a field but found files")),
         }
     }
-    pub fn into_files(self) -> Result<Vec<File>, Cow<'static, str>> {
+    #[inline] pub fn into_files(self) -> Result<Vec<File>, Cow<'static, str>> {
         match self.data {
             FormData::Files(files) => Ok(files),
             FormData::Field(_) => Err(Cow::Borrowed("Expected files but found a field")),
         }
     }
-    pub fn into_file(self) -> Result<File, Cow<'static, str>> {
+    #[inline] pub fn into_file(self) -> Result<File, Cow<'static, str>> {
         match self.data {
             FormData::Field(_)                         => Err(Cow::Borrowed("Expected files but found a field")),
             FormData::Files(files) if files.len() == 0 => Err(Cow::Borrowed("Expected 1 or more files but found 0")),
             FormData::Files(files) => Ok(unsafe {files.into_iter().next().unwrap_unchecked()})
+        }
+    }
+
+    fn is_empty_field(&self) -> bool {
+        match &self.data {
+            FormData::Field(Field { content, .. }) => content.is_empty(),
+            _ => false,
         }
     }
 }
@@ -111,13 +118,12 @@ pub struct File {
 pub fn parse_formparts(buf: &[u8], boundary: &str) -> Result<Vec<FormPart>, Cow<'static, str>> {
     let mut r = Reader::new(buf);
 
-    r.skip_while(|b| b == &0);
     r.consume("--").ok_or_else(EXPECTED_VALID_BOUNDARY)?;
     r.consume(boundary).ok_or_else(EXPECTED_VALID_BOUNDARY)?;
 
     let mut parts = Vec::new();
     while let Some((part, is_final)) = parse_formpart(&mut r, boundary)? {
-        parts.push(part);
+        if !part.is_empty_field() {parts.push(part)}
         if is_final {break}
     }
     Ok(parts)
@@ -181,10 +187,19 @@ pub(super/* for test */) fn parse_formpart(r: &mut Reader, boundary: &str) -> Re
     } else {
         let mut content = Vec::new();
         while r.peek().is_some() {
-            let line = r.read_while(|b| b != &b'\r');
-            match check_as_boundary(line, boundary) {
+            let mut line = Vec::new(); loop {
+                line.append(&mut r.read_while(|b| b != &b'\r').to_vec());
+                if r.peek().is_none() || r.peek2().is_some_and(|b| b == &b'\n') {
+                    break
+                } else {
+                    r.consume("\r").unwrap();
+                    line.push(b'\r');
+                }
+            }
+
+            match check_as_boundary(&line, boundary) {
                 None => {
-                    for b in line {content.push(*b)}
+                    content.append(&mut line);
                     content.push(b'\r');
                     content.push(b'\n');
                     r.consume("\r\n").unwrap();
@@ -204,11 +219,11 @@ pub(super/* for test */) fn parse_formpart(r: &mut Reader, boundary: &str) -> Re
             }
         }
         let data = if let Some(file_name) = file_name {
-            FormData::Files(vec![File {
+            (!content.is_empty()).then(|| FormData::Files(vec![File {
                 name:      Some(file_name),
                 mime_type: mime_type.unwrap_or_else(|| Cow::Borrowed("text/plain")),
                 content
-            }])
+            }])).unwrap_or(FormData::Files(vec![]))
         } else {
             FormData::Field(Field {
                 mime_type: mime_type.unwrap_or_else(|| Cow::Borrowed("text/plain")),
@@ -226,7 +241,7 @@ pub(super/* for test */) fn parse_attachments(r: &mut Reader, boundary: &str) ->
 
     let mut attachments = Vec::new();
     while let Some((attachment, is_final)) = parse_attachment(r, boundary)? {
-        attachments.push(attachment);
+        if !attachment.content.is_empty() {attachments.push(attachment)}
         if is_final {break}
     }
     Ok(attachments)
@@ -269,10 +284,19 @@ pub(super/* for test */) fn parse_attachment(r: &mut Reader, boundary: &str) -> 
         r.consume("\r\n").unwrap();
     }
     while r.peek().is_some() {
-        let line = r.read_while(|b| b != &b'\r');
-        match check_as_boundary(line, boundary) {
+        let mut line = Vec::new(); loop {
+            line.append(&mut r.read_while(|b| b != &b'\r').to_vec());
+            if r.peek().is_none() || r.peek2().is_some_and(|b| b == &b'\n') {
+                break
+            } else {
+                r.consume("\r").unwrap();
+                line.push(b'\r');
+            }
+        }
+
+        match check_as_boundary(&line, boundary) {
             None => {
-                for b in line {content.push(*b)}
+                content.append(&mut line);
                 content.push(b'\r');
                 content.push(b'\n');
                 r.consume("\r\n").unwrap();

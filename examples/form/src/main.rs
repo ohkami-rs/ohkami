@@ -2,6 +2,7 @@ use ohkami::{prelude::*, IntoFang, Fang};
 use ohkami::utils::{Payload, File};
 
 #[Payload(FormData)]
+#[derive(Debug)]
 struct FormData {
     account_name: String,
     pics:         Vec<File>,
@@ -13,6 +14,7 @@ async fn get_form(c: Context) -> Response {
 
 async fn post_submit(c: Context, form_data: FormData) -> Response {
     println!("\n\
+        {form_data:#?}\n\n\
         ===== submit =====\n\
         [account]  {}\n\
         [pictures] {} files (mime: [{}])\n\
