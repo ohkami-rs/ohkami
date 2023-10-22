@@ -111,6 +111,7 @@ pub struct File {
 pub fn parse_formparts(buf: &[u8], boundary: &str) -> Result<Vec<FormPart>, Cow<'static, str>> {
     let mut r = Reader::new(buf);
 
+    r.skip_while(|b| b == &0);
     r.consume("--").ok_or_else(EXPECTED_VALID_BOUNDARY)?;
     r.consume(boundary).ok_or_else(EXPECTED_VALID_BOUNDARY)?;
 

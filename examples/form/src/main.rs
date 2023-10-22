@@ -30,6 +30,10 @@ impl IntoFang for Logger {
     fn bite(self) -> ohkami::Fang {
         Fang(|_: &mut Context, req: &mut Request| {
             println!("[request] {} {}", req.method(), req.path());
+
+            if let Some ((content_type, body)) = req.payload() {
+                println!("[payload] {content_type:?}\n{}", body.escape_ascii());
+            }
         })
     }
 }

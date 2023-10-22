@@ -1,6 +1,7 @@
 use std::hint::unreachable_unchecked;
 
-#[cfg_attr(test, derive(Clone, Debug, PartialEq))]
+#[cfg_attr(test, derive(Clone, PartialEq))]
+#[derive(Debug)]
 pub enum ContentType {
     JSON,
     URLEncoded,
