@@ -56,9 +56,8 @@ impl Fang {
 /// struct AppendHeader;
 /// impl IntoFang for AppendHeader {
 ///     fn bite(self) -> Fang {
-///         Fang(|c: &mut Context, req: Request| {
+///         Fang(|c: &mut Context, req: &mut Request| {
 ///             c.headers.Server("ohkami");
-///             req
 ///         })
 ///     }
 /// }
@@ -66,5 +65,5 @@ impl Fang {
 #[allow(non_snake_case)]
 pub fn Fang<Args>(f: impl IntoFang<Args>) -> Fang {
     f.into_fang()
-        .unwrap()//
+        .unwrap()
 }

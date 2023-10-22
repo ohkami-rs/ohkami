@@ -1,5 +1,3 @@
-// use std::ptr::NonNull;
-
 use std::ptr::NonNull;
 
 /// MANUALLY HANDLE the *lifetime*
@@ -17,25 +15,21 @@ pub(crate) struct Slice {
 
     #[inline] pub(crate) unsafe fn new(head: *const u8, size: usize) -> Self {
         Self {
-            head: NonNull::new(head as *mut _),// Box::from_raw(head as *mut u8),//NonNull::new_unchecked(head as *mut u8),
+            head: NonNull::new(head as *mut _),
             size,
         }
     }
     #[inline] pub(crate) unsafe fn from_bytes(bytes: &[u8]) -> Self {
         Self {
-            head: NonNull::new(bytes.as_ptr() as *mut _),//Box::from_raw(bytes.as_ptr() as *mut u8),// NonNull::new_unchecked(bytes.as_ptr() as *mut u8),
+            head: NonNull::new(bytes.as_ptr() as *mut _),
             size: bytes.len(),
         }
     }
-    #[inline] pub(crate) unsafe fn as_bytes(&self) -> &[u8] {
+    #[inline] pub(crate) unsafe fn as_bytes<'b>(&self) -> &'b [u8] {
         self.head.map(|p| std::slice::from_raw_parts(
             p.as_ptr(),
             self.size,
         )).unwrap_or(&[])
-        // std::slice::from_raw_parts(
-        //     self.head.un,//Box::into_raw(self.head),//self.head,//.as_ptr(),
-        //     self.size,
-        // )
     }
 } const _: () = {
     unsafe impl Send for Slice {}

@@ -11,7 +11,7 @@ use crate::{
     layer0_lib::{List, Method, ContentType, Slice, CowSlice}
 };
 
-pub(crate) const METADATA_SIZE: usize = 512;
+pub(crate) const METADATA_SIZE: usize = 1024;
 pub(crate) const PAYLOAD_LIMIT: usize = 65536;
 
 pub(crate) const QUERIES_LIMIT: usize = 4;
@@ -42,16 +42,12 @@ impl Request {
         stream:   &mut (impl AsyncReader + Unpin),
     ) {
         stream.read(&mut self._metadata).await.unwrap();
-
         let mut r = Reader::new(&self._metadata);
 
         let method = Method::from_bytes(r.read_while(|b| b != &b' '));
         r.consume(" ").unwrap();
         
        let path = unsafe {Slice::from_bytes(r.read_while(|b| b != &b'?' && b != &b' '))};
-
-        // println!("\n[{}:{}]\n{}", file!(), line!(),
-        //     unsafe {path.into_bytes()}.escape_ascii());
 
         let mut queries = List::<(Slice, Slice), QUERIES_LIMIT>::new();
         if r.consume_oneof([" ", "?"]).unwrap() == 1 {
@@ -104,14 +100,6 @@ impl Request {
         self.queries = queries;
         self.headers = headers;
         self.payload = payload;
-
-        // for (k, v) in headers.iter() {
-        //     println!("\n[{}:{}]\n{} : {}", file!(), line!(),
-        //         unsafe {k.into_bytes().escape_ascii()},
-        //         unsafe {v.into_bytes().escape_ascii()});
-        // }
-
-        // Self { _metadata, payload, method, path, queries, headers }
     }
 
     async fn read_payload(
@@ -168,8 +156,8 @@ impl Request {
 }
 
 impl Request {
-    #[inline(always)] pub(crate) fn path_bytes(&self) -> &[u8] {
-        unsafe {self.path.as_bytes()}
+    #[inline(always)] pub(crate) unsafe fn path_bytes<'b>(&self) -> &'b [u8] {
+        self.path.as_bytes()
     }
 }
 

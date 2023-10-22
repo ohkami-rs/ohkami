@@ -181,14 +181,17 @@ impl Node {
         let mut target = self;
 
         // SAFETY:
-        //   `Request` DOESN'T have method that mutates `path`,
-        //   So what `path` refers to is NEVER changed by any other process
-        //   while searching
-        let path = req.path_bytes();
-        let (p, len) = (path.as_ptr(), path.len());
-        let mut path = unsafe {std::slice::from_raw_parts(p, len)};
+        // 1. `req` must be alive while `search`
+        // 2. `Request` DOESN'T have method that mutates `path`,
+        //    So what `path` refers to is NEVER changed by any other process
+        //    while `search`
+        let mut path = unsafe {req.path_bytes()};
 
         loop {
+            for ff in target.front {
+                ff.0(c, req)?
+            }
+
             for pattern in target.patterns {
                 if &path[0] == &b'/' {path = &path[1..]} else {
                     // At least one `pattern` to match is remaining
@@ -206,10 +209,6 @@ impl Node {
                         path = remaining;
                     },
                 }
-            }
-
-            for ff in target.front {
-                ff.0(c, req)?
             }
 
             if path.is_empty() {

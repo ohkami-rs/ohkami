@@ -13,10 +13,10 @@ async fn get_form(c: Context) -> Response {
 
 async fn post_submit(c: Context, form_data: FormData) -> Response {
     println!("\n\
-        ===== submit =====
-        [account] {}\n\
+        ===== submit =====\n\
+        [account]  {}\n\
         [pictures] {} files (mime: [{}])\n\
-        ==================",
+        ==================\n",
         form_data.account_name,
         form_data.pics.len(),
         form_data.pics.iter().map(|f| f.mime_type()).collect::<Vec<_>>().join(", "),
