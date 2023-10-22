@@ -23,9 +23,9 @@ const _: (/* Front: not retuning Result */) = {
             Some(Fang {
                 id:   self.type_id(),
                 proc: FangProc::Front(FrontFang(Arc::new(
-                    move |mut c, req| {
-                        self(&mut c, req);
-                        Ok(c)
+                    move |c, req| {
+                        self(c, req);
+                        Ok(())
                     }
                 ))),
             })
@@ -40,9 +40,10 @@ const _: (/* Front: returning Result */) = {
             Some(Fang {
                 id:   self.type_id(),
                 proc: FangProc::Front(FrontFang(Arc::new(
-                    move |mut c, req| {
-                        self(&mut c, req)?;
-                        Ok(c)
+                    move |c, req| {
+                        self(c, req)
+                        // ?;
+                        // Ok(c)
                     }
                 ))),
             })

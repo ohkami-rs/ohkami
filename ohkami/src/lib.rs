@@ -22,14 +22,13 @@
 mod __rt__ {
     #[cfg(feature="rt_tokio")]
     #[allow(unused)] pub(crate) use tokio::test;
+    #[cfg(feature="rt_async-std")]
+    #[allow(unused)] pub(crate) use async_std::test;
 
     #[cfg(feature="rt_tokio")]
     pub(crate) use tokio::sync::Mutex;
-
-    #[cfg(feature="rt_tokio")]
-    pub(crate) use tokio::net::TcpStream;
     #[cfg(feature="rt_async-std")]
-    pub(crate) use async_std::net::TcpStream;
+    pub(crate) use async_std::sync::Mutex;
 
     #[cfg(feature="rt_tokio")]
     pub(crate) use tokio::net::TcpListener;

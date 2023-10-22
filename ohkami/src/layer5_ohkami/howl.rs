@@ -62,10 +62,9 @@ impl Ohkami {
             ));
 
             let router = Arc::clone(&router);
-            let c = Context::new();
+            let c      = Context::new();
 
-            if let Err(e) = __rt__::task::spawn({
-                let stream = stream.clone();
+            __rt__::task::spawn({let stream = stream.clone();
                 async move {
                     let stream = &mut *stream.lock().await;
 
@@ -73,14 +72,12 @@ impl Ohkami {
                     let mut req = unsafe {Pin::new_unchecked(&mut req)};
                     req.as_mut().read(stream).await;
 
-                    router.handle(c, req.get_mut(), stream).await;
+                    router.handle(c, req.get_mut()).await
                 }
-            }).await {
-                println!("Fatal Error: {e}");
-                Context::new()
-                    .InternalServerError()
-                    .send(&mut *stream.lock().await).await
-            }
+            }).await.unwrap_or_else(|e| {
+                println!("Fatal error: {e}");
+                Context::new().InternalServerError()
+            }).send(&mut *stream.lock().await).await;
         }
     }
 }
