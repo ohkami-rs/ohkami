@@ -44,11 +44,15 @@ impl Ohkami {
         #[cfg(feature="rt_async-std")]
         while let Some(Ok(mut stream)) = listener.incoming().next().await {
             let router = Arc::clone(&router);
-            let c = Context::new();
+            let c      = Context::new();
 
             __rt__::task::spawn(async move {
-                let req = Request::new(&mut stream).await;
-                router.handle(c, req, &mut stream).await;
+                let mut req = Request::init();
+                let mut req = unsafe {Pin::new_unchecked(&mut req)};
+                req.as_mut().read(&mut stream).await;
+
+                let res = router.handle(c, req.get_mut()).await;
+                res.send(&mut stream).await
             }).await
         }
         
@@ -64,7 +68,7 @@ impl Ohkami {
             let router = Arc::clone(&router);
             let c      = Context::new();
 
-            __rt__::task::spawn({let stream = stream.clone();
+            if let Err(e) = __rt__::task::spawn({let stream = stream.clone();
                 async move {
                     let stream = &mut *stream.lock().await;
 
@@ -72,12 +76,16 @@ impl Ohkami {
                     let mut req = unsafe {Pin::new_unchecked(&mut req)};
                     req.as_mut().read(stream).await;
 
-                    router.handle(c, req.get_mut()).await
+                    let res = router.handle(c, req.get_mut()).await;
+                    res.send(stream).await
                 }
-            }).await.unwrap_or_else(|e| {
-                println!("Fatal error: {e}");
-                Context::new().InternalServerError()
-            }).send(&mut *stream.lock().await).await;
+            }).await {
+                (|| async {
+                    println!("Fatal error: {e}");
+                    let res = Context::new().InternalServerError();
+                    res.send(&mut *stream.lock().await).await
+                })().await
+            }
         }
     }
 }
