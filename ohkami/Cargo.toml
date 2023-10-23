@@ -32,4 +32,4 @@ rt_async-std     = ["dep:async-std"]
 test             = ["tokio?/macros", "async-std?/attributes"]
 
 ##### DEBUG #####
-# default = ["rt_tokio", "test", "serde/derive"]
+default = ["rt_tokio", "test", "serde/derive"]
