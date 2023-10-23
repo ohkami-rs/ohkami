@@ -1,6 +1,14 @@
 use std::borrow::Cow;
-use percent_encoding::percent_decode;
+
 use serde::Deserialize;
+use byte_reader::Reader;
+use percent_encoding::percent_decode;
+
+fn __unreachable__() -> ! {
+    unsafe {std::hint::unreachable_unchecked()}
+}
+
+
 
 
 /*===== for #[Payload(JSON)] =====*/
@@ -11,18 +19,363 @@ pub fn parse_json<'req, T: Deserialize<'req>>(buf: &'req [u8]) -> Result<T, Cow<
 }
 
 
+
+
 /*===== for #[Payload(FormData)] =====*/
-pub enum FormPart {
-    Field { part_name: String, content: Vec<u8> },
-    File  { part_name: String, content: Vec<u8>, file_name: Option<String>, content_type: String, },
+#[cfg_attr(test, derive(Debug, PartialEq))]
+pub struct FormPart {
+    pub(super/* for test */) name: String,
+    pub(super/* for test */) data: FormData,
+} impl FormPart {
+    #[inline] pub fn name(&self) -> &str {
+        &self.name
+    }
+    #[inline] pub fn into_field(self) -> Result<Field, Cow<'static, str>> {
+        match self.data {
+            FormData::Field(field) => Ok(field),
+            FormData::Files(_) => Err(Cow::Borrowed("Expected a field but found files")),
+        }
+    }
+    #[inline] pub fn into_files(self) -> Result<Vec<File>, Cow<'static, str>> {
+        match self.data {
+            FormData::Files(files) => Ok(files),
+            FormData::Field(_) => Err(Cow::Borrowed("Expected files but found a field")),
+        }
+    }
+    #[inline] pub fn into_file(self) -> Result<File, Cow<'static, str>> {
+        match self.data {
+            FormData::Field(_)                         => Err(Cow::Borrowed("Expected files but found a field")),
+            FormData::Files(files) if files.len() == 0 => Err(Cow::Borrowed("Expected 1 or more files but found 0")),
+            FormData::Files(files) => Ok(unsafe {files.into_iter().next().unwrap_unchecked()})
+        }
+    }
+
+    fn is_empty_field(&self) -> bool {
+        match &self.data {
+            FormData::Field(Field { content, .. }) => content.is_empty(),
+            _ => false,
+        }
+    }
 }
-/// return
+
+#[cfg_attr(test, derive(Debug, PartialEq))]
+pub enum FormData {
+    Field(Field),
+    Files(Vec<File>),
+}
+
+#[cfg_attr(test, derive(Debug, PartialEq))]
+pub struct Field {
+    pub(super/* for test */) mime_type: Cow<'static, str>,
+    pub(super/* for test */) content:   Vec<u8>,
+} impl Field {
+    pub fn mime_type(&self) -> &str {
+        &self.mime_type
+    }
+    pub fn content(&self) -> &[u8] {
+        &self.content
+    }
+} impl Field {
+    pub fn text(self) -> Result<String, ::std::string::FromUtf8Error> {
+        String::from_utf8(self.content)
+    }
+    pub unsafe fn text_unchecked(self) -> String {
+        String::from_utf8_unchecked(self.content)
+    }
+}
+
+#[cfg_attr(test, derive(PartialEq))]
+pub struct File {
+    pub(super/* for test */) name:      Option<String>,
+    pub(super/* for test */) mime_type: Cow<'static, str>,
+    pub(super/* for test */) content:   Vec<u8>,
+} impl File {
+    pub fn name(&self) -> Option<&str> {
+        self.name.as_ref().map(|s| s.as_str())
+    }
+    pub fn mime_type(&self) -> &str {
+        &self.mime_type
+    }
+    pub fn content(&self) -> &[u8] {
+        &self.content
+    }
+} impl std::fmt::Debug for File {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut d = f.debug_struct("File");
+        let mut d = &mut d;
+        d = d.field("mime", &self.mime_type);
+        if let Some(name) = &self.name {
+            d = d.field("name", name)
+        }
+        match self.mime_type() {
+            "text/plain" => d = d.field("content", &String::from_utf8_lossy(self.content())),
+            _ => d = d.field("content", &self.content().escape_ascii().to_string())
+        }
+        d.finish()
+    }
+}
+
+pub fn parse_formparts(buf: &[u8], boundary: &str) -> Result<Vec<FormPart>, Cow<'static, str>> {
+    let mut r = Reader::new(buf);
+
+    r.consume("--").ok_or_else(EXPECTED_VALID_BOUNDARY)?;
+    r.consume(boundary).ok_or_else(EXPECTED_VALID_BOUNDARY)?;
+
+    let mut parts = Vec::new();
+    while let Some((part, is_final)) = parse_formpart(&mut r, boundary)? {
+        if !part.is_empty_field() {parts.push(part)}
+        if is_final {break}
+    }
+    Ok(parts)
+}
+
+/// <br/>
 /// 
-/// - `Some(PormPart)` if `buf` contains a form part
-/// - `None` if `buf` contains only `{boundary}--`
-pub fn parse_formpart(mut buf: &[u8], boundary: &str) -> Option<FormPart> {
-    todo!()
+/// ```ignore
+/// \r\n
+/// header\r\n
+/// :
+/// header\r\n
+/// \r\n
+/// content\r\n
+/// :
+/// content\r\n
+/// --boundary(--)?
+/// ```
+/// 
+/// If leading 2 bytes are `--`, not `\r\n`, that means
+/// the previous line was the end-boundary and `parse_formpart` returns `None` in this case
+pub(super/* for test */) fn parse_formpart(r: &mut Reader, boundary: &str) -> Result<Option<(FormPart, bool/* is final */)>, &'static str> {
+    let mut name           = String::new();
+    let mut file_name      = None;
+    let mut mime_type      = None;
+    let mut mixed_boundary = None;
+    let mut is_final       = false;
+
+    if r.consume_oneof(["\r\n", "--"]).ok_or_else(EXPECTED_VALID_BOUNDARY)? == 1 {return Ok(None)}    
+    while r.consume("\r\n").is_none(/* The newline just before body of this part */) {
+        let header = r.read_kebab().ok_or_else(EXPECTED_VALID_HEADER)?;
+        if header.eq_ignore_ascii_case("Content-Type") {
+            r.consume(": ").ok_or_else(EXPECTED_VALID_HEADER)?;
+            if r.consume("multipart/mixed").is_some() {
+                mime_type = Some(Cow::Borrowed("multipart/mixed"));
+                r.consume(", boundary=").ok_or_else(EXPECTED_BOUNDARY)?;
+                mixed_boundary = Some(String::from_utf8(r.read_while(|b| b != &b'\r').to_vec()).map_err(|_| INVALID_BOUNDARY())?);
+            } else {
+                mime_type = Some(Cow::Owned(String::from_utf8(r.read_while(|b| b != &b'\r').to_vec()).map_err(|_| INVALID_CONTENT_TYPE())?));
+            }
+        } else if header.eq_ignore_ascii_case("Content-Disposition") {
+            r.consume(": form-data; name=").ok_or_else(EXPECTED_FORMDATA_AND_NAME)?;
+            name = r.read_string().ok_or_else(EXPECTED_FORMDATA_AND_NAME)?;
+            if r.consume("; ").is_some() {
+                r.consume("filename=").ok_or_else(EXPECTED_FILENAME)?;
+                file_name = Some(r.read_string().ok_or_else(INVALID_FILENANE)?)
+            }
+        } else {// ignore the line
+            r.skip_while(|b| b != &b'\r');
+        }
+        r.consume("\r\n").unwrap();
+    }
+
+    if let Some(attachments_boundary) = mixed_boundary {
+        let data = FormData::Files(parse_attachments(r, &attachments_boundary)?);
+
+        is_final = matches!(check_as_boundary(r.read_while(|b| b != &b'\r'), boundary).ok_or_else(EXPECTED_VALID_BOUNDARY)?, Boundary::End);
+        if is_final {r.consume("\r\n")/* Maybe no `\r\n` */;}
+
+        Ok(Some((FormPart { name, data }, is_final)))
+    } else {
+        let mut content = Vec::new();
+        while r.peek().is_some() {
+            let mut line = Vec::new(); loop {
+                line.append(&mut r.read_while(|b| b != &b'\r').to_vec());
+                if r.peek().is_none() || r.peek2().is_some_and(|b| b == &b'\n') {
+                    break
+                } else {
+                    r.consume("\r").unwrap();
+                    line.push(b'\r');
+                }
+            }
+
+            match check_as_boundary(&line, boundary) {
+                None => {
+                    content.append(&mut line);
+                    content.push(b'\r');
+                    content.push(b'\n');
+                    r.consume("\r\n").unwrap();
+                }
+                Some(Boundary::Start) => {
+                    content.pop(/* b'\n' */);
+                    content.pop(/* b'\r' */);
+                    break
+                }
+                Some(Boundary::End) => {
+                    is_final = true;
+                    content.pop(/* b'\n' */);
+                    content.pop(/* b'\r' */);
+                    r.consume("\r\n")/* Maybe no `\r\n` */;
+                    break
+                }
+            }
+        }
+        let data = if let Some(file_name) = file_name {
+            (!content.is_empty()).then(|| FormData::Files(vec![File {
+                name:      Some(file_name),
+                mime_type: mime_type.unwrap_or_else(|| Cow::Borrowed("text/plain")),
+                content
+            }])).unwrap_or(FormData::Files(vec![]))
+        } else {
+            FormData::Field(Field {
+                mime_type: mime_type.unwrap_or_else(|| Cow::Borrowed("text/plain")),
+                content,
+            })
+        };
+
+        Ok(Some((FormPart { name, data }, is_final)))
+    } 
 }
+
+pub(super/* for test */) fn parse_attachments(r: &mut Reader, boundary: &str) -> Result<Vec<File>, &'static str> {
+    r.consume("--").ok_or_else(EXPECTED_VALID_BOUNDARY)?;
+    r.consume(boundary).ok_or_else(EXPECTED_VALID_BOUNDARY)?;
+
+    let mut attachments = Vec::new();
+    while let Some((attachment, is_final)) = parse_attachment(r, boundary)? {
+        if !attachment.content.is_empty() {attachments.push(attachment)}
+        if is_final {break}
+    }
+    Ok(attachments)
+}
+
+/// <br/>
+/// 
+/// ```ignore
+/// \r\n
+/// header\r\n
+/// :
+/// header\r\n
+/// \r\n
+/// content\r\n
+/// :
+/// content\r\n
+/// --boundary(--)?
+/// ```
+/// 
+/// If begining 2 bytes are `--`, not `\r\n`, that means
+/// the previous line was the end-boundary and `parse_attachment` returns `None` in this case
+pub(super/* for test */) fn parse_attachment(r: &mut Reader, boundary: &str) -> Result<Option<(File, bool/* is final */)>, &'static str> {
+    let (mut name, mut mime, mut is_final, mut content) = (None, None, false, vec![]);
+    
+    if r.consume_oneof(["\r\n", "--"]).ok_or_else(EXPECTED_VALID_BOUNDARY)? == 1 {return Ok(None)}
+    while r.consume("\r\n").is_none() {
+        let header = r.read_kebab().ok_or_else(EXPECTED_VALID_HEADER)?;
+        if header.eq_ignore_ascii_case("Content-Disposition") {
+            r.consume(": attachment").ok_or_else(EXPECTED_ATTACHMENT)?;
+            if r.consume("; ").is_some() {
+                r.consume("filename=").ok_or_else(EXPECTED_FILENAME)?;
+                name = Some(r.read_string().ok_or_else(INVALID_FILENANE)?);
+            }
+        } else if header.eq_ignore_ascii_case("Content-Type") {
+            r.consume(": ").ok_or_else(EXPECTED_VALID_HEADER)?;
+            mime = Some(Cow::Owned(String::from_utf8(r.read_while(|b| b != &b'\r').to_vec()).map_err(|_| INVALID_CONTENT_TYPE())?));
+        } else {// ignore this line
+            r.skip_while(|b| b != &b'\r')
+        }
+        r.consume("\r\n").unwrap();
+    }
+    while r.peek().is_some() {
+        let mut line = Vec::new(); loop {
+            line.append(&mut r.read_while(|b| b != &b'\r').to_vec());
+            if r.peek().is_none() || r.peek2().is_some_and(|b| b == &b'\n') {
+                break
+            } else {
+                r.consume("\r").unwrap();
+                line.push(b'\r');
+            }
+        }
+
+        match check_as_boundary(&line, boundary) {
+            None => {
+                content.append(&mut line);
+                content.push(b'\r');
+                content.push(b'\n');
+                r.consume("\r\n").unwrap();
+            }
+            Some(Boundary::Start) => {
+                content.pop(/* b'\n' */);
+                content.pop(/* b'\r' */);
+                break
+            }
+            Some(Boundary::End) => {
+                is_final = true;
+                content.pop(/* b'\n' */);
+                content.pop(/* b'\r' */);
+                r.consume("\r\n").ok_or_else(EXPECTED_VALID_BOUNDARY)?;
+                break
+            }
+        }
+    }
+
+    Ok(Some((File {
+        name,
+        content,
+        mime_type: mime.unwrap_or_else(DEFAULT_MIME_TYPE)
+    }, is_final)))
+}
+
+enum Boundary {
+    Start,
+    End,
+}
+fn check_as_boundary(line: &[u8], boundary_str: &str) -> Option<Boundary> {
+    use std::slice::from_raw_parts as raw;
+    let (boundary, boundary_len) = (boundary_str.as_bytes(), boundary_str.len());
+    if line.len() == 2 + boundary_len {
+        unsafe {let p = line.as_ptr();
+            raw(p, 2) == &[b'-', b'-'] &&
+            raw(p.add(2), boundary_len) == boundary
+        }.then_some(Boundary::Start)
+    } else if line.len() == 2 + boundary_len + 2 {
+        unsafe {let p = line.as_ptr();
+            raw(p, 2) == &[b'-', b'-'] &&
+            raw(p.add(2), boundary_len) == boundary &&
+            raw(p.add(2 + boundary_len), 2) == &[b'-', b'-']
+        }.then_some(Boundary::End)
+    } else {None}
+}
+
+#[allow(non_snake_case)] const fn EXPECTED_VALID_BOUNDARY() -> &'static str {
+    "Expected valid form-data boundary"
+}
+#[allow(non_snake_case)] const fn EXPECTED_ATTACHMENT() -> &'static str {
+    "Expected `attachment`"
+}
+#[allow(non_snake_case)] const fn EXPECTED_FILENAME() -> &'static str {
+    "Expected `filename=\"...\"`"
+}
+#[allow(non_snake_case)] const fn EXPECTED_BOUNDARY() -> &'static str {
+    "Expected `boundary=\"...\"`"
+}
+#[allow(non_snake_case)] const fn EXPECTED_VALID_HEADER() -> &'static str {
+    "Expected `Content-Type` or `Content-Disposition`"
+}
+#[allow(non_snake_case)] const fn EXPECTED_FORMDATA_AND_NAME() -> &'static str {
+    "Expected `form-data; name=\"...\"`"
+}
+#[allow(non_snake_case)] const fn INVALID_FILENANE() -> &'static str {
+    "Invalid filename"
+}
+#[allow(non_snake_case)] const fn INVALID_CONTENT_TYPE() -> &'static str {
+    "Invalid Content-Type"
+}
+#[allow(non_snake_case)] const fn INVALID_BOUNDARY() -> &'static str {
+    "Invalid bonudary"
+}
+#[allow(non_snake_case)] fn DEFAULT_MIME_TYPE() -> Cow<'static, str> {
+    Cow::Borrowed("text/plain")
+}
+
+
 
 
 /*===== for #[Payload(URLEncoded)] =====*/
@@ -195,5 +548,22 @@ pub struct Parse<'a> {
         id:   id.ok_or_else(|| ::std::borrow::Cow::Borrowed("`id` is not found"))?,
         name: name.ok_or_else(|| ::std::borrow::Cow::Borrowed("`name` is not found"))?,
         age:  age,
+    })
+}
+
+#[cfg(test)] #[allow(unused)] struct T3 {
+    account_name: String,
+}
+#[cfg(test)] fn __3(buf: &[u8], boundary: String) -> ::std::result::Result<T3, ::std::borrow::Cow<'static, str>> {
+    let mut account_name = ::std::option::Option::None;
+    for form_part in crate::__internal__::parse_formparts(buf, &boundary)? {
+        match form_part.name() {
+            "account-name" => account_name = ::std::option::Option::Some(
+                form_part.into_field()?.text().map_err(|e| ::std::borrow::Cow::Owned(format!("Invalid form text: {e}")))?),
+            unexpected => return ::std::result::Result::Err(::std::borrow::Cow::Owned(format!("unexpected part in form-data: `{unexpected}`")))
+        }
+    }
+    ::std::result::Result::Ok(T3 {
+        account_name: account_name.ok_or_else(|| ::std::borrow::Cow::Borrowed("`account_name` is not found"))?,
     })
 }

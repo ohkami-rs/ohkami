@@ -1,10 +1,9 @@
 use crate::{
-    __dep__,
     Status,
     Request,
     Context,
     Response,
-    layer0_lib::{Method},
+    layer0_lib::{Method, Slice},
     layer3_fang_handler::{Handler, FrontFang, PathParams, BackFang},
 };
 
@@ -48,29 +47,31 @@ pub(super) enum Pattern {
 impl RadixRouter {
     pub(crate) async fn handle(
         &self,
-        mut c:      Context,
-        mut req:    Request,
-        mut stream: __dep__::TcpStream,
-    ) {
-        let Some((target, params)) = (match req.method() {
-            Method::GET     => self.GET   .search(req.path_bytes()),
-            Method::PUT     => self.PUT   .search(req.path_bytes()),
-            Method::POST    => self.POST  .search(req.path_bytes()),
-            Method::PATCH   => self.PATCH .search(req.path_bytes()),
-            Method::DELETE  => self.DELETE.search(req.path_bytes()),
+        mut c: Context,
+        req:   &mut Request,
+    ) -> Response {
+        let mut params    = PathParams::new();
+        let search_result = match req.method() {
+            Method::GET    => self.GET   .search(&mut c, req/*.path_bytes()*/, &mut params),
+            Method::PUT    => self.PUT   .search(&mut c, req/*.path_bytes()*/, &mut params),
+            Method::POST   => self.POST  .search(&mut c, req/*.path_bytes()*/, &mut params),
+            Method::PATCH  => self.PATCH .search(&mut c, req/*.path_bytes()*/, &mut params),
+            Method::DELETE => self.DELETE.search(&mut c, req/*.path_bytes()*/, &mut params),
             
             Method::HEAD => {
                 let (front, back) = self.HEADfangs;
 
                 for ff in front {
-                    (c, req) = match ff.0(c, req) {
-                        Ok((c, req)) => (c, req),
-                        Err(err_res) => return err_res.send(&mut stream).await
+                    if let Err(err_res) = ff.0(&mut c, req) {
+                        return err_res
                     }
                 }
 
-                let Some((target, params)) = self.GET.search(req.path_bytes())
-                    else {return c.NotFound().send(&mut stream).await};
+                let target = match self.GET.search(&mut c, req/*.path_bytes()*/, &mut params) {
+                    Ok(Some(node)) => node,
+                    Ok(None)       => return c.NotFound(),
+                    Err(err_res)   => return err_res,
+                };
                 
                 let Response { headers, .. } = target.handle(c, req, params).await;
                 let mut res = Response {
@@ -83,54 +84,52 @@ impl RadixRouter {
                     res = bf.0(res)
                 }
 
-                return res.send(&mut stream).await
+                return res
             }
             Method::OPTIONS => {
                 let Some((cors_str, cors)) = crate::layer3_fang_handler::builtin::CORS.get() else {
-                    return c.InternalServerError().send(&mut stream).await
+                    return c.InternalServerError()
                 };
 
                 let (front, back) = self.OPTIONSfangs;
 
                 for ff in front {
-                    (c, req) = match ff.0(c, req) {
-                        Ok((c, req)) => (c, req),
-                        Err(err_res) => return err_res.send(&mut stream).await
+                    if let Err(err_res) = ff.0(&mut c, req) {
+                        return err_res
                     }
                 }
+
                 c.headers.Vary("Origin").cors(cors_str);
 
                 {
                     let Some(origin) = req.header("Origin") else {
-                        return c.BadRequest().send(&mut stream).await
+                        return c.BadRequest()
                     };
                     if !cors.AllowOrigin.matches(origin) {
-                        return c.Forbidden().send(&mut stream).await
+                        return c.Forbidden()
                     }
 
                     if req.header("Authorization").is_some() && !cors.AllowCredentials {
-                        return c.Forbidden().send(&mut stream).await
+                        return c.Forbidden()
                     }
 
                     if let Some(request_method) = req.header("Access-Control-Request-Method") {
-                        let Some(allow_methods) = cors.AllowMethods.as_ref() else {
-                            return c.Forbidden().send(&mut stream).await
-                        };
-
                         let request_method = Method::from_bytes(request_method.as_bytes());
+                        let Some(allow_methods) = cors.AllowMethods.as_ref() else {
+                            return c.Forbidden()
+                        };
                         if !allow_methods.contains(&request_method) {
-                            return c.Forbidden().send(&mut stream).await
+                            return c.Forbidden()
                         }
                     }
 
                     if let Some(request_headers) = req.header("Access-Control-Request-Headers") {
-                        let Some(allow_headers) = cors.AllowHeaders.as_ref() else {
-                            return c.Forbidden().send(&mut stream).await
-                        };
-
                         let mut request_headers = request_headers.split(',').map(|h| h.trim_matches(' '));
+                        let Some(allow_headers) = cors.AllowHeaders.as_ref() else {
+                            return c.Forbidden()
+                        };
                         if !request_headers.all(|h| allow_headers.contains(&h)) {
-                            return c.Forbidden().send(&mut stream).await
+                            return c.Forbidden()
                         }
                     }
                 }
@@ -141,28 +140,26 @@ impl RadixRouter {
                     res = bf.0(res)
                 }
                 
-                return res.send(&mut stream).await
+                return res
             }
-        }) else {
-            return c.NotFound().send(&mut stream).await
         };
 
-        target.handle(c, req, params).await.send(&mut stream).await
+        let target = match search_result {
+            Ok(Some(node)) => node,
+            Ok(None)       => return c.NotFound(),
+            Err(err_res)   => return err_res,
+        };
+
+        target.handle(c, req, params).await
     }
 }
 
 impl Node {
     #[inline] pub(super) async fn handle(&self,
-        mut c:   Context,
-        mut req: Request,
-        params:  PathParams,
+        c:      Context,
+        req:    &mut Request,
+        params: PathParams,
     ) -> Response {
-        for f in self.front {
-            (c, req) = match f.0(c, req) {
-                Ok((c, req)) => (c, req),
-                Err(err_res) => return err_res,
-            }
-        }
         match &self.handler {
             Some(h) => {
                 let mut res = h.0(req, c, params).await;
@@ -175,47 +172,52 @@ impl Node {
         }
     }
 
-    pub(super/* for test */) fn search(&self, mut path: &[u8]) -> Option<(&Node, PathParams)> {
-        let mut path_len = path.len();
-        if &path[path_len-1] == &b'/' {
-            path = &path[..path_len-1];
-            path_len -= 1;
-        }
+    pub(super/* for test */) fn search(&self,
+        c:      &mut Context,
+        req:    &mut Request,
 
-        let mut params = PathParams::new();
-        let mut section_start = 1/* skip initial '/' */;
-
+        params: &mut PathParams,
+    ) -> Result<Option<&Node>, Response> {
         let mut target = self;
+
+        // SAFETY:
+        // 1. `req` must be alive while `search`
+        // 2. `Request` DOESN'T have method that mutates `path`,
+        //    So what `path` refers to is NEVER changed by any other process
+        //    while `search`
+        let mut path = unsafe {req.path_bytes()};
+
         loop {
+            for ff in target.front {
+                ff.0(c, req)?
+            }
+
             for pattern in target.patterns {
                 if &path[0] == &b'/' {path = &path[1..]} else {
-                    // At least one `pattern` to match is remained
+                    // At least one `pattern` to match is remaining
                     // but path doesn't start with '/'
-                    return None
+                    return Ok(None)
                 }
                 match pattern {
-                    Pattern::Static(s) => {
-                        path = path.strip_prefix(*s)?;
-                        section_start += s.len() + 1/* skip '/' */;
-                    }
-                    Pattern::Param => match find(b'/', path) {
-                        None => {
-                            path = &[];
-                            params.append(section_start..path_len)
-                        }
-                        Some(slash) => {
-                            path = &path[slash+1..];
-                            params.append(section_start..(section_start+slash));
-                            section_start += slash + 1/* skip '/' */;
-                        }
-                    }
+                    Pattern::Static(s)  => path = match path.strip_prefix(*s) {
+                        Some(remaining) => remaining,
+                        None            => return Ok(None),
+                    },
+                    Pattern::Param      => {
+                        let (param, remaining) = split_next_section(path);
+                        params.append(unsafe {Slice::from_bytes(param)});
+                        path = remaining;
+                    },
                 }
             }
 
             if path.is_empty() {
-                return Some((target, params))
+                return Ok(Some(target))
             } else {
-                target = target.matchable_child(path)?
+                target = match target.matchable_child(path) {
+                    Some(child) => child,
+                    None        => return Ok(None),
+                }
             }
         }
     }
@@ -243,11 +245,17 @@ impl Pattern {
     }
 }
 
-#[inline] fn find(b: u8, path: &[u8]) -> Option<usize> {
-    for i in 0..(path.len()) {
-        if b == path[i] {
-            return Some(i)
-        }
+#[inline] fn split_next_section(path: &[u8]) -> (&[u8], &[u8]) {
+    let len = path.len();
+    let mut slash = len; for i in 0..len {
+        if b'/' == path[i] {slash = i}
     }
-    None
+
+    let after_slash = (slash + 1/* skip `/` */).min(len/* considering: `path` ends with `/` */);
+    let ptr         = path.as_ptr();
+
+    unsafe {(
+        std::slice::from_raw_parts(ptr,                  slash),
+        std::slice::from_raw_parts(ptr.add(after_slash), len - after_slash),
+    )}
 }

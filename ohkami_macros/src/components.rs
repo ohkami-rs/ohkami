@@ -1,7 +1,62 @@
-use proc_macro2::{TokenStream, Span};
+use proc_macro2::{TokenStream, Span, Ident};
 use quote::{format_ident, ToTokens};
-use syn::{Result, Error, parse2, ItemStruct, Attribute, PathSegment};
+use syn::{Result, Error, parse2, ItemStruct, Attribute, PathSegment, Type, Fields, parse_str};
 
+
+pub(crate) struct FieldData {
+    pub(crate) ident:       Ident,
+    pub(crate) ty:          Type,
+    pub(crate) is_optional: bool,
+} impl FieldData {
+    pub(crate) fn collect_from_struct_fields(fields: &Fields) -> Result<Vec<Self>> {
+        let mut fields_data = Vec::<FieldData>::with_capacity(fields.len());
+        for field in fields {
+            let ident = field.ident.as_ref().unwrap(/* `parse_struct` checked fields are named */).clone();
+            let (ty, is_optional) = {
+                let mut stringified = field.ty.to_token_stream().to_string();
+                if stringified.starts_with("Option") {
+                    stringified.pop(/* final '>' */);
+                    (
+                        /*
+                            You know
+
+                                `Option<Inner>`
+                                    |
+                                    (.to_token_stream)
+                                    |
+                                TokenStram {
+                                    `Option`
+                                 -> `<`
+                                 -> `Inner`
+                                 -> `>`
+                                }
+                                    |
+                                    (.to_string)
+                                    |
+                                "Option < Inner >"
+
+                            Take note that the string contains whitespaces as above; So it start with
+
+                            NOT
+                                "Option<"
+                            BUT
+                                "Option <"
+                        */
+                        parse_str::<Type>(stringified.strip_prefix("Option <").unwrap())?,
+                        true,
+                    )
+                } else {
+                    (
+                        parse_str::<Type>(&stringified)?,
+                        false,
+                    )
+                }
+            };
+            fields_data.push(FieldData { ident, ty, is_optional })
+        }
+        Ok(fields_data)
+    }
+}
 
 pub(crate) enum Format {
     JSON,
@@ -13,11 +68,11 @@ pub(crate) enum Format {
             "JSON"       => Ok(Self::JSON),
             "URLEncoded" => Ok(Self::URLEncoded),
             "FormData"   => Ok(Self::Form),
-            _ => Err(Error::new(Span::call_site(), "\
+            _ => Err(Error::new(Span::mixed_site(), "\
                 Valid format: \n\
                 - `#[Payload(JSON)]` \n\
-                - `#[Payload(URLEncoded)]` \n\
                 - `#[Payload(FormData)]` \n\
+                - `#[Payload(URLEncoded)]` \n\
             "))
         }
     }

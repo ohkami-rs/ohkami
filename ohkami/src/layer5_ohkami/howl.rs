@@ -1,7 +1,7 @@
-use std::sync::Arc;
+use std::{sync::Arc, pin::Pin};
 use super::{Ohkami};
-use crate::{__dep__, Request, Context};
-#[cfg(feature="rt_async-std")] use crate::__dep__::StreamExt;
+use crate::{__rt__, Request, Context};
+#[cfg(feature="rt_async-std")] use crate::__rt__::StreamExt;
 
 
 pub trait TCPAddress {
@@ -36,7 +36,7 @@ impl Ohkami {
     pub async fn howl(self, address: impl TCPAddress) {
         let router = Arc::new(self.into_router().into_radix());
         
-        let listener = match __dep__::TcpListener::bind(address.parse()).await {
+        let listener = match __rt__::TcpListener::bind(address.parse()).await {
             Ok(listener) => listener,
             Err(e)       => panic!("Failed to bind TCP listener: {e}"),
         };
@@ -44,29 +44,47 @@ impl Ohkami {
         #[cfg(feature="rt_async-std")]
         while let Some(Ok(mut stream)) = listener.incoming().next().await {
             let router = Arc::clone(&router);
-            let c = Context::new();
+            let c      = Context::new();
 
-            __dep__::task::spawn(async move {
-                let req = Request::new(&mut stream).await;
-                router.handle(c, req, stream).await;
-            }).await;
+            __rt__::task::spawn(async move {
+                let mut req = Request::init();
+                let mut req = unsafe {Pin::new_unchecked(&mut req)};
+                req.as_mut().read(&mut stream).await;
+
+                let res = router.handle(c, req.get_mut()).await;
+                res.send(&mut stream).await
+            }).await
         }
         
         #[cfg(feature="rt_tokio")]
         loop {
-            let mut stream = match listener.accept().await {
-                Ok((stream, _)) => stream,
-                Err(e)          => panic!("Failed to bind TCP listener: {e}"),
-            };
+            let stream = Arc::new(__rt__::Mutex::new(
+                match listener.accept().await {
+                    Ok((stream, _)) => stream,
+                    Err(e)          => panic!("Failed to accept TCP stream: {e}"),
+                }
+            ));
 
             let router = Arc::clone(&router);
-            let c = Context::new();
+            let c      = Context::new();
 
-            if let Err(e) = __dep__::task::spawn(async move {
-                let req = Request::new(&mut stream).await;
-                router.handle(c, req, stream).await;
+            if let Err(e) = __rt__::task::spawn({let stream = stream.clone();
+                async move {
+                    let stream = &mut *stream.lock().await;
+
+                    let mut req = Request::init();
+                    let mut req = unsafe {Pin::new_unchecked(&mut req)};
+                    req.as_mut().read(stream).await;
+
+                    let res = router.handle(c, req.get_mut()).await;
+                    res.send(stream).await
+                }
             }).await {
-                panic!("Fatal error: {e}")
+                (|| async {
+                    println!("Fatal error: {e}");
+                    let res = Context::new().InternalServerError();
+                    res.send(&mut *stream.lock().await).await
+                })().await
             }
         }
     }

@@ -1,12 +1,13 @@
 use std::hint::unreachable_unchecked;
 
-#[cfg_attr(test, derive(Clone, Debug, PartialEq))]
+#[cfg_attr(test, derive(Clone, PartialEq))]
+#[derive(Debug)]
 pub enum ContentType {
     JSON,
     URLEncoded,
     Text,
     HTML,
-    Form { boundary: String },
+    FormData { boundary: String },
 }
 
 impl ContentType {
@@ -19,8 +20,8 @@ impl ContentType {
 
     pub fn is_form(&self) -> bool {
         match self {
-            Self::Form{ .. } => true,
-            _                => false,
+            Self::FormData { .. } => true,
+            _                     => false,
         }
     }
 
@@ -39,7 +40,7 @@ impl ContentType {
             b"application/x-www-form-urlencoded" => Some(Self::URLEncoded),
             b"text/plain"                        => Some(Self::Text),
             _ => bytes.strip_prefix(b"multipart/form-data; boundary=")
-                .map(|bound| Self::Form {
+                .map(|bound| Self::FormData {
                     boundary: unsafe {String::from_utf8_unchecked(bound.to_vec())}
                 })
         }

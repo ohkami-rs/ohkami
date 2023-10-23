@@ -109,11 +109,11 @@ impl TrieRouter {
         let ByAnother { route, ohkami } = another;
         let another_routes = ohkami.into_router();
 
-        if let Err(e) = self.GET.merge_node(route.clone().into_iter(), another_routes.GET) {panic!("{e}")}
-        if let Err(e) = self.PUT.merge_node(route.clone().into_iter(), another_routes.PUT) {panic!("{e}")}
-        if let Err(e) = self.POST.merge_node(route.clone().into_iter(), another_routes.POST) {panic!("{e}")}
-        if let Err(e) = self.PATCH.merge_node(route.clone().into_iter(), another_routes.PATCH) {panic!("{e}")}
-        if let Err(e) = self.DELETE.merge_node(route.clone().into_iter(), another_routes.DELETE) {panic!("{e}")}
+        self.GET   .merge_node(route.clone().into_iter(), another_routes.GET   ).unwrap();
+        self.PUT   .merge_node(route.clone().into_iter(), another_routes.PUT   ).unwrap();
+        self.POST  .merge_node(route.clone().into_iter(), another_routes.POST  ).unwrap();
+        self.PATCH .merge_node(route.clone().into_iter(), another_routes.PATCH ).unwrap();
+        self.DELETE.merge_node(route.clone().into_iter(), another_routes.DELETE).unwrap();
 
         for af in another_routes.HEADfangs {
             if self.HEADfangs.iter().all(|sf| af.id() != sf.id()) {
@@ -151,11 +151,11 @@ impl TrieRouter {
 
     pub(crate) fn into_radix(self) -> super::RadixRouter {
         super::RadixRouter {
-            GET:     self.GET.into_radix(),
-            PUT:     self.PUT.into_radix(),
-            POST:    self.POST.into_radix(),
-            PATCH:   self.PATCH.into_radix(),
-            DELETE:  self.DELETE.into_radix(),
+            GET:    self.GET   .into_radix(),
+            PUT:    self.PUT   .into_radix(),
+            POST:   self.POST  .into_radix(),
+            PATCH:  self.PATCH .into_radix(),
+            DELETE: self.DELETE.into_radix(),
             HEADfangs: {
                 let (mut front, mut back) = (vec![], vec![]);
                 for f in self.HEADfangs {
@@ -187,9 +187,9 @@ impl Node {
                 self.set_handler(handler)?;
                 Ok(())
             }
-            Some(pattern) => match self.machable_child_mut(pattern.clone().into()) {
+            Some(pattern)   => match self.machable_child_mut(pattern.clone().into()) {
                 Some(child) => child.register_handler(route, handler),
-                None => {
+                None        => {
                     let mut child = Node::new(pattern.into());
                     child.register_handler(route, handler)?;
                     self.append_child(child)?;
@@ -218,21 +218,18 @@ impl Node {
     }
 
     fn apply_fang(&mut self, fang: Fang) {
-        for child in &mut self.children {
-            child.apply_fang(fang.clone())
-        }
-        if self.handler.is_some() {
+        // for child in &mut self.children {
+        //     child.apply_fang(fang.clone())
+        // }
+        // if self.handler.is_some() {
             self.append_fang(fang)
-        }
+        // }
     }
 
     fn into_radix(self) -> super::radix::Node {
         let Node { pattern, mut fangs, mut handler, mut children } = self;
 
-        let mut patterns = match pattern {
-            None          => vec![],
-            Some(pattern) => vec![pattern],
-        };
+        let mut patterns = pattern.into_iter().collect::<Vec<_>>();
 
         while children.len() == 1 && handler.is_none() {
             let Node {
@@ -384,7 +381,6 @@ impl Node {
                 if self.children.is_empty() {
                     self.children.push(new_child);
                     Ok(())
-
                 } else {
                     let __conflicting_pattern__ = format!("{:?}", self.children.first().unwrap().pattern.as_ref().unwrap());
                     Err(format!("Conflicting route definition: {__position__}, {{param}} and {__conflicting_pattern__} can match"))
@@ -394,12 +390,10 @@ impl Node {
                 if self.children.iter().all(|c| c.pattern.as_ref().unwrap().is_static()) {
                     if self.children.iter().find(|c| c.pattern.as_ref().unwrap().to_static().unwrap() == bytes.as_ref()).is_some() {
                         Err(format!("Conflicting route definition: {__position__}, pattern '{}' are registered twice", std::str::from_utf8(&bytes).unwrap()))
-
                     } else {
                         self.children.push(new_child);
                         Ok(())
                     }
-
                 } else {
                     let __pattern_to_append__ = format!("{:?}", new_child.pattern.as_ref().unwrap());
                     Err(format!("Conflicting route definition: {__position__}, {{param}} and {__pattern_to_append__} can match"))

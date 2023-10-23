@@ -18,22 +18,20 @@
 ");
 
 
-/*===== dependency injection layer =====*/
-mod __dep__ {
+/*===== runtime dependency injection layer =====*/
+mod __rt__ {
     #[cfg(feature="rt_tokio")]
-    pub(crate) use tokio::net::TcpStream as TcpStream;
-    #[cfg(feature="rt_async-std")]
-    pub(crate) use async_std::net::TcpStream as TcpStream;
+    pub(crate) use tokio::sync::Mutex;
 
     #[cfg(feature="rt_tokio")]
-    pub(crate) use tokio::net::TcpListener as TcpListener;
+    pub(crate) use tokio::net::TcpListener;
     #[cfg(feature="rt_async-std")]
-    pub(crate) use async_std::net::TcpListener as TcpListener;
+    pub(crate) use async_std::net::TcpListener;
 
     #[cfg(feature="rt_tokio")]
-    pub(crate) use tokio::task as task;
+    pub(crate) use tokio::task;
     #[cfg(feature="rt_async-std")]
-    pub(crate) use async_std::task as task;
+    pub(crate) use async_std::task;
 
     #[cfg(feature="rt_tokio")]
     pub(crate) use tokio::io::AsyncReadExt as AsyncReader;
@@ -60,9 +58,6 @@ mod layer5_ohkami;
 
 
 /*===== visibility managements =====*/
-pub(crate) use layer1_req_res     ::{QUERIES_LIMIT, HEADERS_LIMIT};
-pub(crate) use layer3_fang_handler::{PATH_PARAMS_LIMIT};
-
 pub use layer0_lib         ::{Status, Method, ContentType};
 pub use layer1_req_res     ::{Request, Response, FromRequest};
 pub use layer2_context     ::{Context};
@@ -74,13 +69,19 @@ pub mod prelude {
 }
 
 pub mod utils {
+    pub use crate::layer1_req_res     ::{File};
     pub use crate::layer3_fang_handler::{builtin::*};
     pub use ohkami_macros             ::{Query, Payload};
 }
 
 #[doc(hidden)]
 pub mod __internal__ {
-    pub use crate::layer1_req_res::{parse_json, parse_urlencoded, FromBuffer};
+    pub use crate::layer1_req_res::{
+        parse_json,
+        parse_formparts,
+        parse_urlencoded,
+        FromBuffer,
+    };
 }
 
 
@@ -90,9 +91,8 @@ pub mod __internal__ {
     struct AppendHeader;
     impl IntoFang for AppendHeader {
         fn bite(self) -> Fang {
-            Fang(|c: &mut Context, req: Request| {
+            Fang(|c: &mut Context, _: &mut Request| {
                 c.headers.Server("ohkami");
-                req
             })
         }
     }

@@ -4,17 +4,17 @@ mod into_handler; pub use into_handler::{IntoHandler};
 use std::{pin::Pin, future::Future};
 use crate::{
     Context, Request,
-    layer0_lib::{List, BufRange},
+    layer0_lib::{List, Slice},
     layer1_req_res::{Response},
 };
 
 pub(crate) const PATH_PARAMS_LIMIT: usize = 2;
-pub(crate) type PathParams = List<BufRange, PATH_PARAMS_LIMIT>;
+pub(crate) type PathParams = List<Slice, PATH_PARAMS_LIMIT>;
 
 
 pub struct Handler(
     pub(crate) Box<dyn
-        Fn(Request, Context, PathParams) -> Pin<
+        Fn(&mut Request, Context, PathParams) -> Pin<
             Box<dyn
                 Future<Output = Response>
                 + Send + 'static

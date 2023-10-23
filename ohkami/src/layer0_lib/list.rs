@@ -6,29 +6,14 @@ pub(crate) struct List<T, const CAPACITY: usize> {
     pub(crate) next: usize,
 }
 
-macro_rules! prepare_capacity {
-    ($cap_name:ident: [ $( $uninit:ident ),* ]) => {
-        impl<T> List<T, $cap_name> {
-            #[inline(always)] pub(crate) const fn new() -> Self {
-                Self {
-                    list: [ $( MaybeUninit::$uninit() ),* ],
-                    next: 0,
-                }
-            }
+impl<T, const CAPACITY: usize> List<T, CAPACITY> {
+    pub(crate) fn new() -> Self {
+        Self {
+            list: std::array::from_fn(|_| MaybeUninit::uninit()),
+            next: 0,
         }
-    };
-} const _: () = {
-    use crate::{PATH_PARAMS_LIMIT, QUERIES_LIMIT, HEADERS_LIMIT};
-    
-    prepare_capacity!(PATH_PARAMS_LIMIT: [uninit, uninit]);
-    prepare_capacity!(QUERIES_LIMIT: [uninit, uninit, uninit, uninit]);
-    prepare_capacity!(HEADERS_LIMIT: [
-        uninit, uninit, uninit, uninit, uninit, uninit, uninit, uninit,
-        uninit, uninit, uninit, uninit, uninit, uninit, uninit, uninit,
-        uninit, uninit, uninit, uninit, uninit, uninit, uninit, uninit,
-        uninit, uninit, uninit, uninit, uninit, uninit, uninit, uninit
-    ]);
-};
+    }
+}
 
 impl<T, const CAPACITY: usize> List<T, CAPACITY> {
     #[inline] pub(crate) fn append(&mut self, element: T) {
@@ -63,6 +48,8 @@ impl<T> List<T, 2> {
 
 #[cfg(test)]
 const _: () = {
+    use super::{Slice};
+
     impl<T: PartialEq, const CAPACITY: usize> PartialEq for List<T, CAPACITY> {
         fn eq(&self, other: &Self) -> bool {
             let n = self.next;
@@ -78,6 +65,17 @@ const _: () = {
                 }
             }
             true
+        }
+    }
+
+    impl<const LENGTH: usize, const CAPACITY: usize> From<[(&'static str, &'static str); LENGTH]> for List<(Slice, Slice), CAPACITY> {
+        fn from(array: [(&'static str, &'static str); LENGTH]) -> Self {
+            let mut this = Self::new(); for (key, val) in array {
+                this.append((
+                    unsafe {Slice::from_bytes(key.as_bytes())},
+                    unsafe {Slice::from_bytes(val.as_bytes())},
+                ))
+            } this
         }
     }
 };

@@ -1,11 +1,13 @@
 [workspace]
-members = [
+resolver = "2"
+members  = [
+    "form",
     "hello",
-    "quick_start"
+    "quick_start",
 ]
 
 [workspace.dependencies]
-ohkami = { version = "0.9", path = "../ohkami", features = ["rt_tokio"] }
+ohkami = { version = "0.10", path = "../ohkami", default-features = false, features = ["rt_tokio"] }
 tokio  = { version = "1", features = ["full"] }
 serde  = { version = "1", features = ["derive"] }
 tracing = "0.1"

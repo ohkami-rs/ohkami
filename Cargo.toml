@@ -1,5 +1,6 @@
 [workspace]
-members = [
+resolver = "2"
+members  = [
     "ohkami",
     "ohkami_macros",
 ]
