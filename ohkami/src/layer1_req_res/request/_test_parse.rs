@@ -1,5 +1,8 @@
 use std::pin::Pin;
 
+#[cfg(feature="rt_tokio")]     use tokio::test;
+#[cfg(feature="rt_async-std")] use async_std::test;
+
 use super::{Request, METADATA_SIZE};
 use crate::{__rt__, layer0_lib::{Slice, List, Method, ContentType, CowSlice}};
 
