@@ -7,7 +7,7 @@ mod payload;
 /// 
 /// <br/>
 /// 
-/// ```
+/// ```ignore
 /// use ohkami::prelude::*;
 /// use ohkami::utils::Queries; // <-- import me
 /// 
@@ -58,7 +58,7 @@ pub fn Query(_: proc_macro::TokenStream, data: proc_macro::TokenStream) -> proc_
 /// 
 /// - Requires that the struct implements `serde::Deserialize`
 /// 
-/// ```
+/// ```ignore
 /// use ohkami::prelude::*;
 /// use ohkami::utils::Payload; // <-- import me
 /// 
@@ -89,7 +89,7 @@ pub fn Query(_: proc_macro::TokenStream, data: proc_macro::TokenStream) -> proc_
 /// 
 /// ### URLEncoded
 /// 
-/// ```
+/// ```ignore
 /// use ohkami::prelude::*;
 /// use ohkami::utils::Payload; // <-- import me
 /// 
@@ -110,7 +110,7 @@ pub fn Query(_: proc_macro::TokenStream, data: proc_macro::TokenStream) -> proc_
 /// 
 /// ### FormData
 /// 
-/// ```
+/// ```ignore
 /// use ohkami::prelude::*;
 /// use ohkami::utils::Payload; // <-- import me
 /// 

@@ -1,10 +1,10 @@
 use std::pin::Pin;
 
-#[cfg(feature="rt_tokio")]     use tokio::test;
-#[cfg(feature="rt_async-std")] use async_std::test;
+#[cfg(feature="rt_tokio")]     use tokio::test     as async_test;
+#[cfg(feature="rt_async-std")] use async_std::test as async_test;
 
 use super::{Request, METADATA_SIZE};
-use crate::{__rt__, layer0_lib::{Slice, List, Method, ContentType, CowSlice}};
+use crate::{layer0_lib::{Slice, List, Method, ContentType, CowSlice}};
 
 macro_rules! assert_parse {
     ($case:expr, $expected:expr) => {
@@ -39,7 +39,7 @@ fn metadataize(input: &str) -> [u8; METADATA_SIZE] {
 }
 
 
-#[__rt__::test] async fn test_parse_request() {
+#[async_test] async fn test_parse_request() {
     const CASE_1: &str = "\
         GET /hello.html HTTP/1.1\r\n\
         User-Agent: Mozilla/4.0\r\n\
