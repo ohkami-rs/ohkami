@@ -113,8 +113,12 @@ impl Request {
         ref_metadata: &[u8],
         starts_at:    usize,
         size:         usize,
-    ) -> CowSlice {#[cfg(debug_assertions)] assert!(starts_at <= METADATA_SIZE, "ohkami can't handle requests if the total size of status and headers exceeds {METADATA_SIZE} bytes");
-        if starts_at + size <= METADATA_SIZE {
+    ) -> CowSlice {#[cfg(debug_assertions)] assert!(starts_at < METADATA_SIZE, "ohkami can't handle requests if the total size of status and headers exceeds {METADATA_SIZE} bytes");
+        if ref_metadata[starts_at] == 0 {// Some HTTP client requests as this
+            let mut bytes = vec![0; size];
+            stream.read(&mut bytes).await.unwrap();
+            CowSlice::Own(bytes)
+        } else if starts_at + size <= METADATA_SIZE {
             CowSlice::Ref(unsafe {Slice::new(ref_metadata.as_ptr().add(starts_at), size)})
         } else {
             (|| async move {
@@ -202,7 +206,6 @@ const _: () = {
                     .field("headers", &headers)
                     .field("payload", &String::from_utf8_lossy(payload))
                     .finish()
-
             } else {
                 f.debug_struct("Request")
                     .field("method",  &self.method)
