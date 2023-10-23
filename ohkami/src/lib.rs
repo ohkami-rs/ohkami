@@ -2,6 +2,7 @@
 
 
 /*===== crate features =====*/
+
 #[cfg(any(
     all(feature="rt_tokio", feature="rt_async-std")
 ))] compile_error!("
@@ -19,6 +20,7 @@
 
 
 /*===== runtime dependency injection layer =====*/
+
 mod __rt__ {
     #[cfg(feature="rt_tokio")]
     pub(crate) use tokio::sync::Mutex;
@@ -49,15 +51,18 @@ mod __rt__ {
 
 
 /*===== modules =====*/
+
 mod layer0_lib;
 mod layer1_req_res;
 mod layer2_context;
 mod layer3_fang_handler;
 mod layer4_router;
 mod layer5_ohkami;
+mod layer6_testing;
 
 
 /*===== visibility managements =====*/
+
 pub use layer0_lib         ::{Status, Method, ContentType};
 pub use layer1_req_res     ::{Request, Response, FromRequest};
 pub use layer2_context     ::{Context};
@@ -71,6 +76,7 @@ pub mod prelude {
 pub mod utils {
     pub use crate::layer1_req_res     ::{File};
     pub use crate::layer3_fang_handler::{builtin::*};
+    pub use crate::layer6_testing     ::{Testing};
     pub use ohkami_macros             ::{Query, Payload};
 }
 
@@ -86,6 +92,7 @@ pub mod __internal__ {
 
 
 /*===== usavility =====*/
+
 #[cfg(test)] #[allow(unused)] async fn __() {
 // fangs
     struct AppendHeader;
