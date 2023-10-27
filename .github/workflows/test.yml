@@ -2,11 +2,11 @@ name: test
 on:
   pull_request:
   push:
-      branches:
-        - main
+    branches:
+      - main
 
 jobs:
-  cargo-test:
+  test-stable:
     runs-on: ubuntu-latest
 
     strategy:
@@ -26,3 +26,24 @@ jobs:
         with:
           command: test
           args: --lib --features test,rt_${{ matrix.rt }}
+
+  test-nightly:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        rt: [tokio, async-std]
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          profile:   minimal
+          override:  true
+
+      - uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --lib --features nightly,test,rt_${{ matrix.rt }}

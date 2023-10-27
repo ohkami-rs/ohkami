@@ -2,11 +2,11 @@ name: check
 on:
   pull_request:
   push:
-      branches:
-        - main
+    branches:
+      - main
 
 jobs:
-  cargo-check:
+  check-stable:
     runs-on: ubuntu-latest
 
     strategy:
@@ -26,3 +26,24 @@ jobs:
         with:
           command: check
           args: --features rt_${{ matrix.rt }}
+
+  check-nighlt:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        rt: [tokio, async-std]
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          profile:   minimal
+          override:  true
+
+      - uses: actions-rs/cargo@v1
+        with:
+          command: check
+          args: --features nightly,rt_${{ matrix.rt }}

@@ -29,6 +29,8 @@ byte_reader      = "1.1.2"
 rt_tokio         = ["dep:tokio"]
 rt_async-std     = ["dep:async-std"]
 
+nightly          = []
+
 test             = ["tokio?/macros", "async-std?/attributes"]
 
 ##### DEBUG #####

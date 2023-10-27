@@ -1,5 +1,9 @@
 #![doc(html_root_url = "https://docs.rs/ohkami")]
 
+#![cfg_attr(feature="nightly", feature(
+    try_trait_v2,
+))]
+
 
 /*===== crate features =====*/
 

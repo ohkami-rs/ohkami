@@ -1,6 +1,15 @@
 use std::borrow::Cow;
 use crate::{
-    layer3_fang_handler::{Handler, Handlers, ByAnother, RouteSections, RouteSection, Fang, FangProc}, Method,
+    Method,
+    layer3_fang_handler::{
+        Fang,
+        FangProc,
+        Handler,
+        Handlers,
+        ByAnother,
+        RouteSection,
+        RouteSections,
+    },
 };
 
 const _: () = {
@@ -220,12 +229,25 @@ impl Node {
     }
 
     fn apply_fang(&mut self, fang: Fang) {
-        // for child in &mut self.children {
-        //     child.apply_fang(fang.clone())
-        // }
-        // if self.handler.is_some() {
-            self.append_fang(fang)
-        // }
+        fn apply_front_fang(this: &mut Node, fang: Fang) {
+            assert!(fang.is_front());
+
+            this.append_fang(fang)
+        }
+        fn apply_back_fang(this: &mut Node, fang: Fang) {
+            assert!( ! fang.is_front());
+
+            for child in &mut this.children {
+                apply_back_fang(child, fang.clone())
+            }
+            this.append_fang(fang)
+        }
+
+        if fang.is_front() {
+            apply_front_fang(self, fang)
+        } else {
+            apply_back_fang (self, fang)
+        }
     }
 
     fn into_radix(self) -> super::radix::Node {

@@ -35,6 +35,10 @@ impl Fang {
     pub(crate) fn id(&self) -> &TypeId {
         &self.id
     }
+
+    pub(crate) fn is_front(&self) -> bool {
+        matches!(self.proc, FangProc::Front(_))
+    }
 }
 
 /// <br/>

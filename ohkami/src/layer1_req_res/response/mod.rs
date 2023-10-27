@@ -1,6 +1,12 @@
 pub(crate) mod headers; pub(crate) use headers::ResponseHeaders;
 
-use std::borrow::Cow;
+#[cfg(feature="nightly")]
+use std::{
+    ops::FromResidual,
+    convert::Infallible
+};
+
+use std::{borrow::Cow};
 use crate::{
     __rt__::AsyncWriter,
     layer0_lib::{Status, ContentType, IntoCows},
@@ -24,7 +30,14 @@ pub struct Response {
     pub status:         Status,
     pub(crate) headers: String,
     pub(crate) content: Option<(ContentType, Cow<'static, str>)>,
-}
+} const _: () = {
+    #[cfg(feature="nightly")]
+    impl FromResidual<Result<Infallible, Response>> for Response {
+        fn from_residual(residual: Result<Infallible, Response>) -> Self {
+            unsafe {residual.unwrap_err_unchecked()}
+        }
+    }
+};
 
 impl Response {
     pub(crate) fn into_bytes(self) -> Vec<u8> {
