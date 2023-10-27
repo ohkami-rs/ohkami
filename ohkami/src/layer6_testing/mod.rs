@@ -1,3 +1,5 @@
+mod _test;
+
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::{pin::Pin, future::Future, format as f};
@@ -92,21 +94,29 @@ macro_rules! new_test_request {
 } new_test_request! { GET PUT POST PATCH DELETE HEAD OPTIONS }
 
 impl TestRequest {
-    pub fn query(&mut self, key: impl IntoCows<'static>, value: impl IntoCows<'static>) -> &mut Self {
+    pub fn query(mut self, key: impl IntoCows<'static>, value: impl IntoCows<'static>) -> Self {
         self.queries.insert(key.into_cow(), value.into_cow());
         self
     }
-    pub fn header(&mut self, key: impl IntoCows<'static>, value: impl IntoCows<'static>) -> &mut Self {
+    pub fn header(mut self, key: impl IntoCows<'static>, value: impl IntoCows<'static>) -> Self {
         self.headers.insert(key.into_cow(), value.into_cow());
         self
     }
 }
 impl TestRequest {
-    pub fn json(&mut self, json: impl serde::Serialize) -> &mut Self {
+    pub fn json(mut self, json: impl serde::Serialize) -> Self {
         let content       = serde_json::to_string(&json).expect("Failed to serialize json");
         let content_lenth = content.len();
 
         self.content = Some(Cow::Owned(content));
+        self.header("Content-Type", "application/json")
+            .header("Content-Length", content_lenth.to_string())
+    }
+    pub fn json_lit(mut self, json: impl IntoCows<'static>) -> Self {
+        let content = json.into_cow();
+        let content_lenth = content.len();
+
+        self.content = Some(content);
         self.header("Content-Type", "application/json")
             .header("Content-Length", content_lenth.to_string())
     }
