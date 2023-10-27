@@ -229,7 +229,7 @@ async fn main() {
 use ohkami::prelude::*;
 use ohkami::testing::*; // <--
 
-fn my_ohkami() -> Ohkami {
+fn hello_ohkami() -> Ohkami {
     Ohkami::new((
         "/hello".GET(|c: Context| async move {
             c.OK().text("Hello, world!")
@@ -239,15 +239,24 @@ fn my_ohkami() -> Ohkami {
 
 #[tokio::main]
 async fn main() {
-    my_ohkami()
+    hello_ohkami()
         .howl(5050)
         .await
 }
 
+#[cfg(test)]
 #[tokio::test]
 async fn test_my_ohkami() {
-    let my_ohkami = my_ohkami();
+    use ohkami::Status;
 
+    let hello_ohkami = hello_ohkami();
+
+    let res = hello_ohkami.oneshot(TestRequest::GET("/")).await;
+    assert_eq!(res.status, Status::NotFound);
+
+    let res = hello_ohkami.oneshot(TestRequest::GET("/hello")).await;
+    assert_eq!(res.status, Status::OK);
+    assert_eq!(res.content.unwrap().text().unwrap(), "Hello, world!");
 }
 ```
 
