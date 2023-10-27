@@ -1,8 +1,5 @@
 use std::pin::Pin;
 
-#[cfg(feature="rt_tokio")]     use tokio::test     as async_test;
-#[cfg(feature="rt_async-std")] use async_std::test as async_test;
-
 use super::{Request, METADATA_SIZE};
 use crate::{layer0_lib::{Slice, List, Method, ContentType, CowSlice}};
 
@@ -39,7 +36,7 @@ fn metadataize(input: &str) -> [u8; METADATA_SIZE] {
 }
 
 
-#[async_test] async fn test_parse_request() {
+#[crate::__rt__::test] async fn test_parse_request() {
     const CASE_1: &str = "\
         GET /hello.html HTTP/1.1\r\n\
         User-Agent: Mozilla/4.0\r\n\

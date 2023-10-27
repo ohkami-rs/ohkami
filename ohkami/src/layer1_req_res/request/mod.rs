@@ -44,12 +44,6 @@ impl Request {
         stream.read(&mut self._metadata).await.unwrap();
         let mut r = Reader::new(&self._metadata);
 
-        println!("\n\
-            ===== _metadata =====\n\
-            {}\n\
-            =====================\n\
-        ", self._metadata.escape_ascii());
-
         let method = Method::from_bytes(r.read_while(|b| b != &b' '));
         r.consume(" ").unwrap();
         

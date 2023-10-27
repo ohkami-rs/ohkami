@@ -165,10 +165,9 @@ use ohkami::{Fang, IntoFang};
 struct AppendHeaders;
 impl IntoFang for AppendHeaders {
     fn bite(self) -> Fang {
-        Fang(|c: &mut Context, req: Request| {
+        Fang(|c: &mut Context, req: &mut Request| {
             c.headers
                 .Server("ohkami");
-            req
         })
     }
 }
@@ -197,7 +196,7 @@ async fn main() {
 `Fang` schema :
 
 - to make *back fang* : `Fn(Response) -> Response`
-- to make *front fang* : `Fn(&mut Context, Request) -> Request`, or `_ -> Result<Request, Response>` for early returning error response
+- to make *front fang* : `Fn(&mut Context, &mut Request)`, or `_ -> Result<Request, Response>` for early returning error response
 
 <br/>
 
@@ -220,6 +219,35 @@ async fn main() {
         "/hc"       .GET(health_check),
         "/api/users".By(users_ohkami), // <-- nest by `By`
     )).howl(5000).await
+}
+```
+
+<br/>
+
+### testing
+```rust
+use ohkami::prelude::*;
+use ohkami::testing::*; // <--
+
+fn my_ohkami() -> Ohkami {
+    Ohkami::new((
+        "/hello".GET(|c: Context| async move {
+            c.OK().text("Hello, world!")
+        })
+    ))
+}
+
+#[tokio::main]
+async fn main() {
+    my_ohkami()
+        .howl(5050)
+        .await
+}
+
+#[tokio::test]
+async fn test_my_ohkami() {
+    let my_ohkami = my_ohkami();
+
 }
 ```
 
