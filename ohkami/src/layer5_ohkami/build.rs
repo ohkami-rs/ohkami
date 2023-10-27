@@ -23,6 +23,11 @@ trait RoutingItem {
 
 pub trait Routes {
     fn apply(self, routes: TrieRouter) -> TrieRouter;
+} impl<R: RoutingItem> Routes for R {
+    fn apply(self, mut routes: TrieRouter) -> TrieRouter {
+        routes = <R as RoutingItem>::apply(self, routes);
+        routes
+    }
 } macro_rules! impl_for_tuple {
     ( $( $item:ident ),* ) => {
         impl<$( $item: RoutingItem ),*> Routes for ( $($item,)* ) {

@@ -3,15 +3,27 @@ mod _test;
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::{pin::Pin, future::Future, format as f};
+use byte_reader::Reader;
+
 use crate::{Response, Request, Method, layer0_lib::IntoCows};
-use crate::{Ohkami, Context};
+use crate::{Ohkami, Context, Status, ContentType};
+
 
 pub trait Testing {
-    fn oneshot(&self, req: TestRequest) -> TestResponse;
+    fn oneshot(&self, req: TestRequest) -> TestFuture;
+}
+pub struct TestFuture(
+    Box<dyn Future<Output = TestResponse>>);
+impl Future for TestFuture {
+    type Output = TestResponse;
+    fn poll(self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> std::task::Poll<Self::Output> {
+        unsafe {self.map_unchecked_mut(|this| this.0.as_mut())}
+            .poll(cx)
+    }
 }
 
 impl Testing for Ohkami {
-    fn oneshot(&self, request: TestRequest) -> TestResponse {
+    fn oneshot(&self, request: TestRequest) -> TestFuture {
         let router = {
             let mut router = self.routes.clone();
             for (methods, fang) in &self.fangs {
@@ -20,26 +32,19 @@ impl Testing for Ohkami {
             router.into_radix()
         };
 
-        let res = async move {
+        let test_res = async move {
             let mut req = Request::init();
             let mut req = unsafe {Pin::new_unchecked(&mut req)};
             req.as_mut().read(&mut &request.encode_request()[..]).await;
-            router.handle(Context::new(), &mut req).await
+
+            let res = router.handle(Context::new(), &mut req).await;
+            TestResponse::new(res)
         };
 
-        TestResponse(Box::new(res))
+        TestFuture(Box::new(test_res))
     }
 }
 
-pub struct TestResponse<'test>(
-    Box<dyn Future<Output = Response> + 'test>
-); impl<'test> Future for TestResponse<'test> {
-    type Output = Response;
-    fn poll(self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> std::task::Poll<Self::Output> {
-        unsafe {self.map_unchecked_mut(|tr| tr.0.as_mut())}
-            .poll(cx)
-    }
-}
 
 pub struct TestRequest {
     method:  Method,
@@ -61,10 +66,8 @@ pub struct TestRequest {
 
         let headers = headers.into_iter()
             .map(|(k, v)| f!("{k}: {v}\r\n"))
-            .fold(Vec::new(), |mut h, kv| if h.is_empty() {
-                h.push(b'?'); h.extend_from_slice(kv.as_bytes()); h
-            } else {
-                h.push(b'&'); h.extend_from_slice(kv.as_bytes()); h
+            .fold(Vec::new(), |mut h, kv| {
+                h.extend_from_slice(kv.as_bytes()); h
             });
 
         [
@@ -74,9 +77,7 @@ pub struct TestRequest {
             content.unwrap_or(Cow::Borrowed("")).as_bytes()
         ].concat()
     }
-}
-
-macro_rules! new_test_request {
+} macro_rules! new_test_request {
     ( $($method:ident)* ) => {$(
         #[allow(non_snake_case)]
         impl TestRequest {
@@ -91,9 +92,9 @@ macro_rules! new_test_request {
             }
         }
     )*};
-} new_test_request! { GET PUT POST PATCH DELETE HEAD OPTIONS }
-
-impl TestRequest {
+} new_test_request! {
+    GET PUT POST PATCH DELETE HEAD OPTIONS
+} impl TestRequest {
     pub fn query(mut self, key: impl IntoCows<'static>, value: impl IntoCows<'static>) -> Self {
         self.queries.insert(key.into_cow(), value.into_cow());
         self
@@ -119,5 +120,88 @@ impl TestRequest {
         self.content = Some(content);
         self.header("Content-Type", "application/json")
             .header("Content-Length", content_lenth.to_string())
+    }
+}
+
+
+pub struct TestResponse {
+    pub status:  Status,
+    pub headers: ResponseHeaders,
+    pub content: Option<ResponseBody>,
+} impl TestResponse {
+    fn new(response: Response) -> Self {
+        let Response { status, headers, content } = response;
+        Self {
+            status,
+            headers: ResponseHeaders::new(headers),
+            content: content.map(|(content_type, payload )| ResponseBody { content_type, payload }),
+        }
+    }
+}
+
+pub struct ResponseHeaders(
+    std::sync::RwLock<LazyMap>
+); enum LazyMap {
+    Raw(String),
+    Map(HashMap</*lower case*/String, String>),
+} impl LazyMap {
+    fn eval(&mut self) {
+        match self {
+            Self::Map(_) => (),
+            Self::Raw(string) => {
+                let map = {
+                    let mut map = HashMap::new();
+                    let mut r   = Reader::new(string);
+
+                    while r.peek().is_some() {
+                        let key   = r.read_kebab().unwrap();
+                        r.consume(": ").unwrap();
+                        let value = String::from_utf8(r.read_while(|b| b != &b'\r').to_vec()).unwrap();
+                        r.consume("\r\n").unwrap();
+
+                        map.insert(key.to_ascii_lowercase(), value);
+                    }
+
+                    map
+                };
+                *self = Self::Map(map)
+            }
+        }
+    }
+} impl ResponseHeaders {
+    fn new(raw_headers: String) -> Self {
+        Self(std::sync::RwLock::new(
+            LazyMap::Raw(raw_headers)
+        ))
+    }
+} impl ResponseHeaders {
+    pub fn get(&self, key: &str) -> Option<String> {
+        let current = self.0.read().ok()?;
+        if let LazyMap::Map(map) = &*current {
+            return map.get(&key.to_ascii_lowercase()).map(|s| s.to_string())
+        } else {drop(current)}
+
+        let inner = &mut *self.0.write().ok()?;
+        inner.eval();
+        let LazyMap::Map(map) = inner else {unsafe {std::hint::unreachable_unchecked()}};
+        map.get(&key.to_ascii_lowercase()).map(|s| s.to_string())
+    }
+}
+
+pub struct ResponseBody {
+    content_type: ContentType,
+    payload:      Cow<'static, str>,
+} impl ResponseBody {
+    pub fn text(&self) -> Option<&str> {
+        matches!(&self.content_type, ContentType::Text)
+            .then_some(&self.payload)
+    }
+    pub fn html(&self) -> Option<&str> {
+        matches!(&self.content_type, ContentType::HTML)
+            .then_some(&self.payload)
+    }
+    pub fn json(&self) -> Option<&str> {
+        matches!(&self.content_type, ContentType::JSON)
+            .then_some(&self.payload)
     }
 }
