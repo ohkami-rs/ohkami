@@ -66,17 +66,15 @@ Hello, your_name!
 
 ## Snippets
 
-### handle path/query params
+### handle path params
 ```rust
 use ohkami::prelude::*;
-use ohkami::utils::Query;
 
 #[tokio::main]
 async fn main() {
     Ohkami::new((
         "/api/users/:id".
-            GET(get_user).
-            PATCH(update_user)
+            GET(get_user),
     )).howl("localhost:5000").await
 }
 
@@ -88,70 +86,57 @@ async fn get_user(c: Context,
 
     c.OK().json(found_user)
 }
-
-
-#[Query]
-struct UpdateUserQuery {
-    q: Option<u64>
-}
-
-async fn update_user(c: Context,
-    id:    usize,           /* <-- path  param */
-    query: UpdateUserQuery, /* <-- query params */
-) -> Response {
-
-    // ...
-
-    c.NoContent()
-}
 ```
 Use tuple like `(verion, id): (u8, usize),` for multiple path params.
 
 <br/>
 
-### handle request body
+### handle query params / request body
 ```rust
-use ohkami::{prelude::*, utils::Payload};
+use ohkami::prelude::*;
+use ohkami::utils;   // <--
 
-#[Payload(JSON)]
-#[derive(serde::Deserialize)] // <-- This may not be needed in future version
+#[utils::Query]
+struct SearchCondition {
+    q: String,
+}
+async fn search(c: Context,
+    condition: SearchCondition
+) -> Response { /* */ }
+
+#[utils::Payload(JSON)]
+#[derive(serde::Deserialize)]
 struct CreateUserRequest {
     name:     String,
     password: String,
 }
-
 async fn create_user(c: Context,
     body: CreateUserRequest
-) -> Response {
-
-    // ...
-
-    c.NoContent()
-}
+) -> Response { /* */ }
 
 
-#[Payload(URLEncoded)]
-struct LoginInput {
+#[utils::Payload(URLEncoded)]
+struct LoginRequest {
     name:     String,
     password: String,
 }
-
-#[derive(serde::Serialize)]
-struct Credential {
-    token: String,
-}
-
 async fn post_login(c: Context,
-    input: LoginInput
-) -> Response {
+    input: LoginRequest
+) -> Response { /* */ }
 
-    // ...
 
-    let token = // ...
-
-    c.OK().json(Credential { token })
+#[utils::Payload(FormData)]
+struct Pitures {
+    account: String,
+    pics:    Vec<utils::File>,
 }
+async fn post_pitures(c: Context:
+    pictures: Pictures
+) -> Response { /* */ }
 ```
+`#[Query]`, `#[Payload( 〜 )]` implements `FromRequest` trait for the struct.
+
+( with path params : `(Context, {path params}, {FromRequest values})` )
 
 <br/>
 
