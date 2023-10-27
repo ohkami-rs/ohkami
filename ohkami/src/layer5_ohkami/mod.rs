@@ -24,10 +24,10 @@ use crate::{layer4_router::TrieRouter, Method};
 /// struct Auth;
 /// impl IntoFang for Auth {
 ///     fn bite(self) -> Fang {
-///         Fang(|c: &mut Context, req: Request| {
+///         Fang(|c: &mut Context, req: &mut Request| {
 ///             // Do something...
 /// 
-///             Ok(req)
+///             Ok(())
 ///         })
 ///     }
 /// }
@@ -66,7 +66,7 @@ use crate::{layer4_router::TrieRouter, Method};
 /// <br/>
 /// 
 /// ## fang schema
-/// - front: `Fn(&mut Context, Request) -> Result<Request, Response>`
+/// - front: `Fn(&mut Context, &mut Request) -> () | Result<(), Response>`
 /// - back:  `Fn(Response) -> Response`
 /// 
 /// ## handler schema
@@ -78,7 +78,7 @@ use crate::{layer4_router::TrieRouter, Method};
 /// path_params :
 ///   - `String`
 ///   - `u8` ~ `u128`, `usize`
-///   - and tuple of them
+///   - tuple of them
 pub struct Ohkami {
     pub(crate) routes: TrieRouter,
 
@@ -104,7 +104,7 @@ impl Ohkami {
 
     /// - `fangs` is an item that implements `IntoFang`, or tuple of such items :
     /// 
-    /// ```
+    /// ```ignore
     /// use ohkami::prelude::*;
     /// use ohkami::{Fang, IntoFang};
     /// 

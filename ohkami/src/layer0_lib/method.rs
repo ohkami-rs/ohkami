@@ -22,6 +22,19 @@ impl Method {
             _ => unreachable!("unknown method: `{}`", unsafe {std::str::from_utf8_unchecked(bytes)})
         }
     }
+
+    #[cfg(test)]
+    #[inline] pub(crate) fn as_bytes(&self) -> &'static [u8] {
+        match self {
+            Self::GET     => b"GET",
+            Self::PUT     => b"PUT",
+            Self::POST    => b"POST",
+            Self::PATCH   => b"PATCH",
+            Self::DELETE  => b"DELETE",
+            Self::HEAD    => b"HEAD",
+            Self::OPTIONS => b"OPTIONS",
+        }
+    }
 }
 #[allow(non_snake_case)] impl Method {
     #[inline(always)] pub fn isGET(&self) -> bool {

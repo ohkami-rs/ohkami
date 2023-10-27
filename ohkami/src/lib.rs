@@ -26,6 +26,13 @@
 /*===== runtime dependency injection layer =====*/
 
 mod __rt__ {
+    #[cfg(all(feature="rt_tokio", feature="test"))]
+    #[allow(unused)]
+    pub(crate) use tokio::test;
+    #[cfg(all(feature="rt_async-std", feature="test"))]
+    #[allow(unused)]
+    pub(crate) use async_std::test;
+
     #[cfg(feature="rt_tokio")]
     pub(crate) use tokio::sync::Mutex;
 
@@ -62,6 +69,8 @@ mod layer2_context;
 mod layer3_fang_handler;
 mod layer4_router;
 mod layer5_ohkami;
+
+#[cfg(test)]
 mod layer6_testing;
 
 
@@ -80,8 +89,12 @@ pub mod prelude {
 pub mod utils {
     pub use crate::layer1_req_res     ::{File};
     pub use crate::layer3_fang_handler::{builtin::*};
-    pub use crate::layer6_testing     ::{Testing};
     pub use ohkami_macros             ::{Query, Payload};
+}
+
+#[cfg(test)]
+pub mod testing {
+    pub use crate::layer6_testing::*;
 }
 
 #[doc(hidden)]

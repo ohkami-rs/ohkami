@@ -47,7 +47,7 @@ impl Fang {
 /// 
 /// - to make *back fang* : `Fn(Response) -> Response`
 /// 
-/// - to make *front fang*: `Fn(&mut Context, Request) -> Request` or, return `Result<Request, Response>` instead of `Request` to early return error response
+/// - to make *front fang*: `Fn(&mut Context, &mut Request)` or `Fn(&mut Context, &mut Request) -> Result<(), Response>`
 /// 
 /// <br/>
 /// 
