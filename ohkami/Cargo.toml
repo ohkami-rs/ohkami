@@ -31,5 +31,5 @@ rt_async-std     = ["dep:async-std"]
 nightly          = []
 
 ##### DEBUG #####
-DEBUG   = ["rt_tokio", "serde/derive", "tokio?/macros", "async-std?/attributes"]
-# default = ["DEBUG"]
+DEBUG   = ["serde/derive", "tokio?/macros", "async-std?/attributes"]
+# default = ["rt_tokio", "DEBUG"]
