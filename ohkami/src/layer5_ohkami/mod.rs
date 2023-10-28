@@ -2,7 +2,10 @@ mod with_fangs; pub use with_fangs::{IntoFang};
 mod build;
 mod howl;
 
-use crate::{layer4_router::TrieRouter, Method};
+use crate::{
+    layer0_lib::Method,
+    layer4_router::TrieRouter,
+};
 
 
 /// <br/>
@@ -66,19 +69,19 @@ use crate::{layer4_router::TrieRouter, Method};
 /// <br/>
 /// 
 /// ## fang schema
-/// - front: `Fn(&mut Context, &mut Request) -> () | Result<(), Response>`
 /// - back:  `Fn(Response) -> Response`
+/// - front: `Fn(&mut Context) | Fn(&mut Request) | Fn(&mut Context, &mut Request)`, or `_ -> Result<(), Response>`
 /// 
 /// ## handler schema
 /// - async (`Context`) -> `Response`
 /// - async (`Context`, {path_params}) -> `Response`
-/// - async (`Context`, some {impl `FromRequest`}s) -> `Response`
-/// - async (`Context`, {path_params}, some {impl `FromRequest`}s) -> `Response`
+/// - async (`Context`, {`FromRequest` values...}) -> `Response`
+/// - async (`Context`, {path_params}, {`FromRequest` values...}) -> `Response`
 /// 
 /// path_params :
 ///   - `String`
 ///   - `u8` ~ `u128`, `usize`
-///   - tuple of them
+///   - a tuple of them
 pub struct Ohkami {
     pub(crate) routes: TrieRouter,
 

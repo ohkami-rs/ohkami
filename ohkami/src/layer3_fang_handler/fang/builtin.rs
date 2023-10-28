@@ -1,7 +1,7 @@
 use std::sync::OnceLock;
 use crate::{
     layer0_lib::CORS,
-    Context, Request, IntoFang,
+    Context, IntoFang,
 };
 
 #[allow(non_snake_case)]
@@ -15,7 +15,7 @@ impl IntoFang for CORS {
     fn bite(self) -> crate::Fang {
         CORS.set((Box::leak(self.to_string().into_boxed_str()), self)).ok();
 
-        crate::Fang(|c: &mut Context, _: &mut Request| {
+        crate::Fang(|c: &mut Context| {
             let (cors_str, _) = CORS.get().unwrap();
             c.headers
                 .Vary("Origin")

@@ -112,7 +112,7 @@ pub fn Query(_: proc_macro::TokenStream, data: proc_macro::TokenStream) -> proc_
 /// 
 /// ```ignore
 /// use ohkami::prelude::*;
-/// use ohkami::utils::Payload; // <-- import me
+/// use ohkami::utils::{Payload, File}; // <-- import me
 /// 
 /// #[Payload(FormData)]
 /// struct ProfileData {

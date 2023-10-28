@@ -28,10 +28,8 @@ byte_reader      = "1.1.2"
 [features]
 rt_tokio         = ["dep:tokio"]
 rt_async-std     = ["dep:async-std"]
-
 nightly          = []
 
-test             = ["tokio?/macros", "async-std?/attributes"]
-
 ##### DEBUG #####
-# default = ["rt_tokio", "test", "serde/derive"]
+DEBUG   = ["rt_tokio", "serde/derive", "tokio?/macros", "async-std?/attributes"]
+# default = ["DEBUG"]

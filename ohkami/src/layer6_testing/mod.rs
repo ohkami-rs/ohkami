@@ -5,8 +5,8 @@ use std::collections::HashMap;
 use std::{pin::Pin, future::Future, format as f};
 use byte_reader::Reader;
 
-use crate::{Response, Request, Method, layer0_lib::IntoCows};
-use crate::{Ohkami, Context, Status, ContentType};
+use crate::{Response, Request, Ohkami, Context};
+use crate::layer0_lib::{IntoCows, Status, Method, ContentType};
 
 
 pub trait Testing {
