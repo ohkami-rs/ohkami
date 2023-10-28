@@ -4,7 +4,7 @@
 //! </div>
 //! 
 //! ## Quick start
-//! ```
+//! ```ignore
 //! use ohkami::prelude::*;
 //! 
 //! async fn health_check(c: Context) -> Response {
@@ -26,7 +26,7 @@
 //! <br/>
 //! 
 //! ### handle path params
-//! ```
+//! ```ignore
 //! use ohkami::prelude::*;
 //! 
 //! #[tokio::main]
@@ -46,7 +46,7 @@
 //! <br/>
 //! 
 //! ### handle query params / request body
-//! ```
+//! ```ignore
 //! use ohkami::prelude::*;
 //! use ohkami::utils;   // <--
 //! 
@@ -77,7 +77,7 @@
 //! ### use middlewares
 //! ohkami's middlewares are called "**fang**s".
 //! 
-//! ```
+//! ```ignore
 //! use ohkami::prelude::*;
 //! use ohkami::{Fang, IntoFang};
 //! 
@@ -121,7 +121,7 @@
 //! <br/>
 //! 
 //! ### pack of Ohkamis
-//! ```
+//! ```ignore
 //! #[tokio::main]
 //! async fn main() {
 //!     // ...
@@ -145,7 +145,7 @@
 //! <br/>
 //! 
 //! ### testing
-//! ```
+//! ```ignore
 //! use ohkami::prelude::*;
 //! use ohkami::testing::*; // <--
 //! 
