@@ -1,9 +1,8 @@
 use crate::{
-    Status,
     Request,
     Context,
     Response,
-    layer0_lib::{Method, Slice},
+    layer0_lib::{Method, Status, Slice},
     layer3_fang_handler::{Handler, FrontFang, PathParams, BackFang},
 };
 

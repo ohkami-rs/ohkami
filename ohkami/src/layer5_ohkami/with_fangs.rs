@@ -1,4 +1,7 @@
-use crate::{Fang, Method, Method::*};
+use crate::{
+    Fang,
+    layer0_lib::{Method, Method::*},
+};
 
   
 /// ## fang schema

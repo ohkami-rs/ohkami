@@ -1,6 +1,6 @@
 #![allow(non_snake_case)]
 
-use crate::{Method};
+use crate::http::Method;
 
 
 pub(crate) enum AccessControlAllowOrigin {
@@ -90,7 +90,7 @@ impl CORS {
         self.AllowCredentials = true;
         self
     }
-    pub fn AllowMethods<const N: usize>(mut self, methods: [crate::Method; N]) -> Self {
+    pub fn AllowMethods<const N: usize>(mut self, methods: [Method; N]) -> Self {
         self.AllowMethods.replace(methods.to_vec());
         self
     }

@@ -25,7 +25,7 @@ jobs:
       - uses: actions-rs/cargo@v1
         with:
           command: test
-          args: --lib --features test,rt_${{ matrix.rt }}
+          args: --features rt_${{ matrix.rt }},DEBUG
 
   test-nightly:
     runs-on: ubuntu-latest
@@ -46,4 +46,4 @@ jobs:
       - uses: actions-rs/cargo@v1
         with:
           command: test
-          args: --lib --features nightly,test,rt_${{ matrix.rt }}
+          args: --features nightly,rt_${{ matrix.rt }},DEBUG

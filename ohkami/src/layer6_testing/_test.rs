@@ -1,8 +1,8 @@
-use crate::{Fang, IntoFang, Status};
 use crate::__rt__;
 
 use crate::prelude::*;
 use crate::testing::*;
+use crate::{Fang, IntoFang, http::Status};
 
 
 #[__rt__::test] async fn testing_example_simple() {
@@ -74,7 +74,7 @@ async fn hello(c: Context) -> Response {
 struct SetCustomHeaders;
 impl IntoFang for SetCustomHeaders {
     fn bite(self) -> Fang {
-        Fang(|c: &mut Context, _: &mut Request| {
+        Fang(|c: &mut Context| {
             c.headers
                 .custom("X-State", "testing");
         })
@@ -84,7 +84,7 @@ impl IntoFang for SetCustomHeaders {
 struct SetServerHeader;
 impl IntoFang for SetServerHeader {
     fn bite(self) -> Fang {
-        Fang(|c: &mut Context, _: &mut Request| {
+        Fang(|c: &mut Context| {
             c.headers
                 .Server("ohkami");
         })
@@ -120,7 +120,7 @@ struct CreateUser {
 // Can't use `#[Payload(JSON)]` here becasue this test is within `ohkami`
 impl crate::FromRequest for CreateUser {
     fn parse(req: &Request) -> Result<Self, std::borrow::Cow<'static, str>> {
-        let Some((crate::ContentType::JSON, content)) = req.payload()
+        let Some((crate::http::ContentType::JSON, content)) = req.payload()
             else {return Err(std::borrow::Cow::Borrowed("Expected a json payload"))};
         serde_json::from_slice(content)
             .map_err(|_| std::borrow::Cow::Owned(format!("Failed to deserialize payload")))

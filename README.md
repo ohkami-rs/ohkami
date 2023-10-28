@@ -1,8 +1,7 @@
 <div align="center">
     <h1>ohkami</h1>
+    ohkami <em>- [狼] wolf in Japanese -</em> is <strong>declarative</strong> web framework for Rust.
 </div>
-
-ohkami *- [狼] wolf in Japanese -* is **declarative** web framework for Rust.
 
 ## Features
 - *macro free, declarative APIs*
@@ -23,8 +22,8 @@ ohkami *- [狼] wolf in Japanese -* is **declarative** web framework for Rust.
 # You can choose `async-std` instead by feature "rt_async-std".
 
 [dependencies]
-ohkami = { version = "0.10.0", features = ["rt_tokio"] }
-tokio  = { version = "1",      features = ["full"] }
+ohkami = { version = "0.10", features = ["rt_tokio"] }
+tokio  = { version = "1",    features = ["full"] }
 ```
 
 2. Write your first code with ohkami : [eamples/quick_start](https://github.com/kana-rus/ohkami/blob/main/examples/quick_start/src/main.rs)
@@ -80,12 +79,7 @@ async fn main() {
 
 async fn get_user(c: Context,
     id: usize /* <-- path param */
-) -> Response {
-
-    // ...
-
-    c.OK().json(found_user)
-}
+) -> Response { /* */ }
 ```
 Use tuple like `(verion, id): (u8, usize),` for multiple path params.
 
@@ -113,30 +107,10 @@ struct CreateUserRequest {
 async fn create_user(c: Context,
     body: CreateUserRequest
 ) -> Response { /* */ }
-
-
-#[utils::Payload(URLEncoded)]
-struct LoginRequest {
-    name:     String,
-    password: String,
-}
-async fn post_login(c: Context,
-    input: LoginRequest
-) -> Response { /* */ }
-
-
-#[utils::Payload(FormData)]
-struct Pitures {
-    account: String,
-    pics:    Vec<utils::File>,
-}
-async fn post_pitures(c: Context:
-    pictures: Pictures
-) -> Response { /* */ }
 ```
 `#[Query]`, `#[Payload( 〜 )]` implements `FromRequest` trait for the struct.
 
-( with path params : `(Context, {path params}, {FromRequest values})` )
+( with path params : `(Context, {path params}, {FromRequest values...})` )
 
 <br/>
 
@@ -166,6 +140,7 @@ impl IntoFang for Log {
         })
     }
 }
+
 #[tokio::main]
 async fn main() {
     Ohkami::with((AppendHeaders, Log), (
@@ -181,7 +156,7 @@ async fn main() {
 `Fang` schema :
 
 - to make *back fang* : `Fn(Response) -> Response`
-- to make *front fang* : `Fn(&mut Context, &mut Request)`, or `_ -> Result<Request, Response>` for early returning error response
+- to make *front fang* : `Fn(&mut Context) | Fn(&mut Request) | Fn(&mut Context, &mut Request)`, or `_ -> Result<(), Response>` for early returning error responses
 
 <br/>
 
@@ -225,14 +200,13 @@ fn hello_ohkami() -> Ohkami {
 #[tokio::main]
 async fn main() {
     hello_ohkami()
-        .howl(5050)
-        .await
+        .howl(5050).await
 }
 
 #[cfg(test)]
 #[tokio::test]
 async fn test_my_ohkami() {
-    use ohkami::Status;
+    use ohkami::http::Status;
 
     let hello_ohkami = hello_ohkami();
 
