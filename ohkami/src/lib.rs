@@ -255,6 +255,9 @@ mod layer5_ohkami;
 #[cfg(test)]
 mod layer6_testing;
 
+#[cfg(feature="websocket")]
+mod x_websocket;
+
 
 /*===== visibility managements =====*/
 
@@ -280,6 +283,11 @@ pub mod utils {
 #[cfg(test)]
 pub mod testing {
     pub use crate::layer6_testing::*;
+}
+
+#[cfg(feature="websocket")]
+pub mod websocket {
+    pub use crate::x_websocket::*;
 }
 
 #[doc(hidden)]
