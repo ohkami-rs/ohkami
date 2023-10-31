@@ -1,5 +1,8 @@
-mod request; pub use request::*;
+mod request;  pub use request::*;
 mod response; pub use response::*;
+
+#[cfg(feature="websocket")] mod websocket;
+#[cfg(feature="websocket")] pub use websocket::*;
 
 
 #[cfg(test)] #[allow(unused)] mod __ {
