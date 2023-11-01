@@ -189,22 +189,24 @@ Activate `websocket` feature.
 
 ```rust
 use ohkami::prelude::*;
-use ohkami::websocket::{WebSocket, Message};
+use ohkami::websocket::{WebSocketContext, Message};
 
-async fn handle_websocket(ws: WebSocket) {
-    while let Some(Ok(message)) = ws.recv().await {
-        match message {
-            Message::Text(text) => {
-                let response = Message::from(text);
-                if let Err(e) = ws.send(response).await {
-                    tracing::error!("{e}");
-                    break
+fn handle_websocket(c: WebSocketContext) -> Response {
+    c.on_upgrade(|ws| async move {
+        while let Some(Ok(message)) = ws.recv().await {
+            match message {
+                Message::Text(text) => {
+                    let response = Message::from(text);
+                    if let Err(e) = ws.send(response).await {
+                        tracing::error!("{e}");
+                        break
+                    }
                 }
+                Message::Close(_) => break,
+                other => tracing::warning!("Unsupported message type: {other}"),
             }
-            Message::Close(_) => break,
-            other => tracing::warning!("Unsupported message type: {other}"),
         }
-    }
+    }).await
 }
 
 #[tokio::main]

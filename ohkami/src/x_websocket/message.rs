@@ -16,11 +16,3 @@ pub struct CloseFrame {
     pub code:   u16,
     pub reason: Cow<'static, str>,
 }
-
-impl Message {
-    fn into_tungstenite(self) -> tungstenite::Message {
-        match self {
-            
-        }
-    }
-}
