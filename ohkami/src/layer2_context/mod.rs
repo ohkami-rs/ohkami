@@ -82,52 +82,36 @@ impl Context {
     }
 }
 
-impl Context {
-    #[inline] pub fn OK(&self) -> Response {
-        Response {
-            status:  Status::OK,
-            headers: self.headers.to_string(),
-            content: None,
-        }
-    }
-    #[inline] pub fn Created(&self) -> Response {
-        Response {
-            status:  Status::Created,
-            headers: self.headers.to_string(),
-            content: None,
-        }
-    }
-    #[inline] pub fn NoContent(&self) -> Response {
-        Response {
-            status:  Status::NoContent,
-            headers: self.headers.to_string(),
-            content: None,
-        }
-    }
-}
-
-macro_rules! impl_error_response {
-    ($( $name:ident ),*) => {
+macro_rules! generate_response {
+    ($( $status:ident ),* $(,)?) => {$(
         impl Context {
-            $(
-                #[inline] pub fn $name(&self) -> Response {
-                    Response {
-                        status:  Status::$name,
-                        headers: self.headers.to_string(),
-                        content: None,
-                    }
+            #[inline] pub fn $status(&self) -> Response {
+                Response {
+                    status:  Status::$status,
+                    headers: self.headers.to_string(),
+                    content: None,
                 }
-            )*
+            }
         }
-    };
-} impl_error_response!(
+    )*};
+} generate_response! {
+    SwitchingProtocols,
+
+    OK,
+    Created,
+    NoContent,
+
+    // MovedPermanently,
+    // Found,
+
     BadRequest,
     Unauthorized,
     Forbidden,
     NotFound,
+
     InternalServerError,
-    NotImplemented
-);
+    NotImplemented,
+}
 
 impl Context {
     #[inline] pub fn redirect_to(&self, location: impl AsStr) -> Response {

@@ -1,19 +1,26 @@
 #[derive(PartialEq)]
 pub enum Status {
+    SwitchingProtocols,
+
     OK,
     Created,
     NoContent,
+
     MovedPermanently,
     Found,
+
     BadRequest,
     Unauthorized,
     Forbidden,
     NotFound,
+
     InternalServerError,
     NotImplemented,
 } impl Status {
     #[inline(always)] pub(crate) const fn as_str(&self) -> &'static str {
         match self {
+            Self::SwitchingProtocols  => "101 Switching Protocols",
+
             Self::OK                  => "200 OK",
             Self::Created             => "201 Created",
             Self::NoContent           => "204 No Content",

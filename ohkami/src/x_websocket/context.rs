@@ -1,9 +1,10 @@
 use std::{future::Future, borrow::Cow};
 use super::{WebSocket};
-use crate::{Response};
+use crate::{Response, Context, __rt__};
 
 
 pub struct WebSocketContext<FU: OnFailedUpgrade = DefaultOnFailedUpgrade> {
+    c:                      Context,
     config:                 Config,
 
     on_failed_upgrade:      FU,
@@ -12,6 +13,7 @@ pub struct WebSocketContext<FU: OnFailedUpgrade = DefaultOnFailedUpgrade> {
     sec_websocket_key:      Cow<'static, str>,
     sec_websocket_protocol: Option<Cow<'static, str>>,
 }
+
 pub struct Config {
     write_buffer_size:      usize,
     max_write_buffer_size:  usize,
@@ -31,15 +33,29 @@ pub struct Config {
         }
     }
 };
+
+pub enum UpgradeError { /* TODO */ }
 pub trait OnFailedUpgrade: Send + 'static {
     fn handle(self, error: UpgradeError);
 }
-pub struct UpgradeError { /* TODO */ }
 pub struct DefaultOnFailedUpgrade; const _: () = {
     impl OnFailedUpgrade for DefaultOnFailedUpgrade {
         fn handle(self, _: UpgradeError) { /* DO NOTHING (discard error) */ }
     }
 };
+
+
+impl WebSocketContext {
+    pub(crate) fn new(c: Context) -> Self {
+        Self {c,
+            config: Config::default(),
+            on_failed_upgrade: DefaultOnFailedUpgrade,
+            selected_protocol: None,
+            sec_websocket_key: todo!(),
+            sec_websocket_protocol: None,
+        }
+    }
+}
 
 impl<FU: OnFailedUpgrade> WebSocketContext<FU> {
     pub fn write_buffer_size(mut self, size: usize) -> Self {
@@ -81,6 +97,27 @@ impl<FU: OnFailedUpgrade> WebSocketContext<FU> {
         self,
         callback: impl Fn(WebSocket) -> Fut + Send + 'static
     ) -> Response {
-        todo!()
+        let Self {
+            mut c,
+            config,
+            on_failed_upgrade,
+            selected_protocol,
+            sec_websocket_key,
+            sec_websocket_protocol,
+        } = self;
+
+        __rt__::task::spawn(async move {
+            todo!()
+        });
+
+        c.headers
+            .custom("Connection", "Upgrade")
+            .custom("Upgrade", "websocket")
+            .custom("Sec-WebSocket-Accept", sign(sec_websocket_key.as_bytes()));
+        if let Some(protocol) = selected_protocol {
+            c.headers
+                .custom("Sec-WebSocket-Protocol", protocol);
+        }
+        c.SwitchingProtocols()
     }
 }

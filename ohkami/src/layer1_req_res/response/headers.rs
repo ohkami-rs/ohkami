@@ -2,18 +2,26 @@
 #![allow(non_snake_case)]
 #![allow(unused)] // until ....
 
-use std::{collections::BTreeMap, sync::OnceLock};
-use crate::{layer0_lib::now};
+use std::{collections::BTreeMap, sync::OnceLock, borrow::Cow};
+use crate::{layer0_lib::{now, IntoCows}};
 
 
-struct Header(Option<&'static str>);
+struct Header(Option<Cow<'static, str>>);
 
 pub trait HeaderValue {
-    fn into_header_value(self) -> Option<&'static str>;
-}
-impl HeaderValue for &'static str {fn into_header_value(self) -> Option<&'static str> {Some(self)}}
-impl HeaderValue for Option<&'static str> {fn into_header_value(self) -> Option<&'static str> {self}}
-
+    fn into_header_value(self) -> Option<Cow<'static, str>>;
+} const _: () = {
+    impl<S: IntoCows<'static>> HeaderValue for S {
+        fn into_header_value(self) -> Option<Cow<'static, str>> {
+            Some(self.into_cow())
+        }
+    }
+    impl HeaderValue for Option<()> {
+        fn into_header_value(self) -> Option<Cow<'static, str>> {
+            None
+        }
+    }
+};
 
 macro_rules! ResponseHeaders {
     ($(
@@ -23,18 +31,19 @@ macro_rules! ResponseHeaders {
     )*) => {
         /// Headers in a response.
         /// 
-        /// In current version, this expects values are `&'static str` or `None`.
+        /// Expected values: &'static str, String, Cow<'static, str>, or `None`
         /// 
-        /// - `&'static str` sets the header value to it
-        /// - `None` removes the header value
+        /// - `None` clears value of the header
+        /// - others set the header to thet value
         /// 
         /// <br/>
         /// 
         /// - Content-Type
         /// - Content-Length
         /// - Access-Control-*
+        /// - headers related to WebSocket handshake
         /// 
-        /// are managed by ohkami and MUST NOT be set by `.custom` ( `.custom` has to be used **ONLY** to set custom HTTP headers )
+        /// are managed by ohkami and MUST NOT be set by `.custom` ( `.custom` has to be used **ONLY** to set custom HTTP headers like `X-MyApp-Data: amazing` )
         pub struct ResponseHeaders {
             $( $group: bool, )*
             $($( $name: Header, )*)*
@@ -77,7 +86,7 @@ macro_rules! ResponseHeaders {
                     if self.$group {
                         $(
                             if let Some(value) = self.$name.0 {
-                                h.push_str($key);h.push_str(value);h.push('\r');h.push('\n');
+                                h.push_str($key);h.push_str(&value);h.push('\r');h.push('\n');
                             }
                         )*
                     }
@@ -142,8 +151,8 @@ impl ResponseHeaders {
         match value.into_header_value() {
             Some(value) => {
                 self.custom.entry(key)
-                    .and_modify(|v| *v = value)
-                    .or_insert(value);
+                    .and_modify(|v| *v = &value)
+                    .or_insert(&value);
                 self
             }
             None => {
