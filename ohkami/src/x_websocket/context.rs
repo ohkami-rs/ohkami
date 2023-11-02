@@ -1,6 +1,7 @@
 use std::{future::Future, borrow::Cow};
 use super::{WebSocket};
-use crate::{Response, Context, __rt__};
+use crate::{Response, Context, __rt__, Request};
+use crate::http::{Method};
 
 
 pub struct WebSocketContext<FU: OnFailedUpgrade = DefaultOnFailedUpgrade> {
@@ -46,14 +47,34 @@ pub struct DefaultOnFailedUpgrade; const _: () = {
 
 
 impl WebSocketContext {
-    pub(crate) fn new(c: Context) -> Self {
-        Self {c,
-            config: Config::default(),
+    pub(crate) fn new(c: Context, req: &mut Request) -> Result<Self, Cow<'static, str>> {
+        if req.method() != Method::GET {
+            return Err(Cow::Borrowed("Method is not `GET`"))
+        }
+        if req.header("Connection") != Some("upgrade") {
+            return Err(Cow::Borrowed("Connection header is not `upgrade`"))
+        }
+        if req.header("Upgrade") != Some("websocket") {
+            return Err(Cow::Borrowed("Upgrade header is not `websocket`"))
+        }
+        if req.header("Sec-WebSocket-Version") != Some("13") {
+            return Err(Cow::Borrowed("Sec-WebSocket-Version header is not `13`"))
+        }
+
+        let sec_websocket_key = Cow::Owned(req.header("Sec-WebSocket-Key")
+            .ok_or(Cow::Borrowed("Sec-WebSocket-Key header is missing"))?
+            .to_string());
+
+        let sec_websocket_protocol = req.header("Sec-WebSocket-Protocol")
+            .map(|swp| Cow::Owned(swp.to_string()));
+
+        Ok(Self {c,
+            config:            Config::default(),
             on_failed_upgrade: DefaultOnFailedUpgrade,
             selected_protocol: None,
-            sec_websocket_key: todo!(),
-            sec_websocket_protocol: None,
-        }
+            sec_websocket_key,
+            sec_websocket_protocol,
+        })
     }
 }
 
