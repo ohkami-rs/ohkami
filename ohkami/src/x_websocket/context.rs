@@ -142,3 +142,8 @@ impl<FU: OnFailedUpgrade> WebSocketContext<FU> {
         c.SwitchingProtocols()
     }
 }
+
+
+fn sign(key: &[u8]) -> String {
+    todo!()
+}

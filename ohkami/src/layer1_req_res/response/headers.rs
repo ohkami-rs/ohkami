@@ -47,7 +47,7 @@ macro_rules! ResponseHeaders {
         pub struct ResponseHeaders {
             $( $group: bool, )*
             $($( $name: Header, )*)*
-            custom: BTreeMap<&'static str, &'static str>,
+            custom: BTreeMap<&'static str, Cow<'static, str>>,
             cors_str: &'static str,
         }
 
@@ -85,7 +85,7 @@ macro_rules! ResponseHeaders {
                 $(
                     if self.$group {
                         $(
-                            if let Some(value) = self.$name.0 {
+                            if let Some(value) = &self.$name.0 {
                                 h.push_str($key);h.push_str(&value);h.push('\r');h.push('\n');
                             }
                         )*
@@ -150,9 +150,7 @@ impl ResponseHeaders {
     pub fn custom(&mut self, key: &'static str, value: impl HeaderValue) -> &mut Self {
         match value.into_header_value() {
             Some(value) => {
-                self.custom.entry(key)
-                    .and_modify(|v| *v = &value)
-                    .or_insert(&value);
+                self.custom.insert(key, value);
                 self
             }
             None => {
