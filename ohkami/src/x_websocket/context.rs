@@ -1,5 +1,5 @@
 use std::{future::Future, borrow::Cow};
-use super::{WebSocket};
+use super::{WebSocket, sign};
 use crate::{Response, Context, __rt__, Request};
 use crate::http::{Method};
 
@@ -134,7 +134,7 @@ impl<FU: OnFailedUpgrade> WebSocketContext<FU> {
         c.headers
             .custom("Connection", "Upgrade")
             .custom("Upgrade", "websocket")
-            .custom("Sec-WebSocket-Accept", sign(sec_websocket_key.as_bytes()));
+            .custom("Sec-WebSocket-Accept", sign(&sec_websocket_key));
         if let Some(protocol) = selected_protocol {
             c.headers
                 .custom("Sec-WebSocket-Protocol", protocol);
@@ -143,7 +143,11 @@ impl<FU: OnFailedUpgrade> WebSocketContext<FU> {
     }
 }
 
+fn sign(sec_websocket_key: &str) -> String {
+    let mut sha1 = sign::Sha1::new();
+    sha1.write(sec_websocket_key.as_bytes());
+    sha1.write(b"258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
 
-fn sign(key: &[u8]) -> String {
-    todo!()
+    let sec_websocket_accept_bytes = sign::encode_sha1_to_base64(sha1.sum());
+    unsafe {String::from_utf8_unchecked(sec_websocket_accept_bytes.to_vec())}
 }
