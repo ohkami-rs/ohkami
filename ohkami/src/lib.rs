@@ -182,8 +182,13 @@
 
 #![doc(html_root_url = "https://docs.rs/ohkami")]
 
+#![allow(incomplete_features)]
 #![cfg_attr(feature="nightly", feature(
     try_trait_v2,
+    generic_arg_infer,
+
+    /* imcomplete features */
+    generic_const_exprs,
 ))]
 
 
