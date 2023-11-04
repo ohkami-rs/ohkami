@@ -24,27 +24,26 @@ impl Sha1 {
         }
     }
 
-    pub fn write(&mut self, mut data: &[u8]) {
-        self.len += data.len() as u64;
+    pub fn write(&mut self, mut p: &[u8]) {
+        self.len += p.len() as u64;
         if self.nx > 0 {
-            let n = (CHANK - self.nx).min(data.len());
-            self.x[self.nx..(self.nx + n)].copy_from_slice(&data[..n]);
+            let n = (CHANK - self.nx).min(p.len());
+            self.x[self.nx..(self.nx + n)].copy_from_slice(&p[..n]);
             self.nx += n;
             if self.nx == CHANK {
-                let mut p = [0; CHANK]; p.copy_from_slice(&self.x);
-                self.block(&p);
+                self.block(&self.x.clone());
                 self.nx = 0;
             }
-            data = &data[n..]
+            p = &p[n..]
         }
-        if data.len() >= CHANK {
-            let n = data.len() & (!(CHANK - 1));
-            self.block(&data[..n]);
-            data = &data[n..]
+        if p.len() >= CHANK {
+            let n = p.len() & (!(CHANK - 1));
+            self.block(&p[..n]);
+            p = &p[n..]
         }
-        if data.len() > 0 {
-            self.nx = (data.len()).min(self.x.len());
-            self.x.copy_from_slice(data);
+        if p.len() > 0 {
+            self.nx = self.x.len().min(p.len());
+            self.x.copy_from_slice(p);
         }
     }
 
@@ -60,9 +59,11 @@ impl Sha1 {
         };
 
         len <<= 3;
-        let padlen = &mut tmp[..(t as usize + 8)];
-        padlen[(t as usize)..].copy_from_slice(&len.to_be_bytes());
-        self.write(padlen);
+        //let padlen = &mut tmp[..(t as usize + 8)];
+        //padlen[(t as usize)..].copy_from_slice(&len.to_be_bytes());
+        //self.write(padlen);
+        tmp[(t as usize)..(t as usize + 8)].copy_from_slice(&len.to_be_bytes());
+        self.write(&tmp[..(t as usize + 8)]);
 
         #[cfg(debug_assertions)] assert_eq!(self.nx, 0);
 
@@ -92,7 +93,7 @@ impl Sha1 {
 
             for i in 0..16 {
                 let f = (b & c) | ((!b) & d);
-                let t = a.rotate_left(5) + f + e + w[i&0xf] + K0;
+                let t = dbg!(a.rotate_left(5)) + dbg!(f) + e + w[i&0xf] + K0;
                 (a, b, c, d, e) = (t, a, b.rotate_left(30), c, d)
             }
             for i in 16..20 {
