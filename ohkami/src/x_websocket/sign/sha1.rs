@@ -1,11 +1,15 @@
+#[cfg(not(target_pointer_width = "64"))]
+compile_error!{ "pointer width must be 64" }
+
 pub const CHANK: usize = 64;
 pub const SIZE:  usize = 20; // bytes; 160 bits
 
+#[derive(Debug)]
 pub struct Sha1 {
     h:   [u32; 5],
     x:   [u8; CHANK],
     nx:  usize,
-    len: u64,
+    len: usize,
 }
 
 const K0: u32 = 0x5A827999;
@@ -25,7 +29,7 @@ impl Sha1 {
     }
 
     pub fn write(&mut self, mut p: &[u8]) {
-        self.len += p.len() as u64;
+        self.len += p.len();
         if self.nx > 0 {
             let n = (CHANK - self.nx).min(p.len());
             self.x[self.nx..(self.nx + n)].copy_from_slice(&p[..n]);
@@ -42,8 +46,9 @@ impl Sha1 {
             p = &p[n..]
         }
         if p.len() > 0 {
-            self.nx = self.x.len().min(p.len());
-            self.x.copy_from_slice(p);
+            let n = (self.x.len()).min(p.len());
+            self.nx = n;
+            self.x[..n].copy_from_slice(&p[..n]);
         }
     }
 
@@ -59,11 +64,8 @@ impl Sha1 {
         };
 
         len <<= 3;
-        //let padlen = &mut tmp[..(t as usize + 8)];
-        //padlen[(t as usize)..].copy_from_slice(&len.to_be_bytes());
-        //self.write(padlen);
-        tmp[(t as usize)..(t as usize + 8)].copy_from_slice(&len.to_be_bytes());
-        self.write(&tmp[..(t as usize + 8)]);
+        tmp[t..(t + 8)].copy_from_slice(&len.to_be_bytes());
+        self.write(&tmp[..(t + 8)]);
 
         #[cfg(debug_assertions)] assert_eq!(self.nx, 0);
 
@@ -72,7 +74,7 @@ impl Sha1 {
         digest[4..  8].copy_from_slice(&self.h[1].to_be_bytes());
         digest[8.. 12].copy_from_slice(&self.h[2].to_be_bytes());
         digest[12..16].copy_from_slice(&self.h[3].to_be_bytes());
-        digest[16..  ].copy_from_slice(&self.h[4].to_be_bytes());
+        digest[16..20].copy_from_slice(&self.h[4].to_be_bytes());
         digest
     }
 }
@@ -80,6 +82,18 @@ impl Sha1 {
 // https://github.com/golang/go/blob/master/src/crypto/sha1/sha1block.go
 impl Sha1 {
     fn block(&mut self, mut p: &[u8]) {
+        fn wrapping_sum(u32_1: u32, u32_2: u32, u32_3: u32, u32_4: u32, u32_5: u32) -> u32 {
+            u32_1.wrapping_add(
+                u32_2.wrapping_add(
+                    u32_3.wrapping_add(
+                        u32_4.wrapping_add(
+                            u32_5
+                        )
+                    )
+                )
+            )
+        }
+
         let mut w = [0u32; 16];
 
         let (mut h0, mut h1, mut h2, mut h3, mut h4) = (self.h[0], self.h[1], self.h[2], self.h[3], self.h[4]);
@@ -93,7 +107,7 @@ impl Sha1 {
 
             for i in 0..16 {
                 let f = (b & c) | ((!b) & d);
-                let t = dbg!(a.rotate_left(5)) + dbg!(f) + e + w[i&0xf] + K0;
+                let t = wrapping_sum(a.rotate_left(5), f, e, w[i&0xf], K0);
                 (a, b, c, d, e) = (t, a, b.rotate_left(30), c, d)
             }
             for i in 16..20 {
@@ -101,7 +115,7 @@ impl Sha1 {
                 w[i&0xf] = tmp.rotate_left(1);
 
                 let f = (b & c) | ((!b) & d);
-			    let t = a.rotate_left(5) + f + e + w[i & 0xf] + K0;
+			    let t = wrapping_sum(a.rotate_left(5), f, e, w[i & 0xf], K0);
 			    (a, b, c, d, e) = (t, a, b.rotate_left(30), c, d)
             }
             for i in 20..40 {
@@ -109,7 +123,7 @@ impl Sha1 {
 			    w[i&0xf] = tmp.rotate_left(1);
 
 			    let f = b ^ c ^ d;
-			    let t = a.rotate_left(5) + f + e + w[i&0xf] + K1;
+			    let t = wrapping_sum(a.rotate_left(5), f, e, w[i&0xf], K1);
 			    (a, b, c, d, e) = (t, a, b.rotate_left(30), c, d);
             }
             for i in 40..60 {
@@ -117,7 +131,7 @@ impl Sha1 {
 			    w[i&0xf] = tmp.rotate_left(1);
 
 			    let f = ((b | c) & d) | (b & c);
-			    let t = a.rotate_left(5) + f + e + w[i&0xf] + K2;
+			    let t = wrapping_sum(a.rotate_left(5), f, e, w[i&0xf], K2);
 			    (a, b, c, d, e) = (t, a, b.rotate_left(30), c, d);
             }
             for i in 60..80 {
@@ -125,15 +139,15 @@ impl Sha1 {
 			    w[i&0xf] = tmp.rotate_left(1);
 
 			    let f = b ^ c ^ d;
-			    let t = a.rotate_left(5) + f + e + w[i&0xf] + K3;
+			    let t = wrapping_sum(a.rotate_left(5), f, e, w[i&0xf], K3);
 			    (a, b, c, d, e) = (t, a, b.rotate_left(30), c, d);
             }
 
-            h0 += a;
-            h1 += b;
-            h2 += c;
-            h3 += d;
-            h4 += e;
+            h0 = h0.wrapping_add(a);
+            h1 = h1.wrapping_add(b);
+            h2 = h2.wrapping_add(c);
+            h3 = h3.wrapping_add(d);
+            h4 = h4.wrapping_add(e);
 
             p = &p[CHANK..]
         }
