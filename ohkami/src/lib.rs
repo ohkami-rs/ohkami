@@ -229,6 +229,11 @@ mod __rt__ {
     pub(crate) use async_std::net::TcpListener;
 
     #[cfg(feature="rt_tokio")]
+    pub(crate) use tokio::net::TcpStream;
+    #[cfg(feature="rt_async-std")]
+    pub(crate) use async_std::net::TcpStream;
+
+    #[cfg(feature="rt_tokio")]
     pub(crate) use tokio::task;
     #[cfg(feature="rt_async-std")]
     pub(crate) use async_std::task;

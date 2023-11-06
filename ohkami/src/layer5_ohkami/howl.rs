@@ -65,10 +65,10 @@ impl Ohkami {
                 }
             ));
 
-            let router = Arc::clone(&router);
-            let c      = Context::new();
-
-            if let Err(e) = __rt__::task::spawn({let stream = stream.clone();
+            if let Err(e) = __rt__::task::spawn({
+                let router = router.clone();
+                let stream = stream.clone();
+                
                 async move {
                     let stream = &mut *stream.lock().await;
 
@@ -76,7 +76,7 @@ impl Ohkami {
                     let mut req = unsafe {Pin::new_unchecked(&mut req)};
                     req.as_mut().read(stream).await;
 
-                    let res = router.handle(c, req.get_mut()).await;
+                    let res = router.handle(Context::new(), req.get_mut()).await;
                     res.send(stream).await
                 }
             }).await {
