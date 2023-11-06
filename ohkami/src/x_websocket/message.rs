@@ -42,7 +42,7 @@ const _: (/* `From` impls */) = {
 };
 
 impl Message {
-    pub(super) async fn from(stream: impl AsyncReader + Unpin) -> Result<Self> {
-        
-    }
+    //pub(super) async fn from(stream: impl AsyncReader + Unpin) -> Result<Self> {
+    //    
+    //}
 }
