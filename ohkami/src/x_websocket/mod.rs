@@ -1,3 +1,6 @@
+#[cfg(not(target_pointer_width = "64"))]
+compile_error!{ "pointer width must be 64" }
+
 mod context;
 mod message;
 mod frame;
@@ -19,8 +22,8 @@ impl WebSocket {
 }
 
 impl WebSocket {
-    //pub async fn recv(&self) -> Option<Result<Message>> {
-    //    ( self.stream.lock().await)
-    //    .rea
-    //}
+    async fn handle(self, handle_message: impl Fn(Message) -> Message) {
+        let stream = &mut *self.stream.lock().await;
+        //while let Some(Ok(_)) = stream.re;
+    }
 }

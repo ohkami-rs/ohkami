@@ -1,6 +1,3 @@
-#[cfg(not(target_pointer_width = "64"))]
-compile_error!{ "pointer width must be 64" }
-
 pub const CHANK: usize = 64;
 pub const SIZE:  usize = 20; // bytes; 160 bits
 
