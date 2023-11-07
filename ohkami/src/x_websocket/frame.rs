@@ -1,5 +1,5 @@
 use std::io::{Error, ErrorKind};
-use crate::__rt__::{AsyncReader};
+use crate::__rt__::{AsyncReader, AsyncWriter};
 
 
 #[derive(PartialEq)]
@@ -14,13 +14,23 @@ pub enum OpCode {
     Pong     /* 0xa */,
     /* reserved op codes */
     // Reserved /* 0x[3-7,b-f] */,
-} impl From<u8> for OpCode {
-    fn from(byte: u8) -> Self {match byte {
-        0x0 => Self::Continue, 0x1 => Self::Text, 0x2 => Self::Binary,
-        0x8 => Self::Close,    0x9 => Self::Ping, 0xa => Self::Pong,
-        // 0x3..=0x7 | 0xb..=0xf => Self::Reserved,
-        _ => panic!("OpCode out of range: {byte}")
-    }}
+} impl OpCode {
+    fn from_byte(byte: u8) -> Result<Self, Error> {
+        Ok(match byte {
+            0x0 => Self::Continue, 0x1 => Self::Text, 0x2 => Self::Binary,
+            0x8 => Self::Close,    0x9 => Self::Ping, 0xa => Self::Pong,
+            0x3..=0x7 | 0xb..=0xf => return Err(Error::new(
+                ErrorKind::Unsupported, "Ohkami doesn't handle reserved opcodes")),
+            _ => return Err(Error::new(
+                ErrorKind::InvalidData, "OpCode out of range")),
+        })
+    }
+    fn into_byte(self) -> u8 {
+        match self {
+            Self::Continue => 0x0, Self::Text => 0x1, Self::Binary => 0x2,
+            Self::Close    => 0x8, Self::Ping => 0x9, Self::Pong   => 0xa,
+        }
+    }
 }
 
 pub enum CloseCode {
@@ -43,7 +53,7 @@ pub struct Frame {
     pub mask:     Option<[u8; 4]>,
     pub payload:  Vec<u8>,
 } impl Frame {
-    pub async fn read_from(stream: &mut (impl AsyncReader + Unpin)) -> Result<Option<Self>, Error> {
+    pub(super) async fn read_from(stream: &mut (impl AsyncReader + Unpin)) -> Result<Option<Self>, Error> {
         let [first, second] = {
             let mut head = [0; 2];
             stream.read_exact(&mut head).await?;
@@ -51,7 +61,7 @@ pub struct Frame {
         };
 
         let is_final = first & 0x80 != 0;
-        let opcode   = OpCode::from(first & 0x0F);
+        let opcode   = OpCode::from_byte(first & 0x0F)?;
 
         let payload_len = {
             let payload_len_byte = second & 0x7F;
@@ -89,5 +99,13 @@ pub struct Frame {
         };
 
         Ok(Some(Self { is_final, opcode, mask, payload }))
+    }
+
+    pub(super) async fn write_to(self, stream: &mut (impl AsyncWriter + Unpin)) -> Result<(), Error> {
+        fn into_bytes(frame: Frame) -> Vec<u8> {
+            
+        }
+
+        stream.write_all(&into_bytes(self)).await
     }
 }
