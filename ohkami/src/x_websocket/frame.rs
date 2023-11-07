@@ -2,6 +2,7 @@ use std::io::{Error, ErrorKind};
 use crate::__rt__::{AsyncReader};
 
 
+#[derive(PartialEq)]
 pub enum OpCode {
     /* data op codes */
     Continue /* 0x0 */,
@@ -12,12 +13,12 @@ pub enum OpCode {
     Ping     /* 0x9 */,
     Pong     /* 0xa */,
     /* reserved op codes */
-    Reserved /* 0x[3-7,b-f] */,
+    // Reserved /* 0x[3-7,b-f] */,
 } impl From<u8> for OpCode {
     fn from(byte: u8) -> Self {match byte {
         0x0 => Self::Continue, 0x1 => Self::Text, 0x2 => Self::Binary,
         0x8 => Self::Close,    0x9 => Self::Ping, 0xa => Self::Pong,
-        0x3..=0x7 | 0xb..=0xf => Self::Reserved,
+        // 0x3..=0x7 | 0xb..=0xf => Self::Reserved,
         _ => panic!("OpCode out of range: {byte}")
     }}
 }
@@ -37,13 +38,12 @@ pub enum CloseCode {
 }
 
 pub struct Frame {
-    pub is_final:    bool,
-    pub opcode:      OpCode,
-    pub mask:        Option<[u8; 4]>,
-    pub payload_len: usize,
-    pub payload:     Vec<u8>,
+    pub is_final: bool,
+    pub opcode:   OpCode,
+    pub mask:     Option<[u8; 4]>,
+    pub payload:  Vec<u8>,
 } impl Frame {
-    pub async fn read_header(stream: &mut (impl AsyncReader + Unpin)) -> Result<Option<Self>, Error> {
+    pub async fn read_from(stream: &mut (impl AsyncReader + Unpin)) -> Result<Option<Self>, Error> {
         let [first, second] = {
             let mut head = [0; 2];
             stream.read_exact(&mut head).await?;
@@ -52,9 +52,6 @@ pub struct Frame {
 
         let is_final = first & 0x80 != 0;
         let opcode   = OpCode::from(first & 0x0F);
-        if matches!(opcode, OpCode::Reserved) {
-            return Err(Error::new(ErrorKind::Unsupported, "Ohkami doesn't handle reserved op codes"))
-        }
 
         let payload_len = {
             let payload_len_byte = second & 0x7F;
@@ -91,6 +88,6 @@ pub struct Frame {
             payload
         };
 
-        Ok(Some(Self { is_final, opcode, payload_len, mask, payload }))
+        Ok(Some(Self { is_final, opcode, mask, payload }))
     }
 }
