@@ -37,12 +37,13 @@ pub enum CloseCode {
 }
 
 pub struct Frame {
-    pub is_final: bool,
-    pub opcode:   OpCode,
-    pub mask:     Option<[u8; 4]>,
-    pub payload:  Vec<u8>,
+    pub is_final:    bool,
+    pub opcode:      OpCode,
+    pub mask:        Option<[u8; 4]>,
+    pub payload_len: usize,
+    pub payload:     Vec<u8>,
 } impl Frame {
-    pub async fn read_header(stream: &mut (impl AsyncReader + Unpin)) -> Result<Option<(Self, u64)>, Error> {
+    pub async fn read_header(stream: &mut (impl AsyncReader + Unpin)) -> Result<Option<Self>, Error> {
         let [first, second] = {
             let mut head = [0; 2];
             stream.read_exact(&mut head).await?;
@@ -55,30 +56,41 @@ pub struct Frame {
             return Err(Error::new(ErrorKind::Unsupported, "Ohkami doesn't handle reserved op codes"))
         }
 
-        let length = {
-            let length_byte = second & 0x7F;
-            let length_part_length = match length_byte {126=>2, 127=>8, _=>0};
-            match length_part_length {
-                0 => length_byte as u64,
+        let payload_len = {
+            let payload_len_byte = second & 0x7F;
+            let len_part_size = match payload_len_byte {126=>2, 127=>8, _=>0};
+            match len_part_size {
+                0 => payload_len_byte as usize,
                 _ => {
                     let mut bytes = [0; 8];
-                    stream.read_exact(&mut bytes[(8 - length_part_length)..]).await?;
-                    u64::from_be_bytes(bytes)
+                    if let Err(e) = stream.read_exact(&mut bytes[(8 - len_part_size)..]).await {
+                        return match e.kind() {
+                            ErrorKind::UnexpectedEof => Ok(None),
+                            _                        => Err(e.into()),
+                        }
+                    }
+                    usize::from_be_bytes(bytes)
                 }
             }
         };
 
-        let mask = (second & 0x7F != 0).then(|| async move {
+        let mask = if second & 0x80 == 0 {None} else {
             let mut mask_bytes = [0; 4];
-            stream.read_exact(&mut mask_bytes).await?;
-            Result::<_, Error>::Ok(mask_bytes)
-        });
+            if let Err(e) = stream.read_exact(&mut mask_bytes).await {
+                return match e.kind() {
+                    ErrorKind::UnexpectedEof => Ok(None),
+                    _                        => Err(e.into()),
+                }
+            }
+            Some(mask_bytes)
+        };
 
-        Ok(Some((Self {
-            is_final,
-            opcode,
-            mask:    match mask {None => None, Some(f) => Some(f.await?)},
-            payload: Vec::new(),
-        }, length)))
+        let payload = {
+            let mut payload = Vec::with_capacity(payload_len);
+            stream.read_exact(&mut payload).await?;
+            payload
+        };
+
+        Ok(Some(Self { is_final, opcode, payload_len, mask, payload }))
     }
 }
