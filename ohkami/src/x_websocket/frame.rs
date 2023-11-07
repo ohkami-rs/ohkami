@@ -68,16 +68,16 @@ pub struct Frame {
             }
         };
 
-        let mask = (second & 0x7F != 0).then_some((|| async move {
+        let mask = (second & 0x7F != 0).then(|| async move {
             let mut mask_bytes = [0; 4];
             stream.read_exact(&mut mask_bytes).await?;
             Result::<_, Error>::Ok(mask_bytes)
-        })().await?);
+        });
 
         Ok(Some((Self {
             is_final,
             opcode,
-            mask,
+            mask:    match mask {None => None, Some(f) => Some(f.await?)},
             payload: Vec::new(),
         }, length)))
     }
