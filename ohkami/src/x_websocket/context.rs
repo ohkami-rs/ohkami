@@ -1,17 +1,20 @@
-use std::{future::Future, borrow::Cow};
+use std::{future::Future, borrow::Cow, sync::Arc};
 use super::{WebSocket, sign};
-use crate::{Response, Context, __rt__, Request};
+use crate::{Response, Context, Request};
+use crate::__rt__::{task, Mutex, TcpStream};
 use crate::http::{Method};
 
 
-pub struct WebSocketContext<FU: OnFailedUpgrade = DefaultOnFailedUpgrade> {
+pub struct WebSocketContext {
     c:                      Context,
+    stream:                 Arc<Mutex<TcpStream>>,
+
     config:                 Config,
 
-    on_failed_upgrade:      FU,
+    on_failed_upgrade:      Box<dyn Fn(UpgradeError)>,
 
-    selected_protocol:      Option<Cow<'static, str>>,
     sec_websocket_key:      Cow<'static, str>,
+    selected_protocol:      Option<Cow<'static, str>>,
     sec_websocket_protocol: Option<Cow<'static, str>>,
 }
 
@@ -36,18 +39,9 @@ pub struct Config {
 };
 
 pub enum UpgradeError { /* TODO */ }
-pub trait OnFailedUpgrade: Send + 'static {
-    fn handle(self, error: UpgradeError);
-}
-pub struct DefaultOnFailedUpgrade; const _: () = {
-    impl OnFailedUpgrade for DefaultOnFailedUpgrade {
-        fn handle(self, _: UpgradeError) { /* DO NOTHING (discard error) */ }
-    }
-};
-
 
 impl WebSocketContext {
-    pub(crate) fn new(c: Context, req: &mut Request) -> Result<Self, Cow<'static, str>> {
+    pub(crate) fn new(c: Context, stream: Arc<Mutex<TcpStream>>, req: &mut Request) -> Result<Self, Cow<'static, str>> {
         if req.method() != Method::GET {
             return Err(Cow::Borrowed("Method is not `GET`"))
         }
@@ -68,9 +62,9 @@ impl WebSocketContext {
         let sec_websocket_protocol = req.header("Sec-WebSocket-Protocol")
             .map(|swp| Cow::Owned(swp.to_string()));
 
-        Ok(Self {c,
+        Ok(Self {c, stream,
             config:            Config::default(),
-            on_failed_upgrade: DefaultOnFailedUpgrade,
+            on_failed_upgrade: Box::new(|_| (/* discard error */)),
             selected_protocol: None,
             sec_websocket_key,
             sec_websocket_protocol,
@@ -78,7 +72,7 @@ impl WebSocketContext {
     }
 }
 
-impl<FU: OnFailedUpgrade> WebSocketContext<FU> {
+impl WebSocketContext {
     pub fn write_buffer_size(mut self, size: usize) -> Self {
         self.config.write_buffer_size = size;
         self
@@ -99,9 +93,7 @@ impl<FU: OnFailedUpgrade> WebSocketContext<FU> {
         self.config.accept_unmasked_frames = true;
         self
     }
-}
 
-impl<FU: OnFailedUpgrade> WebSocketContext<FU> {
     pub fn protocols<S: Into<Cow<'static, str>>>(mut self, protocols: impl Iterator<Item = S>) -> Self {
         if let Some(req_protocols) = &self.sec_websocket_protocol {
             self.selected_protocol = protocols.map(Into::into)
@@ -111,15 +103,23 @@ impl<FU: OnFailedUpgrade> WebSocketContext<FU> {
     }
 }
 
-impl<FU: OnFailedUpgrade> WebSocketContext<FU> {
+impl WebSocketContext {
     pub fn on_upgrade<
         Fut: Future<Output = ()> + Send + 'static,
     >(
         self,
-        callback: impl Fn(WebSocket) -> Fut + Send + 'static
+        handler: impl Fn(WebSocket) -> Fut + Send + Sync + 'static
     ) -> Response {
+        fn sign(sec_websocket_key: &str) -> String {
+            let mut sha1 = sign::Sha1::new();
+            sha1.write(sec_websocket_key.as_bytes());
+            sha1.write(b"258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
+            sign::Base64::<{sign::SHA1_SIZE}>::encode(sha1.sum())
+        }
+
         let Self {
             mut c,
+            stream,
             config,
             on_failed_upgrade,
             selected_protocol,
@@ -127,8 +127,25 @@ impl<FU: OnFailedUpgrade> WebSocketContext<FU> {
             sec_websocket_protocol,
         } = self;
 
-        __rt__::task::spawn(async move {
-            todo!()
+        task::spawn({
+            #[cfg(debug_assertions)] let mut __loop_count = 0;
+
+            let stream = loop {
+                #[cfg(debug_assertions)] {
+                    if __loop_count == usize::MAX {panic!("Infinite loop in web socket handshake")}}
+
+                if Arc::strong_count(&stream) == 1 {
+                    break Arc::into_inner(stream).unwrap().into_inner()
+                }
+
+                #[cfg(debug_assertions)] {
+                    __loop_count += 1}
+            };
+
+            async move {
+                let ws = WebSocket::new(stream);
+                handler(ws).await
+            }
         });
 
         c.headers
@@ -141,11 +158,4 @@ impl<FU: OnFailedUpgrade> WebSocketContext<FU> {
         }
         c.SwitchingProtocols()
     }
-}
-
-fn sign(sec_websocket_key: &str) -> String {
-    let mut sha1 = sign::Sha1::new();
-    sha1.write(sec_websocket_key.as_bytes());
-    sha1.write(b"258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
-    sign::Base64::<{sign::SHA1_SIZE}>::encode(sha1.sum())
 }

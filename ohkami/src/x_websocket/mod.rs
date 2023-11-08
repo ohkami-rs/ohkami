@@ -6,24 +6,26 @@ mod message;
 mod frame;
 mod sign;
 
-use std::{sync::Arc, io::Result};
-use crate::__rt__::{TcpStream, Mutex, AsyncReader, AsyncWriter};
+use std::io::{Error, ErrorKind};
+use crate::__rt__::TcpStream;
 use self::message::Message;
 
 
 pub struct WebSocket {
-    stream: Arc<Mutex<TcpStream>>,
+    stream: TcpStream
 }
 
 impl WebSocket {
-    fn new(stream: Arc<Mutex<TcpStream>>) -> Self {
+    fn new(stream: TcpStream) -> Self {
         Self { stream }
     }
 }
 
 impl WebSocket {
-    async fn handle(self, handle_message: impl Fn(Message) -> Message) {
-        let stream = &mut *self.stream.lock().await;
-        //while let Some(Ok(_)) = stream.re;
+    pub async fn recv(&mut self) -> Result<Option<Message>, Error> {
+        Message::read_from(&mut self.stream).await
+    }
+    pub async fn send(&mut self, message: Message) -> Result<(), Error> {
+        message.send(&mut self.stream).await
     }
 }

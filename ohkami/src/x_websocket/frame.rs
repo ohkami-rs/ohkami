@@ -103,7 +103,26 @@ pub struct Frame {
 
     pub(super) async fn write_to(self, stream: &mut (impl AsyncWriter + Unpin)) -> Result<(), Error> {
         fn into_bytes(frame: Frame) -> Vec<u8> {
-            
+            let Frame { is_final, opcode, mask, payload } = frame;
+
+            let (payload_len_byte, payload_len_bytes) = match payload.len() {
+                ..=125      => (payload.len() as u8, None),
+                126..=65535 => (126, Some((|| (payload.len() as u16).to_be_bytes().to_vec())())),
+                _           => (127, Some((|| (payload.len() as u64).to_be_bytes().to_vec())())),
+            };
+
+            let first  = is_final.then_some(1).unwrap_or(0)       << 7 + opcode.into_byte();
+            let second = mask.is_some().then_some(1).unwrap_or(0) << 7 + payload_len_byte;
+
+            let mut header_bytes = vec![first, second];
+            if let Some(mut payload_len_bytes) = payload_len_bytes {
+                header_bytes.append(&mut payload_len_bytes)
+            }
+            if let Some(mask_bytes) = mask {
+                header_bytes.extend_from_slice(&mask_bytes)
+            }
+
+            [header_bytes, payload].concat()
         }
 
         stream.write_all(&into_bytes(self)).await
