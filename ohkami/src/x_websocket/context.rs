@@ -128,18 +128,25 @@ impl WebSocketContext {
         } = self;
 
         task::spawn({
-            #[cfg(debug_assertions)] let mut __loop_count = 0;
-
-            let stream = loop {
-                #[cfg(debug_assertions)] {
-                    if __loop_count == usize::MAX {panic!("Infinite loop in web socket handshake")}}
-
-                if Arc::strong_count(&stream) == 1 {
-                    break Arc::into_inner(stream).unwrap().into_inner()
+            //#[cfg(debug_assertions)] let mut __loop_count = 0;
+//
+            //let stream = loop {
+            //    #[cfg(debug_assertions)] {
+            //        if __loop_count == usize::MAX {panic!("Infinite loop in web socket handshake")}}
+//
+            //    if Arc::strong_count(&stream) == 1 {
+            //        break Arc::into_inner(stream).unwrap().into_inner()
+            //    }
+//
+            //    #[cfg(debug_assertions)] {
+            //        __loop_count += 1}
+            //};
+            let stream = {
+                while Arc::strong_count(&stream) > 1 {
+                    
                 }
 
-                #[cfg(debug_assertions)] {
-                    __loop_count += 1}
+                Arc::into_inner(stream).unwrap().into_inner()
             };
 
             async move {
