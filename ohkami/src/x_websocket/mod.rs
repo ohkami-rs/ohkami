@@ -11,6 +11,8 @@ use std::{io::{Error, ErrorKind}, sync::{Arc, OnceLock, atomic::AtomicUsize}, co
 use crate::__rt__::{TcpStream, RwLock};
 use self::message::Message;
 
+pub(crate) use upgrade::{UpgradeID, request_upgrade_id, reserve_upgrade, assume_upgraded};
+
 
 pub struct WebSocket {
     stream: TcpStream

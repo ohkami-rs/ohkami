@@ -73,12 +73,20 @@ use crate::{
 /// }
 /// ```
 pub struct Context {
+    #[cfg(feature="websocket")]
+    pub(crate) upgrade_id: Option<crate::x_websocket::UpgradeID>,
+
     pub headers: ResponseHeaders,
 }
 
 impl Context {
     #[inline(always)] pub(crate) fn new() -> Self {
-        Self { headers: ResponseHeaders::new() }
+        Self {
+            #[cfg(feature="websocket")]
+            upgrade_id: None,
+
+            headers: ResponseHeaders::new(),
+        }
     }
 }
 

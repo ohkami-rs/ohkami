@@ -4,15 +4,22 @@ type UpgradeLock<T> = Mutex<T>;
 
 
 pub static UPGRADE_STREAMS: OnceLock<UpgradeStreams> = OnceLock::new();
-pub async fn wait_upgrade(arc_stream: Arc<Mutex<TcpStream>>) -> UpgradeID {
+
+pub async fn request_upgrade_id() -> UpgradeID {
     UPGRADE_STREAMS.get_or_init(UpgradeStreams::new)
-        .push(arc_stream).await
+        .reserve().await
 }
+pub async fn reserve_upgrade(id: UpgradeID, stream: Arc<Mutex<TcpStream>>) {
+    UPGRADE_STREAMS.get_or_init(UpgradeStreams::new)
+        .set(id, stream).await
+}
+//pub async fn cancel_upgrade
 pub async fn assume_upgraded(id: UpgradeID) -> TcpStream {
     UPGRADE_STREAMS.get_or_init(UpgradeStreams::new)
         .get(id).await
 }
 
+#[derive(Clone, Copy)]
 pub struct UpgradeID(usize);
 
 pub struct UpgradeStreams {
@@ -25,14 +32,27 @@ pub struct UpgradeStreams {
             }
         }
     }
+
     impl UpgradeStreams {
-        async fn push(&self, arc_stream: Arc<Mutex<TcpStream>>) -> UpgradeID {
+        async fn reserve(&self) -> UpgradeID {
             let mut this = self.streams.lock().await;
-            let id = match this.iter().position(|us| us.is_available()) {
-                Some(i) => {this[i] = UpgradeStream::new(arc_stream);  i}
-                None    => {this.push(UpgradeStream::new(arc_stream)); this.len()-1}
-            };
-            UpgradeID(id)
+            match this.iter().position(UpgradeStream::is_empty) {
+                Some(i) => {
+                    this[i].reserved = true;
+                    UpgradeID(i)
+                }
+                None => {
+                    this.push(UpgradeStream {
+                        reserved: true,
+                        stream:   None,
+                    });
+                    UpgradeID(this.len() - 1)
+                },
+            }
+        }
+        async fn set(&self, id: UpgradeID, stream: Arc<Mutex<TcpStream>>) {
+            let mut this = self.streams.lock().await;
+            this[id.0].stream = Some(stream)
         }
         async fn get(&self, id: UpgradeID) -> TcpStream {
             let mut this = self.streams.lock().await;
@@ -41,25 +61,31 @@ pub struct UpgradeStreams {
     }
 };
 
-struct UpgradeStream(
-    Option<Arc<Mutex<TcpStream>>>
-); const _: () = {
+struct UpgradeStream {
+    reserved: bool,
+    stream:   Option<Arc<Mutex<TcpStream>>>,
+} const _: () = {
     impl UpgradeStream {
         fn new(arc_stream: Arc<Mutex<TcpStream>>) -> Self {
-            Self(Some(arc_stream))
+            Self {
+                reserved: false,
+                stream:   Some(arc_stream),
+            }
         }
-        fn is_available(&self) -> bool {
-            self.0.is_none()
+        fn is_empty(&self) -> bool {
+            self.stream.is_none() && !self.reserved
         }
     }
     impl Default for UpgradeStream {
-        fn default() -> Self {Self(None)}
+        fn default() -> Self {
+            Self { reserved: false, stream: None }
+        }
     }
     impl Future for UpgradeStream {
         type Output = TcpStream;
         fn poll(self: std::pin::Pin<&mut Self>, _: &mut std::task::Context<'_>) -> std::task::Poll<Self::Output> {
-            match Arc::strong_count(self.0.as_ref().unwrap()) {
-                1 => std::task::Poll::Ready(Arc::into_inner(self.get_mut().0.take().unwrap()).unwrap().into_inner()),
+            match Arc::strong_count(self.stream.as_ref().unwrap()) {
+                1 => std::task::Poll::Ready(Arc::into_inner(self.get_mut().stream.take().unwrap()).unwrap().into_inner()),
                 _ => std::task::Poll::Pending,
             }
         }

@@ -1,13 +1,13 @@
 use std::{future::Future, borrow::Cow, sync::Arc};
-use super::{WebSocket, sign};
+use super::{WebSocket, sign, assume_upgraded};
 use crate::{Response, Context, Request};
-use crate::__rt__::{task, Mutex, TcpStream};
+use crate::__rt__::{task, TcpStream};
 use crate::http::{Method};
 
 
 pub struct WebSocketContext {
     c:                      Context,
-    stream:                 Arc<Mutex<TcpStream>>,
+    stream:                 TcpStream,
 
     config:                 Config,
 
@@ -41,7 +41,10 @@ pub struct Config {
 pub enum UpgradeError { /* TODO */ }
 
 impl WebSocketContext {
-    pub(crate) fn new(c: Context, stream: Arc<Mutex<TcpStream>>, req: &mut Request) -> Result<Self, Cow<'static, str>> {
+    pub(crate) async fn new(c: Context, req: &mut Request) -> Result<Self, Cow<'static, str>> {
+        let id = c.upgrade_id.ok_or(Cow::Borrowed("Failed to upgrade"))?;
+        let stream = assume_upgraded(id).await;
+
         if req.method() != Method::GET {
             return Err(Cow::Borrowed("Method is not `GET`"))
         }
@@ -128,27 +131,6 @@ impl WebSocketContext {
         } = self;
 
         task::spawn({
-            //#[cfg(debug_assertions)] let mut __loop_count = 0;
-//
-            //let stream = loop {
-            //    #[cfg(debug_assertions)] {
-            //        if __loop_count == usize::MAX {panic!("Infinite loop in web socket handshake")}}
-//
-            //    if Arc::strong_count(&stream) == 1 {
-            //        break Arc::into_inner(stream).unwrap().into_inner()
-            //    }
-//
-            //    #[cfg(debug_assertions)] {
-            //        __loop_count += 1}
-            //};
-            let stream = {
-                while Arc::strong_count(&stream) > 1 {
-                    
-                }
-
-                Arc::into_inner(stream).unwrap().into_inner()
-            };
-
             async move {
                 let ws = WebSocket::new(stream);
                 handler(ws).await

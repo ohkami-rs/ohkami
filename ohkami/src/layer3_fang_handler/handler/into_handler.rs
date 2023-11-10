@@ -18,7 +18,7 @@ const _: (/* only Context */) = {
         Fut: Future<Output = Response> + Send + Sync + 'static,
     {
         fn into_handler(self) -> Handler {
-            Handler::new(move |_, c, _|
+            Handler::new(false, move |_, c, _|
                 Box::pin({
                     let res = self(c);
                     async {res.await}
@@ -37,7 +37,7 @@ const _: (/* PathParam */) = {
                 Fut: Future<Output = Response> + Send + Sync + 'static,
             {
                 fn into_handler(self) -> Handler {
-                    Handler::new(move |_, c, params|
+                    Handler::new(false, move |_, c, params|
                         match <$param_type as PathParam>::parse(unsafe {params.assume_init_first().as_bytes()}) {
                             Ok(p1) => Box::pin({
                                 let res = self(c, p1);
@@ -62,7 +62,7 @@ const _: (/* PathParam */) = {
         Fut: Future<Output = Response> + Send + Sync + 'static,
     {
         fn into_handler(self) -> Handler {
-            Handler::new(move |_, c, params|
+            Handler::new(false, move |_, c, params|
                 // SAFETY: Due to the architecture of `Router`,
                 // `params` has already `append`ed once before this code
                 match <P1 as PathParam>::parse(unsafe {params.assume_init_first().as_bytes()}) {
@@ -85,7 +85,7 @@ const _: (/* PathParam */) = {
         Fut: Future<Output = Response> + Send + Sync + 'static,
     {
         fn into_handler(self) -> Handler {
-            Handler::new(move |_, c, params| {
+            Handler::new(false, move |_, c, params| {
                 let (p1_range, p2_range) = params.assume_init_extract();
                 // SAFETY: Due to the architecture of `Router`,
                 // `params` has already `append`ed twice before this code
@@ -117,7 +117,7 @@ const _: (/* FromRequest items */) = {
         Fut: Future<Output = Response> + Send + Sync + 'static,
     {
         fn into_handler(self) -> Handler {
-            Handler::new(move |req, c, _|
+            Handler::new(false, move |req, c, _|
                 match Item1::parse(&req) {
                     Ok(item1) => Box::pin({
                         let res = self(c, item1);
@@ -138,7 +138,7 @@ const _: (/* FromRequest items */) = {
         Fut: Future<Output = Response> + Send + Sync + 'static,
     {
         fn into_handler(self) -> Handler {
-            Handler::new(move |req, c, _|
+            Handler::new(false, move |req, c, _|
                 match Item1::parse(&req) {
                     Ok(item1) => match Item2::parse(&req) {
                         Ok(item2) => Box::pin({
@@ -165,7 +165,7 @@ const _: (/* FromRequest items */) = {
         Fut: Future<Output = Response> + Send + Sync + 'static,
     {
         fn into_handler(self) -> Handler {
-            Handler::new(move |req, c, _|
+            Handler::new(false, move |req, c, _|
                 match Item1::parse(&req) {
                     Ok(item1) => match Item2::parse(&req) {
                         Ok(item2) => match Item3::parse(&req) {
@@ -202,7 +202,7 @@ const _: (/* single PathParam and FromRequest items */) = {
                 Fut: Future<Output = Response> + Send + Sync + 'static,
             {
                 fn into_handler(self) -> Handler {
-                    Handler::new(move |req, c, params|
+                    Handler::new(false, move |req, c, params|
                         // SAFETY: Due to the architecture of `Router`,
                         // `params` has already `append`ed once before this code
                         match <$param_type as PathParam>::parse(unsafe {params.assume_init_first().as_bytes()}) {
@@ -231,7 +231,7 @@ const _: (/* single PathParam and FromRequest items */) = {
                 Fut: Future<Output = Response> + Send + Sync + 'static,
             {
                 fn into_handler(self) -> Handler {
-                    Handler::new(move |req, c, params|
+                    Handler::new(false, move |req, c, params|
                         // SAFETY: Due to the architecture of `Router`,
                         // `params` has already `append`ed once before this code
                         match <$param_type as PathParam>::parse(unsafe {params.assume_init_first().as_bytes()}) {
@@ -266,7 +266,7 @@ const _: (/* single PathParam and FromRequest items */) = {
                 Fut: Future<Output = Response> + Send + Sync + 'static,
             {
                 fn into_handler(self) -> Handler {
-                    Handler::new(move |req, c, params|
+                    Handler::new(false, move |req, c, params|
                         // SAFETY: Due to the architecture of `Router`,
                         // `params` has already `append`ed once before this code
                         match <$param_type as PathParam>::parse(unsafe {params.assume_init_first().as_bytes()}) {
@@ -313,7 +313,7 @@ const _: (/* one PathParam and FromRequest items */) = {
             Fut: Future<Output = Response> + Send + Sync + 'static,
         {
             fn into_handler(self) -> Handler {
-                Handler::new(move |req, c, params|
+                Handler::new(false, move |req, c, params|
                     // SAFETY: Due to the architecture of `Router`,
                     // `params` has already `append`ed once before this code
                     match P1::parse(unsafe {params.assume_init_first().as_bytes()}) {
@@ -342,7 +342,7 @@ const _: (/* one PathParam and FromRequest items */) = {
             Fut: Future<Output = Response> + Send + Sync + 'static,
         {
             fn into_handler(self) -> Handler {
-                Handler::new(move |req, c, params|
+                Handler::new(false, move |req, c, params|
                     // SAFETY: Due to the architecture of `Router`,
                     // `params` has already `append`ed once before this code
                     match P1::parse(unsafe {params.assume_init_first().as_bytes()}) {
@@ -377,7 +377,7 @@ const _: (/* one PathParam and FromRequest items */) = {
             Fut: Future<Output = Response> + Send + Sync + 'static,
         {
             fn into_handler(self) -> Handler {
-                Handler::new(move |req, c, params|
+                Handler::new(false, move |req, c, params|
                     // SAFETY: Due to the architecture of `Router`,
                     // `params` has already `append`ed once before this code
                     match P1::parse(unsafe {params.assume_init_first().as_bytes()}) {
@@ -420,7 +420,7 @@ const _: (/* two PathParams and FromRequest items */) = {
         Fut: Future<Output = Response> + Send + Sync + 'static,
     {
         fn into_handler(self) -> Handler {
-            Handler::new(move |req, c, params| {
+            Handler::new(false, move |req, c, params| {
                 let (p1_range, p2_range) = params.assume_init_extract();
 
                 // SAFETY: Due to the architecture of `Router`,
@@ -457,7 +457,7 @@ const _: (/* two PathParams and FromRequest items */) = {
         Fut: Future<Output = Response> + Send + Sync + 'static,
     {
         fn into_handler(self) -> Handler {
-            Handler::new(move |req, c, params| {
+            Handler::new(false, move |req, c, params| {
                 let (p1_range, p2_range) = params.assume_init_extract();
 
                 // SAFETY: Due to the architecture of `Router`,
@@ -500,7 +500,7 @@ const _: (/* two PathParams and FromRequest items */) = {
         Fut: Future<Output = Response> + Send + Sync + 'static,
     {
         fn into_handler(self) -> Handler {
-            Handler::new(move |req, c, params| {
+            Handler::new(false, move |req, c, params| {
                 let (p1_range, p2_range) = params.assume_init_extract();
 
                 // SAFETY: Due to the architecture of `Router`,
