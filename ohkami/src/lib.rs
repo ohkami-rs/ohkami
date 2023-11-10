@@ -222,6 +222,13 @@ mod __rt__ {
 
     #[cfg(feature="rt_tokio")]
     pub(crate) use tokio::sync::Mutex;
+    #[cfg(feature="rt_async-std")]
+    pub(crate) use async_std::sync::Mutex;
+
+    #[cfg(feature="rt_tokio")]
+    pub(crate) use tokio::sync::RwLock;
+    #[cfg(feature="rt_async-std")]
+    pub(crate) use async_std::sync::RwLock;
 
     #[cfg(feature="rt_tokio")]
     pub(crate) use tokio::net::TcpListener;

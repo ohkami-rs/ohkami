@@ -3,11 +3,12 @@ compile_error!{ "pointer width must be 64" }
 
 mod context;
 mod message;
+mod upgrade;
 mod frame;
 mod sign;
 
-use std::io::{Error, ErrorKind};
-use crate::__rt__::TcpStream;
+use std::{io::{Error, ErrorKind}, sync::{Arc, OnceLock, atomic::AtomicUsize}, collections::HashMap};
+use crate::__rt__::{TcpStream, RwLock};
 use self::message::Message;
 
 
