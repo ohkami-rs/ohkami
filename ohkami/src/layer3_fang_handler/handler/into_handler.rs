@@ -13,6 +13,16 @@ pub trait IntoHandler<Args> {
     fn into_handler(self) -> Handler;
 }
 
+#[cold] fn __bad_request(
+    c: &Context,
+    e: std::borrow::Cow<'static, str>,
+) -> std::pin::Pin<Box<impl Future<Output = Response>>> {
+    Box::pin({
+        let res = c.BadRequest().text(e.to_string());
+        async {res}
+    })
+}
+
 const _: (/* only Context */) = {
     impl<F, Fut> IntoHandler<(Context,)> for F
     where
@@ -21,10 +31,7 @@ const _: (/* only Context */) = {
     {
         fn into_handler(self) -> Handler {
             Handler::new(false, move |_, c, _|
-                Box::pin({
-                    let res = self(c);
-                    async {res.await}
-                })
+                Box::pin(self(c))
             )
         }
     }
@@ -41,14 +48,8 @@ const _: (/* PathParam */) = {
                 fn into_handler(self) -> Handler {
                     Handler::new(false, move |_, c, params|
                         match <$param_type as PathParam>::parse(unsafe {params.assume_init_first().as_bytes()}) {
-                            Ok(p1) => Box::pin({
-                                let res = self(c, p1);
-                                async {res.await}
-                            }),
-                            Err(e) => Box::pin({
-                                let res = c.BadRequest().text(e.to_string());
-                                async {res}
-                            }),
+                            Ok(p1) => Box::pin(self(c, p1)),
+                            Err(e) => __bad_request(&c, e)
                         }
                     )
                 }
@@ -68,14 +69,8 @@ const _: (/* PathParam */) = {
                 // SAFETY: Due to the architecture of `Router`,
                 // `params` has already `append`ed once before this code
                 match <P1 as PathParam>::parse(unsafe {params.assume_init_first().as_bytes()}) {
-                    Ok(p1) => Box::pin({
-                        let res = self(c, (p1,));
-                        async {res.await}
-                    }),
-                    Err(e) => Box::pin({
-                        let res = c.BadRequest().text(e.to_string());
-                        async {res}
-                    }),
+                    Ok(p1) => Box::pin(self(c, (p1,))),
+                    Err(e) => __bad_request(&c, e)
                 }
             )
         }
@@ -88,24 +83,11 @@ const _: (/* PathParam */) = {
     {
         fn into_handler(self) -> Handler {
             Handler::new(false, move |_, c, params| {
-                let (p1_range, p2_range) = params.assume_init_extract();
-                // SAFETY: Due to the architecture of `Router`,
-                // `params` has already `append`ed twice before this code
-                match <P1 as PathParam>::parse(unsafe {p1_range.as_bytes()}) {
-                    Ok(p1) => match <P2 as PathParam>::parse(unsafe {p2_range.as_bytes()}) {
-                        Ok(p2) => Box::pin({
-                            let res = self(c, (p1, p2));
-                            async {res.await}
-                        }),
-                        Err(e) => Box::pin({
-                            let res = c.BadRequest().text(e.to_string());
-                            async {res}
-                        })
-                    }
-                    Err(e) => Box::pin({
-                        let res = c.BadRequest().text(e.to_string());
-                        async {res}
-                    }),
+                let (p1, p2) = params.assume_init_extract();
+                let (p1, p2) = unsafe {(p1.as_bytes(), p2.as_bytes())};
+                match (<P1 as PathParam>::parse(p1), <P2 as PathParam>::parse(p2)) {
+                    (Ok(p1), Ok(p2))          => Box::pin(self(c, (p1, p2))),
+                    (Err(e), _) | (_, Err(e)) => __bad_request(&c, e),
                 }
             })
         }
@@ -120,15 +102,9 @@ const _: (/* FromRequest items */) = {
     {
         fn into_handler(self) -> Handler {
             Handler::new(false, move |req, c, _|
-                match Item1::parse(&req) {
-                    Ok(item1) => Box::pin({
-                        let res = self(c, item1);
-                        async {res.await}
-                    }),
-                    Err(e) => Box::pin({
-                        let res = c.BadRequest().text(e.to_string());
-                        async {res}
-                    })
+                match Item1::parse(req) {
+                    Ok(item1) => Box::pin(self(c, item1)),
+                    Err(e)    => __bad_request(&c, e)
                 }
             )
         }
@@ -141,54 +117,9 @@ const _: (/* FromRequest items */) = {
     {
         fn into_handler(self) -> Handler {
             Handler::new(false, move |req, c, _|
-                match Item1::parse(&req) {
-                    Ok(item1) => match Item2::parse(&req) {
-                        Ok(item2) => Box::pin({
-                            let res = self(c, item1, item2);
-                            async {res.await}
-                        }),
-                        Err(e) => Box::pin({
-                            let res = c.BadRequest().text(e.to_string());
-                            async {res}
-                        })
-                    }
-                    Err(e) => Box::pin({
-                        let res = c.BadRequest().text(e.to_string());
-                        async {res}
-                    })
-                }
-            )
-        }
-    }
-
-    impl<F, Fut, Item1:FromRequest, Item2:FromRequest, Item3:FromRequest> IntoHandler<(Context, Item1, Item2, Item3)> for F
-    where
-        F:   Fn(Context, Item1, Item2, Item3) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Response> + Send + Sync + 'static,
-    {
-        fn into_handler(self) -> Handler {
-            Handler::new(false, move |req, c, _|
-                match Item1::parse(&req) {
-                    Ok(item1) => match Item2::parse(&req) {
-                        Ok(item2) => match Item3::parse(&req) {
-                            Ok(item3) => Box::pin({
-                                let res = self(c, item1, item2, item3);
-                                async {res.await}
-                            }),
-                            Err(e) => Box::pin({
-                                let res = c.BadRequest().text(e.to_string());
-                                async {res}
-                            })
-                        }
-                        Err(e) => Box::pin({
-                            let res = c.BadRequest().text(e.to_string());
-                            async {res}
-                        })
-                    }
-                    Err(e) => Box::pin({
-                        let res = c.BadRequest().text(e.to_string());
-                        async {res}
-                    })
+                match (Item1::parse(req), Item2::parse(req)) {
+                    (Ok(item1), Ok(item2))    => Box::pin(self(c, item1, item2)),
+                    (Err(e), _) | (_, Err(e)) => __bad_request(&c, e),
                 }
             )
         }
@@ -204,26 +135,16 @@ const _: (/* single PathParam and FromRequest items */) = {
                 Fut: Future<Output = Response> + Send + Sync + 'static,
             {
                 fn into_handler(self) -> Handler {
-                    Handler::new(false, move |req, c, params|
+                    Handler::new(false, move |req, c, params| {
                         // SAFETY: Due to the architecture of `Router`,
                         // `params` has already `append`ed once before this code
-                        match <$param_type as PathParam>::parse(unsafe {params.assume_init_first().as_bytes()}) {
-                            Ok(p1) => match Item1::parse(&req) {
-                                Ok(item1) => Box::pin({
-                                    let res = self(c, p1, item1);
-                                    async {res.await}
-                                }),
-                                Err(e) => Box::pin({
-                                    let res = c.BadRequest().text(e.to_string());
-                                    async {res}
-                                })
-                            }
-                            Err(e) => Box::pin({
-                                let res = c.BadRequest().text(e.to_string());
-                                async {res}
-                            }),
+                        let p1 = unsafe {params.assume_init_first().as_bytes()};
+
+                        match (<$param_type as PathParam>::parse(p1), Item1::parse(req)) {
+                            (Ok(p1), Ok(item1))       => Box::pin(self(c, p1, item1)),
+                            (Err(e), _) | (_, Err(e)) => __bad_request(&c, e),
                         }
-                    )
+                    })
                 }
             }
 
@@ -233,73 +154,16 @@ const _: (/* single PathParam and FromRequest items */) = {
                 Fut: Future<Output = Response> + Send + Sync + 'static,
             {
                 fn into_handler(self) -> Handler {
-                    Handler::new(false, move |req, c, params|
+                    Handler::new(false, move |req, c, params| {
                         // SAFETY: Due to the architecture of `Router`,
                         // `params` has already `append`ed once before this code
-                        match <$param_type as PathParam>::parse(unsafe {params.assume_init_first().as_bytes()}) {
-                            Ok(p1) => match Item1::parse(&req) {
-                                Ok(item1) => match Item2::parse(&req) {
-                                    Ok(item2) => Box::pin({
-                                        let res = self(c, p1, item1, item2);
-                                        async {res.await}
-                                    }),
-                                    Err(e) => Box::pin({
-                                        let res = c.BadRequest().text(e.to_string());
-                                        async {res}
-                                    })
-                                }
-                                Err(e) => Box::pin({
-                                    let res = c.BadRequest().text(e.to_string());
-                                    async {res}
-                                })
-                            }
-                            Err(e) => Box::pin({
-                                let res = c.BadRequest().text(e.to_string());
-                                async {res}
-                            }),
-                        }
-                    )
-                }
-            }
+                        let p1 = unsafe {params.assume_init_first().as_bytes()};
 
-            impl<F, Fut, Item1:FromRequest, Item2:FromRequest, Item3:FromRequest> IntoHandler<(Context, $param_type, Item1, Item2, Item3)> for F
-            where
-                F:   Fn(Context, $param_type, Item1, Item2, Item3) -> Fut + Send + Sync + 'static,
-                Fut: Future<Output = Response> + Send + Sync + 'static,
-            {
-                fn into_handler(self) -> Handler {
-                    Handler::new(false, move |req, c, params|
-                        // SAFETY: Due to the architecture of `Router`,
-                        // `params` has already `append`ed once before this code
-                        match <$param_type as PathParam>::parse(unsafe {params.assume_init_first().as_bytes()}) {
-                            Ok(p1) => match Item1::parse(&req) {
-                                Ok(item1) => match Item2::parse(&req) {
-                                    Ok(item2) => match Item3::parse(&req) {
-                                        Ok(item3) => Box::pin({
-                                            let res = self(c, p1, item1, item2, item3);
-                                            async {res.await}
-                                        }),
-                                        Err(e) => Box::pin({
-                                            let res = c.BadRequest().text(e.to_string());
-                                            async {res}
-                                        })
-                                    }
-                                    Err(e) => Box::pin({
-                                        let res = c.BadRequest().text(e.to_string());
-                                        async {res}
-                                    })
-                                }
-                                Err(e) => Box::pin({
-                                    let res = c.BadRequest().text(e.to_string());
-                                    async {res}
-                                })
-                            }
-                            Err(e) => Box::pin({
-                                let res = c.BadRequest().text(e.to_string());
-                                async {res}
-                            }),
+                        match (<$param_type as PathParam>::parse(p1), Item1::parse(req), Item2::parse(req)) {
+                            (Ok(p1), Ok(item1), Ok(item2))         => Box::pin(self(c, p1, item1, item2)),
+                            (Err(e),_,_)|(_,Err(e),_)|(_,_,Err(e)) => __bad_request(&c, e),
                         }
-                    )
+                    })
                 }
             }
         )*};
@@ -315,26 +179,16 @@ const _: (/* one PathParam and FromRequest items */) = {
             Fut: Future<Output = Response> + Send + Sync + 'static,
         {
             fn into_handler(self) -> Handler {
-                Handler::new(false, move |req, c, params|
+                Handler::new(false, move |req, c, params| {
                     // SAFETY: Due to the architecture of `Router`,
                     // `params` has already `append`ed once before this code
-                    match P1::parse(unsafe {params.assume_init_first().as_bytes()}) {
-                        Ok(p1) => match Item1::parse(&req) {
-                            Ok(item1) => Box::pin({
-                                let res = self(c, (p1,), item1);
-                                async {res.await}
-                            }),
-                            Err(e) => Box::pin({
-                                let res = c.BadRequest().text(e.to_string());
-                                async {res}
-                            })
-                        }
-                        Err(e) => Box::pin({
-                            let res = c.BadRequest().text(e.to_string());
-                            async {res}
-                        }),
+                    let p1 = unsafe {params.assume_init_first().as_bytes()};
+
+                    match (P1::parse(p1), Item1::parse(req)) {
+                        (Ok(p1), Ok(item1))   => Box::pin(self(c, (p1,), item1)),
+                        (Err(e),_)|(_,Err(e)) => __bad_request(&c, e)
                     }
-                )
+                })
             }
         }
 
@@ -344,73 +198,16 @@ const _: (/* one PathParam and FromRequest items */) = {
             Fut: Future<Output = Response> + Send + Sync + 'static,
         {
             fn into_handler(self) -> Handler {
-                Handler::new(false, move |req, c, params|
+                Handler::new(false, move |req, c, params| {
                     // SAFETY: Due to the architecture of `Router`,
                     // `params` has already `append`ed once before this code
-                    match P1::parse(unsafe {params.assume_init_first().as_bytes()}) {
-                        Ok(p1) => match Item1::parse(&req) {
-                            Ok(item1) => match Item2::parse(&req) {
-                                Ok(item2) => Box::pin({
-                                    let res = self(c, (p1,), item1, item2);
-                                    async {res.await}
-                                }),
-                                Err(e) => Box::pin({
-                                    let res = c.BadRequest().text(e.to_string());
-                                    async {res}
-                                })
-                            }
-                            Err(e) => Box::pin({
-                                let res = c.BadRequest().text(e.to_string());
-                                async {res}
-                            })
-                        }
-                        Err(e) => Box::pin({
-                            let res = c.BadRequest().text(e.to_string());
-                            async {res}
-                        }),
-                    }
-                )
-            }
-        }
+                    let p1 = unsafe {params.assume_init_first().as_bytes()};
 
-        impl<F, Fut, P1:PathParam, Item1:FromRequest, Item2:FromRequest, Item3:FromRequest> IntoHandler<(Context, (P1,), Item1, Item2, Item3)> for F
-        where
-            F:   Fn(Context, (P1,), Item1, Item2, Item3) -> Fut + Send + Sync + 'static,
-            Fut: Future<Output = Response> + Send + Sync + 'static,
-        {
-            fn into_handler(self) -> Handler {
-                Handler::new(false, move |req, c, params|
-                    // SAFETY: Due to the architecture of `Router`,
-                    // `params` has already `append`ed once before this code
-                    match P1::parse(unsafe {params.assume_init_first().as_bytes()}) {
-                        Ok(p1) => match Item1::parse(&req) {
-                            Ok(item1) => match Item2::parse(&req) {
-                                Ok(item2) => match Item3::parse(&req) {
-                                    Ok(item3) => Box::pin({
-                                        let res = self(c, (p1,), item1, item2, item3);
-                                        async {res.await}
-                                    }),
-                                    Err(e) => Box::pin({
-                                        let res = c.BadRequest().text(e.to_string());
-                                        async {res}
-                                    })
-                                }
-                                Err(e) => Box::pin({
-                                    let res = c.BadRequest().text(e.to_string());
-                                    async {res}
-                                })
-                            }
-                            Err(e) => Box::pin({
-                                let res = c.BadRequest().text(e.to_string());
-                                async {res}
-                            })
-                        }
-                        Err(e) => Box::pin({
-                            let res = c.BadRequest().text(e.to_string());
-                            async {res}
-                        }),
+                    match (P1::parse(p1), Item1::parse(req), Item2::parse(req)) {
+                        (Ok(p1), Ok(item1), Ok(item2))         => Box::pin(self(c, (p1,), item1, item2)),
+                        (Err(e),_,_)|(_,Err(e),_)|(_,_,Err(e)) => __bad_request(&c, e),
                     }
-                )
+                })
             }
         }
 };
@@ -423,31 +220,14 @@ const _: (/* two PathParams and FromRequest items */) = {
     {
         fn into_handler(self) -> Handler {
             Handler::new(false, move |req, c, params| {
-                let (p1_range, p2_range) = params.assume_init_extract();
-
                 // SAFETY: Due to the architecture of `Router`,
                 // `params` has already `append`ed twice before this code
-                match <P1 as PathParam>::parse(unsafe {p1_range.as_bytes()}) {
-                    Ok(p1) => match <P2 as PathParam>::parse(unsafe {p2_range.as_bytes()}) {
-                        Ok(p2) => match Item1::parse(&req) {
-                            Ok(item1) => Box::pin({
-                                let res = self(c, (p1, p2), item1);
-                                async {res.await}
-                            }),
-                            Err(e) => Box::pin({
-                                let res = c.BadRequest().text(e.to_string());
-                                async {res}
-                            })
-                        }
-                        Err(e) => Box::pin({
-                            let res = c.BadRequest().text(e.to_string());
-                            async {res}
-                        })
-                    } 
-                    Err(e) => Box::pin({
-                        let res = c.BadRequest().text(e.to_string());
-                        async {res}
-                    }),
+                let (p1, p2) = params.assume_init_extract();
+                let (p1, p2) = unsafe {(p1.as_bytes(), p2.as_bytes())};
+
+                match (P1::parse(p1), P2::parse(p2), Item1::parse(req)) {
+                    (Ok(p1), Ok(p2), Ok(item1))            => Box::pin(self(c, (p1, p2), item1)),
+                    (Err(e),_,_)|(_,Err(e),_)|(_,_,Err(e)) => __bad_request(&c, e),
                 }
             })
         }
@@ -460,86 +240,14 @@ const _: (/* two PathParams and FromRequest items */) = {
     {
         fn into_handler(self) -> Handler {
             Handler::new(false, move |req, c, params| {
-                let (p1_range, p2_range) = params.assume_init_extract();
-
                 // SAFETY: Due to the architecture of `Router`,
                 // `params` has already `append`ed twice before this code
-                match <P1 as PathParam>::parse(unsafe {p1_range.as_bytes()}) {
-                    Ok(p1) => match <P2 as PathParam>::parse(unsafe {p2_range.as_bytes()}) {
-                        Ok(p2) => match Item1::parse(&req) {
-                            Ok(item1) => match Item2::parse(&req) {
-                                Ok(item2) => Box::pin({
-                                    let res = self(c, (p1, p2), item1, item2);
-                                    async {res.await}
-                                }),
-                                Err(e) => Box::pin({
-                                    let res = c.BadRequest().text(e.to_string());
-                                    async {res}
-                                })
-                            }
-                            Err(e) => Box::pin({
-                                let res = c.BadRequest().text(e.to_string());
-                                async {res}
-                            })
-                        }
-                        Err(e) => Box::pin({
-                            let res = c.BadRequest().text(e.to_string());
-                            async {res}
-                        })
-                    } 
-                    Err(e) => Box::pin({
-                        let res = c.BadRequest().text(e.to_string());
-                        async {res}
-                    }),
-                }
-            })
-        }
-    }
+                let (p1, p2) = params.assume_init_extract();
+                let (p1, p2) = unsafe {(p1.as_bytes(), p2.as_bytes())};
 
-    impl<F, Fut, P1:PathParam, P2:PathParam, Item1:FromRequest, Item2:FromRequest, Item3:FromRequest> IntoHandler<(Context, (P1, P2), Item1, Item2, Item3)> for F
-    where
-        F:   Fn(Context, (P1, P2), Item1, Item2, Item3) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Response> + Send + Sync + 'static,
-    {
-        fn into_handler(self) -> Handler {
-            Handler::new(false, move |req, c, params| {
-                let (p1_range, p2_range) = params.assume_init_extract();
-
-                // SAFETY: Due to the architecture of `Router`,
-                // `params` has already `append`ed twice before this code
-                match <P1 as PathParam>::parse(unsafe {p1_range.as_bytes()}) {
-                    Ok(p1) => match <P2 as PathParam>::parse(unsafe {p2_range.as_bytes()}) {
-                        Ok(p2) => match Item1::parse(&req) {
-                            Ok(item1) => match Item2::parse(&req) {
-                                Ok(item2) => match Item3::parse(&req) {
-                                    Ok(item3) => Box::pin({
-                                        let res = self(c, (p1, p2), item1, item2, item3);
-                                        async {res.await}
-                                    }),
-                                    Err(e) => Box::pin({
-                                        let res = c.BadRequest().text(e.to_string());
-                                        async {res}
-                                    })
-                                }
-                                Err(e) => Box::pin({
-                                    let res = c.BadRequest().text(e.to_string());
-                                    async {res}
-                                })
-                            }
-                            Err(e) => Box::pin({
-                                let res = c.BadRequest().text(e.to_string());
-                                async {res}
-                            })
-                        }
-                        Err(e) => Box::pin({
-                            let res = c.BadRequest().text(e.to_string());
-                            async {res}
-                        })
-                    } 
-                    Err(e) => Box::pin({
-                        let res = c.BadRequest().text(e.to_string());
-                        async {res}
-                    }),
+                match (P1::parse(p1), P2::parse(p2), Item1::parse(req), Item2::parse(req)) {
+                    (Ok(p1), Ok(p2), Ok(item1), Ok(item2))                      => Box::pin(self(c, (p1, p2), item1, item2)),
+                    (Err(e),_,_,_)|(_,Err(e),_,_)|(_,_,Err(e),_)|(_,_,_,Err(e)) => __bad_request(&c, e),
                 }
             })
         }
@@ -557,7 +265,82 @@ const _: (/* requires upgrade to websocket */) = {
             Handler::new(true, move |req, c, _| {
                 match WebSocketContext::new(c, req) {
                     Ok(wsc)  => Box::pin(self(wsc)),
-                    Err(res) => Box::pin(async {res}),
+                    Err(res) => (|| Box::pin(async {res}))(),
+                }
+            })
+        }
+    }
+
+    impl<F, Fut, P1:PathParam> IntoHandler<(WebSocketContext, P1)> for F
+    where
+        F:   Fn(WebSocketContext, P1) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = Response> + Send + Sync + 'static,
+    {
+        fn into_handler(self) -> Handler {
+            Handler::new(true, move |req, c, params| {
+                let p1 = unsafe {params.assume_init_first().as_bytes()};
+                match P1::parse(p1) {
+                    Ok(p1) => match WebSocketContext::new(c, req) {
+                        Ok(wsc)  => Box::pin(self(wsc, p1)),
+                        Err(res) => (|| Box::pin(async {res}))(),
+                    }
+                    Err(e) => __bad_request(&c, e),
+                }
+            })
+        }
+    }
+    impl<F, Fut, P1:PathParam, P2:PathParam> IntoHandler<(WebSocketContext, P1, P2)> for F
+    where
+        F:   Fn(WebSocketContext, P1, P2) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = Response> + Send + Sync + 'static,
+    {
+        fn into_handler(self) -> Handler {
+            Handler::new(true, move |req, c, params| {
+                let (p1, p2) = params.assume_init_extract();
+                let (p1, p2) = unsafe {(p1.as_bytes(), p2.as_bytes())};
+                match (P1::parse(p1), P2::parse(p2)) {
+                    (Ok(p1), Ok(p2)) => match WebSocketContext::new(c, req) {
+                        Ok(wsc)  => Box::pin(self(wsc, p1, p2)),
+                        Err(res) => (|| Box::pin(async {res}))(),
+                    }
+                    (Err(e),_)|(_,Err(e)) => __bad_request(&c, e),
+                }
+            })
+        }
+    }
+    impl<F, Fut, P1:PathParam> IntoHandler<(WebSocketContext, (P1,))> for F
+    where
+        F:   Fn(WebSocketContext, (P1,)) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = Response> + Send + Sync + 'static,
+    {
+        fn into_handler(self) -> Handler {
+            Handler::new(true, move |req, c, params| {
+                let p1 = unsafe {params.assume_init_first().as_bytes()};
+                match P1::parse(p1) {
+                    Ok(p1) => match WebSocketContext::new(c, req) {
+                        Ok(wsc)  => Box::pin(self(wsc, (p1,))),
+                        Err(res) => (|| Box::pin(async {res}))(),
+                    }
+                    Err(e) => __bad_request(&c, e),
+                }
+            })
+        }
+    }
+    impl<F, Fut, P1:PathParam, P2:PathParam> IntoHandler<(WebSocketContext, (P1, P2))> for F
+    where
+        F:   Fn(WebSocketContext, (P1, P2)) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = Response> + Send + Sync + 'static,
+    {
+        fn into_handler(self) -> Handler {
+            Handler::new(true, move |req, c, params| {
+                let (p1, p2) = params.assume_init_extract();
+                let (p1, p2) = unsafe {(p1.as_bytes(), p2.as_bytes())};
+                match (P1::parse(p1), P2::parse(p2)) {
+                    (Ok(p1), Ok(p2)) => match WebSocketContext::new(c, req) {
+                        Ok(wsc)  => Box::pin(self(wsc, (p1, p2))),
+                        Err(res) => (|| Box::pin(async {res}))(),
+                    }
+                    (Err(e),_)|(_,Err(e)) => __bad_request(&c, e),
                 }
             })
         }

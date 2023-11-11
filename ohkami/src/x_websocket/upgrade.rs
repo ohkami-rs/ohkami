@@ -66,12 +66,6 @@ struct UpgradeStream {
     stream:   Option<Arc<Mutex<TcpStream>>>,
 } const _: () = {
     impl UpgradeStream {
-        fn new(arc_stream: Arc<Mutex<TcpStream>>) -> Self {
-            Self {
-                reserved: false,
-                stream:   Some(arc_stream),
-            }
-        }
         fn is_empty(&self) -> bool {
             self.stream.is_none() && !self.reserved
         }

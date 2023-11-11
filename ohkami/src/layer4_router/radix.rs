@@ -150,8 +150,8 @@ impl RadixRouter {
             Err(err_res)   => return (err_res, None),
         };
 
-        #[cfg(not(test))] {target.handle(c, req, params).await}
-        #[cfg(test)]      {(target.handle_discarding_upgrade(c, req, params).await, None)}
+        #[cfg(feature="websocket")]      {target.handle(c, req, params).await}
+        #[cfg(not(feature="websocket"))] {(target.handle_discarding_upgrade(c, req, params).await, None)}
     }
 }
 

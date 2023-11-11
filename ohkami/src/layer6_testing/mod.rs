@@ -8,9 +8,6 @@ use byte_reader::Reader;
 use crate::{Response, Request, Ohkami, Context};
 use crate::layer0_lib::{IntoCows, Status, Method, ContentType};
 
-#[cfg(feature="websocket")]
-use {std::sync::Arc, crate::__rt__::Mutex};
-
 
 pub trait Testing {
     fn oneshot(&self, req: TestRequest) -> TestFuture;
@@ -23,53 +20,6 @@ impl Future for TestFuture {
         unsafe {self.map_unchecked_mut(|this| this.0.as_mut())}.poll(cx)
     }
 }
-
-#[cfg(feature="websocket")]
-pub struct TestWebSocket(Vec<u8>);
-#[cfg(feature="websocket")] const _: () = {
-    impl TestWebSocket {
-        fn new(size: usize) -> Self {
-            Self(Vec::with_capacity(size))
-        }
-    }
-
-    #[cfg(feature="rt_tokio")] const _: () = {
-        impl tokio::io::AsyncRead for TestWebSocket {
-            fn poll_read(
-                self: Pin<&mut Self>,
-                _cx: &mut std::task::Context<'_>,
-                buf: &mut tokio::io::ReadBuf<'_>,
-            ) -> std::task::Poll<std::io::Result<()>> {
-                let mut pin_inner = unsafe {self.map_unchecked_mut(|this| &mut this.0)};
-
-                let amt = std::cmp::min(pin_inner.len(), buf.remaining());
-                let (a, b) = pin_inner.split_at(amt);
-                buf.put_slice(a);
-                *pin_inner = b.to_vec();
-
-                std::task::Poll::Ready(Ok(()))
-            }
-        }
-        impl tokio::io::AsyncWrite for TestWebSocket {
-            fn poll_write(
-                self: Pin<&mut Self>,
-                cx: &mut std::task::Context<'_>,
-                buf: &[u8],
-            ) -> std::task::Poll<Result<usize, std::io::Error>> {
-                unsafe {self.map_unchecked_mut(|this| &mut this.0)}
-                    .poll_write(cx, buf)
-            }
-            fn poll_flush(self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> std::task::Poll<Result<(), std::io::Error>> {
-                unsafe {self.map_unchecked_mut(|this| &mut this.0)}
-                    .poll_flush(cx)
-            }
-            fn poll_shutdown(self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> std::task::Poll<Result<(), std::io::Error>> {
-                unsafe {self.map_unchecked_mut(|this| &mut this.0)}
-                    .poll_shutdown(cx)
-            }
-        }
-    };
-};
 
 impl Testing for Ohkami {
     fn oneshot(&self, request: TestRequest) -> TestFuture {
@@ -93,7 +43,6 @@ impl Testing for Ohkami {
         TestFuture(Box::new(test_res))
     }
 }
-
 
 pub struct TestRequest {
     method:  Method,

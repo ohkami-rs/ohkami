@@ -76,17 +76,27 @@ impl Ohkami {
                     let mut req = unsafe {Pin::new_unchecked(&mut req)};
                     req.as_mut().read(stream).await;
 
+                    #[cfg(not(feature="websocket"))]
+                    let res = router.handle_discarding_upgrade(Context::new(), req.get_mut()).await;
+                    #[cfg(feature="websocket")]
                     let (res, upgrade_id) = router.handle(Context::new(), req.get_mut()).await;
+
                     res.send(stream).await;
 
+                    #[cfg(feature="websocket")]
                     upgrade_id
                 }
             }).await {
+                #[cfg(not(feature="websocket"))]
+                Ok(_) => (),
+
+                #[cfg(feature="websocket")]
                 Ok(upgrade_id) => {
                     if let Some(id) = upgrade_id {
                         reserve_upgrade(id, stream).await
                     }
                 }
+
                 Err(e) => (|| async {
                     println!("Fatal error: {e}");
                     let res = Context::new().InternalServerError();
