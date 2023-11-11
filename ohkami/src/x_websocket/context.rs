@@ -1,4 +1,5 @@
 use std::{future::Future, borrow::Cow};
+use super::websocket::Config;
 use super::{WebSocket, sign, assume_upgraded};
 use crate::{Response, Context, Request};
 use crate::__rt__::{task};
@@ -16,26 +17,6 @@ pub struct WebSocketContext<UFH: UpgradeFailureHandler = DefaultUpgradeFailureHa
     selected_protocol:      Option<Cow<'static, str>>,
     sec_websocket_protocol: Option<Cow<'static, str>>,
 }
-
-pub struct Config {
-    write_buffer_size:      usize,
-    max_write_buffer_size:  usize,
-    max_message_size:       Option<usize>,
-    max_frame_size:         Option<usize>,
-    accept_unmasked_frames: bool,
-} const _: () = {
-    impl Default for Config {
-        fn default() -> Self {
-            Self {
-                write_buffer_size:      128 * 1024, // 128 KiB
-                max_write_buffer_size:  usize::MAX,
-                max_message_size:       Some(64 << 20),
-                max_frame_size:         Some(16 << 20),
-                accept_unmasked_frames: false,
-            }
-        }
-    }
-};
 
 pub trait UpgradeFailureHandler {
     fn handle(self, error: UpgradeError);
@@ -131,17 +112,17 @@ impl WebSocketContext {
             on_failed_upgrade,
             selected_protocol,
             sec_websocket_key,
-            sec_websocket_protocol,
+            ..
         } = self;
 
         task::spawn({
             async move {
                 let stream = match c.upgrade_id {
-                    None     => return on_failed_upgrade.handle(UpgradeError::NotRequestedUpgrade),
                     Some(id) => assume_upgraded(id).await,
+                    None     => return on_failed_upgrade.handle(UpgradeError::NotRequestedUpgrade),
                 };
 
-                let ws = WebSocket::new(stream);
+                let ws = WebSocket::new(stream, config);
                 handler(ws).await
             }
         });

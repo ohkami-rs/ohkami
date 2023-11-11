@@ -1,5 +1,6 @@
 use std::io::{Error, ErrorKind};
 use crate::__rt__::{AsyncReader, AsyncWriter};
+use super::websocket::Config;
 
 
 #[derive(PartialEq)]
@@ -53,7 +54,10 @@ pub struct Frame {
     pub mask:     Option<[u8; 4]>,
     pub payload:  Vec<u8>,
 } impl Frame {
-    pub(super) async fn read_from(stream: &mut (impl AsyncReader + Unpin)) -> Result<Option<Self>, Error> {
+    pub(super) async fn read_from(
+        stream: &mut (impl AsyncReader + Unpin),
+        config: &Config,
+    ) -> Result<Option<Self>, Error> {
         let [first, second] = {
             let mut head = [0; 2];
             stream.read_exact(&mut head).await?;
@@ -65,7 +69,7 @@ pub struct Frame {
 
         let payload_len = {
             let payload_len_byte = second & 0x7F;
-            let len_part_size = match payload_len_byte {126=>2, 127=>8, _=>0};
+            let len_part_size = match payload_len_byte {127=>8, 126=>2, _=>0};
             match len_part_size {
                 0 => payload_len_byte as usize,
                 _ => {
@@ -101,7 +105,10 @@ pub struct Frame {
         Ok(Some(Self { is_final, opcode, mask, payload }))
     }
 
-    pub(super) async fn write_to(self, stream: &mut (impl AsyncWriter + Unpin)) -> Result<(), Error> {
+    pub(super) async fn write_to(self,
+        stream: &mut (impl AsyncWriter + Unpin),
+        config: &Config,
+    ) -> Result<usize, Error> {
         fn into_bytes(frame: Frame) -> Vec<u8> {
             let Frame { is_final, opcode, mask, payload } = frame;
 
@@ -119,12 +126,12 @@ pub struct Frame {
                 header_bytes.append(&mut payload_len_bytes)
             }
             if let Some(mask_bytes) = mask {
-                header_bytes.extend_from_slice(&mask_bytes)
+                header_bytes.extend(mask_bytes)
             }
 
             [header_bytes, payload].concat()
         }
 
-        stream.write_all(&into_bytes(self)).await
+        stream.write(&into_bytes(self)).await
     }
 }

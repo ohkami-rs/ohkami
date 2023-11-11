@@ -1,6 +1,6 @@
 use std::{borrow::Cow, io::{Error, ErrorKind}};
 use crate::{__rt__::{AsyncReader, AsyncWriter}};
-use super::frame::{Frame, OpCode};
+use super::{frame::{Frame, OpCode}, websocket::Config};
 
 
 pub enum Message {
@@ -43,7 +43,10 @@ const _: (/* `From` impls */) = {
 };
 
 impl Message {
-    pub(super) async fn send(self, stream: &mut (impl AsyncWriter + Unpin)) -> Result<(), Error> {        
+    pub(super) async fn write(self,
+        stream: &mut (impl AsyncWriter + Unpin),
+        config: &Config,
+    ) -> Result<usize, Error> {
         fn into_frame(message: Message) -> Frame {
             let (opcode, payload) = match message {
                 Message::Text  (text)                        => (OpCode::Text,   text.into_bytes()),
@@ -61,13 +64,16 @@ impl Message {
             Frame { is_final: false, mask: None, opcode, payload }
         }
 
-        into_frame(self).write_to(stream).await
+        into_frame(self).write_to(stream, config).await
     }
 }
 
 impl Message {
-    pub(super) async fn read_from(stream: &mut (impl AsyncReader + Unpin)) -> Result<Option<Self>, Error> {
-        let head_frame = match Frame::read_from(stream).await? {
+    pub(super) async fn read_from(
+        stream: &mut (impl AsyncReader + Unpin),
+        config: &Config,
+    ) -> Result<Option<Self>, Error> {
+        let head_frame = match Frame::read_from(stream, config).await? {
             Some(frame) => frame,
             None        => return Ok(None),
         };
@@ -77,7 +83,7 @@ impl Message {
                 let mut payload = String::from_utf8(head_frame.payload)
                     .map_err(|_| Error::new(ErrorKind::InvalidData, "Text frame's payload is not valid UTF-8"))?;
                 if !head_frame.is_final {
-                    while let Ok(Some(next_frame)) = Frame::read_from(stream).await {
+                    while let Ok(Some(next_frame)) = Frame::read_from(stream, config).await {
                         if next_frame.opcode != OpCode::Continue {
                             return Err(Error::new(ErrorKind::InvalidData, "Expected continue frame"));
                         }
@@ -94,7 +100,7 @@ impl Message {
             OpCode::Binary => {
                 let mut payload = head_frame.payload;
                 if !head_frame.is_final {
-                    while let Ok(Some(mut next_frame)) = Frame::read_from(stream).await {
+                    while let Ok(Some(mut next_frame)) = Frame::read_from(stream, config).await {
                         if next_frame.opcode != OpCode::Continue {
                             return Err(Error::new(ErrorKind::InvalidData, "Expected continue frame"));
                         }
