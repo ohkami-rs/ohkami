@@ -210,7 +210,7 @@
 ");
 
 
-/*===== runtime dependency injection layer =====*/
+/*===== async runtime dependency layer =====*/
 
 mod __rt__ {
     #[cfg(all(feature="rt_tokio", feature="DEBUG"))]
@@ -226,11 +226,6 @@ mod __rt__ {
     pub(crate) use async_std::sync::Mutex;
 
     #[cfg(feature="rt_tokio")]
-    pub(crate) use tokio::sync::RwLock;
-    #[cfg(feature="rt_async-std")]
-    pub(crate) use async_std::sync::RwLock;
-
-    #[cfg(feature="rt_tokio")]
     pub(crate) use tokio::net::TcpListener;
     #[cfg(feature="rt_async-std")]
     pub(crate) use async_std::net::TcpListener;
@@ -239,6 +234,10 @@ mod __rt__ {
     pub(crate) use tokio::net::TcpStream;
     #[cfg(feature="rt_async-std")]
     pub(crate) use async_std::net::TcpStream;
+
+    #[cfg(all(feature="rt_tokio", feature="websocket"))]
+    pub(crate) use tokio::net::tcp::{ReadHalf, WriteHalf};
+    /* async-std doesn't have `split` */
 
     #[cfg(feature="rt_tokio")]
     pub(crate) use tokio::task;

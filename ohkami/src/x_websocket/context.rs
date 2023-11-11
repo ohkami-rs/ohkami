@@ -1,4 +1,4 @@
-use std::{future::Future, borrow::Cow, sync::Arc};
+use std::{future::Future, borrow::Cow};
 use super::{WebSocket, sign, assume_upgraded};
 use crate::{Response, Context, Request};
 use crate::__rt__::{task, TcpStream};
