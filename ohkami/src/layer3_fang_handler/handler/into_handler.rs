@@ -5,6 +5,8 @@ use crate::{
     Response,
     layer1_req_res::{FromRequest, FromBuffer as PathParam},
 };
+#[cfg(feature="websocket")]
+use crate::websocket::WebSocketContext;
 
 
 pub trait IntoHandler<Args> {
@@ -538,6 +540,24 @@ const _: (/* two PathParams and FromRequest items */) = {
                         let res = c.BadRequest().text(e.to_string());
                         async {res}
                     }),
+                }
+            })
+        }
+    }
+};
+
+#[cfg(feature="websocket")]
+const _: (/* requires upgrade to websocket */) = {
+    impl<F, Fut> IntoHandler<(WebSocketContext,)> for F
+    where
+        F:   Fn(WebSocketContext) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = Response> + Send + Sync + 'static,
+    {
+        fn into_handler(self) -> Handler {
+            Handler::new(true, move |req, c, _| {
+                match WebSocketContext::new(c, req) {
+                    Ok(wsc)  => Box::pin(self(wsc)),
+                    Err(res) => Box::pin(async {res}),
                 }
             })
         }

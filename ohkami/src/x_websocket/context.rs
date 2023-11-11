@@ -5,13 +5,12 @@ use crate::__rt__::{task, TcpStream};
 use crate::http::{Method};
 
 
-pub struct WebSocketContext {
+pub struct WebSocketContext<UFH: UpgradeFailureHandler = DefaultUpgradeFailureHandler> {
     c:                      Context,
-    stream:                 TcpStream,
 
     config:                 Config,
 
-    on_failed_upgrade:      Box<dyn Fn(UpgradeError)>,
+    on_failed_upgrade:      UFH,
 
     sec_websocket_key:      Cow<'static, str>,
     selected_protocol:      Option<Cow<'static, str>>,
@@ -38,36 +37,42 @@ pub struct Config {
     }
 };
 
-pub enum UpgradeError { /* TODO */ }
+pub trait UpgradeFailureHandler {
+    fn handle(self, error: UpgradeError);
+}
+pub enum UpgradeError {
+    NotRequestedUpgrade,
+}
+pub struct DefaultUpgradeFailureHandler;
+impl UpgradeFailureHandler for DefaultUpgradeFailureHandler {
+    fn handle(self, _: UpgradeError) {/* discard error */}
+}
 
 impl WebSocketContext {
-    pub(crate) async fn new(c: Context, req: &mut Request) -> Result<Self, Cow<'static, str>> {
-        let id = c.upgrade_id.ok_or(Cow::Borrowed("Failed to upgrade"))?;
-        let stream = assume_upgraded(id).await;
-
+    pub(crate) fn new(c: Context, req: &mut Request) -> Result<Self, Response> {
         if req.method() != Method::GET {
-            return Err(Cow::Borrowed("Method is not `GET`"))
+            return Err((|| c.BadRequest().text("Method is not `GET`"))())
         }
         if req.header("Connection") != Some("upgrade") {
-            return Err(Cow::Borrowed("Connection header is not `upgrade`"))
+            return Err((|| c.BadRequest().text("Connection header is not `upgrade`"))())
         }
         if req.header("Upgrade") != Some("websocket") {
-            return Err(Cow::Borrowed("Upgrade header is not `websocket`"))
+            return Err((|| c.BadRequest().text("Upgrade header is not `websocket`"))())
         }
         if req.header("Sec-WebSocket-Version") != Some("13") {
-            return Err(Cow::Borrowed("Sec-WebSocket-Version header is not `13`"))
+            return Err((|| c.BadRequest().text("Sec-WebSocket-Version header is not `13`"))())
         }
 
         let sec_websocket_key = Cow::Owned(req.header("Sec-WebSocket-Key")
-            .ok_or(Cow::Borrowed("Sec-WebSocket-Key header is missing"))?
+            .ok_or_else(|| c.BadRequest().text("Sec-WebSocket-Key header is missing"))?
             .to_string());
 
         let sec_websocket_protocol = req.header("Sec-WebSocket-Protocol")
             .map(|swp| Cow::Owned(swp.to_string()));
 
-        Ok(Self {c, stream,
+        Ok(Self {c,
             config:            Config::default(),
-            on_failed_upgrade: Box::new(|_| (/* discard error */)),
+            on_failed_upgrade: DefaultUpgradeFailureHandler,
             selected_protocol: None,
             sec_websocket_key,
             sec_websocket_protocol,
@@ -122,7 +127,6 @@ impl WebSocketContext {
 
         let Self {
             mut c,
-            stream,
             config,
             on_failed_upgrade,
             selected_protocol,
@@ -132,6 +136,11 @@ impl WebSocketContext {
 
         task::spawn({
             async move {
+                let stream = match c.upgrade_id {
+                    None     => return on_failed_upgrade.handle(UpgradeError::NotRequestedUpgrade),
+                    Some(id) => assume_upgraded(id).await,
+                };
+
                 let ws = WebSocket::new(stream);
                 handler(ws).await
             }
