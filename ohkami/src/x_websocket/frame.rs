@@ -36,16 +36,24 @@ pub enum OpCode {
 
 pub enum CloseCode {
     Normal, Away, Protocol, Unsupported, Status, Abnormal, Invalid,
-    Policy, Size, Extension, Error, Restart,Again, Tls, Reserved,
+    Policy, Size, Extension, Error, Restart, Again, Tls, Reserved,
     Iana(u16), Library(u16), Bad(u16),
-} impl From<u16> for CloseCode {
-    fn from(code: u16) -> Self {match code {
-        1000 => Self::Normal, 1001 => Self::Away,      1002 => Self::Protocol, 1003 => Self::Unsupported,
-        1005 => Self::Status, 1006 => Self::Abnormal,  1007 => Self::Invalid,  1008 => Self::Policy,
-        1009 => Self::Size,   1010 => Self::Extension, 1011 => Self::Error,    1012 => Self::Restart,
-        1013 => Self::Again,  1015 => Self::Tls,       1016..=2999 => Self::Reserved,
-        3000..=3999 => Self::Iana(code),   4000..=4999 => Self::Library(code),    _ => Self::Bad(code),
-    }}
+} impl CloseCode {
+    pub(super) fn from_bytes(bytes: [u8; 2]) -> Self {
+        let code = u16::from_be_bytes(bytes);
+        match code {
+            1000 => Self::Normal, 1001 => Self::Away,      1002 => Self::Protocol, 1003 => Self::Unsupported,
+            1005 => Self::Status, 1006 => Self::Abnormal,  1007 => Self::Invalid,  1008 => Self::Policy,
+            1009 => Self::Size,   1010 => Self::Extension, 1011 => Self::Error,    1012 => Self::Restart,
+            1013 => Self::Again,  1015 => Self::Tls,       1016..=2999 => Self::Reserved,
+            3000..=3999 => Self::Iana(code),   4000..=4999 => Self::Library(code),    _ => Self::Bad(code),
+        }
+    }
+    pub(super) fn into_bytes(self) -> [u8; 2] {
+        match self {
+            
+        }
+    }
 }
 
 pub struct Frame {
@@ -70,7 +78,8 @@ pub struct Frame {
         let payload_len = {
             let payload_len_byte = second & 0x7F;
             let len_part_size = match payload_len_byte {127=>8, 126=>2, _=>0};
-            match len_part_size {
+
+            let len = match len_part_size {
                 0 => payload_len_byte as usize,
                 _ => {
                     let mut bytes = [0; 8];
@@ -82,10 +91,24 @@ pub struct Frame {
                     }
                     usize::from_be_bytes(bytes)
                 }
+            }; if let Some(limit) = &config.max_frame_size {
+                (&len <= limit).then_some(())
+                    .ok_or_else(|| Error::new(
+                        ErrorKind::InvalidData,
+                        "Incoming frame is too large"
+                    ))?;
             }
+
+            len
         };
 
-        let mask = if second & 0x80 == 0 {None} else {
+        let mask = if second & 0x80 == 0 {
+            (config.accept_unmasked_frames).then_some(None)
+                .ok_or_else(|| Error::new(
+                    ErrorKind::InvalidData,
+                    "Client frame is unmasked"
+                ))?
+        } else {
             let mut mask_bytes = [0; 4];
             if let Err(e) = stream.read_exact(&mut mask_bytes).await {
                 return match e.kind() {
@@ -106,8 +129,8 @@ pub struct Frame {
     }
 
     pub(super) async fn write_to(self,
-        stream: &mut (impl AsyncWriter + Unpin),
-        config: &Config,
+        stream:  &mut (impl AsyncWriter + Unpin),
+        _config: &Config,
     ) -> Result<usize, Error> {
         fn into_bytes(frame: Frame) -> Vec<u8> {
             let Frame { is_final, opcode, mask, payload } = frame;
