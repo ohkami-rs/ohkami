@@ -61,13 +61,10 @@ impl Message {
                 Message::Close(close_frame) => {
                     let payload = close_frame
                         .map(|CloseFrame { code, reason }| {
-                            let mut bytes = code.to_be_bytes().to_vec();
-                            if let Some(reason_text) = reason {
-                                bytes.extend_from_slice(reason_text.as_bytes())
-                            }
-                            bytes
+                            let code   = code.into_bytes();
+                            let reason = reason.as_ref().map(|cow| cow.as_bytes()).unwrap_or(&[]);
+                            [&code, reason].concat()
                         }).unwrap_or(Vec::new());
-
                     (OpCode::Close, payload)
                 }
             };
@@ -162,9 +159,9 @@ impl Message {
                 Ok(Some(Message::Close(
                     (! payload.is_empty()).then(|| {
                         let (code_bytes, rem) = payload.split_at(2);
-                        let code = CloseCode::from_bytes(unsafe {(code_bytes.as_ptr() as *const [u8; 2]).read()});
-
-                        todo!()
+                        let code   = CloseCode::from_bytes(unsafe {(code_bytes.as_ptr() as *const [u8; 2]).read()});
+                        let reason = (! rem.is_empty()).then(|| Cow::Owned(String::from_utf8(rem.to_vec()).unwrap()));
+                        CloseFrame { code, reason }
                     })
                 )))
             }

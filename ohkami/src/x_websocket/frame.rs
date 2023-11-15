@@ -50,9 +50,13 @@ pub enum CloseCode {
         }
     }
     pub(super) fn into_bytes(self) -> [u8; 2] {
-        match self {
-            
-        }
+        u16::to_be_bytes(match self {
+            Self::Normal => 1000, Self::Away      => 1001, Self::Protocol => 1002, Self::Unsupported => 1003,
+            Self::Status => 1005, Self::Abnormal  => 1006, Self::Invalid  => 1007,  Self::Policy => 1008,
+            Self::Size   => 1009, Self::Extension => 1010, Self::Error    => 1011,    Self::Restart => 1012,
+            Self::Again  => 1013, Self::Tls       => 1015,
+            Self::Reserved => 1016, Self::Iana(code) | Self::Library(code) | Self::Bad(code) => code,
+        })
     }
 }
 
