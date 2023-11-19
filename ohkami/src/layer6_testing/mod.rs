@@ -36,7 +36,7 @@ impl Testing for Ohkami {
             let mut req = unsafe {Pin::new_unchecked(&mut req)};
             req.as_mut().read(&mut &request.encode_request()[..]).await;
 
-            let (res, _) = router.handle(Context::new(), &mut req).await;
+            let res = router.handle_discarding_upgrade(Context::new(), &mut req).await;
             TestResponse::new(res)
         };
 

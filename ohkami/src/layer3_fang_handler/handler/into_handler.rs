@@ -30,7 +30,7 @@ const _: (/* only Context */) = {
         Fut: Future<Output = Response> + Send + Sync + 'static,
     {
         fn into_handler(self) -> Handler {
-            Handler::new(false, move |_, c, _|
+            Handler::new(move |_, c, _|
                 Box::pin(self(c))
             )
         }
@@ -46,7 +46,7 @@ const _: (/* PathParam */) = {
                 Fut: Future<Output = Response> + Send + Sync + 'static,
             {
                 fn into_handler(self) -> Handler {
-                    Handler::new(false, move |_, c, params|
+                    Handler::new(move |_, c, params|
                         match <$param_type as PathParam>::parse(unsafe {params.assume_init_first().as_bytes()}) {
                             Ok(p1) => Box::pin(self(c, p1)),
                             Err(e) => __bad_request(&c, e)
@@ -65,7 +65,7 @@ const _: (/* PathParam */) = {
         Fut: Future<Output = Response> + Send + Sync + 'static,
     {
         fn into_handler(self) -> Handler {
-            Handler::new(false, move |_, c, params|
+            Handler::new(move |_, c, params|
                 // SAFETY: Due to the architecture of `Router`,
                 // `params` has already `append`ed once before this code
                 match <P1 as PathParam>::parse(unsafe {params.assume_init_first().as_bytes()}) {
@@ -82,7 +82,7 @@ const _: (/* PathParam */) = {
         Fut: Future<Output = Response> + Send + Sync + 'static,
     {
         fn into_handler(self) -> Handler {
-            Handler::new(false, move |_, c, params| {
+            Handler::new(move |_, c, params| {
                 let (p1, p2) = params.assume_init_extract();
                 let (p1, p2) = unsafe {(p1.as_bytes(), p2.as_bytes())};
                 match (<P1 as PathParam>::parse(p1), <P2 as PathParam>::parse(p2)) {
@@ -101,7 +101,7 @@ const _: (/* FromRequest items */) = {
         Fut: Future<Output = Response> + Send + Sync + 'static,
     {
         fn into_handler(self) -> Handler {
-            Handler::new(false, move |req, c, _|
+            Handler::new(move |req, c, _|
                 match Item1::parse(req) {
                     Ok(item1) => Box::pin(self(c, item1)),
                     Err(e)    => __bad_request(&c, e)
@@ -116,7 +116,7 @@ const _: (/* FromRequest items */) = {
         Fut: Future<Output = Response> + Send + Sync + 'static,
     {
         fn into_handler(self) -> Handler {
-            Handler::new(false, move |req, c, _|
+            Handler::new(move |req, c, _|
                 match (Item1::parse(req), Item2::parse(req)) {
                     (Ok(item1), Ok(item2))    => Box::pin(self(c, item1, item2)),
                     (Err(e), _) | (_, Err(e)) => __bad_request(&c, e),
@@ -135,7 +135,7 @@ const _: (/* single PathParam and FromRequest items */) = {
                 Fut: Future<Output = Response> + Send + Sync + 'static,
             {
                 fn into_handler(self) -> Handler {
-                    Handler::new(false, move |req, c, params| {
+                    Handler::new(move |req, c, params| {
                         // SAFETY: Due to the architecture of `Router`,
                         // `params` has already `append`ed once before this code
                         let p1 = unsafe {params.assume_init_first().as_bytes()};
@@ -154,7 +154,7 @@ const _: (/* single PathParam and FromRequest items */) = {
                 Fut: Future<Output = Response> + Send + Sync + 'static,
             {
                 fn into_handler(self) -> Handler {
-                    Handler::new(false, move |req, c, params| {
+                    Handler::new(move |req, c, params| {
                         // SAFETY: Due to the architecture of `Router`,
                         // `params` has already `append`ed once before this code
                         let p1 = unsafe {params.assume_init_first().as_bytes()};
@@ -179,7 +179,7 @@ const _: (/* one PathParam and FromRequest items */) = {
             Fut: Future<Output = Response> + Send + Sync + 'static,
         {
             fn into_handler(self) -> Handler {
-                Handler::new(false, move |req, c, params| {
+                Handler::new(move |req, c, params| {
                     // SAFETY: Due to the architecture of `Router`,
                     // `params` has already `append`ed once before this code
                     let p1 = unsafe {params.assume_init_first().as_bytes()};
@@ -198,7 +198,7 @@ const _: (/* one PathParam and FromRequest items */) = {
             Fut: Future<Output = Response> + Send + Sync + 'static,
         {
             fn into_handler(self) -> Handler {
-                Handler::new(false, move |req, c, params| {
+                Handler::new(move |req, c, params| {
                     // SAFETY: Due to the architecture of `Router`,
                     // `params` has already `append`ed once before this code
                     let p1 = unsafe {params.assume_init_first().as_bytes()};
@@ -219,7 +219,7 @@ const _: (/* two PathParams and FromRequest items */) = {
         Fut: Future<Output = Response> + Send + Sync + 'static,
     {
         fn into_handler(self) -> Handler {
-            Handler::new(false, move |req, c, params| {
+            Handler::new(move |req, c, params| {
                 // SAFETY: Due to the architecture of `Router`,
                 // `params` has already `append`ed twice before this code
                 let (p1, p2) = params.assume_init_extract();
@@ -239,7 +239,7 @@ const _: (/* two PathParams and FromRequest items */) = {
         Fut: Future<Output = Response> + Send + Sync + 'static,
     {
         fn into_handler(self) -> Handler {
-            Handler::new(false, move |req, c, params| {
+            Handler::new(move |req, c, params| {
                 // SAFETY: Due to the architecture of `Router`,
                 // `params` has already `append`ed twice before this code
                 let (p1, p2) = params.assume_init_extract();
@@ -295,7 +295,7 @@ const _: (/* requires upgrade to websocket */) = {
         Fut: Future<Output = Response> + Send + Sync + 'static,
     {
         fn into_handler(self) -> Handler {
-            Handler::new(true, move |req, c, params| {
+            Handler::new(move |req, c, params| {
                 let (p1, p2) = params.assume_init_extract();
                 let (p1, p2) = unsafe {(p1.as_bytes(), p2.as_bytes())};
                 match (P1::parse(p1), P2::parse(p2)) {
@@ -305,7 +305,7 @@ const _: (/* requires upgrade to websocket */) = {
                     }
                     (Err(e),_)|(_,Err(e)) => __bad_request(&c, e),
                 }
-            })
+            }).requires_upgrade()
         }
     }
     impl<F, Fut, P1:PathParam> IntoHandler<(WebSocketContext, (P1,))> for F
@@ -314,7 +314,7 @@ const _: (/* requires upgrade to websocket */) = {
         Fut: Future<Output = Response> + Send + Sync + 'static,
     {
         fn into_handler(self) -> Handler {
-            Handler::new(true, move |req, c, params| {
+            Handler::new(move |req, c, params| {
                 let p1 = unsafe {params.assume_init_first().as_bytes()};
                 match P1::parse(p1) {
                     Ok(p1) => match WebSocketContext::new(c, req) {
@@ -323,7 +323,7 @@ const _: (/* requires upgrade to websocket */) = {
                     }
                     Err(e) => __bad_request(&c, e),
                 }
-            })
+            }).requires_upgrade()
         }
     }
     impl<F, Fut, P1:PathParam, P2:PathParam> IntoHandler<(WebSocketContext, (P1, P2))> for F
@@ -332,7 +332,7 @@ const _: (/* requires upgrade to websocket */) = {
         Fut: Future<Output = Response> + Send + Sync + 'static,
     {
         fn into_handler(self) -> Handler {
-            Handler::new(true, move |req, c, params| {
+            Handler::new(move |req, c, params| {
                 let (p1, p2) = params.assume_init_extract();
                 let (p1, p2) = unsafe {(p1.as_bytes(), p2.as_bytes())};
                 match (P1::parse(p1), P2::parse(p2)) {
@@ -342,7 +342,7 @@ const _: (/* requires upgrade to websocket */) = {
                     }
                     (Err(e),_)|(_,Err(e)) => __bad_request(&c, e),
                 }
-            })
+            }).requires_upgrade()
         }
     }
 };

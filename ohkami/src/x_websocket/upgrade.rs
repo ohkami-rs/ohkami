@@ -1,9 +1,14 @@
 use std::{
-    sync::{Arc, OnceLock, atomic::{AtomicBool, Ordering}},
+    sync::{OnceLock, atomic::{AtomicBool, Ordering}},
     pin::Pin, cell::UnsafeCell,
     future::Future,
 };
-use crate::__rt__::{TcpStream, Mutex};
+use crate::__rt__::{TcpStream};
+
+#[cfg(feature="rt")] use {
+    std::sync::Arc,
+    __rt__::Mutex,
+};
 
 
 pub async fn request_upgrade_id() -> UpgradeID {
@@ -29,10 +34,14 @@ pub async fn request_upgrade_id() -> UpgradeID {
 }
 
 /// SAFETY: This must be called after the corresponded `reserve_upgrade`
-pub unsafe fn reserve_upgrade(id: UpgradeID, stream: Arc<Mutex<TcpStream>>) {
+pub unsafe fn reserve_upgrade(
+    id: UpgradeID,
+    #[cfg(feature="rt_tokio")]     stream: Arc<Mutex<TcpStream>>,
+    #[cfg(feature="rt_async-std")] stream: TcpStream,
+) {
     #[cfg(debug_assertions)] assert!(
-        UpgradeStreams().get().get(id.as_usize())
-            .is_some_and(|cell| cell.reserved && cell.stream.is_some()),
+        UpgradeStreams().get().get(id.as_usize()).is_some_and(
+            |cell| cell.reserved && cell.stream.is_some()),
         "Cell not reserved"
     );
 
@@ -47,16 +56,28 @@ pub async fn assume_upgradable(id: UpgradeID) -> TcpStream {
             let Some(StreamCell { reserved, stream }) = (unsafe {UpgradeStreams().get_mut()}).get_mut(self.id.as_usize())
                 else {cx.waker().wake_by_ref(); return std::task::Poll::Pending};
 
+            #[cfg(feature="rt_tokio")]
             if !stream.as_ref().is_some_and(|arc| Arc::strong_count(arc) == 1)
+                {cx.waker().wake_by_ref(); return std::task::Poll::Pending};
+            #[cfg(feature="rt_async-std")]
+            if !stream.is_some()
                 {cx.waker().wake_by_ref(); return std::task::Poll::Pending};
 
             *reserved = false;
+
+            #[cfg(feature="rt_tokio")] {
             std::task::Poll::Ready(unsafe {
                 Mutex::into_inner(
                     Arc::into_inner(
                         Option::take(stream)
                             .unwrap_unchecked())
                                 .unwrap_unchecked())})
+            }
+            #[cfg(feature="rt_async-std")] {
+            std::task::Poll::Ready(unsafe {
+                Option::take(stream)
+                    .unwrap_unchecked()})
+            }
         }
     }
 
@@ -111,7 +132,9 @@ struct UpgradeStreams {
 
 struct StreamCell {
     reserved: bool,
-    stream:   Option<Arc<Mutex<TcpStream>>>,
+
+    #[cfg(feature="rt_tokio")]     stream: Option<Arc<Mutex<TcpStream>>>,
+    #[cfg(feature="rt_async-std")] stream: Option<TcpStream>,
 } const _: () = {
     impl StreamCell {
         fn new() -> Self {
