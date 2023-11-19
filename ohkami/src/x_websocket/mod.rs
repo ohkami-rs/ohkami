@@ -14,5 +14,5 @@ pub use {
     context::{WebSocketContext, UpgradeError},
 };
 pub(crate) use {
-    upgrade::{UpgradeID, request_upgrade_id, reserve_upgrade, assume_upgraded},
+    upgrade::{UpgradeID, request_upgrade_id, reserve_upgrade, assume_upgradable},
 };

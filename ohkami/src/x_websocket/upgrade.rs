@@ -1,88 +1,137 @@
-use std::{sync::{Arc, OnceLock}, future::Future, pin::Pin};
+use std::{
+    sync::{Arc, OnceLock, atomic::{AtomicBool, Ordering}},
+    pin::Pin, cell::UnsafeCell,
+    future::Future,
+};
 use crate::__rt__::{TcpStream, Mutex};
-type UpgradeLock<T> = Mutex<T>;
 
-
-pub static UPGRADE_STREAMS: OnceLock<UpgradeStreams> = OnceLock::new();
 
 pub async fn request_upgrade_id() -> UpgradeID {
-    UPGRADE_STREAMS.get_or_init(UpgradeStreams::new)
-        .reserve().await
-}
-pub async fn reserve_upgrade(id: UpgradeID, stream: Arc<Mutex<TcpStream>>) {
-    UPGRADE_STREAMS.get_or_init(UpgradeStreams::new)
-        .set(id, stream).await
-}
-//pub async fn cancel_upgrade
-pub async fn assume_upgraded(id: UpgradeID) -> TcpStream {
-    UPGRADE_STREAMS.get_or_init(UpgradeStreams::new)
-        .get(id).await
+    struct ReserveUpgrade;
+    impl Future for ReserveUpgrade {
+        type Output = UpgradeID;
+        fn poll(self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> std::task::Poll<Self::Output> {
+            let Some(mut streams) = UpgradeStreams().request_reservation()
+                else {cx.waker().wake_by_ref(); return std::task::Poll::Pending};
+
+            let id = UpgradeID(match streams.iter().position(|cell| cell.is_empty()) {
+                Some(i) => i,
+                None    => {streams.push(StreamCell::new()); streams.len() - 1},
+            });
+
+            streams[id.as_usize()].reserved = true;
+
+            std::task::Poll::Ready(id)
+        }
+    }
+
+    ReserveUpgrade.await
 }
 
-#[derive(Clone, Copy)]
-pub struct UpgradeID(usize);
+/// SAFETY: This must be called after the corresponded `reserve_upgrade`
+pub unsafe fn reserve_upgrade(id: UpgradeID, stream: Arc<Mutex<TcpStream>>) {
+    #[cfg(debug_assertions)] assert!(
+        UpgradeStreams().get().get(id.as_usize())
+            .is_some_and(|cell| cell.reserved && cell.stream.is_some()),
+        "Cell not reserved"
+    );
 
-pub struct UpgradeStreams {
-    streams: UpgradeLock<Vec<UpgradeStream>>,
+    (UpgradeStreams().get_mut())[id.as_usize()].stream = Some(stream);
+}
+
+pub async fn assume_upgradable(id: UpgradeID) -> TcpStream {
+    struct AssumeUpgraded{id: UpgradeID}
+    impl Future for AssumeUpgraded {
+        type Output = TcpStream;
+        fn poll(self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> std::task::Poll<Self::Output> {
+            let Some(StreamCell { reserved, stream }) = (unsafe {UpgradeStreams().get_mut()}).get_mut(self.id.as_usize())
+                else {cx.waker().wake_by_ref(); return std::task::Poll::Pending};
+
+            if !stream.as_ref().is_some_and(|arc| Arc::strong_count(arc) == 1)
+                {cx.waker().wake_by_ref(); return std::task::Poll::Pending};
+
+            *reserved = false;
+            std::task::Poll::Ready(unsafe {
+                Mutex::into_inner(
+                    Arc::into_inner(
+                        Option::take(stream)
+                            .unwrap_unchecked())
+                                .unwrap_unchecked())})
+        }
+    }
+
+    AssumeUpgraded{id}.await
+}
+
+
+static UPGRADE_STREAMS: OnceLock<UpgradeStreams> = OnceLock::new();
+#[allow(non_snake_case)] fn UpgradeStreams() -> &'static UpgradeStreams {
+    UPGRADE_STREAMS.get_or_init(UpgradeStreams::new)
+}
+
+struct UpgradeStreams {
+    in_scanning: AtomicBool,
+    streams:     UnsafeCell<Vec<StreamCell>>,
 } const _: () = {
+    unsafe impl Sync for UpgradeStreams {}
+
     impl UpgradeStreams {
         fn new() -> Self {
             Self {
-                streams: UpgradeLock::new(Vec::new()),
+                in_scanning: AtomicBool::new(false),
+                streams:     UnsafeCell::new(Vec::new()),
             }
+        }
+        fn get(&self) -> &Vec<StreamCell> {
+            unsafe {&*self.streams.get()}
+        }
+        unsafe fn get_mut(&self) -> &mut Vec<StreamCell> {
+            &mut *self.streams.get()
+        }
+        fn request_reservation(&self) -> Option<ReservationLock<'_>> {
+            self.in_scanning.compare_exchange_weak(false, true, Ordering::Acquire, Ordering::Relaxed)
+                .ok().and(Some(ReservationLock(unsafe {self.get_mut()})))
         }
     }
 
-    impl UpgradeStreams {
-        async fn reserve(&self) -> UpgradeID {
-            let mut this = self.streams.lock().await;
-            match this.iter().position(UpgradeStream::is_empty) {
-                Some(i) => {
-                    this[i].reserved = true;
-                    UpgradeID(i)
-                }
-                None => {
-                    this.push(UpgradeStream {
-                        reserved: true,
-                        stream:   None,
-                    });
-                    UpgradeID(this.len() - 1)
-                },
-            }
-        }
-        async fn set(&self, id: UpgradeID, stream: Arc<Mutex<TcpStream>>) {
-            let mut this = self.streams.lock().await;
-            this[id.0].stream = Some(stream)
-        }
-        async fn get(&self, id: UpgradeID) -> TcpStream {
-            let mut this = self.streams.lock().await;
-            Pin::new(this.get_mut(id.0).unwrap()).await
+    struct ReservationLock<'scan>(&'scan mut Vec<StreamCell>);
+    impl<'scan> Drop for ReservationLock<'scan> {
+        fn drop(&mut self) {
+            UpgradeStreams().in_scanning.store(false, Ordering::Release)
         }
     }
-};
+    impl<'scan> std::ops::Deref for ReservationLock<'scan> {
+        type Target = Vec<StreamCell>;
+        fn deref(&self) -> &Self::Target {&*self.0}
+    }
+    impl<'scan> std::ops::DerefMut for ReservationLock<'scan> {
+        fn deref_mut(&mut self) -> &mut Self::Target {self.0}
+    }
+}; 
 
-struct UpgradeStream {
+struct StreamCell {
     reserved: bool,
     stream:   Option<Arc<Mutex<TcpStream>>>,
 } const _: () = {
-    impl UpgradeStream {
-        fn is_empty(&self) -> bool {
-            self.stream.is_none() && !self.reserved
-        }
-    }
-    impl Default for UpgradeStream {
-        fn default() -> Self {
-            Self { reserved: false, stream: None }
-        }
-    }
-    impl Future for UpgradeStream {
-        type Output = TcpStream;
-        fn poll(self: std::pin::Pin<&mut Self>, _: &mut std::task::Context<'_>) -> std::task::Poll<Self::Output> {
-            match Arc::strong_count(self.stream.as_ref().unwrap()) {
-                1 => std::task::Poll::Ready(Arc::into_inner(self.get_mut().stream.take().unwrap()).unwrap().into_inner()),
-                _ => std::task::Poll::Pending,
+    impl StreamCell {
+        fn new() -> Self {
+            Self {
+                reserved: false,
+                stream:   None,
             }
+        }
+        fn is_empty(&self) -> bool {
+            (!self.reserved) && self.stream.is_none()
         }
     }
 };
 
+#[derive(Clone, Copy)]
+pub struct UpgradeID(usize);
+const _: () = {
+    impl UpgradeID {
+        fn as_usize(&self) -> usize {
+            self.0
+        }
+    }
+};

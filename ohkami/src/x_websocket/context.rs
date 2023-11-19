@@ -1,6 +1,6 @@
 use std::{future::Future, borrow::Cow};
 use super::websocket::Config;
-use super::{WebSocket, sign, assume_upgraded};
+use super::{WebSocket, sign, assume_upgradable};
 use crate::{Response, Context, Request};
 use crate::__rt__::{task};
 use crate::http::{Method};
@@ -118,7 +118,7 @@ impl WebSocketContext {
         task::spawn({
             async move {
                 let stream = match c.upgrade_id {
-                    Some(id) => assume_upgraded(id).await,
+                    Some(id) => assume_upgradable(id).await,
                     None     => return on_failed_upgrade.handle(UpgradeError::NotRequestedUpgrade),
                 };
 

@@ -1,6 +1,6 @@
 use std::{sync::Arc, pin::Pin};
 use super::{Ohkami};
-use crate::{__rt__, Request, Context, websocket::reserve_upgrade};
+use crate::{__rt__, Request, Context, websocket::{reserve_upgrade}};
 #[cfg(feature="rt_async-std")] use crate::__rt__::StreamExt;
 
 
@@ -93,7 +93,7 @@ impl Ohkami {
                 #[cfg(feature="websocket")]
                 Ok(upgrade_id) => {
                     if let Some(id) = upgrade_id {
-                        reserve_upgrade(id, stream).await
+                        unsafe{reserve_upgrade(id, stream)}
                     }
                 }
 
