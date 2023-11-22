@@ -7,7 +7,11 @@ use crate::{
 };
 
 #[cfg(feature="websocket")]
-use crate::websocket::{request_upgrade_id, UpgradeID};
+use crate::websocket::{
+    UpgradeID,
+};
+#[cfg(all(feature="websocket", not(test)))]
+use crate::websocket::request_upgrade_id;
 
 
 /*===== defs =====*/
@@ -68,20 +72,20 @@ impl RadixRouter {
 
                 for ff in front {
                     if let Err(err_res) = ff.0(&mut c, req) {
-                        {#[cfg(feature="websocket")]      return (err_res, None);}
-                        {#[cfg(not(feature="websocket"))] return err_res;}
+                        #[cfg(feature="websocket")]      return (err_res, None);
+                        #[cfg(not(feature="websocket"))] return err_res;
                     }
                 }
 
                 let target = match self.GET.search(&mut c, req/*.path_bytes()*/, &mut params) {
                     Ok(Some(node)) => node,
-                    Ok(None)       => return {
-                        {#[cfg(feature="websocket")]    (c.NotFound(), None)}
-                        #[cfg(not(feature="websocket"))] c.NotFound()
+                    Ok(None)       => {
+                        #[cfg(feature="websocket")]     return (c.NotFound(), None);
+                        #[cfg(not(feature="websocket"))] return c.NotFound();
                     },
-                    Err(err_res)   => return {
-                        {#[cfg(feature="websocket")] (err_res, None)}
-                        #[cfg(not(feature="websocket"))] err_res
+                    Err(err_res)   => {
+                        #[cfg(feature="websocket")]      return (err_res, None);
+                        #[cfg(not(feature="websocket"))] return err_res;
                     },
                 };
                 
@@ -192,11 +196,16 @@ impl Node {
         match &self.handler {
             Some(handler) => {
                 #[cfg(feature="websocket")]
+                #[cfg(not(test))]
                 let upgrade_id = match (handler.requires_upgrade).then(|| async {
                     let id = request_upgrade_id().await;
                     c.upgrade_id = Some(id);
                     id
                 }) {None => None, Some(id) => Some(id.await)};
+
+                #[cfg(feature="websocket")]
+                #[cfg(test)]
+                let upgrade_id = None;
 
                 let mut res = (handler.proc)(req, c, params).await;
                 for b in self.back {

@@ -262,12 +262,12 @@ const _: (/* requires upgrade to websocket */) = {
         Fut: Future<Output = Response> + Send + Sync + 'static,
     {
         fn into_handler(self) -> Handler {
-            Handler::new(true, move |req, c, _| {
+            Handler::new(move |req, c, _| {
                 match WebSocketContext::new(c, req) {
                     Ok(wsc)  => Box::pin(self(wsc)),
                     Err(res) => (|| Box::pin(async {res}))(),
                 }
-            })
+            }).requires_upgrade()
         }
     }
 
@@ -277,7 +277,7 @@ const _: (/* requires upgrade to websocket */) = {
         Fut: Future<Output = Response> + Send + Sync + 'static,
     {
         fn into_handler(self) -> Handler {
-            Handler::new(true, move |req, c, params| {
+            Handler::new(move |req, c, params| {
                 let p1 = unsafe {params.assume_init_first().as_bytes()};
                 match P1::parse(p1) {
                     Ok(p1) => match WebSocketContext::new(c, req) {
@@ -286,7 +286,7 @@ const _: (/* requires upgrade to websocket */) = {
                     }
                     Err(e) => __bad_request(&c, e),
                 }
-            })
+            }).requires_upgrade()
         }
     }
     impl<F, Fut, P1:PathParam, P2:PathParam> IntoHandler<(WebSocketContext, P1, P2)> for F

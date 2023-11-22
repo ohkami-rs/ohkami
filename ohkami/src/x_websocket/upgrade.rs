@@ -5,9 +5,9 @@ use std::{
 };
 use crate::__rt__::{TcpStream};
 
-#[cfg(feature="rt")] use {
+#[cfg(feature="rt_tokio")] use {
     std::sync::Arc,
-    __rt__::Mutex,
+    crate::__rt__::Mutex,
 };
 
 

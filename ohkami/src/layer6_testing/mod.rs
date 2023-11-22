@@ -1,4 +1,7 @@
 mod _test;
+mod x_websocket;
+
+pub(crate) use x_websocket::TestWebSocket;
 
 use std::borrow::Cow;
 use std::collections::HashMap;
@@ -11,7 +14,9 @@ use crate::layer0_lib::{IntoCows, Status, Method, ContentType};
 
 pub trait Testing {
     fn oneshot(&self, req: TestRequest) -> TestFuture;
+    //fn oneshot_and_upgraded(&self, req: TestRequest) -> (TestFuture, TestWebSocket);
 }
+
 pub struct TestFuture(
     Box<dyn Future<Output = TestResponse>>);
 impl Future for TestFuture {
@@ -36,7 +41,11 @@ impl Testing for Ohkami {
             let mut req = unsafe {Pin::new_unchecked(&mut req)};
             req.as_mut().read(&mut &request.encode_request()[..]).await;
 
-            let res = router.handle_discarding_upgrade(Context::new(), &mut req).await;
+            #[cfg(not(feature="websocket"))]
+            let res = router.handle(Context::new(), &mut req).await;
+            #[cfg(feature="websocket")]
+            let (res, _) = router.handle(Context::new(), &mut req).await;
+
             TestResponse::new(res)
         };
 
