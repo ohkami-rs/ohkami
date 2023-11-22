@@ -1,7 +1,9 @@
 use std::cell::UnsafeCell;
+use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
-use crate::__rt__::Mutex;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::task::Poll;
 
 
 pub struct TestWebSocket {
@@ -13,28 +15,47 @@ pub struct TestWebSocket {
 }
 
 
+/// 
+/// ```txt
+///   client ------------- server
+///      |                   |
+///   [read  ============= write] : TestStream
+///   [write =============  read] : TestStream
+///      |                   |
+/// TestWebSocket      TestWebSocket
+/// ```
 pub(crate) struct TestStream {
-    read:  Arc<UnsafeCell<Vec<u8>>>,
-    write: Arc<UnsafeCell<Vec<u8>>>,
+    locked: AtomicBool, // It could be more efficient, but now use very simple lock
+    buf:    Arc<UnsafeCell<Vec<u8>>>,
 }
-/// SAFETY: Only one of the client - server needs `&mut _` to `write` into
-/// each `Arc<UnsafeCell<Vec<u8>>>` at a time
-impl TestStream {
-    fn read_half(&self) -> &[u8] {
-        unsafe {&*self.read.get()}
-    }
-    fn write_half(&self) -> &mut Vec<u8> {
-        unsafe {&mut *self.write.get()}
-    }
-}
-impl Clone for TestStream {
-    fn clone(&self) -> Self {
-        Self {
-            read:  self.read.clone(),
-            write: self.write.clone(),
+const _: () = {
+    impl TestStream {
+        fn lock(self: Pin<&mut Self>) -> Poll<Lock<'_>> {
+            match self.locked.compare_exchange_weak(false, true, Ordering::Acquire, Ordering::Relaxed) {
+                Ok(_)  => Poll::Ready(Lock(self.get_mut())),
+                Err(_) => Poll::Pending,
+            }
         }
     }
-}
+
+    struct Lock<'stream>(&'stream mut TestStream);
+    impl<'stream> Drop for Lock<'stream> {
+        fn drop(&mut self) {
+            self.0.locked.store(false, Ordering::Release);
+        }
+    }
+    impl<'stream> std::ops::Deref for Lock<'stream> {
+        type Target = Vec<u8>;
+        fn deref(&self) -> &Self::Target {
+            unsafe {&*self.0.buf.get()}
+        }
+    }
+    impl<'stream> std::ops::DerefMut for Lock<'stream> {
+        fn deref_mut(&mut self) -> &mut Self::Target {
+            unsafe {&mut *self.0.buf.get()}
+        }
+    }
+};
 #[cfg(feature="rt_tokio")] const _: () = {
     impl tokio::io::AsyncRead for TestStream {
         fn poll_read(
@@ -76,9 +97,15 @@ impl Clone for TestStream {
             cx: &mut std::task::Context<'_>,
             buf: &mut [u8],
         ) -> std::task::Poll<std::io::Result<usize>> {
-            let mut read = self.read_half();
-            let read = unsafe {Pin::new_unchecked(&mut read)};
-            read.poll_read(cx, buf)
+            let Poll::Ready(mut this) = self.lock()
+                else {cx.waker().wake_by_ref(); return Poll::Pending};
+
+            let size = (this.len()).min(buf.len());
+            let (a, b) = this.split_at(size);
+            buf.copy_from_slice(a);
+            *this = b.to_vec();
+
+            Poll::Ready(Ok(size))
         }
     }
 
@@ -88,18 +115,19 @@ impl Clone for TestStream {
             cx: &mut std::task::Context<'_>,
             buf: &[u8],
         ) -> std::task::Poll<std::io::Result<usize>> {
-            unsafe {self.map_unchecked_mut(|this| this.write_half())}
-                .poll_write(cx, buf)
+            let Poll::Ready(mut this) = self.lock()
+                else {cx.waker().wake_by_ref(); return Poll::Pending};
+
+            this.extend_from_slice(buf);
+            Poll::Ready(Ok(buf.len()))
         }
 
-        fn poll_flush(self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> std::task::Poll<std::io::Result<()>> {
-            unsafe {self.map_unchecked_mut(|this| this.write_half())}
-                .poll_flush(cx)
+        fn poll_flush(self: Pin<&mut Self>, _: &mut std::task::Context<'_>) -> std::task::Poll<std::io::Result<()>> {
+            Poll::Ready(Ok(()))
         }
 
-        fn poll_close(self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> std::task::Poll<std::io::Result<()>> {
-            unsafe {self.map_unchecked_mut(|this| this.write_half())}
-                .poll_close(cx)
+        fn poll_close(self: Pin<&mut Self>, _: &mut std::task::Context<'_>) -> std::task::Poll<std::io::Result<()>> {
+            Poll::Ready(Ok(()))
         }
     }
 };
