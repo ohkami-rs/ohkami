@@ -103,6 +103,7 @@ impl Ohkami {
                 #[cfg(feature="websocket")]
                 Ok(upgrade_id) => {
                     if let Some(id) = upgrade_id {
+                        let stream = __rt__::Mutex::into_inner(Arc::into_inner(stream).unwrap());
                         unsafe{reserve_upgrade(id, stream)}
                     }
                 }

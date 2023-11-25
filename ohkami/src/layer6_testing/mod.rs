@@ -1,7 +1,7 @@
 mod _test;
 mod x_websocket;
 
-pub(crate) use x_websocket::TestWebSocket;
+pub(crate) use x_websocket::{TestWebSocket, TestStream};
 
 use std::borrow::Cow;
 use std::collections::HashMap;
@@ -13,21 +13,31 @@ use crate::layer0_lib::{IntoCows, Status, Method, ContentType};
 
 
 pub trait Testing {
-    fn oneshot(&self, req: TestRequest) -> TestFuture;
-    //fn oneshot_and_upgraded(&self, req: TestRequest) -> (TestFuture, TestWebSocket);
+    fn oneshot(&self, req: TestRequest) -> Oneshot;
+
+    #[cfg(feature="websocket")]
+    fn oneshot_and_upgraded(&self, req: TestRequest) -> OneshotAndUpgraded;
 }
 
-pub struct TestFuture(
-    Box<dyn Future<Output = TestResponse>>);
-impl Future for TestFuture {
+pub struct Oneshot(
+    Box<dyn Future<Output = TestResponse>>
+); impl Future for Oneshot {
     type Output = TestResponse;
+    fn poll(self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> std::task::Poll<Self::Output> {
+        unsafe {self.map_unchecked_mut(|this| this.0.as_mut())}.poll(cx)
+    }
+}
+pub struct OneshotAndUpgraded(
+    Box<dyn Future<Output = (TestResponse, Option<TestWebSocket>)>>
+); impl Future for OneshotAndUpgraded {
+    type Output = (TestResponse, Option<TestWebSocket>);
     fn poll(self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> std::task::Poll<Self::Output> {
         unsafe {self.map_unchecked_mut(|this| this.0.as_mut())}.poll(cx)
     }
 }
 
 impl Testing for Ohkami {
-    fn oneshot(&self, request: TestRequest) -> TestFuture {
+    fn oneshot(&self, request: TestRequest) -> Oneshot {
         let router = {
             let mut router = self.routes.clone();
             for (methods, fang) in &self.fangs {
@@ -36,7 +46,7 @@ impl Testing for Ohkami {
             router.into_radix()
         };
 
-        let test_res = async move {
+        let res = async move {
             let mut req = Request::init();
             let mut req = unsafe {Pin::new_unchecked(&mut req)};
             req.as_mut().read(&mut &request.encode_request()[..]).await;
@@ -49,7 +59,40 @@ impl Testing for Ohkami {
             TestResponse::new(res)
         };
 
-        TestFuture(Box::new(test_res))
+        Oneshot(Box::new(res))
+    }
+
+    #[cfg(feature="websocket")]
+    fn oneshot_and_upgraded(&self, request: TestRequest) -> OneshotAndUpgraded {
+        use crate::websocket::{reserve_upgrade_in_test, assume_upgradable_in_test};
+
+        let router = {
+            let mut router = self.routes.clone();
+            for (methods, fang) in &self.fangs {
+                router = router.apply_fang(methods, fang.clone())
+            }
+            router.into_radix()
+        };
+
+        let res_and_socket = async move {
+            let mut req = Request::init();
+            let mut req = unsafe {Pin::new_unchecked(&mut req)};
+            req.as_mut().read(&mut &request.encode_request()[..]).await;
+
+            let (res, upgrade_id) = router.handle(Context::new(), &mut req).await;
+            match upgrade_id {
+                None     => (TestResponse::new(res), None),
+                Some(id) => {
+                    let (client, server) = TestWebSocket::new_pair();
+                    unsafe {reserve_upgrade_in_test(id, client.stream)};
+                    let _ = assume_upgradable_in_test(id).await;
+                    
+                    __TODO__
+                },
+            }
+        };
+
+        OneshotAndUpgraded(Box::new(res_and_socket))
     }
 }
 

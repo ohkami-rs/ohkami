@@ -221,9 +221,9 @@ mod __rt__ {
     pub(crate) use async_std::test;
 
     #[cfg(feature="rt_tokio")]
-    pub(crate) use tokio::sync::Mutex;
+    pub(crate) use tokio::net::TcpStream;
     #[cfg(feature="rt_async-std")]
-    pub(crate) use async_std::sync::Mutex;
+    pub(crate) use async_std::net::TcpStream;
 
     #[cfg(feature="rt_tokio")]
     pub(crate) use tokio::net::TcpListener;
@@ -231,9 +231,9 @@ mod __rt__ {
     pub(crate) use async_std::net::TcpListener;
 
     #[cfg(feature="rt_tokio")]
-    pub(crate) use tokio::net::TcpStream;
+    pub(crate) use tokio::sync::Mutex;
     #[cfg(feature="rt_async-std")]
-    pub(crate) use async_std::net::TcpStream;
+    pub(crate) use async_std::sync::Mutex;
 
     #[cfg(all(feature="rt_tokio", feature="websocket"))]
     pub(crate) use tokio::net::tcp::{ReadHalf, WriteHalf};
@@ -325,6 +325,7 @@ pub mod __internal__ {
 // fangs
     struct AppendHeader;
     impl IntoFang for AppendHeader {
+        //const METHODS: &'static [Method] = &[Method::GET];
         fn bite(self) -> Fang {
             Fang(|c: &mut Context, _: &mut Request| {
                 c.headers.Server("ohkami");
@@ -334,6 +335,7 @@ pub mod __internal__ {
 
     struct Log;
     impl IntoFang for Log {
+        //const METHODS: &'static [Method] = &[];
         fn bite(self) -> Fang {
             Fang(|res: Response| {
                 println!("{res:?}");

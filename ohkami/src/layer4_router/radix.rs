@@ -9,9 +9,8 @@ use crate::{
 #[cfg(feature="websocket")]
 use crate::websocket::{
     UpgradeID,
+    request_upgrade_id,
 };
-#[cfg(all(feature="websocket", not(test)))]
-use crate::websocket::request_upgrade_id;
 
 
 /*===== defs =====*/
@@ -50,8 +49,16 @@ pub(super) enum Pattern {
 
 
 /*===== impls =====*/
-#[cfg(feature="websocket")]      type HandleResult = (Response, Option<UpgradeID>);
+#[cfg(feature="websocket")] type HandleResult = (Response, Option<UpgradeID>);
+#[cfg(feature="websocket")] fn __no_upgrade(res: Response) -> HandleResult {
+    (res, None)
+}
+
 #[cfg(not(feature="websocket"))] type HandleResult = Response;
+#[cfg(not(feature="websocket"))] fn __no_upgrade(res: Response) -> HandleResult {
+    res
+}
+
 
 impl RadixRouter {
     pub(crate) async fn handle(
@@ -72,21 +79,14 @@ impl RadixRouter {
 
                 for ff in front {
                     if let Err(err_res) = ff.0(&mut c, req) {
-                        #[cfg(feature="websocket")]      return (err_res, None);
-                        #[cfg(not(feature="websocket"))] return err_res;
+                        return __no_upgrade(err_res)
                     }
                 }
 
                 let target = match self.GET.search(&mut c, req/*.path_bytes()*/, &mut params) {
                     Ok(Some(node)) => node,
-                    Ok(None)       => {
-                        #[cfg(feature="websocket")]     return (c.NotFound(), None);
-                        #[cfg(not(feature="websocket"))] return c.NotFound();
-                    },
-                    Err(err_res)   => {
-                        #[cfg(feature="websocket")]      return (err_res, None);
-                        #[cfg(not(feature="websocket"))] return err_res;
-                    },
+                    Ok(None)       => return __no_upgrade(c.NotFound()),
+                    Err(err_res)   => return __no_upgrade(err_res),
                 };
                 
                 let Response { headers, .. } = target.handle_discarding_upgrade(c, req, params).await;
@@ -100,21 +100,18 @@ impl RadixRouter {
                     res = bf.0(res)
                 }
 
-                #[cfg(feature="websocket")]      return (res, None);
-                #[cfg(not(feature="websocket"))] return res;
+                return __no_upgrade(res);
             }
             Method::OPTIONS => {
                 let Some((cors_str, cors)) = crate::layer3_fang_handler::builtin::CORS.get() else {
-                    #[cfg(feature="websocket")]      return (c.InternalServerError(), None);
-                    #[cfg(not(feature="websocket"))] return c.InternalServerError();
+                    return __no_upgrade(c.InternalServerError());
                 };
 
                 let (front, back) = self.OPTIONSfangs;
 
                 for ff in front {
                     if let Err(err_res) = ff.0(&mut c, req) {
-                        #[cfg(feature="websocket")]      return (err_res, None);
-                        #[cfg(not(feature="websocket"))] return err_res;
+                        return __no_upgrade(err_res);
                     }
                 }
 
@@ -122,40 +119,33 @@ impl RadixRouter {
 
                 {
                     let Some(origin) = req.header("Origin") else {
-                        #[cfg(feature="websocket")]      return (c.BadRequest(), None);
-                        #[cfg(not(feature="websocket"))] return c.BadRequest();
+                        return __no_upgrade(c.BadRequest());
                     };
                     if !cors.AllowOrigin.matches(origin) {
-                        #[cfg(feature="websocket")]      return (c.Forbidden(), None);
-                        #[cfg(not(feature="websocket"))] return c.Forbidden();
+                        return __no_upgrade(c.Forbidden());
                     }
 
                     if req.header("Authorization").is_some() && !cors.AllowCredentials {
-                        #[cfg(feature="websocket")]      return (c.Forbidden(), None);
-                        #[cfg(not(feature="websocket"))] return c.Forbidden();
+                        return __no_upgrade(c.Forbidden());
                     }
 
                     if let Some(request_method) = req.header("Access-Control-Request-Method") {
                         let request_method = Method::from_bytes(request_method.as_bytes());
                         let Some(allow_methods) = cors.AllowMethods.as_ref() else {
-                            #[cfg(feature="websocket")]      return (c.Forbidden(), None);
-                            #[cfg(not(feature="websocket"))] return c.Forbidden();
+                            return __no_upgrade(c.Forbidden());
                         };
                         if !allow_methods.contains(&request_method) {
-                            #[cfg(feature="websocket")]      return (c.Forbidden(), None);
-                            #[cfg(not(feature="websocket"))] return c.Forbidden();
+                            return __no_upgrade(c.Forbidden());
                         }
                     }
 
                     if let Some(request_headers) = req.header("Access-Control-Request-Headers") {
                         let mut request_headers = request_headers.split(',').map(|h| h.trim_matches(' '));
                         let Some(allow_headers) = cors.AllowHeaders.as_ref() else {
-                            #[cfg(feature="websocket")]      return (c.Forbidden(), None);
-                            #[cfg(not(feature="websocket"))] return c.Forbidden();
+                            return __no_upgrade(c.Forbidden());
                         };
                         if !request_headers.all(|h| allow_headers.contains(&h)) {
-                            #[cfg(feature="websocket")]      return (c.Forbidden(), None);
-                            #[cfg(not(feature="websocket"))] return c.Forbidden();
+                            return __no_upgrade(c.Forbidden());
                         }
                     }
                 }
@@ -166,21 +156,14 @@ impl RadixRouter {
                     res = bf.0(res)
                 }
                 
-                #[cfg(feature="websocket")]      return (res, None);
-                #[cfg(not(feature="websocket"))] return res;
+                return __no_upgrade(res);
             }
         };
 
         let target = match search_result {
             Ok(Some(node)) => node,
-            Ok(None)       => {
-                #[cfg(feature="websocket")]      return (c.NotFound(), None);
-                #[cfg(not(feature="websocket"))] return c.NotFound();
-            }
-            Err(err_res)   => {
-                #[cfg(feature="websocket")]      return (err_res, None);
-                #[cfg(not(feature="websocket"))] return err_res;
-            }
+            Ok(None)       => return __no_upgrade(c.NotFound()),
+            Err(err_res)   => return __no_upgrade(err_res),
         };
 
         target.handle(c, req, params).await
@@ -196,16 +179,11 @@ impl Node {
         match &self.handler {
             Some(handler) => {
                 #[cfg(feature="websocket")]
-                #[cfg(not(test))]
                 let upgrade_id = match (handler.requires_upgrade).then(|| async {
                     let id = request_upgrade_id().await;
                     c.upgrade_id = Some(id);
                     id
                 }) {None => None, Some(id) => Some(id.await)};
-
-                #[cfg(feature="websocket")]
-                #[cfg(test)]
-                let upgrade_id = None;
 
                 let mut res = (handler.proc)(req, c, params).await;
                 for b in self.back {
@@ -217,10 +195,7 @@ impl Node {
                 #[cfg(not(feature="websocket"))]
                 {res}
             }
-            #[cfg(feature="websocket")]
-            None => (c.NotFound(), None),
-            #[cfg(not(feature="websocket"))]
-            None => c.NotFound(),
+            None => __no_upgrade(c.NotFound()),
         }
     }
 

@@ -91,7 +91,7 @@ impl WebSocket {
     }
 }
 
-#[cfg(feature="rt_tokio")] const _: () = {
+#[cfg(all(not(test), feature="rt_tokio"))] const _: () = {
     impl WebSocket {
         pub fn split(&mut self) -> (ReadHalf, WriteHalf) {
             let (rh, wh)   = self.stream.split();

@@ -16,3 +16,6 @@ pub use {
 pub(crate) use {
     upgrade::{UpgradeID, request_upgrade_id, reserve_upgrade, assume_upgradable},
 };
+#[cfg(test)] pub(crate) use {
+    upgrade::{reserve_upgrade_in_test, assume_upgradable_in_test},
+};
