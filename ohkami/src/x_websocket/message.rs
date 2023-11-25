@@ -77,7 +77,7 @@ impl Message {
 }
 
 impl Message {
-    pub(super) async fn read_from(
+    pub(crate) async fn read_from(
         stream: &mut (impl AsyncReader + Unpin),
         config: &Config,
     ) -> Result<Option<Self>, Error> {

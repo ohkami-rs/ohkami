@@ -1,15 +1,16 @@
 mod _test;
 mod x_websocket;
 
-pub(crate) use x_websocket::{TestWebSocket, TestStream};
+#[cfg(feature="websocket")]
+pub(crate) use x_websocket::{TestStream, TestWebSocket};
+
+use crate::{Response, Request, Ohkami, Context};
+use crate::layer0_lib::{IntoCows, Status, Method, ContentType};
 
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::{pin::Pin, future::Future, format as f};
 use byte_reader::Reader;
-
-use crate::{Response, Request, Ohkami, Context};
-use crate::layer0_lib::{IntoCows, Status, Method, ContentType};
 
 
 pub trait Testing {
@@ -64,7 +65,7 @@ impl Testing for Ohkami {
 
     #[cfg(feature="websocket")]
     fn oneshot_and_upgraded(&self, request: TestRequest) -> OneshotAndUpgraded {
-        use crate::websocket::{reserve_upgrade_in_test, assume_upgradable_in_test};
+        use crate::websocket::{reserve_upgrade_in_test};
 
         let router = {
             let mut router = self.routes.clone();
@@ -83,11 +84,10 @@ impl Testing for Ohkami {
             match upgrade_id {
                 None     => (TestResponse::new(res), None),
                 Some(id) => {
-                    let (client, server) = TestWebSocket::new_pair();
-                    unsafe {reserve_upgrade_in_test(id, client.stream)};
-                    let _ = assume_upgradable_in_test(id).await;
+                    let (client, server) = TestStream::new_pair();
+                    unsafe {reserve_upgrade_in_test(id, server)};
                     
-                    __TODO__
+                    (TestResponse::new(res), Some(TestWebSocket::new(client)))
                 },
             }
         };

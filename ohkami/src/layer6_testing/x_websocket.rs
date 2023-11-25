@@ -1,37 +1,40 @@
+use crate::x_websocket::{Message};
+use crate::x_websocket::{Config, send, write, flush};
+
 use std::cell::UnsafeCell;
 use std::pin::Pin;
 use std::sync::Arc;
+use std::io::{Error};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::task::Poll;
 
 
+/// Web socket client for test with upgrade
 pub struct TestWebSocket {
-    pub(crate) stream: TestStream,
-} impl TestWebSocket {
-    pub(crate) fn new_pair() -> (Self, Self) {
-        let (server_read, server_write) = (
-            Arc::new(
-                HalfStream {
-                    locked: AtomicBool::new(false),
-                    buf:    UnsafeCell::new(Vec::new()),
-                }
-            ),
-            Arc::new(
-                HalfStream {
-                    locked: AtomicBool::new(false),
-                    buf:    UnsafeCell::new(Vec::new()),
-                }
-            ),
-        );
-        let (client_write, client_read) = (
-            server_read.clone(),
-            server_write.clone(),
-        );
+    stream:     TestStream,
+    n_buffered: usize,
+}
+impl TestWebSocket {
+    pub(crate) fn new(client_stream: TestStream) -> Self {
+        Self {
+            stream:     client_stream,
+            n_buffered: 0,
+        }
+    }
+}
+impl TestWebSocket {
+    pub async fn recv(&mut self) -> Result<Option<Message>, Error> {
+        Message::read_from(&mut self.stream, &Config::default()).await
+    }
 
-        (
-            Self {stream: TestStream::new(client_read, client_write)},
-            Self {stream: TestStream::new(server_read, server_write)}
-        )
+    pub async fn send(&mut self, message: Message) -> Result<(), Error> {
+        send(message, &mut self.stream, &Config::default(), &mut self.n_buffered).await
+    }
+    pub async fn write(&mut self, message: Message) -> Result<usize, Error> {
+        write(message, &mut self.stream, &Config::default(), &mut self.n_buffered).await
+    }
+    pub async fn flush(&mut self) -> Result<(), Error> {
+        flush(&mut self.stream, &mut self.n_buffered).await
     }
 }
 
@@ -44,7 +47,6 @@ pub struct TestWebSocket {
 ///   =========================== | : TestStream
 ///   [write =============  read] |
 ///      |                   |
-/// TestWebSocket      TestWebSocket
 /// ```
 pub struct TestStream {
     read:  Arc<HalfStream>,
@@ -54,15 +56,35 @@ pub struct HalfStream {
     locked: AtomicBool, // It could be more efficient, but now using very simple lock
     buf:    UnsafeCell<Vec<u8>>
 }
+
+impl TestStream {
+    pub(crate) fn new_pair() -> (Self, Self) {
+        let (client_read, client_write) = (
+            Arc::new(HalfStream {
+                locked: AtomicBool::new(false),
+                buf:    UnsafeCell::new(Vec::new()),
+            }),
+            Arc::new(HalfStream {
+                locked: AtomicBool::new(false),
+                buf:    UnsafeCell::new(Vec::new()),
+            }),
+        );
+
+        let (server_write, server_read) = (
+            client_read.clone(),
+            client_write.clone(),
+        );
+
+        (
+            Self { read:client_read, write:client_write },
+            Self { read:server_read, write:server_write },
+        )
+    }
+}
+
 const _: () = {
     unsafe impl Sync for TestStream {}
     unsafe impl Send for TestStream {}
-
-    impl TestStream {
-        pub(crate) fn new(read: Arc<HalfStream>, write: Arc<HalfStream>) -> Self {
-            Self { read, write }
-        }
-    }
 
     impl TestStream {
         fn read_lock(self: Pin<&mut Self>) -> Poll<ReadLock<'_>> {

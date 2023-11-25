@@ -49,9 +49,9 @@ pub unsafe fn reserve_upgrade(id: UpgradeID, stream: TcpStream) {
     (UpgradeStreamsInTest().get_mut())[id.as_usize()].stream = Some(stream);
 }
 
-pub async fn assume_upgradable(id: UpgradeID) -> TcpStream {
-    struct AssumeUpgraded{id: UpgradeID}
-    impl Future for AssumeUpgraded {
+#[cfg(not(test))] pub async fn assume_upgradable(id: UpgradeID) -> TcpStream {
+    struct AssumeUpgradable{id: UpgradeID}
+    impl Future for AssumeUpgradable {
         type Output = TcpStream;
         fn poll(self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> std::task::Poll<Self::Output> {
             let Some(StreamCell { reserved, stream }) = (unsafe {UpgradeStreams().get_mut()}).get_mut(self.id.as_usize())
@@ -66,11 +66,11 @@ pub async fn assume_upgradable(id: UpgradeID) -> TcpStream {
         }
     }
 
-    AssumeUpgraded{id}.await
+    AssumeUpgradable{id}.await
 }
 #[cfg(test)] pub async fn assume_upgradable_in_test(id: UpgradeID) -> TestStream {
-    struct AssumeUpgradedInTest{id: UpgradeID}
-    impl Future for AssumeUpgradedInTest {
+    struct AssumeUpgradableInTest{id: UpgradeID}
+    impl Future for AssumeUpgradableInTest {
         type Output = TestStream;
         fn poll(self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> std::task::Poll<Self::Output> {
             let Some(StreamCell { reserved, stream }) = (unsafe {UpgradeStreamsInTest().get_mut()}).get_mut(self.id.as_usize())
@@ -85,7 +85,7 @@ pub async fn assume_upgradable(id: UpgradeID) -> TcpStream {
         }
     }
 
-    AssumeUpgradedInTest{id}.await
+    AssumeUpgradableInTest{id}.await
 }
 
 

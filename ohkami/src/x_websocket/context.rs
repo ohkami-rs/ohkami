@@ -1,9 +1,12 @@
 use std::{future::Future, borrow::Cow};
 use super::websocket::Config;
-use super::{WebSocket, sign, assume_upgradable};
+use super::{WebSocket, sign};
 use crate::{Response, Context, Request};
 use crate::__rt__::{task};
 use crate::http::{Method};
+
+#[cfg(test)]      use crate::websocket::assume_upgradable_in_test;
+#[cfg(not(test))] use super::assume_upgradable;
 
 
 pub struct WebSocketContext<UFH: UpgradeFailureHandler = DefaultUpgradeFailureHandler> {
@@ -118,8 +121,13 @@ impl WebSocketContext {
         task::spawn({
             async move {
                 let stream = match c.upgrade_id {
+                    None => return on_failed_upgrade.handle(UpgradeError::NotRequestedUpgrade),
+
+                    #[cfg(not(test))]
                     Some(id) => assume_upgradable(id).await,
-                    None     => return on_failed_upgrade.handle(UpgradeError::NotRequestedUpgrade),
+
+                    #[cfg(test)]
+                    Some(id) => assume_upgradable_in_test(id).await,
                 };
 
                 let ws = WebSocket::new(stream, config);
