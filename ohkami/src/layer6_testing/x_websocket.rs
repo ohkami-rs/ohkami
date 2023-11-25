@@ -10,6 +10,8 @@ use std::task::Poll;
 
 
 /// Web socket client for test with upgrade
+/// 
+/// In current version, `split` to read / write halves is not supported.
 pub struct TestWebSocket {
     stream:     TestStream,
     n_buffered: usize,
