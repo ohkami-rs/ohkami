@@ -15,9 +15,6 @@ pub use {
 };
 #[cfg(test)] pub(crate) use websocket::{
     Config,
-    send,
-    write,
-    flush,
 };
 
 pub(crate) use {

@@ -1,5 +1,7 @@
+use tokio::io::AsyncWriteExt;
+
 use crate::x_websocket::{Message};
-use crate::x_websocket::{Config, send, write, flush};
+use crate::x_websocket::{Config};
 
 use std::cell::UnsafeCell;
 use std::pin::Pin;
@@ -26,17 +28,40 @@ impl TestWebSocket {
 }
 impl TestWebSocket {
     pub async fn recv(&mut self) -> Result<Option<Message>, Error> {
-        Message::read_from(&mut self.stream, &Config::default()).await
+        // ========================= //
+        let config = Config::default();
+        // ========================= //
+
+        Message::read_from(&mut self.stream, &config).await
     }
 
     pub async fn send(&mut self, message: Message) -> Result<(), Error> {
-        send(message, &mut self.stream, &Config::default(), &mut self.n_buffered).await
+        self.write(message).await?;
+        self.flush().await?;
+        Ok(())
     }
     pub async fn write(&mut self, message: Message) -> Result<usize, Error> {
-        write(message, &mut self.stream, &Config::default(), &mut self.n_buffered).await
+        // ========================= //
+        let config = Config::default();
+        let mask   = [12, 34, 56, 78];
+        // ========================= //
+
+        let n = message.masking_write(&mut self.stream, &config, mask).await?;
+
+        self.n_buffered += n;
+        if self.n_buffered > config.write_buffer_size {
+            if self.n_buffered > config.max_write_buffer_size {
+                panic!("Buffered messages is larger than `max_write_buffer_size`");
+            } else {
+                self.flush().await?;
+            }
+        }
+
+        Ok(n)
     }
     pub async fn flush(&mut self) -> Result<(), Error> {
-        flush(&mut self.stream, &mut self.n_buffered).await
+        self.stream.flush().await
+            .map(|_| self.n_buffered = 0)
     }
 }
 

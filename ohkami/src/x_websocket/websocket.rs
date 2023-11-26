@@ -48,7 +48,8 @@ impl WebSocket {
 }
 
 // =============================================================================
-pub(crate) async fn send(message:Message,
+pub(super) async fn send(
+    message:    Message,
     stream:     &mut (impl AsyncWriter + Unpin),
     config:     &Config,
     n_buffered: &mut usize,
@@ -57,7 +58,8 @@ pub(crate) async fn send(message:Message,
     flush(stream, n_buffered).await?;
     Ok(())
 }
-pub(crate) async fn write(message:Message,
+pub(super) async fn write(
+    message:    Message,
     stream:     &mut (impl AsyncWriter + Unpin),
     config:     &Config,
     n_buffered: &mut usize,
@@ -75,7 +77,7 @@ pub(crate) async fn write(message:Message,
 
     Ok(n)
 }
-pub(crate) async fn flush(
+pub(super) async fn flush(
     stream:     &mut (impl AsyncWriter + Unpin),
     n_buffered: &mut usize,
 ) -> Result<(), Error> {

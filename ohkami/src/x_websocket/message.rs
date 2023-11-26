@@ -4,6 +4,7 @@ use super::{frame::{Frame, OpCode, CloseCode}, websocket::Config};
 
 
 const PING_PONG_PAYLOAD_LIMIT: usize = 125;
+
 pub enum Message {
     Text  (String),
     Binary(Vec<u8>),
@@ -40,39 +41,48 @@ const _: (/* `From` impls */) = {
 };
 
 impl Message {
-    pub(super) async fn write(self,
+    pub(crate) fn into_frame(self) -> Frame {
+        let (opcode, payload) = match self {
+            Message::Text  (text)  => (OpCode::Text,   text.into_bytes()),
+            Message::Binary(bytes) => (OpCode::Binary, bytes),
+            Message::Ping(mut bytes) => {
+                bytes.truncate(PING_PONG_PAYLOAD_LIMIT);
+                (OpCode::Ping, bytes)
+            }
+            Message::Pong(mut bytes) => {
+                bytes.truncate(PING_PONG_PAYLOAD_LIMIT);
+                (OpCode::Ping, bytes)
+            }
+            Message::Close(close_frame) => {
+                let payload = close_frame
+                    .map(|CloseFrame { code, reason }| {
+                        let code   = code.into_bytes();
+                        let reason = reason.as_ref().map(|cow| cow.as_bytes()).unwrap_or(&[]);
+                        [&code, reason].concat()
+                    }).unwrap_or(Vec::new());
+                (OpCode::Close, payload)
+            }
+        };
+
+        Frame { is_final: false, mask: None, opcode, payload }
+    }
+
+    pub(crate) async fn write(self,
         stream: &mut (impl AsyncWriter + Unpin),
         config: &Config,
     ) -> Result<usize, Error> {
-        fn into_frame(message: Message) -> Frame {
-            let (opcode, payload) = match message {
-                Message::Text  (text)  => (OpCode::Text,   text.into_bytes()),
-                Message::Binary(bytes) => (OpCode::Binary, bytes),
+        self.into_frame().write_unmasked(stream, config).await
+    }
 
-                Message::Ping(mut bytes) => {
-                    bytes.truncate(PING_PONG_PAYLOAD_LIMIT);
-                    (OpCode::Ping, bytes)
-                }
-                Message::Pong(mut bytes) => {
-                    bytes.truncate(PING_PONG_PAYLOAD_LIMIT);
-                    (OpCode::Ping, bytes)
-                }
-
-                Message::Close(close_frame) => {
-                    let payload = close_frame
-                        .map(|CloseFrame { code, reason }| {
-                            let code   = code.into_bytes();
-                            let reason = reason.as_ref().map(|cow| cow.as_bytes()).unwrap_or(&[]);
-                            [&code, reason].concat()
-                        }).unwrap_or(Vec::new());
-                    (OpCode::Close, payload)
-                }
-            };
-
-            Frame { is_final: false, mask: None, opcode, payload }
-        }
-
-        into_frame(self).write_to(stream, config).await
+    #[cfg(test) /* used in `crate::layer6_testing::x_websokcket::TestWebSocket::write` */ ]
+    pub(crate) async fn masking_write(self,
+        stream: &mut (impl AsyncWriter + Unpin),
+        config: &Config,
+        mask:   [u8; 4],
+    ) -> Result<usize, Error> {
+        let mut frame = self.into_frame();
+        frame.mask = Some(mask);
+        frame.write_masked(stream, config).await
     }
 }
 
