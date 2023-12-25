@@ -49,7 +49,7 @@ pub fn Query(_: proc_macro::TokenStream, data: proc_macro::TokenStream) -> proc_
 /// ### Valid format :
 /// 
 /// - `#[Payload(JSON)]` ( for `application/json` )
-/// - `#[Payload(FormData)]` ( for `multipart/form-data` )
+/// - `#[Payload(Form)]` ( for `multipart/form-data` )
 /// - `#[Payload(URLEncoded)]` ( for `application/x-www-form-urlencoded` )
 /// 
 /// <br/>
@@ -108,13 +108,13 @@ pub fn Query(_: proc_macro::TokenStream, data: proc_macro::TokenStream) -> proc_
 /// 
 /// <br/>
 /// 
-/// ### FormData
+/// ### Form
 /// 
 /// ```ignore
 /// use ohkami::prelude::*;
 /// use ohkami::utils::{Payload, File}; // <-- import me
 /// 
-/// #[Payload(FormData)]
+/// #[Payload(Form)]
 /// struct ProfileData {
 ///     submitter_name: String,
 ///     pics:           Vec<File>,

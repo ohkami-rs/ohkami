@@ -118,6 +118,7 @@ macro_rules! Route {
         name:     String,
         password: String,
     } impl FromRequest for CreateUser {
+        type Error = Cow<'static, str>;
         fn parse(req: &crate::Request) -> Result<Self, ::std::borrow::Cow<'static, str>> {
             let (content_type, body) = req.payload().ok_or_else(|| Cow::Borrowed("Payload expected"))?;
             match content_type {
@@ -151,6 +152,7 @@ macro_rules! Route {
         name:     Option<String>,
         password: Option<String>,
     } impl FromRequest for UpdateUser {
+        type Error = Cow<'static, str>;
         fn parse(req: &crate::Request) -> Result<Self, ::std::borrow::Cow<'static, str>> {
             let (content_type, body) = req.payload().ok_or_else(|| Cow::Borrowed("Payload expected"))?;
             match content_type {

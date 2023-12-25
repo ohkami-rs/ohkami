@@ -1,7 +1,7 @@
 use ohkami::{prelude::*, IntoFang, Fang};
 use ohkami::utils::{Payload, File};
 
-#[Payload(FormData)]
+#[Payload(Form)]
 #[derive(Debug)]
 struct FormData {
     account_name: String,

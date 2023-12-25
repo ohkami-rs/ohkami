@@ -27,6 +27,7 @@ fn impl_payload_json(data: &ItemStruct) -> Result<TokenStream> {
     
     Ok(quote!{
         impl ::ohkami::FromRequest for #struct_name {
+            type Error = ::std::borrow::Cow<'static, str>;
             fn parse<'req>(req: &'req ::ohkami::Request) -> ::std::result::Result<Self, ::std::borrow::Cow<'static, str>> {
                 let (content_type, payload) = req.payload()
                     .ok_or_else(|| ::std::borrow::Cow::Borrowed("Expected payload"))?;
@@ -96,6 +97,7 @@ fn impl_payload_urlencoded(data: &ItemStruct) -> Result<TokenStream> {
 
     Ok(quote!{
         impl ::ohkami::FromRequest for #struct_name {
+            type Error = ::std::borrow::Cow<'static, str>;
             fn parse(req: &::ohkami::Request) -> ::std::result::Result<Self, ::std::borrow::Cow<'static, str>> {
                 let (content_type, payload) = req.payload()
                     .ok_or_else(|| ::std::borrow::Cow::Borrowed("Expected a payload"))?;
@@ -116,9 +118,9 @@ fn impl_payload_formdata(data: &ItemStruct) -> Result<TokenStream> {
     let struct_name = &data.ident;
     let fields_data = FieldData::collect_from_struct_fields(&data.fields)?;
 
-    // `#[Payload(FormData)]` doesn't accept optional fields
+    // `#[Payload(Form)]` doesn't accept optional fields
     if fields_data.iter().any(|FieldData { is_optional, .. }| *is_optional) {
-        return Err(syn::Error::new(Span::mixed_site(), "`Option<_>` is not available in `#[Payload(FormData)]`"))
+        return Err(syn::Error::new(Span::mixed_site(), "`Option<_>` is not available in `#[Payload(Form)]`"))
     }
 
     let declaring_exprs = {
@@ -150,7 +152,7 @@ fn impl_payload_formdata(data: &ItemStruct) -> Result<TokenStream> {
                 "String" => PartType::Field,
                 "File" | "utils::File" | "ohkami::File" | "::ohkami::File" => PartType::File,
                 "Vec<File>" | "Vec<utils::File>" | "Vec<ohkami::utils::File>" | "Vec<::ohkami::utils::File>" => PartType::Files,
-                unexpected  => return Err(syn::Error::new(Span::call_site(), &format!("Unexpected field type `{unexpected}` : `#[Payload(FormData)]` supports only `String`, `File` or `Vec<File>` as field type")))
+                unexpected  => return Err(syn::Error::new(Span::call_site(), &format!("Unexpected field type `{unexpected}` : `#[Payload(Form)]` supports only `String`, `File` or `Vec<File>` as field type")))
             }.into_method_call();
 
             Ok(quote!{
@@ -187,6 +189,7 @@ fn impl_payload_formdata(data: &ItemStruct) -> Result<TokenStream> {
 
     Ok(quote!{
         impl ::ohkami::FromRequest for #struct_name {
+            type Error = ::std::borrow::Cow<'static, str>;
             fn parse(req: &::ohkami::Request) -> ::std::result::Result<Self, ::std::borrow::Cow<'static, str>> {
                 let (content_type, payload) = req.payload()
                     .ok_or_else(|| ::std::borrow::Cow::Borrowed("Expected a payload"))?;

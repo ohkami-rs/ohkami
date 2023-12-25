@@ -3,7 +3,7 @@ mod from_request;  pub use from_request::*;
 #[cfg(test)] mod _test_parse_payload;
 #[cfg(test)] mod _test_parse;
 
-use std::{borrow::Cow, pin::Pin};
+use std::{pin::Pin};
 use byte_reader::{Reader};
 use percent_encoding::{percent_decode};
 use crate::{
@@ -12,7 +12,7 @@ use crate::{
 };
 
 pub(crate) const METADATA_SIZE: usize = 1024;
-pub(crate) const PAYLOAD_LIMIT: usize = 2_usize.pow(20);
+pub(crate) const PAYLOAD_LIMIT: usize = 2 << 32;
 
 pub(crate) const QUERIES_LIMIT: usize = 4;
 pub(crate) const HEADERS_LIMIT: usize = 32;
@@ -137,10 +137,10 @@ impl Request {
             &*(percent_decode(self.path_bytes()).decode_utf8_lossy())
         )}
     }
-    #[inline] pub fn query<Value: FromBuffer>(&self, key: &str) -> Option<Result<Value, Cow<'static, str>>> {
+    #[inline] pub fn query<Value: FromParam>(&self, key: &str) -> Option<Result<Value, Value::Error>> {
         for (k, v) in self.queries.iter() {
             if key.eq_ignore_ascii_case(&percent_decode(unsafe {k.as_bytes()}).decode_utf8_lossy()) {
-                return (|| Some(Value::parse((&percent_decode(unsafe {v.as_bytes()}).decode_utf8_lossy()).as_bytes())))()
+                return (|| Some(Value::from_param(&percent_decode(unsafe {v.as_bytes()}).decode_utf8_lossy())))()
             }
         }
         None
