@@ -12,7 +12,7 @@ jobs:
     strategy:
       matrix:
         rt:        ['tokio', 'async-std']
-        x:         [',websocket', '']
+        x:         ['websocket', '']
         toolchain: ['stable', 'nightly']
 
     steps:
