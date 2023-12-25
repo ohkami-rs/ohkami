@@ -5,7 +5,7 @@ macro_rules! HeaderName {
         /// 
         /// In future, ohkami will introduce a feature like `"custom_headers"` or something,
         /// with that you can do in exchange for a slight decrease in performance.
-        #[derive(Debug, PartialEq, Eq, Hash)]
+        #[derive(Debug, Eq, Hash)]
         pub enum HeaderName {
             $( $konst, )*
         }
@@ -87,7 +87,7 @@ macro_rules! HeaderName {
     SecWebSocketProtocol: b"Sec-WebSocket-Protocol",
     SecWebSocketVersion: b"Sec-WebSocket-Version",
     Server: b"Server",
-    SetCookie: b"SetCookie",
+    SetCookie: b"Set-Cookie",
     StrictTransportSecurity: b"Strict-Transport-Security",
     TE: b"TE",
     Trailer: b"Trailer",
@@ -104,9 +104,33 @@ macro_rules! HeaderName {
 pub trait IntoHeaderName {
     fn into_header_name(self) -> Option<HeaderName>;
 } impl<'s, C: Into<std::borrow::Cow<'s, str>>> IntoHeaderName for C {
-    #[inline] fn into_header_name(self) -> Option<HeaderName> {
+    #[inline(always)] fn into_header_name(self) -> Option<HeaderName> {
         HeaderName::from_bytes(self.into().as_bytes())
     }
+}
+
+impl PartialEq<HeaderName> for HeaderName {
+    #[inline] fn eq(&self, other: &HeaderName) -> bool {
+        *self as u8 == *other as u8
+    }
+}
+impl<S: AsRef<str>> PartialEq<S> for HeaderName {
+    #[inline] fn eq(&self, other: &S) -> bool {
+        self.as_str().eq_ignore_ascii_case(other.as_ref())
+    }
+}
+
+
+#[cfg(test)]
+#[test] fn test_case_insensitive_comparison() {
+    let h = HeaderName::Accept;
+
+    assert_eq!(h, "ACCEPT");
+
+    let string = String::from("accept");
+    assert_eq!(h, string);
+    assert_eq!(h, &string);
+    assert_eq!(h, &&string);
 }
 
 

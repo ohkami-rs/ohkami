@@ -1,7 +1,9 @@
 //! Great thanks: https://github.com/hyperium/http/blob/master/src/header/map.rs; MIT, @hyperium
+//! 
+//! Based on that, except for this doesn't handle `danger`.
 
 use super::name::{HeaderName as Name, IntoHeaderName};
-use super::value::{HeaderValue as Value};
+use super::value::{HeaderValue as Value, IntoHeaderValue};
 use super::utils;
 
 
@@ -91,6 +93,51 @@ macro_rules! probe_loop {
     };
 }
 
+macro_rules! insert_phase_one {
+    (
+        $map:ident,
+        $key:expr,
+        $probe:ident,
+        $pos:ident,
+        $hash:ident,
+        $vacant:expr,
+        $occupied:expr,
+        $robinhood:expr
+    ) => {{
+        let $hash = utils::hash_elem(&$key);
+        let mut $probe = utils::desired_pos($map.mask, $hash);
+        let mut dist = 0;
+        let ret;
+
+        // Start at the ideal position, checking all slots
+        probe_loop!{'probe: $probe < $map.indices.len(), {
+            if let Some(($pos, entry_hash)) = $map.indices[$probe].resolve() {
+                // The slot is already occupied, but check if it has a lower
+                // displacement.
+                let their_dist = utils::probe_distance($map.mask, entry_hash, $probe);
+                if their_dist < dist {
+                    // The new key's distance is larger, so claim this spot and
+                    // displace the current entry.
+                    ret = $robinhood;
+                    break 'probe;
+                } else if entry_hash == $hash && $map.entries[$pos].key == $key {
+                    // There already is an entry with the same key.
+                    ret = $occupied;
+                    break 'probe;
+                }
+            } else {
+                // The entry is vacant, use it for this key.
+                ret = $vacant;
+                break 'probe;
+            }
+
+            dist += 1;
+        }}
+
+        ret
+    }}
+}
+
 
 impl Headers {
     pub(crate) fn new() -> Self {
@@ -163,7 +210,46 @@ impl Headers {
     }
 
     pub(crate) fn get(&self, name: impl IntoHeaderName) -> Option<&Value> {
-        self.__get(name)
+        self.__get(name.into_header_name()?)
+    }
+    pub(crate) fn get_mut(&mut self, name: impl IntoHeaderName) -> Option<&mut Value> {
+        match self.find(name.into_header_name()?) {
+            Some((_, found)) => Some(&mut self.entries[found].value),
+            None => None,
+        }
+    }
+    pub(crate) fn get_all(&self, name: impl IntoHeaderName) -> GetAll<'_, Value> {
+        GetAll {
+            map: self,
+            index: key.find(self).map(|(_, i)| i),
+        }
+    }
+
+    pub(crate) fn contains(&self, name: impl IntoHeaderName) -> bool {
+        match name.into_header_name() {
+            Some(name) => self.find(name).is_some(),
+            None => false,
+        }
+    }
+
+    pub(crate) fn insert(&mut self, name: impl IntoHeaderName, value: impl IntoHeaderValue) -> Option<Value> {
+        self.__insert(name.into_header_name()?, value.into_header_value())
+    }
+
+    pub(crate) fn iter(&self) -> Iter<'_, Value> {
+        Iter {
+            map: self,
+            entry: 0,
+            cursor: self.entries.first().map(|_| Cursor::Head),
+        }
+    }
+    pub(crate) fn iter_mut(&mut self) -> IterMut<'_, T> {
+        IterMut {
+            map: self as *mut _,
+            entry: 0,
+            cursor: self.entries.first().map(|_| Cursor::Head),
+            lt: PhantomData,
+        }
     }
 }
 
@@ -210,8 +296,8 @@ impl Headers {
         }
     }
 
-    fn __get(&self, name: impl IntoHeaderName) -> Option<&Value> {
-        match self.find(name.into_header_name()?) {
+    fn __get(&self, name: Name) -> Option<&Value> {
+        match self.find(name) {
             Some((_, found)) => Some(&self.entries[found].value),
             None => None,
         }
@@ -221,6 +307,41 @@ impl Headers {
         if self.entries.is_empty() {return None}
 
         let hash = utils::hash_elem(&name);
-        let mask = ;
+        let mask = self.mask;
+        let mut probe = utils::desired_pos(mask, hash);
+        let mut dist  = 0;
+
+        probe_loop! {probe < self.indices.len(), {
+            if let Some((i, entry_hash)) = self.indices[probe].resolve() {
+                if dist > utils::probe_distance(mask, entry_hash, probe) {
+                    return None;
+                } else if entry_hash == hash && self.entries[i].key == name {
+                    return Some((probe, i))
+                }
+            } else {
+                return None;
+            }
+
+            dist += 1;
+        }}
+    }
+
+    #[inline] fn __insert(&mut self, name: Name, value: Value) -> Option<Value> {
+        self.reserve_one();
+
+        insert_phase_one! {}
+    }
+
+    fn reserve_one(&mut self) {
+        let len = self.entries.len();
+        if len == self.capacity() {
+            let new_raw_capacity = 8;
+            self.mask = 8 - 1;
+            self.indices = vec![Pos::none(); new_raw_capacity].into_boxed_slice();
+            self.entries = Vec::with_capacity(utils::usable_capacity(new_raw_capacity));
+        } else {
+            let raw_capacity = self.indices.len();
+            self.grow(raw_capacity << 1);
+        }
     }
 }
