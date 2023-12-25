@@ -24,7 +24,14 @@ jobs:
           profile:   minimal
           override:  true
 
-      - uses: actions-rs/cargo@v1
+      - name: Check ohkami's buildability
+        uses: actions-rs/cargo@v1
         with:
           command: check
           args: --features rt_${{ matrix.rt }}${{ matrix.x == '' && '' || ',' }}${{ matrix.x }}${{ matrix.toolchain == 'nightly' && ',nightly' || '' }},DEBUG
+
+      - name: Check examples' buildablity
+        working-directory: examples
+        uses: actions-rs/cargo@v1
+        with:
+          command: check
