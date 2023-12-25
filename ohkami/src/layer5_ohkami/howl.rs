@@ -1,7 +1,9 @@
 use std::{sync::Arc, pin::Pin};
 use super::{Ohkami};
 use crate::{__rt__, Request, Context};
+
 #[cfg(feature="rt_async-std")] use crate::__rt__::StreamExt;
+#[cfg(feature="websocket")]    use crate::websocket::reserve_upgrade;
 
 
 pub trait TCPAddress {
@@ -44,15 +46,23 @@ impl Ohkami {
         #[cfg(feature="rt_async-std")]
         while let Some(Ok(mut stream)) = listener.incoming().next().await {
             let router = Arc::clone(&router);
-            let c      = Context::new();
 
             __rt__::task::spawn(async move {
                 let mut req = Request::init();
                 let mut req = unsafe {Pin::new_unchecked(&mut req)};
                 req.as_mut().read(&mut stream).await;
 
-                let res = router.handle(c, req.get_mut()).await;
-                res.send(&mut stream).await
+                #[cfg(not(feature="websocket"))]
+                let res = router.handle(Context::new(), req.get_mut()).await;
+                #[cfg(feature="websocket")]
+                let (res, upgrade_id) = router.handle(Context::new(), req.get_mut()).await;
+
+                res.send(&mut stream).await;
+
+                #[cfg(feature="websocket")]
+                if let Some(id) = upgrade_id {
+                    unsafe{reserve_upgrade(id, stream)}
+                }
             }).await
         }
         
@@ -65,10 +75,10 @@ impl Ohkami {
                 }
             ));
 
-            let router = Arc::clone(&router);
-            let c      = Context::new();
-
-            if let Err(e) = __rt__::task::spawn({let stream = stream.clone();
+            match __rt__::task::spawn({
+                let router = router.clone();
+                let stream = stream.clone();
+                
                 async move {
                     let stream = &mut *stream.lock().await;
 
@@ -76,15 +86,33 @@ impl Ohkami {
                     let mut req = unsafe {Pin::new_unchecked(&mut req)};
                     req.as_mut().read(stream).await;
 
-                    let res = router.handle(c, req.get_mut()).await;
-                    res.send(stream).await
+                    #[cfg(not(feature="websocket"))]
+                    let res = router.handle(Context::new(), req.get_mut()).await;
+                    #[cfg(feature="websocket")]
+                    let (res, upgrade_id) = router.handle(Context::new(), req.get_mut()).await;
+
+                    res.send(stream).await;
+
+                    #[cfg(feature="websocket")]
+                    upgrade_id
                 }
             }).await {
-                (|| async {
+                #[cfg(not(feature="websocket"))]
+                Ok(_) => (),
+
+                #[cfg(feature="websocket")]
+                Ok(upgrade_id) => {
+                    if let Some(id) = upgrade_id {
+                        let stream = __rt__::Mutex::into_inner(Arc::into_inner(stream).unwrap());
+                        unsafe{reserve_upgrade(id, stream)}
+                    }
+                }
+
+                Err(e) => (|| async {
                     println!("Fatal error: {e}");
                     let res = Context::new().InternalServerError();
                     res.send(&mut *stream.lock().await).await
-                })().await
+                })().await,
             }
         }
     }

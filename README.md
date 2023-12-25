@@ -184,6 +184,42 @@ async fn main() {
 
 <br/>
 
+### web socket
+Activate `websocket` feature.
+
+```rust
+use ohkami::prelude::*;
+use ohkami::websocket::{WebSocketContext, Message};
+
+fn handle_websocket(c: WebSocketContext) -> Response {
+    c.on_upgrade(|ws| async move {
+        while let Some(Ok(message)) = ws.recv().await {
+            match message {
+                Message::Text(text) => {
+                    let response = Message::from(text);
+                    if let Err(e) = ws.send(response).await {
+                        tracing::error!("{e}");
+                        break
+                    }
+                }
+                Message::Close(_) => break,
+                other => tracing::warning!("Unsupported message type: {other}"),
+            }
+        }
+    }).await
+}
+
+#[tokio::main]
+async fn main() {
+    Ohkami::new((
+        "/websocket"
+            .GET(handle_websocket)
+    )).howl(8080).await
+}
+```
+
+<br/>
+
 ### testing
 ```rust
 use ohkami::prelude::*;

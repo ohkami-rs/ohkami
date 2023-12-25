@@ -14,3 +14,4 @@ pub trait IntoCows<'l> {
 }
 impl IntoCows<'static> for &'static str {fn into_cow(self) -> Cow<'static, str> {Cow::Borrowed(self)}}
 impl IntoCows<'static> for String {fn into_cow(self) -> Cow<'static, str> {Cow::Owned(self)}}
+impl IntoCows<'static> for Cow<'static, str> {fn into_cow(self) -> Cow<'static, str> {self}}

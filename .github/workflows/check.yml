@@ -6,44 +6,25 @@ on:
       - main
 
 jobs:
-  check-stable:
+  test:
     runs-on: ubuntu-latest
 
     strategy:
       matrix:
-        rt: [tokio, async-std]
+        rt:        ["tokio", "async-std"]
+        x:         [",websocket", ""]
+        toolchain: ["stable", "nightly"]
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - uses: actions-rs/toolchain@v1
         with:
-          toolchain: stable
+          toolchain: ${{ matrix.toolchain }}
           profile:   minimal
           override:  true
 
       - uses: actions-rs/cargo@v1
         with:
           command: check
-          args: --features rt_${{ matrix.rt }}
-
-  check-nighlt:
-    runs-on: ubuntu-latest
-
-    strategy:
-      matrix:
-        rt: [tokio, async-std]
-
-    steps:
-      - uses: actions/checkout@v3
-
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: nightly
-          profile:   minimal
-          override:  true
-
-      - uses: actions-rs/cargo@v1
-        with:
-          command: check
-          args: --features nightly,rt_${{ matrix.rt }}
+          args: --features rt_${{ matrix.rt }}${{ matrix.x }}${{ matrix.toolchain == "nightly" && ",nightly" || "" }},DEBUG

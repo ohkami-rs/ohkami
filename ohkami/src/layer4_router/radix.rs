@@ -6,6 +6,12 @@ use crate::{
     layer3_fang_handler::{Handler, FrontFang, PathParams, BackFang},
 };
 
+#[cfg(feature="websocket")]
+use crate::websocket::{
+    UpgradeID,
+    request_upgrade_id,
+};
+
 
 /*===== defs =====*/
 pub(crate) struct RadixRouter {
@@ -43,12 +49,23 @@ pub(super) enum Pattern {
 
 
 /*===== impls =====*/
+#[cfg(feature="websocket")] type HandleResult = (Response, Option<UpgradeID>);
+#[cfg(feature="websocket")] fn __no_upgrade(res: Response) -> HandleResult {
+    (res, None)
+}
+
+#[cfg(not(feature="websocket"))] type HandleResult = Response;
+#[cfg(not(feature="websocket"))] fn __no_upgrade(res: Response) -> HandleResult {
+    res
+}
+
+
 impl RadixRouter {
     pub(crate) async fn handle(
         &self,
         mut c: Context,
         req:   &mut Request,
-    ) -> Response {
+    ) -> HandleResult {
         let mut params    = PathParams::new();
         let search_result = match req.method() {
             Method::GET    => self.GET   .search(&mut c, req/*.path_bytes()*/, &mut params),
@@ -62,17 +79,17 @@ impl RadixRouter {
 
                 for ff in front {
                     if let Err(err_res) = ff.0(&mut c, req) {
-                        return err_res
+                        return __no_upgrade(err_res)
                     }
                 }
 
                 let target = match self.GET.search(&mut c, req/*.path_bytes()*/, &mut params) {
                     Ok(Some(node)) => node,
-                    Ok(None)       => return c.NotFound(),
-                    Err(err_res)   => return err_res,
+                    Ok(None)       => return __no_upgrade(c.NotFound()),
+                    Err(err_res)   => return __no_upgrade(err_res),
                 };
                 
-                let Response { headers, .. } = target.handle(c, req, params).await;
+                let Response { headers, .. } = target.handle_discarding_upgrade(c, req, params).await;
                 let mut res = Response {
                     headers,
                     status:  Status::NoContent,
@@ -83,18 +100,18 @@ impl RadixRouter {
                     res = bf.0(res)
                 }
 
-                return res
+                return __no_upgrade(res);
             }
             Method::OPTIONS => {
                 let Some((cors_str, cors)) = crate::layer3_fang_handler::builtin::CORS.get() else {
-                    return c.InternalServerError()
+                    return __no_upgrade(c.InternalServerError());
                 };
 
                 let (front, back) = self.OPTIONSfangs;
 
                 for ff in front {
                     if let Err(err_res) = ff.0(&mut c, req) {
-                        return err_res
+                        return __no_upgrade(err_res);
                     }
                 }
 
@@ -102,33 +119,33 @@ impl RadixRouter {
 
                 {
                     let Some(origin) = req.header("Origin") else {
-                        return c.BadRequest()
+                        return __no_upgrade(c.BadRequest());
                     };
                     if !cors.AllowOrigin.matches(origin) {
-                        return c.Forbidden()
+                        return __no_upgrade(c.Forbidden());
                     }
 
                     if req.header("Authorization").is_some() && !cors.AllowCredentials {
-                        return c.Forbidden()
+                        return __no_upgrade(c.Forbidden());
                     }
 
                     if let Some(request_method) = req.header("Access-Control-Request-Method") {
                         let request_method = Method::from_bytes(request_method.as_bytes());
                         let Some(allow_methods) = cors.AllowMethods.as_ref() else {
-                            return c.Forbidden()
+                            return __no_upgrade(c.Forbidden());
                         };
                         if !allow_methods.contains(&request_method) {
-                            return c.Forbidden()
+                            return __no_upgrade(c.Forbidden());
                         }
                     }
 
                     if let Some(request_headers) = req.header("Access-Control-Request-Headers") {
                         let mut request_headers = request_headers.split(',').map(|h| h.trim_matches(' '));
                         let Some(allow_headers) = cors.AllowHeaders.as_ref() else {
-                            return c.Forbidden()
+                            return __no_upgrade(c.Forbidden());
                         };
                         if !request_headers.all(|h| allow_headers.contains(&h)) {
-                            return c.Forbidden()
+                            return __no_upgrade(c.Forbidden());
                         }
                     }
                 }
@@ -139,14 +156,14 @@ impl RadixRouter {
                     res = bf.0(res)
                 }
                 
-                return res
+                return __no_upgrade(res);
             }
         };
 
         let target = match search_result {
             Ok(Some(node)) => node,
-            Ok(None)       => return c.NotFound(),
-            Err(err_res)   => return err_res,
+            Ok(None)       => return __no_upgrade(c.NotFound()),
+            Err(err_res)   => return __no_upgrade(err_res),
         };
 
         target.handle(c, req, params).await
@@ -155,13 +172,41 @@ impl RadixRouter {
 
 impl Node {
     #[inline] pub(super) async fn handle(&self,
+        #[allow(unused_mut)] mut c: Context,
+        req:    &mut Request,
+        params: PathParams,
+    ) -> HandleResult {
+        match &self.handler {
+            Some(handler) => {
+                #[cfg(feature="websocket")]
+                let upgrade_id = match (handler.requires_upgrade).then(|| async {
+                    let id = request_upgrade_id().await;
+                    c.upgrade_id = Some(id);
+                    id
+                }) {None => None, Some(id) => Some(id.await)};
+
+                let mut res = (handler.proc)(req, c, params).await;
+                for b in self.back {
+                    res = b.0(res);
+                }
+
+                #[cfg(feature="websocket")]
+                {(res, upgrade_id)}
+                #[cfg(not(feature="websocket"))]
+                {res}
+            }
+            None => __no_upgrade(c.NotFound()),
+        }
+    }
+
+    #[inline] pub(super) async fn handle_discarding_upgrade(&self,
         c:      Context,
         req:    &mut Request,
         params: PathParams,
     ) -> Response {
         match &self.handler {
-            Some(h) => {
-                let mut res = h.0(req, c, params).await;
+            Some(handler) => {
+                let mut res = (handler.proc)(req, c, params).await;
                 for b in self.back {
                     res = b.0(res);
                 }

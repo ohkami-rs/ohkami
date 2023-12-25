@@ -18,8 +18,9 @@ pub(crate) type PathParams = List<Slice, PATH_PARAMS_LIMIT>;
 
 
 #[cfg(not(test))]
-pub struct Handler(
-    pub(crate) Box<dyn
+pub struct Handler {
+    #[cfg(feature="websocket")] pub(crate) requires_upgrade: bool,
+    pub(crate) proc: Box<dyn
         Fn(&mut Request, Context, PathParams) -> Pin<
             Box<dyn
                 Future<Output = Response>
@@ -27,12 +28,13 @@ pub struct Handler(
             >
         > + Send + Sync + 'static
     >
-);
+}
 
 #[cfg(test)]
 #[derive(Clone)]
-pub struct Handler(
-    pub(crate) Arc<dyn
+pub struct Handler {
+    #[cfg(feature="websocket")] pub(crate) requires_upgrade: bool,
+    pub(crate) proc: Arc<dyn
         Fn(&mut Request, Context, PathParams) -> Pin<
             Box<dyn
                 Future<Output = Response>
@@ -40,12 +42,12 @@ pub struct Handler(
             >
         > + Send + Sync + 'static
     >
-);
+}
 
 
 impl Handler {
-    fn new(proc: (impl
-        Fn(&mut Request, Context, PathParams) -> Pin<
+    fn new(
+        proc: (impl Fn(&mut Request, Context, PathParams) -> Pin<
             Box<dyn
                 Future<Output = Response>
                 + Send + 'static
@@ -53,7 +55,18 @@ impl Handler {
             > + Send + Sync + 'static
         )
     ) -> Self {
-        #[cfg(not(test))] {Self(Box::new(proc))}
-        #[cfg(test)]      {Self(Arc::new(proc))}
+        #[cfg(not(test))] {Self {
+            #[cfg(feature="websocket")] requires_upgrade: false,
+            proc: Box::new(proc),
+        }}
+        #[cfg(test)] {Self {
+            #[cfg(feature="websocket")] requires_upgrade: false,
+            proc: Arc::new(proc),
+        }}
+    }
+
+    #[cfg(feature="websocket")] fn requires_upgrade(mut self) -> Self {
+        self.requires_upgrade = true;
+        self
     }
 }
