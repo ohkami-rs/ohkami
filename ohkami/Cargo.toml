@@ -23,7 +23,7 @@ serde            = "1.0"
 serde_json       = "1.0"
 chrono           = "0.4"
 percent-encoding = "2.2.0"
-byte_reader      = "1.1.2"
+byte_reader      = { version = "1.2.2", features = ["text"] }
 
 [features]
 rt_tokio         = ["dep:tokio"]
@@ -38,9 +38,9 @@ DEBUG = [
     "tokio?/macros",
     "async-std?/attributes"
 ]
-# default = [
-#     "rt_tokio",
-#     #"rt_async-std",
-#     "DEBUG",
-#     # "nightly"
-# ]
+default = [
+    "rt_tokio",
+    #"rt_async-std",
+    "DEBUG",
+    # "nightly"
+]

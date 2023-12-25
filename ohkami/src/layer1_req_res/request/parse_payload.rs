@@ -166,10 +166,14 @@ pub(super/* for test */) fn parse_formpart(r: &mut Reader, boundary: &str) -> Re
             }
         } else if header.eq_ignore_ascii_case("Content-Disposition") {
             r.consume(": form-data; name=").ok_or_else(EXPECTED_FORMDATA_AND_NAME)?;
-            name = r.read_string().ok_or_else(EXPECTED_FORMDATA_AND_NAME)?;
+            name = r.read_quoted_by(b'"', b'"').map(|bytes|
+                String::from_utf8(bytes.to_vec()).map_err(|_| INVALID_FILENANE())
+            ).ok_or_else(EXPECTED_FORMDATA_AND_NAME)??;
             if r.consume("; ").is_some() {
                 r.consume("filename=").ok_or_else(EXPECTED_FILENAME)?;
-                file_name = Some(r.read_string().ok_or_else(INVALID_FILENANE)?)
+                file_name = Some(String::from_utf8(
+                    r.read_quoted_by(b'"', b'"').ok_or_else(EXPECTED_FILENAME)?.to_vec()
+                ).map_err(|_| INVALID_FILENANE())?);
             }
         } else {// ignore the line
             r.skip_while(|b| b != &b'\r');
@@ -273,7 +277,9 @@ pub(super/* for test */) fn parse_attachment(r: &mut Reader, boundary: &str) -> 
             r.consume(": attachment").ok_or_else(EXPECTED_ATTACHMENT)?;
             if r.consume("; ").is_some() {
                 r.consume("filename=").ok_or_else(EXPECTED_FILENAME)?;
-                name = Some(r.read_string().ok_or_else(INVALID_FILENANE)?);
+                name = Some(String::from_utf8(
+                    r.read_quoted_by(b'"', b'"').ok_or_else(INVALID_FILENANE)?.to_vec()
+                ).map_err(|_| INVALID_FILENANE())?);
             }
         } else if header.eq_ignore_ascii_case("Content-Type") {
             r.consume(": ").ok_or_else(EXPECTED_VALID_HEADER)?;
@@ -459,7 +465,7 @@ pub struct Parse<'a> {
 
                         // First we do a debug_assert to confirm our description above.
                         let raw_utf8: *const [u8] = utf8.as_bytes();
-                        debug_assert!(raw_utf8 == &*bytes as *const [u8]);
+                        debug_assert!(std::ptr::eq(raw_utf8, &*bytes as *const [u8]));
 
                         // Given we know the original input bytes are valid UTF-8,
                         // and we have ownership of those bytes, we re-use them and
