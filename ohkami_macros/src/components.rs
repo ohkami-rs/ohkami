@@ -66,12 +66,12 @@ pub(crate) enum Format {
     pub(crate) fn parse(tokens: TokenStream) -> Result<Self> {
         match tokens.to_token_stream().to_string().as_str() {
             "JSON"       => Ok(Self::JSON),
+            "Form"       => Ok(Self::Form),
             "URLEncoded" => Ok(Self::URLEncoded),
-            "FormData"   => Ok(Self::Form),
             _ => Err(Error::new(Span::mixed_site(), "\
                 Valid format: \n\
                 - `#[Payload(JSON)]` \n\
-                - `#[Payload(FormData)]` \n\
+                - `#[Payload(Form)]` \n\
                 - `#[Payload(URLEncoded)]` \n\
             "))
         }

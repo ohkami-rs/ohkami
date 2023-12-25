@@ -274,7 +274,7 @@ mod x_websocket;
 
 /*===== visibility managements =====*/
 
-pub use layer1_req_res     ::{Request, Response, FromRequest};
+pub use layer1_req_res     ::{Request, Response, FromRequest, FromParam};
 pub use layer2_context     ::{Context};
 pub use layer3_fang_handler::{Route, Fang};
 pub use layer5_ohkami      ::{Ohkami, IntoFang};
@@ -309,7 +309,6 @@ pub mod __internal__ {
         parse_json,
         parse_formparts,
         parse_urlencoded,
-        FromBuffer,
     };
 }
 
