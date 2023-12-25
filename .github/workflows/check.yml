@@ -6,7 +6,7 @@ on:
       - main
 
 jobs:
-  test:
+  Check:
     runs-on: ubuntu-latest
 
     strategy:
@@ -24,7 +24,9 @@ jobs:
           profile:   minimal
           override:  true
 
-      - uses: actions-rs/cargo@v1
-        with:
-          command: check
-          args: --features rt_${{ matrix.rt }}${{ matrix.x == '' && '' || ',' }}${{ matrix.x }}${{ matrix.toolchain == 'nightly' && ',nightly' || '' }},DEBUG
+      - name: Check ohkami's buildability
+        run: cargo check --features rt_${{ matrix.rt }}${{ matrix.x == '' && '' || ',' }}${{ matrix.x }}${{ matrix.toolchain == 'nightly' && ',nightly' || '' }},DEBUG
+        
+      - name: Check examples' buildablity
+        working-directory: examples
+        run: cargo check

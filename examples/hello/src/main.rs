@@ -61,7 +61,7 @@ mod fangs {
     pub struct AppendServer;
     impl IntoFang for AppendServer {
         fn bite(self) -> Fang {
-            Fang(|c: &mut Context, req: Request| {
+            Fang(|c: &mut Context| {
                 c.headers
                     .Server("ohkami");
 
@@ -70,8 +70,6 @@ mod fangs {
                     [current headers]\n\
                     {:?}\
                 ", c.headers);
-
-                req
             })
         }
     }
@@ -79,7 +77,7 @@ mod fangs {
     pub struct LogRequest;
     impl IntoFang for LogRequest {
         fn bite(self) -> Fang {
-            Fang(|_: &mut Context, req: Request| {
+            Fang(|req: &mut Request| {
                 let __method__ = req.method();
                 let __path__   = req.path();
 
@@ -88,8 +86,6 @@ mod fangs {
                     [ method ] {__method__}\n\
                     [  path  ] {__path__}\n\
                 ");
-
-                req
             })
         }
     }
