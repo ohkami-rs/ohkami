@@ -120,7 +120,7 @@ fn impl_payload_formdata(data: &ItemStruct) -> Result<TokenStream> {
 
     // `#[Payload(Form)]` doesn't accept optional fields
     if fields_data.iter().any(|FieldData { is_optional, .. }| *is_optional) {
-        return Err(syn::Error::new(Span::mixed_site(), "`Option<_>` is not available in `#[Payload(FormData)]`"))
+        return Err(syn::Error::new(Span::mixed_site(), "`Option<_>` is not available in `#[Payload(Form)]`"))
     }
 
     let declaring_exprs = {
@@ -152,7 +152,7 @@ fn impl_payload_formdata(data: &ItemStruct) -> Result<TokenStream> {
                 "String" => PartType::Field,
                 "File" | "utils::File" | "ohkami::File" | "::ohkami::File" => PartType::File,
                 "Vec<File>" | "Vec<utils::File>" | "Vec<ohkami::utils::File>" | "Vec<::ohkami::utils::File>" => PartType::Files,
-                unexpected  => return Err(syn::Error::new(Span::call_site(), &format!("Unexpected field type `{unexpected}` : `#[Payload(FormData)]` supports only `String`, `File` or `Vec<File>` as field type")))
+                unexpected  => return Err(syn::Error::new(Span::call_site(), &format!("Unexpected field type `{unexpected}` : `#[Payload(Form)]` supports only `String`, `File` or `Vec<File>` as field type")))
             }.into_method_call();
 
             Ok(quote!{

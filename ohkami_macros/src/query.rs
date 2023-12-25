@@ -24,7 +24,7 @@ pub(super) fn Query(data: TokenStream) -> Result<TokenStream> {
                 quote!{
                     #field_name: req.query::<#inner_type>(#field_name_str) // Option<Result<_>>
                         .transpose()
-                        .map_err(|e| e.to_string().into())?,
+                        .map_err(|e| ::std::borrow::Cow::Owned(e.to_string()))?,
                 }
             } else {
                 quote!{
@@ -32,7 +32,7 @@ pub(super) fn Query(data: TokenStream) -> Result<TokenStream> {
                         .ok_or_else(|| ::std::borrow::Cow::Borrowed(
                             concat!("Expected query parameter `", #field_name_str, "`")
                         ))?
-                        .map_err(|e| e.to_string().into())?,
+                        .map_err(|e| ::std::borrow::Cow::Owned(e.to_string()))?,
                 }
             } 
         });
