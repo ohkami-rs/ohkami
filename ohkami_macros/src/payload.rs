@@ -190,7 +190,7 @@ fn impl_payload_formdata(data: &ItemStruct) -> Result<TokenStream> {
             fn parse(req: &::ohkami::Request) -> ::std::result::Result<Self, ::std::borrow::Cow<'static, str>> {
                 let (content_type, payload) = req.payload()
                     .ok_or_else(|| ::std::borrow::Cow::Borrowed("Expected a payload"))?;
-                let ::ohkami::ContentType::FormData { boundary } = content_type
+                let ::ohkami::http::ContentType::FormData { boundary } = content_type
                     else {return ::std::result::Result::Err(::std::borrow::Cow::Borrowed("Expected a `multipart/form-data` payload"))};
             
                 #declaring_exprs
