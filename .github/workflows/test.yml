@@ -12,7 +12,7 @@ jobs:
     strategy:
       matrix:
         rt:        ['tokio', 'async-std']
-        x:         [',websocket', '']
+        x:         ['websocket', '']
         toolchain: ['stable', 'nightly']
 
     steps:
@@ -27,4 +27,4 @@ jobs:
       - uses: actions-rs/cargo@v1
         with:
           command: test
-          args: --features rt_${{ matrix.rt }}${{ matrix.x }}${{ matrix.toolchain == 'nightly' && ',nightly' || '' }},DEBUG
+          args: --features rt_${{ matrix.rt }}${{ matrix.x != ',' }}${{ matrix.x }}${{ matrix.toolchain != '' && ',' }}${{ matrix.toolchain }},DEBUG
