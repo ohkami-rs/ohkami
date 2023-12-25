@@ -1,14 +1,12 @@
-use tokio::io::AsyncWriteExt;
+use crate::__rt__::AsyncWriter;
+use crate::x_websocket::{Config, Message};
 
-use crate::x_websocket::{Message};
-use crate::x_websocket::{Config};
-
-use std::cell::UnsafeCell;
 use std::pin::Pin;
-use std::sync::Arc;
-use std::io::{Error};
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::task::Poll;
+use std::io::{Error};
+use std::cell::UnsafeCell;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 
 /// Web socket client for test with upgrade
