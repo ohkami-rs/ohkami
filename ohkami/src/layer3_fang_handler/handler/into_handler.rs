@@ -15,19 +15,19 @@ pub trait IntoHandler<Args> {
 
 #[cold] fn __bad_request(
     c: &Context,
-    e: impl std::fmt::Debug,
+    e: impl std::fmt::Display,
 ) -> std::pin::Pin<Box<impl Future<Output = Response>>> {
     Box::pin({
-        let res = c.BadRequest().text(format!("{e:?}"));
+        let res = c.BadRequest().text(e.to_string());
         async {res}
     })
 }
 
 #[inline] fn from_param_bytes<P: FromParam>(bytes: &[u8]) -> Result<P, Cow<'static, str>> {
     let param = std::str::from_utf8(bytes)
-        .map_err(|utf8err| Cow::Owned(format!("{utf8err}")))?;
+        .map_err(|utf8err| Cow::Owned(utf8err.to_string()))?;
     <P as FromParam>::from_param(param)
-        .map_err(|e| Cow::Owned(format!("{e:?}")))
+        .map_err(|e| e.to_string().into())
 }
 
 const _: (/* only Context */) = {

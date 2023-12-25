@@ -27,12 +27,12 @@ use crate::{Request};
 /// }
 /// ```
 pub trait FromRequest: Sized {
-    type Error: std::fmt::Debug + 'static;
+    type Error: std::fmt::Display + 'static;
     fn parse(req: &Request) -> Result<Self, Self::Error>;
 }
 
 pub trait FromParam: Sized {
-    type Error: std::fmt::Debug;
+    type Error: std::fmt::Display;
     fn from_param(param: &str) -> Result<Self, Self::Error>;
 } const _: () = {
     impl FromParam for String {

@@ -22,15 +22,17 @@ pub(super) fn Query(data: TokenStream) -> Result<TokenStream> {
             if field_type_str.starts_with("Option") {
                 let inner_type = parse_str::<Type>(field_type_str.strip_prefix("Option <").unwrap().strip_suffix(">").unwrap()).unwrap();
                 quote!{
-                    #field_name: req.query::<#inner_type>(#field_name_str)
-                        .transpose()?,
+                    #field_name: req.query::<#inner_type>(#field_name_str) // Option<Result<_>>
+                        .transpose()
+                        .map_err(|e| e.to_string().into())?,
                 }
             } else {
                 quote!{
                     #field_name: req.query::<#field_type>(#field_name_str) // Option<Result<_>>
                         .ok_or_else(|| ::std::borrow::Cow::Borrowed(
                             concat!("Expected query parameter `", #field_name_str, "`")
-                        ))??,
+                        ))?
+                        .map_err(|e| e.to_string().into())?,
                 }
             } 
         });
