@@ -7,7 +7,7 @@ use crate::components::*;
 
 #[allow(non_snake_case)]
 pub(super) fn Query(data: TokenStream) -> Result<TokenStream> {
-    let data = parse_struct("Queries", data)?;
+    let data = parse_struct("Query", data)?;
 
     let impl_from_request = {
         let struct_name = &data.ident;
@@ -37,6 +37,7 @@ pub(super) fn Query(data: TokenStream) -> Result<TokenStream> {
         
         quote!{
             impl #lifetimes ::ohkami::FromRequest for #struct_name #lifetimes {
+                type Error = ::std::borrow::Cow<'static, str>;
                 fn parse(req: &::ohkami::Request) -> ::std::result::Result<Self, ::std::borrow::Cow<'static, str>> {
                     ::std::result::Result::Ok(Self {
                         #( #fields )*
