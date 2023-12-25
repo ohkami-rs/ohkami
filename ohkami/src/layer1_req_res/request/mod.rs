@@ -15,7 +15,7 @@ pub(crate) const METADATA_SIZE: usize = 1024;
 pub(crate) const PAYLOAD_LIMIT: usize = 2 << 32;
 
 pub(crate) const QUERIES_LIMIT: usize = 4;
-pub(crate) const HEADERS_LIMIT: usize = 32;
+pub(crate) const HEADERS_LIMIT: usize = 64;
 
 
 pub struct Request {pub(crate) _metadata: [u8; METADATA_SIZE],
