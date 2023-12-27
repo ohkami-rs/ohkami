@@ -79,6 +79,15 @@ macro_rules! Header {
             #[inline] pub fn as_str(&self) -> &'static str {
                 unsafe {std::str::from_utf8_unchecked(self.as_bytes())}
             }
+
+            #[cfg(test)] pub fn from_bytes(bytes: &[u8]) -> Option<Self> {
+                match bytes {
+                    $(
+                        $name_bytes => Some(Self::$konst),
+                    )*
+                    _ => None
+                }
+            }
         }
 
         impl<T: AsRef<[u8]>> PartialEq<T> for Header {
@@ -249,3 +258,15 @@ impl Headers {
         write!(buf <- b"\r\n");
     }
 }
+
+const _: () = {
+    use std::fmt::Debug;
+
+    impl Debug for Headers {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            f.debug_map()
+                .entries(self.iter().map(|(k, v)| (k, v.escape_ascii())))
+                .finish()
+        }
+    }
+};

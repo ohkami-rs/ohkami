@@ -9,7 +9,7 @@ use crate::{Fang, IntoFang, http::Status};
     let simple_ohkami = Ohkami::new(());
 
     let res = simple_ohkami.oneshot(TestRequest::GET("/")).await;
-    assert_eq!(res.status, Status::NotFound);
+    assert_eq!(res.status(), Status::NotFound);
 
     let hello_ohkami = Ohkami::new((
         "/hello".
@@ -17,11 +17,11 @@ use crate::{Fang, IntoFang, http::Status};
     ));
 
     let res = hello_ohkami.oneshot(TestRequest::GET("/")).await;
-    assert_eq!(res.status, Status::NotFound);
+    assert_eq!(res.status(), Status::NotFound);
 
     let res = hello_ohkami.oneshot(TestRequest::GET("/hello")).await;
-    assert_eq!(res.status, Status::OK);
-    assert_eq!(res.content.unwrap().text(), Some("Hello, world!"));
+    assert_eq!(res.status(), Status::OK);
+    assert_eq!(res.text(), Some("Hello, world!"));
 }
 
 async fn hello(c: Context) -> Response {
@@ -41,34 +41,40 @@ async fn hello(c: Context) -> Response {
     ));
 
     let res = testing_example.oneshot(TestRequest::GET("/")).await;
-    assert_eq!(res.status, Status::NotFound);
+    assert_eq!(res.status(), Status::NotFound);
 
     let res = testing_example.oneshot(TestRequest::GET("/health")).await;
-    assert_eq!(res.status, Status::NoContent);
-    assert_eq!(res.headers.get("Server").unwrap(), "ohkami");
-    assert_eq!(res.headers.get("X-State"), None);
+    assert_eq!(res.status(), Status::NoContent);
+    assert_eq!(res.header("Server").unwrap(), "ohkami");
+    assert_eq!(res.header("X-State"), None);
 
     let res = testing_example.oneshot(TestRequest::GET("/users/100")).await;
-    assert_eq!(res.status, Status::NotFound);
-    assert_eq!(res.headers.get("Server").unwrap(),  "ohkami");
-    assert_eq!(res.headers.get("X-State").unwrap(), "testing");
+    assert_eq!(res.status(), Status::NotFound);
+    assert_eq!(res.header("Server").unwrap(),  "ohkami");
+    assert_eq!(res.header("X-State").unwrap(), "testing");
 
     let res = testing_example.oneshot(TestRequest::GET("/users/42")).await;
-    assert_eq!(res.status, Status::OK);
-    assert_eq!(res.content.unwrap().json().unwrap(), r#"{"name":"kanarus","age":20}"#);
+    assert_eq!(res.status(), Status::OK);
+    assert_eq!(
+        res.json::<serde_json::Value>().unwrap().unwrap(),
+        serde_json::json!({"name":"kanarus","age":20}),
+    );
 
     let res = testing_example.oneshot(TestRequest::PUT("/users")).await;
-    assert_eq!(res.status, Status::BadRequest);
+    assert_eq!(res.status(), Status::BadRequest);
 
     let res = testing_example.oneshot(TestRequest::PUT("/users")
         .json(CreateUser {
             name: format!("kanarus"),
             age:  None,
         })).await;
-    assert_eq!(res.status, Status::Created);
-    assert_eq!(res.headers.get("Server").unwrap(),   "ohkami");
-    assert_eq!(res.headers.get("X-State").unwrap(),  "testing");
-    assert_eq!(res.content.unwrap().json().unwrap(), r#"{"name":"kanarus","age":0}"#);
+    assert_eq!(res.status(), Status::Created);
+    assert_eq!(res.header("Server").unwrap(),   "ohkami");
+    assert_eq!(res.header("X-State").unwrap(),  "testing");
+    assert_eq!(
+        res.json::<serde_json::Value>().unwrap().unwrap(),
+        serde_json::json!({"name":"kanarus","age":0}),
+    );
 }
 
 struct SetCustomHeaders;

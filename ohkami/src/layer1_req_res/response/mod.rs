@@ -89,7 +89,12 @@ impl Response {
         self
     }
     pub fn json(mut self, json: impl serde::Serialize) -> Self {
-        #[cold] fn __json_serialize_error_response
+        #[cold] fn __json_serialize_error_response(mut res: Response, err: serde_json::Error) -> Response {
+            let body = err.to_string().into_bytes();
+            res.headers.ContentType("text/plain").ContentLength(body.len().to_string());
+            res.content = Some(Cow::Owned(body));
+            res
+        }
 
         match serde_json::to_string(&json) {
             Ok(json) => {let body = json.into_bytes();
@@ -97,13 +102,15 @@ impl Response {
                 self.content = Some(Cow::Owned(body));
                 self
             }
-            Err(err) => {let body = err.to_string();
-
-            }
+            Err(err) => __json_serialize_error_response(self, err)
         }
     }
     pub fn json_literal(mut self, json_literal: &'static str) -> Self {
+        let body = json_literal.as_bytes();
 
+        self.headers.ContentType("application/json").ContentLength(body.len().to_string());
+        self.content = Some(Cow::Borrowed(body));
+        self
     }
 }
 

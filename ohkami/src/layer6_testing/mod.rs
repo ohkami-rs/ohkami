@@ -5,12 +5,11 @@ mod x_websocket;
 pub(crate) use x_websocket::{TestStream, TestWebSocket};
 
 use crate::{Response, Request, Ohkami, Context};
-use crate::layer0_lib::{IntoCows, Status, Method, ContentType};
+use crate::layer0_lib::{Method, Status, server_header};
 
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::{pin::Pin, future::Future, format as f};
-use byte_reader::Reader;
 
 
 pub trait Testing {
@@ -131,10 +130,10 @@ pub struct TestRequest {
     ( $($method:ident)* ) => {$(
         #[allow(non_snake_case)]
         impl TestRequest {
-            pub fn $method(path: impl IntoCows<'static>) -> Self {
+            pub fn $method(path: impl Into<Cow<'static, str>>) -> Self {
                 Self {
                     method:  Method::$method,
-                    path:    path.into_cow(),
+                    path:    path.into(),
                     queries: HashMap::new(),
                     headers: HashMap::new(),
                     content: None,
@@ -145,12 +144,12 @@ pub struct TestRequest {
 } new_test_request! {
     GET PUT POST PATCH DELETE HEAD OPTIONS
 } impl TestRequest {
-    pub fn query(mut self, key: impl IntoCows<'static>, value: impl IntoCows<'static>) -> Self {
-        self.queries.insert(key.into_cow(), value.into_cow());
+    pub fn query(mut self, key: impl Into<Cow<'static, str>>, value: impl Into<Cow<'static, str>>) -> Self {
+        self.queries.insert(key.into(), value.into());
         self
     }
-    pub fn header(mut self, key: impl IntoCows<'static>, value: impl IntoCows<'static>) -> Self {
-        self.headers.insert(key.into_cow(), value.into_cow());
+    pub fn header(mut self, key: impl Into<Cow<'static, str>>, value: impl Into<Cow<'static, str>>) -> Self {
+        self.headers.insert(key.into(), value.into());
         self
     }
 }
@@ -163,8 +162,8 @@ impl TestRequest {
         self.header("Content-Type", "application/json")
             .header("Content-Length", content_lenth.to_string())
     }
-    pub fn json_lit(mut self, json: impl IntoCows<'static>) -> Self {
-        let content = json.into_cow();
+    pub fn json_lit(mut self, json: impl Into<Cow<'static, str>>) -> Self {
+        let content = json.into();
         let content_lenth = content.len();
 
         self.content = Some(content);
@@ -174,84 +173,54 @@ impl TestRequest {
 }
 
 
-pub struct TestResponse {
-    pub status:  Status,
-    pub headers: ResponseHeaders,
-    pub content: Option<ResponseBody>,
-} impl TestResponse {
+pub struct TestResponse(
+    Response
+);
+impl TestResponse {
     fn new(response: Response) -> Self {
-        let Response { status, headers, content } = response;
-        Self {
-            status,
-            headers: ResponseHeaders::new(headers),
-            content: content.map(|(content_type, payload )| ResponseBody { content_type, payload }),
-        }
+        Self(response)
     }
 }
+impl TestResponse {
+    pub fn status(&self) -> Status {
+        self.0.status
+    }
 
-pub struct ResponseHeaders(
-    std::sync::RwLock<LazyMap>
-); enum LazyMap {
-    Raw(String),
-    Map(HashMap</*lower case*/String, String>),
-} impl LazyMap {
-    fn eval(&mut self) {
-        match self {
-            Self::Map(_) => (),
-            Self::Raw(string) => {
-                let map = {
-                    let mut map = HashMap::new();
-                    let mut r   = Reader::new(string);
-
-                    while r.peek().is_some() {
-                        let key   = r.read_kebab().unwrap();
-                        r.consume(": ").unwrap();
-                        let value = String::from_utf8(r.read_while(|b| b != &b'\r').to_vec()).unwrap();
-                        r.consume("\r\n").unwrap();
-
-                        map.insert(key.to_ascii_lowercase(), value);
-                    }
-
-                    map
-                };
-                *self = Self::Map(map)
+    pub fn header(&self, name: &'static str) -> Option<&str> {
+        let name_bytes = name.split('-').map(|section| {
+            if section.eq_ignore_ascii_case("ETag") {
+                f!("ETag")
+            } else if section.eq_ignore_ascii_case("WebSocket") {
+                f!("WebSocket")
+            } else {
+                let mut section_chars = section.chars();
+                let first = section_chars.next().expect("Found `--` in header name").to_ascii_uppercase();
+                section_chars.fold(
+                    String::from(first),
+                    |mut section, ch| {section.push(ch); section}
+                )
             }
-        }
+        }).collect::<String>();
+        self.0.headers.get(server_header::Header::from_bytes(name_bytes.as_bytes())?)
+            .map(|value_bytes| std::str::from_utf8(value_bytes).expect(&f!("Header value is not UTF-8: {}", value_bytes.escape_ascii())))
     }
-} impl ResponseHeaders {
-    fn new(raw_headers: String) -> Self {
-        Self(std::sync::RwLock::new(
-            LazyMap::Raw(raw_headers)
-        ))
-    }
-} impl ResponseHeaders {
-    pub fn get(&self, key: &str) -> Option<String> {
-        let current = self.0.read().ok()?;
-        if let LazyMap::Map(map) = &*current {
-            return map.get(&key.to_ascii_lowercase()).map(|s| s.to_string())
-        } else {drop(current)}
 
-        let inner = &mut *self.0.write().ok()?;
-        inner.eval();
-        let LazyMap::Map(map) = inner else {unsafe {std::hint::unreachable_unchecked()}};
-        map.get(&key.to_ascii_lowercase()).map(|s| s.to_string())
-    }
-}
-
-pub struct ResponseBody {
-    content_type: ContentType,
-    payload:      Cow<'static, str>,
-} impl ResponseBody {
     pub fn text(&self) -> Option<&str> {
-        matches!(&self.content_type, ContentType::Text)
-            .then_some(&self.payload)
+        if self.0.headers.ContentType(())? == b"text/plain" {
+            let body = self.0.content.as_ref()?;
+            Some(std::str::from_utf8(body).expect(&f!("Response content is not UTF-8: {}", body.escape_ascii())))
+        } else {None}
     }
     pub fn html(&self) -> Option<&str> {
-        matches!(&self.content_type, ContentType::HTML)
-            .then_some(&self.payload)
+        if self.0.headers.ContentType(())? == b"text/html" {
+            let body = self.0.content.as_ref()?;
+            Some(std::str::from_utf8(body).expect(&f!("Response content is not UTF-8: {}", body.escape_ascii())))
+        } else {None}
     }
-    pub fn json(&self) -> Option<&str> {
-        matches!(&self.content_type, ContentType::JSON)
-            .then_some(&self.payload)
+    pub fn json<'d, JSON: serde::Deserialize<'d>>(&self) -> Option<serde_json::Result<JSON>> {
+        if self.0.headers.ContentType(())? == b"application/json" {
+            let body = self.0.content.as_ref()?;
+            Some(serde_json::from_slice(body))
+        } else {None}
     }
 }

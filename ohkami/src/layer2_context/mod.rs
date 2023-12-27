@@ -2,7 +2,7 @@
 
 use crate::{
     layer0_lib::{AsStr, Status},
-    layer1_req_res::{ResponseHeaders, Response},
+    layer1_req_res::{Response},
 };
 
 
