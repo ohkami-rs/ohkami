@@ -1,15 +1,14 @@
-macro_rules! HeaderName {
-    ($( $konst:ident: $name_bytes:literal, )*) => {
-        /// In the current version, ohkami doesn't support custom HTTP headers
-        /// both in request processing or response generation.
-        /// 
-        /// In future, ohkami will introduce a feature like `"custom_headers"` or something,
-        /// with that you can do in exchange for a slight decrease in performance.
-        #[derive(Debug, Eq, Hash)]
-        pub enum HeaderName {
+macro_rules! ClientHeader {
+    ($N:literal; $( $konst:ident: $name_bytes:literal $(| $other_case:literal)*, )*) => {
+        pub(crate) const N_CLIENT_HEADERS: usize = $N;
+        pub(crate) const CLIENT_HEADERS: [ClientHeader; N_CLIENT_HEADERS] = [ $( ClientHeader::$konst ),* ];
+
+        #[derive(Debug, PartialEq)]
+        pub enum ClientHeader {
             $( $konst, )*
         }
-        impl HeaderName {
+
+        impl ClientHeader {
             #[inline] pub fn as_str(&self) -> &'static str {
                 match self {
                     $(
@@ -17,219 +16,137 @@ macro_rules! HeaderName {
                     )*
                 }
             }
-            const fn from_bytes(bytes: &[u8]) -> Option<Self> {
+            #[inline] pub fn from_bytes(bytes: &[u8]) -> Option<Self> {
                 match bytes {
                     $(
-                        $name_bytes => Some(Self::$konst),
+                        $name_bytes $(| $other_case)* => Some(Self::$konst),
                     )*
                     _ => None
                 }
             }
         }
+
+        #[cfg(test)] #[test] fn client_header_name_cases() {
+            $(
+                $(
+                    assert_eq!($name_bytes.to_ascii_lowercase(), $other_case);
+                )*
+            )*
+        }
     };
-} HeaderName! {
-    AccessControlAllowCredentials: b"Access-Control-Allow-Credentials",
-    AccessControlAllowHeaders:     b"Access-Control-Allow-Headers",
-    AccessControlAllowMethods:     b"Access-Control-Allow-Methods",
-    AccessControlAllowOrigin:      b"Access-Control-Allow-Origin",
-    AccessControlExposeHeaders:    b"Access-Control-Expose-Headers",
-    AccessControlMaxAge:           b"Access-Control-Max-Age",
-    AccessControlRequestHeaders:   b"Access-Control-Request-Headers",
-    AccessControlRequestMethod:    b"Access-Control-Request-Method",
+} ClientHeader! {41;
+    Accept:                  b"Accept" | b"accept",
+    AcceptEncoding:          b"Accept-Encoding" | b"accept-encoding",
+    AcceptLanguage:          b"Accept-Language" | b"accept-language",
+    Authorization:           b"Authorization" | b"authorization",
+    CacheControl:            b"Cache-Control" | b"cache-control",
+    Connection:              b"Connection" | b"connection",
+    ContentDisposition:      b"Content-Disposition" | b"content-disposition",
+    ContentEncoding:         b"Content-Encoding" | b"content-encoding",
+    ContentLanguage:         b"Content-Language" | b"content-language",
+    ContentLength:           b"Content-Length" | b"content-length",
+    ContentLocation:         b"Content-Location" | b"content-location",
+    ContentType:             b"Content-Type" | b"content-type",
+    Cookie:                  b"Cookie" | b"cookie",
+    Date:                    b"Date" | b"date",
+    Expect:                  b"Expect" | b"expect",
+    Forwarded:               b"Forwarded" | b"forwarded",
+    From:                    b"From" | b"from",
+    Host:                    b"Host" | b"host",
+    IfMatch:                 b"If-Match" | b"if-match",
+    IfModifiedSince:         b"If-Modified-Since" | b"if-modified-since",
+    IfNoneMatch:             b"If-None-Match" | b"if-none-match",
+    IfRange:                 b"If-Range" | b"if-range",
+    IfUnmodifiedSince:       b"If-Unmodified-Since" | b"if-unmodified-since",
+    Link:                    b"Link" | b"link",
+    MaxForwards:             b"Max-Forwards" | b"max-forwards",
+    Origin:                  b"Origin" | b"origin",
+    ProxyAuthorization:      b"Proxy-Authorization" | b"proxy-authorization",
+    Range:                   b"Range" | b"range",
+    Referer:                 b"Referer" | b"referer",
+    SecWebSocketExtensions:  b"Sec-WebSocket-Extensions" | b"sec-websocket-extensions",
+    SecWebSocketKey:         b"Sec-WebSocket-Key" | b"sec-websocket-key",
+    SecWebSocketProtocol:    b"Sec-WebSocket-Protocol" | b"sec-websocket-protocol",
+    SecWebSocketVersion:     b"Sec-WebSocket-Version" | b"sec-websocket-version",
+    TE:                      b"TE" | b"te",
+    Trailer:                 b"Trailer" | b"trailer",
+    TransferEncoding:        b"Transfer-Encoding" | b"transfer-encoding",
+    UserAgent:               b"User-Agent" | b"user-agent",
+    Upgrade:                 b"Upgrade" | b"upgrade",
+    UpgradeInsecureRequests: b"Upgrade-Insecure-Requests" | b"upgrade-insecure-requests",
+    Via:                     b"Via" | b"via",
+    XRequestID:              b"X-Request-ID" | b"X-Request-Id" | b"x-request-id",
+}
 
-    Accept: b"Accept",
-    AcceptEncoding: b"Accept-Encoding",
-    AcceptLanguage: b"Accept-Language",
-    AcceptRanges: b"Accept-Ranges",
-    Age: b"Age",
-    Allow: b"Allow",
-    AltSrv: b"Alt-Srv",
-    Authorization: b"Authorization",
-    CacheControl: b"Cache-Control",
-    CacheStatus: b"CacheStatus",
-    CDNCacheControl: b"CDN-Cache-Control",
-    Connection: b"Connection",
-    ContentDisposition: b"Content-Disposition",
-    ContentEncoding: b"Content-Ecoding",
-    ContentLanguage: b"Content-Language",
-    ContentLength: b"Content-Length",
-    ContentLocation: b"Content-Location",
-    ContentRange: b"Content-Range",
+macro_rules! ServerHeader {
+    ($N:literal; $( $konst:ident: $name_bytes:literal, )*) => {
+        pub(crate) const N_SERVER_HEADERS: usize = $N;
+        pub(crate) const SERVER_HEADERS: [ServerHeader; N_SERVER_HEADERS] = [ $( ServerHeader::$konst ),* ];
+
+        #[derive(Debug, PartialEq, Clone, Copy)]
+        pub enum ServerHeader {
+            $( $konst, )*
+        }
+
+        impl ServerHeader {
+            #[inline] pub fn as_bytes(&self) -> &'static [u8] {
+                match self {
+                    $(
+                        Self::$konst => $name_bytes,
+                    )*
+                }
+            }
+            #[inline] pub fn as_str(&self) -> &'static str {
+                unsafe {std::str::from_utf8_unchecked(self.as_bytes())}
+            }
+        }
+    };
+} ServerHeader! {47;
+    AcceptRanges:                    b"Accept-Ranges",
+    AccessControlAllowCredentials:   b"Access-Control-Allow-Credentials",
+    AccessControlAllowHeaders:       b"Access-Control-Allow-Headers",
+    AccessControlAllowMethods:       b"Access-Control-Allow-Methods",
+    AccessControlAllowOrigin:        b"Access-Control-Allow-Origin",
+    AccessControlExposeHeaders:      b"Access-Control-Expose-Headers",
+    AccessControlMaxAge:             b"Access-Control-Max-Age",
+    AccessControlRequestHeaders:     b"Access-Control-Request-Headers",
+    AccessControlRequestMethod:      b"Access-Control-Request-Method",
+    Age:                             b"Age",
+    Allow:                           b"Allow",
+    AltSrv:                          b"Alt-Srv",
+    CacheControl:                    b"Cache-Control",
+    CacheStatus:                     b"Cache-Status",
+    CDNCacheControl:                 b"CDN-Cache-Control",
+    Connection:                      b"Connection",
+    ContentDisposition:              b"Content-Disposition",
+    ContentEncoding:                 b"Content-Ecoding",
+    ContentLanguage:                 b"Content-Language",
+    ContentLength:                   b"Content-Length",
+    ContentLocation:                 b"Content-Location",
+    ContentRange:                    b"Content-Range",
+    ContentSecurityPolicy:           b"Content-Security-Policy",
     ContentSecurityPolicyReportOnly: b"Content-Security-Policy-Report-Only",
-    ContentType: b"Content-Type",
-    Cookie: b"Cookie",
-    Date: b"Date",
-    ETag: b"ETag",
-    Expect: b"Expect",
-    Expires: b"Expires",
-    Forwarded: b"Forwarded",
-    From: b"From",
-    Host: b"Host",
-    IfMatch: b"If-Match",
-    IfModifiedSince: b"If-Modified-Since",
-    IfNoneMatch: b"If-None-Match",
-    IfRange: b"If-Range",
-    IfUnmodifiedSince: b"If-Unmodified-Since",
-    Link: b"Link",
-    Location: b"Location",
-    MaxForwards: b"Max-Forwards",
-    Origin: b"Origin",
-    ProxyAuthenticate: b"Proxy-Authenticate",
-    ProxyAuthorization: b"Proxy-Authorization",
-    Range: b"Range",
-    Referer: b"Referer",
-    ReferrerPolicy: b"Referrer-Policy",
-    Refresh: b"Refresh",
-    RetryAfter: b"Retry-After",
-    SecWebSocketAccept: b"Sec-WebSocket-Accept",
-    SecWebSocketExtensions: b"Sec-WebSocket-Extensions",
-    SecWebSocketKey: b"Sec-WebSocket-Key",
-    SecWebSocketProtocol: b"Sec-WebSocket-Protocol",
-    SecWebSocketVersion: b"Sec-WebSocket-Version",
-    Server: b"Server",
-    SetCookie: b"Set-Cookie",
-    StrictTransportSecurity: b"Strict-Transport-Security",
-    TE: b"TE",
-    Trailer: b"Trailer",
-    TransferEncoding: b"Transfer-Encoding",
-    UserAgent: b"User-Agent",
-    Upgrade: b"Upgrade",
-    UpgradeInsecureRequests: b"Upgrade-Insecure-Requests",
-    Vary: b"Vary",
-    Via: b"Via",
-    XContentTypeOptions: b"X-Content-Type-Options",
-    XFrameOptions: b"X-Frame-Options",
+    ContentType:                     b"Content-Type",
+    Date:                            b"Date",
+    ETag:                            b"ETag",
+    Expires:                         b"Expires",
+    Link:                            b"Link",
+    Location:                        b"Location",
+    ProxyAuthenticate:               b"Proxy-Authenticate",
+    ReferrerPolicy:                  b"Referrer-Policy",
+    Refresh:                         b"Refresh",
+    RetryAfter:                      b"Retry-After",
+    SecWebSocketAccept:              b"Sec-WebSocket-Accept",
+    SecWebSocketProtocol:            b"Sec-WebSocket-Protocol",
+    SecWebSocketVersion:             b"Sec-WebSocket-Version",
+    Server:                          b"Server",
+    SetCookie:                       b"SetCookie",
+    StrictTransportSecurity:         b"Strict-Transport-Security",
+    Trailer:                         b"Trailer",
+    TransferEncoding:                b"Transfer-Encoding",
+    Upgrade:                         b"Upgrade",
+    Vary:                            b"Vary",
+    Via:                             b"Via",
+    XContentTypeOptions:             b"X-Content-Type-Options",
+    XFrameOptions:                   b"X-Frame-Options",
 }
-
-pub trait IntoHeaderName {
-    fn into_header_name(self) -> Option<HeaderName>;
-} impl<'s, C: Into<std::borrow::Cow<'s, str>>> IntoHeaderName for C {
-    #[inline(always)] fn into_header_name(self) -> Option<HeaderName> {
-        HeaderName::from_bytes(self.into().as_bytes())
-    }
-}
-
-impl PartialEq<HeaderName> for HeaderName {
-    #[inline] fn eq(&self, other: &HeaderName) -> bool {
-        *self as u8 == *other as u8
-    }
-}
-impl<S: AsRef<str>> PartialEq<S> for HeaderName {
-    #[inline] fn eq(&self, other: &S) -> bool {
-        self.as_str().eq_ignore_ascii_case(other.as_ref())
-    }
-}
-
-
-#[cfg(test)]
-#[test] fn test_case_insensitive_comparison() {
-    let h = HeaderName::Accept;
-
-    assert_eq!(h, "ACCEPT");
-
-    let string = String::from("accept");
-    assert_eq!(h, string);
-    assert_eq!(h, &string);
-    assert_eq!(h, &&string);
-}
-
-
-/*
-
-[from client]
-
-    Accept: b"Accept",
-    AcceptEncoding: b"Accept-Encoding",
-    AcceptLanguage: b"Accept-Language",
-    Authorization: b"Authorization",
-    CacheControl: b"Cache-Control",
-    Connection: b"Connection",
-    ContentDisposition: b"Content-Disposition",
-    ContentEncoding: b"Content-Ecoding",
-    ContentLanguage: b"Content-Language",
-    ContentLength: b"Content-Length",
-    ContentLocation: b"Content-Location",
-    ContentType: b"Content-Type",
-    Cookie: b"Cookie",
-    Date: b"Date",
-    Expect: b"Expect",
-    Forwarded: b"Forwarded",
-    From: b"From",
-    Host: b"Host",
-    IfMatch: b"If-Match",
-    IfModifiedSince: b"If-Modified-Since",
-    IfNoneMatch: b"If-None-Match",
-    IfRange: b"If-Range",
-    IfUnmodifiedSince: b"If-Unmodified-Since",
-    Link: b"Link",
-    MaxForwards: b"Max-Forwards",
-    Origin: b"Origin",
-    ProxyAuthorization: b"Proxy-Authorization",
-    Range: b"Range",
-    Referer: b"Referer",
-    SecWebSocketExtensions: b"Sec-WebSocket-Extensions",
-    SecWebSocketKey: b"Sec-WebSocket-Key",
-    SecWebSocketProtocol: b"Sec-WebSocket-Protocol",
-    SecWebSocketVersion: b"Sec-WebSocket-Version",
-    TE: b"TE",
-    Trailer: b"Trailer",
-    TransferEncoding: b"Transfer-Encoding",
-    UserAgent: b"User-Agent",
-    Upgrade: b"Upgrade",
-    UpgradeInsecureRequests: b"Upgrade-Insecure-Requests",
-    Via: b"Via",
-
----
-
-[from server]
-
-    AccessControlAllowCredentials: b"Access-Control-Allow-Credentials",
-    AccessControlAllowHeaders:     b"Access-Control-Allow-Headers",
-    AccessControlAllowMethods:     b"Access-Control-Allow-Methods",
-    AccessControlAllowOrigin:      b"Access-Control-Allow-Origin",
-    AccessControlExposeHeaders:    b"Access-Control-Expose-Headers",
-    AccessControlMaxAge:           b"Access-Control-Max-Age",
-    AccessControlRequestHeaders:   b"Access-Control-Request-Headers",
-    AccessControlRequestMethod:    b"Access-Control-Request-Method",
-
-    AcceptRanges: b"Accept-Ranges",
-    Age: b"Age",
-    Allow: b"Allow",
-    AltSrv: b"Alt-Srv",
-    CacheControl: b"CacheControl",
-    CacheStatus: b"CacheStatus",
-    CDNCacheControl: b"CDN-Cache-Control",
-    Connection: b"Connection",
-    ContentDisposition: b"Content-Disposition",
-    ContentEncoding: b"Content-Ecoding",
-    ContentLanguage: b"Content-Language",
-    ContentLength: b"Content-Length",
-    ContentLocation: b"Content-Location",
-    ContentRange: b"Content-Range",
-    ContentSecurityPolicy: b"Content-Security-Policy",
-    ContentSecurityPolicyReportOnly: b"Content-Security-Policy-Report-Only",
-    ContentType: b"Content-Type",
-    Date: b"Date",
-    ETag: b"ETag",
-    Expires: b"Expires",
-    Link: b"Link",
-    Location: b"Location",
-    ProxyAuthenticate: b"Proxy-Authenticate",
-    ReferrerPolicy: b"Referrer-Policy",
-    Refresh: b"Refresh",
-    RetryAfter: b"Retry-After",
-    SecWebSocketAccept: b"Sec-WebSocket-Accept",
-    SecWebSocketProtocol: b"Sec-WebSocket-Protocol",
-    SecWebSocketVersion: b"Sec-WebSocket-Version",
-    Server: b"Server",
-    SetCookie: b"SetCookie",
-    StrictTransportSecurity: b"Strict-Transport-Security",
-    Trailer: b"Trailer",
-    TransferEncoding: b"Transfer-Encoding",
-    Upgrade: b"Upgrade",
-    Vary: b"Vary",
-    Via: b"Via",
-    XContentTypeOptions: b"X-Content-Type-Options",
-    XFrameOptions: b"X-Frame-Options",
-
-*/
