@@ -8,21 +8,19 @@ use byte_reader::{Reader};
 use percent_encoding::{percent_decode};
 use crate::{
     __rt__::{AsyncReader},
-    layer0_lib::{List, Method, ContentType, Slice, CowSlice, ClientHeaders, ClientHeader, HeaderValue, IntoHeaderValue}
+    layer0_lib::{List, Method, Slice, CowSlice, client_header}
 };
+
 
 pub(crate) const METADATA_SIZE: usize = 1024;
 pub(crate) const PAYLOAD_LIMIT: usize = 2 << 32;
-
 pub(crate) const QUERIES_LIMIT: usize = 4;
-pub(crate) const HEADERS_LIMIT: usize = 64;
-
 
 pub struct Request {pub(crate) _metadata: [u8; METADATA_SIZE],
     method:  Method,
     path:    Slice,
     queries: List<(Slice, Slice), QUERIES_LIMIT>,
-    headers: ClientHeaders,
+    headers: client_header::Headers,
     payload: Option<CowSlice>,
 }
 
@@ -32,7 +30,7 @@ impl Request {
             method:  Method::GET,
             path:    Slice::null(),
             queries: List::<(Slice, Slice), QUERIES_LIMIT>::new(),
-            headers: ClientHeaders::init(),
+            headers: client_header::Headers::init(),
             payload: None,
         }
     }
@@ -63,17 +61,18 @@ impl Request {
 
         r.consume("HTTP/1.1\r\n").expect("Ohkami can only handle HTTP/1.1");
 
-        let mut headers = ClientHeaders::init();
+        let mut headers = client_header::Headers::init();
         while r.consume("\r\n").is_none() {
-            if let Some(key) = ClientHeader::from_bytes(r.read_while(|b| b != &b':')) {
+            if let Some(key) = client_header::Header::from_bytes(r.read_while(|b| b != &b':')) {
                 r.consume(": ").unwrap();
-                let value_bytes = r.read_while(|b| b != &b'\r');
-                headers.insert(key, todo!());
+                headers.insert(key, CowSlice::Ref(unsafe {
+                    Slice::from_bytes(r.read_while(|b| b != &b'\r'))
+                }));
                 r.consume("\r\n").unwrap();
             }
         }
 
-        let content_length = headers.get(ClientHeader::ContentLength)
+        let content_length = headers.get(client_header::Header::ContentLength)
             .unwrap_or(&[]).into_iter()
             .fold(0, |len, b| 10*len + (*b - b'0') as usize);
 
@@ -138,15 +137,15 @@ impl Request {
     }
     #[inline] pub fn header(&self, key: &str) -> Option<&str> {
         for (k, v) in self.headers.iter() {
-            if key.as_bytes().eq_ignore_ascii_case(unsafe {k.as_bytes()}) {
-                return (|| Some(unsafe {std::str::from_utf8(v).unwrap()}))()
+            if key.as_bytes().eq_ignore_ascii_case(k.as_bytes()) {
+                return (|| Some(std::str::from_utf8(v).unwrap()))()
             }
         }
         None
     }
     #[inline] pub fn payload(&self) -> Option<(&str, &[u8])> {
         Some((
-            std::str::from_utf8(self.headers.get(ClientHeader::ContentType).unwrap_or(b"text/plain")).unwrap(),
+            std::str::from_utf8(self.headers.get(client_header::Header::ContentType).unwrap_or(b"text/plain")).unwrap(),
             unsafe {self.payload.as_ref()?.as_bytes()}
         ))
     }
@@ -210,12 +209,6 @@ const _: () = {
                 list.sort_by(|(a, _), (b, _)| (a.to_ascii_lowercase()).cmp(&b.to_ascii_lowercase()));
                 list
             }
-
-            let eq_ignore_key_case = |left: Vec<(&str, &str)>, right: Vec<(&str, &str)>| {
-                left.len() == right.len() &&
-                left.iter().zip(right)
-                    .all(|((k1, v1), (k2, v2))| k1.eq_ignore_ascii_case(k2) && v1 == &v2)
-            };
 
             self.method == other.method &&
             unsafe {self.path.as_bytes() == other.path.as_bytes()} &&

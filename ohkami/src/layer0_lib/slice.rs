@@ -1,6 +1,6 @@
-use std::ptr::NonNull;
+use std::{ptr::NonNull};
 
-/// MANUALLY HANDLE the *lifetime*
+/// Slice but MANUALLY HANDLE the *lifetime*
 #[derive(Clone)]
 pub(crate) struct Slice {
     head: Option<NonNull<u8>>,
@@ -39,18 +39,35 @@ pub(crate) struct Slice {
 pub(crate) enum CowSlice {
     Ref(Slice),
     Own(Vec<u8>),
-}
-#[cfg(test)] impl PartialEq for CowSlice {
-    fn eq(&self, other: &Self) -> bool {
-        unsafe {self.as_bytes() == other.as_bytes()}
-    }
-}
-
-impl CowSlice {
+} impl CowSlice {
     #[inline] pub(crate) unsafe fn as_bytes(&self) -> &[u8] {
         match self {
             Self::Own(vec)   => &vec,
             Self::Ref(slice) => unsafe {slice.as_bytes()},
         }
+    }
+    #[inline] pub(crate) unsafe fn append(&mut self, bytes: &[u8]) {
+        match self {
+            Self::Own(vec)   => vec.extend_from_slice(bytes),
+            Self::Ref(slice) => unsafe {
+                let mut this = slice.as_bytes().to_vec();
+                this.extend_from_slice(bytes);
+                *self = Self::Own(this)
+            },
+        }
+    }
+} const _: () = {
+    impl AsRef<[u8]> for CowSlice {
+        fn as_ref(&self) -> &[u8] {
+            match self {
+                Self::Own(vec)   => vec,
+                Self::Ref(slice) => unsafe {slice.as_bytes()},
+            }
+        }
+    }
+};
+#[cfg(test)] impl PartialEq for CowSlice {
+    fn eq(&self, other: &Self) -> bool {
+        unsafe {self.as_bytes() == other.as_bytes()}
     }
 }

@@ -1,5 +1,3 @@
-pub(crate) mod headers; pub(crate) use headers::ResponseHeaders;
-
 #[cfg(feature="nightly")]
 use std::{
     ops::FromResidual,
@@ -9,7 +7,7 @@ use std::{
 use std::{borrow::Cow};
 use crate::{
     __rt__::AsyncWriter,
-    layer0_lib::{Status, ContentType, IntoCows},
+    layer0_lib::{Status, server_header},
 };
 
 
@@ -28,8 +26,8 @@ use crate::{
 /// ```
 pub struct Response {
     pub status:         Status,
-    pub(crate) headers: String,
-    pub(crate) content: Option<(ContentType, Cow<'static, str>)>,
+    pub(crate) headers: server_header::Headers,
+    pub(crate) content: Option<Cow<'static, [u8]>>,
 } const _: () = {
     #[cfg(feature="nightly")]
     impl FromResidual<Result<Infallible, Response>> for Response {
@@ -42,24 +40,16 @@ pub struct Response {
 impl Response {
     pub(crate) fn into_bytes(self) -> Vec<u8> {
         let Self { status, headers, content } = self;
-        let (status, headers) = (status.as_bytes(), headers.as_bytes());
 
-        match content {
-            None => [
-                b"HTTP/1.1 ",status,b"\r\n",
-                headers,
-                b"\r\n"
-            ].concat(),
-
-            Some((content_type, body)) => [   
-                b"HTTP/1.1 ",status,b"\r\n",
-                b"Content-Type: "  ,content_type.as_bytes(),          b"\r\n",
-                b"Content-Length: ",body.len().to_string().as_bytes(),b"\r\n",
-                headers,
-                b"\r\n",
-                body.as_bytes()
-            ].concat(),
+        let mut buf = Vec::from("HTTP/1.1 ");
+        buf.extend_from_slice(status.as_bytes());
+        buf.extend_from_slice(b"\r\n");
+        headers.write_to(&mut buf);
+        if let Some(body) = content {
+            buf.extend_from_slice(&body);
         }
+        
+        buf
     }
 }
 
@@ -74,29 +64,46 @@ impl Response {
 impl Response {
     pub fn drop_content(mut self) -> Self {
         self.content.take();
+        self.headers.ContentType(None).ContentLength(None);
         self
     }
 
-    pub fn text(mut self, text: impl IntoCows<'static>) -> Self {
-        self.content.replace((
-            ContentType::Text,
-            text.into_cow()
-        ));
+    pub fn text(mut self, text: impl Into<Cow<'static, str>>) -> Self {
+        let body = text.into();
+
+        self.headers.ContentType("text/plain").ContentLength(body.len().to_string());
+        self.content = Some(match body {
+            Cow::Borrowed(s)   => Cow::Borrowed(s.as_bytes()),
+            Cow::Owned(string) => Cow::Owned(string.into_bytes()),
+        });
         self
     }
-    pub fn html(mut self, html: impl IntoCows<'static>) -> Self {
-        self.content.replace((
-            ContentType::HTML,
-            html.into_cow()
-        ));
+    pub fn html(mut self, html: impl Into<Cow<'static, str>>) -> Self {
+        let body = html.into();
+
+        self.headers.ContentType("text/html").ContentLength(body.len().to_string());
+        self.content = Some(match body {
+            Cow::Borrowed(s)   => Cow::Borrowed(s.as_bytes()),
+            Cow::Owned(string) => Cow::Owned(string.into_bytes()),
+        });
         self
     }
     pub fn json(mut self, json: impl serde::Serialize) -> Self {
-        self.content.replace((
-            ContentType::JSON,
-            Cow::Owned(serde_json::to_string(&json).expect("Failed to serialize json"))
-        ));
-        self
+        #[cold] fn __json_serialize_error_response
+
+        match serde_json::to_string(&json) {
+            Ok(json) => {let body = json.into_bytes();
+                self.headers.ContentType("application/json").ContentLength(body.len().to_string());
+                self.content = Some(Cow::Owned(body));
+                self
+            }
+            Err(err) => {let body = err.to_string();
+
+            }
+        }
+    }
+    pub fn json_literal(mut self, json_literal: &'static str) -> Self {
+
     }
 }
 
@@ -108,7 +115,7 @@ const _: () = {
                     .field("status",  &self.status)
                     .field("headers", &self.headers)
                     .finish(),
-                Some((_, cow)) => f.debug_struct("Response")
+                Some(cow) => f.debug_struct("Response")
                     .field("status",  &self.status)
                     .field("headers", &self.headers)
                     .field("content", &*cow)

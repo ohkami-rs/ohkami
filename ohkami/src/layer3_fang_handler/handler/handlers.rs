@@ -80,7 +80,6 @@ macro_rules! Route {
     use crate::{
         Context,
         Response,
-        layer0_lib::ContentType,
         layer1_req_res::FromRequest,
     };
 
@@ -122,7 +121,7 @@ macro_rules! Route {
         fn parse(req: &crate::Request) -> Result<Self, ::std::borrow::Cow<'static, str>> {
             let (content_type, body) = req.payload().ok_or_else(|| Cow::Borrowed("Payload expected"))?;
             match content_type {
-                ContentType::JSON => (),
+                "application/json" => (),
                 _ => return Err(Cow::Borrowed("Payload expected")),
             }
 
@@ -156,7 +155,7 @@ macro_rules! Route {
         fn parse(req: &crate::Request) -> Result<Self, ::std::borrow::Cow<'static, str>> {
             let (content_type, body) = req.payload().ok_or_else(|| Cow::Borrowed("Payload expected"))?;
             match content_type {
-                ContentType::JSON => (),
+                "application/json" => (),
                 _ => return Err(Cow::Borrowed("Payload expected")),
             }
 

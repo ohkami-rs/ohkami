@@ -284,7 +284,7 @@ pub mod prelude {
 }
 
 pub mod http {
-    pub use crate::layer0_lib::{Status, Method, ContentType};
+    pub use crate::layer0_lib::{Status, Method};
 }
 
 pub mod utils {

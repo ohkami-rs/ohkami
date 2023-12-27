@@ -121,7 +121,7 @@ struct CreateUser {
 impl crate::FromRequest for CreateUser {
     type Error = ::std::borrow::Cow<'static, str>;
     fn parse(req: &Request) -> Result<Self, std::borrow::Cow<'static, str>> {
-        let Some((crate::http::ContentType::JSON, content)) = req.payload()
+        let Some(("application/json", content)) = req.payload()
             else {return Err(std::borrow::Cow::Borrowed("Expected a json payload"))};
         serde_json::from_slice(content)
             .map_err(|_| std::borrow::Cow::Owned(format!("Failed to deserialize payload")))
