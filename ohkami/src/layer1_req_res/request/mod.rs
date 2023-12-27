@@ -8,7 +8,7 @@ use byte_reader::{Reader};
 use percent_encoding::{percent_decode};
 use crate::{
     __rt__::{AsyncReader},
-    layer0_lib::{List, Method, ContentType, Slice, CowSlice}
+    layer0_lib::{List, Method, ContentType, Slice, CowSlice, ClientHeaders, ClientHeader, HeaderValue, IntoHeaderValue}
 };
 
 pub(crate) const METADATA_SIZE: usize = 1024;
@@ -22,8 +22,8 @@ pub struct Request {pub(crate) _metadata: [u8; METADATA_SIZE],
     method:  Method,
     path:    Slice,
     queries: List<(Slice, Slice), QUERIES_LIMIT>,
-    headers: List<(Slice, Slice), HEADERS_LIMIT>,
-    payload: Option<(ContentType, CowSlice)>,
+    headers: ClientHeaders,
+    payload: Option<CowSlice>,
 }
 
 impl Request {
@@ -32,7 +32,7 @@ impl Request {
             method:  Method::GET,
             path:    Slice::null(),
             queries: List::<(Slice, Slice), QUERIES_LIMIT>::new(),
-            headers: List::<(Slice, Slice), HEADERS_LIMIT>::new(),
+            headers: ClientHeaders::init(),
             payload: None,
         }
     }
@@ -63,37 +63,28 @@ impl Request {
 
         r.consume("HTTP/1.1\r\n").expect("Ohkami can only handle HTTP/1.1");
 
-        let mut headers = List::<(Slice, Slice), HEADERS_LIMIT>::new();
-        let (mut content_type, mut content_length) = (None, 0);
+        let mut headers = ClientHeaders::init();
         while r.consume("\r\n").is_none() {
-            let _key = r.read_while(|b| b != &b':');
-            let _content_flag = if _key.eq_ignore_ascii_case(b"Content-Type") {
-                Some(true)
-            } else if _key.eq_ignore_ascii_case(b"Content-Length") {
-                Some(false)
-            } else {None};
-            let key = unsafe {Slice::from_bytes(_key)};
-
-            r.consume(": ").unwrap();
-
-            let _val = r.read_while(|b| b != &b'\r');
-            match _content_flag {None => (),
-                Some(true)  => (|| content_type   = ContentType::from_bytes(_val))(),
-                Some(false) => (|| content_length = _val.into_iter().fold(0, |len, d| 10*len + (*d-b'0') as usize))(),
+            if let Some(key) = ClientHeader::from_bytes(r.read_while(|b| b != &b':')) {
+                r.consume(": ").unwrap();
+                let value_bytes = r.read_while(|b| b != &b'\r');
+                headers.insert(key, todo!());
+                r.consume("\r\n").unwrap();
             }
-            let val = unsafe {Slice::from_bytes(_val)};
-            r.consume("\r\n").unwrap();
-
-            headers.append((key, val));
         }
 
-        let payload = match (content_length > 0).then(|| async {(
-            content_type.unwrap_or(ContentType::Text),
-            Request::read_payload(stream, &self._metadata, r.index, content_length.min(PAYLOAD_LIMIT)).await
-        )}) {
-            None    => None,
-            Some(f) => Some(f.await),
-        };
+        let content_length = headers.get(ClientHeader::ContentLength)
+            .unwrap_or(&[]).into_iter()
+            .fold(0, |len, b| 10*len + (*b - b'0') as usize);
+
+        let payload = if content_length > 0 {
+            Some(Request::read_payload(
+                stream,
+                &self._metadata,
+                r.index,
+                content_length.min(PAYLOAD_LIMIT),
+            ).await)
+        } else {None};
 
         self.method  = method;
         self.path    = path;
@@ -148,14 +139,16 @@ impl Request {
     #[inline] pub fn header(&self, key: &str) -> Option<&str> {
         for (k, v) in self.headers.iter() {
             if key.as_bytes().eq_ignore_ascii_case(unsafe {k.as_bytes()}) {
-                return (|| Some(unsafe {std::str::from_utf8_unchecked(v.as_bytes())}))()
+                return (|| Some(unsafe {std::str::from_utf8(v).unwrap()}))()
             }
         }
         None
     }
-    #[inline] pub fn payload(&self) -> Option<(&ContentType, &[u8])> {
-        let (content_type, body) = (&self.payload).as_ref()?;
-        Some((content_type, unsafe {body.as_bytes()}))
+    #[inline] pub fn payload(&self) -> Option<(&str, &[u8])> {
+        Some((
+            std::str::from_utf8(self.headers.get(ClientHeader::ContentType).unwrap_or(b"text/plain")).unwrap(),
+            unsafe {self.payload.as_ref()?.as_bytes()}
+        ))
     }
 }
 
@@ -180,17 +173,9 @@ const _: () = {
                     })
             }.collect::<Vec<_>>();
 
-            let headers = {
-                let List { list, next } = &self.headers;
-                list[..*next].into_iter()
-                    .map(|cell| unsafe {
-                        let (k, v) = cell.assume_init_ref();
-                        format!("{}: {}",
-                            std::str::from_utf8_unchecked(k.as_bytes()),
-                            std::str::from_utf8_unchecked(v.as_bytes()),
-                        )
-                    })
-            }.collect::<Vec<_>>();
+            let headers = self.headers.iter()
+                .map(|(k, v)| format!("{k}: {}", v.escape_ascii()))
+                .collect::<Vec<_>>();
 
             if let Some((_, payload)) = self.payload() {
                 f.debug_struct("Request")
@@ -235,7 +220,7 @@ const _: () = {
             self.method == other.method &&
             unsafe {self.path.as_bytes() == other.path.as_bytes()} &&
             collect(&self.queries) == collect(&other.queries) &&
-            eq_ignore_key_case(collect(&self.headers), collect(&other.headers)) &&
+            self.headers == other.headers &&
             self.payload == other.payload
         }
     }

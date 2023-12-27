@@ -26,6 +26,14 @@ macro_rules! ClientHeader {
             }
         }
 
+        impl<T: AsRef<[u8]>> PartialEq<T> for ClientHeader {
+            fn eq(&self, other: &T) -> bool {
+                self.as_str().as_bytes().eq_ignore_ascii_case(other.as_ref())
+            }
+        }
+
+        // =================================================
+
         #[cfg(test)] #[test] fn client_header_name_cases() {
             $(
                 $(
@@ -98,6 +106,12 @@ macro_rules! ServerHeader {
             }
             #[inline] pub fn as_str(&self) -> &'static str {
                 unsafe {std::str::from_utf8_unchecked(self.as_bytes())}
+            }
+        }
+
+        impl<T: AsRef<[u8]>> PartialEq<T> for ServerHeader {
+            fn eq(&self, other: &T) -> bool {
+                self.as_bytes().eq_ignore_ascii_case(other.as_ref())
             }
         }
     };

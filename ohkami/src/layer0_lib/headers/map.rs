@@ -23,9 +23,9 @@ impl ClientHeaders {
         self.values[name as usize] = None;
     }
 
-    #[inline] pub(crate) fn get(&self, name: ClientHeader) -> Option<&str> {
+    #[inline] pub(crate) fn get(&self, name: ClientHeader) -> Option<&[u8]> {
         match &self.values[name as usize] {
-            Some(v) => Some(v.as_str()),
+            Some(v) => Some(v.as_bytes()),
             None => None,
         }
     }
@@ -35,18 +35,18 @@ impl ClientHeaders {
         Self { values: std::array::from_fn(|_| None) }
     }
 
-    pub(crate) fn iter(&self) -> impl Iterator<Item = (&str, &str)> {
+    pub(crate) fn iter(&self) -> impl Iterator<Item = (&str, &[u8])> {
         struct Iter<'i> {
             map: &'i ClientHeaders,
             cur: usize,
         }
         impl<'i> Iterator for Iter<'i> {
-            type Item = (&'i str, &'i str);
+            type Item = (&'i str, &'i [u8]);
             fn next(&mut self) -> Option<Self::Item> {
                 for i in self.cur..N_CLIENT_HEADERS {
                     if let Some(v) = &self.map.values[i] {
                         self.cur = i + 1;
-                        return Some((&CLIENT_HEADERS[i].as_str(), v.as_str()))
+                        return Some((&CLIENT_HEADERS[i].as_str(), v.as_bytes()))
                     }
                 }
                 None
@@ -56,6 +56,18 @@ impl ClientHeaders {
         Iter { map: self, cur: 0 }
     }
 }
+const _: () = {
+    impl PartialEq for ClientHeaders {
+        fn eq(&self, other: &Self) -> bool {
+            for (k, v) in self.iter() {
+                if other.get(ClientHeader::from_bytes(k.as_bytes()).unwrap()) != Some(v) {
+                    return false
+                }
+            }
+            true
+        }
+    }
+};
 
 
 pub struct ServerHeaders {
@@ -63,17 +75,15 @@ pub struct ServerHeaders {
 
     /// Size of whole the byte stream when this is written into HTTP response.
     size: usize,
-
-    // 
 }
 
 impl ServerHeaders {
     #[inline] pub(crate) fn insert(&mut self, name: ServerHeader, value: HeaderValue) {
-        let (name_len, value_len) = (name.as_bytes().len(), value.as_str().len());
+        let (name_len, value_len) = (name.as_bytes().len(), value.as_bytes().len());
         match self.values[name as usize].replace(value) {
             None       => self.size += name_len + ": ".len() + value_len + "\r\n".len(),
             Some(prev) => {
-                let prev_len = prev.as_str().len();
+                let prev_len = prev.as_bytes().len();
                 if value_len > prev_len {
                     self.size += value_len - prev_len;
                 } else {
@@ -88,13 +98,13 @@ impl ServerHeaders {
         let index = name as usize;
         match &mut self.values[index] {
             None => {
-                self.size += name_len + ": ".len() + value.as_str().len() + "\r\n".len();
+                self.size += name_len + ": ".len() + value.as_bytes().len() + "\r\n".len();
                 self.values[index] = Some(value);
             }
             Some(v) => {
-                let before = v.as_str().len();
+                let before = v.as_bytes().len();
                 v.append(value);
-                self.size += v.as_str().len() - before;
+                self.size += v.as_bytes().len() - before;
             }
         }
     }
@@ -103,13 +113,13 @@ impl ServerHeaders {
         let name_len = name.as_bytes().len();
         let v = &mut self.values[name as usize];
         if let Some(v) = v {
-            self.size -= name_len + ": ".len() + v.as_str().len() + "\r\n".len()
+            self.size -= name_len + ": ".len() + v.as_bytes().len() + "\r\n".len()
         }
         *v = None;
     }
 
-    pub(crate) fn get(&self, name: ServerHeader) -> Option<&str> {
-        self.values[name as usize].as_ref().map(HeaderValue::as_str)
+    pub(crate) fn get(&self, name: ServerHeader) -> Option<&[u8]> {
+        self.values[name as usize].as_ref().map(HeaderValue::as_bytes)
     }
 }
 impl ServerHeaders {
@@ -120,18 +130,18 @@ impl ServerHeaders {
         }
     }
 
-    pub(crate) fn iter(&self) -> impl Iterator<Item = (&str, &str)> {
+    pub(crate) fn iter(&self) -> impl Iterator<Item = (&str, &[u8])> {
         struct Iter<'i> {
             map: &'i ServerHeaders,
             cur: usize,
         }
         impl<'i> Iterator for Iter<'i> {
-            type Item = (&'i str, &'i str);
+            type Item = (&'i str, &'i [u8]);
             fn next(&mut self) -> Option<Self::Item> {
                 for i in self.cur..N_SERVER_HEADERS {
                     if let Some(v) = &self.map.values[i] {
                         self.cur = i + 1;
-                        return Some((SERVER_HEADERS[i].as_str(), v.as_str()))
+                        return Some((SERVER_HEADERS[i].as_str(), v.as_bytes()))
                     }
                 }
                 None
@@ -162,7 +172,7 @@ impl ServerHeaders {
             if let Some(v) = &self.values[*h as usize] {
                 write!(buf <- h.as_bytes());
                 write!(buf <- b": ");
-                write!(buf <- v.as_str().as_bytes());
+                write!(buf <- v.as_bytes());
                 write!(buf <- b"\r\n");
             }
         }

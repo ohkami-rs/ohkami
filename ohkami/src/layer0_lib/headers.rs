@@ -1,5 +1,9 @@
-//! Great thanks to https://github.com/hyperium/http/tree/master/src/header; MIT, @hyperium.
-
+mod map;
 mod name;
 mod value;
-mod headers;
+
+pub(crate) use {
+    map::{ClientHeaders, ServerHeaders},
+    name::{ClientHeader, ServerHeader},
+    value::{HeaderValue, IntoHeaderValue},
+};
