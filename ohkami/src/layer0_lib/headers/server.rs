@@ -114,7 +114,7 @@ macro_rules! Header {
             )*
         }
     };
-} Header! {47;
+} Header! {45;
     AcceptRanges:                    b"Accept-Ranges",
     AccessControlAllowCredentials:   b"Access-Control-Allow-Credentials",
     AccessControlAllowHeaders:       b"Access-Control-Allow-Headers",
@@ -122,8 +122,6 @@ macro_rules! Header {
     AccessControlAllowOrigin:        b"Access-Control-Allow-Origin",
     AccessControlExposeHeaders:      b"Access-Control-Expose-Headers",
     AccessControlMaxAge:             b"Access-Control-Max-Age",
-    AccessControlRequestHeaders:     b"Access-Control-Request-Headers",
-    AccessControlRequestMethod:      b"Access-Control-Request-Method",
     Age:                             b"Age",
     Allow:                           b"Allow",
     AltSrv:                          b"Alt-Srv",
