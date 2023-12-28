@@ -145,12 +145,8 @@ impl Request {
         self.headers.set()
     }
 
-    #[inline] pub fn payload(&self) -> Option<(&str, &[u8])> {
-        Some((
-    // cf)  self.header("Content-Type").unwrap_or("text/plain"), 
-            self.headers.ContentType().unwrap_or("text/plain"),
-            unsafe {self.payload.as_ref()?.as_bytes()}
-        ))
+    #[inline] pub fn payload(&self) -> Option<&[u8]> {
+        Some(unsafe {self.payload.as_ref()?.as_bytes()})
     }
 }
 
@@ -179,7 +175,7 @@ const _: () = {
                 .map(|(k, v)| format!("{k}: {v}"))
                 .collect::<Vec<_>>();
 
-            if let Some((_, payload)) = self.payload() {
+            if let Some(payload) = self.payload() {
                 f.debug_struct("Request")
                     .field("method",  &self.method)
                     .field("path",    &self.path())

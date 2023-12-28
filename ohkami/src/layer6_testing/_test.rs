@@ -113,11 +113,14 @@ struct CreateUser {
 // Can't use `#[Payload(JSON)]` here becasue this test is within `ohkami`
 impl crate::FromRequest for CreateUser {
     type Error = ::std::borrow::Cow<'static, str>;
-    fn parse(req: &Request) -> Result<Self, std::borrow::Cow<'static, str>> {
-        let Some(("application/json", content)) = req.payload()
-            else {return Err(std::borrow::Cow::Borrowed("Expected a json payload"))};
-        serde_json::from_slice(content)
-            .map_err(|_| std::borrow::Cow::Owned(format!("Failed to deserialize payload")))
+    fn parse(req: &Request) -> Result<Self, ::std::borrow::Cow<'static, str>> {
+        let Some(payload) = req.payload()
+            else {return Err(::std::borrow::Cow::Borrowed("Expected a payload"))};
+        match req.headers.ContentType() {
+            Some("application/json") => serde_json::from_slice(payload)
+                .map_err(|_| ::std::borrow::Cow::Owned(format!("Failed to deserialize payload"))),
+            _ => Err(::std::borrow::Cow::Borrowed("Expected a json payload"))
+        }
     }
 }
 async fn create_user(c: Context, payload: CreateUser) -> Response {

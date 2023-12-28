@@ -119,15 +119,11 @@ macro_rules! Route {
     } impl FromRequest for CreateUser {
         type Error = Cow<'static, str>;
         fn parse(req: &crate::Request) -> Result<Self, ::std::borrow::Cow<'static, str>> {
-            let (content_type, body) = req.payload().ok_or_else(|| Cow::Borrowed("Payload expected"))?;
-            match content_type {
-                "application/json" => (),
-                _ => return Err(Cow::Borrowed("Payload expected")),
+            let payload = req.payload().ok_or_else(|| Cow::Borrowed("Payload expected"))?;
+            match req.headers.ContentType() {
+                Some("application/json") => serde_json::from_slice(payload).map_err(|e| Cow::Owned(e.to_string())),
+                _ => Err(Cow::Borrowed("Payload expected")),
             }
-
-            // reexport json parsing function : todo!()
-            serde_json::from_slice(body)
-                .map_err(|e| Cow::Owned(e.to_string()))
         }
     }
 
@@ -153,14 +149,11 @@ macro_rules! Route {
     } impl FromRequest for UpdateUser {
         type Error = Cow<'static, str>;
         fn parse(req: &crate::Request) -> Result<Self, ::std::borrow::Cow<'static, str>> {
-            let (content_type, body) = req.payload().ok_or_else(|| Cow::Borrowed("Payload expected"))?;
-            match content_type {
-                "application/json" => (),
-                _ => return Err(Cow::Borrowed("Payload expected")),
+            let payload = req.payload().ok_or_else(|| Cow::Borrowed("Payload expected"))?;
+            match req.headers.ContentType() {
+                Some("application/json") => serde_json::from_slice(payload).map_err(|e| Cow::Owned(e.to_string())),
+                _ => Err(Cow::Borrowed("Payload expected")),
             }
-
-            serde_json::from_slice(body)
-                .map_err(|e| Cow::Owned(e.to_string()))
         }
     }
 
