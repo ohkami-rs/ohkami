@@ -1,3 +1,5 @@
+mod path;
+mod queries;
 mod parse_payload; pub use parse_payload::*;
 mod from_request;  pub use from_request::*;
 #[cfg(test)] mod _test_parse_payload;
@@ -13,7 +15,7 @@ use crate::{
 
 
 pub(crate) const METADATA_SIZE: usize = 1024;
-pub(crate) const PAYLOAD_LIMIT: usize = 2 << 32;
+pub(crate) const PAYLOAD_LIMIT: usize = 1 << 32;
 pub(crate) const QUERIES_LIMIT: usize = 4;
 
 pub struct Request {pub(crate) _metadata: [u8; METADATA_SIZE],

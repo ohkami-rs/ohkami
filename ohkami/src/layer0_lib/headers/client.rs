@@ -45,13 +45,13 @@ pub trait HeaderAction<'set> {
 
     // insert
     impl<'set> HeaderAction<'set> for &'static str {
-        fn perform(self, set_headers: SetHeaders<'set>, key: Header) -> SetHeaders<'set> {
+        #[inline] fn perform(self, set_headers: SetHeaders<'set>, key: Header) -> SetHeaders<'set> {
             set_headers.0.insert(key, CowSlice::Ref(unsafe {Slice::from_bytes(self.as_bytes())}));
             set_headers
         }
     }
     impl<'set> HeaderAction<'set> for String {
-        fn perform(self, set_headers: SetHeaders<'set>, key: Header) -> SetHeaders<'set> {
+        #[inline] fn perform(self, set_headers: SetHeaders<'set>, key: Header) -> SetHeaders<'set> {
             set_headers.0.insert(key, CowSlice::Own(self.into_bytes()));
             set_headers
         }

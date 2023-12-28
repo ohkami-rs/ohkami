@@ -33,7 +33,7 @@ pub struct Value(
 pub struct SetHeaders<'set>(
     &'set mut Headers
 ); impl Headers {
-    pub(crate) fn set(&mut self) -> SetHeaders<'_> {
+    #[inline(always)] pub(crate) fn set(&mut self) -> SetHeaders<'_> {
         SetHeaders(self)
     }
 }
@@ -42,7 +42,7 @@ pub trait HeaderAction<'action> {
 } const _: () = {
     // remove
     impl<'a> HeaderAction<'a> for Option<()> {
-        fn perform(self, set_headers: SetHeaders<'a>, key: Header) -> SetHeaders<'a> {
+        #[inline] fn perform(self, set_headers: SetHeaders<'a>, key: Header) -> SetHeaders<'a> {
             set_headers.0.remove(key);
             set_headers
         }
@@ -50,13 +50,13 @@ pub trait HeaderAction<'action> {
 
     // insert
     impl<'a> HeaderAction<'a> for &'static str {
-        fn perform(self, set_headers: SetHeaders<'a>, key: Header) -> SetHeaders<'a> {
+        #[inline] fn perform(self, set_headers: SetHeaders<'a>, key: Header) -> SetHeaders<'a> {
             set_headers.0.insert(key, Cow::Borrowed(self));
             set_headers
         }
     }
     impl<'a> HeaderAction<'a> for String {
-        fn perform(self, set_headers: SetHeaders<'a>, key: Header) -> SetHeaders<'a> {
+        #[inline] fn perform(self, set_headers: SetHeaders<'a>, key: Header) -> SetHeaders<'a> {
             set_headers.0.insert(key, Cow::Owned(self));
             set_headers
         }
@@ -70,7 +70,7 @@ pub trait HeaderAction<'action> {
 
     // append or something
     impl<'a, F: FnMut(&mut Value)> HeaderAction<'a> for F {
-        fn perform(mut self, set_headers: SetHeaders<'a>, key: Header) -> SetHeaders<'a> {
+        #[inline] fn perform(mut self, set_headers: SetHeaders<'a>, key: Header) -> SetHeaders<'a> {
             let before_size = set_headers.0.size;
             self(&mut set_headers.0.values[key as usize]);
             set_headers.0.size += set_headers.0.values[key as usize].size() - before_size;

@@ -8,40 +8,28 @@ pub(crate) struct List<T, const CAPACITY: usize> {
 
 impl<T, const CAPACITY: usize> List<T, CAPACITY> {
     pub(crate) fn new() -> Self {
+        // SAFETY: An uninitialized `[MaybeUninit<_>; LEN]` is valid.
         Self {
-            list: std::array::from_fn(|_| MaybeUninit::uninit()),
             next: 0,
+            list: unsafe { MaybeUninit::<[MaybeUninit<T>; CAPACITY]>::uninit().assume_init() },
         }
     }
 }
 
 impl<T, const CAPACITY: usize> List<T, CAPACITY> {
-    #[inline] pub(crate) fn append(&mut self, element: T) {
+    #[inline] pub(crate) fn push(&mut self, element: T) {
         if self.next == CAPACITY {
             panic!("Buffer over flow");
-        } else {
-            self.list[self.next].write(element);
-            self.next += 1;
         }
+        self.list[self.next].write(element);
+        self.next += 1;
     }
 
     #[inline] pub(crate) fn iter(&self) -> impl Iterator<Item = &'_ T> {
         let Self { list, next } = self;
         (&list[..*next])
-            .into_iter()
+            .iter()
             .map(|mu| unsafe {mu.assume_init_ref()})
-    }
-}
-impl<T> List<T, 2> {
-    #[inline] pub(crate) fn assume_init_first(self) -> T {
-        if self.next == 0 {panic!("Called `assume_init_first` by `List` thats `next` is 0")}
-        let [maybe_uninit_1, _] = self.list;
-        unsafe {maybe_uninit_1.assume_init()}
-    }
-    #[inline] pub(crate) fn assume_init_extract(self) -> (T, T) {
-        if self.next != 2 {panic!("Called `assume_init_extract` by `List` thats `next` doesn't equals to CAPACITY")}
-        let [maybe_uninit_1, maybe_uninit_2] = self.list;
-        unsafe {(maybe_uninit_1.assume_init(), maybe_uninit_2.assume_init())}
     }
 }
 
@@ -73,7 +61,7 @@ const _: () = {
     impl<const LENGTH: usize, const CAPACITY: usize> From<[(&'static str, &'static str); LENGTH]> for List<(CowSlice, CowSlice), CAPACITY> {
         fn from(array: [(&'static str, &'static str); LENGTH]) -> Self {
             let mut this = Self::new(); for (key, val) in array {
-                this.append((
+                this.push((
                     unsafe {CowSlice::Ref(Slice::from_bytes(key.as_bytes()))},
                     unsafe {CowSlice::Ref(Slice::from_bytes(val.as_bytes()))},
                 ))
