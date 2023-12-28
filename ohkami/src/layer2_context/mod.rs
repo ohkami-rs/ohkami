@@ -101,7 +101,7 @@ macro_rules! generate_response {
             #[inline] pub fn $status(&self) -> Response {
                 Response {
                     status:  Status::$status,
-                    headers: self.headers,
+                    headers: self.headers.clone(),
                     content: None,
                 }
             }
@@ -127,10 +127,10 @@ macro_rules! generate_response {
 }
 
 impl Context {
-    #[inline] pub fn redirect_to(&self, location: impl AsRef<str>) -> Response {
+    #[inline] pub fn redirect_to(&self, location: impl Into<std::borrow::Cow<'static, str>>) -> Response {
         let mut headers = self.headers.clone();
         headers.set()
-            .Location(location.as_ref());
+            .Location(location.into());
 
         Response {
             status:  Status::Found,
@@ -138,10 +138,10 @@ impl Context {
             headers,
         }
     }
-    #[inline] pub fn redirect_permanently(&self, location: impl AsRef<str>) -> Response {
+    #[inline] pub fn redirect_permanently(&self, location: impl Into<std::borrow::Cow<'static, str>>) -> Response {
         let mut headers = self.headers.clone();
         headers.set()
-            .Location(location.as_ref());
+            .Location(location.into());
 
         Response {
             status:  Status::MovedPermanently,
@@ -156,21 +156,23 @@ impl Context {
 
 #[cfg(test)] mod __ {use crate::Context;
     #[test] fn test_context_change_header() {
-        use crate::layer0_lib::server_header::{Header, Headers};
+        use crate::layer0_lib::{
+            now,
+            server_header::{Header, Headers}
+        };
 
         let mut c = Context::new();
-        let __now__ = crate::layer0_lib::now();
 
         // newly set
         c.set_headers().Server("ohkami");
         assert_eq!(&c.headers, &Headers::from_iter([
-            (Header::Date, __now__),
+            (Header::Date, now()),
             (Header::Server, "ohkami".to_string()),
         ]));
 
         c.set_headers().ETag("identidentidentident");
         assert_eq!(&c.headers,  &Headers::from_iter([
-            (Header::Date, __now__),
+            (Header::Date, now()),
             (Header::Server, "ohkami".to_string()),
             (Header::ETag, "identidentidentident".to_string()),
         ]));
@@ -178,7 +180,7 @@ impl Context {
         // remove
         c.set_headers().Server(None);
         assert_eq!(&c.headers, &Headers::from_iter([
-            (Header::Date, __now__),
+            (Header::Date, now()),
             (Header::ETag, "identidentidentident".to_string()),
         ]));
 
@@ -186,7 +188,7 @@ impl Context {
         c.set_headers().Server("ohkami2");
         c.set_headers().ETag("new-etag");
         assert_eq!(&c.headers, &Headers::from_iter([
-            (Header::Date, __now__),
+            (Header::Date, now()),
             (Header::Server, "ohkami2".to_string()),
             (Header::ETag, "new-etag".to_string()),
         ]));

@@ -9,7 +9,7 @@ pub struct Value(
 ); impl Value {
     pub fn append(&mut self, new: impl AsRef<[u8]>) {
         let new_bytes = new.as_ref();
-        let mut this = match &mut self.0 {
+        match &mut self.0 {
             Some(CowSlice::Own(vec)) => {
                 vec.push(b',');
                 vec.extend_from_slice(new_bytes);
@@ -44,7 +44,7 @@ pub trait HeaderAction<'set> {
     }
 
     // insert
-    impl<'set> HeaderAction<'set> for &'set str {
+    impl<'set> HeaderAction<'set> for &'static str {
         fn perform(self, set_headers: SetHeaders<'set>, key: Header) -> SetHeaders<'set> {
             set_headers.0.insert(key, CowSlice::Ref(unsafe {Slice::from_bytes(self.as_bytes())}));
             set_headers
@@ -53,6 +53,12 @@ pub trait HeaderAction<'set> {
     impl<'set> HeaderAction<'set> for String {
         fn perform(self, set_headers: SetHeaders<'set>, key: Header) -> SetHeaders<'set> {
             set_headers.0.insert(key, CowSlice::Own(self.into_bytes()));
+            set_headers
+        }
+    }
+    impl<'set> HeaderAction<'set> for std::borrow::Cow<'static, str> {
+        fn perform(self, set_headers: SetHeaders<'set>, key: Header) -> SetHeaders<'set> {
+            set_headers.0.insert(key, CowSlice::Ref(unsafe {Slice::from_bytes(self.as_bytes())}));
             set_headers
         }
     }
@@ -77,14 +83,14 @@ macro_rules! Header {
         }
 
         impl Header {
-            #[inline] pub fn as_str(&self) -> &'static str {
+            #[inline] pub const fn as_str(&self) -> &'static str {
                 match self {
                     $(
                         Self::$konst => unsafe {std::str::from_utf8_unchecked($name_bytes)},
                     )*
                 }
             }
-            #[inline] pub fn from_bytes(bytes: &[u8]) -> Option<Self> {
+            #[inline] pub const fn from_bytes(bytes: &[u8]) -> Option<Self> {
                 match bytes {
                     $(
                         $name_bytes $(| $other_case)* => Some(Self::$konst),
@@ -112,10 +118,7 @@ macro_rules! Header {
         impl Headers {
             $(
                 pub fn $konst(&self) -> Option<&str> {
-                    match self.get(Header::$konst) {
-                        Some(value_bytes) => Some(std::str::from_utf8(value_bytes).expect("Header value is not UTF-8")),
-                        None => None,
-                    }
+                    self.get(Header::$konst)
                 }
             )*
         }
@@ -192,9 +195,11 @@ impl Headers {
         self.values[name as usize] = Value(None);
     }
 
-    #[inline] pub(crate) fn get(&self, name: Header) -> Option<&[u8]> {
+    #[inline] pub(crate) fn get(&self, name: Header) -> Option<&str> {
         match &self.values[name as usize].0 {
-            Some(v) => Some(unsafe {v.as_bytes()}),
+            Some(v) => Some(std::str::from_utf8(
+                unsafe {v.as_bytes()}
+            ).expect("Header value is not UTF-8")),
             None => None,
         }
     }
@@ -211,18 +216,21 @@ impl Headers {
         this
     }
 
-    pub(crate) fn iter(&self) -> impl Iterator<Item = (&str, &[u8])> {
+    pub(crate) fn iter(&self) -> impl Iterator<Item = (&str, &str)> {
         struct Iter<'i> {
             map: &'i Headers,
             cur: usize,
         }
         impl<'i> Iterator for Iter<'i> {
-            type Item = (&'i str, &'i [u8]);
+            type Item = (&'i str, &'i str);
             fn next(&mut self) -> Option<Self::Item> {
                 for i in self.cur..N_CLIENT_HEADERS {
                     if let Some(v) = &self.map.values[i].0 {
                         self.cur = i + 1;
-                        return Some((&CLIENT_HEADERS[i].as_str(), unsafe {v.as_bytes()}))
+                        return Some((
+                            &CLIENT_HEADERS[i].as_str(),
+                            std::str::from_utf8(unsafe {v.as_bytes()}).expect("Header value is not UTF-8"),
+                        ))
                     }
                 }
                 None

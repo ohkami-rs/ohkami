@@ -43,6 +43,12 @@ pub trait HeaderAction<'action> {
             set_headers
         }
     }
+    impl<'a> HeaderAction<'a> for std::borrow::Cow<'static, str> {
+        fn perform(self, set_headers: SetHeaders<'a>, key: Header) -> SetHeaders<'a> {
+            set_headers.0.insert(key, self);
+            set_headers
+        }
+    }
 
     // append or something
     impl<'a, F: FnMut(&mut Value)> HeaderAction<'a> for F {
@@ -64,18 +70,18 @@ macro_rules! Header {
         }
 
         impl Header {
-            #[inline] pub fn as_bytes(&self) -> &'static [u8] {
+            #[inline] pub const fn as_bytes(&self) -> &'static [u8] {
                 match self {
                     $(
                         Self::$konst => $name_bytes,
                     )*
                 }
             }
-            #[inline] pub fn as_str(&self) -> &'static str {
+            #[inline] pub const fn as_str(&self) -> &'static str {
                 unsafe {std::str::from_utf8_unchecked(self.as_bytes())}
             }
 
-            pub fn from_bytes(bytes: &[u8]) -> Option<Self> {
+            pub const fn from_bytes(bytes: &[u8]) -> Option<Self> {
                 match bytes {
                     $(
                         $name_bytes => Some(Self::$konst),
@@ -216,7 +222,7 @@ impl Headers {
         Self { values: self.values.clone(), size: self.size }
     }
 
-    pub(crate) fn iter(&self) -> impl Iterator<Item = (&str, &str)> {
+    pub(crate) const fn iter(&self) -> impl Iterator<Item = (&str, &str)> {
         struct Iter<'i> {
             map: &'i Headers,
             cur: usize,

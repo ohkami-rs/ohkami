@@ -48,7 +48,9 @@ impl<T> List<T, 2> {
 
 #[cfg(test)]
 const _: () = {
-    use super::{Slice};
+    use crate::layer0_lib::Slice;
+
+    use super::{CowSlice};
 
     impl<T: PartialEq, const CAPACITY: usize> PartialEq for List<T, CAPACITY> {
         fn eq(&self, other: &Self) -> bool {
@@ -68,12 +70,12 @@ const _: () = {
         }
     }
 
-    impl<const LENGTH: usize, const CAPACITY: usize> From<[(&'static str, &'static str); LENGTH]> for List<(Slice, Slice), CAPACITY> {
+    impl<const LENGTH: usize, const CAPACITY: usize> From<[(&'static str, &'static str); LENGTH]> for List<(CowSlice, CowSlice), CAPACITY> {
         fn from(array: [(&'static str, &'static str); LENGTH]) -> Self {
             let mut this = Self::new(); for (key, val) in array {
                 this.append((
-                    unsafe {Slice::from_bytes(key.as_bytes())},
-                    unsafe {Slice::from_bytes(val.as_bytes())},
+                    unsafe {CowSlice::Ref(Slice::from_bytes(key.as_bytes()))},
+                    unsafe {CowSlice::Ref(Slice::from_bytes(val.as_bytes()))},
                 ))
             } this
         }

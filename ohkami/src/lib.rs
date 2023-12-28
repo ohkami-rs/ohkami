@@ -324,7 +324,7 @@ pub mod __internal__ {
         //const METHODS: &'static [Method] = &[Method::GET];
         fn bite(self) -> Fang {
             Fang(|c: &mut Context, _: &mut Request| {
-                c.headers.Server("ohkami");
+                c.set_headers().Server("ohkami");
             })
         }
     }
@@ -353,7 +353,7 @@ pub mod __internal__ {
     Ohkami::with((
         Log,
         AppendHeader,
-        utils::cors("https://kanarusblog.software")
+        utils::CORS("https://kanarusblog.software")
             .AllowCredentials()
             .AllowHeaders(["Content-Type"])
             .AllowMethods([Method::GET, Method::PUT, Method::POST, Method::DELETE])

@@ -216,7 +216,7 @@ impl TestResponse {
             Some(std::str::from_utf8(body).expect(&f!("Response content is not UTF-8: {}", body.escape_ascii())))
         } else {None}
     }
-    pub fn json<'d, JSON: serde::Deserialize<'d>>(&self) -> Option<serde_json::Result<JSON>> {
+    pub fn json<'d, JSON: serde::Deserialize<'d>>(&'d self) -> Option<serde_json::Result<JSON>> {
         if self.0.headers.ContentType()? == "application/json" {
             let body = self.0.content.as_ref()?;
             Some(serde_json::from_slice(body))
