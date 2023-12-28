@@ -4,4 +4,4 @@ mod slice; pub(crate) use slice::{Slice, CowSlice};
 mod status; pub use status::{Status};
 mod method; pub use method::{Method};
 mod headers; pub(crate) use headers::{client as client_header, server as server_header};
-mod datetime; pub(crate) use datetime::{now};
+mod datetime; pub use datetime::{now};

@@ -185,14 +185,6 @@ impl Headers {
         self.values[name as usize] = Value(Some(value))
     }
 
-    pub(crate) fn append(&mut self, name: Header, value: CowSlice) {
-        let index = name as usize;
-        match &mut self.values[index].0 {
-            None    => self.values[index] = Value(Some(value)),
-            Some(v) => unsafe {v.append(value.as_ref())},
-        }
-    }
-
     pub(crate) fn remove(&mut self, name: Header) {
         self.values[name as usize] = Value(None);
     }

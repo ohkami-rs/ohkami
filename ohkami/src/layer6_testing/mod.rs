@@ -120,7 +120,7 @@ pub struct TestRequest {
             });
 
         [
-            method.as_bytes(), b" ", path.as_bytes(), &queries, b" HTTP/1.1\r\n",
+            method.as_str().as_bytes(), b" ", path.as_bytes(), &queries, b" HTTP/1.1\r\n",
             &headers,
             b"\r\n",
             content.unwrap_or(Cow::Borrowed("")).as_bytes()

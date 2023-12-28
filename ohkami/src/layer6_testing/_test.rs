@@ -76,7 +76,7 @@ async fn hello(c: Context) -> Response {
 
 struct SetServerHeader;
 impl IntoFang for SetServerHeader {
-    fn bite(self) -> Fang {
+    fn into_fang(self) -> Fang {
         Fang(|c: &mut Context| {
             c.set_headers()
                 .Server("ohkami");

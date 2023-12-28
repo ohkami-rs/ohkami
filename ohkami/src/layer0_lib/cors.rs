@@ -1,23 +1,23 @@
 #![allow(non_snake_case)]
 
-use crate::{http::Method, Context};
+use crate::{http::Method};
 
 
 pub(crate) enum AccessControlAllowOrigin {
     Any,
     Only(&'static str),
 } impl AccessControlAllowOrigin {
-    #[inline(always)] pub(crate) fn is_any(&self) -> bool {
+    #[inline(always)] pub(crate) const fn is_any(&self) -> bool {
         match self {
             Self::Any => true,
             _ => false,
         }
     }
 
-    #[inline(always)] pub(crate) fn from_literal(lit: &'static str) -> Self {
-        match lit {
-            "*"    => Self::Any,
-            origin => Self::Only(origin),
+    #[inline(always)] pub(crate) const fn from_literal(lit: &'static str) -> Self {
+        match lit.as_bytes() {
+            b"*"   => Self::Any,
+            origin => Self::Only(unsafe{std::str::from_utf8_unchecked(origin)}),
         }
     }
 
@@ -44,7 +44,7 @@ pub struct CORS {
     pub(crate) ExposeHeaders:    Option<Vec<&'static str>>,
     pub(crate) MaxAge:           Option<u32>,
 } impl CORS {
-    pub(crate) fn new(AllowOrigin: &'static str) -> Self {
+    pub(crate) const fn new(AllowOrigin: &'static str) -> Self {
         Self {
             AllowOrigin:      AccessControlAllowOrigin::from_literal(AllowOrigin),
             AllowCredentials: false,
@@ -53,31 +53,6 @@ pub struct CORS {
             ExposeHeaders:    None,
             MaxAge:           None,
         }
-    }
-
-    pub(crate) fn apply(self, request: &mut Context) {
-
-
-        //let mut h = format!("Access-Control-Allow-Origin: {}\r\n", self.AllowOrigin.as_str());
-        //if self.AllowCredentials {
-        //    h.push_str("Access-Control-Allow-Credentials: true\r\n");
-        //}
-        //if let Some(seconds) = &self.MaxAge {
-        //    h.push_str(&format!("Access-Control-Max-Age: {seconds}\r\n"));
-        //}
-        //if let Some(methods) = &self.AllowMethods {
-        //    let methods = methods.into_iter().map(|m| m.to_string()).collect::<Vec<_>>().join(",");
-        //    h.push_str(&format!("Access-Control-Allow-Methods: {methods}\r\n"));
-        //}
-        //if let Some(headers) = &self.AllowHeaders {
-        //    let headers = headers.join(",");
-        //    h.push_str(&format!("Access-Control-Allow-Headers: {headers}\r\n"));
-        //}
-        //if let Some(headers) = &self.ExposeHeaders {
-        //    let headers = headers.join(",");
-        //    h.push_str(&format!("Access-Control-Expose-Headers: {headers}\r\n"));
-        //}
-        //h
     }
 }
 

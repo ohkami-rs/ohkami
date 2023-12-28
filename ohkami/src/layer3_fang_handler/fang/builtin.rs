@@ -9,14 +9,32 @@ pub fn CORS(AllowOrigin: &'static str) -> CORS {
 }
 
 impl IntoFang for CORS {
-    fn bite(self) -> Fang {
+    const METHODS: &'static [Method] = &[Method::OPTIONS];
+
+    fn into_fang(self) -> Fang {
         #[cold] fn __forbid_cors(c: &Context) -> Result<(), Response> {
             Err(c.Forbidden())
         }
 
         Fang(move |c: &mut Context, req: &mut Request| -> Result<(), Response> {
+            c.set_headers()
+                .AccessControlAllowOrigin(self.AllowOrigin.as_str())
+                .AccessControlAllowCredentials(if self.AllowCredentials {"true"} else {"false"});
+            if let Some(methods) = &self.AllowMethods {
+                c.set_headers()
+                .AccessControlAllowMethods(methods.iter().map(Method::as_str).collect::<Vec<_>>().join(","));
+            }
+            if let Some(headers) = &self.AllowHeaders {
+                c.set_headers()
+                .AccessControlAllowHeaders(headers.join(","));
+            }
+            if let Some(headers) = &self.ExposeHeaders {
+                c.set_headers()
+                .AccessControlExposeHeaders(headers.join(","));
+            }
+
             let origin = req.headers.Origin().ok_or_else(|| c.BadRequest())?;
-            if self.AllowOrigin.matches(origin) {
+            if !self.AllowOrigin.matches(origin) {
                 return __forbid_cors(c)
             }
 

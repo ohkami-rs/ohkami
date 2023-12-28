@@ -83,7 +83,7 @@
 //! 
 //! struct AppendHeaders;
 //! impl IntoFang for AppendHeaders {
-//!     fn bite(self) -> Fang {
+//!     fn into_fang(self) -> Fang {
 //!         Fang(|c: &mut Context, req: &mut Request| {
 //!             c.headers
 //!                 .Server("ohkami");
@@ -93,7 +93,7 @@
 //! 
 //! struct Log;
 //! impl IntoFang for Log {
-//!     fn bite(self) -> Fang {
+//!     fn into_fang(self) -> Fang {
 //!         Fang(|res: Response| {
 //!             println!("{res:?}");
 //!             res
@@ -288,6 +288,7 @@ pub mod http {
 }
 
 pub mod utils {
+    pub use crate::layer0_lib         ::{now};
     pub use crate::layer1_req_res     ::{File};
     pub use crate::layer3_fang_handler::{builtin::*};
     pub use ohkami_macros             ::{Query, Payload};
@@ -322,7 +323,7 @@ pub mod __internal__ {
     struct AppendHeader;
     impl IntoFang for AppendHeader {
         //const METHODS: &'static [Method] = &[Method::GET];
-        fn bite(self) -> Fang {
+        fn into_fang(self) -> Fang {
             Fang(|c: &mut Context, _: &mut Request| {
                 c.set_headers().Server("ohkami");
             })
@@ -332,7 +333,7 @@ pub mod __internal__ {
     struct Log;
     impl IntoFang for Log {
         //const METHODS: &'static [Method] = &[];
-        fn bite(self) -> Fang {
+        fn into_fang(self) -> Fang {
             Fang(|res: Response| {
                 println!("{res:?}");
                 res

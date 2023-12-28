@@ -6,7 +6,7 @@ pub(crate) struct Slice {
     head: Option<NonNull<u8>>,
     size: usize,
 } impl Slice {
-    pub(crate) fn null() -> Self {
+    pub(crate) const fn null() -> Self {
         Self {
             head: None,
             size: 0,
@@ -25,11 +25,11 @@ pub(crate) struct Slice {
             size: bytes.len(),
         }
     }
-    #[inline] pub(crate) unsafe fn as_bytes<'b>(&self) -> &'b [u8] {
-        self.head.map(|p| std::slice::from_raw_parts(
-            p.as_ptr(),
-            self.size,
-        )).unwrap_or(&[])
+    #[inline] pub(crate) const unsafe fn as_bytes<'b>(&self) -> &'b [u8] {
+        match self.head {
+            Some(p) => std::slice::from_raw_parts(p.as_ptr(), self.size),
+            None    => &[],
+        }
     }
 } const _: () = {
     unsafe impl Send for Slice {}
@@ -44,16 +44,6 @@ pub(crate) enum CowSlice {
         match self {
             Self::Own(vec)   => &vec,
             Self::Ref(slice) => unsafe {slice.as_bytes()},
-        }
-    }
-    #[inline] pub(crate) unsafe fn append(&mut self, bytes: &[u8]) {
-        match self {
-            Self::Own(vec)   => vec.extend_from_slice(bytes),
-            Self::Ref(slice) => unsafe {
-                let mut this = slice.as_bytes().to_vec();
-                this.extend_from_slice(bytes);
-                *self = Self::Own(this)
-            },
         }
     }
 } const _: () = {

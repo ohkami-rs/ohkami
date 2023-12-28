@@ -10,7 +10,25 @@ pub struct Headers {
 #[derive(Clone)]
 pub struct Value(
     Option<Cow<'static, str>>,
-);
+); impl Value {
+    fn size(&self) -> usize {
+        match &self.0 {
+            None    => 0,
+            Some(v) => v.len(),
+        }
+    }
+
+    pub fn append(&mut self, value: impl Into<Cow<'static, str>>) {
+        match &mut self.0 {
+            None    => self.0 = Some(value.into()),
+            Some(v) => {
+                let mut new = v.to_string();
+                new.push_str(&value.into());
+                *v = Cow::Owned(new);
+            }
+        }
+    }
+}
 
 pub struct SetHeaders<'set>(
     &'set mut Headers
@@ -53,7 +71,9 @@ pub trait HeaderAction<'action> {
     // append or something
     impl<'a, F: FnMut(&mut Value)> HeaderAction<'a> for F {
         fn perform(mut self, set_headers: SetHeaders<'a>, key: Header) -> SetHeaders<'a> {
+            let before_size = set_headers.0.size;
             self(&mut set_headers.0.values[key as usize]);
+            set_headers.0.size += set_headers.0.values[key as usize].size() - before_size;
             set_headers
         }
     }
@@ -174,24 +194,6 @@ impl Headers {
                 } else {
                     self.size -= prev_len - value_len;
                 }
-            }
-        }
-    }
-
-    pub(crate) fn append(&mut self, name: Header, value: Cow<'static, str>) {
-        let name_len = name.as_bytes().len();
-        let index = name as usize;
-        match &mut self.values[index] {
-            Value(None) => {
-                self.size += name_len + ": ".len() + value.len() + "\r\n".len();
-                self.values[index].0 = Some(value);
-            }
-            Value(Some(v)) => {
-                let before = v.len();
-                let mut new = v.to_string();
-                new.push_str(&value);
-                *v = Cow::Owned(new);
-                self.size += v.len() - before;
             }
         }
     }
