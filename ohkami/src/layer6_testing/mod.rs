@@ -202,23 +202,22 @@ impl TestResponse {
             }
         }).collect::<String>();
         self.0.headers.get(server_header::Header::from_bytes(name_bytes.as_bytes())?)
-            .map(|value_bytes| std::str::from_utf8(value_bytes).expect(&f!("Header value is not UTF-8: {}", value_bytes.escape_ascii())))
     }
 
     pub fn text(&self) -> Option<&str> {
-        if self.0.headers.ContentType(())? == b"text/plain" {
+        if self.0.headers.ContentType()? == "text/plain" {
             let body = self.0.content.as_ref()?;
             Some(std::str::from_utf8(body).expect(&f!("Response content is not UTF-8: {}", body.escape_ascii())))
         } else {None}
     }
     pub fn html(&self) -> Option<&str> {
-        if self.0.headers.ContentType(())? == b"text/html" {
+        if self.0.headers.ContentType()? == "text/html" {
             let body = self.0.content.as_ref()?;
             Some(std::str::from_utf8(body).expect(&f!("Response content is not UTF-8: {}", body.escape_ascii())))
         } else {None}
     }
     pub fn json<'d, JSON: serde::Deserialize<'d>>(&self) -> Option<serde_json::Result<JSON>> {
-        if self.0.headers.ContentType(())? == b"application/json" {
+        if self.0.headers.ContentType()? == "application/json" {
             let body = self.0.content.as_ref()?;
             Some(serde_json::from_slice(body))
         } else {None}

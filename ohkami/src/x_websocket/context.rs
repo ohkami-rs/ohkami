@@ -135,13 +135,13 @@ impl WebSocketContext {
             }
         });
 
-        c.headers
-            .custom("Connection", "Upgrade")
-            .custom("Upgrade", "websocket")
-            .custom("Sec-WebSocket-Accept", sign(&sec_websocket_key));
+        c.set_headers()
+            .Connection("Update")
+            .Upgrade("websocket")
+            .SecWebSocketAccept(sign(&sec_websocket_key));
         if let Some(protocol) = selected_protocol {
-            c.headers
-                .custom("Sec-WebSocket-Protocol", protocol);
+            c.set_headers()
+                .SecWebSocketProtocol(protocol.to_string());
         }
         c.SwitchingProtocols()
     }

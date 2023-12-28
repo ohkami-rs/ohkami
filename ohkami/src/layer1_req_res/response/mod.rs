@@ -26,8 +26,12 @@ use crate::{
 /// ```
 pub struct Response {
     pub status:         Status,
-    pub(crate) headers: server_header::Headers,
+    pub headers:        server_header::Headers,
     pub(crate) content: Option<Cow<'static, [u8]>>,
+} impl Response {
+    pub fn set_headers(&mut self) -> server_header::SetHeaders<'_> {
+        self.headers.set()
+    }
 } const _: () = {
     #[cfg(feature="nightly")]
     impl FromResidual<Result<Infallible, Response>> for Response {
@@ -64,14 +68,14 @@ impl Response {
 impl Response {
     pub fn drop_content(mut self) -> Self {
         self.content.take();
-        self.headers.ContentType(None).ContentLength(None);
+        self.set_headers().ContentType(None).ContentLength(None);
         self
     }
 
     pub fn text(mut self, text: impl Into<Cow<'static, str>>) -> Self {
         let body = text.into();
 
-        self.headers.ContentType("text/plain").ContentLength(body.len().to_string());
+        self.set_headers().ContentType("text/plain").ContentLength(body.len().to_string());
         self.content = Some(match body {
             Cow::Borrowed(s)   => Cow::Borrowed(s.as_bytes()),
             Cow::Owned(string) => Cow::Owned(string.into_bytes()),
@@ -81,7 +85,7 @@ impl Response {
     pub fn html(mut self, html: impl Into<Cow<'static, str>>) -> Self {
         let body = html.into();
 
-        self.headers.ContentType("text/html").ContentLength(body.len().to_string());
+        self.set_headers().ContentType("text/html").ContentLength(body.len().to_string());
         self.content = Some(match body {
             Cow::Borrowed(s)   => Cow::Borrowed(s.as_bytes()),
             Cow::Owned(string) => Cow::Owned(string.into_bytes()),
@@ -91,14 +95,14 @@ impl Response {
     pub fn json(mut self, json: impl serde::Serialize) -> Self {
         #[cold] fn __json_serialize_error_response(mut res: Response, err: serde_json::Error) -> Response {
             let body = err.to_string().into_bytes();
-            res.headers.ContentType("text/plain").ContentLength(body.len().to_string());
+            res.set_headers().ContentType("text/plain").ContentLength(body.len().to_string());
             res.content = Some(Cow::Owned(body));
             res
         }
 
         match serde_json::to_string(&json) {
             Ok(json) => {let body = json.into_bytes();
-                self.headers.ContentType("application/json").ContentLength(body.len().to_string());
+                self.set_headers().ContentType("application/json").ContentLength(body.len().to_string());
                 self.content = Some(Cow::Owned(body));
                 self
             }
@@ -108,7 +112,7 @@ impl Response {
     pub fn json_literal(mut self, json_literal: &'static str) -> Self {
         let body = json_literal.as_bytes();
 
-        self.headers.ContentType("application/json").ContentLength(body.len().to_string());
+        self.set_headers().ContentType("application/json").ContentLength(body.len().to_string());
         self.content = Some(Cow::Borrowed(body));
         self
     }

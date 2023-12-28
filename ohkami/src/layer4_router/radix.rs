@@ -115,7 +115,7 @@ impl RadixRouter {
                     }
                 }
 
-                c.headers.Vary("Origin").cors(cors_str);
+                c.set_headers().Vary("Origin").cors(cors_str);
 
                 {
                     let Some(origin) = req.header("Origin") else {

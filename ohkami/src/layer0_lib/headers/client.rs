@@ -25,49 +25,43 @@ pub struct Value(
     }
 }
 
-pub trait HeaderAction<'headers> {
-    type Output;
-    fn perform(self, headers: &'headers mut Headers, key: Header) -> Self::Output;
-} const _: () = {
-    // get
-    impl<'h> HeaderAction<'h> for () {
-        type Output = Option<&'h [u8]>;
-        fn perform(self, headers: &mut Headers, key: Header) -> Self::Output {
-            headers.get(key)
-        }
+pub struct SetHeaders<'set>(
+    &'set mut Headers
+); impl Headers {
+    pub(crate) fn set(&mut self) -> SetHeaders<'_> {
+        SetHeaders(self)
     }
-
+}
+pub trait HeaderAction<'set> {
+    fn perform(self, set_headers: SetHeaders<'set>, key: Header) -> SetHeaders<'set>;
+} const _: () = {
     // remove
-    impl<'h> HeaderAction<'h> for Option<()> {
-        type Output = &'h mut Headers;
-        fn perform(self, headers: &'h mut Headers, key: Header) -> Self::Output {
-            headers.remove(key);
-            headers
+    impl<'set> HeaderAction<'set> for Option<()> {
+        fn perform(self, set_headers: SetHeaders<'set>, key: Header) -> SetHeaders<'set> {
+            set_headers.0.remove(key);
+            set_headers
         }
     }
 
     // insert
-    impl<'h> HeaderAction<'h> for &'h str {
-        type Output = &'h mut Headers;
-        fn perform(self, headers: &'h mut Headers, key: Header) -> Self::Output {
-            headers.insert(key, CowSlice::Ref(unsafe {Slice::from_bytes(self.as_bytes())}));
-            headers
+    impl<'set> HeaderAction<'set> for &'set str {
+        fn perform(self, set_headers: SetHeaders<'set>, key: Header) -> SetHeaders<'set> {
+            set_headers.0.insert(key, CowSlice::Ref(unsafe {Slice::from_bytes(self.as_bytes())}));
+            set_headers
         }
     }
-    impl<'h> HeaderAction<'h> for String {
-        type Output = &'h mut Headers;
-        fn perform(self, headers: &'h mut Headers, key: Header) -> Self::Output {
-            headers.insert(key, CowSlice::Own(self.into_bytes()));
-            headers
+    impl<'set> HeaderAction<'set> for String {
+        fn perform(self, set_headers: SetHeaders<'set>, key: Header) -> SetHeaders<'set> {
+            set_headers.0.insert(key, CowSlice::Own(self.into_bytes()));
+            set_headers
         }
     }
 
     // append
-    impl<'h, F: FnMut(&mut Value)> HeaderAction<'h> for F {
-        type Output = &'h mut Headers;
-        fn perform(mut self, headers: &'h mut Headers, key: Header) -> Self::Output {
-            self(&mut headers.values[key as usize]);
-            headers
+    impl<'set, F: FnMut(&mut Value)> HeaderAction<'set> for F {
+        fn perform(mut self, set_headers: SetHeaders<'set>, key: Header) -> SetHeaders<'set> {
+            self(&mut set_headers.0.values[key as usize]);
+            set_headers
         }
     }
 };
@@ -107,10 +101,21 @@ macro_rules! Header {
         }
 
         #[allow(non_snake_case)]
+        impl<'set> SetHeaders<'set> {
+            $(
+                pub fn $konst(self, action: impl HeaderAction<'set>) -> Self {
+                    action.perform(self, Header::$konst)
+                }
+            )*
+        }
+        #[allow(non_snake_case)]
         impl Headers {
             $(
-                pub fn $konst<'a, Action:HeaderAction<'a>>(&mut self, action: Action) -> Action::Output {
-                    action.perform(self, Header::$konst)
+                pub fn $konst(&self) -> Option<&str> {
+                    match self.get(Header::$konst) {
+                        Some(value_bytes) => Some(std::str::from_utf8(value_bytes).expect("Header value is not UTF-8")),
+                        None => None,
+                    }
                 }
             )*
         }

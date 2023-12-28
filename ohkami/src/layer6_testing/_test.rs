@@ -30,7 +30,7 @@ async fn hello(c: Context) -> Response {
 
 
 #[__rt__::test] async fn testing_example_complex() {
-    let users_ohkami = Ohkami::with((SetCustomHeaders,), (
+    let users_ohkami = Ohkami::with((), (
         "/".   PUT(create_user),
         "/:id".GET(get_user),
     ));
@@ -46,12 +46,10 @@ async fn hello(c: Context) -> Response {
     let res = testing_example.oneshot(TestRequest::GET("/health")).await;
     assert_eq!(res.status(), Status::NoContent);
     assert_eq!(res.header("Server").unwrap(), "ohkami");
-    assert_eq!(res.header("X-State"), None);
 
     let res = testing_example.oneshot(TestRequest::GET("/users/100")).await;
     assert_eq!(res.status(), Status::NotFound);
     assert_eq!(res.header("Server").unwrap(),  "ohkami");
-    assert_eq!(res.header("X-State").unwrap(), "testing");
 
     let res = testing_example.oneshot(TestRequest::GET("/users/42")).await;
     assert_eq!(res.status(), Status::OK);
@@ -70,28 +68,17 @@ async fn hello(c: Context) -> Response {
         })).await;
     assert_eq!(res.status(), Status::Created);
     assert_eq!(res.header("Server").unwrap(),   "ohkami");
-    assert_eq!(res.header("X-State").unwrap(),  "testing");
     assert_eq!(
         res.json::<serde_json::Value>().unwrap().unwrap(),
         serde_json::json!({"name":"kanarus","age":0}),
     );
 }
 
-struct SetCustomHeaders;
-impl IntoFang for SetCustomHeaders {
-    fn bite(self) -> Fang {
-        Fang(|c: &mut Context| {
-            c.headers
-                .custom("X-State", "testing");
-        })
-    }
-}
-
 struct SetServerHeader;
 impl IntoFang for SetServerHeader {
     fn bite(self) -> Fang {
         Fang(|c: &mut Context| {
-            c.headers
+            c.set_headers()
                 .Server("ohkami");
         })
     }

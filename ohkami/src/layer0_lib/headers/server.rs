@@ -7,53 +7,48 @@ pub struct Headers {
     /// Size of whole the byte stream when this is written into HTTP response.
     size: usize,
 }
+#[derive(Clone)]
 pub struct Value(
-    Option<Cow<'static, [u8]>>,
+    Option<Cow<'static, str>>,
 );
 
-pub trait HeaderAction<'headers> {
-    type Output;
-    fn perform(self, headers: &'headers mut Headers, key: Header) -> Self::Output;
-} const _: () = {
-    // get
-    impl<'h> HeaderAction<'h> for () {
-        type Output = Option<&'h [u8]>;
-        fn perform(self, headers: &mut Headers, key: Header) -> Self::Output {
-            headers.get(key)
-        }
+pub struct SetHeaders<'set>(
+    &'set mut Headers
+); impl Headers {
+    pub(crate) fn set(&mut self) -> SetHeaders<'_> {
+        SetHeaders(self)
     }
-
+}
+pub trait HeaderAction<'action> {
+    fn perform(self, set_headers: SetHeaders<'action>, key: Header) -> SetHeaders<'action>;
+} const _: () = {
     // remove
-    impl<'h> HeaderAction<'h> for Option<()> {
-        type Output = &'h mut Headers;
-        fn perform(self, headers: &'h mut Headers, key: Header) -> Self::Output {
-            headers.remove(key);
-            headers
+    impl<'a> HeaderAction<'a> for Option<()> {
+        fn perform(self, set_headers: SetHeaders<'a>, key: Header) -> SetHeaders<'a> {
+            set_headers.0.remove(key);
+            set_headers
         }
     }
 
     // insert
-    impl<'h> HeaderAction<'h> for &'static str {
-        type Output = &'h mut Headers;
-        fn perform(self, headers: &'h mut Headers, key: Header) -> Self::Output {
-            headers.insert(key, Cow::Borrowed(self.as_bytes()));
-            headers
+    impl<'a> HeaderAction<'a> for &'static str {
+        fn perform(self, set_headers: SetHeaders<'a>, key: Header) -> SetHeaders<'a> {
+            set_headers.0.insert(key, Cow::Borrowed(self));
+            set_headers
         }
     }
-    impl<'h> HeaderAction<'h> for String {
-        type Output = &'h mut Headers;
-        fn perform(self, headers: &'h mut Headers, key: Header) -> Self::Output {
-            headers.insert(key, Cow::Owned(self.into_bytes()));
-            headers
+    impl<'a> HeaderAction<'a> for String {
+        fn perform(self, set_headers: SetHeaders<'a>, key: Header) -> SetHeaders<'a> {
+            set_headers.0.insert(key, Cow::Owned(self));
+            set_headers
         }
     }
 
-    // append
-    impl<'h, F: FnMut(&mut Value)> HeaderAction<'h> for F {
-        type Output = &'h mut Headers;
-        fn perform(mut self, headers: &'h mut Headers, key: Header) -> Self::Output {
-            self(&mut headers.values[key as usize]);
-            headers
+    // append or something
+    impl<'a, F: FnMut(&mut Value)> HeaderAction<'a> for F {
+        fn perform(mut self, set_headers: SetHeaders<'a>, key: Header) -> SetHeaders<'a> {
+            self(&mut set_headers.0.values[key as usize]);
+            set_headers
         }
     }
 };
@@ -80,7 +75,7 @@ macro_rules! Header {
                 unsafe {std::str::from_utf8_unchecked(self.as_bytes())}
             }
 
-            #[cfg(test)] pub fn from_bytes(bytes: &[u8]) -> Option<Self> {
+            pub fn from_bytes(bytes: &[u8]) -> Option<Self> {
                 match bytes {
                     $(
                         $name_bytes => Some(Self::$konst),
@@ -97,10 +92,18 @@ macro_rules! Header {
         }
 
         #[allow(non_snake_case)]
+        impl<'set> SetHeaders<'set> {
+            $(
+                pub fn $konst(self, action: impl HeaderAction<'set>) -> Self {
+                    action.perform(self, Header::$konst)
+                }
+            )*
+        }
+        #[allow(non_snake_case)]
         impl Headers {
             $(
-                pub fn $konst<'a, Action:HeaderAction<'a>>(&mut self, action: Action) -> Action::Output {
-                    action.perform(self, Header::$konst)
+                pub fn $konst(&self) -> Option<&str> {
+                    self.get(Header::$konst)
                 }
             )*
         }
@@ -156,7 +159,7 @@ macro_rules! Header {
 }
 
 impl Headers {
-    #[inline] pub(crate) fn insert(&mut self, name: Header, value: Cow<'static, [u8]>) {
+    #[inline] pub(crate) fn insert(&mut self, name: Header, value: Cow<'static, str>) {
         let (name_len, value_len) = (name.as_bytes().len(), value.len());
         match self.values[name as usize].0.replace(value) {
             None       => self.size += name_len + ": ".len() + value_len + "\r\n".len(),
@@ -171,7 +174,7 @@ impl Headers {
         }
     }
 
-    pub(crate) fn append(&mut self, name: Header, value: Cow<'static, [u8]>) {
+    pub(crate) fn append(&mut self, name: Header, value: Cow<'static, str>) {
         let name_len = name.as_bytes().len();
         let index = name as usize;
         match &mut self.values[index] {
@@ -181,8 +184,8 @@ impl Headers {
             }
             Value(Some(v)) => {
                 let before = v.len();
-                let mut new = v.to_vec();
-                new.extend_from_slice(&value);
+                let mut new = v.to_string();
+                new.push_str(&value);
                 *v = Cow::Owned(new);
                 self.size += v.len() - before;
             }
@@ -197,7 +200,7 @@ impl Headers {
         }
     }
 
-    pub(crate) fn get(&self, name: Header) -> Option<&[u8]> {
+    pub(crate) fn get(&self, name: Header) -> Option<&str> {
         self.values[name as usize].0.as_ref().map(AsRef::as_ref)
     }
 }
@@ -209,13 +212,17 @@ impl Headers {
         }
     }
 
-    pub(crate) fn iter(&self) -> impl Iterator<Item = (&str, &[u8])> {
+    pub(crate) fn clone(&self) -> Self {
+        Self { values: self.values.clone(), size: self.size }
+    }
+
+    pub(crate) fn iter(&self) -> impl Iterator<Item = (&str, &str)> {
         struct Iter<'i> {
             map: &'i Headers,
             cur: usize,
         }
         impl<'i> Iterator for Iter<'i> {
-            type Item = (&'i str, &'i [u8]);
+            type Item = (&'i str, &'i str);
             fn next(&mut self) -> Option<Self::Item> {
                 for i in self.cur..N_SERVER_HEADERS {
                     if let Value(Some(v)) = &self.map.values[i] {
@@ -260,13 +267,32 @@ impl Headers {
 }
 
 const _: () = {
-    use std::fmt::Debug;
-
-    impl Debug for Headers {
+    impl std::fmt::Debug for Headers {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             f.debug_map()
-                .entries(self.iter().map(|(k, v)| (k, v.escape_ascii())))
+                .entries(self.iter())
                 .finish()
+        }
+    }
+
+    impl PartialEq for Headers {
+        fn eq(&self, other: &Self) -> bool {
+            for (k, v) in self.iter() {
+                if other.get(Header::from_bytes(k.as_bytes()).unwrap()) != Some(v) {
+                    return false
+                }
+            }
+            true
+        }
+    }
+
+    impl Headers {
+        pub fn from_iter(iter: impl IntoIterator<Item = (Header, impl Into<Cow<'static, str>>)>) -> Self {
+            let mut this = Headers::new();
+            for (k, v) in iter {
+                this.insert(k, v.into())
+            }
+            this
         }
     }
 };

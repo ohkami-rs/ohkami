@@ -17,7 +17,7 @@ impl IntoFang for CORS {
 
         crate::Fang(|c: &mut Context| {
             let (cors_str, _) = CORS.get().unwrap();
-            c.headers
+            c.set_headers()
                 .Vary("Origin")
                 .cors(cors_str);
         })

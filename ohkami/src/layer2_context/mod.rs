@@ -1,7 +1,7 @@
 #![allow(non_snake_case)]
 
 use crate::{
-    layer0_lib::{AsStr, Status},
+    layer0_lib::{Status, server_header},
     layer1_req_res::{Response},
 };
 
@@ -36,7 +36,7 @@ use crate::{
 /// 
 /// With error handling :
 /// 
-/// ```ignore
+/// ```
 /// use ohkami::prelude::*;
 /// use ohkami::utils::Payload;
 /// 
@@ -76,16 +76,21 @@ pub struct Context {
     #[cfg(feature="websocket")]
     pub(crate) upgrade_id: Option<crate::x_websocket::UpgradeID>,
 
-    pub headers: ResponseHeaders,
+    pub headers: server_header::Headers,
 }
 
 impl Context {
-    #[inline(always)] pub(crate) fn new() -> Self {
+    #[inline(always)] pub fn set_headers(&mut self) -> server_header::SetHeaders<'_> {
+        self.headers.set()
+    }
+}
+impl Context {
+    #[inline] pub(crate) fn new() -> Self {
         Self {
             #[cfg(feature="websocket")]
             upgrade_id: None,
 
-            headers: ResponseHeaders::new(),
+            headers: server_header::Headers::new(),
         }
     }
 }
@@ -96,7 +101,7 @@ macro_rules! generate_response {
             #[inline] pub fn $status(&self) -> Response {
                 Response {
                     status:  Status::$status,
-                    headers: self.headers.to_string(),
+                    headers: self.headers,
                     content: None,
                 }
             }
@@ -109,8 +114,8 @@ macro_rules! generate_response {
     Created,
     NoContent,
 
-    // MovedPermanently,
-    // Found,
+    MovedPermanently,
+    Found,
 
     BadRequest,
     Unauthorized,
@@ -122,12 +127,10 @@ macro_rules! generate_response {
 }
 
 impl Context {
-    #[inline] pub fn redirect_to(&self, location: impl AsStr) -> Response {
-        let mut headers = self.headers.to_string();
-        headers.push_str("Location: ");
-        headers.push_str(location.as_str());
-        headers.push('\r');
-        headers.push('\n');
+    #[inline] pub fn redirect_to(&self, location: impl AsRef<str>) -> Response {
+        let mut headers = self.headers.clone();
+        headers.set()
+            .Location(location.as_ref());
 
         Response {
             status:  Status::Found,
@@ -135,12 +138,10 @@ impl Context {
             headers,
         }
     }
-    #[inline] pub fn redirect_permanently(&self, location: impl AsStr) -> Response {
-        let mut headers = self.headers.to_string();
-        headers.push_str("Location: ");
-        headers.push_str(location.as_str());
-        headers.push('\r');
-        headers.push('\n');
+    #[inline] pub fn redirect_permanently(&self, location: impl AsRef<str>) -> Response {
+        let mut headers = self.headers.clone();
+        headers.set()
+            .Location(location.as_ref());
 
         Response {
             status:  Status::MovedPermanently,
@@ -155,56 +156,47 @@ impl Context {
 
 #[cfg(test)] mod __ {use crate::Context;
     #[test] fn test_context_change_header() {
+        use crate::layer0_lib::server_header::{Header, Headers};
+
         let mut c = Context::new();
         let __now__ = crate::layer0_lib::now();
 
         // newly set
-        c.headers.Server("ohkami");
-        assert_eq!(c.headers.to_string(), format!("\
-            Date: {__now__}\r\n\
-            Server: ohkami\r\n\
-        "));
+        c.set_headers().Server("ohkami");
+        assert_eq!(&c.headers, &Headers::from_iter([
+            (Header::Date, __now__),
+            (Header::Server, "ohkami".to_string()),
+        ]));
 
-        c.headers.ETag("identidentidentident");
-        assert_eq!(c.headers.to_string(), format!("\
-            Date: {__now__}\r\n\
-            Server: ohkami\r\n\
-            ETag: identidentidentident\r\n\
-        "));
+        c.set_headers().ETag("identidentidentident");
+        assert_eq!(&c.headers,  &Headers::from_iter([
+            (Header::Date, __now__),
+            (Header::Server, "ohkami".to_string()),
+            (Header::ETag, "identidentidentident".to_string()),
+        ]));
 
         // remove
-        c.headers.Server(None);
-        assert_eq!(c.headers.to_string(), format!("\
-            Date: {__now__}\r\n\
-            ETag: identidentidentident\r\n\
-        "));
+        c.set_headers().Server(None);
+        assert_eq!(&c.headers, &Headers::from_iter([
+            (Header::Date, __now__),
+            (Header::ETag, "identidentidentident".to_string()),
+        ]));
 
         // update
-        c.headers.Server("ohkami2");
-        c.headers.ETag("new-etag");
-        assert_eq!(c.headers.to_string(), format!("\
-            Date: {__now__}\r\n\
-            Server: ohkami2\r\n\
-            ETag: new-etag\r\n\
-        "));
-
-        // custom
-        c.headers.custom("X-MyApp-Cred", "abcdefg");
-        c.headers.custom("MyApp-Data", "gfedcba");
-        assert_eq!(c.headers.to_string(), format!("\
-            Date: {__now__}\r\n\
-            Server: ohkami2\r\n\
-            ETag: new-etag\r\n\
-            MyApp-Data: gfedcba\r\n\
-            X-MyApp-Cred: abcdefg\r\n\
-        "));
+        c.set_headers().Server("ohkami2");
+        c.set_headers().ETag("new-etag");
+        assert_eq!(&c.headers, &Headers::from_iter([
+            (Header::Date, __now__),
+            (Header::Server, "ohkami2".to_string()),
+            (Header::ETag, "new-etag".to_string()),
+        ]));
     }
 
     #[test] fn test_context_generate_response() {
         let mut c = Context::new();
         let __now__ = crate::layer0_lib::now();
 
-        c.headers.Server("ohkami");
+        c.set_headers().Server("ohkami");
         assert_eq!(std::str::from_utf8(&c.OK().text("Hello, world!").into_bytes()).unwrap(), format!("\
             HTTP/1.1 200 OK\r\n\
             Content-Type: text/plain; charset=utf-8\r\n\
@@ -215,7 +207,7 @@ impl Context {
             Hello, world!\
         "));
 
-        c.headers.ETag("identidentidentident");
+        c.set_headers().ETag("identidentidentident");
 
         // Checking how json serializing works in
         // structs and String...
@@ -274,7 +266,7 @@ impl Context {
             \r\n\
         ") + r##""{\"id\":42,\"name\":\"kanarus\",\"age\":19}""##);
 
-        c.headers.Server(None);
+        c.set_headers().Server(None);
         assert_eq!(std::str::from_utf8(&c.NoContent().into_bytes()).unwrap(), format!("\
             HTTP/1.1 204 No Content\r\n\
             Date: {__now__}\r\n\
@@ -282,29 +274,14 @@ impl Context {
             \r\n\
         "));
 
-        c.headers.Server("ohkami2");
-        c.headers.ETag("new-etag");
+        c.set_headers().Server("ohkami2");
+        c.set_headers().ETag("new-etag");
         assert_eq!(std::str::from_utf8(&c.BadRequest().into_bytes()).unwrap(), format!("\
             HTTP/1.1 400 Bad Request\r\n\
             Date: {__now__}\r\n\
             Server: ohkami2\r\n\
             ETag: new-etag\r\n\
             \r\n\
-        "));
-
-        c.headers.custom("X-MyApp-Cred", "abcdefg");
-        c.headers.custom("MyApp-Data", "gfedcba");
-        assert_eq!(std::str::from_utf8(&c.InternalServerError().text("I'm sorry fo").into_bytes()).unwrap(), format!("\
-            HTTP/1.1 500 Internal Server Error\r\n\
-            Content-Type: text/plain; charset=utf-8\r\n\
-            Content-Length: 12\r\n\
-            Date: {__now__}\r\n\
-            Server: ohkami2\r\n\
-            ETag: new-etag\r\n\
-            MyApp-Data: gfedcba\r\n\
-            X-MyApp-Cred: abcdefg\r\n\
-            \r\n\
-            I'm sorry fo\
         "));
     }
 }
