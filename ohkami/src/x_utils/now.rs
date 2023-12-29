@@ -24,7 +24,8 @@
     use super::{__correct_now, now};
 
     #[test] fn test_now() {
-        assert_eq!(__correct_now(), now());
+        let (cn, n) = (__correct_now(), now());
+        assert_eq!(cn, n);
     }
 }
 
@@ -43,7 +44,7 @@ impl UTCDateTime {
         const SHORT_MONTHS:    [&str; 12] = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
         fn push_hundreds(buf: &mut String, n: u8) {
-            debug_assert!(n >= 100, "Called `push_hundreds` for `n` less than 100");
+            debug_assert!(n < 100, "Called `push_hundreds` for `n` greater than 100");
             buf.push((n/10 + b'0') as char);
             buf.push((n%10 + b'0') as char);
         }
