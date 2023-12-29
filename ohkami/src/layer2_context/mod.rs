@@ -156,10 +156,8 @@ impl Context {
 
 #[cfg(test)] mod __ {use crate::Context;
     #[test] fn test_context_change_header() {
-        use crate::layer0_lib::{
-            now,
-            server_header::{Header, Headers}
-        };
+        use crate::utils::now;
+        use crate::layer0_lib::server_header::{Header, Headers};
 
         let mut c = Context::new();
 
@@ -196,7 +194,7 @@ impl Context {
 
     #[test] fn test_context_generate_response() {
         let mut c = Context::new();
-        let __now__ = crate::layer0_lib::now();
+        let __now__ = crate::utils::now();
 
         c.set_headers().Server("ohkami");
         assert_eq!(std::str::from_utf8(&c.OK().text("Hello, world!").into_bytes()).unwrap(), format!("\

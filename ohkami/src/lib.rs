@@ -268,6 +268,8 @@ mod layer5_ohkami;
 #[cfg(test)]
 mod layer6_testing;
 
+mod x_utils;
+
 #[cfg(feature="websocket")]
 mod x_websocket;
 
@@ -288,7 +290,7 @@ pub mod http {
 }
 
 pub mod utils {
-    pub use crate::layer0_lib         ::{now};
+    pub use crate::x_utils::*;
     pub use crate::layer1_req_res     ::{File};
     pub use crate::layer3_fang_handler::{builtin::*};
     pub use ohkami_macros             ::{Query, Payload};
