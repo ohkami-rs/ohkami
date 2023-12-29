@@ -211,9 +211,6 @@ impl Context {
 
         c.set_headers().ETag("identidentidentident");
 
-        // Checking how json serializing works in
-        // structs and String...
-
         #[derive(serde::Serialize)] struct User {
             id:   usize,
             name: &'static str,
