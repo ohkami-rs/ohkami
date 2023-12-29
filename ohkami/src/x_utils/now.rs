@@ -3,10 +3,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 #[inline] pub fn now() -> String {
     let system_now = SystemTime::now().duration_since(UNIX_EPOCH).expect("system time before Unix epoch");
-    let naive_now  = NaiveDateTime::now_from_system(system_now);
-
-    let utc_now = UTCDateTime::from_naive(naive_now);
-    utc_now.into_imf_fixdate()
+    UTCDateTime::now_from_system(system_now).into_imf_fixdate()
 }
 
 #[cfg(test)] mod test {
@@ -29,14 +26,23 @@ use std::time::{SystemTime, UNIX_EPOCH};
 }
 
 
-struct UTCDateTime(NaiveDateTime);
+struct UTCDateTime {
+    date: Date,
+    time: Time,
+}
 impl UTCDateTime {
-    fn from_naive(naive: NaiveDateTime) -> Self {
-        Self(naive)
+    fn now_from_system(system_now: std::time::Duration) -> Self {
+        let (secs, nsecs) = (system_now.as_secs() as i64, system_now.subsec_nanos());
+
+        let days = secs.div_euclid(86_400);
+        let secs = secs.rem_euclid(86_400);
+
+        let date = Date::from_days(days as i32 + 719_163);
+        let time = Time::from_seconds(secs as u32, nsecs);
+
+        Self { date, time }
     }
-    fn into_naive_local(self) -> NaiveDateTime {
-        self.0 // Offset is 0 because this is *UTC* datetime
-    }
+
     fn into_imf_fixdate(self) -> String {
         const IMF_FIXDATE_LEN: usize      = "Sun, 06 Nov 1994 08:49:37 GMT".len();
         const SHORT_WEEKDAYS:  [&str; 7]  = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -50,7 +56,7 @@ impl UTCDateTime {
 
         let mut buf = String::with_capacity(IMF_FIXDATE_LEN);
         {
-            let NaiveDateTime { date, time } = self.into_naive_local();
+            let Self { date, time } = self;
 
             buf.push_str(SHORT_WEEKDAYS[date.weekday().num_days_from_sunday() as usize]);
             buf.push_str(", ");
@@ -85,34 +91,10 @@ impl UTCDateTime {
     }
 }
 
-struct NaiveDateTime {
-    date: NaiveDate,
-    time: NaiveTime,
-}
-
-/// (year << 13) | of
-struct NaiveDate(i32);
-
-struct NaiveTime {
+struct Time {
     secs: u32,
     frac: u32,
-}
-
-impl NaiveDateTime {
-    fn now_from_system(system_now: std::time::Duration) -> Self {
-        let (secs, nsecs) = (system_now.as_secs() as i64, system_now.subsec_nanos());
-
-        let days = secs.div_euclid(86_400);
-        let secs = secs.rem_euclid(86_400);
-
-        let date = NaiveDate::from_days(days as i32 + 719_163).unwrap(/* TODO: more optimization */);
-        let time = NaiveTime::from_seconds(secs as u32, nsecs);
-
-        Self { date, time }
-    }
-}
-
-impl NaiveTime {
+} impl Time {
     const fn from_seconds(secs: u32, nsecs: u32) -> Self {
         debug_assert! {
             secs  < 86_400 &&
@@ -121,7 +103,7 @@ impl NaiveTime {
         }
         Self { secs, frac: nsecs }
     }
-    fn hms(&self) -> (u32, u32, u32) {
+    const fn hms(&self) -> (u32, u32, u32) {
         let sec = self.secs % 60;
         let mins = self.secs / 60;
         let min = mins % 60;
@@ -133,8 +115,10 @@ impl NaiveTime {
     }
 }
 
-impl NaiveDate {
-    const fn from_days(days: i32) -> Option<Self> {
+/// (year << 13) | of
+struct Date(i32);
+impl Date {
+    const fn from_days(days: i32) -> Self {
         const fn cycle_to_yo(cycle: u32) -> (u32, u32) {
             let mut year_mod_400 = cycle / 365;
             let mut ordinal0 = cycle % 365;
@@ -148,7 +132,7 @@ impl NaiveDate {
             (year_mod_400, ordinal0 + 1)
         }
 
-        let Some(days) = days.checked_add(365) else {return None};
+        let days = days + 365;
         let year_div_400 = days.div_euclid(146_097);
         let cycle = days.rem_euclid(146_097);
         let (year_mod_400, ordinal) = cycle_to_yo(cycle as u32);
@@ -156,18 +140,18 @@ impl NaiveDate {
         Self::from_ordinal_and_flags(year_div_400 * 400 + year_mod_400 as i32, ordinal, flags)
     }
     const fn from_ordinal_and_flags(
-        year: i32,
+        year:    i32,
         ordinal: u32,
-        flags: YearFlag,
-    ) -> Option<NaiveDate> {
-        if year < MIN_YEAR || year > MAX_YEAR {
-            return None; // Out-of-range
-        }
-        debug_assert!(YearFlag::from_year(year).0 == flags.0);
-        match Of::new(ordinal, flags) {
-            Some(of) => Some(NaiveDate((year << 13) | (of.0 as i32))),
-            None => None, // Invalid: Ordinal outside of the nr of days in a year with those flags.
-        }
+        flag:    YearFlag,
+    ) -> Date {
+        const MAX_YEAR: i32 = i32::MAX >> 13;
+        const MIN_YEAR: i32 = i32::MIN >> 13;
+        
+        debug_assert!(year >= MIN_YEAR && year <= MAX_YEAR, "Year out of range");
+        debug_assert!(YearFlag::from_year(year).0 == flag.0);
+
+        let of = Of::new(ordinal, flag);
+        Self((year << 13) | (of.0 as i32))
     }
 
     const fn year(&self) -> i32 {
@@ -198,6 +182,39 @@ impl NaiveDate {
 struct YearFlag(u8);
 impl YearFlag {
     const fn from_year(year: i32) -> Self {
+        const YEAR_TO_FLAG: &[YearFlag; 400] = &[
+            BA, G, F, E, DC, B, A, G, FE, D, C, B, AG, F, E, D, CB, A, G, F, ED, C, B, A, GF, E, D, C, BA,
+            G, F, E, DC, B, A, G, FE, D, C, B, AG, F, E, D, CB, A, G, F, ED, C, B, A, GF, E, D, C, BA, G,
+            F, E, DC, B, A, G, FE, D, C, B, AG, F, E, D, CB, A, G, F, ED, C, B, A, GF, E, D, C, BA, G, F,
+            E, DC, B, A, G, FE, D, C, B, AG, F, E, D, // 100
+            C, B, A, G, FE, D, C, B, AG, F, E, D, CB, A, G, F, ED, C, B, A, GF, E, D, C, BA, G, F, E, DC,
+            B, A, G, FE, D, C, B, AG, F, E, D, CB, A, G, F, ED, C, B, A, GF, E, D, C, BA, G, F, E, DC, B,
+            A, G, FE, D, C, B, AG, F, E, D, CB, A, G, F, ED, C, B, A, GF, E, D, C, BA, G, F, E, DC, B, A,
+            G, FE, D, C, B, AG, F, E, D, CB, A, G, F, // 200
+            E, D, C, B, AG, F, E, D, CB, A, G, F, ED, C, B, A, GF, E, D, C, BA, G, F, E, DC, B, A, G, FE,
+            D, C, B, AG, F, E, D, CB, A, G, F, ED, C, B, A, GF, E, D, C, BA, G, F, E, DC, B, A, G, FE, D,
+            C, B, AG, F, E, D, CB, A, G, F, ED, C, B, A, GF, E, D, C, BA, G, F, E, DC, B, A, G, FE, D, C,
+            B, AG, F, E, D, CB, A, G, F, ED, C, B, A, // 300
+            G, F, E, D, CB, A, G, F, ED, C, B, A, GF, E, D, C, BA, G, F, E, DC, B, A, G, FE, D, C, B, AG,
+            F, E, D, CB, A, G, F, ED, C, B, A, GF, E, D, C, BA, G, F, E, DC, B, A, G, FE, D, C, B, AG, F,
+            E, D, CB, A, G, F, ED, C, B, A, GF, E, D, C, BA, G, F, E, DC, B, A, G, FE, D, C, B, AG, F, E,
+            D, CB, A, G, F, ED, C, B, A, GF, E, D, C, // 400
+        ];
+        const A:  YearFlag = YearFlag(0o15);
+        const AG: YearFlag = YearFlag(0o05);
+        const B:  YearFlag = YearFlag(0o14);
+        const BA: YearFlag = YearFlag(0o04);
+        const C:  YearFlag = YearFlag(0o13);
+        const CB: YearFlag = YearFlag(0o03);
+        const D:  YearFlag = YearFlag(0o12);
+        const DC: YearFlag = YearFlag(0o02);
+        const E:  YearFlag = YearFlag(0o11);
+        const ED: YearFlag = YearFlag(0o01);
+        const F:  YearFlag = YearFlag(0o17);
+        const FE: YearFlag = YearFlag(0o07);
+        const G:  YearFlag = YearFlag(0o16);
+        const GF: YearFlag = YearFlag(0o06);
+
         YEAR_TO_FLAG[year.rem_euclid(400) as usize]
     }
 }
@@ -205,16 +222,16 @@ impl YearFlag {
 #[derive(Clone, Copy)]
 struct Of(u32);
 impl Of {
-    const fn new(ordinal: u32, YearFlag(flag): YearFlag) -> Option<Self> {
+    const fn new(ordinal: u32, YearFlag(flag): YearFlag) -> Self {
         const MIN_OL: u32 = 1 << 1;
         const MAX_OL: u32 = 366 << 1; // `(366 << 1) | 1` would be day 366 in a non-leap year
         
         let of = Self((ordinal << 4) | flag as u32);
         let ol = of.ol();
-        match ol >= MIN_OL && ol <= MAX_OL {
-            true => Some(of),
-            false => None,
-        }
+
+        debug_assert!(MIN_OL <= ol && ol <= MAX_OL);
+
+        of
     }
     const fn ol(&self) -> u32 {
         self.0 >> 3
@@ -324,9 +341,6 @@ impl Weekday {
     }
 }
 
-const MAX_YEAR: i32 = i32::MAX >> 13;
-const MIN_YEAR: i32 = i32::MIN >> 13;
-
 const YEAR_DELTAS: &[u8; 401] = &[
     0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 6, 6, 6, 6, 7, 7, 7, 7, 8, 8, 8,
     8, 9, 9, 9, 9, 10, 10, 10, 10, 11, 11, 11, 11, 12, 12, 12, 12, 13, 13, 13, 13, 14, 14, 14, 14,
@@ -348,35 +362,3 @@ const YEAR_DELTAS: &[u8; 401] = &[
     90, 91, 91, 91, 91, 92, 92, 92, 92, 93, 93, 93, 93, 94, 94, 94, 94, 95, 95, 95, 95, 96, 96, 96,
     96, 97, 97, 97, 97, // 400+1
 ];
-const YEAR_TO_FLAG: &[YearFlag; 400] = &[
-    BA, G, F, E, DC, B, A, G, FE, D, C, B, AG, F, E, D, CB, A, G, F, ED, C, B, A, GF, E, D, C, BA,
-    G, F, E, DC, B, A, G, FE, D, C, B, AG, F, E, D, CB, A, G, F, ED, C, B, A, GF, E, D, C, BA, G,
-    F, E, DC, B, A, G, FE, D, C, B, AG, F, E, D, CB, A, G, F, ED, C, B, A, GF, E, D, C, BA, G, F,
-    E, DC, B, A, G, FE, D, C, B, AG, F, E, D, // 100
-    C, B, A, G, FE, D, C, B, AG, F, E, D, CB, A, G, F, ED, C, B, A, GF, E, D, C, BA, G, F, E, DC,
-    B, A, G, FE, D, C, B, AG, F, E, D, CB, A, G, F, ED, C, B, A, GF, E, D, C, BA, G, F, E, DC, B,
-    A, G, FE, D, C, B, AG, F, E, D, CB, A, G, F, ED, C, B, A, GF, E, D, C, BA, G, F, E, DC, B, A,
-    G, FE, D, C, B, AG, F, E, D, CB, A, G, F, // 200
-    E, D, C, B, AG, F, E, D, CB, A, G, F, ED, C, B, A, GF, E, D, C, BA, G, F, E, DC, B, A, G, FE,
-    D, C, B, AG, F, E, D, CB, A, G, F, ED, C, B, A, GF, E, D, C, BA, G, F, E, DC, B, A, G, FE, D,
-    C, B, AG, F, E, D, CB, A, G, F, ED, C, B, A, GF, E, D, C, BA, G, F, E, DC, B, A, G, FE, D, C,
-    B, AG, F, E, D, CB, A, G, F, ED, C, B, A, // 300
-    G, F, E, D, CB, A, G, F, ED, C, B, A, GF, E, D, C, BA, G, F, E, DC, B, A, G, FE, D, C, B, AG,
-    F, E, D, CB, A, G, F, ED, C, B, A, GF, E, D, C, BA, G, F, E, DC, B, A, G, FE, D, C, B, AG, F,
-    E, D, CB, A, G, F, ED, C, B, A, GF, E, D, C, BA, G, F, E, DC, B, A, G, FE, D, C, B, AG, F, E,
-    D, CB, A, G, F, ED, C, B, A, GF, E, D, C, // 400
-];
-const A:  YearFlag = YearFlag(0o15);
-const AG: YearFlag = YearFlag(0o05);
-const B:  YearFlag = YearFlag(0o14);
-const BA: YearFlag = YearFlag(0o04);
-const C:  YearFlag = YearFlag(0o13);
-const CB: YearFlag = YearFlag(0o03);
-const D:  YearFlag = YearFlag(0o12);
-const DC: YearFlag = YearFlag(0o02);
-const E:  YearFlag = YearFlag(0o11);
-const ED: YearFlag = YearFlag(0o01);
-const F:  YearFlag = YearFlag(0o17);
-const FE: YearFlag = YearFlag(0o07);
-const G:  YearFlag = YearFlag(0o16);
-const GF: YearFlag = YearFlag(0o06);
