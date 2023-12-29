@@ -1,14 +1,16 @@
 use std::{mem::MaybeUninit, borrow::Cow};
 use super::{CowSlice, Slice};
+use percent_encoding::percent_decode;
 
 
 const LIMIT: usize = 8;
 
 pub struct QueryParams {
     next:   usize,
+    /// `MaybeUninit<({percent decoded key}, {percent decoded value})>`
     params: [MaybeUninit<(CowSlice, CowSlice)>; LIMIT],
 } impl QueryParams {
-    pub(crate) const fn new() -> Self {
+    #[inline] pub(crate) const fn new() -> Self {
         // SAFETY: An uninitialized `[MaybeUninit<_>; LEN]` is valid.
         Self {
             next:   0,
@@ -18,15 +20,32 @@ pub struct QueryParams {
         }
     }
 
-    #[inline] pub(crate) fn iter<'q>(self) -> impl Iterator<Item = (CowSlice, CowSlice)> {
-        self.params.into_iter()
-            .take(self.next)
-            .map(|mu| unsafe {mu.assume_init()})
+    #[inline] pub(crate) fn iter(&self) -> impl Iterator<Item = (&str, &str)> {
+        self.params[..self.next].iter()
+            .map(|mu| unsafe {
+                let (k, v) = mu.assume_init_ref();
+                (std::str::from_utf8(k.as_bytes()).unwrap(), std::str::from_utf8(v.as_bytes()).unwrap())
+            })
+    }
+    #[inline] pub(crate) fn get(&self, key: &str) -> Option<&str> {
+        let key = key.as_bytes();
+        for kv in &self.params[..self.next] {
+            unsafe {
+                let (k, v) = kv.assume_init_ref();
+                if key == k.as_bytes() {
+                    return Some((|| std::str::from_utf8(v.as_bytes()).unwrap())())
+                }
+            }
+        }
+        None
     }
 
-    #[inline] pub(crate) unsafe fn push_from_request_bytes(&mut self, key: &[u8], value: &[u8]) {
-        let (key, value) = (Slice::from_bytes(key), Slice::from_bytes(value));
-        self.params[self.next].write((CowSlice::Ref(key), CowSlice::Ref(value)));
+    #[inline] pub(crate) unsafe fn push_from_request_slice(&mut self, key: Slice, value: Slice) {
+        let (key, value) = (percent_decode(key.as_bytes()), percent_decode(value.as_bytes()));
+        self.params[self.next].write((
+            CowSlice::from_request_cow_bytes(key.into()),
+            CowSlice::from_request_cow_bytes(value.into()),
+        ));
         self.next += 1;
     }
 
@@ -42,3 +61,26 @@ pub struct QueryParams {
         self.next += 1;
     }
 }
+
+const _: () = {
+    impl PartialEq for QueryParams {
+        fn eq(&self, other: &Self) -> bool {
+            for (k, v) in self.iter() {
+                if other.get(k) != Some(v) {
+                    return false
+                }
+            }
+            true
+        }
+    }
+
+    impl<const N: usize> From<[(&'static str, &'static str); N]> for QueryParams {
+        fn from(kv: [(&'static str, &'static str); N]) -> Self {
+            let mut this = QueryParams::new();
+            for (k, v) in kv {
+                this.push(k, v)
+            }
+            this
+        }
+    }
+};

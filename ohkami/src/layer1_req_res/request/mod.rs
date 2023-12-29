@@ -1,5 +1,5 @@
-mod path;
-mod queries;
+mod path;    pub(crate) use path::Path;
+mod queries; pub(crate) use queries::QueryParams;
 mod parse_payload; pub use parse_payload::*;
 mod from_request;  pub use from_request::*;
 #[cfg(test)] mod _test_parse_payload;
@@ -7,31 +7,29 @@ mod from_request;  pub use from_request::*;
 
 use std::{pin::Pin};
 use byte_reader::{Reader};
-use percent_encoding::{percent_decode};
 use crate::{
     __rt__::{AsyncReader},
-    layer0_lib::{List, Method, Slice, CowSlice, client_header}
+    layer0_lib::{Method, Slice, CowSlice, client_header}
 };
 
 
 pub(crate) const METADATA_SIZE: usize = 1024;
 pub(crate) const PAYLOAD_LIMIT: usize = 1 << 32;
-pub(crate) const QUERIES_LIMIT: usize = 4;
 
 pub struct Request {pub(crate) _metadata: [u8; METADATA_SIZE],
     pub method:  Method,
     pub headers: client_header::Headers,
-    path:    Slice,
-    queries: List<(CowSlice, CowSlice), QUERIES_LIMIT>,
-    payload: Option<CowSlice>,
+    path:        Path,
+    queries:     QueryParams,
+    payload:     Option<CowSlice>,
 }
 
 impl Request {
     pub(crate) fn init() -> Self {
         Self {_metadata: [0; METADATA_SIZE],
             method:  Method::GET,
-            path:    Slice::null(),
-            queries: List::<(CowSlice, CowSlice), QUERIES_LIMIT>::new(),
+            path:    Path::init(),
+            queries: QueryParams::new(),
             headers: client_header::Headers::init(),
             payload: None,
         }
@@ -47,17 +45,22 @@ impl Request {
         let method = Method::from_bytes(r.read_while(|b| b != &b' '));
         r.consume(" ").unwrap();
         
-       let path = unsafe {Slice::from_bytes(r.read_while(|b| b != &b'?' && b != &b' '))};
+        let path = unsafe {// SAFETY: Just calling in request parsing
+            Path::from_request_bytes(r.read_while(|b| b != &b'?' && b != &b' '))
+        };
 
-        let mut queries = List::<(CowSlice, CowSlice), QUERIES_LIMIT>::new();
+        let mut queries = QueryParams::new();
         if r.consume_oneof([" ", "?"]).unwrap() == 1 {
             while r.peek().is_some() {
-                let key = unsafe {Slice::from_bytes(r.read_while(|b| b != &b'='))};
-                r.consume("=").unwrap();
-                let val = unsafe {Slice::from_bytes(r.read_while(|b| b != &b'&' && b != &b' '))};
+                unsafe {// SAFETY: Just executing in request parsing
+                    let key = Slice::from_bytes(r.read_while(|b| b != &b'='));
+                    r.consume("=").unwrap();
+                    let val = Slice::from_bytes(r.read_while(|b| b != &b'&' && b != &b' '));
 
-                queries.append((CowSlice::Ref(key), CowSlice::Ref(val)));
-                if r.consume_oneof(["&", " "]).unwrap() == 1 {break}
+                    queries.push_from_request_slice(key, val);
+
+                    if r.consume_oneof(["&", " "]).unwrap() == 1 {break}
+                }
             }
         }
 
@@ -123,24 +126,15 @@ impl Request {
 
 impl Request {
     #[inline] pub fn path(&self) -> &str {
-        unsafe {std::mem::transmute(
-            &*(percent_decode(self.path_bytes()).decode_utf8_lossy())
-        )}
+        // SAFETY: Just callig for data owned by `Request`
+        unsafe {self.path.as_str()}
     }
 
     #[inline] pub fn query<Value: FromParam>(&self, key: &str) -> Option<Result<Value, Value::Error>> {
-        for (k, v) in self.queries.iter() {
-            if key.eq_ignore_ascii_case(&percent_decode(unsafe {k.as_bytes()}).decode_utf8_lossy()) {
-                return (|| Some(Value::from_param(&percent_decode(unsafe {v.as_bytes()}).decode_utf8_lossy())))()
-            }
-        }
-        None
+        self.queries.get(key).map(Value::from_param)
     }
-    pub fn set_query(&mut self, key: &str, value: &str) {
-        self.queries.append((
-            CowSlice::Own(key.as_bytes().to_vec()),
-            CowSlice::Own(value.as_bytes().to_vec()),
-        ))
+    pub fn set_query(&mut self, key: impl Into<std::borrow::Cow<'static, str>>, value: impl Into<std::borrow::Cow<'static, str>>) {
+        self.queries.push(key, value)
     }
 
     #[inline] pub fn set_headers(&mut self) -> client_header::SetHeaders<'_> {
@@ -161,17 +155,9 @@ impl Request {
 const _: () = {
     impl std::fmt::Debug for Request {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            let queires = {
-                let List { list, next } = &self.queries;
-                list[..*next].into_iter()
-                    .map(|cell| {
-                        let (k, v) = unsafe {cell.assume_init_ref()};
-                        format!("{} = {}",
-                            percent_decode(unsafe {k.as_bytes()}).decode_utf8_lossy(),
-                            percent_decode(unsafe {v.as_bytes()}).decode_utf8_lossy(),
-                        )
-                    })
-            }.collect::<Vec<_>>();
+            let queires = self.queries.iter()
+                .map(|(k, v)| format!("{k}: {v}"))
+                .collect::<Vec<_>>();
 
             let headers = self.headers.iter()
                 .map(|(k, v)| format!("{k}: {v}"))
@@ -200,20 +186,9 @@ const _: () = {
 #[cfg(test)] const _: () = {
     impl PartialEq for Request {
         fn eq(&self, other: &Self) -> bool {
-            fn collect<const CAP: usize>(list: &List<(CowSlice, CowSlice), CAP>) -> Vec<(&str, &str)> {
-                let mut list = list.iter()
-                    .map(|(k, v)| unsafe {(
-                        std::str::from_utf8(k.as_bytes()).unwrap(),
-                        std::str::from_utf8(v.as_bytes()).unwrap(),
-                    )})
-                    .collect::<Vec<_>>();
-                list.sort_by(|(a, _), (b, _)| (a.to_ascii_lowercase()).cmp(&b.to_ascii_lowercase()));
-                list
-            }
-
             self.method == other.method &&
             unsafe {self.path.as_bytes() == other.path.as_bytes()} &&
-            collect(&self.queries) == collect(&other.queries) &&
+            self.queries == other.queries &&
             self.headers == other.headers &&
             self.payload == other.payload
         }

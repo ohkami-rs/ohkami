@@ -1,7 +1,6 @@
 use std::pin::Pin;
-
-use super::{Request, METADATA_SIZE};
-use crate::{layer0_lib::{Slice, List, Method, CowSlice, client_header}};
+use super::{Request, METADATA_SIZE, Path, QueryParams};
+use crate::{layer0_lib::{Slice, Method, CowSlice, client_header}};
 
 macro_rules! assert_parse {
     ($case:expr, $expected:expr) => {
@@ -51,8 +50,8 @@ fn metadataize(input: &str) -> [u8; METADATA_SIZE] {
     const _CASE_1_LEN: usize = CASE_1.len();
     assert_parse!(CASE_1, Request {_metadata: metadataize(CASE_1),
         method:  Method::GET,
-        path:    unsafe {Slice::from_bytes(b"/hello.html")},
-        queries: List::from([]),
+        path:    Path::from_literal("/hello.html"),
+        queries: QueryParams::new(),
         headers: client_header::Headers::from_iter([
             (ch::Host,           "www.tutorialspoint.com"),
             (ch::UserAgent,      "Mozilla/4.0"),
@@ -77,8 +76,8 @@ fn metadataize(input: &str) -> [u8; METADATA_SIZE] {
     const _CASE_2_LEN: usize = CASE_2.len();
     assert_parse!(CASE_2, Request {_metadata: metadataize(CASE_2),
         method:  Method::POST,
-        path:    unsafe {Slice::from_bytes(b"/signup")},
-        queries: List::from([]),
+        path:    Path::from_literal("/signup"),
+        queries: QueryParams::new(),
         headers: client_header::Headers::from_iter([
             (ch::Host,            "www.tutorialspoint.com"),
             (ch::UserAgent,      "Mozilla/4.0"),
@@ -111,8 +110,8 @@ fn metadataize(input: &str) -> [u8; METADATA_SIZE] {
     const _CASE_3_LEN: usize = CASE_3.len();
     assert_parse!(CASE_3, Request {_metadata: metadataize(CASE_3),
         method:  Method::POST,
-        path:    unsafe {Slice::from_bytes(b"/foo.php")},
-        queries: List::from([
+        path:    Path::from_literal("/foo.php"),
+        queries: QueryParams::from([
             ("query", "1"),
             ("q2",    "xxx"),
         ]),

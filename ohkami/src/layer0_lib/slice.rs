@@ -46,6 +46,12 @@ pub(crate) enum CowSlice {
             Self::Ref(slice) => unsafe {slice.as_bytes()},
         }
     }
+    #[inline] pub(crate) unsafe fn from_request_cow_bytes<'req>(cow_bytes: std::borrow::Cow<'req, [u8]>) -> Self {
+        match cow_bytes {
+            std::borrow::Cow::Borrowed(slice) => Self::Ref(Slice::from_bytes(slice)),
+            std::borrow::Cow::Owned(vec)      => Self::Own(vec),
+        }
+    }
 } const _: () = {
     impl AsRef<[u8]> for CowSlice {
         fn as_ref(&self) -> &[u8] {
