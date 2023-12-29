@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use crate::layer0_lib::{CowSlice, Slice};
 
 
@@ -7,21 +8,36 @@ pub struct Headers {
 pub struct Value(
     Option<CowSlice>,
 ); impl Value {
-    pub fn append(&mut self, new: impl AsRef<[u8]>) {
-        let new_bytes = new.as_ref();
+    pub fn as_str(&self) -> &str {
+        match &self.0 {
+            Some(cows) => std::str::from_utf8(unsafe {cows.as_bytes()}).expect("Header value is not UTF-8"),
+            None       => "",
+        }
+    }
+    pub fn append(&mut self, value: impl Into<Cow<'static, str>>) {
+        let value: Cow<'static, str> = value.into();
         match &mut self.0 {
             Some(CowSlice::Own(vec)) => {
                 vec.push(b',');
-                vec.extend_from_slice(new_bytes);
+                vec.extend_from_slice(value.as_bytes());
             }
             Some(CowSlice::Ref(slice)) => {
                 let mut this = unsafe{slice.as_bytes()}.to_vec();
                 this.push(b',');
-                this.extend_from_slice(new_bytes);
+                this.extend_from_slice(value.as_bytes());
                 self.0 = Some(CowSlice::Own(this))
             }
-            None => self.0 = Some(CowSlice::Own(new_bytes.to_vec()))
+            None => self.0 = Some(match value {
+                Cow::Borrowed(static_str) => CowSlice::Ref(unsafe {Slice::from_bytes(static_str.as_bytes())}),
+                Cow::Owned(string)        => CowSlice::Own(string.into_bytes()),
+            })
         };
+    }
+    pub fn replace(&mut self, new_value: impl Into<Cow<'static, str>>) {
+        self.0 = Some(match new_value.into() {
+            Cow::Borrowed(static_str) => CowSlice::Ref(unsafe {Slice::from_bytes(static_str.as_bytes())}),
+            Cow::Owned(string)        => CowSlice::Own(string.into_bytes()),
+        })
     }
 }
 
@@ -66,7 +82,7 @@ pub trait HeaderAction<'set> {
     // append
     impl<'set, F: FnMut(&mut Value)> HeaderAction<'set> for F {
         fn perform(mut self, set_headers: SetHeaders<'set>, key: Header) -> SetHeaders<'set> {
-            self(&mut set_headers.0.values[key as usize]);
+            self(unsafe {set_headers.0.values.get_unchecked_mut(key as usize)});
             set_headers
         }
     }
@@ -182,15 +198,15 @@ macro_rules! Header {
 
 impl Headers {
     #[inline] pub(crate) fn insert(&mut self, name: Header, value: CowSlice) {
-        self.values[name as usize] = Value(Some(value))
+        unsafe {*self.values.get_unchecked_mut(name as usize) = Value(Some(value))}
     }
 
     pub(crate) fn remove(&mut self, name: Header) {
-        self.values[name as usize] = Value(None);
+        unsafe {*self.values.get_unchecked_mut(name as usize) = Value(None)}
     }
 
     #[inline] pub(crate) fn get(&self, name: Header) -> Option<&str> {
-        match &self.values[name as usize].0 {
+        match unsafe {&self.values.get_unchecked(name as usize).0} {
             Some(v) => Some(std::str::from_utf8(
                 unsafe {v.as_bytes()}
             ).expect("Header value is not UTF-8")),
@@ -199,8 +215,18 @@ impl Headers {
     }
 }
 impl Headers {
-    pub(crate) fn init() -> Self {
-        Self { values: std::array::from_fn(|_| Value(None)) }
+    pub(crate) const fn init() -> Self {
+        Self { values: [
+            Value(None), Value(None), Value(None), Value(None), Value(None),
+            Value(None), Value(None), Value(None), Value(None), Value(None),
+            Value(None), Value(None), Value(None), Value(None), Value(None),
+            Value(None), Value(None), Value(None), Value(None), Value(None),
+            Value(None), Value(None), Value(None), Value(None), Value(None),
+            Value(None), Value(None), Value(None), Value(None), Value(None),
+            Value(None), Value(None), Value(None), Value(None), Value(None),
+            Value(None), Value(None), Value(None), Value(None), Value(None),
+            Value(None), Value(None), Value(None),
+        ] }
     }
     #[cfg(test)] pub(crate) fn from_iter(iter: impl IntoIterator<Item = (Header, &'static str)>) -> Self {
         let mut this = Self::init();
@@ -219,10 +245,10 @@ impl Headers {
             type Item = (&'i str, &'i str);
             fn next(&mut self) -> Option<Self::Item> {
                 for i in self.cur..N_CLIENT_HEADERS {
-                    if let Some(v) = &self.map.values[i].0 {
+                    if let Some(v) = unsafe {&self.map.values.get_unchecked(i).0} {
                         self.cur = i + 1;
                         return Some((
-                            &CLIENT_HEADERS[i].as_str(),
+                            unsafe {CLIENT_HEADERS.get_unchecked(i)}.as_str(),
                             std::str::from_utf8(unsafe {v.as_bytes()}).expect("Header value is not UTF-8"),
                         ))
                     }

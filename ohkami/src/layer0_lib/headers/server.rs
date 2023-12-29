@@ -18,6 +18,12 @@ pub struct Value(
         }
     }
 
+    pub fn as_str(&self) -> &str {
+        match &self.0 {
+            Some(cows) => &cows,
+            None       => "",
+        }
+    }
     pub fn append(&mut self, value: impl Into<Cow<'static, str>>) {
         match &mut self.0 {
             None    => self.0 = Some(value.into()),
@@ -27,6 +33,9 @@ pub struct Value(
                 *v = Cow::Owned(new);
             }
         }
+    }
+    pub fn replace(&mut self, new_value: impl Into<Cow<'static, str>>) {
+        self.0 = Some(new_value.into())
     }
 }
 
@@ -72,7 +81,7 @@ pub trait HeaderAction<'action> {
     impl<'a, F: FnMut(&mut Value)> HeaderAction<'a> for F {
         #[inline] fn perform(mut self, set_headers: SetHeaders<'a>, key: Header) -> SetHeaders<'a> {
             let before_size = set_headers.0.size;
-            self(&mut set_headers.0.values[key as usize]);
+            self(unsafe {set_headers.0.values.get_unchecked_mut(key as usize)});
             set_headers.0.size += set_headers.0.values[key as usize].size() - before_size;
             set_headers
         }
@@ -185,7 +194,7 @@ macro_rules! Header {
 impl Headers {
     #[inline] pub(crate) fn insert(&mut self, name: Header, value: Cow<'static, str>) {
         let (name_len, value_len) = (name.as_bytes().len(), value.len());
-        match self.values[name as usize].0.replace(value) {
+        match unsafe {self.values.get_unchecked_mut(name as usize)}.0.replace(value) {
             None       => self.size += name_len + ": ".len() + value_len + "\r\n".len(),
             Some(prev) => {
                 let prev_len = prev.len();
@@ -200,21 +209,31 @@ impl Headers {
 
     #[inline] pub(crate) fn remove(&mut self, name: Header) {
         let name_len = name.as_bytes().len();
-        let v = &mut self.values[name as usize];
+        let v = unsafe {self.values.get_unchecked_mut(name as usize)};
         if let Some(v) = v.0.take() {
             self.size -= name_len + ": ".len() + v.len() + "\r\n".len()
         }
     }
 
     pub(crate) fn get(&self, name: Header) -> Option<&str> {
-        self.values[name as usize].0.as_ref().map(AsRef::as_ref)
+        unsafe {self.values.get_unchecked(name as usize)}.0.as_ref().map(AsRef::as_ref)
     }
 }
 impl Headers {
     pub(crate) fn new() -> Self {
         Self {
-            values: std::array::from_fn(|_| Value(None)),
             size:   "\r\n".len(),
+            values: [
+                Value(None), Value(None), Value(None), Value(None), Value(None),
+                Value(None), Value(None), Value(None), Value(None), Value(None),
+                Value(None), Value(None), Value(None), Value(None), Value(None),
+                Value(None), Value(None), Value(None), Value(None), Value(None),
+                Value(None), Value(None), Value(None), Value(None), Value(None),
+                Value(None), Value(None), Value(None), Value(None), Value(None),
+                Value(None), Value(None), Value(None), Value(None), Value(None),
+                Value(None), Value(None), Value(None), Value(None), Value(None),
+                Value(None), Value(None), Value(None), Value(None), Value(None),
+            ]
         }
     }
 
@@ -231,9 +250,9 @@ impl Headers {
             type Item = (&'i str, &'i str);
             fn next(&mut self) -> Option<Self::Item> {
                 for i in self.cur..N_SERVER_HEADERS {
-                    if let Value(Some(v)) = &self.map.values[i] {
+                    if let Value(Some(v)) = unsafe {self.map.values.get_unchecked(i)} {
                         self.cur = i + 1;
-                        return Some((SERVER_HEADERS[i].as_str(), &v))
+                        return Some((unsafe {SERVER_HEADERS.get_unchecked(i)}.as_str(), &v))
                     }
                 }
                 None
@@ -244,7 +263,7 @@ impl Headers {
     }
 
     pub(crate) fn write_to(self, buf: &mut Vec<u8>) {
-        macro_rules! write {
+        macro_rules! push {
             ($buf:ident <- $bytes:expr) => {
                 unsafe {
                     let (buf_len, bytes_len) = ($buf.len(), $bytes.len());
@@ -262,13 +281,13 @@ impl Headers {
 
         for h in &SERVER_HEADERS {
             if let Some(v) = &self.values[*h as usize].0 {
-                write!(buf <- h.as_bytes());
-                write!(buf <- b": ");
-                write!(buf <- v);
-                write!(buf <- b"\r\n");
+                push!(buf <- h.as_bytes());
+                push!(buf <- b": ");
+                push!(buf <- v);
+                push!(buf <- b"\r\n");
             }
         }
-        write!(buf <- b"\r\n");
+        push!(buf <- b"\r\n");
     }
 }
 

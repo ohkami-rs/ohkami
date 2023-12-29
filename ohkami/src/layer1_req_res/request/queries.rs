@@ -21,7 +21,7 @@ pub struct QueryParams {
     }
 
     #[inline] pub(crate) fn iter(&self) -> impl Iterator<Item = (&str, &str)> {
-        self.params[..self.next].iter()
+        unsafe {self.params.get_unchecked(0..self.next)}.into_iter()
             .map(|mu| unsafe {
                 let (k, v) = mu.assume_init_ref();
                 (std::str::from_utf8(k.as_bytes()).unwrap(), std::str::from_utf8(v.as_bytes()).unwrap())
@@ -29,7 +29,7 @@ pub struct QueryParams {
     }
     #[inline] pub(crate) fn get(&self, key: &str) -> Option<&str> {
         let key = key.as_bytes();
-        for kv in &self.params[..self.next] {
+        for kv in unsafe {self.params.get_unchecked(0..self.next)} {
             unsafe {
                 let (k, v) = kv.assume_init_ref();
                 if key == k.as_bytes() {
@@ -42,7 +42,7 @@ pub struct QueryParams {
 
     #[inline] pub(crate) unsafe fn push_from_request_slice(&mut self, key: Slice, value: Slice) {
         let (key, value) = (percent_decode(key.as_bytes()), percent_decode(value.as_bytes()));
-        self.params[self.next].write((
+        self.params.get_unchecked_mut(self.next).write((
             CowSlice::from_request_cow_bytes(key.into()),
             CowSlice::from_request_cow_bytes(value.into()),
         ));
@@ -57,7 +57,7 @@ pub struct QueryParams {
             }
         }
 
-        self.params[self.next].write((into_cow_slice(key), into_cow_slice(value)));
+        unsafe {self.params.get_unchecked_mut(self.next)}.write((into_cow_slice(key), into_cow_slice(value)));
         self.next += 1;
     }
 }
