@@ -9,19 +9,15 @@ use std::{
 };
 use crate::{
     Context, Request,
-    layer0_lib::{List, Slice},
     layer1_req_res::{Response},
 };
-
-pub(crate) const PATH_PARAMS_LIMIT: usize = 2;
-pub(crate) type PathParams = List<Slice, PATH_PARAMS_LIMIT>;
 
 
 #[cfg(not(test))]
 pub struct Handler {
     #[cfg(feature="websocket")] pub(crate) requires_upgrade: bool,
     pub(crate) proc: Box<dyn
-        Fn(&mut Request, Context, PathParams) -> Pin<
+        Fn(Context, &mut Request) -> Pin<
             Box<dyn
                 Future<Output = Response>
                 + Send + 'static
@@ -35,7 +31,7 @@ pub struct Handler {
 pub struct Handler {
     #[cfg(feature="websocket")] pub(crate) requires_upgrade: bool,
     pub(crate) proc: Arc<dyn
-        Fn(&mut Request, Context, PathParams) -> Pin<
+        Fn(Context, &mut Request) -> Pin<
             Box<dyn
                 Future<Output = Response>
                 + Send + 'static
@@ -47,7 +43,7 @@ pub struct Handler {
 
 impl Handler {
     fn new(
-        proc: (impl Fn(&mut Request, Context, PathParams) -> Pin<
+        proc: (impl Fn(Context, &mut Request) -> Pin<
             Box<dyn
                 Future<Output = Response>
                 + Send + 'static

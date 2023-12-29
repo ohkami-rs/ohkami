@@ -17,11 +17,11 @@ pub(crate) const METADATA_SIZE: usize = 1024;
 pub(crate) const PAYLOAD_LIMIT: usize = 1 << 32;
 
 pub struct Request {pub(crate) _metadata: [u8; METADATA_SIZE],
-    pub method:  Method,
-    pub headers: client_header::Headers,
-    path:        Path,
-    queries:     QueryParams,
-    payload:     Option<CowSlice>,
+    pub method:      Method,
+    pub headers:     client_header::Headers,
+    pub(crate) path: Path,
+    queries:         QueryParams,
+    payload:         Option<CowSlice>,
 }
 
 impl Request {

@@ -24,13 +24,6 @@ impl<T, const CAPACITY: usize> List<T, CAPACITY> {
         self.list[self.next].write(element);
         self.next += 1;
     }
-
-    #[inline] pub(crate) fn iter(&self) -> impl Iterator<Item = &'_ T> {
-        let Self { list, next } = self;
-        (&list[..*next])
-            .iter()
-            .map(|mu| unsafe {mu.assume_init_ref()})
-    }
 }
 
 

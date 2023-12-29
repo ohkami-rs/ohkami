@@ -3,7 +3,7 @@ use crate::{
     Context,
     Response,
     layer0_lib::{Method, Status, Slice},
-    layer3_fang_handler::{Handler, FrontFang, PathParams, BackFang},
+    layer3_fang_handler::{Handler, FrontFang, BackFang},
 };
 
 #[cfg(feature="websocket")]
@@ -66,13 +66,12 @@ impl RadixRouter {
         mut c: Context,
         req:   &mut Request,
     ) -> HandleResult {
-        let mut params    = PathParams::new();
         let search_result = match req.method {
-            Method::GET    => self.GET   .search(&mut c, req/*.path_bytes()*/, &mut params),
-            Method::PUT    => self.PUT   .search(&mut c, req/*.path_bytes()*/, &mut params),
-            Method::POST   => self.POST  .search(&mut c, req/*.path_bytes()*/, &mut params),
-            Method::PATCH  => self.PATCH .search(&mut c, req/*.path_bytes()*/, &mut params),
-            Method::DELETE => self.DELETE.search(&mut c, req/*.path_bytes()*/, &mut params),
+            Method::GET    => self.GET   .search(&mut c, req/*.path_bytes()*/),
+            Method::PUT    => self.PUT   .search(&mut c, req/*.path_bytes()*/),
+            Method::POST   => self.POST  .search(&mut c, req/*.path_bytes()*/),
+            Method::PATCH  => self.PATCH .search(&mut c, req/*.path_bytes()*/),
+            Method::DELETE => self.DELETE.search(&mut c, req/*.path_bytes()*/),
             
             Method::HEAD => {
                 let (front, back) = self.HEADfangs;
@@ -83,13 +82,13 @@ impl RadixRouter {
                     }
                 }
 
-                let target = match self.GET.search(&mut c, req/*.path_bytes()*/, &mut params) {
+                let target = match self.GET.search(&mut c, req/*.path_bytes()*/) {
                     Ok(Some(node)) => node,
                     Ok(None)       => return __no_upgrade(c.NotFound()),
                     Err(err_res)   => return __no_upgrade(err_res),
                 };
                 
-                let Response { headers, .. } = target.handle_discarding_upgrade(c, req, params).await;
+                let Response { headers, .. } = target.handle_discarding_upgrade(c, req).await;
                 let mut res = Response {
                     headers,
                     status:  Status::NoContent,
@@ -128,7 +127,7 @@ impl RadixRouter {
             Err(err_res)   => return __no_upgrade(err_res),
         };
 
-        target.handle(c, req, params).await
+        target.handle(c, req).await
     }
 }
 
@@ -136,7 +135,6 @@ impl Node {
     #[inline] pub(super) async fn handle(&self,
         #[allow(unused_mut)] mut c: Context,
         req:    &mut Request,
-        params: PathParams,
     ) -> HandleResult {
         match &self.handler {
             Some(handler) => {
@@ -147,7 +145,7 @@ impl Node {
                     id
                 }) {None => None, Some(id) => Some(id.await)};
 
-                let mut res = (handler.proc)(req, c, params).await;
+                let mut res = (handler.proc)(c, req).await;
                 for b in self.back {
                     res = b.0(res);
                 }
@@ -164,11 +162,10 @@ impl Node {
     #[inline] pub(super) async fn handle_discarding_upgrade(&self,
         c:      Context,
         req:    &mut Request,
-        params: PathParams,
     ) -> Response {
         match &self.handler {
             Some(handler) => {
-                let mut res = (handler.proc)(req, c, params).await;
+                let mut res = (handler.proc)(c, req).await;
                 for b in self.back {
                     res = b.0(res);
                 }
@@ -181,8 +178,6 @@ impl Node {
     pub(super/* for test */) fn search(&self,
         c:      &mut Context,
         req:    &mut Request,
-
-        params: &mut PathParams,
     ) -> Result<Option<&Node>, Response> {
         let mut target = self;
 
@@ -191,7 +186,7 @@ impl Node {
         // 2. `Request` DOESN'T have method that mutates `path`,
         //    So what `path` refers to is NEVER changed by any other process
         //    while `search`
-        let mut path = unsafe {req.path_bytes()};
+        let mut path: &[u8] = unsafe {req.path_bytes()};
 
         loop {
             for ff in target.front {
@@ -211,7 +206,7 @@ impl Node {
                     },
                     Pattern::Param      => {
                         let (param, remaining) = split_next_section(path);
-                        params.append(unsafe {Slice::from_bytes(param)});
+                        req.path.params.push(unsafe {Slice::from_bytes(param)});
                         path = remaining;
                     },
                 }
