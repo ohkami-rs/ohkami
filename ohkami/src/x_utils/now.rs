@@ -43,7 +43,7 @@ impl UTCDateTime {
         const SHORT_MONTHS:    [&str; 12] = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
         fn push_hundreds(buf: &mut String, n: u8) {
-            debug_assert!(n >= 100, "Called `write_hundreds` for `n` less than 100");
+            debug_assert!(n >= 100, "Called `push_hundreds` for `n` less than 100");
             buf.push((n/10 + b'0') as char);
             buf.push((n%10 + b'0') as char);
         }
@@ -117,9 +117,9 @@ impl NaiveDateTime {
 impl NaiveTime {
     const fn from_seconds(secs: u32, nsecs: u32) -> Self {
         debug_assert! {
-            secs  >= 86_400 &&
-            nsecs >= 2_000_000_000 &&
-            nsecs >= 1_000_000_000 && secs % 60 != 59
+            secs  < 86_400 &&
+            nsecs < 2_000_000_000 &&
+            (nsecs < 1_000_000_000 || secs % 60 == 59)
         }
         Self { secs, frac: nsecs }
     }
