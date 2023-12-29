@@ -223,18 +223,15 @@ impl YearFlag {
 struct Of(u32);
 impl Of {
     const fn new(ordinal: u32, YearFlag(flag): YearFlag) -> Self {
-        const MIN_OL: u32 = 1 << 1;
-        const MAX_OL: u32 = 366 << 1; // `(366 << 1) | 1` would be day 366 in a non-leap year
-        
         let of = Self((ordinal << 4) | flag as u32);
-        let ol = of.ol();
+        debug_assert!({
+            const MIN_OL: u32 = 1 << 1;
+            const MAX_OL: u32 = 366 << 1; // `(366 << 1) | 1` would be day 366 in a non-leap year
 
-        debug_assert!(MIN_OL <= ol && ol <= MAX_OL);
-
+            let ol = of.0 >> 3;
+            MIN_OL <= ol && ol <= MAX_OL
+        });
         of
-    }
-    const fn ol(&self) -> u32 {
-        self.0 >> 3
     }
     const fn from_date(date: i32) -> Self {
         Self((date & 0b1_1111_1111_1111) as u32)
