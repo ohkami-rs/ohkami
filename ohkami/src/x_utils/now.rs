@@ -1,18 +1,7 @@
-#[inline] fn __correct_now() -> String {
-    let mut now = chrono::Utc::now().to_rfc2822(); // like `Wed, 21 Dec 2022 10:16:52 +0000`
-    if now.len() == 30 {
-        now.insert(5, '0')
-    }
-    match now.len() {
-        31 => now.replace_range(26.., "GMT"),
-         _ => unsafe {std::hint::unreachable_unchecked()}
-    }
-    now
-}
+use std::time::{SystemTime, UNIX_EPOCH};
+
 
 #[inline] pub fn now() -> String {
-    use std::time::{SystemTime, UNIX_EPOCH};
-
     let system_now = SystemTime::now().duration_since(UNIX_EPOCH).expect("system time before Unix epoch");
     let naive_now  = NaiveDateTime::now_from_system(system_now);
 
@@ -21,10 +10,20 @@
 }
 
 #[cfg(test)] mod test {
-    use super::{__correct_now, now};
+    fn __correct_now() -> String {
+        let mut now = chrono::Utc::now().to_rfc2822(); // like `Wed, 21 Dec 2022 10:16:52 +0000`
+        if now.len() == 30 {
+            now.insert(5, '0')
+        }
+        match now.len() {
+            31 => now.replace_range(26.., "GMT"),
+             _ => unsafe {std::hint::unreachable_unchecked()}
+        }
+        now
+    }
 
     #[test] fn test_now() {
-        let (cn, n) = (__correct_now(), now());
+        let (cn, n) = (__correct_now(), super::now());
         assert_eq!(cn, n);
     }
 }
@@ -91,10 +90,8 @@ struct NaiveDateTime {
     time: NaiveTime,
 }
 
-type DateImpl = i32;
-struct NaiveDate {
-    ymdf: DateImpl, // (year << 13) | of
-}
+/// (year << 13) | of
+struct NaiveDate(i32);
 
 struct NaiveTime {
     secs: u32,
@@ -168,13 +165,13 @@ impl NaiveDate {
         }
         debug_assert!(YearFlag::from_year(year).0 == flags.0);
         match Of::new(ordinal, flags) {
-            Some(of) => Some(NaiveDate { ymdf: (year << 13) | (of.0 as DateImpl) }),
+            Some(of) => Some(NaiveDate((year << 13) | (of.0 as i32))),
             None => None, // Invalid: Ordinal outside of the nr of days in a year with those flags.
         }
     }
 
     const fn year(&self) -> i32 {
-        self.ymdf >> 13
+        self.0 >> 13
     }
     const fn month(&self) -> u32 {
         self.mdf().month()
@@ -193,7 +190,7 @@ impl NaiveDate {
     }
     #[inline]
     const fn of(&self) -> Of {
-        Of::from_date_impl(self.ymdf)
+        Of::from_date(self.0)
     }
 }
 
@@ -209,25 +206,21 @@ impl YearFlag {
 struct Of(u32);
 impl Of {
     const fn new(ordinal: u32, YearFlag(flag): YearFlag) -> Option<Self> {
+        const MIN_OL: u32 = 1 << 1;
+        const MAX_OL: u32 = 366 << 1; // `(366 << 1) | 1` would be day 366 in a non-leap year
+        
         let of = Self((ordinal << 4) | flag as u32);
-        of.validate()
+        let ol = of.ol();
+        match ol >= MIN_OL && ol <= MAX_OL {
+            true => Some(of),
+            false => None,
+        }
     }
     const fn ol(&self) -> u32 {
         self.0 >> 3
     }
-    const fn validate(self) -> Option<Self> {
-        const MIN_OL: u32 = 1 << 1;
-        const MAX_OL: u32 = 366 << 1; // `(366 << 1) | 1` would be day 366 in a non-leap year
-
-        let ol = self.ol();
-        match ol >= MIN_OL && ol <= MAX_OL {
-            true => Some(self),
-            false => None,
-        }
-    }
-    const fn from_date_impl(date_impl: DateImpl) -> Self {
-        // We assume the value in the `DateImpl` is valid.
-        Self((date_impl & 0b1_1111_1111_1111) as u32)
+    const fn from_date(date: i32) -> Self {
+        Self((date & 0b1_1111_1111_1111) as u32)
     }
     const fn weekday(&self) -> Weekday {
         let Of(of) = *self;
@@ -331,8 +324,8 @@ impl Weekday {
     }
 }
 
-const MAX_YEAR: DateImpl = i32::MAX >> 13;
-const MIN_YEAR: DateImpl = i32::MIN >> 13;
+const MAX_YEAR: i32 = i32::MAX >> 13;
+const MIN_YEAR: i32 = i32::MIN >> 13;
 
 const YEAR_DELTAS: &[u8; 401] = &[
     0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 6, 6, 6, 6, 7, 7, 7, 7, 8, 8, 8,
@@ -387,179 +380,3 @@ const F:  YearFlag = YearFlag(0o17);
 const FE: YearFlag = YearFlag(0o07);
 const G:  YearFlag = YearFlag(0o16);
 const GF: YearFlag = YearFlag(0o06);
-
-/*
-
-    pub const fn from_num_days_from_ce_opt(days: i32) -> Option<NaiveDate> {
-        let days = try_opt!(days.checked_add(365)); // make December 31, 1 BCE equal to day 0
-        let year_div_400 = days.div_euclid(146_097);
-        let cycle = days.rem_euclid(146_097);
-        let (year_mod_400, ordinal) = internals::cycle_to_yo(cycle as u32);
-        let flags = YearFlags::from_year_mod_400(year_mod_400 as i32);
-        NaiveDate::from_ordinal_and_flags(year_div_400 * 400 + year_mod_400 as i32, ordinal, flags)
-    }
-*/
-
-/*
-chrono::Utc::now
-
-    pub fn now() -> DateTime<Utc> {
-        let now   = ::std::time::SystemTime::now().duration_since(UNIX_EPOCH).expect("system time before Unix epoch");
-        let naive = NaiveDateTime::from_timestamp_opt(now.as_secs() as i64, now.subsec_nanos()).unwrap();
-        Utc.from_utc_datetime(&naive)
-    }
-
-    pub const UNIX_EPOCH: SystemTime = SystemTime(time::UNIX_EPOCH);
-*/
-
-/*
-chrono::NaiveDateTime
-
-    pub struct NaiveDateTime {
-        date: NaiveDate,
-        time: NaiveTime,
-    }
-
-    pub fn from_timestamp_opt(secs: i64, nsecs: u32) -> Option<NaiveDateTime> {
-        let days = secs.div_euclid(86_400);
-        let secs = secs.rem_euclid(86_400);
-        let date = i32::try_from(days)
-            .ok()
-            .and_then(|days| days.checked_add(719_163))
-            .and_then(NaiveDate::from_num_days_from_ce_opt);
-        let time = NaiveTime::from_num_seconds_from_midnight_opt(secs as u32, nsecs);
-        match (date, time) {
-            (Some(date), Some(time)) => Some(NaiveDateTime { date, time }),
-            (_, _) => None,
-        }
-    }
-
-*/
-
-/*
-chrono::DateTime
-
-    pub struct DateTime<Tz: TimeZone> {
-        datetime: NaiveDateTime,
-        offset: Tz::Offset,
-    }
-
-    fn from_utc_datetime(&self, utc: &NaiveDateTime) -> DateTime<Self> {
-        DateTime::from_naive_utc_and_offset(*utc, self.offset_from_utc_datetime(utc))
-    }
-    pub fn from_naive_utc_and_offset(datetime: NaiveDateTime, offset: Tz::Offset) -> DateTime<Tz> {
-        DateTime { datetime, offset }
-    }
-*/
-
-/* chrono::NaiveDate
-
-    pub struct NaiveDate {
-        ymdf: DateImpl, // (year << 13) | of
-    }
-
-    pub const fn from_num_days_from_ce_opt(days: i32) -> Option<NaiveDate> {
-        let days = try_opt!(days.checked_add(365)); // make December 31, 1 BCE equal to day 0
-        let year_div_400 = days.div_euclid(146_097);
-        let cycle = days.rem_euclid(146_097);
-        let (year_mod_400, ordinal) = internals::cycle_to_yo(cycle as u32);
-        let flags = YearFlags::from_year_mod_400(year_mod_400 as i32);
-        NaiveDate::from_ordinal_and_flags(year_div_400 * 400 + year_mod_400 as i32, ordinal, flags)
-    }
-*/
-
-/*
-chrono::NaiveTime
-
-    pub struct NaiveTime {
-        secs: u32,
-        frac: u32,
-    }
-
-    pub const fn from_num_seconds_from_midnight_opt(secs: u32, nano: u32) -> Option<NaiveTime> {
-        if secs >= 86_400 || nano >= 2_000_000_000 || (nano >= 1_000_000_000 && secs % 60 != 59) {
-            return None;
-        }
-        Some(NaiveTime { secs, frac: nano })
-    }
-
-*/
-
-/* ========== */
-
-/* chrono::DateTime::to_rfc_2822
-
-    pub fn to_rfc2822(&self) -> String {
-        let mut result = String::with_capacity(32);
-        crate::format::write_rfc2822(&mut result, self.naive_local(), self.offset.fix())
-            .expect("writing rfc2822 datetime to string should never fail");
-        result
-    }
-
-    pub(crate) fn write_rfc2822(
-        w: &mut impl Write,
-        dt: NaiveDateTime,
-        off: FixedOffset,
-    ) -> fmt::Result {
-        write_rfc2822_inner(w, dt.date(), dt.time(), off, default_locale())
-    }
-
-    #[cfg(any(feature = "alloc", feature = "std"))]
-    /// write datetimes like `Tue, 1 Jul 2003 10:52:37 +0200`, same as `%a, %d %b %Y %H:%M:%S %z`
-    fn write_rfc2822_inner(
-        w: &mut impl Write,
-        d: NaiveDate,
-        t: NaiveTime,
-        off: FixedOffset,
-        locale: Locale,
-    ) -> fmt::Result {
-        let year = d.year();
-        // RFC2822 is only defined on years 0 through 9999
-        if !(0..=9999).contains(&year) {
-            return Err(fmt::Error);
-        }
-
-        w.write_str(short_weekdays(locale)[d.weekday().num_days_from_sunday() as usize])?;
-        w.write_str(", ")?;
-        let day = d.day();
-        if day < 10 {
-            w.write_char((b'0' + day as u8) as char)?;
-        } else {
-            write_hundreds(w, day as u8)?;
-        }
-        w.write_char(' ')?;
-        w.write_str(short_months(locale)[d.month0() as usize])?;
-        w.write_char(' ')?;
-        write_hundreds(w, (year / 100) as u8)?;
-        write_hundreds(w, (year % 100) as u8)?;
-        w.write_char(' ')?;
-
-        let (hour, min, sec) = t.hms();
-        write_hundreds(w, hour as u8)?;
-        w.write_char(':')?;
-        write_hundreds(w, min as u8)?;
-        w.write_char(':')?;
-        let sec = sec + t.nanosecond() / 1_000_000_000;
-        write_hundreds(w, sec as u8)?;
-        w.write_char(' ')?;
-        OffsetFormat {
-            precision: OffsetPrecision::Minutes,
-            colons: Colons::None,
-            allow_zulu: false,
-            padding: Pad::Zero,
-        }
-        .format(w, off)
-    }
-    
-    /// Equivalent to `{:02}` formatting for n < 100.
-    pub(crate) fn write_hundreds(w: &mut impl Write, n: u8) -> fmt::Result {
-        if n >= 100 {
-            return Err(fmt::Error);
-        }
-    
-        let tens = b'0' + n / 10;
-        let ones = b'0' + n % 10;
-        w.write_char(tens as char)?;
-        w.write_char(ones as char)
-    }
-*/
