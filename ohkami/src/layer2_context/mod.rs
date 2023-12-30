@@ -12,6 +12,7 @@ use crate::{
 /// 
 /// ```
 /// use ohkami::prelude::*;
+/// use ohkami::utils::append;
 /// 
 /// async fn handler(mut c: Context) -> Response {
 ///     // Get current response header value
@@ -22,7 +23,7 @@ use crate::{
 ///     c.set_headers()
 ///         .Server("ohkami")
 ///         .Date(None)
-///         .SetCookie(|prev:&mut _| prev.append("this=my-delicious-cookie"));
+///         .SetCookie(append("this=my-delicious-cookie"));
 /// 
 ///     // Generate a `Response`
 ///     c.NoContent()

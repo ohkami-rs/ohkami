@@ -188,28 +188,31 @@ impl Headers {
     }
 
     pub(crate) fn append(&mut self, name: Header, value: Cow<'static, str>) {
-        /*
-            let Headers { values, size } = set_headers.0;
+        let value_len = value.len();
+        let target = unsafe {self.values.get_unchecked_mut(name as usize)};
 
-            let before_size = unsafe {values.get_unchecked(key as usize).l()};
-            unsafe {values.get_unchecked_mut(key as usize)}.;
-            let after_size  = unsafe {values.get_unchecked(key as usize)};
-
-            if after_size > before_size {
-                *size += after_size - before_size;
-            } else {
-                *size -= before_size - after_size;
-            }
-
-        */
-        match unsafe {self.values.get_unchecked_mut(name as usize)} {
+        let size_increase = match target {
             Some(v) => {
-
+                match v {
+                    Cow::Borrowed(slice) => {
+                        let mut appended = String::with_capacity(slice.len() + 1 + value_len);
+                        appended.push_str(slice);
+                        appended.push(',');
+                        appended.push_str(&value);
+                    }
+                    Cow::Owned(string) => {
+                        string.push(',');
+                        string.push_str(&value);
+                    }
+                }
+                value_len + 1
             }
             None => {
-                let before_size = 0;
+                *target = Some(value);
+                value_len
             }
-        }
+        };
+        self.size += size_increase;
     }
 }
 impl Headers {

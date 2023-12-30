@@ -1,44 +1,10 @@
 use std::borrow::Cow;
+use super::Append;
 use crate::layer0_lib::{CowSlice, Slice};
 
 
 pub struct Headers {
-    values: [Value; N_CLIENT_HEADERS],
-}
-pub struct Value(
-    Option<CowSlice>,
-); impl Value {
-    pub fn as_str(&self) -> &str {
-        match &self.0 {
-            Some(cows) => std::str::from_utf8(unsafe {cows.as_bytes()}).expect("Header value is not UTF-8"),
-            None       => "",
-        }
-    }
-    pub fn append(&mut self, value: impl Into<Cow<'static, str>>) {
-        let value: Cow<'static, str> = value.into();
-        match &mut self.0 {
-            Some(CowSlice::Own(vec)) => {
-                vec.push(b',');
-                vec.extend_from_slice(value.as_bytes());
-            }
-            Some(CowSlice::Ref(slice)) => {
-                let mut this = unsafe{slice.as_bytes()}.to_vec();
-                this.push(b',');
-                this.extend_from_slice(value.as_bytes());
-                self.0 = Some(CowSlice::Own(this))
-            }
-            None => self.0 = Some(match value {
-                Cow::Borrowed(static_str) => CowSlice::Ref(unsafe {Slice::from_bytes(static_str.as_bytes())}),
-                Cow::Owned(string)        => CowSlice::Own(string.into_bytes()),
-            })
-        };
-    }
-    pub fn replace(&mut self, new_value: impl Into<Cow<'static, str>>) {
-        self.0 = Some(match new_value.into() {
-            Cow::Borrowed(static_str) => CowSlice::Ref(unsafe {Slice::from_bytes(static_str.as_bytes())}),
-            Cow::Owned(string)        => CowSlice::Own(string.into_bytes()),
-        })
-    }
+    values: [Option<CowSlice>; N_CLIENT_HEADERS],
 }
 
 pub struct SetHeaders<'set>(
@@ -80,9 +46,9 @@ pub trait HeaderAction<'set> {
     }
 
     // append
-    impl<'set, F: FnMut(&mut Value)> HeaderAction<'set> for F {
-        fn perform(mut self, set_headers: SetHeaders<'set>, key: Header) -> SetHeaders<'set> {
-            self(unsafe {set_headers.0.values.get_unchecked_mut(key as usize)});
+    impl<'set> HeaderAction<'set> for Append {
+        fn perform(self, set_headers: SetHeaders<'set>, key: Header) -> SetHeaders<'set> {
+            set_headers.0.append(key, self.0);
             set_headers
         }
     }
@@ -200,34 +166,60 @@ macro_rules! Header {
 
 impl Headers {
     #[inline] pub(crate) fn insert(&mut self, name: Header, value: CowSlice) {
-        unsafe {*self.values.get_unchecked_mut(name as usize) = Value(Some(value))}
+        unsafe {*self.values.get_unchecked_mut(name as usize) = Some(value)}
     }
 
     pub(crate) fn remove(&mut self, name: Header) {
-        unsafe {*self.values.get_unchecked_mut(name as usize) = Value(None)}
+        unsafe {*self.values.get_unchecked_mut(name as usize) = None}
     }
 
     #[inline] pub(crate) fn get(&self, name: Header) -> Option<&str> {
-        match unsafe {&self.values.get_unchecked(name as usize).0} {
+        match unsafe {self.values.get_unchecked(name as usize)} {
             Some(v) => Some(std::str::from_utf8(
                 unsafe {v.as_bytes()}
             ).expect("Header value is not UTF-8")),
             None => None,
         }
     }
+
+    pub(crate) fn append(&mut self, name: Header, value: Cow<'static, str>) {
+        let value_len = value.len();
+        let target = unsafe {self.values.get_unchecked_mut(name as usize)};
+
+        match target {
+            Some(v) => {
+                match v {
+                    CowSlice::Ref(slice) => {
+                        let mut appended = unsafe {slice.as_bytes()}.to_vec();
+                        appended.push(b',');
+                        appended.extend_from_slice(value.as_bytes());
+                    }
+                    CowSlice::Own(vec) => {
+                        vec.push(b',');
+                        vec.extend_from_slice(value.as_bytes());
+                    }
+                }
+                value_len + 1
+            }
+            None => {
+                *target = Some(CowSlice::Ref(unsafe {Slice::from_bytes(value.as_bytes())}));
+                value_len
+            }
+        };
+    }
 }
 impl Headers {
     pub(crate) const fn init() -> Self {
         Self { values: [
-            Value(None), Value(None), Value(None), Value(None), Value(None),
-            Value(None), Value(None), Value(None), Value(None), Value(None),
-            Value(None), Value(None), Value(None), Value(None), Value(None),
-            Value(None), Value(None), Value(None), Value(None), Value(None),
-            Value(None), Value(None), Value(None), Value(None), Value(None),
-            Value(None), Value(None), Value(None), Value(None), Value(None),
-            Value(None), Value(None), Value(None), Value(None), Value(None),
-            Value(None), Value(None), Value(None), Value(None), Value(None),
-            Value(None), Value(None), Value(None),
+            None, None, None, None, None,
+            None, None, None, None, None,
+            None, None, None, None, None,
+            None, None, None, None, None,
+            None, None, None, None, None,
+            None, None, None, None, None,
+            None, None, None, None, None,
+            None, None, None, None, None,
+            None, None, None,
         ] }
     }
     #[cfg(test)] pub(crate) fn from_iter(iter: impl IntoIterator<Item = (Header, &'static str)>) -> Self {
@@ -247,7 +239,7 @@ impl Headers {
             type Item = (&'i str, &'i str);
             fn next(&mut self) -> Option<Self::Item> {
                 for i in self.cur..N_CLIENT_HEADERS {
-                    if let Some(v) = unsafe {&self.map.values.get_unchecked(i).0} {
+                    if let Some(v) = unsafe {self.map.values.get_unchecked(i)} {
                         self.cur = i + 1;
                         return Some((
                             unsafe {CLIENT_HEADERS.get_unchecked(i)}.as_str(),
