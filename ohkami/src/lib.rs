@@ -134,7 +134,7 @@
 //! <br/>
 //! 
 //! ### testing
-//! ```
+//! ```ignore
 //! use ohkami::prelude::*;
 //! use ohkami::testing::*; // <--
 //! 

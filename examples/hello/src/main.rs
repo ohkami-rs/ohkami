@@ -60,9 +60,9 @@ mod fangs {
 
     pub struct AppendServer;
     impl IntoFang for AppendServer {
-        fn bite(self) -> Fang {
+        fn into_fang(self) -> Fang {
             Fang(|c: &mut Context| {
-                c.headers
+                c.set_headers()
                     .Server("ohkami");
 
                 tracing::info!("\
@@ -76,9 +76,9 @@ mod fangs {
 
     pub struct LogRequest;
     impl IntoFang for LogRequest {
-        fn bite(self) -> Fang {
+        fn into_fang(self) -> Fang {
             Fang(|req: &mut Request| {
-                let __method__ = req.method();
+                let __method__ = req.method;
                 let __path__   = req.path();
 
                 tracing::info!("\
