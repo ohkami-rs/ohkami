@@ -75,7 +75,7 @@ impl Response {
     pub fn text(mut self, text: impl Into<Cow<'static, str>>) -> Self {
         let body = text.into();
 
-        self.set_headers().ContentType("text/plain").ContentLength(body.len().to_string());
+        self.set_headers().ContentType("text/plain; charset=UTF-8").ContentLength(body.len().to_string());
         self.content = Some(match body {
             Cow::Borrowed(s)   => Cow::Borrowed(s.as_bytes()),
             Cow::Owned(string) => Cow::Owned(string.into_bytes()),
@@ -85,7 +85,7 @@ impl Response {
     pub fn html(mut self, html: impl Into<Cow<'static, str>>) -> Self {
         let body = html.into();
 
-        self.set_headers().ContentType("text/html").ContentLength(body.len().to_string());
+        self.set_headers().ContentType("text/html; charset=UTF-8").ContentLength(body.len().to_string());
         self.content = Some(match body {
             Cow::Borrowed(s)   => Cow::Borrowed(s.as_bytes()),
             Cow::Owned(string) => Cow::Owned(string.into_bytes()),
@@ -95,14 +95,14 @@ impl Response {
     pub fn json(mut self, json: impl serde::Serialize) -> Self {
         #[cold] fn __json_serialize_error_response(mut res: Response, err: serde_json::Error) -> Response {
             let body = err.to_string().into_bytes();
-            res.set_headers().ContentType("text/plain").ContentLength(body.len().to_string());
+            res.set_headers().ContentType("text/plain; charset-UTF-8").ContentLength(body.len().to_string());
             res.content = Some(Cow::Owned(body));
             res
         }
 
         match serde_json::to_string(&json) {
             Ok(json) => {let body = json.into_bytes();
-                self.set_headers().ContentType("application/json").ContentLength(body.len().to_string());
+                self.set_headers().ContentType("application/json; charset=UTF-8").ContentLength(body.len().to_string());
                 self.content = Some(Cow::Owned(body));
                 self
             }
@@ -112,7 +112,7 @@ impl Response {
     pub fn json_literal(mut self, json_literal: &'static str) -> Self {
         let body = json_literal.as_bytes();
 
-        self.set_headers().ContentType("application/json").ContentLength(body.len().to_string());
+        self.set_headers().ContentType("application/json; charset=UTF-8").ContentLength(body.len().to_string());
         self.content = Some(Cow::Borrowed(body));
         self
     }

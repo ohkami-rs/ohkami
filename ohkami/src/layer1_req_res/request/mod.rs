@@ -73,8 +73,11 @@ impl Request {
                 headers.insert(key, CowSlice::Ref(unsafe {
                     Slice::from_bytes(r.read_while(|b| b != &b'\r'))
                 }));
-                r.consume("\r\n").unwrap();
+            } else {
+                r.consume(": ").unwrap();
+                r.skip_while(|b| b != &b'\r');
             }
+            r.consume("\r\n");
         }
 
         let content_length = headers.get(client_header::Header::ContentLength)

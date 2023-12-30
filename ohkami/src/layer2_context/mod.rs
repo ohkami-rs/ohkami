@@ -199,9 +199,8 @@ impl Context {
         c.set_headers().Server("ohkami");
         assert_eq!(std::str::from_utf8(&c.OK().text("Hello, world!").into_bytes()).unwrap(), format!("\
             HTTP/1.1 200 OK\r\n\
-            Content-Type: text/plain; charset=utf-8\r\n\
             Content-Length: 13\r\n\
-            Date: {__now__}\r\n\
+            Content-Type: text/plain; charset=UTF-8\r\n\
             Server: ohkami\r\n\
             \r\n\
             Hello, world!\
@@ -216,11 +215,10 @@ impl Context {
         }
         assert_eq!(std::str::from_utf8(&c.Created().json(User{ id:42, name:"kanarus", age:19 }).into_bytes()).unwrap(), format!("\
             HTTP/1.1 201 Created\r\n\
-            Content-Type: application/json; charset=utf-8\r\n\
             Content-Length: 35\r\n\
-            Date: {__now__}\r\n\
-            Server: ohkami\r\n\
+            Content-Type: application/json; charset=UTF-8\r\n\
             ETag: identidentidentident\r\n\
+            Server: ohkami\r\n\
             \r\n\
             {{\"id\":42,\"name\":\"kanarus\",\"age\":19}}\
         "));
@@ -235,11 +233,10 @@ impl Context {
         */
         assert_eq!(std::str::from_utf8(&c.Created().json(serde_json::json!({"id":42,"name":"kanarus","age":19})).into_bytes()).unwrap(), format!("\
             HTTP/1.1 201 Created\r\n\
-            Content-Type: application/json; charset=utf-8\r\n\
             Content-Length: 35\r\n\
-            Date: {__now__}\r\n\
-            Server: ohkami\r\n\
+            Content-Type: application/json; charset=UTF-8\r\n\
             ETag: identidentidentident\r\n\
+            Server: ohkami\r\n\
             \r\n\
             {{\"age\":19,\"id\":42,\"name\":\"kanarus\"}}\
         "));
@@ -255,18 +252,16 @@ impl Context {
         */
         assert_eq!(std::str::from_utf8(&c.Created().json(r#"{"id":42,"name":"kanarus","age":19}"#).into_bytes()).unwrap(), format!("\
             HTTP/1.1 201 Created\r\n\
-            Content-Type: application/json; charset=utf-8\r\n\
             Content-Length: 45\r\n\
-            Date: {__now__}\r\n\
-            Server: ohkami\r\n\
+            Content-Type: application/json; charset=UTF-8\r\n\
             ETag: identidentidentident\r\n\
+            Server: ohkami\r\n\
             \r\n\
         ") + r##""{\"id\":42,\"name\":\"kanarus\",\"age\":19}""##);
 
         c.set_headers().Server(None);
         assert_eq!(std::str::from_utf8(&c.NoContent().into_bytes()).unwrap(), format!("\
             HTTP/1.1 204 No Content\r\n\
-            Date: {__now__}\r\n\
             ETag: identidentidentident\r\n\
             \r\n\
         "));
@@ -275,9 +270,8 @@ impl Context {
         c.set_headers().ETag("new-etag");
         assert_eq!(std::str::from_utf8(&c.BadRequest().into_bytes()).unwrap(), format!("\
             HTTP/1.1 400 Bad Request\r\n\
-            Date: {__now__}\r\n\
-            Server: ohkami2\r\n\
             ETag: new-etag\r\n\
+            Server: ohkami2\r\n\
             \r\n\
         "));
     }

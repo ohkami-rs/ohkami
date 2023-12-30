@@ -89,7 +89,7 @@ pub trait HeaderAction<'set> {
 };
 
 macro_rules! Header {
-    ($N:literal; $( $konst:ident: $name_bytes:literal $(| $other_case:literal)*, )*) => {
+    ($N:literal; $( $konst:ident: $name_bytes:literal | $lower_case:literal $(| $other_pattern:literal)* , )*) => {
         pub(crate) const N_CLIENT_HEADERS: usize = $N;
         pub(crate) const CLIENT_HEADERS: [Header; N_CLIENT_HEADERS] = [ $( Header::$konst ),* ];
 
@@ -109,7 +109,7 @@ macro_rules! Header {
             #[inline] pub const fn from_bytes(bytes: &[u8]) -> Option<Self> {
                 match bytes {
                     $(
-                        $name_bytes $(| $other_case)* => Some(Self::$konst),
+                        $name_bytes | $lower_case $(| $other_pattern)* => Some(Self::$konst),
                     )*
                     _ => None
                 }
@@ -141,11 +141,13 @@ macro_rules! Header {
 
         // =================================================
 
-        #[cfg(test)] #[test] fn client_header_name_cases() {
+        #[cfg(test)]
+        #[test] fn client_header_name_cases() {
             $(
-                $(
-                    assert_eq!($name_bytes.to_ascii_lowercase(), $other_case);
-                )*
+                assert_eq!(
+                    std::str::from_utf8(&$name_bytes.to_ascii_lowercase()).unwrap(),
+                    std::str::from_utf8($lower_case).unwrap(),
+                );
             )*
         }
     };
@@ -153,8 +155,8 @@ macro_rules! Header {
     Accept:                      b"Accept" | b"accept",
     AcceptEncoding:              b"Accept-Encoding" | b"accept-encoding",
     AcceptLanguage:              b"Accept-Language" | b"accept-language",
-    AccessControlRequestHeaders: b"Access-Control-Request-Headers",
-    AccessControlRequestMethod:  b"Access-Control-Request-Method",
+    AccessControlRequestHeaders: b"Access-Control-Request-Headers" | b"access-control-request-headers",
+    AccessControlRequestMethod:  b"Access-Control-Request-Method" | b"access-control-request-method",
     Authorization:               b"Authorization" | b"authorization",
     CacheControl:                b"Cache-Control" | b"cache-control",
     Connection:                  b"Connection" | b"connection",
@@ -192,7 +194,7 @@ macro_rules! Header {
     Upgrade:                     b"Upgrade" | b"upgrade",
     UpgradeInsecureRequests:     b"Upgrade-Insecure-Requests" | b"upgrade-insecure-requests",
     Via:                         b"Via" | b"via",
-    XRequestID:                  b"X-Request-ID" | b"X-Request-Id" | b"x-request-id",
+    XRequestID:                  b"X-Request-ID" | b"x-request-id" | b"X-Request-Id",
 }
 
 

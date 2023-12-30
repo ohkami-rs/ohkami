@@ -79,7 +79,7 @@ fn metadataize(input: &str) -> [u8; METADATA_SIZE] {
         path:    Path::from_literal("/signup"),
         queries: QueryParams::new(),
         headers: client_header::Headers::from_iter([
-            (ch::Host,            "www.tutorialspoint.com"),
+            (ch::Host,           "www.tutorialspoint.com"),
             (ch::UserAgent,      "Mozilla/4.0"),
             (ch::AcceptLanguage, "en-us"),
             (ch::ContentLength,  "27"),

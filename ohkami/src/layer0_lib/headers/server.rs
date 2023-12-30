@@ -288,9 +288,8 @@ impl Headers {
         }
 
         buf.reserve(self.size);
-
-        for h in &SERVER_HEADERS {
-            if let Some(v) = &self.values[*h as usize].0 {
+        for h in unsafe {SERVER_HEADERS.get_unchecked(1..)} {
+            if let Some(v) = &unsafe {self.values.get_unchecked(*h as usize)}.0 {
                 push!(buf <- h.as_bytes());
                 push!(buf <- b": ");
                 push!(buf <- v);
