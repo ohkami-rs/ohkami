@@ -74,7 +74,6 @@ impl Message {
         self.into_frame().write_unmasked(stream, config).await
     }
 
-    #[cfg(test) /* used in `crate::layer6_testing::x_websokcket::TestWebSocket::write` */ ]
     pub(crate) async fn masking_write(self,
         stream: &mut (impl AsyncWriter + Unpin),
         config: &Config,

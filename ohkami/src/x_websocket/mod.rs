@@ -13,17 +13,17 @@ pub use {
     websocket::{WebSocket},
     context::{WebSocketContext, UpgradeError},
 };
-#[cfg(test)] pub(crate) use websocket::{
+pub(crate) use websocket::{
     Config,
 };
 
 pub(crate) use {
     upgrade::{UpgradeID, request_upgrade_id, reserve_upgrade},
 };
-#[cfg(not(test))] pub(crate) use upgrade::{
+pub(crate) use upgrade::{
     assume_upgradable,
 };
-#[cfg(test)] pub(crate) use upgrade::{
+pub(crate) use upgrade::{
     reserve_upgrade_in_test,
     assume_upgradable_in_test,
 };

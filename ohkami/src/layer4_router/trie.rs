@@ -27,7 +27,7 @@ const _: () = {
 
 
 /*===== defs =====*/
-#[cfg_attr(test, derive(Clone))]
+#[derive(Clone/* for testing */)]
 pub struct TrieRouter {
     pub(super/* for test */) GET:     Node,
     pub(super/* for test */) PUT:     Node,
@@ -38,7 +38,7 @@ pub struct TrieRouter {
     pub(super) OPTIONSfangs: Vec<Fang>,
 }
 
-#[cfg_attr(test, derive(Clone))]
+#[derive(Clone/* for testing */)]
 pub(super/* for test */) struct Node {
     /// Why Option: root node doesn't have pattern
     pub(super/* for test */) pattern:  Option<Pattern>,

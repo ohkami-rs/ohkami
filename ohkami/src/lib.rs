@@ -39,14 +39,14 @@
 //! 
 //! async fn get_user(c: Context,
 //!     id: usize /* <-- path param */
-//! ) -> Response { /* */ }
+//! ) -> Response { c.OK() }
 //! ```
 //! Use tuple like `(verion, id): (u8, usize),` for multiple path params.
 //! 
 //! <br/>
 //! 
 //! ### handle query params / request body
-//! ```ignore
+//! ```
 //! use ohkami::prelude::*;
 //! use ohkami::utils;   // <--
 //! 
@@ -56,7 +56,7 @@
 //! }
 //! async fn search(c: Context,
 //!     condition: SearchCondition
-//! ) -> Response { /* */ }
+//! ) -> Response { c.OK() }
 //! 
 //! #[utils::Payload(JSON)]
 //! #[derive(serde::Deserialize)]
@@ -64,9 +64,10 @@
 //!     name:     String,
 //!     password: String,
 //! }
+//! 
 //! async fn create_user(c: Context,
 //!     body: CreateUserRequest
-//! ) -> Response { /* */ }
+//! ) -> Response { c.Created() }
 //! ```
 //! `#[Query]`, `#[Payload( 〜 )]` implements `FromRequest` trait for the struct.
 //! 
@@ -77,15 +78,15 @@
 //! ### use middlewares
 //! ohkami's middlewares are called "**fang**s".
 //! 
-//! ```ignore
+//! ```
 //! use ohkami::prelude::*;
 //! use ohkami::{Fang, IntoFang};
 //! 
 //! struct AppendHeaders;
 //! impl IntoFang for AppendHeaders {
 //!     fn into_fang(self) -> Fang {
-//!         Fang(|c: &mut Context, req: &mut Request| {
-//!             c.headers
+//!         Fang(|c: &mut Context| {
+//!             c.set_headers()
 //!                 .Server("ohkami");
 //!         })
 //!     }
@@ -100,18 +101,6 @@
 //!         })
 //!     }
 //! }
-//! 
-//! #[tokio::main]
-//! async fn main() {
-//!     Ohkami::with((AppendHeaders, Log), (
-//!         "/"  .GET(root),
-//!         "/hc".GET(health_check),
-//!         "/api/users".
-//!             GET(get_users).
-//!             POST(create_user),
-//!     )).howl(":8080").await
-//! }
-//! 
 //! ```
 //! `Fang` schema :
 //! 
@@ -145,7 +134,7 @@
 //! <br/>
 //! 
 //! ### testing
-//! ```ignore
+//! ```
 //! use ohkami::prelude::*;
 //! use ohkami::testing::*; // <--
 //! 
@@ -166,7 +155,7 @@
 //! #[cfg(test)]
 //! #[tokio::test]
 //! async fn test_my_ohkami() {
-//!     use ohkami::http::::Status;
+//!     use ohkami::http::Status;
 //! 
 //!     let hello_ohkami = hello_ohkami();
 //! 
@@ -178,7 +167,7 @@
 //!     assert_eq!(res.content.unwrap().text().unwrap(), "Hello, world!");
 //! }
 //! ```
-//! 
+
 
 #![doc(html_root_url = "https://docs.rs/ohkami")]
 
@@ -264,8 +253,6 @@ mod layer2_context;
 mod layer3_fang_handler;
 mod layer4_router;
 mod layer5_ohkami;
-
-#[cfg(test)]
 mod layer6_testing;
 
 mod x_utils;
@@ -297,7 +284,6 @@ pub mod utils {
     pub use ohkami_macros             ::{Query, Payload};
 }
 
-#[cfg(test)]
 pub mod testing {
     pub use crate::layer6_testing::*;
 }

@@ -17,7 +17,6 @@ use crate::{
 /// async fn handler(mut c: Context) -> Response {
 ///     // Get current response header value
 ///     let current_server = c.headers.Server();
-///     /* Do somthing with it... */
 /// 
 ///     // Update response header values
 ///     c.set_headers()

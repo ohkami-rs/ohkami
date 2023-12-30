@@ -172,7 +172,6 @@ pub struct Frame {
         stream.write(&into_bytes(self)).await
     }
 
-    #[cfg(test) /* used in `Message::masking_write` */ ]
     pub(crate) async fn write_masked(self,
         stream:  &mut (impl AsyncWriter + Unpin),
         _config: &Config,

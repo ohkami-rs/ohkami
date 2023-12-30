@@ -1,4 +1,4 @@
-mod _test;
+#[cfg(test)] mod _test;
 mod x_websocket;
 
 #[cfg(feature="websocket")]

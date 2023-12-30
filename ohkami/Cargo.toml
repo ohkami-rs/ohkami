@@ -34,7 +34,7 @@ DEBUG = [
     "websocket",
     "serde/derive",
     "tokio?/macros",
-    "async-std?/attributes"
+    "async-std?/attributes",
 ]
 default = [
     "rt_tokio",
