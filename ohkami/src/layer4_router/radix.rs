@@ -2,8 +2,8 @@ use crate::{
     Request,
     Context,
     Response,
-    layer0_lib::{Method, Status, Slice},
-    layer3_fang_handler::{Handler, FrontFang, PathParams, BackFang},
+    layer0_lib::{Method, Status, Slice, percent_decode},
+    layer3_fang_handler::{Handler, FrontFang, BackFang},
 };
 
 #[cfg(feature="websocket")]
@@ -66,13 +66,12 @@ impl RadixRouter {
         mut c: Context,
         req:   &mut Request,
     ) -> HandleResult {
-        let mut params    = PathParams::new();
-        let search_result = match req.method() {
-            Method::GET    => self.GET   .search(&mut c, req/*.path_bytes()*/, &mut params),
-            Method::PUT    => self.PUT   .search(&mut c, req/*.path_bytes()*/, &mut params),
-            Method::POST   => self.POST  .search(&mut c, req/*.path_bytes()*/, &mut params),
-            Method::PATCH  => self.PATCH .search(&mut c, req/*.path_bytes()*/, &mut params),
-            Method::DELETE => self.DELETE.search(&mut c, req/*.path_bytes()*/, &mut params),
+        let search_result = match req.method {
+            Method::GET    => self.GET   .search(&mut c, req/*.path_bytes()*/),
+            Method::PUT    => self.PUT   .search(&mut c, req/*.path_bytes()*/),
+            Method::POST   => self.POST  .search(&mut c, req/*.path_bytes()*/),
+            Method::PATCH  => self.PATCH .search(&mut c, req/*.path_bytes()*/),
+            Method::DELETE => self.DELETE.search(&mut c, req/*.path_bytes()*/),
             
             Method::HEAD => {
                 let (front, back) = self.HEADfangs;
@@ -83,13 +82,13 @@ impl RadixRouter {
                     }
                 }
 
-                let target = match self.GET.search(&mut c, req/*.path_bytes()*/, &mut params) {
+                let target = match self.GET.search(&mut c, req/*.path_bytes()*/) {
                     Ok(Some(node)) => node,
                     Ok(None)       => return __no_upgrade(c.NotFound()),
                     Err(err_res)   => return __no_upgrade(err_res),
                 };
                 
-                let Response { headers, .. } = target.handle_discarding_upgrade(c, req, params).await;
+                let Response { headers, .. } = target.handle_discarding_upgrade(c, req).await;
                 let mut res = Response {
                     headers,
                     status:  Status::NoContent,
@@ -102,11 +101,8 @@ impl RadixRouter {
 
                 return __no_upgrade(res);
             }
-            Method::OPTIONS => {
-                let Some((cors_str, cors)) = crate::layer3_fang_handler::builtin::CORS.get() else {
-                    return __no_upgrade(c.InternalServerError());
-                };
 
+            Method::OPTIONS => {
                 let (front, back) = self.OPTIONSfangs;
 
                 for ff in front {
@@ -115,42 +111,7 @@ impl RadixRouter {
                     }
                 }
 
-                c.headers.Vary("Origin").cors(cors_str);
-
-                {
-                    let Some(origin) = req.header("Origin") else {
-                        return __no_upgrade(c.BadRequest());
-                    };
-                    if !cors.AllowOrigin.matches(origin) {
-                        return __no_upgrade(c.Forbidden());
-                    }
-
-                    if req.header("Authorization").is_some() && !cors.AllowCredentials {
-                        return __no_upgrade(c.Forbidden());
-                    }
-
-                    if let Some(request_method) = req.header("Access-Control-Request-Method") {
-                        let request_method = Method::from_bytes(request_method.as_bytes());
-                        let Some(allow_methods) = cors.AllowMethods.as_ref() else {
-                            return __no_upgrade(c.Forbidden());
-                        };
-                        if !allow_methods.contains(&request_method) {
-                            return __no_upgrade(c.Forbidden());
-                        }
-                    }
-
-                    if let Some(request_headers) = req.header("Access-Control-Request-Headers") {
-                        let mut request_headers = request_headers.split(',').map(|h| h.trim_matches(' '));
-                        let Some(allow_headers) = cors.AllowHeaders.as_ref() else {
-                            return __no_upgrade(c.Forbidden());
-                        };
-                        if !request_headers.all(|h| allow_headers.contains(&h)) {
-                            return __no_upgrade(c.Forbidden());
-                        }
-                    }
-                }
-
-                let mut res = c.NoContent().drop_content();
+                let mut res = c.NoContent();
 
                 for bf in back {
                     res = bf.0(res)
@@ -166,7 +127,7 @@ impl RadixRouter {
             Err(err_res)   => return __no_upgrade(err_res),
         };
 
-        target.handle(c, req, params).await
+        target.handle(c, req).await
     }
 }
 
@@ -174,7 +135,6 @@ impl Node {
     #[inline] pub(super) async fn handle(&self,
         #[allow(unused_mut)] mut c: Context,
         req:    &mut Request,
-        params: PathParams,
     ) -> HandleResult {
         match &self.handler {
             Some(handler) => {
@@ -185,7 +145,7 @@ impl Node {
                     id
                 }) {None => None, Some(id) => Some(id.await)};
 
-                let mut res = (handler.proc)(req, c, params).await;
+                let mut res = (handler.proc)(c, req).await;
                 for b in self.back {
                     res = b.0(res);
                 }
@@ -202,11 +162,10 @@ impl Node {
     #[inline] pub(super) async fn handle_discarding_upgrade(&self,
         c:      Context,
         req:    &mut Request,
-        params: PathParams,
     ) -> Response {
         match &self.handler {
             Some(handler) => {
-                let mut res = (handler.proc)(req, c, params).await;
+                let mut res = (handler.proc)(c, req).await;
                 for b in self.back {
                     res = b.0(res);
                 }
@@ -219,8 +178,6 @@ impl Node {
     pub(super/* for test */) fn search(&self,
         c:      &mut Context,
         req:    &mut Request,
-
-        params: &mut PathParams,
     ) -> Result<Option<&Node>, Response> {
         let mut target = self;
 
@@ -229,7 +186,11 @@ impl Node {
         // 2. `Request` DOESN'T have method that mutates `path`,
         //    So what `path` refers to is NEVER changed by any other process
         //    while `search`
-        let mut path = unsafe {req.path_bytes()};
+        let path_bytes_maybe_percent_encoded = unsafe {req.path_bytes()};
+        // Decode percent encodings in `path_bytes_maybe_percent_encoded`,
+        // without checking entire it is valid UTF-8.
+        let decoded = percent_decode(path_bytes_maybe_percent_encoded);
+        let mut path: &[u8] = &decoded;
 
         loop {
             for ff in target.front {
@@ -249,7 +210,7 @@ impl Node {
                     },
                     Pattern::Param      => {
                         let (param, remaining) = split_next_section(path);
-                        params.append(unsafe {Slice::from_bytes(param)});
+                        req.path.params.push(unsafe {Slice::from_bytes(param)});
                         path = remaining;
                     },
                 }

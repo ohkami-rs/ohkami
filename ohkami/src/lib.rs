@@ -39,14 +39,14 @@
 //! 
 //! async fn get_user(c: Context,
 //!     id: usize /* <-- path param */
-//! ) -> Response { /* */ }
+//! ) -> Response { c.OK() }
 //! ```
 //! Use tuple like `(verion, id): (u8, usize),` for multiple path params.
 //! 
 //! <br/>
 //! 
 //! ### handle query params / request body
-//! ```ignore
+//! ```
 //! use ohkami::prelude::*;
 //! use ohkami::utils;   // <--
 //! 
@@ -56,7 +56,7 @@
 //! }
 //! async fn search(c: Context,
 //!     condition: SearchCondition
-//! ) -> Response { /* */ }
+//! ) -> Response { c.OK() }
 //! 
 //! #[utils::Payload(JSON)]
 //! #[derive(serde::Deserialize)]
@@ -64,9 +64,10 @@
 //!     name:     String,
 //!     password: String,
 //! }
+//! 
 //! async fn create_user(c: Context,
 //!     body: CreateUserRequest
-//! ) -> Response { /* */ }
+//! ) -> Response { c.Created() }
 //! ```
 //! `#[Query]`, `#[Payload( 〜 )]` implements `FromRequest` trait for the struct.
 //! 
@@ -77,15 +78,15 @@
 //! ### use middlewares
 //! ohkami's middlewares are called "**fang**s".
 //! 
-//! ```ignore
+//! ```
 //! use ohkami::prelude::*;
 //! use ohkami::{Fang, IntoFang};
 //! 
 //! struct AppendHeaders;
 //! impl IntoFang for AppendHeaders {
-//!     fn bite(self) -> Fang {
-//!         Fang(|c: &mut Context, req: &mut Request| {
-//!             c.headers
+//!     fn into_fang(self) -> Fang {
+//!         Fang(|c: &mut Context| {
+//!             c.set_headers()
 //!                 .Server("ohkami");
 //!         })
 //!     }
@@ -93,25 +94,13 @@
 //! 
 //! struct Log;
 //! impl IntoFang for Log {
-//!     fn bite(self) -> Fang {
+//!     fn into_fang(self) -> Fang {
 //!         Fang(|res: Response| {
 //!             println!("{res:?}");
 //!             res
 //!         })
 //!     }
 //! }
-//! 
-//! #[tokio::main]
-//! async fn main() {
-//!     Ohkami::with((AppendHeaders, Log), (
-//!         "/"  .GET(root),
-//!         "/hc".GET(health_check),
-//!         "/api/users".
-//!             GET(get_users).
-//!             POST(create_user),
-//!     )).howl(":8080").await
-//! }
-//! 
 //! ```
 //! `Fang` schema :
 //! 
@@ -166,7 +155,7 @@
 //! #[cfg(test)]
 //! #[tokio::test]
 //! async fn test_my_ohkami() {
-//!     use ohkami::http::::Status;
+//!     use ohkami::http::Status;
 //! 
 //!     let hello_ohkami = hello_ohkami();
 //! 
@@ -178,7 +167,7 @@
 //!     assert_eq!(res.content.unwrap().text().unwrap(), "Hello, world!");
 //! }
 //! ```
-//! 
+
 
 #![doc(html_root_url = "https://docs.rs/ohkami")]
 
@@ -264,9 +253,9 @@ mod layer2_context;
 mod layer3_fang_handler;
 mod layer4_router;
 mod layer5_ohkami;
-
-#[cfg(test)]
 mod layer6_testing;
+
+mod x_utils;
 
 #[cfg(feature="websocket")]
 mod x_websocket;
@@ -284,16 +273,17 @@ pub mod prelude {
 }
 
 pub mod http {
-    pub use crate::layer0_lib::{Status, Method, ContentType};
+    pub use crate::layer0_lib::{Status, Method};
 }
 
 pub mod utils {
+    pub use crate::x_utils::*;
+    pub use crate::layer0_lib         ::{append};
     pub use crate::layer1_req_res     ::{File};
     pub use crate::layer3_fang_handler::{builtin::*};
     pub use ohkami_macros             ::{Query, Payload};
 }
 
-#[cfg(test)]
 pub mod testing {
     pub use crate::layer6_testing::*;
 }
@@ -322,9 +312,9 @@ pub mod __internal__ {
     struct AppendHeader;
     impl IntoFang for AppendHeader {
         //const METHODS: &'static [Method] = &[Method::GET];
-        fn bite(self) -> Fang {
+        fn into_fang(self) -> Fang {
             Fang(|c: &mut Context, _: &mut Request| {
-                c.headers.Server("ohkami");
+                c.set_headers().Server("ohkami");
             })
         }
     }
@@ -332,7 +322,7 @@ pub mod __internal__ {
     struct Log;
     impl IntoFang for Log {
         //const METHODS: &'static [Method] = &[];
-        fn bite(self) -> Fang {
+        fn into_fang(self) -> Fang {
             Fang(|res: Response| {
                 println!("{res:?}");
                 res
@@ -353,7 +343,7 @@ pub mod __internal__ {
     Ohkami::with((
         Log,
         AppendHeader,
-        utils::cors("https://kanarusblog.software")
+        utils::CORS("https://kanarusblog.software")
             .AllowCredentials()
             .AllowHeaders(["Content-Type"])
             .AllowMethods([Method::GET, Method::PUT, Method::POST, Method::DELETE])

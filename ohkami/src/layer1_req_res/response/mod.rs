@@ -1,5 +1,3 @@
-pub(crate) mod headers; pub(crate) use headers::ResponseHeaders;
-
 #[cfg(feature="nightly")]
 use std::{
     ops::FromResidual,
@@ -9,7 +7,7 @@ use std::{
 use std::{borrow::Cow};
 use crate::{
     __rt__::AsyncWriter,
-    layer0_lib::{Status, ContentType, IntoCows},
+    layer0_lib::{Status, server_header},
 };
 
 
@@ -28,8 +26,12 @@ use crate::{
 /// ```
 pub struct Response {
     pub status:         Status,
-    pub(crate) headers: String,
-    pub(crate) content: Option<(ContentType, Cow<'static, str>)>,
+    pub headers:        server_header::Headers,
+    pub(crate) content: Option<Cow<'static, [u8]>>,
+} impl Response {
+    pub fn set_headers(&mut self) -> server_header::SetHeaders<'_> {
+        self.headers.set()
+    }
 } const _: () = {
     #[cfg(feature="nightly")]
     impl FromResidual<Result<Infallible, Response>> for Response {
@@ -42,24 +44,16 @@ pub struct Response {
 impl Response {
     pub(crate) fn into_bytes(self) -> Vec<u8> {
         let Self { status, headers, content } = self;
-        let (status, headers) = (status.as_bytes(), headers.as_bytes());
 
-        match content {
-            None => [
-                b"HTTP/1.1 ",status,b"\r\n",
-                headers,
-                b"\r\n"
-            ].concat(),
-
-            Some((content_type, body)) => [   
-                b"HTTP/1.1 ",status,b"\r\n",
-                b"Content-Type: "  ,content_type.as_bytes(),          b"\r\n",
-                b"Content-Length: ",body.len().to_string().as_bytes(),b"\r\n",
-                headers,
-                b"\r\n",
-                body.as_bytes()
-            ].concat(),
+        let mut buf = Vec::from("HTTP/1.1 ");
+        buf.extend_from_slice(status.as_bytes());
+        buf.extend_from_slice(b"\r\n");
+        headers.write_to(&mut buf);
+        if let Some(body) = content {
+            buf.extend_from_slice(&body);
         }
+        
+        buf
     }
 }
 
@@ -74,28 +68,52 @@ impl Response {
 impl Response {
     pub fn drop_content(mut self) -> Self {
         self.content.take();
+        self.set_headers().ContentType(None).ContentLength(None);
         self
     }
 
-    pub fn text(mut self, text: impl IntoCows<'static>) -> Self {
-        self.content.replace((
-            ContentType::Text,
-            text.into_cow()
-        ));
+    pub fn text(mut self, text: impl Into<Cow<'static, str>>) -> Self {
+        let body = text.into();
+
+        self.set_headers().ContentType("text/plain; charset=UTF-8").ContentLength(body.len().to_string());
+        self.content = Some(match body {
+            Cow::Borrowed(s)   => Cow::Borrowed(s.as_bytes()),
+            Cow::Owned(string) => Cow::Owned(string.into_bytes()),
+        });
         self
     }
-    pub fn html(mut self, html: impl IntoCows<'static>) -> Self {
-        self.content.replace((
-            ContentType::HTML,
-            html.into_cow()
-        ));
+    pub fn html(mut self, html: impl Into<Cow<'static, str>>) -> Self {
+        let body = html.into();
+
+        self.set_headers().ContentType("text/html; charset=UTF-8").ContentLength(body.len().to_string());
+        self.content = Some(match body {
+            Cow::Borrowed(s)   => Cow::Borrowed(s.as_bytes()),
+            Cow::Owned(string) => Cow::Owned(string.into_bytes()),
+        });
         self
     }
     pub fn json(mut self, json: impl serde::Serialize) -> Self {
-        self.content.replace((
-            ContentType::JSON,
-            Cow::Owned(serde_json::to_string(&json).expect("Failed to serialize json"))
-        ));
+        #[cold] fn __json_serialize_error_response(mut res: Response, err: serde_json::Error) -> Response {
+            let body = err.to_string().into_bytes();
+            res.set_headers().ContentType("text/plain; charset-UTF-8").ContentLength(body.len().to_string());
+            res.content = Some(Cow::Owned(body));
+            res
+        }
+
+        match serde_json::to_string(&json) {
+            Ok(json) => {let body = json.into_bytes();
+                self.set_headers().ContentType("application/json; charset=UTF-8").ContentLength(body.len().to_string());
+                self.content = Some(Cow::Owned(body));
+                self
+            }
+            Err(err) => __json_serialize_error_response(self, err)
+        }
+    }
+    pub fn json_literal(mut self, json_literal: &'static str) -> Self {
+        let body = json_literal.as_bytes();
+
+        self.set_headers().ContentType("application/json; charset=UTF-8").ContentLength(body.len().to_string());
+        self.content = Some(Cow::Borrowed(body));
         self
     }
 }
@@ -108,7 +126,7 @@ const _: () = {
                     .field("status",  &self.status)
                     .field("headers", &self.headers)
                     .finish(),
-                Some((_, cow)) => f.debug_struct("Response")
+                Some(cow) => f.debug_struct("Response")
                     .field("status",  &self.status)
                     .field("headers", &self.headers)
                     .field("content", &*cow)

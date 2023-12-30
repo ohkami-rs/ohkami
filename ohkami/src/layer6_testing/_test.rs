@@ -9,7 +9,7 @@ use crate::{Fang, IntoFang, http::Status};
     let simple_ohkami = Ohkami::new(());
 
     let res = simple_ohkami.oneshot(TestRequest::GET("/")).await;
-    assert_eq!(res.status, Status::NotFound);
+    assert_eq!(res.status(), Status::NotFound);
 
     let hello_ohkami = Ohkami::new((
         "/hello".
@@ -17,11 +17,11 @@ use crate::{Fang, IntoFang, http::Status};
     ));
 
     let res = hello_ohkami.oneshot(TestRequest::GET("/")).await;
-    assert_eq!(res.status, Status::NotFound);
+    assert_eq!(res.status(), Status::NotFound);
 
     let res = hello_ohkami.oneshot(TestRequest::GET("/hello")).await;
-    assert_eq!(res.status, Status::OK);
-    assert_eq!(res.content.unwrap().text(), Some("Hello, world!"));
+    assert_eq!(res.status(), Status::OK);
+    assert_eq!(res.text(), Some("Hello, world!"));
 }
 
 async fn hello(c: Context) -> Response {
@@ -30,7 +30,7 @@ async fn hello(c: Context) -> Response {
 
 
 #[__rt__::test] async fn testing_example_complex() {
-    let users_ohkami = Ohkami::with((SetCustomHeaders,), (
+    let users_ohkami = Ohkami::with((), (
         "/".   PUT(create_user),
         "/:id".GET(get_user),
     ));
@@ -41,51 +41,44 @@ async fn hello(c: Context) -> Response {
     ));
 
     let res = testing_example.oneshot(TestRequest::GET("/")).await;
-    assert_eq!(res.status, Status::NotFound);
+    assert_eq!(res.status(), Status::NotFound);
 
     let res = testing_example.oneshot(TestRequest::GET("/health")).await;
-    assert_eq!(res.status, Status::NoContent);
-    assert_eq!(res.headers.get("Server").unwrap(), "ohkami");
-    assert_eq!(res.headers.get("X-State"), None);
+    assert_eq!(res.status(), Status::NoContent);
+    assert_eq!(res.header("Server").unwrap(), "ohkami");
 
     let res = testing_example.oneshot(TestRequest::GET("/users/100")).await;
-    assert_eq!(res.status, Status::NotFound);
-    assert_eq!(res.headers.get("Server").unwrap(),  "ohkami");
-    assert_eq!(res.headers.get("X-State").unwrap(), "testing");
+    assert_eq!(res.status(), Status::NotFound);
+    assert_eq!(res.header("Server").unwrap(),  "ohkami");
 
     let res = testing_example.oneshot(TestRequest::GET("/users/42")).await;
-    assert_eq!(res.status, Status::OK);
-    assert_eq!(res.content.unwrap().json().unwrap(), r#"{"name":"kanarus","age":20}"#);
+    assert_eq!(res.status(), Status::OK);
+    assert_eq!(
+        res.json::<serde_json::Value>().unwrap().unwrap(),
+        serde_json::json!({"name":"kanarus","age":20}),
+    );
 
     let res = testing_example.oneshot(TestRequest::PUT("/users")).await;
-    assert_eq!(res.status, Status::BadRequest);
+    assert_eq!(res.status(), Status::BadRequest);
 
     let res = testing_example.oneshot(TestRequest::PUT("/users")
         .json(CreateUser {
             name: format!("kanarus"),
             age:  None,
         })).await;
-    assert_eq!(res.status, Status::Created);
-    assert_eq!(res.headers.get("Server").unwrap(),   "ohkami");
-    assert_eq!(res.headers.get("X-State").unwrap(),  "testing");
-    assert_eq!(res.content.unwrap().json().unwrap(), r#"{"name":"kanarus","age":0}"#);
-}
-
-struct SetCustomHeaders;
-impl IntoFang for SetCustomHeaders {
-    fn bite(self) -> Fang {
-        Fang(|c: &mut Context| {
-            c.headers
-                .custom("X-State", "testing");
-        })
-    }
+    assert_eq!(res.status(), Status::Created);
+    assert_eq!(res.header("Server").unwrap(),   "ohkami");
+    assert_eq!(
+        res.json::<serde_json::Value>().unwrap().unwrap(),
+        serde_json::json!({"name":"kanarus","age":0}),
+    );
 }
 
 struct SetServerHeader;
 impl IntoFang for SetServerHeader {
-    fn bite(self) -> Fang {
+    fn into_fang(self) -> Fang {
         Fang(|c: &mut Context| {
-            c.headers
+            c.set_headers()
                 .Server("ohkami");
         })
     }
@@ -120,11 +113,14 @@ struct CreateUser {
 // Can't use `#[Payload(JSON)]` here becasue this test is within `ohkami`
 impl crate::FromRequest for CreateUser {
     type Error = ::std::borrow::Cow<'static, str>;
-    fn parse(req: &Request) -> Result<Self, std::borrow::Cow<'static, str>> {
-        let Some((crate::http::ContentType::JSON, content)) = req.payload()
-            else {return Err(std::borrow::Cow::Borrowed("Expected a json payload"))};
-        serde_json::from_slice(content)
-            .map_err(|_| std::borrow::Cow::Owned(format!("Failed to deserialize payload")))
+    fn parse(req: &Request) -> Result<Self, ::std::borrow::Cow<'static, str>> {
+        let Some(payload) = req.payload()
+            else {return Err(::std::borrow::Cow::Borrowed("Expected a payload"))};
+        match req.headers.ContentType() {
+            Some("application/json") => serde_json::from_slice(payload)
+                .map_err(|_| ::std::borrow::Cow::Owned(format!("Failed to deserialize payload"))),
+            _ => Err(::std::borrow::Cow::Borrowed("Expected a json payload"))
+        }
     }
 }
 async fn create_user(c: Context, payload: CreateUser) -> Response {

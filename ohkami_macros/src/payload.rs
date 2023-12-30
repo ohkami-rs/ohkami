@@ -29,10 +29,10 @@ fn impl_payload_json(data: &ItemStruct) -> Result<TokenStream> {
         impl ::ohkami::FromRequest for #struct_name {
             type Error = ::std::borrow::Cow<'static, str>;
             fn parse<'req>(req: &'req ::ohkami::Request) -> ::std::result::Result<Self, ::std::borrow::Cow<'static, str>> {
-                let (content_type, payload) = req.payload()
+                let payload = req.payload()
                     .ok_or_else(|| ::std::borrow::Cow::Borrowed("Expected payload"))?;
-                if !content_type.is_json() {
-                    return ::std::result::Result::Err(::std::borrow::Cow::Borrowed("Expected payload of `Content-Type: application/json`"))
+                if !req.headers.ContentType().unwrap().starts_with("application/json") {
+                    return ::std::result::Result::Err(::std::borrow::Cow::Borrowed("Expected a payload of `Content-Type: application/json`"))
                 }
                 let __payload__ = ::ohkami::__internal__::parse_json(payload)?;
                 ::std::result::Result::Ok(__payload__)
@@ -99,10 +99,10 @@ fn impl_payload_urlencoded(data: &ItemStruct) -> Result<TokenStream> {
         impl ::ohkami::FromRequest for #struct_name {
             type Error = ::std::borrow::Cow<'static, str>;
             fn parse(req: &::ohkami::Request) -> ::std::result::Result<Self, ::std::borrow::Cow<'static, str>> {
-                let (content_type, payload) = req.payload()
+                let payload = req.payload()
                     .ok_or_else(|| ::std::borrow::Cow::Borrowed("Expected a payload"))?;
-                if !content_type.is_urlencoded() {
-                    return ::std::result::Result::Err(::std::borrow::Cow::Borrowed("Expected a `application/x-www-form-urlencoded` payload"))
+                if !req.headers.ContentType().unwrap().starts_with("application/x-www-form-urlencoded") {
+                    return ::std::result::Result::Err(::std::borrow::Cow::Borrowed("Expected an `application/x-www-form-urlencoded` payload"))
                 }
 
                 #declaring_exprs
@@ -191,11 +191,19 @@ fn impl_payload_formdata(data: &ItemStruct) -> Result<TokenStream> {
         impl ::ohkami::FromRequest for #struct_name {
             type Error = ::std::borrow::Cow<'static, str>;
             fn parse(req: &::ohkami::Request) -> ::std::result::Result<Self, ::std::borrow::Cow<'static, str>> {
-                let (content_type, payload) = req.payload()
+                let payload = req.payload()
                     .ok_or_else(|| ::std::borrow::Cow::Borrowed("Expected a payload"))?;
-                let ::ohkami::http::ContentType::FormData { boundary } = content_type
-                    else {return ::std::result::Result::Err(::std::borrow::Cow::Borrowed("Expected a `multipart/form-data` payload"))};
-            
+
+                #[cold] #[inline(never)] const fn __expected_multipart_formdata_and_boundary() -> ::std::borrow::Cow<'static, str> {
+                    ::std::borrow::Cow::Borrowed("Expected `multipart/form-data` and a boundary")
+                }
+                let ("multipart/form-data", boundary) = req.headers.ContentType().unwrap()
+                    .split_once("; boundary=")
+                    .ok_or_else(__expected_multipart_formdata_and_boundary)?
+                else {
+                    return ::std::result::Result::Err(__expected_multipart_formdata_and_boundary())
+                };
+                
                 #declaring_exprs
                 #parsing_expr
                 #building_expr

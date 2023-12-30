@@ -23,39 +23,38 @@ impl Method {
         }
     }
 
-    #[cfg(test)]
-    #[inline] pub(crate) fn as_bytes(&self) -> &'static [u8] {
+    #[inline] pub const fn as_str(&self) -> &'static str {
         match self {
-            Self::GET     => b"GET",
-            Self::PUT     => b"PUT",
-            Self::POST    => b"POST",
-            Self::PATCH   => b"PATCH",
-            Self::DELETE  => b"DELETE",
-            Self::HEAD    => b"HEAD",
-            Self::OPTIONS => b"OPTIONS",
+            Self::GET     => "GET",
+            Self::PUT     => "PUT",
+            Self::POST    => "POST",
+            Self::PATCH   => "PATCH",
+            Self::DELETE  => "DELETE",
+            Self::HEAD    => "HEAD",
+            Self::OPTIONS => "OPTIONS",
         }
     }
 }
 #[allow(non_snake_case)] impl Method {
-    #[inline(always)] pub fn isGET(&self) -> bool {
+    #[inline(always)] pub const fn isGET(&self) -> bool {
         matches!(self, Method::GET)
     }
-    #[inline(always)] pub fn isPUT(&self) -> bool {
+    #[inline(always)] pub const fn isPUT(&self) -> bool {
         matches!(self, Method::PUT)
     }
-    #[inline(always)] pub fn isPOST(&self) -> bool {
+    #[inline(always)] pub const fn isPOST(&self) -> bool {
         matches!(self, Method::POST)
     }
-    #[inline(always)] pub fn isPATCH(&self) -> bool {
+    #[inline(always)] pub const fn isPATCH(&self) -> bool {
         matches!(self, Method::PATCH)
     }
-    #[inline(always)] pub fn isDELETE(&self) -> bool {
+    #[inline(always)] pub const fn isDELETE(&self) -> bool {
         matches!(self, Method::DELETE)
     }
-    #[inline(always)] pub fn isHEAD(&self) -> bool {
+    #[inline(always)] pub const fn isHEAD(&self) -> bool {
         matches!(self, Method::HEAD)
     }
-    #[inline(always)] pub fn isOPTIONS(&self) -> bool {
+    #[inline(always)] pub const fn isOPTIONS(&self) -> bool {
         matches!(self, Method::OPTIONS)
     }
 }

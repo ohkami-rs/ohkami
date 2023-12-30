@@ -16,14 +16,12 @@ license          = "MIT"
 features         = ["rt_tokio"]
 
 [dependencies]
-ohkami_macros    = { version = "0.4", path = "../ohkami_macros" }
+ohkami_macros    = { version = "0.5", path = "../ohkami_macros" }
 tokio            = { version = "1", optional = true, features = ["net", "rt", "io-util", "sync"] }
 async-std        = { version = "1", optional = true }
+byte_reader      = { version = "1.2.2", features = ["text"] }
 serde            = "1.0"
 serde_json       = "1.0"
-chrono           = "0.4"
-percent-encoding = "2.2.0"
-byte_reader      = { version = "1.2.2", features = ["text"] }
 
 [features]
 rt_tokio         = ["dep:tokio"]
@@ -36,11 +34,11 @@ DEBUG = [
     "websocket",
     "serde/derive",
     "tokio?/macros",
-    "async-std?/attributes"
+    "async-std?/attributes",
 ]
-# default = [
-#     "rt_tokio",
-#     #"rt_async-std",
-#     "DEBUG",
-#     # "nightly"
-# ]
+#default = [
+#    "rt_tokio",
+#    #"rt_async-std",
+#    "DEBUG",
+#    # "nightly"
+#]

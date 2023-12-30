@@ -29,11 +29,12 @@ async fn post_submit(c: Context, form_data: FormData) -> Response {
 
 struct Logger;
 impl IntoFang for Logger {
-    fn bite(self) -> ohkami::Fang {
+    fn into_fang(self) -> ohkami::Fang {
         Fang(|_: &mut Context, req: &mut Request| {
-            println!("[request] {} {}", req.method(), req.path());
+            println!("[request] {} {}", req.method, req.path());
 
-            if let Some ((content_type, body)) = req.payload() {
+            if let Some(body) = req.payload() {
+                let content_type = req.headers.ContentType().unwrap();
                 println!("[payload] {content_type:?}\n{}", body.escape_ascii());
             }
         })

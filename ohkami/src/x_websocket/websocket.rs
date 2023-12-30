@@ -1,13 +1,13 @@
 use std::io::Error;
 use super::{Message};
-use crate::__rt__::{AsyncWriter};
+use crate::__rt__::{AsyncWriter, AsyncReader, TcpStream};
 
-#[cfg(test)]      use crate::layer6_testing::TestStream as Stream;
-#[cfg(not(test))] use crate::__rt__::TcpStream          as Stream;
+//#[cfg(test)]      use crate::layer6_testing::TestStream as Stream;
+//#[cfg(not(test))] use crate::__rt__::TcpStream          as Stream;
 
 
 /// In current version, `split` to read / write halves is not supported
-pub struct WebSocket {
+pub struct WebSocket<Stream: AsyncReader + AsyncWriter = TcpStream> {
     stream: Stream,
     config: Config,
 
@@ -35,7 +35,7 @@ pub struct Config {
     }
 };
 
-impl WebSocket {
+impl<Stream: AsyncReader + AsyncWriter> WebSocket<Stream> {
     pub(crate) fn new(stream: Stream, config: Config) -> Self {
         Self { stream, config, n_buffered:0 }
     }
@@ -97,47 +97,3 @@ impl WebSocket {
         flush(&mut self.stream, &mut self.n_buffered).await
     }
 }
-
-// #[cfg(feature="rt_tokio")] const _: () = {
-//     impl WebSocket {
-//         pub fn split(&mut self) -> (ReadHalf<'_, Stream>, WriteHalf<'_, Stream>) {
-//             let (rh, wh)   = self.stream.split();
-//             let config     = &self.config;
-//             let n_buffered = self.n_buffered;
-//             (ReadHalf {config, stream:rh}, WriteHalf {config, n_buffered, stream:wh})
-//         }
-//     }
-// 
-//     use crate::__rt__::{
-//         ReadHalf as TcpReadHalf,
-//         WriteHalf as TcpWriteHalf,
-//     };
-// 
-//     pub struct ReadHalf<'ws, Stream: AsyncReader + AsyncWriter + Unpin> {
-//         stream: &'ws Stream,
-//         config: &'ws Config,
-//     }
-//     impl<'ws, Stream: AsyncReader + AsyncWriter + Unpin> ReadHalf<'ws, Stream> {
-//         pub async fn recv(&mut self) -> Result<Option<Message>, Error> {
-//             Message::read_from(&mut self.stream, &self.config).await
-//         }
-//     }
-// 
-//     pub struct WriteHalf<'ws, Stream: AsyncReader + AsyncWriter + Unpin> {
-//         stream:     &'ws Stream,
-//         config:     &'ws Config,
-//         n_buffered: usize,
-//     }
-//     impl<'ws, Stream: AsyncReader + AsyncWriter + Unpin> WriteHalf<'ws, Stream> {
-//         pub async fn send(&mut self, message: Message) -> Result<(), Error> {
-//             send(message, &mut self.stream, &self.config, &mut self.n_buffered).await
-//         }
-//         pub async fn write(&mut self, message: Message) -> Result<usize, Error> {
-//             write(message, &mut self.stream, &self.config, &mut self.n_buffered).await
-//         }
-//         pub async fn flush(&mut self) -> Result<(), Error> {
-//             flush(&mut self.stream, &mut self.n_buffered).await
-//         }
-//     }
-// };
-// 

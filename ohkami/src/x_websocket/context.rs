@@ -4,9 +4,7 @@ use super::{WebSocket, sign};
 use crate::{Response, Context, Request};
 use crate::__rt__::{task};
 use crate::http::{Method};
-
-#[cfg(test)]      use crate::websocket::assume_upgradable_in_test;
-#[cfg(not(test))] use super::assume_upgradable;
+use super::assume_upgradable;
 
 
 pub struct WebSocketContext<UFH: UpgradeFailureHandler = DefaultUpgradeFailureHandler> {
@@ -34,24 +32,24 @@ impl UpgradeFailureHandler for DefaultUpgradeFailureHandler {
 
 impl WebSocketContext {
     pub(crate) fn new(c: Context, req: &mut Request) -> Result<Self, Response> {
-        if req.method() != Method::GET {
+        if req.method != Method::GET {
             return Err((|| c.BadRequest().text("Method is not `GET`"))())
         }
-        if req.header("Connection") != Some("upgrade") {
+        if req.headers.Connection() != Some("upgrade") {
             return Err((|| c.BadRequest().text("Connection header is not `upgrade`"))())
         }
-        if req.header("Upgrade") != Some("websocket") {
+        if req.headers.Upgrade() != Some("websocket") {
             return Err((|| c.BadRequest().text("Upgrade header is not `websocket`"))())
         }
-        if req.header("Sec-WebSocket-Version") != Some("13") {
+        if req.headers.SecWebSocketVersion() != Some("13") {
             return Err((|| c.BadRequest().text("Sec-WebSocket-Version header is not `13`"))())
         }
 
-        let sec_websocket_key = Cow::Owned(req.header("Sec-WebSocket-Key")
+        let sec_websocket_key = Cow::Owned(req.headers.SecWebSocketKey()
             .ok_or_else(|| c.BadRequest().text("Sec-WebSocket-Key header is missing"))?
             .to_string());
 
-        let sec_websocket_protocol = req.header("Sec-WebSocket-Protocol")
+        let sec_websocket_protocol = req.headers.SecWebSocketProtocol()
             .map(|swp| Cow::Owned(swp.to_string()));
 
         Ok(Self {c,
@@ -96,9 +94,7 @@ impl WebSocketContext {
 }
 
 impl WebSocketContext {
-    pub fn on_upgrade<
-        Fut: Future<Output = ()> + Send + 'static,
-    >(
+    pub fn on_upgrade<Fut: Future<Output = ()> + Send + 'static>(
         self,
         handler: impl Fn(WebSocket) -> Fut + Send + Sync + 'static
     ) -> Response {
@@ -121,13 +117,8 @@ impl WebSocketContext {
         task::spawn({
             async move {
                 let stream = match c.upgrade_id {
-                    None => return on_failed_upgrade.handle(UpgradeError::NotRequestedUpgrade),
-
-                    #[cfg(not(test))]
+                    None     => return on_failed_upgrade.handle(UpgradeError::NotRequestedUpgrade),
                     Some(id) => assume_upgradable(id).await,
-
-                    #[cfg(test)]
-                    Some(id) => assume_upgradable_in_test(id).await,
                 };
 
                 let ws = WebSocket::new(stream, config);
@@ -135,13 +126,13 @@ impl WebSocketContext {
             }
         });
 
-        c.headers
-            .custom("Connection", "Upgrade")
-            .custom("Upgrade", "websocket")
-            .custom("Sec-WebSocket-Accept", sign(&sec_websocket_key));
+        c.set_headers()
+            .Connection("Update")
+            .Upgrade("websocket")
+            .SecWebSocketAccept(sign(&sec_websocket_key));
         if let Some(protocol) = selected_protocol {
-            c.headers
-                .custom("Sec-WebSocket-Protocol", protocol);
+            c.set_headers()
+                .SecWebSocketProtocol(protocol.to_string());
         }
         c.SwitchingProtocols()
     }
