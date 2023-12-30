@@ -1,3 +1,5 @@
+//! Baed on [chrono](https://github.com/chronotope/chrono); MIT.
+
 use std::time::{SystemTime, UNIX_EPOCH};
 
 
@@ -29,8 +31,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 struct UTCDateTime {
     date: Date,
     time: Time,
-}
-impl UTCDateTime {
+} impl UTCDateTime {
     fn now_from_system(system_now: std::time::Duration) -> Self {
         let (secs, nsecs) = (system_now.as_secs() as i64, system_now.subsec_nanos());
 
@@ -58,7 +59,7 @@ impl UTCDateTime {
         {
             let Self { date, time } = self;
 
-            buf.push_str(SHORT_WEEKDAYS[date.weekday().num_days_from_sunday() as usize]);
+            buf.push_str(unsafe {SHORT_WEEKDAYS.get_unchecked(date.weekday().num_days_from_sunday() as usize)});
             buf.push_str(", ");
 
             let day = date.day() as u8;
@@ -69,7 +70,7 @@ impl UTCDateTime {
             }
 
             buf.push(' ');
-            buf.push_str(SHORT_MONTHS[date.month_index() as usize]);
+            buf.push_str(unsafe {SHORT_MONTHS.get_unchecked(date.month_index() as usize)});
 
             buf.push(' ');
             let year = date.year();
@@ -140,11 +141,14 @@ impl Date {
         ordinal: u32,
         flag:    YearFlag,
     ) -> Date {
-        const MAX_YEAR: i32 = i32::MAX >> 13;
-        const MIN_YEAR: i32 = i32::MIN >> 13;
-        
-        debug_assert!(year >= MIN_YEAR && year <= MAX_YEAR, "Year out of range");
-        debug_assert!(YearFlag::from_year(year).0 == flag.0);
+        debug_assert!({
+            const MAX_YEAR: i32 = i32::MAX >> 13;
+            const MIN_YEAR: i32 = i32::MIN >> 13;
+
+            year >= MIN_YEAR &&
+            year <= MAX_YEAR &&
+            YearFlag::from_year(year).0 == flag.0
+        });
 
         let of = Of::new(ordinal, flag);
         Self((year << 13) | (of.0 as i32))
@@ -153,10 +157,10 @@ impl Date {
     const fn year(&self) -> i32 {
         self.0 >> 13
     }
-    const fn month_index(&self) -> u32 {
+    fn month_index(&self) -> u32 {
         self.of().to_mdf().month() - 1
     }
-    const fn day(&self) -> u32 {
+    fn day(&self) -> u32 {
         self.of().to_mdf().day()
     }
     const fn weekday(&self) -> Weekday {
@@ -256,7 +260,7 @@ impl Of {
         let Of(of) = *self;
         Weekday::from_u32_mod7((of >> 4) + (of & 0b111))
     }
-    const fn to_mdf(&self) -> Mdf {
+    fn to_mdf(&self) -> Mdf {
         Mdf::from_of(*self)
     }
 }
@@ -272,7 +276,7 @@ impl Mdf {
         (mdf >> 4) & 0b1_1111
     }
 
-    const fn from_of(Of(of): Of) -> Mdf {
+    fn from_of(Of(of): Of) -> Mdf {
         const MAX_OL: u32 = 366 << 1; // `(366 << 1) | 1` would be day 366 in a non-leap year
         const OL_TO_MDL: &[u8; MAX_OL as usize + 1] = &[
             0, 0, // 0
@@ -318,7 +322,7 @@ impl Mdf {
         let ol = of >> 3;
         if ol <= MAX_OL {
             // Array is indexed from `[1..=MAX_OL]`, with a `0` index having a meaningless value.
-            Mdf(of + ((OL_TO_MDL[ol as usize] as u32) << 3))
+            Mdf(of + ((unsafe {*OL_TO_MDL.get_unchecked(ol as usize)} as u32) << 3))
         } else {
             // Panicking here would be reasonable, but we are just going on with a safe value.
             Mdf(0)
@@ -335,8 +339,7 @@ enum Weekday {
     Fri,
     Sat,
     Sun,
-}
-impl Weekday {
+} impl Weekday {
     const fn from_u32_mod7(n: u32) -> Self {
         match n % 7 {
             0 => Self::Mon,
