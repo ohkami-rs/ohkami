@@ -29,6 +29,7 @@ pub struct Value(
             None    => self.0 = Some(value.into()),
             Some(v) => {
                 let mut new = v.to_string();
+                new.push(',');
                 new.push_str(&value.into());
                 *v = Cow::Owned(new);
             }
@@ -80,9 +81,16 @@ pub trait HeaderAction<'action> {
     // append or something
     impl<'a, F: FnMut(&mut Value)> HeaderAction<'a> for F {
         #[inline] fn perform(mut self, set_headers: SetHeaders<'a>, key: Header) -> SetHeaders<'a> {
-            let before_size = set_headers.0.size;
+            let before_size = unsafe {set_headers.0.values.get_unchecked(key as usize).size()};
             self(unsafe {set_headers.0.values.get_unchecked_mut(key as usize)});
-            set_headers.0.size += set_headers.0.values[key as usize].size() - before_size;
+            let after_size  = unsafe {set_headers.0.values.get_unchecked(key as usize)}.size();
+
+            if after_size > before_size {
+                set_headers.0.size += after_size - before_size;
+            } else {
+                set_headers.0.size -= before_size - after_size;
+            }
+
             set_headers
         }
     }
