@@ -81,14 +81,16 @@ pub trait HeaderAction<'action> {
     // append or something
     impl<'a, F: FnMut(&mut Value)> HeaderAction<'a> for F {
         #[inline] fn perform(mut self, set_headers: SetHeaders<'a>, key: Header) -> SetHeaders<'a> {
-            let before_size = unsafe {set_headers.0.values.get_unchecked(key as usize).size()};
-            self(unsafe {set_headers.0.values.get_unchecked_mut(key as usize)});
-            let after_size  = unsafe {set_headers.0.values.get_unchecked(key as usize)}.size();
+            let Headers { values, size } = set_headers.0;
+
+            let before_size = unsafe {values.get_unchecked(key as usize).size()};
+            self(unsafe {values.get_unchecked_mut(key as usize)});
+            let after_size  = unsafe {values.get_unchecked(key as usize)}.size();
 
             if after_size > before_size {
-                set_headers.0.size += after_size - before_size;
+                *size += after_size - before_size;
             } else {
-                set_headers.0.size -= before_size - after_size;
+                *size -= before_size - after_size;
             }
 
             set_headers
