@@ -59,9 +59,10 @@ impl Fang {
 /// 
 /// struct AppendHeader;
 /// impl IntoFang for AppendHeader {
-///     fn bite(self) -> Fang {
+///     fn into_fang(self) -> Fang {
 ///         Fang(|c: &mut Context, req: &mut Request| {
-///             c.headers.Server("ohkami");
+///             c.set_headers()
+///                 .Server("ohkami");
 ///         })
 ///     }
 /// }

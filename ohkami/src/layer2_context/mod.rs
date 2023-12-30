@@ -14,62 +14,18 @@ use crate::{
 /// use ohkami::prelude::*;
 /// 
 /// async fn handler(mut c: Context) -> Response {
-///     // set header values
-///     c.headers
+///     // Get current response header value
+///     let current_server = c.headers.Server();
+///     /* Do somthing with it... */
+/// 
+///     // Update response header values
+///     c.set_headers()
 ///         .Server("ohkami")
-///         .custom("X-MyApp-Cred", "abcdefg");
+///         .Date(None)
+///         .SetCookie(|prev:&mut _| prev.append("this=my-delicious-cookie"));
 /// 
-///     // update / delete header values
-///     c.headers
-///         .Server(None)
-///         .custom("X-MyApp-Cred", "gfedcba");
-/// 
-///     // generate a `Response`
+///     // Generate a `Response`
 ///     c.NoContent()
-/// 
-///     // `Content-Type`, `Content-Length`, `Date`,
-///     // `Access-Control-*` are managed by ohkami.
-/// }
-/// ```
-/// 
-/// <br/>
-/// 
-/// With error handling :
-/// 
-/// ```
-/// use ohkami::prelude::*;
-/// use ohkami::utils::Payload;
-/// 
-/// #[derive(serde::Serialize)]
-/// struct User {
-///     id:       usize,
-///     name:     String,
-///     password: String,
-/// }
-/// 
-/// #[Payload(JSON)]
-/// #[derive(serde::Serialize)]
-/// struct CreateUser {
-///     name:     String,
-///     password: String,
-/// }
-/// 
-/// async fn create_user(
-///     c:    Context,
-///     body: CreateUser,
-/// ) -> Response {
-///     let Ok(created_id) = insert_user_returing_id(
-///         &body.name,
-///         &body.password,
-///     ).await else {
-///         return c.InternalServerError().text("in DB handling")
-///     };
-/// 
-///     c.Created().json(User {
-///         id:       created_id,
-///         name:     body.name,
-///         password: body.password,
-///     })
 /// }
 /// ```
 pub struct Context {

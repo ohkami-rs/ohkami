@@ -15,7 +15,7 @@ use crate::{
 /// 
 /// struct Log;
 /// impl IntoFang for Log {
-///     fn bite(self) -> Fang {
+///     fn into_fang(self) -> Fang {
 ///         Fang(|res: Response| {
 ///             println!("{res:?}");
 ///             res

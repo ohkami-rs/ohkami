@@ -1,43 +1,12 @@
 use std::borrow::Cow;
+use super::Append;
 
 
 pub struct Headers {
-    values: [Value; N_SERVER_HEADERS],
+    values: [Option<Cow<'static, str>>; N_SERVER_HEADERS],
 
     /// Size of whole the byte stream when this is written into HTTP response.
     size: usize,
-}
-#[derive(Clone)]
-pub struct Value(
-    Option<Cow<'static, str>>,
-); impl Value {
-    fn size(&self) -> usize {
-        match &self.0 {
-            None    => 0,
-            Some(v) => v.len(),
-        }
-    }
-
-    pub fn as_str(&self) -> &str {
-        match &self.0 {
-            Some(cows) => &cows,
-            None       => "",
-        }
-    }
-    pub fn append(&mut self, value: impl Into<Cow<'static, str>>) {
-        match &mut self.0 {
-            None    => self.0 = Some(value.into()),
-            Some(v) => {
-                let mut new = v.to_string();
-                new.push(',');
-                new.push_str(&value.into());
-                *v = Cow::Owned(new);
-            }
-        }
-    }
-    pub fn replace(&mut self, new_value: impl Into<Cow<'static, str>>) {
-        self.0 = Some(new_value.into())
-    }
 }
 
 pub struct SetHeaders<'set>(
@@ -78,21 +47,10 @@ pub trait HeaderAction<'action> {
         }
     }
 
-    // append or something
-    impl<'a, F: FnMut(&mut Value)> HeaderAction<'a> for F {
-        #[inline] fn perform(mut self, set_headers: SetHeaders<'a>, key: Header) -> SetHeaders<'a> {
-            let Headers { values, size } = set_headers.0;
-
-            let before_size = unsafe {values.get_unchecked(key as usize).size()};
-            self(unsafe {values.get_unchecked_mut(key as usize)});
-            let after_size  = unsafe {values.get_unchecked(key as usize)}.size();
-
-            if after_size > before_size {
-                *size += after_size - before_size;
-            } else {
-                *size -= before_size - after_size;
-            }
-
+    // append
+    impl<'a> HeaderAction<'a> for Append {
+        #[inline] fn perform(self, set_headers: SetHeaders<'a>, key: Header) -> SetHeaders<'a> {
+            set_headers.0.append(key, self.0);
             set_headers
         }
     }
@@ -204,7 +162,7 @@ macro_rules! Header {
 impl Headers {
     #[inline] pub(crate) fn insert(&mut self, name: Header, value: Cow<'static, str>) {
         let (name_len, value_len) = (name.as_bytes().len(), value.len());
-        match unsafe {self.values.get_unchecked_mut(name as usize)}.0.replace(value) {
+        match unsafe {self.values.get_unchecked_mut(name as usize)}.replace(value) {
             None       => self.size += name_len + ": ".len() + value_len + "\r\n".len(),
             Some(prev) => {
                 let prev_len = prev.len();
@@ -220,13 +178,38 @@ impl Headers {
     #[inline] pub(crate) fn remove(&mut self, name: Header) {
         let name_len = name.as_bytes().len();
         let v = unsafe {self.values.get_unchecked_mut(name as usize)};
-        if let Some(v) = v.0.take() {
+        if let Some(v) = v.take() {
             self.size -= name_len + ": ".len() + v.len() + "\r\n".len()
         }
     }
 
     pub(crate) fn get(&self, name: Header) -> Option<&str> {
-        unsafe {self.values.get_unchecked(name as usize)}.0.as_ref().map(AsRef::as_ref)
+        unsafe {self.values.get_unchecked(name as usize)}.as_ref().map(AsRef::as_ref)
+    }
+
+    pub(crate) fn append(&mut self, name: Header, value: Cow<'static, str>) {
+        /*
+            let Headers { values, size } = set_headers.0;
+
+            let before_size = unsafe {values.get_unchecked(key as usize).l()};
+            unsafe {values.get_unchecked_mut(key as usize)}.;
+            let after_size  = unsafe {values.get_unchecked(key as usize)};
+
+            if after_size > before_size {
+                *size += after_size - before_size;
+            } else {
+                *size -= before_size - after_size;
+            }
+
+        */
+        match unsafe {self.values.get_unchecked_mut(name as usize)} {
+            Some(v) => {
+
+            }
+            None => {
+                let before_size = 0;
+            }
+        }
     }
 }
 impl Headers {
@@ -234,15 +217,15 @@ impl Headers {
         Self {
             size:   "\r\n".len(),
             values: [
-                Value(None), Value(None), Value(None), Value(None), Value(None),
-                Value(None), Value(None), Value(None), Value(None), Value(None),
-                Value(None), Value(None), Value(None), Value(None), Value(None),
-                Value(None), Value(None), Value(None), Value(None), Value(None),
-                Value(None), Value(None), Value(None), Value(None), Value(None),
-                Value(None), Value(None), Value(None), Value(None), Value(None),
-                Value(None), Value(None), Value(None), Value(None), Value(None),
-                Value(None), Value(None), Value(None), Value(None), Value(None),
-                Value(None), Value(None), Value(None), Value(None), Value(None),
+                None, None, None, None, None,
+                None, None, None, None, None,
+                None, None, None, None, None,
+                None, None, None, None, None,
+                None, None, None, None, None,
+                None, None, None, None, None,
+                None, None, None, None, None,
+                None, None, None, None, None,
+                None, None, None, None, None,
             ]
         }
     }
@@ -260,7 +243,7 @@ impl Headers {
             type Item = (&'i str, &'i str);
             fn next(&mut self) -> Option<Self::Item> {
                 for i in self.cur..N_SERVER_HEADERS {
-                    if let Value(Some(v)) = unsafe {self.map.values.get_unchecked(i)} {
+                    if let Some(v) = unsafe {self.map.values.get_unchecked(i)} {
                         self.cur = i + 1;
                         return Some((unsafe {SERVER_HEADERS.get_unchecked(i)}.as_str(), &v))
                     }
@@ -289,7 +272,7 @@ impl Headers {
 
         buf.reserve(self.size);
         for h in unsafe {SERVER_HEADERS.get_unchecked(1..)} {
-            if let Some(v) = &unsafe {self.values.get_unchecked(*h as usize)}.0 {
+            if let Some(v) = unsafe {self.values.get_unchecked(*h as usize)} {
                 push!(buf <- h.as_bytes());
                 push!(buf <- b": ");
                 push!(buf <- v);
