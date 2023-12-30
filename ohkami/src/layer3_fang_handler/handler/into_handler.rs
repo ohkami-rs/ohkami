@@ -3,6 +3,7 @@ use super::Handler;
 use crate::{
     Context,
     Response,
+    layer0_lib::{percent_decode},
     layer1_req_res::{FromRequest, FromParam},
 };
 #[cfg(feature="websocket")]
@@ -13,7 +14,7 @@ pub trait IntoHandler<Args> {
     fn into_handler(self) -> Handler;
 }
 
-#[cold] fn __bad_request(
+#[cold] #[inline(never)] fn __bad_request(
     c: &Context,
     e: impl std::fmt::Display,
 ) -> std::pin::Pin<Box<impl Future<Output = Response>>> {
@@ -22,10 +23,14 @@ pub trait IntoHandler<Args> {
         async {res}
     })
 }
-#[inline(always)] fn from_param_bytes<P: FromParam>(bytes: &[u8]) -> Result<P, Cow<'static, str>> {
-    let param = std::str::from_utf8(bytes)
+#[inline(always)] fn from_param_bytes<P: FromParam>(
+    param_bytes_maybe_percent_encoded: &[u8]
+) -> Result<P, Cow<'static, str>> {
+    let param = percent_decode(param_bytes_maybe_percent_encoded)
+        .decode_utf8()
         .map_err(|e| Cow::Owned(e.to_string()))?;
-    <P as FromParam>::from_param(param)
+
+    <P as FromParam>::from_param(&param)
         .map_err(|e| Cow::Owned(e.to_string()))
 }
 

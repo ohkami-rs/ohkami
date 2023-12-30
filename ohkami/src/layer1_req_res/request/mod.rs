@@ -9,7 +9,7 @@ use std::{pin::Pin};
 use byte_reader::{Reader};
 use crate::{
     __rt__::{AsyncReader},
-    layer0_lib::{Method, Slice, CowSlice, client_header}
+    layer0_lib::{Method, Slice, CowSlice, client_header, percent_decode}
 };
 
 
@@ -125,9 +125,9 @@ impl Request {
 }
 
 impl Request {
-    #[inline] pub fn path(&self) -> &str {
-        // SAFETY: Just callig for data owned by `Request`
-        unsafe {self.path.as_str()}
+    #[inline] pub fn path(&self) -> std::borrow::Cow<'_, str> {
+        percent_decode(unsafe {self.path.as_bytes()})
+            .decode_utf8().unwrap()
     }
 
     #[inline] pub fn query<Value: FromParam>(&self, key: &str) -> Option<Result<Value, Value::Error>> {

@@ -3,6 +3,7 @@ use crate::layer0_lib::{Slice, List};
 
 const LIMIT: usize = 2;
 
+/// This doesn't handle percent encoding by itself.
 pub(crate) struct Path {
     raw:               Slice,
     pub(crate) params: List<Slice, LIMIT>,
@@ -29,9 +30,6 @@ impl Path {
 
     #[inline] pub(crate) unsafe fn as_bytes<'req>(&self) -> &'req [u8] {
         self.raw.as_bytes()
-    }
-    #[inline] pub(crate) unsafe fn as_str(&self) -> &str {
-        std::str::from_utf8(self.raw.as_bytes()).unwrap()
     }
 }
 

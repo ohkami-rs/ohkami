@@ -2,7 +2,7 @@ use crate::{
     Request,
     Context,
     Response,
-    layer0_lib::{Method, Status, Slice},
+    layer0_lib::{Method, Status, Slice, percent_decode},
     layer3_fang_handler::{Handler, FrontFang, BackFang},
 };
 
@@ -186,7 +186,11 @@ impl Node {
         // 2. `Request` DOESN'T have method that mutates `path`,
         //    So what `path` refers to is NEVER changed by any other process
         //    while `search`
-        let mut path: &[u8] = unsafe {req.path_bytes()};
+        let path_bytes_maybe_percent_encoded = unsafe {req.path_bytes()};
+        // Decode percent encodings in `path_bytes_maybe_percent_encoded`,
+        // without checking entire it is valid UTF-8.
+        let decoded: std::borrow::Cow<'_, [u8]> = percent_decode(path_bytes_maybe_percent_encoded).into();
+        let mut path: &[u8] = &decoded;
 
         loop {
             for ff in target.front {
