@@ -171,69 +171,69 @@ pub struct Frame {
 
         stream.write(&into_bytes(self)).await
     }
-
-    pub(crate) async fn write_masked(self,
-        stream:  &mut (impl AsyncWriter + Unpin),
-        _config: &Config,
-    ) -> Result<usize, Error> {
-        fn into_bytes(frame: Frame) -> Vec<u8> {
-            let Frame { is_final, opcode, mask, mut payload } = frame;
-
-            let (payload_len_byte, payload_len_bytes) = match payload.len() {
-                ..=125      => (payload.len() as u8, None),
-                126..=65535 => (126, Some((|| (payload.len() as u16).to_be_bytes().to_vec())())),
-                _           => (127, Some((|| (payload.len() as u64).to_be_bytes().to_vec())())),
-            };
-
-            let first  = (is_final as u8)       << 7 + opcode.into_byte();
-            let second = (mask.is_some() as u8) << 7 + payload_len_byte;
-
-            let mut header_bytes = vec![first, second];
-            if let Some(mut payload_len_bytes) = payload_len_bytes {
-                header_bytes.append(&mut payload_len_bytes)
-            }
-            if let Some(masking_bytes) = mask {
-                header_bytes.extend_from_slice(&masking_bytes);
-
-                // mask the payload
-                let mut i = 0;
-                for b in &mut payload {
-                    /*
-                        ```
-                        a    =    b xor c
-                        -----------------
-                        0         0     0
-                        1         0     1
-                        1         1     0
-                        0         1     1
-                        
-                        if
-                          a = b xor c
-                        then
-                          b = a xor c
-
-                        ```
-
-                        When client or server get masked payload, they perform:
-
-                          for each {decoded byte}
-                            = {payload byte} xor {masking key byte}
-
-                        Here {decoded byte} is `b` and {maksing key byte} is `masking_bytes[i]`,
-                        So {payload byte} (that WAS sent as *masked byte*) is computed as follows.
-                    */
-                    *b = *b ^ masking_bytes[i];
-
-                    /*
-                        i = if i == 3 {0} else {i + 1};
-                    */
-                    i = (i + 1) & 0b00000011;
-                }
-            }
-
-            [header_bytes, payload].concat()
-        }
-
-        stream.write(&into_bytes(self)).await
-    }
+//    /// For test
+//    pub(crate) async fn write_masked(self,
+//        stream:  &mut (impl AsyncWriter + Unpin),
+//        _config: &Config,
+//    ) -> Result<usize, Error> {
+//        fn into_bytes(frame: Frame) -> Vec<u8> {
+//            let Frame { is_final, opcode, mask, mut payload } = frame;
+//
+//            let (payload_len_byte, payload_len_bytes) = match payload.len() {
+//                ..=125      => (payload.len() as u8, None),
+//                126..=65535 => (126, Some((|| (payload.len() as u16).to_be_bytes().to_vec())())),
+//                _           => (127, Some((|| (payload.len() as u64).to_be_bytes().to_vec())())),
+//            };
+//
+//            let first  = (is_final as u8)       << 7 + opcode.into_byte();
+//            let second = (mask.is_some() as u8) << 7 + payload_len_byte;
+//
+//            let mut header_bytes = vec![first, second];
+//            if let Some(mut payload_len_bytes) = payload_len_bytes {
+//                header_bytes.append(&mut payload_len_bytes)
+//            }
+//            if let Some(masking_bytes) = mask {
+//                header_bytes.extend_from_slice(&masking_bytes);
+//
+//                // mask the payload
+//                let mut i = 0;
+//                for b in &mut payload {
+//                    /*
+//                        ```
+//                        a    =    b xor c
+//                        -----------------
+//                        0         0     0
+//                        1         0     1
+//                        1         1     0
+//                        0         1     1
+//                        
+//                        if
+//                          a = b xor c
+//                        then
+//                          b = a xor c
+//
+//                        ```
+//
+//                        When client or server get masked payload, they perform:
+//
+//                          for each {decoded byte}
+//                            = {payload byte} xor {masking key byte}
+//
+//                        Here {decoded byte} is `b` and {maksing key byte} is `masking_bytes[i]`,
+//                        So {payload byte} (that WAS sent as *masked byte*) is computed as follows.
+//                    */
+//                    *b = *b ^ masking_bytes[i];
+//
+//                    /*
+//                        i = if i == 3 {0} else {i + 1};
+//                    */
+//                    i = (i + 1) & 0b00000011;
+//                }
+//            }
+//
+//            [header_bytes, payload].concat()
+//        }
+//
+//        stream.write(&into_bytes(self)).await
+//    }
 }

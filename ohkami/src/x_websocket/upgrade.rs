@@ -4,7 +4,7 @@ use std::{
     future::Future,
 };
 use crate::__rt__::{TcpStream};
-use crate::layer6_testing::TestStream;
+
 
 pub async fn request_upgrade_id() -> UpgradeID {
     struct ReserveUpgrade;
@@ -38,16 +38,6 @@ pub unsafe fn reserve_upgrade(id: UpgradeID, stream: TcpStream) {
 
     (UpgradeStreams().get_mut())[id.as_usize()].stream = Some(stream);
 }
-/// SAFETY: This must be called after the corresponded `request_upgrade_id_in_test`
-pub unsafe fn reserve_upgrade_in_test(id: UpgradeID, stream: TestStream) {
-    #[cfg(debug_assertions)] assert!(
-        UpgradeStreams().get().get(id.as_usize()).is_some_and(
-            |cell| cell.reserved && cell.stream.is_some()),
-        "Cell not reserved"
-    );
-
-    (UpgradeStreamsInTest().get_mut())[id.as_usize()].stream = Some(stream);
-}
 
 pub async fn assume_upgradable(id: UpgradeID) -> TcpStream {
     struct AssumeUpgradable{id: UpgradeID}
@@ -68,35 +58,12 @@ pub async fn assume_upgradable(id: UpgradeID) -> TcpStream {
 
     AssumeUpgradable{id}.await
 }
-pub async fn assume_upgradable_in_test(id: UpgradeID) -> TestStream {
-    struct AssumeUpgradableInTest{id: UpgradeID}
-    impl Future for AssumeUpgradableInTest {
-        type Output = TestStream;
-        fn poll(self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> std::task::Poll<Self::Output> {
-            let Some(StreamCell { reserved, stream }) = (unsafe {UpgradeStreamsInTest().get_mut()}).get_mut(self.id.as_usize())
-                else {cx.waker().wake_by_ref(); return std::task::Poll::Pending};
-
-            if stream.is_none()
-                {cx.waker().wake_by_ref(); return std::task::Poll::Pending};
-
-            *reserved = false;
-
-            std::task::Poll::Ready(unsafe {stream.take().unwrap_unchecked()})
-        }
-    }
-
-    AssumeUpgradableInTest{id}.await
-}
 
 
 static UPGRADE_STREAMS: OnceLock<UpgradeStreams> = OnceLock::new();
-static UPGRADE_STREAMS_IN_TEST: OnceLock<UpgradeStreams<TestStream>> = OnceLock::new();
 
 #[allow(non_snake_case)] fn UpgradeStreams() -> &'static UpgradeStreams {
     UPGRADE_STREAMS.get_or_init(UpgradeStreams::new)
-}
-#[allow(non_snake_case)] fn UpgradeStreamsInTest() -> &'static UpgradeStreams<TestStream> {
-    UPGRADE_STREAMS_IN_TEST.get_or_init(UpgradeStreams::<TestStream>::new)
 }
 
 struct UpgradeStreams<Stream = TcpStream> {

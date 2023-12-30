@@ -1,12 +1,9 @@
 use std::{future::Future, borrow::Cow};
 use super::websocket::Config;
 use super::{WebSocket, sign};
-use crate::layer6_testing::TestStream;
 use crate::{Response, Context, Request};
 use crate::__rt__::{task};
 use crate::http::{Method};
-
-use super::assume_upgradable_in_test;
 use super::assume_upgradable;
 
 
@@ -122,49 +119,6 @@ impl WebSocketContext {
                 let stream = match c.upgrade_id {
                     None     => return on_failed_upgrade.handle(UpgradeError::NotRequestedUpgrade),
                     Some(id) => assume_upgradable(id).await,
-                };
-
-                let ws = WebSocket::new(stream, config);
-                handler(ws).await
-            }
-        });
-
-        c.set_headers()
-            .Connection("Update")
-            .Upgrade("websocket")
-            .SecWebSocketAccept(sign(&sec_websocket_key));
-        if let Some(protocol) = selected_protocol {
-            c.set_headers()
-                .SecWebSocketProtocol(protocol.to_string());
-        }
-        c.SwitchingProtocols()
-    }
-
-    pub(crate) fn on_upgrade_on_test<Fut: Future<Output = ()> + Send + 'static>(
-        self,
-        handler: impl Fn(WebSocket<TestStream>) -> Fut + Send + Sync + 'static
-    ) -> Response {
-        fn sign(sec_websocket_key: &str) -> String {
-            let mut sha1 = sign::Sha1::new();
-            sha1.write(sec_websocket_key.as_bytes());
-            sha1.write(b"258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
-            sign::Base64::<{sign::SHA1_SIZE}>::encode(sha1.sum())
-        }
-
-        let Self {
-            mut c,
-            config,
-            on_failed_upgrade,
-            selected_protocol,
-            sec_websocket_key,
-            ..
-        } = self;
-
-        task::spawn({
-            async move {
-                let stream = match c.upgrade_id {
-                    None     => return on_failed_upgrade.handle(UpgradeError::NotRequestedUpgrade),
-                    Some(id) => assume_upgradable_in_test(id).await,
                 };
 
                 let ws = WebSocket::new(stream, config);

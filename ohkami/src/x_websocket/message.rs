@@ -73,16 +73,16 @@ impl Message {
     ) -> Result<usize, Error> {
         self.into_frame().write_unmasked(stream, config).await
     }
-
-    pub(crate) async fn masking_write(self,
-        stream: &mut (impl AsyncWriter + Unpin),
-        config: &Config,
-        mask:   [u8; 4],
-    ) -> Result<usize, Error> {
-        let mut frame = self.into_frame();
-        frame.mask = Some(mask);
-        frame.write_masked(stream, config).await
-    }
+//    /// for test
+//    pub(crate) async fn masking_write(self,
+//        stream: &mut (impl AsyncWriter + Unpin),
+//        config: &Config,
+//        mask:   [u8; 4],
+//    ) -> Result<usize, Error> {
+//        let mut frame = self.into_frame();
+//        frame.mask = Some(mask);
+//        frame.write_masked(stream, config).await
+//    }
 }
 
 impl Message {

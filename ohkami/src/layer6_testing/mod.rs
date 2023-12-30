@@ -1,8 +1,9 @@
 #[cfg(test)] mod _test;
-mod x_websocket;
 
-#[cfg(feature="websocket")]
-pub(crate) use x_websocket::{TestStream, TestWebSocket};
+// #[cfg(feature="websocket")]
+// mod x_websocket;
+// #[cfg(feature="websocket")]
+// pub(crate) use x_websocket::{TestStream, TestWebSocket};
 
 use crate::{Response, Request, Ohkami, Context};
 use crate::layer0_lib::{Method, Status, server_header};
@@ -15,22 +16,14 @@ use std::{pin::Pin, future::Future, format as f};
 pub trait Testing {
     fn oneshot(&self, req: TestRequest) -> Oneshot;
 
-    #[cfg(feature="websocket")]
-    fn oneshot_and_upgraded(&self, req: TestRequest) -> OneshotAndUpgraded;
+    // #[cfg(feature="websocket")]
+    // fn oneshot_and_on_upgrade(&self, req: TestRequest) -> OneshotAndUpgraded;
 }
 
 pub struct Oneshot(
     Box<dyn Future<Output = TestResponse>>
 ); impl Future for Oneshot {
     type Output = TestResponse;
-    fn poll(self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> std::task::Poll<Self::Output> {
-        unsafe {self.map_unchecked_mut(|this| this.0.as_mut())}.poll(cx)
-    }
-}
-pub struct OneshotAndUpgraded(
-    Box<dyn Future<Output = (TestResponse, Option<TestWebSocket>)>>
-); impl Future for OneshotAndUpgraded {
-    type Output = (TestResponse, Option<TestWebSocket>);
     fn poll(self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> std::task::Poll<Self::Output> {
         unsafe {self.map_unchecked_mut(|this| this.0.as_mut())}.poll(cx)
     }
@@ -62,37 +55,47 @@ impl Testing for Ohkami {
         Oneshot(Box::new(res))
     }
 
-    #[cfg(feature="websocket")]
-    fn oneshot_and_upgraded(&self, request: TestRequest) -> OneshotAndUpgraded {
-        use crate::websocket::{reserve_upgrade_in_test};
-
-        let router = {
-            let mut router = self.routes.clone();
-            for (methods, fang) in &self.fangs {
-                router = router.apply_fang(methods, fang.clone())
-            }
-            router.into_radix()
-        };
-
-        let res_and_socket = async move {
-            let mut req = Request::init();
-            let mut req = unsafe {Pin::new_unchecked(&mut req)};
-            req.as_mut().read(&mut &request.encode_request()[..]).await;
-
-            let (res, upgrade_id) = router.handle(Context::new(), &mut req).await;
-            match upgrade_id {
-                None     => (TestResponse::new(res), None),
-                Some(id) => {
-                    let (client, server) = TestStream::new_pair();
-                    unsafe {reserve_upgrade_in_test(id, server)};
-                    
-                    (TestResponse::new(res), Some(TestWebSocket::new(client)))
-                },
-            }
-        };
-
-        OneshotAndUpgraded(Box::new(res_and_socket))
-    }
+//    #[cfg(feature="websocket")]
+//    fn oneshot_and_on_upgrade(
+//        &self,
+//        request: TestRequest,
+//
+//    ) -> OneshotAndUpgraded {
+//        use crate::websocket::{reserve_upgrade_in_test, assume_upgradable_in_test, WebSocketContext};
+//
+//        let router = {
+//            let mut router = self.routes.clone();
+//            for (methods, fang) in &self.fangs {
+//                router = router.apply_fang(methods, fang.clone())
+//            }
+//            router.into_radix()
+//        };
+//
+//        let res_and_socket = async move {
+//            let mut req = Request::init();
+//            let mut req = unsafe {Pin::new_unchecked(&mut req)};
+//            req.as_mut().read(&mut &request.encode_request()[..]).await;
+//
+//            let (res, upgrade_id) = router.handle(Context::new(), &mut req).await;
+//            match upgrade_id {
+//                None     => (TestResponse::new(res), None),
+//                Some(id) => {
+//                    let (client, server) = TestStream::new_pair();
+//                    unsafe {reserve_upgrade_in_test(id, server)};
+//
+//                    let server = assume_upgradable_in_test(id).await;
+//                    let ctx = WebSocketContext::new(Context {
+//                        upgrade_id,
+//                        ..Context::new()
+//                    }, &mut req);
+//                    
+//                    (TestResponse::new(res), Some(TestWebSocket::new(client)))
+//                },
+//            }
+//        };
+//
+//        OneshotAndUpgraded(Box::new(res_and_socket))
+//    }
 }
 
 pub struct TestRequest {

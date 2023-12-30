@@ -9,6 +9,8 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 
+pub(super) const MASK: [u8; 4] = [12, 34, 56, 78];
+
 /// Web socket client for test with upgrade
 /// 
 /// In current version, `split` to read / write halves is not supported.
@@ -26,11 +28,7 @@ impl TestWebSocket {
 }
 impl TestWebSocket {
     pub async fn recv(&mut self) -> Result<Option<Message>, Error> {
-        // ========================= //
-        let config = Config::default();
-        // ========================= //
-
-        Message::read_from(&mut self.stream, &config).await
+        Message::read_from(&mut self.stream, &Config::default()).await
     }
 
     pub async fn send(&mut self, message: Message) -> Result<(), Error> {
@@ -39,12 +37,9 @@ impl TestWebSocket {
         Ok(())
     }
     pub async fn write(&mut self, message: Message) -> Result<usize, Error> {
-        // ========================= //
         let config = Config::default();
-        let mask   = [12, 34, 56, 78];
-        // ========================= //
 
-        let n = message.masking_write(&mut self.stream, &config, mask).await?;
+        let n = message.masking_write(&mut self.stream, &config, MASK).await?;
 
         self.n_buffered += n;
         if self.n_buffered > config.write_buffer_size {
