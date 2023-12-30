@@ -8,25 +8,6 @@ use std::time::{SystemTime, UNIX_EPOCH};
     UTCDateTime::now_from_system(system_now).into_imf_fixdate()
 }
 
-#[cfg(test)] mod test {
-    fn __correct_now() -> String {
-        let mut now = chrono::Utc::now().to_rfc2822(); // like `Wed, 21 Dec 2022 10:16:52 +0000`
-        if now.len() == 30 {
-            now.insert(5, '0')
-        }
-        match now.len() {
-            31 => now.replace_range(26.., "GMT"),
-             _ => unsafe {std::hint::unreachable_unchecked()}
-        }
-        now
-    }
-
-    #[test] fn test_now() {
-        let (cn, n) = (__correct_now(), super::now());
-        assert_eq!(cn, n);
-    }
-}
-
 
 struct UTCDateTime {
     date: Date,
@@ -354,5 +335,45 @@ enum Weekday {
 
     const fn num_days_from_sunday(&self) -> u32 {
         (*self as u32 + 7 - Self::Sun as u32) % 7
+    }
+}
+
+
+#[cfg(test)] mod test {
+    #[test] fn test_now() {
+        fn correct_now() -> String {
+            let mut output_bytes = std::process::Command::new("/usr/bin/date")
+                .env("LANG", "en_US")
+                .arg("+'%a, %d %b %Y %H:%M:%S GMT'")
+                .arg("-u")
+                .output().unwrap()
+                .stdout;
+
+            // `output_bytes` is like
+            // 
+            // ```escape_ascii:
+            // 'Sat, 30 Dec 2023 19:05:26 GMT'\n
+            // ```
+            output_bytes.rotate_left(1);
+            output_bytes.truncate(output_bytes.len() - 3);
+            // Here
+            // 
+            // ```escape_ascii:
+            // Sat, 30 Dec 2023 19:05:26 GMT
+            // ```
+
+            String::from_utf8(output_bytes).unwrap()
+        }
+
+        let (cn, n) = (correct_now(), super::now());
+        assert_eq!(cn, n);
+
+        std::thread::sleep(std::time::Duration::from_secs_f64(4.2));
+        let (cn, n) = (correct_now(), super::now());
+        assert_eq!(cn, n);
+
+        std::thread::sleep(std::time::Duration::from_secs_f64(3.14));
+        let (cn, n) = (correct_now(), super::now());
+        assert_eq!(cn, n);
     }
 }
