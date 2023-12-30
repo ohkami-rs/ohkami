@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 use serde::Deserialize;
 use byte_reader::Reader;
-use crate::layer0_lib::percent_decode;
+use crate::layer0_lib::percent_decode_utf8;
 
 fn __unreachable__() -> ! {
     unsafe {std::hint::unreachable_unchecked()}
@@ -384,8 +384,10 @@ fn check_as_boundary(line: &[u8], boundary_str: &str) -> Option<Boundary> {
 
 
 /*===== for #[Payload(URLEncoded)] =====*/
-/* Thanks: https://github.com/servo/rust-url/blob/master/form_urlencoded/src/lib.rs */
-
+/// Based on https://github.com/servo/rust-url/blob/master/form_urlencoded; MIT
+/// 
+/// ---
+/// 
 /// Convert a byte string in the `application/x-www-form-urlencoded` syntax
 /// into a iterator of (name, value) pairs.
 ///
@@ -425,54 +427,19 @@ pub struct Parse<'a> {
     }
 
     fn decode(input: &[u8]) -> Cow<'_, str> {
-        let replaced = replace_plus(input);
-        decode_utf8_lossy(match percent_decode(&replaced).into() {
-            Cow::Owned(vec) => Cow::Owned(vec),
-            Cow::Borrowed(_) => replaced,
-        })
-    }
-
-    /// Replace b'+' with b' '
-    fn replace_plus(input: &[u8]) -> Cow<'_, [u8]> {
         match input.iter().position(|&b| b == b'+') {
-            None => Cow::Borrowed(input),
-            Some(first_position) => {
-                let mut replaced = input.to_owned();
-                replaced[first_position] = b' ';
-                for byte in &mut replaced[first_position + 1..] {
+            None => {
+                percent_decode_utf8(input).unwrap()
+            }
+            Some(first_plus) => {
+                let mut plus_replaced = input.to_owned();
+                plus_replaced[first_plus] = b' ';
+                for byte in &mut plus_replaced[first_plus + 1..] {
                     if *byte == b'+' {
                         *byte = b' ';
                     }
                 }
-                Cow::Owned(replaced)
-            }
-        }
-    }
-
-    fn decode_utf8_lossy(input: Cow<'_, [u8]>) -> Cow<'_, str> {
-        // Note: This function is duplicated in `percent_encoding/lib.rs`.
-        match input {
-            Cow::Borrowed(bytes) => String::from_utf8_lossy(bytes),
-            Cow::Owned(bytes) => {
-                match String::from_utf8_lossy(&bytes) {
-                    Cow::Borrowed(utf8) => {
-                        // If from_utf8_lossy returns a Cow::Borrowed, then we can
-                        // be sure our original bytes were valid UTF-8. This is because
-                        // if the bytes were invalid UTF-8 from_utf8_lossy would have
-                        // to allocate a new owned string to back the Cow so it could
-                        // replace invalid bytes with a placeholder.
-
-                        // First we do a debug_assert to confirm our description above.
-                        let raw_utf8: *const [u8] = utf8.as_bytes();
-                        debug_assert!(std::ptr::eq(raw_utf8, &*bytes as *const [u8]));
-
-                        // Given we know the original input bytes are valid UTF-8,
-                        // and we have ownership of those bytes, we re-use them and
-                        // return a Cow::Owned here.
-                        Cow::Owned(unsafe { String::from_utf8_unchecked(bytes) })
-                    }
-                    Cow::Owned(s) => Cow::Owned(s),
-                }
+                Cow::Owned(percent_decode_utf8(&plus_replaced).unwrap().into_owned())
             }
         }
     }

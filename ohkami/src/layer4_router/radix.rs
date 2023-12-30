@@ -189,7 +189,7 @@ impl Node {
         let path_bytes_maybe_percent_encoded = unsafe {req.path_bytes()};
         // Decode percent encodings in `path_bytes_maybe_percent_encoded`,
         // without checking entire it is valid UTF-8.
-        let decoded: std::borrow::Cow<'_, [u8]> = percent_decode(path_bytes_maybe_percent_encoded).into();
+        let decoded = percent_decode(path_bytes_maybe_percent_encoded);
         let mut path: &[u8] = &decoded;
 
         loop {

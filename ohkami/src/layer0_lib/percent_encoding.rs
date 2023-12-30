@@ -1,19 +1,22 @@
+//! Based on https://github.com/servo/rust-url/tree/master/percent_encoding; MIT.
+
 use std::{str, slice, borrow::Cow};
 
 
-#[inline]
-pub fn percent_decode(input: &[u8]) -> PercentDecode<'_> {
-    PercentDecode {
-        bytes: input.iter(),
-    }
+#[inline] pub(crate) fn percent_decode_utf8(input: &[u8]) -> Result<Cow<'_, str>, str::Utf8Error> {
+    PercentDecode { bytes: input.iter() }.decode_utf8()
+}
+#[inline] pub(crate) fn percent_decode(input: &[u8]) -> Cow<'_, [u8]> {
+    PercentDecode { bytes: input.iter() }.into_cow()
 }
 
-#[derive(Clone, Debug)]
-pub struct PercentDecode<'a> {
+
+#[derive(Clone)]
+struct PercentDecode<'a> {
     bytes: slice::Iter<'a, u8>,
 }
 
-fn after_percent_sign(iter: &mut slice::Iter<'_, u8>) -> Option<u8> {
+#[inline] fn after_percent_sign(iter: &mut slice::Iter<'_, u8>) -> Option<u8> {
     let mut cloned_iter = iter.clone();
     let h = char::from(*cloned_iter.next()?).to_digit(16)?;
     let l = char::from(*cloned_iter.next()?).to_digit(16)?;
@@ -24,7 +27,7 @@ fn after_percent_sign(iter: &mut slice::Iter<'_, u8>) -> Option<u8> {
 impl<'a> Iterator for PercentDecode<'a> {
     type Item = u8;
 
-    fn next(&mut self) -> Option<u8> {
+    #[inline] fn next(&mut self) -> Option<u8> {
         self.bytes.next().map(|&byte| {
             if byte == b'%' {
                 after_percent_sign(&mut self.bytes).unwrap_or(byte)
@@ -32,19 +35,6 @@ impl<'a> Iterator for PercentDecode<'a> {
                 byte
             }
         })
-    }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        let bytes = self.bytes.len();
-        ((bytes + 2) / 3, Some(bytes))
-    }
-}
-impl<'a> From<PercentDecode<'a>> for Cow<'a, [u8]> {
-    fn from(iter: PercentDecode<'a>) -> Self {
-        match iter.if_any() {
-            Some(vec) => Cow::Owned(vec),
-            None => Cow::Borrowed(iter.bytes.as_slice()),
-        }
     }
 }
 
@@ -64,8 +54,8 @@ impl<'a> PercentDecode<'a> {
         None
     }
 
-    pub fn decode_utf8(self) -> Result<Cow<'a, str>, str::Utf8Error> {
-        match self.clone().into() {
+    #[inline] fn decode_utf8(self) -> Result<Cow<'a, str>, str::Utf8Error> {
+        match self.clone().into_cow() {
             Cow::Borrowed(bytes) => match str::from_utf8(bytes) {
                 Ok(s) => Ok(s.into()),
                 Err(e) => Err(e),
@@ -74,6 +64,13 @@ impl<'a> PercentDecode<'a> {
                 Ok(s) => Ok(s.into()),
                 Err(e) => Err(e.utf8_error()),
             },
+        }
+    }
+
+    #[inline] fn into_cow(self) -> Cow<'a, [u8]> {
+        match self.if_any() {
+            Some(vec) => Cow::Owned(vec),
+            None => Cow::Borrowed(self.bytes.as_slice()),
         }
     }
 }
@@ -129,7 +126,7 @@ impl<'a> PercentDecode<'a> {
             ),
         ] {
             assert_eq!(
-                &super::percent_decode(encoded.as_bytes()).decode_utf8().unwrap(),
+                &super::percent_decode_utf8(encoded.as_bytes()).unwrap(),
                 expected
             );
         }

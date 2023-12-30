@@ -3,7 +3,7 @@ use super::Handler;
 use crate::{
     Context,
     Response,
-    layer0_lib::{percent_decode},
+    layer0_lib::{percent_decode_utf8},
     layer1_req_res::{FromRequest, FromParam},
 };
 #[cfg(feature="websocket")]
@@ -26,8 +26,7 @@ pub trait IntoHandler<Args> {
 #[inline(always)] fn from_param_bytes<P: FromParam>(
     param_bytes_maybe_percent_encoded: &[u8]
 ) -> Result<P, Cow<'static, str>> {
-    let param = percent_decode(param_bytes_maybe_percent_encoded)
-        .decode_utf8()
+    let param = percent_decode_utf8(param_bytes_maybe_percent_encoded)
         .map_err(|e| Cow::Owned(e.to_string()))?;
 
     <P as FromParam>::from_param(&param)

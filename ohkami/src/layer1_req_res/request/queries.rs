@@ -1,6 +1,6 @@
 use std::{mem::MaybeUninit, borrow::Cow};
 use super::{CowSlice, Slice};
-use crate::layer0_lib::percent_decode;
+use crate::layer0_lib::{percent_decode};
 
 
 const LIMIT: usize = 8;
@@ -43,8 +43,8 @@ pub struct QueryParams {
     #[inline] pub(crate) unsafe fn push_from_request_slice(&mut self, key: Slice, value: Slice) {
         let (key, value) = (percent_decode(key.as_bytes()), percent_decode(value.as_bytes()));
         self.params.get_unchecked_mut(self.next).write((
-            CowSlice::from_request_cow_bytes(key.into()),
-            CowSlice::from_request_cow_bytes(value.into()),
+            CowSlice::from_request_cow_bytes(key),
+            CowSlice::from_request_cow_bytes(value),
         ));
         self.next += 1;
     }
