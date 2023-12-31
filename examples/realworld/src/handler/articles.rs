@@ -5,26 +5,31 @@ use crate::fangs::Auth;
 
 
 pub fn articles_ohkami() -> Ohkami {
-    Ohkami::with((), (
+    Ohkami::with((
+        Auth::with_condition(|req| (!req.method.isGET()) || req.path().ends_with("/feed")),
+    ), (
         "/"
             .GET(list)//optional
             .POST(create),//required
         "/feed"
             .GET(feed),//required
-        "/:slug"
-            .GET(get)//no
-            .PUT(update)//required
-            .DELETE(delete),//required
-        "/:slug/comments"
-            .POST(add_comment)//required
-            .GET(get_comments),//optional
-        "/:slug/comments/:id"
-            .DELETE(delete_comment),//required
-        "/:slug/favorite"
-            .POST(favorite)//required
-            .DELETE(unfavorite)//required
+        "/:slug".By(Ohkami::new((
+            "/"
+                .GET(get)//no
+                .PUT(update)//required
+                .DELETE(delete),//required
+            "/comments"
+                .POST(add_comment)//required
+                .GET(get_comments),//optional
+            "/comments/:id"
+                .DELETE(delete_comment),//required
+            "/favorite"
+                .POST(favorite)//required
+                .DELETE(unfavorite)//required
+        )))
     ))
 }
+
 
 #[Query]
 struct ArticlesQuery {

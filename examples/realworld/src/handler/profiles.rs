@@ -3,7 +3,7 @@ use crate::fangs::Auth;
 
 
 pub fn profiles_ohkami() -> Ohkami {
-    Ohkami::with(Auth, (
+    Ohkami::with(Auth::default(), (
         "/:username"
             .GET(get_profile),
         "/:username/follow"

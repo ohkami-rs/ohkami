@@ -5,7 +5,7 @@ use crate::fangs::Auth;
 
 
 pub fn user_ohkami() -> Ohkami {
-    Ohkami::with(Auth, (
+    Ohkami::with(Auth::default(), (
         "/"
             .GET(get_current)
             .POST(update),
