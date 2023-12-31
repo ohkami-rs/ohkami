@@ -36,9 +36,9 @@ DEBUG = [
     "tokio?/macros",
     "async-std?/attributes",
 ]
-#default = [
-#    "rt_tokio",
-#    #"rt_async-std",
-#    "DEBUG",
-#    # "nightly"
-#]
+default = [
+    "rt_tokio",
+    #"rt_async-std",
+    "DEBUG",
+    # "nightly"
+]

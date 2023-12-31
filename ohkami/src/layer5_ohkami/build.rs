@@ -2,7 +2,7 @@
 
 use crate::{
     layer3_fang_handler::{Handlers, ByAnother},
-    layer4_router::{TrieRouter},
+    layer4_router::TrieRouter,
 };
 
 
@@ -17,6 +17,31 @@ trait RoutingItem {
     impl RoutingItem for ByAnother {
         fn apply(self, routes: TrieRouter) -> TrieRouter {
             routes.merge_another(self)
+        }
+    }
+
+    /// This is for better developer experience.
+    /// 
+    /// If we only impl `Routes` for `Handlers` and `ByAnother`, ohkami users
+    /// will see following situations：
+    /// 
+    /// ```ignore
+    /// fn my_ohkami() -> Ohkami {
+    ///     Ohkami::new((
+    ///         "/".|
+    /// /*          ↑ cursor */
+    ///     ))
+    /// }
+    /// 
+    /// // Here rust-analyzer puts red underlines for all lines of `Ohkami::new(( 〜 ))`
+    /// // because the type of argument of `new` is `&str` **AT NOW** and `Routes` trait is
+    /// // NOT IMPLEMENTED for this.
+    /// // 
+    /// // This must be so annoying!!!
+    /// ```
+    impl RoutingItem for &'static str {
+        fn apply(self, routes: TrieRouter) -> TrieRouter {
+            routes
         }
     }
 };

@@ -1,5 +1,4 @@
-mod into_fang; pub use into_fang::{IntoFang};
-pub mod builtin;
+mod into_fang; pub use into_fang::IntoFang;
 
 use std::{any::TypeId, sync::Arc};
 use crate::{Context, Request, Response};
@@ -45,13 +44,19 @@ impl Fang {
 /// 
 /// ## available `f` signatures
 /// 
-/// - to make *back fang* : `Fn(Response) -> Response`
+/// #### To make *back fang*：
+/// - `Fn(&Response)`
+/// - `Fn(Response) -> Response`
 /// 
-/// - to make *front fang*: `Fn(&mut Context) | Fn(&mut Request) | Fn(&mut Context, &mut Request)` , or `_ -> Result<(), Response>` for early error returning
+/// #### To make *front fang*：
+/// - `Fn( {&/&mut Context} )`
+/// - `Fn( {&/&mut Request} )`
+/// - `Fn( {&/&mut Context}, {&/&mut Request} )`
+/// - `_ -> Result<(), Response>` version of them
 /// 
 /// <br/>
 /// 
-/// ## example
+/// ## Example
 /// 
 /// ```
 /// use ohkami::prelude::*;
@@ -60,7 +65,7 @@ impl Fang {
 /// struct AppendHeader;
 /// impl IntoFang for AppendHeader {
 ///     fn into_fang(self) -> Fang {
-///         Fang(|c: &mut Context, req: &mut Request| {
+///         Fang(|c: &mut Context| {
 ///             c.set_headers()
 ///                 .Server("ohkami");
 ///         })

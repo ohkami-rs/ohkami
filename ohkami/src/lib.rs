@@ -264,7 +264,7 @@ mod x_websocket;
 /*===== visibility managements =====*/
 
 pub use layer1_req_res     ::{Request, Response, FromRequest, FromParam};
-pub use layer2_context     ::{Context};
+pub use layer2_context     ::Context;
 pub use layer3_fang_handler::{Route, Fang};
 pub use layer5_ohkami      ::{Ohkami, IntoFang};
 
@@ -277,11 +277,10 @@ pub mod http {
 }
 
 pub mod utils {
-    pub use crate::x_utils::*;
-    pub use crate::layer0_lib         ::{append};
-    pub use crate::layer1_req_res     ::{File};
-    pub use crate::layer3_fang_handler::{builtin::*};
-    pub use ohkami_macros             ::{Query, Payload};
+    pub use crate::x_utils       ::{now, CORS};
+    pub use crate::layer0_lib    ::append;
+    pub use crate::layer1_req_res::File;
+    pub use ohkami_macros        ::{Query, Payload};
 }
 
 pub mod testing {

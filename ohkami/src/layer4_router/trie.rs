@@ -1,8 +1,6 @@
 use std::borrow::Cow;
 use crate::{
-    layer0_lib::{
-        Method,
-    },
+    layer0_lib::Method,
     layer3_fang_handler::{
         Fang,
         FangProc,
