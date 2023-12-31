@@ -5,6 +5,9 @@ mod payload;
 
 /// ## Query parameters
 /// 
+/// - Value types：types that impls `FromParam`, or `Option<_>` of them
+/// - NOT available for tuple struct ( like `struct S(usize, usize);` ) or unit struct ( like `struct X;` ).
+/// 
 /// <br/>
 /// 
 /// ```ignore
@@ -28,13 +31,6 @@ mod payload;
 ///     c.OK().text(message)
 /// }
 /// ```
-/// 
-/// <br/>
-/// 
-/// - Possible value types : `String` `u8` `u16` `u32` `u64` `u128` `usize` and `Option` of them.
-/// - NOT available for tuple struct ( like `struct S(usize, usize);` ) or tag struct ( like `struct X;` ).
-/// 
-/// If you need support for other structs or types, plaese let me know that in [GitHub issue](https://github.com/kana-rus/ohkami/issues) !
 #[proc_macro_attribute] #[allow(non_snake_case)]
 pub fn Query(_: proc_macro::TokenStream, data: proc_macro::TokenStream) -> proc_macro::TokenStream {
     query::Query(data.into())
@@ -44,7 +40,7 @@ pub fn Query(_: proc_macro::TokenStream, data: proc_macro::TokenStream) -> proc_
 
 /// ## Request payload
 /// 
-/// - NOT available for tuple struct ( like `struct S(usize, usize);` ) or tag struct ( like `struct X;` ).
+/// - NOT available for tuple struct ( like `struct S(usize, usize);` ) or unit struct ( like `struct X;` ).
 /// 
 /// ### Valid format :
 /// 
@@ -63,7 +59,7 @@ pub fn Query(_: proc_macro::TokenStream, data: proc_macro::TokenStream) -> proc_
 /// use ohkami::utils::Payload; // <-- import me
 /// 
 /// #[Payload(JSON)]
-/// #[derive(serde::Deserialize)] // <-- This may be not required in future version
+/// #[derive(serde::Deserialize)]
 /// struct HelloRequest {
 ///     name:     String,
 ///     n_repeat: Option<usize>,
@@ -89,6 +85,8 @@ pub fn Query(_: proc_macro::TokenStream, data: proc_macro::TokenStream) -> proc_
 /// 
 /// ### URLEncoded
 /// 
+/// - Available value types : types that impl `FromParam`, or `Option<_>` of them.
+/// 
 /// ```ignore
 /// use ohkami::prelude::*;
 /// use ohkami::utils::Payload; // <-- import me
@@ -104,11 +102,13 @@ pub fn Query(_: proc_macro::TokenStream, data: proc_macro::TokenStream) -> proc_
 /// */
 /// ```
 /// 
-/// - Available value types : `String` `u8` `u16` `u32` `u64` `u128` `usize` and `Option` of them.
-/// 
 /// <br/>
 /// 
 /// ### Form
+/// 
+/// - Available value types : `String` or `File` or `Vec<File>`.
+/// - Form part of kebab-case-name is handled by field of snake_case version of the name ( example: `name="submitter-name"` is handled by field `submitter_name` ).
+/// 
 /// 
 /// ```ignore
 /// use ohkami::prelude::*;
@@ -125,12 +125,7 @@ pub fn Query(_: proc_macro::TokenStream, data: proc_macro::TokenStream) -> proc_
 ///         What files are you sending? <input="file" name="pics" />
 ///     </form>
 /// */ 
-///
 /// ```
-/// 
-/// - Available value types : `String` or `File` or `Vec<File>`.
-/// - Form part of kebab-case-name is handled by field of snake_case version of the name ( example: `name="submitter-name"` is handled by field `submitter_name` ).
-/// 
 #[proc_macro_attribute] #[allow(non_snake_case)]
 pub fn Payload(format: proc_macro::TokenStream, data: proc_macro::TokenStream) -> proc_macro::TokenStream {
     payload::Payload(format.into(), data.into())

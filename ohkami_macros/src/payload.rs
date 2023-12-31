@@ -61,7 +61,7 @@ fn impl_payload_urlencoded(data: &ItemStruct) -> Result<TokenStream> {
         let arms = fields_data.iter().map(|FieldData { ident, ty, .. }| {
             let ident_str = ident.to_string();
             quote!{
-                #ident_str => #ident.replace(<#ty as ::ohkami::__internal__::FromBuffer>::parse(v.as_bytes())?)
+                #ident_str => #ident.replace(<#ty as ::ohkami::FromParam>::parse(v.as_bytes())?)
                     .map_or(::std::result::Result::Ok(()), |_|
                         ::std::result::Result::Err(::std::borrow::Cow::Borrowed(concat!("duplicated key: `", #ident_str,"`")))
                     )?,
