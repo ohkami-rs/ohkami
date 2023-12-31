@@ -25,14 +25,14 @@ pub struct Handler {
     >
 }
 
-
 impl Handler {
-    fn new(
-        proc: (impl Fn(Context, &mut Request) -> Pin<
-            Box<dyn
-                Future<Output = Response>
-                + Send + 'static
-            >
+    fn new<'h>(
+        proc: (
+            impl Fn(Context, &mut Request) -> Pin<
+                Box<dyn
+                    Future<Output = Response>
+                    + Send + 'static
+                >
             > + Send + Sync + 'static
         )
     ) -> Self {

@@ -83,7 +83,7 @@ pub(crate) fn parse_struct(macro_name: &str, input: TokenStream) -> Result<ItemS
 
     if struct_tokens.semi_token.is_some() {
         return Err(Error::new(Span::call_site(), format!(
-            "`#[{macro_name}]` doesn't support tuple or tag struct"
+            "`#[{macro_name}]` doesn't support tuple or unit struct"
         )))
     }
 
@@ -96,12 +96,6 @@ pub(crate) fn parse_struct(macro_name: &str, input: TokenStream) -> Result<ItemS
     if struct_tokens.generics.const_params().count() > 0 {
         return Err(Error::new(Span::call_site(), format!(
             "`#[{macro_name}]` doesn't support const params"
-        )))
-    }
-
-    if struct_tokens.generics.lifetimes().count() > 0 {
-        return Err(Error::new(Span::call_site(), format!(
-            "`#[{macro_name}]` doesn't support lifetime params"
         )))
     }
 

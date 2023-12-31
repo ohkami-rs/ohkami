@@ -12,8 +12,8 @@ mod hello_handler {
     use ohkami::utils::{Payload, Query};
 
     #[Query]
-    pub struct HelloQuery {
-        name:   String,
+    pub struct HelloQuery<'q> {
+        name:   &'q str,
         repeat: Option<usize>,
     }
 

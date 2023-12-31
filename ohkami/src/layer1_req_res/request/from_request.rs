@@ -7,7 +7,7 @@ use crate::{Request};
 /// - `#[Query]`
 /// - `#[Payload(JSON)]`
 /// - `#[Payload(URLEncoded)]`
-/// - ( `#[Payload(Form)]` )
+/// - `#[Payload(Form)]`
 /// 
 /// implement this by default.
 /// 
@@ -15,7 +15,9 @@ use crate::{Request};
 /// 
 /// Of course, you can manually implement for any structs that can be extracted from request：
 /// 
-/// ```ignore
+/// ```
+/// use ohkami::prelude::*;
+/// 
 /// struct HasPayload(bool);
 /// 
 /// impl FromRequest for HasPayload {
@@ -26,28 +28,43 @@ use crate::{Request};
 ///     }
 /// }
 /// ```
-pub trait FromRequest: Sized {
+pub trait FromRequest<'req>: Sized {
     type Error: std::fmt::Display + 'static;
-    fn parse(req: &Request) -> Result<Self, Self::Error>;
+    fn parse(req: &'req Request) -> Result<Self, Self::Error>;
 }
 
-pub trait FromParam: Sized {
+pub trait FromParam<'p>: Sized {
     type Error: std::fmt::Display;
-    fn from_param(param: &str) -> Result<Self, Self::Error>;
+    fn from_param(param: Cow<'p, str>) -> Result<Self, Self::Error>;
 } const _: () = {
-    impl FromParam for String {
-        type Error = std::str::Utf8Error;
-        fn from_param(param: &str) -> Result<Self, Self::Error> {
+    impl<'p> FromParam<'p> for String {
+        type Error = std::convert::Infallible;
+        fn from_param(param: Cow<'p, str>) -> Result<Self, Self::Error> {
             Ok(param.to_string())
+        }
+    }
+    impl<'p> FromParam<'p> for Cow<'p, str> {
+        type Error = std::convert::Infallible;
+        fn from_param(param: Cow<'p, str>) -> Result<Self, Self::Error> {
+            Ok(param)
+        }
+    }
+    impl<'p> FromParam<'p> for &'p str {
+        type Error = &'static str;
+        fn from_param(param: Cow<'p, str>) -> Result<Self, Self::Error> {
+            match param {
+                Cow::Borrowed(s) => Ok(s),
+                Cow::Owned(_)    => Err("Found percent decoded `String`, can't convert into `&str` in `from_param`"),
+            }
         }
     }
 
     macro_rules! unsigned_integers {
         ($( $unsigned_int:ty ),*) => {
             $(
-                impl FromParam for $unsigned_int {
+                impl<'p> FromParam<'p> for $unsigned_int {
                     type Error = Cow<'static, str>;
-                    fn from_param(param: &str) -> Result<Self, Self::Error> {
+                    fn from_param(param: Cow<'p, str>) -> Result<Self, Self::Error> {
                         let digit_bytes = param.as_bytes();
                         if digit_bytes.is_empty() {return Err(Cow::Borrowed("Expected a number nut found an empty string"))}
                         match digit_bytes[0] {

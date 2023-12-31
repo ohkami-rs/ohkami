@@ -63,7 +63,7 @@ async fn hello(c: Context) -> Response {
 
     let res = testing_example.oneshot(TestRequest::PUT("/users")
         .json(CreateUser {
-            name: format!("kanarus"),
+            name: "kanarus",
             age:  None,
         })).await;
     assert_eq!(res.status(), Status::Created);
@@ -106,14 +106,14 @@ async fn get_user(c: Context, id: usize) -> Response {
 
 #[derive(serde::Deserialize)]
 #[cfg_attr(test, derive(serde::Serialize))]
-struct CreateUser {
-    name: String,
+struct CreateUser<'c> {
+    name: &'c str,
     age:  Option<u8>,
 }
 // Can't use `#[Payload(JSON)]` here becasue this test is within `ohkami`
-impl crate::FromRequest for CreateUser {
+impl<'req> crate::FromRequest<'req> for CreateUser<'req> {
     type Error = ::std::borrow::Cow<'static, str>;
-    fn parse(req: &Request) -> Result<Self, ::std::borrow::Cow<'static, str>> {
+    fn parse(req: &'req Request) -> Result<Self, ::std::borrow::Cow<'static, str>> {
         let Some(payload) = req.payload()
             else {return Err(::std::borrow::Cow::Borrowed("Expected a payload"))};
         match req.headers.ContentType() {
@@ -123,9 +123,9 @@ impl crate::FromRequest for CreateUser {
         }
     }
 }
-async fn create_user(c: Context, payload: CreateUser) -> Response {
+async fn create_user<'h>(c: Context, payload: CreateUser<'h>) -> Response {
     c.Created().json(User {
-        name: payload.name,
+        name: payload.name.to_string(),
         age:  payload.age.unwrap_or(0),
     })
 }

@@ -465,15 +465,15 @@ pub struct Parse<'a> {
 
     for (k, v) in crate::__internal__::parse_urlencoded(buf) {
         match &*k {
-            "id"   => id.replace(<usize as crate::FromParam>::from_param(&v).map_err(|e| format!("{e:?}"))?)
+            "id"   => id.replace(<usize as crate::FromParam>::from_param(v).map_err(|e| format!("{e:?}"))?)
                 .map_or(::std::result::Result::Ok(()), |_|
                     ::std::result::Result::Err(::std::borrow::Cow::Borrowed("duplicated key: `id`"))
                 )?,
-            "name" => name.replace(<String as crate::FromParam>::from_param(&v).map_err(|e| format!("{e:?}"))?)
+            "name" => name.replace(<String as crate::FromParam>::from_param(v).map_err(|e| format!("{e:?}"))?)
                 .map_or(::std::result::Result::Ok(()), |_|
                     ::std::result::Result::Err(::std::borrow::Cow::Borrowed("duplicated key: `name`"))
                 )?,
-            "age"  => age.replace(<u8 as crate::FromParam>::from_param(&v).map_err(|e| format!("{e:?}"))?)
+            "age"  => age.replace(<u8 as crate::FromParam>::from_param(v).map_err(|e| format!("{e:?}"))?)
                 .map_or(::std::result::Result::Ok(()), |_|
                     ::std::result::Result::Err(::std::borrow::Cow::Borrowed("duplicated key: `age`")),
                 )?,
@@ -500,15 +500,15 @@ pub struct Parse<'a> {
 
     for (k, v) in crate::__internal__::parse_urlencoded(buf) {
         match &*k {
-            "id"   => id.replace(<usize as crate::FromParam>::from_param(&v).map_err(|e| Cow::Owned(format!("{e:?}")))?)
+            "id"   => id.replace(<usize as crate::FromParam>::from_param(v).map_err(|e| Cow::Owned(format!("{e:?}")))?)
                 .map_or(::std::result::Result::Ok(()), |_|
                     ::std::result::Result::Err(::std::borrow::Cow::Borrowed("duplicated key: `id`"))
                 )?,
-            "name" => name.replace(<String as crate::FromParam>::from_param(&v).map_err(|e| Cow::Owned(format!("{e:?}")))?)
+            "name" => name.replace(<String as crate::FromParam>::from_param(v).map_err(|e| Cow::Owned(format!("{e:?}")))?)
                 .map_or(::std::result::Result::Ok(()), |_|
                     ::std::result::Result::Err(::std::borrow::Cow::Borrowed("duplicated key: `name`"))
                 )?,
-            "age"  => age.replace(<u8 as crate::FromParam>::from_param(&v).map_err(|e| Cow::Owned(format!("{e:?}")))?)
+            "age"  => age.replace(<u8 as crate::FromParam>::from_param(v).map_err(|e| Cow::Owned(format!("{e:?}")))?)
                 .map_or(::std::result::Result::Ok(()), |_|
                     ::std::result::Result::Err(::std::borrow::Cow::Borrowed("duplicated key: `age`")),
                 )?,
