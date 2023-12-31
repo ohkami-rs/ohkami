@@ -60,7 +60,6 @@ impl Fang {
 /// 
 /// ```
 /// use ohkami::prelude::*;
-/// use ohkami::{IntoFang, Fang};
 /// 
 /// struct AppendHeader;
 /// impl IntoFang for AppendHeader {

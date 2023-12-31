@@ -3,15 +3,11 @@ use crate::{
     layer0_lib::{Method, Method::*},
 };
 
-  
-/// ## fang schema
-/// 
-/// - to make *back fang* : `Fn(Response) -> Response`
-/// - to make *front fang* : `Fn(&mut Context, &mut Request)`, or `_ -> Result<(), Response>` for early returning error response
+
+/// <br/>
 /// 
 /// ```
 /// use ohkami::prelude::*;
-/// use ohkami::{Fang, IntoFang};
 /// 
 /// struct Log;
 /// impl IntoFang for Log {
@@ -23,6 +19,19 @@ use crate::{
 ///     }
 /// }
 /// ```
+/// <br/>
+/// 
+/// ## fang schema
+/// #### To make *back fang*：
+/// - `Fn(&Response)`
+/// - `Fn(Response) -> Response`
+/// 
+/// #### To make *front fang*：
+/// - `Fn( {&/&mut Context} )`
+/// - `Fn( {&/&mut Request} )`
+/// - `Fn( {&/&mut Context}, {&/&mut Request} )`
+/// - `_ -> Result<(), Response>` version of them
+/// 
 pub trait IntoFang {
     const METHODS: &'static [Method] = &[GET, PUT, POST, PATCH, DELETE, HEAD, OPTIONS];
     fn into_fang(self) -> Fang;

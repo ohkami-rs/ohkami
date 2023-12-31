@@ -10,23 +10,21 @@ use crate::{
 
 /// <br/>
 /// 
-/// ```ignore
+/// ```
 /// use ohkami::prelude::*;
-/// use ohkami::{Fang, IntoFang};
 /// 
 /// struct Log;
 /// impl IntoFang for Log {
-///     fn bite(self) -> Fang {
-///         Fang(|res: Response| {
+///     fn into_fang(self) -> Fang {
+///         Fang(|res: &Response| {
 ///             println!("{res:?}");
-///             res
 ///         })
 ///     }
 /// }
 /// 
 /// struct Auth;
 /// impl IntoFang for Auth {
-///     fn bite(self) -> Fang {
+///     fn into_fang(self) -> Fang {
 ///         Fang(|c: &mut Context, req: &mut Request| {
 ///             // Do something...
 /// 
@@ -35,18 +33,23 @@ use crate::{
 ///     }
 /// }
 /// 
-/// #[tokio::main]
-/// async fn main() {
-///     let api_ohkami = Ohkami::new((
-///         "/users".
-///             POST(create_user),
-///         "/users/:id".
-///             GET(get_user_by_id).
-///             PATCH(update_user),
-///     ));
+/// async fn health_check(c: Context) -> Response {
+///     todo!()
+/// }
 /// 
-///     // I'd like to use `Auth` and `Log` fang...
-///     
+/// async fn create_user(c: Context) -> Response {
+///     todo!()
+/// }
+/// 
+/// async fn get_user_by_id(c: Context) -> Response {
+///     todo!()
+/// }
+/// 
+/// async fn update_user(c: Context) -> Response {
+///     todo!()
+/// }
+/// 
+/// fn my_ohkami() -> Ohkami {
 ///     let api_ohkami = Ohkami::with((Auth, Log), (
 ///         "/users".
 ///             POST(create_user),
@@ -62,15 +65,22 @@ use crate::{
 ///     Ohkami::with(Log, (
 ///         "/hc" .GET(health_check),
 ///         "/api".By(api_ohkami),
-///     )).howl(3000).await
+///     ))
 /// }
 /// ```
 /// 
 /// <br/>
 /// 
 /// ## fang schema
-/// - back:  `Fn(Response) -> Response`
-/// - front: `Fn(&mut Context) | Fn(&mut Request) | Fn(&mut Context, &mut Request)`, or `_ -> Result<(), Response>`
+/// #### To make *back fang*：
+/// - `Fn(&Response)`
+/// - `Fn(Response) -> Response`
+/// 
+/// #### To make *front fang*：
+/// - `Fn( {&/&mut Context} )`
+/// - `Fn( {&/&mut Request} )`
+/// - `Fn( {&/&mut Context}, {&/&mut Request} )`
+/// - `_ -> Result<(), Response>` version of them
 /// 
 /// ## handler schema
 /// - async (`Context`) -> `Response`
@@ -78,10 +88,8 @@ use crate::{
 /// - async (`Context`, {`FromRequest` values...}) -> `Response`
 /// - async (`Context`, {path_params}, {`FromRequest` values...}) -> `Response`
 /// 
-/// path_params :
-///   - `String`
-///   - `u8` ~ `u128`, `usize`
-///   - a tuple of them
+/// path_param：A type that impls `FromParam`, or a tuple of `FromParam` types
+/// 
 pub struct Ohkami {
     pub(crate) routes: TrieRouter,
 
@@ -107,16 +115,14 @@ impl Ohkami {
 
     /// - `fangs` is an item that implements `IntoFang`, or tuple of such items :
     /// 
-    /// ```ignore
+    /// ```
     /// use ohkami::prelude::*;
-    /// use ohkami::{Fang, IntoFang};
     /// 
     /// struct Log;
     /// impl IntoFang for Log {
-    ///     fn bite(self) -> Fang {
-    ///         Fang(|res: Response| {
+    ///     fn into_fang(self) -> Fang {
+    ///         Fang(|res: &Response| {
     ///             println!("{res:?}");
-    ///             res
     ///         })
     ///     }
     /// }
@@ -127,10 +133,14 @@ impl Ohkami {
     /// - `routes` is tuple of routing item :
     /// 
     /// ```ignore
-    /// "/route".
-    ///     Method1(method1).
-    ///     Method2(method2)
+    /// (
+    ///     "/a".
+    ///         GET(method1).
+    ///         POST(method2),
+    ///     "/b".
+    ///         PUT(method3),
     ///     //...
+    /// )
     /// ```
     pub fn with(fangs: impl with_fangs::Fangs, routes: impl build::Routes) -> Self {
         Self {
