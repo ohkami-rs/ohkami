@@ -1,6 +1,95 @@
 #![allow(non_snake_case)]
 
+/// ---
 /// 
+/// ## Fang and generator for JWT.
+/// 
+/// <br>
+/// 
+/// #### Example, a tiny project
+/// 
+/// ---
+/// 
+/// <br>
+/// 
+/// `config.rs`
+/// ```
+/// use ohkami::utils::JWT;
+/// 
+/// pub fn my_jwt_config() -> JWT {
+///     // Get secret key from somewhere, `.env` file for example
+///     let secret = todo!();
+/// 
+///     JWT(secret)
+/// }
+/// ```
+/// <br>
+/// 
+/// `api/signin.rs`
+/// ```
+/// use ohkami::prelude::*;
+/// use ohkami::utils::Payload;
+/// use crate::model::User;
+/// use crate::config::my_jwt_config; // <-- used as generator
+/// 
+/// fn auth_ohkami() -> Ohkami {
+///     Ohkami::new((
+///         "/signin".PUT(signin),
+///     ))
+/// }
+/// 
+/// #[Payload(JSON)]
+/// #[derive(serde::Deserialize)]
+/// struct SigninRequest<'req> {
+///     email:    &'req str,
+///     password: &'req str,
+/// }
+/// 
+/// async fn signin<'req>(c: Context, body: SigninRequest<'req>) -> Response {
+///     use std::time::{SystemTime, UNIX_EPOCH};
+///     use serde_json::json;
+/// 
+///     let user = todo!();
+///     
+///     match user {
+///         None => unimplemented!(),
+///         Some(u) => {
+///             let jwt = my_jwt_config().issue(serde_json::json!({
+///                 "user_id": u.id,
+///                 "iat":     SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs(),
+///             }));
+///             c.OK().text(jwt)
+///         }
+///     }
+/// }
+/// ```
+/// <br>
+/// 
+/// `api/profile.rs`
+/// ```
+/// use ohkami::prelude::*;
+/// use crate::config::my_jwt_config; // <-- used as fang
+/// 
+/// fn profile_ohkami() -> Ohkami {
+///     let my_secret_key = todo!();
+/// 
+///     Ohkami::with((
+///         // Verifies JWT in requests' `Authorization` header
+///         // and early returns error response if it's missing or malformed.
+///         my_jwt_config(),
+///     ), (
+///         "/profile".GET(get_profile)
+///     ))
+/// }
+/// 
+/// async fn get_profile(c: Context) -> Response {
+///     let user_id = todo!();
+/// 
+///     let profile = todo!();
+/// 
+///     c.OK().json(profile)
+/// }
+/// ```
 pub fn JWT(secret: impl Into<String>) -> internal::JWT {
     #[cfg(test)] {
         const fn assert_into_fang<T: crate::IntoFang>() {}
