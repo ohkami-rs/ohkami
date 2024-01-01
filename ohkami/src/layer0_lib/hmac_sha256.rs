@@ -1,15 +1,16 @@
 const CHUNK: usize = 64;
 const SIZE:  usize = 32/* 256 bits */;
 
-pub struct HMACSha256 {
+#[allow(non_camel_case_types)]
+pub struct HMAC_SHA256 {
     h:   [u32; 8],
     x:   [u8; CHUNK],
     nx:  usize,
     len: usize,
 }
 
-impl HMACSha256 {
-    pub fn new() -> Self {
+impl HMAC_SHA256 {
+    pub fn new(secret_key: impl AsRef<[u8]>) -> Self {
         Self {
             h:   [
                 0x6A09E667,

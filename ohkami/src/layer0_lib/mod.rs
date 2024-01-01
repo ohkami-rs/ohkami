@@ -10,7 +10,7 @@ mod status;
 pub use status::Status;
 
 mod hmac_sha256;
-pub(crate) use hmac_sha256::HMACSha256;
+pub(crate) use hmac_sha256::HMAC_SHA256;
 
 mod method;
 pub use method::Method;
