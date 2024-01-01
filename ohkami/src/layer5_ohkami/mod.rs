@@ -88,8 +88,28 @@ use crate::{
 /// - async (`Context`, {`FromRequest` values...}) -> `Response`
 /// - async (`Context`, {path_params}, {`FromRequest` values...}) -> `Response`
 /// 
-/// path_param：A type that impls `FromParam`, or a tuple of `FromParam` types
+/// #### path_param：
+/// A tuple of types that implement `FromParam` trait.\
+/// `String`, `&str`, and primitive integers are splecially allowed to be used without tuple：
 /// 
+/// ```
+/// use ohkami::prelude::*;
+/// 
+/// struct MyParam;
+/// impl<'p> ohkami::FromParam<'p> for MyParam {
+///     fn from_param(param: &'p std::borrow::Cow<'p, str>) -> Self {
+///         MyParam
+///     }
+/// }
+/// 
+/// async fn handler_1(c: Context, param: (MyParam,)) -> Response {
+///     todo!()
+/// }
+/// 
+/// async fn handler_2(c: Context, str_param: &str) -> Response {
+///     todo!()
+/// }
+/// ```
 pub struct Ohkami {
     pub(crate) routes: TrieRouter,
 

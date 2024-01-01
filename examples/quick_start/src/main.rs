@@ -4,7 +4,7 @@ async fn health_check(c: Context) -> Response {
     c.NoContent()
 }
 
-async fn hello(c: Context, name: String) -> Response {
+async fn hello(c: Context, name: &str) -> Response {
     c.OK().text(format!("Hello, {name}!"))
 }
 

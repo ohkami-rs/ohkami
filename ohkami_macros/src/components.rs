@@ -1,7 +1,13 @@
 use proc_macro2::{TokenStream, Span, Ident};
 use quote::{format_ident, ToTokens};
-use syn::{Result, Error, parse2, ItemStruct, Attribute, PathSegment, Type, Fields, parse_str};
+use syn::{Result, Error, parse2, ItemStruct, Attribute, PathSegment, Type, Fields, parse_str, GenericParam, Lifetime, LifetimeDef};
 
+
+pub(crate) fn from_request_lifetime() -> GenericParam {
+    GenericParam::Lifetime(LifetimeDef::new(
+        Lifetime::new("'__impl_from_request_lifetime", Span::call_site())
+    ))
+}
 
 pub(crate) struct FieldData {
     pub(crate) ident:       Ident,
@@ -96,6 +102,12 @@ pub(crate) fn parse_struct(macro_name: &str, input: TokenStream) -> Result<ItemS
     if struct_tokens.generics.const_params().count() > 0 {
         return Err(Error::new(Span::call_site(), format!(
             "`#[{macro_name}]` doesn't support const params"
+        )))
+    }
+
+    if struct_tokens.generics.lifetimes().count() >= 2 {
+        return Err(Error::new(Span::call_site(), format!(
+            "`#[{macro_name}]` doesn't support multiple lifetime params"
         )))
     }
 

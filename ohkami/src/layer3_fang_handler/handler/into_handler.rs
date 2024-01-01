@@ -36,7 +36,7 @@ pub trait IntoHandler<Args> {
     req: &'req Request
 ) -> Result<R, <R as FromRequest<'fr>>::Error> {
     <R as FromRequest>::parse(unsafe {
-        std::mem::transmute::<&'req _, &'fr _>(req)
+        std::mem::transmute::<&'req _, &'fr _>(req) //
     })
 }
 
@@ -74,6 +74,27 @@ const _: (/* FromParam */) = {
         )*};
     } with_single_path_param! {
         String, u8, u16, u32, u64, u128, usize
+    }
+    impl<'req, F, Fut> IntoHandler<(Context, &'req str)> for F
+    where
+        F:   Fn(Context, &'req str) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = Response> + Send + Sync + 'static,
+    {
+        fn into_handler(self) -> Handler {
+            Handler::new(move |c, req|
+                match from_param_bytes(unsafe {req.path.assume_one_param()}) {
+                    Ok(p1) => Box::pin(self(c, p1)),
+                    Err(e) => __bad_request(&c, e)
+                }
+            )
+        }
+    }
+    #[cfg(test)] fn __() {
+        async fn h1(_c: Context, _param: String) -> Response {todo!()}
+        async fn h2(_c: Context, _param: &str) -> Response {todo!()}
+    
+        let _ = h1.into_handler();
+        let _ = h2.into_handler();
     }
 
     impl<'req, F, Fut, P1:FromParam<'req>> IntoHandler<(Context, (P1,))> for F
@@ -188,7 +209,7 @@ const _: (/* single FromParam and FromRequest items */) = {
             }
         )*};
     } with_single_path_param_and_from_request_items! {
-        String, u8, u16, u32, u64, u128, usize
+        String, &'req str, u8, u16, u32, u64, u128, usize
     }
 };
 

@@ -198,11 +198,12 @@ impl Node {
             }
 
             for pattern in target.patterns {
-                if &path[0] == &b'/' {path = &path[1..]} else {
+                if path.is_empty() || unsafe {path.get_unchecked(0)} != &b'/' {
                     // At least one `pattern` to match is remaining
                     // but path doesn't start with '/'
                     return Ok(None)
                 }
+                path = unsafe {path.get_unchecked(1..)};
                 match pattern {
                     Pattern::Static(s)  => path = match path.strip_prefix(*s) {
                         Some(remaining) => remaining,

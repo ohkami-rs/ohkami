@@ -106,7 +106,9 @@ pub fn Query(_: proc_macro::TokenStream, data: proc_macro::TokenStream) -> proc_
 /// 
 /// ### Form
 /// 
-/// - Available value types : `String` or `File` or `Vec<File>`.
+/// **NOTE**：This can't handle reference types like `&str` in current version. Wait for the development!
+/// 
+/// - Available value types : `String`, `File`, `Vec<File>`.
 /// - Form part of kebab-case-name is handled by field of snake_case version of the name ( example: `name="submitter-name"` is handled by field `submitter_name` ).
 /// 
 /// 
