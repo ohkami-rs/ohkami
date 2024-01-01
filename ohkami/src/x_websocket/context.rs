@@ -4,7 +4,7 @@ use super::{WebSocket, sign::Sha1};
 use crate::{Response, Context, Request};
 use crate::__rt__::{task};
 use crate::http::{Method};
-use crate::layer0_lib::{base64_encode};
+use crate::layer0_lib::{base64};
 use super::assume_upgradable;
 
 
@@ -103,7 +103,7 @@ impl WebSocketContext {
             let mut sha1 = Sha1::new();
             sha1.write(sec_websocket_key.as_bytes());
             sha1.write(b"258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
-            base64_encode(sha1.sum())
+            base64::encode(sha1.sum())
         }
 
         let Self {

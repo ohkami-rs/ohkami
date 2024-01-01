@@ -54,7 +54,15 @@ pub fn encode(src: impl AsRef<[u8]>) -> String {
     unsafe {String::from_utf8_unchecked(dst)}
 }
 
+pub fn encode_url(src: impl AsRef<[u8]>) -> String {
+    todo!()
+}
+
 pub fn decode(encoded: impl AsRef<[u8]>) -> Vec<u8> {
+    todo!()
+}
+
+pub fn decode_url(encoded: impl AsRef<[u8]>) -> Vec<u8> {
     todo!()
 }
 

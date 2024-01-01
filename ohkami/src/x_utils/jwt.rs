@@ -11,7 +11,7 @@ pub fn JWT(secret: impl Into<String>) -> internal::JWT {
 }
 
 mod internal {
-    use crate::layer0_lib::base64_decode;
+    use crate::layer0_lib::{base64, HMACSha256};
     use crate::{IntoFang, Fang, Context, Request};
 
 
@@ -72,11 +72,7 @@ mod internal {
         fn into_fang(self) -> Fang {
             type Header  = ::serde_json::Value;
             type Payload = ::serde_json::Value;
-            fn now() -> u64 {
-                use std::time::{SystemTime, UNIX_EPOCH};
-                SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()
-            }
-
+            
             Fang(move |c: &Context, req: &Request| {
                 let mut parts = req
                     .headers.Authorization().ok_or_else(|| c.Unauthorized())?
@@ -85,12 +81,12 @@ mod internal {
 
                 let header_part = parts.next()
                     .ok_or_else(|| c.BadRequest())?;
-                let header: Header = ::serde_json::from_slice(&base64_decode(header_part))
+                let header: Header = ::serde_json::from_slice(&base64::decode(header_part))
                     .map_err(|_| c.InternalServerError())?;
-                if header.get("typ").is_some_and(|typ| typ.as_str().unwrap_or("").eq_ignore_ascii_case("JWT")) {
+                if header.get("typ").is_some_and(|typ| typ.as_str().unwrap_or_default().eq_ignore_ascii_case("JWT")) {
                     return Err(c.BadRequest())
                 }
-                if header.get("cty").is_some_and(|cty| cty.as_str().unwrap_or("").eq_ignore_ascii_case("JWT")) {
+                if header.get("cty").is_some_and(|cty| cty.as_str().unwrap_or_default().eq_ignore_ascii_case("JWT")) {
                     return Err(c.BadRequest())
                 }
                 if header.get("alg").ok_or_else(|| c.BadRequest())? != self.alg.as_str() {
@@ -99,10 +95,32 @@ mod internal {
 
                 let payload_part = parts.next()
                     .ok_or_else(|| c.BadRequest())?;
-                let payload: Payload = ::serde_json::from_slice(&base64_decode(payload_part))
+                let payload: Payload = ::serde_json::from_slice(&base64::decode(payload_part))
                     .map_err(|_| c.InternalServerError())?;
                 let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs();
-                if payload.get("nbf").is_some_and(|nbf| nbf.)
+                if payload.get("nbf").is_some_and(|nbf| nbf.as_u64().unwrap_or_default() > now) {
+                    return Err(c.BadRequest())
+                }
+                if payload.get("exp").is_some_and(|exp| exp.as_u64().unwrap_or_default() <= now) {
+                    return Err(c.BadRequest())
+                }
+                if payload.get("iat").is_some_and(|iat| iat.as_u64().unwrap_or_default() > now) {
+                    return Err(c.BadRequest())
+                }
+
+                let signature_part = parts.next()
+                    .ok_or_else(|| c.BadRequest())?;
+                let requested_signature = base64::decode_url(signature_part);
+                let actual_signature = {
+                    let mut s = HMACSha256::new();
+                    s.write(header_part.as_bytes());
+                    s.write(b".");
+                    s.write(payload_part.as_bytes());
+                    s.sum()
+                };
+                if requested_signature != actual_signature {
+                    return Err(c.Unauthorized().text("mulformed jwt"))
+                }
 
                 Ok(())
             })
