@@ -97,8 +97,9 @@ use crate::{
 /// 
 /// struct MyParam;
 /// impl<'p> ohkami::FromParam<'p> for MyParam {
-///     fn from_param(param: &'p std::borrow::Cow<'p, str>) -> Self {
-///         MyParam
+///     type Error = std::convert::Infallible;
+///     fn from_param(param: std::borrow::Cow<'p, str>) -> Result<Self, Self::Error> {
+///         Ok(MyParam)
 ///     }
 /// }
 /// 

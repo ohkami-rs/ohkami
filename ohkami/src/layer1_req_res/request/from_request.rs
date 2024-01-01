@@ -20,10 +20,11 @@ use crate::{Request};
 /// 
 /// struct HasPayload(bool);
 /// 
-/// impl FromRequest for HasPayload {
-///     fn parse(req: &Request) -> Result<Self, Cow> {
+/// impl ohkami::FromRequest<'_> for HasPayload {
+///     type Error = std::convert::Infallible;
+///     fn parse(req: &Request) -> Result<Self, Self::Error> {
 ///         Ok(Self(
-///             req.payload.is_some()
+///             req.payload().is_some()
 ///         ))
 ///     }
 /// }

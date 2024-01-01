@@ -31,7 +31,7 @@ struct UTCDateTime {
         const SHORT_MONTHS:    [&str; 12] = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
         fn push_hundreds(buf: &mut String, n: u8) {
-            debug_assert!(n < 100, "Called `push_hundreds` for `n` greater than 100");
+            debug_assert!(n < 100, "Called `push_hundreds` for `n` that's 100 or greater");
             buf.push((n/10 + b'0') as char);
             buf.push((n%10 + b'0') as char);
         }
@@ -45,6 +45,7 @@ struct UTCDateTime {
 
             let day = date.day() as u8;
             if day < 10 {
+                buf.push('0');
                 buf.push((day + b'0') as char);
             } else {
                 push_hundreds(&mut buf, day);
