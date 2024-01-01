@@ -65,7 +65,16 @@ mod internal {
 
     impl IntoFang for JWT {
         fn into_fang(self) -> Fang {
-            Fang(|c: &Context, req|)
+            Fang(|c: &Context, req: &Request| {
+                let parts = req
+                    .headers.Authorization().ok_or_else(|| c.Forbidden())?
+                    .strip_prefix("Bearer ").ok_or_else(|| c.BadRequest())?
+                    .split('.');
+
+                todo!{}
+
+                Ok(())
+            })
         }
     }
 }

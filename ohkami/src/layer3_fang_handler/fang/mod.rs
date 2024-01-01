@@ -44,9 +44,13 @@ impl Fang {
 /// 
 /// ## available `f` signatures
 /// 
+/// <br/>
+/// 
 /// #### To make *back fang*：
 /// - `Fn(&Response)`
 /// - `Fn(Response) -> Response`
+/// 
+/// <br/>
 /// 
 /// #### To make *front fang*：
 /// - `Fn( {&/&mut Context} )`
