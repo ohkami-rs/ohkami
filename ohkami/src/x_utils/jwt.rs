@@ -1,35 +1,30 @@
 #![allow(non_snake_case)]
 
 
-pub fn JWT() -> internal::JWT {
+pub fn JWT(secret: impl Into<String>) -> internal::JWT {
     #[cfg(test)] {
         const fn assert_into_fang<T: crate::IntoFang>() {}
         assert_into_fang::<internal::JWT>();
     }
 
-    internal::JWT::default()
+    internal::JWT::new(secret)
 }
 
 mod internal {
-    use crate::{http::Method, IntoFang, Fang, Context, Response, Request};
+    use crate::layer0_lib::base64_decode;
+    use crate::{IntoFang, Fang, Context, Request};
 
 
     pub struct JWT {
         secret: String,
         alg:    VerifyingAlgorithm,
     }
-    impl Default for JWT {
-        fn default() -> Self {
-            JWT {
-                secret: super::super::now().replace(' ', "+"),
+    impl JWT {
+        pub fn new(secret: impl Into<String>) -> Self {
+            Self {
+                secret: secret.into(),
                 alg:    VerifyingAlgorithm::default(),
             }
-        }
-    }
-    impl JWT {
-        pub fn secret(mut self, secret: impl Into<String>) -> Self {
-            self.secret = secret.into();
-            self
         }
     }
 
@@ -63,15 +58,20 @@ mod internal {
         @default: HS256
     }
 
+
     impl IntoFang for JWT {
         fn into_fang(self) -> Fang {
+            struct JWTHeader {
+                cty: ,
+            }
+
             Fang(|c: &Context, req: &Request| {
-                let parts = req
-                    .headers.Authorization().ok_or_else(|| c.Forbidden())?
+                let mut parts = req
+                    .headers.Authorization().ok_or_else(|| c.Unauthorized())?
                     .strip_prefix("Bearer ").ok_or_else(|| c.BadRequest())?
                     .split('.');
 
-                todo!{}
+                let header = base64_decode(parts.next().ok_or_else(|| c.BadRequest())?);
 
                 Ok(())
             })
