@@ -40,5 +40,5 @@ default = [
     "rt_tokio",
     #"rt_async-std",
     "DEBUG",
-    # "nightly"
+    "nightly",
 ]

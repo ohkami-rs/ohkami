@@ -1,9 +1,10 @@
 use std::{future::Future, borrow::Cow};
 use super::websocket::Config;
-use super::{WebSocket, sign};
+use super::{WebSocket, sign::Sha1};
 use crate::{Response, Context, Request};
 use crate::__rt__::{task};
 use crate::http::{Method};
+use crate::layer0_lib::{base64_encode};
 use super::assume_upgradable;
 
 
@@ -99,10 +100,10 @@ impl WebSocketContext {
         handler: impl Fn(WebSocket) -> Fut + Send + Sync + 'static
     ) -> Response {
         fn sign(sec_websocket_key: &str) -> String {
-            let mut sha1 = sign::Sha1::new();
+            let mut sha1 = Sha1::new();
             sha1.write(sec_websocket_key.as_bytes());
             sha1.write(b"258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
-            sign::Base64::<{sign::SHA1_SIZE}>::encode(sha1.sum())
+            base64_encode(sha1.sum())
         }
 
         let Self {
