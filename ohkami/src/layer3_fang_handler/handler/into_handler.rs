@@ -4,7 +4,7 @@ use crate::{
     Context,
     Response,
     layer0_lib::{percent_decode_utf8},
-    layer1_req_res::{FromRequest, FromParam},
+    layer1_req_res::{FromRequest, FromParam}, Request,
 };
 #[cfg(feature="websocket")]
 use crate::websocket::WebSocketContext;
@@ -23,14 +23,21 @@ pub trait IntoHandler<Args> {
         async {res}
     })
 }
-#[inline(always)] fn from_param_bytes<P: FromParam>(
-    param_bytes_maybe_percent_encoded: &[u8]
+#[inline(always)] fn from_param_bytes<'p, P: FromParam<'p>>(
+    param_bytes_maybe_percent_encoded: &'p [u8]
 ) -> Result<P, Cow<'static, str>> {
     let param = percent_decode_utf8(param_bytes_maybe_percent_encoded)
         .map_err(|e| Cow::Owned(e.to_string()))?;
 
-    <P as FromParam>::from_param(&param)
+    <P as FromParam>::from_param(param)
         .map_err(|e| Cow::Owned(e.to_string()))
+}
+#[inline(always)] fn from_request<'fr, 'req, R: FromRequest<'fr>>(
+    req: &'req Request
+) -> Result<R, <R as FromRequest<'fr>>::Error> {
+    <R as FromRequest>::parse(unsafe {
+        std::mem::transmute::<&'req _, &'fr _>(req) //
+    })
 }
 
 const _: (/* only Context */) = {
@@ -68,8 +75,29 @@ const _: (/* FromParam */) = {
     } with_single_path_param! {
         String, u8, u16, u32, u64, u128, usize
     }
+    impl<'req, F, Fut> IntoHandler<(Context, &'req str)> for F
+    where
+        F:   Fn(Context, &'req str) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = Response> + Send + Sync + 'static,
+    {
+        fn into_handler(self) -> Handler {
+            Handler::new(move |c, req|
+                match from_param_bytes(unsafe {req.path.assume_one_param()}) {
+                    Ok(p1) => Box::pin(self(c, p1)),
+                    Err(e) => __bad_request(&c, e)
+                }
+            )
+        }
+    }
+    #[cfg(test)] fn __() {
+        async fn h1(_c: Context, _param: String) -> Response {todo!()}
+        async fn h2(_c: Context, _param: &str) -> Response {todo!()}
+    
+        let _ = h1.into_handler();
+        let _ = h2.into_handler();
+    }
 
-    impl<F, Fut, P1:FromParam> IntoHandler<(Context, (P1,))> for F
+    impl<'req, F, Fut, P1:FromParam<'req>> IntoHandler<(Context, (P1,))> for F
     where
         F:   Fn(Context, (P1,)) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = Response> + Send + Sync + 'static,
@@ -86,7 +114,7 @@ const _: (/* FromParam */) = {
         }
     }
 
-    impl<F, Fut, P1:FromParam, P2:FromParam> IntoHandler<(Context, (P1, P2))> for F
+    impl<'req, F, Fut, P1:FromParam<'req>, P2:FromParam<'req>> IntoHandler<(Context, (P1, P2))> for F
     where
         F:   Fn(Context, (P1, P2)) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = Response> + Send + Sync + 'static,
@@ -104,14 +132,14 @@ const _: (/* FromParam */) = {
 };
 
 const _: (/* FromRequest items */) = {
-    impl<F, Fut, Item1:FromRequest> IntoHandler<(Context, Item1)> for F
+    impl<'req, F, Fut, Item1:FromRequest<'req>> IntoHandler<(Context, Item1)> for F
     where
         F:   Fn(Context, Item1) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = Response> + Send + Sync + 'static,
     {
         fn into_handler(self) -> Handler {
             Handler::new(move |c, req|
-                match Item1::parse(req) {
+                match from_request::<Item1>(req) {
                     Ok(item1) => Box::pin(self(c, item1)),
                     Err(e)    => __bad_request(&c, e)
                 }
@@ -119,14 +147,14 @@ const _: (/* FromRequest items */) = {
         }
     }
 
-    impl<F, Fut, Item1:FromRequest, Item2:FromRequest> IntoHandler<(Context, Item1, Item2)> for F
+    impl<'req, F, Fut, Item1:FromRequest<'req>, Item2:FromRequest<'req>> IntoHandler<(Context, Item1, Item2)> for F
     where
         F:   Fn(Context, Item1, Item2) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = Response> + Send + Sync + 'static,
     {
         fn into_handler(self) -> Handler {
             Handler::new(move |c, req|
-                match (Item1::parse(req), Item2::parse(req)) {
+                match (from_request::<Item1>(req), from_request::<Item2>(req)) {
                     (Ok(item1), Ok(item2)) => Box::pin(self(c, item1, item2)),
                     (Err(e), _) => __bad_request(&c, e),
                     (_, Err(e)) => __bad_request(&c, e),
@@ -139,7 +167,7 @@ const _: (/* FromRequest items */) = {
 const _: (/* single FromParam and FromRequest items */) = {
     macro_rules! with_single_path_param_and_from_request_items {
         ($( $param_type:ty ),*) => {$(
-            impl<F, Fut, Item1:FromRequest> IntoHandler<(Context, $param_type, Item1)> for F
+            impl<'req, F, Fut, Item1:FromRequest<'req>> IntoHandler<(Context, $param_type, Item1)> for F
             where
                 F:   Fn(Context, $param_type, Item1) -> Fut + Send + Sync + 'static,
                 Fut: Future<Output = Response> + Send + Sync + 'static,
@@ -150,7 +178,7 @@ const _: (/* single FromParam and FromRequest items */) = {
                         // `params` has already `append`ed once before this code
                         let p1 = unsafe {req.path.assume_one_param()};
 
-                        match (from_param_bytes(p1), Item1::parse(req)) {
+                        match (from_param_bytes(p1), from_request(req)) {
                             (Ok(p1), Ok(item1)) => Box::pin(self(c, p1, item1)),
                             (Err(e), _) => __bad_request(&c, e),
                             (_, Err(e)) => __bad_request(&c, e),
@@ -159,7 +187,7 @@ const _: (/* single FromParam and FromRequest items */) = {
                 }
             }
 
-            impl<F, Fut, Item1:FromRequest, Item2:FromRequest> IntoHandler<(Context, $param_type, Item1, Item2)> for F
+            impl<'req, F, Fut, Item1:FromRequest<'req>, Item2:FromRequest<'req>> IntoHandler<(Context, $param_type, Item1, Item2)> for F
             where
                 F:   Fn(Context, $param_type, Item1, Item2) -> Fut + Send + Sync + 'static,
                 Fut: Future<Output = Response> + Send + Sync + 'static,
@@ -170,7 +198,7 @@ const _: (/* single FromParam and FromRequest items */) = {
                         // `params` has already `append`ed once before this code
                         let p1 = unsafe {req.path.assume_one_param()};
 
-                        match (from_param_bytes(p1), Item1::parse(req), Item2::parse(req)) {
+                        match (from_param_bytes(p1), from_request::<Item1>(req), from_request::<Item2>(req)) {
                             (Ok(p1), Ok(item1), Ok(item2)) => Box::pin(self(c, p1, item1, item2)),
                             (Err(e),_,_) => __bad_request(&c, e),
                             (_,Err(e),_) => __bad_request(&c, e),
@@ -181,12 +209,12 @@ const _: (/* single FromParam and FromRequest items */) = {
             }
         )*};
     } with_single_path_param_and_from_request_items! {
-        String, u8, u16, u32, u64, u128, usize
+        String, &'req str, u8, u16, u32, u64, u128, usize
     }
 };
 
 const _: (/* one FromParam and FromRequest items */) = {
-    impl<F, Fut, P1:FromParam, Item1:FromRequest> IntoHandler<(Context, (P1,), Item1)> for F
+    impl<'req, F, Fut, P1:FromParam<'req>, Item1:FromRequest<'req>> IntoHandler<(Context, (P1,), Item1)> for F
         where
             F:   Fn(Context, (P1,), Item1) -> Fut + Send + Sync + 'static,
             Fut: Future<Output = Response> + Send + Sync + 'static,
@@ -197,7 +225,7 @@ const _: (/* one FromParam and FromRequest items */) = {
                     // `params` has already `append`ed once before this code
                     let p1 = unsafe {req.path.assume_one_param()};
 
-                    match (from_param_bytes(p1), Item1::parse(req)) {
+                    match (from_param_bytes(p1), from_request::<Item1>(req)) {
                         (Ok(p1), Ok(item1)) => Box::pin(self(c, (p1,), item1)),
                         (Err(e),_) => __bad_request(&c, e),
                         (_,Err(e)) => __bad_request(&c, e),
@@ -206,7 +234,7 @@ const _: (/* one FromParam and FromRequest items */) = {
             }
         }
 
-        impl<F, Fut, P1:FromParam, Item1:FromRequest, Item2:FromRequest> IntoHandler<(Context, (P1,), Item1, Item2)> for F
+        impl<'req, F, Fut, P1:FromParam<'req>, Item1:FromRequest<'req>, Item2:FromRequest<'req>> IntoHandler<(Context, (P1,), Item1, Item2)> for F
         where
             F:   Fn(Context, (P1,), Item1, Item2) -> Fut + Send + Sync + 'static,
             Fut: Future<Output = Response> + Send + Sync + 'static,
@@ -217,7 +245,7 @@ const _: (/* one FromParam and FromRequest items */) = {
                     // `params` has already `append`ed once before this code
                     let p1 = unsafe {req.path.assume_one_param()};
 
-                    match (from_param_bytes(p1), Item1::parse(req), Item2::parse(req)) {
+                    match (from_param_bytes(p1), from_request::<Item1>(req), from_request::<Item2>(req)) {
                         (Ok(p1), Ok(item1), Ok(item2)) => Box::pin(self(c, (p1,), item1, item2)),
                         (Err(e),_,_) => __bad_request(&c, e),
                         (_,Err(e),_) => __bad_request(&c, e),
@@ -229,7 +257,7 @@ const _: (/* one FromParam and FromRequest items */) = {
 };
 
 const _: (/* two PathParams and FromRequest items */) = {
-    impl<F, Fut, P1:FromParam, P2:FromParam, Item1:FromRequest> IntoHandler<(Context, (P1, P2), Item1)> for F
+    impl<'req, F, Fut, P1:FromParam<'req>, P2:FromParam<'req>, Item1:FromRequest<'req>> IntoHandler<(Context, (P1, P2), Item1)> for F
     where
         F:   Fn(Context, (P1, P2), Item1) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = Response> + Send + Sync + 'static,
@@ -240,7 +268,7 @@ const _: (/* two PathParams and FromRequest items */) = {
                 // `params` has already `append`ed twice before this code
                 let (p1, p2) = unsafe {req.path.assume_two_params()};
 
-                match (from_param_bytes(p1), from_param_bytes(p2), Item1::parse(req)) {
+                match (from_param_bytes(p1), from_param_bytes(p2), from_request::<Item1>(req)) {
                     (Ok(p1), Ok(p2), Ok(item1)) => Box::pin(self(c, (p1, p2), item1)),
                     (Err(e),_,_) => __bad_request(&c, e),
                     (_,Err(e),_) => __bad_request(&c, e),
@@ -250,7 +278,7 @@ const _: (/* two PathParams and FromRequest items */) = {
         }
     }
 
-    impl<F, Fut, P1:FromParam, P2:FromParam, Item1:FromRequest, Item2:FromRequest> IntoHandler<(Context, (P1, P2), Item1, Item2)> for F
+    impl<'req, F, Fut, P1:FromParam<'req>, P2:FromParam<'req>, Item1:FromRequest<'req>, Item2:FromRequest<'req>> IntoHandler<(Context, (P1, P2), Item1, Item2)> for F
     where
         F:   Fn(Context, (P1, P2), Item1, Item2) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = Response> + Send + Sync + 'static,
@@ -261,7 +289,7 @@ const _: (/* two PathParams and FromRequest items */) = {
                 // `params` has already `append`ed twice before this code
                 let (p1, p2) = unsafe {req.path.assume_two_params()};
 
-                match (from_param_bytes(p1), from_param_bytes(p2), Item1::parse(req), Item2::parse(req)) {
+                match (from_param_bytes(p1), from_param_bytes(p2), from_request::<Item1>(req), from_request::<Item2>(req)) {
                     (Ok(p1), Ok(p2), Ok(item1), Ok(item2)) => Box::pin(self(c, (p1, p2), item1, item2)),
                     (Err(e),_,_,_) => __bad_request(&c, e),
                     (_,Err(e),_,_) => __bad_request(&c, e),
@@ -275,7 +303,7 @@ const _: (/* two PathParams and FromRequest items */) = {
 
 #[cfg(feature="websocket")]
 const _: (/* requires upgrade to websocket */) = {
-    impl<F, Fut> IntoHandler<(WebSocketContext,)> for F
+    impl<'req, F, Fut> IntoHandler<(WebSocketContext,)> for F
     where
         F:   Fn(WebSocketContext) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = Response> + Send + Sync + 'static,
@@ -290,7 +318,7 @@ const _: (/* requires upgrade to websocket */) = {
         }
     }
 
-    impl<F, Fut, P1:FromParam> IntoHandler<(WebSocketContext, P1)> for F
+    impl<'req, F, Fut, P1:FromParam<'req>> IntoHandler<(WebSocketContext, P1)> for F
     where
         F:   Fn(WebSocketContext, P1) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = Response> + Send + Sync + 'static,
@@ -308,7 +336,7 @@ const _: (/* requires upgrade to websocket */) = {
             }).requires_upgrade()
         }
     }
-    impl<F, Fut, P1:FromParam, P2:FromParam> IntoHandler<(WebSocketContext, P1, P2)> for F
+    impl<'req, F, Fut, P1:FromParam<'req>, P2:FromParam<'req>> IntoHandler<(WebSocketContext, P1, P2)> for F
     where
         F:   Fn(WebSocketContext, P1, P2) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = Response> + Send + Sync + 'static,
@@ -326,7 +354,7 @@ const _: (/* requires upgrade to websocket */) = {
             }).requires_upgrade()
         }
     }
-    impl<F, Fut, P1:FromParam> IntoHandler<(WebSocketContext, (P1,))> for F
+    impl<'req, F, Fut, P1:FromParam<'req>> IntoHandler<(WebSocketContext, (P1,))> for F
     where
         F:   Fn(WebSocketContext, (P1,)) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = Response> + Send + Sync + 'static,
@@ -344,7 +372,7 @@ const _: (/* requires upgrade to websocket */) = {
             }).requires_upgrade()
         }
     }
-    impl<F, Fut, P1:FromParam, P2:FromParam> IntoHandler<(WebSocketContext, (P1, P2))> for F
+    impl<'req, F, Fut, P1:FromParam<'req>, P2:FromParam<'req>> IntoHandler<(WebSocketContext, (P1, P2))> for F
     where
         F:   Fn(WebSocketContext, (P1, P2)) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = Response> + Send + Sync + 'static,

@@ -102,10 +102,10 @@ macro_rules! Route {
         pub const DB: __::Database = __::Database; mod __ {
             pub struct Database;
             impl Database {
-                pub async fn insert_returning_id(&self, Model: impl for<'de>serde::Deserialize<'de>) -> Result<usize, std::io::Error> {
+                pub async fn insert_returning_id(&self, Model: impl serde::Deserialize<'_>) -> Result<usize, std::io::Error> {
                     Ok(42)
                 }
-                pub async fn update_returning_id(&self, Model: impl for<'de>serde::Deserialize<'de>) -> Result<usize, std::io::Error> {
+                pub async fn update_returning_id(&self, Model: impl serde::Deserialize<'_>) -> Result<usize, std::io::Error> {
                     Ok(24)
                 }
             }
@@ -113,12 +113,12 @@ macro_rules! Route {
     }
 
     #[derive(Deserialize)]
-    struct CreateUser {
-        name:     String,
-        password: String,
-    } impl FromRequest for CreateUser {
+    struct CreateUser<'c> {
+        name:     &'c str,
+        password: &'c str,
+    } impl<'req> FromRequest<'req> for CreateUser<'req> {
         type Error = Cow<'static, str>;
-        fn parse(req: &crate::Request) -> Result<Self, ::std::borrow::Cow<'static, str>> {
+        fn parse(req: &'req crate::Request) -> Result<Self, ::std::borrow::Cow<'static, str>> {
             let payload = req.payload().ok_or_else(|| Cow::Borrowed("Payload expected"))?;
             match req.headers.ContentType() {
                 Some("application/json") => serde_json::from_slice(payload).map_err(|e| Cow::Owned(e.to_string())),
@@ -127,28 +127,31 @@ macro_rules! Route {
         }
     }
 
-    async fn create_user(c: Context, payload: CreateUser) -> Response {
+    async fn create_user<'req>(c: Context, payload: CreateUser<'req>) -> Response {
         let CreateUser { name, password } = payload;
 
         if let Err(_) = mock::authenticate().await {
             return c.Unauthorized()
         }
 
-        let Ok(id) = mock::DB.insert_returning_id(CreateUser{
-            name: name.clone(),
-            password: password.clone(),
-        }).await else {return c.InternalServerError()};
+        let Ok(id) = mock::DB.insert_returning_id(CreateUser{ name, password }).await else {
+            return c.InternalServerError();
+        };
 
-        c.Created().json(User { id, name, password })
+        c.Created().json(User {
+            id,
+            name: name.to_string(),
+            password: password.to_string(),
+        })
     }
 
     #[derive(Deserialize)]
-    struct UpdateUser {
-        name:     Option<String>,
-        password: Option<String>,
-    } impl FromRequest for UpdateUser {
+    struct UpdateUser<'u> {
+        name:     Option<&'u str>,
+        password: Option<&'u str>,
+    } impl<'req> FromRequest<'req> for UpdateUser<'req> {
         type Error = Cow<'static, str>;
-        fn parse(req: &crate::Request) -> Result<Self, ::std::borrow::Cow<'static, str>> {
+        fn parse(req: &'req crate::Request) -> Result<Self, ::std::borrow::Cow<'static, str>> {
             let payload = req.payload().ok_or_else(|| Cow::Borrowed("Payload expected"))?;
             match req.headers.ContentType() {
                 Some("application/json") => serde_json::from_slice(payload).map_err(|e| Cow::Owned(e.to_string())),
@@ -157,17 +160,14 @@ macro_rules! Route {
         }
     }
 
-    async fn update_user(c: Context, req: UpdateUser) -> Response {
-        let UpdateUser { name, password } = req;
-
+    async fn update_user<'req>(c: Context, body: UpdateUser<'req>) -> Response {
         if let Err(_) = mock::authenticate().await {
             return c.Unauthorized()
         }
 
-        if let Err(_) = mock::DB.update_returning_id(UpdateUser {
-            name: name.clone(),
-            password: password.clone(),
-        }).await {return c.InternalServerError()};
+        if let Err(_) = mock::DB.update_returning_id(body).await {
+            return c.InternalServerError();
+        };
 
         c.NoContent()
     }

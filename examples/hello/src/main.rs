@@ -12,13 +12,13 @@ mod hello_handler {
     use ohkami::utils::{Payload, Query};
 
     #[Query]
-    pub struct HelloQuery {
-        name:   String,
+    pub struct HelloQuery<'q> {
+        name:   &'q str,
         repeat: Option<usize>,
     }
 
-    pub async fn hello_by_query(c: Context,
-        HelloQuery { name, repeat }: HelloQuery
+    pub async fn hello_by_query<'h>(c: Context,
+        HelloQuery { name, repeat }: HelloQuery<'h>
     ) -> Response {
         tracing::info!("\
             Called `hello_by_query`\
@@ -31,13 +31,13 @@ mod hello_handler {
 
     #[Payload(JSON)]
     #[derive(serde::Deserialize)]
-    pub struct HelloRequest {
-        name:   String,
+    pub struct HelloRequest<'n> {
+        name:   &'n str,
         repeat: Option<usize>,
     }
 
-    pub async fn hello_by_json(c: Context,
-        HelloRequest { name, repeat }: HelloRequest
+    pub async fn hello_by_json<'h>(c: Context,
+        HelloRequest { name, repeat }: HelloRequest<'h>
     ) -> Response {
         tracing::info!("\
             Called `hello_by_query`\
@@ -58,8 +58,8 @@ mod hello_handler {
 mod fangs {
     use ohkami::{Context, Request, Fang, IntoFang};
 
-    pub struct AppendServer;
-    impl IntoFang for AppendServer {
+    pub struct SetServer;
+    impl IntoFang for SetServer {
         fn into_fang(self) -> Fang {
             Fang(|c: &mut Context| {
                 c.set_headers()
@@ -77,7 +77,7 @@ mod fangs {
     pub struct LogRequest;
     impl IntoFang for LogRequest {
         fn into_fang(self) -> Fang {
-            Fang(|req: &mut Request| {
+            Fang(|req: &Request| {
                 let __method__ = req.method;
                 let __path__   = req.path();
 
@@ -101,7 +101,7 @@ async fn main() {
         .with_max_level(tracing::Level::INFO)
         .init();
 
-    let hello_ohkami = Ohkami::with((AppendServer, LogRequest), (
+    let hello_ohkami = Ohkami::with((SetServer, LogRequest), (
         "/query".
             GET(hello_handler::hello_by_query),
         "/json".

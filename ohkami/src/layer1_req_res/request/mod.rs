@@ -132,7 +132,7 @@ impl Request {
         percent_decode_utf8(unsafe {self.path.as_bytes()}).unwrap()
     }
 
-    #[inline] pub fn query<Value: FromParam>(&self, key: &str) -> Option<Result<Value, Value::Error>> {
+    #[inline] pub fn query<'req, Value: FromParam<'req>>(&'req self, key: &str) -> Option<Result<Value, Value::Error>> {
         self.queries.get(key).map(Value::from_param)
     }
     pub fn append_query(&mut self, key: impl Into<std::borrow::Cow<'static, str>>, value: impl Into<std::borrow::Cow<'static, str>>) {

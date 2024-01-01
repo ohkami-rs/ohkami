@@ -27,13 +27,16 @@ pub struct QueryParams {
                 (std::str::from_utf8(k.as_bytes()).unwrap(), std::str::from_utf8(v.as_bytes()).unwrap())
             })
     }
-    #[inline] pub(crate) fn get(&self, key: &str) -> Option<&str> {
+    #[inline] pub(crate) fn get(&self, key: &str) -> Option<Cow<'_, str>> {
         let key = key.as_bytes();
         for kv in unsafe {self.params.get_unchecked(0..self.next)} {
             unsafe {
                 let (k, v) = kv.assume_init_ref();
                 if key == k.as_bytes() {
-                    return Some((|| std::str::from_utf8(v.as_bytes()).unwrap())())
+                    return Some((|| match v {
+                        CowSlice::Ref(slice) => Cow::Borrowed(std::str::from_utf8(slice.as_bytes()).unwrap()),
+                        CowSlice::Own(vec)   => Cow::Owned(String::from_utf8(vec.to_vec()).unwrap()),
+                    })())
                 }
             }
         }
@@ -66,7 +69,7 @@ const _: () = {
     impl PartialEq for QueryParams {
         fn eq(&self, other: &Self) -> bool {
             for (k, v) in self.iter() {
-                if other.get(k) != Some(v) {
+                if other.get(k) != Some(Cow::Borrowed(v)) {
                     return false
                 }
             }

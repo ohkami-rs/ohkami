@@ -209,9 +209,9 @@ mod __rt__ {
     #[cfg(all(feature="rt_async-std", feature="DEBUG"))]
     pub(crate) use async_std::test;
 
-    #[cfg(feature="rt_tokio")]
+    #[cfg(all(feature="websocket", feature="rt_tokio"))]
     pub(crate) use tokio::net::TcpStream;
-    #[cfg(feature="rt_async-std")]
+    #[cfg(all(feature="websocket", feature="rt_async-std"))]
     pub(crate) use async_std::net::TcpStream;
 
     #[cfg(feature="rt_tokio")]
@@ -334,7 +334,7 @@ pub mod __internal__ {
         c.NoContent()
     }
 
-    async fn hello(c: Context, name: String) -> Response {
+    async fn hello(c: Context, name: &str) -> Response {
         c.OK().text(format!("Hello, {name}!"))
     }
 

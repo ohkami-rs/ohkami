@@ -24,11 +24,23 @@ pub(super) fn Payload(format: TokenStream, data: TokenStream) -> Result<TokenStr
 
 fn impl_payload_json(data: &ItemStruct) -> Result<TokenStream> {
     let struct_name = &data.ident;
+
+    let (impl_lifetime, struct_lifetime) = match data.generics.lifetimes().count() {
+        0 => (
+            from_request_lifetime(),
+            None,
+        ),
+        1 => (
+            data.generics.params.first().unwrap().clone(),
+            Some(data.generics.params.first().unwrap().clone()),
+        ),
+        _ => return Err(syn::Error::new(Span::call_site(), "#[Payload] doesn't support multiple lifetime params")),
+    };
     
     Ok(quote!{
-        impl ::ohkami::FromRequest for #struct_name {
+        impl<#impl_lifetime> ::ohkami::FromRequest<#impl_lifetime> for #struct_name<#struct_lifetime> {
             type Error = ::std::borrow::Cow<'static, str>;
-            fn parse<'req>(req: &'req ::ohkami::Request) -> ::std::result::Result<Self, ::std::borrow::Cow<'static, str>> {
+            fn parse(req: &#impl_lifetime ::ohkami::Request) -> ::std::result::Result<Self, ::std::borrow::Cow<'static, str>> {
                 let payload = req.payload()
                     .ok_or_else(|| ::std::borrow::Cow::Borrowed("Expected payload"))?;
                 if !req.headers.ContentType().unwrap().starts_with("application/json") {
@@ -44,6 +56,18 @@ fn impl_payload_json(data: &ItemStruct) -> Result<TokenStream> {
 fn impl_payload_urlencoded(data: &ItemStruct) -> Result<TokenStream> {
     let struct_name = &data.ident;
     let fields_data = FieldData::collect_from_struct_fields(&data.fields)?;
+
+    let (impl_lifetime, struct_lifetime) = match data.generics.lifetimes().count() {
+        0 => (
+            from_request_lifetime(),
+            None,
+        ),
+        1 => (
+            data.generics.params.first().unwrap().clone(),
+            Some(data.generics.params.first().unwrap().clone()),
+        ),
+        _ => return Err(syn::Error::new(Span::call_site(), "#[Payload] doesn't support multiple lifetime params")),
+    };
 
     let declaring_exprs = {
         let exprs = fields_data.iter().map(|FieldData { ident, ty, .. }| {
@@ -96,9 +120,9 @@ fn impl_payload_urlencoded(data: &ItemStruct) -> Result<TokenStream> {
     };
 
     Ok(quote!{
-        impl ::ohkami::FromRequest for #struct_name {
+        impl<#impl_lifetime> ::ohkami::FromRequest<#impl_lifetime> for #struct_name<#struct_lifetime> {
             type Error = ::std::borrow::Cow<'static, str>;
-            fn parse(req: &::ohkami::Request) -> ::std::result::Result<Self, ::std::borrow::Cow<'static, str>> {
+            fn parse(req: &#impl_lifetime ::ohkami::Request) -> ::std::result::Result<Self, ::std::borrow::Cow<'static, str>> {
                 let payload = req.payload()
                     .ok_or_else(|| ::std::borrow::Cow::Borrowed("Expected a payload"))?;
                 if !req.headers.ContentType().unwrap().starts_with("application/x-www-form-urlencoded") {
@@ -117,6 +141,18 @@ fn impl_payload_urlencoded(data: &ItemStruct) -> Result<TokenStream> {
 fn impl_payload_formdata(data: &ItemStruct) -> Result<TokenStream> {
     let struct_name = &data.ident;
     let fields_data = FieldData::collect_from_struct_fields(&data.fields)?;
+
+    let (impl_lifetime, struct_lifetime) = match data.generics.lifetimes().count() {
+        0 => (
+            from_request_lifetime(),
+            None,
+        ),
+        1 => (
+            data.generics.params.first().unwrap().clone(),
+            Some(data.generics.params.first().unwrap().clone()),
+        ),
+        _ => return Err(syn::Error::new(Span::call_site(), "#[Payload] doesn't support multiple lifetime params")),
+    };
 
     // `#[Payload(Form)]` doesn't accept optional fields
     if fields_data.iter().any(|FieldData { is_optional, .. }| *is_optional) {
@@ -188,9 +224,9 @@ fn impl_payload_formdata(data: &ItemStruct) -> Result<TokenStream> {
     };
 
     Ok(quote!{
-        impl ::ohkami::FromRequest for #struct_name {
+        impl<#impl_lifetime> ::ohkami::FromRequest<#impl_lifetime> for #struct_name<#struct_lifetime> {
             type Error = ::std::borrow::Cow<'static, str>;
-            fn parse(req: &::ohkami::Request) -> ::std::result::Result<Self, ::std::borrow::Cow<'static, str>> {
+            fn parse(req: &#impl_lifetime ::ohkami::Request) -> ::std::result::Result<Self, ::std::borrow::Cow<'static, str>> {
                 let payload = req.payload()
                     .ok_or_else(|| ::std::borrow::Cow::Borrowed("Expected a payload"))?;
 
