@@ -1,8 +1,4 @@
-const ENCODER: [u8; 64] = *b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-const PADDING: u8       = b'=';
-
-
-pub fn encode(src: impl AsRef<[u8]>) -> String {
+fn encode_by(src: &[u8], encoder: &[u8; 64], padding: Option<u8>) -> String {
     let src = src.as_ref();
     let src_len = src.len();
 
@@ -17,10 +13,10 @@ pub fn encode(src: impl AsRef<[u8]>) -> String {
     while si < n {
         let val = (src[si+0] as usize)<<16 | (src[si+1] as usize)<<8 | (src[si+2] as usize);
 
-        dst[di+0] = ENCODER[val>>18&0x3F];
-    	dst[di+1] = ENCODER[val>>12&0x3F];
-    	dst[di+2] = ENCODER[val>>6&0x3F];
-    	dst[di+3] = ENCODER[val&0x3F];
+        dst[di+0] = encoder[val>>18&0x3F];
+    	dst[di+1] = encoder[val>>12&0x3F];
+    	dst[di+2] = encoder[val>>6&0x3F];
+    	dst[di+3] = encoder[val&0x3F];
 
         si += 3;
         di += 4;
@@ -36,17 +32,19 @@ pub fn encode(src: impl AsRef<[u8]>) -> String {
         val |= (src[si+1] as usize) << 8;
     }
 
-    dst[di+0] = ENCODER[val>>18&0x3F];
-    dst[di+1] = ENCODER[val>>12&0x3F];
+    dst[di+0] = encoder[val>>18&0x3F];
+    dst[di+1] = encoder[val>>12&0x3F];
 
     match remain {
         2 => {
-            dst[di+2] = ENCODER[val>>6&0x3F];
-            dst[di+3] = PADDING;
+            dst[di+2] = encoder[val>>6&0x3F];
+            if let Some(p) = padding {
+                dst[di+3] = p;
+            }
         }
-        1 => {
-            dst[di+2] = PADDING;
-            dst[di+3] = PADDING;
+        1 => if let Some(p) = padding {
+            dst[di+2] = p;
+            dst[di+3] = p;
         }
         _ => unsafe {std::hint::unreachable_unchecked()}
     }
@@ -54,8 +52,20 @@ pub fn encode(src: impl AsRef<[u8]>) -> String {
     unsafe {String::from_utf8_unchecked(dst)}
 }
 
+pub fn encode(src: impl AsRef<[u8]>) -> String {
+    encode_by(
+        src.as_ref(),
+        b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/",
+        Some(b'='),
+    )
+}
+
 pub fn encode_url(src: impl AsRef<[u8]>) -> String {
-    todo!()
+    encode_by(
+        src.as_ref(),
+        b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_",
+        None,
+    )
 }
 
 pub fn decode_url(encoded: impl AsRef<[u8]>) -> Vec<u8> {
