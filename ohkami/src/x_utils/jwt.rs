@@ -193,7 +193,7 @@ mod internal {
 
                 let header_part = parts.next()
                     .ok_or_else(|| c.BadRequest())?;
-                let header: Header = ::serde_json::from_slice(&base64::decode(header_part))
+                let header: Header = ::serde_json::from_slice(&base64::decode_url(header_part))
                     .map_err(|_| c.InternalServerError())?;
                 if header.get("typ").is_some_and(|typ| typ.as_str().unwrap_or_default().eq_ignore_ascii_case("JWT")) {
                     return Err(c.BadRequest())
@@ -207,7 +207,7 @@ mod internal {
 
                 let payload_part = parts.next()
                     .ok_or_else(|| c.BadRequest())?;
-                let payload: Payload = ::serde_json::from_slice(&base64::decode(payload_part))
+                let payload: Payload = ::serde_json::from_slice(&base64::decode_url(payload_part))
                     .map_err(|_| c.InternalServerError())?;
                 let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs();
                 if payload.get("nbf").is_some_and(|nbf| nbf.as_u64().unwrap_or_default() > now) {
