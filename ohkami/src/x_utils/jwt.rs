@@ -26,11 +26,11 @@
 /// <br>
 /// 
 /// `api/signin.rs`
-/// ```
+/// ```ignore
 /// use ohkami::prelude::*;
 /// use ohkami::utils::Payload;
 /// use crate::model::User;
-/// use crate::config::my_jwt_config; // <-- used as generator
+/// use crate::config::my_jwt_config; // <-- used to generate JWT
 /// 
 /// fn auth_ohkami() -> Ohkami {
 ///     Ohkami::new((
@@ -66,9 +66,9 @@
 /// <br>
 /// 
 /// `api/profile.rs`
-/// ```
+/// ```ignore
 /// use ohkami::prelude::*;
-/// use crate::config::my_jwt_config; // <-- used as fang
+/// use crate::config::my_jwt_config; // <-- used as a fang
 /// 
 /// fn profile_ohkami() -> Ohkami {
 ///     let my_secret_key = todo!();
