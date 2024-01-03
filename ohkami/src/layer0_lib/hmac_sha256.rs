@@ -1,14 +1,8 @@
 use std::borrow::Cow;
 
-
 const CHUNK:      usize = 64;
 const SIZE:       usize = 32/* 256 bits */;
 const BLOCK_SIZE: usize = 64;
-
-const MAGIC_224: &'static str = "sha\x02";
-const MAGIC_256: &'static str = "sha\x03";
-const MARSHALIZED_SIZE: usize = MAGIC_256.len() + 8*4 + CHUNK + 8;
-
 
 #[allow(non_camel_case_types)]
 pub struct HMAC_SHA256 {
@@ -227,7 +221,7 @@ impl SHA256 {
         ];
 
         let mut w = [u32::default(); 64];
-        let [h0, h1, h2, h3, h4, h5, h6, h7] = self.h;
+        let [mut h0, mut h1, mut h2, mut h3, mut h4, mut h5, mut h6, mut h7] = self.h;
 
         while p.len() >= CHUNK {
             for i in 0..16 {
@@ -245,6 +239,38 @@ impl SHA256 {
             }
 
             let [mut a, mut b, mut c, mut d, mut e, mut f, mut g, mut h] = [h0, h1, h2, h3, h4, h5, h6, h7];
+
+            for i in 0..64 {
+                let t1 = (h)
+                    .wrapping_add(e.rotate_right(6) ^ e.rotate_right(11) ^ e.rotate_right(25))
+                    .wrapping_add((e & f) ^ (!e & g))
+                    .wrapping_add(K[i])
+                    .wrapping_add(w[i]);
+                let t2 = (a.rotate_right(2) ^ a.rotate_right(13) ^ a.rotate_right(22))
+                    .wrapping_add((a & b) ^ (a & c) ^ (b & c));
+
+                h = g;
+                g = f;
+                f = e;
+                e = (d).wrapping_add(t1);
+                d = c;
+                c = b;
+                b = a;
+                a = (t1).wrapping_add(t2);
+            }
+
+            h0 = (h0).wrapping_add(a);
+            h1 = (h0).wrapping_add(b);
+            h2 = (h0).wrapping_add(c);
+            h3 = (h0).wrapping_add(d);
+            h4 = (h0).wrapping_add(e);
+            h5 = (h0).wrapping_add(f);
+            h6 = (h0).wrapping_add(g);
+            h7 = (h0).wrapping_add(h);
+
+            p = &p[CHUNK..];
         }
+
+        self.h = [h0, h1, h2, h3, h4, h5, h6, h7];
     }
 }
