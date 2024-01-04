@@ -14,9 +14,18 @@ pub fn encode_url(src: impl AsRef<[u8]>) -> String {
     )
 }
 
-pub fn decode_url(encoded: impl AsRef<[u8]>) -> Vec<u8> {
+#[cfg(test)]
+pub fn decode(encoded: &[u8]) -> Vec<u8> {
     decode_by(
-        encoded.as_ref(),
+        encoded,
+        b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/",
+        Some(b'='),
+    )
+}
+
+pub fn decode_url(encoded: &str) -> Vec<u8> {
+    decode_by(
+        encoded.as_bytes(),
         b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_",
         None,
     )
@@ -101,7 +110,7 @@ fn decode_by(encoded: &[u8], encode_map: &[u8; 64], padding: Option<u8>) -> Vec<
         let mut d_buf = [u8::default(); 4];
 
         let mut i = 0;
-        while i < d_buf.len() {dbg!(i, d_len, d_buf);
+        while i < d_buf.len() {
             if encoded.len() == si {
                 if i == 0 {
                     return (si, 0)
@@ -109,7 +118,7 @@ fn decode_by(encoded: &[u8], encode_map: &[u8; 64], padding: Option<u8>) -> Vec<
                     unreachable!("Illegal base64 data at input byte {}", si - i)
                 }
 
-                d_len = i; dbg!(d_len);
+                d_len = i;
                 break
             }
 
@@ -154,7 +163,7 @@ fn decode_by(encoded: &[u8], encode_map: &[u8; 64], padding: Option<u8>) -> Vec<
             if si < encoded.len() {
                 unreachable!("Illegal base64 data at input byte {}: trailing garbage", si)
             }
-            d_len = i; dbg!(d_len);
+            d_len = i;
             break
         }
 
@@ -196,37 +205,37 @@ fn decode_by(encoded: &[u8], encode_map: &[u8; 64], padding: Option<u8>) -> Vec<
     let mut n  = 0;
 
     #[cfg(target_pointer_width = "64")]
-    while encoded.len() - si >= 8 && decoded.len() - n >= 8 {dbg!(n, si, decoded.escape_ascii().to_string());
+    while encoded.len() - si >= 8 && decoded.len() - n >= 8 {
         let encoded2: [_; 8] = encoded[si..(si + 8)].try_into().unwrap();
         if let Some(dn) = assemble64(encoded2.map(|byte| decode_map[byte as usize])) {
             decoded[n..(n + 8)].copy_from_slice(&dn.to_be_bytes());
             si += 8;
             n  += 6;
         } else {
-            let (new_si, n_inc) = dbg!{decode_quantum(&mut decoded[n..], encoded, si, &decode_map, padding)};
+            let (new_si, n_inc) = decode_quantum(&mut decoded[n..], encoded, si, &decode_map, padding);
             si = new_si;
             n += n_inc;
         }
-    }dbg!(n, si, decoded.escape_ascii().to_string());
+    }
 
-    while encoded.len() - si >= 4 && decoded.len() - n >= 4 {dbg!(n, si, decoded.escape_ascii().to_string());
+    while encoded.len() - si >= 4 && decoded.len() - n >= 4 {
         let encoded2: [_; 4] = encoded[si..(si + 4)].try_into().unwrap();
         if let Some(dn) = assemble32(encoded2.map(|byte| decode_map[byte as usize])) {
             decoded[n..(n + 4)].copy_from_slice(&dn.to_be_bytes());
             si += 4;
             n  += 3;
         } else {
-            let (new_si, n_inc) = dbg!{decode_quantum(&mut decoded[n..], encoded, si, &decode_map, padding)};
+            let (new_si, n_inc) = decode_quantum(&mut decoded[n..], encoded, si, &decode_map, padding);
             si = new_si;
             n += n_inc;
         }
-    }dbg!(n, si, decoded.escape_ascii().to_string());
+    }
 
-    while si < encoded.len() {dbg!(n, si, decoded.escape_ascii().to_string());
-        let (new_si, n_inc) = dbg!{decode_quantum(&mut decoded[n..], encoded, si, &decode_map, padding)};
+    while si < encoded.len() {
+        let (new_si, n_inc) = decode_quantum(&mut decoded[n..], encoded, si, &decode_map, padding);
         si = new_si;
         n += n_inc;
-    }dbg!(n, si, decoded.escape_ascii().to_string());
+    }
 
     decoded.truncate(n);
     decoded
@@ -271,16 +280,8 @@ fn decode_by(encoded: &[u8], encode_map: &[u8; 64], padding: Option<u8>) -> Vec<
     }
 
     #[test] fn test_decode() {
-        fn decode(encoded: &[u8]) -> Vec<u8> {
-            super::decode_by(
-                encoded,
-                b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/",
-                Some(b'='),
-            )
-        }
-
         for (original, encoded) in CASES {
-            let (actual, expected) = (decode(encoded.as_bytes()), original);
+            let (actual, expected) = (super::decode(encoded.as_bytes()), original);
             if actual != *expected {
                 panic!("\n\
                   \0  actual: `{}`\n\
