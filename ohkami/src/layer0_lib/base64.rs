@@ -119,12 +119,12 @@ fn decode_by(encoded: &[u8], encode_map: &[u8; 64], padding: Option<u8>) -> Vec<
             let output = decode_map[input as usize];
             if output != 0xff {
                 d_buf[i] = output;
-                continue
+
+                i += 1; continue
             }
 
             if matches!(input, b'\r' | b'\n') {
-                i -= 1;
-                continue
+                /* With no increase of `i` */ continue
             }
 
             if padding != Some(input) {
@@ -155,9 +155,7 @@ fn decode_by(encoded: &[u8], encode_map: &[u8; 64], padding: Option<u8>) -> Vec<
                 unreachable!("Illegal base64 data at input byte {}: trailing garbage", si)
             }
             d_len = i; dbg!(d_len);
-            break;
-
-            #[allow(unreachable_code)] {i += 1}
+            break
         }
 
         let val = (d_buf[0] as usize)<<18 | (d_buf[1] as usize)<<12 | (d_buf[2] as usize)<<6 | (d_buf[3] as usize);
