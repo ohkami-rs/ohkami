@@ -13,7 +13,7 @@ categories       = ["asynchronous", "web-programming::http-server"]
 license          = "MIT"
 
 [package.metadata.docs.rs]
-features         = ["rt_tokio"]
+features         = ["rt_tokio", "websocket", "nightly"]
 
 [dependencies]
 ohkami_macros    = { version = "0.5", path = "../ohkami_macros" }
@@ -40,5 +40,5 @@ DEBUG = [
 #    "rt_tokio",
 #    #"rt_async-std",
 #    "DEBUG",
-#    # "nightly"
-#]
+#    "nightly",
+#]#

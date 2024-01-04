@@ -277,7 +277,7 @@ pub mod http {
 }
 
 pub mod utils {
-    pub use crate::x_utils       ::{now, CORS};
+    pub use crate::x_utils       ::{now, CORS, JWT};
     pub use crate::layer0_lib    ::append;
     pub use crate::layer1_req_res::File;
     pub use ohkami_macros        ::{Query, Payload};

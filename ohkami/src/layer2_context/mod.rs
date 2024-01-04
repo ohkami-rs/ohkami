@@ -1,5 +1,9 @@
 #![allow(non_snake_case)]
 
+mod store;
+
+use store::Store;
+
 use crate::{
     layer0_lib::{Status, server_header},
     layer1_req_res::{Response},
@@ -33,11 +37,19 @@ pub struct Context {
     pub(crate) upgrade_id: Option<crate::x_websocket::UpgradeID>,
 
     pub headers: server_header::Headers,
+    store: Store,
 }
 
 impl Context {
     #[inline(always)] pub fn set_headers(&mut self) -> server_header::SetHeaders<'_> {
         self.headers.set()
+    }
+
+    #[inline] pub fn store<Value: Send + Sync + 'static>(&mut self, value: Value) {
+        self.store.insert(value)
+    }
+    #[inline] pub fn get<Value: Send + Sync + 'static>(&self) -> Option<&Value> {
+        self.store.get()
     }
 }
 impl Context {
@@ -47,6 +59,7 @@ impl Context {
             upgrade_id: None,
 
             headers: server_header::Headers::new(),
+            store:   Store::new(),
         }
     }
 }
