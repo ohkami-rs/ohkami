@@ -160,18 +160,17 @@ fn decode_by(encoded: &[u8], encode_map: &[u8; 64], padding: Option<u8>) -> Vec<
 
         let val = (d_buf[0] as usize)<<18 | (d_buf[1] as usize)<<12 | (d_buf[2] as usize)<<6 | (d_buf[3] as usize);
         (d_buf[2], d_buf[1], d_buf[0]) = ((val>>0) as u8, (val>>8) as u8, (val>>16) as u8);
-        match d_len {
-            4 => {
-                dst[2] = d_buf[2];
-                d_buf[2] = 0;
-            }
-            3 => {
-                dst[1] = d_buf[1];
-                d_buf[1] = 0;
-            }
-            _ => ()
+        if d_len >= 4 {
+            dst[2] = d_buf[2];
+            d_buf[2] = 0;
         }
-        dst[0] = d_buf[0];
+        if d_len >= 3 {
+            dst[1] = d_buf[1];
+            d_buf[1] = 0;
+        }
+        if d_len >= 2 {
+            dst[0] = d_buf[0];
+        }
 
         (si, d_len - 1)
     }
@@ -197,7 +196,7 @@ fn decode_by(encoded: &[u8], encode_map: &[u8; 64], padding: Option<u8>) -> Vec<
     let mut n  = 0;
 
     #[cfg(target_pointer_width = "64")]
-    while encoded.len() - si >= 8 && decoded.len() - n >= 8 {dbg!(n, si);
+    while encoded.len() - si >= 8 && decoded.len() - n >= 8 {dbg!(n, si, decoded.escape_ascii().to_string());
         let encoded2: [_; 8] = encoded[si..(si + 8)].try_into().unwrap();
         if let Some(dn) = assemble64(encoded2.map(|byte| decode_map[byte as usize])) {
             decoded[n..(n + 8)].copy_from_slice(&dn.to_be_bytes());
@@ -208,9 +207,9 @@ fn decode_by(encoded: &[u8], encode_map: &[u8; 64], padding: Option<u8>) -> Vec<
             si = new_si;
             n += n_inc;
         }
-    }dbg!(n, si);
+    }dbg!(n, si, decoded.escape_ascii().to_string());
 
-    while encoded.len() - si >= 4 && decoded.len() - n >= 4 {dbg!(n, si);
+    while encoded.len() - si >= 4 && decoded.len() - n >= 4 {dbg!(n, si, decoded.escape_ascii().to_string());
         let encoded2: [_; 4] = encoded[si..(si + 4)].try_into().unwrap();
         if let Some(dn) = assemble32(encoded2.map(|byte| decode_map[byte as usize])) {
             decoded[n..(n + 4)].copy_from_slice(&dn.to_be_bytes());
@@ -221,13 +220,13 @@ fn decode_by(encoded: &[u8], encode_map: &[u8; 64], padding: Option<u8>) -> Vec<
             si = new_si;
             n += n_inc;
         }
-    }dbg!(n, si);
+    }dbg!(n, si, decoded.escape_ascii().to_string());
 
-    while si < encoded.len() {dbg!(n, si);
+    while si < encoded.len() {dbg!(n, si, decoded.escape_ascii().to_string());
         let (new_si, n_inc) = dbg!{decode_quantum(&mut decoded[n..], encoded, si, &decode_map, padding)};
         si = new_si;
         n += n_inc;
-    }dbg!(n, si);
+    }dbg!(n, si, decoded.escape_ascii().to_string());
 
     decoded.truncate(n);
     decoded
@@ -242,26 +241,27 @@ fn decode_by(encoded: &[u8], encode_map: &[u8; 64], padding: Option<u8>) -> Vec<
 
     const CASES: &[(Src, Encoded)] = &[
         // RFC 3548 examples
-        //(b"\x14\xfb\x9c\x03\xd9\x7e", "FPucA9l+"),
-        //(b"\x14\xfb\x9c\x03\xd9",     "FPucA9k="),
-        //(b"\x14\xfb\x9c\x03",         "FPucAw=="),
+        (b"\x14\xfb\x9c\x03\xd9\x7e", "FPucA9l+"),
+        (b"\x14\xfb\x9c\x03\xd9",     "FPucA9k="),
+        (b"\x14\xfb\x9c\x03",         "FPucAw=="),
+
         // RFC 4648 examples
-        //(b"",       ""),
-        //(b"f",      "Zg=="),
-        //(b"fo",     "Zm8="),
+        (b"",       ""),
+        (b"f",      "Zg=="),
+        (b"fo",     "Zm8="),
         (b"foo",    "Zm9v"),
-        //(b"foob",   "Zm9vYg=="),
-        //(b"fooba",  "Zm9vYmE="),
-        //(b"foobar", "Zm9vYmFy"),
+        (b"foob",   "Zm9vYg=="),
+        (b"fooba",  "Zm9vYmE="),
+        (b"foobar", "Zm9vYmFy"),
+
         // Wikipedia examples
-        //(b"sure.",    "c3VyZS4="),
-        //(b"sure",     "c3VyZQ=="),
-        //(b"sur",      "c3Vy"),
-        //(b"su",       "c3U="),
-        //(b"leasure.", "bGVhc3VyZS4="),
-        //(b"easure.",  "ZWFzdXJlLg=="),
-        //(b"asure.",   "YXN1cmUu"),
-        //(b"sure.",    "c3VyZS4="),
+        (b"sure.",    "c3VyZS4="),
+        (b"sure",     "c3VyZQ=="),
+        (b"sur",      "c3Vy"),
+        (b"su",       "c3U="),
+        (b"leasure.", "bGVhc3VyZS4="),
+        (b"easure.",  "ZWFzdXJlLg=="),
+        (b"asure.",   "YXN1cmUu"),
     ];
 
     #[test] fn test_encode() {
