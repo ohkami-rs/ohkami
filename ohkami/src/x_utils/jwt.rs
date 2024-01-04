@@ -99,6 +99,8 @@ pub fn JWT(secret: impl Into<String>) -> internal::JWT {
     internal::JWT::new(secret)
 }
 
+pub use internal::JWT;
+
 mod internal {
     use crate::layer0_lib::{base64, HMAC_SHA256};
     use crate::{IntoFang, Fang, Context, Request};

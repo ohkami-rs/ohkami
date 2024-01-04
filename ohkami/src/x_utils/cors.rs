@@ -1,5 +1,6 @@
 #![allow(non_snake_case)]
 
+pub use internal::CORS;
 
 pub const fn CORS(AllowOrigin: &'static str) -> internal::CORS {
     #[cfg(test)] {
