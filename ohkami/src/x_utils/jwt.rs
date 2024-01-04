@@ -18,7 +18,7 @@
 /// 
 /// pub fn my_jwt_config() -> JWT {
 ///     // Get secret key from somewhere, `.env` file for example
-///     let secret = todo!();
+///     let secret = "MY_VERY_SECRET_KEY";
 /// 
 ///     JWT(secret)
 /// }
