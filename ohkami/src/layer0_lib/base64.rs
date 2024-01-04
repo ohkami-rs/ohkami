@@ -1,4 +1,4 @@
-pub fn encode(src: impl AsRef<[u8]>) -> String {
+#[inline(always)] pub fn encode(src: impl AsRef<[u8]>) -> String {
     encode_by(
         src.as_ref(),
         b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/",
@@ -6,7 +6,7 @@ pub fn encode(src: impl AsRef<[u8]>) -> String {
     )
 }
 
-pub fn encode_url(src: impl AsRef<[u8]>) -> String {
+#[inline(always)] pub fn encode_url(src: impl AsRef<[u8]>) -> String {
     encode_by(
         src.as_ref(),
         b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_",
@@ -15,7 +15,7 @@ pub fn encode_url(src: impl AsRef<[u8]>) -> String {
 }
 
 #[cfg(test)]
-pub fn decode(encoded: &[u8]) -> Vec<u8> {
+#[inline(always)] pub fn decode(encoded: &[u8]) -> Vec<u8> {
     decode_by(
         encoded,
         b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/",
@@ -23,7 +23,7 @@ pub fn decode(encoded: &[u8]) -> Vec<u8> {
     )
 }
 
-pub fn decode_url(encoded: &str) -> Vec<u8> {
+#[inline(always)] pub fn decode_url(encoded: &str) -> Vec<u8> {
     decode_by(
         encoded.as_bytes(),
         b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_",
@@ -87,13 +87,13 @@ fn encode_by(src: &[u8], encode_map: &[u8; 64], padding: Option<u8>) -> String {
 }
 
 fn decode_by(encoded: &[u8], encode_map: &[u8; 64], padding: Option<u8>) -> Vec<u8> {
-    fn assemble64(n: [u8; 8]) -> Option<u64> {
+    #[inline] fn assemble64(n: [u8; 8]) -> Option<u64> {
         let [n1, n2, n3, n4, n5, n6, n7, n8] = n.map(<u8 as Into<u64>>::into);
         (n1|n2|n3|n4|n5|n6|n7|n8 != 0xff).then_some(
             n1<<58 | n2<<52 | n3<<46 | n4<<40 | n5<<34 | n6<<28 | n7<<22 | n8<<16
         )
     }
-    fn assemble32(n: [u8; 4]) -> Option<u32> {
+    #[inline] fn assemble32(n: [u8; 4]) -> Option<u32> {
         let [n1, n2, n3, n4] = n.map(<u8 as Into<u32>>::into);
         (n1|n2|n3|n4 != 0xff).then_some(
             n1<<26 | n2<<20 | n3<<14 | n4<<8

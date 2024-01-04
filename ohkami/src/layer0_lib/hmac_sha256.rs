@@ -40,11 +40,11 @@ impl HMAC_SHA256 {
         this
     }
 
-    pub fn write(&mut self, p: &[u8]) {
+    #[inline] pub fn write(&mut self, p: &[u8]) {
         self.inner.write(p)
     }
 
-    pub fn sum(self) -> [u8; SIZE] {
+    #[inline] pub fn sum(self) -> [u8; SIZE] {
         let Self { opad, ipad:_, mut outer, inner } = self;
 
         let in_sum = inner.sum();
@@ -67,7 +67,7 @@ pub struct SHA256 {
 }
 
 impl SHA256 {
-    pub fn new() -> Self {
+    #[inline] pub const fn new() -> Self {
         Self {
             h:   [
                 0x6A09E667,
@@ -112,7 +112,7 @@ impl SHA256 {
         }
     }
 
-    pub fn sum(mut self) -> [u8; SIZE] {
+    #[inline] pub fn sum(mut self) -> [u8; SIZE] {
         let mut len = self.len;
 
         let mut tmp = [u8::default(); 64+8];
@@ -144,7 +144,7 @@ impl SHA256 {
 }
 
 impl SHA256 {
-    fn reset(&mut self) {
+    #[inline] fn reset(&mut self) {
         *self = Self {
             x: self.x,
             ..Self::new()
