@@ -24,7 +24,9 @@ jobs:
           profile:   minimal
           override:  true
 
-      - uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --features rt_${{ matrix.rt }}${{ matrix.x == '' && '' || ',' }}${{ matrix.x }}${{ matrix.toolchain == 'nightly' && ',nightly' || '' }},DEBUG
+      - name: Run ohkami's tests
+        run:  cargo test --features rt_${{ matrix.rt }}${{ matrix.x == '' && '' || ',' }}${{ matrix.x }}${{ matrix.toolchain == 'nightly' && ',nightly' || '' }},DEBUG
+
+      - name: Run tests of examples
+        working-directory: examples
+        run:  cargo check 
