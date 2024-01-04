@@ -33,6 +33,7 @@ pub struct Context {
     pub(crate) upgrade_id: Option<crate::x_websocket::UpgradeID>,
 
     pub headers: server_header::Headers,
+    store: ,
 }
 
 impl Context {

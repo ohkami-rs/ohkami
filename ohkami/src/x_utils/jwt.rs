@@ -209,9 +209,9 @@ mod internal {
 
 #[cfg(test)] mod test {
     use super::JWT;
-    use serde_json::json;
+    use crate::__rt__::test;
 
-    #[test] fn test_jwt_issue() {
+    #[test] async fn test_jwt_issue() {
         /* NOTE: 
             `serde_json::to_vec` automatically sorts original object's keys
             in alphabetical order. e.t., here
@@ -226,12 +226,159 @@ mod internal {
             ```
         */
         assert_eq! {
-            JWT("secret").issue(json!({"name":"kanarus","id":42,"iat":1516239022})),
+            JWT("secret").issue(::serde_json::json!({"name":"kanarus","id":42,"iat":1516239022})),
             "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE1MTYyMzkwMjIsImlkIjo0MiwibmFtZSI6ImthbmFydXMifQ.dt43rLwmy4_GA_84LMC1m5CwVc59P9as_nRFldVCH7g"
         }
     }
 
-    #[test] fn test_jwt_verify() {
+    #[test] async fn test_jwt_verify() {
+        use crate::prelude::*;
+        use crate::{testing::*, http::*};
+
+        use std::{sync::OnceLock, collections::HashMap, borrow::Cow};
+        use crate::__rt__::Mutex;
+
+
+        fn my_jwt() -> JWT {
+            JWT("myverysecretjwtsecretkey")
+        }
+
+        #[derive(serde::Serialize)]
+        struct MyJWTPayload {
+            iat:     u64,
+            user_id: usize,
+        }
+
+        fn issue_jwt_for_user(user: &User) -> String {
+            use std::time::{UNIX_EPOCH, SystemTime};
+
+            my_jwt().issue(MyJWTPayload {
+                user_id: user.id,
+                iat:     SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs(),
+            })
+        }
+
+
+        async fn repository() -> &'static Mutex<HashMap<usize, User>> {
+            static REPOSITORY: OnceLock<Mutex<HashMap<usize, User>>> = OnceLock::new();
+
+            REPOSITORY.get_or_init(|| Mutex::new(HashMap::new()))
+        }
+
+        #[derive(Clone)]
+        struct User {
+            id:           usize,
+            first_name:   String,
+            familly_name: String,
+        } impl User {
+            fn profile(&self) -> Profile {
+                Profile {
+                    id:           self.id,
+                    first_name:   &self.first_name,
+                    familly_name: &self.familly_name,
+                }
+            }
+        }
+
+
+        #[derive(serde::Serialize)]
+        struct Profile<'p> {
+            id:           usize,
+            first_name:   &'p str,
+            familly_name: &'p str,
+        }
+
+        async fn get_profile(c: Context) -> Response {
+            let r = &mut *repository().await.lock().await;
+
+            let verified_jwt = ;
+
+            let user = r.get(&id)
+                .ok_or_else(|| c.BadRequest().text("User doesn't exist"))?;
+
+            c.OK().json(user.profile())
+        }
+
+        #[derive(serde::Deserialize, serde::Serialize/* for test */)]
+        struct SigninRequest<'s> {
+            first_name:   &'s str,
+            familly_name: &'s str,
+        } impl<'req> crate::FromRequest<'req> for SigninRequest<'req> {
+            type Error = std::borrow::Cow<'static, str>;
+            fn parse(req: &'req Request) -> Result<Self, Self::Error> {
+                serde_json::from_slice(
+                    req.payload().ok_or_else(|| std::borrow::Cow::Borrowed("No payload found"))?
+                ).map_err(|e| std::borrow::Cow::Owned(e.to_string()))
+            }
+        }
+
+        async fn signin(c: Context, body: SigninRequest<'_>) -> Response {
+            let r = &mut *repository().await.lock().await;
+
+            let user: Cow<'_, User> = match r.iter().find(|(_, u)|
+                u.first_name   == body.first_name &&
+                u.familly_name == body.familly_name
+            ) {
+                Some((_, u)) => Cow::Borrowed(u),
+                None => {
+                    let new_user_id = match r.keys().max() {
+                        Some(max) => max + 1,
+                        None      => 1,
+                    };
+
+                    let new_user = User {
+                        id:           new_user_id,
+                        first_name:   body.first_name.to_string(),
+                        familly_name: body.familly_name.to_string(), 
+                    };
+
+                    r.insert(new_user_id, new_user.clone());
+
+                    Cow::Owned(new_user)
+                }
+            };
+
+            c.OK().text(issue_jwt_for_user(&user))
+        }
+
+        let t = Ohkami::new((
+            "/signin".By(Ohkami::new(
+                "/".PUT(signin),
+            )),
+            "/profile".By(Ohkami::with((
+                my_jwt(),
+            ), (
+                "/".GET(get_profile),
+            ))),
+        ));
         
+
+        let req = TestRequest::PUT("/signin");
+        let res = t.oneshot(req).await;
+        assert_eq!(res.status(), Status::BadRequest);
+
+        let req = TestRequest::GET("/profile");
+        let res = t.oneshot(req).await;
+        assert_eq!(res.status(), Status::Unauthorized);
+        assert_eq!(res.text(),   Some("missing or malformed jwt"));
+
+
+        let req = TestRequest::PUT("/signin")
+            .json(SigninRequest {
+                first_name:   "ohkami",
+                familly_name: "framwork",
+            });
+        let res = t.oneshot(req).await;
+        assert_eq!(res.status(), Status::OK);
+        assert!(res.text().is_some());
+
+        let jwt = res.text().unwrap();
+
+        let req = TestRequest::GET("/profile")
+            .header("Authorization", format!("Bearer {jwt}"));
+        let res = t.oneshot(req).await;
+        assert_eq!(res.status(), Status::OK);
+
+        {}
     }
 }
