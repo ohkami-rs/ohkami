@@ -120,7 +120,7 @@ mod internal {
     impl JWT {
         pub fn issue(self, payload: impl ::serde::Serialize) -> String {
             let unsigned_token = {
-                let mut ut = base64::encode_url("{\"typ\":\"JWT\",\"alg\":\"HS256\"");
+                let mut ut = base64::encode_url("{\"typ\":\"JWT\",\"alg\":\"HS256\"}");
                 ut.push('.');
                 ut.push_str(&base64::encode_url(::serde_json::to_vec(&payload).expect("Failed to serialze payload")));
                 ut
@@ -212,9 +212,26 @@ mod internal {
     use serde_json::json;
 
     #[test] fn test_jwt_issue() {
+        /* NOTE: 
+            `serde_json::to_vec` automatically sorts original object's keys
+            in alphabetical order. e.t., here
+
+            ```
+            json!({"name":"kanarus","id":42,"iat":1516239022})
+            ```
+            is serialzed to
+
+            ```raw literal
+            {"iat":1516239022,"id":42,"name":"kanarus"}
+            ```
+        */
         assert_eq! {
             JWT("secret").issue(json!({"name":"kanarus","id":42,"iat":1516239022})),
-            "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJuYW1lIjoia2FuYXJ1cyIsImlkIjo0MiwiaWF0IjoxNTE2MjM5MDIyfQ.1zMqW4iyzBih6lVeUfKf_0mIgnvwSm1bxerypEhbxak"
+            "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE1MTYyMzkwMjIsImlkIjo0MiwibmFtZSI6ImthbmFydXMifQ.dt43rLwmy4_GA_84LMC1m5CwVc59P9as_nRFldVCH7g"
         }
+    }
+
+    #[test] fn test_jwt_verify() {
+        
     }
 }

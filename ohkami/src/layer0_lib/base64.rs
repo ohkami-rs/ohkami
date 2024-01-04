@@ -40,7 +40,15 @@ fn encode_by(src: &[u8], encode_map: &[u8; 64], padding: Option<u8>) -> String {
         return String::new()
     }
 
-    let mut dst = vec![0; (src_len + 2) / 3 * 4];
+    let mut dst = {
+        let encoded_len =
+            if padding.is_none() {
+                src_len / 3 * 4 + (src_len % 3 * 8 + 5) / 6
+            } else {
+                (src_len + 2) / 3 * 4
+            };
+        vec![u8::default(); encoded_len]
+    };
 
     let (mut di, mut si) = (0, 0);
     let n = (src_len / 3) * 3;  // `n` is `src_len - (src_len % 3)`
