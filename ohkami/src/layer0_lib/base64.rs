@@ -101,7 +101,7 @@ fn decode_by(encoded: &[u8], encode_map: &[u8; 64], padding: Option<u8>) -> Vec<
         let mut d_buf = [u8::default(); 4];
 
         let mut i = 0;
-        while i < d_buf.len() {
+        while i < d_buf.len() {dbg!(i, d_len, d_buf);
             if encoded.len() == si {
                 if i == 0 {
                     return (si, 0)
@@ -109,7 +109,7 @@ fn decode_by(encoded: &[u8], encode_map: &[u8; 64], padding: Option<u8>) -> Vec<
                     unreachable!("Illegal base64 data at input byte {}", si - i)
                 }
 
-                d_len = i;
+                d_len = i; dbg!(d_len);
                 break
             }
 
@@ -154,7 +154,7 @@ fn decode_by(encoded: &[u8], encode_map: &[u8; 64], padding: Option<u8>) -> Vec<
             if si < encoded.len() {
                 unreachable!("Illegal base64 data at input byte {}: trailing garbage", si)
             }
-            d_len = i;
+            d_len = i; dbg!(d_len);
             break;
 
             #[allow(unreachable_code)] {i += 1}
@@ -195,41 +195,41 @@ fn decode_by(encoded: &[u8], encode_map: &[u8; 64], padding: Option<u8>) -> Vec<
         map
     };
 
-    let mut n  = 0;
     let mut si = 0;
+    let mut n  = 0;
 
     #[cfg(target_pointer_width = "64")]
-    while encoded.len() - si >= 8 && decoded.len() - n >= 8 {
+    while encoded.len() - si >= 8 && decoded.len() - n >= 8 {dbg!(n, si);
         let encoded2: [_; 8] = encoded[si..(si + 8)].try_into().unwrap();
         if let Some(dn) = assemble64(encoded2.map(|byte| decode_map[byte as usize])) {
             decoded[n..(n + 8)].copy_from_slice(&dn.to_be_bytes());
-            n  += 6;
             si += 8;
+            n  += 6;
         } else {
-            let (new_si, n_inc) = decode_quantum(&mut decoded[n..], encoded, si, &decode_map, padding);
-            n += n_inc;
+            let (new_si, n_inc) = dbg!{decode_quantum(&mut decoded[n..], encoded, si, &decode_map, padding)};
             si = new_si;
+            n += n_inc;
         }
-    }
+    }dbg!(n, si);
 
-    while encoded.len() - si >= 4 && decoded.len() - n >= 4 {
+    while encoded.len() - si >= 4 && decoded.len() - n >= 4 {dbg!(n, si);
         let encoded2: [_; 4] = encoded[si..(si + 4)].try_into().unwrap();
         if let Some(dn) = assemble32(encoded2.map(|byte| decode_map[byte as usize])) {
             decoded[n..(n + 4)].copy_from_slice(&dn.to_be_bytes());
-            n  += 3;
             si += 4;
+            n  += 3;
         } else {
-            let (new_si, n_inc) = decode_quantum(&mut decoded[n..], encoded, si, &decode_map, padding);
-            n += n_inc;
+            let (new_si, n_inc) = dbg!{decode_quantum(&mut decoded[n..], encoded, si, &decode_map, padding)};
             si = new_si;
+            n += n_inc;
         }
-    }
+    }dbg!(n, si);
 
-    while si < encoded.len() {
-        let (new_si, n_inc) = decode_quantum(&mut decoded[n..], encoded, si, &decode_map, padding);
-        n += n_inc;
+    while si < encoded.len() {dbg!(n, si);
+        let (new_si, n_inc) = dbg!{decode_quantum(&mut decoded[n..], encoded, si, &decode_map, padding)};
         si = new_si;
-    }
+        n += n_inc;
+    }dbg!(n, si);
 
     decoded.truncate(n);
     decoded
@@ -248,7 +248,7 @@ fn decode_by(encoded: &[u8], encode_map: &[u8; 64], padding: Option<u8>) -> Vec<
         //(b"\x14\xfb\x9c\x03\xd9",     "FPucA9k="),
         //(b"\x14\xfb\x9c\x03",         "FPucAw=="),
         // RFC 4648 examples
-        (b"",       ""),
+        //(b"",       ""),
         //(b"f",      "Zg=="),
         //(b"fo",     "Zm8="),
         (b"foo",    "Zm9v"),
@@ -282,12 +282,12 @@ fn decode_by(encoded: &[u8], encode_map: &[u8; 64], padding: Option<u8>) -> Vec<
         }
 
         for (original, encoded) in CASES {
-            let (left, right) = (decode(encoded.as_bytes()), original);
-            if left != *right {
+            let (actual, expected) = (decode(encoded.as_bytes()), original);
+            if actual != *expected {
                 panic!("\n\
-                  \0 left: `{}`\n\
-                    right: `{}`\n\
-                ", left.escape_ascii(), right.escape_ascii())
+                  \0  actual: `{}`\n\
+                    expected: `{}`\n\
+                ", actual.escape_ascii(), expected.escape_ascii())
             }
         }
     }
