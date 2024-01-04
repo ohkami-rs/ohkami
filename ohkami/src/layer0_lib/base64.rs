@@ -90,15 +90,104 @@ fn decode_by(encoded: &[u8], encode_map: &[u8; 64], padding: Option<u8>) -> Vec<
             n1<<26 | n2<<20 | n3<<14 | n4<<8
         )
     }
-    fn decode_quantum(dst: &mut Vec<u8>, encoded: &[u8], si: usize) -> (usize, usize) {
-        todo!()
+    fn decode_quantum(
+        dst: &mut [u8],
+        encoded: &[u8],
+        mut si: usize,
+        decode_map: &[u8; 256],
+        padding: Option<u8>,
+    ) -> (/*new si*/usize, /*n increase*/usize) {
+        let mut d_len = 4;
+        let mut d_buf = [u8::default(); 4];
+
+        let mut i = 0;
+        while i < d_buf.len() {
+            if encoded.len() == si {
+                if i == 0 {
+                    return (si, 0)
+                } else if i == 1 || padding.is_some() {
+                    unreachable!("Illegal base64 data at input byte {}", si - i)
+                }
+
+                d_len = i;
+                break
+            }
+
+            let input = encoded[si];
+            si += 1;
+
+            let output = decode_map[input as usize];
+            if output != 0xff {
+                d_buf[i] = output;
+                continue
+            }
+
+            if matches!(input, b'\r' | b'\n') {
+                i -= 1;
+                continue
+            }
+
+            if padding != Some(input) {
+                unreachable!("Illegal base64 data at input byte {}", si - i)
+            }
+
+            /* We've reached the end and there's padding */
+            match i {
+                0 | 1 => unreachable!("Illegal base64 data at input byte {}", si - i),
+                2 => {/* "==" is expected, the first "=" is already consumed.  */
+                    /* skip over newlines */
+                    while si < encoded.len() && matches!(encoded[si], b'\r' | b'\n') {si += 1}
+
+                    if si == encoded.len() {
+                        /* not enough padding */
+                        unreachable!("Illegal base64 data at input byte {}", encoded.len())
+                    } else if padding != Some(input) {
+                        /* incorrect padding */
+                        unreachable!("Illegal base64 data at input byte {}", si - i)
+                    }
+
+                    si += 1
+                }
+                _ => ()
+            }
+
+            /* skip over newlines */
+            while si < encoded.len() && matches!(encoded[si], b'\r' | b'\n') {si += 1}
+            if si < encoded.len() {
+                /* trailing garbage */
+                unreachable!("Illegal base64 data at input byte {}", si)
+            }
+            d_len = i;
+            break;
+
+            #[allow(unreachable_code)] {i += 1}
+        }
+
+        let val = (d_buf[0] as usize)<<18 | (d_buf[1] as usize)<<12 | (d_buf[2] as usize)<<6 | (d_buf[3] as usize);
+        (d_buf[2], d_buf[1], d_buf[0]) = ((val>>0) as u8, (val>>8) as u8, (val>>16) as u8);
+        match d_len {
+            4 => {
+                dst[2] = d_buf[2];
+                d_buf[2] = 0;
+                todo!()
+            }
+            3 => {
+                dst[1] = d_buf[1];
+                d_buf[1] = 0;
+                todo!()
+            }
+            _ => ()
+        }
+        dst[0] = d_buf[0];
+
+        (si, d_len - 1)
     }
 
     let mut decoded = vec![u8::default(); encoded.len()];
     if decoded.is_empty() {return decoded}
 
     let decode_map = {
-        let mut map =[u8::MAX; 256];
+        let mut map =[0xff; 256];
         for (i, &byte) in encode_map.iter().enumerate() {
             map[byte as usize] = i as u8
         }
@@ -116,7 +205,7 @@ fn decode_by(encoded: &[u8], encode_map: &[u8; 64], padding: Option<u8>) -> Vec<
             n  += 6;
             si += 8;
         } else {
-            let (new_si, n_inc) = decode_quantum(&mut decoded, encoded, si);
+            let (new_si, n_inc) = decode_quantum(&mut decoded[n..], encoded, si, &decode_map, padding);
             n += n_inc;
             si = new_si;
         }
@@ -129,14 +218,14 @@ fn decode_by(encoded: &[u8], encode_map: &[u8; 64], padding: Option<u8>) -> Vec<
             n  += 3;
             si += 4;
         } else {
-            let (new_si, n_inc) = decode_quantum(&mut decoded, encoded, si);
+            let (new_si, n_inc) = decode_quantum(&mut decoded[n..], encoded, si, &decode_map, padding);
             n += n_inc;
             si = new_si;
         }
     }
 
     while si < encoded.len() {
-        let (new_si, n_inc) = decode_quantum(&mut decoded, encoded, si);
+        let (new_si, n_inc) = decode_quantum(&mut decoded[n..], encoded, si, &decode_map, padding);
         n += n_inc;
         si = new_si;
     }
