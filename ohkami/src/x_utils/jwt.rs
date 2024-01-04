@@ -1,109 +1,14 @@
 #![allow(non_snake_case, non_camel_case_types)]
 
-/// ---
-/// 
-/// ## Fang and generator for JWT.
-/// 
-/// **NOTE**：In current version, this only supports `HMAC-SHA256` as the verifying algorithm (and select it by default).
-/// 
-/// <br>
-/// 
-/// #### Example, a tiny project
-/// 
-/// ---
-/// 
-/// <br>
-/// 
-/// `config.rs`
-/// ```
-/// use ohkami::utils::JWT;
-/// 
-/// pub fn my_jwt_config() -> JWT {
-///     // Get secret key from somewhere, `.env` file for example
-///     let secret = "MY_VERY_SECRET_KEY";
-/// 
-///     JWT(secret) // Using HMAC-SHA256 (by default)
-/// }
-/// ```
-/// <br>
-/// 
-/// `api/signin.rs`
-/// ```ignore
-/// use ohkami::prelude::*;
-/// use ohkami::utils::Payload;
-/// use crate::model::User;
-/// use crate::config::my_jwt_config; // <-- used to generate JWT
-/// 
-/// fn auth_ohkami() -> Ohkami {
-///     Ohkami::new((
-///         "/signin".PUT(signin),
-///     ))
-/// }
-/// 
-/// #[Payload(JSON)]
-/// #[derive(serde::Deserialize)]
-/// struct SigninRequest<'req> {
-///     email:    &'req str,
-///     password: &'req str,
-/// }
-/// 
-/// async fn signin<'req>(c: Context, body: SigninRequest<'req>) -> Response {
-///     use std::time::{SystemTime, UNIX_EPOCH};
-///     use serde_json::json;
-/// 
-///     let user = todo!();
-///     
-///     match user {
-///         None => unimplemented!(),
-///         Some(u) => {
-///             let jwt = my_jwt_config().issue(serde_json::json!({
-///                 "user_id": u.id,
-///                 "iat":     SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs(),
-///             }));
-///             c.OK().text(jwt)
-///         }
-///     }
-/// }
-/// ```
-/// <br>
-/// 
-/// `api/profile.rs`
-/// ```ignore
-/// use ohkami::prelude::*;
-/// use crate::config::my_jwt_config; // <-- used as a fang
-/// 
-/// fn profile_ohkami() -> Ohkami {
-///     Ohkami::with((
-///         // Verifies JWT in requests' `Authorization` header
-///         // and early returns error response if it's missing or malformed.
-///         my_jwt_config(),
-///     ), (
-///         "/profile".GET(get_profile)
-///     ))
-/// }
-/// 
-/// async fn get_profile(c: Context) -> Response {
-///     let user_id = todo!();
-/// 
-///     let profile = todo!();
-/// 
-///     c.OK().json(profile)
-/// }
-/// ```
-pub fn JWT(secret: impl Into<String>) -> internal::JWT {
-    #[cfg(test)] {
-        const fn assert_into_fang<T: crate::IntoFang>() {}
-        assert_into_fang::<internal::JWT>();
-    }
+pub use internal::JWT;
 
+pub fn JWT(secret: impl Into<String>) -> internal::JWT {
     internal::JWT::new(secret)
 }
 
-pub use internal::JWT;
-
 mod internal {
     use crate::layer0_lib::{base64, HMAC_SHA256};
-    use crate::{IntoFang, Fang, Context, Request, Response};
+    use crate::{Context, Request, Response};
 
 
     pub struct JWT {
@@ -140,7 +45,17 @@ mod internal {
     }
 
     impl JWT {
-        pub(crate/* for test */) fn verify(&self, c: &Context, req: &Request) -> Result<(), Response> {
+        /// Verify JWT in requests' `Authorization` header and early return error response if
+        /// it's missing or malformed.
+        pub fn verify(&self, c: &Context, req: &Request) -> Result<(), Response> {
+            self.verified::<()>(c, req)
+        }
+
+        /// Verify JWT in requests' `Authorization` header and early return error response if
+        /// it's missing or malformed.
+        /// 
+        /// Then it's valid, this returns decoded paylaod of the JWT as `Payload`.
+        pub fn verified<Payload: for<'d> serde::Deserialize<'d>>(&self, c: &Context, req: &Request) -> Result<Payload, Response> {
             const UNAUTHORIZED_MESSAGE: &str = "missing or malformed jwt";
 
             type Header  = ::serde_json::Value;
@@ -194,12 +109,8 @@ mod internal {
                 return Err(c.Unauthorized().text(UNAUTHORIZED_MESSAGE))
             }
 
-            Ok(())
-        }
-    }
-    impl IntoFang for JWT {
-        fn into_fang(self) -> Fang {
-            Fang(move |c: &Context, req: &Request| self.verify(c, req))
+            let payload = ::serde_json::from_value(payload).map_err(|_| c.InternalServerError())?;
+            Ok(payload)
         }
     }
 }
@@ -208,6 +119,8 @@ mod internal {
 
 
 #[cfg(test)] mod test {
+    use serde::Deserialize;
+
     use super::JWT;
     use crate::__rt__::test;
 
@@ -243,7 +156,7 @@ mod internal {
             JWT("myverysecretjwtsecretkey")
         }
 
-        #[derive(serde::Serialize)]
+        #[derive(serde::Serialize, Deserialize)]
         struct MyJWTPayload {
             iat:     u64,
             user_id: usize,
@@ -281,7 +194,7 @@ mod internal {
         }
 
 
-        #[derive(serde::Serialize)]
+        #[derive(serde::Serialize, Deserialize, Debug, PartialEq)]
         struct Profile<'p> {
             id:           usize,
             first_name:   &'p str,
@@ -291,9 +204,10 @@ mod internal {
         async fn get_profile(c: Context) -> Response {
             let r = &mut *repository().await.lock().await;
 
-            let verified_jwt = ;
+            let jwt_payload = c.get::<MyJWTPayload>()
+                .ok_or_else(|| c.InternalServerError())?;
 
-            let user = r.get(&id)
+            let user = r.get(&jwt_payload.user_id)
                 .ok_or_else(|| c.BadRequest().text("User doesn't exist"))?;
 
             c.OK().json(user.profile())
@@ -341,12 +255,24 @@ mod internal {
             c.OK().text(issue_jwt_for_user(&user))
         }
 
+
+        struct MyJWTFang(JWT);
+        impl IntoFang for MyJWTFang {
+            fn into_fang(self) -> Fang {
+                Fang(move |c: &mut Context, req: &Request| {
+                    let jwt_payload =  self.0.verified::<MyJWTPayload>(c, req)?;
+                    c.store(jwt_payload);
+                    Ok(())
+                })
+            }
+        }
+
         let t = Ohkami::new((
             "/signin".By(Ohkami::new(
                 "/".PUT(signin),
             )),
             "/profile".By(Ohkami::with((
-                my_jwt(),
+                MyJWTFang(my_jwt()),
             ), (
                 "/".GET(get_profile),
             ))),
@@ -378,6 +304,11 @@ mod internal {
             .header("Authorization", format!("Bearer {jwt}"));
         let res = t.oneshot(req).await;
         assert_eq!(res.status(), Status::OK);
+        assert_eq!(res.json::<Profile>().unwrap().unwrap(), Profile {
+            id:           1,
+            first_name:   "ohkami",
+            familly_name: "framework",
+        });
 
         {}
     }
