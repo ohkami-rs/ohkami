@@ -202,6 +202,7 @@ mod internal {
             familly_name: &'p str,
         }
 
+        #[cfg(feature="nightly")]
         async fn get_profile(c: Context) -> Response {
             let r = &mut *repository().await.lock().await;
 
@@ -210,6 +211,20 @@ mod internal {
 
             let user = r.get(&jwt_payload.user_id)
                 .ok_or_else(|| c.BadRequest().text("User doesn't exist"))?;
+
+            c.OK().json(user.profile())
+        }
+        #[cfg(not(feature="nightly"))]
+        async fn get_profile(c: Context) -> Response {
+            let r = &mut *repository().await.lock().await;
+
+            let Some(jwt_payload) = c.get::<MyJWTPayload>() else {
+                return (|| c.InternalServerError())()
+            };
+
+            let Some(user) = r.get(&jwt_payload.user_id) else {
+                return (|| c.BadRequest().text("User doesn't exist"))()
+            };
 
             c.OK().json(user.profile())
         }
