@@ -45,7 +45,7 @@ impl Testing for Ohkami {
             req.as_mut().read(&mut &request.encode_request()[..]).await;
 
             #[cfg(not(feature="websocket"))]
-            let res = router.handle(Context::new(), &mut req).await;
+            let res = router.handle(&mut req).await;
             #[cfg(feature="websocket")]
             let (res, _) = router.handle(&mut req).await;
 

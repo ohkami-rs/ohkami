@@ -1,4 +1,4 @@
-use ohkami::{Ohkami, Route, Context, Response};
+use ohkami::{Ohkami, Route, Response};
 use ohkami::utils::Payload;
 use serde::Deserialize;
 
@@ -19,7 +19,7 @@ struct LoginRequest {
     password: String,
 }
 
-async fn login(c: Context, body: LoginRequest) -> Response {
+async fn login(body: LoginRequest) -> Response {
     todo!()
 }
 
@@ -31,6 +31,6 @@ struct RegisterRequest {
     password: String,
 }
 
-async fn register(c: Context, body: RegisterRequest) -> Response {
+async fn register(body: RegisterRequest) -> Response {
     todo!()
 }

@@ -21,8 +21,10 @@ use std::pin::Pin;
 use byte_reader::Reader;
 use crate::{
     __rt__::AsyncReader,
-    layer0_lib::{Method, Slice, CowSlice, client_header, percent_decode_utf8}, websocket::UpgradeID
+    layer0_lib::{Method, Slice, CowSlice, client_header, percent_decode_utf8}
 };
+
+#[cfg(feature="websocket")] use crate::websocket::UpgradeID;
 
 
 pub(crate) const METADATA_SIZE: usize = 1024;
@@ -35,7 +37,8 @@ pub struct Request {pub(crate) _metadata: [u8; METADATA_SIZE],
     queries:               QueryParams,
     payload:               Option<CowSlice>,
     store:                 Store,
-    pub(crate) upgrade_id: Option<UpgradeID>,
+
+    #[cfg(feature="websocket")] pub(crate) upgrade_id: Option<UpgradeID>,
 }
 
 impl Request {
@@ -47,7 +50,7 @@ impl Request {
             headers:    client_header::Headers::init(),
             payload:    None,
             store:      Store::new(),
-            upgrade_id: None,
+            #[cfg(feature="websocket")] upgrade_id: None,
         }
     }
 

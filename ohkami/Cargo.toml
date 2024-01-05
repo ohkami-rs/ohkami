@@ -31,7 +31,7 @@ nightly          = []
 
 ##### DEBUG #####
 DEBUG = [
-    "websocket",
+    #"websocket",
     "serde/derive",
     "tokio?/macros",
     "async-std?/attributes",
@@ -41,4 +41,4 @@ default = [
     #"rt_async-std",
     "DEBUG",
     "nightly",
-]#
+]

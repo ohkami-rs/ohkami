@@ -1,4 +1,4 @@
-use ohkami::{Ohkami, Route, Context, Response};
+use ohkami::{Ohkami, Route, Response};
 use ohkami::utils::{Payload, Query};
 use serde::Deserialize;
 use crate::fangs::Auth;
@@ -51,15 +51,15 @@ impl Default for ArticlesQuery {
     }
 }
 
-async fn list(c: Context, query: ArticlesQuery) -> Response {
+async fn list(query: ArticlesQuery) -> Response {
     todo!()
 }
 
-async fn feed(c: Context, query: ArticlesQuery) -> Response {
+async fn feed(query: ArticlesQuery) -> Response {
     todo!()
 }
 
-async fn get(c: Context, slug: String) -> Response {
+async fn get(slug: String) -> Response {
     todo!()
 }
 
@@ -73,7 +73,7 @@ struct CreateArticleRequest {
     tag_list:      Option<Vec<String>>,
 }
 
-async fn create(c: Context, body: CreateArticleRequest) -> Response {
+async fn create(body: CreateArticleRequest) -> Response {
     todo!()
 }
 
@@ -85,11 +85,11 @@ struct UpdateArticleRequest {
     body:        Option<String>,
 }
 
-async fn update(c: Context, slug: String, body: UpdateArticleRequest) -> Response {
+async fn update(slug: String, body: UpdateArticleRequest) -> Response {
     todo!()
 }
 
-async fn delete(c: Context, slug: String) -> Response {
+async fn delete(slug: String) -> Response {
     todo!()
 }
 
@@ -99,22 +99,22 @@ struct AddCommentRequest {
     body: String,
 }
 
-async fn add_comment(c: Context, slug: String, body: AddCommentRequest) -> Response {
+async fn add_comment(slug: String, body: AddCommentRequest) -> Response {
     todo!()
 }
 
-async fn get_comments(c: Context, slug: String) -> Response {
+async fn get_comments(slug: String) -> Response {
     todo!()
 }
 
-async fn delete_comment(c: Context, (slug, id): (String, usize)) -> Response {
+async fn delete_comment((slug, id): (String, usize)) -> Response {
     todo!()
 }
 
-async fn favorite(c: Context, slug: String) -> Response {
+async fn favorite(slug: String) -> Response {
     todo!()
 }
 
-async fn unfavorite(c: Context, slug: String) -> Response {
+async fn unfavorite(slug: String) -> Response {
     todo!()
 }

@@ -1,4 +1,5 @@
-use ohkami::{Fang, IntoFang, Context, Request, Response};
+use ohkami::{Fang, IntoFang, Request, Response};
+use ohkami::utils::JWT;
 
 
 pub struct Auth {
@@ -20,7 +21,7 @@ impl Auth {
 }
 impl IntoFang for Auth {
     fn into_fang(self) -> Fang {
-        Fang(move |c: &mut Context, req: &mut Request| {
+        Fang(move |req: &mut Request| {
             if !self.condition.is_some_and(|cond| cond(req)) {
                 return Ok(());
             }

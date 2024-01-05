@@ -61,7 +61,7 @@ fn metadataize(input: &str) -> [u8; METADATA_SIZE] {
         ]),
         payload: None,
         store:      Store::new(),
-        upgrade_id: None,
+        #[cfg(feature="websocket")] upgrade_id: None,
     });
 
 
@@ -91,7 +91,7 @@ fn metadataize(input: &str) -> [u8; METADATA_SIZE] {
             Slice::from_bytes(br#"{"name":"kanarus","age":20}"#)
         })),
         store:      Store::new(),
-        upgrade_id: None,
+        #[cfg(feature="websocket")] upgrade_id: None,
     });
 
 
@@ -132,6 +132,6 @@ fn metadataize(input: &str) -> [u8; METADATA_SIZE] {
         ]),
         payload: Some(CowSlice::Own(Vec::from("first_name=John&last_name=Doe&action=Submit"))),
         store:      Store::new(),
-        upgrade_id: None,
+        #[cfg(feature="websocket")] upgrade_id: None,
     });
 }

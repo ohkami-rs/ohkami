@@ -1,4 +1,4 @@
-use ohkami::{Ohkami, Route, Context, Response};
+use ohkami::{Ohkami, Route, Response};
 use crate::fangs::Auth;
 
 
@@ -12,14 +12,14 @@ pub fn profiles_ohkami() -> Ohkami {
     ))
 }
 
-async fn get_profile(c: Context, username: String) -> Response {
+async fn get_profile(username: String) -> Response {
     todo!()
 }
 
-async fn follow(c: Context, username: String) -> Response {
+async fn follow(username: String) -> Response {
     todo!()
 }
 
-async fn unfollow(c: Context, username: String) -> Response {
+async fn unfollow(username: String) -> Response {
     todo!()
 }
