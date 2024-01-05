@@ -40,7 +40,7 @@ fn impl_payload_json(data: &ItemStruct) -> Result<TokenStream> {
     Ok(quote!{
         impl<#impl_lifetime> ::ohkami::FromRequest<#impl_lifetime> for #struct_name<#struct_lifetime> {
             type Error = ::std::borrow::Cow<'static, str>;
-            fn parse(req: &#impl_lifetime ::ohkami::Request) -> ::std::result::Result<Self, ::std::borrow::Cow<'static, str>> {
+            #[inline] fn from_request(req: &#impl_lifetime ::ohkami::Request) -> ::std::result::Result<Self, ::std::borrow::Cow<'static, str>> {
                 let payload = req.payload()
                     .ok_or_else(|| ::std::borrow::Cow::Borrowed("Expected payload"))?;
                 if !req.headers.ContentType().unwrap().starts_with("application/json") {
@@ -122,7 +122,7 @@ fn impl_payload_urlencoded(data: &ItemStruct) -> Result<TokenStream> {
     Ok(quote!{
         impl<#impl_lifetime> ::ohkami::FromRequest<#impl_lifetime> for #struct_name<#struct_lifetime> {
             type Error = ::std::borrow::Cow<'static, str>;
-            fn parse(req: &#impl_lifetime ::ohkami::Request) -> ::std::result::Result<Self, ::std::borrow::Cow<'static, str>> {
+            fn from_request(req: &#impl_lifetime ::ohkami::Request) -> ::std::result::Result<Self, ::std::borrow::Cow<'static, str>> {
                 let payload = req.payload()
                     .ok_or_else(|| ::std::borrow::Cow::Borrowed("Expected a payload"))?;
                 if !req.headers.ContentType().unwrap().starts_with("application/x-www-form-urlencoded") {
@@ -226,7 +226,7 @@ fn impl_payload_formdata(data: &ItemStruct) -> Result<TokenStream> {
     Ok(quote!{
         impl<#impl_lifetime> ::ohkami::FromRequest<#impl_lifetime> for #struct_name<#struct_lifetime> {
             type Error = ::std::borrow::Cow<'static, str>;
-            fn parse(req: &#impl_lifetime ::ohkami::Request) -> ::std::result::Result<Self, ::std::borrow::Cow<'static, str>> {
+            fn from_request(req: &#impl_lifetime ::ohkami::Request) -> ::std::result::Result<Self, ::std::borrow::Cow<'static, str>> {
                 let payload = req.payload()
                     .ok_or_else(|| ::std::borrow::Cow::Borrowed("Expected a payload"))?;
 

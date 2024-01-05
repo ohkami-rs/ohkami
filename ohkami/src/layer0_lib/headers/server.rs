@@ -12,7 +12,7 @@ pub struct Headers {
 pub struct SetHeaders<'set>(
     &'set mut Headers
 ); impl Headers {
-    #[inline(always)] pub(crate) fn set(&mut self) -> SetHeaders<'_> {
+    #[inline(always)] pub fn set(&mut self) -> SetHeaders<'_> {
         SetHeaders(self)
     }
 }
@@ -231,10 +231,6 @@ impl Headers {
                 None, None, None, None, None,
             ]
         }
-    }
-
-    pub(crate) fn clone(&self) -> Self {
-        Self { values: self.values.clone(), size: self.size }
     }
 
     pub(crate) const fn iter(&self) -> impl Iterator<Item = (&str, &str)> {

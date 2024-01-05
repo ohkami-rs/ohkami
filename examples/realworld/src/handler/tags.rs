@@ -1,4 +1,4 @@
-use ohkami::{Ohkami, Route, Context, Response};
+use ohkami::{Ohkami, Route, Response};
 
 
 pub fn tags_ohkami() -> Ohkami {
@@ -7,6 +7,6 @@ pub fn tags_ohkami() -> Ohkami {
     ))
 }
 
-async fn get(c: Context) -> Response {
+async fn get() -> Response {
     todo!()
 }

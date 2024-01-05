@@ -7,7 +7,7 @@ use std::{
     future::Future,
 };
 use crate::{
-    Context, Request,
+    Request,
     layer1_req_res::{Response},
 };
 
@@ -16,7 +16,7 @@ use crate::{
 pub struct Handler {
     #[cfg(feature="websocket")] pub(crate) requires_upgrade: bool,
     pub(crate) proc: Arc<dyn
-        Fn(Context, &mut Request) -> Pin<
+        Fn(&mut Request) -> Pin<
             Box<dyn
                 Future<Output = Response>
                 + Send + 'static
@@ -26,9 +26,9 @@ pub struct Handler {
 }
 
 impl Handler {
-    fn new<'h>(
+    fn new(
         proc: (
-            impl Fn(Context, &mut Request) -> Pin<
+            impl Fn(&mut Request) -> Pin<
                 Box<dyn
                     Future<Output = Response>
                     + Send + 'static

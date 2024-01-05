@@ -2,7 +2,7 @@ use crate::__rt__;
 
 use crate::prelude::*;
 use crate::testing::*;
-use crate::{Fang, IntoFang, http::Status};
+use crate::{Fang, IntoFang, http, http::Status, IntoResponse};
 
 
 #[__rt__::test] async fn testing_example_simple() {
@@ -24,8 +24,8 @@ use crate::{Fang, IntoFang, http::Status};
     assert_eq!(res.text(), Some("Hello, world!"));
 }
 
-async fn hello(c: Context) -> Response {
-    c.OK().text("Hello, world!")
+async fn hello() -> impl IntoResponse {
+    http::Text::OK("Hello, world!")
 }
 
 
@@ -48,7 +48,7 @@ async fn hello(c: Context) -> Response {
     assert_eq!(res.header("Server").unwrap(), "ohkami");
 
     let res = testing_example.oneshot(TestRequest::GET("/users/100")).await;
-    assert_eq!(res.status(), Status::NotFound);
+    assert_eq!(res.status(), Status::NotImplemented);
     assert_eq!(res.header("Server").unwrap(),  "ohkami");
 
     let res = testing_example.oneshot(TestRequest::GET("/users/42")).await;
@@ -74,18 +74,29 @@ async fn hello(c: Context) -> Response {
     );
 }
 
+
 struct SetServerHeader;
 impl IntoFang for SetServerHeader {
     fn into_fang(self) -> Fang {
-        Fang(|c: &mut Context| {
-            c.set_headers()
+        Fang(|res: &mut Response| {
+            res.headers.set()
                 .Server("ohkami");
         })
     }
 }
 
-async fn health_check(c: Context) -> Response {
-    c.NoContent()
+enum APIError {
+    TODO,
+}
+impl IntoResponse for APIError {
+    fn into_response(self) -> Response {
+        Status::NotImplemented.into_response()
+    }
+}
+
+
+async fn health_check() -> impl IntoResponse {
+    http::Status::NoContent
 }
 
 #[derive(serde::Serialize)]
@@ -94,13 +105,13 @@ struct User {
     age:  u8,
 }
 
-async fn get_user(c: Context, id: usize) -> Response {
+async fn get_user(id: usize) -> Result<http::JSON<User>, APIError> {
     match id {
-        42 => c.OK().json(User {
+        42 => Ok(http::JSON::OK(User {
             name: format!("kanarus"),
             age:  20,
-        }),
-        _ => c.NotFound()
+        })),
+        _ => Err(APIError::TODO)
     }
 }
 
@@ -113,7 +124,7 @@ struct CreateUser<'c> {
 // Can't use `#[Payload(JSON)]` here becasue this test is within `ohkami`
 impl<'req> crate::FromRequest<'req> for CreateUser<'req> {
     type Error = ::std::borrow::Cow<'static, str>;
-    fn parse(req: &'req Request) -> Result<Self, ::std::borrow::Cow<'static, str>> {
+    fn from_request(req: &'req Request) -> Result<Self, ::std::borrow::Cow<'static, str>> {
         let Some(payload) = req.payload()
             else {return Err(::std::borrow::Cow::Borrowed("Expected a payload"))};
         match req.headers.ContentType() {
@@ -123,8 +134,8 @@ impl<'req> crate::FromRequest<'req> for CreateUser<'req> {
         }
     }
 }
-async fn create_user<'h>(c: Context, payload: CreateUser<'h>) -> Response {
-    c.Created().json(User {
+async fn create_user(payload: CreateUser<'_>) -> http::JSON<User> {
+    http::JSON::Created(User {
         name: payload.name.to_string(),
         age:  payload.age.unwrap_or(0),
     })

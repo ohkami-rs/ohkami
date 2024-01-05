@@ -7,11 +7,11 @@
 //! ```ignore
 //! use ohkami::prelude::*;
 //! 
-//! async fn health_check(c: Context) -> Response {
-//!     c.NoContent()
+//! async fn health_check() -> impl IntoResponse {
+//!     http::Status::NoContent
 //! }
 //! 
-//! async fn hello(c: Context, name: String) -> Response {
+//! async fn hello(name: String) -> Response {
 //!     c.OK().text(format!("Hello, {name}!"))
 //! }
 //! 
@@ -37,9 +37,9 @@
 //!     )).howl("localhost:5000").await
 //! }
 //! 
-//! async fn get_user(c: Context,
+//! async fn get_user(
 //!     id: usize /* <-- path param */
-//! ) -> Response { c.OK() }
+//! ) -> http::Status { http::Status::OK }
 //! ```
 //! Use tuple like `(verion, id): (u8, usize),` for multiple path params.
 //! 
@@ -54,9 +54,9 @@
 //! struct SearchCondition {
 //!     q: String,
 //! }
-//! async fn search(c: Context,
+//! async fn search(
 //!     condition: SearchCondition
-//! ) -> Response { c.OK() }
+//! ) -> impl IntoResponse { http::Status::OK }
 //! 
 //! #[utils::Payload(JSON)]
 //! #[derive(serde::Deserialize)]
@@ -65,9 +65,9 @@
 //!     password: String,
 //! }
 //! 
-//! async fn create_user(c: Context,
+//! async fn create_user(
 //!     body: CreateUserRequest
-//! ) -> Response { c.Created() }
+//! ) -> impl IntoResponse { http::Status::Created }
 //! ```
 //! `#[Query]`, `#[Payload( 〜 )]` implements `FromRequest` trait for the struct.
 //! 
@@ -85,8 +85,8 @@
 //! struct AppendHeaders;
 //! impl IntoFang for AppendHeaders {
 //!     fn into_fang(self) -> Fang {
-//!         Fang(|c: &mut Context| {
-//!             c.set_headers()
+//!         Fang(|res: &mut Response| {
+//!             res.headers.set()
 //!                 .Server("ohkami");
 //!         })
 //!     }
@@ -95,9 +95,8 @@
 //! struct Log;
 //! impl IntoFang for Log {
 //!     fn into_fang(self) -> Fang {
-//!         Fang(|res: Response| {
+//!         Fang(|res: &Response| {
 //!             println!("{res:?}");
-//!             res
 //!         })
 //!     }
 //! }
@@ -140,8 +139,8 @@
 //! 
 //! fn hello_ohkami() -> Ohkami {
 //!     Ohkami::new((
-//!         "/hello".GET(|c: Context| async move {
-//!             c.OK().text("Hello, world!")
+//!         "/hello".GET(|| async move {
+//!             http::Text::OK("Hello, world!")
 //!         })
 //!     ))
 //! }
@@ -249,7 +248,6 @@ mod __rt__ {
 
 mod layer0_lib;
 mod layer1_req_res;
-mod layer2_context;
 mod layer3_fang_handler;
 mod layer4_router;
 mod layer5_ohkami;
@@ -263,22 +261,21 @@ mod x_websocket;
 
 /*===== visibility managements =====*/
 
-pub use layer1_req_res     ::{Request, Response, FromRequest, FromParam};
-pub use layer2_context     ::Context;
+pub use layer1_req_res     ::{Request, Response, FromRequest, FromParam, IntoResponse, Memory};
 pub use layer3_fang_handler::{Route, Fang};
 pub use layer5_ohkami      ::{Ohkami, IntoFang};
 
 pub mod prelude {
-    pub use crate::{Request, Response, Context, Route, Ohkami, Fang, IntoFang};
+    pub use crate::{Request, Response, Route, Ohkami, Fang, IntoFang, IntoResponse, http};
 }
 
 pub mod http {
-    pub use crate::layer0_lib::{Status, Method};
+    pub use crate::layer0_lib::{Status, Method, append};
+    pub use crate::layer1_req_res::{JSON, Text, HTML, Redirect};
 }
 
 pub mod utils {
     pub use crate::x_utils       ::{now, CORS, JWT};
-    pub use crate::layer0_lib    ::append;
     pub use crate::layer1_req_res::File;
     pub use ohkami_macros        ::{Query, Payload};
 }
@@ -312,8 +309,8 @@ pub mod __internal__ {
     impl IntoFang for AppendHeader {
         //const METHODS: &'static [Method] = &[Method::GET];
         fn into_fang(self) -> Fang {
-            Fang(|c: &mut Context, _: &mut Request| {
-                c.set_headers().Server("ohkami");
+            Fang(|res: &mut Response| {
+                res.headers.set().Server("ohkami");
             })
         }
     }
@@ -330,12 +327,12 @@ pub mod __internal__ {
     }
 
 // handlers
-    async fn health_check(c: Context) -> Response {
-        c.NoContent()
+    async fn health_check() -> http::Status {
+        http::Status::NoContent
     }
 
-    async fn hello(c: Context, name: &str) -> Response {
-        c.OK().text(format!("Hello, {name}!"))
+    async fn hello(name: &str) -> http::Text {
+        http::Text::OK(format!("Hello, {name}!"))
     }
 
 // run
@@ -344,8 +341,8 @@ pub mod __internal__ {
         AppendHeader,
         utils::CORS("https://kanarusblog.software")
             .AllowCredentials()
-            .AllowHeaders(["Content-Type"])
-            .AllowMethods([Method::GET, Method::PUT, Method::POST, Method::DELETE])
+            .AllowHeaders(&["Content-Type"])
+            .AllowMethods(&[Method::GET, Method::PUT, Method::POST, Method::DELETE])
             .MaxAge(3600)
     ), (
         "/hc".

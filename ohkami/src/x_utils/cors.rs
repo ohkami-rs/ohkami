@@ -8,10 +8,12 @@ pub const fn CORS(AllowOrigin: &'static str) -> internal::CORS {
         assert_into_fang::<internal::CORS>();
     }
 
+    use crate::http::Method::*;
+
     internal::CORS {
         AllowOrigin:      internal::AccessControlAllowOrigin::from_literal(AllowOrigin),
         AllowCredentials: false,
-        AllowMethods:     None,
+        AllowMethods:     Some(&[GET, HEAD, PUT, POST, DELETE, PATCH]),
         AllowHeaders:     None,
         ExposeHeaders:    None,
         MaxAge:           None,
@@ -19,15 +21,15 @@ pub const fn CORS(AllowOrigin: &'static str) -> internal::CORS {
 }
 
 mod internal {
-    use crate::{http::Method, IntoFang, Fang, Context, Response, Request};
+    use crate::{IntoFang, Fang, Response, Request, http::{append, Status, Method}};
 
 
     pub struct CORS {
         pub(crate) AllowOrigin:      AccessControlAllowOrigin,
         pub(crate) AllowCredentials: bool,
-        pub(crate) AllowMethods:     Option<Vec<Method>>,
-        pub(crate) AllowHeaders:     Option<Vec<&'static str>>,
-        pub(crate) ExposeHeaders:    Option<Vec<&'static str>>,
+        pub(crate) AllowMethods:     Option<&'static [Method]>,
+        pub(crate) AllowHeaders:     Option<&'static [&'static str]>,
+        pub(crate) ExposeHeaders:    Option<&'static [&'static str]>,
         pub(crate) MaxAge:           Option<u32>,
     }
 
@@ -55,13 +57,6 @@ mod internal {
                 Self::Only(origin) => origin,
             }
         }
-
-        #[inline(always)] pub(crate) fn matches(&self, origin: &str) -> bool {
-            match self {
-                Self::Any     => true,
-                Self::Only(o) => *o == origin,
-            }
-        }
     }
 
     impl CORS {
@@ -75,16 +70,22 @@ mod internal {
             self.AllowCredentials = true;
             self
         }
-        pub fn AllowMethods<const N: usize>(mut self, methods: [Method; N]) -> Self {
-            self.AllowMethods = Some(methods.to_vec());
+        pub fn AllowMethods(mut self, methods: &'static [Method]) -> Self {
+            if methods.len() > 0 {
+                self.AllowMethods = Some(methods);
+            }
             self
         }
-        pub fn AllowHeaders<const N: usize>(mut self, headers: [&'static str; N]) -> Self {
-            self.AllowHeaders = Some(headers.to_vec());
+        pub fn AllowHeaders(mut self, headers: &'static [&'static str]) -> Self {
+            if headers.len() > 0 {
+                self.AllowHeaders = Some(headers);
+            }
             self
         }
-        pub fn ExposeHeaders<const N: usize>(mut self, headers: [&'static str; N]) -> Self {
-            self.ExposeHeaders = Some(headers.to_vec());
+        pub fn ExposeHeaders(mut self, headers: &'static [&'static str]) -> Self {
+            if headers.len() > 0 {
+                self.ExposeHeaders = Some(headers);
+            }
             self
         }
         pub fn MaxAge(mut self, delta_seconds: u32) -> Self {
@@ -93,60 +94,44 @@ mod internal {
         }
     }
 
+    /* Based on https://github.com/honojs/hono/blob/main/src/middleware/cors/index.ts; MIT */
     impl IntoFang for CORS {
-        const METHODS: &'static [Method] = &[Method::OPTIONS];
-
         fn into_fang(self) -> Fang {
-            #[cold] fn __forbid_cors(c: &Context) -> Result<(), Response> {
-                Err(c.Forbidden())
-            }
+            Fang(move |req: &Request, res: &mut Response| {
+                let mut h = res.headers.set();
 
-            Fang(move |c: &mut Context, req: &mut Request| -> Result<(), Response> {
-                c.set_headers()
-                    .AccessControlAllowOrigin(self.AllowOrigin.as_str())
-                    .AccessControlAllowCredentials(if self.AllowCredentials {"true"} else {"false"});
-                if let Some(methods) = &self.AllowMethods {
-                    c.set_headers()
-                    .AccessControlAllowMethods(methods.iter().map(Method::as_str).collect::<Vec<_>>().join(","));
+                h = h.AccessControlAllowOrigin(self.AllowOrigin.as_str());
+                if self.AllowOrigin.is_any() {
+                    h = h.Vary("Origin");
                 }
-                if let Some(headers) = &self.AllowHeaders {
-                    c.set_headers()
-                    .AccessControlAllowHeaders(headers.join(","));
+                if self.AllowCredentials {
+                    h = h.AccessControlAllowCredentials("true");
                 }
-                if let Some(headers) = &self.ExposeHeaders {
-                    c.set_headers()
-                    .AccessControlExposeHeaders(headers.join(","));
+                if let Some(expose_headers) = &self.ExposeHeaders {
+                    h = h.AccessControlExposeHeaders(expose_headers.join(","));
                 }
 
-                let origin = req.headers.Origin().ok_or_else(|| c.BadRequest())?;
-                if !self.AllowOrigin.matches(origin) {
-                    return __forbid_cors(c)
-                }
-
-                if req.headers.Authorization().is_some() {
-                    if !self.AllowCredentials {
-                        return __forbid_cors(c)
+                if req.method.isOPTIONS() {
+                    if let Some(max_age) = self.MaxAge {
+                        h = h.AccessControlMaxAge(max_age.to_string());
                     }
-                }
-
-                if let Some(request_method) = req.headers.AccessControlRequestMethod() {
-                    let request_method = Method::from_bytes(request_method.as_bytes());
-                    let allow_methods  = self.AllowMethods.as_ref().ok_or_else(|| c.Forbidden())?;
-                    if !allow_methods.contains(&request_method) {
-                        return __forbid_cors(c)
+                    if let Some(allow_methods) = self.AllowMethods {
+                        let methods_string = allow_methods.iter()
+                            .map(Method::as_str)
+                            .fold(String::new(), |mut ms, m| {ms.push_str(m); ms});
+                        h = h.AccessControlAllowMethods(methods_string);
                     }
-                }
-
-                if let Some(request_headers) = req.headers.AccessControlRequestHeaders() {
-                    let request_headers = request_headers.split(',').map(|h| h.trim());
-                    let allow_headers   = self.AllowHeaders.as_ref().ok_or_else(|| c.Forbidden())?;
-                    if !request_headers.into_iter().all(|h| allow_headers.contains(&h)) {
-                        return __forbid_cors(c)
+                    if let Some(allow_headers_string) = match self.AllowHeaders {
+                        Some(hs) => Some(hs.join(",")),
+                        None     => req.headers.AccessControlRequestHeaders().map(String::from),
+                    } {
+                        h = h.AccessControlAllowHeaders(allow_headers_string)
+                            .Vary(append("Access-Control-Request-Headers"));
                     }
-                }
 
-                c.set_headers().Vary("Origin");
-                Ok(())
+                    h.ContentType(None).ContentLength(None);
+                    res.status = Status::NoContent;
+                }
             })
         }
     }

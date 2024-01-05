@@ -1,9 +1,9 @@
 use crate::{
+    http,
     Request,
-    Context,
     Response,
     layer0_lib::{Method, Status, Slice, percent_decode},
-    layer3_fang_handler::{Handler, FrontFang, BackFang},
+    layer3_fang_handler::{Handler, FrontFang, BackFang}, IntoResponse,
 };
 
 #[cfg(feature="websocket")]
@@ -63,40 +63,41 @@ pub(super) enum Pattern {
 impl RadixRouter {
     pub(crate) async fn handle(
         &self,
-        mut c: Context,
-        req:   &mut Request,
+        req: &mut Request,
     ) -> HandleResult {
         let search_result = match req.method {
-            Method::GET    => self.GET   .search(&mut c, req/*.path_bytes()*/),
-            Method::PUT    => self.PUT   .search(&mut c, req/*.path_bytes()*/),
-            Method::POST   => self.POST  .search(&mut c, req/*.path_bytes()*/),
-            Method::PATCH  => self.PATCH .search(&mut c, req/*.path_bytes()*/),
-            Method::DELETE => self.DELETE.search(&mut c, req/*.path_bytes()*/),
+            Method::GET    => self.GET   .search(req/*.path_bytes()*/),
+            Method::PUT    => self.PUT   .search(req/*.path_bytes()*/),
+            Method::POST   => self.POST  .search(req/*.path_bytes()*/),
+            Method::PATCH  => self.PATCH .search(req/*.path_bytes()*/),
+            Method::DELETE => self.DELETE.search(req/*.path_bytes()*/),
             
             Method::HEAD => {
                 let (front, back) = self.HEADfangs;
 
-                for ff in front {
-                    if let Err(err_res) = ff.0(&mut c, req) {
-                        return __no_upgrade(err_res)
+                let mut res = 'res: {
+                    for ff in front {
+                        if let Err(err_res) = ff.0(req) {
+                            break 'res err_res
+                        }
                     }
-                }
 
-                let target = match self.GET.search(&mut c, req/*.path_bytes()*/) {
-                    Ok(Some(node)) => node,
-                    Ok(None)       => return __no_upgrade(c.NotFound()),
-                    Err(err_res)   => return __no_upgrade(err_res),
-                };
-                
-                let Response { headers, .. } = target.handle_discarding_upgrade(c, req).await;
-                let mut res = Response {
-                    headers,
-                    status:  Status::NoContent,
-                    content: None,
+                    let target = match self.GET.search(req/*.path_bytes()*/) {
+                        Ok(Some(node)) => node,
+                        Ok(None)       => break 'res http::Status::NotFound.into_response(),
+                        Err(err_res)   => break 'res err_res,
+                    };
+
+                    let Response { headers, .. } = target.handle_discarding_upgrade(req).await;
+                    Response {
+                        headers,
+                        status:  Status::NoContent,
+                        content: None,
+                    }
                 };
 
                 for bf in back {
-                    res = bf.0(res)
+                    res = bf.0(req, res)
                 }
 
                 return __no_upgrade(res);
@@ -105,49 +106,45 @@ impl RadixRouter {
             Method::OPTIONS => {
                 let (front, back) = self.OPTIONSfangs;
 
-                for ff in front {
-                    if let Err(err_res) = ff.0(&mut c, req) {
-                        return __no_upgrade(err_res);
+                let mut res = 'res: {
+                    for ff in front {
+                        if let Err(err_res) = ff.0(req) {
+                            break 'res err_res
+                        }
                     }
-                }
-
-                let mut res = c.NoContent();
+                    http::Status::NoContent.into_response()
+                };
 
                 for bf in back {
-                    res = bf.0(res)
+                    res = bf.0(req, res)
                 }
                 
                 return __no_upgrade(res);
             }
         };
 
-        let target = match search_result {
-            Ok(Some(node)) => node,
-            Ok(None)       => return __no_upgrade(c.NotFound()),
-            Err(err_res)   => return __no_upgrade(err_res),
-        };
-
-        target.handle(c, req).await
+        match search_result {
+            Ok(Some(node)) => node.handle(req).await,
+            Ok(None)       => __no_upgrade(http::Status::NotFound.into_response()),
+            Err(err_res)   => __no_upgrade(err_res),
+        }
     }
 }
 
 impl Node {
-    #[inline] pub(super) async fn handle(&self,
-        #[allow(unused_mut)] mut c: Context,
-        req:    &mut Request,
-    ) -> HandleResult {
+    #[inline] pub(super) async fn handle(&self, req: &mut Request) -> HandleResult {
         match &self.handler {
             Some(handler) => {
                 #[cfg(feature="websocket")]
                 let upgrade_id = match (handler.requires_upgrade).then(|| async {
                     let id = request_upgrade_id().await;
-                    c.upgrade_id = Some(id);
+                    req.upgrade_id = Some(id);
                     id
                 }) {None => None, Some(id) => Some(id.await)};
 
-                let mut res = (handler.proc)(c, req).await;
+                let mut res = (handler.proc)(req).await;
                 for b in self.back {
-                    res = b.0(res);
+                    res = b.0(req, res);
                 }
 
                 #[cfg(feature="websocket")]
@@ -155,30 +152,24 @@ impl Node {
                 #[cfg(not(feature="websocket"))]
                 {res}
             }
-            None => __no_upgrade(c.NotFound()),
+            None => __no_upgrade(http::Status::NotFound.into_response()),
         }
     }
 
-    #[inline] pub(super) async fn handle_discarding_upgrade(&self,
-        c:      Context,
-        req:    &mut Request,
-    ) -> Response {
+    #[inline] pub(super) async fn handle_discarding_upgrade(&self, req: &mut Request) -> Response {
         match &self.handler {
             Some(handler) => {
-                let mut res = (handler.proc)(c, req).await;
+                let mut res = (handler.proc)(req).await;
                 for b in self.back {
-                    res = b.0(res);
+                    res = b.0(req, res);
                 }
                 res
             }
-            None => c.NotFound()
+            None => http::Status::NotFound.into_response()
         }
     }
 
-    pub(super/* for test */) fn search(&self,
-        c:      &mut Context,
-        req:    &mut Request,
-    ) -> Result<Option<&Node>, Response> {
+    pub(super/* for test */) fn search(&self, req: &mut Request) -> Result<Option<&Node>, Response> {
         let mut target = self;
 
         // SAFETY:
@@ -194,7 +185,7 @@ impl Node {
 
         loop {
             for ff in target.front {
-                ff.0(c, req)?
+                ff.0(req)?
             }
 
             for pattern in target.patterns {
