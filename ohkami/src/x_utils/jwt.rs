@@ -122,7 +122,7 @@ mod internal {
     use serde::Deserialize;
 
     use super::JWT;
-    use crate::__rt__::test;
+    use crate::{__rt__::test, IntoResponse};
 
     #[test] async fn test_jwt_issue() {
         /* NOTE: 
@@ -146,7 +146,7 @@ mod internal {
 
     #[test] async fn test_jwt_verify() {
         use crate::prelude::*;
-        use crate::{testing::*, http::*, response as res, Memory};
+        use crate::{testing::*, http, Memory};
 
         use std::{sync::OnceLock, collections::HashMap, borrow::Cow};
         use crate::__rt__::Mutex;
@@ -174,13 +174,11 @@ mod internal {
 
         enum APIError {
             UserNotFound,
-            ItemNotMemorized,
         }
-        impl Responder for APIError {
-            fn respond_to(self, _: &Request) -> Response {
+        impl IntoResponse for APIError {
+            fn into_response(self) -> Response {
                 match self {
                     Self::UserNotFound     => Response::InternalServerError().text("User was not found"),
-                    Self::ItemNotMemorized => Response::InternalServerError(),
                 }
             }
         }
@@ -216,13 +214,13 @@ mod internal {
             familly_name: String,
         }
 
-        async fn get_profile(jwt_payload: Memory<'_, MyJWTPayload>) -> Result<res::JSON<Profile>, APIError> {
+        async fn get_profile(jwt_payload: Memory<'_, MyJWTPayload>) -> Result<http::JSON<Profile>, APIError> {
             let r = &mut *repository().await.lock().await;
 
             let user = r.get(&jwt_payload.user_id)
                 .ok_or_else(|| APIError::UserNotFound)?;
 
-            Ok(res::JSON::OK(user.profile()))
+            Ok(http::JSON::OK(user.profile()))
         }
 
         #[derive(serde::Deserialize, serde::Serialize/* for test */)]
@@ -238,7 +236,7 @@ mod internal {
             }
         }
 
-        async fn signin(body: SigninRequest<'_>) -> res::Text {
+        async fn signin(body: SigninRequest<'_>) -> http::Text {
             let r = &mut *repository().await.lock().await;
 
             let user: Cow<'_, User> = match r.iter().find(|(_, u)|
@@ -264,7 +262,7 @@ mod internal {
                 }
             };
 
-            res::Text::OK(issue_jwt_for_user(&user))
+            http::Text::OK(issue_jwt_for_user(&user))
         }
 
 
@@ -293,11 +291,11 @@ mod internal {
 
         let req = TestRequest::PUT("/signin");
         let res = t.oneshot(req).await;
-        assert_eq!(res.status(), Status::BadRequest);
+        assert_eq!(res.status(), http::Status::BadRequest);
 
         let req = TestRequest::GET("/profile");
         let res = t.oneshot(req).await;
-        assert_eq!(res.status(), Status::Unauthorized);
+        assert_eq!(res.status(), http::Status::Unauthorized);
         assert_eq!(res.text(),   Some("missing or malformed jwt"));
 
 
@@ -307,13 +305,13 @@ mod internal {
                 familly_name: "framework",
             });
         let res = t.oneshot(req).await;
-        assert_eq!(res.status(), Status::OK);
+        assert_eq!(res.status(), http::Status::OK);
         let jwt_1 = dbg!(res.text().unwrap());
 
         let req = TestRequest::GET("/profile")
             .header("Authorization", format!("Bearer {jwt_1}"));
         let res = t.oneshot(req).await;
-        assert_eq!(res.status(), Status::OK);
+        assert_eq!(res.status(), http::Status::OK);
         assert_eq!(res.json::<Profile>().unwrap().unwrap(), Profile {
             id:           1,
             first_name:   String::from("ohkami"),
@@ -323,7 +321,7 @@ mod internal {
         let req = TestRequest::GET("/profile")
             .header("Authorization", format!("Bearer {jwt_1}x"));
         let res = t.oneshot(req).await;
-        assert_eq!(res.status(), Status::Unauthorized);
+        assert_eq!(res.status(), http::Status::Unauthorized);
         assert_eq!(res.text(),   Some("missing or malformed jwt"));
 
 
@@ -345,13 +343,13 @@ mod internal {
                 familly_name: "Euler",
             });
         let res = t.oneshot(req).await;
-        assert_eq!(res.status(), Status::OK);
+        assert_eq!(res.status(), http::Status::OK);
         let jwt_2 = dbg!(res.text().unwrap());
 
         let req = TestRequest::GET("/profile")
             .header("Authorization", format!("Bearer {jwt_2}"));
         let res = t.oneshot(req).await;
-        assert_eq!(res.status(), Status::OK);
+        assert_eq!(res.status(), http::Status::OK);
         assert_eq!(res.json::<Profile>().unwrap().unwrap(), Profile {
             id:           2,
             first_name:   String::from("Leonhard"),
@@ -379,7 +377,7 @@ mod internal {
         let req = TestRequest::GET("/profile")
             .header("Authorization", format!("Bearer {jwt_1}"));
         let res = t.oneshot(req).await;
-        assert_eq!(res.status(), Status::OK);
+        assert_eq!(res.status(), http::Status::OK);
         assert_eq!(res.json::<Profile>().unwrap().unwrap(), Profile {
             id:           1,
             first_name:   String::from("ohkami"),
@@ -389,7 +387,7 @@ mod internal {
         let req = TestRequest::GET("/profile")
             .header("Authorization", format!("Bearer {jwt_2}0000"));
         let res = t.oneshot(req).await;
-        assert_eq!(res.status(), Status::Unauthorized);
+        assert_eq!(res.status(), http::Status::Unauthorized);
         assert_eq!(res.text(),   Some("missing or malformed jwt"));
 
 

@@ -1,24 +1,24 @@
 #![allow(non_snake_case)]
 
 use std::borrow::Cow;
-use crate::{Request, Response, layer0_lib::{server_header, Status}};
+use crate::{Response, layer0_lib::{server_header, Status}};
 
 
-pub trait Responder {
-    fn respond_to(self, req: &Request) -> Response;
+pub trait IntoResponse {
+    fn into_response(self) -> Response;
 }
 
 
-impl Responder for Response {
-    fn respond_to(self, _: &Request) -> Response {
+impl IntoResponse for Response {
+    fn into_response(self) -> Response {
         self
     }
 }
-impl<T:Responder, E:Responder> Responder for Result<T, E> {
-    fn respond_to(self, req: &Request) -> Response {
+impl<'req, T:IntoResponse, E:IntoResponse> IntoResponse for Result<T, E> {
+    fn into_response(self) -> Response {
         match self {
-            Ok(ok) => ok.respond_to(req),
-            Err(e) => e.respond_to(req),
+            Ok(ok) => ok.into_response(),
+            Err(e) => e.into_response(),
         }
     }
 }
@@ -28,8 +28,8 @@ pub struct JSON<T: serde::Serialize> {
     status: Status,
     body:   T,
 }
-impl<T: serde::Serialize> Responder for JSON<T> {
-    fn respond_to(self, _: &Request) -> Response {
+impl<'req, T: serde::Serialize> IntoResponse for JSON<T> {
+    fn into_response(self) -> Response {
         self.into()
     }
 }
@@ -118,8 +118,8 @@ impl Into<Response> for Text {
         }
     }
 }
-impl Responder for Text {
-    fn respond_to(self, _: &Request) -> Response {
+impl<'req> IntoResponse for Text {
+    fn into_response(self) -> Response {
         self.into()
     }
 }
@@ -170,8 +170,8 @@ impl Into<Response> for HTML {
         }
     }
 }
-impl Responder for HTML {
-    fn respond_to(self, _: &Request) -> Response {
+impl<'req> IntoResponse for HTML {
+    fn into_response(self) -> Response {
         self.into()
     }
 }
@@ -196,46 +196,8 @@ impl Into<Response> for Redirect {
         }
     }
 }
-impl Responder for Redirect {
-    fn respond_to(self, _: &Request) -> Response {
-        self.into()
-    }
-}
-
-
-pub struct Empty {
-    status: Status
-}
-macro_rules! generate_empty_response {
-    ($( $status:ident, )*) => {
-        impl Empty {$(
-            pub fn $status() -> Self {
-                Self {
-                    status: Status::$status,
-                }
-            }
-        )*}
-    };
-} generate_empty_response! {
-    OK,
-    Created,
-    NoContent,
-
-    BadRequest,
-    Unauthorized,
-    Forbidden,
-    NotFound,
-
-    InternalServerError,
-    NotImplemented,
-}
-impl Into<Response> for Empty {
-    fn into(self) -> Response {
-        Response::NoContent()
-    }
-}
-impl Responder for Empty {
-    fn respond_to(self, _: &Request) -> Response {
+impl<'req> IntoResponse for Redirect {
+    fn into_response(self) -> Response {
         self.into()
     }
 }

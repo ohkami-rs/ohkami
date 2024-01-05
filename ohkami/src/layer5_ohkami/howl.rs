@@ -1,6 +1,6 @@
 use std::{sync::Arc, pin::Pin};
 use super::{Ohkami};
-use crate::{__rt__, Request, response as r, Response};
+use crate::{__rt__, http, Request, Response, IntoResponse};
 
 #[cfg(feature="rt_async-std")] use crate::__rt__::StreamExt;
 #[cfg(feature="websocket")]    use crate::websocket::reserve_upgrade;
@@ -110,7 +110,7 @@ impl Ohkami {
 
                 Err(e) => (|| async {
                     println!("Fatal error: {e}");
-                    let res: Response = r::Empty::InternalServerError().into();
+                    let res: Response = http::Status::InternalServerError.into_response();
                     res.send(&mut *stream.lock().await).await
                 })().await,
             }

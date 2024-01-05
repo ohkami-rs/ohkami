@@ -262,20 +262,17 @@ mod x_websocket;
 
 /*===== visibility managements =====*/
 
-pub use layer1_req_res     ::{Request, Response, FromRequest, FromParam, Responder, Memory};
+pub use layer1_req_res     ::{Request, Response, FromRequest, FromParam, IntoResponse, Memory};
 pub use layer3_fang_handler::{Route, Fang};
 pub use layer5_ohkami      ::{Ohkami, IntoFang};
 
 pub mod prelude {
-    pub use crate::{Request, Response, Route, Ohkami, Fang, IntoFang, Responder};
+    pub use crate::{Request, Response, Route, Ohkami, Fang, IntoFang};
 }
 
 pub mod http {
     pub use crate::layer0_lib::{Status, Method, append};
-}
-
-pub mod response {
-    pub use crate::layer1_req_res::{JSON, Text, HTML, Redirect, Empty};
+    pub use crate::layer1_req_res::{JSON, Text, HTML, Redirect};
 }
 
 pub mod utils {
@@ -331,12 +328,12 @@ pub mod __internal__ {
     }
 
 // handlers
-    async fn health_check() -> response::Empty {
-        response::Empty::NoContent()
+    async fn health_check() -> http::Status {
+        http::Status::NoContent
     }
 
-    async fn hello(name: &str) -> response::Text {
-        response::Text::OK(format!("Hello, {name}!"))
+    async fn hello(name: &str) -> http::Text {
+        http::Text::OK(format!("Hello, {name}!"))
     }
 
 // run

@@ -8,10 +8,12 @@ pub const fn CORS(AllowOrigin: &'static str) -> internal::CORS {
         assert_into_fang::<internal::CORS>();
     }
 
+    use crate::http::Method::*;
+
     internal::CORS {
         AllowOrigin:      internal::AccessControlAllowOrigin::from_literal(AllowOrigin),
         AllowCredentials: false,
-        AllowMethods:     None,
+        AllowMethods:     Some(&[GET, HEAD, PUT, POST, DELETE, PATCH]),
         AllowHeaders:     None,
         ExposeHeaders:    None,
         MaxAge:           None,
@@ -53,13 +55,6 @@ mod internal {
             match self {
                 Self::Any          => "*",
                 Self::Only(origin) => origin,
-            }
-        }
-
-        #[inline(always)] pub(crate) fn matches(&self, origin: &str) -> bool {
-            match self {
-                Self::Any     => true,
-                Self::Only(o) => *o == origin,
             }
         }
     }

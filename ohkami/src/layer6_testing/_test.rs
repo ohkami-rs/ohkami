@@ -2,7 +2,7 @@ use crate::__rt__;
 
 use crate::prelude::*;
 use crate::testing::*;
-use crate::{Fang, IntoFang, http::Status, response as res, Responder};
+use crate::{Fang, IntoFang, http, http::Status, IntoResponse};
 
 
 #[__rt__::test] async fn testing_example_simple() {
@@ -24,8 +24,8 @@ use crate::{Fang, IntoFang, http::Status, response as res, Responder};
     assert_eq!(res.text(), Some("Hello, world!"));
 }
 
-async fn hello() -> impl Responder {
-    res::Text::OK("Hello, world!")
+async fn hello() -> impl IntoResponse {
+    http::Text::OK("Hello, world!")
 }
 
 
@@ -88,15 +88,15 @@ impl IntoFang for SetServerHeader {
 enum APIError {
     TODO,
 }
-impl Responder for APIError {
-    fn respond_to(self, _: &Request) -> Response {
-        res::Empty::NotImplemented().into()
+impl IntoResponse for APIError {
+    fn into_response(self) -> Response {
+        Status::NotImplemented.into_response()
     }
 }
 
 
-async fn health_check() -> impl Responder {
-    res::Empty::NoContent()
+async fn health_check() -> impl IntoResponse {
+    http::Status::NoContent
 }
 
 #[derive(serde::Serialize)]
@@ -105,9 +105,9 @@ struct User {
     age:  u8,
 }
 
-async fn get_user(id: usize) -> Result<res::JSON<User>, APIError> {
+async fn get_user(id: usize) -> Result<http::JSON<User>, APIError> {
     match id {
-        42 => Ok(res::JSON::OK(User {
+        42 => Ok(http::JSON::OK(User {
             name: format!("kanarus"),
             age:  20,
         })),
@@ -134,8 +134,8 @@ impl<'req> crate::FromRequest<'req> for CreateUser<'req> {
         }
     }
 }
-async fn create_user(payload: CreateUser<'_>) -> res::JSON<User> {
-    res::JSON::Created(User {
+async fn create_user(payload: CreateUser<'_>) -> http::JSON<User> {
+    http::JSON::Created(User {
         name: payload.name.to_string(),
         age:  payload.age.unwrap_or(0),
     })

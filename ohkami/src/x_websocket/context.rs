@@ -1,7 +1,7 @@
 use std::{future::Future, borrow::Cow};
 use super::websocket::Config;
 use super::{WebSocket, sign::Sha1};
-use crate::{Response, Request, response as r};
+use crate::{Response, Request, http};
 use crate::__rt__::{task};
 use crate::http::{Method};
 use crate::layer0_lib::{base64};
@@ -33,20 +33,20 @@ impl UpgradeFailureHandler for DefaultUpgradeFailureHandler {
 impl WebSocketContext {
     pub(crate) fn new(req: &mut Request) -> Result<Self, Response> {
         if req.method != Method::GET {
-            return Err((|| r::Text::BadRequest("Method is not `GET`").into())())
+            return Err((|| http::Text::BadRequest("Method is not `GET`").into())())
         }
         if req.headers.Connection() != Some("upgrade") {
-            return Err((|| r::Text::BadRequest("Connection header is not `upgrade`").into())())
+            return Err((|| http::Text::BadRequest("Connection header is not `upgrade`").into())())
         }
         if req.headers.Upgrade() != Some("websocket") {
-            return Err((|| r::Text::BadRequest("Upgrade header is not `websocket`").into())())
+            return Err((|| http::Text::BadRequest("Upgrade header is not `websocket`").into())())
         }
         if req.headers.SecWebSocketVersion() != Some("13") {
-            return Err((|| r::Text::BadRequest("Sec-WebSocket-Version header is not `13`").into())())
+            return Err((|| http::Text::BadRequest("Sec-WebSocket-Version header is not `13`").into())())
         }
 
         let sec_websocket_key = Cow::Owned(req.headers.SecWebSocketKey()
-            .ok_or_else(|| r::Text::BadRequest("Sec-WebSocket-Key header is missing").into())?
+            .ok_or_else(|| http::Text::BadRequest("Sec-WebSocket-Key header is missing").into())?
             .to_string());
 
         let sec_websocket_protocol = req.headers.SecWebSocketProtocol()

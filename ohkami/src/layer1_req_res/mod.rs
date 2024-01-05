@@ -4,10 +4,10 @@ mod response; pub use response::*;
 
 #[cfg(test)] #[allow(unused)] mod __ {
     use serde::Serialize;
-    use crate::response;
+    use crate::http;
 
-    fn handler_1() -> response::Empty {
-        response::Empty::NoContent()
+    fn handler_1() -> http::Status {
+        crate::http::Status::NoContent
     }
 
     #[derive(Serialize)]
@@ -22,8 +22,8 @@ mod response; pub use response::*;
     enum LengthError {
         TODO,
     }
-    fn handler_2() -> Result<response::JSON<Length>, LengthError> {
+    fn handler_2() -> Result<http::JSON<Length>, LengthError> {
         let length = Length::new()?;
-        Ok(response::JSON::Created(length))
+        Ok(http::JSON::Created(length))
     }
 }

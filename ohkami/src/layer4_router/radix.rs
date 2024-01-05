@@ -1,9 +1,9 @@
 use crate::{
+    http,
     Request,
     Response,
-    response as r,
     layer0_lib::{Method, Status, Slice, percent_decode},
-    layer3_fang_handler::{Handler, FrontFang, BackFang},
+    layer3_fang_handler::{Handler, FrontFang, BackFang}, IntoResponse,
 };
 
 #[cfg(feature="websocket")]
@@ -84,7 +84,7 @@ impl RadixRouter {
 
                     let target = match self.GET.search(req/*.path_bytes()*/) {
                         Ok(Some(node)) => node,
-                        Ok(None)       => break 'res r::Empty::NotFound().into(),
+                        Ok(None)       => break 'res http::Status::NotFound.into_response(),
                         Err(err_res)   => break 'res err_res,
                     };
 
@@ -112,7 +112,7 @@ impl RadixRouter {
                             break 'res err_res
                         }
                     }
-                    r::Empty::NoContent().into()
+                    http::Status::NoContent.into_response()
                 };
 
                 for bf in back {
@@ -125,7 +125,7 @@ impl RadixRouter {
 
         match search_result {
             Ok(Some(node)) => node.handle(req).await,
-            Ok(None)       => __no_upgrade(r::Empty::NotFound().into()),
+            Ok(None)       => __no_upgrade(http::Status::NotFound.into_response()),
             Err(err_res)   => __no_upgrade(err_res),
         }
     }
@@ -152,7 +152,7 @@ impl Node {
                 #[cfg(not(feature="websocket"))]
                 {res}
             }
-            None => __no_upgrade(r::Empty::NotFound().into()),
+            None => __no_upgrade(http::Status::NotFound.into_response()),
         }
     }
 
@@ -165,7 +165,7 @@ impl Node {
                 }
                 res
             }
-            None => r::Empty::NotFound().into()
+            None => http::Status::NotFound.into_response()
         }
     }
 

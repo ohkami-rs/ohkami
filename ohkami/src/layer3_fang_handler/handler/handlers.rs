@@ -77,20 +77,20 @@ macro_rules! Route {
     use std::borrow::Cow;
     use serde::{Serialize, Deserialize};
     use super::{Handlers, Route};
-    use crate::{response as r, FromRequest, Responder, Response};
+    use crate::{http, FromRequest, IntoResponse, Response, Request};
 
 
     enum APIError {
         DBError,
     }
-    impl Responder for APIError {
-        fn respond_to(self, _: &crate::Request) -> crate::Response {
+    impl IntoResponse for APIError {
+        fn into_response(self) -> crate::Response {
             Response::InternalServerError()
         }
     }
 
-    async fn health_check() -> r::Empty {
-        r::Empty::NoContent()
+    async fn health_check() -> http::Status {
+        http::Status::NoContent
     }
 
     #[derive(Serialize)]
@@ -137,14 +137,14 @@ macro_rules! Route {
         }
     }
 
-    async fn create_user<'req>(payload: CreateUser<'req>) -> Result<r::JSON<User>, APIError> {
+    async fn create_user<'req>(payload: CreateUser<'req>) -> Result<http::JSON<User>, APIError> {
         let CreateUser { name, password } = payload;
 
         mock::authenticate().await?;
 
         let id = mock::DB.insert_returning_id(CreateUser{ name, password }).await?;
 
-        Ok(r::JSON::Created(User {
+        Ok(http::JSON::Created(User {
             id,
             name: name.to_string(),
             password: password.to_string(),
@@ -166,11 +166,11 @@ macro_rules! Route {
         }
     }
 
-    async fn update_user<'req>(body: UpdateUser<'req>) -> Result<r::Empty, APIError> {
+    async fn update_user<'req>(body: UpdateUser<'req>) -> Result<http::Status, APIError> {
         mock::authenticate().await?;
         mock::DB.update_returning_id(body).await?;
 
-        Ok(r::Empty::NoContent())
+        Ok(http::Status::NoContent)
     }
 
 

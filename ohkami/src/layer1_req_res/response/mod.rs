@@ -1,5 +1,5 @@
-mod responder;
-pub use responder::{Responder, JSON, Text, HTML, Redirect, Empty};
+mod into_response;
+pub use into_response::{IntoResponse, JSON, Text, HTML, Redirect};
 
 #[cfg(feature="nightly")]
 use std::{
