@@ -19,7 +19,7 @@ pub const fn CORS(AllowOrigin: &'static str) -> internal::CORS {
 }
 
 mod internal {
-    use crate::{http::Method, IntoFang, Fang, Context, Response, Request};
+    use crate::{http::Method, IntoFang, Fang, Response, Request, response as res};
 
 
     pub struct CORS {
@@ -97,11 +97,11 @@ mod internal {
         const METHODS: &'static [Method] = &[Method::OPTIONS];
 
         fn into_fang(self) -> Fang {
-            #[cold] fn __forbid_cors(c: &Context) -> Result<(), Response> {
-                Err(c.Forbidden())
+            #[cold] fn __forbid_cors() -> Result<(), Response> {
+                Err(res::Empty::Forbidden().into())
             }
 
-            Fang(move |c: &mut Context, req: &mut Request| -> Result<(), Response> {
+            Fang(move |req: &mut Request| -> Result<(), Response> {
                 c.set_headers()
                     .AccessControlAllowOrigin(self.AllowOrigin.as_str())
                     .AccessControlAllowCredentials(if self.AllowCredentials {"true"} else {"false"});

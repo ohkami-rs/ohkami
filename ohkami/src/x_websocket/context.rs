@@ -1,7 +1,7 @@
 use std::{future::Future, borrow::Cow};
 use super::websocket::Config;
 use super::{WebSocket, sign::Sha1};
-use crate::{Response, Context, Request};
+use crate::{Response, Request, response as r};
 use crate::__rt__::{task};
 use crate::http::{Method};
 use crate::layer0_lib::{base64};
@@ -9,8 +9,6 @@ use super::assume_upgradable;
 
 
 pub struct WebSocketContext<UFH: UpgradeFailureHandler = DefaultUpgradeFailureHandler> {
-    c:                      Context,
-
     config:                 Config,
 
     on_failed_upgrade:      UFH,
@@ -32,22 +30,22 @@ impl UpgradeFailureHandler for DefaultUpgradeFailureHandler {
 }
 
 impl WebSocketContext {
-    pub(crate) fn new(c: Context, req: &mut Request) -> Result<Self, Response> {
+    pub(crate) fn new(req: &mut Request) -> Result<Self, Response> {
         if req.method != Method::GET {
-            return Err((|| c.BadRequest().text("Method is not `GET`"))())
+            return Err((|| r::Text::BadRequest("Method is not `GET`").into())())
         }
         if req.headers.Connection() != Some("upgrade") {
-            return Err((|| c.BadRequest().text("Connection header is not `upgrade`"))())
+            return Err((|| r::Text::BadRequest("Connection header is not `upgrade`").into())())
         }
         if req.headers.Upgrade() != Some("websocket") {
-            return Err((|| c.BadRequest().text("Upgrade header is not `websocket`"))())
+            return Err((|| r::Text::BadRequest("Upgrade header is not `websocket`").into())())
         }
         if req.headers.SecWebSocketVersion() != Some("13") {
-            return Err((|| c.BadRequest().text("Sec-WebSocket-Version header is not `13`"))())
+            return Err((|| r::Text::BadRequest("Sec-WebSocket-Version header is not `13`").into())())
         }
 
         let sec_websocket_key = Cow::Owned(req.headers.SecWebSocketKey()
-            .ok_or_else(|| c.BadRequest().text("Sec-WebSocket-Key header is missing"))?
+            .ok_or_else(|| r::Text::BadRequest("Sec-WebSocket-Key header is missing").into())?
             .to_string());
 
         let sec_websocket_protocol = req.headers.SecWebSocketProtocol()
@@ -107,7 +105,6 @@ impl WebSocketContext {
         }
 
         let Self {
-            mut c,
             config,
             on_failed_upgrade,
             selected_protocol,

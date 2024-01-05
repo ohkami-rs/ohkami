@@ -121,6 +121,21 @@ const _: (/* Back */) = {
         }
     }
 
+    impl<F: Fn(&mut Response) + Send + Sync + 'static>
+    IntoFang<fn(&mut Response)> for F {
+        fn into_fang(self) -> Option<Fang> {
+            Some(Fang {
+                id:   self.type_id(),
+                proc: FangProc::Back(BackFang(Arc::new(
+                    move |mut res| {
+                        self(&mut res);
+                        res
+                    }
+                ))),
+            })
+        }
+    }
+
     impl<F: Fn(&Response) + Send + Sync + 'static>
     IntoFang<fn(&Response)> for F {
         fn into_fang(self) -> Option<Fang> {

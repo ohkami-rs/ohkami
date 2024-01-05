@@ -204,8 +204,8 @@ const _: (/* single FromParam and FromRequest items */) = {
 
                         match (from_param_bytes(p1), from_request(req)) {
                             (Ok(p1), Ok(item1)) => {
-                                let res = ;
-                                Box::pin(self(p1, item1))
+                                let res = self(p1, item1);
+                                Box::pin(async move {res.await.respond_to(req)})
                             },
                             (Err(e), _) => __bad_request(e),
                             (_, Err(e)) => __bad_request(e),
@@ -226,7 +226,10 @@ const _: (/* single FromParam and FromRequest items */) = {
                         let p1 = unsafe {req.path.assume_one_param()};
 
                         match (from_param_bytes(p1), from_request::<Item1>(req), from_request::<Item2>(req)) {
-                            (Ok(p1), Ok(item1), Ok(item2)) => Box::pin(self(p1, item1, item2)),
+                            (Ok(p1), Ok(item1), Ok(item2)) => {
+                                let res = self(p1, item1, item2);
+                                Box::pin(async move {res.await.respond_to(req)})
+                            }
                             (Err(e),_,_) => __bad_request(e),
                             (_,Err(e),_) => __bad_request(e),
                             (_,_,Err(e)) => __bad_request(e),
@@ -253,7 +256,10 @@ const _: (/* one FromParam and FromRequest items */) = {
                     let p1 = unsafe {req.path.assume_one_param()};
 
                     match (from_param_bytes(p1), from_request::<Item1>(req)) {
-                        (Ok(p1), Ok(item1)) => Box::pin(self((p1,), item1)),
+                        (Ok(p1), Ok(item1)) => {
+                            let res = self((p1,), item1);
+                            Box::pin(async move {res.await.respond_to(req)})
+                        }
                         (Err(e),_) => __bad_request(e),
                         (_,Err(e)) => __bad_request(e),
                     }
@@ -273,7 +279,10 @@ const _: (/* one FromParam and FromRequest items */) = {
                     let p1 = unsafe {req.path.assume_one_param()};
 
                     match (from_param_bytes(p1), from_request::<Item1>(req), from_request::<Item2>(req)) {
-                        (Ok(p1), Ok(item1), Ok(item2)) => Box::pin(self((p1,), item1, item2)),
+                        (Ok(p1), Ok(item1), Ok(item2)) => {
+                            let res = self((p1,), item1, item2);
+                            Box::pin(async move {res.await.respond_to(req)})
+                        }
                         (Err(e),_,_) => __bad_request(e),
                         (_,Err(e),_) => __bad_request(e),
                         (_,_,Err(e)) => __bad_request(e),
@@ -296,7 +305,10 @@ const _: (/* two PathParams and FromRequest items */) = {
                 let (p1, p2) = unsafe {req.path.assume_two_params()};
 
                 match (from_param_bytes(p1), from_param_bytes(p2), from_request::<Item1>(req)) {
-                    (Ok(p1), Ok(p2), Ok(item1)) => Box::pin(self((p1, p2), item1)),
+                    (Ok(p1), Ok(p2), Ok(item1)) => {
+                        let res = self((p1, p2), item1); 
+                        Box::pin(async move {res.await.respond_to(req)})
+                    }
                     (Err(e),_,_) => __bad_request(e),
                     (_,Err(e),_) => __bad_request(e),
                     (_,_,Err(e)) => __bad_request(e),
@@ -317,7 +329,10 @@ const _: (/* two PathParams and FromRequest items */) = {
                 let (p1, p2) = unsafe {req.path.assume_two_params()};
 
                 match (from_param_bytes(p1), from_param_bytes(p2), from_request::<Item1>(req), from_request::<Item2>(req)) {
-                    (Ok(p1), Ok(p2), Ok(item1), Ok(item2)) => Box::pin(self((p1, p2), item1, item2)),
+                    (Ok(p1), Ok(p2), Ok(item1), Ok(item2)) => {
+                        let res = self((p1, p2), item1, item2);
+                        Box::pin(async move {res.await.respond_to(req)})
+                    }
                     (Err(e),_,_,_) => __bad_request(e),
                     (_,Err(e),_,_) => __bad_request(e),
                     (_,_,Err(e),_) => __bad_request(e),
@@ -337,8 +352,11 @@ const _: (/* requires upgrade to websocket */) = {
     {
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
-                match WebSocketContext::new(c, req) {
-                    Ok(wsc)  => Box::pin(self(wsc)),
+                match WebSocketContext::new(req) {
+                    Ok(wsc)  => {
+                        let res = self(wsc);
+                        Box::pin(async move {res.await.respond_to(req)})
+                    }
                     Err(res) => (|| Box::pin(async {res}))(),
                 }
             }).requires_upgrade()
@@ -354,8 +372,11 @@ const _: (/* requires upgrade to websocket */) = {
             Handler::new(move |req| {
                 let p1 = unsafe {req.path.assume_one_param()};
                 match from_param_bytes(p1) {
-                    Ok(p1) => match WebSocketContext::new(c, req) {
-                        Ok(wsc)  => Box::pin(self(wsc, p1)),
+                    Ok(p1) => match WebSocketContext::new(req) {
+                        Ok(wsc)  => {
+                            let res = self(wsc, p1);
+                            Box::pin(async move {res.await.respond_to(req)})
+                        }
                         Err(res) => (|| Box::pin(async {res}))(),
                     }
                     Err(e) => __bad_request(e),
@@ -372,8 +393,11 @@ const _: (/* requires upgrade to websocket */) = {
             Handler::new(move |req| {
                 let (p1, p2) = unsafe {req.path.assume_two_params()};
                 match (from_param_bytes(p1), from_param_bytes(p2)) {
-                    (Ok(p1), Ok(p2)) => match WebSocketContext::new(c, req) {
-                        Ok(wsc)  => Box::pin(self(wsc, p1, p2)),
+                    (Ok(p1), Ok(p2)) => match WebSocketContext::new(req) {
+                        Ok(wsc)  => {
+                            let res = self(wsc, p1, p2);
+                            Box::pin(async move {res.await.respond_to(req)})
+                        }
                         Err(res) => (|| Box::pin(async {res}))(),
                     }
                     (Err(e),_)|(_,Err(e)) => __bad_request(e),
@@ -390,8 +414,11 @@ const _: (/* requires upgrade to websocket */) = {
             Handler::new(move |req| {
                 let p1 = unsafe {req.path.assume_one_param()};
                 match from_param_bytes(p1) {
-                    Ok(p1) => match WebSocketContext::new(c, req) {
-                        Ok(wsc)  => Box::pin(self(wsc, (p1,))),
+                    Ok(p1) => match WebSocketContext::new(req) {
+                        Ok(wsc)  => {
+                            let res = self(wsc, (p1,));
+                            Box::pin(async move {res.await.respond_to(req)})
+                        }
                         Err(res) => (|| Box::pin(async {res}))(),
                     }
                     Err(e) => __bad_request(e),
@@ -408,8 +435,11 @@ const _: (/* requires upgrade to websocket */) = {
             Handler::new(move |req| {
                 let (p1, p2) = unsafe {req.path.assume_two_params()};
                 match (from_param_bytes(p1), from_param_bytes(p2)) {
-                    (Ok(p1), Ok(p2)) => match WebSocketContext::new(c, req) {
-                        Ok(wsc)  => Box::pin(self(wsc, (p1, p2))),
+                    (Ok(p1), Ok(p2)) => match WebSocketContext::new(req) {
+                        Ok(wsc)  => {
+                            let res = self(wsc, (p1, p2));
+                            Box::pin(async move {res.await.respond_to(req)})
+                        }
                         Err(res) => (|| Box::pin(async {res}))(),
                     }
                     (Err(e),_)|(_,Err(e)) => __bad_request(e),

@@ -2,7 +2,7 @@ use crate::__rt__;
 
 use crate::prelude::*;
 use crate::testing::*;
-use crate::{Fang, IntoFang, http::Status};
+use crate::{Fang, IntoFang, http::Status, response as res, Responder};
 
 
 #[__rt__::test] async fn testing_example_simple() {
@@ -24,8 +24,8 @@ use crate::{Fang, IntoFang, http::Status};
     assert_eq!(res.text(), Some("Hello, world!"));
 }
 
-async fn hello(c: Context) -> Response {
-    c.OK().text("Hello, world!")
+async fn hello() -> impl Responder {
+    res::Text::OK("Hello, world!")
 }
 
 
@@ -74,18 +74,29 @@ async fn hello(c: Context) -> Response {
     );
 }
 
+
 struct SetServerHeader;
 impl IntoFang for SetServerHeader {
     fn into_fang(self) -> Fang {
-        Fang(|c: &mut Context| {
-            c.set_headers()
+        Fang(|res: &mut Response| {
+            res.headers.set()
                 .Server("ohkami");
         })
     }
 }
 
-async fn health_check(c: Context) -> Response {
-    c.NoContent()
+enum APIError {
+    TODO,
+}
+impl Responder for APIError {
+    fn respond_to(self, _: &Request) -> Response {
+        res::Empty::NotImplemented().into()
+    }
+}
+
+
+async fn health_check() -> impl Responder {
+    res::Empty::NoContent()
 }
 
 #[derive(serde::Serialize)]
@@ -94,13 +105,13 @@ struct User {
     age:  u8,
 }
 
-async fn get_user(c: Context, id: usize) -> Response {
+async fn get_user(id: usize) -> Result<res::JSON<User>, APIError> {
     match id {
-        42 => c.OK().json(User {
+        42 => Ok(res::JSON::OK(User {
             name: format!("kanarus"),
             age:  20,
-        }),
-        _ => c.NotFound()
+        })),
+        _ => Err(APIError::TODO)
     }
 }
 
@@ -123,8 +134,8 @@ impl<'req> crate::FromRequest<'req> for CreateUser<'req> {
         }
     }
 }
-async fn create_user<'h>(c: Context, payload: CreateUser<'h>) -> Response {
-    c.Created().json(User {
+async fn create_user(payload: CreateUser<'_>) -> res::JSON<User> {
+    res::JSON::Created(User {
         name: payload.name.to_string(),
         age:  payload.age.unwrap_or(0),
     })

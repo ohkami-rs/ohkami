@@ -1,6 +1,6 @@
 use std::{sync::Arc, pin::Pin};
 use super::{Ohkami};
-use crate::{__rt__, Request, Context};
+use crate::{__rt__, Request, response as r, Response};
 
 #[cfg(feature="rt_async-std")] use crate::__rt__::StreamExt;
 #[cfg(feature="websocket")]    use crate::websocket::reserve_upgrade;
@@ -87,9 +87,9 @@ impl Ohkami {
                     req.as_mut().read(stream).await;
 
                     #[cfg(not(feature="websocket"))]
-                    let res = router.handle(Context::new(), req.get_mut()).await;
+                    let res = router.handle(req.get_mut()).await;
                     #[cfg(feature="websocket")]
-                    let (res, upgrade_id) = router.handle(Context::new(), req.get_mut()).await;
+                    let (res, upgrade_id) = router.handle(req.get_mut()).await;
 
                     res.send(stream).await;
 
@@ -110,7 +110,7 @@ impl Ohkami {
 
                 Err(e) => (|| async {
                     println!("Fatal error: {e}");
-                    let res = Context::new().InternalServerError();
+                    let res: Response = r::Empty::InternalServerError().into();
                     res.send(&mut *stream.lock().await).await
                 })().await,
             }
