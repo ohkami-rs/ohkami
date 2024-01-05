@@ -51,7 +51,7 @@ pub(super) fn Query(data: TokenStream) -> Result<TokenStream> {
         quote!{
             impl<#impl_lifetime> ::ohkami::FromRequest<#impl_lifetime> for #struct_name<#struct_lifetime> {
                 type Error = ::std::borrow::Cow<'static, str>;
-                fn parse(req: &#impl_lifetime ::ohkami::Request) -> ::std::result::Result<Self, ::std::borrow::Cow<'static, str>> {
+                #[inline] fn from_request(req: &#impl_lifetime ::ohkami::Request) -> ::std::result::Result<Self, ::std::borrow::Cow<'static, str>> {
                     ::std::result::Result::Ok(Self {
                         #( #fields )*
                     })

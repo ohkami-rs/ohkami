@@ -7,11 +7,11 @@
 //! ```ignore
 //! use ohkami::prelude::*;
 //! 
-//! async fn health_check(c: Context) -> Response {
-//!     c.NoContent()
+//! async fn health_check() -> impl IntoResponse {
+//!     http::Status::NoContent
 //! }
 //! 
-//! async fn hello(c: Context, name: String) -> Response {
+//! async fn hello(name: String) -> Response {
 //!     c.OK().text(format!("Hello, {name}!"))
 //! }
 //! 
@@ -37,9 +37,9 @@
 //!     )).howl("localhost:5000").await
 //! }
 //! 
-//! async fn get_user(c: Context,
+//! async fn get_user(
 //!     id: usize /* <-- path param */
-//! ) -> Response { c.OK() }
+//! ) -> http::Status { http::Status::OK }
 //! ```
 //! Use tuple like `(verion, id): (u8, usize),` for multiple path params.
 //! 
@@ -54,9 +54,9 @@
 //! struct SearchCondition {
 //!     q: String,
 //! }
-//! async fn search(c: Context,
+//! async fn search(
 //!     condition: SearchCondition
-//! ) -> Response { c.OK() }
+//! ) -> impl IntoResponse { http::Status::OK }
 //! 
 //! #[utils::Payload(JSON)]
 //! #[derive(serde::Deserialize)]
@@ -65,9 +65,9 @@
 //!     password: String,
 //! }
 //! 
-//! async fn create_user(c: Context,
+//! async fn create_user(
 //!     body: CreateUserRequest
-//! ) -> Response { c.Created() }
+//! ) -> impl IntoResponse { http::Status::Created }
 //! ```
 //! `#[Query]`, `#[Payload( 〜 )]` implements `FromRequest` trait for the struct.
 //! 
@@ -85,8 +85,8 @@
 //! struct AppendHeaders;
 //! impl IntoFang for AppendHeaders {
 //!     fn into_fang(self) -> Fang {
-//!         Fang(|c: &mut Context| {
-//!             c.set_headers()
+//!         Fang(|res: &mut Response| {
+//!             res.headers.set()
 //!                 .Server("ohkami");
 //!         })
 //!     }
@@ -95,9 +95,8 @@
 //! struct Log;
 //! impl IntoFang for Log {
 //!     fn into_fang(self) -> Fang {
-//!         Fang(|res: Response| {
+//!         Fang(|res: &Response| {
 //!             println!("{res:?}");
-//!             res
 //!         })
 //!     }
 //! }
@@ -140,8 +139,8 @@
 //! 
 //! fn hello_ohkami() -> Ohkami {
 //!     Ohkami::new((
-//!         "/hello".GET(|c: Context| async move {
-//!             c.OK().text("Hello, world!")
+//!         "/hello".GET(|| async move {
+//!             http::Text::OK("Hello, world!")
 //!         })
 //!     ))
 //! }
@@ -267,7 +266,7 @@ pub use layer3_fang_handler::{Route, Fang};
 pub use layer5_ohkami      ::{Ohkami, IntoFang};
 
 pub mod prelude {
-    pub use crate::{Request, Response, Route, Ohkami, Fang, IntoFang};
+    pub use crate::{Request, Response, Route, Ohkami, Fang, IntoFang, IntoResponse, http};
 }
 
 pub mod http {

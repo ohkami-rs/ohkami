@@ -122,7 +122,7 @@ mod internal {
     use serde::Deserialize;
 
     use super::JWT;
-    use crate::{__rt__::test, IntoResponse};
+    use crate::{__rt__::test};
 
     #[test] async fn test_jwt_issue() {
         /* NOTE: 

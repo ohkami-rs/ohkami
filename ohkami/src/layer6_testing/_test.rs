@@ -48,7 +48,7 @@ async fn hello() -> impl IntoResponse {
     assert_eq!(res.header("Server").unwrap(), "ohkami");
 
     let res = testing_example.oneshot(TestRequest::GET("/users/100")).await;
-    assert_eq!(res.status(), Status::NotFound);
+    assert_eq!(res.status(), Status::NotImplemented);
     assert_eq!(res.header("Server").unwrap(),  "ohkami");
 
     let res = testing_example.oneshot(TestRequest::GET("/users/42")).await;

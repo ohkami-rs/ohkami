@@ -233,10 +233,6 @@ impl Headers {
         }
     }
 
-    pub(crate) fn clone(&self) -> Self {
-        Self { values: self.values.clone(), size: self.size }
-    }
-
     pub(crate) const fn iter(&self) -> impl Iterator<Item = (&str, &str)> {
         struct Iter<'i> {
             map: &'i Headers,

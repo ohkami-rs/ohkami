@@ -16,19 +16,6 @@ use crate::{
 };
 
 
-/// # HTTP Response
-/// 
-/// Generated from `Context`
-/// 
-/// ```
-/// use ohkami::prelude::*;
-/// 
-/// async fn hello(c: Context) -> Response {
-///     c
-///         .OK()           // generate Response
-///         .text("Hello!") // set content
-/// }
-/// ```
 pub struct Response {
     pub status:         Status,
     pub headers:        server_header::Headers,

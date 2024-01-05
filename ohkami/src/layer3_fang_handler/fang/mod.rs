@@ -44,18 +44,13 @@ impl Fang {
 /// 
 /// ## available `f` signatures
 /// 
-/// <br/>
-/// 
-/// #### To make *back fang*：
-/// - `Fn(&Response)`
+/// #### To make a *back fang*：
+/// - `Fn({&/&mut Response})`
 /// - `Fn(Response) -> Response`
 /// 
-/// <br/>
-/// 
-/// #### To make *front fang*：
-/// - `Fn( {&/&mut Context} )`
-/// - `Fn( {&/&mut Request} )`
-/// - `Fn( {&/&mut Context}, {&/&mut Request} )`
+/// #### To make a *front fang*：
+/// - `Fn()`
+/// - `Fn({&/&mut Request})`
 /// - `_ -> Result<(), Response>` version of them
 /// 
 /// <br/>
@@ -68,8 +63,8 @@ impl Fang {
 /// struct AppendHeader;
 /// impl IntoFang for AppendHeader {
 ///     fn into_fang(self) -> Fang {
-///         Fang(|c: &mut Context| {
-///             c.set_headers()
+///         Fang(|res: &mut Response| {
+///             res.headers.set()
 ///                 .Server("ohkami");
 ///         })
 ///     }

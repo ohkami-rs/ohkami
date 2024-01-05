@@ -25,7 +25,7 @@ use crate::{
 /// struct Auth;
 /// impl IntoFang for Auth {
 ///     fn into_fang(self) -> Fang {
-///         Fang(|c: &mut Context, req: &mut Request| {
+///         Fang(|req: &Request| {
 ///             // Do something...
 /// 
 ///             Ok(())
@@ -33,20 +33,46 @@ use crate::{
 ///     }
 /// }
 /// 
-/// async fn health_check(c: Context) -> Response {
-///     todo!()
+/// #[derive(serde::Serialize)]
+/// struct User {
+///     id:   usize,
+///     name: String,
+///     age:  Option<usize>,
 /// }
 /// 
-/// async fn create_user(c: Context) -> Response {
-///     todo!()
+/// enum APIError {
+///     UserNotFound
+/// }
+/// impl IntoResponse for APIError {
+///     fn into_response(self) -> Response {
+///         match self {
+///             Self::UserNotFound => Response::InternalServerError()
+///         }
+///     }
 /// }
 /// 
-/// async fn get_user_by_id(c: Context) -> Response {
-///     todo!()
+/// async fn health_check() -> impl IntoResponse {
+///     http::Status::NoContent
 /// }
 /// 
-/// async fn update_user(c: Context) -> Response {
-///     todo!()
+/// async fn create_user() -> http::JSON<User> {
+///     http::JSON::Created(User {
+///         id:   42,
+///         name: String::from("ohkami"),
+///         age:  None,
+///     })
+/// }
+/// 
+/// async fn get_user_by_id(id: usize) -> Result<http::JSON<User>, APIError> {
+///     Ok(http::JSON::OK(User {
+///         id,
+///         name: String::from("ohkami"),
+///         age:  Some(2),
+///     }))
+/// }
+/// 
+/// async fn update_user(id: usize) -> impl IntoResponse {
+///     http::Status::OK
 /// }
 /// 
 /// fn my_ohkami() -> Ohkami {
@@ -73,22 +99,23 @@ use crate::{
 /// 
 /// ## fang schema
 /// #### To make *back fang*：
-/// - `Fn(&Response)`
+/// - `Fn({&/&mut Response})`
 /// - `Fn(Response) -> Response`
 /// 
 /// #### To make *front fang*：
-/// - `Fn( {&/&mut Context} )`
-/// - `Fn( {&/&mut Request} )`
-/// - `Fn( {&/&mut Context}, {&/&mut Request} )`
+/// - `Fn()`
+/// - `Fn({&/&mut Request})`
 /// - `_ -> Result<(), Response>` version of them
 /// 
-/// ## handler schema
-/// - async (`Context`) -> `Response`
-/// - async (`Context`, {path_params}) -> `Response`
-/// - async (`Context`, {`FromRequest` values...}) -> `Response`
-/// - async (`Context`, {path_params}, {`FromRequest` values...}) -> `Response`
+/// <br/>
 /// 
-/// #### path_param：
+/// ## handler schema
+/// - async () -> `Response`
+/// - async ({path_params}) -> `Response`
+/// - async ({`FromRequest` values...}) -> `Response`
+/// - async ({path_params}, {`FromRequest` values...}) -> `Response`
+/// 
+/// #### path_params：
 /// A tuple of types that implement `FromParam` trait.\
 /// `String`, `&str`, and primitive integers are splecially allowed to be used without tuple：
 /// 
@@ -103,11 +130,11 @@ use crate::{
 ///     }
 /// }
 /// 
-/// async fn handler_1(c: Context, param: (MyParam,)) -> Response {
+/// async fn handler_1(param: (MyParam,)) -> Response {
 ///     todo!()
 /// }
 /// 
-/// async fn handler_2(c: Context, str_param: &str) -> Response {
+/// async fn handler_2(str_param: &str) -> Response {
 ///     todo!()
 /// }
 /// ```
