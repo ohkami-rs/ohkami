@@ -249,7 +249,6 @@ mod __rt__ {
 
 mod layer0_lib;
 mod layer1_req_res;
-mod layer2_context;
 mod layer3_fang_handler;
 mod layer4_router;
 mod layer5_ohkami;
@@ -263,17 +262,20 @@ mod x_websocket;
 
 /*===== visibility managements =====*/
 
-pub use layer1_req_res     ::{Request, Response, FromRequest, FromParam};
-pub use layer2_context     ::Context;
+pub use layer1_req_res     ::{Request, Response, FromRequest, FromParam, Responder};
 pub use layer3_fang_handler::{Route, Fang};
 pub use layer5_ohkami      ::{Ohkami, IntoFang};
 
 pub mod prelude {
-    pub use crate::{Request, Response, Context, Route, Ohkami, Fang, IntoFang};
+    pub use crate::{Request, Response, Route, Ohkami, Fang, IntoFang, Responder};
 }
 
 pub mod http {
     pub use crate::layer0_lib::{Status, Method};
+}
+
+pub mod response {
+    pub use crate::layer1_req_res::{JSON, Text, HTML, Redirect, Empty};
 }
 
 pub mod utils {

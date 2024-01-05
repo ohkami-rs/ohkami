@@ -12,7 +12,7 @@ pub struct Headers {
 pub struct SetHeaders<'set>(
     &'set mut Headers
 ); impl Headers {
-    #[inline(always)] pub(crate) fn set(&mut self) -> SetHeaders<'_> {
+    #[inline(always)] pub fn set(&mut self) -> SetHeaders<'_> {
         SetHeaders(self)
     }
 }

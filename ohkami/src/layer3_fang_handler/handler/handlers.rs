@@ -77,14 +77,20 @@ macro_rules! Route {
     use std::borrow::Cow;
     use serde::{Serialize, Deserialize};
     use super::{Handlers, Route};
-    use crate::{
-        Context,
-        Response,
-        layer1_req_res::FromRequest,
-    };
+    use crate::{response as r, FromRequest, Responder, Response};
 
-    async fn health_check(c: Context) -> Response {
-        c.NoContent()
+
+    enum APIError {
+        DBError,
+    }
+    impl Responder for APIError {
+        fn respond_to(self, _: &crate::Request) -> crate::Response {
+            Response::InternalServerError()
+        }
+    }
+
+    async fn health_check() -> r::Empty {
+        r::Empty::NoContent()
     }
 
     #[derive(Serialize)]
@@ -95,17 +101,21 @@ macro_rules! Route {
     }
 
     mod mock {
-        pub async fn authenticate() -> Result<(), std::io::Error> {
+        use super::APIError;
+
+        pub async fn authenticate() -> Result<(), APIError> {
             Ok(())
         }
 
         pub const DB: __::Database = __::Database; mod __ {
+            use super::APIError;
+
             pub struct Database;
             impl Database {
-                pub async fn insert_returning_id(&self, Model: impl serde::Deserialize<'_>) -> Result<usize, std::io::Error> {
+                pub async fn insert_returning_id(&self, Model: impl serde::Deserialize<'_>) -> Result<usize, APIError> {
                     Ok(42)
                 }
-                pub async fn update_returning_id(&self, Model: impl serde::Deserialize<'_>) -> Result<usize, std::io::Error> {
+                pub async fn update_returning_id(&self, Model: impl serde::Deserialize<'_>) -> Result<usize, APIError> {
                     Ok(24)
                 }
             }
@@ -127,22 +137,18 @@ macro_rules! Route {
         }
     }
 
-    async fn create_user<'req>(c: Context, payload: CreateUser<'req>) -> Response {
+    async fn create_user<'req>(payload: CreateUser<'req>) -> Result<r::JSON<User>, APIError> {
         let CreateUser { name, password } = payload;
 
-        if let Err(_) = mock::authenticate().await {
-            return c.Unauthorized()
-        }
+        mock::authenticate().await?;
 
-        let Ok(id) = mock::DB.insert_returning_id(CreateUser{ name, password }).await else {
-            return c.InternalServerError();
-        };
+        let id = mock::DB.insert_returning_id(CreateUser{ name, password }).await?;
 
-        c.Created().json(User {
+        Ok(r::JSON::Created(User {
             id,
             name: name.to_string(),
             password: password.to_string(),
-        })
+        }))
     }
 
     #[derive(Deserialize)]
@@ -160,16 +166,11 @@ macro_rules! Route {
         }
     }
 
-    async fn update_user<'req>(c: Context, body: UpdateUser<'req>) -> Response {
-        if let Err(_) = mock::authenticate().await {
-            return c.Unauthorized()
-        }
+    async fn update_user<'req>(body: UpdateUser<'req>) -> Result<r::Empty, APIError> {
+        mock::authenticate().await?;
+        mock::DB.update_returning_id(body).await?;
 
-        if let Err(_) = mock::DB.update_returning_id(body).await {
-            return c.InternalServerError();
-        };
-
-        c.NoContent()
+        Ok(r::Empty::NoContent())
     }
 
 

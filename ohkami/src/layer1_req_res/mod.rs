@@ -4,11 +4,10 @@ mod response; pub use response::*;
 
 #[cfg(test)] #[allow(unused)] mod __ {
     use serde::Serialize;
-    use crate::Context;
-    use super::Response;
+    use crate::response;
 
-    fn handler_1(mut c: Context) -> Response {
-        c.NoContent()
+    fn handler_1() -> response::Empty {
+        response::Empty::NoContent()
     }
 
     #[derive(Serialize)]
@@ -16,15 +15,15 @@ mod response; pub use response::*;
         value: usize
     }
     impl Length {
-        fn new() -> Result<Self, std::io::Error> {
+        fn new() -> Result<Self, LengthError> {
             Ok(Self { value: 42 })
         }
     }
-    fn handler_2(mut c: Context) -> Response {
-        let Ok(length) = Length::new() else {
-            return c.InternalServerError().text("got error in I/O")
-        };
-
-        c.Created().json(length)
+    enum LengthError {
+        TODO,
+    }
+    fn handler_2() -> Result<response::JSON<Length>, LengthError> {
+        let length = Length::new()?;
+        Ok(response::JSON::Created(length))
     }
 }

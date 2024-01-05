@@ -1,7 +1,7 @@
 mod into_fang; pub use into_fang::IntoFang;
 
 use std::{any::TypeId, sync::Arc};
-use crate::{Context, Request, Response};
+use crate::{Request, Response};
 
 
 #[derive(Clone)]
@@ -16,7 +16,7 @@ pub enum FangProc {
 }
 #[derive(Clone)]
 pub struct FrontFang(pub(crate) Arc<dyn
-    Fn(&mut Context, &mut Request) -> Result<(), Response>
+    Fn(&mut Request) -> Result<(), Response>
     + Send
     + Sync
     + 'static

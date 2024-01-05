@@ -76,23 +76,25 @@ impl RadixRouter {
             Method::HEAD => {
                 let (front, back) = self.HEADfangs;
 
-                for ff in front {
-                    if let Err(err_res) = ff.0(&mut c, req) {
-                        return __no_upgrade(err_res)
+                let mut res = 'res: {
+                    for ff in front {
+                        if let Err(err_res) = ff.0(&mut c, req) {
+                            break 'res err_res
+                        }
                     }
-                }
 
-                let target = match self.GET.search(&mut c, req/*.path_bytes()*/) {
-                    Ok(Some(node)) => node,
-                    Ok(None)       => return __no_upgrade(c.NotFound()),
-                    Err(err_res)   => return __no_upgrade(err_res),
-                };
-                
-                let Response { headers, .. } = target.handle_discarding_upgrade(c, req).await;
-                let mut res = Response {
-                    headers,
-                    status:  Status::NoContent,
-                    content: None,
+                    let target = match self.GET.search(&mut c, req/*.path_bytes()*/) {
+                        Ok(Some(node)) => node,
+                        Ok(None)       => break 'res c.NotFound(),
+                        Err(err_res)   => break 'res err_res,
+                    };
+
+                    let Response { headers, .. } = target.handle_discarding_upgrade(c, req).await;
+                    Response {
+                        headers,
+                        status:  Status::NoContent,
+                        content: None,
+                    }
                 };
 
                 for bf in back {
@@ -105,13 +107,14 @@ impl RadixRouter {
             Method::OPTIONS => {
                 let (front, back) = self.OPTIONSfangs;
 
-                for ff in front {
-                    if let Err(err_res) = ff.0(&mut c, req) {
-                        return __no_upgrade(err_res);
+                let mut res = 'res: {
+                    for ff in front {
+                        if let Err(err_res) = ff.0(&mut c, req) {
+                            break 'res err_res
+                        }
                     }
-                }
-
-                let mut res = c.NoContent();
+                    c.NoContent()
+                };
 
                 for bf in back {
                     res = bf.0(res)
@@ -121,13 +124,11 @@ impl RadixRouter {
             }
         };
 
-        let target = match search_result {
-            Ok(Some(node)) => node,
-            Ok(None)       => return __no_upgrade(c.NotFound()),
-            Err(err_res)   => return __no_upgrade(err_res),
-        };
-
-        target.handle(c, req).await
+        match search_result {
+            Ok(Some(node)) => node.handle(c, req).await,
+            Ok(None)       => __no_upgrade(c.NotFound()),
+            Err(err_res)   => __no_upgrade(err_res),
+        }
     }
 }
 

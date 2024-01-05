@@ -206,7 +206,7 @@ mod internal {
         async fn get_profile(c: Context) -> Response {
             let r = &mut *repository().await.lock().await;
 
-            let jwt_payload = c.get::<MyJWTPayload>()
+            let jwt_payload = c.stored::<MyJWTPayload>()
                 .ok_or_else(|| c.InternalServerError())?;
 
             let user = r.get(&jwt_payload.user_id)

@@ -1,5 +1,5 @@
 use std::pin::Pin;
-use super::{Request, METADATA_SIZE, Path, QueryParams};
+use super::{Request, METADATA_SIZE, Path, QueryParams, Store};
 use crate::{layer0_lib::{Slice, Method, CowSlice, client_header}};
 
 macro_rules! assert_parse {
@@ -60,6 +60,8 @@ fn metadataize(input: &str) -> [u8; METADATA_SIZE] {
             (ch::AcceptEncoding, "gzip, deflate"),
         ]),
         payload: None,
+        store:      Store::new(),
+        upgrade_id: None,
     });
 
 
@@ -88,6 +90,8 @@ fn metadataize(input: &str) -> [u8; METADATA_SIZE] {
         payload: Some(CowSlice::Ref(unsafe {
             Slice::from_bytes(br#"{"name":"kanarus","age":20}"#)
         })),
+        store:      Store::new(),
+        upgrade_id: None,
     });
 
 
@@ -127,5 +131,7 @@ fn metadataize(input: &str) -> [u8; METADATA_SIZE] {
             (ch::ContentLength,  "43"),
         ]),
         payload: Some(CowSlice::Own(Vec::from("first_name=John&last_name=Doe&action=Submit"))),
+        store:      Store::new(),
+        upgrade_id: None,
     });
 }
