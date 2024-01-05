@@ -53,9 +53,9 @@ impl Ohkami {
                 req.as_mut().read(&mut stream).await;
 
                 #[cfg(not(feature="websocket"))]
-                let res = router.handle(Context::new(), req.get_mut()).await;
+                let res = router.handle(req.get_mut()).await;
                 #[cfg(feature="websocket")]
-                let (res, upgrade_id) = router.handle(Context::new(), req.get_mut()).await;
+                let (res, upgrade_id) = router.handle(req.get_mut()).await;
 
                 res.send(&mut stream).await;
 
