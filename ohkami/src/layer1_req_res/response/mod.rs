@@ -100,7 +100,7 @@ impl Response {
 
 impl Response {
     pub fn drop_content(mut self) -> Self {
-        self.content.take();
+        self.content = None;
         self.headers.set()
             .ContentType(None)
             .ContentLength(None);

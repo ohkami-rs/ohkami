@@ -97,7 +97,7 @@ impl RadixRouter {
                 };
 
                 for bf in back {
-                    res = bf.0(res)
+                    res = bf.0(req, res)
                 }
 
                 return __no_upgrade(res);
@@ -116,7 +116,7 @@ impl RadixRouter {
                 };
 
                 for bf in back {
-                    res = bf.0(res)
+                    res = bf.0(req, res)
                 }
                 
                 return __no_upgrade(res);
@@ -144,7 +144,7 @@ impl Node {
 
                 let mut res = (handler.proc)(req).await;
                 for b in self.back {
-                    res = b.0(res);
+                    res = b.0(req, res);
                 }
 
                 #[cfg(feature="websocket")]
@@ -161,7 +161,7 @@ impl Node {
             Some(handler) => {
                 let mut res = (handler.proc)(req).await;
                 for b in self.back {
-                    res = b.0(res);
+                    res = b.0(req, res);
                 }
                 res
             }

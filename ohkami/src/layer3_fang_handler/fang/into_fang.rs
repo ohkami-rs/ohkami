@@ -113,7 +113,7 @@ const _: (/* Back */) = {
             Some(Fang {
                 id:   self.type_id(),
                 proc: FangProc::Back(BackFang(Arc::new(
-                    move |res| {
+                    move |_, res| {
                         self(res)
                     }
                 ))),
@@ -127,7 +127,7 @@ const _: (/* Back */) = {
             Some(Fang {
                 id:   self.type_id(),
                 proc: FangProc::Back(BackFang(Arc::new(
-                    move |mut res| {
+                    move |_, mut res| {
                         self(&mut res);
                         res
                     }
@@ -142,8 +142,52 @@ const _: (/* Back */) = {
             Some(Fang {
                 id:   self.type_id(),
                 proc: FangProc::Back(BackFang(Arc::new(
-                    move |res| {
+                    move |_, res| {
                         self(&res);
+                        res
+                    }
+                ))),
+            })
+        }
+    }
+
+    impl<F: Fn(&Request, Response)->Response + Send + Sync + 'static>
+    IntoFang<fn(&Request, Response)->Response> for F {
+        fn into_fang(self) -> Option<Fang> {
+            Some(Fang {
+                id:   self.type_id(),
+                proc: FangProc::Back(BackFang(Arc::new(
+                    move |req, res| {
+                        self(req, res)
+                    }
+                ))),
+            })
+        }
+    }
+
+    impl<F: Fn(&Request, &mut Response) + Send + Sync + 'static>
+    IntoFang<fn(&Request, &mut Response)> for F {
+        fn into_fang(self) -> Option<Fang> {
+            Some(Fang {
+                id:   self.type_id(),
+                proc: FangProc::Back(BackFang(Arc::new(
+                    move |req, mut res| {
+                        self(req, &mut res);
+                        res
+                    }
+                ))),
+            })
+        }
+    }
+
+    impl<F: Fn(&Request, &Response) + Send + Sync + 'static>
+    IntoFang<fn(&Request, &Response)> for F {
+        fn into_fang(self) -> Option<Fang> {
+            Some(Fang {
+                id:   self.type_id(),
+                proc: FangProc::Back(BackFang(Arc::new(
+                    move |req, res| {
+                        self(req, &res);
                         res
                     }
                 ))),

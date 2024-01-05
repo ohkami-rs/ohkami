@@ -262,7 +262,7 @@ mod x_websocket;
 
 /*===== visibility managements =====*/
 
-pub use layer1_req_res     ::{Request, Response, FromRequest, FromParam, Responder};
+pub use layer1_req_res     ::{Request, Response, FromRequest, FromParam, Responder, Memory};
 pub use layer3_fang_handler::{Route, Fang};
 pub use layer5_ohkami      ::{Ohkami, IntoFang};
 
@@ -271,7 +271,7 @@ pub mod prelude {
 }
 
 pub mod http {
-    pub use crate::layer0_lib::{Status, Method};
+    pub use crate::layer0_lib::{Status, Method, append};
 }
 
 pub mod response {
@@ -280,7 +280,6 @@ pub mod response {
 
 pub mod utils {
     pub use crate::x_utils       ::{now, CORS, JWT};
-    pub use crate::layer0_lib    ::append;
     pub use crate::layer1_req_res::File;
     pub use ohkami_macros        ::{Query, Payload};
 }
@@ -314,8 +313,8 @@ pub mod __internal__ {
     impl IntoFang for AppendHeader {
         //const METHODS: &'static [Method] = &[Method::GET];
         fn into_fang(self) -> Fang {
-            Fang(|c: &mut Context, _: &mut Request| {
-                c.set_headers().Server("ohkami");
+            Fang(|res: &mut Response| {
+                res.headers.set().Server("ohkami");
             })
         }
     }
@@ -332,12 +331,12 @@ pub mod __internal__ {
     }
 
 // handlers
-    async fn health_check(c: Context) -> Response {
-        c.NoContent()
+    async fn health_check() -> response::Empty {
+        response::Empty::NoContent()
     }
 
-    async fn hello(c: Context, name: &str) -> Response {
-        c.OK().text(format!("Hello, {name}!"))
+    async fn hello(name: &str) -> response::Text {
+        response::Text::OK(format!("Hello, {name}!"))
     }
 
 // run
@@ -346,8 +345,8 @@ pub mod __internal__ {
         AppendHeader,
         utils::CORS("https://kanarusblog.software")
             .AllowCredentials()
-            .AllowHeaders(["Content-Type"])
-            .AllowMethods([Method::GET, Method::PUT, Method::POST, Method::DELETE])
+            .AllowHeaders(&["Content-Type"])
+            .AllowMethods(&[Method::GET, Method::PUT, Method::POST, Method::DELETE])
             .MaxAge(3600)
     ), (
         "/hc".

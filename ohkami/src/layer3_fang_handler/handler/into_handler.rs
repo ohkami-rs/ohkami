@@ -34,7 +34,7 @@ pub trait IntoHandler<Args> {
 #[inline(always)] fn from_request<'fr, 'req, R: FromRequest<'fr>>(
     req: &'req Request
 ) -> Result<R, <R as FromRequest<'fr>>::Error> {
-    <R as FromRequest>::parse(unsafe {
+    <R as FromRequest>::from_request(unsafe {
         std::mem::transmute::<&'req _, &'fr _>(req) //
     })
 }

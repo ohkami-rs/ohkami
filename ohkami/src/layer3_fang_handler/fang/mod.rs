@@ -23,7 +23,7 @@ pub struct FrontFang(pub(crate) Arc<dyn
 >);
 #[derive(Clone)]
 pub struct BackFang(pub(crate) Arc<dyn
-    Fn(Response) -> Response
+    Fn(&Request, Response) -> Response
     + Send
     + Sync
     + 'static

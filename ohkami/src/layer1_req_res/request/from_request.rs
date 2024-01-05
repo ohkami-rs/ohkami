@@ -22,7 +22,7 @@ use crate::{Request};
 /// 
 /// impl ohkami::FromRequest<'_> for HasPayload {
 ///     type Error = std::convert::Infallible;
-///     fn parse(req: &Request) -> Result<Self, Self::Error> {
+///     fn from_request(req: &Request) -> Result<Self, Self::Error> {
 ///         Ok(Self(
 ///             req.payload().is_some()
 ///         ))
@@ -31,7 +31,7 @@ use crate::{Request};
 /// ```
 pub trait FromRequest<'req>: Sized {
     type Error: std::fmt::Display + 'static;
-    fn parse(req: &'req Request) -> Result<Self, Self::Error>;
+    fn from_request(req: &'req Request) -> Result<Self, Self::Error>;
 }
 
 pub trait FromParam<'p>: Sized {

@@ -109,7 +109,7 @@ impl Into<Response> for Text {
         let mut headers = server_header::Headers::new();
         headers.set()
             .ContentType("text/plain; charset=UTF-8")
-            .ContentLength(self.content.len().to_string());
+            .ContentLength(content.len().to_string());
 
         Response {
             headers,
@@ -161,7 +161,7 @@ impl Into<Response> for HTML {
         let mut headers = server_header::Headers::new();
         headers.set()
             .ContentType("text/html; charset=UTF-8")
-            .ContentLength(self.content.len().to_string());
+            .ContentLength(content.len().to_string());
 
         Response {
             headers,

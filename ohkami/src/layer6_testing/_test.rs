@@ -124,7 +124,7 @@ struct CreateUser<'c> {
 // Can't use `#[Payload(JSON)]` here becasue this test is within `ohkami`
 impl<'req> crate::FromRequest<'req> for CreateUser<'req> {
     type Error = ::std::borrow::Cow<'static, str>;
-    fn parse(req: &'req Request) -> Result<Self, ::std::borrow::Cow<'static, str>> {
+    fn from_request(req: &'req Request) -> Result<Self, ::std::borrow::Cow<'static, str>> {
         let Some(payload) = req.payload()
             else {return Err(::std::borrow::Cow::Borrowed("Expected a payload"))};
         match req.headers.ContentType() {

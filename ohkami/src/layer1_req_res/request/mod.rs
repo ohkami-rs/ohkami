@@ -1,8 +1,19 @@
-mod path;    pub(crate) use path::Path;
-mod queries; pub(crate) use queries::QueryParams;
-mod store;   pub(crate) use store::Store;
-mod parse_payload; pub use parse_payload::*;
-mod from_request;  pub use from_request::*;
+mod path;
+pub(crate) use path::Path;
+
+mod queries;
+pub(crate) use queries::QueryParams;
+
+mod store;
+pub(crate) use store::Store;
+pub use store::Memory;
+
+mod parse_payload;
+pub use parse_payload::*;
+
+mod from_request; 
+pub use from_request::*;
+
 #[cfg(test)] mod _test_parse_payload;
 #[cfg(test)] mod _test_parse;
 

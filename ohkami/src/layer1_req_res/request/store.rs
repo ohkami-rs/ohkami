@@ -14,7 +14,6 @@ pub struct Store(
         >
     >>
 );
-
 #[derive(Default)]
 struct TypeIDHasger(u64);
 impl Hasher for TypeIDHasger {
@@ -30,14 +29,28 @@ impl Hasher for TypeIDHasger {
     }
 }
 
+pub struct Memory<'req, Value: Send + Sync + 'static>(&'req Value);
+impl<'req, Value: Send + Sync + 'static> super::FromRequest<'req> for Memory<'req, Value> {
+    type Error = &'static str;
+    #[inline] fn from_request(req: &'req crate::Request) -> Result<Self, Self::Error> {
+        req.memorized::<Value>()
+            .map(Memory)
+            .ok_or_else(|| "Something went wrong")
+    }
+}
+impl<'req, Value: Send + Sync + 'static> std::ops::Deref for Memory<'req, Value> {
+    type Target = &'req Value;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
 
 impl Store {
     pub(super) fn new() -> Self {
         Self(None)
     }
-}
 
-impl Store {
     pub fn insert<Value: Send + Sync + 'static>(&mut self, value: Value) {
         self.0.get_or_insert_with(|| Box::new(HashMap::default()))
             .insert(TypeId::of::<Value>(), Box::new(value));

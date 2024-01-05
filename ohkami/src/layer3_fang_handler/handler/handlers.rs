@@ -128,7 +128,7 @@ macro_rules! Route {
         password: &'c str,
     } impl<'req> FromRequest<'req> for CreateUser<'req> {
         type Error = Cow<'static, str>;
-        fn parse(req: &'req crate::Request) -> Result<Self, ::std::borrow::Cow<'static, str>> {
+        fn from_request(req: &'req crate::Request) -> Result<Self, ::std::borrow::Cow<'static, str>> {
             let payload = req.payload().ok_or_else(|| Cow::Borrowed("Payload expected"))?;
             match req.headers.ContentType() {
                 Some("application/json") => serde_json::from_slice(payload).map_err(|e| Cow::Owned(e.to_string())),
@@ -157,7 +157,7 @@ macro_rules! Route {
         password: Option<&'u str>,
     } impl<'req> FromRequest<'req> for UpdateUser<'req> {
         type Error = Cow<'static, str>;
-        fn parse(req: &'req crate::Request) -> Result<Self, ::std::borrow::Cow<'static, str>> {
+        fn from_request(req: &'req crate::Request) -> Result<Self, ::std::borrow::Cow<'static, str>> {
             let payload = req.payload().ok_or_else(|| Cow::Borrowed("Payload expected"))?;
             match req.headers.ContentType() {
                 Some("application/json") => serde_json::from_slice(payload).map_err(|e| Cow::Owned(e.to_string())),

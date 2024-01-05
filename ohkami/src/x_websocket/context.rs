@@ -5,10 +5,11 @@ use crate::{Response, Request, response as r};
 use crate::__rt__::{task};
 use crate::http::{Method};
 use crate::layer0_lib::{base64};
-use super::assume_upgradable;
+use super::{assume_upgradable, UpgradeID};
 
 
 pub struct WebSocketContext<UFH: UpgradeFailureHandler = DefaultUpgradeFailureHandler> {
+    id:                     Option<UpgradeID>,
     config:                 Config,
 
     on_failed_upgrade:      UFH,
@@ -51,7 +52,8 @@ impl WebSocketContext {
         let sec_websocket_protocol = req.headers.SecWebSocketProtocol()
             .map(|swp| Cow::Owned(swp.to_string()));
 
-        Ok(Self {c,
+        Ok(Self {
+            id:                req.upgrade_id,
             config:            Config::default(),
             on_failed_upgrade: DefaultUpgradeFailureHandler,
             selected_protocol: None,
@@ -114,7 +116,7 @@ impl WebSocketContext {
 
         task::spawn({
             async move {
-                let stream = match c.upgrade_id {
+                let stream = match self.id {
                     None     => return on_failed_upgrade.handle(UpgradeError::NotRequestedUpgrade),
                     Some(id) => assume_upgradable(id).await,
                 };
@@ -124,14 +126,15 @@ impl WebSocketContext {
             }
         });
 
-        c.set_headers()
+        let mut handshake_res = Response::SwitchingProtocols();
+        handshake_res.headers.set()
             .Connection("Update")
             .Upgrade("websocket")
             .SecWebSocketAccept(sign(&sec_websocket_key));
         if let Some(protocol) = selected_protocol {
-            c.set_headers()
+            handshake_res.headers.set()
                 .SecWebSocketProtocol(protocol.to_string());
         }
-        c.SwitchingProtocols()
+        handshake_res
     }
 }
