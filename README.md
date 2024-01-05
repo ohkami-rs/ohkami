@@ -103,7 +103,7 @@ async fn create_user(body: CreateUserRequest) -> Response { /* */ }
 ```
 `#[Query]`, `#[Payload( 〜 )]` implements `FromRequest` trait for the struct.
 
-( with path params : `(Context, {path params}, {FromRequest values...})` )
+( with path params : `({path params}, {FromRequest values...})` )
 
 <br/>
 
@@ -248,7 +248,7 @@ async fn test_my_ohkami() {
 
     let res = hello_ohkami.oneshot(TestRequest::GET("/hello")).await;
     assert_eq!(res.status, http::Status::OK);
-    assert_eq!(res.content.unwrap().text().unwrap(), "Hello, world!");
+    assert_eq!(res.content.unwrap().text(), Some("Hello, world!"));
 }
 ```
 
