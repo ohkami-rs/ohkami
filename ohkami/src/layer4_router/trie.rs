@@ -395,32 +395,21 @@ impl Node {
 
 impl Node {
     fn append_child(&mut self, new_child: Node) -> Result<(), String> {
-        let __position__ = match &self.pattern {
-            None    => format!("For the first part of route"),
-            Some(p) => format!("After {p:?}"),
-        };
-
         match new_child.pattern.as_ref().expect("Invalid child node: Child node must have pattern") {
             Pattern::Param => {
-                if self.children.is_empty() {
+                self.children.push(new_child);
+                Ok(())
+            }
+            Pattern::Static(bytes) => {
+                if self.children.iter().find(|c| c.pattern.as_ref().unwrap().to_static().is_some_and(|p| p == bytes.as_ref())).is_some() {
+                    let __position__ = match &self.pattern {
+                        None    => format!("For the first part of route"),
+                        Some(p) => format!("After {p:?}"),
+                    };
+                    Err(format!("Conflicting route definition: {__position__}, pattern '{}' is registered twice", std::str::from_utf8(&bytes).unwrap()))
+                } else {
                     self.children.push(new_child);
                     Ok(())
-                } else {
-                    let __conflicting_pattern__ = format!("{:?}", self.children.first().unwrap().pattern.as_ref().unwrap());
-                    Err(format!("Conflicting route definition: {__position__}, {{param}} and {__conflicting_pattern__} can match"))
-                }
-            },
-            Pattern::Static(bytes) => {
-                if self.children.iter().all(|c| c.pattern.as_ref().unwrap().is_static()) {
-                    if self.children.iter().find(|c| c.pattern.as_ref().unwrap().to_static().unwrap() == bytes.as_ref()).is_some() {
-                        Err(format!("Conflicting route definition: {__position__}, pattern '{}' are registered twice", std::str::from_utf8(&bytes).unwrap()))
-                    } else {
-                        self.children.push(new_child);
-                        Ok(())
-                    }
-                } else {
-                    let __pattern_to_append__ = format!("{:?}", new_child.pattern.as_ref().unwrap());
-                    Err(format!("Conflicting route definition: {__position__}, {{param}} and {__pattern_to_append__} can match"))
                 }
             }
         }

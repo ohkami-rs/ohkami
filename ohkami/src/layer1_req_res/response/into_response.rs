@@ -14,6 +14,15 @@ impl IntoResponse for Response {
         self
     }
 }
+impl crate::IntoResponse for Status {
+    fn into_response(self) -> crate::Response {
+        crate::Response {
+            status:  self,
+            headers: crate::layer0_lib::server_header::Headers::new(),
+            content: None,
+        }
+    }
+}
 impl<'req, T:IntoResponse, E:IntoResponse> IntoResponse for Result<T, E> {
     fn into_response(self) -> Response {
         match self {

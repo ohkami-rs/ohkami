@@ -45,14 +45,4 @@ pub enum Status {
             f.write_str(self.as_str())
         }
     }
-
-    impl crate::IntoResponse for Status {
-        fn into_response(self) -> crate::Response {
-            crate::Response {
-                status:  self,
-                headers: crate::layer0_lib::server_header::Headers::new(),
-                content: None,
-            }
-        }
-    }
 };
