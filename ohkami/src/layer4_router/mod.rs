@@ -79,21 +79,32 @@ mod radix; pub(crate) use radix::RadixRouter;
     #[test] async fn test_router() {
         let t = my_ohkami();
 
+        /* GET /health */
         let req = TestRequest::GET("/health");
         let res = t.oneshot(req).await;
         assert_eq!(res.text(), Some("health_check"));
 
+        /* GET /api/profiles/:username */
         let req = TestRequest::GET("/api/profiles");
         let res = t.oneshot(req).await;
         assert_eq!(res.status(), Status::NotFound);
 
         let req = TestRequest::GET("/api/profiles/123");
         let res = t.oneshot(req).await;
-        assert_eq!(res.text(), Some(""));
+        assert_eq!(res.text(), Some("get_profile of user `123`"));
 
-        let req = TestRequest::GET("/health");
+        /* POST,DELETE /api/profiles/:username/follow */
+        let req = TestRequest::GET("/api/profiles/the_user/follow");
         let res = t.oneshot(req).await;
-        assert_eq!(res.text(), Some("health_check"));
+        assert_eq!(res.status(), Status::NotFound);
+
+        let req = TestRequest::POST("/api/profiles/the_user/follow");
+        let res = t.oneshot(req).await;
+        assert_eq!(res.text(), Some("follow_user `{the_user}`"));
+
+        let req = TestRequest::DELETE("/api/profiles/the_user/follow");
+        let res = t.oneshot(req).await;
+        assert_eq!(res.text(), Some("unfollow_user `{the_user}`"));
 
         let req = TestRequest::GET("/health");
         let res = t.oneshot(req).await;
