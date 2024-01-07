@@ -1,4 +1,4 @@
-use ohkami::{Ohkami, Route, http::JSON};
+use ohkami::{Ohkami, Route, utils::JSON};
 use crate::{fangs::Auth, models::{Profile, ProfileResponse}};
 
 

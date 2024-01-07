@@ -1,7 +1,12 @@
-use ohkami::{Ohkami, Route, Response};
+use ohkami::{Ohkami, Route, utils::JSON, http::Status};
 use ohkami::utils::{Payload, Query};
 use serde::Deserialize;
 use crate::fangs::Auth;
+use crate::models::{
+    Tag,
+    Article, SingleArticleResponse, MultipleArticlesResponse,
+    Comment, MultipleCommentsResponse, SingleCommentResponse
+};
 
 
 pub fn articles_ohkami() -> Ohkami {
@@ -32,14 +37,14 @@ pub fn articles_ohkami() -> Ohkami {
 
 
 #[Query]
-struct ArticlesQuery {
-    tag:       Option<String>,
-    author:    Option<String>,
-    favorited: Option<String>,
+struct ArticlesQuery<'q> {
+    tag:       Option<&'q str>,
+    author:    Option<&'q str>,
+    favorited: Option<&'q str>,
     limit:     usize,
     offset:    usize,
 }
-impl Default for ArticlesQuery {
+impl<'q> Default for ArticlesQuery<'q> {
     fn default() -> Self {
         ArticlesQuery {
             tag:       None,
@@ -51,70 +56,70 @@ impl Default for ArticlesQuery {
     }
 }
 
-async fn list(query: ArticlesQuery) -> Response {
+async fn list(query: ArticlesQuery<'_>) -> JSON<MultipleArticlesResponse> {
     todo!()
 }
 
-async fn feed(query: ArticlesQuery) -> Response {
+async fn feed(query: ArticlesQuery<'_>) -> JSON<MultipleArticlesResponse> {
     todo!()
 }
 
-async fn get(slug: String) -> Response {
+async fn get(slug: &str) -> JSON<SingleArticleResponse> {
     todo!()
 }
 
 #[Payload(JSON)]
 #[derive(Deserialize)]
-struct CreateArticleRequest {
-    title:         String,
-    descipription: String,
-    body:          String,
+struct CreateArticleRequest<'req> {
+    title:         &'req str,
+    descipription: &'req str,
+    body:          &'req str,
     #[serde(rename = "tagList")]
-    tag_list:      Option<Vec<String>>,
+    tag_list:      Option<Vec<Tag<'req>>>,
 }
 
-async fn create(body: CreateArticleRequest) -> Response {
+async fn create(body: CreateArticleRequest<'_>) -> JSON<SingleArticleResponse> {
     todo!()
 }
 
 #[Payload(JSON)]
 #[derive(Deserialize)]
-struct UpdateArticleRequest {
-    title:       Option<String>,
-    description: Option<String>,
-    body:        Option<String>,
+struct UpdateArticleRequest<'req> {
+    title:       Option<&'req str>,
+    description: Option<&'req str>,
+    body:        Option<&'req str>,
 }
 
-async fn update(slug: String, body: UpdateArticleRequest) -> Response {
+async fn update(slug: &str, body: UpdateArticleRequest<'_>) -> JSON<SingleArticleResponse> {
     todo!()
 }
 
-async fn delete(slug: String) -> Response {
+async fn delete(slug: &str) -> Status {
     todo!()
 }
 
 #[Payload(JSON)]
 #[derive(Deserialize)]
-struct AddCommentRequest {
-    body: String,
+struct AddCommentRequest<'req> {
+    body: &'req str,
 }
 
-async fn add_comment(slug: String, body: AddCommentRequest) -> Response {
+async fn add_comment(slug: &str, body: AddCommentRequest<'_>) -> JSON<SingleCommentResponse> {
     todo!()
 }
 
-async fn get_comments(slug: String) -> Response {
+async fn get_comments(slug: &str) -> JSON<MultipleCommentsResponse> {
     todo!()
 }
 
-async fn delete_comment((slug, id): (String, usize)) -> Response {
+async fn delete_comment((slug, id): (&str, usize)) -> Status {
     todo!()
 }
 
-async fn favorite(slug: String) -> Response {
+async fn favorite(slug: &str) -> JSON<SingleArticleResponse> {
     todo!()
 }
 
-async fn unfavorite(slug: String) -> Response {
+async fn unfavorite(slug: &str) -> JSON<SingleArticleResponse> {
     todo!()
 }

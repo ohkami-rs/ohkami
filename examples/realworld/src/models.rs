@@ -1,4 +1,4 @@
-use serde::Serialize;
+use serde::{Serialize, Deserialize};
 use chrono::{DateTime, Utc, SecondsFormat};
 
 fn serialize_datetime<S: serde::Serializer>(
@@ -40,7 +40,7 @@ pub struct SingleArticleResponse {
     pub article: Article,
 }
 #[derive(Serialize)]
-pub struct MultipleArticleResponse {
+pub struct MultipleArticlesResponse {
     pub articles: Vec<Article>,
     #[serde(rename = "articlesCount")]
     pub articles_count: usize,
@@ -83,8 +83,22 @@ pub struct Comment {
 }
 
 #[derive(Serialize)]
-pub struct ListOfTagsResponse {
-    pub tags: Vec<Tag>
+pub struct ListOfTagsResponse<'t> {
+    pub tags: Vec<Tag<'t>>
 }
-#[derive(Serialize)]
-pub struct Tag(pub String);
+#[derive(Serialize, Deserialize)]
+pub struct Tag<'t>(std::borrow::Cow<'t, str>);
+const _: () = {
+    impl Tag<'static> {
+        pub fn new(name: impl Into<std::borrow::Cow<'static, str>>) -> Self {
+            Self(name.into())
+        }
+    }
+    
+    impl<'t> std::ops::Deref for Tag<'t> {
+        type Target = str;
+        #[inline] fn deref(&self) -> &Self::Target {
+            &self.0
+        }
+    }
+};

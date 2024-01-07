@@ -1,4 +1,4 @@
-use ohkami::{Ohkami, Route, http::JSON};
+use ohkami::{Ohkami, Route, utils::JSON};
 use crate::models::ListOfTagsResponse;
 
 
@@ -8,6 +8,6 @@ pub fn tags_ohkami() -> Ohkami {
     ))
 }
 
-async fn get() -> JSON<ListOfTagsResponse> {
+async fn get() -> JSON<ListOfTagsResponse<'static>> {
     todo!()
 }

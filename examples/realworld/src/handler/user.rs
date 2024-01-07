@@ -1,4 +1,4 @@
-use ohkami::{Ohkami, Route, utils::Payload, http::JSON};
+use ohkami::{Ohkami, Route, utils::{Payload, JSON}};
 use serde::Deserialize;
 use crate::{fangs::Auth, models::{User, UserResponse}};
 
