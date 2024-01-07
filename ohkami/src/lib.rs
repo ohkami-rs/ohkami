@@ -140,7 +140,7 @@
 //! fn hello_ohkami() -> Ohkami {
 //!     Ohkami::new((
 //!         "/hello".GET(|| async move {
-//!             http::Text::OK("Hello, world!")
+//!             utils::Text::OK("Hello, world!")
 //!         })
 //!     ))
 //! }
@@ -271,12 +271,11 @@ pub mod prelude {
 
 pub mod http {
     pub use crate::layer0_lib::{Status, Method, append};
-    pub use crate::layer1_req_res::{JSON, Text, HTML, Redirect};
 }
 
 pub mod utils {
     pub use crate::x_utils       ::{now, CORS, JWT};
-    pub use crate::layer1_req_res::File;
+    pub use crate::layer1_req_res::{File, JSON, Text, HTML, Redirect};
     pub use ohkami_macros        ::{Query, Payload};
 }
 
@@ -331,8 +330,8 @@ pub mod __internal__ {
         http::Status::NoContent
     }
 
-    async fn hello(name: &str) -> http::Text {
-        http::Text::OK(format!("Hello, {name}!"))
+    async fn hello(name: &str) -> utils::Text {
+        utils::Text::OK(format!("Hello, {name}!"))
     }
 
 // run

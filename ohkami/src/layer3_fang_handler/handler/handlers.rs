@@ -77,7 +77,7 @@ macro_rules! Route {
     use std::borrow::Cow;
     use serde::{Serialize, Deserialize};
     use super::{Handlers, Route};
-    use crate::{http, FromRequest, IntoResponse, Response, Request};
+    use crate::{http, FromRequest, IntoResponse, Response, Request, utils};
 
 
     enum APIError {
@@ -137,14 +137,14 @@ macro_rules! Route {
         }
     }
 
-    async fn create_user<'req>(payload: CreateUser<'req>) -> Result<http::JSON<User>, APIError> {
+    async fn create_user<'req>(payload: CreateUser<'req>) -> Result<utils::JSON<User>, APIError> {
         let CreateUser { name, password } = payload;
 
         mock::authenticate().await?;
 
         let id = mock::DB.insert_returning_id(CreateUser{ name, password }).await?;
 
-        Ok(http::JSON::Created(User {
+        Ok(utils::JSON::Created(User {
             id,
             name: name.to_string(),
             password: password.to_string(),

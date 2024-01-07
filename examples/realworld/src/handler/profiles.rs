@@ -1,5 +1,5 @@
-use ohkami::{Ohkami, Route, Response};
-use crate::fangs::Auth;
+use ohkami::{Ohkami, Route, http::JSON};
+use crate::{fangs::Auth, models::{Profile, ProfileResponse}};
 
 
 pub fn profiles_ohkami() -> Ohkami {
@@ -12,14 +12,14 @@ pub fn profiles_ohkami() -> Ohkami {
     ))
 }
 
-async fn get_profile(username: String) -> Response {
+async fn get_profile(username: String) -> JSON<ProfileResponse> {
     todo!()
 }
 
-async fn follow(username: String) -> Response {
+async fn follow(username: String) -> JSON<ProfileResponse> {
     todo!()
 }
 
-async fn unfollow(username: String) -> Response {
+async fn unfollow(username: String) -> JSON<ProfileResponse> {
     todo!()
 }

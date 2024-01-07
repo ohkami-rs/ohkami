@@ -1,6 +1,6 @@
-use ohkami::{Ohkami, Route, Response};
-use ohkami::utils::Payload;
+use ohkami::{Ohkami, Route, http::JSON, utils::Payload};
 use serde::Deserialize;
+use crate::models::{User, UserResponse};
 
 
 pub fn users_ohkami() -> Ohkami {
@@ -15,11 +15,16 @@ pub fn users_ohkami() -> Ohkami {
 #[Payload(JSON)]
 #[derive(Deserialize)]
 struct LoginRequest {
+    user: LoginRequestUser,
+}
+
+#[derive(Deserialize)]
+struct LoginRequestUser {
     email:    String,
     password: String,
 }
 
-async fn login(body: LoginRequest) -> Response {
+async fn login(body: LoginRequest) -> JSON<UserResponse> {
     todo!()
 }
 
@@ -31,6 +36,6 @@ struct RegisterRequest {
     password: String,
 }
 
-async fn register(body: RegisterRequest) -> Response {
+async fn register(body: RegisterRequest) -> JSON<UserResponse> {
     todo!()
 }

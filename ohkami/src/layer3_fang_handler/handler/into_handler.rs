@@ -1,8 +1,8 @@
 use std::{future::Future, borrow::Cow};
 use super::Handler;
 use crate::{
-    http,
     Response,
+    utils::{Text},
     layer0_lib::{percent_decode_utf8},
     layer1_req_res::{FromRequest, FromParam}, Request, IntoResponse,
 };
@@ -18,7 +18,7 @@ pub trait IntoHandler<Args> {
     e: impl std::fmt::Display,
 ) -> std::pin::Pin<Box<impl Future<Output = Response>>> {
     Box::pin({
-        let res = http::Text::BadRequest(e.to_string());
+        let res = Text::BadRequest(e.to_string());
         async {res.into()}
     })
 }

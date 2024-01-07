@@ -1,3 +1,6 @@
+mod config;
+mod models;
+mod repositories;
 mod fangs;
 mod handler;
 

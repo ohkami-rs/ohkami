@@ -122,7 +122,7 @@ mod internal {
     use serde::Deserialize;
 
     use super::JWT;
-    use crate::{__rt__::test};
+    use crate::{__rt__::test, utils};
 
     #[test] async fn test_jwt_issue() {
         /* NOTE: 
@@ -214,13 +214,13 @@ mod internal {
             familly_name: String,
         }
 
-        async fn get_profile(jwt_payload: Memory<'_, MyJWTPayload>) -> Result<http::JSON<Profile>, APIError> {
+        async fn get_profile(jwt_payload: Memory<'_, MyJWTPayload>) -> Result<utils::JSON<Profile>, APIError> {
             let r = &mut *repository().await.lock().await;
 
             let user = r.get(&jwt_payload.user_id)
                 .ok_or_else(|| APIError::UserNotFound)?;
 
-            Ok(http::JSON::OK(user.profile()))
+            Ok(utils::JSON::OK(user.profile()))
         }
 
         #[derive(serde::Deserialize, serde::Serialize/* for test */)]
@@ -236,7 +236,7 @@ mod internal {
             }
         }
 
-        async fn signin(body: SigninRequest<'_>) -> http::Text {
+        async fn signin(body: SigninRequest<'_>) -> utils::Text {
             let r = &mut *repository().await.lock().await;
 
             let user: Cow<'_, User> = match r.iter().find(|(_, u)|
@@ -262,7 +262,7 @@ mod internal {
                 }
             };
 
-            http::Text::OK(issue_jwt_for_user(&user))
+            utils::Text::OK(issue_jwt_for_user(&user))
         }
 
 

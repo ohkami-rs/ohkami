@@ -9,11 +9,13 @@ use crate::fangs::{LogRequest, LogResponse};
 
 
 pub fn realworld_ohkami() -> Ohkami {
-    Ohkami::with((LogRequest, LogResponse), (
-        "/api/users"   .By(users::users_ohkami()),
-        "/api/user"    .By(user::user_ohkami()),
-        "/api/profiles".By(profiles::profiles_ohkami()),
-        "/api/articles".By(articles::articles_ohkami()),
-        "/api/tags"    .By(tags::tags_ohkami()),
+    Ohkami::with((LogRequest, LogResponse),
+        "/api".By(Ohkami::new((
+            "/users"   .By(users::users_ohkami()),
+            "/user"    .By(user::user_ohkami()),
+            "/profiles".By(profiles::profiles_ohkami()),
+            "/articles".By(articles::articles_ohkami()),
+            "/tags"    .By(tags::tags_ohkami()),
+        ))
     ))
 }

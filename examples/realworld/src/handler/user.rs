@@ -1,7 +1,6 @@
-use ohkami::{Ohkami, Route, Response};
-use ohkami::utils::Payload;
+use ohkami::{Ohkami, Route, utils::Payload, http::JSON};
 use serde::Deserialize;
-use crate::fangs::Auth;
+use crate::{fangs::Auth, models::{User, UserResponse}};
 
 
 pub fn user_ohkami() -> Ohkami {
@@ -12,7 +11,7 @@ pub fn user_ohkami() -> Ohkami {
     ))
 }
 
-async fn get_current_user() -> Response {
+async fn get_current_user() -> JSON<UserResponse> {
     todo!()
 }
 
@@ -26,6 +25,6 @@ struct UpdateRequest {
     bio:      Option<String>,
 }
 
-async fn update() -> Response {
+async fn update() -> JSON<UserResponse> {
     todo!()
 }

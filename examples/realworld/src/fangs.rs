@@ -1,5 +1,6 @@
 use ohkami::{Fang, IntoFang, Request, Response};
 use ohkami::utils::JWT;
+use crate::config;
 
 
 pub struct Auth {
@@ -26,7 +27,9 @@ impl IntoFang for Auth {
                 return Ok(());
             }
 
-            todo!()
+            let payload: config::JWTPayload = JWT(config::JWT_SECRET_KEY()).verified(req)?;
+            req.memorize(payload);
+            Ok(())
         })
     }
 }

@@ -6,8 +6,9 @@ mod radix; pub(crate) use radix::RadixRouter;
 
 #[cfg(test)] mod test {
     use crate::prelude::*;
-    use crate::http::*;
     use crate::testing::*;
+    use crate::utils::Text;
+    use crate::http::Status;
     use crate::__rt__::test;
 
     fn my_ohkami() -> Ohkami {

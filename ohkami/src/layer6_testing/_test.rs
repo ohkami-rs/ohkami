@@ -2,7 +2,7 @@ use crate::__rt__;
 
 use crate::prelude::*;
 use crate::testing::*;
-use crate::{Fang, IntoFang, http, http::Status, IntoResponse};
+use crate::{Fang, IntoFang, IntoResponse, http::Status, utils::{Text, JSON}};
 
 
 #[__rt__::test] async fn testing_example_simple() {
@@ -25,7 +25,7 @@ use crate::{Fang, IntoFang, http, http::Status, IntoResponse};
 }
 
 async fn hello() -> impl IntoResponse {
-    http::Text::OK("Hello, world!")
+    Text::OK("Hello, world!")
 }
 
 
@@ -105,9 +105,9 @@ struct User {
     age:  u8,
 }
 
-async fn get_user(id: usize) -> Result<http::JSON<User>, APIError> {
+async fn get_user(id: usize) -> Result<JSON<User>, APIError> {
     match id {
-        42 => Ok(http::JSON::OK(User {
+        42 => Ok(JSON::OK(User {
             name: format!("kanarus"),
             age:  20,
         })),
@@ -134,8 +134,8 @@ impl<'req> crate::FromRequest<'req> for CreateUser<'req> {
         }
     }
 }
-async fn create_user(payload: CreateUser<'_>) -> http::JSON<User> {
-    http::JSON::Created(User {
+async fn create_user(payload: CreateUser<'_>) -> JSON<User> {
+    JSON::Created(User {
         name: payload.name.to_string(),
         age:  payload.age.unwrap_or(0),
     })
