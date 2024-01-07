@@ -8,7 +8,9 @@ use ohkami::{Ohkami, Route};
 use crate::fangs::{LogRequest, LogResponse};
 
 
-pub fn realworld_ohkami() -> Ohkami {
+pub fn realworld_ohkami(
+
+) -> Ohkami {
     Ohkami::with((LogRequest, LogResponse),
         "/api".By(Ohkami::new((
             "/users"   .By(users::users_ohkami()),

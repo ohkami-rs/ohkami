@@ -1,4 +1,5 @@
 mod config;
+mod errors;
 mod models;
 mod repositories;
 mod fangs;
