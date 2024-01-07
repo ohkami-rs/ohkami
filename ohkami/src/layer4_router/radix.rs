@@ -245,7 +245,7 @@ impl Pattern {
 #[inline] fn split_next_section(path: &[u8]) -> (&[u8], &[u8]) {
     let len = path.len();
     let mut slash = len; for i in 0..len {
-        if b'/' == path[i] {slash = i}
+        if &b'/' == unsafe {path.get_unchecked(i)} {slash = i}
     }
 
     let after_slash = (slash + 1/* skip `/` */).min(len/* considering: `path` ends with `/` */);
