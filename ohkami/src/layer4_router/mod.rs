@@ -38,13 +38,13 @@ mod radix; pub(crate) use radix::RadixRouter;
             "/:slug".By(Ohkami::new((
                 "/"
                     .GET(|slug: String| async move {
-                        Text::OK(format!("get_slug {slug}"))
+                        Text::OK(format!("get_article {slug}"))
                     })
                     .PUT(|slug: String| async move {
-                        Text::OK(format!("put_slug {slug}"))
+                        Text::OK(format!("put_article {slug}"))
                     })
                     .DELETE(|slug: String| async move {
-                        Text::OK(format!("delete_slug {slug}"))
+                        Text::OK(format!("delete_article {slug}"))
                     }),
                 "/comments"
                     .POST(|slug: String| async move {
@@ -79,12 +79,16 @@ mod radix; pub(crate) use radix::RadixRouter;
     #[test] async fn test_router() {
         let t = my_ohkami();
 
+
         /* GET /health */
+
         let req = TestRequest::GET("/health");
         let res = t.oneshot(req).await;
         assert_eq!(res.text(), Some("health_check"));
 
+
         /* GET /api/profiles/:username */
+
         let req = TestRequest::GET("/api/profiles");
         let res = t.oneshot(req).await;
         assert_eq!(res.status(), Status::NotFound);
@@ -93,42 +97,51 @@ mod radix; pub(crate) use radix::RadixRouter;
         let res = t.oneshot(req).await;
         assert_eq!(res.text(), Some("get_profile of user `123`"));
 
+
         /* POST,DELETE /api/profiles/:username/follow */
+
         let req = TestRequest::GET("/api/profiles/the_user/follow");
+        let res = t.oneshot(req).await;
+        assert_eq!(res.status(), Status::NotFound);
+
+        let req = TestRequest::POST("/api/profiles/the_user");
         let res = t.oneshot(req).await;
         assert_eq!(res.status(), Status::NotFound);
 
         let req = TestRequest::POST("/api/profiles/the_user/follow");
         let res = t.oneshot(req).await;
-        assert_eq!(res.text(), Some("follow_user `{the_user}`"));
+        assert_eq!(res.status(), Status::OK);
+
+        let req = TestRequest::POST("/api/profiles/the_user/follow");
+        let res = t.oneshot(req).await;
+        assert_eq!(res.text(), Some("follow_user `the_user`"));
 
         let req = TestRequest::DELETE("/api/profiles/the_user/follow");
         let res = t.oneshot(req).await;
-        assert_eq!(res.text(), Some("unfollow_user `{the_user}`"));
+        assert_eq!(res.text(), Some("unfollow_user `the_user`"));
 
-        let req = TestRequest::GET("/health");
+        /* GET /api/articles/feed */
+
+        let req = TestRequest::GET("/api/articles/feed");
         let res = t.oneshot(req).await;
-        assert_eq!(res.text(), Some("health_check"));
+        assert_eq!(res.text(), Some("get_feed"));
 
-        let req = TestRequest::GET("/health");
+
+        /* GET,PUT,DELETE /api/articles/:slug */
+
+        let req = TestRequest::GET("/api/articles/ohkami123456");
         let res = t.oneshot(req).await;
-        assert_eq!(res.text(), Some("health_check"));
+        assert_eq!(res.text(), Some("get_article ohkami123456"));
 
-        let req = TestRequest::GET("/health");
+        let req = TestRequest::PUT("/api/articles/abcdef123");
         let res = t.oneshot(req).await;
-        assert_eq!(res.text(), Some("health_check"));
+        assert_eq!(res.text(), Some("put_article abcdef123"));
 
-        let req = TestRequest::GET("/health");
+
+        /* DELETE /api/articles/:slug/comments/:id */
+
+        let req = TestRequest::DELETE("/api/articles/__prototype__/comments/42");
         let res = t.oneshot(req).await;
-        assert_eq!(res.text(), Some("health_check"));
-
-        let req = TestRequest::GET("/health");
-        let res = t.oneshot(req).await;
-        assert_eq!(res.text(), Some("health_check"));
-
-        let req = TestRequest::GET("/health");
-        let res = t.oneshot(req).await;
-        assert_eq!(res.text(), Some("health_check"));
-
+        assert_eq!(res.text(), Some("delete_comment __prototype__ / 42"));
     }
 }

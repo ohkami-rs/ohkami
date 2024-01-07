@@ -191,7 +191,7 @@ impl Node {
             for pattern in target.patterns {
                 if path.is_empty() || unsafe {path.get_unchecked(0)} != &b'/' {
                     // At least one `pattern` to match is remaining
-                    // but path doesn't start with '/'
+                    // but remaining `path` doesn't start with '/'
                     return Ok(None)
                 }
                 path = unsafe {path.get_unchecked(1..)};
@@ -242,17 +242,22 @@ impl Pattern {
     }
 }
 
+/// Returning `(next_section, remaining/* starts with '/', or empty */)`
 #[inline] fn split_next_section(path: &[u8]) -> (&[u8], &[u8]) {
+    let ptr = path.as_ptr();
     let len = path.len();
-    let mut slash = len; for i in 0..len {
-        if &b'/' == unsafe {path.get_unchecked(i)} {slash = i}
+
+    let mut slash = None; for i in 0..len {
+        if &b'/' == unsafe {path.get_unchecked(i)} {
+            slash = Some(i); break
+        }
     }
 
-    let after_slash = (slash + 1/* skip `/` */).min(len/* considering: `path` ends with `/` */);
-    let ptr         = path.as_ptr();
-
-    unsafe {(
-        std::slice::from_raw_parts(ptr,                  slash),
-        std::slice::from_raw_parts(ptr.add(after_slash), len - after_slash),
-    )}
+    match slash {
+        None    => (path, &[]),
+        Some(s) => unsafe {(
+            std::slice::from_raw_parts(ptr,        s),
+            std::slice::from_raw_parts(ptr.add(s), len - s),
+        )}
+    }
 }
