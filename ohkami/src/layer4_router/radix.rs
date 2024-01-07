@@ -247,17 +247,12 @@ impl Pattern {
     let ptr = path.as_ptr();
     let len = path.len();
 
-    let mut slash = None; for i in 0..len {
+    for i in 0..len {
         if &b'/' == unsafe {path.get_unchecked(i)} {
-            slash = Some(i); break
+            return unsafe {(
+                std::slice::from_raw_parts(ptr,        i),
+                std::slice::from_raw_parts(ptr.add(i), len - i),
+            )}
         }
-    }
-
-    match slash {
-        None    => (path, &[]),
-        Some(s) => unsafe {(
-            std::slice::from_raw_parts(ptr,        s),
-            std::slice::from_raw_parts(ptr.add(s), len - s),
-        )}
-    }
+    } (path, &[])
 }
