@@ -3,7 +3,7 @@ mod errors;
 mod models;
 mod repositories;
 mod fangs;
-mod handler;
+mod handlers;
 
 use errors::RealWorldError;
 
@@ -12,7 +12,7 @@ use errors::RealWorldError;
 async fn main() -> Result<(), RealWorldError> {
     config::init().await?;
 
-    handler::realworld_ohkami()
+    handlers::realworld_ohkami()
         .howl(":8080").await;
 
     Ok(())

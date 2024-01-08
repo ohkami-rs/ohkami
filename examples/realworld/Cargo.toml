@@ -11,3 +11,4 @@ tracing            = { workspace = true }
 tracing-subscriber = { workspace = true }
 sqlx               = { workspace = true }
 chrono             = { workspace = true }
+uuid               = { version = "1.6", features = ["serde", "v4"] }

@@ -1,18 +1,9 @@
-pub trait UsersRepository {
-    async fn create(&self);
-}
+mod articles;
+mod comments;
+mod tags;
+mod users;
 
-
-pub trait ArticlesRepository {
-
-}
-
-
-pub trait CommentsRepository {
-
-}
-
-
-pub trait TagsRepository {
-
-}
+pub use articles::ArticlesRepository;
+pub use comments::CommentsRepository;
+pub use tags    ::TagsRepository;
+pub use users   ::UsersRepository;
