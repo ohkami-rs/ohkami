@@ -19,7 +19,7 @@ pub struct User {
     /// JWT token
     pub token:    String,
     pub username: String,
-    pub bio:      String,
+    pub bio:      Option<String>,
     pub image:    Option<String>,
 }
 
