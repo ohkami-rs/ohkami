@@ -8,9 +8,8 @@ mod health_handler {
 
 
 mod hello_handler {
-    use ohkami::http::*;
     use ohkami::Response;
-    use ohkami::utils::{Payload, Query};
+    use ohkami::utils::{Payload, Query, Text};
 
     #[Query]
     pub struct HelloQuery<'q> {
