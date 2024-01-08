@@ -27,7 +27,7 @@ impl IntoFang for Auth {
                 return Ok(());
             }
 
-            let payload: config::JWTPayload = JWT(config::JWT_SECRET_KEY()).verified(req)?;
+            let payload: config::JWTPayload = config::jwt().verified(req)?;
             req.memorize(payload);
             Ok(())
         })

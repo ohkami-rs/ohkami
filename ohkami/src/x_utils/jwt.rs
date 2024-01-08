@@ -11,6 +11,7 @@ mod internal {
     use crate::{Request, Response};
 
 
+    #[derive(Clone)]
     pub struct JWT {
         secret: String,
     }
