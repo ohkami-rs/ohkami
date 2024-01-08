@@ -1,3 +1,4 @@
+#[cfg(feature="websocket")]
 #[inline(always)] pub fn encode(src: impl AsRef<[u8]>) -> String {
     encode_by(
         src.as_ref(),
@@ -256,11 +257,11 @@ fn decode_by(encoded: &[u8], encode_map: &[u8; 64], padding: Option<u8>) -> Vec<
 
 
 
-#[cfg(feature="utils")]
 #[cfg(test)] mod test {
     type Src     = &'static [u8];
     type Encoded = &'static str;
 
+    #[allow(unused)]
     const CASES: &[(Src, Encoded)] = &[
         // RFC 3548 examples
         (b"\x14\xfb\x9c\x03\xd9\x7e", "FPucA9l+"),
@@ -286,12 +287,14 @@ fn decode_by(encoded: &[u8], encode_map: &[u8; 64], padding: Option<u8>) -> Vec<
         (b"asure.",   "YXN1cmUu"),
     ];
 
+    #[cfg(feature="websocket")]
     #[test] fn test_encode() {
         for (src, encoded) in CASES {
             assert_eq!(super::encode(src), *encoded);
         }
     }
 
+    #[cfg(feature="utils")]
     #[test] fn test_decode() {
         for (original, encoded) in CASES {
             let (actual, expected) = (super::decode(encoded.as_bytes()), original);

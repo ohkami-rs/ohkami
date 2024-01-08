@@ -24,7 +24,7 @@ serde          = "1.0"
 serde_json     = "1.0"
 
 [features]
-default        = ["utils"]
+#default        = ["utils"]
 rt_tokio       = ["dep:tokio"]
 rt_async-std   = ["dep:async-std"]
 utils          = ["dep:ohkami_macros"]
@@ -34,15 +34,15 @@ nightly        = []
 
 ##### DEBUG #####
 DEBUG = [
-    "websocket",
+    #"websocket",
     "serde/derive",
     "tokio?/macros",
     "async-std?/attributes",
 ]
-#default = [
-#    "utils",
-#    "rt_tokio",
-#    #"rt_async-std",
-#    "DEBUG",
-#    "nightly",
-#]
+default = [
+    "utils",
+    "rt_tokio",
+    #"rt_async-std",
+    "DEBUG",
+    "nightly",
+]
