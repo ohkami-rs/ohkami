@@ -10,6 +10,12 @@ services:
       options:
         max-size: '10k'
         max-file: '5'
+    environment:
+      POSTGRES_USER:     ohkami
+      POSTGRES_PASSWORD: password
+      POSTGRES_PORT:     5432
+      POSTGRES_DB:       realworld
+      PGSSLMODE:         disable
     ports:
       - 5432:5432
     volumes:
