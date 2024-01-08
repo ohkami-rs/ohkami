@@ -2,6 +2,7 @@ mod request;  pub use request::*;
 mod response; pub use response::*;
 
 
+#[cfg(feature="utils")]
 #[cfg(test)] #[allow(unused)] mod __ {
     use serde::Serialize;
     use crate::{utils::JSON, http::Status};

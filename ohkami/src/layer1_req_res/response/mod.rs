@@ -1,5 +1,8 @@
+mod headers;
+pub use headers::{Headers as ResponseHeaders, Header as ResponseHeader};
+
 mod into_response;
-pub use into_response::{IntoResponse, JSON, Text, HTML, Redirect};
+pub use into_response::IntoResponse;
 
 #[cfg(feature="nightly")]
 use std::{
@@ -12,13 +15,13 @@ use std::{
 };
 use crate::{
     __rt__::AsyncWriter,
-    layer0_lib::{Status, server_header},
+    layer0_lib::Status,
 };
 
 
 pub struct Response {
     pub status:         Status,
-    pub headers:        server_header::Headers,
+    pub headers:        ResponseHeaders,
     pub(crate) content: Option<Cow<'static, [u8]>>,
 } const _: () = {
     #[cfg(feature="nightly")]
@@ -36,7 +39,7 @@ macro_rules! new_response {
             pub fn $status() -> Self {
                 Self {
                     status:  Status::$status,
-                    headers: server_header::Headers::new(),
+                    headers: ResponseHeaders::new(),
                     content: None,
                 }
             }

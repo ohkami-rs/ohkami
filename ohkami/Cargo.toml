@@ -1,33 +1,36 @@
 [package]
-name             = "ohkami"
-version          = "0.10.0"
-edition          = "2021"
-authors          = ["kanarus <kanarus786@gmail.com>"]
-description      = "declarative web framework for Rust"
-documentation    = "https://docs.rs/ohkami"
-homepage         = "https://crates.io/crates/ohkami"
-repository       = "https://github.com/kana-rus/ohkami"
-readme           = "../README.md"
-keywords         = ["declarative", "async", "web", "server", "framework"]
-categories       = ["asynchronous", "web-programming::http-server"]
-license          = "MIT"
+name           = "ohkami"
+version        = "0.10.0"
+edition        = "2021"
+authors        = ["kanarus <kanarus786@gmail.com>"]
+description    = "declarative web framework for Rust"
+documentation  = "https://docs.rs/ohkami"
+homepage       = "https://crates.io/crates/ohkami"
+repository     = "https://github.com/kana-rus/ohkami"
+readme         = "../README.md"
+keywords       = ["declarative", "async", "web", "server", "framework"]
+categories     = ["asynchronous", "web-programming::http-server"]
+license        = "MIT"
 
 [package.metadata.docs.rs]
-features         = ["rt_tokio", "websocket", "nightly"]
+features       = ["rt_tokio", "websocket", "nightly"]
 
 [dependencies]
-ohkami_macros    = { version = "0.5", path = "../ohkami_macros" }
-tokio            = { version = "1", optional = true, features = ["net", "rt", "io-util", "sync"] }
-async-std        = { version = "1", optional = true }
-byte_reader      = { version = "1.2.2", features = ["text"] }
-serde            = "1.0"
-serde_json       = "1.0"
+ohkami_macros  = { version = "0.5", optional = true, path = "../ohkami_macros" }
+tokio          = { version = "1",   optional = true, features = ["net", "rt", "io-util", "sync"] }
+async-std      = { version = "1",   optional = true }
+byte_reader    = { version = "1.2.2", features = ["text"] }
+serde          = "1.0"
+serde_json     = "1.0"
 
 [features]
-rt_tokio         = ["dep:tokio"]
-rt_async-std     = ["dep:async-std"]
-websocket        = []
-nightly          = []
+default       = ["utils"]
+rt_tokio       = ["dep:tokio"]
+rt_async-std   = ["dep:async-std"]
+utils          = ["dep:ohkami_macros"]
+custom_headers = []
+websocket      = []
+nightly        = []
 
 ##### DEBUG #####
 DEBUG = [
@@ -37,6 +40,7 @@ DEBUG = [
     "async-std?/attributes",
 ]
 #default = [
+#    #"utils",
 #    "rt_tokio",
 #    #"rt_async-std",
 #    "DEBUG",

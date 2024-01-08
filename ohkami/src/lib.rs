@@ -253,6 +253,7 @@ mod layer4_router;
 mod layer5_ohkami;
 mod layer6_testing;
 
+#[cfg(feature="utils")]
 mod x_utils;
 
 #[cfg(feature="websocket")]
@@ -273,10 +274,10 @@ pub mod http {
     pub use crate::layer0_lib::{Status, Method, append};
 }
 
+#[cfg(feature="utils")]
 pub mod utils {
-    pub use crate::x_utils       ::{now, CORS, JWT};
-    pub use crate::layer1_req_res::{File, JSON, Text, HTML, Redirect};
-    pub use ohkami_macros        ::{Query, Payload};
+    pub use crate::x_utils::{now, CORS, JWT, File, JSON, Text, HTML, Redirect};
+    pub use ohkami_macros ::{Query, Payload};
 }
 
 pub mod testing {
@@ -290,7 +291,8 @@ pub mod websocket {
 
 #[doc(hidden)]
 pub mod __internal__ {
-    pub use crate::layer1_req_res::{
+    #[cfg(feature="utils")]
+    pub use crate::x_utils::{
         parse_json,
         parse_formparts,
         parse_urlencoded,
@@ -300,6 +302,7 @@ pub mod __internal__ {
 
 /*===== usavility =====*/
 
+#[cfg(feature="utils")]
 #[cfg(feature="DEBUG")] #[allow(unused)] async fn __() {
     use http::Method;
 
