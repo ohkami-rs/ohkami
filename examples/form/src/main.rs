@@ -1,6 +1,6 @@
 use ohkami::{prelude::*, IntoFang, Fang};
-use ohkami::utils::{Payload, File};
-use ohkami::http::*;
+use ohkami::utils::{Payload, File, HTML};
+use ohkami::http::Status;
 
 #[Payload(Form)]
 #[derive(Debug)]

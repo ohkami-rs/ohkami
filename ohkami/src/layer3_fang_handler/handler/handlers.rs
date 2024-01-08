@@ -73,6 +73,7 @@ macro_rules! Route {
 
 
 
+#[cfg(feature="utils")]
 #[cfg(test)] #[allow(unused)] mod __ {
     use std::borrow::Cow;
     use serde::{Serialize, Deserialize};

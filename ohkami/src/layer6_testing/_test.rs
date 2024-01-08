@@ -1,8 +1,9 @@
-use crate::__rt__;
+#![cfg(feature="utils")]
 
+use crate::__rt__;
 use crate::prelude::*;
 use crate::testing::*;
-use crate::{Fang, IntoFang, IntoResponse, http::Status, utils::{Text, JSON}};
+use crate::utils::{Text, JSON};
 
 
 #[__rt__::test] async fn testing_example_simple() {
@@ -96,7 +97,7 @@ impl IntoResponse for APIError {
 
 
 async fn health_check() -> impl IntoResponse {
-    http::Status::NoContent
+    Status::NoContent
 }
 
 #[derive(serde::Serialize)]

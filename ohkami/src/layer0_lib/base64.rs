@@ -1,3 +1,4 @@
+#[cfg(feature="websocket")]
 #[inline(always)] pub fn encode(src: impl AsRef<[u8]>) -> String {
     encode_by(
         src.as_ref(),
@@ -6,6 +7,7 @@
     )
 }
 
+#[cfg(feature="utils")]
 #[inline(always)] pub fn encode_url(src: impl AsRef<[u8]>) -> String {
     encode_by(
         src.as_ref(),
@@ -14,6 +16,7 @@
     )
 }
 
+#[cfg(feature="utils")]
 #[cfg(test)]
 #[inline(always)] pub fn decode(encoded: &[u8]) -> Vec<u8> {
     decode_by(
@@ -23,6 +26,7 @@
     )
 }
 
+#[cfg(feature="utils")]
 #[inline(always)] pub fn decode_url(encoded: &str) -> Vec<u8> {
     decode_by(
         encoded.as_bytes(),
@@ -94,6 +98,7 @@ fn encode_by(src: &[u8], encode_map: &[u8; 64], padding: Option<u8>) -> String {
     unsafe {String::from_utf8_unchecked(dst)}
 }
 
+#[cfg(feature="utils")]
 fn decode_by(encoded: &[u8], encode_map: &[u8; 64], padding: Option<u8>) -> Vec<u8> {
     #[inline] fn assemble64(n: [u8; 8]) -> Option<u64> {
         let [n1, n2, n3, n4, n5, n6, n7, n8] = n.map(<u8 as Into<u64>>::into);
@@ -256,6 +261,7 @@ fn decode_by(encoded: &[u8], encode_map: &[u8; 64], padding: Option<u8>) -> Vec<
     type Src     = &'static [u8];
     type Encoded = &'static str;
 
+    #[allow(unused)]
     const CASES: &[(Src, Encoded)] = &[
         // RFC 3548 examples
         (b"\x14\xfb\x9c\x03\xd9\x7e", "FPucA9l+"),
@@ -281,12 +287,14 @@ fn decode_by(encoded: &[u8], encode_map: &[u8; 64], padding: Option<u8>) -> Vec<
         (b"asure.",   "YXN1cmUu"),
     ];
 
+    #[cfg(feature="websocket")]
     #[test] fn test_encode() {
         for (src, encoded) in CASES {
             assert_eq!(super::encode(src), *encoded);
         }
     }
 
+    #[cfg(feature="utils")]
     #[test] fn test_decode() {
         for (original, encoded) in CASES {
             let (actual, expected) = (super::decode(encoded.as_bytes()), original);
@@ -299,4 +307,3 @@ fn decode_by(encoded: &[u8], encode_map: &[u8; 64], padding: Option<u8>) -> Vec<
         }
     }
 }
-

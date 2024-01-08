@@ -1,6 +1,5 @@
 use std::borrow::Cow;
-use super::Append;
-use crate::layer0_lib::{CowSlice, Slice};
+use crate::layer0_lib::{CowSlice, Slice, Append};
 
 
 pub struct Headers {

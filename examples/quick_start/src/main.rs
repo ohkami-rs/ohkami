@@ -1,5 +1,5 @@
 use ohkami::prelude::*;
-use ohkami::http::{Status, Text};
+use ohkami::{http::Status, utils::Text};
 
 async fn health_check() -> Status {
     Status::NoContent

@@ -6,12 +6,13 @@
 //! ## Quick start
 //! ```ignore
 //! use ohkami::prelude::*;
+//! use ohkami::utils::Text;
 //! 
 //! async fn health_check() -> impl IntoResponse {
-//!     http::Status::NoContent
+//!     Status::NoContent
 //! }
 //! 
-//! async fn hello(name: String) -> Response {
+//! async fn hello(name: String) -> Text {
 //!     c.OK().text(format!("Hello, {name}!"))
 //! }
 //! 
@@ -39,7 +40,7 @@
 //! 
 //! async fn get_user(
 //!     id: usize /* <-- path param */
-//! ) -> http::Status { http::Status::OK }
+//! ) -> Status { Status::OK }
 //! ```
 //! Use tuple like `(verion, id): (u8, usize),` for multiple path params.
 //! 
@@ -56,7 +57,7 @@
 //! }
 //! async fn search(
 //!     condition: SearchCondition
-//! ) -> impl IntoResponse { http::Status::OK }
+//! ) -> impl IntoResponse { Status::OK }
 //! 
 //! #[utils::Payload(JSON)]
 //! #[derive(serde::Deserialize)]
@@ -67,7 +68,7 @@
 //! 
 //! async fn create_user(
 //!     body: CreateUserRequest
-//! ) -> impl IntoResponse { http::Status::Created }
+//! ) -> impl IntoResponse { Status::Created }
 //! ```
 //! `#[Query]`, `#[Payload( 〜 )]` implements `FromRequest` trait for the struct.
 //! 
@@ -80,7 +81,6 @@
 //! 
 //! ```
 //! use ohkami::prelude::*;
-//! use ohkami::{Fang, IntoFang};
 //! 
 //! struct AppendHeaders;
 //! impl IntoFang for AppendHeaders {
@@ -140,7 +140,7 @@
 //! fn hello_ohkami() -> Ohkami {
 //!     Ohkami::new((
 //!         "/hello".GET(|| async move {
-//!             utils::Text::OK("Hello, world!")
+//!             ohkami::utils::Text::OK("Hello, world!")
 //!         })
 //!     ))
 //! }
@@ -154,8 +154,6 @@
 //! #[cfg(test)]
 //! #[tokio::test]
 //! async fn test_my_ohkami() {
-//!     use ohkami::http::Status;
-//! 
 //!     let hello_ohkami = hello_ohkami();
 //! 
 //!     let res = hello_ohkami.oneshot(TestRequest::GET("/")).await;
@@ -253,6 +251,7 @@ mod layer4_router;
 mod layer5_ohkami;
 mod layer6_testing;
 
+#[cfg(feature="utils")]
 mod x_utils;
 
 #[cfg(feature="websocket")]
@@ -266,17 +265,17 @@ pub use layer3_fang_handler::{Route, Fang};
 pub use layer5_ohkami      ::{Ohkami, IntoFang};
 
 pub mod prelude {
-    pub use crate::{Request, Response, Route, Ohkami, Fang, IntoFang, IntoResponse, http};
+    pub use crate::{Request, Response, Route, Ohkami, Fang, IntoFang, IntoResponse, http::Status};
 }
 
 pub mod http {
     pub use crate::layer0_lib::{Status, Method, append};
 }
 
+#[cfg(feature="utils")]
 pub mod utils {
-    pub use crate::x_utils       ::{now, CORS, JWT};
-    pub use crate::layer1_req_res::{File, JSON, Text, HTML, Redirect};
-    pub use ohkami_macros        ::{Query, Payload};
+    pub use crate::x_utils::{now, CORS, JWT, File, JSON, Text, HTML, Redirect};
+    pub use ohkami_macros ::{Query, Payload};
 }
 
 pub mod testing {
@@ -290,7 +289,8 @@ pub mod websocket {
 
 #[doc(hidden)]
 pub mod __internal__ {
-    pub use crate::layer1_req_res::{
+    #[cfg(feature="utils")]
+    pub use crate::x_utils::{
         parse_json,
         parse_formparts,
         parse_urlencoded,
@@ -300,7 +300,8 @@ pub mod __internal__ {
 
 /*===== usavility =====*/
 
-#[cfg(feature="DEBUG")] #[allow(unused)] async fn __() {
+#[cfg(feature="utils")]
+#[cfg(test)] #[allow(unused)] async fn __() {
     use http::Method;
 
 // fangs

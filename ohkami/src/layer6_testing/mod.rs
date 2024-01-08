@@ -6,7 +6,8 @@
 // pub(crate) use x_websocket::{TestStream, TestWebSocket};
 
 use crate::{Response, Request, Ohkami};
-use crate::layer0_lib::{Method, Status, server_header};
+use crate::layer0_lib::{Method, Status};
+use crate::layer1_req_res::ResponseHeader;
 
 use std::borrow::Cow;
 use std::collections::HashMap;
@@ -204,7 +205,7 @@ impl TestResponse {
                 )
             }
         }).collect::<String>();
-        self.0.headers.get(server_header::Header::from_bytes(name_bytes.as_bytes())?)
+        self.0.headers.get(ResponseHeader::from_bytes(name_bytes.as_bytes())?)
     }
 
     pub fn text(&self) -> Option<&str> {
