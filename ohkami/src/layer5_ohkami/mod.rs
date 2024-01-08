@@ -12,6 +12,7 @@ use crate::{
 /// 
 /// ```
 /// use ohkami::prelude::*;
+/// use ohkami::utils::JSON;
 /// 
 /// struct Log;
 /// impl IntoFang for Log {
@@ -52,19 +53,19 @@ use crate::{
 /// }
 /// 
 /// async fn health_check() -> impl IntoResponse {
-///     http::Status::NoContent
+///     Status::NoContent
 /// }
 /// 
-/// async fn create_user() -> http::JSON<User> {
-///     http::JSON::Created(User {
+/// async fn create_user() -> JSON<User> {
+///     JSON::Created(User {
 ///         id:   42,
 ///         name: String::from("ohkami"),
 ///         age:  None,
 ///     })
 /// }
 /// 
-/// async fn get_user_by_id(id: usize) -> Result<http::JSON<User>, APIError> {
-///     Ok(http::JSON::OK(User {
+/// async fn get_user_by_id(id: usize) -> Result<JSON<User>, APIError> {
+///     Ok(JSON::OK(User {
 ///         id,
 ///         name: String::from("ohkami"),
 ///         age:  Some(2),
@@ -72,7 +73,7 @@ use crate::{
 /// }
 /// 
 /// async fn update_user(id: usize) -> impl IntoResponse {
-///     http::Status::OK
+///     Status::OK
 /// }
 /// 
 /// fn my_ohkami() -> Ohkami {
