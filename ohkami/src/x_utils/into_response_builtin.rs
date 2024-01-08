@@ -1,5 +1,6 @@
 #![allow(non_snake_case)]
-use crate::{Response, IntoResponse, http::Status, layer0_lib::server_header};
+
+use crate::{Response, IntoResponse, http::Status, layer1_req_res::ResponseHeaders};
 use std::borrow::Cow;
 
 
@@ -16,7 +17,7 @@ impl<T: serde::Serialize> Into<Response> for JSON<T> {
     fn into(self) -> Response {
         let body = serde_json::to_vec(&self.body).unwrap();
 
-        let mut headers = server_header::Headers::new();
+        let mut headers = ResponseHeaders::new();
         headers.set()
             .ContentType("application/json; charset=UTF-8")
             .ContentLength(body.len().to_string());
@@ -85,7 +86,7 @@ impl Into<Response> for Text {
             Cow::Owned(string) => Cow::Owned(string.into_bytes())
         };
 
-        let mut headers = server_header::Headers::new();
+        let mut headers = ResponseHeaders::new();
         headers.set()
             .ContentType("text/plain; charset=UTF-8")
             .ContentLength(content.len().to_string());
@@ -137,7 +138,7 @@ impl Into<Response> for HTML {
             Cow::Owned(string) => Cow::Owned(string.into_bytes())
         };
 
-        let mut headers = server_header::Headers::new();
+        let mut headers = ResponseHeaders::new();
         headers.set()
             .ContentType("text/html; charset=UTF-8")
             .ContentLength(content.len().to_string());
@@ -166,7 +167,7 @@ impl Redirect {
 }
 impl Into<Response> for Redirect {
     fn into(self) -> Response {
-        let mut headers = server_header::Headers::new();
+        let mut headers = ResponseHeaders::new();
         headers.set().Location(self.location);
         Response {
             status:  Status::Found,

@@ -40,7 +40,7 @@ DEBUG = [
     "async-std?/attributes",
 ]
 #default = [
-#    #"utils",
+#    "utils",
 #    "rt_tokio",
 #    #"rt_async-std",
 #    "DEBUG",
