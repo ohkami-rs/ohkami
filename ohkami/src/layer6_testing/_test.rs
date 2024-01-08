@@ -3,7 +3,6 @@
 use crate::__rt__;
 use crate::prelude::*;
 use crate::testing::*;
-use crate::{Fang, IntoFang, IntoResponse, http::Status};
 use crate::utils::{Text, JSON};
 
 
@@ -98,7 +97,7 @@ impl IntoResponse for APIError {
 
 
 async fn health_check() -> impl IntoResponse {
-    http::Status::NoContent
+    Status::NoContent
 }
 
 #[derive(serde::Serialize)]
