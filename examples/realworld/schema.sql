@@ -14,6 +14,16 @@ CREATE TABLE IF NOT EXISTS articles (
     FOREIGN KEY (author_id) REFERENCES users (id)    
 );
 
+CREATE TABLE IF NOT EXISTS users (
+    id        uuid         NOT NULL DEFAULT gen_random_uuid(),
+    email     varchar(32)  NOT NULL,
+    name      varchar(32)  NOT NULL,
+    bio       varchar(256),
+    image_url varchar(64),
+
+    PRIMARY KEY (id)
+);
+
 CREATE TABLE IF NOT EXISTS comments (
     id         uuid NOT NULL DEFAULT gen_random_uuid(),
     author_id  uuid NOT NULL,
@@ -23,16 +33,6 @@ CREATE TABLE IF NOT EXISTS comments (
     PRIMARY KEY (id),
     FOREIGN KEY (author_id)  REFERENCES users (id),
     FOREIGN KEY (article_id) REFERENCES articles (id)
-);
-
-CREATE TABLE IF NOT EXISTS users (
-    id        uuid         NOT NULL DEFAULT gen_random_uuid(),
-    email     varchar(32)  NOT NULL,
-    name      varchar(32)  NOT NULL,
-    bio       varchar(256),
-    image_url varchar(64),
-
-    PRIMARY KEY (id)
 );
 
 CREATE TABLE IF NOT EXISTS tags (

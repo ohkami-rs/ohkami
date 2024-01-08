@@ -3,7 +3,7 @@ use ohkami::{IntoResponse, utils::Text};
 
 #[derive(Debug)]
 pub enum RealWorldError {
-    Config(&'static str),
+    Config(String),
     DB(sqlx::Error),
 }
 

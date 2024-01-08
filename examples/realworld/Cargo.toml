@@ -11,4 +11,5 @@ tracing            = { workspace = true }
 tracing-subscriber = { workspace = true }
 sqlx               = { workspace = true }
 chrono             = { workspace = true }
-uuid               = { version = "1.6", features = ["serde", "v4"] }
+dotenvy            = "0.15.7"
+uuid               = { version = "1.6.1", features = ["serde", "v4"] }

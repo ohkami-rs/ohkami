@@ -1,19 +1,19 @@
 mod config;
 mod errors;
 mod models;
-mod repositories;
 mod fangs;
 mod handlers;
 
-use errors::RealWorldError;
-
 
 #[tokio::main]
-async fn main() -> Result<(), RealWorldError> {
+async fn main() -> Result<(), errors::RealWorldError> {
     config::init().await?;
 
-    handlers::realworld_ohkami()
-        .howl(":8080").await;
+    // handlers::realworld_ohkami()
+    //     .howl(":8080").await;
+    for (k, v) in std::env::vars() {
+        println!("[env] {k} = {v}")
+    }
 
     Ok(())
 }
