@@ -267,7 +267,7 @@ pub use layer2_fang_handler::{Route, Fang};
 pub use layer4_ohkami      ::{Ohkami, IntoFang};
 
 pub mod prelude {
-    pub use crate::{Request, Response, Route, Ohkami, Fang, IntoFang, IntoResponse, http::Status};
+    pub use crate::{Request, Response, Route, Ohkami, Fang, IntoFang, IntoResponse, http::Status, utils::{Text, JSON}};
 }
 
 pub mod http {

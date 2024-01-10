@@ -31,12 +31,12 @@ tokio  = { version = "1",    features = ["full"] }
 ```rust
 use ohkami::prelude::*;
 
-async fn health_check() -> http::Status {
-    http::Status::NoContent
+async fn health_check() -> Status {
+    Status::NoContent
 }
 
-async fn hello(c: Context, name: String) -> http::Text {
-    http::Text::OK(format!("Hello, {name}!"))
+async fn hello(c: Context, name: &str) -> Text {
+    Text::OK(format!("Hello, {name}!"))
 }
 
 #[tokio::main]
@@ -88,18 +88,18 @@ use ohkami::prelude::*;
 use ohkami::utils;   // <--
 
 #[utils::Query]
-struct SearchQuery {
-    q: String,
+struct SearchQuery<'q> {
+    q: &'q str,
 }
 async fn search(condition: SearchQuery) -> Response { /* */ }
 
 #[utils::Payload(JSON)]
 #[derive(serde::Deserialize)]
-struct CreateUserRequest {
-    name:     String,
-    password: String,
+struct CreateUserRequest<'req> {
+    name:     &'req str,
+    password: &'req str,
 }
-async fn create_user(body: CreateUserRequest) -> Response { /* */ }
+async fn create_user(body: CreateUserRequest<'_>) -> Response { /* */ }
 ```
 `#[Query]`, `#[Payload( 〜 )]` implements `FromRequest` trait for the struct.
 
@@ -226,7 +226,7 @@ use ohkami::testing::*; // <--
 fn hello_ohkami() -> Ohkami {
     Ohkami::new((
         "/hello".GET(|| async move {
-            http::Text::OK("Hello, world!")
+            Text::OK("Hello, world!")
         })
     ))
 }
@@ -240,7 +240,6 @@ async fn main() {
 #[cfg(test)]
 #[tokio::test]
 async fn test_my_ohkami() {
-
     let hello_ohkami = hello_ohkami();
 
     let res = hello_ohkami.oneshot(TestRequest::GET("/")).await;
