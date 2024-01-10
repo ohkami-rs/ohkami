@@ -43,4 +43,6 @@ jobs:
         working-directory: examples
         run:  |
           docker-compose -f ./realworld up -d
+          cargo install sqlx
+          cd ./realworld && sqlx migrate run
           cargo test 
