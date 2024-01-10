@@ -40,6 +40,6 @@ jobs:
         working-directory: examples
         run: |
           docker-compose -f ./realworld/docker-compose.yml up -d
-          cargo install sqlx
+          cargo install sqlx-cli
           cd ./realworld && sqlx migrate run
           cargo check
