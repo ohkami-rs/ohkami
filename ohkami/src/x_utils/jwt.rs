@@ -163,6 +163,7 @@ mod internal {
 
 
 
+#[cfg(feature="testing")]
 #[cfg(test)] mod test {
     use serde::Deserialize;
 

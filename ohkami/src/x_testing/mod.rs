@@ -1,10 +1,5 @@
 #[cfg(test)] mod _test;
 
-// #[cfg(feature="websocket")]
-// mod x_websocket;
-// #[cfg(feature="websocket")]
-// pub(crate) use x_websocket::{TestStream, TestWebSocket};
-
 use crate::{Response, Request, Ohkami};
 use crate::layer0_lib::{Method, Status};
 use crate::layer1_req_res::ResponseHeader;
