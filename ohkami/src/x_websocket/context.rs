@@ -1,11 +1,11 @@
 use std::{future::Future, borrow::Cow};
+use super::{assume_upgradable, UpgradeID};
 use super::websocket::Config;
-use super::{WebSocket, sign::Sha1};
+use super::{WebSocket};
 use crate::{Response, Request};
 use crate::__rt__::{task};
 use crate::http::{Method};
 use crate::layer0_lib::{base64};
-use super::{assume_upgradable, UpgradeID};
 
 
 pub struct WebSocketContext<UFH: UpgradeFailureHandler = DefaultUpgradeFailureHandler> {
@@ -99,11 +99,13 @@ impl WebSocketContext {
         self,
         handler: impl Fn(WebSocket) -> Fut + Send + Sync + 'static
     ) -> Response {
-        fn sign(sec_websocket_key: &str) -> String {
-            let mut sha1 = Sha1::new();
-            sha1.write(sec_websocket_key.as_bytes());
-            sha1.write(b"258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
-            base64::encode(sha1.sum())
+        #[inline] fn sign(sec_websocket_key: &str) -> String {
+            use ::sha1::{Sha1, Digest};
+
+            let mut sha1 = <Sha1 as Digest>::new();
+            sha1.update(sec_websocket_key.as_bytes());
+            sha1.update(b"258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
+            base64::encode(sha1.finalize())
         }
 
         let Self {
