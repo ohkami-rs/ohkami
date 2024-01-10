@@ -39,14 +39,14 @@ struct RegisterRequest {
 async fn register(
     RegisterRequest { username, email, password }: RegisterRequest,
 ) -> Result<JSON<UserResponse>, RealWorldError> {
-    sqlx::query!(r#"
-        SELECT id
-        FROM users AS u
-        WHERE
-            u.name = $1  AND
-            u.email = $2 AND
-            u.pa
-    "#, username, email).fetch_optional(pool()).await.map_err(RealWorldError::DB)?;
+    // sqlx::query!(r#"
+    //     SELECT id
+    //     FROM users AS u
+    //     WHERE
+    //         u.name = $1  AND
+    //         u.email = $2 AND
+    //         u.pa
+    // "#, username, email).fetch_optional(pool()).await.map_err(RealWorldError::DB)?;
 
     todo!()
 }

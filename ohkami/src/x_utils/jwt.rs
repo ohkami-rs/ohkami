@@ -44,6 +44,14 @@ mod internal {
             }
         }
 
+
+        #[inline(always)] const fn alg_str(&self) -> &'static str {
+            match self.alg {
+                VerifyingAlgorithm::HS256 => "HS256",
+                VerifyingAlgorithm::HS384 => "HS384",
+                VerifyingAlgorithm::HS512 => "HS512",
+            }
+        }
         #[inline(always)] const fn header_str(&self) -> &'static str {
             match self.alg {
                 VerifyingAlgorithm::HS256 => "{\"typ\":\"JWT\",\"alg\":\"HS256\"}",
@@ -110,7 +118,7 @@ mod internal {
             if header.get("cty").is_some_and(|cty| !cty.as_str().unwrap_or_default().eq_ignore_ascii_case("JWT")) {
                 return Err(Response::BadRequest())
             }
-            if header.get("alg").ok_or_else(|| Response::BadRequest())? != "HS256" {
+            if header.get("alg").ok_or_else(|| Response::BadRequest())? != self.alg_str() {
                 return Err(Response::BadRequest())
             }
 
