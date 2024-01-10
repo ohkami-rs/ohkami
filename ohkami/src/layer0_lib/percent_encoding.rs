@@ -39,7 +39,7 @@ impl<'a> Iterator for PercentDecode<'a> {
 }
 
 impl<'a> PercentDecode<'a> {
-    fn if_any(&self) -> Option<Vec<u8>> {
+    #[inline] fn if_any(&self) -> Option<Vec<u8>> {
         let mut bytes_iter = self.bytes.clone();
         while bytes_iter.any(|&b| b == b'%') {
             if let Some(decoded_byte) = after_percent_sign(&mut bytes_iter) {

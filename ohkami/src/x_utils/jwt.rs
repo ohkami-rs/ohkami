@@ -2,40 +2,81 @@
 
 pub use internal::JWT;
 
-pub fn JWT(secret: impl Into<String>) -> internal::JWT {
+pub fn JWT(secret: impl Into<std::borrow::Cow<'static, str>>) -> internal::JWT {
     internal::JWT::new(secret)
 }
 
 mod internal {
-    use crate::layer0_lib::{base64, HMAC_SHA256};
+    use std::borrow::Cow;
+    use crate::layer0_lib::{base64};
     use crate::{Request, Response};
 
 
     #[derive(Clone)]
     pub struct JWT {
-        secret: String,
+        secret: Cow<'static, str>,
+        alg:    VerifyingAlgorithm,
     }
+    #[derive(Clone)]
+    enum VerifyingAlgorithm {
+        HS256,
+        HS384,
+        HS512,
+    }
+
     impl JWT {
-        pub fn new(secret: impl Into<String>) -> Self {
+        #[inline] pub fn new(secret: impl Into<Cow<'static, str>>) -> Self {
             Self {
                 secret: secret.into(),
+                alg:    VerifyingAlgorithm::HS256,
+            }
+        }
+        pub fn new_384(secret: impl Into<Cow<'static, str>>) -> Self {
+            Self {
+                secret: secret.into(),
+                alg:    VerifyingAlgorithm::HS384,
+            }
+        }
+        pub fn new_512(secret: impl Into<Cow<'static, str>>) -> Self {
+            Self {
+                secret: secret.into(),
+                alg:    VerifyingAlgorithm::HS512,
+            }
+        }
+
+
+        #[inline(always)] const fn alg_str(&self) -> &'static str {
+            match self.alg {
+                VerifyingAlgorithm::HS256 => "HS256",
+                VerifyingAlgorithm::HS384 => "HS384",
+                VerifyingAlgorithm::HS512 => "HS512",
+            }
+        }
+        #[inline(always)] const fn header_str(&self) -> &'static str {
+            match self.alg {
+                VerifyingAlgorithm::HS256 => "{\"typ\":\"JWT\",\"alg\":\"HS256\"}",
+                VerifyingAlgorithm::HS384 => "{\"typ\":\"JWT\",\"alg\":\"HS384\"}",
+                VerifyingAlgorithm::HS512 => "{\"typ\":\"JWT\",\"alg\":\"HS512\"}",
             }
         }
     }
 
     impl JWT {
-        pub fn issue(self, payload: impl ::serde::Serialize) -> String {
+        #[inline] pub fn issue(self, payload: impl ::serde::Serialize) -> String {
             let unsigned_token = {
-                let mut ut = base64::encode_url("{\"typ\":\"JWT\",\"alg\":\"HS256\"}");
+                let mut ut = base64::encode_url(self.header_str());
                 ut.push('.');
                 ut.push_str(&base64::encode_url(::serde_json::to_vec(&payload).expect("Failed to serialze payload")));
                 ut
             };
 
             let signature = {
-                let mut s = HMAC_SHA256::new(self.secret);
-                s.write(unsigned_token.as_bytes());
-                s.sum()
+                use ::sha2::{Sha256};
+                use ::hmac::{Hmac, KeyInit, Mac};
+
+                let mut s = Hmac::<Sha256>::new_from_slice(self.secret.as_bytes()).unwrap();
+                s.update(unsigned_token.as_bytes());
+                s.finalize().into_bytes()
             };
             
             let mut token = unsigned_token;
@@ -77,7 +118,7 @@ mod internal {
             if header.get("cty").is_some_and(|cty| !cty.as_str().unwrap_or_default().eq_ignore_ascii_case("JWT")) {
                 return Err(Response::BadRequest())
             }
-            if header.get("alg").ok_or_else(|| Response::BadRequest())? != "HS256" {
+            if header.get("alg").ok_or_else(|| Response::BadRequest())? != self.alg_str() {
                 return Err(Response::BadRequest())
             }
 
@@ -100,13 +141,16 @@ mod internal {
                 .ok_or_else(|| Response::BadRequest())?;
             let requested_signature = base64::decode_url(signature_part);
             let actual_signature = {
-                let mut hs = HMAC_SHA256::new(&self.secret);
-                hs.write(header_part.as_bytes());
-                hs.write(b".");
-                hs.write(payload_part.as_bytes());
-                hs.sum()
+                use ::sha2::{Sha256};
+                use ::hmac::{Hmac, KeyInit, Mac};
+
+                let mut hs = Hmac::<Sha256>::new_from_slice(self.secret.as_bytes()).unwrap();
+                hs.update(header_part.as_bytes());
+                hs.update(b".");
+                hs.update(payload_part.as_bytes());
+                hs.finalize().into_bytes()
             };
-            if requested_signature != actual_signature {
+            if *requested_signature != *actual_signature {
                 return Err(Response::Unauthorized().text(UNAUTHORIZED_MESSAGE))
             }
 

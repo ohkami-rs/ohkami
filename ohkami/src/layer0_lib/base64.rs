@@ -99,7 +99,7 @@ fn encode_by(src: &[u8], encode_map: &[u8; 64], padding: Option<u8>) -> String {
 }
 
 #[cfg(feature="utils")]
-fn decode_by(encoded: &[u8], encode_map: &[u8; 64], padding: Option<u8>) -> Vec<u8> {
+#[inline] fn decode_by(encoded: &[u8], encode_map: &[u8; 64], padding: Option<u8>) -> Vec<u8> {
     #[inline] fn assemble64(n: [u8; 8]) -> Option<u64> {
         let [n1, n2, n3, n4, n5, n6, n7, n8] = n.map(<u8 as Into<u64>>::into);
         (n1|n2|n3|n4|n5|n6|n7|n8 != 0xff).then_some(

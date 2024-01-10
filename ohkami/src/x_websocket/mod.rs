@@ -6,7 +6,6 @@ mod context;
 mod message;
 mod upgrade;
 mod frame;
-mod sign;
 
 pub use {
     message::{Message},
