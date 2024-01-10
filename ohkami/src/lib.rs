@@ -246,10 +246,12 @@ mod __rt__ {
 
 mod layer0_lib;
 mod layer1_req_res;
-mod layer3_fang_handler;
-mod layer4_router;
-mod layer5_ohkami;
-mod layer6_testing;
+mod layer2_fang_handler;
+mod layer3_router;
+mod layer4_ohkami;
+
+#[cfg(feature="testing")]
+mod x_testing;
 
 #[cfg(feature="utils")]
 mod x_utils;
@@ -261,8 +263,8 @@ mod x_websocket;
 /*===== visibility managements =====*/
 
 pub use layer1_req_res     ::{Request, Response, FromRequest, FromParam, IntoResponse, Memory};
-pub use layer3_fang_handler::{Route, Fang};
-pub use layer5_ohkami      ::{Ohkami, IntoFang};
+pub use layer2_fang_handler::{Route, Fang};
+pub use layer4_ohkami      ::{Ohkami, IntoFang};
 
 pub mod prelude {
     pub use crate::{Request, Response, Route, Ohkami, Fang, IntoFang, IntoResponse, http::Status};
@@ -272,14 +274,15 @@ pub mod http {
     pub use crate::layer0_lib::{Status, Method, append};
 }
 
+#[cfg(feature="testing")]
+pub mod testing {
+    pub use crate::x_testing::*;
+}
+
 #[cfg(feature="utils")]
 pub mod utils {
     pub use crate::x_utils::{now, CORS, JWT, File, JSON, Text, HTML, Redirect};
     pub use ohkami_macros ::{Query, Payload};
-}
-
-pub mod testing {
-    pub use crate::layer6_testing::*;
 }
 
 #[cfg(feature="websocket")]

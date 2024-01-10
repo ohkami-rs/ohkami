@@ -4,6 +4,7 @@ mod trie;  pub(crate) use trie::TrieRouter;
 mod radix; pub(crate) use radix::RadixRouter;
 
 
+#[cfg(feature="testing")]
 #[cfg(feature="utils")]
 #[cfg(test)] mod test {
     use crate::prelude::*;

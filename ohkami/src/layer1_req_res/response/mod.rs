@@ -1,5 +1,7 @@
 mod headers;
-pub use headers::{Headers as ResponseHeaders, Header as ResponseHeader};
+pub use headers::{Headers as ResponseHeaders};
+#[cfg(feature="testing")]
+pub(crate) use headers::{Header as ResponseHeader};
 
 mod into_response;
 pub use into_response::IntoResponse;

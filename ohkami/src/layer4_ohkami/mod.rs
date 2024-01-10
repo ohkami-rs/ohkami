@@ -4,7 +4,7 @@ mod howl;
 
 use crate::{
     layer0_lib::Method,
-    layer4_router::TrieRouter,
+    layer3_router::TrieRouter,
 };
 
 
@@ -143,7 +143,7 @@ pub struct Ohkami {
     pub(crate) routes: TrieRouter,
 
     /// apply just before merged to another or called `howl`
-    pub(crate) fangs:  Vec<(&'static [Method], crate::layer3_fang_handler::Fang)>,
+    pub(crate) fangs:  Vec<(&'static [Method], crate::layer2_fang_handler::Fang)>,
 }
 
 impl Ohkami {

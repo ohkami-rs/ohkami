@@ -3,7 +3,7 @@ use crate::{
     Request,
     Response,
     layer0_lib::{Method, Status, Slice, percent_decode},
-    layer3_fang_handler::{Handler, FrontFang, BackFang}, IntoResponse,
+    layer2_fang_handler::{Handler, FrontFang, BackFang}, IntoResponse,
 };
 
 #[cfg(feature="websocket")]

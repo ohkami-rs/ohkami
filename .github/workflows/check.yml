@@ -27,7 +27,13 @@ jobs:
       - name: Check ohkami's buildability
         run:  cargo check --features rt_${{ matrix.rt }}${{ matrix.x == '' && '' || ',' }}${{ matrix.x }}${{ matrix.toolchain == 'nightly' && ',nightly' || '' }},DEBUG
         
-      - name: Check ohkami's buildability without default feature (utils)
+      - name: Check ohkami's buildability without default features except fot `utils`
+        run:  cargo check --no-default-features --features utils,rt_${{ matrix.rt }}${{ matrix.x == '' && '' || ',' }}${{ matrix.x }}${{ matrix.toolchain == 'nightly' && ',nightly' || '' }},DEBUG
+      
+      - name: Check ohkami's buildability without default features except fot `testing`
+        run:  cargo check --no-default-features --features testing,rt_${{ matrix.rt }}${{ matrix.x == '' && '' || ',' }}${{ matrix.x }}${{ matrix.toolchain == 'nightly' && ',nightly' || '' }},DEBUG
+      
+      - name: Check ohkami's buildability without default features
         run:  cargo check --no-default-features --features rt_${{ matrix.rt }}${{ matrix.x == '' && '' || ',' }}${{ matrix.x }}${{ matrix.toolchain == 'nightly' && ',nightly' || '' }},DEBUG
       
       - name: Check examples' buildablity
