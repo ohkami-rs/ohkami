@@ -38,8 +38,8 @@ jobs:
       
       - name: Check examples' buildablity
         working-directory: examples
-        run:  |
-          docker-compose -f ./realworld up -d
-          cargo install sqlx
+        run: |
+          docker-compose -f ./realworld/docker-compose.yml up -d
+          cargo install sqlx-cli
           cd ./realworld && sqlx migrate run
           cargo check

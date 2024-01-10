@@ -13,31 +13,36 @@ pub fn users_ohkami() -> Ohkami {
 }
 
 #[Payload(JSON)]
+struct LoginRequest<'req> {
+    user: LoginRequestUser<'req>,
+}
+impl<'req> Deserialize<'req> for LoginRequest<'req> {
+    fn deserialize<D: serde::Deserializer<'req>>(deserializer: D) -> Result<Self, D::Error> {
+        Ok(Self {
+            user: LoginRequestUser::deserialize(deserializer)?,
+        })
+    }
+}
 #[derive(Deserialize)]
-struct LoginRequest {
-    user: LoginRequestUser,
+struct LoginRequestUser<'req> {
+    email:    &'req str,
+    password: &'req str,
 }
 
-#[derive(Deserialize)]
-struct LoginRequestUser {
-    email:    String,
-    password: String,
-}
-
-async fn login(body: LoginRequest) -> Result<JSON<UserResponse>, RealWorldError> {
+async fn login(body: LoginRequest<'_>) -> Result<JSON<UserResponse>, RealWorldError> {
     todo!()
 }
 
 #[Payload(JSON)]
 #[derive(Deserialize)]
-struct RegisterRequest {
-    username: String,
-    email:    String,
-    password: String,
+struct RegisterRequest<'req> {
+    username: &'req str,
+    email:    &'req str,
+    password: &'req str,
 }
 
 async fn register(
-    RegisterRequest { username, email, password }: RegisterRequest,
+    RegisterRequest { username, email, password }: RegisterRequest<'_>,
 ) -> Result<JSON<UserResponse>, RealWorldError> {
     sqlx::query!(r#"
         SELECT id

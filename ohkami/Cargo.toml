@@ -42,12 +42,12 @@ DEBUG = [
     "tokio?/macros",
     "async-std?/attributes",
 ]
-#default = [
-#    "utils",
-#    "testing",
-#    "websocket",
-#    "rt_tokio",
-#    #"rt_async-std",
-#    "DEBUG",
-#    "nightly",
-#]
+# default = [
+#     "utils",
+#     "testing",
+#     "websocket",
+#     "rt_tokio",
+#     #"rt_async-std",
+#     "DEBUG",
+#     "nightly",
+# ]

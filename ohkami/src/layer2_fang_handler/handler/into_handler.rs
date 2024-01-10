@@ -43,7 +43,7 @@ const _: () = {
     where
         F:    Fn() -> Fut + Send + Sync + 'static,
         Body: IntoResponse,
-        Fut:  Future<Output = Body> + Send + Sync + 'static,
+        Fut:  Future<Output = Body> + Send + 'static,
     {
         fn into_handler(self) -> Handler {
             Handler::new(move |_| {
@@ -63,7 +63,7 @@ const _: (/* FromParam */) = {
             where
                 F:    Fn($param_type) -> Fut + Send + Sync + 'static,
                 Body: IntoResponse,
-                Fut:  Future<Output = Body> + Send + Sync + 'static,
+                Fut:  Future<Output = Body> + Send + 'static,
             {
                 fn into_handler(self) -> Handler {
                     Handler::new(move |req|
@@ -85,7 +85,7 @@ const _: (/* FromParam */) = {
     where
         F:    Fn(&'req str) -> Fut + Send + Sync + 'static,
         Body: IntoResponse,
-        Fut:  Future<Output = Body> + Send + Sync + 'static,
+        Fut:  Future<Output = Body> + Send + 'static,
     {
         fn into_handler(self) -> Handler {
             Handler::new(move |req|
@@ -111,7 +111,7 @@ const _: (/* FromParam */) = {
     where
         F:    Fn((P1,)) -> Fut + Send + Sync + 'static,
         Body: IntoResponse,
-        Fut:  Future<Output = Body> + Send + Sync + 'static,
+        Fut:  Future<Output = Body> + Send + 'static,
     {
         fn into_handler(self) -> Handler {
             Handler::new(move |req|
@@ -131,7 +131,7 @@ const _: (/* FromParam */) = {
     impl<'req, F, Fut, Body:IntoResponse, P1:FromParam<'req>, P2:FromParam<'req>> IntoHandler<fn((P1, P2))->Body> for F
     where
         F:   Fn((P1, P2)) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Body> + Send + Sync + 'static,
+        Fut: Future<Output = Body> + Send + 'static,
     {
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
@@ -152,7 +152,7 @@ const _: (/* FromRequest items */) = {
     impl<'req, F, Fut, Body:IntoResponse, Item1:FromRequest<'req>> IntoHandler<fn(Item1)->Body> for F
     where
         F:   Fn(Item1) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Body> + Send + Sync + 'static,
+        Fut: Future<Output = Body> + Send + 'static,
     {
         fn into_handler(self) -> Handler {
             Handler::new(move |req|
@@ -170,7 +170,7 @@ const _: (/* FromRequest items */) = {
     impl<'req, F, Fut, Body:IntoResponse, Item1:FromRequest<'req>, Item2:FromRequest<'req>> IntoHandler<fn(Item1, Item2)->Body> for F
     where
         F:   Fn(Item1, Item2) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Body> + Send + Sync + 'static,
+        Fut: Future<Output = Body> + Send + 'static,
     {
         fn into_handler(self) -> Handler {
             Handler::new(move |req|
@@ -193,7 +193,7 @@ const _: (/* single FromParam and FromRequest items */) = {
             impl<'req, F, Fut, Body:IntoResponse, Item1:FromRequest<'req>> IntoHandler<fn($param_type, Item1)->Body> for F
             where
                 F:   Fn($param_type, Item1) -> Fut + Send + Sync + 'static,
-                Fut: Future<Output = Body> + Send + Sync + 'static,
+                Fut: Future<Output = Body> + Send + 'static,
             {
                 fn into_handler(self) -> Handler {
                     Handler::new(move |req| {
@@ -216,7 +216,7 @@ const _: (/* single FromParam and FromRequest items */) = {
             impl<'req, F, Fut, Body:IntoResponse, Item1:FromRequest<'req>, Item2:FromRequest<'req>> IntoHandler<fn($param_type, Item1, Item2)->Body> for F
             where
                 F:   Fn($param_type, Item1, Item2) -> Fut + Send + Sync + 'static,
-                Fut: Future<Output = Body> + Send + Sync + 'static,
+                Fut: Future<Output = Body> + Send + 'static,
             {
                 fn into_handler(self) -> Handler {
                     Handler::new(move |req| {
@@ -246,7 +246,7 @@ const _: (/* one FromParam and FromRequest items */) = {
     impl<'req, F, Fut, Body:IntoResponse, P1:FromParam<'req>, Item1:FromRequest<'req>> IntoHandler<fn((P1,), Item1)->Body> for F
         where
             F:   Fn((P1,), Item1) -> Fut + Send + Sync + 'static,
-            Fut: Future<Output = Body> + Send + Sync + 'static,
+            Fut: Future<Output = Body> + Send + 'static,
         {
             fn into_handler(self) -> Handler {
                 Handler::new(move |req| {
@@ -269,7 +269,7 @@ const _: (/* one FromParam and FromRequest items */) = {
         impl<'req, F, Fut, Body:IntoResponse, P1:FromParam<'req>, Item1:FromRequest<'req>, Item2:FromRequest<'req>> IntoHandler<fn((P1,), Item1, Item2)->Body> for F
         where
             F:   Fn((P1,), Item1, Item2) -> Fut + Send + Sync + 'static,
-            Fut: Future<Output = Body> + Send + Sync + 'static,
+            Fut: Future<Output = Body> + Send + 'static,
         {
             fn into_handler(self) -> Handler {
                 Handler::new(move |req| {
@@ -295,7 +295,7 @@ const _: (/* two PathParams and FromRequest items */) = {
     impl<'req, F, Fut, Body:IntoResponse, P1:FromParam<'req>, P2:FromParam<'req>, Item1:FromRequest<'req>> IntoHandler<fn((P1, P2), Item1)->Body> for F
     where
         F:   Fn((P1, P2), Item1) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Body> + Send + Sync + 'static,
+        Fut: Future<Output = Body> + Send + 'static,
     {
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
@@ -319,7 +319,7 @@ const _: (/* two PathParams and FromRequest items */) = {
     impl<'req, F, Fut, Body:IntoResponse, P1:FromParam<'req>, P2:FromParam<'req>, Item1:FromRequest<'req>, Item2:FromRequest<'req>> IntoHandler<fn((P1, P2), Item1, Item2)->Body> for F
     where
         F:   Fn((P1, P2), Item1, Item2) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Body> + Send + Sync + 'static,
+        Fut: Future<Output = Body> + Send + 'static,
     {
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
@@ -347,7 +347,7 @@ const _: (/* requires upgrade to websocket */) = {
     impl<'req, F, Fut, Body:IntoResponse> IntoHandler<fn(WebSocketContext,)->Body> for F
     where
         F:   Fn(WebSocketContext) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Body> + Send + Sync + 'static,
+        Fut: Future<Output = Body> + Send + 'static,
     {
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
@@ -365,7 +365,7 @@ const _: (/* requires upgrade to websocket */) = {
     impl<'req, F, Fut, Body:IntoResponse, P1:FromParam<'req>> IntoHandler<fn(WebSocketContext, P1)->Body> for F
     where
         F:   Fn(WebSocketContext, P1) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Body> + Send + Sync + 'static,
+        Fut: Future<Output = Body> + Send + 'static,
     {
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
@@ -386,7 +386,7 @@ const _: (/* requires upgrade to websocket */) = {
     impl<'req, F, Fut, Body:IntoResponse, P1:FromParam<'req>, P2:FromParam<'req>> IntoHandler<fn(WebSocketContext, P1, P2)->Body> for F
     where
         F:   Fn(WebSocketContext, P1, P2) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Body> + Send + Sync + 'static,
+        Fut: Future<Output = Body> + Send + 'static,
     {
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
@@ -407,7 +407,7 @@ const _: (/* requires upgrade to websocket */) = {
     impl<'req, F, Fut, Body:IntoResponse, P1:FromParam<'req>> IntoHandler<fn(WebSocketContext, (P1,))->Body> for F
     where
         F:   Fn(WebSocketContext, (P1,)) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Body> + Send + Sync + 'static,
+        Fut: Future<Output = Body> + Send + 'static,
     {
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
@@ -428,7 +428,7 @@ const _: (/* requires upgrade to websocket */) = {
     impl<'req, F, Fut, Body:IntoResponse, P1:FromParam<'req>, P2:FromParam<'req>> IntoHandler<fn(WebSocketContext, (P1, P2))->Body> for F
     where
         F:   Fn(WebSocketContext, (P1, P2)) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Body> + Send + Sync + 'static,
+        Fut: Future<Output = Body> + Send + 'static,
     {
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {

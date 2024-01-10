@@ -268,6 +268,9 @@ pub use layer4_ohkami      ::{Ohkami, IntoFang};
 
 pub mod prelude {
     pub use crate::{Request, Response, Route, Ohkami, Fang, IntoFang, IntoResponse, http::Status};
+
+    #[cfg(feature="utils")]
+    pub use crate::utils::{Text, JSON};
 }
 
 pub mod http {
