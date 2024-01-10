@@ -38,4 +38,6 @@ jobs:
       
       - name: Check examples' buildablity
         working-directory: examples
-        run:  cargo check
+        run:  |
+          docker-compose -f ./realworld up -d
+          cargo check
