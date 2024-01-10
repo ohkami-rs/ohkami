@@ -21,7 +21,7 @@ static PG_POOL: OnceLock<PgPool>             = OnceLock::new();
 static OUR_JWT: OnceLock<ohkami::utils::JWT> = OnceLock::new();
 
 pub async fn init() -> Result<(), RealWorldError> {
-    dotenvy::dotenv().map_err(|e| RealWorldError::Config(format!("Failed to load .env: {e}")))?;
+    dotenvy::from_filename("sample.env").map_err(|e| RealWorldError::Config(format!("Failed to load .env: {e}")))?;
 
     static DATABASE_URL: OnceLock<String> = OnceLock::new();
     let db_url = DATABASE_URL.get_or_init(|| match std::env::var("DATABASE_URL") {
