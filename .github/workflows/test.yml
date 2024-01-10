@@ -41,8 +41,8 @@ jobs:
       
       - name: Run tests of examples
         working-directory: examples
-        run:  |
-          docker-compose -f ./realworld up -d
+        run: |
+          docker-compose -f ./realworld/docker-compose.yml up -d
           cargo install sqlx
           cd ./realworld && sqlx migrate run
           cargo test 
