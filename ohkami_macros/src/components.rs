@@ -64,11 +64,11 @@ pub(crate) struct FieldData {
     }
 }
 
-pub(crate) enum Format {
+pub(crate) enum PayloadFormat {
     JSON,
     Form,
     URLEncoded,
-} impl Format {
+} impl PayloadFormat {
     pub(crate) fn parse(tokens: TokenStream) -> Result<Self> {
         match tokens.to_token_stream().to_string().as_str() {
             "JSON"       => Ok(Self::JSON),
@@ -84,7 +84,7 @@ pub(crate) enum Format {
     }
 }
 
-pub(crate) fn parse_struct(macro_name: &str, input: TokenStream) -> Result<ItemStruct> {
+pub(crate) fn parse_request_struct(macro_name: &str, input: TokenStream) -> Result<ItemStruct> {
     let mut struct_tokens = parse2::<ItemStruct>(input)?;
 
     if struct_tokens.semi_token.is_some() {
@@ -95,7 +95,7 @@ pub(crate) fn parse_struct(macro_name: &str, input: TokenStream) -> Result<ItemS
 
     if struct_tokens.generics.type_params().count() > 0 {
         return Err(Error::new(Span::call_site(), format!(
-            "`#[{macro_name}]` doesn't support type params"
+            "`#[{macro_name}]` doesn't support generics"
         )))
     }
 
@@ -117,6 +117,23 @@ pub(crate) fn parse_struct(macro_name: &str, input: TokenStream) -> Result<ItemS
 
     Ok(struct_tokens)
 }
+
+
+pub(crate) enum ResponseFormat {
+    JSON,
+} impl ResponseFormat {
+    pub(crate) fn parse(tokens: TokenStream) -> Result<Self> {
+        match tokens.to_token_stream().to_string().as_str() {
+            "JSON"       => Ok(Self::JSON),
+            _ => Err(Error::new(Span::mixed_site(), "\
+                Valid format: \n\
+                - `#[Response(JSON)]` \n\
+            "))
+        }
+    }
+}
+
+
 
 
 fn is_not(attr: &Attribute, name: &str) -> bool {

@@ -1,7 +1,7 @@
-use ohkami::{Ohkami, Route, utils::JSON, http::Status};
+use ohkami::{Ohkami, Route, http::Status, utils::typed::{OK, Created}};
 use ohkami::utils::{Payload, Query};
 use serde::Deserialize;
-use crate::fangs::Auth;
+use crate::{fangs::Auth, errors::RealWorldError};
 use crate::models::{
     Tag,
     Article, SingleArticleResponse, MultipleArticlesResponse,
@@ -56,15 +56,15 @@ impl<'q> Default for ArticlesQuery<'q> {
     }
 }
 
-async fn list(query: ArticlesQuery<'_>) -> JSON<MultipleArticlesResponse> {
+async fn list(query: ArticlesQuery<'_>) -> Result<OK<MultipleArticlesResponse>, RealWorldError> {
     todo!()
 }
 
-async fn feed(query: ArticlesQuery<'_>) -> JSON<MultipleArticlesResponse> {
+async fn feed(query: ArticlesQuery<'_>) -> Result<OK<MultipleArticlesResponse>, RealWorldError> {
     todo!()
 }
 
-async fn get(slug: &str) -> JSON<SingleArticleResponse> {
+async fn get(slug: &str) -> Result<OK<SingleArticleResponse>, RealWorldError> {
     todo!()
 }
 
@@ -78,7 +78,7 @@ struct CreateArticleRequest<'req> {
     tag_list:      Option<Vec<Tag<'req>>>,
 }
 
-async fn create(body: CreateArticleRequest<'_>) -> JSON<SingleArticleResponse> {
+async fn create(body: CreateArticleRequest<'_>) -> Result<Created<SingleArticleResponse>, RealWorldError> {
     todo!()
 }
 
@@ -90,7 +90,7 @@ struct UpdateArticleRequest<'req> {
     body:        Option<&'req str>,
 }
 
-async fn update(slug: &str, body: UpdateArticleRequest<'_>) -> JSON<SingleArticleResponse> {
+async fn update(slug: &str, body: UpdateArticleRequest<'_>) -> Result<OK<SingleArticleResponse>, RealWorldError> {
     todo!()
 }
 
@@ -104,11 +104,11 @@ struct AddCommentRequest<'req> {
     body: &'req str,
 }
 
-async fn add_comment(slug: &str, body: AddCommentRequest<'_>) -> JSON<SingleCommentResponse> {
+async fn add_comment(slug: &str, body: AddCommentRequest<'_>) -> Result<Created<SingleCommentResponse>, RealWorldError> {
     todo!()
 }
 
-async fn get_comments(slug: &str) -> JSON<MultipleCommentsResponse> {
+async fn get_comments(slug: &str) -> Result<OK<MultipleCommentsResponse>, RealWorldError> {
     todo!()
 }
 
@@ -116,10 +116,10 @@ async fn delete_comment((slug, id): (&str, usize)) -> Status {
     todo!()
 }
 
-async fn favorite(slug: &str) -> JSON<SingleArticleResponse> {
+async fn favorite(slug: &str) -> Result<OK<SingleArticleResponse>, RealWorldError> {
     todo!()
 }
 
-async fn unfavorite(slug: &str) -> JSON<SingleArticleResponse> {
+async fn unfavorite(slug: &str) -> Result<OK<SingleArticleResponse>, RealWorldError> {
     todo!()
 }

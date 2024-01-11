@@ -1,5 +1,5 @@
-use ohkami::{Ohkami, Route, utils::JSON};
-use crate::models::ListOfTagsResponse;
+use ohkami::{Ohkami, Route, utils::typed::OK};
+use crate::{models::ListOfTagsResponse, errors::RealWorldError};
 
 
 pub fn tags_ohkami() -> Ohkami {
@@ -8,6 +8,6 @@ pub fn tags_ohkami() -> Ohkami {
     ))
 }
 
-async fn get() -> JSON<ListOfTagsResponse<'static>> {
+async fn get() -> Result<OK<ListOfTagsResponse<'static>>, RealWorldError> {
     todo!()
 }

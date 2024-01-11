@@ -1,3 +1,4 @@
+use ohkami::utils::Response;
 use serde::{Serialize, Deserialize};
 use chrono::{DateTime, Utc, SecondsFormat};
 use uuid::Uuid;
@@ -9,7 +10,7 @@ fn serialize_datetime<S: serde::Serializer>(
     serializer.serialize_str(&date_time.to_rfc3339_opts(SecondsFormat::Millis, true))
 }
 
-
+#[Response(JSON)]
 #[derive(Serialize)]
 pub struct UserResponse {
     pub user: User,
@@ -24,6 +25,7 @@ pub struct User {
     pub image:    Option<String>,
 }
 
+#[Response(JSON)]
 #[derive(Serialize)]
 pub struct ProfileResponse {
     pub profile: Profile,
@@ -36,10 +38,12 @@ pub struct Profile {
     pub following: bool,
 }
 
+#[Response(JSON)]
 #[derive(Serialize)]
 pub struct SingleArticleResponse {
     pub article: Article,
 }
+#[Response(JSON)]
 #[derive(Serialize)]
 pub struct MultipleArticlesResponse {
     pub articles: Vec<Article>,
@@ -64,10 +68,12 @@ pub struct Article {
     pub author:         Profile,
 }
 
+#[Response(JSON)]
 #[derive(Serialize)]
 pub struct SingleCommentResponse {
     pub comment: Comment,
 }
+#[Response(JSON)]
 #[derive(Serialize)]
 pub struct MultipleCommentsResponse {
     pub comments: Vec<Comment>,
@@ -83,6 +89,7 @@ pub struct Comment {
     pub author:     Profile,
 }
 
+#[Response(JSON)]
 #[derive(Serialize)]
 pub struct ListOfTagsResponse<'t> {
     pub tags: Vec<Tag<'t>>

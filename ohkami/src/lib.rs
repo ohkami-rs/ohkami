@@ -171,10 +171,6 @@
 #![allow(incomplete_features)]
 #![cfg_attr(feature="nightly", feature(
     try_trait_v2,
-    generic_arg_infer,
-
-    /* imcomplete features */
-    generic_const_exprs,
 ))]
 
 
@@ -285,7 +281,29 @@ pub mod testing {
 #[cfg(feature="utils")]
 pub mod utils {
     pub use crate::x_utils::{now, CORS, JWT, File, JSON, Text, HTML, Redirect};
-    pub use ohkami_macros ::{Query, Payload};
+    pub use ohkami_macros ::{Query, Payload, Response};
+
+    pub mod typed {
+        pub use crate::x_utils::{
+            SwitchingProtocols,
+
+            OK,
+            Created,
+            NoContent,
+
+            MovedPermanently,
+            Found,
+
+            BadRequest,
+            Unauthorized,
+            Forbidden,
+            NotFound,
+            UnprocessableEntity,
+
+            InternalServerError,
+            NotImplemented,
+        };
+    }
 }
 
 #[cfg(feature="websocket")]
@@ -300,6 +318,8 @@ pub mod __internal__ {
         parse_json,
         parse_formparts,
         parse_urlencoded,
+
+        ResponseBody,
     };
 }
 

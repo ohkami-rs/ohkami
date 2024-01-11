@@ -1,6 +1,6 @@
 use std::borrow::Cow;
-use ohkami::{Ohkami, Route, utils::{Payload, JSON}};
 use serde::Deserialize;
+use ohkami::{Ohkami, Route, utils::{Payload, JSON}, utils::typed::{Created, OK}};
 use crate::{models::{User, UserResponse}, errors::RealWorldError, config::{pool, self}};
 
 
@@ -30,7 +30,7 @@ struct LoginRequestUser<'req> {
     password: &'req str,
 }
 
-async fn login(body: LoginRequest<'_>) -> Result<JSON<UserResponse>, RealWorldError> {
+async fn login(body: LoginRequest<'_>) -> Result<OK<UserResponse>, RealWorldError> {
     todo!()
 }
 
@@ -44,7 +44,7 @@ struct RegisterRequest<'req> {
 
 async fn register(
     RegisterRequest { username, email, password }: RegisterRequest<'_>,
-) -> Result<JSON<UserResponse>, RealWorldError> {
+) -> Result<Created<UserResponse>, RealWorldError> {
     let already_exists = sqlx::query!(r#"
         SELECT EXISTS (
             SELECT id
@@ -73,7 +73,7 @@ async fn register(
 
     let jwt_token = config::issue_jwt_for_user_of_id(new_user_id);
 
-    Ok(JSON::Created(UserResponse {
+    Ok(Created(UserResponse {
         user: User {
             email:    email.into(),
             token:    jwt_token,

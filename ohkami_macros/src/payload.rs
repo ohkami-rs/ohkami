@@ -7,13 +7,13 @@ use crate::components::*;
 
 #[allow(non_snake_case)]
 pub(super) fn Payload(format: TokenStream, data: TokenStream) -> Result<TokenStream> {
-    let format = Format::parse(format)?;
-    let data = parse_struct("Payload", data)?;
+    let format = PayloadFormat::parse(format)?;
+    let data = parse_request_struct("Payload", data)?;
 
     let impl_payload = match format {
-        Format::JSON       => impl_payload_json(&data),
-        Format::URLEncoded => impl_payload_urlencoded(&data),
-        Format::Form       => impl_payload_formdata(&data),
+        PayloadFormat::JSON       => impl_payload_json(&data),
+        PayloadFormat::URLEncoded => impl_payload_urlencoded(&data),
+        PayloadFormat::Form       => impl_payload_formdata(&data),
     }?;
 
     Ok(quote!{

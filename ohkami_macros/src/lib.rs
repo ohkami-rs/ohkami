@@ -2,6 +2,8 @@ mod components;
 
 mod query;
 mod payload;
+mod response;
+
 
 /// ## Query parameters
 /// 
@@ -15,12 +17,12 @@ mod payload;
 /// use ohkami::utils::Queries; // <-- import me
 /// 
 /// #[Query]
-/// struct HelloQuery {
-///     name:     String,
+/// struct HelloQuery<'q> {
+///     name:     &'q str,
 ///     n_repeat: Option<usize>,
 /// }
 /// 
-/// async fn hello(c: Context, queries: HelloQuery) -> Response {
+/// async fn hello(c: Context, queries: HelloQuery<'_>) -> Response {
 ///     let HelloQuery { name, n_repeat } = queries;
 /// 
 ///     let message = match n_repeat {
@@ -37,6 +39,7 @@ pub fn Query(_: proc_macro::TokenStream, data: proc_macro::TokenStream) -> proc_
         .unwrap_or_else(|e| e.into_compile_error())
         .into()
 }
+
 
 /// ## Request payload
 /// 
@@ -60,8 +63,8 @@ pub fn Query(_: proc_macro::TokenStream, data: proc_macro::TokenStream) -> proc_
 /// 
 /// #[Payload(JSON)]
 /// #[derive(serde::Deserialize)]
-/// struct HelloRequest {
-///     name:     String,
+/// struct HelloRequest<'req> {
+///     name:     &'req str,
 ///     n_repeat: Option<usize>,
 /// }
 /// /* expected payload examples :
@@ -69,7 +72,7 @@ pub fn Query(_: proc_macro::TokenStream, data: proc_macro::TokenStream) -> proc_
 ///     {"name":"you_name","n_repeat":2}
 /// */
 /// 
-/// async fn hello(c: Context, body: HelloRequest) -> Response {
+/// async fn hello(c: Context, body: HelloRequest<'_>) -> Response {
 ///     let HelloRequest { name, n_repeat } = queries;
 /// 
 ///     let message = match n_repeat {
@@ -92,8 +95,8 @@ pub fn Query(_: proc_macro::TokenStream, data: proc_macro::TokenStream) -> proc_
 /// use ohkami::utils::Payload; // <-- import me
 /// 
 /// #[Payload(URLEncoded)]
-/// struct HelloRequest {
-///     name:     String,
+/// struct HelloRequest<'req> {
+///     name:     &'req str,
 ///     n_repeat: Option<usize>,
 /// }
 /// /* expected payload examples :
@@ -131,6 +134,14 @@ pub fn Query(_: proc_macro::TokenStream, data: proc_macro::TokenStream) -> proc_
 #[proc_macro_attribute] #[allow(non_snake_case)]
 pub fn Payload(format: proc_macro::TokenStream, data: proc_macro::TokenStream) -> proc_macro::TokenStream {
     payload::Payload(format.into(), data.into())
+        .unwrap_or_else(|e| e.into_compile_error())
+        .into()
+}
+
+
+#[proc_macro_attribute] #[allow(non_snake_case)]
+pub fn Response(format: proc_macro::TokenStream, data: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    response::Response(format.into(), data.into())
         .unwrap_or_else(|e| e.into_compile_error())
         .into()
 }
