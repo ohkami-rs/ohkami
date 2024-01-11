@@ -1,5 +1,6 @@
 use serde::{Serialize, Deserialize};
 use chrono::{DateTime, Utc, SecondsFormat};
+use uuid::Uuid;
 
 fn serialize_datetime<S: serde::Serializer>(
     date_time:  &DateTime<Utc>,
@@ -73,7 +74,7 @@ pub struct MultipleCommentsResponse {
 }
 #[derive(Serialize)]
 pub struct Comment {
-    pub id:         usize,
+    pub id:         Uuid,
     #[serde(rename = "createdAt", serialize_with = "serialize_datetime")]
     pub created_at: DateTime<Utc>,
     #[serde(rename = "updatedAt", serialize_with = "serialize_datetime")]

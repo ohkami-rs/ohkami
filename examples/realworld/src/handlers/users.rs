@@ -1,6 +1,7 @@
+use std::borrow::Cow;
 use ohkami::{Ohkami, Route, utils::{Payload, JSON}};
 use serde::Deserialize;
-use crate::{models::{User, UserResponse}, errors::RealWorldError, config::pool};
+use crate::{models::{User, UserResponse}, errors::RealWorldError, config::{pool, self}};
 
 
 pub fn users_ohkami() -> Ohkami {
@@ -44,16 +45,41 @@ struct RegisterRequest<'req> {
 async fn register(
     RegisterRequest { username, email, password }: RegisterRequest<'_>,
 ) -> Result<JSON<UserResponse>, RealWorldError> {
-    sqlx::query!(r#"
-        SELECT id
-        FROM users AS u
-        WHERE
-            u.name  = $1  AND
-            u.email = $2
-            -- TODO
-    "#,
-        username, email
-    ).fetch_optional(pool()).await.map_err(RealWorldError::DB)?;
+    let already_exists = sqlx::query!(r#"
+        SELECT EXISTS (
+            SELECT id
+            FROM users AS u
+            WHERE
+                u.name  = $1 AND
+                u.email = $2
+        )
+    "#, username, email).fetch_one(pool()).await
+        .map_err(RealWorldError::DB)?
+        .exists.unwrap();
+    if already_exists {
+        return Err(RealWorldError::FoundUnexpectedly(Cow::Owned(
+            format!("User of name = '{username}' & email = '{email}' is already exists")
+        )))
+    }
 
-    todo!()
+    let new_user_id = sqlx::query!(r#"
+        INSERT INTO
+            users  (email, name, password)
+            VALUES ($1, $2, $3)
+        RETURNING id
+    "#, email, username, password).fetch_one(pool()).await
+        .map_err(RealWorldError::DB)?
+        .id;
+
+    let jwt_token = config::issue_jwt_for_user_of_id(new_user_id);
+
+    Ok(JSON::Created(UserResponse {
+        user: User {
+            email:    email.into(),
+            token:    jwt_token,
+            username: username.into(),
+            bio:      None,
+            image:    None,
+        },
+    }))
 }

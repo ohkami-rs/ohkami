@@ -5,11 +5,11 @@ services:
     image: postgres:15-alpine
     container_name: realworld-postgres
     tty: true
-    command: postgres -c log_destination=stderr -c log_statement=all -c log_connections=on -c log_disconnections=on
-    logging:
-      options:
-        max-size: '10k'
-        max-file: '5'
+#    command: postgres -c log_destination=stderr -c log_statement=all -c log_connections=on -c log_disconnections=on
+#    logging:
+#      options:
+#        max-size: '10k'
+#        max-file: '5'
     environment:
       POSTGRES_USER:     ohkami
       POSTGRES_PASSWORD: password

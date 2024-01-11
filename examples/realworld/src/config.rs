@@ -1,13 +1,23 @@
 use std::sync::OnceLock;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 use sqlx::{PgPool, postgres::PgPoolOptions};
 use crate::errors::RealWorldError;
 
 
-#[derive(Deserialize)]
+#[derive(Serialize, Deserialize)]
 pub struct JWTPayload {
     pub iat:     u64,
-    pub user_id: String,
+    pub user_id: Uuid,
+}
+
+pub fn issue_jwt_for_user_of_id(user_id: Uuid) -> String {
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    jwt().clone().issue(JWTPayload {
+        user_id,
+        iat: SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs(),
+    })
 }
 
 pub fn pool() -> &'static PgPool {
