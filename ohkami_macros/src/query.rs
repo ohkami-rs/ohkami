@@ -35,23 +35,23 @@ pub(super) fn Query(data: TokenStream) -> Result<TokenStream> {
                 quote!{
                     #field_name: req.query::<#inner_type>(#field_name_str) // Option<Result<_>>
                         .transpose()
-                        .map_err(|e| ::std::borrow::Cow::Owned(e.to_string()))?,
+                        .map_err(|e| ::ohkami::FromRequestError::Owned(e.to_string()))?,
                 }
             } else {
                 quote!{
                     #field_name: req.query::<#field_type>(#field_name_str) // Option<Result<_>>
-                        .ok_or_else(|| ::std::borrow::Cow::Borrowed(
+                        .ok_or_else(|| ::ohkami::FromRequestError::Static(
                             concat!("Expected query parameter `", #field_name_str, "`")
                         ))?
-                        .map_err(|e| ::std::borrow::Cow::Owned(e.to_string()))?,
+                        .map_err(|e| ::ohkami::FromRequestError::Owned(e.to_string()))?,
                 }
             } 
         });
         
         quote!{
             impl<#impl_lifetime> ::ohkami::FromRequest<#impl_lifetime> for #struct_name<#struct_lifetime> {
-                type Error = ::std::borrow::Cow<'static, str>;
-                #[inline] fn from_request(req: &#impl_lifetime ::ohkami::Request) -> ::std::result::Result<Self, ::std::borrow::Cow<'static, str>> {
+                type Error = ::ohkami::FromRequestError;
+                #[inline] fn from_request(req: &#impl_lifetime ::ohkami::Request) -> ::std::result::Result<Self, ::ohkami::FromRequestError> {
                     ::std::result::Result::Ok(Self {
                         #( #fields )*
                     })

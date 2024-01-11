@@ -3,10 +3,10 @@
 use std::{str, slice, borrow::Cow};
 
 
-#[inline] pub(crate) fn percent_decode_utf8(input: &[u8]) -> Result<Cow<'_, str>, str::Utf8Error> {
+#[inline(always)] pub(crate) fn percent_decode_utf8(input: &[u8]) -> Result<Cow<'_, str>, str::Utf8Error> {
     PercentDecode { bytes: input.iter() }.decode_utf8()
 }
-#[inline] pub(crate) fn percent_decode(input: &[u8]) -> Cow<'_, [u8]> {
+#[inline(always)] pub(crate) fn percent_decode(input: &[u8]) -> Cow<'_, [u8]> {
     PercentDecode { bytes: input.iter() }.into_cow()
 }
 
@@ -55,7 +55,7 @@ impl<'a> PercentDecode<'a> {
     }
 
     #[inline] fn decode_utf8(self) -> Result<Cow<'a, str>, str::Utf8Error> {
-        match self.clone().into_cow() {
+        match self.into_cow() {
             Cow::Borrowed(bytes) => match str::from_utf8(bytes) {
                 Ok(s) => Ok(s.into()),
                 Err(e) => Err(e),
@@ -67,7 +67,7 @@ impl<'a> PercentDecode<'a> {
         }
     }
 
-    #[inline] fn into_cow(self) -> Cow<'a, [u8]> {
+    #[inline(always)] fn into_cow(self) -> Cow<'a, [u8]> {
         match self.if_any() {
             Some(vec) => Cow::Owned(vec),
             None => Cow::Borrowed(self.bytes.as_slice()),

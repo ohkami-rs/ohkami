@@ -19,13 +19,13 @@ pub(crate) struct Slice {
             size,
         }
     }
-    #[inline] pub(crate) unsafe fn from_bytes(bytes: &[u8]) -> Self {
+    #[inline(always)] pub(crate) unsafe fn from_bytes(bytes: &[u8]) -> Self {
         Self {
             head: NonNull::new(bytes.as_ptr() as *mut _),
             size: bytes.len(),
         }
     }
-    #[inline] pub(crate) const unsafe fn as_bytes<'b>(&self) -> &'b [u8] {
+    #[inline(always)] pub(crate) const unsafe fn as_bytes<'b>(&self) -> &'b [u8] {
         match self.head {
             Some(p) => std::slice::from_raw_parts(p.as_ptr(), self.size),
             None    => &[],
@@ -40,13 +40,13 @@ pub(crate) enum CowSlice {
     Ref(Slice),
     Own(Vec<u8>),
 } impl CowSlice {
-    #[inline] pub(crate) unsafe fn as_bytes(&self) -> &[u8] {
+    #[inline(always)] pub(crate) unsafe fn as_bytes(&self) -> &[u8] {
         match self {
             Self::Own(vec)   => &vec,
             Self::Ref(slice) => unsafe {slice.as_bytes()},
         }
     }
-    #[inline] pub(crate) unsafe fn from_request_cow_bytes<'req>(cow_bytes: std::borrow::Cow<'req, [u8]>) -> Self {
+    #[inline(always)] pub(crate) unsafe fn from_request_cow_bytes<'req>(cow_bytes: std::borrow::Cow<'req, [u8]>) -> Self {
         match cow_bytes {
             std::borrow::Cow::Borrowed(slice) => Self::Ref(Slice::from_bytes(slice)),
             std::borrow::Cow::Owned(vec)      => Self::Own(vec),

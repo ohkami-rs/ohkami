@@ -128,12 +128,12 @@ macro_rules! Route {
         name:     &'c str,
         password: &'c str,
     } impl<'req> FromRequest<'req> for CreateUser<'req> {
-        type Error = Cow<'static, str>;
-        fn from_request(req: &'req crate::Request) -> Result<Self, ::std::borrow::Cow<'static, str>> {
-            let payload = req.payload().ok_or_else(|| Cow::Borrowed("Payload expected"))?;
+        type Error = crate::FromRequestError;
+        fn from_request(req: &'req crate::Request) -> Result<Self, Self::Error> {
+            let payload = req.payload().ok_or_else(|| crate::FromRequestError::Static("Payload expected"))?;
             match req.headers.ContentType() {
-                Some("application/json") => serde_json::from_slice(payload).map_err(|e| Cow::Owned(e.to_string())),
-                _ => Err(Cow::Borrowed("Payload expected")),
+                Some("application/json") => serde_json::from_slice(payload).map_err(|e| crate::FromRequestError::Owned(e.to_string())),
+                _ => Err(crate::FromRequestError::Static("Payload expected")),
             }
         }
     }
@@ -157,12 +157,12 @@ macro_rules! Route {
         name:     Option<&'u str>,
         password: Option<&'u str>,
     } impl<'req> FromRequest<'req> for UpdateUser<'req> {
-        type Error = Cow<'static, str>;
-        fn from_request(req: &'req crate::Request) -> Result<Self, ::std::borrow::Cow<'static, str>> {
-            let payload = req.payload().ok_or_else(|| Cow::Borrowed("Payload expected"))?;
+        type Error = crate::FromRequestError;
+        fn from_request(req: &'req crate::Request) -> Result<Self, Self::Error> {
+            let payload = req.payload().ok_or_else(|| Self::Error::Static("Payload expected"))?;
             match req.headers.ContentType() {
-                Some("application/json") => serde_json::from_slice(payload).map_err(|e| Cow::Owned(e.to_string())),
-                _ => Err(Cow::Borrowed("Payload expected")),
+                Some("application/json") => serde_json::from_slice(payload).map_err(|e| Self::Error::Owned(e.to_string())),
+                _ => Err(Self::Error::Static("Payload expected")),
             }
         }
     }
