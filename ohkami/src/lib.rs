@@ -262,7 +262,7 @@ mod x_websocket;
 
 /*===== visibility managements =====*/
 
-pub use layer1_req_res     ::{Request, Response, FromRequest, FromParam, IntoResponse, Memory};
+pub use layer1_req_res     ::{Request, Response, FromRequestError, FromRequest, FromParam, IntoResponse, Memory};
 pub use layer2_fang_handler::{Route, Fang};
 pub use layer4_ohkami      ::{Ohkami, IntoFang};
 

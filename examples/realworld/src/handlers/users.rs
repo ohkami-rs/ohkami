@@ -48,10 +48,12 @@ async fn register(
         SELECT id
         FROM users AS u
         WHERE
-            u.name = $1  AND
+            u.name  = $1  AND
             u.email = $2
             -- TODO
-    "#, username, email).fetch_optional(pool()).await.map_err(RealWorldError::DB)?;
+    "#,
+        username, email
+    ).fetch_optional(pool()).await.map_err(RealWorldError::DB)?;
 
     todo!()
 }

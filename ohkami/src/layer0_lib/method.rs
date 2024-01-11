@@ -36,25 +36,25 @@ impl Method {
     }
 }
 #[allow(non_snake_case)] impl Method {
-    #[inline(always)] pub const fn isGET(&self) -> bool {
+    pub const fn isGET(&self) -> bool {
         matches!(self, Method::GET)
     }
-    #[inline(always)] pub const fn isPUT(&self) -> bool {
+    pub const fn isPUT(&self) -> bool {
         matches!(self, Method::PUT)
     }
-    #[inline(always)] pub const fn isPOST(&self) -> bool {
+    pub const fn isPOST(&self) -> bool {
         matches!(self, Method::POST)
     }
-    #[inline(always)] pub const fn isPATCH(&self) -> bool {
+    pub const fn isPATCH(&self) -> bool {
         matches!(self, Method::PATCH)
     }
-    #[inline(always)] pub const fn isDELETE(&self) -> bool {
+    pub const fn isDELETE(&self) -> bool {
         matches!(self, Method::DELETE)
     }
-    #[inline(always)] pub const fn isHEAD(&self) -> bool {
+    pub const fn isHEAD(&self) -> bool {
         matches!(self, Method::HEAD)
     }
-    #[inline(always)] pub const fn isOPTIONS(&self) -> bool {
+    pub const fn isOPTIONS(&self) -> bool {
         matches!(self, Method::OPTIONS)
     }
 }

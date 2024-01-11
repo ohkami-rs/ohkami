@@ -9,12 +9,12 @@ pub struct JSON<T: serde::Serialize> {
     body:   T,
 }
 impl<'req, T: serde::Serialize> IntoResponse for JSON<T> {
-    fn into_response(self) -> Response {
+    #[inline(always)] fn into_response(self) -> Response {
         self.into()
     }
 }
 impl<T: serde::Serialize> Into<Response> for JSON<T> {
-    fn into(self) -> Response {
+    #[inline] fn into(self) -> Response {
         let body = serde_json::to_vec(&self.body).unwrap();
 
         let mut headers = ResponseHeaders::new();
@@ -32,7 +32,7 @@ impl<T: serde::Serialize> Into<Response> for JSON<T> {
 macro_rules! generate_json_response {
     ($( $status:ident, )*) => {
         impl<T: serde::Serialize> JSON<T> {$(
-            pub fn $status(body: T) -> Self {
+            #[inline(always)] pub fn $status(body: T) -> Self {
                 Self {
                     status: Status::$status,
                     body
@@ -48,6 +48,7 @@ macro_rules! generate_json_response {
     Unauthorized,
     Forbidden,
     NotFound,
+    UnprocessableEntity,
 
     InternalServerError,
 }
@@ -60,7 +61,7 @@ pub struct Text {
 macro_rules! generate_text_response {
     ($( $status:ident, )*) => {
         impl Text {$(
-            pub fn $status(text: impl Into<Cow<'static, str>>) -> Self {
+            #[inline] pub fn $status(text: impl Into<Cow<'static, str>>) -> Self {
                 Self {
                     status:  Status::$status,
                     content: text.into(),
@@ -76,11 +77,12 @@ macro_rules! generate_text_response {
     Unauthorized,
     Forbidden,
     NotFound,
+    UnprocessableEntity,
 
     InternalServerError,
 }
 impl Into<Response> for Text {
-    fn into(self) -> Response {
+    #[inline] fn into(self) -> Response {
         let content = match self.content {
             Cow::Borrowed(str) => Cow::Borrowed(str.as_bytes()),
             Cow::Owned(string) => Cow::Owned(string.into_bytes())
@@ -99,7 +101,7 @@ impl Into<Response> for Text {
     }
 }
 impl<'req> IntoResponse for Text {
-    fn into_response(self) -> Response {
+    #[inline(always)] fn into_response(self) -> Response {
         self.into()
     }
 }
@@ -112,7 +114,7 @@ pub struct HTML {
 macro_rules! generate_text_response {
     ($( $status:ident, )*) => {
         impl HTML {$(
-            pub fn $status(html: impl Into<Cow<'static, str>>) -> Self {
+            #[inline] pub fn $status(html: impl Into<Cow<'static, str>>) -> Self {
                 Self {
                     status:  Status::$status,
                     content: html.into(),
@@ -128,11 +130,12 @@ macro_rules! generate_text_response {
     Unauthorized,
     Forbidden,
     NotFound,
+    UnprocessableEntity,
 
     InternalServerError,
 }
 impl Into<Response> for HTML {
-    fn into(self) -> Response {
+    #[inline] fn into(self) -> Response {
         let content = match self.content {
             Cow::Borrowed(str) => Cow::Borrowed(str.as_bytes()),
             Cow::Owned(string) => Cow::Owned(string.into_bytes())
@@ -151,7 +154,7 @@ impl Into<Response> for HTML {
     }
 }
 impl<'req> IntoResponse for HTML {
-    fn into_response(self) -> Response {
+    #[inline(always)] fn into_response(self) -> Response {
         self.into()
     }
 }
@@ -161,7 +164,7 @@ pub struct Redirect {
     location: Cow<'static, str>,
 }
 impl Redirect {
-    pub fn to(location: impl Into<Cow<'static, str>>) -> Self {
+    #[inline] pub fn to(location: impl Into<Cow<'static, str>>) -> Self {
         Self { location: location.into() }
     }
 }
@@ -177,7 +180,7 @@ impl Into<Response> for Redirect {
     }
 }
 impl<'req> IntoResponse for Redirect {
-    fn into_response(self) -> Response {
+    #[inline] fn into_response(self) -> Response {
         self.into()
     }
 }

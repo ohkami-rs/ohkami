@@ -274,11 +274,11 @@ mod internal {
             first_name:   &'s str,
             familly_name: &'s str,
         } impl<'req> crate::FromRequest<'req> for SigninRequest<'req> {
-            type Error = std::borrow::Cow<'static, str>;
+            type Error = crate::FromRequestError;
             fn from_request(req: &'req Request) -> Result<Self, Self::Error> {
                 serde_json::from_slice(
-                    req.payload().ok_or_else(|| std::borrow::Cow::Borrowed("No payload found"))?
-                ).map_err(|e| std::borrow::Cow::Owned(e.to_string()))
+                    req.payload().ok_or_else(|| crate::FromRequestError::Static("No payload found"))?
+                ).map_err(|e| crate::FromRequestError::Owned(e.to_string()))
             }
         }
 

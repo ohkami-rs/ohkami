@@ -61,13 +61,14 @@ macro_rules! new_response {
     Unauthorized,
     Forbidden,
     NotFound,
+    UnprocessableEntity,
 
     InternalServerError,
     NotImplemented,
 }
 
 impl Response {
-    pub(crate) fn into_bytes(self) -> Vec<u8> {
+    #[inline] pub(crate) fn into_bytes(self) -> Vec<u8> {
         let Self { status, headers, content, .. } = self;
 
         let mut buf = Vec::from("HTTP/1.1 ");
@@ -83,7 +84,7 @@ impl Response {
 }
 
 impl Response {
-    pub(crate) async fn send(self, stream: &mut (impl AsyncWriter + Unpin)) {
+    #[inline] pub(crate) async fn send(self, stream: &mut (impl AsyncWriter + Unpin)) {
         if let Err(e) = stream.write_all(&self.into_bytes()).await {
             panic!("Failed to send response: {e}")
         }
