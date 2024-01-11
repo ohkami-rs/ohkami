@@ -20,7 +20,9 @@ pub(super) fn Response(format: TokenStream, data: TokenStream) -> Result<TokenSt
     let generics_where  = &data.generics.where_clause;
 
     Ok(quote! {
-        impl #generics_params ::ohkami::__internal__::ResponseBody for #name
+        #data
+
+        impl<#generics_params> ::ohkami::__internal__::ResponseBody for #name<#generics_params>
             #generics_where
         {
             #[inline(always)] fn into_response_with(self, status: ::ohkami::http::Status) -> ::ohkami::Response {

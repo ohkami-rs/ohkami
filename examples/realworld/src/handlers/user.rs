@@ -1,6 +1,6 @@
-use ohkami::{Ohkami, Route, utils::{Payload, JSON}};
+use ohkami::{Ohkami, Route, utils::Payload, utils::typed::OK};
 use serde::Deserialize;
-use crate::{fangs::Auth, models::{User, UserResponse}};
+use crate::{fangs::Auth, models::{User, UserResponse}, errors::RealWorldError};
 
 
 pub fn user_ohkami() -> Ohkami {
@@ -11,7 +11,7 @@ pub fn user_ohkami() -> Ohkami {
     ))
 }
 
-async fn get_current_user() -> JSON<UserResponse> {
+async fn get_current_user() -> Result<OK<UserResponse>, RealWorldError> {
     todo!()
 }
 
@@ -25,6 +25,6 @@ struct UpdateRequest {
     bio:      Option<String>,
 }
 
-async fn update() -> JSON<UserResponse> {
+async fn update() -> Result<OK<UserResponse>, RealWorldError> {
     todo!()
 }
