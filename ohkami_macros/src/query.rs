@@ -7,7 +7,7 @@ use crate::components::*;
 
 #[allow(non_snake_case)]
 pub(super) fn Query(data: TokenStream) -> Result<TokenStream> {
-    let data = parse_struct("Query", data)?;
+    let data = parse_request_struct("Query", data)?;
 
     let impl_from_request = {
         let struct_name = &data.ident;
@@ -25,7 +25,7 @@ pub(super) fn Query(data: TokenStream) -> Result<TokenStream> {
         };
 
         let fields = data.fields.iter().map(|f| {
-            let field_name = f.ident.as_ref().unwrap(/* already checked in `parse_struct` */);
+            let field_name = f.ident.as_ref().unwrap(/* already checked in `parse_request_struct` */);
             let field_name_str = field_name.to_string();
             let field_type = &f.ty;
             let field_type_str = field_type.to_token_stream().to_string();

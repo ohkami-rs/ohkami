@@ -32,6 +32,16 @@ pub struct Response {
             unsafe {residual.unwrap_err_unchecked()}
         }
     }
+
+    impl Response {
+        #[doc(hidden)] #[inline] pub fn new(status: Status) -> Self {
+            Self {
+                status,
+                headers: ResponseHeaders::new(),
+                content: None,
+            }
+        }
+    }
 };
 
 macro_rules! new_response {
@@ -100,7 +110,7 @@ impl Response {
         self
     }
 
-    pub fn text<Text: Into<Cow<'static, str>>>(mut self, text: Text) -> Response {
+    #[inline] pub fn text<Text: Into<Cow<'static, str>>>(mut self, text: Text) -> Response {
         let body = text.into();
 
         self.headers.set()
@@ -111,13 +121,9 @@ impl Response {
             Cow::Owned(string) => Cow::Owned(string.into_bytes()),
         });
 
-        Response {
-            status:       self.status,
-            headers:      self.headers,
-            content:      self.content,
-        }
+        self
     }
-    pub fn html<HTML: Into<Cow<'static, str>>>(mut self, html: HTML) -> Response {
+    #[inline] pub fn html<HTML: Into<Cow<'static, str>>>(mut self, html: HTML) -> Response {
         let body = html.into();
 
         self.headers.set()
@@ -128,13 +134,9 @@ impl Response {
             Cow::Owned(string) => Cow::Owned(string.into_bytes()),
         });
 
-        Response {
-            status:       self.status,
-            headers:      self.headers,
-            content:      self.content,
-        }
+        self
     }
-    pub fn json<JSON: serde::Serialize>(mut self, json: JSON) -> Response {
+    #[inline] pub fn json<JSON: serde::Serialize>(mut self, json: JSON) -> Response {
         let body = ::serde_json::to_vec(&json).unwrap();
 
         self.headers.set()
@@ -142,11 +144,7 @@ impl Response {
             .ContentLength(body.len().to_string());
         self.content = Some(Cow::Owned(body));
 
-        Response {
-            status:       self.status,
-            headers:      self.headers,
-            content:      self.content,
-        }
+        self
     }
     pub fn json_literal<JSONString: Into<Cow<'static, str>>>(mut self, json_literal: JSONString) -> Response {
         let body = match json_literal.into() {
@@ -159,11 +157,7 @@ impl Response {
             .ContentLength(body.len().to_string());
         self.content = Some(body);
 
-        Response {
-            status:       self.status,
-            headers:      self.headers,
-            content:      self.content,
-        }
+        self
     }
 }
 
