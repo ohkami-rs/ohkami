@@ -59,11 +59,11 @@ impl Hasher for TypeIDHasger {
 /// 
 /// async fn handler(
 ///     now: Memory<'_, serde_json::Value>
-/// ) -> Text {
+/// ) -> OK<String> {
 ///         // &'_ Value
 ///     let memorized_data = *now;
 /// 
-///     Text::OK(format!(
+///     OK(format!(
 ///         "It's {} !",
 ///         memorized_data["now"]
 ///     ))

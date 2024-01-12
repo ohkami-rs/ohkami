@@ -124,7 +124,7 @@ pub(crate) enum ResponseFormat {
 } impl ResponseFormat {
     pub(crate) fn parse(tokens: TokenStream) -> Result<Self> {
         match tokens.to_token_stream().to_string().as_str() {
-            "JSON"       => Ok(Self::JSON),
+            "JSON" => Ok(Self::JSON),
             _ => Err(Error::new(Span::mixed_site(), "\
                 Valid format: \n\
                 - `#[Response(JSON)]` \n\

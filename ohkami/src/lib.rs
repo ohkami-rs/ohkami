@@ -12,8 +12,8 @@
 //!     Status::NoContent
 //! }
 //! 
-//! async fn hello(name: String) -> Text {
-//!     c.OK().text(format!("Hello, {name}!"))
+//! async fn hello(name: String) -> OK<String> {
+//!     OK(format!("Hello, {name}!"))
 //! }
 //! 
 //! #[tokio::main]
@@ -52,22 +52,23 @@
 //! use ohkami::utils;   // <--
 //! 
 //! #[utils::Query]
-//! struct SearchCondition {
-//!     q: String,
+//! struct SearchCondition<'q> {
+//!     q: &'q str,
 //! }
 //! async fn search(
-//!     condition: SearchCondition
+//!     condition: SearchCondition<'_>
 //! ) -> impl IntoResponse { Status::OK }
 //! 
 //! #[utils::Payload(JSON)]
 //! #[derive(serde::Deserialize)]
-//! struct CreateUserRequest {
-//!     name:     String,
-//!     password: String,
+//! struct CreateUserRequest<'req> {
+//!     #[serde(rename = "user_name")]
+//!     name:     &'req str,
+//!     password: &'req str,
 //! }
 //! 
 //! async fn create_user(
-//!     body: CreateUserRequest
+//!     body: CreateUserRequest<'_>
 //! ) -> impl IntoResponse { Status::Created }
 //! ```
 //! `#[Query]`, `#[Payload( 〜 )]` implements `FromRequest` trait for the struct.
@@ -266,7 +267,7 @@ pub mod prelude {
     pub use crate::{Request, Response, Route, Ohkami, Fang, IntoFang, IntoResponse, http::Status};
 
     #[cfg(feature="utils")]
-    pub use crate::utils::{Text, JSON};
+    pub use crate::typed::{OK, Created, NoContent};
 }
 
 pub mod http {
@@ -281,29 +282,30 @@ pub mod testing {
 #[cfg(feature="utils")]
 pub mod utils {
     pub use crate::x_utils::{now, CORS, JWT, File, JSON, Text, HTML, Redirect};
-    pub use ohkami_macros ::{Query, Payload, Response};
+    pub use ohkami_macros ::{Query, Payload, ResponseBody, Serialize, Deserialize};
+    pub use crate::__internal__::serde::{ser::Serialize, de::Deserialize};
+}
+#[cfg(feature="utils")]
+pub mod typed {
+    pub use crate::x_utils::{
+        SwitchingProtocols,
 
-    pub mod typed {
-        pub use crate::x_utils::{
-            SwitchingProtocols,
+        OK,
+        Created,
+        NoContent,
 
-            OK,
-            Created,
-            NoContent,
+        MovedPermanently,
+        Found,
 
-            MovedPermanently,
-            Found,
+        BadRequest,
+        Unauthorized,
+        Forbidden,
+        NotFound,
+        UnprocessableEntity,
 
-            BadRequest,
-            Unauthorized,
-            Forbidden,
-            NotFound,
-            UnprocessableEntity,
-
-            InternalServerError,
-            NotImplemented,
-        };
-    }
+        InternalServerError,
+        NotImplemented,
+    };
 }
 
 #[cfg(feature="websocket")]
@@ -313,6 +315,12 @@ pub mod websocket {
 
 #[doc(hidden)]
 pub mod __internal__ {
+    #[cfg(feature="utils")]
+    pub use ::serde;
+
+    #[cfg(feature="utils")]
+    pub use ohkami_macros::consume_struct;
+
     #[cfg(feature="utils")]
     pub use crate::x_utils::{
         parse_json,
@@ -326,6 +334,7 @@ pub mod __internal__ {
 
 /*===== usavility =====*/
 
+#[doc(hidden)]
 #[cfg(feature="utils")]
 #[cfg(test)] #[allow(unused)] async fn __() {
     use http::Method;
@@ -357,8 +366,8 @@ pub mod __internal__ {
         http::Status::NoContent
     }
 
-    async fn hello(name: &str) -> utils::Text {
-        utils::Text::OK(format!("Hello, {name}!"))
+    async fn hello(name: &str) -> typed::OK<String> {
+        typed::OK(format!("Hello, {name}!"))
     }
 
 // run

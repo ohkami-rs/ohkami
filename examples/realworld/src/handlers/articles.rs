@@ -1,4 +1,4 @@
-use ohkami::{Ohkami, Route, http::Status, utils::typed::{OK, Created}};
+use ohkami::{Ohkami, Route, http::Status, typed::{OK, Created}};
 use ohkami::utils::{Payload, Query};
 use serde::Deserialize;
 use crate::{fangs::Auth, errors::RealWorldError};

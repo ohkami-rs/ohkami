@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 use serde::Deserialize;
-use ohkami::{Ohkami, Route, utils::{Payload, JSON}, utils::typed::{Created, OK}};
+use ohkami::{Ohkami, Route, utils::{Payload, JSON}, typed::{Created, OK}};
 use crate::{models::{User, UserResponse}, errors::RealWorldError, config::{pool, self}};
 
 

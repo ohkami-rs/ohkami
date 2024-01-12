@@ -5,7 +5,7 @@ use super::components::*;
 
 
 #[allow(non_snake_case)]
-pub(super) fn Response(format: TokenStream, data: TokenStream) -> Result<TokenStream> {
+pub(super) fn ResponseBody(format: TokenStream, data: TokenStream) -> Result<TokenStream> {
     let format = ResponseFormat::parse(format)?;
     let data   = parse2::<ItemStruct>(data)?;
 
@@ -31,4 +31,3 @@ pub(super) fn Response(format: TokenStream, data: TokenStream) -> Result<TokenSt
         }
     })
 }
-

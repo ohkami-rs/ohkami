@@ -1,4 +1,4 @@
-use ohkami::{Ohkami, Route, utils::typed::OK};
+use ohkami::{Ohkami, Route, typed::OK};
 use crate::{models::ListOfTagsResponse, errors::RealWorldError};
 
 

@@ -12,7 +12,7 @@ use crate::{
 /// 
 /// ```
 /// use ohkami::prelude::*;
-/// use ohkami::utils::JSON;
+/// use ohkami::utils::{ResponseBody, Serialize};
 /// 
 /// struct Log;
 /// impl IntoFang for Log {
@@ -34,7 +34,8 @@ use crate::{
 ///     }
 /// }
 /// 
-/// #[derive(serde::Serialize)]
+/// #[ResponseBody(JSON)]
+/// #[derive(Serialize)]
 /// struct User {
 ///     id:   usize,
 ///     name: String,
@@ -56,16 +57,16 @@ use crate::{
 ///     Status::NoContent
 /// }
 /// 
-/// async fn create_user() -> JSON<User> {
-///     JSON::Created(User {
+/// async fn create_user() -> Created<User> {
+///     Created(User {
 ///         id:   42,
 ///         name: String::from("ohkami"),
 ///         age:  None,
 ///     })
 /// }
 /// 
-/// async fn get_user_by_id(id: usize) -> Result<JSON<User>, APIError> {
-///     Ok(JSON::OK(User {
+/// async fn get_user_by_id(id: usize) -> Result<OK<User>, APIError> {
+///     Ok(OK(User {
 ///         id,
 ///         name: String::from("ohkami"),
 ///         age:  Some(2),
