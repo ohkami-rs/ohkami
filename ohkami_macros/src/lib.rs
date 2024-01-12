@@ -1,8 +1,27 @@
 mod components;
 
+mod serde;
 mod query;
 mod payload;
 mod response;
+
+
+#[proc_macro_derive(Serialize, attributes(serde))] #[allow(non_snake_case)]
+pub fn Serialize(data: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    serde::Serialize(data.into())
+        .unwrap_or_else(|e| e.into_compile_error())
+        .into()
+}
+#[proc_macro_derive(Deserialize, attributes(serde))] #[allow(non_snake_case)]
+pub fn Deserialize(data: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    serde::Deserialize(data.into())
+        .unwrap_or_else(|e| e.into_compile_error())
+        .into()
+}
+#[proc_macro_attribute]
+pub fn consume_struct(_: proc_macro::TokenStream, _: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    proc_macro::TokenStream::new()
+}
 
 
 /// ## Query parameters
@@ -59,10 +78,10 @@ pub fn Query(_: proc_macro::TokenStream, data: proc_macro::TokenStream) -> proc_
 /// 
 /// ```ignore
 /// use ohkami::prelude::*;
-/// use ohkami::utils::Payload; // <-- import me
+/// use ohkami::utils::{Payload, Deseriailize}; // <-- import me and `Deserialize`
 /// 
 /// #[Payload(JSON)]
-/// #[derive(serde::Deserialize)]
+/// #[derive(Deserialize)]
 /// struct HelloRequest<'req> {
 ///     name:     &'req str,
 ///     n_repeat: Option<usize>,
@@ -140,8 +159,8 @@ pub fn Payload(format: proc_macro::TokenStream, data: proc_macro::TokenStream) -
 
 
 #[proc_macro_attribute] #[allow(non_snake_case)]
-pub fn Response(format: proc_macro::TokenStream, data: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    response::Response(format.into(), data.into())
+pub fn ResponseBody(format: proc_macro::TokenStream, data: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    response::ResponseBody(format.into(), data.into())
         .unwrap_or_else(|e| e.into_compile_error())
         .into()
 }

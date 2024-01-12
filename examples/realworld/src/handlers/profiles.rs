@@ -1,4 +1,4 @@
-use ohkami::{Ohkami, Route, utils::typed::OK};
+use ohkami::{Ohkami, Route, typed::OK};
 use crate::{fangs::Auth, models::{Profile, ProfileResponse}, errors::RealWorldError};
 
 
