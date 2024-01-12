@@ -1,6 +1,5 @@
 use ohkami::{Ohkami, Route, http::Status, typed::{OK, Created}};
 use ohkami::utils::{Payload, Query};
-use serde::Deserialize;
 use crate::{fangs::Auth, errors::RealWorldError};
 use crate::models::{
     Tag,
@@ -68,8 +67,7 @@ async fn get(slug: &str) -> Result<OK<SingleArticleResponse>, RealWorldError> {
     todo!()
 }
 
-#[Payload(JSON)]
-#[derive(Deserialize)]
+#[Payload(JSOND)]
 struct CreateArticleRequest<'req> {
     title:         &'req str,
     descipription: &'req str,
@@ -82,8 +80,7 @@ async fn create(body: CreateArticleRequest<'_>) -> Result<Created<SingleArticleR
     todo!()
 }
 
-#[Payload(JSON)]
-#[derive(Deserialize)]
+#[Payload(JSOND)]
 struct UpdateArticleRequest<'req> {
     title:       Option<&'req str>,
     description: Option<&'req str>,
@@ -98,8 +95,7 @@ async fn delete(slug: &str) -> Status {
     todo!()
 }
 
-#[Payload(JSON)]
-#[derive(Deserialize)]
+#[Payload(JSOND)]
 struct AddCommentRequest<'req> {
     body: &'req str,
 }

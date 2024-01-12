@@ -1,6 +1,8 @@
 use std::borrow::Cow;
-use serde::Deserialize;
-use ohkami::{Ohkami, Route, utils::{Payload, JSON}, typed::{Created, OK}};
+use argon2::PasswordHasher;
+use ohkami::{Ohkami, Route, utils::{Payload, Deserialize, Deserializer, base64}, typed::{Created, OK}};
+use ohkami::utils::base64::encode;
+use uuid::Uuid;
 use crate::{models::{User, UserResponse}, errors::RealWorldError, config::{pool, self}};
 
 
@@ -16,14 +18,15 @@ pub fn users_ohkami() -> Ohkami {
 #[Payload(JSON)]
 struct LoginRequest<'req> {
     user: LoginRequestUser<'req>,
-}
-impl<'req> Deserialize<'req> for LoginRequest<'req> {
-    fn deserialize<D: serde::Deserializer<'req>>(deserializer: D) -> Result<Self, D::Error> {
-        Ok(Self {
-            user: LoginRequestUser::deserialize(deserializer)?,
-        })
+} const _: () = {
+    impl<'req> Deserialize<'req> for LoginRequest<'req> {
+        fn deserialize<D: Deserializer<'req>>(deserializer: D) -> Result<Self, D::Error> {
+            Ok(Self {
+                user: LoginRequestUser::deserialize(deserializer)?,
+            })
+        }
     }
-}
+};
 #[derive(Deserialize)]
 struct LoginRequestUser<'req> {
     email:    &'req str,
@@ -34,8 +37,7 @@ async fn login(body: LoginRequest<'_>) -> Result<OK<UserResponse>, RealWorldErro
     todo!()
 }
 
-#[Payload(JSON)]
-#[derive(Deserialize)]
+#[Payload(JSOND)]
 struct RegisterRequest<'req> {
     username: &'req str,
     email:    &'req str,
@@ -62,14 +64,34 @@ async fn register(
         )))
     }
 
-    let new_user_id = sqlx::query!(r#"
+    let new_user_id = Uuid::new_v4();
+
+    let hashed_password = {
+        use ::argon2::{Argon2, Algorithm, Version, Params, password_hash::Salt};
+
+        let a = Argon2::new_with_secret(
+            config::pepper(),
+            Algorithm::Argon2id,
+            Version::V0x13,
+            Params::DEFAULT,
+        ).map_err(|e| RealWorldError::Config(e.to_string()))?;
+
+        let salt = base64::encode(&new_user_id);
+
+        let hash = a.hash_password(
+            password.as_bytes(),
+            Salt::from_b64(&salt).map_err(|e| RealWorldError::Config(e.to_string()))?,
+        ).map_err(|e| RealWorldError::Config(e.to_string()))?;
+
+        hash.serialize()
+    };
+
+    sqlx::query!(r#"
         INSERT INTO
             users  (email, name, password)
-            VALUES ($1, $2, $3)
-        RETURNING id
-    "#, email, username, password).fetch_one(pool()).await
-        .map_err(RealWorldError::DB)?
-        .id;
+            VALUES ($1,    $2,   $3)
+    "#, email, username, hashed_password.as_str()).execute(pool()).await
+        .map_err(RealWorldError::DB)?;
 
     let jwt_token = config::issue_jwt_for_user_of_id(new_user_id);
 
