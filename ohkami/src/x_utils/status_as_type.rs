@@ -69,8 +69,34 @@ macro_rules! generate_statuses_as_types_with_no_value {
 
     NoContent,
 
-    MovedPermanently,
-    Found,
-
     NotImplemented,
+}
+
+macro_rules! generate_redirects {
+    ($( $status:ident / $contructor:ident, )*) => {
+        $(
+            pub struct $status {
+                location: Cow<'static, str>,
+            }
+            impl $status {
+                pub fn $contructor(location: impl Into<::std::borrow::Cow<'static, str>>) -> Self {
+                    Self {
+                        location: location.into(),
+                    }
+                }
+            }
+
+            impl IntoResponse for $status {
+                #[inline] fn into_response(self) -> Response {
+                    let mut res = Response::$status();
+                    res.headers.set()
+                        .Location(self.location);
+                    res
+                }
+            }
+        )*
+    };
+} generate_redirects! {
+    MovedPermanently / to,
+    Found / at,
 }

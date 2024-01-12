@@ -165,8 +165,6 @@ mod internal {
 
 #[cfg(feature="testing")]
 #[cfg(test)] mod test {
-    use serde::Deserialize;
-
     use super::JWT;
     use crate::{__rt__::test, utils};
 
@@ -192,6 +190,7 @@ mod internal {
 
     #[test] async fn test_jwt_verify() {
         use crate::prelude::*;
+        use crate::utils::ResponseBody;
         use crate::{testing::*, http, Memory};
 
         use std::{sync::OnceLock, collections::HashMap, borrow::Cow};
@@ -202,7 +201,7 @@ mod internal {
             JWT("myverysecretjwtsecretkey")
         }
 
-        #[derive(serde::Serialize, Deserialize)]
+        #[derive(serde::Serialize, serde::Deserialize)]
         struct MyJWTPayload {
             iat:     u64,
             user_id: usize,
@@ -253,20 +252,25 @@ mod internal {
         }
 
 
-        #[derive(serde::Serialize, Deserialize, Debug, PartialEq)]
+        #[derive(serde::Serialize, serde::Deserialize, Debug, PartialEq)]
         struct Profile {
             id:           usize,
             first_name:   String,
             familly_name: String,
         }
+        impl ResponseBody for Profile {
+            fn into_response_with(self, status: Status) -> Response {
+                Response::with(status).json(self)
+            }
+        }
 
-        async fn get_profile(jwt_payload: Memory<'_, MyJWTPayload>) -> Result<utils::JSON<Profile>, APIError> {
+        async fn get_profile(jwt_payload: Memory<'_, MyJWTPayload>) -> Result<OK<Profile>, APIError> {
             let r = &mut *repository().await.lock().await;
 
             let user = r.get(&jwt_payload.user_id)
                 .ok_or_else(|| APIError::UserNotFound)?;
 
-            Ok(utils::JSON::OK(user.profile()))
+            Ok(OK(user.profile()))
         }
 
         #[derive(serde::Deserialize, serde::Serialize/* for test */)]
@@ -308,7 +312,7 @@ mod internal {
                 }
             };
 
-            utils::Text::OK(issue_jwt_for_user(&user))
+            utils::Text(issue_jwt_for_user(&user))
         }
 
 
