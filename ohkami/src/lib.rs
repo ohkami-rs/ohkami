@@ -315,8 +315,10 @@ pub mod websocket {
 
 #[doc(hidden)]
 pub mod __internal__ {
+    #[cfg(feature="utils")]
     pub use ::serde;
 
+    #[cfg(feature="utils")]
     pub use ohkami_macros::consume_struct;
 
     #[cfg(feature="utils")]
