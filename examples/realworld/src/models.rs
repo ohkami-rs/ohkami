@@ -1,16 +1,15 @@
-use ohkami::utils::{ResponseBody, Serialize, Deserialize};
+use ohkami::utils::{ResponseBody, Serialize, Deserialize, Serializer};
 use chrono::{DateTime, Utc, SecondsFormat};
 use uuid::Uuid;
 
-fn serialize_datetime<S: serde::Serializer>(
+fn serialize_datetime<S: Serializer>(
     date_time:  &DateTime<Utc>,
     serializer: S,
 ) -> Result<S::Ok, S::Error> {
     serializer.serialize_str(&date_time.to_rfc3339_opts(SecondsFormat::Millis, true))
 }
 
-#[ResponseBody(JSON)]
-#[derive(Serialize)]
+#[ResponseBody(JSONS)]
 pub struct UserResponse {
     pub user: User,
 }
@@ -24,8 +23,7 @@ pub struct User {
     pub image:    Option<String>,
 }
 
-#[ResponseBody(JSON)]
-#[derive(Serialize)]
+#[ResponseBody(JSONS)]
 pub struct ProfileResponse {
     pub profile: Profile,
 }
@@ -37,13 +35,11 @@ pub struct Profile {
     pub following: bool,
 }
 
-#[ResponseBody(JSON)]
-#[derive(Serialize)]
+#[ResponseBody(JSONS)]
 pub struct SingleArticleResponse {
     pub article: Article,
 }
-#[ResponseBody(JSON)]
-#[derive(Serialize)]
+#[ResponseBody(JSONS)]
 pub struct MultipleArticlesResponse {
     pub articles: Vec<Article>,
     #[serde(rename = "articlesCount")]
@@ -67,13 +63,11 @@ pub struct Article {
     pub author:         Profile,
 }
 
-#[ResponseBody(JSON)]
-#[derive(Serialize)]
+#[ResponseBody(JSONS)]
 pub struct SingleCommentResponse {
     pub comment: Comment,
 }
-#[ResponseBody(JSON)]
-#[derive(Serialize)]
+#[ResponseBody(JSONS)]
 pub struct MultipleCommentsResponse {
     pub comments: Vec<Comment>,
 }
@@ -88,8 +82,7 @@ pub struct Comment {
     pub author:     Profile,
 }
 
-#[ResponseBody(JSON)]
-#[derive(Serialize)]
+#[ResponseBody(JSONS)]
 pub struct ListOfTagsResponse<'t> {
     pub tags: Vec<Tag<'t>>
 }

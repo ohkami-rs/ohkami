@@ -66,17 +66,20 @@ pub(crate) struct FieldData {
 
 pub(crate) enum PayloadFormat {
     JSON,
+    JSOND,
     Form,
     URLEncoded,
 } impl PayloadFormat {
     pub(crate) fn parse(tokens: TokenStream) -> Result<Self> {
         match tokens.to_token_stream().to_string().as_str() {
             "JSON"       => Ok(Self::JSON),
+            "JSOND"      => Ok(Self::JSOND),
             "Form"       => Ok(Self::Form),
             "URLEncoded" => Ok(Self::URLEncoded),
             _ => Err(Error::new(Span::mixed_site(), "\
                 Valid format: \n\
                 - `#[Payload(JSON)]` \n\
+                - `#[Payload(JSOND)]` \n\
                 - `#[Payload(Form)]` \n\
                 - `#[Payload(URLEncoded)]` \n\
             "))
@@ -121,13 +124,16 @@ pub(crate) fn parse_request_struct(macro_name: &str, input: TokenStream) -> Resu
 
 pub(crate) enum ResponseFormat {
     JSON,
+    JSONS,
 } impl ResponseFormat {
     pub(crate) fn parse(tokens: TokenStream) -> Result<Self> {
         match tokens.to_token_stream().to_string().as_str() {
-            "JSON" => Ok(Self::JSON),
+            "JSON"  => Ok(Self::JSON),
+            "JSONS" => Ok(Self::JSONS),
             _ => Err(Error::new(Span::mixed_site(), "\
                 Valid format: \n\
                 - `#[Response(JSON)]` \n\
+                - `#[Response(JSONS)]` \n\
             "))
         }
     }

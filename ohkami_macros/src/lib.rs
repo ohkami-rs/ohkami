@@ -18,6 +18,7 @@ pub fn Deserialize(data: proc_macro::TokenStream) -> proc_macro::TokenStream {
         .unwrap_or_else(|e| e.into_compile_error())
         .into()
 }
+
 #[proc_macro_attribute]
 pub fn consume_struct(_: proc_macro::TokenStream, _: proc_macro::TokenStream) -> proc_macro::TokenStream {
     proc_macro::TokenStream::new()
@@ -67,6 +68,7 @@ pub fn Query(_: proc_macro::TokenStream, data: proc_macro::TokenStream) -> proc_
 /// ### Valid format :
 /// 
 /// - `#[Payload(JSON)]` ( for `application/json` )
+/// - `#[Payload(JSOND)]` ( `JSON` + auto-deriving `Deserialize` )
 /// - `#[Payload(Form)]` ( for `multipart/form-data` )
 /// - `#[Payload(URLEncoded)]` ( for `application/x-www-form-urlencoded` )
 /// 

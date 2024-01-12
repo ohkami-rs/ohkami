@@ -8,13 +8,21 @@ use crate::components::*;
 #[allow(non_snake_case)]
 pub(super) fn Payload(format: TokenStream, data: TokenStream) -> Result<TokenStream> {
     let format = PayloadFormat::parse(format)?;
-    let data = parse_request_struct("Payload", data)?;
+    let mut data = parse_request_struct("Payload", data)?;
 
     let impl_payload = match format {
-        PayloadFormat::JSON       => impl_payload_json(&data),
+        PayloadFormat::JSON       => impl_payload_json(&data, false),
+        PayloadFormat::JSOND      => impl_payload_json(&data, true),
         PayloadFormat::URLEncoded => impl_payload_urlencoded(&data),
         PayloadFormat::Form       => impl_payload_formdata(&data),
     }?;
+
+    if matches!(format, PayloadFormat::JSOND) {
+        data.attrs.retain(|a| a.path.to_token_stream().to_string() != "serde");
+        for f in &mut data.fields {
+            f.attrs.retain(|a| a.path.to_token_stream().to_string() != "serde")
+        }
+    }
 
     Ok(quote!{
         #data
@@ -22,7 +30,7 @@ pub(super) fn Payload(format: TokenStream, data: TokenStream) -> Result<TokenStr
     })
 }
 
-fn impl_payload_json(data: &ItemStruct) -> Result<TokenStream> {
+fn impl_payload_json(data: &ItemStruct, derive_deserialize: bool) -> Result<TokenStream> {
     let struct_name = &data.ident;
 
     let (impl_lifetime, struct_lifetime) = match data.generics.lifetimes().count() {
@@ -36,8 +44,16 @@ fn impl_payload_json(data: &ItemStruct) -> Result<TokenStream> {
         ),
         _ => return Err(syn::Error::new(Span::call_site(), "#[Payload] doesn't support multiple lifetime params")),
     };
+
+    let derive_deserialize = derive_deserialize.then_some(quote! {
+        #[derive(::ohkami::utils::Deserialize)]
+        #[::ohkami::__internal__::consume_struct]
+        #data
+    });
     
     Ok(quote!{
+        #derive_deserialize
+
         impl<#impl_lifetime> ::ohkami::FromRequest<#impl_lifetime> for #struct_name<#struct_lifetime> {
             type Error = ::ohkami::FromRequestError;
             #[inline] fn from_request(req: &#impl_lifetime ::ohkami::Request) -> ::std::result::Result<Self, ::ohkami::FromRequestError> {

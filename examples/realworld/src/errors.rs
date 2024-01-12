@@ -1,4 +1,4 @@
-use ohkami::{IntoResponse, utils::{Text, JSON}};
+use ohkami::{IntoResponse, utils::{Text, JSON, Serialize}};
 use std::borrow::Cow;
 
 
@@ -18,11 +18,11 @@ pub enum RealWorldError {
     impl std::error::Error for RealWorldError {}
 };
 
-#[derive(serde::Serialize)]
+#[derive(Serialize)]
 struct ValidationErrorFormat {
     errors: ValidationError,
 }
-#[derive(serde::Serialize)]
+#[derive(Serialize)]
 #[derive(Debug)]
 pub struct ValidationError {
     body: Option<Cow<'static, str>>,

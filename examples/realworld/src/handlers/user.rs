@@ -1,5 +1,4 @@
 use ohkami::{Ohkami, Route, utils::Payload, typed::OK};
-use serde::Deserialize;
 use crate::{fangs::Auth, models::{User, UserResponse}, errors::RealWorldError};
 
 
@@ -15,8 +14,7 @@ async fn get_current_user() -> Result<OK<UserResponse>, RealWorldError> {
     todo!()
 }
 
-#[Payload(JSON)]
-#[derive(Deserialize)]
+#[Payload(JSOND)]
 struct UpdateRequest {
     email:    Option<String>,
     username: Option<String>,

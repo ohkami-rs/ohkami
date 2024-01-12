@@ -4,7 +4,7 @@ pub(crate) use list::List;
 mod slice;
 pub(crate) use slice::{Slice, CowSlice};
 
-pub(crate) mod base64;
+pub mod base64;
 
 mod status;
 pub use status::Status;
