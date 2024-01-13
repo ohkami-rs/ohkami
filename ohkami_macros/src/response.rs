@@ -21,7 +21,7 @@ pub(super) fn ResponseBody(format: TokenStream, data: TokenStream) -> Result<Tok
                 #generics_where
             {
                 #[inline(always)] fn into_response_with(self, status: ::ohkami::http::Status) -> ::ohkami::Response {
-                    ::ohkami::Response::new(status).json(self)
+                    ::ohkami::Response::with(status).json(self)
                 }
             }
         },
@@ -49,7 +49,7 @@ pub(super) fn ResponseBody(format: TokenStream, data: TokenStream) -> Result<Tok
                     #generics_where
                 {
                     #[inline(always)] fn into_response_with(self, status: ::ohkami::http::Status) -> ::ohkami::Response {
-                        ::ohkami::Response::new(status).json(self)
+                        ::ohkami::Response::with(status).json(self)
                     }
                 }
             }
