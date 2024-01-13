@@ -43,3 +43,8 @@ impl IntoResponse for &'_ String {
         Response::OK().text(self.clone())
     }
 }
+impl IntoResponse for std::borrow::Cow<'static, str> {
+    fn into_response(self) -> Response {
+        Response::OK().text(self)
+    }
+}

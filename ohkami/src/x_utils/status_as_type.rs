@@ -28,9 +28,10 @@ macro_rules! plain_text_responsebodies {
         )*
     };
 } plain_text_responsebodies! {
-    &'static str: s => s.as_bytes(),
-    String:       s => s.into_bytes(),
-    &'_ String:   s => s.clone().into_bytes(),
+    &'static str:      s => s.as_bytes(),
+    String:            s => s.into_bytes(),
+    &'_ String:        s => s.clone().into_bytes(),
+    Cow<'static, str>: c => c,
 }
 
 

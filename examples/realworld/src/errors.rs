@@ -1,4 +1,4 @@
-use ohkami::{IntoResponse, utils::{Text, JSON, Serialize}};
+use ohkami::{IntoResponse, utils::{Text, Serialize, ResponseBody}, typed::{UnprocessableEntity, InternalServerError, NotFound, BadRequest}};
 use std::borrow::Cow;
 
 
@@ -18,12 +18,11 @@ pub enum RealWorldError {
     impl std::error::Error for RealWorldError {}
 };
 
-#[derive(Serialize)]
+#[ResponseBody(JSONS)]
 struct ValidationErrorFormat {
     errors: ValidationError,
 }
-#[derive(Serialize)]
-#[derive(Debug)]
+#[derive(Serialize, Debug)]
 pub struct ValidationError {
     body: Option<Cow<'static, str>>,
 }
@@ -31,11 +30,11 @@ pub struct ValidationError {
 impl IntoResponse for RealWorldError {
     fn into_response(self) -> ohkami::Response {
         match self {
-            Self::Validation(e) => JSON::UnprocessableEntity(
+            Self::Validation(e) => UnprocessableEntity(
                 ValidationErrorFormat {
                     errors: e,
                 }
-            ).into(),
+            ).into_response(),
             Self::Config(err)           => Text::InternalServerError(err).into(),
             Self::DB(sqlx_err)          => Text::InternalServerError(sqlx_err.to_string()).into(),
             Self::NotFound(nf)          => Text::NotFound(<Cow<'static, str> as Into<String>>::into(nf)).into(),
