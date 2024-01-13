@@ -31,7 +31,21 @@ macro_rules! plain_text_responsebodies {
     &'static str:      s => s.as_bytes(),
     String:            s => s.into_bytes(),
     &'_ String:        s => s.clone().into_bytes(),
-    Cow<'static, str>: c => c,
+    Cow<'static, str>: c => match c {
+        Cow::Borrowed(s) => Cow::Borrowed(s.as_bytes()),
+        Cow::Owned   (s) => Cow::Owned   (s.into_bytes()),
+    },
+}
+
+#[cfg(test)]
+#[test] fn assert_impls() {
+    fn is_reponsebody<T: ResponseBody>() {}
+
+    is_reponsebody::<&'static str>();
+    is_reponsebody::<String>();
+    is_reponsebody::<&'_ String>();
+    is_reponsebody::<Cow<'static, str>>();
+    is_reponsebody::<Cow<'_, str>>();
 }
 
 

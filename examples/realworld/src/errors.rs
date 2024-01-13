@@ -1,4 +1,4 @@
-use ohkami::{IntoResponse, utils::{Text, Serialize, ResponseBody}, typed::{UnprocessableEntity, InternalServerError, NotFound, BadRequest}};
+use ohkami::{IntoResponse, utils::{Serialize, ResponseBody}};
 use std::borrow::Cow;
 
 
@@ -29,16 +29,18 @@ pub struct ValidationError {
 
 impl IntoResponse for RealWorldError {
     fn into_response(self) -> ohkami::Response {
+        use ohkami::typed::*;
+        
         match self {
             Self::Validation(e) => UnprocessableEntity(
                 ValidationErrorFormat {
                     errors: e,
                 }
             ).into_response(),
-            Self::Config(err)           => Text::InternalServerError(err).into(),
-            Self::DB(sqlx_err)          => Text::InternalServerError(sqlx_err.to_string()).into(),
-            Self::NotFound(nf)          => Text::NotFound(<Cow<'static, str> as Into<String>>::into(nf)).into(),
-            Self::FoundUnexpectedly(fu) => Text::BadRequest(<Cow<'static, str> as Into<String>>::into(fu)).into(),
+            Self::Config(err_msg)       => InternalServerError(err_msg).into_response(),
+            Self::DB(sqlx_err)          => InternalServerError(sqlx_err.to_string()).into_response(),
+            Self::NotFound(nf)          => NotFound(nf).into_response(),
+            Self::FoundUnexpectedly(fu) => BadRequest(fu).into_response(),
         }
     }
 }
