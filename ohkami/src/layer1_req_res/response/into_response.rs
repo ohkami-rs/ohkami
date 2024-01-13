@@ -1,7 +1,6 @@
 #![allow(non_snake_case)]
 
 use crate::{Response, layer0_lib::Status};
-use super::ResponseHeaders;
 
 
 pub trait IntoResponse {
@@ -14,21 +13,33 @@ impl IntoResponse for Response {
     }
 }
 
-impl crate::IntoResponse for Status {
-    #[inline(always)] fn into_response(self) -> crate::Response {
-        crate::Response {
-            status:  self,
-            headers: ResponseHeaders::new(),
-            content: None,
-        }
+impl IntoResponse for Status {
+    #[inline(always)] fn into_response(self) -> Response {
+        Response::with(self)
     }
 }
 
-impl<'req, T:IntoResponse, E:IntoResponse> IntoResponse for Result<T, E> {
+impl<T:IntoResponse, E:IntoResponse> IntoResponse for Result<T, E> {
     #[inline(always)] fn into_response(self) -> Response {
         match self {
             Ok(ok) => ok.into_response(),
             Err(e) => e.into_response(),
         }
+    }
+}
+
+impl IntoResponse for &'static str {
+    fn into_response(self) -> Response {
+        Response::OK().text(self)
+    }
+}
+impl IntoResponse for String {
+    fn into_response(self) -> Response {
+        Response::OK().text(self)
+    }
+}
+impl IntoResponse for &'_ String {
+    fn into_response(self) -> Response {
+        Response::OK().text(self.clone())
     }
 }

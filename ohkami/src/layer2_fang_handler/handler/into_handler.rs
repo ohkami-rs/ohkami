@@ -38,6 +38,7 @@ pub trait IntoHandler<Args> {
     })
 }
 
+
 const _: () = {
     impl<F, Body, Fut> IntoHandler<fn()->Body> for F
     where
