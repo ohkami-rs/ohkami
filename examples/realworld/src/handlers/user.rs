@@ -3,8 +3,8 @@ use crate::{
     fangs::Auth,
     models::{User, UserResponse},
     errors::RealWorldError,
-    config::{self, pool},
-    db::{UserEntity, hash_password},
+    config::{pool, issue_jwt_for_user_of_id, JWTPayload},
+    db::{UserEntity, hash_password_string},
 };
 
 
@@ -17,7 +17,7 @@ pub fn user_ohkami() -> Ohkami {
 }
 
 async fn get_current_user(
-    jwt_payload: Memory<'_, config::JWTPayload>
+    jwt_payload: Memory<'_, JWTPayload>
 ) -> Result<OK<UserResponse>, RealWorldError> {
     let u = sqlx::query_as!(UserEntity, r#"
         SELECT id, email, name, bio, image_url
@@ -31,7 +31,7 @@ async fn get_current_user(
     Ok(OK(UserResponse {
         user: User {
             email: u.email,
-            jwt:   config::issue_jwt_for_user_of_id(u.id),
+            jwt:   issue_jwt_for_user_of_id(u.id),
             name:  u.name,
             bio:   u.bio,
             image: u.image_url,
@@ -50,22 +50,21 @@ struct UpdateRequest {
 
 async fn update(
     body:        UpdateRequest,
-    jwt_payload: Memory<'_, config::JWTPayload>,
+    jwt_payload: Memory<'_, JWTPayload>,
 ) -> Result<OK<UserResponse>, RealWorldError> {
     let id = jwt_payload.user_id;
 
     let u = {
         let UpdateRequest { email, username, image, bio, password:raw_password } = body;
-        let password = raw_password.map(|rp|
-            hash_password(&rp).map(|hash| hash.as_str().to_string())
-        ).transpose()?;
+        let password = raw_password.map(hash_password_string).transpose()?;
 
         let mut set_once = false;
         macro_rules! set_if_some {
             ($field:ident -> $query:ident . $column:ident) => {
                 if let Some($field) = $field {
-                    set_once = true; if set_once {$query.push(',');}
+                    if set_once {$query.push(',');}
                     $query.push(concat!(" ",stringify!($column)," = ")).push_bind($field);
+                    set_once = true; 
                 }
             };
         }
@@ -79,7 +78,9 @@ async fn update(
         query.push(" WHERE id = ").push_bind(id);
         query.push(" RETURNING id, email, name, image_url, bio");
 
-        if !set_once {// not perform UPDATE query
+        if !set_once {
+            // Requested to set 0 columns, then
+            // not perform UPDATE query
             return get_current_user(jwt_payload).await
         }
 
@@ -91,7 +92,7 @@ async fn update(
     Ok(OK(UserResponse {
         user: User {
             email: u.email,
-            jwt:   config::issue_jwt_for_user_of_id(u.id),
+            jwt:   issue_jwt_for_user_of_id(u.id),
             name:  u.name,
             bio:   u.bio,
             image: u.image_url,

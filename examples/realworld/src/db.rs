@@ -24,6 +24,13 @@ pub fn hash_password(
     Ok(hash.serialize())
 }
 
+#[inline] pub fn hash_password_string(
+    raw_password_string: String,
+) -> Result<String, RealWorldError> {
+    let hashed_password = hash_password(raw_password_string.as_str())?;
+    Ok(hashed_password.as_str().to_string())
+}
+
 #[derive(sqlx::FromRow)]
 pub struct UserEntity {
     pub id:        Uuid,
