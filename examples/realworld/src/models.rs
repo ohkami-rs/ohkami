@@ -15,12 +15,13 @@ pub struct UserResponse {
 }
 #[derive(Serialize)]
 pub struct User {
-    pub email:    String,
-    /// JWT token
-    pub token:    String,
-    pub username: String,
-    pub bio:      Option<String>,
-    pub image:    Option<String>,
+    pub email: String,
+    #[serde(rename = "token")]
+    pub jwt:   String,
+    #[serde(rename = "username")]
+    pub name:  String,
+    pub bio:   Option<String>,
+    pub image: Option<String>,
 }
 
 #[ResponseBody(JSONS)]

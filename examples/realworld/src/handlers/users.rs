@@ -1,9 +1,11 @@
 use std::borrow::Cow;
-use argon2::PasswordHasher;
-use ohkami::{Ohkami, Route, utils::{Payload, Deserialize, Deserializer, base64}, typed::{Created, OK}};
-use ohkami::utils::base64::encode;
-use uuid::Uuid;
-use crate::{models::{User, UserResponse}, errors::RealWorldError, config::{pool, self}};
+use ohkami::{Ohkami, Route, utils::{Payload, Deserialize, Deserializer}, typed::{Created, OK}};
+use crate::{
+    models::{User, UserResponse},
+    errors::RealWorldError,
+    config::{pool, self},
+    db,
+};
 
 
 pub fn users_ohkami() -> Ohkami {
@@ -33,8 +35,32 @@ struct LoginRequestUser<'req> {
     password: &'req str,
 }
 
-async fn login(body: LoginRequest<'_>) -> Result<OK<UserResponse>, RealWorldError> {
-    todo!()
+async fn login(
+    LoginRequest {
+        user: LoginRequestUser { email, password },
+    }: LoginRequest<'_>,
+) -> Result<OK<UserResponse>, RealWorldError> {
+    let hased_password = db::hash_password(password)?;
+
+    let u = sqlx::query_as!(db::UserEntity, r#"
+        SELECT id, email, name, bio, image_url
+        FROM users AS u
+        WHERE
+            u.email    = $1 AND
+            u.password = $2
+    "#, email, hased_password.as_str())
+        .fetch_one(pool()).await
+        .map_err(RealWorldError::DB)?;
+
+    Ok(OK(UserResponse {
+        user: User {
+            email: u.email,
+            jwt:   config::issue_jwt_for_user_of_id(u.id),
+            name:  u.name,
+            bio:   u.bio,
+            image: u.image_url,
+        },
+    }))
 }
 
 #[Payload(JSOND)]
@@ -52,10 +78,9 @@ async fn register(
             SELECT id
             FROM users AS u
             WHERE
-                u.name  = $1 AND
-                u.email = $2
+                u.email = $1
         )
-    "#, username, email).fetch_one(pool()).await
+    "#, email).fetch_one(pool()).await
         .map_err(RealWorldError::DB)?
         .exists.unwrap();
     if already_exists {
@@ -64,44 +89,25 @@ async fn register(
         )))
     }
 
-    let new_user_id = Uuid::new_v4();
+    let hased_password = db::hash_password(password)?;
 
-    let hashed_password = {
-        use ::argon2::{Argon2, Algorithm, Version, Params, password_hash::Salt};
-
-        let a = Argon2::new_with_secret(
-            config::pepper(),
-            Algorithm::Argon2id,
-            Version::V0x13,
-            Params::DEFAULT,
-        ).map_err(|e| RealWorldError::Config(e.to_string()))?;
-
-        let salt = base64::encode(&new_user_id);
-
-        let hash = a.hash_password(
-            password.as_bytes(),
-            Salt::from_b64(&salt).map_err(|e| RealWorldError::Config(e.to_string()))?,
-        ).map_err(|e| RealWorldError::Config(e.to_string()))?;
-
-        hash.serialize()
-    };
-
-    sqlx::query!(r#"
+    let new_user_id = sqlx::query!(r#"
         INSERT INTO
             users  (email, name, password)
             VALUES ($1,    $2,   $3)
-    "#, email, username, hashed_password.as_str()).execute(pool()).await
-        .map_err(RealWorldError::DB)?;
-
-    let jwt_token = config::issue_jwt_for_user_of_id(new_user_id);
+        RETURNING id
+    "#, email, username, hased_password.as_str())
+        .fetch_one(pool()).await
+        .map_err(RealWorldError::DB)?
+        .id;
 
     Ok(Created(UserResponse {
         user: User {
-            email:    email.into(),
-            token:    jwt_token,
-            username: username.into(),
-            bio:      None,
-            image:    None,
+            email: email.into(),
+            jwt:   config::issue_jwt_for_user_of_id(new_user_id),
+            name:  username.into(),
+            bio:   None,
+            image: None,
         },
     }))
 }

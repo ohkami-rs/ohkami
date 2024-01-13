@@ -1,3 +1,4 @@
+mod db;
 mod config;
 mod errors;
 mod models;

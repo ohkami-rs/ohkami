@@ -1,5 +1,11 @@
-use ohkami::{Ohkami, Route, utils::Payload, typed::OK};
-use crate::{fangs::Auth, models::{User, UserResponse}, errors::RealWorldError};
+use ohkami::{Ohkami, Route, utils::Payload, typed::OK, Memory};
+use crate::{
+    fangs::Auth,
+    models::{User, UserResponse},
+    errors::RealWorldError,
+    config::{self, pool},
+    db::{UserEntity, hash_password},
+};
 
 
 pub fn user_ohkami() -> Ohkami {
@@ -10,8 +16,27 @@ pub fn user_ohkami() -> Ohkami {
     ))
 }
 
-async fn get_current_user() -> Result<OK<UserResponse>, RealWorldError> {
-    todo!()
+async fn get_current_user(
+    jwt_payload: Memory<'_, config::JWTPayload>
+) -> Result<OK<UserResponse>, RealWorldError> {
+    let u = sqlx::query_as!(UserEntity, r#"
+        SELECT id, email, name, bio, image_url
+        FROM users AS u
+        WHERE
+            u.id = $1
+    "#, jwt_payload.user_id)
+        .fetch_one(pool()).await
+        .map_err(RealWorldError::DB)?;
+
+    Ok(OK(UserResponse {
+        user: User {
+            email: u.email,
+            jwt:   config::issue_jwt_for_user_of_id(u.id),
+            name:  u.name,
+            bio:   u.bio,
+            image: u.image_url,
+        },
+    }))
 }
 
 #[Payload(JSOND)]
@@ -23,6 +48,53 @@ struct UpdateRequest {
     bio:      Option<String>,
 }
 
-async fn update() -> Result<OK<UserResponse>, RealWorldError> {
-    todo!()
+async fn update(
+    body:        UpdateRequest,
+    jwt_payload: Memory<'_, config::JWTPayload>,
+) -> Result<OK<UserResponse>, RealWorldError> {
+    let id = jwt_payload.user_id;
+
+    let u = {
+        let UpdateRequest { email, username, image, bio, password:raw_password } = body;
+        let password = raw_password.map(|rp|
+            hash_password(&rp).map(|hash| hash.as_str().to_string())
+        ).transpose()?;
+
+        let mut set_once = false;
+        macro_rules! set_if_some {
+            ($field:ident -> $query:ident . $column:ident) => {
+                if let Some($field) = $field {
+                    set_once = true; if set_once {$query.push(',');}
+                    $query.push(concat!(" ",stringify!($column)," = ")).push_bind($field);
+                }
+            };
+        }
+
+        let mut query = sqlx::QueryBuilder::new("UPDATE users SET");
+        set_if_some!(email    -> query.email);
+        set_if_some!(username -> query.name);
+        set_if_some!(password -> query.password);
+        set_if_some!(image    -> query.image_url);
+        set_if_some!(bio      -> query.bio);
+        query.push(" WHERE id = ").push_bind(id);
+        query.push(" RETURNING id, email, name, image_url, bio");
+
+        if !set_once {// not perform UPDATE query
+            return get_current_user(jwt_payload).await
+        }
+
+        query.build_query_as::<UserEntity>()
+            .fetch_one(pool()).await
+            .map_err(RealWorldError::DB)?
+    };
+
+    Ok(OK(UserResponse {
+        user: User {
+            email: u.email,
+            jwt:   config::issue_jwt_for_user_of_id(u.id),
+            name:  u.name,
+            bio:   u.bio,
+            image: u.image_url,
+        },
+    }))
 }
