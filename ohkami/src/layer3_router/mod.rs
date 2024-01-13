@@ -15,57 +15,57 @@ mod radix; pub(crate) use radix::RadixRouter;
 
     fn my_ohkami() -> Ohkami {
         let health_ohkami = Ohkami::new((
-            "/".GET(|| async {Text::OK("health_check")}),
+            "/".GET(|| async {Text("health_check")}),
         ));
 
         let profiles_ohkami = Ohkami::new((
             "/:username"
                 .GET(|username: String| async  move {
-                    Text::OK(format!("get_profile of user `{username}`"))
+                    Text(format!("get_profile of user `{username}`"))
                 }),
             "/:username/follow"
                 .POST(|username: String| async move {
-                    Text::OK(format!("follow_user `{username}`"))
+                    Text(format!("follow_user `{username}`"))
                 })
                 .DELETE(|username: String| async move {
-                    Text::OK(format!("unfollow_user `{username}`"))
+                    Text(format!("unfollow_user `{username}`"))
                 })
         ));
 
         let articles_ohkami = Ohkami::new((
             "/"
-                .GET(|| async {Text::OK("get_article")})
-                .POST(|| async {Text::OK("post_article")}),
+                .GET(|| async {Text("get_article")})
+                .POST(|| async {Text("post_article")}),
             "/feed"
-                .GET(|| async {Text::OK("get_feed")}),
+                .GET(|| async {Text("get_feed")}),
             "/:slug".By(Ohkami::new((
                 "/"
                     .GET(|slug: String| async move {
-                        Text::OK(format!("get_article {slug}"))
+                        Text(format!("get_article {slug}"))
                     })
                     .PUT(|slug: String| async move {
-                        Text::OK(format!("put_article {slug}"))
+                        Text(format!("put_article {slug}"))
                     })
                     .DELETE(|slug: String| async move {
-                        Text::OK(format!("delete_article {slug}"))
+                        Text(format!("delete_article {slug}"))
                     }),
                 "/comments"
                     .POST(|slug: String| async move {
-                        Text::OK(format!("post_comments {slug}"))
+                        Text(format!("post_comments {slug}"))
                     })
                     .GET(|slug: String| async move {
-                        Text::OK(format!("get_comments {slug}"))
+                        Text(format!("get_comments {slug}"))
                     }),
                 "/comments/:id"
                     .DELETE(|(slug, id): (String, usize)| async move {
-                        Text::OK(format!("delete_comment {slug} / {id}"))
+                        Text(format!("delete_comment {slug} / {id}"))
                     }),
                 "/favorite"
                     .POST(|slug: String| async move {
-                        Text::OK(format!("favorite_article {slug}"))
+                        Text(format!("favorite_article {slug}"))
                     })
                     .DELETE(|slug: String| async move {
-                        Text::OK(format!("unfavorite_article {slug}"))
+                        Text(format!("unfavorite_article {slug}"))
                     }),
             )))
         ));

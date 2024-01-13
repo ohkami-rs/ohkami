@@ -12,7 +12,7 @@ mod parse_payload;
 pub use parse_payload::{parse_json, parse_urlencoded, parse_formparts, File};
 
 mod into_response_builtin;
-pub use into_response_builtin::{HTML, JSON, Text, Redirect};
+pub use into_response_builtin::{HTML, Text};
 
 mod status_as_type;
 pub use status_as_type::{ResponseBody,

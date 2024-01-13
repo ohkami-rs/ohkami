@@ -3,7 +3,7 @@
 use crate::__rt__;
 use crate::prelude::*;
 use crate::testing::*;
-use crate::utils::{Text, JSON};
+use crate::utils::{Text, ResponseBody};
 
 
 #[__rt__::test] async fn testing_example_simple() {
@@ -26,7 +26,7 @@ use crate::utils::{Text, JSON};
 }
 
 async fn hello() -> impl IntoResponse {
-    Text::OK("Hello, world!")
+    Text("Hello, world!")
 }
 
 
@@ -105,10 +105,15 @@ struct User {
     name: String,
     age:  u8,
 }
+impl ResponseBody for User {
+    fn into_response_with(self, status: Status) -> Response {
+        Response::with(status).json(self)
+    }
+}
 
-async fn get_user(id: usize) -> Result<JSON<User>, APIError> {
+async fn get_user(id: usize) -> Result<OK<User>, APIError> {
     match id {
-        42 => Ok(JSON::OK(User {
+        42 => Ok(OK(User {
             name: format!("kanarus"),
             age:  20,
         })),
@@ -135,8 +140,8 @@ impl<'req> crate::FromRequest<'req> for CreateUser<'req> {
         }
     }
 }
-async fn create_user(payload: CreateUser<'_>) -> JSON<User> {
-    JSON::Created(User {
+async fn create_user(payload: CreateUser<'_>) -> Created<User> {
+    Created(User {
         name: payload.name.to_string(),
         age:  payload.age.unwrap_or(0),
     })

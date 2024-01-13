@@ -34,7 +34,7 @@ pub struct Response {
     }
 
     impl Response {
-        #[doc(hidden)] #[inline] pub fn new(status: Status) -> Self {
+        #[inline(always)] pub fn with(status: Status) -> Self {
             Self {
                 status,
                 headers: ResponseHeaders::new(),
