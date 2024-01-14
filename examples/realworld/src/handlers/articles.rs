@@ -40,22 +40,20 @@ struct ArticlesQuery<'q> {
     tag:       Option<&'q str>,
     author:    Option<&'q str>,
     favorited: Option<&'q str>,
-    limit:     usize,
-    offset:    usize,
-}
-impl<'q> Default for ArticlesQuery<'q> {
-    fn default() -> Self {
-        ArticlesQuery {
-            tag:       None,
-            author:    None,
-            favorited: None,
-            limit:     20,
-            offset:    0,
-        }
+    limit:     Option<usize>,
+    offset:    Option<usize>,
+} impl<'q> ArticlesQuery<'q> {
+    fn limit(&self) -> usize {
+        self.limit.unwrap_or(20)
+    }
+    fn offset(&self) -> usize {
+        self.offset.unwrap_or(0)
     }
 }
 
 async fn list(query: ArticlesQuery<'_>) -> Result<OK<MultipleArticlesResponse>, RealWorldError> {
+    
+
     todo!()
 }
 
