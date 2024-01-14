@@ -52,9 +52,7 @@ async fn update(
     body:        UpdateRequest,
     jwt_payload: Memory<'_, JWTPayload>,
 ) -> Result<OK<UserResponse>, RealWorldError> {
-    let id = jwt_payload.user_id;
-
-    let u = {
+    let user_entity = {
         let UpdateRequest { email, username, image, bio, password:raw_password } = body;
         let password = raw_password.map(hash_password_string).transpose()?;
 
@@ -75,11 +73,11 @@ async fn update(
         set_if_some!(password -> query.password);
         set_if_some!(image    -> query.image_url);
         set_if_some!(bio      -> query.bio);
-        query.push(" WHERE id = ").push_bind(id);
+        query.push(" WHERE id = ").push_bind(jwt_payload.user_id);
         query.push(" RETURNING id, email, name, image_url, bio");
 
         if !set_once {
-            // Requested to set 0 columns, then
+            // Requested to update nothing, then
             // not perform UPDATE query
             return get_current_user(jwt_payload).await
         }
@@ -89,13 +87,5 @@ async fn update(
             .map_err(RealWorldError::DB)?
     };
 
-    Ok(OK(UserResponse {
-        user: User {
-            email: u.email,
-            jwt:   issue_jwt_for_user_of_id(u.id),
-            name:  u.name,
-            bio:   u.bio,
-            image: u.image_url,
-        },
-    }))
+    Ok(OK(user_entity.into_user_response()))
 }

@@ -52,15 +52,7 @@ async fn login(
         .fetch_one(pool()).await
         .map_err(RealWorldError::DB)?;
 
-    Ok(OK(UserResponse {
-        user: User {
-            email: u.email,
-            jwt:   config::issue_jwt_for_user_of_id(u.id),
-            name:  u.name,
-            bio:   u.bio,
-            image: u.image_url,
-        },
-    }))
+    Ok(OK(u.into_user_response()))
 }
 
 #[Payload(JSOND)]
@@ -78,9 +70,10 @@ async fn register(
             SELECT id
             FROM users AS u
             WHERE
-                u.email = $1
+                u.name = $1
         )
-    "#, email).fetch_one(pool()).await
+    "#, username)
+        .fetch_one(pool()).await
         .map_err(RealWorldError::DB)?
         .exists.unwrap();
     if already_exists {

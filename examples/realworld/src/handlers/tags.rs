@@ -1,5 +1,7 @@
 use ohkami::{Ohkami, Route, typed::OK};
-use crate::{models::ListOfTagsResponse, errors::RealWorldError};
+use crate::config::pool;
+use crate::errors::RealWorldError;
+use crate::models::{ListOfTagsResponse, Tag};
 
 
 pub fn tags_ohkami() -> Ohkami {
@@ -9,5 +11,12 @@ pub fn tags_ohkami() -> Ohkami {
 }
 
 async fn get() -> Result<OK<ListOfTagsResponse<'static>>, RealWorldError> {
-    todo!()
+    let tags = sqlx::query!(r#"
+        SELECT name
+        FROM tags
+    "#).fetch_all(pool()).await
+        .map_err(RealWorldError::DB)?.into_iter()
+        .map(|n| Tag::new(n.name)).collect();
+
+    Ok(OK(ListOfTagsResponse { tags }))
 }

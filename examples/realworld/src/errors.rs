@@ -8,6 +8,7 @@ pub enum RealWorldError {
     DB(sqlx::Error),
     Validation(ValidationError),
     NotFound(Cow<'static, str>),
+    Unauthorized(Cow<'static, str>),
     FoundUnexpectedly(Cow<'static, str>),
 } const _: () = {
     impl std::fmt::Display for RealWorldError {
@@ -40,6 +41,7 @@ impl IntoResponse for RealWorldError {
             Self::Config(err_msg)       => InternalServerError(err_msg).into_response(),
             Self::DB(sqlx_err)          => InternalServerError(sqlx_err.to_string()).into_response(),
             Self::NotFound(nf)          => NotFound(nf).into_response(),
+            Self::Unauthorized(msg)     => Unauthorized(msg).into_response(),
             Self::FoundUnexpectedly(fu) => BadRequest(fu).into_response(),
         }
     }
