@@ -78,7 +78,26 @@ async fn unfollow(
     username:    &str,
     jwt_payload: Memory<'_, JWTPayload>,
 ) -> Result<OK<ProfileResponse>, RealWorldError> {
-    
+    let followee = UserEntity::get_by_name(username).await?;
 
-    todo!()
+    let deletion_count = sqlx::query!(r#"
+        DELETE FROM users_follow_users AS ufu
+        WHERE
+            ufu.followee_id = $1 AND
+            ufu.follower_id = $2
+    "#, followee.id, jwt_payload.user_id)
+        .execute(pool()).await
+        .map_err(RealWorldError::DB)?
+        .rows_affected();
+    if deletion_count != 1 {
+        tracing::error!("\
+            Found {deletion_count} deletion of following \
+            {} by {}
+        ", followee.id, jwt_payload.user_id);
+        return Err(RealWorldError::FoundUnexpectedly(Cow::Borrowed(
+            "Found more than one following"
+        )))
+    }
+
+    Ok(OK(followee.into_profile_response_with(false)))
 }
