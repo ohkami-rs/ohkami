@@ -5,18 +5,14 @@ use crate::config;
 pub struct Auth {
     condition: Option<fn(&Request)->bool>
 }
-impl Default for Auth {
-    fn default() -> Self {
-        Auth {
-            condition: None,
-        }
-    }
-}
 impl Auth {
     pub fn with_condition(condition: fn(&Request)->bool) -> Self {
-        Auth {
-            condition: Some(condition),
-        }
+        Auth { condition: Some(condition) }
+    }
+}
+impl Default for Auth {
+    fn default() -> Self {
+        Auth { condition: None }
     }
 }
 impl IntoFang for Auth {
@@ -33,10 +29,37 @@ impl IntoFang for Auth {
     }
 }
 
+pub struct OptionalAuth {
+    condition: Option<fn(&Request)->bool>,
+}
+impl OptionalAuth {
+    pub fn with_condition(condition: fn(&Request)->bool) -> Self {
+        Self { condition: Some(condition) }
+    }
+}
+impl Default for OptionalAuth {
+    fn default() -> Self {
+        Self { condition: None }
+    }
+}
+impl IntoFang for OptionalAuth {
+    fn into_fang(self) -> Fang {
+        Fang(move |req: &mut Request| {
+            if !self.condition.is_some_and(|cond| cond(req)) {
+                return Ok(());
+            }
+
+            let payload: Option<config::JWTPayload> = config::jwt().verified(req).ok();
+            req.memorize(payload);
+            Ok(())
+        })
+    }
+}
+
 pub struct LogRequest;
 impl IntoFang for LogRequest {
     fn into_fang(self) -> Fang {
-        Fang(|req: &mut Request| {
+        Fang(|req: &Request| {
             let method = req.method;
             let path   = req.path();
 
@@ -48,10 +71,8 @@ impl IntoFang for LogRequest {
 pub struct LogResponse;
 impl IntoFang for LogResponse {
     fn into_fang(self) -> Fang {
-        Fang(|res: Response| {
+        Fang(|res: &Response| {
             tracing::info!("{res:?}");
-
-            res
         })
     }
 }

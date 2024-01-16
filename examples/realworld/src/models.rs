@@ -48,20 +48,20 @@ pub struct MultipleArticlesResponse {
 }
 #[derive(Serialize)]
 pub struct Article {
-    pub slug:           String,
-    pub title:          String,
-    pub description:    String,
-    pub body:           String,
+    pub slug:            String,
+    pub title:           String,
+    pub description:     String,
+    pub body:            String,
     #[serde(rename = "tagList")]
-    pub tag_list:       Vec<String>,
+    pub tag_list:        Vec<String>,
     #[serde(rename = "createdAt", serialize_with = "serialize_datetime")]
-    pub created_at:     DateTime<Utc>,
+    pub created_at:      DateTime<Utc>,
     #[serde(rename = "updatedAt", serialize_with = "serialize_datetime")]
-    pub updated_at:     DateTime<Utc>,
-    pub favorited:      bool,
-    #[serde(rename = "favoriteCount")]
-    pub favorite_count: usize,
-    pub author:         Profile,
+    pub updated_at:      DateTime<Utc>,
+    pub favorited:       bool,
+    #[serde(rename = "favoritesCount")]
+    pub favorites_count: usize,
+    pub author:          Profile,
 }
 
 #[ResponseBody(JSONS)]

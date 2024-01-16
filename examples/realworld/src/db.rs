@@ -2,6 +2,7 @@ use crate::{config, errors::RealWorldError};
 use crate::models::{User, UserResponse, ProfileResponse, Profile};
 use argon2::{Argon2, Algorithm, Version, Params, PasswordHasher};
 use argon2::password_hash::{PasswordHashString, Salt, SaltString};
+use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
 
@@ -73,3 +74,31 @@ pub struct UserEntity {
             .map_err(RealWorldError::DB)
     }
 }
+
+#[derive(sqlx::FromRow)]
+pub struct ArticleEntity {
+    pub slug:        String,
+    pub title:       String,
+    pub description: String,
+    pub body:        String,
+    pub created_at:  DateTime<Utc>,
+    pub updated_at:  DateTime<Utc>,
+    
+}
+/*
+pub slug:           String,
+pub title:          String,
+pub description:    String,
+pub body:           String,
+#[serde(rename = "tagList")]
+pub tag_list:       Vec<String>,
+#[serde(rename = "createdAt", serialize_with = "serialize_datetime")]
+pub created_at:     DateTime<Utc>,
+#[serde(rename = "updatedAt", serialize_with = "serialize_datetime")]
+pub updated_at:     DateTime<Utc>,
+pub favorited:      bool,
+#[serde(rename = "favoriteCount")]
+pub favorite_count: usize,
+pub author:         Profile,
+
+*/

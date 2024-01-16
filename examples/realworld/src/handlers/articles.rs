@@ -1,6 +1,8 @@
-use ohkami::{Ohkami, Route, http::Status, typed::{OK, Created}};
+use ohkami::{Ohkami, Route, http::Status, typed::{OK, Created}, Memory};
 use ohkami::utils::{Payload, Query};
-use crate::{fangs::Auth, errors::RealWorldError};
+use sqlx::Execute;
+use crate::{errors::RealWorldError, config::{JWTPayload, pool}};
+use crate::fangs::{Auth, OptionalAuth};
 use crate::models::{
     Tag,
     Article, SingleArticleResponse, MultipleArticlesResponse,
@@ -9,8 +11,13 @@ use crate::models::{
 
 
 pub fn articles_ohkami() -> Ohkami {
+    fn auth_required(req: &ohkami::Request) -> bool {
+        (!req.method.isGET()) || req.path().ends_with("/feed")
+    }
+
     Ohkami::with((
-        Auth::with_condition(|req| (!req.method.isGET()) || req.path().ends_with("/feed")),
+        Auth        ::with_condition(|req| auth_required(req)),
+        OptionalAuth::with_condition(|req| ! auth_required(req)),
     ), (
         "/"
             .GET(list)//optional
@@ -43,16 +50,53 @@ struct ArticlesQuery<'q> {
     limit:     Option<usize>,
     offset:    Option<usize>,
 } impl<'q> ArticlesQuery<'q> {
-    fn limit(&self) -> usize {
-        self.limit.unwrap_or(20)
+    fn limit(&self) -> i64 {
+        self.limit.unwrap_or(20) as _
     }
-    fn offset(&self) -> usize {
-        self.offset.unwrap_or(0)
+    fn offset(&self) -> i64 {
+        self.offset.unwrap_or(0) as _
     }
 }
 
-async fn list(query: ArticlesQuery<'_>) -> Result<OK<MultipleArticlesResponse>, RealWorldError> {
-    
+async fn list(
+    q:    ArticlesQuery<'_>,
+    auth: Memory<'_, Option<JWTPayload>>,
+) -> Result<OK<MultipleArticlesResponse>, RealWorldError> {
+    let user_id = auth.as_ref().map(|jwt| jwt.user_id);
+
+    let mut query = sqlx::QueryBuilder::new(sqlx::query!(r#"
+        SELECT
+            a.id          AS id,
+            a.slug        AS article_slug,
+            a.title       AS article_title,
+            a.description AS article_description,
+            a.body        AS article_body,
+            a.created_at  AS article_created_at,
+            a.updated_at  AS article_updated_at,
+            u.id          AS user_id,
+            u.email       AS user_email,
+            u.name        AS user_name,
+            u.bio         AS user_bio,
+            u.image_url   AS user_image
+        FROM
+                 articles                AS a
+            JOIN users                   AS u    ON a.author_id = u.id
+            JOIN users_favorite_articles AS fav  ON a.id = fav.article_id
+            JOIN articles_tags           AS tags ON a.id = tags.article_id
+        GROUP BY
+            a.id, u.id
+    "#).sql());
+
+
+
+    query
+        .push(" ORDER BY a.created_at")
+        .push(" OFFSET ").push_bind(q.offset())
+        .push(" LIMIT ").push_bind(q.limit());
+
+
+
+    query.build().execute(pool()).await.map_err(RealWorldError::DB)?;
 
     todo!()
 }
