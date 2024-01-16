@@ -43,13 +43,13 @@ pub fn articles_ohkami() -> Ohkami {
 
 
 #[Query]
-struct ArticlesQuery<'q> {
+struct ListArticlesQuery<'q> {
     tag:       Option<&'q str>,
     author:    Option<&'q str>,
     favorited: Option<&'q str>,
     limit:     Option<usize>,
     offset:    Option<usize>,
-} impl<'q> ArticlesQuery<'q> {
+} impl<'q> ListArticlesQuery<'q> {
     fn limit(&self) -> i64 {
         self.limit.unwrap_or(20) as _
     }
@@ -59,35 +59,46 @@ struct ArticlesQuery<'q> {
 }
 
 async fn list(
-    q:    ArticlesQuery<'_>,
+    q:    ListArticlesQuery<'_>,
     auth: Memory<'_, Option<JWTPayload>>,
 ) -> Result<OK<MultipleArticlesResponse>, RealWorldError> {
     let user_id = auth.as_ref().map(|jwt| jwt.user_id);
 
     let mut query = sqlx::QueryBuilder::new(sqlx::query!(r#"
         SELECT
-            a.id          AS id,
-            a.slug        AS article_slug,
-            a.title       AS article_title,
-            a.description AS article_description,
-            a.body        AS article_body,
-            a.created_at  AS article_created_at,
-            a.updated_at  AS article_updated_at,
-            u.id          AS user_id,
-            u.email       AS user_email,
-            u.name        AS user_name,
-            u.bio         AS user_bio,
-            u.image_url   AS user_image
+            a.id                  AS id,
+            a.slug                AS slug,
+            a.title               AS title,
+            a.description         AS description,
+            a.body                AS body,
+            a.created_at          AS created_at,
+            a.updated_at          AS updated_at,
+            COUNT(fav.id)         AS favorites_count,
+            JSON_AGG(tags.name)   AS tags,
+            JSON_AGG(users)       AS authors,
+            JSON_AGG(fav.user_id) AS favoriter_ids
         FROM
-                 articles                AS a
-            JOIN users                   AS u    ON a.author_id = u.id
-            JOIN users_favorite_articles AS fav  ON a.id = fav.article_id
-            JOIN articles_tags           AS tags ON a.id = tags.article_id
+                 articles                 AS a
+            JOIN users_author_of_articles AS author ON a.id = author.article_id
+            JOIN users                    AS users  ON author.user_id = users.id
+            JOIN users_favorite_articles  AS fav    ON a.id = fav.article_id
+            JOIN articles_tags            AS a_tags ON a.id = a_tags.article_id
+            JOIN tags                     AS tags   ON a_tags.tag_id = tags.id
         GROUP BY
-            a.id, u.id
+            a.id
     "#).sql());
 
+    /* `author.following` は上記とは別のクエリで取得する */
+    /*
+        - user_id が None のとき (つまりログインしていないとき) は常に author.following = false,
+        - user_id が Some のときは authoer.following = {
+            SELECT EXISTS users_follow_users AS ufu
+            WHERE ufu.follower_id = user_id AND ufu.followee_id = author.id
+        }
 
+        (実際には IN array を使い、レスポンスに含める全ての author についての following
+        を一度のクエリで取得する)
+    */
 
     query
         .push(" ORDER BY a.created_at")
@@ -101,11 +112,19 @@ async fn list(
     todo!()
 }
 
-async fn feed(query: ArticlesQuery<'_>) -> Result<OK<MultipleArticlesResponse>, RealWorldError> {
-    todo!()
+#[Query]
+struct FeedArticleQuery {
+    limit:  Option<usize>,
+    offset: Option<usize>,
+}
+
+async fn feed(query: FeedArticleQuery) -> Result<OK<MultipleArticlesResponse>, RealWorldError> {
+    unimplemented!()
 }
 
 async fn get(slug: &str) -> Result<OK<SingleArticleResponse>, RealWorldError> {
+    // let;
+
     todo!()
 }
 

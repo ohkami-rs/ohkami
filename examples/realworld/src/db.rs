@@ -77,28 +77,47 @@ pub struct UserEntity {
 
 #[derive(sqlx::FromRow)]
 pub struct ArticleEntity {
-    pub slug:        String,
-    pub title:       String,
-    pub description: String,
-    pub body:        String,
-    pub created_at:  DateTime<Utc>,
-    pub updated_at:  DateTime<Utc>,
-    
+    pub id:              Uuid,
+    pub slug:            String,
+    pub title:           String,
+    pub description:     String,
+    pub body:            String,
+    pub created_at:      DateTime<Utc>,
+    pub updated_at:      DateTime<Utc>,
+    pub favorites_count: i64,
+    pub author:          Vec<AuthorEntity>,
+    pub tags:            Vec<String>,
+    pub favoriter_ids:   Vec<Uuid>,
 }
-/*
-pub slug:           String,
-pub title:          String,
-pub description:    String,
-pub body:           String,
-#[serde(rename = "tagList")]
-pub tag_list:       Vec<String>,
-#[serde(rename = "createdAt", serialize_with = "serialize_datetime")]
-pub created_at:     DateTime<Utc>,
-#[serde(rename = "updatedAt", serialize_with = "serialize_datetime")]
-pub updated_at:     DateTime<Utc>,
-pub favorited:      bool,
-#[serde(rename = "favoriteCount")]
-pub favorite_count: usize,
-pub author:         Profile,
+#[derive(sqlx::FromRow)]
+pub struct AuthorEntity {
+    pub name:      String,
+    pub bio:       Option<String>,
+    pub image_url: Option<String>,
+}
 
+/*
+    let mut query = sqlx::QueryBuilder::new(sqlx::query!(r#"
+        SELECT
+            a.id                  AS article_id,
+            a.slug                AS article_slug,
+            a.title               AS article_title,
+            a.description         AS article_description,
+            a.body                AS article_body,
+            a.created_at          AS article_created_at,
+            a.updated_at          AS article_updated_at,
+            COUNT(fav.id)         AS favorites_count,
+            JSON_AGG(users)       AS author,
+            JSON_AGG(tags.name)   AS tags,
+            JSON_AGG(fav.user_id) AS favoriter_ids
+        FROM
+                 articles                 AS a
+            JOIN users_author_of_articles AS author ON a.id = author.article_id
+            JOIN users                    AS users  ON author.user_id = users.id
+            JOIN users_favorite_articles  AS fav    ON a.id = fav.article_id
+            JOIN articles_tags            AS a_tags ON a.id = a_tags.article_id
+            JOIN tags                     AS tags   ON a_tags.tag_id = tags.id
+        GROUP BY
+            a.id
+    "#).sql());
 */
