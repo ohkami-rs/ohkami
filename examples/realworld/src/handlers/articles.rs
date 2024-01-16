@@ -1,7 +1,7 @@
 use ohkami::{Ohkami, Route, http::Status, typed::{OK, Created}, Memory};
 use ohkami::utils::{Payload, Query};
 use sqlx::Execute;
-use crate::{errors::RealWorldError, config::{JWTPayload, pool}};
+use crate::{errors::RealWorldError, config::{JWTPayload, pool}, db::ArticleEntity};
 use crate::fangs::{Auth, OptionalAuth};
 use crate::models::{
     Tag,
@@ -64,19 +64,19 @@ async fn list(
 ) -> Result<OK<MultipleArticlesResponse>, RealWorldError> {
     let user_id = auth.as_ref().map(|jwt| jwt.user_id);
 
-    let mut query = sqlx::QueryBuilder::new(sqlx::query!(r#"
+    let mut query = sqlx::QueryBuilder::new(sqlx::query_as!(ArticleEntity, r#"
         SELECT
-            a.id                  AS id,
-            a.slug                AS slug,
-            a.title               AS title,
-            a.description         AS description,
-            a.body                AS body,
-            a.created_at          AS created_at,
-            a.updated_at          AS updated_at,
-            COUNT(fav.id)         AS favorites_count,
-            JSON_AGG(tags.name)   AS tags,
-            JSON_AGG(users)       AS authors,
-            JSON_AGG(fav.user_id) AS favoriter_ids
+            a.id                   AS id,
+            a.slug                 AS slug,
+            a.title                AS title,
+            a.description          AS description,
+            a.body                 AS body,
+            a.created_at           AS created_at,
+            a.updated_at           AS updated_at,
+            COUNT(fav.id)          AS favorites_count,
+            ARRAY_AGG(fav.user_id) AS favoriter_ids,
+            ARRAY_AGG(tags.name)   AS tags,
+            JSON_AGG(users)        AS authors
         FROM
                  articles                 AS a
             JOIN users_author_of_articles AS author ON a.id = author.article_id
@@ -87,6 +87,12 @@ async fn list(
         GROUP BY
             a.id
     "#).sql());
+    query
+        .push(" ORDER BY a.created_at")
+        .push(" OFFSET ").push_bind(q.offset())
+        .push(" LIMIT ").push_bind(q.limit());
+    query.build().execute(pool()).await.map_err(RealWorldError::DB)?;
+
 
     /* `author.following` は上記とは別のクエリで取得する */
     /*
@@ -99,15 +105,6 @@ async fn list(
         (実際には IN array を使い、レスポンスに含める全ての author についての following
         を一度のクエリで取得する)
     */
-
-    query
-        .push(" ORDER BY a.created_at")
-        .push(" OFFSET ").push_bind(q.offset())
-        .push(" LIMIT ").push_bind(q.limit());
-
-
-
-    query.build().execute(pool()).await.map_err(RealWorldError::DB)?;
 
     todo!()
 }

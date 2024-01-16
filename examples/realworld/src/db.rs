@@ -78,23 +78,48 @@ pub struct UserEntity {
 #[derive(sqlx::FromRow)]
 pub struct ArticleEntity {
     pub id:              Uuid,
-    pub slug:            String,
+    pub slug:            Option<String>,
     pub title:           String,
-    pub description:     String,
+    pub description:     Option<String>,
     pub body:            String,
     pub created_at:      DateTime<Utc>,
     pub updated_at:      DateTime<Utc>,
-    pub favorites_count: i64,
-    pub author:          Vec<AuthorEntity>,
-    pub tags:            Vec<String>,
-    pub favoriter_ids:   Vec<Uuid>,
+    pub favorites_count: Option<i64>,
+    pub favoriter_ids:   Option<Vec<Uuid>>,
+    pub tags:            Option<Vec<String>>,
+    pub authors:         AuthorsEntity,
 }
-#[derive(sqlx::FromRow)]
+pub struct AuthorsEntity {
+    pub authors: Option<Vec<AuthorEntity>>,
+}
 pub struct AuthorEntity {
     pub name:      String,
     pub bio:       Option<String>,
     pub image_url: Option<String>,
 }
+const _: () = {
+    impl From<Option<sqlx::types::JsonValue>> for AuthorsEntity {
+        fn from(value: Option<sqlx::types::JsonValue>) -> Self {
+            Self {
+                authors: value.map(|v| match v {
+                    sqlx::types::JsonValue::Array(arr) => arr.into_iter().map(|v| {
+                        match v {
+                            sqlx::types::JsonValue::Object(obj) => {
+                                AuthorEntity {
+                                    name:      obj.get("name")     .unwrap() .as_str().unwrap().into(),
+                                    bio:       obj.get("bio")      .map(|v| v.as_str().unwrap().into()),
+                                    image_url: obj.get("image_url").map(|v| v.as_str().unwrap().into()),
+                                }
+                            },
+                            other => unreachable!("{other:?}")
+                        }
+                    }).collect(),
+                    other => unreachable!("{other:?}")
+                })
+            }
+        }
+    }
+};
 
 /*
     let mut query = sqlx::QueryBuilder::new(sqlx::query!(r#"
