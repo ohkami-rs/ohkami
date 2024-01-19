@@ -98,6 +98,11 @@ pub struct AuthorEntity {
     pub image_url: Option<String>,
 }
 const _: () = {
+    impl<R: sqlx::Row> sqlx::FromRow<'_, R> for AuthorsEntity {
+        fn from_row(row: &'_ R) -> Result<Self, sqlx::Error> {
+            Ok(<Option<sqlx::types::JsonValue> as sqlx::FromRow>::from_row(row)?.into())
+        }
+    }
     impl From<Option<sqlx::types::JsonValue>> for AuthorsEntity {
         fn from(value: Option<sqlx::types::JsonValue>) -> Self {
             Self {

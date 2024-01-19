@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use ohkami::{Ohkami, Route, http::Status, typed::{OK, Created}, Memory};
 use ohkami::utils::{Payload, Query};
 use sqlx::Execute;
@@ -62,49 +63,51 @@ async fn list(
     q:    ListArticlesQuery<'_>,
     auth: Memory<'_, Option<JWTPayload>>,
 ) -> Result<OK<MultipleArticlesResponse>, RealWorldError> {
-    let user_id = auth.as_ref().map(|jwt| jwt.user_id);
-
-    let mut query = sqlx::QueryBuilder::new(sqlx::query_as!(ArticleEntity, r#"
-        SELECT
-            a.id                   AS id,
-            a.slug                 AS slug,
-            a.title                AS title,
-            a.description          AS description,
-            a.body                 AS body,
-            a.created_at           AS created_at,
-            a.updated_at           AS updated_at,
-            COUNT(fav.id)          AS favorites_count,
-            ARRAY_AGG(fav.user_id) AS favoriter_ids,
-            ARRAY_AGG(tags.name)   AS tags,
-            JSON_AGG(users)        AS authors
-        FROM
-                 articles                 AS a
-            JOIN users_author_of_articles AS author ON a.id = author.article_id
-            JOIN users                    AS users  ON author.user_id = users.id
-            JOIN users_favorite_articles  AS fav    ON a.id = fav.article_id
-            JOIN articles_tags            AS a_tags ON a.id = a_tags.article_id
-            JOIN tags                     AS tags   ON a_tags.tag_id = tags.id
-        GROUP BY
-            a.id
-    "#).sql());
-    query
-        .push(" ORDER BY a.created_at")
-        .push(" OFFSET ").push_bind(q.offset())
-        .push(" LIMIT ").push_bind(q.limit());
-    query.build().execute(pool()).await.map_err(RealWorldError::DB)?;
-
-
-    /* `author.following` は上記とは別のクエリで取得する */
-    /*
-        - user_id が None のとき (つまりログインしていないとき) は常に author.following = false,
-        - user_id が Some のときは authoer.following = {
-            SELECT EXISTS users_follow_users AS ufu
-            WHERE ufu.follower_id = user_id AND ufu.followee_id = author.id
+    let following_authors_ids: Cow<'_, [uuid::Uuid]> = match *auth {
+        None => Cow::Borrowed(&[]),
+        Some(JWTPayload { user_id, .. }) => {
+            sqlx::query!(r#"
+                SELECT followee_id
+                FROM users_follow_users
+                WHERE follower_id = $1
+            "#, user_id)
+                .fetch_all(pool()).await
+                .map_err(RealWorldError::DB)?.into_iter()
+                .map(|r| r.followee_id).collect::<Vec<_>>()
+                .into()
         }
+    };
 
-        (実際には IN array を使い、レスポンスに含める全ての author についての following
-        を一度のクエリで取得する)
-    */
+    let articles_data = {
+        let mut query = sqlx::QueryBuilder::new(sqlx::query_as!(ArticleEntity, r#"
+            SELECT
+                a.id                   AS id,
+                a.slug                 AS slug,
+                a.title                AS title,
+                a.description          AS description,
+                a.body                 AS body,
+                a.created_at           AS created_at,
+                a.updated_at           AS updated_at,
+                COUNT(fav.id)          AS favorites_count,
+                ARRAY_AGG(fav.user_id) AS favoriter_ids,
+                ARRAY_AGG(tags.name)   AS tags,
+                JSON_AGG(users)        AS authors
+            FROM
+                     articles                 AS a
+                JOIN users_author_of_articles AS author ON a.id = author.article_id
+                JOIN users                    AS users  ON author.user_id = users.id
+                JOIN users_favorite_articles  AS fav    ON a.id = fav.article_id
+                JOIN articles_tags            AS a_tags ON a.id = a_tags.article_id
+                JOIN tags                     AS tags   ON a_tags.tag_id = tags.id
+            GROUP BY
+                a.id
+        "#).sql());
+        query
+            .push(" ORDER BY a.created_at")
+            .push(" OFFSET ").push_bind(q.offset())
+            .push(" LIMIT ").push_bind(q.limit());
+        query.build_query_as::<'_, ArticleEntity>()//.build().execute(pool()).await.map_err(RealWorldError::DB)?;
+    };
 
     todo!()
 }
