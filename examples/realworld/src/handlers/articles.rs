@@ -79,7 +79,7 @@ async fn list(
     };
 
     let articles_data = {
-        let mut query = sqlx::QueryBuilder::new(sqlx::query_as!(ArticleEntity, r#"
+        let mut query = sqlx::QueryBuilder::<'_, sqlx::Postgres>::new(sqlx::query_as!(ArticleEntity, r#"
             SELECT
                 a.id                   AS id,
                 a.slug                 AS slug,
@@ -106,7 +106,9 @@ async fn list(
             .push(" ORDER BY a.created_at")
             .push(" OFFSET ").push_bind(q.offset())
             .push(" LIMIT ").push_bind(q.limit());
-        query.build_query_as::<'_, ArticleEntity>()//.build().execute(pool()).await.map_err(RealWorldError::DB)?;
+        query.build_query_as::<'_, ArticleEntity>()
+            .fetch_all(pool()).await
+            .map_err(RealWorldError::DB)?
     };
 
     todo!()

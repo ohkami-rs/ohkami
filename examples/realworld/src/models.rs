@@ -48,9 +48,9 @@ pub struct MultipleArticlesResponse {
 }
 #[derive(Serialize)]
 pub struct Article {
-    pub slug:            String,
     pub title:           String,
-    pub description:     String,
+    pub slug:            Option<String>,
+    pub description:     Option<String>,
     pub body:            String,
     #[serde(rename = "tagList")]
     pub tag_list:        Vec<String>,
