@@ -2,6 +2,7 @@ use std::borrow::Cow;
 use ohkami::{Ohkami, Route, http::Status, typed::{OK, Created}, Memory};
 use ohkami::utils::{Payload, Query};
 use sqlx::Execute;
+use uuid::Uuid;
 use crate::{errors::RealWorldError, config::{JWTPayload, pool}, db::ArticleEntity};
 use crate::fangs::{Auth, OptionalAuth};
 use crate::models::{
@@ -63,18 +64,19 @@ async fn list(
     q:    ListArticlesQuery<'_>,
     auth: Memory<'_, Option<JWTPayload>>,
 ) -> Result<OK<MultipleArticlesResponse>, RealWorldError> {
-    let following_authors_ids: Cow<'_, [uuid::Uuid]> = match *auth {
-        None => Cow::Borrowed(&[]),
+    let user_and_followings: Option<(Uuid, Vec<Uuid>)> = match *auth {
+        None => None,
         Some(JWTPayload { user_id, .. }) => {
-            sqlx::query!(r#"
+            let followings = sqlx::query!(r#"
                 SELECT followee_id
                 FROM users_follow_users
                 WHERE follower_id = $1
             "#, user_id)
                 .fetch_all(pool()).await
                 .map_err(RealWorldError::DB)?.into_iter()
-                .map(|r| r.followee_id).collect::<Vec<_>>()
-                .into()
+                .map(|r| r.followee_id).collect::<Vec<_>>();
+
+            Some((*user_id, followings))
         }
     };
 
@@ -91,27 +93,67 @@ async fn list(
                 COUNT(fav.id)          AS favorites_count,
                 ARRAY_AGG(fav.user_id) AS favoriter_ids,
                 ARRAY_AGG(tags.name)   AS tags,
-                JSON_AGG(users)        AS authors
+                author.id              AS author_id,
+                author.name            AS author_name,
+                author.bio             AS author_bio,
+                author.image_url       AS author_image
             FROM
                      articles                 AS a
-                JOIN users_author_of_articles AS author ON a.id = author.article_id
-                JOIN users                    AS users  ON author.user_id = users.id
-                JOIN users_favorite_articles  AS fav    ON a.id = fav.article_id
-                JOIN articles_tags            AS a_tags ON a.id = a_tags.article_id
-                JOIN tags                     AS tags   ON a_tags.tag_id = tags.id
+                JOIN users                    AS author  ON a.author_id = author.id
+                JOIN users_favorite_articles  AS fav     ON a.id = fav.article_id
+                JOIN articles_tags            AS a_tags  ON a.id = a_tags.article_id
+                JOIN tags                     AS tags    ON a_tags.tag_id = tags.id
             GROUP BY
-                a.id
+                a.id, author.id
         "#).sql());
+
+        let mut once_having = false;
+        if let Some(tag) = q.tag {
+            query.push(if once_having {" AND "} else {" HAVING "});
+            query
+                .push_bind(tag)
+                .push(" = ANY(ARRAY_AGG(tags.name))");
+            once_having = true;
+        }
+        if let Some(author) = q.author {
+            query.push(if once_having {" AND "} else {" HAVING "});
+            query
+                .push("author.name = ")
+                .push_bind(author);
+            once_having = true;
+        }
+        if let Some(favoriter) = q.favorited {
+            let favoriter_id = sqlx::query!(r#"
+                SELECT id FROM users WHERE name = $1
+            "#, favoriter)
+                .fetch_one(pool()).await
+                .map_err(RealWorldError::DB)?
+                .id;
+
+            query.push(if once_having {" AND "} else {" HAVING "});
+            query
+                .push(favoriter_id)
+                .push_bind(" = ANY(ARRAY_AGG(fav.user_id))");
+        }
+
         query
             .push(" ORDER BY a.created_at")
             .push(" OFFSET ").push_bind(q.offset())
             .push(" LIMIT ").push_bind(q.limit());
+
         query.build_query_as::<'_, ArticleEntity>()
             .fetch_all(pool()).await
             .map_err(RealWorldError::DB)?
     };
 
-    todo!()
+    let articles = articles_data.into_iter()
+        .map(|a| a.into_article_with(&user_and_followings))
+        .collect::<Vec<_>>();
+
+    Ok(OK(MultipleArticlesResponse {
+        articles_count: articles.len(),
+        articles,
+    }))
 }
 
 #[Query]
@@ -120,8 +162,11 @@ struct FeedArticleQuery {
     offset: Option<usize>,
 }
 
-async fn feed(query: FeedArticleQuery) -> Result<OK<MultipleArticlesResponse>, RealWorldError> {
-    unimplemented!()
+async fn feed(
+    q:    FeedArticleQuery,
+    auth: Memory<'_, JWTPayload>,
+) -> Result<OK<MultipleArticlesResponse>, RealWorldError> {
+    todo!()
 }
 
 async fn get(slug: &str) -> Result<OK<SingleArticleResponse>, RealWorldError> {

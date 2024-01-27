@@ -90,67 +90,36 @@ pub struct ArticleEntity {
     pub favorites_count: Option<i64>,
     pub favoriter_ids:   Option<Vec<Uuid>>,
     pub tags:            Option<Vec<String>>,
-    pub authors:         Option<sqlx::types::JsonValue>,
+    pub author_id:       Uuid,
+    pub author_name:     String,
+    pub author_bio:      Option<String>,
+    pub author_image:    Option<String>,
 } impl ArticleEntity {
-    pub fn into_article_with(
-        self,
-        user_and_followings: Option<(Uuid, Cow<'static, [Uuid]>)>,
-    ) -> Article {
-        let user_favorited_this_article = match &user_and_followings {
-            None => false,
-            Some((id, _)) => self.favoriter_ids.unwrap_or_else(Vec::new).contains(id),
-        };
+    pub fn into_article_with(self, user_and_followings: &Option<(Uuid, Vec<Uuid>)>) -> Article {
+        let favorited = user_and_followings.as_ref()
+            .map(|(user_id, _)| self.favoriter_ids.unwrap_or_else(Vec::new).contains(user_id))
+            .unwrap_or(false);
 
-        let author_profile = match self.authors.expect("No author found") {
-            sqlx::types::JsonValue::Array(mut arr) => {
-                assert!(arr.len() == 1, "Multiple authors found; this may be allowed in future, but not implemented now");
-                let mut author_obj = match unsafe {arr.pop().unwrap_unchecked()} {
-                    sqlx::types::JsonValue::Object(obj) => obj,
-                    other => unreachable!("author was not object: {other:?}")
-                };
-
-                let id = match author_obj.remove("id").expect("`id` was not found in author") {
-                    sqlx::types::JsonValue::String(s) => Uuid::from_str(&s).unwrap(),
-                    other => unreachable!("`id` was not string in `author_obj`: {other:?}"),
-                };
-                let username = match author_obj.remove("name").expect("`name` was not found in author") {
-                    sqlx::types::JsonValue::String(s) => s,
-                    other => unreachable!("`name` was not string: {other:?}")
-                };
-                let bio = match author_obj.remove("bio") {
-                    Some(sqlx::types::JsonValue::String(s))   => Some(s),
-                    None | Some(sqlx::types::JsonValue::Null) => None,
-                    Some(other) => unreachable!("`bio` was not string: {other:?}")
-                };
-                let image = match author_obj.remove("image_url") {
-                    Some(sqlx::types::JsonValue::String(s))   => Some(s),
-                    None | Some(sqlx::types::JsonValue::Null) => None,
-                    Some(other) => unreachable!("`image_url` was not string: {other:?}")
-                };
-
-                Profile {
-                    username,
-                    bio,
-                    image,
-                    following: user_and_followings
-                        .map(|(_, following_authors)| following_authors.contains(&id))
-                        .unwrap_or(false),
-                }
-            }
-            other => unreachable!("`authors` was not json array: {other:?}")
+        let author = Profile {
+            username:  self.author_name,
+            bio:       self.author_bio,
+            image:     self.author_image,
+            following: user_and_followings.as_ref()
+                .map(|(_, followings)| followings.contains(&self.author_id))
+                .unwrap_or(false),
         };
 
         Article {
             title:           self.title,
-            slug:            self.slug,
             description:     self.description,
             body:            self.body,
-            tag_list:        self.tags.unwrap_or_else(Vec::new),
+            slug:            self.slug,
             created_at:      self.created_at,
             updated_at:      self.updated_at,
+            tag_list:        self.tags.unwrap_or_else(Vec::new),
             favorites_count: self.favorites_count.unwrap_or(0) as _,
-            favorited:       user_favorited_this_article,
-            author:          author_profile,
+            favorited,
+            author,
         }
     }
 }
