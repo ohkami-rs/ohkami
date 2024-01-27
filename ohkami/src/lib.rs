@@ -281,7 +281,6 @@ pub mod testing {
 
 #[cfg(feature="utils")]
 pub mod utils {
-    pub use crate::layer0_lib::base64;
     pub use crate::x_utils::{now, CORS, JWT, File, Text, HTML, ResponseBody};
     pub use ohkami_macros ::{Query, Payload, ResponseBody, Serialize, Deserialize};
     pub use crate::__internal__::serde::{ser::{Serialize, Serializer}, de::{Deserialize, Deserializer}};
