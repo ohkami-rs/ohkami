@@ -1,9 +1,9 @@
-use std::borrow::Cow;
-use ohkami::{Ohkami, Route, http::Status, typed::{OK, Created}, Memory};
+use std::borrow::{BorrowMut, Cow};
+use ohkami::{Ohkami, Route, http::Status, typed::{OK, Created, NoContent}, Memory};
 use ohkami::utils::{Payload, Query};
 use sqlx::Execute;
 use uuid::Uuid;
-use crate::{errors::RealWorldError, config::{JWTPayload, pool}, db::ArticleEntity};
+use crate::{config::{JWTPayload, pool}, db::ArticleEntity, errors::RealWorldError, models::Profile};
 use crate::fangs::{Auth, OptionalAuth};
 use crate::models::{
     Tag,
@@ -194,24 +194,93 @@ async fn get(slug: &str) -> Result<OK<SingleArticleResponse>, RealWorldError> {
 
 #[Payload(JSOND)]
 struct CreateArticleRequest<'req> {
-    title:         &'req str,
-    descipription: &'req str,
-    body:          &'req str,
+    title:       &'req str,
+    description: &'req str,
+    body:        &'req str,
     #[serde(rename = "tagList")]
     tag_list:      Option<Vec<Tag<'req>>>,
+} impl CreateArticleRequest<'_> {
+    fn slug(&self) -> String {
+        self.title.chars().filter_map(|ch| match ch {
+            '/' | '?' | '=' | '&' | '#'     => None,
+            ' ' | '　' | '\r' | '\n' | '\t' => Some('-'),
+            _ => Some(ch)
+        }).collect()
+    }
 }
 
 async fn create(
     auth: Memory<'_, JWTPayload>,
-    body: CreateArticleRequest<'_>,
+    req:  CreateArticleRequest<'_>,
 ) -> Result<Created<SingleArticleResponse>, RealWorldError> {
-    sqlx::query!(r#"
-        INSERT INTO
-            articles ()
-        VALUES
-    "#);
+    let author_id = auth.user_id;
+    let slug = req.slug();
+    let CreateArticleRequest { title, description, body, tag_list } = req;
 
-    todo!()
+    let created = sqlx::query!(r#"
+        INSERT INTO
+            articles (author_id, slug, title, description, body)
+            VALUES   ($1,        $2,   $3,    $4,          $5  )
+        RETURNING id, created_at, updated_at
+    "#, author_id, slug, title, description, body)
+        .fetch_one(pool()).await
+        .map_err(RealWorldError::DB)?;
+
+    if let Some(tags) = &tag_list {
+        /*
+            No problem in most cases because, basically,
+            `tags` contains at most 4 or 5 items
+        */
+
+        let mut tag_ids = Vec::with_capacity(tags.len());
+        for tag in tags {
+            tag_ids.push(match sqlx::query_scalar!("SELECT id FROM tags WHERE name = $1", &**tag)
+                .fetch_optional(pool()).await
+                .map_err(RealWorldError::DB)?
+            {
+                Some(existing_id) => existing_id,
+                None => sqlx::query_scalar!("INSERT INTO tags (name) VALUES ($1) RETURNING id", &**tag)
+                    .fetch_one(pool()).await
+                    .map_err(RealWorldError::DB)?
+            })
+        }
+
+        sqlx::query!(r#"
+            INSERT INTO
+                articles_tags (tag_id,            article_id       )
+                SELECT        UNNEST($1::uuid[]), UNNEST($2::uuid[])
+        "#, &tag_ids, &vec![created.id; tag_ids.len()])
+            .execute(pool()).await
+            .map_err(RealWorldError::DB)?;
+    }
+
+    let author = sqlx::query!(r#"
+        SELECT name, bio, image_url
+        FROM users
+        WHERE id = $1
+    "#, author_id)
+        .fetch_one(pool()).await
+        .map_err(RealWorldError::DB)?;
+
+    Ok(Created(SingleArticleResponse {
+        article: Article {
+            title:           title.into(),
+            slug:            Some(slug),
+            description:     Some(description.into()),
+            body:            body.into(),
+            tag_list:        tag_list.unwrap_or_else(Vec::new).into_iter().map(|t| t.to_string()).collect(),
+            created_at:      created.created_at,
+            updated_at:      created.updated_at,
+            favorited:       false,
+            favorites_count: 0,
+            author: Profile {
+                username:  author.name,
+                bio:       author.bio,
+                image:     author.image_url,
+                following: false  // They doesn't follow themselves
+            },
+        }
+    }))
 }
 
 #[Payload(JSOND)]
@@ -225,7 +294,9 @@ async fn update(slug: &str, body: UpdateArticleRequest<'_>) -> Result<OK<SingleA
     todo!()
 }
 
-async fn delete(slug: &str) -> Status {
+async fn delete(slug: &str) -> Result<NoContent, RealWorldError> {
+
+
     todo!()
 }
 
@@ -242,7 +313,7 @@ async fn get_comments(slug: &str) -> Result<OK<MultipleCommentsResponse>, RealWo
     todo!()
 }
 
-async fn delete_comment((slug, id): (&str, usize)) -> Status {
+async fn delete_comment((slug, id): (&str, usize)) -> Result<NoContent, RealWorldError> {
     todo!()
 }
 
