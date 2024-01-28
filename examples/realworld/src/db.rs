@@ -2,7 +2,7 @@ use std::borrow::Cow;
 use std::str::FromStr;
 
 use crate::{config, errors::RealWorldError};
-use crate::models::{User, UserResponse, ProfileResponse, Profile, Article};
+use crate::models::{Article, Profile, ProfileResponse, Tag, User, UserResponse};
 use argon2::{Argon2, Algorithm, Version, Params, PasswordHasher};
 use argon2::password_hash::{PasswordHashString, Salt, SaltString};
 use chrono::{DateTime, Utc};
@@ -95,7 +95,44 @@ pub struct ArticleEntity {
     pub author_bio:      Option<String>,
     pub author_image:    Option<String>,
 } impl ArticleEntity {
-    pub fn into_article_with(self, user_and_followings: &Option<(Uuid, Vec<Uuid>)>) -> Article {
+    pub fn base_query() -> String {
+        use sqlx::Execute;
+
+        sqlx::query_as!(Self, r#"
+            SELECT
+                a.id                   AS id,
+                a.slug                 AS slug,
+                a.title                AS title,
+                a.description          AS description,
+                a.body                 AS body,
+                a.created_at           AS created_at,
+                a.updated_at           AS updated_at,
+                COUNT(fav.id)          AS favorites_count,
+                ARRAY_AGG(fav.user_id) AS favoriter_ids,
+                ARRAY_AGG(tags.name)   AS tags,
+                author.id              AS author_id,
+                author.name            AS author_name,
+                author.bio             AS author_bio,
+                author.image_url       AS author_image
+            FROM
+                     articles                 AS a
+                JOIN users                    AS author ON a.author_id = author.id
+                JOIN users_favorite_articles  AS fav    ON a.id = fav.article_id
+                JOIN articles_tags            AS a_tags ON a.id = a_tags.article_id
+                JOIN tags                     AS tags   ON a_tags.tag_id = tags.id
+            GROUP BY
+                a.id, author.id
+        "#).sql().into()
+    }
+} impl ArticleEntity {
+    pub fn into_article(self) -> Article {
+        self.into_article_with(None::<&(Uuid, &[Uuid])>)
+    }
+
+    pub fn into_article_with(
+        self,
+        user_and_followings: Option<&(Uuid, impl AsRef<[Uuid]>)>,
+    ) -> Article {
         let favorited = user_and_followings.as_ref()
             .map(|(user_id, _)| self.favoriter_ids.unwrap_or_else(Vec::new).contains(user_id))
             .unwrap_or(false);
@@ -104,8 +141,8 @@ pub struct ArticleEntity {
             username:  self.author_name,
             bio:       self.author_bio,
             image:     self.author_image,
-            following: user_and_followings.as_ref()
-                .map(|(_, followings)| followings.contains(&self.author_id))
+            following: user_and_followings
+                .map(|(_, followings)| followings.as_ref().contains(&self.author_id))
                 .unwrap_or(false),
         };
 

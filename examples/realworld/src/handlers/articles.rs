@@ -67,45 +67,20 @@ async fn list(
     let user_and_followings: Option<(Uuid, Vec<Uuid>)> = match *auth {
         None => None,
         Some(JWTPayload { user_id, .. }) => {
-            let followings = sqlx::query!(r#"
+            let followings = sqlx::query_scalar!(r#"
                 SELECT followee_id
                 FROM users_follow_users
                 WHERE follower_id = $1
             "#, user_id)
                 .fetch_all(pool()).await
-                .map_err(RealWorldError::DB)?.into_iter()
-                .map(|r| r.followee_id).collect::<Vec<_>>();
+                .map_err(RealWorldError::DB)?;
 
             Some((*user_id, followings))
         }
     };
 
     let articles_data = {
-        let mut query = sqlx::QueryBuilder::<'_, sqlx::Postgres>::new(sqlx::query_as!(ArticleEntity, r#"
-            SELECT
-                a.id                   AS id,
-                a.slug                 AS slug,
-                a.title                AS title,
-                a.description          AS description,
-                a.body                 AS body,
-                a.created_at           AS created_at,
-                a.updated_at           AS updated_at,
-                COUNT(fav.id)          AS favorites_count,
-                ARRAY_AGG(fav.user_id) AS favoriter_ids,
-                ARRAY_AGG(tags.name)   AS tags,
-                author.id              AS author_id,
-                author.name            AS author_name,
-                author.bio             AS author_bio,
-                author.image_url       AS author_image
-            FROM
-                     articles                 AS a
-                JOIN users                    AS author  ON a.author_id = author.id
-                JOIN users_favorite_articles  AS fav     ON a.id = fav.article_id
-                JOIN articles_tags            AS a_tags  ON a.id = a_tags.article_id
-                JOIN tags                     AS tags    ON a_tags.tag_id = tags.id
-            GROUP BY
-                a.id, author.id
-        "#).sql());
+        let mut query = sqlx::QueryBuilder::new(ArticleEntity::base_query());
 
         let mut once_having = false;
         if let Some(tag) = q.tag {
@@ -147,7 +122,7 @@ async fn list(
     };
 
     let articles = articles_data.into_iter()
-        .map(|a| a.into_article_with(&user_and_followings))
+        .map(|a| a.into_article_with(user_and_followings.as_ref()))
         .collect::<Vec<_>>();
 
     Ok(OK(MultipleArticlesResponse {
@@ -160,19 +135,61 @@ async fn list(
 struct FeedArticleQuery {
     limit:  Option<usize>,
     offset: Option<usize>,
+} impl FeedArticleQuery {
+    fn limit(&self) -> i64 {
+        self.limit.unwrap_or(20) as _
+    }
+    fn offset(&self) -> i64 {
+        self.offset.unwrap_or(0) as _
+    }
 }
 
 async fn feed(
     q:    FeedArticleQuery,
     auth: Memory<'_, JWTPayload>,
 ) -> Result<OK<MultipleArticlesResponse>, RealWorldError> {
-    todo!()
+    let followings = sqlx::query_scalar!(r#"
+        SELECT followee_id
+        FROM users_follow_users
+        WHERE follower_id = $1
+    "#, auth.user_id)
+        .fetch_all(pool()).await
+        .map_err(RealWorldError::DB)?;
+
+    if followings.is_empty() {
+        return Ok(OK(MultipleArticlesResponse {
+            articles: Vec::new(),
+            articles_count: 0,
+        }))
+    }
+
+    let articles = sqlx::QueryBuilder::new(ArticleEntity::base_query())
+        .push(" HAVING author.id IN ").push_bind(&followings)
+        .push(" ORDER BY a.created_at")
+        .push(" OFFSET ").push_bind(q.offset())
+        .push(" LIMIT ").push_bind(q.limit())
+        .build_query_as::<'_, ArticleEntity>()
+        .fetch_all(pool()).await
+        .map_err(RealWorldError::DB)?.into_iter()
+        .map(|a| a.into_article_with(Some(&(auth.user_id, &followings)))).collect::<Vec<_>>();
+
+    Ok(OK(MultipleArticlesResponse {
+        articles_count: articles.len(),
+        articles
+    }))
 }
 
 async fn get(slug: &str) -> Result<OK<SingleArticleResponse>, RealWorldError> {
-    // let;
+    let article = sqlx::QueryBuilder::new(ArticleEntity::base_query())
+        .push(" HAVING a.slug = ").push_bind(slug)
+        .build_query_as::<'_, ArticleEntity>()
+        .fetch_one(pool()).await
+        .map_err(RealWorldError::DB)?
+        .into_article();
 
-    todo!()
+    Ok(OK(SingleArticleResponse {
+        article,
+    }))
 }
 
 #[Payload(JSOND)]
@@ -184,7 +201,16 @@ struct CreateArticleRequest<'req> {
     tag_list:      Option<Vec<Tag<'req>>>,
 }
 
-async fn create(body: CreateArticleRequest<'_>) -> Result<Created<SingleArticleResponse>, RealWorldError> {
+async fn create(
+    auth: Memory<'_, JWTPayload>,
+    body: CreateArticleRequest<'_>,
+) -> Result<Created<SingleArticleResponse>, RealWorldError> {
+    sqlx::query!(r#"
+        INSERT INTO
+            articles ()
+        VALUES
+    "#);
+
     todo!()
 }
 
