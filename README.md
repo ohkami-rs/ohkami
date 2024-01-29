@@ -95,7 +95,7 @@ struct SearchQuery<'q> {
 async fn search(condition: SearchQuery) -> Response { /* */ }
 
 #[utils::Payload(JSON)]
-#[derive(serde::Deserialize)]
+#[derive(utils::Deserialize)]
 struct CreateUserRequest<'req> {
     name:     &'req str,
     password: &'req str,
@@ -221,8 +221,8 @@ async fn main() {
 ### testing
 ```rust
 use ohkami::prelude::*;
-use ohkami::testing::*; // <--
 use ohkami::typed::OK;
+use ohkami::testing::*; // <--
 
 fn hello_ohkami() -> Ohkami {
     Ohkami::new((
