@@ -1,6 +1,10 @@
-use ohkami::utils::{ResponseBody, Serialize, Deserialize, Serializer};
+use ohkami::utils::{Serialize, Serializer, Deserialize};
 use chrono::{DateTime, Utc, SecondsFormat};
 use uuid::Uuid;
+
+pub mod request;
+pub mod response;
+
 
 fn serialize_datetime<S: Serializer>(
     date_time:  &DateTime<Utc>,
@@ -9,10 +13,7 @@ fn serialize_datetime<S: Serializer>(
     serializer.serialize_str(&date_time.to_rfc3339_opts(SecondsFormat::Millis, true))
 }
 
-#[ResponseBody(JSONS)]
-pub struct UserResponse {
-    pub user: User,
-}
+
 #[derive(Serialize)]
 pub struct User {
     pub email: String,
@@ -24,10 +25,6 @@ pub struct User {
     pub image: Option<String>,
 }
 
-#[ResponseBody(JSONS)]
-pub struct ProfileResponse {
-    pub profile: Profile,
-}
 #[derive(Serialize)]
 pub struct Profile {
     pub username:  String,
@@ -36,16 +33,6 @@ pub struct Profile {
     pub following: bool,
 }
 
-#[ResponseBody(JSONS)]
-pub struct SingleArticleResponse {
-    pub article: Article,
-}
-#[ResponseBody(JSONS)]
-pub struct MultipleArticlesResponse {
-    pub articles: Vec<Article>,
-    #[serde(rename = "articlesCount")]
-    pub articles_count: usize,
-}
 #[derive(Serialize)]
 pub struct Article {
     pub title:           String,
@@ -64,17 +51,9 @@ pub struct Article {
     pub author:          Profile,
 }
 
-#[ResponseBody(JSONS)]
-pub struct SingleCommentResponse {
-    pub comment: Comment,
-}
-#[ResponseBody(JSONS)]
-pub struct MultipleCommentsResponse {
-    pub comments: Vec<Comment>,
-}
 #[derive(Serialize)]
 pub struct Comment {
-    pub id:         Uuid,
+    pub id:         usize,
     #[serde(rename = "createdAt", serialize_with = "serialize_datetime")]
     pub created_at: DateTime<Utc>,
     #[serde(rename = "updatedAt", serialize_with = "serialize_datetime")]
@@ -83,10 +62,6 @@ pub struct Comment {
     pub author:     Profile,
 }
 
-#[ResponseBody(JSONS)]
-pub struct ListOfTagsResponse<'t> {
-    pub tags: Vec<Tag<'t>>
-}
 #[derive(Serialize, Deserialize)]
 pub struct Tag<'t>(std::borrow::Cow<'t, str>);
 const _: () = {

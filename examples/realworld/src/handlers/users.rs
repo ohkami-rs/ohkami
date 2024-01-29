@@ -1,7 +1,9 @@
 use std::borrow::Cow;
-use ohkami::{Ohkami, Route, utils::{Payload, Deserialize, Deserializer}, typed::{Created, OK}};
+use ohkami::{Ohkami, Route, typed::{Created, OK}};
 use crate::{
-    models::{User, UserResponse},
+    models::User,
+    models::response::UserResponse,
+    models::request::{LoginRequest, LoginRequestUser, RegisterRequest},
     errors::RealWorldError,
     config::{pool, self},
     db,
@@ -15,24 +17,6 @@ pub fn users_ohkami() -> Ohkami {
         "/"
             .POST(register),
     ))
-}
-
-#[Payload(JSON)]
-struct LoginRequest<'req> {
-    user: LoginRequestUser<'req>,
-} const _: () = {
-    impl<'req> Deserialize<'req> for LoginRequest<'req> {
-        fn deserialize<D: Deserializer<'req>>(deserializer: D) -> Result<Self, D::Error> {
-            Ok(Self {
-                user: LoginRequestUser::deserialize(deserializer)?,
-            })
-        }
-    }
-};
-#[derive(Deserialize)]
-struct LoginRequestUser<'req> {
-    email:    &'req str,
-    password: &'req str,
 }
 
 async fn login(
@@ -53,13 +37,6 @@ async fn login(
         .map_err(RealWorldError::DB)?;
 
     Ok(OK(u.into_user_response()))
-}
-
-#[Payload(JSOND)]
-struct RegisterRequest<'req> {
-    username: &'req str,
-    email:    &'req str,
-    password: &'req str,
 }
 
 async fn register(

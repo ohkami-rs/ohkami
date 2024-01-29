@@ -1,8 +1,6 @@
-use std::borrow::Cow;
-use std::str::FromStr;
-
 use crate::{config, errors::RealWorldError};
-use crate::models::{Article, Profile, ProfileResponse, Tag, User, UserResponse};
+use crate::models::{Article, Profile, User, Comment};
+use crate::models::response::{UserResponse, ProfileResponse};
 use argon2::{Argon2, Algorithm, Version, Params, PasswordHasher};
 use argon2::password_hash::{PasswordHashString, Salt, SaltString};
 use chrono::{DateTime, Utc};
@@ -36,6 +34,49 @@ pub fn hash_password(
     Ok(hashed_password.as_str().to_string())
 }
 
+pub async fn article_id_by_slug(slug: &str) -> Result<Uuid, RealWorldError> {
+    sqlx::query_scalar!(r#"
+        SELECT id
+        FROM articles
+        WHERE slug = $1
+    "#, slug)
+        .fetch_one(config::pool()).await
+        .map_err(RealWorldError::DB)
+}
+
+pub enum UserAndFollowings<'uf> {
+    None,
+    Owned { user: Uuid, followings: Vec<Uuid> },
+    Ref   { user: Uuid, followings: &'uf [Uuid] },
+} impl UserAndFollowings<'_> {
+    pub fn user_id(&self) -> Option<&Uuid> {
+        match self {
+            Self::None => None,
+            Self::Owned { user, .. } | Self::Ref { user, .. } => Some(user),
+        }
+    }
+    pub fn followings(&self) -> &[Uuid] {
+        match self {
+            Self::None => &[],
+            Self::Owned { followings, .. } => followings,
+            Self::Ref   { followings, .. } => followings,
+        }
+    }
+} impl UserAndFollowings<'_> {
+    pub async fn from_user_id(user_id: Uuid) -> Result<Self, RealWorldError> {
+        let followings = sqlx::query_scalar!(r#"
+            SELECT followee_id FROM users_follow_users WHERE follower_id = $1
+        "#, user_id)
+            .fetch_all(config::pool()).await
+            .map_err(RealWorldError::DB)?;
+
+        Ok(Self::Owned {
+            user: user_id,
+            followings
+        })
+    }
+}
+
 #[derive(sqlx::FromRow)]
 pub struct UserEntity {
     pub id:        Uuid,
@@ -47,8 +88,8 @@ pub struct UserEntity {
     pub fn into_user_response(self) -> UserResponse {
         UserResponse {
             user: User {
-                email: self.email,
                 jwt:   config::issue_jwt_for_user_of_id(self.id),
+                email: self.email,
                 name:  self.name,
                 bio:   self.bio,
                 image: self.image_url,
@@ -125,25 +166,19 @@ pub struct ArticleEntity {
         "#).sql().into()
     }
 } impl ArticleEntity {
-    pub fn into_article(self) -> Article {
-        self.into_article_with(None::<&(Uuid, &[Uuid])>)
-    }
-
     pub fn into_article_with(
         self,
-        user_and_followings: Option<&(Uuid, impl AsRef<[Uuid]>)>,
+        uf: &UserAndFollowings,
     ) -> Article {
-        let favorited = user_and_followings.as_ref()
-            .map(|(user_id, _)| self.favoriter_ids.unwrap_or_else(Vec::new).contains(user_id))
+        let favorited = uf.user_id()
+            .map(|id| self.favoriter_ids.unwrap_or_else(Vec::new).contains(id))
             .unwrap_or(false);
 
         let author = Profile {
             username:  self.author_name,
             bio:       self.author_bio,
             image:     self.author_image,
-            following: user_and_followings
-                .map(|(_, followings)| followings.as_ref().contains(&self.author_id))
-                .unwrap_or(false),
+            following: uf.followings().contains(&self.author_id),
         };
 
         Article {
@@ -157,6 +192,33 @@ pub struct ArticleEntity {
             favorites_count: self.favorites_count.unwrap_or(0) as _,
             favorited,
             author,
+        }
+    }
+}
+
+#[derive(sqlx::FromRow)]
+pub struct CommentEntity {
+    pub id:           i32,
+    pub created_at:   DateTime<Utc>,
+    pub updated_at:   DateTime<Utc>,
+    pub content:      String,
+    pub author_id:    Uuid,
+    pub author_name:  String,
+    pub author_bio:   Option<String>,
+    pub author_image: Option<String>,
+} impl CommentEntity {
+    pub fn into_comment_with(self, uf: &UserAndFollowings) -> Comment {
+        Comment {
+            id:         self.id as _,
+            created_at: self.created_at,
+            updated_at: self.updated_at,
+            body:       self.content,
+            author:     Profile {
+                username:  self.author_name,
+                bio:       self.author_bio,
+                image:     self.author_image,
+                following: uf.followings().contains(&self.author_id),
+            },
         }
     }
 }

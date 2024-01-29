@@ -1,14 +1,17 @@
-use std::borrow::{BorrowMut, Cow};
-use ohkami::{Ohkami, Route, http::Status, typed::{OK, Created, NoContent}, Memory};
-use ohkami::utils::{Payload, Query};
-use sqlx::Execute;
+use chrono::{DateTime, Utc};
+use ohkami::{Ohkami, Route, typed::{OK, Created, NoContent}, Memory};
 use uuid::Uuid;
-use crate::{config::{JWTPayload, pool}, db::ArticleEntity, errors::RealWorldError, models::Profile};
+use crate::{config::{JWTPayload, pool}, errors::RealWorldError};
 use crate::fangs::{Auth, OptionalAuth};
+use crate::db::{article_id_by_slug, UserAndFollowings, ArticleEntity, CommentEntity};
+use crate::models::request::{
+    ListArticlesQuery,
+    FeedArticleQuery,
+};
 use crate::models::{
-    Tag,
-    Article, SingleArticleResponse, MultipleArticlesResponse,
-    Comment, MultipleCommentsResponse, SingleCommentResponse
+    Article, Profile, Comment,
+    request::{CreateArticleRequest, UpdateArticleRequest, AddCommentRequest},
+    response::{SingleArticleResponse, MultipleArticlesResponse, SingleCommentResponse, MultipleCommentsResponse},
 };
 
 
@@ -44,28 +47,12 @@ pub fn articles_ohkami() -> Ohkami {
 }
 
 
-#[Query]
-struct ListArticlesQuery<'q> {
-    tag:       Option<&'q str>,
-    author:    Option<&'q str>,
-    favorited: Option<&'q str>,
-    limit:     Option<usize>,
-    offset:    Option<usize>,
-} impl<'q> ListArticlesQuery<'q> {
-    fn limit(&self) -> i64 {
-        self.limit.unwrap_or(20) as _
-    }
-    fn offset(&self) -> i64 {
-        self.offset.unwrap_or(0) as _
-    }
-}
-
 async fn list(
     q:    ListArticlesQuery<'_>,
     auth: Memory<'_, Option<JWTPayload>>,
 ) -> Result<OK<MultipleArticlesResponse>, RealWorldError> {
-    let user_and_followings: Option<(Uuid, Vec<Uuid>)> = match *auth {
-        None => None,
+    let user_and_followings = match *auth {
+        None => UserAndFollowings::None,
         Some(JWTPayload { user_id, .. }) => {
             let followings = sqlx::query_scalar!(r#"
                 SELECT followee_id
@@ -75,7 +62,10 @@ async fn list(
                 .fetch_all(pool()).await
                 .map_err(RealWorldError::DB)?;
 
-            Some((*user_id, followings))
+            UserAndFollowings::Owned {
+                user: *user_id,
+                followings
+            }
         }
     };
 
@@ -122,7 +112,7 @@ async fn list(
     };
 
     let articles = articles_data.into_iter()
-        .map(|a| a.into_article_with(user_and_followings.as_ref()))
+        .map(|a| a.into_article_with(&user_and_followings))
         .collect::<Vec<_>>();
 
     Ok(OK(MultipleArticlesResponse {
@@ -131,47 +121,21 @@ async fn list(
     }))
 }
 
-#[Query]
-struct FeedArticleQuery {
-    limit:  Option<usize>,
-    offset: Option<usize>,
-} impl FeedArticleQuery {
-    fn limit(&self) -> i64 {
-        self.limit.unwrap_or(20) as _
-    }
-    fn offset(&self) -> i64 {
-        self.offset.unwrap_or(0) as _
-    }
-}
-
 async fn feed(
     q:    FeedArticleQuery,
     auth: Memory<'_, JWTPayload>,
 ) -> Result<OK<MultipleArticlesResponse>, RealWorldError> {
-    let followings = sqlx::query_scalar!(r#"
-        SELECT followee_id
-        FROM users_follow_users
-        WHERE follower_id = $1
-    "#, auth.user_id)
-        .fetch_all(pool()).await
-        .map_err(RealWorldError::DB)?;
-
-    if followings.is_empty() {
-        return Ok(OK(MultipleArticlesResponse {
-            articles: Vec::new(),
-            articles_count: 0,
-        }))
-    }
+    let uf = UserAndFollowings::from_user_id(auth.user_id).await?;
 
     let articles = sqlx::QueryBuilder::new(ArticleEntity::base_query())
-        .push(" HAVING author.id IN ").push_bind(&followings)
+        .push(" HAVING author.id IN ").push_bind(uf.followings())
         .push(" ORDER BY a.created_at")
         .push(" OFFSET ").push_bind(q.offset())
         .push(" LIMIT ").push_bind(q.limit())
         .build_query_as::<'_, ArticleEntity>()
         .fetch_all(pool()).await
         .map_err(RealWorldError::DB)?.into_iter()
-        .map(|a| a.into_article_with(Some(&(auth.user_id, &followings)))).collect::<Vec<_>>();
+        .map(|a| a.into_article_with(&uf)).collect::<Vec<_>>();
 
     Ok(OK(MultipleArticlesResponse {
         articles_count: articles.len(),
@@ -185,28 +149,11 @@ async fn get(slug: &str) -> Result<OK<SingleArticleResponse>, RealWorldError> {
         .build_query_as::<'_, ArticleEntity>()
         .fetch_one(pool()).await
         .map_err(RealWorldError::DB)?
-        .into_article();
+        .into_article_with(&UserAndFollowings::None);
 
     Ok(OK(SingleArticleResponse {
         article,
     }))
-}
-
-#[Payload(JSOND)]
-struct CreateArticleRequest<'req> {
-    title:       &'req str,
-    description: &'req str,
-    body:        &'req str,
-    #[serde(rename = "tagList")]
-    tag_list:      Option<Vec<Tag<'req>>>,
-} impl CreateArticleRequest<'_> {
-    fn slug(&self) -> String {
-        self.title.chars().filter_map(|ch| match ch {
-            '/' | '?' | '=' | '&' | '#'     => None,
-            ' ' | '　' | '\r' | '\n' | '\t' => Some('-'),
-            _ => Some(ch)
-        }).collect()
-    }
 }
 
 async fn create(
@@ -277,50 +224,173 @@ async fn create(
                 username:  author.name,
                 bio:       author.bio,
                 image:     author.image_url,
-                following: false  // They doesn't follow themselves
+                following: false  // They doesn't follow themself
             },
         }
     }))
 }
 
-#[Payload(JSOND)]
-struct UpdateArticleRequest<'req> {
-    title:       Option<&'req str>,
-    description: Option<&'req str>,
-    body:        Option<&'req str>,
+async fn update(
+    slug: &str,
+    body: UpdateArticleRequest<'_>,
+    auth: Memory<'_, JWTPayload>,
+) -> Result<OK<SingleArticleResponse>, RealWorldError> {
+    let mut article = sqlx::QueryBuilder::new(ArticleEntity::base_query())
+        .push(" HAVING a.slug = ").push_bind(slug)
+        .build_query_as::<ArticleEntity>()
+        .fetch_one(pool()).await
+        .map_err(RealWorldError::DB)?;
+
+    if article.author_id != auth.user_id {
+        return Err(RealWorldError::Unauthorized(
+            std::borrow::Cow::Borrowed("This is not your article")
+        ))
+    }
+
+    let mut updater = sqlx::QueryBuilder::new("UPDATE articles SET updated_at = now()");
+    let mut once_set = false; {
+        if let Some(title) = body.title {
+            updater
+                .push(if once_set {","} else {" SET "})
+                .push("title = ").push_bind(title);
+            article.title = title.into();
+            once_set = true;
+        }
+        if let Some(description) = body.description {
+            updater
+                .push(if once_set {","} else {" SET "})
+                .push("description = ").push_bind(description);
+            article.description = Some(description.into());
+            once_set = true;
+        }
+        if let Some(body) = body.body {
+            updater
+                .push(if once_set {","} else {" SET "})
+                .push("body = ").push_bind(body);
+            article.body = body.into();
+        }
+    }
+
+    article.updated_at = updater
+        .push(" WHERE slug = ").push_bind(slug)
+        .push(" RETURNING updated_at ")
+        .build_query_scalar::<DateTime<Utc>>()
+        .fetch_one(pool()).await
+        .map_err(RealWorldError::DB)?;
+
+    Ok(OK(SingleArticleResponse {
+        article: article.into_article_with(
+            &UserAndFollowings::from_user_id(auth.user_id).await?
+        )}))
 }
 
-async fn update(slug: &str, body: UpdateArticleRequest<'_>) -> Result<OK<SingleArticleResponse>, RealWorldError> {
+async fn delete(
+    slug: &str,
+    auth: Memory<'_, JWTPayload>,
+) -> Result<NoContent, RealWorldError> {
+    let n = sqlx::query!("DELETE FROM articles WHERE author_id = $1 AND slug = $2", auth.user_id, slug)
+        .execute(pool()).await
+        .map_err(RealWorldError::DB)?
+        .rows_affected();
+
+    match n {
+        1 => Ok(NoContent),
+        0 => Err(RealWorldError::NotFound(std::borrow::Cow::Borrowed("Article not found"))),
+        _ => Err(RealWorldError::FoundUnexpectedly(std::borrow::Cow::Owned(format!("{n} articles deleted"))))
+    }
+}
+
+async fn add_comment(
+    slug: &str,
+    body: AddCommentRequest<'_>,
+    auth: Memory<'_, JWTPayload>,
+) -> Result<Created<SingleCommentResponse>, RealWorldError> {
+    let ariticle_id = article_id_by_slug(slug).await?;
+
+    let created = sqlx::query!(r#"
+        INSERT INTO
+            comments (author_id, article_id, content)
+            VALUES   ($1,        $2,         $3     )
+        RETURNING id, created_at
+    "#, auth.user_id, ariticle_id, body.content)
+        .fetch_one(pool()).await
+        .map_err(RealWorldError::DB)?;
+
+    let comment_author = sqlx::query!(r#"
+        SELECT name, bio, image_url
+        FROM users
+        WHERE id = $1
+    "#, auth.user_id)
+        .fetch_one(pool()).await
+        .map_err(RealWorldError::DB)?;
+
+    Ok(Created(SingleCommentResponse {
+        comment: Comment {
+            id:         created.id as _,
+            created_at: created.created_at,
+            updated_at: created.created_at,
+            body:       body.content.into(),
+            author:     Profile {
+                username:  comment_author.name,
+                bio:       comment_author.bio,
+                image:     comment_author.image_url,
+                following: false,  // They doesn't follow themself
+            },
+        },
+    }))
+}
+
+async fn get_comments(
+    slug: &str,
+    auth: Memory<'_, Option<JWTPayload>>,
+) -> Result<OK<MultipleCommentsResponse>, RealWorldError> {
+    let ariticle_id = article_id_by_slug(slug).await?;
+
+    let uf = match *auth {
+        None => UserAndFollowings::None,
+        Some(JWTPayload { user_id, .. }) => UserAndFollowings::from_user_id(*user_id).await?,
+    };
+
+    let comments = sqlx::query_as!(CommentEntity, r#"
+        SELECT
+            c.id,
+            c.content,
+            c.created_at,
+            c.updated_at,
+            u.id        AS author_id,
+            u.name      AS author_name,
+            u.bio       AS author_bio,
+            u.image_url AS author_image
+        FROM
+            comments AS c JOIN
+            users    AS u ON c.author_id = u.id
+        WHERE
+            c.article_id = $1
+    "#, ariticle_id)
+        .fetch_all(pool()).await
+        .map_err(RealWorldError::DB)?.into_iter()
+        .map(|c| c.into_comment_with(&uf));
+
     todo!()
 }
 
-async fn delete(slug: &str) -> Result<NoContent, RealWorldError> {
-
-
+async fn delete_comment(
+    (slug, id): (&str, usize),
+    auth: Memory<'_, JWTPayload>,
+) -> Result<NoContent, RealWorldError> {
     todo!()
 }
 
-#[Payload(JSOND)]
-struct AddCommentRequest<'req> {
-    body: &'req str,
-}
-
-async fn add_comment(slug: &str, body: AddCommentRequest<'_>) -> Result<Created<SingleCommentResponse>, RealWorldError> {
+async fn favorite(
+    slug: &str,
+    auth: Memory<'_, JWTPayload>,
+) -> Result<OK<SingleArticleResponse>, RealWorldError> {
     todo!()
 }
 
-async fn get_comments(slug: &str) -> Result<OK<MultipleCommentsResponse>, RealWorldError> {
-    todo!()
-}
-
-async fn delete_comment((slug, id): (&str, usize)) -> Result<NoContent, RealWorldError> {
-    todo!()
-}
-
-async fn favorite(slug: &str) -> Result<OK<SingleArticleResponse>, RealWorldError> {
-    todo!()
-}
-
-async fn unfavorite(slug: &str) -> Result<OK<SingleArticleResponse>, RealWorldError> {
+async fn unfavorite(
+    slug: &str,
+    auth: Memory<'_, JWTPayload>,
+) -> Result<OK<SingleArticleResponse>, RealWorldError> {
     todo!()
 }

@@ -3,7 +3,7 @@ use std::borrow::Cow;
 use ohkami::{Ohkami, Route, typed::OK, Memory};
 use crate::config::{pool, JWTPayload};
 use crate::{fangs::Auth, errors::RealWorldError};
-use crate::models::{Profile, ProfileResponse};
+use crate::models::response::ProfileResponse;
 use crate::db::UserEntity;
 
 

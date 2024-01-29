@@ -1,7 +1,9 @@
-use ohkami::{Ohkami, Route, utils::Payload, typed::OK, Memory};
+use ohkami::{Ohkami, Route, typed::OK, Memory};
 use crate::{
     fangs::Auth,
-    models::{User, UserResponse},
+    models::User,
+    models::response::UserResponse,
+    models::request::UpdateProfileRequest,
     errors::RealWorldError,
     config::{pool, issue_jwt_for_user_of_id, JWTPayload},
     db::{UserEntity, hash_password_string},
@@ -39,21 +41,12 @@ async fn get_current_user(
     }))
 }
 
-#[Payload(JSOND)]
-struct UpdateRequest {
-    email:    Option<String>,
-    username: Option<String>,
-    password: Option<String>,
-    image:    Option<String>,
-    bio:      Option<String>,
-}
-
 async fn update(
-    body:        UpdateRequest,
+    body:        UpdateProfileRequest,
     jwt_payload: Memory<'_, JWTPayload>,
 ) -> Result<OK<UserResponse>, RealWorldError> {
     let user_entity = {
-        let UpdateRequest { email, username, image, bio, password:raw_password } = body;
+        let UpdateProfileRequest { email, username, image, bio, password:raw_password } = body;
         let password = raw_password.map(hash_password_string).transpose()?;
 
         let mut set_once = false;

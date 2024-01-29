@@ -1,7 +1,7 @@
 use ohkami::{Ohkami, Route, typed::OK};
 use crate::config::pool;
 use crate::errors::RealWorldError;
-use crate::models::{ListOfTagsResponse, Tag};
+use crate::models::{Tag, response::ListOfTagsResponse};
 
 
 pub fn tags_ohkami() -> Ohkami {
