@@ -44,25 +44,23 @@ pub async fn article_id_by_slug(slug: &str) -> Result<Uuid, RealWorldError> {
         .map_err(RealWorldError::DB)
 }
 
-pub enum UserAndFollowings<'uf> {
+pub enum UserAndFollowings {
     None,
-    Owned { user: Uuid, followings: Vec<Uuid> },
-    Ref   { user: Uuid, followings: &'uf [Uuid] },
-} impl UserAndFollowings<'_> {
+    Some { user: Uuid, followings: Vec<Uuid> },
+} impl UserAndFollowings {
     pub fn user_id(&self) -> Option<&Uuid> {
         match self {
             Self::None => None,
-            Self::Owned { user, .. } | Self::Ref { user, .. } => Some(user),
+            Self::Some { user, .. } => Some(user),
         }
     }
     pub fn followings(&self) -> &[Uuid] {
         match self {
             Self::None => &[],
-            Self::Owned { followings, .. } => followings,
-            Self::Ref   { followings, .. } => followings,
+            Self::Some { followings, .. } => followings,
         }
     }
-} impl UserAndFollowings<'_> {
+} impl UserAndFollowings {
     pub async fn from_user_id(user_id: Uuid) -> Result<Self, RealWorldError> {
         let followings = sqlx::query_scalar!(r#"
             SELECT followee_id FROM users_follow_users WHERE follower_id = $1
@@ -70,7 +68,7 @@ pub enum UserAndFollowings<'uf> {
             .fetch_all(config::pool()).await
             .map_err(RealWorldError::DB)?;
 
-        Ok(Self::Owned {
+        Ok(Self::Some {
             user: user_id,
             followings
         })

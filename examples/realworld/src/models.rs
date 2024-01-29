@@ -1,6 +1,5 @@
 use ohkami::utils::{Serialize, Serializer, Deserialize};
 use chrono::{DateTime, Utc, SecondsFormat};
-use uuid::Uuid;
 
 pub mod request;
 pub mod response;

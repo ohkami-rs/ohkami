@@ -6,7 +6,7 @@ use std::borrow::Cow;
 pub enum RealWorldError {
     Config(String),
     DB(sqlx::Error),
-    Validation(ValidationError),
+    #[allow(unused)] Validation(ValidationError),
     NotFound(Cow<'static, str>),
     Unauthorized(Cow<'static, str>),
     FoundUnexpectedly(Cow<'static, str>),
