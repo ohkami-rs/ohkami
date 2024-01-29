@@ -1,5 +1,5 @@
 use chrono::{DateTime, Utc};
-use ohkami::{Ohkami, Route, typed::{OK, Created, NoContent}, Memory};
+use ohkami::{Ohkami, Route, typed::{Created, NoContent}, Memory};
 use crate::{config::{JWTPayload, pool}, errors::RealWorldError};
 use crate::fangs::{Auth, OptionalAuth};
 use crate::db::{article_id_by_slug, UserAndFollowings, ArticleEntity, CommentEntity};
@@ -49,7 +49,7 @@ pub fn articles_ohkami() -> Ohkami {
 async fn list(
     q:    ListArticlesQuery<'_>,
     auth: Memory<'_, Option<JWTPayload>>,
-) -> Result<OK<MultipleArticlesResponse>, RealWorldError> {
+) -> Result<MultipleArticlesResponse, RealWorldError> {
     let user_and_followings = match *auth {
         None => UserAndFollowings::None,
         Some(JWTPayload { user_id, .. }) => UserAndFollowings::from_user_id(*user_id).await?,
@@ -101,16 +101,16 @@ async fn list(
         .map(|a| a.into_article_with(&user_and_followings))
         .collect::<Vec<_>>();
 
-    Ok(OK(MultipleArticlesResponse {
+    Ok(MultipleArticlesResponse {
         articles_count: articles.len(),
         articles,
-    }))
+    })
 }
 
 async fn feed(
     q:    FeedArticleQuery,
     auth: Memory<'_, JWTPayload>,
-) -> Result<OK<MultipleArticlesResponse>, RealWorldError> {
+) -> Result<MultipleArticlesResponse, RealWorldError> {
     let uf = UserAndFollowings::from_user_id(auth.user_id).await?;
 
     let articles = sqlx::QueryBuilder::new(ArticleEntity::base_query())
@@ -123,13 +123,13 @@ async fn feed(
         .map_err(RealWorldError::DB)?.into_iter()
         .map(|a| a.into_article_with(&uf)).collect::<Vec<_>>();
 
-    Ok(OK(MultipleArticlesResponse {
+    Ok(MultipleArticlesResponse {
         articles_count: articles.len(),
         articles
-    }))
+    })
 }
 
-async fn get(slug: &str) -> Result<OK<SingleArticleResponse>, RealWorldError> {
+async fn get(slug: &str) -> Result<SingleArticleResponse, RealWorldError> {
     let article = sqlx::QueryBuilder::new(ArticleEntity::base_query())
         .push(" HAVING a.slug = ").push_bind(slug)
         .build_query_as::<'_, ArticleEntity>()
@@ -137,9 +137,9 @@ async fn get(slug: &str) -> Result<OK<SingleArticleResponse>, RealWorldError> {
         .map_err(RealWorldError::DB)?
         .into_article_with(&UserAndFollowings::None);
 
-    Ok(OK(SingleArticleResponse {
+    Ok(SingleArticleResponse {
         article,
-    }))
+    })
 }
 
 async fn create(
@@ -220,7 +220,7 @@ async fn update(
     slug: &str,
     body: UpdateArticleRequest<'_>,
     auth: Memory<'_, JWTPayload>,
-) -> Result<OK<SingleArticleResponse>, RealWorldError> {
+) -> Result<SingleArticleResponse, RealWorldError> {
     let mut article = sqlx::QueryBuilder::new(ArticleEntity::base_query())
         .push(" HAVING a.slug = ").push_bind(slug)
         .build_query_as::<ArticleEntity>()
@@ -264,10 +264,11 @@ async fn update(
         .fetch_one(pool()).await
         .map_err(RealWorldError::DB)?;
 
-    Ok(OK(SingleArticleResponse {
+    Ok(SingleArticleResponse {
         article: article.into_article_with(
             &UserAndFollowings::from_user_id(auth.user_id).await?
-        )}))
+        )
+    })
 }
 
 async fn delete(
@@ -329,7 +330,7 @@ async fn add_comment(
 async fn get_comments(
     slug: &str,
     auth: Memory<'_, Option<JWTPayload>>,
-) -> Result<OK<MultipleCommentsResponse>, RealWorldError> {
+) -> Result<MultipleCommentsResponse, RealWorldError> {
     let ariticle_id = article_id_by_slug(slug).await?;
 
     let uf = match *auth {
@@ -357,7 +358,7 @@ async fn get_comments(
         .map_err(RealWorldError::DB)?.into_iter()
         .map(|c| c.into_comment_with(&uf)).collect();
 
-    Ok(OK(MultipleCommentsResponse { comments }))
+    Ok(MultipleCommentsResponse { comments })
 }
 
 async fn delete_comment(
@@ -387,7 +388,7 @@ async fn delete_comment(
 async fn favorite(
     slug: &str,
     auth: Memory<'_, JWTPayload>,
-) -> Result<OK<SingleArticleResponse>, RealWorldError> {
+) -> Result<SingleArticleResponse, RealWorldError> {
     let ariticle_id = article_id_by_slug(slug).await?;
 
     sqlx::query!(r#"
@@ -404,17 +405,17 @@ async fn favorite(
         .fetch_one(pool()).await
         .map_err(RealWorldError::DB)?;
 
-    Ok(OK(SingleArticleResponse {
+    Ok(SingleArticleResponse {
         article: article.into_article_with(
             &UserAndFollowings::from_user_id(auth.user_id).await?
         ),
-    }))
+    })
 }
 
 async fn unfavorite(
     slug: &str,
     auth: Memory<'_, JWTPayload>,
-) -> Result<OK<SingleArticleResponse>, RealWorldError> {
+) -> Result<SingleArticleResponse, RealWorldError> {
     let ariticle_id = article_id_by_slug(slug).await?;
 
     let n = sqlx::query!(r#"
@@ -439,9 +440,9 @@ async fn unfavorite(
         .fetch_one(pool()).await
         .map_err(RealWorldError::DB)?;
 
-    Ok(OK(SingleArticleResponse {
+    Ok(SingleArticleResponse {
         article: article.into_article_with(
             &UserAndFollowings::from_user_id(auth.user_id).await?
         ),
-    }))
+    })
 }

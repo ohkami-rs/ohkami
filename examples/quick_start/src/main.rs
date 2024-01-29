@@ -1,12 +1,12 @@
 use ohkami::prelude::*;
-use ohkami::{http::Status, utils::Text};
+use ohkami::typed::{OK, NoContent};
 
-async fn health_check() -> Status {
-    Status::NoContent
+async fn health_check() -> NoContent {
+    NoContent
 }
 
-async fn hello(name: &str) -> Text {
-    Text::OK(format!("Hello, {name}!"))
+async fn hello(name: &str) -> OK<String> {
+    OK(format!("Hello, {name}!"))
 }
 
 #[tokio::main]

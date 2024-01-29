@@ -30,13 +30,14 @@ tokio  = { version = "1",    features = ["full"] }
 
 ```rust
 use ohkami::prelude::*;
+use ohkami::typed::{OK, NoContent};
 
-async fn health_check() -> Status {
-    Status::NoContent
+async fn health_check() -> NoContent {
+    NoContent
 }
 
-async fn hello(c: Context, name: &str) -> Text {
-    Text::OK(format!("Hello, {name}!"))
+async fn hello(name: &str) -> OK<String> {
+    OK(format!("Hello, {name}!"))
 }
 
 #[tokio::main]
@@ -112,7 +113,6 @@ ohkami's middlewares are called "**fang**s".
 
 ```rust
 use ohkami::prelude::*;
-use ohkami::{Fang, IntoFang};
 
 struct AppendHeaders;
 impl IntoFang for AppendHeaders {
@@ -222,11 +222,12 @@ async fn main() {
 ```rust
 use ohkami::prelude::*;
 use ohkami::testing::*; // <--
+use ohkami::typed::OK;
 
 fn hello_ohkami() -> Ohkami {
     Ohkami::new((
         "/hello".GET(|| async move {
-            Text::OK("Hello, world!")
+            OK("Hello, world!")
         })
     ))
 }

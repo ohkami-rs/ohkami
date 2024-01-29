@@ -10,7 +10,7 @@ struct FormData {
 }
 
 async fn get_form() -> HTML {
-    HTML::OK(include_str!("../form.html"))
+    HTML(include_str!("../form.html"))
 }
 
 async fn post_submit(form_data: FormData) -> Status {

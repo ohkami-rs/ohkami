@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-use ohkami::{Ohkami, Route, typed::OK, Memory};
+use ohkami::{Ohkami, Route, Memory};
 use crate::config::{pool, JWTPayload};
 use crate::{fangs::Auth, errors::RealWorldError};
 use crate::models::response::ProfileResponse;
@@ -20,7 +20,7 @@ pub fn profiles_ohkami() -> Ohkami {
 async fn get_profile(
     username:    &str,
     jwt_payload: Memory<'_, JWTPayload>,
-) -> Result<OK<ProfileResponse>, RealWorldError> {
+) -> Result<ProfileResponse, RealWorldError> {
     let the_user = UserEntity::get_by_name(username).await?;
 
     let following_the_user = sqlx::query!(r#"
@@ -36,13 +36,13 @@ async fn get_profile(
         .map_err(RealWorldError::DB)?
         .exists.unwrap();
 
-    Ok(OK(the_user.into_profile_response_with(following_the_user)))
+    Ok(the_user.into_profile_response_with(following_the_user))
 }
 
 async fn follow(
     username:    &str,
     jwt_payload: Memory<'_, JWTPayload>,
-) -> Result<OK<ProfileResponse>, RealWorldError> {
+) -> Result<ProfileResponse, RealWorldError> {
     let by_existing_user = sqlx::query!(r#"
         SELECT EXISTS (
             SELECT id
@@ -71,13 +71,13 @@ async fn follow(
         .execute(pool()).await
         .map_err(RealWorldError::DB)?;
 
-    Ok(OK(followee.into_profile_response_with(true)))
+    Ok(followee.into_profile_response_with(true))
 }
 
 async fn unfollow(
     username:    &str,
     jwt_payload: Memory<'_, JWTPayload>,
-) -> Result<OK<ProfileResponse>, RealWorldError> {
+) -> Result<ProfileResponse, RealWorldError> {
     let followee = UserEntity::get_by_name(username).await?;
 
     let deletion_count = sqlx::query!(r#"
@@ -99,5 +99,5 @@ async fn unfollow(
         )))
     }
 
-    Ok(OK(followee.into_profile_response_with(false)))
+    Ok(followee.into_profile_response_with(false))
 }

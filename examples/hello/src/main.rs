@@ -25,7 +25,7 @@ mod hello_handler {
         ");
 
         let message = name.repeat(repeat.unwrap_or(1));
-        Text::OK(message)
+        Text(message)
     }
 
 
@@ -59,7 +59,7 @@ mod hello_handler {
         }
         
         let message = name.repeat(repeat.unwrap_or(1));
-        Ok(Text::OK(message))
+        Ok(Text(message))
     }
 }
 

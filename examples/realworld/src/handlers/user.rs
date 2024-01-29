@@ -1,4 +1,4 @@
-use ohkami::{Ohkami, Route, typed::OK, Memory};
+use ohkami::{Ohkami, Route, Memory};
 use crate::{
     fangs::Auth,
     models::User,
@@ -20,7 +20,7 @@ pub fn user_ohkami() -> Ohkami {
 
 async fn get_current_user(
     jwt_payload: Memory<'_, JWTPayload>
-) -> Result<OK<UserResponse>, RealWorldError> {
+) -> Result<UserResponse, RealWorldError> {
     let u = sqlx::query_as!(UserEntity, r#"
         SELECT id, email, name, bio, image_url
         FROM users AS u
@@ -30,7 +30,7 @@ async fn get_current_user(
         .fetch_one(pool()).await
         .map_err(RealWorldError::DB)?;
 
-    Ok(OK(UserResponse {
+    Ok(UserResponse {
         user: User {
             email: u.email,
             jwt:   issue_jwt_for_user_of_id(u.id),
@@ -38,13 +38,13 @@ async fn get_current_user(
             bio:   u.bio,
             image: u.image_url,
         },
-    }))
+    })
 }
 
 async fn update(
     body:        UpdateProfileRequest,
     jwt_payload: Memory<'_, JWTPayload>,
-) -> Result<OK<UserResponse>, RealWorldError> {
+) -> Result<UserResponse, RealWorldError> {
     let user_entity = {
         let UpdateProfileRequest { email, username, image, bio, password:raw_password } = body;
         let password = raw_password.map(hash_password_string).transpose()?;
@@ -80,5 +80,5 @@ async fn update(
             .map_err(RealWorldError::DB)?
     };
 
-    Ok(OK(user_entity.into_user_response()))
+    Ok(user_entity.into_user_response())
 }

@@ -1,5 +1,5 @@
 use std::borrow::Cow;
-use ohkami::{Ohkami, Route, typed::{Created, OK}};
+use ohkami::{Ohkami, Route, typed::Created};
 use crate::{
     models::User,
     models::response::UserResponse,
@@ -23,7 +23,7 @@ async fn login(
     LoginRequest {
         user: LoginRequestUser { email, password },
     }: LoginRequest<'_>,
-) -> Result<OK<UserResponse>, RealWorldError> {
+) -> Result<UserResponse, RealWorldError> {
     let hased_password = db::hash_password(password)?;
 
     let u = sqlx::query_as!(db::UserEntity, r#"
@@ -36,7 +36,7 @@ async fn login(
         .fetch_one(pool()).await
         .map_err(RealWorldError::DB)?;
 
-    Ok(OK(u.into_user_response()))
+    Ok(u.into_user_response())
 }
 
 async fn register(
