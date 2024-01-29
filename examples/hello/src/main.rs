@@ -1,75 +1,84 @@
 mod health_handler {
-    use ohkami::{Context, Response};
+    use ohkami::http::Status;
 
-    pub async fn health_check(c: Context) -> Response {
-        c.NoContent()
+    pub async fn health_check() -> Status {
+        Status::NoContent
     }
 }
 
 
 mod hello_handler {
-    use ohkami::{Context, Response};
-    use ohkami::utils::{Payload, Query};
+    use ohkami::Response;
+    use ohkami::utils::{Payload, Query, Text};
 
     #[Query]
-    pub struct HelloQuery {
-        name:   String,
+    pub struct HelloQuery<'q> {
+        name:   &'q str,
         repeat: Option<usize>,
     }
 
-    pub async fn hello_by_query(c: Context,
-        HelloQuery { name, repeat }: HelloQuery
-    ) -> Response {
+    pub async fn hello_by_query<'h>(
+        HelloQuery { name, repeat }: HelloQuery<'h>
+    ) -> Text {
         tracing::info!("\
             Called `hello_by_query`\
         ");
 
         let message = name.repeat(repeat.unwrap_or(1));
-        c.OK().text(message)
+        Text(message)
     }
 
 
     #[Payload(JSON)]
     #[derive(serde::Deserialize)]
-    pub struct HelloRequest {
-        name:   String,
+    pub struct HelloRequest<'n> {
+        name:   &'n str,
         repeat: Option<usize>,
     }
 
-    pub async fn hello_by_json(c: Context,
-        HelloRequest { name, repeat }: HelloRequest
-    ) -> Response {
+    pub enum ValidationError {
+        NameIsEmpty
+    }
+    impl ohkami::IntoResponse for ValidationError {
+        fn into_response(self) -> Response {
+            match self {
+                Self::NameIsEmpty => Response::BadRequest().text("`name` mustn't be empty")
+            }
+        }
+    }
+
+    pub async fn hello_by_json<'h>(
+        HelloRequest { name, repeat }: HelloRequest<'h>
+    ) -> Result<Text, ValidationError> {
         tracing::info!("\
             Called `hello_by_query`\
         ");
         
         if name.is_empty() {
-            return c
-                .BadRequest()
-                .text("`name` mustn't be empty")
+            return Err(ValidationError::NameIsEmpty)
         }
         
         let message = name.repeat(repeat.unwrap_or(1));
-        c.OK().text(message)
+        Ok(Text(message))
     }
 }
 
 
 mod fangs {
-    use ohkami::{Context, Request, Fang, IntoFang};
+    use ohkami::{Request, Fang, IntoFang, Response};
 
-    pub struct AppendServer;
-    impl IntoFang for AppendServer {
+    pub struct SetServer;
+    impl IntoFang for SetServer {
         fn into_fang(self) -> Fang {
-            Fang(|c: &mut Context| {
-                c.set_headers()
+            Fang(|res: &mut Response| {
+                res.headers.set()
                     .Server("ohkami");
 
                 tracing::info!("\
                     Called `append_server`\n\
                     [current headers]\n\
                     {:?}\
-                ", c.headers);
+                ", res.headers);
             })
         }
     }
@@ -77,7 +86,7 @@ mod fangs {
     pub struct LogRequest;
     impl IntoFang for LogRequest {
         fn into_fang(self) -> Fang {
-            Fang(|req: &mut Request| {
+            Fang(|req: &Request| {
                 let __method__ = req.method;
                 let __path__   = req.path();
 
@@ -101,7 +110,7 @@ async fn main() {
         .with_max_level(tracing::Level::INFO)
         .init();
 
-    let hello_ohkami = Ohkami::with((AppendServer, LogRequest), (
+    let hello_ohkami = Ohkami::with((SetServer, LogRequest), (
         "/query".
             GET(hello_handler::hello_by_query),
         "/json".

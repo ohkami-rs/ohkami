@@ -1,6 +1,6 @@
 use std::pin::Pin;
-use super::{Request, METADATA_SIZE, Path, QueryParams};
-use crate::{layer0_lib::{Slice, Method, CowSlice, client_header}};
+use super::{Request, METADATA_SIZE, Path, QueryParams, Store};
+use crate::{layer0_lib::{Slice, Method, CowSlice}};
 
 macro_rules! assert_parse {
     ($case:expr, $expected:expr) => {
@@ -36,7 +36,7 @@ fn metadataize(input: &str) -> [u8; METADATA_SIZE] {
 
 
 #[crate::__rt__::test] async fn test_parse_request() {
-    use client_header::Header as ch;
+    use super::{RequestHeader, RequestHeaders};
 
     const CASE_1: &str = "\
         GET /hello.html HTTP/1.1\r\n\
@@ -52,14 +52,16 @@ fn metadataize(input: &str) -> [u8; METADATA_SIZE] {
         method:  Method::GET,
         path:    Path::from_literal("/hello.html"),
         queries: QueryParams::new(),
-        headers: client_header::Headers::from_iter([
-            (ch::Host,           "www.tutorialspoint.com"),
-            (ch::UserAgent,      "Mozilla/4.0"),
-            (ch::Connection,     "Keep-Alive"),
-            (ch::AcceptLanguage, "en-us"),
-            (ch::AcceptEncoding, "gzip, deflate"),
+        headers: RequestHeaders::from_iter([
+            (RequestHeader::Host,           "www.tutorialspoint.com"),
+            (RequestHeader::UserAgent,      "Mozilla/4.0"),
+            (RequestHeader::Connection,     "Keep-Alive"),
+            (RequestHeader::AcceptLanguage, "en-us"),
+            (RequestHeader::AcceptEncoding, "gzip, deflate"),
         ]),
         payload: None,
+        store:      Store::new(),
+        #[cfg(feature="websocket")] upgrade_id: None,
     });
 
 
@@ -78,16 +80,18 @@ fn metadataize(input: &str) -> [u8; METADATA_SIZE] {
         method:  Method::POST,
         path:    Path::from_literal("/signup"),
         queries: QueryParams::new(),
-        headers: client_header::Headers::from_iter([
-            (ch::Host,           "www.tutorialspoint.com"),
-            (ch::UserAgent,      "Mozilla/4.0"),
-            (ch::AcceptLanguage, "en-us"),
-            (ch::ContentLength,  "27"),
-            (ch::ContentType,    "application/json"),
+        headers: RequestHeaders::from_iter([
+            (RequestHeader::Host,           "www.tutorialspoint.com"),
+            (RequestHeader::UserAgent,      "Mozilla/4.0"),
+            (RequestHeader::AcceptLanguage, "en-us"),
+            (RequestHeader::ContentLength,  "27"),
+            (RequestHeader::ContentType,    "application/json"),
         ]),
         payload: Some(CowSlice::Ref(unsafe {
             Slice::from_bytes(br#"{"name":"kanarus","age":20}"#)
         })),
+        store:      Store::new(),
+        #[cfg(feature="websocket")] upgrade_id: None,
     });
 
 
@@ -115,17 +119,19 @@ fn metadataize(input: &str) -> [u8; METADATA_SIZE] {
             ("query", "1"),
             ("q2",    "xxx"),
         ]),
-        headers: client_header::Headers::from_iter([
-            (ch::Host,           "localhost"),
-            (ch::UserAgent,      "Mozilla/5.0 (Windows; U; Windows NT 6.1; en-US; rv:1.9.1.5) Gecko/20091102 Firefox/3.5.5 (.NET CLR 3.5.30729)"),
-            (ch::Accept,         "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"),
-            (ch::AcceptLanguage, "en-us,en;q=0.5"),
-            (ch::AcceptEncoding, "gzip,deflate"),
-            (ch::Connection,     "keep-alive"),
-            (ch::Referer,        "http://localhost/test.php"),
-            (ch::ContentType,    "application/x-www-form-urlencoded"),
-            (ch::ContentLength,  "43"),
+        headers: RequestHeaders::from_iter([
+            (RequestHeader::Host,           "localhost"),
+            (RequestHeader::UserAgent,      "Mozilla/5.0 (Windows; U; Windows NT 6.1; en-US; rv:1.9.1.5) Gecko/20091102 Firefox/3.5.5 (.NET CLR 3.5.30729)"),
+            (RequestHeader::Accept,         "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"),
+            (RequestHeader::AcceptLanguage, "en-us,en;q=0.5"),
+            (RequestHeader::AcceptEncoding, "gzip,deflate"),
+            (RequestHeader::Connection,     "keep-alive"),
+            (RequestHeader::Referer,        "http://localhost/test.php"),
+            (RequestHeader::ContentType,    "application/x-www-form-urlencoded"),
+            (RequestHeader::ContentLength,  "43"),
         ]),
         payload: Some(CowSlice::Own(Vec::from("first_name=John&last_name=Doe&action=Submit"))),
+        store:      Store::new(),
+        #[cfg(feature="websocket")] upgrade_id: None,
     });
 }

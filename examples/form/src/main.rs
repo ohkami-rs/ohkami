@@ -1,5 +1,6 @@
 use ohkami::{prelude::*, IntoFang, Fang};
-use ohkami::utils::{Payload, File};
+use ohkami::utils::{Payload, File, HTML};
+use ohkami::http::Status;
 
 #[Payload(Form)]
 #[derive(Debug)]
@@ -8,11 +9,11 @@ struct FormData {
     pics:         Vec<File>,
 }
 
-async fn get_form(c: Context) -> Response {
-    c.OK().html(include_str!("../form.html"))
+async fn get_form() -> HTML {
+    HTML(include_str!("../form.html"))
 }
 
-async fn post_submit(c: Context, form_data: FormData) -> Response {
+async fn post_submit(form_data: FormData) -> Status {
     println!("\n\
         {form_data:#?}\n\n\
         ===== submit =====\n\
@@ -24,17 +25,17 @@ async fn post_submit(c: Context, form_data: FormData) -> Response {
         form_data.pics.iter().map(|f| f.mime_type()).collect::<Vec<_>>().join(", "),
     );
 
-    c.NoContent()
+    Status::NoContent
 }
 
 struct Logger;
 impl IntoFang for Logger {
     fn into_fang(self) -> ohkami::Fang {
-        Fang(|_: &mut Context, req: &mut Request| {
+        Fang(|req: &Request| {
             println!("[request] {} {}", req.method, req.path());
 
             if let Some(body) = req.payload() {
-                let content_type = req.headers.ContentType().unwrap();
+                let content_type = req.headers.ContentType().unwrap_or("");
                 println!("[payload] {content_type:?}\n{}", body.escape_ascii());
             }
         })

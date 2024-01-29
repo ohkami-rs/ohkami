@@ -1,37 +1,55 @@
-mod path;    pub(crate) use path::Path;
-mod queries; pub(crate) use queries::QueryParams;
-mod parse_payload; pub use parse_payload::*;
-mod from_request;  pub use from_request::*;
-#[cfg(test)] mod _test_parse_payload;
+mod path;
+pub(crate) use path::Path;
+
+mod queries;
+pub(crate) use queries::QueryParams;
+
+mod headers;
+pub use headers::{Headers as RequestHeaders, Header as RequestHeader};
+
+mod store;
+pub(crate) use store::Store;
+pub use store::Memory;
+
+mod from_request; 
+pub use from_request::*;
+
 #[cfg(test)] mod _test_parse;
 
-use std::{pin::Pin};
-use byte_reader::{Reader};
+use std::pin::Pin;
+use byte_reader::Reader;
 use crate::{
-    __rt__::{AsyncReader},
-    layer0_lib::{Method, Slice, CowSlice, client_header, percent_decode_utf8}
+    __rt__::AsyncReader,
+    layer0_lib::{Method, Slice, CowSlice, percent_decode_utf8}
 };
+
+#[cfg(feature="websocket")] use crate::websocket::UpgradeID;
 
 
 pub(crate) const METADATA_SIZE: usize = 1024;
 pub(crate) const PAYLOAD_LIMIT: usize = 1 << 32;
 
 pub struct Request {pub(crate) _metadata: [u8; METADATA_SIZE],
-    pub method:      Method,
-    pub headers:     client_header::Headers,
-    pub(crate) path: Path,
-    queries:         QueryParams,
-    payload:         Option<CowSlice>,
+    pub method:            Method,
+    pub headers:           RequestHeaders,
+    pub(crate) path:       Path,
+    queries:               QueryParams,
+    payload:               Option<CowSlice>,
+    store:                 Store,
+
+    #[cfg(feature="websocket")] pub(crate) upgrade_id: Option<UpgradeID>,
 }
 
 impl Request {
     pub(crate) fn init() -> Self {
         Self {_metadata: [0; METADATA_SIZE],
-            method:  Method::GET,
-            path:    Path::init(),
-            queries: QueryParams::new(),
-            headers: client_header::Headers::init(),
-            payload: None,
+            method:     Method::GET,
+            path:       Path::init(),
+            queries:    QueryParams::new(),
+            headers:    RequestHeaders::init(),
+            payload:    None,
+            store:      Store::new(),
+            #[cfg(feature="websocket")] upgrade_id: None,
         }
     }
 
@@ -66,9 +84,9 @@ impl Request {
 
         r.consume("HTTP/1.1\r\n").expect("Ohkami can only handle HTTP/1.1");
 
-        let mut headers = client_header::Headers::init();
+        let mut headers = RequestHeaders::init();
         while r.consume("\r\n").is_none() {
-            if let Some(key) = client_header::Header::from_bytes(r.read_while(|b| b != &b':')) {
+            if let Some(key) = RequestHeader::from_bytes(r.read_while(|b| b != &b':')) {
                 r.consume(": ").unwrap();
                 headers.insert(key, CowSlice::Ref(unsafe {
                     Slice::from_bytes(r.read_while(|b| b != &b'\r'))
@@ -80,7 +98,7 @@ impl Request {
             r.consume("\r\n");
         }
 
-        let content_length = headers.get(client_header::Header::ContentLength)
+        let content_length = headers.get(RequestHeader::ContentLength)
             .unwrap_or("")
             .as_bytes().into_iter()
             .fold(0, |len, b| 10*len + (*b - b'0') as usize);
@@ -132,19 +150,22 @@ impl Request {
         percent_decode_utf8(unsafe {self.path.as_bytes()}).unwrap()
     }
 
-    #[inline] pub fn query<Value: FromParam>(&self, key: &str) -> Option<Result<Value, Value::Error>> {
+    #[inline] pub fn query<'req, Value: FromParam<'req>>(&'req self, key: &str) -> Option<Result<Value, Value::Error>> {
         self.queries.get(key).map(Value::from_param)
     }
     pub fn append_query(&mut self, key: impl Into<std::borrow::Cow<'static, str>>, value: impl Into<std::borrow::Cow<'static, str>>) {
         self.queries.push(key, value)
     }
 
-    #[inline] pub fn set_headers(&mut self) -> client_header::SetHeaders<'_> {
-        self.headers.set()
-    }
-
     #[inline] pub fn payload(&self) -> Option<&[u8]> {
         Some(unsafe {self.payload.as_ref()?.as_bytes()})
+    }
+
+    pub fn memorize<Value: Send + Sync + 'static>(&mut self, value: Value) {
+        self.store.insert(value)
+    }
+    pub fn memorized<Value: Send + Sync + 'static>(&self) -> Option<&Value> {
+        self.store.get()
     }
 }
 

@@ -1,7 +1,13 @@
 use proc_macro2::{TokenStream, Span, Ident};
 use quote::{format_ident, ToTokens};
-use syn::{Result, Error, parse2, ItemStruct, Attribute, PathSegment, Type, Fields, parse_str};
+use syn::{Result, Error, parse2, ItemStruct, Attribute, PathSegment, Type, Fields, parse_str, GenericParam, Lifetime, LifetimeDef};
 
+
+pub(crate) fn from_request_lifetime() -> GenericParam {
+    GenericParam::Lifetime(LifetimeDef::new(
+        Lifetime::new("'__impl_from_request_lifetime", Span::call_site())
+    ))
+}
 
 pub(crate) struct FieldData {
     pub(crate) ident:       Ident,
@@ -58,19 +64,22 @@ pub(crate) struct FieldData {
     }
 }
 
-pub(crate) enum Format {
+pub(crate) enum PayloadFormat {
     JSON,
+    JSOND,
     Form,
     URLEncoded,
-} impl Format {
+} impl PayloadFormat {
     pub(crate) fn parse(tokens: TokenStream) -> Result<Self> {
         match tokens.to_token_stream().to_string().as_str() {
             "JSON"       => Ok(Self::JSON),
+            "JSOND"      => Ok(Self::JSOND),
             "Form"       => Ok(Self::Form),
             "URLEncoded" => Ok(Self::URLEncoded),
             _ => Err(Error::new(Span::mixed_site(), "\
                 Valid format: \n\
                 - `#[Payload(JSON)]` \n\
+                - `#[Payload(JSOND)]` \n\
                 - `#[Payload(Form)]` \n\
                 - `#[Payload(URLEncoded)]` \n\
             "))
@@ -78,18 +87,18 @@ pub(crate) enum Format {
     }
 }
 
-pub(crate) fn parse_struct(macro_name: &str, input: TokenStream) -> Result<ItemStruct> {
+pub(crate) fn parse_request_struct(macro_name: &str, input: TokenStream) -> Result<ItemStruct> {
     let mut struct_tokens = parse2::<ItemStruct>(input)?;
 
     if struct_tokens.semi_token.is_some() {
         return Err(Error::new(Span::call_site(), format!(
-            "`#[{macro_name}]` doesn't support tuple or tag struct"
+            "`#[{macro_name}]` doesn't support tuple or unit struct"
         )))
     }
 
     if struct_tokens.generics.type_params().count() > 0 {
         return Err(Error::new(Span::call_site(), format!(
-            "`#[{macro_name}]` doesn't support type params"
+            "`#[{macro_name}]` doesn't support generics"
         )))
     }
 
@@ -99,9 +108,9 @@ pub(crate) fn parse_struct(macro_name: &str, input: TokenStream) -> Result<ItemS
         )))
     }
 
-    if struct_tokens.generics.lifetimes().count() > 0 {
+    if struct_tokens.generics.lifetimes().count() >= 2 {
         return Err(Error::new(Span::call_site(), format!(
-            "`#[{macro_name}]` doesn't support lifetime params"
+            "`#[{macro_name}]` doesn't support multiple lifetime params"
         )))
     }
 
@@ -111,6 +120,26 @@ pub(crate) fn parse_struct(macro_name: &str, input: TokenStream) -> Result<ItemS
 
     Ok(struct_tokens)
 }
+
+
+pub(crate) enum ResponseFormat {
+    JSON,
+    JSONS,
+} impl ResponseFormat {
+    pub(crate) fn parse(tokens: TokenStream) -> Result<Self> {
+        match tokens.to_token_stream().to_string().as_str() {
+            "JSON"  => Ok(Self::JSON),
+            "JSONS" => Ok(Self::JSONS),
+            _ => Err(Error::new(Span::mixed_site(), "\
+                Valid format: \n\
+                - `#[Response(JSON)]` \n\
+                - `#[Response(JSONS)]` \n\
+            "))
+        }
+    }
+}
+
+
 
 
 fn is_not(attr: &Attribute, name: &str) -> bool {

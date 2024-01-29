@@ -1,9 +1,34 @@
 mod components;
 
+mod serde;
 mod query;
 mod payload;
+mod response;
+
+
+#[proc_macro_derive(Serialize, attributes(serde))] #[allow(non_snake_case)]
+pub fn Serialize(data: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    serde::Serialize(data.into())
+        .unwrap_or_else(|e| e.into_compile_error())
+        .into()
+}
+#[proc_macro_derive(Deserialize, attributes(serde))] #[allow(non_snake_case)]
+pub fn Deserialize(data: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    serde::Deserialize(data.into())
+        .unwrap_or_else(|e| e.into_compile_error())
+        .into()
+}
+
+#[proc_macro_attribute]
+pub fn consume_struct(_: proc_macro::TokenStream, _: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    proc_macro::TokenStream::new()
+}
+
 
 /// ## Query parameters
+/// 
+/// - Value types：types that impls `FromParam`, or `Option<_>` of them
+/// - NOT available for tuple struct ( like `struct S(usize, usize);` ) or unit struct ( like `struct X;` ).
 /// 
 /// <br/>
 /// 
@@ -12,12 +37,12 @@ mod payload;
 /// use ohkami::utils::Queries; // <-- import me
 /// 
 /// #[Query]
-/// struct HelloQuery {
-///     name:     String,
+/// struct HelloQuery<'q> {
+///     name:     &'q str,
 ///     n_repeat: Option<usize>,
 /// }
 /// 
-/// async fn hello(c: Context, queries: HelloQuery) -> Response {
+/// async fn hello(c: Context, queries: HelloQuery<'_>) -> Response {
 ///     let HelloQuery { name, n_repeat } = queries;
 /// 
 ///     let message = match n_repeat {
@@ -28,13 +53,6 @@ mod payload;
 ///     c.OK().text(message)
 /// }
 /// ```
-/// 
-/// <br/>
-/// 
-/// - Possible value types : `String` `u8` `u16` `u32` `u64` `u128` `usize` and `Option` of them.
-/// - NOT available for tuple struct ( like `struct S(usize, usize);` ) or tag struct ( like `struct X;` ).
-/// 
-/// If you need support for other structs or types, plaese let me know that in [GitHub issue](https://github.com/kana-rus/ohkami/issues) !
 #[proc_macro_attribute] #[allow(non_snake_case)]
 pub fn Query(_: proc_macro::TokenStream, data: proc_macro::TokenStream) -> proc_macro::TokenStream {
     query::Query(data.into())
@@ -42,13 +60,15 @@ pub fn Query(_: proc_macro::TokenStream, data: proc_macro::TokenStream) -> proc_
         .into()
 }
 
+
 /// ## Request payload
 /// 
-/// - NOT available for tuple struct ( like `struct S(usize, usize);` ) or tag struct ( like `struct X;` ).
+/// - NOT available for tuple struct ( like `struct S(usize, usize);` ) or unit struct ( like `struct X;` ).
 /// 
 /// ### Valid format :
 /// 
 /// - `#[Payload(JSON)]` ( for `application/json` )
+/// - `#[Payload(JSOND)]` ( `JSON` + auto-deriving `Deserialize` )
 /// - `#[Payload(Form)]` ( for `multipart/form-data` )
 /// - `#[Payload(URLEncoded)]` ( for `application/x-www-form-urlencoded` )
 /// 
@@ -60,12 +80,12 @@ pub fn Query(_: proc_macro::TokenStream, data: proc_macro::TokenStream) -> proc_
 /// 
 /// ```ignore
 /// use ohkami::prelude::*;
-/// use ohkami::utils::Payload; // <-- import me
+/// use ohkami::utils::{Payload, Deseriailize}; // <-- import me and `Deserialize`
 /// 
 /// #[Payload(JSON)]
-/// #[derive(serde::Deserialize)] // <-- This may be not required in future version
-/// struct HelloRequest {
-///     name:     String,
+/// #[derive(Deserialize)]
+/// struct HelloRequest<'req> {
+///     name:     &'req str,
 ///     n_repeat: Option<usize>,
 /// }
 /// /* expected payload examples :
@@ -73,7 +93,7 @@ pub fn Query(_: proc_macro::TokenStream, data: proc_macro::TokenStream) -> proc_
 ///     {"name":"you_name","n_repeat":2}
 /// */
 /// 
-/// async fn hello(c: Context, body: HelloRequest) -> Response {
+/// async fn hello(c: Context, body: HelloRequest<'_>) -> Response {
 ///     let HelloRequest { name, n_repeat } = queries;
 /// 
 ///     let message = match n_repeat {
@@ -89,13 +109,15 @@ pub fn Query(_: proc_macro::TokenStream, data: proc_macro::TokenStream) -> proc_
 /// 
 /// ### URLEncoded
 /// 
+/// - Available value types : types that impl `FromParam`, or `Option<_>` of them.
+/// 
 /// ```ignore
 /// use ohkami::prelude::*;
 /// use ohkami::utils::Payload; // <-- import me
 /// 
 /// #[Payload(URLEncoded)]
-/// struct HelloRequest {
-///     name:     String,
+/// struct HelloRequest<'req> {
+///     name:     &'req str,
 ///     n_repeat: Option<usize>,
 /// }
 /// /* expected payload examples :
@@ -104,11 +126,15 @@ pub fn Query(_: proc_macro::TokenStream, data: proc_macro::TokenStream) -> proc_
 /// */
 /// ```
 /// 
-/// - Available value types : `String` `u8` `u16` `u32` `u64` `u128` `usize` and `Option` of them.
-/// 
 /// <br/>
 /// 
 /// ### Form
+/// 
+/// **NOTE**：This can't handle reference types like `&str` in current version. Wait for the development!
+/// 
+/// - Available value types : `String`, `File`, `Vec<File>`.
+/// - Form part of kebab-case-name is handled by field of snake_case version of the name ( example: `name="submitter-name"` is handled by field `submitter_name` ).
+/// 
 /// 
 /// ```ignore
 /// use ohkami::prelude::*;
@@ -125,15 +151,18 @@ pub fn Query(_: proc_macro::TokenStream, data: proc_macro::TokenStream) -> proc_
 ///         What files are you sending? <input="file" name="pics" />
 ///     </form>
 /// */ 
-///
 /// ```
-/// 
-/// - Available value types : `String` or `File` or `Vec<File>`.
-/// - Form part of kebab-case-name is handled by field of snake_case version of the name ( example: `name="submitter-name"` is handled by field `submitter_name` ).
-/// 
 #[proc_macro_attribute] #[allow(non_snake_case)]
 pub fn Payload(format: proc_macro::TokenStream, data: proc_macro::TokenStream) -> proc_macro::TokenStream {
     payload::Payload(format.into(), data.into())
+        .unwrap_or_else(|e| e.into_compile_error())
+        .into()
+}
+
+
+#[proc_macro_attribute] #[allow(non_snake_case)]
+pub fn ResponseBody(format: proc_macro::TokenStream, data: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    response::ResponseBody(format.into(), data.into())
         .unwrap_or_else(|e| e.into_compile_error())
         .into()
 }

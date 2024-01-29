@@ -1,15 +1,15 @@
 use std::{future::Future, borrow::Cow};
+use super::{assume_upgradable, UpgradeID};
 use super::websocket::Config;
-use super::{WebSocket, sign};
-use crate::{Response, Context, Request};
+use super::{WebSocket};
+use crate::{Response, Request};
 use crate::__rt__::{task};
 use crate::http::{Method};
-use super::assume_upgradable;
+use crate::layer0_lib::{base64};
 
 
 pub struct WebSocketContext<UFH: UpgradeFailureHandler = DefaultUpgradeFailureHandler> {
-    c:                      Context,
-
+    id:                     Option<UpgradeID>,
     config:                 Config,
 
     on_failed_upgrade:      UFH,
@@ -31,28 +31,29 @@ impl UpgradeFailureHandler for DefaultUpgradeFailureHandler {
 }
 
 impl WebSocketContext {
-    pub(crate) fn new(c: Context, req: &mut Request) -> Result<Self, Response> {
+    pub(crate) fn new(req: &mut Request) -> Result<Self, Response> {
         if req.method != Method::GET {
-            return Err((|| c.BadRequest().text("Method is not `GET`"))())
+            return Err((|| Response::BadRequest().text("Method is not `GET`"))())
         }
         if req.headers.Connection() != Some("upgrade") {
-            return Err((|| c.BadRequest().text("Connection header is not `upgrade`"))())
+            return Err((|| Response::BadRequest().text("Connection header is not `upgrade`"))())
         }
         if req.headers.Upgrade() != Some("websocket") {
-            return Err((|| c.BadRequest().text("Upgrade header is not `websocket`"))())
+            return Err((|| Response::BadRequest().text("Upgrade header is not `websocket`"))())
         }
         if req.headers.SecWebSocketVersion() != Some("13") {
-            return Err((|| c.BadRequest().text("Sec-WebSocket-Version header is not `13`"))())
+            return Err((|| Response::BadRequest().text("Sec-WebSocket-Version header is not `13`"))())
         }
 
         let sec_websocket_key = Cow::Owned(req.headers.SecWebSocketKey()
-            .ok_or_else(|| c.BadRequest().text("Sec-WebSocket-Key header is missing"))?
+            .ok_or_else(|| Response::BadRequest().text("Sec-WebSocket-Key header is missing"))?
             .to_string());
 
         let sec_websocket_protocol = req.headers.SecWebSocketProtocol()
             .map(|swp| Cow::Owned(swp.to_string()));
 
-        Ok(Self {c,
+        Ok(Self {
+            id:                req.upgrade_id,
             config:            Config::default(),
             on_failed_upgrade: DefaultUpgradeFailureHandler,
             selected_protocol: None,
@@ -98,15 +99,16 @@ impl WebSocketContext {
         self,
         handler: impl Fn(WebSocket) -> Fut + Send + Sync + 'static
     ) -> Response {
-        fn sign(sec_websocket_key: &str) -> String {
-            let mut sha1 = sign::Sha1::new();
-            sha1.write(sec_websocket_key.as_bytes());
-            sha1.write(b"258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
-            sign::Base64::<{sign::SHA1_SIZE}>::encode(sha1.sum())
+        #[inline] fn sign(sec_websocket_key: &str) -> String {
+            use ::sha1::{Sha1, Digest};
+
+            let mut sha1 = <Sha1 as Digest>::new();
+            sha1.update(sec_websocket_key.as_bytes());
+            sha1.update(b"258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
+            base64::encode(sha1.finalize())
         }
 
         let Self {
-            mut c,
             config,
             on_failed_upgrade,
             selected_protocol,
@@ -116,7 +118,7 @@ impl WebSocketContext {
 
         task::spawn({
             async move {
-                let stream = match c.upgrade_id {
+                let stream = match self.id {
                     None     => return on_failed_upgrade.handle(UpgradeError::NotRequestedUpgrade),
                     Some(id) => assume_upgradable(id).await,
                 };
@@ -126,14 +128,15 @@ impl WebSocketContext {
             }
         });
 
-        c.set_headers()
+        let mut handshake_res = Response::SwitchingProtocols();
+        handshake_res.headers.set()
             .Connection("Update")
             .Upgrade("websocket")
             .SecWebSocketAccept(sign(&sec_websocket_key));
         if let Some(protocol) = selected_protocol {
-            c.set_headers()
+            handshake_res.headers.set()
                 .SecWebSocketProtocol(protocol.to_string());
         }
-        c.SwitchingProtocols()
+        handshake_res
     }
 }

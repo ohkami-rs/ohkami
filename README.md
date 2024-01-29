@@ -30,13 +30,14 @@ tokio  = { version = "1",    features = ["full"] }
 
 ```rust
 use ohkami::prelude::*;
+use ohkami::typed::{OK, NoContent};
 
-async fn health_check(c: Context) -> Response {
-    c.NoContent()
+async fn health_check() -> NoContent {
+    NoContent
 }
 
-async fn hello(c: Context, name: String) -> Response {
-    c.OK().text(format!("Hello, {name}!"))
+async fn hello(name: &str) -> OK<String> {
+    OK(format!("Hello, {name}!"))
 }
 
 #[tokio::main]
@@ -77,11 +78,8 @@ async fn main() {
     )).howl("localhost:5000").await
 }
 
-async fn get_user(c: Context,
-    id: usize /* <-- path param */
-) -> Response { /* */ }
+async fn get_user(id: usize) -> impl IntoResponse { /* */ }
 ```
-Use tuple like `(verion, id): (u8, usize),` for multiple path params.
 
 <br/>
 
@@ -91,26 +89,22 @@ use ohkami::prelude::*;
 use ohkami::utils;   // <--
 
 #[utils::Query]
-struct SearchCondition {
-    q: String,
+struct SearchQuery<'q> {
+    q: &'q str,
 }
-async fn search(c: Context,
-    condition: SearchCondition
-) -> Response { /* */ }
+async fn search(condition: SearchQuery) -> Response { /* */ }
 
 #[utils::Payload(JSON)]
 #[derive(serde::Deserialize)]
-struct CreateUserRequest {
-    name:     String,
-    password: String,
+struct CreateUserRequest<'req> {
+    name:     &'req str,
+    password: &'req str,
 }
-async fn create_user(c: Context,
-    body: CreateUserRequest
-) -> Response { /* */ }
+async fn create_user(body: CreateUserRequest<'_>) -> Response { /* */ }
 ```
 `#[Query]`, `#[Payload( 〜 )]` implements `FromRequest` trait for the struct.
 
-( with path params : `(Context, {path params}, {FromRequest values...})` )
+( with path params : `({path params}, {FromRequest values...})` )
 
 <br/>
 
@@ -119,13 +113,12 @@ ohkami's middlewares are called "**fang**s".
 
 ```rust
 use ohkami::prelude::*;
-use ohkami::{Fang, IntoFang};
 
 struct AppendHeaders;
 impl IntoFang for AppendHeaders {
     fn bite(self) -> Fang {
-        Fang(|c: &mut Context, req: &mut Request| {
-            c.headers
+        Fang(|res: &mut Response| {
+            res.headers.set()
                 .Server("ohkami");
         })
     }
@@ -134,9 +127,8 @@ impl IntoFang for AppendHeaders {
 struct Log;
 impl IntoFang for Log {
     fn bite(self) -> Fang {
-        Fang(|res: Response| {
+        Fang(|res: &Response| {
             println!("{res:?}");
-            res
         })
     }
 }
@@ -155,8 +147,14 @@ async fn main() {
 ```
 `Fang` schema :
 
-- to make *back fang* : `Fn(Response) -> Response`
-- to make *front fang* : `Fn(&mut Context) | Fn(&mut Request) | Fn(&mut Context, &mut Request)`, or `_ -> Result<(), Response>` for early returning error responses
+#### To make a *back fang* :
+- `Fn({&/&mut Response})`
+- `Fn(Response) -> Response`
+
+#### To make a *front fang* :
+- `Fn()`
+- `Fn({&/&mut Request})`
+- or `_ -> Result<(), Response>` version of them (for early returning an error response)
 
 <br/>
 
@@ -184,8 +182,8 @@ async fn main() {
 
 <br/>
 
-### web socket
-Activate `websocket` feature.
+### web socket (VERY experimental feature)
+Activate `"websocket"` feature.
 
 ```rust
 use ohkami::prelude::*;
@@ -224,11 +222,12 @@ async fn main() {
 ```rust
 use ohkami::prelude::*;
 use ohkami::testing::*; // <--
+use ohkami::typed::OK;
 
 fn hello_ohkami() -> Ohkami {
     Ohkami::new((
-        "/hello".GET(|c: Context| async move {
-            c.OK().text("Hello, world!")
+        "/hello".GET(|| async move {
+            OK("Hello, world!")
         })
     ))
 }
@@ -242,16 +241,14 @@ async fn main() {
 #[cfg(test)]
 #[tokio::test]
 async fn test_my_ohkami() {
-    use ohkami::http::Status;
-
     let hello_ohkami = hello_ohkami();
 
     let res = hello_ohkami.oneshot(TestRequest::GET("/")).await;
-    assert_eq!(res.status, Status::NotFound);
+    assert_eq!(res.status, http::Status::NotFound);
 
     let res = hello_ohkami.oneshot(TestRequest::GET("/hello")).await;
-    assert_eq!(res.status, Status::OK);
-    assert_eq!(res.content.unwrap().text().unwrap(), "Hello, world!");
+    assert_eq!(res.status, http::Status::OK);
+    assert_eq!(res.content.unwrap().text(), Some("Hello, world!"));
 }
 ```
 

@@ -1,11 +1,12 @@
 use ohkami::prelude::*;
+use ohkami::typed::{OK, NoContent};
 
-async fn health_check(c: Context) -> Response {
-    c.NoContent()
+async fn health_check() -> NoContent {
+    NoContent
 }
 
-async fn hello(c: Context, name: String) -> Response {
-    c.OK().text(format!("Hello, {name}!"))
+async fn hello(name: &str) -> OK<String> {
+    OK(format!("Hello, {name}!"))
 }
 
 #[tokio::main]

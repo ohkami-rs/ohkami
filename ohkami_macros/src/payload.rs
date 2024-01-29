@@ -7,14 +7,22 @@ use crate::components::*;
 
 #[allow(non_snake_case)]
 pub(super) fn Payload(format: TokenStream, data: TokenStream) -> Result<TokenStream> {
-    let format = Format::parse(format)?;
-    let data = parse_struct("Payload", data)?;
+    let format = PayloadFormat::parse(format)?;
+    let mut data = parse_request_struct("Payload", data)?;
 
     let impl_payload = match format {
-        Format::JSON       => impl_payload_json(&data),
-        Format::URLEncoded => impl_payload_urlencoded(&data),
-        Format::Form       => impl_payload_formdata(&data),
+        PayloadFormat::JSON       => impl_payload_json(&data, false),
+        PayloadFormat::JSOND      => impl_payload_json(&data, true),
+        PayloadFormat::URLEncoded => impl_payload_urlencoded(&data),
+        PayloadFormat::Form       => impl_payload_formdata(&data),
     }?;
+
+    if matches!(format, PayloadFormat::JSOND) {
+        data.attrs.retain(|a| a.path.to_token_stream().to_string() != "serde");
+        for f in &mut data.fields {
+            f.attrs.retain(|a| a.path.to_token_stream().to_string() != "serde")
+        }
+    }
 
     Ok(quote!{
         #data
@@ -22,19 +30,39 @@ pub(super) fn Payload(format: TokenStream, data: TokenStream) -> Result<TokenStr
     })
 }
 
-fn impl_payload_json(data: &ItemStruct) -> Result<TokenStream> {
+fn impl_payload_json(data: &ItemStruct, derive_deserialize: bool) -> Result<TokenStream> {
     let struct_name = &data.ident;
+
+    let (impl_lifetime, struct_lifetime) = match data.generics.lifetimes().count() {
+        0 => (
+            from_request_lifetime(),
+            None,
+        ),
+        1 => (
+            data.generics.params.first().unwrap().clone(),
+            Some(data.generics.params.first().unwrap().clone()),
+        ),
+        _ => return Err(syn::Error::new(Span::call_site(), "#[Payload] doesn't support multiple lifetime params")),
+    };
+
+    let derive_deserialize = derive_deserialize.then_some(quote! {
+        #[derive(::ohkami::utils::Deserialize)]
+        #[::ohkami::__internal__::consume_struct]
+        #data
+    });
     
     Ok(quote!{
-        impl ::ohkami::FromRequest for #struct_name {
-            type Error = ::std::borrow::Cow<'static, str>;
-            fn parse<'req>(req: &'req ::ohkami::Request) -> ::std::result::Result<Self, ::std::borrow::Cow<'static, str>> {
+        #derive_deserialize
+
+        impl<#impl_lifetime> ::ohkami::FromRequest<#impl_lifetime> for #struct_name<#struct_lifetime> {
+            type Error = ::ohkami::FromRequestError;
+            #[inline] fn from_request(req: &#impl_lifetime ::ohkami::Request) -> ::std::result::Result<Self, ::ohkami::FromRequestError> {
                 let payload = req.payload()
-                    .ok_or_else(|| ::std::borrow::Cow::Borrowed("Expected payload"))?;
+                    .ok_or_else(|| ::ohkami::FromRequestError::Static("Expected payload"))?;
                 if !req.headers.ContentType().unwrap().starts_with("application/json") {
-                    return ::std::result::Result::Err(::std::borrow::Cow::Borrowed("Expected a payload of `Content-Type: application/json`"))
+                    return ::std::result::Result::Err(::ohkami::FromRequestError::Static("Expected a payload of `Content-Type: application/json`"))
                 }
-                let __payload__ = ::ohkami::__internal__::parse_json(payload)?;
+                let __payload__ = ::ohkami::__internal__::parse_json(payload).map_err(|e| ::ohkami::FromRequestError::from(e))?;
                 ::std::result::Result::Ok(__payload__)
             }
         }
@@ -44,6 +72,18 @@ fn impl_payload_json(data: &ItemStruct) -> Result<TokenStream> {
 fn impl_payload_urlencoded(data: &ItemStruct) -> Result<TokenStream> {
     let struct_name = &data.ident;
     let fields_data = FieldData::collect_from_struct_fields(&data.fields)?;
+
+    let (impl_lifetime, struct_lifetime) = match data.generics.lifetimes().count() {
+        0 => (
+            from_request_lifetime(),
+            None,
+        ),
+        1 => (
+            data.generics.params.first().unwrap().clone(),
+            Some(data.generics.params.first().unwrap().clone()),
+        ),
+        _ => return Err(syn::Error::new(Span::call_site(), "#[Payload] doesn't support multiple lifetime params")),
+    };
 
     let declaring_exprs = {
         let exprs = fields_data.iter().map(|FieldData { ident, ty, .. }| {
@@ -61,9 +101,9 @@ fn impl_payload_urlencoded(data: &ItemStruct) -> Result<TokenStream> {
         let arms = fields_data.iter().map(|FieldData { ident, ty, .. }| {
             let ident_str = ident.to_string();
             quote!{
-                #ident_str => #ident.replace(<#ty as ::ohkami::__internal__::FromBuffer>::parse(v.as_bytes())?)
+                #ident_str => #ident.replace(<#ty as ::ohkami::FromParam>::parse(v.as_bytes())?)
                     .map_or(::std::result::Result::Ok(()), |_|
-                        ::std::result::Result::Err(::std::borrow::Cow::Borrowed(concat!("duplicated key: `", #ident_str,"`")))
+                        ::std::result::Result::Err(::ohkami::FromRequestError::Static(concat!("duplicated key: `", #ident_str,"`")))
                     )?,
             }
         });
@@ -72,7 +112,7 @@ fn impl_payload_urlencoded(data: &ItemStruct) -> Result<TokenStream> {
             for (k, v) in ::ohkami::__internal__::parse_urlencoded(payload) {
                 match &*k {
                     #( #arms )*
-                    unexpected => return ::std::result::Result::Err(::std::borrow::Cow::Owned(::std::format!("unexpected key: `{unexpected}`")))
+                    unexpected => return ::std::result::Result::Err(::ohkami::FromRequestError::Owned(::std::format!("unexpected key: `{unexpected}`")))
                 }
             }
         }
@@ -84,7 +124,7 @@ fn impl_payload_urlencoded(data: &ItemStruct) -> Result<TokenStream> {
                 quote!{ #ident, }
             } else {
                 let ident_str = ident.to_string();
-                quote!{ #ident: #ident.ok_or_else(|| ::std::borrow::Cow::Borrowed(::std::concat!("`", #ident_str, "` is not found")))?, }
+                quote!{ #ident: #ident.ok_or_else(|| ::ohkami::FromRequestError::Static(::std::concat!("`", #ident_str, "` is not found")))?, }
             }
         });
 
@@ -96,13 +136,13 @@ fn impl_payload_urlencoded(data: &ItemStruct) -> Result<TokenStream> {
     };
 
     Ok(quote!{
-        impl ::ohkami::FromRequest for #struct_name {
-            type Error = ::std::borrow::Cow<'static, str>;
-            fn parse(req: &::ohkami::Request) -> ::std::result::Result<Self, ::std::borrow::Cow<'static, str>> {
+        impl<#impl_lifetime> ::ohkami::FromRequest<#impl_lifetime> for #struct_name<#struct_lifetime> {
+            type Error = ::ohkami::FromRequestError;
+            fn from_request(req: &#impl_lifetime ::ohkami::Request) -> ::std::result::Result<Self, ::ohkami::FromRequestError> {
                 let payload = req.payload()
-                    .ok_or_else(|| ::std::borrow::Cow::Borrowed("Expected a payload"))?;
+                    .ok_or_else(|| ::ohkami::FromRequestError::Static("Expected a payload"))?;
                 if !req.headers.ContentType().unwrap().starts_with("application/x-www-form-urlencoded") {
-                    return ::std::result::Result::Err(::std::borrow::Cow::Borrowed("Expected an `application/x-www-form-urlencoded` payload"))
+                    return ::std::result::Result::Err(::ohkami::FromRequestError::Static("Expected an `application/x-www-form-urlencoded` payload"))
                 }
 
                 #declaring_exprs
@@ -117,6 +157,18 @@ fn impl_payload_urlencoded(data: &ItemStruct) -> Result<TokenStream> {
 fn impl_payload_formdata(data: &ItemStruct) -> Result<TokenStream> {
     let struct_name = &data.ident;
     let fields_data = FieldData::collect_from_struct_fields(&data.fields)?;
+
+    let (impl_lifetime, struct_lifetime) = match data.generics.lifetimes().count() {
+        0 => (
+            from_request_lifetime(),
+            None,
+        ),
+        1 => (
+            data.generics.params.first().unwrap().clone(),
+            Some(data.generics.params.first().unwrap().clone()),
+        ),
+        _ => return Err(syn::Error::new(Span::call_site(), "#[Payload] doesn't support multiple lifetime params")),
+    };
 
     // `#[Payload(Form)]` doesn't accept optional fields
     if fields_data.iter().any(|FieldData { is_optional, .. }| *is_optional) {
@@ -138,9 +190,9 @@ fn impl_payload_formdata(data: &ItemStruct) -> Result<TokenStream> {
         impl PartType {
             fn into_method_call(&self) -> TokenStream {
                 match self {
-                    Self::Field => quote!{ form_part.into_field()?.text().map_err(|e| ::std::borrow::Cow::Owned(::std::format!("Invalid form text: {e}")))? },
-                    Self::Files => quote!{ form_part.into_files()? },
-                    Self::File  => quote!{ form_part.into_file()? },
+                    Self::Field => quote!{ form_part.into_field()?.text().map_err(|e| ::ohkami::FromRequestError::Owned(::std::format!("Invalid form text: {e}")))? },
+                    Self::Files => quote!{ form_part.into_files().map_err(|e| ::ohkami::FromRequestError::from(e))? },
+                    Self::File  => quote!{ form_part.into_file().map_err(|e| ::ohkami::FromRequestError::from(e))? },
                 }
             }
         }
@@ -164,7 +216,7 @@ fn impl_payload_formdata(data: &ItemStruct) -> Result<TokenStream> {
             for form_part in ::ohkami::__internal__::parse_formparts(payload, &boundary)? {
                 match form_part.name() {
                     #( #arms )*
-                    unexpected => return ::std::result::Result::Err(::std::borrow::Cow::Owned(::std::format!("unexpected part in form-data: `{unexpected}`")))
+                    unexpected => return ::std::result::Result::Err(::ohkami::FromRequestError::Owned(::std::format!("unexpected part in form-data: `{unexpected}`")))
                 }
             }
         }
@@ -176,7 +228,7 @@ fn impl_payload_formdata(data: &ItemStruct) -> Result<TokenStream> {
                 quote!{ #ident, }
             } else {
                 let ident_str = ident.to_string();
-                quote!{ #ident: #ident.ok_or_else(|| ::std::borrow::Cow::Borrowed(::std::concat!("Field `", #ident_str, "` is not found in the form-data")))?, }
+                quote!{ #ident: #ident.ok_or_else(|| ::ohkami::FromRequestError::Static(::std::concat!("Field `", #ident_str, "` is not found in the form-data")))?, }
             }
         });
 
@@ -188,14 +240,14 @@ fn impl_payload_formdata(data: &ItemStruct) -> Result<TokenStream> {
     };
 
     Ok(quote!{
-        impl ::ohkami::FromRequest for #struct_name {
-            type Error = ::std::borrow::Cow<'static, str>;
-            fn parse(req: &::ohkami::Request) -> ::std::result::Result<Self, ::std::borrow::Cow<'static, str>> {
+        impl<#impl_lifetime> ::ohkami::FromRequest<#impl_lifetime> for #struct_name<#struct_lifetime> {
+            type Error = ::ohkami::FromRequestError;
+            fn from_request(req: &#impl_lifetime ::ohkami::Request) -> ::std::result::Result<Self, ::ohkami::FromRequestError> {
                 let payload = req.payload()
-                    .ok_or_else(|| ::std::borrow::Cow::Borrowed("Expected a payload"))?;
+                    .ok_or_else(|| ::ohkami::FromRequestError::Static("Expected a payload"))?;
 
-                #[cold] #[inline(never)] const fn __expected_multipart_formdata_and_boundary() -> ::std::borrow::Cow<'static, str> {
-                    ::std::borrow::Cow::Borrowed("Expected `multipart/form-data` and a boundary")
+                #[cold] const fn __expected_multipart_formdata_and_boundary() -> ::ohkami::FromRequestError {
+                    ::ohkami::FromRequestError::Static("Expected `multipart/form-data` and a boundary")
                 }
                 let ("multipart/form-data", boundary) = req.headers.ContentType().unwrap()
                     .split_once("; boundary=")

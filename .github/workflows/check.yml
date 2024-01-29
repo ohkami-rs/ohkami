@@ -25,8 +25,30 @@ jobs:
           override:  true
 
       - name: Check ohkami's buildability
-        run: cargo check --features rt_${{ matrix.rt }}${{ matrix.x == '' && '' || ',' }}${{ matrix.x }}${{ matrix.toolchain == 'nightly' && ',nightly' || '' }},DEBUG
+        run:  cargo check --features rt_${{ matrix.rt }}${{ matrix.x == '' && '' || ',' }}${{ matrix.x }}${{ matrix.toolchain == 'nightly' && ',nightly' || '' }},DEBUG
         
+      - name: Check ohkami's buildability without default features except fot `utils`
+        run:  cargo check --no-default-features --features utils,rt_${{ matrix.rt }}${{ matrix.x == '' && '' || ',' }}${{ matrix.x }}${{ matrix.toolchain == 'nightly' && ',nightly' || '' }},DEBUG
+      
+      - name: Check ohkami's buildability without default features except fot `testing`
+        run:  cargo check --no-default-features --features testing,rt_${{ matrix.rt }}${{ matrix.x == '' && '' || ',' }}${{ matrix.x }}${{ matrix.toolchain == 'nightly' && ',nightly' || '' }},DEBUG
+      
+      - name: Check ohkami's buildability without default features
+        run:  cargo check --no-default-features --features rt_${{ matrix.rt }}${{ matrix.x == '' && '' || ',' }}${{ matrix.x }}${{ matrix.toolchain == 'nightly' && ',nightly' || '' }},DEBUG
+      
+      - name: Cache cargo tools
+        id:   cache_cargo_tools
+        uses: actions/cache@v3
+        with:
+          key:  ${{ runner.os }}-cargo-install
+          path: ~/.cargo/bin
+      - name: Install cargo tools
+        if:   ${{ steps.cache_cargo_tools.outputs.cache-hit != 'true' }}
+        run:  |
+          cargo install sqlx-cli --no-default-features --features native-tls,postgres
       - name: Check examples' buildablity
         working-directory: examples
-        run: cargo check
+        run: |
+          docker-compose -f ./realworld/docker-compose.yml up -d
+          cd ./realworld && sqlx migrate run
+          cargo check
