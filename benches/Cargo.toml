@@ -1,0 +1,9 @@
+[package]
+name    = "ohkami_benches"
+version = "0.0.0"
+edition = "2021"
+authors = ["kanarus <kanarus786@gmail.com>"]
+
+[dependencies]
+ohkami  = { version = "0.10.0", path = "../ohkami", features = ["rt_tokio", "DEBUG"] }
+http    = "1.0.0"

@@ -31,7 +31,7 @@ pub async fn request_upgrade_id() -> UpgradeID {
 /// SAFETY: This must be called after the corresponded `request_upgrade_id`
 pub unsafe fn reserve_upgrade(id: UpgradeID, stream: TcpStream) {
     #[cfg(debug_assertions)] assert!(
-        UpgradeStreams().get().get(id.as_usize()).is_some_and(
+        UpgradeStreams().get_mut().get(id.as_usize()).is_some_and(
             |cell| cell.reserved && cell.stream.is_some()),
         "Cell not reserved"
     );
@@ -78,9 +78,6 @@ struct UpgradeStreams<Stream = TcpStream> {
                 in_scanning: AtomicBool::new(false),
                 streams:     UnsafeCell::new(Vec::new()),
             }
-        }
-        fn get(&self) -> &Vec<StreamCell<Stream>> {
-            unsafe {&*self.streams.get()}
         }
         unsafe fn get_mut(&self) -> &mut Vec<StreamCell<Stream>> {
             &mut *self.streams.get()
