@@ -4,14 +4,16 @@ mod profiles;
 mod articles;
 mod tags;
 
+use sqlx::PgPool;
 use ohkami::{Ohkami, Route};
-use crate::fangs::{LogRequest, LogResponse};
+use crate::fangs::{LogRequest, LogResponse, DB};
+
 
 
 pub fn realworld_ohkami(
-
+    pool: PgPool,
 ) -> Ohkami {
-    Ohkami::with((LogRequest, LogResponse),
+    Ohkami::with((LogRequest, LogResponse, DB(pool)),
         "/api".By(Ohkami::new((
             "/users"   .By(users::users_ohkami()),
             "/user"    .By(user::user_ohkami()),

@@ -4,6 +4,7 @@ use crate::models::response::{UserResponse, ProfileResponse};
 use argon2::{Argon2, Algorithm, Version, Params, PasswordHasher};
 use argon2::password_hash::{PasswordHashString, Salt, SaltString};
 use chrono::{DateTime, Utc};
+use sqlx::PgPool;
 use uuid::Uuid;
 
 
@@ -34,13 +35,13 @@ pub fn hash_password(
     Ok(hashed_password.as_str().to_string())
 }
 
-pub async fn article_id_by_slug(slug: &str) -> Result<Uuid, RealWorldError> {
+pub async fn article_id_by_slug(slug: &str, pool: &PgPool) -> Result<Uuid, RealWorldError> {
     sqlx::query_scalar!(r#"
         SELECT id
         FROM articles
         WHERE slug = $1
     "#, slug)
-        .fetch_one(config::pool()).await
+        .fetch_one(pool).await
         .map_err(RealWorldError::DB)
 }
 
@@ -61,11 +62,11 @@ pub enum UserAndFollowings {
         }
     }
 } impl UserAndFollowings {
-    pub async fn from_user_id(user_id: Uuid) -> Result<Self, RealWorldError> {
+    pub async fn from_user_id(user_id: Uuid, pool: &PgPool) -> Result<Self, RealWorldError> {
         let followings = sqlx::query_scalar!(r#"
             SELECT followee_id FROM users_follow_users WHERE follower_id = $1
         "#, user_id)
-            .fetch_all(config::pool()).await
+            .fetch_all(pool).await
             .map_err(RealWorldError::DB)?;
 
         Ok(Self::Some {
@@ -105,14 +106,14 @@ pub struct UserEntity {
         }
     }
 } impl UserEntity {
-    pub async fn get_by_name(name: &str) -> Result<Self, RealWorldError> {
+    pub async fn get_by_name(name: &str, pool: &PgPool) -> Result<Self, RealWorldError> {
         sqlx::query_as!(UserEntity, r#"
             SELECT id, name, email, bio, image_url
             FROM users AS u
             WHERE
                 u.name = $1
         "#, name)
-            .fetch_one(config::pool()).await
+            .fetch_one(pool).await
             .map_err(RealWorldError::DB)
     }
 }

@@ -1,11 +1,12 @@
 use std::borrow::Cow;
-use ohkami::{Ohkami, Route, typed::Created};
+use ohkami::{typed::Created, Memory, Ohkami, Route};
+use sqlx::PgPool;
 use crate::{
     models::User,
     models::response::UserResponse,
     models::request::{LoginRequest, LoginRequestUser, RegisterRequest},
     errors::RealWorldError,
-    config::{pool, self},
+    config,
     db,
 };
 
@@ -20,6 +21,7 @@ pub fn users_ohkami() -> Ohkami {
 }
 
 async fn login(
+    pool: Memory<'_, PgPool>,
     LoginRequest {
         user: LoginRequestUser { email, password },
     }: LoginRequest<'_>,
@@ -33,13 +35,14 @@ async fn login(
             u.email    = $1 AND
             u.password = $2
     "#, email, hased_password.as_str())
-        .fetch_one(pool()).await
+        .fetch_one(*pool).await
         .map_err(RealWorldError::DB)?;
 
     Ok(u.into_user_response())
 }
 
 async fn register(
+    pool: Memory<'_, PgPool>,
     RegisterRequest { username, email, password }: RegisterRequest<'_>,
 ) -> Result<Created<UserResponse>, RealWorldError> {
     let already_exists = sqlx::query!(r#"
@@ -50,7 +53,7 @@ async fn register(
                 u.name = $1
         )
     "#, username)
-        .fetch_one(pool()).await
+        .fetch_one(*pool).await
         .map_err(RealWorldError::DB)?
         .exists.unwrap();
     if already_exists {
@@ -67,7 +70,7 @@ async fn register(
             VALUES ($1,    $2,   $3)
         RETURNING id
     "#, email, username, hased_password.as_str())
-        .fetch_one(pool()).await
+        .fetch_one(*pool).await
         .map_err(RealWorldError::DB)?
         .id;
 

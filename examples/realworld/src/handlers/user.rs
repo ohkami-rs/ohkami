@@ -1,11 +1,12 @@
 use ohkami::{Ohkami, Route, Memory};
+use sqlx::PgPool;
 use crate::{
     fangs::Auth,
     models::User,
     models::response::UserResponse,
     models::request::UpdateProfileRequest,
     errors::RealWorldError,
-    config::{pool, issue_jwt_for_user_of_id, JWTPayload},
+    config::{issue_jwt_for_user_of_id, JWTPayload},
     db::{UserEntity, hash_password_string},
 };
 
@@ -19,15 +20,16 @@ pub fn user_ohkami() -> Ohkami {
 }
 
 async fn get_current_user(
-    jwt_payload: Memory<'_, JWTPayload>
+    pool: Memory<'_, PgPool>,
+    auth: Memory<'_, JWTPayload>
 ) -> Result<UserResponse, RealWorldError> {
     let u = sqlx::query_as!(UserEntity, r#"
         SELECT id, email, name, bio, image_url
         FROM users AS u
         WHERE
             u.id = $1
-    "#, jwt_payload.user_id)
-        .fetch_one(pool()).await
+    "#, auth.user_id)
+        .fetch_one(*pool).await
         .map_err(RealWorldError::DB)?;
 
     Ok(UserResponse {
@@ -41,9 +43,10 @@ async fn get_current_user(
     })
 }
 
-async fn update(
-    body:        UpdateProfileRequest,
-    jwt_payload: Memory<'_, JWTPayload>,
+async fn update<'m>(
+    body: UpdateProfileRequest,
+    auth: Memory<'m, JWTPayload>,
+    pool: Memory<'m, PgPool>,
 ) -> Result<UserResponse, RealWorldError> {
     let user_entity = {
         let UpdateProfileRequest { email, username, image, bio, password:raw_password } = body;
@@ -66,17 +69,17 @@ async fn update(
         set_if_some!(password -> query.password);
         set_if_some!(image    -> query.image_url);
         set_if_some!(bio      -> query.bio);
-        query.push(" WHERE id = ").push_bind(jwt_payload.user_id);
+        query.push(" WHERE id = ").push_bind(auth.user_id);
         query.push(" RETURNING id, email, name, image_url, bio");
 
         if !set_once {
             // Requested to update nothing, then
             // not perform UPDATE query
-            return get_current_user(jwt_payload).await
+            return get_current_user(pool, auth).await
         }
 
         query.build_query_as::<UserEntity>()
-            .fetch_one(pool()).await
+            .fetch_one(*pool).await
             .map_err(RealWorldError::DB)?
     };
 

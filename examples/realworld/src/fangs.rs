@@ -1,4 +1,5 @@
 use ohkami::{Fang, IntoFang, Request, Response};
+use sqlx::PgPool;
 use crate::config;
 
 
@@ -73,6 +74,15 @@ impl IntoFang for LogResponse {
     fn into_fang(self) -> Fang {
         Fang(|res: &Response| {
             tracing::info!("{res:?}");
+        })
+    }
+}
+
+pub struct DB(pub PgPool);
+impl IntoFang for DB {
+    fn into_fang(self) -> Fang {
+        Fang(move |req: &mut Request| {
+            req.memorize(self.0.clone())
         })
     }
 }
