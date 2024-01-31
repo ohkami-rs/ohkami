@@ -1,4 +1,3 @@
-use std::borrow::Cow;
 use ohkami::{typed::Created, Memory, Ohkami, Route};
 use sqlx::PgPool;
 use crate::{
@@ -26,19 +25,25 @@ async fn login(
         user: LoginRequestUser { email, password },
     }: LoginRequest<'_>,
 ) -> Result<UserResponse, RealWorldError> {
-    let hased_password = db::hash_password(password)?;
+    let credential = sqlx::query!(r#"
+        SELECT password, salt
+        FROM users
+        WHERE email = $1
+    "#, email)
+        .fetch_one(*pool).await
+        .map_err(RealWorldError::DB)?;
+
+    db::verify_password(password, &credential.salt, &credential.password)?;
 
     let u = sqlx::query_as!(db::UserEntity, r#"
         SELECT id, email, name, bio, image_url
         FROM users AS u
-        WHERE
-            u.email    = $1 AND
-            u.password = $2
-    "#, email, hased_password.as_str())
+        WHERE email = $1
+    "#, email)
         .fetch_one(*pool).await
         .map_err(RealWorldError::DB)?;
 
-    Ok(u.into_user_response())
+    Ok(u.into_user_response()?)
 }
 
 async fn register(
@@ -57,19 +62,19 @@ async fn register(
         .map_err(RealWorldError::DB)?
         .exists.unwrap();
     if already_exists {
-        return Err(RealWorldError::FoundUnexpectedly(Cow::Owned(
-            format!("User of name = '{username}' & email = '{email}' is already exists")
-        )))
+        return Err(RealWorldError::Validation {
+            body: format!("User of name {username:?} is already exists")
+        })
     }
 
-    let hased_password = db::hash_password(password)?;
+    let (hased_password, salt) = db::hash_password(password)?;
 
     let new_user_id = sqlx::query!(r#"
         INSERT INTO
-            users  (email, name, password)
-            VALUES ($1,    $2,   $3)
+            users  (email, name, password, salt)
+            VALUES ($1,    $2,   $3,       $4  )
         RETURNING id
-    "#, email, username, hased_password.as_str())
+    "#, email, username, hased_password.as_str(), salt.as_str())
         .fetch_one(*pool).await
         .map_err(RealWorldError::DB)?
         .id;
@@ -77,7 +82,7 @@ async fn register(
     Ok(Created(UserResponse {
         user: User {
             email: email.into(),
-            jwt:   config::issue_jwt_for_user_of_id(new_user_id),
+            jwt:   config::issue_jwt_for_user_of_id(new_user_id)?,
             name:  username.into(),
             bio:   None,
             image: None,

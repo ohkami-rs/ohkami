@@ -7,7 +7,7 @@ use crate::{
     models::request::UpdateProfileRequest,
     errors::RealWorldError,
     config::{issue_jwt_for_user_of_id, JWTPayload},
-    db::{UserEntity, hash_password_string},
+    db::{UserEntity, hash_password},
 };
 
 
@@ -35,7 +35,7 @@ async fn get_current_user(
     Ok(UserResponse {
         user: User {
             email: u.email,
-            jwt:   issue_jwt_for_user_of_id(u.id),
+            jwt:   issue_jwt_for_user_of_id(u.id)?,
             name:  u.name,
             bio:   u.bio,
             image: u.image_url,
@@ -50,7 +50,7 @@ async fn update<'m>(
 ) -> Result<UserResponse, RealWorldError> {
     let user_entity = {
         let UpdateProfileRequest { email, username, image, bio, password:raw_password } = body;
-        let password = raw_password.map(hash_password_string).transpose()?;
+        let new_password_and_salt = raw_password.map(|rp| hash_password(&rp)).transpose()?;
 
         let mut set_once = false;
         macro_rules! set_if_some {
@@ -66,9 +66,13 @@ async fn update<'m>(
         let mut query = sqlx::QueryBuilder::new("UPDATE users SET");
         set_if_some!(email    -> query.email);
         set_if_some!(username -> query.name);
-        set_if_some!(password -> query.password);
         set_if_some!(image    -> query.image_url);
         set_if_some!(bio      -> query.bio);
+        if let Some((hash, salt)) = new_password_and_salt {
+            if set_once {query.push(',');}
+            query.push(" password = ").push_bind(hash.as_str().to_string());
+            query.push(" salt = ").push_bind(salt.as_str().to_string());
+        }
         query.push(" WHERE id = ").push_bind(auth.user_id);
         query.push(" RETURNING id, email, name, image_url, bio");
 
@@ -83,5 +87,5 @@ async fn update<'m>(
             .map_err(RealWorldError::DB)?
     };
 
-    Ok(user_entity.into_user_response())
+    Ok(user_entity.into_user_response()?)
 }

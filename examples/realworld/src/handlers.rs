@@ -9,7 +9,6 @@ use ohkami::{Ohkami, Route};
 use crate::fangs::{LogRequest, LogResponse, DB};
 
 
-
 pub fn realworld_ohkami(
     pool: PgPool,
 ) -> Ohkami {

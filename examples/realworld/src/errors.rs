@@ -6,7 +6,7 @@ use std::borrow::Cow;
 pub enum RealWorldError {
     Config(String),
     DB(sqlx::Error),
-    #[allow(unused)] Validation(ValidationError),
+    Validation { body: String },
     NotFound(Cow<'static, str>),
     Unauthorized(Cow<'static, str>),
     FoundUnexpectedly(Cow<'static, str>),
@@ -25,7 +25,7 @@ struct ValidationErrorFormat {
 }
 #[derive(Serialize, Debug)]
 pub struct ValidationError {
-    body: Option<Cow<'static, str>>,
+    body: Vec<Cow<'static, str>>,
 }
 
 impl IntoResponse for RealWorldError {
@@ -33,9 +33,11 @@ impl IntoResponse for RealWorldError {
         use ohkami::typed::*;
         
         match self {
-            Self::Validation(e) => UnprocessableEntity(
+            Self::Validation { body } => UnprocessableEntity(
                 ValidationErrorFormat {
-                    errors: e,
+                    errors: ValidationError {
+                        body: vec![body.into()],
+                    },
                 }
             ).into_response(),
             Self::Config(err_msg)       => InternalServerError(err_msg).into_response(),

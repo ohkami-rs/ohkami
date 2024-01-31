@@ -1,7 +1,7 @@
 use crate::{config, errors::RealWorldError};
 use crate::models::{Article, Profile, User, Comment};
 use crate::models::response::{UserResponse, ProfileResponse};
-use argon2::{Argon2, Algorithm, Version, Params, PasswordHasher};
+use argon2::{Algorithm, Argon2, Params, PasswordHasher,  Version};
 use argon2::password_hash::{PasswordHashString, Salt, SaltString};
 use chrono::{DateTime, Utc};
 use sqlx::PgPool;
@@ -10,30 +10,59 @@ use uuid::Uuid;
 
 pub fn hash_password(
     raw_password: &str,
+) -> Result<(PasswordHashString, SaltString), RealWorldError> {
+    let salt = SaltString::generate(::argon2::password_hash::rand_core::OsRng);
+    let hash = __hash_password_with(raw_password, &salt)?;
+
+    Ok((hash, salt))
+}
+
+pub fn verify_password(
+    raw_password:    &str,
+    salt:            &str,
+    hashed_password: &str,
+) -> Result<(), RealWorldError> {
+    let correct_hash = __hash_password_with(
+        raw_password,
+        &SaltString::from_b64(salt).unwrap(),
+    )?;
+
+    if correct_hash.as_str() != hashed_password {
+        return Err(RealWorldError::Unauthorized(std::borrow::Cow::Borrowed(
+            "Wrong email or password"
+        )))
+    }
+
+    Ok(())
+}
+
+fn __hash_password_with(
+    raw_password: &str,
+    salt: &SaltString,
 ) -> Result<PasswordHashString, RealWorldError> {
+    let pepper = config::PEPPER()?;
+    
     let a = Argon2::new_with_secret(
-        config::pepper(),
+        pepper.as_bytes(),
         Algorithm::Argon2id,
         Version::V0x13,
         Params::DEFAULT,
     ).map_err(|e| RealWorldError::Config(e.to_string()))?;
 
-    let s = SaltString::generate(::argon2::password_hash::rand_core::OsRng);
-
     let hash = a.hash_password(
         raw_password.as_bytes(),
-        Salt::from(&s),
+        Salt::from(salt),
     ).map_err(|e| RealWorldError::Config(e.to_string()))?;
 
     Ok(hash.serialize())
 }
 
-#[inline] pub fn hash_password_string(
-    raw_password_string: String,
-) -> Result<String, RealWorldError> {
-    let hashed_password = hash_password(raw_password_string.as_str())?;
-    Ok(hashed_password.as_str().to_string())
-}
+// #[inline] pub fn hash_password_string(
+//     raw_password_string: String,
+// ) -> Result<String, RealWorldError> {
+//     let hashed_password = hash_password(raw_password_string.as_str())?;
+//     Ok(hashed_password.as_str().to_string())
+// }
 
 pub async fn article_id_by_slug(slug: &str, pool: &PgPool) -> Result<Uuid, RealWorldError> {
     sqlx::query_scalar!(r#"
@@ -84,16 +113,16 @@ pub struct UserEntity {
     pub bio:       Option<String>,
     pub image_url: Option<String>,
 } impl UserEntity {
-    pub fn into_user_response(self) -> UserResponse {
-        UserResponse {
+    pub fn into_user_response(self) -> Result<UserResponse, RealWorldError> {
+        Ok(UserResponse {
             user: User {
-                jwt:   config::issue_jwt_for_user_of_id(self.id),
+                jwt:   config::issue_jwt_for_user_of_id(self.id)?,
                 email: self.email,
                 name:  self.name,
                 bio:   self.bio,
                 image: self.image_url,
             },
-        }
+        })
     }
     pub fn into_profile_response_with(self, following: bool) -> ProfileResponse {
         ProfileResponse {
