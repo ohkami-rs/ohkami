@@ -326,8 +326,6 @@ pub mod __internal__ {
         parse_json,
         parse_formparts,
         parse_urlencoded,
-
-        ResponseBody,
     };
 }
 

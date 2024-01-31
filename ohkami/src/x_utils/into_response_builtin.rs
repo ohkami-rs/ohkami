@@ -44,7 +44,6 @@ impl ResponseBody for Text {
     }
 }
 
-
 pub fn HTML(text: impl Into<Cow<'static, str>>) -> HTML {
     HTML {
         content: text.into()
