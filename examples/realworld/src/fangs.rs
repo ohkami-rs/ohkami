@@ -82,11 +82,16 @@ impl IntoFang for LogResponse {
     }
 }
 
-pub struct DB(pub PgPool);
-impl IntoFang for DB {
+pub struct ConnectionPool(PgPool);
+impl IntoFang for ConnectionPool {
     fn into_fang(self) -> Fang {
         Fang(move |req: &mut Request| {
             req.memorize(self.0.clone())
         })
+    }
+}
+impl From<PgPool> for ConnectionPool {
+    fn from(pool: PgPool) -> Self {
+        Self(pool)
     }
 }

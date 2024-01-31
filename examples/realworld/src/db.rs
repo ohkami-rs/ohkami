@@ -41,7 +41,7 @@ fn __hash_password_with(
     salt: &SaltString,
 ) -> Result<PasswordHashString, RealWorldError> {
     let pepper = config::PEPPER()?;
-    
+
     let a = Argon2::new_with_secret(
         pepper.as_bytes(),
         Algorithm::Argon2id,
@@ -164,10 +164,22 @@ pub struct ArticleEntity {
     pub author_bio:      Option<String>,
     pub author_image:    Option<String>,
 } impl ArticleEntity {
-    pub fn base_query() -> String {
-        use sqlx::Execute;
+    #[cfg_attr(not(test), inline(always))]
+    pub fn base_query() -> &'static str {
+        macro_rules! verified {
+            ($query:literal) => {
+                {
+                    #[cfg(test)] {
+                        use sqlx::Execute;
+                        sqlx::query_as!(Self, $query).sql();
+                    }
+                    
+                    $query
+                }
+            };
+        }
 
-        sqlx::query_as!(Self, r#"
+        verified!(r#"
             SELECT
                 a.id                   AS id,
                 a.slug                 AS slug,
@@ -191,7 +203,7 @@ pub struct ArticleEntity {
                 JOIN tags                     AS tags   ON a_tags.tag_id = tags.id
             GROUP BY
                 a.id, author.id
-        "#).sql().into()
+        "#)
     }
 } impl ArticleEntity {
     pub fn into_article_with(
