@@ -6,12 +6,42 @@ mod payload;
 mod response;
 
 
+/// The *perfect* reexport of `serde::Serialize`.
+/// 
+/// <br>
+/// 
+/// *example.rs*
+/// ```ignore
+/// use ohkami::utils::Serialize;
+/// 
+/// #[derive(Serialize)]
+/// struct User {
+///     #[serde(rename = "username")]
+///     name: String,
+///     bio:  Option<String>,
+/// }
+/// ```
 #[proc_macro_derive(Serialize, attributes(serde))] #[allow(non_snake_case)]
 pub fn Serialize(data: proc_macro::TokenStream) -> proc_macro::TokenStream {
     serde::Serialize(data.into())
         .unwrap_or_else(|e| e.into_compile_error())
         .into()
 }
+/// The *perfect* reexport of `serde::Deserialize`.
+/// 
+/// <br>
+/// 
+/// *example.rs*
+/// ```ignore
+/// use ohkami::utils::Deserialize;
+/// 
+/// #[derive(Deserialize)]
+/// struct CreateUser<'req> {
+///     #[serde(rename = "username")]
+///     name: &'req str,
+///     bio:  Option<&'req str>,
+/// }
+/// ```
 #[proc_macro_derive(Deserialize, attributes(serde))] #[allow(non_snake_case)]
 pub fn Deserialize(data: proc_macro::TokenStream) -> proc_macro::TokenStream {
     serde::Deserialize(data.into())
