@@ -6,7 +6,7 @@ mod payload;
 mod response;
 
 
-/// The *perfect* reexport of `serde::Serialize`.
+/// The *perfect* reexport of [serde](https://crates.io/crates/serde)'s `Serialize`.
 /// 
 /// <br>
 /// 
@@ -27,7 +27,7 @@ pub fn Serialize(data: proc_macro::TokenStream) -> proc_macro::TokenStream {
         .unwrap_or_else(|e| e.into_compile_error())
         .into()
 }
-/// The *perfect* reexport of `serde::Deserialize`.
+/// The *perfect* reexport of [serde](https://crates.io/crates/serde)'s `Deserialize`.
 /// 
 /// <br>
 /// 

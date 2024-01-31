@@ -121,7 +121,7 @@ macro_rules! Header {
     AccessControlMaxAge:             b"Access-Control-Max-Age",
     Age:                             b"Age",
     Allow:                           b"Allow",
-    AltSrv:                          b"Alt-Srv",
+    AltSvc:                          b"Alt-Svc",
     CacheControl:                    b"Cache-Control",
     CacheStatus:                     b"Cache-Status",
     CDNCacheControl:                 b"CDN-Cache-Control",
@@ -216,7 +216,7 @@ impl Headers {
     }
 }
 impl Headers {
-    pub(crate) fn new() -> Self {
+    pub(crate) const fn new() -> Self {
         Self {
             size:   "\r\n".len(),
             values: [
@@ -232,6 +232,9 @@ impl Headers {
             ]
         }
     }
+    #[cfg(feature="DEBUG")]
+    #[doc(hidden)]
+    pub const fn init() -> Self {Self::new()}
 
     pub(crate) const fn iter(&self) -> impl Iterator<Item = (&str, &str)> {
         struct Iter<'i> {
@@ -254,7 +257,35 @@ impl Headers {
         Iter { map: self, cur: 0 }
     }
 
-    pub(crate) fn write_to(self, buf: &mut Vec<u8>) {
+    #[inline] pub(crate) fn write_to(self, buf: &mut Vec<u8>) {
+        macro_rules! push {
+            ($buf:ident <- $bytes:expr) => {
+                unsafe {
+                    let (buf_len, bytes_len) = ($buf.len(), $bytes.len());
+                    std::ptr::copy_nonoverlapping(
+                        $bytes.as_ptr(),
+                        $buf.as_mut_ptr().add(buf_len),
+                        bytes_len
+                    );
+                    $buf.set_len(buf_len + bytes_len);
+                }
+            };
+        }
+
+        buf.reserve(self.size);
+        for h in unsafe {SERVER_HEADERS.get_unchecked(1..)} {
+            if let Some(v) = unsafe {self.values.get_unchecked(*h as usize)} {
+                push!(buf <- h.as_bytes());
+                push!(buf <- b": ");
+                push!(buf <- v);
+                push!(buf <- b"\r\n");
+            }
+        }
+        push!(buf <- b"\r\n");
+    }
+    #[cfg(feature="DEBUG")]
+    #[doc(hidden)]
+    #[inline] pub fn write_ref_to(&self, buf: &mut Vec<u8>) {
         macro_rules! push {
             ($buf:ident <- $bytes:expr) => {
                 unsafe {

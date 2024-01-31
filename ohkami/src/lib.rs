@@ -327,6 +327,10 @@ pub mod __internal__ {
         parse_formparts,
         parse_urlencoded,
     };
+
+    /* for benchmarks */
+    #[cfg(feature="DEBUG")]
+    pub use crate::layer1_req_res::{RequestHeader, RequestHeaders, ResponseHeader, ResponseHeaders};
 }
 
 

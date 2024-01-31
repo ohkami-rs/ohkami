@@ -1,4 +1,4 @@
-#[cfg(any(feature="websocket", feature="utils"))]
+#[cfg(feature="websocket")]
 #[inline(always)] pub fn encode(src: impl AsRef<[u8]>) -> String {
     encode_by(
         src.as_ref(),
