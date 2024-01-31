@@ -1,9 +1,21 @@
-//! Baed on [chrono](https://github.com/chronotope/chrono); MIT.
+//! Most parts are based on [chrono](https://github.com/chronotope/chrono); MIT.
 
 use std::time::{SystemTime, UNIX_EPOCH};
 
 
-#[inline] pub fn now() -> String {
+/// ```ignore
+/// {
+///     SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()
+/// }
+/// ```
+#[inline] pub fn unix_timestamp() -> u64 {
+    SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()
+}
+
+/// Current datetime by **IMF-fixdate** format like `Sun, 06 Nov 1994 08:49:37 GMT`, used for `Date` HTTP header.
+/// 
+/// (reference：[https://datatracker.ietf.org/doc/html/rfc9110#name-date-time-formats](https://datatracker.ietf.org/doc/html/rfc9110#name-date-time-formats))
+#[inline] pub fn imf_fixdate_now() -> String {
     let system_now = SystemTime::now().duration_since(UNIX_EPOCH).expect("system time before Unix epoch");
     UTCDateTime::now_from_system(system_now).into_imf_fixdate()
 }
@@ -366,15 +378,15 @@ enum Weekday {
             String::from_utf8(output_bytes).unwrap()
         }
 
-        let (cn, n) = (correct_now(), super::now());
+        let (cn, n) = (correct_now(), super::imf_fixdate_now());
         assert_eq!(cn, n);
 
         std::thread::sleep(std::time::Duration::from_secs_f64(1.05));
-        let (cn, n) = (correct_now(), super::now());
+        let (cn, n) = (correct_now(), super::imf_fixdate_now());
         assert_eq!(cn, n);
 
         std::thread::sleep(std::time::Duration::from_secs_f64(3.14));
-        let (cn, n) = (correct_now(), super::now());
+        let (cn, n) = (correct_now(), super::imf_fixdate_now());
         assert_eq!(cn, n);
     }
 }

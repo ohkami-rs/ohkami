@@ -1,5 +1,5 @@
 mod now;
-pub use now::now;
+pub use now::{imf_fixdate_now, unix_timestamp};
 
 mod jwt;
 pub use jwt::JWT;
