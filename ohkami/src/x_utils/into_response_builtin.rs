@@ -6,6 +6,37 @@ use serde::Serialize;
 use std::borrow::Cow;
 
 
+macro_rules! plain_text_into_response {
+    ($( $text_type:ty: $self:ident => $content:expr, )*) => {
+        $(
+            impl IntoResponse for $text_type {
+                #[inline] fn into_response(self) -> Response {
+                    let content = {let $self = self; $content};
+            
+                    let mut headers = ResponseHeaders::new();
+                    headers.set()
+                        .ContentType("text/plain; charset=UTF-8")
+                        .ContentLength(content.len().to_string());
+            
+                    Response {
+                        status: Status::OK,
+                        headers,
+                        content: Some(content.into()),
+                    }
+                }
+            }
+        )*
+    };
+} plain_text_into_response! {
+    &'static str:      s => s.as_bytes(),
+    String:            s => s.into_bytes(),
+    &'_ String:        s => s.clone().into_bytes(),
+    Cow<'static, str>: c => match c {
+        Cow::Borrowed(s) => Cow::Borrowed(s.as_bytes()),
+        Cow::Owned   (s) => Cow::Owned   (s.into_bytes()),
+    },
+}
+
 pub fn Text(text: impl Into<Cow<'static, str>>) -> Text {
     Text {
         content: text.into()
@@ -43,7 +74,6 @@ impl ResponseBody for Text {
         }
     }
 }
-
 
 pub fn HTML(text: impl Into<Cow<'static, str>>) -> HTML {
     HTML {
