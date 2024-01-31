@@ -4,25 +4,24 @@ use uuid::Uuid;
 use crate::errors::RealWorldError;
 
 
-
-#[allow(non_snake_case)]
-pub fn JWT_SECRET_KEY() -> Result<&'static str, RealWorldError> {
-    static JWT_SECRET_KEY: OnceLock<Result<String, std::env::VarError>> = OnceLock::new();
-
-    match JWT_SECRET_KEY.get_or_init(|| std::env::var("JWT_SECRET_KEY")) {
-        Ok(value) => Ok(&**value),
-        Err(e) => Err(RealWorldError::Config(e.to_string())),
-    }
-}
-
-#[allow(non_snake_case)]
-pub fn PEPPER() -> Result<&'static str, RealWorldError> {
-    static PEPPER: OnceLock<Result<String, std::env::VarError>> = OnceLock::new();
-
-    match PEPPER.get_or_init(|| std::env::var("PEPPER")) {
-        Ok(value) => Ok(&**value),
-        Err(e)    => Err(RealWorldError::Config(e.to_string())),
-    }
+macro_rules! environment_variables {
+    ( $( $name:ident ),* $(,)? ) => {
+        $(
+            #[allow(non_snake_case)]
+            pub fn $name() -> Result<&'static str, RealWorldError> {
+                static $name: OnceLock<Result<String, std::env::VarError>> = OnceLock::new();
+            
+                match $name.get_or_init(|| std::env::var(stringify!($name))) {
+                    Ok(value) => Ok(&**value),
+                    Err(e) => Err(RealWorldError::Config(e.to_string())),
+                }
+            }
+        )*
+    };
+} environment_variables! {
+    DB_URL,
+    PEPPER,
+    JWT_SECRET_KEY,
 }
 
 #[derive(Serialize, Deserialize)]
