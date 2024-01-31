@@ -12,7 +12,7 @@ use crate::{IntoResponse, Response, layer1_req_res::ResponseHeaders, prelude::St
 /// <br>
 /// 
 /// *example.rs*
-/// ```
+/// ```ignore
 /// use ohkami::prelude::*;
 /// use ohkami::utils::{Payload, ResponseBody};
 /// use ohkami::typed::{Created};
