@@ -43,7 +43,7 @@ impl Hasher for TypeIDHasger {
 ///     fn into_fang(self) -> Fang {
 ///         Fang(|req: &mut Request|
 ///             req.memorize(serde_json::json!({
-///                 "now": ohkami::utils::now()
+///                 "now": ohkami::utils::imf_fixdate_now()
 ///             }))
 ///         )
 ///     }
