@@ -5,15 +5,31 @@ pub mod request;
 pub mod response;
 
 
-fn serialize_datetime<S: Serializer>(
-    date_time:  &DateTime<Utc>,
-    serializer: S,
-) -> Result<S::Ok, S::Error> {
-    serializer.serialize_str(&date_time.to_rfc3339_opts(SecondsFormat::Millis, true))
+mod serde_datetime {
+    use ohkami::utils::{Serializer, Deserializer};
+    use chrono::{DateTime, Utc, SecondsFormat};
+
+    pub(super) fn serialize<S: Serializer>(
+        date_time:  &DateTime<Utc>,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(&date_time.to_rfc3339_opts(SecondsFormat::Millis, true))
+    }
+
+    pub(super) fn deserialize<'de, D: Deserializer<'de>>(
+        deserializer: D,
+    ) -> Result<DateTime<Utc>, D::Error> {
+        //DateTime::<Utc>::parse_from_rfc3339(
+//
+        //);
+        todo!()
+        // deserializer.deserialize_str(visitor)
+    }
 }
 
 
 #[derive(Serialize)]
+#[cfg_attr(test, derive(ohkami::utils::Deserialize))]
 pub struct User {
     pub email: String,
     #[serde(rename = "token")]
@@ -25,6 +41,7 @@ pub struct User {
 }
 
 #[derive(Serialize)]
+#[cfg_attr(test, derive(ohkami::utils::Deserialize))]
 pub struct Profile {
     pub username:  String,
     pub bio:       Option<String>,
@@ -33,6 +50,7 @@ pub struct Profile {
 }
 
 #[derive(Serialize)]
+#[cfg_attr(test, derive(ohkami::utils::Deserialize))]
 pub struct Article {
     pub title:           String,
     pub slug:            Option<String>,
@@ -40,9 +58,9 @@ pub struct Article {
     pub body:            String,
     #[serde(rename = "tagList")]
     pub tag_list:        Vec<String>,
-    #[serde(rename = "createdAt", serialize_with = "serialize_datetime")]
+    #[serde(rename = "createdAt", with = "serde_datetime")]
     pub created_at:      DateTime<Utc>,
-    #[serde(rename = "updatedAt", serialize_with = "serialize_datetime")]
+    #[serde(rename = "updatedAt", with = "serde_datetime")]
     pub updated_at:      DateTime<Utc>,
     pub favorited:       bool,
     #[serde(rename = "favoritesCount")]
@@ -51,11 +69,12 @@ pub struct Article {
 }
 
 #[derive(Serialize)]
+#[cfg_attr(test, derive(ohkami::utils::Deserialize))]
 pub struct Comment {
     pub id:         usize,
-    #[serde(rename = "createdAt", serialize_with = "serialize_datetime")]
+    #[serde(rename = "createdAt", with = "serde_datetime")]
     pub created_at: DateTime<Utc>,
-    #[serde(rename = "updatedAt", serialize_with = "serialize_datetime")]
+    #[serde(rename = "updatedAt", with = "serde_datetime")]
     pub updated_at: DateTime<Utc>,
     pub body:       String,
     pub author:     Profile,

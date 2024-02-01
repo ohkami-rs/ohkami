@@ -3,6 +3,7 @@ use super::Tag;
 
 
 #[Payload(JSON)]
+#[cfg_attr(test, derive(ohkami::utils::Serialize))]
 pub struct LoginRequest<'req> {
     pub user: LoginRequestUser<'req>,
 } const _: () = {
@@ -15,12 +16,14 @@ pub struct LoginRequest<'req> {
     }
 };
 #[derive(Deserialize)]
+#[cfg_attr(test, derive(ohkami::utils::Serialize))]
 pub struct LoginRequestUser<'req> {
     pub email:    &'req str,
     pub password: &'req str,
 }
 
 #[Payload(JSOND)]
+#[cfg_attr(test, derive(ohkami::utils::Serialize))]
 pub struct RegisterRequest<'req> {
     pub username: &'req str,
     pub email:    &'req str,
@@ -28,6 +31,7 @@ pub struct RegisterRequest<'req> {
 }
 
 #[Payload(JSOND)]
+#[cfg_attr(test, derive(ohkami::utils::Serialize))]
 pub struct UpdateProfileRequest {
     pub email:    Option<String>,
     pub username: Option<String>,
@@ -37,6 +41,7 @@ pub struct UpdateProfileRequest {
 }
 
 #[Query]
+#[cfg_attr(test, derive(ohkami::utils::Serialize))]
 pub struct ListArticlesQuery<'q> {
     pub tag:       Option<&'q str>,
     pub author:    Option<&'q str>,
@@ -53,6 +58,7 @@ pub struct ListArticlesQuery<'q> {
 }
 
 #[Query]
+#[cfg_attr(test, derive(ohkami::utils::Serialize))]
 pub struct FeedArticleQuery {
     limit:  Option<usize>,
     offset: Option<usize>,
@@ -66,6 +72,7 @@ pub struct FeedArticleQuery {
 }
 
 #[Payload(JSOND)]
+#[cfg_attr(test, derive(ohkami::utils::Serialize))]
 pub struct CreateArticleRequest<'req> {
     pub title:       &'req str,
     pub description: &'req str,
@@ -83,6 +90,7 @@ pub struct CreateArticleRequest<'req> {
 }
 
 #[Payload(JSOND)]
+#[cfg_attr(test, derive(ohkami::utils::Serialize))]
 pub struct UpdateArticleRequest<'req> {
     pub title:       Option<&'req str>,
     pub description: Option<&'req str>,
@@ -90,6 +98,7 @@ pub struct UpdateArticleRequest<'req> {
 }
 
 #[Payload(JSOND)]
+#[cfg_attr(test, derive(ohkami::utils::Serialize))]
 pub struct AddCommentRequest<'req> {
     pub content: &'req str,
 }
