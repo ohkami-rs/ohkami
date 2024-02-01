@@ -19,7 +19,7 @@ macro_rules! environment_variables {
         )*
     };
 } environment_variables! {
-    DB_URL,
+    DATABASE_URL,
     PEPPER,
     JWT_SECRET_KEY,
 }

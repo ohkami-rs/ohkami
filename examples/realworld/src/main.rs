@@ -22,7 +22,7 @@ async fn main() -> Result<(), errors::RealWorldError> {
     let pool = PgPoolOptions::new()
         .max_connections(42)
         .min_connections(42)
-        .connect(config::DB_URL()?).await
+        .connect(config::DATABASE_URL()?).await
         .map_err(|e| RealWorldError::DB(e))?;
 
     handlers::realworld_ohkami(pool)

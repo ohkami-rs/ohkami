@@ -199,7 +199,7 @@ pub struct ArticleEntity {
                      articles                 AS a
                 JOIN users                    AS author ON a.author_id = author.id
                 JOIN users_favorite_articles  AS fav    ON a.id = fav.article_id
-                JOIN articles_tags            AS a_tags ON a.id = a_tags.article_id
+                JOIN articles_have_tags       AS a_tags ON a.id = a_tags.article_id
                 JOIN tags                     AS tags   ON a_tags.tag_id = tags.id
             GROUP BY
                 a.id, author.id
