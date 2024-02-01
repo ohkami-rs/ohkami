@@ -11,6 +11,9 @@ use ohkami::testing::*;
         .connect(config::DATABASE_URL().unwrap()).await
         .unwrap();
 
+    let tx = pool.begin().await.unwrap();
+
+
     let t = handlers::realworld_ohkami(pool);
 
     

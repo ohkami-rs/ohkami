@@ -157,14 +157,22 @@ async fn create(
     let slug = req.slug();
     let CreateArticleRequest { title, description, body, tag_list } = req;
 
-    let created = sqlx::query!(r#"
+    let mut tx = pool.begin().await.map_err(RealWorldError::DB)?;
+
+    let created = match sqlx::query!(r#"
         INSERT INTO
             articles (author_id, slug, title, description, body)
             VALUES   ($1,        $2,   $3,    $4,          $5  )
         RETURNING id, created_at, updated_at
     "#, author_id, slug, title, description, body)
-        .fetch_one(*pool).await
-        .map_err(RealWorldError::DB)?;
+        .fetch_one(&mut *tx).await
+    {
+        Ok(ok) => ok,
+        Err(e) => {
+            tx.rollback().await.map_err(RealWorldError::DB)?;
+            return Err(RealWorldError::DB(e));
+        },
+    };
 
     if let Some(tags) = &tag_list {
         /*
@@ -185,14 +193,19 @@ async fn create(
             })
         }
 
-        sqlx::query!(r#"
+        if let Err(e) = sqlx::query!(r#"
             INSERT INTO
                 articles_have_tags (tag_id,            article_id       )
                 SELECT              UNNEST($1::int[]), UNNEST($2::uuid[])
         "#, &tag_ids, &vec![created.id; tag_ids.len()])
-            .execute(*pool).await
-            .map_err(RealWorldError::DB)?;
+            .execute(&mut *tx).await
+        {
+            tx.rollback().await.map_err(RealWorldError::DB)?;
+            return Err(RealWorldError::DB(e));
+        }
     }
+
+    tx.commit().await.map_err(RealWorldError::DB)?;
 
     let author = sqlx::query!(r#"
         SELECT name, bio, image_url
