@@ -1,5 +1,6 @@
 use crate::errors::RealWorldError;
 use std::process::{Command, Stdio};
+use std::format as f;
 
 
 #[allow(non_snake_case)]
@@ -16,23 +17,23 @@ impl TestDB {
     fn db_url(&self) -> String {
         let Self { POSTGRES_PASSWORD, POSTGRES_USER, POSTGRES_PORT, POSTGRES_DB } = self;
 
-        format!("postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@localhost:{POSTGRES_PORT}/{POSTGRES_DB}?sslmode=disable")
+        f!("postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@localhost:{POSTGRES_PORT}/{POSTGRES_DB}?sslmode=disable")
     }
 
     async fn setup(&self) -> Result<sqlx::PgPool, RealWorldError> {
         let Self { POSTGRES_PASSWORD, POSTGRES_USER, POSTGRES_PORT, POSTGRES_DB } = self;
 
-        Command::new("docker").stdout(Stdio::piped()).stderr(Stdio::piped()).args([
-            format!("container"), format!("run"),
-            format!("--name"), format!("{}", Self::CONTAINER_NAME),
-            format!("-e"), format!("POSTGRES_PASSWORD={POSTGRES_PASSWORD}"),
-            format!("-e"), format!("POSTGRES_USER={POSTGRES_USER}"),
-            format!("-e"), format!("POSTGRES_PORT={POSTGRES_PORT}"),
-            format!("-e"), format!("POSTGRES_DB={POSTGRES_DB}"),
-            format!("-p"), format!("{POSTGRES_PORT}:{POSTGRES_PORT}"),
-            format!("--rm"),
-            format!("{}", Self::CONTAINER_IMAGE),
-        ]).spawn().map_err(|e| RealWorldError::Config(e.to_string()))?;
+//        Command::new("docker").stdout(Stdio::piped()).stderr(Stdio::piped()).args([
+//            f!("container"), f!("run"),
+//            f!("--name"), f!("{}", Self::CONTAINER_NAME),
+//            f!("-e"), f!("POSTGRES_PASSWORD={POSTGRES_PASSWORD}"),
+//            f!("-e"), f!("POSTGRES_USER={POSTGRES_USER}"),
+//            f!("-e"), f!("POSTGRES_DB={POSTGRES_DB}"),
+//            f!("-p"), f!("{POSTGRES_PORT}:5432"),
+//            f!("-d"),
+//            f!("--rm"),
+//            f!("{}", Self::CONTAINER_IMAGE),
+//        ]).spawn().map_err(|e| RealWorldError::Config(e.to_string()))?;
 
         let pool = sqlx::postgres::PgPoolOptions::new()
             .max_connections(42)
@@ -40,23 +41,28 @@ impl TestDB {
             .connect(&self.db_url()).await
             .map_err(RealWorldError::DB)?;
 
-        Command::new("sqlx").stdout(Stdio::piped()).stderr(Stdio::piped()).args([
-            "migrate", "run", "--database-url", &self.db_url()
-        ]).spawn().map_err(|e| RealWorldError::DB(sqlx::Error::Migrate(Box::new(sqlx::migrate::MigrateError::Execute(sqlx::Error::Io(e))))))?;
+        Command::new("sqlx").stdout(Stdio::piped()).stderr(Stdio::piped())
+            .args(["migrate", "run", "--database-url", &self.db_url()])
+            .spawn()
+            .map_err(|e| RealWorldError::DB(sqlx::Error::Migrate(Box::new(sqlx::migrate::MigrateError::Execute(sqlx::Error::Io(e))))))?
+            .wait()
+            .map_err(|e| RealWorldError::DB(sqlx::Error::Migrate(Box::new(sqlx::migrate::MigrateError::Execute(sqlx::Error::Io(e))))))?;
 
         Ok(pool)
     }
 }
 impl Drop for TestDB {
     fn drop(&mut self) {
-        Command::new("docker").stdout(Stdio::piped()).stderr(Stdio::piped()).args([
-            "container", "stop", Self::CONTAINER_NAME
-        ]).spawn().unwrap();
+        Command::new("docker").stdout(Stdio::piped()).stderr(Stdio::piped())
+            .args(["container", "stop", Self::CONTAINER_NAME])
+            .spawn().unwrap()
+            .wait().unwrap();
     }
 }
 
 
-#[tokio::test] async fn senario() {
+#[tokio::test]
+pub async fn senario() {
     dotenvy::dotenv().unwrap();
     
     let db = TestDB {
@@ -70,7 +76,6 @@ impl Drop for TestDB {
         db.setup().await.unwrap()
     );
 
-    use std::format as f;
     use ohkami::testing::*;
     use ohkami::http::Status;
     use crate::models::{*, request::*, response::*};
@@ -197,4 +202,9 @@ impl Drop for TestDB {
     assert_eq!(res.json::<ListOfTagsResponse>().unwrap().unwrap(), ListOfTagsResponse {
         tags: vec![Tag::new("reactjs"), Tag::new("angularjs"), Tag::new("dragons")]
     });
+
+
+    /*===== Clearn up =====*/
+
+    drop(db);
 }
