@@ -187,8 +187,8 @@ async fn create(
 
         sqlx::query!(r#"
             INSERT INTO
-                articles_tags (tag_id,            article_id       )
-                SELECT        UNNEST($1::uuid[]), UNNEST($2::uuid[])
+                articles_have_tags (tag_id,            article_id       )
+                SELECT              UNNEST($1::int[]), UNNEST($2::uuid[])
         "#, &tag_ids, &vec![created.id; tag_ids.len()])
             .execute(*pool).await
             .map_err(RealWorldError::DB)?;
@@ -304,12 +304,22 @@ async fn add_comment(
 ) -> Result<Created<SingleCommentResponse>, RealWorldError> {
     let ariticle_id = article_id_by_slug(slug, *pool).await?;
 
-    let created = sqlx::query!(r#"
+    let new_comment_id = sqlx::query_scalar!(r#"
+        SELECT id FROM comments
+        WHERE article_id = $1
+        ORDER BY created_at DESC
+        LIMIT 1
+    "#, ariticle_id)
+        .fetch_optional(*pool).await
+        .map_err(RealWorldError::DB)?
+        .unwrap_or(0) + 1;
+
+    let created_at = sqlx::query_scalar!(r#"
         INSERT INTO
-            comments (author_id, article_id, content)
-            VALUES   ($1,        $2,         $3     )
-        RETURNING id, created_at
-    "#, auth.user_id, ariticle_id, body.content)
+            comments (id, author_id, article_id, content)
+            VALUES   ($1, $2,        $3,         $4     )
+        RETURNING created_at
+    "#, new_comment_id, auth.user_id, ariticle_id, body.content)
         .fetch_one(*pool).await
         .map_err(RealWorldError::DB)?;
 
@@ -323,9 +333,9 @@ async fn add_comment(
 
     Ok(Created(SingleCommentResponse {
         comment: Comment {
-            id:         created.id as _,
-            created_at: created.created_at,
-            updated_at: created.created_at,
+            id:         new_comment_id as _,
+            created_at: created_at,
+            updated_at: created_at,
             body:       body.content.into(),
             author:     Profile {
                 username:  comment_author.name,
