@@ -70,12 +70,13 @@ impl Drop for TestDB {
         db.setup().await.unwrap()
     );
 
+    use std::format as f;
     use ohkami::testing::*;
     use ohkami::http::Status;
     use crate::models::{*, request::*, response::*};
 
 
-    /*===== Play the test senario =====*/
+    /*===== Play the test senario based on https://realworld-docs.netlify.app/docs/specs/backend-specs/endpoints =====*/
 
 
     // Jacob registers to the service
@@ -103,7 +104,7 @@ impl Drop for TestDB {
     // He checks current profile of himself
 
     let req = TestRequest::GET("/api/user")
-        .header("Authorization", format!("Bearer {jwt}"));
+        .header("Authorization", f!("Bearer {jwt}"));
     let res = t.oneshot(req).await;
 
     assert_eq!(res.status(), Status::OK);
@@ -121,7 +122,7 @@ impl Drop for TestDB {
     // He writes his bio and image
 
     let req = TestRequest::PUT("/api/user")
-        .header("Authorization", format!("Bearer {jwt}"))
+        .header("Authorization", f!("Bearer {jwt}"))
         .json_lit(r#"
             {
                 "user": {
@@ -144,6 +145,56 @@ impl Drop for TestDB {
     assert_eq!(image.unwrap(), "https://i.stack.imgur.com/xHWG8.jpg");
 
 
+    // He checks what tags exist at that time
+    // (But found nothing because he's the first user)
+
+    let req = TestRequest::GET("/api/tags");
+    let res = t.oneshot(req).await;
+
+    assert_eq!(res.status(), Status::OK);
+    assert_eq!(res.json::<ListOfTagsResponse>().unwrap().unwrap(), ListOfTagsResponse {
+        tags: Vec::new()
+    });
+
+
     // He writes the first article in this service
-    
+
+    let req = TestRequest::POST("/api/articles")
+        .header("Authorization", f!("Bearer {jwt}"))
+        .json(CreateArticleRequest {
+            title:       "How to train your dragon",
+            description: "Ever wonder how?",
+            body:        "You have to believe",
+            tag_list:    Some(vec![Tag::new("reactjs"), Tag::new("angularjs"), Tag::new("dragons")]),
+        });
+    let res = t.oneshot(req).await;
+
+    assert_eq!(res.status(), Status::Created);
+
+    let SingleArticleResponse { article } = res.json().unwrap().unwrap();
+
+    assert_eq!(article.title,           "How to train your dragon");
+    assert_eq!(article.slug,            "How-to-train-your-dragon");
+    assert_eq!(article.description,     "Ever wonder how?");
+    assert_eq!(article.body,            "You have to believe");
+    assert_eq!(article.tag_list,        vec![f!("reactjs"), f!("angularjs"), f!("dragons")]);
+    assert_eq!(article.favorited,       false);
+    assert_eq!(article.favorites_count, 0);
+    assert_eq!(article.author,          Profile {
+        username:  f!("Jacob"),
+        bio:       Some(f!("I like to skateboard")),
+        image:     Some(f!("https://i.stack.imgur.com/xHWG8.jpg")),
+        following: false,
+    });
+
+
+    // He checks tags again
+
+    let req = TestRequest::GET("/api/tags");
+    let res = t.oneshot(req).await;
+
+    assert_eq!(res.status(), Status::OK);
+    assert_eq!(res.json::<ListOfTagsResponse>().unwrap().unwrap(), ListOfTagsResponse {
+        tags: vec![Tag::new("reactjs"), Tag::new("angularjs"), Tag::new("dragons")]
+    });
 }

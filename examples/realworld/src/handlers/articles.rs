@@ -218,8 +218,8 @@ async fn create(
     Ok(Created(SingleArticleResponse {
         article: Article {
             title:           title.into(),
-            slug:            Some(slug),
-            description:     Some(description.into()),
+            slug:            slug,
+            description:     description.into(),
             body:            body.into(),
             tag_list:        tag_list.unwrap_or_else(Vec::new).into_iter().map(|t| t.to_string()).collect(),
             created_at:      created.created_at,
@@ -267,7 +267,7 @@ async fn update(
             updater
                 .push(if once_set {","} else {" SET "})
                 .push("description = ").push_bind(description);
-            article.description = Some(description.into());
+            article.description = description.into();
             once_set = true;
         }
         if let Some(body) = body.body {

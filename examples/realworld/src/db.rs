@@ -150,9 +150,9 @@ pub struct UserEntity {
 #[derive(sqlx::FromRow)]
 pub struct ArticleEntity {
     pub id:              Uuid,
-    pub slug:            Option<String>,
+    pub slug:            String,
     pub title:           String,
-    pub description:     Option<String>,
+    pub description:     String,
     pub body:            String,
     pub created_at:      DateTime<Utc>,
     pub updated_at:      DateTime<Utc>,

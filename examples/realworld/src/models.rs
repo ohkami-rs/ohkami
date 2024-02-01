@@ -6,7 +6,7 @@ pub mod response;
 
 
 mod serde_datetime {
-    use ohkami::utils::{Serializer, Deserializer};
+    use ohkami::utils::{Deserialize, Deserializer, Serializer};
     use chrono::{DateTime, Utc, SecondsFormat};
 
     pub(super) fn serialize<S: Serializer>(
@@ -19,17 +19,17 @@ mod serde_datetime {
     pub(super) fn deserialize<'de, D: Deserializer<'de>>(
         deserializer: D,
     ) -> Result<DateTime<Utc>, D::Error> {
-        //DateTime::<Utc>::parse_from_rfc3339(
-//
-        //);
-        todo!()
-        // deserializer.deserialize_str(visitor)
+        let dt = DateTime::parse_from_rfc3339(&String::deserialize(deserializer)?)
+            .map_err(uuid::serde::compact::);
+
+
+        Ok(dt.unwrap())
     }
 }
 
 
 #[derive(Serialize)]
-#[cfg_attr(test, derive(ohkami::utils::Deserialize))]
+#[cfg_attr(test, derive(ohkami::utils::Deserialize, Debug, PartialEq))]
 pub struct User {
     pub email: String,
     #[serde(rename = "token")]
@@ -41,7 +41,7 @@ pub struct User {
 }
 
 #[derive(Serialize)]
-#[cfg_attr(test, derive(ohkami::utils::Deserialize))]
+#[cfg_attr(test, derive(ohkami::utils::Deserialize, Debug, PartialEq))]
 pub struct Profile {
     pub username:  String,
     pub bio:       Option<String>,
@@ -50,11 +50,11 @@ pub struct Profile {
 }
 
 #[derive(Serialize)]
-#[cfg_attr(test, derive(ohkami::utils::Deserialize))]
+#[cfg_attr(test, derive(ohkami::utils::Deserialize, Debug, PartialEq))]
 pub struct Article {
     pub title:           String,
-    pub slug:            Option<String>,
-    pub description:     Option<String>,
+    pub slug:            String,
+    pub description:     String,
     pub body:            String,
     #[serde(rename = "tagList")]
     pub tag_list:        Vec<String>,
@@ -69,7 +69,7 @@ pub struct Article {
 }
 
 #[derive(Serialize)]
-#[cfg_attr(test, derive(ohkami::utils::Deserialize))]
+#[cfg_attr(test, derive(ohkami::utils::Deserialize, Debug, PartialEq))]
 pub struct Comment {
     pub id:         usize,
     #[serde(rename = "createdAt", with = "serde_datetime")]
@@ -81,6 +81,7 @@ pub struct Comment {
 }
 
 #[derive(Serialize, Deserialize)]
+#[cfg_attr(test, derive(Debug, PartialEq))]
 pub struct Tag<'t>(std::borrow::Cow<'t, str>);
 const _: () = {
     impl Tag<'static> {

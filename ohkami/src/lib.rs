@@ -283,8 +283,9 @@ pub mod testing {
 pub mod utils {
     pub use crate::x_utils::{imf_fixdate_now, unix_timestamp, CORS, JWT, File, Text, HTML, ResponseBody};
     pub use ohkami_macros ::{Query, Payload, ResponseBody, Serialize, Deserialize};
-    pub use crate::__internal__::serde::{ser::{Serialize, Serializer}, de::{Deserialize, Deserializer}};
+    pub use ::serde::{ser::{self, Serialize, Serializer}, de::{self, Deserialize, Deserializer}};
 }
+
 #[cfg(feature="utils")]
 pub mod typed {
     pub use crate::x_utils::{
