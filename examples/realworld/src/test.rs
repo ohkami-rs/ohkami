@@ -8,7 +8,7 @@ use ohkami::testing::*;
     let pool = PgPoolOptions::new()
         .max_connections(42)
         .min_connections(42)
-        .connect(config::DB_URL().unwrap()).await
+        .connect(config::DATABASE_URL().unwrap()).await
         .unwrap();
 
     let t = handlers::realworld_ohkami(pool);
