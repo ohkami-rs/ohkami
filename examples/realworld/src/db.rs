@@ -150,9 +150,9 @@ pub struct UserEntity {
 #[derive(sqlx::FromRow)]
 pub struct ArticleEntity {
     pub id:              Uuid,
-    pub slug:            Option<String>,
+    pub slug:            String,
     pub title:           String,
-    pub description:     Option<String>,
+    pub description:     String,
     pub body:            String,
     pub created_at:      DateTime<Utc>,
     pub updated_at:      DateTime<Utc>,
@@ -199,7 +199,7 @@ pub struct ArticleEntity {
                      articles                 AS a
                 JOIN users                    AS author ON a.author_id = author.id
                 JOIN users_favorite_articles  AS fav    ON a.id = fav.article_id
-                JOIN articles_tags            AS a_tags ON a.id = a_tags.article_id
+                JOIN articles_have_tags       AS a_tags ON a.id = a_tags.article_id
                 JOIN tags                     AS tags   ON a_tags.tag_id = tags.id
             GROUP BY
                 a.id, author.id

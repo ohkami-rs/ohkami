@@ -4,13 +4,10 @@ use sqlx::PgPool;
 use crate::{config::JWTPayload, errors::RealWorldError};
 use crate::fangs::{Auth, OptionalAuth};
 use crate::db::{article_id_by_slug, UserAndFollowings, ArticleEntity, CommentEntity};
-use crate::models::request::{
-    ListArticlesQuery,
-    FeedArticleQuery,
-};
 use crate::models::{
     Article, Profile, Comment,
-    request::{CreateArticleRequest, UpdateArticleRequest, AddCommentRequest},
+    request::{ListArticlesQuery, FeedArticleQuery},
+    request::{CreateArticleRequest, CreateArticleRequestArticle, UpdateArticleRequest, AddCommentRequest},
     response::{SingleArticleResponse, MultipleArticlesResponse, SingleCommentResponse, MultipleCommentsResponse},
 };
 
@@ -155,16 +152,28 @@ async fn create(
 ) -> Result<Created<SingleArticleResponse>, RealWorldError> {
     let author_id = auth.user_id;
     let slug = req.slug();
-    let CreateArticleRequest { title, description, body, tag_list } = req;
+    let CreateArticleRequest {
+        article: CreateArticleRequestArticle {
+            title, description, body, tag_list
+        }
+    } = req;
 
-    let created = sqlx::query!(r#"
+    let mut tx = pool.begin().await.map_err(RealWorldError::DB)?;
+
+    let created = match sqlx::query!(r#"
         INSERT INTO
             articles (author_id, slug, title, description, body)
             VALUES   ($1,        $2,   $3,    $4,          $5  )
         RETURNING id, created_at, updated_at
     "#, author_id, slug, title, description, body)
-        .fetch_one(*pool).await
-        .map_err(RealWorldError::DB)?;
+        .fetch_one(&mut *tx).await
+    {
+        Ok(ok) => ok,
+        Err(e) => {
+            tx.rollback().await.map_err(RealWorldError::DB)?;
+            return Err(RealWorldError::DB(e));
+        },
+    };
 
     if let Some(tags) = &tag_list {
         /*
@@ -185,14 +194,19 @@ async fn create(
             })
         }
 
-        sqlx::query!(r#"
+        if let Err(e) = sqlx::query!(r#"
             INSERT INTO
-                articles_tags (tag_id,            article_id       )
-                SELECT        UNNEST($1::uuid[]), UNNEST($2::uuid[])
+                articles_have_tags (tag_id,            article_id       )
+                SELECT              UNNEST($1::int[]), UNNEST($2::uuid[])
         "#, &tag_ids, &vec![created.id; tag_ids.len()])
-            .execute(*pool).await
-            .map_err(RealWorldError::DB)?;
+            .execute(&mut *tx).await
+        {
+            tx.rollback().await.map_err(RealWorldError::DB)?;
+            return Err(RealWorldError::DB(e));
+        }
     }
+
+    tx.commit().await.map_err(RealWorldError::DB)?;
 
     let author = sqlx::query!(r#"
         SELECT name, bio, image_url
@@ -205,8 +219,8 @@ async fn create(
     Ok(Created(SingleArticleResponse {
         article: Article {
             title:           title.into(),
-            slug:            Some(slug),
-            description:     Some(description.into()),
+            slug:            slug,
+            description:     description.into(),
             body:            body.into(),
             tag_list:        tag_list.unwrap_or_else(Vec::new).into_iter().map(|t| t.to_string()).collect(),
             created_at:      created.created_at,
@@ -243,21 +257,23 @@ async fn update(
 
     let mut updater = sqlx::QueryBuilder::new("UPDATE articles SET updated_at = now()");
     let mut once_set = false; {
-        if let Some(title) = body.title {
+        let set = body.article;
+
+        if let Some(title) = set.title {
             updater
                 .push(if once_set {","} else {" SET "})
                 .push("title = ").push_bind(title);
             article.title = title.into();
             once_set = true;
         }
-        if let Some(description) = body.description {
+        if let Some(description) = set.description {
             updater
                 .push(if once_set {","} else {" SET "})
                 .push("description = ").push_bind(description);
-            article.description = Some(description.into());
+            article.description = description.into();
             once_set = true;
         }
-        if let Some(body) = body.body {
+        if let Some(body) = set.body {
             updater
                 .push(if once_set {","} else {" SET "})
                 .push("body = ").push_bind(body);
@@ -303,13 +319,24 @@ async fn add_comment(
     pool: Memory<'_, PgPool>,
 ) -> Result<Created<SingleCommentResponse>, RealWorldError> {
     let ariticle_id = article_id_by_slug(slug, *pool).await?;
+    let content = body.comment.content;
 
-    let created = sqlx::query!(r#"
+    let new_comment_id = sqlx::query_scalar!(r#"
+        SELECT id FROM comments
+        WHERE article_id = $1
+        ORDER BY created_at DESC
+        LIMIT 1
+    "#, ariticle_id)
+        .fetch_optional(*pool).await
+        .map_err(RealWorldError::DB)?
+        .unwrap_or(0) + 1;
+
+    let created_at = sqlx::query_scalar!(r#"
         INSERT INTO
-            comments (author_id, article_id, content)
-            VALUES   ($1,        $2,         $3     )
-        RETURNING id, created_at
-    "#, auth.user_id, ariticle_id, body.content)
+            comments (id, author_id, article_id, content)
+            VALUES   ($1, $2,        $3,         $4     )
+        RETURNING created_at
+    "#, new_comment_id, auth.user_id, ariticle_id, content)
         .fetch_one(*pool).await
         .map_err(RealWorldError::DB)?;
 
@@ -323,10 +350,10 @@ async fn add_comment(
 
     Ok(Created(SingleCommentResponse {
         comment: Comment {
-            id:         created.id as _,
-            created_at: created.created_at,
-            updated_at: created.created_at,
-            body:       body.content.into(),
+            id:         new_comment_id as _,
+            created_at: created_at,
+            updated_at: created_at,
+            body:       content.into(),
             author:     Profile {
                 username:  comment_author.name,
                 bio:       comment_author.bio,

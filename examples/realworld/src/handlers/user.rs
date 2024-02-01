@@ -4,7 +4,7 @@ use crate::{
     fangs::Auth,
     models::User,
     models::response::UserResponse,
-    models::request::UpdateProfileRequest,
+    models::request::{UpdateProfileRequest, UpdateProfileRequestUser},
     errors::RealWorldError,
     config::{issue_jwt_for_user_of_id, JWTPayload},
     db::{UserEntity, hash_password},
@@ -15,13 +15,13 @@ pub fn user_ohkami() -> Ohkami {
     Ohkami::with(Auth::default(), (
         "/"
             .GET(get_current_user)
-            .POST(update),
+            .PUT(update),
     ))
 }
 
 async fn get_current_user(
     pool: Memory<'_, PgPool>,
-    auth: Memory<'_, JWTPayload>
+    auth: Memory<'_, JWTPayload>,
 ) -> Result<UserResponse, RealWorldError> {
     let u = sqlx::query_as!(UserEntity, r#"
         SELECT id, email, name, bio, image_url
@@ -43,13 +43,17 @@ async fn get_current_user(
     })
 }
 
-async fn update<'m>(
-    body: UpdateProfileRequest,
-    auth: Memory<'m, JWTPayload>,
-    pool: Memory<'m, PgPool>,
+async fn update<'h>(
+    body: UpdateProfileRequest<'h>,
+    auth: Memory<'h, JWTPayload>,
+    pool: Memory<'h, PgPool>,
 ) -> Result<UserResponse, RealWorldError> {
     let user_entity = {
-        let UpdateProfileRequest { email, username, image, bio, password:raw_password } = body;
+        let UpdateProfileRequest {
+            user: UpdateProfileRequestUser {
+                email, username, image, bio, password:raw_password
+            }
+        } = body;
         let new_password_and_salt = raw_password.map(|rp| hash_password(&rp)).transpose()?;
 
         let mut set_once = false;

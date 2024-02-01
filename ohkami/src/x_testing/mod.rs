@@ -38,7 +38,7 @@ impl Testing for Ohkami {
         let res = async move {
             let mut req = Request::init();
             let mut req = unsafe {Pin::new_unchecked(&mut req)};
-            req.as_mut().read(&mut &request.encode_request()[..]).await;
+            req.as_mut().read(&mut &request.encode()[..]).await;
 
             #[cfg(not(feature="websocket"))]
             let res = router.handle(&mut req).await;
@@ -101,7 +101,7 @@ pub struct TestRequest {
     headers: HashMap<Cow<'static, str>, Cow<'static, str>>,
     content: Option<Cow<'static, str>>,
 } impl TestRequest {
-    fn encode_request(self) -> Vec<u8> {
+    pub(crate) fn encode(self) -> Vec<u8> {
         let Self { method, path, queries, headers, content } = self;
 
         let queries = queries.into_iter()

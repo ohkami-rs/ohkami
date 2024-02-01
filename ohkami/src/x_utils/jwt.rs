@@ -2,10 +2,6 @@
 
 pub use internal::JWT;
 
-pub fn JWT(secret: impl Into<std::borrow::Cow<'static, str>>) -> internal::JWT {
-    internal::JWT::new(secret)
-}
-
 mod internal {
     use std::borrow::Cow;
     use crate::layer0_lib::{base64};
@@ -137,20 +133,39 @@ mod internal {
                 return Err(Response::Unauthorized().text(UNAUTHORIZED_MESSAGE))
             }
 
-            let signature_part = parts.next()
-                .ok_or_else(|| Response::BadRequest())?;
+            let signature_part = parts.next().ok_or_else(|| Response::BadRequest())?;
             let requested_signature = base64::decode_url(signature_part);
-            let actual_signature = {
-                use ::sha2::{Sha256};
+
+            let is_correct_signature = {
+                use ::sha2::{Sha256, Sha384, Sha512};
                 use ::hmac::{Hmac, KeyInit, Mac};
 
-                let mut hs = Hmac::<Sha256>::new_from_slice(self.secret.as_bytes()).unwrap();
-                hs.update(header_part.as_bytes());
-                hs.update(b".");
-                hs.update(payload_part.as_bytes());
-                hs.finalize().into_bytes()
+                match self.alg {
+                    VerifyingAlgorithm::HS256 => {
+                        let mut hs = Hmac::<Sha256>::new_from_slice(self.secret.as_bytes()).unwrap();
+                        hs.update(header_part.as_bytes());
+                        hs.update(b".");
+                        hs.update(payload_part.as_bytes());
+                        hs.finalize().into_bytes().0 == *requested_signature
+                    }
+                    VerifyingAlgorithm::HS384 => {
+                        let mut hs = Hmac::<Sha384>::new_from_slice(self.secret.as_bytes()).unwrap();
+                        hs.update(header_part.as_bytes());
+                        hs.update(b".");
+                        hs.update(payload_part.as_bytes());
+                        hs.finalize().into_bytes().0 == *requested_signature
+                    }
+                    VerifyingAlgorithm::HS512 => {
+                        let mut hs = Hmac::<Sha512>::new_from_slice(self.secret.as_bytes()).unwrap();
+                        hs.update(header_part.as_bytes());
+                        hs.update(b".");
+                        hs.update(payload_part.as_bytes());
+                        hs.finalize().into_bytes().0 == *requested_signature
+                    }
+                }
             };
-            if *requested_signature != *actual_signature {
+            
+            if !is_correct_signature {
                 return Err(Response::Unauthorized().text(UNAUTHORIZED_MESSAGE))
             }
 
@@ -183,12 +198,31 @@ mod internal {
             ```
         */
         assert_eq! {
-            JWT("secret").issue(::serde_json::json!({"name":"kanarus","id":42,"iat":1516239022})),
+            JWT::new("secret").issue(::serde_json::json!({"name":"kanarus","id":42,"iat":1516239022})),
             "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE1MTYyMzkwMjIsImlkIjo0MiwibmFtZSI6ImthbmFydXMifQ.dt43rLwmy4_GA_84LMC1m5CwVc59P9as_nRFldVCH7g"
         }
     }
 
     #[test] async fn test_jwt_verify() {
+        use crate::{Request, testing::TestRequest};
+        use std::pin::Pin;
+
+        let my_jwt = JWT::new("ohkami-realworld-jwt-authorization-secret-key");
+
+        let req_bytes = TestRequest::GET("/")
+            .header("Authorization", "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE3MDY4MTEwNzUsInVzZXJfaWQiOiI5ZmMwMDViMi1mODU4LTQzMzYtODkwYS1mMWEyYWVmNjBhMjQifQ.AKp-0zvKK4Hwa6qCgxskckD04Snf0gpSG7U1LOpcC_I")
+            .encode();
+        let mut req = Request::init();
+        let mut req = unsafe {Pin::new_unchecked(&mut req)};
+        req.as_mut().read(&mut &req_bytes[..]).await;
+
+        assert_eq!(
+            my_jwt.verified::<::serde_json::Value>(&req.as_ref()).unwrap(),
+            ::serde_json::json!({ "iat": 1706811075, "user_id": "9fc005b2-f858-4336-890a-f1a2aef60a24" })
+        );
+    }
+
+    #[test] async fn test_jwt_verify_senario() {
         use crate::prelude::*;
         use crate::utils::ResponseBody;
         use crate::{testing::*, http, Memory};
@@ -198,7 +232,7 @@ mod internal {
 
 
         fn my_jwt() -> JWT {
-            JWT("myverysecretjwtsecretkey")
+            JWT::new("myverysecretjwtsecretkey")
         }
 
         #[derive(serde::Serialize, serde::Deserialize)]
