@@ -133,20 +133,39 @@ mod internal {
                 return Err(Response::Unauthorized().text(UNAUTHORIZED_MESSAGE))
             }
 
-            let signature_part = parts.next()
-                .ok_or_else(|| Response::BadRequest())?;
+            let signature_part = parts.next().ok_or_else(|| Response::BadRequest())?;
             let requested_signature = base64::decode_url(signature_part);
-            let actual_signature = {
-                use ::sha2::{Sha256};
+
+            let is_correct_signature = {
+                use ::sha2::{Sha256, Sha384, Sha512};
                 use ::hmac::{Hmac, KeyInit, Mac};
 
-                let mut hs = Hmac::<Sha256>::new_from_slice(self.secret.as_bytes()).unwrap();
-                hs.update(header_part.as_bytes());
-                hs.update(b".");
-                hs.update(payload_part.as_bytes());
-                hs.finalize().into_bytes()
+                match self.alg {
+                    VerifyingAlgorithm::HS256 => {
+                        let mut hs = Hmac::<Sha256>::new_from_slice(self.secret.as_bytes()).unwrap();
+                        hs.update(header_part.as_bytes());
+                        hs.update(b".");
+                        hs.update(payload_part.as_bytes());
+                        hs.finalize().into_bytes().0 == *requested_signature
+                    }
+                    VerifyingAlgorithm::HS384 => {
+                        let mut hs = Hmac::<Sha384>::new_from_slice(self.secret.as_bytes()).unwrap();
+                        hs.update(header_part.as_bytes());
+                        hs.update(b".");
+                        hs.update(payload_part.as_bytes());
+                        hs.finalize().into_bytes().0 == *requested_signature
+                    }
+                    VerifyingAlgorithm::HS512 => {
+                        let mut hs = Hmac::<Sha512>::new_from_slice(self.secret.as_bytes()).unwrap();
+                        hs.update(header_part.as_bytes());
+                        hs.update(b".");
+                        hs.update(payload_part.as_bytes());
+                        hs.finalize().into_bytes().0 == *requested_signature
+                    }
+                }
             };
-            if *requested_signature != *actual_signature {
+            
+            if !is_correct_signature {
                 return Err(Response::Unauthorized().text(UNAUTHORIZED_MESSAGE))
             }
 

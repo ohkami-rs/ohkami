@@ -23,30 +23,31 @@ impl TestDB {
     async fn setup(&self) -> Result<sqlx::PgPool, RealWorldError> {
         let Self { POSTGRES_PASSWORD, POSTGRES_USER, POSTGRES_PORT, POSTGRES_DB } = self;
 
-//        Command::new("docker").stdout(Stdio::piped()).stderr(Stdio::piped()).args([
-//            f!("container"), f!("run"),
-//            f!("--name"), f!("{}", Self::CONTAINER_NAME),
-//            f!("-e"), f!("POSTGRES_PASSWORD={POSTGRES_PASSWORD}"),
-//            f!("-e"), f!("POSTGRES_USER={POSTGRES_USER}"),
-//            f!("-e"), f!("POSTGRES_DB={POSTGRES_DB}"),
-//            f!("-p"), f!("{POSTGRES_PORT}:5432"),
-//            f!("-d"),
-//            f!("--rm"),
-//            f!("{}", Self::CONTAINER_IMAGE),
-//        ]).spawn().map_err(|e| RealWorldError::Config(e.to_string()))?;
+        Command::new("docker").stdout(Stdio::piped()).stderr(Stdio::piped())
+            .args([
+                f!("container"), f!("run"),
+                f!("--name"), f!("{}", Self::CONTAINER_NAME),
+                f!("-e"), f!("POSTGRES_PASSWORD={POSTGRES_PASSWORD}"),
+                f!("-e"), f!("POSTGRES_USER={POSTGRES_USER}"),
+                f!("-e"), f!("POSTGRES_DB={POSTGRES_DB}"),
+                f!("-p"), f!("{POSTGRES_PORT}:5432"),
+                f!("-d"),
+                f!("--rm"),
+                f!("{}", Self::CONTAINER_IMAGE),
+            ])
+            .spawn().map_err(|e| RealWorldError::Config(e.to_string()))?
+            .wait().map_err(|e| RealWorldError::Config(e.to_string()))?;
+
+        Command::new("sqlx").stdout(Stdio::piped()).stderr(Stdio::piped())
+            .args(["migrate", "run", "--database-url", &self.db_url()])
+            .spawn().map_err(|e| RealWorldError::DB(sqlx::Error::Migrate(Box::new(sqlx::migrate::MigrateError::Execute(sqlx::Error::Io(e))))))?
+            .wait().map_err(|e| RealWorldError::DB(sqlx::Error::Migrate(Box::new(sqlx::migrate::MigrateError::Execute(sqlx::Error::Io(e))))))?;
 
         let pool = sqlx::postgres::PgPoolOptions::new()
             .max_connections(42)
             .min_connections(42)
             .connect(&self.db_url()).await
             .map_err(RealWorldError::DB)?;
-
-        Command::new("sqlx").stdout(Stdio::piped()).stderr(Stdio::piped())
-            .args(["migrate", "run", "--database-url", &self.db_url()])
-            .spawn()
-            .map_err(|e| RealWorldError::DB(sqlx::Error::Migrate(Box::new(sqlx::migrate::MigrateError::Execute(sqlx::Error::Io(e))))))?
-            .wait()
-            .map_err(|e| RealWorldError::DB(sqlx::Error::Migrate(Box::new(sqlx::migrate::MigrateError::Execute(sqlx::Error::Io(e))))))?;
 
         Ok(pool)
     }
@@ -83,17 +84,19 @@ pub async fn senario() {
 
     /*===== Play the test senario based on https://realworld-docs.netlify.app/docs/specs/backend-specs/endpoints =====*/
 
-
     // Jacob registers to the service
 
     let req = TestRequest::POST("/api/users")
         .json(RegisterRequest {
-            username: "Jacob",
-            email:    "jake@jake.jake",
-            password: "jakejake",
+            user: RegisterRequestUser {
+                username: "Jacob",
+                email:    "jake@jake.jake",
+                password: "jakejake",
+            }
         });
     let res = t.oneshot(req).await;
 
+    dbg!(res.text());
     assert_eq!(res.status(), Status::Created);
 
     let UserResponse {
@@ -101,8 +104,8 @@ pub async fn senario() {
     } = res.json().unwrap().unwrap();
 
     assert_eq!(email, "jake@jake.jake");
-    assert_eq!(name, "Jacob");
-    assert_eq!(bio, None);
+    assert_eq!(name,  "Jacob");
+    assert_eq!(bio,   None);
     assert_eq!(image, None);
 
 
@@ -145,9 +148,9 @@ pub async fn senario() {
     } = res.json().unwrap().unwrap();
 
     assert_eq!(email, "jake@jake.jake");
-    assert_eq!(name, "Jacob");
-    assert_eq!(bio.unwrap(), "I like to skateboard");
-    assert_eq!(image.unwrap(), "https://i.stack.imgur.com/xHWG8.jpg");
+    assert_eq!(name,  "Jacob");
+    assert_eq!(bio,   Some(f!("I like to skateboard")));
+    assert_eq!(image, Some(f!("https://i.stack.imgur.com/xHWG8.jpg")));
 
 
     // He checks what tags exist at that time
@@ -167,10 +170,12 @@ pub async fn senario() {
     let req = TestRequest::POST("/api/articles")
         .header("Authorization", f!("Bearer {jwt}"))
         .json(CreateArticleRequest {
-            title:       "How to train your dragon",
-            description: "Ever wonder how?",
-            body:        "You have to believe",
-            tag_list:    Some(vec![Tag::new("reactjs"), Tag::new("angularjs"), Tag::new("dragons")]),
+            article: CreateArticleRequestArticle {
+                title:       "How to train your dragon",
+                description: "Ever wonder how?",
+                body:        "You have to believe",
+                tag_list:    Some(vec![Tag::new("reactjs"), Tag::new("angularjs"), Tag::new("dragons")]),
+            }
         });
     let res = t.oneshot(req).await;
 

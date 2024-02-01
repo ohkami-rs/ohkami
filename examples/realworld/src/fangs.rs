@@ -19,13 +19,13 @@ impl Default for Auth {
 impl IntoFang for Auth {
     fn into_fang(self) -> Fang {
         Fang(move |req: &mut Request| {
-            if !self.condition.is_some_and(|cond| cond(req)) {
+            if self.condition.is_some_and(|cond| !cond(req)) {
                 return Ok(());
             }
 
             let secret = config::JWT_SECRET_KEY()
                 .map_err(RealWorldError::into_response)?;
-            let payload: config::JWTPayload = JWT(secret).verified(req)?;
+            let payload: config::JWTPayload = JWT::new(secret).verified(req)?;
             req.memorize(payload);
             Ok(())
         })
@@ -48,13 +48,13 @@ impl Default for OptionalAuth {
 impl IntoFang for OptionalAuth {
     fn into_fang(self) -> Fang {
         Fang(move |req: &mut Request| {
-            if !self.condition.is_some_and(|cond| cond(req)) {
+            if self.condition.is_some_and(|cond| !cond(req)) {
                 return Ok(());
             }
 
             let secret = config::JWT_SECRET_KEY()
                 .map_err(RealWorldError::into_response)?;
-            let payload: Option<config::JWTPayload> = JWT(secret).verified(req).ok();
+            let payload: Option<config::JWTPayload> = JWT::new(secret).verified(req).ok();
             req.memorize(payload);
             Ok(())
         })

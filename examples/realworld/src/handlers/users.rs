@@ -3,7 +3,7 @@ use sqlx::PgPool;
 use crate::{
     models::User,
     models::response::UserResponse,
-    models::request::{LoginRequest, LoginRequestUser, RegisterRequest},
+    models::request::{LoginRequest, LoginRequestUser, RegisterRequest, RegisterRequestUser},
     errors::RealWorldError,
     config,
     db,
@@ -48,7 +48,9 @@ async fn login(
 
 async fn register(
     pool: Memory<'_, PgPool>,
-    RegisterRequest { username, email, password }: RegisterRequest<'_>,
+    RegisterRequest {
+        user: RegisterRequestUser { username, email, password }
+    }: RegisterRequest<'_>,
 ) -> Result<Created<UserResponse>, RealWorldError> {
     let already_exists = sqlx::query!(r#"
         SELECT EXISTS (
