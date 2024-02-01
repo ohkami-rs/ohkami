@@ -1,5 +1,5 @@
-use ohkami::utils::{Serialize, Serializer, Deserialize};
-use chrono::{DateTime, Utc, SecondsFormat};
+use ohkami::utils::{Serialize, Deserialize};
+use chrono::{DateTime, Utc};
 
 pub mod request;
 pub mod response;
@@ -16,14 +16,14 @@ mod serde_datetime {
         serializer.serialize_str(&date_time.to_rfc3339_opts(SecondsFormat::Millis, true))
     }
 
+    #[allow(unused)] // used in test
     pub(super) fn deserialize<'de, D: Deserializer<'de>>(
         deserializer: D,
     ) -> Result<DateTime<Utc>, D::Error> {
-        let dt = DateTime::parse_from_rfc3339(&String::deserialize(deserializer)?)
-            .map_err(uuid::serde::compact::);
-
-
-        Ok(dt.unwrap())
+        let s = String::deserialize(deserializer)?;
+        let datetime = DateTime::parse_from_rfc3339(&s)
+            .map_err(ohkami::utils::de::Error::custom)?;
+        Ok(datetime.into())
     }
 }
 
