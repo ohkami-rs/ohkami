@@ -207,7 +207,7 @@ impl JWT {
     }
 
     #[test] async fn test_jwt_verify() {
-        use crate::{Request, testing::TestRequest, http::Status};
+        use crate::{Request, testing::TestRequest, Status};
         use std::pin::Pin;
 
         let my_jwt = JWT::default("ohkami-realworld-jwt-authorization-secret-key");
@@ -241,7 +241,7 @@ impl JWT {
     #[test] async fn test_jwt_verify_senario() {
         use crate::prelude::*;
         use crate::typed::ResponseBody;
-        use crate::{testing::*, http, Memory};
+        use crate::{testing::*, Memory};
 
         use std::{sync::OnceLock, collections::HashMap, borrow::Cow};
         use crate::__rt__::Mutex;
@@ -391,11 +391,11 @@ impl JWT {
 
         let req = TestRequest::PUT("/signin");
         let res = t.oneshot(req).await;
-        assert_eq!(res.status(), http::Status::BadRequest);
+        assert_eq!(res.status(), Status::BadRequest);
 
         let req = TestRequest::GET("/profile");
         let res = t.oneshot(req).await;
-        assert_eq!(res.status(), http::Status::Unauthorized);
+        assert_eq!(res.status(), Status::Unauthorized);
         assert_eq!(res.text(),   Some("missing or malformed jwt"));
 
 
@@ -405,13 +405,13 @@ impl JWT {
                 familly_name: "framework",
             });
         let res = t.oneshot(req).await;
-        assert_eq!(res.status(), http::Status::OK);
+        assert_eq!(res.status(), Status::OK);
         let jwt_1 = dbg!(res.text().unwrap());
 
         let req = TestRequest::GET("/profile")
             .header("Authorization", format!("Bearer {jwt_1}"));
         let res = t.oneshot(req).await;
-        assert_eq!(res.status(), http::Status::OK);
+        assert_eq!(res.status(), Status::OK);
         assert_eq!(res.json::<Profile>().unwrap().unwrap(), Profile {
             id:           1,
             first_name:   String::from("ohkami"),
@@ -421,7 +421,7 @@ impl JWT {
         let req = TestRequest::GET("/profile")
             .header("Authorization", format!("Bearer {jwt_1}x"));
         let res = t.oneshot(req).await;
-        assert_eq!(res.status(), http::Status::Unauthorized);
+        assert_eq!(res.status(), Status::Unauthorized);
         assert_eq!(res.text(),   Some("missing or malformed jwt"));
 
 
@@ -443,13 +443,13 @@ impl JWT {
                 familly_name: "Euler",
             });
         let res = t.oneshot(req).await;
-        assert_eq!(res.status(), http::Status::OK);
+        assert_eq!(res.status(), Status::OK);
         let jwt_2 = dbg!(res.text().unwrap());
 
         let req = TestRequest::GET("/profile")
             .header("Authorization", format!("Bearer {jwt_2}"));
         let res = t.oneshot(req).await;
-        assert_eq!(res.status(), http::Status::OK);
+        assert_eq!(res.status(), Status::OK);
         assert_eq!(res.json::<Profile>().unwrap().unwrap(), Profile {
             id:           2,
             first_name:   String::from("Leonhard"),
@@ -477,7 +477,7 @@ impl JWT {
         let req = TestRequest::GET("/profile")
             .header("Authorization", format!("Bearer {jwt_1}"));
         let res = t.oneshot(req).await;
-        assert_eq!(res.status(), http::Status::OK);
+        assert_eq!(res.status(), Status::OK);
         assert_eq!(res.json::<Profile>().unwrap().unwrap(), Profile {
             id:           1,
             first_name:   String::from("ohkami"),
@@ -487,7 +487,7 @@ impl JWT {
         let req = TestRequest::GET("/profile")
             .header("Authorization", format!("Bearer {jwt_2}0000"));
         let res = t.oneshot(req).await;
-        assert_eq!(res.status(), http::Status::Unauthorized);
+        assert_eq!(res.status(), Status::Unauthorized);
         assert_eq!(res.text(),   Some("missing or malformed jwt"));
 
 

@@ -20,7 +20,7 @@ pub(super) fn ResponseBody(format: TokenStream, data: TokenStream) -> Result<Tok
             impl<#generics_params> ::ohkami::typed::ResponseBody for #name<#generics_params>
                 #generics_where
             {
-                #[inline(always)] fn into_response_with(self, status: ::ohkami::http::Status) -> ::ohkami::Response {
+                #[inline(always)] fn into_response_with(self, status: ::ohkami::Status) -> ::ohkami::Response {
                     ::ohkami::Response::with(status).json(self)
                 }
             }
@@ -29,7 +29,7 @@ pub(super) fn ResponseBody(format: TokenStream, data: TokenStream) -> Result<Tok
                 #generics_where
             {
                 #[inline] fn into_response(self) -> ::ohkami::Response {
-                    ::ohkami::Response::with(::ohkami::http::Status::OK).json(self)
+                    ::ohkami::Response::with(::ohkami::Status::OK).json(self)
                 }
             }
         },
@@ -56,7 +56,7 @@ pub(super) fn ResponseBody(format: TokenStream, data: TokenStream) -> Result<Tok
                 impl<#generics_params> ::ohkami::typed::ResponseBody for #name<#generics_params>
                     #generics_where
                 {
-                    #[inline(always)] fn into_response_with(self, status: ::ohkami::http::Status) -> ::ohkami::Response {
+                    #[inline(always)] fn into_response_with(self, status: ::ohkami::Status) -> ::ohkami::Response {
                         ::ohkami::Response::with(status).json(self)
                     }
                 }
@@ -65,7 +65,7 @@ pub(super) fn ResponseBody(format: TokenStream, data: TokenStream) -> Result<Tok
                     #generics_where
                 {
                     #[inline] fn into_response(self) -> ::ohkami::Response {
-                        ::ohkami::Response::with(::ohkami::http::Status::OK).json(self)
+                        ::ohkami::Response::with(::ohkami::Status::OK).json(self)
                     }
                 }
             }

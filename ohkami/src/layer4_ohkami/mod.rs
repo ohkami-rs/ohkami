@@ -149,13 +149,25 @@ pub struct Ohkami {
 }
 
 impl Ohkami {
-    /// `routes` is tuple of routing item :
+    /// - `routes` is tuple of routing item :
     /// 
-    /// ```ignore
-    /// "/route".
-    ///     Method1(method1).
-    ///     Method2(method2)
+    /// ```
+    /// # use ohkami::Route;
+    /// #
+    /// # async fn handler1() -> &'static str {"1"}
+    /// # async fn handler2() -> &'static str {"2"}
+    /// # async fn handler3() -> &'static str {"3"}
+    /// #
+    /// # let _ =
+    /// (
+    ///     "/a".
+    ///         GET(handler1).
+    ///         POST(handler2),
+    ///     "/b".
+    ///         PUT(handler3),
     ///     //...
+    /// )
+    /// # ;
     /// ```
     pub fn new(routes: impl build::Routes) -> Self {
         Self {
@@ -183,15 +195,23 @@ impl Ohkami {
     /// 
     /// - `routes` is tuple of routing item :
     /// 
-    /// ```ignore
+    /// ```
+    /// # use ohkami::Route;
+    /// #
+    /// # async fn handler1() -> &'static str {"1"}
+    /// # async fn handler2() -> &'static str {"2"}
+    /// # async fn handler3() -> &'static str {"3"}
+    /// #
+    /// # let _ =
     /// (
     ///     "/a".
-    ///         GET(method1).
-    ///         POST(method2),
+    ///         GET(handler1).
+    ///         POST(handler2),
     ///     "/b".
-    ///         PUT(method3),
+    ///         PUT(handler3),
     ///     //...
     /// )
+    /// # ;
     /// ```
     pub fn with(fangs: impl with_fangs::Fangs, routes: impl build::Routes) -> Self {
         Self {

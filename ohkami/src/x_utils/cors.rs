@@ -1,6 +1,6 @@
 #![allow(non_snake_case)]
 
-use crate::{IntoFang, Fang, Response, Request, http::{append, Status, Method}};
+use crate::{IntoFang, Fang, Response, Request, append, Status, Method};
 
 
 pub struct CORS {
