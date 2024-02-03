@@ -14,7 +14,6 @@ license        = "MIT"
 
 [package.metadata.docs.rs]
 features       = ["rt_tokio", "custom-header"]
-rustdoc-args   = ["--no-deps"]
 
 [dependencies]
 ohkami_macros  = { version = "0.5", optional = true, path = "../ohkami_macros" }
