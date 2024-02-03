@@ -4,12 +4,6 @@ pub use headers::{Headers as ResponseHeaders, Header as ResponseHeader};
 mod into_response;
 pub use into_response::IntoResponse;
 
-#[cfg(feature="nightly")]
-use std::{
-    ops::FromResidual,
-    convert::Infallible
-};
-
 use std::{
     borrow::Cow,
 };
@@ -24,13 +18,6 @@ pub struct Response {
     pub headers:        ResponseHeaders,
     pub(crate) content: Option<Cow<'static, [u8]>>,
 } const _: () = {
-    #[cfg(feature="nightly")]
-    impl FromResidual<Result<Infallible, Response>> for Response {
-        fn from_residual(residual: Result<Infallible, Response>) -> Self {
-            unsafe {residual.unwrap_err_unchecked()}
-        }
-    }
-
     impl Response {
         #[inline(always)] pub fn with(status: Status) -> Self {
             Self {
@@ -64,6 +51,7 @@ macro_rules! new_response {
 
     MovedPermanently,
     Found,
+    NotModified,
 
     BadRequest,
     Unauthorized,

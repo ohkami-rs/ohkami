@@ -17,7 +17,7 @@ pub(super) fn ResponseBody(format: TokenStream, data: TokenStream) -> Result<Tok
         ResponseFormat::JSON => quote! {
             #data
 
-            impl<#generics_params> ::ohkami::utils::ResponseBody for #name<#generics_params>
+            impl<#generics_params> ::ohkami::typed::ResponseBody for #name<#generics_params>
                 #generics_where
             {
                 #[inline(always)] fn into_response_with(self, status: ::ohkami::http::Status) -> ::ohkami::Response {
@@ -35,7 +35,7 @@ pub(super) fn ResponseBody(format: TokenStream, data: TokenStream) -> Result<Tok
         },
         ResponseFormat::JSONS => {
             let derive_serialize = quote! {
-                #[derive(::ohkami::utils::Serialize)]
+                #[derive(::ohkami::serde::Serialize)]
                 #[::ohkami::__internal__::consume_struct]
                 #data
             };
@@ -53,7 +53,7 @@ pub(super) fn ResponseBody(format: TokenStream, data: TokenStream) -> Result<Tok
                 #derive_serialize
                 #data
 
-                impl<#generics_params> ::ohkami::utils::ResponseBody for #name<#generics_params>
+                impl<#generics_params> ::ohkami::typed::ResponseBody for #name<#generics_params>
                     #generics_where
                 {
                     #[inline(always)] fn into_response_with(self, status: ::ohkami::http::Status) -> ::ohkami::Response {

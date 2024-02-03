@@ -5,7 +5,7 @@ mod response; pub use response::*;
 #[cfg(feature="utils")]
 #[cfg(test)] #[allow(unused)] mod __ {
     use serde::Serialize;
-    use crate::{http::Status, typed::OK, IntoResponse, utils::ResponseBody, Response};
+    use crate::{http::Status, typed::ResponseBody, IntoResponse, Response};
 
     async fn handler_1() -> Status {
         Status::NoContent
@@ -39,8 +39,8 @@ mod response; pub use response::*;
         }
     };
 
-    async fn handler_2() -> Result<OK<Length>, LengthError> {
+    async fn handler_2() -> Result<Length, LengthError> {
         let length = Length::new()?;
-        Ok(OK(length))
+        Ok(length)
     }
 }

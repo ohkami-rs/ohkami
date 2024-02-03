@@ -1,178 +1,5 @@
-//! <div align="center">
-//!     <h1>ohkami</h1>
-//!     ohkami <em>- [狼] wolf in Japanese -</em> is <strong>declarative</strong> web framework for Rust.
-//! </div>
-//! 
-//! ## Quick start
-//! ```ignore
-//! use ohkami::prelude::*;
-//! use ohkami::utils::Text;
-//! 
-//! async fn health_check() -> impl IntoResponse {
-//!     Status::NoContent
-//! }
-//! 
-//! async fn hello(name: String) -> OK<String> {
-//!     OK(format!("Hello, {name}!"))
-//! }
-//! 
-//! #[tokio::main]
-//! async fn main() {
-//!     Ohkami::new((
-//!         "/hc"         .GET(health_check),
-//!         "/hello/:name".GET(hello),
-//!     )).howl(3000).await
-//! }
-//! ```
-//! <br/>
-//! 
-//! ### handle path params
-//! ```ignore
-//! use ohkami::prelude::*;
-//! 
-//! #[tokio::main]
-//! async fn main() {
-//!     Ohkami::new((
-//!         "/api/users/:id".
-//!             GET(get_user),
-//!     )).howl("localhost:5000").await
-//! }
-//! 
-//! async fn get_user(
-//!     id: usize /* <-- path param */
-//! ) -> Status { Status::OK }
-//! ```
-//! Use tuple like `(verion, id): (u8, usize),` for multiple path params.
-//! 
-//! <br/>
-//! 
-//! ### handle query params / request body
-//! ```
-//! use ohkami::prelude::*;
-//! use ohkami::utils;   // <--
-//! 
-//! #[utils::Query]
-//! struct SearchCondition<'q> {
-//!     q: &'q str,
-//! }
-//! async fn search(
-//!     condition: SearchCondition<'_>
-//! ) -> impl IntoResponse { Status::OK }
-//! 
-//! #[utils::Payload(JSON)]
-//! #[derive(serde::Deserialize)]
-//! struct CreateUserRequest<'req> {
-//!     #[serde(rename = "user_name")]
-//!     name:     &'req str,
-//!     password: &'req str,
-//! }
-//! 
-//! async fn create_user(
-//!     body: CreateUserRequest<'_>
-//! ) -> impl IntoResponse { Status::Created }
-//! ```
-//! `#[Query]`, `#[Payload( 〜 )]` implements `FromRequest` trait for the struct.
-//! 
-//! ( with path params : `(Context, {path params}, {FromRequest values...})` )
-//! 
-//! <br/>
-//! 
-//! ### use middlewares
-//! ohkami's middlewares are called "**fang**s".
-//! 
-//! ```
-//! use ohkami::prelude::*;
-//! 
-//! struct AppendHeaders;
-//! impl IntoFang for AppendHeaders {
-//!     fn into_fang(self) -> Fang {
-//!         Fang(|res: &mut Response| {
-//!             res.headers.set()
-//!                 .Server("ohkami");
-//!         })
-//!     }
-//! }
-//! 
-//! struct Log;
-//! impl IntoFang for Log {
-//!     fn into_fang(self) -> Fang {
-//!         Fang(|res: &Response| {
-//!             println!("{res:?}");
-//!         })
-//!     }
-//! }
-//! ```
-//! `Fang` schema :
-//! 
-//! - *back fang*  : `Fn(Response) -> Response`
-//! - *front fang* : `Fn(&mut Context) | Fn(&mut Request) | Fn(&mut Context, &mut Request)`, or `_ -> Result<(), Response>` for early returning error responses
-//! 
-//! <br/>
-//! 
-//! ### pack of Ohkamis
-//! ```ignore
-//! #[tokio::main]
-//! async fn main() {
-//!     // ...
-//! 
-//!     let users_ohkami = Ohkami::new((
-//!         "/".
-//!             POST(create_user),
-//!         "/:id".
-//!             GET(get_user).
-//!             PATCH(update_user).
-//!             DELETE(delete_user),
-//!     ));
-//! 
-//!     Ohkami::new((
-//!         "/hc"       .GET(health_check),
-//!         "/api/users".By(users_ohkami), // <-- nest by `By`
-//!     )).howl(5000).await
-//! }
-//! ```
-//! 
-//! <br/>
-//! 
-//! ### testing
-//! ```ignore
-//! use ohkami::prelude::*;
-//! use ohkami::testing::*; // <--
-//! 
-//! fn hello_ohkami() -> Ohkami {
-//!     Ohkami::new((
-//!         "/hello".GET(|| async move {
-//!             ohkami::utils::Text::OK("Hello, world!")
-//!         })
-//!     ))
-//! }
-//! 
-//! #[tokio::main]
-//! async fn main() {
-//!     hello_ohkami()
-//!         .howl(5050).await
-//! }
-//! 
-//! #[cfg(test)]
-//! #[tokio::test]
-//! async fn test_my_ohkami() {
-//!     let hello_ohkami = hello_ohkami();
-//! 
-//!     let res = hello_ohkami.oneshot(TestRequest::GET("/")).await;
-//!     assert_eq!(res.status, Status::NotFound);
-//! 
-//!     let res = hello_ohkami.oneshot(TestRequest::GET("/hello")).await;
-//!     assert_eq!(res.status, Status::OK);
-//!     assert_eq!(res.content.unwrap().text().unwrap(), "Hello, world!");
-//! }
-//! ```
-
-
+#![doc = include_str!("../../README.md")]
 #![doc(html_root_url = "https://docs.rs/ohkami")]
-
-#![allow(incomplete_features)]
-#![cfg_attr(feature="nightly", feature(
-    try_trait_v2,
-))]
 
 
 /*===== crate features =====*/
@@ -264,7 +91,7 @@ pub use layer2_fang_handler::{Route, Fang};
 pub use layer4_ohkami      ::{Ohkami, IntoFang};
 
 pub mod prelude {
-    pub use crate::{Request, Response, Route, Ohkami, Fang, IntoFang, IntoResponse, http::Status};
+    pub use crate::{Request, Route, Ohkami, Fang, Response, IntoFang, IntoResponse, http::Status};
 
     #[cfg(feature="utils")]
     pub use crate::typed::{OK, Created, NoContent};
@@ -281,13 +108,27 @@ pub mod testing {
 
 #[cfg(feature="utils")]
 pub mod utils {
-    pub use crate::x_utils::{imf_fixdate_now, unix_timestamp, CORS, JWT, File, Text, HTML, ResponseBody};
-    pub use ohkami_macros ::{Query, Payload, ResponseBody, Serialize, Deserialize};
-    pub use ::serde::{ser::{self, Serialize, Serializer}, de::{self, Deserialize, Deserializer}};
+    pub use crate::x_utils::{imf_fixdate_now, unix_timestamp, Text, HTML};
+}
+
+#[cfg(feature="utils")]
+pub mod fangs {
+    pub use crate::x_utils::{CORS, JWT};
+}
+
+#[cfg(feature="utils")]
+pub mod serde {
+    pub use ::ohkami_macros::{Serialize, Deserialize};
+    pub use ::serde::ser::{self, Serialize, Serializer};
+    pub use ::serde::de::{self, Deserialize, Deserializer};
 }
 
 #[cfg(feature="utils")]
 pub mod typed {
+    pub use ohkami_macros::{ResponseBody, Query, Payload};
+
+    pub use crate::x_utils::{ResponseBody, File};
+
     pub use crate::x_utils::{
         SwitchingProtocols,
 
@@ -332,60 +173,4 @@ pub mod __internal__ {
     /* for benchmarks */
     #[cfg(feature="DEBUG")]
     pub use crate::layer1_req_res::{RequestHeader, RequestHeaders, ResponseHeader, ResponseHeaders};
-}
-
-
-/*===== usavility =====*/
-
-#[doc(hidden)]
-#[cfg(feature="utils")]
-#[cfg(test)] #[allow(unused)] async fn __() {
-    use http::Method;
-
-// fangs
-    struct AppendHeader;
-    impl IntoFang for AppendHeader {
-        //const METHODS: &'static [Method] = &[Method::GET];
-        fn into_fang(self) -> Fang {
-            Fang(|res: &mut Response| {
-                res.headers.set().Server("ohkami");
-            })
-        }
-    }
-
-    struct Log;
-    impl IntoFang for Log {
-        //const METHODS: &'static [Method] = &[];
-        fn into_fang(self) -> Fang {
-            Fang(|res: Response| {
-                println!("{res:?}");
-                res
-            })
-        }
-    }
-
-// handlers
-    async fn health_check() -> http::Status {
-        http::Status::NoContent
-    }
-
-    async fn hello(name: &str) -> typed::OK<String> {
-        typed::OK(format!("Hello, {name}!"))
-    }
-
-// run
-    Ohkami::with((
-        Log,
-        AppendHeader,
-        utils::CORS("https://kanarusblog.software")
-            .AllowCredentials()
-            .AllowHeaders(&["Content-Type"])
-            .AllowMethods(&[Method::GET, Method::PUT, Method::POST, Method::DELETE])
-            .MaxAge(3600)
-    ), (
-        "/hc".
-            GET(health_check),
-        "/hello/:name".
-            GET(hello),
-    )).howl(3000).await
 }

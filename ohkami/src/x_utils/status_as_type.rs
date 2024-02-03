@@ -138,6 +138,8 @@ macro_rules! generate_statuses_as_types_with_no_value {
 
     NoContent,
 
+    NotModified,
+
     NotImplemented,
 }
 

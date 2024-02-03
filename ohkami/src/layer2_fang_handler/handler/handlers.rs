@@ -78,7 +78,7 @@ macro_rules! Route {
     use std::borrow::Cow;
     use serde::{Serialize, Deserialize};
     use super::{Handlers, Route};
-    use crate::{http, FromRequest, IntoResponse, Response, Request, utils::{ResponseBody}, typed::{OK, Created}};
+    use crate::{http, FromRequest, IntoResponse, Response, Request, typed::{ResponseBody, OK, Created}};
 
 
     enum APIError {

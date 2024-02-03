@@ -12,7 +12,8 @@ use crate::{
 /// 
 /// ```
 /// use ohkami::prelude::*;
-/// use ohkami::utils::{ResponseBody, Serialize};
+/// use ohkami::serde::Serialize;
+/// use ohkami::typed::ResponseBody;
 /// 
 /// struct Log;
 /// impl IntoFang for Log {

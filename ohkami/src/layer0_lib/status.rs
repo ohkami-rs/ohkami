@@ -8,6 +8,7 @@ pub enum Status {
 
     MovedPermanently,
     Found,
+    NotModified,
 
     BadRequest,
     Unauthorized,
@@ -28,8 +29,9 @@ pub enum Status {
 
             Self::MovedPermanently    => "301 Moved Permanently",
             Self::Found               => "302 Found",
+            Self::NotModified         => "304 Not Modifed",
+            
             Self::UnprocessableEntity => "422 Unprocessable Entity",
-
             Self::BadRequest          => "400 Bad Request",
             Self::Unauthorized        => "401 Unauthorized",
             Self::Forbidden           => "403 Forbidden",

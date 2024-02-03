@@ -3,16 +3,21 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
 
-/// ```ignore
+/// ```
+/// # let _ =
 /// {
-///     SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()
+///     std::time::SystemTime::now()
+///         .duration_since(std::time::UNIX_EPOCH)
+///         .unwrap()
+///         .as_secs()
 /// }
+/// # ;
 /// ```
 #[inline] pub fn unix_timestamp() -> u64 {
     SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()
 }
 
-/// Current datetime by **IMF-fixdate** format like `Sun, 06 Nov 1994 08:49:37 GMT`, used for `Date` HTTP header.
+/// Current datetime by **IMF-fixdate** format like `Sun, 06 Nov 1994 08:49:37 GMT`, used in `Date` header.
 /// 
 /// (reference：[https://datatracker.ietf.org/doc/html/rfc9110#name-date-time-formats](https://datatracker.ietf.org/doc/html/rfc9110#name-date-time-formats))
 #[inline] pub fn imf_fixdate_now() -> String {
