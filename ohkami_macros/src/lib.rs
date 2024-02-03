@@ -49,6 +49,7 @@ pub fn Deserialize(data: proc_macro::TokenStream) -> proc_macro::TokenStream {
         .into()
 }
 
+#[doc(hidden)]
 #[proc_macro_attribute]
 pub fn consume_struct(_: proc_macro::TokenStream, _: proc_macro::TokenStream) -> proc_macro::TokenStream {
     proc_macro::TokenStream::new()
