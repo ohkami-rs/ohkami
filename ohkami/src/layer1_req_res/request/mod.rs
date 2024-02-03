@@ -93,11 +93,11 @@ impl Request {
                     Slice::from_bytes(r.read_while(|b| b != &b'\r'))
                 }));
             } else {
-                #[cfg(not(feature="custom_headers"))] {
+                #[cfg(not(feature="custom-header"))] {
                     r.consume(": ").unwrap();
                     r.skip_while(|b| b != &b'\r');
                 }
-                #[cfg(feature="custom_headers")] {
+                #[cfg(feature="custom-header")] {
                     let key = CowSlice::Ref(unsafe {Slice::from_bytes(key_bytes)});
                     r.consume(": ").unwrap();
                     headers.insert_custom(key, CowSlice::Ref(unsafe {

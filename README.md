@@ -126,7 +126,7 @@ async fn create_user(body: CreateUserRequest<'_>) -> Created<User> {
 ### use middlewares
 ohkami's middlewares are called "**fang**s".
 
-```rust,ignore
+```rust,no_run
 use ohkami::prelude::*;
 
 struct AppendHeaders;
@@ -151,11 +151,7 @@ impl IntoFang for Log {
 #[tokio::main]
 async fn main() {
     Ohkami::with((AppendHeaders, Log), (
-        "/"  .GET(root),
-        "/hc".GET(health_check),
-        "/api/users".
-            GET(get_users).
-            POST(create_user),
+        "/".GET(|| async {"Hello!"})
     )).howl(":8080").await
 }
 
@@ -174,22 +170,35 @@ async fn main() {
 <br/>
 
 ### pack of Ohkamis
-```rust,ignore
+```rust,no_run
+use ohkami::prelude::*;
+use ohkami::typed::{Created, NoContent, ResponseBody};
+
+#[ResponseBody(JSONS)]
+struct User {
+    name: String
+}
+
+async fn create_user() -> Created<User> {
+    Created(User {
+        name: "ohkami web framework".to_string()
+    })
+}
+
+async fn health_check() -> NoContent {
+    NoContent
+}
+
 #[tokio::main]
 async fn main() {
     // ...
 
     let users_ohkami = Ohkami::new((
-        "/".
-            POST(create_user),
-        "/:id".
-            GET(get_user).
-            PATCH(update_user).
-            DELETE(delete_user),
+        "/".POST(create_user),
     ));
 
     Ohkami::new((
-        "/hc"       .GET(health_check),
+        "/healthz"  .GET(health_check),
         "/api/users".By(users_ohkami), // <-- nest by `By`
     )).howl(5000).await
 }
