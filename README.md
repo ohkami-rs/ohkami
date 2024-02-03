@@ -43,10 +43,10 @@ async fn hello(name: &str) -> OK<String> {
 #[tokio::main]
 async fn main() {
     Ohkami::new((
-        "/healthz".
-            GET(health_check),
-        "/hello/:name".
-            GET(hello),
+        "/healthz"
+            .GET(health_check),
+        "/hello/:name"
+            .GET(hello),
     )).howl(3000).await
 }
 ```
@@ -73,8 +73,8 @@ use ohkami::prelude::*;
 #[tokio::main]
 async fn main() {
     Ohkami::new((
-        "/api/hello/:name".
-            GET(hello),
+        "/api/hello/:name"
+            .GET(hello),
     )).howl("localhost:5000").await
 }
 
