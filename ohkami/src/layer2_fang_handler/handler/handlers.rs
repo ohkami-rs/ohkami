@@ -78,7 +78,7 @@ macro_rules! Route {
     use std::borrow::Cow;
     use serde::{Serialize, Deserialize};
     use super::{Handlers, Route};
-    use crate::{http, FromRequest, IntoResponse, Response, Request, typed::{ResponseBody, OK, Created}};
+    use crate::{FromRequest, IntoResponse, Response, Request, Status, typed::{ResponseBody, OK, Created}};
 
 
     enum APIError {
@@ -90,8 +90,8 @@ macro_rules! Route {
         }
     }
 
-    async fn health_check() -> http::Status {
-        http::Status::NoContent
+    async fn health_check() -> Status {
+        Status::NoContent
     }
 
     #[derive(Serialize)]
@@ -101,7 +101,7 @@ macro_rules! Route {
         password: String,
     } const _: () = {
         impl ResponseBody for User {
-            fn into_response_with(self, status: http::Status) -> Response {
+            fn into_response_with(self, status: Status) -> Response {
                 Response::with(status).json(self)
             }
         }
@@ -173,11 +173,11 @@ macro_rules! Route {
         }
     }
 
-    async fn update_user<'req>(body: UpdateUser<'req>) -> Result<http::Status, APIError> {
+    async fn update_user<'req>(body: UpdateUser<'req>) -> Result<Status, APIError> {
         mock::authenticate().await?;
         mock::DB.update_returning_id(body).await?;
 
-        Ok(http::Status::NoContent)
+        Ok(Status::NoContent)
     }
 
 

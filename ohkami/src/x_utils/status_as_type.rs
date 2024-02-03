@@ -12,11 +12,18 @@ use crate::{IntoResponse, Response, layer1_req_res::ResponseHeaders, prelude::St
 /// <br>
 /// 
 /// *example.rs*
-/// ```ignore
+/// ```
 /// use ohkami::prelude::*;
-/// use ohkami::utils::{Payload, ResponseBody};
-/// use ohkami::typed::{Created};
-/// use sqlx::postgres::PgPool;
+/// use ohkami::typed::{Created, Payload, ResponseBody};
+/// 
+/// enum MyError {
+///     Hoge,
+/// }
+/// impl ohkami::IntoResponse for MyError {
+///     fn into_response(self) -> ohkami::Response {
+///         ohkami::Response::InternalServerError()
+///     }
+/// }
 /// 
 /// #[Payload(JSOND)]
 /// struct CreateUserRequest<'c> {
@@ -33,17 +40,7 @@ use crate::{IntoResponse, Response, layer1_req_res::ResponseHeaders, prelude::St
 /// 
 /// async fn create_user(
 ///     req:  CreateUserRequest<'_>,
-///     pool: Memory<'_, PgPool>,
 /// ) -> Result<Created<User>, MyError> {
-///     let hashed_password = crate::hash_password(req.password);
-/// 
-///     sqlx::query!(r#"
-///         INSERT INTO users (name, password, bio)
-///         VALUES ($1, $2, $3)
-///     "#, req.name, hashed_password, req.bio)
-///         .execute(*pool).await
-///         .map_err(MyError::DB)?;
-/// 
 ///     Ok(Created(User {
 ///         name: req.name.into(),
 ///         bio:  req.bio.map(String::from),

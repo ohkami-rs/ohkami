@@ -1,6 +1,6 @@
 #![allow(non_snake_case)]
 
-use crate::{IntoFang, Fang, Response, Request, http::{append, Status, Method}};
+use crate::{IntoFang, Fang, Response, Request, append, Status, Method};
 
 
 pub struct CORS {
@@ -104,7 +104,7 @@ impl IntoFang for CORS {
                 h = h.AccessControlExposeHeaders(expose_headers.join(","));
             }
 
-            if req.method.isOPTIONS() {
+            if req.method().isOPTIONS() {
                 if let Some(max_age) = self.MaxAge {
                     h = h.AccessControlMaxAge(max_age.to_string());
                 }

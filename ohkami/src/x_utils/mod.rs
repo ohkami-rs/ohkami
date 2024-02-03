@@ -24,6 +24,7 @@ pub use status_as_type::{ResponseBody,
 
     MovedPermanently,
     Found,
+    NotModified,
 
     BadRequest,
     Unauthorized,

@@ -29,13 +29,64 @@ use crate::{
 pub(crate) const METADATA_SIZE: usize = 1024;
 pub(crate) const PAYLOAD_LIMIT: usize = 1 << 32;
 
+/// # HTTP Request
+/// 
+/// Composed of
+/// 
+/// - `method`
+/// - `headers`
+/// - `path`
+/// - `queries`
+/// - `payload`
+/// 
+/// and have a `memory`.
+/// 
+/// <br>
+/// 
+/// ## Usages
+/// 
+/// ---
+/// 
+/// *in_fang.rs*
+/// ```
+/// use ohkami::{IntoFang, Fang, Request};
+/// 
+/// struct LogRequest;
+/// impl IntoFang for LogRequest {
+///     fn into_fang(self) -> Fang {
+///         Fang(|req: &Request| {
+///             let method = req.method();
+///             let path = req.path();
+///             println!("{method} {path}");
+///         })
+///     }
+/// }
+/// ```
+/// 
+/// ---
+/// 
+/// *from_request.rs*
+/// ```
+/// use ohkami::{Request, FromRequest};
+/// 
+/// struct HasPayload(bool);
+/// 
+/// impl<'req> FromRequest<'req> for HasPayload {
+///     type Error = std::convert::Infallible;
+///     fn from_request(req: &'req Request) -> Result<Self, Self::Error> {
+///         Ok(Self(
+///             req.payload().is_some()
+///         ))
+///     }
+/// }
+/// ```
 pub struct Request {pub(crate) _metadata: [u8; METADATA_SIZE],
-    pub method:            Method,
-    pub headers:           RequestHeaders,
-    pub(crate) path:       Path,
-    queries:               QueryParams,
-    payload:               Option<CowSlice>,
-    store:                 Store,
+    method:          Method,
+    pub headers:     RequestHeaders,
+    pub(crate) path: Path,
+    queries:         QueryParams,
+    payload:         Option<CowSlice>,
+    store:           Store,
 
     #[cfg(feature="websocket")] pub(crate) upgrade_id: Option<UpgradeID>,
 }
@@ -93,11 +144,11 @@ impl Request {
                     Slice::from_bytes(r.read_while(|b| b != &b'\r'))
                 }));
             } else {
-                #[cfg(not(feature="custom_headers"))] {
+                #[cfg(not(feature="custom-header"))] {
                     r.consume(": ").unwrap();
                     r.skip_while(|b| b != &b'\r');
                 }
-                #[cfg(feature="custom_headers")] {
+                #[cfg(feature="custom-header")] {
                     let key = CowSlice::Ref(unsafe {Slice::from_bytes(key_bytes)});
                     r.consume(": ").unwrap();
                     headers.insert_custom(key, CowSlice::Ref(unsafe {
@@ -156,8 +207,14 @@ impl Request {
 }
 
 impl Request {
+    #[inline] pub const fn method(&self) -> Method {
+        self.method
+    }
+
+    /// Get request path as `Cow::Borrowed(&str)`, and if it's precent-encoded,
+    /// decode it into `Cow::Owned(String)`.
     #[inline] pub fn path(&self) -> std::borrow::Cow<'_, str> {
-        percent_decode_utf8(unsafe {self.path.as_bytes()}).unwrap()
+        percent_decode_utf8(unsafe {self.path.as_bytes()}).expect("Path is not UTF-8")
     }
 
     #[inline] pub fn query<'req, Value: FromParam<'req>>(&'req self, key: &str) -> Option<Result<Value, Value::Error>> {
@@ -171,9 +228,11 @@ impl Request {
         Some(unsafe {self.payload.as_ref()?.as_bytes()})
     }
 
+    /// Memorize any data within this request object
     pub fn memorize<Value: Send + Sync + 'static>(&mut self, value: Value) {
         self.store.insert(value)
     }
+    /// Retrieve a data memorized in this request (using the type as key)
     pub fn memorized<Value: Send + Sync + 'static>(&self) -> Option<&Value> {
         self.store.get()
     }

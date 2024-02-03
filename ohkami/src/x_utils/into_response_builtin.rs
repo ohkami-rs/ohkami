@@ -1,6 +1,6 @@
 #![allow(non_snake_case)]
 
-use crate::{Response, IntoResponse, http::Status, layer1_req_res::ResponseHeaders};
+use crate::{Response, IntoResponse, Status, layer1_req_res::ResponseHeaders};
 use super::ResponseBody;
 use serde::Serialize;
 use std::borrow::Cow;

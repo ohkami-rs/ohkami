@@ -1,4 +1,4 @@
-//! Based on https://github.com/servo/rust-url/tree/master/percent_encoding; MIT.
+//! Based on <https://github.com/servo/rust-url/tree/master/percent_encoding>; MIT.
 
 use std::{str, slice, borrow::Cow};
 

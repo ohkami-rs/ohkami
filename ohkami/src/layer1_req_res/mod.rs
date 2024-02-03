@@ -4,14 +4,13 @@ mod response; pub use response::*;
 
 #[cfg(feature="utils")]
 #[cfg(test)] #[allow(unused)] mod __ {
-    use serde::Serialize;
-    use crate::{http::Status, typed::ResponseBody, IntoResponse, Response};
+    use crate::{Status, typed::ResponseBody, IntoResponse, Response};
 
     async fn handler_1() -> Status {
         Status::NoContent
     }
 
-    #[derive(Serialize)]
+    #[derive(::serde::Serialize)]
     struct Length {
         value: usize
     } const _: () = {

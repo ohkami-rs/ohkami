@@ -85,39 +85,82 @@ mod x_websocket;
 
 
 /*===== visibility managements =====*/
-
+pub use crate::layer0_lib  ::{Status, Method, append};
 pub use layer1_req_res     ::{Request, Response, FromRequestError, FromRequest, FromParam, IntoResponse, Memory};
 pub use layer2_fang_handler::{Route, Fang};
 pub use layer4_ohkami      ::{Ohkami, IntoFang};
 
 pub mod prelude {
-    pub use crate::{Request, Route, Ohkami, Fang, Response, IntoFang, IntoResponse};
-    pub use crate::http::{Method, Status};
+    pub use crate::{Request, Route, Ohkami, Fang, Response, IntoFang, IntoResponse, Method, Status};
 
     #[cfg(feature="utils")]
     pub use crate::typed::{OK, Created, NoContent};
 }
 
-pub mod http {
-    pub use crate::layer0_lib::{Status, Method, append};
-}
-
+/// Ohkami testing tools
+/// 
+/// <br>
+/// 
+/// *test_example.rs*
+/// ```
+/// use ohkami::prelude::*;
+/// use ohkami::testing::*;
+/// 
+/// fn my_ohkami() -> Ohkami {
+///     Ohkami::new(
+///         "/".GET(|| async {
+///             "Hello, ohkami!"
+///         })
+///     )
+/// }
+/// 
+/// #[cfg(test)]
+/// #[tokio::test]
+/// async fn test_my_ohkami() {
+///     let mo = my_ohkami();
+/// 
+///     let req = TestRequest::GET("/");
+///     let res = mo.oneshot(req).await;
+///     assert_eq!(res.status, Status::OK);
+///     assert_eq!(res.text(), Some("Hello, ohkami!"));
+/// }
+/// ```
 #[cfg(feature="testing")]
 pub mod testing {
     pub use crate::x_testing::*;
 }
 
+/// Some utilities for building web app
 #[cfg(feature="utils")]
 pub mod utils {
     pub use crate::x_utils::{imf_fixdate_now, unix_timestamp, Text, HTML};
     pub use crate::x_utils::File;
 }
 
+/// Ohkami's buitlin fangs
+/// 
+/// - `CORS`
+/// - `JWT`
 #[cfg(feature="utils")]
 pub mod fangs {
     pub use crate::x_utils::{CORS, JWT};
 }
 
+/// Somthing that's almost [serde](https://crates.io/crates/serde)
+/// 
+/// <br>
+/// 
+/// *not_need_serde_in_your_dependencies.rs*
+/// ```
+/// use ohkami::serde::Serialize;
+/// 
+/// #[derive(Serialize)]
+/// struct User {
+///     #[serde(rename = "username")]
+///     name: String,
+///     age:  u8,
+/// }
+/// ```
 #[cfg(feature="utils")]
 pub mod serde {
     pub use ::ohkami_macros::{Serialize, Deserialize};
@@ -125,6 +168,7 @@ pub mod serde {
     pub use ::serde::de::{self, Deserialize, Deserializer};
 }
 
+/// Convenient tools to build type-safe handlers
 #[cfg(feature="utils")]
 pub mod typed {
     pub use ohkami_macros::{ResponseBody, Query, Payload};
@@ -140,6 +184,7 @@ pub mod typed {
 
         MovedPermanently,
         Found,
+        NotModified,
 
         BadRequest,
         Unauthorized,

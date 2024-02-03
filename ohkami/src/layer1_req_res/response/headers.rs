@@ -1,17 +1,17 @@
 use std::borrow::Cow;
 use crate::layer0_lib::Append;
 
-#[cfg(feature="custom_headers")]
+#[cfg(feature="custom-header")]
 use rustc_hash::FxHashMap;
 
 
-#[cfg(feature="custom_headers")]
+#[cfg(feature="custom-header")]
 type CustomHeaderMap = FxHashMap<Cow<'static, str>, Cow<'static, str>>;
 
 pub struct Headers {
     values: [Option<Cow<'static, str>>; N_SERVER_HEADERS],
 
-    #[cfg(feature="custom_headers")]
+    #[cfg(feature="custom-header")]
     custom: Option<Box<CustomHeaderMap>>,
 
     /// Size of whole the byte stream when this is written into HTTP response.
@@ -66,11 +66,11 @@ pub trait HeaderAction<'action> {
     }
 };
 
-#[cfg(feature="custom_headers")]
+#[cfg(feature="custom-header")]
 pub trait CustomHeadersAction<'action> {
     fn perform(self, set_headers: SetHeaders<'action>, key: impl Into<Cow<'static, str>>) -> SetHeaders<'action>;
 }
-#[cfg(feature="custom_headers")]
+#[cfg(feature="custom-header")]
 const _: () = {
     pub trait CustomHeadersAction<'set> {
         fn perform(self, set_headers: SetHeaders<'set>, key: impl Into<Cow<'static, str>>) -> SetHeaders<'set>;
@@ -200,7 +200,7 @@ macro_rules! Header {
                 }
             )*
 
-            #[cfg(feature="custom_headers")]
+            #[cfg(feature="custom-header")]
             pub fn custom(&self, name: impl Into<Cow<'static, str>>) -> Option<&str> {
                 let value = self.custom.as_ref()?
                     .get(&name.into())?;
@@ -216,7 +216,7 @@ macro_rules! Header {
                 }
             )*
 
-            #[cfg(feature="custom_headers")]
+            #[cfg(feature="custom-header")]
             pub fn custom(self, name: impl Into<Cow<'static, str>>, action: impl CustomHeadersAction<'set>) -> Self {
                 action.perform(self, name)
             }
@@ -341,7 +341,7 @@ impl Headers {
                 None, None, None, None, None,
                 None, None, None, None, None,
             ],
-            #[cfg(feature="custom_headers")]
+            #[cfg(feature="custom-header")]
             custom: None
         }
     }
@@ -388,11 +388,11 @@ impl Headers {
             }
         }
 
-        #[cfg(feature="custom_headers")]
+        #[cfg(feature="custom-header")]
         struct Custom<'i> {
             map: Option<std::collections::hash_map::Iter<'i, Cow<'static, str>, Cow<'static, str>>>,
         }
-        #[cfg(feature="custom_headers")]
+        #[cfg(feature="custom-header")]
         impl<'i> Iterator for Custom<'i> {
             type Item = (&'i str, &'i str);
             fn next(&mut self) -> Option<Self::Item> {
@@ -401,13 +401,13 @@ impl Headers {
             }
         }
 
-        #[cfg(feature="custom_headers")] {
+        #[cfg(feature="custom-header")] {
             Iterator::chain(
                 Standard { map: &self.values, cur: 0 },
                 Custom { map: self.custom.as_ref().map(|box_hmap| box_hmap.iter()) }
             )
         }
-        #[cfg(not(feature="custom_headers"))] {
+        #[cfg(not(feature="custom-header"))] {
             Standard { map: &self.values, cur: 0 }
         }
     }
@@ -485,7 +485,7 @@ const _: () = {
                 }
             }
 
-            #[cfg(feature="custom_headers")]
+            #[cfg(feature="custom-header")]
             if self.custom != other.custom {
                 return false
             }

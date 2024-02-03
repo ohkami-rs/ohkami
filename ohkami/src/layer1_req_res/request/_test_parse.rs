@@ -94,7 +94,7 @@ fn metadataize(input: &str) -> [u8; METADATA_SIZE] {
         #[cfg(feature="websocket")] upgrade_id: None,
     });
 
-    #[cfg(feature="custom_headers")]
+    #[cfg(feature="custom-header")]
     {
         const CASE_3: &str = "\
             POST /foo.php?query=1&q2=xxx HTTP/1.1\r\n\
