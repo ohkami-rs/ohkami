@@ -64,7 +64,7 @@ impl RadixRouter {
         &self,
         req: &mut Request,
     ) -> HandleResult {
-        let search_result = match req.method {
+        let search_result = match req.method() {
             Method::GET    => self.GET   .search(req/*.path_bytes()*/),
             Method::PUT    => self.PUT   .search(req/*.path_bytes()*/),
             Method::POST   => self.POST  .search(req/*.path_bytes()*/),

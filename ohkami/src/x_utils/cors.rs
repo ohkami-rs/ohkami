@@ -104,7 +104,7 @@ impl IntoFang for CORS {
                 h = h.AccessControlExposeHeaders(expose_headers.join(","));
             }
 
-            if req.method.isOPTIONS() {
+            if req.method().isOPTIONS() {
                 if let Some(max_age) = self.MaxAge {
                     h = h.AccessControlMaxAge(max_age.to_string());
                 }

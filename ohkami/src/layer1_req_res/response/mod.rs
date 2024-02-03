@@ -13,6 +13,61 @@ use crate::{
 };
 
 
+/// # HTTP Response
+/// 
+/// Composed of
+/// 
+/// - `status`
+/// - `headers`
+/// - `content`
+/// 
+/// <br>
+/// 
+/// ## Usages
+/// 
+/// ---
+/// 
+/// *in_fang.rs*
+/// ```
+/// use ohkami::{Response, Fang, IntoFang};
+/// 
+/// struct LogResponse;
+/// impl IntoFang for LogResponse {
+///     fn into_fang(self) -> Fang {
+///         Fang(|res: &Response| {
+///             println!("{}", res.status);
+///         })
+///     }
+/// }
+/// ```
+/// 
+/// ---
+/// 
+/// *into_response.rs*
+/// ```
+/// use ohkami::{Response, IntoResponse};
+/// 
+/// enum AppError {
+///     A(String),
+///     B(String),
+/// }
+/// impl IntoResponse for AppError {
+///     fn into_response(self) -> Response {
+///         match self {
+///             Self::A(msg) => Response::InternalServerError().text(msg),
+///             Self::B(msg) => Response::BadRequest().text(msg),
+///         }
+///     }
+/// }
+/// 
+/// async fn handler(id: usize) -> Result<String, AppError> {
+///     if id == 0 {
+///         return Err(AppError::B("id must be positive".into()))
+///     }
+/// 
+///     Ok("Hello, Response!".into())
+/// }
+/// ```
 pub struct Response {
     pub status:         Status,
     pub headers:        ResponseHeaders,
