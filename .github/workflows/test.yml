@@ -11,8 +11,9 @@ jobs:
 
     strategy:
       matrix:
-        rt:        ['tokio', 'async-std']
-        toolchain: ['stable', 'nightly']
+        rt:             ['tokio', 'async-std']
+        toolchain:      ['stable', 'nightly']
+        custom_headers: [true, false]
 
     steps:
       - uses: actions/checkout@v4
@@ -25,19 +26,19 @@ jobs:
 
       - name: Run ohkami's doc tests
         if:   matrix.rt == 'tokio'
-        run:  cargo test --doc --features rt_${{ matrix.rt }},DEBUG
+        run:  cargo test --doc --features rt_${{ matrix.rt }},DEBUG${{ matrix.custom_headers && ',custom_headers' || '' }}
 
       - name: Run ohkami's lib tests
-        run:  cargo test --lib --features rt_${{ matrix.rt }},DEBUG
+        run:  cargo test --lib --features rt_${{ matrix.rt }},DEBUG${{ matrix.custom_headers && ',custom_headers' || '' }}
 
       - name: Run ohkami's lib tests without default features except fot `utils`
-        run:  cargo test --lib --no-default-features --features utils,rt_${{ matrix.rt }},DEBUG
+        run:  cargo test --lib --no-default-features --features utils,rt_${{ matrix.rt }},DEBUG${{ matrix.custom_headers && ',custom_headers' || '' }}
       
       - name: Run ohkami's lib tests without default features except fot `testing`
-        run:  cargo test --lib --no-default-features --features testing,rt_${{ matrix.rt }},DEBUG
+        run:  cargo test --lib --no-default-features --features testing,rt_${{ matrix.rt }},DEBUG${{ matrix.custom_headers && ',custom_headers' || '' }}
       
       - name: Run ohkami's lib tests without default features
-        run:  cargo test --lib --no-default-features --features rt_${{ matrix.rt }},DEBUG
+        run:  cargo test --lib --no-default-features --features rt_${{ matrix.rt }},DEBUG${{ matrix.custom_headers && ',custom_headers' || '' }}
 
       - name: Run ohkami's benchmark
         if:   matrix.toolchain == 'nightly'

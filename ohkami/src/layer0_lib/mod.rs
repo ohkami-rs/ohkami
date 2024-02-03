@@ -1,10 +1,10 @@
+pub mod base64;
+
 mod list;
 pub(crate) use list::List;
 
 mod slice;
 pub(crate) use slice::{Slice, CowSlice};
-
-pub mod base64;
 
 mod status;
 pub use status::Status;

@@ -1,4 +1,4 @@
-use std::{ptr::NonNull};
+use std::{borrow::Cow, ptr::NonNull};
 
 /// Slice but MANUALLY HANDLE the *lifetime*
 #[derive(Clone)]
@@ -52,6 +52,16 @@ pub(crate) enum CowSlice {
             std::borrow::Cow::Owned(vec)      => Self::Own(vec),
         }
     }
+    #[inline] pub(crate) unsafe fn extend(&mut self, bytes: &[u8]) {
+        match self {
+            Self::Own(vec)   => vec.extend_from_slice(bytes),
+            Self::Ref(slice) => {
+                let mut vec: Vec<_> = slice.as_bytes().into();
+                vec.extend_from_slice(bytes);
+                *self = Self::Own(vec);
+            }
+        }
+    }
 } const _: () = {
     impl AsRef<[u8]> for CowSlice {
         fn as_ref(&self) -> &[u8] {
@@ -61,9 +71,27 @@ pub(crate) enum CowSlice {
             }
         }
     }
-};
-#[cfg(test)] impl PartialEq for CowSlice {
-    fn eq(&self, other: &Self) -> bool {
-        unsafe {self.as_bytes() == other.as_bytes()}
+
+    impl From<Cow<'static, str>> for CowSlice {
+        fn from(cow: Cow<'static, str>) -> Self {
+            match cow {
+                Cow::Borrowed(s)   => Self::Ref(unsafe {Slice::from_bytes(s.as_bytes())}),
+                Cow::Owned(string) => Self::Own(string.into_bytes()),
+            }
+        }
     }
-}
+
+    impl PartialEq for CowSlice {
+        fn eq(&self, other: &Self) -> bool {
+            unsafe {self.as_bytes() == other.as_bytes()}
+        }
+    }
+    impl Eq for CowSlice {}
+
+    use std::hash::Hash;
+    impl Hash for CowSlice {
+        fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+            unsafe {self.as_bytes()}.hash(state)
+        }
+    }
+};

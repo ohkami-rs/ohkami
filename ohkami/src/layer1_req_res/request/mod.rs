@@ -86,14 +86,24 @@ impl Request {
 
         let mut headers = RequestHeaders::init();
         while r.consume("\r\n").is_none() {
-            if let Some(key) = RequestHeader::from_bytes(r.read_while(|b| b != &b':')) {
+            let key_bytes = r.read_while(|b| b != &b':');
+            if let Some(key) = RequestHeader::from_bytes(key_bytes) {
                 r.consume(": ").unwrap();
                 headers.insert(key, CowSlice::Ref(unsafe {
                     Slice::from_bytes(r.read_while(|b| b != &b'\r'))
                 }));
             } else {
-                r.consume(": ").unwrap();
-                r.skip_while(|b| b != &b'\r');
+                #[cfg(not(feature="custom_headers"))] {
+                    r.consume(": ").unwrap();
+                    r.skip_while(|b| b != &b'\r');
+                }
+                #[cfg(feature="custom_headers")] {
+                    let key = CowSlice::Ref(unsafe {Slice::from_bytes(key_bytes)});
+                    r.consume(": ").unwrap();
+                    headers.insert_custom(key, CowSlice::Ref(unsafe {
+                        Slice::from_bytes(r.read_while(|b| b != &b'\r'))
+                    }));
+                }
             }
             r.consume("\r\n");
         }
