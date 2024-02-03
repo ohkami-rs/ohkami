@@ -1,28 +1,29 @@
-use ohkami::utils::{Deserialize, Payload, Query};
+use ohkami::typed::{Payload, Query};
+use ohkami::serde::Deserialize;
 use super::Tag;
 
 
 #[Payload(JSOND)]
-#[cfg_attr(test, derive(ohkami::utils::Serialize))]
+#[cfg_attr(test, derive(ohkami::serde::Serialize))]
 pub struct LoginRequest<'req> {
     #[serde(borrow)]
     pub user: LoginRequestUser<'req>,
 }
 #[derive(Deserialize)]
-#[cfg_attr(test, derive(ohkami::utils::Serialize))]
+#[cfg_attr(test, derive(ohkami::serde::Serialize))]
 pub struct LoginRequestUser<'req> {
     pub email:    &'req str,
     pub password: &'req str,
 }
 
 #[Payload(JSOND)]
-#[cfg_attr(test, derive(ohkami::utils::Serialize))]
+#[cfg_attr(test, derive(ohkami::serde::Serialize))]
 pub struct RegisterRequest<'req> {
     #[serde(borrow)]
     pub user: RegisterRequestUser<'req>,
 }
 #[derive(Deserialize)]
-#[cfg_attr(test, derive(ohkami::utils::Serialize))]
+#[cfg_attr(test, derive(ohkami::serde::Serialize))]
 pub struct RegisterRequestUser<'req> {
     pub username: &'req str,
     pub email:    &'req str,
@@ -30,13 +31,13 @@ pub struct RegisterRequestUser<'req> {
 }
 
 #[Payload(JSOND)]
-#[cfg_attr(test, derive(ohkami::utils::Serialize))]
+#[cfg_attr(test, derive(ohkami::serde::Serialize))]
 pub struct UpdateProfileRequest<'req> {
     #[serde(borrow)]
     pub user: UpdateProfileRequestUser<'req>
 }
 #[derive(Deserialize)]
-#[cfg_attr(test, derive(ohkami::utils::Serialize))]
+#[cfg_attr(test, derive(ohkami::serde::Serialize))]
 pub struct UpdateProfileRequestUser<'req> {
     pub email:    Option<&'req str>,
     pub username: Option<&'req str>,
@@ -46,7 +47,7 @@ pub struct UpdateProfileRequestUser<'req> {
 }
 
 #[Query]
-#[cfg_attr(test, derive(ohkami::utils::Serialize))]
+#[cfg_attr(test, derive(ohkami::serde::Serialize))]
 pub struct ListArticlesQuery<'q> {
     pub tag:       Option<&'q str>,
     pub author:    Option<&'q str>,
@@ -63,7 +64,7 @@ pub struct ListArticlesQuery<'q> {
 }
 
 #[Query]
-#[cfg_attr(test, derive(ohkami::utils::Serialize))]
+#[cfg_attr(test, derive(ohkami::serde::Serialize))]
 pub struct FeedArticleQuery {
     limit:  Option<usize>,
     offset: Option<usize>,
@@ -77,13 +78,13 @@ pub struct FeedArticleQuery {
 }
 
 #[Payload(JSOND)]
-#[cfg_attr(test, derive(ohkami::utils::Serialize))]
+#[cfg_attr(test, derive(ohkami::serde::Serialize))]
 pub struct CreateArticleRequest<'req> {
     #[serde(borrow)]
     pub article: CreateArticleRequestArticle<'req>,
 }
 #[derive(Deserialize)]
-#[cfg_attr(test, derive(ohkami::utils::Serialize))]
+#[cfg_attr(test, derive(ohkami::serde::Serialize))]
 pub struct CreateArticleRequestArticle<'req> {
     pub title:       &'req str,
     pub description: &'req str,
@@ -102,13 +103,13 @@ impl CreateArticleRequest<'_> {
 }
 
 #[Payload(JSOND)]
-#[cfg_attr(test, derive(ohkami::utils::Serialize))]
+#[cfg_attr(test, derive(ohkami::serde::Serialize))]
 pub struct UpdateArticleRequest<'req> {
     #[serde(borrow)]
     pub article: UpdateArticleRequestArticle<'req>,
 }
 #[derive(Deserialize)]
-#[cfg_attr(test, derive(ohkami::utils::Serialize))]
+#[cfg_attr(test, derive(ohkami::serde::Serialize))]
 pub struct UpdateArticleRequestArticle<'req> {
     pub title:       Option<&'req str>,
     pub description: Option<&'req str>,
@@ -116,13 +117,13 @@ pub struct UpdateArticleRequestArticle<'req> {
 }
 
 #[Payload(JSOND)]
-#[cfg_attr(test, derive(ohkami::utils::Serialize))]
+#[cfg_attr(test, derive(ohkami::serde::Serialize))]
 pub struct AddCommentRequest<'req> {
     #[serde(borrow)]
     pub comment: AddCommentRequestComment<'req>,
 }
 #[derive(Deserialize)]
-#[cfg_attr(test, derive(ohkami::utils::Serialize))]
+#[cfg_attr(test, derive(ohkami::serde::Serialize))]
 pub struct AddCommentRequestComment<'req> {
     #[serde(rename = "body")]
     pub content: &'req str,

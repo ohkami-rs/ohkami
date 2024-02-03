@@ -91,7 +91,8 @@ pub use layer2_fang_handler::{Route, Fang};
 pub use layer4_ohkami      ::{Ohkami, IntoFang};
 
 pub mod prelude {
-    pub use crate::{Request, Route, Ohkami, Fang, Response, IntoFang, IntoResponse, http::Status};
+    pub use crate::{Request, Route, Ohkami, Fang, Response, IntoFang, IntoResponse};
+    pub use crate::http::{Method, Status};
 
     #[cfg(feature="utils")]
     pub use crate::typed::{OK, Created, NoContent};
@@ -109,6 +110,7 @@ pub mod testing {
 #[cfg(feature="utils")]
 pub mod utils {
     pub use crate::x_utils::{imf_fixdate_now, unix_timestamp, Text, HTML};
+    pub use crate::x_utils::File;
 }
 
 #[cfg(feature="utils")]
@@ -127,7 +129,7 @@ pub mod serde {
 pub mod typed {
     pub use ohkami_macros::{ResponseBody, Query, Payload};
 
-    pub use crate::x_utils::{ResponseBody, File};
+    pub use crate::x_utils::ResponseBody;
 
     pub use crate::x_utils::{
         SwitchingProtocols,
