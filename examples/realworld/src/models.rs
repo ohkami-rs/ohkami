@@ -1,4 +1,4 @@
-use ohkami::utils::{Serialize, Deserialize};
+use ohkami::serde::{Serialize, Deserialize};
 use chrono::{DateTime, Utc};
 
 pub mod request;
@@ -6,7 +6,7 @@ pub mod response;
 
 
 mod serde_datetime {
-    use ohkami::utils::{Deserialize, Deserializer, Serializer};
+    use ohkami::serde::{Deserialize, Deserializer, Serializer};
     use chrono::{DateTime, Utc, SecondsFormat};
 
     pub(super) fn serialize<S: Serializer>(
@@ -22,14 +22,14 @@ mod serde_datetime {
     ) -> Result<DateTime<Utc>, D::Error> {
         let s = String::deserialize(deserializer)?;
         let datetime = DateTime::parse_from_rfc3339(&s)
-            .map_err(ohkami::utils::de::Error::custom)?;
+            .map_err(ohkami::serde::de::Error::custom)?;
         Ok(datetime.into())
     }
 }
 
 
 #[derive(Serialize)]
-#[cfg_attr(test, derive(ohkami::utils::Deserialize, Debug, PartialEq))]
+#[cfg_attr(test, derive(ohkami::serde::Deserialize, Debug, PartialEq))]
 pub struct User {
     pub email: String,
     #[serde(rename = "token")]
@@ -41,7 +41,7 @@ pub struct User {
 }
 
 #[derive(Serialize)]
-#[cfg_attr(test, derive(ohkami::utils::Deserialize, Debug, PartialEq))]
+#[cfg_attr(test, derive(ohkami::serde::Deserialize, Debug, PartialEq))]
 pub struct Profile {
     pub username:  String,
     pub bio:       Option<String>,
@@ -50,7 +50,7 @@ pub struct Profile {
 }
 
 #[derive(Serialize)]
-#[cfg_attr(test, derive(ohkami::utils::Deserialize, Debug, PartialEq))]
+#[cfg_attr(test, derive(ohkami::serde::Deserialize, Debug, PartialEq))]
 pub struct Article {
     pub title:           String,
     pub slug:            String,
@@ -69,7 +69,7 @@ pub struct Article {
 }
 
 #[derive(Serialize)]
-#[cfg_attr(test, derive(ohkami::utils::Deserialize, Debug, PartialEq))]
+#[cfg_attr(test, derive(ohkami::serde::Deserialize, Debug, PartialEq))]
 pub struct Comment {
     pub id:         usize,
     #[serde(rename = "createdAt", with = "serde_datetime")]

@@ -3,7 +3,7 @@
 use crate::__rt__;
 use crate::prelude::*;
 use crate::testing::*;
-use crate::utils::{Text, ResponseBody};
+use crate::typed::ResponseBody;
 
 
 #[__rt__::test] async fn testing_example_simple() {
@@ -26,7 +26,7 @@ use crate::utils::{Text, ResponseBody};
 }
 
 async fn hello() -> impl IntoResponse {
-    Text("Hello, world!")
+    "Hello, world!"
 }
 
 

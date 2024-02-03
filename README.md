@@ -28,7 +28,7 @@ tokio  = { version = "1",    features = ["full"] }
 
 2. Write your first code with ohkami : [eamples/quick_start](https://github.com/kana-rus/ohkami/blob/main/examples/quick_start/src/main.rs)
 
-```rust
+```rust,no_run
 use ohkami::prelude::*;
 use ohkami::typed::{OK, NoContent};
 
@@ -43,7 +43,7 @@ async fn hello(name: &str) -> OK<String> {
 #[tokio::main]
 async fn main() {
     Ohkami::new((
-        "/hc".
+        "/healthz".
             GET(health_check),
         "/hello/:name".
             GET(hello),
@@ -67,18 +67,20 @@ Hello, your_name!
 ## Snippets
 
 ### handle path params
-```rust
+```rust,no_run
 use ohkami::prelude::*;
 
 #[tokio::main]
 async fn main() {
     Ohkami::new((
-        "/api/users/:id".
-            GET(get_user),
+        "/api/hello/:name".
+            GET(hello),
     )).howl("localhost:5000").await
 }
 
-async fn get_user(id: usize) -> impl IntoResponse { /* */ }
+async fn hello(name: &str) -> impl IntoResponse {
+    format!("Hello, {name}!")
+}
 ```
 
 <br/>
@@ -86,21 +88,34 @@ async fn get_user(id: usize) -> impl IntoResponse { /* */ }
 ### handle query params / request body
 ```rust
 use ohkami::prelude::*;
-use ohkami::utils;   // <--
+use ohkami::typed;   // <--
 
-#[utils::Query]
+#[typed::Query]
 struct SearchQuery<'q> {
     q: &'q str,
 }
-async fn search(condition: SearchQuery) -> Response { /* */ }
 
-#[utils::Payload(JSON)]
-#[derive(utils::Deserialize)]
+async fn search(condition: SearchQuery<'_>) -> OK<String> {
+    OK(format!("Something found"))
+}
+
+#[typed::Payload(JSOND)]
 struct CreateUserRequest<'req> {
+    #[serde(rename = "username")]
     name:     &'req str,
     password: &'req str,
 }
-async fn create_user(body: CreateUserRequest<'_>) -> Response { /* */ }
+
+#[typed::ResponseBody(JSONS)]
+struct User {
+    name: String,
+}
+
+async fn create_user(body: CreateUserRequest<'_>) -> Created<User> {
+    Created(User {
+        name: format!("ohkami web framework")
+    })
+}
 ```
 `#[Query]`, `#[Payload( 〜 )]` implements `FromRequest` trait for the struct.
 
@@ -111,12 +126,12 @@ async fn create_user(body: CreateUserRequest<'_>) -> Response { /* */ }
 ### use middlewares
 ohkami's middlewares are called "**fang**s".
 
-```rust
+```rust,ignore
 use ohkami::prelude::*;
 
 struct AppendHeaders;
 impl IntoFang for AppendHeaders {
-    fn bite(self) -> Fang {
+    fn into_fang(self) -> Fang {
         Fang(|res: &mut Response| {
             res.headers.set()
                 .Server("ohkami");
@@ -126,7 +141,7 @@ impl IntoFang for AppendHeaders {
 
 struct Log;
 impl IntoFang for Log {
-    fn bite(self) -> Fang {
+    fn into_fang(self) -> Fang {
         Fang(|res: &Response| {
             println!("{res:?}");
         })
@@ -159,7 +174,7 @@ async fn main() {
 <br/>
 
 ### pack of Ohkamis
-```rust
+```rust,ignore
 #[tokio::main]
 async fn main() {
     // ...
@@ -182,46 +197,9 @@ async fn main() {
 
 <br/>
 
-### web socket (VERY experimental feature)
-Activate `"websocket"` feature.
-
-```rust
-use ohkami::prelude::*;
-use ohkami::websocket::{WebSocketContext, Message};
-
-fn handle_websocket(c: WebSocketContext) -> Response {
-    c.on_upgrade(|ws| async move {
-        while let Some(Ok(message)) = ws.recv().await {
-            match message {
-                Message::Text(text) => {
-                    let response = Message::from(text);
-                    if let Err(e) = ws.send(response).await {
-                        tracing::error!("{e}");
-                        break
-                    }
-                }
-                Message::Close(_) => break,
-                other => tracing::warning!("Unsupported message type: {other}"),
-            }
-        }
-    }).await
-}
-
-#[tokio::main]
-async fn main() {
-    Ohkami::new((
-        "/websocket"
-            .GET(handle_websocket)
-    )).howl(8080).await
-}
-```
-
-<br/>
-
 ### testing
-```rust
+```rust,no_run
 use ohkami::prelude::*;
-use ohkami::typed::OK;
 use ohkami::testing::*; // <--
 
 fn hello_ohkami() -> Ohkami {

@@ -1,4 +1,4 @@
-use ohkami::{utils::JWT, Fang, IntoFang, IntoResponse, Request, Response};
+use ohkami::{fangs::JWT, Fang, IntoFang, IntoResponse, Request, Response};
 use sqlx::PgPool;
 use crate::{config, errors::RealWorldError};
 
@@ -25,7 +25,7 @@ impl IntoFang for Auth {
 
             let secret = config::JWT_SECRET_KEY()
                 .map_err(RealWorldError::into_response)?;
-            let payload: config::JWTPayload = JWT::new(secret).verified(req)?;
+            let payload: config::JWTPayload = JWT::default(secret).verified(req)?;
             req.memorize(payload);
             Ok(())
         })
@@ -54,7 +54,7 @@ impl IntoFang for OptionalAuth {
 
             let secret = config::JWT_SECRET_KEY()
                 .map_err(RealWorldError::into_response)?;
-            let payload: Option<config::JWTPayload> = JWT::new(secret).verified(req).ok();
+            let payload: Option<config::JWTPayload> = JWT::default(secret).verified(req).ok();
             req.memorize(payload);
             Ok(())
         })

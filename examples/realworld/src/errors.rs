@@ -1,4 +1,4 @@
-use ohkami::{IntoResponse, utils::{Serialize, ResponseBody}};
+use ohkami::{IntoResponse, serde::Serialize, typed::ResponseBody};
 use std::borrow::Cow;
 
 

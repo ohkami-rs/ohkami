@@ -1,11 +1,11 @@
-#[cfg(feature="websocket")]
-#[inline(always)] pub fn encode(src: impl AsRef<[u8]>) -> String {
-    encode_by(
-        src.as_ref(),
-        b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/",
-        Some(b'='),
-    )
-}
+// #[cfg(feature="websocket")]
+// #[inline(always)] pub fn encode(src: impl AsRef<[u8]>) -> String {
+//     encode_by(
+//         src.as_ref(),
+//         b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/",
+//         Some(b'='),
+//     )
+// }
 
 #[cfg(feature="utils")]
 #[inline(always)] pub fn encode_url(src: impl AsRef<[u8]>) -> String {

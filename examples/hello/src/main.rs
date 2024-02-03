@@ -9,7 +9,7 @@ mod health_handler {
 
 mod hello_handler {
     use ohkami::Response;
-    use ohkami::utils::{Payload, Query, Text};
+    use ohkami::typed::{Payload, Query};
 
     #[Query]
     pub struct HelloQuery<'q> {
@@ -19,13 +19,12 @@ mod hello_handler {
 
     pub async fn hello_by_query<'h>(
         HelloQuery { name, repeat }: HelloQuery<'h>
-    ) -> Text {
+    ) -> String {
         tracing::info!("\
             Called `hello_by_query`\
         ");
 
-        let message = name.repeat(repeat.unwrap_or(1));
-        Text(message)
+        name.repeat(repeat.unwrap_or(1))
     }
 
 
@@ -49,7 +48,7 @@ mod hello_handler {
 
     pub async fn hello_by_json<'h>(
         HelloRequest { name, repeat }: HelloRequest<'h>
-    ) -> Result<Text, ValidationError> {
+    ) -> Result<String, ValidationError> {
         tracing::info!("\
             Called `hello_by_query`\
         ");
@@ -58,8 +57,7 @@ mod hello_handler {
             return Err(ValidationError::NameIsEmpty)
         }
         
-        let message = name.repeat(repeat.unwrap_or(1));
-        Ok(Text(message))
+        Ok(name.repeat(repeat.unwrap_or(1)))
     }
 }
 

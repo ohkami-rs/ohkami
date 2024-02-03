@@ -46,7 +46,7 @@ fn impl_payload_json(data: &ItemStruct, derive_deserialize: bool) -> Result<Toke
     };
 
     let derive_deserialize = derive_deserialize.then_some(quote! {
-        #[derive(::ohkami::utils::Deserialize)]
+        #[derive(::ohkami::serde::Deserialize)]
         #[::ohkami::__internal__::consume_struct]
         #data
     });

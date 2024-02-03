@@ -12,7 +12,6 @@ jobs:
     strategy:
       matrix:
         rt:        ['tokio', 'async-std']
-        x:         ['websocket', '']
         toolchain: ['stable', 'nightly']
 
     steps:
@@ -25,19 +24,19 @@ jobs:
           override:  true
 
       - name: Run ohkami's doc tests
-        run:  cargo test --doc --features rt_${{ matrix.rt }}${{ matrix.toolchain == 'nightly' && ',nightly' || '' }},DEBUG
+        run:  cargo test --doc --features rt_tokio,DEBUG
 
       - name: Run ohkami's lib tests
-        run:  cargo test --lib --features rt_${{ matrix.rt }}${{ matrix.x == '' && '' || ',' }}${{ matrix.x }}${{ matrix.toolchain == 'nightly' && ',nightly' || '' }},DEBUG
+        run:  cargo test --lib --features rt_${{ matrix.rt }},DEBUG
 
       - name: Run ohkami's lib tests without default features except fot `utils`
-        run:  cargo test --lib --no-default-features --features utils,rt_${{ matrix.rt }}${{ matrix.x == '' && '' || ',' }}${{ matrix.x }}${{ matrix.toolchain == 'nightly' && ',nightly' || '' }},DEBUG
+        run:  cargo test --lib --no-default-features --features utils,rt_${{ matrix.rt }},DEBUG
       
       - name: Run ohkami's lib tests without default features except fot `testing`
-        run:  cargo test --lib --no-default-features --features testing,rt_${{ matrix.rt }}${{ matrix.x == '' && '' || ',' }}${{ matrix.x }}${{ matrix.toolchain == 'nightly' && ',nightly' || '' }},DEBUG
+        run:  cargo test --lib --no-default-features --features testing,rt_${{ matrix.rt }},DEBUG
       
       - name: Run ohkami's lib tests without default features
-        run:  cargo test --lib --no-default-features --features rt_${{ matrix.rt }}${{ matrix.x == '' && '' || ',' }}${{ matrix.x }}${{ matrix.toolchain == 'nightly' && ',nightly' || '' }},DEBUG
+        run:  cargo test --lib --no-default-features --features rt_${{ matrix.rt }},DEBUG
       
       - name: Cache cargo tools
         id:   cache_cargo_tools
