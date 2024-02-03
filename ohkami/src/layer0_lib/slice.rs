@@ -52,6 +52,7 @@ pub(crate) enum CowSlice {
             std::borrow::Cow::Owned(vec)      => Self::Own(vec),
         }
     }
+    #[cfg(feature="custom_headers")]
     #[inline] pub(crate) unsafe fn extend(&mut self, bytes: &[u8]) {
         match self {
             Self::Own(vec)   => vec.extend_from_slice(bytes),

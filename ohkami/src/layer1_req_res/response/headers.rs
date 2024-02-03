@@ -1,8 +1,12 @@
 use std::borrow::Cow;
-use rustc_hash::FxHashMap;
-
 use crate::layer0_lib::Append;
 
+#[cfg(feature="custom_headers")]
+use rustc_hash::FxHashMap;
+
+
+#[cfg(feature="custom_headers")]
+type CustomHeaderMap = FxHashMap<Cow<'static, str>, Cow<'static, str>>;
 
 pub struct Headers {
     values: [Option<Cow<'static, str>>; N_SERVER_HEADERS],
@@ -13,8 +17,6 @@ pub struct Headers {
     /// Size of whole the byte stream when this is written into HTTP response.
     size: usize,
 }
-
-type CustomHeaderMap = FxHashMap<Cow<'static, str>, Cow<'static, str>>;
 
 pub struct SetHeaders<'set>(
     &'set mut Headers
@@ -367,6 +369,7 @@ impl Headers {
 
         Standard { map: self, cur: 0 }
     }
+
     pub(crate) fn iter(&self) -> impl Iterator<Item = (&str, &str)> {
         struct Standard<'i> {
             map: &'i [Option<Cow<'static, str>>; N_SERVER_HEADERS],
@@ -385,9 +388,11 @@ impl Headers {
             }
         }
 
+        #[cfg(feature="custom_headers")]
         struct Custom<'i> {
             map: Option<std::collections::hash_map::Iter<'i, Cow<'static, str>, Cow<'static, str>>>,
         }
+        #[cfg(feature="custom_headers")]
         impl<'i> Iterator for Custom<'i> {
             type Item = (&'i str, &'i str);
             fn next(&mut self) -> Option<Self::Item> {
@@ -396,10 +401,15 @@ impl Headers {
             }
         }
 
-        Iterator::chain(
-            Standard { map: &self.values, cur: 0 },
-            Custom { map: self.custom.as_ref().map(|box_hmap| box_hmap.iter()) }
-        )
+        #[cfg(feature="custom_headers")] {
+            Iterator::chain(
+                Standard { map: &self.values, cur: 0 },
+                Custom { map: self.custom.as_ref().map(|box_hmap| box_hmap.iter()) }
+            )
+        }
+        #[cfg(not(feature="custom_headers"))] {
+            Standard { map: &self.values, cur: 0 }
+        }
     }
 
     #[inline] pub(crate) fn write_to(self, buf: &mut Vec<u8>) {
@@ -475,6 +485,7 @@ const _: () = {
                 }
             }
 
+            #[cfg(feature="custom_headers")]
             if self.custom != other.custom {
                 return false
             }

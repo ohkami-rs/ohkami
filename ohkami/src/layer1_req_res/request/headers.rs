@@ -1,6 +1,8 @@
 use std::borrow::Cow;
-use rustc_hash::FxHashMap;
 use crate::layer0_lib::{Append, CowSlice, Slice};
+
+#[cfg(feature="custom_headers")]
+use rustc_hash::FxHashMap;
 
 
 pub struct Headers {
@@ -362,6 +364,7 @@ impl Headers {
         }
         this
     }
+    #[cfg(feature="custom_headers")]
     #[cfg(test)] pub(crate) fn from_iters(
         iter:   impl IntoIterator<Item = (Header, &'static str)>,
         custom: impl IntoIterator<Item = (&'static str, &'static str)>,
@@ -426,9 +429,11 @@ impl Headers {
             }
         }
 
+        #[cfg(feature="custom_headers")]
         struct Custom<'i> {
             map_iter: Option<::std::collections::hash_map::Iter<'i, CowSlice, CowSlice>>
         }
+        #[cfg(feature="custom_headers")]
         impl<'i> Iterator for Custom<'i> {
             type Item = (&'i str, &'i str);
             fn next(&mut self) -> Option<Self::Item> {
@@ -440,10 +445,15 @@ impl Headers {
             }
         }
 
-        Iterator::chain(
-            Standard { cur:0, standard:&self.values },
-            Custom { map_iter:self.custom.as_ref().map(|box_hmap| box_hmap.iter()) }
-        )
+        #[cfg(feature="custom_headers")] {
+            Iterator::chain(
+                Standard { cur:0, standard:&self.values },
+                Custom { map_iter:self.custom.as_ref().map(|box_hmap| box_hmap.iter()) }
+            )
+        }
+        #[cfg(not(feature="custom_headers"))] {
+            Standard { cur:0, standard:&self.values }
+        }
     }
 }
 
@@ -455,7 +465,8 @@ const _: () = {
                     return false
                 }
             }
-
+            
+            #[cfg(feature="custom_headers")]
             if self.custom != other.custom {
                 return false
             }

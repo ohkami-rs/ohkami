@@ -94,48 +94,50 @@ fn metadataize(input: &str) -> [u8; METADATA_SIZE] {
         #[cfg(feature="websocket")] upgrade_id: None,
     });
 
-
-    const CASE_3: &str = "\
-        POST /foo.php?query=1&q2=xxx HTTP/1.1\r\n\
-        Host: localhost\r\n\
-        User-Agent: Mozilla/5.0 (Windows; U; Windows NT 6.1; en-US; rv:1.9.1.5) Gecko/20091102 Firefox/3.5.5 (.NET CLR 3.5.30729)\r\n\
-        Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8\r\n\
-        Accept-Language: en-us,en;q=0.5\r\n\
-        Accept-Encoding: gzip,deflate\r\n\
-        X-Request-Id: 300\r\n\
-        Connection: keep-alive\r\n\
-        Referer: http://localhost/test.php\r\n\
-        Content-Type: application/x-www-form-urlencoded\r\n\
-        Content-Length: 43\r\n\
-        \r\n\
-        first_name=John&last_name=Doe&action=Submit\
-    ";
-    const _CASE_3_LEN: usize = CASE_3.len();
-    assert_parse!(CASE_3, Request {_metadata: metadataize(CASE_3),
-        method:  Method::POST,
-        path:    Path::from_literal("/foo.php"),
-        queries: QueryParams::from([
-            ("query", "1"),
-            ("q2",    "xxx"),
-        ]),
-        headers: RequestHeaders::from_iters(
-            [
-                (RequestHeader::Host,           "localhost"),
-                (RequestHeader::UserAgent,      "Mozilla/5.0 (Windows; U; Windows NT 6.1; en-US; rv:1.9.1.5) Gecko/20091102 Firefox/3.5.5 (.NET CLR 3.5.30729)"),
-                (RequestHeader::Accept,         "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"),
-                (RequestHeader::AcceptLanguage, "en-us,en;q=0.5"),
-                (RequestHeader::AcceptEncoding, "gzip,deflate"),
-                (RequestHeader::Connection,     "keep-alive"),
-                (RequestHeader::Referer,        "http://localhost/test.php"),
-                (RequestHeader::ContentType,    "application/x-www-form-urlencoded"),
-                (RequestHeader::ContentLength,  "43"),
-            ],
-            [
-                ("X-Request-Id", "300"),
-            ]
-        ),
-        payload: Some(CowSlice::Own(Vec::from("first_name=John&last_name=Doe&action=Submit"))),
-        store:   Store::new(),
-        #[cfg(feature="websocket")] upgrade_id: None,
-    });
+    #[cfg(feature="custom_headers")]
+    {
+        const CASE_3: &str = "\
+            POST /foo.php?query=1&q2=xxx HTTP/1.1\r\n\
+            Host: localhost\r\n\
+            User-Agent: Mozilla/5.0 (Windows; U; Windows NT 6.1; en-US; rv:1.9.1.5) Gecko/20091102 Firefox/3.5.5 (.NET CLR 3.5.30729)\r\n\
+            Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8\r\n\
+            Accept-Language: en-us,en;q=0.5\r\n\
+            Accept-Encoding: gzip,deflate\r\n\
+            X-Request-Id: 300\r\n\
+            Connection: keep-alive\r\n\
+            Referer: http://localhost/test.php\r\n\
+            Content-Type: application/x-www-form-urlencoded\r\n\
+            Content-Length: 43\r\n\
+            \r\n\
+            first_name=John&last_name=Doe&action=Submit\
+        ";
+        const _CASE_3_LEN: usize = CASE_3.len();
+        assert_parse!(CASE_3, Request {_metadata: metadataize(CASE_3),
+            method:  Method::POST,
+            path:    Path::from_literal("/foo.php"),
+            queries: QueryParams::from([
+                ("query", "1"),
+                ("q2",    "xxx"),
+            ]),
+            headers: RequestHeaders::from_iters(
+                [
+                    (RequestHeader::Host,           "localhost"),
+                    (RequestHeader::UserAgent,      "Mozilla/5.0 (Windows; U; Windows NT 6.1; en-US; rv:1.9.1.5) Gecko/20091102 Firefox/3.5.5 (.NET CLR 3.5.30729)"),
+                    (RequestHeader::Accept,         "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"),
+                    (RequestHeader::AcceptLanguage, "en-us,en;q=0.5"),
+                    (RequestHeader::AcceptEncoding, "gzip,deflate"),
+                    (RequestHeader::Connection,     "keep-alive"),
+                    (RequestHeader::Referer,        "http://localhost/test.php"),
+                    (RequestHeader::ContentType,    "application/x-www-form-urlencoded"),
+                    (RequestHeader::ContentLength,  "43"),
+                ],
+                [
+                    ("X-Request-Id", "300"),
+                ]
+            ),
+            payload: Some(CowSlice::Own(Vec::from("first_name=John&last_name=Doe&action=Submit"))),
+            store:   Store::new(),
+            #[cfg(feature="websocket")] upgrade_id: None,
+        });
+    }
 }
