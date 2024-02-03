@@ -163,4 +163,12 @@ const _: () = {
             }
         }
     }
+
+    impl PartialEq for Response {
+        fn eq(&self, other: &Self) -> bool {
+            self.status  == other.status  &&
+            self.headers == other.headers &&
+            self.content == other.content
+        }
+    }
 };
