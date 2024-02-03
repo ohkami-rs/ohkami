@@ -32,7 +32,7 @@ struct Logger;
 impl IntoFang for Logger {
     fn into_fang(self) -> ohkami::Fang {
         Fang(|req: &Request| {
-            println!("[request] {} {}", req.method, req.path());
+            println!("[request] {} {}", req.method(), req.path());
 
             if let Some(body) = req.payload() {
                 let content_type = req.headers.ContentType().unwrap_or("");

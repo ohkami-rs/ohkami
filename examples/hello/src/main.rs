@@ -1,8 +1,8 @@
 mod health_handler {
-    use ohkami::http::Status;
+    use ohkami::typed::NoContent;
 
-    pub async fn health_check() -> Status {
-        Status::NoContent
+    pub async fn health_check() -> NoContent {
+        NoContent
     }
 }
 
@@ -85,7 +85,7 @@ mod fangs {
     impl IntoFang for LogRequest {
         fn into_fang(self) -> Fang {
             Fang(|req: &Request| {
-                let __method__ = req.method;
+                let __method__ = req.method();
                 let __path__   = req.path();
 
                 tracing::info!("\

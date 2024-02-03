@@ -78,7 +78,7 @@ pub async fn senario() {
     );
 
     use ohkami::testing::*;
-    use ohkami::http::Status;
+    use ohkami::Status;
     use crate::models::{*, request::*, response::*};
 
 

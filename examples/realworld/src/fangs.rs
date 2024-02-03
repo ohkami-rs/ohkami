@@ -65,7 +65,7 @@ pub struct LogRequest;
 impl IntoFang for LogRequest {
     fn into_fang(self) -> Fang {
         Fang(|req: &Request| {
-            let method = req.method;
+            let method = req.method();
             let path   = req.path();
 
             tracing::info!("{method:<7} {path}");
