@@ -15,9 +15,6 @@ categories    = ["rust-patterns", "asynchronous", "web-programming::http-server"
 license       = "MIT"
 readme        = "../README.md"
 
-[package.metadata.docs.rs]
-rustdoc-args  = ["--no-deps"]
-
 [dependencies]
 proc-macro2   = "1.0"
 quote         = "1.0"
