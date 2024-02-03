@@ -18,7 +18,14 @@
     }
 
 impl JWT {
-    #[inline] pub fn new(secret: impl Into<Cow<'static, str>>) -> Self {
+    /// Just `new_256`; use HMAC-SHA256 as verifying algorithm
+    #[inline] pub fn default(secret: impl Into<Cow<'static, str>>) -> Self {
+        Self {
+            secret: secret.into(),
+            alg:    VerifyingAlgorithm::HS256,
+        }
+    }
+    pub fn new_256(secret: impl Into<Cow<'static, str>>) -> Self {
         Self {
             secret: secret.into(),
             alg:    VerifyingAlgorithm::HS256,
@@ -194,7 +201,7 @@ impl JWT {
             ```
         */
         assert_eq! {
-            JWT::new("secret").issue(::serde_json::json!({"name":"kanarus","id":42,"iat":1516239022})),
+            JWT::default("secret").issue(::serde_json::json!({"name":"kanarus","id":42,"iat":1516239022})),
             "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE1MTYyMzkwMjIsImlkIjo0MiwibmFtZSI6ImthbmFydXMifQ.dt43rLwmy4_GA_84LMC1m5CwVc59P9as_nRFldVCH7g"
         }
     }
@@ -203,7 +210,7 @@ impl JWT {
         use crate::{Request, testing::TestRequest, http::Status};
         use std::pin::Pin;
 
-        let my_jwt = JWT::new("ohkami-realworld-jwt-authorization-secret-key");
+        let my_jwt = JWT::default("ohkami-realworld-jwt-authorization-secret-key");
 
         let req_bytes = TestRequest::GET("/")
             .header("Authorization", "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE3MDY4MTEwNzUsInVzZXJfaWQiOiI5ZmMwMDViMi1mODU4LTQzMzYtODkwYS1mMWEyYWVmNjBhMjQifQ.AKp-0zvKK4Hwa6qCgxskckD04Snf0gpSG7U1LOpcC_I")
@@ -241,7 +248,7 @@ impl JWT {
 
 
         fn my_jwt() -> JWT {
-            JWT::new("myverysecretjwtsecretkey")
+            JWT::default("myverysecretjwtsecretkey")
         }
 
         #[derive(serde::Serialize, serde::Deserialize)]

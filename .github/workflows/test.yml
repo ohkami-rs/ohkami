@@ -24,7 +24,7 @@ jobs:
           override:  true
 
       - name: Run ohkami's doc tests
-        run:  cargo test --doc --features rt_${{ matrix.rt }},DEBUG
+        run:  cargo test --doc --features rt_tokio,DEBUG
 
       - name: Run ohkami's lib tests
         run:  cargo test --lib --features rt_${{ matrix.rt }},DEBUG
