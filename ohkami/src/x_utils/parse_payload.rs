@@ -384,7 +384,7 @@ fn check_as_boundary(line: &[u8], boundary_str: &str) -> Option<Boundary> {
 
 
 /*===== for #[Payload(URLEncoded)] =====*/
-/// Based on https://github.com/servo/rust-url/blob/master/form_urlencoded; MIT
+/// Based on <https://github.com/servo/rust-url/blob/master/form_urlencoded>; MIT
 /// 
 /// ---
 /// 
