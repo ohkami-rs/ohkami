@@ -8,7 +8,7 @@ members  = [
 ]
 
 [workspace.dependencies]
-ohkami             = { version = "0.10.0", path = "../ohkami", features = ["rt_tokio"] }
+ohkami             = { version = "0.11.0", path = "../ohkami", features = ["rt_tokio"] }
 tokio              = { version = "1", features = ["full"] }
 serde              = { version = "1", features = ["derive"] }
 sqlx               = { version = "0.7.3", features = ["runtime-tokio-native-tls", "postgres", "macros", "chrono", "uuid"] }
