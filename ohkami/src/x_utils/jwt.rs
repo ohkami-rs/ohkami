@@ -1,21 +1,103 @@
 #![allow(non_snake_case, non_camel_case_types)]
 
-    use std::borrow::Cow;
-    use crate::layer0_lib::{base64};
-    use crate::{Request, Response};
+use std::borrow::Cow;
+use crate::layer0_lib::{base64};
+use crate::{Request, Response};
 
 
-    #[derive(Clone)]
-    pub struct JWT {
-        secret: Cow<'static, str>,
-        alg:    VerifyingAlgorithm,
-    }
-    #[derive(Clone)]
-    enum VerifyingAlgorithm {
-        HS256,
-        HS384,
-        HS512,
-    }
+/// # Builtin fang for JWT (JSON Web Token) config
+/// 
+/// <br>
+/// 
+/// *example.rs*
+/// ```no_run
+/// use ohkami::prelude::*;
+/// use ohkami::fangs::JWT;
+/// use ohkami::typed::ResponseBody;
+/// use ohkami::Memory;
+/// use ohkami::serde::{Serialize, Deserialize};
+/// 
+/// 
+/// fn my_jwt() -> JWT {
+///     let jwt_secret = std::env::var("JWT_SECRET").unwrap();
+/// 
+///     // `default` uses HMAC-SHA256 as the verifying algorithm
+///     JWT::default(jwt_secret)
+/// }
+/// 
+/// #[derive(Serialize, Deserialize)]
+/// struct JWTPayload {
+///     user_id: i64,
+///     iat:     u64,
+/// }
+/// 
+/// struct MyAuthFang;
+/// impl IntoFang for MyAuthFang {
+///     fn into_fang(self) -> Fang {
+///         Fang(move |req: &mut Request| {
+///             let payload = my_jwt()
+///                 .verified::<JWTPayload>(req)?;
+///             req.memorize(payload);
+///             Ok(())
+///         })
+///     }
+/// }
+/// 
+/// fn issue_jwt_for(user_id: i64) -> String {
+///     my_jwt().issue(JWTPayload {
+///         user_id,
+///         iat: ohkami::utils::unix_timestamp(),
+///     })
+/// }
+/// 
+/// 
+/// #[ResponseBody(JSONS)]
+/// struct SigninResponse {
+///     token: String,
+/// }
+/// 
+/// async fn signin() -> SigninResponse {
+///     SigninResponse {
+///         token: issue_jwt_for(42)
+///     }
+/// }
+/// 
+/// 
+/// #[ResponseBody(JSONS)]
+/// struct ProfileResponse {
+///     name: String,
+///     bio:  Option<String>,
+/// }
+/// 
+/// async fn get_profile(
+///     auth: Memory<'_, JWTPayload>
+/// ) -> ProfileResponse {
+///     ProfileResponse {
+///         name: String::from("ohkami"),
+///         bio:  Some(String::from("declarative web framework")),
+///     }
+/// }
+/// 
+/// 
+/// #[tokio::main]
+/// async fn main() {
+///     Ohkami::with(MyAuthFang, (
+///         "/signin".POST(signin),
+///         "/api/profile".GET(get_profile),
+///     )).howl(3000).await
+/// }
+/// ```
+#[derive(Clone)]
+pub struct JWT {
+    secret: Cow<'static, str>,
+    alg:    VerifyingAlgorithm,
+}
+#[derive(Clone)]
+enum VerifyingAlgorithm {
+    HS256,
+    HS384,
+    HS512,
+}
 
 impl JWT {
     /// Just `new_256`; use HMAC-SHA256 as verifying algorithm
@@ -25,18 +107,21 @@ impl JWT {
             alg:    VerifyingAlgorithm::HS256,
         }
     }
+    /// Use HMAC-SHA256 as verifying algorithm
     pub fn new_256(secret: impl Into<Cow<'static, str>>) -> Self {
         Self {
             secret: secret.into(),
             alg:    VerifyingAlgorithm::HS256,
         }
     }
+    /// Use HMAC-SHA384 as verifying algorithm
     pub fn new_384(secret: impl Into<Cow<'static, str>>) -> Self {
         Self {
             secret: secret.into(),
             alg:    VerifyingAlgorithm::HS384,
         }
     }
+    /// Use HMAC-SHA512 as verifying algorithm
     pub fn new_512(secret: impl Into<Cow<'static, str>>) -> Self {
         Self {
             secret: secret.into(),
