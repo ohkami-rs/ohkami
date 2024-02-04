@@ -46,6 +46,37 @@ pub struct ByAnother {
 
 macro_rules! Route {
     ($( $method:ident ),*) => {
+        /// Core trait for ohkami's routing definition.
+        /// 
+        /// <br>
+        /// 
+        /// *example.rs*
+        /// ```no_run
+        /// use ohkami::{Ohkami, Route};
+        /// 
+        /// async fn index() -> &'static str {
+        ///     "ohkami"
+        /// }
+        /// 
+        /// async fn greet() -> &'static str {
+        ///     "I'm fine."
+        /// }
+        /// 
+        /// async fn hello() -> String {
+        ///     format!("Hello!!!")
+        /// }
+        /// 
+        /// #[tokio::main]
+        /// async fn main() {
+        ///     Ohkami::new((
+        ///         "/"  // <-- `Route` works here...
+        ///             .GET(index),
+        ///         "/hello"  // <-- `Route` works here...
+        ///             .GET(greet)
+        ///             .PUT(hello),
+        ///     )).howl(3000).await
+        /// }
+        /// ```
         pub trait Route {
             $(
                 fn $method<Args>(self, handler: impl IntoHandler<Args>) -> Handlers;
