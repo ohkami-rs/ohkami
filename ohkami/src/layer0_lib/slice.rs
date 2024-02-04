@@ -13,24 +13,27 @@ pub(crate) struct Slice {
         }
     }
 
-    #[inline] pub(crate) unsafe fn new(head: *const u8, size: usize) -> Self {
+    #[inline(always)] pub(crate) unsafe fn new(head: *const u8, size: usize) -> Self {
         Self {
             head: NonNull::new(head as *mut _),
             size,
         }
     }
+
     #[inline(always)] pub(crate) unsafe fn from_bytes(bytes: &[u8]) -> Self {
         Self {
             head: NonNull::new(bytes.as_ptr() as *mut _),
             size: bytes.len(),
         }
     }
+    
     #[inline(always)] pub(crate) const unsafe fn as_bytes<'b>(&self) -> &'b [u8] {
         match self.head {
             Some(p) => std::slice::from_raw_parts(p.as_ptr(), self.size),
             None    => &[],
         }
     }
+
 } const _: () = {
     unsafe impl Send for Slice {}
     unsafe impl Sync for Slice {}

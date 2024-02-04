@@ -1,3 +1,5 @@
+use std::fmt::Write;
+
 use crate::{
     Request,
     Response,
@@ -29,13 +31,31 @@ pub(super) struct Node {
     pub(super) handler:  Option<Handler>,
     pub(super) back:     &'static [BackFang],
     pub(super) children: Vec<Node>,
-}
+} const _: () = {
+    impl std::fmt::Debug for Node {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            struct FangMarker;
+            impl std::fmt::Debug for FangMarker {
+                fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                    f.write_char('#')
+                }
+            }
+
+            f.debug_struct("Node")
+                .field("patterns", &self.patterns)
+                .field("handler", &if self.handler.is_some() {"Some<_>"} else {"None"})
+                .field("children", &self.children)
+                .field("front", &self.front.iter().map(|_| FangMarker).collect::<Vec<_>>())
+                .field("back", &self.back.iter().map(|_| FangMarker).collect::<Vec<_>>())
+                .finish()
+        }
+    }
+};
 
 pub(super) enum Pattern {
     Static(&'static [u8]),
     Param,
 } const _: () = {
-    #[cfg(test)]
     impl std::fmt::Debug for Pattern {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             f.write_str(match self {
@@ -182,18 +202,29 @@ impl Node {
         let decoded = percent_decode(path_bytes_maybe_percent_encoded);
         let mut path: &[u8] = &decoded;
 
+        #[cfg(feature="DEBUG")]
+        println!("[path] {}", path.escape_ascii());
+
         loop {
             for ff in target.front {
                 ff.0(req)?
             }
 
+            #[cfg(feature="DEBUG")]
+            println!("[patterns] {:?}", target.patterns);
+    
             for pattern in target.patterns {
                 if path.is_empty() || unsafe {path.get_unchecked(0)} != &b'/' {
                     // At least one `pattern` to match is remaining
                     // but remaining `path` doesn't start with '/'
                     return Ok(None)
                 }
+
                 path = unsafe {path.get_unchecked(1..)};
+                
+                #[cfg(feature="DEBUG")]
+                println!("[path stripped '/'] {}", path.escape_ascii());
+        
                 match pattern {
                     Pattern::Static(s)  => path = match path.strip_prefix(*s) {
                         Some(remaining) => remaining,
@@ -208,8 +239,14 @@ impl Node {
             }
 
             if path.is_empty() {
+                #[cfg(feature="DEBUG")]
+                println!("Found: {target:?}");
+        
                 return Ok(Some(target))
             } else {
+                #[cfg(feature="DEBUG")]
+                println!("not found, searching children: {:?}", target.children);
+        
                 target = match target.matchable_child(path) {
                     Some(child) => child,
                     None        => return Ok(None),
