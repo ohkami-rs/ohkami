@@ -30,7 +30,7 @@ struct UTCDateTime {
     date: Date,
     time: Time,
 } impl UTCDateTime {
-    fn now_from_system(system_now: std::time::Duration) -> Self {
+    #[inline] fn now_from_system(system_now: std::time::Duration) -> Self {
         let (secs, nsecs) = (system_now.as_secs() as i64, system_now.subsec_nanos());
 
         let days = secs.div_euclid(86_400);
@@ -135,7 +135,7 @@ impl Date {
         let flags = YearFlag::from_year(year_mod_400 as i32);
         Self::from_ordinal_and_flags(year_div_400 * 400 + year_mod_400 as i32, ordinal, flags)
     }
-    fn from_ordinal_and_flags(
+    #[inline(always)] fn from_ordinal_and_flags(
         year:    i32,
         ordinal: u32,
         flag:    YearFlag,
@@ -153,20 +153,19 @@ impl Date {
         Self((year << 13) | (of.0 as i32))
     }
 
-    const fn year(&self) -> i32 {
+    #[inline(always)] const fn year(&self) -> i32 {
         self.0 >> 13
     }
-    fn month_index(&self) -> u32 {
+    #[inline(always)] fn month_index(&self) -> u32 {
         self.of().to_mdf().month() - 1
     }
-    fn day(&self) -> u32 {
+    #[inline(always)] fn day(&self) -> u32 {
         self.of().to_mdf().day()
     }
-    const fn weekday(&self) -> Weekday {
+    #[inline(always)] const fn weekday(&self) -> Weekday {
         self.of().weekday()
     }
-    #[inline]
-    const fn of(&self) -> Of {
+    #[inline(always)] const fn of(&self) -> Of {
         Of::from_date(self.0)
     }
 }
@@ -176,7 +175,7 @@ struct Time {
     secs: u32,
     frac: u32,
 } impl Time {
-    const fn from_seconds(secs: u32, nsecs: u32) -> Self {
+    #[inline(always)] const fn from_seconds(secs: u32, nsecs: u32) -> Self {
         debug_assert! {
             secs  < 86_400 &&
             nsecs < 2_000_000_000 &&
@@ -184,14 +183,14 @@ struct Time {
         }
         Self { secs, frac: nsecs }
     }
-    const fn hms(&self) -> (u32, u32, u32) {
+    #[inline] const fn hms(&self) -> (u32, u32, u32) {
         let sec = self.secs % 60;
         let mins = self.secs / 60;
         let min = mins % 60;
         let hour = mins / 60;
         (hour, min, sec)
     }
-    const fn nanosecond(&self) -> u32 {
+    #[inline(always)] const fn nanosecond(&self) -> u32 {
         self.frac
     }
 }
@@ -199,7 +198,7 @@ struct Time {
 #[derive(Clone, Copy)]
 struct YearFlag(u8);
 impl YearFlag {
-    fn from_year(year: i32) -> Self {
+    #[inline(always)] fn from_year(year: i32) -> Self {
         const A:  YearFlag = YearFlag(0o15);
         const AG: YearFlag = YearFlag(0o05);
         const B:  YearFlag = YearFlag(0o14);
@@ -241,7 +240,7 @@ impl YearFlag {
 #[derive(Clone, Copy)]
 struct Of(u32);
 impl Of {
-    const fn new(ordinal: u32, YearFlag(flag): YearFlag) -> Self {
+    #[inline] const fn new(ordinal: u32, YearFlag(flag): YearFlag) -> Self {
         let of = Self((ordinal << 4) | flag as u32);
         debug_assert!({
             const MIN_OL: u32 = 1 << 1;
@@ -252,30 +251,30 @@ impl Of {
         });
         of
     }
-    const fn from_date(date: i32) -> Self {
+    #[inline] const fn from_date(date: i32) -> Self {
         Self((date & 0b1_1111_1111_1111) as u32)
     }
-    const fn weekday(&self) -> Weekday {
+    #[inline] const fn weekday(&self) -> Weekday {
         let Of(of) = *self;
         Weekday::from_u32_mod7((of >> 4) + (of & 0b111))
     }
-    fn to_mdf(&self) -> Mdf {
+    #[inline] fn to_mdf(&self) -> Mdf {
         Mdf::from_of(*self)
     }
 }
 
 struct Mdf(u32);
 impl Mdf {
-    const fn month(&self) -> u32 {
+    #[inline] const fn month(&self) -> u32 {
         let Mdf(mdf) = *self;
         mdf >> 9
     }
-    const fn day(&self) -> u32 {
+    #[inline] const fn day(&self) -> u32 {
         let Mdf(mdf) = *self;
         (mdf >> 4) & 0b1_1111
     }
 
-    fn from_of(Of(of): Of) -> Mdf {
+    #[inline] fn from_of(Of(of): Of) -> Mdf {
         const MAX_OL: u32 = 366 << 1; // `(366 << 1) | 1` would be day 366 in a non-leap year
         const OL_TO_MDL: &[u8; MAX_OL as usize + 1] = &[
             0, 0, // 0
@@ -339,7 +338,7 @@ enum Weekday {
     Sat,
     Sun,
 } impl Weekday {
-    const fn from_u32_mod7(n: u32) -> Self {
+    #[inline] const fn from_u32_mod7(n: u32) -> Self {
         match n % 7 {
             0 => Self::Mon,
             1 => Self::Tue,
@@ -351,7 +350,7 @@ enum Weekday {
         }
     }
 
-    const fn num_days_from_sunday(&self) -> u32 {
+    #[inline] const fn num_days_from_sunday(&self) -> u32 {
         (*self as u32 + 7 - Self::Sun as u32) % 7
     }
 }

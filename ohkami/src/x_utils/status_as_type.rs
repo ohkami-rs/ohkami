@@ -94,8 +94,12 @@ macro_rules! plain_text_responsebodies {
 
 
 macro_rules! generate_statuses_as_types_containing_value {
-    ($( $status:ident, )*) => {
+    ($( $status:ident : $message:literal, )*) => {
         $(
+            #[doc = "Type-safe `"]
+            #[doc = $message]
+            #[doc = "` response with the `ResponseBody`"]
+            #[doc = "<br><br>Use `()` for no response body."]
             pub struct $status<B: ResponseBody>(pub B);
 
             impl<B: ResponseBody> IntoResponse for $status<B> {
@@ -106,21 +110,24 @@ macro_rules! generate_statuses_as_types_containing_value {
         )*
     };
 } generate_statuses_as_types_containing_value! {
-    OK,
-    Created,
+    OK: "200 OK",
+    Created: "201 Created",
 
-    BadRequest,
-    Unauthorized,
-    Forbidden,
-    NotFound,
-    UnprocessableEntity,
+    BadRequest: "400 BadRequest",
+    Unauthorized: "401 Unauthorized",
+    Forbidden: "403 Forbidden",
+    NotFound: "404 Not Found",
+    UnprocessableEntity: "422 Unprocessable Entity",
 
-    InternalServerError,
+    InternalServerError: "500 Internal Server Error",
 }
 
 macro_rules! generate_statuses_as_types_with_no_value {
-    ($( $status:ident, )*) => {
+    ($( $status:ident : $message:literal, )*) => {
         $(
+            #[doc = "Type-safe `"]
+            #[doc = $message]
+            #[doc = "` response"]
             pub struct $status;
 
             impl IntoResponse for $status {
@@ -131,18 +138,21 @@ macro_rules! generate_statuses_as_types_with_no_value {
         )*
     };
 } generate_statuses_as_types_with_no_value! {
-    SwitchingProtocols,
+    SwitchingProtocols : "101 SwitchingProtocols",
 
-    NoContent,
+    NoContent : "204 NoContent",
 
-    NotModified,
+    NotModified : "304 NotModified",
 
-    NotImplemented,
+    NotImplemented : "501 NotImplemented",
 }
 
 macro_rules! generate_redirects {
-    ($( $status:ident / $contructor:ident, )*) => {
+    ($( $status:ident / $contructor:ident : $message:literal, )*) => {
         $(
+            #[doc = "Type-safe `"]
+            #[doc = $message]
+            #[doc = "` response using the `location` as `Location` header value"]
             pub struct $status {
                 location: Cow<'static, str>,
             }
@@ -165,6 +175,6 @@ macro_rules! generate_redirects {
         )*
     };
 } generate_redirects! {
-    MovedPermanently / to,
-    Found / at,
+    MovedPermanently / to : "301 MovedPermanently",
+    Found / at : "302 Found",
 }
