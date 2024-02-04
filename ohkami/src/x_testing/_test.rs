@@ -10,7 +10,7 @@ use crate::typed::ResponseBody;
     let simple_ohkami = Ohkami::new(());
 
     let res = simple_ohkami.oneshot(TestRequest::GET("/")).await;
-    assert_eq!(res.status(), Status::NotFound)
+    assert_eq!(res.status(), Status::NotFound);
     let simple_ohkami = Ohkami::new((
         "/".
             GET(hello),
