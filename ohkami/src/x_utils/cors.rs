@@ -3,6 +3,30 @@
 use crate::{IntoFang, Fang, Response, Request, append, Status, Method};
 
 
+/// # Builtin fang for CORS config
+/// 
+/// <br>
+/// 
+/// *example.rs*
+/// ```no_run
+/// use ohkami::prelude::*;
+/// use ohkami::fangs::CORS;
+/// 
+/// #[tokio::main]
+/// async fn main() {
+///     Ohkami::with((
+///         CORS::new("https://foo.bar.org")
+///             .AllowMethods(&[Method::GET, Method::POST])
+///             .AllowHeaders(&["Content-Type", "X-Requested-With"])
+///             .AllowCredentials()
+///             .MaxAge(86400),
+///     ), (
+///         "/api".GET(|| async {
+///             "Hello, CORS!"
+///         }),
+///     )).howl(8080).await
+/// }
+/// ```
 pub struct CORS {
     pub(crate) AllowOrigin:      AccessControlAllowOrigin,
     pub(crate) AllowCredentials: bool,

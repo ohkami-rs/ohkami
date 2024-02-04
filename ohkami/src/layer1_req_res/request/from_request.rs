@@ -37,19 +37,16 @@ impl std::fmt::Display for FromRequestError {
     }
 }
 
-/// Represents "this is retirieved from `Request`".
+/// Represents "retirieved from `Request`".
 /// 
 /// - `#[Query]`
-/// - `#[Payload(JSON)]`
-/// - `#[Payload(URLEncoded)]`
-/// - `#[Payload(Form)]`
+/// - `#[Payload]`
 /// 
-/// implement this by default.
-/// 
-/// <br/>
+/// implements this for a struct.
 /// 
 /// Of course, you can manually implement for any structs that can be extracted from request：
 /// 
+/// *example.rs*
 /// ```
 /// use ohkami::prelude::*;
 /// 
@@ -69,8 +66,13 @@ pub trait FromRequest<'req>: Sized {
     fn from_request(req: &'req Request) -> Result<Self, Self::Error>;
 }
 
+/// Repredents "retrieved from path/query param".
 pub trait FromParam<'p>: Sized {
     type Error: std::error::Error;
+    /// `param` is percent-decoded：
+    /// 
+    /// - `Cow::Borrowed(&'p str)` by default
+    /// - `Cow::Owned(String)` if it is decoded
     fn from_param(param: Cow<'p, str>) -> Result<Self, Self::Error>;
 } const _: () = {
     impl<'p> FromParam<'p> for String {

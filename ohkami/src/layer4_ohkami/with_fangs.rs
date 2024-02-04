@@ -4,8 +4,11 @@ use crate::{
 };
 
 
-/// <br/>
+/// Represents "can be used as a `Fang`".
 /// 
+/// <br>
+/// 
+/// *example.rs*
 /// ```
 /// use ohkami::prelude::*;
 /// 

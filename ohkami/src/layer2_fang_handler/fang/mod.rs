@@ -4,6 +4,52 @@ use std::{any::TypeId, sync::Arc};
 use crate::{Request, Response};
 
 
+/// # Fang ー ohkami's middleware system
+/// 
+/// <br>
+/// 
+/// *example.rs*
+/// ```no_run
+/// use ohkami::{Ohkami, Route};
+/// use ohkami::{Fang, IntoFang, Response};
+/// 
+/// struct SetServer;
+/// impl IntoFang for SetServer {
+///     fn into_fang(self) -> Fang {
+///         Fang(|res: &mut Response| {
+///             res.headers.set()
+///                 .Server("ohkami");
+///         })
+///     }
+/// }
+/// 
+/// #[tokio::main]
+/// async fn main() {
+///     // Use `with` to give
+///     // fangs for your Ohkami...
+///     Ohkami::with((SetServer,),
+///         "/".GET(|| async {
+///             "Hello!"
+///         })
+///     ).howl(5000).await
+/// }
+/// ```
+/// 
+/// <br>
+/// 
+/// ---
+/// 
+/// $ cargo run
+/// 
+/// ---
+/// 
+/// $ curl -i http://localhost:5000\
+/// HTTP/1.1 200 OK\
+/// Content-Length: 6\
+/// Content-Type: text/plain; charset=UTF-8\
+/// Server: ohkami\
+/// \
+/// Hello!
 #[derive(Clone)]
 pub struct Fang {
     pub(crate) id:   TypeId,
@@ -40,7 +86,9 @@ impl Fang {
     }
 }
 
-/// <br/>
+/// Create `Fang` from a function.
+/// 
+/// <br>
 /// 
 /// ## available `f` signatures
 /// 
@@ -53,10 +101,9 @@ impl Fang {
 /// - `Fn({&/&mut Request})`
 /// - `_ -> Result<(), Response>` version of them
 /// 
-/// <br/>
+/// <br>
 /// 
-/// ## Example
-/// 
+/// *example.rs*
 /// ```
 /// use ohkami::prelude::*;
 /// 
