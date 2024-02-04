@@ -44,7 +44,7 @@ DEBUG = [
     "tokio?/rt-multi-thread",
     "async-std?/attributes",
 ]
-default = [
+#default = [
 #    "utils",
 #    "testing",
 #    "custom-header",
@@ -52,4 +52,4 @@ default = [
 #    "rt_tokio",
 #    #"rt_async-std",
 #    "DEBUG",
-#]#
+#]
