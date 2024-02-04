@@ -57,7 +57,7 @@ async fn main() {
 $ cargo run
 ```
 ```sh
-$ curl http://localhost:3000/hc
+$ curl http://localhost:3000/healthz
 $ curl http://localhost:3000/hello/your_name
 Hello, your_name!
 ```
