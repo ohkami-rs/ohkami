@@ -15,7 +15,17 @@ impl Path {
     }
 
     #[inline] pub(crate) unsafe fn from_request_bytes(bytes: &[u8]) -> Self {
-        Self { raw: Slice::from_bytes(bytes), params: List::new() }
+        debug_assert! {
+            bytes.starts_with(b"/")
+        }
+
+        let mut len = bytes.len();
+        if bytes[len-1] == b'/' {len-=1};
+
+        Self {
+            raw:    Slice::new(bytes.as_ptr(), len),
+            params: List::new(),
+        }
     }
 
     #[inline] pub(crate) unsafe fn assume_one_param<'p>(&self) -> &'p [u8] {

@@ -30,5 +30,5 @@ async fn main() {
     assert_eq!(res.status(), Status::OK);
     assert_eq!(res.text(), Some("Hello!"));
 
-    //o.howl(5000).await
+    o.howl(5000).await
 }

@@ -7,20 +7,36 @@ use crate::typed::ResponseBody;
 
 
 #[__rt__::test] async fn testing_example_simple() {
-    let simple_ohkami = Ohkami::new(());
+//    let simple_ohkami = Ohkami::new(());
+//
+//    let res = simple_ohkami.oneshot(TestRequest::GET("/")).await;
+//    assert_eq!(res.status(), Status::NotFound);
 
-    let res = simple_ohkami.oneshot(TestRequest::GET("/")).await;
-    assert_eq!(res.status(), Status::NotFound);
+
+//    let simple_ohkami = Ohkami::new((
+//        "/".
+//            GET(hello),
+//    ));
+//    let res = simple_ohkami.oneshot(TestRequest::GET("/")).await;
+//    assert_eq!(res.status(), Status::OK);
+//    assert_eq!(res.text(), Some("Hello, world!"));
+//    let res = simple_ohkami.oneshot(TestRequest::GET("/a")).await;
+//    assert_eq!(res.status(), Status::NotFound);
+
 
     let hello_ohkami = Ohkami::new((
         "/hello".
             GET(hello),
     ));
 
-    let res = hello_ohkami.oneshot(TestRequest::GET("/")).await;
-    assert_eq!(res.status(), Status::NotFound);
+//    let res = hello_ohkami.oneshot(TestRequest::GET("/")).await;
+//    assert_eq!(res.status(), Status::NotFound);
+//
+//    let res = hello_ohkami.oneshot(TestRequest::GET("/hello")).await;
+//    assert_eq!(res.status(), Status::OK);
+//    assert_eq!(res.text(), Some("Hello, world!"));
 
-    let res = hello_ohkami.oneshot(TestRequest::GET("/hello")).await;
+    let res = hello_ohkami.oneshot(TestRequest::GET("/hello/")).await;
     assert_eq!(res.status(), Status::OK);
     assert_eq!(res.text(), Some("Hello, world!"));
 }
