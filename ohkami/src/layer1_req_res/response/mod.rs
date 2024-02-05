@@ -45,7 +45,7 @@ use crate::{
 /// 
 /// *into_response.rs*
 /// ```
-/// use ohkami::{Response, IntoResponse};
+/// use ohkami::{Response, IntoResponse, Status};
 /// 
 /// enum AppError {
 ///     A(String),
@@ -81,6 +81,87 @@ pub struct Response {
                 content: None,
             }
         }
+    }
+
+    macro_rules! direct_with_status_method {
+        ($( $status:ident, )*) => {
+            #[allow(non_snake_case)]
+            impl Response {
+                $(
+                    pub fn $status() -> Self {
+                        Self {
+                            status:  Status::$status,
+                            headers: ResponseHeaders::new(),
+                            content: None,
+                        }
+                    }
+                )*
+            }
+        };
+    } direct_with_status_method! {
+        Continue,
+        SwitchingProtocols,
+        Processing,
+        EarlyHints,
+    
+        OK,
+        Created,
+        Accepted,
+        NonAuthoritativeInformation,
+        NoContent,
+        ResetContent,
+        PartialContent,
+        MultiStatus,
+        AlreadyReported,
+        IMUsed,
+    
+        MultipleChoice,
+        MovedPermanently,
+        Found,
+        SeeOther,
+        NotModified,
+        TemporaryRedirect,
+        PermanentRedirect,
+    
+        BadRequest,
+        Unauthorized,
+        Forbidden,
+        NotFound,
+        MethodNotAllowed,
+        NotAcceptable,
+        ProxyAuthenticationRequired,
+        RequestTimeout,
+        Conflict,
+        Gone,
+        LengthRequired,
+        PreconditionFailed,
+        PayloadTooLarge,
+        URITooLong,
+        UnsupportedMediaType,
+        RangeNotSatisfiable,
+        ExceptionFailed,
+        Im_a_teapot,
+        MisdirectedRequest,
+        UnprocessableEntity,
+        Locked,
+        FailedDependency,
+        UpgradeRequired,
+        PreconditionRequired,
+        TooManyRequest,
+        RequestHeaderFieldsTooLarge,
+        UnavailableForLegalReasons,
+    
+        InternalServerError,
+        NotImplemented,
+        BadGateway,
+        ServiceUnavailable,
+        GatewayTimeout,
+        HTTPVersionNotSupported,
+        VariantAlsoNegotiates,
+        InsufficientStorage,
+        LoopDetected,
+        NotExtended,
+        NetworkAuthenticationRequired,
     }
 };
 

@@ -16,7 +16,8 @@ use crate::{Response, layer0_lib::Status};
 /// }
 /// impl IntoResponse for MyResponse {
 ///     fn into_response(self) -> Response {
-///         Response::OK().text(self.message)
+///         Response::with(Status::OK)
+///             .text(self.message)
 ///     }
 /// }
 /// 
