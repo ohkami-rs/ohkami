@@ -15,23 +15,4 @@ mod into_response_builtin;
 pub use into_response_builtin::{HTML, Text};
 
 mod status_as_type;
-pub use status_as_type::{ResponseBody,
-    SwitchingProtocols,
-
-    OK,
-    Created,
-    NoContent,
-
-    MovedPermanently,
-    Found,
-    NotModified,
-
-    BadRequest,
-    Unauthorized,
-    Forbidden,
-    NotFound,
-    UnprocessableEntity,
-
-    InternalServerError,
-    NotImplemented,
-};
+pub use status_as_type::{*, ResponseBody};

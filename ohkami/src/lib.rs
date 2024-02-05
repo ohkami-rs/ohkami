@@ -174,27 +174,7 @@ pub mod typed {
     pub use ohkami_macros::{ResponseBody, Query, Payload};
 
     pub use crate::x_utils::ResponseBody;
-
-    pub use crate::x_utils::{
-        SwitchingProtocols,
-
-        OK,
-        Created,
-        NoContent,
-
-        MovedPermanently,
-        Found,
-        NotModified,
-
-        BadRequest,
-        Unauthorized,
-        Forbidden,
-        NotFound,
-        UnprocessableEntity,
-
-        InternalServerError,
-        NotImplemented,
-    };
+    pub use crate::x_utils::*;
 }
 
 #[cfg(feature="websocket")]

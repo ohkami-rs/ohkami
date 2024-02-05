@@ -117,7 +117,7 @@ macro_rules! Route {
     }
     impl IntoResponse for APIError {
         fn into_response(self) -> crate::Response {
-            Response::InternalServerError()
+            Response::with(Status::InternalServerError)
         }
     }
 

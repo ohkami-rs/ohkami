@@ -60,21 +60,21 @@ impl<T:IntoResponse, E:IntoResponse> IntoResponse for Result<T, E> {
 
 impl IntoResponse for &'static str {
     fn into_response(self) -> Response {
-        Response::OK().text(self)
+        Response::with(Status::OK).text(self)
     }
 }
 impl IntoResponse for String {
     fn into_response(self) -> Response {
-        Response::OK().text(self)
+        Response::with(Status::OK).text(self)
     }
 }
 impl IntoResponse for &'_ String {
     fn into_response(self) -> Response {
-        Response::OK().text(self.clone())
+        Response::with(Status::OK).text(self.clone())
     }
 }
 impl IntoResponse for std::borrow::Cow<'static, str> {
     fn into_response(self) -> Response {
-        Response::OK().text(self)
+        Response::with(Status::OK).text(self)
     }
 }
