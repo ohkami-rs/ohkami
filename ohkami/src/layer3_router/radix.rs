@@ -198,14 +198,14 @@ impl Node {
         // 2. `Request` DOESN'T have method that mutates `path`,
         //    So what `path` refers to is NEVER changed by any other process
         //    while `search`
-        let path_bytes_maybe_percent_encoded = unsafe {req.path_bytes()};
+        let path_bytes_maybe_percent_encoded = unsafe {req.internal_path_bytes()};
         // Decode percent encodings in `path_bytes_maybe_percent_encoded`,
         // without checking entire it is valid UTF-8.
         let decoded = percent_decode(path_bytes_maybe_percent_encoded);
         let mut path: &[u8] = &decoded;
 
         #[cfg(feature="DEBUG")]
-        println!("[path] {}", path.escape_ascii());
+        println!("[path] '{}'", path.escape_ascii());
 
         loop {
             for ff in target.front {
@@ -225,7 +225,7 @@ impl Node {
                 path = unsafe {path.get_unchecked(1..)};
                 
                 #[cfg(feature="DEBUG")]
-                println!("[path stripped '/'] {}", path.escape_ascii());
+                println!("[path - prefix '/'] '{}'", path.escape_ascii());
         
                 match pattern {
                     Pattern::Static(s)  => path = match path.strip_prefix(*s) {

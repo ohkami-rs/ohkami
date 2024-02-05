@@ -232,18 +232,18 @@ impl Request {
     }
 
     /// Memorize any data within this request object
-    pub fn memorize<Value: Send + Sync + 'static>(&mut self, value: Value) {
+    #[inline(always)] pub fn memorize<Value: Send + Sync + 'static>(&mut self, value: Value) {
         self.store.insert(value)
     }
     /// Retrieve a data memorized in this request (using the type as key)
-    pub fn memorized<Value: Send + Sync + 'static>(&self) -> Option<&Value> {
+    #[inline(always)] pub fn memorized<Value: Send + Sync + 'static>(&self) -> Option<&Value> {
         self.store.get()
     }
 }
 
 impl Request {
-    #[inline(always)] pub(crate) unsafe fn path_bytes<'b>(&self) -> &'b [u8] {
-        self.path.as_bytes()
+    #[inline(always)] pub(crate) unsafe fn internal_path_bytes<'b>(&self) -> &'b [u8] {
+        self.path.as_internal_bytes()
     }
 }
 
