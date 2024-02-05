@@ -1,3 +1,6 @@
+mod status;
+pub use status::Status;
+
 mod headers;
 pub use headers::{Headers as ResponseHeaders, Header as ResponseHeader};
 
@@ -7,10 +10,7 @@ pub use into_response::IntoResponse;
 use std::{
     borrow::Cow,
 };
-use crate::{
-    __rt__::AsyncWriter,
-    layer0_lib::Status,
-};
+use crate::__rt__::AsyncWriter;
 
 
 /// # HTTP Response
@@ -81,87 +81,6 @@ pub struct Response {
                 content: None,
             }
         }
-    }
-
-    macro_rules! direct_with_status_method {
-        ($( $status:ident, )*) => {
-            #[allow(non_snake_case)]
-            impl Response {
-                $(
-                    pub fn $status() -> Self {
-                        Self {
-                            status:  Status::$status,
-                            headers: ResponseHeaders::new(),
-                            content: None,
-                        }
-                    }
-                )*
-            }
-        };
-    } direct_with_status_method! {
-        Continue,
-        SwitchingProtocols,
-        Processing,
-        EarlyHints,
-    
-        OK,
-        Created,
-        Accepted,
-        NonAuthoritativeInformation,
-        NoContent,
-        ResetContent,
-        PartialContent,
-        MultiStatus,
-        AlreadyReported,
-        IMUsed,
-    
-        MultipleChoice,
-        MovedPermanently,
-        Found,
-        SeeOther,
-        NotModified,
-        TemporaryRedirect,
-        PermanentRedirect,
-    
-        BadRequest,
-        Unauthorized,
-        Forbidden,
-        NotFound,
-        MethodNotAllowed,
-        NotAcceptable,
-        ProxyAuthenticationRequired,
-        RequestTimeout,
-        Conflict,
-        Gone,
-        LengthRequired,
-        PreconditionFailed,
-        PayloadTooLarge,
-        URITooLong,
-        UnsupportedMediaType,
-        RangeNotSatisfiable,
-        ExceptionFailed,
-        Im_a_teapot,
-        MisdirectedRequest,
-        UnprocessableEntity,
-        Locked,
-        FailedDependency,
-        UpgradeRequired,
-        PreconditionRequired,
-        TooManyRequest,
-        RequestHeaderFieldsTooLarge,
-        UnavailableForLegalReasons,
-    
-        InternalServerError,
-        NotImplemented,
-        BadGateway,
-        ServiceUnavailable,
-        GatewayTimeout,
-        HTTPVersionNotSupported,
-        VariantAlsoNegotiates,
-        InsufficientStorage,
-        LoopDetected,
-        NotExtended,
-        NetworkAuthenticationRequired,
     }
 };
 

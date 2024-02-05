@@ -1,6 +1,6 @@
 use std::pin::Pin;
-use super::{Request, METADATA_SIZE, Path, QueryParams, Store};
-use crate::{layer0_lib::{Slice, Method, CowSlice}};
+use super::{Request, Method, METADATA_SIZE, Path, QueryParams, Store};
+use crate::layer0_lib::{Slice, CowSlice};
 
 macro_rules! assert_parse {
     ($case:expr, $expected:expr) => {

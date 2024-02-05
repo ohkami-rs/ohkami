@@ -3,7 +3,7 @@ mod build;
 mod howl;
 
 use crate::{
-    layer0_lib::Method,
+    Method,
     layer3_router::TrieRouter,
 };
 

@@ -1,3 +1,6 @@
+use super::{Response, ResponseHeaders};
+
+
 macro_rules! status {
     (
         $(
@@ -19,6 +22,19 @@ macro_rules! status {
             #[inline(always)] pub(crate) const fn as_bytes(&self) -> &'static [u8] {
                 self.as_str().as_bytes()
             }
+        }
+
+        #[allow(non_snake_case)]
+        impl Response {
+            $(
+                pub fn $name() -> Self {
+                    Self {
+                        status:  Status::$name,
+                        headers: ResponseHeaders::new(),
+                        content: None,
+                    }
+                }
+            )*
         }
     };
 } status! {
