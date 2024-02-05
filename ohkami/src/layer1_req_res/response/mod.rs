@@ -1,3 +1,6 @@
+mod status;
+pub use status::Status;
+
 mod headers;
 pub use headers::{Headers as ResponseHeaders, Header as ResponseHeader};
 
@@ -7,10 +10,7 @@ pub use into_response::IntoResponse;
 use std::{
     borrow::Cow,
 };
-use crate::{
-    __rt__::AsyncWriter,
-    layer0_lib::Status,
-};
+use crate::__rt__::AsyncWriter;
 
 
 /// # HTTP Response
@@ -45,7 +45,7 @@ use crate::{
 /// 
 /// *into_response.rs*
 /// ```
-/// use ohkami::{Response, IntoResponse};
+/// use ohkami::{Response, IntoResponse, Status};
 /// 
 /// enum AppError {
 ///     A(String),
@@ -84,40 +84,6 @@ pub struct Response {
     }
 };
 
-macro_rules! new_response {
-    ($( $status:ident, )*) => {
-        #[allow(non_snake_case)]
-        impl Response {$(
-            pub fn $status() -> Self {
-                Self {
-                    status:  Status::$status,
-                    headers: ResponseHeaders::new(),
-                    content: None,
-                }
-            }
-        )*}
-    };
-} new_response! {
-    SwitchingProtocols,
-
-    OK,
-    Created,
-    NoContent,
-
-    MovedPermanently,
-    Found,
-    NotModified,
-
-    BadRequest,
-    Unauthorized,
-    Forbidden,
-    NotFound,
-    UnprocessableEntity,
-
-    InternalServerError,
-    NotImplemented,
-}
-
 impl Response {
     #[inline] pub(crate) fn into_bytes(self) -> Vec<u8> {
         let Self { status, headers, content, .. } = self;
@@ -135,7 +101,7 @@ impl Response {
 }
 
 impl Response {
-    #[inline] pub(crate) async fn send(self, stream: &mut (impl AsyncWriter + Unpin)) {
+    #[inline(always)] pub(crate) async fn send(self, stream: &mut (impl AsyncWriter + Unpin)) {
         if let Err(e) = stream.write_all(&self.into_bytes()).await {
             panic!("Failed to send response: {e}")
         }
@@ -187,7 +153,7 @@ impl Response {
 
         self
     }
-    pub fn json_literal<JSONString: Into<Cow<'static, str>>>(mut self, json_literal: JSONString) -> Response {
+    pub fn json_lit<JSONString: Into<Cow<'static, str>>>(mut self, json_literal: JSONString) -> Response {
         let body = match json_literal.into() {
             Cow::Borrowed(str) => Cow::Borrowed(str.as_bytes()),
             Cow::Owned(string) => Cow::Owned(string.into_bytes()),

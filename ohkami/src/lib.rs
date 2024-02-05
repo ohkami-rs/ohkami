@@ -85,8 +85,8 @@ mod x_websocket;
 
 
 /*===== visibility managements =====*/
-pub use crate::layer0_lib  ::{Status, Method, append};
-pub use layer1_req_res     ::{Request, Response, FromRequestError, FromRequest, FromParam, IntoResponse, Memory};
+pub use crate::layer0_lib  ::{append};
+pub use layer1_req_res     ::{Request, Method, Response, Status, FromRequestError, FromRequest, FromParam, IntoResponse, Memory};
 pub use layer2_fang_handler::{Route, Fang};
 pub use layer4_ohkami      ::{Ohkami, IntoFang};
 
@@ -174,27 +174,7 @@ pub mod typed {
     pub use ohkami_macros::{ResponseBody, Query, Payload};
 
     pub use crate::x_utils::ResponseBody;
-
-    pub use crate::x_utils::{
-        SwitchingProtocols,
-
-        OK,
-        Created,
-        NoContent,
-
-        MovedPermanently,
-        Found,
-        NotModified,
-
-        BadRequest,
-        Unauthorized,
-        Forbidden,
-        NotFound,
-        UnprocessableEntity,
-
-        InternalServerError,
-        NotImplemented,
-    };
+    pub use crate::x_utils::*;
 }
 
 #[cfg(feature="websocket")]

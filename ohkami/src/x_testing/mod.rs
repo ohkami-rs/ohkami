@@ -1,7 +1,6 @@
 #[cfg(test)] mod _test;
 
-use crate::{Response, Request, Ohkami};
-use crate::layer0_lib::{Method, Status};
+use crate::{Response, Request, Ohkami, Status, Method};
 use crate::layer1_req_res::ResponseHeader;
 
 use std::borrow::Cow;

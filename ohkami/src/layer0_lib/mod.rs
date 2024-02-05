@@ -6,12 +6,6 @@ pub(crate) use list::List;
 mod slice;
 pub(crate) use slice::{Slice, CowSlice};
 
-mod status;
-pub use status::Status;
-
-mod method;
-pub use method::Method;
-
 mod headers;
 pub use headers::append;
 pub(crate) use headers::Append;

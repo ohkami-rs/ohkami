@@ -8,7 +8,7 @@ mod health_handler {
 
 
 mod hello_handler {
-    use ohkami::Response;
+    use ohkami::{Response, Status};
     use ohkami::typed::{Payload, Query};
 
     #[Query]
@@ -41,7 +41,7 @@ mod hello_handler {
     impl ohkami::IntoResponse for ValidationError {
         fn into_response(self) -> Response {
             match self {
-                Self::NameIsEmpty => Response::BadRequest().text("`name` mustn't be empty")
+                Self::NameIsEmpty => Response::with(Status::BadRequest).text("`name` mustn't be empty")
             }
         }
     }

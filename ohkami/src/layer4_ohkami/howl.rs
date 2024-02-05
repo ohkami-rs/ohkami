@@ -110,7 +110,7 @@ impl Ohkami {
 
                 Err(e) => (|| async {
                     println!("Fatal error: {e}");
-                    let res = Response::InternalServerError();
+                    let res = Response::with(crate::Status::InternalServerError);
                     res.send(&mut *stream.lock().await).await
                 })().await,
             }

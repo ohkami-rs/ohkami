@@ -1,3 +1,6 @@
+mod method;
+pub use method::Method;
+
 mod path;
 pub(crate) use path::Path;
 
@@ -20,7 +23,7 @@ use std::pin::Pin;
 use byte_reader::Reader;
 use crate::{
     __rt__::AsyncReader,
-    layer0_lib::{Method, Slice, CowSlice, percent_decode_utf8}
+    layer0_lib::{Slice, CowSlice, percent_decode_utf8}
 };
 
 #[cfg(feature="websocket")] use crate::websocket::UpgradeID;
