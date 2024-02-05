@@ -25,16 +25,16 @@ jobs:
           override:  true
 
       - name: Check ohkami's buildability
-        run:  cargo check --features rt_${{ matrix.rt }},DEBUG${{ matrix.custom-header && ',custom-header' || '' }}
+        run:  cargo check --features rt_${{ matrix.rt }}${{ matrix.custom-header && ',custom-header' || '' }}
         
       - name: Check ohkami's buildability without default features except fot `utils`
-        run:  cargo check --no-default-features --features utils,rt_${{ matrix.rt }},DEBUG${{ matrix.custom-header && ',custom-header' || '' }}
+        run:  cargo check --no-default-features --features utils,rt_${{ matrix.rt }}${{ matrix.custom-header && ',custom-header' || '' }}
       
       - name: Check ohkami's buildability without default features except fot `testing`
-        run:  cargo check --no-default-features --features testing,rt_${{ matrix.rt }},DEBUG${{ matrix.custom-header && ',custom-header' || '' }}
+        run:  cargo check --no-default-features --features testing,rt_${{ matrix.rt }}${{ matrix.custom-header && ',custom-header' || '' }}
       
       - name: Check ohkami's buildability without default features
-        run:  cargo check --no-default-features --features rt_${{ matrix.rt }},DEBUG${{ matrix.custom-header && ',custom-header' || '' }}
+        run:  cargo check --no-default-features --features rt_${{ matrix.rt }}${{ matrix.custom-header && ',custom-header' || '' }}
       
       - name: Cache cargo tools
         id:   cache_cargo_tools

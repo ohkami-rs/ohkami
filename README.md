@@ -22,8 +22,8 @@
 # You can choose `async-std` instead by feature "rt_async-std".
 
 [dependencies]
-ohkami = { version = "0.11.2", features = ["rt_tokio"] }
-tokio  = { version = "1",      features = ["full"] }
+ohkami = { version = "0.12", features = ["rt_tokio"] }
+tokio  = { version = "1",    features = ["full"] }
 ```
 
 2. Write your first code with ohkami : [eamples/quick_start](https://github.com/kana-rus/ohkami/blob/main/examples/quick_start/src/main.rs)
