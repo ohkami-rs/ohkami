@@ -29,7 +29,7 @@ impl Path {
             returns `b"/"` if that bytes is `b"/"`.
         */
         let mut len = bytes.len();
-        if bytes[len-1] == b'/' {len-=1};
+        if *bytes.get_unchecked(len-1) == b'/' {len-=1};
 
         Self {
             raw:    Slice::new(bytes.as_ptr(), len),
