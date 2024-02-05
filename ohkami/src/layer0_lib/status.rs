@@ -1,5 +1,9 @@
 macro_rules! status {
-    ( $( $name:ident = $message:literal, )* ) => {
+    (
+        $(
+            $name:ident => $message:literal,
+        )*
+    ) => {
         #[derive(PartialEq, Clone, Copy)]
         pub enum Status {
             $( $name, )*
@@ -17,24 +21,39 @@ macro_rules! status {
         }
     };
 } status! {
-    SwitchingProtocols  = "101 Switching Protocols",
+    Continue                    => "100 Continue",
+    SwitchingProtocols          => "101 Switching Protocols",
+    Processing                  => "102 Processing",
+    EarlyHints                  => "103 Early Hints",
 
-    OK                  = "200 OK",
-    Created             = "201 Created",
-    NoContent           = "204 No Content",
+    OK                          => "200 OK",
+    Created                     => "201 Created",
+    Accepted                    => "202 Accepted",
+    NonAuthoritativeInformation => "203 Non-Authoritative Information",
+    NoContent                   => "204 No Content",
+    ResetContent                => "205 Reset Content",
+    PartialContent              => "206 Partial Content",
+    MultiStatus                 => "207 Multi-Status",
+    AlreadyReported             => "208 Already Reported",
+    IMUsed                      => "226 IMUsed",
 
-    MovedPermanently    = "301 Moved Permanently",
-    Found               = "302 Found",
-    NotModified         = "304 Not Modifed",
-            
-    UnprocessableEntity = "422 Unprocessable Entity",
-    BadRequest          = "400 Bad Request",
-    Unauthorized        = "401 Unauthorized",
-    Forbidden           = "403 Forbidden",
-    NotFound            = "404 Not Found",
+    MultipleChoice              => "300 Multiple Choice",
+    MovedPermanently            => "301 Moved Permanently",
+    Found                       => "302 Found",
+    SeeOther                    => "303 See Other",
+    NotModified                 => "304 Not Modifed",
+    TemporaryRedirect           => "307 Temporary Redirect",
+    PermanentlRedirect          => "308 Permanent Redirect",
 
-    InternalServerError = "500 Internal Server Error",
-    NotImplemented      = "501 Not Implemented",
+    BadRequest                  => "400 Bad Request",
+    Unauthorized                => "401 Unauthorized",
+    Forbidden                   => "403 Forbidden",
+    NotFound                    => "404 Not Found",
+    MethodNotAllowed            => "405 Method Not Allowed",
+    UnprocessableEntity         => "422 Unprocessable Entity",
+
+    InternalServerError => "500 Internal Server Error",
+    NotImplemented      => "501 Not Implemented",
 }
 
 const _: () = {

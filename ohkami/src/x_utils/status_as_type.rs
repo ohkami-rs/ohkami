@@ -113,7 +113,7 @@ macro_rules! generate_statuses_as_types_containing_value {
     OK: "200 OK",
     Created: "201 Created",
 
-    BadRequest: "400 BadRequest",
+    BadRequest: "400 Bad Request",
     Unauthorized: "401 Unauthorized",
     Forbidden: "403 Forbidden",
     NotFound: "404 Not Found",
@@ -138,13 +138,13 @@ macro_rules! generate_statuses_as_types_with_no_value {
         )*
     };
 } generate_statuses_as_types_with_no_value! {
-    SwitchingProtocols : "101 SwitchingProtocols",
+    SwitchingProtocols : "101 Switching Protocols",
 
-    NoContent : "204 NoContent",
+    NoContent : "204 No Content",
 
-    NotModified : "304 NotModified",
+    NotModified : "304 Not Modified",
 
-    NotImplemented : "501 NotImplemented",
+    NotImplemented : "501 Not Implemented",
 }
 
 macro_rules! generate_redirects {
@@ -175,6 +175,6 @@ macro_rules! generate_redirects {
         )*
     };
 } generate_redirects! {
-    MovedPermanently / to : "301 MovedPermanently",
+    MovedPermanently / to : "301 Moved Permanently",
     Found / at : "302 Found",
 }
