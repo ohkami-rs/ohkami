@@ -34,7 +34,7 @@ use crate::__rt__::AsyncWriter;
 /// struct LogResponse;
 /// impl IntoFang for LogResponse {
 ///     fn into_fang(self) -> Fang {
-///         Fang(|res: &Response| {
+///         Fang::back(|res: &Response| {
 ///             println!("{}", res.status);
 ///         })
 ///     }

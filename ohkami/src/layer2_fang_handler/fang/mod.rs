@@ -14,7 +14,7 @@ use crate::{Request, Response};
 /// struct SetServer;
 /// impl IntoFang for SetServer {
 ///     fn into_fang(self) -> Fang {
-///         Fang(|res: &mut Response| {
+///         Fang::back(|res: &mut Response| {
 ///             res.headers.set()
 ///                 .Server("ohkami");
 ///         })

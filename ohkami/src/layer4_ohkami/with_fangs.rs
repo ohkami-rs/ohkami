@@ -12,31 +12,12 @@ use crate::{Fang, Method::{self, *}};
 /// struct Log;
 /// impl IntoFang for Log {
 ///     fn into_fang(self) -> Fang {
-///         Fang(|res: Response| {
+///         Fang::back(|res: &Response| {
 ///             println!("{res:?}");
-///             res
 ///         })
 ///     }
 /// }
 /// ```
-/// <br/>
-/// 
-/// ## fang schema
-/// 
-/// <br/>
-/// 
-/// #### To make *front fang*：
-/// - `Fn(&/&mut Request)`
-/// - `Fn(&/&mut Request) -> Result<(), Response>`
-/// 
-/// <br/>
-/// 
-/// #### To make *back fang*：
-/// - `Fn(&/&mut Response)`
-/// - `Fn(&/&mut Response) -> Result<(), Response>`
-/// - `Fn(&/&mut Response, &Request)`
-/// - `Fn(&/&mut Response, &Request) -> Result<(), Response>`
-/// 
 pub trait IntoFang {
     const METHODS: &'static [Method] = &[GET, PUT, POST, PATCH, DELETE, HEAD, OPTIONS];
     fn into_fang(self) -> Fang;

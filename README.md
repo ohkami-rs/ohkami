@@ -132,25 +132,25 @@ use ohkami::prelude::*;
 struct AppendHeaders;
 impl IntoFang for AppendHeaders {
     fn into_fang(self) -> Fang {
-        Fang(|res: &mut Response| {
+        Fang::back(|res: &mut Response| {
             res.headers.set()
                 .Server("ohkami");
         })
     }
 }
 
-struct Log;
-impl IntoFang for Log {
+struct LogRequest;
+impl IntoFang for LogRequest {
     fn into_fang(self) -> Fang {
-        Fang(|res: &Response| {
-            println!("{res:?}");
+        Fang::front(|req: &Request| {
+            println!("{req:?}");
         })
     }
 }
 
 #[tokio::main]
 async fn main() {
-    Ohkami::with((AppendHeaders, Log), (
+    Ohkami::with((AppendHeaders, LogRequest), (
         "/".GET(|| async {"Hello!"})
     )).howl(":8080").await
 }
@@ -158,14 +158,15 @@ async fn main() {
 ```
 `Fang` schema :
 
-#### To make a *back fang* :
-- `Fn({&/&mut Response})`
-- `Fn(Response) -> Response`
-
 #### To make a *front fang* :
-- `Fn()`
-- `Fn({&/&mut Request})`
-- or `_ -> Result<(), Response>` version of them (for early returning an error response)
+- `Fn(&/&mut Request)`
+- `Fn(&/&mut Request) -> Result<(), Response>`
+
+#### To make a *back fang* :
+- `Fn(&/&mut Response)`
+- `Fn(&/&mut Response) -> Result<(), Response>`
+- `Fn(&/&mut Response, &Request)`
+- `Fn(&/&mut Response, &Request) -> Result<(), Response>`
 
 <br/>
 

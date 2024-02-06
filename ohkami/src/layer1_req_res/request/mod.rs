@@ -57,7 +57,7 @@ pub(crate) const PAYLOAD_LIMIT: usize = 1 << 32;
 /// struct LogRequest;
 /// impl IntoFang for LogRequest {
 ///     fn into_fang(self) -> Fang {
-///         Fang(|req: &Request| {
+///         Fang::front(|req: &Request| {
 ///             let method = req.method();
 ///             let path = req.path();
 ///             println!("{method} {path}");

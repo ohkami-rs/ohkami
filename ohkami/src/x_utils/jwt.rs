@@ -34,7 +34,7 @@ use crate::{Request, Response, Status};
 /// struct MyAuthFang;
 /// impl IntoFang for MyAuthFang {
 ///     fn into_fang(self) -> Fang {
-///         Fang(move |req: &mut Request| {
+///         Fang::front(move |req: &mut Request| {
 ///             let payload = my_jwt()
 ///                 .verified::<JWTPayload>(req)?;
 ///             req.memorize(payload);
