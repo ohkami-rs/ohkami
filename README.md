@@ -3,9 +3,8 @@
     ohkami <em>- [狼] wolf in Japanese -</em> is <strong>declarative</strong> web framework for Rust.
 </div>
 
-## Features
-- *macro free, declarative APIs*
-- *multi runtime* support：`tokio`, `async-std` (and more in future)
+- *macro less, declarative APIs*
+- *multi runtime* support：`tokio`, `async-std`
 
 <div align="right">
     <img alt="build check status of ohkami" src="https://github.com/kana-rus/ohkami/actions/workflows/check.yml/badge.svg"/>
