@@ -109,15 +109,18 @@ impl Response {
 }
 
 impl Response {
-    pub fn drop_content(mut self) -> Self {
+    pub fn drop_content(&mut self) {
         self.content = None;
         self.headers.set()
             .ContentType(None)
             .ContentLength(None);
-        self
     }
 
-    #[inline] pub fn text<Text: Into<Cow<'static, str>>>(mut self, text: Text) -> Response {
+    #[inline] pub fn text<Text: Into<Cow<'static, str>>>(mut self, text: Text) -> Self {
+        self.set_text(text);
+        self
+    }
+    #[inline] pub fn set_text<Text: Into<Cow<'static, str>>>(&mut self, text: Text) {
         let body = text.into();
 
         self.headers.set()
@@ -127,10 +130,13 @@ impl Response {
             Cow::Borrowed(s)   => Cow::Borrowed(s.as_bytes()),
             Cow::Owned(string) => Cow::Owned(string.into_bytes()),
         });
+    }
 
+    #[inline] pub fn html<HTML: Into<Cow<'static, str>>>(mut self, html: HTML) -> Self {
+        self.set_html(html);
         self
     }
-    #[inline] pub fn html<HTML: Into<Cow<'static, str>>>(mut self, html: HTML) -> Response {
+    #[inline] pub fn set_html<HTML: Into<Cow<'static, str>>>(&mut self, html: HTML) {
         let body = html.into();
 
         self.headers.set()
@@ -140,21 +146,27 @@ impl Response {
             Cow::Borrowed(s)   => Cow::Borrowed(s.as_bytes()),
             Cow::Owned(string) => Cow::Owned(string.into_bytes()),
         });
+    }
 
+    #[inline] pub fn json<JSON: serde::Serialize>(mut self, json: JSON) -> Self {
+        self.set_json(json);
         self
     }
-    #[inline] pub fn json<JSON: serde::Serialize>(mut self, json: JSON) -> Response {
+    #[inline] pub fn set_json<JSON: serde::Serialize>(&mut self, json: JSON) {
         let body = ::serde_json::to_vec(&json).unwrap();
 
         self.headers.set()
             .ContentType("application/json; charset=UTF-8")
             .ContentLength(body.len().to_string());
         self.content = Some(Cow::Owned(body));
+    }
 
+    pub fn json_str<JSONString: Into<Cow<'static, str>>>(mut self, json_str: JSONString) -> Self {
+        self.set_json_str(json_str);
         self
     }
-    pub fn json_lit<JSONString: Into<Cow<'static, str>>>(mut self, json_literal: JSONString) -> Response {
-        let body = match json_literal.into() {
+    pub fn set_json_str<JSONString: Into<Cow<'static, str>>>(&mut self, json_str: JSONString) {
+        let body = match json_str.into() {
             Cow::Borrowed(str) => Cow::Borrowed(str.as_bytes()),
             Cow::Owned(string) => Cow::Owned(string.into_bytes()),
         };
@@ -163,8 +175,6 @@ impl Response {
             .ContentType("application/json; charset=UTF-8")
             .ContentLength(body.len().to_string());
         self.content = Some(body);
-
-        self
     }
 }
 
