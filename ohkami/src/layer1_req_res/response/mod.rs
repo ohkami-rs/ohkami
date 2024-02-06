@@ -70,6 +70,11 @@ use crate::__rt__::AsyncWriter;
 /// ```
 pub struct Response {
     pub status:         Status,
+    /// Headers of this response
+    /// 
+    /// - `.headers.{HeaderName}()` to get the value
+    /// - `.headers.set().{HeaderName}(〜)` to set the value
+    /// - `.headers.set().{HeaderName}(append(〜))` to append the value
     pub headers:        ResponseHeaders,
     pub(crate) content: Option<Cow<'static, [u8]>>,
 } const _: () = {
