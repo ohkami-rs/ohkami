@@ -79,7 +79,7 @@ async fn main() {
     )).howl("localhost:5000").await
 }
 
-async fn hello(name: &str) -> impl IntoResponse {
+async fn hello(name: &str) -> String {
     format!("Hello, {name}!")
 }
 ```
@@ -209,7 +209,7 @@ async fn main() {
 <br/>
 
 ### testing
-```rust,no_run
+```rust
 use ohkami::prelude::*;
 use ohkami::testing::*; // <--
 
@@ -217,27 +217,23 @@ fn hello_ohkami() -> Ohkami {
     Ohkami::new((
         "/hello".GET(|| async move {
             OK("Hello, world!")
-        })
+        }),
     ))
-}
-
-#[tokio::main]
-async fn main() {
-    hello_ohkami()
-        .howl(5050).await
 }
 
 #[cfg(test)]
 #[tokio::test]
 async fn test_my_ohkami() {
-    let hello_ohkami = hello_ohkami();
+    let ho = hello_ohkami();
 
-    let res = hello_ohkami.oneshot(TestRequest::GET("/")).await;
-    assert_eq!(res.status, http::Status::NotFound);
+    let req = TestRequest::GET("/");
+    let res = ho.oneshot(req).await;
+    assert_eq!(res.status(), Status::NotFound);
 
-    let res = hello_ohkami.oneshot(TestRequest::GET("/hello")).await;
-    assert_eq!(res.status, http::Status::OK);
-    assert_eq!(res.content.unwrap().text(), Some("Hello, world!"));
+    let req = TestRequest::GET("/hello");
+    let res = ho.oneshot(req).await;
+    assert_eq!(res.status(), Status::OK);
+    assert_eq!(res.text(), Some("Hello, world!"));
 }
 ```
 
