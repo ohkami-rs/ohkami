@@ -93,7 +93,7 @@ async fn hello() -> impl IntoResponse {
 struct SetServerHeader;
 impl IntoFang for SetServerHeader {
     fn into_fang(self) -> Fang {
-        Fang(|res: &mut Response| {
+        Fang::back(|res: &mut Response| {
             res.headers.set()
                 .Server("ohkami");
         })

@@ -30,8 +30,8 @@ async fn post_submit(form_data: FormData) -> Status {
 
 struct Logger;
 impl IntoFang for Logger {
-    fn into_fang(self) -> ohkami::Fang {
-        Fang(|req: &Request| {
+    fn into_fang(self) -> Fang {
+        Fang::front(|req: &Request| {
             println!("[request] {} {}", req.method(), req.path());
 
             if let Some(body) = req.payload() {

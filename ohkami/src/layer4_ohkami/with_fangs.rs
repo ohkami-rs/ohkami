@@ -1,7 +1,4 @@
-use crate::{
-    Fang,
-    Method, Method::*,
-};
+use crate::{Fang, Method::{self, *}};
 
 
 /// Represents "can be used as a `Fang`".
@@ -15,31 +12,12 @@ use crate::{
 /// struct Log;
 /// impl IntoFang for Log {
 ///     fn into_fang(self) -> Fang {
-///         Fang(|res: Response| {
+///         Fang::back(|res: &Response| {
 ///             println!("{res:?}");
-///             res
 ///         })
 ///     }
 /// }
 /// ```
-/// <br/>
-/// 
-/// ## fang schema
-/// 
-/// <br/>
-/// 
-/// #### To make *back fang*：
-/// - `Fn(&Response)`
-/// - `Fn(Response) -> Response`
-/// 
-/// <br/>
-/// 
-/// #### To make *front fang*：
-/// - `Fn( {&/&mut Context} )`
-/// - `Fn( {&/&mut Request} )`
-/// - `Fn( {&/&mut Context}, {&/&mut Request} )`
-/// - `_ -> Result<(), Response>` version of them
-/// 
 pub trait IntoFang {
     const METHODS: &'static [Method] = &[GET, PUT, POST, PATCH, DELETE, HEAD, OPTIONS];
     fn into_fang(self) -> Fang;

@@ -70,22 +70,22 @@ pub(super) enum Pattern {
 
 
 /*===== impls =====*/
-#[cfg(feature="websocket")] type HandleResult = (Response, Option<UpgradeID>);
-#[cfg(feature="websocket")] fn __no_upgrade(res: Response) -> HandleResult {
-    (res, None)
-}
-
-#[cfg(not(feature="websocket"))] type HandleResult = Response;
-#[cfg(not(feature="websocket"))] fn __no_upgrade(res: Response) -> HandleResult {
-    res
-}
+// #[cfg(feature="websocket")] type HandleResult = (Response, Option<UpgradeID>);
+// #[cfg(feature="websocket")] fn __no_upgrade(res: Response) -> HandleResult {
+//     (res, None)
+// }
+// 
+// #[cfg(not(feature="websocket"))] type HandleResult = Response;
+// #[cfg(not(feature="websocket"))] fn __no_upgrade(res: Response) -> HandleResult {
+//     res
+// }
 
 
 impl RadixRouter {
     pub(crate) async fn handle(
         &self,
         req: &mut Request,
-    ) -> HandleResult {
+    ) -> Response {
         let search_result = match req.method() {
             Method::GET    => self.GET   .search(req/*.path_bytes()*/),
             Method::PUT    => self.PUT   .search(req/*.path_bytes()*/),
@@ -118,10 +118,12 @@ impl RadixRouter {
                 };
 
                 for bf in back {
-                    res = bf.0(req, res)
+                    if let Err(err_res) = bf.0(&mut res, req) {
+                        return err_res;
+                    }
                 }
 
-                return __no_upgrade(res);
+                return res;
             }
 
             Method::OPTIONS => {
@@ -137,23 +139,25 @@ impl RadixRouter {
                 };
 
                 for bf in back {
-                    res = bf.0(req, res)
+                    if let Err(err_res) = bf.0(&mut res, req) {
+                        return err_res;
+                    }
                 }
-                
-                return __no_upgrade(res);
+
+                return res;
             }
         };
 
         match search_result {
             Ok(Some(node)) => node.handle(req).await,
-            Ok(None)       => __no_upgrade(Status::NotFound.into_response()),
-            Err(err_res)   => __no_upgrade(err_res),
+            Ok(None)       => Status::NotFound.into_response(),
+            Err(err_res)   => err_res,
         }
     }
 }
 
 impl Node {
-    #[inline] pub(super) async fn handle(&self, req: &mut Request) -> HandleResult {
+    #[inline] pub(super) async fn handle(&self, req: &mut Request) -> Response {
         match &self.handler {
             Some(handler) => {
                 #[cfg(feature="websocket")]
@@ -164,8 +168,11 @@ impl Node {
                 }) {None => None, Some(id) => Some(id.await)};
 
                 let mut res = (handler.proc)(req).await;
-                for b in self.back {
-                    res = b.0(req, res);
+                
+                for bf in self.back {
+                    if let Err(err_res) = bf.0(&mut res, req) {
+                        return err_res;
+                    }
                 }
 
                 #[cfg(feature="websocket")]
@@ -173,7 +180,7 @@ impl Node {
                 #[cfg(not(feature="websocket"))]
                 {res}
             }
-            None => __no_upgrade(Status::NotFound.into_response()),
+            None => Status::NotFound.into_response(),
         }
     }
 
@@ -181,9 +188,13 @@ impl Node {
         match &self.handler {
             Some(handler) => {
                 let mut res = (handler.proc)(req).await;
-                for b in self.back {
-                    res = b.0(req, res);
+                
+                for bf in self.back {
+                    if let Err(err_res) = bf.0(&mut res, req) {
+                        return err_res;
+                    }
                 }
+
                 res
             }
             None => Status::NotFound.into_response()

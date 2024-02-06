@@ -1,6 +1,7 @@
 use std::{sync::Arc, pin::Pin};
 use super::{Ohkami};
-use crate::{__rt__, Request, Response};
+use crate::{__rt__, Request};
+#[cfg(feature="rt_tokio")] use crate::Response;
 
 #[cfg(feature="rt_async-std")] use crate::__rt__::StreamExt;
 #[cfg(feature="websocket")]    use crate::websocket::reserve_upgrade;

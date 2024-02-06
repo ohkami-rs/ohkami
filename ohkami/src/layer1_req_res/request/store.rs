@@ -41,7 +41,7 @@ impl Hasher for TypeIDHasger {
 /// pub struct MemorizeNow;
 /// impl IntoFang for MemorizeNow {
 ///     fn into_fang(self) -> Fang {
-///         Fang(|req: &mut Request|
+///         Fang::front(|req: &mut Request|
 ///             req.memorize(serde_json::json!({
 ///                 "now": ohkami::utils::imf_fixdate_now()
 ///             }))

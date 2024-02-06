@@ -34,7 +34,7 @@ use crate::{Request, Response, Status};
 /// struct MyAuthFang;
 /// impl IntoFang for MyAuthFang {
 ///     fn into_fang(self) -> Fang {
-///         Fang(move |req: &mut Request| {
+///         Fang::front(move |req: &mut Request| {
 ///             let payload = my_jwt()
 ///                 .verified::<JWTPayload>(req)?;
 ///             req.memorize(payload);
@@ -454,7 +454,7 @@ impl JWT {
         struct MyJWTFang(JWT);
         impl IntoFang for MyJWTFang {
             fn into_fang(self) -> Fang {
-                Fang(move |req: &mut Request| {
+                Fang::front(move |req: &mut Request| {
                     let jwt_payload =  self.0.verified::<MyJWTPayload>(req)?;
                     req.memorize(jwt_payload);
                     Ok(())

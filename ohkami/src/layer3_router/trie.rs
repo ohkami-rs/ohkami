@@ -127,14 +127,10 @@ impl TrieRouter {
         self.DELETE.merge_node(route.clone().into_iter(), another_routes.DELETE).unwrap();
 
         for af in another_routes.HEADfangs {
-            if self.HEADfangs.iter().all(|sf| af.id() != sf.id()) {
-                self.HEADfangs.push(af)
-            }
+            self.HEADfangs.push(af);
         }
         for af in another_routes.OPTIONSfangs {
-            if self.OPTIONSfangs.iter().all(|sf| af.id() != sf.id()) {
-                self.OPTIONSfangs.push(af)
-            }
+            self.OPTIONSfangs.push(af);
         }
         
         self
@@ -143,17 +139,13 @@ impl TrieRouter {
     pub(crate) fn apply_fang(mut self, methods: &'static [Method], fang: Fang) -> Self {
         for method in methods {
             match method {
-                Method::GET     => self.GET   .apply_fang(fang.clone()),
-                Method::PUT     => self.PUT   .apply_fang(fang.clone()),
-                Method::POST    => self.POST  .apply_fang(fang.clone()),
-                Method::PATCH   => self.PATCH .apply_fang(fang.clone()),
-                Method::DELETE  => self.DELETE.apply_fang(fang.clone()),
-                Method::HEAD    => if self.HEADfangs.iter().all(|f| fang.id() != f.id()) {
-                    self.HEADfangs.push(fang.clone())
-                },
-                Method::OPTIONS => if self.OPTIONSfangs.iter().all(|f| fang.id() != f.id()) {
-                    self.OPTIONSfangs.push(fang.clone())
-                },
+                Method::GET     => self.GET         .apply_fang(fang.clone()),
+                Method::PUT     => self.PUT         .apply_fang(fang.clone()),
+                Method::POST    => self.POST        .apply_fang(fang.clone()),
+                Method::PATCH   => self.PATCH       .apply_fang(fang.clone()),
+                Method::DELETE  => self.DELETE      .apply_fang(fang.clone()),
+                Method::HEAD    => self.HEADfangs   .push(fang.clone()),
+                Method::OPTIONS => self.OPTIONSfangs.push(fang.clone()),
             }
         }
 
@@ -266,9 +258,7 @@ impl Node {
             children = child_children;
             handler  = child_handler;
             for cf in child_fangs {
-                if fangs.iter().all(|f| f.id() != cf.id()) {
-                    fangs.push(cf)
-                }
+                fangs.push(cf);
             }
             
             let child_pattern = child_pattern.unwrap(/* `child` is not root */);
@@ -416,10 +406,7 @@ impl Node {
     }
 
     fn append_fang(&mut self, new_fang: Fang) {
-        let new_fang_id = new_fang.id();
-        if self.fangs.iter().all(|f| f.id() != new_fang_id) {
-            self.fangs.push(new_fang)
-        }
+        self.fangs.push(new_fang);
     }
 
     fn set_handler(&mut self, new_handler: Handler) -> Result<(), String> {

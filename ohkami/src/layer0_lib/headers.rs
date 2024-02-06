@@ -11,7 +11,7 @@
 /// struct AppendServer;
 /// impl IntoFang for AppendServer {
 ///     fn into_fang(self) -> Fang {
-///         Fang(|res: &mut Response| {
+///         Fang::back(|res: &mut Response| {
 ///             res.headers.set()
 ///                 .Server(append("ohkami"));
 ///         })

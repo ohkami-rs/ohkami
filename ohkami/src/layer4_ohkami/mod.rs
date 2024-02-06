@@ -18,7 +18,7 @@ use crate::{
 /// struct Log;
 /// impl IntoFang for Log {
 ///     fn into_fang(self) -> Fang {
-///         Fang(|res: &Response| {
+///         Fang::back(|res: &Response| {
 ///             println!("{res:?}");
 ///         })
 ///     }
@@ -27,7 +27,7 @@ use crate::{
 /// struct Auth;
 /// impl IntoFang for Auth {
 ///     fn into_fang(self) -> Fang {
-///         Fang(|req: &Request| {
+///         Fang::front(|req: &Request| {
 ///             // Do something...
 /// 
 ///             Ok(())
@@ -97,18 +97,6 @@ use crate::{
 ///     ))
 /// }
 /// ```
-/// 
-/// <br/>
-/// 
-/// ## fang schema
-/// #### To make *back fang*：
-/// - `Fn({&/&mut Response})`
-/// - `Fn(Response) -> Response`
-/// 
-/// #### To make *front fang*：
-/// - `Fn()`
-/// - `Fn({&/&mut Request})`
-/// - `_ -> Result<(), Response>` version of them
 /// 
 /// <br/>
 /// 
@@ -184,7 +172,7 @@ impl Ohkami {
     /// struct Log;
     /// impl IntoFang for Log {
     ///     fn into_fang(self) -> Fang {
-    ///         Fang(|res: &Response| {
+    ///         Fang::back(|res: &Response| {
     ///             println!("{res:?}");
     ///         })
     ///     }

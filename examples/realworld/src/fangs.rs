@@ -18,7 +18,7 @@ impl Default for Auth {
 }
 impl IntoFang for Auth {
     fn into_fang(self) -> Fang {
-        Fang(move |req: &mut Request| {
+        Fang::front(move |req: &mut Request| {
             if self.condition.is_some_and(|cond| !cond(req)) {
                 return Ok(());
             }
@@ -47,7 +47,7 @@ impl Default for OptionalAuth {
 }
 impl IntoFang for OptionalAuth {
     fn into_fang(self) -> Fang {
-        Fang(move |req: &mut Request| {
+        Fang::front(move |req: &mut Request| {
             if self.condition.is_some_and(|cond| !cond(req)) {
                 return Ok(());
             }
@@ -64,7 +64,7 @@ impl IntoFang for OptionalAuth {
 pub struct LogRequest;
 impl IntoFang for LogRequest {
     fn into_fang(self) -> Fang {
-        Fang(|req: &Request| {
+        Fang::front(|req: &Request| {
             let method = req.method();
             let path   = req.path();
 
@@ -76,7 +76,7 @@ impl IntoFang for LogRequest {
 pub struct LogResponse;
 impl IntoFang for LogResponse {
     fn into_fang(self) -> Fang {
-        Fang(|res: &Response| {
+        Fang::back(|res: &Response| {
             tracing::info!("{res:?}");
         })
     }
@@ -85,7 +85,7 @@ impl IntoFang for LogResponse {
 pub struct ConnectionPool(PgPool);
 impl IntoFang for ConnectionPool {
     fn into_fang(self) -> Fang {
-        Fang(move |req: &mut Request| {
+        Fang::front(move |req: &mut Request| {
             req.memorize(self.0.clone())
         })
     }

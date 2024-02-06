@@ -68,7 +68,7 @@ mod fangs {
     pub struct SetServer;
     impl IntoFang for SetServer {
         fn into_fang(self) -> Fang {
-            Fang(|res: &mut Response| {
+            Fang::back(|res: &mut Response| {
                 res.headers.set()
                     .Server("ohkami");
 
@@ -84,7 +84,7 @@ mod fangs {
     pub struct LogRequest;
     impl IntoFang for LogRequest {
         fn into_fang(self) -> Fang {
-            Fang(|req: &Request| {
+            Fang::front(|req: &Request| {
                 let __method__ = req.method();
                 let __path__   = req.path();
 

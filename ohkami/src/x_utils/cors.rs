@@ -114,7 +114,7 @@ impl CORS {
 /* Based on https://github.com/honojs/hono/blob/main/src/middleware/cors/index.ts; MIT */
 impl IntoFang for CORS {
     fn into_fang(self) -> Fang {
-        Fang(move |req: &Request, res: &mut Response| {
+        Fang::back(move |res: &mut Response, req: &Request| {
             let mut h = res.headers.set();
 
             h = h.AccessControlAllowOrigin(self.AllowOrigin.as_str());
