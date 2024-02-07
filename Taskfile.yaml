@@ -3,8 +3,11 @@ version: '3'
 tasks:
   test:
     deps:
+      - test_doc
       - test_rt_tokio
+      - test_rt_tokio_with_custom-header
       - test_rt_async-std
+      - test_rt_async-std_with_custom-header
       - test_examples
 
   check:
@@ -31,6 +34,9 @@ tasks:
       - cargo test --lib --no-default-features --features DEBUG,rt_tokio,utils
       - cargo test --lib --no-default-features --features DEBUG,rt_tokio,testing
       - cargo test --lib --no-default-features --features DEBUG,rt_tokio,utils,testing
+  test_rt_tokio_with_custom-header:
+    dir: ohkami
+    cmds:
       - cargo test --lib --no-default-features --features DEBUG,custom-header,rt_tokio
       - cargo test --lib --no-default-features --features DEBUG,custom-header,rt_tokio,utils
       - cargo test --lib --no-default-features --features DEBUG,custom-header,rt_tokio,testing
@@ -43,6 +49,9 @@ tasks:
       - cargo test --lib --no-default-features --features DEBUG,rt_async-std,utils
       - cargo test --lib --no-default-features --features DEBUG,rt_async-std,testing
       - cargo test --lib --no-default-features --features DEBUG,rt_async-std,utils,testing
+  test_rt_async-std_with_custom-header:
+    dir: ohkami
+    cmds:
       - cargo test --lib --no-default-features --features DEBUG,custom-header,rt_async-std
       - cargo test --lib --no-default-features --features DEBUG,custom-header,rt_async-std,utils
       - cargo test --lib --no-default-features --features DEBUG,custom-header,rt_async-std,testing
