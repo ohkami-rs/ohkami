@@ -69,6 +69,7 @@ fn my_ohkami() -> Ohkami {
     ))
 }
 
+#[cfg(feature="testing")]
 #[test] async fn test_router() {
     let t = my_ohkami();
 
