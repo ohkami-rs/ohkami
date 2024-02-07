@@ -28,10 +28,10 @@ jobs:
         uses: actions/cache@v3
         with:
           key:  ${{ runner.os }}-task-command
-          path: /usr/local/bin
+          path: ~/bin
       - name: Install task command
         if:   ${{ steps.cache_task_command.outputs.cache-hit != 'true' }}
-        run:  sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
+        run:  sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b ~/bin
 
       - name: Cache cargo tools
         id:   cache_cargo_tools
