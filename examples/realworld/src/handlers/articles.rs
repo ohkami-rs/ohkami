@@ -1,5 +1,5 @@
 use chrono::{DateTime, Utc};
-use ohkami::{Ohkami, Route, typed::{Created, NoContent}, Memory};
+use ohkami::{Ohkami, Route, Memory, typed::status::{Created, NoContent}};
 use sqlx::PgPool;
 use crate::{config::JWTPayload, errors::RealWorldError};
 use crate::fangs::{Auth, OptionalAuth};

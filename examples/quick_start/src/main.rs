@@ -1,5 +1,5 @@
 use ohkami::prelude::*;
-use ohkami::typed::{OK, NoContent};
+use ohkami::typed::status::{OK, NoContent};
 
 async fn health_check() -> NoContent {
     NoContent

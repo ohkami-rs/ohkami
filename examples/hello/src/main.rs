@@ -1,5 +1,5 @@
 mod health_handler {
-    use ohkami::typed::NoContent;
+    use ohkami::typed::status::NoContent;
 
     pub async fn health_check() -> NoContent {
         NoContent

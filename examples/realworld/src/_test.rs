@@ -1,5 +1,5 @@
 use crate::errors::RealWorldError;
-use std::process::{Command, Stdio};
+use std::process::Command;
 use std::format as f;
 
 
@@ -23,23 +23,23 @@ impl TestDB {
     async fn setup(&self) -> Result<sqlx::PgPool, RealWorldError> {
         let Self { POSTGRES_PASSWORD, POSTGRES_USER, POSTGRES_PORT, POSTGRES_DB } = self;
 
-        Command::new("docker").stdout(Stdio::piped()).stderr(Stdio::piped())
-            .args([
-                f!("container"), f!("run"),
-                f!("--name"), f!("{}", Self::CONTAINER_NAME),
-                f!("-e"), f!("POSTGRES_PASSWORD={POSTGRES_PASSWORD}"),
-                f!("-e"), f!("POSTGRES_USER={POSTGRES_USER}"),
-                f!("-e"), f!("POSTGRES_DB={POSTGRES_DB}"),
-                f!("-p"), f!("{POSTGRES_PORT}:5432"),
-                f!("-d"),
-                f!("--rm"),
-                f!("{}", Self::CONTAINER_IMAGE),
-            ])
-            .spawn().map_err(|e| RealWorldError::Config(e.to_string()))?
-            .wait().map_err(|e| RealWorldError::Config(e.to_string()))?;
+        Command::new("docker").args([
+            f!("container"), f!("run"),
+            f!("--name"), f!("{}", Self::CONTAINER_NAME),
+            f!("-e"), f!("POSTGRES_PASSWORD={POSTGRES_PASSWORD}"),
+            f!("-e"), f!("POSTGRES_USER={POSTGRES_USER}"),
+            f!("-e"), f!("POSTGRES_DB={POSTGRES_DB}"),
+            f!("-p"), f!("{POSTGRES_PORT}:5432"),
+            f!("-d"),
+            f!("--rm"),
+            f!("{}", Self::CONTAINER_IMAGE),
+        ])
+        .spawn().map_err(|e| RealWorldError::Config(e.to_string()))?
+        .wait().map_err(|e| RealWorldError::Config(e.to_string()))?;
 
-        Command::new("sqlx").stdout(Stdio::piped()).stderr(Stdio::piped())
-            .args(["migrate", "run", "--database-url", &self.db_url()])
+        tokio::time::sleep(std::time::Duration::from_secs_f32(3.14)).await;
+
+        Command::new("sqlx").args(["migrate", "run", "--database-url", &self.db_url()])
             .spawn().map_err(|e| RealWorldError::DB(sqlx::Error::Migrate(Box::new(sqlx::migrate::MigrateError::Execute(sqlx::Error::Io(e))))))?
             .wait().map_err(|e| RealWorldError::DB(sqlx::Error::Migrate(Box::new(sqlx::migrate::MigrateError::Execute(sqlx::Error::Io(e))))))?;
 
@@ -54,7 +54,7 @@ impl TestDB {
 }
 impl Drop for TestDB {
     fn drop(&mut self) {
-        Command::new("docker").stdout(Stdio::piped()).stderr(Stdio::piped())
+        Command::new("docker")
             .args(["container", "stop", Self::CONTAINER_NAME])
             .spawn().unwrap()
             .wait().unwrap();
