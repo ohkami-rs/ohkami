@@ -1,6 +1,6 @@
 version: '3'
 
 tasks:
-  hello:
+  test:
     cmds:
-      - echo "hello!"
+      - cargo test --no-default-features --features

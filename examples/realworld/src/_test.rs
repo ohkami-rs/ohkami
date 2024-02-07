@@ -37,7 +37,7 @@ impl TestDB {
         .spawn().map_err(|e| RealWorldError::Config(e.to_string()))?
         .wait().map_err(|e| RealWorldError::Config(e.to_string()))?;
 
-        tokio::time::sleep(std::time::Duration::from_secs_f32(3.14)).await;
+        tokio::time::sleep(std::time::Duration::from_secs(5)).await;
 
         Command::new("sqlx").args(["migrate", "run", "--database-url", &self.db_url()])
             .spawn().map_err(|e| RealWorldError::DB(sqlx::Error::Migrate(Box::new(sqlx::migrate::MigrateError::Execute(sqlx::Error::Io(e))))))?

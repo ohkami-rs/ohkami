@@ -1,7 +1,6 @@
+#![cfg(all(feature="testing", feature="utils"))]
 use crate::prelude::*;
-#[cfg(feature="testing")]
 use crate::testing::*;
-#[cfg(feature="utils")]
 use crate::utils::Text;
 
 fn my_ohkami() -> Ohkami {
