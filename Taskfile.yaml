@@ -1,6 +1,8 @@
 version: '3'
 
 tasks:
-  test:
+  test_rt_tokio:
     cmds:
-      - cargo test --no-default-features --features
+      - cargo test --no-default-features --features rt_tokio
+      - cargo test --no-default-features --features rt_tokio,utils
+      - cargo test --no-default-features --features rt_tokio,testing

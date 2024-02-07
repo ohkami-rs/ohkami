@@ -265,7 +265,7 @@ impl JWT {
 
 
 
-#[cfg(feature="testing")]
+#[cfg(all(feature="testing", feature="utils"))]
 #[cfg(test)] mod test {
     use super::JWT;
     use crate::{__rt__::test, utils};
