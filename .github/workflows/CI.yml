@@ -1,0 +1,39 @@
+name: CI
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  CI:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        toolchain: ['stable', 'nightly']
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install task command
+        run:  sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ matrix.toolchain }}
+          profile:   minimal
+          override:  true
+
+      - name: Cache cargo tools
+        id:   cache_cargo_tools
+        uses: actions/cache@v3
+        with:
+          key:  ${{ runner.os }}-cargo-install
+          path: ~/.cargo/bin
+      - name: Install cargo tools
+        if:   ${{ steps.cache_cargo_tools.outputs.cache-hit != 'true' }}
+        run:  cargo install sqlx-cli --no-default-features --features native-tls,postgres
+      
+      - name: Run tasks
+        run:  task test check ${{ matrix.toolchain == 'nightly' && 'bench' || '' }}

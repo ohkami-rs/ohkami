@@ -2,7 +2,9 @@ mod status;
 pub use status::Status;
 
 mod headers;
-pub use headers::{Headers as ResponseHeaders, Header as ResponseHeader};
+pub use headers::{Headers as ResponseHeaders};
+#[cfg(any(feature="testing", feature="DEBUG"))]
+pub use headers::Header as ResponseHeader;
 
 mod into_response;
 pub use into_response::IntoResponse;

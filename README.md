@@ -9,8 +9,7 @@
 - *multi runtime* support：`tokio`, `async-std`
 
 <div align="right">
-    <img alt="build check status of ohkami" src="https://github.com/kana-rus/ohkami/actions/workflows/check.yml/badge.svg"/>
-    <img alt="test status of ohkami" src="https://github.com/kana-rus/ohkami/actions/workflows/test.yml/badge.svg"/>
+    <img alt="build check status of ohkami" src="https://github.com/kana-rus/ohkami/actions/workflows/CI.yml/badge.svg"/>
 </div>
 
 <br>
@@ -242,8 +241,6 @@ async fn test_my_ohkami() {
 
 ## MSRV (Minimum Supported Rust Version)
 Latest stable.
-
-<br>
 
 ## License
 `ohkami` is licensed under MIT LICENSE ([LICENSE-MIT](https://github.com/kana-rus/ohkami/blob/main/LICENSE-MIT) or [https://opensource.org/licenses/MIT](https://opensource.org/licenses/MIT)).
