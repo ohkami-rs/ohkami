@@ -16,22 +16,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Install latest Rust every time because MSRV is "latest stable"
+      - name: Install task command
+        run:  sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
+
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: ${{ matrix.toolchain }}
           profile:   minimal
           override:  true
-
-      - name: Cache task command
-        id:   cache_task_command
-        uses: actions/cache@v3
-        with:
-          key:  ${{ runner.os }}-task-command
-          path: ~/bin
-      - name: Install task command
-        if:   ${{ steps.cache_task_command.outputs.cache-hit != 'true' }}
-        run:  sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b ~/bin
 
       - name: Cache cargo tools
         id:   cache_cargo_tools
