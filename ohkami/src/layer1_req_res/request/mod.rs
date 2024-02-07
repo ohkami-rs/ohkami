@@ -87,9 +87,17 @@ pub struct Request {pub(crate) _metadata: [u8; METADATA_SIZE],
     method:          Method,
     /// Headers of this request
     /// 
-    /// - `.{HeaderName}()` to get the value
-    /// - `.set().{HeaderName}(〜)` to mutate the value
-    /// - `.set().{HeaderName}(append(〜))` to append the value
+    /// - `.{Name}()` to get the value
+    /// - `.set().{Name}(〜)` to mutate the value
+    ///   - `.set().{Name}(append(〜))` to append
+    /// 
+    /// ---
+    /// 
+    /// *`custom-header` feature required*：
+    /// 
+    /// - `.custom({Name})` to get the value
+    /// - `.set().custom({Name}, {value})` to mutate the value
+    ///   - `.set().custom({Name}, append(〜))` to append
     pub headers:     RequestHeaders,
     pub(crate) path: Path,
     queries:         QueryParams,

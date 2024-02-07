@@ -13,7 +13,7 @@
     <img alt="test status of ohkami" src="https://github.com/kana-rus/ohkami/actions/workflows/test.yml/badge.svg"/>
 </div>
 
-<br/>
+<br>
 
 ## Quick start
 1. Add to `dependencies` :
@@ -23,7 +23,7 @@
 # You can choose `async-std` instead by feature "rt_async-std".
 
 [dependencies]
-ohkami = { version = "0.12", features = ["rt_tokio"] }
+ohkami = { version = "0.13", features = ["rt_tokio"] }
 tokio  = { version = "1",    features = ["full"] }
 ```
 
@@ -63,7 +63,7 @@ $ curl http://localhost:3000/hello/your_name
 Hello, your_name!
 ```
 
-<br/>
+<br>
 
 ## Snippets
 
@@ -84,7 +84,7 @@ async fn hello(name: &str) -> String {
 }
 ```
 
-<br/>
+<br>
 
 ### handle query params / request body
 ```rust
@@ -122,7 +122,7 @@ async fn create_user(body: CreateUserRequest<'_>) -> Created<User> {
 
 ( with path params : `({path params}, {FromRequest values...})` )
 
-<br/>
+<br>
 
 ### use middlewares
 ohkami's middlewares are called "**fang**s".
@@ -169,7 +169,7 @@ async fn main() {
 - `Fn(&/&mut Response, &Request)`
 - `Fn(&/&mut Response, &Request) -> Result<(), Response>`
 
-<br/>
+<br>
 
 ### pack of Ohkamis
 ```rust,no_run
@@ -206,7 +206,7 @@ async fn main() {
 }
 ```
 
-<br/>
+<br>
 
 ### testing
 ```rust
@@ -237,7 +237,12 @@ async fn test_my_ohkami() {
 }
 ```
 
-<br/>
+<br>
+
+## MSRV (Minimum Supported Rust Version)
+Latest stable.
+
+<br>
 
 ## License
 `ohkami` is licensed under MIT LICENSE ([LICENSE-MIT](https://github.com/kana-rus/ohkami/blob/main/LICENSE-MIT) or [https://opensource.org/licenses/MIT](https://opensource.org/licenses/MIT)).
