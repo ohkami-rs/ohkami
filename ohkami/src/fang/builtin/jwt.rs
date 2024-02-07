@@ -11,10 +11,9 @@ use crate::{Request, Response, Status};
 /// 
 /// *example.rs*
 /// ```no_run
-/// use ohkami::prelude::*;
-/// use ohkami::fangs::JWT;
+/// use ohkami::{prelude::*, Memory};
+/// use ohkami::builtin::JWT;
 /// use ohkami::typed::ResponseBody;
-/// use ohkami::Memory;
 /// use ohkami::serde::{Serialize, Deserialize};
 /// 
 /// 

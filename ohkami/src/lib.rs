@@ -85,8 +85,8 @@ pub use response::{Response, Status, IntoResponse};
 mod handler;
 pub use handler::Route;
 
-pub mod fang;
-pub use fang::Fang;
+mod fang;
+pub use fang::{Fang, builtin};
 
 mod ohkami;
 pub use ohkami::{Ohkami, IntoFang};

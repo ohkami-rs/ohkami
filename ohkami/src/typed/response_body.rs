@@ -15,7 +15,8 @@ use std::borrow::Cow;
 /// *example.rs*
 /// ```
 /// use ohkami::prelude::*;
-/// use ohkami::typed::{Created, Payload, ResponseBody};
+/// use ohkami::typed::{Payload, ResponseBody};
+/// use ohkami::typed::status::Created;
 /// 
 /// enum MyError {
 ///     Hoge,

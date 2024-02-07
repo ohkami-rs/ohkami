@@ -10,7 +10,7 @@ use crate::{IntoFang, Fang, Response, Request, append, Status, Method};
 /// *example.rs*
 /// ```no_run
 /// use ohkami::prelude::*;
-/// use ohkami::fangs::CORS;
+/// use ohkami::builtin::CORS;
 /// 
 /// #[tokio::main]
 /// async fn main() {

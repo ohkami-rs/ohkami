@@ -9,88 +9,90 @@ pub use with_fangs::{IntoFang};
 use crate::Method;
 
 
-/// <br/>
+/// # Ohkami - a robust wolf who serves web app
 /// 
+/// <br>
+/// 
+/// *example.rs*
 /// ```
-/// use ohkami::prelude::*;
-/// use ohkami::serde::Serialize;
-/// use ohkami::typed::ResponseBody;
-/// 
+/// # use ohkami::prelude::*;
+/// # use ohkami::serde::Serialize;
+/// # use ohkami::typed::ResponseBody;
+/// # use ohkami::typed::status::{OK, Created};
+/// # 
 /// struct Log;
 /// impl IntoFang for Log {
-///     fn into_fang(self) -> Fang {
-///         Fang::back(|res: &Response| {
-///             println!("{res:?}");
-///         })
-///     }
+///     /* 〜 */
+/// #    fn into_fang(self) -> Fang {
+/// #        Fang::back(|res: &Response| {
+/// #            println!("{res:?}");
+/// #        })
+/// #    }
 /// }
 /// 
 /// struct Auth;
 /// impl IntoFang for Auth {
-///     fn into_fang(self) -> Fang {
-///         Fang::front(|req: &Request| {
-///             // Do something...
-/// 
-///             Ok(())
-///         })
-///     }
+///     /* 〜 */
+/// #    fn into_fang(self) -> Fang {
+/// #        Fang::front(|req: &Request| {
+/// #            // Do something...
+/// #
+/// #            Ok(())
+/// #        })
+/// #    }
 /// }
 /// 
-/// #[ResponseBody(JSON)]
-/// #[derive(Serialize)]
-/// struct User {
-///     id:   usize,
-///     name: String,
-///     age:  Option<usize>,
-/// }
-/// 
-/// enum APIError {
-///     UserNotFound
-/// }
-/// impl IntoResponse for APIError {
-///     fn into_response(self) -> Response {
-///         match self {
-///             Self::UserNotFound => Response::InternalServerError()
-///         }
-///     }
-/// }
-/// 
-/// async fn health_check() -> impl IntoResponse {
-///     Status::NoContent
-/// }
-/// 
-/// async fn create_user() -> Created<User> {
-///     Created(User {
-///         id:   42,
-///         name: String::from("ohkami"),
-///         age:  None,
-///     })
-/// }
-/// 
-/// async fn get_user_by_id(id: usize) -> Result<OK<User>, APIError> {
-///     Ok(OK(User {
-///         id,
-///         name: String::from("ohkami"),
-///         age:  Some(2),
-///     }))
-/// }
-/// 
-/// async fn update_user(id: usize) -> impl IntoResponse {
-///     Status::OK
-/// }
+/// # #[ResponseBody(JSON)]
+/// # #[derive(Serialize)]
+/// # struct User {
+/// #     id:   usize,
+/// #     name: String,
+/// #     age:  Option<usize>,
+/// # }
+/// # 
+/// # enum APIError {
+/// #     UserNotFound
+/// # }
+/// # impl IntoResponse for APIError {
+/// #     fn into_response(self) -> Response {
+/// #         match self {
+/// #             Self::UserNotFound => Response::InternalServerError()
+/// #         }
+/// #     }
+/// # }
+/// # 
+/// # async fn health_check() -> impl IntoResponse {
+/// #     Status::NoContent
+/// # }
+/// # 
+/// # async fn create_user() -> Created<User> {
+/// #     Created(User {
+/// #         id:   42,
+/// #         name: String::from("ohkami"),
+/// #         age:  None,
+/// #     })
+/// # }
+/// # 
+/// # async fn get_user_by_id(id: usize) -> Result<OK<User>, APIError> {
+/// #     Ok(OK(User {
+/// #         id,
+/// #         name: String::from("ohkami"),
+/// #         age:  Some(2),
+/// #     }))
+/// # }
+/// # 
+/// # async fn update_user(id: usize) -> impl IntoResponse {
+/// #     Status::OK
+/// # }
 /// 
 /// fn my_ohkami() -> Ohkami {
-///     let api_ohkami = Ohkami::with((Auth, Log), (
+///     let api_ohkami = Ohkami::with((Auth,), (
 ///         "/users".
 ///             POST(create_user),
 ///         "/users/:id".
 ///             GET(get_user_by_id).
 ///             PATCH(update_user),
 ///     ));
-/// 
-///     // And, here `Log` fang of api_ohkami is duplicated with
-///     // that of the root ohkami below, but it's no problem
-///     // because they are merged internally.
 /// 
 ///     Ohkami::with(Log, (
 ///         "/hc" .GET(health_check),
@@ -99,17 +101,16 @@ use crate::Method;
 /// }
 /// ```
 /// 
-/// <br/>
+/// <br>
 /// 
-/// ## handler schema
-/// - async () -> `Response`
-/// - async ({path_params}) -> `Response`
-/// - async ({`FromRequest` values...}) -> `Response`
-/// - async ({path_params}, {`FromRequest` values...}) -> `Response`
+/// #### handler schema：
+/// async ({path_params}?, {`FromRequest` type}s...) -> {`IntoResponse` type}
 /// 
 /// #### path_params：
 /// A tuple of types that implement `FromParam` trait.\
 /// `String`, `&str`, and primitive integers are splecially allowed to be used without tuple：
+/// 
+/// <br>
 /// 
 /// ```
 /// use ohkami::prelude::*;

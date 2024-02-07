@@ -59,14 +59,14 @@ impl Hasher for TypeIDHasger {
 /// 
 /// async fn handler(
 ///     now: Memory<'_, serde_json::Value>
-/// ) -> OK<String> {
+/// ) -> String {
 ///         // &'_ Value
 ///     let memorized_data = *now;
 /// 
-///     OK(format!(
+///     format!(
 ///         "It's {} !",
 ///         memorized_data["now"]
-///     ))
+///     )
 /// }
 /// ```
 pub struct Memory<'req, Value: Send + Sync + 'static>(&'req Value);

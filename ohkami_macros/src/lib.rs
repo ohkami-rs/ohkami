@@ -66,7 +66,7 @@ pub fn consume_struct(_: proc_macro::TokenStream, _: proc_macro::TokenStream) ->
 /// *example.rs*
 /// ```ignore
 /// use ohkami::prelude::*;
-/// use ohkami::typed::Queries; // <-- import me
+/// use ohkami::typed::Query; // <--
 /// 
 /// #[Query]
 /// struct HelloQuery<'q> {
@@ -110,7 +110,8 @@ pub fn Query(_: proc_macro::TokenStream, data: proc_macro::TokenStream) -> proc_
 /// 
 /// ```ignore
 /// use ohkami::prelude::*;
-/// use ohkami::typed::{Payload, Deseriailize}; // <-- import me and `Deserialize`
+/// use ohkami::serde::Deserialize;
+/// use ohkami::typed::{Payload}; // <--
 /// 
 /// #[Payload(JSON)]
 /// #[derive(Deserialize)]
@@ -141,7 +142,7 @@ pub fn Query(_: proc_macro::TokenStream, data: proc_macro::TokenStream) -> proc_
 /// 
 /// ```ignore
 /// use ohkami::prelude::*;
-/// use ohkami::typed::Payload; // <-- import me
+/// use ohkami::typed::Payload; // <--
 /// 
 /// #[Payload(URLEncoded)]
 /// struct HelloRequest<'req> {
@@ -166,7 +167,7 @@ pub fn Query(_: proc_macro::TokenStream, data: proc_macro::TokenStream) -> proc_
 /// 
 /// ```ignore
 /// use ohkami::prelude::*;
-/// use ohkami::typed::{Payload, File}; // <-- import me
+/// use ohkami::typed::{Payload, File}; // <--
 /// 
 /// #[Payload(Form)]
 /// struct ProfileData {
@@ -204,7 +205,7 @@ pub fn Payload(format: proc_macro::TokenStream, data: proc_macro::TokenStream) -
 /// ```ignore
 /// use ohkami::prelude::*;
 /// use ohkami::typed::{Payload, ResponseBody};
-/// use ohkami::typed::{Created};
+/// use ohkami::typed::status::{Created};
 /// use sqlx::postgres::PgPool;
 /// 
 /// #[Payload(JSOND)]
