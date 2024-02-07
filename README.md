@@ -31,7 +31,7 @@ tokio  = { version = "1",    features = ["full"] }
 
 ```rust,no_run
 use ohkami::prelude::*;
-use ohkami::typed::{OK, NoContent};
+use ohkami::typed::status::{OK, NoContent};
 
 async fn health_check() -> NoContent {
     NoContent
@@ -89,9 +89,10 @@ async fn hello(name: &str) -> String {
 ### handle query params / request body
 ```rust
 use ohkami::prelude::*;
-use ohkami::typed;   // <--
+use ohkami::typed::status::{OK, Created};
+use ohkami::typed::{Query, Payload, ResponseBody};
 
-#[typed::Query]
+#[Query]
 struct SearchQuery<'q> {
     q: &'q str,
 }
@@ -100,14 +101,13 @@ async fn search(condition: SearchQuery<'_>) -> OK<String> {
     OK(format!("Something found"))
 }
 
-#[typed::Payload(JSOND)]
+#[Payload(JSOND)]
 struct CreateUserRequest<'req> {
-    #[serde(rename = "username")]
     name:     &'req str,
     password: &'req str,
 }
 
-#[typed::ResponseBody(JSONS)]
+#[ResponseBody(JSONS)]
 struct User {
     name: String,
 }
@@ -120,7 +120,7 @@ async fn create_user(body: CreateUserRequest<'_>) -> Created<User> {
 ```
 `#[Query]`, `#[Payload( 〜 )]` implements `FromRequest` trait for the struct.
 
-( with path params : `({path params}, {FromRequest values...})` )
+( with path params : `({path params}, {FromRequest value}s...)` )
 
 <br>
 
@@ -174,7 +174,8 @@ async fn main() {
 ### pack of Ohkamis
 ```rust,no_run
 use ohkami::prelude::*;
-use ohkami::typed::{Created, NoContent, ResponseBody};
+use ohkami::typed::ResponseBody;
+use ohkami::typed::status::{Created, NoContent};
 
 #[ResponseBody(JSONS)]
 struct User {
@@ -216,7 +217,7 @@ use ohkami::testing::*; // <--
 fn hello_ohkami() -> Ohkami {
     Ohkami::new((
         "/hello".GET(|| async move {
-            OK("Hello, world!")
+            "Hello, world!"
         }),
     ))
 }

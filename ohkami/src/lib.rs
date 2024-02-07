@@ -16,8 +16,6 @@
 //! for more information！
 
 
-/*===== crate features =====*/
-
 #[cfg(any(
     all(feature="rt_tokio", feature="rt_async-std")
 ))] compile_error!("
@@ -33,8 +31,6 @@
     - rt_async-std
 ");
 
-
-/*===== async runtime dependency layer =====*/
 
 mod __rt__ {
     #[allow(unused)]
@@ -80,84 +76,59 @@ mod __rt__ {
 }
 
 
-/*===== modules =====*/
+mod request;
+pub use request::{Request, Method, FromRequestError, FromRequest, FromParam, Memory};
 
-mod layer0_lib;
-mod layer1_req_res;
-mod layer2_fang_handler;
-mod layer3_router;
-mod layer4_ohkami;
+mod response;
+pub use response::{Response, Status, IntoResponse};
+
+mod handler;
+pub use handler::Route;
+
+mod fang;
+pub use fang::{Fang, builtin};
+
+mod ohkami;
+pub use ohkami::{Ohkami, IntoFang};
+
+pub mod typed;
 
 #[cfg(feature="testing")]
-mod x_testing;
+pub mod testing;
 
 #[cfg(feature="utils")]
-mod x_utils;
+pub mod utils;
 
 #[cfg(feature="websocket")]
 mod x_websocket;
 
 
-/*===== visibility managements =====*/
-pub use crate::layer0_lib  ::{append};
-pub use layer1_req_res     ::{Request, Method, Response, Status, FromRequestError, FromRequest, FromParam, IntoResponse, Memory};
-pub use layer2_fang_handler::{Route, Fang};
-pub use layer4_ohkami      ::{Ohkami, IntoFang};
-
-pub mod prelude {
-    pub use crate::{Request, Route, Ohkami, Fang, Response, IntoFang, IntoResponse, Method, Status};
-
-    #[cfg(feature="utils")]
-    pub use crate::typed::{OK, Created, NoContent};
-}
-
-/// Ohkami testing tools
+/// Passed to `{Request/Response}.headers.set().Name( 〜 )` and
+/// append `value` to the header
 /// 
 /// <br>
 /// 
-/// *test_example.rs*
+/// *example.rs*
 /// ```
-/// use ohkami::prelude::*;
-/// use ohkami::testing::*;
+/// # use ohkami::prelude::*;
+/// use ohkami::append;
 /// 
-/// fn my_ohkami() -> Ohkami {
-///     Ohkami::new(
-///         "/".GET(|| async {
-///             "Hello, ohkami!"
+/// struct AppendServer;
+/// impl IntoFang for AppendServer {
+///     fn into_fang(self) -> Fang {
+///         Fang::back(|res: &mut Response| {
+///             res.headers.set()
+///                 .Server(append("ohkami"));
 ///         })
-///     )
-/// }
-/// 
-/// #[cfg(test)]
-/// #[tokio::test]
-/// async fn test_my_ohkami() {
-///     let mo = my_ohkami();
-/// 
-///     let req = TestRequest::GET("/");
-///     let res = mo.oneshot(req).await;
-///     assert_eq!(res.status, Status::OK);
-///     assert_eq!(res.text(), Some("Hello, ohkami!"));
+///     }
 /// }
 /// ```
-#[cfg(feature="testing")]
-pub mod testing {
-    pub use crate::x_testing::*;
+pub fn append(value: impl Into<std::borrow::Cow<'static, str>>) -> __internal__::Append {
+    __internal__::Append(value.into())
 }
 
-/// Some utilities for building web app
-#[cfg(feature="utils")]
-pub mod utils {
-    pub use crate::x_utils::{imf_fixdate_now, unix_timestamp, Text, HTML};
-    pub use crate::x_utils::File;
-}
-
-/// Ohkami's buitlin fangs
-/// 
-/// - `CORS`
-/// - `JWT`
-#[cfg(feature="utils")]
-pub mod fangs {
-    pub use crate::x_utils::{CORS, JWT};
+pub mod prelude {
+    pub use crate::{Request, Route, Ohkami, Fang, Response, IntoFang, IntoResponse, Method, Status};
 }
 
 /// Somthing that's almost [serde](https://crates.io/crates/serde)
@@ -175,20 +146,10 @@ pub mod fangs {
 ///     age:  u8,
 /// }
 /// ```
-#[cfg(feature="utils")]
 pub mod serde {
     pub use ::ohkami_macros::{Serialize, Deserialize};
     pub use ::serde::ser::{self, Serialize, Serializer};
     pub use ::serde::de::{self, Deserialize, Deserializer};
-}
-
-/// Convenient tools to build type-safe handlers
-#[cfg(feature="utils")]
-pub mod typed {
-    pub use ohkami_macros::{ResponseBody, Query, Payload};
-
-    pub use crate::x_utils::ResponseBody;
-    pub use crate::x_utils::*;
 }
 
 #[cfg(feature="websocket")]
@@ -198,14 +159,13 @@ pub mod websocket {
 
 #[doc(hidden)]
 pub mod __internal__ {
-    #[cfg(feature="utils")]
+    pub struct Append(pub(crate) std::borrow::Cow<'static, str>);
+
     pub use ::serde;
 
-    #[cfg(feature="utils")]
     pub use ohkami_macros::consume_struct;
 
-    #[cfg(feature="utils")]
-    pub use crate::x_utils::{
+    pub use crate::typed::parse_payload::{
         parse_json,
         parse_formparts,
         parse_urlencoded,
@@ -213,5 +173,8 @@ pub mod __internal__ {
 
     /* for benchmarks */
     #[cfg(feature="DEBUG")]
-    pub use crate::layer1_req_res::{RequestHeader, RequestHeaders, ResponseHeader, ResponseHeaders};
+    pub use crate::{
+        request::{RequestHeader, RequestHeaders},
+        response::{ResponseHeader, ResponseHeaders},
+    };
 }

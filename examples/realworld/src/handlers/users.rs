@@ -1,4 +1,4 @@
-use ohkami::{typed::Created, Memory, Ohkami, Route};
+use ohkami::{typed::status::Created, Memory, Ohkami, Route};
 use sqlx::PgPool;
 use crate::{
     models::User,

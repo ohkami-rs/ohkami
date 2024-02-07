@@ -6,7 +6,7 @@ mod fangs;
 mod handlers;
 
 #[cfg(test)]
-mod test;
+mod _test;
 
 use errors::RealWorldError;
 use sqlx::postgres::PgPoolOptions;

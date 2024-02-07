@@ -30,7 +30,7 @@ pub struct ValidationError {
 
 impl IntoResponse for RealWorldError {
     fn into_response(self) -> ohkami::Response {
-        use ohkami::typed::*;
+        use ohkami::typed::status::*;
         
         match self {
             Self::Validation { body } => UnprocessableEntity(
