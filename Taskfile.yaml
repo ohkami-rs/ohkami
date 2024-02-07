@@ -1,8 +1,23 @@
 version: '3'
 
 tasks:
-  test_rt_tokio:
+  test_rt_async-std:
     cmds:
       - cargo test --no-default-features --features rt_tokio
       - cargo test --no-default-features --features rt_tokio,utils
       - cargo test --no-default-features --features rt_tokio,testing
+      - cargo test --no-default-features --features rt_tokio,utils,testing
+      - cargo test --no-default-features --features custom-header,rt_tokio
+      - cargo test --no-default-features --features custom-header,rt_tokio,utils
+      - cargo test --no-default-features --features custom-header,rt_tokio,testing
+      - cargo test --no-default-features --features custom-header,rt_tokio,utils,testing
+  test_rt_async-std:
+    cmds:
+      - cargo test --no-default-features --features rt_async-std
+      - cargo test --no-default-features --features rt_async-std,utils
+      - cargo test --no-default-features --features rt_async-std,testing
+      - cargo test --no-default-features --features rt_async-std,utils,testing
+      - cargo test --no-default-features --features custom-header,rt_async-std
+      - cargo test --no-default-features --features custom-header,rt_async-std,utils
+      - cargo test --no-default-features --features custom-header,rt_async-std,testing
+      - cargo test --no-default-features --features custom-header,rt_async-std,utils,testing
