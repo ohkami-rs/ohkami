@@ -1,23 +1,83 @@
 version: '3'
 
 tasks:
-  test_rt_async-std:
+  test:
+    deps:
+      - test_rt_tokio
+      - test_rt_async-std
+      - test_examples
+
+  check:
+    deps:
+      - check_rt_tokio
+      - check_rt_async-std
+
+  bench:
+    dir: benches
     cmds:
-      - cargo test --no-default-features --features rt_tokio
-      - cargo test --no-default-features --features rt_tokio,utils
-      - cargo test --no-default-features --features rt_tokio,testing
-      - cargo test --no-default-features --features rt_tokio,utils,testing
-      - cargo test --no-default-features --features custom-header,rt_tokio
-      - cargo test --no-default-features --features custom-header,rt_tokio,utils
-      - cargo test --no-default-features --features custom-header,rt_tokio,testing
-      - cargo test --no-default-features --features custom-header,rt_tokio,utils,testing
-  test_rt_async-std:
+      - cargo bench
+
+#### tests ####
+  test_doc:
+    dir: ohkami
     cmds:
-      - cargo test --no-default-features --features rt_async-std
-      - cargo test --no-default-features --features rt_async-std,utils
-      - cargo test --no-default-features --features rt_async-std,testing
-      - cargo test --no-default-features --features rt_async-std,utils,testing
-      - cargo test --no-default-features --features custom-header,rt_async-std
-      - cargo test --no-default-features --features custom-header,rt_async-std,utils
-      - cargo test --no-default-features --features custom-header,rt_async-std,testing
-      - cargo test --no-default-features --features custom-header,rt_async-std,utils,testing
+      - cargo test --doc --features rt_tokio
+      - cargo test --doc --features rt_tokio,custom-header
+
+  test_rt_tokio:
+    dir: ohkami
+    cmds:
+      - cargo test --lib --no-default-features --features DEBUG,rt_tokio
+      - cargo test --lib --no-default-features --features DEBUG,rt_tokio,utils
+      - cargo test --lib --no-default-features --features DEBUG,rt_tokio,testing
+      - cargo test --lib --no-default-features --features DEBUG,rt_tokio,utils,testing
+      - cargo test --lib --no-default-features --features DEBUG,custom-header,rt_tokio
+      - cargo test --lib --no-default-features --features DEBUG,custom-header,rt_tokio,utils
+      - cargo test --lib --no-default-features --features DEBUG,custom-header,rt_tokio,testing
+      - cargo test --lib --no-default-features --features DEBUG,custom-header,rt_tokio,utils,testing
+
+  test_rt_async-std:
+    dir: ohkami
+    cmds:
+      - cargo test --lib --no-default-features --features DEBUG,rt_async-std
+      - cargo test --lib --no-default-features --features DEBUG,rt_async-std,utils
+      - cargo test --lib --no-default-features --features DEBUG,rt_async-std,testing
+      - cargo test --lib --no-default-features --features DEBUG,rt_async-std,utils,testing
+      - cargo test --lib --no-default-features --features DEBUG,custom-header,rt_async-std
+      - cargo test --lib --no-default-features --features DEBUG,custom-header,rt_async-std,utils
+      - cargo test --lib --no-default-features --features DEBUG,custom-header,rt_async-std,testing
+      - cargo test --lib --no-default-features --features DEBUG,custom-header,rt_async-std,utils,testing
+
+  test_examples:
+    dir: examples
+    cmds:
+      - docker compose -f ./realworld/docker-compose.yml up -d
+      - cargo test
+      - docker compose -f ./realworld/docker-compose.yml down
+
+#### checks ####
+  # Assure buildability without "DEBUG" feature
+
+  check_rt_tokio:
+    dir: ohkami
+    cmds:
+      - cargo check --lib --no-default-features --features rt_tokio
+      - cargo check --lib --no-default-features --features rt_tokio,utils
+      - cargo check --lib --no-default-features --features rt_tokio,testing
+      - cargo check --lib --no-default-features --features rt_tokio,utils,testing
+      - cargo check --lib --no-default-features --features custom-header,rt_tokio
+      - cargo check --lib --no-default-features --features custom-header,rt_tokio,utils
+      - cargo check --lib --no-default-features --features custom-header,rt_tokio,testing
+      - cargo check --lib --no-default-features --features custom-header,rt_tokio,utils,testing
+
+  check_rt_async-std:
+    dir: ohkami
+    cmds:
+      - cargo check --lib --no-default-features --features rt_async-std
+      - cargo check --lib --no-default-features --features rt_async-std,utils
+      - cargo check --lib --no-default-features --features rt_async-std,testing
+      - cargo check --lib --no-default-features --features rt_async-std,utils,testing
+      - cargo check --lib --no-default-features --features custom-header,rt_async-std
+      - cargo check --lib --no-default-features --features custom-header,rt_async-std,utils
+      - cargo check --lib --no-default-features --features custom-header,rt_async-std,testing
+      - cargo check --lib --no-default-features --features custom-header,rt_async-std,utils,testing

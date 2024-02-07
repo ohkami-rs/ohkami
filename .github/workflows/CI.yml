@@ -1,0 +1,47 @@
+name: test
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  Test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        toolchain: ['stable', 'nightly']
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Install latest Rust every time because MSRV is "latest stable"
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ matrix.toolchain }}
+          profile:   minimal
+          override:  true
+
+      - name: Cache task command
+        id:   cache_task_command
+        uses: actions/cache@v3
+        with:
+          key:  ${{ runner.os }}-task-command
+          path: /usr/local/bin
+      - name: Install task command
+        if:   ${{ steps.cache_task_command.outputs.cache-hit != 'true' }}
+        run:  sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
+
+      - name: Cache cargo tools
+        id:   cache_cargo_tools
+        uses: actions/cache@v3
+        with:
+          key:  ${{ runner.os }}-cargo-install
+          path: ~/.cargo/bin
+      - name: Install cargo tools
+        if:   ${{ steps.cache_cargo_tools.outputs.cache-hit != 'true' }}
+        run:  cargo install sqlx-cli --no-default-features --features native-tls,postgres
+      
+      - name: Run tasks
+        run:  task test bench ${{ matrix.toolchain == 'nightly' && 'bench' || '' }}
