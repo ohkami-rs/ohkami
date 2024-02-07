@@ -44,4 +44,4 @@ jobs:
         run:  cargo install sqlx-cli --no-default-features --features native-tls,postgres
       
       - name: Run tasks
-        run:  task test bench ${{ matrix.toolchain == 'nightly' && 'bench' || '' }}
+        run:  task test check ${{ matrix.toolchain == 'nightly' && 'bench' || '' }}
