@@ -1,62 +1,65 @@
 use std::{borrow::Cow, ptr::NonNull};
 
-/// Slice but MANUALLY HANDLE the *lifetime*
+
+/// A byte slice with **MANUALLY HANDLE** the *lifetime*
 #[derive(Clone)]
-pub(crate) struct Slice {
+pub struct Slice {
     head: Option<NonNull<u8>>,
     size: usize,
-} impl Slice {
-    pub(crate) const fn null() -> Self {
+}
+impl Slice {
+    pub const fn null() -> Self {
         Self {
             head: None,
             size: 0,
         }
     }
 
-    #[inline(always)] pub(crate) unsafe fn new(head: *const u8, size: usize) -> Self {
+    #[inline(always)] pub unsafe fn new(head: *const u8, size: usize) -> Self {
         Self {
             head: NonNull::new(head as *mut _),
             size,
         }
     }
 
-    #[inline(always)] pub(crate) unsafe fn from_bytes(bytes: &[u8]) -> Self {
+    #[inline(always)] pub unsafe fn from_bytes(bytes: &[u8]) -> Self {
         Self {
             head: NonNull::new(bytes.as_ptr() as *mut _),
             size: bytes.len(),
         }
     }
     
-    #[inline(always)] pub(crate) const unsafe fn as_bytes<'b>(&self) -> &'b [u8] {
+    #[inline(always)] pub const unsafe fn as_bytes<'b>(&self) -> &'b [u8] {
         match self.head {
             Some(p) => std::slice::from_raw_parts(p.as_ptr(), self.size),
             None    => &[],
         }
     }
-
-} const _: () = {
+}
+const _: () = {
     unsafe impl Send for Slice {}
     unsafe impl Sync for Slice {}
 };
 
-pub(crate) enum CowSlice {
+
+pub enum CowSlice {
     Ref(Slice),
     Own(Vec<u8>),
-} impl CowSlice {
-    #[inline(always)] pub(crate) unsafe fn as_bytes(&self) -> &[u8] {
+}
+impl CowSlice {
+    #[inline(always)] pub unsafe fn as_bytes(&self) -> &[u8] {
         match self {
             Self::Own(vec)   => &vec,
             Self::Ref(slice) => unsafe {slice.as_bytes()},
         }
     }
-    #[inline(always)] pub(crate) unsafe fn from_request_cow_bytes<'req>(cow_bytes: std::borrow::Cow<'req, [u8]>) -> Self {
+    #[inline(always)] pub unsafe fn from_request_cow_bytes<'req>(cow_bytes: std::borrow::Cow<'req, [u8]>) -> Self {
         match cow_bytes {
             std::borrow::Cow::Borrowed(slice) => Self::Ref(Slice::from_bytes(slice)),
             std::borrow::Cow::Owned(vec)      => Self::Own(vec),
         }
     }
-    #[cfg(feature="custom-header")]
-    #[inline] pub(crate) unsafe fn extend(&mut self, bytes: &[u8]) {
+    #[inline] pub unsafe fn extend(&mut self, bytes: &[u8]) {
         match self {
             Self::Own(vec)   => vec.extend_from_slice(bytes),
             Self::Ref(slice) => {
@@ -66,7 +69,8 @@ pub(crate) enum CowSlice {
             }
         }
     }
-} const _: () = {
+}
+const _: () = {
     impl AsRef<[u8]> for CowSlice {
         fn as_ref(&self) -> &[u8] {
             match self {

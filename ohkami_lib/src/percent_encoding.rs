@@ -3,10 +3,10 @@
 use std::{str, slice, borrow::Cow};
 
 
-#[inline(always)] pub(crate) fn percent_decode_utf8(input: &[u8]) -> Result<Cow<'_, str>, str::Utf8Error> {
+#[inline(always)] pub fn percent_decode_utf8(input: &[u8]) -> Result<Cow<'_, str>, str::Utf8Error> {
     PercentDecode { bytes: input.iter() }.decode_utf8()
 }
-#[inline(always)] pub(crate) fn percent_decode(input: &[u8]) -> Cow<'_, [u8]> {
+#[inline(always)] pub fn percent_decode(input: &[u8]) -> Cow<'_, [u8]> {
     PercentDecode { bytes: input.iter() }.into_cow()
 }
 

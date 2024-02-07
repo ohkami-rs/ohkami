@@ -1,13 +1,11 @@
-// #[cfg(feature="websocket")]
-// #[inline(always)] pub fn encode(src: impl AsRef<[u8]>) -> String {
-//     encode_by(
-//         src.as_ref(),
-//         b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/",
-//         Some(b'='),
-//     )
-// }
+#[inline(always)] pub fn encode(src: impl AsRef<[u8]>) -> String {
+    encode_by(
+        src.as_ref(),
+        b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/",
+        Some(b'='),
+    )
+}
 
-#[cfg(feature="utils")]
 #[inline(always)] pub fn encode_url(src: impl AsRef<[u8]>) -> String {
     encode_by(
         src.as_ref(),
@@ -16,8 +14,6 @@
     )
 }
 
-#[cfg(feature="utils")]
-#[cfg(test)]
 #[inline(always)] pub fn decode(encoded: &[u8]) -> Vec<u8> {
     decode_by(
         encoded,
@@ -26,7 +22,6 @@
     )
 }
 
-#[cfg(feature="utils")]
 #[inline(always)] pub fn decode_url(encoded: &str) -> Vec<u8> {
     decode_by(
         encoded.as_bytes(),
@@ -98,7 +93,6 @@ fn encode_by(src: &[u8], encode_map: &[u8; 64], padding: Option<u8>) -> String {
     unsafe {String::from_utf8_unchecked(dst)}
 }
 
-#[cfg(feature="utils")]
 #[inline] fn decode_by(encoded: &[u8], encode_map: &[u8; 64], padding: Option<u8>) -> Vec<u8> {
     #[inline] fn assemble64(n: [u8; 8]) -> Option<u64> {
         let [n1, n2, n3, n4, n5, n6, n7, n8] = n.map(<u8 as Into<u64>>::into);

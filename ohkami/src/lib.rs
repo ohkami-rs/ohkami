@@ -81,29 +81,49 @@ mod __rt__ {
 
 
 /*===== modules =====*/
-
-mod layer0_lib;
-mod layer1_req_res;
-mod layer2_fang_handler;
-mod layer3_router;
-mod layer4_ohkami;
+mod typed;
+mod router;
+mod ohkami;
 
 #[cfg(feature="testing")]
-mod x_testing;
+mod testing;
 
 #[cfg(feature="utils")]
-mod x_utils;
+mod utils;
 
 #[cfg(feature="websocket")]
 mod x_websocket;
 
 
 /*===== visibility managements =====*/
-pub use crate::layer0_lib  ::{append};
 pub use layer1_req_res     ::{Request, Method, Response, Status, FromRequestError, FromRequest, FromParam, IntoResponse, Memory};
 pub use layer2_fang_handler::{Route, Fang};
-pub use layer4_ohkami      ::{Ohkami, IntoFang};
+pub use ohkami      ::{Ohkami, IntoFang};
 
+/// Passed to `{Request/Response}.headers.set().Name( 〜 )` and
+/// append `value` to the header
+/// 
+/// <br>
+/// 
+/// *example.rs*
+/// ```
+/// # use ohkami::prelude::*;
+/// use ohkami::append;
+/// 
+/// struct AppendServer;
+/// impl IntoFang for AppendServer {
+///     fn into_fang(self) -> Fang {
+///         Fang::back(|res: &mut Response| {
+///             res.headers.set()
+///                 .Server(append("ohkami"));
+///         })
+///     }
+/// }
+/// ```
+pub fn append(value: impl Into<std::borrow::Cow<'static, str>>) -> __internal__::Append {
+    __internal__::Append(value.into())
+}
+    
 pub mod prelude {
     pub use crate::{Request, Route, Ohkami, Fang, Response, IntoFang, IntoResponse, Method, Status};
 
@@ -141,14 +161,14 @@ pub mod prelude {
 /// ```
 #[cfg(feature="testing")]
 pub mod testing {
-    pub use crate::x_testing::*;
+    pub use crate::testing::*;
 }
 
 /// Some utilities for building web app
 #[cfg(feature="utils")]
 pub mod utils {
-    pub use crate::x_utils::{imf_fixdate_now, unix_timestamp, Text, HTML};
-    pub use crate::x_utils::File;
+    pub use crate::utils::{imf_fixdate_now, unix_timestamp, Text, HTML};
+    pub use crate::utils::File;
 }
 
 /// Ohkami's buitlin fangs
@@ -157,7 +177,7 @@ pub mod utils {
 /// - `JWT`
 #[cfg(feature="utils")]
 pub mod fangs {
-    pub use crate::x_utils::{CORS, JWT};
+    pub use crate::utils::{CORS, JWT};
 }
 
 /// Somthing that's almost [serde](https://crates.io/crates/serde)
@@ -187,8 +207,8 @@ pub mod serde {
 pub mod typed {
     pub use ohkami_macros::{ResponseBody, Query, Payload};
 
-    pub use crate::x_utils::ResponseBody;
-    pub use crate::x_utils::*;
+    pub use crate::utils::ResponseBody;
+    pub use crate::utils::*;
 }
 
 #[cfg(feature="websocket")]
@@ -198,6 +218,8 @@ pub mod websocket {
 
 #[doc(hidden)]
 pub mod __internal__ {
+    pub struct Append(pub(crate) std::borrow::Cow<'static, str>);
+
     #[cfg(feature="utils")]
     pub use ::serde;
 
@@ -205,7 +227,7 @@ pub mod __internal__ {
     pub use ohkami_macros::consume_struct;
 
     #[cfg(feature="utils")]
-    pub use crate::x_utils::{
+    pub use crate::utils::{
         parse_json,
         parse_formparts,
         parse_urlencoded,

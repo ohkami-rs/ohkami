@@ -1,5 +1,3 @@
-#[cfg(test)] mod _test;
-
 use crate::{Response, Request, Ohkami, Status, Method};
 use crate::layer1_req_res::ResponseHeader;
 

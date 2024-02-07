@@ -4,7 +4,7 @@ mod howl;
 
 use crate::{
     Method,
-    layer3_router::TrieRouter,
+    router::TrieRouter,
 };
 
 

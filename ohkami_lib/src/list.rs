@@ -1,38 +1,39 @@
 use std::mem::MaybeUninit;
 
 
-pub(crate) struct List<T, const CAPACITY: usize> {
+pub struct List<T, const CAPACITY: usize> {
     pub(crate) list: [MaybeUninit<T>; CAPACITY],
     pub(crate) next: usize,
 }
 
 impl<T, const CAPACITY: usize> List<T, CAPACITY> {
-    pub(crate) fn new() -> Self {
+    pub const fn new() -> Self {
         // SAFETY: An uninitialized `[MaybeUninit<_>; LEN]` is valid.
         Self {
             next: 0,
             list: unsafe { MaybeUninit::<[MaybeUninit<T>; CAPACITY]>::uninit().assume_init() },
         }
     }
-}
 
-impl<T, const CAPACITY: usize> List<T, CAPACITY> {
-    #[inline] pub(crate) fn push(&mut self, element: T) {
+    /// SAFETY: The amount of calling `push`, `push_unchecked` for this `List` before
+    /// is **LESS THAN** `CAPACITY`
+    #[inline(always)] pub unsafe fn push_unchecked(&mut self, element: T) {
+        self.list.get_unchecked_mut(self.next).write(element);
+        self.next += 1;
+    }
+
+    #[inline] pub fn push(&mut self, element: T) {
         if self.next == CAPACITY {
             panic!("Buffer over flow");
         }
-        self.list[self.next].write(element);
-        self.next += 1;
+
+        // SAFETY: Here `self.next < CAPACITY`
+        unsafe {self.push_unchecked(element)}
     }
 }
 
 
-#[cfg(test)]
 const _: () = {
-    use crate::layer0_lib::Slice;
-
-    use super::{CowSlice};
-
     impl<T: PartialEq, const CAPACITY: usize> PartialEq for List<T, CAPACITY> {
         fn eq(&self, other: &Self) -> bool {
             let n = self.next;
@@ -51,14 +52,13 @@ const _: () = {
         }
     }
 
-    impl<const LENGTH: usize, const CAPACITY: usize> From<[(&'static str, &'static str); LENGTH]> for List<(CowSlice, CowSlice), CAPACITY> {
-        fn from(array: [(&'static str, &'static str); LENGTH]) -> Self {
-            let mut this = Self::new(); for (key, val) in array {
-                this.push((
-                    unsafe {CowSlice::Ref(Slice::from_bytes(key.as_bytes()))},
-                    unsafe {CowSlice::Ref(Slice::from_bytes(val.as_bytes()))},
-                ))
-            } this
+    impl<const N: usize, S: Into<T>, T> From<[(S, S); N]> for List<(T, T), N> {
+        fn from(array: [(S, S); N]) -> Self {
+            let mut this = Self::new();
+            for (k, v) in array {
+                this.push((k.into() , v.into()))
+            }
+            this
         }
     }
 };
