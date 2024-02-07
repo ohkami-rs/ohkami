@@ -1,7 +1,8 @@
 use crate::prelude::*;
+#[cfg(feature="testing")]
 use crate::testing::*;
+#[cfg(feature="utils")]
 use crate::utils::Text;
-use crate::__rt__::test;
 
 fn my_ohkami() -> Ohkami {
     let health_ohkami = Ohkami::new((
@@ -70,7 +71,7 @@ fn my_ohkami() -> Ohkami {
 }
 
 #[cfg(feature="testing")]
-#[test] async fn test_router() {
+#[crate::__rt__::test] async fn test_router() {
     let t = my_ohkami();
 
 
