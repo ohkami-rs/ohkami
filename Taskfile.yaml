@@ -52,6 +52,7 @@ tasks:
     dir: examples
     cmds:
       - docker compose -f ./realworld/docker-compose.yml up -d
+      - cd ./realworld && sqlx migrate run
       - cargo test
       - docker compose -f ./realworld/docker-compose.yml down
 
