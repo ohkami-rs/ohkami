@@ -1,7 +1,7 @@
 #![allow(non_snake_case, non_camel_case_types)]
 
 use std::borrow::Cow;
-use crate::layer0_lib::{base64};
+use ohkami_lib::base64;
 use crate::{Request, Response, Status};
 
 
@@ -325,8 +325,8 @@ impl JWT {
 
     #[test] async fn test_jwt_verify_senario() {
         use crate::prelude::*;
-        use crate::typed::ResponseBody;
         use crate::{testing::*, Memory};
+        use crate::typed::{ResponseBody, status::OK};
 
         use std::{sync::OnceLock, collections::HashMap, borrow::Cow};
         use crate::__rt__::Mutex;

@@ -1,5 +1,6 @@
 use std::borrow::Cow;
-use crate::layer0_lib::{Append, CowSlice, Slice};
+use crate::__internal__::Append;
+use ohkami_lib::{CowSlice, Slice};
 
 #[cfg(feature="custom-header")]
 use rustc_hash::FxHashMap;

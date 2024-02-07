@@ -6,10 +6,7 @@ use std::{
     sync::Arc,
     future::Future,
 };
-use crate::{
-    Request,
-    layer1_req_res::{Response},
-};
+use crate::{Request, Response};
 
 
 #[derive(Clone)]

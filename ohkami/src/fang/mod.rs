@@ -1,3 +1,5 @@
+pub mod builtin;
+
 use std::sync::Arc;
 use crate::{Request, Response};
 
@@ -50,32 +52,39 @@ use crate::{Request, Response};
 /// Hello!
 #[derive(Clone)]
 pub struct Fang {
-    pub(crate) proc: FangProc,
+    pub(crate) proc: proc::FangProc,
 }
-#[derive(Clone)]
-pub enum FangProc {
-    Front(FrontFang),
-    Back (BackFang),
-}
-#[derive(Clone)]
-pub struct FrontFang(pub(crate) Arc<dyn
-    Fn(&mut Request) -> Result<(), Response>
-    + Send
-    + Sync
-    + 'static
->);
-#[derive(Clone)]
-pub struct BackFang(pub(crate) Arc<dyn
-    Fn(&mut Response, &Request) -> Result<(), Response>
-    + Send
-    + Sync
-    + 'static
->);
-
 impl Fang {
     pub(crate) fn is_front(&self) -> bool {
-        matches!(self.proc, FangProc::Front(_))
+        matches!(self.proc, proc::FangProc::Front(_))
     }
+}
+
+pub(crate) mod proc {
+    use std::sync::Arc;
+    use crate::{Request, Response};
+
+    
+    #[derive(Clone)]
+    pub enum FangProc {
+        Front(FrontFang),
+        Back (BackFang),
+    }
+
+    #[derive(Clone)]
+    pub struct FrontFang(pub(crate) Arc<dyn
+        Fn(&mut Request) -> Result<(), Response>
+        + Send
+        + Sync
+        + 'static
+    >);
+    #[derive(Clone)]
+    pub struct BackFang(pub(crate) Arc<dyn
+        Fn(&mut Response, &Request) -> Result<(), Response>
+        + Send
+        + Sync
+        + 'static
+    >);
 }
 
 
@@ -87,7 +96,7 @@ const _: () = {
         /// - `Fn(&/&mut Request) -> Result<(), Response>`
         pub fn front<M>(material: impl IntoFrontFang<M>) -> Self {
             Self {
-                proc: FangProc::Front(material.into_front()),
+                proc: proc::FangProc::Front(material.into_front()),
             }
         }
 
@@ -99,17 +108,17 @@ const _: () = {
         /// - `Fn(&/&mut Response, &Request) -> Result<(), Response>`
         pub fn back<M>(material: impl IntoBackFang<M>) -> Self {
             Self {
-                proc: FangProc::Back(material.into_back()),
+                proc: proc::FangProc::Back(material.into_back()),
             }
         }
     }
 
-    pub trait IntoFrontFang<M> {fn into_front(self) -> FrontFang;}
+    pub trait IntoFrontFang<M> {fn into_front(self) -> proc::FrontFang;}
     const _: () = {
         impl<F: Fn(&Request) + Sync + Send + 'static>
         IntoFrontFang<fn(&Request)> for F {
-            fn into_front(self) -> FrontFang {
-                FrontFang(Arc::new(move |req| {
+            fn into_front(self) -> proc::FrontFang {
+                proc::FrontFang(Arc::new(move |req| {
                     self(req);
                     Ok(())
                 }))
@@ -117,8 +126,8 @@ const _: () = {
         }
         impl<F: Fn(&mut Request) + Sync + Send + 'static>
         IntoFrontFang<fn(&mut Request)> for F {
-            fn into_front(self) -> FrontFang {
-                FrontFang(Arc::new(move |req| {
+            fn into_front(self) -> proc::FrontFang {
+                proc::FrontFang(Arc::new(move |req| {
                     self(req);
                     Ok(())
                 }))
@@ -127,28 +136,28 @@ const _: () = {
 
         impl<F: Fn(&Request)->Result<(),Response> + Sync + Send + 'static>
         IntoFrontFang<fn(&Request)->Result<(),Response>> for F {
-            fn into_front(self) -> FrontFang {
-                FrontFang(Arc::new(move |req| {
+            fn into_front(self) -> proc::FrontFang {
+                proc::FrontFang(Arc::new(move |req| {
                     self(req)
                 }))
             }
         }
         impl<F: Fn(&mut Request)->Result<(),Response> + Sync + Send + 'static>
         IntoFrontFang<fn(&mut Request)->Result<(),Response>> for F {
-            fn into_front(self) -> FrontFang {
-                FrontFang(Arc::new(
+            fn into_front(self) -> proc::FrontFang {
+                proc::FrontFang(Arc::new(
                     self
                 ))
             }
         }
     };
     
-    pub trait IntoBackFang<M> {fn into_back(self) -> BackFang;}
+    pub trait IntoBackFang<M> {fn into_back(self) -> proc::BackFang;}
     const _: () = {
         impl<F: Fn(&Response) + Send + Sync + 'static>
         IntoBackFang<fn(&Response)> for F {
-            fn into_back(self) -> BackFang {
-                BackFang(Arc::new(move |res, _| {
+            fn into_back(self) -> proc::BackFang {
+                proc::BackFang(Arc::new(move |res, _| {
                     self(res);
                     Ok(())
                 }))
@@ -156,8 +165,8 @@ const _: () = {
         }
         impl<F: Fn(&mut Response) + Send + Sync + 'static>
         IntoBackFang<fn(&mut Response)> for F {
-            fn into_back(self) -> BackFang {
-                BackFang(Arc::new(move |res, _| {
+            fn into_back(self) -> proc::BackFang {
+                proc::BackFang(Arc::new(move |res, _| {
                     self(res);
                     Ok(())
                 }))
@@ -166,8 +175,8 @@ const _: () = {
 
         impl<F: Fn(&Response, &Request) + Send + Sync + 'static>
         IntoBackFang<fn(&Response, &Request)> for F {
-            fn into_back(self) -> BackFang {
-                BackFang(Arc::new(move |res, req| {
+            fn into_back(self) -> proc::BackFang {
+                proc::BackFang(Arc::new(move |res, req| {
                     self(res, req);
                     Ok(())
                 }))
@@ -175,8 +184,8 @@ const _: () = {
         }
         impl<F: Fn(&mut Response, &Request) + Send + Sync + 'static>
         IntoBackFang<fn(&mut Response, &Request)> for F {
-            fn into_back(self) -> BackFang {
-                BackFang(Arc::new(move |res, req| {
+            fn into_back(self) -> proc::BackFang {
+                proc::BackFang(Arc::new(move |res, req| {
                     self(res, req);
                     Ok(())
                 }))
@@ -185,16 +194,16 @@ const _: () = {
 
         impl<F: Fn(&Response)->Result<(),Response> + Send + Sync + 'static>
         IntoBackFang<fn(&Response)->Result<(),Response>> for F {
-            fn into_back(self) -> BackFang {
-                BackFang(Arc::new(move |res, _| {
+            fn into_back(self) -> proc::BackFang {
+                proc::BackFang(Arc::new(move |res, _| {
                     self(res)
                 }))
             }
         }
         impl<F: Fn(&mut Response)->Result<(),Response> + Send + Sync + 'static>
         IntoBackFang<fn(&mut Response)->Result<(),Response>> for F {
-            fn into_back(self) -> BackFang {
-                BackFang(Arc::new(move |res, _| {
+            fn into_back(self) -> proc::BackFang {
+                proc::BackFang(Arc::new(move |res, _| {
                     self(res)
                 }))
             }
@@ -202,16 +211,16 @@ const _: () = {
 
         impl<F: Fn(&Response, &Request)->Result<(),Response> + Send + Sync + 'static>
         IntoBackFang<fn(&Response, &Request)->Result<(),Response>> for F {
-            fn into_back(self) -> BackFang {
-                BackFang(Arc::new(move |res, req| {
+            fn into_back(self) -> proc::BackFang {
+                proc::BackFang(Arc::new(move |res, req| {
                     self(res, req)
                 }))
             }
         }
         impl<F: Fn(&mut Response, &Request)->Result<(),Response> + Send + Sync + 'static>
         IntoBackFang<fn(&mut Response, &Request)->Result<(),Response>> for F {
-            fn into_back(self) -> BackFang {
-                BackFang(Arc::new(
+            fn into_back(self) -> proc::BackFang {
+                proc::BackFang(Arc::new(
                     self
                 ))
             }

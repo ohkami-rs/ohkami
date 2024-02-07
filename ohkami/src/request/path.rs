@@ -1,4 +1,4 @@
-use crate::layer0_lib::{Slice, List};
+use ohkami_lib::{Slice, List};
 
 
 const LIMIT: usize = 2;
@@ -38,13 +38,10 @@ impl Path {
     }
 
     #[inline] pub(crate) unsafe fn assume_one_param<'p>(&self) -> &'p [u8] {
-        self.params.list.get_unchecked(0).assume_init_ref().as_bytes()
+        self.params.get_unchecked(0).as_bytes()
     }
     #[inline] pub(crate) unsafe fn assume_two_params<'p>(&self) -> (&'p [u8], &'p [u8]) {
-        (
-            self.params.list.get_unchecked(0).assume_init_ref().as_bytes(),
-            self.params.list.get_unchecked(1).assume_init_ref().as_bytes(),
-        )
+        (self.params.get_unchecked(0).as_bytes(), self.params.get_unchecked(1).as_bytes())
     }
 
     #[inline] pub(crate) unsafe fn as_internal_bytes<'req>(&self) -> &'req [u8] {

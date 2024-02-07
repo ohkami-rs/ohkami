@@ -1,5 +1,5 @@
 use std::borrow::Cow;
-use crate::layer0_lib::Append;
+use crate::__internal__::Append;
 
 #[cfg(feature="custom-header")]
 use rustc_hash::FxHashMap;

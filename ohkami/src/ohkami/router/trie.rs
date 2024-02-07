@@ -1,15 +1,9 @@
 use std::borrow::Cow;
+use super::{RouteSection, RouteSections};
 use crate::{
     Method,
-    layer2_fang_handler::{
-        Fang,
-        FangProc,
-        Handler,
-        Handlers,
-        ByAnother,
-        RouteSection,
-        RouteSections,
-    },
+    handler::{Handler, Handlers, ByAnother},
+    fang::{Fang, proc::FangProc},
 };
 
 const _: () = {

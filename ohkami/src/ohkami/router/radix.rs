@@ -5,9 +5,11 @@ use crate::{
     Response,
     Status,
     Method,
-    layer0_lib::{Slice, percent_decode},
-    layer2_fang_handler::{Handler, FrontFang, BackFang}, IntoResponse,
+    IntoResponse,
+    handler::Handler,
+    fang::proc::{FrontFang, BackFang},
 };
+use ohkami_lib::{Slice, percent_decode};
 
 #[cfg(feature="websocket")]
 use crate::websocket::{

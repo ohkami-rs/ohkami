@@ -16,8 +16,6 @@
 //! for more information！
 
 
-/*===== crate features =====*/
-
 #[cfg(any(
     all(feature="rt_tokio", feature="rt_async-std")
 ))] compile_error!("
@@ -33,8 +31,6 @@
     - rt_async-std
 ");
 
-
-/*===== async runtime dependency layer =====*/
 
 mod __rt__ {
     #[allow(unused)]
@@ -80,25 +76,32 @@ mod __rt__ {
 }
 
 
-/*===== modules =====*/
-mod typed;
-mod router;
+mod request;
+pub use request::{Request, Method, FromRequestError, FromRequest, FromParam, Memory};
+
+mod response;
+pub use response::{Response, Status, IntoResponse};
+
+mod handler;
+pub use handler::Route;
+
+pub mod fang;
+pub use fang::Fang;
+
 mod ohkami;
+pub use ohkami::{Ohkami, IntoFang};
+
+pub mod typed;
 
 #[cfg(feature="testing")]
-mod testing;
+pub mod testing;
 
 #[cfg(feature="utils")]
-mod utils;
+pub mod utils;
 
 #[cfg(feature="websocket")]
 mod x_websocket;
 
-
-/*===== visibility managements =====*/
-pub use layer1_req_res     ::{Request, Method, Response, Status, FromRequestError, FromRequest, FromParam, IntoResponse, Memory};
-pub use layer2_fang_handler::{Route, Fang};
-pub use ohkami      ::{Ohkami, IntoFang};
 
 /// Passed to `{Request/Response}.headers.set().Name( 〜 )` and
 /// append `value` to the header
@@ -123,61 +126,9 @@ pub use ohkami      ::{Ohkami, IntoFang};
 pub fn append(value: impl Into<std::borrow::Cow<'static, str>>) -> __internal__::Append {
     __internal__::Append(value.into())
 }
-    
+
 pub mod prelude {
     pub use crate::{Request, Route, Ohkami, Fang, Response, IntoFang, IntoResponse, Method, Status};
-
-    #[cfg(feature="utils")]
-    pub use crate::typed::{OK, Created, NoContent};
-}
-
-/// Ohkami testing tools
-/// 
-/// <br>
-/// 
-/// *test_example.rs*
-/// ```
-/// use ohkami::prelude::*;
-/// use ohkami::testing::*;
-/// 
-/// fn my_ohkami() -> Ohkami {
-///     Ohkami::new(
-///         "/".GET(|| async {
-///             "Hello, ohkami!"
-///         })
-///     )
-/// }
-/// 
-/// #[cfg(test)]
-/// #[tokio::test]
-/// async fn test_my_ohkami() {
-///     let mo = my_ohkami();
-/// 
-///     let req = TestRequest::GET("/");
-///     let res = mo.oneshot(req).await;
-///     assert_eq!(res.status, Status::OK);
-///     assert_eq!(res.text(), Some("Hello, ohkami!"));
-/// }
-/// ```
-#[cfg(feature="testing")]
-pub mod testing {
-    pub use crate::testing::*;
-}
-
-/// Some utilities for building web app
-#[cfg(feature="utils")]
-pub mod utils {
-    pub use crate::utils::{imf_fixdate_now, unix_timestamp, Text, HTML};
-    pub use crate::utils::File;
-}
-
-/// Ohkami's buitlin fangs
-/// 
-/// - `CORS`
-/// - `JWT`
-#[cfg(feature="utils")]
-pub mod fangs {
-    pub use crate::utils::{CORS, JWT};
 }
 
 /// Somthing that's almost [serde](https://crates.io/crates/serde)
@@ -195,20 +146,10 @@ pub mod fangs {
 ///     age:  u8,
 /// }
 /// ```
-#[cfg(feature="utils")]
 pub mod serde {
     pub use ::ohkami_macros::{Serialize, Deserialize};
     pub use ::serde::ser::{self, Serialize, Serializer};
     pub use ::serde::de::{self, Deserialize, Deserializer};
-}
-
-/// Convenient tools to build type-safe handlers
-#[cfg(feature="utils")]
-pub mod typed {
-    pub use ohkami_macros::{ResponseBody, Query, Payload};
-
-    pub use crate::utils::ResponseBody;
-    pub use crate::utils::*;
 }
 
 #[cfg(feature="websocket")]
@@ -220,14 +161,11 @@ pub mod websocket {
 pub mod __internal__ {
     pub struct Append(pub(crate) std::borrow::Cow<'static, str>);
 
-    #[cfg(feature="utils")]
     pub use ::serde;
 
-    #[cfg(feature="utils")]
     pub use ohkami_macros::consume_struct;
 
-    #[cfg(feature="utils")]
-    pub use crate::utils::{
+    pub use crate::typed::parse_payload::{
         parse_json,
         parse_formparts,
         parse_urlencoded,
@@ -235,5 +173,8 @@ pub mod __internal__ {
 
     /* for benchmarks */
     #[cfg(feature="DEBUG")]
-    pub use crate::layer1_req_res::{RequestHeader, RequestHeaders, ResponseHeader, ResponseHeaders};
+    pub use crate::{
+        request::{RequestHeader, RequestHeaders},
+        response::{ResponseHeader, ResponseHeaders},
+    };
 }

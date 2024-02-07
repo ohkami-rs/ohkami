@@ -1,11 +1,12 @@
-mod with_fangs; pub use with_fangs::{IntoFang};
+pub(crate) mod router;
 mod build;
 mod howl;
+mod with_fangs;
 
-use crate::{
-    Method,
-    router::TrieRouter,
-};
+use router::TrieRouter;
+pub use with_fangs::{IntoFang};
+
+use crate::Method;
 
 
 /// <br/>
@@ -133,7 +134,7 @@ pub struct Ohkami {
     pub(crate) routes: TrieRouter,
 
     /// apply just before merged to another or called `howl`
-    pub(crate) fangs:  Vec<(&'static [Method], crate::layer2_fang_handler::Fang)>,
+    pub(crate) fangs:  Vec<(&'static [Method], crate::Fang)>,
 }
 
 impl Ohkami {

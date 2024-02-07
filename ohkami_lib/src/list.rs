@@ -15,6 +15,10 @@ impl<T, const CAPACITY: usize> List<T, CAPACITY> {
         }
     }
 
+    #[inline(always)] pub unsafe fn get_unchecked(&self, index: usize) -> &T {
+        self.list.get_unchecked(index).assume_init_ref()
+    }
+
     /// SAFETY: The amount of calling `push`, `push_unchecked` for this `List` before
     /// is **LESS THAN** `CAPACITY`
     #[inline(always)] pub unsafe fn push_unchecked(&mut self, element: T) {

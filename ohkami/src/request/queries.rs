@@ -1,6 +1,6 @@
 use std::{mem::MaybeUninit, borrow::Cow};
+use ohkami_lib::percent_decode;
 use super::{CowSlice, Slice};
-use crate::layer0_lib::{percent_decode};
 
 
 const LIMIT: usize = 8;

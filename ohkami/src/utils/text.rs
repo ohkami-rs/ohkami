@@ -1,11 +1,13 @@
 #![allow(non_snake_case)]
 
-use crate::{Response, IntoResponse, Status, layer1_req_res::ResponseHeaders};
-use super::ResponseBody;
-use serde::Serialize;
+use crate::{Response, IntoResponse, Status};
+use crate::response::ResponseHeaders;
+use crate::serde::Serialize;
+use crate::typed::ResponseBody;
 use std::borrow::Cow;
 
 
+/// Clone on write `text/plain` response
 pub fn Text(text: impl Into<Cow<'static, str>>) -> Text {
     Text {
         content: text.into()
@@ -44,6 +46,7 @@ impl ResponseBody for Text {
     }
 }
 
+/// Clone on write `text/html` response
 pub fn HTML(text: impl Into<Cow<'static, str>>) -> HTML {
     HTML {
         content: text.into()

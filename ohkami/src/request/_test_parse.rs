@@ -1,6 +1,6 @@
 use std::pin::Pin;
+use ohkami_lib::{Slice, CowSlice};
 use super::{Request, Method, METADATA_SIZE, Path, QueryParams, Store};
-use crate::layer0_lib::{Slice, CowSlice};
 
 macro_rules! assert_parse {
     ($case:expr, $expected:expr) => {

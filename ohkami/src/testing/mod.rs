@@ -1,5 +1,34 @@
+//! Ohkami testing tools
+//! 
+//! <br>
+//! 
+//! *test_example.rs*
+//! ```
+//! use ohkami::prelude::*;
+//! use ohkami::testing::*;
+//! 
+//! fn my_ohkami() -> Ohkami {
+//!     Ohkami::new(
+//!         "/".GET(|| async {
+//!             "Hello, ohkami!"
+//!         })
+//!     )
+//! }
+//! 
+//! #[cfg(test)]
+//! #[tokio::test]
+//! async fn test_my_ohkami() {
+//!     let mo = my_ohkami();
+//! 
+//!     let req = TestRequest::GET("/");
+//!     let res = mo.oneshot(req).await;
+//!     assert_eq!(res.status(), Status::OK);
+//!     assert_eq!(res.text(), Some("Hello, ohkami!"));
+//! }
+//! ```
+
 use crate::{Response, Request, Ohkami, Status, Method};
-use crate::layer1_req_res::ResponseHeader;
+use crate::response::ResponseHeader;
 
 use std::borrow::Cow;
 use std::collections::HashMap;

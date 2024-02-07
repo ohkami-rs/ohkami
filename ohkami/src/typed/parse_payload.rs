@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 use serde::Deserialize;
 use byte_reader::Reader;
-use crate::layer0_lib::percent_decode_utf8;
+use ohkami_lib::percent_decode_utf8;
 
 fn __unreachable__() -> ! {
     unsafe {std::hint::unreachable_unchecked()}
