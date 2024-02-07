@@ -72,9 +72,17 @@ pub struct Response {
     pub status:         Status,
     /// Headers of this response
     /// 
-    /// - `.{HeaderName}()` to get the value
-    /// - `.set().{HeaderName}(〜)` to set the value
-    /// - `.set().{HeaderName}(append(〜))` to append the value
+    /// - `.{Name}()` to get the value
+    /// - `.set().{Name}(〜)` to mutate the value
+    ///   - `.set().{Name}(append(〜))` to append
+    /// 
+    /// ---
+    /// 
+    /// *`custom-header` feature required*：
+    /// 
+    /// - `.custom({Name})` to get the value
+    /// - `.set().custom({Name}, {value})` to mutate the value
+    ///   - `.set().custom({Name}, append(〜))` to append
     pub headers:        ResponseHeaders,
     pub(crate) content: Option<Cow<'static, [u8]>>,
 } const _: () = {

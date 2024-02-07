@@ -12,7 +12,7 @@ async fn hello(name: &str) -> OK<String> {
 #[tokio::main]
 async fn main() {
     Ohkami::new((
-        "/hc".
+        "/healthz".
             GET(health_check),
         "/hello/:name".
             GET(hello),

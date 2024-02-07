@@ -63,6 +63,8 @@ pub(crate) enum AccessControlAllowOrigin {
 }
 
 impl CORS {
+    /// Create `CORS` fang for specified `AllowOrigin` as `Access-Control-Allow-Origin` header.\
+    /// (Both `"*"` and a speciffic origin name are available)
     #[allow(non_snake_case)]
     pub const fn new(AllowOrigin: &'static str) -> Self {
         use Method::*;
