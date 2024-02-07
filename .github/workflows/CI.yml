@@ -6,7 +6,7 @@ on:
       - main
 
 jobs:
-  Test:
+  CI:
     runs-on: ubuntu-latest
 
     strategy:
