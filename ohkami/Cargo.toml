@@ -16,9 +16,9 @@ license       = "MIT"
 features      = ["rt_tokio", "custom-header"]
 
 [dependencies]
-ohkami_macros = { version = "0.5", optional = true, path = "../ohkami_macros" }
-tokio         = { version = "1",   optional = true, features = ["net", "rt", "io-util", "sync"] }
-async-std     = { version = "1",   optional = true }
+ohkami_macros = { version = "=0.5.0", optional = true, path = "../ohkami_macros" }
+tokio         = { version = "1", optional = true, features = ["net", "rt", "io-util", "sync"] }
+async-std     = { version = "1", optional = true }
 byte_reader   = { version = "2.0.0", features = ["text"] }
 serde         = "1.0"
 serde_json    = "1.0"
