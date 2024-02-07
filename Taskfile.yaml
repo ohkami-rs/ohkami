@@ -24,8 +24,8 @@ tasks:
   test_doc:
     dir: ohkami
     cmds:
-      - cargo test --doc --features rt_tokio
-      - cargo test --doc --features rt_tokio,custom-header
+      - cargo test --doc --features DEBUG,rt_tokio
+      - cargo test --doc --features DEBUG,rt_tokio,custom-header
 
   test_rt_tokio:
     dir: ohkami

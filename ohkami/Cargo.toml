@@ -21,7 +21,7 @@ ohkami_macros = { version = "=0.5.1", path = "../ohkami_macros" }
 tokio         = { version = "1", optional = true, features = ["net", "rt", "io-util", "sync"] }
 async-std     = { version = "1", optional = true }
 byte_reader   = { version = "2.0.0", features = ["text"] }
-serde         = "1.0"
+serde         = { version = "1.0",   features = ["derive"] }
 serde_json    = "1.0"
 sha1          = { version = "=0.11.0-pre.0", optional = true, default-features = false }
 sha2          = { version = "=0.11.0-pre.0", default-features = false }
@@ -40,7 +40,6 @@ custom-header = ["dep:rustc-hash"]
 
 ##### DEBUG #####
 DEBUG = [
-    "serde/derive",
     "tokio?/macros",
     "tokio?/rt-multi-thread",
     "async-std?/attributes",
