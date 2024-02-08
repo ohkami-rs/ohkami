@@ -28,8 +28,7 @@ mod hello_handler {
     }
 
 
-    #[Payload(JSON)]
-    #[derive(serde::Deserialize)]
+    #[Payload(JSOND)]
     pub struct HelloRequest<'n> {
         name:   &'n str,
         repeat: Option<usize>,
@@ -73,9 +72,9 @@ mod fangs {
                     .Server("ohkami");
 
                 tracing::info!("\
-                    Called `append_server`\n\
+                    Called `SetServer`\n\
                     [current headers]\n\
-                    {:?}\
+                    {:?}\n\
                 ", res.headers);
             })
         }
@@ -88,7 +87,7 @@ mod fangs {
                 let __method__ = req.method();
                 let __path__   = req.path();
 
-                tracing::info!("\
+                tracing::info!("\n\
                     Got request:\n\
                     [ method ] {__method__}\n\
                     [  path  ] {__path__}\n\
@@ -117,8 +116,8 @@ async fn main() {
 
     tracing::info!("Started listening on http://localhost:3000");
 
-    Ohkami::with(LogRequest, (
+    Ohkami::with((LogRequest,), (
         "/hc" .GET(health_handler::health_check),
         "/api".By(hello_ohkami),
-    )).howl(3000).await
+    )).howl("localhost:3000").await
 }

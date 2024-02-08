@@ -2,8 +2,8 @@ use std::borrow::Cow;
 use super::{RouteSection, RouteSections};
 use crate::{
     Method,
-    handler::{Handler, Handlers, ByAnother},
-    fang::{Fang, proc::FangProc},
+    fang::{proc::FangProc, Fang},
+    handler::{ByAnother, Handler, Handlers}
 };
 
 const _: () = {
@@ -247,7 +247,7 @@ impl Node {
                 fangs:    child_fangs,
                 handler:  child_handler,
                 children: child_children,
-            } = children.pop(/* single child */).unwrap(/* `children` is empty here */);
+            } = children.pop(/* pop the single child */).unwrap(/* `children` is empty here */);
 
             children = child_children;
             handler  = child_handler;
@@ -270,23 +270,31 @@ impl Node {
         }
 
         let (mut front, mut back) = (Vec::new(), Vec::new());
-        for f in fangs {
-            match f.proc {
-                FangProc::Front(ff) => front.push(ff),
-                FangProc::Back (bf) => back .push(bf),
+        {
+            let mut unique_fangs = Vec::new();
+            for f in fangs {
+                if unique_fangs.iter().all(|uf| uf != &f) {
+                    unique_fangs.push(f)
+                }
+            }
+
+            for uf in unique_fangs {
+                match uf.proc {
+                    FangProc::Front(ff) => front.push(ff),
+                    FangProc::Back (bf) => back.push(bf),
+                }
             }
         }
 
         super::radix::Node {
             handler,
             children: children.into_iter().map(|c| c.into_radix()).collect(),
-            front: Box::leak(front.into_boxed_slice()),
-            back:  Box::leak(back .into_boxed_slice()),
+            front:    Box::leak(front.into_boxed_slice()),
+            back:     Box::leak(back .into_boxed_slice()),
             patterns: Box::leak(patterns
                 .into_iter()
                 .map(Pattern::into_radix)
-                .collect()
-            ),
+                .collect())
         }
     }
 }

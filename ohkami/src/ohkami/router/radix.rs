@@ -19,6 +19,7 @@ use crate::websocket::{
 
 
 /*===== defs =====*/
+
 pub(crate) struct RadixRouter {
     pub(super) GET:    Node,
     pub(super) PUT:    Node,
@@ -72,16 +73,6 @@ pub(super) enum Pattern {
 
 
 /*===== impls =====*/
-// #[cfg(feature="websocket")] type HandleResult = (Response, Option<UpgradeID>);
-// #[cfg(feature="websocket")] fn __no_upgrade(res: Response) -> HandleResult {
-//     (res, None)
-// }
-// 
-// #[cfg(not(feature="websocket"))] type HandleResult = Response;
-// #[cfg(not(feature="websocket"))] fn __no_upgrade(res: Response) -> HandleResult {
-//     res
-// }
-
 
 impl RadixRouter {
     pub(crate) async fn handle(
@@ -162,25 +153,13 @@ impl Node {
     #[inline] pub(super) async fn handle(&self, req: &mut Request) -> Response {
         match &self.handler {
             Some(handler) => {
-                #[cfg(feature="websocket")]
-                let upgrade_id = match (handler.requires_upgrade).then(|| async {
-                    let id = request_upgrade_id().await;
-                    req.upgrade_id = Some(id);
-                    id
-                }) {None => None, Some(id) => Some(id.await)};
-
-                let mut res = (handler.proc)(req).await;
-                
+                let mut res = (handler.proc)(req).await;                
                 for bf in self.back {
                     if let Err(err_res) = bf.0(&mut res, req) {
                         return err_res;
                     }
                 }
-
-                #[cfg(feature="websocket")]
-                {(res, upgrade_id)}
-                #[cfg(not(feature="websocket"))]
-                {res}
+                res
             }
             None => Status::NotFound.into_response(),
         }
@@ -213,7 +192,7 @@ impl Node {
         //    while `search`
         let path_bytes_maybe_percent_encoded = unsafe {req.internal_path_bytes()};
         // Decode percent encodings in `path_bytes_maybe_percent_encoded`,
-        // without checking entire it is valid UTF-8.
+        // without checking if entire it is valid UTF-8.
         let decoded = percent_decode(path_bytes_maybe_percent_encoded);
         let mut path: &[u8] = &decoded;
 
@@ -238,7 +217,7 @@ impl Node {
                 path = unsafe {path.get_unchecked(1..)};
                 
                 #[cfg(feature="DEBUG")]
-                println!("[path - prefix '/'] '{}'", path.escape_ascii());
+                println!("[path striped prefix '/'] '{}'", path.escape_ascii());
         
                 match pattern {
                     Pattern::Static(s)  => path = match path.strip_prefix(*s) {
@@ -273,6 +252,7 @@ impl Node {
 
 
 /*===== utils =====*/
+
 impl Node {
     #[inline] fn matchable_child(&self, path: &[u8]) -> Option<&Node> {
         for child in &self.children {

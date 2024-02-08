@@ -75,7 +75,7 @@ macro_rules! Route {
         ///         "/hello"  // <-- `Route` works here...
         ///             .GET(greet)
         ///             .PUT(hello),
-        ///     )).howl(3000).await
+        ///     )).howl("localhost:3000").await
         /// }
         /// ```
         pub trait Route {

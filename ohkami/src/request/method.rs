@@ -10,16 +10,16 @@ pub enum Method {
 }
 
 impl Method {
-    #[inline] pub(crate) fn from_bytes(bytes: &[u8]) -> Self {
+    #[inline] pub(crate) fn from_bytes(bytes: &[u8]) -> Option<Self> {
         match bytes {
-            b"GET"     => Self::GET,
-            b"PUT"     => Self::PUT,
-            b"POST"    => Self::POST,
-            b"PATCH"   => Self::PATCH,
-            b"DELETE"  => Self::DELETE,
-            b"HEAD"    => Self::HEAD,
-            b"OPTIONS" => Self::OPTIONS,
-            _ => unreachable!("unknown method: `{}`", unsafe {std::str::from_utf8_unchecked(bytes)})
+            b"GET"     => Some(Self::GET),
+            b"PUT"     => Some(Self::PUT),
+            b"POST"    => Some(Self::POST),
+            b"PATCH"   => Some(Self::PATCH),
+            b"DELETE"  => Some(Self::DELETE),
+            b"HEAD"    => Some(Self::HEAD),
+            b"OPTIONS" => Some(Self::OPTIONS),
+            _ => None
         }
     }
 

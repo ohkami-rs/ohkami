@@ -9,7 +9,9 @@
 - *multi runtime* support：`tokio`, `async-std`
 
 <div align="right">
-    <img alt="build check status of ohkami" src="https://github.com/kana-rus/ohkami/actions/workflows/CI.yml/badge.svg"/>
+    <a href="https://github.com/kana-rus/ohkami/actions"><img alt="build check status of ohkami" src="https://github.com/kana-rus/ohkami/actions/workflows/CI.yml/badge.svg"/></a>
+    <a href="https://crates.io/crates/ohkami"><img alt="crates.io" src="https://img.shields.io/crates/v/ohkami" /></a>
+    <a href="https://github.com/kana-rus/ohkami/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/crates/l/ohkami.svg" /></a>
 </div>
 
 <br>
@@ -47,7 +49,7 @@ async fn main() {
             .GET(health_check),
         "/hello/:name"
             .GET(hello),
-    )).howl(3000).await
+    )).howl("localhost:3000").await
 }
 ```
 
@@ -152,7 +154,7 @@ impl IntoFang for LogRequest {
 async fn main() {
     Ohkami::with((AppendHeaders, LogRequest), (
         "/".GET(|| async {"Hello!"})
-    )).howl(":8080").await
+    )).howl("localhost:8080").await
 }
 
 ```
@@ -202,7 +204,7 @@ async fn main() {
     Ohkami::new((
         "/healthz"  .GET(health_check),
         "/api/users".By(users_ohkami), // <-- nest by `By`
-    )).howl(5000).await
+    )).howl("localhost:5000").await
 }
 ```
 
@@ -239,8 +241,17 @@ async fn test_my_ohkami() {
 
 <br>
 
+## Supporting protocol
+- [x] HTTP/1.1
+- [ ] HTTPS
+- [ ] HTTP/2
+- [ ] HTTP/3
+- [ ] WebSocket
+
+<br>
+
 ## MSRV (Minimum Supported Rust Version)
 Latest stable.
 
 ## License
-`ohkami` is licensed under MIT LICENSE ([LICENSE-MIT](https://github.com/kana-rus/ohkami/blob/main/LICENSE-MIT) or [https://opensource.org/licenses/MIT](https://opensource.org/licenses/MIT)).
+`ohkami` is licensed under MIT LICENSE ([LICENSE](https://github.com/kana-rus/ohkami/blob/main/LICENSE) or [https://opensource.org/licenses/MIT](https://opensource.org/licenses/MIT)).

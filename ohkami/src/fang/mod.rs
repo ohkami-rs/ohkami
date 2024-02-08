@@ -1,6 +1,6 @@
 pub mod builtin;
 
-use std::sync::Arc;
+use std::{any::{Any, TypeId}, sync::Arc};
 use crate::{Request, Response};
 
 
@@ -31,7 +31,7 @@ use crate::{Request, Response};
 ///         "/".GET(|| async {
 ///             "Hello!"
 ///         })
-///     ).howl(5000).await
+///     ).howl("localhost:5000").await
 /// }
 /// ```
 /// 
@@ -52,6 +52,7 @@ use crate::{Request, Response};
 /// Hello!
 #[derive(Clone)]
 pub struct Fang {
+    id:              TypeId,
     pub(crate) proc: proc::FangProc,
 }
 impl Fang {
@@ -59,6 +60,13 @@ impl Fang {
         matches!(self.proc, proc::FangProc::Front(_))
     }
 }
+const _: () = {
+    impl<'f> PartialEq for &'f Fang {
+        fn eq(&self, other: &Self) -> bool {
+            self.id == other.id
+        }
+    }
+};
 
 pub(crate) mod proc {
     use std::sync::Arc;
@@ -94,8 +102,9 @@ const _: () = {
         /// 
         /// - `Fn(&/&mut Request)`
         /// - `Fn(&/&mut Request) -> Result<(), Response>`
-        pub fn front<M>(material: impl IntoFrontFang<M>) -> Self {
+        pub fn front<M>(material: impl IntoFrontFang<M> + 'static) -> Self {
             Self {
+                id:   material.type_id(),
                 proc: proc::FangProc::Front(material.into_front()),
             }
         }
@@ -106,8 +115,9 @@ const _: () = {
         /// - `Fn(&/&mut Response) -> Result<(), Response>`
         /// - `Fn(&/&mut Response, &Request)`
         /// - `Fn(&/&mut Response, &Request) -> Result<(), Response>`
-        pub fn back<M>(material: impl IntoBackFang<M>) -> Self {
+        pub fn back<M>(material: impl IntoBackFang<M> + 'static) -> Self {
             Self {
+                id:   material.type_id(),
                 proc: proc::FangProc::Back(material.into_back()),
             }
         }

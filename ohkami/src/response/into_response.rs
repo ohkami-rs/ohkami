@@ -31,7 +31,7 @@ use crate::{Response, Status};
 /// async fn main() {
 ///     Ohkami::new(
 ///         "/".GET(handler)
-///     ).howl(5050).await
+///     ).howl("localhost:5050").await
 /// }
 /// ```
 pub trait IntoResponse {

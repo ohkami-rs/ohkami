@@ -9,6 +9,9 @@ pub use headers::Header as ResponseHeader;
 mod into_response;
 pub use into_response::IntoResponse;
 
+#[cfg(test)]
+mod _test;
+
 use std::{
     borrow::Cow,
 };
@@ -101,7 +104,11 @@ pub struct Response {
 
 impl Response {
     #[inline] pub(crate) fn into_bytes(self) -> Vec<u8> {
-        let Self { status, headers, content, .. } = self;
+        let Self { status, mut headers, content, .. } = self;
+
+        if content.is_none() && !matches!(status, Status::NoContent) {
+            headers.set().ContentLength("0");
+        }
 
         let mut buf = Vec::from("HTTP/1.1 ");
         buf.extend_from_slice(status.as_bytes());
