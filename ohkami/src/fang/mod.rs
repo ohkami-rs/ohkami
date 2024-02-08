@@ -31,7 +31,7 @@ use crate::{Request, Response};
 ///         "/".GET(|| async {
 ///             "Hello!"
 ///         })
-///     ).howl(5000).await
+///     ).howl("localhost:5000").await
 /// }
 /// ```
 /// 

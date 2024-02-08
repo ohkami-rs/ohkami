@@ -83,7 +83,7 @@ use crate::{Request, Response, Status};
 ///     Ohkami::with(MyAuthFang, (
 ///         "/signin".POST(signin),
 ///         "/api/profile".GET(get_profile),
-///     )).howl(3000).await
+///     )).howl("localhost:3000").await
 /// }
 /// ```
 #[derive(Clone)]

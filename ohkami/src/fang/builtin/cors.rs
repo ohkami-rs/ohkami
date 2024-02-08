@@ -24,7 +24,7 @@ use crate::{IntoFang, Fang, Response, Request, append, Status, Method};
 ///         "/api".GET(|| async {
 ///             "Hello, CORS!"
 ///         }),
-///     )).howl(8080).await
+///     )).howl("localhost:8080").await
 /// }
 /// ```
 pub struct CORS {

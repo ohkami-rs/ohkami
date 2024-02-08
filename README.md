@@ -154,7 +154,7 @@ impl IntoFang for LogRequest {
 async fn main() {
     Ohkami::with((AppendHeaders, LogRequest), (
         "/".GET(|| async {"Hello!"})
-    )).howl(":8080").await
+    )).howl("localhost:8080").await
 }
 
 ```
@@ -204,7 +204,7 @@ async fn main() {
     Ohkami::new((
         "/healthz"  .GET(health_check),
         "/api/users".By(users_ohkami), // <-- nest by `By`
-    )).howl(5000).await
+    )).howl("localhost:5000").await
 }
 ```
 
