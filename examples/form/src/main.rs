@@ -47,5 +47,5 @@ async fn main() {
     Ohkami::with(Logger, (
         "/form"  .GET(get_form),
         "/submit".POST(post_submit),
-    )).howl(5000).await
+    )).howl("localhost:5000").await
 }

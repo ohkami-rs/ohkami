@@ -123,11 +123,11 @@ impl Request {
     pub(crate) async fn read(
         mut self: Pin<&mut Self>,
         stream:   &mut (impl AsyncReader + Unpin),
-    ) {
+    ) -> Option<()> {
         stream.read(&mut self._metadata).await.unwrap();
         let mut r = Reader::new(&self._metadata);
 
-        let method = Method::from_bytes(r.read_while(|b| b != &b' '));
+        let method = Method::from_bytes(r.read_while(|b| b != &b' '))?;
         r.consume(" ").unwrap();
         
         let path = unsafe {// SAFETY: Just calling in request parsing
@@ -189,11 +189,13 @@ impl Request {
             ).await)
         } else {None};
 
-        self.method  = method;
-        self.path    = path;
-        self.queries = queries;
-        self.headers = headers;
-        self.payload = payload;
+        Some({
+            self.method  = method;
+            self.path    = path;
+            self.queries = queries;
+            self.headers = headers;
+            self.payload = payload;
+        })
     }
 
     async fn read_payload(

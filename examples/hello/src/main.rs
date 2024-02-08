@@ -28,8 +28,7 @@ mod hello_handler {
     }
 
 
-    #[Payload(JSON)]
-    #[derive(serde::Deserialize)]
+    #[Payload(JSOND)]
     pub struct HelloRequest<'n> {
         name:   &'n str,
         repeat: Option<usize>,
@@ -120,5 +119,5 @@ async fn main() {
     Ohkami::with(LogRequest, (
         "/hc" .GET(health_handler::health_check),
         "/api".By(hello_ohkami),
-    )).howl(3000).await
+    )).howl("localhost:3000").await
 }

@@ -41,7 +41,7 @@ impl Session {
         for _ in 0..LOOP_LIMIT {
             let mut req = Request::init();
             let mut req = unsafe {Pin::new_unchecked(&mut req)};
-            req.as_mut().read(connection).await;
+            if req.as_mut().read(connection).await.is_none() {break}
 
             let close = req.headers.Connection().is_some_and(|c| c == "close");
 

@@ -49,7 +49,7 @@ async fn main() {
             .GET(health_check),
         "/hello/:name"
             .GET(hello),
-    )).howl(3000).await
+    )).howl("localhost:3000").await
 }
 ```
 
