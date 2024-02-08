@@ -25,15 +25,15 @@ pub(crate) struct RadixRouter {
     pub(super) POST:   Node,
     pub(super) PATCH:  Node,
     pub(super) DELETE: Node,
-    pub(super) HEADfangs:    (Box<[FrontFang]>, Box<[BackFang]>),
-    pub(super) OPTIONSfangs: (Box<[FrontFang]>, Box<[BackFang]>),
+    pub(super) HEADfangs:    (&'static [FrontFang], &'static [BackFang]),
+    pub(super) OPTIONSfangs: (&'static [FrontFang], &'static [BackFang]),
 }
 
 pub(super) struct Node {
-    pub(super) patterns: Box<[Pattern]>,
-    pub(super) front:    Box<[FrontFang]>,
+    pub(super) patterns: &'static [Pattern],
+    pub(super) front:    &'static [FrontFang],
     pub(super) handler:  Option<Handler>,
-    pub(super) back:     Box<[BackFang]>,
+    pub(super) back:     &'static [BackFang],
     pub(super) children: Vec<Node>,
 } const _: () = {
     impl std::fmt::Debug for Node {
@@ -96,10 +96,10 @@ impl RadixRouter {
             Method::DELETE => self.DELETE.search(req/*.path_bytes()*/),
             
             Method::HEAD => {
-                let (front, back) = &self.HEADfangs;
+                let (front, back) = self.HEADfangs;
 
                 let mut res = 'res: {
-                    for ff in &**front {
+                    for ff in front {
                         if let Err(err_res) = ff.0(req) {
                             break 'res err_res
                         }
@@ -119,7 +119,7 @@ impl RadixRouter {
                     }
                 };
 
-                for bf in &**back {
+                for bf in back {
                     if let Err(err_res) = bf.0(&mut res, req) {
                         return err_res;
                     }
@@ -129,10 +129,10 @@ impl RadixRouter {
             }
 
             Method::OPTIONS => {
-                let (front, back) = &self.OPTIONSfangs;
+                let (front, back) = self.OPTIONSfangs;
 
                 let mut res = 'res: {
-                    for ff in &**front {
+                    for ff in front {
                         if let Err(err_res) = ff.0(req) {
                             break 'res err_res
                         }
@@ -140,7 +140,7 @@ impl RadixRouter {
                     Status::NoContent.into_response()
                 };
 
-                for bf in &**back {
+                for bf in back {
                     if let Err(err_res) = bf.0(&mut res, req) {
                         return err_res;
                     }
@@ -163,7 +163,7 @@ impl Node {
         match &self.handler {
             Some(handler) => {
                 let mut res = (handler.proc)(req).await;                
-                for bf in &*self.back {
+                for bf in self.back {
                     if let Err(err_res) = bf.0(&mut res, req) {
                         return err_res;
                     }
@@ -179,7 +179,7 @@ impl Node {
             Some(handler) => {
                 let mut res = (handler.proc)(req).await;
                 
-                for bf in &*self.back {
+                for bf in self.back {
                     if let Err(err_res) = bf.0(&mut res, req) {
                         return err_res;
                     }
@@ -209,14 +209,14 @@ impl Node {
         println!("[path] '{}'", path.escape_ascii());
 
         loop {
-            for ff in &*target.front {
+            for ff in target.front {
                 ff.0(req)?
             }
 
             #[cfg(feature="DEBUG")]
             println!("[patterns] {:?}", target.patterns);
     
-            for pattern in &*target.patterns {
+            for pattern in target.patterns {
                 if path.is_empty() || unsafe {path.get_unchecked(0)} != &b'/' {
                     // At least one `pattern` to match is remaining
                     // but remaining `path` doesn't start with '/'

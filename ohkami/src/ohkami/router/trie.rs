@@ -161,7 +161,7 @@ impl TrieRouter {
                         FangProc::Back(bf)  => back .push(bf),
                     }
                 }
-                (front.into_boxed_slice(), back.into_boxed_slice())
+                (Box::leak(front.into_boxed_slice()), Box::leak(back.into_boxed_slice()))
             },
             OPTIONSfangs: {
                 let (mut front, mut back) = (vec![], vec![]);
@@ -171,7 +171,7 @@ impl TrieRouter {
                         FangProc::Back(bf)  => back .push(bf),
                     }
                 }
-                (front.into_boxed_slice(), back.into_boxed_slice())
+                (Box::leak(front.into_boxed_slice()), Box::leak(back.into_boxed_slice()))
             }
         }
     }
@@ -289,12 +289,12 @@ impl Node {
         super::radix::Node {
             handler,
             children: children.into_iter().map(|c| c.into_radix()).collect(),
-            front:    front.into_boxed_slice(),
-            back:     back .into_boxed_slice(),
-            patterns: patterns
+            front:    Box::leak(front.into_boxed_slice()),
+            back:     Box::leak(back .into_boxed_slice()),
+            patterns: Box::leak(patterns
                 .into_iter()
                 .map(Pattern::into_radix)
-                .collect(),
+                .collect())
         }
     }
 }
