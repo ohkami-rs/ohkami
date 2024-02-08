@@ -1,9 +1,9 @@
-use std::borrow::Cow;
+use std::{any::Any, borrow::Cow};
 use super::{RouteSection, RouteSections};
 use crate::{
     Method,
-    handler::{Handler, Handlers, ByAnother},
-    fang::{Fang, proc::FangProc},
+    fang::{proc::{BackFang, FangProc, FrontFang}, Fang},
+    handler::{ByAnother, Handler, Handlers}
 };
 
 const _: () = {
@@ -161,7 +161,7 @@ impl TrieRouter {
                         FangProc::Back(bf)  => back .push(bf),
                     }
                 }
-                (Box::leak(front.into_boxed_slice()), Box::leak(back.into_boxed_slice()))
+                (front.into_boxed_slice(), back.into_boxed_slice())
             },
             OPTIONSfangs: {
                 let (mut front, mut back) = (vec![], vec![]);
@@ -171,7 +171,7 @@ impl TrieRouter {
                         FangProc::Back(bf)  => back .push(bf),
                     }
                 }
-                (Box::leak(front.into_boxed_slice()), Box::leak(back.into_boxed_slice()))
+                (front.into_boxed_slice(), back.into_boxed_slice())
             }
         }
     }
@@ -272,21 +272,29 @@ impl Node {
         let (mut front, mut back) = (Vec::new(), Vec::new());
         for f in fangs {
             match f.proc {
-                FangProc::Front(ff) => front.push(ff),
-                FangProc::Back (bf) => back .push(bf),
+                FangProc::Front(ff) => {
+                    if front.iter().all(|f: &FrontFang| f.type_id() != ff.type_id()) {
+                        front.push(ff)
+                    }
+                }
+                FangProc::Back (bf) => {
+                    if back.iter().all(|b: &BackFang| b.type_id() != bf.type_id()) {
+                        back.push(bf)
+                    }
+                }
             }
         }
+        
 
         super::radix::Node {
             handler,
             children: children.into_iter().map(|c| c.into_radix()).collect(),
-            front: Box::leak(front.into_boxed_slice()),
-            back:  Box::leak(back .into_boxed_slice()),
-            patterns: Box::leak(patterns
+            front:    front.into_boxed_slice(),
+            back:     back .into_boxed_slice(),
+            patterns: patterns
                 .into_iter()
                 .map(Pattern::into_radix)
-                .collect()
-            ),
+                .collect(),
         }
     }
 }

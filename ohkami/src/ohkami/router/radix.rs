@@ -25,15 +25,15 @@ pub(crate) struct RadixRouter {
     pub(super) POST:   Node,
     pub(super) PATCH:  Node,
     pub(super) DELETE: Node,
-    pub(super) HEADfangs:    (&'static [FrontFang], &'static [BackFang]),
-    pub(super) OPTIONSfangs: (&'static [FrontFang], &'static [BackFang]),
+    pub(super) HEADfangs:    (Box<[FrontFang]>, Box<[BackFang]>),
+    pub(super) OPTIONSfangs: (Box<[FrontFang]>, Box<[BackFang]>),
 }
 
 pub(super) struct Node {
-    pub(super) patterns: &'static [Pattern],
-    pub(super) front:    &'static [FrontFang],
+    pub(super) patterns: Box<[Pattern]>,
+    pub(super) front:    Box<[FrontFang]>,
     pub(super) handler:  Option<Handler>,
-    pub(super) back:     &'static [BackFang],
+    pub(super) back:     Box<[BackFang]>,
     pub(super) children: Vec<Node>,
 } const _: () = {
     impl std::fmt::Debug for Node {
@@ -96,10 +96,10 @@ impl RadixRouter {
             Method::DELETE => self.DELETE.search(req/*.path_bytes()*/),
             
             Method::HEAD => {
-                let (front, back) = self.HEADfangs;
+                let (front, back) = &self.HEADfangs;
 
                 let mut res = 'res: {
-                    for ff in front {
+                    for ff in &**front {
                         if let Err(err_res) = ff.0(req) {
                             break 'res err_res
                         }
@@ -119,7 +119,7 @@ impl RadixRouter {
                     }
                 };
 
-                for bf in back {
+                for bf in &**back {
                     if let Err(err_res) = bf.0(&mut res, req) {
                         return err_res;
                     }
@@ -129,10 +129,10 @@ impl RadixRouter {
             }
 
             Method::OPTIONS => {
-                let (front, back) = self.OPTIONSfangs;
+                let (front, back) = &self.OPTIONSfangs;
 
                 let mut res = 'res: {
-                    for ff in front {
+                    for ff in &**front {
                         if let Err(err_res) = ff.0(req) {
                             break 'res err_res
                         }
@@ -140,7 +140,7 @@ impl RadixRouter {
                     Status::NoContent.into_response()
                 };
 
-                for bf in back {
+                for bf in &**back {
                     if let Err(err_res) = bf.0(&mut res, req) {
                         return err_res;
                     }
@@ -162,25 +162,13 @@ impl Node {
     #[inline] pub(super) async fn handle(&self, req: &mut Request) -> Response {
         match &self.handler {
             Some(handler) => {
-                #[cfg(feature="websocket")]
-                let upgrade_id = match (handler.requires_upgrade).then(|| async {
-                    let id = request_upgrade_id().await;
-                    req.upgrade_id = Some(id);
-                    id
-                }) {None => None, Some(id) => Some(id.await)};
-
-                let mut res = (handler.proc)(req).await;
-                
-                for bf in self.back {
+                let mut res = (handler.proc)(req).await;                
+                for bf in &*self.back {
                     if let Err(err_res) = bf.0(&mut res, req) {
                         return err_res;
                     }
                 }
-
-                #[cfg(feature="websocket")]
-                {(res, upgrade_id)}
-                #[cfg(not(feature="websocket"))]
-                {res}
+                res
             }
             None => Status::NotFound.into_response(),
         }
@@ -191,7 +179,7 @@ impl Node {
             Some(handler) => {
                 let mut res = (handler.proc)(req).await;
                 
-                for bf in self.back {
+                for bf in &*self.back {
                     if let Err(err_res) = bf.0(&mut res, req) {
                         return err_res;
                     }
@@ -221,14 +209,14 @@ impl Node {
         println!("[path] '{}'", path.escape_ascii());
 
         loop {
-            for ff in target.front {
+            for ff in &*target.front {
                 ff.0(req)?
             }
 
             #[cfg(feature="DEBUG")]
             println!("[patterns] {:?}", target.patterns);
     
-            for pattern in target.patterns {
+            for pattern in &*target.patterns {
                 if path.is_empty() || unsafe {path.get_unchecked(0)} != &b'/' {
                     // At least one `pattern` to match is remaining
                     // but remaining `path` doesn't start with '/'
@@ -238,7 +226,7 @@ impl Node {
                 path = unsafe {path.get_unchecked(1..)};
                 
                 #[cfg(feature="DEBUG")]
-                println!("[path - prefix '/'] '{}'", path.escape_ascii());
+                println!("[path striped prefix '/'] '{}'", path.escape_ascii());
         
                 match pattern {
                     Pattern::Static(s)  => path = match path.strip_prefix(*s) {
