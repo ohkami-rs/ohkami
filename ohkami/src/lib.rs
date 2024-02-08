@@ -5,10 +5,10 @@
 
 //! <div align="center">
 //!     <h1>ohkami</h1>
-//!     ohkami <em>- [狼] wolf in Japanese -</em> is <strong>declarative</strong> web framework for Rust.
+//!     ohkami <em>- [狼] wolf in Japanese -</em> is a framework to build web app in intuitive and declarative code.
 //! </div>
 //! 
-//! - *macro less, declarative APIs*
+//! - *intuitive and declarative* APIs
 //! - *multi runtime* support：`tokio`, `async-std`
 //! 
 //! See our [README](https://github.com/kana-rus/ohkami/blob/main/README.md)

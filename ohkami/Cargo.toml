@@ -3,12 +3,12 @@ name          = "ohkami"
 version       = "0.13.0"
 edition       = "2021"
 authors       = ["kanarus <kanarus786@gmail.com>"]
-description   = "declarative web framework for Rust"
+description   = "Build web app in intuitive and declarative code"
 documentation = "https://docs.rs/ohkami"
 homepage      = "https://crates.io/crates/ohkami"
 repository    = "https://github.com/kana-rus/ohkami"
 readme        = "../README.md"
-keywords      = ["declarative", "async", "web", "server", "framework"]
+keywords      = ["async", "http", "web", "server", "framework"]
 categories    = ["asynchronous", "web-programming::http-server"]
 license       = "MIT"
 
