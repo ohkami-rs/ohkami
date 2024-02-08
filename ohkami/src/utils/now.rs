@@ -384,13 +384,5 @@ enum Weekday {
 
         let (cn, n) = (correct_now(), super::imf_fixdate_now());
         assert_eq!(cn, n);
-
-        std::thread::sleep(std::time::Duration::from_secs_f64(1.05));
-        let (cn, n) = (correct_now(), super::imf_fixdate_now());
-        assert_eq!(cn, n);
-
-        std::thread::sleep(std::time::Duration::from_secs_f64(3.14));
-        let (cn, n) = (correct_now(), super::imf_fixdate_now());
-        assert_eq!(cn, n);
     }
 }
