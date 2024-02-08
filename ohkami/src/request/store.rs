@@ -75,7 +75,16 @@ impl<'req, Value: Send + Sync + 'static> super::FromRequest<'req> for Memory<'re
     #[inline] fn from_request(req: &'req crate::Request) -> Result<Self, Self::Error> {
         req.memorized::<Value>()
             .map(Memory)
-            .ok_or_else(|| crate::FromRequestError::Static("Something went wrong"))
+            .ok_or_else(|| {
+                #[cfg(debug_assertions)] {
+                    eprintln!(
+                        "`Memory` of type `{}` was not found",
+                        std::any::type_name::<Value>(),
+                    );
+                }
+
+                crate::FromRequestError::Static("Something went wrong")
+            })
     }
 }
 impl<'req, Value: Send + Sync + 'static> std::ops::Deref for Memory<'req, Value> {
