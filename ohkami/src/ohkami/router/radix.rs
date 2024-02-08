@@ -192,7 +192,7 @@ impl Node {
         //    while `search`
         let path_bytes_maybe_percent_encoded = unsafe {req.internal_path_bytes()};
         // Decode percent encodings in `path_bytes_maybe_percent_encoded`,
-        // without checking entire it is valid UTF-8.
+        // without checking if entire it is valid UTF-8.
         let decoded = percent_decode(path_bytes_maybe_percent_encoded);
         let mut path: &[u8] = &decoded;
 

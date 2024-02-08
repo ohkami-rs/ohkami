@@ -247,7 +247,7 @@ impl Node {
                 fangs:    child_fangs,
                 handler:  child_handler,
                 children: child_children,
-            } = children.pop(/* single child */).unwrap(/* `children` is empty here */);
+            } = children.pop(/* pop the single child */).unwrap(/* `children` is empty here */);
 
             children = child_children;
             handler  = child_handler;
@@ -284,7 +284,6 @@ impl Node {
                 }
             }
         }
-        
 
         super::radix::Node {
             handler,
