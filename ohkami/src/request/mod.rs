@@ -175,7 +175,7 @@ impl Request {
             r.consume("\r\n");
         }
 
-        let content_length = headers.get(RequestHeader::ContentLength)
+        let content_length = headers.ContentLength()
             .unwrap_or("")
             .as_bytes().into_iter()
             .fold(0, |len, b| 10*len + (*b - b'0') as usize);

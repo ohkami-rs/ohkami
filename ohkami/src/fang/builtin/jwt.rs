@@ -327,8 +327,7 @@ impl JWT {
         use crate::{testing::*, Memory};
         use crate::typed::{ResponseBody, status::OK};
 
-        use std::{sync::OnceLock, collections::HashMap, borrow::Cow};
-        use crate::__rt__::Mutex;
+        use std::{sync::OnceLock, sync::Mutex, collections::HashMap, borrow::Cow};
 
 
         fn my_jwt() -> JWT {
@@ -399,7 +398,7 @@ impl JWT {
         }
 
         async fn get_profile(jwt_payload: Memory<'_, MyJWTPayload>) -> Result<OK<Profile>, APIError> {
-            let r = &mut *repository().await.lock().await;
+            let r = &mut *repository().await.lock().unwrap();
 
             let user = r.get(&jwt_payload.user_id)
                 .ok_or_else(|| APIError::UserNotFound)?;
@@ -421,7 +420,7 @@ impl JWT {
         }
 
         async fn signin(body: SigninRequest<'_>) -> utils::Text {
-            let r = &mut *repository().await.lock().await;
+            let r = &mut *repository().await.lock().unwrap();
 
             let user: Cow<'_, User> = match r.iter().find(|(_, u)|
                 u.first_name   == body.first_name &&
@@ -510,7 +509,7 @@ impl JWT {
 
 
         assert_eq! {
-            &*repository().await.lock().await,
+            &*repository().await.lock().unwrap(),
             &HashMap::from([
                 (1, User {
                     id:           1,
@@ -542,7 +541,7 @@ impl JWT {
 
 
         assert_eq! {
-            &*repository().await.lock().await,
+            &*repository().await.lock().unwrap(),
             &HashMap::from([
                 (1, User {
                     id:           1,
@@ -576,7 +575,7 @@ impl JWT {
 
 
         assert_eq! {
-            &*repository().await.lock().await,
+            &*repository().await.lock().unwrap(),
             &HashMap::from([
                 (1, User {
                     id:           1,
