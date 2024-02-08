@@ -90,11 +90,20 @@ pub trait FromParam<'p>: Sized {
     impl<'p> FromParam<'p> for &'p str {
         type Error = FromRequestError;
         fn from_param(param: Cow<'p, str>) -> Result<Self, Self::Error> {
+            #[cold] fn unexpectedly_percent_encoded() -> FromRequestError {
+                eprintln!("\
+                    [WARNING] \
+                    `&str` can't handle percent encoded parameters. \
+                    Use `Cow<'_, str>` or `String` instead \
+                    to handle them.");
+                FromRequestError::Owned(format!(    
+                    "Unexpected path params: percent encoded"
+                ))
+            }
+
             match param {
                 Cow::Borrowed(s) => Ok(s),
-                Cow::Owned(_)    => Err(FromRequestError::Static(
-                    "Unexpected path params: Found percent decoded"
-                )),
+                Cow::Owned(_)    => Err(unexpectedly_percent_encoded()),
             }
         }
     }
