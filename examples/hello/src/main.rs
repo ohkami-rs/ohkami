@@ -72,9 +72,9 @@ mod fangs {
                     .Server("ohkami");
 
                 tracing::info!("\
-                    Called `append_server`\n\
+                    Called `SetServer`\n\
                     [current headers]\n\
-                    {:?}\
+                    {:?}\n\
                 ", res.headers);
             })
         }
@@ -87,7 +87,7 @@ mod fangs {
                 let __method__ = req.method();
                 let __path__   = req.path();
 
-                tracing::info!("\
+                tracing::info!("\n\
                     Got request:\n\
                     [ method ] {__method__}\n\
                     [  path  ] {__path__}\n\
