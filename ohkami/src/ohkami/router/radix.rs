@@ -19,6 +19,7 @@ use crate::websocket::{
 
 
 /*===== defs =====*/
+
 pub(crate) struct RadixRouter {
     pub(super) GET:    Node,
     pub(super) PUT:    Node,
@@ -72,16 +73,6 @@ pub(super) enum Pattern {
 
 
 /*===== impls =====*/
-// #[cfg(feature="websocket")] type HandleResult = (Response, Option<UpgradeID>);
-// #[cfg(feature="websocket")] fn __no_upgrade(res: Response) -> HandleResult {
-//     (res, None)
-// }
-// 
-// #[cfg(not(feature="websocket"))] type HandleResult = Response;
-// #[cfg(not(feature="websocket"))] fn __no_upgrade(res: Response) -> HandleResult {
-//     res
-// }
-
 
 impl RadixRouter {
     pub(crate) async fn handle(
@@ -261,6 +252,7 @@ impl Node {
 
 
 /*===== utils =====*/
+
 impl Node {
     #[inline] fn matchable_child(&self, path: &[u8]) -> Option<&Node> {
         for child in &self.children {

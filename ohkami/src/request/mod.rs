@@ -124,10 +124,10 @@ impl Request {
         mut self: Pin<&mut Self>,
         stream:   &mut (impl AsyncReader + Unpin),
     ) -> Option<()> {
-        stream.read(&mut self._metadata).await.unwrap();
+        if stream.read(&mut self._metadata).await.ok()? == 0 {return None};
         let mut r = Reader::new(&self._metadata);
 
-        let method = Method::from_bytes(r.read_while(|b| b != &b' '))?;
+        let method = Method::from_bytes(r.read_while(|b| b != &b' ')).unwrap();
         r.consume(" ").unwrap();
         
         let path = unsafe {// SAFETY: Just calling in request parsing
