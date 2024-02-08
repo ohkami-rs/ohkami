@@ -1,8 +1,8 @@
-use std::{any::Any, borrow::Cow};
+use std::borrow::Cow;
 use super::{RouteSection, RouteSections};
 use crate::{
     Method,
-    fang::{proc::{BackFang, FangProc, FrontFang}, Fang},
+    fang::{proc::FangProc, Fang},
     handler::{ByAnother, Handler, Handlers}
 };
 
@@ -270,17 +270,18 @@ impl Node {
         }
 
         let (mut front, mut back) = (Vec::new(), Vec::new());
-        for f in fangs {
-            match f.proc {
-                FangProc::Front(ff) => {
-                    if front.iter().all(|f: &FrontFang| f.type_id() != ff.type_id()) {
-                        front.push(ff)
-                    }
+        {
+            let mut unique_fangs = Vec::new();
+            for f in fangs {
+                if unique_fangs.iter().all(|uf| uf != &f) {
+                    unique_fangs.push(f)
                 }
-                FangProc::Back (bf) => {
-                    if back.iter().all(|b: &BackFang| b.type_id() != bf.type_id()) {
-                        back.push(bf)
-                    }
+            }
+
+            for uf in unique_fangs {
+                match uf.proc {
+                    FangProc::Front(ff) => front.push(ff),
+                    FangProc::Back (bf) => back.push(bf),
                 }
             }
         }
