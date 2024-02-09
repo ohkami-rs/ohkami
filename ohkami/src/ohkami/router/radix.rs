@@ -200,6 +200,9 @@ impl Node {
         println!("[path] '{}'", path.escape_ascii());
 
         loop {
+            #[cfg(feature="DEBUG")]
+            println!("[target] {:?}", target);
+
             for ff in target.front {
                 ff.0.call(req).await?
             }
