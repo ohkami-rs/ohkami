@@ -34,14 +34,13 @@ use crate::__rt__::AsyncWriter;
 /// 
 /// *in_fang.rs*
 /// ```
-/// use ohkami::{Response, Fang, IntoFang};
+/// use ohkami::{Response, Request, BackFang};
 /// 
 /// struct LogResponse;
-/// impl IntoFang for LogResponse {
-///     fn into_fang(self) -> Fang {
-///         Fang::back(|res: &Response| {
-///             println!("{}", res.status);
-///         })
+/// impl BackFang for LogResponse {
+///     async fn bite(&self, res: &mut Response, req: &Request) -> Result<(), Response> {
+///         println!("{}", res.status);
+///         Ok(())
 ///     }
 /// }
 /// ```

@@ -5,7 +5,8 @@
 
 <br>
 
-- *intuitive and declarative* APIs
+- *intuitive and declarative* code
+- *type-safe and macro-less* APIs
 - *multi runtime* support：`tokio`, `async-std`
 
 <div align="right">
@@ -24,11 +25,11 @@
 # You can choose `async-std` instead by feature "rt_async-std".
 
 [dependencies]
-ohkami = { version = "0.13", features = ["rt_tokio"] }
+ohkami = { version = "0.14", features = ["rt_tokio"] }
 tokio  = { version = "1",    features = ["full"] }
 ```
 
-2. Write your first code with ohkami : [eamples/quick_start](https://github.com/kana-rus/ohkami/blob/main/examples/quick_start/src/main.rs)
+2. Write your first code with ohkami : [examples/quick_start](https://github.com/kana-rus/ohkami/blob/main/examples/quick_start/src/main.rs)
 
 ```rust,no_run
 use ohkami::prelude::*;
@@ -132,21 +133,19 @@ ohkami's middlewares are called "**fang**s".
 use ohkami::prelude::*;
 
 struct AppendHeaders;
-impl IntoFang for AppendHeaders {
-    fn into_fang(self) -> Fang {
-        Fang::back(|res: &mut Response| {
-            res.headers.set()
-                .Server("ohkami");
-        })
+impl BackFang for AppendHeaders {
+    async fn bite(&self, res: &mut Response, req: &Request) -> Result<(), Response> {
+        res.headers.set()
+            .Server("ohkami");
+        Ok(())
     }
 }
 
 struct LogRequest;
-impl IntoFang for LogRequest {
-    fn into_fang(self) -> Fang {
-        Fang::front(|req: &Request| {
-            println!("{req:?}");
-        })
+impl FrontFang for LogRequest {
+    async fn bite(&self, req: &mut Request) -> Result<(), Response> {
+        println!("{req:?}");
+        Ok(())
     }
 }
 
@@ -158,17 +157,6 @@ async fn main() {
 }
 
 ```
-`Fang` schema :
-
-#### To make a *front fang* :
-- `Fn(&/&mut Request)`
-- `Fn(&/&mut Request) -> Result<(), Response>`
-
-#### To make a *back fang* :
-- `Fn(&/&mut Response)`
-- `Fn(&/&mut Response) -> Result<(), Response>`
-- `Fn(&/&mut Response, &Request)`
-- `Fn(&/&mut Response, &Request) -> Result<(), Response>`
 
 <br>
 

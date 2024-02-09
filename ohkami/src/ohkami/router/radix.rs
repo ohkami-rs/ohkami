@@ -91,12 +91,12 @@ impl RadixRouter {
 
                 let mut res = 'res: {
                     for ff in front {
-                        if let Err(err_res) = ff.0(req) {
+                        if let Err(err_res) = ff.0.call(req).await {
                             break 'res err_res
                         }
                     }
 
-                    let target = match self.GET.search(req/*.path_bytes()*/) {
+                    let target = match self.GET.search(req/*.path_bytes()*/).await {
                         Ok(Some(node)) => node,
                         Ok(None)       => break 'res Status::NotFound.into_response(),
                         Err(err_res)   => break 'res err_res,
@@ -111,7 +111,7 @@ impl RadixRouter {
                 };
 
                 for bf in back {
-                    if let Err(err_res) = bf.0(&mut res, req) {
+                    if let Err(err_res) = bf.0.call(&mut res, req).await {
                         return err_res;
                     }
                 }
@@ -124,7 +124,7 @@ impl RadixRouter {
 
                 let mut res = 'res: {
                     for ff in front {
-                        if let Err(err_res) = ff.0(req) {
+                        if let Err(err_res) = ff.0.call(req).await {
                             break 'res err_res
                         }
                     }
@@ -132,7 +132,7 @@ impl RadixRouter {
                 };
 
                 for bf in back {
-                    if let Err(err_res) = bf.0(&mut res, req) {
+                    if let Err(err_res) = bf.0.call(&mut res, req).await {
                         return err_res;
                     }
                 }
@@ -141,7 +141,7 @@ impl RadixRouter {
             }
         };
 
-        match search_result {
+        match search_result.await {
             Ok(Some(node)) => node.handle(req).await,
             Ok(None)       => Status::NotFound.into_response(),
             Err(err_res)   => err_res,
@@ -155,7 +155,7 @@ impl Node {
             Some(handler) => {
                 let mut res = (handler.proc)(req).await;                
                 for bf in self.back {
-                    if let Err(err_res) = bf.0(&mut res, req) {
+                    if let Err(err_res) = bf.0.call(&mut res, req).await {
                         return err_res;
                     }
                 }
@@ -171,7 +171,7 @@ impl Node {
                 let mut res = (handler.proc)(req).await;
                 
                 for bf in self.back {
-                    if let Err(err_res) = bf.0(&mut res, req) {
+                    if let Err(err_res) = bf.0.call(&mut res, req).await {
                         return err_res;
                     }
                 }
@@ -182,7 +182,7 @@ impl Node {
         }
     }
 
-    pub(super/* for test */) fn search(&self, req: &mut Request) -> Result<Option<&Node>, Response> {
+    pub(super/* for test */) async fn search(&self, req: &mut Request) -> Result<Option<&Node>, Response> {
         let mut target = self;
 
         // SAFETY:
@@ -201,7 +201,7 @@ impl Node {
 
         loop {
             for ff in target.front {
-                ff.0(req)?
+                ff.0.call(req).await?
             }
 
             #[cfg(feature="DEBUG")]

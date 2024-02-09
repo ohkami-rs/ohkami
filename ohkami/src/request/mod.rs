@@ -52,16 +52,15 @@ pub(crate) const PAYLOAD_LIMIT: usize = 1 << 32;
 /// 
 /// *in_fang.rs*
 /// ```
-/// use ohkami::{IntoFang, Fang, Request};
+/// use ohkami::{Request, Response, FrontFang};
 /// 
 /// struct LogRequest;
-/// impl IntoFang for LogRequest {
-///     fn into_fang(self) -> Fang {
-///         Fang::front(|req: &Request| {
-///             let method = req.method();
-///             let path = req.path();
-///             println!("{method} {path}");
-///         })
+/// impl FrontFang for LogRequest {
+///     async fn bite(&self, req: &mut Request) -> Result<(), Response> {
+///         let method = req.method();
+///         let path = req.path();
+///         println!("{method} {path}");
+///         Ok(())
 ///     }
 /// }
 /// ```

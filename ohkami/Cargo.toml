@@ -1,6 +1,6 @@
 [package]
 name          = "ohkami"
-version       = "0.13.0"
+version       = "0.14.0"
 edition       = "2021"
 authors       = ["kanarus <kanarus786@gmail.com>"]
 description   = "Build web app in intuitive and declarative code"

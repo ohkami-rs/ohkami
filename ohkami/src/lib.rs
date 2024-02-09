@@ -8,7 +8,8 @@
 //!     ohkami <em>- [狼] wolf in Japanese -</em> is intuitive and declarative web framework.
 //! </div>
 //! 
-//! - *intuitive and declarative* APIs
+//! - *intuitive and declarative* code
+//! - *type-safe and macro-less* APIs
 //! - *multi runtime* support：`tokio`, `async-std`
 //! 
 //! See our [README](https://github.com/kana-rus/ohkami/blob/main/README.md)
@@ -75,13 +76,13 @@ mod handler;
 pub use handler::Route;
 
 mod fang;
-pub use fang::{Fang, builtin};
+pub use fang::{builtin, FrontFang, BackFang};
 
 mod session;
 use session::Session;
 
 mod ohkami;
-pub use ohkami::{Ohkami, IntoFang};
+pub use ohkami::Ohkami;
 
 pub mod typed;
 
@@ -106,12 +107,11 @@ mod x_websocket;
 /// use ohkami::append;
 /// 
 /// struct AppendServer;
-/// impl IntoFang for AppendServer {
-///     fn into_fang(self) -> Fang {
-///         Fang::back(|res: &mut Response| {
-///             res.headers.set()
-///                 .Server(append("ohkami"));
-///         })
+/// impl BackFang for AppendServer {
+///     async fn bite(&self, res: &mut Response, req: &Request) -> Result<(), Response> {
+///         res.headers.set()
+///             .Server(append("ohkami"));
+///         Ok(())
 ///     }
 /// }
 /// ```
@@ -120,7 +120,7 @@ pub fn append(value: impl Into<std::borrow::Cow<'static, str>>) -> __internal__:
 }
 
 pub mod prelude {
-    pub use crate::{Request, Route, Ohkami, Fang, Response, IntoFang, IntoResponse, Method, Status};
+    pub use crate::{Request, Route, Ohkami, FrontFang, BackFang, Response, IntoResponse, Method, Status};
 }
 
 /// Somthing that's almost [serde](https://crates.io/crates/serde)

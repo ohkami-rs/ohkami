@@ -49,7 +49,7 @@ mod hello_handler {
         HelloRequest { name, repeat }: HelloRequest<'h>
     ) -> Result<String, ValidationError> {
         tracing::info!("\
-            Called `hello_by_query`\
+            Called `hello_by_json`\
         ");
         
         if name.is_empty() {
@@ -62,37 +62,37 @@ mod hello_handler {
 
 
 mod fangs {
-    use ohkami::{Request, Fang, IntoFang, Response};
+    use ohkami::{Request, Response, FrontFang, BackFang};
 
     pub struct SetServer;
-    impl IntoFang for SetServer {
-        fn into_fang(self) -> Fang {
-            Fang::back(|res: &mut Response| {
-                res.headers.set()
-                    .Server("ohkami");
+    impl BackFang for SetServer {
+        async fn bite(&self, res: &mut Response, _: &Request) -> Result<(), Response> {
+            res.headers.set()
+                .Server("ohkami");
 
-                tracing::info!("\
-                    Called `SetServer`\n\
-                    [current headers]\n\
-                    {:?}\n\
-                ", res.headers);
-            })
+            tracing::info!("\
+                Called `SetServer`\n\
+                [current headers]\n\
+                {:?}\n\
+            ", res.headers);
+
+            Ok(())
         }
     }
 
     pub struct LogRequest;
-    impl IntoFang for LogRequest {
-        fn into_fang(self) -> Fang {
-            Fang::front(|req: &Request| {
-                let __method__ = req.method();
-                let __path__   = req.path();
+    impl FrontFang for LogRequest {
+        async fn bite(&self, req: &mut Request) -> Result<(), Response> {
+            let __method__ = req.method();
+            let __path__   = req.path();
 
-                tracing::info!("\n\
-                    Got request:\n\
-                    [ method ] {__method__}\n\
-                    [  path  ] {__path__}\n\
-                ");
-            })
+            tracing::info!("\n\
+                Got request:\n\
+                [ method ] {__method__}\n\
+                [  path  ] {__path__}\n\
+            ");
+
+            Ok(())
         }
     }
 }

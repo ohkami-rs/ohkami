@@ -72,10 +72,6 @@ pub trait CustomHeadersAction<'action> {
 }
 #[cfg(feature="custom-header")]
 const _: () = {
-    pub trait CustomHeadersAction<'set> {
-        fn perform(self, set_headers: SetHeaders<'set>, key: impl Into<Cow<'static, str>>) -> SetHeaders<'set>;
-    }
-    
     // remove
     impl<'set> CustomHeadersAction<'set> for Option<()> {
         fn perform(self, set_headers: SetHeaders<'set>, key: impl Into<Cow<'static, str>>) -> SetHeaders<'set> {
@@ -151,8 +147,6 @@ const _: () = {
         }
     }
 };
-
-//pub trait 
 
 macro_rules! Header {
     ($N:literal; $( $konst:ident: $name_bytes:literal, )*) => {

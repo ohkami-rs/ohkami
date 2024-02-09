@@ -1,6 +1,6 @@
 #![allow(non_snake_case)]
 
-use crate::{IntoFang, Fang, Response, Request, append, Status, Method};
+use crate::{Response, Request, append, Status, Method, BackFang};
 
 
 /// # Builtin fang for CORS config
@@ -114,9 +114,49 @@ impl CORS {
 }
 
 /* Based on https://github.com/honojs/hono/blob/main/src/middleware/cors/index.ts; MIT */
-impl IntoFang for CORS {
+impl BackFang for CORS {
+    async fn bite(&self, res: &mut Response, req: &Request) -> Result<(), Response> {
+        let mut h = res.headers.set();
+
+        h = h.AccessControlAllowOrigin(self.AllowOrigin.as_str());
+        if self.AllowOrigin.is_any() {
+            h = h.Vary("Origin");
+        }
+        if self.AllowCredentials {
+            h = h.AccessControlAllowCredentials("true");
+        }
+        if let Some(expose_headers) = &self.ExposeHeaders {
+            h = h.AccessControlExposeHeaders(expose_headers.join(","));
+        }
+
+        if req.method().isOPTIONS() {
+            if let Some(max_age) = self.MaxAge {
+                h = h.AccessControlMaxAge(max_age.to_string());
+            }
+            if let Some(allow_methods) = self.AllowMethods {
+                let methods_string = allow_methods.iter()
+                    .map(Method::as_str)
+                    .fold(String::new(), |mut ms, m| {ms.push_str(m); ms});
+                h = h.AccessControlAllowMethods(methods_string);
+            }
+            if let Some(allow_headers_string) = match self.AllowHeaders {
+                Some(hs) => Some(hs.join(",")),
+                None     => req.headers.AccessControlRequestHeaders().map(String::from),
+            } {
+                h = h.AccessControlAllowHeaders(allow_headers_string)
+                    .Vary(append("Access-Control-Request-Headers"));
+            }
+
+            h.ContentType(None).ContentLength(None);
+            res.status = Status::NoContent;
+        }
+
+        Ok(())
+    }
+
+    /*
     fn into_fang(self) -> Fang {
-        Fang::back(move |res: &mut Response, req: &Request| {
+        Fang::back(move |res: &mut Response, req: &Request| async {
             let mut h = res.headers.set();
 
             h = h.AccessControlAllowOrigin(self.AllowOrigin.as_str());
@@ -153,4 +193,5 @@ impl IntoFang for CORS {
             }
         })
     }
+    */
 }
