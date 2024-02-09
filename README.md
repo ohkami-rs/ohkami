@@ -1,11 +1,11 @@
 <div align="center">
     <h1>ohkami</h1>
-    ohkami <em>- [狼] wolf in Japanese -</em> is <strong>declarative</strong> web framework for Rust.
+    ohkami <em>- [狼] wolf in Japanese -</em> is intuitive and declarative web framework.
 </div>
 
 <br>
 
-- *macro less, declarative APIs*
+- *intuitive and declarative* APIs
 - *multi runtime* support：`tokio`, `async-std`
 
 <div align="right">
@@ -241,17 +241,15 @@ async fn test_my_ohkami() {
 
 <br>
 
-## Supporting protocol
-- [x] HTTP/1.1
+## Supporting protocols
 - [ ] HTTPS
+- [x] HTTP/1.1
 - [ ] HTTP/2
 - [ ] HTTP/3
 - [ ] WebSocket
-
-<br>
 
 ## MSRV (Minimum Supported Rust Version)
 Latest stable.
 
 ## License
-`ohkami` is licensed under MIT LICENSE ([LICENSE](https://github.com/kana-rus/ohkami/blob/main/LICENSE) or [https://opensource.org/licenses/MIT](https://opensource.org/licenses/MIT)).
+ohkami is licensed under MIT LICENSE ([LICENSE](https://github.com/kana-rus/ohkami/blob/main/LICENSE) or [https://opensource.org/licenses/MIT](https://opensource.org/licenses/MIT)).

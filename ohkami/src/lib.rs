@@ -1,14 +1,14 @@
 #![doc(html_root_url = "https://docs.rs/ohkami")]
 
-/* Execute static test for sample codes in README */
+/* Execute static tests for sample codes in README */
 #![cfg_attr(feature="DEBUG", doc = include_str!("../../README.md"))]
 
 //! <div align="center">
 //!     <h1>ohkami</h1>
-//!     ohkami <em>- [狼] wolf in Japanese -</em> is <strong>declarative</strong> web framework for Rust.
+//!     ohkami <em>- [狼] wolf in Japanese -</em> is intuitive and declarative web framework.
 //! </div>
 //! 
-//! - *macro less, declarative APIs*
+//! - *intuitive and declarative* APIs
 //! - *multi runtime* support：`tokio`, `async-std`
 //! 
 //! See our [README](https://github.com/kana-rus/ohkami/blob/main/README.md)
