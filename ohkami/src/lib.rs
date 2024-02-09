@@ -8,7 +8,8 @@
 //!     ohkami <em>- [狼] wolf in Japanese -</em> is intuitive and declarative web framework.
 //! </div>
 //! 
-//! - *intuitive and declarative* APIs
+//! - *intuitive and declarative* code
+//! - *type-safe and macro-less* APIs
 //! - *multi runtime* support：`tokio`, `async-std`
 //! 
 //! See our [README](https://github.com/kana-rus/ohkami/blob/main/README.md)
