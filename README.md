@@ -5,8 +5,7 @@
 
 <br>
 
-- *intuitive and declarative* code
-- *type-safe and macro-less* APIs
+- *macro-less and type-safe* APIs for intuitive and declarative code
 - *multi runtime* support：`tokio`, `async-std`
 
 <div align="right">
