@@ -1,11 +1,11 @@
 #![doc(html_root_url = "https://docs.rs/ohkami")]
 
-/* Execute static test for sample codes in README */
+/* Execute static tests for sample codes in README */
 #![cfg_attr(feature="DEBUG", doc = include_str!("../../README.md"))]
 
 //! <div align="center">
 //!     <h1>ohkami</h1>
-//!     ohkami <em>- [狼] wolf in Japanese -</em> is a framework to build web app in intuitive and declarative code.
+//!     ohkami <em>- [狼] wolf in Japanese -</em> is intuitive and declarative web framework.
 //! </div>
 //! 
 //! - *intuitive and declarative* APIs
