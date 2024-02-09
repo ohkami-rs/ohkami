@@ -25,7 +25,7 @@
 # You can choose `async-std` instead by feature "rt_async-std".
 
 [dependencies]
-ohkami = { version = "0.13", features = ["rt_tokio"] }
+ohkami = { version = "0.14", features = ["rt_tokio"] }
 tokio  = { version = "1",    features = ["full"] }
 ```
 
