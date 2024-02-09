@@ -11,7 +11,6 @@ use crate::{Request, Response};
 
 #[derive(Clone)]
 pub struct Handler {
-    #[cfg(feature="websocket")] pub(crate) requires_upgrade: bool,
     pub(crate) proc: Arc<dyn
         Fn(&mut Request) -> Pin<
             Box<dyn
@@ -34,13 +33,7 @@ impl Handler {
         )
     ) -> Self {
         Self {
-            #[cfg(feature="websocket")] requires_upgrade: false,
             proc: Arc::new(proc),
         }
-    }
-
-    #[cfg(feature="websocket")] fn requires_upgrade(mut self) -> Self {
-        self.requires_upgrade = true;
-        self
     }
 }

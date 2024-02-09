@@ -1,6 +1,10 @@
+mod fangs;
 pub mod builtin;
 
-use std::{any::{Any, TypeId}, sync::Arc};
+pub use fangs::{FrontFang, BackFang};
+pub(crate) use fangs::{Fangs, internal};
+
+use std::{any::{Any, TypeId}, future::Future, sync::Arc};
 use crate::{Request, Response};
 
 
@@ -69,7 +73,7 @@ const _: () = {
 };
 
 pub(crate) mod proc {
-    use std::sync::Arc;
+    use std::{future::Future, pin::Pin, sync::Arc};
     use crate::{Request, Response};
 
     
@@ -81,27 +85,34 @@ pub(crate) mod proc {
 
     #[derive(Clone)]
     pub struct FrontFang(pub(crate) Arc<dyn
-        Fn(&mut Request) -> Result<(), Response>
-        + Send
-        + Sync
-        + 'static
+        // Fn(&mut Request) -> Pin<
+        //     Box<dyn
+        //         Future<Output = Result<(), Response>>
+        //         + Send + 'static
+        //     >
+        // > + Send + Sync + 'static
+        super::FrontFang
     >);
+
     #[derive(Clone)]
     pub struct BackFang(pub(crate) Arc<dyn
-        Fn(&mut Response, &Request) -> Result<(), Response>
-        + Send
-        + Sync
-        + 'static
+        Fn(&mut Response, &Request) -> Pin<
+            Box<dyn
+                Future<Output = Result<(), Response>>
+                + Send + 'static
+            >
+        > + Send + Sync + 'static
     >);
 }
 
 
+/*
 const _: () = {
     impl Fang {
         /// Create a *front fang* from the `material`：
         /// 
-        /// - `Fn(&/&mut Request)`
-        /// - `Fn(&/&mut Request) -> Result<(), Response>`
+        /// - `async (&/&mut Request)`
+        /// - `async (&/&mut Request) -> Result<(), Response>`
         pub fn front<M>(material: impl IntoFrontFang<M> + 'static) -> Self {
             Self {
                 id:   material.type_id(),
@@ -111,10 +122,10 @@ const _: () = {
 
         /// Create a *back fang* from the `material`：
         /// 
-        /// - `Fn(&/&mut Response)`
-        /// - `Fn(&/&mut Response) -> Result<(), Response>`
-        /// - `Fn(&/&mut Response, &Request)`
-        /// - `Fn(&/&mut Response, &Request) -> Result<(), Response>`
+        /// - `async (&/&mut Response)`
+        /// - `async (&/&mut Response) -> Result<(), Response>`
+        /// - `async (&/&mut Response, &Request)`
+        /// - `async (&/&mut Response, &Request) -> Result<(), Response>`
         pub fn back<M>(material: impl IntoBackFang<M> + 'static) -> Self {
             Self {
                 id:   material.type_id(),
@@ -125,115 +136,158 @@ const _: () = {
 
     pub trait IntoFrontFang<M> {fn into_front(self) -> proc::FrontFang;}
     const _: () = {
-        impl<F: Fn(&Request) + Sync + Send + 'static>
-        IntoFrontFang<fn(&Request)> for F {
+        impl<F, Fut> IntoFrontFang<fn(&Request)> for F
+        where
+            F:   Fn(&Request) -> Fut + Sync + Send + 'static,
+            Fut: Future<Output = ()> + Send + 'static,
+        {
             fn into_front(self) -> proc::FrontFang {
                 proc::FrontFang(Arc::new(move |req| {
-                    self(req);
-                    Ok(())
+                    let fut = self(req);
+                    Box::pin(async move {fut.await; Ok(())})
                 }))
             }
         }
-        impl<F: Fn(&mut Request) + Sync + Send + 'static>
-        IntoFrontFang<fn(&mut Request)> for F {
+        impl<F, Fut> IntoFrontFang<fn(&mut Request)> for F
+        where
+            F:   Fn(&mut Request) -> Fut + Sync + Send + 'static,
+            Fut: Future<Output = ()> + Send + 'static,
+        {
             fn into_front(self) -> proc::FrontFang {
                 proc::FrontFang(Arc::new(move |req| {
-                    self(req);
-                    Ok(())
+                    let fut = self(req);
+                    Box::pin(async move {fut.await; Ok(())})
                 }))
             }
         }
 
-        impl<F: Fn(&Request)->Result<(),Response> + Sync + Send + 'static>
-        IntoFrontFang<fn(&Request)->Result<(),Response>> for F {
+        impl<F, Fut> IntoFrontFang<fn(&Request)->Result<(),Response>> for F
+        where
+            F:   Fn(&Request)->Fut + Sync + Send + 'static,
+            Fut: Future<Output = Result<(), Response>> + Send + 'static,
+        {
             fn into_front(self) -> proc::FrontFang {
                 proc::FrontFang(Arc::new(move |req| {
-                    self(req)
+                    let fut = self(req);
+                    Box::pin(async move {fut.await})
                 }))
             }
         }
-        impl<F: Fn(&mut Request)->Result<(),Response> + Sync + Send + 'static>
-        IntoFrontFang<fn(&mut Request)->Result<(),Response>> for F {
+        impl<'req, F, Fut> IntoFrontFang<fn(&'req mut Request)->Result<(),Response>> for F
+        where
+            F:   Fn(&'req mut Request)->Fut + Sync + Send + 'static,
+            Fut: Future<Output = Result<(), Response>> + Send + 'static,
+        {
             fn into_front(self) -> proc::FrontFang {
-                proc::FrontFang(Arc::new(
-                    self
-                ))
+                proc::FrontFang(Arc::new(move |req| {
+                    let fut = self(unsafe {std::mem::transmute(req)});
+                    Box::pin(async move {fut.await})
+                }))
             }
         }
     };
     
     pub trait IntoBackFang<M> {fn into_back(self) -> proc::BackFang;}
     const _: () = {
-        impl<F: Fn(&Response) + Send + Sync + 'static>
-        IntoBackFang<fn(&Response)> for F {
+        impl<F, Fut> IntoBackFang<fn(&Response)> for F
+        where
+            F:   Fn(&Response) -> Fut + Send + Sync + 'static,
+            Fut: Future<Output = ()> + Send + 'static,
+        {
             fn into_back(self) -> proc::BackFang {
                 proc::BackFang(Arc::new(move |res, _| {
-                    self(res);
-                    Ok(())
+                    let fut = self(res);
+                    Box::pin(async move {fut.await; Ok(())})
                 }))
             }
         }
-        impl<F: Fn(&mut Response) + Send + Sync + 'static>
-        IntoBackFang<fn(&mut Response)> for F {
+        impl<F, Fut> IntoBackFang<fn(&mut Response)> for F
+        where
+            F:   Fn(&mut Response) -> Fut + Send + Sync + 'static,
+            Fut: Future<Output = ()> + Send + 'static,
+        {
             fn into_back(self) -> proc::BackFang {
                 proc::BackFang(Arc::new(move |res, _| {
-                    self(res);
-                    Ok(())
+                    let fut = self(res);
+                    Box::pin(async move {fut.await; Ok(())})
                 }))
             }
         }
 
-        impl<F: Fn(&Response, &Request) + Send + Sync + 'static>
-        IntoBackFang<fn(&Response, &Request)> for F {
+        impl<F, Fut> IntoBackFang<fn(&Response, &Request)> for F
+        where
+            F:   Fn(&Response, &Request) -> Fut + Send + Sync + 'static,
+            Fut: Future<Output = ()> + Send + 'static,
+        {
             fn into_back(self) -> proc::BackFang {
                 proc::BackFang(Arc::new(move |res, req| {
-                    self(res, req);
-                    Ok(())
+                    let fut = self(res, req);
+                    Box::pin(async move {fut.await; Ok(())})
                 }))
             }
         }
-        impl<F: Fn(&mut Response, &Request) + Send + Sync + 'static>
-        IntoBackFang<fn(&mut Response, &Request)> for F {
+        impl<F, Fut> IntoBackFang<fn(&mut Response, &Request)> for F
+        where
+            F:   Fn(&mut Response, &Request) -> Fut + Send + Sync + 'static,
+            Fut: Future<Output = ()> + Send + 'static,
+        {
             fn into_back(self) -> proc::BackFang {
                 proc::BackFang(Arc::new(move |res, req| {
-                    self(res, req);
-                    Ok(())
+                    let fut = self(res, req);
+                    Box::pin(async move {fut.await; Ok(())})
                 }))
             }
         }
 
-        impl<F: Fn(&Response)->Result<(),Response> + Send + Sync + 'static>
-        IntoBackFang<fn(&Response)->Result<(),Response>> for F {
+        impl<F, Fut> IntoBackFang<fn(&Response)->Result<(), Response>> for F
+        where
+            F:   Fn(&Response) -> Fut + Send + Sync + 'static,
+            Fut: Future<Output = Result<(), Response>> + Send + 'static,
+        {
             fn into_back(self) -> proc::BackFang {
                 proc::BackFang(Arc::new(move |res, _| {
-                    self(res)
+                    let fut = self(res);
+                    Box::pin(async move {fut.await})
                 }))
             }
         }
-        impl<F: Fn(&mut Response)->Result<(),Response> + Send + Sync + 'static>
-        IntoBackFang<fn(&mut Response)->Result<(),Response>> for F {
+        impl<F, Fut> IntoBackFang<fn(&mut Response)->Result<(), Response>> for F
+        where
+            F:   Fn(&mut Response) -> Fut + Send + Sync + 'static,
+            Fut: Future<Output = Result<(), Response>> + Send + 'static,
+        {
             fn into_back(self) -> proc::BackFang {
                 proc::BackFang(Arc::new(move |res, _| {
-                    self(res)
+                    let fut = self(res);
+                    Box::pin(async move {fut.await})
                 }))
             }
         }
 
-        impl<F: Fn(&Response, &Request)->Result<(),Response> + Send + Sync + 'static>
-        IntoBackFang<fn(&Response, &Request)->Result<(),Response>> for F {
+        impl<F, Fut> IntoBackFang<fn(&Response, &Request)->Result<(), Response>> for F
+        where
+            F:   Fn(&Response, &Request) -> Fut + Send + Sync + 'static,
+            Fut: Future<Output = Result<(), Response>> + Send + 'static,
+        {
             fn into_back(self) -> proc::BackFang {
                 proc::BackFang(Arc::new(move |res, req| {
-                    self(res, req)
+                    let fut = self(res, req);
+                    Box::pin(async move {fut.await})
                 }))
             }
         }
-        impl<F: Fn(&mut Response, &Request)->Result<(),Response> + Send + Sync + 'static>
-        IntoBackFang<fn(&mut Response, &Request)->Result<(),Response>> for F {
+        impl<F, Fut> IntoBackFang<fn(&mut Response, &Request)->Result<(), Response>> for F
+        where
+            F:   Fn(&mut Response, &Request) -> Fut + Send + Sync + 'static,
+            Fut: Future<Output = Result<(), Response>> + Send + 'static,
+        {
             fn into_back(self) -> proc::BackFang {
-                proc::BackFang(Arc::new(
-                    self
-                ))
+                proc::BackFang(Arc::new(move |res, req| {
+                    let fut = self(res, req);
+                    Box::pin(async move {fut.await})
+                }))
             }
         }
     };
 };
+*/

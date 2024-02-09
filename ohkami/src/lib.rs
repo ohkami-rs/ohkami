@@ -76,13 +76,13 @@ mod handler;
 pub use handler::Route;
 
 mod fang;
-pub use fang::{Fang, builtin};
+pub use fang::{Fang, builtin, FrontFang, BackFang};
 
 mod session;
 use session::Session;
 
 mod ohkami;
-pub use ohkami::{Ohkami, IntoFang};
+pub use ohkami::Ohkami;
 
 pub mod typed;
 
@@ -121,7 +121,7 @@ pub fn append(value: impl Into<std::borrow::Cow<'static, str>>) -> __internal__:
 }
 
 pub mod prelude {
-    pub use crate::{Request, Route, Ohkami, Fang, Response, IntoFang, IntoResponse, Method, Status};
+    pub use crate::{Request, Route, Ohkami, Fang, FrontFang, BackFang, Response, IntoResponse, Method, Status};
 }
 
 /// Somthing that's almost [serde](https://crates.io/crates/serde)

@@ -1,11 +1,9 @@
 pub(crate) mod router;
 mod build;
 mod howl;
-mod with_fangs;
 
 use router::TrieRouter;
-pub use with_fangs::{IntoFang};
-
+use crate::fang::Fangs;
 use crate::Method;
 
 
@@ -203,7 +201,7 @@ impl Ohkami {
     /// )
     /// # ;
     /// ```
-    pub fn with(fangs: impl with_fangs::Fangs, routes: impl build::Routes) -> Self {
+    pub fn with<T>(fangs: impl Fangs<T>, routes: impl build::Routes) -> Self {
         Self {
             routes: routes.apply(TrieRouter::new()),
             fangs:  fangs.collect(),
