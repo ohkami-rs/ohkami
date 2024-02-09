@@ -31,14 +31,12 @@ use crate::{Request, Response, Status};
 /// }
 /// 
 /// struct MyAuthFang;
-/// impl IntoFang for MyAuthFang {
-///     fn into_fang(self) -> Fang {
-///         Fang::front(move |req: &mut Request| {
-///             let payload = my_jwt()
-///                 .verified::<JWTPayload>(req)?;
-///             req.memorize(payload);
-///             Ok(())
-///         })
+/// impl FrontFang for MyAuthFang {
+///     async fn bite(&self, req: &mut Request) -> Result<(), Response> {
+///         let payload = my_jwt()
+///             .verified::<JWTPayload>(req)?;
+///         req.memorize(payload);
+///         Ok(())
 ///     }
 /// }
 /// 
@@ -456,13 +454,6 @@ impl JWT {
                 req.memorize(jwt_payload);
                 Ok(())
             }
-            // fn into_fang(self) -> Fang {
-            //     Fang::front(move |req: &mut Request| async {
-            //         let jwt_payload =  self.0.verified::<MyJWTPayload>(req)?;
-            //         req.memorize(jwt_payload);
-            //         Ok(())
-            //     })
-            // }
         }
 
         let t = Ohkami::new((

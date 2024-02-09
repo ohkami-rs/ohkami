@@ -91,7 +91,7 @@ impl RadixRouter {
 
                 let mut res = 'res: {
                     for ff in front {
-                        if let Err(err_res) = ff.0(req).await {
+                        if let Err(err_res) = ff.0.call(req).await {
                             break 'res err_res
                         }
                     }
@@ -111,7 +111,7 @@ impl RadixRouter {
                 };
 
                 for bf in back {
-                    if let Err(err_res) = bf.0(&mut res, req).await {
+                    if let Err(err_res) = bf.0.call(&mut res, req).await {
                         return err_res;
                     }
                 }
@@ -124,7 +124,7 @@ impl RadixRouter {
 
                 let mut res = 'res: {
                     for ff in front {
-                        if let Err(err_res) = ff.0(req).await {
+                        if let Err(err_res) = ff.0.call(req).await {
                             break 'res err_res
                         }
                     }
@@ -132,7 +132,7 @@ impl RadixRouter {
                 };
 
                 for bf in back {
-                    if let Err(err_res) = bf.0(&mut res, req).await {
+                    if let Err(err_res) = bf.0.call(&mut res, req).await {
                         return err_res;
                     }
                 }
@@ -155,7 +155,7 @@ impl Node {
             Some(handler) => {
                 let mut res = (handler.proc)(req).await;                
                 for bf in self.back {
-                    if let Err(err_res) = bf.0(&mut res, req).await {
+                    if let Err(err_res) = bf.0.call(&mut res, req).await {
                         return err_res;
                     }
                 }
@@ -171,7 +171,7 @@ impl Node {
                 let mut res = (handler.proc)(req).await;
                 
                 for bf in self.back {
-                    if let Err(err_res) = bf.0(&mut res, req).await {
+                    if let Err(err_res) = bf.0.call(&mut res, req).await {
                         return err_res;
                     }
                 }
@@ -201,7 +201,7 @@ impl Node {
 
         loop {
             for ff in target.front {
-                ff.0(req).await?
+                ff.0.call(req).await?
             }
 
             #[cfg(feature="DEBUG")]

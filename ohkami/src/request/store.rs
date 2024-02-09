@@ -36,16 +36,15 @@ impl Hasher for TypeIDHasger {
 /// ## memorizing any value
 /// With `Request::memorize`：
 /// ```
-/// use ohkami::{Fang, IntoFang, Request};
+/// use ohkami::{FrontFang, Request, Response};
 /// 
 /// pub struct MemorizeNow;
-/// impl IntoFang for MemorizeNow {
-///     fn into_fang(self) -> Fang {
-///         Fang::front(|req: &mut Request|
-///             req.memorize(serde_json::json!({
-///                 "now": ohkami::utils::imf_fixdate_now()
-///             }))
-///         )
+/// impl FrontFang for MemorizeNow {
+///     async fn bite(&self, req: &mut Request) -> Result<(), Response> {
+///         req.memorize(serde_json::json!({
+///             "now": ohkami::utils::imf_fixdate_now()
+///         }));
+///         Ok(())
 ///     }
 /// }
 /// ```
@@ -98,6 +97,7 @@ impl<'req, Value: Send + Sync + 'static> std::ops::Deref for Memory<'req, Value>
 #[test] fn get_easily_the_ref_of_inside_memory_as_satisfying_a_trait() {
     use ::serde_json::Value;
 
+    #[allow(unused)]
     trait T {}
     impl<'t> T for &'t Value {}
 

@@ -19,24 +19,22 @@ use crate::Method;
 /// # use ohkami::typed::status::{OK, Created};
 /// # 
 /// struct Log;
-/// impl IntoFang for Log {
+/// impl BackFang for Log {
 ///     /* 〜 */
-/// #    fn into_fang(self) -> Fang {
-/// #        Fang::back(|res: &Response| {
-/// #            println!("{res:?}");
-/// #        })
+/// #    async fn bite(&self, res: &mut Response, req: &Request) -> Result<(), Response> {
+/// #        println!("{req:?}");
+/// #        println!("{res:?}");
+/// #        Ok(())
 /// #    }
 /// }
 /// 
 /// struct Auth;
-/// impl IntoFang for Auth {
+/// impl FrontFang for Auth {
 ///     /* 〜 */
-/// #    fn into_fang(self) -> Fang {
-/// #        Fang::front(|req: &Request| {
-/// #            // Do something...
+/// #    async fn bite(&self, req: &mut Request) -> Result<(), Response> {
+/// #        // Do something...
 /// #
-/// #            Ok(())
-/// #        })
+/// #        Ok(())
 /// #    }
 /// }
 /// 
@@ -133,7 +131,7 @@ pub struct Ohkami {
     pub(crate) routes: TrieRouter,
 
     /// apply just before merged to another or called `howl`
-    pub(crate) fangs:  Vec<(&'static [Method], crate::Fang)>,
+    pub(crate) fangs:  Vec<(&'static [Method], crate::fang::Fang)>,
 }
 
 impl Ohkami {
@@ -164,17 +162,16 @@ impl Ohkami {
         }
     }
 
-    /// - `fangs` is an item that implements `IntoFang`, or tuple of such items :
+    /// - `fangs` is an item that implements `FrontFang` or `BackFang`, or tuple of such items :
     /// 
     /// ```
     /// use ohkami::prelude::*;
     /// 
     /// struct Log;
-    /// impl IntoFang for Log {
-    ///     fn into_fang(self) -> Fang {
-    ///         Fang::back(|res: &Response| {
-    ///             println!("{res:?}");
-    ///         })
+    /// impl FrontFang for Log {
+    ///     async fn bite(&self, req: &mut Request) -> Result<(), Response> {
+    ///         println!("{req:?}");
+    ///         Ok(())
     ///     }
     /// }
     /// ```

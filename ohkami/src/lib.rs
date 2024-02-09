@@ -76,7 +76,7 @@ mod handler;
 pub use handler::Route;
 
 mod fang;
-pub use fang::{Fang, builtin, FrontFang, BackFang};
+pub use fang::{builtin, FrontFang, BackFang};
 
 mod session;
 use session::Session;
@@ -107,12 +107,11 @@ mod x_websocket;
 /// use ohkami::append;
 /// 
 /// struct AppendServer;
-/// impl IntoFang for AppendServer {
-///     fn into_fang(self) -> Fang {
-///         Fang::back(|res: &mut Response| {
-///             res.headers.set()
-///                 .Server(append("ohkami"));
-///         })
+/// impl BackFang for AppendServer {
+///     async fn bite(&self, res: &mut Response, req: &Request) -> Result<(), Response> {
+///         res.headers.set()
+///             .Server(append("ohkami"));
+///         Ok(())
 ///     }
 /// }
 /// ```
@@ -121,7 +120,7 @@ pub fn append(value: impl Into<std::borrow::Cow<'static, str>>) -> __internal__:
 }
 
 pub mod prelude {
-    pub use crate::{Request, Route, Ohkami, Fang, FrontFang, BackFang, Response, IntoResponse, Method, Status};
+    pub use crate::{Request, Route, Ohkami, FrontFang, BackFang, Response, IntoResponse, Method, Status};
 }
 
 /// Somthing that's almost [serde](https://crates.io/crates/serde)

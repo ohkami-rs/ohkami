@@ -1,4 +1,5 @@
-use crate::{Fang, Response, Request, Method::{self, *}};
+use std::{future::Future, pin::Pin};
+use crate::{Response, Request, Method::{self, *}, fang::Fang};
 
 
 /// Represents "can be used as a front fang".
@@ -11,8 +12,9 @@ use crate::{Fang, Response, Request, Method::{self, *}};
 /// 
 /// struct LogRequest;
 /// impl FrontFang for LogRequest {
-///     async fn bite(self, req: &mut Request) -> Result<(), Response> {
+///     async fn bite(&self, req: &mut Request) -> Result<(), Response> {
 ///         println!("{req:?}");
+///         Ok(())
 ///     }
 /// }
 /// ```
@@ -21,6 +23,19 @@ pub trait FrontFang {
 
     fn bite(&self, req: &mut Request) -> impl ::std::future::Future<Output = Result<(), Response>> + Send;
 }
+
+pub(crate) trait FrontFangCaller: Send + Sync {
+    fn call<'c>(&'c self, req: &'c mut Request) -> Pin<Box<dyn Future<Output = Result<(), Response>> + Send + 'c>>
+    where Self: Sync + 'c;
+}
+impl<FF: FrontFang + Send + Sync> FrontFangCaller for FF {
+    fn call<'c>(&'c self, req: &'c mut Request) -> Pin<Box<dyn Future<Output = Result<(), Response>> + Send + 'c>>
+    where Self: Sync + 'c
+    {
+        Box::pin(async move {self.bite(req).await})
+    }
+}
+
 
 /// Represents "can be used as a back fang".
 /// 
@@ -32,8 +47,9 @@ pub trait FrontFang {
 /// 
 /// struct LogResponse;
 /// impl FrontFang for LogResponse {
-///     async fn bite(&self, res: &mut Response) -> Result<(), Response> {
-///         println!("{res:?}");
+///     async fn bite(&self, req: &mut Request) -> Result<(), Response> {
+///         println!("{req:?}");
+///         Ok(())
 ///     }
 /// }
 /// ```
@@ -43,11 +59,23 @@ pub trait BackFang {
     fn bite(&self, res: &mut Response, req: &Request) -> impl ::std::future::Future<Output = Result<(), Response>> + Send;
 }
 
+pub(crate) trait BackFangCaller: Send + Sync {
+    fn call<'c>(&'c self, res: &'c mut Response, req: &'c Request) -> Pin<Box<dyn Future<Output = Result<(), Response>> + Send + 'c>>
+    where Self: Sync + 'c;
+}
+impl<BF: BackFang + Send + Sync> BackFangCaller for BF {
+    fn call<'c>(&'c self, res: &'c mut Response, req: &'c Request) -> Pin<Box<dyn Future<Output = Result<(), Response>> + Send + 'c>>
+    where Self: Sync + 'c
+    {
+        Box::pin(async move {self.bite(res, req).await})
+    }
+}
+
 
 pub(crate) mod internal {
     use std::{any::Any, sync::Arc};
-    use crate::{Method, Fang};
-    use super::super::proc::{FangProc, FrontFang, BackFang};
+    use crate::Method;
+    use super::super::{Fang, proc::{FangProc, FrontFang, BackFang}};
     
     pub trait IntoFang<T> {
         const METHODS: &'static [Method];
@@ -61,22 +89,20 @@ pub(crate) mod internal {
         fn into_fang(self) -> Fang {
             Fang {
                 id:   self.type_id(),
-                proc: FangProc::Front(FrontFang(Arc::new(|req| {
-                    // let fut = self.bite(req);
-                    // Box::pin(fut)
-
-                    todo!()
-                }))),
+                proc: FangProc::Front(FrontFang(Arc::new(self))),
             }
         }
     }
     
     pub struct Back;
-    impl<BF: super::BackFang + 'static> IntoFang<Back> for BF {
+    impl<BF: super::BackFang + Send + Sync + 'static> IntoFang<Back> for BF {
         const METHODS: &'static [Method] = BF::METHODS;
 
         fn into_fang(self) -> Fang {
-            todo!()
+            Fang {
+                id:   self.type_id(),
+                proc: FangProc::Back(BackFang(Arc::new(self))),
+            }
         }
     }
 }

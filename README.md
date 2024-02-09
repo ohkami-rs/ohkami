@@ -133,21 +133,19 @@ ohkami's middlewares are called "**fang**s".
 use ohkami::prelude::*;
 
 struct AppendHeaders;
-impl IntoFang for AppendHeaders {
-    fn into_fang(self) -> Fang {
-        Fang::back(|res: &mut Response| {
-            res.headers.set()
-                .Server("ohkami");
-        })
+impl BackFang for AppendHeaders {
+    async fn bite(&self, res: &mut Response, req: &Request) -> Result<(), Response> {
+        res.headers.set()
+            .Server("ohkami");
+        Ok(())
     }
 }
 
 struct LogRequest;
-impl IntoFang for LogRequest {
-    fn into_fang(self) -> Fang {
-        Fang::front(|req: &Request| {
-            println!("{req:?}");
-        })
+impl FrontFang for LogRequest {
+    async fn bite(&self, req: &mut Request) -> Result<(), Response> {
+        println!("{req:?}");
+        Ok(())
     }
 }
 
@@ -159,17 +157,6 @@ async fn main() {
 }
 
 ```
-`Fang` schema :
-
-#### To make a *front fang* :
-- `Fn(&/&mut Request)`
-- `Fn(&/&mut Request) -> Result<(), Response>`
-
-#### To make a *back fang* :
-- `Fn(&/&mut Response)`
-- `Fn(&/&mut Response) -> Result<(), Response>`
-- `Fn(&/&mut Response, &Request)`
-- `Fn(&/&mut Response, &Request) -> Result<(), Response>`
 
 <br>
 
