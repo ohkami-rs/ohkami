@@ -134,7 +134,7 @@ use ohkami::prelude::*;
 
 struct AppendHeaders;
 impl BackFang for AppendHeaders {
-    async fn bite(&self, res: &mut Response, req: &Request) -> Result<(), Response> {
+    async fn bite(&self, res: &mut Response, _req: &Request) -> Result<(), Response> {
         res.headers.set()
             .Server("ohkami");
         Ok(())
@@ -229,15 +229,15 @@ async fn test_my_ohkami() {
 
 <br>
 
-## Supporting protocols
+## Supported protocols
 - [ ] HTTPS
 - [x] HTTP/1.1
 - [ ] HTTP/2
 - [ ] HTTP/3
 - [ ] WebSocket
 
-## MSRV (Minimum Supported Rust Version)
-Latest stable.
+## MSRV (Minimum Supported rustc Version)
+Latest stable at that time.
 
 ## License
 ohkami is licensed under MIT LICENSE ([LICENSE](https://github.com/kana-rus/ohkami/blob/main/LICENSE) or [https://opensource.org/licenses/MIT](https://opensource.org/licenses/MIT)).

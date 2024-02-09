@@ -2,7 +2,8 @@ use std::{future::Future, pin::Pin};
 use crate::{Response, Request, Method::{self, *}, fang::Fang};
 
 
-/// Represents "can be used as a front fang".
+/// Represents "can be used as a front fang", e.g. executed before `req` is passed to a handler.\
+/// You can register this fang only for several request methods using `METHODS` const parameter.
 /// 
 /// <br>
 /// 
@@ -37,7 +38,8 @@ impl<FF: FrontFang + Send + Sync> FrontFangCaller for FF {
 }
 
 
-/// Represents "can be used as a back fang".
+/// Represents "can be used as a back fang", e.g. executed after a handler generates `res`.\
+/// You can register this fang only for several request methods using `METHODS` const parameter.
 /// 
 /// <br>
 /// 
@@ -46,9 +48,9 @@ impl<FF: FrontFang + Send + Sync> FrontFangCaller for FF {
 /// use ohkami::prelude::*;
 /// 
 /// struct LogResponse;
-/// impl FrontFang for LogResponse {
-///     async fn bite(&self, req: &mut Request) -> Result<(), Response> {
-///         println!("{req:?}");
+/// impl BackFang for LogResponse {
+///     async fn bite(&self, res: &mut Response, _req: &Request) -> Result<(), Response> {
+///         println!("{res:?}");
 ///         Ok(())
 ///     }
 /// }
