@@ -49,7 +49,7 @@ mod hello_handler {
         HelloRequest { name, repeat }: HelloRequest<'h>
     ) -> Result<String, ValidationError> {
         tracing::info!("\
-            Called `hello_by_query`\
+            Called `hello_by_json`\
         ");
         
         if name.is_empty() {
