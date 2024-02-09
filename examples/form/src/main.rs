@@ -1,4 +1,4 @@
-use ohkami::{prelude::*, IntoFang, Fang};
+use ohkami::prelude::*;
 use ohkami::utils::HTML;
 use ohkami::typed::{Payload, File};
 
@@ -29,16 +29,16 @@ async fn post_submit(form_data: FormData) -> Status {
 }
 
 struct Logger;
-impl IntoFang for Logger {
-    fn into_fang(self) -> Fang {
-        Fang::front(|req: &Request| {
-            println!("[request] {} {}", req.method(), req.path());
+impl FrontFang for Logger {
+    fn bite(&self, req: &mut Request) -> impl std::future::Future<Output = Result<(), Response>> + Send {
+        println!("[request] {} {}", req.method(), req.path());
 
-            if let Some(body) = req.payload() {
-                let content_type = req.headers.ContentType().unwrap_or("");
-                println!("[payload] {content_type:?}\n{}", body.escape_ascii());
-            }
-        })
+        if let Some(body) = req.payload() {
+            let content_type = req.headers.ContentType().unwrap_or("");
+            println!("[payload] {content_type:?}\n{}", body.escape_ascii());
+        }
+
+        async {Ok(())}
     }
 }
 

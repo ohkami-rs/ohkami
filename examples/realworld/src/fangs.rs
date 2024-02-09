@@ -1,4 +1,4 @@
-use ohkami::{builtin::JWT, Fang, IntoFang, IntoResponse, Request, Response};
+use ohkami::{builtin::JWT, FrontFang, BackFang, IntoResponse, Request, Response};
 use sqlx::PgPool;
 use crate::{config, errors::RealWorldError};
 
@@ -16,19 +16,17 @@ impl Default for Auth {
         Auth { condition: None }
     }
 }
-impl IntoFang for Auth {
-    fn into_fang(self) -> Fang {
-        Fang::front(move |req: &mut Request| {
-            if self.condition.is_some_and(|cond| !cond(req)) {
-                return Ok(());
-            }
+impl FrontFang for Auth {
+    async fn bite(&self, req: &mut Request) -> Result<(), Response> {
+        if self.condition.is_some_and(|cond| !cond(req)) {
+            return Ok(());
+        }
 
-            let secret = config::JWT_SECRET_KEY()
-                .map_err(RealWorldError::into_response)?;
-            let payload: config::JWTPayload = JWT::default(secret).verified(req)?;
-            req.memorize(payload);
-            Ok(())
-        })
+        let secret = config::JWT_SECRET_KEY()
+            .map_err(RealWorldError::into_response)?;
+        let payload: config::JWTPayload = JWT::default(secret).verified(req)?;
+        req.memorize(payload);
+        Ok(())
     }
 }
 
@@ -45,49 +43,45 @@ impl Default for OptionalAuth {
         Self { condition: None }
     }
 }
-impl IntoFang for OptionalAuth {
-    fn into_fang(self) -> Fang {
-        Fang::front(move |req: &mut Request| {
-            if self.condition.is_some_and(|cond| !cond(req)) {
-                return Ok(());
-            }
+impl FrontFang for OptionalAuth {
+    async fn bite(&self, req: &mut Request) -> Result<(), Response> {
+        if self.condition.is_some_and(|cond| !cond(req)) {
+            return Ok(());
+        }
 
-            let secret = config::JWT_SECRET_KEY()
-                .map_err(RealWorldError::into_response)?;
-            let payload: Option<config::JWTPayload> = JWT::default(secret).verified(req).ok();
-            req.memorize(payload);
-            Ok(())
-        })
+        let secret = config::JWT_SECRET_KEY()
+            .map_err(RealWorldError::into_response)?;
+        let payload: Option<config::JWTPayload> = JWT::default(secret).verified(req).ok();
+        req.memorize(payload);
+        Ok(())
     }
 }
 
 pub struct LogRequest;
-impl IntoFang for LogRequest {
-    fn into_fang(self) -> Fang {
-        Fang::front(|req: &Request| {
-            let method = req.method();
-            let path   = req.path();
+impl FrontFang for LogRequest {
+    fn bite(&self, req: &mut Request) -> impl std::future::Future<Output = Result<(), Response>> + Send {
+        let method = req.method();
+        let path   = req.path();
 
-            tracing::info!("{method:<7} {path}");
-        })
+        tracing::info!("{method:<7} {path}");
+
+        async {Ok(())}
     }
 }
 
 pub struct LogResponse;
-impl IntoFang for LogResponse {
-    fn into_fang(self) -> Fang {
-        Fang::back(|res: &Response| {
-            tracing::info!("{res:?}");
-        })
+impl BackFang for LogResponse {
+    fn bite(&self, res: &mut Response, _: &Request) -> impl std::future::Future<Output = Result<(), Response>> + Send {
+        tracing::info!("{res:?}");
+        async {Ok(())}
     }
 }
 
 pub struct ConnectionPool(PgPool);
-impl IntoFang for ConnectionPool {
-    fn into_fang(self) -> Fang {
-        Fang::front(move |req: &mut Request| {
-            req.memorize(self.0.clone())
-        })
+impl FrontFang for ConnectionPool {
+    fn bite(&self, req: &mut Request) -> impl std::future::Future<Output = Result<(), Response>> + Send {
+        req.memorize(self.0.clone());
+        async {Ok(())}
     }
 }
 impl From<PgPool> for ConnectionPool {

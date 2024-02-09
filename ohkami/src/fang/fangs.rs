@@ -56,18 +56,18 @@ impl<FF: FrontFang + Send + Sync> FrontFangCaller for FF {
 pub trait BackFang {
     const METHODS: &'static [Method] = &[GET, PUT, POST, PATCH, DELETE, HEAD, OPTIONS];
 
-    fn bite(&self, res: &mut Response, req: &Request) -> impl ::std::future::Future<Output = Result<(), Response>> + Send;
+    fn bite(&self, res: &mut Response, _req: &Request) -> impl ::std::future::Future<Output = Result<(), Response>> + Send;
 }
 
 pub(crate) trait BackFangCaller: Send + Sync {
-    fn call<'c>(&'c self, res: &'c mut Response, req: &'c Request) -> Pin<Box<dyn Future<Output = Result<(), Response>> + Send + 'c>>
+    fn call<'c>(&'c self, res: &'c mut Response, _req: &'c Request) -> Pin<Box<dyn Future<Output = Result<(), Response>> + Send + 'c>>
     where Self: Sync + 'c;
 }
 impl<BF: BackFang + Send + Sync> BackFangCaller for BF {
-    fn call<'c>(&'c self, res: &'c mut Response, req: &'c Request) -> Pin<Box<dyn Future<Output = Result<(), Response>> + Send + 'c>>
+    fn call<'c>(&'c self, res: &'c mut Response, _req: &'c Request) -> Pin<Box<dyn Future<Output = Result<(), Response>> + Send + 'c>>
     where Self: Sync + 'c
     {
-        Box::pin(async move {self.bite(res, req).await})
+        Box::pin(async move {self.bite(res, _req).await})
     }
 }
 
