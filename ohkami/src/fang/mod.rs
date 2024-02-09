@@ -17,7 +17,7 @@ use std::any::TypeId;
 /// 
 /// struct SetServer;
 /// impl BackFang for SetServer {
-///     async fn bite(&self, res: &mut Response, req: &Request) -> Result<(), Response> {
+///     async fn bite(&self, res: &mut Response, _req: &Request) -> Result<(), Response> {
 ///         res.headers.set()
 ///             .Server("ohkami");
 ///         Ok(())

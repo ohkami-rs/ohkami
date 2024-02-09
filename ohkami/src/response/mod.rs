@@ -38,7 +38,7 @@ use crate::__rt__::AsyncWriter;
 /// 
 /// struct LogResponse;
 /// impl BackFang for LogResponse {
-///     async fn bite(&self, res: &mut Response, req: &Request) -> Result<(), Response> {
+///     async fn bite(&self, res: &mut Response, _req: &Request) -> Result<(), Response> {
 ///         println!("{}", res.status);
 ///         Ok(())
 ///     }
