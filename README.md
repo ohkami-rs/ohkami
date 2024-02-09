@@ -242,8 +242,8 @@ async fn test_my_ohkami() {
 <br>
 
 ## Supporting protocols
-- [x] HTTP/1.1
 - [ ] HTTPS
+- [x] HTTP/1.1
 - [ ] HTTP/2
 - [ ] HTTP/3
 - [ ] WebSocket
@@ -252,4 +252,4 @@ async fn test_my_ohkami() {
 Latest stable.
 
 ## License
-`ohkami` is licensed under MIT LICENSE ([LICENSE](https://github.com/kana-rus/ohkami/blob/main/LICENSE) or [https://opensource.org/licenses/MIT](https://opensource.org/licenses/MIT)).
+ohkami is licensed under MIT LICENSE ([LICENSE](https://github.com/kana-rus/ohkami/blob/main/LICENSE) or [https://opensource.org/licenses/MIT](https://opensource.org/licenses/MIT)).
