@@ -26,7 +26,7 @@ async fn main() -> Result<(), errors::RealWorldError> {
         .map_err(|e| RealWorldError::DB(e))?;
 
     handlers::realworld_ohkami(pool)
-        .howl(":8080").await;
+        .howl("localhost:8080").await;
 
     Ok(())
 }
