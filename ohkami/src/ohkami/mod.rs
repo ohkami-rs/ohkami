@@ -22,7 +22,7 @@ use crate::Method;
 /// impl BackFang for Log {
 ///     /* 〜 */
 /// #    async fn bite(&self, res: &mut Response, _req: &Request) -> Result<(), Response> {
-/// #        println!("{req:?}");
+/// #        println!("{_req:?}");
 /// #        println!("{res:?}");
 /// #        Ok(())
 /// #    }
