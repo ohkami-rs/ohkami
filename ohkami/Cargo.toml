@@ -29,7 +29,7 @@ hmac          = { version = "=0.13.0-pre.0", default-features = false }
 rustc-hash    = { version = "1.1", optional = true }
 
 [features]
-#default       = ["utils", "testing"]
+default       = ["utils", "testing"]
 rt_tokio      = ["dep:tokio"]
 rt_async-std  = ["dep:async-std"]
 utils         = []
@@ -44,12 +44,12 @@ DEBUG = [
     "tokio?/rt-multi-thread",
     "async-std?/attributes",
 ]
-default = [
-    "utils",
-    "testing",
-    "custom-header",
-    #"websocket",
-    "rt_tokio",
-    #"rt_async-std",
-    "DEBUG",
-]
+#default = [
+#    "utils",
+#    "testing",
+#    "custom-header",
+#    #"websocket",
+#    "rt_tokio",
+#    #"rt_async-std",
+#    "DEBUG",
+#]
