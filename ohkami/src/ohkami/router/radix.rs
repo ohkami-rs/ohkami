@@ -21,19 +21,28 @@ use crate::websocket::{
 /*===== defs =====*/
 
 pub(crate) struct RadixRouter {
-    pub(super) GET:    Node,
-    pub(super) PUT:    Node,
-    pub(super) POST:   Node,
-    pub(super) PATCH:  Node,
-    pub(super) DELETE: Node,
-    pub(super) HEADfangs:    (&'static [FrontFang], &'static [BackFang]),
-    pub(super) OPTIONSfangs: (&'static [FrontFang], &'static [BackFang]),
+    pub(super) global_fangs: GlobalFangs,
+    pub(super) GET:          Node,
+    pub(super) PUT:          Node,
+    pub(super) POST:         Node,
+    pub(super) PATCH:        Node,
+    pub(super) DELETE:       Node,
+}
+
+pub(super) struct GlobalFangs {
+    pub(super) GET:     (&'static [FrontFang], &'static [BackFang]),
+    pub(super) PUT:     (&'static [FrontFang], &'static [BackFang]),
+    pub(super) POST:    (&'static [FrontFang], &'static [BackFang]),
+    pub(super) PATCH:   (&'static [FrontFang], &'static [BackFang]),
+    pub(super) DELETE:  (&'static [FrontFang], &'static [BackFang]),
+    pub(super) HEAD:    (&'static [FrontFang], &'static [BackFang]),
+    pub(super) OPTIONS: (&'static [FrontFang], &'static [BackFang]),
 }
 
 pub(super) struct Node {
     pub(super) patterns: &'static [Pattern],
-    pub(super) front:    &'static [FrontFang],
     pub(super) handler:  Option<Handler>,
+    pub(super) front:    &'static [FrontFang],
     pub(super) back:     &'static [BackFang],
     pub(super) children: Vec<Node>,
 } const _: () = {
@@ -79,73 +88,51 @@ impl RadixRouter {
         &self,
         req: &mut Request,
     ) -> Response {
-        let search_result = match req.method() {
-            Method::GET    => self.GET   .search(req/*.path_bytes()*/),
-            Method::PUT    => self.PUT   .search(req/*.path_bytes()*/),
-            Method::POST   => self.POST  .search(req/*.path_bytes()*/),
-            Method::PATCH  => self.PATCH .search(req/*.path_bytes()*/),
-            Method::DELETE => self.DELETE.search(req/*.path_bytes()*/),
-            
-            Method::HEAD => {
-                let (front, back) = self.HEADfangs;
+        let method = req.method();
 
-                let mut res = 'res: {
-                    for ff in front {
-                        if let Err(err_res) = ff.0.call(req).await {
-                            break 'res err_res
-                        }
-                    }
+        let (global_front, global_back) = match &method {
+            Method::GET     => self.global_fangs.GET,
+            Method::PUT     => self.global_fangs.PUT,
+            Method::POST    => self.global_fangs.POST,
+            Method::PATCH   => self.global_fangs.PATCH,
+            Method::DELETE  => self.global_fangs.DELETE,
+            Method::HEAD    => self.global_fangs.HEAD,
+            Method::OPTIONS => self.global_fangs.OPTIONS,
+        };
 
-                    let target = match self.GET.search(req/*.path_bytes()*/).await {
-                        Ok(Some(node)) => node,
-                        Ok(None)       => break 'res Status::NotFound.into_response(),
-                        Err(err_res)   => break 'res err_res,
-                    };
-
-                    let Response { headers, .. } = target.handle_discarding_upgrade(req).await;
-                    Response {
-                        headers,
-                        status:  Status::NoContent,
-                        content: None,
-                    }
-                };
-
-                for bf in back {
-                    if let Err(err_res) = bf.0.call(&mut res, req).await {
-                        return err_res;
-                    }
+        let mut res = 'handled: {
+            for gf in global_front {
+                if let Err(err_res) = gf.0.call(req).await {
+                    break 'handled err_res
                 }
-
-                return res;
             }
 
-            Method::OPTIONS => {
-                let (front, back) = self.OPTIONSfangs;
+            let search_result = match method {
+                Method::GET     => self.GET   .search(req),
+                Method::PUT     => self.PUT   .search(req),
+                Method::POST    => self.POST  .search(req),
+                Method::PATCH   => self.PATCH .search(req),
+                Method::DELETE  => self.DELETE.search(req),
+                Method::OPTIONS => break 'handled Response::NoContent(),
+                Method::HEAD    => break 'handled match self.GET.search(req) {
+                    Some(n) => n.handle(req).await.without_content(),
+                    None    => Response::NotFound(),
+                },
+            };
 
-                let mut res = 'res: {
-                    for ff in front {
-                        if let Err(err_res) = ff.0.call(req).await {
-                            break 'res err_res
-                        }
-                    }
-                    Status::NoContent.into_response()
-                };
-
-                for bf in back {
-                    if let Err(err_res) = bf.0.call(&mut res, req).await {
-                        return err_res;
-                    }
-                }
-
-                return res;
+            match search_result {
+                Some(n) => n.handle(req).await,
+                None    => Status::NotFound.into_response(),
             }
         };
 
-        match search_result.await {
-            Ok(Some(node)) => node.handle(req).await,
-            Ok(None)       => Status::NotFound.into_response(),
-            Err(err_res)   => err_res,
+        for gb in global_back {
+            if let Err(err_res) = gb.0.call(&mut res, req).await {
+                return err_res
+            }
         }
+
+        res
     }
 }
 
@@ -153,7 +140,14 @@ impl Node {
     #[inline] pub(super) async fn handle(&self, req: &mut Request) -> Response {
         match &self.handler {
             Some(handler) => {
-                let mut res = (handler.proc)(req).await;                
+                for ff in self.front {
+                    if let Err(err_res) = ff.0.call(req).await {
+                        return err_res;
+                    }
+                }
+
+                let mut res = (handler.proc)(req).await;  
+
                 for bf in self.back {
                     if let Err(err_res) = bf.0.call(&mut res, req).await {
                         return err_res;
@@ -165,24 +159,7 @@ impl Node {
         }
     }
 
-    #[inline] pub(super) async fn handle_discarding_upgrade(&self, req: &mut Request) -> Response {
-        match &self.handler {
-            Some(handler) => {
-                let mut res = (handler.proc)(req).await;
-                
-                for bf in self.back {
-                    if let Err(err_res) = bf.0.call(&mut res, req).await {
-                        return err_res;
-                    }
-                }
-
-                res
-            }
-            None => Status::NotFound.into_response()
-        }
-    }
-
-    pub(super/* for test */) async fn search(&self, req: &mut Request) -> Result<Option<&Node>, Response> {
+    pub(super/* for test */) fn search(&self, req: &mut Request) -> Option<&Node> {
         let mut target = self;
 
         // SAFETY:
@@ -203,10 +180,6 @@ impl Node {
             #[cfg(feature="DEBUG")]
             println!("[target] {:?}", target);
 
-            for ff in target.front {
-                ff.0.call(req).await?
-            }
-
             #[cfg(feature="DEBUG")]
             println!("[patterns] {:?}", target.patterns);
     
@@ -214,7 +187,7 @@ impl Node {
                 if path.is_empty() || unsafe {path.get_unchecked(0)} != &b'/' {
                     // At least one `pattern` to match is remaining
                     // but remaining `path` doesn't start with '/'
-                    return Ok(None)
+                    return None
                 }
 
                 path = unsafe {path.get_unchecked(1..)};
@@ -225,7 +198,7 @@ impl Node {
                 match pattern {
                     Pattern::Static(s)  => path = match path.strip_prefix(*s) {
                         Some(remaining) => remaining,
-                        None            => return Ok(None),
+                        None            => return None,
                     },
                     Pattern::Param      => {
                         let (param, remaining) = split_next_section(path);
@@ -239,14 +212,14 @@ impl Node {
                 #[cfg(feature="DEBUG")]
                 println!("Found: {target:?}");
         
-                return Ok(Some(target))
+                return Some(target)
             } else {
                 #[cfg(feature="DEBUG")]
                 println!("not found, searching children: {:?}", target.children);
         
                 target = match target.matchable_child(path) {
                     Some(child) => child,
-                    None        => return Ok(None),
+                    None        => return None,
                 }
             }
         }

@@ -56,11 +56,6 @@ pub struct Fang {
     id:              TypeId,
     pub(crate) proc: proc::FangProc,
 }
-impl Fang {
-    pub(crate) fn is_front(&self) -> bool {
-        matches!(self.proc, proc::FangProc::Front(_))
-    }
-}
 const _: () = {
     impl<'f> PartialEq for &'f Fang {
         fn eq(&self, other: &Self) -> bool {

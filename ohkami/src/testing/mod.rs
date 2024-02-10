@@ -56,7 +56,7 @@ impl Testing for Ohkami {
         let router = {
             let mut router = self.routes.clone();
             for (methods, fang) in &self.fangs {
-                router = router.apply_fang(methods, fang.clone())
+                router.apply_fang(methods, fang.clone())
             }
             router.into_radix()
         };

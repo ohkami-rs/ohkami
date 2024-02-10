@@ -136,6 +136,10 @@ impl Response {
             .ContentType(None)
             .ContentLength(None);
     }
+    pub fn without_content(mut self) -> Self {
+        self.drop_content();
+        self
+    }
 
     #[inline] pub fn text<Text: Into<Cow<'static, str>>>(mut self, text: Text) -> Self {
         self.set_text(text);

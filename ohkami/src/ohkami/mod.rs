@@ -156,8 +156,11 @@ impl Ohkami {
     /// # ;
     /// ```
     pub fn new(routes: impl build::Routes) -> Self {
+        let mut router = TrieRouter::new();
+        routes.apply(&mut router);
+
         Self {
-            routes: routes.apply(TrieRouter::new()),
+            routes: router,
             fangs:  Vec::new(),
         }
     }
@@ -199,8 +202,11 @@ impl Ohkami {
     /// # ;
     /// ```
     pub fn with<T>(fangs: impl Fangs<T>, routes: impl build::Routes) -> Self {
+        let mut router = TrieRouter::new();
+        routes.apply(&mut router);
+
         Self {
-            routes: routes.apply(TrieRouter::new()),
+            routes: router,
             fangs:  fangs.collect(),
         }
     }
@@ -209,9 +215,11 @@ impl Ohkami {
 impl Ohkami {
     pub(crate) fn into_router(self) -> TrieRouter {
         let mut router = self.routes;
+
         for (methods, fang) in self.fangs {
-            router = router.apply_fang(methods, fang)
+            router.apply_fang(methods, fang);
         }
+
         router
     }
 }
