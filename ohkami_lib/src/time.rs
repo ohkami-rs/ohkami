@@ -3,20 +3,6 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
 
-/// ```
-/// # let _ =
-/// {
-///     std::time::SystemTime::now()
-///         .duration_since(std::time::UNIX_EPOCH)
-///         .unwrap()
-///         .as_secs()
-/// }
-/// # ;
-/// ```
-#[inline] pub fn unix_timestamp() -> u64 {
-    SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()
-}
-
 /// Current datetime by **IMF-fixdate** format like `Sun, 06 Nov 1994 08:49:37 GMT`, used in `Date` header.
 /// 
 /// (reference：[https://datatracker.ietf.org/doc/html/rfc9110#name-date-time-formats](https://datatracker.ietf.org/doc/html/rfc9110#name-date-time-formats))
@@ -24,7 +10,6 @@ use std::time::{SystemTime, UNIX_EPOCH};
     let system_now = SystemTime::now().duration_since(UNIX_EPOCH).expect("system time before Unix epoch");
     UTCDateTime::now_from_system(system_now).into_imf_fixdate()
 }
-
 
 struct UTCDateTime {
     date: Date,

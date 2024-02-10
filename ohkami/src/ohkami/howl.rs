@@ -70,9 +70,11 @@ impl Ohkami {
     /// 
     /// #[tokio::main]
     /// async fn main() {
-    ///     Ohkami::new(
+    ///     let hello_ohkami = Ohkami::new(
     ///         "/".GET(|| async {"Hello, world!"})
-    ///     ).howl_with(
+    ///     );
+    /// 
+    ///     hello_ohkami.howl_with(
     ///         (LogRequest, CustomNotFound),
     ///         "localhost:5000"
     ///     ).await

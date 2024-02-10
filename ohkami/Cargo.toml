@@ -16,7 +16,7 @@ license       = "MIT"
 features      = ["rt_tokio", "custom-header"]
 
 [dependencies]
-ohkami_lib    = { version = "=0.1.0", path = "../ohkami_lib" }
+ohkami_lib    = { version = "=0.1.1", path = "../ohkami_lib" }
 ohkami_macros = { version = "=0.5.1", path = "../ohkami_macros" }
 tokio         = { version = "1", optional = true, features = ["net", "rt", "io-util", "sync"] }
 async-std     = { version = "1", optional = true }
