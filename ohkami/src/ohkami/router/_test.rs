@@ -3,6 +3,7 @@ use crate::prelude::*;
 use crate::testing::*;
 use crate::utils::Text;
 
+
 fn my_ohkami() -> Ohkami {
     let health_ohkami = Ohkami::new((
         "/".GET(|| async {Text("health_check")}),
@@ -69,8 +70,7 @@ fn my_ohkami() -> Ohkami {
     ))
 }
 
-#[cfg(feature="testing")]
-#[crate::__rt__::test] async fn test_router() {
+#[crate::__rt__::test] async fn test_handler_registration() {
     let t = my_ohkami();
 
 
@@ -137,4 +137,43 @@ fn my_ohkami() -> Ohkami {
     let req = TestRequest::DELETE("/api/articles/__prototype__/comments/42");
     let res = t.oneshot(req).await;
     assert_eq!(res.text(), Some("delete_comment __prototype__ / 42"));
+}
+
+
+#[crate::__rt__::test] async fn test_fang_registration() {
+    use std::sync::{OnceLock, Mutex};
+    use crate::FrontFang;
+
+    fn N() -> &'static Mutex<usize> {
+        static N: OnceLock<Mutex<usize>> = OnceLock::new();
+        N.get_or_init(|| Mutex::new(0))
+    }
+
+    struct Increment;
+    impl FrontFang for Increment {
+        fn bite(&self, _: &mut Request) -> impl std::future::Future<Output = Result<(), Response>> + Send {
+            *N().lock().unwrap() += 1;
+
+            async {Ok(())}
+        }
+    }
+
+    async fn h() -> &'static str {"h"}
+
+    let o = Ohkami::with(Increment, (
+        "/a"  .GET(h),
+        "/a/b".GET(h),
+    ));
+
+    let req = TestRequest::GET("/a");
+    o.oneshot(req).await;
+    assert_eq!(*N().lock().unwrap(), 1);
+
+    let req = TestRequest::GET("/a");
+    o.oneshot(req).await;
+    assert_eq!(*N().lock().unwrap(), 2);
+
+    let req = TestRequest::GET("/a/b");
+    o.oneshot(req).await;
+    assert_eq!(*N().lock().unwrap(), 3);
 }
