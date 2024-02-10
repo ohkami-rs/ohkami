@@ -22,6 +22,8 @@ use crate::{Response, Request, Method::{self, *}, fang::Fang};
 pub trait FrontFang {
     const METHODS: &'static [Method] = &[GET, PUT, POST, PATCH, DELETE, HEAD, OPTIONS];
 
+    #[must_use]
+    #[allow(clippy::type_complexity)]
     fn bite(&self, req: &mut Request) -> impl ::std::future::Future<Output = Result<(), Response>> + Send;
 }
 
@@ -58,6 +60,8 @@ impl<FF: FrontFang + Send + Sync> FrontFangCaller for FF {
 pub trait BackFang {
     const METHODS: &'static [Method] = &[GET, PUT, POST, PATCH, DELETE, HEAD, OPTIONS];
 
+    #[must_use]
+    #[allow(clippy::type_complexity)]
     fn bite(&self, res: &mut Response, _req: &Request) -> impl ::std::future::Future<Output = Result<(), Response>> + Send;
 }
 
