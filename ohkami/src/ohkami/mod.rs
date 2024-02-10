@@ -165,7 +165,7 @@ impl Ohkami {
         }
     }
 
-    /// - `fangs` is an item that implements `FrontFang` or `BackFang`, or tuple of such items :
+    /// - `fangs` is an item that implements `FrontFang` or `BackFang`, or tuple of such items:
     /// 
     /// ```
     /// use ohkami::prelude::*;
@@ -178,6 +178,8 @@ impl Ohkami {
     ///     }
     /// }
     /// ```
+    /// `fangs` passed here are executed just before/after a handler is called for the request.
+    /// If you use some fangs for any requests, specify them in `.howl_with`!
     /// 
     /// <br/>
     /// 

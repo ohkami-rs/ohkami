@@ -214,7 +214,7 @@ const _: () = {
                 Some(cow) => f.debug_struct("Response")
                     .field("status",  &self.status)
                     .field("headers", &self.headers)
-                    .field("content", &cow.escape_ascii().to_string())
+                    .field("content", &String::from_utf8_lossy(&*cow))
                     .finish(),
             }
         }
