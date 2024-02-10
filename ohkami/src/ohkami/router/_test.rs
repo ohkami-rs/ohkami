@@ -176,6 +176,4 @@ fn my_ohkami() -> Ohkami {
     let req = TestRequest::GET("/a/b");
     o.oneshot(req).await;
     assert_eq!(*N().lock().unwrap(), 3);
-
-    panic!()
 }
