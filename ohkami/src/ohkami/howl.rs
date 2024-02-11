@@ -50,19 +50,21 @@ impl Ohkami {
     /// struct CustomNotFound;
     /// impl BackFang for CustomNotFound {
     ///     async fn bite(&self, res: &mut Response, _req: &Request) -> Result<(), Response> {
-    ///         res.set_html(r#"
-    ///             <!DOCTYPE html>
-    ///             <html lang="en">
-    ///                 <title>The page is not found</title>
-    ///                 <body>
-    ///                     <h1>Not Found</h1>
-    ///                     <p>
-    ///                         Something has triggered missing webpage on this website.
-    ///                         This is custom 404 error page for <strong>ohkami</strong>.
-    ///                      </p>
-    ///                 </body>
-    ///             </html>
-    ///         "#);
+    ///         if res.status == Status::NotFound {
+    ///             res.set_html(r#"
+    ///                 <!DOCTYPE html>
+    ///                 <html lang="en">
+    ///                     <title>The page is not found</title>
+    ///                     <body>
+    ///                         <h1>Not Found</h1>
+    ///                         <p>
+    ///                             Something has triggered missing webpage on this website.
+    ///                             This is custom 404 error page for <strong>ohkami</strong>.
+    ///                          </p>
+    ///                     </body>
+    ///                 </html>
+    ///             "#);
+    ///         }
     /// 
     ///         Ok(())
     ///     }
