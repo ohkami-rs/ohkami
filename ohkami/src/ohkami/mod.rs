@@ -178,7 +178,7 @@ impl Ohkami {
     ///     }
     /// }
     /// ```
-    /// `fangs` passed here are executed just before/after a handler is called for the request.
+    /// `fangs` passed here are executed just before/after a handler in this `Ohkami` is called for the request.
     /// If you use some fangs for any requests, specify them in `.howl_with`!
     /// 
     /// <br/>
