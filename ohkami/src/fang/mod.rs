@@ -65,8 +65,9 @@ const _: () = {
 };
 
 pub(crate) mod proc {
-    use std::sync::Arc;
     use super::{BackFangCaller, FrontFangCaller};
+    use std::{future::Future, pin::Pin, sync::Arc};
+    use crate::{Request, Response};
 
     
     #[derive(Clone)]
@@ -76,8 +77,18 @@ pub(crate) mod proc {
     }
 
     #[derive(Clone)]
-    pub struct FrontFang(pub(crate) Arc<dyn FrontFangCaller>);
+    pub struct FrontFang(pub(super) Arc<dyn FrontFangCaller>);
+    impl FrontFang {
+        pub fn call<'c>(&'c self, req: &'c mut Request) -> Pin<Box<dyn Future<Output = Result<(), Response>> + Send + 'c>> {
+            self.0.call(req)
+        }
+    }
 
     #[derive(Clone)]
-    pub struct BackFang(pub(crate) Arc<dyn BackFangCaller>);
+    pub struct BackFang(pub(super) Arc<dyn BackFangCaller>);
+    impl BackFang {
+        pub fn call<'c>(&'c self, res: &'c mut Response, req: &'c Request) -> Pin<Box<dyn Future<Output = Result<(), Response>> + Send + 'c>> {
+            self.0.call(res, req)
+        }
+    }
 }

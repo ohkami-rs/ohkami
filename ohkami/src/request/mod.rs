@@ -42,7 +42,7 @@ pub(crate) const PAYLOAD_LIMIT: usize = 1 << 32;
 /// - `queries`
 /// - `payload`
 /// 
-/// and have a `memory`.
+/// and a `memory`.
 /// 
 /// <br>
 /// 

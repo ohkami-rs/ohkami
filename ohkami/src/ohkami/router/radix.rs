@@ -102,7 +102,7 @@ impl RadixRouter {
 
         let mut res = 'handled: {
             for gf in global_front {
-                if let Err(err_res) = gf.0.call(req).await {
+                if let Err(err_res) = gf.call(req).await {
                     break 'handled err_res
                 }
             }
@@ -127,7 +127,7 @@ impl RadixRouter {
         };
 
         for gb in global_back {
-            if let Err(err_res) = gb.0.call(&mut res, req).await {
+            if let Err(err_res) = gb.call(&mut res, req).await {
                 return err_res
             }
         }
@@ -141,7 +141,7 @@ impl Node {
         match &self.handler {
             Some(handler) => {
                 for ff in self.front {
-                    if let Err(err_res) = ff.0.call(req).await {
+                    if let Err(err_res) = ff.call(req).await {
                         return err_res;
                     }
                 }
@@ -149,7 +149,7 @@ impl Node {
                 let mut res = (handler.proc)(req).await;  
 
                 for bf in self.back {
-                    if let Err(err_res) = bf.0.call(&mut res, req).await {
+                    if let Err(err_res) = bf.call(&mut res, req).await {
                         return err_res;
                     }
                 }

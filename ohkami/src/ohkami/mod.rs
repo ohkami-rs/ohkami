@@ -7,7 +7,7 @@ use crate::fang::Fangs;
 use crate::Method;
 
 
-/// # Ohkami - a robust wolf who serves web app
+/// # Ohkami - a robust wolf who serves your web app
 /// 
 /// <br>
 /// 
@@ -18,15 +18,6 @@ use crate::Method;
 /// # use ohkami::typed::ResponseBody;
 /// # use ohkami::typed::status::{OK, Created};
 /// # 
-/// struct Log;
-/// impl BackFang for Log {
-///     /* 〜 */
-/// #    async fn bite(&self, res: &mut Response, _req: &Request) -> Result<(), Response> {
-/// #        println!("{_req:?}");
-/// #        println!("{res:?}");
-/// #        Ok(())
-/// #    }
-/// }
 /// 
 /// struct Auth;
 /// impl FrontFang for Auth {
@@ -90,7 +81,7 @@ use crate::Method;
 ///             PATCH(update_user),
 ///     ));
 /// 
-///     Ohkami::with(Log, (
+///     Ohkami::new((
 ///         "/hc" .GET(health_check),
 ///         "/api".By(api_ohkami),
 ///     ))

@@ -105,16 +105,14 @@ impl Response {
     #[inline] pub(crate) fn into_bytes(self) -> Vec<u8> {
         let Self { status, mut headers, content, .. } = self;
 
-
-        /*===== HTTP specification =====*/
+        /*===== for HTTP specification =====*/
         headers.set().Date(::ohkami_lib::imf_fixdate_now());
 
         if content.is_none() && !matches!(status, Status::NoContent) {
             headers.set().ContentLength("0");
         }
 
-
-        /*===== build bytes from this response =====*/
+        /*===== build bytes from self =====*/
         let mut buf = Vec::from("HTTP/1.1 ");
 
         buf.extend_from_slice(status.as_bytes());
