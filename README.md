@@ -21,7 +21,7 @@
 
 ```toml
 # This sample uses `tokio` runtime.
-# You can choose `async-std` instead by feature "rt_async-std".
+# `async-std` is available by feature "rt_async-std".
 
 [dependencies]
 ohkami = { version = "0.14", features = ["rt_tokio"] }
@@ -131,15 +131,6 @@ ohkami's middlewares are called "**fang**s".
 ```rust,no_run
 use ohkami::prelude::*;
 
-struct AppendHeaders;
-impl BackFang for AppendHeaders {
-    async fn bite(&self, res: &mut Response, _req: &Request) -> Result<(), Response> {
-        res.headers.set()
-            .Server("ohkami");
-        Ok(())
-    }
-}
-
 struct LogRequest;
 impl FrontFang for LogRequest {
     async fn bite(&self, req: &mut Request) -> Result<(), Response> {
@@ -148,13 +139,21 @@ impl FrontFang for LogRequest {
     }
 }
 
+struct AppendServer;
+impl BackFang for AppendServer {
+    async fn bite(&self, res: &mut Response, _req: &Request) -> Result<(), Response> {
+        res.headers.set()
+            .Server("ohkami");
+        Ok(())
+    }
+}
+
 #[tokio::main]
 async fn main() {
-    Ohkami::with((AppendHeaders, LogRequest), (
+    Ohkami::with((AppendServer, LogRequest), (
         "/".GET(|| async {"Hello!"})
     )).howl("localhost:8080").await
 }
-
 ```
 
 <br>
@@ -204,9 +203,7 @@ use ohkami::testing::*; // <--
 
 fn hello_ohkami() -> Ohkami {
     Ohkami::new((
-        "/hello".GET(|| async move {
-            "Hello, world!"
-        }),
+        "/hello".GET(|| async {"Hello, world!"}),
     ))
 }
 
@@ -236,7 +233,7 @@ async fn test_my_ohkami() {
 - [ ] WebSocket
 
 ## MSRV (Minimum Supported rustc Version)
-Latest stable at that time.
+Latest stable
 
 ## License
 ohkami is licensed under MIT LICENSE ([LICENSE](https://github.com/kana-rus/ohkami/blob/main/LICENSE) or [https://opensource.org/licenses/MIT](https://opensource.org/licenses/MIT)).
