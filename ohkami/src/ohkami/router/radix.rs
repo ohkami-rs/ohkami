@@ -20,6 +20,7 @@ use crate::websocket::{
 
 /*===== defs =====*/
 
+#[derive(Debug)]
 pub(crate) struct RadixRouter {
     pub(super) global_fangs: GlobalFangs,
     pub(super) GET:          Node,
@@ -37,7 +38,102 @@ pub(super) struct GlobalFangs {
     pub(super) DELETE:  (&'static [FrontFang], &'static [BackFang]),
     pub(super) HEAD:    (&'static [FrontFang], &'static [BackFang]),
     pub(super) OPTIONS: (&'static [FrontFang], &'static [BackFang]),
-}
+} const _: () = {
+    struct C<Item: std::fmt::Debug>(Vec<Item>);
+    impl<Item: std::fmt::Debug> FromIterator<Item> for C<Item> {
+        fn from_iter<T: IntoIterator<Item = Item>>(iter: T) -> Self {
+            Self(iter.into_iter().collect())
+        }
+    }
+    impl<Item: std::fmt::Debug> std::fmt::Debug for C<Item> {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            f.write_char('[')?;
+            {
+                let mut i = 0;
+                loop {
+                    if i == self.0.len() {break}
+
+                    self.0[i].fmt(f)?;
+                    i += 1;
+
+                    if i < self.0.len()-1 {
+                        f.write_char(',')?;
+                        f.write_char(' ')?;
+                    }
+                }
+            }
+            f.write_char(']')?;
+            Ok(())
+        }
+    }
+
+    impl std::fmt::Debug for GlobalFangs {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            let mut d = f.debug_struct("global_fangs");
+            let mut d = &mut d;
+
+            let mut set_once = false;
+            if !(self.GET.0.is_empty() && self.GET.1.is_empty()) {set_once = true;
+                d = d.field("GET",
+                    &Iterator::chain(
+                        self.GET.0.iter().map(|_| 'f'),
+                        self.GET.1.iter().map(|_| 'f')
+                    ).collect::<C<_>>()
+                );
+            }
+            if !(self.PUT.0.is_empty() && self.PUT.1.is_empty()) {set_once = true;
+                d = d.field("PUT",
+                    &Iterator::chain(
+                        self.PUT.0.iter().map(|_| 'f'),
+                        self.PUT.1.iter().map(|_| 'f')
+                    ).collect::<C<_>>()
+                );
+            }
+            if !(self.POST.0.is_empty() && self.POST.1.is_empty()) {set_once = true;
+                d = d.field("POST",
+                    &Iterator::chain(
+                        self.POST.0.iter().map(|_| 'f'),
+                        self.POST.1.iter().map(|_| 'f')
+                    ).collect::<C<_>>()
+                );
+            }
+            if !(self.PATCH.0.is_empty() && self.PATCH.1.is_empty()) {set_once = true;
+                d = d.field("PATCH",
+                    &Iterator::chain(
+                        self.PATCH.0.iter().map(|_| 'f'),
+                        self.PATCH.1.iter().map(|_| 'f')
+                    ).collect::<C<_>>()
+                );
+            }
+            if !(self.DELETE.0.is_empty() && self.DELETE.1.is_empty()) {set_once = true;
+                d = d.field("DELETE",
+                    &Iterator::chain(
+                        self.DELETE.0.iter().map(|_| 'f'),
+                        self.DELETE.1.iter().map(|_| 'f')
+                    ).collect::<C<_>>()
+                );
+            }
+            if !(self.HEAD.0.is_empty() && self.HEAD.1.is_empty()) {set_once = true;
+                d = d.field("HEAD",
+                    &Iterator::chain(
+                        self.HEAD.0.iter().map(|_| 'f'),
+                        self.HEAD.1.iter().map(|_| 'f')
+                    ).collect::<C<_>>()
+                );
+            }
+            if !(self.OPTIONS.0.is_empty() && self.OPTIONS.1.is_empty()) {set_once = true;
+                d = d.field("OPTIONS",
+                    &Iterator::chain(
+                        self.OPTIONS.0.iter().map(|_| 'f'),
+                        self.OPTIONS.1.iter().map(|_| 'f')
+                    ).collect::<C<_>>()
+                );
+            }
+
+            if set_once {d.finish()} else {f.write_str(" {}")}
+        }
+    }
+};
 
 pub(super) struct Node {
     pub(super) patterns: &'static [Pattern],
@@ -48,19 +144,75 @@ pub(super) struct Node {
 } const _: () = {
     impl std::fmt::Debug for Node {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            struct FangMarker;
-            impl std::fmt::Debug for FangMarker {
+            struct PatternsMarker(&'static [Pattern]);
+            impl std::fmt::Debug for PatternsMarker {
                 fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                    f.write_char('#')
+                    f.write_char('[')?;
+                    'items: {
+                        let mut n = self.0.len();
+                        loop {
+                            if n == 0 {break 'items}
+                            f.write_str(&format!("{:?}", self.0[n-1]))?;
+                            n -= 1;
+                            if n > 1 {f.write_char(' ')?;}
+                        }
+                    }
+                    f.write_char(']')?;
+
+                    Ok(())
                 }
             }
 
-            f.debug_struct("Node")
-                .field("patterns", &self.patterns)
-                .field("handler", &if self.handler.is_some() {"Some<_>"} else {"None"})
+            enum HandlerMarker { None, Some }
+            impl From<Option<&Handler>> for HandlerMarker {
+                fn from(h: Option<&Handler>) -> Self {
+                    match h {Some(_) => Self::Some, None => Self::None}
+                }
+            }
+            impl std::fmt::Debug for HandlerMarker {
+                fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                    match self {Self::Some => f.write_char('@'), Self::None => f.write_str("None")}
+                }
+            }
+
+            struct FangsMarker(usize);
+            impl From<&[FrontFang]> for FangsMarker {
+                fn from(ff: &[FrontFang]) -> Self {
+                    Self(ff.len())
+                }
+            }
+            impl From<&[BackFang]> for FangsMarker {
+                fn from(bf: &[BackFang]) -> Self {
+                    Self(bf.len())
+                }
+            }
+            impl std::fmt::Debug for FangsMarker {
+                fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                    f.write_char('[')?;
+                    'items: {
+                        let mut n = self.0;
+                        loop {
+                            if n == 0 {break 'items}
+                            f.write_char('#')?;
+                            n -= 1;
+                            if n > 1 {
+                                f.write_char(',')?;
+                                f.write_char(' ')?;
+                            }
+                        }
+                    }
+                    f.write_char(']')?;
+
+                    Ok(())
+                }
+            }
+
+            f.debug_struct("")
+                .field("patterns", &PatternsMarker(self.patterns))
+                .field("handler", &HandlerMarker::from(self.handler.as_ref()))
+                .field("front", &FangsMarker::from(self.front))
+                .field("back", &FangsMarker::from(self.back))
                 .field("children", &self.children)
-                .field("front", &self.front.iter().map(|_| FangMarker).collect::<Vec<_>>())
-                .field("back", &self.back.iter().map(|_| FangMarker).collect::<Vec<_>>())
                 .finish()
         }
     }
@@ -178,7 +330,7 @@ impl Node {
 
         loop {
             #[cfg(feature="DEBUG")]
-            println!("[target] {:?}", target);
+            println!("[target] {:#?}", target);
 
             #[cfg(feature="DEBUG")]
             println!("[patterns] {:?}", target.patterns);
@@ -215,7 +367,7 @@ impl Node {
                 return Some(target)
             } else {
                 #[cfg(feature="DEBUG")]
-                println!("not found, searching children: {:?}", target.children);
+                println!("not found, searching children: {:#?}", target.children);
         
                 target = match target.matchable_child(path) {
                     Some(child) => child,

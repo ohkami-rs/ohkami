@@ -17,7 +17,7 @@ const _: () = {
 
 
 /*===== defs =====*/
-#[derive(Clone/* for testing */)]
+#[derive(Clone, Debug)]
 pub struct TrieRouter {
     pub(super) global_fangs: GlobalFangs,
     pub(super) GET:          Node,
@@ -36,7 +36,39 @@ pub(super) struct GlobalFangs {
     pub(super) DELETE:  Vec<Fang>,
     pub(super) HEAD:    Vec<Fang>,
     pub(super) OPTIONS: Vec<Fang>,
-}
+} const _: () = {
+    impl std::fmt::Debug for GlobalFangs {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            let mut d = f.debug_struct("global_fangs");
+            let mut d = &mut d;
+
+            let mut set_once = false;
+            if !self.GET.is_empty() {set_once = true;
+                d = d.field("GET", &self.GET.iter().map(|_| "#").collect::<Vec<_>>());
+            }
+            if !self.PUT.is_empty() {set_once = true;
+                d = d.field("PUT", &self.PUT.iter().map(|_| "#").collect::<Vec<_>>());
+            }
+            if !self.POST.is_empty() {set_once = true;
+                d = d.field("POST", &self.POST.iter().map(|_| "#").collect::<Vec<_>>());
+            }
+            if !self.PATCH.is_empty() {set_once = true;
+                d = d.field("PATCH", &self.PATCH.iter().map(|_| "#").collect::<Vec<_>>());
+            }
+            if !self.DELETE.is_empty() {set_once = true;
+                d = d.field("DELETE", &self.DELETE.iter().map(|_| "#").collect::<Vec<_>>());
+            }
+            if !self.HEAD.is_empty() {set_once = true;
+                d = d.field("HEAD", &self.HEAD.iter().map(|_| "#").collect::<Vec<_>>());
+            }
+            if !self.OPTIONS.is_empty() {set_once = true;
+                d = d.field("OPTIONS", &self.OPTIONS.iter().map(|_| "#").collect::<Vec<_>>());
+            }
+
+            if set_once {d.finish()} else {f.write_str(" {}")}
+        }
+    }
+};
 
 #[derive(Clone/* for testing */)]
 pub(super) struct Node {
@@ -45,7 +77,18 @@ pub(super) struct Node {
     pub(super) fangs:    Vec<Fang>,
     pub(super) handler:  Option<Handler>,
     pub(super) children: Vec<Node>,
-}
+} const _: () = {
+    impl std::fmt::Debug for Node {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            f.debug_struct("")
+                .field("pattern",  &self.pattern)
+                .field("fangs",    &self.fangs.iter().map(|_| "#").collect::<Vec<_>>())
+                .field("handler",  &self.handler.as_ref().map(|_| "@"))
+                .field("children", &self.children)
+                .finish()
+        }
+    }
+};
 
 #[derive(Clone)]
 pub(super) enum Pattern {
@@ -247,7 +290,7 @@ impl Node {
 
     fn apply_fang(&mut self, fang: Fang) {
         for child in &mut self.children {
-            child.append_fang(fang.clone())
+            child.apply_fang(fang.clone())
         }
 
         if self.handler.is_some() {
@@ -292,10 +335,10 @@ impl Node {
 
         super::radix::Node {
             handler,
-            patterns: Box::leak(patterns.into_iter().map(Pattern::into_radix).collect()),
-            children: children.into_iter().map(|c| c.into_radix()).collect(),
             front,
             back,
+            patterns: Box::leak(patterns.into_iter().map(Pattern::into_radix).collect()),
+            children: children.into_iter().map(Node::into_radix).collect(),
         }
     }
 }
@@ -320,13 +363,13 @@ fn split_fangs(fangs: Vec<Fang>) -> (
     for f in unique_fangs {
         match f.proc {
             FangProc::Front(ff) => front.push(ff),
-            FangProc::Back(bf)  => back.push(bf),
+            FangProc::Back (bf) => back .push(bf),
         }
     }
 
     (
         Box::leak(front.into_boxed_slice()) as &_,
-        Box::leak(back.into_boxed_slice()) as &_,
+        Box::leak(back .into_boxed_slice()) as &_,
     )
 }
 
@@ -389,6 +432,12 @@ impl Node {
     ///     .register_handlers("/api/tasks/:id".GET (get_task));
     /// ```
     fn merge_here(&mut self, another_root: Node) -> Result<(), String> {
+        if self.handler.is_some() {
+            return Err(format!(
+                "Can't merge another Ohkami at route that already has handler"
+            ))
+        }
+
         let Node {
             pattern:  None, // <-- another_root は root node のはずなので必ず None のはず
             fangs:    another_root_fangs,

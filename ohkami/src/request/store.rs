@@ -42,7 +42,7 @@ impl Hasher for TypeIDHasger {
 /// impl FrontFang for MemorizeNow {
 ///     async fn bite(&self, req: &mut Request) -> Result<(), Response> {
 ///         req.memorize(serde_json::json!({
-///             "now": ohkami::utils::imf_fixdate_now()
+///             "now": std::time::SystemTime::now()
 ///         }));
 ///         Ok(())
 ///     }
@@ -57,10 +57,10 @@ impl Hasher for TypeIDHasger {
 /// use ohkami::Memory;  // <---
 /// 
 /// async fn handler(
-///     now: Memory<'_, serde_json::Value>
+///     data: Memory<'_, serde_json::Value>
 /// ) -> String {
 ///         // &'_ Value
-///     let memorized_data = *now;
+///     let memorized_data = *data;
 /// 
 ///     format!(
 ///         "It's {} !",

@@ -213,6 +213,17 @@ impl Ohkami {
             router.apply_fang(methods, fang);
         }
 
+        #[cfg(feature="DEBUG")]
+        println!("{router:#?}");
+
         router
+    }
+
+    #[cfg(all(feature="DEBUG", test))]
+    pub(crate) fn clone(&self) -> Self {
+        Self {
+            routes: self.routes.clone(),
+            fangs:  self.fangs .clone(),
+        }
     }
 }
