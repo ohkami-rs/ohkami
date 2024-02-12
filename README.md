@@ -21,7 +21,7 @@
 
 ```toml
 # This sample uses `tokio` runtime.
-# You can choose `async-std` instead by feature "rt_async-std".
+# `async-std` is available by feature "rt_async-std".
 
 [dependencies]
 ohkami = { version = "0.14", features = ["rt_tokio"] }
