@@ -154,7 +154,7 @@ impl JWT {
 
         let signature = {
             use ::sha2::{Sha256};
-            use ::hmac::{Hmac, KeyInit, Mac};
+            use ::hmac::{Hmac, Mac};
 
             let mut s = Hmac::<Sha256>::new_from_slice(self.secret.as_bytes()).unwrap();
             s.update(unsigned_token.as_bytes());
@@ -224,7 +224,7 @@ impl JWT {
 
         let is_correct_signature = {
             use ::sha2::{Sha256, Sha384, Sha512};
-            use ::hmac::{Hmac, KeyInit, Mac};
+            use ::hmac::{Hmac, Mac};
 
             match self.alg {
                 VerifyingAlgorithm::HS256 => {
@@ -232,21 +232,21 @@ impl JWT {
                     hs.update(header_part.as_bytes());
                     hs.update(b".");
                     hs.update(payload_part.as_bytes());
-                    hs.finalize().into_bytes().0 == *requested_signature
+                    hs.finalize().into_bytes().as_slice() == &requested_signature
                 }
                 VerifyingAlgorithm::HS384 => {
                     let mut hs = Hmac::<Sha384>::new_from_slice(self.secret.as_bytes()).unwrap();
                     hs.update(header_part.as_bytes());
                     hs.update(b".");
                     hs.update(payload_part.as_bytes());
-                    hs.finalize().into_bytes().0 == *requested_signature
+                    hs.finalize().into_bytes().as_slice() == &requested_signature
                 }
                 VerifyingAlgorithm::HS512 => {
                     let mut hs = Hmac::<Sha512>::new_from_slice(self.secret.as_bytes()).unwrap();
                     hs.update(header_part.as_bytes());
                     hs.update(b".");
                     hs.update(payload_part.as_bytes());
-                    hs.finalize().into_bytes().0 == *requested_signature
+                    hs.finalize().into_bytes().as_slice() == &requested_signature
                 }
             }
         };

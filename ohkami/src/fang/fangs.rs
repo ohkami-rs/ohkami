@@ -3,7 +3,7 @@ use crate::{Response, Request, Method::{self, *}, fang::Fang};
 
 
 /// Represents "can be used as a front fang", e.g. executed before `req` is passed to a handler.\
-/// You can register this fang only for several request methods using `METHODS` const parameter.
+/// You can register this fang only for some request methods you like using `METHODS` const parameter.
 /// 
 /// <br>
 /// 
@@ -35,13 +35,13 @@ impl<FF: FrontFang + Send + Sync> FrontFangCaller for FF {
     fn call<'c>(&'c self, req: &'c mut Request) -> Pin<Box<dyn Future<Output = Result<(), Response>> + Send + 'c>>
     where Self: Sync + 'c
     {
-        Box::pin(async move {self.bite(req).await})
+        Box::pin(self.bite(req))
     }
 }
 
 
 /// Represents "can be used as a back fang", e.g. executed after a handler generates `res`.\
-/// You can register this fang only for several request methods using `METHODS` const parameter.
+/// You can register this fang only for some request methods you like using `METHODS` const parameter.
 /// 
 /// <br>
 /// 
@@ -73,7 +73,7 @@ impl<BF: BackFang + Send + Sync> BackFangCaller for BF {
     fn call<'c>(&'c self, res: &'c mut Response, _req: &'c Request) -> Pin<Box<dyn Future<Output = Result<(), Response>> + Send + 'c>>
     where Self: Sync + 'c
     {
-        Box::pin(async move {self.bite(res, _req).await})
+        Box::pin(self.bite(res, _req))
     }
 }
 

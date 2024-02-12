@@ -107,7 +107,7 @@ async fn main() {
         .with_max_level(tracing::Level::INFO)
         .init();
 
-    let hello_ohkami = Ohkami::with((SetServer, LogRequest), (
+    let hello_ohkami = Ohkami::with(SetServer, (
         "/query".
             GET(hello_handler::hello_by_query),
         "/json".
@@ -116,8 +116,8 @@ async fn main() {
 
     tracing::info!("Started listening on http://localhost:3000");
 
-    Ohkami::with((LogRequest,), (
+    Ohkami::new((
         "/hc" .GET(health_handler::health_check),
         "/api".By(hello_ohkami),
-    )).howl("localhost:3000").await
+    )).howl_with(LogRequest, "localhost:3000").await
 }

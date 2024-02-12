@@ -29,14 +29,10 @@ async fn post_submit(form_data: FormData) -> Status {
 }
 
 struct Logger;
-impl FrontFang for Logger {
-    fn bite(&self, req: &mut Request) -> impl std::future::Future<Output = Result<(), Response>> + Send {
-        println!("[request] {} {}", req.method(), req.path());
-
-        if let Some(body) = req.payload() {
-            let content_type = req.headers.ContentType().unwrap_or("");
-            println!("[payload] {content_type:?}\n{}", body.escape_ascii());
-        }
+impl BackFang for Logger {
+    fn bite(&self, res: &mut Response, req: &Request) -> impl std::future::Future<Output = Result<(), Response>> + Send {
+        println!("[request ] {:?}", req);
+        println!("[response] {:?}", res);
 
         async {Ok(())}
     }
@@ -44,8 +40,8 @@ impl FrontFang for Logger {
 
 #[tokio::main]
 async fn main() {
-    Ohkami::with(Logger, (
+    Ohkami::new((
         "/form"  .GET(get_form),
         "/submit".POST(post_submit),
-    )).howl("localhost:5000").await
+    )).howl_with(Logger, "localhost:5000").await
 }

@@ -7,7 +7,7 @@ use crate::fang::Fangs;
 use crate::Method;
 
 
-/// # Ohkami - a robust wolf who serves web app
+/// # Ohkami - a robust wolf who serves your web app
 /// 
 /// <br>
 /// 
@@ -18,15 +18,6 @@ use crate::Method;
 /// # use ohkami::typed::ResponseBody;
 /// # use ohkami::typed::status::{OK, Created};
 /// # 
-/// struct Log;
-/// impl BackFang for Log {
-///     /* 〜 */
-/// #    async fn bite(&self, res: &mut Response, _req: &Request) -> Result<(), Response> {
-/// #        println!("{_req:?}");
-/// #        println!("{res:?}");
-/// #        Ok(())
-/// #    }
-/// }
 /// 
 /// struct Auth;
 /// impl FrontFang for Auth {
@@ -90,7 +81,7 @@ use crate::Method;
 ///             PATCH(update_user),
 ///     ));
 /// 
-///     Ohkami::with(Log, (
+///     Ohkami::new((
 ///         "/hc" .GET(health_check),
 ///         "/api".By(api_ohkami),
 ///     ))
@@ -156,13 +147,16 @@ impl Ohkami {
     /// # ;
     /// ```
     pub fn new(routes: impl build::Routes) -> Self {
+        let mut router = TrieRouter::new();
+        routes.apply(&mut router);
+
         Self {
-            routes: routes.apply(TrieRouter::new()),
+            routes: router,
             fangs:  Vec::new(),
         }
     }
 
-    /// - `fangs` is an item that implements `FrontFang` or `BackFang`, or tuple of such items :
+    /// - `fangs` is an item that implements `FrontFang` or `BackFang`, or tuple of such items:
     /// 
     /// ```
     /// use ohkami::prelude::*;
@@ -175,6 +169,8 @@ impl Ohkami {
     ///     }
     /// }
     /// ```
+    /// `fangs` passed here are executed just before/after a handler in this `Ohkami` is called for the request.
+    /// If you use some fangs for any requests, specify them in `.howl_with`!
     /// 
     /// <br/>
     /// 
@@ -199,8 +195,11 @@ impl Ohkami {
     /// # ;
     /// ```
     pub fn with<T>(fangs: impl Fangs<T>, routes: impl build::Routes) -> Self {
+        let mut router = TrieRouter::new();
+        routes.apply(&mut router);
+
         Self {
-            routes: routes.apply(TrieRouter::new()),
+            routes: router,
             fangs:  fangs.collect(),
         }
     }
@@ -209,9 +208,22 @@ impl Ohkami {
 impl Ohkami {
     pub(crate) fn into_router(self) -> TrieRouter {
         let mut router = self.routes;
+
         for (methods, fang) in self.fangs {
-            router = router.apply_fang(methods, fang)
+            router.apply_fang(methods, fang);
         }
+
+        #[cfg(feature="DEBUG")]
+        println!("{router:#?}");
+
         router
+    }
+
+    #[cfg(all(feature="DEBUG", test))]
+    pub(crate) fn clone(&self) -> Self {
+        Self {
+            routes: self.routes.clone(),
+            fangs:  self.fangs .clone(),
+        }
     }
 }

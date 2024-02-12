@@ -12,9 +12,9 @@ async fn hello(name: &str) -> OK<String> {
 #[tokio::main]
 async fn main() {
     Ohkami::new((
-        "/healthz".
-            GET(health_check),
-        "/hello/:name".
-            GET(hello),
+        "/healthz"
+            .GET(health_check),
+        "/hello/:name"
+            .GET(hello),
     )).howl("localhost:3000").await
 }

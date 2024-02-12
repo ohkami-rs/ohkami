@@ -5,16 +5,16 @@ use crate::handler::{Handlers, ByAnother};
 
 
 trait RoutingItem {
-    fn apply(self, routes: TrieRouter) -> TrieRouter;
+    fn apply(self, router: &mut TrieRouter);
 } const _: () = {
     impl RoutingItem for Handlers {
-        fn apply(self, routes: TrieRouter) -> TrieRouter {
-            routes.register_handlers(self)
+        fn apply(self, router: &mut TrieRouter) {
+            router.register_handlers(self)
         }
     }
     impl RoutingItem for ByAnother {
-        fn apply(self, routes: TrieRouter) -> TrieRouter {
-            routes.merge_another(self)
+        fn apply(self, router: &mut TrieRouter) {
+            router.merge_another(self)
         }
     }
 
@@ -38,33 +38,30 @@ trait RoutingItem {
     /// // This must be so annoying!!!
     /// ```
     impl RoutingItem for &'static str {
-        fn apply(self, routes: TrieRouter) -> TrieRouter {
-            routes
-        }
+        fn apply(self, _router: &mut TrieRouter) {}
     }
 };
 
 pub trait Routes {
-    fn apply(self, routes: TrieRouter) -> TrieRouter;
+    fn apply(self, router: &mut TrieRouter);
 } impl<R: RoutingItem> Routes for R {
-    fn apply(self, mut routes: TrieRouter) -> TrieRouter {
-        routes = <R as RoutingItem>::apply(self, routes);
-        routes
+    fn apply(self, router: &mut TrieRouter) {
+        <R as RoutingItem>::apply(self, router)
     }
 } macro_rules! impl_for_tuple {
-    ( $( $item:ident ),* ) => {
-        impl<$( $item: RoutingItem ),*> Routes for ( $($item,)* ) {
-            fn apply(self, mut routes: TrieRouter) -> TrieRouter {
-                let ( $( $item, )* ) = self;
+    ( $( $item:ident ),+ ) => {
+        impl<$( $item: RoutingItem ),+> Routes for ( $($item,)+ ) {
+            fn apply(self, router: &mut TrieRouter) {
+                let ( $( $item, )+ ) = self;
                 $(
-                    routes = <$item as RoutingItem>::apply($item, routes);
-                )*
-                routes
+                    <$item as RoutingItem>::apply($item, router);
+                )+
             }
         }
     };
 } const _: () = {
-    impl_for_tuple!();
+    impl Routes for () {fn apply(self, _router: &mut TrieRouter) {}}
+    
     impl_for_tuple!(R1);
     impl_for_tuple!(R1, R2);
     impl_for_tuple!(R1, R2, R3);

@@ -8,13 +8,16 @@ mod handlers;
 #[cfg(test)]
 mod _test;
 
+use fangs::{LogRequest, LogResponse};
 use errors::RealWorldError;
+
 use sqlx::postgres::PgPoolOptions;
 
 
 #[tokio::main]
 async fn main() -> Result<(), errors::RealWorldError> {
-    dotenvy::dotenv().map_err(|e| RealWorldError::Config(format!("Failed to load .env: {e}")))?;
+    dotenvy::dotenv()
+        .map_err(|e| RealWorldError::Config(format!("Failed to load .env: {e}")))?;
     tracing_subscriber::fmt()
         .with_max_level(tracing_subscriber::filter::LevelFilter::DEBUG)
         .init();
@@ -26,7 +29,7 @@ async fn main() -> Result<(), errors::RealWorldError> {
         .map_err(|e| RealWorldError::DB(e))?;
 
     handlers::realworld_ohkami(pool)
-        .howl("localhost:8080").await;
+        .howl_with((LogRequest, LogResponse), "localhost:8080").await;
 
     Ok(())
 }

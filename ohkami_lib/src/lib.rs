@@ -3,6 +3,9 @@ pub mod base64;
 mod list;
 pub use list::List;
 
+mod time;
+pub use time::imf_fixdate_now;
+
 mod slice;
 pub use slice::{Slice, CowSlice};
 

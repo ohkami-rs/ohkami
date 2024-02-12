@@ -105,13 +105,19 @@ impl Response {
     #[inline] pub(crate) fn into_bytes(self) -> Vec<u8> {
         let Self { status, mut headers, content, .. } = self;
 
+        /*===== for HTTP specification =====*/
+        headers.set().Date(::ohkami_lib::imf_fixdate_now());
+
         if content.is_none() && !matches!(status, Status::NoContent) {
             headers.set().ContentLength("0");
         }
 
+        /*===== build bytes from self =====*/
         let mut buf = Vec::from("HTTP/1.1 ");
+
         buf.extend_from_slice(status.as_bytes());
         buf.extend_from_slice(b"\r\n");
+        
         headers.write_to(&mut buf);
         if let Some(content) = content {
             buf.extend_from_slice(&content);
@@ -135,6 +141,10 @@ impl Response {
         self.headers.set()
             .ContentType(None)
             .ContentLength(None);
+    }
+    pub fn without_content(mut self) -> Self {
+        self.drop_content();
+        self
     }
 
     #[inline] pub fn text<Text: Into<Cow<'static, str>>>(mut self, text: Text) -> Self {
@@ -210,7 +220,7 @@ const _: () = {
                 Some(cow) => f.debug_struct("Response")
                     .field("status",  &self.status)
                     .field("headers", &self.headers)
-                    .field("content", &cow.escape_ascii().to_string())
+                    .field("content", &String::from_utf8_lossy(&*cow))
                     .finish(),
             }
         }
