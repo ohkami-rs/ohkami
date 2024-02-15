@@ -17,7 +17,7 @@ features      = ["rt_tokio", "custom-header"]
 
 [dependencies]
 ohkami_lib    = { version = "=0.1.1", path = "../ohkami_lib" }
-ohkami_macros = { version = "=0.5.1", path = "../ohkami_macros" }
+ohkami_macros = { version = "=0.5.2", path = "../ohkami_macros" }
 tokio         = { version = "1", optional = true, features = ["net", "rt", "io-util", "sync"] }
 async-std     = { version = "1", optional = true }
 byte_reader   = { version = "2.0.0", features = ["text"] }
@@ -29,7 +29,7 @@ hmac          = { version = "0.12.1", default-features = false }
 rustc-hash    = { version = "1.1", optional = true }
 
 [features]
-default       = ["utils", "testing"]
+#default       = ["utils", "testing"]
 rt_tokio      = ["dep:tokio"]
 rt_async-std  = ["dep:async-std"]
 utils         = []
@@ -44,12 +44,12 @@ DEBUG = [
     "tokio?/rt-multi-thread",
     "async-std?/attributes",
 ]
-#default = [
-#    "utils",
-#    "testing",
-#    "custom-header",
-#    #"websocket",
-#    "rt_tokio",
-#    #"rt_async-std",
-#    "DEBUG",
-#]
+default = [
+    "utils",
+    "testing",
+    "custom-header",
+    #"websocket",
+    "rt_tokio",
+    #"rt_async-std",
+    "DEBUG",
+]

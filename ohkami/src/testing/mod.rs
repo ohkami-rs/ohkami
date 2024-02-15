@@ -28,6 +28,7 @@
 //! ```
 
 use crate::{Response, Request, Ohkami, Status, Method};
+use crate::fang::Fangs;
 use crate::response::ResponseHeader;
 
 use std::borrow::Cow;
@@ -36,10 +37,10 @@ use std::{pin::Pin, future::Future, format as f};
 
 
 pub trait Testing {
-    fn oneshot(&self, req: TestRequest) -> Oneshot;
-
-    // #[cfg(feature="websocket")]
-    // fn oneshot_and_on_upgrade(&self, req: TestRequest) -> OneshotAndUpgraded;
+    fn oneshot_with<T>(&self, global_fangs: impl Fangs<T>, req: TestRequest) -> Oneshot;
+    fn oneshot(&self, req: TestRequest) -> Oneshot {
+        self.oneshot_with((), req)
+    }
 }
 
 pub struct Oneshot(
@@ -52,72 +53,27 @@ pub struct Oneshot(
 }
 
 impl Testing for Ohkami {
-    fn oneshot(&self, request: TestRequest) -> Oneshot {
+    fn oneshot_with<T>(&self, global_fangs: impl Fangs<T>, req: TestRequest) -> Oneshot {
         let router = {
-            let mut router = self.routes.clone();
-            for (methods, fang) in &self.fangs {
-                router.apply_fang(methods, fang.clone())
+            let mut trie = self.clone().into_router();
+            for (methods, fang) in global_fangs.collect() {
+                trie.register_global_fang(methods, fang)
             }
-            router.into_radix()
+            trie.into_radix()
         };
 
         let res = async move {
-            let mut req = Request::init();
-            let mut req = unsafe {Pin::new_unchecked(&mut req)};
-            req.as_mut().read(&mut &request.encode()[..]).await;
+            let mut request = Request::init();
+            let mut request = unsafe {Pin::new_unchecked(&mut request)};
+            request.as_mut().read(&mut &req.encode()[..]).await;
 
-            #[cfg(not(feature="websocket"))]
-            let res = router.handle(&mut req).await;
-            #[cfg(feature="websocket")]
-            let (res, _) = router.handle(&mut req).await;
+            let res = router.handle(&mut request).await;
 
             TestResponse::new(res)
         };
 
         Oneshot(Box::new(res))
     }
-
-//    #[cfg(feature="websocket")]
-//    fn oneshot_and_on_upgrade(
-//        &self,
-//        request: TestRequest,
-//
-//    ) -> OneshotAndUpgraded {
-//        use crate::websocket::{reserve_upgrade_in_test, assume_upgradable_in_test, WebSocketContext};
-//
-//        let router = {
-//            let mut router = self.routes.clone();
-//            for (methods, fang) in &self.fangs {
-//                router = router.apply_fang(methods, fang.clone())
-//            }
-//            router.into_radix()
-//        };
-//
-//        let res_and_socket = async move {
-//            let mut req = Request::init();
-//            let mut req = unsafe {Pin::new_unchecked(&mut req)};
-//            req.as_mut().read(&mut &request.encode_request()[..]).await;
-//
-//            let (res, upgrade_id) = router.handle(Context::new(), &mut req).await;
-//            match upgrade_id {
-//                None     => (TestResponse::new(res), None),
-//                Some(id) => {
-//                    let (client, server) = TestStream::new_pair();
-//                    unsafe {reserve_upgrade_in_test(id, server)};
-//
-//                    let server = assume_upgradable_in_test(id).await;
-//                    let ctx = WebSocketContext::new(Context {
-//                        upgrade_id,
-//                        ..Context::new()
-//                    }, &mut req);
-//                    
-//                    (TestResponse::new(res), Some(TestWebSocket::new(client)))
-//                },
-//            }
-//        };
-//
-//        OneshotAndUpgraded(Box::new(res_and_socket))
-//    }
 }
 
 pub struct TestRequest {

@@ -1,3 +1,4 @@
+#![allow(non_snake_case)]
 #![cfg(all(feature="testing", feature="utils"))]
 use crate::prelude::*;
 use crate::testing::*;
@@ -245,4 +246,87 @@ fn my_ohkami() -> Ohkami {
     let req = TestRequest::GET("/a/b/c/d/e");
     o.oneshot(req).await;
     assert_eq!(*N().lock().unwrap(), 4);
+}
+
+
+#[crate::__rt__::test] async fn test_global_fangs_registration() {
+    use std::sync::{OnceLock, Mutex};
+
+    async fn h() -> &'static str {"Hello"}
+
+    fn N() -> &'static Mutex<usize> {
+        static N: OnceLock<Mutex<usize>> = OnceLock::new();
+        N.get_or_init(|| Mutex::new(0))
+    }
+
+    struct APIIncrement;
+    impl FrontFang for APIIncrement {
+        fn bite(&self, _: &mut Request) -> impl std::future::Future<Output = Result<(), Response>> + Send {
+            *N().lock().unwrap() += 1;
+            async {Ok(())}
+        }
+    }
+
+    struct GlobalIncrement;
+    impl FrontFang for GlobalIncrement {
+        fn bite(&self, _: &mut Request) -> impl std::future::Future<Output = Result<(), Response>> + Send {
+            *N().lock().unwrap() += 2;
+            async {Ok(())}
+        }
+    }
+
+    struct NotFoundIncrement;
+    impl BackFang for NotFoundIncrement {
+        fn bite(&self, res: &mut Response, _req: &Request) -> impl std::future::Future<Output = Result<(), Response>> + Send {
+            if res.status == Status::NotFound {
+                *N().lock().unwrap() += 3;
+            }
+            async {Ok(())}
+        }
+    }
+
+    let o = Ohkami::new((
+        "/healthz".GET(h),
+        "/api".By(Ohkami::with(APIIncrement, (
+            "/a".GET(h),
+            "/b".GET(h),
+        )))
+    ));
+
+
+    dbg!(o.clone().into_router());
+    dbg!(o.clone().into_router().into_radix());
+
+
+    let req = TestRequest::GET("/healthz");
+    o.oneshot_with((), req).await;
+    assert_eq!(*N().lock().unwrap(), 0);
+
+    let req = TestRequest::GET("/healthz");
+    o.oneshot_with((NotFoundIncrement,), req).await;
+    assert_eq!(*N().lock().unwrap(), 0);
+
+    let req = TestRequest::GET("/healthz");
+    o.oneshot_with((GlobalIncrement, NotFoundIncrement), req).await;
+    assert_eq!(*N().lock().unwrap(), 2);
+
+    let req = TestRequest::GET("/healthy");
+    o.oneshot_with((NotFoundIncrement,), req).await;
+    assert_eq!(*N().lock().unwrap(), 5);
+
+    let req = TestRequest::GET("/healthy");
+    o.oneshot_with((GlobalIncrement, NotFoundIncrement), req).await;
+    assert_eq!(*N().lock().unwrap(), 10);
+
+    let req = TestRequest::GET("/api/a");
+    o.oneshot_with((GlobalIncrement, NotFoundIncrement), req).await;
+    assert_eq!(*N().lock().unwrap(), 13);
+
+    let req = TestRequest::GET("/api/b");
+    o.oneshot_with((NotFoundIncrement,), req).await;
+    assert_eq!(*N().lock().unwrap(), 14);
+
+    let req = TestRequest::GET("/api/c");
+    o.oneshot_with((GlobalIncrement, NotFoundIncrement), req).await;
+    assert_eq!(*N().lock().unwrap(), 19);
 }
