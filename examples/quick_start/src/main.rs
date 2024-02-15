@@ -6,7 +6,7 @@ async fn health_check() -> NoContent {
 }
 
 async fn hello(name: &str) -> String {
-    OK(format!("Hello, {name}!"))
+    format!("Hello, {name}!")
 }
 
 #[tokio::main]

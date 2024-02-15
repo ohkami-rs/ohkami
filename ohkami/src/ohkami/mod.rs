@@ -119,6 +119,7 @@ use crate::Method;
 ///     todo!()
 /// }
 /// ```
+#[cfg_attr(all(feature="DEBUG", test), derive(Clone))]
 pub struct Ohkami {
     pub(crate) routes: TrieRouter,
 
@@ -218,13 +219,5 @@ impl Ohkami {
         println!("{router:#?}");
 
         router
-    }
-
-    #[cfg(all(feature="DEBUG", test))]
-    pub(crate) fn clone(&self) -> Self {
-        Self {
-            routes: self.routes.clone(),
-            fangs:  self.fangs .clone(),
-        }
     }
 }
