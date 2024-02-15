@@ -110,11 +110,9 @@ pub fn Query(_: proc_macro::TokenStream, data: proc_macro::TokenStream) -> proc_
 /// 
 /// ```ignore
 /// use ohkami::prelude::*;
-/// use ohkami::serde::Deserialize;
-/// use ohkami::typed::{Payload}; // <--
+/// use ohkami::typed::Payload; // <--
 /// 
-/// #[Payload(JSON)]
-/// #[derive(Deserialize)]
+/// #[Payload(JSOND)]
 /// struct HelloRequest<'req> {
 ///     name:     &'req str,
 ///     n_repeat: Option<usize>,
