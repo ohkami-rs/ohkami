@@ -32,7 +32,7 @@ tokio  = { version = "1",    features = ["full"] }
 
 ```rust,no_run
 use ohkami::prelude::*;
-use ohkami::typed::status::{NoContent};
+use ohkami::typed::status::NoContent;
 
 async fn health_check() -> NoContent {
     NoContent
@@ -119,7 +119,7 @@ async fn create_user(body: CreateUserRequest<'_>) -> Created<User> {
     })
 }
 ```
-`#[Query]`, `#[Payload( 〜 )]` implements `FromRequest` trait for the struct.
+`#[Query]`, `#[Payload( 〜 )]` derives `FromRequest` trait impl for the struct.
 
 ( with path params : `({path params}, {FromRequest value}s...)` )
 

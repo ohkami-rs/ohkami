@@ -74,11 +74,11 @@ use crate::Method;
 /// 
 /// fn my_ohkami() -> Ohkami {
 ///     let api_ohkami = Ohkami::with((Auth,), (
-///         "/users".
-///             POST(create_user),
-///         "/users/:id".
-///             GET(get_user_by_id).
-///             PATCH(update_user),
+///         "/users"
+///             .POST(create_user),
+///         "/users/:id"
+///             .GET(get_user_by_id)
+///             .PATCH(update_user),
 ///     ));
 /// 
 ///     Ohkami::new((
@@ -119,7 +119,7 @@ use crate::Method;
 ///     todo!()
 /// }
 /// ```
-#[cfg_attr(all(feature="DEBUG", test), derive(Clone))]
+#[cfg_attr(feature="testing", derive(Clone))]
 pub struct Ohkami {
     pub(crate) routes: TrieRouter,
 
@@ -128,7 +128,7 @@ pub struct Ohkami {
 }
 
 impl Ohkami {
-    /// - `routes` is tuple of routing item :
+    /// - `routes` is a tuple of routing items :
     /// 
     /// ```
     /// # use ohkami::Route;
@@ -139,11 +139,11 @@ impl Ohkami {
     /// #
     /// # let _ =
     /// (
-    ///     "/a".
-    ///         GET(handler1).
-    ///         POST(handler2),
-    ///     "/b".
-    ///         PUT(handler3),
+    ///     "/a"
+    ///         .GET(handler1)
+    ///         .POST(handler2),
+    ///     "/b"
+    ///         .PUT(handler3),
     ///     //...
     /// )
     /// # ;
@@ -176,7 +176,7 @@ impl Ohkami {
     /// 
     /// <br/>
     /// 
-    /// - `routes` is tuple of routing item :
+    /// - `routes` is a tuple of routing items :
     /// 
     /// ```
     /// # use ohkami::Route;
@@ -187,11 +187,11 @@ impl Ohkami {
     /// #
     /// # let _ =
     /// (
-    ///     "/a".
-    ///         GET(handler1).
-    ///         POST(handler2),
-    ///     "/b".
-    ///         PUT(handler3),
+    ///     "/a"
+    ///         .GET(handler1)
+    ///         .POST(handler2),
+    ///     "/b"
+    ///         .PUT(handler3),
     ///     //...
     /// )
     /// # ;
