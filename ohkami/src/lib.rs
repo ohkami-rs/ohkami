@@ -20,14 +20,14 @@
 #[cfg(any(
     all(feature="rt_tokio", feature="rt_async-std")
 ))] compile_error!("
-    Can't activate multiple `rt_*` feature!
+    Can't activate multiple `rt_*` features!
 ");
 
 #[cfg(not(any(
     feature="rt_tokio",
     feature="rt_async-std",
 )))] compile_error!("
-    Activate 1 of `rt_*` features：
+    Activate one of `rt_*` features：
     - rt_tokio
     - rt_async-std
 ");
