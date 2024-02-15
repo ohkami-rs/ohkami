@@ -84,19 +84,22 @@ pub(crate) const PAYLOAD_LIMIT: usize = 1 << 32;
 /// ```
 pub struct Request {pub(crate) _metadata: [u8; METADATA_SIZE],
     method:          Method,
-    /// Headers of this request
+    /// Headers of this response
     /// 
     /// - `.{Name}()` to get the value
     /// - `.set().{Name}(〜)` to mutate the value
-    ///   - `.set().{Name}(append(〜))` to append
+    ///   - `.set().{Name}({value})` to insert
+    ///   - `.set().{Name}(None)` to remove
+    ///   - `.set().{Name}(append({value}))` to append
+    /// 
+    /// `{value}`: `String`, `&'static str`, `Cow<&'static, str>`
     /// 
     /// ---
     /// 
-    /// *`custom-header` feature required*：
+    /// *`custom-header` feature required* :
     /// 
     /// - `.custom({Name})` to get the value
-    /// - `.set().custom({Name}, {value})` to mutate the value
-    ///   - `.set().custom({Name}, append(〜))` to append
+    /// - `.set().custom({Name}, 〜)` to mutate the value like standard headers
     pub headers:     RequestHeaders,
     pub(crate) path: Path,
     queries:         QueryParams,
