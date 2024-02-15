@@ -298,7 +298,7 @@ impl Node {
                     }
                 }
 
-                let mut res = (handler.proc)(req).await;  
+                let mut res = handler.handle(req).await;  
 
                 for bf in self.back {
                     if let Err(err_res) = bf.call(&mut res, req).await {

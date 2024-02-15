@@ -1,5 +1,5 @@
 use std::borrow::Cow;
-use crate::{Request};
+use crate::{IntoResponse, Request, Response};
 
 
 pub enum FromRequestError {
@@ -23,29 +23,41 @@ pub enum FromRequestError {
             }
         }
     }
+
+    impl std::error::Error for FromRequestError {}
+    impl std::fmt::Debug for FromRequestError {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            f.write_str(&self)
+        }
+    }
+    impl std::fmt::Display for FromRequestError {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            f.write_str(&self)
+        }
+    }
+
+    impl IntoResponse for FromRequestError {
+        fn into_response(self) -> Response {
+            Response::InternalServerError().text(match self {
+                Self::Owned(s)  => Cow::Owned(s),
+                Self::Static(s) => Cow::Borrowed(s),
+            })
+        }
+    }
 };
 
-impl std::error::Error for FromRequestError {}
-impl std::fmt::Debug for FromRequestError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&self)
-    }
-}
-impl std::fmt::Display for FromRequestError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&self)
-    }
-}
-
-/// Represents "retirieved from `Request`".
+/// "Retirieved from a `Request`".
 /// 
 /// - `#[Query]`
 /// - `#[Payload]`
 /// 
 /// implements this for a struct.
 /// 
-/// Of course, you can manually implement for any structs that can be extracted from request：
+/// Of course, you can manually implement for your structs that can be extracted from a request：
 /// 
+/// <br>
+/// 
+/// ---
 /// *example.rs*
 /// ```
 /// use ohkami::prelude::*;
@@ -61,18 +73,29 @@ impl std::fmt::Display for FromRequestError {
 ///     }
 /// }
 /// ```
+/// ---
+/// 
+/// <br>
+/// 
+/// NOTE: *Cannot impl both `FromRequest` and `FromParam`*.
 pub trait FromRequest<'req>: Sized {
-    type Error: std::error::Error + 'static;
+    /// If this extraction never fails, `std::convert::Infallible` is recomended as this `Error`.
+    type Error: IntoResponse;
+    
     fn from_request(req: &'req Request) -> Result<Self, Self::Error>;
 }
 
-/// Repredents "retrieved from path/query param".
+/// "Retrieved from a path/query param".
+/// 
+/// NOTE: *Cannot impl both `FromRequest` and `FromParam`*.
 pub trait FromParam<'p>: Sized {
-    type Error: std::error::Error;
+    /// If this extraction never fails, `std::convert::Infallible` is recomended as this `Error`.
+    type Error: IntoResponse;
+
     /// `param` is percent-decoded：
     /// 
     /// - `Cow::Borrowed(&'p str)` by default
-    /// - `Cow::Owned(String)` if it is decoded
+    /// - `Cow::Owned(String)` if ohkami has decoded it
     fn from_param(param: Cow<'p, str>) -> Result<Self, Self::Error>;
 } const _: () = {
     impl<'p> FromParam<'p> for String {

@@ -65,7 +65,7 @@ impl IntoResponse for &'static str {
     }
 }
 impl IntoResponse for String {
-    fn into_response(self) -> Response {
+    #[inline(always)] fn into_response(self) -> Response {
         Response::with(Status::OK).text(self)
     }
 }
@@ -77,5 +77,11 @@ impl IntoResponse for &'_ String {
 impl IntoResponse for std::borrow::Cow<'static, str> {
     fn into_response(self) -> Response {
         Response::with(Status::OK).text(self)
+    }
+}
+
+impl IntoResponse for std::convert::Infallible {
+    fn into_response(self) -> Response {
+        unsafe {std::hint::unreachable_unchecked()}
     }
 }

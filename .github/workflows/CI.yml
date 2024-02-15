@@ -16,8 +16,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install task command
-        run:  sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
+      - name: Setup mold
+        run:  |
+          sudo apt install mold clang
+          echo '[target.x86_64-unknown-linux-gnu]'                     >> $HOME/.cargo/config.toml
+          echo 'linker    = "clang"'                                   >> $HOME/.cargo/config.toml
+          echo 'rustflags = ["-C", "link-arg=-fuse-ld=/usr/bin/mold"]' >> $HOME/.cargo/config.toml
+          cat $HOME/.cargo/config.toml
 
       - uses: actions-rs/toolchain@v1
         with:
@@ -25,15 +30,25 @@ jobs:
           profile:   minimal
           override:  true
 
-      - name: Cache cargo tools
-        id:   cache_cargo_tools
+      - name: Cache cargo subcommands
+        id:   cache_cargo_subcommands
         uses: actions/cache@v3
         with:
-          key:  ${{ runner.os }}-cargo-install
+          key:  ${{ runner.os }}-cargo-install--sqlx-sccache
           path: ~/.cargo/bin
-      - name: Install cargo tools
-        if:   ${{ steps.cache_cargo_tools.outputs.cache-hit != 'true' }}
-        run:  cargo install sqlx-cli --no-default-features --features native-tls,postgres
-      
+      - name: Install cargo subcommands
+        if:   ${{ steps.cache_cargo_subcommands.outputs.cache-hit != 'true' }}
+        run:  |
+          cargo install sqlx-cli --no-default-features --features native-tls,postgres
+          cargo install sccache  --locked
+
+      - name: Setup sccache
+        run:  |
+          echo '[build]'                                      >> $HOME/.cargo/config.toml
+          echo "rustc-wrapper = \"$HOME/.cargo/bin/sccache\"" >> $HOME/.cargo/config.toml
+          cat $HOME/.cargo/config.toml
+         
       - name: Run tasks
-        run:  task test check ${{ matrix.toolchain == 'nightly' && 'bench' || '' }}
+        run:  |
+          sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
+          task test check ${{ matrix.toolchain == 'nightly' && 'bench' || '' }}
