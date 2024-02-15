@@ -406,7 +406,7 @@ const _: (/* two PathParams and FromRequest items */) = {
     struct P;
     impl<'p> FromParam<'p> for P {
         type Error = std::convert::Infallible;
-        fn from_param(param: std::borrow::Cow<'p, str>) -> Result<Self, Self::Error> {
+        fn from_param(_param: std::borrow::Cow<'p, str>) -> Result<Self, Self::Error> {
             Ok(Self)
         }
     }

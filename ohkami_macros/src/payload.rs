@@ -55,14 +55,14 @@ fn impl_payload_json(data: &ItemStruct, derive_deserialize: bool) -> Result<Toke
         #derive_deserialize
 
         impl<#impl_lifetime> ::ohkami::FromRequest<#impl_lifetime> for #struct_name<#struct_lifetime> {
-            type Error = ::ohkami::FromRequestError;
-            #[inline] fn from_request(req: &#impl_lifetime ::ohkami::Request) -> ::std::result::Result<Self, ::ohkami::FromRequestError> {
+            type Error = ::ohkami::Response;
+            #[inline] fn from_request(req: &#impl_lifetime ::ohkami::Request) -> ::std::result::Result<Self, Self::Error> {
                 let payload = req.payload()
-                    .ok_or_else(|| ::ohkami::FromRequestError::Static("Expected payload"))?;
+                    .ok_or_else(|| ::ohkami::Response::BadRequest().text("Expected payload"))?;
                 if !req.headers.ContentType().unwrap().starts_with("application/json") {
-                    return ::std::result::Result::Err(::ohkami::FromRequestError::Static("Expected a payload of `Content-Type: application/json`"))
+                    return ::std::result::Result::Err(::ohkami::Response::BadRequest().text("Expected a payload of `Content-Type: application/json`"))
                 }
-                let __payload__ = ::ohkami::__internal__::parse_json(payload).map_err(|e| ::ohkami::FromRequestError::from(e))?;
+                let __payload__ = ::ohkami::__internal__::parse_json(payload).map_err(|e| ::ohkami::Response::InternalServerError().text(e.to_string()))?;
                 ::std::result::Result::Ok(__payload__)
             }
         }
@@ -103,7 +103,7 @@ fn impl_payload_urlencoded(data: &ItemStruct) -> Result<TokenStream> {
             quote!{
                 #ident_str => #ident.replace(<#ty as ::ohkami::FromParam>::parse(v.as_bytes())?)
                     .map_or(::std::result::Result::Ok(()), |_|
-                        ::std::result::Result::Err(::ohkami::FromRequestError::Static(concat!("duplicated key: `", #ident_str,"`")))
+                        ::std::result::Result::Err(::ohkami::Response::BadRequest().text(concat!("Duplicated key: `", #ident_str,"`")))
                     )?,
             }
         });
@@ -112,7 +112,7 @@ fn impl_payload_urlencoded(data: &ItemStruct) -> Result<TokenStream> {
             for (k, v) in ::ohkami::__internal__::parse_urlencoded(payload) {
                 match &*k {
                     #( #arms )*
-                    unexpected => return ::std::result::Result::Err(::ohkami::FromRequestError::Owned(::std::format!("unexpected key: `{unexpected}`")))
+                    unexpected => return ::std::result::Result::Err(::ohkami::Response::BadRequest().text(::std::format!("Unexpected key: `{unexpected}`")))
                 }
             }
         }
@@ -124,7 +124,7 @@ fn impl_payload_urlencoded(data: &ItemStruct) -> Result<TokenStream> {
                 quote!{ #ident, }
             } else {
                 let ident_str = ident.to_string();
-                quote!{ #ident: #ident.ok_or_else(|| ::ohkami::FromRequestError::Static(::std::concat!("`", #ident_str, "` is not found")))?, }
+                quote!{ #ident: #ident.ok_or_else(|| ::ohkami::Response::BadRequest().text(::std::concat!("`", #ident_str, "` is not found")))?, }
             }
         });
 
@@ -137,12 +137,12 @@ fn impl_payload_urlencoded(data: &ItemStruct) -> Result<TokenStream> {
 
     Ok(quote!{
         impl<#impl_lifetime> ::ohkami::FromRequest<#impl_lifetime> for #struct_name<#struct_lifetime> {
-            type Error = ::ohkami::FromRequestError;
-            fn from_request(req: &#impl_lifetime ::ohkami::Request) -> ::std::result::Result<Self, ::ohkami::FromRequestError> {
+            type Error = ::ohkami::Response;
+            fn from_request(req: &#impl_lifetime ::ohkami::Request) -> ::std::result::Result<Self, Self::Error> {
                 let payload = req.payload()
-                    .ok_or_else(|| ::ohkami::FromRequestError::Static("Expected a payload"))?;
+                    .ok_or_else(|| ::ohkami::Response::BadRequest().text("Expected a payload"))?;
                 if !req.headers.ContentType().unwrap().starts_with("application/x-www-form-urlencoded") {
-                    return ::std::result::Result::Err(::ohkami::FromRequestError::Static("Expected an `application/x-www-form-urlencoded` payload"))
+                    return ::std::result::Result::Err(::ohkami::Response::BadRequest().text("Expected an `application/x-www-form-urlencoded` payload"))
                 }
 
                 #declaring_exprs
@@ -216,7 +216,7 @@ fn impl_payload_formdata(data: &ItemStruct) -> Result<TokenStream> {
             for form_part in ::ohkami::__internal__::parse_formparts(payload, &boundary)? {
                 match form_part.name() {
                     #( #arms )*
-                    unexpected => return ::std::result::Result::Err(::ohkami::FromRequestError::Owned(::std::format!("unexpected part in form-data: `{unexpected}`")))
+                    unexpected => return ::std::result::Result::Err(::ohkami::Response::BadRequest().text(::std::format!("unexpected part in form-data: `{unexpected}`")))
                 }
             }
         }
@@ -228,7 +228,7 @@ fn impl_payload_formdata(data: &ItemStruct) -> Result<TokenStream> {
                 quote!{ #ident, }
             } else {
                 let ident_str = ident.to_string();
-                quote!{ #ident: #ident.ok_or_else(|| ::ohkami::FromRequestError::Static(::std::concat!("Field `", #ident_str, "` is not found in the form-data")))?, }
+                quote!{ #ident: #ident.ok_or_else(|| ::ohkami::Response::BadRequest().text(::std::concat!("Field `", #ident_str, "` is not found in the form-data")))?, }
             }
         });
 
@@ -241,13 +241,13 @@ fn impl_payload_formdata(data: &ItemStruct) -> Result<TokenStream> {
 
     Ok(quote!{
         impl<#impl_lifetime> ::ohkami::FromRequest<#impl_lifetime> for #struct_name<#struct_lifetime> {
-            type Error = ::ohkami::FromRequestError;
-            fn from_request(req: &#impl_lifetime ::ohkami::Request) -> ::std::result::Result<Self, ::ohkami::FromRequestError> {
+            type Error = ::ohkami::Response;
+            fn from_request(req: &#impl_lifetime ::ohkami::Request) -> ::std::result::Result<Self, Self::Error> {
                 let payload = req.payload()
-                    .ok_or_else(|| ::ohkami::FromRequestError::Static("Expected a payload"))?;
+                    .ok_or_else(|| ::ohkami::Response::BadRequest().text("Expected a payload"))?;
 
                 #[cold] const fn __expected_multipart_formdata_and_boundary() -> ::ohkami::FromRequestError {
-                    ::ohkami::FromRequestError::Static("Expected `multipart/form-data` and a boundary")
+                    ::ohkami::Response::BadRequest().text("Expected `multipart/form-data` and a boundary")
                 }
                 let ("multipart/form-data", boundary) = req.headers.ContentType().unwrap()
                     .split_once("; boundary=")

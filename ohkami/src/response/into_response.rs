@@ -65,7 +65,7 @@ impl IntoResponse for &'static str {
     }
 }
 impl IntoResponse for String {
-    fn into_response(self) -> Response {
+    #[inline(always)] fn into_response(self) -> Response {
         Response::with(Status::OK).text(self)
     }
 }

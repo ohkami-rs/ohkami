@@ -409,11 +409,14 @@ impl JWT {
             first_name:   &'s str,
             familly_name: &'s str,
         } impl<'req> crate::FromRequest<'req> for SigninRequest<'req> {
-            type Error = crate::FromRequestError;
+            type Error = Response;
             fn from_request(req: &'req Request) -> Result<Self, Self::Error> {
                 serde_json::from_slice(
-                    req.payload().ok_or_else(|| crate::FromRequestError::Static("No payload found"))?
-                ).map_err(|e| crate::FromRequestError::Owned(e.to_string()))
+                    req.payload().ok_or_else(|| Response::BadRequest().text("No payload found"))?
+                ).map_err(|e| {
+                    eprintln!("Failed to deserialize: {}", e.to_string());
+                    Response::InternalServerError()
+                })
             }
         }
 

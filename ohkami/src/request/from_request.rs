@@ -55,8 +55,9 @@ pub enum FromRequestError {
 /// 
 /// Of course, you can manually implement for your structs that can be extracted from a request：
 /// 
-/// ---
+/// <br>
 /// 
+/// ---
 /// *example.rs*
 /// ```
 /// use ohkami::prelude::*;
@@ -72,8 +73,9 @@ pub enum FromRequestError {
 ///     }
 /// }
 /// ```
-/// 
 /// ---
+/// 
+/// <br>
 /// 
 /// NOTE: *Cannot impl both `FromRequest` and `FromParam`*.
 pub trait FromRequest<'req>: Sized {
