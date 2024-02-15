@@ -35,7 +35,7 @@ jobs:
         uses: actions/cache@v3
         with:
           key:  ${{ runner.os }}-cargo-install--sqlx-sccache
-          path: $HOME/.cargo/bin
+          path: ~/.cargo/bin
       - name: Install cargo subcommands
         if:   ${{ steps.cache_cargo_subcommands.outputs.cache-hit != 'true' }}
         run:  |
