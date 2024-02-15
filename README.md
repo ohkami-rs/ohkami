@@ -156,6 +156,40 @@ async fn main() {
 }
 ```
 
+Or, you can call some fangs for any requests (regardless of their paths) :
+
+```rust,no_run
+use ohkami::prelude::*;
+use ohkami::builtin::CORS;
+
+struct Logger;
+impl BackFang for Logger {
+    async fn bite(&self, res: &mut Response, req: &Request) -> Result<(), Response> {
+        println!("{req:?}");
+        println!("{res:?}");
+        Ok(())
+    }
+}
+
+struct SetServer;
+impl BackFang for SetServer {
+    async fn bite(&self, res: &mut Response, _req: &Request) -> Result<(), Response> {
+        res.headers.set()
+            .Server("ohkami");
+        Ok(())
+    }
+}
+
+#[tokio::main]
+async fn main() {
+    let global_fangs = (Logger, SetServer);
+
+    Ohkami::with(CORS::new("*"), (
+        "/".GET(|| async {"Hello!"})
+    )).howl_with(global_fangs, "localhost:8080").await
+}
+```
+
 <br>
 
 ### pack of Ohkamis
