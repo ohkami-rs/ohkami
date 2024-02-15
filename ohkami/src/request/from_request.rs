@@ -51,7 +51,7 @@ pub enum FromRequestError {
 /// - `#[Query]`
 /// - `#[Payload]`
 /// 
-/// implements this for a struct.
+/// derives `FromRequest` impl for a struct.
 /// 
 /// Of course, you can manually implement for your structs that can be extracted from a request：
 /// 
@@ -83,7 +83,14 @@ pub trait FromRequest<'req>: Sized {
     type Error: IntoResponse;
     
     fn from_request(req: &'req Request) -> Result<Self, Self::Error>;
-}
+} const _: () = {
+    impl<'req> FromRequest<'req> for &'req Request {
+        type Error = std::convert::Infallible;
+        fn from_request(req: &'req Request) -> Result<Self, Self::Error> {
+            Ok(req)
+        }
+    }
+};
 
 /// "Retrieved from a path/query param".
 /// 

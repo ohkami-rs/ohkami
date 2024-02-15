@@ -130,7 +130,9 @@ pub struct Ohkami {
 impl Ohkami {
     /// Create new `Ohkami` on the routing.
     /// 
-    /// `routes` is a tuple of routing items :
+    /// ---
+    ///
+    /// `routes` is a routing item or a tuple of them :
     /// 
     /// ```
     /// # use ohkami::Route;
@@ -150,6 +152,14 @@ impl Ohkami {
     /// )
     /// # ;
     /// ```
+    /// 
+    /// ---
+    /// 
+    /// Handler is an _**async**_ function :
+    /// 
+    /// > `({path params}, {FromRequest values},...) -> {IntoResponse value}`
+    ///
+    /// `{path params}` is a `FromParam` value or a tuple of them
     pub fn new(routes: impl build::Routes) -> Self {
         let mut router = TrieRouter::new();
         routes.apply(&mut router);
@@ -162,7 +172,9 @@ impl Ohkami {
 
     /// Create new ohkami with the fangs on the routing.
     /// 
-    /// - `fangs` is an item that implements `FrontFang` or `BackFang`, or tuple of such items
+    /// ---
+    ///
+    /// `fangs` is an item that implements `FrontFang` or `BackFang`, or tuple of such items
     /// 
     /// NOTE:
     /// `fangs` passed here are executed just before/after a handler in this `Ohkami` called for a request.
