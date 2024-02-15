@@ -17,8 +17,8 @@ pub trait IntoHandler<T> {
     param_bytes_maybe_percent_encoded: &'p [u8]
 ) -> Result<P, Response> {
     let param = percent_decode_utf8(param_bytes_maybe_percent_encoded)
-        .map_err(|e| {
-            #[cfg(debug_assertions)] eprintln!("Failed to decode percent encoding: {e}");
+        .map_err(|_e| {
+            #[cfg(debug_assertions)] eprintln!("Failed to decode percent encoding: {_e}");
             Response::InternalServerError()
         })?;
 

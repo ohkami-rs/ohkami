@@ -190,9 +190,9 @@ fn impl_payload_formdata(data: &ItemStruct) -> Result<TokenStream> {
         impl PartType {
             fn into_method_call(&self) -> TokenStream {
                 match self {
-                    Self::Field => quote!{ form_part.into_field()?.text().map_err(|e| ::ohkami::FromRequestError::Owned(::std::format!("Invalid form text: {e}")))? },
-                    Self::Files => quote!{ form_part.into_files().map_err(|e| ::ohkami::FromRequestError::from(e))? },
-                    Self::File  => quote!{ form_part.into_file().map_err(|e| ::ohkami::FromRequestError::from(e))? },
+                    Self::Field => quote!{ form_part.into_field().map_err(|e| ::ohkami::Response::InternalServerError().text(e))?.text().map_err(|e| ::ohkami::Response::InternalServerError().text(::std::format!("Invalid form text: {e}")))? },
+                    Self::Files => quote!{ form_part.into_files().map_err(|e| ::ohkami::Response::InternalServerError().text(e))? },
+                    Self::File  => quote!{ form_part.into_file().map_err(|e| ::ohkami::Response::InternalServerError().text(e))? },
                 }
             }
         }
@@ -213,7 +213,7 @@ fn impl_payload_formdata(data: &ItemStruct) -> Result<TokenStream> {
         }).collect::<Result<Vec<_>>>()?;
 
         quote!{
-            for form_part in ::ohkami::__internal__::parse_formparts(payload, &boundary)? {
+            for form_part in ::ohkami::__internal__::parse_formparts(payload, &boundary).map_err(|e| ::ohkami::Response::InternalServerError().text(e))? {
                 match form_part.name() {
                     #( #arms )*
                     unexpected => return ::std::result::Result::Err(::ohkami::Response::BadRequest().text(::std::format!("unexpected part in form-data: `{unexpected}`")))
@@ -242,11 +242,12 @@ fn impl_payload_formdata(data: &ItemStruct) -> Result<TokenStream> {
     Ok(quote!{
         impl<#impl_lifetime> ::ohkami::FromRequest<#impl_lifetime> for #struct_name<#struct_lifetime> {
             type Error = ::ohkami::Response;
+
             fn from_request(req: &#impl_lifetime ::ohkami::Request) -> ::std::result::Result<Self, Self::Error> {
                 let payload = req.payload()
                     .ok_or_else(|| ::ohkami::Response::BadRequest().text("Expected a payload"))?;
 
-                #[cold] const fn __expected_multipart_formdata_and_boundary() -> ::ohkami::FromRequestError {
+                #[cold] fn __expected_multipart_formdata_and_boundary() -> ::ohkami::Response {
                     ::ohkami::Response::BadRequest().text("Expected `multipart/form-data` and a boundary")
                 }
                 let ("multipart/form-data", boundary) = req.headers.ContentType().unwrap()
