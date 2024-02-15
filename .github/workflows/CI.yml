@@ -16,32 +16,35 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Setup mold
+        run:  |
+          sudo apt install mold clang
+          echo '[target.x86_64-unknown-linux-gnu]'                     >> ~/.cargo/config.toml
+          echo 'linker    = "clang"'                                   >> ~/.cargo/config.toml
+          echo 'rustflags = ["-C", "link-arg=-fuse-ld=/usr/bin/mold"]' >> ~/.cargo/config.toml
+
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: ${{ matrix.toolchain }}
           profile:   minimal
           override:  true
 
-      - name: Cache cargo tools
-        id:   cache_cargo_tools
+      - name: Cache cargo subcommands
+        id:   cache_cargo_subcommands
         uses: actions/cache@v3
         with:
           key:  ${{ runner.os }}-cargo-install--sqlx-sccache
           path: ~/.cargo/bin
-      - name: Install cargo tools
-        if:   ${{ steps.cache_cargo_tools.outputs.cache-hit != 'true' }}
+      - name: Install cargo subcommands
+        if:   ${{ steps.cache_cargo_subcommands.outputs.cache-hit != 'true' }}
         run:  |
           cargo install sqlx-cli --no-default-features --features native-tls,postgres
           cargo install sccache --locked
 
-      - name: Setup fast build environment
+      - name: Setup sccache
         run:  |
-          apt install mold clang
-          echo '[build]'                                                   >> ~/.cargo/config.toml
-          echo 'rustc-wrapper = "/home/kanarus/.cargo/bin/sccache"'        >> ~/.cargo/config.toml
-          echo '[target.x86_64-unknown-linux-gnu]'                         >> ~/.cargo/config.toml
-          echo 'linker        = "clang"'                                   >> ~/.cargo/config.toml
-          echo 'rustflags     = ["-C", "link-arg=-fuse-ld=/usr/bin/mold"]' >> ~/.cargo/config.toml
+          echo '[build]'                                >> ~/.cargo/config.toml
+          echo 'rustc-wrapper = "~/.cargo/bin/sccache"' >> ~/.cargo/config.toml
          
       - name: Run tasks
         run:  |
