@@ -1,5 +1,9 @@
-mod handlers;     pub use handlers::{Handlers, ByAnother, Route};
-mod into_handler; pub use into_handler::{IntoHandler};
+mod handlers;
+pub use handlers::{Handlers, ByAnother, Route};
+
+mod into_handler;
+pub use into_handler::{IntoHandler};
+
 
 use std::{
     pin::Pin,
@@ -10,30 +14,32 @@ use crate::{Request, Response};
 
 
 #[derive(Clone)]
-pub struct Handler {
-    pub(crate) proc: Arc<dyn
-        Fn(&mut Request) -> Pin<
-            Box<dyn
+pub struct Handler(Arc<dyn
+    Fn(&Request) -> Pin<Box<dyn
+        Future<Output = Response>
+        + Send + '_
+    >>
+    + Send + Sync
+    + 'static
+>);
+const _: () = {
+    impl Handler {
+        fn new(proc: impl
+            Fn(&Request) -> Pin<Box<dyn
                 Future<Output = Response>
-                + Send + 'static
-            >
-        > + Send + Sync + 'static
-    >
-}
+                + Send + '_
+            >>
+            + Send + Sync
+            + 'static
+        ) -> Self {
+            Self(Arc::new(proc))
+        }
 
-impl Handler {
-    fn new(
-        proc: (
-            impl Fn(&mut Request) -> Pin<
-                Box<dyn
-                    Future<Output = Response>
-                    + Send + 'static
-                >
-            > + Send + Sync + 'static
-        )
-    ) -> Self {
-        Self {
-            proc: Arc::new(proc),
+        #[inline(always)] pub(crate) fn handle<'req>(
+            &'req self,
+            req: &'req Request,
+        ) -> Pin<Box<dyn Future<Output = Response> + Send + 'req>> {
+            (self.0)(req)
         }
     }
-}
+};

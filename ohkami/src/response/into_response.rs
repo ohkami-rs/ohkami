@@ -79,3 +79,9 @@ impl IntoResponse for std::borrow::Cow<'static, str> {
         Response::with(Status::OK).text(self)
     }
 }
+
+impl IntoResponse for std::convert::Infallible {
+    fn into_response(self) -> Response {
+        unsafe {std::hint::unreachable_unchecked()}
+    }
+}

@@ -96,6 +96,7 @@ macro_rules! plain_text_responsebodies {
 #[test] fn assert_impls() {
     fn is_reponsebody<T: ResponseBody>() {}
 
+    is_reponsebody::<()>();
     is_reponsebody::<&'static str>();
     is_reponsebody::<String>();
     is_reponsebody::<&'_ String>();

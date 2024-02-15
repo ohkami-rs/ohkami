@@ -29,7 +29,7 @@ macro_rules! Handlers {
     ($( $method:ident ),*) => {
         impl Handlers {
             $(
-                pub fn $method<Args>(mut self, handler: impl IntoHandler<Args>) -> Self {
+                pub fn $method<T>(mut self, handler: impl IntoHandler<T>) -> Self {
                     self.$method.replace(handler.into_handler());
                     self
                 }
@@ -80,13 +80,13 @@ macro_rules! Route {
         /// ```
         pub trait Route {
             $(
-                fn $method<Args>(self, handler: impl IntoHandler<Args>) -> Handlers;
+                fn $method<T>(self, handler: impl IntoHandler<T>) -> Handlers;
             )*
             fn By(self, another: Ohkami) -> ByAnother;
         }
         impl Route for &'static str {
             $(
-                fn $method<Args>(self, handler: impl IntoHandler<Args>) -> Handlers {
+                fn $method<T>(self, handler: impl IntoHandler<T>) -> Handlers {
                     let mut handlers = Handlers::new(self);
                     handlers.$method.replace(handler.into_handler());
                     handlers

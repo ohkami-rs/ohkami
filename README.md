@@ -32,14 +32,14 @@ tokio  = { version = "1",    features = ["full"] }
 
 ```rust,no_run
 use ohkami::prelude::*;
-use ohkami::typed::status::{OK, NoContent};
+use ohkami::typed::status::{NoContent};
 
 async fn health_check() -> NoContent {
     NoContent
 }
 
-async fn hello(name: &str) -> OK<String> {
-    OK(format!("Hello, {name}!"))
+async fn hello(name: &str) -> String {
+    format!("Hello, {name}!")
 }
 
 #[tokio::main]
@@ -233,7 +233,7 @@ async fn test_my_ohkami() {
 - [ ] WebSocket
 
 ## MSRV (Minimum Supported rustc Version)
-Latest stable
+Latest stable at the time of publication.
 
 ## License
 ohkami is licensed under MIT LICENSE ([LICENSE](https://github.com/kana-rus/ohkami/blob/main/LICENSE) or [https://opensource.org/licenses/MIT](https://opensource.org/licenses/MIT)).

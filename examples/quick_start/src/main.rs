@@ -1,11 +1,11 @@
 use ohkami::prelude::*;
-use ohkami::typed::status::{OK, NoContent};
+use ohkami::typed::status::NoContent;
 
 async fn health_check() -> NoContent {
     NoContent
 }
 
-async fn hello(name: &str) -> OK<String> {
+async fn hello(name: &str) -> String {
     OK(format!("Hello, {name}!"))
 }
 

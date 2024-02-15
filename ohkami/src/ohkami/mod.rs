@@ -91,11 +91,12 @@ use crate::Method;
 /// <br>
 /// 
 /// #### handler schema：
-/// async ({path_params}?, {`FromRequest` type}s...) -> {`IntoResponse` type}
+/// `async ({path_params}?, {FromRequest type}s...) -> {IntoResponse type}`
 /// 
 /// #### path_params：
 /// A tuple of types that implement `FromParam` trait.\
-/// `String`, `&str`, and primitive integers are splecially allowed to be used without tuple：
+/// If the path contains only one parameter, then you can omit the tuple.\
+/// (In current ohkami, at most *2* path params can be passed.)
 /// 
 /// <br>
 /// 

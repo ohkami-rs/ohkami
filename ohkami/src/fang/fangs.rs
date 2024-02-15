@@ -32,7 +32,7 @@ pub(crate) trait FrontFangCaller: Send + Sync {
     where Self: Sync + 'c;
 }
 impl<FF: FrontFang + Send + Sync> FrontFangCaller for FF {
-    fn call<'c>(&'c self, req: &'c mut Request) -> Pin<Box<dyn Future<Output = Result<(), Response>> + Send + 'c>>
+    #[inline(always)] fn call<'c>(&'c self, req: &'c mut Request) -> Pin<Box<dyn Future<Output = Result<(), Response>> + Send + 'c>>
     where Self: Sync + 'c
     {
         Box::pin(self.bite(req))
@@ -70,7 +70,7 @@ pub(crate) trait BackFangCaller: Send + Sync {
     where Self: Sync + 'c;
 }
 impl<BF: BackFang + Send + Sync> BackFangCaller for BF {
-    fn call<'c>(&'c self, res: &'c mut Response, _req: &'c Request) -> Pin<Box<dyn Future<Output = Result<(), Response>> + Send + 'c>>
+    #[inline(always)] fn call<'c>(&'c self, res: &'c mut Response, _req: &'c Request) -> Pin<Box<dyn Future<Output = Result<(), Response>> + Send + 'c>>
     where Self: Sync + 'c
     {
         Box::pin(self.bite(res, _req))

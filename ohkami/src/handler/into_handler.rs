@@ -1,46 +1,41 @@
-use std::{future::Future, borrow::Cow};
+use std::{future::Future, pin::Pin};
 use ohkami_lib::percent_decode_utf8;
 use super::Handler;
-use crate::{
-    Response, Status,
-    FromRequest, FromParam, Request, IntoResponse,
-};
-#[cfg(feature="websocket")]
-use crate::websocket::WebSocketContext;
+use crate::{Response, FromRequest, FromParam, Request, IntoResponse};
 
 
-pub trait IntoHandler<Args> {
+pub trait IntoHandler<T> {
     fn into_handler(self) -> Handler;
 }
 
-#[cold] #[inline(never)] fn __bad_request(
-    e: impl std::fmt::Display,
-) -> std::pin::Pin<Box<impl Future<Output = Response>>> {
-    Box::pin({
-        let res = Response::with(Status::BadRequest).text(e.to_string());
-        async {res.into()}
-    })
+
+#[inline(never)] #[cold] fn __error__(e: Response) -> Pin<Box<dyn Future<Output = Response> + Send>> {
+    Box::pin(async {e})
 }
+
 #[inline(always)] fn from_param_bytes<'p, P: FromParam<'p>>(
     param_bytes_maybe_percent_encoded: &'p [u8]
-) -> Result<P, Cow<'static, str>> {
+) -> Result<P, Response> {
     let param = percent_decode_utf8(param_bytes_maybe_percent_encoded)
-        .map_err(|e| Cow::Owned(e.to_string()))?;
+        .map_err(|e| {
+            #[cfg(debug_assertions)] eprintln!("Failed to decode percent encoding: {e}");
+            Response::InternalServerError()
+        })?;
 
     <P as FromParam>::from_param(param)
-        .map_err(|e| Cow::Owned(e.to_string()))
+        .map_err(IntoResponse::into_response)
 }
 #[inline(always)] fn from_request<'fr, 'req, R: FromRequest<'fr>>(
     req: &'req Request
-) -> Result<R, <R as FromRequest<'fr>>::Error> {
+) -> Result<R, Response> {
     <R as FromRequest>::from_request(unsafe {
-        std::mem::transmute::<&'req _, &'fr _>(req) //
-    })
+        std::mem::transmute::<&'req _, &'fr _>(req)
+    }).map_err(IntoResponse::into_response)
 }
 
 
-const _: () = {
-    impl<F, Body, Fut> IntoHandler<fn()->Body> for F
+const _: (/* no args */) = {
+    impl<'req, F, Body, Fut> IntoHandler<fn()->Body> for F
     where
         F:    Fn() -> Fut + Send + Sync + 'static,
         Body: IntoResponse,
@@ -58,33 +53,9 @@ const _: () = {
 };
 
 const _: (/* FromParam */) = {
-    macro_rules! with_single_path_param {
-        ($( $param_type:ty ),*) => {$(
-            impl<'req, F, Body, Fut> IntoHandler<fn($param_type)->Body> for F
-            where
-                F:    Fn($param_type) -> Fut + Send + Sync + 'static,
-                Body: IntoResponse,
-                Fut:  Future<Output = Body> + Send + 'static,
-            {
-                fn into_handler(self) -> Handler {
-                    Handler::new(move |req|
-                        match from_param_bytes(unsafe {req.path.assume_one_param()}) {
-                            Ok(p1) => {
-                                let res = self(p1);
-                                Box::pin(async move {res.await.into_response()})
-                            }
-                            Err(e) => __bad_request(e)
-                        }
-                    )
-                }
-            }
-        )*};
-    } with_single_path_param! {
-        String, u8, u16, u32, u64, u128, usize
-    }
-    impl<'req, F, Body, Fut> IntoHandler<fn(&'req str)->Body> for F
+    impl<'req, F, Fut, Body, P1:FromParam<'req>> IntoHandler<fn((P1,))->Body> for F
     where
-        F:    Fn(&'req str) -> Fut + Send + Sync + 'static,
+        F:    Fn(P1) -> Fut + Send + Sync + 'static,
         Body: IntoResponse,
         Fut:  Future<Output = Body> + Send + 'static,
     {
@@ -94,8 +65,8 @@ const _: (/* FromParam */) = {
                     Ok(p1) => {
                         let res = self(p1);
                         Box::pin(async move {res.await.into_response()})
-                    },
-                    Err(e) => __bad_request(e)
+                    }
+                    Err(e) => __error__(e)
                 }
             )
         }
@@ -108,7 +79,7 @@ const _: (/* FromParam */) = {
         let _ = h2.into_handler();
     }
 
-    impl<'req, F, Body, Fut, P1:FromParam<'req>> IntoHandler<fn((P1,))->Body> for F
+    impl<'req, F, Body, Fut, P1:FromParam<'req>> IntoHandler<fn(((P1,),))->Body> for F
     where
         F:    Fn((P1,)) -> Fut + Send + Sync + 'static,
         Body: IntoResponse,
@@ -123,13 +94,13 @@ const _: (/* FromParam */) = {
                         let res = self((p1,));
                         Box::pin(async move {res.await.into_response()})
                     }
-                    Err(e) => __bad_request(e)
+                    Err(e) => __error__(e)
                 }
             )
         }
     }
 
-    impl<'req, F, Fut, Body:IntoResponse, P1:FromParam<'req>, P2:FromParam<'req>> IntoHandler<fn((P1, P2))->Body> for F
+    impl<'req, F, Fut, Body:IntoResponse, P1:FromParam<'req>, P2:FromParam<'req>> IntoHandler<fn(((P1, P2),))->Body> for F
     where
         F:   Fn((P1, P2)) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = Body> + Send + 'static,
@@ -142,7 +113,7 @@ const _: (/* FromParam */) = {
                         let res = self((p1, p2));
                         Box::pin(async move {res.await.into_response()})
                     }
-                    (Err(e), _) | (_, Err(e)) => __bad_request(e),
+                    (Err(e), _) | (_, Err(e)) => __error__(e),
                 }
             })
         }
@@ -162,7 +133,7 @@ const _: (/* FromRequest items */) = {
                         let res = self(item1);
                         Box::pin(async move {res.await.into_response()})
                     }
-                    Err(e)    => __bad_request(e)
+                    Err(e) => __error__(e)
                 }
             )
         }
@@ -180,8 +151,8 @@ const _: (/* FromRequest items */) = {
                         let res = self(item1, item2);
                         Box::pin(async move {res.await.into_response()})
                     }
-                    (Err(e), _) => __bad_request(e),
-                    (_, Err(e)) => __bad_request(e),
+                    (Err(e), _) |
+                    (_, Err(e)) => __error__(e),
                 }
             )
         }
@@ -199,92 +170,86 @@ const _: (/* FromRequest items */) = {
                         let res = self(item1, item2, item3);
                         Box::pin(async move {res.await.into_response()})
                     }
-                    (Err(e), _, _) => __bad_request(e),
-                    (_, Err(e), _) => __bad_request(e),
-                    (_, _, Err(e)) => __bad_request(e),
+                    (Err(e), _, _) |
+                    (_, Err(e), _) |
+                    (_, _, Err(e)) => __error__(e),
                 }
             )
         }
     }
 };
 
-const _: (/* single FromParam and FromRequest items */) = {
-    macro_rules! with_single_path_param_and_from_request_items {
-        ($( $param_type:ty ),*) => {$(
-            impl<'req, F, Fut, Body:IntoResponse, Item1:FromRequest<'req>> IntoHandler<fn($param_type, Item1)->Body> for F
-            where
-                F:   Fn($param_type, Item1) -> Fut + Send + Sync + 'static,
-                Fut: Future<Output = Body> + Send + 'static,
-            {
-                fn into_handler(self) -> Handler {
-                    Handler::new(move |req| {
-                        // SAFETY: Due to the architecture of `Router`,
-                        // `params` has already `append`ed once before this code
-                        let p1 = unsafe {req.path.assume_one_param()};
+const _: (/* one FromParam without tuple and FromRequest items */) = {
+    impl<'req, F, Fut, Body:IntoResponse, P1:FromParam<'req>, Item1:FromRequest<'req>> IntoHandler<fn(((P1,),), Item1)->Body> for F
+    where
+        F:   Fn(P1, Item1) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = Body> + Send + 'static,
+    {
+        fn into_handler(self) -> Handler {
+            Handler::new(move |req| {
+                // SAFETY: Due to the architecture of `Router`,
+                // `params` has already `append`ed once before this code
+                let p1 = unsafe {req.path.assume_one_param()};
 
-                        match (from_param_bytes(p1), from_request(req)) {
-                            (Ok(p1), Ok(item1)) => {
-                                let res = self(p1, item1);
-                                Box::pin(async move {res.await.into_response()})
-                            },
-                            (Err(e), _) => __bad_request(e),
-                            (_, Err(e)) => __bad_request(e),
-                        }
-                    })
+                match (from_param_bytes(p1), from_request(req)) {
+                    (Ok(p1), Ok(item1)) => {
+                        let res = self(p1, item1);
+                        Box::pin(async move {res.await.into_response()})
+                    },
+                    (Err(e), _) |
+                    (_, Err(e)) => __error__(e),
                 }
-            }
+            })
+        }
+    }
 
-            impl<'req, F, Fut, Body:IntoResponse, Item1:FromRequest<'req>, Item2:FromRequest<'req>> IntoHandler<fn($param_type, Item1, Item2)->Body> for F
-            where
-                F:   Fn($param_type, Item1, Item2) -> Fut + Send + Sync + 'static,
-                Fut: Future<Output = Body> + Send + 'static,
-            {
-                fn into_handler(self) -> Handler {
-                    Handler::new(move |req| {
-                        // SAFETY: Due to the architecture of `Router`,
-                        // `params` has already `append`ed once before this code
-                        let p1 = unsafe {req.path.assume_one_param()};
+    impl<'req, F, Fut, Body:IntoResponse, P1:FromParam<'req>, Item1:FromRequest<'req>, Item2:FromRequest<'req>> IntoHandler<fn(((P1,),), Item1, Item2)->Body> for F
+    where
+        F:   Fn(P1, Item1, Item2) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = Body> + Send + 'static,
+    {
+        fn into_handler(self) -> Handler {
+            Handler::new(move |req| {
+                // SAFETY: Due to the architecture of `Router`,
+                // `params` has already `append`ed once before this code
+                let p1 = unsafe {req.path.assume_one_param()};
 
-                        match (from_param_bytes(p1), from_request::<Item1>(req), from_request::<Item2>(req)) {
-                            (Ok(p1), Ok(item1), Ok(item2)) => {
-                                let res = self(p1, item1, item2);
-                                Box::pin(async move {res.await.into_response()})
-                            }
-                            (Err(e),_,_) => __bad_request(e),
-                            (_,Err(e),_) => __bad_request(e),
-                            (_,_,Err(e)) => __bad_request(e),
-                        }
-                    })
+                match (from_param_bytes(p1), from_request::<Item1>(req), from_request::<Item2>(req)) {
+                    (Ok(p1), Ok(item1), Ok(item2)) => {
+                        let res = self(p1, item1, item2);
+                        Box::pin(async move {res.await.into_response()})
+                    }
+                    (Err(e),_,_) |
+                    (_,Err(e),_) |
+                    (_,_,Err(e)) => __error__(e),
                 }
-            }
+            })
+        }
+    }
 
-            impl<'req, F, Fut, Body:IntoResponse, Item1:FromRequest<'req>, Item2:FromRequest<'req>, Item3:FromRequest<'req>> IntoHandler<fn($param_type, Item1, Item2, Item3)->Body> for F
-            where
-                F:   Fn($param_type, Item1, Item2, Item3) -> Fut + Send + Sync + 'static,
-                Fut: Future<Output = Body> + Send + 'static,
-            {
-                fn into_handler(self) -> Handler {
-                    Handler::new(move |req| {
-                        // SAFETY: Due to the architecture of `Router`,
-                        // `params` has already `append`ed once before this code
-                        let p1 = unsafe {req.path.assume_one_param()};
+    impl<'req, F, Fut, Body:IntoResponse, P1:FromParam<'req>, Item1:FromRequest<'req>, Item2:FromRequest<'req>, Item3:FromRequest<'req>> IntoHandler<fn(((P1,),), Item1, Item2, Item3)->Body> for F
+    where
+        F:   Fn(P1, Item1, Item2, Item3) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = Body> + Send + 'static,
+    {
+        fn into_handler(self) -> Handler {
+            Handler::new(move |req| {
+                // SAFETY: Due to the architecture of `Router`,
+                // `params` has already `append`ed once before this code
+                let p1 = unsafe {req.path.assume_one_param()};
 
-                        match (from_param_bytes(p1), from_request::<Item1>(req), from_request::<Item2>(req), from_request::<Item3>(req)) {
-                            (Ok(p1), Ok(item1), Ok(item2), Ok(item3)) => {
-                                let res = self(p1, item1, item2, item3);
-                                Box::pin(async move {res.await.into_response()})
-                            }
-                            (Err(e),_,_,_) => __bad_request(e),
-                            (_,Err(e),_,_) => __bad_request(e),
-                            (_,_,Err(e),_) => __bad_request(e),
-                            (_,_,_,Err(e)) => __bad_request(e),
-                        }
-                    })
+                match (from_param_bytes(p1), from_request::<Item1>(req), from_request::<Item2>(req), from_request::<Item3>(req)) {
+                    (Ok(p1), Ok(item1), Ok(item2), Ok(item3)) => {
+                        let res = self(p1, item1, item2, item3);
+                        Box::pin(async move {res.await.into_response()})
+                    }
+                    (Err(e),_,_,_) |
+                    (_,Err(e),_,_) |
+                    (_,_,Err(e),_) |
+                    (_,_,_,Err(e)) => __error__(e),
                 }
-            }
-        )*};
-    } with_single_path_param_and_from_request_items! {
-        String, &'req str, u8, u16, u32, u64, u128, usize
+            })
+        }
     }
 };
 
@@ -305,8 +270,8 @@ const _: (/* one FromParam and FromRequest items */) = {
                         let res = self((p1,), item1);
                         Box::pin(async move {res.await.into_response()})
                     }
-                    (Err(e),_) => __bad_request(e),
-                    (_,Err(e)) => __bad_request(e),
+                    (Err(e),_) |
+                    (_,Err(e)) => __error__(e),
                 }
             })
         }
@@ -328,9 +293,9 @@ const _: (/* one FromParam and FromRequest items */) = {
                         let res = self((p1,), item1, item2);
                         Box::pin(async move {res.await.into_response()})
                     }
-                    (Err(e),_,_) => __bad_request(e),
-                    (_,Err(e),_) => __bad_request(e),
-                    (_,_,Err(e)) => __bad_request(e),
+                    (Err(e),_,_) |
+                    (_,Err(e),_) |
+                    (_,_,Err(e)) => __error__(e),
                 }
             })
         }
@@ -352,10 +317,10 @@ const _: (/* one FromParam and FromRequest items */) = {
                         let res = self((p1,), item1, item2, item3);
                         Box::pin(async move {res.await.into_response()})
                     }
-                    (Err(e),_,_,_) => __bad_request(e),
-                    (_,Err(e),_,_) => __bad_request(e),
-                    (_,_,Err(e),_) => __bad_request(e),
-                    (_,_,_,Err(e)) => __bad_request(e),
+                    (Err(e),_,_,_) |
+                    (_,Err(e),_,_) |
+                    (_,_,Err(e),_) |
+                    (_,_,_,Err(e)) => __error__(e),
                 }
             })
         }
@@ -379,9 +344,9 @@ const _: (/* two PathParams and FromRequest items */) = {
                         let res = self((p1, p2), item1); 
                         Box::pin(async move {res.await.into_response()})
                     }
-                    (Err(e),_,_) => __bad_request(e),
-                    (_,Err(e),_) => __bad_request(e),
-                    (_,_,Err(e)) => __bad_request(e),
+                    (Err(e),_,_) |
+                    (_,Err(e),_) |
+                    (_,_,Err(e)) => __error__(e),
                 }
             })
         }
@@ -403,10 +368,10 @@ const _: (/* two PathParams and FromRequest items */) = {
                         let res = self((p1, p2), item1, item2);
                         Box::pin(async move {res.await.into_response()})
                     }
-                    (Err(e),_,_,_) => __bad_request(e),
-                    (_,Err(e),_,_) => __bad_request(e),
-                    (_,_,Err(e),_) => __bad_request(e),
-                    (_,_,_,Err(e)) => __bad_request(e),
+                    (Err(e),_,_,_) |
+                    (_,Err(e),_,_) |
+                    (_,_,Err(e),_) |
+                    (_,_,_,Err(e)) => __error__(e),
                 }
             })
         }
@@ -428,119 +393,13 @@ const _: (/* two PathParams and FromRequest items */) = {
                         let res = self((p1, p2), item1, item2, item3);
                         Box::pin(async move {res.await.into_response()})
                     }
-                    (Err(e),_,_,_,_) => __bad_request(e),
-                    (_,Err(e),_,_,_) => __bad_request(e),
-                    (_,_,Err(e),_,_) => __bad_request(e),
-                    (_,_,_,Err(e),_) => __bad_request(e),
-                    (_,_,_,_,Err(e)) => __bad_request(e),
+                    (Err(e),_,_,_,_) |
+                    (_,Err(e),_,_,_) |
+                    (_,_,Err(e),_,_) |
+                    (_,_,_,Err(e),_) |
+                    (_,_,_,_,Err(e)) => __error__(e),
                 }
             })
-        }
-    }
-};
-
-#[cfg(feature="websocket")]
-const _: (/* requires upgrade to websocket */) = {
-    impl<'req, F, Fut, Body:IntoResponse> IntoHandler<fn(WebSocketContext,)->Body> for F
-    where
-        F:   Fn(WebSocketContext) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Body> + Send + 'static,
-    {
-        fn into_handler(self) -> Handler {
-            Handler::new(move |req| {
-                match WebSocketContext::new(req) {
-                    Ok(wsc)  => {
-                        let res = self(wsc);
-                        Box::pin(async move {res.await.into_response()})
-                    }
-                    Err(res) => (|| Box::pin(async {res}))(),
-                }
-            }).requires_upgrade()
-        }
-    }
-
-    impl<'req, F, Fut, Body:IntoResponse, P1:FromParam<'req>> IntoHandler<fn(WebSocketContext, P1)->Body> for F
-    where
-        F:   Fn(WebSocketContext, P1) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Body> + Send + 'static,
-    {
-        fn into_handler(self) -> Handler {
-            Handler::new(move |req| {
-                let p1 = unsafe {req.path.assume_one_param()};
-                match from_param_bytes(p1) {
-                    Ok(p1) => match WebSocketContext::new(req) {
-                        Ok(wsc)  => {
-                            let res = self(wsc, p1);
-                            Box::pin(async move {res.await.into_response()})
-                        }
-                        Err(res) => (|| Box::pin(async {res}))(),
-                    }
-                    Err(e) => __bad_request(e),
-                }
-            }).requires_upgrade()
-        }
-    }
-    impl<'req, F, Fut, Body:IntoResponse, P1:FromParam<'req>, P2:FromParam<'req>> IntoHandler<fn(WebSocketContext, P1, P2)->Body> for F
-    where
-        F:   Fn(WebSocketContext, P1, P2) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Body> + Send + 'static,
-    {
-        fn into_handler(self) -> Handler {
-            Handler::new(move |req| {
-                let (p1, p2) = unsafe {req.path.assume_two_params()};
-                match (from_param_bytes(p1), from_param_bytes(p2)) {
-                    (Ok(p1), Ok(p2)) => match WebSocketContext::new(req) {
-                        Ok(wsc)  => {
-                            let res = self(wsc, p1, p2);
-                            Box::pin(async move {res.await.into_response()})
-                        }
-                        Err(res) => (|| Box::pin(async {res}))(),
-                    }
-                    (Err(e),_)|(_,Err(e)) => __bad_request(e),
-                }
-            }).requires_upgrade()
-        }
-    }
-    impl<'req, F, Fut, Body:IntoResponse, P1:FromParam<'req>> IntoHandler<fn(WebSocketContext, (P1,))->Body> for F
-    where
-        F:   Fn(WebSocketContext, (P1,)) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Body> + Send + 'static,
-    {
-        fn into_handler(self) -> Handler {
-            Handler::new(move |req| {
-                let p1 = unsafe {req.path.assume_one_param()};
-                match from_param_bytes(p1) {
-                    Ok(p1) => match WebSocketContext::new(req) {
-                        Ok(wsc)  => {
-                            let res = self(wsc, (p1,));
-                            Box::pin(async move {res.await.into_response()})
-                        }
-                        Err(res) => (|| Box::pin(async {res}))(),
-                    }
-                    Err(e) => __bad_request(e),
-                }
-            }).requires_upgrade()
-        }
-    }
-    impl<'req, F, Fut, Body:IntoResponse, P1:FromParam<'req>, P2:FromParam<'req>> IntoHandler<fn(WebSocketContext, (P1, P2))->Body> for F
-    where
-        F:   Fn(WebSocketContext, (P1, P2)) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Body> + Send + 'static,
-    {
-        fn into_handler(self) -> Handler {
-            Handler::new(move |req| {
-                let (p1, p2) = unsafe {req.path.assume_two_params()};
-                match (from_param_bytes(p1), from_param_bytes(p2)) {
-                    (Ok(p1), Ok(p2)) => match WebSocketContext::new(req) {
-                        Ok(wsc)  => {
-                            let res = self(wsc, (p1, p2));
-                            Box::pin(async move {res.await.into_response()})
-                        }
-                        Err(res) => (|| Box::pin(async {res}))(),
-                    }
-                    (Err(e),_)|(_,Err(e)) => __bad_request(e),
-                }
-            }).requires_upgrade()
         }
     }
 };
