@@ -22,6 +22,7 @@ jobs:
           echo '[target.x86_64-unknown-linux-gnu]'                     >> $HOME/.cargo/config.toml
           echo 'linker    = "clang"'                                   >> $HOME/.cargo/config.toml
           echo 'rustflags = ["-C", "link-arg=-fuse-ld=/usr/bin/mold"]' >> $HOME/.cargo/config.toml
+          cat $HOME/.cargo/config.toml
 
       - uses: actions-rs/toolchain@v1
         with:
@@ -44,7 +45,8 @@ jobs:
       - name: Setup sccache
         run:  |
           echo '[build]'                                      >> $HOME/.cargo/config.toml
-          echo 'rustc-wrapper = "${HOME}/.cargo/bin/sccache"' >> $HOME/.cargo/config.toml
+          echo "rustc-wrapper = \"$HOME/.cargo/bin/sccache\"" >> $HOME/.cargo/config.toml
+          cat $HOME/.cargo/config.toml
          
       - name: Run tasks
         run:  |
