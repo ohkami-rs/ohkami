@@ -71,13 +71,6 @@ const _: (/* FromParam */) = {
             )
         }
     }
-    #[cfg(test)] fn __() {
-        async fn h1(_param: String) -> Response {todo!()}
-        async fn h2(_param: &str) -> Response {todo!()}
-    
-        let _ = h1.into_handler();
-        let _ = h2.into_handler();
-    }
 
     impl<'req, F, Body, Fut, P1:FromParam<'req>> IntoHandler<fn(((P1,),))->Body> for F
     where
@@ -403,3 +396,25 @@ const _: (/* two PathParams and FromRequest items */) = {
         }
     }
 };
+
+
+
+#[cfg(test)] #[test] fn handler_args() {
+    async fn h1(_param: String) -> Response {todo!()}
+    async fn h2(_param: &str) -> Response {todo!()}
+
+    struct P;
+    impl<'p> FromParam<'p> for P {
+        type Error = std::convert::Infallible;
+        fn from_param(param: std::borrow::Cow<'p, str>) -> Result<Self, Self::Error> {
+            Ok(Self)
+        }
+    }
+    async fn h3(_param: P) -> String {format!("")}
+
+    macro_rules! assert_handlers {
+        ( $($function:ident)* ) => {
+            $( let _ = $function.into_handler(); )*
+        };
+    } assert_handlers! { h1 h2 h3 }
+}
