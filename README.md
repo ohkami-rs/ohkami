@@ -150,7 +150,7 @@ impl BackFang for SetServer {
 
 #[tokio::main]
 async fn main() {
-    Ohkami::with((LogRequest, Seterver), (
+    Ohkami::with((LogRequest, SetServer), (
         "/".GET(|| async {"Hello!"}),
     )).howl("localhost:8080").await
 
