@@ -128,7 +128,11 @@ pub struct Ohkami {
 }
 
 impl Ohkami {
-    /// - `routes` is a tuple of routing items :
+    /// Create new `Ohkami` on the routing.
+    /// 
+    /// ---
+    ///
+    /// `routes` is a routing item or a tuple of them :
     /// 
     /// ```
     /// # use ohkami::Route;
@@ -148,6 +152,14 @@ impl Ohkami {
     /// )
     /// # ;
     /// ```
+    /// 
+    /// ---
+    /// 
+    /// Handler is an _**async**_ function :
+    /// 
+    /// > `({path params}, {FromRequest values},...) -> {IntoResponse value}`
+    ///
+    /// `{path params}` is a `FromParam` value or a tuple of them
     pub fn new(routes: impl build::Routes) -> Self {
         let mut router = TrieRouter::new();
         routes.apply(&mut router);
@@ -158,42 +170,39 @@ impl Ohkami {
         }
     }
 
-    /// - `fangs` is an item that implements `FrontFang` or `BackFang`, or tuple of such items:
+    /// Create new ohkami with the fangs on the routing.
+    /// 
+    /// ---
+    ///
+    /// `fangs` is an item that implements `FrontFang` or `BackFang`, or tuple of such items
+    /// 
+    /// NOTE:
+    /// `fangs` passed here are executed just before/after a handler in this `Ohkami` called for a request.
+    /// If you'd like to call some fangs for any requests, give them to `.howl_with()`!
     /// 
     /// ```
     /// use ohkami::prelude::*;
     /// 
-    /// struct Log;
-    /// impl FrontFang for Log {
+    /// struct Auth;
+    /// impl FrontFang for Auth {
     ///     async fn bite(&self, req: &mut Request) -> Result<(), Response> {
-    ///         println!("{req:?}");
     ///         Ok(())
     ///     }
     /// }
-    /// ```
-    /// `fangs` passed here are executed just before/after a handler in this `Ohkami` is called for the request.
-    /// If you use some fangs for any requests, specify them in `.howl_with`!
     /// 
-    /// <br/>
-    /// 
-    /// - `routes` is a tuple of routing items :
-    /// 
-    /// ```
-    /// # use ohkami::Route;
-    /// #
     /// # async fn handler1() -> &'static str {"1"}
     /// # async fn handler2() -> &'static str {"2"}
     /// # async fn handler3() -> &'static str {"3"}
     /// #
     /// # let _ =
-    /// (
+    /// Ohkami::with(Auth, (
     ///     "/a"
     ///         .GET(handler1)
     ///         .POST(handler2),
     ///     "/b"
     ///         .PUT(handler3),
     ///     //...
-    /// )
+    /// ))
     /// # ;
     /// ```
     pub fn with<T>(fangs: impl Fangs<T>, routes: impl build::Routes) -> Self {

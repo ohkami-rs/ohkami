@@ -68,7 +68,7 @@ Hello, your_name!
 
 ## Snippets
 
-### handle path params
+### Handle path params
 ```rust,no_run
 use ohkami::prelude::*;
 
@@ -87,7 +87,7 @@ async fn hello(name: &str) -> String {
 
 <br>
 
-### handle query params / request body
+### Handle query params / request body
 ```rust
 use ohkami::prelude::*;
 use ohkami::typed::status::{OK, Created};
@@ -125,7 +125,7 @@ async fn create_user(body: CreateUserRequest<'_>) -> Created<User> {
 
 <br>
 
-### use middlewares
+### Use middlewares
 ohkami's middlewares are called "**fang**s".
 
 ```rust,no_run
@@ -139,8 +139,8 @@ impl FrontFang for LogRequest {
     }
 }
 
-struct AppendServer;
-impl BackFang for AppendServer {
+struct SetServer;
+impl BackFang for SetServer {
     async fn bite(&self, res: &mut Response, _req: &Request) -> Result<(), Response> {
         res.headers.set()
             .Server("ohkami");
@@ -150,15 +150,24 @@ impl BackFang for AppendServer {
 
 #[tokio::main]
 async fn main() {
-    Ohkami::with((AppendServer, LogRequest), (
-        "/".GET(|| async {"Hello!"})
+    Ohkami::with((LogRequest, SetServer), (
+        "/".GET(|| async {"Hello!"}),
     )).howl("localhost:8080").await
+
+/* Or, you can call them for any requests (regardless of request paths) :
+
+    {an Ohkami}.howl_with(
+        (LogRequest, SetServer),
+        "localhost:8080"
+    ).await
+
+*/
 }
 ```
 
 <br>
 
-### pack of Ohkamis
+### Pack of Ohkamis
 ```rust,no_run
 use ohkami::prelude::*;
 use ohkami::typed::ResponseBody;
@@ -196,7 +205,7 @@ async fn main() {
 
 <br>
 
-### testing
+### Testing
 ```rust
 use ohkami::prelude::*;
 use ohkami::testing::*; // <--

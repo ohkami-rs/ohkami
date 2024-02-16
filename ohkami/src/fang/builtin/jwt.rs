@@ -144,6 +144,7 @@ impl JWT {
 }
 
 impl JWT {
+    /// Build JWT token with the payload.
     #[inline] pub fn issue(self, payload: impl ::serde::Serialize) -> String {
         let unsigned_token = {
             let mut ut = base64::encode_url(self.header_str());
@@ -153,17 +154,31 @@ impl JWT {
         };
 
         let signature = {
-            use ::sha2::{Sha256};
+            use ::sha2::{Sha256, Sha384, Sha512};
             use ::hmac::{Hmac, Mac};
 
-            let mut s = Hmac::<Sha256>::new_from_slice(self.secret.as_bytes()).unwrap();
-            s.update(unsigned_token.as_bytes());
-            s.finalize().into_bytes()
+            match &self.alg {
+                VerifyingAlgorithm::HS256 => base64::encode_url({
+                    let mut s = Hmac::<Sha256>::new_from_slice(self.secret.as_bytes()).unwrap();
+                    s.update(unsigned_token.as_bytes());
+                    s.finalize().into_bytes()
+                }),
+                VerifyingAlgorithm::HS384 => base64::encode_url({
+                    let mut s = Hmac::<Sha384>::new_from_slice(self.secret.as_bytes()).unwrap();
+                    s.update(unsigned_token.as_bytes());
+                    s.finalize().into_bytes()
+                }),
+                VerifyingAlgorithm::HS512 => base64::encode_url({
+                    let mut s = Hmac::<Sha512>::new_from_slice(self.secret.as_bytes()).unwrap();
+                    s.update(unsigned_token.as_bytes());
+                    s.finalize().into_bytes()
+                }),
+            }
         };
         
         let mut token = unsigned_token;
         token.push('.');
-        token.push_str(&base64::encode_url(signature));
+        token.push_str(&signature);
         token
     }
 }

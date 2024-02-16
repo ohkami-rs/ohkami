@@ -20,14 +20,14 @@
 #[cfg(any(
     all(feature="rt_tokio", feature="rt_async-std")
 ))] compile_error!("
-    Can't activate multiple `rt_*` feature!
+    Can't activate multiple `rt_*` features!
 ");
 
 #[cfg(not(any(
     feature="rt_tokio",
     feature="rt_async-std",
 )))] compile_error!("
-    Activate 1 of `rt_*` features：
+    Activate one of `rt_*` features：
     - rt_tokio
     - rt_async-std
 ");
@@ -106,9 +106,9 @@ mod x_websocket;
 /// # use ohkami::prelude::*;
 /// use ohkami::append;
 /// 
-/// struct AppendServer;
-/// impl BackFang for AppendServer {
-///     async fn bite(&self, res: &mut Response, req: &Request) -> Result<(), Response> {
+/// struct SetServer;
+/// impl BackFang for SetServer {
+///     async fn bite(&self, res: &mut Response, _req: &Request) -> Result<(), Response> {
 ///         res.headers.set()
 ///             .Server(append("ohkami"));
 ///         Ok(())
@@ -123,10 +123,9 @@ pub mod prelude {
     pub use crate::{Request, Route, Ohkami, FrontFang, BackFang, Response, IntoResponse, Method, Status};
 }
 
-/// Somthing that's almost [serde](https://crates.io/crates/serde)
+/// Somthing almost be [serde](https://crates.io/crates/serde).
 /// 
-/// <br>
-/// 
+/// ---
 /// *not_need_serde_in_your_dependencies.rs*
 /// ```
 /// use ohkami::serde::Serialize;
@@ -138,6 +137,7 @@ pub mod prelude {
 ///     age:  u8,
 /// }
 /// ```
+/// ---
 pub mod serde {
     pub use ::ohkami_macros::{Serialize, Deserialize};
     pub use ::serde::ser::{self, Serialize, Serializer};
