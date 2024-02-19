@@ -115,6 +115,8 @@ impl CORS {
 
 /* Based on https://github.com/honojs/hono/blob/main/src/middleware/cors/index.ts; MIT */
 impl BackFang for CORS {
+    type Error = Response;
+
     async fn bite(&self, res: &mut Response, req: &Request) -> Result<(), Response> {
         let mut h = res.headers.set();
 

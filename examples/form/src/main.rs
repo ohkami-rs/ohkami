@@ -30,7 +30,8 @@ async fn post_submit(form_data: FormData) -> Status {
 
 struct Logger;
 impl BackFang for Logger {
-    fn bite(&self, res: &mut Response, req: &Request) -> impl std::future::Future<Output = Result<(), Response>> + Send {
+    type Error = std::convert::Infallible;
+    fn bite(&self, res: &mut Response, req: &Request) -> impl std::future::Future<Output = Result<(), Self::Error>> + Send {
         println!("[request ] {:?}", req);
         println!("[response] {:?}", res);
 

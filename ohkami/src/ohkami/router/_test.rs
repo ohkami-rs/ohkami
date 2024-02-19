@@ -152,9 +152,8 @@ fn my_ohkami() -> Ohkami {
 
     struct Increment;
     impl FrontFang for Increment {
-        fn bite(&self, _: &mut Request) -> impl std::future::Future<Output = Result<(), Response>> + Send {
-            *N().lock().unwrap() += 1;
-
+        type Error = std::convert::Infallible;
+        fn bite(&self, _: &mut Request) -> impl std::future::Future<Output = Result<(), Self::Error>> + Send {              *N().lock().unwrap() += 1;    
             async {Ok(())}
         }
     }
@@ -261,7 +260,8 @@ fn my_ohkami() -> Ohkami {
 
     struct APIIncrement;
     impl FrontFang for APIIncrement {
-        fn bite(&self, _: &mut Request) -> impl std::future::Future<Output = Result<(), Response>> + Send {
+        type Error = std::convert::Infallible;
+        fn bite(&self, _: &mut Request) -> impl std::future::Future<Output = Result<(), Self::Error>> + Send {
             *N().lock().unwrap() += 1;
             async {Ok(())}
         }
@@ -269,7 +269,8 @@ fn my_ohkami() -> Ohkami {
 
     struct GlobalIncrement;
     impl FrontFang for GlobalIncrement {
-        fn bite(&self, _: &mut Request) -> impl std::future::Future<Output = Result<(), Response>> + Send {
+        type Error = std::convert::Infallible;
+        fn bite(&self, _: &mut Request) -> impl std::future::Future<Output = Result<(), Self::Error>> + Send {
             *N().lock().unwrap() += 2;
             async {Ok(())}
         }
@@ -277,7 +278,8 @@ fn my_ohkami() -> Ohkami {
 
     struct NotFoundIncrement;
     impl BackFang for NotFoundIncrement {
-        fn bite(&self, res: &mut Response, _req: &Request) -> impl std::future::Future<Output = Result<(), Response>> + Send {
+        type Error = std::convert::Infallible;
+        fn bite(&self, res: &mut Response, _req: &Request) -> impl std::future::Future<Output = Result<(), Self::Error>> + Send {
             if res.status == Status::NotFound {
                 *N().lock().unwrap() += 3;
             }

@@ -38,7 +38,8 @@ use crate::__rt__::AsyncWriter;
 /// 
 /// struct LogResponse;
 /// impl BackFang for LogResponse {
-///     async fn bite(&self, res: &mut Response, _req: &Request) -> Result<(), Response> {
+///     type Error = std::convert::Infallible;
+///     async fn bite(&self, res: &mut Response, _req: &Request) -> Result<(), Self::Error> {
 ///         println!("{}", res.status);
 ///         Ok(())
 ///     }

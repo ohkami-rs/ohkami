@@ -41,7 +41,8 @@ impl Ohkami {
     /// 
     /// struct LogRequest;
     /// impl FrontFang for LogRequest {
-    ///     async fn bite(&self, req: &mut Request) -> Result<(), Response> {
+    ///     type Error = std::convert::Infallible;
+    ///     async fn bite(&self, req: &mut Request) -> Result<(), Self::Error> {
     ///         println!("{req:?}");
     ///         Ok(())
     ///     }
@@ -49,7 +50,8 @@ impl Ohkami {
     /// 
     /// struct CustomNotFound;
     /// impl BackFang for CustomNotFound {
-    ///     async fn bite(&self, res: &mut Response, _req: &Request) -> Result<(), Response> {
+    ///     type Error = std::convert::Infallible;
+    ///     async fn bite(&self, res: &mut Response, _req: &Request) -> Result<(), Self::Error> {
     ///         if res.status == Status::NotFound {
     ///             res.set_html(r#"
     ///                 <!DOCTYPE html>

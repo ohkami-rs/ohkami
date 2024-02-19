@@ -108,7 +108,8 @@ mod x_websocket;
 /// 
 /// struct SetServer;
 /// impl BackFang for SetServer {
-///     async fn bite(&self, res: &mut Response, _req: &Request) -> Result<(), Response> {
+///     type Error = std::convert::Infallible;
+///     async fn bite(&self, res: &mut Response, _req: &Request) -> Result<(), Self::Error> {
 ///         res.headers.set()
 ///             .Server(append("ohkami"));
 ///         Ok(())

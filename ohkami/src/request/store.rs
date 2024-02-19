@@ -40,7 +40,8 @@ impl Hasher for TypeIDHasger {
 /// 
 /// pub struct MemorizeNow;
 /// impl FrontFang for MemorizeNow {
-///     async fn bite(&self, req: &mut Request) -> Result<(), Response> {
+///     type Error = std::convert::Infallible;
+///     async fn bite(&self, req: &mut Request) -> Result<(), Self::Error> {
 ///         req.memorize(serde_json::json!({
 ///             "now": std::time::SystemTime::now()
 ///         }));

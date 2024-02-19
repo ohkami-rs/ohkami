@@ -17,6 +17,7 @@ impl Default for Auth {
     }
 }
 impl FrontFang for Auth {
+    type Error = Response;
     async fn bite(&self, req: &mut Request) -> Result<(), Response> {
         if self.condition.is_some_and(|cond| !cond(req)) {
             return Ok(());
@@ -44,13 +45,13 @@ impl Default for OptionalAuth {
     }
 }
 impl FrontFang for OptionalAuth {
-    async fn bite(&self, req: &mut Request) -> Result<(), Response> {
+    type Error = RealWorldError;
+    async fn bite(&self, req: &mut Request) -> Result<(), Self::Error> {
         if self.condition.is_some_and(|cond| !cond(req)) {
             return Ok(());
         }
 
-        let secret = config::JWT_SECRET_KEY()
-            .map_err(RealWorldError::into_response)?;
+        let secret = config::JWT_SECRET_KEY()?;
         let payload: Option<config::JWTPayload> = JWT::default(secret).verified(req).ok();
         req.memorize(payload);
         Ok(())
@@ -59,7 +60,8 @@ impl FrontFang for OptionalAuth {
 
 pub struct LogRequest;
 impl FrontFang for LogRequest {
-    fn bite(&self, req: &mut Request) -> impl std::future::Future<Output = Result<(), Response>> + Send {
+    type Error = std::convert::Infallible;
+    fn bite(&self, req: &mut Request) -> impl std::future::Future<Output = Result<(), Self::Error>> + Send {
         let method = req.method();
         let path   = req.path();
 
@@ -71,7 +73,8 @@ impl FrontFang for LogRequest {
 
 pub struct LogResponse;
 impl BackFang for LogResponse {
-    fn bite(&self, res: &mut Response, _: &Request) -> impl std::future::Future<Output = Result<(), Response>> + Send {
+    type Error = std::convert::Infallible;
+    fn bite(&self, res: &mut Response, _: &Request) -> impl std::future::Future<Output = Result<(), Self::Error>> + Send {
         tracing::info!("{res:?}");
         async {Ok(())}
     }
@@ -79,7 +82,8 @@ impl BackFang for LogResponse {
 
 pub struct ConnectionPool(PgPool);
 impl FrontFang for ConnectionPool {
-    fn bite(&self, req: &mut Request) -> impl std::future::Future<Output = Result<(), Response>> + Send {
+    type Error = std::convert::Infallible;
+    fn bite(&self, req: &mut Request) -> impl std::future::Future<Output = Result<(), Self::Error>> + Send {
         req.memorize(self.0.clone());
         async {Ok(())}
     }

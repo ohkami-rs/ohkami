@@ -66,7 +66,8 @@ mod fangs {
 
     pub struct SetServer;
     impl BackFang for SetServer {
-        async fn bite(&self, res: &mut Response, _: &Request) -> Result<(), Response> {
+        type Error = std::convert::Infallible;
+        async fn bite(&self, res: &mut Response, _: &Request) -> Result<(), Self::Error> {
             res.headers.set()
                 .Server("ohkami");
 
@@ -82,7 +83,8 @@ mod fangs {
 
     pub struct LogRequest;
     impl FrontFang for LogRequest {
-        async fn bite(&self, req: &mut Request) -> Result<(), Response> {
+        type Error = std::convert::Infallible;
+        async fn bite(&self, req: &mut Request) -> Result<(), Self::Error> {
             let __method__ = req.method();
             let __path__   = req.path();
 

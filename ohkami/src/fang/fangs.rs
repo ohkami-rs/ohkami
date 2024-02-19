@@ -1,5 +1,5 @@
 use std::{future::Future, pin::Pin};
-use crate::{Response, Request, Method::{self, *}, fang::Fang};
+use crate::{Response, Request, IntoResponse, Method::{self, *}, fang::Fang};
 
 
 /// Represents "can be used as a front fang", e.g. executed before `req` is passed to a handler.\
@@ -13,7 +13,8 @@ use crate::{Response, Request, Method::{self, *}, fang::Fang};
 /// 
 /// struct LogRequest;
 /// impl FrontFang for LogRequest {
-///     async fn bite(&self, req: &mut Request) -> Result<(), Response> {
+///     type Error = std::convert::Infallible;
+///     async fn bite(&self, req: &mut Request) -> Result<(), Self::Error> {
 ///         println!("{req:?}");
 ///         Ok(())
 ///     }
@@ -22,9 +23,12 @@ use crate::{Response, Request, Method::{self, *}, fang::Fang};
 pub trait FrontFang {
     const METHODS: &'static [Method] = &[GET, PUT, POST, PATCH, DELETE, HEAD, OPTIONS];
 
+    /// If `bite` never fails, `std::convert::Infallible` is recommended.
+    type Error: IntoResponse;
+
     #[must_use]
     #[allow(clippy::type_complexity)]
-    fn bite(&self, req: &mut Request) -> impl ::std::future::Future<Output = Result<(), Response>> + Send;
+    fn bite(&self, req: &mut Request) -> impl ::std::future::Future<Output = Result<(), Self::Error>> + Send;
 }
 
 pub(crate) trait FrontFangCaller: Send + Sync {
@@ -33,9 +37,11 @@ pub(crate) trait FrontFangCaller: Send + Sync {
 }
 impl<FF: FrontFang + Send + Sync> FrontFangCaller for FF {
     #[inline(always)] fn call<'c>(&'c self, req: &'c mut Request) -> Pin<Box<dyn Future<Output = Result<(), Response>> + Send + 'c>>
-    where Self: Sync + 'c
-    {
-        Box::pin(self.bite(req))
+    where Self: Sync + 'c {
+        Box::pin(async {
+            self.bite(req).await
+                .map_err(IntoResponse::into_response)
+        })
     }
 }
 
@@ -51,7 +57,8 @@ impl<FF: FrontFang + Send + Sync> FrontFangCaller for FF {
 /// 
 /// struct LogResponse;
 /// impl BackFang for LogResponse {
-///     async fn bite(&self, res: &mut Response, _req: &Request) -> Result<(), Response> {
+///     type Error = std::convert::Infallible;
+///     async fn bite(&self, res: &mut Response, _req: &Request) -> Result<(), Self::Error> {
 ///         println!("{res:?}");
 ///         Ok(())
 ///     }
@@ -60,9 +67,12 @@ impl<FF: FrontFang + Send + Sync> FrontFangCaller for FF {
 pub trait BackFang {
     const METHODS: &'static [Method] = &[GET, PUT, POST, PATCH, DELETE, HEAD, OPTIONS];
 
+    /// If `bite` never fails, `std::convert::Infallible` is recommended.
+    type Error: IntoResponse;
+
     #[must_use]
     #[allow(clippy::type_complexity)]
-    fn bite(&self, res: &mut Response, _req: &Request) -> impl ::std::future::Future<Output = Result<(), Response>> + Send;
+    fn bite(&self, res: &mut Response, _req: &Request) -> impl ::std::future::Future<Output = Result<(), Self::Error>> + Send;
 }
 
 pub(crate) trait BackFangCaller: Send + Sync {
@@ -71,9 +81,11 @@ pub(crate) trait BackFangCaller: Send + Sync {
 }
 impl<BF: BackFang + Send + Sync> BackFangCaller for BF {
     #[inline(always)] fn call<'c>(&'c self, res: &'c mut Response, _req: &'c Request) -> Pin<Box<dyn Future<Output = Result<(), Response>> + Send + 'c>>
-    where Self: Sync + 'c
-    {
-        Box::pin(self.bite(res, _req))
+    where Self: Sync + 'c {
+        Box::pin(async {
+            self.bite(res, _req).await
+                .map_err(IntoResponse::into_response)
+        })
     }
 }
 

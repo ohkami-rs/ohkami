@@ -22,7 +22,8 @@ use crate::Method;
 /// struct Auth;
 /// impl FrontFang for Auth {
 ///     /* 〜 */
-/// #    async fn bite(&self, req: &mut Request) -> Result<(), Response> {
+/// #    type Error = Response;
+/// #    async fn bite(&self, req: &mut Request) -> Result<(), Self::Error> {
 /// #        // Do something...
 /// #
 /// #        Ok(())
@@ -185,7 +186,8 @@ impl Ohkami {
     /// 
     /// struct Auth;
     /// impl FrontFang for Auth {
-    ///     async fn bite(&self, req: &mut Request) -> Result<(), Response> {
+    ///     type Error = Response;
+    ///     async fn bite(&self, req: &mut Request) -> Result<(), Self::Error> {
     ///         Ok(())
     ///     }
     /// }
