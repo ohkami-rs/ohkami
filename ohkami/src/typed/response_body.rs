@@ -50,9 +50,37 @@ use std::borrow::Cow;
 /// }
 /// ```
 pub trait ResponseBody: Serialize {
+    /// Select from `ohkami::typed::body_type` module
+    type Type: BodyType;
     fn into_response_with(self, status: Status) -> Response;
 }
+
+pub trait BodyType {}
+macro_rules! body_type {
+    ($( $name:ident, )*) => {
+        pub mod body_type {
+            $(
+                pub struct $name;
+                impl super::BodyType for $name {}
+            )*
+        }
+    };
+} body_type! {
+    Empty,
+    JSON,
+    HTML,
+    Text,
+    Other,
+}
+
+impl<RB: ResponseBody> crate::IntoResponse for RB {
+    fn into_response(self) -> Response {
+        self.into_response_with(Status::OK)
+    }
+}
+
 impl ResponseBody for () {
+    type Type = body_type::Empty;
     fn into_response_with(self, status: Status) -> Response {
         Response {
             status,
@@ -61,10 +89,55 @@ impl ResponseBody for () {
         }
     }
 }
+
+const _: (/* JSON utility impls */) = {
+    impl<RB: ResponseBody<Type = body_type::JSON>> ResponseBody for Option<RB> {
+        type Type = body_type::JSON;
+        fn into_response_with(self, status: Status) -> Response {
+            Response::with(status).json(self)
+        }
+    }
+
+    impl<RB: ResponseBody<Type = body_type::JSON>> ResponseBody for Vec<RB> {
+        type Type = body_type::JSON;
+        #[inline] fn into_response_with(self, status: Status) -> Response {
+            Response::with(status).json(self)
+        }
+    }
+
+    impl<RB: ResponseBody<Type = body_type::JSON>> ResponseBody for &[RB] {
+        type Type = body_type::JSON;
+        fn into_response_with(self, status: Status) -> Response {
+            Response::with(status).json(self)
+        }
+    }
+
+    /// ```
+    /// impl<RB: ResponseBody<Type = body_type::JSON>, const N: usize> ResponseBody for [RB; N]
+    /// ```
+    /// is not available becasue `serde` only provides following 33 `Serialize` impls...
+    macro_rules! response_body_of_json_array_of_len {
+        ($($len:literal)*) => {
+            $(
+                impl<RB: ResponseBody<Type = body_type::JSON>> ResponseBody for [RB; $len] {
+                    type Type = body_type::JSON;
+                    #[inline] fn into_response_with(self, status: Status) -> Response {
+                        Response::with(status).json(self)
+                    }
+                }
+            )*
+        };
+    } response_body_of_json_array_of_len! {
+        0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17
+        18 19 20 21 22 23 24 25 26 27 28 29 30 31 32
+    }
+};
+
 macro_rules! plain_text_responsebodies {
     ($( $text_type:ty: $self:ident => $content:expr, )*) => {
         $(
             impl ResponseBody for $text_type {
+                type Type = body_type::Text;
                 #[inline] fn into_response_with(self, status: Status) -> Response {
                     let content = {let $self = self; $content};
             
@@ -94,12 +167,13 @@ macro_rules! plain_text_responsebodies {
 
 #[cfg(test)]
 #[test] fn assert_impls() {
-    fn is_reponsebody<T: ResponseBody>() {}
+    fn is_empty_reponsebody<T: ResponseBody<Type = body_type::Empty>>() {}
+    is_empty_reponsebody::<()>();
 
-    is_reponsebody::<()>();
-    is_reponsebody::<&'static str>();
-    is_reponsebody::<String>();
-    is_reponsebody::<&'_ String>();
-    is_reponsebody::<Cow<'static, str>>();
-    is_reponsebody::<Cow<'_, str>>();
+    fn is_text_reponsebody<T: ResponseBody<Type = body_type::Text>>() {}
+    is_text_reponsebody::<&'static str>();
+    is_text_reponsebody::<String>();
+    is_text_reponsebody::<&'_ String>();
+    is_text_reponsebody::<Cow<'static, str>>();
+    is_text_reponsebody::<Cow<'_, str>>();
 }
