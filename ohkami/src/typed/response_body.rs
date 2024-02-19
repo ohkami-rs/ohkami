@@ -112,9 +112,7 @@ const _: (/* JSON utility impls */) = {
         }
     }
 
-    /// ```
-    /// impl<RB: ResponseBody<Type = body_type::JSON>, const N: usize> ResponseBody for [RB; N]
-    /// ```
+    /// `impl<RB: ResponseBody<Type = body_type::JSON>, const N: usize> ResponseBody for [RB; N]`
     /// is not available becasue `serde` only provides following 33 `Serialize` impls...
     macro_rules! response_body_of_json_array_of_len {
         ($($len:literal)*) => {
