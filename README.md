@@ -24,8 +24,8 @@
 # `async-std` is available by feature "rt_async-std".
 
 [dependencies]
-ohkami = { version = "0.14.1", features = ["rt_tokio"] }
-tokio  = { version = "1",      features = ["full"] }
+ohkami = { version = "0.15", features = ["rt_tokio"] }
+tokio  = { version = "1",    features = ["full"] }
 ```
 
 2. Write your first code with ohkami : [examples/quick_start](https://github.com/kana-rus/ohkami/blob/main/examples/quick_start/src/main.rs)
@@ -142,6 +142,7 @@ use ohkami::prelude::*;
 struct LogRequest;
 impl FrontFang for LogRequest {
     type Error = std::convert::Infallible;
+
     async fn bite(&self, req: &mut Request) -> Result<(), Self::Error> {
         println!("{req:?}");
         Ok(())
@@ -151,6 +152,7 @@ impl FrontFang for LogRequest {
 struct SetServer;
 impl BackFang for SetServer {
     type Error = std::convert::Infallible;
+
     async fn bite(&self, res: &mut Response, _req: &Request) -> Result<(), Self::Error> {
         res.headers.set()
             .Server("ohkami");
@@ -172,6 +174,7 @@ async fn main() {
     ).await
 
 */
+
 }
 ```
 

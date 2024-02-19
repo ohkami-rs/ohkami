@@ -196,11 +196,11 @@ impl Response {
         self.content = Some(Cow::Owned(body));
     }
 
-    pub fn json_str<JSONString: Into<Cow<'static, str>>>(mut self, json_str: JSONString) -> Self {
+    pub unsafe fn json_str<JSONString: Into<Cow<'static, str>>>(mut self, json_str: JSONString) -> Self {
         self.set_json_str(json_str);
         self
     }
-    pub fn set_json_str<JSONString: Into<Cow<'static, str>>>(&mut self, json_str: JSONString) {
+    pub unsafe fn set_json_str<JSONString: Into<Cow<'static, str>>>(&mut self, json_str: JSONString) {
         let body = match json_str.into() {
             Cow::Borrowed(str) => Cow::Borrowed(str.as_bytes()),
             Cow::Owned(string) => Cow::Owned(string.into_bytes()),
