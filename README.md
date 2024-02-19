@@ -9,14 +9,14 @@
 - *multi runtime* support：`tokio`, `async-std`
 
 <div align="right">
+    <a href="https://github.com/kana-rus/ohkami/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/crates/l/ohkami.svg" /></a>
     <a href="https://github.com/kana-rus/ohkami/actions"><img alt="build check status of ohkami" src="https://github.com/kana-rus/ohkami/actions/workflows/CI.yml/badge.svg"/></a>
     <a href="https://crates.io/crates/ohkami"><img alt="crates.io" src="https://img.shields.io/crates/v/ohkami" /></a>
-    <a href="https://github.com/kana-rus/ohkami/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/crates/l/ohkami.svg" /></a>
 </div>
 
 <br>
 
-## Quick start
+## Quick Start
 1. Add to `dependencies` :
 
 ```toml
@@ -24,7 +24,7 @@
 # `async-std` is available by feature "rt_async-std".
 
 [dependencies]
-ohkami = { version = "0.14", features = ["rt_tokio"] }
+ohkami = { version = "0.15", features = ["rt_tokio"] }
 tokio  = { version = "1",    features = ["full"] }
 ```
 
