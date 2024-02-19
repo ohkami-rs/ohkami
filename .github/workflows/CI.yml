@@ -51,4 +51,4 @@ jobs:
       - name: Run tasks
         run:  |
           sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
-          task test check ${{ matrix.toolchain == 'nightly' && 'bench' || '' }}
+          task test check ${{ matrix.toolchain == 'nightly' && 'bench_dryrun' || '' }}

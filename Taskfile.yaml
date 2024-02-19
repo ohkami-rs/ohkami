@@ -15,6 +15,11 @@ tasks:
       - check_rt_tokio
       - check_rt_async-std
 
+  bench_dryrun:
+    dir: benches
+    cmds:
+      - cargo bench --no-run
+
   bench:
     dir: benches
     cmds:
