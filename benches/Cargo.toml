@@ -5,6 +5,6 @@ edition    = "2021"
 authors    = ["kanarus <kanarus786@gmail.com>"]
 
 [dependencies]
-ohkami     = { version = "0.15.0", path = "../ohkami", features = ["rt_tokio", "DEBUG"] }
+ohkami     = { version = "0.14.1", path = "../ohkami", features = ["rt_tokio", "DEBUG"] }
 http       = "1.0.0"
 rustc-hash = "1.1"

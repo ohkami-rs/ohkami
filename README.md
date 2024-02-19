@@ -24,8 +24,8 @@
 # `async-std` is available by feature "rt_async-std".
 
 [dependencies]
-ohkami = { version = "0.15", features = ["rt_tokio"] }
-tokio  = { version = "1",    features = ["full"] }
+ohkami = { version = "0.14.1", features = ["rt_tokio"] }
+tokio  = { version = "1",      features = ["full"] }
 ```
 
 2. Write your first code with ohkami : [examples/quick_start](https://github.com/kana-rus/ohkami/blob/main/examples/quick_start/src/main.rs)
@@ -87,36 +87,44 @@ async fn hello(name: &str) -> String {
 
 <br>
 
-### Handle query params / request body
+### Handle request body / query params
 ```rust
 use ohkami::prelude::*;
-use ohkami::typed::status::{OK, Created};
+use ohkami::typed::status::Created;
 use ohkami::typed::{Query, Payload, ResponseBody};
 
-#[Query]
-struct SearchQuery<'q> {
-    q: &'q str,
-}
-
-async fn search(condition: SearchQuery<'_>) -> OK<String> {
-    OK(format!("Something found"))
-}
-
-#[Payload(JSOND)]
+#[Payload(JSOND)] // "JSON Deserialized"
 struct CreateUserRequest<'req> {
     name:     &'req str,
     password: &'req str,
 }
 
-#[ResponseBody(JSONS)]
+#[ResponseBody(JSONS)] // "JSON Serializable"
 struct User {
     name: String,
 }
 
 async fn create_user(body: CreateUserRequest<'_>) -> Created<User> {
     Created(User {
-        name: format!("ohkami web framework")
+        name: String::from("ohkami")
     })
+}
+
+#[Query] // Params like `?lang=rust&q=framework`
+struct SearchQuery<'q> {
+    lang: &'q str,
+    q:    &'q str,
+}
+
+#[ResponseBody(JSONS)]
+struct SearchResult {
+    title: String,
+}
+
+async fn search(condition: SearchQuery<'_>) -> Vec<SearchResult> {
+    vec![
+        SearchResult { title: String::from("ohkami") },
+    ]
 }
 ```
 `#[Query]`, `#[Payload( 〜 )]` derives `FromRequest` trait impl for the struct.
