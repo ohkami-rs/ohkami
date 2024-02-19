@@ -1,9 +1,9 @@
 #![allow(non_snake_case)]
 
-use crate::{Response, IntoResponse, Status};
+use crate::{Response, Status};
+use crate::typed::{ResponseBody, body_type};
 use crate::response::ResponseHeaders;
 use crate::serde::Serialize;
-use crate::typed::ResponseBody;
 use std::borrow::Cow;
 
 
@@ -21,12 +21,8 @@ impl Serialize for Text {
         self.content.serialize(serializer)    
     }
 }
-impl IntoResponse for Text {
-    #[inline(always)] fn into_response(self) -> Response {
-        self.into_response_with(Status::OK)
-    }
-}
 impl ResponseBody for Text {
+    type Type = body_type::Text;
     #[inline] fn into_response_with(self, status: Status) -> Response {
         let content = match self.content {
             Cow::Borrowed(str) => Cow::Borrowed(str.as_bytes()),
@@ -60,12 +56,8 @@ impl Serialize for HTML {
         self.content.serialize(serializer)    
     }
 }
-impl IntoResponse for HTML {
-    #[inline(always)] fn into_response(self) -> Response {
-        self.into_response_with(Status::OK)
-    }
-}
 impl ResponseBody for HTML {
+    type Type = body_type::HTML;
     #[inline] fn into_response_with(self, status: Status) -> Response {
         let content = match self.content {
             Cow::Borrowed(str) => Cow::Borrowed(str.as_bytes()),

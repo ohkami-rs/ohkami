@@ -1,0 +1,9 @@
+[package]
+name    = "json_response"
+version = "0.1.0"
+edition = "2021"
+authors = ["kanarus <kanarus786@gmail.com>"]
+
+[dependencies]
+ohkami  = { workspace = true }
+tokio   = { workspace = true }
