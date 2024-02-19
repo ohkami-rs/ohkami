@@ -32,7 +32,8 @@ use crate::{Request, Response, Status};
 /// 
 /// struct MyAuthFang;
 /// impl FrontFang for MyAuthFang {
-///     async fn bite(&self, req: &mut Request) -> Result<(), Response> {
+///     type Error = Response;
+///     async fn bite(&self, req: &mut Request) -> Result<(), Self::Error> {
 ///         let payload = my_jwt()
 ///             .verified::<JWTPayload>(req)?;
 ///         req.memorize(payload);
@@ -468,6 +469,7 @@ impl JWT {
 
         struct MyJWTFang(JWT);
         impl FrontFang for MyJWTFang {
+            type Error = Response;
             async fn bite(&self, req: &mut Request) -> Result<(), Response> {
                 let jwt_payload = self.0.verified::<MyJWTPayload>(req)?;
                 req.memorize(jwt_payload);

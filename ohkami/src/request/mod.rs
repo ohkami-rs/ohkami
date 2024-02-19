@@ -56,7 +56,8 @@ pub(crate) const PAYLOAD_LIMIT: usize = 1 << 32;
 /// 
 /// struct LogRequest;
 /// impl FrontFang for LogRequest {
-///     async fn bite(&self, req: &mut Request) -> Result<(), Response> {
+///     type Error = std::convert::Infallible;
+///     async fn bite(&self, req: &mut Request) -> Result<(), Self::Error> {
 ///         let method = req.method();
 ///         let path = req.path();
 ///         println!("{method} {path}");
@@ -105,8 +106,6 @@ pub struct Request {pub(crate) _metadata: [u8; METADATA_SIZE],
     queries:         QueryParams,
     payload:         Option<CowSlice>,
     store:           Store,
-
-    #[cfg(feature="websocket")] pub(crate) upgrade_id: Option<UpgradeID>,
 }
 
 impl Request {
