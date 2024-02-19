@@ -8,3 +8,4 @@ authors    = ["kanarus <kanarus786@gmail.com>"]
 ohkami     = { version = "0.14.1", path = "../ohkami", features = ["rt_tokio", "DEBUG"] }
 http       = "1.0.0"
 rustc-hash = "1.1"
+bytes      = "1.5.0"
