@@ -39,7 +39,7 @@ pub(super) fn ResponseBody(format: TokenStream, data: TokenStream) -> Result<Tok
                 impl<#generics_params> ::ohkami::typed::ResponseBody for #name<#generics_params>
                     #generics_where
                 {
-                    type Type = ::ohkami::typed::body_type::JSON;
+                    type Type = ::ohkami::typed::bodytype::JSON;
                     #[inline(always)] fn into_response_with(self, status: ::ohkami::Status) -> ::ohkami::Response {
                         ::ohkami::Response::with(status).json(self)
                     }

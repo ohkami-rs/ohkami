@@ -339,7 +339,7 @@ impl JWT {
     #[test] async fn test_jwt_verify_senario() {
         use crate::prelude::*;
         use crate::{testing::*, Memory};
-        use crate::typed::{ResponseBody, body_type, status::OK};
+        use crate::typed::{ResponseBody, bodytype, status::OK};
 
         use std::{sync::OnceLock, sync::Mutex, collections::HashMap, borrow::Cow};
 
@@ -406,7 +406,7 @@ impl JWT {
             familly_name: String,
         }
         impl ResponseBody for Profile {
-            type Type = body_type::JSON;
+            type Type = bodytype::JSON;
             fn into_response_with(self, status: Status) -> Response {
                 Response::with(status).json(self)
             }
