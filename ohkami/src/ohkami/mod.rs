@@ -97,7 +97,7 @@ use crate::Method;
 /// #### path_params：
 /// A tuple of types that implement `FromParam` trait.\
 /// If the path contains only one parameter, then you can omit the tuple.\
-/// (In current ohkami, at most *2* path params can be passed.)
+/// (In current ohkami, at most *2* path params can be handled.)
 /// 
 /// <br>
 /// 

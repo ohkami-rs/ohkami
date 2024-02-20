@@ -93,13 +93,13 @@ use ohkami::prelude::*;
 use ohkami::typed::status::Created;
 use ohkami::typed::{Query, Payload, ResponseBody};
 
-#[Payload(JSOND)] // JSON + Deserialize
+#[Payload(JSOND)] /* JSON + Deserialize */
 struct CreateUserRequest<'req> {
     name:     &'req str,
     password: &'req str,
 }
 
-#[ResponseBody(JSONS)] // JSON + Serialize
+#[ResponseBody(JSONS)] /* JSON + Serialize */
 struct User {
     name: String,
 }
@@ -110,7 +110,7 @@ async fn create_user(body: CreateUserRequest<'_>) -> Created<User> {
     })
 }
 
-#[Query] // Params like `?lang=rust&q=framework`
+#[Query] /* Params like `?lang=rust&q=framework` */
 struct SearchQuery<'q> {
     lang: &'q str,
     q:    &'q str,
@@ -140,7 +140,7 @@ ohkami's middlewares are called "**fang**s".
 use ohkami::prelude::*;
 
 struct LogRequest;
-impl FrontFang for LogRequest {
+impl FrontFang for LogRequest { /* Called before a handler */
     type Error = std::convert::Infallible;
 
     async fn bite(&self, req: &mut Request) -> Result<(), Self::Error> {
@@ -150,7 +150,7 @@ impl FrontFang for LogRequest {
 }
 
 struct SetServer;
-impl BackFang for SetServer {
+impl BackFang for SetServer { /* Called after a handler */
     type Error = std::convert::Infallible;
 
     async fn bite(&self, res: &mut Response, _req: &Request) -> Result<(), Self::Error> {
@@ -163,15 +163,17 @@ impl BackFang for SetServer {
 #[tokio::main]
 async fn main() {
     Ohkami::with((LogRequest, SetServer), (
-        "/".GET(|| async {"Hello!"}),
+        "/hello".GET(|| async {"Hello!"}),
     )).howl("localhost:8080").await
 
-/* Or, you can call them for any requests (regardless of request paths) :
+/* Or, you can call them for any incoming requests
+   (regardless of request paths) :
 
-    {{an Ohkami}}.howl_with(
-        (LogRequest, SetServer),
-        "localhost:8080"
-    ).await
+    {an Ohkami}
+        .howl_with(
+            (LogRequest, SetServer),
+            "localhost:8080"
+        ).await
 
 */
 

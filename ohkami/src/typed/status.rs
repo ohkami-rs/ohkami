@@ -8,7 +8,16 @@ macro_rules! generate_statuses_as_types_containing_value {
         $(
             #[doc = "Type-safe `"]
             #[doc = $message]
-            #[doc = "` response with the `ResponseBody`"]
+            #[doc = "` response with the `ResponseBody`.\n\n---\n"]
+            #[doc = "Use `()` (: default) for body to represent an empty-content response of the status: <br>"]
+            #[doc = "\
+            ```\n\
+            # use ohkami::prelude::*;\n\
+            # use ohkami::typed::status::OK;\n\
+            async fn create_user(name: &str) -> OK {\n\
+            \tOK(())\n\
+            }\n\
+            ```"]
             #[allow(non_camel_case_types)]
             pub struct $status<B: ResponseBody = ()>(pub B);
 
