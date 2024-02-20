@@ -1,7 +1,7 @@
 pub mod status;
 
 mod response_body;
-pub use response_body::{ResponseBody, body_type};
+pub use response_body::{ResponseBody, bodytype};
 pub use ohkami_macros::ResponseBody;
 
 pub(crate) mod parse_payload;

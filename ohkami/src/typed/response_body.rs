@@ -50,22 +50,22 @@ use std::borrow::Cow;
 /// }
 /// ```
 pub trait ResponseBody: Serialize {
-    /// Select from `ohkami::typed::body_type` module
+    /// Select from `ohkami::typed::bodytype` module
     type Type: BodyType;
     fn into_response_with(self, status: Status) -> Response;
 }
 
 pub trait BodyType {}
-macro_rules! body_type {
+macro_rules! bodytype {
     ($( $name:ident, )*) => {
-        pub mod body_type {
+        pub mod bodytype {
             $(
                 pub struct $name;
                 impl super::BodyType for $name {}
             )*
         }
     };
-} body_type! {
+} bodytype! {
     Empty,
     JSON,
     HTML,
@@ -80,7 +80,7 @@ impl<RB: ResponseBody> crate::IntoResponse for RB {
 }
 
 impl ResponseBody for () {
-    type Type = body_type::Empty;
+    type Type = bodytype::Empty;
     fn into_response_with(self, status: Status) -> Response {
         Response {
             status,
@@ -91,34 +91,34 @@ impl ResponseBody for () {
 }
 
 const _: (/* JSON utility impls */) = {
-    impl<RB: ResponseBody<Type = body_type::JSON>> ResponseBody for Option<RB> {
-        type Type = body_type::JSON;
+    impl<RB: ResponseBody<Type = bodytype::JSON>> ResponseBody for Option<RB> {
+        type Type = bodytype::JSON;
         fn into_response_with(self, status: Status) -> Response {
             Response::with(status).json(self)
         }
     }
 
-    impl<RB: ResponseBody<Type = body_type::JSON>> ResponseBody for Vec<RB> {
-        type Type = body_type::JSON;
+    impl<RB: ResponseBody<Type = bodytype::JSON>> ResponseBody for Vec<RB> {
+        type Type = bodytype::JSON;
         #[inline] fn into_response_with(self, status: Status) -> Response {
             Response::with(status).json(self)
         }
     }
 
-    impl<RB: ResponseBody<Type = body_type::JSON>> ResponseBody for &[RB] {
-        type Type = body_type::JSON;
+    impl<RB: ResponseBody<Type = bodytype::JSON>> ResponseBody for &[RB] {
+        type Type = bodytype::JSON;
         fn into_response_with(self, status: Status) -> Response {
             Response::with(status).json(self)
         }
     }
 
-    /// `impl<RB: ResponseBody<Type = body_type::JSON>, const N: usize> ResponseBody for [RB; N]`
+    /// `impl<RB: ResponseBody<Type = bodytype::JSON>, const N: usize> ResponseBody for [RB; N]`
     /// is not available becasue `serde` only provides following 33 `Serialize` impls...
     macro_rules! response_body_of_json_array_of_len {
         ($($len:literal)*) => {
             $(
-                impl<RB: ResponseBody<Type = body_type::JSON>> ResponseBody for [RB; $len] {
-                    type Type = body_type::JSON;
+                impl<RB: ResponseBody<Type = bodytype::JSON>> ResponseBody for [RB; $len] {
+                    type Type = bodytype::JSON;
                     #[inline] fn into_response_with(self, status: Status) -> Response {
                         Response::with(status).json(self)
                     }
@@ -135,7 +135,7 @@ macro_rules! plain_text_responsebodies {
     ($( $text_type:ty: $self:ident => $content:expr, )*) => {
         $(
             impl ResponseBody for $text_type {
-                type Type = body_type::Text;
+                type Type = bodytype::Text;
                 #[inline] fn into_response_with(self, status: Status) -> Response {
                     let content = {let $self = self; $content};
             
@@ -165,10 +165,10 @@ macro_rules! plain_text_responsebodies {
 
 #[cfg(test)]
 #[test] fn assert_impls() {
-    fn is_empty_reponsebody<T: ResponseBody<Type = body_type::Empty>>() {}
+    fn is_empty_reponsebody<T: ResponseBody<Type = bodytype::Empty>>() {}
     is_empty_reponsebody::<()>();
 
-    fn is_text_reponsebody<T: ResponseBody<Type = body_type::Text>>() {}
+    fn is_text_reponsebody<T: ResponseBody<Type = bodytype::Text>>() {}
     is_text_reponsebody::<&'static str>();
     is_text_reponsebody::<String>();
     is_text_reponsebody::<&'_ String>();
