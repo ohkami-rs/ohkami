@@ -189,13 +189,22 @@ pub fn Payload(format: proc_macro::TokenStream, data: proc_macro::TokenStream) -
 
 /// # Response body
 /// 
-/// Implements `ResponseBody` and `IntoResponse (as 200 OK)`
+/// Derives `ResponseBody` trait impl.\
+/// `ResponseBody` types automatically implements `IntoResponse` for `200 OK`.
 /// 
 /// <br>
 /// 
 /// ## Valid format
 /// - `#[ResponseBody(JSON)]`（for `application/json`）
 /// - `#[ResponseBody(JSONS)]`（shorthand for `JSON + #[derive(Serialize)]`）
+/// 
+/// ---
+/// 
+/// In `JSON` and `JSONS`, `ResponseBody` is additionally implemented for
+/// 
+/// - `Vec<{it}>`
+/// - `[{it}; {0-32}]`
+/// - `&[{it}]`
 /// 
 /// <br>
 /// 
