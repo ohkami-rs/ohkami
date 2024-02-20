@@ -93,13 +93,13 @@ use ohkami::prelude::*;
 use ohkami::typed::status::Created;
 use ohkami::typed::{Query, Payload, ResponseBody};
 
-#[Payload(JSOND)] // "JSON Deserialized"
+#[Payload(JSOND)] // JSON + Deserialize
 struct CreateUserRequest<'req> {
     name:     &'req str,
     password: &'req str,
 }
 
-#[ResponseBody(JSONS)] // "JSON Serializable"
+#[ResponseBody(JSONS)] // JSON + Serialize
 struct User {
     name: String,
 }
@@ -168,7 +168,7 @@ async fn main() {
 
 /* Or, you can call them for any requests (regardless of request paths) :
 
-    {an Ohkami}.howl_with(
+    {{an Ohkami}}.howl_with(
         (LogRequest, SetServer),
         "localhost:8080"
     ).await
@@ -254,7 +254,7 @@ async fn test_my_ohkami() {
 - [ ] HTTP/3
 - [ ] WebSocket
 
-## MSRV (Minimum Supported rustc Version)
+## MSRV (Minimum Supported Rust Version)
 Latest stable at the time of publication.
 
 ## License
