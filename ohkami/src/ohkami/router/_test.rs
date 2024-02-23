@@ -1,5 +1,6 @@
 #![allow(non_snake_case)]
 #![cfg(all(feature="testing", feature="utils"))]
+use crate::__rt__;
 use crate::prelude::*;
 use crate::testing::*;
 use crate::utils::Text;
@@ -331,4 +332,37 @@ fn my_ohkami() -> Ohkami {
     let req = TestRequest::GET("/api/c");
     o.oneshot_with((GlobalIncrement, NotFoundIncrement), req).await;
     assert_eq!(*N().lock().unwrap(), 19);
+}
+
+#[__rt__::test] async fn test_timeout() {
+    use crate::prelude::*;
+    use crate::testing::*;
+    use crate::builtin::Timeout;
+    use std::time::Duration;
+
+    async fn sleeping_hello(sleep: u64) -> &'static str {
+        tokio::time::sleep(Duration::from_secs(sleep)).await;
+
+        "Hello, I was sleeping ):"
+    }
+
+    let t = Ohkami::with(Timeout(Duration::from_secs(3)), (
+        "/hello/:sleep".GET(sleeping_hello),
+    ));
+
+
+    let req = TestRequest::GET("/hello/1");
+    let res = t.oneshot(req).await;
+    assert_eq!(res.status(), Status::OK);
+    assert_eq!(res.text(),   Some("Hello, I was sleeping ):"));
+
+    let req = TestRequest::GET("/hello/2");
+    let res = t.oneshot(req).await;
+    assert_eq!(res.status(), Status::OK);
+    assert_eq!(res.text(),   Some("Hello, I was sleeping ):"));
+
+    let req = TestRequest::GET("/hello/4");
+    let res = t.oneshot(req).await;
+    assert_eq!(res.status(), Status::InternalServerError);
+    assert_eq!(res.text(),   Some("Timeout"));
 }

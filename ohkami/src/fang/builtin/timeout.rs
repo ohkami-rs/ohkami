@@ -28,8 +28,8 @@ use std::time::Duration;
 /// #[tokio::main]
 /// async fn main() {
 ///     Ohkami::with(Timeout(Duration::from_secs(10)), (
-///         "/hello/:sleep".GET(sleeping_hello)
-///     )).howl("0.0.0.0:3000")
+///         "/hello/:sleep".GET(sleeping_hello),
+///     )).howl("0.0.0.0:3000").await
 /// }
 /// 
 /// async fn sleeping_hello(sleep: u64) -> &'static str {
