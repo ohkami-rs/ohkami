@@ -341,7 +341,7 @@ fn my_ohkami() -> Ohkami {
     use std::time::Duration;
 
     async fn sleeping_hello(sleep: u64) -> &'static str {
-        tokio::time::sleep(Duration::from_secs(sleep)).await;
+        __rt__::sleep(Duration::from_secs(sleep)).await;
 
         "Hello, I was sleeping ):"
     }

@@ -52,9 +52,9 @@ mod __rt__ {
     pub(crate) use async_std::task;
 
     #[cfg(feature="rt_tokio")]
-    pub(crate) use tokio::time;
+    pub(crate) use tokio::time::sleep;
     #[cfg(feature="rt_async-std")]
-    pub(crate) use async_std::time;
+    pub(crate) use async_std::task::sleep;
 
     #[cfg(feature="rt_tokio")]
     pub(crate) use tokio::io::AsyncReadExt as AsyncReader;
