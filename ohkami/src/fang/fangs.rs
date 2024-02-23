@@ -92,7 +92,7 @@ impl<BF: BackFang + Send + Sync> BackFangCaller for BF {
 
 pub(crate) mod internal {
     use std::{any::Any, sync::Arc};
-    use crate::Method;
+    use crate::{Method, Method::*};
     use super::super::{Fang, proc::{FangProc, FrontFang, BackFang}};
     
     pub trait IntoFang<T> {
@@ -103,7 +103,6 @@ pub(crate) mod internal {
     pub struct Front;
     impl<FF: super::FrontFang + Send + Sync + 'static> IntoFang<Front> for FF {
         const METHODS: &'static [Method] = FF::METHODS;
-
         fn into_fang(self) -> Fang {
             Fang {
                 id:   self.type_id(),
@@ -115,11 +114,21 @@ pub(crate) mod internal {
     pub struct Back;
     impl<BF: super::BackFang + Send + Sync + 'static> IntoFang<Back> for BF {
         const METHODS: &'static [Method] = BF::METHODS;
-
         fn into_fang(self) -> Fang {
             Fang {
                 id:   self.type_id(),
                 proc: FangProc::Back(BackFang(Arc::new(self))),
+            }
+        }
+    }
+
+    pub struct SpecialBuiltin;
+    impl IntoFang<SpecialBuiltin> for crate::builtin::Timeout {
+        const METHODS: &'static [Method] = &[GET, PUT, POST, PATCH, DELETE, OPTIONS, HEAD];
+        fn into_fang(self) -> Fang {
+            Fang {
+                id:   self.type_id(),
+                proc: FangProc::Timeout(self),
             }
         }
     }

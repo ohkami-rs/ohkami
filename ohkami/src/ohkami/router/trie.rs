@@ -1,7 +1,9 @@
 use std::borrow::Cow;
 use super::{RouteSection, RouteSections};
 use crate::{
-    fang::{proc::{BackFang, FangProc, FrontFang}, Fang}, handler::{ByAnother, Handler, Handlers}, Method
+    fang::{Fang, proc::{BackFang, FangProc, FrontFang}, builtin::Timeout},
+    handler::{ByAnother, Handler, Handlers},
+    Method,
 };
 
 const _: () = {
@@ -151,13 +153,13 @@ impl GlobalFangs {
 
     fn into_radix(self) -> super::radix::GlobalFangs {
         super::radix::GlobalFangs {
-            GET:     split_fangs(self.GET),
-            PUT:     split_fangs(self.PUT),
-            POST:    split_fangs(self.POST),
-            PATCH:   split_fangs(self.PATCH),
-            DELETE:  split_fangs(self.DELETE),
-            HEAD:    split_fangs(self.HEAD),
-            OPTIONS: split_fangs(self.OPTIONS),
+            GET:     split_fangs_without_builtin_specials(self.GET),
+            PUT:     split_fangs_without_builtin_specials(self.PUT),
+            POST:    split_fangs_without_builtin_specials(self.POST),
+            PATCH:   split_fangs_without_builtin_specials(self.PATCH),
+            DELETE:  split_fangs_without_builtin_specials(self.DELETE),
+            HEAD:    split_fangs_without_builtin_specials(self.HEAD),
+            OPTIONS: split_fangs_without_builtin_specials(self.OPTIONS),
         }
     }
 }
@@ -288,6 +290,7 @@ impl Node {
         }
     }
 
+    /// MUST be called after all handlers are registered
     fn apply_fang(&mut self, fang: Fang) {
         for child in &mut self.children {
             child.apply_fang(fang.clone())
@@ -312,7 +315,9 @@ impl Node {
             } = children.pop(/* pop the single child */).unwrap(/* `children` is empty here */);
 
             children = child_children;
+
             handler  = child_handler;
+
             for cf in child_fangs {
                 fangs.push(cf);
             }
@@ -331,9 +336,10 @@ impl Node {
             }
         }
 
-        let (front, back) = split_fangs(fangs);
+        let (front, back, timeout) = split_fangs(fangs);
 
         super::radix::Node {
+            timeout,
             handler,
             front,
             back,
@@ -348,7 +354,8 @@ impl Node {
 
 fn split_fangs(fangs: Vec<Fang>) -> (
     &'static [FrontFang],
-    &'static [BackFang]
+    &'static [BackFang],
+    Option<Timeout>,
 ) {
     let mut unique_fangs = Vec::new(); {
         for f in fangs {
@@ -358,19 +365,30 @@ fn split_fangs(fangs: Vec<Fang>) -> (
         }
     }
 
-    let (mut front, mut back) = (Vec::new(), Vec::new());
+    let mut front   = Vec::new();
+    let mut back    = Vec::new();
+    let mut timeout = None;
 
     for f in unique_fangs {
         match f.proc {
-            FangProc::Front(ff) => front.push(ff),
-            FangProc::Back (bf) => back .push(bf),
+            FangProc::Front(ff)   => front.push(ff),
+            FangProc::Back (bf)   => back .push(bf),
+            FangProc::Timeout(to) => timeout = Some(to),
         }
     }
 
     (
         Box::leak(front.into_boxed_slice()) as &_,
         Box::leak(back .into_boxed_slice()) as &_,
+        timeout,
     )
+}
+fn split_fangs_without_builtin_specials(fangs: Vec<Fang>) -> (
+    &'static [FrontFang],
+    &'static [BackFang],
+) {
+    let (ff, bf, _) = split_fangs(fangs);
+    (ff, bf)
 }
 
 impl Node {

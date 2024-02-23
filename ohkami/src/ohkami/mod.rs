@@ -1,8 +1,10 @@
 pub(crate) mod router;
+use router::TrieRouter;
+
+mod timeout;
 mod build;
 mod howl;
 
-use router::TrieRouter;
 use crate::fang::Fangs;
 use crate::Method;
 

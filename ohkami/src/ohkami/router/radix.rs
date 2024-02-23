@@ -1,21 +1,14 @@
-use std::fmt::Write;
-
 use crate::{
     Request,
     Response,
-    Status,
     Method,
-    IntoResponse,
     handler::Handler,
     fang::proc::{FrontFang, BackFang},
+    builtin::Timeout,
 };
+use super::super::timeout::set_timeout;
 use ohkami_lib::{Slice, percent_decode};
-
-#[cfg(feature="websocket")]
-use crate::websocket::{
-    UpgradeID,
-    request_upgrade_id,
-};
+use std::fmt::Write;
 
 
 /*===== defs =====*/
@@ -137,6 +130,7 @@ pub(super) struct GlobalFangs {
 
 pub(super) struct Node {
     pub(super) patterns: &'static [Pattern],
+    pub(super) timeout:  Option<Timeout>,
     pub(super) handler:  Option<Handler>,
     pub(super) front:    &'static [FrontFang],
     pub(super) back:     &'static [BackFang],
@@ -274,7 +268,7 @@ impl RadixRouter {
 
             match search_result {
                 Some(n) => n.handle(req).await,
-                None    => Status::NotFound.into_response(),
+                None    => Response::NotFound(),
             }
         };
 
@@ -291,7 +285,7 @@ impl RadixRouter {
 impl Node {
     #[inline] pub(super) async fn handle(&self, req: &mut Request) -> Response {
         match &self.handler {
-            Some(handler) => {
+            Some(handler) => set_timeout(self.timeout.unwrap_or_default(), async {
                 for ff in self.front {
                     if let Err(err_res) = ff.call(req).await {
                         return err_res;
@@ -306,8 +300,9 @@ impl Node {
                     }
                 }
                 res
-            }
-            None => Status::NotFound.into_response(),
+            }).await,
+            
+            None => Response::NotFound(),
         }
     }
 
