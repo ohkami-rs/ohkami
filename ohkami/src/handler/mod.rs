@@ -38,7 +38,7 @@ const _: () = {
         #[inline(always)] pub(crate) fn handle<'req>(
             &'req self,
             req: &'req Request,
-        ) -> Pin<Box<dyn Future<Output = Response> + Send + 'req>> {
+        ) -> impl Future<Output = Response> + Send + 'req {
             (self.0)(req)
         }
     }

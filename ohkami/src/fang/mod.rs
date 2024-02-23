@@ -54,7 +54,7 @@ use std::any::TypeId;
 /// Hello!
 #[derive(Clone)]
 pub struct Fang {
-    id:              TypeId,
+    pub(crate) id:   TypeId,
     pub(crate) proc: proc::FangProc,
 }
 const _: () = {
@@ -75,6 +75,9 @@ pub(crate) mod proc {
     pub enum FangProc {
         Front(FrontFang),
         Back (BackFang),
+
+        /* Builtin specials */
+        Timeout(crate::builtin::Timeout),
     }
 
     #[derive(Clone)]
