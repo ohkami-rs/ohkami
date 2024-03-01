@@ -1,3 +1,5 @@
+#![cfg(any(feature="rt_tokio", feature="rt_async-std"))]
+
 //! Ohkami testing tools
 //! 
 //! <br>

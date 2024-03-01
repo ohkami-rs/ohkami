@@ -15,6 +15,8 @@ mod _test;
 use std::{
     borrow::Cow,
 };
+
+#[cfg(any(feature="rt_tokio", feature="rt_async-std"))]
 use crate::__rt__::AsyncWriter;
 
 
@@ -132,6 +134,7 @@ impl Response {
 }
 
 impl Response {
+    #[cfg(any(feature="rt_tokio", feature="rt_async-std"))]
     #[inline(always)] pub(crate) async fn send(self, stream: &mut (impl AsyncWriter + Unpin)) {
         if let Err(e) = stream.write_all(&self.into_bytes()).await {
             panic!("Failed to send response: {e}")

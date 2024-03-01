@@ -1,6 +1,9 @@
-use std::{sync::Arc};
 use super::{Ohkami};
-use crate::{__rt__, Session, fang::Fangs};
+
+use {
+    std::sync::Arc,
+    crate::{__rt__, Session, fang::Fangs}
+};
 
 #[cfg(feature="rt_async-std")] use crate::__rt__::StreamExt;
 #[cfg(feature="websocket")]    use crate::websocket::reserve_upgrade;
@@ -27,6 +30,7 @@ impl Ohkami {
     ///     ).howl("localhost:3000").await
     /// }
     /// ```
+    #[cfg(any(feature="rt_tokio", feature="rt_async-std"))]
     pub async fn howl(self, address: impl __rt__::ToSocketAddrs) {
         self.howl_with((), address).await
     }
@@ -84,6 +88,7 @@ impl Ohkami {
     ///     ).await
     /// }
     /// ```
+    #[cfg(any(feature="rt_tokio", feature="rt_async-std"))]
     pub async fn howl_with<T>(self, global_fangs: impl Fangs<T>, address: impl __rt__::ToSocketAddrs) {
         let mut router = self.into_router();
         for (methods, fang) in global_fangs.collect() {

@@ -1,3 +1,5 @@
+#![cfg(any(feature="rt_tokio", feature="rt_async-std"))]
+
 use std::any::Any;
 use std::{pin::Pin, sync::Arc};
 use std::panic::{AssertUnwindSafe, catch_unwind};

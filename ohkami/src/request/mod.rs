@@ -8,7 +8,7 @@ mod queries;
 pub(crate) use queries::QueryParams;
 
 mod headers;
-pub use headers::{Headers as RequestHeaders, Header as RequestHeader};
+pub use headers::Headers as RequestHeaders;
 
 mod store;
 pub(crate) use store::Store;
@@ -19,14 +19,18 @@ pub use from_request::*;
 
 #[cfg(test)] mod _test_parse;
 
-use std::pin::Pin;
-use byte_reader::Reader;
-use crate::{
-    __rt__::AsyncReader,
-};
 use ohkami_lib::{Slice, CowSlice, percent_decode_utf8};
 
-#[cfg(feature="websocket")] use crate::websocket::UpgradeID;
+#[cfg(any(feature="rt_tokio", feature="rt_async-std"))]
+use {
+    headers::Header as RequestHeader,
+    crate::__rt__::AsyncReader,
+    std::pin::Pin,
+    byte_reader::Reader,
+};
+
+#[cfg(feature="websocket")]
+use crate::websocket::UpgradeID;
 
 
 pub(crate) const METADATA_SIZE: usize = 1024;
@@ -121,6 +125,7 @@ impl Request {
         }
     }
 
+    #[cfg(any(feature="rt_tokio", feature="rt_async-std"))]
     pub(crate) async fn read(
         mut self: Pin<&mut Self>,
         stream:   &mut (impl AsyncReader + Unpin),
@@ -199,6 +204,7 @@ impl Request {
         })
     }
 
+    #[cfg(any(feature="rt_tokio", feature="rt_async-std"))]
     async fn read_payload(
         stream:       &mut (impl AsyncReader + Unpin),
         ref_metadata: &[u8],

@@ -1,3 +1,5 @@
+#![cfg(any(feature="rt_tokio", feature="rt_async-std"))]
+
 use std::pin::Pin;
 use ohkami_lib::{Slice, CowSlice};
 use super::{Request, Method, METADATA_SIZE, Path, QueryParams, Store};

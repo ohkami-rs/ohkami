@@ -1,3 +1,5 @@
+#![cfg(any(feature="rt_tokio", feature="rt_async-std"))]
+
 mod handlers;
 pub use handlers::{Handlers, ByAnother, Route};
 

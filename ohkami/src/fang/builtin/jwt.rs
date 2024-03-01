@@ -279,6 +279,7 @@ impl JWT {
 
 
 
+#[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
 #[cfg(all(feature="testing", feature="utils"))]
 #[cfg(test)] mod test {
     use super::JWT;

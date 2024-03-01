@@ -23,15 +23,6 @@
     Can't activate multiple `rt_*` features!
 ");
 
-#[cfg(not(any(
-    feature="rt_tokio",
-    feature="rt_async-std",
-)))] compile_error!("
-    Activate one of `rt_*` features：
-    - rt_tokio
-    - rt_async-std
-");
-
 
 mod __rt__ {
     #[allow(unused)]
@@ -78,15 +69,18 @@ mod response;
 pub use response::{Response, Status, IntoResponse};
 
 mod handler;
+#[cfg(any(feature="rt_tokio", feature="rt_async-std"))]
 pub use handler::Route;
 
 mod fang;
 pub use fang::{builtin, FrontFang, BackFang};
 
 mod session;
+#[cfg(any(feature="rt_tokio", feature="rt_async-std"))]
 use session::Session;
 
 mod ohkami;
+#[cfg(any(feature="rt_tokio", feature="rt_async-std"))]
 pub use ohkami::Ohkami;
 
 pub mod typed;
@@ -126,7 +120,11 @@ pub fn append(value: impl Into<std::borrow::Cow<'static, str>>) -> __internal__:
 }
 
 pub mod prelude {
-    pub use crate::{Request, Route, Ohkami, FrontFang, BackFang, Response, IntoResponse, Method, Status};
+    pub use crate::{Request, FrontFang, BackFang, Response, IntoResponse, Method, Status};
+
+
+    #[cfg(any(feature="rt_tokio", feature="rt_async-std"))]
+    pub use crate::{Route, Ohkami};
 }
 
 /// Somthing almost be [serde](https://crates.io/crates/serde).
