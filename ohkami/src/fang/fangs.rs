@@ -1,9 +1,15 @@
-use std::{future::Future, pin::Pin};
-use crate::{Response, Request, IntoResponse, Method::{self, *}, fang::Fang};
+use crate::{Response, Request, IntoResponse, Method::{self, *}};
+
+#[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
+use {
+    crate::fang::Fang,
+    std::{future::Future, pin::Pin},
+};
 
 
 /// Represents "can be used as a front fang", e.g. executed before `req` is passed to a handler.\
-/// You can register this fang only for some request methods you like using `METHODS` const parameter.
+/// `METHODS` const parameter enable to filter the target request of this fang by request method
+/// (default: any methods).
 /// 
 /// <br>
 /// 
@@ -31,10 +37,12 @@ pub trait FrontFang {
     fn bite(&self, req: &mut Request) -> impl ::std::future::Future<Output = Result<(), Self::Error>> + Send;
 }
 
+#[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
 pub(crate) trait FrontFangCaller: Send + Sync {
     fn call<'c>(&'c self, req: &'c mut Request) -> Pin<Box<dyn Future<Output = Result<(), Response>> + Send + 'c>>
     where Self: Sync + 'c;
 }
+#[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
 impl<FF: FrontFang + Send + Sync> FrontFangCaller for FF {
     #[inline(always)] fn call<'c>(&'c self, req: &'c mut Request) -> Pin<Box<dyn Future<Output = Result<(), Response>> + Send + 'c>>
     where Self: Sync + 'c {
@@ -47,7 +55,8 @@ impl<FF: FrontFang + Send + Sync> FrontFangCaller for FF {
 
 
 /// Represents "can be used as a back fang", e.g. executed after a handler generates `res`.\
-/// You can register this fang only for some request methods you like using `METHODS` const parameter.
+/// `METHODS` const parameter enable to filter the target request of this fang by request method
+/// (default: any methods).
 /// 
 /// <br>
 /// 
@@ -75,10 +84,12 @@ pub trait BackFang {
     fn bite(&self, res: &mut Response, _req: &Request) -> impl ::std::future::Future<Output = Result<(), Self::Error>> + Send;
 }
 
+#[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
 pub(crate) trait BackFangCaller: Send + Sync {
     fn call<'c>(&'c self, res: &'c mut Response, _req: &'c Request) -> Pin<Box<dyn Future<Output = Result<(), Response>> + Send + 'c>>
     where Self: Sync + 'c;
 }
+#[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
 impl<BF: BackFang + Send + Sync> BackFangCaller for BF {
     #[inline(always)] fn call<'c>(&'c self, res: &'c mut Response, _req: &'c Request) -> Pin<Box<dyn Future<Output = Result<(), Response>> + Send + 'c>>
     where Self: Sync + 'c {
@@ -90,10 +101,16 @@ impl<BF: BackFang + Send + Sync> BackFangCaller for BF {
 }
 
 
+#[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
 pub(crate) mod internal {
-    use std::{any::Any, sync::Arc};
     use crate::{Method, Method::*};
-    use super::super::{Fang, proc::{FangProc, FrontFang, BackFang}};
+    use super::super::Fang;
+    use std::any::Any;
+
+    use {
+        super::super::proc::{FangProc, FrontFang, BackFang},
+        std::sync::Arc,
+    };
     
     pub trait IntoFang<T> {
         const METHODS: &'static [Method];
@@ -128,6 +145,7 @@ pub(crate) mod internal {
         fn into_fang(self) -> Fang {
             Fang {
                 id:   self.type_id(),
+                #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
                 proc: FangProc::Timeout(self),
             }
         }
@@ -135,9 +153,13 @@ pub(crate) mod internal {
 }
 
 
+#[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
 pub trait Fangs<T> {
     fn collect(self) -> Vec<(&'static [Method], Fang)>;
-} macro_rules! impl_for_tuple {
+}
+
+#[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
+macro_rules! impl_for_tuple {
     () => {
         impl Fangs<()> for () {
             fn collect(self) -> Vec<(&'static [Method], Fang)> {
@@ -160,7 +182,10 @@ pub trait Fangs<T> {
             }
         }
     };
-} const _: () = {
+}
+
+#[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
+const _: () = {
     impl_for_tuple!();
     impl_for_tuple!(F1:T1);
     impl_for_tuple!(F1:T1, F2:T2);
@@ -170,8 +195,9 @@ pub trait Fangs<T> {
     impl_for_tuple!(F1:T1, F2:T2, F3:T3, F4:T4, F5:T5, F6:T6);
     impl_for_tuple!(F1:T1, F2:T2, F3:T3, F4:T4, F5:T5, F6:T6, F7:T7);
     impl_for_tuple!(F1:T1, F2:T2, F3:T3, F4:T4, F5:T5, F6:T6, F7:T7, F8:T8);
-}; impl<T, F: internal::IntoFang<T>> Fangs<T> for F {
-    fn collect(self) -> Vec<(&'static [Method], Fang)> {
-        vec![(Self::METHODS, self.into_fang())]
+    impl<T, F: internal::IntoFang<T>> Fangs<T> for F {
+        fn collect(self) -> Vec<(&'static [Method], Fang)> {
+            vec![(Self::METHODS, self.into_fang())]
+        }
     }
-}
+}; 

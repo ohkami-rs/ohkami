@@ -3,7 +3,9 @@ pub use status::Status;
 
 mod headers;
 pub use headers::{Headers as ResponseHeaders};
+
 #[cfg(any(feature="testing", feature="DEBUG"))]
+#[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
 pub use headers::Header as ResponseHeader;
 
 mod into_response;
@@ -15,6 +17,8 @@ mod _test;
 use std::{
     borrow::Cow,
 };
+
+#[cfg(any(feature="rt_tokio", feature="rt_async-std"))]
 use crate::__rt__::AsyncWriter;
 
 
@@ -105,6 +109,7 @@ pub struct Response {
     }
 };
 
+#[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
 impl Response {
     #[inline] pub(crate) fn into_bytes(self) -> Vec<u8> {
         let Self { status, mut headers, content, .. } = self;
@@ -132,6 +137,7 @@ impl Response {
 }
 
 impl Response {
+    #[cfg(any(feature="rt_tokio", feature="rt_async-std"))]
     #[inline(always)] pub(crate) async fn send(self, stream: &mut (impl AsyncWriter + Unpin)) {
         if let Err(e) = stream.write_all(&self.into_bytes()).await {
             panic!("Failed to send response: {e}")
