@@ -1,7 +1,7 @@
 use std::{mem::MaybeUninit, borrow::Cow};
 use super::{CowSlice, Slice};
 
-#[cfg(any(feature="rt_tokio",feature="async-std"))]
+#[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
 use ohkami_lib::percent_decode;
 
 
@@ -45,7 +45,7 @@ pub struct QueryParams {
         None
     }
 
-    #[cfg(any(feature="rt_tokio",feature="async-std"))]
+    #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
     #[inline] pub(crate) unsafe fn push_from_request_slice(&mut self, key: Slice, value: Slice) {
         let (key, value) = (percent_decode(key.as_bytes()), percent_decode(value.as_bytes()));
         self.params.get_unchecked_mut(self.next).write((

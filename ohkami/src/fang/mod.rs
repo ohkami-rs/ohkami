@@ -4,7 +4,7 @@ pub mod builtin;
 pub use fangs::{FrontFang, BackFang};
 use std::any::TypeId;
 
-#[cfg(any(feature="rt_tokio",feature="async-std"))]
+#[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
 pub(crate) use fangs::{Fangs, FrontFangCaller, BackFangCaller};
 
 
@@ -57,7 +57,7 @@ pub(crate) use fangs::{Fangs, FrontFangCaller, BackFangCaller};
 #[derive(Clone)]
 pub struct Fang {
     pub(crate) id:   TypeId,
-    #[cfg(any(feature="rt_tokio",feature="async-std"))]
+    #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
     pub(crate) proc: proc::FangProc,
 }
 const _: () = {
@@ -68,7 +68,7 @@ const _: () = {
     }
 };
 
-#[cfg(any(feature="rt_tokio",feature="async-std"))]
+#[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
 pub(crate) mod proc {
     use super::{BackFangCaller, FrontFangCaller};
     use std::{future::Future, pin::Pin, sync::Arc};
@@ -89,7 +89,7 @@ pub(crate) mod proc {
         pub(super) Arc<dyn FrontFangCaller>
     );
     impl FrontFang {
-        #[cfg(any(feature="rt_tokio",feature="async-std"))]
+        #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
         #[inline(always)] pub fn call<'c>(&'c self, req: &'c mut Request) -> Pin<Box<dyn Future<Output = Result<(), Response>> + Send + 'c>> {
             self.0.call(req)
         }

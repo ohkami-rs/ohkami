@@ -406,7 +406,7 @@ impl Headers {
         }
     }
 
-    #[cfg(any(feature="rt_tokio",feature="async-std"))]
+    #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
     #[inline] pub(crate) fn write_to(self, buf: &mut Vec<u8>) {
         macro_rules! push {
             ($buf:ident <- $bytes:expr) => {

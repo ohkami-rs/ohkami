@@ -24,7 +24,7 @@ impl Session {
     }
 
     pub(crate) async fn manage(mut self) {
-        #[cold] fn panicking(panic: Box<dyn Any + Send>) -> Response {
+        fn panicking(panic: Box<dyn Any + Send>) -> Response {
             if let Some(msg) = panic.downcast_ref::<String>() {
                 eprintln!("[Panicked]: {msg}");
             } else if let Some(msg) = panic.downcast_ref::<&str>() {
