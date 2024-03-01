@@ -21,12 +21,15 @@ pub use from_request::*;
 
 use ohkami_lib::{Slice, CowSlice, percent_decode_utf8};
 
-#[cfg(any(feature="rt_tokio", feature="rt_async-std"))]
+#[cfg(any(feature="rt_tokio",feature="async-std"))]
 use {
-    headers::Header as RequestHeader,
     crate::__rt__::AsyncReader,
     std::pin::Pin,
     byte_reader::Reader,
+};
+#[cfg(any(feature="rt_tokio",feature="async-std"))]
+pub use {
+    headers::Header as RequestHeader,
 };
 
 #[cfg(feature="websocket")]
@@ -34,6 +37,8 @@ use crate::websocket::UpgradeID;
 
 
 pub(crate) const METADATA_SIZE: usize = 1024;
+
+#[cfg(any(feature="rt_tokio",feature="async-std"))]
 pub(crate) const PAYLOAD_LIMIT: usize = 1 << 32;
 
 /// # HTTP Request
@@ -113,6 +118,7 @@ pub struct Request {pub(crate) _metadata: [u8; METADATA_SIZE],
 }
 
 impl Request {
+    #[cfg(any(feature="rt_tokio",feature="async-std"))]
     pub(crate) fn init() -> Self {
         Self {_metadata: [0; METADATA_SIZE],
             method:     Method::GET,
@@ -264,6 +270,7 @@ impl Request {
 }
 
 impl Request {
+    #[cfg(any(feature="rt_tokio",feature="async-std"))]
     #[inline(always)] pub(crate) unsafe fn internal_path_bytes<'b>(&self) -> &'b [u8] {
         self.path.as_internal_bytes()
     }

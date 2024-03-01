@@ -327,6 +327,7 @@ impl Headers {
     }
 }
 
+#[cfg(any(feature="rt_tokio",feature="async-std"))]
 #[cfg(feature="custom-header")]
 impl Headers {
     #[inline] pub(crate) fn insert_custom(&mut self, name: CowSlice, value: CowSlice) {
@@ -340,6 +341,7 @@ impl Headers {
 }
 
 impl Headers {
+    #[cfg(any(feature="rt_tokio",feature="async-std"))]
     pub(crate) const fn init() -> Self {
         Self {
             values: [
@@ -358,6 +360,7 @@ impl Headers {
         }
     }
 
+    #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
     #[cfg(test)] pub(crate) fn from_iter(iter: impl IntoIterator<Item = (Header, &'static str)>) -> Self {
         let mut this = Self::init();
         for (k, v) in iter {
@@ -365,7 +368,7 @@ impl Headers {
         }
         this
     }
-    #[cfg(feature="custom-header")]
+    #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
     #[cfg(test)] pub(crate) fn from_iters(
         iter:   impl IntoIterator<Item = (Header, &'static str)>,
         custom: impl IntoIterator<Item = (&'static str, &'static str)>,

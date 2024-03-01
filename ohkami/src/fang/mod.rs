@@ -2,8 +2,10 @@ mod fangs;
 pub mod builtin;
 
 pub use fangs::{FrontFang, BackFang};
-pub(crate) use fangs::{Fangs, FrontFangCaller, BackFangCaller};
 use std::any::TypeId;
+
+#[cfg(any(feature="rt_tokio",feature="async-std"))]
+pub(crate) use fangs::{Fangs, FrontFangCaller, BackFangCaller};
 
 
 /// # Fang ー ohkami's middleware system
@@ -55,6 +57,7 @@ use std::any::TypeId;
 #[derive(Clone)]
 pub struct Fang {
     pub(crate) id:   TypeId,
+    #[cfg(any(feature="rt_tokio",feature="async-std"))]
     pub(crate) proc: proc::FangProc,
 }
 const _: () = {
@@ -65,6 +68,7 @@ const _: () = {
     }
 };
 
+#[cfg(any(feature="rt_tokio",feature="async-std"))]
 pub(crate) mod proc {
     use super::{BackFangCaller, FrontFangCaller};
     use std::{future::Future, pin::Pin, sync::Arc};
@@ -81,15 +85,20 @@ pub(crate) mod proc {
     }
 
     #[derive(Clone)]
-    pub struct FrontFang(pub(super) Arc<dyn FrontFangCaller>);
+    pub struct FrontFang(
+        pub(super) Arc<dyn FrontFangCaller>
+    );
     impl FrontFang {
+        #[cfg(any(feature="rt_tokio",feature="async-std"))]
         #[inline(always)] pub fn call<'c>(&'c self, req: &'c mut Request) -> Pin<Box<dyn Future<Output = Result<(), Response>> + Send + 'c>> {
             self.0.call(req)
         }
     }
 
     #[derive(Clone)]
-    pub struct BackFang(pub(super) Arc<dyn BackFangCaller>);
+    pub struct BackFang(   
+        pub(super) Arc<dyn BackFangCaller>
+    );
     impl BackFang {
         #[inline(always)] pub fn call<'c>(&'c self, res: &'c mut Response, req: &'c Request) -> Pin<Box<dyn Future<Output = Result<(), Response>> + Send + 'c>> {
             self.0.call(res, req)

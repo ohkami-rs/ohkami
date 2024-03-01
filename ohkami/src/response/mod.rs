@@ -3,7 +3,9 @@ pub use status::Status;
 
 mod headers;
 pub use headers::{Headers as ResponseHeaders};
+
 #[cfg(any(feature="testing", feature="DEBUG"))]
+#[cfg(any(feature="rt_tokio",feature="async-std"))]
 pub use headers::Header as ResponseHeader;
 
 mod into_response;
@@ -107,6 +109,7 @@ pub struct Response {
     }
 };
 
+#[cfg(any(feature="rt_tokio",feature="async-std"))]
 impl Response {
     #[inline] pub(crate) fn into_bytes(self) -> Vec<u8> {
         let Self { status, mut headers, content, .. } = self;

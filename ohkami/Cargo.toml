@@ -49,7 +49,7 @@ DEBUG = [
 #    "testing",
 #    "custom-header",
 #    #"websocket",
-#    #"rt_tokio",
-#    "rt_async-std",
+#    "rt_tokio",
+#    #"rt_async-std",
 #    "DEBUG",
 #]

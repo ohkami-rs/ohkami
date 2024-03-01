@@ -19,6 +19,7 @@ macro_rules! status {
                     $( Self::$name => $message, )*
                 }
             }
+            #[cfg(any(feature="rt_tokio",feature="async-std"))]
             #[inline(always)] pub(crate) const fn as_bytes(&self) -> &'static [u8] {
                 self.as_str().as_bytes()
             }

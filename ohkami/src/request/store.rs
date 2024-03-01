@@ -111,6 +111,7 @@ impl<'req, Value: Send + Sync + 'static> std::ops::Deref for Memory<'req, Value>
 
 
 impl Store {
+    #[cfg(any(feature="rt_tokio",feature="async-std"))]
     pub(super) const fn new() -> Self {
         Self(None)
     }

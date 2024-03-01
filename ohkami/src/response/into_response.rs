@@ -60,6 +60,7 @@ impl<T:IntoResponse, E:IntoResponse> IntoResponse for Result<T, E> {
 }
 
 impl IntoResponse for std::convert::Infallible {
+    #[cold]
     fn into_response(self) -> Response {
         unsafe {std::hint::unreachable_unchecked()}
     }

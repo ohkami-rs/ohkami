@@ -69,18 +69,18 @@ mod response;
 pub use response::{Response, Status, IntoResponse};
 
 mod handler;
-#[cfg(any(feature="rt_tokio", feature="rt_async-std"))]
+#[cfg(any(feature="rt_tokio",feature="async-std"))]
 pub use handler::Route;
 
 mod fang;
 pub use fang::{builtin, FrontFang, BackFang};
 
 mod session;
-#[cfg(any(feature="rt_tokio", feature="rt_async-std"))]
+#[cfg(any(feature="rt_tokio",feature="async-std"))]
 use session::Session;
 
 mod ohkami;
-#[cfg(any(feature="rt_tokio", feature="rt_async-std"))]
+#[cfg(any(feature="rt_tokio",feature="async-std"))]
 pub use ohkami::Ohkami;
 
 pub mod typed;
@@ -169,6 +169,7 @@ pub mod __internal__ {
 
     /* for benchmarks */
     #[cfg(feature="DEBUG")]
+    #[cfg(any(feature="rt_tokio",feature="async-std"))]
     pub use crate::{
         request::{RequestHeader, RequestHeaders},
         response::{ResponseHeader, ResponseHeaders},
