@@ -5,7 +5,10 @@ pub use fangs::{FrontFang, BackFang};
 use std::any::TypeId;
 
 #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
-pub(crate) use fangs::{Fangs, FrontFangCaller, BackFangCaller};
+pub(crate) use fangs::{FrontFangCaller, BackFangCaller};
+
+#[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
+pub use fangs::Fangs;
 
 
 /// # Fang ー ohkami's middleware system

@@ -122,7 +122,6 @@ pub fn append(value: impl Into<std::borrow::Cow<'static, str>>) -> __internal__:
 pub mod prelude {
     pub use crate::{Request, FrontFang, BackFang, Response, IntoResponse, Method, Status};
 
-
     #[cfg(any(feature="rt_tokio", feature="rt_async-std"))]
     pub use crate::{Route, Ohkami};
 }
@@ -166,6 +165,8 @@ pub mod __internal__ {
         parse_formparts,
         parse_urlencoded,
     };
+
+    pub use crate::fang::Fangs;
 
     /* for benchmarks */
     #[cfg(feature="DEBUG")]
