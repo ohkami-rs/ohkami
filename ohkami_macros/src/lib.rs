@@ -4,6 +4,7 @@ mod serde;
 mod query;
 mod payload;
 mod response;
+mod from_request;
 
 
 /// The *perfect* reexport of [serde](https://crates.io/crates/serde)'s `Serialize`.
@@ -250,6 +251,14 @@ pub fn Payload(format: proc_macro::TokenStream, data: proc_macro::TokenStream) -
 #[proc_macro_attribute] #[allow(non_snake_case)]
 pub fn ResponseBody(format: proc_macro::TokenStream, data: proc_macro::TokenStream) -> proc_macro::TokenStream {
     response::ResponseBody(format.into(), data.into())
+        .unwrap_or_else(|e| e.into_compile_error())
+        .into()
+}
+
+
+#[proc_macro_derive(FromRequest)]
+pub fn derive_from_request(target: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    from_request::derive_from_request(target.into())
         .unwrap_or_else(|e| e.into_compile_error())
         .into()
 }
