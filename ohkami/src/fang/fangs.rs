@@ -159,33 +159,32 @@ pub trait Fangs<T> {
 }
 
 #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
-macro_rules! impl_for_tuple {
-    () => {
-        impl Fangs<()> for () {
-            fn collect(self) -> Vec<(&'static [Method], Fang)> {
-                Vec::new()
-            }
-        }
-    };
-    ( $( $f:ident : $t:ident ),+ ) => {
-        impl<$( $t, $f: internal::IntoFang<$t> ),+> Fangs<( $( $t, )+ )> for ( $( $f,)+ ) {
-            #[allow(non_snake_case)]
-            fn collect(self) -> Vec<(&'static [Method], Fang)> {
-                let mut fangs = Vec::new();
-                let ( $( $f, )+ ) = self;
-
-                $(
-                    fangs.push(($f::METHODS, $f.into_fang()));
-                )+
-
-                fangs
-            }
-        }
-    };
-}
-
-#[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
 const _: () = {
+    macro_rules! impl_for_tuple {
+        () => {
+            impl Fangs<()> for () {
+                fn collect(self) -> Vec<(&'static [Method], Fang)> {
+                    Vec::new()
+                }
+            }
+        };
+        ( $( $f:ident : $t:ident ),+ ) => {
+            impl<$( $t, $f: internal::IntoFang<$t> ),+> Fangs<( $( $t, )+ )> for ( $( $f,)+ ) {
+                #[allow(non_snake_case)]
+                fn collect(self) -> Vec<(&'static [Method], Fang)> {
+                    let mut fangs = Vec::new();
+                    let ( $( $f, )+ ) = self;
+
+                    $(
+                        fangs.push(($f::METHODS, $f.into_fang()));
+                    )+
+
+                    fangs
+                }
+            }
+        };
+    }
+
     impl_for_tuple!();
     impl_for_tuple!(F1:T1);
     impl_for_tuple!(F1:T1, F2:T2);
@@ -195,9 +194,10 @@ const _: () = {
     impl_for_tuple!(F1:T1, F2:T2, F3:T3, F4:T4, F5:T5, F6:T6);
     impl_for_tuple!(F1:T1, F2:T2, F3:T3, F4:T4, F5:T5, F6:T6, F7:T7);
     impl_for_tuple!(F1:T1, F2:T2, F3:T3, F4:T4, F5:T5, F6:T6, F7:T7, F8:T8);
+
     impl<T, F: internal::IntoFang<T>> Fangs<T> for F {
         fn collect(self) -> Vec<(&'static [Method], Fang)> {
             vec![(Self::METHODS, self.into_fang())]
         }
     }
-}; 
+};
