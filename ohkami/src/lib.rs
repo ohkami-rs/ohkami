@@ -64,6 +64,7 @@ mod __rt__ {
 
 mod request;
 pub use request::{Request, Method, FromRequestError, FromRequest, FromParam, Memory};
+pub use ::ohkami_macros::FromRequest;
 
 mod response;
 pub use response::{Response, Status, IntoResponse};
