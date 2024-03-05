@@ -64,6 +64,7 @@ mod __rt__ {
 
 mod request;
 pub use request::{Request, Method, FromRequestError, FromRequest, FromParam, Memory};
+pub use ::ohkami_macros::FromRequest;
 
 mod response;
 pub use response::{Response, Status, IntoResponse};
@@ -166,6 +167,7 @@ pub mod __internal__ {
         parse_urlencoded,
     };
 
+    #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
     pub use crate::fang::Fangs;
 
     /* for benchmarks */

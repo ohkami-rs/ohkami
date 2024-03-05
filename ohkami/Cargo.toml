@@ -1,6 +1,6 @@
 [package]
 name          = "ohkami"
-version       = "0.15.0"
+version       = "0.15.1"
 edition       = "2021"
 authors       = ["kanarus <kanarus786@gmail.com>"]
 description   = "Build web app in intuitive and declarative code"
@@ -17,7 +17,7 @@ features      = ["rt_tokio", "custom-header"]
 
 [dependencies]
 ohkami_lib    = { version = "=0.1.1", path = "../ohkami_lib" }
-ohkami_macros = { version = "=0.6.0", path = "../ohkami_macros" }
+ohkami_macros = { version = "=0.6.1", path = "../ohkami_macros" }
 tokio         = { version = "1", optional = true, features = ["net", "rt", "io-util", "sync", "time"] }
 async-std     = { version = "1", optional = true }
 byte_reader   = { version = "2.0.0", features = ["text"] }
