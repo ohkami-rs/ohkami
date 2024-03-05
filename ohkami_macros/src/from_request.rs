@@ -1,19 +1,53 @@
 use proc_macro2::{Span, TokenStream};
-use syn::{Error, ItemStruct, Result};
+use syn::{Field, ItemStruct, Result};
+use quote::quote;
+use crate::components::from_request_lifetime;
+
 
 pub(super) fn derive_from_request(target: TokenStream) -> Result<TokenStream> {
     let s: ItemStruct = syn::parse2(target)?;
 
-    if s.generics.lifetimes().count() >= 2 {
-        return Err(Error::new(Span::call_site(), "`#[derive(FromRequest)]` doesn't support multiple lifetimes!"))
-    }
+    let name = &s.ident;
 
-    if s.semi_token.is_none() {/* struct S { 〜 } */
-        
+    let generics_params_r = &s.generics.params;
+    let generics_params_l = &mut generics_params_r.clone();
+    let generics_where    = &s.generics.where_clause;
+
+    let impl_lifetime = match s.generics.lifetimes().count() {
+        0 => {
+            let il = from_request_lifetime();
+            generics_params_l.push(il.clone());
+            il
+        }
+        1 => s.generics.params.first().unwrap().clone(),
+        _ => return Err(syn::Error::new(Span::call_site(), "#[derive(FromRequest)] doesn't support multiple lifetime params")),
+    };
+
+    let build = if s.semi_token.is_none() {/* struct S { 〜 } */
+        let fields = s.fields.into_iter()
+            .map(|Field { ident, ty, .. }| quote! {
+                #ident: <#ty as ::ohkami::FromRequest>::from_request(req)
+                    .map_err(::ohkami::IntoResponse::into_response)?
+            });
+        quote![ Self { #( #fields ),* } ]
 
     } else {/* struct T(); */
+        let fields = s.fields.into_iter()
+            .map(|Field { ty, .. }| quote! {
+                <#ty as ::ohkami::FromRequest>::from_request(req)
+                    .map_err(::ohkami::IntoResponse::into_response)?
+            });
+        quote![ Self(#( #fields ),*) ]
+    };
 
-    }
-
-    todo!()
+    Ok(quote! {
+        impl<#generics_params_l> ::ohkami::FromRequest<#impl_lifetime> for #name<#generics_params_r>
+            #generics_where
+        {
+            type Error = ::ohkami::Response;
+            fn from_request(req: &#impl_lifetime ::ohkami::Request) -> ::std::result::Result<Self, Self::Error> {
+                ::std::result::Result::Ok(#build)
+            }
+        }
+    })
 }
