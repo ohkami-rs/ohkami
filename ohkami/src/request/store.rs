@@ -33,46 +33,36 @@ impl Hasher for TypeIDHasger {
 /// 
 /// <br>
 /// 
-/// ## memorizing any value
-/// With `Request::memorize`：
-/// ```
-/// use ohkami::{FrontFang, Request, Response};
-/// 
-/// pub struct MemorizeNow;
-/// impl FrontFang for MemorizeNow {
-///     type Error = std::convert::Infallible;
-///     async fn bite(&self, req: &mut Request) -> Result<(), Self::Error> {
-///         req.memorize(serde_json::json!({
-///             "now": std::time::SystemTime::now()
-///         }));
-///         Ok(())
-///     }
-/// }
-/// ```
-/// <br>
-/// 
-/// ## retireiving a reference
-/// `*{a Memory<'_, T>}` is just `&'_ T`：
-/// ```
+/// ```no_run
 /// use ohkami::prelude::*;
-/// use ohkami::Memory;  // <---
+/// use ohkami::Memory; // <--
+/// use std::sync::Arc;
 /// 
-/// async fn handler(
-///     data: Memory<'_, serde_json::Value>
-/// ) -> String {
-///         // &'_ Value
-///     let memorized_data = *data;
+/// #[tokio::main]
+/// async fn main() {
+///     let sample_data = Arc::new(String::from("ohkami"));
 /// 
-///     format!(
-///         "It's {} !",
-///         memorized_data["now"]
-///     )
+///     Ohkami::with(
+///         Memory::new(sample_data), // <--
+///         (
+///             "/hello".GET(hello),
+///         )
+///     ).howl("0.0.0.0:8080").await
+/// }
+/// 
+/// async fn hello(m: Memory<'_, String>) -> String {
+///     /* `*{Memory<'_, T>}` is just `&'_ T` */
+///     let name = *m; // <-- &str
+/// 
+///     format!("Hello, {name}!")
 /// }
 /// ```
 pub struct Memory<'req, Value: Send + Sync + 'static>(&'req Value);
 impl<'req, Value: Send + Sync + 'static> super::FromRequest<'req> for Memory<'req, Value> {
     type Error = crate::FromRequestError;
-    #[inline] fn from_request(req: &'req crate::Request) -> Result<Self, Self::Error> {
+
+    #[inline]
+    fn from_request(req: &'req crate::Request) -> Result<Self, Self::Error> {
         req.memorized::<Value>()
             .map(Memory)
             .ok_or_else(|| {
@@ -89,8 +79,28 @@ impl<'req, Value: Send + Sync + 'static> super::FromRequest<'req> for Memory<'re
 }
 impl<'req, Value: Send + Sync + 'static> std::ops::Deref for Memory<'req, Value> {
     type Target = &'req Value;
-    #[inline(always)] fn deref(&self) -> &Self::Target {
+
+    #[inline(always)]
+    fn deref(&self) -> &Self::Target {
         &self.0
+    }
+}
+
+impl<Data: Clone + Send + Sync + 'static> Memory<'_, Data> {
+    pub fn new(data: Data) -> impl crate::FrontFang {
+        struct Use<Data: Clone + Send + Sync + 'static>(Data);
+
+        impl<Data: Clone + Send + Sync + 'static> crate::FrontFang for Use<Data> {
+            type Error = std::convert::Infallible;
+
+            #[inline(always)]
+            fn bite(&self, req: &mut crate::Request) -> impl std::future::Future<Output = Result<(), Self::Error>> + Send {
+                req.memorize(self.0.clone());
+                async {Ok(())}
+            }
+        }
+
+        Use(data)
     }
 }
 
