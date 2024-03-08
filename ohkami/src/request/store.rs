@@ -33,40 +33,27 @@ impl Hasher for TypeIDHasger {
 /// 
 /// <br>
 /// 
-/// ## memorizing any value
-/// With `Request::memorize`：
-/// ```
-/// use ohkami::{FrontFang, Request, Response};
-/// 
-/// pub struct MemorizeNow;
-/// impl FrontFang for MemorizeNow {
-///     type Error = std::convert::Infallible;
-///     async fn bite(&self, req: &mut Request) -> Result<(), Self::Error> {
-///         req.memorize(serde_json::json!({
-///             "now": std::time::SystemTime::now()
-///         }));
-///         Ok(())
-///     }
-/// }
-/// ```
-/// <br>
-/// 
-/// ## retireiving a reference
-/// `*{a Memory<'_, T>}` is just `&'_ T`：
-/// ```
+/// ```no_run
 /// use ohkami::prelude::*;
-/// use ohkami::Memory;  // <---
+/// use ohkami::Memory; // <--
 /// 
-/// async fn handler(
-///     data: Memory<'_, serde_json::Value>
-/// ) -> String {
-///         // &'_ Value
-///     let memorized_data = *data;
+/// #[tokio::main]
+/// async fn main() {
+///     let sample_data = std::Arc::new(String::from("ohkami"));
 /// 
-///     format!(
-///         "It's {} !",
-///         memorized_data["now"]
-///     )
+///     Ohkami::with(
+///         Memory::new(sample_data), // <--
+///         (
+///             "/hello".GET(hello),
+///         )
+///     ).howl("0.0.0.0:8080")
+/// }
+/// 
+/// async fn hello(m: Memory<'_, String>) -> String {
+///     /* `*{Memory<'_, T>}` is just `&'_ T` */
+///     let name = *m; // <-- &str
+/// 
+///     format!("Hello, {name}!")
 /// }
 /// ```
 pub struct Memory<'req, Value: Send + Sync + 'static>(&'req Value);
@@ -91,6 +78,22 @@ impl<'req, Value: Send + Sync + 'static> std::ops::Deref for Memory<'req, Value>
     type Target = &'req Value;
     #[inline(always)] fn deref(&self) -> &Self::Target {
         &self.0
+    }
+}
+
+impl<Value: Clone +Send + Sync + 'static> Memory<'_, Value> {
+    pub fn new(data: Value) -> impl crate::FrontFang {
+        struct Use<Value: Clone + Send + Sync + 'static>(Value);
+
+        impl<Value: Clone + Send + Sync + 'static> crate::FrontFang for Use<Value> {
+            type Error = std::convert::Infallible;
+            fn bite(&self, req: &mut crate::Request) -> impl std::future::Future<Output = Result<(), Self::Error>> + Send {
+                req.memorize(self.0.clone());
+                async {Ok(())}
+            }
+        }
+
+        Use(data)
     }
 }
 
