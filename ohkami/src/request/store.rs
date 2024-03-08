@@ -36,10 +36,11 @@ impl Hasher for TypeIDHasger {
 /// ```no_run
 /// use ohkami::prelude::*;
 /// use ohkami::Memory; // <--
+/// use std::sync::Arc;
 /// 
 /// #[tokio::main]
 /// async fn main() {
-///     let sample_data = std::Arc::new(String::from("ohkami"));
+///     let sample_data = Arc::new(String::from("ohkami"));
 /// 
 ///     Ohkami::with(
 ///         Memory::new(sample_data), // <--
@@ -59,7 +60,9 @@ impl Hasher for TypeIDHasger {
 pub struct Memory<'req, Value: Send + Sync + 'static>(&'req Value);
 impl<'req, Value: Send + Sync + 'static> super::FromRequest<'req> for Memory<'req, Value> {
     type Error = crate::FromRequestError;
-    #[inline] fn from_request(req: &'req crate::Request) -> Result<Self, Self::Error> {
+
+    #[inline]
+    fn from_request(req: &'req crate::Request) -> Result<Self, Self::Error> {
         req.memorized::<Value>()
             .map(Memory)
             .ok_or_else(|| {
@@ -76,13 +79,15 @@ impl<'req, Value: Send + Sync + 'static> super::FromRequest<'req> for Memory<'re
 }
 impl<'req, Value: Send + Sync + 'static> std::ops::Deref for Memory<'req, Value> {
     type Target = &'req Value;
-    #[inline(always)] fn deref(&self) -> &Self::Target {
+
+    #[inline(always)]
+    fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
 
-impl<Value: Clone + Send + Sync + 'static> Memory<'_, Value> {
-    pub fn new(data: Value) -> impl crate::FrontFang {
+impl<Data: Clone + Send + Sync + 'static> Memory<'_, Data> {
+    pub fn new(data: Data) -> impl crate::FrontFang {
         struct Use<Data: Clone + Send + Sync + 'static>(Data);
 
         impl<Data: Clone + Send + Sync + 'static> crate::FrontFang for Use<Data> {
