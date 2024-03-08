@@ -46,7 +46,7 @@ impl Hasher for TypeIDHasger {
 ///         (
 ///             "/hello".GET(hello),
 ///         )
-///     ).howl("0.0.0.0:8080")
+///     ).howl("0.0.0.0:8080").await
 /// }
 /// 
 /// async fn hello(m: Memory<'_, String>) -> String {
@@ -81,12 +81,14 @@ impl<'req, Value: Send + Sync + 'static> std::ops::Deref for Memory<'req, Value>
     }
 }
 
-impl<Value: Clone +Send + Sync + 'static> Memory<'_, Value> {
+impl<Value: Clone + Send + Sync + 'static> Memory<'_, Value> {
     pub fn new(data: Value) -> impl crate::FrontFang {
-        struct Use<Value: Clone + Send + Sync + 'static>(Value);
+        struct Use<Data: Clone + Send + Sync + 'static>(Data);
 
-        impl<Value: Clone + Send + Sync + 'static> crate::FrontFang for Use<Value> {
+        impl<Data: Clone + Send + Sync + 'static> crate::FrontFang for Use<Data> {
             type Error = std::convert::Infallible;
+
+            #[inline(always)]
             fn bite(&self, req: &mut crate::Request) -> impl std::future::Future<Output = Result<(), Self::Error>> + Send {
                 req.memorize(self.0.clone());
                 async {Ok(())}
