@@ -1,13 +1,92 @@
 use proc_macro2::{TokenStream, Span};
-use syn::{Result, ItemStruct};
+use syn::{parse::Parse, Ident, ItemStruct, Result, Error, token};
 use quote::{quote, ToTokens};
 
 use crate::components::*;
 
 
+struct PayloadFormat {
+    pt: PayloadType,
+    ps: Option<PayloadSerde>,
+} impl Parse for PayloadFormat {
+    fn parse(input: syn::parse::ParseStream) -> Result<Self> {
+        let this = Self {
+            pt: input.parse()?,
+            ps: input.parse::<token::Div>()
+                .is_ok().then_some(input.parse()?),
+        };
+
+        match &this.pt {
+            PayloadType::JSON => {
+                // any combination is supported
+            }
+            PayloadType::Form => {
+                if this.ps.as_ref().is_some_and(|sd| sd.S) {
+                    return Err(Error::new(Span::call_site(), "#[Payload(Form)] doesn't support /...S"))
+                }
+            }
+            PayloadType::URLEncoded => {
+                if this.ps.as_ref().is_some_and(|sd| sd.S) {
+                    return Err(Error::new(Span::call_site(), "#[Payload(URLEncoded)] doesn't support /...S"))
+                }
+            }
+        }
+
+        Ok(this)
+    }
+}
+enum PayloadType {
+    JSON,
+    Form,
+    URLEncoded,
+} impl Parse for PayloadType {
+    fn parse(input: syn::parse::ParseStream) -> Result<Self> {
+        match &*input.parse::<Ident>()?.to_string() {
+            "JSON" => Ok(Self::JSON),
+            "Form" => Ok(Self::Form),
+            "URLEncoded" => Ok(Self::URLEncoded),
+            other => Err(Error::new(Span::call_site(), format!(
+                "Unexpected payload type `{other}`: expected one of \n\
+                - JSON\n\
+                - Form\n\
+                - URLEncoded\n\
+            ")))
+        }
+    }
+}
+#[allow(non_snake_case)]
+struct PayloadSerde {
+    S: bool,
+    D: bool,
+} impl Parse for PayloadSerde {
+    fn parse(input: syn::parse::ParseStream) -> Result<Self> {
+        let mut this = Self {
+            S: false,
+            D: false,
+        };
+
+        let mut seq = input.parse::<Ident>()?.to_string();
+        while let Some(label) = seq.pop() {
+            match label {
+                'S' => this.S = true,
+                'D' => this.D = true,
+                other => return Err(Error::new(Span::call_site(), format!(
+                    "Unexpected serde label `{other}`: expected a sequence of \n\
+                    - S\n\
+                    - D\n\
+                ")))
+            }
+        }
+
+        Ok(this)
+    }
+}
+
+
+
 #[allow(non_snake_case)]
 pub(super) fn Payload(format: TokenStream, data: TokenStream) -> Result<TokenStream> {
-    let format = PayloadFormat::parse(format)?;
+    let format: PayloadFormat = syn::parse2(format)?;
     let mut data = parse_request_struct("Payload", data)?;
 
     let impl_payload = match format {
