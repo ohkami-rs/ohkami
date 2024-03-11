@@ -99,24 +99,6 @@ pub(crate) fn parse_request_struct(macro_name: &str, input: TokenStream) -> Resu
 }
 
 
-pub(crate) enum ResponseFormat {
-    JSON,
-    JSONS,
-} impl ResponseFormat {
-    pub(crate) fn parse(tokens: TokenStream) -> Result<Self> {
-        match tokens.to_token_stream().to_string().as_str() {
-            "JSON"  => Ok(Self::JSON),
-            "JSONS" => Ok(Self::JSONS),
-            _ => Err(Error::new(Span::mixed_site(), "\
-                Valid format: \n\
-                - `#[Response(JSON)]` \n\
-                - `#[Response(JSONS)]` \n\
-            "))
-        }
-    }
-}
-
-
 
 
 fn is_not(attr: &Attribute, name: &str) -> bool {

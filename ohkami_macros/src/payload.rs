@@ -10,24 +10,27 @@ struct PayloadFormat {
     ps: Option<PayloadSerde>,
 } impl Parse for PayloadFormat {
     fn parse(input: syn::parse::ParseStream) -> Result<Self> {
-        let this = Self {
+        let mut this = Self {
             pt: input.parse()?,
             ps: input.parse::<token::Div>()
                 .is_ok().then_some(input.parse()?),
         };
 
-        match &this.pt {
+        /* TODO: refactor serde-support combination management */
+        match this.pt {
             PayloadType::JSON => {
-                // any combination is supported
+                if this.ps.is_none() {/* set default derives */
+                    this.ps = Some(PayloadSerde { S: true, D: true })
+                }
             }
             PayloadType::Form => {
-                if this.ps.as_ref().is_some_and(|sd| sd.S) {
-                    return Err(Error::new(Span::call_site(), "#[Payload(Form)] doesn't support /...S"))
+                if this.ps.is_some() {
+                    return Err(Error::new(Span::call_site(), "#[Payload(Form)] doesn't support serde derive filtering syntax"))
                 }
             }
             PayloadType::URLEncoded => {
-                if this.ps.as_ref().is_some_and(|sd| sd.S) {
-                    return Err(Error::new(Span::call_site(), "#[Payload(URLEncoded)] doesn't support /...S"))
+                if this.ps.is_some() {
+                    return Err(Error::new(Span::call_site(), "#[Payload(URLEncoded)] doesn't support serde derive filtering syntax"))
                 }
             }
         }
@@ -85,53 +88,72 @@ struct PayloadSerde {
 
 
 #[allow(non_snake_case)]
-pub(super) fn Payload(format: TokenStream, data: TokenStream) -> Result<TokenStream> {
+pub(super) fn Payload(format: TokenStream, target: TokenStream) -> Result<TokenStream> {
     let format: PayloadFormat = syn::parse2(format)?;
-    let mut data = parse_request_struct("Payload", data)?;
+    let mut target = parse_request_struct("Payload", target)?;
 
-    let impl_payload = match format {
-        PayloadFormat::JSON       => impl_payload_json(&data, false),
-        PayloadFormat::JSOND      => impl_payload_json(&data, true),
-        PayloadFormat::URLEncoded => impl_payload_urlencoded(&data),
-        PayloadFormat::Form       => impl_payload_formdata(&data),
+    let impl_payload = match format.pt {
+        PayloadType::JSON       => impl_payload_json(&target, &format.ps),
+        PayloadType::Form       => impl_payload_formdata(&target),
+        PayloadType::URLEncoded => impl_payload_urlencoded(&target),
     }?;
 
-    if matches!(format, PayloadFormat::JSOND) {
-        data.attrs.retain(|a| a.path.to_token_stream().to_string() != "serde");
-        for f in &mut data.fields {
+    if format.ps.as_ref().is_some_and(|sd| sd.S || sd.D) {
+        target.attrs.retain(|a| a.path.to_token_stream().to_string() != "serde");
+        for f in &mut target.fields {
             f.attrs.retain(|a| a.path.to_token_stream().to_string() != "serde")
         }
     }
 
     Ok(quote!{
-        #data
+        #target
         #impl_payload
     })
 }
 
-fn impl_payload_json(data: &ItemStruct, derive_deserialize: bool) -> Result<TokenStream> {
-    let struct_name = &data.ident;
+fn impl_payload_json(target: &ItemStruct, serde: &Option<PayloadSerde>) -> Result<TokenStream> {
+    let struct_name = &target.ident;
 
-    let (impl_lifetime, struct_lifetime) = match data.generics.lifetimes().count() {
+    let (impl_lifetime, struct_lifetime) = match target.generics.lifetimes().count() {
         0 => (
             from_request_lifetime(),
             None,
         ),
         1 => (
-            data.generics.params.first().unwrap().clone(),
-            Some(data.generics.params.first().unwrap().clone()),
+            target.generics.params.first().unwrap().clone(),
+            Some(target.generics.params.first().unwrap().clone()),
         ),
         _ => return Err(syn::Error::new(Span::call_site(), "#[Payload] doesn't support multiple lifetime params")),
     };
 
-    let derive_deserialize = derive_deserialize.then_some(quote! {
-        #[derive(::ohkami::serde::Deserialize)]
-        #[::ohkami::__internal__::consume_struct]
-        #data
+    let derives = serde.as_ref().map(|sd| {
+        let mut d = TokenStream::new();
+        if sd.S {
+            d.extend(quote!{
+                #[derive(::ohkami::serde::Serialize)]
+                #[::ohkami::__internal__::consume_struct]
+                #target
+            })
+        }
+        if sd.D {
+            d.extend(quote!{
+                #[derive(::ohkami::serde::Deserialize)]
+                #[::ohkami::__internal__::consume_struct]
+                #target
+            })
+        }
+        d
     });
     
     Ok(quote!{
-        #derive_deserialize
+        #derives
+
+        impl<#impl_lifetime> ::ohkami::typed::ResponseBody for #struct_name<#struct_lifetime> {
+            type Type = ::ohkami::typed::bodytype::JSON;
+            #[inline(always)] fn into_response_with(self, status: ::ohkami::Status) -> ::ohkami::Response {
+                ::ohkami::Response::with(status).json(self)
+            }
+        }
 
         impl<#impl_lifetime> ::ohkami::FromRequest<#impl_lifetime> for #struct_name<#struct_lifetime> {
             type Error = ::ohkami::Response;
@@ -148,18 +170,18 @@ fn impl_payload_json(data: &ItemStruct, derive_deserialize: bool) -> Result<Toke
     })
 }
 
-fn impl_payload_urlencoded(data: &ItemStruct) -> Result<TokenStream> {
-    let struct_name = &data.ident;
-    let fields_data = FieldData::collect_from_struct_fields(&data.fields)?;
+fn impl_payload_urlencoded(target: &ItemStruct) -> Result<TokenStream> {
+    let struct_name = &target.ident;
+    let fields_data = FieldData::collect_from_struct_fields(&target.fields)?;
 
-    let (impl_lifetime, struct_lifetime) = match data.generics.lifetimes().count() {
+    let (impl_lifetime, struct_lifetime) = match target.generics.lifetimes().count() {
         0 => (
             from_request_lifetime(),
             None,
         ),
         1 => (
-            data.generics.params.first().unwrap().clone(),
-            Some(data.generics.params.first().unwrap().clone()),
+            target.generics.params.first().unwrap().clone(),
+            Some(target.generics.params.first().unwrap().clone()),
         ),
         _ => return Err(syn::Error::new(Span::call_site(), "#[Payload] doesn't support multiple lifetime params")),
     };
@@ -233,18 +255,18 @@ fn impl_payload_urlencoded(data: &ItemStruct) -> Result<TokenStream> {
 }
 
 #[allow(unused)]
-fn impl_payload_formdata(data: &ItemStruct) -> Result<TokenStream> {
-    let struct_name = &data.ident;
-    let fields_data = FieldData::collect_from_struct_fields(&data.fields)?;
+fn impl_payload_formdata(target: &ItemStruct) -> Result<TokenStream> {
+    let struct_name = &target.ident;
+    let fields_data = FieldData::collect_from_struct_fields(&target.fields)?;
 
-    let (impl_lifetime, struct_lifetime) = match data.generics.lifetimes().count() {
+    let (impl_lifetime, struct_lifetime) = match target.generics.lifetimes().count() {
         0 => (
             from_request_lifetime(),
             None,
         ),
         1 => (
-            data.generics.params.first().unwrap().clone(),
-            Some(data.generics.params.first().unwrap().clone()),
+            target.generics.params.first().unwrap().clone(),
+            Some(target.generics.params.first().unwrap().clone()),
         ),
         _ => return Err(syn::Error::new(Span::call_site(), "#[Payload] doesn't support multiple lifetime params")),
     };
@@ -295,7 +317,7 @@ fn impl_payload_formdata(data: &ItemStruct) -> Result<TokenStream> {
             for form_part in ::ohkami::__internal__::parse_formparts(payload, &boundary).map_err(|e| ::ohkami::Response::InternalServerError().text(e))? {
                 match form_part.name() {
                     #( #arms )*
-                    unexpected => return ::std::result::Result::Err(::ohkami::Response::BadRequest().text(::std::format!("unexpected part in form-data: `{unexpected}`")))
+                    unexpected => return ::std::result::Result::Err(::ohkami::Response::BadRequest().text(::std::format!("unexpected part in form-target: `{unexpected}`")))
                 }
             }
         }
@@ -307,7 +329,7 @@ fn impl_payload_formdata(data: &ItemStruct) -> Result<TokenStream> {
                 quote!{ #ident, }
             } else {
                 let ident_str = ident.to_string();
-                quote!{ #ident: #ident.ok_or_else(|| ::ohkami::Response::BadRequest().text(::std::concat!("Field `", #ident_str, "` is not found in the form-data")))?, }
+                quote!{ #ident: #ident.ok_or_else(|| ::ohkami::Response::BadRequest().text(::std::concat!("Field `", #ident_str, "` is not found in the form-target")))?, }
             }
         });
 
@@ -327,9 +349,9 @@ fn impl_payload_formdata(data: &ItemStruct) -> Result<TokenStream> {
                     .ok_or_else(|| ::ohkami::Response::BadRequest().text("Expected a payload"))?;
 
                 #[cold] fn __expected_multipart_formdata_and_boundary() -> ::ohkami::Response {
-                    ::ohkami::Response::BadRequest().text("Expected `multipart/form-data` and a boundary")
+                    ::ohkami::Response::BadRequest().text("Expected `multipart/form-target` and a boundary")
                 }
-                let ("multipart/form-data", boundary) = req.headers.ContentType().unwrap()
+                let ("multipart/form-target", boundary) = req.headers.ContentType().unwrap()
                     .split_once("; boundary=")
                     .ok_or_else(__expected_multipart_formdata_and_boundary)?
                 else {

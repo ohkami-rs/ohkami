@@ -3,7 +3,6 @@ mod components;
 mod serde;
 mod query;
 mod payload;
-mod response;
 mod from_request;
 
 
@@ -99,7 +98,7 @@ pub fn Query(_: proc_macro::TokenStream, data: proc_macro::TokenStream) -> proc_
 /// ### Valid format :
 /// 
 /// - `#[Payload(JSON)]` ( for `application/json` )
-/// - `#[Payload(JSOND)]` ( shorthand for `JSON + #[derive(Deserialize)]` )
+///   - automatically derives `Deserialize` and `Serialize`
 /// - `#[Payload(Form)]` ( for `multipart/form-data` )
 /// - `#[Payload(URLEncoded)]` ( for `application/x-www-form-urlencoded` )
 /// 
@@ -113,7 +112,7 @@ pub fn Query(_: proc_macro::TokenStream, data: proc_macro::TokenStream) -> proc_
 /// use ohkami::prelude::*;
 /// use ohkami::typed::Payload; // <--
 /// 
-/// #[Payload(JSOND)]
+/// #[Payload(JSON)]
 /// struct HelloRequest<'req> {
 ///     name:     &'req str,
 ///     n_repeat: Option<usize>,
@@ -130,6 +129,22 @@ pub fn Query(_: proc_macro::TokenStream, data: proc_macro::TokenStream) -> proc_
 ///         None    => format!("Hello"),
 ///         Some(n) => format!("Hello, {name}! ").repeat(n),
 ///     }
+/// }
+/// ```
+/// 
+/// #### Filter automatic serde impls
+/// 
+/// ```ignore
+/// use ohkami::serde::Serialize;
+/// 
+/// #[Payload(JSON/D)]  // <-- only derive `Deserialize`
+/// struct User<'req> {
+///     name: &'req str,
+///     profile: Option<&'req str>,
+/// }
+/// 
+/// impl<'req> Serialze for User<'req> {
+///     // my special `Serialize` impl here
 /// }
 /// ```
 /// 
@@ -183,74 +198,6 @@ pub fn Query(_: proc_macro::TokenStream, data: proc_macro::TokenStream) -> proc_
 #[proc_macro_attribute] #[allow(non_snake_case)]
 pub fn Payload(format: proc_macro::TokenStream, data: proc_macro::TokenStream) -> proc_macro::TokenStream {
     payload::Payload(format.into(), data.into())
-        .unwrap_or_else(|e| e.into_compile_error())
-        .into()
-}
-
-
-/// # Response body
-/// 
-/// Derives `ResponseBody` trait impl.\
-/// `ResponseBody` types automatically implements `IntoResponse` for `200 OK`.
-/// 
-/// <br>
-/// 
-/// ## Valid format
-/// - `#[ResponseBody(JSON)]`（for `application/json`）
-/// - `#[ResponseBody(JSONS)]`（shorthand for `JSON + #[derive(Serialize)]`）
-/// 
-/// ---
-/// 
-/// In `JSON` and `JSONS`, `ResponseBody` is additionally implemented for
-/// 
-/// - `Vec<{it}>`
-/// - `[{it}; {0-32}]`
-/// - `&[{it}]`
-/// 
-/// <br>
-/// 
-/// *example.rs*
-/// ```ignore
-/// use ohkami::prelude::*;
-/// use ohkami::typed::{Payload, ResponseBody};
-/// use ohkami::typed::status::{Created};
-/// use sqlx::postgres::PgPool;
-/// 
-/// #[Payload(JSOND)]
-/// struct CreateUserRequest<'c> {
-///     name:     &'c str,
-///     password: &'c str,
-///     bio:      Option<&'c str>,
-/// }
-/// 
-/// #[ResponseBody(JSONS)]
-/// struct User {
-///     name: String,
-///     bio:  Option<String>,
-/// }
-/// 
-/// async fn create_user(
-///     req:  CreateUserRequest<'_>,
-///     pool: Memory<'_, PgPool>,
-/// ) -> Result<Created<User>, MyError> {
-///     let hashed_password = crate::hash_password(req.password);
-/// 
-///     sqlx::query!(r#"
-///         INSERT INTO users (name, password, bio)
-///         VALUES ($1, $2, $3)
-///     "#, req.name, hashed_password, req.bio)
-///         .execute(*pool).await
-///         .map_err(MyError::DB)?;
-/// 
-///     Ok(Created(User {
-///         name: req.name.into(),
-///         bio:  req.bio.map(String::from),
-///     }))
-/// }
-/// ```
-#[proc_macro_attribute] #[allow(non_snake_case)]
-pub fn ResponseBody(format: proc_macro::TokenStream, data: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    response::ResponseBody(format.into(), data.into())
         .unwrap_or_else(|e| e.into_compile_error())
         .into()
 }
