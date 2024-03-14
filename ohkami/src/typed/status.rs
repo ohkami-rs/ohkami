@@ -1,7 +1,46 @@
 use std::borrow::Cow;
-use super::response_body::ResponseBody;
+use serde::Serialize;
+use super::{Payload, PayloadType};
 use crate::{IntoResponse, Response, Status};
 
+
+trait ResponseBody {
+    fn into_response_with(self, status: Status) -> Response;
+}
+const _: () = {
+    impl ResponseBody for () {
+        fn into_response_with(self, status: Status) -> Response {
+            Response::with(status)
+        }
+    }
+
+    impl<P: Payload + Serialize> ResponseBody for P {
+        #[inline]
+        fn into_response_with(self, status: Status) -> Response {
+            let mut res = Response::with(status);
+            {
+                macro_rules! content_type {
+                    () => {<<Self as Payload>::Type as PayloadType>::CONTENT_TYPE};
+                }
+
+                let bytes = match <<Self as Payload>::Type as PayloadType>::bytes(&self) {
+                    Ok(bytes) => bytes,
+                    Err(e) => return (|| {
+                        eprintln!("Failed to serialize {} as {}: {e}", std::any::type_name::<Self>(), content_type!());
+                        Response::InternalServerError()
+                    })()
+                };
+
+                res.headers.set()
+                    .ContentType(content_type!())
+                    .ContentLength(bytes.len().to_string());
+
+                res.content = Some(std::borrow::Cow::Owned(bytes));
+            }
+            res
+        }
+    }
+};
 
 macro_rules! generate_statuses_as_types_containing_value {
     ($( $status:ident : $message:literal, )*) => {

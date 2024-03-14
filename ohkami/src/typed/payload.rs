@@ -1,4 +1,4 @@
-use crate::{FromRequest, Response};
+use crate::{FromRequest, IntoResponse, Response};
 use serde::{Serialize, Deserialize};
 
 
@@ -47,61 +47,33 @@ const _: () = {
         }
     }
 
-    // impl<P> super::ResponseBody for P
-    // where
-    //     P: Payload + Serialize
-    // {
-    //     type Type = ;
-// 
-    //     fn into_response_with(self, status: crate::Status) -> Response {
-    //         let mut res = Response::with(status);
-    //         {
-    //             let bytes = match <<Self as Payload>::Type as PayloadType>::bytes(&self) {
-    //                 Ok(bytes) => bytes,
-    //                 Err(e) => return (|| {
-    //                     eprintln!("Failed to serialize {} as {}: {e}", std::any::type_name::<Self>(), content_type!());
-    //                     Response::InternalServerError()
-    //                 })()
-    //             };
-// 
-    //             res.headers.set()
-    //                 .ContentType(<<Self as Payload>::Type as PayloadType>::CONTENT_TYPE)
-    //                 .ContentLength(bytes.len().to_string());
-// 
-    //             res.content = Some(std::borrow::Cow::Owned(bytes));
-    //         }
-    //         res
-    //     }
-    // }
+    impl<P> IntoResponse for P
+    where
+        P: Payload + Serialize
+    {
+        #[inline]
+        fn into_response(self) -> Response {
+            let mut res = Response::OK();
+            {
+                macro_rules! content_type {
+                    () => {<<Self as Payload>::Type as PayloadType>::CONTENT_TYPE};
+                }
+
+                let bytes = match <<Self as Payload>::Type as PayloadType>::bytes(&self) {
+                    Ok(bytes) => bytes,
+                    Err(e) => return (|| {
+                        eprintln!("Failed to serialize {} as {}: {e}", std::any::type_name::<Self>(), content_type!());
+                        Response::InternalServerError()
+                    })()
+                };
+
+                res.headers.set()
+                    .ContentType(content_type!())
+                    .ContentLength(bytes.len().to_string());
+
+                res.content = Some(std::borrow::Cow::Owned(bytes));
+            }
+            res
+        }
+    }
 };
-
-
-// pub struct FormData;
-// impl PayloadType for FormData {
-//     const CONTENT_TYPE: &'static str = "multipart/form-data";
-// 
-//     type Error = ;
-// 
-//     fn parse<'req, T: Deserialize<'req>>(bytes: &'req [u8]) -> Result<T, Self::Error> {
-//         todo!()
-//     }
-// 
-//     fn write<'res, T: Serialize>(_: T, _: &'res mut Vec<u8>) -> Result<(), Self::Error> {
-//         not_supported_response_contenttype!()
-//     }
-// }
-
-// pub struct URLEncoded;
-// impl PayloadType for URLEncoded {
-//     const CONTENT_TYPE: &'static str = "multipart/form-data";
-// 
-//     type Error = ;
-// 
-//     fn parse<'req, T: Deserialize<'req>>(bytes: &'req [u8]) -> Result<T, Self::Error> {
-//         todo!()
-//     }
-// 
-//     fn write<'res, T: Serialize>(_: T, _: &'res mut Vec<u8>) -> Result<(), Self::Error> {
-//         not_supported_response_contenttype!()
-//     }
-// }
