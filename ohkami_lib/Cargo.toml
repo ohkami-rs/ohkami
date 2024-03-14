@@ -11,3 +11,6 @@ readme        = "../README.md"
 keywords      = ["async", "http", "web", "server", "framework"]
 categories    = ["asynchronous", "web-programming::http-server"]
 license       = "MIT"
+
+[dependencies]
+serde         = { version = "1.0" }
