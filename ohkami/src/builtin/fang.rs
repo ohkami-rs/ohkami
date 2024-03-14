@@ -1,5 +1,3 @@
-//! Ohkami's buitlin fangs
-
 mod cors;
 pub use cors::CORS;
 

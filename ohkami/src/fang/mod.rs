@@ -1,5 +1,4 @@
 mod fangs;
-pub mod builtin;
 
 pub use fangs::{FrontFang, BackFang};
 use std::any::TypeId;

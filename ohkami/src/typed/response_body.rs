@@ -2,6 +2,7 @@ use crate::serde::Serialize;
 use crate::response::ResponseHeaders;
 use crate::{Status, Response};
 use std::borrow::Cow;
+use std::io::Empty;
 
 
 /// # Response body
@@ -50,7 +51,6 @@ use std::borrow::Cow;
 /// }
 /// ```
 pub trait ResponseBody: Serialize {
-    /// Select from `ohkami::typed::bodytype` module
     type Type: BodyType;
     fn into_response_with(self, status: Status) -> Response;
 }
@@ -89,47 +89,6 @@ impl ResponseBody for () {
         }
     }
 }
-
-const _: (/* JSON utility impls */) = {
-    impl<RB: ResponseBody<Type = bodytype::JSON>> ResponseBody for Option<RB> {
-        type Type = bodytype::JSON;
-        fn into_response_with(self, status: Status) -> Response {
-            Response::with(status).json(self)
-        }
-    }
-
-    impl<RB: ResponseBody<Type = bodytype::JSON>> ResponseBody for Vec<RB> {
-        type Type = bodytype::JSON;
-        #[inline] fn into_response_with(self, status: Status) -> Response {
-            Response::with(status).json(self)
-        }
-    }
-
-    impl<RB: ResponseBody<Type = bodytype::JSON>> ResponseBody for &[RB] {
-        type Type = bodytype::JSON;
-        fn into_response_with(self, status: Status) -> Response {
-            Response::with(status).json(self)
-        }
-    }
-
-    /// `impl<RB: ResponseBody<Type = bodytype::JSON>, const N: usize> ResponseBody for [RB; N]`
-    /// is not available becasue `serde` only provides following 33 `Serialize` impls...
-    macro_rules! response_body_of_json_array_of_len {
-        ($($len:literal)*) => {
-            $(
-                impl<RB: ResponseBody<Type = bodytype::JSON>> ResponseBody for [RB; $len] {
-                    type Type = bodytype::JSON;
-                    #[inline] fn into_response_with(self, status: Status) -> Response {
-                        Response::with(status).json(self)
-                    }
-                }
-            )*
-        };
-    } response_body_of_json_array_of_len! {
-        0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17
-        18 19 20 21 22 23 24 25 26 27 28 29 30 31 32
-    }
-};
 
 macro_rules! plain_text_responsebodies {
     ($( $text_type:ty: $self:ident => $content:expr, )*) => {
