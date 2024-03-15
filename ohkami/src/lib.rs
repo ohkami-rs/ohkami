@@ -163,12 +163,6 @@ pub mod __internal__ {
 
     pub use ohkami_macros::consume_struct;
 
-    pub use crate::typed::_parse_payload::{
-        parse_json,
-        parse_formparts,
-        parse_urlencoded,
-    };
-
     #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
     pub use crate::fang::Fangs;
 
