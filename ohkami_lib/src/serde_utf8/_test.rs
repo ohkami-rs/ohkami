@@ -1,4 +1,4 @@
-use super::serde_utf8;
+use crate::serde_utf8;
 
 
 #[test] fn serialize_bool() {
