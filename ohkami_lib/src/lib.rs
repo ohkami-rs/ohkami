@@ -4,7 +4,7 @@ mod list;
 pub use list::List;
 
 mod time;
-pub use time::imf_fixdate_now;
+pub use time::{unix_timestamp, imf_fixdate_now};
 
 mod slice;
 pub use slice::{Slice, CowSlice};

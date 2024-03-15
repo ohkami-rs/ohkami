@@ -92,7 +92,9 @@ pub mod typed;
 pub mod testing;
 
 #[cfg(feature="utils")]
-pub mod utils;
+pub mod utils {
+    pub use ::ohkami_lib::unix_timestamp;
+}
 
 #[cfg(feature="websocket")]
 mod x_websocket;
