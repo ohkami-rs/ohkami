@@ -58,6 +58,7 @@ macro_rules! generate_statuses_as_types_containing_value {
             }\n\
             ```"]
             #[allow(non_camel_case_types)]
+            #[allow(private_bounds)]
             pub struct $status<B: ResponseBody = ()>(pub B);
 
             impl<B: ResponseBody> IntoResponse for $status<B> {
