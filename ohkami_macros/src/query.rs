@@ -1,30 +1,34 @@
 use proc_macro2::{TokenStream, Span};
 use quote::{quote, ToTokens};
-use syn::{Result, parse_str, Type};
-
-use crate::components::*;
+use syn::{parse_str, Error, GenericParam, ItemStruct, Lifetime, LifetimeDef, Result, Type};
 
 
 #[allow(non_snake_case)]
-pub(super) fn Query(data: TokenStream) -> Result<TokenStream> {
-    let data = parse_request_struct("Query", data)?;
+pub(super) fn Query(target: TokenStream) -> Result<TokenStream> {
+    let target: ItemStruct = syn::parse2(target)?;
+
+    if target.semi_token.is_some() {
+        return Err(Error::new(Span::call_site(), "#[Query] doesn't support unit / tuple struct !"))
+    }
 
     let impl_from_request = {
-        let struct_name = &data.ident;
+        let struct_name = &target.ident;
 
-        let (impl_lifetime, struct_lifetime) = match &data.generics.lifetimes().count() {
+        let (impl_lifetime, struct_lifetime) = match &target.generics.lifetimes().count() {
             0 => (
-                from_request_lifetime(),
+                GenericParam::Lifetime(LifetimeDef::new(
+                    Lifetime::new("'__impl_from_request_lifetime", Span::call_site())
+                )),
                 None,
             ),
             1 => (
-                data.generics.params.first().unwrap().clone(),
-                Some(data.generics.params.first().unwrap().clone()),
+                target.generics.params.first().unwrap().clone(),
+                Some(target.generics.params.first().unwrap().clone()),
             ),
             _ => return Err(syn::Error::new(Span::call_site(), "#[Query] doesn't support multiple lifetime params"))
         };
 
-        let fields = data.fields.iter().map(|f| {
+        let fields = target.fields.iter().map(|f| {
             let field_name = f.ident.as_ref().unwrap(/* already checked in `parse_request_struct` */);
             let field_name_str = field_name.to_string();
             let field_type = &f.ty;
@@ -61,7 +65,7 @@ pub(super) fn Query(data: TokenStream) -> Result<TokenStream> {
     };
 
     Ok(quote!{
-        #data
+        #target
         #impl_from_request
     })
 }

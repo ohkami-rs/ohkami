@@ -1,5 +1,3 @@
-mod components;
-
 mod serde;
 mod query;
 mod payload;

@@ -36,3 +36,9 @@ const _: (/* JSON payload utitlity impls */) = {
         type Type = JSON;
     }
 };
+
+const _: (/* builtin impls */) = {
+    impl Payload for ::serde_json::Value {
+        type Type = JSON;
+    }
+};
