@@ -1,9 +1,11 @@
+#[inline]
 pub fn to_string(value: &impl serde::Serialize) -> Result<String, Error> {
     let mut s = UTF8Serializer { output: String::new() };
     value.serialize(&mut s)?;
     Ok(s.output)
 }
 
+#[inline]
 pub fn from_str<'de, D: serde::Deserialize<'de>>(input: &'de str) -> Result<D, Error> {
     let mut d = UTF8Deserializer { input };
     let t = D::deserialize(&mut d)?;
@@ -86,22 +88,25 @@ impl serde::Serializer for &mut UTF8Serializer {
         Ok(())
     }
 
-    fn serialize_char(self, v: char) -> Result<Self::Ok, Self::Error> {
-        self.output.push(v);
-        Ok(())
-    }
+    #[inline(always)]
     fn serialize_str(self, v: &str) -> Result<Self::Ok, Self::Error> {
         self.output.push_str(v);
+        Ok(())
+    }
+    fn serialize_char(self, v: char) -> Result<Self::Ok, Self::Error> {
+        self.output.push(v);
         Ok(())
     }
     fn serialize_bytes(self, v: &[u8]) -> Result<Self::Ok, Self::Error> {
         let v = std::str::from_utf8(v).map_err(|e| serde::ser::Error::custom(e))?;
         self.serialize_str(v)
     }
-
+    
+    #[inline]
     fn serialize_none(self) -> Result<Self::Ok, Self::Error> {
         Ok(())
     }
+    #[inline]
     fn serialize_some<T: ?Sized>(self, value: &T) -> Result<Self::Ok, Self::Error>
     where T: serde::Serialize {
         value.serialize(self)
@@ -114,6 +119,7 @@ impl serde::Serializer for &mut UTF8Serializer {
         Ok(())
     }
 
+    #[inline]
     fn serialize_unit_variant(
         self,
         _name: &'static str, 
@@ -145,6 +151,7 @@ impl serde::Serializer for &mut UTF8Serializer {
         Err(serde::ser::Error::custom("ohkami's builtin UTF-8 serialier doesn't support enum with struct variants !"))
     }
 
+    #[inline(always)]
     fn serialize_newtype_struct<T: ?Sized>(
         self,
         _name: &'static str,
@@ -204,6 +211,7 @@ const _: () = {
 impl<'de, 'u> serde::Deserializer<'de> for &'u mut UTF8Deserializer<'de> {
     type Error = Error;
     
+    #[inline]
     fn deserialize_any<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where V: serde::de::Visitor<'de> {
         self.deserialize_str(visitor)
@@ -213,6 +221,7 @@ impl<'de, 'u> serde::Deserializer<'de> for &'u mut UTF8Deserializer<'de> {
         self.deserialize_any(visitor)
     }
 
+    #[inline(always)]
     fn deserialize_str<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where V: serde::de::Visitor<'de> {
         visitor.visit_str(self.input())
@@ -222,6 +231,7 @@ impl<'de, 'u> serde::Deserializer<'de> for &'u mut UTF8Deserializer<'de> {
         self.deserialize_str(visitor)
     }
 
+    #[inline(always)]
     fn deserialize_newtype_struct<V>(
         self,
         _name: &'static str,
@@ -264,6 +274,7 @@ impl<'de, 'u> serde::Deserializer<'de> for &'u mut UTF8Deserializer<'de> {
         }
     }
 
+    #[inline]
     fn deserialize_enum<V>(
         self,
         _name: &'static str,
@@ -359,11 +370,13 @@ impl<'de, 'u> serde::Deserializer<'de> for &'u mut UTF8Deserializer<'de> {
         )
     }
 
+    #[inline]
     fn deserialize_identifier<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where V: serde::de::Visitor<'de> {
         self.deserialize_str(visitor)
     }
 
+    #[inline]
     fn deserialize_option<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where V: serde::de::Visitor<'de> {
         if self.input.is_empty() {
