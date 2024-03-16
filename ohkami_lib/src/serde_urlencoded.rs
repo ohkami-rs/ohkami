@@ -7,9 +7,9 @@ mod _test;
 
 #[inline]
 pub fn to_string(value: &impl serde::Serialize) -> Result<String, Error> {
-    let mut s = ser::URLEncodedSerializer { output: String::new() };
+    let mut s = ser::URLEncodedSerializer::new();
     value.serialize(&mut s)?;
-    Ok(s.output)
+    Ok(s.output())
 }
 
 #[inline(always)]
@@ -57,6 +57,20 @@ const _: () = {
             _key: &'static str,
             _value: &T,
         ) -> Result<(), Self::Error>
+        where T: serde::Serialize {
+            match *self {}
+        }
+
+        fn end(self) -> Result<Self::Ok, Self::Error> {
+            match self {}
+        }
+    }
+
+    impl serde::ser::SerializeTupleVariant for Infallible {
+        type Ok    = ();
+        type Error = Error;
+
+        fn serialize_field<T: ?Sized>(&mut self, value: &T) -> Result<(), Self::Error>
         where T: serde::Serialize {
             match *self {}
         }

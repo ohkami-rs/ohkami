@@ -3,7 +3,24 @@ use crate::percent_encode;
 
 
 pub(crate) struct URLEncodedSerializer {
-    pub(crate) output: String
+    output: String,
+
+    /// To forbid nesting maps
+    init: bool,
+}
+impl URLEncodedSerializer {
+    #[inline]
+    pub(crate) const fn new() -> Self {
+        Self {
+            output: String::new(),
+            init:   true,
+        }
+    }
+
+    #[inline]
+    pub(crate) fn output(self) -> String {
+        self.output
+    }
 }
 
 const _: () = {
@@ -124,8 +141,8 @@ impl serde::Serializer for &mut URLEncodedSerializer {
     type SerializeSeq           = Self;
     type SerializeTuple         = Self;
     type SerializeTupleStruct   = Self;
-    type SerializeTupleVariant  = Self;
 
+    type SerializeTupleVariant  = super::Infallible;
     type SerializeStructVariant = super::Infallible;
 
     fn serialize_bool(self, v: bool) -> Result<Self::Ok, Self::Error> {
@@ -266,7 +283,7 @@ impl serde::Serializer for &mut URLEncodedSerializer {
         _variant: &'static str,
         _len: usize,
     ) -> Result<Self::SerializeStructVariant, Self::Error> {
-        Err(serde::ser::Error::custom("ohkami's builtin urlencoded serializer doesn't support struct variants !"))
+        Err(serde::ser::Error::custom("ohkami's builtin urlencoded serializer doesn't support enum with struct variants !"))
     }
     fn serialize_tuple_variant(
         self,
@@ -275,12 +292,7 @@ impl serde::Serializer for &mut URLEncodedSerializer {
         variant: &'static str,
         _len: usize,
     ) -> Result<Self::SerializeTupleVariant, Self::Error> {
-        if !self.output.is_empty() {
-            self.output.push('&');
-        }
-        variant.serialize(&mut *self)?;
-        self.output.push('=');
-        Ok(self)
+        Err(serde::ser::Error::custom("ohkami's builtin urlencoded serializer doesn't support enum with tuple variants !"))
     }
     fn serialize_unit_variant(
         self,
