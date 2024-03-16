@@ -13,10 +13,10 @@ const _: () = {
     }
 };
 
-impl<'de, 'u> serde::Deserializer<'de> for &'u mut UTF8Deserializer<'de> {
+impl<'de> serde::Deserializer<'de> for &mut UTF8Deserializer<'de> {
     type Error = super::Error;
     
-    #[inline]
+    #[inline(always)]
     fn deserialize_any<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where V: serde::de::Visitor<'de> {
         self.deserialize_str(visitor)

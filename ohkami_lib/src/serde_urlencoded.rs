@@ -5,6 +5,25 @@ mod de;
 mod _test;
 
 
+#[inline]
+pub fn to_string(value: &impl serde::Serialize) -> Result<String, Error> {
+    let mut s = ser::URLEncodedSerializer { output: String::new() };
+    value.serialize(&mut s)?;
+    Ok(s.output)
+}
+
+#[inline(always)]
+pub fn from_str<'de, D: serde::Deserialize<'de>>(input: &'de str) -> Result<D, Error> {
+    let mut d = de::URLEncodedDeserializer { input };
+    let t = D::deserialize(&mut d)?;
+    if d.input.is_empty() {
+        Ok(t)
+    } else {
+        Err((||serde::de::Error::custom(format!("Unexpected trailing charactors: {}", d.input)))())
+    }
+}
+
+
 #[derive(Debug)]
 pub struct Error(String);
 const _: () = {
@@ -28,3 +47,22 @@ const _: () = {
 };
 
 pub(crate) enum Infallible {}
+const _: () = {
+    impl serde::ser::SerializeStructVariant for Infallible {
+        type Ok    = ();
+        type Error = Error;
+
+        fn serialize_field<T: ?Sized>(
+            &mut self,
+            _key: &'static str,
+            _value: &T,
+        ) -> Result<(), Self::Error>
+        where T: serde::Serialize {
+            match *self {}
+        }
+
+        fn end(self) -> Result<Self::Ok, Self::Error> {
+            match self {}
+        }
+    }
+};

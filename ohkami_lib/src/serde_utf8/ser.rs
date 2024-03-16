@@ -41,9 +41,8 @@ impl serde::Serializer for &mut UTF8Serializer {
         self.output.push(v);
         Ok(())
     }
-    fn serialize_bytes(self, v: &[u8]) -> Result<Self::Ok, Self::Error> {
-        let v = std::str::from_utf8(v).map_err(|e| serde::ser::Error::custom(e))?;
-        self.serialize_str(v)
+    fn serialize_bytes(self, _: &[u8]) -> Result<Self::Ok, Self::Error> {
+        Err(serde::ser::Error::custom("ohkami's builtin UTF-8 serializer doesn't support raw byte data !"))
     }
     
     #[inline]

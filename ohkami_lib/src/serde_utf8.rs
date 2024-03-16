@@ -5,14 +5,14 @@ mod de;
 mod _test;
 
 
-#[inline]
+#[inline(always)]
 pub fn to_string(value: &impl serde::Serialize) -> Result<String, Error> {
     let mut s = ser::UTF8Serializer { output: String::new() };
     value.serialize(&mut s)?;
     Ok(s.output)
 }
 
-#[inline]
+#[inline(always)]
 pub fn from_str<'de, D: serde::Deserialize<'de>>(input: &'de str) -> Result<D, Error> {
     let mut d = de::UTF8Deserializer { input };
     let t = D::deserialize(&mut d)?;
