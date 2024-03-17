@@ -7,16 +7,16 @@ pub struct Text;
 impl PayloadType for Text {
     const CONTENT_TYPE: &'static str = "text/plain";
 
-    type Error = serde_utf8::Error;
-
-    fn parse<'req, T: Deserialize<'req>>(bytes: &'req [u8]) -> Result<T, Self::Error> {
+    #[inline]
+    fn parse<'req, T: Deserialize<'req>>(bytes: &'req [u8]) -> Result<T, impl crate::serde::de::Error> {
         let str = std::str::from_utf8(bytes).map_err(
             |e| serde::de::Error::custom(format!("input is not UTF-8: {e}"))
         )?;
         serde_utf8::from_str(str)
     }
 
-    fn bytes<T: Serialize>(value: &T) -> Result<Vec<u8>, Self::Error> {
+    #[inline(always)]
+    fn bytes<T: Serialize>(value: &T) -> Result<Vec<u8>, impl crate::serde::ser::Error> {
         serde_utf8::to_string(value).map(String::into_bytes)
     }
 }
@@ -26,13 +26,11 @@ pub struct HTML;
 impl PayloadType for HTML {
     const CONTENT_TYPE: &'static str = "text/html";
 
-    type Error = serde_utf8::Error;
-
-    fn bytes<T: Serialize>(value: &T) -> Result<Vec<u8>, Self::Error> {
+    fn bytes<T: Serialize>(value: &T) -> Result<Vec<u8>, impl crate::serde::ser::Error> {
         serde_utf8::to_string(value).map(String::into_bytes)
     }
 
-    fn parse<'req, T: Deserialize<'req>>(bytes: &'req [u8]) -> Result<T, Self::Error> {
+    fn parse<'req, T: Deserialize<'req>>(bytes: &'req [u8]) -> Result<T, impl crate::serde::de::Error> {
         let str = std::str::from_utf8(bytes).map_err(
             |e| serde::de::Error::custom(format!("input is not UTF-8: {e}"))
         )?;

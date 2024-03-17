@@ -9,10 +9,8 @@ pub trait Payload: Sized {
 pub trait PayloadType {
     const CONTENT_TYPE: &'static str;
 
-    type Error: std::error::Error;
-
-    fn parse<'req, T: Deserialize<'req>>(bytes: &'req [u8]) -> Result<T, Self::Error>;
-    fn bytes<T: Serialize>(value: &T) -> Result<Vec<u8>, Self::Error>;
+    fn parse<'req, T: Deserialize<'req>>(bytes: &'req [u8]) -> Result<T, impl crate::serde::de::Error>;
+    fn bytes<T: Serialize>(value: &T) -> Result<Vec<u8>, impl crate::serde::ser::Error>;
 }
 
 const _: () = {

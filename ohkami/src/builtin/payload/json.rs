@@ -5,16 +5,14 @@ use crate::typed::{Payload, PayloadType};
 pub struct JSON;
 impl PayloadType for JSON {
     const CONTENT_TYPE: &'static str = "application/json";
-
-    type Error = ::serde_json::Error;
     
     #[inline(always)]
-    fn parse<'req, T: Deserialize<'req>>(bytes: &'req [u8]) -> Result<T, Self::Error> {
+    fn parse<'req, T: Deserialize<'req>>(bytes: &'req [u8]) -> Result<T, impl crate::serde::de::Error> {
         ::serde_json::from_slice(bytes)
     }
 
     #[inline(always)]
-    fn bytes<T: Serialize>(value: &T) -> Result<Vec<u8>, Self::Error> {
+    fn bytes<T: Serialize>(value: &T) -> Result<Vec<u8>, impl crate::serde::ser::Error> {
         ::serde_json::to_vec(&value)
     }
 }
