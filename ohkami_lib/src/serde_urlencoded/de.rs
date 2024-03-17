@@ -5,7 +5,22 @@ use std::borrow::Cow;
 
 
 pub(crate) struct URLEncodedDeserializer<'de> {
-    pub(crate) input: &'de str
+    input: &'de str,
+    side:  ParsingSide,
+}
+#[derive(Debug, PartialEq, Clone, Copy)]
+enum ParsingSide {
+    Key,
+    Value,
+}
+
+impl<'de> URLEncodedDeserializer<'de> {
+    pub(crate) fn new(input: &'de str) -> Self {
+        Self { input, side: ParsingSide::Key }
+    }
+    pub(crate) fn remaining(&self) -> &'de str {
+        &self.input
+    }
 }
 
 impl<'de> URLEncodedDeserializer<'de> {
@@ -19,26 +34,24 @@ impl<'de> URLEncodedDeserializer<'de> {
         self.input = &self.input[next.len_utf8()..];
         Ok(next)
     }
-    #[inline]
-    fn peek_value(&self) -> &'de str {
-        let len = self.input.find('&').unwrap_or(self.input.len());
-        &self.input[..len]
-    }
-    #[inline(always)] /// empty str is acceptable
-    fn next_value(&mut self) -> &'de str {
-        let len = self.input.find('&').unwrap_or(self.input.len());
-        let value = &self.input[..len];
-        self.input = &self.input[len..];
-        value
-    }
-    #[inline(always)] /// empty str is **NOT** acceptable
-    fn next_key(&mut self) -> Result<&'de str, super::Error> {
-        let len = self.input.find('=').ok_or_else(|| serde::de::Error::custom("can't get a key: unexpected end of input"))?;
-        (len > 0).then_some({
-            let (key, remaining) = self.input.split_at(len);
-            self.input = remaining;
-            key
-        }).ok_or_else(|| serde::de::Error::custom("empty key"))
+    #[inline(always)]
+    fn next_section(&mut self) -> Result<&'de str, super::Error> {
+        match &self.side {
+            ParsingSide::Key => {
+                let len = self.input.find('=').ok_or_else(|| serde::de::Error::custom("can't get a key: unexpected end of input"))?;
+                (len > 0).then_some({
+                    let (key, remaining) = self.input.split_at(len);
+                    self.input = remaining;
+                    key
+                }).ok_or_else(|| serde::de::Error::custom("empty key"))
+            }
+            ParsingSide::Value => {
+                let len = self.input.find('&').unwrap_or(self.input.len());
+                let (value, remaining) = self.input.split_at(len);
+                self.input = remaining;
+                Ok(value)
+            }
+        }
     }
 }
 
@@ -57,6 +70,10 @@ impl<'u, 'de> serde::Deserializer<'de> for &'u mut URLEncodedDeserializer<'de> {
     #[inline(always)]
     fn deserialize_map<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where V: serde::de::Visitor<'de> {
+        #[cfg(debug_assertions)] {
+            assert!(self.side == ParsingSide::Key);
+        }
+
         visitor.visit_map(AmpersandSeparated::new(self))
     }
     #[inline(always)]
@@ -67,6 +84,10 @@ impl<'u, 'de> serde::Deserializer<'de> for &'u mut URLEncodedDeserializer<'de> {
         visitor: V,
     ) -> Result<V::Value, Self::Error>
     where V: serde::de::Visitor<'de> {
+        #[cfg(debug_assertions)] {
+            assert!(self.side == ParsingSide::Key);
+        }
+
         self.deserialize_map(visitor)
     }
 
@@ -84,7 +105,19 @@ impl<'u, 'de> serde::Deserializer<'de> for &'u mut URLEncodedDeserializer<'de> {
     #[inline(always)]
     fn deserialize_identifier<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where V: serde::de::Visitor<'de> {
-        let section = self.next_key()?;
+        /*
+            Here we don't put
+
+            ```
+            #[cfg(debug_assertions)] {
+                assert!(self.side == ParsingSide::Key);
+            }
+            ```
+            because `deserialize_identifier` can be called by value-place enums
+            like `enum Gender { Male, Female, Oter }`.
+        */
+
+        let section = dbg!(self.next_section().unwrap());
         match percent_decode_utf8(section.as_bytes()).map_err(|e|
             serde::de::Error::custom(format!("Expected to be decoded to an UTF-8, but got `{section}`: {e}"))
         )? {
@@ -95,12 +128,12 @@ impl<'u, 'de> serde::Deserializer<'de> for &'u mut URLEncodedDeserializer<'de> {
     #[inline(always)]
     fn deserialize_str<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where V: serde::de::Visitor<'de> {
-        let section = self.next_value();
+        let section = self.next_section()?;
         match percent_decode_utf8(section.as_bytes()).map_err(|e|
             serde::de::Error::custom(format!("Expected to be decoded to an UTF-8, but got `{section}`: {e}"))
         )? {
-            Cow::Borrowed(str) => visitor.visit_str(str),
-            Cow::Owned(string) => visitor.visit_string(string),
+            Cow::Borrowed(str) => visitor.visit_str(dbg!(str)),
+            Cow::Owned(string) => visitor.visit_string(dbg!(string)),
         }
     }
     fn deserialize_string<V>(self, visitor: V) -> Result<V::Value, Self::Error>
@@ -109,7 +142,7 @@ impl<'u, 'de> serde::Deserializer<'de> for &'u mut URLEncodedDeserializer<'de> {
     }
     fn deserialize_char<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where V: serde::de::Visitor<'de> {
-        let section = self.next_value();
+        let section = self.next_section()?;
         let mut chars = section.chars();
         let (Some(ch), None) = (chars.next(), chars.next()) else {
             return Err((|| serde::de::Error::custom(
@@ -146,7 +179,10 @@ impl<'u, 'de> serde::Deserializer<'de> for &'u mut URLEncodedDeserializer<'de> {
         } else {
             Err((|| serde::de::Error::custom(format!(
                 "Expected an empty value for an unit, but got `{}`",
-                self.peek_value(),
+                match self.next_section() {
+                    Ok(section) => section.to_string(),
+                    Err(e) => e.to_string()
+                }
             )))())
         }
     }
@@ -179,19 +215,31 @@ impl<'u, 'de> serde::Deserializer<'de> for &'u mut URLEncodedDeserializer<'de> {
 
     fn deserialize_bytes<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where V: serde::de::Visitor<'de> {
-        match percent_decode(self.next_value().as_bytes()) {
+        #[cfg(debug_assertions)] {
+            assert!(self.side == ParsingSide::Value);
+        }
+
+        match percent_decode(self.next_section().unwrap().as_bytes()) {
             Cow::Borrowed(slice) => visitor.visit_bytes(slice),
             Cow::Owned(byte_vec) => visitor.visit_byte_buf(byte_vec),
         }
     }
     fn deserialize_byte_buf<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where V: serde::de::Visitor<'de> {
+        #[cfg(debug_assertions)] {
+            assert!(self.side == ParsingSide::Value);
+        }
+
         self.deserialize_bytes(visitor)
     }
 
     fn deserialize_bool<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where V: serde::de::Visitor<'de> {
-        match self.next_value() {
+        #[cfg(debug_assertions)] {
+            assert!(self.side == ParsingSide::Value);
+        }
+
+        match self.next_section().unwrap() {
             "true"  => visitor.visit_bool(true),
             "false" => visitor.visit_bool(false),
             other   => Err(serde::de::Error::custom(format!(
@@ -202,7 +250,11 @@ impl<'u, 'de> serde::Deserializer<'de> for &'u mut URLEncodedDeserializer<'de> {
 
     fn deserialize_f32<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where V: serde::de::Visitor<'de> {
-        let section = self.next_value();
+        #[cfg(debug_assertions)] {
+            assert!(self.side == ParsingSide::Value);
+        }
+
+        let section = self.next_section().unwrap();
         visitor.visit_f32(
             section.parse().map_err(|_| serde::de::Error::custom(
                 format!("Expected a f32, but got `{section}`")
@@ -211,7 +263,11 @@ impl<'u, 'de> serde::Deserializer<'de> for &'u mut URLEncodedDeserializer<'de> {
     }
     fn deserialize_f64<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where V: serde::de::Visitor<'de> {
-        let section = self.next_value();
+        #[cfg(debug_assertions)] {
+            assert!(self.side == ParsingSide::Value);
+        }
+
+        let section = self.next_section().unwrap();
         visitor.visit_f64(
             section.parse().map_err(|_| serde::de::Error::custom(
                 format!("Expected a f64, but got `{section}`")
@@ -221,7 +277,11 @@ impl<'u, 'de> serde::Deserializer<'de> for &'u mut URLEncodedDeserializer<'de> {
 
     fn deserialize_i8<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where V: serde::de::Visitor<'de> {
-        let section = self.next_value();
+        #[cfg(debug_assertions)] {
+            assert!(self.side == ParsingSide::Value);
+        }
+
+        let section = self.next_section().unwrap();
         visitor.visit_i8(
             section.parse().map_err(|_| serde::de::Error::custom(
                 format!("Expected a i8, but got `{section}`")
@@ -230,7 +290,11 @@ impl<'u, 'de> serde::Deserializer<'de> for &'u mut URLEncodedDeserializer<'de> {
     }
     fn deserialize_i16<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where V: serde::de::Visitor<'de> {
-        let section = self.next_value();
+        #[cfg(debug_assertions)] {
+            assert!(self.side == ParsingSide::Value);
+        }
+
+        let section = self.next_section().unwrap();
         visitor.visit_i16(
             section.parse().map_err(|_| serde::de::Error::custom(
                 format!("Expected a i16, but got `{section}`")
@@ -239,7 +303,11 @@ impl<'u, 'de> serde::Deserializer<'de> for &'u mut URLEncodedDeserializer<'de> {
     }
     fn deserialize_i32<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where V: serde::de::Visitor<'de> {
-        let section = self.next_value();
+        #[cfg(debug_assertions)] {
+            assert!(self.side == ParsingSide::Value);
+        }
+
+        let section = self.next_section().unwrap();
         visitor.visit_i32(
             section.parse().map_err(|_| serde::de::Error::custom(
                 format!("Expected a i32, but got `{section}`")
@@ -248,7 +316,11 @@ impl<'u, 'de> serde::Deserializer<'de> for &'u mut URLEncodedDeserializer<'de> {
     }
     fn deserialize_i64<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where V: serde::de::Visitor<'de> {
-        let section = self.next_value();
+        #[cfg(debug_assertions)] {
+            assert!(self.side == ParsingSide::Value);
+        }
+
+        let section = self.next_section().unwrap();
         visitor.visit_i64(
             section.parse().map_err(|_| serde::de::Error::custom(
                 format!("Expected a i64, but got `{section}`")
@@ -258,7 +330,11 @@ impl<'u, 'de> serde::Deserializer<'de> for &'u mut URLEncodedDeserializer<'de> {
 
     fn deserialize_u8<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where V: serde::de::Visitor<'de> {
-        let section = self.next_value();
+        #[cfg(debug_assertions)] {
+            assert!(self.side == ParsingSide::Value);
+        }
+
+        let section = self.next_section().unwrap();
         visitor.visit_u8(
             section.parse().map_err(|_| serde::de::Error::custom(
                 format!("Expected a u8, but got `{section}`")
@@ -267,7 +343,11 @@ impl<'u, 'de> serde::Deserializer<'de> for &'u mut URLEncodedDeserializer<'de> {
     }
     fn deserialize_u16<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where V: serde::de::Visitor<'de> {
-        let section = self.next_value();
+        #[cfg(debug_assertions)] {
+            assert!(self.side == ParsingSide::Value);
+        }
+
+        let section = self.next_section().unwrap();
         visitor.visit_u16(
             section.parse().map_err(|_| serde::de::Error::custom(
                 format!("Expected a u16, but got `{section}`")
@@ -276,7 +356,11 @@ impl<'u, 'de> serde::Deserializer<'de> for &'u mut URLEncodedDeserializer<'de> {
     }
     fn deserialize_u32<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where V: serde::de::Visitor<'de> {
-        let section = self.next_value();
+        #[cfg(debug_assertions)] {
+            assert!(self.side == ParsingSide::Value);
+        }
+
+        let section = self.next_section().unwrap();
         visitor.visit_u32(
             section.parse().map_err(|_| serde::de::Error::custom(
                 format!("Expected a u32, but got `{section}`")
@@ -285,7 +369,11 @@ impl<'u, 'de> serde::Deserializer<'de> for &'u mut URLEncodedDeserializer<'de> {
     }
     fn deserialize_u64<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where V: serde::de::Visitor<'de> {
-        let section = self.next_value();
+        #[cfg(debug_assertions)] {
+            assert!(self.side == ParsingSide::Value);
+        }
+
+        let section = self.next_section().unwrap();
         visitor.visit_u64(
             section.parse().map_err(|_| serde::de::Error::custom(
                 format!("Expected a u64, but got `{section}`")
@@ -318,6 +406,8 @@ const _: () = {
                 return Err((|| serde::de::Error::custom("missing `&`"))())
             }
             self.first = false;
+
+            self.de.side = ParsingSide::Key;
             seed.deserialize(
                 // self.de.next_key()?.into_deserializer()
                 &mut *self.de
@@ -329,6 +419,8 @@ const _: () = {
             if self.de.next()? != '=' {
                 return Err((|| serde::de::Error::custom("missing `=`"))())
             }
+
+            self.de.side = ParsingSide::Value;
             seed.deserialize(
                 &mut *self.de
                 // self.de.next_value().into_deserializer()
@@ -356,11 +448,22 @@ const _: () = {
 
         fn variant_seed<V>(self, seed: V) -> Result<(V::Value, Self::Variant), Self::Error>
         where V: serde::de::DeserializeSeed<'de> {
-            let v = seed.deserialize(&mut *self.de)?;
-            if self.de.next()? == '=' {
-                Ok((v, self))
-            } else {
-                Err(serde::de::Error::custom("missing '='"))
+            match self.de.side {
+                ParsingSide::Key => {
+                    let v = seed.deserialize(&mut *self.de)?;
+                    if self.de.next()? == '=' {
+                        self.de.side = ParsingSide::Value;
+                        Ok((v, self))
+                    } else {
+                        Err(serde::de::Error::custom("missing '='"))
+                    }
+                }
+                ParsingSide::Value => {
+                    Ok((
+                        seed.deserialize(self.de.next_section().unwrap().into_deserializer())?,
+                        self,
+                    ))
+                }
             }
         }
     }
@@ -399,7 +502,10 @@ struct CommaSeparated<'de> {
 }
 impl<'de> CommaSeparated<'de> {
     fn new(de: &mut URLEncodedDeserializer<'de>) -> Self {
-        Self { section: de.next_value(), first: true }
+        Self {
+            section: de.next_section().unwrap(),
+            first:   true,
+        }
     }
 }
 const _: () = {

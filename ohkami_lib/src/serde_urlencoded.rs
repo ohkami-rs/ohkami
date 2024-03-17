@@ -14,12 +14,12 @@ pub fn to_string(value: &impl serde::Serialize) -> Result<String, Error> {
 
 #[inline(always)]
 pub fn from_str<'de, D: serde::Deserialize<'de>>(input: &'de str) -> Result<D, Error> {
-    let mut d = de::URLEncodedDeserializer { input };
+    let mut d = de::URLEncodedDeserializer::new(input);
     let t = D::deserialize(&mut d)?;
-    if d.input.is_empty() {
+    if d.remaining().is_empty() {
         Ok(t)
     } else {
-        Err((||serde::de::Error::custom(format!("Unexpected trailing charactors: {}", d.input)))())
+        Err((||serde::de::Error::custom(format!("Unexpected trailing charactors: {}", d.remaining())))())
     }
 }
 
