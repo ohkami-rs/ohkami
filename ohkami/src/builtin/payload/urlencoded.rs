@@ -8,11 +8,9 @@ pub struct URLEncoded;
 impl PayloadType for URLEncoded {
     const CONTENT_TYPE: &'static str = "application/x-www-form-urlencoded";
 
+    #[inline]
     fn parse<'req, T: Deserialize<'req>>(bytes: &'req [u8]) -> Result<T, impl crate::serde::de::Error> {
-        let str = std::str::from_utf8(bytes).map_err(
-            |e| serde::de::Error::custom(format!("input is not valid form-urlencoded: {e}"))
-        )?;
-        serde_urlencoded::from_str(str)
+        serde_urlencoded::from_bytes(bytes)
     }
 
     fn bytes<T: Serialize>(value: &T) -> Result<Vec<u8>, impl crate::serde::ser::Error> {

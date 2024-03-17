@@ -73,8 +73,8 @@ struct Problem<'s> {
     use std::collections::HashMap;
 
     assert_eq!(
-        serde_urlencoded::from_str::<HashMap<String, String>>(
-            "key=value"
+        serde_urlencoded::from_bytes::<HashMap<String, String>>(
+            b"key=value"
         ).unwrap(),
         HashMap::from([
             (format!("key"), format!("value")),
@@ -82,8 +82,8 @@ struct Problem<'s> {
     );
 
     assert_eq!(
-        serde_urlencoded::from_str::<HashMap<String, String>>(
-            "key=value&japanese%20%28%E6%97%A5%E6%9C%AC%E8%AA%9E%29=%E3%81%93%E3%82%93%E3%81%AB%E3%81%A1%E3%81%AF%E3%80%81%E4%B8%96%E7%95%8C%EF%BC%81"
+        serde_urlencoded::from_bytes::<HashMap<String, String>>(
+            b"key=value&japanese%20%28%E6%97%A5%E6%9C%AC%E8%AA%9E%29=%E3%81%93%E3%82%93%E3%81%AB%E3%81%A1%E3%81%AF%E3%80%81%E4%B8%96%E7%95%8C%EF%BC%81"
         ).unwrap(),
         HashMap::from([
             (format!("key"), format!("value")),
@@ -97,8 +97,8 @@ struct Problem<'s> {
     }
 
     assert_eq!(
-        serde_urlencoded::from_str::<HashMap<ABCorXYZ, String>>(
-            "ABC=value&XYZ=%E3%81%93%E3%82%93%E3%81%AB%E3%81%A1%E3%81%AF%E3%80%81%E4%B8%96%E7%95%8C%EF%BC%81"
+        serde_urlencoded::from_bytes::<HashMap<ABCorXYZ, String>>(
+            b"ABC=value&XYZ=%E3%81%93%E3%82%93%E3%81%AB%E3%81%A1%E3%81%AF%E3%80%81%E4%B8%96%E7%95%8C%EF%BC%81"
         ).unwrap(),
         HashMap::from([
             (ABCorXYZ::ABC, format!("value")),
@@ -114,8 +114,8 @@ struct Problem<'s> {
             age:    None,
             gender: None,
         },
-        serde_urlencoded::from_str(
-            "name=ohkami&age=&gender="
+        serde_urlencoded::from_bytes(
+            b"name=ohkami&age=&gender="
         ).unwrap()
     );
     assert_eq!( 
@@ -124,8 +124,8 @@ struct Problem<'s> {
             age:    None,
             gender: None,
         },
-        serde_urlencoded::from_str(
-            "age=&name=ohkami&gender="
+        serde_urlencoded::from_bytes(
+            b"age=&name=ohkami&gender="
         ).unwrap()
     );
 
@@ -135,8 +135,8 @@ struct Problem<'s> {
             age:    None,
             gender: Some(Gender::Other),
         },
-        serde_urlencoded::from_str(
-            "name=ohkami&age=&gender=other"
+        serde_urlencoded::from_bytes(
+            b"name=ohkami&age=&gender=other"
         ).unwrap()
     );
     assert_eq!(
@@ -145,8 +145,8 @@ struct Problem<'s> {
             age:    None,
             gender: Some(Gender::Other),
         },
-        serde_urlencoded::from_str(
-            "gender=other&name=ohkami&age="
+        serde_urlencoded::from_bytes(
+            b"gender=other&name=ohkami&age="
         ).unwrap()
     );
 
@@ -156,8 +156,8 @@ struct Problem<'s> {
             age:    None,
             gender: Some(Gender::Other),
         },
-        serde_urlencoded::from_str(
-            "name=ohkami%20%2D%E7%8B%BC%20%28%E3%81%8A%E3%81%8A%E3%81%8B%E3%81%BF%29%2D&age=&gender=other"
+        serde_urlencoded::from_bytes(
+            b"name=ohkami%20%2D%E7%8B%BC%20%28%E3%81%8A%E3%81%8A%E3%81%8B%E3%81%BF%29%2D&age=&gender=other"
         ).unwrap()
     );
     assert_eq!(
@@ -166,8 +166,8 @@ struct Problem<'s> {
             age:    None,
             gender: Some(Gender::Other),
         },
-        serde_urlencoded::from_str(
-            "age=&gender=other&name=ohkami%20%2D%E7%8B%BC%20%28%E3%81%8A%E3%81%8A%E3%81%8B%E3%81%BF%29%2D"
+        serde_urlencoded::from_bytes(
+            b"age=&gender=other&name=ohkami%20%2D%E7%8B%BC%20%28%E3%81%8A%E3%81%8A%E3%81%8B%E3%81%BF%29%2D"
         ).unwrap()
     );
 }

@@ -13,13 +13,13 @@ pub fn to_string(value: &impl serde::Serialize) -> Result<String, Error> {
 }
 
 #[inline(always)]
-pub fn from_str<'de, D: serde::Deserialize<'de>>(input: &'de str) -> Result<D, Error> {
+pub fn from_bytes<'de, D: serde::Deserialize<'de>>(input: &'de [u8]) -> Result<D, Error> {
     let mut d = de::URLEncodedDeserializer::new(input);
     let t = D::deserialize(&mut d)?;
     if d.remaining().is_empty() {
         Ok(t)
     } else {
-        Err((||serde::de::Error::custom(format!("Unexpected trailing charactors: {}", d.remaining())))())
+        Err((||serde::de::Error::custom(format!("Unexpected trailing charactors: {}", d.remaining().escape_ascii())))())
     }
 }
 
