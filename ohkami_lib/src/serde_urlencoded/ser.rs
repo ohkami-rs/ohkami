@@ -230,16 +230,19 @@ impl serde::Serializer for &mut URLEncodedSerializer {
         Ok(())
     }
 
-    fn serialize_map(self, _len: Option<usize>) -> Result<Self::SerializeMap, Self::Error> {
-        Ok(self)
+    #[inline(always)]
+    fn serialize_map(self, len: Option<usize>) -> Result<Self::SerializeMap, Self::Error> {
+        let _ = len;
+        self.init.then_some({self.init = false; self})
+            .ok_or_else(||serde::ser::Error::custom("ohkami's builtin urlencoded serializer doesn't support nested maps or map-like structs !"))
     }
     #[inline(always)]
     fn serialize_struct(
         self,
         _name: &'static str,
-        _len: usize,
+        len: usize,
     ) -> Result<Self::SerializeStruct, Self::Error> {
-        Ok(self)
+        self.serialize_map(Some(len))
     }
     fn serialize_tuple_struct(
         self,
@@ -289,7 +292,7 @@ impl serde::Serializer for &mut URLEncodedSerializer {
         self,
         _name: &'static str,
         _variant_index: u32,
-        variant: &'static str,
+        _variant: &'static str,
         _len: usize,
     ) -> Result<Self::SerializeTupleVariant, Self::Error> {
         Err(serde::ser::Error::custom("ohkami's builtin urlencoded serializer doesn't support enum with tuple variants !"))

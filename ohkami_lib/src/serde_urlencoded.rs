@@ -70,7 +70,7 @@ const _: () = {
         type Ok    = ();
         type Error = Error;
 
-        fn serialize_field<T: ?Sized>(&mut self, value: &T) -> Result<(), Self::Error>
+        fn serialize_field<T: ?Sized>(&mut self, _: &T) -> Result<(), Self::Error>
         where T: serde::Serialize {
             match *self {}
         }
