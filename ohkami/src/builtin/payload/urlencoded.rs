@@ -12,7 +12,7 @@ impl PayloadType for URLEncoded {
 
     fn parse<'req, T: Deserialize<'req>>(bytes: &'req [u8]) -> Result<T, Self::Error> {
         let str = std::str::from_utf8(bytes).map_err(
-            |e| serde::de::Error::custom(format!("input is not UTF-8: {e}"))
+            |e| serde::de::Error::custom(format!("input is not valid form-urlencoded: {e}"))
         )?;
         serde_urlencoded::from_str(str)
     }
