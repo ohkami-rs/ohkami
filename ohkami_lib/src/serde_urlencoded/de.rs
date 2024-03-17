@@ -448,23 +448,10 @@ const _: () = {
 
         fn variant_seed<V>(self, seed: V) -> Result<(V::Value, Self::Variant), Self::Error>
         where V: serde::de::DeserializeSeed<'de> {
-            match self.de.side {
-                ParsingSide::Key => {
-                    let v = seed.deserialize(&mut *self.de)?;
-                    if self.de.next()? == '=' {
-                        self.de.side = ParsingSide::Value;
-                        Ok((v, self))
-                    } else {
-                        Err(serde::de::Error::custom("missing '='"))
-                    }
-                }
-                ParsingSide::Value => {
-                    Ok((
-                        seed.deserialize(self.de.next_section().unwrap().into_deserializer())?,
-                        self,
-                    ))
-                }
-            }
+            Ok((
+                seed.deserialize(self.de.next_section().unwrap().into_deserializer())?,
+                self,
+            ))
         }
     }
 

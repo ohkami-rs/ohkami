@@ -17,10 +17,26 @@ enum Gender {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
+enum Difficulty {
+    Low,
+    Middle,
+    High,
+    Ultimate,
+}
+
+
+#[derive(Serialize, Deserialize, PartialEq, Debug)]
 struct User<'s> {
     name:   Cow<'s, str>,
     age:    Option<Age>,
     gender: Option<Gender>,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Debug)]
+struct Problem<'s> {
+    title:      Cow<'s, str>,
+    content:    String,
+    difficulty: Option<Difficulty>,
 }
 
 
@@ -102,6 +118,16 @@ struct User<'s> {
             "name=ohkami&age=&gender="
         ).unwrap()
     );
+    assert_eq!( 
+        User {
+            name:   Cow::Borrowed("ohkami"),
+            age:    None,
+            gender: None,
+        },
+        serde_urlencoded::from_str(
+            "age=&name=ohkami&gender="
+        ).unwrap()
+    );
 
     assert_eq!(
         User {
@@ -111,6 +137,16 @@ struct User<'s> {
         },
         serde_urlencoded::from_str(
             "name=ohkami&age=&gender=other"
+        ).unwrap()
+    );
+    assert_eq!(
+        User {
+            name:   Cow::Owned(String::from("ohkami")),
+            age:    None,
+            gender: Some(Gender::Other),
+        },
+        serde_urlencoded::from_str(
+            "gender=other&name=ohkami&age="
         ).unwrap()
     );
 
@@ -124,4 +160,16 @@ struct User<'s> {
             "name=ohkami%20%2D%E7%8B%BC%20%28%E3%81%8A%E3%81%8A%E3%81%8B%E3%81%BF%29%2D&age=&gender=other"
         ).unwrap()
     );
+    assert_eq!(
+        User {
+            name:   Cow::Owned(String::from("ohkami -狼 (おおかみ)-")),
+            age:    None,
+            gender: Some(Gender::Other),
+        },
+        serde_urlencoded::from_str(
+            "age=&gender=other&name=ohkami%20%2D%E7%8B%BC%20%28%E3%81%8A%E3%81%8A%E3%81%8B%E3%81%BF%29%2D"
+        ).unwrap()
+    );
 }
+
+
