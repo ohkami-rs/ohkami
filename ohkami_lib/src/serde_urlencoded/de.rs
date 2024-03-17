@@ -117,7 +117,7 @@ impl<'u, 'de> serde::Deserializer<'de> for &'u mut URLEncodedDeserializer<'de> {
             like `enum Gender { Male, Female, Oter }`.
         */
 
-        let section = dbg!(self.next_section().unwrap());
+        let section = self.next_section().unwrap();
         match percent_decode_utf8(section.as_bytes()).map_err(|e|
             serde::de::Error::custom(format!("Expected to be decoded to an UTF-8, but got `{section}`: {e}"))
         )? {
@@ -132,8 +132,8 @@ impl<'u, 'de> serde::Deserializer<'de> for &'u mut URLEncodedDeserializer<'de> {
         match percent_decode_utf8(section.as_bytes()).map_err(|e|
             serde::de::Error::custom(format!("Expected to be decoded to an UTF-8, but got `{section}`: {e}"))
         )? {
-            Cow::Borrowed(str) => visitor.visit_str(dbg!(str)),
-            Cow::Owned(string) => visitor.visit_string(dbg!(string)),
+            Cow::Borrowed(str) => visitor.visit_str(str),
+            Cow::Owned(string) => visitor.visit_string(string),
         }
     }
     fn deserialize_string<V>(self, visitor: V) -> Result<V::Value, Self::Error>
@@ -462,9 +462,11 @@ const _: () = {
             Ok(())
         }
 
-        fn newtype_variant_seed<T>(self, seed: T) -> Result<T::Value, Self::Error>
+        fn newtype_variant_seed<T>(self, _seed: T) -> Result<T::Value, Self::Error>
         where T: serde::de::DeserializeSeed<'de> {
-            seed.deserialize(self.de)
+            // seed.deserialize(self.de)
+            
+            Err(serde::de::Error::custom("ohkami's builtin urlencoded deserializer doesn't support enum with variants !"))
         }
 
         fn struct_variant<V>(
