@@ -280,7 +280,7 @@ impl JWT {
 
 
 #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
-#[cfg(all(feature="testing", feature="utils"))]
+#[cfg(feature="testing")]
 #[cfg(test)] mod test {
     use super::JWT;
     use crate::__rt__::test;
@@ -423,16 +423,9 @@ impl JWT {
         struct SigninRequest<'s> {
             first_name:   &'s str,
             familly_name: &'s str,
-        } impl<'req> crate::FromRequest<'req> for SigninRequest<'req> {
-            type Error = Response;
-            fn from_request(req: &'req Request) -> Result<Self, Self::Error> {
-                serde_json::from_slice(
-                    req.payload().ok_or_else(|| Response::BadRequest().text("No payload found"))?
-                ).map_err(|e| {
-                    eprintln!("Failed to deserialize: {}", e.to_string());
-                    Response::InternalServerError()
-                })
-            }
+        }
+        impl Payload for SigninRequest<'_> {
+            type Type = crate::builtin::payload::JSON;
         }
 
         async fn signin(body: SigninRequest<'_>) -> String {

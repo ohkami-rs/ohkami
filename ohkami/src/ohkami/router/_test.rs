@@ -1,5 +1,5 @@
 #![allow(non_snake_case)]
-#![cfg(all(feature="testing", feature="utils"))]
+#![cfg(feature="testing")]
 
 use crate::__rt__;
 use crate::prelude::*;

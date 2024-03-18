@@ -53,7 +53,7 @@ fn metadataize(input: &str) -> [u8; METADATA_SIZE] {
     assert_parse!(CASE_1, Request {_metadata: metadataize(CASE_1),
         method:  Method::GET,
         path:    Path::from_literal("/hello.html"),
-        queries: QueryParams::new(),
+        queries: None,
         headers: RequestHeaders::from_iter([
             (RequestHeader::Host,           "www.tutorialspoint.com"),
             (RequestHeader::UserAgent,      "Mozilla/4.0"),
@@ -81,7 +81,7 @@ fn metadataize(input: &str) -> [u8; METADATA_SIZE] {
     assert_parse!(CASE_2, Request {_metadata: metadataize(CASE_2),
         method:  Method::POST,
         path:    Path::from_literal("/signup"),
-        queries: QueryParams::new(),
+        queries: None,
         headers: RequestHeaders::from_iter([
             (RequestHeader::Host,           "www.tutorialspoint.com"),
             (RequestHeader::UserAgent,      "Mozilla/4.0"),
@@ -117,10 +117,10 @@ fn metadataize(input: &str) -> [u8; METADATA_SIZE] {
         assert_parse!(CASE_3, Request {_metadata: metadataize(CASE_3),
             method:  Method::POST,
             path:    Path::from_literal("/foo.php"),
-            queries: QueryParams::from([
+            queries: Some(Box::new(QueryParams::from([
                 ("query", "1"),
                 ("q2",    "xxx"),
-            ]),
+            ]))),
             headers: RequestHeaders::from_iters(
                 [
                     (RequestHeader::Host,           "localhost"),

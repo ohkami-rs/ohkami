@@ -91,7 +91,6 @@ pub mod typed;
 #[cfg(feature="testing")]
 pub mod testing;
 
-#[cfg(feature="utils")]
 pub mod utils {
     pub use ::ohkami_lib::unix_timestamp;
 }

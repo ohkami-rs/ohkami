@@ -21,6 +21,8 @@ pub use from_request::*;
 
 use ohkami_lib::{Slice, CowSlice, percent_decode_utf8};
 
+use crate::typed::{Payload, PayloadType};
+
 #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
 use {
     crate::__rt__::AsyncReader,
@@ -112,7 +114,7 @@ pub struct Request {pub(crate) _metadata: [u8; METADATA_SIZE],
     /// - `.set().custom({Name}, 〜)` to mutate the value like standard headers
     pub headers:     RequestHeaders,
     pub(crate) path: Path,
-    queries:         QueryParams,
+    queries:         Option<Box<QueryParams>>,
     payload:         Option<CowSlice>,
     store:           Store,
 }
@@ -122,8 +124,8 @@ impl Request {
     pub(crate) fn init() -> Self {
         Self {_metadata: [0; METADATA_SIZE],
             method:     Method::GET,
-            path:       Path::init(),
-            queries:    QueryParams::new(),
+            path:       unsafe {Path::null()},
+            queries:    None,
             headers:    RequestHeaders::init(),
             payload:    None,
             store:      Store::new(),
@@ -142,26 +144,16 @@ impl Request {
         let method = Method::from_bytes(r.read_while(|b| b != &b' ')).unwrap();
         r.consume(" ").unwrap();
         
-        let path = unsafe {// SAFETY: Just calling in request parsing
+        let path = unsafe {// SAFETY: Just calling for request bytes
             Path::from_request_bytes(r.read_while(|b| b != &b'?' && b != &b' '))
         };
 
-        let mut queries = QueryParams::new();
-        if r.consume_oneof([" ", "?"]).unwrap() == 1 {
-            while r.peek().is_some() {
-                unsafe {// SAFETY: Just executing in request parsing
-                    let key = Slice::from_bytes(r.read_while(|b| b != &b'='));
-                    r.consume("=").unwrap();
-                    let val = Slice::from_bytes(r.read_while(|b| b != &b'&' && b != &b' '));
+        let queries = (r.consume_oneof([" ", "?"]).unwrap() == 1)
+            .then(|| Box::new(
+                QueryParams::new(r.read_while(|b| b != &b' '))
+            ));
 
-                    queries.push_from_request_slice(key, val);
-
-                    if r.consume_oneof(["&", " "]).unwrap() == 1 {break}
-                }
-            }
-        }
-
-        r.consume("HTTP/1.1\r\n").expect("Ohkami can only handle HTTP/1.1");
+        r.consume(" HTTP/1.1\r\n").expect("Ohkami can only handle HTTP/1.1");
 
         let mut headers = RequestHeaders::init();
         while r.consume("\r\n").is_none() {
@@ -222,7 +214,7 @@ impl Request {
             stream.read(&mut bytes).await.unwrap();
             CowSlice::Own(bytes)
         } else if starts_at + size <= METADATA_SIZE {
-            CowSlice::Ref(unsafe {Slice::new(ref_metadata.as_ptr().add(starts_at), size)})
+            CowSlice::Ref(unsafe {Slice::new_unchecked(ref_metadata.as_ptr().add(starts_at), size)})
         } else {
             (|| async move {
                 let mut bytes = vec![0; size];
@@ -238,25 +230,31 @@ impl Request {
 }
 
 impl Request {
-    #[inline] pub const fn method(&self) -> Method {
+    #[inline(always)] pub const fn method(&self) -> Method {
         self.method
     }
 
     /// Get request path as `Cow::Borrowed(&str)` if it's not percent-encoded, or, if encoded,
     /// decode it into `Cow::Owned(String)`.
-    #[inline] pub fn path(&self) -> std::borrow::Cow<'_, str> {
+    #[inline(always)] pub fn path(&self) -> std::borrow::Cow<'_, str> {
         percent_decode_utf8(unsafe {self.path.as_bytes()}).expect("Path is not UTF-8")
     }
 
-    #[inline] pub fn query<'req, Value: FromParam<'req>>(&'req self, key: &str) -> Option<Result<Value, Value::Error>> {
-        self.queries.get(key).map(Value::from_param)
+    #[inline] pub fn queires<'req, Q: serde::Deserialize<'req>>(&'req self) -> Option<Result<Q, impl serde::de::Error>> {
+        Some(unsafe {self.queries.as_ref()?.parse()})
     }
-    pub fn append_query(&mut self, key: impl Into<std::borrow::Cow<'static, str>>, value: impl Into<std::borrow::Cow<'static, str>>) {
-        self.queries.push(key, value)
+    #[inline] pub fn query<'req, Value: FromParam<'req>>(&'req self, key: &str) -> Option<Result<Value, Value::Error>> {
+        let (_, value) = unsafe {self.queries.as_ref()?.iter()}.find(|(k, _)| k == key)?;
+        Some(Value::from_param(value))
     }
 
-    #[inline] pub fn payload(&self) -> Option<&[u8]> {
-        Some(unsafe {self.payload.as_ref()?.as_bytes()})
+    #[inline(always)] pub fn payload<
+        'req, P: Payload + serde::Deserialize<'req> + 'req
+    >(&'req self) -> Option<Result<P, impl serde::de::Error + 'req>> {
+        (self.headers.ContentType()? == <<P as Payload>::Type as PayloadType>::CONTENT_TYPE)
+            .then_some(<<P as Payload>::Type as PayloadType>::parse(unsafe {
+                self.payload.as_ref()?.as_bytes()
+            }))
     }
 
     /// Memorize any data within this request object
@@ -279,15 +277,17 @@ impl Request {
 const _: () = {
     impl std::fmt::Debug for Request {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            let queires = self.queries.iter()
-                .map(|(k, v)| format!("{k}: {v}"))
-                .collect::<Vec<_>>();
+            let queires = self.queries.as_ref().map(|q|
+                unsafe {q.iter()}
+                    .map(|(k, v)| format!("{k}: {v}"))
+                    .collect::<Vec<_>>()
+            ).unwrap_or_else(Vec::new);
 
             let headers = self.headers.iter()
                 .map(|(k, v)| format!("{k}: {v}"))
                 .collect::<Vec<_>>();
 
-            if let Some(payload) = self.payload() {
+            if let Some(payload) = self.payload.as_ref().map(|cs| unsafe {cs.as_bytes()}) {
                 f.debug_struct("Request")
                     .field("method",  &self.method)
                     .field("path",    &self.path())
