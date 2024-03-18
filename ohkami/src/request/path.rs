@@ -19,7 +19,7 @@ impl Path {
     #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
     #[inline] pub(crate) unsafe fn null() -> Self {
         Self {
-            raw:    Slice::new_unchecked(std::ptr::null(), 0),
+            raw:    Slice::new_unchecked(b"".as_ptr(), 0),
             #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
             params: List::new(),
         }

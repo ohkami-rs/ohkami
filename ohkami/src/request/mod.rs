@@ -149,11 +149,17 @@ impl Request {
         };
 
         let queries = (r.consume_oneof([" ", "?"]).unwrap() == 1)
-            .then(|| Box::new(
-                QueryParams::new(r.read_while(|b| b != &b' '))
-            ));
+            .then(|| Box::new({
+                let q = QueryParams::new(r.read_while(|b| b != &b' '));
+                #[cfg(debug_assertions)] {
+                    r.consume(" ").unwrap();
+                } #[cfg(not(debug_assertions))] {
+                    r.advance_by(1)
+                }
+                q
+            }));
 
-        r.consume(" HTTP/1.1\r\n").expect("Ohkami can only handle HTTP/1.1");
+        r.consume("HTTP/1.1\r\n").expect("Ohkami can only handle HTTP/1.1");
 
         let mut headers = RequestHeaders::init();
         while r.consume("\r\n").is_none() {

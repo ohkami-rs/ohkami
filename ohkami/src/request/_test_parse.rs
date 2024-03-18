@@ -62,7 +62,7 @@ fn metadataize(input: &str) -> [u8; METADATA_SIZE] {
             (RequestHeader::AcceptEncoding, "gzip, deflate"),
         ]),
         payload: None,
-        store:      Store::new(),
+        store:   Store::new(),
         #[cfg(feature="websocket")] upgrade_id: None,
     });
 
