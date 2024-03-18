@@ -24,6 +24,7 @@ const _: () = {
     {
         type Error = Response;
 
+        #[inline]
         fn from_request(req: &'req crate::Request) -> Result<Self, Self::Error> {
             if req.headers.ContentType() != Some(content_type!()) {
                 return Err(

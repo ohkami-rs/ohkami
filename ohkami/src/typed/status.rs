@@ -4,6 +4,7 @@ use super::{Payload, PayloadType};
 use crate::{IntoResponse, Response, Status};
 
 
+/// `Payload + Serialize`, or `()`
 trait ResponseBody {
     fn into_response_with(self, status: Status) -> Response;
 }
@@ -41,34 +42,34 @@ const _: () = {
         }
     }
 
-    /*
+    /*  :fixme:
 
-const _: (/* builtin impls */) = {
-    use std::borrow::Cow;
-
-    macro_rules! impl_text_payload_for {
-        ($( $t:ty )*) => {
+        It's more natural to implement `Payload<Type = Text>` for these types,
+        but then, `String`, `&str` and `Cow<'_, str>` are to have twos `FromRequest`
+        impls via `FromParam` and `Payload + Deserialize` ):
+    */
+    macro_rules! text_response_bodies {
+        ($($t:ty)*) => {
             $(
-                impl Payload for $t {
-                    type Type = Text;
+                impl ResponseBody for $t {
+                    #[inline]
+                    fn into_response_with(self, status: Status) -> Response {
+                        Response::with(status).text(self)
+                    }
+                }
+                impl IntoResponse for $t {
+                    #[inline]
+                    fn into_response(self) -> Response {
+                        Response::OK().text(self)
+                    }
                 }
             )*
         };
-    }
-    
-    impl_text_payload_for! {
-        &str
-        Option<&str>
+    } text_response_bodies! {
         String
-        Option<String>
-        Cow<'_, str>
-        Option<Cow<'_, str>>
+        &'static str
+        std::borrow::Cow<'static, str>
     }
-};
-
-    */
-
-    
 };
 
 macro_rules! generate_statuses_as_types_containing_value {
