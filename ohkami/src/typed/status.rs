@@ -40,6 +40,35 @@ const _: () = {
             res
         }
     }
+
+    /*
+
+const _: (/* builtin impls */) = {
+    use std::borrow::Cow;
+
+    macro_rules! impl_text_payload_for {
+        ($( $t:ty )*) => {
+            $(
+                impl Payload for $t {
+                    type Type = Text;
+                }
+            )*
+        };
+    }
+    
+    impl_text_payload_for! {
+        &str
+        Option<&str>
+        String
+        Option<String>
+        Cow<'_, str>
+        Option<Cow<'_, str>>
+    }
+};
+
+    */
+
+    
 };
 
 macro_rules! generate_statuses_as_types_containing_value {

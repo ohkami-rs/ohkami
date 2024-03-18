@@ -283,7 +283,7 @@ impl JWT {
 #[cfg(all(feature="testing", feature="utils"))]
 #[cfg(test)] mod test {
     use super::JWT;
-    use crate::{__rt__::test, utils};
+    use crate::__rt__::test;
 
     #[test] async fn test_jwt_issue() {
         /* NOTE: 
@@ -340,7 +340,7 @@ impl JWT {
     #[test] async fn test_jwt_verify_senario() {
         use crate::prelude::*;
         use crate::{testing::*, Memory};
-        use crate::typed::{ResponseBody, bodytype, status::OK};
+        use crate::typed::{Payload, status::OK};
 
         use std::{sync::OnceLock, sync::Mutex, collections::HashMap, borrow::Cow};
 
@@ -406,11 +406,8 @@ impl JWT {
             first_name:   String,
             familly_name: String,
         }
-        impl ResponseBody for Profile {
-            type Type = bodytype::JSON;
-            fn into_response_with(self, status: Status) -> Response {
-                Response::with(status).json(self)
-            }
+        impl Payload for Profile {
+            type Type = crate::builtin::payload::JSON;
         }
 
         async fn get_profile(jwt_payload: Memory<'_, MyJWTPayload>) -> Result<OK<Profile>, APIError> {
@@ -438,7 +435,7 @@ impl JWT {
             }
         }
 
-        async fn signin(body: SigninRequest<'_>) -> utils::Text {
+        async fn signin(body: SigninRequest<'_>) -> String {
             let r = &mut *repository().await.lock().unwrap();
 
             let user: Cow<'_, User> = match r.iter().find(|(_, u)|
@@ -464,7 +461,7 @@ impl JWT {
                 }
             };
 
-            utils::Text(issue_jwt_for_user(&user))
+            issue_jwt_for_user(&user)
         }
 
 

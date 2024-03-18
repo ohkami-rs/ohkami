@@ -7,7 +7,7 @@ use crate::Response;
 
 
 pub(super) fn set_timeout(
-    time:   crate::builtin::Timeout,
+    time:   crate::builtin::fang::Timeout,
     handle: impl Future<Output = Response>,
 ) -> impl Future<Output = Response> {
     struct Timeout<

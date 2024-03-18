@@ -111,7 +111,8 @@ macro_rules! Route {
     use ::serde::{Serialize, Deserialize};
     use super::{Handlers, Route};
     use crate::{FromRequest, IntoResponse, Response, Request, Status};
-    use crate::typed::{ResponseBody, bodytype, status::{OK, Created}};
+    use crate::typed::Payload;
+    use crate::typed::status::{OK, Created};
 
 
     enum APIError {
@@ -133,11 +134,8 @@ macro_rules! Route {
         name:     String,
         password: String,
     } const _: () = {
-        impl ResponseBody for User {
-            type Type = bodytype::JSON;
-            fn into_response_with(self, status: Status) -> Response {
-                Response::with(status).json(self)
-            }
+        impl Payload for User {
+            type Type = crate::builtin::payload::JSON;
         }
     };
 

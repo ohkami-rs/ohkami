@@ -140,7 +140,7 @@ pub(crate) mod internal {
     }
 
     pub struct SpecialBuiltin;
-    impl IntoFang<SpecialBuiltin> for crate::builtin::Timeout {
+    impl IntoFang<SpecialBuiltin> for crate::builtin::fang::Timeout {
         const METHODS: &'static [Method] = &[GET, PUT, POST, PATCH, DELETE, OPTIONS, HEAD];
         fn into_fang(self) -> Fang {
             Fang {

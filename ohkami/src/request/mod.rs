@@ -242,7 +242,7 @@ impl Request {
         self.method
     }
 
-    /// Get request path as `Cow::Borrowed(&str)`, and if it's precent-encoded,
+    /// Get request path as `Cow::Borrowed(&str)` if it's not percent-encoded, or, if encoded,
     /// decode it into `Cow::Owned(String)`.
     #[inline] pub fn path(&self) -> std::borrow::Cow<'_, str> {
         percent_decode_utf8(unsafe {self.path.as_bytes()}).expect("Path is not UTF-8")

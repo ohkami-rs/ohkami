@@ -1,6 +1,6 @@
 use serde::{Serialize, Deserialize};
 use ohkami_lib::serde_utf8;
-use crate::typed::{Payload, PayloadType};
+use crate::typed::PayloadType;
 
 
 pub struct Text;
@@ -37,26 +37,3 @@ impl PayloadType for HTML {
         serde_utf8::from_str(str)
     }
 }
-
-const _: (/* builtin impls */) = {
-    use std::borrow::Cow;
-
-    macro_rules! impl_text_payload_for {
-        ($( $t:ty )*) => {
-            $(
-                impl Payload for $t {
-                    type Type = Text;
-                }
-            )*
-        };
-    }
-    
-    impl_text_payload_for! {
-        &str
-        Option<&str>
-        String
-        Option<String>
-        Cow<'_, str>
-        Option<Cow<'_, str>>
-    }
-};

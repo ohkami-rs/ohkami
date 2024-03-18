@@ -513,7 +513,7 @@ const _: () = {
         where T: serde::de::DeserializeSeed<'de> {
             // seed.deserialize(self.de)
             
-            Err(serde::de::Error::custom("ohkami's builtin urlencoded deserializer doesn't support enum with variants !"))
+            Err(serde::de::Error::custom("ohkami's builtin urlencoded deserializer doesn't support enum with newtype variants !"))
         }
 
         fn struct_variant<V>(
