@@ -38,10 +38,14 @@ macro_rules! Handlers {
     };
 } Handlers! { GET, PUT, POST, PATCH, DELETE }
 
-
 pub struct ByAnother {
-    pub(crate) route: RouteSections,
+    pub(crate) route:  RouteSections,
     pub(crate) ohkami: Ohkami,
+}
+
+pub struct Dir {
+    pub(crate) route:      RouteSections,
+    pub(crate) target_dir: std::path::PathBuf,
 }
 
 
@@ -82,8 +86,12 @@ macro_rules! Route {
             $(
                 fn $method<T>(self, handler: impl IntoHandler<T>) -> Handlers;
             )*
+
             fn By(self, another: Ohkami) -> ByAnother;
+
+            fn Dir(self, static_files_dir_path: &'static str) -> Dir;
         }
+
         impl Route for &'static str {
             $(
                 fn $method<T>(self, handler: impl IntoHandler<T>) -> Handlers {
@@ -92,11 +100,16 @@ macro_rules! Route {
                     handlers
                 }
             )*
+
             fn By(self, another: Ohkami) -> ByAnother {
                 ByAnother {
                     route:  RouteSections::from_literal(self),
                     ohkami: another,
                 }
+            }
+
+            fn Dir(self, path: &'static str) -> Dir {
+                
             }
         }
     };
