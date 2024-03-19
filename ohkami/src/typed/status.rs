@@ -1,7 +1,76 @@
 use std::borrow::Cow;
-use super::response_body::ResponseBody;
+use serde::Serialize;
+use super::{Payload, PayloadType};
 use crate::{IntoResponse, Response, Status};
 
+
+/// `Payload + Serialize`, or `()`
+trait ResponseBody {
+    fn into_response_with(self, status: Status) -> Response;
+}
+const _: () = {
+    impl ResponseBody for () {
+        fn into_response_with(self, status: Status) -> Response {
+            Response::with(status)
+        }
+    }
+
+    impl<P: Payload + Serialize> ResponseBody for P {
+        #[inline]
+        fn into_response_with(self, status: Status) -> Response {
+            let mut res = Response::with(status);
+            {
+                macro_rules! content_type {
+                    () => {<<Self as Payload>::Type as PayloadType>::CONTENT_TYPE};
+                }
+
+                let bytes = match <<Self as Payload>::Type as PayloadType>::bytes(&self) {
+                    Ok(bytes) => bytes,
+                    Err(e) => return (|| {
+                        eprintln!("Failed to serialize {} as {}: {e}", std::any::type_name::<Self>(), content_type!());
+                        Response::InternalServerError()
+                    })()
+                };
+
+                res.headers.set()
+                    .ContentType(content_type!())
+                    .ContentLength(bytes.len().to_string());
+
+                res.content = Some(std::borrow::Cow::Owned(bytes));
+            }
+            res
+        }
+    }
+
+    /*  :fixme:
+
+        It's more natural to implement `Payload<Type = Text>` for these types,
+        but then, `String`, `&str` and `Cow<'_, str>` are to have twos `FromRequest`
+        impls via `FromParam` and `Payload + Deserialize` ):
+    */
+    macro_rules! text_response_bodies {
+        ($($t:ty)*) => {
+            $(
+                impl ResponseBody for $t {
+                    #[inline]
+                    fn into_response_with(self, status: Status) -> Response {
+                        Response::with(status).text(self)
+                    }
+                }
+                impl IntoResponse for $t {
+                    #[inline]
+                    fn into_response(self) -> Response {
+                        Response::OK().text(self)
+                    }
+                }
+            )*
+        };
+    } text_response_bodies! {
+        String
+        &'static str
+        std::borrow::Cow<'static, str>
+    }
+};
 
 macro_rules! generate_statuses_as_types_containing_value {
     ($( $status:ident : $message:literal, )*) => {
@@ -19,6 +88,7 @@ macro_rules! generate_statuses_as_types_containing_value {
             }\n\
             ```"]
             #[allow(non_camel_case_types)]
+            #[allow(private_bounds)]
             pub struct $status<B: ResponseBody = ()>(pub B);
 
             impl<B: ResponseBody> IntoResponse for $status<B> {

@@ -1,8 +1,9 @@
 use std::borrow::Cow;
 use super::{RouteSection, RouteSections};
 use crate::{
-    fang::{Fang, proc::{BackFang, FangProc, FrontFang}, builtin::Timeout},
+    fang::{Fang, proc::{BackFang, FangProc, FrontFang}},
     handler::{ByAnother, Handler, Handlers},
+    builtin::fang::Timeout,
     Method,
 };
 

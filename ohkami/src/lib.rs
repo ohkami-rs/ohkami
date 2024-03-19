@@ -74,7 +74,7 @@ mod handler;
 pub use handler::Route;
 
 mod fang;
-pub use fang::{builtin, FrontFang, BackFang};
+pub use fang::{FrontFang, BackFang};
 
 mod session;
 #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
@@ -84,13 +84,16 @@ mod ohkami;
 #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
 pub use ohkami::Ohkami;
 
+pub mod builtin;
+
 pub mod typed;
 
 #[cfg(feature="testing")]
 pub mod testing;
 
-#[cfg(feature="utils")]
-pub mod utils;
+pub mod utils {
+    pub use ::ohkami_lib::unix_timestamp;
+}
 
 #[cfg(feature="websocket")]
 mod x_websocket;
@@ -160,12 +163,6 @@ pub mod __internal__ {
     pub use ::serde;
 
     pub use ohkami_macros::consume_struct;
-
-    pub use crate::typed::parse_payload::{
-        parse_json,
-        parse_formparts,
-        parse_urlencoded,
-    };
 
     #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
     pub use crate::fang::Fangs;

@@ -463,7 +463,7 @@ pub struct Parse<'a> {
     let mut name = ::std::option::Option::<String>::None;
     let mut age  = ::std::option::Option::<u8>::None;
 
-    for (k, v) in crate::__internal__::parse_urlencoded(buf) {
+    for (k, v) in parse_urlencoded(buf) {
         match &*k {
             "id"   => id.replace(<usize as crate::FromParam>::from_param(v).map_err(|e| format!("{e:?}"))?)
                 .map_or(::std::result::Result::Ok(()), |_|
@@ -498,7 +498,7 @@ pub struct Parse<'a> {
     let mut name = ::std::option::Option::<String>::None;
     let mut age  = ::std::option::Option::<u8>::None;
 
-    for (k, v) in crate::__internal__::parse_urlencoded(buf) {
+    for (k, v) in parse_urlencoded(buf) {
         match &*k {
             "id"   => id.replace(<usize as crate::FromParam>::from_param(v).map_err(|e| Cow::Owned(format!("{e:?}")))?)
                 .map_or(::std::result::Result::Ok(()), |_|
@@ -528,7 +528,7 @@ pub struct Parse<'a> {
 }
 #[cfg(test)] fn __3(buf: &[u8], boundary: String) -> ::std::result::Result<T3, ::std::borrow::Cow<'static, str>> {
     let mut account_name = ::std::option::Option::None;
-    for form_part in crate::__internal__::parse_formparts(buf, &boundary)? {
+    for form_part in parse_formparts(buf, &boundary)? {
         match form_part.name() {
             "account-name" => account_name = ::std::option::Option::Some(
                 form_part.into_field()?.text().map_err(|e| ::std::borrow::Cow::Owned(format!("Invalid form text: {e}")))?),

@@ -1,9 +1,6 @@
-mod components;
-
 mod serde;
 mod query;
 mod payload;
-mod response;
 mod from_request;
 
 
@@ -59,8 +56,10 @@ pub fn consume_struct(_: proc_macro::TokenStream, _: proc_macro::TokenStream) ->
 
 /// ## Query parameters
 /// 
-/// - Value types：types that impls `FromParam`, or `Option<_>` of them
-/// - NOT available for tuple struct ( like `struct S(usize, usize);` ) or unit struct ( like `struct X;` ).
+/// _NOTE_: NOT available for tuple struct ( like `struct S(usize, usize);` ) or unit struct ( like `struct X;` ).
+/// 
+/// `#[Query]` supports `#[serde]`-conpatible `#[query]` attributes for struct fields.
+/// ( They are used in internal parsing process based on [ohkami_lib](https://crates.io/crates/ohkami_lib)'s `serde_urlencoded`. )
 /// 
 /// <br/>
 /// 
@@ -72,6 +71,7 @@ pub fn consume_struct(_: proc_macro::TokenStream, _: proc_macro::TokenStream) ->
 /// #[Query]
 /// struct HelloQuery<'q> {
 ///     name:     &'q str,
+///     #[query(rename = "n-repeat")]
 ///     n_repeat: Option<usize>,
 /// }
 /// 
@@ -92,28 +92,35 @@ pub fn Query(_: proc_macro::TokenStream, data: proc_macro::TokenStream) -> proc_
 }
 
 
-/// ## Request payload
+/// ## Request / Response payload
 /// 
-/// - NOT available for tuple struct ( like `struct S(usize, usize);` ) or unit struct ( like `struct X;` ).
+/// Derives `Payload` implementaion with specified `PayloadType`.
 /// 
-/// ### Valid format :
+/// - `Payload + Serialize` types can be used as response or response body in `typed::status`.
+/// - `Payload + Deserialize` types can be used as request body passed via a handler argument.
 /// 
-/// - `#[Payload(JSON)]` ( for `application/json` )
-/// - `#[Payload(JSOND)]` ( shorthand for `JSON + #[derive(Deserialize)]` )
-/// - `#[Payload(Form)]` ( for `multipart/form-data` )
-/// - `#[Payload(URLEncoded)]` ( for `application/x-www-form-urlencoded` )
+/// <br>
+/// 
+/// In current version, ohkami provides following 4 builtin `PayloadType`s :
+/// 
+/// - `JSON` (for `application/json`)
+/// - `URLEncoded` (for `application/www-x-urlencoded`)
+/// - `Text` (for `text/plain`)
+/// - `HTML` (for `text/html`)
+/// 
+/// Of course, other `PayloadType`s can be implemented by you or anyone else !
 /// 
 /// <br/>
 /// 
-/// ### JSON
-/// 
-/// - Requires that the struct implements `serde::Deserialize`
-/// 
+/// ---
+/// *example_with_builtin_json.rs*
 /// ```ignore
 /// use ohkami::prelude::*;
 /// use ohkami::typed::Payload; // <--
+/// use ohkami::builtin::payload::JSON; // <--
 /// 
-/// #[Payload(JSOND)]
+/// #[Payload(JSON)]
+/// #[derive(ohkami::serde::Desrialize)]
 /// struct HelloRequest<'req> {
 ///     name:     &'req str,
 ///     n_repeat: Option<usize>,
@@ -132,125 +139,31 @@ pub fn Query(_: proc_macro::TokenStream, data: proc_macro::TokenStream) -> proc_
 ///     }
 /// }
 /// ```
+/// ---
 /// 
-/// <br/>
+/// <br>
 /// 
-/// ### URLEncoded
+/// Additionally, `#[Payload]` supports shortcuts for automatic deriving `Serialize` and `Deserialize` :
 /// 
-/// - Available value types : types that impl `FromParam`, or `Option<_>` of them.
+/// - `/ S` ... automatically derive `Serilize`
+/// - `/ D` ... automatically derive `Deserilize`
+/// - `/ SD` or `/ DS` ... automatically derive `Serialize` and `Deserialize`
 /// 
+/// <br>
+/// 
+/// ---
+/// *shorthand.rs*
 /// ```ignore
-/// use ohkami::prelude::*;
-/// use ohkami::typed::Payload; // <--
-/// 
-/// #[Payload(URLEncoded)]
+/// #[Payload(JSON/D)]
 /// struct HelloRequest<'req> {
 ///     name:     &'req str,
 ///     n_repeat: Option<usize>,
 /// }
-/// /* expected payload examples :
-///     name=yourname
-///     name=yourname&n_repeat=2
-/// */
 /// ```
-/// 
-/// <br/>
-/// 
-/// ### Form
-/// 
-/// **NOTE**：This can't handle reference types like `&str` in current version. Wait for the development!
-/// 
-/// - Available value types : `String`, `File`, `Vec<File>`.
-/// - Form part of kebab-case-name is handled by field of snake_case version of the name ( example: `name="submitter-name"` is handled by field `submitter_name` ).
-/// 
-/// 
-/// ```ignore
-/// use ohkami::prelude::*;
-/// use ohkami::typed::{Payload, File}; // <--
-/// 
-/// #[Payload(Form)]
-/// struct ProfileData {
-///     submitter_name: String,
-///     pics:           Vec<File>,
-/// }
-/// /* expected form :
-///     <form action="http://server.dom/cgi/handle" enctype="multiprt/form-data" method="post">
-///         What is your name? <input type="text" name="submitter-name" />
-///         What files are you sending? <input="file" name="pics" />
-///     </form>
-/// */ 
-/// ```
+/// ---
 #[proc_macro_attribute] #[allow(non_snake_case)]
 pub fn Payload(format: proc_macro::TokenStream, data: proc_macro::TokenStream) -> proc_macro::TokenStream {
     payload::Payload(format.into(), data.into())
-        .unwrap_or_else(|e| e.into_compile_error())
-        .into()
-}
-
-
-/// # Response body
-/// 
-/// Derives `ResponseBody` trait impl.\
-/// `ResponseBody` types automatically implements `IntoResponse` for `200 OK`.
-/// 
-/// <br>
-/// 
-/// ## Valid format
-/// - `#[ResponseBody(JSON)]`（for `application/json`）
-/// - `#[ResponseBody(JSONS)]`（shorthand for `JSON + #[derive(Serialize)]`）
-/// 
-/// ---
-/// 
-/// In `JSON` and `JSONS`, `ResponseBody` is additionally implemented for
-/// 
-/// - `Vec<{it}>`
-/// - `[{it}; {0-32}]`
-/// - `&[{it}]`
-/// 
-/// <br>
-/// 
-/// *example.rs*
-/// ```ignore
-/// use ohkami::prelude::*;
-/// use ohkami::typed::{Payload, ResponseBody};
-/// use ohkami::typed::status::{Created};
-/// use sqlx::postgres::PgPool;
-/// 
-/// #[Payload(JSOND)]
-/// struct CreateUserRequest<'c> {
-///     name:     &'c str,
-///     password: &'c str,
-///     bio:      Option<&'c str>,
-/// }
-/// 
-/// #[ResponseBody(JSONS)]
-/// struct User {
-///     name: String,
-///     bio:  Option<String>,
-/// }
-/// 
-/// async fn create_user(
-///     req:  CreateUserRequest<'_>,
-///     pool: Memory<'_, PgPool>,
-/// ) -> Result<Created<User>, MyError> {
-///     let hashed_password = crate::hash_password(req.password);
-/// 
-///     sqlx::query!(r#"
-///         INSERT INTO users (name, password, bio)
-///         VALUES ($1, $2, $3)
-///     "#, req.name, hashed_password, req.bio)
-///         .execute(*pool).await
-///         .map_err(MyError::DB)?;
-/// 
-///     Ok(Created(User {
-///         name: req.name.into(),
-///         bio:  req.bio.map(String::from),
-///     }))
-/// }
-/// ```
-#[proc_macro_attribute] #[allow(non_snake_case)]
-pub fn ResponseBody(format: proc_macro::TokenStream, data: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    response::ResponseBody(format.into(), data.into())
         .unwrap_or_else(|e| e.into_compile_error())
         .into()
 }

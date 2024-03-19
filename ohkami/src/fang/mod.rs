@@ -1,5 +1,4 @@
 mod fangs;
-pub mod builtin;
 
 pub use fangs::{FrontFang, BackFang};
 use std::any::TypeId;
@@ -84,7 +83,7 @@ pub(crate) mod proc {
         Back (BackFang),
 
         /* Builtin specials */
-        Timeout(crate::builtin::Timeout),
+        Timeout(crate::builtin::fang::Timeout),
     }
 
     #[derive(Clone)]

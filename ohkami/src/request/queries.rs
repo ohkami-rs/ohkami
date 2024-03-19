@@ -1,78 +1,63 @@
-use std::{mem::MaybeUninit, borrow::Cow};
-use super::{CowSlice, Slice};
-
-#[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
+use std::mem::MaybeUninit;
+use std::borrow::Cow;
 use ohkami_lib::percent_decode;
+use super::Slice;
 
 
-const LIMIT: usize = 8;
+pub struct QueryParams(
+    /// raw bytes of query params with leading '?' cut
+    /// 
+    /// ex) name=ohkami&type=framework
+    MaybeUninit<Slice>
+);
 
-pub struct QueryParams {
-    next:   usize,
-    /// `MaybeUninit<({percent decoded key}, {percent decoded value})>`
-    params: [MaybeUninit<(CowSlice, CowSlice)>; LIMIT],
-} impl QueryParams {
-    #[inline] pub(crate) const fn new() -> Self {
-        // SAFETY: An uninitialized `[MaybeUninit<_>; LEN]` is valid.
-        Self {
-            next:   0,
-            params: unsafe {
-                MaybeUninit::<[MaybeUninit<(CowSlice, CowSlice)>; LIMIT]>::uninit().assume_init()
-            },
-        }
-    }
-
-    #[inline] pub(crate) fn iter(&self) -> impl Iterator<Item = (&str, &str)> {
-        unsafe {self.params.get_unchecked(0..self.next)}.into_iter()
-            .map(|mu| unsafe {
-                let (k, v) = mu.assume_init_ref();
-                (std::str::from_utf8(k.as_bytes()).unwrap(), std::str::from_utf8(v.as_bytes()).unwrap())
-            })
-    }
-    #[inline] pub(crate) fn get(&self, key: &str) -> Option<Cow<'_, str>> {
-        let key = key.as_bytes();
-        for kv in unsafe {self.params.get_unchecked(0..self.next)} {
-            unsafe {
-                let (k, v) = kv.assume_init_ref();
-                if key == k.as_bytes() {
-                    return Some((|| match v {
-                        CowSlice::Ref(slice) => Cow::Borrowed(std::str::from_utf8(slice.as_bytes()).unwrap()),
-                        CowSlice::Own(vec)   => Cow::Owned(String::from_utf8(vec.to_vec()).unwrap()),
-                    })())
-                }
-            }
-        }
-        None
-    }
-
+impl QueryParams {
     #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
-    #[inline] pub(crate) unsafe fn push_from_request_slice(&mut self, key: Slice, value: Slice) {
-        let (key, value) = (percent_decode(key.as_bytes()), percent_decode(value.as_bytes()));
-        self.params.get_unchecked_mut(self.next).write((
-            CowSlice::from_request_cow_bytes(key),
-            CowSlice::from_request_cow_bytes(value),
-        ));
-        self.next += 1;
+    #[inline(always)] pub(crate) fn new(bytes: &[u8]) -> Self {
+        Self(MaybeUninit::new(unsafe {Slice::from_bytes(bytes)}))
     }
 
-    pub(crate) fn push(&mut self, key: impl Into<Cow<'static, str>>, value: impl Into<Cow<'static, str>>) {
-        fn into_cow_slice(c: impl Into<Cow<'static, str>>) -> CowSlice {
-            match c.into() {
-                Cow::Borrowed(str) => CowSlice::Ref(unsafe {Slice::from_bytes(str.as_bytes())}),
-                Cow::Owned(string) => CowSlice::Own(string.into_bytes()),
+    /// SAFETY: The `QueryParams` is already **INITIALIZED**.
+    #[inline(always)] pub(crate) unsafe fn parse<'q, T: serde::Deserialize<'q>>(&'q self) -> Result<T, impl serde::de::Error> {
+        ohkami_lib::serde_urlencoded::from_bytes(self.0.assume_init_ref().as_bytes())
+    }
+
+    /// Returns an iterator of maybe-percent-decoded (key, value).
+    /// 
+    /// SAFETY: The `QueryParams` is already **INITIALIZED**.
+    #[inline] pub(crate) unsafe fn iter(&self) -> impl Iterator<
+        Item = (Cow<'_, str>, Cow<'_, str>)
+    > {
+        #[inline(always)]
+        fn decoded_utf8(maybe_encoded: &[u8]) -> Cow<'_, str> {
+            match percent_decode(maybe_encoded) {
+                Cow::Borrowed(bytes) => String::from_utf8_lossy(bytes),
+                Cow::Owned(vec)      => String::from_utf8_lossy(&vec).into_owned().into(),
             }
         }
 
-        unsafe {self.params.get_unchecked_mut(self.next)}.write((into_cow_slice(key), into_cow_slice(value)));
-        self.next += 1;
+        self.0.assume_init_ref().as_bytes()
+            .split(|b| b==&b'&')
+            .map(|kv| {
+                let (k, v) = kv.split_at(
+                    kv.iter().position(|b| b==&b'=').expect("invalid query params: missing `=`")
+                );
+                (decoded_utf8(k), decoded_utf8(v))
+            })
     }
 }
 
+#[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
+#[cfg(test)]
 const _: () = {
     impl PartialEq for QueryParams {
         fn eq(&self, other: &Self) -> bool {
-            for (k, v) in self.iter() {
-                if other.get(k) != Some(Cow::Borrowed(v)) {
+            let (this, other) = unsafe {(
+                self.iter().collect::<Vec<_>>(),
+                other.iter().collect::<Vec<_>>()
+            )};
+            for kv in this {
+                if other.iter().find(|o_kv| o_kv == &&kv).is_none() {
                     return false
                 }
             }
@@ -81,12 +66,19 @@ const _: () = {
     }
 
     impl<const N: usize> From<[(&'static str, &'static str); N]> for QueryParams {
-        fn from(kv: [(&'static str, &'static str); N]) -> Self {
-            let mut this = QueryParams::new();
-            for (k, v) in kv {
-                this.push(k, v)
-            }
-            this
+        fn from(kvs: [(&'static str, &'static str); N]) -> Self {
+            use ohkami_lib::percent_encode;
+
+            let raw = kvs.into_iter()
+                .map(|(k, v)| format!(
+                    "{}={}",
+                    percent_encode(k),
+                    percent_encode(v),
+                ))
+                .collect::<Vec<_>>()
+                .join("&");
+
+            QueryParams::new(Box::leak(raw.into_boxed_str()).as_bytes())
         }
     }
 };

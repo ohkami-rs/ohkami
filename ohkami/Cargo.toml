@@ -1,6 +1,6 @@
 [package]
 name          = "ohkami"
-version       = "0.15.1"
+version       = "0.16.0"
 edition       = "2021"
 authors       = ["kanarus <kanarus786@gmail.com>"]
 description   = "Build web app in intuitive and declarative code"
@@ -29,10 +29,9 @@ hmac          = { version = "0.12.1", default-features = false }
 rustc-hash    = { version = "1.1", optional = true }
 
 [features]
-default       = ["utils", "testing"]
+default       = ["testing"]
 rt_tokio      = ["dep:tokio"]
 rt_async-std  = ["dep:async-std"]
-utils         = []
 testing       = []
 custom-header = ["dep:rustc-hash"]
 #websocket    = ["dep:sha1"]
@@ -45,11 +44,10 @@ DEBUG = [
     "async-std?/attributes",
 ]
 #default = [
-#    "utils",
 #    "testing",
 #    "custom-header",
 #    #"websocket",
-#    #"rt_tokio",
-#    "rt_async-std",
+#    "rt_tokio",
+#    #"rt_async-std",
 #    "DEBUG",
 #]

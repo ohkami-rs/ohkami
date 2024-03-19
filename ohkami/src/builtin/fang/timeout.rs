@@ -22,7 +22,7 @@ use std::time::Duration;
 /// *example.rs*
 /// ```no_run
 /// use ohkami::prelude::*;
-/// use ohkami::builtin::Timeout;
+/// use ohkami::builtin::fang::Timeout;
 /// use std::time::Duration;
 ///
 /// #[tokio::main]

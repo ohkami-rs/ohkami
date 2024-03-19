@@ -1,39 +1,28 @@
-use std::{borrow::Cow, ptr::NonNull};
+use std::borrow::Cow;
 
 
 /// A byte slice with **MANUALLY HANDLE** the *lifetime*
 #[derive(Clone)]
 pub struct Slice {
-    head: Option<NonNull<u8>>,
+    head: *const u8,
     size: usize,
 }
 impl Slice {
-    pub const fn null() -> Self {
+    #[inline(always)] pub unsafe fn new_unchecked(head: *const u8, size: usize) -> Self {
         Self {
-            head: None,
-            size: 0,
-        }
-    }
-
-    #[inline(always)] pub unsafe fn new(head: *const u8, size: usize) -> Self {
-        Self {
-            head: NonNull::new(head as *mut _),
+            head,
             size,
         }
     }
-
-    #[inline(always)] pub unsafe fn from_bytes(bytes: &[u8]) -> Self {
+    #[inline(always)] pub const unsafe fn from_bytes(bytes: &[u8]) -> Self {
         Self {
-            head: NonNull::new(bytes.as_ptr() as *mut _),
+            head: bytes.as_ptr(),
             size: bytes.len(),
         }
     }
     
     #[inline(always)] pub const unsafe fn as_bytes<'b>(&self) -> &'b [u8] {
-        match self.head {
-            Some(p) => std::slice::from_raw_parts(p.as_ptr(), self.size),
-            None    => &[],
-        }
+        std::slice::from_raw_parts(self.head, self.size)
     }
 }
 const _: () = {

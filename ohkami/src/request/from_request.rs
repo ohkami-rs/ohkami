@@ -62,13 +62,13 @@ pub enum FromRequestError {
 /// ```
 /// use ohkami::prelude::*;
 /// 
-/// struct HasPayload(bool);
+/// struct IsGETRequest(bool);
 /// 
-/// impl ohkami::FromRequest<'_> for HasPayload {
+/// impl ohkami::FromRequest<'_> for IsGETRequest {
 ///     type Error = std::convert::Infallible;
 ///     fn from_request(req: &Request) -> Result<Self, Self::Error> {
 ///         Ok(Self(
-///             req.payload().is_some()
+///             req.method().isGET()
 ///         ))
 ///     }
 /// }

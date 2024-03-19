@@ -1,4 +1,4 @@
-use ohkami::{IntoResponse, serde::Serialize, typed::ResponseBody};
+use ohkami::{IntoResponse, serde::Serialize, typed::Payload, builtin::payload::JSON};
 use std::borrow::Cow;
 
 
@@ -19,7 +19,7 @@ pub enum RealWorldError {
     impl std::error::Error for RealWorldError {}
 };
 
-#[ResponseBody(JSONS)]
+#[Payload(JSON/S)]
 struct ValidationErrorFormat {
     errors: ValidationError,
 }

@@ -4,7 +4,7 @@ use crate::{
     Method,
     handler::Handler,
     fang::proc::{FrontFang, BackFang},
-    builtin::Timeout,
+    builtin::fang::Timeout,
 };
 use super::super::timeout::set_timeout;
 use ohkami_lib::{Slice, percent_decode};

@@ -1,65 +1,64 @@
 #![allow(non_snake_case)]
-#![cfg(all(feature="testing", feature="utils"))]
+#![cfg(feature="testing")]
 
 use crate::__rt__;
 use crate::prelude::*;
 use crate::testing::*;
-use crate::utils::Text;
 
 
 fn my_ohkami() -> Ohkami {
     let health_ohkami = Ohkami::new((
-        "/".GET(|| async {Text("health_check")}),
+        "/".GET(|| async {"health_check"}),
     ));
 
     let profiles_ohkami = Ohkami::new((
         "/:username"
             .GET(|username: String| async  move {
-                Text(format!("get_profile of user `{username}`"))
+                format!("get_profile of user `{username}`")
             }),
         "/:username/follow"
             .POST(|username: String| async move {
-                Text(format!("follow_user `{username}`"))
+                format!("follow_user `{username}`")
             })
             .DELETE(|username: String| async move {
-                Text(format!("unfollow_user `{username}`"))
+                format!("unfollow_user `{username}`")
             })
     ));
 
     let articles_ohkami = Ohkami::new((
         "/"
-            .GET(|| async {Text("get_article")})
-            .POST(|| async {Text("post_article")}),
+            .GET(|| async {"get_article"})
+            .POST(|| async {"post_article"}),
         "/feed"
-            .GET(|| async {Text("get_feed")}),
+            .GET(|| async {"get_feed"}),
         "/:slug".By(Ohkami::new((
             "/"
                 .GET(|slug: String| async move {
-                    Text(format!("get_article {slug}"))
+                    format!("get_article {slug}")
                 })
                 .PUT(|slug: String| async move {
-                    Text(format!("put_article {slug}"))
+                    format!("put_article {slug}")
                 })
                 .DELETE(|slug: String| async move {
-                    Text(format!("delete_article {slug}"))
+                    format!("delete_article {slug}")
                 }),
             "/comments"
                 .POST(|slug: String| async move {
-                    Text(format!("post_comments {slug}"))
+                    format!("post_comments {slug}")
                 })
                 .GET(|slug: String| async move {
-                    Text(format!("get_comments {slug}"))
+                    format!("get_comments {slug}")
                 }),
             "/comments/:id"
                 .DELETE(|(slug, id): (String, usize)| async move {
-                    Text(format!("delete_comment {slug} / {id}"))
+                    format!("delete_comment {slug} / {id}")
                 }),
             "/favorite"
                 .POST(|slug: String| async move {
-                    Text(format!("favorite_article {slug}"))
+                    format!("favorite_article {slug}")
                 })
                 .DELETE(|slug: String| async move {
-                    Text(format!("unfavorite_article {slug}"))
+                    format!("unfavorite_article {slug}")
                 }),
         )))
     ));
@@ -338,7 +337,7 @@ fn my_ohkami() -> Ohkami {
 #[__rt__::test] async fn test_timeout() {
     use crate::prelude::*;
     use crate::testing::*;
-    use crate::builtin::Timeout;
+    use crate::builtin::fang::Timeout;
     use std::time::Duration;
 
     async fn sleeping_hello(sleep: u64) -> &'static str {

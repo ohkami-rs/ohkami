@@ -12,9 +12,9 @@ use crate::{Request, Response, Status};
 /// *example.rs*
 /// ```no_run
 /// use ohkami::{prelude::*, Memory};
-/// use ohkami::builtin::JWT;
-/// use ohkami::typed::ResponseBody;
 /// use ohkami::serde::{Serialize, Deserialize};
+/// use ohkami::typed::Payload;
+/// use ohkami::builtin::{fang::JWT, payload::JSON};
 /// 
 /// 
 /// fn my_jwt() -> JWT {
@@ -49,7 +49,7 @@ use crate::{Request, Response, Status};
 /// }
 /// 
 /// 
-/// #[ResponseBody(JSONS)]
+/// #[Payload(JSON/S)]
 /// struct SigninResponse {
 ///     token: String,
 /// }
@@ -61,7 +61,7 @@ use crate::{Request, Response, Status};
 /// }
 /// 
 /// 
-/// #[ResponseBody(JSONS)]
+/// #[Payload(JSON/S)]
 /// struct ProfileResponse {
 ///     name: String,
 ///     bio:  Option<String>,
@@ -280,10 +280,10 @@ impl JWT {
 
 
 #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
-#[cfg(all(feature="testing", feature="utils"))]
+#[cfg(feature="testing")]
 #[cfg(test)] mod test {
     use super::JWT;
-    use crate::{__rt__::test, utils};
+    use crate::__rt__::test;
 
     #[test] async fn test_jwt_issue() {
         /* NOTE: 
@@ -340,7 +340,7 @@ impl JWT {
     #[test] async fn test_jwt_verify_senario() {
         use crate::prelude::*;
         use crate::{testing::*, Memory};
-        use crate::typed::{ResponseBody, bodytype, status::OK};
+        use crate::typed::{Payload, status::OK};
 
         use std::{sync::OnceLock, sync::Mutex, collections::HashMap, borrow::Cow};
 
@@ -406,11 +406,8 @@ impl JWT {
             first_name:   String,
             familly_name: String,
         }
-        impl ResponseBody for Profile {
-            type Type = bodytype::JSON;
-            fn into_response_with(self, status: Status) -> Response {
-                Response::with(status).json(self)
-            }
+        impl Payload for Profile {
+            type Type = crate::builtin::payload::JSON;
         }
 
         async fn get_profile(jwt_payload: Memory<'_, MyJWTPayload>) -> Result<OK<Profile>, APIError> {
@@ -426,19 +423,12 @@ impl JWT {
         struct SigninRequest<'s> {
             first_name:   &'s str,
             familly_name: &'s str,
-        } impl<'req> crate::FromRequest<'req> for SigninRequest<'req> {
-            type Error = Response;
-            fn from_request(req: &'req Request) -> Result<Self, Self::Error> {
-                serde_json::from_slice(
-                    req.payload().ok_or_else(|| Response::BadRequest().text("No payload found"))?
-                ).map_err(|e| {
-                    eprintln!("Failed to deserialize: {}", e.to_string());
-                    Response::InternalServerError()
-                })
-            }
+        }
+        impl Payload for SigninRequest<'_> {
+            type Type = crate::builtin::payload::JSON;
         }
 
-        async fn signin(body: SigninRequest<'_>) -> utils::Text {
+        async fn signin(body: SigninRequest<'_>) -> String {
             let r = &mut *repository().await.lock().unwrap();
 
             let user: Cow<'_, User> = match r.iter().find(|(_, u)|
@@ -464,7 +454,7 @@ impl JWT {
                 }
             };
 
-            utils::Text(issue_jwt_for_user(&user))
+            issue_jwt_for_user(&user)
         }
 
 

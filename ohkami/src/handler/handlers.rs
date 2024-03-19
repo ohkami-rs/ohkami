@@ -105,13 +105,13 @@ macro_rules! Route {
 
 
 
-#[cfg(feature="utils")]
 #[cfg(test)] #[allow(unused)] mod __ {
     use std::borrow::Cow;
     use ::serde::{Serialize, Deserialize};
     use super::{Handlers, Route};
     use crate::{FromRequest, IntoResponse, Response, Request, Status};
-    use crate::typed::{ResponseBody, bodytype, status::{OK, Created}};
+    use crate::typed::Payload;
+    use crate::typed::status::{OK, Created};
 
 
     enum APIError {
@@ -133,11 +133,8 @@ macro_rules! Route {
         name:     String,
         password: String,
     } const _: () = {
-        impl ResponseBody for User {
-            type Type = bodytype::JSON;
-            fn into_response_with(self, status: Status) -> Response {
-                Response::with(status).json(self)
-            }
+        impl Payload for User {
+            type Type = crate::builtin::payload::JSON;
         }
     };
 
@@ -167,15 +164,9 @@ macro_rules! Route {
     struct CreateUser<'c> {
         name:     &'c str,
         password: &'c str,
-    } impl<'req> FromRequest<'req> for CreateUser<'req> {
-        type Error = crate::FromRequestError;
-        fn from_request(req: &'req crate::Request) -> Result<Self, Self::Error> {
-            let payload = req.payload().ok_or_else(|| crate::FromRequestError::Static("Payload expected"))?;
-            match req.headers.ContentType() {
-                Some("application/json") => serde_json::from_slice(payload).map_err(|e| crate::FromRequestError::Owned(e.to_string())),
-                _ => Err(crate::FromRequestError::Static("Payload expected")),
-            }
-        }
+    }
+    impl Payload for CreateUser<'_> {
+        type Type = crate::builtin::payload::JSON;
     }
 
     async fn create_user<'req>(payload: CreateUser<'req>) -> Result<Created<User>, APIError> {
@@ -196,15 +187,9 @@ macro_rules! Route {
     struct UpdateUser<'u> {
         name:     Option<&'u str>,
         password: Option<&'u str>,
-    } impl<'req> FromRequest<'req> for UpdateUser<'req> {
-        type Error = crate::FromRequestError;
-        fn from_request(req: &'req crate::Request) -> Result<Self, Self::Error> {
-            let payload = req.payload().ok_or_else(|| Self::Error::Static("Payload expected"))?;
-            match req.headers.ContentType() {
-                Some("application/json") => serde_json::from_slice(payload).map_err(|e| Self::Error::Owned(e.to_string())),
-                _ => Err(Self::Error::Static("Payload expected")),
-            }
-        }
+    }
+    impl Payload for UpdateUser<'_> {
+        type Type = crate::builtin::payload::JSON;
     }
 
     async fn update_user<'req>(body: UpdateUser<'req>) -> Result<Status, APIError> {
