@@ -56,8 +56,10 @@ pub fn consume_struct(_: proc_macro::TokenStream, _: proc_macro::TokenStream) ->
 
 /// ## Query parameters
 /// 
-/// - Value types：types that impls `FromParam`, or `Option<_>` of them
-/// - NOT available for tuple struct ( like `struct S(usize, usize);` ) or unit struct ( like `struct X;` ).
+/// _NOTE_: NOT available for tuple struct ( like `struct S(usize, usize);` ) or unit struct ( like `struct X;` ).
+/// 
+/// `#[Query]` supports `#[serde]`-conpatible `#[query]` attributes for struct fields.
+/// ( They are used in internal parsing process based on [ohkami_lib](https://crates.io/crates/ohkami_lib)'s `serde_urlencoded`. )
 /// 
 /// <br/>
 /// 
@@ -69,6 +71,7 @@ pub fn consume_struct(_: proc_macro::TokenStream, _: proc_macro::TokenStream) ->
 /// #[Query]
 /// struct HelloQuery<'q> {
 ///     name:     &'q str,
+///     #[query(rename = "n-repeat")]
 ///     n_repeat: Option<usize>,
 /// }
 /// 
@@ -91,26 +94,33 @@ pub fn Query(_: proc_macro::TokenStream, data: proc_macro::TokenStream) -> proc_
 
 /// ## Request payload
 /// 
-/// - NOT available for tuple struct ( like `struct S(usize, usize);` ) or unit struct ( like `struct X;` ).
+/// Derives `Payload` implementaion with specified `PayloadType`.
 /// 
-/// ### Valid format :
+/// - `Payload + Serialize` types can be used as response or response body in `typed::status`.
+/// - `Payload + Deserialize` types can be used as request body passed via a handler argument.
 /// 
-/// - `#[Payload(JSON)]` ( for `application/json` )
-///   - automatically derives `Deserialize` and `Serialize`
-/// - `#[Payload(Form)]` ( for `multipart/form-data` )
-/// - `#[Payload(URLEncoded)]` ( for `application/x-www-form-urlencoded` )
+/// <br>
+/// 
+/// In current version, ohkami provides following 4 builtin `PayloadType`s :
+/// 
+/// - `JSON` (for `application/json`)
+/// - `URLEncoded` (for `application/www-x-urlencoded`)
+/// - `Text` (for `text/plain`)
+/// - `HTML` (for `text/html`)
+/// 
+/// Of course, other `PayloadType`s can be implemented by you or anyone else !
 /// 
 /// <br/>
 /// 
-/// ### JSON
-/// 
-/// - Requires that the struct implements `serde::Deserialize`
-/// 
+/// ---
+/// *example_with_builtin_json.rs*
 /// ```ignore
 /// use ohkami::prelude::*;
 /// use ohkami::typed::Payload; // <--
+/// use ohkami::builtin::payload::JSON; // <--
 /// 
 /// #[Payload(JSON)]
+/// #[derive(ohkami::serde::Desrialize)]
 /// struct HelloRequest<'req> {
 ///     name:     &'req str,
 ///     n_repeat: Option<usize>,
@@ -129,70 +139,28 @@ pub fn Query(_: proc_macro::TokenStream, data: proc_macro::TokenStream) -> proc_
 ///     }
 /// }
 /// ```
+/// ---
 /// 
-/// #### Filter automatic serde impls
+/// <br>
 /// 
+/// Additionally, `#[Payload]` supports shortcuts for automatic deriving `Serialize` and `Deserialize` :
+/// 
+/// - `/ S` ... automatically derive `Serilize`
+/// - `/ D` ... automatically derive `Deserilize`
+/// - `/ SD` or `/ DS` ... automatically derive `Serialize` and `Deserialize`
+/// 
+/// <br>
+/// 
+/// ---
+/// *shorthand.rs*
 /// ```ignore
-/// use ohkami::serde::Serialize;
-/// 
-/// #[Payload(JSON/D)]  // <-- only derive `Deserialize`
-/// struct User<'req> {
-///     name: &'req str,
-///     profile: Option<&'req str>,
-/// }
-/// 
-/// impl<'req> Serialze for User<'req> {
-///     // my special `Serialize` impl here
-/// }
-/// ```
-/// 
-/// <br/>
-/// 
-/// ### URLEncoded
-/// 
-/// - Available value types : types that impl `FromParam`, or `Option<_>` of them.
-/// 
-/// ```ignore
-/// use ohkami::prelude::*;
-/// use ohkami::typed::Payload; // <--
-/// 
-/// #[Payload(URLEncoded)]
+/// #[Payload(JSON/D)]
 /// struct HelloRequest<'req> {
 ///     name:     &'req str,
 ///     n_repeat: Option<usize>,
 /// }
-/// /* expected payload examples :
-///     name=yourname
-///     name=yourname&n_repeat=2
-/// */
 /// ```
-/// 
-/// <br/>
-/// 
-/// ### Form
-/// 
-/// **NOTE**：This can't handle reference types like `&str` in current version. Wait for the development!
-/// 
-/// - Available value types : `String`, `File`, `Vec<File>`.
-/// - Form part of kebab-case-name is handled by field of snake_case version of the name ( example: `name="submitter-name"` is handled by field `submitter_name` ).
-/// 
-/// 
-/// ```ignore
-/// use ohkami::prelude::*;
-/// use ohkami::typed::{Payload, File}; // <--
-/// 
-/// #[Payload(Form)]
-/// struct ProfileData {
-///     submitter_name: String,
-///     pics:           Vec<File>,
-/// }
-/// /* expected form :
-///     <form action="http://server.dom/cgi/handle" enctype="multiprt/form-data" method="post">
-///         What is your name? <input type="text" name="submitter-name" />
-///         What files are you sending? <input="file" name="pics" />
-///     </form>
-/// */ 
-/// ```
+/// ---
 #[proc_macro_attribute] #[allow(non_snake_case)]
 pub fn Payload(format: proc_macro::TokenStream, data: proc_macro::TokenStream) -> proc_macro::TokenStream {
     payload::Payload(format.into(), data.into())

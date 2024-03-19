@@ -24,7 +24,7 @@
 # `async-std` is available by feature "rt_async-std".
 
 [dependencies]
-ohkami = { version = "0.15", features = ["rt_tokio"] }
+ohkami = { version = "0.16", features = ["rt_tokio"] }
 tokio  = { version = "1",    features = ["full"] }
 ```
 
@@ -121,8 +121,9 @@ async fn create_user(body: CreateUserRequest<'_>) -> Created<User> {
 
 #[Query] /* Params like `?lang=rust&q=framework` */
 struct SearchQuery<'q> {
-    lang: &'q str,
-    q:    &'q str,
+    lang:    &'q str,
+    #[query(rename = "q")] /* #[serde]-compatible #[query] attribute */
+    keyword: &'q str,
 }
 
 #[Payload(JSON / S)] /* Shorthand for Payload + Serialize */

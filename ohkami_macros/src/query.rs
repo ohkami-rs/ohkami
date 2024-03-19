@@ -5,7 +5,7 @@ use syn::{Error, Field, GenericParam, ItemStruct, Lifetime, LifetimeDef, Result}
 
 #[allow(non_snake_case)]
 pub(super) fn Query(target: TokenStream) -> Result<TokenStream> {
-    let target: ItemStruct = syn::parse2(target)?;
+    let mut target: ItemStruct = syn::parse2(target)?;
     if target.semi_token.is_some() {
         return Err(Error::new(Span::call_site(), "#[Query] doesn't support unit / tuple struct !"))
     }
@@ -47,6 +47,12 @@ pub(super) fn Query(target: TokenStream) -> Result<TokenStream> {
                     attr.path = syn::parse2(quote!{ serde }).unwrap();
                 }
             }
+        }
+        for field in &mut target.fields {
+            field.attrs = field.attrs.iter()
+                .filter(|a| !{a.path.get_ident().is_some_and(|i| i.to_string() == "query")})
+                .cloned()
+                .collect()
         }
         just_cloned
     };
