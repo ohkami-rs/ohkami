@@ -92,7 +92,7 @@ pub fn Query(_: proc_macro::TokenStream, data: proc_macro::TokenStream) -> proc_
 }
 
 
-/// ## Request payload
+/// ## Request / Response payload
 /// 
 /// Derives `Payload` implementaion with specified `PayloadType`.
 /// 

@@ -49,12 +49,12 @@ struct SerdeDerive {
         let mut derives = Vec::new();
         if self.S {
             derives.extend(quote!{
-                ::ohkami::__internal__::serde::Serialize,
+                ::ohkami::serde::Serialize,
             });
         }
         if self.D {
             derives.extend(quote!{
-                ::ohkami::__internal__::serde::Deserialize,
+                ::ohkami::serde::Deserialize,
             });
         }
 

@@ -1,4 +1,4 @@
-use ohkami::{builtin::JWT, FrontFang, BackFang, IntoResponse, Request, Response};
+use ohkami::{builtin::fang::JWT, FrontFang, BackFang, IntoResponse, Request, Response};
 use sqlx::PgPool;
 use crate::{config, errors::RealWorldError};
 

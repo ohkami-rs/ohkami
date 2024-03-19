@@ -1,6 +1,7 @@
-use ohkami::{typed::ResponseBody, Ohkami, Route};
+use ohkami::{Ohkami, Route};
+use ohkami::{typed::Payload, builtin::payload::JSON};
 
-#[ResponseBody(JSONS)]
+#[Payload(JSON/S)]
 struct User {
     id:   u64,
     name: String,
