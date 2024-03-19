@@ -1,5 +1,7 @@
 pub mod base64;
 
+pub mod mime;
+
 mod list;
 pub use list::List;
 

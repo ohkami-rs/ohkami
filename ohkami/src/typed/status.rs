@@ -20,20 +20,25 @@ const _: () = {
         fn into_response_with(self, status: Status) -> Response {
             let mut res = Response::with(status);
             {
-                macro_rules! content_type {
-                    () => {<<Self as Payload>::Type as PayloadType>::CONTENT_TYPE};
+                #[cfg(debug_assertions)] {
+                    assert!(
+                        ! <<Self as Payload>::Type as PayloadType>::CONTENT_TYPE.is_empty(),
+                        "`PayloadType::CONTENT_TYPE` must not be empty"
+                    );
                 }
+
+                let content_type = *unsafe {<<Self as Payload>::Type as PayloadType>::CONTENT_TYPE.get_unchecked(0)};
 
                 let bytes = match <<Self as Payload>::Type as PayloadType>::bytes(&self) {
                     Ok(bytes) => bytes,
                     Err(e) => return (|| {
-                        eprintln!("Failed to serialize {} as {}: {e}", std::any::type_name::<Self>(), content_type!());
+                        eprintln!("Failed to serialize {} as {}: {e}", std::any::type_name::<Self>(), content_type);
                         Response::InternalServerError()
                     })()
                 };
 
                 res.headers.set()
-                    .ContentType(content_type!())
+                    .ContentType(content_type)
                     .ContentLength(bytes.len().to_string());
 
                 res.content = Some(std::borrow::Cow::Owned(bytes));
