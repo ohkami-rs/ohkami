@@ -72,27 +72,31 @@ pub struct Dir {
             let mut entries = fetch_entries(dir_path.clone())?;
             while let Some(entry) = entries.pop() {
                 if entry.is_file() {
-                    if entry.starts_with(".") {
-                        println!(
-                            "[WARNING] `Route::Dir`: found `{}` in directory `{}`, \
-                            are you sure to serve this file？",
+                    let path_sections = entry.canonicalize()?
+                        .components()
+                        .skip(dir_path.components().count())
+                        .map(|c| c.as_os_str().to_os_string()
+                            .into_string()
+                            .map_err(|os_string| std::io::Error::new(
+                                std::io::ErrorKind::InvalidData,
+                                format!("Can't read a path segment `{}`", os_string.as_encoded_bytes().escape_ascii())
+                            ))
+                        )
+                        .collect::<std::io::Result<Vec<_>>>()?;
+
+                    if path_sections.last().unwrap().starts_with('.') {
+                        eprintln!("\
+                            =========\n\
+                            [WARNING] `Route::Dir`: found `{}` in directory `{}`, \
+                            are you sure to serve this file？\n\
+                            =========\n",
                             entry.display(),
                             dir_path.display(),
                         )
                     }
 
                     files.push((
-                        entry.canonicalize()?
-                            .components()
-                            .skip(dir_path.components().count())
-                            .map(|c| c.as_os_str().to_os_string()
-                                .into_string()
-                                .map_err(|os_string| std::io::Error::new(
-                                    std::io::ErrorKind::InvalidData,
-                                    format!("Can't read a path segment `{}`", os_string.as_encoded_bytes().escape_ascii())
-                                ))
-                            )
-                            .collect::<std::io::Result<Vec<_>>>()?,
+                        path_sections,
                         std::fs::File::open(entry)?
                     ));
 
