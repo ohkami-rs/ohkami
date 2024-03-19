@@ -12,6 +12,7 @@ pub struct QueryParams(
 );
 
 impl QueryParams {
+    #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
     #[inline(always)] pub(crate) fn new(bytes: &[u8]) -> Self {
         Self(MaybeUninit::new(unsafe {Slice::from_bytes(bytes)}))
     }
@@ -46,6 +47,7 @@ impl QueryParams {
     }
 }
 
+#[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
 #[cfg(test)]
 const _: () = {
     impl PartialEq for QueryParams {

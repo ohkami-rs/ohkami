@@ -2,6 +2,7 @@
 
 use std::pin::Pin;
 use ohkami_lib::{Slice, CowSlice};
+#[allow(unused)]
 use super::{Request, Method, METADATA_SIZE, Path, QueryParams, Store};
 
 macro_rules! assert_parse {

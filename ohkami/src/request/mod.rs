@@ -313,6 +313,7 @@ const _: () = {
     }
 };
 
+#[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
 #[cfg(test)] const _: () = {
     impl PartialEq for Request {
         fn eq(&self, other: &Self) -> bool {
