@@ -19,8 +19,9 @@ use crate::Method;
 /// ```
 /// # use ohkami::prelude::*;
 /// # use ohkami::serde::Serialize;
-/// # use ohkami::typed::ResponseBody;
+/// # use ohkami::typed::Payload;
 /// # use ohkami::typed::status::{OK, Created};
+/// # use ohkami::builtin::payload::JSON;
 /// # 
 /// 
 /// struct Auth;
@@ -34,7 +35,7 @@ use crate::Method;
 /// #    }
 /// }
 /// 
-/// # #[ResponseBody(JSON)]
+/// # #[Payload(JSON/S)]
 /// # #[derive(Serialize)]
 /// # struct User {
 /// #     id:   usize,

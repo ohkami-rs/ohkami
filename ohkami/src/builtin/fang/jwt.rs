@@ -12,9 +12,9 @@ use crate::{Request, Response, Status};
 /// *example.rs*
 /// ```no_run
 /// use ohkami::{prelude::*, Memory};
-/// use ohkami::builtin::JWT;
-/// use ohkami::typed::ResponseBody;
 /// use ohkami::serde::{Serialize, Deserialize};
+/// use ohkami::typed::Payload;
+/// use ohkami::builtin::{fang::JWT, payload::JSON};
 /// 
 /// 
 /// fn my_jwt() -> JWT {
@@ -49,7 +49,7 @@ use crate::{Request, Response, Status};
 /// }
 /// 
 /// 
-/// #[ResponseBody(JSONS)]
+/// #[Payload(JSON/S)]
 /// struct SigninResponse {
 ///     token: String,
 /// }
@@ -61,7 +61,7 @@ use crate::{Request, Response, Status};
 /// }
 /// 
 /// 
-/// #[ResponseBody(JSONS)]
+/// #[Payload(JSON/S)]
 /// struct ProfileResponse {
 ///     name: String,
 ///     bio:  Option<String>,
@@ -314,28 +314,27 @@ impl JWT {
         let req_bytes = TestRequest::GET("/")
             .header("Authorization", "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE3MDY4MTEwNzUsInVzZXJfaWQiOiI5ZmMwMDViMi1mODU4LTQzMzYtODkwYS1mMWEyYWVmNjBhMjQifQ.AKp-0zvKK4Hwa6qCgxskckD04Snf0gpSG7U1LOpcC_I")
             .encode();
-        //let mut req = Request::init();
-        panic!("fin")
-        // let mut req = unsafe {Pin::new_unchecked(&mut req)};
-        // req.as_mut().read(&mut &req_bytes[..]).await;
-// 
-        // assert_eq!(
-        //     my_jwt.verified::<::serde_json::Value>(&req.as_ref()).unwrap(),
-        //     ::serde_json::json!({ "iat": 1706811075, "user_id": "9fc005b2-f858-4336-890a-f1a2aef60a24" })
-        // );
-// 
-        // let req_bytes = TestRequest::GET("/")
-        //     // Modifed last `I` of the value above to `X`
-        //     .header("Authorization", "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE3MDY4MTEwNzUsInVzZXJfaWQiOiI5ZmMwMDViMi1mODU4LTQzMzYtODkwYS1mMWEyYWVmNjBhMjQifQ.AKp-0zvKK4Hwa6qCgxskckD04Snf0gpSG7U1LOpcC_X")
-        //     .encode();
-        // let mut req = Request::init();
-        // let mut req = unsafe {Pin::new_unchecked(&mut req)};
-        // req.as_mut().read(&mut &req_bytes[..]).await;
-// 
-        // assert_eq!(
-        //     my_jwt.verified::<::serde_json::Value>(&req.as_ref()).unwrap_err().status,
-        //     Status::Unauthorized
-        // );
+        let mut req = Request::init();
+        let mut req = unsafe {Pin::new_unchecked(&mut req)};
+        req.as_mut().read(&mut &req_bytes[..]).await;
+
+        assert_eq!(
+            my_jwt.verified::<::serde_json::Value>(&req.as_ref()).unwrap(),
+            ::serde_json::json!({ "iat": 1706811075, "user_id": "9fc005b2-f858-4336-890a-f1a2aef60a24" })
+        );
+
+        let req_bytes = TestRequest::GET("/")
+            // Modifed last `I` of the value above to `X`
+            .header("Authorization", "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE3MDY4MTEwNzUsInVzZXJfaWQiOiI5ZmMwMDViMi1mODU4LTQzMzYtODkwYS1mMWEyYWVmNjBhMjQifQ.AKp-0zvKK4Hwa6qCgxskckD04Snf0gpSG7U1LOpcC_X")
+            .encode();
+        let mut req = Request::init();
+        let mut req = unsafe {Pin::new_unchecked(&mut req)};
+        req.as_mut().read(&mut &req_bytes[..]).await;
+
+        assert_eq!(
+            my_jwt.verified::<::serde_json::Value>(&req.as_ref()).unwrap_err().status,
+            Status::Unauthorized
+        );
     }
 
     #[test] async fn test_jwt_verify_senario() {

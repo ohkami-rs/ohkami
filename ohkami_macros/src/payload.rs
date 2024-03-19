@@ -63,8 +63,8 @@ struct SerdeDerive {
 
 #[allow(non_snake_case)]
 pub(super) fn Payload(format: TokenStream, target: TokenStream) -> Result<TokenStream> {
-    let target: ItemStruct    = syn::parse2(target)?;
     let format: PayloadFormat = syn::parse2(format)?;
+    let target: ItemStruct    = syn::parse2(target)?;
 
     let name            = &target.ident;
     let generics_params = &target.generics.params;

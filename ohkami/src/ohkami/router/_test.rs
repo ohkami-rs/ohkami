@@ -352,18 +352,17 @@ fn my_ohkami() -> Ohkami {
 
 
     let req = TestRequest::GET("/hello/1");
-    panic!("fin")
-    // let res = t.oneshot(req).await;
-    // assert_eq!(res.status(), Status::OK);
-    // assert_eq!(res.text(),   Some("Hello, I was sleeping ):"));
-// 
-    // let req = TestRequest::GET("/hello/2");
-    // let res = t.oneshot(req).await;
-    // assert_eq!(res.status(), Status::OK);
-    // assert_eq!(res.text(),   Some("Hello, I was sleeping ):"));
-// 
-    // let req = TestRequest::GET("/hello/4");
-    // let res = t.oneshot(req).await;
-    // assert_eq!(res.status(), Status::InternalServerError);
-    // assert_eq!(res.text(),   Some("Timeout"));
+    let res = t.oneshot(req).await;
+    assert_eq!(res.status(), Status::OK);
+    assert_eq!(res.text(),   Some("Hello, I was sleeping ):"));
+
+    let req = TestRequest::GET("/hello/2");
+    let res = t.oneshot(req).await;
+    assert_eq!(res.status(), Status::OK);
+    assert_eq!(res.text(),   Some("Hello, I was sleeping ):"));
+
+    let req = TestRequest::GET("/hello/4");
+    let res = t.oneshot(req).await;
+    assert_eq!(res.status(), Status::InternalServerError);
+    assert_eq!(res.text(),   Some("Timeout"));
 }

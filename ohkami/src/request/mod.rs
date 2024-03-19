@@ -83,13 +83,13 @@ pub(crate) const PAYLOAD_LIMIT: usize = 1 << 32;
 /// ```
 /// use ohkami::{Request, FromRequest};
 /// 
-/// struct HasPayload(bool);
+/// struct IsGET(bool);
 /// 
-/// impl<'req> FromRequest<'req> for HasPayload {
+/// impl<'req> FromRequest<'req> for IsGET {
 ///     type Error = std::convert::Infallible;
 ///     fn from_request(req: &'req Request) -> Result<Self, Self::Error> {
 ///         Ok(Self(
-///             req.payload().is_some()
+///             req.method().isGET()
 ///         ))
 ///     }
 /// }

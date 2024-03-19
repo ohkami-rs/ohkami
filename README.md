@@ -91,15 +91,24 @@ async fn hello(name: &str) -> String {
 ```rust
 use ohkami::prelude::*;
 use ohkami::typed::status::Created;
-use ohkami::typed::{Query, Payload, ResponseBody};
 
-#[Payload(JSOND)] /* JSON + Deserialize */
+use ohkami::typed::{Query, Payload};
+use ohkami::builtin::payload::JSON;
+
+/* `serde = 〜` is not needed in your [dependencies] */
+use ohkami::serde::{Serialize, Deserialize};
+
+/* Payload + Deserialize for request */
+#[Payload(JSON)]
+#[derive(Deserialize)]
 struct CreateUserRequest<'req> {
     name:     &'req str,
     password: &'req str,
 }
 
-#[ResponseBody(JSONS)] /* JSON + Serialize */
+/* Payload + Serialize for response */
+#[Payload(JSON)]
+#[derive(Serialize)]
 struct User {
     name: String,
 }
@@ -116,7 +125,7 @@ struct SearchQuery<'q> {
     q:    &'q str,
 }
 
-#[ResponseBody(JSONS)]
+#[Payload(JSON / S)] /* Shorthand for Payload + Serialize */
 struct SearchResult {
     title: String,
 }
@@ -185,10 +194,11 @@ async fn main() {
 ### Pack of Ohkamis
 ```rust,no_run
 use ohkami::prelude::*;
-use ohkami::typed::ResponseBody;
 use ohkami::typed::status::{Created, NoContent};
+use ohkami::typed::Payload;
+use ohkami::buitin::payload::JSON;
 
-#[ResponseBody(JSONS)]
+#[Payload(JSON/S)]
 struct User {
     name: String
 }
