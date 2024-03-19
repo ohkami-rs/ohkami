@@ -36,7 +36,6 @@ use crate::Method;
 /// }
 /// 
 /// # #[Payload(JSON/S)]
-/// # #[derive(Serialize)]
 /// # struct User {
 /// #     id:   usize,
 /// #     name: String,

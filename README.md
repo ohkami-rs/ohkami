@@ -196,7 +196,7 @@ async fn main() {
 use ohkami::prelude::*;
 use ohkami::typed::status::{Created, NoContent};
 use ohkami::typed::Payload;
-use ohkami::buitin::payload::JSON;
+use ohkami::builtin::payload::JSON;
 
 #[Payload(JSON/S)]
 struct User {

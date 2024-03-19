@@ -9,7 +9,10 @@ struct PayloadFormat {
     fn parse(input: syn::parse::ParseStream) -> Result<Self> {
         Ok(Self {
             payload_type: input.parse()?,
-            serde_derive: input.parse::<token::Div>().is_ok().then_some(input.parse()?)
+            serde_derive: input.peek(token::Div).then(|| {
+                input.parse::<token::Div>().unwrap();
+                input.parse()
+            }).transpose()?
         })
     }
 }
@@ -46,17 +49,17 @@ struct SerdeDerive {
         let mut derives = Vec::new();
         if self.S {
             derives.extend(quote!{
-                ::ohkami::__internal__::serde::Serialize
+                ::ohkami::__internal__::serde::Serialize,
             });
         }
         if self.D {
             derives.extend(quote!{
-                ::ohkami::__internal__::serde::Deserialize
+                ::ohkami::__internal__::serde::Deserialize,
             });
         }
 
         (!derives.is_empty()).then_some(quote!{
-            #[derive( #( #derives ),* )]
+            #[derive( #( #derives )* )]
         })
     }
 }

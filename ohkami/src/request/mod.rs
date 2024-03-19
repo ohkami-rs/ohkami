@@ -246,7 +246,7 @@ impl Request {
         percent_decode_utf8(unsafe {self.path.as_bytes()}).expect("Path is not UTF-8")
     }
 
-    #[inline] pub fn queires<'req, Q: serde::Deserialize<'req>>(&'req self) -> Option<Result<Q, impl serde::de::Error>> {
+    #[inline] pub fn queries<'req, Q: serde::Deserialize<'req>>(&'req self) -> Option<Result<Q, impl serde::de::Error>> {
         Some(unsafe {self.queries.as_ref()?.parse()})
     }
     #[inline] pub fn query<'req, Value: FromParam<'req>>(&'req self, key: &str) -> Option<Result<Value, Value::Error>> {

@@ -44,7 +44,7 @@ pub(super) fn Query(target: TokenStream) -> Result<TokenStream> {
         for field in &mut just_cloned.fields {
             for attr in &mut field.attrs {
                 if attr.path.get_ident().is_some_and(|i| i.to_string() == "query") {
-                    attr.path = syn::parse2(quote!{ "serde" }).unwrap();
+                    attr.path = syn::parse2(quote!{ serde }).unwrap();
                 }
             }
         }
@@ -58,12 +58,14 @@ pub(super) fn Query(target: TokenStream) -> Result<TokenStream> {
         });
 
     Ok(quote!{
+        #target
+
         const _: () = {
             #[allow(non_camel_case_types)]
             #[derive(::ohkami::serde::Deserialize)]
             #target_cloned
 
-            impl<#generics_params> Into<#name<#generics_params>> for #cloned_name
+            impl<#generics_params> Into<#name<#generics_params>> for #cloned_name<#generics_params>
             where
                 #generics_where
             {
@@ -78,19 +80,18 @@ pub(super) fn Query(target: TokenStream) -> Result<TokenStream> {
             impl<
                 #from_request_impl_additional_lifetime
                 #generics_params
-            > ::ohkami::FromRequest<#from_request_lifetime> for #name
+            > ::ohkami::FromRequest<#from_request_lifetime> for #name<#generics_params>
             where
-                #generics_params
+                #generics_where
             {
                 type Error = ::ohkami::Response;
 
                 #[inline]
-                fn fn from_request(req: &#from_request_lifetime) -> Result<Self, Self::Error> {
-                    req.queries::<#target_cloned<#generics_params>>()
-                        .map_or_else(
-                            |e| ::ohkami::Response::BadRequest().text(::std::format!("Unexpected query parameters: {e}")),
-                            Into::into
-                        )
+                fn from_request(req: &#from_request_lifetime ::ohkami::Request) -> Result<Self, Self::Error> {
+                    let deserialized = req.queries::<#cloned_name<#generics_params>>()
+                        .ok_or_else(|| ::ohkami::Response::BadRequest().text("Expected query parameters"))?
+                        .map_err(|e| ::ohkami::Response::BadRequest().text(::std::format!("Unexpected query parameters: {e}")))?;
+                    Ok(deserialized.into())
                 }
             }
         };
