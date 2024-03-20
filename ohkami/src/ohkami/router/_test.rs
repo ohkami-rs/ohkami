@@ -366,3 +366,59 @@ fn my_ohkami() -> Ohkami {
     assert_eq!(res.status(), Status::InternalServerError);
     assert_eq!(res.text(),   Some("Timeout"));
 }
+
+#[__rt__::test] async fn test_pararell_registering() {
+    async fn hello_help() -> &'static str {
+        "Hi, this is `hello` api. \
+        Call me with your name as a path parameter:\n\
+        \t `GET /hello/{you name here}`"
+    }
+
+    async fn hello(name: &str) -> String {
+        format!("Hello, {name}!")
+    }
+
+
+    /* register static pattern in ahead */
+
+    let t = Ohkami::new((
+        "/hello/help" .GET(hello_help),
+        "/hello/:name".GET(hello),
+    ));
+
+    let req = TestRequest::GET("/hello/help");
+    let res = t.oneshot(req).await;
+    assert_eq!(res.status(), Status::OK);
+    assert_eq!(res.text(),   Some(
+        "Hi, this is `hello` api. \
+        Call me with your name as a path parameter:\n\
+        \t `GET /hello/{you name here}`"
+    ));
+
+    let req = TestRequest::GET("/hello/Mr.%20wolf");
+    let res = t.oneshot(req).await;
+    assert_eq!(res.status(), Status::OK);
+    assert_eq!(res.text(),   Some("Hello, Mr. wolf!"));
+
+
+    /* register param pattern in ahead */
+
+    let t = Ohkami::new((
+        "/hello/:name".GET(hello),
+        "/hello/help" .GET(hello_help),
+    ));
+
+    let req = TestRequest::GET("/hello/help");
+    let res = t.oneshot(req).await;
+    assert_eq!(res.status(), Status::OK);
+    assert_eq!(res.text(),   Some(
+        "Hi, this is `hello` api. \
+        Call me with your name as a path parameter:\n\
+        \t `GET /hello/{you name here}`"
+    ));
+
+    let req = TestRequest::GET("/hello/Mr.%20wolf");
+    let res = t.oneshot(req).await;
+    assert_eq!(res.status(), Status::OK);
+    assert_eq!(res.text(),   Some("Hello, Mr. wolf!"));
+}
