@@ -7,7 +7,7 @@ use crate::{
     builtin::fang::Timeout,
 };
 use super::super::timeout::set_timeout;
-use ohkami_lib::{Slice, percent_decode};
+use ohkami_lib::Slice;
 use std::fmt::Write;
 
 
@@ -308,17 +308,13 @@ impl Node {
 
     pub(super/* for test */) fn search(&self, req: &mut Request) -> Option<&Node> {
         let mut target = self;
-
+        
         // SAFETY:
         // 1. `req` must be alive while `search`
         // 2. `Request` DOESN'T have method that mutates `path`,
         //    So what `path` refers to is NEVER changed by any other process
         //    while `search`
-        let path_bytes_maybe_percent_encoded = unsafe {req.internal_path_bytes()};
-        // Decode percent encodings in `path_bytes_maybe_percent_encoded`,
-        // without checking if entire it is valid UTF-8.
-        let decoded = percent_decode(path_bytes_maybe_percent_encoded);
-        let mut path: &[u8] = &decoded;
+        let mut path = unsafe {req.internal_path_bytes()};
 
         #[cfg(feature="DEBUG")]
         println!("[path] '{}'", path.escape_ascii());

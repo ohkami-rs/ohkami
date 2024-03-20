@@ -12,9 +12,6 @@ keywords         = ["async", "http", "web", "server", "framework"]
 categories       = ["asynchronous", "web-programming::http-server"]
 license          = "MIT"
 
-[features]
-mime             = []
-
 [dependencies]
 serde            = { version = "1.0" }
 percent-encoding = { version = "2.3" }

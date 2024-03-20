@@ -39,7 +39,10 @@ use std::{pin::Pin, future::Future, format as f};
 
 
 pub trait Testing {
+    #[must_use]
     fn oneshot_with<T>(&self, global_fangs: impl Fangs<T>, req: TestRequest) -> Oneshot;
+    
+    #[must_use]
     fn oneshot(&self, req: TestRequest) -> Oneshot {
         self.oneshot_with((), req)
     }
