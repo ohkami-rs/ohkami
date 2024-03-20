@@ -337,11 +337,11 @@ impl Node {
             }
         }
 
-        // children.sort_unstable_by(|a, b| match (a.pattern.as_ref().unwrap(), b.pattern.as_ref().unwrap()) {
-        //     (Pattern::Static(_), Pattern::Param) => std::cmp::Ordering::Less,
-        //     (Pattern::Param, Pattern::Static(_)) => std::cmp::Ordering::Greater,
-        //     _ => std::cmp::Ordering::Equal
-        // });
+        children.sort_unstable_by(|a, b| match (a.pattern.as_ref().unwrap(), b.pattern.as_ref().unwrap()) {
+            (Pattern::Static(_), Pattern::Param) => std::cmp::Ordering::Less,
+            (Pattern::Param, Pattern::Static(_)) => std::cmp::Ordering::Greater,
+            _ => std::cmp::Ordering::Equal
+        });
 
         let (front, back, timeout) = split_fangs(fangs);
 

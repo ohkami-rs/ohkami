@@ -122,10 +122,14 @@ pub trait FromParam<'p>: Sized {
         fn from_param(param: Cow<'p, str>) -> Result<Self, Self::Error> {
             #[cold] fn unexpectedly_percent_encoded() -> FromRequestError {
                 eprintln!("\
+                    \n\
+                    =========\n\
                     [WARNING] \
                     `&str` can't handle percent encoded parameters. \
-                    Use `Cow<'_, str>` or `String` instead \
-                    to handle them.");
+                    Use `Cow<'_, str>` (or `String` instead) \
+                    to handle them.\n\
+                    =========\n\
+                ");
                 FromRequestError::Owned(format!(    
                     "Unexpected path params: percent encoded"
                 ))
