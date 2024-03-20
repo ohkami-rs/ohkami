@@ -374,7 +374,7 @@ fn my_ohkami() -> Ohkami {
         \t `GET /hello/{you name here}`"
     }
 
-    async fn hello(name: &str) -> String {
+    async fn hello(name: std::borrow::Cow<'_, str>) -> String {
         format!("Hello, {name}!")
     }
 
