@@ -1,3 +1,5 @@
+//! Related with `ohkami/ohkami/build.rs`
+
 #![allow(non_snake_case)]
 
 use crate::Ohkami;
@@ -5,28 +7,26 @@ use super::{Handler, IntoHandler};
 use crate::ohkami::router::RouteSections;
 
 
-pub struct Handlers {
-    pub(crate) route:   RouteSections,
-    pub(crate) GET:     Option<Handler>,
-    pub(crate) PUT:     Option<Handler>,
-    pub(crate) POST:    Option<Handler>,
-    pub(crate) PATCH:   Option<Handler>,
-    pub(crate) DELETE:  Option<Handler>,
-} impl Handlers {
-    fn new(route_str: &'static str) -> Self {
-        Self {
-            route:   RouteSections::from_literal(route_str),
-            GET:     None,
-            PUT:     None,
-            POST:    None,
-            PATCH:   None,
-            DELETE:  None,
-        }
-    }
-}
-
 macro_rules! Handlers {
     ($( $method:ident ),*) => {
+        pub struct Handlers {
+            pub(crate) route:   RouteSections,
+            $(
+                pub(crate) $method: Option<Handler>,
+            )*
+        }
+        
+        impl Handlers {
+            pub(crate) fn new(route_str: &'static str) -> Self {
+                Self {
+                    route:   RouteSections::from_literal(route_str),
+                    $(
+                        $method: None,
+                    )*
+                }
+            }
+        }
+
         impl Handlers {
             $(
                 pub fn $method<T>(mut self, handler: impl IntoHandler<T>) -> Self {
@@ -38,10 +38,96 @@ macro_rules! Handlers {
     };
 } Handlers! { GET, PUT, POST, PATCH, DELETE }
 
-
 pub struct ByAnother {
-    pub(crate) route: RouteSections,
+    pub(crate) route:  RouteSections,
     pub(crate) ohkami: Ohkami,
+}
+
+pub struct Dir {
+    pub(crate) route: &'static str,
+    pub(crate) files: Vec<(
+        Vec<String>,
+        std::fs::File,
+    )>,
+
+    /*=== config ===*/
+
+    /// File extensions (leading `.` trimmed) that should not be appeared in handling path
+    pub(crate) omit_extensions: Option<Box<[&'static str]>>,
+} impl Dir {
+    fn new(route: &'static str, dir_path: std::path::PathBuf) -> std::io::Result<Self> {
+        let dir_path = dir_path.canonicalize()?;
+
+        if !dir_path.is_dir() {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                format!("{} is not directory", dir_path.display()))
+            )
+        }
+
+        let mut files = Vec::new(); {
+            fn fetch_entries(
+                dir: std::path::PathBuf
+            ) -> std::io::Result<Vec<std::path::PathBuf>> {
+                dir.read_dir()?
+                    .map(|de| de.map(|de| de.path()))
+                    .collect()
+            }
+
+            let mut entries = fetch_entries(dir_path.clone())?;
+            while let Some(entry) = entries.pop() {
+                if entry.is_file() {
+                    let path_sections = entry.canonicalize()?
+                        .components()
+                        .skip(dir_path.components().count())
+                        .map(|c| c.as_os_str().to_os_string()
+                            .into_string()
+                            .map_err(|os_string| std::io::Error::new(
+                                std::io::ErrorKind::InvalidData,
+                                format!("Can't read a path segment `{}`", os_string.as_encoded_bytes().escape_ascii())
+                            ))
+                        )
+                        .collect::<std::io::Result<Vec<_>>>()?;
+
+                    if path_sections.last().unwrap().starts_with('.') {
+                        eprintln!("\
+                            =========\n\
+                            [WARNING] `Route::Dir`: found `{}` in directory `{}`, \
+                            are you sure to serve this file？\n\
+                            =========\n",
+                            entry.display(),
+                            dir_path.display(),
+                        )
+                    }
+
+                    files.push((
+                        path_sections,
+                        std::fs::File::open(entry)?
+                    ));
+
+                } else if entry.is_dir() {
+                    entries.append(&mut fetch_entries(entry)?)
+
+                } else {
+                    continue
+                }
+            }
+        }
+
+        Ok(Self {
+            route,
+            files,
+
+            omit_extensions: None,
+        })
+    }
+
+    pub fn omit_extensions<const N: usize>(mut self, target_extensions: [&'static str; N]) -> Self {
+        self.omit_extensions = Some(Box::new(
+            target_extensions.map(|ext| ext.trim_start_matches('.'))
+        ));
+        self
+    }
 }
 
 
@@ -82,8 +168,12 @@ macro_rules! Route {
             $(
                 fn $method<T>(self, handler: impl IntoHandler<T>) -> Handlers;
             )*
+
             fn By(self, another: Ohkami) -> ByAnother;
+
+            fn Dir(self, static_files_dir_path: &'static str) -> Dir;
         }
+
         impl Route for &'static str {
             $(
                 fn $method<T>(self, handler: impl IntoHandler<T>) -> Handlers {
@@ -92,10 +182,24 @@ macro_rules! Route {
                     handlers
                 }
             )*
+
             fn By(self, another: Ohkami) -> ByAnother {
                 ByAnother {
                     route:  RouteSections::from_literal(self),
                     ohkami: another,
+                }
+            }
+
+            fn Dir(self, path: &'static str) -> Dir {
+                // Check `self` is valid route
+                let _ = RouteSections::from_literal(self);
+
+                match Dir::new(
+                    self,
+                    path.into()
+                ) {
+                    Ok(dir) => dir,
+                    Err(e) => panic!("{e}")
                 }
             }
         }

@@ -34,6 +34,7 @@ rt_tokio      = ["dep:tokio"]
 rt_async-std  = ["dep:async-std"]
 testing       = []
 custom-header = ["dep:rustc-hash"]
+#static-files  = []
 #websocket    = ["dep:sha1"]
 #sse          = []
 

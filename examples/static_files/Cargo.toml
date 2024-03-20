@@ -1,0 +1,13 @@
+[package]
+name = "static_files"
+version = "0.1.0"
+edition = "2021"
+
+[features]
+DEBUG = ["ohkami/DEBUG"]
+
+[dependencies]
+ohkami             = { workspace = true }
+tokio              = { workspace = true }
+tracing            = { workspace = true }
+tracing-subscriber = { workspace = true }

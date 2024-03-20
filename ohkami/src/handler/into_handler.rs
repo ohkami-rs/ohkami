@@ -400,6 +400,8 @@ const _: (/* two PathParams and FromRequest items */) = {
 
 
 #[cfg(test)] #[test] fn handler_args() {
+    async fn h0() -> &'static str {""}
+
     async fn h1(_param: String) -> Response {todo!()}
     async fn h2(_param: &str) -> Response {todo!()}
 
@@ -416,5 +418,5 @@ const _: (/* two PathParams and FromRequest items */) = {
         ( $($function:ident)* ) => {
             $( let _ = $function.into_handler(); )*
         };
-    } assert_handlers! { h1 h2 h3 }
+    } assert_handlers! { h0 h1 h2 h3 }
 }

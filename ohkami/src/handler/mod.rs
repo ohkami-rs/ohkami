@@ -1,7 +1,7 @@
 #![cfg(any(feature="rt_tokio", feature="rt_async-std"))]
 
 mod handlers;
-pub use handlers::{Handlers, ByAnother, Route};
+pub use handlers::{Handlers, ByAnother, Dir, Route};
 
 mod into_handler;
 pub use into_handler::{IntoHandler};
@@ -26,7 +26,7 @@ pub struct Handler(Arc<dyn
 >);
 const _: () = {
     impl Handler {
-        fn new(proc: impl
+        pub(crate) fn new(proc: impl
             Fn(&Request) -> Pin<Box<dyn
                 Future<Output = Response>
                 + Send + '_

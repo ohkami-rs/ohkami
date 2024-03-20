@@ -1,7 +1,7 @@
 #![allow(non_snake_case, unused_mut)]
 
 use super::router::TrieRouter;
-use crate::handler::{Handlers, ByAnother};
+use crate::handler::{Handlers, ByAnother, Dir};
 
 
 trait RoutingItem {
@@ -12,15 +12,115 @@ trait RoutingItem {
             router.register_handlers(self)
         }
     }
+
     impl RoutingItem for ByAnother {
         fn apply(self, router: &mut TrieRouter) {
             router.merge_another(self)
         }
     }
 
+    impl RoutingItem for Dir {
+        fn apply(self, router: &mut TrieRouter) {
+            struct StaticFileHandler {
+                mime:     &'static str,
+                content:  Vec<u8>,
+
+                /// Used for `Content-Length` header.
+                /// 
+                /// The size itself can be got by `.content.len()`,
+                /// but in response, we have to write it in stringified form
+                /// every time. So we should the string here for performance.
+                size_str: String,
+            } const _: () = {
+                impl StaticFileHandler {
+                    fn new(path_sections: &[String], file: std::fs::File) -> Result<Self, String> {
+                        let filename = path_sections.last()
+                            .ok_or_else(|| format!("[.Dir] got empty file path"))?;
+                        let (_, extension) = filename.rsplit_once('.')
+                            .ok_or_else(|| format!("[.Dir] got `{filename}`: In current version, ohkami doesn't support serving files that have no extenstion"))?;
+                        let mime = ohkami_lib::mime::get_by_extension(extension)
+                            .ok_or_else(|| format!("[.Dir] got `{filename}`: ohkami doesn't know the extension `{extension}`"))?;
+
+                        let mut content = vec![
+                            u8::default();
+                            file.metadata().unwrap().len() as usize
+                        ]; {use std::io::Read;
+                            let mut file = file;
+                            file.read_exact(&mut content)
+                                .map_err(|e| e.to_string())?;
+                        }
+
+                        if mime.starts_with("text/")
+                        && std::str::from_utf8(&content).is_err() {
+                            return Err(format!("[.Dir] got `{filename}`: Ohkami doesn't support non UTF-8 text file"))
+                        }
+
+                        let size_str = content.len().to_string();
+
+                        Ok(Self { mime, content, size_str })
+                    }
+                }
+                
+                impl crate::handler::IntoHandler<std::fs::File> for StaticFileHandler {
+                    fn into_handler(self) -> crate::handler::Handler {
+                        let this: &'static StaticFileHandler
+                            = Box::leak(Box::new(self));
+
+                        crate::handler::Handler::new(|_| Box::pin(async {
+                            let mut res = crate::Response::OK();
+                            {
+                                res.headers.set()
+                                    .ContentType(this.mime)
+                                    .ContentLength(&*this.size_str);
+                                res.content = Some(
+                                    std::borrow::Cow::Borrowed(&this.content)
+                                );
+                            }
+                            res
+                        }))
+                    }
+                }
+            };
+
+            #[cfg(feature="DEBUG")]
+            println!{ "[Dir] .files = {:#?}", self.files }
+
+            for (mut path, file) in self.files {
+                let mut handler = match StaticFileHandler::new(&path, file) {
+                    Ok(h) => h,
+                    Err(msg) => panic!("{msg}")
+                };
+
+                if let Some(exts) = self.omit_extensions.as_ref() {
+                    if path.last().unwrap() == "index.html" && exts.contains(&"html") {
+                        path.pop();
+                    } else {
+                        for ext in exts.iter() {
+                            if let Some(filename) = path.last().unwrap().strip_suffix(&format!(".{ext}")) {
+                                let filename_len = filename.len();
+                                path.last_mut().unwrap().truncate(filename_len);
+                                break
+                            }
+                        }
+                    }
+                }
+
+                router.register_handlers(
+                    Handlers::new(Box::leak({
+                        let base_path = self.route.trim_end_matches('/').to_string();
+                        match &*path.join("/") {
+                            ""   => base_path,
+                            some => base_path + "/" + some,
+                        }
+                    }.into_boxed_str())).GET(handler)
+                );
+            }
+        }
+    }
+
     /// This is for better developer experience.
     /// 
-    /// If we impl `Routes` only for `Handlers` and `ByAnother`, ohkami users
+    /// If we don't impl `Routes` `&str`, ohkami users
     /// will see following situations：
     /// 
     /// ```ignore
