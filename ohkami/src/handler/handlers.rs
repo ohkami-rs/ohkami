@@ -49,6 +49,11 @@ pub struct Dir {
         Vec<String>,
         std::fs::File,
     )>,
+
+    /*=== config ===*/
+
+    /// File extensions (leading `.` trimmed) that should not be appeared in handling path
+    pub(crate) omit_extensions: Option<Box<[&'static str]>>,
 } impl Dir {
     fn new(route: RouteSections, dir_path: std::path::PathBuf) -> std::io::Result<Self> {
         let dir_path = dir_path.canonicalize()?;
@@ -109,7 +114,19 @@ pub struct Dir {
             }
         }
 
-        Ok(Self { route, files })
+        Ok(Self {
+            route,
+            files,
+
+            omit_extensions: None,
+        })
+    }
+
+    pub fn omit_extensions<const N: usize>(mut self, target_extensions: [&'static str; N]) -> Self {
+        self.omit_extensions = Some(Box::new(
+            target_extensions.map(|ext| ext.trim_start_matches('.'))
+        ));
+        self
     }
 }
 

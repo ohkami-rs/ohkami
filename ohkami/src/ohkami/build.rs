@@ -82,13 +82,26 @@ trait RoutingItem {
                 }
             };
 
-            for (path, file) in self.files {
-                let handler = match StaticFileHandler::new(&path, file) {
+            for (mut path, file) in self.files {
+                let mut handler = match StaticFileHandler::new(&path, file) {
                     Ok(h) => h,
                     Err(msg) => panic!("{msg}")
                 };
 
                 let routerized = {
+                    if let Some(exts) = self.omit_extensions.as_ref() {
+                        if path.last().unwrap() == "index.html" && exts.contains(&"html") {
+                            path.pop();
+
+                        } else {
+                            for ext in exts.iter() {
+                                if path.last_mut().unwrap().strip_suffix(&format!(".{ext}")).is_some() {
+                                    break
+                                }
+                            }
+                        }
+                    }
+
                     let path: &'static str = Box::leak({
                         String::from('/') + &path.join("/")
                     }.into_boxed_str());
