@@ -44,7 +44,7 @@ pub struct ByAnother {
 }
 
 pub struct Dir {
-    pub(crate) route: RouteSections,
+    pub(crate) route: &'static str,
     pub(crate) files: Vec<(
         Vec<String>,
         std::fs::File,
@@ -55,7 +55,7 @@ pub struct Dir {
     /// File extensions (leading `.` trimmed) that should not be appeared in handling path
     pub(crate) omit_extensions: Option<Box<[&'static str]>>,
 } impl Dir {
-    fn new(route: RouteSections, dir_path: std::path::PathBuf) -> std::io::Result<Self> {
+    fn new(route: &'static str, dir_path: std::path::PathBuf) -> std::io::Result<Self> {
         let dir_path = dir_path.canonicalize()?;
 
         if !dir_path.is_dir() {
@@ -191,8 +191,11 @@ macro_rules! Route {
             }
 
             fn Dir(self, path: &'static str) -> Dir {
+                // Check `self` is valid route
+                let _ = RouteSections::from_literal(self);
+
                 match Dir::new(
-                    RouteSections::from_literal(self),
+                    self,
                     path.into()
                 ) {
                     Ok(dir) => dir,

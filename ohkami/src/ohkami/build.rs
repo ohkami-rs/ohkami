@@ -82,44 +82,33 @@ trait RoutingItem {
                 }
             };
 
+            #[cfg(feature="DEBUG")]
+            println!{ "[Dir] .files = {:#?}", self.files }
+
             for (mut path, file) in self.files {
                 let mut handler = match StaticFileHandler::new(&path, file) {
                     Ok(h) => h,
                     Err(msg) => panic!("{msg}")
                 };
 
-                let routerized = {
-                    if let Some(exts) = self.omit_extensions.as_ref() {
-                        if path.last().unwrap() == "index.html" && exts.contains(&"html") {
-                            path.pop();
+                if let Some(exts) = self.omit_extensions.as_ref() {
+                    if path.last().unwrap() == "index.html" && exts.contains(&"html") {
+                        path.pop();
 
-                        } else {
-                            for ext in exts.iter() {
-                                if path.last_mut().unwrap().strip_suffix(&format!(".{ext}")).is_some() {
-                                    break
-                                }
+                    } else {
+                        for ext in exts.iter() {
+                            if path.last_mut().unwrap().strip_suffix(&format!(".{ext}")).is_some() {
+                                break
                             }
                         }
                     }
+                }
 
-                    let path: &'static str = Box::leak({
-                        String::from('/') + &path.join("/")
-                    }.into_boxed_str());
-
-                    let mut r = TrieRouter::new();
-                    r.register_handlers(
-                        Handlers::new(path).GET(handler)
-                    );
-                    r
-                };
-                
-                router.merge_another(ByAnother {
-                    route:  self.route.clone(),
-                    ohkami: crate::Ohkami {
-                        fangs:  Vec::new(),
-                        routes: routerized
-                    },
-                })
+                router.register_handlers(
+                    Handlers::new(Box::leak({
+                        self.route.trim_end_matches('/').to_string() + "/" + &path.join("/")
+                    }.into_boxed_str())).GET(handler)
+                );
             }
         }
     }
