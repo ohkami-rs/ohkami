@@ -120,7 +120,7 @@ trait RoutingItem {
 
     /// This is for better developer experience.
     /// 
-    /// If we impl `Routes` only for `Handlers` and `ByAnother`, ohkami users
+    /// If we don't impl `Routes` `&str`, ohkami users
     /// will see following situations：
     /// 
     /// ```ignore
