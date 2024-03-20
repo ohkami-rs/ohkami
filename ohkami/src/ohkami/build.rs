@@ -94,10 +94,11 @@ trait RoutingItem {
                 if let Some(exts) = self.omit_extensions.as_ref() {
                     if path.last().unwrap() == "index.html" && exts.contains(&"html") {
                         path.pop();
-
                     } else {
                         for ext in exts.iter() {
-                            if path.last_mut().unwrap().strip_suffix(&format!(".{ext}")).is_some() {
+                            if let Some(filename) = path.last().unwrap().strip_suffix(&format!(".{ext}")) {
+                                let filename_len = filename.len();
+                                path.last_mut().unwrap().truncate(filename_len);
                                 break
                             }
                         }
@@ -106,7 +107,11 @@ trait RoutingItem {
 
                 router.register_handlers(
                     Handlers::new(Box::leak({
-                        self.route.trim_end_matches('/').to_string() + "/" + &path.join("/")
+                        let base_path = self.route.trim_end_matches('/').to_string();
+                        match &*path.join("/") {
+                            ""   => base_path,
+                            some => base_path + "/" + some,
+                        }
                     }.into_boxed_str())).GET(handler)
                 );
             }
