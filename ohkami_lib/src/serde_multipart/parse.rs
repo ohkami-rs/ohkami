@@ -6,32 +6,42 @@ pub(super) struct Multipart<'de> {
     parts: Vec<Part<'de>>, // vec reversed
 }
 pub(super) enum Part<'de> {
-    File  { name: &'de str, file:    File<'de> },
-    Field { name: &'de str, content: &'de str },
+    Text { name: &'de str, text: &'de str },
+    File { name: &'de str, file: File<'de> },
 }
 
-pub(super) struct NextFields<'de> {
-    name: &'de str,
-    item: FilesOrField<'de>,
+pub(super) struct Next<'de> {
+    pub(crate) name: &'de str,
+    pub(crate) item: TextOrFiles<'de>,
 }
-pub(super) enum FilesOrField<'de> {
+pub(super) enum TextOrFiles<'de> {
+    Text (&'de str),
     Files(Vec<File<'de>>),
-    Field(&'de str),
 }
 
 impl<'de> Multipart<'de> {
-    pub(super) fn next(&mut self) -> NextFields<'de> {
-        let mut parts_of_same_name = Vec::with_capacity(1);
-        let Some(first) = self.parts.pop() else {return Vec::new()};
-        if let Part::File { name, .. } = first {
-            while self.parts.last()
-                .is_some_and(|next| next.is_file() && next.name == first.name)
-            {
-                parts_of_same_name.push(unsafe {self.parts.pop().unwrap_unchecked()});
+    pub(super) fn next(&mut self) -> Option<Next<'de>> {
+        Some(match self.parts.pop()? {
+            Part::Text { name, text } => Next {
+                name,
+                item: TextOrFiles::Text(text),
+            },
+            Part::File { name, file } => {
+                let mut files = vec![file];
+                while self.peek().is_some_and(|part| match part {
+                    Part::File { name: next_name, .. } => name == *next_name,
+                    Part::Text { .. } => false,
+                }) {
+                    let Some(Part::File { file, .. }) = self.parts.pop()
+                        else {unsafe {std::hint::unreachable_unchecked()}};
+                    files.push(file)
+                }
+                Next {
+                    name,
+                    item: TextOrFiles::Files(files)
+                }
             }
-        }
-        parts_of_same_name.push(first);
-        parts_of_same_name
+        })
     }
     pub(super) fn peek(&self) -> Option<&Part<'de>> {
         self.parts.last()
@@ -96,11 +106,11 @@ impl<'de> Multipart<'de> {
                     }
 
                     parts.push(match filename {
-                        None => Part::Field {
+                        None => Part::Text {
                             name,
-                            content: detached_str(content, Error::NotUTF8NonFileField)?,
+                            text: detached_str(content, Error::NotUTF8NonFileField)?,
                         },
-                        Some(filename ) => Part::File {
+                        Some(filename) => Part::File {
                             name,
                             file: File { filename, mime, content }
                         },
@@ -119,37 +129,16 @@ impl<'de> Multipart<'de> {
 
 
 const _: () = {
-    impl<'de> serde::de::IntoDeserializer<'de, Error> for FilesOrField<'de> {
+    impl<'de> serde::de::IntoDeserializer<'de, Error> for TextOrFiles<'de> {
         type Deserializer = DeserializeFilesOrField<'de>;
         fn into_deserializer(self) -> Self::Deserializer {
             DeserializeFilesOrField {
-                files_or_field: self,
-                entry:          FileStructEntry::init()
+                text_ot_files: self
             }
         }
     }
     pub(super) struct DeserializeFilesOrField<'de> {
-        files_or_field: FilesOrField<'de>,
-        entry:          FileStructEntry,
-    }
-    #[allow(non_camel_case_types)]
-    enum FileStructEntry {
-        filename,
-        mime,
-        content,
-        __finished
-    } impl FileStructEntry {
-        const fn init() -> Self {
-            Self::filename
-        }
-        fn step(&mut self) {
-            match &self {
-                Self::filename => *self = Self::mime,
-                Self::mime     => *self = Self::content,
-                Self::content  => *self = Self::__finished,
-                Self::__finished => ()
-            }
-        }
+        text_ot_files: TextOrFiles<'de>
     }
 
     impl<'de> serde::de::Deserializer<'de> for DeserializeFilesOrField<'de> {
@@ -157,9 +146,9 @@ const _: () = {
 
         fn deserialize_any<V>(self, visitor: V) -> Result<V::Value, Self::Error>
         where V: serde::de::Visitor<'de> {
-            match &self.files_or_field {
-                FilesOrField::Field(_) => self.deserialize_str(visitor),
-                FilesOrField::Files(_) => self.deserialize_map(visitor),
+            match &self.text_ot_files {
+                TextOrFiles::Text(_)  => self.deserialize_str(visitor),
+                TextOrFiles::Files(_) => self.deserialize_map(visitor),
             }
         }
         fn deserialize_newtype_struct<V>(
@@ -173,8 +162,8 @@ const _: () = {
 
         fn deserialize_str<V>(self, visitor: V) -> Result<V::Value, Self::Error>
         where V: serde::de::Visitor<'de> {
-            if let FilesOrField::Field(content) = self.files_or_field {
-                visitor.visit_str(content)
+            if let TextOrFiles::Text(text) = self.text_ot_files {
+                visitor.visit_str(text)
             } else {
                 Err((|| Error::ExpectedNonFileField())())
             }
@@ -189,112 +178,61 @@ const _: () = {
         where V: serde::de::Visitor<'de> {
             self.deserialize_map(visitor)
         }
-        fn deserialize_map<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+        fn deserialize_map<V>(mut self, visitor: V) -> Result<V::Value, Self::Error>
         where V: serde::de::Visitor<'de> {
-            let FilesOrField::Files(files) = &self.files_or_field
-                else {return Err((|| Error::ExpectedFile())())};
+            let TextOrFiles::Files(files) = &mut self.text_ot_files else {
+                return Err((|| Error::ExpectedFile())())
+            };
             (files.len() == 1)
-                .then_some(visitor.visit_map(self)?)
+                .then_some({
+                    let file = unsafe {files.pop().unwrap_unchecked()};
+                    visitor.visit_map(file.into_deserializer())?
+                })
                 .ok_or_else(Error::ExpectedFile)
+        }
+
+        fn deserialize_seq<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+        where V: serde::de::Visitor<'de> {
+            let TextOrFiles::Files(_) = &self.text_ot_files else {
+                return Err((|| Error::ExpectedFile())())
+            };
+            visitor.visit_seq(self)
         }
 
         serde::forward_to_deserialize_any! {
             i8 i16 i32 i64 u8 u16 u32 u64 f32 f64
             string char bool
             bytes byte_buf
-            seq enum option identifier
+            enum option identifier
             unit unit_struct tuple tuple_struct
             ignored_any
         }
     }
 
-    impl<'de> serde::de::MapAccess<'de> for DeserializeFilesOrField<'de> {
+    impl<'de> serde::de::SeqAccess<'de> for DeserializeFilesOrField<'de> {
         type Error = Error;
 
-        fn next_entry_seed<K, V>(
-            &mut self,
-            kseed: K,
-            vseed: V,
-        ) -> Result<Option<(K::Value, V::Value)>, Self::Error>
-        where
-            K: serde::de::DeserializeSeed<'de>,
-            V: serde::de::DeserializeSeed<'de>,
-        {
+        fn next_element_seed<T>(&mut self, seed: T) -> Result<Option<T::Value>, Self::Error>
+        where T: serde::de::DeserializeSeed<'de> {
             #[cfg(debug_assertions)] {
                 // This SHOULD be already checked in `deserialize_map`,
                 // BEFORE `next_entry_seed` here
-                assert!(match &self.files_or_field {
-                    FilesOrField::Files(files) => files.len() == 1,
+                assert!(match &self.text_ot_files {
+                    TextOrFiles::Files(_) => true,
                     _ => false
                 });
             }
-
-            let file = match &mut self.files_or_field {
-                FilesOrField::Files(files) => unsafe {files.pop().unwrap_unchecked()},
-                _ => unsafe {std::hint::unreachable_unchecked()}
+            
+            let TextOrFiles::Files(files) = &mut self.text_ot_files else {
+                unsafe {std::hint::unreachable_unchecked()}
             };
 
-            let (k, v) = match &self.entry {
-                FileStructEntry::__finished => return Ok(None),
-
-                FileStructEntry::filename => (
-                    kseed.deserialize("filename".into_deserializer())?,
-                    vseed.deserialize(file.filename.into_deserializer())?
-                ),
-                FileStructEntry::mime     => (
-                    kseed.deserialize("mime".into_deserializer())?,
-                    vseed.deserialize(file.mime.into_deserializer())?
-                ),
-                FileStructEntry::content  => (
-                    kseed.deserialize("content".into_deserializer())?,
-                    vseed.deserialize(file.content.into_deserializer())?
-                ),
+            let next = match files.pop() {
+                Some(file) => file,
+                None       => return Ok(None),
             };
-            self.entry.step();
 
-            Ok(Some((k, v)))
-        }
-
-        fn next_key_seed<K>(&mut self, seed: K) -> Result<Option<K::Value>, Self::Error>
-        where K: serde::de::DeserializeSeed<'de> {
-            #[cfg(debug_assertions)] {
-                // This SHOULD be already checked in `deserialize_map`,
-                // BEFORE `next_entry_seed` here
-                assert!(matches!(&self.ff, FileOrField::File(_)));
-            }
-
-            seed.deserialize(match &self.entry {
-                FileStructEntry::__finished => return Ok(None),
-
-                FileStructEntry::filename => "filename",
-                FileStructEntry::mime     => "mime",
-                FileStructEntry::content  => "content",
-            }.into_deserializer()).map(Some)
-        }
-        fn next_value_seed<V>(&mut self, seed: V) -> Result<V::Value, Self::Error>
-        where V: serde::de::DeserializeSeed<'de> {
-            #[cfg(debug_assertions)] {
-                // This SHOULD be already checked in `deserialize_map`,
-                // BEFORE `next_entry_seed` here
-                assert!(matches!(&self.ff, FileOrField::File(_)));
-            }
-
-            let DeserializeFilesOrField {
-                ff: FileOrField::File(file), entry
-            } = self else {unsafe {std::hint::unreachable_unchecked()}};
-
-            let v = match entry {
-                FileStructEntry::__finished => unsafe {// SAFETY: already checked in `next_key_seed`
-                    std::hint::unreachable_unchecked()
-                },
-
-                FileStructEntry::filename => seed.deserialize(file.filename.into_deserializer()),
-                FileStructEntry::mime     => seed.deserialize(file.mime.into_deserializer()),
-                FileStructEntry::content  => seed.deserialize(file.content.into_deserializer()),
-            };
-            entry.step();
-
-            v
+            seed.deserialize(next.into_deserializer()).map(Some)
         }
     }
 };

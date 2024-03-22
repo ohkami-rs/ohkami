@@ -1,7 +1,7 @@
 use serde::de::IntoDeserializer;
 
 use super::Error;
-use super::parse::{Multipart, Part};
+use super::parse::{Multipart, Part, Next};
 
 
 pub(crate) struct MultipartDesrializer<'de> {
@@ -70,27 +70,29 @@ impl<'de> serde::de::MapAccess<'de> for &mut MultipartDesrializer<'de> {
         K: serde::de::DeserializeSeed<'de>,
         V: serde::de::DeserializeSeed<'de>,
     {
-        let next_parts = self.parsed.next();
-        if next_parts.is_empty() {
-            return Ok(None)
+        match self.parsed.next() {
+            Some(Next { name, item }) => Ok(Some((
+                kseed.deserialize(name.into_deserializer())?,
+                vseed.deserialize(item.into_deserializer())?
+            ))),
+            None => Ok(None)
         }
-
-        Ok(Some((
-            kseed.deserialize(unsafe {next_parts.first().unwrap_unchecked()}.name.into_deserializer())?,
-            vseed.deserialize(content.into_deserializer())?
-        )))
     }
 
     fn next_key_seed<K>(&mut self, seed: K) -> Result<Option<K::Value>, Self::Error>
     where K: serde::de::DeserializeSeed<'de> {
-        let Some(Part { name, .. }) = self.parsed.peek() else {
+        let Some(part) = self.parsed.peek() else {
             return Ok(None)
+        };
+        let name = match part {
+            Part::File { name, .. } => name,
+            Part::Text { name, .. } => name,
         };
         seed.deserialize(name.into_deserializer()).map(Some)
     }
     fn next_value_seed<V>(&mut self, seed: V) -> Result<V::Value, Self::Error>
     where V: serde::de::DeserializeSeed<'de> {
-        let Part { content, .. } = self.parsed.next().unwrap();
-        seed.deserialize(content.into_deserializer())
+        let Next { item, .. } = self.parsed.next().unwrap();
+        seed.deserialize(item.into_deserializer())
     }
 }

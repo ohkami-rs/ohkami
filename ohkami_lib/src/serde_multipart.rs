@@ -76,7 +76,7 @@ impl Error {
         Self(Cow::Borrowed("Invalid `name` in multipart; name must be UTF-8 enclosed by \"\""))
     }
     const fn NotUTF8NonFileField() -> Self {
-        Self(Cow::Borrowed("Expected a non-file field to be a UTF-8 text"))
+        Self(Cow::Borrowed("Expected a non-file field to be a UTF-8 text; ohkami doesn't support multipart/form-data with not-file fields have raw byte streams"))
     }
     const fn MissinSpecifyingMixedBoudary() -> Self {
         Self(Cow::Borrowed("Found a multipart/mixed without specifying its boundary"))
