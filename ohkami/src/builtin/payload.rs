@@ -9,3 +9,8 @@ pub use multipart::Multipart;
 
 mod urlencoded;
 pub use urlencoded::URLEncoded;
+
+
+pub mod utils {
+    pub use ohkami_lib::serde_multipart::File;
+}

@@ -1,4 +1,4 @@
-use serde::Deserialize;
+use serde::{Serialize, Deserialize};
 use ohkami_lib::serde_multipart;
 use crate::typed::PayloadType;
 
@@ -10,10 +10,10 @@ impl PayloadType for Multipart {
     ];
 
     fn parse<'req, T: Deserialize<'req>>(bytes: &'req [u8]) -> Result<T, impl crate::serde::de::Error> {
-        serde_multipart::from_bytes(input)
+        serde_multipart::from_bytes(bytes)
     }
-    fn bytes<T: Serialize>(value: &T) -> Result<Vec<u8>, impl crate::serde::ser::Error> {
-        Err(crate::serde::de::Error::custom(
+    fn bytes<T: Serialize>(_: &T) -> Result<Vec<u8>, impl crate::serde::ser::Error> {
+        Err(<std::fmt::Error as crate::serde::ser::Error>::custom(
             "ohkami's builtin `Multipart` payload type doesn't support response use"
         ))
     }

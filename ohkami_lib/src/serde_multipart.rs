@@ -2,8 +2,8 @@ mod de;
 mod file;
 mod parse;
 
-#[cfg(test)]
-mod _test;
+#[cfg(test)] mod _test_de;
+#[cfg(test)] mod _test_parse;
 
 
 pub use file::File;
@@ -39,9 +39,6 @@ const _: () = {
 };
 #[allow(non_snake_case)]
 impl Error {
-    const fn ExpectedValidBoundary() -> Self {
-        Self(Cow::Borrowed("Expected valid multipart boundary"))
-    }
     const fn ExpectedBoundary() -> Self {
         Self(Cow::Borrowed("Expected multipart boundary"))
     }
@@ -53,6 +50,9 @@ impl Error {
     }
     const fn ExpectedFile() -> Self {
         Self(Cow::Borrowed("Expected file but found non-file field in multipart"))
+    }
+    const fn ExpectedNonFileField() -> Self {
+        Self(Cow::Borrowed("Expected non-file field but found file(s) in multipart"))
     }
     const fn ExpectedFilename() -> Self {
         Self(Cow::Borrowed("Expected `filename=\"...\"`"))
