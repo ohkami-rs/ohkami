@@ -2,18 +2,22 @@ use serde::de::IntoDeserializer;
 use super::{File, Error};
 
 
-pub(super) struct Multipart<'de> {
-    parts: Vec<Part<'de>>, // vec reversed
-}
+#[derive(Debug, PartialEq)]
+pub(super) struct Multipart<'de>(
+    pub(super/* for test */) Vec<Part<'de>>, // vec reversed
+);
+#[derive(Debug, PartialEq)]
 pub(super) enum Part<'de> {
     Text { name: &'de str, text: &'de str },
     File { name: &'de str, file: File<'de> },
 }
 
+#[derive(Debug, PartialEq)]
 pub(super) struct Next<'de> {
     pub(crate) name: &'de str,
     pub(crate) item: TextOrFiles<'de>,
 }
+#[derive(Debug, PartialEq)]
 pub(super) enum TextOrFiles<'de> {
     Text (&'de str),
     Files(Vec<File<'de>>),
@@ -21,7 +25,7 @@ pub(super) enum TextOrFiles<'de> {
 
 impl<'de> Multipart<'de> {
     pub(super) fn next(&mut self) -> Option<Next<'de>> {
-        Some(match self.parts.pop()? {
+        Some(match self.0.pop()? {
             Part::Text { name, text } => Next {
                 name,
                 item: TextOrFiles::Text(text),
@@ -32,7 +36,7 @@ impl<'de> Multipart<'de> {
                     Part::File { name: next_name, .. } => name == *next_name,
                     Part::Text { .. } => false,
                 }) {
-                    let Some(Part::File { file, .. }) = self.parts.pop()
+                    let Some(Part::File { file, .. }) = self.0.pop()
                         else {unsafe {std::hint::unreachable_unchecked()}};
                     files.push(file)
                 }
@@ -44,7 +48,7 @@ impl<'de> Multipart<'de> {
         })
     }
     pub(super) fn peek(&self) -> Option<&Part<'de>> {
-        self.parts.last()
+        self.0.last()
     }
 
     pub(super) fn parse(input: &'de [u8]) -> Result<Self, Error> {
@@ -64,8 +68,11 @@ impl<'de> Multipart<'de> {
         }
 
         let boundary = {
-            let _ = r.consume("--").ok_or_else(Error::ExpectedBoundary)?;
+            // let _ = r.consume("--").ok_or_else(Error::ExpectedBoundary)?;
+
+            /* includes leading `--` */
             let b = r.read_while(|b| b != &b'\r');
+
             detached(b)
         };
 
@@ -102,18 +109,24 @@ impl<'de> Multipart<'de> {
                         r.consume("\r\n").ok_or_else(Error::MissingCRLF)?;
                     }
 
-                    let content = {
+                    let content = 'content: {
                         let content_start = r.index;
                         while r.peek().is_some() {
-                            if r.read_while(UNTIL_CR) == boundary {
-                                break
+                            if r.consume(boundary).is_some() {
+                                break 'content Some(unsafe {
+                                    input.get_unchecked(
+                                        content_start..(r.index - 2/* \r\n */ - boundary.len())
+                                    )
+                                })
                             } else {
-                                r.consume(&[b'\r']).ok_or_else(Error::UnexpectedEndOfInput)?;
-                                r.consume(&[b'\n']);
+                                loop {
+                                    r.skip_while(UNTIL_CR);
+                                    r.consume("\r").ok_or_else(Error::UnexpectedEndOfInput)?;
+                                    if r.consume("\n").is_some() {break}
+                                }
                             }
-                        }
-                        unsafe {input.get_unchecked(content_start..r.index)}
-                    };
+                        }; None
+                    }.ok_or_else(Error::ExpectedBoundary)?;
 
                     parts.push(match filename {
                         None => Part::Text {
@@ -126,14 +139,12 @@ impl<'de> Multipart<'de> {
                         },
                     })
                 }
-                1 => {
-                    r.consume(boundary).ok_or_else(Error::ExpectedBoundary)?;
-                    break
-                }
+                1 => break,
                 _ => unsafe {std::hint::unreachable_unchecked()}
             }
         }
-        Ok(Self {parts})
+
+        Ok(Self({parts.reverse(); parts}))
     }
 }
 

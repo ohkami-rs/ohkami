@@ -52,6 +52,7 @@
 /// }
 /// ```
 /// ---
+#[derive(Debug, PartialEq)]
 pub struct File<'req> {
     pub filename: &'req str,
     pub mime:     &'req str,
