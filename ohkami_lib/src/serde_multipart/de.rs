@@ -32,6 +32,7 @@ impl<'de> serde::de::Deserializer<'de> for &mut MultipartDesrializer<'de> {
     where V: serde::de::Visitor<'de> {
         visitor.visit_map(self)
     }
+
     fn deserialize_newtype_struct<V>(
         self,
         _name: &'static str,
@@ -42,11 +43,11 @@ impl<'de> serde::de::Deserializer<'de> for &mut MultipartDesrializer<'de> {
     }
 
     serde::forward_to_deserialize_any! {
-        bool str string char seq
+        bool str string char
         unit unit_struct
         tuple tuple_struct
         bytes byte_buf
-        option enum identifier
+        option enum seq identifier
         ignored_any
         i8 i16 i32 i64
         u8 u16 u32 u64
@@ -69,12 +70,13 @@ impl<'de> serde::de::MapAccess<'de> for &mut MultipartDesrializer<'de> {
         K: serde::de::DeserializeSeed<'de>,
         V: serde::de::DeserializeSeed<'de>,
     {
-        let Some(Part { name, content }) = self.parsed.next() else {
+        let next_parts = self.parsed.next();
+        if next_parts.is_empty() {
             return Ok(None)
-        };
+        }
 
         Ok(Some((
-            kseed.deserialize(name.into_deserializer())?,
+            kseed.deserialize(unsafe {next_parts.first().unwrap_unchecked()}.name.into_deserializer())?,
             vseed.deserialize(content.into_deserializer())?
         )))
     }

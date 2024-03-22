@@ -39,6 +39,9 @@ const _: () = {
 };
 #[allow(non_snake_case)]
 impl Error {
+    const fn UnexpectedMultipleFiles() -> Self {
+        Self(Cow::Borrowed("Expected a single file for the name, but found multiple parts of the same name holding files in multipart/form-data"))
+    }
     const fn ExpectedBoundary() -> Self {
         Self(Cow::Borrowed("Expected multipart boundary"))
     }
@@ -64,6 +67,18 @@ impl Error {
         Self(Cow::Borrowed("Expected `form-data; name=\"...\"` after `Content-Disposition: `"))
     }
     const fn InvalidFilename() -> Self {
-        Self(Cow::Borrowed("Invalid filename"))
+        Self(Cow::Borrowed("Invalid filename; filename must be UTF-8"))
+    }
+    const fn InvalidMimeType() -> Self {
+        Self(Cow::Borrowed("Invalid mime type"))
+    }
+    const fn InvalidPartName() -> Self {
+        Self(Cow::Borrowed("Invalid `name` in multipart; name must be UTF-8 enclosed by \"\""))
+    }
+    const fn NotUTF8NonFileField() -> Self {
+        Self(Cow::Borrowed("Expected a non-file field to be a UTF-8 text"))
+    }
+    const fn MissinSpecifyingMixedBoudary() -> Self {
+        Self(Cow::Borrowed("Found a multipart/mixed without specifying its boundary"))
     }
 }
