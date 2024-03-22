@@ -51,7 +51,7 @@ impl<'de> Multipart<'de> {
         let mut r = ::byte_reader::Reader::new(input);
 
         #[inline(always)] #[allow(non_snake_case)]
-        const fn UNTIL_CRLF(b: &u8) -> bool {
+        const fn UNTIL_CR(b: &u8) -> bool {
             *b != b'\r'
         }
         #[inline(always)]
@@ -73,21 +73,17 @@ impl<'de> Multipart<'de> {
         while let Some(i) = r.consume_oneof(["\r\n", "--"]) {
             match i {
                 0 => {
-                    let mut name          = "";
-                    let mut mime          = "";
-                    let mut content       = &b""[..];
-                    let mut filename      = None;
-                    let mut mixed_boudary = None;
-
+                    let mut name     = "";
+                    let mut mime     = "";
+                    let mut filename = None;
                     while r.consume("\r\n"/* A newline between headers and content */).is_none() {
                         let header = r.read_kebab().ok_or_else(Error::ExpectedValidHeader)?;
                         if header.eq_ignore_ascii_case("Content-Type") {
                             r.consume(": ").ok_or_else(Error::ExpectedValidHeader)?;
-                            mime = detached_str(r.read_while(UNTIL_CRLF), Error::InvalidMimeType)?;
-                            if mime == "multipart/mixed" {
-                                r.consume(", boundary=").ok_or_else(Error::MissinSpecifyingMixedBoudary)?;
-                                mixed_boudary = Some(detached(r.read_while(UNTIL_CRLF)));
-                            }
+                            mime = detached_str(r.read_while(UNTIL_CR), Error::InvalidMimeType)?;
+                            (mime != "multipart/mixed").then_some(())
+                                .ok_or_else(Error::NotSupportedMultipartMixed)?;
+
                         } else if header.eq_ignore_ascii_case("Content-Disposition") {
                             r.consume(": form-data; name=").ok_or_else(Error::ExpectedFormdataAndName)?;
                             name = detached_str(
@@ -99,11 +95,25 @@ impl<'de> Multipart<'de> {
                                     r.read_quoted_by(b'"', b'"').ok_or_else(Error::InvalidFilename)?,
                                     Error::InvalidFilename)?);
                             }
+
                         } else {
                             r.skip_while(|b| b != &b'\r');
                         }
                         r.consume("\r\n").ok_or_else(Error::MissingCRLF)?;
                     }
+
+                    let content = {
+                        let content_start = r.index;
+                        while r.peek().is_some() {
+                            if r.read_while(UNTIL_CR) == boundary {
+                                break
+                            } else {
+                                r.consume(&[b'\r']).ok_or_else(Error::UnexpectedEndOfInput)?;
+                                r.consume(&[b'\n']);
+                            }
+                        }
+                        unsafe {input.get_unchecked(content_start..r.index)}
+                    };
 
                     parts.push(match filename {
                         None => Part::Text {
@@ -188,7 +198,7 @@ const _: () = {
                     let file = unsafe {files.pop().unwrap_unchecked()};
                     visitor.visit_map(file.into_deserializer())?
                 })
-                .ok_or_else(Error::ExpectedFile)
+                .ok_or_else(Error::UnexpectedMultipleFiles)
         }
 
         fn deserialize_seq<V>(self, visitor: V) -> Result<V::Value, Self::Error>

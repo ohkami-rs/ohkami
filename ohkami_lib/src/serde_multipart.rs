@@ -39,6 +39,12 @@ const _: () = {
 };
 #[allow(non_snake_case)]
 impl Error {
+    const fn UnexpectedEndOfInput() -> Self {
+        Self(Cow::Borrowed("Unexpected end of input"))
+    }
+    const fn NotSupportedMultipartMixed() -> Self {
+        Self(Cow::Borrowed("Ohkami doesn't support `multipart/mixed` nested in `multipart/form-data`, this is DEPRECATED!"))
+    }
     const fn UnexpectedMultipleFiles() -> Self {
         Self(Cow::Borrowed("Expected a single file for the name, but found multiple parts of the same name holding files in multipart/form-data"))
     }
@@ -47,9 +53,6 @@ impl Error {
     }
     const fn MissingCRLF() -> Self {
         Self(Cow::Borrowed("Missing CRLF in multipart"))
-    }
-    const fn ExpectedAttachment() -> Self {
-        Self(Cow::Borrowed("Expected `attachment`"))
     }
     const fn ExpectedFile() -> Self {
         Self(Cow::Borrowed("Expected file but found non-file field in multipart"))
@@ -77,8 +80,5 @@ impl Error {
     }
     const fn NotUTF8NonFileField() -> Self {
         Self(Cow::Borrowed("Expected a non-file field to be a UTF-8 text; ohkami doesn't support multipart/form-data with not-file fields have raw byte streams"))
-    }
-    const fn MissinSpecifyingMixedBoudary() -> Self {
-        Self(Cow::Borrowed("Found a multipart/mixed without specifying its boundary"))
     }
 }
