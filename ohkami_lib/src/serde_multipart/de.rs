@@ -6,7 +6,7 @@ use crate::Slice;
 
 pub(crate) struct MultipartDesrializer<'de> {
     r:        Reader<'de>,
-    boundary: Slice,
+    boundary: &'de [u8],
 }
 
 impl<'de> MultipartDesrializer<'de> {
@@ -15,11 +15,15 @@ impl<'de> MultipartDesrializer<'de> {
 
         r.consume("--").ok_or_else(Error::ExpectedValidBoundary)?;
         // SAFETY:
-        //    What `boundary` refers to is `input`, that keeps alive
+        // 1. What `boundary` refers to is `input`, that keeps alive
         //    for 'de, the same lifetime as `Self`
-        let boundary = unsafe {Slice::from_bytes(
-            r.read_while(|b| b != &b'\r')
-        )};
+        // 2. `r` never changes the content of `input`
+        
+        let boundary = {
+            let b = r.read_while(|b| b != &b'\r');
+            unsafe {std::slice::from_raw_parts(b.as_ptr(), b.len())}
+        };
+
         r.consume("\r\n").ok_or_else(Error::MissingCRLF)?;
 
         Ok(Self { r, boundary })

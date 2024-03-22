@@ -1,4 +1,6 @@
 mod de;
+mod file;
+mod pre_parse;
 
 #[cfg(test)]
 mod _test;
