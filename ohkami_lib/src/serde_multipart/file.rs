@@ -52,12 +52,8 @@
 /// }
 /// ```
 /// ---
-pub struct File {
-
-}
-
-
-
-struct FileInner {
-
+pub struct File<'req> {
+    pub filename: &'req str,
+    pub mime:     &'req str,
+    pub content:  &'req [u8],
 }

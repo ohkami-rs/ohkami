@@ -1,20 +1,17 @@
 mod de;
 mod file;
-mod pre_parse;
+mod parse;
 
 #[cfg(test)]
 mod _test;
 
 
+pub use file::File;
+
 #[inline(always)]
 pub fn from_bytes<'de, D: serde::Deserialize<'de>>(input: &'de [u8]) -> Result<D, Error> {
     let mut d = de::MultipartDesrializer::new(input)?;
-    let t = D::deserialize(&mut d)?;
-    if d.remaining().is_empty() {
-        Ok(t)
-    } else {
-        Err((||serde::de::Error::custom(format!("Unexpected trailing charactors: {}", d.remaining().escape_ascii())))())
-    }
+    D::deserialize(&mut d)
 }
 
 
@@ -53,6 +50,9 @@ impl Error {
     }
     const fn ExpectedAttachment() -> Self {
         Self(Cow::Borrowed("Expected `attachment`"))
+    }
+    const fn ExpectedFile() -> Self {
+        Self(Cow::Borrowed("Expected file but found non-file field in multipart"))
     }
     const fn ExpectedFilename() -> Self {
         Self(Cow::Borrowed("Expected `filename=\"...\"`"))
