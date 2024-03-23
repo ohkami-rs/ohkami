@@ -171,7 +171,6 @@ impl Request {
                 }));
             } else {
                 #[cfg(not(feature="custom-header"))] {
-                    r.consume(": ").unwrap();
                     r.skip_while(|b| b != &b'\r');
                 }
                 #[cfg(feature="custom-header")] {
@@ -214,23 +213,33 @@ impl Request {
         ref_metadata: &[u8],
         starts_at:    usize,
         size:         usize,
-    ) -> CowSlice {#[cfg(debug_assertions)] assert!(starts_at < METADATA_SIZE, "ohkami can't handle requests if the total size of status and headers exceeds {METADATA_SIZE} bytes");
-        if ref_metadata[starts_at] == 0 {// Some HTTP client requests as this
+    ) -> CowSlice {
+        #[cfg(debug_assertions)] {
+            assert!(starts_at < METADATA_SIZE, "ohkami can't handle requests if the total size of status and headers exceeds {METADATA_SIZE} bytes");
+        }
+
+        if ref_metadata[starts_at] == 0 {
+            #[cfg(feature="DEBUG")] println!("\n[read_payload] case: ref_metadata[starts_at] == 0\n");
+
             let mut bytes = vec![0; size];
-            stream.read(&mut bytes).await.unwrap();
+            stream.read_exact(&mut bytes).await.unwrap();
             CowSlice::Own(bytes)
+
         } else if starts_at + size <= METADATA_SIZE {
+            #[cfg(feature="DEBUG")] println!("\n[read_payload] case: starts_at + size <= METADATA_SIZE\n");
+
             CowSlice::Ref(unsafe {Slice::new_unchecked(ref_metadata.as_ptr().add(starts_at), size)})
+
         } else {
-            (|| async move {
-                let mut bytes = vec![0; size];
-                let size_of_payload_in_metadata_bytes = METADATA_SIZE - starts_at;
+            #[cfg(feature="DEBUG")] println!("\n[read_payload] case: else\n");
+
+            let mut bytes = vec![0; size];
+            let size_of_payload_in_metadata_bytes = METADATA_SIZE - starts_at;
                 
-                bytes[..size_of_payload_in_metadata_bytes].copy_from_slice(&ref_metadata[starts_at..]);
-                stream.read(bytes[size_of_payload_in_metadata_bytes..].as_mut()).await.unwrap();
+            bytes[..size_of_payload_in_metadata_bytes].copy_from_slice(&ref_metadata[starts_at..]);
+            stream.read_exact(bytes[size_of_payload_in_metadata_bytes..].as_mut()).await.unwrap();
                 
-                CowSlice::Own(bytes)
-            })().await
+            CowSlice::Own(bytes)
         }
     }
 }
