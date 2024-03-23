@@ -118,11 +118,14 @@ impl<'de> Multipart<'de> {
                         let content_start = r.index;
                         while r.peek().is_some() {
                             if r.consume(boundary).is_some() {
-                                break 'content Some(unsafe {
-                                    input.get_unchecked(
-                                        content_start..(r.index - 2/* \r\n */ - boundary.len())
-                                    )
-                                })
+                                #[cfg(debug_assertions)] {
+                                    if r.index - 2/* \r\n */ - boundary.len() < content_start {
+                                        return Err(Error::MissingCRLF())
+                                    }
+                                }
+                                break 'content Some(unsafe {input.get_unchecked(
+                                    content_start..(r.index - 2/* \r\n */ - boundary.len())
+                                )})
                             } else {
                                 loop {
                                     r.skip_while(UNTIL_CR);

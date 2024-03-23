@@ -1,4 +1,4 @@
-/// File in `multipart/form-data`, `multipart/mixed` requests
+/// File in `multipart/form-data` requests
 /// 
 /// <br>
 /// 
