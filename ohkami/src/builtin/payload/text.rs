@@ -5,11 +5,8 @@ use crate::typed::PayloadType;
 
 pub struct Text;
 impl PayloadType for Text {
-    const CONTENT_TYPE: &'static [&'static str] = &[
-        "text/plain; charset=UTF-8",
-        "text/plain; charset=utf-8",
-        "text/plain",
-    ];
+    const MIME_TYPE: &'static str = "text/plain";
+    const CONTENT_TYPE: &'static str = "text/plain; charset=UTF-8";
 
     #[inline]
     fn parse<'req, T: Deserialize<'req>>(bytes: &'req [u8]) -> Result<T, impl crate::serde::de::Error> {
@@ -28,11 +25,8 @@ impl PayloadType for Text {
 /// This doesn't check the text is valid HTML.
 pub struct HTML;
 impl PayloadType for HTML {
-    const CONTENT_TYPE: &'static [&'static str] = &[
-        "text/html; charset=UTF-8",
-        "text/html; charset=utf-8",
-        "text/html",
-    ];
+    const MIME_TYPE: &'static str = "text/html";
+    const CONTENT_TYPE: &'static str = "text/html; charset=UTF-8";
 
     fn bytes<T: Serialize>(value: &T) -> Result<Vec<u8>, impl crate::serde::ser::Error> {
         serde_utf8::to_string(value).map(String::into_bytes)

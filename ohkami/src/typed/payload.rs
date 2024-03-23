@@ -7,8 +7,8 @@ pub trait Payload: Sized {
 }
 
 pub trait PayloadType {
-    /// **MUST NOT** be empty and the first element is used in response.
-    const CONTENT_TYPE: &'static [&'static str];
+    const MIME_TYPE: &'static str;
+    const CONTENT_TYPE: &'static str = Self::MIME_TYPE;
 
     fn parse<'req, T: Deserialize<'req>>(bytes: &'req [u8]) -> Result<T, impl crate::serde::de::Error>;
     fn bytes<T: Serialize>(value: &T) -> Result<Vec<u8>, impl crate::serde::ser::Error>;
@@ -23,17 +23,10 @@ const _: () = {
 
         #[inline(always)]
         fn from_request(req: &'req crate::Request) -> Result<Self, Self::Error> {
-            #[cfg(debug_assertions)] {
-                assert!(
-                    ! <<Self as Payload>::Type as PayloadType>::CONTENT_TYPE.is_empty(),
-                    "`PayloadType::CONTENT_TYPE` must not be empty"
-                );
-            }
-
             req.payload()
                 .ok_or_else(|| Response::BadRequest().text(
                     format!("{} payload is required",
-                        <<Self as Payload>::Type as PayloadType>::CONTENT_TYPE[0]
+                        <<Self as Payload>::Type as PayloadType>::MIME_TYPE
                     )
                 ))?
                 .map_err(|e| Response::BadRequest().text(e.to_string()))
@@ -48,14 +41,7 @@ const _: () = {
         fn into_response(self) -> Response {
             let mut res = Response::OK();
             {
-                #[cfg(debug_assertions)] {
-                    assert!(
-                        ! <<Self as Payload>::Type as PayloadType>::CONTENT_TYPE.is_empty(),
-                        "`PayloadType::CONTENT_TYPE` must not be empty"
-                    );
-                }
-
-                let content_type = *unsafe {<<Self as Payload>::Type as PayloadType>::CONTENT_TYPE.get_unchecked(0)};
+                let content_type = <<Self as Payload>::Type as PayloadType>::CONTENT_TYPE;
 
                 let bytes = match <<Self as Payload>::Type as PayloadType>::bytes(&self) {
                     Ok(bytes) => bytes,

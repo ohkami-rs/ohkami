@@ -5,9 +5,7 @@ use crate::typed::PayloadType;
 
 pub struct Multipart;
 impl PayloadType for Multipart {
-    const CONTENT_TYPE: &'static [&'static str] = &[
-        "multipart/form-data"
-    ];
+    const MIME_TYPE: &'static str = "multipart/form-data";
 
     fn parse<'req, T: Deserialize<'req>>(bytes: &'req [u8]) -> Result<T, impl crate::serde::de::Error> {
         serde_multipart::from_bytes(bytes)

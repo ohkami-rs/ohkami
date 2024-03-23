@@ -257,7 +257,7 @@ impl Request {
     #[inline(always)] pub fn payload<
         'req, P: Payload + serde::Deserialize<'req> + 'req
     >(&'req self) -> Option<Result<P, impl serde::de::Error + 'req>> {
-        <<P as Payload>::Type as PayloadType>::CONTENT_TYPE.contains(&self.headers.ContentType()?)
+        self.headers.ContentType()?.starts_with(<<P as Payload>::Type as PayloadType>::MIME_TYPE)
             .then_some(<<P as Payload>::Type as PayloadType>::parse(unsafe {
                 self.payload.as_ref()?.as_bytes()
             }))
