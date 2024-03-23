@@ -18,17 +18,17 @@ async fn get_form() -> FormTemplate {
 #[Payload(Multipart/D)]
 struct FormData<'req> {
     #[serde(rename = "account-name")]
-    account_name: &'req str,
+    account_name: Option<&'req str>,
     
-    pics:         Vec<File<'req>>,
+    pics: Vec<File<'req>>,
 }
 
 async fn post_submit(form_data: FormData<'_>) -> NoContent {
     println!("\n\
         ===== submit =====\n\
-        [account name] `{}`\n\
+        [account name] {:?}\n\
         [  pictures  ] {} files (mime: [{}])\n\
-        ==================\n",
+        ==================",
         form_data.account_name,
         form_data.pics.len(),
         form_data.pics.iter().map(|f| f.mimetype).collect::<Vec<_>>().join(", "),

@@ -141,7 +141,7 @@ impl Request {
         if stream.read(&mut self._metadata).await.ok()? == 0 {return None};
         let mut r = Reader::new(&self._metadata);
 
-        let method = Method::from_bytes(r.read_while(|b| b != &b' ')).unwrap();
+        let method = Method::from_bytes(r.read_while(|b| b != &b' '))?;
         r.consume(" ").unwrap();
         
         let path = unsafe {// SAFETY: Just calling for request bytes
