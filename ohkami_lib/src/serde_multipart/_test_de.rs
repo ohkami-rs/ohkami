@@ -213,5 +213,41 @@ use super::{from_bytes, File};
 }
 
 #[test] fn deserialize_optionals() {
-    
+    const BOUNDARY: &str = "Bbax09y";
+
+    #[derive(serde::Deserialize, Debug, PartialEq)]
+    struct UserFilesForm<'req> {
+        #[serde(rename = "user-name")]
+        user_name:     Option<&'req str>,
+
+        templates:     Vec<File<'req>>,
+
+        #[serde(rename = "binary-sample")]
+        binary_sample: Option<File<'req>>,
+    }
+
+    let case_1 = format!("\
+        --{BOUNDARY}\r\n\
+        Content-Disposition: form-data; name=\"user-name\"\r\n\
+        \r\n\
+        Jacky\r\n\
+        --{BOUNDARY}\r\n\
+        Content-Type: unknown/some-binary\r\n\
+        Content-Disposition: form-data; name=\"binary-sample\"; filename=\"x.bin\"\r\n\
+        Something-Unknown-Header: unknown-header-value\r\n\
+        \r\n\
+        \r\u{0}\r\u{0}\n0123xyz\u{11}\r\n\u{10}\rabc\r\n\
+        --{BOUNDARY}--");
+    assert_eq!(
+        from_bytes::<UserFilesForm>(case_1.as_bytes()).unwrap(),
+        UserFilesForm {
+            user_name: Some("Jacky"),
+            templates: vec![],
+            binary_sample: Some(File {
+                filename: "x.bin",
+                mimetype: "unknown/some-binary",
+                content:  "\r\u{0}\r\u{0}\n0123xyz\u{11}\r\n\u{10}\rabc".as_bytes(),
+            }),
+        }
+    );
 }

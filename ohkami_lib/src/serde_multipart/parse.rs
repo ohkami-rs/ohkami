@@ -31,15 +31,25 @@ impl<'de> Multipart<'de> {
                 item: TextOrFiles::Text(text),
             },
             Part::File { name, file } => {
-                let mut files = vec![file];
+                let mut files = Vec::with_capacity(1);
+                macro_rules! push {
+                    ($file:ident -> $files:ident) => {
+                        if $file.filename.len() > 0 && $file.content.len() > 0 {
+                            $files.push($file)
+                        }
+                    };
+                }
+
+                push!(file -> files);
                 while self.peek().is_some_and(|part| match part {
                     Part::File { name: next_name, .. } => name == *next_name,
                     Part::Text { .. } => false,
                 }) {
                     let Some(Part::File { file, .. }) = self.0.pop()
                         else {unsafe {std::hint::unreachable_unchecked()}};
-                    files.push(file)
+                    push!(file -> files);
                 }
+
                 Next {
                     name,
                     item: TextOrFiles::Files(files)
@@ -224,11 +234,26 @@ const _: () = {
             visitor.visit_seq(self)
         }
 
+        fn deserialize_option<V>(mut self, visitor: V) -> Result<V::Value, Self::Error>
+        where V: serde::de::Visitor<'de> {
+            match &mut self.text_ot_files {
+                TextOrFiles::Files(files) => match files.len() {
+                    0 => visitor.visit_none(),
+                    1 => visitor.visit_some(unsafe {files.pop().unwrap_unchecked()}.into_deserializer()),
+                    _ => Err((|| Error::UnexpectedMultipleFiles())())
+                },
+                TextOrFiles::Text(text) => match text.len() {
+                    0 => visitor.visit_none(),
+                    _ => visitor.visit_borrowed_str(text),
+                }
+            }
+        }
+
         serde::forward_to_deserialize_any! {
             i8 i16 i32 i64 u8 u16 u32 u64 f32 f64
             char bool
             bytes byte_buf
-            enum option identifier
+            enum identifier
             unit unit_struct tuple tuple_struct
             ignored_any
         }
