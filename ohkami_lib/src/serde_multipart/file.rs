@@ -52,6 +52,7 @@
 /// }
 /// ```
 /// ---
+#[derive(serde::Deserialize)]
 #[derive(Debug, PartialEq)]
 pub struct File<'req> {
     pub filename: &'req str,
@@ -156,15 +157,15 @@ const _: () = {
             let (k, v) = match &self.state {
                 FileField::filename => (
                     kseed.deserialize("filename".into_deserializer())?,
-                    vseed.deserialize(self.file.filename.into_deserializer())?,
+                    vseed.deserialize(serde::de::value::BorrowedStrDeserializer::new(self.file.filename))?,
                 ),
                 FileField::mime => (
                     kseed.deserialize("mime".into_deserializer())?,
-                    vseed.deserialize(self.file.mime.into_deserializer())?,
+                    vseed.deserialize(serde::de::value::BorrowedStrDeserializer::new(self.file.mime))?,
                 ),
                 FileField::content => (
                     kseed.deserialize("content".into_deserializer())?,
-                    vseed.deserialize(self.file.content.into_deserializer())?,
+                    vseed.deserialize(serde::de::value::BorrowedBytesDeserializer::new(self.file.content))?,
                 ),
                 FileField::__finished => return Ok(None)
             };
@@ -189,9 +190,9 @@ const _: () = {
         fn next_value_seed<V>(&mut self, seed: V) -> Result<V::Value, Self::Error>
         where V: serde::de::DeserializeSeed<'de> {
             let v = match &self.state {
-                FileField::filename => seed.deserialize(self.file.filename.into_deserializer())?,
-                FileField::mime     => seed.deserialize(self.file.mime.into_deserializer())?,
-                FileField::content  => seed.deserialize(self.file.content.into_deserializer())?,
+                FileField::filename => seed.deserialize(serde::de::value::BorrowedStrDeserializer::new(self.file.filename))?,
+                FileField::mime     => seed.deserialize(serde::de::value::BorrowedStrDeserializer::new(self.file.mime))?,
+                FileField::content  => seed.deserialize(serde::de::value::BorrowedBytesDeserializer::new(self.file.content))?,
                 FileField::__finished => unsafe {std::hint::unreachable_unchecked(/* already checked in `next_key_seed` */)}
             };
 

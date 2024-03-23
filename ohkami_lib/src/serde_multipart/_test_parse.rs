@@ -1,4 +1,4 @@
-use super::parse::{Multipart, Part, TextOrFiles};
+use super::parse::{Multipart, Part};
 use super::File;
 
 

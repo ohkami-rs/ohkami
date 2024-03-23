@@ -184,10 +184,14 @@ const _: () = {
         fn deserialize_str<V>(self, visitor: V) -> Result<V::Value, Self::Error>
         where V: serde::de::Visitor<'de> {
             if let TextOrFiles::Text(text) = self.text_ot_files {
-                visitor.visit_str(text)
+                visitor.visit_borrowed_str(text)
             } else {
                 Err((|| Error::ExpectedNonFileField())())
             }
+        }
+        fn deserialize_string<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+        where V: serde::de::Visitor<'de> {
+            self.deserialize_str(visitor)
         }
 
         fn deserialize_struct<V>(
@@ -222,7 +226,7 @@ const _: () = {
 
         serde::forward_to_deserialize_any! {
             i8 i16 i32 i64 u8 u16 u32 u64 f32 f64
-            string char bool
+            char bool
             bytes byte_buf
             enum option identifier
             unit unit_struct tuple tuple_struct
