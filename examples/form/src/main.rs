@@ -17,7 +17,9 @@ async fn get_form() -> FormTemplate {
 
 #[Payload(Multipart/D)]
 struct FormData<'req> {
+    #[serde(rename = "account-name")]
     account_name: &'req str,
+    
     pics:         Vec<File<'req>>,
 }
 

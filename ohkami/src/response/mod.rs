@@ -14,9 +14,7 @@ pub use into_response::IntoResponse;
 #[cfg(test)]
 mod _test;
 
-use std::{
-    borrow::Cow,
-};
+use std::borrow::Cow;
 
 #[cfg(any(feature="rt_tokio", feature="rt_async-std"))]
 use crate::__rt__::AsyncWriter;
@@ -77,6 +75,7 @@ use crate::__rt__::AsyncWriter;
 ///     Ok("Hello, Response!".into())
 /// }
 /// ```
+#[derive(Clone)]
 pub struct Response {
     pub status:         Status,
     /// Headers of this response
@@ -109,34 +108,37 @@ pub struct Response {
     }
 };
 
+impl Response {
+    /// Complete HTTP spec
+    #[inline]
+    fn complete(&mut self) {
+        self.headers.set().Date(::ohkami_lib::imf_fixdate_now());
+
+        if self.content.is_none() && !matches!(self.status, Status::NoContent) {
+            self.headers.set().ContentLength("0");
+        }
+    }
+}
+
 #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
 impl Response {
-    #[inline] pub(crate) fn into_bytes(self) -> Vec<u8> {
-        let Self { status, mut headers, content, .. } = self;
-
-        /*===== for HTTP specification =====*/
-        headers.set().Date(::ohkami_lib::imf_fixdate_now());
-
-        if content.is_none() && !matches!(status, Status::NoContent) {
-            headers.set().ContentLength("0");
-        }
+    #[inline] pub(crate) fn into_bytes(mut self) -> Vec<u8> {
+        self.complete();
 
         /*===== build bytes from self =====*/
         let mut buf = Vec::from("HTTP/1.1 ");
 
-        buf.extend_from_slice(status.as_bytes());
+        buf.extend_from_slice(self.status.as_bytes());
         buf.extend_from_slice(b"\r\n");
         
-        headers.write_to(&mut buf);
-        if let Some(content) = content {
+        self.headers.write_to(&mut buf);
+        if let Some(content) = self.content {
             buf.extend_from_slice(&content);
         }
         
         buf
     }
-}
 
-impl Response {
     #[cfg(any(feature="rt_tokio", feature="rt_async-std"))]
     #[inline(always)] pub(crate) async fn send(self, stream: &mut (impl AsyncWriter + Unpin)) {
         if let Err(e) = stream.write_all(&self.into_bytes()).await {
@@ -222,14 +224,17 @@ impl Response {
 const _: () = {
     impl std::fmt::Debug for Response {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            match &self.content {
+            let mut this = self.clone();
+            this.complete();
+
+            match &this.content {
                 None => f.debug_struct("Response")
-                    .field("status",  &self.status)
-                    .field("headers", &self.headers)
+                    .field("status",  &this.status)
+                    .field("headers", &this.headers)
                     .finish(),
                 Some(cow) => f.debug_struct("Response")
-                    .field("status",  &self.status)
-                    .field("headers", &self.headers)
+                    .field("status",  &this.status)
+                    .field("headers", &this.headers)
                     .field("content", &String::from_utf8_lossy(&*cow))
                     .finish(),
             }
