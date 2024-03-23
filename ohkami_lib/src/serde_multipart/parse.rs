@@ -31,23 +31,18 @@ impl<'de> Multipart<'de> {
                 item: TextOrFiles::Text(text),
             },
             Part::File { name, file } => {
-                let mut files = Vec::with_capacity(1);
-                macro_rules! push {
-                    ($file:ident -> $files:ident) => {
-                        if $file.filename.len() > 0 && $file.content.len() > 0 {
-                            $files.push($file)
-                        }
-                    };
+                if file.filename.is_empty() && file.content.is_empty() {
+                    return Some(Next { name, item: TextOrFiles::Files(Vec::new()) })
                 }
 
-                push!(file -> files);
+                let mut files = vec![file];
                 while self.peek().is_some_and(|part| match part {
                     Part::File { name: next_name, .. } => name == *next_name,
                     Part::Text { .. } => false,
                 }) {
                     let Some(Part::File { file, .. }) = self.0.pop()
                         else {unsafe {std::hint::unreachable_unchecked()}};
-                    push!(file -> files);
+                    files.push(file);
                 }
 
                 Next {
@@ -244,7 +239,7 @@ const _: () = {
                 },
                 TextOrFiles::Text(text) => match text.len() {
                     0 => visitor.visit_none(),
-                    _ => visitor.visit_borrowed_str(text),
+                    _ => visitor.visit_some(serde::de::value::BorrowedStrDeserializer::new(text)),
                 }
             }
         }

@@ -232,6 +232,11 @@ use super::{from_bytes, File};
         \r\n\
         Jacky\r\n\
         --{BOUNDARY}\r\n\
+        content-type: application/octet-stream\r\n\
+        CONTENT-DISPOSITION: form-data; name=\"templates\"; filename=\"\"\r\n\
+        \r\n\
+        \r\n\
+        --{BOUNDARY}\r\n\
         Content-Type: unknown/some-binary\r\n\
         Content-Disposition: form-data; name=\"binary-sample\"; filename=\"x.bin\"\r\n\
         Something-Unknown-Header: unknown-header-value\r\n\
@@ -243,6 +248,50 @@ use super::{from_bytes, File};
         UserFilesForm {
             user_name: Some("Jacky"),
             templates: vec![],
+            binary_sample: Some(File {
+                filename: "x.bin",
+                mimetype: "unknown/some-binary",
+                content:  "\r\u{0}\r\u{0}\n0123xyz\u{11}\r\n\u{10}\rabc".as_bytes(),
+            }),
+        }
+    );
+
+    let case_2 = format!("\
+        --{BOUNDARY}\r\n\
+        Content-Disposition: form-data; name=\"user-name\"\r\n\
+        \r\n\
+        \r\n\
+        --{BOUNDARY}\r\n\
+        content-type: text/html\r\n\
+        CONTENT-DISPOSITION: form-data; name=\"templates\"; filename=\"tiny.html\"\r\n\
+        \r\n\
+        <html>\n\
+        <h1>Tiny Document</h1>\n\
+        <p>Hi, this is composed of one h1 and one p tag!</p>\n\
+        </html>\n\
+        \r\n\
+        --{BOUNDARY}\r\n\
+        Content-Type: unknown/some-binary\r\n\
+        Content-Disposition: form-data; name=\"binary-sample\"; filename=\"x.bin\"\r\n\
+        Something-Unknown-Header: unknown-header-value\r\n\
+        \r\n\
+        \r\u{0}\r\u{0}\n0123xyz\u{11}\r\n\u{10}\rabc\r\n\
+        --{BOUNDARY}--");
+    assert_eq!(
+        from_bytes::<UserFilesForm>(case_2.as_bytes()).unwrap(),
+        UserFilesForm {
+            user_name: None,
+            templates: vec![
+                File {
+                    filename: "tiny.html",
+                    mimetype: "text/html",
+                    content: b"\
+                    <html>\n\
+                    <h1>Tiny Document</h1>\n\
+                    <p>Hi, this is composed of one h1 and one p tag!</p>\n\
+                    </html>\n"
+                }
+            ],
             binary_sample: Some(File {
                 filename: "x.bin",
                 mimetype: "unknown/some-binary",
