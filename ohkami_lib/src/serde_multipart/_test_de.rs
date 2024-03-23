@@ -43,7 +43,7 @@ use super::{from_bytes, File};
         FilesForm {
             files: File {
                 filename: "test.md",
-                mime:     "text/markdown",
+                mimetype: "text/markdown",
                 content:  b"\
                 # Why ohkami\n\
                 \n\
@@ -90,7 +90,7 @@ use super::{from_bytes, File};
             user_name: "Mr. admin\r\n(hmm...)",
             template:  File {
                 filename: "index.html",
-                mime:     "text/html",
+                mimetype: "text/html",
                 content:  "\
                 <!DOCTYPE html>\n\
                 <html lang=\"en-US\">\n\
@@ -117,14 +117,13 @@ use super::{from_bytes, File};
         templates:     Vec<File<'req>>,
 
         #[serde(rename = "binary-sample")]
-        binary_sample: Option<File<'req>>,
+        binary_sample: File<'req>,
     }
     let case = format!("\
         --{BOUNDARY}\r\n\
         Content-Disposition: form-data; name=\"user-name\"\r\n\
         \r\n\
-        Mr. admin\r\n\
-        (hmm...)\r\n\
+        Hi, Mr. admin\r\n\
         --{BOUNDARY}\r\n\
         content-type: text/html\r\n\
         CONTENT-DISPOSITION: form-data; name=\"templates\"; filename=\"index.html\"\r\n\
@@ -164,4 +163,55 @@ use super::{from_bytes, File};
         \r\n\
         \r\u{0}\r\u{0}\n0123xyz\u{11}\r\n\u{10}\rabc\r\n\
         --{BOUNDARY}--");
+    assert_eq!(
+        from_bytes::<UserFilesForm>(case.as_bytes()).unwrap(),
+        UserFilesForm {
+            user_name: "Hi, Mr. admin",
+            templates: vec![
+                File {
+                    filename: "index.html",
+                    mimetype: "text/html",
+                    content:  "\
+                    <!DOCTYPE html>\n\
+                    <html lang=\"en-US\">\n\
+                    <head>\n\
+                    <title>Document</title>\n\
+                    </head>\n\
+                    <body>\n\
+                    <p>Hello, this is a test case！</p>\n\
+                    </body>\n\
+                    </html>".as_bytes()
+                },
+                File {
+                    filename: "home.html",
+                    mimetype: "text/html",
+                    content:  "\
+                    <!DOCTYPE html>\n\
+                    <html lang=\"en-US\">\n\
+                    <head>\n\
+                    <style>\n\
+                    h1 {\n\
+                    color: red;\n\
+                    }\n\
+                    </style>\n\
+                    <title>Home</title>\n\
+                    </head>\n\
+                    <body>\n\
+                    <h1>This is HOME page.</h1>\n\
+                    </body>\n\
+                    </html>\n".as_bytes()
+                },
+            ],
+            binary_sample: File {
+                filename: "x.bin",
+                mimetype: "unknown/some-binary",
+                content:  "\
+                \r\u{0}\r\u{0}\n0123xyz\u{11}\r\n\u{10}\rabc".as_bytes(),
+            },
+        }
+    );
+}
+
+#[test] fn deserialize_optionals() {
+    
 }

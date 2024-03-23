@@ -36,7 +36,7 @@ use super::File;
                 name: "files",
                 file: File {
                     filename: "test.md",
-                    mime:     "text/markdown",
+                    mimetype: "text/markdown",
                     content:  "\
                         # Why ohkami\n\
                         \n\
@@ -74,12 +74,16 @@ use super::File;
         \r\n--{BOUNDARY}--");
     assert_eq!(
         Multipart::parse(case.as_bytes()).unwrap(),
-        Multipart(vec![/* reversed */
+        Multipart(vec![
+            Part::Text {
+                name: "user-name",
+                text: "Mr. admin\r\n(hmm...)",
+            },
             Part::File {
                 name: "template",
                 file: File {
                     filename: "index.html",
-                    mime:     "text/html",
+                    mimetype: "text/html",
                     content:  "\
                     <!DOCTYPE html>\n\
                     <html lang=\"en-US\">\n\
@@ -91,10 +95,6 @@ use super::File;
                     </body>\n\
                     </html>".as_bytes(),
                 },
-            },
-            Part::Text {
-                name: "user-name",
-                text: "Mr. admin\r\n(hmm...)",
             },
         ])
     );
@@ -150,21 +150,34 @@ use super::File;
         --{BOUNDARY}--");
     assert_eq!(
         Multipart::parse(case.as_bytes()).unwrap(),
-        Multipart(vec![/* reversed */
-            Part::File {
-                name: "binary_sample",
-                file: File {
-                    filename: "x.bin",
-                    mime:     "unknown/some-binary",
-                    content:  "\r\u{0}\r\u{0}\n0123xyz\u{11}\r\n\u{10}\rabc".as_bytes(),
-                },
+        Multipart(vec![
+            Part::Text {
+                name: "user-name",
+                text: "Mr. admin\r\n(hmm...)",
             },
 
             Part::File {
                 name: "templates",
                 file: File {
+                    filename: "index.html",
+                    mimetype: "text/html",
+                    content:  "\
+                    <!DOCTYPE html>\n\
+                    <html lang=\"en-US\">\n\
+                    <head>\n\
+                    <title>Document</title>\n\
+                    </head>\n\
+                    <body>\n\
+                    <p>Hello, this is a test case！</p>\n\
+                    </body>\n\
+                    </html>".as_bytes()
+                },
+            },
+            Part::File {
+                name: "templates",
+                file: File {
                     filename: "home.html",
-                    mime:     "text/html",
+                    mimetype: "text/html",
                     content:  "\
                     <!DOCTYPE html>\n\
                     <html lang=\"en-US\">\n\
@@ -182,27 +195,14 @@ use super::File;
                     </html>\n".as_bytes(),
                 },
             },
-            Part::File {
-                name: "templates",
-                file: File {
-                    filename: "index.html",
-                    mime:     "text/html",
-                    content:  "\
-                    <!DOCTYPE html>\n\
-                    <html lang=\"en-US\">\n\
-                    <head>\n\
-                    <title>Document</title>\n\
-                    </head>\n\
-                    <body>\n\
-                    <p>Hello, this is a test case！</p>\n\
-                    </body>\n\
-                    </html>".as_bytes()
-                },
-            },
 
-            Part::Text {
-                name: "user-name",
-                text: "Mr. admin\r\n(hmm...)",
+            Part::File {
+                name: "binary_sample",
+                file: File {
+                    filename: "x.bin",
+                    mimetype: "unknown/some-binary",
+                    content:  "\r\u{0}\r\u{0}\n0123xyz\u{11}\r\n\u{10}\rabc".as_bytes(),
+                },
             },
         ])
     );

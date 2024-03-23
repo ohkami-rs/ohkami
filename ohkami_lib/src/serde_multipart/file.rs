@@ -56,7 +56,7 @@
 #[derive(Debug, PartialEq)]
 pub struct File<'req> {
     pub filename: &'req str,
-    pub mime:     &'req str,
+    pub mimetype: &'req str,
     pub content:  &'req [u8],
 }
 
@@ -86,7 +86,7 @@ const _: () = {
     #[allow(non_camel_case_types)]
     enum FileField {
         filename,
-        mime,
+        mimetype,
         content,
         __finished
     } impl FileField {
@@ -95,8 +95,8 @@ const _: () = {
         }
         fn step(&mut self) {
             match &self {
-                Self::filename => *self = Self::mime,
-                Self::mime     => *self = Self::content,
+                Self::filename => *self = Self::mimetype,
+                Self::mimetype => *self = Self::content,
                 Self::content  => *self = Self::__finished,
                 Self::__finished => ()
             }
@@ -159,9 +159,9 @@ const _: () = {
                     kseed.deserialize("filename".into_deserializer())?,
                     vseed.deserialize(serde::de::value::BorrowedStrDeserializer::new(self.file.filename))?,
                 ),
-                FileField::mime => (
-                    kseed.deserialize("mime".into_deserializer())?,
-                    vseed.deserialize(serde::de::value::BorrowedStrDeserializer::new(self.file.mime))?,
+                FileField::mimetype => (
+                    kseed.deserialize("mimetype".into_deserializer())?,
+                    vseed.deserialize(serde::de::value::BorrowedStrDeserializer::new(self.file.mimetype))?,
                 ),
                 FileField::content => (
                     kseed.deserialize("content".into_deserializer())?,
@@ -179,7 +179,7 @@ const _: () = {
         where K: serde::de::DeserializeSeed<'de> {
             let k = match &self.state {
                 FileField::filename => seed.deserialize("filename".into_deserializer())?,
-                FileField::mime     => seed.deserialize("mime".into_deserializer())?,
+                FileField::mimetype => seed.deserialize("mimetype".into_deserializer())?,
                 FileField::content  => seed.deserialize("content".into_deserializer())?,
                 FileField::__finished => return Ok(None)
             };
@@ -191,7 +191,7 @@ const _: () = {
         where V: serde::de::DeserializeSeed<'de> {
             let v = match &self.state {
                 FileField::filename => seed.deserialize(serde::de::value::BorrowedStrDeserializer::new(self.file.filename))?,
-                FileField::mime     => seed.deserialize(serde::de::value::BorrowedStrDeserializer::new(self.file.mime))?,
+                FileField::mimetype => seed.deserialize(serde::de::value::BorrowedStrDeserializer::new(self.file.mimetype))?,
                 FileField::content  => seed.deserialize(serde::de::value::BorrowedBytesDeserializer::new(self.file.content))?,
                 FileField::__finished => unsafe {std::hint::unreachable_unchecked(/* already checked in `next_key_seed` */)}
             };

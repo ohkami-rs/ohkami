@@ -4,7 +4,7 @@ use super::{File, Error};
 
 #[derive(Debug, PartialEq)]
 pub(super) struct Multipart<'de>(
-    pub(super/* for test */) Vec<Part<'de>>, // vec reversed
+    pub(super/* for test */) Vec<Part<'de>>,
 );
 #[derive(Debug, PartialEq)]
 pub(super) enum Part<'de> {
@@ -81,14 +81,14 @@ impl<'de> Multipart<'de> {
             match i {
                 0 => {
                     let mut name     = "";
-                    let mut mime     = "";
+                    let mut mimetype = "";
                     let mut filename = None;
                     while r.consume("\r\n"/* A newline between headers and content */).is_none() {
                         let header = r.read_kebab().ok_or_else(Error::ExpectedValidHeader)?;
                         if header.eq_ignore_ascii_case("Content-Type") {
                             r.consume(": ").ok_or_else(Error::ExpectedValidHeader)?;
-                            mime = detached_str(r.read_while(UNTIL_CR), Error::InvalidMimeType)?;
-                            (mime != "multipart/mixed").then_some(())
+                            mimetype = detached_str(r.read_while(UNTIL_CR), Error::InvalidMimeType)?;
+                            (mimetype != "multipart/mixed").then_some(())
                                 .ok_or_else(Error::NotSupportedMultipartMixed)?;
 
                         } else if header.eq_ignore_ascii_case("Content-Disposition") {
@@ -135,7 +135,7 @@ impl<'de> Multipart<'de> {
                         },
                         Some(filename) => Part::File {
                             name,
-                            file: File { filename, mime, content }
+                            file: File { filename, mimetype, content }
                         },
                     })
                 }
@@ -144,7 +144,7 @@ impl<'de> Multipart<'de> {
             }
         }
 
-        Ok(Self({parts.reverse(); parts}))
+        Ok(Self(parts))
     }
 }
 
