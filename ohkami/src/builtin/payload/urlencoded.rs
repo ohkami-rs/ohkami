@@ -6,9 +6,7 @@ use crate::typed::PayloadType;
 pub struct URLEncoded;
 
 impl PayloadType for URLEncoded {
-    const CONTENT_TYPE: &'static [&'static str] = &[
-        "application/x-www-form-urlencoded",
-    ];
+    const MIME_TYPE: &'static str = "application/x-www-form-urlencoded";
 
     #[inline]
     fn parse<'req, T: Deserialize<'req>>(bytes: &'req [u8]) -> Result<T, impl crate::serde::de::Error> {

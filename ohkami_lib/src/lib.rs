@@ -15,4 +15,5 @@ mod percent_encoding;
 pub use percent_encoding::{percent_encode, percent_decode, percent_decode_utf8};
 
 pub mod serde_utf8;
+pub mod serde_multipart;
 pub mod serde_urlencoded;

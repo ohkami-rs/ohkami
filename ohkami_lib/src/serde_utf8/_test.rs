@@ -7,7 +7,7 @@ use crate::serde_utf8;
 }
 
 #[test] fn serialize_newtype() {
-    #[derive(serde_derive::Serialize)]
+    #[derive(serde::Serialize)]
     struct MyText(String);
 
     assert_eq!(
@@ -17,7 +17,7 @@ use crate::serde_utf8;
         "Hello, serde!"
     );
     
-    #[derive(serde_derive::Serialize)]
+    #[derive(serde::Serialize)]
     struct MyCowText(std::borrow::Cow<'static, str>);
 
     assert_eq!(
@@ -31,7 +31,7 @@ use crate::serde_utf8;
 #[test] fn serialize_enum() {
     #![allow(dead_code)]
     
-    #[derive(serde_derive::Serialize)]
+    #[derive(serde::Serialize)]
     enum Color { Red, Blue, Green }
 
     assert_eq!(
@@ -39,7 +39,7 @@ use crate::serde_utf8;
         "Blue"
     );
 
-    #[derive(serde_derive::Serialize)]
+    #[derive(serde::Serialize)]
     enum Color2 {
         #[serde(rename = "red")]
         Red,
@@ -56,7 +56,7 @@ use crate::serde_utf8;
 }
 
 #[test] fn serialize_non_newtype_struct_makes_err() {
-    #[derive(serde_derive::Serialize)]
+    #[derive(serde::Serialize)]
     struct User {
         id:   usize,
         name: String,
@@ -83,7 +83,7 @@ use crate::serde_utf8;
 }
 
 #[test] fn deserialize_newtype() {
-    #[derive(serde_derive::Deserialize, Debug, PartialEq)]
+    #[derive(serde::Deserialize, Debug, PartialEq)]
     struct MyText(String);
 
     assert_eq!(
@@ -91,7 +91,7 @@ use crate::serde_utf8;
         MyText(String::from("Hello, serde!"))
     );
     
-    #[derive(serde_derive::Deserialize, Debug, PartialEq)]
+    #[derive(serde::Deserialize, Debug, PartialEq)]
     struct MyCowText(std::borrow::Cow<'static, str>);
 
     assert_eq!(
@@ -101,7 +101,7 @@ use crate::serde_utf8;
 }
 
 #[test] fn deserialize_non_newtype_struct_makes_err() {
-    #[derive(serde_derive::Deserialize)]
+    #[derive(serde::Deserialize)]
     struct User {
         _id:   usize,
         _name: String,

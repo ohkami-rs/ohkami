@@ -13,8 +13,7 @@ categories       = ["asynchronous", "web-programming::http-server"]
 license          = "MIT"
 
 [dependencies]
-serde            = { version = "1.0" }
-percent-encoding = { version = "2.3" }
+serde            = { workspace = true }
+byte_reader      = { workspace = true }
 
-[dev-dependencies]
-serde_derive     = { version = "1.0" }
+percent-encoding = { version = "2.3" }

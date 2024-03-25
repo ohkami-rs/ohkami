@@ -4,7 +4,7 @@ use crate::typed::{Payload, PayloadType};
 
 pub struct JSON;
 impl PayloadType for JSON {
-    const CONTENT_TYPE: &'static [&'static str] = &["application/json"];
+    const MIME_TYPE: &'static str = "application/json";
     
     #[inline(always)]
     fn parse<'req, T: Deserialize<'req>>(bytes: &'req [u8]) -> Result<T, impl crate::serde::de::Error> {

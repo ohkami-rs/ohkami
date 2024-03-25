@@ -489,6 +489,17 @@ const _: () = {
         }
     }
 
+    impl Clone for Headers {
+        fn clone(&self) -> Self {
+            Self::from_iter(
+                self.iter()
+                    .map(|(k, v)| (
+                        unsafe {Header::from_bytes(k.as_bytes()).unwrap_unchecked()},
+                        String::from(v)
+                    )))
+        }
+    }
+
     impl Headers {
         pub fn from_iter(iter: impl IntoIterator<Item = (Header, impl Into<Cow<'static, str>>)>) -> Self {
             let mut this = Headers::new();

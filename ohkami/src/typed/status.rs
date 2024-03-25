@@ -20,14 +20,7 @@ const _: () = {
         fn into_response_with(self, status: Status) -> Response {
             let mut res = Response::with(status);
             {
-                #[cfg(debug_assertions)] {
-                    assert!(
-                        ! <<Self as Payload>::Type as PayloadType>::CONTENT_TYPE.is_empty(),
-                        "`PayloadType::CONTENT_TYPE` must not be empty"
-                    );
-                }
-
-                let content_type = *unsafe {<<Self as Payload>::Type as PayloadType>::CONTENT_TYPE.get_unchecked(0)};
+                let content_type = <<Self as Payload>::Type as PayloadType>::CONTENT_TYPE;
 
                 let bytes = match <<Self as Payload>::Type as PayloadType>::bytes(&self) {
                     Ok(bytes) => bytes,

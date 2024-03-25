@@ -101,12 +101,13 @@ pub fn Query(_: proc_macro::TokenStream, data: proc_macro::TokenStream) -> proc_
 /// 
 /// <br>
 /// 
-/// In current version, ohkami provides following 4 builtin `PayloadType`s :
+/// In current version, ohkami provides following 5 builtin `PayloadType`s :
 /// 
 /// - `JSON` (for `application/json`)
 /// - `URLEncoded` (for `application/www-x-urlencoded`)
 /// - `Text` (for `text/plain`)
 /// - `HTML` (for `text/html`)
+/// - `Multipart` (for `multipart/form-data`)
 /// 
 /// Of course, other `PayloadType`s can be implemented by you or anyone else !
 /// 

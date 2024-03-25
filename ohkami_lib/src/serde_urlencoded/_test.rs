@@ -1,6 +1,6 @@
 use crate::serde_urlencoded;
 use std::borrow::Cow;
-use ::serde_derive::{Serialize, Deserialize};
+use ::serde::{Serialize, Deserialize};
 
 
 #[derive(Serialize, Deserialize, PartialEq, Debug)]

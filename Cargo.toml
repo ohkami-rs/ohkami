@@ -8,3 +8,7 @@ members  = [
 exclude  = [
     "benches",
 ]
+
+[workspace.dependencies]
+byte_reader   = { version = "3.0", features = ["text"] }
+serde         = { version = "1.0", features = ["derive"] }
