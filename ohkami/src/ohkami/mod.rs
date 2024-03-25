@@ -129,8 +129,10 @@ pub struct Ohkami {
     pub(crate) routes: TrieRouter,
 
     /// apply just before merged to another or called `howl`
-    pub(crate) fangs:  Vec<(&'static [Method], crate::fang::Fang)>,
+    pub(crate) fangs:  ,
 }
+
+pub(crate) struct FangsObject 
 
 impl Ohkami {
     /// Create new `Ohkami` on the routing.
