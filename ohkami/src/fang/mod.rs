@@ -56,14 +56,49 @@ const _: () = {
     }
 };
 
-#[cfg(test)]
-fn __merge<
-    A: Fangs<B::Proc>,
-    B: Fangs<Inner>,
-    Inner: FangProc,
->(a: A, b: B, inner: Inner) -> impl FangProc {
-    a.build(b.build(inner))
-}
+#[cfg(test)] const _: () = {
+    trait SetOfFangs<SetOfProcs> {
+        fn collect(self, handler: Handler) -> impl FangProc;
+    }
+
+    fn __merge<
+        A: Fangs<B::Proc>,
+        B: Fangs<Inner>,
+        Inner: FangProc,
+    >(a: A, b: B, inner: Inner) -> impl FangProc {
+        a.build(b.build(inner))
+    }
+
+    struct Fangs2<
+        A: Fangs<B::Proc>,
+        B: Fangs<Handler>,
+    >(A, B);
+    impl<
+        A: Fangs<B::Proc>,
+        B: Fangs<Handler>,
+    > SetOfFangs<(A::Proc, B::Proc)> for Fangs2<A, B> {
+        fn collect(self, handler: Handler) -> impl FangProc {
+            let Self(a, b) = self;
+            a.build(b.build(handler))
+        }
+    }
+
+    struct Fangs3<
+        A: Fangs<B::Proc>,
+        B: Fangs<C::Proc>,
+        C: Fangs<Handler>,
+    >(A, B, C);
+    impl<
+        A: Fangs<B::Proc>,
+        B: Fangs<C::Proc>,
+        C: Fangs<Handler>,
+    > SetOfFangs<(A::Proc, B::Proc, C::Proc)> for Fangs3<A, B, C> {
+        fn collect(self, handler: Handler) -> impl FangProc {
+            let Self(a, b, c) = self;
+            a.build(b.build(c.build(handler)))
+        }
+    }
+};
 
 // pub trait Fangs {
 //     fn build(self) -> impl Iterator<Item = Arc<dyn >>;
