@@ -82,6 +82,15 @@ const _: () = {
             a.build(b.build(handler))
         }
     }
+    impl<
+        A: Fangs<B::Proc>,
+        B: Fangs<Handler>,
+    > Fangs2<A, B> {
+        fn promote<X: Fangs<A::Proc>>(self, x: X) -> Fangs3<X, A, B> {
+            let Self(a, b) = self;
+            Fangs3(x, a, b)
+        }
+    }
 
     struct Fangs3<
         A: Fangs<B::Proc>,
