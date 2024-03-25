@@ -39,9 +39,6 @@ const _: () = {
 };
 #[allow(non_snake_case)]
 impl Error {
-    const fn UnexpectedEndOfInput() -> Self {
-        Self(Cow::Borrowed("Unexpected end of input"))
-    }
     const fn NotSupportedMultipartMixed() -> Self {
         Self(Cow::Borrowed("Ohkami doesn't support `multipart/mixed` nested in `multipart/form-data`, this is DEPRECATED!"))
     }
