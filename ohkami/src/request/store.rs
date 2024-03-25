@@ -86,6 +86,32 @@ impl<'req, Value: Send + Sync + 'static> std::ops::Deref for Memory<'req, Value>
     }
 }
 
+const _: () = {
+    use crate::fang::{Fang, FangProc};
+
+    pub struct UseMemory<'req, Data: Clone + Send + Sync + 'static>(
+        &'req Data
+    );
+    impl<'req, Data: Clone + Send + Sync + 'static, Inner: FangProc>
+    Fang<Inner> for UseMemory<'req, Data> {
+        type Proc = UseMemoryProc<'req, Data, Inner>;
+        fn chain(self, inner: Inner) -> Self::Proc {
+            UseMemoryProc { data: &self.0, inner }
+        }
+    }
+
+    pub struct UseMemoryProc<'req, Data: Clone + Send + Sync + 'static, Inner: FangProc> {
+        data:  &'req Data,
+        inner: Inner,
+    }
+    impl<'req, Data: Clone + Send + Sync + 'static, Inner: FangProc>
+    FangProc for UseMemoryProc<'req, Data, Inner> {
+        fn bite<'b>(&'b self, req: &'b mut crate::Request) -> impl std::future::Future<Output = crate::Response> + Send + 'b {
+            req.memorize(self.data.clone());
+            self.inner.bite(req)
+        }
+    }
+};
 impl<Data: Clone + Send + Sync + 'static> Memory<'_, Data> {
     pub fn new(data: Data) -> impl crate::FrontFang {
         struct Use<Data: Clone + Send + Sync + 'static>(Data);

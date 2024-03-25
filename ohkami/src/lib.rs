@@ -74,7 +74,7 @@ mod handler;
 pub use handler::Route;
 
 mod fang;
-pub use fang::{FrontFang, BackFang};
+pub use fang::{Fang, FangProc};
 
 mod session;
 #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
@@ -124,7 +124,7 @@ pub fn append(value: impl Into<std::borrow::Cow<'static, str>>) -> __internal__:
 }
 
 pub mod prelude {
-    pub use crate::{Request, FrontFang, BackFang, Response, IntoResponse, Method, Status};
+    pub use crate::{Request, Fang, FangProc, Response, IntoResponse, Method, Status};
 
     #[cfg(any(feature="rt_tokio", feature="rt_async-std"))]
     pub use crate::{Route, Ohkami};
