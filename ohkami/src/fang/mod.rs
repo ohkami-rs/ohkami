@@ -17,49 +17,101 @@ const _: () = {
     }
 };
 
-pub trait Fangs {
-    fn build(self, handler: Handler) -> impl FangProc;
+pub trait Fangs<Inner: FangProc> {
+    type Proc: FangProc;
+    fn build(self, inner: Inner) -> Self::Proc;
 }
 const _: () = {
-    impl<
-        F1: Fang<Handler>,
-    > Fangs for (F1,) {
-        fn build(self, handler: Handler) -> impl FangProc {
+    impl<Inner: FangProc,
+        F1: Fang<Inner>,
+    > Fangs<Inner> for (F1,) {
+        type Proc = F1::Proc;
+        fn build(self, inner: Inner) -> Self::Proc {
             let (f1,) = self;
-            f1.chain(handler)
+            f1.chain(inner)
         }
     }
 
-    impl<
+    impl<Inner: FangProc,
         F1: Fang<F2::Proc>,
-        F2: Fang<Handler>,
-    > Fangs for (F1, F2) {
-        fn build(self, handler: Handler) -> impl FangProc {
+        F2: Fang<Inner>,
+    > Fangs<Inner> for (F1, F2) {
+        type Proc = F1::Proc;
+        fn build(self, inner: Inner) -> Self::Proc {
             let (f1, f2) = self;
-            f1.chain(f2.chain(handler))
+            f1.chain(f2.chain(inner))
         }
     }
 
-    impl<
+    impl<Inner: FangProc,
         F1: Fang<F2::Proc>,
         F2: Fang<F3::Proc>,
-        F3: Fang<Handler>,
-    > Fangs for (F1, F2, F3) {
-        fn build(self, handler: Handler) -> impl FangProc {
+        F3: Fang<Inner>,
+    > Fangs<Inner> for (F1, F2, F3) {
+        type Proc = F1::Proc;
+        fn build(self, inner: Inner) -> Self::Proc {
             let (f1, f2, f3) = self;
-            f1.chain(f2.chain(f3.chain(handler)))
-        }
-    }
-
-    impl<
-        F1: Fang<F2::Proc>,
-        F2: Fang<F3::Proc>,
-        F3: Fang<F4::Proc>,
-        F4: Fang<Handler>,
-    > Fangs for (F1, F2, F3, F4) {
-        fn build(self, handler: Handler) -> impl FangProc {
-            let (f1, f2, f3, f4) = self;
-            f1.chain(f2.chain(f3.chain(f4.chain(handler))))
+            f1.chain(f2.chain(f3.chain(inner)))
         }
     }
 };
+
+#[cfg(test)]
+fn __merge<
+    A: Fangs<B::Proc>,
+    B: Fangs<Inner>,
+    Inner: FangProc,
+>(a: A, b: B, inner: Inner) -> impl FangProc {
+    a.build(b.build(inner))
+}
+
+// pub trait Fangs {
+//     fn build(self) -> impl Iterator<Item = Arc<dyn >>;
+// }
+
+// pub trait Fangs {
+//     fn build(self, handler: Handler) -> impl FangProc;
+// }
+// const _: () = {
+//     impl<
+//         F1: Fang<Handler>,
+//     > Fangs for (F1,) {
+//         fn build(self, handler: Handler) -> impl FangProc {
+//             let (f1,) = self;
+//             f1.chain(handler)
+//         }
+//     }
+// 
+//     impl<
+//         F1: Fang<F2::Proc>,
+//         F2: Fang<Handler>,
+//     > Fangs for (F1, F2) {
+//         fn build(self, handler: Handler) -> impl FangProc {
+//             let (f1, f2) = self;
+//             f1.chain(f2.chain(handler))
+//         }
+//     }
+// 
+//     impl<
+//         F1: Fang<F2::Proc>,
+//         F2: Fang<F3::Proc>,
+//         F3: Fang<Handler>,
+//     > Fangs for (F1, F2, F3) {
+//         fn build(self, handler: Handler) -> impl FangProc {
+//             let (f1, f2, f3) = self;
+//             f1.chain(f2.chain(f3.chain(handler)))
+//         }
+//     }
+// 
+//     impl<
+//         F1: Fang<F2::Proc>,
+//         F2: Fang<F3::Proc>,
+//         F3: Fang<F4::Proc>,
+//         F4: Fang<Handler>,
+//     > Fangs for (F1, F2, F3, F4) {
+//         fn build(self, handler: Handler) -> impl FangProc {
+//             let (f1, f2, f3, f4) = self;
+//             f1.chain(f2.chain(f3.chain(f4.chain(handler))))
+//         }
+//     }
+// };
