@@ -115,11 +115,10 @@ mod experiment {
 
     /*
     
-        (L1, L2, L3)
+        (L1, L2, L3): Layers: fn(self, handler) -> impl Fang;
 
-        ↓
-
-        (L1, L2, L3)(H)
+        
+        (L1, L2, L3) <- H
 
         ↓
 
