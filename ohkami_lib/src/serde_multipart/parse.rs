@@ -100,24 +100,21 @@ impl<'de> Multipart<'de> {
                         r.consume("\r\n").ok_or_else(Error::MissingCRLF)?;
                     }
 
-                    let content = 'content: {
-                        let content_start = r.index;
-                        while r.peek().is_some() {
-                            if r.consume(boundary).is_some() {
-                                #[cfg(debug_assertions)] {
-                                    if r.index - 2/* \r\n */ - boundary.len() < content_start {
-                                        return Err(Error::MissingCRLF())
-                                    }
-                                }
-                                break 'content Some(unsafe {input.get_unchecked(
-                                    content_start..(r.index - 2/* \r\n */ - boundary.len())
-                                )})
-                            } else {
-                                let _ = r.read_until(CRLF);
-                                r.consume(CRLF).ok_or_else(Error::UnexpectedEndOfInput)?;
-                            }
-                        }; None
-                    }.ok_or_else(Error::ExpectedBoundary)?;
+                    let content = {
+                        let before_boundary = r.read_until(boundary);
+                        let before_boundary_len = before_boundary.len();
+                        let Some((content, CRLF)) = (before_boundary_len >= CRLF.len()).then_some(unsafe {
+                            use std::slice::from_raw_parts;
+
+                            let ptr = before_boundary.as_ptr();
+                            let mid = before_boundary_len - CRLF.len();
+                            (from_raw_parts(ptr, mid), from_raw_parts(ptr.add(mid), CRLF.len()))
+                        }) else {return Err((|| Error::MissingCRLF())())};
+
+                        r.consume(boundary).ok_or_else(Error::ExpectedBoundary)?;
+
+                        content
+                    };
 
                     parts.push(match filename {
                         None => Part::Text {
