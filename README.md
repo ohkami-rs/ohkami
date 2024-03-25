@@ -137,9 +137,6 @@ async fn search(condition: SearchQuery<'_>) -> Vec<SearchResult> {
     ]
 }
 ```
-`#[Query]`, `#[Payload( 〜 )]` derives `FromRequest` trait impl for the struct.
-
-( with path params : `({path params}, {FromRequest value}s...)` )
 
 <br>
 

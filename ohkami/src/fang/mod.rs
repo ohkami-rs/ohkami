@@ -107,3 +107,92 @@ pub(crate) mod proc {
         }
     }
 }
+
+
+mod experiment {
+    use std::future::Future;
+    use crate::{Request, Response, handler::Handler};
+
+    /*
+    
+        (L1, L2, L3)
+
+        ↓
+
+        (L1, L2, L3)(H)
+
+        ↓
+
+        (L1, L2) (L3 chain H)
+                 ------------
+                      L3'
+
+        ↓
+
+        (L1) (L2 chain L3')
+             --------------
+                   L2'
+
+        ↓
+
+        (L1 chain L2')
+        --------------
+             L1'
+
+        ↓
+
+        L1' :: -> Pin<Box<Future>>
+    
+    */
+
+    pub trait Layer<F: Fang> {
+        type Fang: Fang;
+        fn chain(&self, fang: F) -> Self::Fang;
+    }
+    pub trait Fang: Sized + Send + Sync {
+        fn bite<'f>(&'f self, req: &'f mut Request) -> impl Future<Output = Response> + Send + 'f;
+    }
+
+    pub struct Logger;
+    impl<F: Fang> Layer<F> for Logger {
+        type Fang = LoggerFang<F>;
+        fn chain(&self, fang: F) -> Self::Fang {
+            LoggerFang(fang)
+        }
+    }
+    pub struct LoggerFang<F: Fang>(F);
+    impl<F: Fang> Fang for LoggerFang<F> {
+        async fn bite<'f>(&'f self, req: &'f mut Request) -> Response {
+            println!("request: {req:?}");
+
+            let res = self.0.bite(req).await;
+
+            println!("response: {res:?}");
+
+            res
+        }
+    }
+
+    pub struct SetData;
+    impl<F: Fang> Layer<F> for SetData {
+        type Fang = SetDateFang<F>;
+        fn chain(&self, fang: F) -> Self::Fang {
+            SetDateFang(fang)
+        }
+    }
+    pub struct SetDateFang<F: Fang>(F);
+    impl<F: Fang> Fang for SetDateFang<F> {
+        async fn bite<'f>(&'f self, req: &'f mut Request) -> Response {
+            let mut res = self.0.bite(req).await;
+            res.headers.set()
+                .Date(::ohkami_lib::imf_fixdate_now());
+            res
+        }
+    }
+
+    impl Fang for Handler {
+        fn bite<'f>(&'f self, req: &'f mut Request) -> impl Future<Output = Response> + Send + 'f {
+            self.handle(req)
+        }
+    }
+}
