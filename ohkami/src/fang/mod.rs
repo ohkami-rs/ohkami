@@ -22,6 +22,11 @@ pub trait FangProc {
     fn bite<'b>(&'b self, req: &'b mut Request) -> impl std::future::Future<Output = Response> + Send + 'b;
 }
 const _: () = {
+    impl FangProc for std::convert::Infallible {
+        fn bite<'b>(&'b self, _: &'b mut Request) -> impl std::future::Future<Output = Response> + Send + 'b {
+            async {unsafe {std::hint::unreachable_unchecked()}}
+        }
+    }
     impl FangProc for Handler {
         fn bite<'b>(&'b self, req: &'b mut Request) -> impl std::future::Future<Output = Response> + Send + 'b {
             self.handle(req)
@@ -34,7 +39,7 @@ impl<Inner: FangProc, SF: SealedFangs<Inner>> Fangs<Inner> for SF {}
 trait SealedFangs<Inner: FangProc> {
     fn build(self, handler: Handler) -> impl FangProc;
 } const _: () = {
-    impl<Inner: FangProc> SealedFangs<Inner> for () {
+    impl SealedFangs<std::convert::Infallible> for () {
         fn build(self, handler: Handler) -> impl FangProc {
             handler
         }
