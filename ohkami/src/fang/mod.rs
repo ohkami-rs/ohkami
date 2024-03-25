@@ -1,117 +1,58 @@
-mod fangs;
+// mod fangs;
+// 
+// pub use fangs::{FrontFang, BackFang};
+// use std::any::TypeId;
+// 
+// #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
+// pub(crate) use fangs::{FrontFangCaller, BackFangCaller};
+// 
+// #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
+// pub use fangs::Fangs;
+// 
 
-pub use fangs::{FrontFang, BackFang};
-use std::any::TypeId;
-
-#[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
-pub(crate) use fangs::{FrontFangCaller, BackFangCaller};
-
-#[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
-pub use fangs::Fangs;
+use crate::{handler::Handler, Request, Response};
 
 
-/// # Fang ー ohkami's middleware system
-/// 
-/// <br>
-/// 
-/// *example.rs*
-/// ```no_run
-/// use ohkami::{Ohkami, Route};
-/// use ohkami::{BackFang, Response, Request};
-/// 
-/// struct SetServer;
-/// impl BackFang for SetServer {
-///     type Error = std::convert::Infallible;
-///     async fn bite(&self, res: &mut Response, _req: &Request) -> Result<(), Self::Error> {
-///         res.headers.set()
-///             .Server("ohkami");
-///         Ok(())
-///     }
-/// }
-/// 
-/// #[tokio::main]
-/// async fn main() {
-///     // Use `with` to give
-///     // fangs for your Ohkami...
-///     Ohkami::with((SetServer,),
-///         "/".GET(|| async {
-///             "Hello!"
-///         })
-///     ).howl("localhost:5000").await
-/// }
-/// ```
-/// 
-/// <br>
-/// 
-/// ---
-/// 
-/// $ cargo run
-/// 
-/// ---
-/// 
-/// $ curl -i http://localhost:5000\
-/// HTTP/1.1 200 OK\
-/// Content-Length: 6\
-/// Content-Type: text/plain; charset=UTF-8\
-/// Server: ohkami\
-/// \
-/// Hello!
-#[derive(Clone)]
-pub struct Fang {
-    pub(crate) id:   TypeId,
-    #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
-    pub(crate) proc: proc::FangProc,
+pub trait Fang<Inner: FangProc> {
+    type Proc: FangProc;
+    fn chain(self, inner: Inner) -> Self::Proc;
+}
+
+pub trait FangProc {
+    fn bite<'b>(&'b self, req: &'b mut Request) -> impl std::future::Future<Output = Response> + Send + 'b;
 }
 const _: () = {
-    impl<'f> PartialEq for &'f Fang {
-        fn eq(&self, other: &Self) -> bool {
-            self.id == other.id
+    impl FangProc for Handler {
+        fn bite<'b>(&'b self, req: &'b mut Request) -> impl std::future::Future<Output = Response> + Send + 'b {
+            self.handle(req)
         }
     }
 };
 
-#[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
-pub(crate) mod proc {
-    use super::{BackFangCaller, FrontFangCaller};
-    use std::{future::Future, pin::Pin, sync::Arc};
-    use crate::{Request, Response};
-
-    
-    #[derive(Clone)]
-    pub enum FangProc {
-        Front(FrontFang),
-        Back (BackFang),
-
-        /* Builtin specials */
-        Timeout(crate::builtin::fang::Timeout),
-    }
-
-    #[derive(Clone)]
-    pub struct FrontFang(
-        pub(super) Arc<dyn FrontFangCaller>
-    );
-    impl FrontFang {
-        #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
-        #[inline(always)] pub fn call<'c>(&'c self, req: &'c mut Request) -> Pin<Box<dyn Future<Output = Result<(), Response>> + Send + 'c>> {
-            self.0.call(req)
+pub trait Fangs<Inner: FangProc>: SealedFangs<Inner> {}
+impl<Inner: FangProc, SF: SealedFangs<Inner>> Fangs<Inner> for SF {}
+trait SealedFangs<Inner: FangProc> {
+    fn build(self, handler: Handler) -> impl FangProc;
+} const _: () = {
+    impl<Inner: FangProc> SealedFangs<Inner> for () {
+        fn build(self, handler: Handler) -> impl FangProc {
+            handler
         }
     }
-
-    #[derive(Clone)]
-    pub struct BackFang(   
-        pub(super) Arc<dyn BackFangCaller>
-    );
-    impl BackFang {
-        #[inline(always)] pub fn call<'c>(&'c self, res: &'c mut Response, req: &'c Request) -> Pin<Box<dyn Future<Output = Result<(), Response>> + Send + 'c>> {
-            self.0.call(res, req)
+    impl<F1:Fang<Handler>> SealedFangs<F1::Proc> for (F1,) {
+        fn build(self, handler: Handler) -> impl FangProc {
+            let (f1,) = self;
+            f1.chain(handler)
         }
     }
-}
+    impl<F1:Fang<Handler>, F2:Fang<F1::Proc>> SealedFangs<F2::Proc> for (F1, F2) {
+        fn build(self, handler: Handler) -> impl FangProc {
+            let (f1, f2) = self;
+            f2.chain(f1.chain(handler))
+        }
+    }
+};
 
-
-mod experiment {
-    use std::future::Future;
-    use crate::{Request, Response, handler::Handler};
 
     /*
     
@@ -143,55 +84,3 @@ mod experiment {
         L1' :: -> Pin<Box<Future>>
     
     */
-
-    pub trait Layer<F: Fang> {
-        type Fang: Fang;
-        fn chain(&self, fang: F) -> Self::Fang;
-    }
-    pub trait Fang: Sized + Send + Sync {
-        fn bite<'f>(&'f self, req: &'f mut Request) -> impl Future<Output = Response> + Send + 'f;
-    }
-
-    pub struct Logger;
-    impl<F: Fang> Layer<F> for Logger {
-        type Fang = LoggerFang<F>;
-        fn chain(&self, fang: F) -> Self::Fang {
-            LoggerFang(fang)
-        }
-    }
-    pub struct LoggerFang<F: Fang>(F);
-    impl<F: Fang> Fang for LoggerFang<F> {
-        async fn bite<'f>(&'f self, req: &'f mut Request) -> Response {
-            println!("request: {req:?}");
-
-            let res = self.0.bite(req).await;
-
-            println!("response: {res:?}");
-
-            res
-        }
-    }
-
-    pub struct SetData;
-    impl<F: Fang> Layer<F> for SetData {
-        type Fang = SetDateFang<F>;
-        fn chain(&self, fang: F) -> Self::Fang {
-            SetDateFang(fang)
-        }
-    }
-    pub struct SetDateFang<F: Fang>(F);
-    impl<F: Fang> Fang for SetDateFang<F> {
-        async fn bite<'f>(&'f self, req: &'f mut Request) -> Response {
-            let mut res = self.0.bite(req).await;
-            res.headers.set()
-                .Date(::ohkami_lib::imf_fixdate_now());
-            res
-        }
-    }
-
-    impl Fang for Handler {
-        fn bite<'f>(&'f self, req: &'f mut Request) -> impl Future<Output = Response> + Send + 'f {
-            self.handle(req)
-        }
-    }
-}
