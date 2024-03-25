@@ -57,29 +57,17 @@ impl<'de> Multipart<'de> {
     }
 
     pub(super) fn parse(input: &'de [u8]) -> Result<Self, Error> {
+        const CRLF: &[u8] = b"\r\n";
+
+        #[inline(always)]
+        fn utf8(bytes: &[u8], if_not_utf8: fn()->Error) -> Result<&str, Error> {
+            std::str::from_utf8(bytes).map_err(|_| if_not_utf8())
+        }
+
         let mut r = ::byte_reader::Reader::new(input);
 
-        #[inline(always)] #[allow(non_snake_case)]
-        const fn UNTIL_CR(b: &u8) -> bool {
-            *b != b'\r'
-        }
-        #[inline(always)]
-        const fn detached<'d>(bytes: &[u8]) -> &'d [u8] {
-            unsafe {std::slice::from_raw_parts(bytes.as_ptr(), bytes.len())}
-        }
-        #[inline(always)]
-        fn detached_str<'d>(bytes: &[u8], if_not_utf8: fn()->Error) -> Result<&'d str, Error> {
-            std::str::from_utf8(detached(bytes)).map_err(|_| if_not_utf8())
-        }
-
-        let boundary = {
-            // let _ = r.consume("--").ok_or_else(Error::ExpectedBoundary)?;
-
-            /* includes leading `--` */
-            let b = r.read_while(|b| b != &b'\r');
-
-            detached(b)
-        };
+        /* including leading `--` */
+        let boundary = r.read_until(CRLF);
 
         let mut parts = Vec::new();
         while let Some(i) = r.consume_oneof(["\r\n", "--"]) {
@@ -92,22 +80,20 @@ impl<'de> Multipart<'de> {
                         let header = r.read_kebab().ok_or_else(Error::ExpectedValidHeader)?;
                         if header.eq_ignore_ascii_case("Content-Type") {
                             r.consume(": ").ok_or_else(Error::ExpectedValidHeader)?;
-                            mimetype = detached_str(r.read_while(UNTIL_CR), Error::InvalidMimeType)?;
+                            mimetype = utf8(r.read_until(CRLF), Error::InvalidMimeType)?;
                             (mimetype != "multipart/mixed").then_some(())
                                 .ok_or_else(Error::NotSupportedMultipartMixed)?;
-
                         } else if header.eq_ignore_ascii_case("Content-Disposition") {
                             r.consume(": form-data; name=").ok_or_else(Error::ExpectedFormdataAndName)?;
-                            name = detached_str(
+                            name = utf8(
                                 r.read_quoted_by(b'"', b'"').ok_or_else(Error::InvalidPartName)?,
                                 Error::InvalidPartName)?;
                             if r.consume("; ").is_some() {
                                 r.consume("filename=").ok_or_else(Error::ExpectedFilename)?;
-                                filename = Some(detached_str(
+                                filename = Some(utf8(
                                     r.read_quoted_by(b'"', b'"').ok_or_else(Error::InvalidFilename)?,
                                     Error::InvalidFilename)?);
                             }
-
                         } else {
                             r.skip_while(|b| b != &b'\r');
                         }
@@ -127,11 +113,8 @@ impl<'de> Multipart<'de> {
                                     content_start..(r.index - 2/* \r\n */ - boundary.len())
                                 )})
                             } else {
-                                loop {
-                                    r.skip_while(UNTIL_CR);
-                                    r.consume("\r").ok_or_else(Error::UnexpectedEndOfInput)?;
-                                    if r.consume("\n").is_some() {break}
-                                }
+                                let _ = r.read_until(CRLF);
+                                r.consume(CRLF).ok_or_else(Error::UnexpectedEndOfInput)?;
                             }
                         }; None
                     }.ok_or_else(Error::ExpectedBoundary)?;
@@ -139,7 +122,7 @@ impl<'de> Multipart<'de> {
                     parts.push(match filename {
                         None => Part::Text {
                             name,
-                            text: detached_str(content, Error::NotUTF8NonFileField)?,
+                            text: utf8(content, Error::NotUTF8NonFileField)?,
                         },
                         Some(filename) => Part::File {
                             name,
