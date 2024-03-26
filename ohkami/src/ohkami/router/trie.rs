@@ -1,7 +1,7 @@
-use std::borrow::Cow;
+use std::{borrow::Cow, sync::Arc};
 use super::{RouteSection, RouteSections};
 use crate::{
-    fang::{Fang, proc::{BackFang, FangProc, FrontFang}},
+    fang::{Fang, FangProc, FangProcCaller, Fangs},
     handler::{ByAnother, Handler, Handlers},
     builtin::fang::Timeout,
     Method,
@@ -22,62 +22,19 @@ const _: () = {
 /*===== defs =====*/
 #[derive(Clone, Debug)]
 pub struct TrieRouter {
-    pub(super) global_fangs: GlobalFangs,
-    pub(super) GET:          Node,
-    pub(super) PUT:          Node,
-    pub(super) POST:         Node,
-    pub(super) PATCH:        Node,
-    pub(super) DELETE:       Node,
+    pub(super) GET:     Node,
+    pub(super) PUT:     Node,
+    pub(super) POST:    Node,
+    pub(super) PATCH:   Node,
+    pub(super) DELETE:  Node,
+    pub(super) OPTIONS: super::OPTIONSProc,
 }
-
-#[derive(Clone)]
-pub(super) struct GlobalFangs {
-    pub(super) GET:     Vec<Fang>,
-    pub(super) PUT:     Vec<Fang>,
-    pub(super) POST:    Vec<Fang>,
-    pub(super) PATCH:   Vec<Fang>,
-    pub(super) DELETE:  Vec<Fang>,
-    pub(super) HEAD:    Vec<Fang>,
-    pub(super) OPTIONS: Vec<Fang>,
-} const _: () = {
-    impl std::fmt::Debug for GlobalFangs {
-        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            let mut d = f.debug_struct("global_fangs");
-            let mut d = &mut d;
-
-            let mut set_once = false;
-            if !self.GET.is_empty() {set_once = true;
-                d = d.field("GET", &self.GET.iter().map(|_| "#").collect::<Vec<_>>());
-            }
-            if !self.PUT.is_empty() {set_once = true;
-                d = d.field("PUT", &self.PUT.iter().map(|_| "#").collect::<Vec<_>>());
-            }
-            if !self.POST.is_empty() {set_once = true;
-                d = d.field("POST", &self.POST.iter().map(|_| "#").collect::<Vec<_>>());
-            }
-            if !self.PATCH.is_empty() {set_once = true;
-                d = d.field("PATCH", &self.PATCH.iter().map(|_| "#").collect::<Vec<_>>());
-            }
-            if !self.DELETE.is_empty() {set_once = true;
-                d = d.field("DELETE", &self.DELETE.iter().map(|_| "#").collect::<Vec<_>>());
-            }
-            if !self.HEAD.is_empty() {set_once = true;
-                d = d.field("HEAD", &self.HEAD.iter().map(|_| "#").collect::<Vec<_>>());
-            }
-            if !self.OPTIONS.is_empty() {set_once = true;
-                d = d.field("OPTIONS", &self.OPTIONS.iter().map(|_| "#").collect::<Vec<_>>());
-            }
-
-            if set_once {d.finish()} else {f.write_str(" {}")}
-        }
-    }
-};
 
 #[derive(Clone/* for testing */)]
 pub(super) struct Node {
     /// Why Option: root node doesn't have pattern
     pub(super) pattern:  Option<Pattern>,
-    pub(super) fangs:    Vec<Fang>,
+    pub(super) fangs:    Arc<dyn Fangs>,
     pub(super) handler:  Option<Handler>,
     pub(super) children: Vec<Node>,
 } const _: () = {
@@ -85,7 +42,7 @@ pub(super) struct Node {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             f.debug_struct("")
                 .field("pattern",  &self.pattern)
-                .field("fangs",    &self.fangs.iter().map(|_| "#").collect::<Vec<_>>())
+                // .field("fangs",    &self.fangs.iter().map(|_| "#").collect::<Vec<_>>())
                 .field("handler",  &self.handler.as_ref().map(|_| "@"))
                 .field("children", &self.children)
                 .finish()
@@ -128,52 +85,15 @@ pub(super) enum Pattern {
 };
 
 
-/*===== impls =====*/
-impl GlobalFangs {
-    fn new() -> Self {
-        Self {
-            GET:     Vec::new(),
-            PUT:     Vec::new(),
-            POST:    Vec::new(),
-            PATCH:   Vec::new(),
-            DELETE:  Vec::new(),
-            HEAD:    Vec::new(),
-            OPTIONS: Vec::new(),
-        }
-    }
-
-    fn merge(&mut self, mut another: Self) {
-        self.GET    .append(&mut another.GET);
-        self.PUT    .append(&mut another.PUT);
-        self.POST   .append(&mut another.POST);
-        self.PATCH  .append(&mut another.PATCH);
-        self.DELETE .append(&mut another.DELETE);
-        self.HEAD   .append(&mut another.HEAD);
-        self.OPTIONS.append(&mut another.OPTIONS);
-    }
-
-    fn into_radix(self) -> super::radix::GlobalFangs {
-        super::radix::GlobalFangs {
-            GET:     split_fangs_without_builtin_specials(self.GET),
-            PUT:     split_fangs_without_builtin_specials(self.PUT),
-            POST:    split_fangs_without_builtin_specials(self.POST),
-            PATCH:   split_fangs_without_builtin_specials(self.PATCH),
-            DELETE:  split_fangs_without_builtin_specials(self.DELETE),
-            HEAD:    split_fangs_without_builtin_specials(self.HEAD),
-            OPTIONS: split_fangs_without_builtin_specials(self.OPTIONS),
-        }
-    }
-}
-
 impl TrieRouter {
     pub(crate) fn new() -> Self {
         Self {
-            GET:          Node::root(),
-            PUT:          Node::root(),
-            POST:         Node::root(),
-            PATCH:        Node::root(),
-            DELETE:       Node::root(),
-            global_fangs: GlobalFangs::new(),
+            GET:     Node::root(),
+            PUT:     Node::root(),
+            POST:    Node::root(),
+            PATCH:   Node::root(),
+            DELETE:  Node::root(),
+            OPTIONS: super::OPTIONSProc::new(),
         }
     }
 
@@ -197,32 +117,13 @@ impl TrieRouter {
         }
     }
 
-    pub(crate) fn register_global_fang(&mut self, methods: &'static [Method], global_fang: Fang) {
-        for method in methods {
-            match method {
-                Method::GET     => self.global_fangs.GET    .push(global_fang.clone()),
-                Method::PUT     => self.global_fangs.PUT    .push(global_fang.clone()),
-                Method::POST    => self.global_fangs.POST   .push(global_fang.clone()),
-                Method::PATCH   => self.global_fangs.PATCH  .push(global_fang.clone()),
-                Method::DELETE  => self.global_fangs.DELETE .push(global_fang.clone()),
-                Method::HEAD    => self.global_fangs.HEAD   .push(global_fang.clone()),
-                Method::OPTIONS => self.global_fangs.OPTIONS.push(global_fang.clone()),
-            }
-        }
-    }
-
-    pub(crate) fn apply_fang(&mut self, methods: &'static [Method], fang: Fang) {
-        for method in methods {
-            match method {
-                Method::GET     => self.GET   .apply_fang(fang.clone()),
-                Method::PUT     => self.PUT   .apply_fang(fang.clone()),
-                Method::POST    => self.POST  .apply_fang(fang.clone()),
-                Method::PATCH   => self.PATCH .apply_fang(fang.clone()),
-                Method::DELETE  => self.DELETE.apply_fang(fang.clone()),
-                Method::HEAD    => self.global_fangs.HEAD   .push(fang.clone()),
-                Method::OPTIONS => self.global_fangs.OPTIONS.push(fang.clone()),
-            }
-        }
+    pub(crate) fn apply_fangs(&mut self, fangs: impl Fangs) {
+        self.GET   .apply_fangs(fang.clone());
+        self.PUT   .apply_fangs(fang.clone());
+        self.POST  .apply_fangs(fang.clone());
+        self.PATCH .apply_fangs(fang.clone());
+        self.DELETE.apply_fangs(fang.clone());
+        self.global_fangs.OPTIONS.push(fang.clone());
     }
 
     pub(crate) fn merge_another(&mut self, another: ByAnother) {
@@ -240,12 +141,12 @@ impl TrieRouter {
 
     pub(crate) fn into_radix(self) -> super::RadixRouter {
         super::RadixRouter {
-            global_fangs: self.global_fangs.into_radix(),
-            GET:          self.GET         .into_radix(),
-            PUT:          self.PUT         .into_radix(),
-            POST:         self.POST        .into_radix(),
-            PATCH:        self.PATCH       .into_radix(),
-            DELETE:       self.DELETE      .into_radix(),
+            GET:     self.GET    .into_radix(),
+            PUT:     self.PUT    .into_radix(),
+            POST:    self.POST   .into_radix(),
+            PATCH:   self.PATCH  .into_radix(),
+            DELETE:  self.DELETE .into_radix(),
+            OPTIONS: self.OPTIONS,
         }
     }
 }

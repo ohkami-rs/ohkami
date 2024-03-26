@@ -372,7 +372,7 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
             type Type = crate::builtin::payload::JSON;
         }
 
-        async fn get_profile(jwt_payload: Memory<MyJWTPayload>) -> Result<OK<Profile>, APIError> {
+        async fn get_profile(jwt_payload: Memory<'_, MyJWTPayload>) -> Result<OK<Profile>, APIError> {
             let r = &mut *repository().await.lock().unwrap();
 
             let user = r.get(&jwt_payload.user_id)

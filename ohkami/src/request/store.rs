@@ -28,6 +28,31 @@ impl Hasher for TypeIDHasger {
         self.0
     }
 }
+impl Store {
+    #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
+    pub(super) const fn new() -> Self {
+        Self(None)
+    }
+
+    #[inline] pub fn insert<Data: Send + Sync + 'static>(&mut self, value: Data) {
+        self.0.get_or_insert_with(|| Box::new(HashMap::default()))
+            .insert(TypeId::of::<Data>(), Box::new(value));
+    }
+
+    #[inline] pub fn get<Data: Send + Sync + 'static>(&self) -> Option<&Data> {
+        self.0.as_ref().and_then(|map| map
+            .get(&TypeId::of::<Data>())
+            .map(|boxed| {
+                let data: &dyn Any = &**boxed;
+                #[cfg(debug_assertions)] {
+                    assert!(data.is::<Data>(), "Request's Memory is poisoned!!!");
+                }
+                unsafe { &*(data as *const dyn Any as *const Data) }
+            })
+        )
+    }
+}
+
 
 /// # Memory of a Request
 /// 
@@ -57,8 +82,8 @@ impl Hasher for TypeIDHasger {
 ///     format!("Hello, {name}!")
 /// }
 /// ```
-pub struct Memory<Data: Send + Sync + 'static>(Data);
-impl<'req, Data: Send + Sync + 'static> super::FromRequest<'req> for Memory<Data> {
+pub struct Memory<'req, Data: Send + Sync + 'static>(&'req Data);
+impl<'req, Data: Clone + Send + Sync + 'static> super::FromRequest<'req> for Memory<'req, Data> {
     type Error = crate::FromRequestError;
 
     #[inline]
@@ -72,46 +97,52 @@ impl<'req, Data: Send + Sync + 'static> super::FromRequest<'req> for Memory<Data
                         std::any::type_name::<Data>(),
                     );
                 }
-
                 crate::FromRequestError::Static("Something went wrong")
             })
     }
 }
-impl<Data: Send + Sync + 'static> std::ops::Deref for Memory<Data> {
+impl<'req, Data: Send + Sync + 'static> std::ops::Deref for Memory<'req, Data> {
     type Target = Data;
 
     #[inline(always)]
     fn deref(&self) -> &Self::Target {
-        &self.0
+        self.0
     }
 }
 
 const _: () = {
     use crate::fang::{Fang, FangProc};
 
-    impl<Data: Clone + Send + Sync + 'static> Memory<Data> {
-        pub fn new(data: Data) -> Self {
-            Self(data)
+    impl<'req, Data: Clone + Send + Sync + 'static> Memory<'req, Data> {
+        pub fn new(data: Data) -> UseMemory<Data> {
+            UseMemory(data)
         }
     }
 
+    struct UseMemory<Data: Clone + Send + Sync + 'static>(
+        Data
+    );
     impl<Data: Clone + Send + Sync + 'static, Inner: FangProc>
-    Fang<Inner> for Memory<Data> {
-        type Proc = UseMemory<Data, Inner>;
+    Fang<Inner> for UseMemory<Data> {
+        type Proc = UseMemoryProc<Data, Inner>;
         fn chain(self, inner: Inner) -> Self::Proc {
-            UseMemory { memory: self, inner_proc: inner }
+            UseMemoryProc { data: self.0, inner }
         }
     }
 
-    pub struct UseMemory<Data: Clone + Send + Sync + 'static, Inner: FangProc> {
-        memory:     Memory<Data>,
-        inner_proc: Inner,
+    pub struct UseMemoryProc<
+        Data: Clone + Send + Sync + 'static,
+        Inner: FangProc,
+    > {
+        data:  Data,
+        inner: Inner,
     }
     impl<Data: Clone + Send + Sync + 'static, Inner: FangProc>
-    FangProc for UseMemory<Data, Inner> {
-        fn bite<'b>(&'b self, req: &'b mut crate::Request) -> impl std::future::Future<Output = crate::Response> + Send + 'b {
-            req.memorize(self.memory.0.clone());
-            self.inner_proc.bite(req)
+    FangProc for UseMemoryProc<Data, Inner> {
+        type Response = Inner::Response;
+        fn bite<'b>(&'b self, req: &'b mut crate::Request) -> impl std::future::Future<Output = Self::Response> + Send + 'b {
+            req.memorize(self.data.clone());
+            self.inner.bite(req)
         }
     }
 };
@@ -128,24 +159,5 @@ const _: () = {
 
     fn _g(m: Memory<Value>) {
         _f(*m)  // <-- easy (just writing `*` before a memory)
-    }
-}
-
-
-impl Store {
-    #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
-    pub(super) const fn new() -> Self {
-        Self(None)
-    }
-
-    #[inline] pub fn insert<Data: Send + Sync + 'static>(&mut self, value: Data) {
-        self.0.get_or_insert_with(|| Box::new(HashMap::default()))
-            .insert(TypeId::of::<Data>(), Box::new(value));
-    }
-
-    #[inline] pub fn get<Data: Send + Sync + 'static>(&self) -> Option<&Data> {
-        self.0.as_ref()
-            .and_then(|map|   map.get(&TypeId::of::<Data>()))
-            .and_then(|boxed| boxed.downcast_ref())
     }
 }

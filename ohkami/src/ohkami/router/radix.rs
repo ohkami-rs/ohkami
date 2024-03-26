@@ -1,140 +1,23 @@
-use crate::{
-    Request,
-    Response,
-    Method,
-    handler::Handler,
-    fang::proc::{FrontFang, BackFang},
-    builtin::fang::Timeout,
-};
-use super::super::timeout::set_timeout;
+use crate::{fang::FangProcCaller, handler::Handler, Method, Request, Response};
 use ohkami_lib::Slice;
 use std::fmt::Write;
 
 
-/*===== defs =====*/
-
 #[derive(Debug)]
 pub(crate) struct RadixRouter {
-    pub(super) global_fangs: GlobalFangs,
-    pub(super) GET:          Node,
-    pub(super) PUT:          Node,
-    pub(super) POST:         Node,
-    pub(super) PATCH:        Node,
-    pub(super) DELETE:       Node,
+    pub(super) GET:     Node,
+    pub(super) PUT:     Node,
+    pub(super) POST:    Node,
+    pub(super) PATCH:   Node,
+    pub(super) DELETE:  Node,
+    pub(super) OPTIONS: super::OPTIONSProc,
 }
 
-pub(super) struct GlobalFangs {
-    pub(super) GET:     (&'static [FrontFang], &'static [BackFang]),
-    pub(super) PUT:     (&'static [FrontFang], &'static [BackFang]),
-    pub(super) POST:    (&'static [FrontFang], &'static [BackFang]),
-    pub(super) PATCH:   (&'static [FrontFang], &'static [BackFang]),
-    pub(super) DELETE:  (&'static [FrontFang], &'static [BackFang]),
-    pub(super) HEAD:    (&'static [FrontFang], &'static [BackFang]),
-    pub(super) OPTIONS: (&'static [FrontFang], &'static [BackFang]),
-} const _: () = {
-    struct C<Item: std::fmt::Debug>(Vec<Item>);
-    impl<Item: std::fmt::Debug> FromIterator<Item> for C<Item> {
-        fn from_iter<T: IntoIterator<Item = Item>>(iter: T) -> Self {
-            Self(iter.into_iter().collect())
-        }
-    }
-    impl<Item: std::fmt::Debug> std::fmt::Debug for C<Item> {
-        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            f.write_char('[')?;
-            {
-                let mut i = 0;
-                loop {
-                    if i == self.0.len() {break}
-
-                    self.0[i].fmt(f)?;
-                    i += 1;
-
-                    if i < self.0.len()-1 {
-                        f.write_char(',')?;
-                        f.write_char(' ')?;
-                    }
-                }
-            }
-            f.write_char(']')?;
-            Ok(())
-        }
-    }
-
-    impl std::fmt::Debug for GlobalFangs {
-        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            let mut d = f.debug_struct("global_fangs");
-            let mut d = &mut d;
-
-            let mut set_once = false;
-            if !(self.GET.0.is_empty() && self.GET.1.is_empty()) {set_once = true;
-                d = d.field("GET",
-                    &Iterator::chain(
-                        self.GET.0.iter().map(|_| 'f'),
-                        self.GET.1.iter().map(|_| 'f')
-                    ).collect::<C<_>>()
-                );
-            }
-            if !(self.PUT.0.is_empty() && self.PUT.1.is_empty()) {set_once = true;
-                d = d.field("PUT",
-                    &Iterator::chain(
-                        self.PUT.0.iter().map(|_| 'f'),
-                        self.PUT.1.iter().map(|_| 'f')
-                    ).collect::<C<_>>()
-                );
-            }
-            if !(self.POST.0.is_empty() && self.POST.1.is_empty()) {set_once = true;
-                d = d.field("POST",
-                    &Iterator::chain(
-                        self.POST.0.iter().map(|_| 'f'),
-                        self.POST.1.iter().map(|_| 'f')
-                    ).collect::<C<_>>()
-                );
-            }
-            if !(self.PATCH.0.is_empty() && self.PATCH.1.is_empty()) {set_once = true;
-                d = d.field("PATCH",
-                    &Iterator::chain(
-                        self.PATCH.0.iter().map(|_| 'f'),
-                        self.PATCH.1.iter().map(|_| 'f')
-                    ).collect::<C<_>>()
-                );
-            }
-            if !(self.DELETE.0.is_empty() && self.DELETE.1.is_empty()) {set_once = true;
-                d = d.field("DELETE",
-                    &Iterator::chain(
-                        self.DELETE.0.iter().map(|_| 'f'),
-                        self.DELETE.1.iter().map(|_| 'f')
-                    ).collect::<C<_>>()
-                );
-            }
-            if !(self.HEAD.0.is_empty() && self.HEAD.1.is_empty()) {set_once = true;
-                d = d.field("HEAD",
-                    &Iterator::chain(
-                        self.HEAD.0.iter().map(|_| 'f'),
-                        self.HEAD.1.iter().map(|_| 'f')
-                    ).collect::<C<_>>()
-                );
-            }
-            if !(self.OPTIONS.0.is_empty() && self.OPTIONS.1.is_empty()) {set_once = true;
-                d = d.field("OPTIONS",
-                    &Iterator::chain(
-                        self.OPTIONS.0.iter().map(|_| 'f'),
-                        self.OPTIONS.1.iter().map(|_| 'f')
-                    ).collect::<C<_>>()
-                );
-            }
-
-            if set_once {d.finish()} else {f.write_str(" {}")}
-        }
-    }
-};
-
 pub(super) struct Node {
-    pub(super) patterns: &'static [Pattern],
-    pub(super) timeout:  Option<Timeout>,
-    pub(super) handler:  Option<Handler>,
-    pub(super) front:    &'static [FrontFang],
-    pub(super) back:     &'static [BackFang],
-    pub(super) children: Vec<Node>,
+    pub(super) patterns:    &'static [Pattern],
+    pub(super) handle_proc: Box<dyn FangProcCaller>,
+    pub(super) catch_proc:  Box<dyn FangProcCaller>,
+    pub(super) children:    Vec<Node>,
 } const _: () = {
     impl std::fmt::Debug for Node {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -169,43 +52,9 @@ pub(super) struct Node {
                 }
             }
 
-            struct FangsMarker(usize);
-            impl From<&[FrontFang]> for FangsMarker {
-                fn from(ff: &[FrontFang]) -> Self {
-                    Self(ff.len())
-                }
-            }
-            impl From<&[BackFang]> for FangsMarker {
-                fn from(bf: &[BackFang]) -> Self {
-                    Self(bf.len())
-                }
-            }
-            impl std::fmt::Debug for FangsMarker {
-                fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                    f.write_char('[')?;
-                    'items: {
-                        let mut n = self.0;
-                        loop {
-                            if n == 0 {break 'items}
-                            f.write_char('#')?;
-                            n -= 1;
-                            if n > 1 {
-                                f.write_char(',')?;
-                                f.write_char(' ')?;
-                            }
-                        }
-                    }
-                    f.write_char(']')?;
-
-                    Ok(())
-                }
-            }
-
             f.debug_struct("")
                 .field("patterns", &PatternsMarker(self.patterns))
-                .field("handler", &HandlerMarker::from(self.handler.as_ref()))
-                .field("front", &FangsMarker::from(self.front))
-                .field("back", &FangsMarker::from(self.back))
+                // .field("proc", &HandlerMarker::from(self.handler.as_ref()))
                 .field("children", &self.children)
                 .finish()
         }
@@ -234,79 +83,21 @@ impl RadixRouter {
         &self,
         req: &mut Request,
     ) -> Response {
-        let method = req.method();
+        match req.method() {
+            Method::GET     => self.GET    .search(req).bite_caller(req).await,
+            Method::PUT     => self.PUT    .search(req).bite_caller(req).await,
+            Method::POST    => self.POST   .search(req).bite_caller(req).await,
+            Method::PATCH   => self.PATCH  .search(req).bite_caller(req).await,
+            Method::DELETE  => self.DELETE .search(req).bite_caller(req).await,
 
-        let (global_front, global_back) = match &method {
-            Method::GET     => self.global_fangs.GET,
-            Method::PUT     => self.global_fangs.PUT,
-            Method::POST    => self.global_fangs.POST,
-            Method::PATCH   => self.global_fangs.PATCH,
-            Method::DELETE  => self.global_fangs.DELETE,
-            Method::HEAD    => self.global_fangs.HEAD,
-            Method::OPTIONS => self.global_fangs.OPTIONS,
-        };
-
-        let mut res = 'handled: {
-            for gf in global_front {
-                if let Err(err_res) = gf.call(req).await {
-                    break 'handled err_res
-                }
-            }
-
-            let search_result = match method {
-                Method::GET     => self.GET   .search(req),
-                Method::PUT     => self.PUT   .search(req),
-                Method::POST    => self.POST  .search(req),
-                Method::PATCH   => self.PATCH .search(req),
-                Method::DELETE  => self.DELETE.search(req),
-                Method::OPTIONS => break 'handled Response::NoContent(),
-                Method::HEAD    => break 'handled match self.GET.search(req) {
-                    Some(n) => n.handle(req).await.without_content(),
-                    None    => Response::NotFound(),
-                },
-            };
-
-            match search_result {
-                Some(n) => n.handle(req).await,
-                None    => Response::NotFound(),
-            }
-        };
-
-        for gb in global_back {
-            if let Err(err_res) = gb.call(&mut res, req).await {
-                return err_res
-            }
+            Method::HEAD    => self.GET    .search(req).bite_caller(req).await.without_content(),
+            Method::OPTIONS => self.OPTIONS.handle(req).await,
         }
-
-        res
     }
 }
 
 impl Node {
-    #[inline] pub(super) async fn handle(&self, req: &mut Request) -> Response {
-        match &self.handler {
-            Some(handler) => set_timeout(self.timeout.unwrap_or_default(), async {
-                for ff in self.front {
-                    if let Err(err_res) = ff.call(req).await {
-                        return err_res;
-                    }
-                }
-
-                let mut res = handler.handle(req).await;  
-
-                for bf in self.back {
-                    if let Err(err_res) = bf.call(&mut res, req).await {
-                        return err_res;
-                    }
-                }
-                res
-            }).await,
-            
-            None => Response::NotFound(),
-        }
-    }
-
-    pub(super/* for test */) fn search(&self, req: &mut Request) -> Option<&Node> {
+    pub(super/* for test */) fn search(&self, req: &mut Request) -> &dyn FangProcCaller {
         let mut target = self;
         
         // SAFETY:
@@ -330,7 +121,7 @@ impl Node {
                 if path.is_empty() || unsafe {path.get_unchecked(0)} != &b'/' {
                     // At least one `pattern` to match is remaining
                     // but remaining `path` doesn't start with '/'
-                    return None
+                    return &*target.catch_proc
                 }
 
                 path = unsafe {path.get_unchecked(1..)};
@@ -341,7 +132,7 @@ impl Node {
                 match pattern {
                     Pattern::Static(s)  => path = match path.strip_prefix(*s) {
                         Some(remaining) => remaining,
-                        None            => return None,
+                        None            => return &*target.catch_proc,
                     },
                     Pattern::Param      => {
                         let (param, remaining) = split_next_section(path);
@@ -355,14 +146,14 @@ impl Node {
                 #[cfg(feature="DEBUG")]
                 println!("Found: {target:?}");
         
-                return Some(target)
+                return &*target.handle_proc
             } else {
                 #[cfg(feature="DEBUG")]
                 println!("not found, searching children: {:#?}", target.children);
         
                 target = match target.matchable_child(path) {
                     Some(child) => child,
-                    None        => return None,
+                    None        => return &*target.catch_proc,
                 }
             }
         }

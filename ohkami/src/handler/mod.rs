@@ -24,24 +24,24 @@ pub struct Handler(Arc<dyn
     + Send + Sync
     + 'static
 >);
-const _: () = {
-    impl Handler {
-        pub(crate) fn new(proc: impl
-            Fn(&Request) -> Pin<Box<dyn
-                Future<Output = Response>
-                + Send + '_
-            >>
-            + Send + Sync
-            + 'static
-        ) -> Self {
-            Self(Arc::new(proc))
-        }
 
-        #[inline(always)] pub(crate) fn handle<'req>(
-            &'req self,
-            req: &'req Request,
-        ) -> Pin<Box<dyn Future<Output = Response> + Send + 'req>> {
-            (self.0)(req)
-        }
+impl Handler {
+    pub(crate) fn new(proc: impl
+        Fn(&Request) -> Pin<Box<dyn
+            Future<Output = Response>
+            + Send + '_
+        >>
+        + Send + Sync
+        + 'static
+    ) -> Self {
+        Self(Arc::new(proc))
     }
-};
+
+    #[inline(always)]
+    pub(crate) fn handle<'req>(
+        &'req self,
+        req: &'req Request,
+    ) -> Pin<Box<dyn Future<Output = Response> + Send + 'req>> {
+        (self.0)(req)
+    }
+}

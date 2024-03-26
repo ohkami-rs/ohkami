@@ -1,18 +1,14 @@
 #![cfg(any(feature="rt_tokio",feature="rt_async-std"))]
 
-pub(crate) mod router;
-use std::future::Future;
-use std::pin::Pin;
-use std::sync::Arc;
-
-use router::TrieRouter;
-
 mod timeout;
 mod build;
 mod howl;
 
-use crate::fang::{FangProc, FangProcCaller, Fangs};
-use crate::{Method, Request, Response};
+pub(crate) mod router;
+
+use crate::fang::Fangs;
+use std::sync::Arc;
+use router::TrieRouter;
 
 
 /// # Ohkami - a robust wolf who serves your web app
@@ -176,7 +172,7 @@ impl Ohkami {
 
         Self {
             routes: router,
-            fangs:  Vec::new(),
+            fangs:  Arc::new(()),
         }
     }
 
@@ -216,24 +212,21 @@ impl Ohkami {
     /// ))
     /// # ;
     /// ```
-    pub fn with(fangs: impl Fangs, routes: impl build::Routes) -> Self {
+    pub fn with(fangs: impl Fangs + 'static, routes: impl build::Routes) -> Self {
         let mut router = TrieRouter::new();
         routes.apply(&mut router);
 
         Self {
             routes: router,
-            fangs:  fangs.collect(),
+            fangs:  Arc::new(fangs),
         }
     }
 }
 
 impl Ohkami {
     pub(crate) fn into_router(self) -> TrieRouter {
-        let mut router = self.routes;
-
-        for (methods, fang) in self.fangs {
-            router.apply_fang(methods, fang);
-        }
+        let Self { routes: mut router, fangs } = self;
+        router.apply_fangs(fangs);
 
         #[cfg(feature="DEBUG")]
         println!("{router:#?}");
