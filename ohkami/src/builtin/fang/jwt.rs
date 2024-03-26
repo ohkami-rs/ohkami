@@ -1,94 +1,16 @@
 #![allow(non_snake_case, non_camel_case_types)]
 
-use std::borrow::Cow;
+use std::{borrow::Cow, marker::PhantomData};
+use serde::{Serialize, Deserialize};
 use ohkami_lib::base64;
-use crate::{Request, Response, Status};
+use crate::{Request, Response, Status, Fang, FangProc};
 
 
-/// # Builtin fang for JWT (JSON Web Token) config
-/// 
-/// <br>
-/// 
-/// *example.rs*
-/// ```no_run
-/// use ohkami::{prelude::*, Memory};
-/// use ohkami::serde::{Serialize, Deserialize};
-/// use ohkami::typed::Payload;
-/// use ohkami::builtin::{fang::JWT, payload::JSON};
-/// 
-/// 
-/// fn my_jwt() -> JWT {
-///     let jwt_secret = std::env::var("JWT_SECRET").unwrap();
-/// 
-///     // `default` uses HMAC-SHA256 as the verifying algorithm
-///     JWT::default(jwt_secret)
-/// }
-/// 
-/// #[derive(Serialize, Deserialize)]
-/// struct JWTPayload {
-///     user_id: i64,
-///     iat:     u64,
-/// }
-/// 
-/// struct MyAuthFang;
-/// impl FrontFang for MyAuthFang {
-///     type Error = Response;
-///     async fn bite(&self, req: &mut Request) -> Result<(), Self::Error> {
-///         let payload = my_jwt()
-///             .verified::<JWTPayload>(req)?;
-///         req.memorize(payload);
-///         Ok(())
-///     }
-/// }
-/// 
-/// fn issue_jwt_for(user_id: i64) -> String {
-///     my_jwt().issue(JWTPayload {
-///         user_id,
-///         iat: ohkami::utils::unix_timestamp(),
-///     })
-/// }
-/// 
-/// 
-/// #[Payload(JSON/S)]
-/// struct SigninResponse {
-///     token: String,
-/// }
-/// 
-/// async fn signin() -> SigninResponse {
-///     SigninResponse {
-///         token: issue_jwt_for(42)
-///     }
-/// }
-/// 
-/// 
-/// #[Payload(JSON/S)]
-/// struct ProfileResponse {
-///     name: String,
-///     bio:  Option<String>,
-/// }
-/// 
-/// async fn get_profile(
-///     auth: Memory<'_, JWTPayload>
-/// ) -> ProfileResponse {
-///     ProfileResponse {
-///         name: String::from("ohkami"),
-///         bio:  Some(String::from("declarative web framework")),
-///     }
-/// }
-/// 
-/// 
-/// #[tokio::main]
-/// async fn main() {
-///     Ohkami::with(MyAuthFang, (
-///         "/signin".POST(signin),
-///         "/api/profile".GET(get_profile),
-///     )).howl("localhost:3000").await
-/// }
-/// ```
 #[derive(Clone)]
-pub struct JWT {
-    secret: Cow<'static, str>,
-    alg:    VerifyingAlgorithm,
+pub struct JWT<Payload> {
+    secret:   Cow<'static, str>,
+    alg:      VerifyingAlgorithm,
+    _payload: PhantomData<Payload>,
 }
 #[derive(Clone)]
 enum VerifyingAlgorithm {
@@ -97,33 +19,66 @@ enum VerifyingAlgorithm {
     HS512,
 }
 
-impl JWT {
+const _: () = {
+    impl<
+        Inner: FangProc,
+        Payload: Serialize + for<'de> Deserialize<'de>,
+    > Fang<Inner> for JWT<Payload> {
+        type Proc = JWTProc<Inner, Payload>;
+        fn chain(self, inner: Inner) -> Self::Proc {
+            JWTProc { inner, jwt: self }
+        }
+    }
+
+    struct JWTProc<
+        Inner: FangProc,
+        Payload: Serialize + for<'de> Deserialize<'de>,
+    > {
+        inner: Inner,
+        jwt:   JWT<Payload>,
+    }
+    impl<
+        Inner: FangProc,
+        Payload: Serialize + for<'de> Deserialize<'de>,
+    > FangProc for JWTProc<Inner, Payload> {
+        type Response = Response;
+        fn bite<'b>(&'b self, req: &'b mut Request) -> impl std::future::Future<Output = Self::Response> + Send + 'b {
+            
+        }
+    }
+};
+
+impl<Payload> JWT<Payload> {
     /// Just `new_256`; use HMAC-SHA256 as verifying algorithm
     #[inline] pub fn default(secret: impl Into<Cow<'static, str>>) -> Self {
         Self {
-            secret: secret.into(),
-            alg:    VerifyingAlgorithm::HS256,
+            secret:   secret.into(),
+            alg:      VerifyingAlgorithm::HS256,
+            _payload: PhantomData
         }
     }
     /// Use HMAC-SHA256 as verifying algorithm
     pub fn new_256(secret: impl Into<Cow<'static, str>>) -> Self {
         Self {
-            secret: secret.into(),
-            alg:    VerifyingAlgorithm::HS256,
+            secret:   secret.into(),
+            alg:      VerifyingAlgorithm::HS256,
+            _payload: PhantomData
         }
     }
     /// Use HMAC-SHA384 as verifying algorithm
     pub fn new_384(secret: impl Into<Cow<'static, str>>) -> Self {
         Self {
-            secret: secret.into(),
-            alg:    VerifyingAlgorithm::HS384,
+            secret:   secret.into(),
+            alg:      VerifyingAlgorithm::HS384,
+            _payload: PhantomData
         }
     }
     /// Use HMAC-SHA512 as verifying algorithm
     pub fn new_512(secret: impl Into<Cow<'static, str>>) -> Self {
         Self {
-            secret: secret.into(),
-            alg:    VerifyingAlgorithm::HS512,
+            secret:   secret.into(),
+            alg:      VerifyingAlgorithm::HS512,
+            _payload: PhantomData
         }
     }
 
@@ -144,9 +99,9 @@ impl JWT {
     }
 }
 
-impl JWT {
+impl<Payload: Serialize> JWT<Payload> {
     /// Build JWT token with the payload.
-    #[inline] pub fn issue(self, payload: impl ::serde::Serialize) -> String {
+    #[inline] pub fn issue(self, payload: Payload) -> String {
         let unsigned_token = {
             let mut ut = base64::encode_url(self.header_str());
             ut.push('.');
@@ -184,18 +139,19 @@ impl JWT {
     }
 }
 
-impl JWT {
+impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
     /// Verify JWT in requests' `Authorization` header and early return error response if
     /// it's missing or malformed.
     pub fn verify(&self, req: &Request) -> Result<(), Response> {
-        self.verified::<()>(req)
+        self.verified(req)?;
+        Ok(())
     }
 
     /// Verify JWT in requests' `Authorization` header and early return error response if
     /// it's missing or malformed.
     /// 
     /// Then it's valid, this returns decoded paylaod of the JWT as `Payload`.
-    pub fn verified<Payload: for<'d> serde::Deserialize<'d>>(&self, req: &Request) -> Result<Payload, Response> {
+    pub fn verified(&self, req: &Request) -> Result<Payload, Response> {
         const UNAUTHORIZED_MESSAGE: &str = "missing or malformed jwt";
 
         type Header  = ::serde_json::Value;
@@ -345,7 +301,7 @@ impl JWT {
         use std::{sync::OnceLock, sync::Mutex, collections::HashMap, borrow::Cow};
 
 
-        fn my_jwt() -> JWT {
+        fn my_jwt() -> JWT<MyJWTPayload> {
             JWT::default("myverysecretjwtsecretkey")
         }
 
@@ -410,7 +366,7 @@ impl JWT {
             type Type = crate::builtin::payload::JSON;
         }
 
-        async fn get_profile(jwt_payload: Memory<'_, MyJWTPayload>) -> Result<OK<Profile>, APIError> {
+        async fn get_profile(jwt_payload: Memory<MyJWTPayload>) -> Result<OK<Profile>, APIError> {
             let r = &mut *repository().await.lock().unwrap();
 
             let user = r.get(&jwt_payload.user_id)
@@ -459,9 +415,9 @@ impl JWT {
 
 
         struct MyJWTFang(JWT);
-        impl FrontFang for MyJWTFang {
-            type Error = Response;
-            async fn bite(&self, req: &mut Request) -> Result<(), Response> {
+        impl Fang for MyJWTFang {
+            type Response = Response;
+            async fn bite(&self, req: &mut Request) -> Self::Response {
                 let jwt_payload = self.0.verified::<MyJWTPayload>(req)?;
                 req.memorize(jwt_payload);
                 Ok(())

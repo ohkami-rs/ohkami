@@ -1,6 +1,6 @@
 #![allow(non_snake_case)]
 
-use crate::{Response, Request, append, Status, Method, BackFang};
+use crate::{append, Fang, FangProc, IntoResponse, Method, Request, Response, Status};
 
 
 /// # Builtin fang for CORS config
@@ -113,35 +113,47 @@ impl CORS {
     }
 }
 
-/* Based on https://github.com/honojs/hono/blob/main/src/middleware/cors/index.ts; MIT */
-impl BackFang for CORS {
-    type Error = Response;
+impl<Inner: FangProc> Fang<Inner> for CORS {
+    type Proc = CORSProc<Inner>;
+    fn chain(self, inner: Inner) -> Self::Proc {
+        CORSProc { inner, cors: self }
+    }
+}
 
-    async fn bite(&self, res: &mut Response, req: &Request) -> Result<(), Response> {
+struct CORSProc<Inner: FangProc> {
+    cors:  CORS,
+    inner: Inner,
+}
+/* Based on https://github.com/honojs/hono/blob/main/src/middleware/cors/index.ts; MIT */
+impl<Inner: FangProc> FangProc for CORSProc<Inner> {
+    type Response = Response;
+    async fn bite<'b>(&'b self, req: &'b mut Request) -> Self::Response {
+        let mut res = self.inner.bite(req).await.into_response();
+
         let mut h = res.headers.set();
 
-        h = h.AccessControlAllowOrigin(self.AllowOrigin.as_str());
-        if self.AllowOrigin.is_any() {
+        h = h.AccessControlAllowOrigin(self.cors.AllowOrigin.as_str());
+        if self.cors.AllowOrigin.is_any() {
             h = h.Vary("Origin");
         }
-        if self.AllowCredentials {
+        if self.cors.AllowCredentials {
             h = h.AccessControlAllowCredentials("true");
         }
-        if let Some(expose_headers) = &self.ExposeHeaders {
+        if let Some(expose_headers) = &self.cors.ExposeHeaders {
             h = h.AccessControlExposeHeaders(expose_headers.join(","));
         }
 
         if req.method().isOPTIONS() {
-            if let Some(max_age) = self.MaxAge {
+            if let Some(max_age) = self.cors.MaxAge {
                 h = h.AccessControlMaxAge(max_age.to_string());
             }
-            if let Some(allow_methods) = self.AllowMethods {
+            if let Some(allow_methods) = self.cors.AllowMethods {
                 let methods_string = allow_methods.iter()
                     .map(Method::as_str)
                     .fold(String::new(), |mut ms, m| {ms.push_str(m); ms});
                 h = h.AccessControlAllowMethods(methods_string);
             }
-            if let Some(allow_headers_string) = match self.AllowHeaders {
+            if let Some(allow_headers_string) = match self.cors.AllowHeaders {
                 Some(hs) => Some(hs.join(",")),
                 None     => req.headers.AccessControlRequestHeaders().map(String::from),
             } {
@@ -153,47 +165,6 @@ impl BackFang for CORS {
             res.status = Status::NoContent;
         }
 
-        Ok(())
+        res
     }
-
-    /*
-    fn into_fang(self) -> Fang {
-        Fang::back(move |res: &mut Response, req: &Request| async {
-            let mut h = res.headers.set();
-
-            h = h.AccessControlAllowOrigin(self.AllowOrigin.as_str());
-            if self.AllowOrigin.is_any() {
-                h = h.Vary("Origin");
-            }
-            if self.AllowCredentials {
-                h = h.AccessControlAllowCredentials("true");
-            }
-            if let Some(expose_headers) = &self.ExposeHeaders {
-                h = h.AccessControlExposeHeaders(expose_headers.join(","));
-            }
-
-            if req.method().isOPTIONS() {
-                if let Some(max_age) = self.MaxAge {
-                    h = h.AccessControlMaxAge(max_age.to_string());
-                }
-                if let Some(allow_methods) = self.AllowMethods {
-                    let methods_string = allow_methods.iter()
-                        .map(Method::as_str)
-                        .fold(String::new(), |mut ms, m| {ms.push_str(m); ms});
-                    h = h.AccessControlAllowMethods(methods_string);
-                }
-                if let Some(allow_headers_string) = match self.AllowHeaders {
-                    Some(hs) => Some(hs.join(",")),
-                    None     => req.headers.AccessControlRequestHeaders().map(String::from),
-                } {
-                    h = h.AccessControlAllowHeaders(allow_headers_string)
-                        .Vary(append("Access-Control-Request-Headers"));
-                }
-
-                h.ContentType(None).ContentLength(None);
-                res.status = Status::NoContent;
-            }
-        })
-    }
-    */
 }
