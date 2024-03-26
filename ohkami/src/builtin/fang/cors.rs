@@ -27,6 +27,7 @@ use crate::{append, Fang, FangProc, IntoResponse, Method, Request, Response, Sta
 ///     )).howl("localhost:8080").await
 /// }
 /// ```
+#[derive(Clone)]
 pub struct CORS {
     pub(crate) AllowOrigin:      AccessControlAllowOrigin,
     pub(crate) AllowCredentials: bool,
@@ -36,6 +37,7 @@ pub struct CORS {
     pub(crate) MaxAge:           Option<u32>,
 }
 
+#[derive(Clone)]
 pub(crate) enum AccessControlAllowOrigin {
     Any,
     Only(&'static str),
@@ -115,8 +117,8 @@ impl CORS {
 
 impl<Inner: FangProc> Fang<Inner> for CORS {
     type Proc = CORSProc<Inner>;
-    fn chain(self, inner: Inner) -> Self::Proc {
-        CORSProc { inner, cors: self }
+    fn chain(&self, inner: Inner) -> Self::Proc {
+        CORSProc { inner, cors: self.clone() }
     }
 }
 

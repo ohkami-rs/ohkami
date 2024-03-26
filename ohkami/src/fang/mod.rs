@@ -4,7 +4,7 @@ use crate::{handler::Handler, IntoResponse, Request, Response};
 
 pub trait Fang<Inner: FangProc> {
     type Proc: FangProc;
-    fn chain(self, inner: Inner) -> Self::Proc;
+    fn chain(&self, inner: Inner) -> Self::Proc;
 }
 
 pub trait FangProc: Sync {
@@ -60,10 +60,10 @@ const _: () = {
 
 
 pub trait Fangs {
-    fn build(self, inner: Inner) -> Arc<dyn FangProcCaller>;
+    fn build(&self, inner: Inner) -> Arc<dyn FangProcCaller>;
 } const _: () = {
     impl Fangs for () {
-        fn build(self, inner: Inner) -> Arc<dyn FangProcCaller> {
+        fn build(&self, inner: Inner) -> Arc<dyn FangProcCaller> {
             Arc::new(inner)
         }
     }
@@ -72,7 +72,7 @@ pub trait Fangs {
     where
         F1: Fang<Inner>, F1::Proc: 'static,
     {
-        fn build(self, inner: Inner) -> Arc<dyn FangProcCaller> {
+        fn build(&self, inner: Inner) -> Arc<dyn FangProcCaller> {
             let (f1,) = self;
             Arc::new(
                 f1.chain(inner)
@@ -85,7 +85,7 @@ pub trait Fangs {
         F1: Fang<F2::Proc>, F1::Proc: 'static,
         F2: Fang<Inner>,    F2::Proc: 'static,
     {
-        fn build(self, inner: Inner) -> Arc<dyn FangProcCaller> {
+        fn build(&self, inner: Inner) -> Arc<dyn FangProcCaller> {
             let (f1, f2) = self;
             Arc::new(
                 f1.chain(
@@ -101,7 +101,7 @@ pub trait Fangs {
         F2: Fang<F3::Proc>, F2::Proc: 'static,
         F3: Fang<Inner>,    F3::Proc: 'static,
     {
-        fn build(self, inner: Inner) -> Arc<dyn FangProcCaller> {
+        fn build(&self, inner: Inner) -> Arc<dyn FangProcCaller> {
             let (f1, f2, f3) = self;
             Arc::new(
                 f1.chain(
@@ -120,7 +120,7 @@ pub trait Fangs {
         F3: Fang<F4::Proc>, F3::Proc: 'static,
         F4: Fang<Inner>,    F4::Proc: 'static,
     {
-        fn build(self, inner: Inner) -> Arc<dyn FangProcCaller> {
+        fn build(&self, inner: Inner) -> Arc<dyn FangProcCaller> {
             let (f1, f2, f3, f4) = self;
             Arc::new(
                 f1.chain(
@@ -142,7 +142,7 @@ pub trait Fangs {
         F4: Fang<F5::Proc>, F4::Proc: 'static,
         F5: Fang<Inner>,    F5::Proc: 'static,
     {
-        fn build(self, inner: Inner) -> Arc<dyn FangProcCaller> {
+        fn build(&self, inner: Inner) -> Arc<dyn FangProcCaller> {
             let (f1, f2, f3, f4, f5) = self;
             Arc::new(
                 f1.chain(
@@ -167,7 +167,7 @@ pub trait Fangs {
         F5: Fang<F6::Proc>, F5::Proc: 'static,
         F6: Fang<Inner>,    F6::Proc: 'static,
     {
-        fn build(self, inner: Inner) -> Arc<dyn FangProcCaller> {
+        fn build(&self, inner: Inner) -> Arc<dyn FangProcCaller> {
             let (f1, f2, f3, f4, f5, f6) = self;
             Arc::new(
                 f1.chain(
@@ -195,7 +195,7 @@ pub trait Fangs {
         F6: Fang<F7::Proc>, F6::Proc: 'static,
         F7: Fang<Inner>,    F7::Proc: 'static,
     {
-        fn build(self, inner: Inner) -> Arc<dyn FangProcCaller> {
+        fn build(&self, inner: Inner) -> Arc<dyn FangProcCaller> {
             let (f1, f2, f3, f4, f5, f6, f7) = self;
             Arc::new(
                 f1.chain(
@@ -226,7 +226,7 @@ pub trait Fangs {
         F7: Fang<F8::Proc>, F7::Proc: 'static,
         F8: Fang<Inner>,    F8::Proc: 'static,
     {
-        fn build(self, inner: Inner) -> Arc<dyn FangProcCaller> {
+        fn build(&self, inner: Inner) -> Arc<dyn FangProcCaller> {
             let (f1, f2, f3, f4, f5, f6, f7, f8) = self;
             Arc::new(
                 f1.chain(

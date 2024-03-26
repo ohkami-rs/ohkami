@@ -13,34 +13,6 @@ use std::{collections::VecDeque, future::Future, iter::Peekable, pin::Pin, str::
 use crate::{fang::FangProcCaller, Request, Response};
 
 
-#[derive(Clone)]
-struct OPTIONSProc(
-    Arc<dyn FangProcCaller>
-); const _: () = {
-    impl std::fmt::Debug for OPTIONSProc {
-        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            f.write_str("{OPTIONS proc}")
-        }
-    }
-
-    impl OPTIONSProc {
-        fn new() -> Self {
-            struct OPTIONSProcCaller;
-            impl FangProcCaller for OPTIONSProcCaller {
-                fn bite_caller<'b>(&'b self, _: &'b mut Request) -> Pin<Box<dyn Future<Output = Response> + Send + 'b>> {
-                    Box::pin(async {Response::NoContent()})
-                }
-            }
-
-            Self(Arc::new(OPTIONSProcCaller))
-        }
-
-        fn handle<'h>(&'h self, req: &'h mut Request) -> Pin<Box<dyn Future<Output = Response> + Send + 'h>> {
-            self.0.bite_caller(req)
-        }
-    }
-};
-
 #[derive(Clone, Debug)]
 pub struct RouteSections(
     VecDeque<RouteSection>

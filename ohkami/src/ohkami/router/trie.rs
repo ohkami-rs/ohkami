@@ -27,7 +27,7 @@ pub struct TrieRouter {
     pub(super) POST:    Node,
     pub(super) PATCH:   Node,
     pub(super) DELETE:  Node,
-    pub(super) OPTIONS: super::OPTIONSProc,
+    pub(super) OPTIONS: OPTIONSFangs,
 }
 
 #[derive(Clone/* for testing */)]
@@ -84,6 +84,11 @@ pub(super) enum Pattern {
     }
 };
 
+#[derive(Clone)]
+struct OPTIONSFangs(
+    Arc<dyn Fangs>
+);
+
 
 impl TrieRouter {
     pub(crate) fn new() -> Self {
@@ -118,12 +123,12 @@ impl TrieRouter {
     }
 
     pub(crate) fn apply_fangs(&mut self, fangs: impl Fangs) {
-        self.GET   .apply_fangs(fang.clone());
-        self.PUT   .apply_fangs(fang.clone());
-        self.POST  .apply_fangs(fang.clone());
-        self.PATCH .apply_fangs(fang.clone());
-        self.DELETE.apply_fangs(fang.clone());
-        self.global_fangs.OPTIONS.push(fang.clone());
+        self.GET    .apply_fangs(fangs.clone());
+        self.PUT    .apply_fangs(fangs.clone());
+        self.POST   .apply_fangs(fangs.clone());
+        self.PATCH  .apply_fangs(fangs.clone());
+        self.DELETE .apply_fangs(fangs.clone());
+        self.OPTIONS.push(fangs);
     }
 
     pub(crate) fn merge_another(&mut self, another: ByAnother) {

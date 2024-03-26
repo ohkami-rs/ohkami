@@ -6,7 +6,6 @@ use ohkami_lib::base64;
 use crate::{Fang, FangProc, IntoResponse, Request, Response, Status};
 
 
-#[derive(Clone)]
 pub struct JWT<Payload> {
     secret:   Cow<'static, str>,
     alg:      VerifyingAlgorithm,
@@ -20,13 +19,23 @@ enum VerifyingAlgorithm {
 }
 
 const _: () = {
+    impl<Payload> Clone for JWT<Payload> {
+        fn clone(&self) -> Self {
+            Self {
+                secret:   self.secret.clone(),
+                alg:      self.alg.clone(),
+                _payload: PhantomData
+            }
+        }
+    }
+
     impl<
         Inner: FangProc + Sync,
         Payload: Serialize + for<'de> Deserialize<'de> + Send + Sync + 'static,
     > Fang<Inner> for JWT<Payload> {
         type Proc = JWTProc<Inner, Payload>;
-        fn chain(self, inner: Inner) -> Self::Proc {
-            JWTProc { inner, jwt: self }
+        fn chain(&self, inner: Inner) -> Self::Proc {
+            JWTProc { inner, jwt: self.clone() }
         }
     }
 
