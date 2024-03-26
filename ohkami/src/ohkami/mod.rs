@@ -11,7 +11,7 @@ mod timeout;
 mod build;
 mod howl;
 
-use crate::fang::{Fangs, FangProc};
+use crate::fang::{FangProc, FangProcCaller, Fangs};
 use crate::{Method, Request, Response};
 
 
@@ -129,29 +129,13 @@ use crate::{Method, Request, Response};
 /// }
 /// ```
 #[cfg_attr(feature="testing", derive(Clone))]
-pub struct Ohkami<F: FangProc> {
+pub struct Ohkami {
     pub(crate) routes: TrieRouter,
 
     /// apply just before merged to another or called `howl`
-    pub(crate) fangs:  Arc<dyn Fangs<F>>,
+    pub(crate) fangs:  Arc<dyn Fangs>,
 }
 
-trait FangsObject<Inner: FangProc> {
-    fn build(self, inner: Inner) -> Arc<dyn FangProcObject>;
-}
-trait FangProcObject {
-    fn bite<'b>(&'b self, req: &'b mut Request) -> Pin<Box<dyn Future<Output = Response> + Send + 'b>>;
-}
-const _: () = {
-    impl<
-        Inner: FangProc,
-        Fs: Fangs<Inner>,
-    > FangsObject<Inner> for Fs {
-        fn build(self, inner: Inner) -> Arc<dyn FangProcObject> {
-            
-        }
-    }
-};
 
 impl Ohkami {
     /// Create new `Ohkami` on the routing.
@@ -232,7 +216,7 @@ impl Ohkami {
     /// ))
     /// # ;
     /// ```
-    pub fn with<T>(fangs: impl Fangs<T>, routes: impl build::Routes) -> Self {
+    pub fn with(fangs: impl Fangs, routes: impl build::Routes) -> Self {
         let mut router = TrieRouter::new();
         routes.apply(&mut router);
 

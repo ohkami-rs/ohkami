@@ -3,7 +3,7 @@
 use std::{borrow::Cow, marker::PhantomData};
 use serde::{Serialize, Deserialize};
 use ohkami_lib::base64;
-use crate::{Request, Response, Status, Fang, FangProc};
+use crate::{Fang, FangProc, IntoResponse, Request, Response, Status};
 
 
 #[derive(Clone)]
@@ -21,8 +21,8 @@ enum VerifyingAlgorithm {
 
 const _: () = {
     impl<
-        Inner: FangProc,
-        Payload: Serialize + for<'de> Deserialize<'de>,
+        Inner: FangProc + Sync,
+        Payload: Serialize + for<'de> Deserialize<'de> + Send + Sync + 'static,
     > Fang<Inner> for JWT<Payload> {
         type Proc = JWTProc<Inner, Payload>;
         fn chain(self, inner: Inner) -> Self::Proc {
@@ -38,12 +38,18 @@ const _: () = {
         jwt:   JWT<Payload>,
     }
     impl<
-        Inner: FangProc,
-        Payload: Serialize + for<'de> Deserialize<'de>,
+        Inner: FangProc + Sync,
+        Payload: Serialize + for<'de> Deserialize<'de> + Send + Sync + 'static,
     > FangProc for JWTProc<Inner, Payload> {
         type Response = Response;
-        fn bite<'b>(&'b self, req: &'b mut Request) -> impl std::future::Future<Output = Self::Response> + Send + 'b {
-            
+        async fn bite<'b>(&'b self, req: &'b mut Request) -> Self::Response {
+            let jwt_payload = match self.jwt.verified(req) {
+                Ok(payload) => payload,
+                Err(errres) => return errres
+            };
+            req.memorize(jwt_payload);
+
+            self.inner.bite(req).await.into_response()
         }
     }
 };
@@ -413,23 +419,12 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
             issue_jwt_for_user(&user)
         }
 
-
-        struct MyJWTFang(JWT);
-        impl Fang for MyJWTFang {
-            type Response = Response;
-            async fn bite(&self, req: &mut Request) -> Self::Response {
-                let jwt_payload = self.0.verified::<MyJWTPayload>(req)?;
-                req.memorize(jwt_payload);
-                Ok(())
-            }
-        }
-
         let t = Ohkami::new((
             "/signin".By(Ohkami::new(
                 "/".PUT(signin),
             )),
             "/profile".By(Ohkami::with((
-                MyJWTFang(my_jwt()),
+                my_jwt(),
             ), (
                 "/".GET(get_profile),
             ))),

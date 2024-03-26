@@ -27,7 +27,7 @@ const _: () = {
             Self(Box::new(NoneFangCaller))
         }
 
-        pub(crate) fn from_proc(proc: impl FangProc + 'static) -> Self {
+        pub(crate) fn from_proc(inner: Inner) -> Self {
             Self(Box::new(proc))
         }
     }
@@ -60,34 +60,42 @@ const _: () = {
 
 
 pub trait Fangs {
-    fn build(self, proc: impl FangProc + 'static) -> Arc<dyn FangProcCaller>;
-}
-impl Fangs for () {
-    fn build(self, proc: impl FangProc + 'static) -> Arc<dyn FangProcCaller> {
-        Arc::new(proc)
+    fn build(self, inner: Inner) -> Arc<dyn FangProcCaller>;
+} const _: () = {
+    impl Fangs for () {
+        fn build(self, inner: Inner) -> Arc<dyn FangProcCaller> {
+            Arc::new(proc)
+        }
     }
-}
-impl<
-    F1: Fang<Inner>,
-> Fangs for (F1,) {
-    fn build(self, proc: impl FangProc + 'static) -> Arc<dyn FangProcCaller> {
-        let (f1,) = self;
-        Arc::new(f1.chain(Inner::from_proc(proc)))
+
+    impl<F1> Fangs for (F1,)
+    where
+        F1: Fang<Inner>,
+        F1::Proc: 'static,
+    {
+        fn build(self, inner: Inner) -> Arc<dyn FangProcCaller> {
+            let (f1,) = self;
+            Arc::new(f1.chain(Inner::from_proc(proc)))
+        }
     }
-}
-impl<
-    F1: Fang<Inner>,
-    F2: Fang<Inner>,
-> Fangs for (F1, F2) {
-    fn build(self, proc: impl FangProc + 'static) -> Arc<dyn FangProcCaller> {
-        let (f1, f2) = self;
-        Arc::new(
-            f1.chain(Inner::from_proc(
-                f2.chain(Inner::from_proc(proc))
-            ))
-        )
+
+    impl<F1, F2> Fangs for (F1, F2)
+    where
+        F1: Fang<Inner>,
+        F2: Fang<Inner>,
+        F1::Proc: 'static,
+        F2::Proc: 'static,
+    {
+        fn build(self, inner: Inner) -> Arc<dyn FangProcCaller> {
+            let (f1, f2) = self;
+            Arc::new(
+                f1.chain(Inner::from_proc(
+                    f2.chain(Inner::from_proc(proc))
+                ))
+            )
+        }
     }
-}
+};
 
 
 // macro_rules! tuple_fangs {
