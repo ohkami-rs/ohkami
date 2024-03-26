@@ -15,7 +15,7 @@ use std::time::Duration;
 /// use ohkami::prelude::*;
 /// use ohkami::builtin::fang::Timeout;
 /// use std::time::Duration;
-///
+/// 
 /// #[tokio::main]
 /// async fn main() {
 ///     Ohkami::with(Timeout::from_secs(10), (
