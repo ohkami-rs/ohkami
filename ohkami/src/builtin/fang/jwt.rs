@@ -39,7 +39,7 @@ const _: () = {
         }
     }
 
-    struct JWTProc<
+    pub struct JWTProc<
         Inner: FangProc,
         Payload: Serialize + for<'de> Deserialize<'de>,
     > {
@@ -280,7 +280,7 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
         use crate::{Request, testing::TestRequest, Status};
         use std::pin::Pin;
 
-        let my_jwt = JWT::default("ohkami-realworld-jwt-authorization-secret-key");
+        let my_jwt = JWT::<::serde_json::Value>::default("ohkami-realworld-jwt-authorization-secret-key");
 
         let req_bytes = TestRequest::GET("/")
             .header("Authorization", "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE3MDY4MTEwNzUsInVzZXJfaWQiOiI5ZmMwMDViMi1mODU4LTQzMzYtODkwYS1mMWEyYWVmNjBhMjQifQ.AKp-0zvKK4Hwa6qCgxskckD04Snf0gpSG7U1LOpcC_I")
@@ -290,7 +290,7 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
         req.as_mut().read(&mut &req_bytes[..]).await;
 
         assert_eq!(
-            my_jwt.verified::<::serde_json::Value>(&req.as_ref()).unwrap(),
+            my_jwt.verified(&req.as_ref()).unwrap(),
             ::serde_json::json!({ "iat": 1706811075, "user_id": "9fc005b2-f858-4336-890a-f1a2aef60a24" })
         );
 
@@ -303,7 +303,7 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
         req.as_mut().read(&mut &req_bytes[..]).await;
 
         assert_eq!(
-            my_jwt.verified::<::serde_json::Value>(&req.as_ref()).unwrap_err().status,
+            my_jwt.verified(&req.as_ref()).unwrap_err().status,
             Status::Unauthorized
         );
     }

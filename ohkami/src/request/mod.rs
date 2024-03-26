@@ -10,9 +10,9 @@ pub(crate) use queries::QueryParams;
 mod headers;
 pub use headers::Headers as RequestHeaders;
 
-mod store;
-pub(crate) use store::Store;
-pub use store::Memory;
+mod memory;
+pub(crate) use memory::Store;
+pub use memory::Memory;
 
 mod from_request; 
 pub use from_request::*;

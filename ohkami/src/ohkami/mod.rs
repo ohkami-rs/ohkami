@@ -1,6 +1,5 @@
 #![cfg(any(feature="rt_tokio",feature="rt_async-std"))]
 
-mod timeout;
 mod build;
 mod howl;
 

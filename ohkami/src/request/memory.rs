@@ -83,7 +83,9 @@ impl Store {
 /// }
 /// ```
 pub struct Memory<'req, Data: Send + Sync + 'static>(&'req Data);
-impl<'req, Data: Clone + Send + Sync + 'static> super::FromRequest<'req> for Memory<'req, Data> {
+
+impl<'req, Data: Send + Sync + 'static>
+super::FromRequest<'req> for Memory<'req, Data> {
     type Error = crate::FromRequestError;
 
     #[inline]
@@ -102,11 +104,11 @@ impl<'req, Data: Clone + Send + Sync + 'static> super::FromRequest<'req> for Mem
     }
 }
 impl<'req, Data: Send + Sync + 'static> std::ops::Deref for Memory<'req, Data> {
-    type Target = Data;
+    type Target = &'req Data;
 
     #[inline(always)]
     fn deref(&self) -> &Self::Target {
-        self.0
+        &self.0
     }
 }
 
@@ -114,6 +116,7 @@ const _: () = {
     use crate::fang::{Fang, FangProc};
 
     impl<'req, Data: Clone + Send + Sync + 'static> Memory<'req, Data> {
+        #[allow(private_interfaces)]
         pub fn new(data: Data) -> UseMemory<Data> {
             UseMemory(data)
         }
@@ -125,8 +128,8 @@ const _: () = {
     impl<Data: Clone + Send + Sync + 'static, Inner: FangProc>
     Fang<Inner> for UseMemory<Data> {
         type Proc = UseMemoryProc<Data, Inner>;
-        fn chain(self, inner: Inner) -> Self::Proc {
-            UseMemoryProc { data: self.0, inner }
+        fn chain(&self, inner: Inner) -> Self::Proc {
+            UseMemoryProc { data: self.0.clone(), inner }
         }
     }
 
@@ -157,7 +160,7 @@ const _: () = {
 
     fn _f(_: impl T) {}
 
-    fn _g(m: Memory<Value>) {
+    fn _g(m: Memory<'_, Value>) {
         _f(*m)  // <-- easy (just writing `*` before a memory)
     }
 }

@@ -2,7 +2,7 @@ use super::{Ohkami};
 
 use {
     std::sync::Arc,
-    crate::{__rt__, Session, fang::Fangs}
+    crate::{__rt__, Session},
 };
 
 #[cfg(feature="rt_async-std")] use crate::__rt__::StreamExt;
@@ -10,32 +10,12 @@ use {
 
 
 impl Ohkami {
-    /// Start serving at `address`!
+     /// Start serving at `address`!
     /// 
     /// `address` is `{runtime}::net::ToSocketAddrs`：
     /// 
     /// - `tokio::net::ToSocketAddrs` if you use `tokio`
     /// - `async_std::net::ToSocketAddrs` if you use `async-std`
-    /// 
-    /// <br>
-    /// 
-    /// *example.rs*
-    /// ```no_run
-    /// use ohkami::prelude::*;
-    /// 
-    /// #[tokio::main]
-    /// async fn main() {
-    ///     Ohkami::new(
-    ///         "/".GET(|| async {"Hello, world!"})
-    ///     ).howl("localhost:3000").await
-    /// }
-    /// ```
-    #[cfg(any(feature="rt_tokio", feature="rt_async-std"))]
-    pub async fn howl(self, address: impl __rt__::ToSocketAddrs) {
-        self.howl_with((), address).await
-    }
-
-    /// `howl` with *global fang*s, that are fangs executed regardless of request's path.
     /// 
     /// <br>
     /// 
@@ -78,23 +58,18 @@ impl Ohkami {
     /// 
     /// #[tokio::main]
     /// async fn main() {
-    ///     let hello_ohkami = Ohkami::new(
+    ///     let hello_ohkami = Ohkami::with((
+    ///         LogRequest, CustomNotFound
+    ///     ),
     ///         "/".GET(|| async {"Hello, world!"})
     ///     );
     /// 
-    ///     hello_ohkami.howl_with(
-    ///         (LogRequest, CustomNotFound),
-    ///         "localhost:5000"
-    ///     ).await
+    ///     hello_ohkami.howl("localhost:5000").await
     /// }
     /// ```
     #[cfg(any(feature="rt_tokio", feature="rt_async-std"))]
-    pub async fn howl_with<T>(self, global_fangs: impl Fangs<T>, address: impl __rt__::ToSocketAddrs) {
-        let mut router = self.into_router();
-        for (methods, fang) in global_fangs.collect() {
-            router.register_global_fang(methods, fang)
-        }
-        let router = Arc::new(router.into_radix());
+    pub async fn howl(self, address: impl __rt__::ToSocketAddrs) {
+        let router = Arc::new(self.into_router().into_radix());
         
         let listener = match __rt__::TcpListener::bind(address).await {
             Ok(listener) => listener,

@@ -1,6 +1,6 @@
 use crate::{fang::FangProcCaller, handler::Handler, Method, Request, Response};
 use ohkami_lib::Slice;
-use std::{fmt::Write, future::Future, pin::Pin};
+use std::{fmt::Write as _, future::Future, pin::Pin};
 
 
 #[derive(Debug)]
@@ -15,8 +15,8 @@ pub(crate) struct RadixRouter {
 
 pub(super) struct Node {
     pub(super) patterns:    &'static [Pattern],
-    pub(super) handle_proc: Box<dyn FangProcCaller>,
-    pub(super) catch_proc:  Box<dyn FangProcCaller>,
+    pub(super) handle_proc: Box<dyn FangProcCaller + Send + Sync>,
+    pub(super) catch_proc:  Box<dyn FangProcCaller + Send + Sync>,
     pub(super) children:    Vec<Node>,
 } const _: () = {
     impl std::fmt::Debug for Node {
@@ -75,8 +75,8 @@ pub(super) enum Pattern {
     }
 };
 
-struct OPTIONSProc(
-    Box<dyn FangProcCaller>
+pub(super) struct OPTIONSProc(
+    pub(super) Box<dyn FangProcCaller + Send + Sync>
 ); const _: () = {
     impl std::fmt::Debug for OPTIONSProc {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -85,17 +85,6 @@ struct OPTIONSProc(
     }
 
     impl OPTIONSProc {
-        fn new() -> Self {
-            struct OPTIONSProcCaller;
-            impl FangProcCaller for OPTIONSProcCaller {
-                fn bite_caller<'b>(&'b self, _: &'b mut Request) -> Pin<Box<dyn Future<Output = Response> + Send + 'b>> {
-                    Box::pin(async {Response::NoContent()})
-                }
-            }
-
-            Self(Box::new(OPTIONSProcCaller))
-        }
-
         fn handle<'h>(&'h self, req: &'h mut Request) -> Pin<Box<dyn Future<Output = Response> + Send + 'h>> {
             self.0.bite_caller(req)
         }

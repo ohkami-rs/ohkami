@@ -122,7 +122,7 @@ impl<Inner: FangProc> Fang<Inner> for CORS {
     }
 }
 
-struct CORSProc<Inner: FangProc> {
+pub struct CORSProc<Inner: FangProc> {
     cors:  CORS,
     inner: Inner,
 }

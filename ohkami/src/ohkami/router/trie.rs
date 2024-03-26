@@ -1,10 +1,9 @@
 use std::{borrow::Cow, sync::Arc};
 use super::{RouteSection, RouteSections};
 use crate::{
-    fang::{Fang, FangProc, FangProcCaller, Fangs},
+    Response,
+    fang::{FangProcCaller, Fangs, Inner},
     handler::{ByAnother, Handler, Handlers},
-    builtin::fang::Timeout,
-    Method,
 };
 
 const _: () = {
@@ -34,8 +33,8 @@ pub struct TrieRouter {
 pub(super) struct Node {
     /// Why Option: root node doesn't have pattern
     pub(super) pattern:  Option<Pattern>,
-    pub(super) fangs:    Arc<dyn Fangs>,
     pub(super) handler:  Option<Handler>,
+    pub(super) fangses:  Vec<Arc<dyn Fangs>>,
     pub(super) children: Vec<Node>,
 } const _: () = {
     impl std::fmt::Debug for Node {
@@ -85,9 +84,29 @@ pub(super) enum Pattern {
 };
 
 #[derive(Clone)]
-struct OPTIONSFangs(
+pub(super) struct OPTIONSFangs(
     Arc<dyn Fangs>
-);
+); const _: () = {
+    impl std::fmt::Debug for OPTIONSFangs {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            f.write_str("{OPTIONS fangs}")
+        }
+    }
+
+    impl OPTIONSFangs {
+        fn new(fangs: impl Fangs + 'static) -> Self {
+            Self(Arc::new(fangs))
+        }
+
+        fn into_radix(self) -> super::radix::OPTIONSProc {
+            super::radix::OPTIONSProc(
+                self.0.build(Inner::from_proc(Handler::new(|_|
+                    Box::pin(async {Response::NoContent()})
+                )))
+            )
+        }
+    }
+};
 
 
 impl TrieRouter {
@@ -98,7 +117,7 @@ impl TrieRouter {
             POST:    Node::root(),
             PATCH:   Node::root(),
             DELETE:  Node::root(),
-            OPTIONS: super::OPTIONSProc::new(),
+            OPTIONS: OPTIONSFangs::new(()),
         }
     }
 
@@ -122,20 +141,19 @@ impl TrieRouter {
         }
     }
 
-    pub(crate) fn apply_fangs(&mut self, fangs: impl Fangs) {
-        self.GET    .apply_fangs(fangs.clone());
-        self.PUT    .apply_fangs(fangs.clone());
-        self.POST   .apply_fangs(fangs.clone());
-        self.PATCH  .apply_fangs(fangs.clone());
-        self.DELETE .apply_fangs(fangs.clone());
-        self.OPTIONS.push(fangs);
+    pub(crate) fn apply_fangs(&mut self, fangs: Arc<dyn Fangs>) {
+        self.GET   .apply_fangs(fangs.clone());
+        self.PUT   .apply_fangs(fangs.clone());
+        self.POST  .apply_fangs(fangs.clone());
+        self.PATCH .apply_fangs(fangs.clone());
+        self.DELETE.apply_fangs(fangs.clone());
+
+        self.OPTIONS = OPTIONSFangs(fangs);
     }
 
     pub(crate) fn merge_another(&mut self, another: ByAnother) {
         let ByAnother { route, ohkami } = another;
         let another_routes = ohkami.into_router();
-
-        self.global_fangs.merge(another_routes.global_fangs);
 
         self.GET   .merge_node(route.clone().into_iter(), another_routes.GET   ).unwrap();
         self.PUT   .merge_node(route.clone().into_iter(), another_routes.PUT   ).unwrap();
@@ -151,7 +169,7 @@ impl TrieRouter {
             POST:    self.POST   .into_radix(),
             PATCH:   self.PATCH  .into_radix(),
             DELETE:  self.DELETE .into_radix(),
-            OPTIONS: self.OPTIONS,
+            OPTIONS: self.OPTIONS.into_radix(),
         }
     }
 }
@@ -198,25 +216,23 @@ impl Node {
     }
 
     /// MUST be called after all handlers are registered
-    fn apply_fang(&mut self, fang: Fang) {
+    fn apply_fangs(&mut self, fangs: Arc<dyn Fangs>) {
         for child in &mut self.children {
-            child.apply_fang(fang.clone())
+            child.apply_fangs(fangs.clone())
         }
 
-        if self.handler.is_some() {
-            self.append_fang(fang);
-        }
+        self.fangses.push(fangs);
     }
 
     fn into_radix(self) -> super::radix::Node {
-        let Node { pattern, mut fangs, mut handler, mut children } = self;
+        let Node { pattern, mut fangses, mut handler, mut children } = self;
 
         let mut patterns = pattern.into_iter().collect::<Vec<_>>();
 
         while children.len() == 1 && handler.is_none() {
             let Node {
                 pattern:  child_pattern,
-                fangs:    child_fangs,
+                fangses:  child_fangses,
                 handler:  child_handler,
                 children: child_children,
             } = children.pop(/* pop the single child */).unwrap(/* `children` is empty here */);
@@ -225,9 +241,7 @@ impl Node {
 
             handler  = child_handler;
 
-            for cf in child_fangs {
-                fangs.push(cf);
-            }
+            fangses.extend(child_fangses);
             
             let child_pattern = child_pattern.unwrap(/* `child` is not root */);
             if patterns.last().is_some_and(|last| last.is_static()) && child_pattern.is_static() {
@@ -249,18 +263,33 @@ impl Node {
             _ => std::cmp::Ordering::Equal
         });
 
-        let (front, back, timeout) = split_fangs(fangs);
+        let catch_proc = {
+            let mut proc: Box<dyn FangProcCaller + Send + Sync + 'static> = Box::new(Handler::new(
+                |_| Box::pin(async {Response::NotFound()})
+            ));
+            for fangs in &fangses {
+                proc = fangs.build(Inner::from_proc_boxed(proc))
+            }
+            proc
+        };
+        let handle_proc = {
+            let mut proc: Box<dyn FangProcCaller + Send + Sync + 'static> = Box::new(
+                match handler {
+                    None    => Handler::new(|_| Box::pin(async {Response::NotFound()})),
+                    Some(h) => h,
+                }
+            );
+            for fangs in &fangses {
+                proc = fangs.build(Inner::from_proc_boxed(proc))
+            }
+            proc
+        };
 
         super::radix::Node {
-            timeout,
-            handler,
-            front,
-            back,
+            catch_proc,
+            handle_proc,
             patterns: Box::leak(patterns.into_iter().map(Pattern::into_radix).collect()),
-            children: {
-
-                children.into_iter().map(Node::into_radix).collect()
-            }
+            children: children.into_iter().map(Node::into_radix).collect(),
         }
     }
 }
@@ -268,51 +297,13 @@ impl Node {
 
 /*===== utils =====*/
 
-fn split_fangs(fangs: Vec<Fang>) -> (
-    &'static [FrontFang],
-    &'static [BackFang],
-    Option<Timeout>,
-) {
-    let mut unique_fangs = Vec::new(); {
-        for f in fangs {
-            if unique_fangs.iter().all(|uf| uf != &f) {
-                unique_fangs.push(f)
-            }
-        }
-    }
-
-    let mut front   = Vec::new();
-    let mut back    = Vec::new();
-    let mut timeout = None;
-
-    for f in unique_fangs {
-        match f.proc {
-            FangProc::Front(ff)   => front.push(ff),
-            FangProc::Back (bf)   => back .push(bf),
-            FangProc::Timeout(to) => timeout = Some(to),
-        }
-    }
-
-    (
-        Box::leak(front.into_boxed_slice()) as &_,
-        Box::leak(back .into_boxed_slice()) as &_,
-        timeout,
-    )
-}
-fn split_fangs_without_builtin_specials(fangs: Vec<Fang>) -> (
-    &'static [FrontFang],
-    &'static [BackFang],
-) {
-    let (ff, bf, _) = split_fangs(fangs);
-    (ff, bf)
-}
 
 impl Node {
     fn new(pattern: Pattern) -> Self {
         Self {
             pattern:  Some(pattern),
             handler:  None,
-            fangs:    vec![],
+            fangses:  vec![],
             children: vec![],
         }
     }
@@ -320,7 +311,7 @@ impl Node {
         Self {
             pattern:  None,
             handler:  None,
-            fangs:    vec![],
+            fangses:  vec![],
             children: vec![],
         }
     }
@@ -342,18 +333,18 @@ impl Node {
     /// TrieRouter::new()
     ///     .register_handlers("/hc".GET(health_check))
     ///     .register_handlers("/api".by(
-    ///         Ohkami::new()(
+    ///         Ohkami::new((
     ///             "/"         .GET (hello),
     ///             "/users"    .POST(create_user),
     ///             "/users/:id".GET (get_user),
     ///             "/tasks"    .GET (get_task),
-    ///         )
+    ///         ))
     ///     ))
     /// ```
     /// 
     /// <br/>
     /// 
-    /// This must equals :
+    /// This must equals to :
     /// 
     /// <br/>
     /// 
@@ -373,8 +364,8 @@ impl Node {
         }
 
         let Node {
-            pattern:  None, // <-- another_root は root node のはずなので必ず None のはず
-            fangs:    another_root_fangs,
+            pattern:  None, // <-- another_root must be a root node and has pattern `None`
+            fangses:  another_root_fangses,
             handler:  another_root_handler,
             children: another_children,
         } = another_root else {
@@ -385,9 +376,7 @@ impl Node {
             self.set_handler(new_handler)?
         }
 
-        for arf in another_root_fangs {
-            self.append_fang(arf)
-        }
+        self.append_fangs(another_root_fangses);
 
         for ac in another_children {
             self.append_child(ac)?
@@ -419,8 +408,8 @@ impl Node {
         }
     }
 
-    fn append_fang(&mut self, new_fang: Fang) {
-        self.fangs.push(new_fang);
+    fn append_fangs(&mut self, fangs: Vec<Arc<dyn Fangs>>) {
+        self.fangses.extend(fangs);
     }
 
     fn set_handler(&mut self, new_handler: Handler) -> Result<(), String> {

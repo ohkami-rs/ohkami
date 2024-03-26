@@ -1,4 +1,4 @@
-use std::{pin::Pin, sync::Arc, future::Future};
+use std::{pin::Pin, future::Future};
 use crate::{handler::Handler, IntoResponse, Request, Response};
 
 
@@ -13,22 +13,14 @@ pub trait FangProc: Sync {
 }
 
 
-struct Inner(Box<dyn FangProcCaller + Send + Sync>);
+pub(crate) struct Inner(Box<dyn FangProcCaller + Send + Sync>);
 const _: () = {
     impl Inner {
-        pub(crate) fn new() -> Self {
-            struct NoneFangCaller;
-            impl FangProcCaller for NoneFangCaller {
-                fn bite_caller<'b>(&'b self, _: &'b mut Request) -> Pin<Box<dyn Future<Output = Response> + Send + 'b>> {
-                    unreachable!("NoneFangCaller::bite_caller")
-                }
-            }
-        
-            Self(Box::new(NoneFangCaller))
-        }
-
         pub(crate) fn from_proc(proc: impl FangProcCaller + Send + Sync + 'static) -> Self {
             Self(Box::new(proc))
+        }
+        pub(crate) fn from_proc_boxed(proc: Box<dyn FangProcCaller + Send + Sync>) -> Self {
+            Self(proc)
         }
     }
 
@@ -59,22 +51,34 @@ const _: () = {
 };
 
 
+#[allow(private_interfaces)]
 pub trait Fangs {
-    fn build(&self, inner: Inner) -> Arc<dyn FangProcCaller>;
-} const _: () = {
+    fn build(&self, inner: Inner) -> Box<dyn FangProcCaller + Send + Sync + 'static>;
+}
+#[allow(private_interfaces)]
+const _: () = {
     impl Fangs for () {
-        fn build(&self, inner: Inner) -> Arc<dyn FangProcCaller> {
-            Arc::new(inner)
+        fn build(&self, inner: Inner) -> Box<dyn FangProcCaller + Send + Sync + 'static> {
+            Box::new(inner)
+        }
+    }
+
+    impl<F> Fangs for F
+    where
+        F: Fang<Inner>, F::Proc: Send + Sync + 'static,
+    {
+        fn build(&self, inner: Inner) -> Box<dyn FangProcCaller + Send + Sync + 'static> {
+            Box::new(self.chain(inner))
         }
     }
 
     impl<F1> Fangs for (F1,)
     where
-        F1: Fang<Inner>, F1::Proc: 'static,
+        F1: Fang<Inner>, F1::Proc: Send + Sync + 'static,
     {
-        fn build(&self, inner: Inner) -> Arc<dyn FangProcCaller> {
+        fn build(&self, inner: Inner) -> Box<dyn FangProcCaller + Send + Sync + 'static> {
             let (f1,) = self;
-            Arc::new(
+            Box::new(
                 f1.chain(inner)
             )
         }
@@ -82,12 +86,12 @@ pub trait Fangs {
 
     impl<F1, F2> Fangs for (F1, F2)
     where
-        F1: Fang<F2::Proc>, F1::Proc: 'static,
-        F2: Fang<Inner>,    F2::Proc: 'static,
+        F1: Fang<F2::Proc>, F1::Proc: Send + Sync + 'static,
+        F2: Fang<Inner>,    F2::Proc: Send + Sync + 'static,
     {
-        fn build(&self, inner: Inner) -> Arc<dyn FangProcCaller> {
+        fn build(&self, inner: Inner) -> Box<dyn FangProcCaller + Send + Sync + 'static> {
             let (f1, f2) = self;
-            Arc::new(
+            Box::new(
                 f1.chain(
                     f2.chain(inner)
                 )
@@ -97,13 +101,13 @@ pub trait Fangs {
 
     impl<F1, F2, F3> Fangs for (F1, F2, F3)
     where
-        F1: Fang<F2::Proc>, F1::Proc: 'static,
-        F2: Fang<F3::Proc>, F2::Proc: 'static,
-        F3: Fang<Inner>,    F3::Proc: 'static,
+        F1: Fang<F2::Proc>, F1::Proc: Send + Sync + 'static,
+        F2: Fang<F3::Proc>, F2::Proc: Send + Sync + 'static,
+        F3: Fang<Inner>,    F3::Proc: Send + Sync + 'static,
     {
-        fn build(&self, inner: Inner) -> Arc<dyn FangProcCaller> {
+        fn build(&self, inner: Inner) -> Box<dyn FangProcCaller + Send + Sync + 'static> {
             let (f1, f2, f3) = self;
-            Arc::new(
+            Box::new(
                 f1.chain(
                     f2.chain(
                         f3.chain(inner)
@@ -115,14 +119,14 @@ pub trait Fangs {
 
     impl<F1, F2, F3, F4> Fangs for (F1, F2, F3, F4)
     where
-        F1: Fang<F2::Proc>, F1::Proc: 'static,
-        F2: Fang<F3::Proc>, F2::Proc: 'static,
-        F3: Fang<F4::Proc>, F3::Proc: 'static,
-        F4: Fang<Inner>,    F4::Proc: 'static,
+        F1: Fang<F2::Proc>, F1::Proc: Send + Sync + 'static,
+        F2: Fang<F3::Proc>, F2::Proc: Send + Sync + 'static,
+        F3: Fang<F4::Proc>, F3::Proc: Send + Sync + 'static,
+        F4: Fang<Inner>,    F4::Proc: Send + Sync + 'static,
     {
-        fn build(&self, inner: Inner) -> Arc<dyn FangProcCaller> {
+        fn build(&self, inner: Inner) -> Box<dyn FangProcCaller + Send + Sync + 'static> {
             let (f1, f2, f3, f4) = self;
-            Arc::new(
+            Box::new(
                 f1.chain(
                     f2.chain(
                         f3.chain(
@@ -136,15 +140,15 @@ pub trait Fangs {
 
     impl<F1, F2, F3, F4, F5> Fangs for (F1, F2, F3, F4, F5)
     where
-        F1: Fang<F2::Proc>, F1::Proc: 'static,
-        F2: Fang<F3::Proc>, F2::Proc: 'static,
-        F3: Fang<F4::Proc>, F3::Proc: 'static,
-        F4: Fang<F5::Proc>, F4::Proc: 'static,
-        F5: Fang<Inner>,    F5::Proc: 'static,
+        F1: Fang<F2::Proc>, F1::Proc: Send + Sync + 'static,
+        F2: Fang<F3::Proc>, F2::Proc: Send + Sync + 'static,
+        F3: Fang<F4::Proc>, F3::Proc: Send + Sync + 'static,
+        F4: Fang<F5::Proc>, F4::Proc: Send + Sync + 'static,
+        F5: Fang<Inner>,    F5::Proc: Send + Sync + 'static,
     {
-        fn build(&self, inner: Inner) -> Arc<dyn FangProcCaller> {
+        fn build(&self, inner: Inner) -> Box<dyn FangProcCaller + Send + Sync + 'static> {
             let (f1, f2, f3, f4, f5) = self;
-            Arc::new(
+            Box::new(
                 f1.chain(
                     f2.chain(
                         f3.chain(
@@ -160,16 +164,16 @@ pub trait Fangs {
 
     impl<F1, F2, F3, F4, F5, F6> Fangs for (F1, F2, F3, F4, F5, F6)
     where
-        F1: Fang<F2::Proc>, F1::Proc: 'static,
-        F2: Fang<F3::Proc>, F2::Proc: 'static,
-        F3: Fang<F4::Proc>, F3::Proc: 'static,
-        F4: Fang<F5::Proc>, F4::Proc: 'static,
-        F5: Fang<F6::Proc>, F5::Proc: 'static,
-        F6: Fang<Inner>,    F6::Proc: 'static,
+        F1: Fang<F2::Proc>, F1::Proc: Send + Sync + 'static,
+        F2: Fang<F3::Proc>, F2::Proc: Send + Sync + 'static,
+        F3: Fang<F4::Proc>, F3::Proc: Send + Sync + 'static,
+        F4: Fang<F5::Proc>, F4::Proc: Send + Sync + 'static,
+        F5: Fang<F6::Proc>, F5::Proc: Send + Sync + 'static,
+        F6: Fang<Inner>,    F6::Proc: Send + Sync + 'static,
     {
-        fn build(&self, inner: Inner) -> Arc<dyn FangProcCaller> {
+        fn build(&self, inner: Inner) -> Box<dyn FangProcCaller + Send + Sync + 'static> {
             let (f1, f2, f3, f4, f5, f6) = self;
-            Arc::new(
+            Box::new(
                 f1.chain(
                     f2.chain(
                         f3.chain(
@@ -187,17 +191,17 @@ pub trait Fangs {
 
     impl<F1, F2, F3, F4, F5, F6, F7> Fangs for (F1, F2, F3, F4, F5, F6, F7)
     where
-        F1: Fang<F2::Proc>, F1::Proc: 'static,
-        F2: Fang<F3::Proc>, F2::Proc: 'static,
-        F3: Fang<F4::Proc>, F3::Proc: 'static,
-        F4: Fang<F5::Proc>, F4::Proc: 'static,
-        F5: Fang<F6::Proc>, F5::Proc: 'static,
-        F6: Fang<F7::Proc>, F6::Proc: 'static,
-        F7: Fang<Inner>,    F7::Proc: 'static,
+        F1: Fang<F2::Proc>, F1::Proc: Send + Sync + 'static,
+        F2: Fang<F3::Proc>, F2::Proc: Send + Sync + 'static,
+        F3: Fang<F4::Proc>, F3::Proc: Send + Sync + 'static,
+        F4: Fang<F5::Proc>, F4::Proc: Send + Sync + 'static,
+        F5: Fang<F6::Proc>, F5::Proc: Send + Sync + 'static,
+        F6: Fang<F7::Proc>, F6::Proc: Send + Sync + 'static,
+        F7: Fang<Inner>,    F7::Proc: Send + Sync + 'static,
     {
-        fn build(&self, inner: Inner) -> Arc<dyn FangProcCaller> {
+        fn build(&self, inner: Inner) -> Box<dyn FangProcCaller + Send + Sync + 'static> {
             let (f1, f2, f3, f4, f5, f6, f7) = self;
-            Arc::new(
+            Box::new(
                 f1.chain(
                     f2.chain(
                         f3.chain(
@@ -217,18 +221,18 @@ pub trait Fangs {
 
     impl<F1, F2, F3, F4, F5, F6, F7, F8> Fangs for (F1, F2, F3, F4, F5, F6, F7, F8)
     where
-        F1: Fang<F2::Proc>, F1::Proc: 'static,
-        F2: Fang<F3::Proc>, F2::Proc: 'static,
-        F3: Fang<F4::Proc>, F3::Proc: 'static,
-        F4: Fang<F5::Proc>, F4::Proc: 'static,
-        F5: Fang<F6::Proc>, F5::Proc: 'static,
-        F6: Fang<F7::Proc>, F6::Proc: 'static,
-        F7: Fang<F8::Proc>, F7::Proc: 'static,
-        F8: Fang<Inner>,    F8::Proc: 'static,
+        F1: Fang<F2::Proc>, F1::Proc: Send + Sync + 'static,
+        F2: Fang<F3::Proc>, F2::Proc: Send + Sync + 'static,
+        F3: Fang<F4::Proc>, F3::Proc: Send + Sync + 'static,
+        F4: Fang<F5::Proc>, F4::Proc: Send + Sync + 'static,
+        F5: Fang<F6::Proc>, F5::Proc: Send + Sync + 'static,
+        F6: Fang<F7::Proc>, F6::Proc: Send + Sync + 'static,
+        F7: Fang<F8::Proc>, F7::Proc: Send + Sync + 'static,
+        F8: Fang<Inner>,    F8::Proc: Send + Sync + 'static,
     {
-        fn build(&self, inner: Inner) -> Arc<dyn FangProcCaller> {
+        fn build(&self, inner: Inner) -> Box<dyn FangProcCaller + Send + Sync + 'static> {
             let (f1, f2, f3, f4, f5, f6, f7, f8) = self;
-            Arc::new(
+            Box::new(
                 f1.chain(
                     f2.chain(
                         f3.chain(

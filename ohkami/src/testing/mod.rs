@@ -30,7 +30,6 @@
 //! ```
 
 use crate::{Response, Request, Ohkami, Status, Method};
-use crate::fang::{Fangs, FangProc};
 use crate::response::ResponseHeader;
 
 use std::borrow::Cow;
@@ -40,12 +39,7 @@ use std::{pin::Pin, future::Future, format as f};
 
 pub trait Testing {
     #[must_use]
-    fn oneshot_with<T: FangProc>(&self, global_fangs: impl Fangs<T>, req: TestRequest) -> Oneshot;
-    
-    #[must_use]
-    fn oneshot(&self, req: TestRequest) -> Oneshot {
-        self.oneshot_with((), req)
-    }
+    fn oneshot(&self, req: TestRequest) -> Oneshot;
 }
 
 pub struct Oneshot(
@@ -58,14 +52,8 @@ pub struct Oneshot(
 }
 
 impl Testing for Ohkami {
-    fn oneshot_with<T: FangProc>(&self, global_fangs: impl Fangs<T>, req: TestRequest) -> Oneshot {
-        let router = {
-            let mut trie = self.clone().into_router();
-            for (methods, fang) in global_fangs.collect() {
-                trie.register_global_fang(methods, fang)
-            }
-            trie.into_radix()
-        };
+    fn oneshot(&self, req: TestRequest) -> Oneshot {
+        let router = self.clone().into_router().into_radix();
 
         let res = async move {
             let mut request = Request::init();
