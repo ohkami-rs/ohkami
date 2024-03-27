@@ -54,21 +54,35 @@ const _: () = {
 #[allow(private_interfaces)]
 pub trait Fangs {
     fn build(&self, inner: Inner) -> Box<dyn FangProcCaller + Send + Sync + 'static>;
+    fn build_handler(&self, handler: Handler) -> Box<dyn FangProcCaller + Send + 'static>;
 }
 #[allow(private_interfaces)]
 const _: () = {
-    impl Fangs for () {
+    trait FangsCore {
+        fn build_core(&self, inner: impl FangProcCaller + Send + Sync + 'static) -> impl FangProcCaller + Send + Sync + 'static;
+    }
+    impl<FC: FangsCore> Fangs for FC {
         fn build(&self, inner: Inner) -> Box<dyn FangProcCaller + Send + Sync + 'static> {
-            Box::new(inner)
+            Box::new(self.build_core(inner))
+        }
+        fn build_handler(&self, handler: Handler) -> Box<dyn FangProcCaller + Send + 'static> {
+            Box::new(self.build_core(handler))
         }
     }
 
-    impl<F> Fangs for F
+
+    impl FangsCore for () {
+        fn build_core(&self, inner: impl FangProcCaller + Send + Sync + 'static) -> impl FangProcCaller + Send + Sync + 'static {
+            inner
+        }
+    }
+
+    impl<F> FangsCore for F
     where
         F: Fang<Inner>, F::Proc: Send + Sync + 'static,
     {
-        fn build(&self, inner: Inner) -> Box<dyn FangProcCaller + Send + Sync + 'static> {
-            Box::new(self.chain(inner))
+        fn build_core(&self, inner: impl FangProcCaller + Send + Sync + 'static) -> impl FangProcCaller + Send + Sync + 'static {
+            self.chain(Inner::from_proc(inner))
         }
     }
 
