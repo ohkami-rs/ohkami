@@ -6,7 +6,6 @@ pub trait Fang<Inner: FangProc> {
     type Proc: FangProc;
     fn chain(&self, inner: Inner) -> Self::Proc;
 }
-
 pub trait FangProc: Sync {
     type Response: IntoResponse;
     fn bite<'b>(&'b self, req: &'b mut Request) -> impl std::future::Future<Output = Self::Response> + Send + 'b;
@@ -36,13 +35,14 @@ const _: () = {
 pub(crate) trait FangProcCaller {
     fn bite_caller<'b>(&'b self, req: &'b mut Request) -> Pin<Box<dyn Future<Output = Response> + Send + 'b>>;
 }
-impl<Proc: FangProc> FangProcCaller for Proc {
-    fn bite_caller<'b>(&'b self, req: &'b mut Request) -> Pin<Box<dyn Future<Output = Response> + Send + 'b>> {
-        let res = self.bite(req);
-        Box::pin(async move {res.await.into_response()})
-    }
-}
 const _: () = {
+    impl<Proc: FangProc> FangProcCaller for Proc {
+        fn bite_caller<'b>(&'b self, req: &'b mut Request) -> Pin<Box<dyn Future<Output = Response> + Send + 'b>> {
+            let res = self.bite(req);
+            Box::pin(async move {res.await.into_response()})
+        }
+    }
+
     impl FangProcCaller for Handler {
         fn bite_caller<'b>(&'b self, req: &'b mut Request) -> Pin<Box<dyn Future<Output = Response> + Send + 'b>> {
             self.handle(req)
@@ -54,35 +54,21 @@ const _: () = {
 #[allow(private_interfaces)]
 pub trait Fangs {
     fn build(&self, inner: Inner) -> Box<dyn FangProcCaller + Send + Sync + 'static>;
-    fn build_handler(&self, handler: Handler) -> Box<dyn FangProcCaller + Send + 'static>;
 }
 #[allow(private_interfaces)]
 const _: () = {
-    trait FangsCore {
-        fn build_core(&self, inner: impl FangProcCaller + Send + Sync + 'static) -> impl FangProcCaller + Send + Sync + 'static;
-    }
-    impl<FC: FangsCore> Fangs for FC {
+    impl Fangs for () {
         fn build(&self, inner: Inner) -> Box<dyn FangProcCaller + Send + Sync + 'static> {
-            Box::new(self.build_core(inner))
-        }
-        fn build_handler(&self, handler: Handler) -> Box<dyn FangProcCaller + Send + 'static> {
-            Box::new(self.build_core(handler))
+            Box::new(inner)
         }
     }
 
-
-    impl FangsCore for () {
-        fn build_core(&self, inner: impl FangProcCaller + Send + Sync + 'static) -> impl FangProcCaller + Send + Sync + 'static {
-            inner
-        }
-    }
-
-    impl<F> FangsCore for F
+    impl<F> Fangs for F
     where
         F: Fang<Inner>, F::Proc: Send + Sync + 'static,
     {
-        fn build_core(&self, inner: impl FangProcCaller + Send + Sync + 'static) -> impl FangProcCaller + Send + Sync + 'static {
-            self.chain(Inner::from_proc(inner))
+        fn build(&self, inner: Inner) -> Box<dyn FangProcCaller + Send + Sync + 'static> {
+            Box::new(self.chain(inner))
         }
     }
 
