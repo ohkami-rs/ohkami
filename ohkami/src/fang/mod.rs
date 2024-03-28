@@ -58,6 +58,7 @@ const _: () = {
 #[cfg(not(feature="nightly"))]
 const _: () = {
     impl<Proc: FangProc> FangProcCaller for Proc {
+        #[inline(always)]
         fn call_bite<'b>(&'b self, req: &'b mut Request) -> Pin<Box<dyn Future<Output = Response> + Send + 'b>> {
             let res = self.bite(req);
             Box::pin(async move {res.await.into_response()})
@@ -67,6 +68,7 @@ const _: () = {
 #[cfg(feature="nightly")]
 const _: () = {
     impl<Proc: FangProc> FangProcCaller for Proc {
+        #[inline(always)]
         default fn call_bite<'b>(&'b self, req: &'b mut Request) -> Pin<Box<dyn Future<Output = Response> + Send + 'b>> {
             let res = self.bite(req);
             Box::pin(async move {res.await.into_response()})
@@ -74,6 +76,7 @@ const _: () = {
     }
 
     impl FangProcCaller for Handler {
+        #[inline(always)]
         fn call_bite<'b>(&'b self, req: &'b mut Request) -> Pin<Box<dyn Future<Output = Response> + Send + 'b>> {
             // omit doubly-boxed future
             self.handle(req)
@@ -81,6 +84,7 @@ const _: () = {
     }
 
     impl FangProcCaller for BoxedFPC {
+        #[inline(always)]
         fn call_bite<'b>(&'b self, req: &'b mut Request) -> Pin<Box<dyn Future<Output = Response> + Send + 'b>> {
             // omit doubly-boxed future
             (&*self.0).call_bite(req)
@@ -98,12 +102,11 @@ pub trait Fangs {
 }
 #[allow(private_interfaces)]
 const _: () = {
-    /*===== tuple helper =====*/
+    /*===== tuple impl helper =====*/
 
     trait FangsHelper<Inner: FangProc> {
         fn build_helper(&self, inner: Inner) -> BoxedFPC;
     }
-    trait Sealed {}
     impl<FH: FangsHelper<BoxedFPC> + FangsHelper<Handler>> Fangs for FH {
         fn build(&self, inner: BoxedFPC) -> BoxedFPC {
             <Self as FangsHelper<BoxedFPC>>::build_helper(&self, inner)

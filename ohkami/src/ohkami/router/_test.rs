@@ -162,6 +162,9 @@ fn my_ohkami() -> Ohkami {
     impl<Inner: FangProc> FangProc for IncrementProc<Inner> {
         type Response = Inner::Response;
         fn bite<'b>(&'b self, req: &'b mut Request) -> impl std::future::Future<Output = Self::Response> + Send + 'b {
+            #[cfg(feature="DEBUG")]
+            println!("Called `Increment`");
+
             *N().lock().unwrap() += 1;
             self.0.bite(req)
         }

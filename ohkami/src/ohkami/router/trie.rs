@@ -94,8 +94,8 @@ pub(super) struct OPTIONSFangses(
     }
 
     impl OPTIONSFangses {
-        fn new(fangs: impl Fangs + 'static) -> Self {
-            Self(vec![Arc::new(fangs)])
+        fn new() -> Self {
+            Self(vec![])
         }
 
         fn push(&mut self, fangs: Arc<dyn Fangs>) {
@@ -111,7 +111,7 @@ pub(super) struct OPTIONSFangses(
                 None       => BoxedFPC::from_proc(handler),
                 Some(last) => self.0.into_iter().rfold(
                     last.build_handler(handler),
-                    |proc, fangs| fangs.build(proc)
+                    |proc, remaining| remaining.build(proc)
                 )
             })
         }
@@ -127,7 +127,7 @@ impl TrieRouter {
             POST:    Node::root(),
             PATCH:   Node::root(),
             DELETE:  Node::root(),
-            OPTIONS: OPTIONSFangses::new(()),
+            OPTIONS: OPTIONSFangses::new(),
         }
     }
 
@@ -251,7 +251,7 @@ impl Node {
 
             handler  = child_handler;
 
-            fangses.extend(child_fangses);
+            fangses  = child_fangses; // `handler` is None
             
             let child_pattern = child_pattern.unwrap(/* `child` is not root */);
             if patterns.last().is_some_and(|last| last.is_static()) && child_pattern.is_static() {
@@ -284,7 +284,7 @@ impl Node {
                 None       => BoxedFPC::from_proc(handler),
                 Some(last) => fangses.into_iter().rfold(
                     last.build_handler(handler),
-                    |proc, fangs| fangs.build(proc)
+                    |proc, remaining| remaining.build(proc)
                 )
             }
         };
@@ -300,7 +300,7 @@ impl Node {
                 None       => BoxedFPC::from_proc(handler),
                 Some(last) => fangses.into_iter().rfold(
                     last.build_handler(handler),
-                    |proc, fangs| fangs.build(proc)
+                    |proc, remaining| remaining.build(proc)
                 )
             }
         };
