@@ -2,7 +2,7 @@ use std::{borrow::Cow, sync::Arc};
 use super::{RouteSection, RouteSections};
 use crate::{
     Response,
-    fang::{FangProcCaller, Fangs, Inner},
+    fang::{BoxedFPC, Fangs},
     handler::{ByAnother, Handler, Handlers},
 };
 
@@ -100,7 +100,7 @@ pub(super) struct OPTIONSFangs(
 
         fn into_radix(self) -> super::radix::OPTIONSProc {
             super::radix::OPTIONSProc(
-                self.0.build(Inner::from_proc(Handler::new(|_|
+                self.0.build(BoxedFPC::from_proc(Handler::new(|_|
                     Box::pin(async {Response::NoContent()})
                 )))
             )
@@ -264,25 +264,35 @@ impl Node {
         });
 
         let catch_proc = {
-            let mut proc: Box<dyn FangProcCaller + Send + Sync + 'static> = Box::new(Handler::new(
-                |_| Box::pin(async {Response::NotFound()})
-            ));
-            for fangs in &fangses {
-                proc = fangs.build(Inner::from_proc_boxed(proc))
+            let mut fangses = fangses.clone();
+
+            let handler = Handler::new(|_| Box::pin(async {
+                Response::NotFound()
+            }));
+
+            match fangses.pop() {
+                None       => BoxedFPC::from_proc(handler),
+                Some(last) => fangses.into_iter().rfold(
+                    last.build_handler(handler),
+                    |proc, fangs| fangs.build(proc)
+                )
             }
-            proc
         };
         let handle_proc = {
-            let mut proc: Box<dyn FangProcCaller + Send + Sync + 'static> = Box::new(
-                match handler {
-                    None    => Handler::new(|_| Box::pin(async {Response::NotFound()})),
-                    Some(h) => h,
-                }
-            );
-            for fangs in &fangses {
-                proc = fangs.build(Inner::from_proc_boxed(proc))
+            let handler = match handler {
+                Some(h) => h,
+                None    => Handler::new(|_| Box::pin(async {
+                    Response::NotFound()
+                }))
+            };
+
+            match fangses.pop() {
+                None       => BoxedFPC::from_proc(handler),
+                Some(last) => fangses.into_iter().rfold(
+                    last.build_handler(handler),
+                    |proc, fangs| fangs.build(proc)
+                )
             }
-            proc
         };
 
         super::radix::Node {

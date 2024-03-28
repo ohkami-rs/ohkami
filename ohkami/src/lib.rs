@@ -17,6 +17,11 @@
 //! for more information！
 
 
+#![cfg_attr(feature="nightly", feature(
+    min_specialization,
+))]
+
+
 #[cfg(any(
     all(feature="rt_tokio", feature="rt_async-std")
 ))] compile_error!("

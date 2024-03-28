@@ -1,4 +1,4 @@
-use std::{pin::Pin, future::Future};
+use std::{future::Future, ops::Deref, pin::Pin};
 use crate::{handler::Handler, IntoResponse, Request, Response};
 
 
@@ -6,46 +6,81 @@ pub trait Fang<Inner: FangProc> {
     type Proc: FangProc;
     fn chain(&self, inner: Inner) -> Self::Proc;
 }
-pub trait FangProc: Sync {
+pub trait FangProc: Send + Sync + 'static {
     type Response: IntoResponse;
     fn bite<'b>(&'b self, req: &'b mut Request) -> impl std::future::Future<Output = Self::Response> + Send + 'b;
 }
 
 
-pub(crate) struct Inner(Box<dyn FangProcCaller + Send + Sync>);
+pub(crate) trait FangProcCaller {
+    fn call_bite<'b>(&'b self, req: &'b mut Request) -> Pin<Box<dyn Future<Output = Response> + Send + 'b>>;
+}
+
+pub(crate) struct BoxedFPC(Box<dyn
+    FangProcCaller + Send + Sync + 'static
+>);
 const _: () = {
-    impl Inner {
-        pub(crate) fn from_proc(proc: impl FangProcCaller + Send + Sync + 'static) -> Self {
-            Self(Box::new(proc))
+    impl Deref for BoxedFPC {
+        type Target = dyn FangProcCaller + Send + Sync + 'static;
+        
+        #[inline(always)]
+        fn deref(&self) -> &Self::Target {
+            &*self.0
         }
-        pub(crate) fn from_proc_boxed(proc: Box<dyn FangProcCaller + Send + Sync>) -> Self {
-            Self(proc)
+    }
+};
+impl BoxedFPC {
+    pub(crate) fn from_proc(proc: impl FangProcCaller + Send + Sync + 'static) -> Self {
+        Self(Box::new(proc))
+    }
+}
+
+const _: () = {
+    impl FangProc for Handler {
+        type Response = Response;
+        fn bite<'b>(&'b self, req: &'b mut Request) -> impl std::future::Future<Output = Self::Response> + Send + 'b {
+            self.handle(req)  // Pin<Box<dyn Future>>
         }
     }
 
-    impl FangProc for Inner {
+    impl FangProc for BoxedFPC {
         type Response = Response;
-        fn bite<'b>(&'b self, req: &'b mut Request) ->impl Future<Output = Response> + Send + 'b {
-            self.0.bite_caller(req)
+        fn bite<'b>(&'b self, req: &'b mut Request) -> impl std::future::Future<Output = Self::Response> + Send + 'b {
+            (&*self.0).call_bite(req)  // Pin<Box<dyn Future>>
         }
     }
 };
 
-
-pub(crate) trait FangProcCaller {
-    fn bite_caller<'b>(&'b self, req: &'b mut Request) -> Pin<Box<dyn Future<Output = Response> + Send + 'b>>;
-}
+#[cfg(not(feature="nightly"))]
 const _: () = {
     impl<Proc: FangProc> FangProcCaller for Proc {
-        fn bite_caller<'b>(&'b self, req: &'b mut Request) -> Pin<Box<dyn Future<Output = Response> + Send + 'b>> {
+        fn call_bite<'b>(&'b self, req: &'b mut Request) -> Pin<Box<dyn Future<Output = Response> + Send + 'b>> {
+            let res = self.bite(req);
+            Box::pin(async move {res.await.into_response()})
+        }
+    }
+};
+
+#[cfg(feature="nightly")]
+const _: () = {
+    impl<Proc: FangProc> FangProcCaller for Proc {
+        default fn call_bite<'b>(&'b self, req: &'b mut Request) -> Pin<Box<dyn Future<Output = Response> + Send + 'b>> {
             let res = self.bite(req);
             Box::pin(async move {res.await.into_response()})
         }
     }
 
     impl FangProcCaller for Handler {
-        fn bite_caller<'b>(&'b self, req: &'b mut Request) -> Pin<Box<dyn Future<Output = Response> + Send + 'b>> {
+        fn call_bite<'b>(&'b self, req: &'b mut Request) -> Pin<Box<dyn Future<Output = Response> + Send + 'b>> {
+            // omit doubly-boxed future
             self.handle(req)
+        }
+    }
+
+    impl FangProcCaller for BoxedFPC {
+        fn call_bite<'b>(&'b self, req: &'b mut Request) -> Pin<Box<dyn Future<Output = Response> + Send + 'b>> {
+            // omit doubly-boxed future
+            (&*self.0).call_bite(req)
         }
     }
 };
@@ -53,45 +88,52 @@ const _: () = {
 
 #[allow(private_interfaces)]
 pub trait Fangs {
-    fn build(&self, inner: Inner) -> Box<dyn FangProcCaller + Send + Sync + 'static>;
+    // returning box for object-safety
+    fn build(&self, inner: BoxedFPC) -> BoxedFPC;
+    // specialize to omit doubly dynamic dispatching by `Inner`
+    fn build_handler(&self, handler: Handler) -> BoxedFPC;
 }
 #[allow(private_interfaces)]
-const _: () = {
-    impl Fangs for () {
-        fn build(&self, inner: Inner) -> Box<dyn FangProcCaller + Send + Sync + 'static> {
-            Box::new(inner)
+const _: (/* FIXME: more easy way to impl the same... */) = {
+    trait FangsHelper<Inner: FangProc> {
+        fn build_helper(&self, inner: Inner) -> BoxedFPC;
+    }
+    impl<FH: FangsHelper<BoxedFPC> + FangsHelper<Handler>> Fangs for FH {
+        fn build(&self, inner: BoxedFPC) -> BoxedFPC {
+            <Self as FangsHelper<BoxedFPC>>::build_helper(&self, inner)
+        }
+        fn build_handler(&self, handler: Handler) -> BoxedFPC {
+            <Self as FangsHelper<Handler>>::build_helper(&self, handler)
         }
     }
 
-    impl<F> Fangs for F
-    where
-        F: Fang<Inner>, F::Proc: Send + Sync + 'static,
-    {
-        fn build(&self, inner: Inner) -> Box<dyn FangProcCaller + Send + Sync + 'static> {
-            Box::new(self.chain(inner))
+
+    impl<Inner: FangProc> FangsHelper<Inner> for () {
+        fn build_helper(&self, inner: Inner) -> BoxedFPC {
+            BoxedFPC::from_proc(inner)
         }
     }
 
-    impl<F1> Fangs for (F1,)
+    impl<Inner: FangProc,
+        F1: Fang<Inner>,
+    > FangsHelper<Inner> for (F1,)
     where
-        F1: Fang<Inner>, F1::Proc: Send + Sync + 'static,
     {
-        fn build(&self, inner: Inner) -> Box<dyn FangProcCaller + Send + Sync + 'static> {
+        fn build_helper(&self, inner: Inner) -> BoxedFPC {
             let (f1,) = self;
-            Box::new(
+            BoxedFPC::from_proc(
                 f1.chain(inner)
             )
         }
     }
 
-    impl<F1, F2> Fangs for (F1, F2)
-    where
-        F1: Fang<F2::Proc>, F1::Proc: Send + Sync + 'static,
-        F2: Fang<Inner>,    F2::Proc: Send + Sync + 'static,
-    {
-        fn build(&self, inner: Inner) -> Box<dyn FangProcCaller + Send + Sync + 'static> {
+    impl<Inner: FangProc,
+        F1: Fang<F2::Proc>,
+        F2: Fang<Inner>,
+    > FangsHelper<Inner> for (F1, F2) {
+        fn build_helper(&self, inner: Inner) -> BoxedFPC {
             let (f1, f2) = self;
-            Box::new(
+            BoxedFPC::from_proc(
                 f1.chain(
                     f2.chain(inner)
                 )
@@ -99,15 +141,14 @@ const _: () = {
         }
     }
 
-    impl<F1, F2, F3> Fangs for (F1, F2, F3)
-    where
-        F1: Fang<F2::Proc>, F1::Proc: Send + Sync + 'static,
-        F2: Fang<F3::Proc>, F2::Proc: Send + Sync + 'static,
-        F3: Fang<Inner>,    F3::Proc: Send + Sync + 'static,
-    {
-        fn build(&self, inner: Inner) -> Box<dyn FangProcCaller + Send + Sync + 'static> {
+    impl<Inner: FangProc,
+        F1: Fang<F2::Proc>,
+        F2: Fang<F3::Proc>,
+        F3: Fang<Inner>,
+    > FangsHelper<Inner> for (F1, F2, F3) {
+        fn build_helper(&self, inner: Inner) -> BoxedFPC {
             let (f1, f2, f3) = self;
-            Box::new(
+            BoxedFPC::from_proc(
                 f1.chain(
                     f2.chain(
                         f3.chain(inner)
@@ -117,16 +158,18 @@ const _: () = {
         }
     }
 
+/*
     impl<F1, F2, F3, F4> Fangs for (F1, F2, F3, F4)
     where
-        F1: Fang<F2::Proc>, F1::Proc: Send + Sync + 'static,
-        F2: Fang<F3::Proc>, F2::Proc: Send + Sync + 'static,
-        F3: Fang<F4::Proc>, F3::Proc: Send + Sync + 'static,
-        F4: Fang<Inner>,    F4::Proc: Send + Sync + 'static,
+        F1: Fang<F2::Proc>,
+        F2: Fang<F3::Proc>,
+        F3: Fang<F4::Proc>,
+        F4: Fang<BoxedFPC>, <F4 as Fang<BoxedFPC>>::Proc: 'static,
+        F4: Fang<Handler>,           <F4 as Fang<Handler>>::Proc: 'static,
     {
-        fn build(&self, inner: Inner) -> Box<dyn FangProcCaller + Send + Sync + 'static> {
+        fn build(&self, inner: BoxedFPC) -> BoxedFPC {
             let (f1, f2, f3, f4) = self;
-            Box::new(
+            BoxedFPC::from_proc(
                 f1.chain(
                     f2.chain(
                         f3.chain(
@@ -140,15 +183,16 @@ const _: () = {
 
     impl<F1, F2, F3, F4, F5> Fangs for (F1, F2, F3, F4, F5)
     where
-        F1: Fang<F2::Proc>, F1::Proc: Send + Sync + 'static,
-        F2: Fang<F3::Proc>, F2::Proc: Send + Sync + 'static,
-        F3: Fang<F4::Proc>, F3::Proc: Send + Sync + 'static,
-        F4: Fang<F5::Proc>, F4::Proc: Send + Sync + 'static,
-        F5: Fang<Inner>,    F5::Proc: Send + Sync + 'static,
+        F1: Fang<F2::Proc>,
+        F2: Fang<F3::Proc>,
+        F3: Fang<F4::Proc>,
+        F4: Fang<F5::Proc>,
+        F5: Fang<BoxedFPC>, <F5 as Fang<BoxedFPC>>::Proc: 'static,
+        F5: Fang<Handler>,           <F5 as Fang<Handler>>::Proc: 'static,
     {
-        fn build(&self, inner: Inner) -> Box<dyn FangProcCaller + Send + Sync + 'static> {
+        fn build(&self, inner: BoxedFPC) -> BoxedFPC {
             let (f1, f2, f3, f4, f5) = self;
-            Box::new(
+            BoxedFPC::from_proc(
                 f1.chain(
                     f2.chain(
                         f3.chain(
@@ -164,16 +208,17 @@ const _: () = {
 
     impl<F1, F2, F3, F4, F5, F6> Fangs for (F1, F2, F3, F4, F5, F6)
     where
-        F1: Fang<F2::Proc>, F1::Proc: Send + Sync + 'static,
-        F2: Fang<F3::Proc>, F2::Proc: Send + Sync + 'static,
-        F3: Fang<F4::Proc>, F3::Proc: Send + Sync + 'static,
-        F4: Fang<F5::Proc>, F4::Proc: Send + Sync + 'static,
-        F5: Fang<F6::Proc>, F5::Proc: Send + Sync + 'static,
-        F6: Fang<Inner>,    F6::Proc: Send + Sync + 'static,
+        F1: Fang<F2::Proc>,
+        F2: Fang<F3::Proc>,
+        F3: Fang<F4::Proc>,
+        F4: Fang<F5::Proc>,
+        F5: Fang<F6::Proc>,
+        F6: Fang<BoxedFPC>, <F6 as Fang<BoxedFPC>>::Proc: 'static,
+        F6: Fang<Handler>,           <F6 as Fang<Handler>>::Proc: 'static,
     {
-        fn build(&self, inner: Inner) -> Box<dyn FangProcCaller + Send + Sync + 'static> {
+        fn build(&self, inner: BoxedFPC) -> BoxedFPC {
             let (f1, f2, f3, f4, f5, f6) = self;
-            Box::new(
+            BoxedFPC::from_proc(
                 f1.chain(
                     f2.chain(
                         f3.chain(
@@ -191,17 +236,18 @@ const _: () = {
 
     impl<F1, F2, F3, F4, F5, F6, F7> Fangs for (F1, F2, F3, F4, F5, F6, F7)
     where
-        F1: Fang<F2::Proc>, F1::Proc: Send + Sync + 'static,
-        F2: Fang<F3::Proc>, F2::Proc: Send + Sync + 'static,
-        F3: Fang<F4::Proc>, F3::Proc: Send + Sync + 'static,
-        F4: Fang<F5::Proc>, F4::Proc: Send + Sync + 'static,
-        F5: Fang<F6::Proc>, F5::Proc: Send + Sync + 'static,
-        F6: Fang<F7::Proc>, F6::Proc: Send + Sync + 'static,
-        F7: Fang<Inner>,    F7::Proc: Send + Sync + 'static,
+        F1: Fang<F2::Proc>,
+        F2: Fang<F3::Proc>,
+        F3: Fang<F4::Proc>,
+        F4: Fang<F5::Proc>,
+        F5: Fang<F6::Proc>,
+        F6: Fang<F7::Proc>,
+        F7: Fang<BoxedFPC>, <F7 as Fang<BoxedFPC>>::Proc: 'static,
+        F7: Fang<Handler>,           <F7 as Fang<Handler>>::Proc: 'static,
     {
-        fn build(&self, inner: Inner) -> Box<dyn FangProcCaller + Send + Sync + 'static> {
+        fn build(&self, inner: BoxedFPC) -> BoxedFPC {
             let (f1, f2, f3, f4, f5, f6, f7) = self;
-            Box::new(
+            BoxedFPC::from_proc(
                 f1.chain(
                     f2.chain(
                         f3.chain(
@@ -221,18 +267,19 @@ const _: () = {
 
     impl<F1, F2, F3, F4, F5, F6, F7, F8> Fangs for (F1, F2, F3, F4, F5, F6, F7, F8)
     where
-        F1: Fang<F2::Proc>, F1::Proc: Send + Sync + 'static,
-        F2: Fang<F3::Proc>, F2::Proc: Send + Sync + 'static,
-        F3: Fang<F4::Proc>, F3::Proc: Send + Sync + 'static,
-        F4: Fang<F5::Proc>, F4::Proc: Send + Sync + 'static,
-        F5: Fang<F6::Proc>, F5::Proc: Send + Sync + 'static,
-        F6: Fang<F7::Proc>, F6::Proc: Send + Sync + 'static,
-        F7: Fang<F8::Proc>, F7::Proc: Send + Sync + 'static,
-        F8: Fang<Inner>,    F8::Proc: Send + Sync + 'static,
+        F1: Fang<F2::Proc>,
+        F2: Fang<F3::Proc>,
+        F3: Fang<F4::Proc>,
+        F4: Fang<F5::Proc>,
+        F5: Fang<F6::Proc>,
+        F6: Fang<F7::Proc>,
+        F7: Fang<F8::Proc>,
+        F8: Fang<BoxedFPC>, <F8 as Fang<BoxedFPC>>::Proc: 'static,
+        F8: Fang<Handler>,           <F8 as Fang<Handler>>::Proc: 'static,
     {
-        fn build(&self, inner: Inner) -> Box<dyn FangProcCaller + Send + Sync + 'static> {
+        fn build(&self, inner: BoxedFPC) -> BoxedFPC {
             let (f1, f2, f3, f4, f5, f6, f7, f8) = self;
-            Box::new(
+            BoxedFPC::from_proc(
                 f1.chain(
                     f2.chain(
                         f3.chain(
@@ -251,4 +298,5 @@ const _: () = {
             )
         }
     }
+*/
 };

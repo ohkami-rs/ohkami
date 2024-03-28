@@ -1,4 +1,5 @@
-use crate::{fang::FangProcCaller, handler::Handler, Method, Request, Response};
+use crate::{handler::Handler, Method, Request, Response};
+use crate::fang::{FangProcCaller, BoxedFPC};
 use ohkami_lib::Slice;
 use std::{fmt::Write as _, future::Future, pin::Pin};
 
@@ -15,8 +16,8 @@ pub(crate) struct RadixRouter {
 
 pub(super) struct Node {
     pub(super) patterns:    &'static [Pattern],
-    pub(super) handle_proc: Box<dyn FangProcCaller + Send + Sync>,
-    pub(super) catch_proc:  Box<dyn FangProcCaller + Send + Sync>,
+    pub(super) handle_proc: BoxedFPC,
+    pub(super) catch_proc:  BoxedFPC,
     pub(super) children:    Vec<Node>,
 } const _: () = {
     impl std::fmt::Debug for Node {
@@ -76,7 +77,7 @@ pub(super) enum Pattern {
 };
 
 pub(super) struct OPTIONSProc(
-    pub(super) Box<dyn FangProcCaller + Send + Sync>
+    pub(super) BoxedFPC
 ); const _: () = {
     impl std::fmt::Debug for OPTIONSProc {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -86,7 +87,7 @@ pub(super) struct OPTIONSProc(
 
     impl OPTIONSProc {
         fn handle<'h>(&'h self, req: &'h mut Request) -> Pin<Box<dyn Future<Output = Response> + Send + 'h>> {
-            self.0.bite_caller(req)
+            self.0.call_bite(req)
         }
     }
 };
@@ -100,13 +101,13 @@ impl RadixRouter {
         req: &mut Request,
     ) -> Response {
         match req.method() {
-            Method::GET     => self.GET    .search(req).bite_caller(req).await,
-            Method::PUT     => self.PUT    .search(req).bite_caller(req).await,
-            Method::POST    => self.POST   .search(req).bite_caller(req).await,
-            Method::PATCH   => self.PATCH  .search(req).bite_caller(req).await,
-            Method::DELETE  => self.DELETE .search(req).bite_caller(req).await,
+            Method::GET     => self.GET    .search(req).call_bite(req).await,
+            Method::PUT     => self.PUT    .search(req).call_bite(req).await,
+            Method::POST    => self.POST   .search(req).call_bite(req).await,
+            Method::PATCH   => self.PATCH  .search(req).call_bite(req).await,
+            Method::DELETE  => self.DELETE .search(req).call_bite(req).await,
 
-            Method::HEAD    => self.GET    .search(req).bite_caller(req).await.without_content(),
+            Method::HEAD    => self.GET    .search(req).call_bite(req).await.without_content(),
             Method::OPTIONS => self.OPTIONS.handle(req).await,
         }
     }
