@@ -45,3 +45,22 @@ impl Handler {
         (self.0)(req)
     }
 }
+
+impl Handler {
+    pub(crate) fn default_not_found() -> Self {
+        async fn not_found() -> Response {
+            Response::NotFound()
+        }
+
+        not_found.into_handler()
+    }
+
+
+    pub(crate) fn default_no_content() -> Self {
+        async fn no_content() -> Response {
+            Response::NoContent()
+        }
+
+        no_content.into_handler()
+    }
+}

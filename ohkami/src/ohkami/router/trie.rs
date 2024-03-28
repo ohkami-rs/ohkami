@@ -1,7 +1,6 @@
 use std::{borrow::Cow, sync::Arc};
 use super::{RouteSection, RouteSections};
 use crate::{
-    Response,
     fang::{BoxedFPC, Fangs},
     handler::{ByAnother, Handler, Handlers},
 };
@@ -103,14 +102,10 @@ pub(super) struct OPTIONSFangses(
         }
 
         fn into_radix(mut self) -> super::radix::OPTIONSProc {
-            let handler = Handler::new(|_|
-                Box::pin(async {Response::NoContent()})
-            );
-
             super::radix::OPTIONSProc(match self.0.pop() {
-                None       => BoxedFPC::from_proc(handler),
+                None       => BoxedFPC::from_proc(Handler::default_no_content()),
                 Some(last) => self.0.into_iter().rfold(
-                    last.build_handler(handler),
+                    last.build_handler(Handler::default_no_content()),
                     |proc, remaining| remaining.build(proc)
                 )
             })
@@ -276,14 +271,10 @@ impl Node {
         let catch_proc = {
             let mut fangses = fangses.clone();
 
-            let handler = Handler::new(|_| Box::pin(async {
-                Response::NotFound()
-            }));
-
             match fangses.pop() {
-                None       => BoxedFPC::from_proc(handler),
+                None       => BoxedFPC::from_proc(Handler::default_not_found()),
                 Some(last) => fangses.into_iter().rfold(
-                    last.build_handler(handler),
+                    last.build_handler(Handler::default_not_found()),
                     |proc, remaining| remaining.build(proc)
                 )
             }
@@ -291,9 +282,7 @@ impl Node {
         let handle_proc = {
             let handler = match handler {
                 Some(h) => h,
-                None    => Handler::new(|_| Box::pin(async {
-                    Response::NotFound()
-                }))
+                None    => Handler::default_not_found(),
             };
 
             match fangses.pop() {
