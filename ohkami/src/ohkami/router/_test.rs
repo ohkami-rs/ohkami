@@ -173,7 +173,7 @@ fn my_ohkami() -> Ohkami {
     /*===== with no nests =====*/
     *N().lock().unwrap() = 0;
 
-    let o = Ohkami::with(Increment, (
+    let o = Ohkami::with((Increment,), (
         "/a"  .GET(h),
         "/a/b".GET(h),
     ));
@@ -197,7 +197,7 @@ fn my_ohkami() -> Ohkami {
     /*===== with nests =====*/
     *N().lock().unwrap() = 0;
 
-    let o = Ohkami::with(Increment, (
+    let o = Ohkami::with((Increment,), (
         "/a"  .GET(h),
         "/a/b".GET(h),
         "/a/b/c".By(Ohkami::with((), (
@@ -228,7 +228,7 @@ fn my_ohkami() -> Ohkami {
     /*===== duplicatedly-registerd fangs must be merged and called once =====*/
     *N().lock().unwrap() = 0;
 
-    let o = Ohkami::with(Increment, (
+    let o = Ohkami::with((Increment,), (
         "/a"  .GET(h),
         "/a/b".GET(h),
         "/a/b/c".By(Ohkami::with((Increment, Increment), (

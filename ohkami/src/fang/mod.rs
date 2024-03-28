@@ -60,7 +60,6 @@ const _: () = {
         }
     }
 };
-
 #[cfg(feature="nightly")]
 const _: () = {
     impl<Proc: FangProc> FangProcCaller for Proc {
@@ -95,9 +94,12 @@ pub trait Fangs {
 }
 #[allow(private_interfaces)]
 const _: (/* FIXME: more easy way to impl the same... */) = {
+    /*===== tuple helper =====*/
+
     trait FangsHelper<Inner: FangProc> {
         fn build_helper(&self, inner: Inner) -> BoxedFPC;
     }
+    trait Sealed {}
     impl<FH: FangsHelper<BoxedFPC> + FangsHelper<Handler>> Fangs for FH {
         fn build(&self, inner: BoxedFPC) -> BoxedFPC {
             <Self as FangsHelper<BoxedFPC>>::build_helper(&self, inner)
@@ -107,6 +109,8 @@ const _: (/* FIXME: more easy way to impl the same... */) = {
         }
     }
 
+
+    /*===== tuple impls =====*/
 
     impl<Inner: FangProc> FangsHelper<Inner> for () {
         fn build_helper(&self, inner: Inner) -> BoxedFPC {
@@ -158,16 +162,13 @@ const _: (/* FIXME: more easy way to impl the same... */) = {
         }
     }
 
-/*
-    impl<F1, F2, F3, F4> Fangs for (F1, F2, F3, F4)
-    where
+    impl<Inner: FangProc,
         F1: Fang<F2::Proc>,
         F2: Fang<F3::Proc>,
         F3: Fang<F4::Proc>,
-        F4: Fang<BoxedFPC>, <F4 as Fang<BoxedFPC>>::Proc: 'static,
-        F4: Fang<Handler>,           <F4 as Fang<Handler>>::Proc: 'static,
-    {
-        fn build(&self, inner: BoxedFPC) -> BoxedFPC {
+        F4: Fang<Inner>,
+    > FangsHelper<Inner> for (F1, F2, F3, F4) {
+        fn build_helper(&self, inner: Inner) -> BoxedFPC {
             let (f1, f2, f3, f4) = self;
             BoxedFPC::from_proc(
                 f1.chain(
@@ -181,16 +182,14 @@ const _: (/* FIXME: more easy way to impl the same... */) = {
         }
     }
 
-    impl<F1, F2, F3, F4, F5> Fangs for (F1, F2, F3, F4, F5)
-    where
+    impl<Inner: FangProc,
         F1: Fang<F2::Proc>,
         F2: Fang<F3::Proc>,
         F3: Fang<F4::Proc>,
         F4: Fang<F5::Proc>,
-        F5: Fang<BoxedFPC>, <F5 as Fang<BoxedFPC>>::Proc: 'static,
-        F5: Fang<Handler>,           <F5 as Fang<Handler>>::Proc: 'static,
-    {
-        fn build(&self, inner: BoxedFPC) -> BoxedFPC {
+        F5: Fang<Inner>,
+    > FangsHelper<Inner> for (F1, F2, F3, F4, F5) {
+        fn build_helper(&self, inner: Inner) -> BoxedFPC {
             let (f1, f2, f3, f4, f5) = self;
             BoxedFPC::from_proc(
                 f1.chain(
@@ -206,17 +205,15 @@ const _: (/* FIXME: more easy way to impl the same... */) = {
         }
     }
 
-    impl<F1, F2, F3, F4, F5, F6> Fangs for (F1, F2, F3, F4, F5, F6)
-    where
+    impl<Inner: FangProc,
         F1: Fang<F2::Proc>,
         F2: Fang<F3::Proc>,
         F3: Fang<F4::Proc>,
         F4: Fang<F5::Proc>,
         F5: Fang<F6::Proc>,
-        F6: Fang<BoxedFPC>, <F6 as Fang<BoxedFPC>>::Proc: 'static,
-        F6: Fang<Handler>,           <F6 as Fang<Handler>>::Proc: 'static,
-    {
-        fn build(&self, inner: BoxedFPC) -> BoxedFPC {
+        F6: Fang<Inner>,
+    > FangsHelper<Inner> for (F1, F2, F3, F4, F5, F6) {
+        fn build_helper(&self, inner: Inner) -> BoxedFPC {
             let (f1, f2, f3, f4, f5, f6) = self;
             BoxedFPC::from_proc(
                 f1.chain(
@@ -234,18 +231,16 @@ const _: (/* FIXME: more easy way to impl the same... */) = {
         }
     }
 
-    impl<F1, F2, F3, F4, F5, F6, F7> Fangs for (F1, F2, F3, F4, F5, F6, F7)
-    where
+    impl<Inner: FangProc,
         F1: Fang<F2::Proc>,
         F2: Fang<F3::Proc>,
         F3: Fang<F4::Proc>,
         F4: Fang<F5::Proc>,
         F5: Fang<F6::Proc>,
         F6: Fang<F7::Proc>,
-        F7: Fang<BoxedFPC>, <F7 as Fang<BoxedFPC>>::Proc: 'static,
-        F7: Fang<Handler>,           <F7 as Fang<Handler>>::Proc: 'static,
-    {
-        fn build(&self, inner: BoxedFPC) -> BoxedFPC {
+        F7: Fang<Inner>,
+    > FangsHelper<Inner> for (F1, F2, F3, F4, F5, F6, F7) {
+        fn build_helper(&self, inner: Inner) -> BoxedFPC {
             let (f1, f2, f3, f4, f5, f6, f7) = self;
             BoxedFPC::from_proc(
                 f1.chain(
@@ -265,8 +260,7 @@ const _: (/* FIXME: more easy way to impl the same... */) = {
         }
     }
 
-    impl<F1, F2, F3, F4, F5, F6, F7, F8> Fangs for (F1, F2, F3, F4, F5, F6, F7, F8)
-    where
+    impl<Inner: FangProc,
         F1: Fang<F2::Proc>,
         F2: Fang<F3::Proc>,
         F3: Fang<F4::Proc>,
@@ -274,10 +268,9 @@ const _: (/* FIXME: more easy way to impl the same... */) = {
         F5: Fang<F6::Proc>,
         F6: Fang<F7::Proc>,
         F7: Fang<F8::Proc>,
-        F8: Fang<BoxedFPC>, <F8 as Fang<BoxedFPC>>::Proc: 'static,
-        F8: Fang<Handler>,           <F8 as Fang<Handler>>::Proc: 'static,
-    {
-        fn build(&self, inner: BoxedFPC) -> BoxedFPC {
+        F8: Fang<Inner>,
+    > FangsHelper<Inner> for (F1, F2, F3, F4, F5, F6, F7, F8) {
+        fn build_helper(&self, inner: Inner) -> BoxedFPC {
             let (f1, f2, f3, f4, f5, f6, f7, f8) = self;
             BoxedFPC::from_proc(
                 f1.chain(
@@ -298,5 +291,4 @@ const _: (/* FIXME: more easy way to impl the same... */) = {
             )
         }
     }
-*/
 };
