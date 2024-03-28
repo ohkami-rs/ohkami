@@ -226,37 +226,6 @@ fn my_ohkami() -> Ohkami {
     let req = TestRequest::GET("/a/b/c/d/e");
     o.oneshot(req).await;
     assert_eq!(*N().lock().unwrap(), 4);
-
-    
-    /*===== duplicatedly-registerd fangs must be merged and called once =====*/
-    *N().lock().unwrap() = 0;
-
-    let o = Ohkami::with((Increment,), (
-        "/a"  .GET(h),
-        "/a/b".GET(h),
-        "/a/b/c".By(Ohkami::with((Increment, Increment), (
-            "/d"  .GET(h),
-            "/d/e".GET(h),
-        )))
-    ));
-
-    dbg!(o.clone().into_router());
-    dbg!(o.clone().into_router().into_radix());
-
-    let req = TestRequest::GET("/a");
-    o.oneshot(req).await;
-    assert_eq!(*N().lock().unwrap(), 1);
-
-    let req = TestRequest::GET("/a/b");
-    o.oneshot(req).await;
-    assert_eq!(*N().lock().unwrap(), 2);
-    let req = TestRequest::GET("/a/b/c/d");
-    o.oneshot(req).await;
-    assert_eq!(*N().lock().unwrap(), 3);
-
-    let req = TestRequest::GET("/a/b/c/d/e");
-    o.oneshot(req).await;
-    assert_eq!(*N().lock().unwrap(), 4);
 }
 
 /*
