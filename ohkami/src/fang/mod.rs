@@ -38,6 +38,8 @@ impl BoxedFPC {
 const _: () = {
     impl FangProc for Handler {
         type Response = Response;
+
+        #[inline(always)]
         fn bite<'b>(&'b self, req: &'b mut Request) -> impl std::future::Future<Output = Self::Response> + Send + 'b {
             self.handle(req)  // Pin<Box<dyn Future>>
         }
@@ -45,6 +47,8 @@ const _: () = {
 
     impl FangProc for BoxedFPC {
         type Response = Response;
+
+        #[inline(always)]
         fn bite<'b>(&'b self, req: &'b mut Request) -> impl std::future::Future<Output = Self::Response> + Send + 'b {
             (&*self.0).call_bite(req)  // Pin<Box<dyn Future>>
         }
@@ -93,7 +97,7 @@ pub trait Fangs {
     fn build_handler(&self, handler: Handler) -> BoxedFPC;
 }
 #[allow(private_interfaces)]
-const _: (/* FIXME: more easy way to impl the same... */) = {
+const _: () = {
     /*===== tuple helper =====*/
 
     trait FangsHelper<Inner: FangProc> {

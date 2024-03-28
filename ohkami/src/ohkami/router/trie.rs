@@ -26,7 +26,7 @@ pub struct TrieRouter {
     pub(super) POST:    Node,
     pub(super) PATCH:   Node,
     pub(super) DELETE:  Node,
-    pub(super) OPTIONS: OPTIONSFangs,
+    pub(super) OPTIONS: OPTIONSFangses,
 }
 
 #[derive(Clone/* for testing */)]
@@ -41,8 +41,8 @@ pub(super) struct Node {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             f.debug_struct("")
                 .field("pattern",  &self.pattern)
-                // .field("fangs",    &self.fangs.iter().map(|_| "#").collect::<Vec<_>>())
-                .field("handler",  &self.handler.as_ref().map(|_| "@"))
+                .field("fangses",  &self.fangses.iter().map(|_| '#').collect::<Vec<_>>())
+                .field("handler",  &self.handler.as_ref().map(|_| '@'))
                 .field("children", &self.children)
                 .finish()
         }
@@ -84,26 +84,36 @@ pub(super) enum Pattern {
 };
 
 #[derive(Clone)]
-pub(super) struct OPTIONSFangs(
-    Arc<dyn Fangs>
+pub(super) struct OPTIONSFangses(
+    Vec<Arc<dyn Fangs>>
 ); const _: () = {
-    impl std::fmt::Debug for OPTIONSFangs {
+    impl std::fmt::Debug for OPTIONSFangses {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             f.write_str("{OPTIONS fangs}")
         }
     }
 
-    impl OPTIONSFangs {
+    impl OPTIONSFangses {
         fn new(fangs: impl Fangs + 'static) -> Self {
-            Self(Arc::new(fangs))
+            Self(vec![Arc::new(fangs)])
         }
 
-        fn into_radix(self) -> super::radix::OPTIONSProc {
-            super::radix::OPTIONSProc(
-                self.0.build(BoxedFPC::from_proc(Handler::new(|_|
-                    Box::pin(async {Response::NoContent()})
-                )))
-            )
+        fn push(&mut self, fangs: Arc<dyn Fangs>) {
+            self.0.push(fangs)
+        }
+
+        fn into_radix(mut self) -> super::radix::OPTIONSProc {
+            let handler = Handler::new(|_|
+                Box::pin(async {Response::NoContent()})
+            );
+
+            super::radix::OPTIONSProc(match self.0.pop() {
+                None       => BoxedFPC::from_proc(handler),
+                Some(last) => self.0.into_iter().rfold(
+                    last.build_handler(handler),
+                    |proc, fangs| fangs.build(proc)
+                )
+            })
         }
     }
 };
@@ -117,7 +127,7 @@ impl TrieRouter {
             POST:    Node::root(),
             PATCH:   Node::root(),
             DELETE:  Node::root(),
-            OPTIONS: OPTIONSFangs::new(()),
+            OPTIONS: OPTIONSFangses::new(()),
         }
     }
 
@@ -148,7 +158,7 @@ impl TrieRouter {
         self.PATCH .apply_fangs(fangs.clone());
         self.DELETE.apply_fangs(fangs.clone());
 
-        self.OPTIONS = OPTIONSFangs(fangs);
+        self.OPTIONS.push(fangs);
     }
 
     pub(crate) fn merge_another(&mut self, another: ByAnother) {
