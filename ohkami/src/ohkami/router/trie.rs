@@ -1,48 +1,57 @@
-use std::{borrow::Cow, sync::Arc};
+use std::{borrow::Cow, collections::HashMap, sync::Arc};
 use super::{RouteSection, RouteSections};
 use crate::{
     fang::{BoxedFPC, Fangs},
     handler::{ByAnother, Handler, Handlers},
 };
 
-const _: () = {
-    impl Into<Pattern> for RouteSection {
-        fn into(self) -> Pattern {
-            match self {
-                RouteSection::Param         => Pattern::Param,
-                RouteSection::Static(bytes) => Pattern::Static(Cow::Borrowed(bytes))
-            }
-        }
-    }
-};
 
-
-/*===== defs =====*/
 #[derive(Clone, Debug)]
 pub struct TrieRouter {
+    pub(super) id:      RouterID,
     pub(super) GET:     Node,
     pub(super) PUT:     Node,
     pub(super) POST:    Node,
     pub(super) PATCH:   Node,
     pub(super) DELETE:  Node,
-    pub(super) OPTIONS: OPTIONSFangses,
+    pub(super) OPTIONS: FangsList,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub(crate) struct RouterID(usize);
+impl RouterID {
+    fn new() -> Self {
+        use std::sync::{OnceLock, Mutex};
+
+        static ID: OnceLock<Mutex<usize>> = OnceLock::new();
+
+        let mut id_lock = ID
+            .get_or_init(|| Mutex::new(0))
+            .lock().unwrap();
+
+        let id = *id_lock + 1;
+        *id_lock = id;
+        drop(id_lock);
+
+        Self(id)
+    }
 }
 
 #[derive(Clone/* for testing */)]
 pub(super) struct Node {
     /// Why Option: root node doesn't have pattern
-    pub(super) pattern:  Option<Pattern>,
-    pub(super) handler:  Option<Handler>,
-    pub(super) fangses:  Vec<Arc<dyn Fangs>>,
-    pub(super) children: Vec<Node>,
+    pub(super) pattern:    Option<Pattern>,
+    pub(super) handler:    Option<Handler>,
+    pub(super) fangs_list: FangsList,
+    pub(super) children:   Vec<Node>,
 } const _: () = {
     impl std::fmt::Debug for Node {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             f.debug_struct("")
-                .field("pattern",  &self.pattern)
-                .field("fangses",  &self.fangses.iter().map(|_| '#').collect::<Vec<_>>())
-                .field("handler",  &self.handler.as_ref().map(|_| '@'))
-                .field("children", &self.children)
+                .field("pattern",    &self.pattern)
+                .field("handler",    &self.handler.as_ref().map(|_| '@'))
+                .field("fangs_list", &self.fangs_list.iter().map(|_| '#').collect::<Vec<_>>())
+                .field("children",   &self.children)
                 .finish()
         }
     }
@@ -80,35 +89,127 @@ pub(super) enum Pattern {
             }
         }
     }
+
+    impl From<RouteSection> for Pattern {
+        fn from(section: RouteSection) -> Self {
+            match section {
+                RouteSection::Param         => Pattern::Param,
+                RouteSection::Static(bytes) => Pattern::Static(Cow::Borrowed(bytes))
+            }
+        }
+    }
 };
 
 #[derive(Clone)]
-pub(super) struct OPTIONSFangses(
-    Vec<Arc<dyn Fangs>>
-); const _: () = {
-    impl std::fmt::Debug for OPTIONSFangses {
-        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            f.write_str("{OPTIONS fangs}")
+pub(super) struct FangsList(Option<Box<
+    HashMap<RouterID, Arc<dyn Fangs>>
+>>);
+impl FangsList {
+    fn new() -> Self {
+        Self(None)
+    }
+
+    fn add(&mut self, id: RouterID, fangs: Arc<dyn Fangs>) {
+        self.0.as_mut().unwrap_or(&mut Box::new(HashMap::new()))
+            .insert(id, fangs);
+    }
+    fn get(&self, id: &RouterID) -> Option<&Arc<dyn Fangs>> {
+        self.0.as_ref()?
+            .get(id)
+    }
+    fn remove(&mut self, id: &RouterID) -> Option<Arc<dyn Fangs>> {
+        self.0.as_mut()?
+            .remove(id)
+    }
+    fn extend(&mut self, another: Self) {
+        let another = *another.0.unwrap_or_default();
+        for (id, fangs) in another.into_iter() {
+            self.add(id, fangs)
         }
     }
 
-    impl OPTIONSFangses {
-        fn new() -> Self {
-            Self(vec![])
+    fn into_proc_with(self, handler: Handler) -> BoxedFPC {
+        let mut iter = self.into_iter();
+
+        match iter.next() {
+            None => BoxedFPC::from_proc(handler),
+            Some((_, most_inner)) => iter.fold(
+                most_inner.build_handler(handler),
+                |proc, (_, fangs)| fangs.build(proc)
+            )
+        }
+    }
+
+    /// yield from most inner fangs
+    fn iter(&self) -> impl Iterator<Item = (&RouterID, &Arc<dyn Fangs>)> {
+        struct Iter<'i> {
+            sorted_keys: Vec<&'i RouterID>,
+            ref_map:     &'i FangsList,
+        }
+        impl<'i> Iterator for Iter<'i> {
+            type Item = (&'i RouterID, &'i Arc<dyn Fangs>);
+
+            fn next(&mut self) -> Option<Self::Item> {
+                let most_inner_key   = self.sorted_keys.pop()?;
+                let most_inner_fangs = self.ref_map.get(&most_inner_key).unwrap();
+                Some((most_inner_key, most_inner_fangs))
+            }
         }
 
-        fn push(&mut self, fangs: Arc<dyn Fangs>) {
-            self.0.push(fangs)
+        let mut keys = self.0.as_ref()
+            .map(|map| map.keys().collect::<Vec<_>>())
+            .unwrap_or_else(Vec::new);
+        keys.sort(/*
+            This sorts `keys` by _ order of `RouteID`,
+            it's desired order because more inner (= more child)
+            `TrieRouter` has greater `RouteID`
+        */);
+
+        Iter {
+            sorted_keys: keys,
+            ref_map:     self,
+        }
+    }
+
+    /// yield from most inner fangs
+    fn into_iter(self) -> impl Iterator<Item = (RouterID, Arc<dyn Fangs>)> {
+        struct Iter {
+            sorted_keys: Vec<RouterID>,
+            map:         FangsList,
+        }
+        impl Iterator for Iter {
+            type Item = (RouterID, Arc<dyn Fangs>);
+            fn next(&mut self) -> Option<Self::Item> {
+                let most_inner_key   = self.sorted_keys.pop()?;
+                let most_inner_fangs = self.map.remove(&most_inner_key).unwrap();
+                Some((most_inner_key, most_inner_fangs))
+            }
         }
 
-        fn into_radix(mut self) -> super::radix::OPTIONSProc {
-            super::radix::OPTIONSProc(match self.0.pop() {
-                None       => BoxedFPC::from_proc(Handler::default_no_content()),
-                Some(last) => self.0.into_iter().rfold(
-                    last.build_handler(Handler::default_no_content()),
-                    |proc, remaining| remaining.build(proc)
-                )
-            })
+        let mut keys = self.0.as_ref()
+            .map(|map| map.keys().map(Clone::clone).collect::<Vec<_>>())
+            .unwrap_or_else(Vec::new);
+        keys.sort(/*
+            This sorts `keys` by _ order of `RouteID`,
+            it's desired order because more inner (= more child)
+            `TrieRouter` has greater `RouteID`
+        */);
+
+        Iter {
+            sorted_keys: keys,
+            map:         self,
+        }
+    }
+}
+const _: () = {
+    impl std::fmt::Debug for FangsList {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            let mut d = f.debug_tuple("FangsList");
+            let mut d = &mut d;
+            for (id, _) in self.iter() {
+                d = d.field(id);
+            }
+            d.finish()
         }
     }
 };
@@ -117,13 +218,18 @@ pub(super) struct OPTIONSFangses(
 impl TrieRouter {
     pub(crate) fn new() -> Self {
         Self {
+            id:      RouterID::new(),
             GET:     Node::root(),
             PUT:     Node::root(),
             POST:    Node::root(),
             PATCH:   Node::root(),
             DELETE:  Node::root(),
-            OPTIONS: OPTIONSFangses::new(),
+            OPTIONS: FangsList::new(),
         }
+    }
+
+    pub(crate) fn id(&self) -> RouterID {
+        self.id.clone()
     }
 
     pub(crate) fn register_handlers(&mut self, handlers: Handlers) {
@@ -146,14 +252,14 @@ impl TrieRouter {
         }
     }
 
-    pub(crate) fn apply_fangs(&mut self, fangs: Arc<dyn Fangs>) {
-        self.GET   .apply_fangs(fangs.clone());
-        self.PUT   .apply_fangs(fangs.clone());
-        self.POST  .apply_fangs(fangs.clone());
-        self.PATCH .apply_fangs(fangs.clone());
-        self.DELETE.apply_fangs(fangs.clone());
+    pub(crate) fn apply_fangs(&mut self, id: RouterID, fangs: Arc<dyn Fangs>) {
+        self.GET   .apply_fangs(id.clone(), fangs.clone());
+        self.PUT   .apply_fangs(id.clone(), fangs.clone());
+        self.POST  .apply_fangs(id.clone(), fangs.clone());
+        self.PATCH .apply_fangs(id.clone(), fangs.clone());
+        self.DELETE.apply_fangs(id.clone(), fangs.clone());
 
-        self.OPTIONS.push(fangs);
+        self.OPTIONS.add(id, fangs);
     }
 
     pub(crate) fn merge_another(&mut self, another: ByAnother) {
@@ -174,7 +280,7 @@ impl TrieRouter {
             POST:    self.POST   .into_radix(),
             PATCH:   self.PATCH  .into_radix(),
             DELETE:  self.DELETE .into_radix(),
-            OPTIONS: self.OPTIONS.into_radix(),
+            OPTIONS: self.OPTIONS.into_proc_with(Handler::default_no_content()),
         }
     }
 }
@@ -221,23 +327,23 @@ impl Node {
     }
 
     /// MUST be called after all handlers are registered
-    fn apply_fangs(&mut self, fangs: Arc<dyn Fangs>) {
+    fn apply_fangs(&mut self, id: RouterID, fangs: Arc<dyn Fangs>) {
         for child in &mut self.children {
-            child.apply_fangs(fangs.clone())
+            child.apply_fangs(id.clone(), fangs.clone())
         }
 
-        self.fangses.push(fangs);
+        self.fangs_list.add(id, fangs);
     }
 
     fn into_radix(self) -> super::radix::Node {
-        let Node { pattern, mut fangses, mut handler, mut children } = self;
+        let Node { pattern, mut fangs_list, mut handler, mut children } = self;
 
         let mut patterns = pattern.into_iter().collect::<Vec<_>>();
 
         while children.len() == 1 && handler.is_none() {
             let Node {
                 pattern:  child_pattern,
-                fangses:  child_fangses,
+                fangs_list:  child_fangses,
                 handler:  child_handler,
                 children: child_children,
             } = children.pop(/* pop the single child */).unwrap(/* `children` is empty here */);
@@ -246,7 +352,7 @@ impl Node {
 
             handler  = child_handler;
 
-            fangses  = child_fangses; // `handler` is None
+            fangs_list  = child_fangses; // `handler` is None
             
             let child_pattern = child_pattern.unwrap(/* `child` is not root */);
             if patterns.last().is_some_and(|last| last.is_static()) && child_pattern.is_static() {
@@ -268,37 +374,17 @@ impl Node {
             _ => std::cmp::Ordering::Equal
         });
 
-        let catch_proc = {
-            let mut fangses = fangses.clone();
-
-            match fangses.pop() {
-                None       => BoxedFPC::from_proc(Handler::default_not_found()),
-                Some(last) => fangses.into_iter().rfold(
-                    last.build_handler(Handler::default_not_found()),
-                    |proc, remaining| remaining.build(proc)
-                )
-            }
-        };
-        let handle_proc = {
-            let handler = match handler {
-                Some(h) => h,
-                None    => Handler::default_not_found(),
-            };
-
-            match fangses.pop() {
-                None       => BoxedFPC::from_proc(handler),
-                Some(last) => fangses.into_iter().rfold(
-                    last.build_handler(handler),
-                    |proc, remaining| remaining.build(proc)
-                )
-            }
-        };
+        let catch_proc  = fangs_list.clone().into_proc_with(Handler::default_not_found());
+        let handle_proc = fangs_list.into_proc_with(match handler {
+            Some(h) => h,
+            None    => Handler::default_not_found()
+        });
 
         super::radix::Node {
             catch_proc,
             handle_proc,
             patterns: Box::leak(patterns.into_iter().map(Pattern::into_radix).collect()),
-            children: children.into_iter().map(Node::into_radix).collect(),
+            children: children.into_iter().map(Node::into_radix).collect::<Box<[_]>>(),
         }
     }
 }
@@ -310,18 +396,18 @@ impl Node {
 impl Node {
     fn new(pattern: Pattern) -> Self {
         Self {
-            pattern:  Some(pattern),
-            handler:  None,
-            fangses:  vec![],
-            children: vec![],
+            pattern:    Some(pattern),
+            handler:    None,
+            fangs_list: FangsList::new(),
+            children:   vec![],
         }
     }
     fn root() -> Self {
         Self {
-            pattern:  None,
-            handler:  None,
-            fangses:  vec![],
-            children: vec![],
+            pattern:    None,
+            handler:    None,
+            fangs_list: FangsList::new(),
+            children:   vec![],
         }
     }
 
@@ -374,7 +460,7 @@ impl Node {
 
         let Node {
             pattern:  None, // <-- another_root must be a root node and has pattern `None`
-            fangses:  another_root_fangses,
+            fangs_list:  another_root_fangses,
             handler:  another_root_handler,
             children: another_children,
         } = another_root else {
@@ -417,8 +503,8 @@ impl Node {
         }
     }
 
-    fn append_fangs(&mut self, fangs: Vec<Arc<dyn Fangs>>) {
-        self.fangses.extend(fangs);
+    fn append_fangs(&mut self, fangs: FangsList) {
+        self.fangs_list.extend(fangs);
     }
 
     fn set_handler(&mut self, new_handler: Handler) -> Result<(), String> {

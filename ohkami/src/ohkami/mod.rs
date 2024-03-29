@@ -128,7 +128,7 @@ pub struct Ohkami {
     pub(crate) routes: TrieRouter,
 
     /// apply just before merged to another or called `howl`
-    pub(crate) fangs:  Arc<dyn Fangs>,
+    pub(crate) fangs:  Option<Arc<dyn Fangs>>,
 }
 
 
@@ -171,7 +171,7 @@ impl Ohkami {
 
         Self {
             routes: router,
-            fangs:  Arc::new(()),
+            fangs:  None,
         }
     }
 
@@ -217,7 +217,7 @@ impl Ohkami {
 
         Self {
             routes: router,
-            fangs:  Arc::new(fangs),
+            fangs:  Some(Arc::new(fangs)),
         }
     }
 }
@@ -225,7 +225,10 @@ impl Ohkami {
 impl Ohkami {
     pub(crate) fn into_router(self) -> TrieRouter {
         let Self { routes: mut router, fangs } = self;
-        router.apply_fangs(fangs);
+
+        if let Some(fangs) = fangs {
+            router.apply_fangs(router.id(), fangs);
+        }
 
         #[cfg(feature="DEBUG")]
         println!("{router:#?}");

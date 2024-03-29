@@ -28,6 +28,12 @@ const _: () = {
             &*self.0
         }
     }
+
+    impl std::fmt::Debug for BoxedFPC {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            f.write_str("{Fang proc}")
+        }
+    }
 };
 impl BoxedFPC {
     pub(crate) fn from_proc(proc: impl FangProcCaller + Send + Sync + 'static) -> Self {

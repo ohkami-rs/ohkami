@@ -1,7 +1,7 @@
 use crate::{handler::Handler, Method, Request, Response};
 use crate::fang::{FangProcCaller, BoxedFPC};
 use ohkami_lib::Slice;
-use std::{fmt::Write as _, future::Future, pin::Pin};
+use std::fmt::Write as _;
 
 
 #[derive(Debug)]
@@ -11,14 +11,14 @@ pub(crate) struct RadixRouter {
     pub(super) POST:    Node,
     pub(super) PATCH:   Node,
     pub(super) DELETE:  Node,
-    pub(super) OPTIONS: OPTIONSProc,
+    pub(super) OPTIONS: BoxedFPC,
 }
 
 pub(super) struct Node {
     pub(super) patterns:    &'static [Pattern],
     pub(super) handle_proc: BoxedFPC,
     pub(super) catch_proc:  BoxedFPC,
-    pub(super) children:    Vec<Node>,
+    pub(super) children:    Box<[Node]>,
 } const _: () = {
     impl std::fmt::Debug for Node {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -76,22 +76,6 @@ pub(super) enum Pattern {
     }
 };
 
-pub(super) struct OPTIONSProc(
-    pub(super) BoxedFPC
-); const _: () = {
-    impl std::fmt::Debug for OPTIONSProc {
-        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            f.write_str("{OPTIONS proc}")
-        }
-    }
-
-    impl OPTIONSProc {
-        fn handle<'h>(&'h self, req: &'h mut Request) -> Pin<Box<dyn Future<Output = Response> + Send + 'h>> {
-            self.0.call_bite(req)
-        }
-    }
-};
-
 
 /*===== impls =====*/
 
@@ -108,7 +92,7 @@ impl RadixRouter {
             Method::DELETE  => self.DELETE .search(req).call_bite(req).await,
 
             Method::HEAD    => self.GET    .search(req).call_bite(req).await.without_content(),
-            Method::OPTIONS => self.OPTIONS.handle(req).await,
+            Method::OPTIONS => self.OPTIONS.call_bite(req).await,
         }
     }
 }
@@ -182,7 +166,7 @@ impl Node {
 
 impl Node {
     #[inline] fn matchable_child(&self, path: &[u8]) -> Option<&Node> {
-        for child in &self.children {
+        for child in &*self.children {
             if child.patterns.first()?.is_matchable_to(path) {
                 return Some(child)
             }
