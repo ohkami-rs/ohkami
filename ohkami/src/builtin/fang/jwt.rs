@@ -50,8 +50,7 @@ const _: () = {
         Inner: FangProc + Sync,
         Payload: Serialize + for<'de> Deserialize<'de> + Send + Sync + 'static,
     > FangProc for JWTProc<Inner, Payload> {
-        type Response = Response;
-        async fn bite<'b>(&'b self, req: &'b mut Request) -> Self::Response {
+        async fn bite<'b>(&'b self, req: &'b mut Request) -> Response {
             let jwt_payload = match self.jwt.verified(req) {
                 Ok(payload) => payload,
                 Err(errres) => return errres

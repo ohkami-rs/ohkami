@@ -1,4 +1,4 @@
-use std::{borrow::Cow, collections::HashMap, sync::Arc};
+use std::{borrow::Cow, sync::Arc};
 use super::{RouteSection, RouteSections};
 use crate::{
     fang::{BoxedFPC, Fangs},
@@ -101,29 +101,22 @@ pub(super) enum Pattern {
 };
 
 #[derive(Clone)]
-pub(super) struct FangsList(Option<Box<
-    HashMap<RouterID, Arc<dyn Fangs>>
->>);
+pub(super) struct FangsList(Vec<(
+    RouterID,
+    Arc<dyn Fangs>)
+>);
 impl FangsList {
     fn new() -> Self {
-        Self(None)
+        Self(Vec::new())
     }
 
     fn add(&mut self, id: RouterID, fangs: Arc<dyn Fangs>) {
-        self.0.as_mut().unwrap_or(&mut Box::new(HashMap::new()))
-            .insert(id, fangs);
-    }
-    fn get(&self, id: &RouterID) -> Option<&Arc<dyn Fangs>> {
-        self.0.as_ref()?
-            .get(id)
-    }
-    fn remove(&mut self, id: &RouterID) -> Option<Arc<dyn Fangs>> {
-        self.0.as_mut()?
-            .remove(id)
+        if self.0.iter().find(|(_id, _)| *_id == id).is_none() {
+            self.0.push((id, fangs));
+        }
     }
     fn extend(&mut self, another: Self) {
-        let another = *another.0.unwrap_or_default();
-        for (id, fangs) in another.into_iter() {
+        for (id, fangs) in another.0.into_iter() {
             self.add(id, fangs)
         }
     }
@@ -133,72 +126,24 @@ impl FangsList {
 
         match iter.next() {
             None => BoxedFPC::from_proc(handler),
-            Some((_, most_inner)) => iter.fold(
+            Some(most_inner) => iter.fold(
                 most_inner.build_handler(handler),
-                |proc, (_, fangs)| fangs.build(proc)
+                |proc, fangs| fangs.build(proc)
             )
         }
     }
 
     /// yield from most inner fangs
-    fn iter(&self) -> impl Iterator<Item = (&RouterID, &Arc<dyn Fangs>)> {
-        struct Iter<'i> {
-            sorted_keys: Vec<&'i RouterID>,
-            ref_map:     &'i FangsList,
-        }
-        impl<'i> Iterator for Iter<'i> {
-            type Item = (&'i RouterID, &'i Arc<dyn Fangs>);
-
-            fn next(&mut self) -> Option<Self::Item> {
-                let most_inner_key   = self.sorted_keys.pop()?;
-                let most_inner_fangs = self.ref_map.get(&most_inner_key).unwrap();
-                Some((most_inner_key, most_inner_fangs))
-            }
-        }
-
-        let mut keys = self.0.as_ref()
-            .map(|map| map.keys().collect::<Vec<_>>())
-            .unwrap_or_else(Vec::new);
-        keys.sort(/*
-            This sorts `keys` by _ order of `RouteID`,
-            it's desired order because more inner (= more child)
-            `TrieRouter` has greater `RouteID`
-        */);
-
-        Iter {
-            sorted_keys: keys,
-            ref_map:     self,
-        }
+    fn iter(&self) -> impl Iterator<Item = &Arc<dyn Fangs>> {
+        self.0.iter()
+            .map(|(_, fangs)| fangs)
+            .rev()
     }
-
     /// yield from most inner fangs
-    fn into_iter(self) -> impl Iterator<Item = (RouterID, Arc<dyn Fangs>)> {
-        struct Iter {
-            sorted_keys: Vec<RouterID>,
-            map:         FangsList,
-        }
-        impl Iterator for Iter {
-            type Item = (RouterID, Arc<dyn Fangs>);
-            fn next(&mut self) -> Option<Self::Item> {
-                let most_inner_key   = self.sorted_keys.pop()?;
-                let most_inner_fangs = self.map.remove(&most_inner_key).unwrap();
-                Some((most_inner_key, most_inner_fangs))
-            }
-        }
-
-        let mut keys = self.0.as_ref()
-            .map(|map| map.keys().map(Clone::clone).collect::<Vec<_>>())
-            .unwrap_or_else(Vec::new);
-        keys.sort(/*
-            This sorts `keys` by _ order of `RouteID`,
-            it's desired order because more inner (= more child)
-            `TrieRouter` has greater `RouteID`
-        */);
-
-        Iter {
-            sorted_keys: keys,
-            map:         self,
-        }
+    fn into_iter(self) -> impl Iterator<Item = Arc<dyn Fangs>> {
+        self.0.into_iter()
+            .map(|(_, fangs)| fangs)
+            .rev()
     }
 }
 const _: () = {
@@ -206,7 +151,7 @@ const _: () = {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             let mut d = f.debug_tuple("FangsList");
             let mut d = &mut d;
-            for (id, _) in self.iter() {
+            for (id, _) in self.0.iter() {
                 d = d.field(id);
             }
             d.finish()

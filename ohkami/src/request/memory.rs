@@ -142,8 +142,7 @@ const _: () = {
     }
     impl<Data: Clone + Send + Sync + 'static, Inner: FangProc>
     FangProc for UseMemoryProc<Data, Inner> {
-        type Response = Inner::Response;
-        fn bite<'b>(&'b self, req: &'b mut crate::Request) -> impl std::future::Future<Output = Self::Response> + Send + 'b {
+        fn bite<'b>(&'b self, req: &'b mut crate::Request) -> impl std::future::Future<Output = crate::Response> + Send + 'b {
             req.memorize(self.data.clone());
             self.inner.bite(req)
         }

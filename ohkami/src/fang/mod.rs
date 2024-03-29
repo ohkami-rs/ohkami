@@ -7,8 +7,7 @@ pub trait Fang<Inner: FangProc> {
     fn chain(&self, inner: Inner) -> Self::Proc;
 }
 pub trait FangProc: Send + Sync + 'static {
-    type Response: IntoResponse;
-    fn bite<'b>(&'b self, req: &'b mut Request) -> impl std::future::Future<Output = Self::Response> + Send + 'b;
+    fn bite<'b>(&'b self, req: &'b mut Request) -> impl std::future::Future<Output = Response> + Send + 'b;
 }
 
 
@@ -43,19 +42,15 @@ impl BoxedFPC {
 
 const _: () = {
     impl FangProc for Handler {
-        type Response = Response;
-
         #[inline(always)]
-        fn bite<'b>(&'b self, req: &'b mut Request) -> impl std::future::Future<Output = Self::Response> + Send + 'b {
+        fn bite<'b>(&'b self, req: &'b mut Request) -> impl std::future::Future<Output = Response> + Send + 'b {
             self.handle(req)  // Pin<Box<dyn Future>>
         }
     }
 
     impl FangProc for BoxedFPC {
-        type Response = Response;
-
         #[inline(always)]
-        fn bite<'b>(&'b self, req: &'b mut Request) -> impl std::future::Future<Output = Self::Response> + Send + 'b {
+        fn bite<'b>(&'b self, req: &'b mut Request) -> impl std::future::Future<Output = Response> + Send + 'b {
             (&*self.0).call_bite(req)  // Pin<Box<dyn Future>>
         }
     }

@@ -160,8 +160,7 @@ fn my_ohkami() -> Ohkami {
     }
     struct IncrementProc<Inner: FangProc>(Inner);
     impl<Inner: FangProc> FangProc for IncrementProc<Inner> {
-        type Response = Inner::Response;
-        fn bite<'b>(&'b self, req: &'b mut Request) -> impl std::future::Future<Output = Self::Response> + Send + 'b {
+        fn bite<'b>(&'b self, req: &'b mut Request) -> impl std::future::Future<Output = Response> + Send + 'b {
             #[cfg(feature="DEBUG")]
             println!("Called `Increment`");
 
@@ -228,145 +227,37 @@ fn my_ohkami() -> Ohkami {
     assert_eq!(*N().lock().unwrap(), 4);
 }
 
-/*
-#[crate::__rt__::test] async fn test_global_fangs_registration() {
-    use std::sync::{OnceLock, Mutex};
+#[__rt__::test] async fn test_fangs_nesting() {
+    use std::sync::{Mutex, OnceLock};
     use crate::{Fang, FangProc};
 
-    async fn h() -> &'static str {"Hello"}
-
-    fn N() -> &'static Mutex<usize> {
-        static N: OnceLock<Mutex<usize>> = OnceLock::new();
-        N.get_or_init(|| Mutex::new(0))
+    #[allow(non_snake_case)]
+    fn MESSAGES() -> &'static Mutex<String> {
+        static MESSAGES: OnceLock<Mutex<String>> = OnceLock::new();
+        MESSAGES.get_or_init(|| Mutex::new(String::new()))
     }
 
-    struct APIIncrement;
-    impl<Inner: FangProc> Fang<Inner> for APIIncrement {
-        type Proc = APIIncrementProc<Inner>;
-        fn chain(&self, inner: Inner) -> Self::Proc {
-            APIIncrementProc(inner)
+    struct HelloFang {
+        name: &'static str
+    }
+    impl<I: FangProc> Fang<I> for HelloFang {
+        type Proc = HelloFangProc<I>;
+        fn chain(&self, inner: I) -> Self::Proc {
+            HelloFangProc { inner, name: self.name }
         }
     }
-    struct APIIncrementProc<Inner: FangProc>(Inner);
-    impl<Inner: FangProc> FangProc for APIIncrementProc<Inner> {
-        type Response = Inner::Response;
-        fn bite<'b>(&'b self, req: &'b mut Request) -> impl std::future::Future<Output = Self::Response> + Send + 'b {
-            *N().lock().unwrap() += 1;
-            self.0.bite(req)
-        }
+    struct HelloFangProc<I: FangProc> {
+        name:  &'static str,
+        inner: I,
     }
-
-    struct GlobalIncrement;
-    impl<Inner: FangProc> Fang<Inner> for GlobalIncrement {
-        type Proc = GlobalIncrementProc<Inner>;
-        fn chain(&self, inner: Inner) -> Self::Proc {
-            GlobalIncrementProc(inner)
-        }
-    }
-    struct GlobalIncrementProc<Inner: FangProc>(Inner);
-    impl<Inner: FangProc> FangProc for GlobalIncrementProc<Inner> {
-        type Response = Inner::Response;
-        fn bite<'b>(&'b self, req: &'b mut Request) -> impl std::future::Future<Output = Self::Response> + Send + 'b {
-            *N().lock().unwrap() += 1;
-            self.0.bite(req)
+    impl<I: FangProc> FangProc for HelloFangProc<I> {
+        async fn bite<'b>(&'b self, req: &'b mut Request) -> Response {
+            MESSAGES().lock().unwrap().push_str(self.name);
+            self.inner.bite(req).await
         }
     }
 
-    struct NotFoundIncrement;
-    impl<Inner: FangProc> Fang<Inner> for NotFoundIncrement {
-        type Proc = NotFoundIncrementProc<Inner>;
-        fn chain(&self, inner: Inner) -> Self::Proc {
-            NotFoundIncrement(inner)
-        }
-    }
-    struct NotFoundIncrementProc<Inner: FangProc>(Inner);
-    impl<Inner: FangProc> FangProc for NotFoundIncrementProc<Inner> {
-        type Response = Inner::Response;
-        fn bite<'b>(&'b self, req: &'b mut Request) -> impl std::future::Future<Output = Self::Response> + Send + 'b {
-            *N().lock().unwrap() += 1;
-            self.0.bite(req)
-        }
-    }
-
-    let o = Ohkami::new((
-        "/healthz".GET(h),
-        "/api".By(Ohkami::with(APIIncrement, (
-            "/a".GET(h),
-            "/b".GET(h),
-        )))
-    ));
-
-
-    dbg!(o.clone().into_router());
-    dbg!(o.clone().into_router().into_radix());
-
-
-    let req = TestRequest::GET("/healthz");
-    o.oneshot_with((), req).await;
-    assert_eq!(*N().lock().unwrap(), 0);
-
-    let req = TestRequest::GET("/healthz");
-    o.oneshot_with((NotFoundIncrement,), req).await;
-    assert_eq!(*N().lock().unwrap(), 0);
-
-    let req = TestRequest::GET("/healthz");
-    o.oneshot_with((GlobalIncrement, NotFoundIncrement), req).await;
-    assert_eq!(*N().lock().unwrap(), 2);
-
-    let req = TestRequest::GET("/healthy");
-    o.oneshot_with((NotFoundIncrement,), req).await;
-    assert_eq!(*N().lock().unwrap(), 5);
-
-    let req = TestRequest::GET("/healthy");
-    o.oneshot_with((GlobalIncrement, NotFoundIncrement), req).await;
-    assert_eq!(*N().lock().unwrap(), 10);
-
-    let req = TestRequest::GET("/api/a");
-    o.oneshot_with((GlobalIncrement, NotFoundIncrement), req).await;
-    assert_eq!(*N().lock().unwrap(), 13);
-
-    let req = TestRequest::GET("/api/b");
-    o.oneshot_with((NotFoundIncrement,), req).await;
-    assert_eq!(*N().lock().unwrap(), 14);
-
-    let req = TestRequest::GET("/api/c");
-    o.oneshot_with((GlobalIncrement, NotFoundIncrement), req).await;
-    assert_eq!(*N().lock().unwrap(), 19);
 }
-
-#[__rt__::test] async fn test_timeout() {
-    use crate::prelude::*;
-    use crate::testing::*;
-    use crate::builtin::fang::Timeout;
-    use std::time::Duration;
-
-    async fn sleeping_hello(sleep: u64) -> &'static str {
-        __rt__::sleep(Duration::from_secs(sleep)).await;
-
-        "Hello, I was sleeping ):"
-    }
-
-    let t = Ohkami::with(Timeout(Duration::from_secs(3)), (
-        "/hello/:sleep".GET(sleeping_hello),
-    ));
-
-
-    let req = TestRequest::GET("/hello/1");
-    let res = t.oneshot(req).await;
-    assert_eq!(res.status(), Status::OK);
-    assert_eq!(res.text(),   Some("Hello, I was sleeping ):"));
-
-    let req = TestRequest::GET("/hello/2");
-    let res = t.oneshot(req).await;
-    assert_eq!(res.status(), Status::OK);
-    assert_eq!(res.text(),   Some("Hello, I was sleeping ):"));
-
-    let req = TestRequest::GET("/hello/4");
-    let res = t.oneshot(req).await;
-    assert_eq!(res.status(), Status::InternalServerError);
-    assert_eq!(res.text(),   Some("Timeout"));
-}
-*/
 
 #[__rt__::test] async fn test_pararell_registering() {
     async fn hello_help() -> &'static str {

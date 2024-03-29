@@ -128,8 +128,7 @@ pub struct CORSProc<Inner: FangProc> {
 }
 /* Based on https://github.com/honojs/hono/blob/main/src/middleware/cors/index.ts; MIT */
 impl<Inner: FangProc> FangProc for CORSProc<Inner> {
-    type Response = Response;
-    async fn bite<'b>(&'b self, req: &'b mut Request) -> Self::Response {
+    async fn bite<'b>(&'b self, req: &'b mut Request) -> Response {
         let mut res = self.inner.bite(req).await.into_response();
 
         let mut h = res.headers.set();
