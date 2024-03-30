@@ -5,7 +5,7 @@ use std::fmt::Write as _;
 
 
 #[derive(Debug)]
-pub(crate) struct RadixRouter(Node);
+pub(crate) struct RadixRouter(pub(super) Node);
 
 pub(super) struct Node {
     pub(super) patterns: &'static [Pattern],
