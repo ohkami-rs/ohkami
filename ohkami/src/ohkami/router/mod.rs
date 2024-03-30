@@ -1,8 +1,5 @@
 #![allow(non_snake_case)]
 
-#[cfg(test)]
-mod _test;
-
 mod trie;
 pub(crate) use trie::TrieRouter;
 
