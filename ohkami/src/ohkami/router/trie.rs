@@ -166,13 +166,8 @@ const _: () = {
 impl TrieRouter {
     pub(crate) fn new() -> Self {
         Self {
-            id:      RouterID::new(),
-            GET:     Node::root(),
-            PUT:     Node::root(),
-            POST:    Node::root(),
-            PATCH:   Node::root(),
-            DELETE:  Node::root(),
-            OPTIONS: FangsList::new(),
+            id:   RouterID::new(),
+            root: Node::root(),
         }
     }
 
