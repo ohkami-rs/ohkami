@@ -97,6 +97,7 @@ pub mod typed;
 pub mod testing;
 
 pub mod utils {
+    pub use crate::fang::{FrontFang, BackFang};
     pub use ::ohkami_lib::unix_timestamp;
 }
 

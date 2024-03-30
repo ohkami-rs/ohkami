@@ -295,8 +295,8 @@ fn my_ohkami() -> Ohkami {
         {:#?}\n\n\
         ============================================================\n\n\
         {:#?}",
-        t.clone().into_router().GET,
-        t.clone().into_router().into_radix().GET,
+        t.clone().into_router(),
+        t.clone().into_router().into_radix(),
     );
 
 

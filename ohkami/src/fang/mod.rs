@@ -1,3 +1,6 @@
+mod utils;
+pub use utils::{FrontFang, BackFang};
+
 use std::{future::Future, ops::Deref, pin::Pin};
 use crate::{handler::Handler, IntoResponse, Request, Response};
 
@@ -6,6 +9,7 @@ pub trait Fang<Inner: FangProc> {
     type Proc: FangProc;
     fn chain(&self, inner: Inner) -> Self::Proc;
 }
+
 pub trait FangProc: Send + Sync + 'static {
     fn bite<'b>(&'b self, req: &'b mut Request) -> impl std::future::Future<Output = Response> + Send + 'b;
 }
