@@ -64,3 +64,11 @@ impl Handler {
         no_content.into_handler()
     }
 }
+
+const _: () = {
+    impl std::fmt::Debug for Handler {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            f.write_str("{handler}")
+        }
+    }
+};

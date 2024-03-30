@@ -8,13 +8,8 @@ use crate::{
 
 #[derive(Clone, Debug)]
 pub struct TrieRouter {
-    pub(super) id:      RouterID,
-    pub(super) GET:     Node,
-    pub(super) PUT:     Node,
-    pub(super) POST:    Node,
-    pub(super) PATCH:   Node,
-    pub(super) DELETE:  Node,
-    pub(super) OPTIONS: FangsList,
+    pub(super) id:   RouterID,
+    pub(super) root: Node,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -41,7 +36,7 @@ impl RouterID {
 pub(super) struct Node {
     /// Why Option: root node doesn't have pattern
     pub(super) pattern:    Option<Pattern>,
-    pub(super) handler:    Option<Handler>,
+    pub(super) handlers:   HandlerMap,
     pub(super) fangs_list: FangsList,
     pub(super) children:   Vec<Node>,
 } const _: () = {
@@ -49,13 +44,23 @@ pub(super) struct Node {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             f.debug_struct("")
                 .field("pattern",    &self.pattern)
-                .field("handler",    &self.handler.as_ref().map(|_| '@'))
+                .field("handler",    &self.handlers)
                 .field("fangs_list", &self.fangs_list.iter().map(|_| '#').collect::<Vec<_>>())
                 .field("children",   &self.children)
                 .finish()
         }
     }
 };
+
+#[derive(Clone, Debug)]
+pub(super) struct HandlerMap {
+    GET:     Option<Handler>,
+    PUT:     Option<Handler>,
+    POST:    Option<Handler>,
+    PATCH:   Option<Handler>,
+    DELETE:  Option<Handler>,
+    OPTIONS: Option<Handler>,
+}
 
 #[derive(Clone)]
 pub(super) enum Pattern {
