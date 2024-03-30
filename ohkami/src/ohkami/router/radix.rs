@@ -68,10 +68,15 @@ pub(super) enum Pattern {
 } const _: () = {
     impl std::fmt::Debug for Pattern {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            f.write_str(match self {
-                Self::Param         => ":Param",
-                Self::Static(bytes) => std::str::from_utf8(bytes).unwrap(),
-            })
+            match self {
+                Self::Param         => f.write_str(":Param"),
+                Self::Static(bytes) => {
+                    f.write_char('\'')?;
+                    f.write_str(std::str::from_utf8(bytes).unwrap())?;
+                    f.write_char('\'')?;
+                    Ok(())
+                },
+            }
         }
     }
 };

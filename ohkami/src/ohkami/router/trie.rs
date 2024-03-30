@@ -137,13 +137,11 @@ impl FangsList {
     fn iter(&self) -> impl Iterator<Item = &Arc<dyn Fangs>> {
         self.0.iter()
             .map(|(_, fangs)| fangs)
-            .rev()
     }
     /// yield from most inner fangs
     fn into_iter(self) -> impl Iterator<Item = Arc<dyn Fangs>> {
         self.0.into_iter()
             .map(|(_, fangs)| fangs)
-            .rev()
     }
 }
 const _: () = {
@@ -287,17 +285,17 @@ impl Node {
 
         while children.len() == 1 && handler.is_none() {
             let Node {
-                pattern:  child_pattern,
-                fangs_list:  child_fangses,
-                handler:  child_handler,
-                children: child_children,
+                pattern:    child_pattern,
+                fangs_list: child_fangses,
+                handler:    child_handler,
+                children:   child_children,
             } = children.pop(/* pop the single child */).unwrap(/* `children` is empty here */);
 
             children = child_children;
 
             handler  = child_handler;
 
-            fangs_list  = child_fangses; // `handler` is None
+            fangs_list.extend(child_fangses);
             
             let child_pattern = child_pattern.unwrap(/* `child` is not root */);
             if patterns.last().is_some_and(|last| last.is_static()) && child_pattern.is_static() {
@@ -320,10 +318,7 @@ impl Node {
         });
 
         let catch_proc  = fangs_list.clone().into_proc_with(Handler::default_not_found());
-        let handle_proc = fangs_list.into_proc_with(match handler {
-            Some(h) => h,
-            None    => Handler::default_not_found()
-        });
+        let handle_proc = fangs_list.into_proc_with(handler.unwrap_or(Handler::default_not_found()));
 
         super::radix::Node {
             catch_proc,

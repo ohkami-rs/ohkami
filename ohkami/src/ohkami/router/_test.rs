@@ -229,14 +229,15 @@ fn my_ohkami() -> Ohkami {
 
 #[__rt__::test] async fn test_fangs_nesting() {
     use std::sync::{Mutex, OnceLock};
-    use crate::{Fang, FangProc};
+    use crate::{Fang, FangProc, Ohkami};
 
     #[allow(non_snake_case)]
-    fn MESSAGES() -> &'static Mutex<String> {
-        static MESSAGES: OnceLock<Mutex<String>> = OnceLock::new();
-        MESSAGES.get_or_init(|| Mutex::new(String::new()))
+    fn MESSAGES() -> &'static Mutex<Vec<String>> {
+        static MESSAGES: OnceLock<Mutex<Vec<String>>> = OnceLock::new();
+        MESSAGES.get_or_init(|| Mutex::new(Vec::new()))
     }
 
+ 
     struct HelloFang {
         name: &'static str
     }
@@ -252,11 +253,110 @@ fn my_ohkami() -> Ohkami {
     }
     impl<I: FangProc> FangProc for HelloFangProc<I> {
         async fn bite<'b>(&'b self, req: &'b mut Request) -> Response {
-            MESSAGES().lock().unwrap().push_str(self.name);
-            self.inner.bite(req).await
+            {
+                let mut lock = MESSAGES().lock().unwrap();
+                lock.push(format!("Hello, {}!", self.name));
+            }
+            let res = self.inner.bite(req).await;
+            {
+                let mut lock = MESSAGES().lock().unwrap();
+                lock.push(format!("Bye, {}!", self.name));
+            }
+            res
         }
     }
 
+    async fn h() -> &'static str {"handler"}
+
+
+    let t = Ohkami::with((
+        HelloFang { name: "Amelia" },
+    ), (
+        "/abc".GET(h),
+        "/def".By(Ohkami::with((
+            HelloFang { name: "Brooks" },
+            HelloFang { name: "Carter" },
+        ), (
+            "/".GET(h),
+            "/jkl".By(Ohkami::with((
+                HelloFang { name: "Daniel" },
+            ), (
+                "/mno".GET(h),
+            )))
+        ))),
+        "/pqr".By(Ohkami::with((
+            HelloFang { name: "Evelyn" },
+        ), (
+            "/stu".GET(h),
+        ))),
+    ));
+
+    println!("\
+        {:#?}\n\n\
+        ============================================================\n\n\
+        {:#?}",
+        t.clone().into_router().GET,
+        t.clone().into_router().into_radix().GET,
+    );
+
+
+    {MESSAGES().lock().unwrap().clear();
+        let req = TestRequest::GET("/abc");
+        let res = t.oneshot(req).await;
+
+        assert_eq!(res.status(), Status::OK);
+        assert_eq!(&*MESSAGES().lock().unwrap(), &[
+            "Hello, Amelia!",
+            "Bye, Amelia!",
+        ]);
+    }
+
+    {MESSAGES().lock().unwrap().clear();
+        let req = TestRequest::GET("/def");
+        let res = t.oneshot(req).await;
+
+        assert_eq!(res.status(), Status::OK);
+        assert_eq!(&*MESSAGES().lock().unwrap(), &[
+            "Hello, Amelia!",
+            "Hello, Brooks!",
+            "Hello, Carter!",
+            "Bye, Carter!",
+            "Bye, Brooks!",
+            "Bye, Amelia!",
+        ]);
+    }
+
+    {MESSAGES().lock().unwrap().clear();
+        let req = TestRequest::GET("/def/jklmno");
+        let res = t.oneshot(req).await;
+
+        assert_eq!(res.status(), Status::NotFound);
+        assert_eq!(&*MESSAGES().lock().unwrap(), &[
+            "Hello, Amelia!",
+            "Hello, Brooks!",
+            "Hello, Carter!",
+            "Bye, Carter!",
+            "Bye, Brooks!",
+            "Bye, Amelia!",
+        ]);
+    }
+
+    {MESSAGES().lock().unwrap().clear();
+        let req = TestRequest::GET("/def/jkl/mno");
+        let res = t.oneshot(req).await;
+
+        assert_eq!(res.status(), Status::OK);
+        assert_eq!(&*MESSAGES().lock().unwrap(), &[
+            "Hello, Amelia!",
+            "Hello, Brooks!",
+            "Hello, Carter!",
+            "Hello, Daniel!",
+            "Bye, Daniel!",
+            "Bye, Carter!",
+            "Bye, Brooks!",
+            "Bye, Amelia!",
+        ]);
+    }
 }
 
 #[__rt__::test] async fn test_pararell_registering() {
