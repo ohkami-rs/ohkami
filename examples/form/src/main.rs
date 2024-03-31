@@ -38,22 +38,32 @@ async fn post_submit(form_data: FormData<'_>) -> NoContent {
 }
 
 
-struct Logger;
-impl BackFang for Logger {
-    type Error = std::convert::Infallible;
-    fn bite(&self, res: &mut Response, req: &Request) -> impl std::future::Future<Output = Result<(), Self::Error>> + Send {
-        println!();
-        println!("[ req ]\n{:?}", req);
-        println!("[ res ]\n{:?}", res);
-
-        async {Ok(())}
+struct Logger; const _: () = {
+    impl<I: FangProc> Fang<I> for Logger {
+        type Proc = LoggerProc<I>;
+        fn chain(&self, inner: I) -> Self::Proc {
+            LoggerProc { inner }
+        }
     }
-}
+
+    struct LoggerProc<I: FangProc> { inner: I }
+    impl<I: FangProc> FangProc for LoggerProc<I> {
+        async fn bite<'b>(&'b self, req: &'b mut Request) -> Response {
+            println!("\n[req]\n{req:#?}");
+
+            let res = self.inner.bite(req).await;
+
+            println!("\n[res]\n{res:#?}");
+
+            res
+        }
+    }
+};
 
 #[tokio::main]
 async fn main() {
-    Ohkami::new((
+    Ohkami::with((Logger,), (
         "/form"  .GET(get_form),
         "/submit".POST(post_submit),
-    )).howl_with(Logger, "localhost:5000").await
+    )).howl("localhost:5000").await
 }
