@@ -63,6 +63,14 @@ impl Handler {
 
         no_content.into_handler()
     }
+
+    pub(crate) fn default_method_not_allowed() -> Self {
+        async fn method_not_allowed() -> Response {
+            Response::MethodNotAllowed()
+        }
+
+        method_not_allowed.into_handler()
+    }
 }
 
 const _: () = {

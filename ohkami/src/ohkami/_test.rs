@@ -98,11 +98,11 @@ fn my_ohkami() -> Ohkami {
 
     let req = TestRequest::GET("/api/profiles/the_user/follow");
     let res = t.oneshot(req).await;
-    assert_eq!(res.status(), Status::NotFound);
+    assert_eq!(res.status(), Status::MethodNotAllowed);
 
     let req = TestRequest::POST("/api/profiles/the_user");
     let res = t.oneshot(req).await;
-    assert_eq!(res.status(), Status::NotFound);
+    assert_eq!(res.status(), Status::MethodNotAllowed);
 
     let req = TestRequest::POST("/api/profiles/the_user/follow");
     let res = t.oneshot(req).await;
