@@ -35,7 +35,6 @@ rustc-hash    = { version = "1.1", optional = true }
 #default       = ["testing"]
 rt_tokio      = ["dep:tokio"]
 rt_async-std  = ["dep:async-std"]
-nightly       = []
 testing       = []
 custom-header = ["dep:rustc-hash"]
 #websocket    = ["dep:sha1"]
@@ -48,7 +47,6 @@ DEBUG = [
     "async-std?/attributes",
 ]
 default = [
-    "nightly",
     "testing",
     "custom-header",
     #"websocket",

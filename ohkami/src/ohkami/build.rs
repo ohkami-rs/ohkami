@@ -144,24 +144,29 @@ trait RoutingItem {
 
 pub trait Routes {
     fn apply(self, router: &mut TrieRouter);
-} impl<R: RoutingItem> Routes for R {
-    fn apply(self, router: &mut TrieRouter) {
-        <R as RoutingItem>::apply(self, router)
+}
+const _: () = {
+    impl Routes for () {
+        fn apply(self, _router: &mut TrieRouter) {}
     }
-} macro_rules! impl_for_tuple {
-    ( $( $item:ident ),+ ) => {
-        impl<$( $item: RoutingItem ),+> Routes for ( $($item,)+ ) {
-            fn apply(self, router: &mut TrieRouter) {
-                let ( $( $item, )+ ) = self;
-                $(
-                    <$item as RoutingItem>::apply($item, router);
-                )+
-            }
+    impl<R: RoutingItem> Routes for R {
+        fn apply(self, router: &mut TrieRouter) {
+            <R as RoutingItem>::apply(self, router)
         }
-    };
-} const _: () = {
-    impl Routes for () {fn apply(self, _router: &mut TrieRouter) {}}
-    
+    }
+
+    macro_rules! impl_for_tuple {
+        ( $( $item:ident ),+ ) => {
+            impl<$( $item: RoutingItem ),+> Routes for ( $($item,)+ ) {
+                fn apply(self, router: &mut TrieRouter) {
+                    let ( $( $item, )+ ) = self;
+                    $(
+                        <$item as RoutingItem>::apply($item, router);
+                    )+
+                }
+            }
+        };
+    }
     impl_for_tuple!(R1);
     impl_for_tuple!(R1, R2);
     impl_for_tuple!(R1, R2, R3);

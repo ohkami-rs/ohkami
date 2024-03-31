@@ -2,7 +2,7 @@ mod utils;
 pub use utils::{FrontFang, BackFang};
 
 use std::{future::Future, ops::Deref, pin::Pin};
-use crate::{handler::Handler, IntoResponse, Request, Response};
+use crate::{handler::Handler, Request, Response};
 
 
 pub trait Fang<Inner: FangProc> {
@@ -12,16 +12,59 @@ pub trait Fang<Inner: FangProc> {
 
 pub trait FangProc: Send + Sync + 'static {
     fn bite<'b>(&'b self, req: &'b mut Request) -> impl std::future::Future<Output = Response> + Send + 'b;
+
+    /// Default: `Box::pin(self.bite(req))`.
+    /// 
+    /// Override when `bite` itself returns `Pin<Box<dyn Future>>`.
+    fn bite_boxed_<'b>(&'b self, req: &'b mut Request) -> Pin<Box<dyn Future<Output = Response> + Send + 'b>> {
+        Box::pin(self.bite(req))
+    }
 }
+const _: () = {
+    impl FangProc for Handler {
+        #[inline(always)]
+        fn bite<'b>(&'b self, req: &'b mut Request) -> impl std::future::Future<Output = Response> + Send + 'b {
+            self.handle(req)
+        }
+
+        fn bite_boxed_<'b>(&'b self, req: &'b mut Request) -> Pin<Box<dyn Future<Output = Response> + Send + 'b>> {
+            self.handle(req)
+        }
+    }
+
+    impl FangProc for BoxedFPC {
+        #[inline(always)]
+        fn bite<'b>(&'b self, req: &'b mut Request) -> impl std::future::Future<Output = Response> + Send + 'b {
+            (&*self.0).call_bite(req)
+        }
+
+        fn bite_boxed_<'b>(&'b self, req: &'b mut Request) -> Pin<Box<dyn Future<Output = Response> + Send + 'b>> {
+            (&*self.0).call_bite(req)
+        }
+    }
+};
 
 
 pub(crate) trait FangProcCaller {
     fn call_bite<'b>(&'b self, req: &'b mut Request) -> Pin<Box<dyn Future<Output = Response> + Send + 'b>>;
 }
+const _: () = {
+    impl<Proc: FangProc> FangProcCaller for Proc {
+        #[inline(always)]
+        fn call_bite<'b>(&'b self, req: &'b mut Request) -> Pin<Box<dyn Future<Output = Response> + Send + 'b>> {
+            self.bite_boxed_(req)
+        }
+    }
+};
 
 pub(crate) struct BoxedFPC(Box<dyn
     FangProcCaller + Send + Sync + 'static
 >);
+impl BoxedFPC {
+    pub(crate) fn from_proc(proc: impl FangProcCaller + Send + Sync + 'static) -> Self {
+        Self(Box::new(proc))
+    }
+}
 const _: () = {
     impl Deref for BoxedFPC {
         type Target = dyn FangProcCaller + Send + Sync + 'static;
@@ -35,64 +78,6 @@ const _: () = {
     impl std::fmt::Debug for BoxedFPC {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             f.write_str("{Fang proc}")
-        }
-    }
-};
-impl BoxedFPC {
-    pub(crate) fn from_proc(proc: impl FangProcCaller + Send + Sync + 'static) -> Self {
-        Self(Box::new(proc))
-    }
-}
-
-const _: () = {
-    impl FangProc for Handler {
-        #[inline(always)]
-        fn bite<'b>(&'b self, req: &'b mut Request) -> impl std::future::Future<Output = Response> + Send + 'b {
-            self.handle(req)  // Pin<Box<dyn Future>>
-        }
-    }
-
-    impl FangProc for BoxedFPC {
-        #[inline(always)]
-        fn bite<'b>(&'b self, req: &'b mut Request) -> impl std::future::Future<Output = Response> + Send + 'b {
-            (&*self.0).call_bite(req)  // Pin<Box<dyn Future>>
-        }
-    }
-};
-
-#[cfg(not(feature="nightly"))]
-const _: () = {
-    impl<Proc: FangProc> FangProcCaller for Proc {
-        #[inline(always)]
-        fn call_bite<'b>(&'b self, req: &'b mut Request) -> Pin<Box<dyn Future<Output = Response> + Send + 'b>> {
-            let res = self.bite(req);
-            Box::pin(async move {res.await.into_response()})
-        }
-    }
-};
-#[cfg(feature="nightly")]
-const _: () = {
-    impl<Proc: FangProc> FangProcCaller for Proc {
-        #[inline(always)]
-        default fn call_bite<'b>(&'b self, req: &'b mut Request) -> Pin<Box<dyn Future<Output = Response> + Send + 'b>> {
-            let res = self.bite(req);
-            Box::pin(async move {res.await.into_response()})
-        }
-    }
-
-    impl FangProcCaller for Handler {
-        #[inline(always)]
-        fn call_bite<'b>(&'b self, req: &'b mut Request) -> Pin<Box<dyn Future<Output = Response> + Send + 'b>> {
-            // omit doubly-boxed future
-            self.handle(req)
-        }
-    }
-
-    impl FangProcCaller for BoxedFPC {
-        #[inline(always)]
-        fn call_bite<'b>(&'b self, req: &'b mut Request) -> Pin<Box<dyn Future<Output = Response> + Send + 'b>> {
-            // omit doubly-boxed future
-            (&*self.0).call_bite(req)
         }
     }
 };

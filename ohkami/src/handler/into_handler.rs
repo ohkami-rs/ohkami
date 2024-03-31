@@ -28,6 +28,8 @@ pub trait IntoHandler<T> {
     <P as FromParam>::from_param(param)
         .map_err(IntoResponse::into_response)
 }
+
+/* FIXME: omit unsafe... */
 #[inline(always)] fn from_request<'fr, 'req, R: FromRequest<'fr>>(
     req: &'req Request
 ) -> Result<R, Response> {
