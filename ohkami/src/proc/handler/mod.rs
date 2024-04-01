@@ -17,22 +17,20 @@ use crate::{Request, Response};
 
 #[derive(Clone)]
 pub struct Handler(Arc<dyn
-    Fn(&Request) -> Pin<Box<dyn
+    Fn(&mut Request) -> Pin<Box<dyn
         Future<Output = Response>
         + Send + '_
     >>
-    + Send + Sync
-    + 'static
+    + Send + Sync + 'static
 >);
 
 impl Handler {
     pub(crate) fn new(proc: impl
-        Fn(&Request) -> Pin<Box<dyn
+        Fn(&mut Request) -> Pin<Box<dyn
             Future<Output = Response>
             + Send + '_
         >>
-        + Send + Sync
-        + 'static
+        + Send + Sync + 'static
     ) -> Self {
         Self(Arc::new(proc))
     }
@@ -40,7 +38,7 @@ impl Handler {
     #[inline(always)]
     pub(crate) fn handle<'req>(
         &'req self,
-        req: &'req Request,
+        req: &'req mut Request,
     ) -> Pin<Box<dyn Future<Output = Response> + Send + 'req>> {
         (self.0)(req)
     }

@@ -16,7 +16,7 @@ pub trait FangProc: Send + Sync + 'static {
     /// Default: `Box::pin(self.bite(req))`.
     /// 
     /// Override when `bite` itself returns `Pin<Box<dyn Future>>`.
-    fn bite_boxed_<'b>(&'b self, req: &'b mut Request) -> Pin<Box<dyn Future<Output = Response> + Send + 'b>> {
+    fn bite_boxed<'b>(&'b self, req: &'b mut Request) -> Pin<Box<dyn Future<Output = Response> + Send + 'b>> {
         Box::pin(self.bite(req))
     }
 }
@@ -27,7 +27,7 @@ const _: () = {
             self.handle(req)
         }
 
-        fn bite_boxed_<'b>(&'b self, req: &'b mut Request) -> Pin<Box<dyn Future<Output = Response> + Send + 'b>> {
+        fn bite_boxed<'b>(&'b self, req: &'b mut Request) -> Pin<Box<dyn Future<Output = Response> + Send + 'b>> {
             self.handle(req)
         }
     }
@@ -38,7 +38,7 @@ const _: () = {
             (&*self.0).call_bite(req)
         }
 
-        fn bite_boxed_<'b>(&'b self, req: &'b mut Request) -> Pin<Box<dyn Future<Output = Response> + Send + 'b>> {
+        fn bite_boxed<'b>(&'b self, req: &'b mut Request) -> Pin<Box<dyn Future<Output = Response> + Send + 'b>> {
             (&*self.0).call_bite(req)
         }
     }
@@ -52,7 +52,7 @@ const _: () = {
     impl<Proc: FangProc> FangProcCaller for Proc {
         #[inline(always)]
         fn call_bite<'b>(&'b self, req: &'b mut Request) -> Pin<Box<dyn Future<Output = Response> + Send + 'b>> {
-            self.bite_boxed_(req)
+            self.bite_boxed(req)
         }
     }
 };
