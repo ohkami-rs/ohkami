@@ -1,64 +1,68 @@
 use super::{Fang, FangProc};
 use crate::{Request, Response};
-use std::future::Future;
 
 
-pub struct FrontFang<
-    Proc: Fn(&mut Request) -> Fut + Clone + Send + Sync + 'static,
-    Fut:  Future<Output = Result<(), Response>> + Send + 'static,
->(pub Proc);
-
-const _: () = {
-    pub struct FrontFangProc<
-        Proc: Fn(&mut Request) -> Fut + Clone + Send + Sync + 'static,
-        Fut:  Future<Output = Result<(), Response>> + Send + 'static,
-        I:    FangProc,
-    > {
-        proc:  FrontFang<Proc, Fut>,
-        inner: I,
+pub struct FrontFang(
+    pub fn(&mut Request) -> Result<(), Response>
+); const _: () = {
+    impl<I: FangProc> Fang<I> for FrontFang {
+        type Proc = FrontFangProc<I>;
+        fn chain(&self, inner: I) -> Self::Proc {
+            FrontFangProc { proc: self.0, inner }
+        }
     }
 
-    impl<
-        Proc: Fn(&mut Request) -> Fut + Clone + Send + Sync + 'static,
-        Fut:  Future<Output = Result<(), Response>> + Send + 'static,
-        I:    FangProc,
-    > FangProc for FrontFangProc<Proc, Fut, I> {
+    pub struct FrontFangProc<I: FangProc> {
+        proc:  fn(&mut Request) -> Result<(), Response>,
+        inner: I
+    }
+    impl<I: FangProc> FangProc for FrontFangProc<I> {
         async fn bite<'b>(&'b self, req: &'b mut Request) -> Response {
-            match (self.proc.0)(req).await {
+            match (self.proc)(req) {
                 Ok(()) => self.inner.bite(req).await,
                 Err(e) => e,
             }
         }
     }
+};
 
-    impl<
-        Proc: Fn(&mut Request) -> Fut + Clone + Send + Sync + 'static,
-        Fut:  Future<Output = Result<(), Response>> + Send + 'static,
-        I:    FangProc,
-    > Fang<I> for FrontFang<Proc, Fut> {
-        type Proc = FrontFangProc<Proc, Fut, I>;
+pub struct BackFang(
+    pub fn(&mut Response)
+); const _: () = {
+    impl<I: FangProc> Fang<I> for BackFang {
+        type Proc = BackFangProc<I>;
         fn chain(&self, inner: I) -> Self::Proc {
-            FrontFangProc {
-                proc: FrontFang(self.0.clone()),
-                inner
-            }
+            BackFangProc { proc: self.0, inner }
+        }
+    }
+
+    pub struct BackFangProc<I: FangProc> {
+        proc:  fn(&mut Response),
+        inner: I,
+    }
+    impl<I: FangProc> FangProc for BackFangProc<I> {
+        async fn bite<'b>(&'b self, req: &'b mut Request) -> Response {
+            let mut res = self.inner.bite(req).await;
+            (self.proc)(&mut res);
+            res
         }
     }
 };
 
 
+/*
 pub struct BackFang<
-    Proc: for<'f> BackFangFn<'f>
+    Proc: for<'f> BackFangFn<'f>,
 >(pub Proc);
 
-trait BackFangFn<'f>: Clone + Send + Sync + 'static {
-    fn bite_fn<'b: 'f>(&'f self, res: &'b mut Response) -> impl Future<Output = ()> + Send + 'f;
+trait BackFangFn<'b>: Clone + Send + Sync + 'static {
+    fn bite_fn(&'b self, res: &'b mut Response) -> impl Future<Output = ()> + Send + 'b;
 }
 impl<'f,
     F:   Fn(&'f mut Response) -> Fut + Clone + Send + Sync + 'static,
     Fut: Future<Output = ()> + Send + 'f,
 > BackFangFn<'f> for F {
-    fn bite_fn<'b: 'f>(&'f self, res: &'b mut Response) -> impl Future<Output = ()> + Send + 'f {
+    fn bite_fn(&'f self, res: &'f mut Response) -> impl Future<Output = ()> + Send + 'f {
         self(res)
     }
 }
@@ -71,7 +75,7 @@ const _: () = {
         type Proc = BackFangProc<Proc, I>;
         fn chain(&self, inner: I) -> Self::Proc {
             BackFangProc {
-                proc: BackFang(self.0.clone()),
+                proc: self.0.clone(),
                 inner
             }
         }
@@ -81,21 +85,52 @@ const _: () = {
         Proc: for<'f> BackFangFn<'f>,
         I:    FangProc,
     > {
-        proc:  BackFang<Proc>,
+        proc:  Proc,
         inner: I,
     }
+
 
     impl<
         Proc: for<'f> BackFangFn<'f>,
         I:    FangProc,
     > FangProc for BackFangProc<Proc, I> {
-        async fn bite<'b>(&'b self, req: &'b mut Request) -> Response {
-            let mut res = self.inner.bite(req).await;
-            self.proc.0.bite_fn(&mut res).await;
-            res
+        fn bite<'b>(&'b self, req: &'b mut Request) -> impl Future<Output = Response> + Send + 'b {
+            struct BackFangProcFuture<'b,
+                // Proc: for<'f> BackFangFn<'f>,
+                // I:    FangProc,
+                InnerFuture: Future<Output = Response> + Send + 'b,
+                ProcFuture:  Future<Output = Response> + Send + 'b,
+            > {
+                inner_future: InnerFuture,
+                proc_future:  Option<ProcFuture>,
+                __lifetime__: PhantomData<&'b ()>
+            }
+
+            impl<'b,
+                InnerFuture: Future<Output = Response> + Send + 'b,
+                ProcFuture:  Future<Output = Response> + Send + 'b,
+            > Future for BackFangProcFuture<'b, InnerFuture, ProcFuture> {
+                type Output = Response;
+                fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+                    /*
+                        let mut res = self.inner.bite(req).await;
+                        self.proc.bite_fn(&mut res).await;
+                        res
+                    */
+                
+                    todo!()
+                }
+            }
+
+            BackFangProcFuture {
+                inner_future: self.inner.bite(req),
+                proc_future:  None,
+                __lifetime__: PhantomData
+            }
         }
     }
 };
+*/
 
 
 #[cfg(test)]
@@ -113,20 +148,50 @@ mod test {
             MESSAGES.get_or_init(|| Mutex::new(Vec::new()))
         }
 
-        async fn bye_fang(_: &mut Response) {
-            messages().lock().unwrap().push(format!("Bye, Clerk!"));
+        fn hi_fang(_: &mut Request) -> Result<(), Response> {
+            messages().lock().unwrap().push(format!("Hi!"));
+            Ok(())
+        }
+        fn bye_fang(_: &mut Response) {
+            messages().lock().unwrap().push(format!("Bye!"));
         }
 
+        #[derive(Clone)]
+        struct GreetingFang { name: &'static str }
+        const _: () = {
+            impl<I: FangProc> Fang<I> for GreetingFang {
+                type Proc = GreetingFangProc<I>;
+                fn chain(&self, inner: I) -> Self::Proc {
+                    GreetingFangProc { fang: self.clone(), inner }
+                }
+            }
+
+            struct GreetingFangProc<I: FangProc> {
+                fang:  GreetingFang,
+                inner: I
+            }
+            impl<I: FangProc> FangProc for GreetingFangProc<I> {
+                async fn bite<'b>(&'b self, req: &'b mut Request) -> Response {
+                    {
+                        messages().lock().unwrap().push(format!("Hello, {}!", self.fang.name));
+                    }
+                    let res = self.inner.bite(req).await;
+                    {
+                        messages().lock().unwrap().push(format!("Bye, {}!", self.fang.name));
+                    }
+                    res
+                }
+            }
+        };
+
         let t = Ohkami::with((
-            FrontFang(|_| async {
+            FrontFang(hi_fang),
+            BackFang(bye_fang),
+            FrontFang(|_| {
                 messages().lock().unwrap().push(format!("Hello, Alice!"));
                 Ok(())
             }),
-            BackFang(bye_fang),
-            FrontFang(|_| async {
-                messages().lock().unwrap().push(format!("Hello, Bob!"));
-                Ok(())
-            }),
+            GreetingFang { name: "Clerk" },
         ), (
             "/greet".POST(|| async {"Hi, I'm Handler!"}),
         ));
@@ -137,9 +202,11 @@ mod test {
 
             assert_eq!(res.status(), Status::OK);
             assert_eq!(&*messages().lock().unwrap(), &[
+                "Hi!",
                 "Hello, Alice!",
-                "Hello, Bob!",
+                "Hello, Clerk!",
                 "Bye, Clerk!",
+                "Bye!",
             ]);
         }
     }

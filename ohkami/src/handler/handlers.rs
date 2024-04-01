@@ -10,7 +10,7 @@ use crate::ohkami::router::RouteSections;
 macro_rules! Handlers {
     ($( $method:ident ),*) => {
         pub struct Handlers {
-            pub(crate) route:   RouteSections,
+            pub(crate) route: RouteSections,
             $(
                 pub(crate) $method: Option<Handler>,
             )*
