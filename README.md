@@ -141,50 +141,10 @@ async fn search(condition: SearchQuery<'_>) -> Vec<SearchResult> {
 <br>
 
 ### Use middlewares
-ohkami's middlewares are called "**fang**s".
+ohkami's request handling system is called "**fang**s". Middlewares are implemented on this system :
 
 ```rust,no_run
-use ohkami::prelude::*;
-
-struct LogRequest;
-impl FrontFang for LogRequest { /* Called before a handler */
-    type Error = std::convert::Infallible;
-
-    async fn bite(&self, req: &mut Request) -> Result<(), Self::Error> {
-        println!("{req:?}");
-        Ok(())
-    }
-}
-
-struct SetServer;
-impl BackFang for SetServer { /* Called after a handler */
-    type Error = std::convert::Infallible;
-
-    async fn bite(&self, res: &mut Response, _req: &Request) -> Result<(), Self::Error> {
-        res.headers.set()
-            .Server("ohkami");
-        Ok(())
-    }
-}
-
-#[tokio::main]
-async fn main() {
-    Ohkami::with((LogRequest, SetServer), (
-        "/hello".GET(|| async {"Hello!"}),
-    )).howl("localhost:8080").await
-
-/* Or, you can call them for any incoming requests
-   (regardless of request paths) :
-
-    {an Ohkami}
-        .howl_with(
-            (LogRequest, SetServer),
-            "localhost:8080"
-        ).await
-
-*/
-
-}
+// TODO
 ```
 
 <br>

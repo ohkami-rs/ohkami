@@ -74,11 +74,11 @@ pub use ::ohkami_macros::FromRequest;
 mod response;
 pub use response::{Response, Status, IntoResponse};
 
-mod proc;
-pub use proc::fang::{Fang, FangProc};
+mod fangs;
+pub use fangs::fang::{Fang, FangProc};
 #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
-pub use proc::handler::Route;
-pub(crate) use proc::{fang, handler};
+pub use fangs::handler::Route;
+pub(crate) use fangs::{fang, handler};
 
 mod session;
 #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
@@ -96,7 +96,7 @@ pub mod typed;
 pub mod testing;
 
 pub mod utils {
-    pub use crate::proc::fang::{FrontFang, BackFang};
+    pub use crate::fangs::fang::{FrontFang, BackFang};
     pub use ::ohkami_lib::unix_timestamp;
 }
 
@@ -170,7 +170,7 @@ pub mod __internal__ {
     pub use ohkami_macros::consume_struct;
 
     #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
-    pub use crate::proc::fang::Fangs;
+    pub use crate::fangs::fang::Fangs;
 
     /* for benchmarks */
     #[cfg(feature="DEBUG")]

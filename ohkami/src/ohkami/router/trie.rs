@@ -54,11 +54,11 @@ pub(super) struct Node {
 
 #[derive(Clone, Debug)]
 pub(super) struct HandlerMap {
-    GET:     Option<Handler>,
-    PUT:     Option<Handler>,
-    POST:    Option<Handler>,
-    PATCH:   Option<Handler>,
-    DELETE:  Option<Handler>,
+    GET:     Option<Arc<Handler>>,
+    PUT:     Option<Arc<Handler>>,
+    POST:    Option<Arc<Handler>>,
+    PATCH:   Option<Arc<Handler>>,
+    DELETE:  Option<Arc<Handler>>,
 }
 impl HandlerMap {
     fn new() -> Self {
@@ -81,11 +81,11 @@ impl HandlerMap {
 
     fn into_procmap_with(self, fangs_list: FangsList) -> super::radix::ProcMap {
         super::radix::ProcMap {
-            GET:       fangs_list.clone().into_proc_with(self.GET.unwrap_or(Handler::default_method_not_allowed())),
-            PUT:       fangs_list.clone().into_proc_with(self.PUT.unwrap_or(Handler::default_method_not_allowed())),
-            POST:      fangs_list.clone().into_proc_with(self.POST.unwrap_or(Handler::default_method_not_allowed())),
-            PATCH:     fangs_list.clone().into_proc_with(self.PATCH.unwrap_or(Handler::default_method_not_allowed())),
-            DELETE:    fangs_list.clone().into_proc_with(self.DELETE.unwrap_or(Handler::default_method_not_allowed())),
+            GET:       fangs_list.clone().into_proc_with(self.GET.unwrap_or(Arc::new(Handler::default_method_not_allowed()))),
+            PUT:       fangs_list.clone().into_proc_with(self.PUT.unwrap_or(Arc::new(Handler::default_method_not_allowed()))),
+            POST:      fangs_list.clone().into_proc_with(self.POST.unwrap_or(Arc::new(Handler::default_method_not_allowed()))),
+            PATCH:     fangs_list.clone().into_proc_with(self.PATCH.unwrap_or(Arc::new(Handler::default_method_not_allowed()))),
+            DELETE:    fangs_list.clone().into_proc_with(self.DELETE.unwrap_or(Arc::new(Handler::default_method_not_allowed()))),
             OPTIONS:   fangs_list.clone().into_proc_with(Handler::default_no_content()),
             __catch__: fangs_list.into_proc_with(Handler::default_not_found()),
         }

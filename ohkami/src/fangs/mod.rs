@@ -1,0 +1,76 @@
+mod handler;
+pub use handler::Handler;
+
+mod tuple;
+pub use tuple::Fangs;
+
+mod utils;
+pub use utils::{BackFang, ForeFang, FrontFang};
+
+use crate::{Request, Response};
+use std::{future::Future, pin::Pin, ops::Deref};
+
+
+pub trait Fang<Inner: FangProc> {
+    type Proc: FangProc;
+    fn chain(&self, inner: Inner) -> Self::Proc;
+}
+
+pub trait FangProc: Send + Sync + 'static {
+    fn bite<'b>(&'b self, req: &'b mut Request) -> impl std::future::Future<Output = Response> + Send + 'b;
+
+    /// Default: `Box::pin(self.bite(req))`.
+    /// 
+    /// Override when `bite` itself returns `Pin<Box<dyn Future>>`.
+    fn bite_boxed<'b>(&'b self, req: &'b mut Request) -> Pin<Box<dyn Future<Output = Response> + Send + 'b>> {
+        Box::pin(self.bite(req))
+    }
+}
+
+/// `FangProc` but object-safe, returning `Pin<Box<dyn Future>>`.
+pub(crate) trait FangProcCaller {
+    fn call_bite<'b>(&'b self, req: &'b mut Request) -> Pin<Box<dyn Future<Output = Response> + Send + 'b>>;
+}
+impl<Proc: FangProc> FangProcCaller for Proc {
+    #[inline(always)]
+    fn call_bite<'b>(&'b self, req: &'b mut Request) -> Pin<Box<dyn Future<Output = Response> + Send + 'b>> {
+        self.bite_boxed(req)
+    }
+}
+
+pub(crate) struct BoxedFPC(Box<dyn
+    FangProcCaller + Send + Sync + 'static
+>);
+impl BoxedFPC {
+    pub(crate) fn from_proc(proc: impl FangProcCaller + Send + Sync + 'static) -> Self {
+        Self(Box::new(proc))
+    }
+}
+const _: () = {
+    impl Deref for BoxedFPC {
+        type Target = dyn FangProcCaller + Send + Sync + 'static;
+        
+        #[inline(always)]
+        fn deref(&self) -> &Self::Target {
+            &*self.0
+        }
+    }
+
+    impl std::fmt::Debug for BoxedFPC {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            f.write_str("{Fang proc}")
+        }
+    }
+
+    impl FangProc for BoxedFPC {
+        #[inline(always)]
+        fn bite<'b>(&'b self, req: &'b mut Request) -> impl std::future::Future<Output = Response> + Send + 'b {
+            (&*self.0).call_bite(req)
+        }
+
+        #[inline]
+        fn bite_boxed<'b>(&'b self, req: &'b mut Request) -> Pin<Box<dyn Future<Output = Response> + Send + 'b>> {
+            (&*self.0).call_bite(req)
+        }
+    }
+};

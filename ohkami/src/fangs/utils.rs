@@ -2,6 +2,28 @@ use super::{Fang, FangProc};
 use crate::{Request, Response};
 
 
+pub struct ForeFang(
+    pub fn(&mut Request)
+); const _: () = {
+    impl<I: FangProc> Fang<I> for ForeFang {
+        type Proc = ForeFangProc<I>;
+        fn chain(&self, inner: I) -> Self::Proc {
+            ForeFangProc { proc: self.0, inner }
+        }
+    }
+
+    pub struct ForeFangProc<I: FangProc> {
+        proc:  fn(&mut Request),
+        inner: I
+    }
+    impl<I: FangProc> FangProc for ForeFangProc<I> {
+        fn bite<'b>(&'b self, req: &'b mut Request) -> impl std::future::Future<Output = Response> + Send {
+            (self.proc)(req);
+            self.inner.bite(req)
+        }
+    }
+};
+
 pub struct FrontFang(
     pub fn(&mut Request) -> Result<(), Response>
 ); const _: () = {
