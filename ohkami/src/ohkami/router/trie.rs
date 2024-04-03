@@ -158,7 +158,7 @@ impl FangsList {
         let mut iter = self.into_iter();
 
         match iter.next() {
-            None => BoxedFPC::from_proc(handler),
+            None => handler.into(),
             Some(most_inner) => iter.fold(
                 most_inner.build(handler.into()),
                 |proc, fangs| fangs.build(proc)

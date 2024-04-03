@@ -7,18 +7,44 @@ use std::{pin::Pin, future::Future};
 
 
 pub struct Handler(BoxedFPC);
+
 const _: () = {
-    impl FangProc for Handler {
-        #[inline(always)]
-        fn bite<'b>(&'b self, req: &'b mut Request) -> impl std::future::Future<Output = Response> + Send + 'b {
-            self.handle(req)
+    impl std::fmt::Debug for Handler {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            f.write_str("{handler}")
         }
-        #[inline]
-        fn bite_boxed<'b>(&'b self, req: &'b mut Request) -> Pin<Box<dyn Future<Output = Response> + Send + 'b>> {
-            self.handle(req)
+    }
+
+    impl Into<BoxedFPC> for Handler {
+        fn into(self) -> BoxedFPC {
+            self.0
         }
     }
 };
+
+// const _: () = {
+//     impl FangProc for Handler {
+//         #[inline(always)]
+//         fn bite<'b>(&'b self, req: &'b mut Request) -> impl std::future::Future<Output = Response> + Send + 'b {
+//             self.handle(req)
+//         }
+//         #[inline]
+//         fn bite_boxed<'b>(&'b self, req: &'b mut Request) -> Pin<Box<dyn Future<Output = Response> + Send + 'b>> {
+//             self.handle(req)
+//         }
+//     }
+// 
+//     impl FangProc for std::sync::Arc<Handler> {
+//         #[inline(always)]
+//         fn bite<'b>(&'b self, req: &'b mut Request) -> impl std::future::Future<Output = Response> + Send + 'b {
+//             self.handle(req)
+//         }
+//         #[inline]
+//         fn bite_boxed<'b>(&'b self, req: &'b mut Request) -> Pin<Box<dyn Future<Output = Response> + Send + 'b>> {
+//             self.handle(req)
+//         }
+//     }
+// };
 
 impl Handler {
     pub(crate) fn new(proc: impl
@@ -77,17 +103,3 @@ impl Handler {
         method_not_allowed.into_handler()
     }
 }
-
-const _: () = {
-    impl std::fmt::Debug for Handler {
-        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            f.write_str("{handler}")
-        }
-    }
-
-    impl Into<BoxedFPC> for Handler {
-        fn into(self) -> BoxedFPC {
-            self.0
-        }
-    }
-};
