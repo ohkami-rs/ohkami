@@ -1,9 +1,7 @@
 use std::{borrow::Cow, sync::Arc};
 use super::{RouteSection, RouteSections};
-use crate::{
-    fang::{BoxedFPC, Fangs},
-    handler::{ByAnother, Handler, Handlers},
-};
+use super::super::build::{Handlers, ByAnother};
+use crate::fangs::{BoxedFPC, Fangs, Handler};
 
 
 #[derive(Clone, Debug)]
@@ -162,7 +160,7 @@ impl FangsList {
         match iter.next() {
             None => BoxedFPC::from_proc(handler),
             Some(most_inner) => iter.fold(
-                most_inner.build_handler(handler),
+                most_inner.build(handler.into()),
                 |proc, fangs| fangs.build(proc)
             )
         }

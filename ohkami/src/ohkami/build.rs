@@ -1,7 +1,8 @@
 #![allow(non_snake_case, unused_mut)]
 
-use super::router::TrieRouter;
-use crate::handler::{Handlers, ByAnother, Dir};
+use super::router::{TrieRouter, RouteSections};
+use crate::fangs::{Handler, IntoHandler};
+use crate::Ohkami;
 
 
 macro_rules! Handlers {
@@ -261,12 +262,12 @@ trait RoutingItem {
                     }
                 }
                 
-                impl crate::handler::IntoHandler<std::fs::File> for StaticFileHandler {
-                    fn into_handler(self) -> crate::handler::Handler {
+                impl IntoHandler<std::fs::File> for StaticFileHandler {
+                    fn into_handler(self) -> Handler {
                         let this: &'static StaticFileHandler
                             = Box::leak(Box::new(self));
 
-                        crate::handler::Handler::new(|_| Box::pin(async {
+                        Handler::new(|_| Box::pin(async {
                             let mut res = crate::Response::OK();
                             {
                                 res.headers.set()

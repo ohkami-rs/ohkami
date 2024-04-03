@@ -113,7 +113,7 @@ impl<'req, Data: Send + Sync + 'static> std::ops::Deref for Memory<'req, Data> {
 }
 
 const _: () = {
-    use crate::fang::{Fang, FangProc};
+    use crate::fangs::{Fang, FangProc};
 
     impl<'req, Data: Clone + Send + Sync + 'static> Memory<'req, Data> {
         #[allow(private_interfaces)]

@@ -8,7 +8,6 @@ pub trait IntoHandler<T> {
     fn into_handler(self) -> Handler;
 }
 
-
 #[inline(never)] #[cold] fn __error__(e: Response) -> Pin<Box<dyn Future<Output = Response> + Send>> {
     Box::pin(async {e})
 }

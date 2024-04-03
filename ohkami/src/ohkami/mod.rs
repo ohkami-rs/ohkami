@@ -3,12 +3,13 @@
 #[cfg(test)]
 mod _test;
 
-mod build;
 mod howl;
-
+pub(crate) mod build;
 pub(crate) mod router;
 
-use crate::fang::Fangs;
+pub use build::{Route, Routes};
+
+use crate::fangs::Fangs;
 use std::sync::Arc;
 use router::TrieRouter;
 

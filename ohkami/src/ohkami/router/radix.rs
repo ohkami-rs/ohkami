@@ -1,5 +1,5 @@
-use crate::{handler::Handler, Method, Request, Response};
-use crate::fang::{FangProcCaller, BoxedFPC};
+use crate::{Method, Request, Response};
+use crate::fangs::{FangProcCaller, BoxedFPC, Handler};
 use ohkami_lib::Slice;
 use std::fmt::Write as _;
 

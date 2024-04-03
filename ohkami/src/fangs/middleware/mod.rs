@@ -1,3 +1,5 @@
+pub(crate) mod utils;
+
 use super::{Fang, BoxedFPC};
 
 
@@ -6,6 +8,7 @@ pub trait Fangs {
     // returning box for object-safety
     fn build(&self, inner: BoxedFPC) -> BoxedFPC;
 }
+
 impl<F: Fang<BoxedFPC>> Fangs for F {
     fn build(&self, inner: BoxedFPC) -> BoxedFPC {
         BoxedFPC::from_proc(self.chain(inner))

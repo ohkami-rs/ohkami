@@ -1,4 +1,4 @@
-use super::{Fang, FangProc};
+use super::super::{Fang, FangProc};
 use crate::{Request, Response};
 
 

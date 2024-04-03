@@ -1,11 +1,8 @@
 mod handler;
-pub use handler::Handler;
+pub(crate) use handler::{Handler, IntoHandler};
 
-mod tuple;
-pub use tuple::Fangs;
-
-mod utils;
-pub use utils::{BackFang, ForeFang, FrontFang};
+mod middleware;
+pub(crate) use middleware::{Fangs, utils};
 
 use crate::{Request, Response};
 use std::{future::Future, pin::Pin, ops::Deref};
