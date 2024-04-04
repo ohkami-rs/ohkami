@@ -2,7 +2,7 @@ use chrono::{DateTime, Utc};
 use ohkami::{Ohkami, Route, Memory, typed::status::{Created, NoContent}};
 use sqlx::PgPool;
 use crate::{config::JWTPayload, errors::RealWorldError};
-use crate::fangs::{Auth, OptionalAuth};
+use crate::fangs::Auth;
 use crate::db::{article_id_by_slug, UserAndFollowings, ArticleEntity, CommentEntity};
 use crate::models::{
     Article, Profile, Comment,
@@ -18,8 +18,8 @@ pub fn articles_ohkami() -> Ohkami {
     }
 
     Ohkami::with((
-        Auth        ::with_condition(|req| auth_required(req)),
-        OptionalAuth::with_condition(|req| ! auth_required(req)),
+        Auth::<JWTPayload>        ::with_condition(|req| auth_required(req)),
+        Auth::<Option<JWTPayload>>::with_condition(|req| ! auth_required(req)),
     ), (//auth:
         "/"
             .GET(list)//optional

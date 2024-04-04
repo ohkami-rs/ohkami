@@ -252,3 +252,26 @@ const _: () = {
         }
     }
 };
+
+#[cfg(feature="nightly")]
+const _: () = {
+    use std::{ops::FromResidual, convert::Infallible};
+
+    impl FromResidual<Result<Infallible, Response>> for Response {
+        fn from_residual(residual: Result<Infallible, Response>) -> Self {
+            unsafe {residual.unwrap_err_unchecked()}
+        }
+    }
+
+    #[cfg(test)]
+    fn try_response() {
+        use crate::{Request};
+
+        fn payload_serde_json_value(req: &Request) -> Result<::serde_json::Value, Response> {
+            let value = req.payload::<::serde_json::Value>()
+                .ok_or_else(|| Response::BadRequest())?
+                .map_err(|e| {eprintln!("{e}"); Response::BadRequest()})?;
+            Ok(value)
+        }
+    }
+};

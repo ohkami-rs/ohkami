@@ -66,7 +66,7 @@ mod fangs {
     pub mod back {
         use ohkami::Response;
 
-        pub async fn set_server(res: &mut Response) {
+        pub fn set_server(res: &mut Response) {
             res.headers.set()
                 .Server("ohkami");
 
@@ -79,9 +79,9 @@ mod fangs {
     }
 
     pub mod front {
-        use ohkami::{Request, Response};
+        use ohkami::Request;
 
-        pub async fn log_request(req: &mut Request) -> Result<(), Response> {
+        pub fn log_request(req: &mut Request) {
             let __method__ = req.method();
             let __path__   = req.path();
 
@@ -90,8 +90,6 @@ mod fangs {
                 [ method ] {__method__}\n\
                 [  path  ] {__path__}\n\
             ");
-
-            Ok(())
         }
     }
 }
@@ -100,7 +98,7 @@ mod fangs {
 #[tokio::main]
 async fn main() {
     use ohkami::prelude::*;
-    use ohkami::utils::{BackFang, FrontFang};
+    use ohkami::utils::{BackFang, ForeFang};
 
     tracing_subscriber::fmt()
         .with_max_level(tracing::Level::INFO)
@@ -118,7 +116,7 @@ async fn main() {
     tracing::info!("Started listening on http://localhost:3000");
 
     Ohkami::with((
-        FrontFang(fangs::front::log_request),
+        ForeFang(fangs::front::log_request),
     ), (
         "/hc" .GET(health_handler::health_check),
         "/api".By(hello_ohkami),

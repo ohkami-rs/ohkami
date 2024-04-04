@@ -64,6 +64,10 @@ impl Drop for TestDB {
 
 #[tokio::test]
 pub async fn senario() {
+    use ohkami::testing::*;
+    use ohkami::Status;
+    use crate::models::{*, request::*, response::*};
+
     dotenvy::dotenv().unwrap();
     
     let db = TestDB {
@@ -75,11 +79,7 @@ pub async fn senario() {
     
     let t = crate::handlers::realworld_ohkami(
         db.setup().await.unwrap()
-    );
-
-    use ohkami::testing::*;
-    use ohkami::Status;
-    use crate::models::{*, request::*, response::*};
+    ).test();
 
 
     /*===== Play the test senario based on https://realworld-docs.netlify.app/docs/specs/backend-specs/endpoints =====*/

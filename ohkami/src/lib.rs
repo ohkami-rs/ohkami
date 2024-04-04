@@ -19,6 +19,7 @@
 
 #![cfg_attr(feature="nightly", feature(
     min_specialization,
+    try_trait_v2,
 ))]
 
 

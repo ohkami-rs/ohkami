@@ -8,7 +8,6 @@ mod handlers;
 #[cfg(test)]
 mod _test;
 
-use fangs::{LogRequest, LogResponse};
 use errors::RealWorldError;
 
 use sqlx::postgres::PgPoolOptions;
@@ -29,7 +28,7 @@ async fn main() -> Result<(), errors::RealWorldError> {
         .map_err(|e| RealWorldError::DB(e))?;
 
     handlers::realworld_ohkami(pool)
-        .howl_with((LogRequest, LogResponse), "localhost:8080").await;
+        .howl("localhost:8080").await;
 
     Ok(())
 }
