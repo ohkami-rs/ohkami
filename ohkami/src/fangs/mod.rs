@@ -1,7 +1,9 @@
 mod handler;
+#[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
 pub(crate) use handler::{Handler, IntoHandler};
 
 mod middleware;
+#[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
 pub(crate) use middleware::{Fangs, utils};
 
 use crate::{Request, Response};
