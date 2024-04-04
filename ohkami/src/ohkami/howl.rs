@@ -10,7 +10,7 @@ use {
 
 
 impl Ohkami {
-     /// Start serving at `address`!
+    /// Start serving at `address`!
     /// 
     /// `address` is `{runtime}::net::ToSocketAddrs`：
     /// 
@@ -22,49 +22,22 @@ impl Ohkami {
     /// *example.rs*
     /// ```no_run
     /// use ohkami::prelude::*;
+    /// use ohkami::typed::status::NoContent;
     /// 
-    /// struct LogRequest;
-    /// impl FrontFang for LogRequest {
-    ///     type Error = std::convert::Infallible;
-    ///     async fn bite(&self, req: &mut Request) -> Result<(), Self::Error> {
-    ///         println!("{req:?}");
-    ///         Ok(())
-    ///     }
+    /// async fn hello() -> &'static str {
+    ///     "Hello, ohkami!"
     /// }
     /// 
-    /// struct CustomNotFound;
-    /// impl BackFang for CustomNotFound {
-    ///     type Error = std::convert::Infallible;
-    ///     async fn bite(&self, res: &mut Response, _req: &Request) -> Result<(), Self::Error> {
-    ///         if res.status == Status::NotFound {
-    ///             res.set_html(r#"
-    ///                 <!DOCTYPE html>
-    ///                 <html lang="en">
-    ///                     <title>The page is not found</title>
-    ///                     <body>
-    ///                         <h1>Not Found</h1>
-    ///                         <p>
-    ///                             Something has triggered missing webpage on this website.
-    ///                             This is custom 404 error page for <strong>ohkami</strong>.
-    ///                          </p>
-    ///                     </body>
-    ///                 </html>
-    ///             "#);
-    ///         }
-    /// 
-    ///         Ok(())
-    ///     }
+    /// async fn health_check() -> NoContent {
+    ///     NoContent
     /// }
     /// 
     /// #[tokio::main]
     /// async fn main() {
-    ///     let hello_ohkami = Ohkami::with((
-    ///         LogRequest, CustomNotFound
-    ///     ),
-    ///         "/".GET(|| async {"Hello, world!"})
-    ///     );
-    /// 
-    ///     hello_ohkami.howl("localhost:5000").await
+    ///     Ohkami::new((
+    ///         "/".GET(hello),
+    ///         "/healthz".GET(health_check),
+    ///     )).howl("localhost:5000").await
     /// }
     /// ```
     #[cfg(any(feature="rt_tokio", feature="rt_async-std"))]

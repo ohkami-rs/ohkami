@@ -28,15 +28,19 @@ use router::TrieRouter;
 /// # 
 /// 
 /// struct Auth;
-/// impl FrontFang for Auth {
+/// impl<I: FangProc> Fang<I> for Auth {
 ///     /* 〜 */
-/// #    type Error = Response;
-/// #    async fn bite(&self, req: &mut Request) -> Result<(), Self::Error> {
-/// #        // Do something...
-/// #
-/// #        Ok(())
-/// #    }
-/// }
+/// #   type Proc = AuthProc;
+/// #   fn chain(&self, inner: I) -> Self::Proc {
+/// #       AuthProc
+/// #   }
+/// # }
+/// # struct AuthProc;
+/// # impl FangProc for AuthProc {
+/// #     async fn bite<'b>(&'b self, req: &'b mut Request) -> Response {
+/// #         Response::NotImplemented()
+/// #     }
+/// # }
 /// 
 /// # #[Payload(JSON/S)]
 /// # struct User {
@@ -182,20 +186,33 @@ impl Ohkami {
     /// 
     /// ---
     ///
-    /// `fangs` is an item that implements `FrontFang` or `BackFang`, or tuple of such items
+    /// `fangs: impl Fangs` is an tuple of `Fang` items.
     /// 
-    /// NOTE:
-    /// `fangs` passed here are executed just before/after a handler in this `Ohkami` called for a request.
-    /// If you'd like to call some fangs for any requests, give them to `.howl_with()`!
+    /// **NOTE**: You can omit tuple when `fangs` contains only one `Fang`.
+    /// 
+    /// <br>
+    /// 
+    /// ---
     /// 
     /// ```
     /// use ohkami::prelude::*;
     /// 
-    /// struct Auth;
-    /// impl FrontFang for Auth {
-    ///     type Error = Response;
-    ///     async fn bite(&self, req: &mut Request) -> Result<(), Self::Error> {
-    ///         Ok(())
+    /// struct AuthFang;
+    /// impl<I: FangProc> Fang<I> for AuthFang {
+    ///     type Proc = AuthFangProc<I>;
+    ///     fn chain(&self, inner: I) -> Self::Proc {
+    ///         AuthFangProc { inner }
+    ///     }
+    /// }
+    /// 
+    /// struct AuthFangProc<I: FangProc> {
+    ///     inner: I
+    /// }
+    /// impl<I: FangProc> FangProc for AuthFangProc<I> {
+    ///     async fn bite<'b>(&'b self, req: &'b mut Request) -> Response {
+    ///         // Perform some auth process...
+    /// 
+    ///         self.inner.bite(req).await
     ///     }
     /// }
     /// 
@@ -204,7 +221,7 @@ impl Ohkami {
     /// # async fn handler3() -> &'static str {"3"}
     /// #
     /// # let _ =
-    /// Ohkami::with(Auth, (
+    /// Ohkami::with(AuthFang, (
     ///     "/a"
     ///         .GET(handler1)
     ///         .POST(handler2),

@@ -107,18 +107,18 @@ mod x_websocket;
 /// <br>
 /// 
 /// *example.rs*
-/// ```
+/// ```no_run
 /// # use ohkami::prelude::*;
-/// use ohkami::append;
-/// 
-/// struct SetServer;
-/// impl BackFang for SetServer {
-///     type Error = std::convert::Infallible;
-///     async fn bite(&self, res: &mut Response, _req: &Request) -> Result<(), Self::Error> {
-///         res.headers.set()
-///             .Server(append("ohkami"));
-///         Ok(())
-///     }
+/// #
+/// #[tokio::main]
+/// async fn main() {
+///     Ohkami::with(
+///         ohkami::utils::BackFang(|res| {
+///             res.headers.set()
+///                 .Server("ohkami");
+///         }),
+///         "/".GET(|| async {"Hello, append!"})
+///     ).howl("localhost:3000").await
 /// }
 /// ```
 pub fn append(value: impl Into<std::borrow::Cow<'static, str>>) -> __internal__::Append {

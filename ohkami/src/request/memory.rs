@@ -122,7 +122,7 @@ const _: () = {
         }
     }
 
-    struct UseMemory<Data: Clone + Send + Sync + 'static>(
+    pub struct UseMemory<Data: Clone + Send + Sync + 'static>(
         Data
     );
     impl<Data: Clone + Send + Sync + 'static, Inner: FangProc>
@@ -134,7 +134,7 @@ const _: () = {
     }
 
     pub struct UseMemoryProc<
-        Data: Clone + Send + Sync + 'static,
+        Data:  Clone + Send + Sync + 'static,
         Inner: FangProc,
     > {
         data:  Data,

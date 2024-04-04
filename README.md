@@ -141,10 +141,43 @@ async fn search(condition: SearchQuery<'_>) -> Vec<SearchResult> {
 <br>
 
 ### Use middlewares
-ohkami's request handling system is called "**fang**s". Middlewares are implemented on this system :
+ohkami's request handling system is called "**fang**s", and middlewares are implemented on this :
 
 ```rust,no_run
-// TODO
+use ohkami::prelude::*;
+
+struct GreetFang;
+impl<I: FangProc> Fang<I> for GreetFang {
+    type Proc = GreetFangProc<I>;
+    fn chain(&self, inner: I) -> Self::Proc {
+        GreetFangProc { inner }
+    }
+}
+
+struct GreetFangProc<I: FangProc> {
+    inner: I
+}
+impl<I: FangProc> FangProc for GreetFangProc<I> {
+    async fn bite<'b>(&'b self, req: &'b mut Request) -> Response {
+        println!("Welcome, request!\n{req:?}");
+        let res = self.inner.bite(req).await;
+        println!("My response: \n{res:?}");
+        res
+    }
+}
+
+#[tokio::main]
+async fn main() {
+    Ohkami::with((
+        /* Your `Fang` value */
+        GreetFang,
+
+        /* Inline Fang with utils */
+        ohkami::utils::ForeFang(|req| println!("{}", req.path())),
+    ), (
+        "/".GET(|| async {"Hello, fangs!"})
+    )).howl("localhost:3000").await
+}
 ```
 
 <br>
@@ -202,14 +235,14 @@ fn hello_ohkami() -> Ohkami {
 #[cfg(test)]
 #[tokio::test]
 async fn test_my_ohkami() {
-    let ho = hello_ohkami();
+    let t = hello_ohkami().test();
 
     let req = TestRequest::GET("/");
-    let res = ho.oneshot(req).await;
+    let res = t.oneshot(req).await;
     assert_eq!(res.status(), Status::NotFound);
 
     let req = TestRequest::GET("/hello");
-    let res = ho.oneshot(req).await;
+    let res = t.oneshot(req).await;
     assert_eq!(res.status(), Status::OK);
     assert_eq!(res.text(), Some("Hello, world!"));
 }

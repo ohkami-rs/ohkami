@@ -35,16 +35,19 @@ use crate::__rt__::AsyncWriter;
 /// ---
 /// 
 /// *in_fang.rs*
-/// ```
-/// use ohkami::{Response, Request, BackFang};
+/// ```no_run
+/// use ohkami::prelude::*;
 /// 
-/// struct LogResponse;
-/// impl BackFang for LogResponse {
-///     type Error = std::convert::Infallible;
-///     async fn bite(&self, res: &mut Response, _req: &Request) -> Result<(), Self::Error> {
-///         println!("{}", res.status);
-///         Ok(())
-///     }
+/// #[tokio::main]
+/// async fn main() {
+///     Ohkami::with(
+///         ohkami::utils::BackFang(|res| {
+///             res.headers.set()
+///                 .Server("ohkami")
+///                 .Vary("Origin");
+///         }),
+///         "/".GET(|| async {"Hello, ohkami!"})
+///     ).howl("localhost:5050").await
 /// }
 /// ```
 /// 
