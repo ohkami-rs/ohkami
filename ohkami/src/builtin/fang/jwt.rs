@@ -436,7 +436,7 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
             ), (
                 "/".GET(get_profile),
             ))),
-        ));
+        )).test();
         
 
         let req = TestRequest::PUT("/signin");

@@ -73,7 +73,7 @@ fn my_ohkami() -> Ohkami {
 }
 
 #[crate::__rt__::test] async fn test_handler_registration() {
-    let t = my_ohkami();
+    let t = my_ohkami().test();
 
 
     /* GET /health */
@@ -175,55 +175,49 @@ fn my_ohkami() -> Ohkami {
     /*===== with no nests =====*/
     *N().lock().unwrap() = 0;
 
-    let o = Ohkami::with((Increment,), (
+    let t = Ohkami::with((Increment,), (
         "/a"  .GET(h),
         "/a/b".GET(h),
-    ));
-
-    dbg!(o.clone().into_router());
-    dbg!(o.clone().into_router().into_radix());
+    )).test();
 
     let req = TestRequest::GET("/a");
-    o.oneshot(req).await;
+    t.oneshot(req).await;
     assert_eq!(*N().lock().unwrap(), 1);
 
     let req = TestRequest::GET("/a");
-    o.oneshot(req).await;
+    t.oneshot(req).await;
     assert_eq!(*N().lock().unwrap(), 2);
 
     let req = TestRequest::GET("/a/b");
-    o.oneshot(req).await;
+    t.oneshot(req).await;
     assert_eq!(*N().lock().unwrap(), 3);
 
     
     /*===== with nests =====*/
     *N().lock().unwrap() = 0;
 
-    let o = Ohkami::with((Increment,), (
+    let t = Ohkami::with((Increment,), (
         "/a"  .GET(h),
         "/a/b".GET(h),
         "/a/b/c".By(Ohkami::with((), (
             "/d"  .GET(h),
             "/d/e".GET(h),
         )))
-    ));
-
-    dbg!(o.clone().into_router());
-    dbg!(o.clone().into_router().into_radix());
+    )).test();
 
     let req = TestRequest::GET("/a");
-    o.oneshot(req).await;
+    t.oneshot(req).await;
     assert_eq!(*N().lock().unwrap(), 1);
 
     let req = TestRequest::GET("/a/b");
-    o.oneshot(req).await;
+    t.oneshot(req).await;
     assert_eq!(*N().lock().unwrap(), 2);
     let req = TestRequest::GET("/a/b/c/d");
-    o.oneshot(req).await;
+    t.oneshot(req).await;
     assert_eq!(*N().lock().unwrap(), 3);
 
     let req = TestRequest::GET("/a/b/c/d/e");
-    o.oneshot(req).await;
+    t.oneshot(req).await;
     assert_eq!(*N().lock().unwrap(), 4);
 }
 
@@ -289,16 +283,7 @@ fn my_ohkami() -> Ohkami {
         ), (
             "/stu".GET(h),
         ))),
-    ));
-
-    println!("\
-        {:#?}\n\n\
-        ============================================================\n\n\
-        {:#?}",
-        t.clone().into_router(),
-        t.clone().into_router().into_radix(),
-    );
-
+    )).test();
 
     {MESSAGES().lock().unwrap().clear();
         let req = TestRequest::GET("/abc");
@@ -376,7 +361,7 @@ fn my_ohkami() -> Ohkami {
     let t = Ohkami::new((
         "/hello/help" .GET(hello_help),
         "/hello/:name".GET(hello),
-    ));
+    )).test();
 
     let req = TestRequest::GET("/hello/help");
     let res = t.oneshot(req).await;
@@ -398,7 +383,7 @@ fn my_ohkami() -> Ohkami {
     let t = Ohkami::new((
         "/hello/:name".GET(hello),
         "/hello/help" .GET(hello_help),
-    ));
+    )).test();
 
     let req = TestRequest::GET("/hello/help");
     let res = t.oneshot(req).await;

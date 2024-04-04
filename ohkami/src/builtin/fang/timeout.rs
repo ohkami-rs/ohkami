@@ -133,7 +133,7 @@ const _: () = {
         Timeout::from_secs(2),
     ), (
         "/greet/:name/:sleep".GET(lazy_greeting),
-    ));
+    )).test();
 
 
     {

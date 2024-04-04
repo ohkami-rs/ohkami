@@ -30,30 +30,31 @@
 //! ```
 
 use crate::{Response, Request, Ohkami, Status, Method};
+use crate::ohkami::router::RadixRouter;
 use crate::response::ResponseHeader;
 
 use std::borrow::Cow;
 use std::collections::HashMap;
+use std::sync::Arc;
 use std::{pin::Pin, future::Future, format as f};
 
 
 pub trait Testing {
-    #[must_use]
-    fn oneshot(&self, req: TestRequest) -> Oneshot;
+    fn test(self) -> TestingOhkami;
 }
 
-pub struct Oneshot(
-    Box<dyn Future<Output = TestResponse>>
-); impl Future for Oneshot {
-    type Output = TestResponse;
-    fn poll(self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> std::task::Poll<Self::Output> {
-        unsafe {self.map_unchecked_mut(|this| this.0.as_mut())}.poll(cx)
+pub struct TestingOhkami(Arc<RadixRouter>);
+
+impl Testing for Ohkami {
+    fn test(self) -> TestingOhkami {
+        TestingOhkami(Arc::new(self.into_router().into_radix()))
     }
 }
 
-impl Testing for Ohkami {
-    fn oneshot(&self, req: TestRequest) -> Oneshot {
-        let router = self.clone().into_router().into_radix();
+impl TestingOhkami {
+    #[must_use]
+    pub fn oneshot(&self, req: TestRequest) -> Oneshot {
+        let router = self.0.clone();
 
         let res = async move {
             let mut request = Request::init();
@@ -66,6 +67,15 @@ impl Testing for Ohkami {
         };
 
         Oneshot(Box::new(res))
+    }
+}
+
+pub struct Oneshot(
+    Box<dyn Future<Output = TestResponse>>
+); impl Future for Oneshot {
+    type Output = TestResponse;
+    fn poll(self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> std::task::Poll<Self::Output> {
+        unsafe {self.map_unchecked_mut(|this| this.0.as_mut())}.poll(cx)
     }
 }
 

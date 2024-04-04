@@ -25,7 +25,7 @@ pub trait FangProc: Send + Sync + 'static {
 }
 
 /// `FangProc` but object-safe, returning `Pin<Box<dyn Future>>`.
-pub(crate) trait FangProcCaller {
+pub trait FangProcCaller {
     fn call_bite<'b>(&'b self, req: &'b mut Request) -> Pin<Box<dyn Future<Output = Response> + Send + 'b>>;
 }
 impl<Proc: FangProc> FangProcCaller for Proc {
@@ -35,7 +35,7 @@ impl<Proc: FangProc> FangProcCaller for Proc {
     }
 }
 
-pub(crate) struct BoxedFPC(Box<dyn
+pub struct BoxedFPC(Box<dyn
     FangProcCaller + Send + Sync + 'static
 >);
 impl BoxedFPC {

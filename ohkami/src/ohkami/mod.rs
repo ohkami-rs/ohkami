@@ -127,7 +127,6 @@ use router::TrieRouter;
 ///     todo!()
 /// }
 /// ```
-#[cfg_attr(feature="testing", derive(Clone))]
 pub struct Ohkami {
     pub(crate) routes: TrieRouter,
 

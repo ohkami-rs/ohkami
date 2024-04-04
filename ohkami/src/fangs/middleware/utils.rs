@@ -216,7 +216,7 @@ mod test {
             GreetingFang { name: "Clerk" },
         ), (
             "/greet".POST(|| async {"Hi, I'm Handler!"}),
-        ));
+        )).test();
 
         {
             let req = TestRequest::POST("/greet");
