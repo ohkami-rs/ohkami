@@ -116,7 +116,7 @@ const _: () = {
 };
 
 
-#[cfg(test)]
+#[cfg(all(test, feature="testing", any(feature="rt_tokio",feature="rt_async-std")))]
 #[crate::__rt__::test] async fn test_timeout() {
     use crate::prelude::*;
     use crate::testing::*;
