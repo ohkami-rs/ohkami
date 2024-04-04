@@ -1,15 +1,12 @@
 #![allow(non_snake_case)]
 
-#[cfg(test)]
-mod _test;
-
 mod trie;
 pub(crate) use trie::TrieRouter;
 
 mod radix;
 pub(crate) use radix::RadixRouter;
 
-use std::{collections::VecDeque, str::Chars, iter::Peekable};
+use std::{collections::VecDeque, iter::Peekable, str::Chars};
 
 
 #[derive(Clone, Debug)]

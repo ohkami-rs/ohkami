@@ -8,7 +8,6 @@ pub trait IntoHandler<T> {
     fn into_handler(self) -> Handler;
 }
 
-
 #[inline(never)] #[cold] fn __error__(e: Response) -> Pin<Box<dyn Future<Output = Response> + Send>> {
     Box::pin(async {e})
 }
@@ -28,6 +27,8 @@ pub trait IntoHandler<T> {
     <P as FromParam>::from_param(param)
         .map_err(IntoResponse::into_response)
 }
+
+/* FIXME: omit unsafe... */
 #[inline(always)] fn from_request<'fr, 'req, R: FromRequest<'fr>>(
     req: &'req Request
 ) -> Result<R, Response> {

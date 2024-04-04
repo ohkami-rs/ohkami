@@ -137,56 +137,46 @@ async fn search(condition: SearchQuery<'_>) -> Vec<SearchResult> {
     ]
 }
 ```
-`#[Query]`, `#[Payload( 〜 )]` derives `FromRequest` trait impl for the struct.
-
-( with path params : `({path params}, {FromRequest value}s...)` )
 
 <br>
 
 ### Use middlewares
-ohkami's middlewares are called "**fang**s".
+ohkami's request handling system is called "**fang**s", and middlewares are implemented on this :
 
 ```rust,no_run
 use ohkami::prelude::*;
 
-struct LogRequest;
-impl FrontFang for LogRequest { /* Called before a handler */
-    type Error = std::convert::Infallible;
-
-    async fn bite(&self, req: &mut Request) -> Result<(), Self::Error> {
-        println!("{req:?}");
-        Ok(())
+struct GreetFang;
+impl<I: FangProc> Fang<I> for GreetFang {
+    type Proc = GreetFangProc<I>;
+    fn chain(&self, inner: I) -> Self::Proc {
+        GreetFangProc { inner }
     }
 }
 
-struct SetServer;
-impl BackFang for SetServer { /* Called after a handler */
-    type Error = std::convert::Infallible;
-
-    async fn bite(&self, res: &mut Response, _req: &Request) -> Result<(), Self::Error> {
-        res.headers.set()
-            .Server("ohkami");
-        Ok(())
+struct GreetFangProc<I: FangProc> {
+    inner: I
+}
+impl<I: FangProc> FangProc for GreetFangProc<I> {
+    async fn bite<'b>(&'b self, req: &'b mut Request) -> Response {
+        println!("Welcome, request!\n{req:?}");
+        let res = self.inner.bite(req).await;
+        println!("My response: \n{res:?}");
+        res
     }
 }
 
 #[tokio::main]
 async fn main() {
-    Ohkami::with((LogRequest, SetServer), (
-        "/hello".GET(|| async {"Hello!"}),
-    )).howl("localhost:8080").await
+    Ohkami::with((
+        /* Your `Fang` value */
+        GreetFang,
 
-/* Or, you can call them for any incoming requests
-   (regardless of request paths) :
-
-    {an Ohkami}
-        .howl_with(
-            (LogRequest, SetServer),
-            "localhost:8080"
-        ).await
-
-*/
-
+        /* Inline Fang with utils */
+        ohkami::utils::ForeFang(|req| println!("{}", req.path())),
+    ), (
+        "/".GET(|| async {"Hello, fangs!"})
+    )).howl("localhost:3000").await
 }
 ```
 
@@ -245,14 +235,14 @@ fn hello_ohkami() -> Ohkami {
 #[cfg(test)]
 #[tokio::test]
 async fn test_my_ohkami() {
-    let ho = hello_ohkami();
+    let t = hello_ohkami().test();
 
     let req = TestRequest::GET("/");
-    let res = ho.oneshot(req).await;
+    let res = t.oneshot(req).await;
     assert_eq!(res.status(), Status::NotFound);
 
     let req = TestRequest::GET("/hello");
-    let res = ho.oneshot(req).await;
+    let res = t.oneshot(req).await;
     assert_eq!(res.status(), Status::OK);
     assert_eq!(res.text(), Some("Hello, world!"));
 }

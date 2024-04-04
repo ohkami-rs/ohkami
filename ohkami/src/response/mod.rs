@@ -35,16 +35,19 @@ use crate::__rt__::AsyncWriter;
 /// ---
 /// 
 /// *in_fang.rs*
-/// ```
-/// use ohkami::{Response, Request, BackFang};
+/// ```no_run
+/// use ohkami::prelude::*;
 /// 
-/// struct LogResponse;
-/// impl BackFang for LogResponse {
-///     type Error = std::convert::Infallible;
-///     async fn bite(&self, res: &mut Response, _req: &Request) -> Result<(), Self::Error> {
-///         println!("{}", res.status);
-///         Ok(())
-///     }
+/// #[tokio::main]
+/// async fn main() {
+///     Ohkami::with(
+///         ohkami::utils::BackFang(|res| {
+///             res.headers.set()
+///                 .Server("ohkami")
+///                 .Vary("Origin");
+///         }),
+///         "/".GET(|| async {"Hello, ohkami!"})
+///     ).howl("localhost:5050").await
 /// }
 /// ```
 /// 
@@ -246,6 +249,29 @@ const _: () = {
             self.status  == other.status  &&
             self.headers == other.headers &&
             self.content == other.content
+        }
+    }
+};
+
+#[cfg(feature="nightly")]
+const _: () = {
+    use std::{ops::FromResidual, convert::Infallible};
+
+    impl FromResidual<Result<Infallible, Response>> for Response {
+        fn from_residual(residual: Result<Infallible, Response>) -> Self {
+            unsafe {residual.unwrap_err_unchecked()}
+        }
+    }
+
+    #[cfg(test)]
+    fn try_response() {
+        use crate::{Request};
+
+        fn payload_serde_json_value(req: &Request) -> Result<::serde_json::Value, Response> {
+            let value = req.payload::<::serde_json::Value>()
+                .ok_or_else(|| Response::BadRequest())?
+                .map_err(|e| {eprintln!("{e}"); Response::BadRequest()})?;
+            Ok(value)
         }
     }
 };

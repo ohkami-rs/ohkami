@@ -1,97 +1,93 @@
-use std::borrow::Cow;
+use std::{borrow::Cow, sync::Arc};
 use super::{RouteSection, RouteSections};
-use crate::{
-    fang::{Fang, proc::{BackFang, FangProc, FrontFang}},
-    handler::{ByAnother, Handler, Handlers},
-    builtin::fang::Timeout,
-    Method,
-};
-
-const _: () = {
-    impl Into<Pattern> for RouteSection {
-        fn into(self) -> Pattern {
-            match self {
-                RouteSection::Param         => Pattern::Param,
-                RouteSection::Static(bytes) => Pattern::Static(Cow::Borrowed(bytes))
-            }
-        }
-    }
-};
+use super::super::build::{Handlers, ByAnother};
+use crate::fangs::{BoxedFPC, Fangs, Handler};
 
 
-/*===== defs =====*/
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct TrieRouter {
-    pub(super) global_fangs: GlobalFangs,
-    pub(super) GET:          Node,
-    pub(super) PUT:          Node,
-    pub(super) POST:         Node,
-    pub(super) PATCH:        Node,
-    pub(super) DELETE:       Node,
+    pub(super) id:   RouterID,
+    pub(super) root: Node,
 }
 
-#[derive(Clone)]
-pub(super) struct GlobalFangs {
-    pub(super) GET:     Vec<Fang>,
-    pub(super) PUT:     Vec<Fang>,
-    pub(super) POST:    Vec<Fang>,
-    pub(super) PATCH:   Vec<Fang>,
-    pub(super) DELETE:  Vec<Fang>,
-    pub(super) HEAD:    Vec<Fang>,
-    pub(super) OPTIONS: Vec<Fang>,
-} const _: () = {
-    impl std::fmt::Debug for GlobalFangs {
-        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            let mut d = f.debug_struct("global_fangs");
-            let mut d = &mut d;
+#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub(crate) struct RouterID(usize);
+impl RouterID {
+    fn new() -> Self {
+        use std::sync::{OnceLock, Mutex};
 
-            let mut set_once = false;
-            if !self.GET.is_empty() {set_once = true;
-                d = d.field("GET", &self.GET.iter().map(|_| "#").collect::<Vec<_>>());
-            }
-            if !self.PUT.is_empty() {set_once = true;
-                d = d.field("PUT", &self.PUT.iter().map(|_| "#").collect::<Vec<_>>());
-            }
-            if !self.POST.is_empty() {set_once = true;
-                d = d.field("POST", &self.POST.iter().map(|_| "#").collect::<Vec<_>>());
-            }
-            if !self.PATCH.is_empty() {set_once = true;
-                d = d.field("PATCH", &self.PATCH.iter().map(|_| "#").collect::<Vec<_>>());
-            }
-            if !self.DELETE.is_empty() {set_once = true;
-                d = d.field("DELETE", &self.DELETE.iter().map(|_| "#").collect::<Vec<_>>());
-            }
-            if !self.HEAD.is_empty() {set_once = true;
-                d = d.field("HEAD", &self.HEAD.iter().map(|_| "#").collect::<Vec<_>>());
-            }
-            if !self.OPTIONS.is_empty() {set_once = true;
-                d = d.field("OPTIONS", &self.OPTIONS.iter().map(|_| "#").collect::<Vec<_>>());
-            }
+        static ID: OnceLock<Mutex<usize>> = OnceLock::new();
 
-            if set_once {d.finish()} else {f.write_str(" {}")}
-        }
+        let mut id_lock = ID
+            .get_or_init(|| Mutex::new(0))
+            .lock().unwrap();
+
+        let id = *id_lock + 1;
+        *id_lock = id;
+        drop(id_lock);
+
+        Self(id)
     }
-};
+}
 
-#[derive(Clone/* for testing */)]
 pub(super) struct Node {
     /// Why Option: root node doesn't have pattern
-    pub(super) pattern:  Option<Pattern>,
-    pub(super) fangs:    Vec<Fang>,
-    pub(super) handler:  Option<Handler>,
-    pub(super) children: Vec<Node>,
+    pub(super) pattern:    Option<Pattern>,
+    pub(super) handlers:   HandlerMap,
+    pub(super) fangs_list: FangsList,
+    pub(super) children:   Vec<Node>,
 } const _: () = {
     impl std::fmt::Debug for Node {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             f.debug_struct("")
-                .field("pattern",  &self.pattern)
-                .field("fangs",    &self.fangs.iter().map(|_| "#").collect::<Vec<_>>())
-                .field("handler",  &self.handler.as_ref().map(|_| "@"))
-                .field("children", &self.children)
+                .field("pattern",    &self.pattern)
+                .field("handler",    &self.handlers)
+                .field("fangs_list", &self.fangs_list.iter().map(|_| '#').collect::<Vec<_>>())
+                .field("children",   &self.children)
                 .finish()
         }
     }
 };
+
+#[derive(Debug)]
+pub(super) struct HandlerMap {
+    GET:     Option<Handler>,
+    PUT:     Option<Handler>,
+    POST:    Option<Handler>,
+    PATCH:   Option<Handler>,
+    DELETE:  Option<Handler>,
+}
+impl HandlerMap {
+    fn new() -> Self {
+        Self {
+            GET:    None,
+            PUT:    None,
+            POST:   None,
+            PATCH:  None,
+            DELETE: None,
+        }
+    }
+
+    fn is_empty(&self) -> bool {
+        self.GET.is_none() &&
+        self.PUT.is_none() &&
+        self.POST.is_none() &&
+        self.PATCH.is_none() &&
+        self.DELETE.is_none()
+    }
+
+    fn into_procmap_with(self, fangs_list: FangsList) -> super::radix::ProcMap {
+        super::radix::ProcMap {
+            GET:       fangs_list.clone().into_proc_with(self.GET.unwrap_or(Handler::default_method_not_allowed())),
+            PUT:       fangs_list.clone().into_proc_with(self.PUT.unwrap_or(Handler::default_method_not_allowed())),
+            POST:      fangs_list.clone().into_proc_with(self.POST.unwrap_or(Handler::default_method_not_allowed())),
+            PATCH:     fangs_list.clone().into_proc_with(self.PATCH.unwrap_or(Handler::default_method_not_allowed())),
+            DELETE:    fangs_list.clone().into_proc_with(self.DELETE.unwrap_or(Handler::default_method_not_allowed())),
+            OPTIONS:   fangs_list.clone().into_proc_with(Handler::default_no_content()),
+            __catch__: fangs_list.into_proc_with(Handler::default_not_found()),
+        }
+    }
+}
 
 #[derive(Clone)]
 pub(super) enum Pattern {
@@ -125,143 +121,129 @@ pub(super) enum Pattern {
             }
         }
     }
+
+    impl From<RouteSection> for Pattern {
+        fn from(section: RouteSection) -> Self {
+            match section {
+                RouteSection::Param         => Pattern::Param,
+                RouteSection::Static(bytes) => Pattern::Static(Cow::Borrowed(bytes))
+            }
+        }
+    }
 };
 
-
-/*===== impls =====*/
-impl GlobalFangs {
+#[derive(Clone)]
+pub(super) struct FangsList(Vec<(
+    RouterID,
+    Arc<dyn Fangs>)
+>);
+impl FangsList {
     fn new() -> Self {
-        Self {
-            GET:     Vec::new(),
-            PUT:     Vec::new(),
-            POST:    Vec::new(),
-            PATCH:   Vec::new(),
-            DELETE:  Vec::new(),
-            HEAD:    Vec::new(),
-            OPTIONS: Vec::new(),
+        Self(Vec::new())
+    }
+
+    fn add(&mut self, id: RouterID, fangs: Arc<dyn Fangs>) {
+        if self.0.iter().find(|(_id, _)| *_id == id).is_none() {
+            self.0.push((id, fangs));
+        }
+    }
+    fn extend(&mut self, another: Self) {
+        for (id, fangs) in another.0.into_iter() {
+            self.add(id, fangs)
         }
     }
 
-    fn merge(&mut self, mut another: Self) {
-        self.GET    .append(&mut another.GET);
-        self.PUT    .append(&mut another.PUT);
-        self.POST   .append(&mut another.POST);
-        self.PATCH  .append(&mut another.PATCH);
-        self.DELETE .append(&mut another.DELETE);
-        self.HEAD   .append(&mut another.HEAD);
-        self.OPTIONS.append(&mut another.OPTIONS);
+    fn into_proc_with(self, handler: Handler) -> BoxedFPC {
+        let mut iter = self.into_iter();
+
+        match iter.next() {
+            None => handler.into(),
+            Some(most_inner) => iter.fold(
+                most_inner.build(handler.into()),
+                |proc, fangs| fangs.build(proc)
+            )
+        }
     }
 
-    fn into_radix(self) -> super::radix::GlobalFangs {
-        super::radix::GlobalFangs {
-            GET:     split_fangs_without_builtin_specials(self.GET),
-            PUT:     split_fangs_without_builtin_specials(self.PUT),
-            POST:    split_fangs_without_builtin_specials(self.POST),
-            PATCH:   split_fangs_without_builtin_specials(self.PATCH),
-            DELETE:  split_fangs_without_builtin_specials(self.DELETE),
-            HEAD:    split_fangs_without_builtin_specials(self.HEAD),
-            OPTIONS: split_fangs_without_builtin_specials(self.OPTIONS),
-        }
+    /// yield from most inner fangs
+    fn iter(&self) -> impl Iterator<Item = &Arc<dyn Fangs>> {
+        self.0.iter()
+            .map(|(_, fangs)| fangs)
+    }
+    /// yield from most inner fangs
+    fn into_iter(self) -> impl Iterator<Item = Arc<dyn Fangs>> {
+        self.0.into_iter()
+            .map(|(_, fangs)| fangs)
     }
 }
+const _: () = {
+    impl std::fmt::Debug for FangsList {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            let mut d = f.debug_tuple("FangsList");
+            let mut d = &mut d;
+            for (id, _) in self.0.iter() {
+                d = d.field(id);
+            }
+            d.finish()
+        }
+    }
+};
+
 
 impl TrieRouter {
     pub(crate) fn new() -> Self {
         Self {
-            GET:          Node::root(),
-            PUT:          Node::root(),
-            POST:         Node::root(),
-            PATCH:        Node::root(),
-            DELETE:       Node::root(),
-            global_fangs: GlobalFangs::new(),
+            id:   RouterID::new(),
+            root: Node::root(),
         }
+    }
+
+    pub(crate) fn id(&self) -> RouterID {
+        self.id.clone()
     }
 
     pub(crate) fn register_handlers(&mut self, handlers: Handlers) {
         let Handlers { route, GET, PUT, POST, PATCH, DELETE } = handlers;
-
-        if let Some(handler) = GET {
-            if let Err(e) = self.GET.register_handler(route.clone().into_iter(), handler) {panic!("{e}")}
-        }
-        if let Some(handler) = PUT {
-            if let Err(e) = self.PUT.register_handler(route.clone().into_iter(), handler) {panic!("{e}")}
-        }
-        if let Some(handler) = POST {
-            if let Err(e) = self.POST.register_handler(route.clone().into_iter(), handler) {panic!("{e}")}
-        }
-        if let Some(handler) = PATCH {
-            if let Err(e) = self.PATCH.register_handler(route.clone().into_iter(), handler) {panic!("{e}")}
-        }
-        if let Some(handler) = DELETE {
-            if let Err(e) = self.DELETE.register_handler(route.clone().into_iter(), handler) {panic!("{e}")}
+        if let Err(e) = self.root.register_handlers(route.into_iter(), HandlerMap {
+            GET, PUT, POST, PATCH, DELETE
+        }) {
+            eprintln!("Failed to register handlers: {e}");
+            std::process::exit(1)
         }
     }
 
-    pub(crate) fn register_global_fang(&mut self, methods: &'static [Method], global_fang: Fang) {
-        for method in methods {
-            match method {
-                Method::GET     => self.global_fangs.GET    .push(global_fang.clone()),
-                Method::PUT     => self.global_fangs.PUT    .push(global_fang.clone()),
-                Method::POST    => self.global_fangs.POST   .push(global_fang.clone()),
-                Method::PATCH   => self.global_fangs.PATCH  .push(global_fang.clone()),
-                Method::DELETE  => self.global_fangs.DELETE .push(global_fang.clone()),
-                Method::HEAD    => self.global_fangs.HEAD   .push(global_fang.clone()),
-                Method::OPTIONS => self.global_fangs.OPTIONS.push(global_fang.clone()),
-            }
-        }
-    }
-
-    pub(crate) fn apply_fang(&mut self, methods: &'static [Method], fang: Fang) {
-        for method in methods {
-            match method {
-                Method::GET     => self.GET   .apply_fang(fang.clone()),
-                Method::PUT     => self.PUT   .apply_fang(fang.clone()),
-                Method::POST    => self.POST  .apply_fang(fang.clone()),
-                Method::PATCH   => self.PATCH .apply_fang(fang.clone()),
-                Method::DELETE  => self.DELETE.apply_fang(fang.clone()),
-                Method::HEAD    => self.global_fangs.HEAD   .push(fang.clone()),
-                Method::OPTIONS => self.global_fangs.OPTIONS.push(fang.clone()),
-            }
-        }
+    pub(crate) fn apply_fangs(&mut self, id: RouterID, fangs: Arc<dyn Fangs>) {
+        self.root.apply_fangs(id, fangs);
     }
 
     pub(crate) fn merge_another(&mut self, another: ByAnother) {
         let ByAnother { route, ohkami } = another;
         let another_routes = ohkami.into_router();
 
-        self.global_fangs.merge(another_routes.global_fangs);
-
-        self.GET   .merge_node(route.clone().into_iter(), another_routes.GET   ).unwrap();
-        self.PUT   .merge_node(route.clone().into_iter(), another_routes.PUT   ).unwrap();
-        self.POST  .merge_node(route.clone().into_iter(), another_routes.POST  ).unwrap();
-        self.PATCH .merge_node(route.clone().into_iter(), another_routes.PATCH ).unwrap();
-        self.DELETE.merge_node(route.clone().into_iter(), another_routes.DELETE).unwrap();
+        self.root.merge_node(route.clone().into_iter(), another_routes.root).unwrap();
     }
 
     pub(crate) fn into_radix(self) -> super::RadixRouter {
-        super::RadixRouter {
-            global_fangs: self.global_fangs.into_radix(),
-            GET:          self.GET         .into_radix(),
-            PUT:          self.PUT         .into_radix(),
-            POST:         self.POST        .into_radix(),
-            PATCH:        self.PATCH       .into_radix(),
-            DELETE:       self.DELETE      .into_radix(),
-        }
+        super::RadixRouter(self.root.into_radix())
     }
 }
 
 impl Node {
-    fn register_handler(&mut self, mut route: <RouteSections as IntoIterator>::IntoIter, handler: Handler) -> Result<(), String> {
+    fn register_handlers(
+        &mut self,
+        mut route: <RouteSections as IntoIterator>::IntoIter,
+        handlers:  HandlerMap,
+    ) -> Result<(), String> {
         match route.next() {
             None => {
-                self.set_handler(handler)?;
+                self.set_handlers(handlers)?;
                 Ok(())
             }
             Some(pattern)   => match self.machable_child_mut(pattern.clone().into()) {
-                Some(child) => child.register_handler(route, handler),
+                Some(child) => child.register_handlers(route, handlers),
                 None        => {
                     let mut child = Node::new(pattern.into());
-                    child.register_handler(route, handler)?;
+                    child.register_handlers(route, handlers)?;
                     self.append_child(child)?;
                     Ok(())
                 }
@@ -292,36 +274,32 @@ impl Node {
     }
 
     /// MUST be called after all handlers are registered
-    fn apply_fang(&mut self, fang: Fang) {
+    fn apply_fangs(&mut self, id: RouterID, fangs: Arc<dyn Fangs>) {
         for child in &mut self.children {
-            child.apply_fang(fang.clone())
+            child.apply_fangs(id.clone(), fangs.clone())
         }
 
-        if self.handler.is_some() {
-            self.append_fang(fang);
-        }
+        self.fangs_list.add(id, fangs);
     }
 
     fn into_radix(self) -> super::radix::Node {
-        let Node { pattern, mut fangs, mut handler, mut children } = self;
+        let Node { pattern, mut fangs_list, mut handlers, mut children } = self;
 
         let mut patterns = pattern.into_iter().collect::<Vec<_>>();
 
-        while children.len() == 1 && handler.is_none() {
+        while children.len() == 1 && handlers.is_empty() {
             let Node {
-                pattern:  child_pattern,
-                fangs:    child_fangs,
-                handler:  child_handler,
-                children: child_children,
+                pattern:    child_pattern,
+                fangs_list: child_fangses,
+                handlers:   child_handlers,
+                children:   child_children,
             } = children.pop(/* pop the single child */).unwrap(/* `children` is empty here */);
 
             children = child_children;
 
-            handler  = child_handler;
+            handlers  = child_handlers;
 
-            for cf in child_fangs {
-                fangs.push(cf);
-            }
+            fangs_list.extend(child_fangses);
             
             let child_pattern = child_pattern.unwrap(/* `child` is not root */);
             if patterns.last().is_some_and(|last| last.is_static()) && child_pattern.is_static() {
@@ -343,18 +321,10 @@ impl Node {
             _ => std::cmp::Ordering::Equal
         });
 
-        let (front, back, timeout) = split_fangs(fangs);
-
         super::radix::Node {
-            timeout,
-            handler,
-            front,
-            back,
+            proc:     handlers.into_procmap_with(fangs_list),
             patterns: Box::leak(patterns.into_iter().map(Pattern::into_radix).collect()),
-            children: {
-
-                children.into_iter().map(Node::into_radix).collect()
-            }
+            children: children.into_iter().map(Node::into_radix).collect::<Box<[_]>>(),
         }
     }
 }
@@ -362,60 +332,22 @@ impl Node {
 
 /*===== utils =====*/
 
-fn split_fangs(fangs: Vec<Fang>) -> (
-    &'static [FrontFang],
-    &'static [BackFang],
-    Option<Timeout>,
-) {
-    let mut unique_fangs = Vec::new(); {
-        for f in fangs {
-            if unique_fangs.iter().all(|uf| uf != &f) {
-                unique_fangs.push(f)
-            }
-        }
-    }
-
-    let mut front   = Vec::new();
-    let mut back    = Vec::new();
-    let mut timeout = None;
-
-    for f in unique_fangs {
-        match f.proc {
-            FangProc::Front(ff)   => front.push(ff),
-            FangProc::Back (bf)   => back .push(bf),
-            FangProc::Timeout(to) => timeout = Some(to),
-        }
-    }
-
-    (
-        Box::leak(front.into_boxed_slice()) as &_,
-        Box::leak(back .into_boxed_slice()) as &_,
-        timeout,
-    )
-}
-fn split_fangs_without_builtin_specials(fangs: Vec<Fang>) -> (
-    &'static [FrontFang],
-    &'static [BackFang],
-) {
-    let (ff, bf, _) = split_fangs(fangs);
-    (ff, bf)
-}
 
 impl Node {
     fn new(pattern: Pattern) -> Self {
         Self {
-            pattern:  Some(pattern),
-            handler:  None,
-            fangs:    vec![],
-            children: vec![],
+            pattern:    Some(pattern),
+            handlers:   HandlerMap::new(),
+            fangs_list: FangsList::new(),
+            children:   vec![],
         }
     }
     fn root() -> Self {
         Self {
-            pattern:  None,
-            handler:  None,
-            fangs:    vec![],
-            children: vec![],
+            pattern:    None,
+            handlers:   HandlerMap::new(),
+            fangs_list: FangsList::new(),
+            children:   vec![],
         }
     }
 
@@ -436,18 +368,18 @@ impl Node {
     /// TrieRouter::new()
     ///     .register_handlers("/hc".GET(health_check))
     ///     .register_handlers("/api".by(
-    ///         Ohkami::new()(
+    ///         Ohkami::new((
     ///             "/"         .GET (hello),
     ///             "/users"    .POST(create_user),
     ///             "/users/:id".GET (get_user),
     ///             "/tasks"    .GET (get_task),
-    ///         )
+    ///         ))
     ///     ))
     /// ```
     /// 
     /// <br/>
     /// 
-    /// This must equals :
+    /// This must equals to :
     /// 
     /// <br/>
     /// 
@@ -460,30 +392,26 @@ impl Node {
     ///     .register_handlers("/api/tasks/:id".GET (get_task));
     /// ```
     fn merge_here(&mut self, another_root: Node) -> Result<(), String> {
-        if self.handler.is_some() {
+        if !(self.handlers.is_empty()) {
             return Err(format!(
                 "Can't merge another Ohkami at route that already has handler"
             ))
         }
 
         let Node {
-            pattern:  None, // <-- another_root は root node のはずなので必ず None のはず
-            fangs:    another_root_fangs,
-            handler:  another_root_handler,
-            children: another_children,
+            pattern:  None, // <-- another_root must be a root node and has pattern `None`
+            fangs_list:  another_root_fangses,
+            handlers:  another_root_handlers,
+            children: another_root_children,
         } = another_root else {
             panic!("Unexpectedly called `Node::merge_here` where `another_root` is not root node")
         };
 
-        if let Some(new_handler) = another_root_handler {
-            self.set_handler(new_handler)?
-        }
+        self.set_handlers(another_root_handlers)?;
 
-        for arf in another_root_fangs {
-            self.append_fang(arf)
-        }
+        self.append_fangs(another_root_fangses);
 
-        for ac in another_children {
+        for ac in another_root_children {
             self.append_child(ac)?
         }
 
@@ -513,16 +441,14 @@ impl Node {
         }
     }
 
-    fn append_fang(&mut self, new_fang: Fang) {
-        self.fangs.push(new_fang);
+    fn append_fangs(&mut self, fangs: FangsList) {
+        self.fangs_list.extend(fangs);
     }
 
-    fn set_handler(&mut self, new_handler: Handler) -> Result<(), String> {
-        if self.handler.is_some() {
-            return Err(format!("Conflicting handler registering"))
-        }
-        self.handler = Some(new_handler);
-        Ok(())
+    fn set_handlers(&mut self, new_handlers: HandlerMap) -> Result<(), String> {
+        self.handlers.is_empty()
+            .then(|| self.handlers = new_handlers)
+            .ok_or_else(|| format!("Conflicting handler registering"))
     }
 }
 

@@ -57,13 +57,6 @@ fn __hash_password_with(
     Ok(hash.serialize())
 }
 
-// #[inline] pub fn hash_password_string(
-//     raw_password_string: String,
-// ) -> Result<String, RealWorldError> {
-//     let hashed_password = hash_password(raw_password_string.as_str())?;
-//     Ok(hashed_password.as_str().to_string())
-// }
-
 pub async fn article_id_by_slug(slug: &str, pool: &PgPool) -> Result<Uuid, RealWorldError> {
     sqlx::query_scalar!(r#"
         SELECT id
@@ -149,6 +142,7 @@ pub struct UserEntity {
 
 #[derive(sqlx::FromRow)]
 pub struct ArticleEntity {
+    #[allow(unused)]
     pub id:              Uuid,
     pub slug:            String,
     pub title:           String,

@@ -17,6 +17,12 @@
 //! for more information！
 
 
+#![cfg_attr(feature="nightly", feature(
+    min_specialization,
+    try_trait_v2,
+))]
+
+
 #[cfg(any(
     all(feature="rt_tokio", feature="rt_async-std")
 ))] compile_error!("
@@ -69,12 +75,8 @@ pub use ::ohkami_macros::FromRequest;
 mod response;
 pub use response::{Response, Status, IntoResponse};
 
-mod handler;
-#[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
-pub use handler::Route;
-
-mod fang;
-pub use fang::{FrontFang, BackFang};
+mod fangs;
+pub use fangs::{Fang, FangProc};
 
 mod session;
 #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
@@ -82,7 +84,7 @@ use session::Session;
 
 mod ohkami;
 #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
-pub use ohkami::Ohkami;
+pub use ohkami::{Ohkami, Route};
 
 pub mod builtin;
 
@@ -92,6 +94,7 @@ pub mod typed;
 pub mod testing;
 
 pub mod utils {
+    pub use crate::fangs::utils::{BackFang, ForeFang, FrontFang};
     pub use ::ohkami_lib::unix_timestamp;
 }
 
@@ -105,18 +108,18 @@ mod x_websocket;
 /// <br>
 /// 
 /// *example.rs*
-/// ```
+/// ```no_run
 /// # use ohkami::prelude::*;
-/// use ohkami::append;
-/// 
-/// struct SetServer;
-/// impl BackFang for SetServer {
-///     type Error = std::convert::Infallible;
-///     async fn bite(&self, res: &mut Response, _req: &Request) -> Result<(), Self::Error> {
-///         res.headers.set()
-///             .Server(append("ohkami"));
-///         Ok(())
-///     }
+/// #
+/// #[tokio::main]
+/// async fn main() {
+///     Ohkami::with(
+///         ohkami::utils::BackFang(|res| {
+///             res.headers.set()
+///                 .Server("ohkami");
+///         }),
+///         "/".GET(|| async {"Hello, append!"})
+///     ).howl("localhost:3000").await
 /// }
 /// ```
 pub fn append(value: impl Into<std::borrow::Cow<'static, str>>) -> __internal__::Append {
@@ -124,7 +127,7 @@ pub fn append(value: impl Into<std::borrow::Cow<'static, str>>) -> __internal__:
 }
 
 pub mod prelude {
-    pub use crate::{Request, FrontFang, BackFang, Response, IntoResponse, Method, Status};
+    pub use crate::{Request, Fang, FangProc, Response, IntoResponse, Method, Status};
 
     #[cfg(any(feature="rt_tokio", feature="rt_async-std"))]
     pub use crate::{Route, Ohkami};
@@ -164,8 +167,7 @@ pub mod __internal__ {
 
     pub use ohkami_macros::consume_struct;
 
-    #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
-    pub use crate::fang::Fangs;
+    pub use crate::fangs::Fangs;
 
     /* for benchmarks */
     #[cfg(feature="DEBUG")]

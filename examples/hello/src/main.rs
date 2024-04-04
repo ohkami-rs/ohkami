@@ -63,12 +63,10 @@ mod hello_handler {
 
 
 mod fangs {
-    use ohkami::{Request, Response, FrontFang, BackFang};
+    pub mod back {
+        use ohkami::Response;
 
-    pub struct SetServer;
-    impl BackFang for SetServer {
-        type Error = std::convert::Infallible;
-        async fn bite(&self, res: &mut Response, _: &Request) -> Result<(), Self::Error> {
+        pub fn set_server(res: &mut Response) {
             res.headers.set()
                 .Server("ohkami");
 
@@ -77,15 +75,13 @@ mod fangs {
                 [current headers]\n\
                 {:?}\n\
             ", res.headers);
-
-            Ok(())
         }
     }
 
-    pub struct LogRequest;
-    impl FrontFang for LogRequest {
-        type Error = std::convert::Infallible;
-        async fn bite(&self, req: &mut Request) -> Result<(), Self::Error> {
+    pub mod front {
+        use ohkami::Request;
+
+        pub fn log_request(req: &mut Request) {
             let __method__ = req.method();
             let __path__   = req.path();
 
@@ -94,8 +90,6 @@ mod fangs {
                 [ method ] {__method__}\n\
                 [  path  ] {__path__}\n\
             ");
-
-            Ok(())
         }
     }
 }
@@ -104,13 +98,15 @@ mod fangs {
 #[tokio::main]
 async fn main() {
     use ohkami::prelude::*;
-    use fangs::*;
+    use ohkami::utils::{BackFang, ForeFang};
 
     tracing_subscriber::fmt()
         .with_max_level(tracing::Level::INFO)
         .init();
 
-    let hello_ohkami = Ohkami::with(SetServer, (
+    let hello_ohkami = Ohkami::with((
+        BackFang(fangs::back::set_server),
+    ), (
         "/query".
             GET(hello_handler::hello_by_query),
         "/json".
@@ -119,8 +115,10 @@ async fn main() {
 
     tracing::info!("Started listening on http://localhost:3000");
 
-    Ohkami::new((
+    Ohkami::with((
+        ForeFang(fangs::front::log_request),
+    ), (
         "/hc" .GET(health_handler::health_check),
         "/api".By(hello_ohkami),
-    )).howl_with(LogRequest, "localhost:3000").await
+    )).howl("localhost:3000").await
 }

@@ -10,9 +10,9 @@ pub(crate) use queries::QueryParams;
 mod headers;
 pub use headers::Headers as RequestHeaders;
 
-mod store;
-pub(crate) use store::Store;
-pub use store::Memory;
+mod memory;
+pub(crate) use memory::Store;
+pub use memory::Memory;
 
 mod from_request; 
 pub use from_request::*;
@@ -62,18 +62,18 @@ pub(crate) const PAYLOAD_LIMIT: usize = 1 << 32;
 /// ---
 /// 
 /// *in_fang.rs*
-/// ```
-/// use ohkami::{Request, Response, FrontFang};
+/// ```no_run
+/// use ohkami::prelude::*;
+/// use ohkami::utils::ForeFang;
 /// 
-/// struct LogRequest;
-/// impl FrontFang for LogRequest {
-///     type Error = std::convert::Infallible;
-///     async fn bite(&self, req: &mut Request) -> Result<(), Self::Error> {
-///         let method = req.method();
-///         let path = req.path();
-///         println!("{method} {path}");
-///         Ok(())
-///     }
+/// #[tokio::main]
+/// async fn main() {
+///     Ohkami::with(
+///         ForeFang(|req| println!(
+///             "{} {}", req.method(), req.path()
+///         )),
+///         "/".GET(|| async {"Hello, world!"})
+///     ).howl("localhost:8000").await
 /// }
 /// ```
 /// 

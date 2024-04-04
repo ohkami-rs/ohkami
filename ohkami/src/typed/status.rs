@@ -77,14 +77,7 @@ macro_rules! generate_statuses_as_types_containing_value {
             #[doc = $message]
             #[doc = "` response with the `ResponseBody`.\n\n---\n"]
             #[doc = "Use `()` (: default) for body to represent an empty-content response of the status: <br>"]
-            #[doc = "\
-            ```\n\
-            # use ohkami::prelude::*;\n\
-            # use ohkami::typed::status::OK;\n\
-            async fn create_user(name: &str) -> OK {\n\
-            \tOK(())\n\
-            }\n\
-            ```"]
+
             #[allow(non_camel_case_types)]
             #[allow(private_bounds)]
             pub struct $status<B: ResponseBody = ()>(pub B);
@@ -163,18 +156,18 @@ macro_rules! generate_statuses_as_types_with_no_value {
         )*
     };
 } generate_statuses_as_types_with_no_value! {
-    Continue                      : "100 Continue",
-    SwitchingProtocols            : "101 Switching Protocols",
-    Processing                    : "102 Processing",
-    EarlyHints                    : "103 Early Hints",
+    Continue           : "100 Continue",
+    SwitchingProtocols : "101 Switching Protocols",
+    Processing         : "102 Processing",
+    EarlyHints         : "103 Early Hints",
 
-    Accepted                      : "202 Accepted",
-    NoContent                     : "204 No Content",
-    ResetContent                  : "205 Reset Content",
+    Accepted           : "202 Accepted",
+    NoContent          : "204 No Content",
+    ResetContent       : "205 Reset Content",
 
-    NotModified                   : "304 Not Modifed",
+    NotModified        : "304 Not Modifed",
 
-    Gone                          : "410 Gone",
+    Gone               : "410 Gone",
 }
 
 macro_rules! generate_redirects {
@@ -205,9 +198,9 @@ macro_rules! generate_redirects {
         )*
     };
 } generate_redirects! {
-    MovedPermanently / to             : "301 Moved Permanently",
-    Found / at                        : "302 Found",
-    SeeOther / at                     : "303 See Other",
-    TemporaryRedirect / to            : "307 Temporary Redirect",
-    PermanentRedirect / to            : "308 Permanent Redirect",
+    MovedPermanently / to  : "301 Moved Permanently",
+    Found / at             : "302 Found",
+    SeeOther / at          : "303 See Other",
+    TemporaryRedirect / to : "307 Temporary Redirect",
+    PermanentRedirect / to : "308 Permanent Redirect",
 }

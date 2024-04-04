@@ -1,14 +1,17 @@
 #![cfg(any(feature="rt_tokio",feature="rt_async-std"))]
 
-pub(crate) mod router;
-use router::TrieRouter;
+#[cfg(test)]
+mod _test;
 
-mod timeout;
-mod build;
 mod howl;
+pub(crate) mod build;
+pub(crate) mod router;
 
-use crate::fang::Fangs;
-use crate::Method;
+pub use build::{Route, Routes};
+
+use crate::fangs::Fangs;
+use std::sync::Arc;
+use router::TrieRouter;
 
 
 /// # Ohkami - a robust wolf who serves your web app
@@ -25,15 +28,19 @@ use crate::Method;
 /// # 
 /// 
 /// struct Auth;
-/// impl FrontFang for Auth {
+/// impl<I: FangProc> Fang<I> for Auth {
 ///     /* 〜 */
-/// #    type Error = Response;
-/// #    async fn bite(&self, req: &mut Request) -> Result<(), Self::Error> {
-/// #        // Do something...
-/// #
-/// #        Ok(())
-/// #    }
-/// }
+/// #   type Proc = AuthProc;
+/// #   fn chain(&self, inner: I) -> Self::Proc {
+/// #       AuthProc
+/// #   }
+/// # }
+/// # struct AuthProc;
+/// # impl FangProc for AuthProc {
+/// #     async fn bite<'b>(&'b self, req: &'b mut Request) -> Response {
+/// #         Response::NotImplemented()
+/// #     }
+/// # }
 /// 
 /// # #[Payload(JSON/S)]
 /// # struct User {
@@ -124,13 +131,13 @@ use crate::Method;
 ///     todo!()
 /// }
 /// ```
-#[cfg_attr(feature="testing", derive(Clone))]
 pub struct Ohkami {
     pub(crate) routes: TrieRouter,
 
     /// apply just before merged to another or called `howl`
-    pub(crate) fangs:  Vec<(&'static [Method], crate::fang::Fang)>,
+    pub(crate) fangs:  Option<Arc<dyn Fangs>>,
 }
+
 
 impl Ohkami {
     /// Create new `Ohkami` on the routing.
@@ -171,7 +178,7 @@ impl Ohkami {
 
         Self {
             routes: router,
-            fangs:  Vec::new(),
+            fangs:  None,
         }
     }
 
@@ -179,20 +186,33 @@ impl Ohkami {
     /// 
     /// ---
     ///
-    /// `fangs` is an item that implements `FrontFang` or `BackFang`, or tuple of such items
+    /// `fangs: impl Fangs` is an tuple of `Fang` items.
     /// 
-    /// NOTE:
-    /// `fangs` passed here are executed just before/after a handler in this `Ohkami` called for a request.
-    /// If you'd like to call some fangs for any requests, give them to `.howl_with()`!
+    /// **NOTE**: You can omit tuple when `fangs` contains only one `Fang`.
+    /// 
+    /// <br>
+    /// 
+    /// ---
     /// 
     /// ```
     /// use ohkami::prelude::*;
     /// 
-    /// struct Auth;
-    /// impl FrontFang for Auth {
-    ///     type Error = Response;
-    ///     async fn bite(&self, req: &mut Request) -> Result<(), Self::Error> {
-    ///         Ok(())
+    /// struct AuthFang;
+    /// impl<I: FangProc> Fang<I> for AuthFang {
+    ///     type Proc = AuthFangProc<I>;
+    ///     fn chain(&self, inner: I) -> Self::Proc {
+    ///         AuthFangProc { inner }
+    ///     }
+    /// }
+    /// 
+    /// struct AuthFangProc<I: FangProc> {
+    ///     inner: I
+    /// }
+    /// impl<I: FangProc> FangProc for AuthFangProc<I> {
+    ///     async fn bite<'b>(&'b self, req: &'b mut Request) -> Response {
+    ///         // Perform some auth process...
+    /// 
+    ///         self.inner.bite(req).await
     ///     }
     /// }
     /// 
@@ -201,7 +221,7 @@ impl Ohkami {
     /// # async fn handler3() -> &'static str {"3"}
     /// #
     /// # let _ =
-    /// Ohkami::with(Auth, (
+    /// Ohkami::with(AuthFang, (
     ///     "/a"
     ///         .GET(handler1)
     ///         .POST(handler2),
@@ -211,23 +231,23 @@ impl Ohkami {
     /// ))
     /// # ;
     /// ```
-    pub fn with<T>(fangs: impl Fangs<T>, routes: impl build::Routes) -> Self {
+    pub fn with(fangs: impl Fangs + 'static, routes: impl build::Routes) -> Self {
         let mut router = TrieRouter::new();
         routes.apply(&mut router);
 
         Self {
             routes: router,
-            fangs:  fangs.collect(),
+            fangs:  Some(Arc::new(fangs)),
         }
     }
 }
 
 impl Ohkami {
     pub(crate) fn into_router(self) -> TrieRouter {
-        let mut router = self.routes;
+        let Self { routes: mut router, fangs } = self;
 
-        for (methods, fang) in self.fangs {
-            router.apply_fang(methods, fang);
+        if let Some(fangs) = fangs {
+            router.apply_fangs(router.id(), fangs);
         }
 
         #[cfg(feature="DEBUG")]

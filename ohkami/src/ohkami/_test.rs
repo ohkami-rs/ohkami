@@ -73,7 +73,7 @@ fn my_ohkami() -> Ohkami {
 }
 
 #[crate::__rt__::test] async fn test_handler_registration() {
-    let t = my_ohkami();
+    let t = my_ohkami().test();
 
 
     /* GET /health */
@@ -98,11 +98,11 @@ fn my_ohkami() -> Ohkami {
 
     let req = TestRequest::GET("/api/profiles/the_user/follow");
     let res = t.oneshot(req).await;
-    assert_eq!(res.status(), Status::NotFound);
+    assert_eq!(res.status(), Status::MethodNotAllowed);
 
     let req = TestRequest::POST("/api/profiles/the_user");
     let res = t.oneshot(req).await;
-    assert_eq!(res.status(), Status::NotFound);
+    assert_eq!(res.status(), Status::MethodNotAllowed);
 
     let req = TestRequest::POST("/api/profiles/the_user/follow");
     let res = t.oneshot(req).await;
@@ -144,7 +144,7 @@ fn my_ohkami() -> Ohkami {
 
 #[crate::__rt__::test] async fn test_fang_registration() {
     use std::sync::{OnceLock, Mutex};
-    use crate::FrontFang;
+    use crate::{Fang, FangProc};
 
     fn N() -> &'static Mutex<usize> {
         static N: OnceLock<Mutex<usize>> = OnceLock::new();
@@ -152,10 +152,20 @@ fn my_ohkami() -> Ohkami {
     }
 
     struct Increment;
-    impl FrontFang for Increment {
-        type Error = std::convert::Infallible;
-        fn bite(&self, _: &mut Request) -> impl std::future::Future<Output = Result<(), Self::Error>> + Send {              *N().lock().unwrap() += 1;    
-            async {Ok(())}
+    impl<Inner: FangProc> Fang<Inner> for Increment {
+        type Proc = IncrementProc<Inner>;
+        fn chain(&self, inner: Inner) -> Self::Proc {
+            IncrementProc(inner)
+        }
+    }
+    struct IncrementProc<Inner: FangProc>(Inner);
+    impl<Inner: FangProc> FangProc for IncrementProc<Inner> {
+        fn bite<'b>(&'b self, req: &'b mut Request) -> impl std::future::Future<Output = Response> + Send + 'b {
+            #[cfg(feature="DEBUG")]
+            println!("Called `Increment`");
+
+            *N().lock().unwrap() += 1;
+            self.0.bite(req)
         }
     }
 
@@ -165,206 +175,173 @@ fn my_ohkami() -> Ohkami {
     /*===== with no nests =====*/
     *N().lock().unwrap() = 0;
 
-    let o = Ohkami::with(Increment, (
+    let t = Ohkami::with((Increment,), (
         "/a"  .GET(h),
         "/a/b".GET(h),
-    ));
-
-    dbg!(o.clone().into_router());
-    dbg!(o.clone().into_router().into_radix());
+    )).test();
 
     let req = TestRequest::GET("/a");
-    o.oneshot(req).await;
+    t.oneshot(req).await;
     assert_eq!(*N().lock().unwrap(), 1);
 
     let req = TestRequest::GET("/a");
-    o.oneshot(req).await;
+    t.oneshot(req).await;
     assert_eq!(*N().lock().unwrap(), 2);
 
     let req = TestRequest::GET("/a/b");
-    o.oneshot(req).await;
+    t.oneshot(req).await;
     assert_eq!(*N().lock().unwrap(), 3);
 
     
     /*===== with nests =====*/
     *N().lock().unwrap() = 0;
 
-    let o = Ohkami::with(Increment, (
+    let t = Ohkami::with((Increment,), (
         "/a"  .GET(h),
         "/a/b".GET(h),
         "/a/b/c".By(Ohkami::with((), (
             "/d"  .GET(h),
             "/d/e".GET(h),
         )))
-    ));
-
-    dbg!(o.clone().into_router());
-    dbg!(o.clone().into_router().into_radix());
+    )).test();
 
     let req = TestRequest::GET("/a");
-    o.oneshot(req).await;
+    t.oneshot(req).await;
     assert_eq!(*N().lock().unwrap(), 1);
 
     let req = TestRequest::GET("/a/b");
-    o.oneshot(req).await;
+    t.oneshot(req).await;
     assert_eq!(*N().lock().unwrap(), 2);
     let req = TestRequest::GET("/a/b/c/d");
-    o.oneshot(req).await;
+    t.oneshot(req).await;
     assert_eq!(*N().lock().unwrap(), 3);
 
     let req = TestRequest::GET("/a/b/c/d/e");
-    o.oneshot(req).await;
-    assert_eq!(*N().lock().unwrap(), 4);
-
-    
-    /*===== duplicatedly-registerd fangs must be merged and called once =====*/
-    *N().lock().unwrap() = 0;
-
-    let o = Ohkami::with(Increment, (
-        "/a"  .GET(h),
-        "/a/b".GET(h),
-        "/a/b/c".By(Ohkami::with((Increment, Increment), (
-            "/d"  .GET(h),
-            "/d/e".GET(h),
-        )))
-    ));
-
-    dbg!(o.clone().into_router());
-    dbg!(o.clone().into_router().into_radix());
-
-    let req = TestRequest::GET("/a");
-    o.oneshot(req).await;
-    assert_eq!(*N().lock().unwrap(), 1);
-
-    let req = TestRequest::GET("/a/b");
-    o.oneshot(req).await;
-    assert_eq!(*N().lock().unwrap(), 2);
-    let req = TestRequest::GET("/a/b/c/d");
-    o.oneshot(req).await;
-    assert_eq!(*N().lock().unwrap(), 3);
-
-    let req = TestRequest::GET("/a/b/c/d/e");
-    o.oneshot(req).await;
+    t.oneshot(req).await;
     assert_eq!(*N().lock().unwrap(), 4);
 }
 
+#[__rt__::test] async fn test_fangs_nesting() {
+    use std::sync::{Mutex, OnceLock};
+    use crate::{Fang, FangProc, Ohkami};
 
-#[crate::__rt__::test] async fn test_global_fangs_registration() {
-    use std::sync::{OnceLock, Mutex};
-
-    async fn h() -> &'static str {"Hello"}
-
-    fn N() -> &'static Mutex<usize> {
-        static N: OnceLock<Mutex<usize>> = OnceLock::new();
-        N.get_or_init(|| Mutex::new(0))
+    #[allow(non_snake_case)]
+    fn MESSAGES() -> &'static Mutex<Vec<String>> {
+        static MESSAGES: OnceLock<Mutex<Vec<String>>> = OnceLock::new();
+        MESSAGES.get_or_init(|| Mutex::new(Vec::new()))
     }
 
-    struct APIIncrement;
-    impl FrontFang for APIIncrement {
-        type Error = std::convert::Infallible;
-        fn bite(&self, _: &mut Request) -> impl std::future::Future<Output = Result<(), Self::Error>> + Send {
-            *N().lock().unwrap() += 1;
-            async {Ok(())}
+ 
+    struct HelloFang {
+        name: &'static str
+    }
+    impl<I: FangProc> Fang<I> for HelloFang {
+        type Proc = HelloFangProc<I>;
+        fn chain(&self, inner: I) -> Self::Proc {
+            HelloFangProc { inner, name: self.name }
         }
     }
-
-    struct GlobalIncrement;
-    impl FrontFang for GlobalIncrement {
-        type Error = std::convert::Infallible;
-        fn bite(&self, _: &mut Request) -> impl std::future::Future<Output = Result<(), Self::Error>> + Send {
-            *N().lock().unwrap() += 2;
-            async {Ok(())}
-        }
+    struct HelloFangProc<I: FangProc> {
+        name:  &'static str,
+        inner: I,
     }
-
-    struct NotFoundIncrement;
-    impl BackFang for NotFoundIncrement {
-        type Error = std::convert::Infallible;
-        fn bite(&self, res: &mut Response, _req: &Request) -> impl std::future::Future<Output = Result<(), Self::Error>> + Send {
-            if res.status == Status::NotFound {
-                *N().lock().unwrap() += 3;
+    impl<I: FangProc> FangProc for HelloFangProc<I> {
+        async fn bite<'b>(&'b self, req: &'b mut Request) -> Response {
+            {
+                let mut lock = MESSAGES().lock().unwrap();
+                lock.push(format!("Hello, {}!", self.name));
             }
-            async {Ok(())}
+            let res = self.inner.bite(req).await;
+            {
+                let mut lock = MESSAGES().lock().unwrap();
+                lock.push(format!("Bye, {}!", self.name));
+            }
+            res
         }
     }
 
-    let o = Ohkami::new((
-        "/healthz".GET(h),
-        "/api".By(Ohkami::with(APIIncrement, (
-            "/a".GET(h),
-            "/b".GET(h),
-        )))
-    ));
+    async fn h() -> &'static str {"handler"}
 
 
-    dbg!(o.clone().into_router());
-    dbg!(o.clone().into_router().into_radix());
+    let t = Ohkami::with((
+        HelloFang { name: "Amelia" },
+    ), (
+        "/abc".GET(h),
+        "/def".By(Ohkami::with((
+            HelloFang { name: "Brooks" },
+            HelloFang { name: "Carter" },
+        ), (
+            "/".GET(h),
+            "/jkl".By(Ohkami::with((
+                HelloFang { name: "Daniel" },
+            ), (
+                "/mno".GET(h),
+            )))
+        ))),
+        "/pqr".By(Ohkami::with((
+            HelloFang { name: "Evelyn" },
+        ), (
+            "/stu".GET(h),
+        ))),
+    )).test();
 
+    {MESSAGES().lock().unwrap().clear();
+        let req = TestRequest::GET("/abc");
+        let res = t.oneshot(req).await;
 
-    let req = TestRequest::GET("/healthz");
-    o.oneshot_with((), req).await;
-    assert_eq!(*N().lock().unwrap(), 0);
-
-    let req = TestRequest::GET("/healthz");
-    o.oneshot_with((NotFoundIncrement,), req).await;
-    assert_eq!(*N().lock().unwrap(), 0);
-
-    let req = TestRequest::GET("/healthz");
-    o.oneshot_with((GlobalIncrement, NotFoundIncrement), req).await;
-    assert_eq!(*N().lock().unwrap(), 2);
-
-    let req = TestRequest::GET("/healthy");
-    o.oneshot_with((NotFoundIncrement,), req).await;
-    assert_eq!(*N().lock().unwrap(), 5);
-
-    let req = TestRequest::GET("/healthy");
-    o.oneshot_with((GlobalIncrement, NotFoundIncrement), req).await;
-    assert_eq!(*N().lock().unwrap(), 10);
-
-    let req = TestRequest::GET("/api/a");
-    o.oneshot_with((GlobalIncrement, NotFoundIncrement), req).await;
-    assert_eq!(*N().lock().unwrap(), 13);
-
-    let req = TestRequest::GET("/api/b");
-    o.oneshot_with((NotFoundIncrement,), req).await;
-    assert_eq!(*N().lock().unwrap(), 14);
-
-    let req = TestRequest::GET("/api/c");
-    o.oneshot_with((GlobalIncrement, NotFoundIncrement), req).await;
-    assert_eq!(*N().lock().unwrap(), 19);
-}
-
-#[__rt__::test] async fn test_timeout() {
-    use crate::prelude::*;
-    use crate::testing::*;
-    use crate::builtin::fang::Timeout;
-    use std::time::Duration;
-
-    async fn sleeping_hello(sleep: u64) -> &'static str {
-        __rt__::sleep(Duration::from_secs(sleep)).await;
-
-        "Hello, I was sleeping ):"
+        assert_eq!(res.status(), Status::OK);
+        assert_eq!(&*MESSAGES().lock().unwrap(), &[
+            "Hello, Amelia!",
+            "Bye, Amelia!",
+        ]);
     }
 
-    let t = Ohkami::with(Timeout(Duration::from_secs(3)), (
-        "/hello/:sleep".GET(sleeping_hello),
-    ));
+    {MESSAGES().lock().unwrap().clear();
+        let req = TestRequest::GET("/def");
+        let res = t.oneshot(req).await;
 
+        assert_eq!(res.status(), Status::OK);
+        assert_eq!(&*MESSAGES().lock().unwrap(), &[
+            "Hello, Amelia!",
+            "Hello, Brooks!",
+            "Hello, Carter!",
+            "Bye, Carter!",
+            "Bye, Brooks!",
+            "Bye, Amelia!",
+        ]);
+    }
 
-    let req = TestRequest::GET("/hello/1");
-    let res = t.oneshot(req).await;
-    assert_eq!(res.status(), Status::OK);
-    assert_eq!(res.text(),   Some("Hello, I was sleeping ):"));
+    {MESSAGES().lock().unwrap().clear();
+        let req = TestRequest::GET("/def/jklmno");
+        let res = t.oneshot(req).await;
 
-    let req = TestRequest::GET("/hello/2");
-    let res = t.oneshot(req).await;
-    assert_eq!(res.status(), Status::OK);
-    assert_eq!(res.text(),   Some("Hello, I was sleeping ):"));
+        assert_eq!(res.status(), Status::NotFound);
+        assert_eq!(&*MESSAGES().lock().unwrap(), &[
+            "Hello, Amelia!",
+            "Hello, Brooks!",
+            "Hello, Carter!",
+            "Bye, Carter!",
+            "Bye, Brooks!",
+            "Bye, Amelia!",
+        ]);
+    }
 
-    let req = TestRequest::GET("/hello/4");
-    let res = t.oneshot(req).await;
-    assert_eq!(res.status(), Status::InternalServerError);
-    assert_eq!(res.text(),   Some("Timeout"));
+    {MESSAGES().lock().unwrap().clear();
+        let req = TestRequest::GET("/def/jkl/mno");
+        let res = t.oneshot(req).await;
+
+        assert_eq!(res.status(), Status::OK);
+        assert_eq!(&*MESSAGES().lock().unwrap(), &[
+            "Hello, Amelia!",
+            "Hello, Brooks!",
+            "Hello, Carter!",
+            "Hello, Daniel!",
+            "Bye, Daniel!",
+            "Bye, Carter!",
+            "Bye, Brooks!",
+            "Bye, Amelia!",
+        ]);
+    }
 }
 
 #[__rt__::test] async fn test_pararell_registering() {
@@ -384,7 +361,7 @@ fn my_ohkami() -> Ohkami {
     let t = Ohkami::new((
         "/hello/help" .GET(hello_help),
         "/hello/:name".GET(hello),
-    ));
+    )).test();
 
     let req = TestRequest::GET("/hello/help");
     let res = t.oneshot(req).await;
@@ -406,7 +383,7 @@ fn my_ohkami() -> Ohkami {
     let t = Ohkami::new((
         "/hello/:name".GET(hello),
         "/hello/help" .GET(hello_help),
-    ));
+    )).test();
 
     let req = TestRequest::GET("/hello/help");
     let res = t.oneshot(req).await;
