@@ -155,7 +155,7 @@ const _: () = {
 */
 
 
-#[cfg(test)]
+#[cfg(all(test, feature="testing", any(feature="rt_tokio",feature="async-std")))]
 mod test {
     use super::*;
     use crate::prelude::*;

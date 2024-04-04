@@ -1,4 +1,4 @@
-pub(crate) mod utils;
+pub mod utils;
 
 use super::{Fang, BoxedFPC};
 

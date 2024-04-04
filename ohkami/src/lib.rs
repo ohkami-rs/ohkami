@@ -166,6 +166,8 @@ pub mod __internal__ {
 
     pub use ohkami_macros::consume_struct;
 
+    pub use crate::fangs::Fangs;
+
     /* for benchmarks */
     #[cfg(feature="DEBUG")]
     #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
