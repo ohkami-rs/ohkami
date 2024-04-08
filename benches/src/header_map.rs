@@ -5,16 +5,146 @@ use core::{ops::BitXor, mem::size_of};
 use std::{borrow::Cow, collections::HashMap};
 
 
-pub struct ResponseHeaderMap {
-    map:  HashMap<&'static str, Cow<'static, str>, BuildHasherDefault<HeaderHasher>>,
+pub struct HeaderMap {
+    map:  HashMap<Header, Cow<'static, str>, BuildHasherDefault<HeaderHasher>>,
     size: usize
+}
+
+
+
+macro_rules! __TODO__ {
+    ($( $index:literal : $name:ident = $name_pascal:literal $(| $name_lower:literal)?)*) => {
+        impl Hasher for HeaderHasher {
+            #[inline]
+            fn write(&mut self, bytes: &[u8]) {
+                self.hash = match bytes {
+                    $(
+                        $name_pascal:literal $(| $name_lower:literal)? => $index,
+                    )*
+                    custom => return self.write_fxhash(custom)
+                }
+            }
+        }
+
+        impl HeaderMap {
+            pub fn set(&mut self) -> SetHeader<'_> {
+                SetHeader(self)
+            }
+        }
+
+        struct SetHeader<'s>(&'s mut HeaderMap);
+
+        trait SetHeaderAction<'s> {
+            fn perform(self, index: usize, map: &'s mut HeaderMap);
+        } const _: () = {
+            impl<'s> SetHeader<'s> for Option<()> {
+                fn perform(self, index: usize, map: &'s mut HeaderMap) {
+
+                    // We **CAN'T TOUCH `HashMap` INTERNALS** so
+                    // taking `index` doesn't make it faster...
+                    map.remove(...)
+                }
+            }
+        };
+
+        #[allow(non_snake_case)]
+        impl SetHeader<'_> {
+            $(
+                pub fn $name(self) -> Option<>
+            )*
+        }
+    };
+}
+
+
+#[derive(PartialEq, Eq, PartialOrd, Ord, Hash)]
+enum Header {
+    /* entity */
+    CacheControl,
+    Connection,
+    ContentDisposition,
+    ContentEncoding,
+    ContentLanguage,
+    ContentLength,
+    ContentLocation,
+    ContentType,
+    Date,
+    Link,
+    SecWebSocketProtocol,
+    SecWebSocketVersion,
+    Trailer,
+    TransferEncoding,
+    Upgrade,
+    Via,
+
+    /* response only */
+    AcceptRange,
+    AcceptRanges,
+    AccessControlAllowCredentials,
+    AccessControlAllowHeaders,
+    AccessControlAllowMethods,
+    AccessControlAllowOrigin,
+    AccessControlExposeHeaders,
+    AccessControlMaxAge,
+    Age,
+    Allow,
+    AltSvc,
+    CacheStatus,
+    CDNCacheControl,
+    ContentRange,
+    ContentSecurityPolicy,
+    ContentSecurityPolicyReportOnly,
+    Etag,
+    Expires,
+    Location,
+    ProxyAuthenticate,
+    ReferrerPolicy,
+    Refresh,
+    RetryAfter,
+    SecWebSocketAccept,
+    Server,
+    SetCookie,
+    StrictTransportSecurity,
+    Vary,
+    XContentTypeOptions,
+    XFrameOptions,
+
+    /* request only */
+    Accept,
+    AcceptEncoding,
+    AcceptLanguage,
+    AccessControlRequestHeaders,
+    AccessControlRequestMethod,
+    Authorization,
+    Cookie,
+    Expect,
+    Forwarded,
+    From,
+    Host,
+    IfMatch,
+    IfModifiedSince,
+    IfNoneMatch,
+    IfRange,
+    IfUnmodifiedSince,
+    MaxForwards,
+    Origin,
+    ProxyAuthorization,
+    Range,
+    Referer,
+    SecWebSocketExtensions,
+    SecWebSocketKey,
+    TE,
+    UserAgent,
+    UpgradeInsecureRequests,
+
+    Custom(&'static [u8]),
 }
 #[derive(Default)]
 struct HeaderHasher {
     hash: usize
 }
 
-impl ResponseHeaderMap {
+impl HeaderMap {
     pub fn new() -> Self {
         Self {
             map:  HashMap::default(),
@@ -119,50 +249,6 @@ impl HeaderHasher {
 }
 
 
-macro_rules! response_headers {
-    ($( $index:literal : $name:ident = $name_pascal:literal $(| $name_lower:literal)?)*) => {
-        impl Hasher for HeaderHasher {
-            #[inline]
-            fn write(&mut self, bytes: &[u8]) {
-                self.hash = match bytes {
-                    $(
-                        $name_pascal:literal $(| $name_lower:literal)? => $index,
-                    )*
-                    custom => return self.write_fxhash(custom)
-                }
-            }
-        }
-
-        impl ResponseHeaderMap {
-            pub fn set(&mut self) -> SetResponseHeader<'_> {
-                SetResponseHeader(self)
-            }
-        }
-
-        struct SetResponseHeader<'s>(&'s mut ResponseHeaderMap);
-
-        trait SetResponseHeaderAction<'s> {
-            fn perform(self, index: usize, map: &'s mut ResponseHeaderMap);
-        } const _: () = {
-            impl<'s> SetResponseHeader<'s> for Option<()> {
-                fn perform(self, index: usize, map: &'s mut ResponseHeaderMap) {
-
-                    // We **CAN'T TOUCH `HashMap` INTERNALS** so
-                    // taking `index` doesn't make it faster...
-                    map.remove(...)
-                }
-            }
-        };
-
-        #[allow(non_snake_case)]
-        impl SetResponseHeader<'_> {
-            $(
-                pub fn $name(self) -> Option<>
-            )*
-        }
-    };
-}
-
 impl Hasher for HeaderHasher {
     #[inline]
     fn write(&mut self, bytes: &[u8]) {
@@ -217,33 +303,33 @@ impl Hasher for HeaderHasher {
             b"X-Content-Type-Options"                                             => 44,
             b"X-Frame-Options"                                                    => 45,
 
-            // /* request only */
-            // b"Accept" | b"accept"                                                 => 46,
-            // b"Accept-Encoding" | b"accept-encoding"                               => 47,
-            // b"Accept-Language" | b"accept-language"                               => 48,
-            // b"Access-Control-Request-Headers" | b"access-control-request-headers" => 49,
-            // b"Access-Control-Request-Method" | b"access-control-request-method"   => 50,
-            // b"Authorization" | b"authorization"                                   => 51,
-            // b"Cookie" | b"cookie"                                                 => 52,
-            // b"Expect" | b"expect"                                                 => 53,
-            // b"Forwarded" | b"forwarded"                                           => 54,
-            // b"From" | b"from"                                                     => 55,
-            // b"Host" | b"host"                                                     => 56,
-            // b"If-Match" | b"if-match"                                             => 57,
-            // b"If-Modified-Since" | b"if-modified-since"                           => 58,
-            // b"If-None-Match" | b"if-none-match"                                   => 59,
-            // b"If-Range" | b"if-range"                                             => 60,
-            // b"If-Unmodified-Since" | b"if-unmodified-since"                       => 61,
-            // b"Max-Forwards" | b"max-forwards"                                     => 62,
-            // b"Origin" | b"origin"                                                 => 63,
-            // b"Proxy-Authorization" | b"proxy-authorization"                       => 64,
-            // b"Range" | b"range"                                                   => 65,
-            // b"Referer" | b"referer"                                               => 66,
-            // b"Sec-WebSocket-Extensions" | b"sec-websocket-extensions"             => 67,
-            // b"Sec-WebSocket-Key" | b"sec-websocket-key"                           => 68,
-            // b"TE" | b"te"                                                         => 69,
-            // b"User-Agent" | b"user-agent"                                         => 70,
-            // b"Upgrade-Insecure-Requests" | b"upgrade-insecure-requests"           => 71,
+            /* request only */
+            b"Accept" | b"accept"                                                 => 46,
+            b"Accept-Encoding" | b"accept-encoding"                               => 47,
+            b"Accept-Language" | b"accept-language"                               => 48,
+            b"Access-Control-Request-Headers" | b"access-control-request-headers" => 49,
+            b"Access-Control-Request-Method" | b"access-control-request-method"   => 50,
+            b"Authorization" | b"authorization"                                   => 51,
+            b"Cookie" | b"cookie"                                                 => 52,
+            b"Expect" | b"expect"                                                 => 53,
+            b"Forwarded" | b"forwarded"                                           => 54,
+            b"From" | b"from"                                                     => 55,
+            b"Host" | b"host"                                                     => 56,
+            b"If-Match" | b"if-match"                                             => 57,
+            b"If-Modified-Since" | b"if-modified-since"                           => 58,
+            b"If-None-Match" | b"if-none-match"                                   => 59,
+            b"If-Range" | b"if-range"                                             => 60,
+            b"If-Unmodified-Since" | b"if-unmodified-since"                       => 61,
+            b"Max-Forwards" | b"max-forwards"                                     => 62,
+            b"Origin" | b"origin"                                                 => 63,
+            b"Proxy-Authorization" | b"proxy-authorization"                       => 64,
+            b"Range" | b"range"                                                   => 65,
+            b"Referer" | b"referer"                                               => 66,
+            b"Sec-WebSocket-Extensions" | b"sec-websocket-extensions"             => 67,
+            b"Sec-WebSocket-Key" | b"sec-websocket-key"                           => 68,
+            b"TE" | b"te"                                                         => 69,
+            b"User-Agent" | b"user-agent"                                         => 70,
+            b"Upgrade-Insecure-Requests" | b"upgrade-insecure-requests"           => 71,
             
             custom => return self.write_fxhash(custom)
         }
@@ -270,7 +356,7 @@ impl Hasher for HeaderHasher {
 
 #[cfg(test)]
 #[test] fn edit_map() {
-    let mut h = ResponseHeaderMap::new();
+    let mut h = HeaderMap::new();
 
     h
         .insert("Content-Type", "application/json")
