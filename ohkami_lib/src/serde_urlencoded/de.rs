@@ -135,7 +135,7 @@ impl<'u, 'de> serde::Deserializer<'de> for &'u mut URLEncodedDeserializer<'de> {
         match percent_decode_utf8(section).map_err(|e|
             serde::de::Error::custom(format!("Expected to be decoded to an UTF-8, but got `{}`: {e}", section.escape_ascii()))
         )? {
-            Cow::Borrowed(str) => visitor.visit_str(str),
+            Cow::Borrowed(str) => visitor.visit_borrowed_str(str),
             Cow::Owned(string) => visitor.visit_string(string),
         }
     }

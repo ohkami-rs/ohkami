@@ -4,7 +4,7 @@ extern crate test;
 
 use ohkami::__internal__::ResponseHeaders;
 use http::{HeaderMap, header, HeaderValue};
-use ohkami_benches::fxmap::FxMap;
+use ohkami_benches::{fxmap::FxMap, header_map::ResponseHeaderMap};
 
 
 
@@ -52,6 +52,25 @@ use ohkami_benches::fxmap::FxMap;
 
 #[bench] fn insert_fxmap(b: &mut test::Bencher) {
     let mut h = FxMap::new();
+    b.iter(|| {
+        h
+            .insert("Access-Control-Allow-Credentials", test::black_box("true"))
+            .insert("Access-Control-Allow-Headers", test::black_box("X-Custom-Header,Upgrade-Insecure-Requests"))
+            .insert("Access-Control-Allow-Origin", test::black_box("https://foo.bar.org"))
+            .insert("Access-Control-Max-Age", test::black_box("86400"))
+            .insert("Vary", test::black_box("Origin"))
+            .insert("Server", test::black_box("ohkami"))
+            .insert("Connection", test::black_box("Keep-Alive"))
+            .insert("Date", test::black_box("Wed, 21 Oct 2015 07:28:00 GMT"))
+            .insert("Alt-Svc", test::black_box("h2=\":433\"; ma=2592000"))
+            .insert("Proxy-Authenticate", test::black_box("Basic realm=\"Access to the internal site\""))
+            .insert("Referer-Policy", test::black_box("same-origin"))
+            .insert("X-Frame-Options", test::black_box("DEBY"));
+    });
+}
+
+#[bench] fn insert_headermap(b: &mut test::Bencher) {
+    let mut h = ResponseHeaderMap::new();
     b.iter(|| {
         h
             .insert("Access-Control-Allow-Credentials", test::black_box("true"))
@@ -177,6 +196,39 @@ use ohkami_benches::fxmap::FxMap;
     });
 }
 
+#[bench] fn remove_headermap(b: &mut test::Bencher) {
+    let mut h = ResponseHeaderMap::new();
+    h
+        .insert("Access-Control-Allow-Credentials", test::black_box("true"))
+        .insert("Access-Control-Allow-Headers", test::black_box("X-Custom-Header,Upgrade-Insecure-Requests"))
+        .insert("Access-Control-Allow-Origin", test::black_box("https://foo.bar.org"))
+        .insert("Access-Control-Max-Age", test::black_box("86400"))
+        .insert("Vary", test::black_box("Origin"))
+        .insert("Server", test::black_box("ohkami"))
+        .insert("Connection", test::black_box("Keep-Alive"))
+        .insert("Date", test::black_box("Wed, 21 Oct 2015 07:28:00 GMT"))
+        .insert("Alt-Svc", test::black_box("h2=\":433\"; ma=2592000"))
+        .insert("Proxy-Authenticate", test::black_box("Basic realm=\"Access to the internal site\""))
+        .insert("Referer-Policy", test::black_box("same-origin"))
+        .insert("X-Frame-Options", test::black_box("DEBY"));
+
+    b.iter(|| {
+        h
+            .remove(test::black_box("Access-Control-Allow-Credentials"))
+            .remove(test::black_box("Access-Control-Allow-Headers"))
+            .remove(test::black_box("Access-Control-Allow-Origin"))
+            .remove(test::black_box("Access-Control-Max-Age"))
+            .remove(test::black_box("Vary"))
+            .remove(test::black_box("Server"))
+            .remove(test::black_box("Connection"))
+            .remove(test::black_box("Date"))
+            .remove(test::black_box("Alt-Svc"))
+            .remove(test::black_box("Proxy-Authenticate"))
+            .remove(test::black_box("Referer-Policy"))
+            .remove(test::black_box("X-Frame-Options"));
+    });
+}
+
 
 
 
@@ -255,3 +307,24 @@ use ohkami_benches::fxmap::FxMap;
     });
 }
 
+#[bench] fn write_headermap(b: &mut test::Bencher) {
+    let mut h = ResponseHeaderMap::new();
+    h
+        .insert("Access-Control-Allow-Credentials", test::black_box("true"))
+        .insert("Access-Control-Allow-Headers", test::black_box("X-Custom-Header,Upgrade-Insecure-Requests"))
+        .insert("Access-Control-Allow-Origin", test::black_box("https://foo.bar.org"))
+        .insert("Access-Control-Max-Age", test::black_box("86400"))
+        .insert("Vary", test::black_box("Origin"))
+        .insert("Server", test::black_box("ohkami"))
+        .insert("Connection", test::black_box("Keep-Alive"))
+        .insert("Date", test::black_box("Wed, 21 Oct 2015 07:28:00 GMT"))
+        .insert("Alt-Svc", test::black_box("h2=\":433\"; ma=2592000"))
+        .insert("Proxy-Authenticate", test::black_box("Basic realm=\"Access to the internal site\""))
+        .insert("Referer-Policy", test::black_box("same-origin"))
+        .insert("X-Frame-Options", test::black_box("DEBY"));
+
+    let mut buf = Vec::new();
+    b.iter(|| {
+        h.write_to(&mut buf);
+    });
+}

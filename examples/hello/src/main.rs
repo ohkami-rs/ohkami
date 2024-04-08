@@ -15,6 +15,7 @@ mod hello_handler {
     #[Query]
     pub struct HelloQuery<'q> {
         name:   &'q str,
+        #[query(rename = "n")]
         repeat: Option<usize>,
     }
 

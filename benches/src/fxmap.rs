@@ -12,6 +12,7 @@ impl FxMap {
         }
     }
 
+    #[inline]
     pub fn insert(
         &mut self,
         key:   impl Into<Cow<'static, str>>,
@@ -29,6 +30,7 @@ impl FxMap {
         self
     }
 
+    #[inline]
     pub fn remove(&mut self, key: impl Into<Cow<'static, str>>) -> &mut Self {
         let key = key.into();
         if let Some(old) = self.map.remove(&key) {

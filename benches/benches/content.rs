@@ -185,14 +185,14 @@ fn large() -> Vec<u8> {
     let data = small();
 
     b.iter(|| {
-        let _c = CowContent::new(&data);
+        let _c = CowContent::new(data.as_slice());
     })
 }
 #[bench] fn create_large_cow(b: &mut test::Bencher) {
     let data = large();
 
     b.iter(|| {
-        let _c = CowContent::new(&data);
+        let _c = CowContent::new(data.as_slice());
     })
 }
 
@@ -200,14 +200,14 @@ fn large() -> Vec<u8> {
     let data = small();
 
     b.iter(|| {
-        let _c = BytesContent::new(&data);
+        let _c = BytesContent::new(data.as_slice());
     })
 }
 #[bench] fn create_large_bytes(b: &mut test::Bencher) {
     let data = large();
 
     b.iter(|| {
-        let _c = BytesContent::new(&data);
+        let _c = BytesContent::new(data.as_slice());
     })
 }
 
@@ -216,7 +216,7 @@ fn large() -> Vec<u8> {
     let mut buf = Vec::new();
 
     let data = small();
-    let c = CowContent::new(&data);
+    let c = CowContent::new(data.as_slice());
 
     b.iter(|| {
         c.write_to(&mut buf);
@@ -226,7 +226,7 @@ fn large() -> Vec<u8> {
     let mut buf = Vec::new();
 
     let data = large();
-    let c = CowContent::new(&data);
+    let c = CowContent::new(data.as_slice());
 
     b.iter(|| {
         c.write_to(&mut buf);
@@ -237,7 +237,7 @@ fn large() -> Vec<u8> {
     let mut buf = Vec::new();
 
     let data = small();
-    let c = BytesContent::new(&data);
+    let c = BytesContent::new(data.as_slice());
 
     b.iter(|| {
         c.write_to(&mut buf);
@@ -247,7 +247,7 @@ fn large() -> Vec<u8> {
     let mut buf = Vec::new();
 
     let data = large();
-    let c = BytesContent::new(&data);
+    let c = BytesContent::new(data.as_slice());
 
     b.iter(|| {
         c.write_to(&mut buf);
