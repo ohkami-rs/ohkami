@@ -10,10 +10,39 @@ pub struct HeaderMap {
     size: usize
 }
 
-
-
-macro_rules! __TODO__ {
+macro_rules! Header {
     ($( $index:literal : $name:ident = $name_pascal:literal $(| $name_lower:literal)?)*) => {
+        #[derive(PartialEq, Eq, PartialOrd, Ord, Hash)]
+        enum Header {
+            $(
+                $name = $index,
+            )*
+        }
+        impl Header {
+            #[inline(always)]
+            const fn from_bytes(bytes: &[u8]) -> Self {
+                match bytes {
+                    $(
+                        $name_pascal $(| $name_lower)? => Self::$name,
+                    )*
+                    _ => Self::Custom(bytes)
+                }
+            }
+            #[inline(always)]
+            const fn as_bytes(&self) -> &'static [u8] {
+                match Self {
+                    $(
+                        Self::$name => $name_pascal,
+                    )*
+                    Self::Custom(bytes) => bytes
+                }
+            }
+        }
+
+        #[derive(Default)]
+        struct HeaderHasher {
+            hash: usize
+        }
         impl Hasher for HeaderHasher {
             #[inline]
             fn write(&mut self, bytes: &[u8]) {
@@ -23,6 +52,9 @@ macro_rules! __TODO__ {
                     )*
                     custom => return self.write_fxhash(custom)
                 }
+            }
+            fn finish(self) -> u64 {
+                self.hash
             }
         }
 
@@ -35,25 +67,122 @@ macro_rules! __TODO__ {
         struct SetHeader<'s>(&'s mut HeaderMap);
 
         trait SetHeaderAction<'s> {
-            fn perform(self, index: usize, map: &'s mut HeaderMap);
+            fn perform(self, key: Header, set: SetHeader<'s>) -> SetHeader<'s>;
         } const _: () = {
             impl<'s> SetHeader<'s> for Option<()> {
-                fn perform(self, index: usize, map: &'s mut HeaderMap) {
+                fn perform(self, key: Header, set: SetHeader<'s>) -> SetHeader<'s> {
+                    set.0.remove(key);
+                    set
+                }
+            }
 
-                    // We **CAN'T TOUCH `HashMap` INTERNALS** so
-                    // taking `index` doesn't make it faster...
-                    map.remove(...)
+            impl<'s> SetHeader<'s> for &'static str {
+                fn perform(self, key: Header, set: SetHeader<'s>) -> SetHeader<'s> {
+                    set.0.insert(key, self);
+                    set
+                }
+            }
+            impl<'s> SetHeader<'s> for &String {
+                fn perform(self, key: Header, set: SetHeader<'s>) -> SetHeader<'s> {
+                    set.0.insert(key, self.clone());
+                    set
+                }
+            }
+            impl<'s> SetHeader<'s> for String {
+                fn perform(self, key: Header, set: SetHeader<'s>) -> SetHeader<'s> {
+                    set.0.insert(key, self);
+                    set
                 }
             }
         };
 
         #[allow(non_snake_case)]
-        impl SetHeader<'_> {
+        impl<'s> SetHeader<'s> {
             $(
-                pub fn $name(self) -> Option<>
+                pub fn $name(self, action: impl SetHeaderAction<'s>) -> Self {
+                    action.perform(Self::$name, self.0)
+                }
             )*
+            pub fn custom(self, key: &'static str, action: impl SetHeaderAction) -> Self {
+                action.perform(Self::Custom(key), action)
+            }
         }
     };
+} Header! {
+    1  CacheControl         = b"Cache-Control" | b"cache-control"
+    2  Connection           = b"Connection" | b"connection"
+    3  ContentDisposition   = b"Content-Disposition" | b"content-disposition"
+    4  ContentEncoding      = b"Content-Encoding" | b"content-encoding"
+    5  ContentLanguage      = b"Content-Language" | b"content-language"
+    6  ContentLength        = b"Content-Length" | b"content-length"
+    7  ContentLocation      = b"Content-Location" | b"content-location"
+    8  ContentType          = b"Content-Type" | b"content-type"
+    9  Date                 = b"Date" | b"date"
+    10 Link                 = b"Link" | b"link"
+    11 SecWebSocketProtocol = b"Sec-WebSocket-Protocol" | b"sec-websocket-protocol"
+    12 SecWebSocketVersion  = b"Sec-WebSocket-Version" | b"sec-websocket-version"
+    13 Trailer              = b"Trailer" | b"trailer"
+    14 TransferEncoding     = b"Transfer-Encoding" | b"transfer-encoding"
+    15 Upgrade              = b"Upgrade" | b"upgrade"
+    16 Via                  = b"Via" | b"via"
+
+    17 Accept                      = b"Accept" | b"accept",
+    18 AcceptEncoding              = b"Accept-Encoding" | b"accept-encoding",
+    19 AcceptLanguage              = b"Accept-Language" | b"accept-language",
+    20 AccessControlRequestHeaders = b"Access-Control-Request-Headers" | b"access-control-request-headers",
+    21 AccessControlRequestMethod  = b"Access-Control-Request-Method" | b"access-control-request-method",
+    22 Authorization               = b"Authorization" | b"authorization",
+    23 Cookie                      = b"Cookie" | b"cookie",
+    24 Expect                      = b"Expect" | b"expect",
+    25 Forwarded                   = b"Forwarded" | b"forwarded",
+    26 From                        = b"From" | b"from",
+    27 Host                        = b"Host" | b"host",
+    28 IfMatch                     = b"If-Match" | b"if-match",
+    29 IfModifiedSince             = b"If-Modified-Since" | b"if-modified-since",
+    30 IfNoneMatch                 = b"If-None-Match" | b"rf-none-match",
+    31 IfRange                     = b"If-Range" | b"if-range",
+    32 IfUnmodifiedSince           = b"If-Unmodified-Since" | b"if-unmodified-since",
+    33 MaxForwards                 = b"Max-Forwards" | b"max-forwards",
+    34 Origin                      = b"Origin" | b"origin", 
+    35 ProxyAuthorization          = b"Proxy-Authorization" | b"proxy-authorization",
+    36 Range                       = b"Range" | b"range",
+    37 Referer                     = b"Referer" | b"referer",
+    38 SecWebSocketExtensions      = b"Sec-WebSocket-Extensions" | b"sec-websocket-extensions",
+    39 SecWebSocketKey             = b"Sec-WebSocket-Key" | b"sec-websocket-key",
+    40 TE,                         = b"TE" | b"te"
+    41 UserAgent                   = b"User-Agent" | b"user-agent",
+    42 UpgradeInsecureRequests     = b"Upgrade-Insecure-Requests" | b"upgrade-insecure-requests",
+
+    43 AcceptRange                     = b"Accept-Range",
+    44 AcceptRanges                    = b"Accept-Ranges",
+    45 AccessControlAllowCredentials   = b"Access-Control-Allow-Credentials",
+    46 AccessControlAllowHeaders       = b"Access-Control-Allow-Headers",
+    47 AccessControlAllowMethods       = b"Access-Control-Allow-Methods",
+    48 AccessControlAllowOrigin        = b"Access-Control-Allow-Origin",
+    49 AccessControlExposeHeaders      = b"Access-Control-Expose-Headers",
+    50 AccessControlMaxAge             = b"Access-Control-MaxAge",
+    51 Age                             = b"Age",
+    52 Allow                           = b"Allow",
+    53 AltSvc                          = b"Alt-Svc",
+    54 CacheStatus                     = b"Cache-Status",
+    55 CDNCacheControl                 = b"CDN-Cache-Control",
+    56 ContentRange                    = b"Content-Range",
+    57 ContentSecurityPolicy           = b"Content-Security-Policy",
+    58 ContentSecurityPolicyReportOnly = b"Content-Security-Policy",
+    59 Etag                            = b"Etag",
+    60 Expires                         = b"Expires",
+    67 Location                        = b"Location",
+    68 ProxyAuthenticate               = b"Proxy-Auhtneticate",
+    69 ReferrerPolicy                  = b"Referrer-Policy",
+    70 Refresh                         = b"Refresh",
+    71 RetryAfter                      = b"Retry-After",
+    72 SecWebSocketAccept              = b"Sec-Sert",
+    73 Server                          = b"server",
+    74 SetCookie                       = b"SetCookie",
+    75 StrictTransportSecurity         = b"Strict-Transport-Security",
+    76 Vary                            = b"Vary",
+    77 XContentTypeOptions             = b"X-Content-Type-Options",
+    78 XFrameOptions,                  = b"X-Frame-Options"
 }
 
 
@@ -143,7 +272,6 @@ enum Header {
 struct HeaderHasher {
     hash: usize
 }
-
 impl HeaderMap {
     pub fn new() -> Self {
         Self {
