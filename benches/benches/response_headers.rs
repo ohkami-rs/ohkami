@@ -3,9 +3,10 @@ extern crate test;
 
 use ohkami::__internal__::ResponseHeaders;
 use http::{header, HeaderMap, HeaderName, HeaderValue};
-use ohkami_benches::{
+use ohkami_benches::
+    header_map::HeaderMap as MyHeaderMap;
+use ohkami_benches::response_headers::{
     fxmap::FxMap,
-    header_map::HeaderMap as MyHeaderMap,
     heap_ohkami_headers::HeapOhkamiHeaders,
     heap_ohkami_headers_nosize::HeapOhkamiHeadersWithoutSize,
 };

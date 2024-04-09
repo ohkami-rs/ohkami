@@ -5,8 +5,9 @@ edition    = "2021"
 authors    = ["kanarus <kanarus786@gmail.com>"]
 
 [dependencies]
-ohkami     = { version = "0.16.0", path = "../ohkami", features = ["rt_tokio", "custom-header", "DEBUG"] }
-ohkami_lib = { version = "0.2.0", path = "../ohkami_lib" }
-http       = "1.0.0"
-rustc-hash = "1.1"
-bytes      = "1.5.0"
+ohkami      = { version = "0.16.0", path = "../ohkami", features = ["rt_tokio", "custom-header", "DEBUG"] }
+ohkami_lib  = { version = "0.2.0", path = "../ohkami_lib" }
+http        = "1.0.0"
+rustc-hash  = "1.1"
+bytes       = "1.5.0"
+byte_reader = "3.0.0"

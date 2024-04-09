@@ -28,6 +28,34 @@ impl Slice {
 const _: () = {
     unsafe impl Send for Slice {}
     unsafe impl Sync for Slice {}
+
+    impl PartialEq for Slice {
+        #[inline]
+        fn eq(&self, other: &Self) -> bool {
+            unsafe {self.as_bytes() == other.as_bytes()}
+        }
+    }
+    impl Eq for Slice {}
+
+    impl PartialOrd for Slice {
+        #[inline]
+        fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+            unsafe {PartialOrd::partial_cmp(self.as_bytes(), other.as_bytes())}
+        }
+    }
+    impl Ord for Slice {
+        #[inline]
+        fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+            unsafe {Ord::cmp(self.as_bytes(), other.as_bytes())}
+        }
+    }
+
+    impl std::hash::Hash for Slice {
+        #[inline]
+        fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+            std::hash::Hash::hash(unsafe {self.as_bytes()}, state)
+        }
+    }
 };
 
 
