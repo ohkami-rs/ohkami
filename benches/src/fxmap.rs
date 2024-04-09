@@ -1,44 +1,43 @@
-use std::borrow::Cow;
+use std::{borrow::Cow, hash::BuildHasherDefault};
 
 pub struct FxMap {
-    map:  rustc_hash::FxHashMap<Cow<'static, str>, Cow<'static, str>>,
+    map:  rustc_hash::FxHashMap<&'static str, Cow<'static, str>>,
     size: usize,
 }
 impl FxMap {
     pub fn new() -> Self {
         Self {
-            map:  rustc_hash::FxHashMap::default(),
+            map:  rustc_hash::FxHashMap::with_capacity_and_hasher(32, BuildHasherDefault::default()),
             size: 2/* "\r\n".len() */
         }
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn insert(
         &mut self,
-        key:   impl Into<Cow<'static, str>>,
+        key:   &'static str,
         value: impl Into<Cow<'static, str>>,
     ) -> &mut Self {
-        let (key, value) = (key.into(), value.into());
-        let key_len = key.len();
+        let value = value.into();
 
         self.size += value.len();
         if let Some(old) = self.map.insert(key, value) {
             self.size -= old.len();
         } else {
-            self.size += key_len + 2/* ": ".len() */ + 2/* "\r\n".len() */;
+            self.size += key.len() + 2/* ": ".len() */ + 2/* "\r\n".len() */;
         }
         self
     }
 
     #[inline]
-    pub fn remove(&mut self, key: impl Into<Cow<'static, str>>) -> &mut Self {
-        let key = key.into();
+    pub fn remove(&mut self, key: &'static str) -> &mut Self {
         if let Some(old) = self.map.remove(&key) {
             self.size -= key.len() + 2/* ": ".len() */ + old.len() + 2/* "\r\n".len() */;
         }
         self
     }
 
+    #[inline]
     pub fn write_to(&self, buf: &mut Vec<u8>) {
         macro_rules! push {
             ($buf:ident <- $bytes:expr) => {
