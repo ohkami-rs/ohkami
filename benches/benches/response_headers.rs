@@ -7,6 +7,7 @@ use ohkami_benches::{
     fxmap::FxMap,
     header_map::HeaderMap as MyHeaderMap,
     heap_ohkami_headers::HeapOhkamiHeaders,
+    heap_ohkami_headers_nosize::HeapOhkamiHeadersWithoutSize,
 };
 
 
@@ -38,6 +39,29 @@ use ohkami_benches::{
 
 #[bench] fn insert_heap_ohkami(b: &mut test::Bencher) {
     let mut h = HeapOhkamiHeaders::new();
+    b.iter(|| {
+        h.set()
+            .AccessControlAllowCredentials(test::black_box("true"))
+            .AccessControlAllowHeaders(test::black_box("X-Custom-Header,Upgrade-Insecure-Requests"))
+            .AccessControlAllowOrigin(test::black_box("https://foo.bar.org"))
+            .AccessControlAllowMethods(test::black_box("POST,GET,OPTIONS,DELETE"))
+            .AccessControlMaxAge(test::black_box("86400"))
+            .Vary(test::black_box("Origin"))
+            .Server(test::black_box("ohkami"))
+            .Connection(test::black_box("Keep-Alive"))
+            .Date(test::black_box("Wed, 21 Oct 2015 07:28:00 GMT"))
+            .Via(test::black_box("HTTP/1.1 GWA"))
+            .AltSvc(test::black_box("h2=\":433\"; ma=2592000;"))
+            .ProxyAuthenticate(test::black_box("Basic realm=\"Access to the internal site\""))
+            .ReferrerPolicy(test::black_box("same-origin"))
+            .XFrameOptions(test::black_box("DENY"))
+            .custom("x-myapp-data", test::black_box("myappdata; excellent"))
+            .custom("something", test::black_box("anything"))
+        ;
+    });
+}
+#[bench] fn insert_heap_ohkami_nosize(b: &mut test::Bencher) {
+    let mut h = HeapOhkamiHeadersWithoutSize::new();
     b.iter(|| {
         h.set()
             .AccessControlAllowCredentials(test::black_box("true"))
@@ -174,6 +198,48 @@ use ohkami_benches::{
 
 #[bench] fn remove_heap_ohkami(b: &mut test::Bencher) {
     let mut h = HeapOhkamiHeaders::new();
+    h.set()
+        .AccessControlAllowCredentials(test::black_box("true"))
+        .AccessControlAllowHeaders(test::black_box("X-Custom-Header,Upgrade-Insecure-Requests"))
+        .AccessControlAllowOrigin(test::black_box("https://foo.bar.org"))
+        .AccessControlAllowMethods(test::black_box("POST,GET,OPTIONS,DELETE"))
+        .AccessControlMaxAge(test::black_box("86400"))
+        .Vary(test::black_box("Origin"))
+        .Server(test::black_box("ohkami"))
+        .Connection(test::black_box("Keep-Alive"))
+        .Date(test::black_box("Wed, 21 Oct 2015 07:28:00 GMT"))
+        .Via(test::black_box("HTTP/1.1 GWA"))
+        .AltSvc(test::black_box("h2=\":433\"; ma=2592000;"))
+        .ProxyAuthenticate(test::black_box("Basic realm=\"Access to the internal site\""))
+        .ReferrerPolicy(test::black_box("same-origin"))
+        .XFrameOptions(test::black_box("DENY"))
+        .custom("x-myapp-data", test::black_box("myappdata; excellent"))
+        .custom("something", test::black_box("anything"))
+    ;
+
+    b.iter(|| {
+        h.set()
+            .AccessControlAllowCredentials(test::black_box(None))
+            .AccessControlAllowHeaders(test::black_box(None))
+            .AccessControlAllowOrigin(test::black_box(None))
+            .AccessControlAllowMethods(test::black_box(None))
+            .AccessControlMaxAge(test::black_box(None))
+            .Vary(test::black_box(None))
+            .Server(test::black_box(None))
+            .Connection(test::black_box(None))
+            .Date(test::black_box(None))
+            .Via(test::black_box(None))
+            .AltSvc(test::black_box(None))
+            .ProxyAuthenticate(test::black_box(None))
+            .ReferrerPolicy(test::black_box(None))
+            .XFrameOptions(test::black_box(None))
+            .custom("x-myapp-data", test::black_box(None))
+            .custom("something", test::black_box(None))
+        ;
+    });
+}
+#[bench] fn remove_heap_ohkami_nosize(b: &mut test::Bencher) {
+    let mut h = HeapOhkamiHeadersWithoutSize::new();
     h.set()
         .AccessControlAllowCredentials(test::black_box("true"))
         .AccessControlAllowHeaders(test::black_box("X-Custom-Header,Upgrade-Insecure-Requests"))
@@ -393,6 +459,57 @@ use ohkami_benches::{
 }
 #[bench] fn write_heap_ohkami_only_standards(b: &mut test::Bencher) {
     let mut h = HeapOhkamiHeaders::new();
+    h.set()
+        .AccessControlAllowCredentials(test::black_box("true"))
+        .AccessControlAllowHeaders(test::black_box("X-Custom-Header,Upgrade-Insecure-Requests"))
+        .AccessControlAllowOrigin(test::black_box("https://foo.bar.org"))
+        .AccessControlAllowMethods(test::black_box("POST,GET,OPTIONS,DELETE"))
+        .AccessControlMaxAge(test::black_box("86400"))
+        .Vary(test::black_box("Origin"))
+        .Server(test::black_box("ohkami"))
+        .Connection(test::black_box("Keep-Alive"))
+        .Date(test::black_box("Wed, 21 Oct 2015 07:28:00 GMT"))
+        .Via(test::black_box("HTTP/1.1 GWA"))
+        .AltSvc(test::black_box("h2=\":433\"; ma=2592000;"))
+        .ProxyAuthenticate(test::black_box("Basic realm=\"Access to the internal site\""))
+        .ReferrerPolicy(test::black_box("same-origin"))
+        .XFrameOptions(test::black_box("DENY"))
+        .custom("x-myapp-data", test::black_box("myappdata; excellent"))
+        .custom("something", test::black_box("anything"))
+    ;
+
+    let mut buf = Vec::new();
+    b.iter(|| {
+        h.write_standards_to(&mut buf);
+    });
+}#[bench] fn write_heap_ohkami_nosize(b: &mut test::Bencher) {
+    let mut h = HeapOhkamiHeadersWithoutSize::new();
+    h.set()
+        .AccessControlAllowCredentials(test::black_box("true"))
+        .AccessControlAllowHeaders(test::black_box("X-Custom-Header,Upgrade-Insecure-Requests"))
+        .AccessControlAllowOrigin(test::black_box("https://foo.bar.org"))
+        .AccessControlAllowMethods(test::black_box("POST,GET,OPTIONS,DELETE"))
+        .AccessControlMaxAge(test::black_box("86400"))
+        .Vary(test::black_box("Origin"))
+        .Server(test::black_box("ohkami"))
+        .Connection(test::black_box("Keep-Alive"))
+        .Date(test::black_box("Wed, 21 Oct 2015 07:28:00 GMT"))
+        .Via(test::black_box("HTTP/1.1 GWA"))
+        .AltSvc(test::black_box("h2=\":433\"; ma=2592000;"))
+        .ProxyAuthenticate(test::black_box("Basic realm=\"Access to the internal site\""))
+        .ReferrerPolicy(test::black_box("same-origin"))
+        .XFrameOptions(test::black_box("DENY"))
+        .custom("x-myapp-data", test::black_box("myappdata; excellent"))
+        .custom("something", test::black_box("anything"))
+    ;
+
+    let mut buf = Vec::new();
+    b.iter(|| {
+        h.write_to(&mut buf);
+    });
+}
+#[bench] fn write_heap_ohkami_only_standards_nosize(b: &mut test::Bencher) {
+    let mut h = HeapOhkamiHeadersWithoutSize::new();
     h.set()
         .AccessControlAllowCredentials(test::black_box("true"))
         .AccessControlAllowHeaders(test::black_box("X-Custom-Header,Upgrade-Insecure-Requests"))
