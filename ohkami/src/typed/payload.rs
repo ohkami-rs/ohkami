@@ -26,7 +26,7 @@ use serde::{Serialize, Deserialize};
 /// 
 /// use ohkami::serde::{Deserialize, Serialize};
 /// 
-/// #[Payload]
+/// #[Payload(JSON)]
 /// #[derive(
 ///     Deserialize, // derive to use `User` as request body
 ///     Serialize    // derive to use `User` as response body
@@ -89,7 +89,7 @@ pub trait PayloadType {
     /// *example.rs*
     /// ```
     /// # use serde::Deserialize;
-    /// fn parse<'req, T: Deserialize<'req>>(bytes: &'req [u8]) -> Result<T, impl crate::serde::de::Error> {
+    /// fn parse<'req, T: Deserialize<'req>>(bytes: &'req [u8]) -> Result<T, impl ohkami::serde::de::Error> {
     ///     ::serde_json::from_slice(bytes)
     /// }
     /// ```
@@ -104,7 +104,7 @@ pub trait PayloadType {
     /// *example.rs*
     /// ```
     /// # use serde::Serialize;
-    /// fn bytes<T: Serialize>(value: &T) -> Result<Vec<u8>, impl crate::serde::ser::Error> {
+    /// fn bytes<T: Serialize>(value: &T) -> Result<Vec<u8>, impl ohkami::serde::ser::Error> {
     ///     ::serde_json::to_vec(&value)
     /// }
     /// ```
