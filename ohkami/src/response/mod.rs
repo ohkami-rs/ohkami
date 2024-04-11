@@ -83,20 +83,17 @@ pub struct Response {
     pub status:         Status,
     /// Headers of this response
     /// 
-    /// - `.{Name}()` to get the value
-    /// - `.set().{Name}(〜)` to mutate the value
-    ///   - `.set().{Name}({value})` to insert
-    ///   - `.set().{Name}(None)` to remove
-    ///   - `.set().{Name}(append({value}))` to append
-    /// 
-    /// `{value}`: `String`, `&'static str`, `Cow<&'static, str>`
+    /// - `.{Name}()`, `.custom({Name})` to get the value
+    /// - `.set().{Name}({action})`, `.set().custom({Name}, {action})` to mutate the values
     /// 
     /// ---
     /// 
-    /// *`custom-header` feature required* :
+    /// `{action}`:
+    /// - just `{value}` to insert
+    /// - `None` to remove
+    /// - `append({value})` to append
     /// 
-    /// - `.custom({Name})` to get the value
-    /// - `.set().custom({Name}, 〜)` to mutate the value like standard headers
+    /// `{value}`: `String`, `&'static str`, `Cow<&'static, str>`
     pub headers:        ResponseHeaders,
     pub(crate) content: Option<Cow<'static, [u8]>>,
 } const _: () = {

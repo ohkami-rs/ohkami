@@ -40,7 +40,7 @@ Cache-Control: no-cache\r\n\
     b.iter(|| {
         let mut r = byte_reader::Reader::new(test::black_box(INPUT));
 
-        let mut h = RequestHeaders::__init__();
+        let mut h = RequestHeaders::_init();
         while r.consume("\r\n").is_none() {
             let key_bytes = r.read_while(|b| b != &b':');
             r.consume(": ").unwrap();

@@ -3,7 +3,7 @@
 use std::pin::Pin;
 use ohkami_lib::{Slice, CowSlice};
 #[allow(unused)]
-use super::{Request, Method, METADATA_SIZE, Path, QueryParams, Store};
+use super::{Request, Method, BUF_SIZE, Path, QueryParams, Store};
 
 macro_rules! assert_parse {
     ($case:expr, $expected:expr) => {
@@ -30,11 +30,11 @@ macro_rules! assert_parse {
     };
 }
 
-fn metadataize(input: &str) -> [u8; METADATA_SIZE] {
-    let mut metadata = [0; METADATA_SIZE];
-    metadata[..input.len().min(METADATA_SIZE)]
-        .copy_from_slice(&input.as_bytes()[..input.len().min(METADATA_SIZE)]);
-    metadata
+fn metadataize(input: &str) -> Box<[u8; BUF_SIZE]> {
+    let mut buf = [0; BUF_SIZE];
+    buf[..input.len().min(BUF_SIZE)]
+        .copy_from_slice(&input.as_bytes()[..input.len().min(BUF_SIZE)]);
+    Box::new(buf)
 }
 
 
@@ -51,20 +51,20 @@ fn metadataize(input: &str) -> [u8; METADATA_SIZE] {
         \r\n\
     ";
     const _CASE_1_LEN: usize = CASE_1.len();
-    assert_parse!(CASE_1, Request {_metadata: metadataize(CASE_1),
+    assert_parse!(CASE_1, Request {
+        __buf__: metadataize(CASE_1),
         method:  Method::GET,
         path:    Path::from_literal("/hello.html"),
         queries: None,
-        headers: RequestHeaders::from_iter([
+        headers: RequestHeaders::from_iters([
             (RequestHeader::Host,           "www.tutorialspoint.com"),
             (RequestHeader::UserAgent,      "Mozilla/4.0"),
             (RequestHeader::Connection,     "Keep-Alive"),
             (RequestHeader::AcceptLanguage, "en-us"),
             (RequestHeader::AcceptEncoding, "gzip, deflate"),
-        ]),
+        ], None),
         payload: None,
         store:   Store::new(),
-        #[cfg(feature="websocket")] upgrade_id: None,
     });
 
 
@@ -79,22 +79,22 @@ fn metadataize(input: &str) -> [u8; METADATA_SIZE] {
         {\"name\":\"kanarus\",\"age\":20}\
     ";
     const _CASE_2_LEN: usize = CASE_2.len();
-    assert_parse!(CASE_2, Request {_metadata: metadataize(CASE_2),
+    assert_parse!(CASE_2, Request {
+        __buf__: metadataize(CASE_2),
         method:  Method::POST,
         path:    Path::from_literal("/signup"),
         queries: None,
-        headers: RequestHeaders::from_iter([
+        headers: RequestHeaders::from_iters([
             (RequestHeader::Host,           "www.tutorialspoint.com"),
             (RequestHeader::UserAgent,      "Mozilla/4.0"),
             (RequestHeader::AcceptLanguage, "en-us"),
             (RequestHeader::ContentLength,  "27"),
             (RequestHeader::ContentType,    "application/json"),
-        ]),
+        ], None),
         payload: Some(CowSlice::Ref(unsafe {
             Slice::from_bytes(br#"{"name":"kanarus","age":20}"#)
         })),
         store:      Store::new(),
-        #[cfg(feature="websocket")] upgrade_id: None,
     });
 
     #[cfg(feature="custom-header")]
@@ -115,7 +115,8 @@ fn metadataize(input: &str) -> [u8; METADATA_SIZE] {
             first_name=John&last_name=Doe&action=Submit\
         ";
         const _CASE_3_LEN: usize = CASE_3.len();
-        assert_parse!(CASE_3, Request {_metadata: metadataize(CASE_3),
+        assert_parse!(CASE_3, Request {
+            __buf__: metadataize(CASE_3),
             method:  Method::POST,
             path:    Path::from_literal("/foo.php"),
             queries: Some(Box::new(QueryParams::from([

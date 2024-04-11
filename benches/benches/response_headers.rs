@@ -15,7 +15,7 @@ use ohkami_benches::response_headers::{
 
 
 #[bench] fn insert_ohkami(b: &mut test::Bencher) {
-    let mut h = ResponseHeaders::init();
+    let mut h = ResponseHeaders::_new();
     b.iter(|| {
         h.set()
             .AccessControlAllowCredentials(test::black_box("true"))
@@ -155,7 +155,7 @@ use ohkami_benches::response_headers::{
 
 
 #[bench] fn remove_ohkami(b: &mut test::Bencher) {
-    let mut h = ResponseHeaders::init();
+    let mut h = ResponseHeaders::_new();
     h.set()
         .AccessControlAllowCredentials(test::black_box("true"))
         .AccessControlAllowHeaders(test::black_box("X-Custom-Header,Upgrade-Insecure-Requests"))
@@ -406,7 +406,7 @@ use ohkami_benches::response_headers::{
 
 
 #[bench] fn write_ohkami(b: &mut test::Bencher) {
-    let mut h = ResponseHeaders::init();
+    let mut h = ResponseHeaders::_new();
     h.set()
         .AccessControlAllowCredentials(test::black_box("true"))
         .AccessControlAllowHeaders(test::black_box("X-Custom-Header,Upgrade-Insecure-Requests"))

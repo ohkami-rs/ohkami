@@ -1,21 +1,12 @@
 use std::borrow::Cow;
 use crate::__internal__::Append;
-
-#[cfg(feature="custom-header")]
 use rustc_hash::FxHashMap;
 
 
-#[cfg(feature="custom-header")]
-type CustomHeaderMap = FxHashMap<Cow<'static, str>, Cow<'static, str>>;
-
 pub struct Headers {
-    values: [Option<Cow<'static, str>>; N_SERVER_HEADERS],
-
-    #[cfg(feature="custom-header")]
-    custom: Option<Box<CustomHeaderMap>>,
-
-    /// Size of whole the byte stream when this is written into HTTP response.
-    size: usize,
+    standard: Box<[Option<Cow<'static, str>>; N_SERVER_HEADERS]>,
+    custom:   Option<Box<FxHashMap<&'static str, Cow<'static, str>>>>,
+    size:     usize,
 }
 
 pub struct SetHeaders<'set>(
@@ -66,30 +57,22 @@ pub trait HeaderAction<'action> {
     }
 };
 
-#[cfg(feature="custom-header")]
 pub trait CustomHeadersAction<'action> {
-    fn perform(self, set_headers: SetHeaders<'action>, key: impl Into<Cow<'static, str>>) -> SetHeaders<'action>;
+    fn perform(self, set_headers: SetHeaders<'action>, key: &'static str) -> SetHeaders<'action>;
 }
-#[cfg(feature="custom-header")]
 const _: () = {
     // remove
     impl<'set> CustomHeadersAction<'set> for Option<()> {
-        fn perform(self, set_headers: SetHeaders<'set>, key: impl Into<Cow<'static, str>>) -> SetHeaders<'set> {
-            if let Some(c) = &mut set_headers.0.custom {
-                if let Some(removed) = c.remove(&key.into()) {
-                    set_headers.0.size -= removed.len();
-                }
-
-            }
-            set_headers
+        fn perform(self, set: SetHeaders<'set>, key: &'static str) -> SetHeaders<'set> {
+            set.0.remove_custom(key);
+            set
         }
     }
 
     // append
     impl<'set> CustomHeadersAction<'set> for Append {
-        fn perform(self, set_headers: SetHeaders<'set>, key: impl Into<Cow<'static, str>>) -> SetHeaders<'set> {
+        fn perform(self, set_headers: SetHeaders<'set>, key: &'static str) -> SetHeaders<'set> {
             let self_len = self.0.len();
-            let key = key.into();
 
             if let Some(c) = &mut set_headers.0.custom {
                 if let Some(value) = c.get_mut(&key) {
@@ -107,7 +90,7 @@ const _: () = {
                     set_headers.0.size += self_len;
                 }
             } else {
-                set_headers.0.custom = Some(Box::new(CustomHeaderMap::from_iter([(
+                set_headers.0.custom = Some(Box::new(FxHashMap::from_iter([(
                     key,
                     self.0
                 )])));
@@ -120,30 +103,21 @@ const _: () = {
 
     // insert
     impl<'set> CustomHeadersAction<'set> for &'static str {
-        #[inline] fn perform(self, set_headers: SetHeaders<'set>, key: impl Into<Cow<'static, str>>) -> SetHeaders<'set> {
-            match &mut set_headers.0.custom {
-                None => set_headers.0.custom = Some(Box::new(CustomHeaderMap::from_iter([(key.into(), Cow::Borrowed(self))]))),
-                Some(c) => {c.insert(key.into(), Cow::Borrowed(self));}
-            }
-            set_headers
+        #[inline] fn perform(self, set: SetHeaders<'set>, key: &'static str) -> SetHeaders<'set> {
+            set.0.insert_custom(key, Cow::Borrowed(self));
+            set
         }
     }
     impl<'set> CustomHeadersAction<'set> for String {
-        #[inline] fn perform(self, set_headers: SetHeaders<'set>, key: impl Into<Cow<'static, str>>) -> SetHeaders<'set> {
-            match &mut set_headers.0.custom {
-                None => set_headers.0.custom = Some(Box::new(CustomHeaderMap::from_iter([(key.into(), Cow::Owned(self))]))),
-                Some(c) => {c.insert(key.into(), Cow::Owned(self));}
-            }
-            set_headers
+        #[inline] fn perform(self, set: SetHeaders<'set>, key: &'static str) -> SetHeaders<'set> {
+            set.0.insert_custom(key, Cow::Owned(self));
+            set
         }
     }
     impl<'set> CustomHeadersAction<'set> for Cow<'static, str> {
-        fn perform(self, set_headers: SetHeaders<'set>, key: impl Into<Cow<'static, str>>) -> SetHeaders<'set> {
-            match &mut set_headers.0.custom {
-                None => set_headers.0.custom = Some(Box::new(CustomHeaderMap::from_iter([(key.into(), self)]))),
-                Some(c) => {c.insert(key.into(), self);}
-            }
-            set_headers
+        fn perform(self, set: SetHeaders<'set>, key: &'static str) -> SetHeaders<'set> {
+            set.0.insert_custom(key, self);
+            set
         }
     }
 };
@@ -194,11 +168,8 @@ macro_rules! Header {
                 }
             )*
 
-            #[cfg(feature="custom-header")]
-            pub fn custom(&self, name: impl Into<Cow<'static, str>>) -> Option<&str> {
-                let value = self.custom.as_ref()?
-                    .get(&name.into())?;
-                Some(&value)
+            pub fn custom(&self, name: &'static str) -> Option<&str> {
+                self.get_custom(name)
             }
         }
 
@@ -210,8 +181,7 @@ macro_rules! Header {
                 }
             )*
 
-            #[cfg(feature="custom-header")]
-            pub fn custom(self, name: impl Into<Cow<'static, str>>, action: impl CustomHeadersAction<'set>) -> Self {
+            pub fn custom(self, name: &'static str, action: impl CustomHeadersAction<'set>) -> Self {
                 action.perform(self, name)
             }
         }
@@ -265,36 +235,51 @@ macro_rules! Header {
 }
 
 impl Headers {
-    #[inline] pub(crate) fn insert(&mut self, name: Header, value: Cow<'static, str>) {
+    #[inline]
+    pub(crate) fn insert(&mut self, name: Header, value: Cow<'static, str>) {
         let (name_len, value_len) = (name.as_bytes().len(), value.len());
-        match unsafe {self.values.get_unchecked_mut(name as usize)}.replace(value) {
-            None       => self.size += name_len + ": ".len() + value_len + "\r\n".len(),
-            Some(prev) => {
-                let prev_len = prev.len();
-                if value_len > prev_len {
-                    self.size += value_len - prev_len;
-                } else {
-                    self.size -= prev_len - value_len;
-                }
+        match unsafe {self.standard.get_unchecked_mut(name as usize)}.replace(value) {
+            None       => self.size += name_len + 2/* `: ` */ + value_len + 2/* `\r\n` */,
+            Some(prev) => {self.size -= prev.len(); self.size += value_len;}
+        }
+    }
+    pub(crate) fn insert_custom(&mut self, name: &'static str, value: Cow<'static, str>) {
+        let (name_len, value_len) = (name.len(), value.len());
+        match self.get_or_init_custom_mut().insert(name, value) {
+            None      => self.size += name_len + 2/* `: ` */ + value_len + 2/* `\r\n` */,
+            Some(old) => {self.size -= old.len(); self.size += value_len}
+        }
+    }
+
+    #[inline]
+    pub(crate) fn remove(&mut self, name: Header) {
+        let name_len = name.as_bytes().len();
+        let v = unsafe {self.standard.get_unchecked_mut(name as usize)};
+        if let Some(v) = v.take() {
+            self.size -= name_len + 2/* `: ` */ + v.len() + 2/* `\r\n` */
+        }
+    }
+    pub(crate) fn remove_custom(&mut self, name: &'static str) {
+        if let Some(c) = self.custom.as_mut() {
+            if let Some(v) = c.remove(name) {
+                self.size -= name.len() + 2/* `: ` */ + v.len() + 2/* `\r\n` */
             }
         }
     }
 
-    #[inline] pub(crate) fn remove(&mut self, name: Header) {
-        let name_len = name.as_bytes().len();
-        let v = unsafe {self.values.get_unchecked_mut(name as usize)};
-        if let Some(v) = v.take() {
-            self.size -= name_len + ": ".len() + v.len() + "\r\n".len()
-        }
-    }
-
+    #[inline]
     pub(crate) fn get(&self, name: Header) -> Option<&str> {
-        unsafe {self.values.get_unchecked(name as usize)}.as_ref().map(AsRef::as_ref)
+        unsafe {self.standard.get_unchecked(name as usize)}.as_ref().map(AsRef::as_ref)
+    }
+    pub(crate) fn get_custom(&self, name: &'static str) -> Option<&str> {
+        self.custom.as_ref()?
+            .get(name)
+            .map(Cow::as_ref)
     }
 
     pub(crate) fn append(&mut self, name: Header, value: Cow<'static, str>) {
         let value_len = value.len();
-        let target = unsafe {self.values.get_unchecked_mut(name as usize)};
+        let target = unsafe {self.standard.get_unchecked_mut(name as usize)};
 
         let size_increase = match target {
             Some(v) => {
@@ -321,27 +306,32 @@ impl Headers {
     }
 }
 impl Headers {
-    pub(crate) const fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
+            standard: Box::new([
+                None, None, None, None, None,
+                None, None, None, None, None,
+                None, None, None, None, None,
+                None, None, None, None, None,
+                None, None, None, None, None,
+                None, None, None, None, None,
+                None, None, None, None, None,
+                None, None, None, None, None,
+                None, None, None, None, None,
+            ]),
+            custom: None,
             size:   "\r\n".len(),
-            values: [
-                None, None, None, None, None,
-                None, None, None, None, None,
-                None, None, None, None, None,
-                None, None, None, None, None,
-                None, None, None, None, None,
-                None, None, None, None, None,
-                None, None, None, None, None,
-                None, None, None, None, None,
-                None, None, None, None, None,
-            ],
-            #[cfg(feature="custom-header")]
-            custom: None
         }
     }
     #[cfg(feature="DEBUG")]
     #[doc(hidden)]
-    pub const fn init() -> Self {Self::new()}
+    pub fn _new() -> Self {Self::new()}
+
+    #[inline(always)]
+    fn get_or_init_custom_mut(&mut self) -> &mut FxHashMap<&'static str, Cow<'static, str>> {
+        self.custom.is_none().then(|| self.custom = Some(Box::new(FxHashMap::default())));
+        unsafe {self.custom.as_mut().unwrap_unchecked()}
+    }
 
     pub(crate) const fn iter_standard(&self) -> impl Iterator<Item = (&str, &str)> {
         struct Standard<'i> {
@@ -352,7 +342,7 @@ impl Headers {
             type Item = (&'i str, &'i str);
             fn next(&mut self) -> Option<Self::Item> {
                 for i in self.cur..N_SERVER_HEADERS {
-                    if let Some(v) = unsafe {self.map.values.get_unchecked(i)} {
+                    if let Some(v) = unsafe {self.map.standard.get_unchecked(i)} {
                         self.cur = i + 1;
                         return Some((unsafe {SERVER_HEADERS.get_unchecked(i)}.as_str(), &v))
                     }
@@ -382,11 +372,9 @@ impl Headers {
             }
         }
 
-        #[cfg(feature="custom-header")]
         struct Custom<'i> {
-            map: Option<std::collections::hash_map::Iter<'i, Cow<'static, str>, Cow<'static, str>>>,
+            map: Option<std::collections::hash_map::Iter<'i, &'static str, Cow<'static, str>>>,
         }
-        #[cfg(feature="custom-header")]
         impl<'i> Iterator for Custom<'i> {
             type Item = (&'i str, &'i str);
             fn next(&mut self) -> Option<Self::Item> {
@@ -395,15 +383,10 @@ impl Headers {
             }
         }
 
-        #[cfg(feature="custom-header")] {
-            Iterator::chain(
-                Standard { map: &self.values, cur: 0 },
-                Custom { map: self.custom.as_ref().map(|box_hmap| box_hmap.iter()) }
-            )
-        }
-        #[cfg(not(feature="custom-header"))] {
-            Standard { map: &self.values, cur: 0 }
-        }
+        Iterator::chain(
+            Standard { map: &self.standard, cur: 0 },
+            Custom { map: self.custom.as_ref().map(|box_hmap| box_hmap.iter()) }
+        )
     }
 
     #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
@@ -424,10 +407,18 @@ impl Headers {
 
         buf.reserve(self.size);
         for h in unsafe {SERVER_HEADERS.get_unchecked(1..)} {
-            if let Some(v) = unsafe {self.values.get_unchecked(*h as usize)} {
+            if let Some(v) = unsafe {self.standard.get_unchecked(*h as usize)} {
                 push!(buf <- h.as_bytes());
                 push!(buf <- b": ");
-                push!(buf <- v);
+                push!(buf <- v.as_bytes());
+                push!(buf <- b"\r\n");
+            }
+        }
+        if let Some(custom) = self.custom {
+            for (k, v) in &*custom {
+                push!(buf <- k.as_bytes());
+                push!(buf <- b": ");
+                push!(buf <- v.as_bytes());
                 push!(buf <- b"\r\n");
             }
         }
@@ -452,10 +443,18 @@ impl Headers {
 
         buf.reserve(self.size);
         for h in unsafe {SERVER_HEADERS.get_unchecked(1..)} {
-            if let Some(v) = unsafe {self.values.get_unchecked(*h as usize)} {
+            if let Some(v) = unsafe {self.standard.get_unchecked(*h as usize)} {
                 push!(buf <- h.as_bytes());
                 push!(buf <- b": ");
                 push!(buf <- v);
+                push!(buf <- b"\r\n");
+            }
+        }
+        if let Some(custom) = self.custom.as_ref() {
+            for (k, v) in &**custom {
+                push!(buf <- k.as_bytes());
+                push!(buf <- b": ");
+                push!(buf <- v.as_bytes());
                 push!(buf <- b"\r\n");
             }
         }
@@ -480,7 +479,6 @@ const _: () = {
                 }
             }
 
-            #[cfg(feature="custom-header")]
             if self.custom != other.custom {
                 return false
             }
