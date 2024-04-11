@@ -1,6 +1,6 @@
 use ohkami::prelude::*;
 use ohkami::typed::{Payload, status::NoContent};
-use ohkami::builtin::payload::{Multipart, utils::File};
+use ohkami::builtin::{payload::Multipart, utils::File};
 
 
 struct FormTemplate;

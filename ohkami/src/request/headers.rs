@@ -286,6 +286,10 @@ impl Headers {
     #[inline(always)] pub(crate) fn insert(&mut self, name: Header, value: CowSlice) {
         unsafe {*self.values.get_unchecked_mut(name as usize) = Some(value)}
     }
+    #[cfg(feature="DEBUG")]
+    #[inline(always)] pub fn _insert(&mut self, name: Header, value: CowSlice) {
+        unsafe {*self.values.get_unchecked_mut(name as usize) = Some(value)}
+    }
 
     pub(crate) fn remove(&mut self, name: Header) {
         unsafe {*self.values.get_unchecked_mut(name as usize) = None}
@@ -338,11 +342,35 @@ impl Headers {
             ])))
         }
     }
+
+    #[cfg(feature="DEBUG")]
+    #[inline] pub fn _insert_custom(&mut self, name: CowSlice, value: CowSlice) {
+        self.insert_custom(name, value)
+    }
 }
 
 impl Headers {
     #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
     pub(crate) const fn init() -> Self {
+        Self {
+            values: [
+                None, None, None, None, None,
+                None, None, None, None, None,
+                None, None, None, None, None,
+                None, None, None, None, None,
+                None, None, None, None, None,
+                None, None, None, None, None,
+                None, None, None, None, None,
+                None, None, None, None, None,
+                None, None,
+            ],
+            #[cfg(feature="custom-header")]
+            custom: None,
+        }
+    }
+    #[cfg(feature="DEBUG")]
+    #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
+    pub const fn __init__() -> Self {
         Self {
             values: [
                 None, None, None, None, None,
