@@ -18,51 +18,52 @@ pub struct SetHeaders<'set>(
 }
 
 pub trait HeaderAction<'action> {
-    fn perform(self, set_headers: SetHeaders<'action>, key: Header) -> SetHeaders<'action>;
+    fn perform(self, set: SetHeaders<'action>, key: Header) -> SetHeaders<'action>;
 } const _: () = {
     // remove
     impl<'a> HeaderAction<'a> for Option<()> {
-        #[inline] fn perform(self, set_headers: SetHeaders<'a>, key: Header) -> SetHeaders<'a> {
-            set_headers.0.remove(key);
-            set_headers
+        #[inline] fn perform(self, set: SetHeaders<'a>, key: Header) -> SetHeaders<'a> {
+            set.0.remove(key);
+            set
         }
     }
 
     // append
     impl<'a> HeaderAction<'a> for Append {
-        #[inline] fn perform(self, set_headers: SetHeaders<'a>, key: Header) -> SetHeaders<'a> {
-            set_headers.0.append(key, self.0);
-            set_headers
+        #[inline] fn perform(self, set: SetHeaders<'a>, key: Header) -> SetHeaders<'a> {
+            set.0.append(key, self.0);
+            set
         }
     }
 
     // insert
     impl<'a> HeaderAction<'a> for &'static str {
-        #[inline] fn perform(self, set_headers: SetHeaders<'a>, key: Header) -> SetHeaders<'a> {
-            set_headers.0.insert(key, Cow::Borrowed(self));
-            set_headers
+        #[inline(always)] fn perform(self, set: SetHeaders<'a>, key: Header) -> SetHeaders<'a> {
+            set.0.insert(key, Cow::Borrowed(self));
+            set
         }
     }
     impl<'a> HeaderAction<'a> for String {
-        #[inline] fn perform(self, set_headers: SetHeaders<'a>, key: Header) -> SetHeaders<'a> {
-            set_headers.0.insert(key, Cow::Owned(self));
-            set_headers
+        #[inline(always)] fn perform(self, set: SetHeaders<'a>, key: Header) -> SetHeaders<'a> {
+            set.0.insert(key, Cow::Owned(self));
+            set
         }
     }
     impl<'a> HeaderAction<'a> for std::borrow::Cow<'static, str> {
-        fn perform(self, set_headers: SetHeaders<'a>, key: Header) -> SetHeaders<'a> {
-            set_headers.0.insert(key, self);
-            set_headers
+        fn perform(self, set: SetHeaders<'a>, key: Header) -> SetHeaders<'a> {
+            set.0.insert(key, self);
+            set
         }
     }
 };
 
 pub trait CustomHeadersAction<'action> {
-    fn perform(self, set_headers: SetHeaders<'action>, key: &'static str) -> SetHeaders<'action>;
+    fn perform(self, set: SetHeaders<'action>, key: &'static str) -> SetHeaders<'action>;
 }
 const _: () = {
     // remove
     impl<'set> CustomHeadersAction<'set> for Option<()> {
+        #[inline]
         fn perform(self, set: SetHeaders<'set>, key: &'static str) -> SetHeaders<'set> {
             set.0.remove_custom(key);
             set
@@ -71,10 +72,10 @@ const _: () = {
 
     // append
     impl<'set> CustomHeadersAction<'set> for Append {
-        fn perform(self, set_headers: SetHeaders<'set>, key: &'static str) -> SetHeaders<'set> {
+        fn perform(self, set: SetHeaders<'set>, key: &'static str) -> SetHeaders<'set> {
             let self_len = self.0.len();
 
-            if let Some(c) = &mut set_headers.0.custom {
+            if let Some(c) = &mut set.0.custom {
                 if let Some(value) = c.get_mut(&key) {
                     match value {
                         Cow::Owned(string) => {string.push(','); string.push_str(&self.0);}
@@ -84,32 +85,32 @@ const _: () = {
                             *value = Cow::Owned(s);
                         }
                     }
-                    set_headers.0.size += 1 + self_len;
+                    set.0.size += 1 + self_len;
                 } else {
                     c.insert(key, self.0);
-                    set_headers.0.size += self_len;
+                    set.0.size += self_len;
                 }
             } else {
-                set_headers.0.custom = Some(Box::new(FxHashMap::from_iter([(
+                set.0.custom = Some(Box::new(FxHashMap::from_iter([(
                     key,
                     self.0
                 )])));
-                set_headers.0.size += self_len;
+                set.0.size += self_len;
             }
 
-            set_headers
+            set
         }
     }
 
     // insert
     impl<'set> CustomHeadersAction<'set> for &'static str {
-        #[inline] fn perform(self, set: SetHeaders<'set>, key: &'static str) -> SetHeaders<'set> {
+        #[inline(always)] fn perform(self, set: SetHeaders<'set>, key: &'static str) -> SetHeaders<'set> {
             set.0.insert_custom(key, Cow::Borrowed(self));
             set
         }
     }
     impl<'set> CustomHeadersAction<'set> for String {
-        #[inline] fn perform(self, set: SetHeaders<'set>, key: &'static str) -> SetHeaders<'set> {
+        #[inline(always)] fn perform(self, set: SetHeaders<'set>, key: &'static str) -> SetHeaders<'set> {
             set.0.insert_custom(key, Cow::Owned(self));
             set
         }
@@ -235,18 +236,19 @@ macro_rules! Header {
 }
 
 impl Headers {
-    #[inline]
+    #[inline(always)]
     pub(crate) fn insert(&mut self, name: Header, value: Cow<'static, str>) {
         let (name_len, value_len) = (name.as_bytes().len(), value.len());
         match unsafe {self.standard.get_unchecked_mut(name as usize)}.replace(value) {
-            None       => self.size += name_len + 2/* `: ` */ + value_len + 2/* `\r\n` */,
-            Some(prev) => {self.size -= prev.len(); self.size += value_len;}
+            None      => self.size += name_len + ": ".len() + value_len + "\r\n".len(),
+            Some(old) => {self.size -= old.len(); self.size += value_len}
         }
     }
+    #[inline]
     pub(crate) fn insert_custom(&mut self, name: &'static str, value: Cow<'static, str>) {
         let (name_len, value_len) = (name.len(), value.len());
         match self.get_or_init_custom_mut().insert(name, value) {
-            None      => self.size += name_len + 2/* `: ` */ + value_len + 2/* `\r\n` */,
+            None      => self.size += name_len + ": ".len() + value_len + "\r\n".len(),
             Some(old) => {self.size -= old.len(); self.size += value_len}
         }
     }
@@ -256,21 +258,22 @@ impl Headers {
         let name_len = name.as_bytes().len();
         let v = unsafe {self.standard.get_unchecked_mut(name as usize)};
         if let Some(v) = v.take() {
-            self.size -= name_len + 2/* `: ` */ + v.len() + 2/* `\r\n` */
+            self.size -= name_len + ": ".len() + v.len() + "\r\n".len()
         }
     }
     pub(crate) fn remove_custom(&mut self, name: &'static str) {
         if let Some(c) = self.custom.as_mut() {
             if let Some(v) = c.remove(name) {
-                self.size -= name.len() + 2/* `: ` */ + v.len() + 2/* `\r\n` */
+                self.size -= name.len() + ": ".len() + v.len() + "\r\n".len()
             }
         }
     }
 
-    #[inline]
+    #[inline(always)]
     pub(crate) fn get(&self, name: Header) -> Option<&str> {
         unsafe {self.standard.get_unchecked(name as usize)}.as_ref().map(AsRef::as_ref)
     }
+    #[inline]
     pub(crate) fn get_custom(&self, name: &'static str) -> Option<&str> {
         self.custom.as_ref()?
             .get(name)
@@ -390,7 +393,7 @@ impl Headers {
     }
 
     #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
-    #[inline] pub(crate) fn write_to(self, buf: &mut Vec<u8>) {
+    pub(crate) fn write_to(self, buf: &mut Vec<u8>) {
         macro_rules! push {
             ($buf:ident <- $bytes:expr) => {
                 unsafe {
@@ -426,7 +429,7 @@ impl Headers {
     }
     #[cfg(feature="DEBUG")]
     #[doc(hidden)]
-    #[inline] pub fn write_ref_to(&self, buf: &mut Vec<u8>) {
+    pub fn write_ref_to(&self, buf: &mut Vec<u8>) {
         macro_rules! push {
             ($buf:ident <- $bytes:expr) => {
                 unsafe {
@@ -446,7 +449,7 @@ impl Headers {
             if let Some(v) = unsafe {self.standard.get_unchecked(*h as usize)} {
                 push!(buf <- h.as_bytes());
                 push!(buf <- b": ");
-                push!(buf <- v);
+                push!(buf <- v.as_bytes());
                 push!(buf <- b"\r\n");
             }
         }
