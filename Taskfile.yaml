@@ -16,12 +16,13 @@ tasks:
   bench_dryrun:
     dir: benches
     cmds:
-      - cargo bench --no-run
+      - cargo bench --features DEBUG --no-run
+      - cargo check --bin hello
 
   bench:
     dir: benches
     cmds:
-      - cargo bench
+      - cargo bench --features DEBUG
 
 #### tests ####
   test_doc:
