@@ -38,7 +38,7 @@ pub use {
 use crate::websocket::UpgradeID;
 
 
-pub(crate) const METADATA_SIZE: usize = 1024;
+pub(crate) const BUF_SIZE: usize = 1024;
 
 #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
 pub(crate) const PAYLOAD_LIMIT: usize = 1 << 32;
@@ -94,24 +94,21 @@ pub(crate) const PAYLOAD_LIMIT: usize = 1 << 32;
 ///     }
 /// }
 /// ```
-pub struct Request {pub(crate) _metadata: [u8; METADATA_SIZE],
+pub struct Request {pub(crate) __buf__: Box<[u8; BUF_SIZE]>,
     method:          Method,
-    /// Headers of this response
+    /// Headers of this request
     /// 
-    /// - `.{Name}()` to get the value
-    /// - `.set().{Name}(〜)` to mutate the value
-    ///   - `.set().{Name}({value})` to insert
-    ///   - `.set().{Name}(None)` to remove
-    ///   - `.set().{Name}(append({value}))` to append
-    /// 
-    /// `{value}`: `String`, `&'static str`, `Cow<&'static, str>`
+    /// - `.{Name}()`, `.custom({Name})` to get the value
+    /// - `.set().{Name}({action})`, `.set().custom({Name}, {action})` to mutate the values
     /// 
     /// ---
     /// 
-    /// *`custom-header` feature required* :
+    /// `{action}`:
+    /// - just `{value}` to insert
+    /// - `None` to remove
+    /// - `append({value})` to append
     /// 
-    /// - `.custom({Name})` to get the value
-    /// - `.set().custom({Name}, 〜)` to mutate the value like standard headers
+    /// `{value}`: `String`, `&'static str`, `Cow<&'static, str>`
     pub headers:     RequestHeaders,
     pub(crate) path: Path,
     queries:         Option<Box<QueryParams>>,
@@ -122,14 +119,14 @@ pub struct Request {pub(crate) _metadata: [u8; METADATA_SIZE],
 impl Request {
     #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
     pub(crate) fn init() -> Self {
-        Self {_metadata: [0; METADATA_SIZE],
-            method:     Method::GET,
-            path:       unsafe {Path::null()},
-            queries:    None,
-            headers:    RequestHeaders::init(),
-            payload:    None,
-            store:      Store::new(),
-            #[cfg(feature="websocket")] upgrade_id: None,
+        Self {
+            __buf__: Box::new([0; BUF_SIZE]),
+            method:  Method::GET,
+            path:    unsafe {Path::null()},
+            queries: None,
+            headers: RequestHeaders::init(),
+            payload: None,
+            store:   Store::new(),
         }
     }
 
@@ -138,8 +135,8 @@ impl Request {
         mut self: Pin<&mut Self>,
         stream:   &mut (impl AsyncReader + Unpin),
     ) -> Option<()> {
-        if stream.read(&mut self._metadata).await.ok()? == 0 {return None};
-        let mut r = Reader::new(&self._metadata);
+        if stream.read(&mut *self.__buf__).await.ok()? == 0 {return None};
+        let mut r = Reader::new(&*self.__buf__);
 
         let method = Method::from_bytes(r.read_while(|b| b != &b' '))?;
         r.consume(" ").unwrap();
@@ -164,22 +161,16 @@ impl Request {
         let mut headers = RequestHeaders::init();
         while r.consume("\r\n").is_none() {
             let key_bytes = r.read_while(|b| b != &b':');
+            r.consume(": ").unwrap();
             if let Some(key) = RequestHeader::from_bytes(key_bytes) {
-                r.consume(": ").unwrap();
                 headers.insert(key, CowSlice::Ref(unsafe {
                     Slice::from_bytes(r.read_while(|b| b != &b'\r'))
                 }));
             } else {
-                #[cfg(not(feature="custom-header"))] {
-                    r.skip_while(|b| b != &b'\r');
-                }
-                #[cfg(feature="custom-header")] {
-                    let key = CowSlice::Ref(unsafe {Slice::from_bytes(key_bytes)});
-                    r.consume(": ").unwrap();
-                    headers.insert_custom(key, CowSlice::Ref(unsafe {
-                        Slice::from_bytes(r.read_while(|b| b != &b'\r'))
-                    }));
-                }
+                headers.insert_custom(
+                    CowSlice::Ref(unsafe {Slice::from_bytes(key_bytes)}),
+                    CowSlice::Ref(unsafe {Slice::from_bytes(r.read_while(|b| b != &b'\r'))})
+                );
             }
             r.consume("\r\n");
         }
@@ -192,7 +183,7 @@ impl Request {
         let payload = if content_length > 0 {
             Some(Request::read_payload(
                 stream,
-                &self._metadata,
+                &*self.__buf__,
                 r.index,
                 content_length.min(PAYLOAD_LIMIT),
             ).await)
@@ -215,7 +206,7 @@ impl Request {
         size:         usize,
     ) -> CowSlice {
         #[cfg(debug_assertions)] {
-            assert!(starts_at < METADATA_SIZE, "ohkami can't handle requests if the total size of status and headers exceeds {METADATA_SIZE} bytes");
+            assert!(starts_at < BUF_SIZE, "ohkami can't handle requests if the total size of status and headers exceeds {BUF_SIZE} bytes");
         }
 
         if ref_metadata[starts_at] == 0 {
@@ -225,8 +216,8 @@ impl Request {
             stream.read_exact(&mut bytes).await.unwrap();
             CowSlice::Own(bytes)
 
-        } else if starts_at + size <= METADATA_SIZE {
-            #[cfg(feature="DEBUG")] println!("\n[read_payload] case: starts_at + size <= METADATA_SIZE\n");
+        } else if starts_at + size <= BUF_SIZE {
+            #[cfg(feature="DEBUG")] println!("\n[read_payload] case: starts_at + size <= BUF_SIZE\n");
 
             CowSlice::Ref(unsafe {Slice::new_unchecked(ref_metadata.as_ptr().add(starts_at), size)})
 
@@ -234,7 +225,7 @@ impl Request {
             #[cfg(feature="DEBUG")] println!("\n[read_payload] case: else\n");
 
             let mut bytes = vec![0; size];
-            let size_of_payload_in_metadata_bytes = METADATA_SIZE - starts_at;
+            let size_of_payload_in_metadata_bytes = BUF_SIZE - starts_at;
                 
             bytes[..size_of_payload_in_metadata_bytes].copy_from_slice(&ref_metadata[starts_at..]);
             stream.read_exact(bytes[size_of_payload_in_metadata_bytes..].as_mut()).await.unwrap();

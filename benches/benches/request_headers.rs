@@ -1,6 +1,10 @@
 #![feature(test)]
 extern crate test;
 
+// use test::black_box;
+fn black_box<T>(t: T) -> T {t}
+
+use http::{HeaderMap, HeaderName, HeaderValue};
 use ohkami::__internal__::{RequestHeaders, RequestHeader};
 use ohkami_lib::{CowSlice, Slice};
 
@@ -38,9 +42,9 @@ Cache-Control: no-cache\r\n\
 
 #[bench] fn ohkami_parse(b: &mut test::Bencher) {
     b.iter(|| {
-        let mut r = byte_reader::Reader::new(test::black_box(INPUT));
+        let mut r = byte_reader::Reader::new(black_box(INPUT));
 
-        let mut h = RequestHeaders::__init__();
+        let mut h = RequestHeaders::_init();
         while r.consume("\r\n").is_none() {
             let key_bytes = r.read_while(|b| b != &b':');
             r.consume(": ").unwrap();
@@ -61,7 +65,7 @@ Cache-Control: no-cache\r\n\
 
 #[bench] fn heap_ohkami_parse(b: &mut test::Bencher) {
     b.iter(|| {
-        let mut r = byte_reader::Reader::new(test::black_box(INPUT));
+        let mut r = byte_reader::Reader::new(black_box(INPUT));
 
         let mut h = HeapOhkamiHeaders::new();
         while r.consume("\r\n").is_none() {
@@ -84,7 +88,7 @@ Cache-Control: no-cache\r\n\
 
 #[bench] fn fxmap_parse(b: &mut test::Bencher) {
     b.iter(|| {
-        let mut r = byte_reader::Reader::new(test::black_box(INPUT));
+        let mut r = byte_reader::Reader::new(black_box(INPUT));
 
         let mut h = FxMap::new();
         while r.consume("\r\n").is_none() {
@@ -94,6 +98,23 @@ Cache-Control: no-cache\r\n\
                 unsafe {Slice::from_bytes(key_bytes)},
                 CowSlice::Ref(unsafe {Slice::from_bytes(r.read_while(|b| b != &b'\r'))}
             ));
+            r.consume("\r\n");
+        }
+    })
+}
+
+#[bench] fn http_parse(b: &mut test::Bencher) {
+    b.iter(|| {
+        let mut r = byte_reader::Reader::new(black_box(INPUT));
+        
+        let mut h = HeaderMap::new();
+        while r.consume("\r\n").is_none() {
+            let key_bytes = r.read_while(|b| b != &b':');
+            r.consume(": ").unwrap();
+            h.insert(
+                HeaderName::from_bytes(key_bytes).unwrap(),
+                HeaderValue::from_bytes(r.read_while(|b| b != &b'\r')).unwrap(),
+            );
             r.consume("\r\n");
         }
     })

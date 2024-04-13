@@ -210,10 +210,12 @@ macro_rules! Header {
 
 
 impl HeapOhkamiHeadersWithoutSize {
+    #[inline]
     fn insert(&mut self, key: Header, value: impl Into<Cow<'static, str>>) {
         unsafe {*self.standard.get_unchecked_mut(key as usize) = Some(value.into())}
     }
 
+    #[inline]
     fn remove(&mut self, key: Header) {
         unsafe {*self.standard.get_unchecked_mut(key as usize) = None}
     }

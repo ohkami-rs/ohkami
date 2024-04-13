@@ -16,19 +16,20 @@ tasks:
   bench_dryrun:
     dir: benches
     cmds:
-      - cargo bench --no-run
+      - cargo bench --features DEBUG --no-run
+      - cargo check --bin hello
 
   bench:
     dir: benches
     cmds:
-      - cargo bench
+      - cargo bench --features DEBUG
 
 #### tests ####
   test_doc:
     dir: ohkami
     cmds:
       - cargo test --doc --features DEBUG,rt_tokio
-      - cargo test --doc --features DEBUG,rt_tokio,custom-header
+      - cargo test --doc --features DEBUG,rt_tokio
 
   test_examples:
     dir: examples
@@ -46,8 +47,6 @@ tasks:
     cmds:
       - cargo test --lib --no-default-features --features rt_tokio,DEBUG,{{.MAYBE_NIGHTLY}}
       - cargo test --lib --no-default-features --features rt_tokio,DEBUG,testing,{{.MAYBE_NIGHTLY}}
-      - cargo test --lib --no-default-features --features rt_tokio,DEBUG,custom-header,{{.MAYBE_NIGHTLY}}
-      - cargo test --lib --no-default-features --features rt_tokio,DEBUG,custom-header,testing,{{.MAYBE_NIGHTLY}}
 
   test_rt_async-std:
     vars:
@@ -57,8 +56,6 @@ tasks:
     cmds:
       - cargo test --lib --no-default-features --features rt_async-std,DEBUG,{{.MAYBE_NIGHTLY}}
       - cargo test --lib --no-default-features --features rt_async-std,DEBUG,testing,{{.MAYBE_NIGHTLY}}
-      - cargo test --lib --no-default-features --features rt_async-std,DEBUG,custom-header,{{.MAYBE_NIGHTLY}}
-      - cargo test --lib --no-default-features --features rt_async-std,DEBUG,custom-header,testing,{{.MAYBE_NIGHTLY}}
 
 #### checks ####
   # Assure buildability without "DEBUG" feature
@@ -71,8 +68,6 @@ tasks:
     cmds:
       - cargo check --lib --no-default-features --features rt_tokio,{{.MAYBE_NIGHTLY}}
       - cargo check --lib --no-default-features --features rt_tokio,testing,{{.MAYBE_NIGHTLY}}
-      - cargo check --lib --no-default-features --features custom-header,rt_tokio,{{.MAYBE_NIGHTLY}}
-      - cargo check --lib --no-default-features --features custom-header,rt_tokio,testing,{{.MAYBE_NIGHTLY}}
 
   check_rt_async-std:
     vars:
@@ -82,5 +77,3 @@ tasks:
     cmds:
       - cargo check --lib --no-default-features --features rt_async-std,{{.MAYBE_NIGHTLY}}
       - cargo check --lib --no-default-features --features rt_async-std,testing,{{.MAYBE_NIGHTLY}}
-      - cargo check --lib --no-default-features --features custom-header,rt_async-std,{{.MAYBE_NIGHTLY}}
-      - cargo check --lib --no-default-features --features custom-header,rt_async-std,testing,{{.MAYBE_NIGHTLY}}

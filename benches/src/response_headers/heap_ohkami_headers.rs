@@ -227,6 +227,7 @@ macro_rules! Header {
 
 
 impl HeapOhkamiHeaders {
+    #[inline]
     fn insert(&mut self, key: Header, value: impl Into<Cow<'static, str>>) {
         let value = value.into();
         let (name_len, value_len) = (key.as_bytes().len(), value.len());
@@ -243,11 +244,12 @@ impl HeapOhkamiHeaders {
         }
     }
 
+    #[inline]
     fn remove(&mut self, key: Header) {
         let key_size = key.as_bytes().len();
         let v = unsafe {self.standard.get_unchecked_mut(key as usize)};
         if let Some(v) = v.take() {
-            self.size -= key_size + 2/* ": ".len()*/ + v.len() + 2/*"\r\n".len()*/
+            self.size -= key_size + ": ".len() + v.len() + "\r\n".len()
         }
     }
 

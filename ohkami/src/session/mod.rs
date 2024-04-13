@@ -36,11 +36,8 @@ impl Session {
             crate::Response::InternalServerError()
         }
 
-        const LOOP_LIMIT: u8 = 16;
-
         let connection = &mut self.connection;
-
-        for _ in 0..LOOP_LIMIT {
+        loop {
             let mut req = Request::init();
             let mut req = unsafe {Pin::new_unchecked(&mut req)};
             if req.as_mut().read(connection).await.is_none() {break}
