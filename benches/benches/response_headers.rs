@@ -40,6 +40,27 @@ use ohkami_benches::response_headers::{
         ;
     });
 }
+#[bench] fn insert_ohkami_only_standard(b: &mut test::Bencher) {
+    let mut h = ResponseHeaders::_new();
+    b.iter(|| {
+        h.set()
+            .AccessControlAllowCredentials(black_box("true"))
+            .AccessControlAllowHeaders(black_box("X-Custom-Header,Upgrade-Insecure-Requests"))
+            .AccessControlAllowOrigin(black_box("https://foo.bar.org"))
+            .AccessControlAllowMethods(black_box("POST,GET,OPTIONS,DELETE"))
+            .AccessControlMaxAge(black_box("86400"))
+            .Vary(black_box("Origin"))
+            .Server(black_box("ohkami"))
+            .Connection(black_box("Keep-Alive"))
+            .Date(black_box("Wed, 21 Oct 2015 07:28:00 GMT"))
+            .Via(black_box("HTTP/1.1 GWA"))
+            .AltSvc(black_box("h2=\":433\"; ma=2592000;"))
+            .ProxyAuthenticate(black_box("Basic realm=\"Access to the internal site\""))
+            .ReferrerPolicy(black_box("same-origin"))
+            .XFrameOptions(black_box("DENY"))
+        ;
+    });
+}
 
 #[bench] fn insert_heap_ohkami(b: &mut test::Bencher) {
     let mut h = HeapOhkamiHeaders::new();
@@ -84,6 +105,27 @@ use ohkami_benches::response_headers::{
             .XFrameOptions(black_box("DENY"))
             .custom("x-myapp-data", black_box("myappdata; excellent"))
             .custom("something", black_box("anything"))
+        ;
+    });
+}
+#[bench] fn insert_heap_ohkami_only_standard(b: &mut test::Bencher) {
+    let mut h = HeapOhkamiHeaders::new();
+    b.iter(|| {
+        h.set()
+            .AccessControlAllowCredentials(black_box("true"))
+            .AccessControlAllowHeaders(black_box("X-Custom-Header,Upgrade-Insecure-Requests"))
+            .AccessControlAllowOrigin(black_box("https://foo.bar.org"))
+            .AccessControlAllowMethods(black_box("POST,GET,OPTIONS,DELETE"))
+            .AccessControlMaxAge(black_box("86400"))
+            .Vary(black_box("Origin"))
+            .Server(black_box("ohkami"))
+            .Connection(black_box("Keep-Alive"))
+            .Date(black_box("Wed, 21 Oct 2015 07:28:00 GMT"))
+            .Via(black_box("HTTP/1.1 GWA"))
+            .AltSvc(black_box("h2=\":433\"; ma=2592000;"))
+            .ProxyAuthenticate(black_box("Basic realm=\"Access to the internal site\""))
+            .ReferrerPolicy(black_box("same-origin"))
+            .XFrameOptions(black_box("DENY"))
         ;
     });
 }
