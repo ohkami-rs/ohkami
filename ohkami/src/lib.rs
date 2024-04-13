@@ -94,7 +94,7 @@ pub mod typed;
 pub mod testing;
 
 pub mod utils {
-    pub use crate::fangs::utils::{BackFang, ForeFang, FrontFang};
+    pub use crate::fangs::util::FangAction;
     pub use ::ohkami_lib::unix_timestamp;
 }
 
@@ -111,13 +111,19 @@ mod x_websocket;
 /// ```no_run
 /// # use ohkami::prelude::*;
 /// #
+/// 
+/// #[derive(Clone)]
+/// struct SetServer(&'static str);
+/// impl FangAction for SetServer {
+///     async fn back<'b>(&'b self, res: &'b mut Response) {
+///         res.headers.set()
+///             .Server(self.name);
+///     }
+/// }
+/// 
 /// #[tokio::main]
 /// async fn main() {
-///     Ohkami::with(
-///         ohkami::utils::BackFang(|res| {
-///             res.headers.set()
-///                 .Server("ohkami");
-///         }),
+///     Ohkami::with(SetServer("ohkami"),
 ///         "/".GET(|| async {"Hello, append!"})
 ///     ).howl("localhost:3000").await
 /// }
@@ -127,7 +133,8 @@ pub fn append(value: impl Into<std::borrow::Cow<'static, str>>) -> __internal__:
 }
 
 pub mod prelude {
-    pub use crate::{Request, Fang, FangProc, Response, IntoResponse, Method, Status};
+    pub use crate::{Request, Response, IntoResponse, Method, Status};
+    pub use crate::utils::FangAction;
 
     #[cfg(any(feature="rt_tokio", feature="rt_async-std"))]
     pub use crate::{Route, Ohkami};

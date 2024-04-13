@@ -4,7 +4,7 @@ mod handler;
 pub(crate) use handler::{Handler, IntoHandler};
 
 mod middleware;
-pub use middleware::{Fangs, utils};
+pub use middleware::{Fangs, util};
 
 use crate::{Request, Response};
 use std::{future::Future, pin::Pin, ops::Deref};
