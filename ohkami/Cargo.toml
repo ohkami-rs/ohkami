@@ -53,7 +53,7 @@ DEBUG = [
 #default = [
 #    "testing",
 #    #"websocket",
-#    #"rt_tokio",
-#    "rt_async-std",
+#    "rt_tokio",
+#    #"rt_async-std",
 #    "DEBUG",
 #]
