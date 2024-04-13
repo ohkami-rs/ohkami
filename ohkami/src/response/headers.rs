@@ -61,7 +61,7 @@ pub trait CustomHeadersAction<'action> {
     fn perform(self, set: SetHeaders<'action>, key: &'static str) -> SetHeaders<'action>;
 }
 const _: () = {
-    // remove
+    /* remove */
     impl<'set> CustomHeadersAction<'set> for Option<()> {
         #[inline]
         fn perform(self, set: SetHeaders<'set>, key: &'static str) -> SetHeaders<'set> {
@@ -70,7 +70,7 @@ const _: () = {
         }
     }
 
-    // append
+    /* append */
     impl<'set> CustomHeadersAction<'set> for Append {
         fn perform(self, set: SetHeaders<'set>, key: &'static str) -> SetHeaders<'set> {
             let self_len = self.0.len();
@@ -102,29 +102,76 @@ const _: () = {
         }
     }
 
-    // insert
+    /* insert */
+    // specialize for `&'static str`:
+    // NOT perform `let` binding of `self.len()`, using inlined `self.len()` instead.
     impl<'set> CustomHeadersAction<'set> for &'static str {
         #[inline(always)] fn perform(self, set: SetHeaders<'set>, key: &'static str) -> SetHeaders<'set> {
-            set.0.insert_custom(key, Cow::Borrowed(self));
+            match &mut set.0.custom {
+                None => {
+                    set.0.custom = Some(Box::new(FxHashMap::from_iter([(key, Cow::Borrowed(self))])));
+                    set.0.size += key.len() + ": ".len() + self.len() + "\r\n".len()
+                }
+                Some(custom) => {
+                    if let Some(old) = custom.insert(key, Cow::Borrowed(self)) {
+                        set.0.size -= old.len();
+                        set.0.size += self.len();
+                    } else {
+                        set.0.size += key.len() + ": ".len() + self.len() + "\r\n".len()
+                    }
+                }
+            }
             set
         }
     }
     impl<'set> CustomHeadersAction<'set> for String {
         #[inline(always)] fn perform(self, set: SetHeaders<'set>, key: &'static str) -> SetHeaders<'set> {
-            set.0.insert_custom(key, Cow::Owned(self));
+            let self_len = self.len();
+            match &mut set.0.custom {
+                None => {
+                    set.0.custom = Some(Box::new(FxHashMap::from_iter([(key, Cow::Owned(self))])));
+                    set.0.size += key.len() + ": ".len() + self_len + "\r\n".len()
+                }
+                Some(custom) => {
+                    if let Some(old) = custom.insert(key, Cow::Owned(self)) {
+                        set.0.size -= old.len();
+                        set.0.size += self_len;
+                    } else {
+                        set.0.size += key.len() + ": ".len() + self_len + "\r\n".len()
+                    }
+                }
+            }
             set
         }
     }
     impl<'set> CustomHeadersAction<'set> for Cow<'static, str> {
         fn perform(self, set: SetHeaders<'set>, key: &'static str) -> SetHeaders<'set> {
-            set.0.insert_custom(key, self);
+            let self_len = self.len();
+            match &mut set.0.custom {
+                None => {
+                    set.0.custom = Some(Box::new(FxHashMap::from_iter([(key, self)])));
+                    set.0.size += key.len() + ": ".len() + self_len + "\r\n".len()
+                }
+                Some(custom) => {
+                    if let Some(old) = custom.insert(key, self) {
+                        set.0.size -= old.len();
+                        set.0.size += self_len;
+                    } else {
+                        set.0.size += key.len() + ": ".len() + self_len + "\r\n".len()
+                    }
+                }
+            }
             set
         }
     }
 };
 
 macro_rules! Header {
-    ($N:literal; $( $konst:ident: $name_bytes:literal, )*) => {
+    ($N:literal; $( [$len:literal] $konst:ident: $name_bytes:literal, )*) => {
+        $(
+            const _: &[u8; $len] = $name_bytes;
+        )*
+
         pub(crate) const N_SERVER_HEADERS: usize = $N;
         pub(crate) const SERVER_HEADERS: [Header; N_SERVER_HEADERS] = [ $( Header::$konst ),* ];
 
@@ -153,24 +200,19 @@ macro_rules! Header {
                     _ => None
                 }
             }
+
+            #[inline(always)] const fn len(&self) -> usize {
+                match self {
+                    $(
+                        Self::$konst => $len,
+                    )*
+                }
+            }
         }
 
         impl<T: AsRef<[u8]>> PartialEq<T> for Header {
             fn eq(&self, other: &T) -> bool {
                 self.as_bytes().eq_ignore_ascii_case(other.as_ref())
-            }
-        }
-
-        #[allow(non_snake_case)]
-        impl Headers {
-            $(
-                pub fn $konst(&self) -> Option<&str> {
-                    self.get(Header::$konst)
-                }
-            )*
-
-            pub fn custom(&self, name: &'static str) -> Option<&str> {
-                self.get_custom(name)
             }
         }
 
@@ -186,68 +228,73 @@ macro_rules! Header {
                 action.perform(self, name)
             }
         }
+
+        #[allow(non_snake_case)]
+        impl Headers {
+            $(
+                pub fn $konst(&self) -> Option<&str> {
+                    self.get(Header::$konst)
+                }
+            )*
+
+            pub fn custom(&self, name: &'static str) -> Option<&str> {
+                self.get_custom(name)
+            }
+        }
     };
 } Header! {45;
-    AcceptRanges:                    b"Accept-Ranges",
-    AccessControlAllowCredentials:   b"Access-Control-Allow-Credentials",
-    AccessControlAllowHeaders:       b"Access-Control-Allow-Headers",
-    AccessControlAllowMethods:       b"Access-Control-Allow-Methods",
-    AccessControlAllowOrigin:        b"Access-Control-Allow-Origin",
-    AccessControlExposeHeaders:      b"Access-Control-Expose-Headers",
-    AccessControlMaxAge:             b"Access-Control-Max-Age",
-    Age:                             b"Age",
-    Allow:                           b"Allow",
-    AltSvc:                          b"Alt-Svc",
-    CacheControl:                    b"Cache-Control",
-    CacheStatus:                     b"Cache-Status",
-    CDNCacheControl:                 b"CDN-Cache-Control",
-    Connection:                      b"Connection",
-    ContentDisposition:              b"Content-Disposition",
-    ContentEncoding:                 b"Content-Ecoding",
-    ContentLanguage:                 b"Content-Language",
-    ContentLength:                   b"Content-Length",
-    ContentLocation:                 b"Content-Location",
-    ContentRange:                    b"Content-Range",
-    ContentSecurityPolicy:           b"Content-Security-Policy",
-    ContentSecurityPolicyReportOnly: b"Content-Security-Policy-Report-Only",
-    ContentType:                     b"Content-Type",
-    Date:                            b"Date",
-    ETag:                            b"ETag",
-    Expires:                         b"Expires",
-    Link:                            b"Link",
-    Location:                        b"Location",
-    ProxyAuthenticate:               b"Proxy-Authenticate",
-    ReferrerPolicy:                  b"Referrer-Policy",
-    Refresh:                         b"Refresh",
-    RetryAfter:                      b"Retry-After",
-    SecWebSocketAccept:              b"Sec-WebSocket-Accept",
-    SecWebSocketProtocol:            b"Sec-WebSocket-Protocol",
-    SecWebSocketVersion:             b"Sec-WebSocket-Version",
-    Server:                          b"Server",
-    SetCookie:                       b"SetCookie",
-    StrictTransportSecurity:         b"Strict-Transport-Security",
-    Trailer:                         b"Trailer",
-    TransferEncoding:                b"Transfer-Encoding",
-    Upgrade:                         b"Upgrade",
-    Vary:                            b"Vary",
-    Via:                             b"Via",
-    XContentTypeOptions:             b"X-Content-Type-Options",
-    XFrameOptions:                   b"X-Frame-Options",
+    [13] AcceptRanges:                    b"Accept-Ranges",
+    [32] AccessControlAllowCredentials:   b"Access-Control-Allow-Credentials",
+    [28] AccessControlAllowHeaders:       b"Access-Control-Allow-Headers",
+    [28] AccessControlAllowMethods:       b"Access-Control-Allow-Methods",
+    [27] AccessControlAllowOrigin:        b"Access-Control-Allow-Origin",
+    [29] AccessControlExposeHeaders:      b"Access-Control-Expose-Headers",
+    [22] AccessControlMaxAge:             b"Access-Control-Max-Age",
+    [3]  Age:                             b"Age",
+    [5]  Allow:                           b"Allow",
+    [7]  AltSvc:                          b"Alt-Svc",
+    [13] CacheControl:                    b"Cache-Control",
+    [12] CacheStatus:                     b"Cache-Status",
+    [17] CDNCacheControl:                 b"CDN-Cache-Control",
+    [10] Connection:                      b"Connection",
+    [19] ContentDisposition:              b"Content-Disposition",
+    [15] ContentEncoding:                 b"Content-Ecoding",
+    [16] ContentLanguage:                 b"Content-Language",
+    [14] ContentLength:                   b"Content-Length",
+    [16] ContentLocation:                 b"Content-Location",
+    [13] ContentRange:                    b"Content-Range",
+    [23] ContentSecurityPolicy:           b"Content-Security-Policy",
+    [35] ContentSecurityPolicyReportOnly: b"Content-Security-Policy-Report-Only",
+    [12] ContentType:                     b"Content-Type",
+    [4]  Date:                            b"Date",
+    [4]  ETag:                            b"ETag",
+    [7]  Expires:                         b"Expires",
+    [4]  Link:                            b"Link",
+    [8]  Location:                        b"Location",
+    [18] ProxyAuthenticate:               b"Proxy-Authenticate",
+    [15] ReferrerPolicy:                  b"Referrer-Policy",
+    [7]  Refresh:                         b"Refresh",
+    [11] RetryAfter:                      b"Retry-After",
+    [20] SecWebSocketAccept:              b"Sec-WebSocket-Accept",
+    [22] SecWebSocketProtocol:            b"Sec-WebSocket-Protocol",
+    [21] SecWebSocketVersion:             b"Sec-WebSocket-Version",
+    [6]  Server:                          b"Server",
+    [9]  SetCookie:                       b"SetCookie",
+    [25] StrictTransportSecurity:         b"Strict-Transport-Security",
+    [7]  Trailer:                         b"Trailer",
+    [17] TransferEncoding:                b"Transfer-Encoding",
+    [7]  Upgrade:                         b"Upgrade",
+    [4]  Vary:                            b"Vary",
+    [3]  Via:                             b"Via",
+    [22] XContentTypeOptions:             b"X-Content-Type-Options",
+    [15] XFrameOptions:                   b"X-Frame-Options",
 }
 
 impl Headers {
     #[inline(always)]
     pub(crate) fn insert(&mut self, name: Header, value: Cow<'static, str>) {
-        let (name_len, value_len) = (name.as_bytes().len(), value.len());
-        match unsafe {self.standard.get_unchecked_mut(name as usize)}.replace(value) {
-            None      => self.size += name_len + ": ".len() + value_len + "\r\n".len(),
-            Some(old) => {self.size -= old.len(); self.size += value_len}
-        }
-    }
-    #[inline]
-    pub(crate) fn insert_custom(&mut self, name: &'static str, value: Cow<'static, str>) {
         let (name_len, value_len) = (name.len(), value.len());
-        match self.get_or_init_custom_mut().insert(name, value) {
+        match unsafe {self.standard.get_unchecked_mut(name as usize)}.replace(value) {
             None      => self.size += name_len + ": ".len() + value_len + "\r\n".len(),
             Some(old) => {self.size -= old.len(); self.size += value_len}
         }
@@ -255,7 +302,7 @@ impl Headers {
 
     #[inline]
     pub(crate) fn remove(&mut self, name: Header) {
-        let name_len = name.as_bytes().len();
+        let name_len = name.len();
         let v = unsafe {self.standard.get_unchecked_mut(name as usize)};
         if let Some(v) = v.take() {
             self.size -= name_len + ": ".len() + v.len() + "\r\n".len()
@@ -329,12 +376,6 @@ impl Headers {
     #[cfg(feature="DEBUG")]
     #[doc(hidden)]
     pub fn _new() -> Self {Self::new()}
-
-    #[inline(always)]
-    fn get_or_init_custom_mut(&mut self) -> &mut FxHashMap<&'static str, Cow<'static, str>> {
-        self.custom.is_none().then(|| self.custom = Some(Box::new(FxHashMap::default())));
-        unsafe {self.custom.as_mut().unwrap_unchecked()}
-    }
 
     pub(crate) const fn iter_standard(&self) -> impl Iterator<Item = (&str, &str)> {
         struct Standard<'i> {
