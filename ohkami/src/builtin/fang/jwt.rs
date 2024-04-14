@@ -6,6 +6,72 @@ use ohkami_lib::base64;
 use crate::{Fang, FangProc, IntoResponse, Request, Response, Status};
 
 
+/// # Builtin fang and helper for JWT config
+/// 
+/// <br>
+/// 
+/// *example.rs*
+/// ```no_run
+/// use ohkami::prelude::*;
+/// use ohkami::typed::{Payload, status};
+/// use ohkami::builtin::{fang::JWT, payload::JSON};
+/// use ohkami::serde::{Serialize, Deserialize};
+/// 
+/// 
+/// #[derive(Serialize, Deserialize)]
+/// struct OurJWTPayload {
+///     iat:       u64,
+///     user_name: String,
+/// }
+/// 
+/// fn our_jwt() -> JWT<OurJWTPayload> {
+///     JWT::default("OUR_JWT_SECRET_KEY")
+/// }
+/// 
+/// 
+/// #[tokio::main]
+/// async fn main() {
+///     Ohkami::new((
+///         "/auth".GET(auth),
+///         "/private".By(Ohkami::with(/*
+///             Automatically verify `Authorization` header
+///             of a request and early returns an error
+///             response if it's invalid.
+///             If `Authorization` is valid, momorize the JWT
+///             payload in the request.
+///         */ our_jwt(), (
+///             "/hello/:name".GET(hello),
+///         )))
+///     )).howl("localhost:3000").await
+/// }
+/// 
+/// 
+/// #[Payload(JSON/D)]
+/// struct AuthRequest<'req> {
+///     name: &'req str
+/// }
+/// #[Payload(JSON/S)]
+/// struct AuthResponse {
+///     token: String
+/// }
+/// async fn auth(
+///     req: AuthRequest<'_>
+/// ) -> Result<AuthResponse, Response> {
+///     Ok(AuthResponse {
+///         token: our_jwt().issue(OurJWTPayload {
+///             iat: ohkami::utils::unix_timestamp(),
+///             user_name: req.name.to_string()
+///         })
+///     })
+/// }
+/// 
+/// 
+/// async fn hello(name: &str,
+///     auth: ohkami::Memory<'_, OurJWTPayload>
+/// ) -> String {
+///     format!("Hello {name}, you're authorized!")
+/// }
+/// ```
 pub struct JWT<Payload> {
     secret:   Cow<'static, str>,
     alg:      VerifyingAlgorithm,
