@@ -37,28 +37,17 @@ async fn post_submit(form_data: FormData<'_>) -> NoContent {
     NoContent
 }
 
-
-struct Logger; const _: () = {
-    impl<I: FangProc> Fang<I> for Logger {
-        type Proc = LoggerProc<I>;
-        fn chain(&self, inner: I) -> Self::Proc {
-            LoggerProc { inner }
-        }
+#[derive(Clone)]
+struct Logger;
+impl FangAction for Logger {
+    async fn fore<'a>(&'a self, req: &'a mut Request) -> Result<(), Response> {
+        println!("\n[req]\n{req:#?}");
+        Ok(())
     }
-
-    struct LoggerProc<I: FangProc> { inner: I }
-    impl<I: FangProc> FangProc for LoggerProc<I> {
-        async fn bite<'b>(&'b self, req: &'b mut Request) -> Response {
-            println!("\n[req]\n{req:#?}");
-
-            let res = self.inner.bite(req).await;
-
-            println!("\n[res]\n{res:#?}");
-
-            res
-        }
+    async fn back<'a>(&'a self, res: &'a mut Response) {
+        println!("\n[res]\n{res:#?}");
     }
-};
+}
 
 #[tokio::main]
 async fn main() {

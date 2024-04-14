@@ -109,21 +109,21 @@ mod x_websocket;
 /// 
 /// *example.rs*
 /// ```no_run
-/// # use ohkami::prelude::*;
-/// #
+/// use ohkami::prelude::*;
+/// use ohkami::append;
 /// 
 /// #[derive(Clone)]
-/// struct SetServer(&'static str);
-/// impl FangAction for SetServer {
+/// struct AppendServer(&'static str);
+/// impl FangAction for AppendServer {
 ///     async fn back<'b>(&'b self, res: &'b mut Response) {
 ///         res.headers.set()
-///             .Server(self.name);
+///             .Server(append(self.0));
 ///     }
 /// }
 /// 
 /// #[tokio::main]
 /// async fn main() {
-///     Ohkami::with(SetServer("ohkami"),
+///     Ohkami::with(AppendServer("ohkami"),
 ///         "/".GET(|| async {"Hello, append!"})
 ///     ).howl("localhost:3000").await
 /// }
@@ -140,7 +140,7 @@ pub mod prelude {
     pub use crate::{Route, Ohkami};
 }
 
-/// Somthing almost be [serde](https://crates.io/crates/serde).
+/// Somthing almost [serde](https://crates.io/crates/serde).
 /// 
 /// ---
 /// *not_need_serde_in_your_dependencies.rs*

@@ -1,27 +1,17 @@
 use ohkami::prelude::*;
 use ohkami::{typed::Payload, builtin::payload::JSON};
 
+#[derive(Clone)]
 struct Logger;
-const _: () = {
-    impl<I: FangProc> Fang<I> for Logger {
-        type Proc = LoggerProc<I>;
-        fn chain(&self, inner: I) -> Self::Proc {
-            LoggerProc { inner }
-        }
+impl FangAction for Logger {
+    async fn fore<'a>(&'a self, req: &'a mut Request) -> Result<(), Response> {
+        tracing::info!("\n{req:?}");
+        Ok(())
     }
-
-    struct LoggerProc<I: FangProc> {
-        inner: I
+    async fn back<'a>(&'a self, res: &'a mut Response) {
+        tracing::info!("\n{res:?}");
     }
-    impl<I: FangProc> FangProc for LoggerProc<I> {
-        async fn bite<'b>(&'b self, req: &'b mut Request) -> Response {
-            tracing::info!("\n{req:?}");
-            let res = self.inner.bite(req).await;
-            tracing::info!("\n{res:?}");
-            res
-        }
-    }
-};
+}
 
 #[Payload(JSON/S)]
 struct Message {

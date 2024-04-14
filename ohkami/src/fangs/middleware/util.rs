@@ -2,13 +2,79 @@ use super::super::{Fang, FangProc};
 use crate::{Request, Response};
 
 
+/// # Fang action - utility wrapper of `Fang`
+/// 
+/// `FangAction` provides 2 actions:
+/// 
+/// - `fore` ... *bite* a `&mut Request`, maybe early return `Err(Response)`, before a handler is called
+/// - `back` ... *bite* a `&mut Response` after a handler is called
+/// 
+/// Both of them perform nothing by default.
+/// 
+/// <br>
+/// 
+/// `T: FangAction` automatically implements `Fang` that perform as
+/// 
+/// ```
+/// # use ohkami::{prelude::*, Fang, FangProc};
+/// # #[derive(Clone)]
+/// # struct DummyProc<
+/// #     A: FangAction + Clone,
+/// #     I: FangProc + Clone,
+/// # > {
+/// #     action: A,
+/// #     inner:  I,
+/// # }
+/// # impl<
+/// #     A: FangAction + Clone,
+/// #     I: FangProc + Clone,
+/// # > FangProc for DummyProc<A, I> {
+/// async fn bite<'b>(&'b self, req: &'b mut Request) -> Response {
+///     let Self { action, inner } = self;
+///     match action.fore(req).await {
+///         Err(e) => e,
+///         Ok(()) => {
+///             let mut res = inner.bite(req).await;
+///             action.back(&mut res).await;
+///             res
+///         }
+///     }
+/// }
+/// # }
+/// ```
+/// 
+/// <br>
+/// 
+/// ---
+/// *example.rs*
+/// ```
+/// use ohkami::prelude::*;
+/// 
+/// #[derive(Clone)]
+/// struct SimpleLogger;
+/// impl FangAction for SimpleLogger {
+///     async fn fore<'a>(&'a self, req: &'a mut Request) -> Result<(), Response> {
+///         println!("[request] {req:?}");
+///         Ok(())
+///     }
+///     async fn back<'a>(&'a self, res: &'a mut Response) {
+///         println!("[response] {res:?}");
+///     }
+/// }
+/// ```
 pub trait FangAction: Clone + Send + Sync + 'static {
+    /// *fore fang*, that bites a request before a handler.
+    /// 
+    /// **Default**: just returns `Ok(())`
     #[allow(unused_variables)]
-    fn fore<'b>(&'b self, req: &'b mut Request) -> impl std::future::Future<Output = Result<(), Response>> + Send {
+    fn fore<'a>(&'a self, req: &'a mut Request) -> impl std::future::Future<Output = Result<(), Response>> + Send {
         async {Ok(())}
     }
+    /// *back fang*, that bites a response after a handler.
+    /// 
+    /// **Default**: just returns `()`
     #[allow(unused_variables)]
-    fn back<'b>(&'b self, res: &'b mut Response) -> impl std::future::Future<Output = ()> + Send {
+    fn back<'a>(&'a self, res: &'a mut Response) -> impl std::future::Future<Output = ()> + Send {
         async {}
     }
 } const _: () = {

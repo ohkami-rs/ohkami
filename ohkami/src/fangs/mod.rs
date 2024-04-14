@@ -16,7 +16,7 @@ pub trait Fang<Inner: FangProc> {
 }
 
 pub trait FangProc: Send + Sync + 'static {
-    fn bite<'b>(&'b self, req: &'b mut Request) -> impl std::future::Future<Output = Response> + Send + 'b;
+    fn bite<'b>(&'b self, req: &'b mut Request) -> impl std::future::Future<Output = Response> + Send;
 
     /// Default: `Box::pin(self.bite(req))`.
     /// 
@@ -63,7 +63,7 @@ const _: () = {
 
     impl FangProc for BoxedFPC {
         #[inline(always)]
-        fn bite<'b>(&'b self, req: &'b mut Request) -> impl std::future::Future<Output = Response> + Send + 'b {
+        fn bite<'b>(&'b self, req: &'b mut Request) -> impl std::future::Future<Output = Response> + Send {
             (&*self.0).call_bite(req)
         }
 
