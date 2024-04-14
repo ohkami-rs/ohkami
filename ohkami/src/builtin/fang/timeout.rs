@@ -73,7 +73,7 @@ const _: () = {
         time:  Duration,
     }
     impl<Inner: FangProc> FangProc for TimeoutProc<Inner> {
-        fn bite<'b>(&'b self, req: &'b mut Request) -> impl Future<Output = Response> + Send + 'b {
+        fn bite<'b>(&'b self, req: &'b mut Request) -> impl Future<Output = Response> + Send {
             set_timeout(self.time, self.inner.bite(req))
         }
     }

@@ -169,7 +169,7 @@ const _: () = {
         inner: I,
     }
     impl<I: FangProc> FangProc for ConnectionPoolProc<I> {
-        fn bite<'b>(&'b self, req: &'b mut Request) -> impl std::future::Future<Output = Response> + Send + 'b {
+        fn bite<'b>(&'b self, req: &'b mut Request) -> impl std::future::Future<Output = Response> + Send {
             req.memorize(self.pool.clone());
             self.inner.bite(req)
         }

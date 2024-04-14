@@ -64,10 +64,12 @@ mod hello_handler {
 
 
 mod fangs {
-    pub mod back {
-        use ohkami::Response;
+    use ohkami::prelude::*;
 
-        pub fn set_server(res: &mut Response) {
+    #[derive(Clone)]
+    pub struct SetServer;
+    impl FangAction for SetServer {
+        fn back<'a>(&'a self, res: &'a mut Response) -> impl std::future::Future<Output = ()> + Send {
             res.headers.set()
                 .Server("ohkami");
 
@@ -76,13 +78,15 @@ mod fangs {
                 [current headers]\n\
                 {:?}\n\
             ", res.headers);
+
+            async {}
         }
     }
 
-    pub mod front {
-        use ohkami::Request;
-
-        pub fn log_request(req: &mut Request) {
+    #[derive(Clone)]
+    pub struct LogRequest;
+    impl FangAction for LogRequest {
+        fn fore<'a>(&'a self, req: &'a mut Request) -> impl std::future::Future<Output = Result<(), Response>> + Send {
             let __method__ = req.method();
             let __path__   = req.path();
 
@@ -91,6 +95,8 @@ mod fangs {
                 [ method ] {__method__}\n\
                 [  path  ] {__path__}\n\
             ");
+
+            async {Ok(())}
         }
     }
 }
@@ -99,14 +105,13 @@ mod fangs {
 #[tokio::main]
 async fn main() {
     use ohkami::prelude::*;
-    use ohkami::utils::{BackFang, ForeFang};
 
     tracing_subscriber::fmt()
         .with_max_level(tracing::Level::INFO)
         .init();
 
     let hello_ohkami = Ohkami::with((
-        BackFang(fangs::back::set_server),
+        fangs::SetServer,
     ), (
         "/query".
             GET(hello_handler::hello_by_query),
@@ -117,7 +122,7 @@ async fn main() {
     tracing::info!("Started listening on http://localhost:3000");
 
     Ohkami::with((
-        ForeFang(fangs::front::log_request),
+        fangs::LogRequest,
     ), (
         "/hc" .GET(health_handler::health_check),
         "/api".By(hello_ohkami),

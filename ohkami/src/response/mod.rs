@@ -38,14 +38,19 @@ use crate::__rt__::AsyncWriter;
 /// ```no_run
 /// use ohkami::prelude::*;
 /// 
+/// #[derive(Clone)]
+/// struct SetHeaders;
+/// impl FangAction for SetHeaders {
+///     async fn back<'a>(&'a self, res: &'a mut Response) {
+///         res.headers.set()
+///             .Server("ohkami")
+///             .Vary("Origin");
+///     }
+/// }
+/// 
 /// #[tokio::main]
 /// async fn main() {
-///     Ohkami::with(
-///         ohkami::utils::BackFang(|res| {
-///             res.headers.set()
-///                 .Server("ohkami")
-///                 .Vary("Origin");
-///         }),
+///     Ohkami::with(SetHeaders,
 ///         "/".GET(|| async {"Hello, ohkami!"})
 ///     ).howl("localhost:5050").await
 /// }

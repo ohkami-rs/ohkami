@@ -64,14 +64,19 @@ pub(crate) const PAYLOAD_LIMIT: usize = 1 << 32;
 /// *in_fang.rs*
 /// ```no_run
 /// use ohkami::prelude::*;
-/// use ohkami::utils::ForeFang;
+/// 
+/// #[derive(Clone)]
+/// struct LogRequest;
+/// impl FangAction for LogRequest {
+///     async fn fore<'a>(&'a self, req: &'a mut Request) -> Result<(), Response> {
+///         println!("{} {}", req.method(), req.path());
+///         Ok(())
+///     }
+/// }
 /// 
 /// #[tokio::main]
 /// async fn main() {
-///     Ohkami::with(
-///         ForeFang(|req| println!(
-///             "{} {}", req.method(), req.path()
-///         )),
+///     Ohkami::with(LogRequest,
 ///         "/".GET(|| async {"Hello, world!"})
 ///     ).howl("localhost:8000").await
 /// }

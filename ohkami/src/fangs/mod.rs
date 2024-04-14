@@ -4,7 +4,7 @@ mod handler;
 pub(crate) use handler::{Handler, IntoHandler};
 
 mod middleware;
-pub use middleware::{Fangs, utils};
+pub use middleware::{Fangs, util};
 
 use crate::{Request, Response};
 use std::{future::Future, pin::Pin, ops::Deref};
@@ -16,7 +16,7 @@ pub trait Fang<Inner: FangProc> {
 }
 
 pub trait FangProc: Send + Sync + 'static {
-    fn bite<'b>(&'b self, req: &'b mut Request) -> impl std::future::Future<Output = Response> + Send + 'b;
+    fn bite<'b>(&'b self, req: &'b mut Request) -> impl std::future::Future<Output = Response> + Send;
 
     /// Default: `Box::pin(self.bite(req))`.
     /// 
@@ -63,7 +63,7 @@ const _: () = {
 
     impl FangProc for BoxedFPC {
         #[inline(always)]
-        fn bite<'b>(&'b self, req: &'b mut Request) -> impl std::future::Future<Output = Response> + Send + 'b {
+        fn bite<'b>(&'b self, req: &'b mut Request) -> impl std::future::Future<Output = Response> + Send {
             (&*self.0).call_bite(req)
         }
 

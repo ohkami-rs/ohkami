@@ -146,34 +146,51 @@ ohkami's request handling system is called "**fang**s", and middlewares are impl
 ```rust,no_run
 use ohkami::prelude::*;
 
-struct GreetFang;
-impl<I: FangProc> Fang<I> for GreetFang {
-    type Proc = GreetFangProc<I>;
+
+/* Full impl */
+
+use ohkami::{Fang, FangProc};
+
+struct GreetingFang;
+impl<I: FangProc> Fang<I> for GreetingFang {
+    type Proc = GreetingFangProc<I>;
     fn chain(&self, inner: I) -> Self::Proc {
-        GreetFangProc { inner }
+        GreetingFangProc { inner }
     }
 }
-
-struct GreetFangProc<I: FangProc> {
+struct GreetingFangProc<I: FangProc> {
     inner: I
 }
-impl<I: FangProc> FangProc for GreetFangProc<I> {
+impl<I: FangProc> FangProc for GreetingFangProc<I> {
     async fn bite<'b>(&'b self, req: &'b mut Request) -> Response {
-        println!("Welcome, request!\n{req:?}");
+        println!("Welcome, request!: {req:?}");
         let res = self.inner.bite(req).await;
-        println!("My response: \n{res:?}");
+        println!("Go, response!: {res:?}");
         res
     }
 }
 
+
+/* Easy impl with an utility */
+
+#[derive(Clone)]
+struct GreetingFang2;
+impl FangAction for GreetingFang2 {
+    async fn fore<'a>(&'a self, req: &'a mut Request) -> Result<(), Response> {
+        println!("Welcomm request!: {req:?}");
+        Ok(())
+    }
+    async fn back<'a>(&'a self, res: &'a mut Response) {
+        println!("Go, response!: {res:?}");
+    }
+}
+
+
 #[tokio::main]
 async fn main() {
     Ohkami::with((
-        /* Your `Fang` value */
-        GreetFang,
-
-        /* Inline Fang with utils */
-        ohkami::utils::ForeFang(|req| println!("{}", req.path())),
+        GreetingFang,
+        GreetingFang2,
     ), (
         "/".GET(|| async {"Hello, fangs!"})
     )).howl("localhost:3000").await
@@ -194,9 +211,17 @@ struct User {
     name: String
 }
 
+async fn list_users() -> Vec<User> {
+    vec![
+        User { name: String::from("actix") },
+        User { name: String::from("axum") },
+        User { name: String::from("ohkami") },
+    ]
+}
+
 async fn create_user() -> Created<User> {
     Created(User {
-        name: "ohkami web framework".to_string()
+        name: String::from("ohkami web framework")
     })
 }
 
@@ -209,12 +234,16 @@ async fn main() {
     // ...
 
     let users_ohkami = Ohkami::new((
-        "/".POST(create_user),
+        "/"
+            .GET(list_users)
+            .POST(create_user),
     ));
 
     Ohkami::new((
-        "/healthz"  .GET(health_check),
-        "/api/users".By(users_ohkami), // <-- nest by `By`
+        "/healthz"
+            .GET(health_check),
+        "/api/users"
+            .By(users_ohkami), // nest by `By`
     )).howl("localhost:5000").await
 }
 ```

@@ -25,7 +25,7 @@ use router::TrieRouter;
 /// # use ohkami::typed::Payload;
 /// # use ohkami::typed::status::{OK, Created};
 /// # use ohkami::builtin::payload::JSON;
-/// # 
+/// # use ohkami::{Fang, FangProc};
 /// 
 /// struct Auth;
 /// impl<I: FangProc> Fang<I> for Auth {
@@ -197,23 +197,10 @@ impl Ohkami {
     /// ```
     /// use ohkami::prelude::*;
     /// 
+    /// #[derive(Clone)]
     /// struct AuthFang;
-    /// impl<I: FangProc> Fang<I> for AuthFang {
-    ///     type Proc = AuthFangProc<I>;
-    ///     fn chain(&self, inner: I) -> Self::Proc {
-    ///         AuthFangProc { inner }
-    ///     }
-    /// }
-    /// 
-    /// struct AuthFangProc<I: FangProc> {
-    ///     inner: I
-    /// }
-    /// impl<I: FangProc> FangProc for AuthFangProc<I> {
-    ///     async fn bite<'b>(&'b self, req: &'b mut Request) -> Response {
-    ///         // Perform some auth process...
-    /// 
-    ///         self.inner.bite(req).await
-    ///     }
+    /// impl FangAction for AuthFang {
+    ///     //...
     /// }
     /// 
     /// # async fn handler1() -> &'static str {"1"}
