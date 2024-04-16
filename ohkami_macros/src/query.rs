@@ -41,6 +41,12 @@ pub(super) fn Query(target: TokenStream) -> Result<TokenStream> {
             ident: format_ident!("{}__cloned", target.ident),
             ..target.clone()
         };
+
+        for attr in &mut just_cloned.attrs {
+            if attr.path.get_ident().is_some_and(|i| i.to_string() == "query") {
+                attr.path = syn::parse2(quote!{ serde }).unwrap();
+            }
+        }
         for field in &mut just_cloned.fields {
             for attr in &mut field.attrs {
                 if attr.path.get_ident().is_some_and(|i| i.to_string() == "query") {
@@ -48,12 +54,18 @@ pub(super) fn Query(target: TokenStream) -> Result<TokenStream> {
                 }
             }
         }
+
+        target.attrs = target.attrs.iter()
+            .filter(|a| !{a.path.get_ident().is_some_and(|i| i.to_string() == "query")})
+            .cloned()
+            .collect();
         for field in &mut target.fields {
             field.attrs = field.attrs.iter()
                 .filter(|a| !{a.path.get_ident().is_some_and(|i| i.to_string() == "query")})
                 .cloned()
                 .collect()
         }
+
         just_cloned
     };
     let cloned_name = &target_cloned.ident;

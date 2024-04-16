@@ -13,8 +13,10 @@ mod hello_handler {
     use ohkami::builtin::payload::JSON;
 
     #[Query]
+    #[query(deny_unknown_fields)]
     pub struct HelloQuery<'q> {
         name:   &'q str,
+
         #[query(rename = "n")]
         repeat: Option<usize>,
     }
