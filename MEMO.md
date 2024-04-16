@@ -1,4 +1,4 @@
-The key idea is, becasue of ohkami itself is completely **independent** of any speciffic runtime unlike axum, what we have to do to support Cloudflare Workers is just implementing contertion
+The key idea is, becasue ohkami itself is completely **independent** of any speciffic runtime unlike axum, what we have to do to support Cloudflare Workers is _**maybe**_ just implementing contertion
 
 - `worker::Request`  → `ohkami::Request`
 - `worker::Response` → `ohkami::Response`
