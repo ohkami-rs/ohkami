@@ -1,7 +1,7 @@
 The key idea is, becasue ohkami itself is completely **independent** of any speciffic runtime unlike axum, what we have to do to support Cloudflare Workers is _**maybe**_ just implementing contertion
 
 - `worker::Request`  → `ohkami::Request`
-- `worker::Response` → `ohkami::Response`
+- `ohkami::Response` → `worker::Response`
 
 and an attribute like
 

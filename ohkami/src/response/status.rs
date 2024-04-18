@@ -4,16 +4,21 @@ use super::{Response, ResponseHeaders};
 macro_rules! status {
     (
         $(
-            $name:ident : $message:literal,
+            $code:literal $name:ident : $message:literal,
         )*
     ) => {
         #[derive(PartialEq, Clone, Copy)]
         #[allow(non_camel_case_types)]
         pub enum Status {
-            $( $name, )*
+            $( $name = $code, )*
         }
 
         impl Status {
+            #[inline(always)]
+            pub const fn code(&self) -> u16 {
+                *self as _
+            }
+
             #[inline(always)] pub(crate) const fn as_str(&self) -> &'static str {
                 match self {
                     $( Self::$name => $message, )*
@@ -39,69 +44,69 @@ macro_rules! status {
         }
     };
 } status! {
-    Continue                      : "100 Continue",
-    SwitchingProtocols            : "101 Switching Protocols",
-    Processing                    : "102 Processing",
-    EarlyHints                    : "103 Early Hints",
+    100 Continue                      : "100 Continue",
+    101 SwitchingProtocols            : "101 Switching Protocols",
+    102 Processing                    : "102 Processing",
+    103 EarlyHints                    : "103 Early Hints",
 
-    OK                            : "200 OK",
-    Created                       : "201 Created",
-    Accepted                      : "202 Accepted",
-    NonAuthoritativeInformation   : "203 Non-Authoritative Information",
-    NoContent                     : "204 No Content",
-    ResetContent                  : "205 Reset Content",
-    PartialContent                : "206 Partial Content",
-    MultiStatus                   : "207 Multi-Status",
-    AlreadyReported               : "208 Already Reported",
-    IMUsed                        : "226 IMUsed",
+    200 OK                            : "200 OK",
+    201 Created                       : "201 Created",
+    202 Accepted                      : "202 Accepted",
+    203 NonAuthoritativeInformation   : "203 Non-Authoritative Information",
+    204 NoContent                     : "204 No Content",
+    205 ResetContent                  : "205 Reset Content",
+    206 PartialContent                : "206 Partial Content",
+    207 MultiStatus                   : "207 Multi-Status",
+    208 AlreadyReported               : "208 Already Reported",
+    226 IMUsed                        : "226 IMUsed",
 
-    MultipleChoice                : "300 Multiple Choice",
-    MovedPermanently              : "301 Moved Permanently",
-    Found                         : "302 Found",
-    SeeOther                      : "303 See Other",
-    NotModified                   : "304 Not Modifed",
-    TemporaryRedirect             : "307 Temporary Redirect",
-    PermanentRedirect             : "308 Permanent Redirect",
+    300 MultipleChoice                : "300 Multiple Choice",
+    301 MovedPermanently              : "301 Moved Permanently",
+    302 Found                         : "302 Found",
+    303 SeeOther                      : "303 See Other",
+    304 NotModified                   : "304 Not Modifed",
+    307 TemporaryRedirect             : "307 Temporary Redirect",
+    308 PermanentRedirect             : "308 Permanent Redirect",
 
-    BadRequest                    : "400 Bad Request",
-    Unauthorized                  : "401 Unauthorized",
-    Forbidden                     : "403 Forbidden",
-    NotFound                      : "404 Not Found",
-    MethodNotAllowed              : "405 Method Not Allowed",
-    NotAcceptable                 : "406 Not Acceptable",
-    ProxyAuthenticationRequired   : "407 Proxy Authentication Required",
-    RequestTimeout                : "408 Request Timeout",
-    Conflict                      : "409 Conflict",
-    Gone                          : "410 Gone",
-    LengthRequired                : "411 Length Required",
-    PreconditionFailed            : "412 Precondition Failed",
-    PayloadTooLarge               : "413 Payload Too Large",
-    URITooLong                    : "414 URI Too Long",
-    UnsupportedMediaType          : "415 Unsupported Media Type",
-    RangeNotSatisfiable           : "416 Range Not Satisfiable",
-    ExceptionFailed               : "417 Exception Failed",
-    Im_a_teapot                   : "418 I'm a teapot",
-    MisdirectedRequest            : "421 Misdirected Request",
-    UnprocessableEntity           : "422 Unprocessable Entity",
-    Locked                        : "423 Locked",
-    FailedDependency              : "424 Failed Dependency",
-    UpgradeRequired               : "426 UpgradeRequired",
-    PreconditionRequired          : "428 Precondition Required",
-    TooManyRequest                : "429 Too Many Request",
-    RequestHeaderFieldsTooLarge   : "431 Request Header Fields Too Large",
-    UnavailableForLegalReasons    : "451 Unavailable For Legal Reasons",
+    400 BadRequest                    : "400 Bad Request",
+    401 Unauthorized                  : "401 Unauthorized",
+    403 Forbidden                     : "403 Forbidden",
+    404 NotFound                      : "404 Not Found",
+    405 MethodNotAllowed              : "405 Method Not Allowed",
+    406 NotAcceptable                 : "406 Not Acceptable",
+    407 ProxyAuthenticationRequired   : "407 Proxy Authentication Required",
+    408 RequestTimeout                : "408 Request Timeout",
+    409 Conflict                      : "409 Conflict",
+    410 Gone                          : "410 Gone",
+    411 LengthRequired                : "411 Length Required",
+    412 PreconditionFailed            : "412 Precondition Failed",
+    413 PayloadTooLarge               : "413 Payload Too Large",
+    414 URITooLong                    : "414 URI Too Long",
+    415 UnsupportedMediaType          : "415 Unsupported Media Type",
+    416 RangeNotSatisfiable           : "416 Range Not Satisfiable",
+    417 ExceptionFailed               : "417 Exception Failed",
+    418 Im_a_teapot                   : "418 I'm a teapot",
+    421 MisdirectedRequest            : "421 Misdirected Request",
+    422 UnprocessableEntity           : "422 Unprocessable Entity",
+    423 Locked                        : "423 Locked",
+    424 FailedDependency              : "424 Failed Dependency",
+    426 UpgradeRequired               : "426 UpgradeRequired",
+    428 PreconditionRequired          : "428 Precondition Required",
+    429 TooManyRequest                : "429 Too Many Request",
+    431 RequestHeaderFieldsTooLarge   : "431 Request Header Fields Too Large",
+    451 UnavailableForLegalReasons    : "451 Unavailable For Legal Reasons",
 
-    InternalServerError           : "500 Internal Server Error",
-    NotImplemented                : "501 Not Implemented",
-    BadGateway                    : "502 Bad Gateway",
-    ServiceUnavailable            : "503 Service Unavailable",
-    GatewayTimeout                : "504 Gateway Timeout",
-    HTTPVersionNotSupported       : "505 HTTP Version Not Supported",
-    VariantAlsoNegotiates         : "506 Variant Also Negotiates",
-    InsufficientStorage           : "507 Unsufficient Storage",
-    LoopDetected                  : "508 Loop Detected",
-    NotExtended                   : "510 Not Extended",
-    NetworkAuthenticationRequired : "511 Network Authentication Required",
+    500 InternalServerError           : "500 Internal Server Error",
+    501 NotImplemented                : "501 Not Implemented",
+    502 BadGateway                    : "502 Bad Gateway",
+    503 ServiceUnavailable            : "503 Service Unavailable",
+    504 GatewayTimeout                : "504 Gateway Timeout",
+    505 HTTPVersionNotSupported       : "505 HTTP Version Not Supported",
+    506 VariantAlsoNegotiates         : "506 Variant Also Negotiates",
+    507 InsufficientStorage           : "507 Unsufficient Storage",
+    508 LoopDetected                  : "508 Loop Detected",
+    510 NotExtended                   : "510 Not Extended",
+    511 NetworkAuthenticationRequired : "511 Network Authentication Required",
 }
 
 const _: () = {

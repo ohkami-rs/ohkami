@@ -277,3 +277,18 @@ const _: () = {
         }
     }
 };
+
+#[cfg(feature="rt_worker")]
+const _: () = {
+    impl Into<::worker::Response> for Response {
+        #[inline(always)]
+        fn into(self) -> ::worker::Response {
+            match self.content {
+                Some(bytes) => ::worker::Response::from_bytes(bytes.into()),
+                None        => ::worker::Response::empty(),
+            }.unwrap()
+                .with_status(self.status.code())
+                .with_headers(self.headers.into())
+        }
+    }
+};

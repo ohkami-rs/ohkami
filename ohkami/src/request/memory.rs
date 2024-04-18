@@ -29,7 +29,7 @@ impl Hasher for TypeIDHasger {
     }
 }
 impl Store {
-    #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
+    #[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_worker"))]
     pub(super) const fn new() -> Self {
         Self(None)
     }

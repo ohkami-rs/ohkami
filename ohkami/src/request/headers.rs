@@ -344,7 +344,7 @@ impl Headers {
     }
 }
 
-#[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
+#[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_worker"))]
 impl Headers {
     #[inline] pub(crate) fn insert_custom(&mut self, name: CowSlice, value: CowSlice) {
         match &mut self.custom {
@@ -361,7 +361,7 @@ impl Headers {
     }
 }
 
-#[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
+#[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_worker"))]
 impl Headers {
     pub(crate) fn init() -> Self {
         Self {
@@ -399,5 +399,23 @@ impl Headers {
             );
         }
         this
+    }
+}
+
+#[cfg(feature="rt_worker")]
+impl Headers {
+    pub(crate) fn take_over(&mut self, w: &::worker::Headers) {
+        for (k, v) in w.entries() {
+            match Header::from_bytes(k.as_bytes()) {
+                Some(standard) => self.insert(
+                    standard,
+                    CowSlice::Own(v.into_bytes())
+                ),
+                None => self.insert_custom(
+                    CowSlice::Own(k.into_bytes()),
+                    CowSlice::Own(v.into_bytes())
+                )
+            }
+        }
     }
 }

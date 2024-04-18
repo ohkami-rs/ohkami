@@ -26,10 +26,17 @@ use crate::typed::{Payload, PayloadType};
 #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
 use {
     crate::__rt__::AsyncReader,
-    std::pin::Pin,
     byte_reader::Reader,
 };
-#[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
+#[cfg(feature="rt_worker")]
+use {
+    std::sync::OnceLock,
+};
+#[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_worker"))]
+use {
+    std::pin::Pin,
+};
+#[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_worker"))]
 pub use {
     headers::Header as RequestHeader,
 };
@@ -38,9 +45,15 @@ pub use {
 use crate::websocket::UpgradeID;
 
 
+#[cfg(feature="rt_worker")]
+static WORKER_ENV: OnceLock<::worker::Env> = OnceLock::new();
+#[cfg(feature="rt_worker")]
+static WORKER_CTX: OnceLock<::worker::Context> = OnceLock::new();
+
+
 pub(crate) const BUF_SIZE: usize = 1024;
 
-#[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
+#[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_worker"))]
 pub(crate) const PAYLOAD_LIMIT: usize = 1 << 32;
 
 /// # HTTP Request
@@ -99,8 +112,19 @@ pub(crate) const PAYLOAD_LIMIT: usize = 1 << 32;
 ///     }
 /// }
 /// ```
-pub struct Request {pub(crate) __buf__: Box<[u8; BUF_SIZE]>,
-    method:          Method,
+pub struct Request {
+    method: Method,
+
+    #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
+    pub(crate) __buf__: Box<[u8; BUF_SIZE]>,
+    #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
+    path:    Path,
+    #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
+    queries: Option<Box<QueryParams>>,
+
+    #[cfg(feature="rt_worker")]
+    url: ::worker::Url,
+
     /// Headers of this request
     /// 
     /// - `.{Name}()`, `.custom({Name})` to get the value
@@ -115,20 +139,26 @@ pub struct Request {pub(crate) __buf__: Box<[u8; BUF_SIZE]>,
     /// 
     /// `{value}`: `String`, `&'static str`, `Cow<&'static, str>`
     pub headers:     RequestHeaders,
-    pub(crate) path: Path,
-    queries:         Option<Box<QueryParams>>,
     payload:         Option<CowSlice>,
     store:           Store,
 }
 
 impl Request {
-    #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
+    #[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_worker"))]
     pub(crate) fn init() -> Self {
         Self {
-            __buf__: Box::new([0; BUF_SIZE]),
             method:  Method::GET,
+
+            #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
+            __buf__: Box::new([0; BUF_SIZE]),
+            #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
             path:    unsafe {Path::null()},
+            #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
             queries: None,
+
+            #[cfg(feature="rt_worker")]
+            url:     ::worker::Url::parse("http://nul.l").unwrap(),
+
             headers: RequestHeaders::init(),
             payload: None,
             store:   Store::new(),
@@ -238,6 +268,28 @@ impl Request {
             CowSlice::Own(bytes)
         }
     }
+
+    #[cfg(feature="rt_worker")]
+    pub async fn take_over(mut self: Pin<&mut Self>,
+        mut req: ::worker::Request,
+        env:     ::worker::Env,
+        ctx:     ::worker::Context,
+    ) -> Result<(), crate::Response> {
+        use crate::Response;
+
+        self.headers.take_over(req.headers());
+        self.method  = Method::from_worker(req.method())
+            .ok_or_else(|| Response::NotImplemented().text("ohkami doesn't support `CONNECT`, `TRACE` method"))?;
+        self.url = req.url()
+            .map_err(|_| Response::InternalServerError().text("Invalid request URL"))?;
+        self.payload = Some(CowSlice::Own(req.bytes().await
+            .map_err(|_| Response::InternalServerError().text("Failed to read request payload"))?));
+
+        WORKER_ENV.set(env).ok().unwrap();
+        WORKER_CTX.set(ctx).ok().unwrap();
+
+        Ok(())
+    }
 }
 
 impl Request {
@@ -248,15 +300,31 @@ impl Request {
     /// Get request path as `Cow::Borrowed(&str)` if it's not percent-encoded, or, if encoded,
     /// decode it into `Cow::Owned(String)`.
     #[inline(always)] pub fn path(&self) -> std::borrow::Cow<'_, str> {
-        percent_decode_utf8(unsafe {self.path.as_bytes()}).expect("Path is not UTF-8")
+        #[cfg(any(feature="rt_tokio",feature="rt_async-std"))] {
+            percent_decode_utf8(unsafe {self.path.as_bytes()}).expect("Path is not UTF-8")
+        }
+        #[cfg(feature="rt_worker")] {
+            percent_decode_utf8(self.url.path().as_bytes()).expect("Path is not UTF-8")            
+        }
     }
 
     #[inline] pub fn queries<'req, Q: serde::Deserialize<'req>>(&'req self) -> Option<Result<Q, impl serde::de::Error>> {
-        Some(unsafe {self.queries.as_ref()?.parse()})
+        #[cfg(any(feature="rt_tokio",feature="rt_async-std"))] {
+            Some(unsafe {self.queries.as_ref()?.parse()})
+        }
+        #[cfg(feature="rt_worker")] {
+            self.url.query().map(|str| ohkami_lib::serde_urlencoded::from_bytes(str.as_bytes()))
+        }
     }
     #[inline] pub fn query<'req, Value: FromParam<'req>>(&'req self, key: &str) -> Option<Result<Value, Value::Error>> {
-        let (_, value) = unsafe {self.queries.as_ref()?.iter()}.find(|(k, _)| k == key)?;
-        Some(Value::from_param(value))
+        #[cfg(any(feature="rt_tokio",feature="rt_async-std"))] {
+            let (_, value) = unsafe {self.queries.as_ref()?.iter()}.find(|(k, _)| k == key)?;
+            Some(Value::from_param(value))
+        }
+        #[cfg(feature="rt_worker")] {
+            let (_, value) = self.url.query_pairs().find(|(k, _)| k == key)?;
+            Some(Value::from_param(value))
+        }
     }
 
     #[inline(always)] pub fn payload<
@@ -279,20 +347,35 @@ impl Request {
 }
 
 impl Request {
-    #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
-    #[inline(always)] pub(crate) unsafe fn internal_path_bytes<'b>(&self) -> &'b [u8] {
-        self.path.as_internal_bytes()
+    #[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_worker"))]
+    #[inline(always)] pub(crate) unsafe fn internal_path_bytes(&self) -> &[u8] {
+        #[cfg(any(feature="rt_tokio",feature="rt_async-std"))] {
+            self.path.as_internal_bytes()
+        }
+        #[cfg(feature="rt_worker")] {
+            self.url.path().as_bytes()
+        }
     }
 }
 
 const _: () = {
     impl std::fmt::Debug for Request {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            let queires = self.queries.as_ref().map(|q|
-                unsafe {q.iter()}
-                    .map(|(k, v)| format!("{k}: {v}"))
-                    .collect::<Vec<_>>()
-            ).unwrap_or_else(Vec::new);
+            let queries = {
+                #[cfg(any(feature="rt_tokio",feature="rt_async-std"))] {
+                    self.queries.as_ref().map(|q|
+                        unsafe {q.iter()}
+                            .map(|(k, v)| format!("{k}: {v}"))
+                            .collect::<Vec<_>>()
+                    )
+                }
+                #[cfg(feature="rt_worker")] {
+                    self.url.query().is_some().then(|| self.url.query_pairs()
+                        .map(|(k, v)| format!("{k}: {v}"))
+                        .collect::<Vec<_>>()
+                    )
+                }
+            }.unwrap_or_else(Vec::new);
 
             let headers = self.headers.iter()
                 .map(|(k, v)| format!("{k}: {v}"))
@@ -302,7 +385,7 @@ const _: () = {
                 f.debug_struct("Request")
                     .field("method",  &self.method)
                     .field("path",    &self.path())
-                    .field("queries", &queires)
+                    .field("queries", &queries)
                     .field("headers", &headers)
                     .field("payload", &String::from_utf8_lossy(payload))
                     .finish()
@@ -310,7 +393,7 @@ const _: () = {
                 f.debug_struct("Request")
                     .field("method",  &self.method)
                     .field("path",    &self.path())
-                    .field("queries", &queires)
+                    .field("queries", &queries)
                     .field("headers", &headers)
                     .finish()
             }
@@ -318,15 +401,23 @@ const _: () = {
     }
 };
 
-#[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
+#[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_worker"))]
 #[cfg(test)] const _: () = {
     impl PartialEq for Request {
         fn eq(&self, other: &Self) -> bool {
-            self.method == other.method &&
-            unsafe {self.path.as_bytes() == other.path.as_bytes()} &&
-            self.queries == other.queries &&
-            self.headers == other.headers &&
-            self.payload == other.payload
+            #[cfg(any(feature="rt_tokio",feature="rt_async-std"))] {
+                self.method == other.method &&
+                unsafe {self.path.as_bytes() == other.path.as_bytes()} &&
+                self.queries == other.queries &&
+                self.headers == other.headers &&
+                self.payload == other.payload
+            }
+            #[cfg(feature="rt_worker")] {
+                self.method  == other.method  &&
+                self.url     == other.url     &&
+                self.headers == other.headers &&
+                self.payload == other.payload
+            }
         }
     }
 };
