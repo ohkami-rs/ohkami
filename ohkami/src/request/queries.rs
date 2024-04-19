@@ -78,7 +78,7 @@ const _: () = {
                 .collect::<Vec<_>>()
                 .join("&");
 
-            QueryParams::new(Box::leak(raw.into_boxed_str()).as_bytes())
+            unsafe {QueryParams::new(Box::leak(raw.into_boxed_str()).as_bytes())}
         }
     }
 };

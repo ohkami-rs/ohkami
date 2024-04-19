@@ -4,6 +4,7 @@ use ohkami_lib::{Slice, List};
 /// This doesn't handle percent encoding by itself.
 pub(crate) struct Path {
     raw:    Slice,
+    #[allow(unused)]
     params: List<Slice, 2>,
 }
 
@@ -55,17 +56,20 @@ impl Path {
         self.raw.as_bytes()
     }
 
-    #[inline] pub(crate) unsafe fn as_bytes<'req>(&self) -> &'req [u8] {
-        match self.raw.as_bytes() {
-            b""  => b"/",
-            some => some,
-        }
-    }
 }
 
 #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
 #[cfg(test)] impl Path {
     pub(crate) fn from_literal(literal: &'static str) -> Self {
         Self { raw: unsafe {Bytes::from_bytes(literal.as_bytes())}, params: List::new() }
+    }
+}
+
+impl Path {
+    #[inline] pub(crate) unsafe fn as_bytes<'req>(&self) -> &'req [u8] {
+        match self.raw.as_bytes() {
+            b""  => b"/",
+            some => some,
+        }
     }
 }

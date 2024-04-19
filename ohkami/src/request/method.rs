@@ -11,7 +11,7 @@ pub enum Method {
 
 impl Method {
     #[cfg(any(
-        feature="testing",
+        all(feature="testing",feature="rt_worker"),
         feature="rt_tokio",feature="rt_async-std"))]
     #[inline(always)] pub(crate) const fn from_bytes(bytes: &[u8]) -> Option<Self> {
         match bytes {

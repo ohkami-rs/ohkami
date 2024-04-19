@@ -27,18 +27,13 @@ use crate::typed::{Payload, PayloadType};
 use {
     crate::__rt__::AsyncReader,
 };
-#[cfg(any(
-    feature="testing",
-    feature="rt_tokio",feature="rt_async-std"))]
-use {
-    byte_reader::Reader,
-};
 #[cfg(feature="rt_worker")]
 use {
     std::sync::OnceLock,
 };
-#[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_worker"))]
+#[allow(unused)]
 use {
+    byte_reader::Reader,
     std::pin::Pin,
     std::borrow::Cow,
 };
@@ -172,9 +167,9 @@ impl Request {
             Path::from_request_bytes(r.read_while(|b| b != &b'?' && b != &b' '))
         };
 
-        let queries = (r.consume_oneof([" ", "?"]).unwrap() == 1)
+        let query = (r.consume_oneof([" ", "?"]).unwrap() == 1)
             .then(|| Box::new({
-                let q = QueryParams::new(r.read_while(|b| b != &b' '));
+                let q = unsafe {QueryParams::new(r.read_while(|b| b != &b' '))};
                 #[cfg(debug_assertions)] {
                     r.consume(" ").unwrap();
                 } #[cfg(not(debug_assertions))] {
@@ -219,7 +214,7 @@ impl Request {
         Some({
             self.method  = method;
             self.path    = path;
-            self.queries = queries;
+            self.query   = query;
             self.headers = headers;
             self.payload = payload;
         })
