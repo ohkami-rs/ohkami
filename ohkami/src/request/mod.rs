@@ -205,8 +205,7 @@ impl Request {
         let payload = if content_length > 0 {
             Some(Request::read_payload(
                 stream,
-                &*self.__buf__,
-                r.index,
+                r.remaining(),
                 content_length.min(PAYLOAD_LIMIT),
             ).await)
         } else {None};
@@ -222,42 +221,37 @@ impl Request {
 
     #[cfg(any(feature="rt_tokio", feature="rt_async-std"))]
     async fn read_payload(
-        stream:       &mut (impl AsyncReader + Unpin),
-        ref_metadata: &[u8],
-        starts_at:    usize,
-        size:         usize,
+        stream:        &mut (impl AsyncReader + Unpin),
+        remaining_buf: &[u8],
+        size:          usize,
     ) -> CowSlice {
-        #[cfg(debug_assertions)] {
-            assert!(starts_at < BUF_SIZE, "ohkami can't handle requests if the total size of status and headers exceeds {BUF_SIZE} bytes");
-        }
-
-        if ref_metadata[starts_at] == 0 {
-            #[cfg(feature="DEBUG")] println!("\n[read_payload] case: ref_metadata[starts_at] == 0\n");
+        if remaining_buf.is_empty() || remaining_buf[0] == 0 {
+            #[cfg(feature="DEBUG")] println!("\n[read_payload] case: remaining_buf.is_empty() || remaining_buf[0] == 0\n");
 
             let mut bytes = vec![0; size];
             stream.read_exact(&mut bytes).await.unwrap();
             CowSlice::Own(bytes)
 
-        } else if starts_at + size <= BUF_SIZE {
+        } else if size <= remaining_buf.len() {
             #[cfg(feature="DEBUG")] println!("\n[read_payload] case: starts_at + size <= BUF_SIZE\n");
 
-            CowSlice::Ref(unsafe {Slice::new_unchecked(ref_metadata.as_ptr().add(starts_at), size)})
+            CowSlice::Ref(unsafe {Slice::new_unchecked(remaining_buf.as_ptr(), size)})
 
         } else {
             #[cfg(feature="DEBUG")] println!("\n[read_payload] case: else\n");
 
             let mut bytes = vec![0; size];
-            let size_of_payload_in_metadata_bytes = BUF_SIZE - starts_at;
-                
-            bytes[..size_of_payload_in_metadata_bytes].copy_from_slice(&ref_metadata[starts_at..]);
-            stream.read_exact(bytes[size_of_payload_in_metadata_bytes..].as_mut()).await.unwrap();
-                
+            let remaining_buf_len = remaining_buf.len();
+            unsafe {// SAFETY: Here size > remaining_buf_len
+                bytes.get_unchecked_mut(..remaining_buf_len).copy_from_slice(remaining_buf);
+                stream.read_exact(bytes.get_unchecked_mut(remaining_buf_len..)).await.unwrap();
+            }
             CowSlice::Own(bytes)
         }
     }
 
     #[cfg(feature="rt_worker")]
-    pub async fn take_over(mut self: Pin<&mut Self>,
+    pub(crate) async fn take_over(mut self: Pin<&mut Self>,
         mut req: ::worker::Request,
         env:     ::worker::Env,
         ctx:     ::worker::Context,
