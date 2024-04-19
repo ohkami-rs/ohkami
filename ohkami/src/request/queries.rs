@@ -50,21 +50,6 @@ impl QueryParams {
 #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
 #[cfg(test)]
 const _: () = {
-    impl PartialEq for QueryParams {
-        fn eq(&self, other: &Self) -> bool {
-            let (this, other) = unsafe {(
-                self.iter().collect::<Vec<_>>(),
-                other.iter().collect::<Vec<_>>()
-            )};
-            for kv in this {
-                if other.iter().find(|o_kv| o_kv == &&kv).is_none() {
-                    return false
-                }
-            }
-            true
-        }
-    }
-
     impl<const N: usize> From<[(&'static str, &'static str); N]> for QueryParams {
         fn from(kvs: [(&'static str, &'static str); N]) -> Self {
             use ohkami_lib::percent_encode;

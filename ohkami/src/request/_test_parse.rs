@@ -55,7 +55,7 @@ fn metadataize(input: &str) -> Box<[u8; BUF_SIZE]> {
         __buf__: metadataize(CASE_1),
         method:  Method::GET,
         path:    Path::from_literal("/hello.html"),
-        queries: None,
+        query:   None,
         headers: RequestHeaders::from_iters([
             (RequestHeader::Host,           "www.tutorialspoint.com"),
             (RequestHeader::UserAgent,      "Mozilla/4.0"),
@@ -64,7 +64,7 @@ fn metadataize(input: &str) -> Box<[u8; BUF_SIZE]> {
             (RequestHeader::AcceptEncoding, "gzip, deflate"),
         ], None),
         payload: None,
-        store:   Store::new(),
+        store:   Store::init(),
     });
 
 
@@ -83,7 +83,7 @@ fn metadataize(input: &str) -> Box<[u8; BUF_SIZE]> {
         __buf__: metadataize(CASE_2),
         method:  Method::POST,
         path:    Path::from_literal("/signup"),
-        queries: None,
+        query:   None,
         headers: RequestHeaders::from_iters([
             (RequestHeader::Host,           "www.tutorialspoint.com"),
             (RequestHeader::UserAgent,      "Mozilla/4.0"),
@@ -94,7 +94,7 @@ fn metadataize(input: &str) -> Box<[u8; BUF_SIZE]> {
         payload: Some(CowSlice::Ref(unsafe {
             Slice::from_bytes(br#"{"name":"kanarus","age":20}"#)
         })),
-        store:      Store::new(),
+        store:      Store::init(),
     });
 
     #[cfg(feature="custom-header")]
@@ -119,7 +119,7 @@ fn metadataize(input: &str) -> Box<[u8; BUF_SIZE]> {
             __buf__: metadataize(CASE_3),
             method:  Method::POST,
             path:    Path::from_literal("/foo.php"),
-            queries: Some(Box::new(QueryParams::from([
+            query:   Some(Box::new(QueryParams::from([
                 ("query", "1"),
                 ("q2",    "xxx"),
             ]))),
@@ -140,7 +140,7 @@ fn metadataize(input: &str) -> Box<[u8; BUF_SIZE]> {
                 ]
             ),
             payload: Some(CowSlice::Own(Vec::from("first_name=John&last_name=Doe&action=Submit"))),
-            store:   Store::new(),
+            store:   Store::init(),
             #[cfg(feature="websocket")] upgrade_id: None,
         });
     }

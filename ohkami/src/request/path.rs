@@ -61,7 +61,7 @@ impl Path {
 #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
 #[cfg(test)] impl Path {
     pub(crate) fn from_literal(literal: &'static str) -> Self {
-        Self { raw: unsafe {Bytes::from_bytes(literal.as_bytes())}, params: List::new() }
+        Self { raw: unsafe {Slice::from_bytes(literal.as_bytes())}, params: List::new() }
     }
 }
 
