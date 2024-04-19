@@ -282,11 +282,16 @@ impl Node {
         self.fangs_list.add(id, fangs);
     }
 
+    #[allow(unused_mut)]
     fn into_radix(self) -> super::radix::Node {
         let Node { pattern, mut fangs_list, mut handlers, mut children } = self;
 
         let mut patterns = pattern.into_iter().collect::<Vec<_>>();
 
+        /*
+            In Cloudflare Workers, this compression is nothing but an overhead...
+        */
+        #[cfg(not(feature="rt_worker"))]
         while children.len() == 1 && handlers.is_empty() {
             let Node {
                 pattern:    child_pattern,
@@ -302,7 +307,7 @@ impl Node {
             fangs_list.extend(child_fangses);
             
             let child_pattern = child_pattern.unwrap(/* `child` is not root */);
-            if patterns.last().is_some_and(|last| last.is_static()) && child_pattern.is_static() {
+            if patterns.last().is_some_and(|last| !last.is_param()) && (!child_pattern.is_param()) {
                 let last_pattern = patterns.pop(/*=== POPing here ===*/).unwrap();
                 let this_static  = last_pattern.to_static().unwrap();
                 let child_static = child_pattern.to_static().unwrap();
@@ -457,12 +462,6 @@ impl Pattern {
         match self {
             Self::Param => true,
             Self::Static(_) => false,
-        }
-    }
-    fn is_static(&self) -> bool {
-        match self {
-            Self::Static(_) => true,
-            Self::Param => false,
         }
     }
 
