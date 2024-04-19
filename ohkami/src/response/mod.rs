@@ -5,7 +5,7 @@ mod headers;
 pub use headers::{Headers as ResponseHeaders};
 
 #[cfg(any(feature="testing", feature="DEBUG"))]
-#[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
+#[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_worker"))]
 pub use headers::Header as ResponseHeader;
 
 mod into_response;

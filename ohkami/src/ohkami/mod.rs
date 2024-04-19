@@ -1,9 +1,11 @@
-#![cfg(any(feature="rt_tokio",feature="rt_async-std"))]
+#![cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_worker"))]
 
 #[cfg(test)]
 mod _test;
 
+#[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
 mod howl;
+
 pub(crate) mod build;
 pub(crate) mod router;
 

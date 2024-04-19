@@ -384,6 +384,7 @@ impl Headers {
         Self::init()
     }
 
+    #[allow(unused)]
     #[cfg(test)] pub(crate) fn from_iters(
         iter:   impl IntoIterator<Item = (Header, &'static str)>,
         custom: impl IntoIterator<Item = (&'static str, &'static str)>,

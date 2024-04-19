@@ -1,5 +1,3 @@
-#![cfg(any(feature="rt_tokio", feature="rt_async-std"))]
-
 //! Ohkami testing tools
 //! 
 //! <br>
@@ -55,7 +53,7 @@ impl TestingOhkami {
     #[must_use]
     pub fn oneshot(&self, req: TestRequest) -> Oneshot {
         let router = self.0.clone();
-
+        
         let res = async move {
             let mut request = Request::init();
             let mut request = unsafe {Pin::new_unchecked(&mut request)};
@@ -110,7 +108,9 @@ pub struct TestRequest {
             content.unwrap_or(Cow::Borrowed("")).as_bytes()
         ].concat()
     }
-} macro_rules! new_test_request {
+}
+
+macro_rules! new_test_request {
     ( $($method:ident)* ) => {$(
         #[allow(non_snake_case)]
         impl TestRequest {
@@ -127,7 +127,9 @@ pub struct TestRequest {
     )*};
 } new_test_request! {
     GET PUT POST PATCH DELETE HEAD OPTIONS
-} impl TestRequest {
+}
+
+impl TestRequest {
     pub fn query(mut self, key: impl Into<Cow<'static, str>>, value: impl Into<Cow<'static, str>>) -> Self {
         self.queries.insert(key.into(), value.into());
         self

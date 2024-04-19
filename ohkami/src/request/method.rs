@@ -10,7 +10,9 @@ pub enum Method {
 }
 
 impl Method {
-    #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
+    #[cfg(any(
+        feature="testing",
+        feature="rt_tokio",feature="rt_async-std"))]
     #[inline(always)] pub(crate) const fn from_bytes(bytes: &[u8]) -> Option<Self> {
         match bytes {
             b"GET"     => Some(Self::GET),

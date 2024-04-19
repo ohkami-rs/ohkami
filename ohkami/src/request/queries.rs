@@ -1,25 +1,25 @@
-use std::mem::MaybeUninit;
 use std::borrow::Cow;
 use ohkami_lib::percent_decode;
 use super::Slice;
 
 
+#[derive(PartialEq)]
 pub struct QueryParams(
     /// raw bytes of query params with leading '?' cut
     /// 
     /// ex) name=ohkami&type=framework
-    MaybeUninit<Slice>
+    Slice
 );
 
 impl QueryParams {
-    #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
-    #[inline(always)] pub(crate) fn new(bytes: &[u8]) -> Self {
-        Self(MaybeUninit::new(unsafe {Slice::from_bytes(bytes)}))
+    #[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_worker"))]
+    #[inline(always)] pub(crate) unsafe fn new(bytes: &[u8]) -> Self {
+        Self(unsafe {Slice::from_bytes(bytes)})
     }
 
     /// SAFETY: The `QueryParams` is already **INITIALIZED**.
     #[inline(always)] pub(crate) unsafe fn parse<'q, T: serde::Deserialize<'q>>(&'q self) -> Result<T, impl serde::de::Error> {
-        ohkami_lib::serde_urlencoded::from_bytes(self.0.assume_init_ref().as_bytes())
+        ohkami_lib::serde_urlencoded::from_bytes(self.0.as_bytes())
     }
 
     /// Returns an iterator of maybe-percent-decoded (key, value).
@@ -36,7 +36,7 @@ impl QueryParams {
             }
         }
 
-        self.0.assume_init_ref().as_bytes()
+        self.0.as_bytes()
             .split(|b| b==&b'&')
             .map(|kv| {
                 let (k, v) = kv.split_at(

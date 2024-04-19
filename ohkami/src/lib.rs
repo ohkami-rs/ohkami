@@ -24,14 +24,16 @@
 
 
 #[cfg(any(
-    all(feature="rt_tokio", feature="rt_async-std")
+    all(feature="rt_tokio",     feature="rt_async-std"),
+    all(feature="rt_async-std", feature="rt_worker"),
+    all(feature="rt_worker",    feature="rt_tokio"),
 ))] compile_error!("
     Can't activate multiple `rt_*` features!
 ");
 
 
+#[allow(unused)]
 mod __rt__ {
-    #[allow(unused)]
     #[cfg(all(feature="rt_tokio", feature="DEBUG"))]
     pub(crate) use tokio::test;
     #[allow(unused)]
@@ -83,7 +85,7 @@ mod session;
 use session::Session;
 
 mod ohkami;
-#[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
+#[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_worker"))]
 pub use ohkami::{Ohkami, Route};
 
 pub mod builtin;
@@ -91,6 +93,7 @@ pub mod builtin;
 pub mod typed;
 
 #[cfg(feature="testing")]
+#[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_worker"))]
 pub mod testing;
 
 pub mod utils {
@@ -136,7 +139,7 @@ pub mod prelude {
     pub use crate::{Request, Response, IntoResponse, Method, Status};
     pub use crate::utils::FangAction;
 
-    #[cfg(any(feature="rt_tokio", feature="rt_async-std"))]
+    #[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_worker"))]
     pub use crate::{Route, Ohkami};
 }
 
@@ -178,7 +181,7 @@ pub mod __internal__ {
 
     /* for benchmarks */
     #[cfg(feature="DEBUG")]
-    #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
+    #[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_worker"))]
     pub use crate::{
         request::{RequestHeader, RequestHeaders},
         response::{ResponseHeader, ResponseHeaders},

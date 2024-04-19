@@ -155,7 +155,7 @@ impl Node {
                     },
                     Pattern::Param      => {
                         let (param, remaining) = split_next_section(path);
-                        req.path.params.push(unsafe {Slice::from_bytes(param)});
+                        req.push_param(unsafe {Slice::from_bytes(param)});
                         path = remaining;
                     },
                 }
