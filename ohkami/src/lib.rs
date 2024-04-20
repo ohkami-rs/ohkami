@@ -104,6 +104,9 @@ pub mod utils {
 #[cfg(feature="websocket")]
 mod x_websocket;
 
+#[cfg(feature="rt_worker")]
+pub use ::ohkami_macros::worker;
+
 
 /// Passed to `{Request/Response}.headers.set().Name( 〜 )` and
 /// append `value` to the header

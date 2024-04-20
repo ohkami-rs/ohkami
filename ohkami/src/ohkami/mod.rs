@@ -297,7 +297,8 @@ impl Ohkami {
     }
 
     #[cfg(feature="rt_worker")]
-    pub async fn bite(self,
+    #[doc(hidden)]
+    pub async fn __worker__(self,
         req: ::worker::Request,
         env: ::worker::Env,
         ctx: ::worker::Context,
