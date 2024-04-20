@@ -303,36 +303,36 @@ impl Ohkami {
         env: ::worker::Env,
         ctx: ::worker::Context,
     ) -> ::worker::Response {
-        #[cfg(feature="DEBUG")] println!("Called `#[ohkami::worker]`; req: {req:?}");
+        #[cfg(feature="DEBUG")] ::worker::console_debug!("Called `#[ohkami::worker]`; req: {req:?}");
 
         let mut ohkami_req = crate::Request::init();
-        #[cfg(feature="DEBUG")] println!("Done `ohkami::Request::init`");
+        #[cfg(feature="DEBUG")] ::worker::console_debug!("Done `ohkami::Request::init`");
 
         let mut ohkami_req = unsafe {std::pin::Pin::new_unchecked(&mut ohkami_req)};
-        #[cfg(feature="DEBUG")] println!("Put request in `Pin`");
+        #[cfg(feature="DEBUG")] ::worker::console_debug!("Put request in `Pin`");
 
         let take_over = ohkami_req.as_mut().take_over(req, env, ctx).await;
-        #[cfg(feature="DEBUG")] println!("Done `ohkami::Request::take_over`: {ohkami_req:?}");
+        #[cfg(feature="DEBUG")] ::worker::console_debug!("Done `ohkami::Request::take_over`: {ohkami_req:?}");
 
         let ohkami_res = match take_over {
-            Ok(()) => {#[cfg(feature="DEBUG")] println!("`take_over` succeed");
+            Ok(()) => {#[cfg(feature="DEBUG")] ::worker::console_debug!("`take_over` succeed");
 
                 let router = self.into_router();
-                #[cfg(feature="DEBUG")] println!("Done `Ohkami::into_router`");
+                #[cfg(feature="DEBUG")] ::worker::console_debug!("Done `Ohkami::into_router`");
 
                 let router = router.into_radix();
-                #[cfg(feature="DEBUG")] println!("Done `TrieRouter::into_radix` (without compressions)");
+                #[cfg(feature="DEBUG")] ::worker::console_debug!("Done `TrieRouter::into_radix` (without compressions)");
                 
                 router.handle(&mut ohkami_req).await
             }
-            Err(e) => {#[cfg(feature="DEBUG")] println!("`take_over` returned an error response: {e:?}");
+            Err(e) => {#[cfg(feature="DEBUG")] ::worker::console_debug!("`take_over` returned an error response: {e:?}");
                 e
             }
         };
-        #[cfg(feature="DEBUG")] println!("Successfully generated ohkami::Response: {ohkami_res:?}");
+        #[cfg(feature="DEBUG")] ::worker::console_debug!("Successfully generated ohkami::Response: {ohkami_res:?}");
 
         let res = ohkami_res.into();
-        #[cfg(feature="DEBUG")] println!("Done `ohkami::Response` --into--> `worker::Response`: {res:?}");
+        #[cfg(feature="DEBUG")] ::worker::console_debug!("Done `ohkami::Response` --into--> `worker::Response`: {res:?}");
 
         res
     }

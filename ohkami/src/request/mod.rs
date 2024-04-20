@@ -27,10 +27,6 @@ use crate::typed::{Payload, PayloadType};
 use {
     crate::__rt__::AsyncReader,
 };
-#[cfg(feature="rt_worker")]
-use {
-    std::sync::OnceLock,
-};
 #[allow(unused)]
 use {
     byte_reader::Reader,
@@ -110,8 +106,13 @@ pub(crate) const PAYLOAD_LIMIT: usize = 1 << 32;
 pub struct Request {
     #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
     pub(super/* for test */) __buf__: Box<[u8; BUF_SIZE]>,
+
     #[cfg(feature="rt_worker")]
-    pub(super/* for test */) __url__: Box<str>,
+    pub(super/* for test */) __url__: std::mem::MaybeUninit<::worker::Url>,
+    #[cfg(feature="rt_worker")]
+    pub env: std::mem::MaybeUninit<::worker::Env>,
+    #[cfg(feature="rt_worker")]
+    pub ctx: std::mem::MaybeUninit<::worker::Context>,
 
     method: Method,
     path:   Path,
@@ -140,8 +141,13 @@ impl Request {
         Self {
             #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
             __buf__: Box::new([0; BUF_SIZE]),
+
             #[cfg(feature="rt_worker")]
-            __url__: String::new().into_boxed_str(),
+            __url__: std::mem::MaybeUninit::uninit(),
+            #[cfg(feature="rt_worker")]
+            env:     std::mem::MaybeUninit::uninit(),
+            #[cfg(feature="rt_worker")]
+            ctx:     std::mem::MaybeUninit::uninit(),
 
             method:  Method::GET,
             path:    unsafe {Path::null()},
@@ -251,42 +257,6 @@ impl Request {
     }
 
     #[cfg(feature="rt_worker")]
-    pub(crate) async fn take_over(mut self: Pin<&mut Self>,
-        mut req: ::worker::Request,
-        env:     ::worker::Env,
-        ctx:     ::worker::Context,
-    ) -> Result<(), crate::Response> {
-        use crate::Response;
-
-        self.method  = Method::from_worker(req.method())
-            .ok_or_else(|| Response::NotImplemented().text("ohkami doesn't support `CONNECT`, `TRACE` method"))?;
-
-        self.__url__ = req.inner().url().into_boxed_str();
-        match self.__url__.split_once('?') {
-            // SAFETY: Just calling for request bytes
-            None => unsafe {
-                self.path = Path::from_request_bytes(self.__url__.as_bytes());
-            }
-            Some((path, query)) => unsafe {
-                let path  = Path::from_request_bytes(path.as_bytes());
-                let query = Some(Box::new(QueryParams::new(query.as_bytes())));
-                self.path  = path;
-                self.query = query;
-            }
-        }
-
-        self.headers.take_over(req.headers());
-
-        self.payload = Some(CowSlice::Own(req.bytes().await
-            .map_err(|_| Response::InternalServerError().text("Failed to read request payload"))?));
-
-        WORKER_ENV.set(env).ok().unwrap();
-        WORKER_CTX.set(ctx).ok().unwrap();
-
-        Ok(())
-    }
-
-    #[cfg(feature="rt_worker")]
     #[cfg(feature="testing")]
     pub(crate) async fn read(mut self: Pin<&mut Self>,
         raw_bytes: &mut &[u8]
@@ -296,18 +266,19 @@ impl Request {
         self.method = Method::from_bytes(r.read_while(|b| b != &b' '))?;
         r.consume(" ").unwrap();
 
-        self.__url__ = std::str::from_utf8(r.read_while(|b| b != &b' ')).unwrap().into();
-        // SAFETY: Just calling for request bytes
-        match self.__url__.split_once('?') {
-            // SAFETY: Just calling for request bytes
-            None => unsafe {
-                self.path = Path::from_request_bytes(self.__url__.as_bytes());
-            }
-            Some((path, query)) => unsafe {
-                let path  = Path::from_request_bytes(path.as_bytes());
-                let query = Some(Box::new(QueryParams::new(query.as_bytes())));
-                self.path  = path;
-                self.query = query;
+        self.__url__.write({
+            let mut url = String::from("http://test.ohkami");
+            url.push_str(std::str::from_utf8(r.read_while(|b| b != &b' ')).unwrap());
+            ::worker::Url::parse(&url).unwrap()
+        });
+        // SAFETY: Just calling for request bytes and `self.__url__` is already initialized
+        unsafe {let __url__ = self.__url__.assume_init_ref();
+
+            let path  = Path::from_request_bytes(__url__.path().as_bytes());
+            let query = __url__.query().map(|str| Box::new(QueryParams::new(str.as_bytes())));
+            self.path  = path;
+            if let Some(query) = query {
+                self.query = Some(query);
             }
         }
 
@@ -341,22 +312,53 @@ impl Request {
 
         Some(())
     }
-}
 
-#[cfg(feature="rt_worker")]
-static WORKER_ENV: OnceLock<::worker::Env> = OnceLock::new();
-#[cfg(feature="rt_worker")]
-static WORKER_CTX: OnceLock<::worker::Context> = OnceLock::new();
+    #[cfg(feature="rt_worker")]
+    pub(crate) async fn take_over(mut self: Pin<&mut Self>,
+        mut req: ::worker::Request,
+        env:     ::worker::Env,
+        ctx:     ::worker::Context,
+    ) -> Result<(), crate::Response> {use crate::Response;
+        self.env.write(env);
+        self.ctx.write(ctx);
+
+        self.method  = Method::from_worker(req.method())
+            .ok_or_else(|| Response::NotImplemented().text("ohkami doesn't support `CONNECT`, `TRACE` method"))?;
+
+        self.__url__.write(req.url()
+            .map_err(|_| Response::BadRequest().text("Invalid request URL"))?
+        );
+        #[cfg(feature="DEBUG")] worker::console_debug!("Load __url__: {:?}", self.__url__);
+
+        // SAFETY: Just calling for request bytes and `self.__url__` is already initialized
+        unsafe {let __url__ = self.__url__.assume_init_ref();
+
+            let path  = Path::from_request_bytes(__url__.path().as_bytes());
+            let query = __url__.query().map(|str| Box::new(QueryParams::new(str.as_bytes())));
+            self.path = path;
+            if let Some(query) = query {
+                self.query = Some(query);
+            }
+        }
+
+        self.headers.take_over(req.headers());
+
+        self.payload = Some(CowSlice::Own(req.bytes().await
+            .map_err(|_| Response::InternalServerError().text("Failed to read request payload"))?));
+
+        Ok(())
+    }
+}
 
 #[cfg(feature="rt_worker")]
 impl Request {
     #[inline]
     pub fn env(&self) -> &::worker::Env {
-        WORKER_ENV.get().unwrap()
+        unsafe {self.env.assume_init_ref()}
     }
     #[inline]
     pub fn context(&self) -> &::worker::Context {
-        WORKER_CTX.get().unwrap()
+        unsafe {self.ctx.assume_init_ref()}
     }
 }
 
