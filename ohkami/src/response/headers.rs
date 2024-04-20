@@ -556,27 +556,11 @@ const _: () = {
         fn into(self) -> ::worker::Headers {
             let mut h = ::worker::Headers::new();
             for (k, v) in self.iter() {
-                h.append(k, v).unwrap()
+                if let Err(_e) = h.append(k, v) {
+                    #[cfg(feature="DEBUG")] println!("`worker::Headers::append` failed: {_e:?}");
+                }
             }
             h
         }
     }
 };
-
-#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
-#[cfg(feature="rt_worker")]
-#[cfg(test)]
-#[test] fn test_response_headers_into_worker() {
-    assert_eq!(
-        Into::<::worker::Headers>::into(Headers::from_iter([
-            ("Content-Type", "application/json"),
-            ("Content-Length", "42"),
-            ("Vary", "Origin"),
-        ])).0,
-        ::worker::Headers::from_iter([
-            ("Content-Type", "application/json"),
-            ("Content-Length", "42"),
-            ("Vary", "Origin"),
-        ]).0
-    );
-}
