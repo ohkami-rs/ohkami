@@ -13,7 +13,7 @@ members  = [
 [workspace.dependencies]
 # To assure "DEBUG" feature be off even if DEBUGing `../ohkami`,
 # explicitly set `default-features = false`
-ohkami             = { version = "0.16.0", path = "../ohkami", default-features = false, features = ["rt_tokio", "testing"] }
+ohkami             = { version = "0.17.0", path = "../ohkami", default-features = false, features = ["rt_tokio", "testing"] }
 tokio              = { version = "1", features = ["full"] }
 sqlx               = { version = "0.7.3", features = ["runtime-tokio-native-tls", "postgres", "macros", "chrono", "uuid"] }
 tracing            = "0.1"

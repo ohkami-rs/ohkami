@@ -70,7 +70,7 @@ Hello, your_name!
 You can easily write ohkami app and deploy to Cloudflare Workers :
 
 ```sh
-npm create cloudflare ./my-ohkami-worker -- --template https://github.com/kana-rus/ohkami/templates/worker
+npm create cloudflare ./my-ohkami-worker -- --template https://github.com/kana-rus/ohkami-templates/worker
 ```
 
 Then your `./my-ohkami-worker` has `wrangler.toml`, `package.json` and
@@ -87,7 +87,7 @@ worker = { version = "0.1" }
 ```
 
 `src/lib.rs`
-```rust,no_run
+```rust,ignore
 use ohkami::prelude::*;
 
 #[ohkami::worker]
