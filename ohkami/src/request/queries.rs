@@ -39,10 +39,11 @@ impl QueryParams {
         self.0.as_bytes()
             .split(|b| b==&b'&')
             .map(|kv| {
-                let (k, v) = kv.split_at(
-                    kv.iter().position(|b| b==&b'=').expect("invalid query params: missing `=`")
-                );
-                (decoded_utf8(k), decoded_utf8(v))
+                let eq = kv.iter().position(|b| b==&b'=').expect("invalid query params: missing `=`");
+                (
+                    decoded_utf8(unsafe {kv.get_unchecked(..eq)}),
+                    decoded_utf8(unsafe {kv.get_unchecked(eq+1..)})
+                )
             })
     }
 }

@@ -117,6 +117,8 @@ impl Response {
     /// Complete HTTP spec
     #[inline]
     fn complete(&mut self) {
+        /* `wasm32-unkown-unkown` target doesn't support `time` */
+        #[cfg(not(feature="rt_worker"))]
         self.headers.set().Date(::ohkami_lib::imf_fixdate_now());
 
         if self.content.is_none() && !matches!(self.status, Status::NoContent) {
