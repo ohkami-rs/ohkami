@@ -3,6 +3,7 @@ use crate::__internal__::Append;
 use rustc_hash::FxHashMap;
 
 
+#[derive(Clone)]
 pub struct Headers {
     standard: Box<[Option<Cow<'static, str>>; N_SERVER_HEADERS]>,
     custom:   Option<Box<FxHashMap<&'static str, Cow<'static, str>>>>,
@@ -531,22 +532,17 @@ const _: () = {
         }
     }
 
-    impl Clone for Headers {
-        fn clone(&self) -> Self {
-            Self::from_iter(
-                self.iter()
-                    .map(|(k, v)| (
-                        unsafe {Header::from_bytes(k.as_bytes()).unwrap_unchecked()},
-                        String::from(v)
-                    )))
-        }
-    }
-
     impl Headers {
-        pub fn from_iter(iter: impl IntoIterator<Item = (Header, impl Into<Cow<'static, str>>)>) -> Self {
+        pub fn from_iter(iter: impl IntoIterator<Item = (
+            &'static str,
+            impl Into<Cow<'static, str>>)>
+        ) -> Self {
             let mut this = Headers::new();
             for (k, v) in iter {
-                this.insert(k, v.into())
+                match Header::from_bytes(k.as_bytes()) {
+                    Some(h) => this.insert(h, v.into()),
+                    None    => {this.set().custom(k, v.into());}
+                }
             }
             this
         }
@@ -566,3 +562,21 @@ const _: () = {
         }
     }
 };
+
+#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
+#[cfg(feature="rt_worker")]
+#[cfg(test)]
+#[test] fn test_response_headers_into_worker() {
+    assert_eq!(
+        Into::<::worker::Headers>::into(Headers::from_iter([
+            ("Content-Type", "application/json"),
+            ("Content-Length", "42"),
+            ("Vary", "Origin"),
+        ])).0,
+        ::worker::Headers::from_iter([
+            ("Content-Type", "application/json"),
+            ("Content-Length", "42"),
+            ("Vary", "Origin"),
+        ]).0
+    );
+}
