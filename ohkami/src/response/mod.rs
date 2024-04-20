@@ -5,7 +5,7 @@ mod headers;
 pub use headers::{Headers as ResponseHeaders};
 
 #[cfg(any(feature="testing", feature="DEBUG"))]
-#[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
+#[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_worker"))]
 pub use headers::Header as ResponseHeader;
 
 mod into_response;
@@ -274,6 +274,21 @@ const _: () = {
                 .ok_or_else(|| Response::BadRequest())?
                 .map_err(|e| {eprintln!("{e}"); Response::BadRequest()})?;
             Ok(value)
+        }
+    }
+};
+
+#[cfg(feature="rt_worker")]
+const _: () = {
+    impl Into<::worker::Response> for Response {
+        #[inline(always)]
+        fn into(self) -> ::worker::Response {
+            match self.content {
+                Some(bytes) => ::worker::Response::from_bytes(bytes.into()),
+                None        => ::worker::Response::empty(),
+            }.unwrap()
+                .with_status(self.status.code())
+                .with_headers(self.headers.into())
         }
     }
 };

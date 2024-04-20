@@ -6,7 +6,7 @@
 <br>
 
 - *macro-less and type-safe* APIs for intuitive and declarative code
-- *multi runtime* support：`tokio`, `async-std`
+- *multi runtime* support：`tokio`, `async-std`, `worker` (Cloudflare Workers)
 
 <div align="right">
     <a href="https://github.com/kana-rus/ohkami/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/crates/l/ohkami.svg" /></a>
@@ -24,7 +24,7 @@
 # `async-std` is available by feature "rt_async-std".
 
 [dependencies]
-ohkami = { version = "0.16", features = ["rt_tokio"] }
+ohkami = { version = "0.17", features = ["rt_tokio"] }
 tokio  = { version = "1",    features = ["full"] }
 ```
 
@@ -62,6 +62,46 @@ $ cargo run
 $ curl http://localhost:3000/healthz
 $ curl http://localhost:3000/hello/your_name
 Hello, your_name!
+```
+
+<br>
+
+## Cloudflare Workers is supported by `rt_worker` feature
+You can easily write ohkami app and deploy to Cloudflare Workers :
+
+```sh
+npm create cloudflare ./my-ohkami-worker -- --template https://github.com/kana-rus/ohkami-templates/worker
+```
+
+Then your `./my-ohkami-worker` has `wrangler.toml`, `package.json` and
+
+`Cargo.toml`
+```toml
+# ...
+
+[dependencies]
+ohkami = { version = "0.17", features = ["rt_worker"] }
+worker = { version = "0.1" }
+
+# ...
+```
+
+`src/lib.rs`
+```rust,ignore
+use ohkami::prelude::*;
+
+#[ohkami::worker]
+async fn my_worker() -> Ohkami {
+    Ohkami::new((
+        "/".GET(|| async {"Hello, world!"}),
+    ))
+}
+```
+
+You can deploy this by
+
+```sh
+npx wrangler deploy
 ```
 
 <br>

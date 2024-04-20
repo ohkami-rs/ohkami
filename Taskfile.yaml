@@ -39,6 +39,15 @@ tasks:
       - cargo test
       - docker compose -f ./realworld/docker-compose.yml down
 
+  test_no_rt:
+    vars:
+      MAYBE_NIGHTLY:
+        sh: cargo version | grep -q 'nightly' && echo 'nightly' || echo ''
+    dir: ohkami
+    cmds:
+      - cargo test --lib --no-default-features --features DEBUG,{{.MAYBE_NIGHTLY}}
+      - cargo test --lib --no-default-features --features DEBUG,testing,{{.MAYBE_NIGHTLY}}
+
   test_rt_tokio:
     vars:
       MAYBE_NIGHTLY:
@@ -57,8 +66,26 @@ tasks:
       - cargo test --lib --no-default-features --features rt_async-std,DEBUG,{{.MAYBE_NIGHTLY}}
       - cargo test --lib --no-default-features --features rt_async-std,DEBUG,testing,{{.MAYBE_NIGHTLY}}
 
+  test_rt_worker:
+    vars:
+      MAYBE_NIGHTLY:
+        sh: cargo version | grep -q 'nightly' && echo 'nightly' || echo ''
+    dir: ohkami
+    cmds:
+      - cargo test --lib --no-default-features --features rt_worker,DEBUG,{{.MAYBE_NIGHTLY}}
+      - cargo test --lib --no-default-features --features rt_worker,DEBUG,testing,{{.MAYBE_NIGHTLY}}
+
 #### checks ####
   # Assure buildability without "DEBUG" feature
+
+  check_no_rt:
+    vars:
+      MAYBE_NIGHTLY:
+        sh: cargo version | grep -q 'nightly' && echo 'nightly' || echo ''
+    dir: ohkami
+    cmds:
+      - cargo check --lib --no-default-features --features {{.MAYBE_NIGHTLY}}
+      - cargo check --lib --no-default-features --features testing,{{.MAYBE_NIGHTLY}}
 
   check_rt_tokio:
     vars:
@@ -77,3 +104,12 @@ tasks:
     cmds:
       - cargo check --lib --no-default-features --features rt_async-std,{{.MAYBE_NIGHTLY}}
       - cargo check --lib --no-default-features --features rt_async-std,testing,{{.MAYBE_NIGHTLY}}
+
+  check_rt_worker:
+    vars:
+      MAYBE_NIGHTLY:
+        sh: cargo version | grep -q 'nightly' && echo 'nightly' || echo ''
+    dir: ohkami
+    cmds:
+      - cargo check --lib --no-default-features --features rt_worker,{{.MAYBE_NIGHTLY}}
+      - cargo check --lib --no-default-features --features rt_worker,testing,{{.MAYBE_NIGHTLY}}

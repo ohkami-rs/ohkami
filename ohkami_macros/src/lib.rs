@@ -1,7 +1,16 @@
+mod worker;
 mod serde;
 mod query;
 mod payload;
 mod from_request;
+
+
+#[proc_macro_attribute]
+pub fn worker(_: proc_macro::TokenStream, ohkami_fn: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    worker::worker(ohkami_fn.into())
+        .unwrap_or_else(syn::Error::into_compile_error)
+        .into()
+}
 
 
 /// The *perfect* reexport of [serde](https://crates.io/crates/serde)'s `Serialize`.

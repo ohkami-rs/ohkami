@@ -1,25 +1,25 @@
-use std::mem::MaybeUninit;
 use std::borrow::Cow;
 use ohkami_lib::percent_decode;
 use super::Slice;
 
 
+#[derive(PartialEq)]
 pub struct QueryParams(
     /// raw bytes of query params with leading '?' cut
     /// 
     /// ex) name=ohkami&type=framework
-    MaybeUninit<Slice>
+    Slice
 );
 
 impl QueryParams {
-    #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
-    #[inline(always)] pub(crate) fn new(bytes: &[u8]) -> Self {
-        Self(MaybeUninit::new(unsafe {Slice::from_bytes(bytes)}))
+    #[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_worker"))]
+    #[inline(always)] pub(crate) unsafe fn new(bytes: &[u8]) -> Self {
+        Self(unsafe {Slice::from_bytes(bytes)})
     }
 
     /// SAFETY: The `QueryParams` is already **INITIALIZED**.
     #[inline(always)] pub(crate) unsafe fn parse<'q, T: serde::Deserialize<'q>>(&'q self) -> Result<T, impl serde::de::Error> {
-        ohkami_lib::serde_urlencoded::from_bytes(self.0.assume_init_ref().as_bytes())
+        ohkami_lib::serde_urlencoded::from_bytes(self.0.as_bytes())
     }
 
     /// Returns an iterator of maybe-percent-decoded (key, value).
@@ -36,7 +36,7 @@ impl QueryParams {
             }
         }
 
-        self.0.assume_init_ref().as_bytes()
+        self.0.as_bytes()
             .split(|b| b==&b'&')
             .map(|kv| {
                 let (k, v) = kv.split_at(
@@ -50,21 +50,6 @@ impl QueryParams {
 #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
 #[cfg(test)]
 const _: () = {
-    impl PartialEq for QueryParams {
-        fn eq(&self, other: &Self) -> bool {
-            let (this, other) = unsafe {(
-                self.iter().collect::<Vec<_>>(),
-                other.iter().collect::<Vec<_>>()
-            )};
-            for kv in this {
-                if other.iter().find(|o_kv| o_kv == &&kv).is_none() {
-                    return false
-                }
-            }
-            true
-        }
-    }
-
     impl<const N: usize> From<[(&'static str, &'static str); N]> for QueryParams {
         fn from(kvs: [(&'static str, &'static str); N]) -> Self {
             use ohkami_lib::percent_encode;
@@ -78,7 +63,7 @@ const _: () = {
                 .collect::<Vec<_>>()
                 .join("&");
 
-            QueryParams::new(Box::leak(raw.into_boxed_str()).as_bytes())
+            unsafe {QueryParams::new(Box::leak(raw.into_boxed_str()).as_bytes())}
         }
     }
 };

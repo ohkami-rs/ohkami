@@ -10,8 +10,10 @@ pub enum Method {
 }
 
 impl Method {
-    #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
-    #[inline] pub(crate) fn from_bytes(bytes: &[u8]) -> Option<Self> {
+    #[cfg(any(
+        all(feature="testing",feature="rt_worker"),
+        feature="rt_tokio",feature="rt_async-std"))]
+    #[inline(always)] pub(crate) const fn from_bytes(bytes: &[u8]) -> Option<Self> {
         match bytes {
             b"GET"     => Some(Self::GET),
             b"PUT"     => Some(Self::PUT),
@@ -20,6 +22,19 @@ impl Method {
             b"DELETE"  => Some(Self::DELETE),
             b"HEAD"    => Some(Self::HEAD),
             b"OPTIONS" => Some(Self::OPTIONS),
+            _ => None
+        }
+    }
+    #[cfg(feature="rt_worker")]
+    #[inline(always)] pub(crate) const fn from_worker(w: ::worker::Method) -> Option<Self> {
+        match w {
+            ::worker::Method::Get     => Some(Self::GET),
+            ::worker::Method::Put     => Some(Self::PUT),
+            ::worker::Method::Post    => Some(Self::POST),
+            ::worker::Method::Patch   => Some(Self::PATCH),
+            ::worker::Method::Delete  => Some(Self::DELETE),
+            ::worker::Method::Head    => Some(Self::HEAD),
+            ::worker::Method::Options => Some(Self::OPTIONS),
             _ => None
         }
     }

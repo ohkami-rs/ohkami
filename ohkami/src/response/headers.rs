@@ -552,3 +552,17 @@ const _: () = {
         }
     }
 };
+
+#[cfg(feature="rt_worker")]
+const _: () = {
+    impl Into<::worker::Headers> for Headers {
+        #[inline(always)]
+        fn into(self) -> ::worker::Headers {
+            let mut h = ::worker::Headers::new();
+            for (k, v) in self.iter() {
+                h.append(k, v).unwrap()
+            }
+            h
+        }
+    }
+};

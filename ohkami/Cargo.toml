@@ -1,6 +1,6 @@
 [package]
 name          = "ohkami"
-version       = "0.16.0"
+version       = "0.17.0"
 edition       = "2021"
 authors       = ["kanarus <kanarus786@gmail.com>"]
 description   = "Build web app in intuitive and declarative code"
@@ -17,10 +17,11 @@ features      = ["rt_tokio"]
 
 [dependencies]
 ohkami_lib    = { version = "=0.2.0", path = "../ohkami_lib" }
-ohkami_macros = { version = "=0.7.0", path = "../ohkami_macros" }
+ohkami_macros = { version = "=0.7.1", path = "../ohkami_macros" }
 
 tokio         = { version = "1", optional = true, features = ["net", "rt", "io-util", "sync", "time"] }
 async-std     = { version = "1", optional = true }
+worker        = { version = "0.1.0", optional = true }
 
 byte_reader   = { workspace = true }
 serde         = { workspace = true }
@@ -35,8 +36,11 @@ sha2          = { version = "0.10.8", default-features = false }
 
 [features]
 default       = ["testing"]
+
 rt_tokio      = ["dep:tokio"]
 rt_async-std  = ["dep:async-std"]
+rt_worker     = ["dep:worker"]
+
 nightly       = []
 testing       = []
 #websocket    = ["dep:sha1"]
@@ -51,7 +55,8 @@ DEBUG = [
 #default = [
 #    "testing",
 #    #"websocket",
-#    "rt_tokio",
+#    #"rt_tokio",
 #    #"rt_async-std",
+#    "rt_worker",
 #    "DEBUG",
 #]
