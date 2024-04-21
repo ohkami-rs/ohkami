@@ -84,12 +84,12 @@ tasks:
 
   check_no_rt:
     vars:
-      MAYBE_NIGHTLY:
-        sh: cargo version | grep -q 'nightly' && echo 'nightly' || echo ''
+      MAYBE_NIGHTLY_FEATURE:
+        sh: cargo version | grep -q 'nightly' && echo '--features nightly' || echo ''
     dir: ohkami
     cmds:
-      - cargo check --lib --no-default-features --features {{.MAYBE_NIGHTLY}}
-      - cargo check --lib --no-default-features --features testing,{{.MAYBE_NIGHTLY}}
+      - cargo check --lib --no-default-features {{.MAYBE_NIGHTLY_FEATURE}}
+      - cargo check --lib --no-default-features {{.MAYBE_NIGHTLY_FEATURE}},testing
 
   check_rt_tokio:
     vars:
