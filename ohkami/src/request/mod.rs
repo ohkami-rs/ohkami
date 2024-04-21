@@ -385,8 +385,8 @@ impl Request {
 
     #[inline(always)] pub fn payload<
         'req, P: Payload + serde::Deserialize<'req> + 'req
-    >(&'req self) -> Result<P, impl serde::de::Error + 'req> {
-        P::extract(self).ok_or_else(|| serde::de::Error::custom("Payload is required"))?
+    >(&'req self) -> Option<Result<P, impl serde::de::Error + 'req>> {
+        P::extract(self)
     }
 
     /// Memorize any data within this request object
