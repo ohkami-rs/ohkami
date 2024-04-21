@@ -419,28 +419,28 @@ impl Request {
 const _: () = {
     impl std::fmt::Debug for Request {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            let queries = self.queries()
-                .map(|(k, v)| format!("{k}: {v}"))
-                .collect::<Vec<_>>();
-
-            let headers = self.headers.iter()
-                .map(|(k, v)| format!("{k}: {v}"))
-                .collect::<Vec<_>>();
+            // let queries = self.queries()
+            //     .map(|(k, v)| format!("{k}: {v}"))
+            //     .collect::<Vec<_>>();
+// 
+            // let headers = self.headers.iter()
+            //     .map(|(k, v)| format!("{k}: {v}"))
+            //     .collect::<Vec<_>>();
 
             if let Some(payload) = self.payload.as_ref().map(|cs| unsafe {cs.as_bytes()}) {
                 f.debug_struct("Request")
                     .field("method",  &self.method)
                     .field("path",    &self.path())
-                    .field("queries", &queries)
-                    .field("headers", &headers)
+                    .field("queries", &self.query)
+                    .field("headers", &self.headers)
                     .field("payload", &String::from_utf8_lossy(payload))
                     .finish()
             } else {
                 f.debug_struct("Request")
                     .field("method",  &self.method)
                     .field("path",    &self.path())
-                    .field("queries", &queries)
-                    .field("headers", &headers)
+                    .field("queries", &self.query)
+                    .field("headers", &self.headers)
                     .finish()
             }
         }

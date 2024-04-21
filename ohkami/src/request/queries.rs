@@ -80,3 +80,11 @@ const _: () = {
         }
     }
 };
+
+const _: () = {
+    impl std::fmt::Debug for QueryParams {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            f.debug_map().entries(unsafe {self.iter()}).finish()
+        }
+    }
+};

@@ -420,3 +420,11 @@ impl Headers {
         }
     }
 }
+
+const _: () = {
+    impl std::fmt::Debug for Headers {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            f.debug_map().entries(self.iter()).finish()
+        }
+    }
+};
