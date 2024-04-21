@@ -85,7 +85,7 @@ tasks:
   check_no_rt:
     vars:
       MAYBE_NIGHTLY_FEATURE:
-        sh: cargo version | grep -q 'nightly' && echo '--features nightly' || echo ''
+        sh: cargo version | grep -q 'nightly' && echo '--features nightly,testing' || echo '--features nightly'
     dir: ohkami
     cmds:
       - cargo check --lib --no-default-features {{.MAYBE_NIGHTLY_FEATURE}}
