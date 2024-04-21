@@ -276,12 +276,11 @@ impl Request {
         });
         // SAFETY: Just calling for request bytes and `self.__url__` is already initialized
         unsafe {let __url__ = self.__url__.assume_init_ref();
-
             let path  = Path::from_request_bytes(__url__.path().as_bytes());
-            let query = __url__.query().map(|str| Box::new(QueryParams::new(str.as_bytes())));
-            self.path  = path;
+            let query = __url__.query().map(|str| QueryParams::new(str.as_bytes()));
+            self.path = path;
             if let Some(query) = query {
-                self.query = Some(query);
+                self.query = query;
             }
         }
 
@@ -335,12 +334,11 @@ impl Request {
 
         // SAFETY: Just calling for request bytes and `self.__url__` is already initialized
         unsafe {let __url__ = self.__url__.assume_init_ref();
-
             let path  = Path::from_request_bytes(__url__.path().as_bytes());
-            let query = __url__.query().map(|str| Box::new(QueryParams::new(str.as_bytes())));
+            let query = __url__.query().map(|str| QueryParams::new(str.as_bytes()));
             self.path = path;
             if let Some(query) = query {
-                self.query = Some(query);
+                self.query = query;
             }
         }
 
@@ -419,14 +417,6 @@ impl Request {
 const _: () = {
     impl std::fmt::Debug for Request {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            // let queries = self.queries()
-            //     .map(|(k, v)| format!("{k}: {v}"))
-            //     .collect::<Vec<_>>();
-// 
-            // let headers = self.headers.iter()
-            //     .map(|(k, v)| format!("{k}: {v}"))
-            //     .collect::<Vec<_>>();
-
             if let Some(payload) = self.payload.as_ref().map(|cs| unsafe {cs.as_bytes()}) {
                 f.debug_struct("Request")
                     .field("method",  &self.method)
