@@ -4,14 +4,18 @@ tasks:
   test:
     deps:
       - test_doc
+      - test_examples
+      - test_no_rt
       - test_rt_tokio
       - test_rt_async-std
-      - test_examples
+      - test_rt_worker
 
   check:
     deps:
+      - check_no_rt
       - check_rt_tokio
       - check_rt_async-std
+      - check_rt_worker
 
   bench_dryrun:
     dir: benches
@@ -80,12 +84,14 @@ tasks:
 
   check_no_rt:
     vars:
-      MAYBE_NIGHTLY:
-        sh: cargo version | grep -q 'nightly' && echo 'nightly' || echo ''
+      MAYBE_NIGHTLY_FEATURES:
+        sh: cargo version | grep -q 'nightly' && echo '--features nightly' || echo ''
+      MAYBE_NIGHTLY_FEATURES_WITH_TESTING:
+        sh: cargo version | grep -q 'nightly' && echo '--features nightly,testing' || echo '--features testing'
     dir: ohkami
     cmds:
-      - cargo check --lib --no-default-features --features {{.MAYBE_NIGHTLY}}
-      - cargo check --lib --no-default-features --features testing,{{.MAYBE_NIGHTLY}}
+      - cargo check --lib --no-default-features {{.MAYBE_NIGHTLY_FEATURES}}
+      - cargo check --lib --no-default-features {{.MAYBE_NIGHTLY_FEATURES_WITH_TESTING}}
 
   check_rt_tokio:
     vars:
