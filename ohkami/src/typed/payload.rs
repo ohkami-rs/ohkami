@@ -70,15 +70,27 @@ pub trait Payload: Sized {
     type Type: PayloadType;
 
     #[inline]
-    fn extract<'req>(req: &'req Request) -> Result<Self, impl crate::serde::de::Error>
+    fn extract<'req>(req: &'req Request) -> Option<Result<Self, impl crate::serde::de::Error>>
     where Self: Deserialize<'req> {
-        if req.headers.ContentType().is_some_and(|ct|
+        let bytes = req.payload.as_ref()?;
+
+        Some(if req.headers.ContentType().is_some_and(|ct|
             ct.starts_with(<Self::Type>::MIME_TYPE)
-        ) && req.payload.is_some() {
-            <Self::Type>::parse(unsafe {req.payload.as_ref().unwrap_unchecked().as_bytes()})
+        ) {
+            <Self::Type>::parse(unsafe {bytes.as_bytes()})
         } else {
-            Err((|| crate::serde::de::Error::custom(format!("{} content is required", <Self::Type>::MIME_TYPE)))())
-        }
+            #[cfg(debug_assertions)] {
+                eprintln!("Expected `{}` payload but found {}",
+                    <Self::Type>::MIME_TYPE,
+                    req.headers.ContentType()
+                        .map(|ct| format!("`{ct}`"))
+                        .unwrap_or(String::from("nothing"))
+                )
+            }
+            Err((|| crate::serde::de::Error::custom(format!(
+                "{} payload is required", <Self::Type>::MIME_TYPE
+            )))())
+        })
     }
 
     #[inline]
@@ -138,36 +150,6 @@ pub trait PayloadType {
     fn bytes<T: Serialize>(value: &T) -> Result<Vec<u8>, impl crate::serde::ser::Error>;
 }
 
-impl<P: Payload> Payload for Option<P> {
-    type Type = P::Type;
-
-    fn extract<'req>(req: &'req Request) -> Result<Self, impl crate::serde::de::Error>
-    where Self: Deserialize<'req> {
-        match &req.payload {
-            None        => Ok(None),
-            Some(bytes) => req.headers.ContentType().is_some_and(|ct| ct.starts_with(<Self::Type>::MIME_TYPE))
-                .then_some(<P::Type>::parse(unsafe {bytes.as_bytes()}))
-                .ok_or_else(|| crate::serde::de::Error::custom(format!("{} content is required", <Self::Type>::MIME_TYPE)))?
-        }
-    }
-
-    fn inject(&self, res: &mut Response) -> Result<(), impl crate::serde::ser::Error>
-    where Self: Serialize {
-        match self {
-            None    => Ok(()),
-            Some(_) => match <Self::Type>::bytes(self) {
-                Err(err)  => Err(err),
-                Ok(bytes) => Ok({
-                    res.headers.set()
-                        .ContentType(<Self::Type>::CONTENT_TYPE)
-                        .ContentLength(bytes.len().to_string());
-                    res.content = Some(bytes.into());
-                }),
-            }
-        }
-    }
-}
-
 const _: () = {
     impl<'req, P> FromRequest<'req> for P
     where
@@ -176,11 +158,11 @@ const _: () = {
         type Error = Response;
 
         #[inline(always)]
-        fn from_request(req: &'req Request) -> Result<Self, Self::Error> {
-            Self::extract(req).map_err(|e| {
+        fn from_request(req: &'req Request) -> Option<Result<Self, Self::Error>> {
+            Self::extract(req).map(|result| result.map_err(|e| {
                 eprintln!("Failed to get expected payload: {e}");
                 Response::BadRequest()
-            })
+            }))
         }
     }
 

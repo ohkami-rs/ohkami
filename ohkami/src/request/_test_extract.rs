@@ -20,20 +20,12 @@ struct User<'req> {
 struct HelloQuery<'req> {
     name:   &'req str,
     repeat: Option<usize>,
-} const _: () = {
-    impl<'req> crate::FromRequest<'req> for HelloQuery<'req> {
-        type Error = Response;
-        fn from_request(req: &'req Request) -> Result<Self, Self::Error> {
-            req.query().map_err(|_| Response::BadRequest())
-        }
+} impl<'req> crate::FromRequest<'req> for HelloQuery<'req> {
+    type Error = Response;
+    fn from_request(req: &'req Request) -> Option<Result<Self, Self::Error>> {
+        req.query().map(|result| result.map_err(|_| Response::BadRequest()))
     }
-    impl<'req> crate::FromRequest<'req> for Option<HelloQuery<'req>> {
-        type Error = Response;
-        fn from_request(req: &'req Request) -> Result<Self, Self::Error> {
-            req.query().map_err(|_| Response::BadRequest())
-        }
-    }
-};
+}
 
 #[crate::__rt__::test] async fn extract_required_payload() {
     async fn create_user(
@@ -96,24 +88,24 @@ struct HelloQuery<'req> {
     }
 
     let t = Ohkami::new((
-        "/".POST(hello),
+        "/".GET(hello),
     )).test();
 
     {
-        let req = TestRequest::POST("/")
+        let req = TestRequest::GET("/")
             .query("name", "ohkami");
         let res = t.oneshot(req).await;
         assert_eq!(res.text(), Some("Hello, ohkami!"));
     }
 
     {
-        let req = TestRequest::POST("/");
+        let req = TestRequest::GET("/");
         let res = t.oneshot(req).await;
         assert_eq!(res.text(), Some("no query"));
     }
 
     {
-        let req = TestRequest::POST("/")
+        let req = TestRequest::GET("/")
             .query("name",   "ohkami")
             .query("repeat", "3");
         let res = t.oneshot(req).await;
@@ -121,5 +113,4 @@ struct HelloQuery<'req> {
             "Hello, ohkami!Hello, ohkami!Hello, ohkami!"
         ));
     }
-
 }

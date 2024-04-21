@@ -82,12 +82,23 @@ pub trait FromRequest<'req>: Sized {
     /// If this extraction never fails, `std::convert::Infallible` is recomended.
     type Error: IntoResponse;
     
-    fn from_request(req: &'req Request) -> Result<Self, Self::Error>;
+    fn from_request(req: &'req Request) -> Option<Result<Self, Self::Error>>;
+
 } const _: () = {
     impl<'req> FromRequest<'req> for &'req Request {
         type Error = std::convert::Infallible;
-        fn from_request(req: &'req Request) -> Result<Self, Self::Error> {
-            Ok(req)
+        fn from_request(req: &'req Request) -> Option<Result<Self, Self::Error>> {
+            Some(Ok(req))
+        }
+    }
+
+    impl<'req, FR: FromRequest<'req>> FromRequest<'req> for Option<FR> {
+        type Error = FR::Error;
+        fn from_request(req: &'req Request) -> Option<Result<Self, Self::Error>> {
+            match FR::from_request(req) {
+                None     => Some(Ok(None)),
+                Some(fr) => Some(fr.map(Some))
+            }
         }
     }
 };

@@ -379,14 +379,14 @@ impl Request {
     #[inline] pub fn queries(&self) -> impl Iterator<Item = (Cow<'_, str>, Cow<'_, str>)> {
         unsafe {self.query.iter()}
     }
-    #[inline] pub fn query<'req, Q: serde::Deserialize<'req>>(&'req self) -> Result<Q, impl serde::de::Error> {
+    #[inline] pub fn query<'req, Q: serde::Deserialize<'req>>(&'req self) -> Option<Result<Q, impl serde::de::Error>> {
         unsafe {self.query.parse()}
     }
 
     #[inline(always)] pub fn payload<
         'req, P: Payload + serde::Deserialize<'req> + 'req
     >(&'req self) -> Result<P, impl serde::de::Error + 'req> {
-        P::extract(self)
+        P::extract(self).ok_or_else(|| serde::de::Error::custom("Payload is required"))?
     }
 
     /// Memorize any data within this request object

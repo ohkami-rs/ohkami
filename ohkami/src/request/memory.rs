@@ -89,18 +89,19 @@ super::FromRequest<'req> for Memory<'req, Data> {
     type Error = crate::FromRequestError;
 
     #[inline]
-    fn from_request(req: &'req crate::Request) -> Result<Self, Self::Error> {
-        req.memorized::<Data>()
-            .map(Memory)
-            .ok_or_else(|| {
+    fn from_request(req: &'req crate::Request) -> Option<Result<Self, Self::Error>> {
+        match req.memorized::<Data>().map(Memory) {
+            Some(d) => Some(Ok(d)),
+            None => {
                 #[cfg(debug_assertions)] {
                     eprintln!(
                         "`Memory` of type `{}` was not found",
-                        std::any::type_name::<Data>(),
-                    );
+                        std::any::type_name::<Data>()
+                    )
                 }
-                crate::FromRequestError::Static("Something went wrong")
-            })
+                None
+            }
+        }
     }
 }
 impl<'req, Data: Send + Sync + 'static> std::ops::Deref for Memory<'req, Data> {

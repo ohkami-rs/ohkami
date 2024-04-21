@@ -12,6 +12,7 @@ pub struct QueryParams(
 );
 
 impl QueryParams {
+    #[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_worker"))]
     pub(crate) fn init() -> Self {
         Self(None)
     }
@@ -26,11 +27,10 @@ impl QueryParams {
     /// SAFETY: The `QueryParams` is already **INITIALIZED**.
     #[inline(always)] pub(crate) unsafe fn parse<'q, T: serde::Deserialize<'q>>(
         &'q self
-    ) -> Result<T, impl serde::de::Error> {
-        ohkami_lib::serde_urlencoded::from_bytes(match &self.0 {
-            None        => b"",
-            Some(slice) => slice.as_bytes()
-        })
+    ) -> Option<Result<T, impl serde::de::Error>> {
+        self.0.as_ref().map(|slice| ohkami_lib::serde_urlencoded::from_bytes(
+            slice.as_bytes()
+        ))
     }
 
     /// Returns an iterator of maybe-percent-decoded (key, value).
