@@ -1,6 +1,7 @@
 use ohkami::{Ohkami, Route};
 use ohkami::{typed::Payload, builtin::payload::JSON};
 
+
 #[Payload(JSON/S)]
 struct User {
     id:   u64,
@@ -27,15 +28,10 @@ async fn multiple_users() -> Vec<User> {
     ]
 }
 
-async fn nullable_user() -> Option<User> {
-    None
-}
-
 #[tokio::main]
 async fn main() {
     Ohkami::new((
         "/single"  .GET(single_user),
         "/multiple".GET(multiple_users),
-        "/nullable".GET(nullable_user),
     )).howl("localhost:5000").await
 }

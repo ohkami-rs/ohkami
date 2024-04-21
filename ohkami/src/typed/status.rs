@@ -19,22 +19,11 @@ const _: () = {
         #[inline]
         fn into_response_with(self, status: Status) -> Response {
             let mut res = Response::with(status);
-            {
-                let content_type = <<Self as Payload>::Type as PayloadType>::CONTENT_TYPE;
-
-                let bytes = match <<Self as Payload>::Type as PayloadType>::bytes(&self) {
-                    Ok(bytes) => bytes,
-                    Err(e) => return (|| {
-                        eprintln!("Failed to serialize {} as {}: {e}", std::any::type_name::<Self>(), content_type);
-                        Response::InternalServerError()
-                    })()
-                };
-
-                res.headers.set()
-                    .ContentType(content_type)
-                    .ContentLength(bytes.len().to_string());
-
-                res.content = Some(std::borrow::Cow::Owned(bytes));
+            if let Err(e) = self.inject(&mut res) {
+                return (|| {
+                    eprintln!("Failed to serialize {} payload: {e}", P::Type::CONTENT_TYPE);
+                    Response::InternalServerError()
+                })()
             }
             res
         }
@@ -75,8 +64,8 @@ macro_rules! generate_statuses_as_types_containing_value {
         $(
             #[doc = "Type-safe `"]
             #[doc = $message]
-            #[doc = "` response with the `ResponseBody`.\n\n---\n"]
-            #[doc = "Use `()` (: default) for body to represent an empty-content response of the status: <br>"]
+            #[doc = "` response with the `ResponseBody` (`()` or `T: Payload + Serialize`).<br>"]
+            #[doc = "Use `()` (default) to represent an empty content."]
 
             #[allow(non_camel_case_types)]
             #[allow(private_bounds)]

@@ -1,4 +1,4 @@
-use crate::{FromRequest, IntoResponse, Response};
+use crate::{FromRequest, IntoResponse, Request, Response};
 use serde::{Serialize, Deserialize};
 
 
@@ -68,6 +68,44 @@ use serde::{Serialize, Deserialize};
 /// respectively.
 pub trait Payload: Sized {
     type Type: PayloadType;
+
+    #[inline]
+    fn extract<'req>(req: &'req Request) -> Option<Result<Self, impl crate::serde::de::Error>>
+    where Self: Deserialize<'req> {
+        let bytes = req.payload.as_ref()?;
+
+        Some(if req.headers.ContentType().is_some_and(|ct|
+            ct.starts_with(<Self::Type>::MIME_TYPE)
+        ) {
+            <Self::Type>::parse(unsafe {bytes.as_bytes()})
+        } else {
+            #[cfg(debug_assertions)] {
+                eprintln!("Expected `{}` payload but found {}",
+                    <Self::Type>::MIME_TYPE,
+                    req.headers.ContentType()
+                        .map(|ct| format!("`{ct}`"))
+                        .unwrap_or(String::from("nothing"))
+                )
+            }
+            Err((|| crate::serde::de::Error::custom(format!(
+                "{} payload is required", <Self::Type>::MIME_TYPE
+            )))())
+        })
+    }
+
+    #[inline]
+    fn inject(&self, res: &mut Response) -> Result<(), impl crate::serde::ser::Error>
+    where Self: Serialize {
+        match <Self::Type>::bytes(self) {
+            Err(err)  => Err(err),
+            Ok(bytes) => Ok({
+                res.headers.set()
+                    .ContentType(<Self::Type>::CONTENT_TYPE)
+                    .ContentLength(bytes.len().to_string());
+                res.content = Some(bytes.into());
+            }),
+        }
+    }
 }
 
 pub trait PayloadType {
@@ -120,14 +158,11 @@ const _: () = {
         type Error = Response;
 
         #[inline(always)]
-        fn from_request(req: &'req crate::Request) -> Result<Self, Self::Error> {
-            req.payload()
-                .ok_or_else(|| Response::BadRequest().text(
-                    format!("{} payload is required",
-                        <<Self as Payload>::Type as PayloadType>::MIME_TYPE
-                    )
-                ))?
-                .map_err(|e| Response::BadRequest().text(e.to_string()))
+        fn from_request(req: &'req Request) -> Option<Result<Self, Self::Error>> {
+            Self::extract(req).map(|result| result.map_err(|e| {
+                eprintln!("Failed to get expected payload: {e}");
+                Response::BadRequest()
+            }))
         }
     }
 
@@ -138,22 +173,11 @@ const _: () = {
         #[inline]
         fn into_response(self) -> Response {
             let mut res = Response::OK();
-            {
-                let content_type = <<Self as Payload>::Type as PayloadType>::CONTENT_TYPE;
-
-                let bytes = match <<Self as Payload>::Type as PayloadType>::bytes(&self) {
-                    Ok(bytes) => bytes,
-                    Err(e) => return (|| {
-                        eprintln!("Failed to serialize {} as {}: {e}", std::any::type_name::<Self>(), content_type);
-                        Response::InternalServerError()
-                    })()
-                };
-
-                res.headers.set()
-                    .ContentType(content_type)
-                    .ContentLength(bytes.len().to_string());
-
-                res.content = Some(std::borrow::Cow::Owned(bytes));
+            if let Err(e) = self.inject(&mut res) {
+                return (|| {
+                    eprintln!("Failed to serialize {} payload: {e}", <<Self as Payload>::Type>::MIME_TYPE);
+                    Response::InternalServerError()
+                })()
             }
             res
         }

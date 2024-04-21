@@ -27,16 +27,28 @@ pub(super) fn derive_from_request(target: TokenStream) -> Result<TokenStream> {
     let build = if s.semi_token.is_none() {/* struct S { 〜 } */
         let fields = s.fields.into_iter()
             .map(|Field { ident, ty, .. }| quote! {
-                #ident: <#ty as ::ohkami::FromRequest>::from_request(req)
-                    .map_err(::ohkami::IntoResponse::into_response)?
+                #ident: {
+                    match <#ty as ::ohkami::FromRequest>::from_request(req)? {
+                        ::std::result::Result::Ok(field) => field,
+                        ::std::result::Result::Err(err)  => return Some(::std::result::Result::Err(
+                            ::ohkami::IntoResponse::into_response(err)
+                        )),
+                    }
+                }
             });
         quote![ Self { #( #fields ),* } ]
 
     } else {/* struct T(); */
         let fields = s.fields.into_iter()
             .map(|Field { ty, .. }| quote! {
-                <#ty as ::ohkami::FromRequest>::from_request(req)
-                    .map_err(::ohkami::IntoResponse::into_response)?
+                {
+                    match <#ty as ::ohkami::FromRequest>::from_request(req)? {
+                        ::std::result::Result::Ok(field) => field,
+                        ::std::result::Result::Err(err)  => return Some(::std::result::Result::Err(
+                            ::ohkami::IntoResponse::into_response(err)
+                        )),
+                    }
+                }
             });
         quote![ Self(#( #fields ),*) ]
     };
@@ -46,8 +58,8 @@ pub(super) fn derive_from_request(target: TokenStream) -> Result<TokenStream> {
             #generics_where
         {
             type Error = ::ohkami::Response;
-            fn from_request(req: &#impl_lifetime ::ohkami::Request) -> ::std::result::Result<Self, Self::Error> {
-                ::std::result::Result::Ok(#build)
+            fn from_request(req: &#impl_lifetime ::ohkami::Request) -> ::std::option::Option<::std::result::Result<Self, Self::Error>> {
+                ::std::option::Option::Some(::std::result::Result::Ok(#build))
             }
         }
     })

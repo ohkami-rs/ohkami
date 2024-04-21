@@ -105,11 +105,11 @@ pub(super) fn Query(target: TokenStream) -> Result<TokenStream> {
                 type Error = ::ohkami::Response;
 
                 #[inline]
-                fn from_request(req: &#from_request_lifetime ::ohkami::Request) -> Result<Self, Self::Error> {
-                    let deserialized = req.query::<#cloned_name<#generics_params>>()
-                        .ok_or_else(|| ::ohkami::Response::BadRequest().text("Expected query parameters"))?
-                        .map_err(|e| ::ohkami::Response::BadRequest().text(::std::format!("Unexpected query parameters: {e}")))?;
-                    Ok(deserialized.into())
+                fn from_request(req: &#from_request_lifetime ::ohkami::Request) -> ::std::option::Option<::std::result::Result<Self, Self::Error>> {
+                    req.query::<#cloned_name<#generics_params>>().map(|result| result
+                        .map(Into::into)
+                        .map_err(|e| ::ohkami::Response::BadRequest().text(::std::format!("Unexpected query parameters: {e}")))
+                    )
                 }
             }
         };

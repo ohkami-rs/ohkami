@@ -66,10 +66,10 @@ pub enum FromRequestError {
 /// 
 /// impl ohkami::FromRequest<'_> for IsGETRequest {
 ///     type Error = std::convert::Infallible;
-///     fn from_request(req: &Request) -> Result<Self, Self::Error> {
-///         Ok(Self(
+///     fn from_request(req: &Request) -> Option<Result<Self, Self::Error>> {
+///         Some(Ok(Self(
 ///             req.method().isGET()
-///         ))
+///         )))
 ///     }
 /// }
 /// ```
@@ -79,15 +79,26 @@ pub enum FromRequestError {
 /// 
 /// NOTE: *Cannot impl both `FromRequest` and `FromParam`*.
 pub trait FromRequest<'req>: Sized {
-    /// If this extraction never fails, `std::convert::Infallible` is recomended as this `Error`.
+    /// If this extraction never fails, `std::convert::Infallible` is recomended.
     type Error: IntoResponse;
     
-    fn from_request(req: &'req Request) -> Result<Self, Self::Error>;
+    fn from_request(req: &'req Request) -> Option<Result<Self, Self::Error>>;
+
 } const _: () = {
     impl<'req> FromRequest<'req> for &'req Request {
         type Error = std::convert::Infallible;
-        fn from_request(req: &'req Request) -> Result<Self, Self::Error> {
-            Ok(req)
+        fn from_request(req: &'req Request) -> Option<Result<Self, Self::Error>> {
+            Some(Ok(req))
+        }
+    }
+
+    impl<'req, FR: FromRequest<'req>> FromRequest<'req> for Option<FR> {
+        type Error = FR::Error;
+        fn from_request(req: &'req Request) -> Option<Result<Self, Self::Error>> {
+            match FR::from_request(req) {
+                None     => Some(Ok(None)),
+                Some(fr) => Some(fr.map(Some))
+            }
         }
     }
 };
@@ -96,7 +107,7 @@ pub trait FromRequest<'req>: Sized {
 /// 
 /// NOTE: *Cannot impl both `FromRequest` and `FromParam`*.
 pub trait FromParam<'p>: Sized {
-    /// If this extraction never fails, `std::convert::Infallible` is recomended as this `Error`.
+    /// If this extraction never fails, `std::convert::Infallible` is recomended.
     type Error: IntoResponse;
 
     /// `param` is percent-decoded：
@@ -170,5 +181,3 @@ pub trait FromParam<'p>: Sized {
         };
     } unsigned_integers! { u8, u16, u32, u64, u128, usize }
 };
-
-
