@@ -97,10 +97,10 @@ pub(crate) const PAYLOAD_LIMIT: usize = 1 << 32;
 /// 
 /// impl<'req> FromRequest<'req> for IsGET {
 ///     type Error = std::convert::Infallible;
-///     fn from_request(req: &'req Request) -> Result<Self, Self::Error> {
-///         Ok(Self(
+///     fn from_request(req: &'req Request) -> Option<Result<Self, Self::Error>> {
+///         Some(Ok(Self(
 ///             req.method().isGET()
-///         ))
+///         )))
 ///     }
 /// }
 /// ```

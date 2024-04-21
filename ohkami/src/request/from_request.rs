@@ -66,10 +66,10 @@ pub enum FromRequestError {
 /// 
 /// impl ohkami::FromRequest<'_> for IsGETRequest {
 ///     type Error = std::convert::Infallible;
-///     fn from_request(req: &Request) -> Result<Self, Self::Error> {
-///         Ok(Self(
+///     fn from_request(req: &Request) -> Option<Result<Self, Self::Error>> {
+///         Some(Ok(Self(
 ///             req.method().isGET()
-///         ))
+///         )))
 ///     }
 /// }
 /// ```
