@@ -108,6 +108,12 @@ struct Problem<'s> {
 }
 
 #[test] fn deserialize_struct() {
+    assert_eq!(
+        None,
+        serde_urlencoded::from_bytes::<Option<User>>(
+            b""
+        ).unwrap()
+    );
     assert_eq!( 
         User {
             name:   Cow::Borrowed("ohkami"),

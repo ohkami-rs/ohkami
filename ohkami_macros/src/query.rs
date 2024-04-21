@@ -107,9 +107,25 @@ pub(super) fn Query(target: TokenStream) -> Result<TokenStream> {
                 #[inline]
                 fn from_request(req: &#from_request_lifetime ::ohkami::Request) -> Result<Self, Self::Error> {
                     let deserialized = req.query::<#cloned_name<#generics_params>>()
-                        .ok_or_else(|| ::ohkami::Response::BadRequest().text("Expected query parameters"))?
                         .map_err(|e| ::ohkami::Response::BadRequest().text(::std::format!("Unexpected query parameters: {e}")))?;
                     Ok(deserialized.into())
+                }
+            }
+
+            impl<
+                #from_request_impl_additional_lifetime
+                #generics_params
+            > ::ohkami::FromRequest<#from_request_lifetime> for ::std::option::Option<#name<#generics_params>>
+            where
+                #generics_where
+            {
+                type Error = ::ohkami::Response;
+
+                #[inline]
+                fn from_request(req: &#from_request_lifetime ::ohkami::Request) -> Result<Self, Self::Error> {
+                    let deserialized = req.query::<::std::option::Option<#cloned_name<#generics_params>>>()
+                        .map_err(|e| ::ohkami::Response::BadRequest().text(::std::format!("Unexpected query parameters: {e}")))?;
+                    Ok(deserialized.map(Into::into))
                 }
             }
         };

@@ -8,18 +8,29 @@ pub struct QueryParams(
     /// raw bytes of query params with leading '?' cut
     /// 
     /// ex) name=ohkami&type=framework
-    Slice
+    Option<Box<Slice>>
 );
 
 impl QueryParams {
+    pub(crate) fn init() -> Self {
+        Self(None)
+    }
+
     #[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_worker"))]
-    #[inline(always)] pub(crate) unsafe fn new(bytes: &[u8]) -> Self {
-        Self(unsafe {Slice::from_bytes(bytes)})
+    #[inline(always)] pub(crate) fn new(bytes: &[u8]) -> Self {
+        Self(Some(Box::new(unsafe {
+            Slice::from_bytes(bytes)
+        })))
     }
 
     /// SAFETY: The `QueryParams` is already **INITIALIZED**.
-    #[inline(always)] pub(crate) unsafe fn parse<'q, T: serde::Deserialize<'q>>(&'q self) -> Result<T, impl serde::de::Error> {
-        ohkami_lib::serde_urlencoded::from_bytes(self.0.as_bytes())
+    #[inline(always)] pub(crate) unsafe fn parse<'q, T: serde::Deserialize<'q>>(
+        &'q self
+    ) -> Result<T, impl serde::de::Error> {
+        ohkami_lib::serde_urlencoded::from_bytes(match &self.0 {
+            None        => b"",
+            Some(slice) => slice.as_bytes()
+        })
     }
 
     /// Returns an iterator of maybe-percent-decoded (key, value).
@@ -36,7 +47,7 @@ impl QueryParams {
             }
         }
 
-        self.0.as_bytes()
+        self.0.as_ref().map(|slice| slice.as_bytes()
             .split(|b| b==&b'&')
             .map(|kv| {
                 let eq = kv.iter().position(|b| b==&b'=').expect("invalid query params: missing `=`");
@@ -45,6 +56,7 @@ impl QueryParams {
                     decoded_utf8(unsafe {kv.get_unchecked(eq+1..)})
                 )
             })
+        ).into_iter().flatten()
     }
 }
 
@@ -64,7 +76,7 @@ const _: () = {
                 .collect::<Vec<_>>()
                 .join("&");
 
-            unsafe {QueryParams::new(Box::leak(raw.into_boxed_str()).as_bytes())}
+            QueryParams::new(Box::leak(raw.into_boxed_str()).as_bytes())
         }
     }
 };

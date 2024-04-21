@@ -75,8 +75,8 @@ macro_rules! generate_statuses_as_types_containing_value {
         $(
             #[doc = "Type-safe `"]
             #[doc = $message]
-            #[doc = "` response with the `ResponseBody`.\n\n---\n"]
-            #[doc = "Use `()` (: default) for body to represent an empty-content response of the status: <br>"]
+            #[doc = "` response with the `ResponseBody` (`()` or `T: Payload + Serialize`).<br>"]
+            #[doc = "Use `()` (default) to represent an empty content."]
 
             #[allow(non_camel_case_types)]
             #[allow(private_bounds)]

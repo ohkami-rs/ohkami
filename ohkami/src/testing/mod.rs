@@ -18,10 +18,10 @@
 //! #[cfg(test)]
 //! #[tokio::test]
 //! async fn test_my_ohkami() {
-//!     let mo = my_ohkami();
+//!     let t = my_ohkami().test();
 //! 
 //!     let req = TestRequest::GET("/");
-//!     let res = mo.oneshot(req).await;
+//!     let res = t.oneshot(req).await;
 //!     assert_eq!(res.status(), Status::OK);
 //!     assert_eq!(res.text(), Some("Hello, ohkami!"));
 //! }

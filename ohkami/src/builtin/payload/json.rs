@@ -59,10 +59,6 @@ impl PayloadType for JSON {
 }
 
 const _: (/* JSON payload utitlity impls */) = {
-    impl<P: Payload<Type = JSON>> Payload for Option<P> {
-        type Type = JSON;
-    }
-
     impl<P: Payload<Type = JSON>> Payload for Vec<P> {
         type Type = JSON;
     }

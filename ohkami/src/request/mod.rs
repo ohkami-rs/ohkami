@@ -18,10 +18,11 @@ mod from_request;
 pub use from_request::*;
 
 #[cfg(test)] mod _test_parse;
+#[cfg(test)] mod _test_extract;
 
 use ohkami_lib::{Slice, CowSlice, percent_decode_utf8};
 
-use crate::typed::{Payload, PayloadType};
+use crate::typed::Payload;
 
 #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
 use {
@@ -116,7 +117,7 @@ pub struct Request {
 
     method: Method,
     path:   Path,
-    query:  Option<Box<QueryParams>>,
+    query:  QueryParams,
     /// Headers of this request
     /// 
     /// - `.{Name}()`, `.custom({Name})` to get the value
@@ -130,9 +131,9 @@ pub struct Request {
     /// - `append({value})` to append
     /// 
     /// `{value}`: `String`, `&'static str`, `Cow<&'static, str>`
-    pub headers: RequestHeaders,
-    payload:     Option<CowSlice>,
-    store:       Store,
+    pub headers:        RequestHeaders,
+    pub(crate) payload: Option<CowSlice>,
+    store:              Store,
 }
 
 impl Request {
@@ -150,8 +151,8 @@ impl Request {
             ctx:     std::mem::MaybeUninit::uninit(),
 
             method:  Method::GET,
-            path:    unsafe {Path::null()},
-            query:   None,
+            path:    Path::null(),
+            query:   QueryParams::init(),
             headers: RequestHeaders::init(),
             payload: None,
             store:   Store::init(),
@@ -174,15 +175,15 @@ impl Request {
         };
 
         let query = (r.consume_oneof([" ", "?"]).unwrap() == 1)
-            .then(|| Box::new({
-                let q = unsafe {QueryParams::new(r.read_while(|b| b != &b' '))};
+            .then(|| {
+                let q = QueryParams::new(r.read_while(|b| b != &b' '));
                 #[cfg(debug_assertions)] {
                     r.consume(" ").unwrap();
                 } #[cfg(not(debug_assertions))] {
                     r.advance_by(1)
                 }
                 q
-            }));
+            });
 
         r.consume("HTTP/1.1\r\n").expect("Ohkami can only handle HTTP/1.1");
 
@@ -219,7 +220,9 @@ impl Request {
         Some({
             self.method  = method;
             self.path    = path;
-            self.query   = query;
+            if let Some(query) = query {
+                self.query = query
+            };
             self.headers = headers;
             self.payload = payload;
         })
@@ -373,20 +376,17 @@ impl Request {
         percent_decode_utf8(unsafe {self.path.as_bytes()}).expect("Path is not UTF-8")
     }
 
-    #[inline] pub fn query<'req, Q: serde::Deserialize<'req>>(&'req self) -> Option<Result<Q, impl serde::de::Error>> {
-        Some(unsafe {self.query.as_ref()?.parse()})
+    #[inline] pub fn queries(&self) -> impl Iterator<Item = (Cow<'_, str>, Cow<'_, str>)> {
+        unsafe {self.query.iter()}
     }
-    #[inline] pub fn queries(&self) -> Option<impl Iterator<Item = (Cow<'_, str>, Cow<'_, str>)>> {
-        Some(unsafe {self.query.as_ref()?.iter()})
+    #[inline] pub fn query<'req, Q: serde::Deserialize<'req>>(&'req self) -> Result<Q, impl serde::de::Error> {
+        unsafe {self.query.parse()}
     }
 
     #[inline(always)] pub fn payload<
         'req, P: Payload + serde::Deserialize<'req> + 'req
-    >(&'req self) -> Option<Result<P, impl serde::de::Error + 'req>> {
-        self.headers.ContentType()?.starts_with(<<P as Payload>::Type as PayloadType>::MIME_TYPE)
-            .then_some(<<P as Payload>::Type as PayloadType>::parse(unsafe {
-                self.payload.as_ref()?.as_bytes()
-            }))
+    >(&'req self) -> Result<P, impl serde::de::Error + 'req> {
+        P::extract(self)
     }
 
     /// Memorize any data within this request object
@@ -419,10 +419,9 @@ impl Request {
 const _: () = {
     impl std::fmt::Debug for Request {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            let queries = self.queries().map(|q| q
+            let queries = self.queries()
                 .map(|(k, v)| format!("{k}: {v}"))
-                .collect::<Vec<_>>()
-            ).unwrap_or_else(Vec::new);
+                .collect::<Vec<_>>();
 
             let headers = self.headers.iter()
                 .map(|(k, v)| format!("{k}: {v}"))

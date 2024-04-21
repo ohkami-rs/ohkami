@@ -55,7 +55,7 @@ fn metadataize(input: &str) -> Box<[u8; BUF_SIZE]> {
         __buf__: metadataize(CASE_1),
         method:  Method::GET,
         path:    Path::from_literal("/hello.html"),
-        query:   None,
+        query:   QueryParams::init(),
         headers: RequestHeaders::from_iters([
             (RequestHeader::Host,           "www.tutorialspoint.com"),
             (RequestHeader::UserAgent,      "Mozilla/4.0"),
@@ -83,7 +83,7 @@ fn metadataize(input: &str) -> Box<[u8; BUF_SIZE]> {
         __buf__: metadataize(CASE_2),
         method:  Method::POST,
         path:    Path::from_literal("/signup"),
-        query:   None,
+        query:   QueryParams::init(),
         headers: RequestHeaders::from_iters([
             (RequestHeader::Host,           "www.tutorialspoint.com"),
             (RequestHeader::UserAgent,      "Mozilla/4.0"),

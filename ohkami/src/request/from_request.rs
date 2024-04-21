@@ -79,7 +79,7 @@ pub enum FromRequestError {
 /// 
 /// NOTE: *Cannot impl both `FromRequest` and `FromParam`*.
 pub trait FromRequest<'req>: Sized {
-    /// If this extraction never fails, `std::convert::Infallible` is recomended as this `Error`.
+    /// If this extraction never fails, `std::convert::Infallible` is recomended.
     type Error: IntoResponse;
     
     fn from_request(req: &'req Request) -> Result<Self, Self::Error>;
@@ -96,7 +96,7 @@ pub trait FromRequest<'req>: Sized {
 /// 
 /// NOTE: *Cannot impl both `FromRequest` and `FromParam`*.
 pub trait FromParam<'p>: Sized {
-    /// If this extraction never fails, `std::convert::Infallible` is recomended as this `Error`.
+    /// If this extraction never fails, `std::convert::Infallible` is recomended.
     type Error: IntoResponse;
 
     /// `param` is percent-decoded：
@@ -170,5 +170,3 @@ pub trait FromParam<'p>: Sized {
         };
     } unsigned_integers! { u8, u16, u32, u64, u128, usize }
 };
-
-
