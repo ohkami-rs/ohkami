@@ -38,7 +38,7 @@ pub enum FromRequestError {
 
     impl IntoResponse for FromRequestError {
         fn into_response(self) -> Response {
-            Response::InternalServerError().text(match self {
+            Response::InternalServerError().with_text(match self {
                 Self::Owned(s)  => Cow::Owned(s),
                 Self::Static(s) => Cow::Borrowed(s),
             })

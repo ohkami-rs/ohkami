@@ -11,14 +11,14 @@ trait ResponseBody {
 const _: () = {
     impl ResponseBody for () {
         fn into_response_with(self, status: Status) -> Response {
-            Response::with(status)
+            Response::of(status)
         }
     }
 
     impl<P: Payload + Serialize> ResponseBody for P {
         #[inline]
         fn into_response_with(self, status: Status) -> Response {
-            let mut res = Response::with(status);
+            let mut res = Response::of(status);
             if let Err(e) = self.inject(&mut res) {
                 return (|| {
                     eprintln!("Failed to serialize {} payload: {e}", P::Type::CONTENT_TYPE);
@@ -41,13 +41,13 @@ const _: () = {
                 impl ResponseBody for $t {
                     #[inline]
                     fn into_response_with(self, status: Status) -> Response {
-                        Response::with(status).text(self)
+                        Response::of(status).with_text(self)
                     }
                 }
                 impl IntoResponse for $t {
                     #[inline]
                     fn into_response(self) -> Response {
-                        Response::OK().text(self)
+                        Response::OK().with_text(self)
                     }
                 }
             )*
@@ -178,7 +178,7 @@ macro_rules! generate_redirects {
 
             impl IntoResponse for $status {
                 #[inline] fn into_response(self) -> Response {
-                    let mut res = Response::with(Status::$status);
+                    let mut res = Response::of(Status::$status);
                     res.headers.set()
                         .Location(self.location);
                     res

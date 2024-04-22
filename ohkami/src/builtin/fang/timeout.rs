@@ -105,7 +105,7 @@ const _: () = {
                     Poll::Ready(res) => Poll::Ready(res.into_response()),
                     Poll::Pending    => match unsafe {self.map_unchecked_mut(|t| &mut t.sleep)}.poll(cx) {
                         Poll::Pending  => Poll::Pending,
-                        Poll::Ready(_) => Poll::Ready(Response::InternalServerError().text("Timeout")),
+                        Poll::Ready(_) => Poll::Ready(Response::InternalServerError().with_text("Timeout")),
                     }
                 }
             }

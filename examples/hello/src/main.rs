@@ -44,7 +44,7 @@ mod hello_handler {
     impl ohkami::IntoResponse for ValidationError {
         fn into_response(self) -> Response {
             match self {
-                Self::NameIsEmpty => Response::with(Status::BadRequest).text("`name` mustn't be empty")
+                Self::NameIsEmpty => Response::BadRequest().with_text("`name` mustn't be empty")
             }
         }
     }

@@ -35,7 +35,7 @@ pub trait IntoHandler<T> {
     <R as FromRequest>::from_request(unsafe {
         std::mem::transmute::<&'req _, &'fr _>(req)
     })
-        .ok_or_else(|| Response::BadRequest().text("missing something expected in request"))?
+        .ok_or_else(|| Response::BadRequest().with_text("missing something expected in request"))?
         .map_err(IntoResponse::into_response)
 }
 

@@ -6,7 +6,7 @@ use ohkami::builtin::{payload::Multipart, utils::File};
 struct FormTemplate;
 impl ohkami::IntoResponse for FormTemplate {
     fn into_response(self) -> Response {
-        Response::OK().html(include_str!("../form.html"))
+        Response::OK().with_html(include_str!("../form.html"))
     }
 }
 

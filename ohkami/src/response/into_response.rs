@@ -16,14 +16,13 @@ use crate::{Response, Status};
 /// }
 /// impl IntoResponse for MyResponse {
 ///     fn into_response(self) -> Response {
-///         Response::with(Status::OK)
-///             .text(self.message)
+///         Response::OK().with_text(self.message)
 ///     }
 /// }
 /// 
 /// async fn handler() -> MyResponse {
 ///     MyResponse {
-///         message: "Hello!".to_string()
+///         message: String::from("Hello!")
 ///     }
 /// }
 /// 
@@ -46,7 +45,7 @@ impl IntoResponse for Response {
 
 impl IntoResponse for Status {
     #[inline(always)] fn into_response(self) -> Response {
-        Response::with(self)
+        Response::of(self)
     }
 }
 

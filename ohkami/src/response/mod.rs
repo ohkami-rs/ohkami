@@ -69,8 +69,8 @@ use crate::__rt__::AsyncWriter;
 /// impl IntoResponse for AppError {
 ///     fn into_response(self) -> Response {
 ///         match self {
-///             Self::A(msg) => Response::InternalServerError().text(msg),
-///             Self::B(msg) => Response::BadRequest().text(msg),
+///             Self::A(msg) => Response::InternalServerError().with_text(msg),
+///             Self::B(msg) => Response::BadRequest().with_text(msg),
 ///         }
 ///     }
 /// }
@@ -103,7 +103,7 @@ pub struct Response {
     pub(crate) content: Option<Cow<'static, [u8]>>,
 } const _: () = {
     impl Response {
-        #[inline(always)] pub fn with(status: Status) -> Self {
+        #[inline(always)] pub fn of(status: Status) -> Self {
             Self {
                 status,
                 headers: ResponseHeaders::new(),
@@ -155,21 +155,38 @@ impl Response {
 }
 
 impl Response {
-    pub fn drop_content(&mut self) {
-        self.content = None;
+    pub fn drop_content(&mut self) -> Option<Cow<'static, [u8]>> {
+        let old_content = self.content.take();
         self.headers.set()
             .ContentType(None)
             .ContentLength(None);
+        old_content
     }
     pub fn without_content(mut self) -> Self {
         self.drop_content();
         self
     }
-
-    #[inline] pub fn text<Text: Into<Cow<'static, str>>>(mut self, text: Text) -> Self {
-        self.set_text(text);
+    pub fn set_content(&mut self,
+        content_type: &'static str,
+        content:      impl Into<Cow<'static, [u8]>>,
+    ) {
+        let content = content.into();
+        self.headers.set()
+            .ContentType(content_type)
+            .ContentLength(content.len().to_string());
+        self.content =Some(content);
+    }
+    pub fn with_content(mut self,
+        content_type: &'static str,
+        content:      impl Into<Cow<'static, [u8]>>,
+    ) -> Self {
+        self.set_content(content_type, content);
         self
     }
+    pub fn content(&self) -> Option<&[u8]> {
+        self.content.as_ref().map(Cow::as_ref)
+    }
+
     #[inline] pub fn set_text<Text: Into<Cow<'static, str>>>(&mut self, text: Text) {
         let body = text.into();
 
@@ -181,11 +198,11 @@ impl Response {
             Cow::Owned(string) => Cow::Owned(string.into_bytes()),
         });
     }
-
-    #[inline] pub fn html<HTML: Into<Cow<'static, str>>>(mut self, html: HTML) -> Self {
-        self.set_html(html);
+    #[inline] pub fn with_text<Text: Into<Cow<'static, str>>>(mut self, text: Text) -> Self {
+        self.set_text(text);
         self
     }
+
     #[inline] pub fn set_html<HTML: Into<Cow<'static, str>>>(&mut self, html: HTML) {
         let body = html.into();
 
@@ -197,11 +214,11 @@ impl Response {
             Cow::Owned(string) => Cow::Owned(string.into_bytes()),
         });
     }
-
-    #[inline] pub fn json<JSON: serde::Serialize>(mut self, json: JSON) -> Self {
-        self.set_json(json);
+    #[inline] pub fn with_html<HTML: Into<Cow<'static, str>>>(mut self, html: HTML) -> Self {
+        self.set_html(html);
         self
     }
+
     #[inline] pub fn set_json<JSON: serde::Serialize>(&mut self, json: JSON) {
         let body = ::serde_json::to_vec(&json).unwrap();
 
@@ -210,11 +227,12 @@ impl Response {
             .ContentLength(body.len().to_string());
         self.content = Some(Cow::Owned(body));
     }
-
-    pub unsafe fn json_str<JSONString: Into<Cow<'static, str>>>(mut self, json_str: JSONString) -> Self {
-        self.set_json_str(json_str);
+    #[inline] pub fn with_json<JSON: serde::Serialize>(mut self, json: JSON) -> Self {
+        self.set_json(json);
         self
     }
+
+    /// SAFETY: Argument `json_str` is a **valid JSON**
     pub unsafe fn set_json_str<JSONString: Into<Cow<'static, str>>>(&mut self, json_str: JSONString) {
         let body = match json_str.into() {
             Cow::Borrowed(str) => Cow::Borrowed(str.as_bytes()),
@@ -225,6 +243,11 @@ impl Response {
             .ContentType("application/json; charset=UTF-8")
             .ContentLength(body.len().to_string());
         self.content = Some(body);
+    }
+    /// SAFETY: Argument `json_str` is a **valid JSON**
+    pub unsafe fn with_json_str<JSONString: Into<Cow<'static, str>>>(mut self, json_str: JSONString) -> Self {
+        self.set_json_str(json_str);
+        self
     }
 }
 
