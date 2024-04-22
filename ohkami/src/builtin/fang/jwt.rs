@@ -238,40 +238,40 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
         type Payload = ::serde_json::Value;
 
         let mut parts = req
-            .headers.Authorization().ok_or_else(|| Response::with(Status::Unauthorized).text(UNAUTHORIZED_MESSAGE))?
-            .strip_prefix("Bearer ").ok_or_else(|| Response::with(Status::BadRequest))?
+            .headers.Authorization().ok_or_else(|| Response::of(Status::Unauthorized).with_text(UNAUTHORIZED_MESSAGE))?
+            .strip_prefix("Bearer ").ok_or_else(|| Response::of(Status::BadRequest))?
             .split('.');
 
         let header_part = parts.next()
-            .ok_or_else(|| Response::with(Status::BadRequest))?;
+            .ok_or_else(|| Response::of(Status::BadRequest))?;
         let header: Header = ::serde_json::from_slice(&base64::decode_url(header_part))
-            .map_err(|_| Response::with(Status::InternalServerError))?;
+            .map_err(|_| Response::of(Status::InternalServerError))?;
         if header.get("typ").is_some_and(|typ| !typ.as_str().unwrap_or_default().eq_ignore_ascii_case("JWT")) {
-            return Err(Response::with(Status::BadRequest))
+            return Err(Response::of(Status::BadRequest))
         }
         if header.get("cty").is_some_and(|cty| !cty.as_str().unwrap_or_default().eq_ignore_ascii_case("JWT")) {
-            return Err(Response::with(Status::BadRequest))
+            return Err(Response::of(Status::BadRequest))
         }
-        if header.get("alg").ok_or_else(|| Response::with(Status::BadRequest))? != self.alg_str() {
-            return Err(Response::with(Status::BadRequest))
+        if header.get("alg").ok_or_else(|| Response::of(Status::BadRequest))? != self.alg_str() {
+            return Err(Response::of(Status::BadRequest))
         }
 
         let payload_part = parts.next()
-            .ok_or_else(|| Response::with(Status::BadRequest))?;
+            .ok_or_else(|| Response::of(Status::BadRequest))?;
         let payload: Payload = ::serde_json::from_slice(&base64::decode_url(payload_part))
-            .map_err(|_| Response::with(Status::InternalServerError))?;
+            .map_err(|_| Response::of(Status::InternalServerError))?;
         let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs();
         if payload.get("nbf").is_some_and(|nbf| nbf.as_u64().unwrap_or_default() > now) {
-            return Err(Response::with(Status::Unauthorized).text(UNAUTHORIZED_MESSAGE))
+            return Err(Response::of(Status::Unauthorized).with_text(UNAUTHORIZED_MESSAGE))
         }
         if payload.get("exp").is_some_and(|exp| exp.as_u64().unwrap_or_default() <= now) {
-            return Err(Response::with(Status::Unauthorized).text(UNAUTHORIZED_MESSAGE))
+            return Err(Response::of(Status::Unauthorized).with_text(UNAUTHORIZED_MESSAGE))
         }
         if payload.get("iat").is_some_and(|iat| iat.as_u64().unwrap_or_default() > now) {
-            return Err(Response::with(Status::Unauthorized).text(UNAUTHORIZED_MESSAGE))
+            return Err(Response::of(Status::Unauthorized).with_text(UNAUTHORIZED_MESSAGE))
         }
 
-        let signature_part = parts.next().ok_or_else(|| Response::with(Status::BadRequest))?;
+        let signature_part = parts.next().ok_or_else(|| Response::of(Status::BadRequest))?;
         let requested_signature = base64::decode_url(signature_part);
 
         let is_correct_signature = {
@@ -304,10 +304,10 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
         };
         
         if !is_correct_signature {
-            return Err(Response::with(Status::Unauthorized).text(UNAUTHORIZED_MESSAGE))
+            return Err(Response::of(Status::Unauthorized).with_text(UNAUTHORIZED_MESSAGE))
         }
 
-        let payload = ::serde_json::from_value(payload).map_err(|_| Response::with(Status::InternalServerError))?;
+        let payload = ::serde_json::from_value(payload).map_err(|_| Response::of(Status::InternalServerError))?;
         Ok(payload)
     }
 }
@@ -407,7 +407,7 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
         impl IntoResponse for APIError {
             fn into_response(self) -> Response {
                 match self {
-                    Self::UserNotFound     => Response::with(Status::InternalServerError).text("User was not found"),
+                    Self::UserNotFound     => Response::of(Status::InternalServerError).with_text("User was not found"),
                 }
             }
         }

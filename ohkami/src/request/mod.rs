@@ -325,10 +325,10 @@ impl Request {
         self.ctx.write(ctx);
 
         self.method  = Method::from_worker(req.method())
-            .ok_or_else(|| Response::NotImplemented().text("ohkami doesn't support `CONNECT`, `TRACE` method"))?;
+            .ok_or_else(|| Response::NotImplemented().with_text("ohkami doesn't support `CONNECT`, `TRACE` method"))?;
 
         self.__url__.write(req.url()
-            .map_err(|_| Response::BadRequest().text("Invalid request URL"))?
+            .map_err(|_| Response::BadRequest().with_text("Invalid request URL"))?
         );
         #[cfg(feature="DEBUG")] worker::console_debug!("Load __url__: {:?}", self.__url__);
 
@@ -345,7 +345,7 @@ impl Request {
         self.headers.take_over(req.headers());
 
         self.payload = Some(CowSlice::Own(req.bytes().await
-            .map_err(|_| Response::InternalServerError().text("Failed to read request payload"))?));
+            .map_err(|_| Response::InternalServerError().with_text("Failed to read request payload"))?));
 
         Ok(())
     }
