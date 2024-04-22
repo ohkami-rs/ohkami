@@ -155,11 +155,12 @@ impl Response {
 }
 
 impl Response {
-    pub fn drop_content(&mut self) {
-        self.content = None;
+    pub fn drop_content(&mut self) -> Option<Cow<'static, [u8]>> {
+        let old_content = self.content.take();
         self.headers.set()
             .ContentType(None)
             .ContentLength(None);
+        old_content
     }
     pub fn without_content(mut self) -> Self {
         self.drop_content();
