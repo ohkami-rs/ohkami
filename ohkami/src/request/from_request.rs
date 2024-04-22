@@ -84,7 +84,8 @@ pub trait FromRequest<'req>: Sized {
     
     fn from_request(req: &'req Request) -> Option<Result<Self, Self::Error>>;
 
-} const _: () = {
+}
+const _: () = {
     impl<'req> FromRequest<'req> for &'req Request {
         type Error = std::convert::Infallible;
         fn from_request(req: &'req Request) -> Option<Result<Self, Self::Error>> {
@@ -99,6 +100,21 @@ pub trait FromRequest<'req>: Sized {
                 None     => Some(Ok(None)),
                 Some(fr) => Some(fr.map(Some))
             }
+        }
+    }
+};
+#[cfg(feature="rt_worker")]
+const _: () = {
+    impl<'req> FromRequest<'req> for &'req ::worker::Env {
+        type Error = std::convert::Infallible;
+        fn from_request(req: &'req Request) -> Option<Result<Self, Self::Error>> {
+            Some(Ok(req.env()))
+        }
+    }
+    impl<'req> FromRequest<'req> for &'req ::worker::Context {
+        type Error = std::convert::Infallible;
+        fn from_request(req: &'req Request) -> Option<Result<Self, Self::Error>> {
+            Some(Ok(req.context()))
         }
     }
 };
