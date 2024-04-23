@@ -39,6 +39,11 @@ struct Problem<'s> {
     difficulty: Option<Difficulty>,
 }
 
+#[derive(Deserialize, PartialEq, Debug)]
+struct URLRequest<'req> {
+    url: Cow<'req, str>,
+}
+
 
 #[test] fn serialize_struct() {
     assert_eq!(
@@ -176,6 +181,13 @@ struct Problem<'s> {
             b"age=&gender=other&name=ohkami%20%2D%E7%8B%BC%20%28%E3%81%8A%E3%81%8A%E3%81%8B%E3%81%BF%29%2D"
         ).unwrap()
     );
+
+    assert_eq!(
+        URLRequest {
+            url: Cow::Owned(String::from("https://scrapbox.io/nwtgck/RustのHyper_+_RustlsでHTTPSサーバーを立てるシンプルな例")),
+        },
+        serde_urlencoded::from_bytes(
+            b"url=https://scrapbox.io/nwtgck/Rust%E3%81%AEHyper_+_Rustls%E3%81%A7HTTPS%E3%82%B5%E3%83%BC%E3%83%90%E3%83%BC%E3%82%92%E7%AB%8B%E3%81%A6%E3%82%8B%E3%82%B7%E3%83%B3%E3%83%97%E3%83%AB%E3%81%AA%E4%BE%8B"
+        ).unwrap()
+    );
 }
-
-

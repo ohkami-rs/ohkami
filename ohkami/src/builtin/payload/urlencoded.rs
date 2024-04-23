@@ -59,3 +59,50 @@ impl PayloadType for URLEncoded {
         serde_urlencoded::to_string(value).map(String::into_bytes)
     }
 }
+
+
+#[cfg(test)]
+#[cfg(feature="testing")]
+#[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
+mod test {
+    use crate::{prelude::*, testing::*, typed::Payload};
+    use super::URLEncoded;
+    use std::borrow::Cow;
+
+
+    #[derive(serde::Deserialize)]
+    struct URLRequest<'req> {
+        url: Cow<'req, str>,
+    }
+    impl<'req> Payload for URLRequest<'req> {
+        type Type = URLEncoded;
+    }
+
+    async fn get_url(
+        body: URLRequest<'_>,
+    ) -> String {
+        String::from(body.url)
+    }
+
+    #[crate::__rt__::test] async fn extract_urlencoded_request() {
+        let t = Ohkami::new((
+            "/".GET(get_url),
+        )).test();
+
+        {
+            let req = TestRequest::GET("/");
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status(), Status::BadRequest);
+        }
+
+        {
+            let req = TestRequest::GET("/").content(
+                "application/x-www-form-urlencoded",
+                b"url=https://scrapbox.io/nwtgck/Rust%E3%81%AEHyper_+_Rustls%E3%81%A7HTTPS%E3%82%B5%E3%83%BC%E3%83%90%E3%83%BC%E3%82%92%E7%AB%8B%E3%81%A6%E3%82%8B%E3%82%B7%E3%83%B3%E3%83%97%E3%83%AB%E3%81%AA%E4%BE%8B"
+            );
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status(), Status::OK);
+            assert_eq!(res.text(),   Some("https://scrapbox.io/nwtgck/RustのHyper_+_RustlsでHTTPSサーバーを立てるシンプルな例"));
+        }
+    }
+}
