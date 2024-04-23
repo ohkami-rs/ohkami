@@ -82,7 +82,7 @@ pub struct TestRequest {
     path:    Cow<'static, str>,
     queries: HashMap<Cow<'static, str>, Cow<'static, str>>,
     headers: HashMap<Cow<'static, str>, Cow<'static, str>>,
-    content: Option<Cow<'static, str>>,
+    content: Option<Cow<'static, [u8]>>,
 } impl TestRequest {
     pub(crate) fn encode(self) -> Vec<u8> {
         let Self { method, path, queries, headers, content } = self;
@@ -105,7 +105,7 @@ pub struct TestRequest {
             method.as_str().as_bytes(), b" ", path.as_bytes(), &queries, b" HTTP/1.1\r\n",
             &headers,
             b"\r\n",
-            content.unwrap_or(Cow::Borrowed("")).as_bytes()
+            &content.unwrap_or(Cow::Borrowed(b""))
         ].concat()
     }
 }
@@ -141,7 +141,7 @@ impl TestRequest {
 }
 impl TestRequest {
     pub fn json(mut self, json: impl serde::Serialize) -> Self {
-        let content       = serde_json::to_string(&json).expect("Failed to serialize json");
+        let content       = serde_json::to_vec(&json).expect("Failed to serialize json");
         let content_lenth = content.len();
 
         self.content = Some(Cow::Owned(content));
@@ -149,11 +149,23 @@ impl TestRequest {
             .header("Content-Length", content_lenth.to_string())
     }
     pub fn json_lit(mut self, json: impl Into<Cow<'static, str>>) -> Self {
-        let content = json.into();
+        let content: Cow<'static, [u8]> = match json.into() {
+            Cow::Borrowed(str) => Cow::Borrowed(str.as_bytes()),
+            Cow::Owned(string) => Cow::Owned(string.into_bytes()),
+        };
         let content_lenth = content.len();
 
         self.content = Some(content);
         self.header("Content-Type", "application/json")
+            .header("Content-Length", content_lenth.to_string())
+    }
+
+    pub fn content(mut self, content_type: &'static str, content: impl Into<Cow<'static, [u8]>>) -> Self {
+        let content: Cow<'static, [u8]> = content.into();
+        let content_lenth = content.len();
+
+        self.content = Some(content);
+        self.header("Content-Type", content_type)
             .header("Content-Length", content_lenth.to_string())
     }
 }
