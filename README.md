@@ -92,6 +92,9 @@ use ohkami::prelude::*;
 
 #[ohkami::worker]
 async fn my_worker() -> Ohkami {
+    #[cfg(feature = "DEBUG")]
+    console_error_panic_hook::set_once();
+
     Ohkami::new((
         "/".GET(|| async {"Hello, world!"}),
     ))
@@ -101,7 +104,7 @@ async fn my_worker() -> Ohkami {
 You can deploy this by
 
 ```sh
-npx wrangler deploy
+npm run deploy
 ```
 
 <br>
