@@ -192,13 +192,13 @@ impl Request {
             let key_bytes = r.read_while(|b| b != &b':');
             r.consume(": ").unwrap();
             if let Some(key) = RequestHeader::from_bytes(key_bytes) {
-                headers.insert(key, CowSlice::Ref(unsafe {
+                headers.insert(key, CowSlice::Ref(
                     Slice::from_bytes(r.read_while(|b| b != &b'\r'))
-                }));
+                ));
             } else {
                 headers.insert_custom(
-                    CowSlice::Ref(unsafe {Slice::from_bytes(key_bytes)}),
-                    CowSlice::Ref(unsafe {Slice::from_bytes(r.read_while(|b| b != &b'\r'))})
+                    CowSlice::Ref(Slice::from_bytes(key_bytes)),
+                    CowSlice::Ref(Slice::from_bytes(r.read_while(|b| b != &b'\r')))
                 );
             }
             r.consume("\r\n");
@@ -237,19 +237,19 @@ impl Request {
         if remaining_buf.is_empty() || remaining_buf[0] == 0 {
             #[cfg(feature="DEBUG")] println!("\n[read_payload] case: remaining_buf.is_empty() || remaining_buf[0] == 0\n");
 
-            let mut bytes = vec![0; size];
+            let mut bytes = vec![0; size].into_boxed_slice();
             stream.read_exact(&mut bytes).await.unwrap();
             CowSlice::Own(bytes)
 
         } else if size <= remaining_buf.len() {
             #[cfg(feature="DEBUG")] println!("\n[read_payload] case: starts_at + size <= BUF_SIZE\n");
 
-            CowSlice::Ref(unsafe {Slice::new_unchecked(remaining_buf.as_ptr(), size)})
+            CowSlice::Ref(Slice::new_unchecked(remaining_buf.as_ptr(), size))
 
         } else {
             #[cfg(feature="DEBUG")] println!("\n[read_payload] case: else\n");
 
-            let mut bytes = vec![0; size];
+            let mut bytes = vec![0; size].into_boxed_slice();
             let remaining_buf_len = remaining_buf.len();
             unsafe {// SAFETY: Here size > remaining_buf_len
                 bytes.get_unchecked_mut(..remaining_buf_len).copy_from_slice(remaining_buf);
@@ -290,13 +290,13 @@ impl Request {
             let key_bytes = r.read_while(|b| b != &b':');
             r.consume(": ").unwrap();
             if let Some(key) = RequestHeader::from_bytes(key_bytes) {
-                self.headers.insert(key, CowSlice::Ref(unsafe {
+                self.headers.insert(key, CowSlice::Ref(
                     Slice::from_bytes(r.read_while(|b| b != &b'\r'))
-                }));
+                ));
             } else {
                 self.headers.insert_custom(
-                    CowSlice::Ref(unsafe {Slice::from_bytes(key_bytes)}),
-                    CowSlice::Ref(unsafe {Slice::from_bytes(r.read_while(|b| b != &b'\r'))})
+                    CowSlice::Ref(Slice::from_bytes(key_bytes)),
+                    CowSlice::Ref(Slice::from_bytes(r.read_while(|b| b != &b'\r')))
                 );
             }
             r.consume("\r\n");
@@ -308,7 +308,7 @@ impl Request {
                 .as_bytes().into_iter()
                 .fold(0, |len, b| 10*len + (*b - b'0') as usize);
             (content_length > 0).then_some(CowSlice::Own(
-                Vec::from(r.remaining())
+                r.remaining().into()
             ))
         };
 
@@ -345,7 +345,9 @@ impl Request {
         self.headers.take_over(req.headers());
 
         self.payload = Some(CowSlice::Own(req.bytes().await
-            .map_err(|_| Response::InternalServerError().with_text("Failed to read request payload"))?));
+            .map_err(|_| Response::InternalServerError().with_text("Failed to read request payload"))?
+            .into()
+        ));
 
         Ok(())
     }

@@ -41,19 +41,19 @@ pub trait HeaderAction<'set> {
     // insert
     impl<'set> HeaderAction<'set> for &'static str {
         #[inline] fn perform(self, set: SetHeaders<'set>, key: Header) -> SetHeaders<'set> {
-            set.0.insert(key, CowSlice::Ref(unsafe {Slice::from_bytes(self.as_bytes())}));
+            set.0.insert(key, CowSlice::Ref(Slice::from_bytes(self.as_bytes())));
             set
         }
     }
     impl<'set> HeaderAction<'set> for String {
         #[inline] fn perform(self, set: SetHeaders<'set>, key: Header) -> SetHeaders<'set> {
-            set.0.insert(key, CowSlice::Own(self.into_bytes()));
+            set.0.insert(key, CowSlice::Own(self.into_bytes().into_boxed_slice()));
             set
         }
     }
     impl<'set> HeaderAction<'set> for std::borrow::Cow<'static, str> {
         fn perform(self, set: SetHeaders<'set>, key: Header) -> SetHeaders<'set> {
-            set.0.insert(key, CowSlice::Ref(unsafe {Slice::from_bytes(self.as_bytes())}));
+            set.0.insert(key, CowSlice::Ref(Slice::from_bytes(self.as_bytes())));
             set
         }
     }
@@ -67,7 +67,7 @@ const _: () = {
     impl<'set> CustomHeadersAction<'set> for Option<()> {
         fn perform(self, set: SetHeaders<'set>, key: &'static str) -> SetHeaders<'set> {
             if let Some(c) = &mut set.0.custom {
-                c.remove(&CowSlice::Ref(unsafe {Slice::from_bytes(key.as_bytes())}));
+                c.remove(&CowSlice::Ref(Slice::from_bytes(key.as_bytes())));
             }
             set
         }
@@ -76,16 +76,17 @@ const _: () = {
     // append
     impl<'set> CustomHeadersAction<'set> for Append {
         fn perform(self, set: SetHeaders<'set>, key: &'static str) -> SetHeaders<'set> {
-            let key = CowSlice::Ref(unsafe {Slice::from_bytes(key.as_bytes())});
+            let key = CowSlice::Ref(Slice::from_bytes(key.as_bytes()));
             let custom = set.0.get_or_init_custom_mut();
 
-            if let Some(value) = custom.get_mut(&key) {
-                unsafe {
-                    value.extend(b",");
-                    value.extend(self.0.as_bytes());
+            match custom.get_mut(&key) {
+                Some(v) => unsafe {
+                    v.extend_from_slice(b",");
+                    v.extend_from_slice(self.0.as_bytes());
                 }
-            } else {
-                custom.insert(key, CowSlice::from(self.0));
+                None => {
+                    custom.insert(key, CowSlice::from(self.0));
+                }
             }
 
             set
@@ -96,8 +97,8 @@ const _: () = {
     impl<'set> CustomHeadersAction<'set> for &'static str {
         fn perform(self, set: SetHeaders<'set>, key: &'static str) -> SetHeaders<'set> {
             set.0.get_or_init_custom_mut().insert(
-                CowSlice::Ref(unsafe {Slice::from_bytes(key.as_bytes())}),
-                CowSlice::Ref(unsafe {Slice::from_bytes(self.as_bytes())})
+                CowSlice::Ref(Slice::from_bytes(key.as_bytes())),
+                CowSlice::Ref(Slice::from_bytes(self.as_bytes()))
             );
             set
         }
@@ -105,8 +106,8 @@ const _: () = {
     impl<'set> CustomHeadersAction<'set> for String {
         fn perform(self, set: SetHeaders<'set>, key: &'static str) -> SetHeaders<'set> {
             set.0.get_or_init_custom_mut().insert(
-                CowSlice::Ref(unsafe {Slice::from_bytes(key.as_bytes())}),
-                CowSlice::Own(self.into_bytes())
+                CowSlice::Ref(Slice::from_bytes(key.as_bytes())),
+                CowSlice::Own(self.into_bytes().into_boxed_slice())
             );
             set
         }
@@ -114,7 +115,7 @@ const _: () = {
     impl<'set> CustomHeadersAction<'set> for Cow<'static, str> {
         fn perform(self, set: SetHeaders<'set>, key: &'static str) -> SetHeaders<'set> {
             set.0.get_or_init_custom_mut().insert(
-                CowSlice::Ref(unsafe {Slice::from_bytes(key.as_bytes())}),
+                CowSlice::Ref(Slice::from_bytes(key.as_bytes())),
                 CowSlice::from(self)
             );
             set
@@ -318,29 +319,15 @@ impl Headers {
     }
 
     pub(crate) fn append(&mut self, name: Header, value: Cow<'static, str>) {
-        let value_len = value.len();
         let target = unsafe {self.standard.get_unchecked_mut(name as usize)};
 
         match target {
-            Some(v) => {
-                match v {
-                    CowSlice::Ref(slice) => {
-                        let mut appended = unsafe {slice.as_bytes()}.to_vec();
-                        appended.push(b',');
-                        appended.extend_from_slice(value.as_bytes());
-                    }
-                    CowSlice::Own(vec) => {
-                        vec.push(b',');
-                        vec.extend_from_slice(value.as_bytes());
-                    }
-                }
-                value_len + 1
-            }
-            None => {
-                *target = Some(CowSlice::Ref(unsafe {Slice::from_bytes(value.as_bytes())}));
-                value_len
-            }
-        };
+            Some(v) => unsafe {
+                v.extend_from_slice(b",");
+                v.extend_from_slice(value.as_bytes());
+            },
+            None => *target = Some(CowSlice::Ref(Slice::from_bytes(value.as_bytes()))),
+        }
     }
 }
 
@@ -391,12 +378,12 @@ impl Headers {
     ) -> Self {
         let mut this = Self::init();
         for (k, v) in iter {
-            this.insert(k, CowSlice::Own(v.as_bytes().to_vec()))
+            this.insert(k, CowSlice::Ref(Slice::from_bytes(v.as_bytes())))
         }
         for (k, v) in custom {
             this.insert_custom(
-                CowSlice::Ref(unsafe {Slice::from_bytes(k.as_bytes())}),
-                CowSlice::Ref(unsafe {Slice::from_bytes(v.as_bytes())})
+                CowSlice::Ref(Slice::from_bytes(k.as_bytes())),
+                CowSlice::Ref(Slice::from_bytes(v.as_bytes()))
             );
         }
         this
@@ -410,11 +397,11 @@ impl Headers {
             match Header::from_bytes(k.as_bytes()) {
                 Some(standard) => self.insert(
                     standard,
-                    CowSlice::Own(v.into_bytes())
+                    CowSlice::Own(v.into_boxed_str().into())
                 ),
                 None => self.insert_custom(
-                    CowSlice::Own(k.into_bytes()),
-                    CowSlice::Own(v.into_bytes())
+                    CowSlice::Own(k.into_boxed_str().into()),
+                    CowSlice::Own(v.into_boxed_str().into())
                 )
             }
         }

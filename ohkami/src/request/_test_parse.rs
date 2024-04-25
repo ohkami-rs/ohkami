@@ -91,9 +91,9 @@ fn metadataize(input: &str) -> Box<[u8; BUF_SIZE]> {
             (RequestHeader::ContentLength,  "27"),
             (RequestHeader::ContentType,    "application/json"),
         ], None),
-        payload: Some(CowSlice::Ref(unsafe {
-            Slice::from_bytes(br#"{"name":"kanarus","age":20}"#)
-        })),
+        payload: Some(CowSlice::Ref(Slice::from_bytes(
+            br#"{"name":"kanarus","age":20}"#
+        ))),
         store:      Store::init(),
     });
 

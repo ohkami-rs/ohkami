@@ -8,12 +8,7 @@ use http::{HeaderMap, HeaderName, HeaderValue};
 use ohkami::__internal__::{RequestHeaders, RequestHeader};
 use ohkami_lib::{CowSlice, Slice};
 
-use ohkami_benches::request_headers::{
-    fxmap::FxMap,
-    heap_ohkami_headers::{
-        HeapOhkamiHeaders, Header as HeapOhkamiHeader
-    },
-};
+use ohkami_benches::request_headers::fxmap::FxMap;
 
 
 const INPUT: &[u8] = b"\
@@ -49,42 +44,20 @@ Cache-Control: no-cache\r\n\
             let key_bytes = r.read_while(|b| b != &b':');
             r.consume(": ").unwrap();
             if let Some(key) = RequestHeader::from_bytes(key_bytes) {
-                h._insert(key, CowSlice::Ref(unsafe {
+                h._insert(key, CowSlice::Ref(
                     Slice::from_bytes(r.read_while(|b| b != &b'\r'))
-                }));
+                ));
             } else {
-                let key = CowSlice::Ref(unsafe {Slice::from_bytes(key_bytes)});
-                h._insert_custom(key, CowSlice::Ref(unsafe {
+                let key = CowSlice::Ref(Slice::from_bytes(key_bytes));
+                h._insert_custom(key, CowSlice::Ref(
                     Slice::from_bytes(r.read_while(|b| b != &b'\r'))
-                }));
+                ));
             }
             r.consume("\r\n");
         }
     })
 }
 
-#[bench] fn heap_ohkami_parse(b: &mut test::Bencher) {
-    b.iter(|| {
-        let mut r = byte_reader::Reader::new(black_box(INPUT));
-
-        let mut h = HeapOhkamiHeaders::new();
-        while r.consume("\r\n").is_none() {
-            let key_bytes = r.read_while(|b| b != &b':');
-            r.consume(": ").unwrap();
-            if let Some(key) = HeapOhkamiHeader::from_bytes(key_bytes) {
-                h.insert(key, CowSlice::Ref(unsafe {
-                    Slice::from_bytes(r.read_while(|b| b != &b'\r'))
-                }));
-            } else {
-                let key = unsafe {Slice::from_bytes(key_bytes)};
-                h.insert_custom(key, CowSlice::Ref(unsafe {
-                    Slice::from_bytes(r.read_while(|b| b != &b'\r'))
-                }));
-            }
-            r.consume("\r\n");
-        }
-    })
-}
 
 #[bench] fn fxmap_parse(b: &mut test::Bencher) {
     b.iter(|| {
@@ -95,8 +68,8 @@ Cache-Control: no-cache\r\n\
             let key_bytes = r.read_while(|b| b != &b':');
             r.consume(": ").unwrap();
             h.insert(
-                unsafe {Slice::from_bytes(key_bytes)},
-                CowSlice::Ref(unsafe {Slice::from_bytes(r.read_while(|b| b != &b'\r'))}
+                Slice::from_bytes(key_bytes),
+                CowSlice::Ref(Slice::from_bytes(r.read_while(|b| b != &b'\r'))
             ));
             r.consume("\r\n");
         }
