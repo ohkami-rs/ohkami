@@ -340,6 +340,7 @@ impl Headers {
                         appended.push_str(slice);
                         appended.push(',');
                         appended.push_str(&value);
+                        *v = Cow::Owned(appended);
                     }
                     Cow::Owned(string) => {
                         string.push(',');

@@ -76,7 +76,6 @@ impl CowSlice {
                 let current = std::mem::take(array);                
                 let mut appended = {
                     let mut current = current.into_vec();
-                    current.push(b',');
                     current.extend_from_slice(bytes);
                     current.into_boxed_slice()
                 };
