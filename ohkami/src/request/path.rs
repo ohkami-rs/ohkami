@@ -18,7 +18,7 @@ impl Path {
         }
     }
 
-    #[inline] pub(crate) unsafe fn from_request_bytes(bytes: &[u8]) -> Self {
+    #[inline] pub(crate) fn from_request_bytes(bytes: &[u8]) -> Result<Self, crate::Response> {
         #[cfg(debug_assertions)]
         debug_assert! {
             bytes.starts_with(b"/")
@@ -34,12 +34,12 @@ impl Path {
         returns `b"/"` if that bytes is `b"/"`.
         */
         let mut len = bytes.len();
-        if *bytes.get_unchecked(len-1) == b'/' {len -= 1};
+        if *unsafe {bytes.get_unchecked(len-1)} == b'/' {len -= 1};
         
-        Self {
+        Ok(Self {
             raw:    Slice::new_unchecked(bytes.as_ptr(), len),
             params: List::new(),
-        }
+        })
     }
 
     #[inline] pub(crate) fn push_param(&mut self, param: Slice) {
