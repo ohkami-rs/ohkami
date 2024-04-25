@@ -19,6 +19,7 @@ pub use from_request::*;
 
 #[cfg(test)] mod _test_parse;
 #[cfg(test)] mod _test_extract;
+#[cfg(test)] mod _test_headers;
 
 use ohkami_lib::{Slice, CowSlice, percent_decode_utf8};
 
@@ -111,9 +112,9 @@ pub struct Request {
     #[cfg(feature="rt_worker")]
     pub(super/* for test */) __url__: std::mem::MaybeUninit<::worker::Url>,
     #[cfg(feature="rt_worker")]
-    pub env: std::mem::MaybeUninit<::worker::Env>,
+    env: std::mem::MaybeUninit<::worker::Env>,
     #[cfg(feature="rt_worker")]
-    pub ctx: std::mem::MaybeUninit<::worker::Context>,
+    ctx: std::mem::MaybeUninit<::worker::Context>,
 
     method: Method,
     path:   Path,

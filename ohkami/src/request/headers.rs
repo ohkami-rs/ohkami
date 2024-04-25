@@ -181,10 +181,9 @@ macro_rules! Header {
                 }
             )*
 
-            #[cfg(feature="custom-header")]
             pub fn custom(&self, name: &str) -> Option<&str> {
                 let value = self.custom.as_ref()?
-                    .get(&CowSlice::Ref(unsafe {Slice::from_bytes(name.as_bytes())}))?;
+                    .get(&CowSlice::Ref(Slice::from_bytes(name.as_bytes())))?;
                 Some(std::str::from_utf8(unsafe {value.as_bytes()}).expect("Header value is not UTF-8"))
             }
         }
@@ -325,8 +324,10 @@ impl Headers {
             Some(v) => unsafe {
                 v.extend_from_slice(b",");
                 v.extend_from_slice(value.as_bytes());
-            },
-            None => *target = Some(CowSlice::Ref(Slice::from_bytes(value.as_bytes()))),
+            }
+            None => {
+                *target = Some(CowSlice::from(value))
+            }
         }
     }
 }

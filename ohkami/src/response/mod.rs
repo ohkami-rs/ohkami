@@ -11,8 +11,8 @@ pub use headers::Header as ResponseHeader;
 mod into_response;
 pub use into_response::IntoResponse;
 
-#[cfg(test)]
-mod _test;
+#[cfg(test)] mod _test;
+#[cfg(test)] mod _test_headers;
 
 use std::borrow::Cow;
 
