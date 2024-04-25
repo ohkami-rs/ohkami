@@ -8,7 +8,7 @@ authors = ["kanarus <kanarus786@gmail.com>"]
 DEBUG = ["ohkami/DEBUG"]
 
 [dependencies]
-ohkami             = { version = "0.17.0", path = "../ohkami", features = ["rt_tokio"] }
+ohkami             = { version = "0.17.2", path = "../ohkami", features = ["rt_tokio", "DEBUG"] }
 ohkami_lib         = { version = "0.2.0", path = "../ohkami_lib" }
 http               = "1.0.0"
 rustc-hash         = "1.1"
