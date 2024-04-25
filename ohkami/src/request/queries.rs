@@ -8,33 +8,26 @@ pub struct QueryParams(
     /// raw bytes of query params with leading '?' cut
     /// 
     /// ex) name=ohkami&type=framework
-    Option<Box<Slice>>
+    Slice
 );
 
 impl QueryParams {
     #[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_worker"))]
-    pub(crate) fn init() -> Self {
-        Self(None)
-    }
-
-    #[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_worker"))]
     #[inline(always)] pub(crate) fn new(bytes: &[u8]) -> Self {
-        Self(Some(Box::new(Slice::from_bytes(bytes))))
+        Self(Slice::from_bytes(bytes))
     }
 
     /// SAFETY: The `QueryParams` is already **INITIALIZED**.
-    #[inline(always)] pub(crate) unsafe fn parse<'q, T: serde::Deserialize<'q>>(
+    #[inline(always)] pub(crate) fn parse<'q, T: serde::Deserialize<'q>>(
         &'q self
-    ) -> Option<Result<T, impl serde::de::Error>> {
-        self.0.as_ref().map(|slice| ohkami_lib::serde_urlencoded::from_bytes(
-            slice.as_bytes()
-        ))
+    ) -> Result<T, impl serde::de::Error> {
+        ohkami_lib::serde_urlencoded::from_bytes(unsafe {self.0.as_bytes()})
     }
 
     /// Returns an iterator of maybe-percent-decoded (key, value).
     /// 
     /// SAFETY: The `QueryParams` is already **INITIALIZED**.
-    #[inline] pub(crate) unsafe fn iter(&self) -> impl Iterator<
+    #[inline] pub(crate) fn iter(&self) -> impl Iterator<
         Item = (Cow<'_, str>, Cow<'_, str>)
     > {
         #[inline(always)]
@@ -45,7 +38,7 @@ impl QueryParams {
             }
         }
 
-        self.0.as_ref().map(|slice| slice.as_bytes()
+        unsafe {self.0.as_bytes()}
             .split(|b| b==&b'&')
             .map(|kv| {
                 let eq = kv.iter().position(|b| b==&b'=').expect("invalid query params: missing `=`");
@@ -54,7 +47,6 @@ impl QueryParams {
                     decoded_utf8(unsafe {kv.get_unchecked(eq+1..)})
                 )
             })
-        ).into_iter().flatten()
     }
 }
 
@@ -82,7 +74,7 @@ const _: () = {
 const _: () = {
     impl std::fmt::Debug for QueryParams {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            f.debug_map().entries(unsafe {self.iter()}).finish()
+            f.debug_map().entries(self.iter()).finish()
         }
     }
 };
