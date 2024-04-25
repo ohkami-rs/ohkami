@@ -9,17 +9,19 @@ use crate::{Request, Response};
 
 
 pub(crate) struct Session {
-    router:     Arc<RadixRouter>,
-    connection: TcpStream,
+    router:       Arc<RadixRouter>,
+    connection:   TcpStream,
+    should_close: bool
 }
 impl Session {
     pub(crate) fn new(
-        router:     Arc<RadixRouter>,
-        connection: TcpStream,
+        router:      Arc<RadixRouter>,
+        connection:  TcpStream,
     ) -> Self {
         Self {
             router,
             connection,
+            should_close: false,
         }
     }
 
@@ -37,20 +39,23 @@ impl Session {
         }
 
         let connection = &mut self.connection;
-        loop {
+        while !self.should_close {
             let mut req = Request::init();
             let mut req = unsafe {Pin::new_unchecked(&mut req)};
-            if req.as_mut().read(connection).await.is_none() {break}
 
-            let close = req.headers.Connection().is_some_and(|c| c == "close");
-
-            let res = match catch_unwind(AssertUnwindSafe(|| self.router.handle(req.get_mut()))) {
-                Ok(future) => future.await,
-                Err(panic) => panicking(panic),
+            let res = match req.as_mut().read(connection).await {
+                Some(Ok(())) => {
+                    self.should_close = req.headers.Connection() == Some("close");
+                    match catch_unwind(AssertUnwindSafe(|| self.router.handle(req.get_mut()))) {
+                        Ok(future) => future.await,
+                        Err(panic) => panicking(panic),
+                    }
+                }
+                Some(Err(res)) => res,
+                None => break
             };
-            res.send(connection).await;
 
-            if close {break}
+            res.send(connection).await;
         }
     }
 }
