@@ -8,13 +8,10 @@
 //!     ohkami <em>- [狼] wolf in Japanese -</em> is intuitive and declarative web framework.
 //! </div>
 //! 
-//! - *intuitive and declarative* code
-//! - *type-safe and macro-less* APIs
-//! - *multi runtime* support：`tokio`, `async-std`
+//! <br>
 //! 
-//! See our [README](https://github.com/kana-rus/ohkami/blob/main/README.md)
-//! and [examples](https://github.com/kana-rus/ohkami/tree/main/examples)
-//! for more information！
+//! - *macro-less and type-safe* APIs for intuitive and declarative code
+//! - *multi runtime* support：`tokio`, `async-std`, `worker` (Cloudflare Workers)
 
 
 #![cfg_attr(feature="nightly", feature(
