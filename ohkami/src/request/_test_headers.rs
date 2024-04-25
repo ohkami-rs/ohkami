@@ -1,3 +1,5 @@
+#![cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_worker"))]
+
 use std::borrow::Cow;
 use super::{RequestHeader, RequestHeaders};
 use crate::append;
