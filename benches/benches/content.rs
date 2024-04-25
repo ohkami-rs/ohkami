@@ -1,37 +1,30 @@
 #![feature(test)]
 extern crate test;
 
-use std::borrow::Cow;
+use ohkami_lib::{CowSlice, Slice};
 
 
 struct CowContent(
-    Option<Cow<'static, [u8]>>,
+    CowSlice,
 );
 impl CowContent {
-    #[inline] fn new(bytes: &[u8]) -> Self {
-        Self(Some(Cow::Owned(bytes.into())))
+    #[inline] fn from_request_bytes(bytes: &[u8]) -> Self {
+        Self(CowSlice::Ref(Slice::from_bytes(bytes)))
     }
     #[inline] fn write_to(&self, buf: &mut Vec<u8>) {
-        match &self.0 {
-            Some(Cow::Borrowed(slice)) => buf.extend_from_slice(slice),
-            Some(Cow::Owned(vector))   => buf.extend_from_slice(vector.as_slice()),
-            None                       => ()
-        }
+        buf.extend_from_slice(unsafe {self.0.as_bytes()})
     }
 }
 
 struct BytesContent(
-    Option<::bytes::Bytes>,
+    ::bytes::Bytes
 );
 impl BytesContent {
-    #[inline] fn new(bytes: &[u8]) -> Self {
-        Self(Some(::bytes::Bytes::copy_from_slice(bytes)))
+    #[inline] fn from_request_bytes(bytes: &[u8]) -> Self {
+        Self(::bytes::Bytes::copy_from_slice(bytes))
     }
     #[inline] fn write_to(&self, buf: &mut Vec<u8>) {
-        match &self.0 {
-            Some(b) => buf.extend_from_slice(&b),
-            None    => (),
-        }
+        buf.extend_from_slice(&self.0)
     }
 }
 
@@ -185,14 +178,14 @@ fn large() -> Vec<u8> {
     let data = small();
 
     b.iter(|| {
-        let _c = CowContent::new(data.as_slice());
+        let _c = CowContent::from_request_bytes(data.as_slice());
     })
 }
 #[bench] fn create_large_cow(b: &mut test::Bencher) {
     let data = large();
 
     b.iter(|| {
-        let _c = CowContent::new(data.as_slice());
+        let _c = CowContent::from_request_bytes(data.as_slice());
     })
 }
 
@@ -200,14 +193,14 @@ fn large() -> Vec<u8> {
     let data = small();
 
     b.iter(|| {
-        let _c = BytesContent::new(data.as_slice());
+        let _c = BytesContent::from_request_bytes(data.as_slice());
     })
 }
 #[bench] fn create_large_bytes(b: &mut test::Bencher) {
     let data = large();
 
     b.iter(|| {
-        let _c = BytesContent::new(data.as_slice());
+        let _c = BytesContent::from_request_bytes(data.as_slice());
     })
 }
 
@@ -216,7 +209,7 @@ fn large() -> Vec<u8> {
     let mut buf = Vec::new();
 
     let data = small();
-    let c = CowContent::new(data.as_slice());
+    let c = CowContent::from_request_bytes(data.as_slice());
 
     b.iter(|| {
         c.write_to(&mut buf);
@@ -226,7 +219,7 @@ fn large() -> Vec<u8> {
     let mut buf = Vec::new();
 
     let data = large();
-    let c = CowContent::new(data.as_slice());
+    let c = CowContent::from_request_bytes(data.as_slice());
 
     b.iter(|| {
         c.write_to(&mut buf);
@@ -237,7 +230,7 @@ fn large() -> Vec<u8> {
     let mut buf = Vec::new();
 
     let data = small();
-    let c = BytesContent::new(data.as_slice());
+    let c = BytesContent::from_request_bytes(data.as_slice());
 
     b.iter(|| {
         c.write_to(&mut buf);
@@ -247,7 +240,7 @@ fn large() -> Vec<u8> {
     let mut buf = Vec::new();
 
     let data = large();
-    let c = BytesContent::new(data.as_slice());
+    let c = BytesContent::from_request_bytes(data.as_slice());
 
     b.iter(|| {
         c.write_to(&mut buf);
