@@ -1,3 +1,4 @@
+#![cfg(any(feature="testing", feature="DEBUG"))]
 #![cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_worker"))]
 
 use std::borrow::Cow;

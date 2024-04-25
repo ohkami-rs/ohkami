@@ -334,10 +334,11 @@ impl Headers {
 
 #[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_worker"))]
 impl Headers {
+    #[allow(unused)]
     #[inline] pub(crate) fn get_raw(&self, name: Header) -> Option<&CowSlice> {
         unsafe {self.standard.get_unchecked(name as usize)}.as_ref()
     }
-    
+
     #[inline] pub(crate) fn insert_custom(&mut self, name: CowSlice, value: CowSlice) {
         match &mut self.custom {
             Some(c) => {c.insert(name, value);}

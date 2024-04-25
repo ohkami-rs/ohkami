@@ -9,6 +9,8 @@ pub(crate) use queries::QueryParams;
 
 mod headers;
 pub use headers::Headers as RequestHeaders;
+#[allow(unused)]
+pub use headers::Header as RequestHeader;
 
 mod memory;
 pub(crate) use memory::Store;
@@ -34,10 +36,6 @@ use {
     byte_reader::Reader,
     std::pin::Pin,
     std::borrow::Cow,
-};
-#[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_worker"))]
-pub use {
-    headers::Header as RequestHeader,
 };
 
 #[cfg(feature="websocket")]
@@ -166,7 +164,7 @@ impl Request {
         stream:   &mut (impl AsyncReader + Unpin),
     ) -> Option<Result<(), crate::Response>> {
         use crate::Response;
-        
+
         if stream.read(&mut *self.__buf__).await.ok()? == 0 {return None};
         let mut r = Reader::new(unsafe {
             // pass detouched bytes
@@ -269,7 +267,7 @@ impl Request {
     #[cfg(feature="testing")]
     pub(crate) async fn read(mut self: Pin<&mut Self>,
         raw_bytes: &mut &[u8]
-    ) -> Option<()> {
+    ) -> Option<Result<(), crate::Response>> {
         let mut r = Reader::new(raw_bytes);
 
         self.method = Method::from_bytes(r.read_while(|b| b != &b' '))?;
@@ -282,7 +280,7 @@ impl Request {
         });
         // SAFETY: Just calling for request bytes and `self.__url__` is already initialized
         unsafe {let __url__ = self.__url__.assume_init_ref();
-            let path  = Path::from_request_bytes(__url__.path().as_bytes());
+            let path  = Path::from_request_bytes(__url__.path().as_bytes()).unwrap();
             let query = __url__.query().map(|str| QueryParams::new(str.as_bytes()));
             self.path = path;
             if let Some(query) = query {
@@ -309,16 +307,16 @@ impl Request {
         }
 
         self.payload = {
-            let content_length = self.headers.ContentLength()
-                .unwrap_or("")
-                .as_bytes().into_iter()
-                .fold(0, |len, b| 10*len + (*b - b'0') as usize);
+            let content_length = match self.headers.get_raw(RequestHeader::ContentLength) {
+                Some(v) => unsafe {v.as_bytes()}.into_iter().fold(0, |len, b| 10*len + (*b - b'0') as usize),
+                None    => 0,
+            };
             (content_length > 0).then_some(CowSlice::Own(
                 r.remaining().into()
             ))
         };
 
-        Some(())
+        Some(Ok(()))
     }
 
     #[cfg(feature="rt_worker")]
@@ -340,7 +338,7 @@ impl Request {
 
         // SAFETY: Just calling for request bytes and `self.__url__` is already initialized
         unsafe {let __url__ = self.__url__.assume_init_ref();
-            let path  = Path::from_request_bytes(__url__.path().as_bytes());
+            let path  = Path::from_request_bytes(__url__.path().as_bytes()).unwrap();
             let query = __url__.query().map(|str| QueryParams::new(str.as_bytes()));
             self.path = path;
             if let Some(query) = query {

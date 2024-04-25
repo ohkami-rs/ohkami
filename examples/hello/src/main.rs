@@ -8,7 +8,7 @@ mod health_handler {
 
 
 mod hello_handler {
-    use ohkami::{Response, Status};
+    use ohkami::Response;
     use ohkami::typed::{Payload, Query};
     use ohkami::builtin::payload::JSON;
 

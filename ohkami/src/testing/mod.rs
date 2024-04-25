@@ -57,9 +57,11 @@ impl TestingOhkami {
         let res = async move {
             let mut request = Request::init();
             let mut request = unsafe {Pin::new_unchecked(&mut request)};
-            request.as_mut().read(&mut &req.encode()[..]).await;
-
-            let res = router.handle(&mut request).await;
+            
+            let res = match request.as_mut().read(&mut &req.encode()[..]).await.unwrap() {
+                Ok(())   => router.handle(&mut request).await,
+                Err(res) => res,
+            };
 
             TestResponse::new(res)
         };
