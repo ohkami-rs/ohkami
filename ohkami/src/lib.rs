@@ -103,6 +103,8 @@ mod x_websocket;
 
 #[cfg(feature="rt_worker")]
 pub use ::ohkami_macros::worker;
+#[cfg(feature="rt_worker")]
+pub mod worker;
 
 
 /// Passed to `{Request/Response}.headers.set().Name( 〜 )` and
