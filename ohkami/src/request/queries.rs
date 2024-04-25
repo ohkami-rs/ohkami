@@ -19,9 +19,7 @@ impl QueryParams {
 
     #[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_worker"))]
     #[inline(always)] pub(crate) fn new(bytes: &[u8]) -> Self {
-        Self(Some(Box::new(unsafe {
-            Slice::from_bytes(bytes)
-        })))
+        Self(Some(Box::new(Slice::from_bytes(bytes))))
     }
 
     /// SAFETY: The `QueryParams` is already **INITIALIZED**.

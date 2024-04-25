@@ -378,12 +378,12 @@ impl Headers {
     ) -> Self {
         let mut this = Self::init();
         for (k, v) in iter {
-            this.insert(k, CowSlice::Own(v.as_bytes().to_vec()))
+            this.insert(k, CowSlice::Ref(Slice::from_bytes(v.as_bytes())))
         }
         for (k, v) in custom {
             this.insert_custom(
-                CowSlice::Ref(unsafe {Slice::from_bytes(k.as_bytes())}),
-                CowSlice::Ref(unsafe {Slice::from_bytes(v.as_bytes())})
+                CowSlice::Ref(Slice::from_bytes(k.as_bytes())),
+                CowSlice::Ref(Slice::from_bytes(v.as_bytes()))
             );
         }
         this
@@ -397,11 +397,11 @@ impl Headers {
             match Header::from_bytes(k.as_bytes()) {
                 Some(standard) => self.insert(
                     standard,
-                    CowSlice::Own(v.into_bytes())
+                    CowSlice::Own(v.into_boxed_str().into())
                 ),
                 None => self.insert_custom(
-                    CowSlice::Own(k.into_bytes()),
-                    CowSlice::Own(v.into_bytes())
+                    CowSlice::Own(k.into_boxed_str().into()),
+                    CowSlice::Own(v.into_boxed_str().into())
                 )
             }
         }
