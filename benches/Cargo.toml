@@ -6,6 +6,8 @@ authors = ["kanarus <kanarus786@gmail.com>"]
 
 [features]
 DEBUG = ["ohkami/DEBUG"]
+# `--no-default-features` when running `bin/`
+default = ["DEBUG"]
 
 [dependencies]
 ohkami             = { version = "0.17.2", path = "../ohkami", features = ["rt_tokio"] }

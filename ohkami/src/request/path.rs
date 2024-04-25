@@ -10,10 +10,10 @@ pub(crate) struct Path {
 
 #[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_worker"))]
 impl Path {
-    #[inline] pub(crate) fn from_request_bytes(bytes: &[u8]) -> Result<Self, crate::Response> {
+    #[inline(always)] pub(crate) fn from_request_bytes(bytes: &[u8]) -> Result<Self, crate::Response> {
         bytes.starts_with(b"/").then_some(())
             .ok_or_else(crate::Response::NotImplemented)?;
-        
+
         /*
         Strip trailing '/' **even when `bytes` is just `b"/"`**
         (then the bytes become b"" (empty bytes)).
@@ -24,7 +24,7 @@ impl Path {
         returns `b"/"` if that bytes is `b"/"`.
         */
         let mut len = bytes.len();
-        if *unsafe {bytes.get_unchecked(len-1)} == b'/' {len -= 1};
+        if unsafe {*bytes.get_unchecked(len-1) == b'/'} {len -= 1};
         
         Ok(Self {
             raw:    unsafe {Slice::new_unchecked(bytes.as_ptr(), len)},
@@ -45,7 +45,6 @@ impl Path {
     #[inline] pub(crate) unsafe fn as_internal_bytes<'req>(&self) -> &'req [u8] {
         self.raw.as_bytes()
     }
-
 }
 
 #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
