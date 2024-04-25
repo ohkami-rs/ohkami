@@ -54,8 +54,8 @@ fn metadataize(input: &str) -> Box<[u8; BUF_SIZE]> {
     assert_parse!(CASE_1, Request {
         __buf__: metadataize(CASE_1),
         method:  Method::GET,
-        path:    Path::from_literal("/hello.html"),
-        query:   QueryParams::init(),
+        path:    std::mem::MaybeUninit::new(Path::from_literal("/hello.html")),
+        query:   None,
         headers: RequestHeaders::from_iters([
             (RequestHeader::Host,           "www.tutorialspoint.com"),
             (RequestHeader::UserAgent,      "Mozilla/4.0"),
@@ -82,8 +82,8 @@ fn metadataize(input: &str) -> Box<[u8; BUF_SIZE]> {
     assert_parse!(CASE_2, Request {
         __buf__: metadataize(CASE_2),
         method:  Method::POST,
-        path:    Path::from_literal("/signup"),
-        query:   QueryParams::init(),
+        path:    std::mem::MaybeUninit::new(Path::from_literal("/signup")),
+        query:   None,
         headers: RequestHeaders::from_iters([
             (RequestHeader::Host,           "www.tutorialspoint.com"),
             (RequestHeader::UserAgent,      "Mozilla/4.0"),
