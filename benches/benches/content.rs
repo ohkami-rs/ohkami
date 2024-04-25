@@ -14,7 +14,7 @@ impl CowContent {
     #[inline] fn write_to(&self, buf: &mut Vec<u8>) {
         match &self.0 {
             Some(Cow::Borrowed(slice)) => buf.extend_from_slice(slice),
-            Some(Cow::Owned(vector))   => buf.extend_from_slice(&*vector),
+            Some(Cow::Owned(vector))   => buf.extend_from_slice(vector.as_slice()),
             None                       => ()
         }
     }
