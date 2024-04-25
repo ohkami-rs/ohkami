@@ -2,9 +2,6 @@ pub mod base64;
 
 pub mod mime;
 
-// mod list;
-// pub use list::List;
-
 mod time;
 pub use time::{unix_timestamp, imf_fixdate_now};
 
