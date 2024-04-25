@@ -23,7 +23,7 @@ pub use from_request::*;
 
 use ohkami_lib::{Slice, CowSlice, percent_decode_utf8};
 
-use crate::{typed::Payload, Response};
+use crate::typed::Payload;
 
 #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
 use {
@@ -164,7 +164,9 @@ impl Request {
     pub(crate) async fn read(
         mut self: Pin<&mut Self>,
         stream:   &mut (impl AsyncReader + Unpin),
-    ) -> Option<Result<(), Response>> {
+    ) -> Option<Result<(), crate::Response>> {
+        use crate::Response;
+        
         if stream.read(&mut *self.__buf__).await.ok()? == 0 {return None};
         let mut r = Reader::new(unsafe {
             // pass detouched bytes

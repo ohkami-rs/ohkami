@@ -1,5 +1,4 @@
 use ohkami_lib::{Slice, List};
-use crate::Response;
 
 
 /// This doesn't handle percent encoding by itself.
@@ -19,7 +18,7 @@ impl Path {
         }
     }
 
-    #[inline] pub(crate) fn from_request_bytes(bytes: &[u8]) -> Result<Self, Response> {
+    #[inline] pub(crate) fn from_request_bytes(bytes: &[u8]) -> Result<Self, crate::Response> {
         #[cfg(debug_assertions)]
         debug_assert! {
             bytes.starts_with(b"/")
