@@ -316,6 +316,9 @@ impl Headers {
             None => None,
         }
     }
+    #[inline] pub(crate) fn get_raw(&self, name: Header) -> Option<&CowSlice> {
+        unsafe {self.standard.get_unchecked(name as usize)}.as_ref()
+    }
 
     pub(crate) fn append(&mut self, name: Header, value: Cow<'static, str>) {
         let target = unsafe {self.standard.get_unchecked_mut(name as usize)};

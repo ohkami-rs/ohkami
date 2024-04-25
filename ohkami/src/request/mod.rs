@@ -23,7 +23,7 @@ pub use from_request::*;
 
 use ohkami_lib::{Slice, CowSlice, percent_decode_utf8};
 
-use crate::typed::Payload;
+use crate::{typed::Payload, Response};
 
 #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
 use {
@@ -164,69 +164,72 @@ impl Request {
     pub(crate) async fn read(
         mut self: Pin<&mut Self>,
         stream:   &mut (impl AsyncReader + Unpin),
-    ) -> Option<()> {
+    ) -> Option<Result<(), Response>> {
         if stream.read(&mut *self.__buf__).await.ok()? == 0 {return None};
-        let mut r = Reader::new(&*self.__buf__);
+        let mut r = Reader::new(unsafe {
+            // pass detouched bytes
+            // to resolve immutable/mutable borrowing
+            // 
+            // SAFETY: `self.__buf__` itself is immutable
+            Slice::from_bytes(&*self.__buf__).as_bytes()
+        });
 
-        let method = Method::from_bytes(r.read_while(|b| b != &b' '))?;
-        r.consume(" ").unwrap();
+        self.method = Method::from_bytes(r.read_while(|b| b != &b' '))?;
+        if r.consume(" ").is_none() {
+            return Some(Err((|| Response::BadRequest())()))
+        }
         
-        let path = unsafe {// SAFETY: Just calling for request bytes
-            Path::from_request_bytes(r.read_while(|b| b != &b'?' && b != &b' '))
+        self.path = match Path::from_request_bytes(r.read_while(|b| b != &b'?' && b != &b' ')) {
+            Ok(path) => path,
+            Err(res) => return Some(Err(res))
         };
 
-        let query = (r.consume_oneof([" ", "?"]).unwrap() == 1)
-            .then(|| {
-                let q = QueryParams::new(r.read_while(|b| b != &b' '));
-                #[cfg(debug_assertions)] {
-                    r.consume(" ").unwrap();
-                } #[cfg(not(debug_assertions))] {
-                    r.advance_by(1)
-                }
-                q
-            });
+        if r.consume_oneof([" ", "?"]).unwrap() == 1 {
+            self.query = QueryParams::new(r.read_while(|b| b != &b' '));
+            r.advance_by(1);
+        }
 
-        r.consume("HTTP/1.1\r\n").expect("Ohkami can only handle HTTP/1.1");
+        if r.consume("HTTP/1.1\r\n").is_none() {
+            return Some(Err((|| Response::HTTPVersionNotSupported())()))
+        }
 
-        let mut headers = RequestHeaders::init();
         while r.consume("\r\n").is_none() {
             let key_bytes = r.read_while(|b| b != &b':');
-            r.consume(": ").unwrap();
+            if r.consume(": ").is_none() {
+                return Some(Err((|| Response::BadRequest())()))
+            }
             if let Some(key) = RequestHeader::from_bytes(key_bytes) {
-                headers.insert(key, CowSlice::Ref(
+                self.headers.insert(key, CowSlice::Ref(
                     Slice::from_bytes(r.read_while(|b| b != &b'\r'))
                 ));
             } else {
-                headers.insert_custom(
+                self.headers.insert_custom(
                     CowSlice::Ref(Slice::from_bytes(key_bytes)),
                     CowSlice::Ref(Slice::from_bytes(r.read_while(|b| b != &b'\r')))
                 );
             }
-            r.consume("\r\n");
+            if r.consume("\r\n").is_none() {
+                return Some(Err((|| Response::BadRequest())()))
+            }
         }
 
-        let content_length = headers.ContentLength()
-            .unwrap_or("")
-            .as_bytes().into_iter()
-            .fold(0, |len, b| 10*len + (*b - b'0') as usize);
+        let content_length = match self.headers.get_raw(RequestHeader::ContentLength) {
+            Some(v) => unsafe {v.as_bytes()}.into_iter().fold(0, |len, b| 10*len + (*b - b'0') as usize),
+            None    => 0,
+        };
+        if content_length > PAYLOAD_LIMIT {
+            return Some(Err((|| Response::PayloadTooLarge())()))
+        }
 
-        let payload = if content_length > 0 {
-            Some(Request::read_payload(
+        if content_length > 0 {
+            self.payload = Some(Request::read_payload(
                 stream,
                 r.remaining(),
-                content_length.min(PAYLOAD_LIMIT),
-            ).await)
-        } else {None};
+                content_length,
+            ).await);
+        }
 
-        Some({
-            self.method  = method;
-            self.path    = path;
-            if let Some(query) = query {
-                self.query = query
-            };
-            self.headers = headers;
-            self.payload = payload;
-        })
+        Some(Ok(()))
     }
 
     #[cfg(any(feature="rt_tokio", feature="rt_async-std"))]
