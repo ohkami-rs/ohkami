@@ -18,6 +18,10 @@
     min_specialization,
     try_trait_v2,
 ))]
+#![cfg_attr(all(feature="rt_worker", feature="nightly"), feature(
+    impl_trait_in_assoc_type,
+))]
+
 
 
 #[cfg(any(
@@ -103,7 +107,7 @@ mod x_websocket;
 
 #[cfg(feature="rt_worker")]
 pub use ::ohkami_macros::worker;
-#[cfg(feature="rt_worker")]
+#[cfg(all(feature="rt_worker", feature="nightly"))]
 pub mod worker;
 
 
