@@ -1,34 +1,16 @@
 use std::future::{Future, IntoFuture};
 use std::marker::PhantomData;
+use serde::Deserialize;
 use worker::kv::{GetOptionsBuilder, KvError, KvStore, ListOptionsBuilder, ListResponse, PutOptionsBuilder, ToRawKvValue};
 use worker::wasm_bindgen::JsValue;
-use super::SendFuture;
+use super::{SendFuture, Error};
 
 
 pub struct KV(pub(super) KvStore);
 unsafe impl Send for KV {}
 unsafe impl Sync for KV {}
 
-pub struct Error(KvError);
-unsafe impl Send for Error {}
-unsafe impl Sync for Error {}
-const _: () = {
-    impl std::fmt::Debug for Error {
-        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            self.0.fmt(f)
-        }
-    }
-    impl std::fmt::Display for Error {
-        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            self.0.fmt(f)
-        }
-    }
-    impl std::error::Error for Error {}
-};
-
-const _: (/* get */) = {
-    ///////// default get: { "type": "text" } /////////
-
+const _: (/* get text */) = {
     impl KV {
         pub fn get(&self, key: &str) -> Get {
             Get(self.0.get(key))
@@ -56,37 +38,43 @@ const _: (/* get */) = {
             // }})
             SendFuture(async {
                 self.0.text().await
-                    .map_err(Error)?
-                    .ok_or_else(|| Error(KvError::JavaScript(JsValue::from_str("Specified  `{\"type\": \"text\"}` but not an text"))))
+                    .map_err(Error::KV)?
+                    .ok_or_else(|| Error::KV(KvError::JavaScript(JsValue::from_str("Specified  `{\"type\": \"text\"}` but not an text"))))
             })
         }
     }
+};
 
-    ///////// get with { "type": "json" } /////////
-
+const _: (/* get json */) = {
     impl KV {
-        pub fn get_<T: serde::de::DeserializeOwned>(&self, key: &str) -> GetJSON<T> {
-            GetJSON(self.0.get(key), PhantomData)
+        pub fn get_<T: for<'de> Deserialize<'de>>(&self, key: &str) -> Get<T> {
+            Get(self.0.get(key), PhantomData)
         }
     }
 
-    pub struct GetJSON<T: serde::de::DeserializeOwned>(
+    pub struct Get<T: for<'de> Deserialize<'de>>(
         GetOptionsBuilder,
         PhantomData<fn()->T>
     );
 
-    unsafe impl<T: serde::de::DeserializeOwned> Send for GetJSON<T> {}
-    unsafe impl<T: serde::de::DeserializeOwned> Sync for GetJSON<T> {}
+    unsafe impl<T: for<'de> Deserialize<'de>> Send for Get<T> {}
+    unsafe impl<T: for<'de> Deserialize<'de>> Sync for Get<T> {}
 
-    impl<T: serde::de::DeserializeOwned> IntoFuture for GetJSON<T> {
+    impl<T: for<'de> Deserialize<'de>> Get<T> {
+        pub fn cache_ttl(self, ttl: u64) -> Self {
+            Self(self.0.cache_ttl(ttl), PhantomData)
+        }
+    }
+
+    impl<T: for<'de> Deserialize<'de>> IntoFuture for Get<T> {
         type Output     = Result<T, Error>;
         type IntoFuture = impl Future<Output = Self::Output> + Send;
 
         fn into_future(self) -> Self::IntoFuture {
             SendFuture(async {
                 self.0.json().await
-                    .map_err(Error)?
-                    .ok_or_else(|| Error(KvError::JavaScript(JsValue::from_str("Specified `{\"type\": \"json\"}` but got `null`"))))
+                    .map_err(Error::KV)?
+                    .ok_or_else(|| Error::KV(KvError::JavaScript(JsValue::from_str("Specified `{\"type\": \"json\"}` but got `null`"))))
             })
         }
     }
@@ -95,7 +83,7 @@ const _: (/* get */) = {
 const _: (/* put */) = {
     impl KV {
         pub fn put(&self, key: &str, value: impl ToRawKvValue) -> Put {
-            Put(self.0.put(key, value).map_err(Error))
+            Put(self.0.put(key, value).map_err(Error::KV))
         }
     }
 
@@ -114,7 +102,7 @@ const _: (/* put */) = {
 
         pub fn metadata(self, metadata: impl serde::Serialize) -> Self {
             Self(match self.0 {
-                Ok(put) => put.metadata(metadata).map_err(Error),
+                Ok(put) => put.metadata(metadata).map_err(Error::KV),
                 Err(e)  => Err(e),
             })
         }
@@ -127,7 +115,7 @@ const _: (/* put */) = {
         fn into_future(self) -> Self::IntoFuture {
             SendFuture(async {
                 self.0?.execute().await
-                    .map_err(Error)
+                    .map_err(Error::KV)
             })
         }
     }
@@ -165,7 +153,7 @@ const _: (/* list */) = {
         fn into_future(self) -> Self::IntoFuture {
             SendFuture(async {
                 self.0.execute().await
-                    .map_err(Error)
+                    .map_err(Error::KV)
             })
         }
     }
@@ -174,7 +162,7 @@ const _: (/* list */) = {
 const _: (/* delete */) = {
     impl KV {
         pub async fn delete(&self, key: &str) -> Result<(), Error> {
-            self.0.delete(key).await.map_err(Error)
+            self.0.delete(key).await.map_err(Error::KV)
         }
     }
 };
