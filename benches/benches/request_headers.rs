@@ -7,8 +7,10 @@ use test::black_box;
 use http::{HeaderMap, HeaderName, HeaderValue};
 use ohkami::__internal__::{RequestHeaders, RequestHeader};
 use ohkami_lib::{CowSlice, Slice};
-
-use ohkami_benches::request_headers::fxmap::FxMap;
+use ohkami_benches::request_headers::{
+    fxmap::FxMap,
+    headerhashmap::HeaderHashMap,
+};
 
 
 fn input() -> Vec<u8> {
@@ -52,27 +54,27 @@ fn input() -> Vec<u8> {
     //     \r\n\
     // ");
 
-    // let input: &[u8; 301] = test::black_box(b"\
-    //     Authorization: Bearer dummy-authorization-token-sample\r\n\
-    //     Host: localhost:7777\r\n\
-    //     Origin: localhost:3333\r\n\
-    //     User-Agent: Mozilla/5.0 (platform; rv:geckoversion) Gecko/geckotrail Firefox/firefoxversion\r\n\
-    //     From: webmaster@example.org\r\n\
-    //     X-MyApp-Data: example-custom-header-value\r\n\
-    //     Some-Custom-Header: strawberry\r\n\
-    //     \r\n\
-    // ");
-
-    let input: &[u8; 320] = test::black_box(b"\
+    let input: &[u8; 301] = test::black_box(b"\
         Authorization: Bearer dummy-authorization-token-sample\r\n\
         Host: localhost:7777\r\n\
         Origin: localhost:3333\r\n\
         User-Agent: Mozilla/5.0 (platform; rv:geckoversion) Gecko/geckotrail Firefox/firefoxversion\r\n\
         From: webmaster@example.org\r\n\
-        Cookie: PHPSESSID=298zf09hf012fh2; csrftoken=u32t4o3tb3gg43; _gat=1\r\n\
-        Cache-Control: no-cache\r\n\
+        X-MyApp-Data: example-custom-header-value\r\n\
+        Some-Custom-Header: strawberry\r\n\
         \r\n\
     ");
+
+    // let input: &[u8; 320] = test::black_box(b"\
+    //     Authorization: Bearer dummy-authorization-token-sample\r\n\
+    //     Host: localhost:7777\r\n\
+    //     Origin: localhost:3333\r\n\
+    //     User-Agent: Mozilla/5.0 (platform; rv:geckoversion) Gecko/geckotrail Firefox/firefoxversion\r\n\
+    //     From: webmaster@example.org\r\n\
+    //     Cookie: PHPSESSID=298zf09hf012fh2; csrftoken=u32t4o3tb3gg43; _gat=1\r\n\
+    //     Cache-Control: no-cache\r\n\
+    //     \r\n\
+    // ");
 
     Vec::from(test::black_box(input))
 }
@@ -103,7 +105,6 @@ fn input() -> Vec<u8> {
     })
 }
 
-
 #[bench] fn fxmap_parse(b: &mut test::Bencher) {
     let input = input();
 
@@ -111,6 +112,25 @@ fn input() -> Vec<u8> {
         let mut r = byte_reader::Reader::new(black_box(input.as_slice()));
 
         let mut h = FxMap::new();
+        while r.consume("\r\n").is_none() {
+            let key_bytes = r.read_while(|b| b != &b':');
+            r.consume(": ").unwrap();
+            h.insert(
+                Slice::from_bytes(key_bytes),
+                CowSlice::Ref(Slice::from_bytes(r.read_while(|b| b != &b'\r'))
+            ));
+            r.consume("\r\n");
+        }
+    })
+}
+
+#[bench] fn headerhashmap_parse(b: &mut test::Bencher) {
+    let input = input();
+
+    b.iter(|| {
+        let mut r = byte_reader::Reader::new(black_box(input.as_slice()));
+
+        let mut h = HeaderHashMap::default();
         while r.consume("\r\n").is_none() {
             let key_bytes = r.read_while(|b| b != &b':');
             r.consume(": ").unwrap();
