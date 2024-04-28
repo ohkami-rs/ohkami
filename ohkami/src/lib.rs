@@ -18,10 +18,6 @@
     min_specialization,
     try_trait_v2,
 ))]
-#![cfg_attr(all(feature="rt_worker", feature="nightly"), feature(
-    impl_trait_in_assoc_type,
-))]
-
 
 
 #[cfg(any(
