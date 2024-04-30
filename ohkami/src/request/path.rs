@@ -26,6 +26,7 @@ impl Path {
         let mut len = bytes.len();
         if unsafe {*bytes.get_unchecked(len-1) == b'/'} {len -= 1};
         
+        #[allow(unused_unsafe/* I don't know why but rustc sometimes put warnings to this unsafe as unnecessary */)]
         Ok(Self {
             raw:    unsafe {Slice::new_unchecked(bytes.as_ptr(), len)},
             params: Vec::new(),

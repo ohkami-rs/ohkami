@@ -1,6 +1,6 @@
 use ohkami_lib::{Slice, CowSlice};
 
-type DefaultHasher = rustc_hash::FxHasher;
+type DefaultHasher = super::request_headers::headerhashmap::HeaderHasher;//rustc_hash::FxHasher;
 
 #[inline]
 pub fn hash(key: &[u8]) -> u64 {
@@ -232,6 +232,7 @@ mod table {
         fn hasher() -> impl Fn(&(Slice, CowSlice))->u64 {
             |(k, _)| hash(unsafe {k.as_bytes()})
         }
+        #[inline(always)]
         fn equivalent(key: &Slice) -> impl Fn(&(Slice, CowSlice))->bool + '_ {
             move |(k, _)| k == key
         }

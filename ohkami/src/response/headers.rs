@@ -5,9 +5,10 @@ use rustc_hash::FxHashMap;
 
 #[derive(Clone)]
 pub struct Headers {
-    standard: Box<[Option<Cow<'static, str>>; N_SERVER_HEADERS]>,
-    custom:   Option<Box<FxHashMap<&'static str, Cow<'static, str>>>>,
-    size:     usize,
+    standard:  Box<[Option<Cow<'static, str>>; N_SERVER_HEADERS]>,
+    insertlog: Vec<usize>,
+    custom:    Option<Box<FxHashMap<&'static str, Cow<'static, str>>>>,
+    size:      usize,
 }
 
 pub struct SetHeaders<'set>(
@@ -296,7 +297,10 @@ impl Headers {
     pub(crate) fn insert(&mut self, name: Header, value: Cow<'static, str>) {
         let (name_len, value_len) = (name.len(), value.len());
         match unsafe {self.standard.get_unchecked_mut(name as usize)}.replace(value) {
-            None      => self.size += name_len + ": ".len() + value_len + "\r\n".len(),
+            None => {
+                self.size += name_len + ": ".len() + value_len + "\r\n".len();
+                self.insertlog.push(name as usize)
+            }
             Some(old) => {self.size -= old.len(); self.size += value_len}
         }
     }
@@ -371,8 +375,9 @@ impl Headers {
                 None, None, None, None, None,
                 None, None, None, None, None,
             ]),
-            custom: None,
-            size:   "\r\n".len(),
+            insertlog: Vec::with_capacity(1 << 4),
+            custom:    None,
+            size:      "\r\n".len(),
         }
     }
     #[cfg(feature="DEBUG")]
@@ -436,7 +441,7 @@ impl Headers {
     }
 
     #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
-    pub(crate) fn write_to(self, buf: &mut Vec<u8>) {
+    pub(crate) fn write_to(&self, buf: &mut Vec<u8>) {
         macro_rules! push {
             ($buf:ident <- $bytes:expr) => {
                 unsafe {
@@ -452,16 +457,18 @@ impl Headers {
         }
 
         buf.reserve(self.size);
-        for h in unsafe {SERVER_HEADERS.get_unchecked(1..)} {
-            if let Some(v) = unsafe {self.standard.get_unchecked(*h as usize)} {
-                push!(buf <- h.as_bytes());
-                push!(buf <- b": ");
-                push!(buf <- v.as_bytes());
-                push!(buf <- b"\r\n");
+        {
+            for i in &self.insertlog {
+                if let Some(v) = unsafe {self.standard.get_unchecked(*i)} {
+                    push!(buf <- SERVER_HEADERS[*i].as_bytes());
+                    push!(buf <- b": ");
+                    push!(buf <- v.as_bytes());
+                    push!(buf <- b"\r\n");
+                }
             }
         }
-        if let Some(custom) = self.custom {
-            for (k, v) in &*custom {
+        if let Some(custom) = self.custom.as_ref() {
+            for (k, v) in &**custom {
                 push!(buf <- k.as_bytes());
                 push!(buf <- b": ");
                 push!(buf <- v.as_bytes());
@@ -471,8 +478,7 @@ impl Headers {
         push!(buf <- b"\r\n");
     }
     #[cfg(feature="DEBUG")]
-    #[doc(hidden)]
-    pub fn write_ref_to(&self, buf: &mut Vec<u8>) {
+    pub fn _write_to(&self, buf: &mut Vec<u8>) {
         macro_rules! push {
             ($buf:ident <- $bytes:expr) => {
                 unsafe {
@@ -487,13 +493,14 @@ impl Headers {
             };
         }
 
-        buf.reserve(self.size);
-        for h in unsafe {SERVER_HEADERS.get_unchecked(1..)} {
-            if let Some(v) = unsafe {self.standard.get_unchecked(*h as usize)} {
-                push!(buf <- h.as_bytes());
-                push!(buf <- b": ");
-                push!(buf <- v.as_bytes());
-                push!(buf <- b"\r\n");
+        {
+            for i in &self.insertlog {
+                if let Some(v) = unsafe {self.standard.get_unchecked(*i)} {
+                    push!(buf <- SERVER_HEADERS[*i].as_bytes());
+                    push!(buf <- b": ");
+                    push!(buf <- v.as_bytes());
+                    push!(buf <- b"\r\n");
+                }
             }
         }
         if let Some(custom) = self.custom.as_ref() {

@@ -535,7 +535,7 @@ use ohkami_benches::response_headers::{
 
     let mut buf = Vec::new();
     b.iter(|| {
-        h.write_ref_to(&mut buf);
+        h._write_to(&mut buf);
     });
 }
 
@@ -590,7 +590,8 @@ use ohkami_benches::response_headers::{
     b.iter(|| {
         h.write_standards_to(&mut buf);
     });
-}#[bench] fn write_heap_ohkami_nosize(b: &mut test::Bencher) {
+}
+#[bench] fn write_heap_ohkami_nosize(b: &mut test::Bencher) {
     let mut h = HeapOhkamiHeadersWithoutSize::new();
     h.set()
         .AccessControlAllowCredentials(black_box("true"))

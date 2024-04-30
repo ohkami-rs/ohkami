@@ -248,6 +248,7 @@ impl Request {
         } else if size <= remaining_buf.len() {
             #[cfg(feature="DEBUG")] println!("\n[read_payload] case: starts_at + size <= BUF_SIZE\n");
 
+            #[allow(unused_unsafe/* I don't know why but rustc sometimes put warnings to this unsafe as unnecessary */)]
             CowSlice::Ref(unsafe {
                 Slice::new_unchecked(remaining_buf.as_ptr(), size)
             })
