@@ -273,9 +273,10 @@ trait RoutingItem {
                                 res.headers.set()
                                     .ContentType(this.mime)
                                     .ContentLength(&*this.size_str);
-                                res.content = Some(
-                                    std::borrow::Cow::Borrowed(&this.content)
-                                );
+                                res.content = Some({
+                                    let content: &'static [u8] = &this.content;
+                                    content.into()
+                                });
                             }
                             res
                         }))

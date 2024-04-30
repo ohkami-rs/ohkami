@@ -23,7 +23,7 @@ pub use from_request::*;
 #[cfg(test)] mod _test_extract;
 #[cfg(test)] mod _test_headers;
 
-use ohkami_lib::{Slice, CowSlice, percent_decode_utf8};
+use ohkami_lib::{Slice, CowSlice};
 
 use crate::typed::Payload;
 
@@ -73,7 +73,7 @@ pub(crate) const PAYLOAD_LIMIT: usize = 1 << 32;
 /// struct LogRequest;
 /// impl FangAction for LogRequest {
 ///     async fn fore<'a>(&'a self, req: &'a mut Request) -> Result<(), Response> {
-///         println!("{} {}", req.method(), req.path());
+///         println!("{} {}", req.method, req.path);
 ///         Ok(())
 ///     }
 /// }
@@ -98,7 +98,7 @@ pub(crate) const PAYLOAD_LIMIT: usize = 1 << 32;
 ///     type Error = std::convert::Infallible;
 ///     fn from_request(req: &'req Request) -> Option<Result<Self, Self::Error>> {
 ///         Some(Ok(Self(
-///             req.method().isGET()
+///             req.method.isGET()
 ///         )))
 ///     }
 /// }
@@ -114,9 +114,9 @@ pub struct Request {
     #[cfg(feature="rt_worker")]
     ctx: std::mem::MaybeUninit<::worker::Context>,
 
-    method: Method,
-    path:   std::mem::MaybeUninit<Path>,
-    query:  Option<QueryParams>,
+    pub method: Method,
+    pub path:   Path,
+    pub query:  Option<QueryParams>,
     /// Headers of this request
     /// 
     /// - `.{Name}()`, `.custom({Name})` to get the value
@@ -150,7 +150,7 @@ impl Request {
             ctx:     std::mem::MaybeUninit::uninit(),
 
             method:  Method::GET,
-            path:    std::mem::MaybeUninit::uninit(),
+            path:    Path::uninit(),
             query:   None,
             headers: RequestHeaders::init(),
             payload: None,
@@ -180,7 +180,7 @@ impl Request {
         }
         
         match Path::from_request_bytes(r.read_while(|b| b != &b'?' && b != &b' ')) {
-            Ok(path) => self.path.write(path),
+            Ok(path) => self.path = path,
             Err(res) => return Some(Err(res))
         };
 
@@ -285,7 +285,7 @@ impl Request {
         unsafe {let __url__ = self.__url__.assume_init_ref();
             let path  = Path::from_request_bytes(__url__.path().as_bytes()).unwrap();
             let query = __url__.query().map(|str| QueryParams::new(str.as_bytes()));
-            self.path.write(path);
+            self.path  = path;
             self.query = query;
         }
 
@@ -341,7 +341,7 @@ impl Request {
         unsafe {let __url__ = self.__url__.assume_init_ref();
             let path  = Path::from_request_bytes(__url__.path().as_bytes()).unwrap();
             let query = __url__.query().map(|str| QueryParams::new(str.as_bytes()));
-            self.path.write(path);
+            self.path  = path;
             self.query = query;
         }
 
@@ -369,27 +369,6 @@ impl Request {
 }
 
 impl Request {
-    #[inline(always)] pub const fn method(&self) -> Method {
-        self.method
-    }
-
-    /// Get request path as `Cow::Borrowed(&str)` if it's not percent-encoded, or, if encoded,
-    /// decode it into `Cow::Owned(String)`.
-    #[inline(always)] pub fn path(&self) -> Cow<'_, str> {
-        percent_decode_utf8(unsafe {self.path.assume_init_ref().as_bytes()})
-            .expect("Path is not UTF-8")
-    }
-
-    #[inline] pub fn queries(&self) -> impl Iterator<Item = (Cow<'_, str>, Cow<'_, str>)> {
-        self.query.as_ref()
-            .map(QueryParams::iter)
-            .into_iter().flatten()
-    }
-    #[inline] pub fn query<'req, Q: serde::Deserialize<'req>>(&'req self) -> Option<Result<Q, impl serde::de::Error>> {
-        self.query.as_ref()
-            .map(QueryParams::parse)
-    }
-
     #[inline(always)] pub fn payload<
         'req, P: Payload + serde::Deserialize<'req> + 'req
     >(&'req self) -> Option<Result<P, impl serde::de::Error + 'req>> {
@@ -406,30 +385,13 @@ impl Request {
     }
 }
 
-#[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_worker"))]
-impl Request {
-    #[inline(always)] pub(crate) unsafe fn internal_path_bytes<'p>(&self) -> &'p [u8] {
-        self.path.assume_init_ref().as_internal_bytes()
-    }
-
-    #[inline(always)] pub(crate) fn push_param(&mut self, param: Slice) {
-        unsafe {self.path.assume_init_mut().push_param(param)}
-    }
-    #[inline(always)] pub(crate) unsafe fn assume_one_param<'p>(&self) -> &'p [u8] {
-        self.path.assume_init_ref().assume_one_param()
-    }
-    #[inline(always)] pub(crate) unsafe fn assume_two_params<'p>(&self) -> (&'p [u8], &'p [u8]) {
-        self.path.assume_init_ref().assume_two_params()
-    }
-}
-
 const _: () = {
     impl std::fmt::Debug for Request {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             if let Some(payload) = self.payload.as_ref().map(|cs| unsafe {cs.as_bytes()}) {
                 f.debug_struct("Request")
                     .field("method",  &self.method)
-                    .field("path",    &self.path())
+                    .field("path",    &self.path.str())
                     .field("queries", &self.query)
                     .field("headers", &self.headers)
                     .field("payload", &String::from_utf8_lossy(payload))
@@ -437,7 +399,7 @@ const _: () = {
             } else {
                 f.debug_struct("Request")
                     .field("method",  &self.method)
-                    .field("path",    &self.path())
+                    .field("path",    &self.path.str())
                     .field("queries", &self.query)
                     .field("headers", &self.headers)
                     .finish()
@@ -451,7 +413,7 @@ const _: () = {
     impl PartialEq for Request {
         fn eq(&self, other: &Self) -> bool {
                 self.method == other.method &&
-                unsafe {self.path.assume_init_ref().as_bytes() == other.path.assume_init_ref().as_bytes()} &&
+                unsafe {self.path.normalized_bytes() == other.path.normalized_bytes()} &&
                 self.query == other.query &&
                 self.headers == other.headers &&
                 self.payload == other.payload

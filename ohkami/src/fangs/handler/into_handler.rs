@@ -67,7 +67,7 @@ const _: (/* FromParam */) = {
     {
         fn into_handler(self) -> Handler {
             Handler::new(move |req|
-                match from_param_bytes(unsafe {req.assume_one_param()}) {
+                match from_param_bytes(unsafe {req.path.assume_one_param()}) {
                     Ok(p1) => {
                         let res = self(p1);
                         Box::pin(async move {res.await.into_response()})
@@ -88,7 +88,7 @@ const _: (/* FromParam */) = {
             Handler::new(move |req|
                 // SAFETY: Due to the architecture of `Router`,
                 // `params` has already `append`ed once before this code
-                match from_param_bytes(unsafe {req.assume_one_param()}) {
+                match from_param_bytes(unsafe {req.path.assume_one_param()}) {
                     Ok(p1) => {
                         let res = self((p1,));
                         Box::pin(async move {res.await.into_response()})
@@ -106,7 +106,7 @@ const _: (/* FromParam */) = {
     {
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
-                let (p1, p2) = unsafe {req.assume_two_params()};
+                let (p1, p2) = unsafe {req.path.assume_two_params()};
                 match (from_param_bytes::<P1>(p1), from_param_bytes::<P2>(p2)) {
                     (Ok(p1), Ok(p2)) => {
                         let res = self((p1, p2));
@@ -188,7 +188,7 @@ const _: (/* one FromParam without tuple and FromRequest items */) = {
             Handler::new(move |req| {
                 // SAFETY: Due to the architecture of `Router`,
                 // `params` has already `append`ed once before this code
-                let p1 = unsafe {req.assume_one_param()};
+                let p1 = unsafe {req.path.assume_one_param()};
 
                 match (from_param_bytes(p1), from_request(req)) {
                     (Ok(p1), Ok(item1)) => {
@@ -211,7 +211,7 @@ const _: (/* one FromParam without tuple and FromRequest items */) = {
             Handler::new(move |req| {
                 // SAFETY: Due to the architecture of `Router`,
                 // `params` has already `append`ed once before this code
-                let p1 = unsafe {req.assume_one_param()};
+                let p1 = unsafe {req.path.assume_one_param()};
 
                 match (from_param_bytes(p1), from_request::<Item1>(req), from_request::<Item2>(req)) {
                     (Ok(p1), Ok(item1), Ok(item2)) => {
@@ -235,7 +235,7 @@ const _: (/* one FromParam without tuple and FromRequest items */) = {
             Handler::new(move |req| {
                 // SAFETY: Due to the architecture of `Router`,
                 // `params` has already `append`ed once before this code
-                let p1 = unsafe {req.assume_one_param()};
+                let p1 = unsafe {req.path.assume_one_param()};
 
                 match (from_param_bytes(p1), from_request::<Item1>(req), from_request::<Item2>(req), from_request::<Item3>(req)) {
                     (Ok(p1), Ok(item1), Ok(item2), Ok(item3)) => {
@@ -262,7 +262,7 @@ const _: (/* one FromParam and FromRequest items */) = {
             Handler::new(move |req| {
                 // SAFETY: Due to the architecture of `Router`,
                 // `params` has already `append`ed once before this code
-                let p1 = unsafe {req.assume_one_param()};
+                let p1 = unsafe {req.path.assume_one_param()};
 
                 match (from_param_bytes(p1), from_request::<Item1>(req)) {
                     (Ok(p1), Ok(item1)) => {
@@ -285,7 +285,7 @@ const _: (/* one FromParam and FromRequest items */) = {
             Handler::new(move |req| {
                 // SAFETY: Due to the architecture of `Router`,
                 // `params` has already `append`ed once before this code
-                let p1 = unsafe {req.assume_one_param()};
+                let p1 = unsafe {req.path.assume_one_param()};
 
                 match (from_param_bytes(p1), from_request::<Item1>(req), from_request::<Item2>(req)) {
                     (Ok(p1), Ok(item1), Ok(item2)) => {
@@ -309,7 +309,7 @@ const _: (/* one FromParam and FromRequest items */) = {
             Handler::new(move |req| {
                 // SAFETY: Due to the architecture of `Router`,
                 // `params` has already `append`ed once before this code
-                let p1 = unsafe {req.assume_one_param()};
+                let p1 = unsafe {req.path.assume_one_param()};
                 
                 match (from_param_bytes(p1), from_request::<Item1>(req), from_request::<Item2>(req), from_request::<Item3>(req)) {
                     (Ok(p1), Ok(item1), Ok(item2), Ok(item3)) => {
@@ -336,7 +336,7 @@ const _: (/* two PathParams and FromRequest items */) = {
             Handler::new(move |req| {
                 // SAFETY: Due to the architecture of `Router`,
                 // `params` has already `append`ed twice before this code
-                let (p1, p2) = unsafe {req.assume_two_params()};
+                let (p1, p2) = unsafe {req.path.assume_two_params()};
 
                 match (from_param_bytes(p1), from_param_bytes(p2), from_request::<Item1>(req)) {
                     (Ok(p1), Ok(p2), Ok(item1)) => {
@@ -360,7 +360,7 @@ const _: (/* two PathParams and FromRequest items */) = {
             Handler::new(move |req| {
                 // SAFETY: Due to the architecture of `Router`,
                 // `params` has already `append`ed twice before this code
-                let (p1, p2) = unsafe {req.assume_two_params()};
+                let (p1, p2) = unsafe {req.path.assume_two_params()};
 
                 match (from_param_bytes(p1), from_param_bytes(p2), from_request::<Item1>(req), from_request::<Item2>(req)) {
                     (Ok(p1), Ok(p2), Ok(item1), Ok(item2)) => {
@@ -385,7 +385,7 @@ const _: (/* two PathParams and FromRequest items */) = {
             Handler::new(move |req| {
                 // SAFETY: Due to the architecture of `Router`,
                 // `params` has already `append`ed twice before this code
-                let (p1, p2) = unsafe {req.assume_two_params()};
+                let (p1, p2) = unsafe {req.path.assume_two_params()};
 
                 match (from_param_bytes(p1), from_param_bytes(p2), from_request::<Item1>(req), from_request::<Item2>(req), from_request::<Item3>(req)) {
                     (Ok(p1), Ok(p2), Ok(item1), Ok(item2), Ok(item3)) => {

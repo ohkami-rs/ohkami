@@ -107,7 +107,7 @@ impl RadixRouter {
     ) -> Response {
         let res = self.0.search(req).call_bite(req).await;
         
-        match req.method() {
+        match req.method {
             Method::HEAD => res.without_content(),
             _            => res,
         }
@@ -116,13 +116,13 @@ impl RadixRouter {
 
 impl Node {
     pub(super/* for test */) fn search(&self, req: &mut Request) -> &dyn FangProcCaller {
-        let method = req.method();
+        let method = req.method;
         // SAFETY:
         // 1. `req` must be alive while `search`
         // 2. `Request` DOESN'T have method that mutates `path`,
         //    So what `path` refers to is NEVER changed by any other process
         //    while `search`
-        let mut path = unsafe {req.internal_path_bytes()};
+        let mut path = unsafe {req.path.normalized_bytes()};
 
         let mut target = self;
 
@@ -155,7 +155,7 @@ impl Node {
                     },
                     Pattern::Param      => {
                         let (param, remaining) = split_next_section(path);
-                        req.push_param(Slice::from_bytes(param));
+                        unsafe {req.path.push_param(Slice::from_bytes(param))}
                         path = remaining;
                     },
                 }
