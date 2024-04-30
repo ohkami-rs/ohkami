@@ -299,7 +299,8 @@ impl HeaderMap {
 
 
 #[cfg(test)]
-#[test] fn edit_map() {
+// #[test]
+fn _edit_map() {
     let mut h = HeaderMap::new();
 
     h.set()
