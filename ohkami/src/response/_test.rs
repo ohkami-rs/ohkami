@@ -37,8 +37,8 @@ async fn test_response_into_bytes() {
     let res_bytes = res.into_bytes();
     assert_bytes_eq!(res_bytes, format!("\
         HTTP/1.1 204 No Content\r\n\
-        Date: {__now__}\r\n\
         Server: ohkami\r\n\
+        Date: {__now__}\r\n\
         \r\n\
     ").into_bytes());
 
@@ -46,8 +46,8 @@ async fn test_response_into_bytes() {
     let res_bytes = res.into_bytes();
     assert_bytes_eq!(res_bytes, format!("\
         HTTP/1.1 404 Not Found\r\n\
-        Content-Length: 0\r\n\
         Date: {__now__}\r\n\
+        Content-Length: 0\r\n\
         \r\n\
     ").into_bytes());
 
@@ -57,9 +57,9 @@ async fn test_response_into_bytes() {
     let res_bytes = res.into_bytes();
     assert_bytes_eq!(res_bytes, format!("\
         HTTP/1.1 404 Not Found\r\n\
-        Content-Length: 0\r\n\
-        Date: {__now__}\r\n\
         Server: ohkami\r\n\
+        Date: {__now__}\r\n\
+        Content-Length: 0\r\n\
         Hoge-Header: Something-Custom\r\n\
         \r\n\
     ").into_bytes());
