@@ -52,8 +52,9 @@ async fn test_response_into_bytes() {
     ").into_bytes());
 
     let mut res = Response::NotFound();
-    res.headers.set().Server("ohkami");
-    res.headers.set().custom("Hoge-Header", "Something-Custom");
+    res.headers.set()
+        .Server("ohkami")
+        .custom("Hoge-Header", "Something-Custom");
     let res_bytes = res.into_bytes();
     assert_bytes_eq!(res_bytes, format!("\
         HTTP/1.1 404 Not Found\r\n\
@@ -61,6 +62,24 @@ async fn test_response_into_bytes() {
         Date: {__now__}\r\n\
         Content-Length: 0\r\n\
         Hoge-Header: Something-Custom\r\n\
+        \r\n\
+    ").into_bytes());
+
+    let mut res = Response::NotFound();
+    res.headers.set()
+        .Server("ohkami")
+        .custom("Hoge-Header", "Something-Custom")
+        .SetCookie("id=A")
+        .SetCookie("id=B");
+    let res_bytes = res.into_bytes();
+    assert_bytes_eq!(res_bytes, format!("\
+        HTTP/1.1 404 Not Found\r\n\
+        Server: ohkami\r\n\
+        Date: {__now__}\r\n\
+        Content-Length: 0\r\n\
+        Hoge-Header: Something-Custom\r\n\
+        Set-Cookie: id=A\r\n\
+        Set-Cookie: id=B\r\n\
         \r\n\
     ").into_bytes());
 }

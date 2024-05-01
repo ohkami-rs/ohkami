@@ -75,49 +75,6 @@ const _: () = {
     }
 };
 
-// pub struct OptionalAuth {
-//     condition: Option<fn(&Request)->bool>,
-// }
-// impl OptionalAuth {
-//     pub fn with_condition(condition: fn(&Request)->bool) -> Self {
-//         Self { condition: Some(condition) }
-//     }
-// }
-// impl Default for OptionalAuth {
-//     fn default() -> Self {
-//         Self { condition: None }
-//     }
-// }
-// const _: () = {
-//     impl<I: FangProc> Fang<I> for OptionalAuth {
-//         type Proc = OptionalAuthProc<I>;
-//         fn chain(&self, inner: I) -> Self::Proc {
-//             OptionalAuthProc {
-//                 optional_auth: Self { condition: self.condition },
-//                 inner
-//             }
-//         }
-//     }
-// 
-//     struct OptionalAuthProc<I: FangProc> {
-//         inner: I,
-//         optional_auth: OptionalAuth
-//     }
-// 
-//     impl<I: FangProc> FangProc for OptionalAuthProc<I> {
-//         async fn bite<'b>(&'b self, req: &'b mut Request) -> Response {
-//             if self.optional_auth.condition.is_some_and(|cond| !cond(req)) {
-//                 return self.inner.bite(req).await;
-//             }
-//             
-//             let secret = config::JWT_SECRET_KEY()?;
-//             let payload: Option<config::JWTPayload> = JWT::default(secret).verified(req).ok();
-//             req.memorize(payload);
-//             Ok(())
-//         }
-//     }
-// };
-
 pub struct Logger;
 const _: () = {
     impl<I: FangProc> Fang<I> for Logger {
@@ -133,8 +90,8 @@ const _: () = {
 
     impl<I: FangProc> FangProc for LoggerProc<I> {
         async fn bite<'b>(&'b self, req: &'b mut Request) -> Response {
-            let method = req.method();
-            let path   = req.path();
+            let method = req.method;
+            let path   = req.path.str();
 
             tracing::info!("\n[req]\n{method:<7} {path}");
 

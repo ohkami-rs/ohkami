@@ -68,7 +68,7 @@ pub enum FromRequestError {
 ///     type Error = std::convert::Infallible;
 ///     fn from_request(req: &Request) -> Option<Result<Self, Self::Error>> {
 ///         Some(Ok(Self(
-///             req.method().isGET()
+///             req.method.isGET()
 ///         )))
 ///     }
 /// }

@@ -131,14 +131,13 @@ pub mod header {
     ///     ).howl("localhost:3000").await
     /// }
     /// ```
-    #[allow(private_interfaces)]
-    pub fn append(value: impl Into<std::borrow::Cow<'static, str>>) -> Append {
-        Append(value.into())
+    pub fn append(value: impl Into<std::borrow::Cow<'static, str>>) -> private::Append {
+        private::Append(value.into())
     }
 
-    pub(crate) struct Append(pub(crate) std::borrow::Cow<'static, str>);
-
-    pub fn all() {}
+    pub(crate) mod private {
+        pub struct Append(pub(crate) std::borrow::Cow<'static, str>);
+    }
 }
 
 pub mod prelude {

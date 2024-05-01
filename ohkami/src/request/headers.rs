@@ -1,5 +1,5 @@
 use std::borrow::Cow;
-use crate::header::Append;
+use crate::header::private::Append;
 use ohkami_lib::{CowSlice, Slice};
 use rustc_hash::FxHashMap;
 
@@ -247,8 +247,8 @@ macro_rules! Header {
     Via:                         b"Via" | b"via",
 }
 
-#[allow(non_snake_case)]
 const _: () = {
+    #[allow(non_snake_case)]
     impl Headers {
         pub fn Cookie(&self) -> impl Iterator<Item = &str> {
             self.cookie.as_ref().map(|cookies|

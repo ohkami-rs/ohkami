@@ -30,9 +30,17 @@ const _: () = {
     }
 
     impl AsRef<str> for Path {
+        #[inline]
         fn as_ref(&self) -> &str {
             let bytes = &unsafe {self.0.assume_init_ref().raw.as_bytes()};
             std::str::from_utf8(bytes).expect("Non UTF-8 path params")
+        }
+    }
+    impl std::ops::Deref for Path {
+        type Target = str;
+        #[inline]
+        fn deref(&self) -> &Self::Target {
+            self.as_ref()
         }
     }
 

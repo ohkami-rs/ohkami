@@ -14,7 +14,7 @@ use crate::models::{
 
 pub fn articles_ohkami() -> Ohkami {
     fn auth_required(req: &ohkami::Request) -> bool {
-        (!req.method().isGET()) || req.path().ends_with("/feed")
+        (!req.method.isGET()) || req.path.ends_with("/feed")
     }
 
     Ohkami::with((

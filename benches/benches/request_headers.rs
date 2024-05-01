@@ -96,10 +96,12 @@ fn input() -> Vec<u8> {
                     Slice::from_bytes(r.read_while(|b| b != &b'\r'))
                 ));
             } else {
-                let key = CowSlice::Ref(Slice::from_bytes(key_bytes));
-                h._insert_custom(key, CowSlice::Ref(
-                    Slice::from_bytes(r.read_while(|b| b != &b'\r'))
-                ));
+                match key_bytes {
+                    b"Cookie" | b"cookie" => (/* skip now */),
+                    _ => h._insert_custom(Slice::from_bytes(key_bytes), CowSlice::Ref(
+                        Slice::from_bytes(r.read_while(|b| b != &b'\r'))
+                    ))
+                }
             }
             r.consume("\r\n");
         }
