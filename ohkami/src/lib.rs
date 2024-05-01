@@ -113,7 +113,7 @@ pub mod header {
     /// *example.rs*
     /// ```no_run
     /// use ohkami::prelude::*;
-    /// use ohkami::append;
+    /// use ohkami::header::append;
     /// 
     /// #[derive(Clone)]
     /// struct AppendServer(&'static str);
@@ -131,6 +131,7 @@ pub mod header {
     ///     ).howl("localhost:3000").await
     /// }
     /// ```
+    #[allow(private_interfaces)]
     pub fn append(value: impl Into<std::borrow::Cow<'static, str>>) -> Append {
         Append(value.into())
     }

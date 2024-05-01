@@ -198,15 +198,17 @@ impl Request {
             if r.consume(": ").is_none() {
                 return Some(Err((|| Response::BadRequest())()))
             }
+            let value = Slice::from_bytes(r.read_while(|b| b != &b'\r'));
             if let Some(key) = RequestHeader::from_bytes(key_bytes) {
-                self.headers.insert(key, CowSlice::Ref(
-                    Slice::from_bytes(r.read_while(|b| b != &b'\r'))
-                ));
+                self.headers.append(key, CowSlice::Ref(value));
             } else {
-                self.headers.insert_custom(
-                    CowSlice::Ref(Slice::from_bytes(key_bytes)),
-                    CowSlice::Ref(Slice::from_bytes(r.read_while(|b| b != &b'\r')))
-                );
+                match key_bytes {
+                    b"Cookie" | b"cookie" => self.headers.append_cookie(value),
+                    _ => self.headers.append_custom(
+                        Slice::from_bytes(key_bytes),
+                        CowSlice::Ref(value)
+                    )
+                }
             }
             if r.consume("\r\n").is_none() {
                 return Some(Err((|| Response::BadRequest())()))
@@ -293,18 +295,24 @@ impl Request {
 
         while r.consume("\r\n").is_none() {
             let key_bytes = r.read_while(|b| b != &b':');
-            r.consume(": ").unwrap();
-            if let Some(key) = RequestHeader::from_bytes(key_bytes) {
-                self.headers.insert(key, CowSlice::Ref(
-                    Slice::from_bytes(r.read_while(|b| b != &b'\r'))
-                ));
-            } else {
-                self.headers.insert_custom(
-                    CowSlice::Ref(Slice::from_bytes(key_bytes)),
-                    CowSlice::Ref(Slice::from_bytes(r.read_while(|b| b != &b'\r')))
-                );
+            if r.consume(": ").is_none() {
+                return Some(Err((|| crate::Response::BadRequest())()))
             }
-            r.consume("\r\n");
+            let value = Slice::from_bytes(r.read_while(|b| b != &b'\r'));
+            if let Some(key) = RequestHeader::from_bytes(key_bytes) {
+                self.headers.append(key, CowSlice::Ref(value));
+            } else {
+                match key_bytes {
+                    b"Cookie" | b"cookie" => self.headers.append_cookie(value),
+                    _ => self.headers.append_custom(
+                        Slice::from_bytes(key_bytes),
+                        CowSlice::Ref(value)
+                    )
+                }
+            }
+            if r.consume("\r\n").is_none() {
+                return Some(Err((|| crate::Response::BadRequest())()))
+            }
         }
 
         self.payload = {
@@ -329,7 +337,7 @@ impl Request {
         self.env.write(env);
         self.ctx.write(ctx);
 
-        self.method  = Method::from_worker(req.method())
+        self.method = Method::from_worker(req.method())
             .ok_or_else(|| Response::NotImplemented().with_text("ohkami doesn't support `CONNECT`, `TRACE` method"))?;
 
         self.__url__.write(req.url()
