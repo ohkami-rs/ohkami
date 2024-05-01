@@ -134,14 +134,16 @@ macro_rules! Header {
         }
 
         impl Header {
-            #[inline] pub const fn as_str(&self) -> &'static str {
+            #[inline]
+            pub const fn as_str(&self) -> &'static str {
                 match self {
                     $(
                         Self::$konst => unsafe {std::str::from_utf8_unchecked($name_bytes)},
                     )*
                 }
             }
-            #[inline] pub const fn from_bytes(bytes: &[u8]) -> Option<Self> {
+            #[inline(always)]
+            pub const fn from_bytes(bytes: &[u8]) -> Option<Self> {
                 match bytes {
                     $(
                         $name_bytes | $lower_case $(| $other_pattern)* => Some(Self::$konst),
@@ -394,6 +396,7 @@ impl Headers {
 
 #[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_worker"))]
 impl Headers {
+    #[inline]
     pub(crate) fn init() -> Self {
         Self {
             standard: Box::new([

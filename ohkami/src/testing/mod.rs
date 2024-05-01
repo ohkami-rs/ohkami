@@ -58,8 +58,9 @@ impl TestingOhkami {
             let mut request = Request::init();
             let mut request = unsafe {Pin::new_unchecked(&mut request)};
             
-            let res = match request.as_mut().read(&mut &req.encode()[..]).await.unwrap() {
-                Ok(())   => router.handle(&mut request).await,
+            let res = match request.as_mut().read(&mut &req.encode()[..]).await {
+                Ok(Some(())) => router.handle(&mut request).await,
+                Ok(None) => panic!("No request"),
                 Err(res) => res,
             };
 

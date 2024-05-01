@@ -9,7 +9,7 @@ macro_rules! assert_parse {
     ($case:expr, $expected:expr) => {
         let mut actual = Request::init();
         let mut actual = unsafe {Pin::new_unchecked(&mut actual)};
-        actual.as_mut().read(&mut $case.as_bytes()).await;
+        actual.as_mut().read(&mut $case.as_bytes()).await.ok();
 
         let expected = $expected;
 

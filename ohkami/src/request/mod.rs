@@ -137,6 +137,7 @@ pub struct Request {
 
 impl Request {
     #[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_worker"))]
+    #[inline]
     pub(crate) fn init() -> Self {
         Self {
             #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
@@ -162,10 +163,14 @@ impl Request {
     pub(crate) async fn read(
         mut self: Pin<&mut Self>,
         stream:   &mut (impl AsyncReader + Unpin),
-    ) -> Option<Result<(), crate::Response>> {
+    ) -> Result<Option<()>, crate::Response> {
         use crate::Response;
 
-        if stream.read(&mut *self.__buf__).await.ok()? == 0 {return None};
+        if stream.read(&mut *self.__buf__).await.map_err(|e| {
+            eprintln!("{e}");
+            Response::InternalServerError()
+        })? == 0 {return Ok(None)};
+
         let mut r = Reader::new(unsafe {
             // pass detouched bytes
             // to resolve immutable/mutable borrowing
@@ -174,30 +179,25 @@ impl Request {
             Slice::from_bytes(&*self.__buf__).as_bytes()
         });
 
-        self.method = Method::from_bytes(r.read_while(|b| b != &b' '))?;
-        if r.consume(" ").is_none() {
-            return Some(Err((|| Response::BadRequest())()))
+        match Method::from_bytes(r.read_while(|b| b != &b' ')) {
+            None => return Ok(None),
+            Some(method) => self.method = method
         }
+
+        r.next_if(|b| *b==b' ').ok_or_else(Response::BadRequest)?;
         
-        match Path::from_request_bytes(r.read_while(|b| b != &b'?' && b != &b' ')) {
-            Ok(path) => self.path = path,
-            Err(res) => return Some(Err(res))
-        };
+        self.path = Path::from_request_bytes(r.read_while(|b| b != &b'?' && b != &b' '))?;
 
         if r.consume_oneof([" ", "?"]).unwrap() == 1 {
             self.query = Some(QueryParams::new(r.read_while(|b| b != &b' ')));
             r.advance_by(1);
         }
 
-        if r.consume("HTTP/1.1\r\n").is_none() {
-            return Some(Err((|| Response::HTTPVersionNotSupported())()))
-        }
+        r.consume("HTTP/1.1\r\n").ok_or_else(Response::HTTPVersionNotSupported)?;
 
         while r.consume("\r\n").is_none() {
             let key_bytes = r.read_while(|b| b != &b':');
-            if r.consume(": ").is_none() {
-                return Some(Err((|| Response::BadRequest())()))
-            }
+            r.consume(": ").ok_or_else(Response::BadRequest)?;
             let value = Slice::from_bytes(r.read_while(|b| b != &b'\r'));
             if let Some(key) = RequestHeader::from_bytes(key_bytes) {
                 self.headers.append(key, CowSlice::Ref(value));
@@ -210,28 +210,24 @@ impl Request {
                     )
                 }
             }
-            if r.consume("\r\n").is_none() {
-                return Some(Err((|| Response::BadRequest())()))
-            }
+            r.consume("\r\n").ok_or_else(Response::BadRequest)?;
         }
 
         let content_length = match self.headers.get_raw(RequestHeader::ContentLength) {
             Some(v) => unsafe {v.as_bytes()}.into_iter().fold(0, |len, b| 10*len + (*b - b'0') as usize),
             None    => 0,
         };
-        if content_length > PAYLOAD_LIMIT {
-            return Some(Err((|| Response::PayloadTooLarge())()))
-        }
-
-        if content_length > 0 {
-            self.payload = Some(Request::read_payload(
+        match content_length {
+            0 => (),
+            PAYLOAD_LIMIT.. => return Err((|| Response::PayloadTooLarge())()),
+            _ => self.payload = Some(Request::read_payload(
                 stream,
                 r.remaining(),
                 content_length,
-            ).await);
+            ).await)
         }
 
-        Some(Ok(()))
+        Ok(Some(()))
     }
 
     #[cfg(any(feature="rt_tokio", feature="rt_async-std"))]
@@ -272,12 +268,18 @@ impl Request {
     #[cfg(feature="testing")]
     pub(crate) async fn read(mut self: Pin<&mut Self>,
         raw_bytes: &mut &[u8]
-    ) -> Option<Result<(), crate::Response>> {
+    ) -> Result<Option<()>, crate::Response> {
+        use crate::Response;
+
         let mut r = Reader::new(raw_bytes);
 
-        self.method = Method::from_bytes(r.read_while(|b| b != &b' '))?;
-        r.consume(" ").unwrap();
+        match Method::from_bytes(r.read_while(|b| b != &b' ')) {
+            None => return Ok(None),
+            Some(method) => self.method = method
+        }
 
+        r.next_if(|b| *b==b' ').ok_or_else(Response::BadRequest)?;
+        
         self.__url__.write({
             let mut url = String::from("http://test.ohkami");
             url.push_str(std::str::from_utf8(r.read_while(|b| b != &b' ')).unwrap());
@@ -291,13 +293,11 @@ impl Request {
             self.query = query;
         }
 
-        r.consume("HTTP/1.1\r\n").expect("Ohkami can only handle HTTP/1.1");
+        r.consume("HTTP/1.1\r\n").ok_or_else(Response::HTTPVersionNotSupported)?;
 
         while r.consume("\r\n").is_none() {
             let key_bytes = r.read_while(|b| b != &b':');
-            if r.consume(": ").is_none() {
-                return Some(Err((|| crate::Response::BadRequest())()))
-            }
+            r.consume(": ").ok_or_else(Response::BadRequest)?;
             let value = Slice::from_bytes(r.read_while(|b| b != &b'\r'));
             if let Some(key) = RequestHeader::from_bytes(key_bytes) {
                 self.headers.append(key, CowSlice::Ref(value));
@@ -310,22 +310,18 @@ impl Request {
                     )
                 }
             }
-            if r.consume("\r\n").is_none() {
-                return Some(Err((|| crate::Response::BadRequest())()))
-            }
+            r.consume("\r\n").ok_or_else(Response::BadRequest)?;
         }
 
-        self.payload = {
-            let content_length = match self.headers.get_raw(RequestHeader::ContentLength) {
-                Some(v) => unsafe {v.as_bytes()}.into_iter().fold(0, |len, b| 10*len + (*b - b'0') as usize),
-                None    => 0,
-            };
-            (content_length > 0).then_some(CowSlice::Own(
-                r.remaining().into()
-            ))
+        let content_length = match self.headers.get_raw(RequestHeader::ContentLength) {
+            Some(v) => unsafe {v.as_bytes()}.into_iter().fold(0, |len, b| 10*len + (*b - b'0') as usize),
+            None    => 0,
         };
+        self.payload = (content_length > 0).then(||
+            CowSlice::Own(r.remaining().into())
+        );
 
-        Some(Ok(()))
+        Ok(Some(()))
     }
 
     #[cfg(feature="rt_worker")]
@@ -384,11 +380,11 @@ impl Request {
     }
 
     /// Memorize any data within this request object
-    #[inline(always)] pub fn memorize<Value: Send + Sync + 'static>(&mut self, value: Value) {
+    #[inline] pub fn memorize<Value: Send + Sync + 'static>(&mut self, value: Value) {
         self.store.insert(value)
     }
     /// Retrieve a data memorized in this request (using the type as key)
-    #[inline(always)] pub fn memorized<Value: Send + Sync + 'static>(&self) -> Option<&Value> {
+    #[inline] pub fn memorized<Value: Send + Sync + 'static>(&self) -> Option<&Value> {
         self.store.get()
     }
 }

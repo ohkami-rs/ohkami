@@ -32,7 +32,6 @@ impl Session {
             } else {
                 eprintln!("[Panicked]");
             }
-
             crate::Response::InternalServerError()
         }
 
@@ -41,7 +40,7 @@ impl Session {
             let mut req = Request::init();
             let mut req = unsafe {Pin::new_unchecked(&mut req)};
             match req.as_mut().read(connection).await {
-                Some(Ok(())) => {
+                Ok(Some(())) => {
                     let close = req.headers.Connection() == Some("close");
                     let res = match catch_unwind(AssertUnwindSafe(|| self.router.handle(req.get_mut()))) {
                         Ok(future) => future.await,
@@ -50,10 +49,8 @@ impl Session {
                     res.send(connection).await;
                     if close {break}
                 }
-                Some(Err(res)) => {
-                    res.send(connection).await
-                }
-                None => break
+                Ok(None) => break,
+                Err(res) => res.send(connection).await,
             };
         }
     }

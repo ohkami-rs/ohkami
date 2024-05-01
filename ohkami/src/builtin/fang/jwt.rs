@@ -352,7 +352,7 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
             .encode();
         let mut req = Request::init();
         let mut req = unsafe {Pin::new_unchecked(&mut req)};
-        req.as_mut().read(&mut &req_bytes[..]).await;
+        req.as_mut().read(&mut &req_bytes[..]).await.ok();
 
         assert_eq!(
             my_jwt.verified(&req.as_ref()).unwrap(),
@@ -365,7 +365,7 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
             .encode();
         let mut req = Request::init();
         let mut req = unsafe {Pin::new_unchecked(&mut req)};
-        req.as_mut().read(&mut &req_bytes[..]).await;
+        req.as_mut().read(&mut &req_bytes[..]).await.ok();
 
         assert_eq!(
             my_jwt.verified(&req.as_ref()).unwrap_err().status,

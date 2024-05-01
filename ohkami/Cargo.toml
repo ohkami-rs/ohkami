@@ -1,6 +1,6 @@
 [package]
 name          = "ohkami"
-version       = "0.17.2"
+version       = "0.18.0"
 edition       = "2021"
 authors       = ["kanarus <kanarus786@gmail.com>"]
 description   = "Build web app in intuitive and declarative code"
@@ -56,8 +56,8 @@ DEBUG = [
 #    "testing",
 #    "nightly",
 #    #"websocket",
-#    #"rt_tokio",
+#    "rt_tokio",
 #    #"rt_async-std",
-#    "rt_worker",
+#    #"rt_worker",
 #    "DEBUG",
 #]

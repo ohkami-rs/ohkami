@@ -192,7 +192,7 @@ macro_rules! Header {
                     )*
                 }
             }
-            #[inline] pub const fn as_str(&self) -> &'static str {
+            pub const fn as_str(&self) -> &'static str {
                 unsafe {std::str::from_utf8_unchecked(self.as_bytes())}
             }
 
@@ -223,11 +223,13 @@ macro_rules! Header {
         #[allow(non_snake_case)]
         impl<'set> SetHeaders<'set> {
             $(
+                #[inline]
                 pub fn $konst(self, action: impl HeaderAction<'set>) -> Self {
                     action.perform(self, Header::$konst)
                 }
             )*
 
+            #[inline]
             pub fn custom(self, name: &'static str, action: impl CustomHeadersAction<'set>) -> Self {
                 action.perform(self, name)
             }
@@ -236,11 +238,13 @@ macro_rules! Header {
         #[allow(non_snake_case)]
         impl Headers {
             $(
+                #[inline]
                 pub fn $konst(&self) -> Option<&str> {
                     self.get(Header::$konst)
                 }
             )*
 
+            #[inline]
             pub fn custom(&self, name: &'static str) -> Option<&str> {
                 self.get_custom(name)
             }
@@ -391,6 +395,7 @@ impl Headers {
     }
 }
 impl Headers {
+    #[inline]
     pub(crate) fn new() -> Self {
         Self {
             standard: Box::new([
@@ -489,7 +494,7 @@ impl Headers {
         {
             for i in &self.insertlog {
                 if let Some(v) = unsafe {self.standard.get_unchecked(*i)} {
-                    push!(buf <- SERVER_HEADERS[*i].as_bytes());
+                    push!(buf <- SERVER_HEADERS.get_unchecked(*i).as_bytes());
                     push!(buf <- b": ");
                     push!(buf <- v.as_bytes());
                     push!(buf <- b"\r\n");
@@ -533,7 +538,7 @@ impl Headers {
         {
             for i in &self.insertlog {
                 if let Some(v) = unsafe {self.standard.get_unchecked(*i)} {
-                    push!(buf <- SERVER_HEADERS[*i].as_bytes());
+                    push!(buf <- SERVER_HEADERS.get_unchecked(*i).as_bytes());
                     push!(buf <- b": ");
                     push!(buf <- v.as_bytes());
                     push!(buf <- b"\r\n");

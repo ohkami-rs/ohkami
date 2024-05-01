@@ -63,7 +63,8 @@ impl Path {
         Self(MaybeUninit::uninit())
     }
 
-    #[inline(always)] pub(crate) fn from_request_bytes(bytes: &[u8]) -> Result<Self, crate::Response> {
+    #[inline(always)]
+    pub(crate) fn from_request_bytes(bytes: &[u8]) -> Result<Self, crate::Response> {
         bytes.starts_with(b"/").then_some(())
             .ok_or_else(crate::Response::NotImplemented)?;
 
