@@ -166,10 +166,14 @@ impl Request {
     ) -> Result<Option<()>, crate::Response> {
         use crate::Response;
 
-        if stream.read(&mut *self.__buf__).await.map_err(|e| {
-            eprintln!("{e}");
-            Response::InternalServerError()
-        })? == 0 {return Ok(None)};
+        match stream.read(&mut *self.__buf__).await {
+            Ok (0) => return Ok(None),
+            Err(e) => return match e.kind() {
+                std::io::ErrorKind::ConnectionReset => Ok(None),
+                _ => {eprintln!("Failed to"); Err((|| Response::InternalServerError())())}
+            },
+            _ => ()
+        }
 
         let mut r = Reader::new(unsafe {
             // pass detouched bytes
@@ -186,7 +190,7 @@ impl Request {
 
         r.next_if(|b| *b==b' ').ok_or_else(Response::BadRequest)?;
         
-        self.path = Path::from_request_bytes(r.read_while(|b| b != &b'?' && b != &b' '))?;
+        self.path = Path::from_request_bytes(r.read_while(|b| !matches!(b, b' ' | b'?')))?;
 
         if r.consume_oneof([" ", "?"]).unwrap() == 1 {
             self.query = Some(QueryParams::new(r.read_while(|b| b != &b' ')));
