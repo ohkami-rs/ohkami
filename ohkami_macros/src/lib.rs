@@ -15,10 +15,45 @@ pub fn worker(_: proc_macro::TokenStream, ohkami_fn: proc_macro::TokenStream) ->
         .into()
 }
 
+/// Automatically bind bindings in wrangler.toml to Rust struct.
+/// 
+/// - This uses the default (top-level) env by default. You can configure it
+///   by argument: `#[bindings(dev)]`
+/// - Binded struct implements `FromRequest` and it can be used as an
+///   handler argument
+/// 
+/// <br>
+/// 
+/// ---
+/// *wrangler.toml*
+/// ```ignore
+/// [[kv_namespaces]]
+/// binding = "MY_KV"
+/// id      = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+/// ```
+/// ---
+/// *lib.rs*
+/// ```ignore
+/// #[bindings]
+/// struct Bindings;
+/// 
+/// #[worker::send]
+/// async fn handler(b: Bindings) -> String {
+///     let data = b.MY_KV.get("data").text().await
+///         .expect("Failed to get data");
+/// 
+///     //...
+/// }
+/// ```
+/// ---
+/// 
+/// <br>
+/// 
+/// *Hint* : You can switch envs by package features with some `#[cfg_attr(feature = "...", bindings(env_name))]`s
 #[cfg(feature="worker")]
 #[proc_macro_attribute]
-pub fn bindings(_: proc_macro::TokenStream, bindings_struct: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    worker::bindings(bindings_struct.into())
+pub fn bindings(env: proc_macro::TokenStream, bindings_struct: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    worker::bindings(env.into(), bindings_struct.into())
         .unwrap_or_else(syn::Error::into_compile_error)
         .into()
 }
