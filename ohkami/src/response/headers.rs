@@ -1,5 +1,5 @@
 use std::borrow::Cow;
-use crate::__internal__::Append;
+use crate::header::private::Append;
 use rustc_hash::FxHashMap;
 
 
@@ -8,16 +8,18 @@ pub struct Headers {
     standard:  Box<[Option<Cow<'static, str>>; N_SERVER_HEADERS]>,
     insertlog: Vec<usize>,
     custom:    Option<Box<FxHashMap<&'static str, Cow<'static, str>>>>,
+    setcookie: Option<Box<Vec<Cow<'static, str>>>>,
     size:      usize,
 }
 
-pub struct SetHeaders<'set>(
-    &'set mut Headers
-); impl Headers {
+impl Headers {
     #[inline(always)] pub fn set(&mut self) -> SetHeaders<'_> {
         SetHeaders(self)
     }
 }
+pub struct SetHeaders<'set>(
+    &'set mut Headers
+); 
 
 pub trait HeaderAction<'action> {
     fn perform(self, set: SetHeaders<'action>, key: Header) -> SetHeaders<'action>;
@@ -190,7 +192,7 @@ macro_rules! Header {
                     )*
                 }
             }
-            #[inline] pub const fn as_str(&self) -> &'static str {
+            pub const fn as_str(&self) -> &'static str {
                 unsafe {std::str::from_utf8_unchecked(self.as_bytes())}
             }
 
@@ -221,11 +223,13 @@ macro_rules! Header {
         #[allow(non_snake_case)]
         impl<'set> SetHeaders<'set> {
             $(
+                #[inline]
                 pub fn $konst(self, action: impl HeaderAction<'set>) -> Self {
                     action.perform(self, Header::$konst)
                 }
             )*
 
+            #[inline]
             pub fn custom(self, name: &'static str, action: impl CustomHeadersAction<'set>) -> Self {
                 action.perform(self, name)
             }
@@ -234,17 +238,19 @@ macro_rules! Header {
         #[allow(non_snake_case)]
         impl Headers {
             $(
+                #[inline]
                 pub fn $konst(&self) -> Option<&str> {
                     self.get(Header::$konst)
                 }
             )*
 
+            #[inline]
             pub fn custom(&self, name: &'static str) -> Option<&str> {
                 self.get_custom(name)
             }
         }
     };
-} Header! {45;
+} Header! {44;
     [13] AcceptRanges:                    b"Accept-Ranges",
     [32] AccessControlAllowCredentials:   b"Access-Control-Allow-Credentials",
     [28] AccessControlAllowHeaders:       b"Access-Control-Allow-Headers",
@@ -281,7 +287,7 @@ macro_rules! Header {
     [22] SecWebSocketProtocol:            b"Sec-WebSocket-Protocol",
     [21] SecWebSocketVersion:             b"Sec-WebSocket-Version",
     [6]  Server:                          b"Server",
-    [9]  SetCookie:                       b"SetCookie",
+    // [10] SetCookie:                       b"Set-Cookie",
     [25] StrictTransportSecurity:         b"Strict-Transport-Security",
     [7]  Trailer:                         b"Trailer",
     [17] TransferEncoding:                b"Transfer-Encoding",
@@ -291,6 +297,33 @@ macro_rules! Header {
     [22] XContentTypeOptions:             b"X-Content-Type-Options",
     [15] XFrameOptions:                   b"X-Frame-Options",
 }
+
+#[allow(non_snake_case)]
+const _: () = {
+    impl Headers {
+        pub fn SetCookie(&self) -> impl Iterator<Item = &str> {
+            self.setcookie.as_ref().map(|setcookies|
+                setcookies.iter().map(Cow::as_ref)
+            ).into_iter().flatten()
+        }
+    }
+
+    impl<'s> SetHeaders<'s> {
+        /// Add new `Set-Cookie` header in the response.
+        /// 
+        /// When you call this N times, the response has N *sepearated*
+        /// `Set-Cookie` headers. ( This is specialized behavior... )
+        pub fn SetCookie(self, setcookie: impl Into<Cow<'static, str>>) -> Self {
+            let setcookie = setcookie.into();
+            self.0.size += "Set-Cookie: ".len() + setcookie.len() + "\r\n".len();
+            match self.0.setcookie.as_mut() {
+                None             => self.0.setcookie = Some(Box::new(vec![setcookie])),
+                Some(setcookies) => setcookies.push(setcookie),
+            }
+            self
+        }
+    }
+};
 
 impl Headers {
     #[inline(always)]
@@ -362,6 +395,7 @@ impl Headers {
     }
 }
 impl Headers {
+    #[inline]
     pub(crate) fn new() -> Self {
         Self {
             standard: Box::new([
@@ -373,10 +407,11 @@ impl Headers {
                 None, None, None, None, None,
                 None, None, None, None, None,
                 None, None, None, None, None,
-                None, None, None, None, None,
+                None, None, None, None,
             ]),
             insertlog: Vec::with_capacity(1 << 4),
             custom:    None,
+            setcookie: None,
             size:      "\r\n".len(),
         }
     }
@@ -434,10 +469,9 @@ impl Headers {
             }
         }
 
-        Iterator::chain(
-            Standard { map: &self.standard, cur: 0 },
-            Custom { map: self.custom.as_ref().map(|box_hmap| box_hmap.iter()) }
-        )
+        Standard { map: &self.standard, cur: 0 }
+            .chain(Custom { map: self.custom.as_ref().map(|box_hmap| box_hmap.iter()) })
+            .chain(self.SetCookie().map(|setcookie| ("Set-Cookie", setcookie)))
     }
 
     #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
@@ -460,7 +494,7 @@ impl Headers {
         {
             for i in &self.insertlog {
                 if let Some(v) = unsafe {self.standard.get_unchecked(*i)} {
-                    push!(buf <- SERVER_HEADERS[*i].as_bytes());
+                    push!(buf <- SERVER_HEADERS.get_unchecked(*i).as_bytes());
                     push!(buf <- b": ");
                     push!(buf <- v.as_bytes());
                     push!(buf <- b"\r\n");
@@ -472,6 +506,13 @@ impl Headers {
                 push!(buf <- k.as_bytes());
                 push!(buf <- b": ");
                 push!(buf <- v.as_bytes());
+                push!(buf <- b"\r\n");
+            }
+        }
+        if let Some(setcookies) = self.setcookie.as_ref() {
+            for setcookie in &**setcookies {
+                push!(buf <- b"Set-Cookie: ");
+                push!(buf <- setcookie.as_bytes());
                 push!(buf <- b"\r\n");
             }
         }
@@ -493,10 +534,11 @@ impl Headers {
             };
         }
 
+        buf.reserve(self.size);
         {
             for i in &self.insertlog {
                 if let Some(v) = unsafe {self.standard.get_unchecked(*i)} {
-                    push!(buf <- SERVER_HEADERS[*i].as_bytes());
+                    push!(buf <- SERVER_HEADERS.get_unchecked(*i).as_bytes());
                     push!(buf <- b": ");
                     push!(buf <- v.as_bytes());
                     push!(buf <- b"\r\n");
@@ -508,6 +550,13 @@ impl Headers {
                 push!(buf <- k.as_bytes());
                 push!(buf <- b": ");
                 push!(buf <- v.as_bytes());
+                push!(buf <- b"\r\n");
+            }
+        }
+        if let Some(setcookies) = self.setcookie.as_ref() {
+            for setcookie in &**setcookies {
+                push!(buf <- b"Set-Cookie: ");
+                push!(buf <- setcookie.as_bytes());
                 push!(buf <- b"\r\n");
             }
         }

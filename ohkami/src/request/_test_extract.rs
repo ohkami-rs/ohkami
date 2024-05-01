@@ -24,7 +24,7 @@ struct HelloQuery<'req> {
 } impl<'req> crate::FromRequest<'req> for HelloQuery<'req> {
     type Error = Response;
     fn from_request(req: &'req Request) -> Option<Result<Self, Self::Error>> {
-        req.query().map(|result| result.map_err(|_| Response::BadRequest()))
+        req.query.as_ref().map(|q| q.parse().map_err(|_| Response::BadRequest()))
     }
 }
 

@@ -8,7 +8,7 @@ struct RequestMethod(Method);
 impl<'req> FromRequest<'req> for RequestMethod {
     type Error = std::convert::Infallible;
     fn from_request(req: &'req ohkami::prelude::Request) -> Option<Result<Self, Self::Error>> {
-        Some(Ok(Self(req.method())))
+        Some(Ok(Self(req.method)))
     }
 }
 
@@ -16,7 +16,7 @@ struct RequestPath<'req>(std::borrow::Cow<'req, str>);
 impl<'req> FromRequest<'req> for RequestPath<'req> {
     type Error = std::convert::Infallible;
     fn from_request(req: &'req ohkami::prelude::Request) -> Option<Result<Self, Self::Error>> {
-        Some(Ok(Self(req.path())))
+        Some(Ok(Self(req.path.str())))
     }
 }
 
@@ -24,7 +24,7 @@ struct RequestPathOwned(String);
 impl<'req> FromRequest<'req> for RequestPathOwned {
     type Error = std::convert::Infallible;
     fn from_request(req: &'req ohkami::prelude::Request) -> Option<Result<Self, Self::Error>> {
-        Some(Ok(Self(req.path().into())))
+        Some(Ok(Self(req.path.str().into())))
     }
 }
 

@@ -104,35 +104,40 @@ mod x_websocket;
 #[cfg(feature="rt_worker")]
 pub use ::ohkami_macros::worker;
 
+pub mod header {
+    /// Passed to `{Request/Response}.headers.set().Name( 〜 )` and
+    /// append `value` to the header
+    /// 
+    /// <br>
+    /// 
+    /// *example.rs*
+    /// ```no_run
+    /// use ohkami::prelude::*;
+    /// use ohkami::header::append;
+    /// 
+    /// #[derive(Clone)]
+    /// struct AppendServer(&'static str);
+    /// impl FangAction for AppendServer {
+    ///     async fn back<'b>(&'b self, res: &'b mut Response) {
+    ///         res.headers.set()
+    ///             .Server(append(self.0));
+    ///     }
+    /// }
+    /// 
+    /// #[tokio::main]
+    /// async fn main() {
+    ///     Ohkami::with(AppendServer("ohkami"),
+    ///         "/".GET(|| async {"Hello, append!"})
+    ///     ).howl("localhost:3000").await
+    /// }
+    /// ```
+    pub fn append(value: impl Into<std::borrow::Cow<'static, str>>) -> private::Append {
+        private::Append(value.into())
+    }
 
-/// Passed to `{Request/Response}.headers.set().Name( 〜 )` and
-/// append `value` to the header
-/// 
-/// <br>
-/// 
-/// *example.rs*
-/// ```no_run
-/// use ohkami::prelude::*;
-/// use ohkami::append;
-/// 
-/// #[derive(Clone)]
-/// struct AppendServer(&'static str);
-/// impl FangAction for AppendServer {
-///     async fn back<'b>(&'b self, res: &'b mut Response) {
-///         res.headers.set()
-///             .Server(append(self.0));
-///     }
-/// }
-/// 
-/// #[tokio::main]
-/// async fn main() {
-///     Ohkami::with(AppendServer("ohkami"),
-///         "/".GET(|| async {"Hello, append!"})
-///     ).howl("localhost:3000").await
-/// }
-/// ```
-pub fn append(value: impl Into<std::borrow::Cow<'static, str>>) -> __internal__::Append {
-    __internal__::Append(value.into())
+    pub(crate) mod private {
+        pub struct Append(pub(crate) std::borrow::Cow<'static, str>);
+    }
 }
 
 pub mod prelude {
@@ -171,8 +176,6 @@ pub mod websocket {
 
 #[doc(hidden)]
 pub mod __internal__ {
-    pub struct Append(pub(crate) std::borrow::Cow<'static, str>);
-
     pub use ::serde;
 
     pub use ohkami_macros::consume_struct;

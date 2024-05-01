@@ -89,8 +89,8 @@ mod fangs {
     pub struct LogRequest;
     impl FangAction for LogRequest {
         fn fore<'a>(&'a self, req: &'a mut Request) -> impl std::future::Future<Output = Result<(), Response>> + Send {
-            let __method__ = req.method();
-            let __path__   = req.path();
+            let __method__ = req.method;
+            let __path__   = req.path.str();
 
             tracing::info!("\n\
                 Got request:\n\

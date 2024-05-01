@@ -1,14 +1,14 @@
 use std::borrow::Cow;
-use crate::__internal__::Append;
+use crate::header::private::Append;
 use ohkami_lib::{CowSlice, Slice};
-
 use rustc_hash::FxHashMap;
 
 
 #[derive(PartialEq)]
 pub struct Headers {
     standard: Box<[Option<CowSlice>; N_CLIENT_HEADERS]>,
-    custom:   Option<Box<FxHashMap<CowSlice, CowSlice>>>,
+    custom:   Option<Box<FxHashMap<Slice, CowSlice>>>,
+    cookie:   Option<Box<Vec<Slice>>>,
 }
 
 pub struct SetHeaders<'set>(
@@ -33,7 +33,7 @@ pub trait HeaderAction<'set> {
     // append
     impl<'set> HeaderAction<'set> for Append {
         fn perform(self, set: SetHeaders<'set>, key: Header) -> SetHeaders<'set> {
-            set.0.append(key, self.0);
+            set.0.append(key, self.0.into());
             set
         }
     }
@@ -67,7 +67,7 @@ const _: () = {
     impl<'set> CustomHeadersAction<'set> for Option<()> {
         fn perform(self, set: SetHeaders<'set>, key: &'static str) -> SetHeaders<'set> {
             if let Some(c) = &mut set.0.custom {
-                c.remove(&CowSlice::Ref(Slice::from_bytes(key.as_bytes())));
+                c.remove(&Slice::from_bytes(key.as_bytes()));
             }
             set
         }
@@ -76,7 +76,7 @@ const _: () = {
     // append
     impl<'set> CustomHeadersAction<'set> for Append {
         fn perform(self, set: SetHeaders<'set>, key: &'static str) -> SetHeaders<'set> {
-            let key = CowSlice::Ref(Slice::from_bytes(key.as_bytes()));
+            let key = Slice::from_bytes(key.as_bytes());
             let custom = set.0.get_or_init_custom_mut();
 
             match custom.get_mut(&key) {
@@ -97,7 +97,7 @@ const _: () = {
     impl<'set> CustomHeadersAction<'set> for &'static str {
         fn perform(self, set: SetHeaders<'set>, key: &'static str) -> SetHeaders<'set> {
             set.0.get_or_init_custom_mut().insert(
-                CowSlice::Ref(Slice::from_bytes(key.as_bytes())),
+                Slice::from_bytes(key.as_bytes()),
                 CowSlice::Ref(Slice::from_bytes(self.as_bytes()))
             );
             set
@@ -106,7 +106,7 @@ const _: () = {
     impl<'set> CustomHeadersAction<'set> for String {
         fn perform(self, set: SetHeaders<'set>, key: &'static str) -> SetHeaders<'set> {
             set.0.get_or_init_custom_mut().insert(
-                CowSlice::Ref(Slice::from_bytes(key.as_bytes())),
+                Slice::from_bytes(key.as_bytes()),
                 CowSlice::Own(self.into_bytes().into_boxed_slice())
             );
             set
@@ -115,7 +115,7 @@ const _: () = {
     impl<'set> CustomHeadersAction<'set> for Cow<'static, str> {
         fn perform(self, set: SetHeaders<'set>, key: &'static str) -> SetHeaders<'set> {
             set.0.get_or_init_custom_mut().insert(
-                CowSlice::Ref(Slice::from_bytes(key.as_bytes())),
+                Slice::from_bytes(key.as_bytes()),
                 CowSlice::from(self)
             );
             set
@@ -134,14 +134,16 @@ macro_rules! Header {
         }
 
         impl Header {
-            #[inline] pub const fn as_str(&self) -> &'static str {
+            #[inline]
+            pub const fn as_str(&self) -> &'static str {
                 match self {
                     $(
                         Self::$konst => unsafe {std::str::from_utf8_unchecked($name_bytes)},
                     )*
                 }
             }
-            #[inline] pub const fn from_bytes(bytes: &[u8]) -> Option<Self> {
+            #[inline(always)]
+            pub const fn from_bytes(bytes: &[u8]) -> Option<Self> {
                 match bytes {
                     $(
                         $name_bytes | $lower_case $(| $other_pattern)* => Some(Self::$konst),
@@ -160,6 +162,7 @@ macro_rules! Header {
         #[allow(non_snake_case)]
         impl<'set> SetHeaders<'set> {
             $(
+                #[inline(always)]
                 pub fn $konst(self, action: impl HeaderAction<'set>) -> Self {
                     action.perform(self, Header::$konst)
                 }
@@ -176,6 +179,7 @@ macro_rules! Header {
         #[allow(non_snake_case)]
         impl Headers {
             $(
+                #[inline(always)]
                 pub fn $konst(&self) -> Option<&str> {
                     self.get(Header::$konst)
                 }
@@ -183,7 +187,7 @@ macro_rules! Header {
 
             pub fn custom(&self, name: &str) -> Option<&str> {
                 let value = self.custom.as_ref()?
-                    .get(&CowSlice::Ref(Slice::from_bytes(name.as_bytes())))?;
+                    .get(&Slice::from_bytes(name.as_bytes()))?;
                 Some(std::str::from_utf8(unsafe {value.as_bytes()}).expect("Header value is not UTF-8"))
             }
         }
@@ -200,7 +204,7 @@ macro_rules! Header {
             )*
         }
     };
-} Header! {42;
+} Header! {41;
     Accept:                      b"Accept" | b"accept",
     AcceptEncoding:              b"Accept-Encoding" | b"accept-encoding",
     AcceptLanguage:              b"Accept-Language" | b"accept-language",
@@ -215,7 +219,7 @@ macro_rules! Header {
     ContentLength:               b"Content-Length" | b"content-length",
     ContentLocation:             b"Content-Location" | b"content-location",
     ContentType:                 b"Content-Type" | b"content-type",
-    Cookie:                      b"Cookie" | b"cookie",
+    // Cookie:                      b"Cookie" | b"cookie",
     Date:                        b"Date" | b"date",
     Expect:                      b"Expect" | b"expect",
     Forwarded:                   b"Forwarded" | b"forwarded",
@@ -245,9 +249,22 @@ macro_rules! Header {
     Via:                         b"Via" | b"via",
 }
 
+const _: () = {
+    #[allow(non_snake_case)]
+    impl Headers {
+        pub fn Cookie(&self) -> impl Iterator<Item = &str> {
+            self.cookie.as_ref().map(|cookies|
+                cookies.iter().map(|slice| std::str::from_utf8(unsafe {
+                    slice.as_bytes()
+                }).expect("Non UTF-8 Cookie"))
+            ).into_iter().flatten()
+        }
+    }
+};
+
 impl Headers {
     #[inline(always)]
-    fn get_or_init_custom_mut(&mut self) -> &mut FxHashMap<CowSlice, CowSlice> {
+    fn get_or_init_custom_mut(&mut self) -> &mut FxHashMap<Slice, CowSlice> {
         self.custom.is_none().then(|| self.custom = Some(Box::new(FxHashMap::default())));
         unsafe {self.custom.as_mut().unwrap_unchecked()}
     }
@@ -275,7 +292,7 @@ impl Headers {
         }
 
         struct Custom<'i> {
-            map_iter: Option<::std::collections::hash_map::Iter<'i, CowSlice, CowSlice>>
+            map_iter: Option<::std::collections::hash_map::Iter<'i, Slice, CowSlice>>
         }
         impl<'i> Iterator for Custom<'i> {
             type Item = (&'i str, &'i str);
@@ -288,10 +305,9 @@ impl Headers {
             }
         }
 
-        Iterator::chain(
-            Standard { cur:0, standard:&self.standard },
-            Custom { map_iter:self.custom.as_ref().map(|box_hmap| box_hmap.iter()) }
-        )
+        Standard { cur:0, standard:&self.standard }
+            .chain(Custom { map_iter: self.custom.as_ref().map(|box_hmap| box_hmap.iter()) })
+            .chain(self.Cookie().map(|c| ("Cookie", c)))
     }
 }
 
@@ -317,7 +333,8 @@ impl Headers {
         }
     }
 
-    pub(crate) fn append(&mut self, name: Header, value: Cow<'static, str>) {
+    #[inline]
+    pub(crate) fn append(&mut self, name: Header, value: CowSlice) {
         let target = unsafe {self.standard.get_unchecked_mut(name as usize)};
 
         match target {
@@ -326,7 +343,7 @@ impl Headers {
                 v.extend_from_slice(value.as_bytes());
             }
             None => {
-                *target = Some(CowSlice::from(value))
+                *target = Some(value)
             }
         }
     }
@@ -339,7 +356,8 @@ impl Headers {
         unsafe {self.standard.get_unchecked(name as usize)}.as_ref()
     }
 
-    #[inline] pub(crate) fn insert_custom(&mut self, name: CowSlice, value: CowSlice) {
+    #[allow(unused)]
+    #[inline] pub(crate) fn insert_custom(&mut self, name: Slice, value: CowSlice) {
         match &mut self.custom {
             Some(c) => {c.insert(name, value);}
             None => self.custom = Some(Box::new(FxHashMap::from_iter([
@@ -347,15 +365,38 @@ impl Headers {
             ])))
         }
     }
-
     #[cfg(feature="DEBUG")]
-    #[inline] pub fn _insert_custom(&mut self, name: CowSlice, value: CowSlice) {
+    #[inline] pub fn _insert_custom(&mut self, name: Slice, value: CowSlice) {
         self.insert_custom(name, value)
+    }
+
+    #[allow(unused)]
+    #[inline] pub(crate) fn append_custom(&mut self, name: Slice, value: CowSlice) {
+        let custom = self.get_or_init_custom_mut();
+
+        match custom.get_mut(&name) {
+            Some(v) => unsafe {
+                v.extend_from_slice(b",");
+                v.extend_from_slice(value.as_bytes());
+            }
+            None => {
+                custom.insert(name, value);
+            }
+        }
+    }
+
+    #[allow(unused)]
+    #[inline] pub(crate) fn append_cookie(&mut self, cookie: Slice) {
+        match &mut self.cookie {
+            None          => self.cookie = Some(Box::new(vec![cookie])),
+            Some(cookies) => cookies.push(cookie),
+        }
     }
 }
 
 #[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_worker"))]
 impl Headers {
+    #[inline]
     pub(crate) fn init() -> Self {
         Self {
             standard: Box::new([
@@ -367,9 +408,10 @@ impl Headers {
                 None, None, None, None, None,
                 None, None, None, None, None,
                 None, None, None, None, None,
-                None, None,
+                None,
             ]),
             custom: None,
+            cookie: None,
         }
     }
     #[cfg(feature="DEBUG")]
@@ -388,7 +430,7 @@ impl Headers {
         }
         for (k, v) in custom {
             this.insert_custom(
-                CowSlice::Ref(Slice::from_bytes(k.as_bytes())),
+                Slice::from_bytes(k.as_bytes()),
                 CowSlice::Ref(Slice::from_bytes(v.as_bytes()))
             );
         }
@@ -405,10 +447,15 @@ impl Headers {
                     standard,
                     CowSlice::Own(v.into_boxed_str().into())
                 ),
-                None => self.insert_custom(
-                    CowSlice::Own(k.into_boxed_str().into()),
-                    CowSlice::Own(v.into_boxed_str().into())
-                )
+                None => match &*k {
+                    "Cookie" | "cookie" => self.append_cookie(
+                        Slice::from_bytes(Box::leak(v.into_boxed_str()).as_bytes())
+                    ),
+                    _ => self.insert_custom(
+                        Slice::from_bytes(Box::leak(k.into_boxed_str()).as_bytes()),
+                        CowSlice::Own(v.into_boxed_str().into())
+                    )
+                }
             }
         }
     }

@@ -82,11 +82,10 @@ pub trait Payload: Sized {
             #[cfg(debug_assertions)] {
                 eprintln!("Expected `{}` payload but found {}",
                     <Self::Type>::MIME_TYPE,
-                    req.headers.ContentType()
-                        .map(|ct| format!("`{ct}`"))
-                        .unwrap_or(String::from("nothing"))
+                    req.headers.ContentType().map(|ct| format!("`{ct}`")).unwrap_or(String::from("nothing"))
                 )
             }
+            
             Err((|| crate::serde::de::Error::custom(format!(
                 "{} payload is required", <Self::Type>::MIME_TYPE
             )))())

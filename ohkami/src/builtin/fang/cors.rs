@@ -1,6 +1,6 @@
 #![allow(non_snake_case)]
 
-use crate::{append, Fang, FangProc, IntoResponse, Method, Request, Response, Status};
+use crate::{header::append, Fang, FangProc, IntoResponse, Method, Request, Response, Status};
 
 
 /// # Builtin fang for CORS config
@@ -144,7 +144,7 @@ impl<Inner: FangProc> FangProc for CORSProc<Inner> {
             h = h.AccessControlExposeHeaders(expose_headers.join(","));
         }
 
-        if req.method().isOPTIONS() {
+        if req.method.isOPTIONS() {
             if let Some(max_age) = self.cors.MaxAge {
                 h = h.AccessControlMaxAge(max_age.to_string());
             }

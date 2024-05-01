@@ -17,17 +17,13 @@ impl QueryParams {
         Self(Slice::from_bytes(bytes))
     }
 
-    /// SAFETY: The `QueryParams` is already **INITIALIZED**.
-    #[inline(always)] pub(crate) fn parse<'q, T: serde::Deserialize<'q>>(
+    #[inline(always)] pub fn parse<'q, T: serde::Deserialize<'q>>(
         &'q self
     ) -> Result<T, impl serde::de::Error> {
         ohkami_lib::serde_urlencoded::from_bytes(unsafe {self.0.as_bytes()})
     }
 
-    /// Returns an iterator of maybe-percent-decoded (key, value).
-    /// 
-    /// SAFETY: The `QueryParams` is already **INITIALIZED**.
-    #[inline] pub(crate) fn iter(&self) -> impl Iterator<
+    #[inline] pub fn iter(&self) -> impl Iterator<
         Item = (Cow<'_, str>, Cow<'_, str>)
     > {
         #[inline(always)]

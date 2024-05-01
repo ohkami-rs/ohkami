@@ -106,7 +106,7 @@ pub(super) fn Query(target: TokenStream) -> Result<TokenStream> {
 
                 #[inline]
                 fn from_request(req: &#from_request_lifetime ::ohkami::Request) -> ::std::option::Option<::std::result::Result<Self, Self::Error>> {
-                    req.query::<#cloned_name<#generics_params>>().map(|result| result
+                    req.query.as_ref().map(|q| q.parse::<#cloned_name<#generics_params>>()
                         .map(Into::into)
                         .map_err(|e| ::ohkami::Response::BadRequest().with_text(::std::format!("Unexpected query parameters: {e}")))
                     )

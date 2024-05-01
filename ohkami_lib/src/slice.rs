@@ -60,6 +60,7 @@ const _: () = {
 };
 
 
+#[derive(Clone)]
 pub enum CowSlice {
     Ref(Slice),
     Own(Box<[u8]>),
@@ -89,9 +90,16 @@ impl CowSlice {
             }
         }
     }
+    pub unsafe fn into_cow_static_bytes_uncheked(self) -> Cow<'static, [u8]> {
+        match self {
+            Self::Own(array) => Cow::Owned(array.into()),
+            Self::Ref(slice) => Cow::Borrowed(slice.as_bytes()),
+        }
+    }
 }
 const _: () = {
     impl AsRef<[u8]> for CowSlice {
+        #[inline]
         fn as_ref(&self) -> &[u8] {
             match self {
                 Self::Own(array) => array,
@@ -99,14 +107,51 @@ const _: () = {
             }
         }
     }
+    impl std::ops::Deref for CowSlice {
+        type Target = [u8];
+        #[inline]
+        fn deref(&self) -> &Self::Target {
+            self.as_ref()
+        }
+    }
 
     impl From<Cow<'static, str>> for CowSlice {
-        #[inline(always)]
+        #[inline]
         fn from(cow: Cow<'static, str>) -> Self {
             match cow {
                 Cow::Borrowed(s)   => Self::Ref(Slice::from_bytes(s.as_bytes())),
                 Cow::Owned(string) => Self::Own(string.into_bytes().into_boxed_slice()),
             }
+        }
+    }
+    impl From<Cow<'static, [u8]>> for CowSlice {
+        #[inline]
+        fn from(cow: Cow<'static, [u8]>) -> Self {
+            match cow {
+                Cow::Borrowed(s) => Self::Ref(Slice::from_bytes(s)),
+                Cow::Owned(vec)  => Self::Own(vec.into_boxed_slice()),
+            }
+        }
+    }
+    impl From<Vec<u8>> for CowSlice {
+        #[inline]
+        fn from(vec: Vec<u8>) -> Self {
+            Self::Own(vec.into_boxed_slice())
+        }
+    }
+    impl Into<Vec<u8>> for CowSlice {
+        #[inline]
+        fn into(self) -> Vec<u8> {
+            match self {
+                Self::Own(array) => array.into(),
+                Self::Ref(slice) => Vec::from(unsafe {slice.as_bytes()}),
+            }
+        }
+    }
+    impl From<&'static [u8]> for CowSlice {
+        #[inline]
+        fn from(slice: &'static [u8]) -> Self {
+            Self::Ref(Slice::from_bytes(slice))
         }
     }
 

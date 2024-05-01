@@ -1,17 +1,18 @@
 #![cfg(any(feature="testing", feature="DEBUG"))]
 #![cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_worker"))]
 
-use std::borrow::Cow;
+use ohkami_lib::CowSlice;
+
 use super::{RequestHeader, RequestHeaders};
-use crate::append;
+use crate::header::append;
 
 
 #[test] fn append_header() {
     let mut h = RequestHeaders::init();
 
-    h.append(RequestHeader::Origin, Cow::Borrowed("A"));
+    h.append(RequestHeader::Origin, CowSlice::from("A".as_bytes()));
     assert_eq!(h.Origin(), Some("A"));
-    h.append(RequestHeader::Origin, Cow::Borrowed("B"));
+    h.append(RequestHeader::Origin, CowSlice::from("B".as_bytes()));
     assert_eq!(h.Origin(), Some("A,B"));
 
     h.set().Accept(append("X"));

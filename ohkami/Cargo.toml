@@ -1,6 +1,6 @@
 [package]
 name          = "ohkami"
-version       = "0.17.2"
+version       = "0.18.0"
 edition       = "2021"
 authors       = ["kanarus <kanarus786@gmail.com>"]
 description   = "Build web app in intuitive and declarative code"
@@ -16,7 +16,7 @@ license       = "MIT"
 features      = ["rt_tokio"]
 
 [dependencies]
-ohkami_lib    = { version = "=0.2.2", path = "../ohkami_lib" }
+ohkami_lib    = { version = "=0.2.3", path = "../ohkami_lib" }
 ohkami_macros = { version = "=0.7.1", path = "../ohkami_macros" }
 
 tokio         = { version = "1", optional = true, features = ["net", "rt", "io-util", "sync", "time"] }
@@ -56,8 +56,8 @@ DEBUG = [
 #    "testing",
 #    "nightly",
 #    #"websocket",
-#    #"rt_tokio",
+#    "rt_tokio",
 #    #"rt_async-std",
-#    "rt_worker",
+#    #"rt_worker",
 #    "DEBUG",
 #]
