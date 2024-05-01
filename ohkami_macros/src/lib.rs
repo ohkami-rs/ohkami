@@ -1,13 +1,24 @@
-mod worker;
 mod serde;
 mod query;
 mod payload;
 mod from_request;
 
+#[cfg(feature="worker")]
+mod worker;
 
+
+#[cfg(feature="worker")]
 #[proc_macro_attribute]
 pub fn worker(_: proc_macro::TokenStream, ohkami_fn: proc_macro::TokenStream) -> proc_macro::TokenStream {
     worker::worker(ohkami_fn.into())
+        .unwrap_or_else(syn::Error::into_compile_error)
+        .into()
+}
+
+#[cfg(feature="worker")]
+#[proc_macro_attribute]
+pub fn bindings(_: proc_macro::TokenStream, bindings_struct: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    worker::bindings(bindings_struct.into())
         .unwrap_or_else(syn::Error::into_compile_error)
         .into()
 }
