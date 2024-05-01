@@ -170,7 +170,10 @@ impl Request {
             Ok (0) => return Ok(None),
             Err(e) => return match e.kind() {
                 std::io::ErrorKind::ConnectionReset => Ok(None),
-                _ => {eprintln!("Failed to"); Err((|| Response::InternalServerError())())}
+                _ => Err((|| {
+                    eprintln!("Failed to read stream: {e}");
+                    Response::InternalServerError()
+                })())
             },
             _ => ()
         }
