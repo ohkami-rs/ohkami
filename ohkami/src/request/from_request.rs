@@ -92,7 +92,6 @@ const _: () = {
             Some(Ok(req))
         }
     }
-
     impl<'req, FR: FromRequest<'req>> FromRequest<'req> for Option<FR> {
         type Error = FR::Error;
         fn from_request(req: &'req Request) -> Option<Result<Self, Self::Error>> {

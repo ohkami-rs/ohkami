@@ -1,6 +1,6 @@
 <div align="center">
-    <h1>ohkami</h1>
-    ohkami <em>- [狼] wolf in Japanese -</em> is intuitive and declarative web framework.
+    <h1>Ohkami</h1>
+    Ohkami <em>- [狼] wolf in Japanese -</em> is intuitive and declarative web framework.
 </div>
 
 <br>
@@ -24,7 +24,7 @@
 # `async-std` is available by feature "rt_async-std".
 
 [dependencies]
-ohkami = { version = "0.17", features = ["rt_tokio"] }
+ohkami = { version = "0.18", features = ["rt_tokio"] }
 tokio  = { version = "1",    features = ["full"] }
 ```
 
@@ -77,13 +77,11 @@ Then your `./my-ohkami-worker` has `wrangler.toml`, `package.json` and
 
 `Cargo.toml`
 ```toml
-# ...
+#...
 
 [dependencies]
-ohkami = { version = "0.17", features = ["rt_worker"] }
+ohkami = { version = "0.18", features = ["rt_worker"] }
 worker = { version = "0.1" }
-
-# ...
 ```
 
 `src/lib.rs`

@@ -3,7 +3,7 @@ proc-macro = true
 
 [package]
 name          = "ohkami_macros"
-version       = "0.7.1"
+version       = "0.7.2"
 edition       = "2021"
 authors       = ["kanarus <kanarus786@gmail.com>"]
 description   = "Proc macros for ohkami - intuitive and declarative web framework"
@@ -19,3 +19,11 @@ readme        = "../README.md"
 proc-macro2   = "1.0"
 quote         = "1.0"
 syn           = { version = "1.0", features = ["full"] }
+toml          = { optional = true, version = "0.8.12", features = ["parse"], default-features = false }
+
+[features]
+worker = ["dep:toml"]
+
+##### DEBUG #####
+DEBUG   = ["worker"]
+default = ["DEBUG"]
