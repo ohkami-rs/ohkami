@@ -240,6 +240,9 @@ impl Ohkami {
     /// - `tokio::net::ToSocketAddrs` if you use `tokio`
     /// - `async_std::net::ToSocketAddrs` if you use `async-std`
     /// 
+    /// *note* : Keep-Alive timeout is 42 seconds and this is not
+    /// configureable by user (It will be in future version)
+    /// 
     /// <br>
     /// 
     /// *example.rs*

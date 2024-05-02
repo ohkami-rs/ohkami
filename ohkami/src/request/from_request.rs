@@ -176,9 +176,9 @@ pub trait FromParam<'p>: Sized {
                     fn from_param(param: Cow<'p, str>) -> Result<Self, Self::Error> {
                         let digit_bytes = param.as_bytes();
                         if digit_bytes.is_empty() {return Err(FromRequestError::Static("Unexpected path params: Expected a number nut found an empty string"))}
-                        match digit_bytes[0] {
-                            b'-' => Err(FromRequestError::Static("Unexpected path params: Expected non-negative number but found negetive one")),
-                            b'0' => Err(FromRequestError::Static("Unexpected path params: Expected a number but it starts with '0'")),
+                        match digit_bytes {
+                            [b'0'] => Ok(0),
+                            [b'0', ..] => Err(FromRequestError::Static("Unexpected path params: Expected a number but it starts with '0'")),
                             _ => {
                                 let mut value: $unsigned_int = 0;
                                 for d in digit_bytes {
