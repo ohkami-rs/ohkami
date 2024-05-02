@@ -205,19 +205,14 @@ impl Request {
         while r.consume("\r\n").is_none() {
             let key_bytes = r.read_while(|b| b != &b':');
             r.consume(": ").ok_or_else(Response::BadRequest)?;
-            let value = Slice::from_bytes(r.read_while(|b| b != &b'\r'));
-            if let Some(key) = RequestHeader::from_bytes(key_bytes) {
-                self.headers.append(key, CowSlice::Ref(value));
-            } else {
-                match key_bytes {
-                    b"Cookie" | b"cookie" => self.headers.append_cookie(value),
-                    _ => self.headers.append_custom(
-                        Slice::from_bytes(key_bytes),
-                        CowSlice::Ref(value)
-                    )
-                }
-            }
+            let value = CowSlice::Ref(Slice::from_bytes(r.read_while(|b| b != &b'\r')));
             r.consume("\r\n").ok_or_else(Response::BadRequest)?;
+
+            if let Some(key) = RequestHeader::from_bytes(key_bytes) {
+                self.headers.append(key, value);
+            } else {
+                self.headers.insert_custom(Slice::from_bytes(key_bytes), value)
+            }
         }
 
         let content_length = match self.headers.get_raw(RequestHeader::ContentLength) {
@@ -305,19 +300,14 @@ impl Request {
         while r.consume("\r\n").is_none() {
             let key_bytes = r.read_while(|b| b != &b':');
             r.consume(": ").ok_or_else(Response::BadRequest)?;
-            let value = Slice::from_bytes(r.read_while(|b| b != &b'\r'));
-            if let Some(key) = RequestHeader::from_bytes(key_bytes) {
-                self.headers.append(key, CowSlice::Ref(value));
-            } else {
-                match key_bytes {
-                    b"Cookie" | b"cookie" => self.headers.append_cookie(value),
-                    _ => self.headers.append_custom(
-                        Slice::from_bytes(key_bytes),
-                        CowSlice::Ref(value)
-                    )
-                }
-            }
+            let value = CowSlice::Ref(Slice::from_bytes(r.read_while(|b| b != &b'\r')));
             r.consume("\r\n").ok_or_else(Response::BadRequest)?;
+
+            if let Some(key) = RequestHeader::from_bytes(key_bytes) {
+                self.headers.append(key, value);
+            } else {
+                self.headers.insert_custom(Slice::from_bytes(key_bytes), value)
+            }
         }
 
         let content_length = match self.headers.get_raw(RequestHeader::ContentLength) {

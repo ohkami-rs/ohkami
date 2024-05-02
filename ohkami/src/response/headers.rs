@@ -1,5 +1,5 @@
 use std::borrow::Cow;
-use crate::header::private::Append;
+use crate::header::private::{Append, SetCookie, SetCookieBuilder};
 use rustc_hash::FxHashMap;
 
 
@@ -287,7 +287,6 @@ macro_rules! Header {
     [22] SecWebSocketProtocol:            b"Sec-WebSocket-Protocol",
     [21] SecWebSocketVersion:             b"Sec-WebSocket-Version",
     [6]  Server:                          b"Server",
-    // [10] SetCookie:                       b"Set-Cookie",
     [25] StrictTransportSecurity:         b"Strict-Transport-Security",
     [7]  Trailer:                         b"Trailer",
     [17] TransferEncoding:                b"Transfer-Encoding",
@@ -301,9 +300,15 @@ macro_rules! Header {
 #[allow(non_snake_case)]
 const _: () = {
     impl Headers {
-        pub fn SetCookie(&self) -> impl Iterator<Item = &str> {
+        pub fn SetCookie(&self) -> impl Iterator<Item = SetCookie<'_>> {
             self.setcookie.as_ref().map(|setcookies|
-                setcookies.iter().map(Cow::as_ref)
+                setcookies.iter().filter_map(|raw| match SetCookie::from_raw(raw) {
+                    Ok(valid) => Some(valid),
+                    Err(_err) => {
+                        #[cfg(debug_assertions)] eprintln!("Invalid `Set-Cookie`: {_err}");
+                        None
+                    }
+                })
             ).into_iter().flatten()
         }
     }
@@ -311,10 +316,30 @@ const _: () = {
     impl<'s> SetHeaders<'s> {
         /// Add new `Set-Cookie` header in the response.
         /// 
-        /// When you call this N times, the response has N *sepearated*
-        /// `Set-Cookie` headers. ( This is specialized behavior... )
-        pub fn SetCookie(self, setcookie: impl Into<Cow<'static, str>>) -> Self {
-            let setcookie = setcookie.into();
+        /// - When you call this N times, the response has N different
+        ///   `Set-Cookie` headers.
+        /// - Cookie value (second argument) is precent encoded when the
+        ///   response is sended.
+        /// 
+        /// ---
+        /// *example.rs*
+        /// ```
+        /// use ohkami::Response;
+        /// 
+        /// fn mutate_header(res: &mut Response) {
+        ///     res.headers.set()
+        ///         .Server("ohkami")
+        ///         .SetCookie("id", "42", |d|d.Path("/").SameSiteLax())
+        ///         .SetCookie("name", "John", |d|d.Path("/where").SameSiteStrict());
+        /// }
+        /// ```
+        #[inline]
+        pub fn SetCookie(self,
+            name:  &'static str,
+            value: impl Into<Cow<'static, str>>,
+            directives: impl FnOnce(SetCookieBuilder)->SetCookieBuilder
+        ) -> Self {
+            let setcookie: Cow<'static, str> = directives(SetCookieBuilder::new(name, value)).build().into();
             self.0.size += "Set-Cookie: ".len() + setcookie.len() + "\r\n".len();
             match self.0.setcookie.as_mut() {
                 None             => self.0.setcookie = Some(Box::new(vec![setcookie])),
@@ -409,7 +434,7 @@ impl Headers {
                 None, None, None, None, None,
                 None, None, None, None,
             ]),
-            insertlog: Vec::with_capacity(1 << 4),
+            insertlog: Vec::with_capacity(8),
             custom:    None,
             setcookie: None,
             size:      "\r\n".len(),
@@ -469,9 +494,13 @@ impl Headers {
             }
         }
 
+        let setcookies = self.setcookie.as_ref().map(|setcookies|
+            setcookies.iter().map(Cow::as_ref)
+        ).into_iter().flatten();
+
         Standard { map: &self.standard, cur: 0 }
             .chain(Custom { map: self.custom.as_ref().map(|box_hmap| box_hmap.iter()) })
-            .chain(self.SetCookie().map(|setcookie| ("Set-Cookie", setcookie)))
+            .chain(setcookies.map(|setcookie| ("Set-Cookie", setcookie)))
     }
 
     #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]

@@ -69,8 +69,8 @@ async fn test_response_into_bytes() {
     res.headers.set()
         .Server("ohkami")
         .custom("Hoge-Header", "Something-Custom")
-        .SetCookie("id=A")
-        .SetCookie("id=B");
+        .SetCookie("id", "42", |d|d.Path("/").SameSiteLax())
+        .SetCookie("name", "John", |d|d.Path("/where").SameSiteStrict());
     let res_bytes = res.into_bytes();
     assert_bytes_eq!(res_bytes, format!("\
         HTTP/1.1 404 Not Found\r\n\
@@ -78,8 +78,8 @@ async fn test_response_into_bytes() {
         Date: {__now__}\r\n\
         Content-Length: 0\r\n\
         Hoge-Header: Something-Custom\r\n\
-        Set-Cookie: id=A\r\n\
-        Set-Cookie: id=B\r\n\
+        Set-Cookie: id=42; Path=/; SameSite=Lax\r\n\
+        Set-Cookie: name=John; Path=/where; SameSite=Strict\r\n\
         \r\n\
     ").into_bytes());
 }

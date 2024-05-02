@@ -8,7 +8,6 @@ use rustc_hash::FxHashMap;
 pub struct Headers {
     standard: Box<[Option<CowSlice>; N_CLIENT_HEADERS]>,
     custom:   Option<Box<FxHashMap<Slice, CowSlice>>>,
-    cookie:   Option<Box<Vec<Slice>>>,
 }
 
 pub struct SetHeaders<'set>(
@@ -179,6 +178,10 @@ macro_rules! Header {
         #[allow(non_snake_case)]
         impl Headers {
             $(
+                /// See the header value(s).
+                /// 
+                /// Multiple values are conbined into a comma-separated string, that can be iterated just by `.split(", ")`,\
+                /// except for `Cookie` that by semicolon (see `Cookies` helper method).
                 #[inline(always)]
                 pub fn $konst(&self) -> Option<&str> {
                     self.get(Header::$konst)
@@ -204,7 +207,7 @@ macro_rules! Header {
             )*
         }
     };
-} Header! {41;
+} Header! {42;
     Accept:                      b"Accept" | b"accept",
     AcceptEncoding:              b"Accept-Encoding" | b"accept-encoding",
     AcceptLanguage:              b"Accept-Language" | b"accept-language",
@@ -219,7 +222,7 @@ macro_rules! Header {
     ContentLength:               b"Content-Length" | b"content-length",
     ContentLocation:             b"Content-Location" | b"content-location",
     ContentType:                 b"Content-Type" | b"content-type",
-    // Cookie:                      b"Cookie" | b"cookie",
+    Cookie:                      b"Cookie" | b"cookie",
     Date:                        b"Date" | b"date",
     Expect:                      b"Expect" | b"expect",
     Forwarded:                   b"Forwarded" | b"forwarded",
@@ -249,18 +252,24 @@ macro_rules! Header {
     Via:                         b"Via" | b"via",
 }
 
-const _: () = {
-    #[allow(non_snake_case)]
-    impl Headers {
-        pub fn Cookie(&self) -> impl Iterator<Item = &str> {
-            self.cookie.as_ref().map(|cookies|
-                cookies.iter().map(|slice| std::str::from_utf8(unsafe {
-                    slice.as_bytes()
-                }).expect("Non UTF-8 Cookie"))
+#[allow(non_snake_case)]
+impl Headers {
+    /// Util method to parse semicolon-separated Cookies into an iterator of
+    /// `(name, value)`.
+    /// 
+    /// Invalid Cookie that doesn't contain `=` or contains multiple `=`s is just ignored.
+    pub fn Cookies(&self) -> impl Iterator<Item = (&str, &str)> {
+        self.Cookie()
+            .map(|cookie_list| cookie_list.split("; ")
+                .filter_map(|key_value| {
+                    let mut key_value = key_value.split('=');
+                    let key   = key_value.next()?;
+                    let value = key_value.next()?;
+                    key_value.next().is_none().then_some((key, value))
+                })
             ).into_iter().flatten()
-        }
     }
-};
+}
 
 impl Headers {
     #[inline(always)]
@@ -338,12 +347,10 @@ impl Headers {
         let target = unsafe {self.standard.get_unchecked_mut(name as usize)};
 
         match target {
+            None => *target = Some(value),
             Some(v) => unsafe {
                 v.extend_from_slice(b",");
                 v.extend_from_slice(value.as_bytes());
-            }
-            None => {
-                *target = Some(value)
             }
         }
     }
@@ -384,14 +391,6 @@ impl Headers {
             }
         }
     }
-
-    #[allow(unused)]
-    #[inline] pub(crate) fn append_cookie(&mut self, cookie: Slice) {
-        match &mut self.cookie {
-            None          => self.cookie = Some(Box::new(vec![cookie])),
-            Some(cookies) => cookies.push(cookie),
-        }
-    }
 }
 
 #[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_worker"))]
@@ -408,10 +407,9 @@ impl Headers {
                 None, None, None, None, None,
                 None, None, None, None, None,
                 None, None, None, None, None,
-                None,
+                None, None,
             ]),
             custom: None,
-            cookie: None,
         }
     }
     #[cfg(feature="DEBUG")]
@@ -447,15 +445,10 @@ impl Headers {
                     standard,
                     CowSlice::Own(v.into_boxed_str().into())
                 ),
-                None => match &*k {
-                    "Cookie" | "cookie" => self.append_cookie(
-                        Slice::from_bytes(Box::leak(v.into_boxed_str()).as_bytes())
-                    ),
-                    _ => self.insert_custom(
-                        Slice::from_bytes(Box::leak(k.into_boxed_str()).as_bytes()),
-                        CowSlice::Own(v.into_boxed_str().into())
-                    )
-                }
+                None => self.insert_custom(
+                    Slice::from_bytes(Box::leak(k.into_boxed_str()).as_bytes()),
+                    CowSlice::Own(v.into_boxed_str().into())
+                )
             }
         }
     }
