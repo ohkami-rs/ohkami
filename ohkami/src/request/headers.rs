@@ -410,7 +410,6 @@ impl Headers {
                 None,
             ]),
             custom: None,
-            cookie: None,
         }
     }
     #[cfg(feature="DEBUG")]
