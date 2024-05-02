@@ -41,7 +41,7 @@ impl Session {
             let mut req = unsafe {Pin::new_unchecked(&mut req)};
             match req.as_mut().read(connection).await {
                 Ok(Some(())) => {
-                    let close = req.headers.Connection() == Some("close");
+                    let close = matches!(req.headers.Connection(), Some("close" | "Close"));
                     let res = match catch_unwind(AssertUnwindSafe(|| self.router.handle(req.get_mut()))) {
                         Ok(future) => future.await,
                         Err(panic) => panicking(panic),
