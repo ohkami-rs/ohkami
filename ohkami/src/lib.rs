@@ -110,6 +110,7 @@ pub mod header {#![allow(non_snake_case)]
 
         pub struct Append(pub(crate) Cow<'static, str>);
 
+        #[derive(Debug, PartialEq)]
         pub enum SameSitePolicy {
             Strict,
             Lax,
@@ -133,15 +134,16 @@ pub mod header {#![allow(non_snake_case)]
             }
         }
 
+        #[derive(Debug, PartialEq)]
         pub struct SetCookie<'c> {
-            Cookie:   (&'c str, Cow<'c, str>),
-            Expires:  Option<Cow<'c, str>>,
-            MaxAge:   Option<u64>,
-            Domain:   Option<Cow<'c, str>>,
-            Path:     Option<Cow<'c, str>>,
-            Secure:   Option<bool>,
-            HttpOnly: Option<bool>,
-            SameSite: Option<SameSitePolicy>,
+            pub(crate) Cookie:   (&'c str, Cow<'c, str>),
+            pub(crate) Expires:  Option<Cow<'c, str>>,
+            pub(crate) MaxAge:   Option<u64>,
+            pub(crate) Domain:   Option<Cow<'c, str>>,
+            pub(crate) Path:     Option<Cow<'c, str>>,
+            pub(crate) Secure:   Option<bool>,
+            pub(crate) HttpOnly: Option<bool>,
+            pub(crate) SameSite: Option<SameSitePolicy>,
         }
         impl<'c> SetCookie<'c> {
             pub fn Cookie(&self) -> (&str, &str) {
@@ -180,10 +182,17 @@ pub mod header {#![allow(non_snake_case)]
                 let mut this = {
                     let name  = std::str::from_utf8(r.read_until(b"=")).map_err(|e| format!("Invalid Cookie name: {e}"))?;
                     r.consume("=").ok_or_else(|| format!("No `=` found in a `Set-Cookie` header value"))?;
-                    let value = std::str::from_utf8(r.read_until(b"; ")).map_err(|e| format!("Invalid Cookie value: {e}"))?;
+                    let value =  ohkami_lib::percent_decode_utf8({
+                        let mut bytes = r.read_until(b"; ");
+                        let len = bytes.len();
+                        if len >= 2 && bytes[0] == b'"' && bytes[len-1] == b'"' {
+                            bytes = &bytes[1..(len-1)]
+                        }
+                        bytes
+                    }).map_err(|e| format!("Invalid Cookie value: {e}"))?;
 
                     Self {
-                        Cookie: (name, Cow::Borrowed(value)),
+                        Cookie: (name, value),
                         Expires:  None,
                         MaxAge:   None,
                         Domain:   None,
@@ -211,16 +220,21 @@ pub mod header {#![allow(non_snake_case)]
                             this.MaxAge = Some(value)
                         }
                         Some(2) => {
+                            r.consume("=").ok_or_else(|| format!("Invalid `Domain`: No `=` found"))?;
+                            let value = std::str::from_utf8(r.read_until(b"; ")).map_err(|e| format!("Invalid `Domain`: {e}"))?;
+                            this.Domain = Some(Cow::Borrowed(value))
+                        },
+                        Some(3) => {
                             r.consume("=").ok_or_else(|| format!("Invalid `Path`: No `=` found"))?;
                             let value = std::str::from_utf8(r.read_until(b"; ")).map_err(|e| format!("Invalid `Path`: {e}"))?;
                             this.Path = Some(Cow::Borrowed(value))
                         }
-                        Some(3) => {
+                        Some(4) => {
                             r.consume("=").ok_or_else(|| format!("Invalid `SameSite`: No `=` found"))?;
                             this.SameSite = SameSitePolicy::from_bytes(r.read_until(b"; "));
                         }
-                        Some(4) => this.Secure = Some(true),
-                        Some(5) => this.HttpOnly = Some(true),
+                        Some(5) => this.Secure = Some(true),
+                        Some(6) => this.HttpOnly = Some(true),
                         _ => return Err((|| format!("Unkown directive: `{}`", r.remaining().escape_ascii()))())
                     }
                 }
@@ -244,14 +258,14 @@ pub mod header {#![allow(non_snake_case)]
                 let (name, value) = self.0.Cookie; {
                     bytes.extend_from_slice(name.as_bytes());
                     bytes.push(b'=');
-                    bytes.extend_from_slice(value.as_bytes())
+                    bytes.extend_from_slice(ohkami_lib::percent_encode(&value).as_bytes());
                 }
                 if let Some(Expires) = self.0.Expires {
                     bytes.extend_from_slice(b"; Expires=");
                     bytes.extend_from_slice(Expires.as_bytes());
                 }
                 if let Some(MaxAge) = self.0.MaxAge {
-                    bytes.extend_from_slice(b"; MaxAge=");
+                    bytes.extend_from_slice(b"; Max-Age=");
                     bytes.extend_from_slice(MaxAge.to_string().as_bytes());
                 }
                 if let Some(Domain) = self.0.Domain {

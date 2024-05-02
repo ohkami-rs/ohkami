@@ -287,7 +287,6 @@ macro_rules! Header {
     [22] SecWebSocketProtocol:            b"Sec-WebSocket-Protocol",
     [21] SecWebSocketVersion:             b"Sec-WebSocket-Version",
     [6]  Server:                          b"Server",
-    // [10] SetCookie:                       b"Set-Cookie",
     [25] StrictTransportSecurity:         b"Strict-Transport-Security",
     [7]  Trailer:                         b"Trailer",
     [17] TransferEncoding:                b"Transfer-Encoding",
@@ -317,8 +316,10 @@ const _: () = {
     impl<'s> SetHeaders<'s> {
         /// Add new `Set-Cookie` header in the response.
         /// 
-        /// When you call this N times, the response has N different
-        /// `Set-Cookie` headers.
+        /// - When you call this N times, the response has N different
+        ///   `Set-Cookie` headers.
+        /// - Cookie value (second argument) is precent encoded when the
+        ///   response is sended.
         /// 
         /// ---
         /// *example.rs*
