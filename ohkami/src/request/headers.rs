@@ -407,7 +407,7 @@ impl Headers {
                 None, None, None, None, None,
                 None, None, None, None, None,
                 None, None, None, None, None,
-                None,
+                None, None,
             ]),
             custom: None,
         }
