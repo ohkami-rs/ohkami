@@ -2,7 +2,7 @@
 
 use std::{any::Any, pin::Pin, sync::Arc, future::Future, time::Duration, task::Poll};
 use std::panic::{AssertUnwindSafe, catch_unwind};
-use crate::__rt__::{TcpStream, sleep, AsyncWriter};
+use crate::__rt__::{TcpStream, sleep};
 use crate::ohkami::router::RadixRouter;
 use crate::{Request, Response};
 
@@ -75,6 +75,11 @@ impl Session {
                 };
             }
         }).await;
-        connection.shutdown().await.expect("Failed to shutdown stream");
+        #[cfg(feature="rt_tokio")] {use crate::__rt__::AsyncWriter;
+            connection.shutdown().await.expect("Failed to shutdown stream");
+        }
+        #[cfg(feature="rt_async-std")] {
+            connection.shutdown(std::net::Shutdown::Both).expect("Failed to shutdown stream");
+        }
     }
 }
