@@ -445,15 +445,10 @@ impl Headers {
                     standard,
                     CowSlice::Own(v.into_boxed_str().into())
                 ),
-                None => match &*k {
-                    "Cookie" | "cookie" => self.append_cookie(
-                        Slice::from_bytes(Box::leak(v.into_boxed_str()).as_bytes())
-                    ),
-                    _ => self.insert_custom(
-                        Slice::from_bytes(Box::leak(k.into_boxed_str()).as_bytes()),
-                        CowSlice::Own(v.into_boxed_str().into())
-                    )
-                }
+                None => self.insert_custom(
+                    Slice::from_bytes(Box::leak(k.into_boxed_str()).as_bytes()),
+                    CowSlice::Own(v.into_boxed_str().into())
+                )
             }
         }
     }
