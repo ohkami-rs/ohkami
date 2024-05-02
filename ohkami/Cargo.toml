@@ -59,7 +59,7 @@ DEBUG = [
 #    "nightly",
 #    #"websocket",
 #    #"rt_tokio",
-#    #"rt_async-std",
-#    "rt_worker",
+#    "rt_async-std",
+#    #"rt_worker",
 #    "DEBUG",
 #]
