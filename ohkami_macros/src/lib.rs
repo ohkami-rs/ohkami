@@ -7,6 +7,23 @@ mod from_request;
 mod worker;
 
 
+/// Create an worker Ohkami, running on Cloudflare Workers !
+/// 
+/// - This only handle `fetch` event.
+/// - Expected signature: `() -> Ohkami` ( both sync/async are available )
+/// 
+/// ---
+/// *lib.rs*
+/// ```ignore
+/// use ohkami::prelude::*;
+/// 
+/// #[ohkami::worker]
+/// fn my_ohkami() -> Ohkami {
+///     Ohkami::new((
+///         "/".GET(|| async {"Hello, world!"})
+///     ))
+/// }
+/// ```
 #[cfg(feature="worker")]
 #[proc_macro_attribute]
 pub fn worker(_: proc_macro::TokenStream, ohkami_fn: proc_macro::TokenStream) -> proc_macro::TokenStream {
@@ -21,6 +38,17 @@ pub fn worker(_: proc_macro::TokenStream, ohkami_fn: proc_macro::TokenStream) ->
 ///   by argument: `#[bindings(dev)]`
 /// - Binded struct implements `FromRequest` and it can be used as an
 ///   handler argument
+/// 
+/// _**note**_ : `#[bindings]` only supports
+/// 
+/// - KV
+/// - D1
+/// - Queue (producer)
+/// - Service
+/// - Variables
+/// 
+/// in cuurent version, as `worker` crate does.
+/// ( `worker` supports secrets, but secrets aren't written in wrangler.toml... )
 /// 
 /// <br>
 /// 

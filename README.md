@@ -1,6 +1,6 @@
 <div align="center">
-    <h1>ohkami</h1>
-    ohkami <em>- [狼] wolf in Japanese -</em> is intuitive and declarative web framework.
+    <h1>Ohkami</h1>
+    Ohkami <em>- [狼] wolf in Japanese -</em> is intuitive and declarative web framework.
 </div>
 
 <br>
