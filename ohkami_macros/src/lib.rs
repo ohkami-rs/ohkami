@@ -77,7 +77,12 @@ pub fn worker(_: proc_macro::TokenStream, ohkami_fn: proc_macro::TokenStream) ->
 /// 
 /// <br>
 /// 
-/// *Hint* : You can switch envs by package features with some `#[cfg_attr(feature = "...", bindings(env_name))]`s
+/// _**tips**_ :
+/// 
+/// - You can switch envs by package features with some `#[cfg_attr(feature = "...", bindings(env_name))]`s
+/// - For rust-analyzer user : When you add an new binding into wrangler.toml,
+///   you will need to reload `#[bindings] struct ...;` to notice the new one to analyer.
+///   Then what you have to do is just deleting `;` and immediate restoring it.
 #[cfg(feature="worker")]
 #[proc_macro_attribute]
 pub fn bindings(env: proc_macro::TokenStream, bindings_struct: proc_macro::TokenStream) -> proc_macro::TokenStream {

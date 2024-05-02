@@ -5,7 +5,7 @@
 
 //! <div align="center">
 //!     <h1>ohkami</h1>
-//!     ohkami <em>- [狼] wolf in Japanese -</em> is intuitive and declarative web framework.
+//!     Ohkami <em>- [狼] wolf in Japanese -</em> is intuitive and declarative web framework.
 //! </div>
 //! 
 //! <br>
@@ -106,10 +106,11 @@ pub use ::ohkami_macros::{worker, bindings};
 
 pub mod header {
     /// Passed to `{Request/Response}.headers.set().Name( 〜 )` and
-    /// append `value` to the header
+    /// append `value` to the header.
     /// 
-    /// <br>
+    /// Here appended values are combined by `,`.
     /// 
+    /// ---
     /// *example.rs*
     /// ```no_run
     /// use ohkami::prelude::*;

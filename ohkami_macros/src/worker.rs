@@ -101,29 +101,44 @@ pub fn bindings(env: TokenStream, bindings_struct: TokenStream) -> Result<TokenS
         if let Some(toml::Value::Table(vars)) = config.get("vars") {
             for (name, value) in vars {
                 let value = value.as_str().ok_or_else(|| callsite("`#[bindings]` doesn't support JSON values in `vars` binding"))?;
-                bindings.push((syn::parse_str(name)?, Binding::Variable(value.into())))
+                bindings.push((
+                    syn::parse_str(name).map_err(|e| callsite(format!("Can't bind binding `{name}` into struct: {e}")))?,
+                    Binding::Variable(value.into())
+                ))
             }
         }
 
         if let Some(toml::Value::Array(d1_databases)) = config.get("d1_databases") {
             for binding in d1_databases {
                 let name = binding.as_table().ok_or_else(invalid_wrangler_toml)?
-                    .get("binding").ok_or_else(invalid_wrangler_toml)?.as_str().ok_or_else(invalid_wrangler_toml)?;
-                bindings.push((syn::parse_str(name)?, Binding::D1))
+                    .get("binding").ok_or_else(|| callsite("Invalid wrangler.toml: a binding doesn't have `binding = \"...\"`"))?
+                    .as_str().ok_or_else(invalid_wrangler_toml)?;
+                bindings.push((
+                    syn::parse_str(name).map_err(|e| callsite(format!("Can't bind binding `{name}` into struct: {e}")))?,
+                    Binding::D1
+                ))
             }
         }
         if let Some(toml::Value::Array(kv_namespaces)) = config.get("kv_namespaces") {
             for binding in kv_namespaces {
                 let name = binding.as_table().ok_or_else(invalid_wrangler_toml)?
-                    .get("binding").ok_or_else(invalid_wrangler_toml)?.as_str().ok_or_else(invalid_wrangler_toml)?;
-                bindings.push((syn::parse_str(name)?, Binding::KV))
+                    .get("binding").ok_or_else(|| callsite("Invalid wrangler.toml: a binding doesn't have `binding = \"...\"`"))?
+                    .as_str().ok_or_else(invalid_wrangler_toml)?;
+                bindings.push((
+                    syn::parse_str(name).map_err(|e| callsite(format!("Can't bind binding `{name}` into struct: {e}")))?,
+                    Binding::KV
+                ))
             }
         }
         if let Some(toml::Value::Array(services)) = config.get("services") {
             for binding in services {
                 let name = binding.as_table().ok_or_else(invalid_wrangler_toml)?
-                    .get("binding").ok_or_else(invalid_wrangler_toml)?.as_str().ok_or_else(invalid_wrangler_toml)?;
-                bindings.push((syn::parse_str(name)?, Binding::Service))
+                    .get("binding").ok_or_else(|| callsite("Invalid wrangler.toml: a binding doesn't have `binding = \"...\"`"))?
+                    .as_str().ok_or_else(invalid_wrangler_toml)?;
+                bindings.push((
+                    syn::parse_str(name).map_err(|e| callsite(format!("Can't bind binding `{name}` into struct: {e}")))?,
+                    Binding::Service
+                ))
             }
         }
 
@@ -131,8 +146,12 @@ pub fn bindings(env: TokenStream, bindings_struct: TokenStream) -> Result<TokenS
             if let Some(toml::Value::Array(producers)) = queues.get("producers") {
                 for binding in producers {
                     let name = binding.as_table().ok_or_else(invalid_wrangler_toml)?
-                        .get("binding").ok_or_else(invalid_wrangler_toml)?.as_str().ok_or_else(invalid_wrangler_toml)?;
-                    bindings.push((syn::parse_str(name)?, Binding::Queue))
+                        .get("binding").ok_or_else(|| callsite("Invalid wrangler.toml: a binding doesn't have `binding = \"...\"`"))?
+                        .as_str().ok_or_else(invalid_wrangler_toml)?;
+                    bindings.push((
+                        syn::parse_str(name).map_err(|e| callsite(format!("Can't bind binding `{name}` into struct: {e}")))?,
+                        Binding::Queue
+                    ))
                 }
             }
         }
