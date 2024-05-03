@@ -42,10 +42,6 @@ impl Timeout {
     pub const fn by_millis(millis: u64) -> Self {
         Self(Duration::from_millis(millis))
     }
-    pub const fn by_micros(micros: u64) -> Self {
-        Self(Duration::from_micros(micros))
-    }
-
     pub fn by_secs_f32(secs: f32) -> Self {
         Self(Duration::from_secs_f32(secs))
     }
@@ -129,7 +125,7 @@ const _: () = {
     }
 
     let t = Ohkami::with((
-        Timeout::from_secs(2),
+        Timeout::by_secs(2),
     ), (
         "/greet/:name/:sleep".GET(lazy_greeting),
     )).test();
