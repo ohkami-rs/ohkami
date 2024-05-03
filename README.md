@@ -28,7 +28,7 @@ ohkami = { version = "0.18", features = ["rt_tokio"] }
 tokio  = { version = "1",    features = ["full"] }
 ```
 
-2. Write your first code with ohkami : [examples/quick_start](https://github.com/kana-rus/ohkami/blob/main/examples/quick_start/src/main.rs)
+2. Write your first code with Ohkami : [examples/quick_start](https://github.com/kana-rus/ohkami/blob/main/examples/quick_start/src/main.rs)
 
 ```rust,no_run
 use ohkami::prelude::*;
@@ -67,17 +67,17 @@ Hello, your_name!
 <br>
 
 ## Cloudflare Workers is supported by `rt_worker` feature
-You can easily write ohkami app and deploy to Cloudflare Workers :
+You can easily write Ohkami app and deploy it to Cloudflare Workers :
 
 ```sh
-npm create cloudflare ./my-ohkami-worker -- --template https://github.com/kana-rus/ohkami-templates/worker
+npm create cloudflare ./path/to/project -- --template https://github.com/kana-rus/ohkami-templates/worker
 ```
 
-Then your `./my-ohkami-worker` has `wrangler.toml`, `package.json` and
+Then your `project` has `wrangler.toml`, `package.json` and
 
 `Cargo.toml`
 ```toml
-#...
+# ...
 
 [dependencies]
 ohkami = { version = "0.18", features = ["rt_worker"] }
@@ -87,6 +87,9 @@ worker = { version = "0.1" }
 `src/lib.rs`
 ```rust,ignore
 use ohkami::prelude::*;
+
+#[ohkami::bindings]
+struct Bindings;
 
 #[ohkami::worker]
 async fn my_worker() -> Ohkami {
@@ -99,7 +102,7 @@ async fn my_worker() -> Ohkami {
 }
 ```
 
-You can deploy this by
+You can deploy by :
 
 ```sh
 npm run deploy
@@ -160,16 +163,17 @@ async fn create_user(body: CreateUserRequest<'_>) -> Created<User> {
     })
 }
 
+/* Shorthand for Payload + Serialize */
+#[Payload(JSON / S)]
+struct SearchResult {
+    title: String,
+}
+
 #[Query] /* Params like `?lang=rust&q=framework` */
 struct SearchQuery<'q> {
     lang:    &'q str,
     #[query(rename = "q")] /* #[serde]-compatible #[query] attribute */
     keyword: &'q str,
-}
-
-#[Payload(JSON / S)] /* Shorthand for Payload + Serialize */
-struct SearchResult {
-    title: String,
 }
 
 async fn search(condition: SearchQuery<'_>) -> Vec<SearchResult> {
@@ -182,41 +186,14 @@ async fn search(condition: SearchQuery<'_>) -> Vec<SearchResult> {
 <br>
 
 ### Use middlewares
-ohkami's request handling system is called "**fang**s", and middlewares are implemented on this :
+Ohkami's request handling system is called "**fang**s", and middlewares are implemented on this :
 
 ```rust,no_run
 use ohkami::prelude::*;
 
-
-/* Full impl */
-
-use ohkami::{Fang, FangProc};
-
-struct GreetingFang;
-impl<I: FangProc> Fang<I> for GreetingFang {
-    type Proc = GreetingFangProc<I>;
-    fn chain(&self, inner: I) -> Self::Proc {
-        GreetingFangProc { inner }
-    }
-}
-struct GreetingFangProc<I: FangProc> {
-    inner: I
-}
-impl<I: FangProc> FangProc for GreetingFangProc<I> {
-    async fn bite<'b>(&'b self, req: &'b mut Request) -> Response {
-        println!("Welcome, request!: {req:?}");
-        let res = self.inner.bite(req).await;
-        println!("Go, response!: {res:?}");
-        res
-    }
-}
-
-
-/* Easy impl with an utility */
-
 #[derive(Clone)]
-struct GreetingFang2;
-impl FangAction for GreetingFang2 {
+struct GreetingFang;
+impl FangAction for GreetingFang {
     async fn fore<'a>(&'a self, req: &'a mut Request) -> Result<(), Response> {
         println!("Welcomm request!: {req:?}");
         Ok(())
@@ -226,13 +203,9 @@ impl FangAction for GreetingFang2 {
     }
 }
 
-
 #[tokio::main]
 async fn main() {
-    Ohkami::with((
-        GreetingFang,
-        GreetingFang2,
-    ), (
+    Ohkami::with(GreetingFang, (
         "/".GET(|| async {"Hello, fangs!"})
     )).howl("localhost:3000").await
 }
@@ -328,7 +301,7 @@ async fn test_my_ohkami() {
 - [ ] WebSocket
 
 ## MSRV (Minimum Supported Rust Version)
-Latest stable at the time of publication.
+Latest stable
 
 ## License
 ohkami is licensed under MIT LICENSE ([LICENSE](https://github.com/kana-rus/ohkami/blob/main/LICENSE) or [https://opensource.org/licenses/MIT](https://opensource.org/licenses/MIT)).
