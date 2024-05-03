@@ -207,7 +207,7 @@ macro_rules! Header {
             )*
         }
     };
-} Header! {42;
+} Header! {46;
     Accept:                      b"Accept" | b"accept",
     AcceptEncoding:              b"Accept-Encoding" | b"accept-encoding",
     AcceptLanguage:              b"Accept-Language" | b"accept-language",
@@ -239,6 +239,10 @@ macro_rules! Header {
     ProxyAuthorization:          b"Proxy-Authorization" | b"proxy-authorization",
     Range:                       b"Range" | b"range",
     Referer:                     b"Referer" | b"referer",
+    SecFetchDest:                b"Sec-Fetch-Dest" | b"sec-fetch-dest",
+    SecFetchMode:                b"Sec-Fetch-Mode" | b"sec-fetch-mode",
+    SecFetchSite:                b"Sec-Fetch-Site" | b"sec-fetch-site",
+    SecFetchUser:                b"Sec-Fetch-User" | b"sec-fetch-user",
     SecWebSocketExtensions:      b"Sec-WebSocket-Extensions" | b"sec-websocket-extensions",
     SecWebSocketKey:             b"Sec-WebSocket-Key" | b"sec-websocket-key",
     SecWebSocketProtocol:        b"Sec-WebSocket-Protocol" | b"sec-websocket-protocol",
@@ -399,15 +403,14 @@ impl Headers {
     pub(crate) fn init() -> Self {
         Self {
             standard: Box::new([
-                None, None, None, None, None,
-                None, None, None, None, None,
-                None, None, None, None, None,
-                None, None, None, None, None,
-                None, None, None, None, None,
-                None, None, None, None, None,
-                None, None, None, None, None,
-                None, None, None, None, None,
-                None, None,
+                None, None, None, None, None, None,
+                None, None, None, None, None, None,
+                None, None, None, None, None, None,
+                None, None, None, None, None, None,
+                None, None, None, None, None, None,
+                None, None, None, None, None, None,
+                None, None, None, None, None, None,
+                None, None, None, None,
             ]),
             custom: None,
         }
