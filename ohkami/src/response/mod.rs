@@ -136,8 +136,9 @@ impl Response {
         self.complete();
 
         /*===== build bytes from self =====*/
-        let mut buf = Vec::from("HTTP/1.1 ");
+        let mut buf = Vec::with_capacity(64);
 
+        buf.extend_from_slice(b"HTTP/1.1 ");
         buf.extend_from_slice(self.status.as_bytes());
         buf.extend_from_slice(b"\r\n");
         
@@ -152,12 +153,8 @@ impl Response {
 
     #[inline(always)]
     pub(crate) async fn send(self, stream: &mut (impl AsyncWriter + Unpin)) {
-        if let Err(e) = stream.write_all(&self.into_bytes()).await {
-            panic!("Failed to send response: {e}")
-        }
-        if let Err(e) = stream.flush().await {
-            panic!("Failed to flush stream: {e}")
-        }
+        stream.write_all(&self.into_bytes()).await.expect("Failed to send response");
+        stream.flush().await.expect("Failed to flush stream");
     }
 }
 
@@ -205,7 +202,7 @@ impl Response {
             Cow::Owned(string) => CowSlice::Own(string.into_bytes().into()),
         });
     }
-    #[inline] pub fn with_text<Text: Into<Cow<'static, str>>>(mut self, text: Text) -> Self {
+    #[inline(always)] pub fn with_text<Text: Into<Cow<'static, str>>>(mut self, text: Text) -> Self {
         self.set_text(text);
         self
     }

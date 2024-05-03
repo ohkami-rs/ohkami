@@ -33,6 +33,7 @@ macro_rules! status {
         #[allow(non_snake_case)]
         impl Response {
             $(
+                #[inline(always)]
                 pub fn $name() -> Self {
                     Self {
                         status:  Status::$name,

@@ -24,7 +24,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 /// Current datetime by **IMF-fixdate** format like `Sun, 06 Nov 1994 08:49:37 GMT`, used in `Date` header.
 /// 
 /// (reference：[https://datatracker.ietf.org/doc/html/rfc9110#name-date-time-formats](https://datatracker.ietf.org/doc/html/rfc9110#name-date-time-formats))
-#[inline] pub fn imf_fixdate_now() -> String {
+#[inline(always)] pub fn imf_fixdate_now() -> String {
     let system_now = SystemTime::now().duration_since(UNIX_EPOCH).expect("system time before Unix epoch");
     UTCDateTime::now_from_system(system_now).into_imf_fixdate()
 }
@@ -50,8 +50,12 @@ struct UTCDateTime {
         const SHORT_WEEKDAYS:  [&str; 7]  = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
         const SHORT_MONTHS:    [&str; 12] = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
+        #[inline(always)]
         fn push_hundreds(buf: &mut String, n: u8) {
-            debug_assert!(n < 100, "Called `push_hundreds` for `n` that's 100 or greater");
+            #[cfg(debug_assertions)] assert! {
+                n < 100, "Called `push_hundreds` for `n` that's 100 or greater"
+            }
+
             buf.push((n/10 + b'0') as char);
             buf.push((n%10 + b'0') as char);
         }
@@ -143,7 +147,7 @@ impl Date {
         ordinal: u32,
         flag:    YearFlag,
     ) -> Date {
-        debug_assert!({
+        #[cfg(debug_assertions)] assert!({
             const MAX_YEAR: i32 = i32::MAX >> 13;
             const MIN_YEAR: i32 = i32::MIN >> 13;
 
@@ -179,11 +183,12 @@ struct Time {
     frac: u32,
 } impl Time {
     #[inline(always)] const fn from_seconds(secs: u32, nsecs: u32) -> Self {
-        debug_assert! {
+        #[cfg(debug_assertions)] assert! {
             secs  < 86_400 &&
             nsecs < 2_000_000_000 &&
             (nsecs < 1_000_000_000 || secs % 60 == 59)
         }
+
         Self { secs, frac: nsecs }
     }
     #[inline] const fn hms(&self) -> (u32, u32, u32) {
@@ -245,7 +250,7 @@ struct Of(u32);
 impl Of {
     #[inline] const fn new(ordinal: u32, YearFlag(flag): YearFlag) -> Self {
         let of = Self((ordinal << 4) | flag as u32);
-        debug_assert!({
+        #[cfg(debug_assertions)] assert!({
             const MIN_OL: u32 = 1 << 1;
             const MAX_OL: u32 = 366 << 1; // `(366 << 1) | 1` would be day 366 in a non-leap year
 
