@@ -72,6 +72,7 @@ macro_rules! generate_statuses_as_types_containing_value {
             pub struct $status<B: ResponseBody = ()>(pub B);
 
             impl<B: ResponseBody> IntoResponse for $status<B> {
+                #[inline]
                 fn into_response(self) -> Response {
                     self.0.into_response_with(Status::$status)
                 }
@@ -138,7 +139,8 @@ macro_rules! generate_statuses_as_types_with_no_value {
             pub struct $status;
 
             impl IntoResponse for $status {
-                #[inline] fn into_response(self) -> Response {
+                #[inline]
+                fn into_response(self) -> Response {
                     Status::$status.into_response()
                 }
             }
@@ -177,7 +179,8 @@ macro_rules! generate_redirects {
             }
 
             impl IntoResponse for $status {
-                #[inline] fn into_response(self) -> Response {
+                #[inline]
+                fn into_response(self) -> Response {
                     let mut res = Response::of(Status::$status);
                     res.headers.set()
                         .Location(self.location);

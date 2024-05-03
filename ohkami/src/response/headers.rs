@@ -13,7 +13,7 @@ pub struct Headers {
 }
 
 impl Headers {
-    #[inline(always)] pub fn set(&mut self) -> SetHeaders<'_> {
+    #[inline] pub fn set(&mut self) -> SetHeaders<'_> {
         SetHeaders(self)
     }
 }
@@ -297,8 +297,8 @@ macro_rules! Header {
     [15] XFrameOptions:                   b"X-Frame-Options",
 }
 
-#[allow(non_snake_case)]
 const _: () = {
+    #[allow(non_snake_case)]
     impl Headers {
         pub fn SetCookie(&self) -> impl Iterator<Item = SetCookie<'_>> {
             self.setcookie.as_ref().map(|setcookies|
@@ -313,6 +313,7 @@ const _: () = {
         }
     }
 
+    #[allow(non_snake_case)]
     impl<'s> SetHeaders<'s> {
         /// Add new `Set-Cookie` header in the response.
         /// 

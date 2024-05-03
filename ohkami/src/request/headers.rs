@@ -346,16 +346,16 @@ impl Headers {
         }
     }
 
-    #[inline]
+    #[inline(always)]
     pub(crate) fn append(&mut self, name: Header, value: CowSlice) {
         let target = unsafe {self.standard.get_unchecked_mut(name as usize)};
 
         match target {
             None => *target = Some(value),
-            Some(v) => unsafe {
+            Some(v) => (|| unsafe {
                 v.extend_from_slice(b",");
                 v.extend_from_slice(value.as_bytes());
-            }
+            })()
         }
     }
 }

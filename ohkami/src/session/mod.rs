@@ -34,12 +34,11 @@ impl Session {
             crate::Response::InternalServerError()
         }
 
-        fn keep_alive(
+        fn timeout_in(
             secs: u64,
             proc: impl Future<Output = ()>,
         ) -> impl Future<Output = ()> {
             struct Timeout<Sleep, Proc> { sleep: Sleep, proc: Proc }
-
             impl<Sleep: Future<Output = ()>, Proc: Future<Output = ()>> Future for Timeout<Sleep, Proc> {
                 type Output = ();
                 fn poll(mut self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> Poll<Self::Output> {
@@ -56,7 +55,7 @@ impl Session {
         }
 
         let connection = &mut self.connection;
-        keep_alive(42/* TODO: make this configurable by user */, async {
+        timeout_in(42/* TODO: make this configurable by user */, async {
             loop {
                 let mut req = Request::init();
                 let mut req = unsafe {Pin::new_unchecked(&mut req)};
@@ -75,11 +74,19 @@ impl Session {
                 };
             }
         }).await;
-        #[cfg(feature="rt_tokio")] {use crate::__rt__::AsyncWriter;
-            connection.shutdown().await.expect("Failed to shutdown stream");
-        }
-        #[cfg(feature="rt_async-std")] {
-            connection.shutdown(std::net::Shutdown::Both).expect("Failed to shutdown stream");
+
+        if let Some(err) = {
+            #[cfg(feature="rt_tokio")] {use crate::__rt__::AsyncWriter;
+                connection.shutdown().await
+            }
+            #[cfg(feature="rt_async-std")] {
+                connection.shutdown(std::net::Shutdown::Both)
+            }
+        }.err() {
+            match err.kind() {
+                std::io::ErrorKind::NotConnected => (),
+                _ => panic!("Failed to shutdown stream: {err}")
+            }
         }
     }
 }
