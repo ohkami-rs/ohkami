@@ -4,7 +4,7 @@
 #![cfg_attr(feature="DEBUG", doc = include_str!("../../README.md"))]
 
 //! <div align="center">
-//!     <h1>ohkami</h1>
+//!     <h1>oOhkami</h1>
 //!     Ohkami <em>- [狼] wolf in Japanese -</em> is intuitive and declarative web framework.
 //! </div>
 //! 
