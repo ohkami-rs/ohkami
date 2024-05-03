@@ -23,7 +23,7 @@ ohkami_macros = { version = "=0.7.2", path = "../ohkami_macros" }
 
 tokio         = { version = "1",     optional = true, features = ["net", "rt", "io-util", "sync", "time"] }
 async-std     = { version = "1",     optional = true }
-worker        = { version = "0.1.0", optional = true, features = ["d1", "queue"] }
+worker        = { version = "0.2.0", optional = true, features = ["d1", "queue"] }
 
 byte_reader   = { workspace = true }
 serde         = { workspace = true }
