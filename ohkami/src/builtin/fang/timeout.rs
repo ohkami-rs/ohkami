@@ -18,7 +18,7 @@ use std::time::Duration;
 /// 
 /// #[tokio::main]
 /// async fn main() {
-///     Ohkami::with(Timeout::from_secs(10), (
+///     Ohkami::with(Timeout::by_secs(10), (
 ///         "/hello/:sleep".GET(sleeping_hello),
 ///     )).howl("0.0.0.0:3000").await
 /// }
@@ -33,24 +33,19 @@ use std::time::Duration;
 #[derive(Clone, Copy)]
 pub struct Timeout(Duration);
 impl Timeout {
-    pub fn new(duration: Duration) -> Self {
+    pub fn by(duration: Duration) -> Self {
         Self(duration)
     }
-
-    pub const fn from_secs(secs: u64) -> Self {
+    pub const fn by_secs(secs: u64) -> Self {
         Self(Duration::from_secs(secs))
     }
-    pub const fn from_millis(millis: u64) -> Self {
+    pub const fn by_millis(millis: u64) -> Self {
         Self(Duration::from_millis(millis))
     }
-    pub const fn from_micros(micros: u64) -> Self {
-        Self(Duration::from_micros(micros))
-    }
-
-    pub fn from_secs_f32(secs: f32) -> Self {
+    pub fn by_secs_f32(secs: f32) -> Self {
         Self(Duration::from_secs_f32(secs))
     }
-    pub fn from_secs_f64(secs: f64) -> Self {
+    pub fn by_secs_f64(secs: f64) -> Self {
         Self(Duration::from_secs_f64(secs))
     }
 }
@@ -130,7 +125,7 @@ const _: () = {
     }
 
     let t = Ohkami::with((
-        Timeout::from_secs(2),
+        Timeout::by_secs(2),
     ), (
         "/greet/:name/:sleep".GET(lazy_greeting),
     )).test();
