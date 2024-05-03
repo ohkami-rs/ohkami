@@ -81,7 +81,7 @@ Then your `project` has `wrangler.toml`, `package.json` and
 
 [dependencies]
 ohkami = { version = "0.18", features = ["rt_worker"] }
-worker = { version = "0.1" }
+worker = { version = "0.2.0" }
 ```
 
 `src/lib.rs`
