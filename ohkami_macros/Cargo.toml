@@ -25,5 +25,5 @@ toml          = { optional = true, version = "0.8.12", features = ["parse"], def
 worker = ["dep:toml"]
 
 ##### DEBUG #####
-DEBUG   = ["worker"]
-default = ["DEBUG"]
+# DEBUG   = ["worker"]
+# default = ["DEBUG"]
