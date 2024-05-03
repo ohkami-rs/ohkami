@@ -19,7 +19,7 @@ features      = ["rt_tokio"]
 
 [dependencies]
 ohkami_lib    = { version = "=0.2.3", path = "../ohkami_lib" }
-ohkami_macros = { version = "=0.7.2", path = "../ohkami_macros" }
+ohkami_macros = { version = "=0.7.3", path = "../ohkami_macros" }
 
 tokio         = { version = "1",     optional = true, features = ["net", "rt", "io-util", "sync", "time"] }
 async-std     = { version = "1",     optional = true }
