@@ -67,13 +67,12 @@ Hello, your_name!
 <br>
 
 ## Cloudflare Workers is supported by `rt_worker` feature
-You can easily write Ohkami app and deploy it to Cloudflare Workers :
 
 ```sh
 npm create cloudflare ./path/to/project -- --template https://github.com/kana-rus/ohkami-templates/worker
 ```
 
-Then your `project` has `wrangler.toml`, `package.json` and
+Then your `project` has `wrangler.toml`, `package.json` and `src/lib.rs` with
 
 `Cargo.toml`
 ```toml
@@ -84,29 +83,9 @@ ohkami = { version = "0.18", features = ["rt_worker"] }
 worker = { version = "0.2.0" }
 ```
 
-`src/lib.rs`
-```rust,ignore
-use ohkami::prelude::*;
+Local dev by `npm run dev` and depoly by `npm run deploy` !
 
-#[ohkami::bindings]
-struct Bindings;
-
-#[ohkami::worker]
-async fn my_worker() -> Ohkami {
-    #[cfg(feature = "DEBUG")]
-    console_error_panic_hook::set_once();
-
-    Ohkami::new((
-        "/".GET(|| async {"Hello, world!"}),
-    ))
-}
-```
-
-You can deploy by :
-
-```sh
-npm run deploy
-```
+( See README of the [template](https://github.com/kana-rus/ohkami-templates/tree/main/worker) for details )
 
 <br>
 
