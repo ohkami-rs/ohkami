@@ -203,7 +203,7 @@ macro_rules! Header {
                 }
             }
 
-            #[cfg(feature="testing")]
+            // Mainly used in tests
             pub fn from_bytes(bytes: &[u8]) -> Option<Self> {
                 SERVER_HEADERS.into_iter()
                     .find(|h| h.as_bytes().eq_ignore_ascii_case(bytes))
