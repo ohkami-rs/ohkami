@@ -195,22 +195,18 @@ macro_rules! Header {
             pub const fn as_str(&self) -> &'static str {
                 unsafe {std::str::from_utf8_unchecked(self.as_bytes())}
             }
-
-            pub const fn from_bytes(bytes: &[u8]) -> Option<Self> {
-                match bytes {
-                    $(
-                        $name_bytes => Some(Self::$konst),
-                    )*
-                    _ => None
-                }
-            }
-
             #[inline(always)] const fn len(&self) -> usize {
                 match self {
                     $(
                         Self::$konst => $len,
                     )*
                 }
+            }
+
+            #[cfg(feature="testing")]
+            pub fn from_bytes(bytes: &[u8]) -> Option<Self> {
+                SERVER_HEADERS.into_iter()
+                    .find(|h| h.as_bytes().eq_ignore_ascii_case(bytes))
             }
         }
 

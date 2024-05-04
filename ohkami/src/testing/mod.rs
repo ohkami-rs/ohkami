@@ -188,21 +188,9 @@ impl TestResponse {
     }
 
     pub fn header(&self, name: &'static str) -> Option<&str> {
-        let name_bytes = name.split('-').map(|section| {
-            if section.eq_ignore_ascii_case("ETag") {
-                f!("ETag")
-            } else if section.eq_ignore_ascii_case("WebSocket") {
-                f!("WebSocket")
-            } else {
-                let mut section_chars = section.chars();
-                let first = section_chars.next().expect("Found `--` in header name").to_ascii_uppercase();
-                section_chars.fold(
-                    String::from(first),
-                    |mut section, ch| {section.push(ch); section}
-                )
-            }
-        }).collect::<String>();
-        self.0.headers.get(ResponseHeader::from_bytes(name_bytes.as_bytes())?)
+        ResponseHeader::from_bytes(name.as_bytes())
+            .and_then(|h| self.0.headers.get(h))
+            .or_else(|| self.0.headers.get_custom(name))
     }
 
     pub fn text(&self) -> Option<&str> {
