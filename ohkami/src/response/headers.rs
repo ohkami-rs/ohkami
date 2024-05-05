@@ -82,10 +82,14 @@ const _: () = {
             if let Some(c) = &mut set.0.custom {
                 if let Some(value) = c.get_mut(&key) {
                     match value {
-                        Cow::Owned(string) => {string.push(','); string.push_str(&self.0);}
+                        Cow::Owned(string) => {
+                            string.push_str(", ");
+                            string.push_str(&self.0);
+                        }
                         Cow::Borrowed(s) => {
                             let mut s = s.to_string();
-                            s.push(','); s.push_str(&self.0);
+                            s.push_str(", ");
+                            s.push_str(&self.0);
                             *value = Cow::Owned(s);
                         }
                     }
@@ -397,12 +401,12 @@ impl Headers {
                     Cow::Borrowed(slice) => {
                         let mut appended = String::with_capacity(slice.len() + 1 + value_len);
                         appended.push_str(slice);
-                        appended.push(',');
+                        appended.push_str(", ");
                         appended.push_str(&value);
                         *v = Cow::Owned(appended);
                     }
                     Cow::Owned(string) => {
-                        string.push(',');
+                        string.push_str(", ");
                         string.push_str(&value);
                     }
                 }

@@ -16,8 +16,8 @@ use crate::{header::append, Fang, FangProc, IntoResponse, Method, Request, Respo
 /// async fn main() {
 ///     Ohkami::with((
 ///         CORS::new("https://foo.bar.org")
-///             .AllowMethods(&[Method::GET, Method::POST])
-///             .AllowHeaders(&["Content-Type", "X-Requested-With"])
+///             .AllowMethods([Method::GET, Method::POST])
+///             .AllowHeaders(["Content-Type", "X-Requested-With"])
 ///             .AllowCredentials()
 ///             .MaxAge(86400),
 ///     ), (
@@ -31,9 +31,9 @@ use crate::{header::append, Fang, FangProc, IntoResponse, Method, Request, Respo
 pub struct CORS {
     pub(crate) AllowOrigin:      AccessControlAllowOrigin,
     pub(crate) AllowCredentials: bool,
-    pub(crate) AllowMethods:     Option<&'static [Method]>,
-    pub(crate) AllowHeaders:     Option<&'static [&'static str]>,
-    pub(crate) ExposeHeaders:    Option<&'static [&'static str]>,
+    pub(crate) AllowMethods:     Option<String>,
+    pub(crate) AllowHeaders:     Option<String>,
+    pub(crate) ExposeHeaders:    Option<String>,
     pub(crate) MaxAge:           Option<u32>,
 }
 
@@ -68,13 +68,11 @@ impl CORS {
     /// Create `CORS` fang using given `AllowOrigin` as `Access-Control-Allow-Origin` header value.\
     /// (Both `"*"` and a speciffic origin are available)
     #[allow(non_snake_case)]
-    pub const fn new(AllowOrigin: &'static str) -> Self {
-        use Method::*;
-
+    pub fn new(AllowOrigin: &'static str) -> Self {
         Self {
             AllowOrigin:      AccessControlAllowOrigin::from_literal(AllowOrigin),
             AllowCredentials: false,
-            AllowMethods:     Some(&[GET, PUT, POST, PATCH, DELETE, OPTIONS, HEAD]),
+            AllowMethods:     Some(String::from("GET, PUT, POST, PATCH, DELETE, OPTIONS, HEAD")),
             AllowHeaders:     None,
             ExposeHeaders:    None,
             MaxAge:           None,
@@ -83,7 +81,7 @@ impl CORS {
 
     pub fn AllowCredentials(mut self) -> Self {
         if self.AllowOrigin.is_any() {
-            #[cfg(feature="DEBUG")] eprintln!("\
+            #[cfg(debug_assertions)] eprintln!("\
                 [WRANING] \
                 'Access-Control-Allow-Origin' header \
                 must not have wildcard '*' when the request's credentials mode is 'include' \
@@ -95,23 +93,26 @@ impl CORS {
         self.AllowCredentials = true;
         self
     }
-    pub fn AllowMethods(mut self, methods: &'static [Method]) -> Self {
-        if methods.len() > 0 {
-            self.AllowMethods = Some(methods);
+    pub fn AllowMethods<const N: usize>(self, methods: [Method; N]) -> Self {
+        Self {
+            AllowMethods: Some(methods.map(|m| m.as_str())
+                .join(", ")
+            ), ..self
         }
-        self
     }
-    pub fn AllowHeaders(mut self, headers: &'static [&'static str]) -> Self {
-        if headers.len() > 0 {
-            self.AllowHeaders = Some(headers);
+    pub fn AllowHeaders<const N: usize>(self, headers: [&'static str; N]) -> Self {
+        Self {
+            AllowHeaders: Some(headers
+                .join(", ")
+            ), ..self
         }
-        self
     }
-    pub fn ExposeHeaders(mut self, headers: &'static [&'static str]) -> Self {
-        if headers.len() > 0 {
-            self.ExposeHeaders = Some(headers);
+    pub fn ExposeHeaders<const N: usize>(self, headers: [&'static str; N]) -> Self {
+        Self {
+            ExposeHeaders: Some(headers
+                .join(", ")
+            ), ..self
         }
-        self
     }
     pub fn MaxAge(mut self, delta_seconds: u32) -> Self {
         self.MaxAge = Some(delta_seconds);
@@ -145,24 +146,20 @@ impl<Inner: FangProc> FangProc for CORSProc<Inner> {
             h = h.AccessControlAllowCredentials("true");
         }
         if let Some(expose_headers) = &self.cors.ExposeHeaders {
-            h = h.AccessControlExposeHeaders(expose_headers.join(","));
+            h = h.AccessControlExposeHeaders(expose_headers.to_string());
         }
 
         if req.method.isOPTIONS() {
             if let Some(max_age) = self.cors.MaxAge {
                 h = h.AccessControlMaxAge(max_age.to_string());
             }
-            if let Some(allow_methods) = self.cors.AllowMethods {
-                let methods_string = allow_methods.iter()
-                    .map(Method::as_str).collect::<Vec<_>>()
-                    .join(",");
-                h = h.AccessControlAllowMethods(methods_string);
+            if let Some(allow_methods) = &self.cors.AllowMethods {
+                h = h.AccessControlAllowMethods(allow_methods.to_string());
             }
-            if let Some(allow_headers_string) = match self.cors.AllowHeaders {
-                Some(hs) => Some(hs.join(",")),
-                None     => req.headers.AccessControlRequestHeaders().map(String::from),
-            } {
-                h = h.AccessControlAllowHeaders(allow_headers_string)
+            if let Some(allow_headers) = self.cors.AllowHeaders.as_deref()
+                .or_else(|| req.headers.AccessControlRequestHeaders())
+            {
+                h = h.AccessControlAllowHeaders(allow_headers.to_string())
                     .Vary(append("Access-Control-Request-Headers"));
             }
 
@@ -211,7 +208,7 @@ mod test {
         let t = Ohkami::with(
             CORS::new("https://example.example")
                 .AllowCredentials()
-                .AllowHeaders(&["Content-Type", "X-Custom"]),
+                .AllowHeaders(["Content-Type", "X-Custom"]),
             "/".GET(|| async {"Hello!"})
         ).test(); {
             let req = TestRequest::GET("/");
@@ -238,14 +235,14 @@ mod test {
             assert_eq!(res.header("Access-Control-Allow-Credentials"), Some("true"));
             assert_eq!(res.header("Access-Control-Expose-Headers"), None);
             assert_eq!(res.header("Access-Control-Max-Age"), None);
-            assert_eq!(res.header("Access-Control-Allow-Methods"), Some("GET,PUT,POST,PATCH,DELETE,OPTIONS,HEAD"));
-            assert_eq!(res.header("Access-Control-Allow-Headers"), Some("Content-Type,X-Custom"));
+            assert_eq!(res.header("Access-Control-Allow-Methods"), Some("GET, PUT, POST, PATCH, DELETE, OPTIONS, HEAD"));
+            assert_eq!(res.header("Access-Control-Allow-Headers"), Some("Content-Type, X-Custom"));
             assert_eq!(res.header("Vary"), Some("Access-Control-Request-Headers"));
         }
 
         let t = Ohkami::with(
             CORS::new("*")
-                .AllowHeaders(&["Content-Type", "X-Custom"])
+                .AllowHeaders(["Content-Type", "X-Custom"])
                 .MaxAge(1024),
             "/".GET(|| async {"Hello!"})
         ).test(); {
@@ -259,9 +256,9 @@ mod test {
             assert_eq!(res.header("Access-Control-Allow-Credentials"), None);
             assert_eq!(res.header("Access-Control-Expose-Headers"), None);
             assert_eq!(res.header("Access-Control-Max-Age"), Some("1024"));
-            assert_eq!(res.header("Access-Control-Allow-Methods"), Some("GET,PUT,POST,PATCH,DELETE,OPTIONS,HEAD"));
-            assert_eq!(res.header("Access-Control-Allow-Headers"), Some("Content-Type,X-Custom"));
-            assert_eq!(res.header("Vary"), Some("Origin,Access-Control-Request-Headers"));
+            assert_eq!(res.header("Access-Control-Allow-Methods"), Some("GET, PUT, POST, PATCH, DELETE, OPTIONS, HEAD"));
+            assert_eq!(res.header("Access-Control-Allow-Headers"), Some("Content-Type, X-Custom"));
+            assert_eq!(res.header("Vary"), Some("Origin, Access-Control-Request-Headers"));
         }
     }
 }
