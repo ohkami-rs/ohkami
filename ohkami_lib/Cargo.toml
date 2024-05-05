@@ -9,7 +9,7 @@ homepage         = "https://crates.io/crates/ohkami"
 repository       = "https://github.com/kana-rus/ohkami"
 readme           = "../README.md"
 keywords         = ["async", "http", "web", "server", "framework"]
-categories       = ["asynchronous", "web-programming::http-server"]
+categories       = ["asynchronous", "web-programming::http-server", "network-programming", "wasm"]
 license          = "MIT"
 
 [dependencies]
