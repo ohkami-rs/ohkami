@@ -1,4 +1,5 @@
-use ohkami::{typed::Payload, builtin::payload::JSON};
+use ohkami::typed::Payload;
+use ohkami::builtin::payload::JSON;
 use super::{User, Profile, Article, Comment, Tag};
 
 
