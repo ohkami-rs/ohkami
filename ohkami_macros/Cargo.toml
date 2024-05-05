@@ -11,7 +11,7 @@ documentation = "https://docs.rs/ohkami"
 homepage      = "https://crates.io/crates/ohkami"
 repository    = "https://github.com/kana-rus/ohkami"
 keywords      = ["async", "http", "web", "server", "framework"]
-categories    = ["rust-patterns", "asynchronous", "web-programming::http-server"]
+categories    = ["rust-patterns", "asynchronous", "web-programming::http-server", "network-programming", "wasm"]
 license       = "MIT"
 readme        = "../README.md"
 
