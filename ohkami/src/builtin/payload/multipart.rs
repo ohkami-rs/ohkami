@@ -58,7 +58,7 @@ use crate::typed::PayloadType;
 /// ```
 /// use ohkami::typed::Payload;
 /// use ohkami::builtin::payload::Multipart;
-/// use ohkami::builtin::utils::File; //
+/// use ohkami::builtin::item::File; //
 /// 
 /// #[Payload(Multipart/D)]
 /// struct ExampleForm<'req> {

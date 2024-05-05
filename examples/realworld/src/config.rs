@@ -1,7 +1,7 @@
 use std::sync::OnceLock;
 use ohkami::utils::unix_timestamp;
 use ohkami::serde::{Serialize, Deserialize};
-use ohkami::builtin::fang::JWT;
+use ohkami::builtin::{fang::JWT, item::JWTToken};
 use uuid::Uuid;
 use crate::errors::RealWorldError;
 
@@ -32,7 +32,7 @@ pub struct JWTPayload {
     pub user_id: Uuid,
 }
 
-pub fn issue_jwt_for_user_of_id(user_id: Uuid) -> Result<String, RealWorldError> {
+pub fn issue_jwt_for_user_of_id(user_id: Uuid) -> Result<JWTToken, RealWorldError> {
     let secret = JWT_SECRET_KEY()?;
     Ok(JWT::default(secret).clone().issue(JWTPayload {
         user_id,

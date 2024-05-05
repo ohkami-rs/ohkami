@@ -14,7 +14,7 @@ use crate::{Fang, FangProc, IntoResponse, Request, Response, Status};
 /// ```no_run
 /// use ohkami::prelude::*;
 /// use ohkami::typed::{Payload, status};
-/// use ohkami::builtin::{fang::JWT, payload::JSON};
+/// use ohkami::builtin::{payload::JSON, fang::JWT, item::JWTToken};
 /// use ohkami::serde::{Serialize, Deserialize};
 /// 
 /// 
@@ -52,7 +52,7 @@ use crate::{Fang, FangProc, IntoResponse, Request, Response, Status};
 /// }
 /// #[Payload(JSON/S)]
 /// struct AuthResponse {
-///     token: String
+///     token: JWTToken
 /// }
 /// async fn auth(
 ///     req: AuthRequest<'_>
@@ -179,9 +179,33 @@ impl<Payload> JWT<Payload> {
     }
 }
 
+/// Struct holding JWT token issued by `JWT::issue`.
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub struct JWTToken(String);
+const _: () = {
+    impl std::fmt::Display for JWTToken {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            std::fmt::Display::fmt(&self.0, f)
+        }
+    }
+
+    impl std::ops::Deref for JWTToken {
+        type Target = str;
+        fn deref(&self) -> &Self::Target {
+            &self.0
+        }
+    }
+
+    impl Into<String> for JWTToken {
+        fn into(self) -> String {
+            self.0
+        }
+    }
+};
+
 impl<Payload: Serialize> JWT<Payload> {
     /// Build JWT token with the payload.
-    #[inline] pub fn issue(self, payload: Payload) -> String {
+    #[inline] pub fn issue(self, payload: Payload) -> JWTToken {
         let unsigned_token = {
             let mut ut = base64::encode_url(self.header_str());
             ut.push('.');
@@ -215,7 +239,7 @@ impl<Payload: Serialize> JWT<Payload> {
         let mut token = unsigned_token;
         token.push('.');
         token.push_str(&signature);
-        token
+        JWTToken(token)
     }
 }
 
@@ -318,7 +342,7 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
 #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
 #[cfg(feature="testing")]
 #[cfg(test)] mod test {
-    use super::JWT;
+    use super::{JWT, JWTToken};
     use crate::__rt__::test;
 
     #[test] async fn test_jwt_issue() {
@@ -336,7 +360,7 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
             ```
         */
         assert_eq! {
-            JWT::default("secret").issue(::serde_json::json!({"name":"kanarus","id":42,"iat":1516239022})),
+            &*JWT::default("secret").issue(::serde_json::json!({"name":"kanarus","id":42,"iat":1516239022})),
             "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE1MTYyMzkwMjIsImlkIjo0MiwibmFtZSI6ImthbmFydXMifQ.dt43rLwmy4_GA_84LMC1m5CwVc59P9as_nRFldVCH7g"
         }
     }
@@ -391,7 +415,7 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
             user_id: usize,
         }
 
-        fn issue_jwt_for_user(user: &User) -> String {
+        fn issue_jwt_for_user(user: &User) -> JWTToken {
             use std::time::{UNIX_EPOCH, SystemTime};
 
             my_jwt().issue(MyJWTPayload {
@@ -407,7 +431,7 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
         impl IntoResponse for APIError {
             fn into_response(self) -> Response {
                 match self {
-                    Self::UserNotFound     => Response::of(Status::InternalServerError).with_text("User was not found"),
+                    Self::UserNotFound => Response::of(Status::InternalServerError).with_text("User was not found"),
                 }
             }
         }
@@ -464,7 +488,7 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
             type Type = crate::builtin::payload::JSON;
         }
 
-        async fn signin(body: SigninRequest<'_>) -> String {
+        async fn signin(body: SigninRequest<'_>) -> String/* for test */ {
             let r = &mut *repository().await.lock().unwrap();
 
             let user: Cow<'_, User> = match r.iter().find(|(_, u)|
@@ -490,7 +514,7 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
                 }
             };
 
-            issue_jwt_for_user(&user)
+            issue_jwt_for_user(&user).into()
         }
 
         let t = Ohkami::new((
