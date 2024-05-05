@@ -80,7 +80,7 @@ const _: () = {
 
             match custom.get_mut(&key) {
                 Some(v) => unsafe {
-                    v.extend_from_slice(b",");
+                    v.extend_from_slice(b", ");
                     v.extend_from_slice(self.0.as_bytes());
                 }
                 None => {
@@ -353,7 +353,7 @@ impl Headers {
         match target {
             None => *target = Some(value),
             Some(v) => (|| unsafe {
-                v.extend_from_slice(b",");
+                v.extend_from_slice(b", ");
                 v.extend_from_slice(value.as_bytes());
             })()
         }

@@ -8,7 +8,7 @@ use super::ResponseHeaders;
     h.set().Server(append("X"));
     assert_eq!(h.Server(), Some("X"));
     h.set().Server(append("Y"));
-    assert_eq!(h.Server(), Some("X,Y"));
+    assert_eq!(h.Server(), Some("X, Y"));
 }
 
 #[test] fn append_custom_header() {
@@ -17,7 +17,7 @@ use super::ResponseHeaders;
     h.set().custom("Custom-Header", append("A"));
     assert_eq!(h.custom("Custom-Header"), Some("A"));
     h.set().custom("Custom-Header", append("B"));
-    assert_eq!(h.custom("Custom-Header"), Some("A,B"));
+    assert_eq!(h.custom("Custom-Header"), Some("A, B"));
 }
 
 #[test] fn parse_setcookie_headers() {
