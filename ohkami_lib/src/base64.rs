@@ -282,14 +282,12 @@ fn encode_by(src: &[u8], encode_map: &[u8; 64], padding: Option<u8>) -> String {
         (b"asure.",   "YXN1cmUu"),
     ];
 
-    #[cfg(feature="websocket")]
     #[test] fn test_encode() {
         for (src, encoded) in CASES {
             assert_eq!(super::encode(src), *encoded);
         }
     }
 
-    #[cfg(feature="utils")]
     #[test] fn test_decode() {
         for (original, encoded) in CASES {
             let (actual, expected) = (super::decode(encoded.as_bytes()), original);

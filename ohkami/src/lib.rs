@@ -98,8 +98,8 @@ pub mod utils {
     pub use ::ohkami_lib::unix_timestamp;
 }
 
-#[cfg(feature="websocket")]
-mod x_websocket;
+// #[cfg(feature="websocket")]
+// mod x_websocket;
 
 #[cfg(feature="rt_worker")]
 pub use ::ohkami_macros::{worker, bindings};
@@ -401,10 +401,10 @@ pub mod serde {
     pub use ::serde::de::{self, Deserialize, Deserializer};
 }
 
-#[cfg(feature="websocket")]
-pub mod websocket {
-    pub use crate::x_websocket::*;
-}
+// #[cfg(feature="websocket")]
+// pub mod websocket {
+//     pub use crate::x_websocket::*;
+// }
 
 #[doc(hidden)]
 pub mod __internal__ {

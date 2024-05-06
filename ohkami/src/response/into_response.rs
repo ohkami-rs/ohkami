@@ -64,3 +64,9 @@ impl IntoResponse for std::convert::Infallible {
         unsafe {std::hint::unreachable_unchecked()}
     }
 }
+
+impl IntoResponse for () {
+    fn into_response(self) -> Response {
+        Response::OK()
+    }
+}
