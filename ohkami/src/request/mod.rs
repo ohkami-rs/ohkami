@@ -38,9 +38,6 @@ use {
     std::borrow::Cow,
 };
 
-#[cfg(feature="websocket")]
-use crate::websocket::UpgradeID;
-
 
 #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
 pub(crate) const BUF_SIZE: usize = 1024;

@@ -4,7 +4,7 @@
 #![cfg_attr(feature="DEBUG", doc = include_str!("../../README.md"))]
 
 //! <div align="center">
-//!     <h1>oOhkami</h1>
+//!     <h1>Ohkami</h1>
 //!     Ohkami <em>- [狼] wolf in Japanese -</em> is intuitive and declarative web framework.
 //! </div>
 //! 
@@ -98,8 +98,8 @@ pub mod utils {
     pub use ::ohkami_lib::unix_timestamp;
 }
 
-#[cfg(feature="websocket")]
-mod x_websocket;
+// #[cfg(feature="websocket")]
+// mod x_websocket;
 
 #[cfg(feature="rt_worker")]
 pub use ::ohkami_macros::{worker, bindings};
@@ -401,10 +401,10 @@ pub mod serde {
     pub use ::serde::de::{self, Deserialize, Deserializer};
 }
 
-#[cfg(feature="websocket")]
-pub mod websocket {
-    pub use crate::x_websocket::*;
-}
+// #[cfg(feature="websocket")]
+// pub mod websocket {
+//     pub use crate::x_websocket::*;
+// }
 
 #[doc(hidden)]
 pub mod __internal__ {
