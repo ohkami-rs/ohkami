@@ -59,16 +59,45 @@ pub fn bindings(env: TokenStream, bindings_struct: TokenStream) -> Result<TokenS
         }
     }
 
-    let wrangler_toml: toml::Value = {use std::io::Read;
-        let mut file = std::fs::File::open("wrangler.toml")
-            .map_err(|_| callsite("wrangler.toml doesn't exists or isn't readable"))?;
+    let wrangler_toml: toml::Value = {use std::{io::Read, fs::File};
+        let mut file = File::open("wrangler.toml").or_else(|_| {
+            /* workspace mode */
+
+            let cargo_toml = {
+                let mut file = File::open("Cargo.toml").map_err(|_| callsite("Cargo.toml is not found"))?;
+                let mut buf = String::new();
+                file.read_to_string(&mut buf).map_err(|_| callsite("wrangler.toml found but it's not readable"))?;
+                toml::from_str::<toml::Value>(&buf).map_err(|_| callsite("Failed to read wrangler.toml"))?
+            };
+
+            let Some(workspace) = cargo_toml.as_table().unwrap().get("workspace") else {
+                return Err(callsite("Unexpectedly no `workspace` found in project root Cargo.toml"))
+            };
+            let members = workspace
+                .as_table().ok_or_else(|| callsite("Invalid Cargo.toml"))?
+                .get("members").ok_or_else(|| callsite("No `members` found in `[workspace]`"))?
+                .as_array().ok_or_else(|| callsite("Invalid `workspace.members`"))?;
+
+            let mut wrangler_tomls = Vec::with_capacity(1);
+            for member in members {
+                let path = member.as_str().ok_or_else(|| callsite("Invalid member"))?;
+                if let Ok(wrangler_toml) = File::open(std::path::PathBuf::from_iter([path, "wrangler.toml"])) {
+                    wrangler_tomls.push(wrangler_toml)
+                }
+            }
+
+            (wrangler_tomls.len() == 1)
+                .then_some(wrangler_tomls.pop().unwrap())
+                .ok_or_else(|| callsite("More than one workspace members have wrangler.toml, which is not supported"))
+        }).map_err(|_| callsite("\
+            `wrangler.toml` doesn't exists or isn't readable. \
+            Or, if you call me in a workspace, maybe more then one members have \
+            `wrangler.toml`s and it's not supported. \
+        "))?;
 
         let mut buf = String::new();
-        file.read_to_string(&mut buf)
-            .map_err(|_| callsite("wrangler.toml found but it's not readable"))?;
-
-        toml::from_str(&buf)
-            .map_err(|_| callsite("Failed to read wrangler.toml"))?
+        file.read_to_string(&mut buf).map_err(|_| callsite("wrangler.toml found but it's not readable"))?;
+        toml::from_str(&buf).map_err(|_| callsite("Failed to read wrangler.toml"))?
     };
 
     let config: &toml::Table = {
