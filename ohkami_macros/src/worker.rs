@@ -204,8 +204,26 @@ pub fn bindings(env: TokenStream, bindings_struct: TokenStream) -> Result<TokenS
         });
 
         quote! {
+            #[allow(non_snake_case)]
             #vis struct #name {
                 #( #fields ),*
+            }
+        }
+    };
+
+    let impl_bindings = {
+        let methods = bindings.iter()
+            .filter_map(|(name, binding)| match binding {
+                Binding::Variable(var) => Some(quote! {
+                    #vis const fn #name() -> &'static str { #var }
+                }),
+                _ => None
+            });
+
+        quote! {
+            #[allow(non_snake_case)]
+            impl #name {
+                #( #methods )*
             }
         }
     };
@@ -275,8 +293,8 @@ pub fn bindings(env: TokenStream, bindings_struct: TokenStream) -> Result<TokenS
     );
 
     Ok(quote! {
-        #[allow(non_snake_case)]
         #declare_struct
+        #impl_bindings
         #impl_from_request
         #impl_send_sync
     })
