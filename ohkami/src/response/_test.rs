@@ -22,7 +22,9 @@ async fn test_response_into_bytes() {
         };
     }
 
-    let __now__ = ohkami_lib::imf_fixdate_now();
+    let __now__ = ::ohkami_lib::imf_fixdate(
+        std::time::Duration::from_secs(crate::utils::unix_timestamp())
+    );
 
     let res = Response::NoContent();
     let res_bytes = res.into_bytes();
