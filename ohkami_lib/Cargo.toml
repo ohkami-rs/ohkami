@@ -15,5 +15,4 @@ license          = "MIT"
 [dependencies]
 serde            = { workspace = true }
 byte_reader      = { workspace = true }
-
 percent-encoding = { version = "2.3" }

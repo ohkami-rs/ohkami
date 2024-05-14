@@ -15,7 +15,7 @@ use router::TrieRouter;
 #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
 use crate::{__rt__, Session};
 #[cfg(feature="rt_async-std")] use crate::__rt__::StreamExt as _;
-#[cfg(feature="websocket")]    use crate::websocket::reserve_upgrade;
+// #[cfg(feature="websocket")]    use crate::websocket::reserve_upgrade;
 
 
 /// # Ohkami - a robust wolf who serves your web app

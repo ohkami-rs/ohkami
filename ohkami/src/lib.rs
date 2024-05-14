@@ -95,7 +95,34 @@ pub mod testing;
 
 pub mod utils {
     pub use crate::fangs::util::FangAction;
-    pub use ::ohkami_lib::unix_timestamp;
+
+    #[cfg(not(feature="rt_worker"))]
+    /// ```
+    /// # let _ =
+    /// {
+    ///     std::time::SystemTime::now()
+    ///         .duration_since(std::time::UNIX_EPOCH)
+    ///         .unwrap()
+    ///         .as_secs()
+    /// }
+    /// # ;
+    /// ```
+    #[inline] pub fn unix_timestamp() -> u64 {
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs()
+    }
+
+    #[cfg(feature="rt_worker")]
+    /// ```ignore
+    /// {
+    ///     JS's `Date.now() / 1000` as Rust's u64
+    /// }
+    /// ```
+    #[inline] pub fn unix_timestamp() -> u64 {
+        (worker::js_sys::Date::now() / 1000.) as _
+    }
 }
 
 // #[cfg(feature="websocket")]
