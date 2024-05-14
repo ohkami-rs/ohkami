@@ -15,7 +15,7 @@ use router::TrieRouter;
 #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
 use crate::{__rt__, Session};
 #[cfg(feature="rt_async-std")] use crate::__rt__::StreamExt as _;
-#[cfg(feature="websocket")]    use crate::websocket::reserve_upgrade;
+// #[cfg(feature="websocket")]    use crate::websocket::reserve_upgrade;
 
 
 /// # Ohkami - a robust wolf who serves your web app
@@ -326,7 +326,9 @@ impl Ohkami {
                 let router = router.into_radix();
                 #[cfg(feature="DEBUG")] ::worker::console_debug!("Done `TrieRouter::into_radix` (without compressions)");
                 
-                router.handle(&mut ohkami_req).await
+                let mut res = router.handle(&mut ohkami_req).await;
+                res.complete();
+                res
             }
             Err(e) => {#[cfg(feature="DEBUG")] ::worker::console_debug!("`take_over` returned an error response: {e:?}");
                 e

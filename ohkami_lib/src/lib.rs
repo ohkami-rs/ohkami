@@ -3,7 +3,7 @@ pub mod base64;
 pub mod mime;
 
 mod time;
-pub use time::{unix_timestamp, imf_fixdate_now};
+pub use time::imf_fixdate;
 
 mod slice;
 pub use slice::{Slice, CowSlice};

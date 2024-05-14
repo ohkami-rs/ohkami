@@ -94,10 +94,9 @@ fn metadataize(input: &str) -> Box<[u8; BUF_SIZE]> {
         payload: Some(CowSlice::Ref(Slice::from_bytes(
             br#"{"name":"kanarus","age":20}"#
         ))),
-        store:      Store::init(),
+        store: Store::init(),
     });
 
-    #[cfg(feature="custom-header")]
     {
         const CASE_3: &str = "\
             POST /foo.php?query=1&q2=xxx HTTP/1.1\r\n\
@@ -119,10 +118,10 @@ fn metadataize(input: &str) -> Box<[u8; BUF_SIZE]> {
             __buf__: metadataize(CASE_3),
             method:  Method::POST,
             path:    Path::from_literal("/foo.php"),
-            query:   Some(Box::new(QueryParams::from([
+            query:   Some(QueryParams::from([
                 ("query", "1"),
                 ("q2",    "xxx"),
-            ]))),
+            ])),
             headers: RequestHeaders::from_iters(
                 [
                     (RequestHeader::Host,           "localhost"),
@@ -139,9 +138,9 @@ fn metadataize(input: &str) -> Box<[u8; BUF_SIZE]> {
                     ("X-Request-Id", "300"),
                 ]
             ),
-            payload: Some(CowSlice::Own(Vec::from("first_name=John&last_name=Doe&action=Submit"))),
+            payload: Some(CowSlice::Own(Vec::from("first_name=John&last_name=Doe&action=Submit").into())),
             store:   Store::init(),
-            #[cfg(feature="websocket")] upgrade_id: None,
+            // #[cfg(feature="websocket")] upgrade_id: None,
         });
     }
 }
