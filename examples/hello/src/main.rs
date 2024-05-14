@@ -31,7 +31,7 @@ mod hello_handler {
     }
 
 
-    #[Payload(JSON/D where Self::validate)]
+    #[Payload(JSON/D where self.validate())]
     pub struct HelloRequest<'n> {
         name:   &'n str,
         repeat: Option<usize>,

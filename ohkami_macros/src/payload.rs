@@ -84,7 +84,7 @@ struct Validation {
         quote! {
             #[inline]
             fn validate(&self) -> std::result::Result<(), impl std::fmt::Display> {
-                #validate(self)
+                #validate
             }
         }
     }

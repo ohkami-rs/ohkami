@@ -115,7 +115,7 @@ pub trait Payload: Sized {
         }
     }
 
-    #[inline]
+    #[inline(always)]
     fn validate(&self) -> Result<(), impl std::fmt::Display> {
         Result::<(), std::convert::Infallible>::Ok(())
     }
