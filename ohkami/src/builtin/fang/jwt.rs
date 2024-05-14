@@ -3,7 +3,7 @@
 use std::{borrow::Cow, marker::PhantomData};
 use serde::{Serialize, Deserialize};
 use ohkami_lib::base64;
-use crate::{Fang, FangProc, IntoResponse, Request, Response, Status};
+use crate::{Fang, FangProc, IntoResponse, Request, Response};
 
 
 /// # Builtin fang and helper for JWT config
@@ -73,9 +73,10 @@ use crate::{Fang, FangProc, IntoResponse, Request, Response, Status};
 /// }
 /// ```
 pub struct JWT<Payload> {
-    secret:   Cow<'static, str>,
-    alg:      VerifyingAlgorithm,
-    _payload: PhantomData<Payload>,
+    secret:    Cow<'static, str>,
+    alg:       VerifyingAlgorithm,
+    get_token: fn(&Request)->Option<&str>,
+    _payload:  PhantomData<Payload>,
 }
 #[derive(Clone)]
 enum VerifyingAlgorithm {
@@ -88,9 +89,10 @@ const _: () = {
     impl<Payload> Clone for JWT<Payload> {
         fn clone(&self) -> Self {
             Self {
-                secret:   self.secret.clone(),
-                alg:      self.alg.clone(),
-                _payload: PhantomData
+                secret:    self.secret.clone(),
+                alg:       self.alg.clone(),
+                get_token: self.get_token.clone(),
+                _payload:  PhantomData
             }
         }
     }
@@ -132,36 +134,53 @@ impl<Payload> JWT<Payload> {
     /// Just `new_256`; use HMAC-SHA256 as verifying algorithm
     #[inline] pub fn default(secret: impl Into<Cow<'static, str>>) -> Self {
         Self {
-            secret:   secret.into(),
-            alg:      VerifyingAlgorithm::HS256,
-            _payload: PhantomData
+            secret:    secret.into(),
+            alg:       VerifyingAlgorithm::HS256,
+            get_token: Self::default_get,
+            _payload:  PhantomData
         }
     }
     /// Use HMAC-SHA256 as verifying algorithm
     pub fn new_256(secret: impl Into<Cow<'static, str>>) -> Self {
         Self {
-            secret:   secret.into(),
-            alg:      VerifyingAlgorithm::HS256,
-            _payload: PhantomData
+            secret:    secret.into(),
+            alg:       VerifyingAlgorithm::HS256,
+            get_token: Self::default_get,
+            _payload:  PhantomData
         }
     }
     /// Use HMAC-SHA384 as verifying algorithm
     pub fn new_384(secret: impl Into<Cow<'static, str>>) -> Self {
         Self {
-            secret:   secret.into(),
-            alg:      VerifyingAlgorithm::HS384,
-            _payload: PhantomData
+            secret:    secret.into(),
+            alg:       VerifyingAlgorithm::HS384,
+            get_token: Self::default_get,
+            _payload:  PhantomData
         }
     }
     /// Use HMAC-SHA512 as verifying algorithm
     pub fn new_512(secret: impl Into<Cow<'static, str>>) -> Self {
         Self {
-            secret:   secret.into(),
-            alg:      VerifyingAlgorithm::HS512,
-            _payload: PhantomData
+            secret:    secret.into(),
+            alg:       VerifyingAlgorithm::HS512,
+            get_token: Self::default_get,
+            _payload:  PhantomData
         }
     }
 
+    /// Customize get-token process in JWT verifying.
+    /// 
+    /// *default*: `req.headers.Authorization()?.strip_prefix("Bearer ")`
+    pub fn get_token_by(mut self, get_token: fn(&Request)->Option<&str>) -> Self {
+        self.get_token = get_token;
+        self
+    }
+
+
+    #[inline(always)] fn default_get(req: &Request) -> Option<&str> {
+        req.headers.Authorization()?
+            .strip_prefix("Bearer ")
+    }
 
     #[inline(always)] const fn alg_str(&self) -> &'static str {
         match self.alg {
@@ -261,41 +280,40 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
         type Header  = ::serde_json::Value;
         type Payload = ::serde_json::Value;
 
-        let mut parts = req
-            .headers.Authorization().ok_or_else(|| Response::of(Status::Unauthorized).with_text(UNAUTHORIZED_MESSAGE))?
-            .strip_prefix("Bearer ").ok_or_else(|| Response::of(Status::BadRequest))?
+        let mut parts = (self.get_token)(req)
+            .ok_or_else(|| Response::Unauthorized().with_text(UNAUTHORIZED_MESSAGE))?
             .split('.');
 
         let header_part = parts.next()
-            .ok_or_else(|| Response::of(Status::BadRequest))?;
+            .ok_or_else(|| Response::BadRequest())?;
         let header: Header = ::serde_json::from_slice(&base64::decode_url(header_part))
-            .map_err(|_| Response::of(Status::InternalServerError))?;
+            .map_err(|_| Response::InternalServerError())?;
         if header.get("typ").is_some_and(|typ| !typ.as_str().unwrap_or_default().eq_ignore_ascii_case("JWT")) {
-            return Err(Response::of(Status::BadRequest))
+            return Err(Response::BadRequest())
         }
         if header.get("cty").is_some_and(|cty| !cty.as_str().unwrap_or_default().eq_ignore_ascii_case("JWT")) {
-            return Err(Response::of(Status::BadRequest))
+            return Err(Response::BadRequest())
         }
-        if header.get("alg").ok_or_else(|| Response::of(Status::BadRequest))? != self.alg_str() {
-            return Err(Response::of(Status::BadRequest))
+        if header.get("alg").ok_or_else(|| Response::BadRequest())? != self.alg_str() {
+            return Err(Response::BadRequest())
         }
 
         let payload_part = parts.next()
-            .ok_or_else(|| Response::of(Status::BadRequest))?;
+            .ok_or_else(|| Response::BadRequest())?;
         let payload: Payload = ::serde_json::from_slice(&base64::decode_url(payload_part))
-            .map_err(|_| Response::of(Status::InternalServerError))?;
-        let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs();
-        if payload.get("nbf").is_some_and(|nbf| nbf.as_u64().unwrap_or_default() > now) {
-            return Err(Response::of(Status::Unauthorized).with_text(UNAUTHORIZED_MESSAGE))
+            .map_err(|_| Response::InternalServerError())?;
+        let now = crate::utils::unix_timestamp();
+        if payload.get("nbf").is_some_and(|nbf| nbf.as_u64().unwrap_or(0) > now) {
+            return Err(Response::Unauthorized().with_text(UNAUTHORIZED_MESSAGE))
         }
-        if payload.get("exp").is_some_and(|exp| exp.as_u64().unwrap_or_default() <= now) {
-            return Err(Response::of(Status::Unauthorized).with_text(UNAUTHORIZED_MESSAGE))
+        if payload.get("exp").is_some_and(|exp| exp.as_u64().unwrap_or(u64::MAX) <= now) {
+            return Err(Response::Unauthorized().with_text(UNAUTHORIZED_MESSAGE))
         }
-        if payload.get("iat").is_some_and(|iat| iat.as_u64().unwrap_or_default() > now) {
-            return Err(Response::of(Status::Unauthorized).with_text(UNAUTHORIZED_MESSAGE))
+        if payload.get("iat").is_some_and(|iat| iat.as_u64().unwrap_or(0) > now) {
+            return Err(Response::Unauthorized().with_text(UNAUTHORIZED_MESSAGE))
         }
 
-        let signature_part = parts.next().ok_or_else(|| Response::of(Status::BadRequest))?;
+        let signature_part = parts.next().ok_or_else(|| Response::BadRequest())?;
         let requested_signature = base64::decode_url(signature_part);
 
         let is_correct_signature = {
@@ -328,10 +346,10 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
         };
         
         if !is_correct_signature {
-            return Err(Response::of(Status::Unauthorized).with_text(UNAUTHORIZED_MESSAGE))
+            return Err(Response::Unauthorized().with_text(UNAUTHORIZED_MESSAGE))
         }
 
-        let payload = ::serde_json::from_value(payload).map_err(|_| Response::of(Status::InternalServerError))?;
+        let payload = ::serde_json::from_value(payload).map_err(|_| Response::InternalServerError())?;
         Ok(payload)
     }
 }
@@ -431,7 +449,7 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
         impl IntoResponse for APIError {
             fn into_response(self) -> Response {
                 match self {
-                    Self::UserNotFound => Response::of(Status::InternalServerError).with_text("User was not found"),
+                    Self::UserNotFound => Response::InternalServerError().with_text("User was not found"),
                 }
             }
         }
