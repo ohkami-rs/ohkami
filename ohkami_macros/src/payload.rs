@@ -5,6 +5,7 @@ use quote::quote;
 struct PayloadFormat {
     payload_type: Path,
     serde_derive: Option<SerdeDerive>,
+    validation:   Option<Validation>,
 } impl Parse for PayloadFormat {
     fn parse(input: syn::parse::ParseStream) -> Result<Self> {
         Ok(Self {
@@ -12,7 +13,10 @@ struct PayloadFormat {
             serde_derive: input.peek(token::Div).then(|| {
                 input.parse::<token::Div>().unwrap();
                 input.parse()
-            }).transpose()?
+            }).transpose()?,
+            validation: input.peek(token::Where).then(|| {
+                input.parse()
+            }).transpose()?,
         })
     }
 }
@@ -45,7 +49,7 @@ struct SerdeDerive {
         Ok(this)
     }
 } impl SerdeDerive {
-    fn into_derive(self) -> Option<TokenStream> {
+    fn into_derive(self) -> TokenStream {
         let mut derives = Vec::new();
         if self.S {
             derives.extend(quote!{
@@ -58,9 +62,31 @@ struct SerdeDerive {
             });
         }
 
-        (!derives.is_empty()).then_some(quote!{
+        quote!{
             #[derive( #( #derives )* )]
+        }
+    }
+}
+
+struct Validation {
+    _where:   token::Where,
+    validate: TokenStream,
+} impl Parse for Validation {
+    fn parse(input: syn::parse::ParseStream) -> Result<Self> {
+        Ok(Self {
+            _where:   input.parse()?,
+            validate: input.parse()?,
         })
+    }
+} impl Validation {
+    fn into_fn(self) -> TokenStream {
+        let Self { validate, .. } = self;
+        quote! {
+            #[inline]
+            fn validate(&self) -> std::result::Result<(), impl std::fmt::Display> {
+                #validate(self)
+            }
+        }
     }
 }
 
@@ -73,12 +99,10 @@ pub(super) fn Payload(format: TokenStream, target: TokenStream) -> Result<TokenS
     let generics_params = &target.generics.params;
     let generics_where  = &target.generics.where_clause;
 
-    let PayloadFormat { payload_type, serde_derive } = format;
+    let PayloadFormat { payload_type, serde_derive, validation } = format;
 
-    let serde_derive = match serde_derive {
-        None     => None,
-        Some(sd) => sd.into_derive(),
-    };
+    let serde_derive = serde_derive.map(SerdeDerive::into_derive);
+    let validation   = validation.map(Validation::into_fn);
 
     Ok(quote!{
         #serde_derive
@@ -88,6 +112,8 @@ pub(super) fn Payload(format: TokenStream, target: TokenStream) -> Result<TokenS
             #generics_where
         {
             type Type = #payload_type;
+
+            #validation
         }
     })
 }

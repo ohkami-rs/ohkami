@@ -8,7 +8,6 @@ mod health_handler {
 
 
 mod hello_handler {
-    use ohkami::Response;
     use ohkami::typed::{Payload, Query};
     use ohkami::builtin::payload::JSON;
 
@@ -32,35 +31,31 @@ mod hello_handler {
     }
 
 
-    #[Payload(JSON/D)]
+    #[Payload(JSON/D where Self::validate)]
     pub struct HelloRequest<'n> {
         name:   &'n str,
         repeat: Option<usize>,
     }
+    impl HelloRequest<'_> {
+        fn validate(&self) -> Result<(), &'static str> {
+            let _: () = (! self.name.is_empty()).then_some(())
+                .ok_or_else(|| "`name` mustn't be empty")?;
 
-    pub enum ValidationError {
-        NameIsEmpty
-    }
-    impl ohkami::IntoResponse for ValidationError {
-        fn into_response(self) -> Response {
-            match self {
-                Self::NameIsEmpty => Response::BadRequest().with_text("`name` mustn't be empty")
-            }
+            let _: () = (self.repeat.unwrap_or_default() < 10).then_some(())
+                .ok_or_else(|| "`repeat` must be less than 10")?;
+
+            Ok(())
         }
     }
 
-    pub async fn hello_by_json<'h>(
-        HelloRequest { name, repeat }: HelloRequest<'h>
-    ) -> Result<String, ValidationError> {
+    pub async fn hello_by_json(
+        HelloRequest { name, repeat }: HelloRequest<'_>
+    ) -> String {
         tracing::info!("\
             Called `hello_by_json`\
         ");
         
-        if name.is_empty() {
-            return Err(ValidationError::NameIsEmpty)
-        }
-        
-        Ok(name.repeat(repeat.unwrap_or(1)))
+        name.repeat(repeat.unwrap_or(1))
     }
 }
 

@@ -77,7 +77,15 @@ pub trait Payload: Sized {
         Some(if req.headers.ContentType().is_some_and(|ct|
             ct.starts_with(<Self::Type>::MIME_TYPE)
         ) {
-            <Self::Type>::parse(unsafe {bytes.as_bytes()})
+            match <Self::Type>::parse::<Self>(unsafe {bytes.as_bytes()}) {
+                Ok(this) => 'validation: {
+                    if let Err(e) = this.validate() {
+                        break 'validation Err((|| crate::serde::de::Error::custom(e.to_string()))())
+                    }
+                    Ok(this)
+                }
+                Err(err) => Err(err)
+            }
         } else {
             #[cfg(debug_assertions)] {
                 eprintln!("Expected `{}` payload but found {}",
@@ -95,6 +103,7 @@ pub trait Payload: Sized {
     #[inline]
     fn inject(&self, res: &mut Response) -> Result<(), impl crate::serde::ser::Error>
     where Self: Serialize {
+        self.validate().map_err(|e| crate::serde::ser::Error::custom(e.to_string()))?;
         match <Self::Type>::bytes(self) {
             Err(err)  => Err(err),
             Ok(bytes) => Ok({
@@ -104,6 +113,11 @@ pub trait Payload: Sized {
                 res.content = Some(bytes.into());
             }),
         }
+    }
+
+    #[inline]
+    fn validate(&self) -> Result<(), impl std::fmt::Display> {
+        Result::<(), std::convert::Infallible>::Ok(())
     }
 }
 
