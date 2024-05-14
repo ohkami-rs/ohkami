@@ -118,10 +118,10 @@ pub struct Response {
 impl Response {
     /// Complete HTTP spec
     #[inline(always)]
-    fn complete(&mut self) {
-        /* `wasm32-unkown-unkown` target doesn't support `time` */
-        #[cfg(not(feature="rt_worker"))]
-        self.headers.set().Date(::ohkami_lib::imf_fixdate_now());
+    pub(crate) fn complete(&mut self) {
+        self.headers.set().Date(::ohkami_lib::imf_fixdate(
+            std::time::Duration::from_secs(crate::utils::unix_timestamp())
+        ));
 
         if self.content.is_none() && !matches!(self.status, Status::NoContent) {
             self.headers.set().ContentLength("0");

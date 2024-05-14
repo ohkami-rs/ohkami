@@ -1,21 +1,20 @@
 //! Most parts are based on [chrono](https://github.com/chronotope/chrono); MIT.
 
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::Duration;
 
 
 /// Current datetime by **IMF-fixdate** format like `Sun, 06 Nov 1994 08:49:37 GMT`, used in `Date` header.
 /// 
 /// (reference：[https://datatracker.ietf.org/doc/html/rfc9110#name-date-time-formats](https://datatracker.ietf.org/doc/html/rfc9110#name-date-time-formats))
-#[inline(always)] pub fn imf_fixdate_now() -> String {
-    let system_now = SystemTime::now().duration_since(UNIX_EPOCH).expect("system time before Unix epoch");
-    UTCDateTime::now_from_system(system_now).into_imf_fixdate()
+#[inline(always)] pub fn imf_fixdate(duration_since_unix_epoch: Duration) -> String {
+    UTCDateTime::from_duration_since_unix_epoch(duration_since_unix_epoch).into_imf_fixdate()
 }
 
 struct UTCDateTime {
     date: Date,
     time: Time,
 } impl UTCDateTime {
-    #[inline] fn now_from_system(system_now: std::time::Duration) -> Self {
+    #[inline] fn from_duration_since_unix_epoch(system_now: Duration) -> Self {
         let (secs, nsecs) = (system_now.as_secs() as i64, system_now.subsec_nanos());
 
         let days = secs.div_euclid(86_400);
@@ -28,7 +27,7 @@ struct UTCDateTime {
     }
 
     fn into_imf_fixdate(self) -> String {
-        const IMF_FIXDATE_LEN: usize      = "Sun, 06 Nov 1994 08:49:37 GMT".len();
+        const IMF_FIXDATE_LEN: usize      = str::len("Sun, 06 Nov 1994 08:49:37 GMT");
         const SHORT_WEEKDAYS:  [&str; 7]  = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
         const SHORT_MONTHS:    [&str; 12] = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -372,7 +371,9 @@ enum Weekday {
             String::from_utf8(output_bytes).unwrap()
         }
 
-        let (cn, n) = (correct_now(), super::imf_fixdate_now());
+        use std::time::{SystemTime, UNIX_EPOCH};
+        let system_now = SystemTime::now().duration_since(UNIX_EPOCH).expect("system time before Unix epoch");
+        let (cn, n) = (correct_now(), super::imf_fixdate(system_now));
         assert_eq!(cn, n);
     }
 }
