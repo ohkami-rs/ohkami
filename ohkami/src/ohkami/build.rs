@@ -2,7 +2,7 @@
 
 use super::router::{TrieRouter, RouteSections};
 use crate::fangs::{Handler, IntoHandler};
-use crate::Ohkami;
+use crate::{Ohkami, log_error};
 
 
 macro_rules! Handlers {
@@ -88,7 +88,7 @@ pub struct Dir {
                         .collect::<std::io::Result<Vec<_>>>()?;
 
                     if path_sections.last().unwrap().starts_with('.') {
-                        eprintln!("\
+                        log_error!("\
                             =========\n\
                             [WARNING] `Route::Dir`: found `{}` in directory `{}`, \
                             are you sure to serve this file？\n\

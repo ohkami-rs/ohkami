@@ -1,6 +1,6 @@
 #![allow(non_snake_case)]
 
-use crate::{header::append, Fang, FangProc, IntoResponse, Method, Request, Response, Status};
+use crate::{header::append, log_error, Fang, FangProc, IntoResponse, Method, Request, Response, Status};
 
 
 /// # Builtin fang for CORS config
@@ -81,7 +81,7 @@ impl CORS {
 
     pub fn AllowCredentials(mut self) -> Self {
         if self.AllowOrigin.is_any() {
-            #[cfg(debug_assertions)] eprintln!("\
+            #[cfg(debug_assertions)] log_error!("\
                 [WRANING] \
                 'Access-Control-Allow-Origin' header \
                 must not have wildcard '*' when the request's credentials mode is 'include' \

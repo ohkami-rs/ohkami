@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 use serde::Serialize;
 use super::{Payload, PayloadType};
-use crate::{IntoResponse, Response, Status};
+use crate::{log_error, IntoResponse, Response, Status};
 
 
 /// `Payload + Serialize`, or `()`
@@ -21,7 +21,7 @@ const _: () = {
             let mut res = Response::of(status);
             if let Err(e) = self.inject(&mut res) {
                 return (|| {
-                    eprintln!("Failed to serialize {} payload: {e}", P::Type::CONTENT_TYPE);
+                    log_error!("Failed to serialize {} payload: {e}", P::Type::CONTENT_TYPE);
                     Response::InternalServerError()
                 })()
             }

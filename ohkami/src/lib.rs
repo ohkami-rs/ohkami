@@ -31,6 +31,16 @@
 
 #[allow(unused)]
 mod __rt__ {
+    #[macro_export]
+    macro_rules! log_error {
+        ( $( $t:tt )* ) => {{
+            eprintln!( $( $t )* );
+
+            #[cfg(feature="rt_worker")]
+            worker::console_error!( $( $t )* );
+        }};
+    }
+
     #[cfg(all(feature="rt_tokio", feature="DEBUG"))]
     pub(crate) use tokio::test;
     #[allow(unused)]

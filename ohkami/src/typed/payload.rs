@@ -1,4 +1,4 @@
-use crate::{FromRequest, IntoResponse, Request, Response};
+use crate::{log_error, FromRequest, IntoResponse, Request, Response};
 use serde::{Serialize, Deserialize};
 
 
@@ -88,7 +88,7 @@ pub trait Payload: Sized {
             }
         } else {
             #[cfg(debug_assertions)] {
-                eprintln!("Expected `{}` payload but found {}",
+                log_error!("Expected `{}` payload but found {}",
                     <Self::Type>::MIME_TYPE,
                     req.headers.ContentType().map(|ct| format!("`{ct}`")).unwrap_or(String::from("nothing"))
                 )
@@ -173,8 +173,8 @@ const _: () = {
         #[inline(always)]
         fn from_request(req: &'req Request) -> Option<Result<Self, Self::Error>> {
             Self::extract(req).map(|result| result.map_err(|e| {
-                eprintln!("Failed to get expected payload: {e}");
-                Response::BadRequest()
+                log_error!("Failed to get expected payload: {e}");
+                Response::BadRequest().with_text(e.to_string())
             }))
         }
     }
@@ -188,7 +188,7 @@ const _: () = {
             let mut res = Response::OK();
             if let Err(e) = self.inject(&mut res) {
                 return (|| {
-                    eprintln!("Failed to serialize {} payload: {e}", <<Self as Payload>::Type>::MIME_TYPE);
+                    log_error!("Failed to serialize {} payload: {e}", <<Self as Payload>::Type>::MIME_TYPE);
                     Response::InternalServerError()
                 })()
             }
