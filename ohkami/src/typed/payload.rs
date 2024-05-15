@@ -173,7 +173,6 @@ const _: () = {
         #[inline(always)]
         fn from_request(req: &'req Request) -> Option<Result<Self, Self::Error>> {
             Self::extract(req).map(|result| result.map_err(|e| {
-                log_error!("Failed to get expected payload: {e}");
                 Response::BadRequest().with_text(e.to_string())
             }))
         }
