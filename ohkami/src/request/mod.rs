@@ -161,14 +161,14 @@ impl Request {
         mut self: Pin<&mut Self>,
         stream:   &mut (impl AsyncReader + Unpin),
     ) -> Result<Option<()>, crate::Response> {
-        use crate::{log_error, Response};
+        use crate::{warning, Response};
 
         match stream.read(&mut *self.__buf__).await {
             Ok (0) => return Ok(None),
             Err(e) => return match e.kind() {
                 std::io::ErrorKind::ConnectionReset => Ok(None),
                 _ => Err((|| {
-                    log_error!("Failed to read stream: {e}");
+                    warning!("Failed to read stream: {e}");
                     Response::InternalServerError()
                 })())
             },

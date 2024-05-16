@@ -32,12 +32,12 @@
 #[allow(unused)]
 mod __rt__ {
     #[macro_export]
-    macro_rules! log_error {
+    macro_rules! warning {
         ( $( $t:tt )* ) => {{
             eprintln!( $( $t )* );
 
             #[cfg(feature="rt_worker")]
-            worker::console_error!( $( $t )* );
+            worker::console_warn!( $( $t )* );
         }};
     }
 

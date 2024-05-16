@@ -4,7 +4,7 @@ use std::{
     hash::{Hasher, BuildHasherDefault},
 };
 
-use crate::log_error;
+use crate::warning;
 
 
 pub struct Store(
@@ -96,7 +96,7 @@ super::FromRequest<'req> for Memory<'req, Data> {
             Some(d) => Some(Ok(d)),
             None => {
                 #[cfg(debug_assertions)] {
-                    log_error!(
+                    warning!(
                         "`Memory` of type `{}` was not found",
                         std::any::type_name::<Data>()
                     )

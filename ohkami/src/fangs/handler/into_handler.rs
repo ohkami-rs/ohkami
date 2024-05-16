@@ -1,7 +1,7 @@
 use std::{future::Future, pin::Pin};
 use ohkami_lib::percent_decode_utf8;
 use super::Handler;
-use crate::{log_error, Response, FromRequest, FromParam, Request, IntoResponse};
+use crate::{warning, Response, FromRequest, FromParam, Request, IntoResponse};
 
 
 pub trait IntoHandler<T> {
@@ -17,7 +17,7 @@ pub trait IntoHandler<T> {
 ) -> Result<P, Response> {
     let param = percent_decode_utf8(param_bytes_maybe_percent_encoded)
         .map_err(|_e| {
-            #[cfg(debug_assertions)] log_error!(
+            #[cfg(debug_assertions)] warning!(
                 "[WARNING] Failed to decode percent encoding `{}`: {_e}",
                 param_bytes_maybe_percent_encoded.escape_ascii()
             );

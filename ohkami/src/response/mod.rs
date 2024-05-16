@@ -300,12 +300,12 @@ const _: () = {
 
     #[cfg(test)]
     fn try_response() {
-        use crate::{log_error, Request};
+        use crate::{warning, Request};
 
         fn payload_serde_json_value(req: &Request) -> Result<::serde_json::Value, Response> {
             let value = req.payload::<::serde_json::Value>()
                 .ok_or_else(|| Response::BadRequest())?
-                .map_err(|e| {log_error!("{e}"); Response::BadRequest()})?;
+                .map_err(|e| {warning!("{e}"); Response::BadRequest()})?;
             Ok(value)
         }
     }
