@@ -4,7 +4,7 @@ use std::{any::Any, pin::Pin, sync::Arc, future::Future, time::Duration, task::P
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use crate::__rt__::{TcpStream, sleep};
 use crate::ohkami::router::RadixRouter;
-use crate::{log_error, Request, Response};
+use crate::{warning, Request, Response};
 
 
 pub(crate) struct Session {
@@ -25,11 +25,11 @@ impl Session {
     pub(crate) async fn manage(mut self) {
         fn panicking(panic: Box<dyn Any + Send>) -> Response {
             if let Some(msg) = panic.downcast_ref::<String>() {
-                log_error!("[Panicked]: {msg}");
+                warning!("[Panicked]: {msg}");
             } else if let Some(msg) = panic.downcast_ref::<&str>() {
-                log_error!("[Panicked]: {msg}");
+                warning!("[Panicked]: {msg}");
             } else {
-                log_error!("[Panicked]");
+                warning!("[Panicked]");
             }
             crate::Response::InternalServerError()
         }
