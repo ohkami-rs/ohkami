@@ -37,7 +37,7 @@ mod __rt__ {
             eprintln!( $( $t )* );
 
             #[cfg(feature="rt_worker")]
-            worker::console_info!( $( $t )* );
+            worker::console_log!( $( $t )* );
         }};
     }
 
