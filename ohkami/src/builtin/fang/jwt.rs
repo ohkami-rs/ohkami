@@ -275,6 +275,13 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
     /// 
     /// Then it's valid, this returns decoded paylaod of the JWT as `Payload`.
     pub fn verified(&self, req: &Request) -> Result<Payload, Response> {
+        /* ======================== */
+        req.method.isOPTIONS().then_some(()).ok_or_else(|| {
+            crate::warning!("`ohkami::builtin::JWT` doesn't perform verifying for OPTIONS requests");
+            Response::InternalServerError()
+        })?;
+        /* ======================== */
+
         const UNAUTHORIZED_MESSAGE: &str = "missing or malformed jwt";
 
         type Header  = ::serde_json::Value;
