@@ -163,8 +163,10 @@ impl<Inner: FangProc> FangProc for CORSProc<Inner> {
                     .Vary(append("Access-Control-Request-Headers"));
             }
 
-            h.ContentType(None).ContentLength(None);
-            res.status = Status::NoContent;
+            if res.status.code() < 300 {
+                h.ContentType(None).ContentLength(None);
+                res.status = Status::OK;
+            }
         }
 
         #[cfg(feature="DEBUG")]
@@ -184,6 +186,22 @@ mod test {
     use crate::prelude::*;
     use crate::testing::*;
     use super::CORS;
+
+    #[crate::__rt__::test] async fn options_request() {
+        let t = Ohkami::with(
+            CORS::new("https://example.x.y.z"),
+            "/hello".GET(|| async {"Hello!"})
+        ).test(); {
+            let req = TestRequest::OPTIONS("/");
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status(), Status::NotFound);
+        } {
+            let req = TestRequest::OPTIONS("/hello");
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status(), Status::OK);
+            assert_eq!(res.text(), None);
+        }
+    }
 
     #[crate::__rt__::test] async fn cors_headers() {
         let t = Ohkami::with(
@@ -228,7 +246,7 @@ mod test {
             let req = TestRequest::OPTIONS("/");
             let res = t.oneshot(req).await;
 
-            assert_eq!(res.status().code(), 204);
+            assert_eq!(res.status().code(), 200);
             assert_eq!(res.text(), None);
 
             assert_eq!(res.header("Access-Control-Allow-Origin"), Some("https://example.example"));
@@ -249,7 +267,7 @@ mod test {
             let req = TestRequest::OPTIONS("/");
             let res = t.oneshot(req).await;
 
-            assert_eq!(res.status().code(), 204);
+            assert_eq!(res.status().code(), 200);
             assert_eq!(res.text(), None);
 
             assert_eq!(res.header("Access-Control-Allow-Origin"), Some("*"));
