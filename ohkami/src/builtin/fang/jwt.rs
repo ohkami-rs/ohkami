@@ -266,7 +266,7 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
     /// Verify JWT in requests' `Authorization` header and early return error response if
     /// it's missing or malformed.
     pub fn verify(&self, req: &Request) -> Result<(), Response> {
-        self.verified(req)?;
+        let _ = self.verified(req)?;
         Ok(())
     }
 
@@ -275,12 +275,13 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
     /// 
     /// Then it's valid, this returns decoded paylaod of the JWT as `Payload`.
     pub fn verified(&self, req: &Request) -> Result<Payload, Response> {
-        /* ======================== */
-        req.method.isOPTIONS().then_some(()).ok_or_else(|| {
-            crate::warning!("`ohkami::builtin::JWT` doesn't perform verifying for OPTIONS requests");
+        (! req.method.isOPTIONS()).then_some(()).ok_or_else(|| {
+            crate::warning!(
+                "`ohkami::builtin::JWT` doesn't perform verifying for OPTIONS requests, \
+                and returns Internal Server Error if `JWT::verified` or `JWT::verify` is called."
+            );
             Response::InternalServerError()
         })?;
-        /* ======================== */
 
         const UNAUTHORIZED_MESSAGE: &str = "missing or malformed jwt";
 
