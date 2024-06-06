@@ -1,4 +1,4 @@
-use crate::{warning, FromRequest, IntoResponse, Request, Response};
+use crate::{FromRequest, IntoResponse, Request, Response};
 use serde::{Serialize, Deserialize};
 
 
@@ -88,7 +88,7 @@ pub trait Payload: Sized {
             }
         } else {
             #[cfg(debug_assertions)] {
-                warning!("Expected `{}` payload but found {}",
+                crate::warning!("Expected `{}` payload but found {}",
                     <Self::Type>::MIME_TYPE,
                     req.headers.ContentType().map(|ct| format!("`{ct}`")).unwrap_or(String::from("nothing"))
                 )
@@ -187,7 +187,7 @@ const _: () = {
             let mut res = Response::OK();
             if let Err(e) = self.inject(&mut res) {
                 return (|| {
-                    warning!("Failed to serialize {} payload: {e}", <<Self as Payload>::Type>::MIME_TYPE);
+                    crate::warning!("Failed to serialize {} payload: {e}", <<Self as Payload>::Type>::MIME_TYPE);
                     Response::InternalServerError()
                 })()
             }

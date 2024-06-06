@@ -4,8 +4,6 @@ use std::{
     hash::{Hasher, BuildHasherDefault},
 };
 
-use crate::warning;
-
 
 pub struct Store(
     Option<Box<
@@ -96,7 +94,7 @@ super::FromRequest<'req> for Memory<'req, Data> {
             Some(d) => Some(Ok(d)),
             None => {
                 #[cfg(debug_assertions)] {
-                    warning!(
+                    crate::warning!(
                         "`Memory` of type `{}` was not found",
                         std::any::type_name::<Data>()
                     )

@@ -1,5 +1,5 @@
 use std::borrow::Cow;
-use crate::{header::private::{Append, SetCookie, SetCookieBuilder}, warning};
+use crate::header::private::{Append, SetCookie, SetCookieBuilder};
 use rustc_hash::FxHashMap;
 
 
@@ -305,7 +305,9 @@ const _: () = {
                 setcookies.iter().filter_map(|raw| match SetCookie::from_raw(raw) {
                     Ok(valid) => Some(valid),
                     Err(_err) => {
-                        #[cfg(debug_assertions)] warning!("Invalid `Set-Cookie`: {_err}");
+                        #[cfg(debug_assertions)] crate::warning!(
+                            "Invalid `Set-Cookie`: {_err}"
+                        );
                         None
                     }
                 })
