@@ -2,7 +2,6 @@ use std::{borrow::Cow, sync::Arc};
 use super::{RouteSection, RouteSections};
 use super::super::build::{Handlers, ByAnother};
 use crate::fangs::{BoxedFPC, Fangs, Handler};
-use crate::warning;
 
 
 #[derive(Debug)]
@@ -208,7 +207,7 @@ impl TrieRouter {
         if let Err(e) = self.root.register_handlers(route.into_iter(), HandlerMap {
             GET, PUT, POST, PATCH, DELETE
         }) {
-            warning!("Failed to register handlers: {e}");
+            crate::warning!("Failed to register handlers: {e}");
             std::process::exit(1)
         }
     }

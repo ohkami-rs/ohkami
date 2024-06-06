@@ -1,5 +1,5 @@
 use std::borrow::Cow;
-use crate::{warning, IntoResponse, Request, Response};
+use crate::{IntoResponse, Request, Response};
 
 
 pub enum FromRequestError {
@@ -147,7 +147,7 @@ pub trait FromParam<'p>: Sized {
         type Error = FromRequestError;
         fn from_param(param: Cow<'p, str>) -> Result<Self, Self::Error> {
             #[cold] fn unexpectedly_percent_encoded() -> FromRequestError {
-                warning!("\
+                crate::warning!("\
                     \n\
                     =========\n\
                     [WARNING] \
