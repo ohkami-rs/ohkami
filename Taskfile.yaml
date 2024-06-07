@@ -33,7 +33,6 @@ tasks:
     dir: ohkami
     cmds:
       - cargo test --doc --features DEBUG,rt_tokio
-      - cargo test --doc --features DEBUG,rt_tokio
 
   test_examples:
     dir: examples
@@ -49,8 +48,8 @@ tasks:
         sh: cargo version | grep -q 'nightly' && echo 'nightly' || echo ''
     dir: ohkami
     cmds:
-      - cargo test --lib --no-default-features --features DEBUG,{{.MAYBE_NIGHTLY}}
-      - cargo test --lib --no-default-features --features DEBUG,testing,{{.MAYBE_NIGHTLY}}
+      - cargo test --lib --features DEBUG,{{.MAYBE_NIGHTLY}}
+      - cargo test --lib --features DEBUG,sse,{{.MAYBE_NIGHTLY}}
 
   test_rt_tokio:
     vars:
@@ -58,8 +57,8 @@ tasks:
         sh: cargo version | grep -q 'nightly' && echo 'nightly' || echo ''
     dir: ohkami
     cmds:
-      - cargo test --lib --no-default-features --features rt_tokio,DEBUG,{{.MAYBE_NIGHTLY}}
-      - cargo test --lib --no-default-features --features rt_tokio,DEBUG,testing,{{.MAYBE_NIGHTLY}}
+      - cargo test --lib --features rt_tokio,DEBUG,{{.MAYBE_NIGHTLY}}
+      - cargo test --lib --features rt_tokio,DEBUG,sse,{{.MAYBE_NIGHTLY}}
 
   test_rt_async-std:
     vars:
@@ -67,8 +66,8 @@ tasks:
         sh: cargo version | grep -q 'nightly' && echo 'nightly' || echo ''
     dir: ohkami
     cmds:
-      - cargo test --lib --no-default-features --features rt_async-std,DEBUG,{{.MAYBE_NIGHTLY}}
-      - cargo test --lib --no-default-features --features rt_async-std,DEBUG,testing,{{.MAYBE_NIGHTLY}}
+      - cargo test --lib --features rt_async-std,DEBUG,{{.MAYBE_NIGHTLY}}
+      - cargo test --lib --features rt_async-std,DEBUG,sse,{{.MAYBE_NIGHTLY}}
 
   test_rt_worker:
     vars:
@@ -76,22 +75,22 @@ tasks:
         sh: cargo version | grep -q 'nightly' && echo 'nightly' || echo ''
     dir: ohkami
     cmds:
-      - cargo test --lib --no-default-features --features rt_worker,DEBUG,{{.MAYBE_NIGHTLY}}
-      - cargo test --lib --no-default-features --features rt_worker,DEBUG,testing,{{.MAYBE_NIGHTLY}}
+      - cargo test --lib --features rt_worker,DEBUG,{{.MAYBE_NIGHTLY}}
+      - cargo test --lib --features rt_worker,DEBUG,sse,{{.MAYBE_NIGHTLY}}
 
 #### checks ####
   # Assure buildability without "DEBUG" feature
 
   check_no_rt:
     vars:
-      MAYBE_NIGHTLY_FEATURES:
+      MAYBE_FEATURES_NIGHTLY:
         sh: cargo version | grep -q 'nightly' && echo '--features nightly' || echo ''
-      MAYBE_NIGHTLY_FEATURES_WITH_TESTING:
-        sh: cargo version | grep -q 'nightly' && echo '--features nightly,testing' || echo '--features testing'
+      MAYBE_FEATURES_NIGHTLY_WITH_sse:
+        sh: cargo version | grep -q 'nightly' && echo '--features nightly,sse' || echo '--features testing'
     dir: ohkami
     cmds:
-      - cargo check --lib --no-default-features {{.MAYBE_NIGHTLY_FEATURES}}
-      - cargo check --lib --no-default-features {{.MAYBE_NIGHTLY_FEATURES_WITH_TESTING}}
+      - cargo check --lib {{.MAYBE_FEATURES_NIGHTLY}}
+      - cargo check --lib {{.MAYBE_FEATURES_NIGHTLY_WITH_sse}}
 
   check_rt_tokio:
     vars:
@@ -99,8 +98,8 @@ tasks:
         sh: cargo version | grep -q 'nightly' && echo 'nightly' || echo ''
     dir: ohkami
     cmds:
-      - cargo check --lib --no-default-features --features rt_tokio,{{.MAYBE_NIGHTLY}}
-      - cargo check --lib --no-default-features --features rt_tokio,testing,{{.MAYBE_NIGHTLY}}
+      - cargo check --lib --features rt_tokio,{{.MAYBE_NIGHTLY}}
+      - cargo check --lib --features rt_tokio,sse,{{.MAYBE_NIGHTLY}}
 
   check_rt_async-std:
     vars:
@@ -108,8 +107,8 @@ tasks:
         sh: cargo version | grep -q 'nightly' && echo 'nightly' || echo ''
     dir: ohkami
     cmds:
-      - cargo check --lib --no-default-features --features rt_async-std,{{.MAYBE_NIGHTLY}}
-      - cargo check --lib --no-default-features --features rt_async-std,testing,{{.MAYBE_NIGHTLY}}
+      - cargo check --lib --features rt_async-std,{{.MAYBE_NIGHTLY}}
+      - cargo check --lib --features rt_async-std,sse,{{.MAYBE_NIGHTLY}}
 
   check_rt_worker:
     vars:
@@ -117,5 +116,5 @@ tasks:
         sh: cargo version | grep -q 'nightly' && echo 'nightly' || echo ''
     dir: ohkami
     cmds:
-      - cargo check --lib --no-default-features --features rt_worker,{{.MAYBE_NIGHTLY}}
-      - cargo check --lib --no-default-features --features rt_worker,testing,{{.MAYBE_NIGHTLY}}
+      - cargo check --lib --features rt_worker,{{.MAYBE_NIGHTLY}}
+      - cargo check --lib --features rt_worker,sse,{{.MAYBE_NIGHTLY}}
