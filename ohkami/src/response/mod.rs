@@ -2,7 +2,7 @@ mod status;
 pub use status::Status;
 
 mod headers;
-pub use headers::{Headers as ResponseHeaders};
+pub use headers::{Headers as ResponseHeaders, SetHeaders};
 
 mod content;
 pub use content::{Content, NextChunk};
@@ -156,7 +156,9 @@ impl Response {
         self.headers.write_to(&mut buf);
 
         match self.content {
-            Content::None => (),
+            Content::None => {
+                conn.write_all(&buf).await.expect("Failed to send response");
+            },
 
             Content::Payload(bytes) => {
                 buf.extend_from_slice(&bytes);
@@ -181,16 +183,15 @@ impl Response {
 
         conn.flush().await.expect("Failed to flush TCP connection");
     }
-
-    #[cfg(test)]
-    pub(crate) async fn into_bytes(self) -> Vec<u8> {
-        let mut bytes = Vec::new();
-        self.send(&mut bytes).await;
-        bytes
-    }
 }
 
 impl Response {
+    #[inline]
+    pub fn with_headers(mut self, h: impl FnOnce(SetHeaders)->SetHeaders) -> Self {
+        h(self.headers.set());
+        self
+    }
+
     pub fn drop_content(&mut self) -> Content {
         let old_content = self.content.take();
         self.headers.set()
@@ -333,11 +334,9 @@ impl Response {
                 }
             };
 
-            MapStream {
-                stream,
-                f: |res: Result<T, E>| res
-                    .map(|t| Into::<Cow<'static, [u8]>>::into(t).into())
-                    .map_err(|e| e.to_string())
+            MapStream { stream, f: |res: Result<T, E>| res
+                .map(|t| Into::<Cow<'static, [u8]>>::into(t).into())
+                .map_err(|e| e.to_string())
             }
         });
 
