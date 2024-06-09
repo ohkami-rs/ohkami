@@ -10,7 +10,7 @@ pub enum Content {
     Payload(CowSlice),
 
     #[cfg(feature="sse")]
-    Stream(BoxStream<'static, Result<CowSlice, String>>),
+    Stream(BoxStream<'static, Result<String, String>>),
 } const _: () = {
     impl Default for Content {
         fn default() -> Self {

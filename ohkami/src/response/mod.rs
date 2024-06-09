@@ -176,8 +176,20 @@ impl Response {
                             crate::warning!("Error in stream: {msg}");
                             break
                         }
-                        Ok(bytes) => conn.write_all(&[b"data: ", &*bytes, b"\n\n"].concat()).await
-                            .expect("Failed to write response to TCP connection"),
+                        Ok(chunk) => {
+                            let mut message = Vec::with_capacity(
+                                /* capacity for a single line */
+                                "data: ".len() + chunk.len() + "\n\n".len()
+                            );
+                            for line in chunk.split('\n') {
+                                message.extend_from_slice(b"data: ");
+                                message.extend_from_slice(line.as_bytes());
+                                message.push(b'\n');
+                            }
+                            message.push(b'\n');
+
+                            conn.write_all(&message).await.expect("Failed to write response to TCP connection")
+                        }
                     }
                 }
             }
@@ -295,7 +307,7 @@ impl Response {
 impl Response {
     #[inline]
     pub fn with_stream<
-        T: Into<std::borrow::Cow<'static, [u8]>>,
+        T: Into<String>,
         E: std::error::Error,
     >(mut self,
         stream: impl ::futures_core::Stream<Item = Result<T, E>> + Unpin + Send + 'static
@@ -306,12 +318,12 @@ impl Response {
 
     #[inline]
     pub fn set_stream<
-        T: Into<std::borrow::Cow<'static, [u8]>>,
+        T: Into<String>,
         E: std::error::Error,
     >(&mut self, stream: impl ::futures_core::Stream<Item = Result<T, E>> + Unpin + Send + 'static) {
         let stream = Box::pin({
             crate::utils::MapStream { stream, f: |res: Result<T, E>| res
-                .map(|t| Into::<Cow<'static, [u8]>>::into(t).into())
+                .map(Into::into)
                 .map_err(|e| e.to_string())
             }
         });
@@ -338,7 +350,7 @@ const _: () = {
                     Content::Stream(_)      => Content::Stream(Box::pin({
                         struct DummyStream;
                         impl ::futures_core::Stream for DummyStream {
-                            type Item = Result<CowSlice, String>;
+                            type Item = Result<String, String>;
                             fn poll_next(self: std::pin::Pin<&mut Self>, _: &mut std::task::Context<'_>) -> std::task::Poll<Option<Self::Item>> {
                                 unreachable!()
                             }
