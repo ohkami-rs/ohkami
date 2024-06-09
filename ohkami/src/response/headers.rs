@@ -1,5 +1,5 @@
-use std::borrow::Cow;
 use crate::header::private::{Append, SetCookie, SetCookieBuilder};
+use std::borrow::Cow;
 use rustc_hash::FxHashMap;
 
 
@@ -175,11 +175,7 @@ const _: () = {
 };
 
 macro_rules! Header {
-    ($N:literal; $( [$len:literal] $konst:ident: $name_bytes:literal, )*) => {
-        $(
-            const _: &[u8; $len] = $name_bytes;
-        )*
-
+    ($N:literal; $( $konst:ident: $name_bytes:literal, )*) => {
         pub(crate) const N_SERVER_HEADERS: usize = $N;
         pub(crate) const SERVER_HEADERS: [Header; N_SERVER_HEADERS] = [ $( Header::$konst ),* ];
 
@@ -202,7 +198,7 @@ macro_rules! Header {
             #[inline(always)] const fn len(&self) -> usize {
                 match self {
                     $(
-                        Self::$konst => $len,
+                        Self::$konst => $name_bytes.len(),
                     )*
                 }
             }
@@ -251,50 +247,50 @@ macro_rules! Header {
         }
     };
 } Header! {44;
-    [13] AcceptRanges:                    b"Accept-Ranges",
-    [32] AccessControlAllowCredentials:   b"Access-Control-Allow-Credentials",
-    [28] AccessControlAllowHeaders:       b"Access-Control-Allow-Headers",
-    [28] AccessControlAllowMethods:       b"Access-Control-Allow-Methods",
-    [27] AccessControlAllowOrigin:        b"Access-Control-Allow-Origin",
-    [29] AccessControlExposeHeaders:      b"Access-Control-Expose-Headers",
-    [22] AccessControlMaxAge:             b"Access-Control-Max-Age",
-    [3]  Age:                             b"Age",
-    [5]  Allow:                           b"Allow",
-    [7]  AltSvc:                          b"Alt-Svc",
-    [13] CacheControl:                    b"Cache-Control",
-    [12] CacheStatus:                     b"Cache-Status",
-    [17] CDNCacheControl:                 b"CDN-Cache-Control",
-    [10] Connection:                      b"Connection",
-    [19] ContentDisposition:              b"Content-Disposition",
-    [15] ContentEncoding:                 b"Content-Ecoding",
-    [16] ContentLanguage:                 b"Content-Language",
-    [14] ContentLength:                   b"Content-Length",
-    [16] ContentLocation:                 b"Content-Location",
-    [13] ContentRange:                    b"Content-Range",
-    [23] ContentSecurityPolicy:           b"Content-Security-Policy",
-    [35] ContentSecurityPolicyReportOnly: b"Content-Security-Policy-Report-Only",
-    [12] ContentType:                     b"Content-Type",
-    [4]  Date:                            b"Date",
-    [4]  ETag:                            b"ETag",
-    [7]  Expires:                         b"Expires",
-    [4]  Link:                            b"Link",
-    [8]  Location:                        b"Location",
-    [18] ProxyAuthenticate:               b"Proxy-Authenticate",
-    [15] ReferrerPolicy:                  b"Referrer-Policy",
-    [7]  Refresh:                         b"Refresh",
-    [11] RetryAfter:                      b"Retry-After",
-    [20] SecWebSocketAccept:              b"Sec-WebSocket-Accept",
-    [22] SecWebSocketProtocol:            b"Sec-WebSocket-Protocol",
-    [21] SecWebSocketVersion:             b"Sec-WebSocket-Version",
-    [6]  Server:                          b"Server",
-    [25] StrictTransportSecurity:         b"Strict-Transport-Security",
-    [7]  Trailer:                         b"Trailer",
-    [17] TransferEncoding:                b"Transfer-Encoding",
-    [7]  Upgrade:                         b"Upgrade",
-    [4]  Vary:                            b"Vary",
-    [3]  Via:                             b"Via",
-    [22] XContentTypeOptions:             b"X-Content-Type-Options",
-    [15] XFrameOptions:                   b"X-Frame-Options",
+    AcceptRanges:                    b"Accept-Ranges",
+    AccessControlAllowCredentials:   b"Access-Control-Allow-Credentials",
+    AccessControlAllowHeaders:       b"Access-Control-Allow-Headers",
+    AccessControlAllowMethods:       b"Access-Control-Allow-Methods",
+    AccessControlAllowOrigin:        b"Access-Control-Allow-Origin",
+    AccessControlExposeHeaders:      b"Access-Control-Expose-Headers",
+    AccessControlMaxAge:             b"Access-Control-Max-Age",
+    Age:                             b"Age",
+    Allow:                           b"Allow",
+    AltSvc:                          b"Alt-Svc",
+    CacheControl:                    b"Cache-Control",
+    CacheStatus:                     b"Cache-Status",
+    CDNCacheControl:                 b"CDN-Cache-Control",
+    Connection:                      b"Connection",
+    ContentDisposition:              b"Content-Disposition",
+    ContentEncoding:                 b"Content-Ecoding",
+    ContentLanguage:                 b"Content-Language",
+    ContentLength:                   b"Content-Length",
+    ContentLocation:                 b"Content-Location",
+    ContentRange:                    b"Content-Range",
+    ContentSecurityPolicy:           b"Content-Security-Policy",
+    ContentSecurityPolicyReportOnly: b"Content-Security-Policy-Report-Only",
+    ContentType:                     b"Content-Type",
+    Date:                            b"Date",
+    ETag:                            b"ETag",
+    Expires:                         b"Expires",
+    Link:                            b"Link",
+    Location:                        b"Location",
+    ProxyAuthenticate:               b"Proxy-Authenticate",
+    ReferrerPolicy:                  b"Referrer-Policy",
+    Refresh:                         b"Refresh",
+    RetryAfter:                      b"Retry-After",
+    SecWebSocketAccept:              b"Sec-WebSocket-Accept",
+    SecWebSocketProtocol:            b"Sec-WebSocket-Protocol",
+    SecWebSocketVersion:             b"Sec-WebSocket-Version",
+    Server:                          b"Server",
+    StrictTransportSecurity:         b"Strict-Transport-Security",
+    Trailer:                         b"Trailer",
+    TransferEncoding:                b"Transfer-Encoding",
+    Upgrade:                         b"Upgrade",
+    Vary:                            b"Vary",
+    Via:                             b"Via",
+    XContentTypeOptions:             b"X-Content-Type-Options",
+    XFrameOptions:                   b"X-Frame-Options",
 }
 
 const _: () = {
@@ -422,6 +418,7 @@ impl Headers {
         self.size += size_increase;
     }
 }
+
 impl Headers {
     #[inline]
     pub(crate) fn new() -> Self {

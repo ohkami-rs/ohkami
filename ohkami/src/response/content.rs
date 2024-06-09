@@ -3,64 +3,101 @@ use ::futures_core::stream::{BoxStream, Stream};
 
 
 pub enum Content {
+    None,
+
     Payload(CowSlice),
 
     #[cfg(feature="sse")]
     Stream(BoxStream<'static, Result<CowSlice, String>>),
-}
+} const _: () = {
+    impl Default for Content {
+        fn default() -> Self {
+            Self::None
+        }
+    }
 
-#[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
-const _: () = {
-    use crate::__rt__::{TcpStream, AsyncWriter};
+    impl PartialEq for Content {
+        fn eq(&self, other: &Self) -> bool {
+            match (self, other) {
+                (Content::None, Content::None) => true,
 
-    impl Content {
-        pub(crate) async fn write_into(self, conn: &mut TcpStream) {
-            match self {
-                Self::Payload(bytes) => {
-                    conn.write_all(&bytes).await.expect("Failed to write response to TCP connection");
-                }
+                (Content::Payload(p1), Content::Payload(p2)) => p1 == p2,
 
                 #[cfg(feature="sse")]
-                Self::Stream(mut stream) => {
-                    struct NextChunk<'c>(
-                        &'c mut BoxStream<'static, Result<CowSlice, String>>
-                    ); const _: () = {
-                        use std::pin::Pin;
-                        use std::task::{Context, Poll};
+                (Content::Stream(_), Content::Stream(_)) => false,
 
-                        impl<'c> std::future::Future for NextChunk<'c> {
-                            type Output = Option<Result<CowSlice, String>>;
+                _ => false
+            }
+        }
+    }
 
-                            #[inline(always)]
-                            fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-                                (unsafe {self.map_unchecked_mut(|pin| &mut *pin.0)})
-                                    .poll_next(cx)
-                            }
-                        }
-                    };
+    impl std::fmt::Debug for Content {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            match self {
+                Self::None           => f.write_str("None"),
 
-                    while let Some(chunk) = NextChunk(&mut stream).await {
-                        match chunk {
-                            Ok(bytes) => conn.write_all(&bytes).await.expect("Failed to write response"),
-                            Err(msg)  => {crate::warning!("Error in stream: {msg}"); break}
-                        }
-                    }
-                }
-            }; conn.flush().await.expect("Failed to flush TCP connection")
+                Self::Payload(bytes) => f.write_str(&bytes.escape_ascii().to_string()),
+                
+                #[cfg(feature="sse")]
+                Self::Stream(_)      => f.write_str("{stream}"),
+            }
         }
     }
 };
 
-#[cfg(feature="rt_worker")]
-const _: () = {
-    impl Content {
-        pub(crate) fn into_worker(self) -> ::worker::Response {
-            match self {
-                Self::Payload(bytes) => ::worker::Response::from_bytes(bytes.into()).unwrap(),
+impl Content {
+    #[inline]
+    pub const fn is_none(&self) -> bool {
+        matches!(self, Self::None)
+    }
 
-                #[cfg(feature="sse")]
-                Self::Stream(stream) => ::worker::Response::from_stream(stream).unwrap()
-            }
+    pub fn take(&mut self) -> Content {
+        std::mem::take(self)
+    }
+
+    #[inline(always)]
+    pub fn as_bytes(&self) -> Option<&[u8]> {
+        match self {
+            Self::Payload(bytes) => Some(&bytes),
+            _ => None
+        }
+    }
+    pub fn into_bytes(self) -> Option<std::borrow::Cow<'static, [u8]>> {
+        match self {
+            Self::Payload(bytes) => Some(unsafe {bytes.into_cow_static_bytes_uncheked()}),
+            _ => None
+        }
+    }
+}
+
+#[cfg(feature="rt_worker")]
+impl Content {
+    pub(crate) fn into_worker_response(self) -> ::worker::Response {
+        match self {
+            Self::None           => ::worker::Response::empty().unwrap(),
+
+            Self::Payload(bytes) => ::worker::Response::from_bytes(bytes.into()).unwrap(),
+
+            #[cfg(feature="sse")]
+            Self::Stream(stream) => ::worker::Response::from_stream(stream).unwrap()
+        }
+    }
+}
+
+#[cfg(feature="sse")]
+pub struct NextChunk<'c>(
+    pub &'c mut BoxStream<'static, Result<CowSlice, String>>
+); const _: () = {
+    use std::pin::Pin;
+    use std::task::{Context, Poll};
+
+    impl<'c> std::future::Future for NextChunk<'c> {
+        type Output = Option<Result<CowSlice, String>>;
+
+        #[inline(always)]
+        fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+            (unsafe {self.map_unchecked_mut(|pin| &mut *pin.0)})
+                .poll_next(cx)
         }
     }
 };

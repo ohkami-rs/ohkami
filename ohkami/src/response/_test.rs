@@ -27,7 +27,7 @@ async fn test_response_into_bytes() {
     );
 
     let res = Response::NoContent();
-    let res_bytes = res.into_bytes();
+    let res_bytes = res.into_bytes().await;
     assert_bytes_eq!(res_bytes, format!("\
         HTTP/1.1 204 No Content\r\n\
         Date: {__now__}\r\n\
@@ -36,7 +36,7 @@ async fn test_response_into_bytes() {
 
     let mut res = Response::NoContent();
     res.headers.set().Server("ohkami");
-    let res_bytes = res.into_bytes();
+    let res_bytes = res.into_bytes().await;
     assert_bytes_eq!(res_bytes, format!("\
         HTTP/1.1 204 No Content\r\n\
         Server: ohkami\r\n\
@@ -45,7 +45,7 @@ async fn test_response_into_bytes() {
     ").into_bytes());
 
     let res = Response::NotFound();
-    let res_bytes = res.into_bytes();
+    let res_bytes = res.into_bytes().await;
     assert_bytes_eq!(res_bytes, format!("\
         HTTP/1.1 404 Not Found\r\n\
         Date: {__now__}\r\n\
@@ -57,7 +57,7 @@ async fn test_response_into_bytes() {
     res.headers.set()
         .Server("ohkami")
         .custom("Hoge-Header", "Something-Custom");
-    let res_bytes = res.into_bytes();
+    let res_bytes = res.into_bytes().await;
     assert_bytes_eq!(res_bytes, format!("\
         HTTP/1.1 404 Not Found\r\n\
         Server: ohkami\r\n\
@@ -73,7 +73,7 @@ async fn test_response_into_bytes() {
         .custom("Hoge-Header", "Something-Custom")
         .SetCookie("id", "42", |d|d.Path("/").SameSiteLax())
         .SetCookie("name", "John", |d|d.Path("/where").SameSiteStrict());
-    let res_bytes = res.into_bytes();
+    let res_bytes = res.into_bytes().await;
     assert_bytes_eq!(res_bytes, format!("\
         HTTP/1.1 404 Not Found\r\n\
         Server: ohkami\r\n\

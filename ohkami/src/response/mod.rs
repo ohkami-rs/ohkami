@@ -1,11 +1,11 @@
-mod content;
-//use body::Body;
-
 mod status;
 pub use status::Status;
 
 mod headers;
 pub use headers::{Headers as ResponseHeaders};
+
+mod content;
+pub use content::{Content, NextChunk};
 
 #[cfg(any(feature="testing", feature="DEBUG"))]
 #[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_worker"))]
@@ -87,7 +87,6 @@ use crate::__rt__::AsyncWriter;
 ///     Ok("Hello, Response!".into())
 /// }
 /// ```
-#[derive(Clone)]
 pub struct Response {
     pub status:         Status,
     /// Headers of this response
@@ -104,21 +103,19 @@ pub struct Response {
     /// 
     /// `{value}`: `String`, `&'static str`, `Cow<&'static, str>`
     pub headers:        ResponseHeaders,
-    pub(crate) content: Option<CowSlice>,
-} const _: () = {
-    impl Response {
-        #[inline(always)]
-        pub fn of(status: Status) -> Self {
-            Self {
-                status,
-                headers: ResponseHeaders::new(),
-                content: None,
-            }
-        }
-    }
-};
+    pub(crate) content: Content,
+}
 
 impl Response {
+    #[inline(always)]
+    pub fn of(status: Status) -> Self {
+        Self {
+            status,
+            headers: ResponseHeaders::new(),
+            content: Content::None,
+        }
+    }
+
     /// Complete HTTP spec
     #[inline(always)]
     pub(crate) fn complete(&mut self) {
@@ -126,54 +123,87 @@ impl Response {
             std::time::Duration::from_secs(crate::utils::unix_timestamp())
         ));
 
-        if self.content.is_none() && !matches!(self.status, Status::NoContent) {
-            self.headers.set().ContentLength("0");
-        }
+        match &self.content {
+            Content::None => {
+                match self.status {
+                    Status::NoContent => self.headers.set()
+                        .ContentLength(None),
+                    _ => self.headers.set()
+                        .ContentLength("0")
+                }
+            }
+
+            Content::Payload(bytes) => self.headers.set()
+                .ContentLength((|| bytes.len().to_string())()),
+
+            #[cfg(feature="sse")]
+            Content::Stream(_) => self.headers.set()
+                .ContentLength(None)
+        };
     }
 }
 
 #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
 impl Response {
-    #[inline(always)]
-    pub(crate) fn into_bytes(mut self) -> Vec<u8> {
+    #[cfg_attr(not(feature="sse"), inline)]
+    pub(crate) async fn send(mut self, conn: &mut (impl AsyncWriter + Unpin)) {
         self.complete();
 
-        /*===== build bytes from self =====*/
-        let mut buf = Vec::with_capacity(64);
-
+        let mut buf = Vec::with_capacity(128);
         buf.extend_from_slice(b"HTTP/1.1 ");
         buf.extend_from_slice(self.status.as_bytes());
         buf.extend_from_slice(b"\r\n");
-        
         self.headers.write_to(&mut buf);
 
-        if let Some(content) = self.content {
-            buf.extend_from_slice(unsafe {content.as_bytes()});
+        match self.content {
+            Content::None => (),
+
+            Content::Payload(bytes) => {
+                buf.extend_from_slice(&bytes);
+                conn.write_all(&buf).await.expect("Failed to send response");
+            }
+
+            #[cfg(feature="sse")]
+            Content::Stream(mut stream) => {
+                conn.write_all(&buf).await.expect("Failed to send response");
+                while let Some(chunk) = NextChunk(&mut stream).await {
+                    match chunk {
+                        Err(msg)  => {
+                            crate::warning!("Error in stream: {msg}");
+                            break
+                        }
+                        Ok(bytes) => conn.write_all(&[b"data: ", &*bytes, b"\n\n"].concat()).await
+                            .expect("Failed to write response to TCP connection"),
+                    }
+                }
+            }
         }
-        
-        buf
+
+        conn.flush().await.expect("Failed to flush TCP connection");
     }
 
-    #[inline(always)]
-    pub(crate) async fn send(self, stream: &mut (impl AsyncWriter + Unpin)) {
-        stream.write_all(&self.into_bytes()).await.expect("Failed to send response");
-        stream.flush().await.expect("Failed to flush stream");
+    #[cfg(test)]
+    pub(crate) async fn into_bytes(self) -> Vec<u8> {
+        let mut bytes = Vec::new();
+        self.send(&mut bytes).await;
+        bytes
     }
 }
 
 impl Response {
-    pub fn drop_content(&mut self) -> Option<Cow<'static, [u8]>> {
+    pub fn drop_content(&mut self) -> Content {
         let old_content = self.content.take();
         self.headers.set()
             .ContentType(None)
             .ContentLength(None);
-        old_content.map(|cs| unsafe {cs.into_cow_static_bytes_uncheked()})
+        old_content
     }
     pub fn without_content(mut self) -> Self {
-        self.drop_content();
+        let _ = self.drop_content();
         self
     }
-    pub fn set_content(&mut self,
+
+    pub fn set_payload(&mut self,
         content_type: &'static str,
         content:      impl Into<Cow<'static, [u8]>>,
     ) {
@@ -181,27 +211,26 @@ impl Response {
         self.headers.set()
             .ContentType(content_type)
             .ContentLength(content.len().to_string());
-        self.content =Some(content.into());
+        self.content = Content::Payload(content.into());
     }
-    pub fn with_content(mut self,
+    pub fn with_payload(mut self,
         content_type: &'static str,
         content:      impl Into<Cow<'static, [u8]>>,
     ) -> Self {
-        self.set_content(content_type, content);
+        self.set_payload(content_type, content);
         self
     }
-    pub fn content(&self) -> Option<&[u8]> {
-        self.content.as_ref().map(AsRef::as_ref)
+    pub fn payload(&self) -> Option<&[u8]> {
+        self.content.as_bytes()
     }
 
     #[inline] pub fn set_text<Text: Into<Cow<'static, str>>>(&mut self, text: Text) {
         let body = text.into();
 
         self.headers.set()
-            .ContentType("text/plain; charset=UTF-8")
-            .ContentLength(body.len().to_string());
-        self.content = Some(match body {
-            Cow::Borrowed(s)   => CowSlice::Ref(Slice::from_bytes(s.as_bytes())),
+            .ContentType("text/plain; charset=UTF-8");
+        self.content = Content::Payload(match body {
+            Cow::Borrowed(str) => CowSlice::Ref(Slice::from_bytes(str.as_bytes())),
             Cow::Owned(string) => CowSlice::Own(string.into_bytes().into()),
         });
     }
@@ -215,10 +244,9 @@ impl Response {
         let body = html.into();
 
         self.headers.set()
-            .ContentType("text/html; charset=UTF-8")
-            .ContentLength(body.len().to_string());
-        self.content = Some(match body {
-            Cow::Borrowed(s)   => CowSlice::Ref(Slice::from_bytes(s.as_bytes())),
+            .ContentType("text/html; charset=UTF-8");
+        self.content = Content::Payload(match body {
+            Cow::Borrowed(str) => CowSlice::Ref(Slice::from_bytes(str.as_bytes())),
             Cow::Owned(string) => CowSlice::Own(string.into_bytes().into()),
         });
     }
@@ -233,9 +261,8 @@ impl Response {
         let body = ::serde_json::to_vec(&json).unwrap();
 
         self.headers.set()
-            .ContentType("application/json; charset=UTF-8")
-            .ContentLength(body.len().to_string());
-        self.content = Some(body.into());
+            .ContentType("application/json");
+        self.content = Content::Payload(body.into());
     }
     #[inline(always)]
     pub fn with_json<JSON: serde::Serialize>(mut self, json: JSON) -> Self {
@@ -251,9 +278,8 @@ impl Response {
         };
 
         self.headers.set()
-            .ContentType("application/json; charset=UTF-8")
-            .ContentLength(body.len().to_string());
-        self.content = Some(body.into());
+            .ContentType("application/json");
+        self.content = Content::Payload(body.into());
     }
     /// SAFETY: Argument `json_str` is a **valid JSON**
     pub unsafe fn with_json_str<JSONString: Into<Cow<'static, str>>>(mut self, json_str: JSONString) -> Self {
@@ -262,23 +288,94 @@ impl Response {
     }
 }
 
+#[cfg(feature="sse")]
+impl Response {
+    #[inline]
+    pub fn with_stream<
+        T: Into<std::borrow::Cow<'static, [u8]>>,
+        E: std::error::Error,
+    >(mut self,
+        stream: impl ::futures_core::Stream<Item = Result<T, E>> + Unpin + Send + 'static
+    ) -> Self {
+        self.set_stream(stream);
+        self
+    }
+
+    #[inline]
+    pub fn set_stream<
+        T: Into<std::borrow::Cow<'static, [u8]>>,
+        E: std::error::Error,
+    >(&mut self, stream: impl ::futures_core::Stream<Item = Result<T, E>> + Unpin + Send + 'static) {
+        let stream = Box::pin({
+            struct MapStream<S, F> {
+                stream: S,
+                f:      F,
+            } const _: () = {
+                use ::futures_core::{Stream, ready};
+                use std::task::{Poll, Context};
+
+                impl<S, F, Map> Stream for MapStream<S, F>
+                where
+                    S: Stream + Unpin,
+                    F: FnMut(S::Item) -> Map + Unpin,
+                {
+                    type Item = F::Output;
+                    fn poll_next(mut self: std::pin::Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+                        let res = ready! {
+                            (unsafe {self.as_mut().map_unchecked_mut(|m| &mut m.stream)})
+                            .poll_next(cx)
+                        };
+                        Poll::Ready(res.map(|item| (self.f)(item)))
+                    }
+                    fn size_hint(&self) -> (usize, Option<usize>) {
+                        self.stream.size_hint()
+                    }
+                }
+            };
+
+            MapStream {
+                stream,
+                f: |res: Result<T, E>| res
+                    .map(|t| Into::<Cow<'static, [u8]>>::into(t).into())
+                    .map_err(|e| e.to_string())
+            }
+        });
+
+        self.headers.set()
+            .ContentType("text/event-stream")
+            .CacheControl("no-cache, must-revalidate");
+        self.content = Content::Stream(stream);
+    }
+}
+
 const _: () = {
     impl std::fmt::Debug for Response {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            let mut this = self.clone();
+            let mut this = Self {
+                status:  self.status,
+                headers: self.headers.clone(),
+                content: match &self.content {
+                    Content::None           => Content::None,
+                    Content::Payload(bytes) => Content::Payload(bytes.clone()),
+                    Content::Stream(_)      => Content::Stream(Box::pin({
+                        struct DummyStream;
+                        impl ::futures_core::Stream for DummyStream {
+                            type Item = Result<CowSlice, String>;
+                            fn poll_next(self: std::pin::Pin<&mut Self>, _: &mut std::task::Context<'_>) -> std::task::Poll<Option<Self::Item>> {
+                                unreachable!()
+                            }
+                        }
+                        DummyStream
+                    }))
+                }
+            };
             this.complete();
 
-            match &this.content {
-                None => f.debug_struct("Response")
-                    .field("status",  &this.status)
-                    .field("headers", &this.headers)
-                    .finish(),
-                Some(cow) => f.debug_struct("Response")
-                    .field("status",  &this.status)
-                    .field("headers", &this.headers)
-                    .field("content", &String::from_utf8_lossy(&cow))
-                    .finish(),
-            }
+            f.debug_struct("Response")
+                .field("status",  &this.status)
+                .field("headers", &this.headers)
+                .field("content", &this.content)
+                .finish()
         }
     }
 
