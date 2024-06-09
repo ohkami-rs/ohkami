@@ -123,7 +123,6 @@ pub mod utils {
             .unwrap()
             .as_secs()
     }
-
     #[cfg(feature="rt_worker")]
     /// ```ignore
     /// {
@@ -133,6 +132,64 @@ pub mod utils {
     #[inline] pub fn unix_timestamp() -> u64 {
         (worker::js_sys::Date::now() / 1000.) as _
     }
+
+    pub struct ErrorMessage(pub String);
+    const _: () = {
+        impl std::fmt::Debug for ErrorMessage {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                f.write_str(&self.0)
+            }
+        }
+        impl std::fmt::Display for ErrorMessage {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                f.write_str(&self.0)
+            }
+        }
+        impl std::error::Error for ErrorMessage {}
+    };
+
+    #[cfg(feature="sse")]
+    pub(crate) struct MapStream<S, F> {
+        pub(crate) stream: S,
+        pub(crate) f:      F,
+    }
+    #[cfg(feature="sse")]
+    pub(crate) struct NextChunk<'c, S: ::futures_core::Stream>(
+        pub(crate) &'c mut S
+    );
+    #[cfg(feature="sse")]
+    const _: () = {
+        use ::futures_core::{Stream, ready};
+        use std::task::{Poll, Context};
+        use std::pin::Pin;
+
+        impl<S, F, Map> Stream for MapStream<S, F>
+        where
+            S: Stream + Unpin,
+            F: FnMut(S::Item) -> Map + Unpin,
+        {
+            type Item = F::Output;
+            fn poll_next(mut self: std::pin::Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+                let res = ready! {
+                    (unsafe {self.as_mut().map_unchecked_mut(|m| &mut m.stream)})
+                    .poll_next(cx)
+                };
+                Poll::Ready(res.map(|item| (self.f)(item)))
+            }
+            fn size_hint(&self) -> (usize, Option<usize>) {
+                self.stream.size_hint()
+            }
+        }
+        impl<'c, S: Stream> std::future::Future for NextChunk<'c, S> {
+            type Output = Option<S::Item>;
+    
+            #[inline(always)]
+            fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+                (unsafe {self.map_unchecked_mut(|pin| &mut *pin.0)})
+                    .poll_next(cx)
+            }
+        }
+    };
 }
 
 // #[cfg(feature="websocket")]

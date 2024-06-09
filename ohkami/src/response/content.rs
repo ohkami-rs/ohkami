@@ -1,5 +1,7 @@
 use ohkami_lib::CowSlice;
-use ::futures_core::stream::{BoxStream, Stream};
+
+#[cfg(feature="sse")]
+use ::futures_core::stream::BoxStream;
 
 
 pub enum Content {
@@ -37,7 +39,7 @@ pub enum Content {
                 Self::None           => f.write_str("None"),
 
                 Self::Payload(bytes) => f.write_str(&bytes.escape_ascii().to_string()),
-                
+
                 #[cfg(feature="sse")]
                 Self::Stream(_)      => f.write_str("{stream}"),
             }
@@ -83,21 +85,3 @@ impl Content {
         }
     }
 }
-
-#[cfg(feature="sse")]
-pub struct NextChunk<'c>(
-    pub &'c mut BoxStream<'static, Result<CowSlice, String>>
-); const _: () = {
-    use std::pin::Pin;
-    use std::task::{Context, Poll};
-
-    impl<'c> std::future::Future for NextChunk<'c> {
-        type Output = Option<Result<CowSlice, String>>;
-
-        #[inline(always)]
-        fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-            (unsafe {self.map_unchecked_mut(|pin| &mut *pin.0)})
-                .poll_next(cx)
-        }
-    }
-};

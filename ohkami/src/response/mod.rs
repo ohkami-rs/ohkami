@@ -3,13 +3,12 @@ pub use status::Status;
 
 mod headers;
 pub use headers::{Headers as ResponseHeaders, SetHeaders};
-
-mod content;
-pub use content::{Content, NextChunk};
-
 #[cfg(any(feature="testing", feature="DEBUG"))]
 #[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_worker"))]
 pub use headers::Header as ResponseHeader;
+
+mod content;
+pub use content::Content;
 
 mod into_response;
 pub use into_response::IntoResponse;
@@ -22,6 +21,9 @@ use ohkami_lib::{CowSlice, Slice};
 
 #[cfg(any(feature="rt_tokio", feature="rt_async-std"))]
 use crate::__rt__::AsyncWriter;
+#[cfg(feature="sse")]
+#[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
+use crate::utils::NextChunk;
 
 
 /// # HTTP Response
@@ -308,33 +310,7 @@ impl Response {
         E: std::error::Error,
     >(&mut self, stream: impl ::futures_core::Stream<Item = Result<T, E>> + Unpin + Send + 'static) {
         let stream = Box::pin({
-            struct MapStream<S, F> {
-                stream: S,
-                f:      F,
-            } const _: () = {
-                use ::futures_core::{Stream, ready};
-                use std::task::{Poll, Context};
-
-                impl<S, F, Map> Stream for MapStream<S, F>
-                where
-                    S: Stream + Unpin,
-                    F: FnMut(S::Item) -> Map + Unpin,
-                {
-                    type Item = F::Output;
-                    fn poll_next(mut self: std::pin::Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-                        let res = ready! {
-                            (unsafe {self.as_mut().map_unchecked_mut(|m| &mut m.stream)})
-                            .poll_next(cx)
-                        };
-                        Poll::Ready(res.map(|item| (self.f)(item)))
-                    }
-                    fn size_hint(&self) -> (usize, Option<usize>) {
-                        self.stream.size_hint()
-                    }
-                }
-            };
-
-            MapStream { stream, f: |res: Result<T, E>| res
+            crate::utils::MapStream { stream, f: |res: Result<T, E>| res
                 .map(|t| Into::<Cow<'static, [u8]>>::into(t).into())
                 .map_err(|e| e.to_string())
             }
@@ -355,7 +331,10 @@ const _: () = {
                 headers: self.headers.clone(),
                 content: match &self.content {
                     Content::None           => Content::None,
+
                     Content::Payload(bytes) => Content::Payload(bytes.clone()),
+                    
+                    #[cfg(feature="sse")]
                     Content::Stream(_)      => Content::Stream(Box::pin({
                         struct DummyStream;
                         impl ::futures_core::Stream for DummyStream {
@@ -415,10 +394,7 @@ const _: () = {
     impl Into<::worker::Response> for Response {
         #[inline(always)]
         fn into(self) -> ::worker::Response {
-            match self.content {
-                Some(bytes) => ::worker::Response::from_bytes(bytes.into()),
-                None        => ::worker::Response::empty(),
-            }.unwrap()
+            self.content.into_worker_response()
                 .with_status(self.status.code())
                 .with_headers(self.headers.into())
         }

@@ -1,0 +1,9 @@
+[package]
+name    = "sse"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+ohkami       = { workspace = true }
+tokio        = { workspace = true }
+futures-util = { version = "0.3" }
