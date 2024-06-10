@@ -188,12 +188,13 @@ impl Response {
 
                             let size_hex = message.len()
                                 .to_be_bytes()
-                                .map(|byte| [byte>>4, byte&(8+4+2+1)].map(|n| match n {
-                                    0=>"0",1=>"1",2=>"2", 3=>"3", 4=>"4", 5=>"5", 6=>"6", 7=>"7",
-                                    8=>"8",9=>"9",10=>"a",11=>"b",12=>"c",13=>"d",14=>"e",15=>"f",
-                                    _=>unreachable!()
-                                }).concat())
-                                .concat();
+                                .map(|byte| [byte>>4, byte&(8+4+2+1)]
+                                    .map(|n| match n {
+                                        0=>"0",1=>"1", 2=>"2", 3=>"3", 4=>"4", 5=>"5", 6=>"6", 7=>"7",
+                                        8=>"8",9=>"9",10=>"a",11=>"b",12=>"c",13=>"d",14=>"e",15=>"f",
+                                        _=>unreachable!()
+                                    }).concat()
+                                ).concat();
 
                             let mut chunk = Vec::from(size_hex.trim_start_matches('0'));
                             chunk.extend_from_slice(b"\r\n");
