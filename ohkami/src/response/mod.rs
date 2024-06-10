@@ -22,7 +22,6 @@ use ohkami_lib::{CowSlice, Slice};
 #[cfg(any(feature="rt_tokio", feature="rt_async-std"))]
 use crate::__rt__::AsyncWriter;
 #[cfg(feature="sse")]
-#[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
 use crate::utils::StreamExt;
 
 

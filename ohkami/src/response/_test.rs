@@ -157,15 +157,15 @@ async fn test_stream_response() {
         is-stream: true\r\n\
         Set-Cookie: name=John; Path=/where; SameSite=Strict\r\n\
         \r\n\
-        27\r\n\
+        1b\r\n\
         data: This is message#0 !\n\
         \n\
         \r\n\
-        27\r\n\
+        1b\r\n\
         data: This is message#1 !\n\
         \n\
         \r\n\
-        27\r\n\
+        1b\r\n\
         data: This is message#2 !\n\
         \n\
         \r\n\
@@ -194,17 +194,17 @@ async fn test_stream_response() {
         is-stream: true\r\n\
         Set-Cookie: name=John; Path=/where; SameSite=Strict\r\n\
         \r\n\
-        38\r\n\
+        26\r\n\
         data: This is message#0\n\
         data: です\n\
         \n\
         \r\n\
-        38\r\n\
+        26\r\n\
         data: This is message#1\n\
         data: です\n\
         \n\
         \r\n\
-        38\r\n\
+        26\r\n\
         data: This is message#2\n\
         data: です\n\
         \n\
