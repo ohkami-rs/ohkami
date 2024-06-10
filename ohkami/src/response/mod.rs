@@ -23,7 +23,7 @@ use ohkami_lib::{CowSlice, Slice};
 use crate::__rt__::AsyncWriter;
 #[cfg(feature="sse")]
 #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
-use crate::utils::NextChunk;
+use crate::utils::StreamExt;
 
 
 /// # HTTP Response
@@ -170,7 +170,7 @@ impl Response {
             #[cfg(feature="sse")]
             Content::Stream(mut stream) => {
                 conn.write_all(&buf).await.expect("Failed to send response");
-                while let Some(chunk) = NextChunk(&mut stream).await {
+                while let Some(chunk) = stream.next().await {
                     match chunk {
                         Err(msg)  => {
                             crate::warning!("Error in stream: {msg}");
@@ -321,12 +321,11 @@ impl Response {
         T: Into<String>,
         E: std::error::Error,
     >(&mut self, stream: impl ::futures_core::Stream<Item = Result<T, E>> + Unpin + Send + 'static) {
-        let stream = Box::pin({
-            crate::utils::MapStream { stream, f: |res: Result<T, E>| res
-                .map(Into::into)
-                .map_err(|e| e.to_string())
-            }
-        });
+        let stream = Box::pin(stream.map(|res|
+            res
+            .map(Into::into)
+            .map_err(|e| e.to_string())
+        ));
 
         self.headers.set()
             .ContentType("text/event-stream")

@@ -1,6 +1,6 @@
 #![cfg(feature="sse")]
 
-use crate::utils::{ErrorMessage, MapStream};
+use crate::utils::ErrorMessage;
 use ::futures_core::stream::BoxStream;
 
 
@@ -10,21 +10,39 @@ pub struct EventStream(
 
 const _: () = {
     use crate::prelude::*;
+    use crate::utils::StreamExt;
     use ::futures_core::Stream;
     use std::task::{Poll, Context};
 
+
     impl IntoResponse for EventStream {
-        #[inline]
+        #[inline(always)]
         fn into_response(self) -> Response {
             Response::OK().with_stream(self.0)
         }
     }
 
     impl EventStream {
-        pub fn from_stream<S>(stream: S) -> Self {
-            
+        #[inline]
+        pub fn from_stream<S, T, E>(stream: S) -> Self
+        where
+            S: Stream<Item = Result<T, E>> + Send + Unpin + 'static,
+            T: Into<String>,
+            E: std::error::Error,
+        {
+            Self(Box::pin(stream.map(|res| res
+                .map(Into::into)
+                .map_err(|e| ErrorMessage(e.to_string()))
+            )))
+        }
 
-            todo!()
+        pub fn from_iter<I, T, E>(iter: I) -> Self
+        where
+            I: IntoIterator<IntoIter = Result<T, E>>,
+            T: Into<String>,
+            E: std::error::Error,
+        {
+            Self(Box::pin())
         }
 
 //        pub fn from_iter<I, T, E>(iter: I) -> Self
