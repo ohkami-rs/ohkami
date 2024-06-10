@@ -1,4 +1,4 @@
-use super::{Response, ResponseHeaders};
+use super::{Response, ResponseHeaders, Content};
 
 
 macro_rules! status {
@@ -38,7 +38,7 @@ macro_rules! status {
                     Self {
                         status:  Status::$name,
                         headers: ResponseHeaders::new(),
-                        content: None,
+                        content: Content::None,
                     }
                 }
             )*

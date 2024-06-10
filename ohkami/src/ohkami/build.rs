@@ -2,6 +2,7 @@
 
 use super::router::{TrieRouter, RouteSections};
 use crate::fangs::{Handler, IntoHandler};
+use crate::response::Content;
 use crate::Ohkami;
 
 
@@ -273,7 +274,7 @@ trait RoutingItem {
                                 res.headers.set()
                                     .ContentType(this.mime)
                                     .ContentLength(&*this.size_str);
-                                res.content = Some({
+                                res.content = Content::Payload({
                                     let content: &'static [u8] = &this.content;
                                     content.into()
                                 });

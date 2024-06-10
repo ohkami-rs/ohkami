@@ -1,4 +1,5 @@
 use crate::{FromRequest, IntoResponse, Request, Response};
+use crate::response::Content;
 use serde::{Serialize, Deserialize};
 
 
@@ -110,7 +111,7 @@ pub trait Payload: Sized {
                 res.headers.set()
                     .ContentType(<Self::Type>::CONTENT_TYPE)
                     .ContentLength(bytes.len().to_string());
-                res.content = Some(bytes.into());
+                res.content = Content::Payload(bytes.into());
             }),
         }
     }

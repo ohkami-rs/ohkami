@@ -195,19 +195,19 @@ impl TestResponse {
 
     pub fn text(&self) -> Option<&str> {
         if self.0.headers.ContentType()?.starts_with("text/plain") {
-            let body = self.0.content.as_ref()?;
+            let body = self.0.content.as_bytes()?;
             Some(std::str::from_utf8(body).expect(&f!("Response content is not UTF-8: {}", body.escape_ascii())))
         } else {None}
     }
     pub fn html(&self) -> Option<&str> {
         if self.0.headers.ContentType()?.starts_with("text/html") {
-            let body = self.0.content.as_ref()?;
+            let body = self.0.content.as_bytes()?;
             Some(std::str::from_utf8(body).expect(&f!("Response content is not UTF-8: {}", body.escape_ascii())))
         } else {None}
     }
     pub fn json<'d, JSON: serde::Deserialize<'d>>(&'d self) -> Option<serde_json::Result<JSON>> {
         if self.0.headers.ContentType()?.starts_with("application/json") {
-            let body = self.0.content.as_ref()?;
+            let body = self.0.content.as_bytes()?;
             Some(serde_json::from_slice(body))
         } else {None}
     }

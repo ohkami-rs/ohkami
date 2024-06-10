@@ -123,7 +123,6 @@ pub mod utils {
             .unwrap()
             .as_secs()
     }
-
     #[cfg(feature="rt_worker")]
     /// ```ignore
     /// {
@@ -133,10 +132,117 @@ pub mod utils {
     #[inline] pub fn unix_timestamp() -> u64 {
         (worker::js_sys::Date::now() / 1000.) as _
     }
-}
 
-// #[cfg(feature="websocket")]
-// mod x_websocket;
+    pub struct ErrorMessage(pub String);
+    const _: () = {
+        impl std::fmt::Debug for ErrorMessage {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                f.write_str(&self.0)
+            }
+        }
+        impl std::fmt::Display for ErrorMessage {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                f.write_str(&self.0)
+            }
+        }
+        impl std::error::Error for ErrorMessage {}
+    };
+
+    #[cfg(feature="sse")]
+    pub use sse::StreamExt;
+
+    #[cfg(feature="sse")]
+    mod sse {
+        use ::futures_core::{Stream, ready};
+        use std::task::{Poll, Context};
+        use std::pin::Pin;
+        use std::future::Future;
+
+
+        pub trait StreamExt: ::futures_core::Stream + Sized {
+            fn map<T, F: FnMut(Self::Item)->T>(self, f: F) -> impl Stream<Item = T>;
+            fn filter<P: FnMut(&Self::Item)->bool>(self, predicate: P) -> impl Stream<Item = Self::Item>;
+
+            fn next(&mut self) -> Next<'_, Self>;
+        }
+        
+        impl<S: Stream> StreamExt for S {
+            fn map<T, F: FnMut(Self::Item)->T>(self, f: F) -> impl Stream<Item = T> {
+                Map { inner: self, f }
+            }
+            fn filter<P: FnMut(&Self::Item)->bool>(self, predicate: P) -> impl Stream<Item = Self::Item> {
+                Filter { inner: self, predicate }
+            }
+
+            fn next(&mut self) -> Next<'_, Self> {
+                Next { inner: self }    
+            }
+        }
+
+        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        
+        pub struct Map<S, F> {
+            inner: S,
+            f:     F,
+        }
+        impl<S, F, T> Stream for Map<S, F>
+        where
+            S: Stream,
+            F: FnMut(S::Item) -> T,
+        {
+            type Item = F::Output;
+            fn poll_next(mut self: std::pin::Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+                let res = ready! {
+                    (unsafe {self.as_mut().map_unchecked_mut(|m| &mut m.inner)})
+                    .poll_next(cx)
+                };
+                Poll::Ready(res.map(|item| (unsafe {self.get_unchecked_mut()}.f)(item)))
+            }
+            fn size_hint(&self) -> (usize, Option<usize>) {
+                self.inner.size_hint()
+            }
+        }
+
+        pub struct Filter<S, P> {
+            inner:     S,
+            predicate: P,
+        }
+        impl<S, P> Stream for Filter<S, P>
+        where
+            S: Stream,
+            P: FnMut(&S::Item) -> bool,
+        {
+            type Item = S::Item;
+            fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+                match ready!(
+                    (unsafe {self.as_mut().map_unchecked_mut(|m| &mut m.inner)})
+                    .poll_next(cx)
+                ) {
+                    None => Poll::Ready(None),
+                    Some(item) => if (unsafe {&mut self.as_mut().get_unchecked_mut().predicate})(&item) {
+                        Poll::Ready(Some(item))
+                    } else {
+                        self.poll_next(cx)
+                    }
+                }
+            }
+        }
+
+        pub struct Next<'n, S> {
+            inner: &'n mut S,
+        }
+        impl<'n, S> Future for Next<'n, S>
+        where
+            S: Stream,
+        {
+            type Output = Option<S::Item>;
+            fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+                (unsafe {self.map_unchecked_mut(|pin| &mut *pin.inner)})
+                    .poll_next(cx)
+            }
+        }
+    }
+}
 
 #[cfg(feature="rt_worker")]
 pub use ::ohkami_macros::{worker, bindings};
