@@ -156,8 +156,42 @@ async fn test_stream_response() {
         is-stream: true\r\n\
         Set-Cookie: name=John; Path=/where; SameSite=Strict\r\n\
         \r\n\
-        data: This is message#0 !\n\n\
-        data: This is message#1 !\n\n\
-        data: This is message#2 !\n\n\
+        data: This is message#0 !\n\
+        \n\
+        data: This is message#1 !\n\
+        \n\
+        data: This is message#2 !\n\
+        \n\
+    ").into_bytes());
+
+    let res = Response::OK()
+        .with_stream(
+            repeat_by(3, |i| Result::<_, std::convert::Infallible>::Ok(
+                format!("This is message#{i}\nです")
+            ))
+        )
+        .with_headers(|h| h
+            .Server("ohkami")
+            .custom("is-stream", "true")
+            .SetCookie("name", "John", |d|d.Path("/where").SameSiteStrict())
+        );
+    assert_bytes_eq!(res, format!("\
+        HTTP/1.1 200 OK\r\n\
+        Content-Type: text/event-stream\r\n\
+        Cache-Control: no-cache, must-revalidate\r\n\
+        Server: ohkami\r\n\
+        Date: {__now__}\r\n\
+        is-stream: true\r\n\
+        Set-Cookie: name=John; Path=/where; SameSite=Strict\r\n\
+        \r\n\
+        data: This is message#0\n\
+        data: です\n\
+        \n\
+        data: This is message#1\n\
+        data: です\n\
+        \n\
+        data: This is message#2\n\
+        data: です\n\
+        \n\
     ").into_bytes());
 }
