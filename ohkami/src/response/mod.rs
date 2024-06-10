@@ -187,9 +187,9 @@ impl Response {
                             }
                             message.push(b'\n');
 
-                            let size_hex = ohkami_lib::num::hexize(message.len());
+                            let size_hex_bytes = ohkami_lib::num::hexized_bytes(message.len());
 
-                            let mut chunk = Vec::from(size_hex.trim_start_matches('0'));
+                            let mut chunk = Vec::from(&size_hex_bytes[size_hex_bytes.iter().position(|b| *b!=b'0').unwrap()..]);
                             chunk.extend_from_slice(b"\r\n");
                             chunk.append(&mut message);
                             chunk.extend_from_slice(b"\r\n");
