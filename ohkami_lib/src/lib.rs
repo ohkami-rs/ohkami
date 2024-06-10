@@ -2,6 +2,8 @@ pub mod base64;
 
 pub mod mime;
 
+pub mod num;
+
 mod time;
 pub use time::imf_fixdate;
 
