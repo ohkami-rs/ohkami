@@ -11,7 +11,7 @@ pub fn hexized_bytes(n: usize) -> [u8; std::mem::size_of::<usize>() * 2] {
 
     unsafe {
         transmute::<_, [u8; size_of::<usize>() * 2]>(
-            n.to_be_bytes().map(|byte| [byte>>4, byte&(8+4+2+1)])
+            n.to_be_bytes().map(|byte| [byte>>4, byte&0b1111])
         ).map(|h| h + match h {
             0..=9   => b'0'-0,
             10..=15 => b'a'-10,
