@@ -7,3 +7,6 @@ edition = "2021"
 ohkami       = { workspace = true }
 tokio        = { workspace = true }
 futures-util = { version = "0.3" }
+
+[features]
+DEBUG = ["ohkami/DEBUG"]
