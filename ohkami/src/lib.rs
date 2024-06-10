@@ -159,90 +159,88 @@ pub mod utils {
         use std::future::Future;
 
 
-        pub trait StreamExt: ::futures_core::Stream {
-            fn map<T, F: FnMut(Self::Item)->T + Unpin + Send>(self, f: F) -> impl Stream<Item = T> + Send;
-            fn filter<P: FnMut(&Self::Item)->bool + Unpin + Send>(self, predicate: P) -> impl Stream<Item = Self::Item> + Send;
+        pub trait StreamExt: ::futures_core::Stream + Sized {
+            fn map<T, F: FnMut(Self::Item)->T>(self, f: F) -> impl Stream<Item = T>;
+            fn filter<P: FnMut(&Self::Item)->bool>(self, predicate: P) -> impl Stream<Item = Self::Item>;
 
-            fn next(&mut self) -> impl Future<Output = Option<Self::Item>> + Send;
+            fn next(&mut self) -> Next<'_, Self>;
         }
         
-        const _: () = {
-            impl<S: Stream + Send + Unpin> StreamExt for S {
-                fn map<T, F: FnMut(Self::Item)->T + Unpin + Send>(self, f: F) -> impl Stream<Item = T> + Send {
-                    Map { inner: self, f }
-                }
-                fn filter<P: FnMut(&Self::Item)->bool + Unpin + Send>(self, predicate: P) -> impl Stream<Item = Self::Item> + Send {
-                    Filter { inner: self, predicate }
-                }
-
-                fn next(&mut self) -> impl Future<Output = Option<Self::Item>> + Send {
-                    Next { inner: self }    
-                }
+        impl<S: Stream> StreamExt for S {
+            fn map<T, F: FnMut(Self::Item)->T>(self, f: F) -> impl Stream<Item = T> {
+                Map { inner: self, f }
+            }
+            fn filter<P: FnMut(&Self::Item)->bool>(self, predicate: P) -> impl Stream<Item = Self::Item> {
+                Filter { inner: self, predicate }
             }
 
-            ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-            
-            pub struct Map<S, F> {
-                inner: S,
-                f:     F,
+            fn next(&mut self) -> Next<'_, Self> {
+                Next { inner: self }    
             }
-            impl<S, F, T> Stream for Map<S, F>
-            where
-                S: Stream + Unpin,
-                F: FnMut(S::Item) -> T + Unpin,
-            {
-                type Item = F::Output;
-                fn poll_next(mut self: std::pin::Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-                    let res = ready! {
-                        (unsafe {self.as_mut().map_unchecked_mut(|m| &mut m.inner)})
-                        .poll_next(cx)
-                    };
-                    Poll::Ready(res.map(|item| (self.f)(item)))
-                }
-                fn size_hint(&self) -> (usize, Option<usize>) {
-                    self.inner.size_hint()
-                }
-            }
+        }
 
-            pub struct Filter<S, P> {
-                inner:     S,
-                predicate: P,
+        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        
+        pub struct Map<S, F> {
+            inner: S,
+            f:     F,
+        }
+        impl<S, F, T> Stream for Map<S, F>
+        where
+            S: Stream,
+            F: FnMut(S::Item) -> T,
+        {
+            type Item = F::Output;
+            fn poll_next(mut self: std::pin::Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+                let res = ready! {
+                    (unsafe {self.as_mut().map_unchecked_mut(|m| &mut m.inner)})
+                    .poll_next(cx)
+                };
+                Poll::Ready(res.map(|item| (unsafe {self.get_unchecked_mut()}.f)(item)))
             }
-            impl<S, P> Stream for Filter<S, P>
-            where
-                S: Stream + Unpin,
-                P: FnMut(&S::Item) -> bool + Unpin,
-            {
-                type Item = S::Item;
-                fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-                    match ready!(
-                        (unsafe {self.as_mut().map_unchecked_mut(|m| &mut m.inner)})
-                        .poll_next(cx)
-                    ) {
-                        None => Poll::Ready(None),
-                        Some(item) => if (self.predicate)(&item) {
-                            Poll::Ready(Some(item))
-                        } else {
-                            self.poll_next(cx)
-                        }
+            fn size_hint(&self) -> (usize, Option<usize>) {
+                self.inner.size_hint()
+            }
+        }
+
+        pub struct Filter<S, P> {
+            inner:     S,
+            predicate: P,
+        }
+        impl<S, P> Stream for Filter<S, P>
+        where
+            S: Stream,
+            P: FnMut(&S::Item) -> bool,
+        {
+            type Item = S::Item;
+            fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+                match ready!(
+                    (unsafe {self.as_mut().map_unchecked_mut(|m| &mut m.inner)})
+                    .poll_next(cx)
+                ) {
+                    None => Poll::Ready(None),
+                    Some(item) => if (unsafe {&mut self.as_mut().get_unchecked_mut().predicate})(&item) {
+                        Poll::Ready(Some(item))
+                    } else {
+                        self.poll_next(cx)
                     }
                 }
             }
+        }
 
-            pub struct Next<'n, S> {
-                inner: &'n mut S,
+        pub struct Next<'n, S> {
+            inner: &'n mut S,
+        }
+        impl<'n, S> Future for Next<'n, S>
+        where
+            S: Stream,
+        {
+            type Output = Option<S::Item>;
+            fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+                (unsafe {self.map_unchecked_mut(|pin| &mut *pin.inner)})
+                    .poll_next(cx)
             }
-            impl<'n, S> Future for Next<'n, S>
-            where
-                S: Stream,
-            {
-                type Output = Option<S::Item>;
-                fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-                    (unsafe {self.map_unchecked_mut(|pin| &mut *pin.inner)})
-                        .poll_next(cx)
-                }
-            }
-        };
+        }
     }
 }
 

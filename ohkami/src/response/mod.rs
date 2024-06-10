@@ -178,7 +178,6 @@ impl Response {
                         }
                         Ok(chunk) => {
                             let mut message = Vec::with_capacity(
-                                /* capacity for a single line */
                                 "data: ".len() + chunk.len() + "\n\n".len()
                             );
                             for line in chunk.split('\n') {
@@ -188,10 +187,16 @@ impl Response {
                             }
                             message.push(b'\n');
 
-                            conn.write_all(&message).await.expect("Failed to write response to TCP connection")
+                            let mut chunk = Vec::from(message.len().to_string());
+                            chunk.extend_from_slice(b"\r\n");
+                            chunk.append(&mut message);
+                            chunk.extend_from_slice(b"\r\n");
+
+                            conn.write_all(&chunk).await.expect("Failed to send response")
                         }
                     }
                 }
+                conn.write_all(b"0\r\n\r\n").await.expect("Failed to send response");
             }
         }
 
@@ -329,7 +334,8 @@ impl Response {
 
         self.headers.set()
             .ContentType("text/event-stream")
-            .CacheControl("no-cache, must-revalidate");
+            .CacheControl("no-cache, must-revalidate")
+            .TransferEncoding("chunked");
         self.content = Content::Stream(stream);
     }
 }

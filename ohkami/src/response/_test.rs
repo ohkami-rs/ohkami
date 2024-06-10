@@ -151,17 +151,26 @@ async fn test_stream_response() {
         HTTP/1.1 200 OK\r\n\
         Content-Type: text/event-stream\r\n\
         Cache-Control: no-cache, must-revalidate\r\n\
+        Transfer-Encoding: chunked\r\n\
         Server: ohkami\r\n\
         Date: {__now__}\r\n\
         is-stream: true\r\n\
         Set-Cookie: name=John; Path=/where; SameSite=Strict\r\n\
         \r\n\
+        27\r\n\
         data: This is message#0 !\n\
         \n\
+        \r\n\
+        27\r\n\
         data: This is message#1 !\n\
         \n\
+        \r\n\
+        27\r\n\
         data: This is message#2 !\n\
         \n\
+        \r\n\
+        0\r\n\
+        \r\n\
     ").into_bytes());
 
     let res = Response::OK()
@@ -179,19 +188,28 @@ async fn test_stream_response() {
         HTTP/1.1 200 OK\r\n\
         Content-Type: text/event-stream\r\n\
         Cache-Control: no-cache, must-revalidate\r\n\
+        Transfer-Encoding: chunked\r\n\
         Server: ohkami\r\n\
         Date: {__now__}\r\n\
         is-stream: true\r\n\
         Set-Cookie: name=John; Path=/where; SameSite=Strict\r\n\
         \r\n\
+        38\r\n\
         data: This is message#0\n\
         data: です\n\
         \n\
+        \r\n\
+        38\r\n\
         data: This is message#1\n\
         data: です\n\
         \n\
+        \r\n\
+        38\r\n\
         data: This is message#2\n\
         data: です\n\
         \n\
+        \r\n\
+        0\r\n\
+        \r\n\
     ").into_bytes());
 }
