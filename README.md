@@ -198,7 +198,7 @@ use ohkami::typed::DataStream;
 use tokio::time::sleep;
 
 async fn sse() -> DataStream<String> {
-    DataStream::from_iter_async((1..=5).map(async move {
+    DataStream::from_iter_async((1..=5).map(|i| async move {
         sleep(std::time::Duration::from_secs(1)).await;
         Ok(format!("Hi, I'm message #{i} !"))
     }))
