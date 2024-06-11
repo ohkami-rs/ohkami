@@ -3,10 +3,10 @@ proc-macro = true
 
 [package]
 name          = "ohkami_macros"
-version       = "0.7.3"
+version       = "0.7.4"
 edition       = "2021"
 authors       = ["kanarus <kanarus786@gmail.com>"]
-description   = "Proc macros for ohkami - intuitive and declarative web framework"
+description   = "Proc macros for Ohkami - intuitive and declarative web framework"
 documentation = "https://docs.rs/ohkami"
 homepage      = "https://crates.io/crates/ohkami"
 repository    = "https://github.com/kana-rus/ohkami"
