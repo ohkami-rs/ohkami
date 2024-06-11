@@ -17,6 +17,7 @@
 <br>
 
 ## Quick Start
+
 1. Add to `dependencies` :
 
 ```toml
@@ -24,7 +25,7 @@
 # `async-std` is available by feature "rt_async-std".
 
 [dependencies]
-ohkami = { version = "0.18", features = ["rt_tokio"] }
+ohkami = { version = "0.19", features = ["rt_tokio"] }
 tokio  = { version = "1",    features = ["full"] }
 ```
 
@@ -66,22 +67,13 @@ Hello, your_name!
 
 <br>
 
-## Cloudflare Workers is supported by `rt_worker` feature
+## Cloudflare Workers is supported by `"rt_worker"` feature
 
 ```sh
 npm create cloudflare ./path/to/project -- --template https://github.com/kana-rus/ohkami-templates/worker
 ```
 
-Then your `project` has `wrangler.toml`, `package.json` and `src/lib.rs` with
-
-`Cargo.toml`
-```toml
-# ...
-
-[dependencies]
-ohkami = { version = "0.18", features = ["rt_worker"] }
-worker = { version = "0.2.0" }
-```
+Then your project directory has `wrangler.toml`, `package.json` and a Rust library crate.
 
 Local dev by `npm run dev` and depoly by `npm run deploy` !
 
@@ -92,6 +84,7 @@ Local dev by `npm run dev` and depoly by `npm run deploy` !
 ## Snippets
 
 ### Handle path params
+
 ```rust,no_run
 use ohkami::prelude::*;
 
@@ -111,6 +104,7 @@ async fn hello(name: &str) -> String {
 <br>
 
 ### Handle request body / query params
+
 ```rust
 use ohkami::prelude::*;
 use ohkami::typed::status::Created;
@@ -165,6 +159,7 @@ async fn search(condition: SearchQuery<'_>) -> Vec<SearchResult> {
 <br>
 
 ### Use middlewares
+
 Ohkami's request handling system is called "**fang**s", and middlewares are implemented on this :
 
 ```rust,no_run
@@ -192,7 +187,35 @@ async fn main() {
 
 <br>
 
+### Server-Sent Events with `"sse"` feature
+
+Ohkami respond with HTTP/1.1 `Transfer-Encoding: chunked`.\
+Use some reverse proxy to do with HTTP/2,3.
+
+```rust,no_run
+use ohkami::prelude::*;
+use ohkami::typed::DataStream;
+use tokio::time::sleep;
+
+async fn sse() -> DataStream<String> {
+    DataStream::from_iter_async((1..=5).map(async move {
+        sleep(std::time::Duration::from_secs(1)).await;
+        Ok(format!("Hi, I'm message #{i} !"))
+    }))
+}
+
+#[tokio::main]
+async fn main() {
+    Ohkami::new((
+        "/sse".GET(sse),
+    ))
+}
+```
+
+<br>
+
 ### Pack of Ohkamis
+
 ```rust,no_run
 use ohkami::prelude::*;
 use ohkami::typed::status::{Created, NoContent};
@@ -244,6 +267,7 @@ async fn main() {
 <br>
 
 ### Testing
+
 ```rust
 use ohkami::prelude::*;
 use ohkami::testing::*; // <--
@@ -273,14 +297,17 @@ async fn test_my_ohkami() {
 <br>
 
 ## Supported protocols
-- [ ] HTTPS
+
 - [x] HTTP/1.1
 - [ ] HTTP/2
 - [ ] HTTP/3
+- [ ] HTTPS
 - [ ] WebSocket
 
 ## MSRV (Minimum Supported Rust Version)
+
 Latest stable
 
 ## License
+
 ohkami is licensed under MIT LICENSE ([LICENSE](https://github.com/kana-rus/ohkami/blob/main/LICENSE) or [https://opensource.org/licenses/MIT](https://opensource.org/licenses/MIT)).

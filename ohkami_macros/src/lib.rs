@@ -182,9 +182,11 @@ pub fn Query(_: proc_macro::TokenStream, data: proc_macro::TokenStream) -> proc_
 
 /// ## Request / Response payload
 /// 
+/// <br>
+/// 
 /// Derives `Payload` implementaion with specified `PayloadType`.
 /// 
-/// - `Payload + Serialize` types can be used as response or response body in `typed::status`.
+/// - `Payload + Serialize` types can be used as a response or, response body in `typed::status`.
 /// - `Payload + Deserialize` types can be used as request body passed via a handler argument.
 /// 
 /// <br>
@@ -230,9 +232,11 @@ pub fn Query(_: proc_macro::TokenStream, data: proc_macro::TokenStream) -> proc_
 /// ```
 /// ---
 /// 
+/// ## Serde shothands
+/// 
 /// <br>
 /// 
-/// Additionally, `#[Payload]` supports shortcuts for automatic deriving `Serialize` and `Deserialize` :
+/// `#[Payload]` supports shortcuts for automatic deriving `Serialize` and `Deserialize` :
 /// 
 /// - `/ S` ... automatically derive `Serilize`
 /// - `/ D` ... automatically derive `Deserilize`
@@ -250,6 +254,33 @@ pub fn Query(_: proc_macro::TokenStream, data: proc_macro::TokenStream) -> proc_
 /// }
 /// ```
 /// ---
+/// 
+/// ## Validation
+/// 
+/// <br>
+/// 
+/// Payload validation is supported both in request / response :
+/// 
+/// <br>
+/// 
+/// ---
+/// *validation.rs*
+/// ```ignore
+/// #[Payload(JSON/D where self.valid())]
+/// struct HelloRequest<'req> {
+///     name: &'req str,
+///     n:    usize
+/// }
+/// 
+/// impl HelloRequest<'_> {
+///     fn valid(&self) -> Result<(), String> {
+///         (0 < self.n && self.n < 100)
+///             .then_some(()).ok_or_else(|| format!(
+///                 "`n` must be positive and less than 100"
+///             ))
+///     }
+/// }
+/// ```
 #[proc_macro_attribute] #[allow(non_snake_case)]
 pub fn Payload(format: proc_macro::TokenStream, data: proc_macro::TokenStream) -> proc_macro::TokenStream {
     payload::Payload(format.into(), data.into())

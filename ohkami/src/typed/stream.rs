@@ -1,11 +1,44 @@
 #![cfg(feature="sse")]
 
-use crate::utils::ErrorMessage;
 use ::futures_core::stream::BoxStream;
 
 
-pub struct DataStream<Data: Into<String>>(
-    BoxStream<'static, Result<Data, ErrorMessage>>
+/// # Simple typed stream response
+/// 
+/// <br>
+/// 
+/// Expects one type param: `DataStream<{message type}>` and, \
+/// optional second param: `DataStream<{message type}, {error type}>` \
+/// ( default error type = `std::convert::Infallible` ).
+/// 
+/// <br>
+/// 
+/// ---
+/// *example.rs*
+/// ```no_run
+/// use ohkami::prelude::*;
+/// use ohkami::typed::DataStream;
+/// use tokio::time::sleep;
+/// 
+/// async fn sse() -> DataStream<String> {
+///     DataStream::from_iter_async((1..=5).map(async move {
+///         sleep(std::time::Duration::from_secs(1)).await;
+///         Ok(format!("Hi, I'm message #{i} !"))
+///     }))
+/// }
+/// 
+/// #[tokio::main]
+/// async fn main() {
+///     Ohkami::new((
+///         "/sse".GET(sse),
+///     ))
+/// }
+/// ```
+pub struct DataStream<
+    D: Into<String>,
+    E: std::error::Error = std::convert::Infallible
+>(
+    BoxStream<'static, Result<D, E>>
 );
 
 const _: () = {
@@ -19,33 +52,35 @@ const _: () = {
     use ::futures_core::Stream;
 
 
-    impl<D: Into<String> + 'static> IntoResponse for DataStream<D> {
+    impl<D: Into<String> + 'static, E: std::error::Error + 'static>
+    IntoResponse for DataStream<D, E> {
         #[inline(always)]
         fn into_response(self) -> Response {
             Response::OK().with_stream(self.0.map(|res| res.map(Into::into)))
         }
     }
-    impl<D: Into<String>> Stream for DataStream<D> {
-        type Item = Result<D, ErrorMessage>;
+
+    impl<D: Into<String> + 'static, E: std::error::Error + 'static>
+    Stream for DataStream<D, E> {
+        type Item = Result<D, E>;
         fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
             (unsafe {self.get_unchecked_mut().0.as_mut()})
                 .poll_next(cx)
         }
     }
 
-    impl<D: Into<String> + Send + Unpin + 'static> DataStream<D> {
+    impl<D: Into<String> + Send + Unpin + 'static, E: std::error::Error + 'static>
+    DataStream<D, E> {
         #[inline]
-        pub fn from_stream<S, E>(stream: S) -> Self
+        pub fn from_stream<S>(stream: S) -> Self
         where
             S: Stream<Item = Result<D, E>> + Send + 'static,
             E: std::error::Error,
         {
-            Self(Box::pin(stream.map(|res| res
-                .map_err(|e| ErrorMessage(e.to_string()))
-            )))
+            Self(Box::pin(stream))
         }
 
-        pub fn from_iter<I, E>(iter: I) -> Self
+        pub fn from_iter<I>(iter: I) -> Self
         where
             I: IntoIterator<Item = Result<D, E>>,
             E: std::error::Error + Send + Unpin + 'static,
@@ -62,12 +97,10 @@ const _: () = {
                 E: std::error::Error,
                 Self: Unpin
             {
-                type Item = Result<D, ErrorMessage>;
+                type Item = Result<D, E>;
                 fn poll_next(mut self: std::pin::Pin<&mut Self>, _: &mut Context<'_>) -> Poll<Option<Self::Item>> {
                     Poll::Ready(
-                        Iterator::next(&mut self.iter).map(|res| res
-                            .map_err(|e| ErrorMessage(e.to_string()))
-                        )
+                        Iterator::next(&mut self.iter)
                     )
                 }
             }
@@ -78,7 +111,7 @@ const _: () = {
             }))
         }
 
-        pub fn from_iter_async<I, E>(iter: I) -> Self
+        pub fn from_iter_async<I>(iter: I) -> Self
         where
             I: IntoIterator,
             I::Item: Future<Output = Result<D, E>>,
@@ -101,7 +134,7 @@ const _: () = {
                 D: Into<String>,
                 E: std::error::Error,
             {
-                type Item = Result<D, ErrorMessage>;
+                type Item = Result<D, E>;
 
                 fn poll_next(self: std::pin::Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
                     let this = unsafe {self.get_unchecked_mut()};
@@ -124,7 +157,7 @@ const _: () = {
                         Poll::Ready(res) => {
                             this.next = None;
                             this.pend = None;
-                            Poll::Ready(Some(res.map_err(|e| ErrorMessage(e.to_string()))))
+                            Poll::Ready(Some(res))
                         }
                     }
                 }
@@ -139,3 +172,11 @@ const _: () = {
         }
     }
 };
+
+
+#[cfg(test)]
+async fn __handler() -> DataStream<String> {
+    DataStream::from_iter_async((1..=5).map(|i| async move {
+        Ok(format!("I'm message #{i} !"))
+    }))
+}
