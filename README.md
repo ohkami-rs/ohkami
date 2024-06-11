@@ -208,7 +208,7 @@ async fn sse() -> DataStream<String> {
 async fn main() {
     Ohkami::new((
         "/sse".GET(sse),
-    ))
+    )).howl("localhost:5050").await
 }
 ```
 

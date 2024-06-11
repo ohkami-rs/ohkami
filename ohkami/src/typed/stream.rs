@@ -31,7 +31,7 @@ use ::futures_core::stream::BoxStream;
 /// async fn main() {
 ///     Ohkami::new((
 ///         "/sse".GET(sse),
-///     ))
+///     )).howl("localhost:5050").await
 /// }
 /// ```
 pub struct DataStream<
