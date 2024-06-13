@@ -39,7 +39,7 @@ futures-core  = { version = "0.3", optional = true }
 
 
 [features]
-default       = ["testing"]
+#default       = ["testing"]
 
 rt_tokio      = ["dep:tokio"]
 rt_async-std  = ["dep:async-std"]
@@ -56,13 +56,13 @@ DEBUG = [
     "tokio?/rt-multi-thread",
     "async-std?/attributes",
 ]
-#default = [
-#    "nightly",
-#    "testing",
-#    "sse",
-#    #"websocket",
-#    "rt_tokio",
-#    #"rt_async-std",
-#    #"rt_worker",
-#    "DEBUG",
-#]
+default = [
+    "nightly",
+    "testing",
+    "sse",
+    #"websocket",
+    "rt_tokio",
+    #"rt_async-std",
+    #"rt_worker",
+    "DEBUG",
+]
