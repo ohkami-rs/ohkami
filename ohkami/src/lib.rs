@@ -160,17 +160,17 @@ pub mod utils {
 
 
         pub trait StreamExt: ::futures_core::Stream + Sized {
-            fn map<T, F: FnMut(Self::Item)->T>(self, f: F) -> impl Stream<Item = T>;
-            fn filter<P: FnMut(&Self::Item)->bool>(self, predicate: P) -> impl Stream<Item = Self::Item>;
+            fn map<T, F: FnMut(Self::Item)->T>(self, f: F) -> Map<Self, F>;
+            fn filter<P: FnMut(&Self::Item)->bool>(self, predicate: P) -> Filter<Self, P>;
 
             fn next(&mut self) -> Next<'_, Self>;
         }
         
         impl<S: Stream> StreamExt for S {
-            fn map<T, F: FnMut(Self::Item)->T>(self, f: F) -> impl Stream<Item = T> {
+            fn map<T, F: FnMut(Self::Item)->T>(self, f: F) -> Map<S, F> {
                 Map { inner: self, f }
             }
-            fn filter<P: FnMut(&Self::Item)->bool>(self, predicate: P) -> impl Stream<Item = Self::Item> {
+            fn filter<P: FnMut(&Self::Item)->bool>(self, predicate: P) -> Filter<S, P> {
                 Filter { inner: self, predicate }
             }
 
