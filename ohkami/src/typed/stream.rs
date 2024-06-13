@@ -2,6 +2,11 @@
 
 use ::futures_core::stream::BoxStream;
 
+// #[cfg(not(target_arch = "wasm32"))]
+// type BoxStream<'a, T> = std::pin::Pin<Box<dyn ::futures_core::Stream<Item = T> + Send + 'a>>;
+// #[cfg(target_arch = "wasm32")]
+// type BoxStream<'a, T> = std::pin::Pin<Box<dyn ::futures_core::Stream<Item = T> + Send + 'a>>;
+
 
 /// # Simple typed stream response
 /// 
@@ -71,6 +76,7 @@ const _: () = {
 
     impl<D: Into<String> + Send + Unpin + 'static, E: std::error::Error + 'static>
     DataStream<D, E> {
+        #[cfg(not(feature="rt_worker"))]
         #[inline]
         pub fn from_stream<S>(stream: S) -> Self
         where
@@ -78,6 +84,30 @@ const _: () = {
             E: std::error::Error,
         {
             Self(Box::pin(stream))
+        }
+        #[cfg(feature="rt_worker")]
+        #[inline]
+        pub fn from_stream<S>(stream: S) -> Self
+        where
+            S: Stream<Item = Result<D, E>> + 'static,
+            E: std::error::Error,
+        {
+            struct SendStream<S: Stream>(S);
+            unsafe impl<S: Stream> Send for SendStream<S> {}
+            unsafe impl<S: Stream> Sync for SendStream<S> {}
+            impl<S: Stream> Stream for SendStream<S> {
+                type Item = S::Item;
+                fn size_hint(&self) -> (usize, Option<usize>) {
+                    self.0.size_hint()
+                }
+                #[inline(always)]
+                fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+                    (unsafe {self.map_unchecked_mut(|this| &mut this.0)})
+                        .poll_next(cx)
+                }
+            }
+            
+            Self(Box::pin(SendStream(stream)))
         }
 
         pub fn from_iter<I>(iter: I) -> Self
