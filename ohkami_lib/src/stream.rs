@@ -1,12 +1,8 @@
 pub use ::futures_core::{Stream, ready};
 
-use std::task::{Poll, Context};
-use std::pin::Pin;
-use std::future::Future;
-
 
 pub fn once<T>(item: T) -> stream::Once<T> {
-    Once(Some(item))
+    stream::Once(Some(item))
 }
 
 pub trait StreamExt: Stream + Sized {
@@ -18,23 +14,31 @@ pub trait StreamExt: Stream + Sized {
 impl<S: Stream> StreamExt for S {
     #[inline]
     fn map<T, F: FnMut(Self::Item)->T>(self, f: F) -> stream::Map<S, F> {
-        Map { inner: self, f }
+        stream::Map { inner: self, f }
     }
     fn filter<P: FnMut(&Self::Item)->bool>(self, predicate: P) -> stream::Filter<S, P> {
-        Filter { inner: self, predicate }
+        stream::Filter { inner: self, predicate }
     }
     fn chain<A: Stream>(self, another: A) -> stream::Chain<Self, A> {
-        Chain { inner: self, another }
+        stream::Chain { inner: self, another }
     }
     fn next(&mut self) -> stream::Next<'_, Self> {
-        Next { inner: self }    
+        stream::Next { inner: self }    
     }
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 mod stream {
-    pub struct Once<T>(Option<T>);
+    use super::{Stream, ready};
+    use std::task::{Poll, Context};
+    use std::pin::Pin;
+    use std::future::Future;
+
+
+    pub struct Once<T>(
+        pub(super) Option<T>
+    );
     impl<T: Unpin> Stream for Once<T> {
         type Item = T;
         #[inline]
@@ -44,8 +48,8 @@ mod stream {
     }
 
     pub struct Map<S, F> {
-        inner: S,
-        f:     F,
+        pub(super) inner: S,
+        pub(super) f:     F,
     }
     impl<S, F, T> Stream for Map<S, F>
     where
@@ -67,8 +71,8 @@ mod stream {
     }
 
     pub struct Filter<S, P> {
-        inner:     S,
-        predicate: P,
+        pub(super) inner:     S,
+        pub(super) predicate: P,
     }
     impl<S, P> Stream for Filter<S, P>
     where
@@ -92,8 +96,8 @@ mod stream {
     }
 
     pub struct Chain<S, A> {
-        inner:   S,
-        another: A,
+        pub(super) inner:   S,
+        pub(super) another: A,
     }
     impl<S, A, Item> Stream for Chain<S, A>
     where
@@ -110,7 +114,7 @@ mod stream {
     }
 
     pub struct Next<'n, S> {
-        inner: &'n mut S,
+        pub(super) inner: &'n mut S,
     }
     impl<'n, S> Future for Next<'n, S>
     where
