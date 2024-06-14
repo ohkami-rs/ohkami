@@ -113,13 +113,13 @@ async fn test_stream_response() {
     fn repeat_by<T, F: Fn(usize) -> T + Unpin>(
         n: usize,
         f: F
-    ) -> impl ::futures_core::Stream<Item = T> {
+    ) -> impl ohkami_lib::Stream<Item = T> {
         struct Repeat<F> {
             f: F,
             n: usize,
             count: usize,
         } const _: () = {
-            impl<T, F: Fn(usize) -> T + Unpin> ::futures_core::Stream for Repeat<F> {
+            impl<T, F: Fn(usize) -> T + Unpin> ohkami_lib::Stream for Repeat<F> {
                 type Item = T;
                 fn poll_next(mut self: std::pin::Pin<&mut Self>, _cx: &mut std::task::Context<'_>) -> std::task::Poll<Option<Self::Item>> {
                     if self.count < self.n {
