@@ -1,11 +1,7 @@
 #![cfg(feature="sse")]
 
-use ::futures_core::stream::BoxStream;
-
-// #[cfg(not(target_arch = "wasm32"))]
-// type BoxStream<'a, T> = std::pin::Pin<Box<dyn ::futures_core::Stream<Item = T> + Send + 'a>>;
-// #[cfg(target_arch = "wasm32")]
-// type BoxStream<'a, T> = std::pin::Pin<Box<dyn ::futures_core::Stream<Item = T> + Send + 'a>>;
+use ohkami_lib::{Stream, StreamExt};
+use std::pin::Pin;
 
 
 /// # Simple typed stream response
@@ -43,18 +39,15 @@ pub struct DataStream<
     D: Into<String>,
     E: std::error::Error = std::convert::Infallible
 >(
-    BoxStream<'static, Result<D, E>>
+    Pin<Box<dyn Stream<Item = Result<D, E>> + Send>>
 );
 
 const _: () = {
     use crate::prelude::*;
-    use crate::utils::StreamExt;
     use std::task::{Poll, Context};
     use std::future::Future;
-    use std::pin::Pin;
     use std::marker::PhantomData;
     use std::ptr::NonNull;
-    use ::futures_core::Stream;
 
 
     impl<D: Into<String> + 'static, E: std::error::Error + 'static>

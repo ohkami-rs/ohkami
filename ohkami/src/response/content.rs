@@ -1,7 +1,7 @@
 use ohkami_lib::CowSlice;
 
 #[cfg(feature="sse")]
-use ::futures_core::stream::BoxStream;
+use ohkami_lib::Stream;
 
 
 pub enum Content {
@@ -10,7 +10,7 @@ pub enum Content {
     Payload(CowSlice),
 
     #[cfg(feature="sse")]
-    Stream(BoxStream<'static, Result<String, String>>),
+    Stream(std::pin::Pin<Box<dyn Stream<Item = Result<String, String>> + Send>>),
 } const _: () = {
     impl Default for Content {
         fn default() -> Self {

@@ -321,7 +321,7 @@ impl Response {
         T: Into<String>,
         E: std::error::Error,
     >(mut self,
-        stream: impl ::futures_core::Stream<Item = Result<T, E>> + Unpin + Send + 'static
+        stream: impl ohkami_lib::Stream<Item = Result<T, E>> + Unpin + Send + 'static
     ) -> Self {
         self.set_stream(stream);
         self
@@ -331,7 +331,7 @@ impl Response {
     pub fn set_stream<
         T: Into<String>,
         E: std::error::Error,
-    >(&mut self, stream: impl ::futures_core::Stream<Item = Result<T, E>> + Unpin + Send + 'static) {
+    >(&mut self, stream: impl ohkami_lib::Stream<Item = Result<T, E>> + Unpin + Send + 'static) {
         let stream = Box::pin(stream.map(|res|
             res
             .map(Into::into)
@@ -360,7 +360,7 @@ const _: () = {
                     #[cfg(feature="sse")]
                     Content::Stream(_)      => Content::Stream(Box::pin({
                         struct DummyStream;
-                        impl ::futures_core::Stream for DummyStream {
+                        impl ohkami_lib::Stream for DummyStream {
                             type Item = Result<String, String>;
                             fn poll_next(self: std::pin::Pin<&mut Self>, _: &mut std::task::Context<'_>) -> std::task::Poll<Option<Self::Item>> {
                                 unreachable!()
