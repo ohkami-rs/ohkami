@@ -176,6 +176,27 @@ const _: (/* FromRequest items */) = {
             )
         }
     }
+
+    impl<'req, F, Fut, Body:IntoResponse, Item1:FromRequest<'req>, Item2:FromRequest<'req>, Item3:FromRequest<'req>, Item4:FromRequest<'req>> IntoHandler<fn(Item1, Item2, Item3, Item4)->Body> for F
+    where
+        F:   Fn(Item1, Item2, Item3, Item4) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = Body> + Send + 'static,
+    {
+        fn into_handler(self) -> Handler {
+            Handler::new(move |req|
+                match (from_request::<Item1>(req), from_request::<Item2>(req), from_request::<Item3>(req), from_request::<Item4>(req)) {
+                    (Ok(item1), Ok(item2), Ok(item3), Ok(item4)) => {
+                        let res = self(item1, item2, item3, item4);
+                        Box::pin(async move {res.await.into_response()})
+                    }
+                    (Err(e), _, _,_) |
+                    (_, Err(e), _,_) |
+                    (_, _, Err(e),_) |
+                    (_,_, _, Err(e)) => __error__(e),
+                }
+            )
+        }
+    }
 };
 
 const _: (/* one FromParam without tuple and FromRequest items */) = {
@@ -246,6 +267,32 @@ const _: (/* one FromParam without tuple and FromRequest items */) = {
                     (_,Err(e),_,_) |
                     (_,_,Err(e),_) |
                     (_,_,_,Err(e)) => __error__(e),
+                }
+            })
+        }
+    }
+
+    impl<'req, F, Fut, Body:IntoResponse, P1:FromParam<'req>, Item1:FromRequest<'req>, Item2:FromRequest<'req>, Item3:FromRequest<'req>, Item4:FromRequest<'req>> IntoHandler<fn(((P1,),), Item1, Item2, Item3, Item4)->Body> for F
+    where
+        F:   Fn(P1, Item1, Item2, Item3, Item4) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = Body> + Send + 'static,
+    {
+        fn into_handler(self) -> Handler {
+            Handler::new(move |req| {
+                // SAFETY: Due to the architecture of `Router`,
+                // `params` has already `append`ed once before this code
+                let p1 = unsafe {req.path.assume_one_param()};
+
+                match (from_param_bytes(p1), from_request::<Item1>(req), from_request::<Item2>(req), from_request::<Item3>(req), from_request::<Item4>(req)) {
+                    (Ok(p1), Ok(item1), Ok(item2), Ok(item3), Ok(item4)) => {
+                        let res = self(p1, item1, item2, item3, item4);
+                        Box::pin(async move {res.await.into_response()})
+                    }
+                    (Err(e),_,_,_,_) |
+                    (_,Err(e),_,_,_) |
+                    (_,_,Err(e),_,_) |
+                    (_,_,_,Err(e),_) |
+                    (_,_,_,_,Err(e)) => __error__(e),
                 }
             })
         }
@@ -324,6 +371,32 @@ const _: (/* one FromParam and FromRequest items */) = {
             })
         }
     }
+
+    impl<'req, F, Fut, Body:IntoResponse, P1:FromParam<'req>, Item1:FromRequest<'req>, Item2:FromRequest<'req>, Item3:FromRequest<'req>, Item4:FromRequest<'req>> IntoHandler<fn((P1,), Item1, Item2, Item3, Item4)->Body> for F
+    where
+        F:   Fn((P1,), Item1, Item2, Item3, Item4) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = Body> + Send + 'static,
+    {
+        fn into_handler(self) -> Handler {
+            Handler::new(move |req| {
+                // SAFETY: Due to the architecture of `Router`,
+                // `params` has already `append`ed once before this code
+                let p1 = unsafe {req.path.assume_one_param()};
+                
+                match (from_param_bytes(p1), from_request::<Item1>(req), from_request::<Item2>(req), from_request::<Item3>(req), from_request::<Item4>(req)) {
+                    (Ok(p1), Ok(item1), Ok(item2), Ok(item3), Ok(item4)) => {
+                        let res = self((p1,), item1, item2, item3, item4);
+                        Box::pin(async move {res.await.into_response()})
+                    }
+                    (Err(e),_,_,_,_) |
+                    (_,Err(e),_,_,_) |
+                    (_,_,Err(e),_,_) |
+                    (_,_,_,Err(e),_) |
+                    (_,_,_,_,Err(e)) => __error__(e),
+                }
+            })
+        }
+    }
 };
 
 const _: (/* two PathParams and FromRequest items */) = {
@@ -397,6 +470,33 @@ const _: (/* two PathParams and FromRequest items */) = {
                     (_,_,Err(e),_,_) |
                     (_,_,_,Err(e),_) |
                     (_,_,_,_,Err(e)) => __error__(e),
+                }
+            })
+        }
+    }
+
+    impl<'req, F, Fut, Body:IntoResponse, P1:FromParam<'req>, P2:FromParam<'req>, Item1:FromRequest<'req>, Item2:FromRequest<'req>, Item3:FromRequest<'req>, Item4:FromRequest<'req>> IntoHandler<fn((P1, P2), Item1, Item2, Item3, Item4)->Body> for F
+    where
+        F:   Fn((P1, P2), Item1, Item2, Item3, Item4) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = Body> + Send + 'static,
+    {
+        fn into_handler(self) -> Handler {
+            Handler::new(move |req| {
+                // SAFETY: Due to the architecture of `Router`,
+                // `params` has already `append`ed twice before this code
+                let (p1, p2) = unsafe {req.path.assume_two_params()};
+
+                match (from_param_bytes(p1), from_param_bytes(p2), from_request::<Item1>(req), from_request::<Item2>(req), from_request::<Item3>(req), from_request::<Item4>(req)) {
+                    (Ok(p1), Ok(p2), Ok(item1), Ok(item2), Ok(item3), Ok(item4)) => {
+                        let res = self((p1, p2), item1, item2, item3, item4);
+                        Box::pin(async move {res.await.into_response()})
+                    }
+                    (Err(e),_,_,_,_,_) |
+                    (_,Err(e),_,_,_,_) |
+                    (_,_,Err(e),_,_,_) |
+                    (_,_,_,Err(e),_,_) |
+                    (_,_,_,_,Err(e),_) |
+                    (_,_,_,_,_,Err(e)) => __error__(e),
                 }
             })
         }
