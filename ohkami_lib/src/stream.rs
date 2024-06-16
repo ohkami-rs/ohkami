@@ -3,7 +3,7 @@ pub use ::futures_core::{Stream, ready};
 
 pub fn queue<T, F, Fut>(f: F) -> stream::QueueStream<F, T, Fut>
 where
-    F:   FnMut(stream::Queue<T>) -> Fut,
+    F:   FnOnce(stream::Queue<T>) -> Fut,
     Fut: std::future::Future<Output = ()>,
 {
     stream::QueueStream::new(f)
@@ -143,24 +143,29 @@ mod stream {
     }
     struct QueuingingProc<F, T> {
         queue_ptr: Option<std::ptr::NonNull<std::collections::VecDeque<T>>>,
-        f:         F,
+        /// `Option<_>` to `take` in `setup`
+        f: Option<F>,
     }
     pub struct Queue<T>(
         std::ptr::NonNull<std::collections::VecDeque<T>>
     );
     const _: () = {
+        unsafe impl<F:Send, T:Send, Fut:Send> Send for QueueStream<F, T, Fut> {}
+        unsafe impl<F:Send, T: Send> Send for QueuingingProc<F, T> {}
+        unsafe impl<T:Send> Send for Queue<T> {}
+
         use std::collections::VecDeque;
         use std::ptr::NonNull;
         
         impl<F, T, Fut> QueueStream<F, T, Fut>
         where
-            F:   FnMut(Queue<T>) -> Fut,
+            F:   FnOnce(Queue<T>) -> Fut,
             Fut: Future<Output = ()>,
         {
             pub fn new(f: F) -> Self {
                 Self {
                     queue: VecDeque::new(),
-                    proc:  QueuingingProc { f, queue_ptr: None },
+                    proc:  QueuingingProc { f: Some(f), queue_ptr: None },
                     queuing_future: None,
                     queuing_state:  None
                 }
@@ -175,7 +180,7 @@ mod stream {
                     )});
 
                     let user_queue = Queue(this.proc.queue_ptr.unwrap());
-                    this.queuing_future = Some((&mut this.proc.f)(user_queue));
+                    this.queuing_future = Some((this.proc.f.take().unwrap())(user_queue));
                     this.queuing_state  = Some(unsafe {NonNull::new_unchecked(
                         this.queuing_future.as_mut().unwrap_unchecked()
                     )});
@@ -198,7 +203,7 @@ mod stream {
 
         impl<F, T, Fut> Stream for QueueStream<F, T, Fut>
         where
-            F:   FnMut(Queue<T>) -> Fut,
+            F:   FnOnce(Queue<T>) -> Fut,
             Fut: Future<Output = ()>,
         {
             type Item = T;
