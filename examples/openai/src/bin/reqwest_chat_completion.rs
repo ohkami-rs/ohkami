@@ -22,6 +22,8 @@ async fn main() {
         .send().await.expect("reqwest failed")
         .bytes_stream();
 
+    let;
+
     while let Some(Ok(chunk)) = gpt_response.next().await {
         println!("\n\n[chunk]\n---------------------------\n{}\n---------------------------\n",
             std::str::from_utf8(&chunk).unwrap()
