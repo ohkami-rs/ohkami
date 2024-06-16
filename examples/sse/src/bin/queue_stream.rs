@@ -10,6 +10,7 @@ async fn main() {
             q.push(format!("Hi, I'm message#{i}!"))
         }
     });
+    
     while let Some(message) = qs.next().await {
         println!("{message}")
     }
