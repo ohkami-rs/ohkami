@@ -1,6 +1,14 @@
 pub use ::futures_core::{Stream, ready};
 
 
+pub fn queue<T, F, Fut>(f: F) -> stream::QueueStream<F, T, Fut>
+where
+    F:   FnMut(stream::Queue<T>) -> Fut,
+    Fut: std::future::Future<Output = ()>,
+{
+    stream::QueueStream::new(f)
+}
+
 pub fn once<T>(item: T) -> stream::Once<T> {
     stream::Once(Some(item))
 }
@@ -126,4 +134,97 @@ mod stream {
                 .poll_next(cx)
         }
     }
+
+    pub struct QueueStream<F, T, Fut> {
+        queue: std::collections::VecDeque<T>,
+        proc:  QueuingingProc<F, T>,
+        queuing_future: Option<Fut>,
+        queuing_state:  Option<std::ptr::NonNull<Fut>>,
+    }
+    struct QueuingingProc<F, T> {
+        queue_ptr: Option<std::ptr::NonNull<std::collections::VecDeque<T>>>,
+        f:         F,
+    }
+    pub struct Queue<T>(
+        std::ptr::NonNull<std::collections::VecDeque<T>>
+    );
+    const _: () = {
+        use std::collections::VecDeque;
+        use std::ptr::NonNull;
+        
+        impl<F, T, Fut> QueueStream<F, T, Fut>
+        where
+            F:   FnMut(Queue<T>) -> Fut,
+            Fut: Future<Output = ()>,
+        {
+            pub fn new(f: F) -> Self {
+                Self {
+                    queue: VecDeque::new(),
+                    proc:  QueuingingProc { f, queue_ptr: None },
+                    queuing_future: None,
+                    queuing_state:  None
+                }
+            }
+
+            #[inline]
+            fn setup(self: Pin<&mut Self>) {
+                if self.proc.queue_ptr.is_none() {
+                    let this = unsafe {self.get_unchecked_mut()};
+                    this.proc.queue_ptr = Some(unsafe {NonNull::new_unchecked(
+                        &mut this.queue
+                    )});
+
+                    let user_queue = Queue(this.proc.queue_ptr.unwrap());
+                    this.queuing_future = Some((&mut this.proc.f)(user_queue));
+                    this.queuing_state  = Some(unsafe {NonNull::new_unchecked(
+                        this.queuing_future.as_mut().unwrap_unchecked()
+                    )});
+                }
+            }
+
+            #[inline]
+            fn poll_queuing_future(&mut self, cx: &mut Context<'_>) -> Poll<()> {
+                if self.queuing_state.is_none() {
+                    Poll::Ready(())
+                } else {
+                    let poll = (unsafe {Pin::new_unchecked(self.queuing_state.as_mut().unwrap_unchecked().as_mut())}).poll(cx);
+                    if poll.is_ready() {
+                        self.queuing_state = None
+                    }
+                    poll
+                }
+            }
+        }
+
+        impl<F, T, Fut> Stream for QueueStream<F, T, Fut>
+        where
+            F:   FnMut(Queue<T>) -> Fut,
+            Fut: Future<Output = ()>,
+        {
+            type Item = T;
+            fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+                self.as_mut().setup();
+
+                let this = unsafe {self.get_unchecked_mut()};
+
+                match this.poll_queuing_future(cx) {
+                    Poll::Ready(()) => match this.queue.pop_front() {
+                        None        => Poll::Ready(None),
+                        Some(value) => Poll::Ready(Some(value)),
+                    }
+                    Poll::Pending => match this.queue.pop_front() {
+                        None        => Poll::Pending,
+                        Some(value) => Poll::Ready(Some(value)),
+                    }
+                }
+            }
+        }
+
+        impl<T> Queue<T> {
+            #[inline(always)]
+            pub fn push(&mut self, value: T) {
+                unsafe {self.0.as_mut()}.push_back(value)
+            }
+        }
+    };
 }

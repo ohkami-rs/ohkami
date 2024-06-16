@@ -4,6 +4,7 @@ members  = [
     "sse",
     "form",
     "hello",
+    "openai",
     "realworld",
     "quick_start",
     "static_files",
