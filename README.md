@@ -137,7 +137,7 @@ async fn create_user(body: CreateUserRequest<'_>) -> Created<User> {
 }
 
 /* Shorthand for Payload + Serialize */
-#[Payload(JSON / S)]
+#[Payload(JSON/S)]
 struct SearchResult {
     title: String,
 }
@@ -158,6 +158,35 @@ async fn search(condition: SearchQuery<'_>) -> Vec<SearchResult> {
 
 <br>
 
+### Payload validation
+
+`where ＜validation expression＞` in `#[Payload()]` runs the validation when responding with it or parsing request to it.
+
+`＜validation expression＞` is an expression with `self: &Self` that returns `Result<(), impl Display>`.
+
+```rust
+use ohkami::prelude::*;
+use ohkami::{typed::Payload, builtin::payload::JSON};
+
+#[Payload(JSON/D where self.valid())]
+struct Hello<'req> {
+    name:   &'req str,
+    repeat: usize,
+}
+
+impl Hello<'_> {
+    fn valid(&self) -> Result<(), String> {
+        (self.name.len() > 0).then_some(())
+            .ok_or_else(|| format!("`name` must not be empty"))?;
+        (self.repeat > 0).then_some(())
+            .ok_or_else(|| format!("`repeat` must be positive"))?;
+        Ok(())
+    }
+}
+```
+
+<br>
+
 ### Use middlewares
 
 Ohkami's request handling system is called "**fang**s", and middlewares are implemented on this :
@@ -167,6 +196,8 @@ use ohkami::prelude::*;
 
 #[derive(Clone)]
 struct GreetingFang;
+
+/* utility trait for auto impl `Fang` */
 impl FangAction for GreetingFang {
     async fn fore<'a>(&'a self, req: &'a mut Request) -> Result<(), Response> {
         println!("Welcomm request!: {req:?}");
@@ -302,6 +333,7 @@ async fn test_my_ohkami() {
 - [ ] HTTP/2
 - [ ] HTTP/3
 - [ ] HTTPS
+- [x] Server-Sent Events
 - [ ] WebSocket
 
 ## MSRV (Minimum Supported Rust Version)
