@@ -1,6 +1,116 @@
 pub use ::futures_core::{Stream, ready};
 
 
+/// # Stream of an async process with a queue
+/// 
+/// `queue(|mut q| async move { 〜 })` makes an queue for `T` values
+/// and an async process that pushes items to the queue, they work as
+/// a stream yeilding all the items asynchronously.
+/// 
+/// <br>
+/// 
+/// _**note**_ : It's recommended to just `use ohkami::utils::stream` and
+/// call as **`stream::queue()`**, not direct `queue()`.
+/// 
+/// <br>
+/// 
+/// ---
+/// *example.rs*
+/// ```no_run
+/// use ohkami::prelude::*;
+/// use ohkami::typed::DataStream;
+/// use ohkami::utils::{StreamExt, stream};
+/// use tokio::time::sleep;
+/// 
+/// #[tokio::main]
+/// async fn main() {
+///     let qs = stream::queue(|mut q| async move {
+///         for i in 1..=5 {
+///             sleep(std::time::Duration::from_secs(1)).await;
+///             q.push(format!("Hello, I'm message#{i}!"))
+///         }
+/// 
+///         sleep(std::time::Duration::from_secs(1)).await;
+/// 
+///         q.push("done".to_string())
+///     });
+/// }
+/// ```
+/// 
+/// <br>
+/// 
+/// ---
+/// *openai.rs*
+/// ```ignore
+/// use ohkami::prelude::*;
+/// use ohkami::Memory;
+/// use ohkami::typed::DataStream;
+/// use ohkami::utils::{StreamExt, stream};
+/// 
+/// pub async fn relay_chat_completion(
+///     api_key: Memory<'_, &'static str>,
+///     UserMessage(message): UserMessage,
+/// ) -> Result<DataStream<String, Error>, Error> {
+///     let mut gpt_response = reqwest::Client::new()
+///         .post("https://api.openai.com/v1/chat/completions")
+///         .bearer_auth(*api_key)
+///         .json(&ChatCompletions {
+///             model:    "gpt-4o",
+///             stream:   true,
+///             messages: vec![
+///                 ChatMessage {
+///                     role:    Role::user,
+///                     content: message,
+///                 }
+///             ],
+///         })
+///         .send().await?
+///         .bytes_stream();
+///     
+///     Ok(DataStream::from_stream(stream::queue(|mut q| async move {
+///         let mut push_line = |mut line: String| {
+///             line.strip_suffix("\n\n").ok();
+///     
+///             #[cfg(debug_assertions)] {
+///                 if line != "[DONE]" {
+///                     let chunk: models::ChatCompletionChunk
+///                         = serde_json::from_str(&line).unwrap();
+///                     let content = chunk
+///                         .choices[0]
+///                         .delta
+///                         .content.as_deref().unwrap_or(""));
+///                     print!("{content}");
+///                     std::io::Write::flush(&mut std::io::stdout()).ok();
+///                 } else {
+///                     println!()
+///                 }
+///             }
+///     
+///             q.push(Ok(line));
+///         };
+///     
+///         let mut remaining = String::new();
+///         while let Some(Ok(raw_chunk)) = gpt_response.next().await {
+///             for line in std::str::from_utf8(&raw_chunk).unwrap()
+///                 .split_inclusive("\n\n")
+///             {
+///                 if let Some(data) = line.strip_prefix("data: ") {
+///                     if data.ends_with("\n\n") {
+///                         push_line(data.to_string())
+///                     } else {
+///                         remaining = data.into()
+///                     }
+///                 } else {
+///                     #[cfg(debug_assertions)] {
+///                         assert!(line.ends_with("\n\n"))
+///                     }
+///                     push_line(std::mem::take(&mut remaining) + line)
+///                 }
+///             }
+///         }
+///     })))
+/// }
+/// ```
 pub fn queue<T, F, Fut>(f: F) -> stream::QueueStream<F, T, Fut>
 where
     F:   FnOnce(stream::Queue<T>) -> Fut,

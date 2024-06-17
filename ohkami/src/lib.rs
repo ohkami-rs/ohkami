@@ -452,6 +452,7 @@ pub mod serde {
     pub use ::ohkami_macros::{Serialize, Deserialize};
     pub use ::serde::ser::{self, Serialize, Serializer};
     pub use ::serde::de::{self, Deserialize, Deserializer};
+    pub use ::serde_json as json;
 }
 
 // #[cfg(feature="websocket")]
