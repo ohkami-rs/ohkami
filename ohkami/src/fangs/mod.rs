@@ -18,9 +18,10 @@ pub trait Fang<Inner: FangProc> {
 pub trait FangProc: Send + Sync + 'static {
     fn bite<'b>(&'b self, req: &'b mut Request) -> impl std::future::Future<Output = Response> + Send;
 
-    /// Default: `Box::pin(self.bite(req))`.
+    /// Default: just `Box::pin(self.bite(req))`.
     /// 
-    /// Override when `bite` itself returns `Pin<Box<dyn Future>>`.
+    /// Mainly used for override `bite` when itself returns `Pin<Box<dyn Future>>`.
+    #[inline(always)]
     fn bite_boxed<'b>(&'b self, req: &'b mut Request) -> Pin<Box<dyn Future<Output = Response> + Send + 'b>> {
         Box::pin(self.bite(req))
     }

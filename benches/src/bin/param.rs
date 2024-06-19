@@ -1,8 +1,8 @@
 use ohkami::prelude::*;
 
 #[inline(always)]
-async fn echo_id(id: &str) -> String {
-    id.into()
+async fn echo_id(id: String) -> String {
+    id//.into()
 }
 
 #[tokio::main]

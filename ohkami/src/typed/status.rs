@@ -45,7 +45,7 @@ const _: () = {
                     }
                 }
                 impl IntoResponse for $t {
-                    #[inline]
+                    #[inline(always)]
                     fn into_response(self) -> Response {
                         Response::OK().with_text(self)
                     }

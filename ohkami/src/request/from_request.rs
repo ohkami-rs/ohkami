@@ -4,7 +4,7 @@ use crate::{utils::ErrorMessage, IntoResponse, Request, Response};
 
 /// "Retirieved from a `Request`".
 /// 
-/// ### _required_
+/// ### required
 /// - `type Errpr`
 /// - `fn from_request`
 /// 
@@ -49,6 +49,7 @@ const _: () = {
     }
     impl<'req, FR: FromRequest<'req>> FromRequest<'req> for Option<FR> {
         type Error = FR::Error;
+        #[inline]
         fn from_request(req: &'req Request) -> Option<Result<Self, Self::Error>> {
             match FR::from_request(req) {
                 None     => Some(Ok(None)),
@@ -78,7 +79,7 @@ const _: () = {
 
 /// "Retrieved from a path/query param".
 /// 
-/// ### _required_
+/// ### required
 /// - `type Errpr`
 /// - `fn from_param`
 /// 
@@ -129,27 +130,23 @@ pub trait FromParam<'p>: Sized {
     impl<'p> FromParam<'p> for &'p str {
         type Error = ErrorMessage;
 
+        #[inline(always)]
         fn from_param(param: Cow<'p, str>) -> Result<Self, Self::Error> {
             match param {
                 Cow::Borrowed(s) => Ok(s),
                 Cow::Owned(_) => Err({
-                    crate::warning!("\
-                        `&str` can't handle percent encoded parameters. \
-                        Use `Cow<'_, str>` (or `String`) to handle them. \
-                    ");
-                    ErrorMessage(format!(    
-                        "Unexpected path params `{param}`: percent encoded"
-                    ))
+                    #[cold] #[inline(never)]
+                    fn unexpected(param: &str) -> ErrorMessage {                        
+                        crate::warning!("\
+                            `&str` can't handle percent encoded parameters. \
+                            Use `Cow<'_, str>` or `String` to handle them. \
+                        ");
+                        ErrorMessage(format!(    
+                            "Unexpected path params `{param}`: percent encoded"
+                        ))
+                    } unexpected(&param)
                 }),
             }
-        }
-
-        #[cfg(not(debug_assertions))]
-        #[inline(always)]
-        fn from_raw_param(raw_param: &'p [u8]) -> Result<Self, Response> {
-            Ok(unsafe {
-                std::str::from_utf8_unchecked(raw_param)
-            })
         }
     }
 
