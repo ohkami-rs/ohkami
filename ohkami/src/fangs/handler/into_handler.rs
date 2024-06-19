@@ -1,5 +1,4 @@
 use std::{future::Future, pin::Pin};
-use ohkami_lib::percent_decode_utf8;
 use super::Handler;
 use crate::{Response, FromRequest, FromParam, Request, IntoResponse};
 
@@ -10,22 +9,6 @@ pub trait IntoHandler<T> {
 
 #[inline(never)] #[cold] fn __error__(e: Response) -> Pin<Box<dyn Future<Output = Response> + Send>> {
     Box::pin(async {e})
-}
-
-#[inline(always)] fn from_param_bytes<'p, P: FromParam<'p>>(
-    param_bytes_maybe_percent_encoded: &'p [u8]
-) -> Result<P, Response> {
-    let param = percent_decode_utf8(param_bytes_maybe_percent_encoded)
-        .map_err(|_e| {
-            #[cfg(debug_assertions)] crate::warning!(
-                "[WARNING] Failed to decode percent encoding `{}`: {_e}",
-                param_bytes_maybe_percent_encoded.escape_ascii()
-            );
-            Response::InternalServerError()
-        })?;
-
-    <P as FromParam>::from_param(param)
-        .map_err(IntoResponse::into_response)
 }
 
 /* FIXME: omit unsafe... */
@@ -67,7 +50,7 @@ const _: (/* FromParam */) = {
     {
         fn into_handler(self) -> Handler {
             Handler::new(move |req|
-                match from_param_bytes(unsafe {req.path.assume_one_param()}) {
+                match P1::from_raw_param(unsafe {req.path.assume_one_param()}) {
                     Ok(p1) => {
                         let res = self(p1);
                         Box::pin(async move {res.await.into_response()})
@@ -88,7 +71,7 @@ const _: (/* FromParam */) = {
             Handler::new(move |req|
                 // SAFETY: Due to the architecture of `Router`,
                 // `params` has already `append`ed once before this code
-                match from_param_bytes(unsafe {req.path.assume_one_param()}) {
+                match P1::from_raw_param(unsafe {req.path.assume_one_param()}) {
                     Ok(p1) => {
                         let res = self((p1,));
                         Box::pin(async move {res.await.into_response()})
@@ -107,7 +90,7 @@ const _: (/* FromParam */) = {
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
                 let (p1, p2) = unsafe {req.path.assume_two_params()};
-                match (from_param_bytes::<P1>(p1), from_param_bytes::<P2>(p2)) {
+                match (P1::from_raw_param(p1), P2::from_raw_param(p2)) {
                     (Ok(p1), Ok(p2)) => {
                         let res = self((p1, p2));
                         Box::pin(async move {res.await.into_response()})
@@ -211,7 +194,7 @@ const _: (/* one FromParam without tuple and FromRequest items */) = {
                 // `params` has already `append`ed once before this code
                 let p1 = unsafe {req.path.assume_one_param()};
 
-                match (from_param_bytes(p1), from_request(req)) {
+                match (P1::from_raw_param(p1), from_request(req)) {
                     (Ok(p1), Ok(item1)) => {
                         let res = self(p1, item1);
                         Box::pin(async move {res.await.into_response()})
@@ -234,7 +217,7 @@ const _: (/* one FromParam without tuple and FromRequest items */) = {
                 // `params` has already `append`ed once before this code
                 let p1 = unsafe {req.path.assume_one_param()};
 
-                match (from_param_bytes(p1), from_request::<Item1>(req), from_request::<Item2>(req)) {
+                match (P1::from_raw_param(p1), from_request::<Item1>(req), from_request::<Item2>(req)) {
                     (Ok(p1), Ok(item1), Ok(item2)) => {
                         let res = self(p1, item1, item2);
                         Box::pin(async move {res.await.into_response()})
@@ -258,7 +241,7 @@ const _: (/* one FromParam without tuple and FromRequest items */) = {
                 // `params` has already `append`ed once before this code
                 let p1 = unsafe {req.path.assume_one_param()};
 
-                match (from_param_bytes(p1), from_request::<Item1>(req), from_request::<Item2>(req), from_request::<Item3>(req)) {
+                match (P1::from_raw_param(p1), from_request::<Item1>(req), from_request::<Item2>(req), from_request::<Item3>(req)) {
                     (Ok(p1), Ok(item1), Ok(item2), Ok(item3)) => {
                         let res = self(p1, item1, item2, item3);
                         Box::pin(async move {res.await.into_response()})
@@ -283,7 +266,7 @@ const _: (/* one FromParam without tuple and FromRequest items */) = {
                 // `params` has already `append`ed once before this code
                 let p1 = unsafe {req.path.assume_one_param()};
 
-                match (from_param_bytes(p1), from_request::<Item1>(req), from_request::<Item2>(req), from_request::<Item3>(req), from_request::<Item4>(req)) {
+                match (P1::from_raw_param(p1), from_request::<Item1>(req), from_request::<Item2>(req), from_request::<Item3>(req), from_request::<Item4>(req)) {
                     (Ok(p1), Ok(item1), Ok(item2), Ok(item3), Ok(item4)) => {
                         let res = self(p1, item1, item2, item3, item4);
                         Box::pin(async move {res.await.into_response()})
@@ -311,7 +294,7 @@ const _: (/* one FromParam and FromRequest items */) = {
                 // `params` has already `append`ed once before this code
                 let p1 = unsafe {req.path.assume_one_param()};
 
-                match (from_param_bytes(p1), from_request::<Item1>(req)) {
+                match (P1::from_raw_param(p1), from_request::<Item1>(req)) {
                     (Ok(p1), Ok(item1)) => {
                         let res = self((p1,), item1);
                         Box::pin(async move {res.await.into_response()})
@@ -334,7 +317,7 @@ const _: (/* one FromParam and FromRequest items */) = {
                 // `params` has already `append`ed once before this code
                 let p1 = unsafe {req.path.assume_one_param()};
 
-                match (from_param_bytes(p1), from_request::<Item1>(req), from_request::<Item2>(req)) {
+                match (P1::from_raw_param(p1), from_request::<Item1>(req), from_request::<Item2>(req)) {
                     (Ok(p1), Ok(item1), Ok(item2)) => {
                         let res = self((p1,), item1, item2);
                         Box::pin(async move {res.await.into_response()})
@@ -358,7 +341,7 @@ const _: (/* one FromParam and FromRequest items */) = {
                 // `params` has already `append`ed once before this code
                 let p1 = unsafe {req.path.assume_one_param()};
                 
-                match (from_param_bytes(p1), from_request::<Item1>(req), from_request::<Item2>(req), from_request::<Item3>(req)) {
+                match (P1::from_raw_param(p1), from_request::<Item1>(req), from_request::<Item2>(req), from_request::<Item3>(req)) {
                     (Ok(p1), Ok(item1), Ok(item2), Ok(item3)) => {
                         let res = self((p1,), item1, item2, item3);
                         Box::pin(async move {res.await.into_response()})
@@ -383,7 +366,7 @@ const _: (/* one FromParam and FromRequest items */) = {
                 // `params` has already `append`ed once before this code
                 let p1 = unsafe {req.path.assume_one_param()};
                 
-                match (from_param_bytes(p1), from_request::<Item1>(req), from_request::<Item2>(req), from_request::<Item3>(req), from_request::<Item4>(req)) {
+                match (P1::from_raw_param(p1), from_request::<Item1>(req), from_request::<Item2>(req), from_request::<Item3>(req), from_request::<Item4>(req)) {
                     (Ok(p1), Ok(item1), Ok(item2), Ok(item3), Ok(item4)) => {
                         let res = self((p1,), item1, item2, item3, item4);
                         Box::pin(async move {res.await.into_response()})
@@ -411,7 +394,7 @@ const _: (/* two PathParams and FromRequest items */) = {
                 // `params` has already `append`ed twice before this code
                 let (p1, p2) = unsafe {req.path.assume_two_params()};
 
-                match (from_param_bytes(p1), from_param_bytes(p2), from_request::<Item1>(req)) {
+                match (FromParam::from_raw_param(p1), FromParam::from_raw_param(p2), from_request::<Item1>(req)) {
                     (Ok(p1), Ok(p2), Ok(item1)) => {
                         let res = self((p1, p2), item1); 
                         Box::pin(async move {res.await.into_response()})
@@ -435,7 +418,7 @@ const _: (/* two PathParams and FromRequest items */) = {
                 // `params` has already `append`ed twice before this code
                 let (p1, p2) = unsafe {req.path.assume_two_params()};
 
-                match (from_param_bytes(p1), from_param_bytes(p2), from_request::<Item1>(req), from_request::<Item2>(req)) {
+                match (FromParam::from_raw_param(p1), FromParam::from_raw_param(p2), from_request::<Item1>(req), from_request::<Item2>(req)) {
                     (Ok(p1), Ok(p2), Ok(item1), Ok(item2)) => {
                         let res = self((p1, p2), item1, item2);
                         Box::pin(async move {res.await.into_response()})
@@ -460,7 +443,7 @@ const _: (/* two PathParams and FromRequest items */) = {
                 // `params` has already `append`ed twice before this code
                 let (p1, p2) = unsafe {req.path.assume_two_params()};
 
-                match (from_param_bytes(p1), from_param_bytes(p2), from_request::<Item1>(req), from_request::<Item2>(req), from_request::<Item3>(req)) {
+                match (FromParam::from_raw_param(p1), FromParam::from_raw_param(p2), from_request::<Item1>(req), from_request::<Item2>(req), from_request::<Item3>(req)) {
                     (Ok(p1), Ok(p2), Ok(item1), Ok(item2), Ok(item3)) => {
                         let res = self((p1, p2), item1, item2, item3);
                         Box::pin(async move {res.await.into_response()})
@@ -486,7 +469,7 @@ const _: (/* two PathParams and FromRequest items */) = {
                 // `params` has already `append`ed twice before this code
                 let (p1, p2) = unsafe {req.path.assume_two_params()};
 
-                match (from_param_bytes(p1), from_param_bytes(p2), from_request::<Item1>(req), from_request::<Item2>(req), from_request::<Item3>(req), from_request::<Item4>(req)) {
+                match (FromParam::from_raw_param(p1), FromParam::from_raw_param(p2), from_request::<Item1>(req), from_request::<Item2>(req), from_request::<Item3>(req), from_request::<Item4>(req)) {
                     (Ok(p1), Ok(p2), Ok(item1), Ok(item2), Ok(item3), Ok(item4)) => {
                         let res = self((p1, p2), item1, item2, item3, item4);
                         Box::pin(async move {res.await.into_response()})

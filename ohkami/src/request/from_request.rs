@@ -1,13 +1,12 @@
 use std::borrow::Cow;
-use crate::{IntoResponse, Request, utils::ErrorMessage};
+use crate::{utils::ErrorMessage, IntoResponse, Request, Response};
 
 
 /// "Retirieved from a `Request`".
 /// 
-/// - `#[Query]`
-/// - `#[Payload]`
-/// 
-/// derives `FromRequest` impl for a struct.
+/// ### _required_
+/// - `type Errpr`
+/// - `fn from_request`
 /// 
 /// Of course, you can manually implement for your structs that can be extracted from a request：
 /// 
@@ -76,7 +75,12 @@ const _: () = {
     }
 };
 
+
 /// "Retrieved from a path/query param".
+/// 
+/// ### _required_
+/// - `type Errpr`
+/// - `fn from_param`
 /// 
 /// NOTE: *MUST NOT impl both `FromRequest` and `FromParam`*.
 pub trait FromParam<'p>: Sized {
@@ -88,6 +92,20 @@ pub trait FromParam<'p>: Sized {
     /// - `Cow::Borrowed(&'p str)` if not encoded in request
     /// - `Cow::Owned(String)` if encoded and ohkami has decoded
     fn from_param(param: Cow<'p, str>) -> Result<Self, Self::Error>;
+
+    #[inline(always)]
+    fn from_raw_param(raw_param: &'p [u8]) -> Result<Self, Response> {
+        Self::from_param(
+            ohkami_lib::percent_decode_utf8(raw_param)
+                .map_err(|_e| {
+                    #[cfg(debug_assertions)] crate::warning!(
+                        "Failed to decode percent encoded param `{}`: {_e}",
+                        raw_param.escape_ascii()
+                    );
+                    Response::InternalServerError()
+                })?
+        ).map_err(IntoResponse::into_response)
+    }
 } const _: () = {
     impl<'p> FromParam<'p> for String {
         type Error = std::convert::Infallible;
@@ -111,23 +129,27 @@ pub trait FromParam<'p>: Sized {
     impl<'p> FromParam<'p> for &'p str {
         type Error = ErrorMessage;
 
-        #[inline(always)]
         fn from_param(param: Cow<'p, str>) -> Result<Self, Self::Error> {
-            #[cold] #[inline(never)]
-            fn unexpectedly_percent_encoded(param: &str) -> ErrorMessage {
-                crate::warning!("\
-                    `&str` can't handle percent encoded parameters. \
-                    Use `Cow<'_, str>` (or `String`) to handle them. \
-                ");
-                ErrorMessage(format!(    
-                    "Unexpected path params `{param}`: percent encoded"
-                ))
-            }
-
             match param {
                 Cow::Borrowed(s) => Ok(s),
-                Cow::Owned(_)    => Err(unexpectedly_percent_encoded(&param)),
+                Cow::Owned(_) => Err({
+                    crate::warning!("\
+                        `&str` can't handle percent encoded parameters. \
+                        Use `Cow<'_, str>` (or `String`) to handle them. \
+                    ");
+                    ErrorMessage(format!(    
+                        "Unexpected path params `{param}`: percent encoded"
+                    ))
+                }),
             }
+        }
+
+        #[cfg(not(debug_assertions))]
+        #[inline(always)]
+        fn from_raw_param(raw_param: &'p [u8]) -> Result<Self, Response> {
+            Ok(unsafe {
+                std::str::from_utf8_unchecked(raw_param)
+            })
         }
     }
 
