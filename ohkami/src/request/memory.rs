@@ -86,7 +86,7 @@ pub struct Memory<'req, Data: Send + Sync + 'static>(&'req Data);
 
 impl<'req, Data: Send + Sync + 'static>
 super::FromRequest<'req> for Memory<'req, Data> {
-    type Error = crate::FromRequestError;
+    type Error = std::convert::Infallible;
 
     #[inline]
     fn from_request(req: &'req crate::Request) -> Option<Result<Self, Self::Error>> {

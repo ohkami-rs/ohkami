@@ -31,16 +31,6 @@
 
 #[allow(unused)]
 mod __rt__ {
-    #[macro_export]
-    macro_rules! warning {
-        ( $( $t:tt )* ) => {{
-            eprintln!( $( $t )* );
-
-            #[cfg(feature="rt_worker")]
-            worker::console_log!( $( $t )* );
-        }};
-    }
-
     #[cfg(all(feature="rt_tokio", feature="DEBUG"))]
     pub(crate) use tokio::test;
     #[allow(unused)]
@@ -78,7 +68,7 @@ mod __rt__ {
 
 
 mod request;
-pub use request::{Request, Method, FromRequestError, FromRequest, FromParam, Memory};
+pub use request::{Request, Method, FromRequest, FromParam, Memory};
 pub use ::ohkami_macros::FromRequest;
 
 mod response;
@@ -104,6 +94,17 @@ pub mod typed;
 pub mod testing;
 
 pub mod utils {
+    #[doc(hidden)]
+    #[macro_export]
+    macro_rules! warning {
+        ( $( $t:tt )* ) => {{
+            eprintln!( $( $t )* );
+
+            #[cfg(feature="rt_worker")]
+            worker::console_log!( $( $t )* );
+        }};
+    }
+
     pub use crate::fangs::util::FangAction;
 
     #[cfg(feature="sse")]
@@ -151,6 +152,11 @@ pub mod utils {
             }
         }
         impl std::error::Error for ErrorMessage {}
+        impl super::IntoResponse for ErrorMessage {
+            fn into_response(self) -> crate::Response {
+                crate::Response::InternalServerError().with_text(self.0)
+            }
+        }
     };
 }
 

@@ -23,6 +23,7 @@ impl Session {
     }
 
     pub(crate) async fn manage(mut self) {
+        #[cold] #[inline(never)]
         fn panicking(panic: Box<dyn Any + Send>) -> Response {
             if let Some(msg) = panic.downcast_ref::<String>() {
                 crate::warning!("[Panicked]: {msg}");
@@ -41,6 +42,8 @@ impl Session {
             struct Timeout<Sleep, Proc> { sleep: Sleep, proc: Proc }
             impl<Sleep: Future<Output = ()>, Proc: Future<Output = ()>> Future for Timeout<Sleep, Proc> {
                 type Output = ();
+                
+                #[inline]
                 fn poll(mut self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> Poll<Self::Output> {
                     unsafe {
                         match self.as_mut().map_unchecked_mut(|t| &mut t.proc).poll(cx) {

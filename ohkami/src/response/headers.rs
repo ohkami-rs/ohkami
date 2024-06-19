@@ -93,7 +93,7 @@ const _: () = {
                             *value = Cow::Owned(s);
                         }
                     }
-                    set.0.size += 1 + self_len;
+                    set.0.size += 2 + self_len;
                 } else {
                     c.insert(key, self.0);
                     set.0.size += self_len;
@@ -397,7 +397,7 @@ impl Headers {
             Some(v) => {
                 match v {
                     Cow::Borrowed(slice) => {
-                        let mut appended = String::with_capacity(slice.len() + 1 + value_len);
+                        let mut appended = String::with_capacity(slice.len() + 2 + value_len);
                         appended.push_str(slice);
                         appended.push_str(", ");
                         appended.push_str(&value);
@@ -408,7 +408,7 @@ impl Headers {
                         string.push_str(&value);
                     }
                 }
-                value_len + 1
+                value_len + 2
             }
             None => {
                 *target = Some(value);
