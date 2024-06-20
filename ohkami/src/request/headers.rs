@@ -402,16 +402,7 @@ impl Headers {
     #[inline]
     pub(crate) fn init() -> Self {
         Self {
-            standard: Box::new([
-                None, None, None, None, None, None,
-                None, None, None, None, None, None,
-                None, None, None, None, None, None,
-                None, None, None, None, None, None,
-                None, None, None, None, None, None,
-                None, None, None, None, None, None,
-                None, None, None, None, None, None,
-                None, None, None, None,
-            ]),
+            standard: Box::new([const {None}; N_CLIENT_HEADERS]),
             custom: None,
         }
     }

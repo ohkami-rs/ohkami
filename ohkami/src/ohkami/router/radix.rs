@@ -10,7 +10,7 @@ pub(crate) struct RadixRouter(pub(super) Node);
 pub(super) struct Node {
     pub(super) patterns: &'static [Pattern],
     pub(super) proc:     ProcMap,
-    pub(super) children: Box<[Node]>,
+    pub(super) children: &'static [Node],
 } const _: () = {
     impl std::fmt::Debug for Node {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

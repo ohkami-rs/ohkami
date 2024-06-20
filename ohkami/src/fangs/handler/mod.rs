@@ -45,31 +45,50 @@ impl Handler {
 
         Self(BoxedFPC::from_proc(HandlerProc(proc)))
     }
+
+    pub(crate) fn __new__<
+        Fut: Future<Output = Response> + Send
+    >(
+        proc: impl Fn(&mut Request) -> Fut + Send + Sync + 'static
+    ) -> Self {
+        
+
+        todo!()
+    }
 }
 
 impl Handler {
-    pub(crate) fn default_not_found() -> Self {
-        async fn not_found() -> Response {
-            Response::NotFound()
-        }
-
-        not_found.into_handler()
+    pub(crate) fn default_not_found() -> Self {        
+        Handler({
+            static H: std::sync::OnceLock<Handler> = std::sync::OnceLock::new();
+            H.get_or_init(|| {
+                async fn not_found() -> Response {
+                    Response::NotFound()
+                }
+                not_found.into_handler()
+            }).0.clone()
+        })
     }
-
-
     pub(crate) fn default_no_content() -> Self {
-        async fn no_content() -> Response {
-            Response::NoContent()
-        }
-
-        no_content.into_handler()
+        Handler({
+            static H: std::sync::OnceLock<Handler> = std::sync::OnceLock::new();
+            H.get_or_init(|| {
+                async fn not_found() -> Response {
+                    Response::NoContent()
+                }
+                not_found.into_handler()
+            }).0.clone()
+        })
     }
-
     pub(crate) fn default_method_not_allowed() -> Self {
-        async fn method_not_allowed() -> Response {
-            Response::MethodNotAllowed()
-        }
-
-        method_not_allowed.into_handler()
+        Handler({
+            static H: std::sync::OnceLock<Handler> = std::sync::OnceLock::new();
+            H.get_or_init(|| {
+                async fn not_found() -> Response {
+                    Response::MethodNotAllowed()
+                }
+                not_found.into_handler()
+            }).0.clone()
+        })
     }
 }
