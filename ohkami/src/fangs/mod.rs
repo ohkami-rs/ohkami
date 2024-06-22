@@ -38,21 +38,22 @@ impl<Proc: FangProc> FangProcCaller for Proc {
     }
 }
 
-pub struct BoxedFPC(Box<dyn
+#[derive(Clone/* copy pointer */)]
+pub struct BoxedFPC(&'static (dyn
     FangProcCaller + Send + Sync + 'static
->);
-impl BoxedFPC {
-    pub(crate) fn from_proc(proc: impl FangProcCaller + Send + Sync + 'static) -> Self {
-        Self(Box::new(proc))
-    }
-}
+));
 const _: () = {
+    impl BoxedFPC {
+        pub(crate) fn from_proc(proc: impl FangProcCaller + Send + Sync + 'static) -> Self {
+            Self(Box::leak(Box::new(proc)))
+        }
+    }
+
     impl Deref for BoxedFPC {
         type Target = dyn FangProcCaller + Send + Sync + 'static;
-        
         #[inline(always)]
         fn deref(&self) -> &Self::Target {
-            &*self.0
+            self.0
         }
     }
 
@@ -65,12 +66,11 @@ const _: () = {
     impl FangProc for BoxedFPC {
         #[inline(always)]
         fn bite<'b>(&'b self, req: &'b mut Request) -> impl std::future::Future<Output = Response> + Send {
-            (&*self.0).call_bite(req)
+            self.0.call_bite(req)
         }
-
         #[inline]
         fn bite_boxed<'b>(&'b self, req: &'b mut Request) -> Pin<Box<dyn Future<Output = Response> + Send + 'b>> {
-            (&*self.0).call_bite(req)
+            self.0.call_bite(req)
         }
     }
 };

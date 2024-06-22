@@ -423,17 +423,7 @@ impl Headers {
     #[inline]
     pub(crate) fn new() -> Self {
         Self {
-            standard: Box::new([
-                None, None, None, None, None,
-                None, None, None, None, None,
-                None, None, None, None, None,
-                None, None, None, None, None,
-                None, None, None, None, None,
-                None, None, None, None, None,
-                None, None, None, None, None,
-                None, None, None, None, None,
-                None, None, None, None,
-            ]),
+            standard: Box::new([const {None}; N_SERVER_HEADERS]),
             insertlog: Vec::with_capacity(8),
             custom:    None,
             setcookie: None,

@@ -150,16 +150,13 @@ impl Response {
     pub(crate) async fn send(mut self, conn: &mut (impl AsyncWriter + Unpin)) {
         self.complete();
 
-        let mut buf = Vec::with_capacity(128);
-        buf.extend_from_slice(b"HTTP/1.1 ");
-        buf.extend_from_slice(self.status.as_bytes());
-        buf.extend_from_slice(b"\r\n");
+        let mut buf = Vec::from(self.status.line());
         self.headers.write_to(&mut buf);
 
         match self.content {
             Content::None => {
                 conn.write_all(&buf).await.expect("Failed to send response");
-            },
+            }
 
             Content::Payload(bytes) => {
                 buf.extend_from_slice(&bytes);

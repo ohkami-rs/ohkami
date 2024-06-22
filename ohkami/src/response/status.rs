@@ -25,8 +25,10 @@ macro_rules! status {
                 }
             }
             #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
-            #[inline(always)] pub(crate) const fn as_bytes(&self) -> &'static [u8] {
-                self.as_str().as_bytes()
+            #[inline(always)] pub(crate) const fn line(&self) -> &'static [u8] {
+                match self {
+                    $( Self::$name => concat!("HTTP/1.1 ", $message, "\r\n").as_bytes(), )*
+                }
             }
         }
 

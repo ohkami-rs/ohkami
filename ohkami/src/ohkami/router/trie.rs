@@ -135,8 +135,8 @@ pub(super) enum Pattern {
 #[derive(Clone)]
 pub(super) struct FangsList(Vec<(
     RouterID,
-    Arc<dyn Fangs>)
->);
+    Arc<dyn Fangs>
+)>);
 impl FangsList {
     fn new() -> Self {
         Self(Vec::new())
@@ -329,7 +329,7 @@ impl Node {
         super::radix::Node {
             proc:     handlers.into_procmap_with(fangs_list),
             patterns: Box::leak(patterns.into_iter().map(Pattern::into_radix).collect()),
-            children: children.into_iter().map(Node::into_radix).collect::<Box<[_]>>(),
+            children: Box::leak(children.into_iter().map(Node::into_radix).collect::<Box<[_]>>()),
         }
     }
 }
