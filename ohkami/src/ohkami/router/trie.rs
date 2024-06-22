@@ -327,9 +327,10 @@ impl Node {
         });
 
         super::radix::Node {
-            proc:     handlers.into_procmap_with(fangs_list),
-            patterns: Box::leak(patterns.into_iter().map(Pattern::into_radix).collect()),
-            children: Box::leak(children.into_iter().map(Node::into_radix).collect::<Box<[_]>>()),
+            patterns:  Box::leak(patterns.into_iter().map(Pattern::into_radix).collect()),
+            children:  Box::leak(children.into_iter().map(Node::into_radix).collect::<Box<[_]>>()),
+            proc:      handlers.into_procmap_with(fangs_list),
+            __catch__: /* method: HEAD -> clone GET's one but drop content, other -> come on */,
         }
     }
 }
