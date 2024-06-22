@@ -45,16 +45,6 @@ impl Handler {
 
         Self(BoxedFPC::from_proc(HandlerProc(proc)))
     }
-
-    pub(crate) fn __new__<
-        Fut: Future<Output = Response> + Send
-    >(
-        proc: impl Fn(&mut Request) -> Fut + Send + Sync + 'static
-    ) -> Self {
-        
-
-        todo!()
-    }
 }
 
 impl Handler {
