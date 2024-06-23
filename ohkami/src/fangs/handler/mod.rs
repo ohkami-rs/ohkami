@@ -48,6 +48,7 @@ impl Handler {
     }
 }
 
+#[allow(unused)]
 impl Handler {
     pub(crate) fn default_not_found() -> Self {        
         Handler({
@@ -64,10 +65,21 @@ impl Handler {
         Handler({
             static H: std::sync::OnceLock<Handler> = std::sync::OnceLock::new();
             H.get_or_init(|| {
-                async fn not_found() -> Response {
+                async fn no_content() -> Response {
                     Response::NoContent()
                 }
-                not_found.into_handler()
+                no_content.into_handler()
+            }).0.clone()
+        })
+    }
+    pub(crate) fn default_not_implemented() -> Self {
+        Handler({
+            static H: std::sync::OnceLock<Handler> = std::sync::OnceLock::new();
+            H.get_or_init(|| {
+                async fn not_implemented() -> Response {
+                    Response::NotImplemented()
+                }
+                not_implemented.into_handler()
             }).0.clone()
         })
     }

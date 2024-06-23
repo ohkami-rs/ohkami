@@ -163,9 +163,9 @@ impl<Inner: FangProc> FangProc for CORSProc<Inner> {
                     .Vary(append("Access-Control-Request-Headers"));
             }
 
-            if res.status.code() < 300 {
-                h.ContentType(None).ContentLength(None);
+            if res.status != Status::NotFound {
                 res.status = Status::OK;
+                h.ContentType(None).ContentLength(None);
             }
         }
 
@@ -188,6 +188,19 @@ mod test {
     use super::CORS;
 
     #[crate::__rt__::test] async fn options_request() {
+        let t = Ohkami::with((),
+            "/hello".GET(|| async {"Hello!"})
+        ).test(); {
+            let req = TestRequest::OPTIONS("/");
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status(), Status::NotFound);
+        } {
+            let req = TestRequest::OPTIONS("/hello");
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status(), Status::NotImplemented);
+            assert_eq!(res.text(), None);
+        }
+
         let t = Ohkami::with(CORS::new("https://example.x.y.z"),
             "/hello".GET(|| async {"Hello!"})
         ).test(); {

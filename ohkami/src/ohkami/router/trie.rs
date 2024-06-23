@@ -192,15 +192,24 @@ impl TrieRouter {
                 move |req| {
                     let h = h.clone();
                     Box::pin(async move {
-                        Into::<BoxedFPC>::into(h)
-                            .call_bite(req).await
-                            .without_content()
+                        let mut res = Into::<BoxedFPC>::into(h)
+                            .call_bite(req).await;
+                        {/* almost `res.drop_content()` but remain `Content-Type` */
+                            res.headers.set().ContentLength(None);
+                            res.content = crate::response::Content::None;
+                        }
+                        res
                     })
                 }
             })).expect("Failed to register handler");
         }
 
-        self.OPTIONS.register_handler(route.into_iter(), Handler::default_no_content()).expect("Failed to register handler")
+        /*
+            Ohkami, by default, does not support handling OPTIONS requests
+            (responding with available request methods in `Allow` header) for security reasons.
+            CORS fang must set reset status to `OK` unnless the original one is `Not Found`.
+        */
+        self.OPTIONS.register_handler(route.into_iter(), Handler::default_not_implemented()).expect("Failed to register handler")
     }
 
     pub(crate) fn apply_fangs(&mut self, id: RouterID, fangs: Arc<dyn Fangs>) {
