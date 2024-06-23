@@ -192,6 +192,9 @@ impl TestResponse {
             .and_then(|h| self.0.headers.get(h))
             .or_else(|| self.0.headers.get_custom(name))
     }
+    pub fn headers(&self) -> impl Iterator<Item = (&str, &str)> {
+        self.0.headers.iter()
+    }
 
     pub fn text(&self) -> Option<&str> {
         if self.0.headers.ContentType()?.starts_with("text/plain") {

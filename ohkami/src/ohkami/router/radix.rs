@@ -1,3 +1,4 @@
+use crate::request::Path;
 use crate::{Method, Request, Response};
 use crate::fangs::{FangProcCaller, BoxedFPC, Handler};
 use ohkami_lib::Slice;
@@ -5,12 +6,21 @@ use std::fmt::Write as _;
 
 
 #[derive(Debug)]
-pub(crate) struct RadixRouter(pub(super) Node);
+pub(crate) struct RadixRouter {
+    pub(super) GET:     Node,
+    pub(super) PUT:     Node,
+    pub(super) POST:    Node,
+    pub(super) PATCH:   Node,
+    pub(super) DELETE:  Node,
+    pub(super) HEAD:    Node,
+    pub(super) OPTIONS: Node,
+}
 
 pub(super) struct Node {
-    pub(super) patterns: &'static [Pattern],
-    pub(super) proc:     ProcMap,
-    pub(super) children: &'static [Node],
+    pub(super) patterns:  &'static [Pattern],
+    pub(super) children:  &'static [Node],
+    pub(super) proc:      BoxedFPC,
+    pub(super) __catch__: BoxedFPC,
 } const _: () = {
     impl std::fmt::Debug for Node {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -54,29 +64,6 @@ pub(super) struct Node {
     }
 };
 
-pub(super) struct ProcMap {
-    pub(super) GET:       BoxedFPC,
-    pub(super) PUT:       BoxedFPC,
-    pub(super) POST:      BoxedFPC,
-    pub(super) PATCH:     BoxedFPC,
-    pub(super) DELETE:    BoxedFPC,
-    pub(super) OPTIONS:   BoxedFPC,
-    pub(super) __catch__: BoxedFPC,
-} impl ProcMap {
-    #[inline(always)]
-    const fn lookup(&self, method: Method) -> &BoxedFPC {
-        match method {
-            Method::GET     => &self.GET,
-            Method::PUT     => &self.PUT,
-            Method::POST    => &self.POST,
-            Method::PATCH   => &self.PATCH,
-            Method::DELETE  => &self.DELETE,
-            Method::OPTIONS => &self.OPTIONS,
-            Method::HEAD    => &self.GET,
-        }
-    }
-}
-
 pub(super) enum Pattern {
     Static(&'static [u8]),
     Param,
@@ -105,29 +92,33 @@ impl RadixRouter {
         &self,
         req: &mut Request,
     ) -> Response {
-        let res = self.0.search(req).call_bite(req).await;
-        
-        match req.method {
-            Method::HEAD => res.without_content(),
-            _            => res,
-        }
+        (match req.method {
+            Method::GET     => &self.GET,
+            Method::PUT     => &self.PUT,
+            Method::POST    => &self.POST,
+            Method::PATCH   => &self.PATCH,
+            Method::DELETE  => &self.DELETE,
+            Method::HEAD    => &self.HEAD,
+            Method::OPTIONS => &self.OPTIONS,
+        }).search(&mut req.path).call_bite(req).await
     }
 }
 
 impl Node {
-    pub(super/* for test */) fn search(&self, req: &mut Request) -> &dyn FangProcCaller {
-        let method = req.method;
+    pub(super/* for test */) fn search(&self,
+        path: &mut Path
+    ) -> &dyn FangProcCaller {
         // SAFETY:
         // 1. `req` must be alive while `search`
-        // 2. `Request` DOESN'T have method that mutates `path`,
-        //    So what `path` refers to is NEVER changed by any other process
+        // 2. `Request` DOESN'T have method that mutates `bytes`,
+        //    So what `bytes` refers to is NEVER changed by any other process
         //    while `search`
-        let mut path = unsafe {req.path.normalized_bytes()};
+        let mut bytes = unsafe {path.normalized_bytes()};
 
         let mut target = self;
 
         #[cfg(feature="DEBUG")]
-        println!("[path] '{}'", path.escape_ascii());
+        println!("[path] '{}'", bytes.escape_ascii());
 
         loop {
             #[cfg(feature="DEBUG")]
@@ -137,42 +128,42 @@ impl Node {
             println!("[patterns] {:?}", target.patterns);
     
             for pattern in target.patterns {
-                if path.is_empty() || unsafe {path.get_unchecked(0)} != &b'/' {
+                if bytes.is_empty() || unsafe {bytes.get_unchecked(0)} != &b'/' {
                     // At least one `pattern` to match is remaining
-                    // but remaining `path` doesn't start with '/'
-                    return &*target.proc.__catch__
+                    // but remaining `bytes` doesn't start with '/'
+                    return &target.__catch__
                 }
 
-                path = unsafe {path.get_unchecked(1..)};
+                bytes = unsafe {bytes.get_unchecked(1..)};
                 
                 #[cfg(feature="DEBUG")]
-                println!("[path striped prefix '/'] '{}'", path.escape_ascii());
+                println!("[bytes striped prefix '/'] '{}'", bytes.escape_ascii());
         
                 match pattern {
-                    Pattern::Static(s)  => path = match path.strip_prefix(*s) {
+                    Pattern::Static(s)  => bytes = match bytes.strip_prefix(*s) {
                         Some(remaining) => remaining,
-                        None            => return &*target.proc.__catch__,
+                        None            => return &target.__catch__,
                     },
                     Pattern::Param      => {
-                        let (param, remaining) = split_next_section(path);
-                        unsafe {req.path.push_param(Slice::from_bytes(param))}
-                        path = remaining;
+                        let (param, remaining) = split_next_section(bytes);
+                        unsafe {path.push_param(Slice::from_bytes(param))}
+                        bytes = remaining;
                     },
                 }
             }
 
-            if path.is_empty() {
+            if bytes.is_empty() {
                 #[cfg(feature="DEBUG")]
                 println!("Found: {target:?}");
         
-                return  &*target.proc.lookup(method)
+                return  &target.proc
             } else {
                 #[cfg(feature="DEBUG")]
                 println!("not found, searching children: {:#?}", target.children);
         
-                target = match target.matchable_child(path) {
+                target = match target.matchable_child(bytes) {
                     Some(child) => child,
-                    None        => return &*target.proc.__catch__,
+                    None        => return &target.__catch__,
                 }
             }
         }

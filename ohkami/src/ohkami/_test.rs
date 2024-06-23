@@ -76,34 +76,56 @@ fn my_ohkami() -> Ohkami {
 #[crate::__rt__::test] async fn test_handler_registration() {
     let t = my_ohkami().test();
 
-
     /* GET /health */
 
     let req = TestRequest::GET("/health");
-    let res = t.oneshot(req).await;
-    assert_eq!(res.text(), Some("health_check"));
+    let get_res = t.oneshot(req).await;
+    assert_eq!(get_res.text(), Some("health_check"));
 
+    let req = TestRequest::HEAD("/health");
+    let head_res = t.oneshot(req).await;
+    assert_eq!(head_res.text(), None);
+    assert_eq!(
+        {let mut h = get_res.headers().filter(|(name, _)| *name != "Content-Length").collect::<Vec<_>>(); h.sort(); h},
+        {let mut h = head_res.headers().collect::<Vec<_>>(); h.sort(); h}
+    );
 
     /* GET /api/profiles/:username */
 
     let req = TestRequest::GET("/api/profiles");
-    let res = t.oneshot(req).await;
-    assert_eq!(res.status(), Status::NotFound);
+    let get_res = t.oneshot(req).await;
+    assert_eq!(get_res.status(), Status::NotFound);
+
+    let req = TestRequest::HEAD("/api/profiles");
+    let head_res = t.oneshot(req).await;
+    assert_eq!(head_res.text(), None);
+    assert_eq!(
+        {let mut h = get_res.headers().filter(|(name, _)| *name != "Content-Length").collect::<Vec<_>>(); h.sort(); h},
+        {let mut h = head_res.headers().collect::<Vec<_>>(); h.sort(); h}
+    );
 
     let req = TestRequest::GET("/api/profiles/123");
-    let res = t.oneshot(req).await;
-    assert_eq!(res.text(), Some("get_profile of user `123`"));
+    let get_res = t.oneshot(req).await;
+    assert_eq!(get_res.text(), Some("get_profile of user `123`"));
+
+    let req = TestRequest::HEAD("/api/profiles/123");
+    let head_res = t.oneshot(req).await;
+    assert_eq!(head_res.text(), None);
+    assert_eq!(
+        {let mut h = get_res.headers().filter(|(name, _)| *name != "Content-Length").collect::<Vec<_>>(); h.sort(); h},
+        {let mut h = head_res.headers().collect::<Vec<_>>(); h.sort(); h}
+    );
 
 
     /* POST,DELETE /api/profiles/:username/follow */
 
     let req = TestRequest::GET("/api/profiles/the_user/follow");
     let res = t.oneshot(req).await;
-    assert_eq!(res.status(), Status::MethodNotAllowed);
+    assert_eq!(res.status(), Status::NotFound);
 
     let req = TestRequest::POST("/api/profiles/the_user");
     let res = t.oneshot(req).await;
-    assert_eq!(res.status(), Status::MethodNotAllowed);
+    assert_eq!(res.status(), Status::NotFound);
 
     let req = TestRequest::POST("/api/profiles/the_user/follow");
     let res = t.oneshot(req).await;
