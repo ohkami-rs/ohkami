@@ -188,8 +188,7 @@ mod test {
     use super::CORS;
 
     #[crate::__rt__::test] async fn options_request() {
-        let t = Ohkami::with(
-            CORS::new("https://example.x.y.z"),
+        let t = Ohkami::with(CORS::new("https://example.x.y.z"),
             "/hello".GET(|| async {"Hello!"})
         ).test(); {
             let req = TestRequest::OPTIONS("/");
@@ -204,8 +203,7 @@ mod test {
     }
 
     #[crate::__rt__::test] async fn cors_headers() {
-        let t = Ohkami::with(
-            CORS::new("https://example.example"),
+        let t = Ohkami::with(CORS::new("https://example.example"),
             "/".GET(|| async {"Hello!"})
         ).test(); {
             let req = TestRequest::GET("/");

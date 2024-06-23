@@ -64,29 +64,6 @@ pub(super) struct Node {
     }
 };
 
-// pub(super) struct ProcMap {
-//     pub(super) GET:       BoxedFPC,
-//     pub(super) PUT:       BoxedFPC,
-//     pub(super) POST:      BoxedFPC,
-//     pub(super) PATCH:     BoxedFPC,
-//     pub(super) DELETE:    BoxedFPC,
-//     pub(super) OPTIONS:   BoxedFPC,
-//     pub(super) __catch__: BoxedFPC,
-// } impl ProcMap {
-//     #[inline(always)]
-//     const fn lookup(&self, method: Method) -> &BoxedFPC {
-//         match method {
-//             Method::GET     => &self.GET,
-//             Method::PUT     => &self.PUT,
-//             Method::POST    => &self.POST,
-//             Method::PATCH   => &self.PATCH,
-//             Method::DELETE  => &self.DELETE,
-//             Method::OPTIONS => &self.OPTIONS,
-//             Method::HEAD    => &self.GET,
-//         }
-//     }
-// }
-
 pub(super) enum Pattern {
     Static(&'static [u8]),
     Param,

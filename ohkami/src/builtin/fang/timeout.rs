@@ -139,7 +139,7 @@ const _: () = {
     {
         let req = TestRequest::PUT("/greet/ohkami/1");
         let res = t.oneshot(req).await;
-        assert_eq!(res.status(), Status::MethodNotAllowed);
+        assert_eq!(res.status(), Status::NotFound);
     }
     {
         let req = TestRequest::GET("/greet/ohkami/1");

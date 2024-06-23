@@ -6,6 +6,7 @@ use crate::{Request, Response};
 use std::{pin::Pin, future::Future};
 
 
+#[derive(Clone)]
 pub struct Handler(BoxedFPC);
 
 const _: () = {
@@ -65,17 +66,6 @@ impl Handler {
             H.get_or_init(|| {
                 async fn not_found() -> Response {
                     Response::NoContent()
-                }
-                not_found.into_handler()
-            }).0.clone()
-        })
-    }
-    pub(crate) fn default_method_not_allowed() -> Self {
-        Handler({
-            static H: std::sync::OnceLock<Handler> = std::sync::OnceLock::new();
-            H.get_or_init(|| {
-                async fn not_found() -> Response {
-                    Response::MethodNotAllowed()
                 }
                 not_found.into_handler()
             }).0.clone()
