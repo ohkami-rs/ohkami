@@ -12,7 +12,6 @@ pub(crate) struct RadixRouter {
     pub(super) POST:    Node,
     pub(super) PATCH:   Node,
     pub(super) DELETE:  Node,
-    pub(super) HEAD:    Node,
     pub(super) OPTIONS: Node,
 }
 
@@ -98,8 +97,15 @@ impl RadixRouter {
             Method::POST    => &self.POST,
             Method::PATCH   => &self.PATCH,
             Method::DELETE  => &self.DELETE,
-            Method::HEAD    => &self.HEAD,
             Method::OPTIONS => &self.OPTIONS,
+            Method::HEAD => {
+                let mut res = self.GET.search(&mut req.path).call_bite(req).await;
+                {/* almost `res.drop_content()` but leave `Content-Type` */
+                    res.headers.set().ContentLength(None);
+                    res.content = crate::response::Content::None;
+                }
+                return res
+            }
         }).search(&mut req.path).call_bite(req).await
     }
 }
@@ -123,7 +129,6 @@ impl Node {
         loop {
             #[cfg(feature="DEBUG")]
             println!("[target] {:#?}", target);
-
             #[cfg(feature="DEBUG")]
             println!("[patterns] {:?}", target.patterns);
     
@@ -140,11 +145,11 @@ impl Node {
                 println!("[bytes striped prefix '/'] '{}'", bytes.escape_ascii());
         
                 match pattern {
-                    Pattern::Static(s)  => bytes = match bytes.strip_prefix(*s) {
+                    Pattern::Static(s) => bytes = match bytes.strip_prefix(*s) {
                         Some(remaining) => remaining,
                         None            => return &target.__catch__,
                     },
-                    Pattern::Param      => {
+                    Pattern::Param => {
                         let (param, remaining) = split_next_section(bytes);
                         unsafe {path.push_param(Slice::from_bytes(param))}
                         bytes = remaining;
