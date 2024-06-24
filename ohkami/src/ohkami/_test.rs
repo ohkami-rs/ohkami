@@ -422,3 +422,12 @@ fn my_ohkami() -> Ohkami {
     assert_eq!(res.status(), Status::OK);
     assert_eq!(res.text(),   Some("Hello, Mr. wolf!"));
 }
+
+#[test]
+#[should_panic(expected = "Duplicate routes registration: `/abc`")]
+fn duplcate_routes_registration() {
+    Ohkami::new((
+        "/abc".GET(|| async {"GET"}),
+        "/abc".PUT(|| async {"PUT"}),
+    ));
+}

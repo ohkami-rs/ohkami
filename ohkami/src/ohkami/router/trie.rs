@@ -6,7 +6,8 @@ use crate::fangs::{BoxedFPC, Fangs, Handler};
 
 #[derive(Debug)]
 pub struct TrieRouter {
-    pub(super) id: RouterID,
+    pub(super) id:      RouterID,
+    pub(super) routes:  std::collections::HashSet<&'static str>,
     pub(super) GET:     Node,
     pub(super) PUT:     Node,
     pub(super) POST:    Node,
@@ -158,7 +159,8 @@ const _: () = {
 impl TrieRouter {
     pub(crate) fn new() -> Self {
         Self {
-            id: RouterID::new(),
+            id:      RouterID::new(),
+            routes:  Default::default(),
             GET:     Node::root(),
             PUT:     Node::root(),
             POST:    Node::root(),
@@ -175,20 +177,78 @@ impl TrieRouter {
     pub(crate) fn register_handlers(&mut self, handlers: Handlers) {
         let Handlers { route, GET, PUT, POST, PATCH, DELETE } = handlers;
 
-        macro_rules! register_to {
+        let methods = if !self.routes.insert(route.literal()) {
+            panic!("Duplicate routes registration: `{}`", route.literal())
+        } else {
+            macro_rules! allow_methods {
+                ($($method:ident),*) => {{
+                    let mut methods = Vec::new();
+                    $(
+                        if $method.is_some() {
+                            methods.push(stringify!($method))
+                        }
+                    )*
+                    methods
+                }}
+            } allow_methods! { GET, PUT, POST, PATCH, DELETE }
+        };
+
+        macro_rules! register {
             ($( $method:ident ),*) => {$(
                 if let Some(h) = $method {
                     self.$method.register_handler(route.clone().into_iter(), h).expect("Failed to register handler");
                 }
             )*};
-        } register_to! { GET, PUT, POST, PATCH, DELETE }
+        } register! { GET, PUT, POST, PATCH, DELETE }
 
-        /*
-            Ohkami, by default, does not support handling OPTIONS requests
-            (responding with available request methods in `Allow` header) for security reasons.
-            CORS fang must set reset status to `OK` unnless the original one is `Not Found`.
-        */
-        self.OPTIONS.register_handler(route.into_iter(), Handler::default_not_implemented()).expect("Failed to register handler")
+        self.OPTIONS.register_handler(route.into_iter(), Handler::new(move |req| {
+            let mut available_methods = methods.clone();
+            if available_methods.contains(&"GET") {
+                available_methods.push("HEAD")
+            }
+            available_methods.push("OPTIONS");
+
+            Box::pin(async move {
+                use crate::{Method, Response};
+
+                #[cfg(debug_assertions)] {
+                    assert_eq!(req.method, Method::OPTIONS);
+                }
+
+                match req.headers.AccessControlRequestMethod() {
+                    Some(method) => {
+                        /*
+                            Ohkami, by default, does nothing more than setting
+                            `Access-Control-Allow-Methods` to preflight request.
+                            CORS fang must override `Not Implemented` response,
+                            whitch is the default for a valid preflight request,
+                            by a successful one in its proc.
+                        */
+                        (if available_methods.contains(&method) {
+                            Response::NotImplemented()
+                        } else {
+                            Response::BadRequest()
+                        }).with_headers(|h| h
+                            .AccessControlAllowMethods(available_methods.join(", "))
+                        )
+                    }
+                    None => {
+                        /*
+                            For security reasons, Ohkami doesn't support the
+                            normal behavior to OPTIONS request like
+
+                            ```
+                            Response::NoContent()
+                                .with_headers(|h| h
+                                    .Allow(available_methods.join(", "))
+                                )
+                            ```
+                        */
+                        Response::NotFound()
+                    }
+                }
+            })
+        })).expect("Failed to register handler")
     }
 
     pub(crate) fn apply_fangs(&mut self, id: RouterID, fangs: Arc<dyn Fangs>) {

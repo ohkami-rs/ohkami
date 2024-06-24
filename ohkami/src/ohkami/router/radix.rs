@@ -111,6 +111,7 @@ impl RadixRouter {
 }
 
 impl Node {
+    #[inline]
     pub(super/* for test */) fn search(&self,
         path: &mut Path
     ) -> &dyn FangProcCaller {

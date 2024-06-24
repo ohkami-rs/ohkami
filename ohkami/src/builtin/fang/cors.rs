@@ -1,6 +1,6 @@
 #![allow(non_snake_case)]
 
-use crate::{header::append, Fang, FangProc, IntoResponse, Method, Request, Response, Status};
+use crate::{header::append, Fang, FangProc, Request, Response, Status};
 
 
 /// # Builtin fang for CORS config
@@ -72,12 +72,21 @@ impl CORS {
         Self {
             AllowOrigin:      AccessControlAllowOrigin::from_literal(AllowOrigin),
             AllowCredentials: false,
-            AllowMethods:     Some(String::from("GET, PUT, POST, PATCH, DELETE, OPTIONS, HEAD")),
+            AllowMethods:     None,
             AllowHeaders:     None,
             ExposeHeaders:    None,
             MaxAge:           None,
         }
     }
+
+    /* Always use default for now...
+    /// Override `Access-Control-Allow-Methods` header value, it's default to
+    /// all available methods on the request path.
+    pub fn AllowMethods<const N: usize>(mut self, methods: [Method; N]) -> Self {
+        self.AllowMethods = Some(methods.map(|m| m.as_str()).join(", "));
+        self
+    }
+    */
 
     pub fn AllowCredentials(mut self) -> Self {
         if self.AllowOrigin.is_any() {
@@ -86,33 +95,18 @@ impl CORS {
                 'Access-Control-Allow-Origin' header \
                 must not have wildcard '*' when the request's credentials mode is 'include' \
             ");
-
             return self
         }
-
         self.AllowCredentials = true;
         self
     }
-    pub fn AllowMethods<const N: usize>(self, methods: [Method; N]) -> Self {
-        Self {
-            AllowMethods: Some(methods.map(|m| m.as_str())
-                .join(", ")
-            ), ..self
-        }
+    pub fn AllowHeaders<const N: usize>(mut self, headers: [&'static str; N]) -> Self {
+        self.AllowHeaders = Some(headers.join(", "));
+        self
     }
-    pub fn AllowHeaders<const N: usize>(self, headers: [&'static str; N]) -> Self {
-        Self {
-            AllowHeaders: Some(headers
-                .join(", ")
-            ), ..self
-        }
-    }
-    pub fn ExposeHeaders<const N: usize>(self, headers: [&'static str; N]) -> Self {
-        Self {
-            ExposeHeaders: Some(headers
-                .join(", ")
-            ), ..self
-        }
+    pub fn ExposeHeaders<const N: usize>(mut self, headers: [&'static str; N]) -> Self {
+        self.ExposeHeaders = Some(headers.join(", "));
+        self
     }
     pub fn MaxAge(mut self, delta_seconds: u32) -> Self {
         self.MaxAge = Some(delta_seconds);
@@ -134,7 +128,7 @@ pub struct CORSProc<Inner: FangProc> {
 /* Based on https://github.com/honojs/hono/blob/main/src/middleware/cors/index.ts; MIT */
 impl<Inner: FangProc> FangProc for CORSProc<Inner> {
     async fn bite<'b>(&'b self, req: &'b mut Request) -> Response {
-        let mut res = self.inner.bite(req).await.into_response();
+        let mut res = self.inner.bite(req).await;
 
         let mut h = res.headers.set();
 
@@ -163,7 +157,8 @@ impl<Inner: FangProc> FangProc for CORSProc<Inner> {
                     .Vary(append("Access-Control-Request-Headers"));
             }
 
-            if res.status != Status::NotFound {
+            /* override default `Not Implemented` response for valid preflight */
+            if res.status == Status::NotImplemented {
                 res.status = Status::OK;
                 h.ContentType(None).ContentLength(None);
             }
@@ -189,7 +184,7 @@ mod test {
 
     #[crate::__rt__::test] async fn options_request() {
         let t = Ohkami::with((),
-            "/hello".GET(|| async {"Hello!"})
+            "/hello".POST(|| async {"Hello!"})
         ).test(); {
             let req = TestRequest::OPTIONS("/");
             let res = t.oneshot(req).await;
@@ -197,12 +192,12 @@ mod test {
         } {
             let req = TestRequest::OPTIONS("/hello");
             let res = t.oneshot(req).await;
-            assert_eq!(res.status(), Status::NotImplemented);
+            assert_eq!(res.status(), Status::NotFound);
             assert_eq!(res.text(), None);
         }
 
         let t = Ohkami::with(CORS::new("https://example.x.y.z"),
-            "/hello".GET(|| async {"Hello!"})
+            "/hello".POST(|| async {"Hello!"})
         ).test(); {
             let req = TestRequest::OPTIONS("/");
             let res = t.oneshot(req).await;
@@ -210,7 +205,19 @@ mod test {
         } {
             let req = TestRequest::OPTIONS("/hello");
             let res = t.oneshot(req).await;
-            assert_eq!(res.status(), Status::OK);
+            assert_eq!(res.status(), Status::NotFound);
+            assert_eq!(res.text(), None);
+        } {
+            let req = TestRequest::OPTIONS("/hello")
+                .header("Access-Control-Request-Method", "DELETE");
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status(), Status::BadRequest/* Because `DELETE` is not available */);
+            assert_eq!(res.text(), None);
+        } {
+            let req = TestRequest::OPTIONS("/hello")
+                .header("Access-Control-Request-Method", "POST");
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status(), Status::OK/* Becasue `POST` is available */);
             assert_eq!(res.text(), None);
         }
     }
@@ -238,9 +245,55 @@ mod test {
             CORS::new("https://example.example")
                 .AllowCredentials()
                 .AllowHeaders(["Content-Type", "X-Custom"]),
-            "/".GET(|| async {"Hello!"})
+            "/abc"
+                .GET(|| async {"Hello!"})
+                .PUT(|| async {"Hello!"})
         ).test(); {
-            let req = TestRequest::GET("/");
+            let req = TestRequest::OPTIONS("/abc");
+            let res = t.oneshot(req).await;
+
+            assert_eq!(res.status().code(), 404/* Because `req` has no `Access-Control-Request-Method` */);
+            assert_eq!(res.text(), None);
+
+            assert_eq!(res.header("Access-Control-Allow-Origin"), Some("https://example.example"));
+            assert_eq!(res.header("Access-Control-Allow-Credentials"), Some("true"));
+            assert_eq!(res.header("Access-Control-Expose-Headers"), None);
+            assert_eq!(res.header("Access-Control-Max-Age"), None);
+            assert_eq!(res.header("Access-Control-Allow-Methods"), None/* Because `req` has no `Access-Control-Request-Method` */);
+            assert_eq!(res.header("Access-Control-Allow-Headers"), Some("Content-Type, X-Custom"));
+            assert_eq!(res.header("Vary"), Some("Access-Control-Request-Headers"));
+        } {
+            let req = TestRequest::OPTIONS("/abc")
+                .header("Access-Control-Request-Method", "PUT");
+            let res = t.oneshot(req).await;
+
+            assert_eq!(res.status().code(), 200/* Because `req` HAS available `Access-Control-Request-Method` */);
+            assert_eq!(res.text(), None);
+
+            assert_eq!(res.header("Access-Control-Allow-Origin"), Some("https://example.example"));
+            assert_eq!(res.header("Access-Control-Allow-Credentials"), Some("true"));
+            assert_eq!(res.header("Access-Control-Expose-Headers"), None);
+            assert_eq!(res.header("Access-Control-Max-Age"), None);
+            assert_eq!(res.header("Access-Control-Allow-Methods"), Some("GET, PUT, HEAD, OPTIONS")/* Because `req` HAS a `Access-Control-Request-Method` */);
+            assert_eq!(res.header("Access-Control-Allow-Headers"), Some("Content-Type, X-Custom"));
+            assert_eq!(res.header("Vary"), Some("Access-Control-Request-Headers"));
+        } {
+            let req = TestRequest::OPTIONS("/abc")
+                .header("Access-Control-Request-Method", "DELETE");
+            let res = t.oneshot(req).await;
+
+            assert_eq!(res.status().code(), 400/* Because `DELETE` is not available */);
+            assert_eq!(res.text(), None);
+
+            assert_eq!(res.header("Access-Control-Allow-Origin"), Some("https://example.example"));
+            assert_eq!(res.header("Access-Control-Allow-Credentials"), Some("true"));
+            assert_eq!(res.header("Access-Control-Expose-Headers"), None);
+            assert_eq!(res.header("Access-Control-Max-Age"), None);
+            assert_eq!(res.header("Access-Control-Allow-Methods"), Some("GET, PUT, HEAD, OPTIONS")/* Because `req` HAS a `Access-Control-Request-Method` */);
+            assert_eq!(res.header("Access-Control-Allow-Headers"), Some("Content-Type, X-Custom"));
+            assert_eq!(res.header("Vary"), Some("Access-Control-Request-Headers"));
+        } {
+            let req = TestRequest::PUT("/abc");
             let res = t.oneshot(req).await;
 
             assert_eq!(res.status().code(), 200);
@@ -253,29 +306,30 @@ mod test {
             assert_eq!(res.header("Access-Control-Allow-Methods"), None);
             assert_eq!(res.header("Access-Control-Allow-Headers"), None);
             assert_eq!(res.header("Vary"), None);
-        } {
-            let req = TestRequest::OPTIONS("/");
-            let res = t.oneshot(req).await;
-
-            assert_eq!(res.status().code(), 200);
-            assert_eq!(res.text(), None);
-
-            assert_eq!(res.header("Access-Control-Allow-Origin"), Some("https://example.example"));
-            assert_eq!(res.header("Access-Control-Allow-Credentials"), Some("true"));
-            assert_eq!(res.header("Access-Control-Expose-Headers"), None);
-            assert_eq!(res.header("Access-Control-Max-Age"), None);
-            assert_eq!(res.header("Access-Control-Allow-Methods"), Some("GET, PUT, POST, PATCH, DELETE, OPTIONS, HEAD"));
-            assert_eq!(res.header("Access-Control-Allow-Headers"), Some("Content-Type, X-Custom"));
-            assert_eq!(res.header("Vary"), Some("Access-Control-Request-Headers"));
         }
 
         let t = Ohkami::with(
             CORS::new("*")
                 .AllowHeaders(["Content-Type", "X-Custom"])
                 .MaxAge(1024),
-            "/".GET(|| async {"Hello!"})
+            "/".POST(|| async {"Hello!"})
         ).test(); {
             let req = TestRequest::OPTIONS("/");
+            let res = t.oneshot(req).await;
+
+            assert_eq!(res.status().code(), 404/* Because `req` has no `Access-Control-Request-Method` */);
+            assert_eq!(res.text(), None);
+
+            assert_eq!(res.header("Access-Control-Allow-Origin"), Some("*"));
+            assert_eq!(res.header("Access-Control-Allow-Credentials"), None);
+            assert_eq!(res.header("Access-Control-Expose-Headers"), None);
+            assert_eq!(res.header("Access-Control-Max-Age"), Some("1024"));
+            assert_eq!(res.header("Access-Control-Allow-Methods"), None/* Because `req` has no `Access-Control-Request-Method` */);
+            assert_eq!(res.header("Access-Control-Allow-Headers"), Some("Content-Type, X-Custom"));
+            assert_eq!(res.header("Vary"), Some("Origin, Access-Control-Request-Headers"));
+        } {
+            let req = TestRequest::OPTIONS("/")
+                .header("Access-Control-Request-Method", "POST");
             let res = t.oneshot(req).await;
 
             assert_eq!(res.status().code(), 200);
@@ -285,7 +339,7 @@ mod test {
             assert_eq!(res.header("Access-Control-Allow-Credentials"), None);
             assert_eq!(res.header("Access-Control-Expose-Headers"), None);
             assert_eq!(res.header("Access-Control-Max-Age"), Some("1024"));
-            assert_eq!(res.header("Access-Control-Allow-Methods"), Some("GET, PUT, POST, PATCH, DELETE, OPTIONS, HEAD"));
+            assert_eq!(res.header("Access-Control-Allow-Methods"), Some("POST, OPTIONS"));
             assert_eq!(res.header("Access-Control-Allow-Headers"), Some("Content-Type, X-Custom"));
             assert_eq!(res.header("Vary"), Some("Origin, Access-Control-Request-Headers"));
         }
