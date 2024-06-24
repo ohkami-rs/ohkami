@@ -16,7 +16,6 @@ use crate::{header::append, Fang, FangProc, Request, Response, Status};
 /// async fn main() {
 ///     Ohkami::with((
 ///         CORS::new("https://foo.bar.org")
-///             .AllowMethods([Method::GET, Method::POST])
 ///             .AllowHeaders(["Content-Type", "X-Requested-With"])
 ///             .AllowCredentials()
 ///             .MaxAge(86400),
