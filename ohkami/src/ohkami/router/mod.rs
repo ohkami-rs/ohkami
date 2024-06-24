@@ -10,15 +10,21 @@ use std::{collections::VecDeque, iter::Peekable, str::Chars};
 
 
 #[derive(Clone, Debug)]
-pub struct RouteSections(
-    VecDeque<RouteSection>
-);
+pub struct RouteSections {
+    litreral: &'static str,
+    sections: VecDeque<RouteSection>,
+}
 impl RouteSections {
     pub(crate) fn from_literal(route: &'static str) -> Self {
         if route.is_empty() {panic!("Found an empty route: `{route}`")}
         if !route.starts_with('/') {panic!("Routes must start with '/': `{route}`")}
 
-        if route == "/" {return Self(VecDeque::new())}
+        if route == "/" {
+            return Self {
+                litreral: route,
+                sections: VecDeque::new()
+            }
+        }
 
         let mut sections = VecDeque::new();
         for section in {let mut s = route.split('/'); s.next(); s} {
@@ -28,14 +34,19 @@ impl RouteSections {
             };
             sections.push_back(section)
         }
-        Self(sections)
+
+        Self { litreral:route, sections }
+    }
+
+    pub(crate)  fn literal(&self) -> &'static str {
+        self.litreral
     }
 }
 const _: () = {
     impl IntoIterator for RouteSections {
         type Item = <VecDeque<RouteSection> as IntoIterator>::Item;
         type IntoIter = <VecDeque<RouteSection> as IntoIterator>::IntoIter;
-        fn into_iter(self) -> Self::IntoIter {self.0.into_iter()}
+        fn into_iter(self) -> Self::IntoIter {self.sections.into_iter()}
     }
 };
 
