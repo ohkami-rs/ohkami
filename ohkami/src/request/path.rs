@@ -29,18 +29,19 @@ const _: () = {
         }
     }
 
-    impl AsRef<str> for Path {
-        #[inline]
-        fn as_ref(&self) -> &str {
-            let bytes = &unsafe {self.0.assume_init_ref().raw.as_bytes()};
-            std::str::from_utf8(bytes).expect("Non UTF-8 path params")
-        }
-    }
     impl std::ops::Deref for Path {
         type Target = str;
         #[inline]
         fn deref(&self) -> &Self::Target {
             self.as_ref()
+        }
+    }
+    impl AsRef<str> for Path {
+        #[inline]
+        fn as_ref(&self) -> &str {
+            let bytes = &unsafe {self.0.assume_init_ref().raw.as_bytes()};
+            if bytes.is_empty() {return "/"}
+            std::str::from_utf8(bytes).expect("Non UTF-8 path params")
         }
     }
 
@@ -64,7 +65,7 @@ impl Path {
     }
 
     #[inline(always)]
-    pub(crate) fn from_request_bytes(bytes: &[u8]) -> Result<Self, crate::Response> {
+    pub(crate) fn init_with_request_bytes(&mut self, bytes: &[u8]) -> Result<(), crate::Response> {
         bytes.starts_with(b"/").then_some(())
             .ok_or_else(crate::Response::NotImplemented)?;
 
@@ -81,10 +82,10 @@ impl Path {
         if unsafe {*bytes.get_unchecked(len-1) == b'/'} {len -= 1};
         
         #[allow(unused_unsafe/* I don't know why but rustc sometimes put warnings to this unsafe as unnecessary */)]
-        Ok(Self(MaybeUninit::new(PathInner {
+        Ok({self.0.write(PathInner {
             raw:    unsafe {Slice::new_unchecked(bytes.as_ptr(), len)},
             params: Vec::new(),
-        })))
+        });})
     }
 
     #[inline] pub(crate) unsafe fn push_param(&mut self, param: Slice) {

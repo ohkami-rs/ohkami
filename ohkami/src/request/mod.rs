@@ -190,7 +190,7 @@ impl Request {
 
         r.next_if(|b| *b==b' ').ok_or_else(Response::BadRequest)?;
         
-        self.path = Path::from_request_bytes(r.read_while(|b| !matches!(b, b' ' | b'?')))?;
+        self.path.init_with_request_bytes(r.read_while(|b| !matches!(b, b' ' | b'?')))?;
 
         if r.consume_oneof([" ", "?"]).unwrap() == 1 {
             self.query = Some(QueryParams::new(r.read_while(|b| b != &b' ')));

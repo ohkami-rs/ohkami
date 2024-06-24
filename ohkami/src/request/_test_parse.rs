@@ -37,6 +37,20 @@ fn metadataize(input: &str) -> Box<[u8; BUF_SIZE]> {
     Box::new(buf)
 }
 
+#[test]
+fn parse_path() {
+    let mut path = Path::uninit();
+    path.init_with_request_bytes(b"/abc").unwrap();
+    assert_eq!(&*path, "/abc");
+
+    let mut path = Path::uninit();
+    path.init_with_request_bytes(b"/abc/").unwrap();
+    assert_eq!(&*path, "/abc");
+
+    let mut path = Path::uninit();
+    path.init_with_request_bytes(b"/").unwrap();
+    assert_eq!(&*path, "/");
+}
 
 #[crate::__rt__::test] async fn test_parse_request() {
     use super::{RequestHeader, RequestHeaders};

@@ -12,7 +12,6 @@ pub struct TrieRouter {
     pub(super) POST:    Node,
     pub(super) PATCH:   Node,
     pub(super) DELETE:  Node,
-    pub(super) HEAD:    Node,
     pub(super) OPTIONS: Node,
 }
 
@@ -165,7 +164,6 @@ impl TrieRouter {
             POST:    Node::root(),
             PATCH:   Node::root(),
             DELETE:  Node::root(),
-            HEAD:    Node::root(),
             OPTIONS: Node::root(),
         }
     }
@@ -183,26 +181,7 @@ impl TrieRouter {
                     self.$method.register_handler(route.clone().into_iter(), h).expect("Failed to register handler");
                 }
             )*};
-        } register_to! { PUT, POST, PATCH, DELETE }
-
-        if let Some(h) = GET {
-            self.GET.register_handler(route.clone().into_iter(), h.clone()).expect("Failed to register handler");
-            self.HEAD.register_handler(route.clone().into_iter(), Handler::new({
-                use crate::fangs::FangProcCaller as _;
-                move |req| {
-                    let h = h.clone();
-                    Box::pin(async move {
-                        let mut res = Into::<BoxedFPC>::into(h)
-                            .call_bite(req).await;
-                        {/* almost `res.drop_content()` but remain `Content-Type` */
-                            res.headers.set().ContentLength(None);
-                            res.content = crate::response::Content::None;
-                        }
-                        res
-                    })
-                }
-            })).expect("Failed to register handler");
-        }
+        } register_to! { GET, PUT, POST, PATCH, DELETE }
 
         /*
             Ohkami, by default, does not support handling OPTIONS requests
@@ -219,9 +198,7 @@ impl TrieRouter {
                     self.$method.apply_fangs(id.clone(), fangs.clone());
                 )*
             };
-        } apply_to! {
-            GET, PUT, POST, PATCH, DELETE, HEAD, OPTIONS
-        }
+        } apply_to! { GET, PUT, POST, PATCH, DELETE, OPTIONS }
     }
 
     pub(crate) fn merge_another(&mut self, another: ByAnother) {
@@ -232,7 +209,7 @@ impl TrieRouter {
             ($( $method:ident ),*) => {$(
                 self.$method.merge_node(route.clone().into_iter(), another_routes.$method).expect("Can't merge Ohkamis");
             )*};
-        } merge! { GET, PUT, POST, PATCH, DELETE, HEAD, OPTIONS }
+        } merge! { GET, PUT, POST, PATCH, DELETE, OPTIONS }
     }
 
     pub(crate) fn into_radix(self) -> super::RadixRouter {
@@ -242,7 +219,6 @@ impl TrieRouter {
             POST:    self.POST   .into_radix(),
             PATCH:   self.PATCH  .into_radix(),
             DELETE:  self.DELETE .into_radix(),
-            HEAD:    self.HEAD   .into_radix(),
             OPTIONS: self.OPTIONS.into_radix(),
         }
     }
