@@ -286,10 +286,9 @@ impl Request {
         });
         // SAFETY: Just calling for request bytes and `self.__url__` is already initialized
         unsafe {let __url__ = self.__url__.assume_init_ref();
-            let path  = Path::from_request_bytes(__url__.path().as_bytes()).unwrap();
-            let query = __url__.query().map(|str| QueryParams::new(str.as_bytes()));
-            self.path  = path;
-            self.query = query;
+            let path = Slice::from_bytes(__url__.path().as_bytes()).as_bytes();
+            self.query = __url__.query().map(|str| QueryParams::new(str.as_bytes()));
+            self.path.init_with_request_bytes(path)?;
         }
 
         r.consume("HTTP/1.1\r\n").ok_or_else(Response::HTTPVersionNotSupported)?;
@@ -337,10 +336,9 @@ impl Request {
 
         // SAFETY: Just calling for request bytes and `self.__url__` is already initialized
         unsafe {let __url__ = self.__url__.assume_init_ref();
-            let path  = Path::from_request_bytes(__url__.path().as_bytes()).unwrap();
-            let query = __url__.query().map(|str| QueryParams::new(str.as_bytes()));
-            self.path  = path;
-            self.query = query;
+            let path = Slice::from_bytes(__url__.path().as_bytes()).as_bytes();
+            self.query = __url__.query().map(|str| QueryParams::new(str.as_bytes()));
+            self.path.init_with_request_bytes(path)?;
         }
 
         self.headers.take_over(req.headers());
