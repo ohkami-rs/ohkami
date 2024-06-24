@@ -209,10 +209,8 @@ impl TrieRouter {
             available_methods.push("OPTIONS");
 
             Box::pin(async move {
-                use crate::{Method, Response};
-
                 #[cfg(debug_assertions)] {
-                    assert_eq!(req.method, Method::OPTIONS);
+                    assert_eq!(req.method, crate::Method::OPTIONS);
                 }
 
                 match req.headers.AccessControlRequestMethod() {
@@ -225,9 +223,9 @@ impl TrieRouter {
                             by a successful one in its proc.
                         */
                         (if available_methods.contains(&method) {
-                            Response::NotImplemented()
+                            crate::Response::NotImplemented()
                         } else {
-                            Response::BadRequest()
+                            crate::Response::BadRequest()
                         }).with_headers(|h| h
                             .AccessControlAllowMethods(available_methods.join(", "))
                         )
@@ -238,13 +236,13 @@ impl TrieRouter {
                             normal behavior to OPTIONS request like
 
                             ```
-                            Response::NoContent()
+                            crate::Response::NoContent()
                                 .with_headers(|h| h
                                     .Allow(available_methods.join(", "))
                                 )
                             ```
                         */
-                        Response::NotFound()
+                        crate::Response::NotFound()
                     }
                 }
             })
