@@ -56,6 +56,8 @@ impl Store {
 
 /// # Memory of a Request
 /// 
+/// Memorize and retrieve any data within a request.
+/// 
 /// <br>
 /// 
 /// ```no_run

@@ -33,10 +33,10 @@ tokio  = { version = "1",    features = ["full"] }
 
 ```rust,no_run
 use ohkami::prelude::*;
-use ohkami::typed::status::NoContent;
+use ohkami::typed::status;
 
-async fn health_check() -> NoContent {
-    NoContent
+async fn health_check() -> status::NoContent {
+    status::NoContent
 }
 
 async fn hello(name: &str) -> String {
@@ -160,9 +160,9 @@ async fn search(condition: SearchQuery<'_>) -> Vec<SearchResult> {
 
 ### Payload validation
 
-`where ＜validation expression＞` in `#[Payload()]` runs the validation when responding with it or parsing request to it.
+`where ＜validation expression＞` in `#[Payload( 〜 )]` performs the validation when responding with it or parsing request body to it.
 
-`＜validation expression＞` is an expression with `self: &Self` that returns `Result<(), impl Display>`.
+`＜validation expression＞` is an expression with `self: &Self` returning `Result<(), impl Display>`.
 
 ```rust
 use ohkami::prelude::*;
@@ -197,7 +197,7 @@ use ohkami::prelude::*;
 #[derive(Clone)]
 struct GreetingFang;
 
-/* utility trait for auto impl `Fang` */
+/* utility trait, automatically impl `Fang` trait */
 impl FangAction for GreetingFang {
     async fn fore<'a>(&'a self, req: &'a mut Request) -> Result<(), Response> {
         println!("Welcomm request!: {req:?}");

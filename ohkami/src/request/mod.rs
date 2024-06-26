@@ -111,9 +111,41 @@ pub struct Request {
     #[cfg(feature="rt_worker")]
     ctx: std::mem::MaybeUninit<::worker::Context>,
 
+    /// HTTP method of this request
+    /// 
+    /// ---
+    /// 
+    /// **Note** : In current version, custom HTTP methods are *not supported*,
+    /// in other words, now Ohkami just knows `GET`, `PUT`, `POST`, `PATCH`,
+    /// `DELETE`, `HEAD`, `OPTIONS`.
     pub method: Method,
-    pub path:   Path,
-    pub query:  Option<QueryParams>,
+
+    /// Request path of this request
+    /// 
+    /// - `.params()` to iterate path params
+    /// - `.str()` to ( URL-decode and ) get as `&str`
+    /// 
+    /// ---
+    /// 
+    /// **Note** : In current version, path with schema and origin in request line
+    /// is *not supported*, in other words, now Ohkami just handles requests like
+    /// `GET /path HTTP/1.1`, not `GET http://whatthe.fxxx/path HTTP/1.1`
+    pub path: Path,
+
+    /// Query params of this request
+    /// 
+    /// In handler, using a struct of expected schema
+    /// with `ohkami::typed::Query` attribute is recommended for *type-safe*
+    /// query parsing.
+    /// 
+    /// ---
+    /// 
+    /// **Note** : Ohkami doesn't support multiple same query keys having each value
+    /// like `?ids=1&ids=17&ids=42`.
+    /// Please use, for instance, comma-separated format like
+    /// `?ids=1,17,42` ( URL-encoded to `?ids=1%2C17%2C42` )
+    pub query: Option<QueryParams>,
+
     /// Headers of this request
     /// 
     /// - `.{Name}()`, `.custom({Name})` to get the value
@@ -127,9 +159,10 @@ pub struct Request {
     /// - `append({value})` to append
     /// 
     /// `{value}`: `String`, `&'static str`, `Cow<&'static, str>`
-    pub headers:        RequestHeaders,
+    pub headers: RequestHeaders,
+
     pub(crate) payload: Option<CowSlice>,
-    store:              Store,
+    store: Store,
 }
 
 impl Request {

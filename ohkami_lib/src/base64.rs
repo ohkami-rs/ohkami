@@ -1,3 +1,5 @@
+//! Based on Go lang's standard library: <https://github.com/golang/go/blob/90bcc552c0347948166817a602f612f219bc980c/src/encoding/base64/base64.go>
+
 #[inline(always)] pub fn encode(src: impl AsRef<[u8]>) -> String {
     encode_by(
         src.as_ref(),

@@ -89,7 +89,9 @@ use crate::utils::StreamExt;
 /// }
 /// ```
 pub struct Response {
-    pub status:         Status,
+    /// HTTP status of this response
+    pub status: Status,
+
     /// Headers of this response
     /// 
     /// - `.{Name}()`, `.custom({Name})` to get the value
@@ -104,6 +106,7 @@ pub struct Response {
     /// 
     /// `{value}`: `String`, `&'static str`, `Cow<&'static, str>`
     pub headers:        ResponseHeaders,
+
     pub(crate) content: Content,
 }
 
@@ -135,7 +138,7 @@ impl Response {
             }
 
             Content::Payload(bytes) => self.headers.set()
-                .ContentLength((|| bytes.len().to_string())()),
+                .ContentLength(bytes.len().to_string()),
 
             #[cfg(feature="sse")]
             Content::Stream(_) => self.headers.set()
@@ -293,9 +296,9 @@ impl Response {
         self
     }
 
-    /// SAFETY: Argument `json_str` is a **valid JSON**
-    pub unsafe fn set_json_str<JSONString: Into<Cow<'static, str>>>(&mut self, json_str: JSONString) {
-        let body = match json_str.into() {
+    /// SAFETY: Argument `json_lit` is **valid JSON**
+    pub unsafe fn set_json_lit<JSONLiteral: Into<Cow<'static, str>>>(&mut self, json_lit: JSONLiteral) {
+        let body = match json_lit.into() {
             Cow::Borrowed(str) => Cow::Borrowed(str.as_bytes()),
             Cow::Owned(string) => Cow::Owned(string.into_bytes()),
         };
@@ -304,9 +307,9 @@ impl Response {
             .ContentType("application/json");
         self.content = Content::Payload(body.into());
     }
-    /// SAFETY: Argument `json_str` is a **valid JSON**
-    pub unsafe fn with_json_str<JSONString: Into<Cow<'static, str>>>(mut self, json_str: JSONString) -> Self {
-        self.set_json_str(json_str);
+    /// SAFETY: Argument `json_lit` is **valid JSON**
+    pub unsafe fn with_json_lit<JSONLiteral: Into<Cow<'static, str>>>(mut self, json_lit: JSONLiteral) -> Self {
+        self.set_json_lit(json_lit);
         self
     }
 }
