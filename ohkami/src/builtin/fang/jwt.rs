@@ -10,6 +10,25 @@ use crate::{Fang, FangProc, IntoResponse, Request, Response};
 /// 
 /// <br>
 /// 
+/// ## fang
+/// 
+/// For each request, get JWT token and verify based on given config and `Payload: Deserialize`.
+/// 
+/// ## helper
+/// 
+/// `.issue(/* Payload: Serialize */)` generates a JWT token on the config.
+/// 
+/// <br>
+/// 
+/// ## default config
+/// 
+/// - get token: from `Authorization: Bearer ＜here＞`
+///   - customizable by `.get_token_by( 〜 )`
+/// - verifying algorithm: `HMAC-SHA256`
+///   - `HMAC-SHA{256, 384, 512}` are available now
+/// 
+/// <br>
+/// 
 /// *example.rs*
 /// ```no_run
 /// use ohkami::prelude::*;
@@ -34,7 +53,7 @@ use crate::{Fang, FangProc, IntoResponse, Request, Response};
 ///     Ohkami::new((
 ///         "/auth".GET(auth),
 ///         "/private".By(Ohkami::with(/*
-///             Automatically verify `Authorization` header
+///             Automatically verify JWT token
 ///             of a request and early returns an error
 ///             response if it's invalid.
 ///             If `Authorization` is valid, momorize the JWT
