@@ -5,7 +5,7 @@ use crate::typed::PayloadType;
 
 /// Builtin `PayloadType` for `multipart/form-data` payloads.
 /// 
-/// _**note**_ : `Multipart` only supports request payload with `Deserialize`.
+/// _**note**_ : `Multipart` only supports parding request payload with `Deserialize`.
 /// 
 /// <br>
 /// 

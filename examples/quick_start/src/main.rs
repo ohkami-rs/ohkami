@@ -1,8 +1,8 @@
 use ohkami::prelude::*;
-use ohkami::typed::status::NoContent;
+use ohkami::typed::status;
 
-async fn health_check() -> NoContent {
-    NoContent
+async fn health_check() -> status::NoContent {
+    status::NoContent
 }
 
 async fn hello(name: &str) -> String {

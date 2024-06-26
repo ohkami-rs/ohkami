@@ -132,7 +132,7 @@ pub struct Dir {
 
 macro_rules! Route {
     ($( $method:ident ),*) => {
-        /// Core trait for ohkami's routing definition.
+        /// Core trait for Ohkami's routing definition.
         /// 
         /// <br>
         /// 
@@ -326,7 +326,7 @@ trait RoutingItem {
     /// If we don't impl `Routes` `&str`, ohkami users
     /// will see following situations：
     /// 
-    /// ```ignore
+    /// ---
     /// fn my_ohkami() -> Ohkami {
     ///     Ohkami::new((
     ///         "/".|
@@ -339,7 +339,7 @@ trait RoutingItem {
     /// // NOT IMPLEMENTED for this.
     /// // 
     /// // This must be so annoying!!!
-    /// ```
+    /// ---
     impl RoutingItem for &'static str {
         fn apply(self, _router: &mut TrieRouter) {}
     }

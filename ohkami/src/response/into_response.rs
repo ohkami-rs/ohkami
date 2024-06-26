@@ -3,7 +3,7 @@
 use crate::{Response, Status};
 
 
-/// Represents "can be handlers' return value".
+/// A trait implemented by types that can be used as a return value of a handler.
 /// 
 /// <br>
 /// 

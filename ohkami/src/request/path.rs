@@ -20,8 +20,8 @@ const _: () = {
                 .expect("Non UTF-8 path params"))
         }
 
-        /// Get request path as `Cow::Borrowed(&str)` if it's not percent-encoded, or, if encoded,
-        /// decode it into `Cow::Owned(String)`.
+        /// Get request path as `Cow::Borrowed(&str)` if it's not percent-encoded, or,
+        /// decode it into `Cow::Owned(String)` if encoded in the original request.
         #[inline]
         pub fn str(&self) -> Cow<str> {
             percent_decode_utf8(unsafe {self.0.assume_init_ref().raw.as_bytes()})

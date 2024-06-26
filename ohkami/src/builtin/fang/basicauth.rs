@@ -10,8 +10,11 @@ use crate::prelude::*;
 /// 
 /// <br>
 /// 
-/// Note : **NEVER** hardcode `username` and `password` in your code
-/// if you are pushing your source code to GitHub or other public repository!!!
+/// ## Note
+/// - **NEVER** hardcode `username` and `password` in your code
+///   if you are pushing your source code to GitHub or other public repository!!!
+/// - **NEVER** use this on `http://`!!! The `username` and `password` themselves
+///   are not encoded in secure way and MUST passed on `https://`
 /// 
 /// <br>
 /// 
