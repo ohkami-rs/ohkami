@@ -8,6 +8,13 @@ use crate::prelude::*;
 /// - `[BasicAuth; N]` verifies each request to have one of the pairs of
 ///   `username` and `password`
 /// 
+/// <br>
+/// 
+/// Note : **NEVER** hardcode `username` and `password` in your code
+/// if you are pushing your source code to GitHub or other public repository!!!
+/// 
+/// <br>
+/// 
 /// *example*
 /// ```rust,no_run
 /// use ohkami::prelude::*;

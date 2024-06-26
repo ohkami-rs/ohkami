@@ -6,6 +6,7 @@ members  = [
     "hello",
     "openai",
     "realworld",
+    "basic_auth",
     "quick_start",
     "static_files",
     "json_response",
