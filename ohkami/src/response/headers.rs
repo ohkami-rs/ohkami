@@ -246,7 +246,7 @@ macro_rules! Header {
             }
         }
     };
-} Header! {44;
+} Header! {45;
     AcceptRanges:                    b"Accept-Ranges",
     AccessControlAllowCredentials:   b"Access-Control-Allow-Credentials",
     AccessControlAllowHeaders:       b"Access-Control-Allow-Headers",
@@ -289,6 +289,7 @@ macro_rules! Header {
     Upgrade:                         b"Upgrade",
     Vary:                            b"Vary",
     Via:                             b"Via",
+    WWWAuthenticate:                 b"WWW-Authenticate",
     XContentTypeOptions:             b"X-Content-Type-Options",
     XFrameOptions:                   b"X-Frame-Options",
 }
@@ -423,7 +424,7 @@ impl Headers {
     #[inline]
     pub(crate) fn new() -> Self {
         Self {
-            standard: Box::new([const {None}; N_SERVER_HEADERS]),
+            standard:  Box::new([const {None}; N_SERVER_HEADERS]),
             insertlog: Vec::with_capacity(8),
             custom:    None,
             setcookie: None,
