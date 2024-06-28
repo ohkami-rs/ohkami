@@ -128,7 +128,7 @@ pub trait PayloadType {
     /// Used for checking `Content-Type` of a request.
     const MIME_TYPE: &'static str;
     
-    /// Just mime type, or maybe it with some additional information, like `application/json`, `text/plain; charset=UTF-8`, ...
+    /// Just mime type, or maybe it with some directives, like `application/json`, `text/plain; charset=UTF-8`, ...
     /// 
     /// Used for `Content-Type` of a response with the `Payload` type.
     const CONTENT_TYPE: &'static str = Self::MIME_TYPE;

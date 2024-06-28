@@ -10,6 +10,34 @@ use crate::{Request, Response};
 use std::{future::Future, pin::Pin, ops::Deref};
 
 
+/// # Core trait for Ohkami's Fang system
+/// 
+/// See `FangAction` for simple cases!
+/// 
+/// <br>
+/// 
+/// ### required
+/// - `type Proc` ー associated type implementing `FangProc`, the behavior as a fang
+/// - `fn chain` ー how to associate with `inner: Inner: FangProc`
+/// 
+/// <br>
+/// 
+/// *impl_example.rs*
+/// ```
+/// use ohkami::prelude::*;
+/// use ohkami::{Fang, FangProc};
+/// 
+/// struct HelloFang<I: FangProc> {
+///     inner: I
+/// }
+/// 
+/// impl<I: FangProc> Fang for HelloFang<I> {
+///     async fn bite<'b>(&'b self, req: &'b mut Request) -> Response {
+///         println!("Hello, fang!");
+///         req.inner.bite(req).await
+///     }
+/// }
+/// ```
 pub trait Fang<Inner: FangProc> {
     type Proc: FangProc;
     fn chain(&self, inner: Inner) -> Self::Proc;

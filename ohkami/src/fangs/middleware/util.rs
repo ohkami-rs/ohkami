@@ -6,14 +6,14 @@ use crate::{Request, Response};
 /// 
 /// `FangAction` provides 2 actions:
 /// 
-/// - `fore` ... *bite* a `&mut Request`, maybe early return `Err(Response)`, before a handler is called
+/// - `fore` ... *bite* a `&mut Request`, maybe early returning `Err(Response)`, before a handler is called
 /// - `back` ... *bite* a `&mut Response` after a handler is called
 /// 
 /// Both of them perform nothing by default.
 /// 
 /// <br>
 /// 
-/// `T: FangAction` automatically implements `Fang` that perform as
+/// `T: FangAction` automatically implements `Fang` that performs as
 /// 
 /// ```
 /// # use ohkami::{prelude::*, Fang, FangProc};
@@ -65,14 +65,14 @@ use crate::{Request, Response};
 pub trait FangAction: Clone + Send + Sync + 'static {
     /// *fore fang*, that bites a request before a handler.
     /// 
-    /// **Default**: just returns `Ok(())`
+    /// **Default**: just return `Ok(())`
     #[allow(unused_variables)]
     fn fore<'a>(&'a self, req: &'a mut Request) -> impl std::future::Future<Output = Result<(), Response>> + Send {
         async {Ok(())}
     }
     /// *back fang*, that bites a response after a handler.
     /// 
-    /// **Default**: just returns `()`
+    /// **Default**: just return `()`
     #[allow(unused_variables)]
     fn back<'a>(&'a self, res: &'a mut Response) -> impl std::future::Future<Output = ()> + Send {
         async {}
@@ -93,7 +93,7 @@ pub trait FangAction: Clone + Send + Sync + 'static {
         inner:  I,
     }
     impl<A: FangAction, I: FangProc> FangProc for FangActionProc<A, I> {
-        #[inline]
+        #[inline(always)]
         async fn bite<'b>(&'b self, req: &'b mut Request) -> Response {
             let Self { action, inner } = self;
             match action.fore(req).await {

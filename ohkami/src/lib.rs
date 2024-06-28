@@ -1,4 +1,4 @@
-#![doc(html_root_url = "https://docs.rs/ohkami")]
+#![doc(html_root_url = "https://docs.rs/ohkami/latest/ohkami/")]
 
 /* Execute static tests for sample codes in README */
 #![cfg_attr(feature="DEBUG", doc = include_str!("../../README.md"))]
@@ -127,11 +127,7 @@ pub mod utils {
             .as_secs()
     }
     #[cfg(feature="rt_worker")]
-    /// ```ignore
-    /// {
-    ///     JS's `Date.now() / 1000` as Rust's u64
-    /// }
-    /// ```
+    /// JavaScript `Date.now() / 1000` --as--> Rust `u64`
     #[inline] pub fn unix_timestamp() -> u64 {
         (worker::js_sys::Date::now() / 1000.) as _
     }
@@ -436,12 +432,12 @@ pub mod prelude {
     pub use crate::{Route, Ohkami};
 }
 
-/// Somthing almost [serde](https://crates.io/crates/serde).
+/// Somthing almost [serde](https://crates.io/crates/serde) + [serde_json](https://crates.io/crates/serde_json).
 /// 
 /// ---
 /// *not_need_serde_in_your_dependencies.rs*
 /// ```
-/// use ohkami::serde::Serialize;
+/// use ohkami::serde::{json, Serialize};
 /// 
 /// #[derive(Serialize)]
 /// struct User {
@@ -449,6 +445,16 @@ pub mod prelude {
 ///     name: String,
 ///     age:  u8,
 /// }
+/// 
+/// # fn _user() {
+/// let user = User {
+///     name: String::from("ABC"),
+///     age:  200,
+/// };
+/// assert_eq!(json::to_string(&user), r#"
+///     {"age":200,"username":"ABC"}
+/// "#);
+/// # }
 /// ```
 /// ---
 pub mod serde {
@@ -457,11 +463,6 @@ pub mod serde {
     pub use ::serde::de::{self, Deserialize, Deserializer};
     pub use ::serde_json as json;
 }
-
-// #[cfg(feature="websocket")]
-// pub mod websocket {
-//     pub use crate::x_websocket::*;
-// }
 
 #[doc(hidden)]
 pub mod __internal__ {

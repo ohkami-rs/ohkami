@@ -239,7 +239,7 @@ impl Ohkami {
     /// - `async_std::net::ToSocketAddrs` if you use `async-std`
     /// 
     /// *note* : Keep-Alive timeout is 42 seconds and this is not
-    /// configureable by user (It will be in future version)
+    /// configureable by user (it'll be in future version...)
     /// 
     /// <br>
     /// 
@@ -284,7 +284,6 @@ impl Ohkami {
                 });
             }
         }
-
         #[cfg(feature="rt_async-std")] {
             use async_std::stream::StreamExt as _/* .next() */;
 
