@@ -14,8 +14,6 @@ use router::TrieRouter;
 
 #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
 use crate::{__rt__, Session};
-#[cfg(feature="rt_async-std")] use crate::__rt__::StreamExt as _;
-// #[cfg(feature="websocket")]    use crate::websocket::reserve_upgrade;
 
 
 /// # Ohkami - a robust wolf who serves your web app
@@ -248,14 +246,14 @@ impl Ohkami {
     /// *example.rs*
     /// ```no_run
     /// use ohkami::prelude::*;
-    /// use ohkami::typed::status::NoContent;
+    /// use ohkami::typed::status;
     /// 
     /// async fn hello() -> &'static str {
     ///     "Hello, ohkami!"
     /// }
     /// 
-    /// async fn health_check() -> NoContent {
-    ///     NoContent
+    /// async fn health_check() -> status::NoContent {
+    ///     status::NoContent
     /// }
     /// 
     /// #[tokio::main]
@@ -273,29 +271,33 @@ impl Ohkami {
             Ok(listener) => listener,
             Err(e)       => panic!("Failed to bind TCP listener: {e}"),
         };
-
-        #[cfg(feature="rt_async-std")]
-        while let Some(connection) = listener.incoming().next().await {
-            let Ok(connection) = connection else {continue};
-
-            __rt__::task::spawn({
-                Session::new(
-                    router.clone(),
-                    connection,
-                ).manage()
-            });
-        }
         
-        #[cfg(feature="rt_tokio")]
-        loop {
-            let Ok((connection, _)) = listener.accept().await else {continue};
+        #[cfg(feature="rt_tokio")] {
+            loop {
+                let Ok((connection, _)) = listener.accept().await else {continue};
 
-            __rt__::task::spawn({
-                Session::new(
-                    router.clone(),
-                    connection,
-                ).manage()
-            });
+                __rt__::task::spawn({
+                    Session::new(
+                        router.clone(),
+                        connection,
+                    ).manage()
+                });
+            }
+        }
+
+        #[cfg(feature="rt_async-std")] {
+            use ohkami_lib::StreamExt;
+
+            while let Some(connection) = listener.incoming().next().await {
+                let Ok(connection) = connection else {continue};
+
+                __rt__::task::spawn({
+                    Session::new(
+                        router.clone(),
+                        connection,
+                    ).manage()
+                });
+            }
         }
     }
 
