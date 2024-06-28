@@ -28,13 +28,31 @@ use super::ResponseHeaders;
     }
 }
 
+#[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
 #[test] fn append_header() {
     let mut h = ResponseHeaders::new();
 
     h.set().Server(append("X"));
     assert_eq!(h.Server(), Some("X"));
+    {
+        let mut buf = Vec::new();
+        h.write_to(&mut buf);
+        assert_eq!(std::str::from_utf8(&buf).unwrap(), "\
+            Server: X\r\n\
+            \r\n\
+        ");
+    }
+
     h.set().Server(append("Y"));
     assert_eq!(h.Server(), Some("X, Y"));
+    {
+        let mut buf = Vec::new();
+        h.write_to(&mut buf);
+        assert_eq!(std::str::from_utf8(&buf).unwrap(), "\
+            Server: X, Y\r\n\
+            \r\n\
+        ");
+    }
 }
 
 #[test] fn append_custom_header() {
@@ -42,8 +60,25 @@ use super::ResponseHeaders;
 
     h.set().custom("Custom-Header", append("A"));
     assert_eq!(h.custom("Custom-Header"), Some("A"));
+    {
+        let mut buf = Vec::new();
+        h.write_to(&mut buf);
+        assert_eq!(std::str::from_utf8(&buf).unwrap(), "\
+            Custom-Header: A\r\n\
+            \r\n\
+        ");
+    }
+
     h.set().custom("Custom-Header", append("B"));
     assert_eq!(h.custom("Custom-Header"), Some("A, B"));
+    {
+        let mut buf = Vec::new();
+        h.write_to(&mut buf);
+        assert_eq!(std::str::from_utf8(&buf).unwrap(), "\
+            Custom-Header: A, B\r\n\
+            \r\n\
+        ");
+    }
 }
 
 #[test] fn parse_setcookie_headers() {
