@@ -286,7 +286,7 @@ impl Ohkami {
         }
 
         #[cfg(feature="rt_async-std")] {
-            use ohkami_lib::StreamExt;
+            use async_std::stream::StreamExt as _/* .next() */;
 
             while let Some(connection) = listener.incoming().next().await {
                 let Ok(connection) = connection else {continue};
