@@ -10,7 +10,7 @@ DEBUG = ["ohkami/DEBUG"]
 default = ["DEBUG"]
 
 [dependencies]
-ohkami             = { version = "0.19", path = "../ohkami", default-features = false, features = ["rt_tokio"] }
+ohkami             = { path = "../ohkami", default-features = false, features = ["rt_tokio"] }
 ohkami_lib         = { version = "0.2.3", path = "../ohkami_lib" }
 http               = "1.0.0"
 rustc-hash         = "1.1"

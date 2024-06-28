@@ -25,7 +25,7 @@
 # `async-std` is available by feature "rt_async-std".
 
 [dependencies]
-ohkami = { version = "0.19", features = ["rt_tokio"] }
+ohkami = { version = "0.20", features = ["rt_tokio"] }
 tokio  = { version = "1",    features = ["full"] }
 ```
 
