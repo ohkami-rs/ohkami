@@ -451,7 +451,7 @@ pub mod prelude {
 ///     name: String::from("ABC"),
 ///     age:  200,
 /// };
-/// assert_eq!(json::to_string(&user), r#"
+/// assert_eq!(json::to_string(&user).unwrap(), r#"
 ///     {"age":200,"username":"ABC"}
 /// "#);
 /// # }

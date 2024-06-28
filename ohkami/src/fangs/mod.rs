@@ -27,16 +27,26 @@ use std::{future::Future, pin::Pin, ops::Deref};
 /// use ohkami::prelude::*;
 /// use ohkami::{Fang, FangProc};
 /// 
-/// struct HelloFang<I: FangProc> {
-///     inner: I
-/// }
-/// 
-/// impl<I: FangProc> Fang for HelloFang<I> {
-///     async fn bite<'b>(&'b self, req: &'b mut Request) -> Response {
-///         println!("Hello, fang!");
-///         req.inner.bite(req).await
+/// struct HelloFang;
+/// const _: () = {
+///     struct HelloFangProc<I: FangProc> {
+///         inner: I
 ///     }
-/// }
+///     impl<I: FangProc> FangProc for HelloFangProc<I> {
+///         async fn bite<'b>(&'b self, req: &'b mut Request) -> Response {
+///             println!("Hello, fang!");
+///             self.inner.bite(req).await
+///         }
+///     }
+/// 
+///     impl<I: FangProc> Fang<I> for HelloFang {
+///         type Proc = HelloFangProc<I>;
+///         fn chain(&self, inner: I) -> Self::Proc {
+///             HelloFangProc { inner }
+///         }
+///     }
+/// };
+/// 
 /// ```
 pub trait Fang<Inner: FangProc> {
     type Proc: FangProc;
