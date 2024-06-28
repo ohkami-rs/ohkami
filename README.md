@@ -81,6 +81,12 @@ Local dev by `npm run dev` and depoly by `npm run deploy` !
 
 <br>
 
+## Benchmark Results
+
+- [Web Frameworks Benchmark](https://web-frameworks-benchmark.netlify.app/result?l=rust)
+
+<br>
+
 ## Snippets
 
 ### Handle path params
@@ -91,13 +97,19 @@ use ohkami::prelude::*;
 #[tokio::main]
 async fn main() {
     Ohkami::new((
-        "/api/hello/:name"
+        "/hello/:name"
             .GET(hello),
+        "/hello/:name/:n"
+            .GET(hello_n),
     )).howl("localhost:5000").await
 }
 
 async fn hello(name: &str) -> String {
     format!("Hello, {name}!")
+}
+
+async fn hello_n((name, n): (&str, usize)) -> String {
+    vec![format!("Hello, {name}!"); n].join(" ")
 }
 ```
 
@@ -107,9 +119,7 @@ async fn hello(name: &str) -> String {
 
 ```rust
 use ohkami::prelude::*;
-use ohkami::typed::status::Created;
-
-use ohkami::typed::{Query, Payload};
+use ohkami::typed::{status, Query, Payload};
 use ohkami::builtin::payload::JSON;
 
 /* `serde = 〜` is not needed in your [dependencies] */
@@ -130,8 +140,10 @@ struct User {
     name: String,
 }
 
-async fn create_user(body: CreateUserRequest<'_>) -> Created<User> {
-    Created(User {
+async fn create_user(
+    body: CreateUserRequest<'_>
+) -> status::Created<User> {
+    status::Created(User {
         name: String::from("ohkami")
     })
 }
@@ -149,12 +161,16 @@ struct SearchQuery<'q> {
     keyword: &'q str,
 }
 
-async fn search(condition: SearchQuery<'_>) -> Vec<SearchResult> {
+async fn search(
+    query: SearchQuery<'_>
+) -> Vec<SearchResult> {
     vec![
         SearchResult { title: String::from("ohkami") },
     ]
 }
 ```
+
+*builtin payload* : `JSON`, `Text`, `HTML`, `URLEncoded`, `Multipart`
 
 <br>
 
@@ -216,6 +232,8 @@ async fn main() {
 }
 ```
 
+*builtin fang* : `CORS`, `JWT`, `BasicAuth`, `Timeout`
+
 <br>
 
 ### Server-Sent Events with `"sse"` feature
@@ -249,8 +267,7 @@ async fn main() {
 
 ```rust,no_run
 use ohkami::prelude::*;
-use ohkami::typed::status::{Created, NoContent};
-use ohkami::typed::Payload;
+use ohkami::typed::{status, Payload};
 use ohkami::builtin::payload::JSON;
 
 #[Payload(JSON/S)]
@@ -266,14 +283,14 @@ async fn list_users() -> Vec<User> {
     ]
 }
 
-async fn create_user() -> Created<User> {
-    Created(User {
+async fn create_user() -> status::Created<User> {
+    status::Created(User {
         name: String::from("ohkami web framework")
     })
 }
 
-async fn health_check() -> NoContent {
-    NoContent
+async fn health_check() -> status::NoContent {
+    status::NoContent
 }
 
 #[tokio::main]
