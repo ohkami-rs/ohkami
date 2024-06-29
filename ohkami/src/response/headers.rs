@@ -500,7 +500,7 @@ impl Headers {
         feature="rt_tokio",feature="rt_async-std",
         feature="DEBUG"
     ))]
-    /// SAFETY: `buf` has at least remaining capacity of `self.size`
+    /// SAFETY: `buf` has remaining capacity of at least `self.size`
     pub(crate) unsafe fn write_unchecked_to(&self, buf: &mut Vec<u8>) {
         for i in &self.insertlog {
             if let Some(v) = unsafe {self.standard.get_unchecked(*i)} {

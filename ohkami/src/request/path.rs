@@ -24,8 +24,9 @@ const _: () = {
         /// decode it into `Cow::Owned(String)` if encoded in the original request.
         #[inline]
         pub fn str(&self) -> Cow<str> {
-            percent_decode_utf8(unsafe {self.0.assume_init_ref().raw.as_bytes()})
-                .expect("Non UTF-8 path params")
+            let bytes = unsafe {self.0.assume_init_ref().raw.as_bytes()};
+            if bytes.is_empty() {return Cow::Borrowed("/")}
+            percent_decode_utf8(bytes).expect("Non UTF-8 path params")
         }
     }
 
