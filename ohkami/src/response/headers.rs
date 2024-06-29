@@ -79,8 +79,15 @@ const _: () = {
         fn perform(self, set: SetHeaders<'set>, key: &'static str) -> SetHeaders<'set> {
             let self_len = self.0.len();
 
-            if let Some(c) = &mut set.0.custom {
-                if let Some(value) = c.get_mut(&key) {
+            let custom = {
+                if set.0.custom.is_none() {
+                    set.0.custom = Some(Box::new(FxHashMap::default()));
+                }
+                unsafe {set.0.custom.as_mut().unwrap_unchecked()}
+            };
+
+            set.0.size += match custom.get_mut(&key) {
+                Some(value) => {
                     match value {
                         Cow::Owned(string) => {
                             string.push_str(", ");
@@ -93,18 +100,13 @@ const _: () = {
                             *value = Cow::Owned(s);
                         }
                     }
-                    set.0.size += 2 + self_len;
-                } else {
-                    c.insert(key, self.0);
-                    set.0.size += self_len;
+                    ", ".len() + self_len
                 }
-            } else {
-                set.0.custom = Some(Box::new(FxHashMap::from_iter([(
-                    key,
-                    self.0
-                )])));
-                set.0.size += self_len;
-            }
+                None => {
+                    custom.insert(key, self.0);
+                    key.len() + ": ".len() + self_len + "\r\n".len()
+                }
+            };
 
             set
         }
@@ -394,7 +396,7 @@ impl Headers {
         let value_len = value.len();
         let target = unsafe {self.standard.get_unchecked_mut(name as usize)};
 
-        let size_increase = match target {
+        self.size += match target {
             Some(v) => {
                 match v {
                     Cow::Borrowed(slice) => {
@@ -409,14 +411,14 @@ impl Headers {
                         string.push_str(&value);
                     }
                 }
-                value_len + 2
+                ", ".len() + value_len
             }
             None => {
                 *target = Some(value);
-                value_len
+                self.insertlog.push(name as usize);
+                name.len() + ": ".len() + value_len + "\r\n".len()
             }
         };
-        self.size += size_increase;
     }
 }
 
@@ -494,93 +496,58 @@ impl Headers {
             .chain(setcookies.map(|setcookie| ("Set-Cookie", setcookie)))
     }
 
-    #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
+    #[cfg(any(
+        feature="rt_tokio",feature="rt_async-std",
+        feature="DEBUG"
+    ))]
     pub(crate) fn write_to(&self, buf: &mut Vec<u8>) {
-        macro_rules! push {
-            ($buf:ident <- $bytes:expr) => {
+        let mut buf_len = buf.len(/* keep on a register */);
+
+        macro_rules! push_unchecked {
+            ($bytes:expr) => {
                 unsafe {
-                    let (buf_len, bytes_len) = ($buf.len(), $bytes.len());
+                    let bytes_len = $bytes.len();
                     std::ptr::copy_nonoverlapping(
                         $bytes.as_ptr(),
-                        $buf.as_mut_ptr().add(buf_len),
+                        buf.as_mut_ptr().add(buf_len),
                         bytes_len
                     );
-                    $buf.set_len(buf_len + bytes_len);
+                    buf_len += bytes_len;
                 }
             };
         }
 
-        buf.reserve(self.size);
-        {
-            for i in &self.insertlog {
-                if let Some(v) = unsafe {self.standard.get_unchecked(*i)} {
-                    push!(buf <- SERVER_HEADERS.get_unchecked(*i).as_bytes());
-                    push!(buf <- b": ");
-                    push!(buf <- v.as_bytes());
-                    push!(buf <- b"\r\n");
-                }
+        buf.reserve_exact(self.size);
+        for i in &self.insertlog {
+            if let Some(v) = unsafe {self.standard.get_unchecked(*i)} {
+                push_unchecked!(SERVER_HEADERS.get_unchecked(*i).as_bytes());
+                push_unchecked!(b": ");
+                push_unchecked!(v.as_bytes());
+                push_unchecked!(b"\r\n");
             }
         }
         if let Some(custom) = self.custom.as_ref() {
             for (k, v) in &**custom {
-                push!(buf <- k.as_bytes());
-                push!(buf <- b": ");
-                push!(buf <- v.as_bytes());
-                push!(buf <- b"\r\n");
+                push_unchecked!(k.as_bytes());
+                push_unchecked!(b": ");
+                push_unchecked!(v.as_bytes());
+                push_unchecked!(b"\r\n");
             }
         }
         if let Some(setcookies) = self.setcookie.as_ref() {
             for setcookie in &**setcookies {
-                push!(buf <- b"Set-Cookie: ");
-                push!(buf <- setcookie.as_bytes());
-                push!(buf <- b"\r\n");
+                push_unchecked!(b"Set-Cookie: ");
+                push_unchecked!(setcookie.as_bytes());
+                push_unchecked!(b"\r\n");
             }
         }
-        push!(buf <- b"\r\n");
+        push_unchecked!(b"\r\n");
+
+        unsafe {buf.set_len(buf_len)}
     }
     #[cfg(feature="DEBUG")]
     pub fn _write_to(&self, buf: &mut Vec<u8>) {
-        macro_rules! push {
-            ($buf:ident <- $bytes:expr) => {
-                unsafe {
-                    let (buf_len, bytes_len) = ($buf.len(), $bytes.len());
-                    std::ptr::copy_nonoverlapping(
-                        $bytes.as_ptr(),
-                        $buf.as_mut_ptr().add(buf_len),
-                        bytes_len
-                    );
-                    $buf.set_len(buf_len + bytes_len);
-                }
-            };
-        }
-
-        buf.reserve(self.size);
-        {
-            for i in &self.insertlog {
-                if let Some(v) = unsafe {self.standard.get_unchecked(*i)} {
-                    push!(buf <- SERVER_HEADERS.get_unchecked(*i).as_bytes());
-                    push!(buf <- b": ");
-                    push!(buf <- v.as_bytes());
-                    push!(buf <- b"\r\n");
-                }
-            }
-        }
-        if let Some(custom) = self.custom.as_ref() {
-            for (k, v) in &**custom {
-                push!(buf <- k.as_bytes());
-                push!(buf <- b": ");
-                push!(buf <- v.as_bytes());
-                push!(buf <- b"\r\n");
-            }
-        }
-        if let Some(setcookies) = self.setcookie.as_ref() {
-            for setcookie in &**setcookies {
-                push!(buf <- b"Set-Cookie: ");
-                push!(buf <- setcookie.as_bytes());
-                push!(buf <- b"\r\n");
-            }
-        }
-        push!(buf <- b"\r\n");
+        self.write_to(buf)
     }
 }
 
