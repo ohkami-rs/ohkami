@@ -1,8 +1,9 @@
+#![cfg(any(feature="rt_tokio",feature="rt_async-std"))]
+
 use crate::header::{append, private::{SameSitePolicy, SetCookie}};
 use super::ResponseHeaders;
 
 
-#[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
 #[test] fn insert_and_write() {
     let mut h = ResponseHeaders::new();
     h.set().Server("A");
@@ -28,7 +29,6 @@ use super::ResponseHeaders;
     }
 }
 
-#[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
 #[test] fn append_header() {
     let mut h = ResponseHeaders::new();
 
