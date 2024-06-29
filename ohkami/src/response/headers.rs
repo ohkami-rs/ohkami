@@ -496,7 +496,10 @@ impl Headers {
             .chain(setcookies.map(|setcookie| ("Set-Cookie", setcookie)))
     }
 
-    #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
+    #[cfg(any(
+        feature="rt_tokio",feature="rt_async-std",
+        feature="DEBUG"
+    ))]
     pub(crate) fn write_to(&self, buf: &mut Vec<u8>) {
         let mut buf_len = buf.len(/* keep on a register */);
 
