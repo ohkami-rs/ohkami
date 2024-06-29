@@ -9,17 +9,17 @@ pub struct Headers {
     insertlog: Vec<usize>,
     custom:    Option<Box<FxHashMap<&'static str, Cow<'static, str>>>>,
     setcookie: Option<Box<Vec<Cow<'static, str>>>>,
-    size:      usize,
+    pub(crate) size: usize,
 }
 
+pub struct SetHeaders<'set>(
+    &'set mut Headers
+);
 impl Headers {
     #[inline] pub fn set(&mut self) -> SetHeaders<'_> {
         SetHeaders(self)
     }
 }
-pub struct SetHeaders<'set>(
-    &'set mut Headers
-); 
 
 pub trait HeaderAction<'action> {
     fn perform(self, set: SetHeaders<'action>, key: Header) -> SetHeaders<'action>;
@@ -500,54 +500,38 @@ impl Headers {
         feature="rt_tokio",feature="rt_async-std",
         feature="DEBUG"
     ))]
-    pub(crate) fn write_to(&self, buf: &mut Vec<u8>) {
-        let mut buf_len = buf.len(/* keep on a register */);
-
-        macro_rules! push_unchecked {
-            ($bytes:expr) => {
-                unsafe {
-                    let bytes_len = $bytes.len();
-                    std::ptr::copy_nonoverlapping(
-                        $bytes.as_ptr(),
-                        buf.as_mut_ptr().add(buf_len),
-                        bytes_len
-                    );
-                    buf_len += bytes_len;
-                }
-            };
-        }
-
-        buf.reserve_exact(self.size);
+    /// SAFETY: `buf` has at least remaining capacity of `self.size`
+    pub(crate) unsafe fn write_unchecked_to(&self, buf: &mut Vec<u8>) {
         for i in &self.insertlog {
             if let Some(v) = unsafe {self.standard.get_unchecked(*i)} {
-                push_unchecked!(SERVER_HEADERS.get_unchecked(*i).as_bytes());
-                push_unchecked!(b": ");
-                push_unchecked!(v.as_bytes());
-                push_unchecked!(b"\r\n");
+                crate::push_unchecked!(buf <- SERVER_HEADERS.get_unchecked(*i).as_bytes());
+                crate::push_unchecked!(buf <- b": ");
+                crate::push_unchecked!(buf <- v.as_bytes());
+                crate::push_unchecked!(buf <- b"\r\n");
             }
         }
         if let Some(custom) = self.custom.as_ref() {
             for (k, v) in &**custom {
-                push_unchecked!(k.as_bytes());
-                push_unchecked!(b": ");
-                push_unchecked!(v.as_bytes());
-                push_unchecked!(b"\r\n");
+                crate::push_unchecked!(buf <- k.as_bytes());
+                crate::push_unchecked!(buf <- b": ");
+                crate::push_unchecked!(buf <- v.as_bytes());
+                crate::push_unchecked!(buf <- b"\r\n");
             }
         }
         if let Some(setcookies) = self.setcookie.as_ref() {
             for setcookie in &**setcookies {
-                push_unchecked!(b"Set-Cookie: ");
-                push_unchecked!(setcookie.as_bytes());
-                push_unchecked!(b"\r\n");
+                crate::push_unchecked!(buf <- b"Set-Cookie: ");
+                crate::push_unchecked!(buf <- setcookie.as_bytes());
+                crate::push_unchecked!(buf <- b"\r\n");
             }
         }
-        push_unchecked!(b"\r\n");
-
-        unsafe {buf.set_len(buf_len)}
+        crate::push_unchecked!(buf <- b"\r\n");
     }
+
     #[cfg(feature="DEBUG")]
     pub fn _write_to(&self, buf: &mut Vec<u8>) {
-        self.write_to(buf)
+        buf.reserve_exact(self.size);
+        unsafe {self.write_unchecked_to(buf)}
     }
 }
 

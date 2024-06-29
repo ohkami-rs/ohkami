@@ -102,6 +102,22 @@ pub mod utils {
         }};
     }
 
+    #[doc(hidden)]
+    #[macro_export]
+    macro_rules! push_unchecked {
+        ($buf:ident <- $bytes:expr) => {
+            unsafe {
+                let (buf_len, bytes_len) = ($buf.len(), $bytes.len());
+                std::ptr::copy_nonoverlapping(
+                    $bytes.as_ptr(),
+                    $buf.as_mut_ptr().add(buf_len),
+                    bytes_len
+                );
+                $buf.set_len(buf_len + bytes_len);
+            }
+        };
+    }
+
     pub use crate::fangs::util::FangAction;
 
     #[cfg(feature="sse")]
