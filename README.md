@@ -9,8 +9,8 @@
 - *multi runtime* support：`tokio`, `async-std`, `worker` (Cloudflare Workers)
 
 <div align="right">
-    <a href="https://github.com/kana-rus/ohkami/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/crates/l/ohkami.svg" /></a>
-    <a href="https://github.com/kana-rus/ohkami/actions"><img alt="build check status of ohkami" src="https://github.com/kana-rus/ohkami/actions/workflows/CI.yml/badge.svg"/></a>
+    <a href="https://github.com/ohkami-rs/ohkami/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/crates/l/ohkami.svg" /></a>
+    <a href="https://github.com/ohkami-rs/ohkami/actions"><img alt="build check status of ohkami" src="https://github.com/ohkami-rs/ohkami/actions/workflows/CI.yml/badge.svg"/></a>
     <a href="https://crates.io/crates/ohkami"><img alt="crates.io" src="https://img.shields.io/crates/v/ohkami" /></a>
 </div>
 
@@ -29,7 +29,7 @@ ohkami = { version = "0.20", features = ["rt_tokio"] }
 tokio  = { version = "1",    features = ["full"] }
 ```
 
-2. Write your first code with Ohkami : [examples/quick_start](https://github.com/kana-rus/ohkami/blob/main/examples/quick_start/src/main.rs)
+2. Write your first code with Ohkami : [examples/quick_start](https://github.com/ohkami-rs/ohkami/blob/main/examples/quick_start/src/main.rs)
 
 ```rust,no_run
 use ohkami::prelude::*;
@@ -70,14 +70,14 @@ Hello, your_name!
 ## Cloudflare Workers is supported by `"rt_worker"` feature
 
 ```sh
-npm create cloudflare ./path/to/project -- --template https://github.com/kana-rus/ohkami-templates/worker
+npm create cloudflare ./path/to/project -- --template https://github.com/ohkami-rs/ohkami-templates/worker
 ```
 
 Then your project directory has `wrangler.toml`, `package.json` and a Rust library crate.
 
 Local dev by `npm run dev` and depoly by `npm run deploy` !
 
-( See README of the [template](https://github.com/kana-rus/ohkami-templates/tree/main/worker) for details )
+( See README of the [template](https://github.com/ohkami-rs/ohkami-templates/tree/main/worker) for details )
 
 <br>
 
@@ -359,4 +359,4 @@ Latest stable
 
 ## License
 
-ohkami is licensed under MIT LICENSE ([LICENSE](https://github.com/kana-rus/ohkami/blob/main/LICENSE) or [https://opensource.org/licenses/MIT](https://opensource.org/licenses/MIT)).
+ohkami is licensed under MIT LICENSE ([LICENSE](https://github.com/ohkami-rs/ohkami/blob/main/LICENSE) or [https://opensource.org/licenses/MIT](https://opensource.org/licenses/MIT)).
