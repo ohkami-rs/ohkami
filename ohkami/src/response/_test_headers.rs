@@ -9,7 +9,7 @@ use super::ResponseHeaders;
     h.set().Server("A");
     {
         let mut buf = Vec::new();
-        h.write_to(&mut buf);
+        h._write_to(&mut buf);
         assert_eq!(std::str::from_utf8(&buf).unwrap(), "Server: A\r\n\r\n");
     }
 
@@ -19,7 +19,7 @@ use super::ResponseHeaders;
     h.set().ContentType("text/html").ContentLength("42");
     {
         let mut buf = Vec::new();
-        h.write_to(&mut buf);
+        h._write_to(&mut buf);
         assert_eq!(std::str::from_utf8(&buf).unwrap(), "\
             Server: B\r\n\
             Content-Type: text/html\r\n\
@@ -36,7 +36,7 @@ use super::ResponseHeaders;
     assert_eq!(h.Server(), Some("X"));
     {
         let mut buf = Vec::new();
-        h.write_to(&mut buf);
+        h._write_to(&mut buf);
         assert_eq!(std::str::from_utf8(&buf).unwrap(), "\
             Server: X\r\n\
             \r\n\
@@ -47,7 +47,7 @@ use super::ResponseHeaders;
     assert_eq!(h.Server(), Some("X, Y"));
     {
         let mut buf = Vec::new();
-        h.write_to(&mut buf);
+        h._write_to(&mut buf);
         assert_eq!(std::str::from_utf8(&buf).unwrap(), "\
             Server: X, Y\r\n\
             \r\n\
@@ -62,7 +62,7 @@ use super::ResponseHeaders;
     assert_eq!(h.custom("Custom-Header"), Some("A"));
     {
         let mut buf = Vec::new();
-        h.write_to(&mut buf);
+        h._write_to(&mut buf);
         assert_eq!(std::str::from_utf8(&buf).unwrap(), "\
             Custom-Header: A\r\n\
             \r\n\
@@ -73,7 +73,7 @@ use super::ResponseHeaders;
     assert_eq!(h.custom("Custom-Header"), Some("A, B"));
     {
         let mut buf = Vec::new();
-        h.write_to(&mut buf);
+        h._write_to(&mut buf);
         assert_eq!(std::str::from_utf8(&buf).unwrap(), "\
             Custom-Header: A, B\r\n\
             \r\n\

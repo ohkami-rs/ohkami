@@ -153,8 +153,9 @@ impl Response {
     pub(crate) async fn send(mut self, conn: &mut (impl AsyncWriter + Unpin)) {
         self.complete();
 
-        let mut buf = Vec::from(self.status.line());
-        self.headers.write_to(&mut buf);
+        let mut buf = Vec::<u8>::with_capacity(self.status.line().len() + self.headers.size);
+        crate::push_unchecked!(buf <- self.status.line());
+        unsafe {self.headers.write_unchecked_to(&mut buf)}
 
         match self.content {
             Content::None => {
