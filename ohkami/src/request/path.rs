@@ -67,7 +67,7 @@ impl Path {
 
     #[inline(always)]
     pub(crate) fn init_with_request_bytes(&mut self, bytes: &[u8]) -> Result<(), crate::Response> {
-        bytes.starts_with(b"/").then_some(())
+        (bytes.first() == Some(&b'/')).then_some(())
             .ok_or_else(crate::Response::NotImplemented)?;
 
         /*

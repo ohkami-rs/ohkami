@@ -90,6 +90,7 @@ impl CowSlice {
             }
         }
     }
+    #[inline]
     pub unsafe fn into_cow_static_bytes_uncheked(self) -> Cow<'static, [u8]> {
         match self {
             Self::Own(array) => Cow::Owned(array.into()),
