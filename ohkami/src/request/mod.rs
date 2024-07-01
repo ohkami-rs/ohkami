@@ -190,6 +190,7 @@ impl Request {
     }
 
     #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
+    #[inline]
     pub(crate) async fn read(
         mut self: Pin<&mut Self>,
         stream:   &mut (impl AsyncReader + Unpin),

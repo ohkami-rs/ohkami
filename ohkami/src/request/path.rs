@@ -19,23 +19,6 @@ impl Params {
 
 const _: () = {
     impl Params {
-        #[inline(always)]
-        const fn init() -> Self {
-            Params { next: 0, list: [const {MaybeUninit::uninit()}; Params::LIMIT] }
-        }
-        
-        #[inline(always)]
-        fn push(&mut self, param: Slice) {
-            #[cfg(debug_assertions)] {
-                assert!(self.next < Self::LIMIT);
-            }
-            unsafe {self.list
-                .get_unchecked_mut(self.next)
-                .write(param);
-            }
-            self.next += 1;
-        }
-
         fn iter(&self) -> impl Iterator<Item = &Slice> {
             (0..self.next).map(|i| unsafe {
                 self.list
@@ -92,50 +75,71 @@ const _: () = {
 };
 
 #[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_worker"))]
-impl Path {
-    #[inline]
-    pub(crate) fn uninit() -> Self {
-        Self(MaybeUninit::uninit())
-    }
-
-    #[inline(always)]
-    pub(crate) fn init_with_request_bytes(&mut self, bytes: &[u8]) -> Result<(), crate::Response> {
-        (bytes.first() == Some(&b'/')).then_some(())
-            .ok_or_else(crate::Response::NotImplemented)?;
-
-        /*
-        Strip trailing '/' **even when `bytes` is just `b"/"`**
-        (then the bytes become b"" (empty bytes)).
+const _: () = {
+    impl Params {
+        #[inline(always)]
+        const fn init() -> Self {
+            Params { next: 0, list: [const {MaybeUninit::uninit()}; Params::LIMIT] }
+        }
         
-        This suits to ohkami's radix router's searching algorithm and,
-        while `Path::as_internal_bytes` directly returns the result bytes,
-        `Path::as_bytes`, intended to be used by `Request::{pub fn path(&self)}`,
-        returns `b"/"` if that bytes is `b"/"`.
-        */
-        let mut len = bytes.len();
-        if unsafe {*bytes.get_unchecked(len-1) == b'/'} {len -= 1};
-        
-        #[allow(unused_unsafe/* I don't know why but rustc sometimes put warnings to this unsafe as unnecessary */)]
-        Ok({self.0.write(PathInner {
-            raw:    unsafe {Slice::new_unchecked(bytes.as_ptr(), len)},
-            params: Params::init(),
-        });})
+        #[inline(always)]
+        fn push(&mut self, param: Slice) {
+            #[cfg(debug_assertions)] {
+                assert!(self.next < Self::LIMIT);
+            }
+            unsafe {self.list
+                .get_unchecked_mut(self.next)
+                .write(param);
+            }
+            self.next += 1;
+        }
     }
+    
+    impl Path {
+        #[inline]
+        pub(crate) fn uninit() -> Self {
+            Self(MaybeUninit::uninit())
+        }
 
-    #[inline] pub(crate) unsafe fn push_param(&mut self, param: Slice) {
-        self.0.assume_init_mut().params.push(param)
-    }
-    #[inline] pub(crate) unsafe fn assume_one_param<'p>(&self) -> &'p [u8] {
-        self.0.assume_init_ref().params.list.get_unchecked(0).assume_init_ref().as_bytes()
-    }
-    #[inline] pub(crate) unsafe fn assume_two_params<'p>(&self) -> (&'p [u8], &'p [u8]) {
-        (self.0.assume_init_ref().params.list.get_unchecked(0).assume_init_ref().as_bytes(), self.0.assume_init_ref().params.list.get_unchecked(1).assume_init_ref().as_bytes())
-    }
+        #[inline(always)]
+        pub(crate) fn init_with_request_bytes(&mut self, bytes: &[u8]) -> Result<(), crate::Response> {
+            (bytes.first() == Some(&b'/')).then_some(())
+                .ok_or_else(crate::Response::NotImplemented)?;
 
-    #[inline] pub(crate) unsafe fn normalized_bytes<'req>(&self) -> &'req [u8] {
-        self.0.assume_init_ref().raw.as_bytes()
+            /*
+            Strip trailing '/' **even when `bytes` is just `b"/"`**
+            (then the bytes become b"" (empty bytes)).
+
+            This suits to ohkami's radix router's searching algorithm and,
+            while `Path::as_internal_bytes` directly returns the result bytes,
+            `Path::as_bytes`, intended to be used by `Request::{pub fn path(&self)}`,
+            returns `b"/"` if that bytes is `b"/"`.
+            */
+            let mut len = bytes.len();
+            if unsafe {*bytes.get_unchecked(len-1) == b'/'} {len -= 1};
+
+            #[allow(unused_unsafe/* I don't know why but rustc sometimes put warnings to this unsafe as unnecessary */)]
+            Ok({self.0.write(PathInner {
+                raw:    unsafe {Slice::new_unchecked(bytes.as_ptr(), len)},
+                params: Params::init(),
+            });})
+        }
+
+        #[inline] pub(crate) unsafe fn push_param(&mut self, param: Slice) {
+            self.0.assume_init_mut().params.push(param)
+        }
+        #[inline] pub(crate) unsafe fn assume_one_param<'p>(&self) -> &'p [u8] {
+            self.0.assume_init_ref().params.list.get_unchecked(0).assume_init_ref().as_bytes()
+        }
+        #[inline] pub(crate) unsafe fn assume_two_params<'p>(&self) -> (&'p [u8], &'p [u8]) {
+            (self.0.assume_init_ref().params.list.get_unchecked(0).assume_init_ref().as_bytes(), self.0.assume_init_ref().params.list.get_unchecked(1).assume_init_ref().as_bytes())
+        }
+
+        #[inline] pub(crate) unsafe fn normalized_bytes<'req>(&self) -> &'req [u8] {
+            self.0.assume_init_ref().raw.as_bytes()
+        }
     }
-}
+};
 
 #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
 #[cfg(test)] impl Path {

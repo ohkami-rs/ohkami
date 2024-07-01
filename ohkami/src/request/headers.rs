@@ -403,7 +403,7 @@ impl Headers {
     pub(crate) fn init() -> Self {
         Self {
             standard: Box::new([const {None}; N_CLIENT_HEADERS]),
-            custom: None,
+            custom:   None,
         }
     }
     #[cfg(feature="DEBUG")]

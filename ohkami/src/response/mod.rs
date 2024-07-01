@@ -105,7 +105,7 @@ pub struct Response {
     /// - `append({value})` to append
     /// 
     /// `{value}`: `String`, `&'static str`, `Cow<&'static, str>`
-    pub headers:        ResponseHeaders,
+    pub headers: ResponseHeaders,
 
     pub(crate) content: Content,
 }
