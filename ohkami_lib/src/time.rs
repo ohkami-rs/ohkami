@@ -10,11 +10,12 @@ use std::time::Duration;
     UTCDateTime::from_duration_since_unix_epoch(duration_since_unix_epoch).into_imf_fixdate()
 }
 
-struct UTCDateTime {
+pub struct UTCDateTime {
     date: Date,
     time: Time,
 } impl UTCDateTime {
-    #[inline] fn from_duration_since_unix_epoch(system_now: Duration) -> Self {
+    #[inline]
+    pub fn from_duration_since_unix_epoch(system_now: Duration) -> Self {
         let (secs, nsecs) = (system_now.as_secs() as i64, system_now.subsec_nanos());
 
         let days = secs.div_euclid(86_400);
@@ -26,7 +27,7 @@ struct UTCDateTime {
         Self { date, time }
     }
 
-    fn into_imf_fixdate(self) -> String {
+    pub fn into_imf_fixdate(self) -> String {
         const IMF_FIXDATE_LEN: usize      = str::len("Sun, 06 Nov 1994 08:49:37 GMT");
         const SHORT_WEEKDAYS:  [&str; 7]  = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
         const SHORT_MONTHS:    [&str; 12] = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -46,28 +47,29 @@ struct UTCDateTime {
         }
 
         let mut buf = String::with_capacity(IMF_FIXDATE_LEN);
-        macro_rules! push_unchecked {
-            ($s:expr) => {
-                unsafe {
-                    let (buf_len, s_len) = (buf.len(), $s.len());
-                    std::ptr::copy_nonoverlapping(
-                        $s.as_ptr(),
-                        buf.as_mut_ptr().add(buf_len),
-                        s_len
-                    );
-                    buf.as_mut_vec().set_len(buf_len + s_len);
-                }
-            };
-            (@ $s:expr) => {
-                unsafe {
-                    let buf_len = buf.len();
-                    std::ptr::write(buf.as_mut_ptr().add(buf_len), $s);
-                    buf.as_mut_vec().set_len(buf_len + 1);
-                }
-            };
-        }
         {
             let Self { date, time } = self;
+
+            macro_rules! push_unchecked {
+                ($s:expr) => {
+                    unsafe {
+                        let (buf_len, s_len) = (buf.len(), $s.len());
+                        std::ptr::copy_nonoverlapping(
+                            $s.as_ptr(),
+                            buf.as_mut_ptr().add(buf_len),
+                            s_len
+                        );
+                        buf.as_mut_vec().set_len(buf_len + s_len);
+                    }
+                };
+                (@ $s:expr) => {
+                    unsafe {
+                        let buf_len = buf.len();
+                        std::ptr::write(buf.as_mut_ptr().add(buf_len), $s);
+                        buf.as_mut_vec().set_len(buf_len + 1);
+                    }
+                };
+            }
 
             push_unchecked!(SHORT_WEEKDAYS.get_unchecked(date.weekday().num_days_from_sunday() as usize));
             push_unchecked!(", ");
@@ -397,7 +399,7 @@ enum Weekday {
 
         use std::time::{SystemTime, UNIX_EPOCH};
         let system_now = SystemTime::now().duration_since(UNIX_EPOCH).expect("system time before Unix epoch");
-        let (cn, n) = (correct_now(), super::imf_fixdate(system_now));
-        assert_eq!(cn, n);
+        let (expected, n) = (correct_now(), super::imf_fixdate(system_now));
+        assert_eq!(expected, n);
     }
 }

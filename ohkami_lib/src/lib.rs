@@ -4,7 +4,7 @@ pub mod mime;
 
 pub mod num;
 
-mod time;
+pub mod time;
 pub use time::imf_fixdate;
 
 mod slice;
