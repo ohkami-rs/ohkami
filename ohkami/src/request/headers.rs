@@ -330,7 +330,7 @@ impl Headers {
     }
     #[cfg(feature="DEBUG")]
     #[inline(always)] pub fn _insert(&mut self, name: Header, value: CowSlice) {
-        unsafe {*self.standard.get_unchecked_mut(name as usize) = Some(value)}
+        self.insert(name, value)
     }
 
     pub(crate) fn remove(&mut self, name: Header) {
@@ -352,10 +352,10 @@ impl Headers {
 
         match target {
             None => *target = Some(value),
-            Some(v) => (|| unsafe {
+            Some(v) => (|slice| unsafe {
                 v.extend_from_slice(b", ");
-                v.extend_from_slice(value.as_bytes());
-            })()
+                v.extend_from_slice(slice);
+            })(unsafe {value.as_bytes()})
         }
     }
 }
@@ -403,7 +403,7 @@ impl Headers {
     pub(crate) fn init() -> Self {
         Self {
             standard: Box::new([const {None}; N_CLIENT_HEADERS]),
-            custom: None,
+            custom:   None,
         }
     }
     #[cfg(feature="DEBUG")]

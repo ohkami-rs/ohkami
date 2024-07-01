@@ -105,7 +105,7 @@ pub struct Response {
     /// - `append({value})` to append
     /// 
     /// `{value}`: `String`, `&'static str`, `Cow<&'static, str>`
-    pub headers:        ResponseHeaders,
+    pub headers: ResponseHeaders,
 
     pub(crate) content: Content,
 }
@@ -153,22 +153,30 @@ impl Response {
     pub(crate) async fn send(mut self, conn: &mut (impl AsyncWriter + Unpin)) {
         self.complete();
 
-        let mut buf = Vec::<u8>::with_capacity(self.status.line().len() + self.headers.size);
-        crate::push_unchecked!(buf <- self.status.line());
-        unsafe {self.headers.write_unchecked_to(&mut buf)}
-
         match self.content {
             Content::None => {
+                let mut buf = Vec::<u8>::with_capacity(self.status.line().len() + self.headers.size);
+                crate::push_unchecked!(buf <- self.status.line());
+                unsafe {self.headers.write_unchecked_to(&mut buf)}
+        
                 conn.write_all(&buf).await.expect("Failed to send response");
             }
 
             Content::Payload(bytes) => {
-                buf.extend_from_slice(&bytes);
+                let mut buf = Vec::<u8>::with_capacity(self.status.line().len() + self.headers.size + bytes.len());
+                crate::push_unchecked!(buf <- self.status.line());
+                unsafe {self.headers.write_unchecked_to(&mut buf)}
+                crate::push_unchecked!(buf <- bytes);
+
                 conn.write_all(&buf).await.expect("Failed to send response");
             }
 
             #[cfg(feature="sse")]
             Content::Stream(mut stream) => {
+                let mut buf = Vec::<u8>::with_capacity(self.status.line().len() + self.headers.size);
+                crate::push_unchecked!(buf <- self.status.line());
+                unsafe {self.headers.write_unchecked_to(&mut buf)}
+        
                 conn.write_all(&buf).await.expect("Failed to send response");
                 while let Some(chunk) = stream.next().await {
                     match chunk {

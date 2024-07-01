@@ -40,7 +40,7 @@ use {
 
 
 #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
-pub(crate) const BUF_SIZE: usize = 1024;
+pub(crate) const BUF_SIZE: usize = 1 << 10;
 #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
 pub(crate) const PAYLOAD_LIMIT: usize = 1 << 32;
 
@@ -190,6 +190,7 @@ impl Request {
     }
 
     #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
+    #[inline]
     pub(crate) async fn read(
         mut self: Pin<&mut Self>,
         stream:   &mut (impl AsyncReader + Unpin),
@@ -200,10 +201,10 @@ impl Request {
             Ok (0) => return Ok(None),
             Err(e) => return match e.kind() {
                 std::io::ErrorKind::ConnectionReset => Ok(None),
-                _ => Err((|| {
-                    crate::warning!("Failed to read stream: {e}");
+                _ => Err((|err| {
+                    crate::warning!("Failed to read stream: {err}");
                     Response::InternalServerError()
-                })())
+                })(e))
             },
             _ => ()
         }
@@ -263,19 +264,22 @@ impl Request {
     }
 
     #[cfg(any(feature="rt_tokio", feature="rt_async-std"))]
+    #[inline]
     async fn read_payload(
         stream:        &mut (impl AsyncReader + Unpin),
         remaining_buf: &[u8],
         size:          usize,
     ) -> CowSlice {
-        if remaining_buf.is_empty() || remaining_buf[0] == 0 {
+        let remaining_buf_len = remaining_buf.len();
+
+        if remaining_buf_len == 0 || *unsafe {remaining_buf.get_unchecked(0)} == 0 {
             #[cfg(feature="DEBUG")] println!("\n[read_payload] case: remaining_buf.is_empty() || remaining_buf[0] == 0\n");
 
             let mut bytes = vec![0; size].into_boxed_slice();
             stream.read_exact(&mut bytes).await.unwrap();
             CowSlice::Own(bytes)
 
-        } else if size <= remaining_buf.len() {
+        } else if size <= remaining_buf_len {
             #[cfg(feature="DEBUG")] println!("\n[read_payload] case: starts_at + size <= BUF_SIZE\n");
 
             #[allow(unused_unsafe/* I don't know why but rustc sometimes put warnings to this unsafe as unnecessary */)]
@@ -287,7 +291,6 @@ impl Request {
             #[cfg(feature="DEBUG")] println!("\n[read_payload] case: else\n");
 
             let mut bytes = vec![0; size].into_boxed_slice();
-            let remaining_buf_len = remaining_buf.len();
             unsafe {// SAFETY: Here size > remaining_buf_len
                 bytes.get_unchecked_mut(..remaining_buf_len).copy_from_slice(remaining_buf);
                 stream.read_exact(bytes.get_unchecked_mut(remaining_buf_len..)).await.unwrap();

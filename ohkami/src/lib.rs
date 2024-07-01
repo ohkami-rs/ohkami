@@ -121,9 +121,7 @@ pub mod utils {
     pub use crate::fangs::util::FangAction;
 
     #[cfg(feature="sse")]
-    pub use ohkami_lib::stream;
-    #[cfg(feature="sse")]
-    pub use ohkami_lib::stream::{Stream, StreamExt};
+    pub use ohkami_lib::stream::{self, Stream, StreamExt};
 
     #[cfg(not(feature="rt_worker"))]
     /// ```

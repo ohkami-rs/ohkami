@@ -66,12 +66,15 @@ pub enum CowSlice {
     Own(Box<[u8]>),
 }
 impl CowSlice {
-    #[inline(always)] pub unsafe fn as_bytes(&self) -> &[u8] {
+    #[inline(always)]
+    pub unsafe fn as_bytes(&self) -> &[u8] {
         match self {
             Self::Own(array) => &array,
             Self::Ref(slice) => unsafe {slice.as_bytes()},
         }
     }
+
+    #[cold]
     pub unsafe fn extend_from_slice(&mut self, bytes: &[u8]) {
         match self {
             Self::Own(array) => {
@@ -90,6 +93,8 @@ impl CowSlice {
             }
         }
     }
+
+    #[inline]
     pub unsafe fn into_cow_static_bytes_uncheked(self) -> Cow<'static, [u8]> {
         match self {
             Self::Own(array) => Cow::Owned(array.into()),
