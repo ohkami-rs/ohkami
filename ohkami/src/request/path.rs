@@ -7,11 +7,44 @@ pub struct Path(
 );
 pub(crate) struct PathInner {
     raw:    Slice,
-    #[allow(unused)]
-    params: Vec<Slice>,
+    params: Params,
+}
+struct Params {
+    next: usize,
+    list: [MaybeUninit<Slice>; Self::LIMIT]
+}
+impl Params {
+    const LIMIT: usize = 2;
 }
 
 const _: () = {
+    impl Params {
+        #[inline(always)]
+        const fn init() -> Self {
+            Params { next: 0, list: [const {MaybeUninit::uninit()}; Params::LIMIT] }
+        }
+        
+        #[inline(always)]
+        fn push(&mut self, param: Slice) {
+            #[cfg(debug_assertions)] {
+                assert!(self.next < Self::LIMIT);
+            }
+            unsafe {self.list
+                .get_unchecked_mut(self.next)
+                .write(param);
+            }
+            self.next += 1;
+        }
+
+        fn iter(&self) -> impl Iterator<Item = &Slice> {
+            (0..self.next).map(|i| unsafe {
+                self.list
+                    .get_unchecked(i)
+                    .assume_init_ref()
+            })
+        }
+    }
+
     impl Path {
         pub fn params(&self) -> impl Iterator<Item = Cow<str>> {
             unsafe {self.0.assume_init_ref()}
@@ -85,7 +118,7 @@ impl Path {
         #[allow(unused_unsafe/* I don't know why but rustc sometimes put warnings to this unsafe as unnecessary */)]
         Ok({self.0.write(PathInner {
             raw:    unsafe {Slice::new_unchecked(bytes.as_ptr(), len)},
-            params: Vec::new(),
+            params: Params::init(),
         });})
     }
 
@@ -93,10 +126,10 @@ impl Path {
         self.0.assume_init_mut().params.push(param)
     }
     #[inline] pub(crate) unsafe fn assume_one_param<'p>(&self) -> &'p [u8] {
-        self.0.assume_init_ref().params.get_unchecked(0).as_bytes()
+        self.0.assume_init_ref().params.list.get_unchecked(0).assume_init_ref().as_bytes()
     }
     #[inline] pub(crate) unsafe fn assume_two_params<'p>(&self) -> (&'p [u8], &'p [u8]) {
-        (self.0.assume_init_ref().params.get_unchecked(0).as_bytes(), self.0.assume_init_ref().params.get_unchecked(1).as_bytes())
+        (self.0.assume_init_ref().params.list.get_unchecked(0).assume_init_ref().as_bytes(), self.0.assume_init_ref().params.list.get_unchecked(1).assume_init_ref().as_bytes())
     }
 
     #[inline] pub(crate) unsafe fn normalized_bytes<'req>(&self) -> &'req [u8] {
@@ -109,7 +142,7 @@ impl Path {
     pub(crate) fn from_literal(literal: &'static str) -> Self {
         Self(MaybeUninit::new(PathInner {
             raw:    Slice::from_bytes(literal.as_bytes()),
-            params: Vec::new(),
+            params: Params::init(),
         }))
     }
 }
