@@ -6,8 +6,66 @@ use rustc_hash::FxHashMap;
 
 #[derive(PartialEq)]
 pub struct Headers {
-    standard: Box<[Option<CowSlice>; N_CLIENT_HEADERS]>,
+    standard: Standard,
     custom:   Option<Box<FxHashMap<Slice, CowSlice>>>,
+}
+
+#[derive(PartialEq)]
+struct Standard {
+    index:  [u8; N_CLIENT_HEADERS],
+    values: Vec<CowSlice>,
+} impl Standard {
+    const INF: u8 = u8::MAX;
+
+    #[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_worker"))]
+    #[inline]
+    fn new() -> Self {
+        Self {
+            index:  [Self::INF; N_CLIENT_HEADERS],
+            values: Vec::with_capacity(N_CLIENT_HEADERS / 4)
+        }
+    }
+
+    #[inline(always)]
+    fn get(&self, name: Header) -> Option<&CowSlice> {
+        unsafe {match *self.index.get_unchecked(name as usize) {
+            Self::INF => None,
+            index     => Some(self.values.get_unchecked(index as usize))
+        }}
+    }
+
+    #[inline(always)]
+    fn remove(&mut self, name: Header) {
+        unsafe {*self.index.get_unchecked_mut(name as usize) = Self::INF}
+    }
+
+    #[inline(always)]
+    fn insert(&mut self, name: Header, value: CowSlice) {
+        self.values.push(value);
+        unsafe {*self.index.get_unchecked_mut(name as usize) = self.values.len() as u8}
+    }
+
+    #[inline(always)]
+    fn append(&mut self, name: Header, value: CowSlice) {
+        unsafe {match *self.index.get_unchecked(name as usize) {
+            Self::INF => self.insert(name, value),
+            index => (|index| {
+                let target = self.values.get_unchecked_mut(index as usize);
+                target.extend_from_slice(b", ");
+                target.extend_from_slice(&value);
+            })(index)
+        }}
+    }
+
+    fn iter(&self) -> impl Iterator<Item = (&str, &str)> {
+        self.index.iter()
+            .enumerate()
+            .filter(|(_, index)| **index != Self::INF)
+            .map(|(h, index)| unsafe {(
+                std::mem::transmute::<_, Header>(h as u8).as_str(),
+                std::str::from_utf8(self.values.get_unchecked(*index as usize)).expect("non UTF-8 header value")
+            )})
+    }
 }
 
 pub struct SetHeaders<'set>(
@@ -125,9 +183,8 @@ const _: () = {
 macro_rules! Header {
     ($N:literal; $( $konst:ident: $name_bytes:literal | $lower_case:literal $(| $other_pattern:literal)* , )*) => {
         pub(crate) const N_CLIENT_HEADERS: usize = $N;
-        pub(crate) const CLIENT_HEADERS: [Header; N_CLIENT_HEADERS] = [ $( Header::$konst ),* ];
 
-        #[derive(Debug, PartialEq)]
+        #[derive(Debug, PartialEq, Clone, Copy)]
         pub enum Header {
             $( $konst, )*
         }
@@ -283,50 +340,21 @@ impl Headers {
     }
 
     pub(crate) fn iter(&self) -> impl Iterator<Item = (&str, &str)> {
-        struct Standard<'i> {
-            cur:      usize,
-            standard: &'i [Option<CowSlice>; N_CLIENT_HEADERS],
-        }
-        impl<'i> Iterator for Standard<'i> {
-            type Item = (&'i str, &'i str);
-            fn next(&mut self) -> Option<Self::Item> {
-                for i in self.cur..N_CLIENT_HEADERS {
-                    if let Some(v) = unsafe {self.standard.get_unchecked(i)} {
-                        self.cur = i + 1;
-                        return Some((
-                            unsafe {CLIENT_HEADERS.get_unchecked(i)}.as_str(),
-                            std::str::from_utf8(unsafe {v.as_bytes()}).expect("Header value is not UTF-8"),
-                        ))
-                    }
-                }
-
-                None
-            }
-        }
-
-        struct Custom<'i> {
-            map_iter: Option<::std::collections::hash_map::Iter<'i, Slice, CowSlice>>
-        }
-        impl<'i> Iterator for Custom<'i> {
-            type Item = (&'i str, &'i str);
-            fn next(&mut self) -> Option<Self::Item> {
-                self.map_iter.as_mut()?
-                    .next().map(|(k, v)| (
-                        std::str::from_utf8(unsafe {k.as_bytes()}).expect("Header value is not UTF-8"),
-                        std::str::from_utf8(unsafe {v.as_bytes()}).expect("Header value is not UTF-8")
-                    ))
-            }
-        }
-
-        Standard { cur:0, standard:&self.standard }
-            .chain(Custom { map_iter: self.custom.as_ref().map(|box_hmap| box_hmap.iter()) })
+        self.standard.iter()
+            .chain(self.custom.as_ref()
+                .into_iter()
+                .flat_map(|hm| hm.iter().map(|(k, v)| (
+                    std::str::from_utf8(unsafe {k.as_bytes()}).expect("Header value is not UTF-8"),
+                    std::str::from_utf8(unsafe {v.as_bytes()}).expect("Header value is not UTF-8"),
+                )))
+            )
             .chain(self.Cookie().map(|c| ("Cookie", c)))
     }
 }
 
 impl Headers {
     #[inline(always)] pub(crate) fn insert(&mut self, name: Header, value: CowSlice) {
-        unsafe {*self.standard.get_unchecked_mut(name as usize) = Some(value)}
+        self.standard.insert(name, value)
     }
     #[cfg(feature="DEBUG")]
     #[inline(always)] pub fn _insert(&mut self, name: Header, value: CowSlice) {
@@ -334,29 +362,19 @@ impl Headers {
     }
 
     pub(crate) fn remove(&mut self, name: Header) {
-        unsafe {*self.standard.get_unchecked_mut(name as usize) = None}
+        self.standard.remove(name)
     }
 
     #[inline] pub(crate) fn get(&self, name: Header) -> Option<&str> {
-        match unsafe {self.standard.get_unchecked(name as usize)} {
-            Some(v) => Some(std::str::from_utf8(
-                unsafe {v.as_bytes()}
-            ).expect("Header value is not UTF-8")),
-            None => None,
+        match self.standard.get(name) {
+            Some(cs) => Some(std::str::from_utf8(&cs).expect("non UTF-8 header value")),
+            None => None
         }
     }
 
     #[inline(always)]
     pub(crate) fn append(&mut self, name: Header, value: CowSlice) {
-        let target = unsafe {self.standard.get_unchecked_mut(name as usize)};
-
-        match target {
-            None => *target = Some(value),
-            Some(v) => (|slice| unsafe {
-                v.extend_from_slice(b", ");
-                v.extend_from_slice(slice);
-            })(unsafe {value.as_bytes()})
-        }
+        self.standard.append(name, value)
     }
 }
 
@@ -364,7 +382,7 @@ impl Headers {
 impl Headers {
     #[allow(unused)]
     #[inline] pub(crate) fn get_raw(&self, name: Header) -> Option<&CowSlice> {
-        unsafe {self.standard.get_unchecked(name as usize)}.as_ref()
+        self.standard.get(name)
     }
 
     #[allow(unused)]
@@ -402,7 +420,7 @@ impl Headers {
     #[inline]
     pub(crate) fn init() -> Self {
         Self {
-            standard: Box::new([const {None}; N_CLIENT_HEADERS]),
+            standard: Standard::new(),
             custom:   None,
         }
     }
