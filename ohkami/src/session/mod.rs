@@ -35,6 +35,7 @@ impl Session {
             crate::Response::InternalServerError()
         }
 
+        #[inline]
         fn timeout_in(
             secs: u64,
             proc: impl Future<Output = ()>,
@@ -73,7 +74,7 @@ impl Session {
         #[cfg(feature="rt_async-std")]
         macro_rules! send {($res:ident) => {$res.send(c)};}
 
-        timeout_in(42/* TODO: make this configurable by user */, async {
+        timeout_in(crate::env::OHKAMI_KEEPALIVE_TIMEOUT(), async {
             loop {
                 let mut req = Request::init();
                 let mut req = unsafe {Pin::new_unchecked(&mut req)};
