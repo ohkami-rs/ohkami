@@ -5,11 +5,62 @@ use rustc_hash::FxHashMap;
 
 #[derive(Clone)]
 pub struct Headers {
-    standard:  Box<[Option<Cow<'static, str>>; N_SERVER_HEADERS]>,
-    insertlog: Vec<usize>,
+    standard:  Standard,
     custom:    Option<Box<FxHashMap<&'static str, Cow<'static, str>>>>,
     setcookie: Option<Box<Vec<Cow<'static, str>>>>,
     pub(crate) size: usize,
+}
+
+#[derive(PartialEq, Clone)]
+struct Standard {
+    index:  [u8; N_SERVER_HEADERS],
+    values: Vec<Cow<'static, str>>,
+} impl Standard {
+    const INF: u8 = u8::MAX;
+
+    #[inline]
+    fn new() -> Self {
+        Self {
+            index:  [Self::INF; N_SERVER_HEADERS],
+            values: Vec::with_capacity(N_SERVER_HEADERS / 4)
+        }
+    }
+
+    #[inline(always)]
+    fn get(&self, name: Header) -> Option<&Cow<'static, str>> {
+        unsafe {match *self.index.get_unchecked(name as usize) {
+            Self::INF => None,
+            index     => Some(self.values.get_unchecked(index as usize))
+        }}
+    }
+    #[inline(always)]
+    fn get_mut(&mut self, name: Header) -> Option<&mut Cow<'static, str>> {
+        unsafe {match *self.index.get_unchecked(name as usize) {
+            Self::INF => None,
+            index     => Some(self.values.get_unchecked_mut(index as usize))
+        }}
+    }
+
+    #[inline(always)]
+    fn delete(&mut self, name: Header) {
+        unsafe {*self.index.get_unchecked_mut(name as usize) = Self::INF}
+    }
+
+    #[inline(always)]
+    fn push(&mut self, name: Header, value: Cow<'static, str>) {
+        unsafe {*self.index.get_unchecked_mut(name as usize) = self.values.len() as u8}
+        self.values.push(value);
+    }
+
+    fn iter(&self) -> impl Iterator<Item = (&str, &str)> {
+        self.index.iter()
+            .enumerate()
+            .filter(|(_, index)| **index != Self::INF)
+            .map(|(h, index)| unsafe {(
+                std::mem::transmute::<_, Header>(h as u8).as_str(),
+                &**self.values.get_unchecked(*index as usize)
+            )})
+    }
 }
 
 pub struct SetHeaders<'set>(
@@ -356,22 +407,25 @@ impl Headers {
     #[inline(always)]
     pub(crate) fn insert(&mut self, name: Header, value: Cow<'static, str>) {
         let (name_len, value_len) = (name.len(), value.len());
-        match unsafe {self.standard.get_unchecked_mut(name as usize)}.replace(value) {
+        match self.standard.get_mut(name) {
             None => {
                 self.size += name_len + ": ".len() + value_len + "\r\n".len();
-                self.insertlog.push(name as usize)
+                self.standard.push(name, value)
             }
-            Some(old) => {self.size -= old.len(); self.size += value_len}
+            Some(old) => {
+                self.size -= old.len(); self.size += value_len;
+                *old = value
+            }
         }
     }
 
     #[inline]
     pub(crate) fn remove(&mut self, name: Header) {
         let name_len = name.len();
-        let v = unsafe {self.standard.get_unchecked_mut(name as usize)};
-        if let Some(v) = v.take() {
+        if let Some(v) = self.standard.get(name) {
             self.size -= name_len + ": ".len() + v.len() + "\r\n".len()
         }
+        self.standard.delete(name)
     }
     pub(crate) fn remove_custom(&mut self, name: &'static str) {
         if let Some(c) = self.custom.as_mut() {
@@ -383,7 +437,7 @@ impl Headers {
 
     #[inline(always)]
     pub(crate) fn get(&self, name: Header) -> Option<&str> {
-        unsafe {self.standard.get_unchecked(name as usize)}.as_ref().map(AsRef::as_ref)
+        self.standard.get(name).map(Cow::as_ref)
     }
     #[inline]
     pub(crate) fn get_custom(&self, name: &'static str) -> Option<&str> {
@@ -394,7 +448,7 @@ impl Headers {
 
     pub(crate) fn append(&mut self, name: Header, value: Cow<'static, str>) {
         let value_len = value.len();
-        let target = unsafe {self.standard.get_unchecked_mut(name as usize)};
+        let target = self.standard.get_mut(name);
 
         self.size += match target {
             Some(v) => {
@@ -414,8 +468,7 @@ impl Headers {
                 ", ".len() + value_len
             }
             None => {
-                *target = Some(value);
-                self.insertlog.push(name as usize);
+                self.standard.push(name, value);
                 name.len() + ": ".len() + value_len + "\r\n".len()
             }
         };
@@ -426,8 +479,7 @@ impl Headers {
     #[inline]
     pub(crate) fn new() -> Self {
         Self {
-            standard:  Box::new([const {None}; N_SERVER_HEADERS]),
-            insertlog: Vec::with_capacity(8),
+            standard:  Standard::new(),
             custom:    None,
             setcookie: None,
             size:      "\r\n".len(),
@@ -437,63 +489,21 @@ impl Headers {
     #[doc(hidden)]
     pub fn _new() -> Self {Self::new()}
 
-    pub(crate) const fn iter_standard(&self) -> impl Iterator<Item = (&str, &str)> {
-        struct Standard<'i> {
-            map: &'i Headers,
-            cur: usize,
-        }
-        impl<'i> Iterator for Standard<'i> {
-            type Item = (&'i str, &'i str);
-            fn next(&mut self) -> Option<Self::Item> {
-                for i in self.cur..N_SERVER_HEADERS {
-                    if let Some(v) = unsafe {self.map.standard.get_unchecked(i)} {
-                        self.cur = i + 1;
-                        return Some((unsafe {SERVER_HEADERS.get_unchecked(i)}.as_str(), &v))
-                    }
-                }
-                None
-            }
-        }
-
-        Standard { map: self, cur: 0 }
+    pub(crate) fn iter_standard(&self) -> impl Iterator<Item = (&str, &str)> {
+        self.standard.iter()
     }
 
     pub(crate) fn iter(&self) -> impl Iterator<Item = (&str, &str)> {
-        struct Standard<'i> {
-            map: &'i [Option<Cow<'static, str>>; N_SERVER_HEADERS],
-            cur: usize,
-        }
-        impl<'i> Iterator for Standard<'i> {
-            type Item = (&'i str, &'i str);
-            fn next(&mut self) -> Option<Self::Item> {
-                for i in self.cur..N_SERVER_HEADERS {
-                    if let Some(v) = unsafe {self.map.get_unchecked(i)} {
-                        self.cur = i + 1;
-                        return Some((unsafe {SERVER_HEADERS.get_unchecked(i)}.as_str(), &v))
-                    }
-                }
-                None
-            }
-        }
-
-        struct Custom<'i> {
-            map: Option<std::collections::hash_map::Iter<'i, &'static str, Cow<'static, str>>>,
-        }
-        impl<'i> Iterator for Custom<'i> {
-            type Item = (&'i str, &'i str);
-            fn next(&mut self) -> Option<Self::Item> {
-                self.map.as_mut()?
-                    .next().map(|(k, v)| (&**k, &**v))
-            }
-        }
-
-        let setcookies = self.setcookie.as_ref().map(|setcookies|
-            setcookies.iter().map(Cow::as_ref)
-        ).into_iter().flatten();
-
-        Standard { map: &self.standard, cur: 0 }
-            .chain(Custom { map: self.custom.as_ref().map(|box_hmap| box_hmap.iter()) })
-            .chain(setcookies.map(|setcookie| ("Set-Cookie", setcookie)))
+        self.standard.iter()
+            .chain(self.custom.as_ref()
+                .into_iter()
+                .flat_map(|hm| hm.iter().map(|(k, v)| (*k, &**v)))
+            )
+            .chain(self.setcookie.as_ref()
+                .map(|sc| sc.iter().map(Cow::as_ref)).into_iter()
+                .flatten()
+                .map(|sc| ("Set-Cookie", sc))
+            )
     }
 
     #[cfg(any(
@@ -502,9 +512,10 @@ impl Headers {
     ))]
     /// SAFETY: `buf` has remaining capacity of at least `self.size`
     pub(crate) unsafe fn write_unchecked_to(&self, buf: &mut Vec<u8>) {
-        for i in &self.insertlog {
-            if let Some(v) = unsafe {self.standard.get_unchecked(*i)} {
-                crate::push_unchecked!(buf <- SERVER_HEADERS.get_unchecked(*i).as_bytes());
+        for n in 0..N_SERVER_HEADERS {
+            let h = std::mem::transmute(n as u8);
+            if let Some(v) = self.standard.get(h) {
+                crate::push_unchecked!(buf <- h.as_bytes());
                 crate::push_unchecked!(buf <- b": ");
                 crate::push_unchecked!(buf <- v.as_bytes());
                 crate::push_unchecked!(buf <- b"\r\n");

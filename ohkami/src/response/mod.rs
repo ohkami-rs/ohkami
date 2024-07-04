@@ -138,7 +138,7 @@ impl Response {
             }
 
             Content::Payload(bytes) => self.headers.set()
-                .ContentLength(bytes.len().to_string()),
+                .ContentLength(ohkami_lib::num::atoi(bytes.len())),
 
             #[cfg(feature="sse")]
             Content::Stream(_) => self.headers.set()

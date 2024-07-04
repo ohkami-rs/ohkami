@@ -4,13 +4,11 @@ use ohkami_lib::{CowSlice, Slice};
 use rustc_hash::FxHashMap;
 
 
-#[derive(PartialEq)]
 pub struct Headers {
     standard: Standard,
     custom:   Option<Box<FxHashMap<Slice, CowSlice>>>,
 }
 
-#[derive(PartialEq)]
 struct Standard {
     index:  [u8; N_CLIENT_HEADERS],
     values: Vec<CowSlice>,
@@ -41,8 +39,8 @@ struct Standard {
 
     #[inline(always)]
     fn insert(&mut self, name: Header, value: CowSlice) {
-        self.values.push(value);
         unsafe {*self.index.get_unchecked_mut(name as usize) = self.values.len() as u8}
+        self.values.push(value);
     }
 
     #[inline(always)]
@@ -470,6 +468,25 @@ const _: () = {
     impl std::fmt::Debug for Headers {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             f.debug_map().entries(self.iter()).finish()
+        }
+    }
+
+    impl PartialEq for Headers {
+        fn eq(&self, other: &Self) -> bool {
+            self.custom == other.custom &&
+            self.standard == other.standard
+        }
+    }
+
+    impl PartialEq for Standard {
+        fn eq(&self, other: &Self) -> bool {
+            fn sort_collect<'s>(iter: impl Iterator<Item = (&'s str, &'s str)>) -> Vec<(&'s str, &'s str)> {
+                let mut collect = iter.collect::<Vec<_>>();
+                collect.sort_by_key(|(k, _)| *k);
+                collect
+            }
+
+            sort_collect(self.iter()) == sort_collect(other.iter())
         }
     }
 };
