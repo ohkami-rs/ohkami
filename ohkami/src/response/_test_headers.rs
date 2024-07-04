@@ -21,9 +21,9 @@ use super::ResponseHeaders;
         let mut buf = Vec::new();
         h._write_to(&mut buf);
         assert_eq!(std::str::from_utf8(&buf).unwrap(), "\
-            Server: B\r\n\
-            Content-Type: text/html\r\n\
             Content-Length: 42\r\n\
+            Content-Type: text/html\r\n\
+            Server: B\r\n\
             \r\n\
         ");
     }

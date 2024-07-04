@@ -20,7 +20,6 @@ pub fn hexized_bytes(n: usize) -> [u8; std::mem::size_of::<usize>() * 2] {
     }
 }
 
-
 #[cfg(test)]
 #[test] fn test_hexize() {
     for (n, expected) in [
@@ -32,5 +31,44 @@ pub fn hexized_bytes(n: usize) -> [u8; std::mem::size_of::<usize>() * 2] {
         (314, "13a"),
     ] {
         assert_eq!(hexized(n).trim_start_matches('0'), expected)
+    }
+}
+
+
+#[inline]
+pub fn atoi(mut n: usize) -> String {
+    let log10 = match usize::checked_ilog10(n) {
+        Some(log10) => log10 as usize,
+        None        => return String::from("0")
+    };
+    let len = 1 + log10;
+    let mut digits = vec![0u8; len];
+    {
+        for i in 0..log10 {
+            let d = 10_usize.pow((log10 - i) as u32);
+            let (div, rem) = (n / d, n % d);
+            *unsafe {digits.get_unchecked_mut(i as usize)} = b'0' + div as u8;
+            n = rem;
+        }
+        *unsafe {digits.get_unchecked_mut(log10)} = b'0' + n as u8;
+    }
+    unsafe {String::from_utf8_unchecked(digits)}
+}
+
+#[cfg(test)]
+#[test] fn test_atoi() {
+    for (n, expected) in [
+        (0, "0"),
+        (1, "1"),
+        (4, "4"),
+        (10, "10"),
+        (11, "11"),
+        (99, "99"),
+        (100, "100"),
+        (109, "109"),
+        (999, "999"),
+        (1000, "1000"),
+    ] {
+        assert_eq!(atoi(n), expected)
     }
 }
