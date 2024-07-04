@@ -13,13 +13,13 @@ struct Standard {
     index:  [u8; N_CLIENT_HEADERS],
     values: Vec<CowSlice>,
 } impl Standard {
-    const INF: u8 = u8::MAX;
+    const NULL: u8 = u8::MAX;
 
     #[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_worker"))]
     #[inline]
     fn new() -> Self {
         Self {
-            index:  [Self::INF; N_CLIENT_HEADERS],
+            index:  [Self::NULL; N_CLIENT_HEADERS],
             values: Vec::with_capacity(N_CLIENT_HEADERS / 4)
         }
     }
@@ -27,14 +27,14 @@ struct Standard {
     #[inline(always)]
     fn get(&self, name: Header) -> Option<&CowSlice> {
         unsafe {match *self.index.get_unchecked(name as usize) {
-            Self::INF => None,
-            index     => Some(self.values.get_unchecked(index as usize))
+            Self::NULL => None,
+            index      => Some(self.values.get_unchecked(index as usize))
         }}
     }
 
     #[inline(always)]
     fn remove(&mut self, name: Header) {
-        unsafe {*self.index.get_unchecked_mut(name as usize) = Self::INF}
+        unsafe {*self.index.get_unchecked_mut(name as usize) = Self::NULL}
     }
 
     #[inline(always)]
@@ -46,7 +46,7 @@ struct Standard {
     #[inline(always)]
     fn append(&mut self, name: Header, value: CowSlice) {
         unsafe {match *self.index.get_unchecked(name as usize) {
-            Self::INF => self.insert(name, value),
+            Self::NULL => self.insert(name, value),
             index => (|index| {
                 let target = self.values.get_unchecked_mut(index as usize);
                 target.extend_from_slice(b", ");
@@ -58,7 +58,7 @@ struct Standard {
     fn iter(&self) -> impl Iterator<Item = (&str, &str)> {
         self.index.iter()
             .enumerate()
-            .filter(|(_, index)| **index != Self::INF)
+            .filter(|(_, index)| **index != Self::NULL)
             .map(|(h, index)| unsafe {(
                 std::mem::transmute::<_, Header>(h as u8).as_str(),
                 std::str::from_utf8(self.values.get_unchecked(*index as usize)).expect("non UTF-8 header value")

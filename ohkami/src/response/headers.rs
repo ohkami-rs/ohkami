@@ -16,12 +16,12 @@ struct Standard {
     index:  [u8; N_SERVER_HEADERS],
     values: Vec<Cow<'static, str>>,
 } impl Standard {
-    const INF: u8 = u8::MAX;
+    const NULL: u8 = u8::MAX;
 
     #[inline]
     fn new() -> Self {
         Self {
-            index:  [Self::INF; N_SERVER_HEADERS],
+            index:  [Self::NULL; N_SERVER_HEADERS],
             values: Vec::with_capacity(N_SERVER_HEADERS / 4)
         }
     }
@@ -29,21 +29,21 @@ struct Standard {
     #[inline(always)]
     fn get(&self, name: Header) -> Option<&Cow<'static, str>> {
         unsafe {match *self.index.get_unchecked(name as usize) {
-            Self::INF => None,
-            index     => Some(self.values.get_unchecked(index as usize))
+            Self::NULL => None,
+            index      => Some(self.values.get_unchecked(index as usize))
         }}
     }
     #[inline(always)]
     fn get_mut(&mut self, name: Header) -> Option<&mut Cow<'static, str>> {
         unsafe {match *self.index.get_unchecked(name as usize) {
-            Self::INF => None,
-            index     => Some(self.values.get_unchecked_mut(index as usize))
+            Self::NULL => None,
+            index      => Some(self.values.get_unchecked_mut(index as usize))
         }}
     }
 
     #[inline(always)]
     fn delete(&mut self, name: Header) {
-        unsafe {*self.index.get_unchecked_mut(name as usize) = Self::INF}
+        unsafe {*self.index.get_unchecked_mut(name as usize) = Self::NULL}
     }
 
     #[inline(always)]
@@ -55,7 +55,7 @@ struct Standard {
     fn iter(&self) -> impl Iterator<Item = (&str, &str)> {
         self.index.iter()
             .enumerate()
-            .filter(|(_, index)| **index != Self::INF)
+            .filter(|(_, index)| **index != Self::NULL)
             .map(|(h, index)| unsafe {(
                 std::mem::transmute::<_, Header>(h as u8).as_str(),
                 &**self.values.get_unchecked(*index as usize)
