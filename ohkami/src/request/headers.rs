@@ -181,6 +181,7 @@ const _: () = {
 macro_rules! Header {
     ($N:literal; $( $konst:ident: $name_bytes:literal | $lower_case:literal $(| $other_pattern:literal)* , )*) => {
         pub(crate) const N_CLIENT_HEADERS: usize = $N;
+        const _: [Header; N_CLIENT_HEADERS] = [$(Header::$konst),*];
 
         #[derive(Debug, PartialEq, Clone, Copy)]
         pub enum Header {

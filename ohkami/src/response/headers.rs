@@ -230,7 +230,7 @@ const _: () = {
 macro_rules! Header {
     ($N:literal; $( $konst:ident: $name_bytes:literal, )*) => {
         pub(crate) const N_SERVER_HEADERS: usize = $N;
-        pub(crate) const SERVER_HEADERS: [Header; N_SERVER_HEADERS] = [ $( Header::$konst ),* ];
+        const _: [Header; N_SERVER_HEADERS] = [$(Header::$konst),*];
 
         #[derive(Debug, PartialEq, Clone, Copy)]
         pub enum Header {
@@ -258,7 +258,8 @@ macro_rules! Header {
 
             // Mainly used in tests
             pub fn from_bytes(bytes: &[u8]) -> Option<Self> {
-                SERVER_HEADERS.into_iter()
+                (0..N_SERVER_HEADERS)
+                    .map(|i| unsafe {std::mem::transmute::<_, Header>(i as u8)})
                     .find(|h| h.as_bytes().eq_ignore_ascii_case(bytes))
             }
         }
