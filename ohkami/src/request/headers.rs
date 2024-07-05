@@ -1,74 +1,18 @@
+use crate::header::{Standard, Append};
 use std::borrow::Cow;
-use crate::header::Append;
 use ohkami_lib::{CowSlice, Slice};
 use rustc_hash::FxHashMap;
 
 
 pub struct Headers {
-    standard: Standard,
+    standard: Standard<N_CLIENT_HEADERS, CowSlice>,
     custom:   Option<Box<FxHashMap<Slice, CowSlice>>>,
-}
-
-struct Standard {
-    index:  [u8; N_CLIENT_HEADERS],
-    values: Vec<CowSlice>,
-} impl Standard {
-    const NULL: u8 = u8::MAX;
-
-    #[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_worker"))]
-    #[inline]
-    fn new() -> Self {
-        Self {
-            index:  [Self::NULL; N_CLIENT_HEADERS],
-            values: Vec::with_capacity(N_CLIENT_HEADERS / 4)
-        }
-    }
-
-    #[inline(always)]
-    fn get(&self, name: Header) -> Option<&CowSlice> {
-        unsafe {match *self.index.get_unchecked(name as usize) {
-            Self::NULL => None,
-            index      => Some(self.values.get_unchecked(index as usize))
-        }}
-    }
-
-    #[inline(always)]
-    fn remove(&mut self, name: Header) {
-        unsafe {*self.index.get_unchecked_mut(name as usize) = Self::NULL}
-    }
-
-    #[inline(always)]
-    fn insert(&mut self, name: Header, value: CowSlice) {
-        unsafe {*self.index.get_unchecked_mut(name as usize) = self.values.len() as u8}
-        self.values.push(value);
-    }
-
-    #[inline(always)]
-    fn append(&mut self, name: Header, value: CowSlice) {
-        unsafe {match *self.index.get_unchecked(name as usize) {
-            Self::NULL => self.insert(name, value),
-            index => (|index| {
-                let target = self.values.get_unchecked_mut(index as usize);
-                target.extend_from_slice(b", ");
-                target.extend_from_slice(&value);
-            })(index)
-        }}
-    }
-
-    fn iter(&self) -> impl Iterator<Item = (&str, &str)> {
-        self.index.iter()
-            .enumerate()
-            .filter(|(_, index)| **index != Self::NULL)
-            .map(|(h, index)| unsafe {(
-                std::mem::transmute::<_, Header>(h as u8).as_str(),
-                std::str::from_utf8(self.values.get_unchecked(*index as usize)).expect("non UTF-8 header value")
-            )})
-    }
 }
 
 pub struct SetHeaders<'set>(
     &'set mut Headers
 ); impl Headers {
+    #[inline]
     pub fn set(&mut self) -> SetHeaders<'_> {
         SetHeaders(self)
     }
@@ -79,6 +23,7 @@ pub trait HeaderAction<'set> {
 } const _: () = {
     // remove
     impl<'set> HeaderAction<'set> for Option<()> {
+        #[inline]
         fn perform(self, set: SetHeaders<'set>, key: Header) -> SetHeaders<'set> {
             set.0.remove(key);
             set
@@ -87,6 +32,7 @@ pub trait HeaderAction<'set> {
 
     // append
     impl<'set> HeaderAction<'set> for Append {
+        #[inline]
         fn perform(self, set: SetHeaders<'set>, key: Header) -> SetHeaders<'set> {
             set.0.append(key, self.0.into());
             set
@@ -116,8 +62,7 @@ pub trait HeaderAction<'set> {
 
 pub trait CustomHeadersAction<'set> {
     fn perform(self, set: SetHeaders<'set>, key: &'static str) -> SetHeaders<'set>;
-}
-const _: () = {
+} const _: () = {
     // remove
     impl<'set> CustomHeadersAction<'set> for Option<()> {
         fn perform(self, set: SetHeaders<'set>, key: &'static str) -> SetHeaders<'set> {
@@ -131,19 +76,7 @@ const _: () = {
     // append
     impl<'set> CustomHeadersAction<'set> for Append {
         fn perform(self, set: SetHeaders<'set>, key: &'static str) -> SetHeaders<'set> {
-            let key = Slice::from_bytes(key.as_bytes());
-            let custom = set.0.get_or_init_custom_mut();
-
-            match custom.get_mut(&key) {
-                Some(v) => unsafe {
-                    v.extend_from_slice(b", ");
-                    v.extend_from_slice(self.0.as_bytes());
-                }
-                None => {
-                    custom.insert(key, CowSlice::from(self.0));
-                }
-            }
-
+            set.0.append_custom(Slice::from_bytes(key.as_bytes()), self.0.into());
             set
         }
     }
@@ -151,7 +84,7 @@ const _: () = {
     // insert
     impl<'set> CustomHeadersAction<'set> for &'static str {
         fn perform(self, set: SetHeaders<'set>, key: &'static str) -> SetHeaders<'set> {
-            set.0.get_or_init_custom_mut().insert(
+            set.0.insert_custom(
                 Slice::from_bytes(key.as_bytes()),
                 CowSlice::Ref(Slice::from_bytes(self.as_bytes()))
             );
@@ -160,7 +93,7 @@ const _: () = {
     }
     impl<'set> CustomHeadersAction<'set> for String {
         fn perform(self, set: SetHeaders<'set>, key: &'static str) -> SetHeaders<'set> {
-            set.0.get_or_init_custom_mut().insert(
+            set.0.insert_custom(
                 Slice::from_bytes(key.as_bytes()),
                 CowSlice::Own(self.into_bytes().into_boxed_slice())
             );
@@ -169,7 +102,7 @@ const _: () = {
     }
     impl<'set> CustomHeadersAction<'set> for Cow<'static, str> {
         fn perform(self, set: SetHeaders<'set>, key: &'static str) -> SetHeaders<'set> {
-            set.0.get_or_init_custom_mut().insert(
+            set.0.insert_custom(
                 Slice::from_bytes(key.as_bytes()),
                 CowSlice::from(self)
             );
@@ -329,17 +262,13 @@ impl Headers {
                 })
             ).into_iter().flatten()
     }
-}
-
-impl Headers {
-    #[inline(always)]
-    fn get_or_init_custom_mut(&mut self) -> &mut FxHashMap<Slice, CowSlice> {
-        self.custom.is_none().then(|| self.custom = Some(Box::new(FxHashMap::default())));
-        unsafe {self.custom.as_mut().unwrap_unchecked()}
-    }
-
+    
     pub(crate) fn iter(&self) -> impl Iterator<Item = (&str, &str)> {
         self.standard.iter()
+            .map(|(i, v)| (
+                unsafe {std::mem::transmute::<_, Header>(i as u8).as_str()},
+                std::str::from_utf8(v).expect("Non UTF-8 header value")
+            ))
             .chain(self.custom.as_ref()
                 .into_iter()
                 .flat_map(|hm| hm.iter().map(|(k, v)| (
@@ -353,7 +282,7 @@ impl Headers {
 
 impl Headers {
     #[inline(always)] pub(crate) fn insert(&mut self, name: Header, value: CowSlice) {
-        self.standard.insert(name, value)
+        unsafe {self.standard.set(name as usize, value)}
     }
     #[cfg(feature="DEBUG")]
     #[inline(always)] pub fn _insert(&mut self, name: Header, value: CowSlice) {
@@ -361,19 +290,25 @@ impl Headers {
     }
 
     pub(crate) fn remove(&mut self, name: Header) {
-        self.standard.remove(name)
+        unsafe {self.standard.delete(name as usize)}
     }
 
     #[inline] pub(crate) fn get(&self, name: Header) -> Option<&str> {
-        match self.standard.get(name) {
+        unsafe {match self.standard.get(name as usize) {
             Some(cs) => Some(std::str::from_utf8(&cs).expect("non UTF-8 header value")),
             None => None
-        }
+        }}
     }
 
     #[inline(always)]
     pub(crate) fn append(&mut self, name: Header, value: CowSlice) {
-        self.standard.append(name, value)
+        unsafe {match self.standard.get_mut(name as usize) {
+            None    => self.standard.set(name as usize, value),
+            Some(v) => {
+                v.extend_from_slice(b", ");
+                v.extend_from_slice(&value);
+            }
+        }}
     }
 }
 
@@ -381,10 +316,9 @@ impl Headers {
 impl Headers {
     #[allow(unused)]
     #[inline] pub(crate) fn get_raw(&self, name: Header) -> Option<&CowSlice> {
-        self.standard.get(name)
+        unsafe {self.standard.get(name as usize)}
     }
 
-    #[allow(unused)]
     #[inline] pub(crate) fn insert_custom(&mut self, name: Slice, value: CowSlice) {
         match &mut self.custom {
             Some(c) => {c.insert(name, value);}
@@ -398,17 +332,20 @@ impl Headers {
         self.insert_custom(name, value)
     }
 
-    #[allow(unused)]
     #[inline] pub(crate) fn append_custom(&mut self, name: Slice, value: CowSlice) {
-        let custom = self.get_or_init_custom_mut();
+        if self.custom.is_none() {
+            self.custom = Some(Box::new(FxHashMap::default()))
+        }
 
-        match custom.get_mut(&name) {
+        let c = unsafe {self.custom.as_mut().unwrap_unchecked()};
+
+        match c.get_mut(&name) {
             Some(v) => unsafe {
                 v.extend_from_slice(b",");
                 v.extend_from_slice(value.as_bytes());
             }
             None => {
-                custom.insert(name, value);
+                c.insert(name, value);
             }
         }
     }
@@ -476,18 +413,6 @@ const _: () = {
         fn eq(&self, other: &Self) -> bool {
             self.custom == other.custom &&
             self.standard == other.standard
-        }
-    }
-
-    impl PartialEq for Standard {
-        fn eq(&self, other: &Self) -> bool {
-            fn sort_collect<'s>(iter: impl Iterator<Item = (&'s str, &'s str)>) -> Vec<(&'s str, &'s str)> {
-                let mut collect = iter.collect::<Vec<_>>();
-                collect.sort_by_key(|(k, _)| *k);
-                collect
-            }
-
-            sort_collect(self.iter()) == sort_collect(other.iter())
         }
     }
 };

@@ -1,72 +1,19 @@
-use crate::header::{Append, SetCookie, SetCookieBuilder};
+use crate::header::{Standard, Append, SetCookie, SetCookieBuilder};
 use std::borrow::Cow;
 use rustc_hash::FxHashMap;
 
 
 #[derive(Clone)]
 pub struct Headers {
-    standard:  Standard,
+    standard:  Standard<N_SERVER_HEADERS, Cow<'static, str>>,
     custom:    Option<Box<FxHashMap<&'static str, Cow<'static, str>>>>,
     setcookie: Option<Box<Vec<Cow<'static, str>>>>,
     pub(crate) size: usize,
 }
 
-#[derive(PartialEq, Clone)]
-struct Standard {
-    index:  [u8; N_SERVER_HEADERS],
-    values: Vec<Cow<'static, str>>,
-} impl Standard {
-    const NULL: u8 = u8::MAX;
-
-    #[inline]
-    fn new() -> Self {
-        Self {
-            index:  [Self::NULL; N_SERVER_HEADERS],
-            values: Vec::with_capacity(N_SERVER_HEADERS / 4)
-        }
-    }
-
-    #[inline(always)]
-    fn get(&self, name: Header) -> Option<&Cow<'static, str>> {
-        unsafe {match *self.index.get_unchecked(name as usize) {
-            Self::NULL => None,
-            index      => Some(self.values.get_unchecked(index as usize))
-        }}
-    }
-    #[inline(always)]
-    fn get_mut(&mut self, name: Header) -> Option<&mut Cow<'static, str>> {
-        unsafe {match *self.index.get_unchecked(name as usize) {
-            Self::NULL => None,
-            index      => Some(self.values.get_unchecked_mut(index as usize))
-        }}
-    }
-
-    #[inline(always)]
-    fn delete(&mut self, name: Header) {
-        unsafe {*self.index.get_unchecked_mut(name as usize) = Self::NULL}
-    }
-
-    #[inline(always)]
-    fn push(&mut self, name: Header, value: Cow<'static, str>) {
-        unsafe {*self.index.get_unchecked_mut(name as usize) = self.values.len() as u8}
-        self.values.push(value);
-    }
-
-    fn iter(&self) -> impl Iterator<Item = (&str, &str)> {
-        self.index.iter()
-            .enumerate()
-            .filter(|(_, index)| **index != Self::NULL)
-            .map(|(h, index)| unsafe {(
-                std::mem::transmute::<_, Header>(h as u8).as_str(),
-                &**self.values.get_unchecked(*index as usize)
-            )})
-    }
-}
-
 pub struct SetHeaders<'set>(
     &'set mut Headers
-);
-impl Headers {
+); impl Headers {
     #[inline] pub fn set(&mut self) -> SetHeaders<'_> {
         SetHeaders(self)
     }
@@ -114,8 +61,7 @@ pub trait HeaderAction<'action> {
 
 pub trait CustomHeadersAction<'action> {
     fn perform(self, set: SetHeaders<'action>, key: &'static str) -> SetHeaders<'action>;
-}
-const _: () = {
+} const _: () = {
     /* remove */
     impl<'set> CustomHeadersAction<'set> for Option<()> {
         #[inline]
@@ -128,100 +74,27 @@ const _: () = {
     /* append */
     impl<'set> CustomHeadersAction<'set> for Append {
         fn perform(self, set: SetHeaders<'set>, key: &'static str) -> SetHeaders<'set> {
-            let self_len = self.0.len();
-
-            let custom = {
-                if set.0.custom.is_none() {
-                    set.0.custom = Some(Box::new(FxHashMap::default()));
-                }
-                unsafe {set.0.custom.as_mut().unwrap_unchecked()}
-            };
-
-            set.0.size += match custom.get_mut(&key) {
-                Some(value) => {
-                    match value {
-                        Cow::Owned(string) => {
-                            string.push_str(", ");
-                            string.push_str(&self.0);
-                        }
-                        Cow::Borrowed(s) => {
-                            let mut s = s.to_string();
-                            s.push_str(", ");
-                            s.push_str(&self.0);
-                            *value = Cow::Owned(s);
-                        }
-                    }
-                    ", ".len() + self_len
-                }
-                None => {
-                    custom.insert(key, self.0);
-                    key.len() + ": ".len() + self_len + "\r\n".len()
-                }
-            };
-
+            set.0.append_custom(key, self.0);
             set
         }
     }
 
     /* insert */
-    // specialize for `&'static str`:
-    // NOT perform `let` binding of `self.len()`, using inlined `self.len()` instead.
     impl<'set> CustomHeadersAction<'set> for &'static str {
         #[inline(always)] fn perform(self, set: SetHeaders<'set>, key: &'static str) -> SetHeaders<'set> {
-            match &mut set.0.custom {
-                None => {
-                    set.0.custom = Some(Box::new(FxHashMap::from_iter([(key, Cow::Borrowed(self))])));
-                    set.0.size += key.len() + ": ".len() + self.len() + "\r\n".len()
-                }
-                Some(custom) => {
-                    if let Some(old) = custom.insert(key, Cow::Borrowed(self)) {
-                        set.0.size -= old.len();
-                        set.0.size += self.len();
-                    } else {
-                        set.0.size += key.len() + ": ".len() + self.len() + "\r\n".len()
-                    }
-                }
-            }
+            set.0.insert_custom(key, Cow::Borrowed(self));
             set
         }
     }
     impl<'set> CustomHeadersAction<'set> for String {
         #[inline(always)] fn perform(self, set: SetHeaders<'set>, key: &'static str) -> SetHeaders<'set> {
-            let self_len = self.len();
-            match &mut set.0.custom {
-                None => {
-                    set.0.custom = Some(Box::new(FxHashMap::from_iter([(key, Cow::Owned(self))])));
-                    set.0.size += key.len() + ": ".len() + self_len + "\r\n".len()
-                }
-                Some(custom) => {
-                    if let Some(old) = custom.insert(key, Cow::Owned(self)) {
-                        set.0.size -= old.len();
-                        set.0.size += self_len;
-                    } else {
-                        set.0.size += key.len() + ": ".len() + self_len + "\r\n".len()
-                    }
-                }
-            }
+            set.0.insert_custom(key, Cow::Owned(self));
             set
         }
     }
     impl<'set> CustomHeadersAction<'set> for Cow<'static, str> {
         fn perform(self, set: SetHeaders<'set>, key: &'static str) -> SetHeaders<'set> {
-            let self_len = self.len();
-            match &mut set.0.custom {
-                None => {
-                    set.0.custom = Some(Box::new(FxHashMap::from_iter([(key, self)])));
-                    set.0.size += key.len() + ": ".len() + self_len + "\r\n".len()
-                }
-                Some(custom) => {
-                    if let Some(old) = custom.insert(key, self) {
-                        set.0.size -= old.len();
-                        set.0.size += self_len;
-                    } else {
-                        set.0.size += key.len() + ": ".len() + self_len + "\r\n".len()
-                    }
-                }
-            }
+            set.0.insert_custom(key, self);
             set
         }
     }
@@ -343,9 +216,9 @@ macro_rules! Header {
     Upgrade:                         b"Upgrade",
     Vary:                            b"Vary",
     Via:                             b"Via",
-    WWWAuthenticate:                 b"WWW-Authenticate",
     XContentTypeOptions:             b"X-Content-Type-Options",
     XFrameOptions:                   b"X-Frame-Options",
+    WWWAuthenticate:                 b"WWW-Authenticate",
 }
 
 const _: () = {
@@ -408,10 +281,10 @@ impl Headers {
     #[inline(always)]
     pub(crate) fn insert(&mut self, name: Header, value: Cow<'static, str>) {
         let (name_len, value_len) = (name.len(), value.len());
-        match self.standard.get_mut(name) {
+        match unsafe {self.standard.get_mut(name as usize)} {
             None => {
                 self.size += name_len + ": ".len() + value_len + "\r\n".len();
-                self.standard.push(name, value)
+                unsafe {self.standard.set(name as usize, value)}
             }
             Some(old) => {
                 self.size -= old.len(); self.size += value_len;
@@ -419,14 +292,31 @@ impl Headers {
             }
         }
     }
+    #[inline]
+    pub(crate) fn insert_custom(&mut self, name: &'static str, value: Cow<'static, str>) {
+        let self_len = value.len();
+        match &mut self.custom {
+            None => {
+                self.custom = Some(Box::new(FxHashMap::from_iter([(name, value)])));
+                self.size += name.len() + ": ".len() + self_len + "\r\n".len()
+            }
+            Some(custom) => {
+                if let Some(old) = custom.insert(name, value) {
+                    self.size -= old.len(); self.size += self_len;
+                } else {
+                    self.size += name.len() + ": ".len() + self_len + "\r\n".len()
+                }
+            }
+        }
+    }
 
     #[inline]
     pub(crate) fn remove(&mut self, name: Header) {
         let name_len = name.len();
-        if let Some(v) = self.standard.get(name) {
+        if let Some(v) = unsafe {self.standard.get(name as usize)} {
             self.size -= name_len + ": ".len() + v.len() + "\r\n".len()
         }
-        self.standard.delete(name)
+        unsafe {self.standard.delete(name as usize)}
     }
     pub(crate) fn remove_custom(&mut self, name: &'static str) {
         if let Some(c) = self.custom.as_mut() {
@@ -438,7 +328,7 @@ impl Headers {
 
     #[inline(always)]
     pub(crate) fn get(&self, name: Header) -> Option<&str> {
-        self.standard.get(name).map(Cow::as_ref)
+        unsafe {self.standard.get(name as usize)}.map(Cow::as_ref)
     }
     #[inline]
     pub(crate) fn get_custom(&self, name: &'static str) -> Option<&str> {
@@ -449,7 +339,7 @@ impl Headers {
 
     pub(crate) fn append(&mut self, name: Header, value: Cow<'static, str>) {
         let value_len = value.len();
-        let target = self.standard.get_mut(name);
+        let target = unsafe {self.standard.get_mut(name as usize)};
 
         self.size += match target {
             Some(v) => {
@@ -469,7 +359,39 @@ impl Headers {
                 ", ".len() + value_len
             }
             None => {
-                self.standard.push(name, value);
+                unsafe {self.standard.set(name as usize, value)}
+                name.len() + ": ".len() + value_len + "\r\n".len()
+            }
+        };
+    }
+    pub(crate) fn append_custom(&mut self, name: &'static str, value: Cow<'static, str>) {
+        let value_len = value.len();
+
+        let custom = {
+            if self.custom.is_none() {
+                self.custom = Some(Box::new(FxHashMap::default()));
+            }
+            unsafe {self.custom.as_mut().unwrap_unchecked()}
+        };
+
+        self.size += match custom.get_mut(name) {
+            Some(v) => {
+                match v {
+                    Cow::Owned(string) => {
+                        string.push_str(", ");
+                        string.push_str(&value);
+                    }
+                    Cow::Borrowed(s) => {
+                        let mut s = s.to_string();
+                        s.push_str(", ");
+                        s.push_str(&value);
+                        *v = Cow::Owned(s);
+                    }
+                }
+                ", ".len() + value_len
+            }
+            None => {
+                custom.insert(name, value);
                 name.len() + ": ".len() + value_len + "\r\n".len()
             }
         };
@@ -492,10 +414,14 @@ impl Headers {
 
     pub(crate) fn iter_standard(&self) -> impl Iterator<Item = (&str, &str)> {
         self.standard.iter()
+            .map(|(i, v)| (
+                unsafe {std::mem::transmute::<_, Header>(i as u8)}.as_str(),
+                &**v
+            ))
     }
 
     pub(crate) fn iter(&self) -> impl Iterator<Item = (&str, &str)> {
-        self.standard.iter()
+        self.iter_standard()
             .chain(self.custom.as_ref()
                 .into_iter()
                 .flat_map(|hm| hm.iter().map(|(k, v)| (*k, &**v)))
@@ -514,8 +440,8 @@ impl Headers {
     /// SAFETY: `buf` has remaining capacity of at least `self.size`
     pub(crate) unsafe fn write_unchecked_to(&self, buf: &mut Vec<u8>) {
         for n in 0..N_SERVER_HEADERS {
-            let h = std::mem::transmute(n as u8);
-            if let Some(v) = self.standard.get(h) {
+            let h = std::mem::transmute::<_, Header>(n as u8);
+            if let Some(v) = self.standard.get(h as usize) {
                 crate::push_unchecked!(buf <- h.as_bytes());
                 crate::push_unchecked!(buf <- b": ");
                 crate::push_unchecked!(buf <- v.as_bytes());
