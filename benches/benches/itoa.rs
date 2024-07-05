@@ -354,8 +354,7 @@ macro_rules! benchmark {
         }
     )*};
 } benchmark! {
-    //to_string
-    //itoa_lib
+    to_string
     itoa_01
     itoa_02
     itoa_03
