@@ -1,6 +1,6 @@
 #![cfg(any(feature="rt_tokio",feature="rt_async-std"))]
 
-use crate::header::{append, private::{SameSitePolicy, SetCookie}};
+use crate::header::{append, SameSitePolicy, SetCookie};
 use super::ResponseHeaders;
 
 

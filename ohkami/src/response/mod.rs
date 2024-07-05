@@ -138,7 +138,7 @@ impl Response {
             }
 
             Content::Payload(bytes) => self.headers.set()
-                .ContentLength(ohkami_lib::num::atoi(bytes.len())),
+                .ContentLength(ohkami_lib::num::itoa(bytes.len())),
 
             #[cfg(feature="sse")]
             Content::Stream(_) => self.headers.set()
@@ -155,27 +155,40 @@ impl Response {
 
         match self.content {
             Content::None => {
-                let mut buf = Vec::<u8>::with_capacity(self.status.line().len() + self.headers.size);
-                crate::push_unchecked!(buf <- self.status.line());
-                unsafe {self.headers.write_unchecked_to(&mut buf)}
+                let mut buf = Vec::<u8>::with_capacity(
+                    self.status.line().len() +
+                    self.headers.size
+                ); unsafe {
+                    crate::push_unchecked!(buf <- self.status.line());
+                    self.headers.write_unchecked_to(&mut buf);
+                }
         
                 conn.write_all(&buf).await.expect("Failed to send response");
             }
 
             Content::Payload(bytes) => {
-                let mut buf = Vec::<u8>::with_capacity(self.status.line().len() + self.headers.size + bytes.len());
-                crate::push_unchecked!(buf <- self.status.line());
-                unsafe {self.headers.write_unchecked_to(&mut buf)}
-                crate::push_unchecked!(buf <- bytes);
+                let mut buf = Vec::<u8>::with_capacity(
+                    self.status.line().len() +
+                    self.headers.size +
+                    bytes.len()
+                ); unsafe {
+                    crate::push_unchecked!(buf <- self.status.line());
+                    self.headers.write_unchecked_to(&mut buf);
+                    crate::push_unchecked!(buf <- bytes);
+                }
 
                 conn.write_all(&buf).await.expect("Failed to send response");
             }
 
             #[cfg(feature="sse")]
             Content::Stream(mut stream) => {
-                let mut buf = Vec::<u8>::with_capacity(self.status.line().len() + self.headers.size);
-                crate::push_unchecked!(buf <- self.status.line());
-                unsafe {self.headers.write_unchecked_to(&mut buf)}
+                let mut buf = Vec::<u8>::with_capacity(
+                    self.status.line().len() +
+                    self.headers.size
+                ); unsafe {
+                    crate::push_unchecked!(buf <- self.status.line());
+                    self.headers.write_unchecked_to(&mut buf);
+                }
         
                 conn.write_all(&buf).await.expect("Failed to send response");
                 while let Some(chunk) = stream.next().await {
