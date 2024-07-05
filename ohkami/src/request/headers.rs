@@ -1,5 +1,5 @@
 use std::borrow::Cow;
-use crate::header::private::Append;
+use crate::header::Append;
 use ohkami_lib::{CowSlice, Slice};
 use rustc_hash::FxHashMap;
 

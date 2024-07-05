@@ -36,7 +36,7 @@ pub fn hexized_bytes(n: usize) -> [u8; std::mem::size_of::<usize>() * 2] {
 
 
 #[inline]
-pub fn atoi(mut n: usize) -> String {
+pub fn itoa(mut n: usize) -> String {
     let log10 = match usize::checked_ilog10(n) {
         Some(log10) => log10 as usize,
         None        => return String::from("0")
@@ -56,7 +56,7 @@ pub fn atoi(mut n: usize) -> String {
 }
 
 #[cfg(test)]
-#[test] fn test_atoi() {
+#[test] fn test_itoa() {
     for (n, expected) in [
         (0, "0"),
         (1, "1"),
@@ -69,6 +69,6 @@ pub fn atoi(mut n: usize) -> String {
         (999, "999"),
         (1000, "1000"),
     ] {
-        assert_eq!(atoi(n), expected)
+        assert_eq!(itoa(n), expected)
     }
 }

@@ -1,4 +1,4 @@
-use crate::header::private::{Append, SetCookie, SetCookieBuilder};
+use crate::header::{Append, SetCookie, SetCookieBuilder};
 use std::borrow::Cow;
 use rustc_hash::FxHashMap;
 
