@@ -2,13 +2,14 @@
 
 
 mod candiate {#![allow(unused)]
+    #[inline(always)]
     pub fn to_string(n: usize) -> String {
         n.to_string()
     }
 
     #[inline(always)]
-    pub fn atoi_01(mut n: usize) -> String {
-        ohkami_lib::num::atoi(n)
+    pub fn itoa(mut n: usize) -> String {
+        ohkami_lib::num::itoa(n)
     }
 }
 
@@ -24,5 +25,5 @@ macro_rules! benchmark {
     )*};
 } benchmark! {
     to_string
-    atoi_01
+    itoa
 }
