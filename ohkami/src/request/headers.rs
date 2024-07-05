@@ -335,7 +335,7 @@ impl Headers {
 
         match c.get_mut(&name) {
             Some(v) => unsafe {
-                v.extend_from_slice(b",");
+                v.extend_from_slice(b", ");
                 v.extend_from_slice(value.as_bytes());
             }
             None => {
