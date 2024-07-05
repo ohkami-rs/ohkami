@@ -236,6 +236,39 @@ async fn main() {
 
 <br>
 
+### File upload
+
+```rust,no_run
+use ohkami::prelude::*;
+use ohkami::typed::{status, Payload};
+use ohkami::builtin::{payload::Multipart, item::File};
+
+
+#[Payload(Multipart/D)]
+struct FormData<'req> {
+    #[serde(rename = "account-name")]
+    account_name: Option<&'req str>,
+    
+    pics: Vec<File<'req>>,
+}
+
+async fn post_submit(form_data: FormData<'_>) -> status::NoContent {
+    println!("\n\
+        ===== submit =====\n\
+        [account name] {:?}\n\
+        [  pictures  ] {} files (mime: [{}])\n\
+        ==================",
+        form_data.account_name,
+        form_data.pics.len(),
+        form_data.pics.iter().map(|f| f.mimetype).collect::<Vec<_>>().join(", "),
+    );
+
+    status::NoContent
+}
+```
+
+<br>
+
 ### Server-Sent Events with `"sse"` feature
 
 Ohkami respond with HTTP/1.1 `Transfer-Encoding: chunked`.\
