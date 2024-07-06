@@ -341,6 +341,41 @@ mod candiate {#![allow(unused)]
         
         unsafe {String::from_utf8_unchecked(buf)}
     }
+
+    #[inline(always)]
+    pub fn itoa_07(mut n: usize) -> String {
+        const MAX: usize = usize::ilog10(usize::MAX) as _;
+        let mut buf = Vec::<u8>::with_capacity(1 + MAX);
+
+        {
+            let mut push_unchecked = |byte| {
+                let len = buf.len();
+                unsafe {
+                    std::ptr::write(buf.as_mut_ptr().add(len), byte);
+                    buf.set_len(len + 1);
+                }
+            };
+
+            macro_rules! unroll {
+                () => {};
+                ($digit:expr) => {unroll!($digit,)};
+                ($digit:expr, $($tail:tt)*) => {
+                    if $digit <= MAX && n >= 10_usize.pow($digit) {
+                        unroll!($($tail)*);
+                        let q = n / 10_usize.pow($digit);
+                        push_unchecked(b'0' + q as u8);
+                        n -= 10_usize.pow($digit) * q
+                    }
+                };
+            }
+
+            unroll!(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19);
+
+            push_unchecked(b'0' + n as u8);
+        }
+        
+        unsafe {String::from_utf8_unchecked(buf)}
+    }
 }
 
 
@@ -361,4 +396,5 @@ macro_rules! benchmark {
     itoa_04
     itoa_05
     itoa_06
+    itoa_07
 }
