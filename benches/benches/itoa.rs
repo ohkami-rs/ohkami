@@ -8,7 +8,7 @@ mod candiate {#![allow(unused)]
     }
 
     #[inline(always)]
-    pub fn to_string(n: usize) -> String {
+    pub fn itoa_to_string(n: usize) -> String {
         n.to_string()
     }
 
@@ -383,13 +383,22 @@ macro_rules! benchmark {
     ($( $target:ident )*) => {$(
         #[bench]
         fn $target(b: &mut test::Bencher) {
-            b.iter(|| for n in 0..314 {
-                let _ = candiate::$target(test::black_box(n));
-            })
+            use rand::prelude::*;
+            let mut rng = rand_chacha::ChaCha8Rng::seed_from_u64(314159265358979);
+            let v: [usize; 10000] = std::array::from_fn(|_| rng.next_u64() as usize);
+            b.iter(||
+                v.iter().fold(String::with_capacity(v.len() * 21), |mut s, &n| {
+                    s += &candiate::$target(test::black_box(n));
+                    s.push(' ');
+                    s
+                })
+            );
         }
     )*};
-} benchmark! {
-    to_string
+}
+benchmark! {
+    itoa_to_string
+    itoa_lib
     itoa_01
     itoa_02
     itoa_03
