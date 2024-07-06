@@ -21,3 +21,7 @@ tokio              = { version = "1.37.0", features = ["full"] }
 tracing            = "0.1.4"
 tracing-subscriber = "0.3.18"
 hashbrown          = { version = "0.14.5", features = ["raw"] }
+
+[dev-dependencies]
+rand = "0.8.5"
+rand_chacha = "0.3.1"
