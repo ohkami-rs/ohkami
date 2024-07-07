@@ -1,3 +1,5 @@
+# This will be removed when ohkami has more than one maintainers
+
 name: auto_approve
 on:
   pull_request:
@@ -9,18 +11,11 @@ on:
 
 jobs:
   auto_approve:
+    if: |
+      github.event.pull_request.user.login == 'kana-rus' &&
+      !github.event.pull_request.draft
+    permissions:
+      pull-requests: write
     runs-on: ubuntu-latest
     steps:
-      - name: check values
-        run: |
-          echo ${{ github.event.pull_request.user.login }}
-          echo ${{ github.repository_owner }}
-          echo ${{ github.event.pull_request.draft }}
-#    if: |
-#      github.event.pull_request.user.login == github.repository_owner &&
-#      !github.event.pull_request.draft
-#    permissions:
-#      pull-requests: write
-#    runs-on: ubuntu-latest
-#    steps:
-#      - uses: hmarr/auto-approve-action@v4
+      - uses: hmarr/auto-approve-action@v4
