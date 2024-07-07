@@ -11,8 +11,11 @@ jobs:
   auto_approve:
     runs-on: ubuntu-latest
     steps:
-      - name: hello
-        run:  echo 'not skipped'
+      - name: check values
+        run: |
+          echo ${{ github.event.pull_request.user.login }}
+          echo ${{ github.repository_owner }}
+          echo ${{ github.event.pull_request.draft }}
 #    if: |
 #      github.event.pull_request.user.login == github.repository_owner &&
 #      !github.event.pull_request.draft
