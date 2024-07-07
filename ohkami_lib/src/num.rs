@@ -38,6 +38,8 @@ pub fn hexized_bytes(n: usize) -> [u8; std::mem::size_of::<usize>() * 2] {
 #[inline]
 pub fn itoa(mut n: usize) -> String {
     const MAX: usize = usize::ilog10(usize::MAX) as _;
+    const _/* static assert */: [(); 19] = [(); MAX];
+    
     let mut buf = Vec::<u8>::with_capacity(1 + MAX);
 
     {

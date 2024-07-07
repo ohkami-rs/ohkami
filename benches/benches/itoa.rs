@@ -345,6 +345,8 @@ mod candiate {#![allow(unused)]
     #[inline(always)]
     pub fn itoa_07(mut n: usize) -> String {
         const MAX: usize = usize::ilog10(usize::MAX) as _;
+        const _/* static assert */: [(); 19] = [(); MAX];
+        
         let mut buf = Vec::<u8>::with_capacity(1 + MAX);
 
         {
