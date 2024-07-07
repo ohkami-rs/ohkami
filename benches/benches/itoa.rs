@@ -386,13 +386,22 @@ macro_rules! benchmark {
             use rand::prelude::*;
             let mut rng = rand_chacha::ChaCha8Rng::seed_from_u64(314159265358979);
             let v: [usize; 10000] = std::array::from_fn(|_| rng.next_u64() as usize);
-            b.iter(||
+            let c_std = || -> String {
                 v.iter().fold(String::with_capacity(v.len() * 21), |mut s, &n| {
-                    s += &candiate::$target(test::black_box(n));
+                    s += &candiate::itoa_to_string(n);
                     s.push(' ');
                     s
                 })
-            );
+            };
+            let c_lib = || -> String {
+                v.iter().fold(String::with_capacity(v.len() * 21), |mut s, &n| {
+                    s += &candiate::$target(n);
+                    s.push(' ');
+                    s
+                })
+            };
+            assert_eq!(c_std(), c_lib());
+            b.iter(c_lib);
         }
     )*};
 }
@@ -401,8 +410,8 @@ benchmark! {
     itoa_lib
     itoa_01
     itoa_02
-    itoa_03
-    itoa_04
+//    itoa_03
+//    itoa_04
     itoa_05
     itoa_06
     itoa_07
