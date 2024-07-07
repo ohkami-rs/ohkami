@@ -13,6 +13,34 @@ mod candiate {#![allow(unused)]
     }
 
     #[inline(always)]
+    pub fn iappend_to_string(s: &mut String, n: usize) {
+        s.push_str(&n.to_string());
+    }
+
+    #[inline(always)]
+    pub fn iappend_write(s: &mut String, n: usize) {
+        use std::fmt::Write;
+        write!(s, "{}", n).ok();
+    }
+
+    #[inline(always)]
+    pub fn iappendslice_to_string(s: &mut String, v: &[usize]) {
+        for &n in v {
+            s.push_str(&n.to_string());
+            s.push(' ');
+        }
+    }
+
+    #[inline(always)]
+    pub fn iappendslice_write(s: &mut String, v: &[usize]) {
+        use std::fmt::Write;
+        for &n in v {
+            write!(s, "{}", n).ok();
+            s.push(' ');
+        }
+    }
+
+    #[inline(always)]
     pub fn itoa_01(mut n: usize) -> String {
         let log10 = match usize::checked_ilog10(n) {
             Some(log10) => log10 as usize,
@@ -336,6 +364,235 @@ mod candiate {#![allow(unused)]
 
         unsafe {String::from_utf8_unchecked(buf)}
     }
+
+    #[inline(always)]
+    pub fn iappend_07(s: &mut String, mut n: usize) {
+        const MAX: usize = usize::ilog10(usize::MAX) as _;
+        
+        #[cfg(target_pointer_width = "64")]
+        const _/* static assert */: [(); 19] = [(); MAX];
+
+        //s.reserve(1 + MAX);
+
+        unsafe {
+            let buf = s.as_mut_vec();
+            let mut push_unchecked = |byte| {
+                let len = buf.len();
+                std::ptr::write(buf.as_mut_ptr().add(len), byte);
+                buf.set_len(len + 1);
+            };
+            macro_rules! unroll {
+                () => {};
+                ($digit:expr) => {unroll!($digit,)};
+                ($digit:expr, $($tail:tt)*) => {
+                    if $digit <= MAX && n >= 10_usize.pow($digit) {
+                        unroll!($($tail)*);
+                        let q = n / 10_usize.pow($digit);
+                        push_unchecked(b'0' + q as u8);
+                        n -= 10_usize.pow($digit) * q
+                    }
+                };
+            }
+
+            unroll!(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19);
+
+            push_unchecked(b'0' + n as u8);
+        }
+        
+    }
+
+    #[inline(always)]
+    pub fn iappendslice_07(s: &mut String, v: &[usize]) {
+        const MAX: usize = usize::ilog10(usize::MAX) as _;
+        
+        #[cfg(target_pointer_width = "64")]
+        const _/* static assert */: [(); 19] = [(); MAX];
+        
+        s.reserve((2 + MAX) * v.len());
+
+        unsafe {
+            let buf = s.as_mut_vec();
+            let mut push_unchecked = |byte| {
+                let len = buf.len();
+                std::ptr::write(buf.as_mut_ptr().add(len), byte);
+                buf.set_len(len + 1);
+            };
+            for mut n in v.iter().copied() {
+                macro_rules! unroll {
+                    () => {};
+                    ($digit:expr) => {unroll!($digit,)};
+                    ($digit:expr, $($tail:tt)*) => {
+                        if $digit <= MAX && n >= 10_usize.pow($digit) {
+                            unroll!($($tail)*);
+                            let q = n / 10_usize.pow($digit);
+                            push_unchecked(b'0' + q as u8);
+                            n -= 10_usize.pow($digit) * q
+                        }
+                    };
+                }
+
+                unroll!(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19);
+
+                push_unchecked(b'0' + n as u8);
+                push_unchecked(b' ');
+            }
+        }
+        
+    }
+
+    mod dec4le {
+        macro_rules! invariant {
+            ($expr: expr) => {
+                debug_assert!($expr);
+                if !($expr) {
+                    #[allow(unused_unsafe)]
+                    unsafe {
+                        core::hint::unreachable_unchecked()
+                    };
+                }
+            };
+        }
+        const D4: [u32; 10000] = {
+            let (mut d4, mut i) = ([0u32; 10000], 0u32);
+            while i < 10000 {
+                let (dh, dl) = (i / 100, i % 100);
+                d4[i as usize] = ((dl % 10) << 24) | ((dl / 10) << 16) | ((dh % 10) << 8) | (dh / 10) | 0x30303030;
+                i += 1;
+            }
+            d4
+        };
+        #[inline(always)]
+        unsafe fn raw_d4l(v: &mut *mut u8, x: u32) {
+            invariant!(x < 10000);
+            match x {
+                0..=9 => {
+                    **v = x as u8 | 0x30;
+                    *v = v.add(1);
+                }
+                10..=99 => {
+                    v.copy_from_nonoverlapping((D4[x as usize] >> 16).to_le_bytes().as_ptr(), 2);
+                    *v = v.add(2);
+                }
+                100..=999 => {
+                    v.copy_from_nonoverlapping((D4[x as usize] >> 8).to_le_bytes().as_ptr(), 3);
+                    *v = v.add(3);
+                }
+                1000..=9999 => {
+                    v.copy_from_nonoverlapping(D4[x as usize].to_le_bytes().as_ptr(), 4);
+                    *v = v.add(4);
+                }
+                _ => core::hint::unreachable_unchecked(),
+            }
+        }
+        #[inline(always)]
+        unsafe fn raw_d4(v: &mut *mut u8, x: u32) {
+            invariant!(x < 1_0000);
+            v.copy_from_nonoverlapping(D4[x as usize].to_le_bytes().as_ptr(), 4);
+            *v = v.add(4);
+        }
+        #[inline(always)]
+        unsafe fn raw_d8l(v: &mut *mut u8, x: u32) {
+            invariant!(x < 1_0000_0000);
+            if x < 10000 {
+                raw_d4l(v, x);
+            } else {
+                let (y0, y1) = (x / 1_0000, x % 1_0000);
+                raw_d4l(v, y0);
+                raw_d4(v, y1);
+            }
+        }
+        #[inline(always)]
+        unsafe fn raw_d8(v: &mut *mut u8, x: u32) {
+            invariant!(x < 1_0000_0000);
+            let (y0, y1) = (x / 1_0000, x % 1_0000);
+            v.copy_from_nonoverlapping((((D4[y1 as usize] as u64) << 32) | (D4[y0 as usize] as u64)).to_le_bytes().as_ptr(), 8);
+            *v = v.add(8);
+        }
+        #[inline(always)]
+        pub unsafe fn raw_u64(v: &mut *mut u8, x: u64) {
+            match x {
+                0..=9999_9999 => {
+                    raw_d8l(v, x as u32);
+                }
+                1_0000_0000..=9999_9999_9999_9999 => {
+                    let (z0, z1) = ((x / 1_0000_0000) as u32, (x % 1_0000_0000) as u32);
+                    raw_d8l(v, z0);
+                    raw_d8(v, z1);
+                }
+                1_0000_0000_0000_0000..=u64::MAX => {
+                    let (y0, y1) = (
+                        (x / 1_0000_0000_0000_0000) as u32,
+                        x % 1_0000_0000_0000_0000,
+                    );
+                    let (z0, z1) = ((y1 / 1_0000_0000) as u32, (y1 % 1_0000_0000) as u32);
+                    raw_d8l(v, y0);
+                    raw_d8(v, z0);
+                    raw_d8(v, z1);
+                }
+            }
+        }
+
+        pub struct U64Write(pub u64);
+        impl std::fmt::Display for U64Write {
+            // Example of performance degradation when trying to implement to_string() with std::fmt::Display
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                unsafe {
+                    let mut buf = [0u8; 20];
+                    let r = buf.as_mut_ptr();
+                    let mut p = r;
+                    raw_u64(&mut p, self.0);
+                    f.write_str(std::str::from_utf8_unchecked(&buf[..(p.offset_from(r) as usize)]))
+                }
+            }
+        }
+    }
+
+    #[inline(always)]
+    pub fn itoa_08d(n: usize) -> String {
+        // Example of performance degradation when trying to implement to_string() with std::fmt::Display
+        dec4le::U64Write(n as u64).to_string()
+    }
+
+    #[inline(always)]
+    pub fn itoa_08(n: usize) -> String {
+        let mut s = String::with_capacity(1 + (u64::ilog10(u64::MAX) as usize));
+        unsafe {
+            let v = s.as_mut_vec();
+            let r = v.as_mut_ptr();
+            let mut p = r;
+            dec4le::raw_u64(&mut p, n as u64);
+            v.set_len(p.offset_from(r) as usize);
+        }
+        s
+    }
+
+    #[inline(always)]
+    pub fn iappend_08(s: &mut String, n: usize) {
+        unsafe {
+            let v = s.as_mut_vec();
+            let r = v.as_mut_ptr();
+            let mut p = r.add(v.len());
+            dec4le::raw_u64(&mut p, n as u64);
+            v.set_len(p.offset_from(r) as usize);
+        }
+    }
+
+    #[inline(always)]
+    pub fn iappendslice_08(s: &mut String, v: &[usize]) {
+        s.reserve((2 + (u64::ilog10(u64::MAX) as usize)) * v.len());
+        unsafe {
+            let sv = s.as_mut_vec();
+            let r = sv.as_mut_ptr();
+            let mut p = r.add(sv.len());
+            for &n in v.iter() {
+                dec4le::raw_u64(&mut p, n as u64);
+                *p = b' ';
+                p = p.add(1);
+            }
+            sv.set_len(p.offset_from(r) as usize);
+        }
+    }
+
 }
 
 
@@ -385,6 +642,84 @@ macro_rules! benchmark {
         }
     };
 }
+macro_rules! benchmark_append {
+    ($name:ident : $input_range:expr; $( $target:ident )*) => {
+        mod $name {
+            $(
+                #[bench]
+                fn $target(b: &mut test::Bencher) {            
+                    let v: [usize; 10000] = {
+                        use rand::prelude::*;
+                        let mut rng = rand_chacha::ChaCha8Rng::seed_from_u64(314159265358979);
+                        std::array::from_fn(|_| rng.gen_range($input_range))
+                    };
+                    let push_sp_unchecked = |s: &mut String| {
+                        unsafe {
+                            let v = s.as_mut_vec();
+                            if !(v.len() < v.capacity()) {
+                                core::hint::unreachable_unchecked();
+                            }
+                            v.push(b' ');
+                        }
+                    };
+
+                    let c_std = || {
+                        let mut buf = String::with_capacity(v.len() * 21);
+                        for s in v {
+                            super::candiate::iappend_to_string(&mut buf, s);
+                            push_sp_unchecked(&mut buf);
+                        }
+                        buf
+                    };
+                    let c_lib = || {
+                        let mut buf = String::with_capacity(v.len() * 21);
+                        for s in v {
+                            super::candiate::$target(&mut buf, s);
+                            push_sp_unchecked(&mut buf);
+                        }
+                        buf
+                    };
+
+                    assert_eq!(c_std(), c_lib());
+
+                    b.iter(|| c_lib());
+                }
+            )*
+        }
+    };
+}
+macro_rules! benchmark_append_slice {
+    ($name:ident : $input_range:expr; $( $target:ident )*) => {
+        mod $name {
+            $(
+                #[bench]
+                fn $target(b: &mut test::Bencher) {            
+                    let v: [usize; 10000] = {
+                        use rand::prelude::*;
+                        let mut rng = rand_chacha::ChaCha8Rng::seed_from_u64(314159265358979);
+                        std::array::from_fn(|_| rng.gen_range($input_range))
+                    };
+
+                    let c_std = || {
+                        let mut buf = String::with_capacity(v.len() * 21);
+                        super::candiate::iappendslice_to_string(&mut buf, &v);
+                        buf
+                    };
+                    let c_lib = || {
+                        let mut buf = String::with_capacity(v.len() * 21);
+                        super::candiate::$target(&mut buf, &v);
+                        buf
+                    };
+
+                    assert_eq!(c_std(), c_lib());
+
+                    b.iter(|| c_lib());
+                }
+            )*
+        }
+    };
+}
+
 benchmark! {a_small_http_response_content_length: 0..(1 * 2_usize.pow(10))/* ~1KB */;
     itoa_to_string
     itoa_01
@@ -393,6 +728,8 @@ benchmark! {a_small_http_response_content_length: 0..(1 * 2_usize.pow(10))/* ~1K
     itoa_05
     itoa_06
     itoa_07
+    itoa_08d
+    itoa_08
 }
 benchmark! {common_json_response_content_length: 0..(1 * 2_usize.pow(20))/* ~1MB */;
     itoa_to_string
@@ -402,6 +739,8 @@ benchmark! {common_json_response_content_length: 0..(1 * 2_usize.pow(20))/* ~1MB
     itoa_05
     itoa_06
     itoa_07
+    itoa_08d
+    itoa_08
 }
 benchmark! {http_response_content_length: 0..(10 * 2_usize.pow(30))/* ~10GB
     usually large data more than 10GB are split into multiple responses or
@@ -414,4 +753,66 @@ benchmark! {http_response_content_length: 0..(10 * 2_usize.pow(30))/* ~10GB
     itoa_05
     itoa_06
     itoa_07
+    itoa_08d
+    itoa_08
+}
+benchmark! {max: 0..=usize::MAX;
+    itoa_to_string
+    itoa_01
+    itoa_02
+    itoa_03
+    itoa_05
+    itoa_06
+    itoa_07
+    itoa_08d
+    itoa_08
+}
+benchmark_append! {once_a_small_http_response_content_length: 0..(1 * 2_usize.pow(10))/* ~1KB */;
+    iappend_to_string
+    iappend_write
+    iappend_07
+    iappend_08
+}
+benchmark_append! {once_common_json_response_content_length: 0..(1 * 2_usize.pow(20))/* ~1MB */;
+    iappend_to_string
+    iappend_write
+    iappend_07
+    iappend_08
+}
+benchmark_append! {once_http_response_content_length: 0..(10 * 2_usize.pow(30))/* ~10GB */;
+    iappend_to_string
+    iappend_write
+    iappend_07
+    iappend_08
+}
+benchmark_append! {once_max: 0..=usize::MAX;
+    iappend_to_string
+    iappend_write
+    iappend_07
+    iappend_08
+}
+
+benchmark_append_slice! {slice_a_small_http_response_content_length: 0..(1 * 2_usize.pow(10))/* ~1KB */;
+    iappendslice_to_string
+    iappendslice_write
+    iappendslice_07
+    iappendslice_08
+}
+benchmark_append_slice! {slice_common_json_response_content_length: 0..(1 * 2_usize.pow(20))/* ~1MB */;
+    iappendslice_to_string
+    iappendslice_write
+    iappendslice_07
+    iappendslice_08
+}
+benchmark_append_slice! {slice_http_response_content_length: 0..(10 * 2_usize.pow(30))/* ~10GB */;
+    iappendslice_to_string
+    iappendslice_write
+    iappendslice_07
+    iappendslice_08
+}
+benchmark_append_slice! {slice_max: 0..=usize::MAX;
+    iappendslice_to_string
+    iappendslice_write
+    iappendslice_07
+    iappendslice_08
 }
