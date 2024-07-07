@@ -9,11 +9,15 @@ on:
 
 jobs:
   auto_approve:
-    if: |
-      github.event.pull_request.user.login == github.repository_owner &&
-      !github.event.pull_request.draft
-    permissions:
-      pull-requests: write
     runs-on: ubuntu-latest
     steps:
-      - uses: hmarr/auto-approve-action@v4
+      - name: hello
+        run:  echo 'not skipped'
+#    if: |
+#      github.event.pull_request.user.login == github.repository_owner &&
+#      !github.event.pull_request.draft
+#    permissions:
+#      pull-requests: write
+#    runs-on: ubuntu-latest
+#    steps:
+#      - uses: hmarr/auto-approve-action@v4
