@@ -1,0 +1,23 @@
+# This will be removed when ohkami has more than one maintainers
+
+name: auto_approve
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - ready_for_review
+
+jobs:
+  auto_approve:
+    if: |
+      github.event.pull_request.user.login == 'kana-rus' &&
+      !github.event.pull_request.draft
+    permissions:
+      pull-requests: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: hmarr/auto-approve-action@v4
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}

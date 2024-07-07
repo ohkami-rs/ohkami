@@ -382,10 +382,20 @@ mod candiate {#![allow(unused)]
 macro_rules! benchmark {
     ($( $target:ident )*) => {$(
         #[bench]
-        fn $target(b: &mut test::Bencher) {
-            use rand::prelude::*;
-            let mut rng = rand_chacha::ChaCha8Rng::seed_from_u64(314159265358979);
-            let v: [usize; 10000] = std::array::from_fn(|_| rng.next_u64() as usize);
+        fn $target(b: &mut test::Bencher) {            
+            let v: [usize; 10000] = {
+                use rand::prelude::*;
+                let mut rng = rand_chacha::ChaCha8Rng::seed_from_u64(314159265358979);
+                std::array::from_fn(|_|
+                    /*
+                        - Now `itoa` is only used for serializing `Content-Length`
+                        - In most cases, a single, non-streaming HTTP response
+                          will have Content-Length of less than 10GB
+                    */
+                    rng.gen_range(0..(10 * 2_usize.pow(30)))
+                )
+            };
+
             let c_std = || -> String {
                 v.iter().fold(String::with_capacity(v.len() * 21), |mut s, &n| {
                     s += &candiate::itoa_to_string(n);
@@ -400,7 +410,9 @@ macro_rules! benchmark {
                     s
                 })
             };
+
             assert_eq!(c_std(), c_lib());
+            
             b.iter(c_lib);
         }
     )*};
