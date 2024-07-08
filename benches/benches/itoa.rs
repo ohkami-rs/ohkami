@@ -85,58 +85,14 @@ mod candiate {#![allow(unused)]
         let mut digits = vec![b'0'; 1 + log10];
         {
             for i in 0..log10 {
-                let d = *unsafe {DIGITS.get_unchecked(i)};
+                let d = *unsafe {DIGITS.get(MAX-log10+i).unwrap()};
                 let q = n / d;
-                *unsafe {digits.get_unchecked_mut(i as usize)} += q as u8;
+                *unsafe {digits.get_mut(i).unwrap()} += q as u8;
                 n -= d * q;
             }
-            *unsafe {digits.get_unchecked_mut(log10)} += n as u8;
+            *unsafe {digits.get_mut(log10).unwrap()} += n as u8;
         }
-        unsafe {String::from_utf8_unchecked(digits)}
-    }
-
-    #[inline(always)]
-    pub fn itoa_04(mut n: usize) -> String {
-        const MAX: usize = usize::ilog10(usize::MAX) as _;
-
-        const DIGITS: [usize; MAX+1] = [
-            10_usize.pow(MAX as u32-0),
-            10_usize.pow(MAX as u32-1),
-            10_usize.pow(MAX as u32-2),
-            10_usize.pow(MAX as u32-3),
-            10_usize.pow(MAX as u32-4),
-            10_usize.pow(MAX as u32-5),
-            10_usize.pow(MAX as u32-6),
-            10_usize.pow(MAX as u32-7),
-            10_usize.pow(MAX as u32-8),
-            10_usize.pow(MAX as u32-9),
-            #[cfg(target_pointer_width="64")] 10_usize.pow(MAX as u32-10),
-            #[cfg(target_pointer_width="64")] 10_usize.pow(MAX as u32-11),
-            #[cfg(target_pointer_width="64")] 10_usize.pow(MAX as u32-12),
-            #[cfg(target_pointer_width="64")] 10_usize.pow(MAX as u32-13),
-            #[cfg(target_pointer_width="64")] 10_usize.pow(MAX as u32-14),
-            #[cfg(target_pointer_width="64")] 10_usize.pow(MAX as u32-15),
-            #[cfg(target_pointer_width="64")] 10_usize.pow(MAX as u32-16),
-            #[cfg(target_pointer_width="64")] 10_usize.pow(MAX as u32-17),
-            #[cfg(target_pointer_width="64")] 10_usize.pow(MAX as u32-18),
-            #[cfg(target_pointer_width="64")] 10_usize.pow(MAX as u32-19),
-        ];
-
-        let mut digits = [b'0'; DIGITS.len()];
-        let mut len = 0; loop {
-            let d = *unsafe {DIGITS.get_unchecked(len)};
-            let q = n / d;
-            *unsafe {digits.get_unchecked_mut(len)} += q as u8;
-            n -= d * q;
-
-            len += 1;
-
-            if n < 10 {
-                *unsafe {digits.get_unchecked_mut(len)} += n as u8;
-                break
-            }
-        }
-        unsafe {String::from_utf8_unchecked(digits[..len].into())}
+        unsafe {String::from_utf8(digits).unwrap()}
     }
 
     #[inline(always)]
@@ -384,50 +340,71 @@ mod candiate {#![allow(unused)]
 
 
 macro_rules! benchmark {
-    ($( $target:ident )*) => {$(
-        #[bench]
-        fn $target(b: &mut test::Bencher) {            
-            let v: [usize; 10000] = {
-                use rand::prelude::*;
-                let mut rng = rand_chacha::ChaCha8Rng::seed_from_u64(314159265358979);
-                std::array::from_fn(|_|
-                    /*
-                        - Now `itoa` is only used for serializing `Content-Length`
-                        - In most cases, a single, non-streaming HTTP response
-                          will have Content-Length of less than 10GB
-                    */
-                    rng.gen_range(0..(10 * 2_usize.pow(30)))
-                )
-            };
+    ($name:ident : $input_range:expr; $( $target:ident )*) => {
+        mod $name {
+            $(
+                #[bench]
+                fn $target(b: &mut test::Bencher) {            
+                    let v: [usize; 10000] = {
+                        use rand::prelude::*;
+                        let mut rng = rand_chacha::ChaCha8Rng::seed_from_u64(314159265358979);
+                        std::array::from_fn(|_|
+                            /*
+                                - Now `itoa` is only used for serializing `Content-Length`
+                                - In most cases, a single, non-streaming HTTP response
+                                  will have Content-Length of less than 10GB
+                            */
+                            rng.gen_range($input_range)
+                        )
+                    };
 
-            let c_std = || -> String {
-                v.iter().fold(String::with_capacity(v.len() * 21), |mut s, &n| {
-                    s += &candiate::itoa_to_string(n);
-                    s.push(' ');
-                    s
-                })
-            };
-            let c_lib = || -> String {
-                v.iter().fold(String::with_capacity(v.len() * 21), |mut s, &n| {
-                    s += &candiate::$target(n);
-                    s.push(' ');
-                    s
-                })
-            };
+                    let c_std = |buf: &mut String| for n in v {
+                        buf.push_str(&super::candiate::itoa_to_string(n));
+                        buf.push(' ');
+                    };
+                    let c_lib = |buf: &mut String| for n in v {
+                        buf.push_str(&super::candiate::$target(n));
+                        buf.push(' ');
+                    };
 
-            assert_eq!(c_std(), c_lib());
-            
-            b.iter(c_lib);
+                    assert_eq!(
+                        {let mut buf = String::new(); c_std(&mut buf); buf},
+                        {let mut buf = String::new(); c_lib(&mut buf); buf}
+                    );
+
+                    let mut buf = String::with_capacity(v.len() * 21);
+                    b.iter(|| c_lib(&mut buf));
+                }
+            )*
         }
-    )*};
+    };
 }
-benchmark! {
+benchmark! {a_small_http_response_content_length: 0..(1 * 2_usize.pow(10))/* ~1KB */;
     itoa_to_string
-    itoa_lib
     itoa_01
     itoa_02
-//    itoa_03
-//    itoa_04
+    itoa_03
+    itoa_05
+    itoa_06
+    itoa_07
+}
+benchmark! {common_json_response_content_length: 0..(1 * 2_usize.pow(20))/* ~1MB */;
+    itoa_to_string
+    itoa_01
+    itoa_02
+    itoa_03
+    itoa_05
+    itoa_06
+    itoa_07
+}
+benchmark! {http_response_content_length: 0..(10 * 2_usize.pow(30))/* ~10GB
+    usually large data more than 10GB are split into multiple responses or
+    delivered via streaming, so `Content-Length`, length of a single
+    response payload, will never exceed 10GB */;
+    itoa_to_string
+    itoa_01
+    itoa_02
+    itoa_03
     itoa_05
     itoa_06
     itoa_07
