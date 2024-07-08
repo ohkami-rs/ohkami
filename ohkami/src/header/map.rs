@@ -1,9 +1,9 @@
-pub(crate) struct Standard<const N: usize, Value> {
+pub(crate) struct IndexMap<const N: usize, Value> {
     index:  [u8; N],
-    values: Vec<Value>,
+    values: Vec<(usize, Value)>,
 }
 
-impl<const N: usize, Value> Standard<N, Value> {
+impl<const N: usize, Value> IndexMap<N, Value> {
     const NULL: u8 = u8::MAX;
 
     #[inline]
@@ -18,14 +18,14 @@ impl<const N: usize, Value> Standard<N, Value> {
     pub(crate) unsafe fn get(&self, index: usize) -> Option<&Value> {
         match *self.index.get_unchecked(index) {
             Self::NULL => None,
-            index      => Some(self.values.get_unchecked(index as usize))
+            index      => Some(&self.values.get_unchecked(index as usize).1)
         }
     }
     #[inline(always)]
     pub(crate) unsafe fn get_mut(&mut self, index: usize) -> Option<&mut Value> {
         match *self.index.get_unchecked(index) {
             Self::NULL => None,
-            index      => Some(self.values.get_unchecked_mut(index as usize))
+            index      => Some(&mut self.values.get_unchecked_mut(index as usize).1)
         }
     }
 
@@ -37,21 +37,18 @@ impl<const N: usize, Value> Standard<N, Value> {
     #[inline(always)]
     pub(crate) unsafe fn set(&mut self, index: usize, value: Value) {
         *self.index.get_unchecked_mut(index) = self.values.len() as u8;
-        self.values.push(value);
+        self.values.push((index, value));
     }
 
-    pub(crate) fn iter(&self) -> impl Iterator<Item = (usize, &Value)> {
-        self.index.iter()
-            .enumerate()
-            .filter(|(_, index)| **index != Self::NULL)
-            .map(|(h, index)| unsafe {(
-                h, self.values.get_unchecked(*index as usize)
-            )})
+    #[inline(always)]
+    pub(crate) fn iter(&self) -> impl Iterator<Item = &(usize, Value)> {
+        self.values.iter()
+            .filter(|(i, _)| *unsafe {self.index.get_unchecked(*i)} != Self::NULL)
     }
 }
 
 const _: () = {
-    impl<const N: usize, Value: PartialEq> PartialEq for Standard<N, Value> {
+    impl<const N: usize, Value: PartialEq> PartialEq for IndexMap<N, Value> {
         fn eq(&self, other: &Self) -> bool {
             for i in 0..N {
                 if unsafe {self.get(i)} != unsafe {other.get(i)} {
@@ -61,7 +58,7 @@ const _: () = {
         }
     }
 
-    impl<const N: usize, Value: Clone> Clone for Standard<N, Value> {
+    impl<const N: usize, Value: Clone> Clone for IndexMap<N, Value> {
         fn clone(&self) -> Self {
             Self {
                 index:  self.index.clone(),
