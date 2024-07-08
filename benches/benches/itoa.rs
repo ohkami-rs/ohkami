@@ -348,14 +348,7 @@ macro_rules! benchmark {
                     let v: [usize; 10000] = {
                         use rand::prelude::*;
                         let mut rng = rand_chacha::ChaCha8Rng::seed_from_u64(314159265358979);
-                        std::array::from_fn(|_|
-                            /*
-                                - Now `itoa` is only used for serializing `Content-Length`
-                                - In most cases, a single, non-streaming HTTP response
-                                  will have Content-Length of less than 10GB
-                            */
-                            rng.gen_range($input_range)
-                        )
+                        std::array::from_fn(|_| rng.gen_range($input_range))
                     };
 
                     let c_std = |buf: &mut String| for n in v {
