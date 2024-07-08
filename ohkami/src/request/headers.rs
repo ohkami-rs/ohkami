@@ -1,11 +1,11 @@
-use crate::header::{Standard, Append};
+use crate::header::{IndexMap, Append};
 use std::borrow::Cow;
 use ohkami_lib::{CowSlice, Slice};
 use rustc_hash::FxHashMap;
 
 
 pub struct Headers {
-    standard: Standard<N_CLIENT_HEADERS, CowSlice>,
+    standard: IndexMap<N_CLIENT_HEADERS, CowSlice>,
     custom:   Option<Box<FxHashMap<Slice, CowSlice>>>,
 }
 
@@ -266,7 +266,7 @@ impl Headers {
     pub(crate) fn iter(&self) -> impl Iterator<Item = (&str, &str)> {
         self.standard.iter()
             .map(|(i, v)| (
-                unsafe {std::mem::transmute::<_, Header>(i as u8).as_str()},
+                unsafe {std::mem::transmute::<_, Header>(*i as u8).as_str()},
                 std::str::from_utf8(v).expect("Non UTF-8 header value")
             ))
             .chain(self.custom.as_ref()
@@ -350,7 +350,7 @@ impl Headers {
     #[inline]
     pub(crate) fn init() -> Self {
         Self {
-            standard: Standard::new(),
+            standard: IndexMap::new(),
             custom:   None,
         }
     }

@@ -1,11 +1,11 @@
-use crate::header::{Standard, Append, SetCookie, SetCookieBuilder};
+use crate::header::{IndexMap, Append, SetCookie, SetCookieBuilder};
 use std::borrow::Cow;
 use rustc_hash::FxHashMap;
 
 
 #[derive(Clone)]
 pub struct Headers {
-    standard:  Standard<N_SERVER_HEADERS, Cow<'static, str>>,
+    standard:  IndexMap<N_SERVER_HEADERS, Cow<'static, str>>,
     custom:    Option<Box<FxHashMap<&'static str, Cow<'static, str>>>>,
     setcookie: Option<Box<Vec<Cow<'static, str>>>>,
     pub(crate) size: usize,
@@ -402,7 +402,7 @@ impl Headers {
     #[inline]
     pub(crate) fn new() -> Self {
         Self {
-            standard:  Standard::new(),
+            standard:  IndexMap::new(),
             custom:    None,
             setcookie: None,
             size:      "\r\n".len(),
@@ -415,7 +415,7 @@ impl Headers {
     pub(crate) fn iter_standard(&self) -> impl Iterator<Item = (&str, &str)> {
         self.standard.iter()
             .map(|(i, v)| (
-                unsafe {std::mem::transmute::<_, Header>(i as u8)}.as_str(),
+                unsafe {std::mem::transmute::<_, Header>(*i as u8)}.as_str(),
                 &**v
             ))
     }
@@ -439,9 +439,8 @@ impl Headers {
     ))]
     /// SAFETY: `buf` has remaining capacity of at least `self.size`
     pub(crate) unsafe fn write_unchecked_to(&self, buf: &mut Vec<u8>) {
-        for n in 0..N_SERVER_HEADERS {
-            let h = std::mem::transmute::<_, Header>(n as u8);
-            if let Some(v) = self.standard.get(h as usize) {
+        for (i, v) in self.standard.iter() {
+            let h = std::mem::transmute::<_, Header>(*i as u8); {
                 crate::push_unchecked!(buf <- h.as_bytes());
                 crate::push_unchecked!(buf <- b": ");
                 crate::push_unchecked!(buf <- v.as_bytes());
