@@ -40,16 +40,16 @@ async fn test_response_into_bytes() {
     res.headers.set().Server("ohkami");
     assert_bytes_eq!(res, format!("\
         HTTP/1.1 204 No Content\r\n\
-        Date: {__now__}\r\n\
         Server: ohkami\r\n\
+        Date: {__now__}\r\n\
         \r\n\
     ").into_bytes());
 
     let res = Response::NotFound();
     assert_bytes_eq!(res, format!("\
         HTTP/1.1 404 Not Found\r\n\
-        Content-Length: 0\r\n\
         Date: {__now__}\r\n\
+        Content-Length: 0\r\n\
         \r\n\
     ").into_bytes());
 
@@ -59,9 +59,9 @@ async fn test_response_into_bytes() {
         .custom("Hoge-Header", "Something-Custom");
     assert_bytes_eq!(res, format!("\
         HTTP/1.1 404 Not Found\r\n\
-        Content-Length: 0\r\n\
-        Date: {__now__}\r\n\
         Server: ohkami\r\n\
+        Date: {__now__}\r\n\
+        Content-Length: 0\r\n\
         Hoge-Header: Something-Custom\r\n\
         \r\n\
     ").into_bytes());
@@ -74,9 +74,9 @@ async fn test_response_into_bytes() {
         .SetCookie("name", "John", |d|d.Path("/where").SameSiteStrict());
     assert_bytes_eq!(res, format!("\
         HTTP/1.1 404 Not Found\r\n\
-        Content-Length: 0\r\n\
-        Date: {__now__}\r\n\
         Server: ohkami\r\n\
+        Date: {__now__}\r\n\
+        Content-Length: 0\r\n\
         Hoge-Header: Something-Custom\r\n\
         Set-Cookie: id=42; Path=/; SameSite=Lax\r\n\
         Set-Cookie: name=John; Path=/where; SameSite=Strict\r\n\
@@ -91,10 +91,10 @@ async fn test_response_into_bytes() {
         .SetCookie("name", "John", |d|d.Path("/where").SameSiteStrict());
     assert_bytes_eq!(res, format!("\
         HTTP/1.1 404 Not Found\r\n\
-        Content-Length: 11\r\n\
         Content-Type: text/plain; charset=UTF-8\r\n\
-        Date: {__now__}\r\n\
         Server: ohkami\r\n\
+        Date: {__now__}\r\n\
+        Content-Length: 11\r\n\
         Hoge-Header: Something-Custom\r\n\
         Set-Cookie: id=42; Path=/; SameSite=Lax\r\n\
         Set-Cookie: name=John; Path=/where; SameSite=Strict\r\n\
@@ -149,11 +149,11 @@ async fn test_stream_response() {
         );
     assert_bytes_eq!(res, format!("\
         HTTP/1.1 200 OK\r\n\
-        Cache-Control: no-cache, must-revalidate\r\n\
         Content-Type: text/event-stream\r\n\
-        Date: {__now__}\r\n\
-        Server: ohkami\r\n\
+        Cache-Control: no-cache, must-revalidate\r\n\
         Transfer-Encoding: chunked\r\n\
+        Server: ohkami\r\n\
+        Date: {__now__}\r\n\
         is-stream: true\r\n\
         Set-Cookie: name=John; Path=/where; SameSite=Strict\r\n\
         \r\n\
@@ -186,11 +186,11 @@ async fn test_stream_response() {
         );
     assert_bytes_eq!(res, format!("\
         HTTP/1.1 200 OK\r\n\
-        Cache-Control: no-cache, must-revalidate\r\n\
         Content-Type: text/event-stream\r\n\
-        Date: {__now__}\r\n\
-        Server: ohkami\r\n\
+        Cache-Control: no-cache, must-revalidate\r\n\
         Transfer-Encoding: chunked\r\n\
+        Server: ohkami\r\n\
+        Date: {__now__}\r\n\
         is-stream: true\r\n\
         Set-Cookie: name=John; Path=/where; SameSite=Strict\r\n\
         \r\n\
