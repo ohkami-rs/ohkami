@@ -333,7 +333,7 @@ mod candiate {#![allow(unused)]
 
             push_unchecked(b'0' + n as u8);
         }
-        
+
         unsafe {String::from_utf8_unchecked(buf)}
     }
 }
@@ -366,7 +366,20 @@ macro_rules! benchmark {
                     );
 
                     let mut buf = String::with_capacity(v.len() * 21);
-                    b.iter(|| c_lib(&mut buf));
+                    b.iter(|| {
+                        /*
+                            reuse the same buffer and avoid redundant allocation during each iter
+
+                            - `.as_mut_vec().set_len(0)` is very cheap at the cost
+                            - `buf.{push, push_str}` just do `ptr::write` and `set_len` due to the enough capacity,
+                              whitch means following `c_lib` overwrites existing bytes
+                            - `Drop` impls of overwritten bytes are never called but this is not a problem
+                              because it (`u8::drop`) is noop
+                        */
+                        unsafe {buf.as_mut_vec().set_len(0)}
+
+                        c_lib(&mut buf)
+                    });
                 }
             )*
         }
