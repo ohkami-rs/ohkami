@@ -533,22 +533,24 @@ mod candiate {#![allow(unused)]
         }
     }
 
-    #[inline(always)]
-    pub fn itoa_08d(n: usize) -> String {
-        // Example of performance degradation when trying to implement to_string() with std::fmt::Display
-        pub struct U64Write(pub u64);
-        impl std::fmt::Display for U64Write {
-            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                unsafe {
-                    let mut buf = [0u8; 20];
-                    let r = buf.as_mut_ptr();
-                    let mut p = r;
-                    dec4le::raw_u64(&mut p, self.0);
-                    f.write_str(std::str::from_utf8_unchecked(&buf[..(p.offset_from(r) as usize)]))
-                }
+    // Example of performance degradation when trying to implement std::fmt::Display
+    pub struct U64Write(pub u64);
+    impl std::fmt::Display for U64Write {
+        #[inline(always)]
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            unsafe {
+                let mut buf = [0u8; 20];
+                let r = buf.as_mut_ptr();
+                let mut p = r;
+                dec4le::raw_u64(&mut p, self.0);
+                f.write_str(std::str::from_utf8_unchecked(&buf[..(p.offset_from(r) as usize)]))
             }
         }
+    }
 
+    #[inline(always)]
+    pub fn itoa_08d(n: usize) -> String {
+        // Example of performance degradation when trying to implement std::fmt::Display
         U64Write(n as u64).to_string()
     }
 
@@ -566,6 +568,13 @@ mod candiate {#![allow(unused)]
     }
 
     #[inline(always)]
+    pub fn iappend_08d(s: &mut String, n: usize) {
+        // Example of performance degradation when trying to implement std::fmt::Display
+        use std::fmt::Write;
+        write!(s, "{}", U64Write(n as u64)).ok();
+    }
+
+    #[inline(always)]
     pub fn iappend_08(s: &mut String, n: usize) {
         unsafe {
             let v = s.as_mut_vec();
@@ -573,6 +582,19 @@ mod candiate {#![allow(unused)]
             let mut p = r.add(v.len());
             dec4le::raw_u64(&mut p, n as u64);
             v.set_len(p.offset_from(r) as usize);
+        }
+    }
+
+    #[inline(always)]
+    pub fn iappendslice_08d(s: &mut String, v: &[usize]) {
+        // Example of performance degradation when trying to implement std::fmt::Display
+        use std::fmt::Write;
+        for &n in v.iter() {
+            write!(s, "{}", U64Write(n as u64)).ok();
+            if !(s.len() < s.capacity()) {
+                unsafe { core::hint::unreachable_unchecked(); }
+            }
+            s.push(' ');
         }
     }
 
@@ -771,24 +793,28 @@ benchmark_append! {once_a_small_http_response_content_length: 0..(1 * 2_usize.po
     iappend_write
     iappend_07
     iappend_08
+    iappend_08d
 }
 benchmark_append! {once_common_json_response_content_length: 0..(1 * 2_usize.pow(20))/* ~1MB */;
     iappend_to_string
     iappend_write
     iappend_07
     iappend_08
+    iappend_08d
 }
 benchmark_append! {once_http_response_content_length: 0..(10 * 2_usize.pow(30))/* ~10GB */;
     iappend_to_string
     iappend_write
     iappend_07
     iappend_08
+    iappend_08d
 }
 benchmark_append! {once_max: 0..=usize::MAX;
     iappend_to_string
     iappend_write
     iappend_07
     iappend_08
+    iappend_08d
 }
 
 benchmark_append_slice! {slice_a_small_http_response_content_length: 0..(1 * 2_usize.pow(10))/* ~1KB */;
@@ -796,22 +822,26 @@ benchmark_append_slice! {slice_a_small_http_response_content_length: 0..(1 * 2_u
     iappendslice_write
     iappendslice_07
     iappendslice_08
+    iappendslice_08d
 }
 benchmark_append_slice! {slice_common_json_response_content_length: 0..(1 * 2_usize.pow(20))/* ~1MB */;
     iappendslice_to_string
     iappendslice_write
     iappendslice_07
     iappendslice_08
+    iappendslice_08d
 }
 benchmark_append_slice! {slice_http_response_content_length: 0..(10 * 2_usize.pow(30))/* ~10GB */;
     iappendslice_to_string
     iappendslice_write
     iappendslice_07
     iappendslice_08
+    iappendslice_08d
 }
 benchmark_append_slice! {slice_max: 0..=usize::MAX;
     iappendslice_to_string
     iappendslice_write
     iappendslice_07
     iappendslice_08
+    iappendslice_08d
 }
