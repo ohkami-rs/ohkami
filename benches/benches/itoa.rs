@@ -531,26 +531,25 @@ mod candiate {#![allow(unused)]
                 }
             }
         }
-
-        pub struct U64Write(pub u64);
-        impl std::fmt::Display for U64Write {
-            // Example of performance degradation when trying to implement to_string() with std::fmt::Display
-            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                unsafe {
-                    let mut buf = [0u8; 20];
-                    let r = buf.as_mut_ptr();
-                    let mut p = r;
-                    raw_u64(&mut p, self.0);
-                    f.write_str(std::str::from_utf8_unchecked(&buf[..(p.offset_from(r) as usize)]))
-                }
-            }
-        }
     }
 
     #[inline(always)]
     pub fn itoa_08d(n: usize) -> String {
         // Example of performance degradation when trying to implement to_string() with std::fmt::Display
-        dec4le::U64Write(n as u64).to_string()
+        pub struct U64Write(pub u64);
+        impl std::fmt::Display for U64Write {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                unsafe {
+                    let mut buf = [0u8; 20];
+                    let r = buf.as_mut_ptr();
+                    let mut p = r;
+                    dec4le::raw_u64(&mut p, self.0);
+                    f.write_str(std::str::from_utf8_unchecked(&buf[..(p.offset_from(r) as usize)]))
+                }
+            }
+        }
+
+        U64Write(n as u64).to_string()
     }
 
     #[inline(always)]
