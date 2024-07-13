@@ -55,7 +55,7 @@ impl FxMap {
 
         buf.reserve(self.size);
 
-        for (k, v) in &self.map {
+        for (k, v) in self.map.iter() {
             push!(buf <- k.as_bytes());
             push!(buf <- b": ");
             push!(buf <- v.as_bytes());

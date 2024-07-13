@@ -171,7 +171,7 @@ fn input() -> Vec<u8> {
     b.iter(|| {
         let mut r = byte_reader::Reader::new(black_box(input.as_slice()));
         
-        let mut h = HeaderHashBrown::new();
+        let mut h = HeaderHashBrown::<false>::new();
         while r.consume("\r\n").is_none() {
             let key_bytes = r.read_while(|b| b != &b':');
             r.consume(": ").unwrap();

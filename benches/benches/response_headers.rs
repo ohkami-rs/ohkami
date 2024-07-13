@@ -21,11 +21,11 @@ use ohkami_benches::response_headers::{
     let mut h = ResponseHeaders::_new();
     b.iter(|| {
         h.set()
-            .AccessControlAllowCredentials(black_box("true"))
-            .AccessControlAllowHeaders(black_box("X-Custom-Header,Upgrade-Insecure-Requests"))
-            .AccessControlAllowOrigin(black_box("https://foo.bar.org"))
-            .AccessControlAllowMethods(black_box("POST,GET,OPTIONS,DELETE"))
-            .AccessControlMaxAge(black_box("86400"))
+            //.AccessControlAllowCredentials(black_box("true"))
+            //.AccessControlAllowHeaders(black_box("X-Custom-Header,Upgrade-Insecure-Requests"))
+            //.AccessControlAllowOrigin(black_box("https://foo.bar.org"))
+            //.AccessControlAllowMethods(black_box("POST,GET,OPTIONS,DELETE"))
+            //.AccessControlMaxAge(black_box("86400"))
             .Vary(black_box("Origin"))
             .Server(black_box("ohkami"))
             .Connection(black_box("Keep-Alive"))
@@ -36,7 +36,7 @@ use ohkami_benches::response_headers::{
             .ReferrerPolicy(black_box("same-origin"))
             .XFrameOptions(black_box("DENY"))
             .custom("x-myapp-data", black_box("myappdata; excellent"))
-            .custom("something", black_box("anything"))
+            //.custom("something", black_box("anything"))
         ;
     });
 }
@@ -112,11 +112,11 @@ use ohkami_benches::response_headers::{
 #[bench] fn insert_http_crate(b: &mut test::Bencher) {
     let mut h = HeaderMap::new();
     b.iter(|| {
-        h.insert(header::ACCESS_CONTROL_ALLOW_CREDENTIALS, HeaderValue::from_static(black_box("true")));
-        h.insert(header::ACCESS_CONTROL_ALLOW_HEADERS, HeaderValue::from_static(black_box("X-Custom-Header,Upgrade-Insecure-Requests")));
-        h.insert(header::ACCESS_CONTROL_ALLOW_ORIGIN, HeaderValue::from_static(black_box("https://foo.bar.org")));
-        h.insert(header::ACCESS_CONTROL_ALLOW_METHODS, HeaderValue::from_static(black_box("POST,GET,OPTIONS,DELETE")));
-        h.insert(header::ACCESS_CONTROL_MAX_AGE, HeaderValue::from_static(black_box("86400")));
+        //h.insert(header::ACCESS_CONTROL_ALLOW_CREDENTIALS, HeaderValue::from_static(black_box("true")));
+        //h.insert(header::ACCESS_CONTROL_ALLOW_HEADERS, HeaderValue::from_static(black_box("X-Custom-Header,Upgrade-Insecure-Requests")));
+        //h.insert(header::ACCESS_CONTROL_ALLOW_ORIGIN, HeaderValue::from_static(black_box("https://foo.bar.org")));
+        //h.insert(header::ACCESS_CONTROL_ALLOW_METHODS, HeaderValue::from_static(black_box("POST,GET,OPTIONS,DELETE")));
+        //h.insert(header::ACCESS_CONTROL_MAX_AGE, HeaderValue::from_static(black_box("86400")));
         h.insert(header::VARY, HeaderValue::from_static(black_box("Origin")));
         h.insert(header::SERVER, HeaderValue::from_static(black_box("ohkami")));
         h.insert(header::CONNECTION, HeaderValue::from_static(black_box("Keep-Alive")));
@@ -127,7 +127,7 @@ use ohkami_benches::response_headers::{
         h.insert(header::REFERRER_POLICY, HeaderValue::from_static("same-origin"));
         h.insert(header::X_FRAME_OPTIONS, HeaderValue::from_static("DENY"));
         h.insert(HeaderName::from_static("x-myapp-data"), HeaderValue::from_static(black_box("myappdata; excellent")));
-        h.insert(HeaderName::from_static("something"), HeaderValue::from_static(black_box("anything")));
+        //h.insert(HeaderName::from_static("something"), HeaderValue::from_static(black_box("anything")));
     });
 }
 
@@ -135,10 +135,10 @@ use ohkami_benches::response_headers::{
     let mut h = FxMap::new();
     b.iter(|| {
         h
-            .insert("Access-Control-Allow-Credentials", black_box("true"))
-            .insert("Access-Control-Allow-Headers", black_box("X-Custom-Header,Upgrade-Insecure-Requests"))
-            .insert("Access-Control-Allow-Origin", black_box("https://foo.bar.org"))
-            .insert("Access-Control-Max-Age", black_box("86400"))
+            //.insert("Access-Control-Allow-Credentials", black_box("true"))
+            //.insert("Access-Control-Allow-Headers", black_box("X-Custom-Header,Upgrade-Insecure-Requests"))
+            //.insert("Access-Control-Allow-Origin", black_box("https://foo.bar.org"))
+            //.insert("Access-Control-Max-Age", black_box("86400"))
             .insert("Vary", black_box("Origin"))
             .insert("Server", black_box("ohkami"))
             .insert("Connection", black_box("Keep-Alive"))
@@ -148,7 +148,7 @@ use ohkami_benches::response_headers::{
             .insert("Referer-Policy", black_box("same-origin"))
             .insert("X-Frame-Options", black_box("DEBY"))
             .insert("x-myapp-data", black_box("myappdata; excellent"))
-            .insert("something", black_box("anything"))
+            //.insert("something", black_box("anything"))
         ;
     });
 }
@@ -157,10 +157,10 @@ use ohkami_benches::response_headers::{
     let mut h = MyHeaderMap::new();
     b.iter(|| {
         h.set()
-            .AccessControlAllowCredentials(black_box("true"))
-            .AccessControlAllowHeaders(black_box("X-Custom-Header,Upgrade-Insecure-Requests"))
-            .AccessControlAllowOrigin(black_box("https://foo.bar.org"))
-            .AccessControlMaxAge(black_box("86400"))
+            //.AccessControlAllowCredentials(black_box("true"))
+            //.AccessControlAllowHeaders(black_box("X-Custom-Header,Upgrade-Insecure-Requests"))
+            //.AccessControlAllowOrigin(black_box("https://foo.bar.org"))
+            //.AccessControlMaxAge(black_box("86400"))
             .Vary(black_box("Origin"))
             .Server(black_box("ohkami"))
             .Connection(black_box("Keep-Alive"))
@@ -170,19 +170,19 @@ use ohkami_benches::response_headers::{
             .ReferrerPolicy(black_box("same-origin"))
             .XFrameOptions(black_box("DEBY"))
             .custom("x-myapp-data", black_box("myappdata; excellent"))
-            .custom("something", black_box("anything"))
+            //.custom("something", black_box("anything"))
         ;
     });
 }
 
 #[bench] fn insert_header_hashbrown(b: &mut test::Bencher) {
-    let mut h = HeaderHashBrown::new();
+    let mut h = HeaderHashBrown::<true>::new();
     b.iter(|| {
         h
-            .insert_standard_from_reqbytes(StandardHeader::AccessControlAllowCredentials, black_box(b"true"))
-            .insert_standard_from_reqbytes(StandardHeader::AccessControlAllowHeaders, black_box(b"X-Custom-Header,Upgrade-Insecure-Requests"))
-            .insert_standard_from_reqbytes(StandardHeader::AccessControlAllowOrigin, black_box(b"https://foo.bar.org"))
-            .insert_standard_from_reqbytes(StandardHeader::AccessControlMaxAge, black_box(b"86400"))
+            //.insert_standard_from_reqbytes(StandardHeader::AccessControlAllowCredentials, black_box(b"true"))
+            //.insert_standard_from_reqbytes(StandardHeader::AccessControlAllowHeaders, black_box(b"X-Custom-Header,Upgrade-Insecure-Requests"))
+            //.insert_standard_from_reqbytes(StandardHeader::AccessControlAllowOrigin, black_box(b"https://foo.bar.org"))
+            //.insert_standard_from_reqbytes(StandardHeader::AccessControlMaxAge, black_box(b"86400"))
             .insert_standard_from_reqbytes(StandardHeader::Vary, black_box(b"Origin"))
             .insert_standard_from_reqbytes(StandardHeader::Server, black_box(b"ohkami"))
             .insert_standard_from_reqbytes(StandardHeader::Connection, black_box(b"Keep-Alive"))
@@ -192,7 +192,7 @@ use ohkami_benches::response_headers::{
             .insert_standard_from_reqbytes(StandardHeader::ReferrerPolicy, black_box(b"same-origin"))
             .insert_standard_from_reqbytes(StandardHeader::XFrameOptions, black_box(b"DEBY"))
             .insert_from_reqbytes(b"x-myapp-data", black_box(b"myappdata; excellent"))
-            .insert_from_reqbytes(b"something", black_box(b"anything"))
+            //.insert_from_reqbytes(b"something", black_box(b"anything"))
         ;
     });
 }
@@ -203,11 +203,11 @@ use ohkami_benches::response_headers::{
 #[bench] fn remove_ohkami(b: &mut test::Bencher) {
     let mut h = ResponseHeaders::_new();
     h.set()
-        .AccessControlAllowCredentials(black_box("true"))
-        .AccessControlAllowHeaders(black_box("X-Custom-Header,Upgrade-Insecure-Requests"))
-        .AccessControlAllowOrigin(black_box("https://foo.bar.org"))
-        .AccessControlAllowMethods(black_box("POST,GET,OPTIONS,DELETE"))
-        .AccessControlMaxAge(black_box("86400"))
+        //.AccessControlAllowCredentials(black_box("true"))
+        //.AccessControlAllowHeaders(black_box("X-Custom-Header,Upgrade-Insecure-Requests"))
+        //.AccessControlAllowOrigin(black_box("https://foo.bar.org"))
+        //.AccessControlAllowMethods(black_box("POST,GET,OPTIONS,DELETE"))
+        //.AccessControlMaxAge(black_box("86400"))
         .Vary(black_box("Origin"))
         .Server(black_box("ohkami"))
         .Connection(black_box("Keep-Alive"))
@@ -218,16 +218,16 @@ use ohkami_benches::response_headers::{
         .ReferrerPolicy(black_box("same-origin"))
         .XFrameOptions(black_box("DENY"))
         .custom("x-myapp-data", black_box("myappdata; excellent"))
-        .custom("something", black_box("anything"))
+        //.custom("something", black_box("anything"))
     ;
 
     b.iter(|| {
         h.set()
-            .AccessControlAllowCredentials(black_box(None))
-            .AccessControlAllowHeaders(black_box(None))
-            .AccessControlAllowOrigin(black_box(None))
-            .AccessControlAllowMethods(black_box(None))
-            .AccessControlMaxAge(black_box(None))
+            //.AccessControlAllowCredentials(black_box(None))
+            //.AccessControlAllowHeaders(black_box(None))
+            //.AccessControlAllowOrigin(black_box(None))
+            //.AccessControlAllowMethods(black_box(None))
+            //.AccessControlMaxAge(black_box(None))
             .Vary(black_box(None))
             .Server(black_box(None))
             .Connection(black_box(None))
@@ -238,7 +238,7 @@ use ohkami_benches::response_headers::{
             .ReferrerPolicy(black_box(None))
             .XFrameOptions(black_box(None))
             .custom("x-myapp-data", black_box(None))
-            .custom("something", black_box(None))
+            //.custom("something", black_box(None))
         ;
     });
 }
@@ -289,11 +289,11 @@ use ohkami_benches::response_headers::{
 
 #[bench] fn remove_http_crate(b: &mut test::Bencher) {
     let mut h = HeaderMap::new();
-    h.insert(header::ACCESS_CONTROL_ALLOW_CREDENTIALS, HeaderValue::from_static(black_box("true")));
-    h.insert(header::ACCESS_CONTROL_ALLOW_HEADERS, HeaderValue::from_static(black_box("X-Custom-Header,Upgrade-Insecure-Requests")));
-    h.insert(header::ACCESS_CONTROL_ALLOW_ORIGIN, HeaderValue::from_static(black_box("https://foo.bar.org")));
-    h.insert(header::ACCESS_CONTROL_ALLOW_METHODS, HeaderValue::from_static(black_box("POST,GET,OPTIONS,DELETE")));
-    h.insert(header::ACCESS_CONTROL_MAX_AGE, HeaderValue::from_static(black_box("86400")));
+    //h.insert(header::ACCESS_CONTROL_ALLOW_CREDENTIALS, HeaderValue::from_static(black_box("true")));
+    //h.insert(header::ACCESS_CONTROL_ALLOW_HEADERS, HeaderValue::from_static(black_box("X-Custom-Header,Upgrade-Insecure-Requests")));
+    //h.insert(header::ACCESS_CONTROL_ALLOW_ORIGIN, HeaderValue::from_static(black_box("https://foo.bar.org")));
+    //h.insert(header::ACCESS_CONTROL_ALLOW_METHODS, HeaderValue::from_static(black_box("POST,GET,OPTIONS,DELETE")));
+    //h.insert(header::ACCESS_CONTROL_MAX_AGE, HeaderValue::from_static(black_box("86400")));
     h.insert(header::VARY, HeaderValue::from_static(black_box("Origin")));
     h.insert(header::SERVER, HeaderValue::from_static(black_box("ohkami")));
     h.insert(header::CONNECTION, HeaderValue::from_static(black_box("Keep-Alive")));
@@ -304,14 +304,14 @@ use ohkami_benches::response_headers::{
     h.insert(header::REFERRER_POLICY, HeaderValue::from_static("same-origin"));
     h.insert(header::X_FRAME_OPTIONS, HeaderValue::from_static("DENY"));
     h.insert(HeaderName::from_static("x-myapp-data"), HeaderValue::from_static(black_box("myappdata; excellent")));
-    h.insert(HeaderName::from_static("something"), HeaderValue::from_static(black_box("anything")));
+    //h.insert(HeaderName::from_static("something"), HeaderValue::from_static(black_box("anything")));
 
     b.iter(|| {
-        h.remove(header::ACCESS_CONTROL_ALLOW_CREDENTIALS);
-        h.remove(header::ACCESS_CONTROL_ALLOW_HEADERS);
-        h.remove(header::ACCESS_CONTROL_ALLOW_ORIGIN);
-        h.remove(header::ACCESS_CONTROL_ALLOW_METHODS);
-        h.remove(header::ACCESS_CONTROL_MAX_AGE);
+        //h.remove(header::ACCESS_CONTROL_ALLOW_CREDENTIALS);
+        //h.remove(header::ACCESS_CONTROL_ALLOW_HEADERS);
+        //h.remove(header::ACCESS_CONTROL_ALLOW_ORIGIN);
+        //h.remove(header::ACCESS_CONTROL_ALLOW_METHODS);
+        //h.remove(header::ACCESS_CONTROL_MAX_AGE);
         h.remove(header::VARY);
         h.remove(header::SERVER);
         h.remove(header::CONNECTION);
@@ -322,17 +322,18 @@ use ohkami_benches::response_headers::{
         h.remove(header::REFERRER_POLICY);
         h.remove(header::X_FRAME_OPTIONS);
         h.remove(HeaderName::from_static("x-myapp-data"));
-        h.remove(HeaderName::from_static("something"));
+        //h.remove(HeaderName::from_static("something"));
     });
 }
 
 #[bench] fn remove_fxmap(b: &mut test::Bencher) {
     let mut h = FxMap::new();
     h
-        .insert("Access-Control-Allow-Credentials", black_box("true"))
-        .insert("Access-Control-Allow-Headers", black_box("X-Custom-Header,Upgrade-Insecure-Requests"))
-        .insert("Access-Control-Allow-Origin", black_box("https://foo.bar.org"))
-        .insert("Access-Control-Max-Age", black_box("86400"))
+        //.insert("Access-Control-Allow-Credentials", black_box("true"))
+        //.insert("Access-Control-Allow-Headers", black_box("X-Custom-Header,Upgrade-Insecure-Requests"))
+        //.insert("Access-Control-Allow-Origin", black_box("https://foo.bar.org"))
+        //.insert("Access-Control-Allow-Methods", black_box("POST,GET,OPTIONS,DELETE"))
+        //.insert("Access-Control-Max-Age", black_box("86400"))
         .insert("Vary", black_box("Origin"))
         .insert("Server", black_box("ohkami"))
         .insert("Connection", black_box("Keep-Alive"))
@@ -342,15 +343,16 @@ use ohkami_benches::response_headers::{
         .insert("Referer-Policy", black_box("same-origin"))
         .insert("X-Frame-Options", black_box("DEBY"))
         .insert("x-myapp-data", black_box("myappdata; excellent"))
-        .insert("something", black_box("anything"))
+        //.insert("something", black_box("anything"))
     ;
 
     b.iter(|| {
         h
-            .remove("Access-Control-Allow-Credentials")
-            .remove("Access-Control-Allow-Headers")
-            .remove("Access-Control-Allow-Origin")
-            .remove("Access-Control-Max-Age")
+            //.remove("Access-Control-Allow-Credentials")
+            //.remove("Access-Control-Allow-Headers")
+            //.remove("Access-Control-Allow-Origin")
+            //.remove("Access-Control-Allow-Methods")
+            //.remove("Access-Control-Max-Age")
             .remove("Vary")
             .remove("Server")
             .remove("Connection")
@@ -360,7 +362,7 @@ use ohkami_benches::response_headers::{
             .remove("Referer-Policy")
             .remove("X-Frame-Options")
             .remove("x-myapp-data")
-            .remove("something")
+            //.remove("something")
         ;
     });
 }
@@ -369,10 +371,11 @@ use ohkami_benches::response_headers::{
     let mut h = MyHeaderMap::new();
     
     h.set()
-        .AccessControlAllowCredentials(black_box("true"))
-        .AccessControlAllowHeaders(black_box("X-Custom-Header,Upgrade-Insecure-Requests"))
-        .AccessControlAllowOrigin(black_box("https://foo.bar.org"))
-        .AccessControlMaxAge(black_box("86400"))
+        //.AccessControlAllowCredentials(black_box("true"))
+        //.AccessControlAllowHeaders(black_box("X-Custom-Header,Upgrade-Insecure-Requests"))
+        //.AccessControlAllowOrigin(black_box("https://foo.bar.org"))
+        //.AccessControlAllowMethods(black_box("POST,GET,OPTIONS,DELETE"))
+        //.AccessControlMaxAge(black_box("86400"))
         .Vary(black_box("Origin"))
         .Server(black_box("ohkami"))
         .Connection(black_box("Keep-Alive"))
@@ -382,16 +385,16 @@ use ohkami_benches::response_headers::{
         .ReferrerPolicy(black_box("same-origin"))
         .XFrameOptions(black_box("DEBY"))
         .custom("x-myapp-data", black_box("myappdata; excellent"))
-        .custom("something", black_box("anything"))
+        //.custom("something", black_box("anything"))
     ;
 
     b.iter(|| {
         h.set()
-            .AccessControlAllowCredentials(black_box(None))
-            .AccessControlAllowHeaders(black_box(None))
-            .AccessControlAllowOrigin(black_box(None))
-            .AccessControlAllowMethods(black_box(None))
-            .AccessControlMaxAge(black_box(None))
+            //.AccessControlAllowCredentials(black_box(None))
+            //.AccessControlAllowHeaders(black_box(None))
+            //.AccessControlAllowOrigin(black_box(None))
+            //.AccessControlAllowMethods(black_box(None))
+            //.AccessControlMaxAge(black_box(None))
             .Vary(black_box(None))
             .Server(black_box(None))
             .Connection(black_box(None))
@@ -402,18 +405,19 @@ use ohkami_benches::response_headers::{
             .ReferrerPolicy(black_box(None))
             .XFrameOptions(black_box(None))
             .custom("x-myapp-data", black_box(None))
-            .custom("something", black_box(None))
+            //.custom("something", black_box(None))
         ;
     });
 }
 
 #[bench] fn remove_header_hashbrown(b: &mut test::Bencher) {
-    let mut h = HeaderHashBrown::new();
+    let mut h = HeaderHashBrown::<true>::new();
     h
-        .insert_standard_from_reqbytes(StandardHeader::AccessControlAllowCredentials, black_box(b"true"))
-        .insert_standard_from_reqbytes(StandardHeader::AccessControlAllowHeaders, black_box(b"X-Custom-Header,Upgrade-Insecure-Requests"))
-        .insert_standard_from_reqbytes(StandardHeader::AccessControlAllowOrigin, black_box(b"https://foo.bar.org"))
-        .insert_standard_from_reqbytes(StandardHeader::AccessControlMaxAge, black_box(b"86400"))
+        //.insert_standard_from_reqbytes(StandardHeader::AccessControlAllowCredentials, black_box(b"true"))
+        //.insert_standard_from_reqbytes(StandardHeader::AccessControlAllowHeaders, black_box(b"X-Custom-Header,Upgrade-Insecure-Requests"))
+        //.insert_standard_from_reqbytes(StandardHeader::AccessControlAllowOrigin, black_box(b"https://foo.bar.org"))
+        //.insert_standard_from_reqbytes(StandardHeader::AccessControlAllowMethods, black_box(b"POST,GET,OPTIONS,DELETE"))
+        //.insert_standard_from_reqbytes(StandardHeader::AccessControlMaxAge, black_box(b"86400"))
         .insert_standard_from_reqbytes(StandardHeader::Vary, black_box(b"Origin"))
         .insert_standard_from_reqbytes(StandardHeader::Server, black_box(b"ohkami"))
         .insert_standard_from_reqbytes(StandardHeader::Connection, black_box(b"Keep-Alive"))
@@ -423,16 +427,16 @@ use ohkami_benches::response_headers::{
         .insert_standard_from_reqbytes(StandardHeader::ReferrerPolicy, black_box(b"same-origin"))
         .insert_standard_from_reqbytes(StandardHeader::XFrameOptions, black_box(b"DEBY"))
         .insert_from_reqbytes(b"x-myapp-data", black_box(b"myappdata; excellent"))
-        .insert_from_reqbytes(b"something", black_box(b"anything"))
+        //.insert_from_reqbytes(b"something", black_box(b"anything"))
     ;
 
     b.iter(|| {
         h
-            .remove_standard(StandardHeader::AccessControlAllowCredentials)
-            .remove_standard(StandardHeader::AccessControlAllowHeaders)
-            .remove_standard(StandardHeader::AccessControlAllowOrigin)
-            .remove_standard(StandardHeader::AccessControlAllowMethods)
-            .remove_standard(StandardHeader::AccessControlMaxAge)
+            //.remove_standard(StandardHeader::AccessControlAllowCredentials)
+            //.remove_standard(StandardHeader::AccessControlAllowHeaders)
+            //.remove_standard(StandardHeader::AccessControlAllowOrigin)
+            //.remove_standard(StandardHeader::AccessControlAllowMethods)
+            //.remove_standard(StandardHeader::AccessControlMaxAge)
             .remove_standard(StandardHeader::Vary)
             .remove_standard(StandardHeader::Server)
             .remove_standard(StandardHeader::Connection)
@@ -443,7 +447,7 @@ use ohkami_benches::response_headers::{
             .remove_standard(StandardHeader::ReferrerPolicy)
             .remove_standard(StandardHeader::XFrameOptions)
             .remove("x-myapp-data")
-            .remove("something")
+            //.remove("something")
         ;
     });
 }
@@ -468,7 +472,7 @@ use ohkami_benches::response_headers::{
         .ReferrerPolicy(black_box("same-origin"))
         .XFrameOptions(black_box("DENY"))
         .custom("x-myapp-data", black_box("myappdata; excellent"))
-        .custom("something", black_box("anything"))
+        //.custom("something", black_box("anything"))
     ;
 
     let mut buf = Vec::new();
@@ -574,7 +578,7 @@ use ohkami_benches::response_headers::{
     h.insert(header::REFERRER_POLICY, HeaderValue::from_static("same-origin"));
     h.insert(header::X_FRAME_OPTIONS, HeaderValue::from_static("DENY"));
     h.insert(HeaderName::from_static("x-myapp-data"), HeaderValue::from_static(black_box("myappdata; excellent")));
-    h.insert(HeaderName::from_static("something"), HeaderValue::from_static(black_box("anything")));
+    //h.insert(HeaderName::from_static("something"), HeaderValue::from_static(black_box("anything")));
 
     let mut buf = Vec::new();
     b.iter(|| {
@@ -605,7 +609,7 @@ use ohkami_benches::response_headers::{
         .insert("Referer-Policy", black_box("same-origin"))
         .insert("X-Frame-Options", black_box("DEBY"))
         .insert("x-myapp-data", black_box("myappdata; excellent"))
-        .insert("something", black_box("anything"))
+        //.insert("something", black_box("anything"))
     ;
 
     let mut buf = Vec::new();
@@ -631,7 +635,7 @@ use ohkami_benches::response_headers::{
         .ReferrerPolicy(black_box("same-origin"))
         .XFrameOptions(black_box("DEBY"))
         .custom("x-myapp-data", black_box("myappdata; excellent"))
-        .custom("something", black_box("anything"))
+        //.custom("something", black_box("anything"))
     ;
 
     let mut buf = Vec::new();
@@ -640,8 +644,8 @@ use ohkami_benches::response_headers::{
     });
 }
 
-#[bench] fn write_05_header_hashbrown(b: &mut test::Bencher) {
-    let mut h = HeaderHashBrown::new();
+#[bench] fn write_03_header_hashbrown(b: &mut test::Bencher) {
+    let mut h = HeaderHashBrown::<true>::new();
     h
         // .insert_standard_from_reqbytes(StandardHeader::AccessControlAllowCredentials, black_box(b"true"))
         // .insert_standard_from_reqbytes(StandardHeader::AccessControlAllowHeaders, black_box(b"X-Custom-Header,Upgrade-Insecure-Requests"))
@@ -657,8 +661,11 @@ use ohkami_benches::response_headers::{
         .insert_standard_from_reqbytes(StandardHeader::ReferrerPolicy, black_box(b"same-origin"))
         .insert_standard_from_reqbytes(StandardHeader::XFrameOptions, black_box(b"DEBY"))
         .insert_from_reqbytes(b"x-myapp-data", black_box(b"myappdata; excellent"))
-        .insert_from_reqbytes(b"something", black_box(b"anything"))
+        //.insert_from_reqbytes(b"something", black_box(b"anything"))
     ;
+
+    //assert_eq!({let mut buf = Vec::new(); h.write_to(&mut buf); String::from_utf8(buf).unwrap()}, "\
+    //");
 
     let mut buf = Vec::new();
     b.iter(|| {
