@@ -10,6 +10,7 @@ use std::time::Duration;
     UTCDateTime::from_duration_since_unix_epoch(duration_since_unix_epoch).into_imf_fixdate()
 }
 
+/// date time on UTC *to the second*
 pub struct UTCDateTime {
     date: Date,
     time: Time,
