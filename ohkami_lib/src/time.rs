@@ -16,13 +16,13 @@ pub struct UTCDateTime {
 } impl UTCDateTime {
     #[inline]
     pub fn from_duration_since_unix_epoch(system_now: Duration) -> Self {
-        let (secs, nsecs) = (system_now.as_secs() as i64, system_now.subsec_nanos());
+        let secs = system_now.as_secs() as i64;
 
         let days = secs.div_euclid(86_400);
         let secs = secs.rem_euclid(86_400);
 
         let date = Date::from_days(days as i32 + 719_163);
-        let time = Time::from_seconds(secs as u32, nsecs);
+        let time = Time::from_seconds(secs as u32);
 
         Self { date, time }
     }
@@ -96,7 +96,6 @@ pub struct UTCDateTime {
             push_unchecked!(@ b':');
             push_hundreds(&mut buf, min as u8);
             push_unchecked!(@ b':');
-            let sec = sec + time.nanosecond() / 1_000_000_000;
             push_hundreds(&mut buf, sec as u8);
             
             push_unchecked!(" GMT");
@@ -187,16 +186,13 @@ impl Date {
 #[derive(Debug, PartialEq)]
 struct Time {
     secs: u32,
-    frac: u32,
 } impl Time {
-    #[inline(always)] const fn from_seconds(secs: u32, nsecs: u32) -> Self {
+    #[inline(always)] const fn from_seconds(secs: u32) -> Self {
         #[cfg(debug_assertions)] assert! {
-            secs  < 86_400 &&
-            nsecs < 2_000_000_000 &&
-            (nsecs < 1_000_000_000 || secs % 60 == 59)
+            secs < 86_400
         }
 
-        Self { secs, frac: nsecs }
+        Self { secs }
     }
     #[inline] const fn hms(&self) -> (u32, u32, u32) {
         let sec = self.secs % 60;
@@ -204,9 +200,6 @@ struct Time {
         let min = mins % 60;
         let hour = mins / 60;
         (hour, min, sec)
-    }
-    #[inline(always)] const fn nanosecond(&self) -> u32 {
-        self.frac
     }
 }
 
