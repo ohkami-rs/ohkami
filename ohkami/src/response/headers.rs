@@ -467,7 +467,7 @@ impl Headers {
 
     #[cfg(feature="DEBUG")]
     pub fn _write_to(&self, buf: &mut Vec<u8>) {
-        buf.reserve_exact(self.size);
+        buf.reserve(self.size);
         unsafe {self.write_unchecked_to(buf)}
     }
 }
