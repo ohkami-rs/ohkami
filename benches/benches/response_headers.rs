@@ -36,7 +36,7 @@ use ohkami_benches::response_headers::{
             .ReferrerPolicy(black_box("same-origin"))
             .XFrameOptions(black_box("DENY"))
             .custom("x-myapp-data", black_box("myappdata; excellent"))
-            //.custom("something", black_box("anything"))
+            .custom("something", black_box("anything"))
         ;
     });
 }
@@ -127,7 +127,7 @@ use ohkami_benches::response_headers::{
         h.insert(header::REFERRER_POLICY, HeaderValue::from_static("same-origin"));
         h.insert(header::X_FRAME_OPTIONS, HeaderValue::from_static("DENY"));
         h.insert(HeaderName::from_static("x-myapp-data"), HeaderValue::from_static(black_box("myappdata; excellent")));
-        //h.insert(HeaderName::from_static("something"), HeaderValue::from_static(black_box("anything")));
+        h.insert(HeaderName::from_static("something"), HeaderValue::from_static(black_box("anything")));
     });
 }
 
@@ -148,7 +148,7 @@ use ohkami_benches::response_headers::{
             .insert("Referer-Policy", black_box("same-origin"))
             .insert("X-Frame-Options", black_box("DEBY"))
             .insert("x-myapp-data", black_box("myappdata; excellent"))
-            //.insert("something", black_box("anything"))
+            .insert("something", black_box("anything"))
         ;
     });
 }
@@ -170,7 +170,7 @@ use ohkami_benches::response_headers::{
             .ReferrerPolicy(black_box("same-origin"))
             .XFrameOptions(black_box("DEBY"))
             .custom("x-myapp-data", black_box("myappdata; excellent"))
-            //.custom("something", black_box("anything"))
+            .custom("something", black_box("anything"))
         ;
     });
 }
@@ -192,7 +192,7 @@ use ohkami_benches::response_headers::{
             .insert_standard_from_reqbytes(StandardHeader::ReferrerPolicy, black_box(b"same-origin"))
             .insert_standard_from_reqbytes(StandardHeader::XFrameOptions, black_box(b"DEBY"))
             .insert_from_reqbytes(b"x-myapp-data", black_box(b"myappdata; excellent"))
-            //.insert_from_reqbytes(b"something", black_box(b"anything"))
+            .insert_from_reqbytes(b"something", black_box(b"anything"))
         ;
     });
 }
@@ -218,7 +218,7 @@ use ohkami_benches::response_headers::{
         .ReferrerPolicy(black_box("same-origin"))
         .XFrameOptions(black_box("DENY"))
         .custom("x-myapp-data", black_box("myappdata; excellent"))
-        //.custom("something", black_box("anything"))
+        .custom("something", black_box("anything"))
     ;
 
     b.iter(|| {
@@ -238,7 +238,7 @@ use ohkami_benches::response_headers::{
             .ReferrerPolicy(black_box(None))
             .XFrameOptions(black_box(None))
             .custom("x-myapp-data", black_box(None))
-            //.custom("something", black_box(None))
+            .custom("something", black_box(None))
         ;
     });
 }
@@ -304,7 +304,7 @@ use ohkami_benches::response_headers::{
     h.insert(header::REFERRER_POLICY, HeaderValue::from_static("same-origin"));
     h.insert(header::X_FRAME_OPTIONS, HeaderValue::from_static("DENY"));
     h.insert(HeaderName::from_static("x-myapp-data"), HeaderValue::from_static(black_box("myappdata; excellent")));
-    //h.insert(HeaderName::from_static("something"), HeaderValue::from_static(black_box("anything")));
+    h.insert(HeaderName::from_static("something"), HeaderValue::from_static(black_box("anything")));
 
     b.iter(|| {
         //h.remove(header::ACCESS_CONTROL_ALLOW_CREDENTIALS);
@@ -322,7 +322,7 @@ use ohkami_benches::response_headers::{
         h.remove(header::REFERRER_POLICY);
         h.remove(header::X_FRAME_OPTIONS);
         h.remove(HeaderName::from_static("x-myapp-data"));
-        //h.remove(HeaderName::from_static("something"));
+        h.remove(HeaderName::from_static("something"));
     });
 }
 
@@ -343,7 +343,7 @@ use ohkami_benches::response_headers::{
         .insert("Referer-Policy", black_box("same-origin"))
         .insert("X-Frame-Options", black_box("DEBY"))
         .insert("x-myapp-data", black_box("myappdata; excellent"))
-        //.insert("something", black_box("anything"))
+        .insert("something", black_box("anything"))
     ;
 
     b.iter(|| {
@@ -362,7 +362,7 @@ use ohkami_benches::response_headers::{
             .remove("Referer-Policy")
             .remove("X-Frame-Options")
             .remove("x-myapp-data")
-            //.remove("something")
+            .remove("something")
         ;
     });
 }
@@ -385,7 +385,7 @@ use ohkami_benches::response_headers::{
         .ReferrerPolicy(black_box("same-origin"))
         .XFrameOptions(black_box("DEBY"))
         .custom("x-myapp-data", black_box("myappdata; excellent"))
-        //.custom("something", black_box("anything"))
+        .custom("something", black_box("anything"))
     ;
 
     b.iter(|| {
@@ -405,7 +405,7 @@ use ohkami_benches::response_headers::{
             .ReferrerPolicy(black_box(None))
             .XFrameOptions(black_box(None))
             .custom("x-myapp-data", black_box(None))
-            //.custom("something", black_box(None))
+            .custom("something", black_box(None))
         ;
     });
 }
@@ -427,7 +427,7 @@ use ohkami_benches::response_headers::{
         .insert_standard_from_reqbytes(StandardHeader::ReferrerPolicy, black_box(b"same-origin"))
         .insert_standard_from_reqbytes(StandardHeader::XFrameOptions, black_box(b"DEBY"))
         .insert_from_reqbytes(b"x-myapp-data", black_box(b"myappdata; excellent"))
-        //.insert_from_reqbytes(b"something", black_box(b"anything"))
+        .insert_from_reqbytes(b"something", black_box(b"anything"))
     ;
 
     b.iter(|| {
@@ -447,7 +447,7 @@ use ohkami_benches::response_headers::{
             .remove_standard(StandardHeader::ReferrerPolicy)
             .remove_standard(StandardHeader::XFrameOptions)
             .remove("x-myapp-data")
-            //.remove("something")
+            .remove("something")
         ;
     });
 }
@@ -472,7 +472,7 @@ use ohkami_benches::response_headers::{
         .ReferrerPolicy(black_box("same-origin"))
         .XFrameOptions(black_box("DENY"))
         .custom("x-myapp-data", black_box("myappdata; excellent"))
-        //.custom("something", black_box("anything"))
+        .custom("something", black_box("anything"))
     ;
 
     let mut buf = Vec::new();
@@ -578,7 +578,7 @@ use ohkami_benches::response_headers::{
     h.insert(header::REFERRER_POLICY, HeaderValue::from_static("same-origin"));
     h.insert(header::X_FRAME_OPTIONS, HeaderValue::from_static("DENY"));
     h.insert(HeaderName::from_static("x-myapp-data"), HeaderValue::from_static(black_box("myappdata; excellent")));
-    //h.insert(HeaderName::from_static("something"), HeaderValue::from_static(black_box("anything")));
+    h.insert(HeaderName::from_static("something"), HeaderValue::from_static(black_box("anything")));
 
     let mut buf = Vec::new();
     b.iter(|| {
@@ -609,7 +609,7 @@ use ohkami_benches::response_headers::{
         .insert("Referer-Policy", black_box("same-origin"))
         .insert("X-Frame-Options", black_box("DEBY"))
         .insert("x-myapp-data", black_box("myappdata; excellent"))
-        //.insert("something", black_box("anything"))
+        .insert("something", black_box("anything"))
     ;
 
     let mut buf = Vec::new();
@@ -635,7 +635,7 @@ use ohkami_benches::response_headers::{
         .ReferrerPolicy(black_box("same-origin"))
         .XFrameOptions(black_box("DEBY"))
         .custom("x-myapp-data", black_box("myappdata; excellent"))
-        //.custom("something", black_box("anything"))
+        .custom("something", black_box("anything"))
     ;
 
     let mut buf = Vec::new();
@@ -661,11 +661,8 @@ use ohkami_benches::response_headers::{
         .insert_standard_from_reqbytes(StandardHeader::ReferrerPolicy, black_box(b"same-origin"))
         .insert_standard_from_reqbytes(StandardHeader::XFrameOptions, black_box(b"DEBY"))
         .insert_from_reqbytes(b"x-myapp-data", black_box(b"myappdata; excellent"))
-        //.insert_from_reqbytes(b"something", black_box(b"anything"))
+        .insert_from_reqbytes(b"something", black_box(b"anything"))
     ;
-
-    //assert_eq!({let mut buf = Vec::new(); h.write_to(&mut buf); String::from_utf8(buf).unwrap()}, "\
-    //");
 
     let mut buf = Vec::new();
     b.iter(|| {
