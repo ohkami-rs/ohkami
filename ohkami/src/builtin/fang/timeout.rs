@@ -51,10 +51,7 @@ impl Timeout {
 }
 
 const _: () = {
-    use std::{future::Future, pin::Pin};
-    use std::task::{Context, Poll};
-    use crate::{Fang, FangProc, Request, Response, IntoResponse, __rt__::sleep};
-
+    use crate::{Fang, FangProc, Request, Response};
 
     impl<Inner: FangProc> Fang<Inner> for Timeout {
         type Proc = TimeoutProc<Inner>;
@@ -68,45 +65,10 @@ const _: () = {
         time:  Duration,
     }
     impl<Inner: FangProc> FangProc for TimeoutProc<Inner> {
-        fn bite<'b>(&'b self, req: &'b mut Request) -> impl Future<Output = Response> + Send {
-            set_timeout(self.time, self.inner.bite(req))
+        async fn bite<'b>(&'b self, req: &'b mut Request) -> Response {
+            crate::utils::timeout_in(self.time, self.inner.bite(req)).await
+                .unwrap_or_else(|| Response::InternalServerError().with_text("timeout"))
         }
-    }
-
-
-    /// Based on <https://github.com/tower-rs/tower/blob/master/tower/src/timeout/future.rs>
-    pub(super) fn set_timeout<Res: IntoResponse>(
-        time:   Duration,
-        handle: impl Future<Output = Res>,
-    ) -> impl Future<Output = Response> {
-        struct Timeout<
-            Res: IntoResponse,
-            Handle: Future<Output = Res>,
-            Sleep:  Future<Output = ()>, // `async-std` doesn't provide the type
-        > {
-            handle: Handle,
-            sleep:  Sleep,
-        }
-
-        impl<
-            Res: IntoResponse,
-            Handle: Future<Output = Res>,
-            Sleep:  Future<Output = ()>,
-        > Future for Timeout<Res, Handle, Sleep> {
-            type Output = Response;
-
-            fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-                match unsafe {self.as_mut().map_unchecked_mut(|t| &mut t.handle)}.poll(cx) {
-                    Poll::Ready(res) => Poll::Ready(res.into_response()),
-                    Poll::Pending    => match unsafe {self.map_unchecked_mut(|t| &mut t.sleep)}.poll(cx) {
-                        Poll::Pending  => Poll::Pending,
-                        Poll::Ready(_) => Poll::Ready(Response::InternalServerError().with_text("Timeout")),
-                    }
-                }
-            }
-        }
-
-        Timeout { handle, sleep: sleep(time) }
     }
 };
 
@@ -151,6 +113,6 @@ const _: () = {
         let req = TestRequest::GET("/greet/ohkami/3");
         let res = t.oneshot(req).await;
         assert_eq!(res.status(), Status::InternalServerError);
-        assert_eq!(res.text(),   Some("Timeout"));
+        assert_eq!(res.text(),   Some("timeout"));
     }
 }

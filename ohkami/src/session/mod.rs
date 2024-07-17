@@ -1,8 +1,9 @@
 #![cfg(any(feature="rt_tokio",feature="rt_async-std"))]
 
-use std::{any::Any, pin::Pin, sync::Arc, future::Future, time::Duration, task::Poll};
+use std::{any::Any, pin::Pin, sync::Arc};
 use std::panic::{AssertUnwindSafe, catch_unwind};
-use crate::__rt__::{TcpStream, sleep};
+use crate::__rt__::TcpStream;
+use crate::utils::timeout_in;
 use crate::ohkami::router::RadixRouter;
 use crate::{Request, Response};
 
@@ -35,29 +36,6 @@ impl Session {
             crate::Response::InternalServerError()
         }
 
-        #[inline]
-        fn timeout_in(
-            secs: u64,
-            proc: impl Future<Output = ()>,
-        ) -> impl Future<Output = ()> {
-            struct Timeout<Sleep, Proc> { sleep: Sleep, proc: Proc }
-            impl<Sleep: Future<Output = ()>, Proc: Future<Output = ()>> Future for Timeout<Sleep, Proc> {
-                type Output = ();
-                
-                #[inline]
-                fn poll(mut self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> Poll<Self::Output> {
-                    unsafe {
-                        match self.as_mut().map_unchecked_mut(|t| &mut t.proc).poll(cx) {
-                            Poll::Ready(()) => Poll::Ready(()),
-                            Poll::Pending   => self.map_unchecked_mut(|t| &mut t.sleep).poll(cx),
-                        }
-                    }
-                }
-            }
-
-            Timeout { sleep: sleep(Duration::from_secs(secs)), proc }
-        }
-
         /* async-std doesn't provide split */
         #[cfg(feature="rt_tokio")]
         let (mut r, mut w) = self.connection.split();
@@ -74,7 +52,7 @@ impl Session {
         #[cfg(feature="rt_async-std")]
         macro_rules! send {($res:ident) => {$res.send(c)};}
 
-        timeout_in(crate::env::OHKAMI_KEEPALIVE_TIMEOUT(), async {
+        timeout_in(std::time::Duration::from_secs(crate::env::OHKAMI_KEEPALIVE_TIMEOUT()), async {
             loop {
                 let mut req = Request::init();
                 let mut req = unsafe {Pin::new_unchecked(&mut req)};
