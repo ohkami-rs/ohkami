@@ -184,6 +184,36 @@ pub mod utils {
             }
         }
     };
+
+    #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
+    pub fn timeout_in<T>(
+        duration: std::time::Duration,
+        proc:     impl std::future::Future<Output = T>
+    ) -> impl std::future::Future<Output = Option<T>> {
+        use std::task::Poll;
+        use std::pin::Pin;
+
+        struct Timeout<Sleep, Proc> { sleep: Sleep, proc: Proc }
+
+        impl<Sleep, Proc, T> std::future::Future for Timeout<Sleep, Proc>
+        where
+            Sleep: std::future::Future<Output = ()>,
+            Proc:  std::future::Future<Output = T>,
+        {
+            type Output = Option<T>;
+
+            #[inline]
+            fn poll(self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> Poll<Self::Output> {
+                let Timeout { sleep, proc } = unsafe {self.get_unchecked_mut()};
+                match unsafe {Pin::new_unchecked(proc)}.poll(cx) {
+                    Poll::Ready(t) => Poll::Ready(Some(t)),
+                    Poll::Pending  => unsafe {Pin::new_unchecked(sleep)}.poll(cx).map(|_| None)
+                }
+            }
+        }
+
+        Timeout { proc, sleep: crate::__rt__::sleep(duration) }
+    }
 }
 
 #[cfg(feature="rt_worker")]
