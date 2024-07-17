@@ -113,6 +113,6 @@ const _: () = {
         let req = TestRequest::GET("/greet/ohkami/3");
         let res = t.oneshot(req).await;
         assert_eq!(res.status(), Status::InternalServerError);
-        assert_eq!(res.text(),   Some("Timeout"));
+        assert_eq!(res.text(),   Some("timeout"));
     }
 }
