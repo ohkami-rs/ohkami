@@ -1,0 +1,11 @@
+[package]
+name    = "websocket"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+ohkami = { workspace = true }
+tokio  = { workspace = true }
+
+[features]
+DEBUG = ["ohkami/DEBUG"]

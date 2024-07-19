@@ -5,6 +5,7 @@ members  = [
     "form",
     "hello",
     "openai",
+    "websocket",
     "realworld",
     "basic_auth",
     "quick_start",
