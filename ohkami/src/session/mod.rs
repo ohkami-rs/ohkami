@@ -36,41 +36,22 @@ impl Session {
             crate::Response::InternalServerError()
         }
 
-        // /* async-std doesn't provide split */
-        // #[cfg(feature="rt_tokio")]
-        // let (mut r, mut w) = self.connection.split();
-        // #[cfg(feature="rt_async-std")]
-        // let c = &mut self.connection;
-
-        // #[cfg(feature="rt_tokio")]
-        // macro_rules! read {($req:ident) => {$req.as_mut().read(&mut r)};}
-        // #[cfg(feature="rt_async-std")]
-        // macro_rules! read {($req:ident) => {$req.as_mut().read(c)};}
-
-        // #[cfg(feature="rt_tokio")]
-        // macro_rules! send {($res:ident) => {$res.send(&mut w)};}
-        // #[cfg(feature="rt_async-std")]
-        // macro_rules! send {($res:ident) => {$res.send(c)};}
-
-        macro_rules! read {($req:ident) => {$req.as_mut().read(&mut self.connection)};}
-        macro_rules! send {($res:ident) => {$res.send(&mut self.connection)};}
-
         timeout_in(std::time::Duration::from_secs(crate::env::OHKAMI_KEEPALIVE_TIMEOUT()), async {
             loop {
                 let mut req = Request::init();
                 let mut req = unsafe {Pin::new_unchecked(&mut req)};
-                match read!(req).await {
+                match req.as_mut().read(&mut self.connection).await {
                     Ok(Some(())) => {
                         let close = matches!(req.headers.Connection(), Some("close" | "Close"));
                         let res = match catch_unwind(AssertUnwindSafe(|| self.router.handle(req.get_mut()))) {
                             Ok(future) => future.await,
                             Err(panic) => panicking(panic),
                         };
-                        send!(res).await;
+                        res.send(&mut self.connection).await;
                         if close {break}
                     }
                     Ok(None) => break,
-                    Err(res) => send!(res).await,
+                    Err(res) => res.send(&mut self.connection).await,
                 };
             }
         }).await;
