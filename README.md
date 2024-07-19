@@ -296,6 +296,25 @@ async fn main() {
 
 <br>
 
+### WebSocket with `"ws"` feature
+
+Currently, WebSocket on `rt_worker` is not supported.
+
+```rust,no_run
+use ohkami::prelude::*;
+use ohkami::websocket::{WebSocketContext, WebSocket, Message};
+
+async fn echo_text(c: WebSocketContext) -> WebSocket {
+    c.connect(|ws| async move {
+        while let Ok(Some(Message::Text(text)) = ws.recv().await) {
+            ws.send(Message::Text(text)).await.expect("Failed to send text");
+        }
+    })
+}
+```
+
+<br>
+
 ### Pack of Ohkamis
 
 ```rust,no_run
@@ -384,7 +403,7 @@ async fn test_my_ohkami() {
 - [ ] HTTP/3
 - [ ] HTTPS
 - [x] Server-Sent Events
-- [ ] WebSocket
+- [x] WebSocket
 
 ## MSRV (Minimum Supported Rust Version)
 

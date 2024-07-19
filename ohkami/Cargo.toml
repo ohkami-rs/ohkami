@@ -14,7 +14,7 @@ license       = "MIT"
 
 
 [package.metadata.docs.rs]
-features      = ["rt_tokio", "nightly", "sse"]
+features      = ["rt_tokio", "nightly", "sse", "ws"]
 
 
 [dependencies]

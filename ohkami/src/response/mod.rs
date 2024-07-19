@@ -237,7 +237,7 @@ impl Response {
             }
 
             #[cfg(all(feature="ws", any(feature="rt_tokio",feature="rt_async-std")))]
-            Content::WebSocket(handler) => {
+            Content::WebSocket((config, handler)) => {
                 let mut buf = Vec::<u8>::with_capacity(
                     self.status.line().len() +
                     self.headers.size
@@ -250,11 +250,7 @@ impl Response {
 
                 /* this doesn't match in testing */
                 if let Some(tcp_stream) = <dyn std::any::Any>::downcast_mut::<crate::__rt__::TcpStream>(conn) {
-                    use crate::websocket::{Session, Config};
-
-                    /* FIXME: make Config configurable */
-                    let ws = Session::new(tcp_stream, Config::default());
-
+                    let ws = crate::websocket::Session::new(tcp_stream, config);
                     handler(ws).await
                 }
             }
@@ -400,8 +396,11 @@ impl Response {
 
 #[cfg(all(feature="ws", any(feature="rt_tokio",feature="rt_async-std")))]
 impl Response {
-    pub(crate) fn with_websocket(mut self, handler: crate::websocket::Handler) -> Self {
-        self.content = Content::WebSocket(handler);
+    pub(crate) fn with_websocket(mut self,
+        config:  crate::websocket::Config,
+        handler: crate::websocket::Handler
+    ) -> Self {
+        self.content = Content::WebSocket((config, handler));
         self
     }
 }
@@ -430,9 +429,10 @@ const _: () = {
                     })),
 
                     #[cfg(all(feature="ws", any(feature="rt_tokio",feature="rt_async-std")))]
-                    Content::WebSocket(_) => Content::WebSocket(Box::new({
-                        |_| Box::pin(async {/* dummy handler */})
-                    })),
+                    Content::WebSocket(_) => Content::WebSocket((
+                        crate::websocket::Config::default(),
+                        Box::new(|_| Box::pin(async {/* dummy handler */}))
+                    )),
                 }
             };
             this.complete();

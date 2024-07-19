@@ -32,7 +32,7 @@ tasks:
   test_doc:
     dir: ohkami
     cmds:
-      - cargo test --doc --features DEBUG,rt_tokio,sse
+      - cargo test --doc --features DEBUG,rt_tokio,sse,ws
 
   test_examples:
     dir: examples

@@ -29,6 +29,13 @@ pub struct WebSocketContext<'req> {
         pub fn connect<Fut: Future<Output = ()> + Send + 'static>(self,
             handler: impl Fn(Session<'ws, __rt__::TcpStream>) -> Fut + Send + Sync + 'static
         ) -> WebSocket {
+            self.connect_with(Config::default(), handler)
+        }
+
+        pub fn connect_with<Fut: Future<Output = ()> + Send + 'static>(self,
+            config:  Config,
+            handler: impl Fn(Session<'ws, __rt__::TcpStream>) -> Fut + Send + Sync + 'static
+        ) -> WebSocket {
             #[inline] fn signed(sec_websocket_key: &str) -> String {
                 use ::sha1::{Sha1, Digest};
                 let mut sha1 = <Sha1 as Digest>::new();
@@ -38,6 +45,7 @@ pub struct WebSocketContext<'req> {
             }
 
             WebSocket {
+                config,
                 sec_websocket_key: signed(self.sec_websocket_key),
                 handler: Box::new(move |ws| Box::pin({
                     let h = handler(unsafe {std::mem::transmute::<_, Session<'ws, _>>(ws)});
@@ -54,6 +62,7 @@ pub(crate) type Handler = Box<dyn
 >;
 
 pub struct WebSocket {
+    config:            Config,
     sec_websocket_key: String,
     handler:           Handler,
 } impl IntoResponse for WebSocket {
@@ -62,7 +71,7 @@ pub struct WebSocket {
             .Connection("Update")
             .Upgrade("websocket")
             .SecWebSocketAccept(self.sec_websocket_key)
-        ).with_websocket(self.handler)
+        ).with_websocket(self.config, self.handler)
     }
 }
 

@@ -65,9 +65,11 @@ impl<'ws, Conn: AsyncWriter + AsyncReader + Unpin> WebSocket<'ws, Conn> {
     pub async fn send(&mut self, message: Message) -> Result<(), Error> {
         send(message, &mut self.conn, &self.config, &mut self.n_buffered).await
     }
+
     pub async fn write(&mut self, message: Message) -> Result<usize, Error> {
         write(message, &mut self.conn, &self.config, &mut self.n_buffered).await
     }
+    
     pub async fn flush(&mut self) -> Result<(), Error> {
         flush(&mut self.conn, &mut self.n_buffered).await
     }
