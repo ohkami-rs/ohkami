@@ -12,7 +12,7 @@ pub enum Content {
     #[cfg(feature="sse")]
     Stream(std::pin::Pin<Box<dyn Stream<Item = Result<String, String>> + Send>>),
 
-    #[cfg(feature="ws")]
+    #[cfg(all(feature="ws", any(feature="rt_tokio",feature="rt_async-std")))]
     WebSocket(crate::websocket::Handler),
 } const _: () = {
     impl Default for Content {

@@ -134,19 +134,22 @@ impl Response {
                         .ContentLength(None),
                     _ => self.headers.set()
                         .ContentLength("0")
-                }
+                };
             }
 
-            Content::Payload(bytes) => self.headers.set()
-                .ContentLength(ohkami_lib::num::itoa(bytes.len())),
+            Content::Payload(bytes) => {
+                self.headers.set()
+                    .ContentLength(ohkami_lib::num::itoa(bytes.len()));
+            }
 
             #[cfg(feature="sse")]
-            Content::Stream(_) => self.headers.set()
-                .ContentLength(None),
+            Content::Stream(_) => {
+                self.headers.set()
+                    .ContentLength(None);
+            }
 
-            #[cfg(feature="ws")]
-            Content::WebSocket(_) => self.headers.set()
-                .ContentLength(None),
+            #[cfg(all(feature="ws", any(feature="rt_tokio",feature="rt_async-std")))]
+            Content::WebSocket(_) => (),
         };
     }
 }
@@ -233,7 +236,7 @@ impl Response {
                 conn.flush().await.expect("Failed to flush connection");
             }
 
-            #[cfg(feature="ws")]
+            #[cfg(all(feature="ws", any(feature="rt_tokio",feature="rt_async-std")))]
             Content::WebSocket(handler) => {
                 let mut buf = Vec::<u8>::with_capacity(
                     self.status.line().len() +
@@ -395,7 +398,7 @@ impl Response {
     }
 }
 
-#[cfg(feature="ws")]
+#[cfg(all(feature="ws", any(feature="rt_tokio",feature="rt_async-std")))]
 impl Response {
     pub(crate) fn with_websocket(mut self, handler: crate::websocket::Handler) -> Self {
         self.content = Content::WebSocket(handler);
@@ -426,7 +429,7 @@ const _: () = {
                         DummyStream
                     })),
 
-                    #[cfg(feature="ws")]
+                    #[cfg(all(feature="ws", any(feature="rt_tokio",feature="rt_async-std")))]
                     Content::WebSocket(_) => Content::WebSocket(Box::new({
                         |_| Box::pin(async {/* dummy handler */})
                     })),

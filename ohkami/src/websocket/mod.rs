@@ -1,6 +1,4 @@
-#![cfg(all(
-    feature="ws",
-))]
+#![cfg(all(feature="ws", any(feature="rt_tokio",feature="rt_async-std")))]
 
 mod session;
 mod message;
@@ -14,7 +12,6 @@ use std::{future::Future, pin::Pin};
 use crate::{__rt__, FromRequest, IntoResponse, Request, Response};
 
 
-// #[derive(Clone)]
 pub struct WebSocketContext<'req> {
     sec_websocket_key: &'req str,
 } const _: () = {
@@ -56,7 +53,6 @@ pub(crate) type Handler = Box<dyn
     + Send + Sync + 'static
 >;
 
-// #[derive(Clone)]
 pub struct WebSocket {
     sec_websocket_key: String,
     handler:           Handler,
@@ -73,7 +69,6 @@ pub struct WebSocket {
 /// ## Note
 /// 
 /// - Currently, subprotocols with `Sec-WebSocket-Protocol` is not supported
-//#[derive(Clone)]
 pub struct Config {
     pub write_buffer_size:      usize,
     pub max_write_buffer_size:  usize,
