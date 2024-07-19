@@ -1,6 +1,6 @@
 use std::{borrow::Cow, io::{Error, ErrorKind}};
 use crate::{__rt__::{AsyncReader, AsyncWriter}};
-use super::{frame::{Frame, OpCode, CloseCode}, websocket::Config};
+use super::{frame::{Frame, OpCode, CloseCode}, Config};
 
 
 const PING_PONG_PAYLOAD_LIMIT: usize = 125;

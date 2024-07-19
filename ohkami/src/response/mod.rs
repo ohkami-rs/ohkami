@@ -142,7 +142,11 @@ impl Response {
 
             #[cfg(feature="sse")]
             Content::Stream(_) => self.headers.set()
-                .ContentLength(None)
+                .ContentLength(None),
+
+            #[cfg(feature="ws")]
+            Content::WebSocket(_) => self.headers.set()
+                .ContentLength(None),
         };
     }
 }
@@ -150,7 +154,7 @@ impl Response {
 #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
 impl Response {
     #[cfg_attr(not(feature="sse"), inline)]
-    pub(crate) async fn send(mut self, conn: &mut (impl AsyncWriter + Unpin)) {
+    pub(crate) async fn send(mut self, conn: &mut (impl AsyncWriter + Unpin + 'static)) {
         self.complete();
 
         match self.content {
@@ -162,8 +166,8 @@ impl Response {
                     crate::push_unchecked!(buf <- self.status.line());
                     self.headers.write_unchecked_to(&mut buf);
                 }
-        
                 conn.write_all(&buf).await.expect("Failed to send response");
+                conn.flush().await.expect("Failed to flush TCP connection");
             }
 
             Content::Payload(bytes) => {
@@ -176,8 +180,8 @@ impl Response {
                     self.headers.write_unchecked_to(&mut buf);
                     crate::push_unchecked!(buf <- bytes);
                 }
-
                 conn.write_all(&buf).await.expect("Failed to send response");
+                conn.flush().await.expect("Failed to flush TCP connection");
             }
 
             #[cfg(feature="sse")]
@@ -189,8 +193,9 @@ impl Response {
                     crate::push_unchecked!(buf <- self.status.line());
                     self.headers.write_unchecked_to(&mut buf);
                 }
-        
                 conn.write_all(&buf).await.expect("Failed to send response");
+                conn.flush().await.expect("Failed to flush TCP connection");
+
                 while let Some(chunk) = stream.next().await {
                     match chunk {
                         Err(msg)  => {
@@ -225,10 +230,37 @@ impl Response {
                     }
                 }
                 conn.write_all(b"0\r\n\r\n").await.expect("Failed to send response");
+                conn.flush().await.expect("Failed to flush TCP connection");
+            }
+
+            #[cfg(feature="ws")]
+            Content::WebSocket(handler) => {
+                let mut buf = Vec::<u8>::with_capacity(
+                    self.status.line().len() +
+                    self.headers.size
+                ); unsafe {
+                    crate::push_unchecked!(buf <- self.status.line());
+                    self.headers.write_unchecked_to(&mut buf);
+                }
+                conn.write_all(&buf).await.expect("Failed to send response");
+                conn.flush().await.expect("Failed to flush TCP connection");
+
+                /* this doesn't match in testing */
+                if let Some(tcp_stream) = <dyn std::any::Any>::downcast_mut::<crate::__rt__::TcpStream>(conn) {
+                    use crate::websocket::{Session, Config};
+
+                    /* FIXME: make Config configurable */
+                    let ws = Session::new(tcp_stream, Config::default());
+
+                    crate::__rt__::task::spawn({
+                        let h = handler(ws);
+                        async move {
+                            h.await
+                        }
+                    });
+                }
             }
         }
-
-        conn.flush().await.expect("Failed to flush TCP connection");
     }
 }
 
@@ -368,6 +400,14 @@ impl Response {
     }
 }
 
+#[cfg(feature="ws")]
+impl Response {
+    pub(crate) fn with_websocket(mut self, handler: crate::websocket::Handler) -> Self {
+        self.content = Content::WebSocket(handler);
+        self
+    }
+}
+
 const _: () = {
     impl std::fmt::Debug for Response {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -380,7 +420,7 @@ const _: () = {
                     Content::Payload(bytes) => Content::Payload(bytes.clone()),
                     
                     #[cfg(feature="sse")]
-                    Content::Stream(_)      => Content::Stream(Box::pin({
+                    Content::Stream(_) => Content::Stream(Box::pin({
                         struct DummyStream;
                         impl ohkami_lib::Stream for DummyStream {
                             type Item = Result<String, String>;
@@ -389,7 +429,12 @@ const _: () = {
                             }
                         }
                         DummyStream
-                    }))
+                    })),
+
+                    #[cfg(feature="ws")]
+                    Content::WebSocket(_) => Content::WebSocket(Box::new({
+                        |_| Box::pin(async {/* dummy handler */})
+                    })),
                 }
             };
             this.complete();

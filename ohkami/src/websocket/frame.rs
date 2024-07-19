@@ -1,6 +1,6 @@
 use std::io::{Error, ErrorKind};
 use crate::__rt__::{AsyncReader, AsyncWriter};
-use super::websocket::Config;
+use super::Config;
 
 
 #[derive(PartialEq)]

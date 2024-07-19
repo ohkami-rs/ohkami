@@ -11,6 +11,9 @@ pub enum Content {
 
     #[cfg(feature="sse")]
     Stream(std::pin::Pin<Box<dyn Stream<Item = Result<String, String>> + Send>>),
+
+    #[cfg(feature="ws")]
+    WebSocket(crate::websocket::Handler),
 } const _: () = {
     impl Default for Content {
         fn default() -> Self {
@@ -42,6 +45,9 @@ pub enum Content {
 
                 #[cfg(feature="sse")]
                 Self::Stream(_)      => f.write_str("{stream}"),
+
+                #[cfg(feature="ws")]
+                Self::WebSocket(_)   => f.write_str("{websocket}"),
             }
         }
     }
