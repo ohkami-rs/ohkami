@@ -311,6 +311,13 @@ async fn echo_text(c: WebSocketContext<'_>) -> WebSocket {
         }
     })
 }
+
+#[tokio::main]
+async fn main() {
+    Ohkami::new((
+        "/ws".GET(echo_text),
+    )).howl("localhost:3030").await
+}
 ```
 
 <br>
