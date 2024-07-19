@@ -25,16 +25,16 @@ pub struct WebSocketContext<'req> {
         }
     }
 
-    impl<'ws> WebSocketContext<'ws> {
+    impl<'ctx> WebSocketContext<'ctx> {
         pub fn connect<Fut: Future<Output = ()> + Send + 'static>(self,
-            handler: impl Fn(Session<'ws, __rt__::TcpStream>) -> Fut + Send + Sync + 'static
+            handler: impl Fn(Session<__rt__::TcpStream>) -> Fut + Send + Sync + 'static
         ) -> WebSocket {
             self.connect_with(Config::default(), handler)
         }
 
         pub fn connect_with<Fut: Future<Output = ()> + Send + 'static>(self,
             config:  Config,
-            handler: impl Fn(Session<'ws, __rt__::TcpStream>) -> Fut + Send + Sync + 'static
+            handler: impl Fn(Session<__rt__::TcpStream>) -> Fut + Send + Sync + 'static
         ) -> WebSocket {
             #[inline] fn signed(sec_websocket_key: &str) -> String {
                 use ::sha1::{Sha1, Digest};
@@ -48,8 +48,8 @@ pub struct WebSocketContext<'req> {
                 config,
                 sec_websocket_key: signed(self.sec_websocket_key),
                 handler: Box::new(move |ws| Box::pin({
-                    let h = handler(unsafe {std::mem::transmute::<_, Session<'ws, _>>(ws)});
-                    async {h.await}
+                    let session = handler(ws);
+                    async {session.await}
                 }))
             }
         }
@@ -57,8 +57,8 @@ pub struct WebSocketContext<'req> {
 };
 
 pub(crate) type Handler = Box<dyn
-    Fn(Session<'_, __rt__::TcpStream>) -> Pin<Box<dyn Future<Output = ()> + Send + '_>>
-    + Send + Sync + 'static
+    Fn(Session<__rt__::TcpStream>) -> Pin<Box<dyn Future<Output = ()> + Send + 'static>>
+    + Send + Sync
 >;
 
 pub struct WebSocket {

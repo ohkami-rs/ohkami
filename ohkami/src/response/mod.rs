@@ -250,7 +250,7 @@ impl Response {
 
                 /* this doesn't match in testing */
                 if let Some(tcp_stream) = <dyn std::any::Any>::downcast_mut::<crate::__rt__::TcpStream>(conn) {
-                    let ws = crate::websocket::Session::new(tcp_stream, config);
+                    let ws = unsafe {crate::websocket::Session::new(tcp_stream, config)};
                     handler(ws).await
                 }
             }

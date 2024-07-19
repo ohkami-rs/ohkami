@@ -4,23 +4,23 @@ use crate::__rt__::{AsyncWriter, AsyncReader};
 
 
 /* Used only in `ohkami::websocket::WebSocket::{new, with}` and NOT `use`able by user */
-pub struct WebSocket<'ws, Conn: AsyncWriter + AsyncReader + Unpin> {
-    conn:   &'ws mut Conn,
+pub struct WebSocket<Conn: AsyncWriter + AsyncReader + Unpin + Send> {
+    conn:   *mut Conn,
     config: Config,
     n_buffered: usize,
 }
 
-impl<'ws, Conn: AsyncWriter + AsyncReader + Unpin> WebSocket<'ws, Conn> {
-    pub(crate) fn new(conn: &'ws mut Conn, config: Config) -> Self {
-        Self { conn, config, n_buffered:0 }
+const _: () = {
+    unsafe impl<Conn: AsyncWriter + AsyncReader + Unpin + Send> Send for WebSocket<Conn> {}
+    unsafe impl<Conn: AsyncWriter + AsyncReader + Unpin + Send> Sync for WebSocket<Conn> {}
+    
+    impl<Conn: AsyncWriter + AsyncReader + Unpin + Send> WebSocket<Conn> {
+        /// SAFETY: `conn` is valid while entire the conversation
+        pub(crate) unsafe fn new(conn: &mut Conn, config: Config) -> Self {
+            Self { conn, config, n_buffered:0 }
+        }
     }
-}
-
-impl<'ws, Conn: AsyncWriter + AsyncReader + Unpin> WebSocket<'ws, Conn> {
-    pub async fn recv(&mut self) -> Result<Option<Message>, Error> {
-        Message::read_from(self.conn, &self.config).await
-    }
-}
+};
 
 // =============================================================================
 pub(super) async fn send(
@@ -61,16 +61,20 @@ pub(super) async fn flush(
 }
 // =============================================================================
 
-impl<'ws, Conn: AsyncWriter + AsyncReader + Unpin> WebSocket<'ws, Conn> {
+impl<Conn: AsyncWriter + AsyncReader + Unpin + Send> WebSocket<Conn> {
+    pub async fn recv(&mut self) -> Result<Option<Message>, Error> {
+        Message::read_from(unsafe {&mut *self.conn}, &self.config).await
+    }
+
     pub async fn send(&mut self, message: Message) -> Result<(), Error> {
-        send(message, &mut self.conn, &self.config, &mut self.n_buffered).await
+        send(message, unsafe {&mut *self.conn}, &self.config, &mut self.n_buffered).await
     }
 
     pub async fn write(&mut self, message: Message) -> Result<usize, Error> {
-        write(message, &mut self.conn, &self.config, &mut self.n_buffered).await
+        write(message, unsafe {&mut *self.conn}, &self.config, &mut self.n_buffered).await
     }
-    
+
     pub async fn flush(&mut self) -> Result<(), Error> {
-        flush(&mut self.conn, &mut self.n_buffered).await
+        flush(unsafe {&mut *self.conn}, &mut self.n_buffered).await
     }
 }
