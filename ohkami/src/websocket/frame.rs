@@ -63,7 +63,6 @@ pub enum CloseCode {
 pub struct Frame {
     pub is_final: bool,
     pub opcode:   OpCode,
-    pub mask:     Option<[u8; 4]>,
     pub payload:  Vec<u8>,
 } impl Frame {
     pub(crate) async fn read_from(
@@ -97,10 +96,7 @@ pub struct Frame {
                 }
             }; if let Some(limit) = &config.max_frame_size {
                 (&len <= limit).then_some(())
-                    .ok_or_else(|| Error::new(
-                        ErrorKind::InvalidData,
-                        "Incoming frame is too large"
-                    ))?;
+                    .ok_or_else(|| Error::new(ErrorKind::InvalidData, "Incoming frame is too large"))?;
             }
 
             len
@@ -108,10 +104,7 @@ pub struct Frame {
 
         let mask = if second & 0x80 == 0 {
             (config.accept_unmasked_frames).then_some(None)
-                .ok_or_else(|| Error::new(
-                    ErrorKind::InvalidData,
-                    "Client frame is unmasked"
-                ))?
+                .ok_or_else(|| Error::new(ErrorKind::InvalidData, "Client frame is unmasked"))?
         } else {
             let mut mask_bytes = [0; 4];
             if let Err(e) = stream.read_exact(&mut mask_bytes).await {
@@ -142,7 +135,7 @@ pub struct Frame {
             payload
         };
 
-        Ok(Some(Self { is_final, opcode, mask, payload }))
+        Ok(Some(Self { is_final, opcode, payload }))
     }
 
     pub(crate) async fn write_unmasked(self,
@@ -150,7 +143,7 @@ pub struct Frame {
         _config: &Config,
     ) -> Result<usize, Error> {
         fn into_bytes(frame: Frame) -> Vec<u8> {
-            let Frame { is_final, opcode, payload, mask:_ } = frame;
+            let Frame { is_final, opcode, payload } = frame;
 
             let (payload_len_byte, payload_len_bytes) = match payload.len() {
                 ..=125      => (payload.len() as u8, None),

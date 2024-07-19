@@ -10,9 +10,8 @@ pub use message::Message;
 pub(crate) use session::WebSocket as Session;
 
 use ohkami_lib::base64;
-use std::{future::Future, borrow::Cow, pin::Pin};
-use crate::{FromRequest, IntoResponse, Method, Request, Response};
-use crate::__rt__::{task, AsyncReader, AsyncWriter, TcpStream};
+use std::{future::Future, pin::Pin};
+use crate::{__rt__, FromRequest, IntoResponse, Request, Response};
 
 
 // #[derive(Clone)]
@@ -31,7 +30,7 @@ pub struct WebSocketContext<'req> {
 
     impl<'ws> WebSocketContext<'ws> {
         pub fn connect<Fut: Future<Output = ()> + Send + 'static>(self,
-            handler: impl Fn(Session<'ws, TcpStream>) -> Fut + Send + Sync + 'static
+            handler: impl Fn(Session<'ws, __rt__::TcpStream>) -> Fut + Send + Sync + 'static
         ) -> WebSocket {
             #[inline] fn signed(sec_websocket_key: &str) -> String {
                 use ::sha1::{Sha1, Digest};
@@ -53,7 +52,7 @@ pub struct WebSocketContext<'req> {
 };
 
 pub(crate) type Handler = Box<dyn
-    Fn(Session<'_, TcpStream>) -> Pin<Box<dyn Future<Output = ()> + Send + '_>>
+    Fn(Session<'_, __rt__::TcpStream>) -> Pin<Box<dyn Future<Output = ()> + Send + '_>>
     + Send + Sync + 'static
 >;
 

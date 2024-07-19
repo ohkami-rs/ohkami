@@ -167,7 +167,7 @@ impl Response {
                     self.headers.write_unchecked_to(&mut buf);
                 }
                 conn.write_all(&buf).await.expect("Failed to send response");
-                conn.flush().await.expect("Failed to flush TCP connection");
+                conn.flush().await.expect("Failed to flush connection");
             }
 
             Content::Payload(bytes) => {
@@ -181,7 +181,7 @@ impl Response {
                     crate::push_unchecked!(buf <- bytes);
                 }
                 conn.write_all(&buf).await.expect("Failed to send response");
-                conn.flush().await.expect("Failed to flush TCP connection");
+                conn.flush().await.expect("Failed to flush connection");
             }
 
             #[cfg(feature="sse")]
@@ -194,7 +194,7 @@ impl Response {
                     self.headers.write_unchecked_to(&mut buf);
                 }
                 conn.write_all(&buf).await.expect("Failed to send response");
-                conn.flush().await.expect("Failed to flush TCP connection");
+                conn.flush().await.expect("Failed to flush connection");
 
                 while let Some(chunk) = stream.next().await {
                     match chunk {
@@ -225,12 +225,12 @@ impl Response {
                             println!("\n[sending chunk]\n{}", chunk.escape_ascii());
 
                             conn.write_all(&chunk).await.expect("Failed to send response");
-                            conn.flush().await.ok();
+                            conn.flush().await.expect("Failed to flush connection");
                         }
                     }
                 }
                 conn.write_all(b"0\r\n\r\n").await.expect("Failed to send response");
-                conn.flush().await.expect("Failed to flush TCP connection");
+                conn.flush().await.expect("Failed to flush connection");
             }
 
             #[cfg(feature="ws")]
@@ -243,7 +243,7 @@ impl Response {
                     self.headers.write_unchecked_to(&mut buf);
                 }
                 conn.write_all(&buf).await.expect("Failed to send response");
-                conn.flush().await.expect("Failed to flush TCP connection");
+                conn.flush().await.expect("Failed to flush connection");
 
                 /* this doesn't match in testing */
                 if let Some(tcp_stream) = <dyn std::any::Any>::downcast_mut::<crate::__rt__::TcpStream>(conn) {
@@ -252,12 +252,7 @@ impl Response {
                     /* FIXME: make Config configurable */
                     let ws = Session::new(tcp_stream, Config::default());
 
-                    crate::__rt__::task::spawn({
-                        let h = handler(ws);
-                        async move {
-                            h.await
-                        }
-                    });
+                    handler(ws).await
                 }
             }
         }
