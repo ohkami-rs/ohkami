@@ -298,7 +298,7 @@ async fn main() {
 
 ### WebSocket with `"ws"` feature
 
-Currently, WebSocket on `rt_worker` is not supported.
+Currently, WebSocket on `rt_worker` is *NOT* supported.
 
 ```rust,no_run
 use ohkami::prelude::*;

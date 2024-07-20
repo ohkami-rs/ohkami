@@ -1,6 +1,6 @@
 #![cfg(any(feature="rt_tokio",feature="rt_async-std"))]
 
-use std::{any::Any, pin::Pin, sync::Arc};
+use std::{any::Any, pin::Pin, sync::Arc, time::Duration};
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use crate::__rt__::TcpStream;
 use crate::response::Upgrade;
@@ -37,7 +37,7 @@ impl Session {
             crate::Response::InternalServerError()
         }
 
-        match timeout_in(std::time::Duration::from_secs(crate::env::OHKAMI_KEEPALIVE_TIMEOUT()), async {
+        match timeout_in(Duration::from_secs(crate::env::OHKAMI_KEEPALIVE_TIMEOUT()), async {
             loop {
                 let mut req = Request::init();
                 let mut req = unsafe {Pin::new_unchecked(&mut req)};
@@ -66,12 +66,19 @@ impl Session {
             #[cfg(all(feature="ws", any(feature="rt_tokio",feature="rt_async-std")))]
             Some(Upgrade::WebSocket((config, handler))) => {
                 #[cfg(feature="DEBUG")] {
-                    println!("Entered websocket session with TcpStream");
+                    println!("WebSocket session started");
                 }
 
                 // SAFETY: `&mut self.connection` is valid while `handle`
                 let ws = unsafe {crate::ws::Session::new(&mut self.connection, config)};
-                handler(ws).await
+
+                timeout_in(Duration::from_secs(crate::env::OHKAMI_WEBSOCKET_TIMEOUT()),
+                    handler(ws)
+                ).await;
+
+                #[cfg(feature="DEBUG")] {
+                    println!("WebSocket session finished");
+                }
             }
         }
 

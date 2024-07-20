@@ -3,7 +3,7 @@ use super::{Message, Config};
 use crate::__rt__::{AsyncWriter, AsyncReader};
 
 
-/* Used only in `ohkami::websocket::WebSocket::{new, with}` and NOT `use`able by user */
+/* Used only in `ohkami::ws::WebSocketContext::{connect, connect_with}` and NOT `use`able by user */
 
 /// WebSocket connection
 pub struct WebSocket<Conn: AsyncWriter + AsyncReader + Unpin + Send> {
