@@ -17,7 +17,7 @@ use crate::{__rt__, FromRequest, IntoResponse, Request, Response};
 /// 
 /// *example.rs*
 /// ```
-/// use ohkami::websocket::{WebSocketContext, WebSocket, Message};
+/// use ohkami::ws::{WebSocketContext, WebSocket, Message};
 /// 
 /// async fn ws(ctx: WebSocketContext<'_>) -> WebSocket {
 ///     ctx.connect(|mut ws| async move {
@@ -88,7 +88,7 @@ pub(crate) type Handler = Box<dyn
 /// 
 /// *example.rs*
 /// ```
-/// use ohkami::websocket::{WebSocketContext, WebSocket, Message};
+/// use ohkami::ws::{WebSocketContext, WebSocket, Message};
 /// 
 /// async fn ws(ctx: WebSocketContext<'_>) -> WebSocket {
 ///     ctx.connect(|mut ws| async move {

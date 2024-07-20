@@ -302,7 +302,7 @@ Currently, WebSocket on `rt_worker` is not supported.
 
 ```rust,no_run
 use ohkami::prelude::*;
-use ohkami::websocket::{WebSocketContext, WebSocket, Message};
+use ohkami::ws::{WebSocketContext, WebSocket, Message};
 
 async fn echo_text(c: WebSocketContext<'_>) -> WebSocket {
     c.connect(|mut ws| async move {

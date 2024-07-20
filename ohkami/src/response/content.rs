@@ -4,7 +4,7 @@ use ohkami_lib::CowSlice;
 use ohkami_lib::Stream;
 
 #[cfg(all(feature="ws", any(feature="rt_tokio",feature="rt_async-std")))]
-use crate::websocket::{Config, Handler};
+use crate::ws::{Config, Handler};
 
 
 pub enum Content {

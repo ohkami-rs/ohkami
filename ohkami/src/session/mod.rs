@@ -70,7 +70,7 @@ impl Session {
                 }
 
                 // SAFETY: `&mut self.connection` is valid while `handle`
-                let ws = unsafe {crate::websocket::Session::new(&mut self.connection, config)};
+                let ws = unsafe {crate::ws::Session::new(&mut self.connection, config)};
                 handler(ws).await
             }
         }

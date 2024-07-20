@@ -1,5 +1,5 @@
 use ohkami::prelude::*;
-use ohkami::websocket::{WebSocketContext, WebSocket, Message};
+use ohkami::ws::{WebSocketContext, WebSocket, Message};
 
 
 #[derive(Clone)]
@@ -23,8 +23,6 @@ async fn echo_text(c: WebSocketContext<'_>) -> WebSocket {
         #[cfg(feature="DEBUG")] {
             loop {
                 let r = dbg!(ws.recv().await);
-                // println!("alive: {:?}", ws.is_alive());
-                // tokio::time::sleep(std::time::Duration::from_secs(1)).await;
                 let Ok(Some(Message::Text(text))) = r else {
                     break
                 };

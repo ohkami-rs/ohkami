@@ -106,7 +106,7 @@ pub mod builtin;
 pub mod typed;
 
 #[cfg(all(feature="ws", any(feature="rt_tokio",feature="rt_async-std")))]
-pub mod websocket;
+pub mod ws;
 
 #[cfg(feature="testing")]
 #[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_worker"))]

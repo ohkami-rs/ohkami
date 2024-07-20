@@ -159,7 +159,7 @@ pub(super) enum Upgrade {
     None,
 
     #[cfg(all(feature="ws", any(feature="rt_tokio",feature="rt_async-std")))]
-    WebSocket((crate::websocket::Config, crate::websocket::Handler)),
+    WebSocket((crate::ws::Config, crate::ws::Handler)),
 }
 #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
 impl Upgrade {
@@ -187,7 +187,7 @@ impl Response {
                 }
                 conn.write_all(&buf).await.expect("Failed to send response");
                 conn.flush().await.expect("Failed to flush connection");
-                
+
                 Upgrade::None
             }
 
@@ -415,8 +415,8 @@ impl Response {
 #[cfg(all(feature="ws", any(feature="rt_tokio",feature="rt_async-std")))]
 impl Response {
     pub(crate) fn with_websocket(mut self,
-        config:  crate::websocket::Config,
-        handler: crate::websocket::Handler
+        config:  crate::ws::Config,
+        handler: crate::ws::Handler
     ) -> Self {
         self.content = Content::WebSocket((config, handler));
         self
@@ -448,7 +448,7 @@ const _: () = {
 
                     #[cfg(all(feature="ws", any(feature="rt_tokio",feature="rt_async-std")))]
                     Content::WebSocket(_) => Content::WebSocket((
-                        crate::websocket::Config::default(),
+                        crate::ws::Config::default(),
                         Box::new(|_| Box::pin(async {/* dummy handler */}))
                     )),
                 }
