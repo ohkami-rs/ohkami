@@ -17,20 +17,11 @@ const _: () = {
     impl<Conn: AsyncWriter + AsyncReader + Unpin + Send> WebSocket<Conn> {
         /// SAFETY: `conn` is valid while entire the conversation
         pub(crate) unsafe fn new(conn: &mut Conn, config: Config) -> Self {
-            let conn: *mut Conn = conn;
-            if conn.is_null() {
-                panic!("Invalid connection")
-            }
-
             #[cfg(feature="DEBUG")] {
-                println!("`websocket::session::WebSocket::new` finished successfully")
+                println!("`websocket::session::WebSocket::new` called")
             }
 
             Self { conn, config, n_buffered:0 }
-        }
-
-        pub fn is_alive(&self) -> bool {
-            !self.conn.is_null()
         }
     }
 };

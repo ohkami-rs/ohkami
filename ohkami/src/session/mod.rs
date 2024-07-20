@@ -70,16 +70,7 @@ impl Session {
                 }
 
                 let ws = unsafe {crate::websocket::Session::new(&mut self.connection, config)};
-
-                #[cfg(feature="DEBUG")] {
-                    if !ws.is_alive() {
-                        println!("websocket is already disconnected before handler is called");
-                    }
-                }
-
-                if ws.is_alive() {
-                    handler(ws).await
-                }
+                handler(ws).await
             }
         }
 
