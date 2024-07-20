@@ -69,6 +69,7 @@ impl Session {
                     println!("Entered websocket session with TcpStream");
                 }
 
+                // SAFETY: `&mut self.connection` is valid while `handle`
                 let ws = unsafe {crate::websocket::Session::new(&mut self.connection, config)};
                 handler(ws).await
             }

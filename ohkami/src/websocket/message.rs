@@ -13,6 +13,7 @@ pub enum Message {
     Pong  (Vec<u8>),
     Close (Option<CloseFrame>),
 }
+
 #[derive(Debug)]
 pub struct CloseFrame {
     pub code:   CloseCode,
@@ -90,14 +91,14 @@ impl Message {
         match &first_frame.opcode {
             OpCode::Text => {
                 let mut payload = String::from_utf8(first_frame.payload)
-                    .map_err(|_| Error::new(ErrorKind::InvalidData, "Text frame's payload is not valid UTF-8"))?;
+                    .map_err(|e| Error::new(ErrorKind::InvalidData, format!("Text frame's payload is not valid UTF-8: {e}")))?;
                 if !first_frame.is_final {
                     while let Ok(Some(next_frame)) = Frame::read_from(stream, config).await {
                         if next_frame.opcode != OpCode::Continue {
                             return Err(Error::new(ErrorKind::InvalidData, "Expected continue frame"));
                         }
                         payload.push_str(std::str::from_utf8(&next_frame.payload)
-                            .map_err(|_| Error::new(ErrorKind::InvalidData, "Text frame's payload is not valid UTF-8"))?
+                            .map_err(|e| Error::new(ErrorKind::InvalidData, format!("Text frame's payload is not valid UTF-8: {e}")))?
                         );
                         if next_frame.is_final {
                             break
@@ -109,7 +110,7 @@ impl Message {
                     (&payload.len() <= limit).then_some(())
                         .ok_or_else(|| Error::new(
                             ErrorKind::InvalidData,
-                            "Incoming message is too large"
+                            format!("Incoming message (size: {}) is larger than limit ({})", payload.len(), *limit)
                         ))?;
                 }
 
@@ -135,7 +136,7 @@ impl Message {
                     (&payload.len() <= limit).then_some(())
                         .ok_or_else(|| Error::new(
                             ErrorKind::InvalidData,
-                            "Incoming message is too large"
+                            format!("Incoming message (size: {}) is larger than limit ({})", payload.len(), *limit)
                         ))?;
                 }
 

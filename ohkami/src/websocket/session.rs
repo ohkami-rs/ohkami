@@ -4,6 +4,8 @@ use crate::__rt__::{AsyncWriter, AsyncReader};
 
 
 /* Used only in `ohkami::websocket::WebSocket::{new, with}` and NOT `use`able by user */
+
+/// WebSocket connection
 pub struct WebSocket<Conn: AsyncWriter + AsyncReader + Unpin + Send> {
     conn:       *mut Conn,
     config:     Config,

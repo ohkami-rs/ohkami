@@ -7,11 +7,26 @@ mod frame;
 pub use message::Message;
 pub(crate) use session::WebSocket as Session;
 
-use ohkami_lib::base64;
 use std::{future::Future, pin::Pin};
 use crate::{__rt__, FromRequest, IntoResponse, Request, Response};
 
 
+/// # Context for WebSocket handshake
+/// 
+/// <br>
+/// 
+/// *example.rs*
+/// ```
+/// use ohkami::websocket::{WebSocketContext, WebSocket, Message};
+/// 
+/// async fn ws(ctx: WebSocketContext<'_>) -> WebSocket {
+///     ctx.connect(|mut ws| async move {
+///         ws.send(Message::Text(
+///             "Hello, WebSocket! and bye...".to_string()
+///         )).await.expect("failed to send")
+///     })
+/// }
+/// ```
 pub struct WebSocketContext<'req> {
     sec_websocket_key: &'req str,
 } const _: () = {
@@ -63,6 +78,26 @@ pub(crate) type Handler = Box<dyn
     + Send + Sync
 >;
 
+/// # Response for upgrading to WebSocket
+/// 
+/// Perform the handshake with a `WebSocketContext`,
+/// establish a WebSocket connection,
+/// and run the given handler.
+/// 
+/// <br>
+/// 
+/// *example.rs*
+/// ```
+/// use ohkami::websocket::{WebSocketContext, WebSocket, Message};
+/// 
+/// async fn ws(ctx: WebSocketContext<'_>) -> WebSocket {
+///     ctx.connect(|mut ws| async move {
+///         ws.send(Message::Text(
+///             "Hello, WebSocket! and bye...".to_string()
+///         )).await.expect("failed to send")
+///     })
+/// }
+/// ```
 pub struct WebSocket {
     config:            Config,
     sec_websocket_key: String,
@@ -79,7 +114,7 @@ pub struct WebSocket {
 
 /// ## Note
 /// 
-/// - Currently, subprotocols with `Sec-WebSocket-Protocol` is not supported
+/// - Currently, subprotocols via `Sec-WebSocket-Protocol` is not supported
 pub struct Config {
     pub write_buffer_size:      usize,
     pub max_write_buffer_size:  usize,
@@ -102,6 +137,8 @@ pub struct Config {
 
 #[inline] fn sign(sec_websocket_key: &str) -> String {
     use ::sha1::{Sha1, Digest};
+    use ohkami_lib::base64;
+
     let mut sha1 = <Sha1 as Digest>::new();
     sha1.update(sec_websocket_key.as_bytes());
     sha1.update(b"258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
@@ -110,6 +147,6 @@ pub struct Config {
 
 #[cfg(test)]
 #[test] fn test_sign() {
-    // example in https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API/Writing_WebSocket_servers#server_handshake_response
+    /* example in https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API/Writing_WebSocket_servers#server_handshake_response */
     assert_eq!(sign("dGhlIHNhbXBsZSBub25jZQ=="), "s3pPLMBiTxaQ9kYGzzhZRbK+xOo=");
 }
