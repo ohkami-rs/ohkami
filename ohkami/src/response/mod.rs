@@ -250,8 +250,25 @@ impl Response {
 
                 /* this doesn't match in testing */
                 if let Some(tcp_stream) = <dyn std::any::Any>::downcast_mut::<crate::__rt__::TcpStream>(conn) {
+                    #[cfg(feature="DEBUG")] {
+                        println!("Entered websocket session with TcpStream");
+                    }
+
                     let ws = unsafe {crate::websocket::Session::new(tcp_stream, config)};
-                    handler(ws).await
+
+                    #[cfg(feature="DEBUG")] {
+                        if !ws.is_alive() {
+                            println!("websocket is already disconnected before handler is called");
+                        }
+                    }
+
+                    if ws.is_alive() {
+                        handler(ws).await
+                    }
+                }
+
+                #[cfg(feature="DEBUG")] {
+                    println!("websocket session finished");
                 }
             }
         }

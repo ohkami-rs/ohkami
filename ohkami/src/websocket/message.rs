@@ -5,6 +5,7 @@ use super::{frame::{Frame, OpCode, CloseCode}, Config};
 
 const PING_PONG_PAYLOAD_LIMIT: usize = 125;
 
+#[derive(Debug)]
 pub enum Message {
     Text  (String),
     Binary(Vec<u8>),
@@ -12,6 +13,7 @@ pub enum Message {
     Pong  (Vec<u8>),
     Close (Option<CloseFrame>),
 }
+#[derive(Debug)]
 pub struct CloseFrame {
     pub code:   CloseCode,
     pub reason: Option<Cow<'static, str>>,
@@ -73,16 +75,6 @@ impl Message {
     ) -> Result<usize, Error> {
         self.into_frame().write_unmasked(stream, config).await
     }
-//    /// for test
-//    pub(crate) async fn masking_write(self,
-//        stream: &mut (impl AsyncWriter + Unpin),
-//        config: &Config,
-//        mask:   [u8; 4],
-//    ) -> Result<usize, Error> {
-//        let mut frame = self.into_frame();
-//        frame.mask = Some(mask);
-//        frame.write_masked(stream, config).await
-//    }
 }
 
 impl Message {

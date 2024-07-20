@@ -2,17 +2,48 @@ use ohkami::prelude::*;
 use ohkami::websocket::{WebSocketContext, WebSocket, Message};
 
 
+#[derive(Clone)]
+struct Logger;
+impl FangAction for Logger {
+    async fn fore<'a>(&'a self, req: &'a mut Request) -> Result<(), Response> {
+        Ok(println!("\n{req:#?}"))
+    }
+
+    async fn back<'a>(&'a self, res: &'a mut Response) {
+        println!("\n{res:#?}")
+    }
+}
+
 async fn echo_text(c: WebSocketContext<'_>) -> WebSocket {
     c.connect(|mut ws| async move {
-        while let Ok(Some(Message::Text(text))) = ws.recv().await {
-            ws.send(Message::Text(text)).await.expect("Failed to send text");
+        #[cfg(feature="DEBUG")] {
+            println!("WebSocket handler is called");
+        }
+
+        #[cfg(feature="DEBUG")] {
+            loop {
+                let r = dbg!(ws.recv().await);
+                // println!("alive: {:?}", ws.is_alive());
+                // tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+                let Ok(Some(Message::Text(text))) = r else {
+                    break
+                };
+                println!("recv: {text}");
+                ws.send(Message::Text(text)).await.expect("Failed to send text");
+            }
+        }
+        #[cfg(not(feature="DEBUG"))] {
+            while let Ok(Some(Message::Text(text))) = ws.recv().await {
+                ws.send(Message::Text(text)).await.expect("Failed to send text");
+            }
         }
     })
 }
 
 #[tokio::main]
 async fn main() {
-    Ohkami::new((
-        "/ws".GET(echo_text),
+    Ohkami::with(Logger, (
+        "/".Dir("./template").omit_extensions([".html"]),
+        "/echo".GET(echo_text),
     )).howl("localhost:3030").await
 }

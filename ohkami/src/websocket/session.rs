@@ -5,8 +5,8 @@ use crate::__rt__::{AsyncWriter, AsyncReader};
 
 /* Used only in `ohkami::websocket::WebSocket::{new, with}` and NOT `use`able by user */
 pub struct WebSocket<Conn: AsyncWriter + AsyncReader + Unpin + Send> {
-    conn:   *mut Conn,
-    config: Config,
+    conn:       *mut Conn,
+    config:     Config,
     n_buffered: usize,
 }
 
@@ -17,7 +17,24 @@ const _: () = {
     impl<Conn: AsyncWriter + AsyncReader + Unpin + Send> WebSocket<Conn> {
         /// SAFETY: `conn` is valid while entire the conversation
         pub(crate) unsafe fn new(conn: &mut Conn, config: Config) -> Self {
+            let conn: *mut Conn = conn;
+            if conn.is_null() {
+                panic!("Invalid connection")
+            }
+
+            #[cfg(feature="DEBUG")] {
+                println!("`websocket::session::WebSocket::new` finished successfully: conn @ {conn:?}")
+            }
+
             Self { conn, config, n_buffered:0 }
+        }
+
+        pub fn is_alive(&self) -> bool {
+            #[cfg(feature="DEBUG")] {
+                println!("conn @ {:?}", self.conn);
+            }
+
+            !self.conn.is_null()
         }
     }
 };

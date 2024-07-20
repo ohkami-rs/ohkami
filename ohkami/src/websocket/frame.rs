@@ -34,6 +34,7 @@ pub enum OpCode {
     }
 }
 
+#[derive(Debug)]
 pub enum CloseCode {
     Normal, Away, Protocol, Unsupported, Status, Abnormal, Invalid,
     Policy, Size, Extension, Error, Restart, Again, Tls, Reserved,

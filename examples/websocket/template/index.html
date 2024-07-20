@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ohkami WebSocket Example</title>
+</head>
+<body>
+    <h1>Echo Text</h1>
+
+    <div>
+        <input id="text-input"/>
+        <button id="send-button">send</button>
+    </div>
+
+
+    <script>
+        const ws = new WebSocket("ws://localhost:3030/echo");
+        ws.addEventListener("open", (e) => {
+            console.log(e);
+            ws.send("test");
+        });
+
+        const text_input  = document.getElementById("text-input");
+        const send_button = document.getElementById("send-button");
+
+        send_button.addEventListener(
+            "click", (e) => {
+                console.log("sending: ", text_input.value);
+                ws.send(text_input.value);
+            }
+        );
+    </script>
+</body>
+</html>

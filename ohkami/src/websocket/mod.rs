@@ -16,12 +16,22 @@ pub struct WebSocketContext<'req> {
     sec_websocket_key: &'req str,
 } const _: () = {
     impl<'req> FromRequest<'req> for WebSocketContext<'req> {
-        type Error = std::convert::Infallible;
+        type Error = Response;
 
         fn from_request(req: &'req Request) -> Option<Result<Self, Self::Error>> {
-            req.headers.SecWebSocketKey().map(|swk| Ok(Self {
-                sec_websocket_key: swk,
-            }))
+            if !req.headers.Connection()?.contains("Upgrade") {
+                return Some(Err((|| Response::BadRequest().with_text("upgrade request must have `Connection: Upgrade`"))()))
+            }
+            if req.headers.Upgrade()? != "websocket" {
+                return Some(Err((|| Response::BadRequest().with_text("upgrade request must have `Upgrade: websocket`"))()))
+            }
+            if req.headers.SecWebSocketVersion()? != "13" {
+                return Some(Err((|| Response::BadRequest().with_text("upgrade request must have `Sec-WebSocket-Version: 13`"))()))
+            }
+
+            req.headers.SecWebSocketKey().map(|sec_websocket_key|
+                Ok(Self { sec_websocket_key })
+            )
         }
     }
 
@@ -36,17 +46,9 @@ pub struct WebSocketContext<'req> {
             config:  Config,
             handler: impl Fn(Session<__rt__::TcpStream>) -> Fut + Send + Sync + 'static
         ) -> WebSocket {
-            #[inline] fn signed(sec_websocket_key: &str) -> String {
-                use ::sha1::{Sha1, Digest};
-                let mut sha1 = <Sha1 as Digest>::new();
-                sha1.update(sec_websocket_key.as_bytes());
-                sha1.update(b"258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
-                base64::encode(sha1.finalize())
-            }
-
             WebSocket {
                 config,
-                sec_websocket_key: signed(self.sec_websocket_key),
+                sec_websocket_key: sign(self.sec_websocket_key),
                 handler: Box::new(move |ws| Box::pin({
                     let session = handler(ws);
                     async {session.await}
@@ -68,7 +70,7 @@ pub struct WebSocket {
 } impl IntoResponse for WebSocket {
     fn into_response(self) -> Response {
         Response::SwitchingProtocols().with_headers(|h|h
-            .Connection("Update")
+            .Connection("Upgrade")
             .Upgrade("websocket")
             .SecWebSocketAccept(self.sec_websocket_key)
         ).with_websocket(self.config, self.handler)
@@ -98,72 +100,16 @@ pub struct Config {
     }
 };
 
-// impl WebSocket {
-//     /// shortcut for `WebSocket::with(Config::default())`
-//     pub fn new<Fut: Future<Output = ()> + Send>(
-//         handler: impl Fn(Session<'_, TcpStream>) -> Fut + 'static
-//     ) -> Self {
-//         Self::with(Config::default(), handler)
-//     }
-// 
-//     pub fn with<Fut: Future<Output = ()> + Send>(
-//         config:  Config,
-//         handler: impl Fn(Session<'_, TcpStream>) -> Fut + 'static
-//     ) -> Self {
-//         task::spawn(async move {
-//             todo!()
-//         });
-// 
-//         Self { config, handler:  }
-//     }
-// }
-// 
-// 
-
-/*
-impl WebSocket {
-    pub fn on_upgrade<Fut: Future<Output = ()> + Send + 'static>(
-        self,
-        handler: impl Fn(WebSocket) -> Fut + Send + Sync + 'static
-    ) -> Response {
-        #[inline] fn sign(sec_websocket_key: &str) -> String {
-            use ::sha1::{Sha1, Digest};
-
-            let mut sha1 = <Sha1 as Digest>::new();
-            sha1.update(sec_websocket_key.as_bytes());
-            sha1.update(b"258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
-            base64::encode(sha1.finalize())
-        }
-
-        let Self {
-            config,
-            selected_protocol,
-            sec_websocket_key,
-            ..
-        } = self;
-
-        task::spawn({
-            async move {
-                let stream = match self.id {
-                    None     => return on_failed_upgrade.handle(UpgradeError::NotRequestedUpgrade),
-                    Some(id) => assume_upgradable(id).await,
-                };
-
-                let ws = WebSocket::new(stream, config);
-                handler(ws).await
-            }
-        });
-
-        let mut handshake_res = Response::SwitchingProtocols();
-        handshake_res.headers.set()
-            .Connection("Update")
-            .Upgrade("websocket")
-            .SecWebSocketAccept(sign(&sec_websocket_key));
-        if let Some(protocol) = selected_protocol {
-            handshake_res.headers.set()
-                .SecWebSocketProtocol(protocol.to_string());
-        }
-        handshake_res
-    }
+#[inline] fn sign(sec_websocket_key: &str) -> String {
+    use ::sha1::{Sha1, Digest};
+    let mut sha1 = <Sha1 as Digest>::new();
+    sha1.update(sec_websocket_key.as_bytes());
+    sha1.update(b"258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
+    base64::encode(sha1.finalize())
 }
-*/
+
+#[cfg(test)]
+#[test] fn test_sign() {
+    // example in https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API/Writing_WebSocket_servers#server_handshake_response
+    assert_eq!(sign("dGhlIHNhbXBsZSBub25jZQ=="), "s3pPLMBiTxaQ9kYGzzhZRbK+xOo=");
+}

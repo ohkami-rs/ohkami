@@ -48,6 +48,11 @@ impl Session {
                             Err(panic) => panicking(panic),
                         };
                         res.send(&mut self.connection).await;
+
+                        #[cfg(feature="DEBUG")] {
+                            println!("sended response");
+                        }
+
                         if close {break}
                     }
                     Ok(None) => break,
@@ -55,6 +60,10 @@ impl Session {
                 };
             }
         }).await;
+
+        #[cfg(feature="DEBUG")] {
+            println!("about to shutdown connection");
+        }
 
         if let Some(err) = {
             #[cfg(feature="rt_tokio")] {use crate::__rt__::AsyncWriter;
