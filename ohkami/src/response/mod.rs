@@ -155,9 +155,25 @@ impl Response {
 }
 
 #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
+pub(super) enum Upgrade {
+    None,
+
+    #[cfg(all(feature="ws", any(feature="rt_tokio",feature="rt_async-std")))]
+    WebSocket((crate::websocket::Config, crate::websocket::Handler)),
+}
+#[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
+impl Upgrade {
+    #[inline(always)]
+    pub(super) const fn is_none(&self) -> bool {
+        matches!(self, Self::None)
+    }
+}
+#[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
 impl Response {
     #[cfg_attr(not(feature="sse"), inline)]
-    pub(crate) async fn send(mut self, conn: &mut (impl AsyncWriter + Unpin + 'static)) {
+    pub(crate) async fn send(mut self,
+        conn: &mut (impl AsyncWriter + Unpin + 'static)
+    ) -> Upgrade {
         self.complete();
 
         match self.content {
@@ -171,6 +187,8 @@ impl Response {
                 }
                 conn.write_all(&buf).await.expect("Failed to send response");
                 conn.flush().await.expect("Failed to flush connection");
+                
+                Upgrade::None
             }
 
             Content::Payload(bytes) => {
@@ -185,6 +203,8 @@ impl Response {
                 }
                 conn.write_all(&buf).await.expect("Failed to send response");
                 conn.flush().await.expect("Failed to flush connection");
+
+                Upgrade::None
             }
 
             #[cfg(feature="sse")]
@@ -234,6 +254,8 @@ impl Response {
                 }
                 conn.write_all(b"0\r\n\r\n").await.expect("Failed to send response");
                 conn.flush().await.expect("Failed to flush connection");
+
+                Upgrade::None
             }
 
             #[cfg(all(feature="ws", any(feature="rt_tokio",feature="rt_async-std")))]
@@ -248,28 +270,7 @@ impl Response {
                 conn.write_all(&buf).await.expect("Failed to send response");
                 conn.flush().await.expect("Failed to flush connection");
 
-                /* this doesn't match in testing */
-                if let Some(tcp_stream) = <dyn std::any::Any>::downcast_mut::<crate::__rt__::TcpStream>(conn) {
-                    #[cfg(feature="DEBUG")] {
-                        println!("Entered websocket session with TcpStream");
-                    }
-
-                    let ws = unsafe {crate::websocket::Session::new(tcp_stream, config)};
-
-                    #[cfg(feature="DEBUG")] {
-                        if !ws.is_alive() {
-                            println!("websocket is already disconnected before handler is called");
-                        }
-                    }
-
-                    if ws.is_alive() {
-                        handler(ws).await
-                    }
-                }
-
-                #[cfg(feature="DEBUG")] {
-                    println!("websocket session finished");
-                }
+                Upgrade::WebSocket((config, handler))
             }
         }
     }
