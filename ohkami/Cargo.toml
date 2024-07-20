@@ -14,7 +14,7 @@ license       = "MIT"
 
 
 [package.metadata.docs.rs]
-features      = ["rt_tokio", "nightly", "sse"]
+features      = ["rt_tokio", "nightly", "sse", "ws"]
 
 
 [dependencies]
@@ -33,7 +33,7 @@ rustc-hash    = { version = "2.0" }
 
 hmac          = { version = "0.12", default-features = false }
 sha2          = { version = "0.10", default-features = false }
-#sha1         = { version = "0.10", optional = true, default-features = false }
+sha1          = { version = "0.10", optional = true, default-features = false }
 
 
 [features]
@@ -45,8 +45,8 @@ rt_worker     = ["dep:worker", "ohkami_macros/worker"]
 
 nightly       = []
 testing       = []
-#websocket    = ["dep:sha1"]
 sse           = ["ohkami_lib/stream"]
+ws            = ["dep:sha1"]
 
 ##### DEBUG #####
 DEBUG = [
@@ -58,7 +58,7 @@ DEBUG = [
 #    "nightly",
 #    "testing",
 #    "sse",
-#    #"websocket",
+#    "ws",
 #    "rt_tokio",
 #    #"rt_async-std",
 #    #"rt_worker",

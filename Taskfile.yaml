@@ -32,7 +32,7 @@ tasks:
   test_doc:
     dir: ohkami
     cmds:
-      - cargo test --doc --features DEBUG,rt_tokio,sse
+      - cargo test --doc --features DEBUG,rt_tokio,sse,ws
 
   test_examples:
     dir: examples
@@ -58,7 +58,7 @@ tasks:
     dir: ohkami
     cmds:
       - cargo test --lib --features rt_tokio,DEBUG,{{.MAYBE_NIGHTLY}}
-      - cargo test --lib --features rt_tokio,DEBUG,sse,{{.MAYBE_NIGHTLY}}
+      - cargo test --lib --features rt_tokio,DEBUG,sse,ws,{{.MAYBE_NIGHTLY}}
 
   test_rt_async-std:
     vars:
@@ -67,7 +67,7 @@ tasks:
     dir: ohkami
     cmds:
       - cargo test --lib --features rt_async-std,DEBUG,{{.MAYBE_NIGHTLY}}
-      - cargo test --lib --features rt_async-std,DEBUG,sse,{{.MAYBE_NIGHTLY}}
+      - cargo test --lib --features rt_async-std,DEBUG,sse,ws,{{.MAYBE_NIGHTLY}}
 
   test_rt_worker:
     vars:
@@ -100,6 +100,7 @@ tasks:
     cmds:
       - cargo check --lib --features rt_tokio,{{.MAYBE_NIGHTLY}}
       - cargo check --lib --features rt_tokio,sse,{{.MAYBE_NIGHTLY}}
+      - cargo check --lib --features rt_tokio,sse,ws,{{.MAYBE_NIGHTLY}}
 
   check_rt_async-std:
     vars:
@@ -109,6 +110,7 @@ tasks:
     cmds:
       - cargo check --lib --features rt_async-std,{{.MAYBE_NIGHTLY}}
       - cargo check --lib --features rt_async-std,sse,{{.MAYBE_NIGHTLY}}
+      - cargo check --lib --features rt_async-std,sse,ws,{{.MAYBE_NIGHTLY}}
 
   check_rt_worker:
     vars:

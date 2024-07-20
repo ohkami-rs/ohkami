@@ -312,7 +312,7 @@ trait RoutingItem {
                     Handlers::new(Box::leak({
                         let base_path = self.route.trim_end_matches('/').to_string();
                         match &*path.join("/") {
-                            ""   => base_path,
+                            ""   => if !base_path.is_empty() {base_path} else {"/".into()},
                             some => base_path + "/" + some,
                         }
                     }.into_boxed_str())).GET(handler)
