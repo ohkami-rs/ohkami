@@ -4,7 +4,8 @@ mod session;
 mod message;
 mod frame;
 
-pub use message::Message;
+pub use message::{Message, CloseFrame};
+pub use frame::{CloseCode};
 pub(crate) use session::WebSocket as Session;
 
 use std::{future::Future, pin::Pin};

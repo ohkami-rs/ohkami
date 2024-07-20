@@ -9,6 +9,32 @@ use crate::ohkami::router::RadixRouter;
 use crate::{Request, Response};
 
 
+mod env {
+    #![allow(unused, non_snake_case)]
+
+    use std::sync::OnceLock;
+
+    #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
+    pub(crate) fn OHKAMI_KEEPALIVE_TIMEOUT() -> u64 {
+        static OHKAMI_KEEPALIVE_TIMEOUT: OnceLock<u64> = OnceLock::new();
+        *OHKAMI_KEEPALIVE_TIMEOUT.get_or_init(|| {
+            std::env::var("OHKAMI_KEEPALIVE_TIMEOUT").ok()
+                .map(|v| v.parse().ok()).flatten()
+                .unwrap_or(42)
+        })
+    }
+
+    #[cfg(all(feature="ws", any(feature="rt_tokio",feature="rt_async-std")))]
+    pub(crate) fn OHKAMI_WEBSOCKET_TIMEOUT() -> u64 {
+        static OHKAMI_WEBSOCKET_TIMEOUT: OnceLock<u64> = OnceLock::new();
+        *OHKAMI_WEBSOCKET_TIMEOUT.get_or_init(|| {
+            std::env::var("OHKAMI_WEBSOCKET_TIMEOUT").ok()
+                .map(|v| v.parse().ok()).flatten()
+                .unwrap_or(1 * 60 * 60)
+        })
+    }
+}
+
 pub(crate) struct Session {
     router:     Arc<RadixRouter>,
     connection: TcpStream,
@@ -37,7 +63,7 @@ impl Session {
             crate::Response::InternalServerError()
         }
 
-        match timeout_in(Duration::from_secs(crate::env::OHKAMI_KEEPALIVE_TIMEOUT()), async {
+        match timeout_in(Duration::from_secs(env::OHKAMI_KEEPALIVE_TIMEOUT()), async {
             loop {
                 let mut req = Request::init();
                 let mut req = unsafe {Pin::new_unchecked(&mut req)};
@@ -65,16 +91,30 @@ impl Session {
 
             #[cfg(all(feature="ws", any(feature="rt_tokio",feature="rt_async-std")))]
             Some(Upgrade::WebSocket((config, handler))) => {
+                // SAFETY: `&mut self.connection` is valid while `handle`
+                let ws = unsafe {crate::ws::Session::new(&mut self.connection, config)};
+
                 #[cfg(feature="DEBUG")] {
                     println!("WebSocket session started");
                 }
 
-                // SAFETY: `&mut self.connection` is valid while `handle`
-                let ws = unsafe {crate::ws::Session::new(&mut self.connection, config)};
-
-                timeout_in(Duration::from_secs(crate::env::OHKAMI_WEBSOCKET_TIMEOUT()),
+                if timeout_in(Duration::from_secs(env::OHKAMI_WEBSOCKET_TIMEOUT()),
                     handler(ws)
-                ).await;
+                ).await.is_none() {
+                    let closer = &mut self.connection;
+                    (|| async move {
+                        use crate::ws::{Session, Config, Message, CloseFrame, CloseCode};
+
+                        (unsafe {Session::new(closer, Config::default())}).send(
+                            Message::Close(Some(CloseFrame {
+                                code:   CloseCode::Library(4000),
+                                reason: Some("OHKAMI_WEBSOCKET_TIMEOUT".into())
+                            }))
+                        ).await.expect("Failed to send close message");
+
+                        println!("WebSocket session aborted by `OHKAMI_WEBSOCKET_TIMEOUT` (default to 1 hour, and can be set via environment variable)")
+                    })().await
+                }
 
                 #[cfg(feature="DEBUG")] {
                     println!("WebSocket session finished");

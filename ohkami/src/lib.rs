@@ -64,33 +64,6 @@ mod __rt__ {
 }
 
 
-#[allow(non_snake_case)]
-mod env {
-    #[allow(unused)]
-    use std::sync::OnceLock;
-
-    #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
-    pub(crate) fn OHKAMI_KEEPALIVE_TIMEOUT() -> u64 {
-        static OHKAMI_KEEPALIVE_TIMEOUT: OnceLock<u64> = OnceLock::new();
-        *OHKAMI_KEEPALIVE_TIMEOUT.get_or_init(|| {
-            std::env::var("OHKAMI_KEEPALIVE_TIMEOUT").ok()
-                .map(|v| v.parse().ok()).flatten()
-                .unwrap_or(42)
-        })
-    }
-
-    #[cfg(all(feature="ws", any(feature="rt_tokio",feature="rt_async-std")))]
-    pub(crate) fn OHKAMI_WEBSOCKET_TIMEOUT() -> u64 {
-        static OHKAMI_WEBSOCKET_TIMEOUT: OnceLock<u64> = OnceLock::new();
-        *OHKAMI_WEBSOCKET_TIMEOUT.get_or_init(|| {
-            std::env::var("OHKAMI_WEBSOCKET_TIMEOUT").ok()
-                .map(|v| v.parse().ok()).flatten()
-                .unwrap_or(1 * 60 * 60)
-        })
-    }
-}
-
-
 mod request;
 pub use request::{Request, Method, FromRequest, FromParam, Memory};
 pub use ::ohkami_macros::FromRequest;
