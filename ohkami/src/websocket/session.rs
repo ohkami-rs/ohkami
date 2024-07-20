@@ -23,17 +23,13 @@ const _: () = {
             }
 
             #[cfg(feature="DEBUG")] {
-                println!("`websocket::session::WebSocket::new` finished successfully: conn @ {conn:?}")
+                println!("`websocket::session::WebSocket::new` finished successfully")
             }
 
             Self { conn, config, n_buffered:0 }
         }
 
         pub fn is_alive(&self) -> bool {
-            #[cfg(feature="DEBUG")] {
-                println!("conn @ {:?}", self.conn);
-            }
-
             !self.conn.is_null()
         }
     }

@@ -28,7 +28,7 @@ async fn echo_text(c: WebSocketContext<'_>) -> WebSocket {
                 let Ok(Some(Message::Text(text))) = r else {
                     break
                 };
-                println!("recv: {text}");
+                println!("recv: `{text}`");
                 ws.send(Message::Text(text)).await.expect("Failed to send text");
             }
         }

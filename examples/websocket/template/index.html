@@ -13,9 +13,11 @@
         <button id="send-button">send</button>
     </div>
 
-
     <script>
         const ws = new WebSocket("ws://localhost:3030/echo");
+        ws.addEventListener("message", (e) => {
+            console.log("ws got message: ", e.data);
+        });
         ws.addEventListener("open", (e) => {
             console.log(e);
             ws.send("test");
@@ -23,7 +25,6 @@
 
         const text_input  = document.getElementById("text-input");
         const send_button = document.getElementById("send-button");
-
         send_button.addEventListener(
             "click", (e) => {
                 console.log("sending: ", text_input.value);

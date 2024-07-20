@@ -3,7 +3,7 @@ use crate::__rt__::{AsyncReader, AsyncWriter};
 use super::Config;
 
 
-#[derive(PartialEq)]
+#[derive(Debug, PartialEq)]
 pub enum OpCode {
     /* data op codes */
     Continue /* 0x0 */,
@@ -61,6 +61,7 @@ pub enum CloseCode {
     }
 }
 
+#[derive(Debug)]
 pub struct Frame {
     pub is_final: bool,
     pub opcode:   OpCode,
@@ -118,7 +119,7 @@ pub struct Frame {
         };
 
         let payload = {
-            let mut payload = Vec::with_capacity(payload_len);
+            let mut payload = vec![0u8; payload_len];
             stream.read_exact(&mut payload).await?;
 
             if let Some(masking_bytes) = mask {
@@ -144,16 +145,20 @@ pub struct Frame {
         _config: &Config,
     ) -> Result<usize, Error> {
         fn into_bytes(frame: Frame) -> Vec<u8> {
+            #[cfg(feature="DEBUG")] {
+                println!("[Frame::into_bytes] {frame:#?}");
+            }
+
             let Frame { is_final, opcode, payload } = frame;
 
             let (payload_len_byte, payload_len_bytes) = match payload.len() {
                 ..=125      => (payload.len() as u8, None),
-                126..=65535 => (126, Some((|| (payload.len() as u16).to_be_bytes().to_vec())())),
-                _           => (127, Some((|| (payload.len() as u64).to_be_bytes().to_vec())())),
+                126..=65535 => (126, Some((|len: u16| len.to_be_bytes().to_vec())(payload.len() as u16))),
+                _           => (127, Some((|len: u64| len.to_be_bytes().to_vec())(payload.len() as u64))),
             };
 
-            let first  = (is_final as u8) << 7 + opcode.into_byte();
-            let second = 0                << 7 + payload_len_byte;
+            let first  = ((is_final as u8) << 7) + opcode.into_byte();
+            let second = (0/* MASK: off */ << 7) + payload_len_byte;
 
             let mut header_bytes = vec![first, second];
             if let Some(mut payload_len_bytes) = payload_len_bytes {

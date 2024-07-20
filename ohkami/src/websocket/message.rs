@@ -66,7 +66,7 @@ impl Message {
             }
         };
 
-        Frame { is_final: false, opcode, payload }
+        Frame { is_final:true, opcode, payload }
     }
 
     pub(crate) async fn write(self,
