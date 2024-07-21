@@ -223,17 +223,12 @@ trait RoutingItem {
 
     impl RoutingItem for Dir {
         fn apply(self, router: &mut TrieRouter) {
+            #[derive(Clone)]
             struct StaticFileHandler {
                 mime:     &'static str,
-                content:  Vec<u8>,
-
-                /// Used for `Content-Length` header.
-                /// 
-                /// The size itself can be got by `.content.len()`,
-                /// but in response, we have to write it in stringified form
-                /// every time. So we should the string here for performance.
-                size_str: String,
-            } const _: () = {
+                content:  std::sync::Arc<Vec<u8>>,
+            }
+            const _: () = {
                 impl StaticFileHandler {
                     fn new(path_sections: &[String], file: std::fs::File) -> Result<Self, String> {
                         let filename = path_sections.last()
@@ -257,9 +252,7 @@ trait RoutingItem {
                             return Err(format!("[.Dir] got `{filename}`: Ohkami doesn't support non UTF-8 text file"))
                         }
 
-                        let size_str = content.len().to_string();
-
-                        Ok(Self { mime, content, size_str })
+                        Ok(Self { mime, content:std::sync::Arc::new(content) })
                     }
                 }
                 
@@ -271,9 +264,7 @@ trait RoutingItem {
                         Handler::new(|_| Box::pin(async {
                             let mut res = crate::Response::OK();
                             {
-                                res.headers.set()
-                                    .ContentType(this.mime)
-                                    .ContentLength(&*this.size_str);
+                                res.headers.set().ContentType(this.mime);
                                 res.content = Content::Payload({
                                     let content: &'static [u8] = &this.content;
                                     content.into()
@@ -288,35 +279,41 @@ trait RoutingItem {
             #[cfg(feature="DEBUG")]
             println!{ "[Dir] .files = {:#?}", self.files }
 
+            let mut register = |path: Vec<String>, handler: StaticFileHandler| router.register_handlers(
+                Handlers::new(Box::leak({
+                    let base_path = self.route.trim_end_matches('/').to_string();
+                    match &*path.join("/") {
+                        ""   => if !base_path.is_empty() {base_path} else {"/".into()},
+                        some => base_path + "/" + some,
+                    }
+                }.into_boxed_str())).GET(handler)
+            );
+
             for (mut path, file) in self.files {
                 let mut handler = match StaticFileHandler::new(&path, file) {
                     Ok(h) => h,
                     Err(msg) => panic!("{msg}")
                 };
 
+                if matches!(&**path.last().unwrap(), "index.html") {
+                    if !(self.omit_extensions.as_ref().is_some_and(|exts| exts.contains(&"html"))) {
+                        register(path.clone(), handler.clone());
+                    }
+
+                    path.pop();
+                }
+
                 if let Some(exts) = self.omit_extensions.as_ref() {
-                    if path.last().unwrap() == "index.html" && exts.contains(&"html") {
-                        path.pop();
-                    } else {
-                        for ext in exts.iter() {
-                            if let Some(filename) = path.last().unwrap().strip_suffix(&format!(".{ext}")) {
-                                let filename_len = filename.len();
-                                path.last_mut().unwrap().truncate(filename_len);
-                                break
-                            }
+                    for ext in exts.iter() {
+                        if let Some(filename) = path.last().and_then(|p| p.strip_suffix(&format!(".{ext}"))) {
+                            let filename_len = filename.len();
+                            path.last_mut().unwrap().truncate(filename_len);
+                            break
                         }
                     }
                 }
 
-                router.register_handlers(
-                    Handlers::new(Box::leak({
-                        let base_path = self.route.trim_end_matches('/').to_string();
-                        match &*path.join("/") {
-                            ""   => if !base_path.is_empty() {base_path} else {"/".into()},
-                            some => base_path + "/" + some,
-                        }
-                    }.into_boxed_str())).GET(handler)
-                );
+                register(path, handler);
             }
         }
     }
