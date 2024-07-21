@@ -62,15 +62,12 @@ $ curl http://localhost:3000/hello/your_name
 Hello, your_name!
 ```
 
-<br>
 
 ## Feature flags
 
 ### `"rt_tokio"`, `"rt_async-std"`
 
 Select a native async runtime
-
-<br>
 
 ### `"rt_worker"`：Cloudflare Workers
 
@@ -83,8 +80,6 @@ Then your project directory has `wrangler.toml`, `package.json` and a Rust libra
 Local dev by `npm run dev` and deploy by `npm run deploy` !
 
 See README of the [template](https://github.com/ohkami-rs/ohkami-templates/tree/main/worker) for details.
-
-<br>
 
 ### `"sse"`：Server-Sent Events
 
@@ -111,8 +106,6 @@ async fn main() {
 }
 ```
 
-<br>
-
 ### `"ws"`：WebSocket
 
 Currently, WebSocket on `rt_worker` is *not* supported.
@@ -137,7 +130,6 @@ async fn main() {
 }
 ```
 
-<br>
 
 ## Snippets
 
@@ -171,8 +163,6 @@ async fn main() {
     )).howl("localhost:3000").await
 }
 ```
-
-<br>
 
 ### Typed payload
 
@@ -210,8 +200,6 @@ async fn create_user(
 }
 ```
 
-<br>
-
 ### Payload validation
 
 `where ＜validation expression＞` in `#[Payload( 〜 )]` performs the validation when responding with it or parsing request body to it.
@@ -238,8 +226,6 @@ impl Hello<'_> {
     }
 }
 ```
-
-<br>
 
 ### Typed params
 
@@ -289,8 +275,6 @@ async fn search(
 }
 ```
 
-<br>
-
 ### Static directory serving
 
 ```rust,no_run
@@ -303,8 +287,6 @@ async fn main() {
     )).howl("0.0.0.0:3030").await
 }
 ```
-
-<br>
 
 ### File upload
 
@@ -334,8 +316,6 @@ async fn post_submit(form_data: FormData<'_>) -> status::NoContent {
     status::NoContent
 }
 ```
-
-<br>
 
 ### Pack of Ohkamis
 
@@ -386,8 +366,6 @@ async fn main() {
 }
 ```
 
-<br>
-
 ### Testing
 
 ```rust
@@ -416,7 +394,6 @@ async fn test_my_ohkami() {
 }
 ```
 
-<br>
 
 ## Supported protocols
 
@@ -427,13 +404,16 @@ async fn test_my_ohkami() {
 - [x] Server-Sent Events
 - [x] WebSocket
 
+
 ## Benchmark Results
 
 - [Web Frameworks Benchmark](https://web-frameworks-benchmark.netlify.app/result?l=rust)
 
+
 ## MSRV ( Minimum Supported Rust Version )
 
 Latest stable
+
 
 ## License
 
