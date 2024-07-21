@@ -290,13 +290,27 @@ async fn search(
 
 <br>
 
+### Static directory serving
+
+```rust,no_run
+use ohkami::prelude::*;
+
+#[tokio::main]
+async fn main() {
+    Ohkami::new((
+        "/".Dir("./dist"),
+    )).howl("0.0.0.0:3030").await
+}
+```
+
+<br>
+
 ### File upload
 
 ```rust,no_run
 use ohkami::prelude::*;
 use ohkami::typed::{status, Payload};
 use ohkami::builtin::{payload::Multipart, item::File};
-
 
 #[Payload(Multipart/D)]
 struct FormData<'req> {
