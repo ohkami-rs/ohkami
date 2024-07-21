@@ -19,10 +19,6 @@ const _: () = {
     impl<Conn: AsyncWriter + AsyncReader + Unpin + Send> WebSocket<Conn> {
         /// SAFETY: `conn` is valid while entire the conversation
         pub(crate) unsafe fn new(conn: &mut Conn, config: Config) -> Self {
-            #[cfg(feature="DEBUG")] {
-                println!("`websocket::session::WebSocket::new` called")
-            }
-
             Self { conn, config, n_buffered:0 }
         }
     }

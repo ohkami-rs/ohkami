@@ -91,40 +91,39 @@ impl Session {
 
             #[cfg(all(feature="ws", any(feature="rt_tokio",feature="rt_async-std")))]
             Some(Upgrade::WebSocket((config, handler))) => {
+                use crate::ws::{Session, Config, Message, CloseFrame, CloseCode};
+
+                crate::DEBUG!("WebSocket session started");
+
                 // SAFETY: `&mut self.connection` is valid while `handle`
-                let ws = unsafe {crate::ws::Session::new(&mut self.connection, config)};
-
-                #[cfg(feature="DEBUG")] {
-                    println!("WebSocket session started");
-                }
-
-                if timeout_in(Duration::from_secs(env::OHKAMI_WEBSOCKET_TIMEOUT()),
+                let ws = unsafe {Session::new(&mut self.connection, config)};
+                let close = timeout_in(Duration::from_secs(env::OHKAMI_WEBSOCKET_TIMEOUT()),
                     handler(ws)
-                ).await.is_none() {
-                    let closer = &mut self.connection;
-                    (|| async move {
-                        use crate::ws::{Session, Config, Message, CloseFrame, CloseCode};
+                ).await;
+                
+                let mut ws = unsafe {Session::new(&mut self.connection, Config::default())};
+                ws.send(Message::Close(Some(match close {
+                    Some(_) => {
+                        crate::DEBUG!("Closing WebSocket session...");
+                        CloseFrame {
+                            code:   CloseCode::Normal,
+                            reason: None
+                        }
+                    }
+                    None => {
+                        crate::warning!("[WARNING] WebSocket session is aborted by `OHKAMI_WEBSOCKET_TIMEOUT` (default to 1 hour, and can be set via environment variable)");
+                        CloseFrame {
+                            code:   CloseCode::Library(4000),
+                            reason: Some("OHKAMI_WEBSOCKET_TIMEOUT".into())
+                        }
+                    }
+                }))).await.expect("Failed to send close message");
 
-                        (unsafe {Session::new(closer, Config::default())}).send(
-                            Message::Close(Some(CloseFrame {
-                                code:   CloseCode::Library(4000),
-                                reason: Some("OHKAMI_WEBSOCKET_TIMEOUT".into())
-                            }))
-                        ).await.expect("Failed to send close message");
-
-                        println!("WebSocket session aborted by `OHKAMI_WEBSOCKET_TIMEOUT` (default to 1 hour, and can be set via environment variable)")
-                    })().await
-                }
-
-                #[cfg(feature="DEBUG")] {
-                    println!("WebSocket session finished");
-                }
+                crate::DEBUG!("WebSocket session finished");
             }
         }
 
-        #[cfg(feature="DEBUG")] {
-            println!("about to shutdown connection");
-        }
+        crate::DEBUG!("about to shutdown connection");
 
         if let Some(err) = {
             #[cfg(feature="rt_tokio")] {use crate::__rt__::AsyncWriter;

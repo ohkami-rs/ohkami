@@ -22,6 +22,9 @@
             console.log(e);
             ws.send("test");
         });
+        ws.addEventListener("close", (e) => {
+            console.log("close: ", e);
+        });
 
         const text_input  = document.getElementById("text-input");
         const send_button = document.getElementById("send-button");

@@ -123,6 +123,16 @@ pub mod utils {
         };
     }
 
+    #[doc(hidden)]
+    #[macro_export]
+    macro_rules! DEBUG {
+        ( $( $t:tt )* ) => {
+            #[cfg(feature="DEBUG")] {
+                println!( $( $t )* );
+            }
+        };
+    }
+
     pub use crate::fangs::util::FangAction;
 
     #[cfg(feature="sse")]

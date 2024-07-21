@@ -27,6 +27,12 @@ async fn echo_text(c: WebSocketContext<'_>) -> WebSocket {
                     break
                 };
                 println!("recv: `{text}`");
+
+                if text == "close" {
+                    println!("got close text, closing...");
+                    break
+                }
+
                 ws.send(Message::Text(text)).await.expect("Failed to send text");
             }
         }
