@@ -67,7 +67,15 @@ Hello, your_name!
 
 <br>
 
-## Cloudflare Workers is supported by `"rt_worker"` feature
+## Feature flags
+
+### `"rt_tokio"`, `"rt_async-std"`
+
+Select a native async runtime
+
+<br>
+
+### `"rt_worker"`：Cloudflare Workers
 
 ```sh
 npm create cloudflare ./path/to/project -- --template https://github.com/ohkami-rs/ohkami-templates/worker
@@ -77,7 +85,60 @@ Then your project directory has `wrangler.toml`, `package.json` and a Rust libra
 
 Local dev by `npm run dev` and depoly by `npm run deploy` !
 
-( See README of the [template](https://github.com/ohkami-rs/ohkami-templates/tree/main/worker) for details )
+See README of the [template](https://github.com/ohkami-rs/ohkami-templates/tree/main/worker) for details.
+
+<br>
+
+### `"sse"`：Server-Sent Events
+
+Ohkami responds with HTTP/1.1 `Transfer-Encoding: chunked`.\
+Use some reverse proxy to do with HTTP/2,3.
+
+```rust,no_run
+use ohkami::prelude::*;
+use ohkami::typed::DataStream;
+use tokio::time::sleep;
+
+async fn sse() -> DataStream<String> {
+    DataStream::from_iter_async((1..=5).map(|i| async move {
+        sleep(std::time::Duration::from_secs(1)).await;
+        Ok(format!("Hi, I'm message #{i} !"))
+    }))
+}
+
+#[tokio::main]
+async fn main() {
+    Ohkami::new((
+        "/sse".GET(sse),
+    )).howl("localhost:5050").await
+}
+```
+
+<br>
+
+### `"ws"`：WebSocket
+
+Currently, WebSocket on `rt_worker` is *not* supported.
+
+```rust,no_run
+use ohkami::prelude::*;
+use ohkami::ws::{WebSocketContext, WebSocket, Message};
+
+async fn echo_text(c: WebSocketContext<'_>) -> WebSocket {
+    c.connect(|mut ws| async move {
+        while let Ok(Some(Message::Text(text))) = ws.recv().await {
+            ws.send(Message::Text(text)).await.expect("Failed to send text");
+        }
+    })
+}
+
+#[tokio::main]
+async fn main() {
+    Ohkami::new((
+        "/ws".GET(echo_text),
+    )).howl("localhost:3030").await
+}
+```
 
 <br>
 
@@ -264,59 +325,6 @@ async fn post_submit(form_data: FormData<'_>) -> status::NoContent {
     );
 
     status::NoContent
-}
-```
-
-<br>
-
-### Server-Sent Events with `"sse"` feature
-
-Ohkami respond with HTTP/1.1 `Transfer-Encoding: chunked`.\
-Use some reverse proxy to do with HTTP/2,3.
-
-```rust,no_run
-use ohkami::prelude::*;
-use ohkami::typed::DataStream;
-use tokio::time::sleep;
-
-async fn sse() -> DataStream<String> {
-    DataStream::from_iter_async((1..=5).map(|i| async move {
-        sleep(std::time::Duration::from_secs(1)).await;
-        Ok(format!("Hi, I'm message #{i} !"))
-    }))
-}
-
-#[tokio::main]
-async fn main() {
-    Ohkami::new((
-        "/sse".GET(sse),
-    )).howl("localhost:5050").await
-}
-```
-
-<br>
-
-### WebSocket with `"ws"` feature
-
-Currently, WebSocket on `rt_worker` is *NOT* supported.
-
-```rust,no_run
-use ohkami::prelude::*;
-use ohkami::ws::{WebSocketContext, WebSocket, Message};
-
-async fn echo_text(c: WebSocketContext<'_>) -> WebSocket {
-    c.connect(|mut ws| async move {
-        while let Ok(Some(Message::Text(text))) = ws.recv().await {
-            ws.send(Message::Text(text)).await.expect("Failed to send text");
-        }
-    })
-}
-
-#[tokio::main]
-async fn main() {
-    Ohkami::new((
-        "/ws".GET(echo_text),
-    )).howl("localhost:3030").await
 }
 ```
 
