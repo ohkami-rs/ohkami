@@ -78,9 +78,7 @@ npm create cloudflare ./path/to/project -- --template https://github.com/ohkami-
 
 Then your project directory has `wrangler.toml`, `package.json` and a Rust library crate.
 
-Local dev by `npm run dev` and deploy by `npm run deploy` !
-
-See README of the [template](https://github.com/ohkami-rs/ohkami-templates/tree/main/worker) for details.
+Local dev by `npm run dev` and deploy by `npm run deploy` ! See README of the [template](https://github.com/ohkami-rs/ohkami-templates/tree/main/worker) for details.
 
 ### `"sse"`：Server-Sent Events
 
@@ -110,6 +108,9 @@ async fn main() {
 ### `"ws"`：WebSocket
 
 Currently, WebSocket on `rt_worker` is *not* supported.
+
+Ohkami handles `ws://`.\
+Use some reverse proxy to do with `wss://`.
 
 ```rust,no_run
 use ohkami::prelude::*;
