@@ -6,7 +6,7 @@
 <br>
 
 - *macro-less and type-safe* APIs for intuitive and declarative code
-- *multi runtime* support：`tokio`, `async-std`, `worker` (Cloudflare Workers)
+- *multiple runtimes* are supported：`tokio`, `async-std`, `worker` (Cloudflare Workers)
 
 <div align="right">
     <a href="https://github.com/ohkami-rs/ohkami/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/crates/l/ohkami.svg" /></a>
@@ -21,9 +21,6 @@
 1. Add to `dependencies` :
 
 ```toml
-# This sample uses `tokio` runtime.
-# `async-std` is available by feature "rt_async-std".
-
 [dependencies]
 ohkami = { version = "0.20", features = ["rt_tokio"] }
 tokio  = { version = "1",    features = ["full"] }
@@ -266,7 +263,7 @@ impl Hello<'_> {
 
 ### Use middlewares
 
-Ohkami's request handling system is called "**fang**s", and middlewares are implemented on this :
+Ohkami's request handling system is called "**fang**s". Middlewares are implemented on this :
 
 ```rust,no_run
 use ohkami::prelude::*;
@@ -274,7 +271,7 @@ use ohkami::prelude::*;
 #[derive(Clone)]
 struct GreetingFang;
 
-/* utility trait, automatically impl `Fang` trait */
+/* utility trait; automatically impl `Fang` trait */
 impl FangAction for GreetingFang {
     async fn fore<'a>(&'a self, req: &'a mut Request) -> Result<(), Response> {
         println!("Welcomm request!: {req:?}");
