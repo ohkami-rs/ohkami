@@ -79,13 +79,15 @@ impl Message {
 }
 
 impl Message {
+    /// Read a `Message` from a WebSocket connection.
+    /// 
+    /// _**note**_ : for a ping from client, this automatically sends a corresponded pong.
     pub(crate) async fn read_from(
-        stream: &mut (impl AsyncReader + Unpin),
+        stream: &mut (impl AsyncReader + AsyncWriter + Unpin),
         config: &Config,
     ) -> Result<Option<Self>, Error> {
-        let first_frame = match Frame::read_from(stream, config).await? {
-            Some(frame) => frame,
-            None        => return Ok(None),
+        let Some(first_frame) = Frame::read_from(stream, config).await? else {
+            return Ok(None)
         };
 
         match &first_frame.opcode {
@@ -145,9 +147,12 @@ impl Message {
 
             OpCode::Ping => {
                 let payload = first_frame.payload;
-                (payload.len() <= PING_PONG_PAYLOAD_LIMIT)
-                    .then_some(Some(Message::Ping(payload)))
-                    .ok_or_else(|| Error::new(ErrorKind::InvalidData, "Incoming ping payload is too large"))
+                (payload.len() <= PING_PONG_PAYLOAD_LIMIT).then_some(())
+                    .ok_or_else(|| Error::new(ErrorKind::InvalidData, "Incoming ping payload is too large"))?;
+
+                Message::Pong(payload.clone()).write(stream, config).await?;
+                
+                Ok(Some(Message::Ping(payload)))
             }
             OpCode::Pong => {
                 let payload = first_frame.payload;
