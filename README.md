@@ -95,7 +95,7 @@ async fn sse() -> DataStream<String> {
     DataStream::from_stream(stream::queue(|mut q| async move {
         for i in 1..=5 {
             sleep(Duration::from_secs(1)).await;
-            q.push(Ok(format!("Hi, I'm message #{i} !")))
+            q.add(format!("Hi, I'm message #{i} !"))
         }
     }))
 }
