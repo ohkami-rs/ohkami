@@ -201,24 +201,18 @@ struct CreateUserRequest<'req> {
 }
 
 /* Payload + Serialize for response */
-#[Payload(JSON)]
-#[derive(Serialize)]
+/* using `/S` shorthand */
+#[Payload(JSON/S)]
 struct User {
     name: String,
 }
 
 async fn create_user(
-    body: CreateUserRequest<'_>
+    req: CreateUserRequest<'_>
 ) -> status::Created<User> {
     status::Created(User {
-        name: String::from("ohkami")
+        name: String::from(req.name)
     })
-}
-
-/* Shorthand for Payload + Serialize */
-#[Payload(JSON/S)]
-struct SearchResult {
-    title: String,
 }
 ```
 
@@ -284,6 +278,11 @@ struct SearchQuery<'q> {
     lang:    &'q str,
     #[query(rename = "q")] /* #[serde]-compatible #[query] attribute */
     keyword: &'q str,
+}
+
+#[Payload(JSON/S)]
+struct SearchResult {
+    title: String,
 }
 
 async fn search(
