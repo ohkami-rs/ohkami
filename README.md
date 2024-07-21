@@ -77,8 +77,6 @@ Select a native async runtime
 
 ### `"rt_worker"`：Cloudflare Workers
 
-Run
-
 ```sh
 npm create cloudflare ./path/to/project -- --template https://github.com/ohkami-rs/ohkami-templates/worker
 ```
@@ -422,14 +420,10 @@ async fn test_my_ohkami() {
 - [x] Server-Sent Events
 - [x] WebSocket
 
-<br>
-
 ## MSRV ( Minimum Supported Rust Version )
 
 Latest stable
 
-<br>
-
 ## License
 
-ohkami is licensed under MIT LICENSE ( [LICENSE](https://github.com/ohkami-rs/ohkami/blob/main/LICENSE ) or [https://opensource.org/licenses/MIT](https://opensource.org/licenses/MIT)).
+ohkami is licensed under MIT LICENSE ( [LICENSE](https://github.com/ohkami-rs/ohkami/blob/main/LICENSE) or [https://opensource.org/licenses/MIT](https://opensource.org/licenses/MIT) ).
