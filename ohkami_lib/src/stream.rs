@@ -341,5 +341,13 @@ mod stream {
                 unsafe {self.0.as_mut()}.push_back(value)
             }
         }
+
+        impl<T, E> Queue<Result<T, E>> {
+            /// `.push(Ok(value))`
+            #[inline(always)]
+            pub fn add(&mut self, value: T) {
+                unsafe {self.0.as_mut()}.push_back(Ok(value))
+            }
+        }
     };
 }
