@@ -6,7 +6,7 @@
 <br>
 
 - *macro-less and type-safe* APIs for intuitive and declarative code
-- *multi runtime* support：`tokio`, `async-std`, `worker` (Cloudflare Workers)
+- *multiple runtimes* are supported：`tokio`, `async-std`, `worker` (Cloudflare Workers)
 
 <div align="right">
     <a href="https://github.com/ohkami-rs/ohkami/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/crates/l/ohkami.svg" /></a>
@@ -21,9 +21,6 @@
 1. Add to `dependencies` :
 
 ```toml
-# This sample uses `tokio` runtime.
-# `async-std` is available by feature "rt_async-std".
-
 [dependencies]
 ohkami = { version = "0.20", features = ["rt_tokio"] }
 tokio  = { version = "1",    features = ["full"] }
@@ -67,7 +64,13 @@ Hello, your_name!
 
 <br>
 
-## Cloudflare Workers is supported by `"rt_worker"` feature
+## Feature flags
+
+### `"rt_tokio"`, `"rt_async-std"`
+
+Select a native async runtime
+
+### `"rt_worker"`：Cloudflare Workers
 
 ```sh
 npm create cloudflare ./path/to/project -- --template https://github.com/ohkami-rs/ohkami-templates/worker
@@ -75,51 +78,101 @@ npm create cloudflare ./path/to/project -- --template https://github.com/ohkami-
 
 Then your project directory has `wrangler.toml`, `package.json` and a Rust library crate.
 
-Local dev by `npm run dev` and depoly by `npm run deploy` !
+Local dev by `npm run dev` and deploy by `npm run deploy` !
 
-( See README of the [template](https://github.com/ohkami-rs/ohkami-templates/tree/main/worker) for details )
+See README of the [template](https://github.com/ohkami-rs/ohkami-templates/tree/main/worker) for details.
 
-<br>
+### `"sse"`：Server-Sent Events
 
-## Benchmark Results
-
-- [Web Frameworks Benchmark](https://web-frameworks-benchmark.netlify.app/result?l=rust)
-
-<br>
-
-## Snippets
-
-### Handle path params
+Ohkami responds with HTTP/1.1 `Transfer-Encoding: chunked`.\
+Use some reverse proxy to do with HTTP/2,3.
 
 ```rust,no_run
 use ohkami::prelude::*;
+use ohkami::typed::DataStream;
+use tokio::time::sleep;
+
+async fn sse() -> DataStream<String> {
+    DataStream::from_iter_async((1..=5).map(|i| async move {
+        sleep(std::time::Duration::from_secs(1)).await;
+        Ok(format!("Hi, I'm message #{i} !"))
+    }))
+}
 
 #[tokio::main]
 async fn main() {
     Ohkami::new((
-        "/hello/:name"
-            .GET(hello),
-        "/hello/:name/:n"
-            .GET(hello_n),
-    )).howl("localhost:5000").await
+        "/sse".GET(sse),
+    )).howl("localhost:5050").await
+}
+```
+
+### `"ws"`：WebSocket
+
+Currently, WebSocket on `rt_worker` is *not* supported.
+
+```rust,no_run
+use ohkami::prelude::*;
+use ohkami::ws::{WebSocketContext, WebSocket, Message};
+
+async fn echo_text(c: WebSocketContext<'_>) -> WebSocket {
+    c.connect(|mut ws| async move {
+        while let Ok(Some(Message::Text(text))) = ws.recv().await {
+            ws.send(Message::Text(text)).await.expect("Failed to send text");
+        }
+    })
 }
 
-async fn hello(name: &str) -> String {
-    format!("Hello, {name}!")
-}
-
-async fn hello_n((name, n): (&str, usize)) -> String {
-    vec![format!("Hello, {name}!"); n].join(" ")
+#[tokio::main]
+async fn main() {
+    Ohkami::new((
+        "/ws".GET(echo_text),
+    )).howl("localhost:3030").await
 }
 ```
 
 <br>
 
-### Handle request body / query params
+## Snippets
+
+### Middlewares
+
+Ohkami's request handling system is called "**fang**s", and middlewares are implemented on this.
+
+*builtin fang* : `CORS`, `JWT`, `BasicAuth`, `Timeout`
+
+```rust,no_run
+use ohkami::prelude::*;
+
+#[derive(Clone)]
+struct GreetingFang;
+
+/* utility trait; automatically impl `Fang` trait */
+impl FangAction for GreetingFang {
+    async fn fore<'a>(&'a self, req: &'a mut Request) -> Result<(), Response> {
+        println!("Welcomm request!: {req:?}");
+        Ok(())
+    }
+    async fn back<'a>(&'a self, res: &'a mut Response) {
+        println!("Go, response!: {res:?}");
+    }
+}
+
+#[tokio::main]
+async fn main() {
+    Ohkami::with(GreetingFang, (
+        "/".GET(|| async {"Hello, fangs!"})
+    )).howl("localhost:3000").await
+}
+```
+
+### Typed payload
+
+*builtin payload* : `JSON`, `Text`, `HTML`, `URLEncoded`, `Multipart`
 
 ```rust
 use ohkami::prelude::*;
-use ohkami::typed::{status, Query, Payload};
+use ohkami::typed::{status, Payload};
 use ohkami::builtin::payload::JSON;
 
 /* `serde = 〜` is not needed in your [dependencies] */
@@ -134,45 +187,20 @@ struct CreateUserRequest<'req> {
 }
 
 /* Payload + Serialize for response */
-#[Payload(JSON)]
-#[derive(Serialize)]
+/* using `/S` shorthand */
+#[Payload(JSON/S)]
 struct User {
     name: String,
 }
 
 async fn create_user(
-    body: CreateUserRequest<'_>
+    req: CreateUserRequest<'_>
 ) -> status::Created<User> {
     status::Created(User {
-        name: String::from("ohkami")
+        name: String::from(req.name)
     })
 }
-
-/* Shorthand for Payload + Serialize */
-#[Payload(JSON/S)]
-struct SearchResult {
-    title: String,
-}
-
-#[Query] /* Params like `?lang=rust&q=framework` */
-struct SearchQuery<'q> {
-    lang:    &'q str,
-    #[query(rename = "q")] /* #[serde]-compatible #[query] attribute */
-    keyword: &'q str,
-}
-
-async fn search(
-    query: SearchQuery<'_>
-) -> Vec<SearchResult> {
-    vec![
-        SearchResult { title: String::from("ohkami") },
-    ]
-}
 ```
-
-*builtin payload* : `JSON`, `Text`, `HTML`, `URLEncoded`, `Multipart`
-
-<br>
 
 ### Payload validation
 
@@ -201,40 +229,66 @@ impl Hello<'_> {
 }
 ```
 
-<br>
+### Typed params
 
-### Use middlewares
+```rust,no_run
+use ohkami::prelude::*;
+use ohkami::typed::Query;
+use ohkami::{typed::Payload, builtin::payload::JSON};
 
-Ohkami's request handling system is called "**fang**s", and middlewares are implemented on this :
+#[tokio::main]
+async fn main() {
+    Ohkami::new((
+        "/hello/:name"
+            .GET(hello),
+        "/hello/:name/:n"
+            .GET(hello_n),
+        "/search"
+            .GET(search),
+    )).howl("localhost:5000").await
+}
+
+async fn hello(name: &str) -> String {
+    format!("Hello, {name}!")
+}
+
+async fn hello_n((name, n): (&str, usize)) -> String {
+    vec![format!("Hello, {name}!"); n].join(" ")
+}
+
+#[Query] /* Params like `?lang=rust&q=framework` */
+struct SearchQuery<'q> {
+    lang:    &'q str,
+    #[query(rename = "q")] /* #[serde]-compatible #[query] attribute */
+    keyword: &'q str,
+}
+
+#[Payload(JSON/S)]
+struct SearchResult {
+    title: String,
+}
+
+async fn search(
+    query: SearchQuery<'_>
+) -> Vec<SearchResult> {
+    vec![
+        SearchResult { title: String::from("ohkami") },
+    ]
+}
+```
+
+### Static directory serving
 
 ```rust,no_run
 use ohkami::prelude::*;
 
-#[derive(Clone)]
-struct GreetingFang;
-
-/* utility trait, automatically impl `Fang` trait */
-impl FangAction for GreetingFang {
-    async fn fore<'a>(&'a self, req: &'a mut Request) -> Result<(), Response> {
-        println!("Welcomm request!: {req:?}");
-        Ok(())
-    }
-    async fn back<'a>(&'a self, res: &'a mut Response) {
-        println!("Go, response!: {res:?}");
-    }
-}
-
 #[tokio::main]
 async fn main() {
-    Ohkami::with(GreetingFang, (
-        "/".GET(|| async {"Hello, fangs!"})
-    )).howl("localhost:3000").await
+    Ohkami::new((
+        "/".Dir("./dist"),
+    )).howl("0.0.0.0:3030").await
 }
 ```
-
-*builtin fang* : `CORS`, `JWT`, `BasicAuth`, `Timeout`
-
-<br>
 
 ### File upload
 
@@ -243,12 +297,10 @@ use ohkami::prelude::*;
 use ohkami::typed::{status, Payload};
 use ohkami::builtin::{payload::Multipart, item::File};
 
-
 #[Payload(Multipart/D)]
 struct FormData<'req> {
     #[serde(rename = "account-name")]
     account_name: Option<&'req str>,
-    
     pics: Vec<File<'req>>,
 }
 
@@ -266,61 +318,6 @@ async fn post_submit(form_data: FormData<'_>) -> status::NoContent {
     status::NoContent
 }
 ```
-
-<br>
-
-### Server-Sent Events with `"sse"` feature
-
-Ohkami respond with HTTP/1.1 `Transfer-Encoding: chunked`.\
-Use some reverse proxy to do with HTTP/2,3.
-
-```rust,no_run
-use ohkami::prelude::*;
-use ohkami::typed::DataStream;
-use tokio::time::sleep;
-
-async fn sse() -> DataStream<String> {
-    DataStream::from_iter_async((1..=5).map(|i| async move {
-        sleep(std::time::Duration::from_secs(1)).await;
-        Ok(format!("Hi, I'm message #{i} !"))
-    }))
-}
-
-#[tokio::main]
-async fn main() {
-    Ohkami::new((
-        "/sse".GET(sse),
-    )).howl("localhost:5050").await
-}
-```
-
-<br>
-
-### WebSocket with `"ws"` feature
-
-Currently, WebSocket on `rt_worker` is *NOT* supported.
-
-```rust,no_run
-use ohkami::prelude::*;
-use ohkami::ws::{WebSocketContext, WebSocket, Message};
-
-async fn echo_text(c: WebSocketContext<'_>) -> WebSocket {
-    c.connect(|mut ws| async move {
-        while let Ok(Some(Message::Text(text))) = ws.recv().await {
-            ws.send(Message::Text(text)).await.expect("Failed to send text");
-        }
-    })
-}
-
-#[tokio::main]
-async fn main() {
-    Ohkami::new((
-        "/ws".GET(echo_text),
-    )).howl("localhost:3030").await
-}
-```
-
-<br>
 
 ### Pack of Ohkamis
 
@@ -371,8 +368,6 @@ async fn main() {
 }
 ```
 
-<br>
-
 ### Testing
 
 ```rust
@@ -412,10 +407,17 @@ async fn test_my_ohkami() {
 - [x] Server-Sent Events
 - [x] WebSocket
 
-## MSRV (Minimum Supported Rust Version)
+
+## Benchmark Results
+
+- [Web Frameworks Benchmark](https://web-frameworks-benchmark.netlify.app/result?l=rust)
+
+
+## MSRV ( Minimum Supported Rust Version )
 
 Latest stable
 
+
 ## License
 
-ohkami is licensed under MIT LICENSE ([LICENSE](https://github.com/ohkami-rs/ohkami/blob/main/LICENSE) or [https://opensource.org/licenses/MIT](https://opensource.org/licenses/MIT)).
+ohkami is licensed under MIT LICENSE ( [LICENSE](https://github.com/ohkami-rs/ohkami/blob/main/LICENSE) or [https://opensource.org/licenses/MIT](https://opensource.org/licenses/MIT) ).
