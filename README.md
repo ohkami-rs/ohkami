@@ -139,12 +139,6 @@ async fn main() {
 
 <br>
 
-## Benchmark Results
-
-- [Web Frameworks Benchmark](https://web-frameworks-benchmark.netlify.app/result?l=rust)
-
-<br>
-
 ## Snippets
 
 ### Middlewares
@@ -417,6 +411,10 @@ async fn test_my_ohkami() {
 - [ ] HTTPS
 - [x] Server-Sent Events
 - [x] WebSocket
+
+## Benchmark Results
+
+- [Web Frameworks Benchmark](https://web-frameworks-benchmark.netlify.app/result?l=rust)
 
 ## MSRV ( Minimum Supported Rust Version )
 
