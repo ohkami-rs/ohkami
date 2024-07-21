@@ -62,6 +62,7 @@ $ curl http://localhost:3000/hello/your_name
 Hello, your_name!
 ```
 
+<br>
 
 ## Feature flags
 
@@ -130,6 +131,7 @@ async fn main() {
 }
 ```
 
+<br>
 
 ## Snippets
 
@@ -394,6 +396,7 @@ async fn test_my_ohkami() {
 }
 ```
 
+<br>
 
 ## Supported protocols
 
