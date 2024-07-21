@@ -80,7 +80,7 @@ npm create cloudflare ./path/to/project -- --template https://github.com/ohkami-
 
 Then your project directory has `wrangler.toml`, `package.json` and a Rust library crate.
 
-Local dev by `npm run dev` and depoly by `npm run deploy` !
+Local dev by `npm run dev` and deploy by `npm run deploy` !
 
 See README of the [template](https://github.com/ohkami-rs/ohkami-templates/tree/main/worker) for details.
 
@@ -147,37 +147,46 @@ async fn main() {
 
 ## Snippets
 
-### Handle path params
+### Middlewares
+
+Ohkami's request handling system is called "**fang**s", and middlewares are implemented on this.
+
+*builtin fang* : `CORS`, `JWT`, `BasicAuth`, `Timeout`
 
 ```rust,no_run
 use ohkami::prelude::*;
 
+#[derive(Clone)]
+struct GreetingFang;
+
+/* utility trait; automatically impl `Fang` trait */
+impl FangAction for GreetingFang {
+    async fn fore<'a>(&'a self, req: &'a mut Request) -> Result<(), Response> {
+        println!("Welcomm request!: {req:?}");
+        Ok(())
+    }
+    async fn back<'a>(&'a self, res: &'a mut Response) {
+        println!("Go, response!: {res:?}");
+    }
+}
+
 #[tokio::main]
 async fn main() {
-    Ohkami::new((
-        "/hello/:name"
-            .GET(hello),
-        "/hello/:name/:n"
-            .GET(hello_n),
-    )).howl("localhost:5000").await
-}
-
-async fn hello(name: &str) -> String {
-    format!("Hello, {name}!")
-}
-
-async fn hello_n((name, n): (&str, usize)) -> String {
-    vec![format!("Hello, {name}!"); n].join(" ")
+    Ohkami::with(GreetingFang, (
+        "/".GET(|| async {"Hello, fangs!"})
+    )).howl("localhost:3000").await
 }
 ```
 
 <br>
 
-### Handle request body / query params
+### Typed payload
+
+*builtin payload* : `JSON`, `Text`, `HTML`, `URLEncoded`, `Multipart`
 
 ```rust
 use ohkami::prelude::*;
-use ohkami::typed::{status, Query, Payload};
+use ohkami::typed::{status, Payload};
 use ohkami::builtin::payload::JSON;
 
 /* `serde = 〜` is not needed in your [dependencies] */
@@ -211,24 +220,7 @@ async fn create_user(
 struct SearchResult {
     title: String,
 }
-
-#[Query] /* Params like `?lang=rust&q=framework` */
-struct SearchQuery<'q> {
-    lang:    &'q str,
-    #[query(rename = "q")] /* #[serde]-compatible #[query] attribute */
-    keyword: &'q str,
-}
-
-async fn search(
-    query: SearchQuery<'_>
-) -> Vec<SearchResult> {
-    vec![
-        SearchResult { title: String::from("ohkami") },
-    ]
-}
 ```
-
-*builtin payload* : `JSON`, `Text`, `HTML`, `URLEncoded`, `Multipart`
 
 <br>
 
@@ -261,36 +253,47 @@ impl Hello<'_> {
 
 <br>
 
-### Use middlewares
-
-Ohkami's request handling system is called "**fang**s". Middlewares are implemented on this :
+### Typed params
 
 ```rust,no_run
 use ohkami::prelude::*;
-
-#[derive(Clone)]
-struct GreetingFang;
-
-/* utility trait; automatically impl `Fang` trait */
-impl FangAction for GreetingFang {
-    async fn fore<'a>(&'a self, req: &'a mut Request) -> Result<(), Response> {
-        println!("Welcomm request!: {req:?}");
-        Ok(())
-    }
-    async fn back<'a>(&'a self, res: &'a mut Response) {
-        println!("Go, response!: {res:?}");
-    }
-}
+use ohkami::typed::Query;
 
 #[tokio::main]
 async fn main() {
-    Ohkami::with(GreetingFang, (
-        "/".GET(|| async {"Hello, fangs!"})
-    )).howl("localhost:3000").await
+    Ohkami::new((
+        "/hello/:name"
+            .GET(hello),
+        "/hello/:name/:n"
+            .GET(hello_n),
+        "/search"
+            .GET(search),
+    )).howl("localhost:5000").await
+}
+
+async fn hello(name: &str) -> String {
+    format!("Hello, {name}!")
+}
+
+async fn hello_n((name, n): (&str, usize)) -> String {
+    vec![format!("Hello, {name}!"); n].join(" ")
+}
+
+#[Query] /* Params like `?lang=rust&q=framework` */
+struct SearchQuery<'q> {
+    lang:    &'q str,
+    #[query(rename = "q")] /* #[serde]-compatible #[query] attribute */
+    keyword: &'q str,
+}
+
+async fn search(
+    query: SearchQuery<'_>
+) -> Vec<SearchResult> {
+    vec![
+        SearchResult { title: String::from("ohkami") },
+    ]
 }
 ```
-
-*builtin fang* : `CORS`, `JWT`, `BasicAuth`, `Timeout`
 
 <br>
 
@@ -306,7 +309,6 @@ use ohkami::builtin::{payload::Multipart, item::File};
 struct FormData<'req> {
     #[serde(rename = "account-name")]
     account_name: Option<&'req str>,
-    
     pics: Vec<File<'req>>,
 }
 
