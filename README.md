@@ -76,9 +76,7 @@ Select a native async runtime
 npm create cloudflare ./path/to/project -- --template https://github.com/ohkami-rs/ohkami-templates/worker
 ```
 
-Then your project directory has `wrangler.toml`, `package.json` and a Rust library crate.
-
-Local dev by `npm run dev` and deploy by `npm run deploy` !
+Then your project directory has `wrangler.toml`, `package.json` and a Rust library crate. Local dev by `npm run dev` and deploy by `npm run deploy` !
 
 See README of the [template](https://github.com/ohkami-rs/ohkami-templates/tree/main/worker) for details.
 
@@ -90,12 +88,15 @@ Use some reverse proxy to do with HTTP/2,3.
 ```rust,no_run
 use ohkami::prelude::*;
 use ohkami::typed::DataStream;
-use tokio::time::sleep;
+use ohkami::utils::stream;
+use {tokio::time::sleep, std::time::Duration};
 
 async fn sse() -> DataStream<String> {
-    DataStream::from_iter_async((1..=5).map(|i| async move {
-        sleep(std::time::Duration::from_secs(1)).await;
-        Ok(format!("Hi, I'm message #{i} !"))
+    DataStream::from_stream(stream::queue(|mut q| async move {
+        for i in 1..=5 {
+            sleep(Duration::from_secs(1)).await;
+            q.push(Ok(format!("Hi, I'm message #{i} !")))
+        }
     }))
 }
 
@@ -108,6 +109,9 @@ async fn main() {
 ```
 
 ### `"ws"`：WebSocket
+
+Ohkami only handles `ws://`.\
+Use some reverse proxy to do with `wss://`.
 
 Currently, WebSocket on `rt_worker` is *not* supported.
 
