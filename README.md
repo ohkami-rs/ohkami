@@ -246,6 +246,7 @@ impl Hello<'_> {
 ```rust,no_run
 use ohkami::prelude::*;
 use ohkami::typed::Query;
+use ohkami::{typed::Payload, builtin::payload::JSON};
 
 #[tokio::main]
 async fn main() {
