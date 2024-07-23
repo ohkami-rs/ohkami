@@ -431,3 +431,62 @@ fn duplcate_routes_registration() {
         "/abc".PUT(|| async {"PUT"}),
     ));
 }
+
+#[__rt__::test]
+async fn prefixy_routes() {
+    let t = Ohkami::new((
+        "/abcd".GET(|| async {"This is abcd"}),
+        "/abc".GET(|| async {"This is abc"}),
+    )).test(); {
+        let req = TestRequest::GET("/abc");
+        let res = t.oneshot(req).await;
+        assert_eq!(res.status(), Status::OK);
+        assert_eq!(res.text(), Some("This is abc"));
+    } {
+        let req = TestRequest::GET("/ab");
+        let res = t.oneshot(req).await;
+        assert_eq!(res.status(), Status::NotFound);
+    } {
+        let req = TestRequest::GET("/abc2");
+        let res = t.oneshot(req).await;
+        assert_eq!(res.status(), Status::NotFound);
+    } {
+        let req = TestRequest::GET("/abcd");
+        let res = t.oneshot(req).await;
+        assert_eq!(res.status(), Status::OK);
+        assert_eq!(res.text(), Some("This is abcd"));
+    } {
+        let req = TestRequest::GET("/abcde");
+        let res = t.oneshot(req).await;
+        assert_eq!(res.status(), Status::NotFound);
+    }
+
+    /* reversed; MUST have the same behavior */
+    
+    let t = Ohkami::new((
+        "/abc".GET(|| async {"This is abc"}),
+        "/abcd".GET(|| async {"This is abcd"}),
+    )).test(); {
+        let req = TestRequest::GET("/abc");
+        let res = t.oneshot(req).await;
+        assert_eq!(res.status(), Status::OK);
+        assert_eq!(res.text(), Some("This is abc"));
+    } {
+        let req = TestRequest::GET("/ab");
+        let res = t.oneshot(req).await;
+        assert_eq!(res.status(), Status::NotFound);
+    } {
+        let req = TestRequest::GET("/abc2");
+        let res = t.oneshot(req).await;
+        assert_eq!(res.status(), Status::NotFound);
+    } {
+        let req = TestRequest::GET("/abcd");
+        let res = t.oneshot(req).await;
+        assert_eq!(res.status(), Status::OK);
+        assert_eq!(res.text(), Some("This is abcd"));
+    } {
+        let req = TestRequest::GET("/abcde");
+        let res = t.oneshot(req).await;
+        assert_eq!(res.status(), Status::NotFound);
+    }
+}

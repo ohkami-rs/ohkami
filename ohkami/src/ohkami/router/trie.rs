@@ -373,8 +373,9 @@ impl Node {
         }
 
         children.sort_unstable_by(|a, b| match (a.pattern.as_ref().unwrap(), b.pattern.as_ref().unwrap()) {
-            (Pattern::Static(_), Pattern::Param) => std::cmp::Ordering::Less,
-            (Pattern::Param, Pattern::Static(_)) => std::cmp::Ordering::Greater,
+            (Pattern::Static(_), Pattern::Param)     => std::cmp::Ordering::Less,
+            (Pattern::Param, Pattern::Static(_))     => std::cmp::Ordering::Greater,
+            (Pattern::Static(a), Pattern::Static(b)) => <[u8]>::cmp(&a, &b).reverse(),
             _ => std::cmp::Ordering::Equal
         });
 

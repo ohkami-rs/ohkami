@@ -26,19 +26,7 @@ pub(super) struct Node {
             struct PatternsMarker(&'static [Pattern]);
             impl std::fmt::Debug for PatternsMarker {
                 fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                    f.write_char('[')?;
-                    'items: {
-                        let mut n = self.0.len();
-                        loop {
-                            if n == 0 {break 'items}
-                            f.write_str(&format!("{:?}", self.0[n-1]))?;
-                            n -= 1;
-                            if n > 1 {f.write_char(' ')?;}
-                        }
-                    }
-                    f.write_char(']')?;
-
-                    Ok(())
+                    f.debug_list().entries(self.0).finish()
                 }
             }
 
