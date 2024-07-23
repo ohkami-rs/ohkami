@@ -53,14 +53,14 @@ pub struct WebSocketContext<'req> {
 
     impl<'ctx> WebSocketContext<'ctx> {
         pub fn connect<Fut: Future<Output = ()> + Send + 'static>(self,
-            handler: impl Fn(Session<__rt__::TcpStream>) -> Fut + Send + Sync + 'static
+            handler: impl FnOnce(Session<__rt__::TcpStream>) -> Fut + Send + Sync + 'static
         ) -> WebSocket {
             self.connect_with(Config::default(), handler)
         }
 
         pub fn connect_with<Fut: Future<Output = ()> + Send + 'static>(self,
             config:  Config,
-            handler: impl Fn(Session<__rt__::TcpStream>) -> Fut + Send + Sync + 'static
+            handler: impl FnOnce(Session<__rt__::TcpStream>) -> Fut + Send + Sync + 'static
         ) -> WebSocket {
             WebSocket {
                 config,
@@ -75,7 +75,7 @@ pub struct WebSocketContext<'req> {
 };
 
 pub(crate) type Handler = Box<dyn
-    Fn(Session<__rt__::TcpStream>) -> Pin<Box<dyn Future<Output = ()> + Send + 'static>>
+    FnOnce(Session<__rt__::TcpStream>) -> Pin<Box<dyn Future<Output = ()> + Send + 'static>>
     + Send + Sync
 >;
 
