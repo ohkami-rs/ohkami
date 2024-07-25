@@ -1,12 +1,13 @@
 #![cfg(all(feature="ws", any(feature="rt_tokio",feature="rt_async-std")))]
 
-mod session;
+mod connection;
 mod message;
 mod frame;
 
 pub use message::{Message, CloseFrame};
 pub use frame::{CloseCode};
-pub(crate) use session::WebSocket as Session;
+pub use connection::Connection;
+#[cfg(feature="rt_tokio")] pub use connection::split;
 
 use std::{future::Future, pin::Pin};
 use crate::{__rt__, FromRequest, IntoResponse, Request, Response};
@@ -53,14 +54,14 @@ pub struct WebSocketContext<'req> {
 
     impl<'ctx> WebSocketContext<'ctx> {
         pub fn connect<Fut: Future<Output = ()> + Send + 'static>(self,
-            handler: impl FnOnce(Session<__rt__::TcpStream>) -> Fut + Send + Sync + 'static
+            handler: impl FnOnce(Connection<__rt__::TcpStream>) -> Fut + Send + Sync + 'static
         ) -> WebSocket {
             self.connect_with(Config::default(), handler)
         }
 
         pub fn connect_with<Fut: Future<Output = ()> + Send + 'static>(self,
             config:  Config,
-            handler: impl FnOnce(Session<__rt__::TcpStream>) -> Fut + Send + Sync + 'static
+            handler: impl FnOnce(Connection<__rt__::TcpStream>) -> Fut + Send + Sync + 'static
         ) -> WebSocket {
             WebSocket {
                 config,
@@ -75,7 +76,7 @@ pub struct WebSocketContext<'req> {
 };
 
 pub(crate) type Handler = Box<dyn
-    FnOnce(Session<__rt__::TcpStream>) -> Pin<Box<dyn Future<Output = ()> + Send + 'static>>
+    FnOnce(Connection<__rt__::TcpStream>) -> Pin<Box<dyn Future<Output = ()> + Send + 'static>>
     + Send + Sync
 >;
 
@@ -116,6 +117,7 @@ pub struct WebSocket {
 /// ## Note
 /// 
 /// - Currently, subprotocols via `Sec-WebSocket-Protocol` is not supported
+#[derive(Clone)]
 pub struct Config {
     pub write_buffer_size:      usize,
     pub max_write_buffer_size:  usize,
