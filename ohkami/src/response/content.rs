@@ -31,9 +31,6 @@ pub enum Content {
 
                 (Content::Payload(p1), Content::Payload(p2)) => p1 == p2,
 
-                #[cfg(feature="sse")]
-                (Content::Stream(_), Content::Stream(_)) => false,
-
                 _ => false
             }
         }
@@ -49,7 +46,7 @@ pub enum Content {
                 #[cfg(feature="sse")]
                 Self::Stream(_)      => f.write_str("{stream}"),
 
-                #[cfg(feature="ws")]
+                #[cfg(all(feature="ws", any(feature="rt_tokio",feature="rt_async-std")))]
                 Self::WebSocket(_)   => f.write_str("{websocket}"),
             }
         }
