@@ -4,36 +4,92 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ohkami WebSocket Example</title>
+    <style>
+        main {
+            &> * + * {
+                margin-block-start: 1rem;
+            }
+        }
+        .echo-text {
+            display: flex;
+            width: 100%;
+            height: 2rem;
+
+            &>input {
+                flex-grow: 1;
+                font-size: 1.2rem;
+            }
+            &>button {
+                width: 84px;
+            }
+        }
+    </style>
 </head>
 <body>
     <h1>Echo Text</h1>
 
-    <div>
-        <input id="text-input"/>
-        <button id="send-button">send</button>
-    </div>
+    <main>
+        <div class="echo-text">
+            <input id="echo1-text-input"/>
+            <button id="echo1-send-button"></button>
+        </div>
+        
+        <div class="echo-text">
+            <input id="echo2-text-input"/>
+            <button id="echo2-send-button"></button>
+        </div>
+        
+        <div class="echo-text">
+            <input id="echo3-text-input"/>
+            <button id="echo3-send-button"></button>
+        </div>
+    </main>
 
     <script>
-        const ws = new WebSocket("ws://localhost:3030/echo2/ohkami");
-        ws.addEventListener("message", (e) => {
-            console.log("ws got message: ", e.data);
-        });
-        ws.addEventListener("open", (e) => {
-            console.log(e);
-            ws.send("test");
-        });
-        ws.addEventListener("close", (e) => {
-            console.log("close: ", e);
-        });
+        function connect_input_and_button_to(ws_url, input_id, button_id) {
+            let ws = null;
 
-        const text_input  = document.getElementById("text-input");
-        const send_button = document.getElementById("send-button");
-        send_button.addEventListener(
-            "click", (e) => {
-                console.log("sending: ", text_input.value);
-                ws.send(text_input.value);
-            }
-        );
+            const input  = document.getElementById(input_id);            
+            input.spellcheck = false;
+            input.disabled   = true;
+
+            const button = document.getElementById(button_id);
+            button.textContent = "connect";
+
+            button.addEventListener(
+                "click", (e) => {
+                    if (button.textContent == "connect") {
+                        ws = new WebSocket(ws_url);
+                        ws.addEventListener("open", (e) => {
+                            console.log(e);
+                            ws.send("test");
+                        });
+                        ws.addEventListener("message", (e) => {
+                            console.log("ws got message: ", e.data);
+                        });
+                        ws.addEventListener("close", (e) => {
+                            console.log("close:", e);
+
+                            input.value = "";
+                            input.disabled = true;
+
+                            button.textContent = "connect";
+                        });
+
+                        input.disabled = false;
+
+                        button.textContent = "send";
+                    } else {   
+                        console.log("sending:", input.value);
+                        ws.send(input.value);
+                    }
+                }
+            );
+        }
+
+        connect_input_and_button_to("ws://localhost:3030/echo1",        "echo1-text-input", "echo1-send-button");
+        connect_input_and_button_to("ws://localhost:3030/echo2/ohkami", "echo2-text-input", "echo2-send-button");
+        connect_input_and_button_to("ws://localhost:3030/echo3/ohkami", "echo3-text-input", "echo3-send-button");
     </script>
 </body>
 </html>

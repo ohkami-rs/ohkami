@@ -87,21 +87,37 @@ impl Session {
                 };
             }
         }).await {
-            Some(Upgrade::None) | None => (),
+            Some(Upgrade::None) | None => {
+                crate::DEBUG!("about to shutdown connection");
+        
+                if let Some(err) = {
+                    #[cfg(feature="rt_tokio")] {use crate::__rt__::AsyncWriter;
+                        self.connection.shutdown().await
+                    }
+                    #[cfg(feature="rt_async-std")] {
+                        self.connection.shutdown(std::net::Shutdown::Both)
+                    }
+                }.err() {
+                    match err.kind() {
+                        std::io::ErrorKind::NotConnected => (),
+                        _ => panic!("Failed to shutdown stream: {err}")
+                    }
+                }
+            }
 
             #[cfg(all(feature="ws", any(feature="rt_tokio",feature="rt_async-std")))]
             Some(Upgrade::WebSocket((config, handler))) => {
-                use crate::ws::{Session, Config, Message, CloseFrame, CloseCode};
+                use crate::ws::{Connection, Config, Message, CloseFrame, CloseCode};
 
                 crate::DEBUG!("WebSocket session started");
 
                 // SAFETY: `&mut self.connection` is valid while `handle`
-                let ws = unsafe {Session::new(&mut self.connection, config)};
+                let ws = unsafe {Connection::new(&mut self.connection, config)};
                 let close = timeout_in(Duration::from_secs(env::OHKAMI_WEBSOCKET_TIMEOUT()),
                     handler(ws)
                 ).await;
                 
-                let mut ws = unsafe {Session::new(&mut self.connection, Config::default())};
+                let mut ws = unsafe {Connection::new(&mut self.connection, Config::default())};
                 ws.send(Message::Close(Some(match close {
                     Some(_) => {
                         crate::DEBUG!("Closing WebSocket session...");
@@ -120,22 +136,6 @@ impl Session {
                 }))).await.expect("Failed to send close message");
 
                 crate::DEBUG!("WebSocket session finished");
-            }
-        }
-
-        crate::DEBUG!("about to shutdown connection");
-
-        if let Some(err) = {
-            #[cfg(feature="rt_tokio")] {use crate::__rt__::AsyncWriter;
-                self.connection.shutdown().await
-            }
-            #[cfg(feature="rt_async-std")] {
-                self.connection.shutdown(std::net::Shutdown::Both)
-            }
-        }.err() {
-            match err.kind() {
-                std::io::ErrorKind::NotConnected => (),
-                _ => panic!("Failed to shutdown stream: {err}")
             }
         }
     }
