@@ -49,7 +49,7 @@ tasks:
     dir: ohkami
     cmds:
       - cargo test --lib --features DEBUG,{{.MAYBE_NIGHTLY}}
-      - cargo test --lib --features DEBUG,sse,{{.MAYBE_NIGHTLY}}
+      - cargo test --lib --features DEBUG,sse,ws,{{.MAYBE_NIGHTLY}}
 
   test_rt_tokio:
     vars:
@@ -76,7 +76,7 @@ tasks:
     dir: ohkami
     cmds:
       - cargo test --lib --features rt_worker,DEBUG,{{.MAYBE_NIGHTLY}}
-      - cargo test --lib --features rt_worker,DEBUG,sse,{{.MAYBE_NIGHTLY}}
+      - cargo test --lib --features rt_worker,DEBUG,sse,ws,{{.MAYBE_NIGHTLY}}
 
 #### checks ####
   # Assure buildability without "DEBUG" feature
@@ -85,12 +85,12 @@ tasks:
     vars:
       MAYBE_FEATURES_NIGHTLY:
         sh: cargo version | grep -q 'nightly' && echo '--features nightly' || echo ''
-      MAYBE_FEATURES_NIGHTLY_WITH_sse:
-        sh: cargo version | grep -q 'nightly' && echo '--features nightly,sse' || echo '--features testing'
+      MAYBE_FEATURES_NIGHTLY_full:
+        sh: cargo version | grep -q 'nightly' && echo '--features nightly,sse,ws' || echo '--features testing'
     dir: ohkami
     cmds:
       - cargo check --lib {{.MAYBE_FEATURES_NIGHTLY}}
-      - cargo check --lib {{.MAYBE_FEATURES_NIGHTLY_WITH_sse}}
+      - cargo check --lib {{.MAYBE_FEATURES_NIGHTLY_full}}
 
   check_rt_tokio:
     vars:
@@ -119,4 +119,4 @@ tasks:
     dir: ohkami
     cmds:
       - cargo check --lib --features rt_worker,{{.MAYBE_NIGHTLY}}
-      - cargo check --lib --features rt_worker,sse,{{.MAYBE_NIGHTLY}}
+      - cargo check --lib --features rt_worker,sse,ws,{{.MAYBE_NIGHTLY}}
