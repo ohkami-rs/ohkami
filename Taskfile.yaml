@@ -118,5 +118,5 @@ tasks:
         sh: cargo version | grep -q 'nightly' && echo 'nightly' || echo ''
     dir: ohkami
     cmds:
-      - cargo check --lib --features rt_worker,{{.MAYBE_NIGHTLY}}
-      - cargo check --lib --features rt_worker,sse,ws,{{.MAYBE_NIGHTLY}}
+      - cargo check --target wasm32-unknown-unknown --lib --features rt_worker,{{.MAYBE_NIGHTLY}}
+      - cargo check --target wasm32-unknown-unknown --lib --features rt_worker,sse,ws,{{.MAYBE_NIGHTLY}}
