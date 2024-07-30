@@ -29,6 +29,7 @@ jobs:
           toolchain: ${{ matrix.toolchain }}
           profile:   minimal
           override:  true
+          target:    wasm32-unknown-unknown
 
       - name: Cache cargo subcommands
         id:   cache_cargo_subcommands
