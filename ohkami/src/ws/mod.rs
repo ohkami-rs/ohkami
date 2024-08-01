@@ -117,7 +117,7 @@ pub struct WebSocket {
 /// ## Note
 /// 
 /// - Currently, subprotocols via `Sec-WebSocket-Protocol` is not supported
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Config {
     pub write_buffer_size:      usize,
     pub max_write_buffer_size:  usize,

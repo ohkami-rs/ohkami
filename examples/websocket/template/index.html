@@ -43,6 +43,11 @@
             <input id="echo3-text-input"/>
             <button id="echo3-send-button"></button>
         </div>
+        
+        <div class="echo-text">
+            <input id="echo4-text-input"/>
+            <button id="echo4-send-button"></button>
+        </div>
     </main>
 
     <script>
@@ -90,6 +95,7 @@
         connect_input_and_button_to("ws://localhost:3030/echo1",        "echo1-text-input", "echo1-send-button");
         connect_input_and_button_to("ws://localhost:3030/echo2/ohkami", "echo2-text-input", "echo2-send-button");
         connect_input_and_button_to("ws://localhost:3030/echo3/ohkami", "echo3-text-input", "echo3-send-button");
+        connect_input_and_button_to("ws://localhost:3030/echo4/ohkami", "echo4-text-input", "echo4-send-button");
     </script>
 </body>
 </html>

@@ -76,9 +76,7 @@ impl Message {
     ) -> Result<usize, Error> {
         self.into_frame().write_unmasked(stream, config).await
     }
-}
-
-impl Message {
+    
     /// Read a `Message` from a WebSocket connection.
     pub(crate) async fn read_from(
         stream: &mut (impl AsyncReader + Unpin),

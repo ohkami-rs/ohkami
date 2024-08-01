@@ -122,6 +122,7 @@ async fn echo_text_3(name: String,
     })
 }
 
+
 #[tokio::main]
 async fn main() {
     Ohkami::with(Logger, (
@@ -129,5 +130,24 @@ async fn main() {
         "/echo1".GET(echo_text),
         "/echo2/:name".GET(echo_text_2),
         "/echo3/:name".GET(echo_text_3),
+        "/echo4/:name".GET(echo4),
     )).howl("localhost:3030").await
+}
+
+
+async fn echo4((name,): (String,), ws: WebSocketContext<'_>) -> WebSocket {
+    ws.connect(|mut c| async {
+        /* spawn but not await handle */
+        tokio::task::spawn(async move {
+            #[cfg(feature="DEBUG")] println!("\n{c:#?}");
+
+            c.send(Message::Text(name)).await.expect("failed to send");
+            while let Ok(Some(Message::Text(text))) = c.recv().await {
+                #[cfg(feature="DEBUG")] println!("\n{c:#?}");
+
+                if dbg!(&text) == "close" {break}
+                c.send(Message::Text(text)).await.expect("failed to send");
+            }
+        });
+    })
 }
