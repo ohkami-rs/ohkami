@@ -59,7 +59,8 @@ const _: () = {
                 | Maybe you spawned tasks using ws::Connection or split halves of it |\n\
                 | and NOT join/await the tasks?                                      |\n\
                 | This is NOT supported because it may cause resource leak           |\n\
-                | due to an infinite loop in the websocket handler.                  |\n\
+                | due to something like an infinite loop or a dead lock in the       |\n\
+                | websocket handler.                                                 |\n\
                 | If you're doing it, please join/await the tasks in the handler!    |\n\
                 ---------------------------------------------------------------------|\n\
             ")
