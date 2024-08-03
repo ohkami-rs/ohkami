@@ -273,15 +273,36 @@ impl Ohkami {
         };
         
         #[cfg(feature="rt_tokio")] {
-            loop {
-                let Ok((connection, _)) = listener.accept().await else {continue};
+            let ctrl_c = tokio::signal::ctrl_c();
+            let (ctrl_c_tx, ctrl_c_rx) = tokio::sync::watch::channel(());
+            __rt__::task::spawn(async move {
+                ctrl_c.await.expect("something was unexpected around Ctrl-C");
+                drop(ctrl_c_rx);
+            });
 
-                __rt__::task::spawn({
-                    Session::new(
-                        router.clone(),
-                        connection,
-                    ).manage()
-                });
+            let (close_tx, close_rx) = tokio::sync::watch::channel(());
+            loop {
+                tokio::select! {
+                    accept = listener.accept() => {
+                        crate::DEBUG!("Accepted {accept:#?}");
+                        let Ok((connection, _)) = accept else {continue};
+                        let session = Session::new(router.clone(), connection);
+                        let close_rx = close_rx.clone();
+                        __rt__::task::spawn(async {
+                            session.manage().await;
+                            drop(close_rx)
+                        });
+                    },
+                    _ = ctrl_c_tx.closed() => {
+                        crate::DEBUG!("Recieved Ctrl-C, trying graceful shutdown");
+                        
+                        crate::DEBUG!("Waiting {} session(s) to finish...", close_tx.receiver_count());
+                        drop(close_rx);
+                        close_tx.closed().await;
+
+                        break
+                    }
+                }
             }
         }
         #[cfg(feature="rt_async-std")] {

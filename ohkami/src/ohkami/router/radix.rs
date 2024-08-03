@@ -1,6 +1,6 @@
 use crate::request::Path;
 use crate::{Method, Request, Response};
-use crate::fangs::{FangProcCaller, BoxedFPC, Handler};
+use crate::fangs::{FangProcCaller, BoxedFPC};
 use ohkami_lib::Slice;
 use std::fmt::Write as _;
 
@@ -30,21 +30,8 @@ pub(super) struct Node {
                 }
             }
 
-            enum HandlerMarker { None, Some }
-            impl From<Option<&Handler>> for HandlerMarker {
-                fn from(h: Option<&Handler>) -> Self {
-                    match h {Some(_) => Self::Some, None => Self::None}
-                }
-            }
-            impl std::fmt::Debug for HandlerMarker {
-                fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                    match self {Self::Some => f.write_char('@'), Self::None => f.write_str("None")}
-                }
-            }
-
             f.debug_struct("")
                 .field("patterns", &PatternsMarker(self.patterns))
-                // .field("proc", &HandlerMarker::from(self.handler.as_ref()))
                 .field("children", &self.children)
                 .finish()
         }
