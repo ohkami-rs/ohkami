@@ -80,6 +80,11 @@ Then your project directory has `wrangler.toml`, `package.json` and a Rust libra
 
 See README of the [template](https://github.com/ohkami-rs/ohkami-templates/tree/main/worker) for details.
 
+### `"graceful"`：Graceful Shutdown
+
+Automatically catch Ctrl-C ( SIGINT ) and perform graceful shutdown.\
+Currently, only supported on `rt_tokio`.
+
 ### `"sse"`：Server-Sent Events
 
 Ohkami responds with HTTP/1.1 `Transfer-Encoding: chunked`.\

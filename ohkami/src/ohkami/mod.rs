@@ -272,7 +272,7 @@ impl Ohkami {
             Err(e)       => panic!("Failed to bind TCP listener: {e}"),
         };
         
-        #[cfg(feature="rt_tokio")] {
+        #[cfg(all(feature="rt_tokio", feature="graceful"))] {
             let ctrl_c = tokio::signal::ctrl_c();
             let (ctrl_c_tx, ctrl_c_rx) = tokio::sync::watch::channel(());
             __rt__::task::spawn(async move {
@@ -303,6 +303,18 @@ impl Ohkami {
                         break
                     }
                 }
+            }
+        }
+        #[cfg(all(feature="rt_tokio", not(feature="graceful")))] {
+            loop {
+                let Ok((connection, _)) = listener.accept().await else {continue};
+
+                __rt__::task::spawn({
+                    Session::new(
+                        router.clone(),
+                        connection,
+                    ).manage()
+                });
             }
         }
         #[cfg(feature="rt_async-std")] {
