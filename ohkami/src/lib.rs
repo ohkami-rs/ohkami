@@ -24,16 +24,23 @@
     all(feature="rt_tokio",     feature="rt_async-std"),
     all(feature="rt_async-std", feature="rt_worker"),
     all(feature="rt_worker",    feature="rt_tokio"),
-))] compile_error!("
-    Can't activate multiple `rt_*` features!
-");
+))] compile_error! {"
+    Can't activate multiple `rt_*` features at once!
+"}
+
+#[cfg(any(
+    all(feature="graceful", not(feature="rt_tokio")),
+))] compile_error! {"
+    In current versoin, `graceful` feature is only supported on `rt_tokio`.
+    Please wait for future development for other runtimes...
+"}
 
 #[cfg(not(feature="DEBUG"))] const _: () = {
     #[cfg(all(feature="rt_worker", not(target_arch="wasm32")))]
-    compile_error!("
+    compile_error! {"
         `rt_worker` must be activated on `wasm32` target!
         (We recommend to touch `.cargo/config.toml`: `[build] target = \"wasm32-unknown-unknown\"`)
-    ");
+    "}
 };
 
 

@@ -17,26 +17,10 @@ enum Gender {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
-enum Difficulty {
-    Low,
-    Middle,
-    High,
-    Ultimate,
-}
-
-
-#[derive(Serialize, Deserialize, PartialEq, Debug)]
 struct User<'s> {
     name:   Cow<'s, str>,
     age:    Option<Age>,
     gender: Option<Gender>,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Debug)]
-struct Problem<'s> {
-    title:      Cow<'s, str>,
-    content:    String,
-    difficulty: Option<Difficulty>,
 }
 
 #[derive(Deserialize, PartialEq, Debug)]
