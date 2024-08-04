@@ -266,17 +266,14 @@ impl Ohkami {
     /// ```
     pub async fn howl(self, address: impl __rt__::ToSocketAddrs) {
         let router = Arc::new(self.into_router().into_radix());
-        
-        let listener = match __rt__::TcpListener::bind(address).await {
-            Ok(listener) => listener,
-            Err(e)       => panic!("Failed to bind TCP listener: {e}"),
-        };
+        let listener = __rt__::TcpListener::bind(address).await.expect("Failed to bind TCP listener: {e}");
         
         #[cfg(all(feature="rt_tokio", feature="graceful"))] {
             let ctrl_c = tokio::signal::ctrl_c();
+
             let (ctrl_c_tx, ctrl_c_rx) = tokio::sync::watch::channel(());
-            __rt__::task::spawn(async move {
-                ctrl_c.await.expect("something was unexpected around Ctrl-C");
+            __rt__::task::spawn(async {
+                ctrl_c.await.expect("Something was wrong around Ctrl-C");
                 drop(ctrl_c_rx);
             });
 
@@ -285,8 +282,10 @@ impl Ohkami {
                 tokio::select! {
                     accept = listener.accept() => {
                         crate::DEBUG!("Accepted {accept:#?}");
+
                         let Ok((connection, _)) = accept else {continue};
                         let session = Session::new(router.clone(), connection);
+
                         let close_rx = close_rx.clone();
                         __rt__::task::spawn(async {
                             session.manage().await;
@@ -295,15 +294,15 @@ impl Ohkami {
                     },
                     _ = ctrl_c_tx.closed() => {
                         crate::DEBUG!("Recieved Ctrl-C, trying graceful shutdown");
-                        
-                        crate::DEBUG!("Waiting {} session(s) to finish...", close_tx.receiver_count());
-                        drop(close_rx);
-                        close_tx.closed().await;
-
+                        drop(listener);
                         break
                     }
                 }
             }
+
+            crate::DEBUG!("Waiting {} session(s) to finish...", close_tx.receiver_count());
+            drop(close_rx);
+            close_tx.closed().await;
         }
         #[cfg(all(feature="rt_tokio", not(feature="graceful")))] {
             loop {
