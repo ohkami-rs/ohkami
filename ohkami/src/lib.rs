@@ -1,4 +1,4 @@
-#![doc(html_root_url = "https://docs.rs/ohkami/latest/ohkami/")]
+#![doc(html_root_url = "https://docs.rs/ohkami/0.20.0/ohkami/")]
 
 /* Execute static tests for sample codes in README */
 #![cfg_attr(feature="DEBUG", doc = include_str!("../../README.md"))]
@@ -11,7 +11,13 @@
 //! <br>
 //! 
 //! - *macro-less and type-safe* APIs for intuitive and declarative code
-//! - *multi runtime* support：`tokio`, `async-std`, `worker` (Cloudflare Workers)
+//! - *multi runtimes* are supported：`tokio`, `async-std`, `worker` (Cloudflare Workers)
+//! 
+//! <div align="right">
+//!     <a href="https://github.com/ohkami-rs/ohkami/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/crates/l/ohkami.svg" /></a>
+//!     <a href="https://github.com/ohkami-rs/ohkami/actions"><img alt="build check status of ohkami" src="https://github.com/ohkami-rs/ohkami/actions/workflows/CI.yml/badge.svg"/></a>
+//!     <a href="https://crates.io/crates/ohkami"><img alt="crates.io" src="https://img.shields.io/crates/v/ohkami" /></a>
+//! </div>
 
 
 #![cfg_attr(feature="nightly", feature(
