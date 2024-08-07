@@ -35,13 +35,12 @@
     Please wait for future development for other runtimes...
 "}
 
-#[cfg(not(feature="DEBUG"))] const _: () = {
-    #[cfg(all(feature="rt_worker", not(target_arch="wasm32")))]
-    compile_error! {"
-        `rt_worker` must be activated on `wasm32` target!
-        (We recommend to touch `.cargo/config.toml`: `[build] target = \"wasm32-unknown-unknown\"`)
-    "}
-};
+#[cfg(not(feature="DEBUG"))]
+#[cfg(all(feature="rt_worker", not(target_arch="wasm32")))]
+compile_error! {"
+    `rt_worker` must be activated on `wasm32` target!
+    (We recommend to touch `.cargo/config.toml`: `[build] target = \"wasm32-unknown-unknown\"`)
+"}
 
 
 #[allow(unused)]
