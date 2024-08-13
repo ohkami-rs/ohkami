@@ -3,10 +3,11 @@ pub mod fangs;
 pub mod models;
 
 use error::Error;
-use models::{UserMessage, ChatMessage, ChatCompletions, Role};
+use models::{ChatMessage, ChatCompletions, Role};
 
 use ohkami::prelude::*;
 use ohkami::Memory;
+use ohkami::format::Text;
 use ohkami::typed::DataStream;
 use ohkami::utils::{StreamExt, stream};
 
@@ -29,7 +30,7 @@ async fn main() {
 
 pub async fn relay_chat_completion(
     api_key: Memory<'_, &'static str>,
-    UserMessage(message): UserMessage,
+    Text(message): Text<String>,
 ) -> Result<DataStream<String, Error>, Error> {
     let mut gpt_response = reqwest::Client::new()
         .post("https://api.openai.com/v1/chat/completions")
@@ -57,9 +58,9 @@ pub async fn relay_chat_completion(
 
             #[cfg(debug_assertions)] {
                 if line != "[DONE]" {
-                    use ohkami::{typed::PayloadType, builtin::payload::JSON};
+                    use ohkami::serde::json;
 
-                    let chunk: models::ChatCompletionChunk = JSON::parse(line.as_bytes()).unwrap();
+                    let chunk: models::ChatCompletionChunk = json::from_slice(line.as_bytes()).unwrap();
                     print!("{}", chunk.choices[0].delta.content.as_deref().unwrap_or(""));
                     std::io::Write::flush(&mut std::io::stdout()).unwrap();
                 } else {

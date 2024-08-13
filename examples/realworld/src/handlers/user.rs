@@ -1,4 +1,4 @@
-use ohkami::{Ohkami, Route, Memory};
+use ohkami::{Ohkami, Route, Memory, format::JSON};
 use sqlx::PgPool;
 use crate::{
     fangs::Auth,
@@ -22,7 +22,7 @@ pub fn user_ohkami() -> Ohkami {
 async fn get_current_user(
     pool: Memory<'_, PgPool>,
     auth: Memory<'_, JWTPayload>,
-) -> Result<UserResponse, RealWorldError> {
+) -> Result<JSON<UserResponse>, RealWorldError> {
     let u = sqlx::query_as!(UserEntity, r#"
         SELECT id, email, name, bio, image_url
         FROM users AS u
@@ -32,7 +32,7 @@ async fn get_current_user(
         .fetch_one(*pool).await
         .map_err(RealWorldError::DB)?;
 
-    Ok(UserResponse {
+    Ok(JSON(UserResponse {
         user: User {
             email: u.email,
             jwt:   issue_jwt_for_user_of_id(u.id)?,
@@ -40,20 +40,20 @@ async fn get_current_user(
             bio:   u.bio,
             image: u.image_url,
         },
-    })
+    }))
 }
 
 async fn update<'h>(
-    body: UpdateProfileRequest<'h>,
+    JSON(req): JSON<UpdateProfileRequest<'h>>,
     auth: Memory<'h, JWTPayload>,
     pool: Memory<'h, PgPool>,
-) -> Result<UserResponse, RealWorldError> {
+) -> Result<JSON<UserResponse>, RealWorldError> {
     let user_entity = {
         let UpdateProfileRequest {
             user: UpdateProfileRequestUser {
                 email, username, image, bio, password:raw_password
             }
-        } = body;
+        } = req;
         let new_password_and_salt = raw_password.map(|rp| hash_password(&rp)).transpose()?;
 
         let mut set_once = false;
@@ -91,5 +91,5 @@ async fn update<'h>(
             .map_err(RealWorldError::DB)?
     };
 
-    Ok(user_entity.into_user_response()?)
+    Ok(JSON(user_entity.into_user_response()?))
 }

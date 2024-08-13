@@ -1,4 +1,4 @@
-use ohkami::{Memory, Ohkami, Route};
+use ohkami::{Memory, Ohkami, Route, format::JSON};
 use sqlx::PgPool;
 use crate::errors::RealWorldError;
 use crate::models::{Tag, response::ListOfTagsResponse};
@@ -12,7 +12,7 @@ pub fn tags_ohkami() -> Ohkami {
 
 async fn get(
     pool: Memory<'_, PgPool>
-) -> Result<ListOfTagsResponse<'static>, RealWorldError> {
+) -> Result<JSON<ListOfTagsResponse<'static>>, RealWorldError> {
     let tags = sqlx::query!(r#"
         SELECT name
         FROM tags
@@ -20,5 +20,5 @@ async fn get(
         .map_err(RealWorldError::DB)?.into_iter()
         .map(|n| Tag::new(n.name)).collect();
 
-    Ok(ListOfTagsResponse { tags })
+    Ok(JSON(ListOfTagsResponse { tags }))
 }

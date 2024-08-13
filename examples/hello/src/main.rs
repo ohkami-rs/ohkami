@@ -8,20 +8,19 @@ mod health_handler {
 
 
 mod hello_handler {
-    use ohkami::typed::{Payload, Query};
-    use ohkami::builtin::payload::JSON;
+    use ohkami::format::{Query, JSON};
+    use ohkami::serde::Deserialize;
 
-    #[Query]
-    #[query(deny_unknown_fields)]
-    pub struct HelloQuery<'q> {
-        name:   &'q str,
-
-        #[query(rename = "n")]
+    #[derive(Deserialize)]
+    #[serde(deny_unknown_fields)]
+    pub struct HelloQuery<'q> {        
+        #[serde(rename = "n")]
         repeat: Option<usize>,
+        name: &'q str,
     }
 
     pub async fn hello_by_query<'h>(
-        HelloQuery { name, repeat }: HelloQuery<'h>
+        Query(HelloQuery { name, repeat }): Query<HelloQuery<'h>>
     ) -> String {
         tracing::info!("\
             Called `hello_by_query`\
@@ -31,7 +30,7 @@ mod hello_handler {
     }
 
 
-    #[Payload(JSON/D where self.validate())]
+    #[derive(Deserialize)]
     pub struct HelloRequest<'n> {
         name:   &'n str,
         repeat: Option<usize>,
@@ -49,7 +48,7 @@ mod hello_handler {
     }
 
     pub async fn hello_by_json(
-        HelloRequest { name, repeat }: HelloRequest<'_>
+        JSON(HelloRequest { name, repeat }): JSON<HelloRequest<'_>>
     ) -> String {
         tracing::info!("\
             Called `hello_by_json`\

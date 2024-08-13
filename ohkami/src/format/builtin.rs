@@ -35,6 +35,7 @@ impl<'req, S: Deserialize<'req>> FromRequest<'req> for Multipart<S> {
             .map(Self).into()
     }
 }
+pub use ohkami_lib::serde_multipart::File;
 
 pub struct URLEncoded<Schema>(pub Schema);
 impl<'req, S: Deserialize<'req>> FromRequest<'req> for URLEncoded<S> {
@@ -76,18 +77,7 @@ impl<T: Into<std::borrow::Cow<'static, str>>> IntoResponse for Text<T> {
     }
 }
 
-pub struct HTML<T>(pub T);
-impl<'req, T: From<&'req str>> FromRequest<'req> for HTML<T> {
-    type Error = Response;
-    fn from_request(req: &'req Request) -> Option<Result<Self, Self::Error>> {
-        if !req.headers.ContentType()?.starts_with("text/html") {
-            return None
-        }
-        std::str::from_utf8(req.payload.as_deref()?)
-            .map_err(|e| Response::BadRequest().with_text(e.to_string()))
-            .map(|s| Self(T::from(s))).into()
-    }
-}
+pub struct HTML<T = String>(pub T);
 impl<T: Into<std::borrow::Cow<'static, str>>> IntoResponse for HTML<T> {
     fn into_response(self) -> Response {
         Response::OK().with_html(self.0)
