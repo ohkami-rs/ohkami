@@ -3,8 +3,7 @@
 
 use crate::prelude::*;
 use crate::testing::*;
-use crate::builtin::payload::JSON;
-use crate::typed::{status, Payload};
+use crate::typed::status;
 use ::serde::Deserialize;
 
 
@@ -13,8 +12,6 @@ use ::serde::Deserialize;
 struct User<'req> {
     name:     &'req str,
     password: &'req str,
-} impl Payload for User<'_> {
-    type Type = JSON;
 }
 
 #[derive(Deserialize)]

@@ -70,3 +70,18 @@ impl IntoResponse for () {
         Response::OK()
     }
 }
+
+macro_rules! text_response {
+    ($( $t:ty )*) => {$(
+        impl IntoResponse for $t {
+            #[inline(always)]
+            fn into_response(self: $t) -> Response {
+                Response::OK().with_text(self)
+            }
+        }
+    )*};
+} text_response! {
+    &'static str
+    String
+    std::borrow::Cow<'static, str>
+}

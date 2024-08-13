@@ -92,6 +92,7 @@ mod response;
 pub use response::{Response, Status, IntoResponse};
 
 pub mod fang;
+pub use fang::{Fang, FangProc};
 
 pub mod format;
 
@@ -104,8 +105,6 @@ mod ohkami;
 pub use ohkami::{Ohkami, Route};
 
 pub mod header;
-
-pub mod builtin;
 
 pub mod typed;
 
@@ -154,7 +153,7 @@ pub mod utils {
         };
     }
 
-    pub use crate::fang::util::FangAction;
+    pub use crate::fang::FangAction;
 
     #[cfg(feature="sse")]
     pub use ohkami_lib::stream::{self, Stream, StreamExt};

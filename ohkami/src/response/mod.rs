@@ -484,12 +484,13 @@ const _: () = {
 
     #[cfg(test)]
     fn try_response() {
-        use crate::{warning, Request};
+        use crate::Request;
 
         fn payload_serde_json_value(req: &Request) -> Result<::serde_json::Value, Response> {
-            let value = req.payload::<::serde_json::Value>()
-                .ok_or_else(|| Response::BadRequest())?
-                .map_err(|e| {warning!("{e}"); Response::BadRequest()})?;
+            let payload = req.payload.as_deref()
+                .ok_or_else(|| Response::BadRequest())?;
+            let value = serde_json::from_slice::<serde_json::Value>(payload)
+                .map_err(|_| Response::BadRequest())?;
             Ok(value)
         }
     }

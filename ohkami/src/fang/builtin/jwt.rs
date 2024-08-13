@@ -439,7 +439,7 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
     #[test] async fn test_jwt_verify_senario() {
         use crate::prelude::*;
         use crate::{testing::*, Memory};
-        use crate::typed::{Payload, status::OK};
+        use crate::typed::status::OK;
 
         use std::{sync::OnceLock, sync::Mutex, collections::HashMap, borrow::Cow};
 
@@ -505,9 +505,6 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
             first_name:   String,
             familly_name: String,
         }
-        impl Payload for Profile {
-            type Type = crate::builtin::payload::JSON;
-        }
 
         async fn get_profile(jwt_payload: Memory<'_, MyJWTPayload>) -> Result<OK<Profile>, APIError> {
             let r = &mut *repository().await.lock().unwrap();
@@ -522,9 +519,6 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
         struct SigninRequest<'s> {
             first_name:   &'s str,
             familly_name: &'s str,
-        }
-        impl Payload for SigninRequest<'_> {
-            type Type = crate::builtin::payload::JSON;
         }
 
         async fn signin(body: SigninRequest<'_>) -> String/* for test */ {

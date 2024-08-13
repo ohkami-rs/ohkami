@@ -1,80 +1,25 @@
 use std::borrow::Cow;
-use serde::Serialize;
-use super::{Payload, PayloadType};
 use crate::{IntoResponse, Response, Status};
 
-
-/// `Payload + Serialize`, or `()`
-trait ResponseBody {
-    fn into_response_with(self, status: Status) -> Response;
-}
-const _: () = {
-    impl ResponseBody for () {
-        fn into_response_with(self, status: Status) -> Response {
-            Response::of(status)
-        }
-    }
-
-    impl<P: Payload + Serialize> ResponseBody for P {
-        #[inline]
-        fn into_response_with(self, status: Status) -> Response {
-            let mut res = Response::of(status);
-            if let Err(e) = self.inject(&mut res) {
-                return (|| {
-                    crate::warning!("Failed to serialize {} payload: {e}", P::Type::CONTENT_TYPE);
-                    Response::InternalServerError()
-                })()
-            }
-            res
-        }
-    }
-
-    /*  :fixme:
-
-        It's more natural to implement `Payload<Type = Text>` for these types,
-        but then, `String`, `&str` and `Cow<'_, str>` are to have twos `FromRequest`
-        impls via `FromParam` and `Payload + Deserialize` ):
-    */
-    macro_rules! text_response_bodies {
-        ($($t:ty)*) => {
-            $(
-                impl ResponseBody for $t {
-                    #[inline]
-                    fn into_response_with(self, status: Status) -> Response {
-                        Response::of(status).with_text(self)
-                    }
-                }
-                impl IntoResponse for $t {
-                    #[inline(always)]
-                    fn into_response(self) -> Response {
-                        Response::OK().with_text(self)
-                    }
-                }
-            )*
-        };
-    } text_response_bodies! {
-        String
-        &'static str
-        std::borrow::Cow<'static, str>
-    }
-};
 
 macro_rules! generate_statuses_as_types_containing_value {
     ($( $status:ident : $message:literal, )*) => {
         $(
             #[doc = "Type-safe `"]
             #[doc = $message]
-            #[doc = "` response with the `ResponseBody` (`()` or `T: Payload + Serialize`).<br>"]
+            #[doc = "` response.<br>"]
             #[doc = "Use `()` (default) to represent an empty content."]
 
             #[allow(non_camel_case_types)]
             #[allow(private_bounds)]
-            pub struct $status<B: ResponseBody = ()>(pub B);
+            pub struct $status<B: IntoResponse = ()>(pub B);
 
-            impl<B: ResponseBody> IntoResponse for $status<B> {
+            impl<B: IntoResponse> IntoResponse for $status<B> {
                 #[inline]
                 fn into_response(self) -> Response {
-                    self.0.into_response_with(Status::$status)
+                    let mut res = self.0.into_response();
+                    res.status = Status::$status;
+                    res
                 }
             }
         )*
