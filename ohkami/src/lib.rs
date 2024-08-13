@@ -91,8 +91,9 @@ pub use ::ohkami_macros::FromRequest;
 mod response;
 pub use response::{Response, Status, IntoResponse};
 
-mod fangs;
-pub use fangs::{Fang, FangProc};
+pub mod fang;
+
+pub mod format;
 
 mod session;
 #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
@@ -153,7 +154,7 @@ pub mod utils {
         };
     }
 
-    pub use crate::fangs::util::FangAction;
+    pub use crate::fang::util::FangAction;
 
     #[cfg(feature="sse")]
     pub use ohkami_lib::stream::{self, Stream, StreamExt};
@@ -281,7 +282,7 @@ pub mod __internal__ {
 
     pub use ohkami_macros::consume_struct;
 
-    pub use crate::fangs::Fangs;
+    pub use crate::fang::Fangs;
 
     /* for benchmarks */
     #[cfg(feature="DEBUG")]

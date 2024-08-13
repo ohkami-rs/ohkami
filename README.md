@@ -181,35 +181,36 @@ async fn main() {
 
 ```rust
 use ohkami::prelude::*;
-use ohkami::typed::{status, Payload};
-use ohkami::builtin::payload::JSON;
-
+use ohkami::typed::{status};
+use ohkami::format::JSON;
 /* `serde = 〜` is not needed in your [dependencies] */
 use ohkami::serde::{Serialize, Deserialize};
 
-/* Payload + Deserialize for request */
-#[Payload(JSON)]
+/* Deserialize for request */
 #[derive(Deserialize)]
 struct CreateUserRequest<'req> {
     name:     &'req str,
     password: &'req str,
 }
 
-/* Payload + Serialize for response */
-/* using `/S` shorthand */
-#[Payload(JSON/S)]
+/* Serialize for response */
+#[derive(Serialize)]
 struct User {
     name: String,
 }
 
 async fn create_user(
-    req: CreateUserRequest<'_>
-) -> status::Created<User> {
-    status::Created(User {
-        name: String::from(req.name)
-    })
+    req: JSON<CreateUserRequest<'_>>
+) -> status::Created<JSON<User>> {
+    status::Created(JSON(
+        User {
+            name: String::from(req.name)
+        }
+    ))
 }
 ```
+
+<!--
 
 ### Payload validation
 
@@ -238,12 +239,14 @@ impl Hello<'_> {
 }
 ```
 
+-->
+
 ### Typed params
 
 ```rust,no_run
 use ohkami::prelude::*;
-use ohkami::typed::Query;
-use ohkami::{typed::Payload, builtin::payload::JSON};
+use ohkami::serde::{Serialize, Deserialize};
+use ohkami::format::{Query, JSON};
 
 #[tokio::main]
 async fn main() {
@@ -265,24 +268,24 @@ async fn hello_n((name, n): (&str, usize)) -> String {
     vec![format!("Hello, {name}!"); n].join(" ")
 }
 
-#[Query] /* Params like `?lang=rust&q=framework` */
+#[derive(Deserialize)]
 struct SearchQuery<'q> {
-    lang:    &'q str,
-    #[query(rename = "q")] /* #[serde]-compatible #[query] attribute */
+    #[serde(rename = "q")]
     keyword: &'q str,
+    lang:    &'q str,
 }
 
-#[Payload(JSON/S)]
+#[derive(Serizlie)]
 struct SearchResult {
     title: String,
 }
 
 async fn search(
-    query: SearchQuery<'_>
-) -> Vec<SearchResult> {
-    vec![
+    query: Query<SearchQuery<'_>>
+) -> JSON<Vec<SearchResult>> {
+    JSON(vec![
         SearchResult { title: String::from("ohkami") },
-    ]
+    ])
 }
 ```
 
@@ -303,25 +306,27 @@ async fn main() {
 
 ```rust,no_run
 use ohkami::prelude::*;
-use ohkami::typed::{status, Payload};
-use ohkami::builtin::{payload::Multipart, item::File};
+use ohkami::typed::status;
+use ohkami::format::{Multipart, File};
 
-#[Payload(Multipart/D)]
+#[derive(Deserialize)]
 struct FormData<'req> {
     #[serde(rename = "account-name")]
     account_name: Option<&'req str>,
     pics: Vec<File<'req>>,
 }
 
-async fn post_submit(form_data: FormData<'_>) -> status::NoContent {
+async fn post_submit(
+    Multipart(data): Multipart<FormData<'_>>
+) -> status::NoContent {
     println!("\n\
         ===== submit =====\n\
         [account name] {:?}\n\
         [  pictures  ] {} files (mime: [{}])\n\
         ==================",
-        form_data.account_name,
-        form_data.pics.len(),
-        form_data.pics.iter().map(|f| f.mimetype).collect::<Vec<_>>().join(", "),
+        data.account_name,
+        data.pics.len(),
+        data.pics.iter().map(|f| f.mimetype).collect::<Vec<_>>().join(", "),
     );
 
     status::NoContent
@@ -332,26 +337,26 @@ async fn post_submit(form_data: FormData<'_>) -> status::NoContent {
 
 ```rust,no_run
 use ohkami::prelude::*;
-use ohkami::typed::{status, Payload};
-use ohkami::builtin::payload::JSON;
+use ohkami::typed::status;
+use ohkami::format::JSON;
 
-#[Payload(JSON/S)]
+#[derive(Serialize)]
 struct User {
     name: String
 }
 
-async fn list_users() -> Vec<User> {
-    vec![
+async fn list_users() -> JSON<Vec<User>> {
+    JSON(vec![
         User { name: String::from("actix") },
         User { name: String::from("axum") },
         User { name: String::from("ohkami") },
-    ]
+    ])
 }
 
-async fn create_user() -> status::Created<User> {
-    status::Created(User {
+async fn create_user() -> status::Created<JSON<User>> {
+    status::Created(JSON(User {
         name: String::from("ohkami web framework")
-    })
+    }))
 }
 
 async fn health_check() -> status::NoContent {
