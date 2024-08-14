@@ -19,8 +19,8 @@ mod hello_handler {
         name: &'q str,
     }
 
-    pub async fn hello_by_query<'h>(
-        Query(HelloQuery { name, repeat }): Query<HelloQuery<'h>>
+    pub async fn hello_by_query(
+        Query(HelloQuery { name, repeat }): Query<HelloQuery<'_>>
     ) -> String {
         tracing::info!("\
             Called `hello_by_query`\
@@ -35,15 +35,16 @@ mod hello_handler {
         name:   &'n str,
         repeat: Option<usize>,
     }
-    impl HelloRequest<'_> {
-        fn validate(&self) -> Result<(), &'static str> {
+    #[cfg(feature="nightly")]
+    impl ohkami::format::Schema for HelloRequest<'_> {
+        fn valid(&self) -> Result<(), impl std::fmt::Display> {
             let _: () = (! self.name.is_empty()).then_some(())
                 .ok_or_else(|| "`name` mustn't be empty")?;
 
             let _: () = (self.repeat.unwrap_or_default() < 10).then_some(())
                 .ok_or_else(|| "`repeat` must be less than 10")?;
 
-            Ok(())
+            Ok::<_, &str>(())
         }
     }
 
@@ -106,21 +107,19 @@ async fn main() {
         .with_max_level(tracing::Level::INFO)
         .init();
 
-    let hello_ohkami = Ohkami::with((
-        fangs::SetServer,
-    ), (
-        "/query".
-            GET(hello_handler::hello_by_query),
-        "/json".
-            POST(hello_handler::hello_by_json),
-    ));
-
     tracing::info!("Started listening on http://localhost:3000");
 
     Ohkami::with((
         fangs::LogRequest,
     ), (
         "/hc" .GET(health_handler::health_check),
-        "/api".By(hello_ohkami),
+        "/api".By(Ohkami::with((
+            fangs::SetServer,
+        ), (
+            "/query".
+                GET(hello_handler::hello_by_query),
+            "/json".
+                POST(hello_handler::hello_by_json),
+        ))),
     )).howl("localhost:3000").await
 }

@@ -20,6 +20,7 @@
 //! </div>
 
 
+#![allow(incomplete_features)]
 #![cfg_attr(feature="nightly", feature(
     specialization,
     try_trait_v2,

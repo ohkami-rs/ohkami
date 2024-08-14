@@ -399,6 +399,11 @@ impl Request {
 }
 
 impl Request {
+    #[inline]
+    pub fn payload(&self) -> Option<&[u8]> {
+        self.payload.as_deref()
+    }
+
     /// Memorize any data within this request object
     #[inline] pub fn memorize<Value: Send + Sync + 'static>(&mut self, value: Value) {
         self.store.insert(value)
