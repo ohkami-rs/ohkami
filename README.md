@@ -140,6 +140,11 @@ async fn main() {
 }
 ```
 
+### `"nightly"`：enable nightly-only functionalities
+
+- try response
+- in-place schema validation
+
 <br>
 
 ## Snippets
