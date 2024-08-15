@@ -200,7 +200,7 @@ struct User {
 }
 
 async fn create_user(
-    req: JSON<CreateUserRequest<'_>>
+    JSON(req): JSON<CreateUserRequest<'_>>
 ) -> status::Created<JSON<User>> {
     status::Created(JSON(
         User {
@@ -210,43 +210,12 @@ async fn create_user(
 }
 ```
 
-<!--
-
-### Payload validation
-
-`where ＜validation expression＞` in `#[Payload( 〜 )]` performs the validation when responding with it or parsing request body to it.
-
-`＜validation expression＞` is an expression with `self: &Self` returning `Result<(), impl Display>`.
-
-```rust
-use ohkami::prelude::*;
-use ohkami::{typed::Payload, builtin::payload::JSON};
-
-#[Payload(JSON/D where self.valid())]
-struct Hello<'req> {
-    name:   &'req str,
-    repeat: usize,
-}
-
-impl Hello<'_> {
-    fn valid(&self) -> Result<(), String> {
-        (self.name.len() > 0).then_some(())
-            .ok_or_else(|| format!("`name` must not be empty"))?;
-        (self.repeat > 0).then_some(())
-            .ok_or_else(|| format!("`repeat` must be positive"))?;
-        Ok(())
-    }
-}
-```
-
--->
-
 ### Typed params
 
 ```rust,no_run
 use ohkami::prelude::*;
-use ohkami::serde::{Serialize, Deserialize};
 use ohkami::format::{Query, JSON};
+use ohkami::serde::{Serialize, Deserialize};
 
 #[tokio::main]
 async fn main() {
@@ -275,13 +244,13 @@ struct SearchQuery<'q> {
     lang:    &'q str,
 }
 
-#[derive(Serizlie)]
+#[derive(Serialize)]
 struct SearchResult {
     title: String,
 }
 
 async fn search(
-    query: Query<SearchQuery<'_>>
+    Query(query): Query<SearchQuery<'_>>
 ) -> JSON<Vec<SearchResult>> {
     JSON(vec![
         SearchResult { title: String::from("ohkami") },
@@ -308,6 +277,7 @@ async fn main() {
 use ohkami::prelude::*;
 use ohkami::typed::status;
 use ohkami::format::{Multipart, File};
+use ohkami::serde::Deserialize;
 
 #[derive(Deserialize)]
 struct FormData<'req> {
@@ -339,6 +309,7 @@ async fn post_submit(
 use ohkami::prelude::*;
 use ohkami::typed::status;
 use ohkami::format::JSON;
+use ohkami::serde::Serialize;
 
 #[derive(Serialize)]
 struct User {

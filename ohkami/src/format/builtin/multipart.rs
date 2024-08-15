@@ -15,7 +15,7 @@ impl<'req, S: Deserialize<'req>> FromRequest<'req> for Multipart<S> {
             return None
         }
         ohkami_lib::serde_multipart::from_bytes(req.payload()?)
-            .map_err(|e| Response::BadRequest().with_text(e.to_string()))
+            .map_err(super::super::reject)
             .and_then(super::super::validated)
             .map(Self).into()
     }

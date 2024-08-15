@@ -30,9 +30,12 @@ tasks:
 
 #### tests ####
   test_doc:
+    vars:
+      MAYBE_NIGHTLY:
+        sh: cargo version | grep -q 'nightly' && echo 'nightly' || echo ''
     dir: ohkami
     cmds:
-      - cargo test --doc --features DEBUG,rt_tokio,sse,ws
+      - cargo test --doc --features DEBUG,rt_tokio,sse,ws,{{.MAYBE_NIGHTLY}}
 
   test_examples:
     dir: examples

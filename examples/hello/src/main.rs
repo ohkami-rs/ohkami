@@ -36,15 +36,16 @@ mod hello_handler {
         repeat: Option<usize>,
     }
     #[cfg(feature="nightly")]
-    impl ohkami::format::Schema for HelloRequest<'_> {
-        fn valid(&self) -> Result<(), impl std::fmt::Display> {
+    impl ohkami::format::V for HelloRequest<'_> {
+        type ErrorMessage = &'static str;
+        fn validate(&self) -> Result<(), Self::ErrorMessage> {
             let _: () = (! self.name.is_empty()).then_some(())
                 .ok_or_else(|| "`name` mustn't be empty")?;
 
             let _: () = (self.repeat.unwrap_or_default() < 10).then_some(())
                 .ok_or_else(|| "`repeat` must be less than 10")?;
 
-            Ok::<_, &str>(())
+            Ok(())
         }
     }
 

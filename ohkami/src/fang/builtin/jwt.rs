@@ -32,8 +32,9 @@ use crate::{Fang, FangProc, IntoResponse, Request, Response};
 /// *example.rs*
 /// ```no_run
 /// use ohkami::prelude::*;
-/// use ohkami::typed::{Payload, status};
-/// use ohkami::builtin::{payload::JSON, fang::JWT, item::JWTToken};
+/// use ohkami::typed::status;
+/// use ohkami::format::JSON;
+/// use ohkami::fang::{JWT, JWTToken};
 /// use ohkami::serde::{Serialize, Deserialize};
 /// 
 /// 
@@ -65,23 +66,23 @@ use crate::{Fang, FangProc, IntoResponse, Request, Response};
 /// }
 /// 
 /// 
-/// #[Payload(JSON/D)]
+/// #[derive(Deserialize)]
 /// struct AuthRequest<'req> {
 ///     name: &'req str
 /// }
-/// #[Payload(JSON/S)]
+/// #[derive(Serialize)]
 /// struct AuthResponse {
 ///     token: JWTToken
 /// }
 /// async fn auth(
-///     req: AuthRequest<'_>
-/// ) -> Result<AuthResponse, Response> {
-///     Ok(AuthResponse {
+///     JSON(req): JSON<AuthRequest<'_>>
+/// ) -> Result<JSON<AuthResponse>, Response> {
+///     Ok(JSON(AuthResponse {
 ///         token: our_jwt().issue(OurJWTPayload {
 ///             iat: ohkami::utils::unix_timestamp(),
 ///             user_name: req.name.to_string()
 ///         })
-///     })
+///     }))
 /// }
 /// 
 /// 

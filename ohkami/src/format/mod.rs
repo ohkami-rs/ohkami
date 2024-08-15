@@ -60,10 +60,15 @@ pub fn validated<S>(schema: S) -> Result<S, crate::Response> {
     impl<S: V> schema for S {
         #[inline]
         fn validated(self) -> Result<Self, crate::Response> {
-            self.validate().map_err(|e| crate::Response::BadRequest().with_text(e.to_string()))?;
+            self.validate().map_err(reject)?;
             Ok(self)
         }
     }
 
     schema.validated()
+}
+
+#[cold] #[inline(never)]
+fn reject(msg: impl std::fmt::Display) -> crate::Response {
+    crate::Response::BadRequest().with_text(msg.to_string())
 }

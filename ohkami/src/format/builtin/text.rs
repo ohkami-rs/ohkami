@@ -10,7 +10,7 @@ impl<'req, T: From<&'req str>> FromRequest<'req> for Text<T> {
             return None
         }
         std::str::from_utf8(req.payload()?)
-            .map_err(|e| Response::BadRequest().with_text(e.to_string()))
+            .map_err(super::super::reject)
             .and_then(super::super::validated)
             .map(|s| Self(T::from(s))).into()
     }
