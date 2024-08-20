@@ -239,6 +239,8 @@ pub use ::ohkami_macros::{worker, bindings};
 pub mod prelude {
     pub use crate::{Request, Response, IntoResponse, Method, Status};
     pub use crate::utils::FangAction;
+    pub use crate::serde::{Serialize, Deserialize};
+    pub use crate::format::JSON;
 
     #[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_worker"))]
     pub use crate::{Route, Ohkami};
