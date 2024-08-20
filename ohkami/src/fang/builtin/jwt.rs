@@ -32,8 +32,9 @@ use crate::{Fang, FangProc, IntoResponse, Request, Response};
 /// *example.rs*
 /// ```no_run
 /// use ohkami::prelude::*;
-/// use ohkami::typed::{Payload, status};
-/// use ohkami::builtin::{payload::JSON, fang::JWT, item::JWTToken};
+/// use ohkami::typed::status;
+/// use ohkami::format::JSON;
+/// use ohkami::fang::{JWT, JWTToken};
 /// use ohkami::serde::{Serialize, Deserialize};
 /// 
 /// 
@@ -65,23 +66,23 @@ use crate::{Fang, FangProc, IntoResponse, Request, Response};
 /// }
 /// 
 /// 
-/// #[Payload(JSON/D)]
+/// #[derive(Deserialize)]
 /// struct AuthRequest<'req> {
 ///     name: &'req str
 /// }
-/// #[Payload(JSON/S)]
+/// #[derive(Serialize)]
 /// struct AuthResponse {
 ///     token: JWTToken
 /// }
 /// async fn auth(
-///     req: AuthRequest<'_>
-/// ) -> Result<AuthResponse, Response> {
-///     Ok(AuthResponse {
+///     JSON(req): JSON<AuthRequest<'_>>
+/// ) -> Result<JSON<AuthResponse>, Response> {
+///     Ok(JSON(AuthResponse {
 ///         token: our_jwt().issue(OurJWTPayload {
 ///             iat: ohkami::utils::unix_timestamp(),
 ///             user_name: req.name.to_string()
 ///         })
-///     })
+///     }))
 /// }
 /// 
 /// 
@@ -438,8 +439,8 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
 
     #[test] async fn test_jwt_verify_senario() {
         use crate::prelude::*;
-        use crate::{testing::*, Memory};
-        use crate::typed::{Payload, status::OK};
+        use crate::testing::*;
+        use crate::{Memory, format::JSON};
 
         use std::{sync::OnceLock, sync::Mutex, collections::HashMap, borrow::Cow};
 
@@ -505,17 +506,16 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
             first_name:   String,
             familly_name: String,
         }
-        impl Payload for Profile {
-            type Type = crate::builtin::payload::JSON;
-        }
 
-        async fn get_profile(jwt_payload: Memory<'_, MyJWTPayload>) -> Result<OK<Profile>, APIError> {
+        async fn get_profile(
+            jwt_payload: Memory<'_, MyJWTPayload>
+        ) -> Result<JSON<Profile>, APIError> {
             let r = &mut *repository().await.lock().unwrap();
 
             let user = r.get(&jwt_payload.user_id)
                 .ok_or_else(|| APIError::UserNotFound)?;
 
-            Ok(OK(user.profile()))
+            Ok(JSON(user.profile()))
         }
 
         #[derive(serde::Deserialize, serde::Serialize/* for test */)]
@@ -523,16 +523,15 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
             first_name:   &'s str,
             familly_name: &'s str,
         }
-        impl Payload for SigninRequest<'_> {
-            type Type = crate::builtin::payload::JSON;
-        }
 
-        async fn signin(body: SigninRequest<'_>) -> String/* for test */ {
+        async fn signin(
+            JSON(req): JSON<SigninRequest<'_>>
+        ) -> String/* for test */ {
             let r = &mut *repository().await.lock().unwrap();
 
             let user: Cow<'_, User> = match r.iter().find(|(_, u)|
-                u.first_name   == body.first_name &&
-                u.familly_name == body.familly_name
+                u.first_name   == req.first_name &&
+                u.familly_name == req.familly_name
             ) {
                 Some((_, u)) => Cow::Borrowed(u),
                 None => {
@@ -543,8 +542,8 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
 
                     let new_user = User {
                         id:           new_user_id,
-                        first_name:   body.first_name.to_string(),
-                        familly_name: body.familly_name.to_string(), 
+                        first_name:   req.first_name.to_string(),
+                        familly_name: req.familly_name.to_string(), 
                     };
 
                     r.insert(new_user_id, new_user.clone());

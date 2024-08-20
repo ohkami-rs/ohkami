@@ -1,5 +1,5 @@
 use ohkami::serde::{Serialize, Deserialize};
-use ohkami::builtin::item::JWTToken;
+use ohkami::fang::JWTToken;
 use chrono::{DateTime, Utc};
 
 pub mod request;

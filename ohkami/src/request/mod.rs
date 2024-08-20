@@ -25,8 +25,6 @@ pub use from_request::*;
 
 use ohkami_lib::{Slice, CowSlice};
 
-use crate::typed::Payload;
-
 #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
 use {
     crate::__rt__::AsyncReader,
@@ -161,7 +159,7 @@ pub struct Request {
     /// `{value}`: `String`, `&'static str`, `Cow<&'static, str>`
     pub headers: RequestHeaders,
 
-    pub(crate) payload: Option<CowSlice>,
+    pub payload: Option<CowSlice>,
     store: Store,
 }
 
@@ -401,10 +399,9 @@ impl Request {
 }
 
 impl Request {
-    #[inline(always)] pub fn payload<
-        'req, P: Payload + serde::Deserialize<'req> + 'req
-    >(&'req self) -> Option<Result<P, impl serde::de::Error + 'req>> {
-        P::extract(self)
+    #[inline]
+    pub fn payload(&self) -> Option<&[u8]> {
+        self.payload.as_deref()
     }
 
     /// Memorize any data within this request object

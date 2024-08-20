@@ -1,6 +1,6 @@
 use crate::request::Path;
 use crate::{Method, Request, Response};
-use crate::fangs::{FangProcCaller, BoxedFPC};
+use crate::fang::{FangProcCaller, BoxedFPC};
 use ohkami_lib::Slice;
 use std::fmt::Write as _;
 

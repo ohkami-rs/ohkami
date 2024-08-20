@@ -1,10 +1,8 @@
-use ohkami::typed::{Payload, Query};
-use ohkami::builtin::payload::JSON;
 use ohkami::serde::Deserialize;
 use super::Tag;
 
 
-#[Payload(JSON/D)]
+#[derive(Deserialize)]
 #[cfg_attr(test, derive(ohkami::serde::Serialize))]
 pub struct LoginRequest<'req> {
     #[serde(borrow)]
@@ -17,7 +15,7 @@ pub struct LoginRequestUser<'req> {
     pub password: &'req str,
 }
 
-#[Payload(JSON/D)]
+#[derive(Deserialize)]
 #[cfg_attr(test, derive(ohkami::serde::Serialize))]
 pub struct RegisterRequest<'req> {
     #[serde(borrow)]
@@ -31,7 +29,7 @@ pub struct RegisterRequestUser<'req> {
     pub password: &'req str,
 }
 
-#[Payload(JSON/D)]
+#[derive(Deserialize)]
 #[cfg_attr(test, derive(ohkami::serde::Serialize))]
 pub struct UpdateProfileRequest<'req> {
     #[serde(borrow)]
@@ -47,7 +45,7 @@ pub struct UpdateProfileRequestUser<'req> {
     pub bio:      Option<&'req str>,
 }
 
-#[Query]
+#[derive(Deserialize)]
 #[cfg_attr(test, derive(ohkami::serde::Serialize))]
 pub struct ListArticlesQuery<'q> {
     pub tag:       Option<&'q str>,
@@ -64,7 +62,7 @@ pub struct ListArticlesQuery<'q> {
     }
 }
 
-#[Query]
+#[derive(Deserialize)]
 #[cfg_attr(test, derive(ohkami::serde::Serialize))]
 pub struct FeedArticleQuery {
     limit:  Option<usize>,
@@ -78,7 +76,7 @@ pub struct FeedArticleQuery {
     }
 }
 
-#[Payload(JSON/D)]
+#[derive(Deserialize)]
 #[cfg_attr(test, derive(ohkami::serde::Serialize))]
 pub struct CreateArticleRequest<'req> {
     #[serde(borrow)]
@@ -103,7 +101,7 @@ impl CreateArticleRequest<'_> {
     }
 }
 
-#[Payload(JSON/D)]
+#[derive(Deserialize)]
 #[cfg_attr(test, derive(ohkami::serde::Serialize))]
 pub struct UpdateArticleRequest<'req> {
     #[serde(borrow)]
@@ -117,7 +115,7 @@ pub struct UpdateArticleRequestArticle<'req> {
     pub body:        Option<&'req str>,
 }
 
-#[Payload(JSON/D)]
+#[derive(Deserialize)]
 #[cfg_attr(test, derive(ohkami::serde::Serialize))]
 pub struct AddCommentRequest<'req> {
     #[serde(borrow)]

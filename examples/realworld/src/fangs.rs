@@ -1,4 +1,4 @@
-use ohkami::{builtin::fang::JWT, Fang, FangProc, IntoResponse, Request, Response};
+use ohkami::{fang::JWT, Fang, FangProc, IntoResponse, Request, Response};
 use ohkami::serde::{Serialize, Deserialize};
 use sqlx::PgPool;
 use crate::config;

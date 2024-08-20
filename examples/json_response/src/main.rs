@@ -1,22 +1,23 @@
 use ohkami::{Ohkami, Route};
-use ohkami::{typed::Payload, builtin::payload::JSON};
+use ohkami::format::JSON;
+use ohkami::serde::Serialize;
 
 
-#[Payload(JSON/S)]
+#[derive(Serialize)]
 struct User {
     id:   u64,
     name: String,
 }
 
-async fn single_user() -> User {
-    User {
+async fn single_user() -> JSON<User> {
+    JSON(User {
         id:   42,
         name: String::from("ohkami"),
-    }
+    })
 }
 
-async fn multiple_users() -> Vec<User> {
-    vec![
+async fn multiple_users() -> JSON<Vec<User>> {
+    JSON(vec![
         User {
             id:   42,
             name: String::from("ohkami"),
@@ -25,7 +26,7 @@ async fn multiple_users() -> Vec<User> {
             id:   1024,
             name: String::from("bynari"),
         }
-    ]
+    ])
 }
 
 #[tokio::main]

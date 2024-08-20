@@ -8,7 +8,7 @@ pub(crate) mod router;
 
 pub use build::{Route, Routes};
 
-use crate::fangs::Fangs;
+use crate::fang::Fangs;
 use std::sync::Arc;
 use router::TrieRouter;
 
@@ -24,9 +24,8 @@ use crate::{__rt__, Session};
 /// ```
 /// # use ohkami::prelude::*;
 /// # use ohkami::serde::Serialize;
-/// # use ohkami::typed::Payload;
 /// # use ohkami::typed::status::{OK, Created};
-/// # use ohkami::builtin::payload::JSON;
+/// # use ohkami::format::JSON;
 /// # use ohkami::{Fang, FangProc};
 /// 
 /// struct Auth;
@@ -44,7 +43,7 @@ use crate::{__rt__, Session};
 /// #     }
 /// # }
 /// 
-/// # #[Payload(JSON/S)]
+/// # #[derive(Serialize)]
 /// # struct User {
 /// #     id:   usize,
 /// #     name: String,
@@ -66,16 +65,16 @@ use crate::{__rt__, Session};
 /// #     Status::NoContent
 /// # }
 /// # 
-/// # async fn create_user() -> Created<User> {
-/// #     Created(User {
+/// # async fn create_user() -> Created<JSON<User>> {
+/// #     Created(JSON(User {
 /// #         id:   42,
 /// #         name: String::from("ohkami"),
 /// #         age:  None,
-/// #     })
+/// #     }))
 /// # }
 /// # 
-/// # async fn get_user_by_id(id: usize) -> Result<OK<User>, APIError> {
-/// #     Ok(OK(User {
+/// # async fn get_user_by_id(id: usize) -> Result<JSON<User>, APIError> {
+/// #     Ok(JSON(User {
 /// #         id,
 /// #         name: String::from("ohkami"),
 /// #         age:  Some(2),

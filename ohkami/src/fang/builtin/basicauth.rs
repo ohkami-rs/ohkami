@@ -21,7 +21,7 @@ use crate::prelude::*;
 /// *example*
 /// ```rust,no_run
 /// use ohkami::prelude::*;
-/// use ohkami::builtin::fang::BasicAuth;
+/// use ohkami::fang::BasicAuth;
 /// 
 /// #[tokio::main]
 /// async fn main() {

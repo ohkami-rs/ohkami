@@ -1,6 +1,7 @@
 use std::borrow::Cow;
 
 use ohkami::{Ohkami, Route, Memory};
+use ohkami::format::JSON;
 use sqlx::PgPool;
 use crate::config::JWTPayload;
 use crate::{fangs::Auth, errors::RealWorldError};
@@ -18,11 +19,10 @@ pub fn profiles_ohkami() -> Ohkami {
     ))
 }
 
-async fn get_profile(
-    username:    &str,
+async fn get_profile(username: &str,
     auth: Memory<'_, JWTPayload>,
     pool: Memory<'_, PgPool>
-) -> Result<ProfileResponse, RealWorldError> {
+) -> Result<JSON<ProfileResponse>, RealWorldError> {
     let the_user = UserEntity::get_by_name(username, *pool).await?;
 
     let following_the_user = sqlx::query!(r#"
@@ -38,14 +38,15 @@ async fn get_profile(
         .map_err(RealWorldError::DB)?
         .exists.unwrap();
 
-    Ok(the_user.into_profile_response_with(following_the_user))
+    Ok(JSON(
+        the_user.into_profile_response_with(following_the_user)
+    ))
 }
 
-async fn follow(
-    username:    &str,
+async fn follow(username: &str,
     auth: Memory<'_, JWTPayload>,
     pool: Memory<'_, PgPool>,
-) -> Result<ProfileResponse, RealWorldError> {
+) -> Result<JSON<ProfileResponse>, RealWorldError> {
     let by_existing_user = sqlx::query!(r#"
         SELECT EXISTS (
             SELECT id
@@ -74,14 +75,15 @@ async fn follow(
         .execute(*pool).await
         .map_err(RealWorldError::DB)?;
 
-    Ok(followee.into_profile_response_with(true))
+    Ok(JSON(
+        followee.into_profile_response_with(true)
+    ))
 }
 
-async fn unfollow(
-    username:    &str,
+async fn unfollow(username: &str,
     auth: Memory<'_, JWTPayload>,
     pool: Memory<'_, PgPool>,
-) -> Result<ProfileResponse, RealWorldError> {
+) -> Result<JSON<ProfileResponse>, RealWorldError> {
     let followee = UserEntity::get_by_name(username, *pool).await?;
 
     let deletion_count = sqlx::query!(r#"
@@ -103,5 +105,5 @@ async fn unfollow(
         )))
     }
 
-    Ok(followee.into_profile_response_with(false))
+    Ok(JSON(followee.into_profile_response_with(false)))
 }

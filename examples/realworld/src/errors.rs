@@ -1,4 +1,4 @@
-use ohkami::{IntoResponse, serde::Serialize, typed::Payload, builtin::payload::JSON};
+use ohkami::{IntoResponse, serde::Serialize, format::JSON};
 use std::borrow::Cow;
 
 
@@ -19,7 +19,7 @@ pub enum RealWorldError {
     impl std::error::Error for RealWorldError {}
 };
 
-#[Payload(JSON/S)]
+#[derive(Serialize)]
 struct ValidationErrorFormat {
     errors: ValidationError,
 }
@@ -34,12 +34,12 @@ impl IntoResponse for RealWorldError {
         
         match self {
             Self::Validation { body } => UnprocessableEntity(
-                ValidationErrorFormat {
+                JSON(ValidationErrorFormat {
                     errors: ValidationError {
                         body: vec![body.into()],
                     },
                 }
-            ).into_response(),
+            )).into_response(),
             Self::Config(err_msg)       => InternalServerError(err_msg).into_response(),
             Self::DB(sqlx_err)          => InternalServerError(sqlx_err.to_string()).into_response(),
             Self::NotFound(nf)          => NotFound(nf).into_response(),

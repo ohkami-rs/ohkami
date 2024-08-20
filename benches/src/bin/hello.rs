@@ -1,5 +1,5 @@
 use ohkami::prelude::*;
-use ohkami::{typed::Payload, builtin::payload::JSON};
+use ohkami::{serde::*, format::JSON};
 
 #[cfg(feature="DEBUG")]
 #[derive(Clone)]
@@ -15,15 +15,15 @@ impl FangAction for Logger {
     }
 }
 
-#[Payload(JSON/S)]
+#[derive(Serialize)]
 struct Message {
     message: String
 }
 
-async fn hello(name: &str) -> Message {
-    Message {
+async fn hello(name: &str) -> JSON<Message> {
+    JSON(Message {
         message: format!("Hello, {name}!")
-    }
+    })
 }
 
 #[tokio::main]
@@ -32,7 +32,6 @@ async fn main() {
     tracing_subscriber::fmt()
         .with_max_level(tracing::Level::INFO)
         .init();
-
 
     #[cfg(feature="DEBUG")]
     let fangs = Logger;

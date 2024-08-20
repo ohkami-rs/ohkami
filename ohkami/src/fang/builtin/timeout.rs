@@ -1,3 +1,5 @@
+#![cfg(any(feature="rt_tokio",feature="rt_async-std"))]
+
 use std::time::Duration;
 
 
@@ -13,7 +15,7 @@ use std::time::Duration;
 /// *example.rs*
 /// ```no_run
 /// use ohkami::prelude::*;
-/// use ohkami::builtin::fang::Timeout;
+/// use ohkami::fang::Timeout;
 /// use std::time::Duration;
 /// 
 /// #[tokio::main]

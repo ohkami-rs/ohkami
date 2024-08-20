@@ -8,20 +8,19 @@ mod health_handler {
 
 
 mod hello_handler {
-    use ohkami::typed::{Payload, Query};
-    use ohkami::builtin::payload::JSON;
+    use ohkami::format::{Query, JSON};
+    use ohkami::serde::Deserialize;
 
-    #[Query]
-    #[query(deny_unknown_fields)]
-    pub struct HelloQuery<'q> {
-        name:   &'q str,
-
-        #[query(rename = "n")]
+    #[derive(Deserialize)]
+    #[serde(deny_unknown_fields)]
+    pub struct HelloQuery<'q> {        
+        #[serde(rename = "n")]
         repeat: Option<usize>,
+        name: &'q str,
     }
 
-    pub async fn hello_by_query<'h>(
-        HelloQuery { name, repeat }: HelloQuery<'h>
+    pub async fn hello_by_query(
+        Query(HelloQuery { name, repeat }): Query<HelloQuery<'_>>
     ) -> String {
         tracing::info!("\
             Called `hello_by_query`\
@@ -31,13 +30,15 @@ mod hello_handler {
     }
 
 
-    #[Payload(JSON/D where self.validate())]
+    #[derive(Deserialize)]
     pub struct HelloRequest<'n> {
         name:   &'n str,
         repeat: Option<usize>,
     }
-    impl HelloRequest<'_> {
-        fn validate(&self) -> Result<(), &'static str> {
+    #[cfg(feature="nightly")]
+    impl ohkami::format::V for HelloRequest<'_> {
+        type ErrorMessage = &'static str;
+        fn validate(&self) -> Result<(), Self::ErrorMessage> {
             let _: () = (! self.name.is_empty()).then_some(())
                 .ok_or_else(|| "`name` mustn't be empty")?;
 
@@ -49,7 +50,7 @@ mod hello_handler {
     }
 
     pub async fn hello_by_json(
-        HelloRequest { name, repeat }: HelloRequest<'_>
+        JSON(HelloRequest { name, repeat }): JSON<HelloRequest<'_>>
     ) -> String {
         tracing::info!("\
             Called `hello_by_json`\
@@ -107,21 +108,19 @@ async fn main() {
         .with_max_level(tracing::Level::INFO)
         .init();
 
-    let hello_ohkami = Ohkami::with((
-        fangs::SetServer,
-    ), (
-        "/query".
-            GET(hello_handler::hello_by_query),
-        "/json".
-            POST(hello_handler::hello_by_json),
-    ));
-
     tracing::info!("Started listening on http://localhost:3000");
 
     Ohkami::with((
         fangs::LogRequest,
     ), (
         "/hc" .GET(health_handler::health_check),
-        "/api".By(hello_ohkami),
+        "/api".By(Ohkami::with((
+            fangs::SetServer,
+        ), (
+            "/query".
+                GET(hello_handler::hello_by_query),
+            "/json".
+                POST(hello_handler::hello_by_json),
+        ))),
     )).howl("localhost:3000").await
 }

@@ -3,8 +3,7 @@
 
 use crate::prelude::*;
 use crate::testing::*;
-use crate::builtin::payload::JSON;
-use crate::typed::{status, Payload};
+use crate::{typed::status, format::JSON};
 use ::serde::Deserialize;
 
 
@@ -13,8 +12,6 @@ use ::serde::Deserialize;
 struct User<'req> {
     name:     &'req str,
     password: &'req str,
-} impl Payload for User<'_> {
-    type Type = JSON;
 }
 
 #[derive(Deserialize)]
@@ -30,7 +27,7 @@ struct HelloQuery<'req> {
 
 #[crate::__rt__::test] async fn extract_required_payload() {
     async fn create_user(
-        _body: User<'_>,
+        JSON(_user): JSON<User<'_>>
     ) -> status::Created {
         status::Created(())
     }
@@ -51,7 +48,7 @@ struct HelloQuery<'req> {
 
 #[crate::__rt__::test] async fn extract_optional_payload() {
     async fn post_user(
-        body: Option<User<'_>>,
+        body: Option<JSON<User<'_>>>,
     ) -> &'static str {
         if body.is_none() {"none"} else {"some"}
     }

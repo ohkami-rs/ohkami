@@ -1,14 +1,7 @@
-use ohkami::typed::Payload;
-use ohkami::builtin::payload::{JSON, Text};
 use ohkami::serde::{Deserialize, Serialize};
 
 
-#[Payload(Text/D)]
-pub struct UserMessage(
-    pub String
-);
-
-#[Payload(JSON/S)]
+#[derive(Serialize)]
 pub struct ChatCompletions {
     pub model:    &'static str,
     pub messages: Vec<ChatMessage>,
@@ -20,7 +13,7 @@ pub struct ChatMessage {
     pub content: String,
 }
 
-#[Payload(JSON/D)]
+#[derive(Deserialize)]
 pub struct ChatCompletionChunk {
     pub id:      String,
     pub choices: [ChatCompletionChoice; 1],

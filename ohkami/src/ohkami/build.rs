@@ -1,7 +1,7 @@
 #![allow(non_snake_case, unused_mut)]
 
 use super::router::{TrieRouter, RouteSections};
-use crate::fangs::{Handler, IntoHandler};
+use crate::fang::{Handler, IntoHandler};
 use crate::response::Content;
 use crate::Ohkami;
 

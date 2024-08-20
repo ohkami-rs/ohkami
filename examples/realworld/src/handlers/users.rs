@@ -1,4 +1,4 @@
-use ohkami::{typed::status::Created, Memory, Ohkami, Route};
+use ohkami::{typed::status::Created, format::JSON, Memory, Ohkami, Route};
 use sqlx::PgPool;
 use crate::{
     models::User,
@@ -21,10 +21,10 @@ pub fn users_ohkami() -> Ohkami {
 
 async fn login(
     pool: Memory<'_, PgPool>,
-    LoginRequest {
+    JSON(LoginRequest {
         user: LoginRequestUser { email, password },
-    }: LoginRequest<'_>,
-) -> Result<UserResponse, RealWorldError> {
+    }): JSON<LoginRequest<'_>>,
+) -> Result<JSON<UserResponse>, RealWorldError> {
     let credential = sqlx::query!(r#"
         SELECT password, salt
         FROM users
@@ -43,15 +43,15 @@ async fn login(
         .fetch_one(*pool).await
         .map_err(RealWorldError::DB)?;
 
-    Ok(u.into_user_response()?)
+    Ok(JSON(u.into_user_response()?))
 }
 
 async fn register(
     pool: Memory<'_, PgPool>,
-    RegisterRequest {
+    JSON(RegisterRequest {
         user: RegisterRequestUser { username, email, password }
-    }: RegisterRequest<'_>,
-) -> Result<Created<UserResponse>, RealWorldError> {
+    }): JSON<RegisterRequest<'_>>,
+) -> Result<Created<JSON<UserResponse>>, RealWorldError> {
     let already_exists = sqlx::query!(r#"
         SELECT EXISTS (
             SELECT id
@@ -81,13 +81,15 @@ async fn register(
         .map_err(RealWorldError::DB)?
         .id;
 
-    Ok(Created(UserResponse {
-        user: User {
-            email: email.into(),
-            jwt:   config::issue_jwt_for_user_of_id(new_user_id)?,
-            name:  username.into(),
-            bio:   None,
-            image: None,
-        },
-    }))
+    Ok(Created(JSON(
+        UserResponse {
+            user: User {
+                email: email.into(),
+                jwt:   config::issue_jwt_for_user_of_id(new_user_id)?,
+                name:  username.into(),
+                bio:   None,
+                image: None,
+            },
+        }
+    )))
 }
