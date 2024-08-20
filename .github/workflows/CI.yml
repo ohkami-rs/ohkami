@@ -48,7 +48,13 @@ jobs:
           echo '[build]'                                      >> $HOME/.cargo/config.toml
           echo "rustc-wrapper = \"$HOME/.cargo/bin/sccache\"" >> $HOME/.cargo/config.toml
           cat $HOME/.cargo/config.toml
-         
+      - name: Cache sccahe dir
+        id:   cahce_sccahe_dir
+        uses: actions/cache@v3
+        with:
+          key:  ${{ runner.os }}-sccahe-dir
+          path: ~/.cache/sccache
+
       - name: Run tasks
         run:  |
           sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
