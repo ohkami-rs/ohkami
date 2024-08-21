@@ -92,20 +92,6 @@ impl Session {
         }).await {
             Some(Upgrade::None) | None => {
                 crate::DEBUG!("about to shutdown connection");
-        
-                if let Some(err) = {
-                    #[cfg(feature="rt_tokio")] {use crate::__rt__::AsyncWriter;
-                        self.connection.shutdown().await
-                    }
-                    #[cfg(feature="rt_async-std")] {
-                        self.connection.shutdown(std::net::Shutdown::Both)
-                    }
-                }.err() {
-                    match err.kind() {
-                        std::io::ErrorKind::NotConnected => (),
-                        _ => panic!("Failed to shutdown stream: {err}")
-                    }
-                }
             }
 
             #[cfg(all(feature="ws", any(feature="rt_tokio",feature="rt_async-std")))]
