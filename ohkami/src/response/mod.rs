@@ -172,7 +172,7 @@ impl Upgrade {
 impl Response {
     #[cfg_attr(not(feature="sse"), inline)]
     pub(crate) async fn send(mut self,
-        conn: &mut (impl AsyncWriter + Unpin + 'static)
+        conn: &mut (impl AsyncWriter + Unpin)
     ) -> Upgrade {
         self.complete();
 
