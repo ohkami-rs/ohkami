@@ -84,17 +84,9 @@ mod fangs {
     #[derive(Clone)]
     pub struct LogRequest;
     impl FangAction for LogRequest {
-        fn fore<'a>(&'a self, req: &'a mut Request) -> impl std::future::Future<Output = Result<(), Response>> + Send {
-            let __method__ = req.method;
-            let __path__   = req.path.str();
-
-            tracing::info!("\n\
-                Got request:\n\
-                [ method ] {__method__}\n\
-                [  path  ] {__path__}\n\
-            ");
-
-            async {Ok(())}
+        async fn fore<'a>(&'a self, req: &'a mut Request) -> Result<(), Response> {
+            tracing::info!("\nGot request: {req:#?}");
+            Ok(())
         }
     }
 }

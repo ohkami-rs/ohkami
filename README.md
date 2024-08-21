@@ -76,7 +76,7 @@ Select a native async runtime
 npm create cloudflare ./path/to/project -- --template https://github.com/ohkami-rs/ohkami-templates/worker
 ```
 
-Then your project directory has `wrangler.toml`, `package.json` and a Rust library crate. Local dev by `npm run dev` and deploy by `npm run deploy` !
+then your project directory has `wrangler.toml`, `package.json` and a Rust library crate. Local dev by `npm run dev` and deploy by `npm run deploy` !
 
 See README of the [template](https://github.com/ohkami-rs/ohkami-templates/tree/main/worker) for details.
 
@@ -139,6 +139,10 @@ async fn main() {
     )).howl("localhost:3030").await
 }
 ```
+
+### `"ip"`：remote IP address
+
+Get and hold remote peer's IP address
 
 ### `"nightly"`：enable nightly-only functionalities
 

@@ -55,7 +55,7 @@ impl TestingOhkami {
         let router = self.0.clone();
         
         let res = async move {
-            let mut request = Request::init();
+            let mut request = Request::init(#[cfg(feature="ip")] crate::utils::IP_0000);
             let mut request = unsafe {Pin::new_unchecked(&mut request)};
             
             let res = match request.as_mut().read(&mut &req.encode()[..]).await {

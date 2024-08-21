@@ -282,8 +282,16 @@ impl Ohkami {
                     accept = listener.accept() => {
                         crate::DEBUG!("Accepted {accept:#?}");
 
+                        #[cfg(not(feature="ip"))]
                         let Ok((connection, _)) = accept else {continue};
-                        let session = Session::new(router.clone(), connection);
+                        #[cfg(feature="ip")]
+                        let Ok((connection, addr)) = accept else {continue};
+
+                        let session = Session::new(
+                            router.clone(),
+                            connection,
+                            #[cfg(feature="ip")] addr.ip()
+                        );
 
                         let close_rx = close_rx.clone();
                         __rt__::task::spawn(async {
@@ -305,12 +313,16 @@ impl Ohkami {
         }
         #[cfg(all(feature="rt_tokio", not(feature="graceful")))] {
             loop {
+                #[cfg(not(feature="ip"))]
                 let Ok((connection, _)) = listener.accept().await else {continue};
+                #[cfg(feature="ip")]
+                let Ok((connection, addr)) = listener.accept().await else {continue};
 
                 __rt__::task::spawn({
                     Session::new(
                         router.clone(),
                         connection,
+                        #[cfg(feature="ip")] addr.ip()
                     ).manage()
                 });
             }
@@ -321,10 +333,14 @@ impl Ohkami {
             while let Some(connection) = listener.incoming().next().await {
                 let Ok(connection) = connection else {continue};
 
+                #[cfg(feature="ip")]
+                let Ok(addr) = connection.peer_addr() else {continue};
+
                 __rt__::task::spawn({
                     Session::new(
                         router.clone(),
                         connection,
+                        #[cfg(feature="ip")] addr.ip()
                     ).manage()
                 });
             }

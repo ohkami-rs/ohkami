@@ -160,13 +160,20 @@ pub struct Request {
     pub headers: RequestHeaders,
 
     pub payload: Option<CowSlice>,
+
     store: Store,
+
+    #[cfg(feature="ip")]
+    pub addr: std::net::IpAddr
 }
 
 impl Request {
     #[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_worker"))]
     #[inline]
-    pub(crate) fn init() -> Self {
+    pub(crate) fn init(
+        #[cfg(feature="ip")]
+        addr: std::net::IpAddr
+    ) -> Self {
         Self {
             #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
             __buf__: Box::new([0; BUF_SIZE]),
@@ -184,6 +191,9 @@ impl Request {
             headers: RequestHeaders::init(),
             payload: None,
             store:   Store::init(),
+
+            #[cfg(feature="ip")]
+            addr
         }
     }
     #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
@@ -431,22 +441,22 @@ impl Request {
 const _: () = {
     impl std::fmt::Debug for Request {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            let mut d = f.debug_struct("Request");
+            let d = &mut d;
+
+            d
+                .field("method",  &self.method)
+                .field("path",    &self.path.str())
+                .field("queries", &self.query)
+                .field("headers", &self.headers);
             if let Some(payload) = self.payload.as_ref().map(|cs| unsafe {cs.as_bytes()}) {
-                f.debug_struct("Request")
-                    .field("method",  &self.method)
-                    .field("path",    &self.path.str())
-                    .field("queries", &self.query)
-                    .field("headers", &self.headers)
-                    .field("payload", &String::from_utf8_lossy(payload))
-                    .finish()
-            } else {
-                f.debug_struct("Request")
-                    .field("method",  &self.method)
-                    .field("path",    &self.path.str())
-                    .field("queries", &self.query)
-                    .field("headers", &self.headers)
-                    .finish()
+                d.field("payload", &String::from_utf8_lossy(payload));
             }
+            #[cfg(feature="ip")] {
+                d.field("ip_address", &self.addr);
+            }
+
+            d.finish()
         }
     }
 };
@@ -455,11 +465,15 @@ const _: () = {
 #[cfg(test)] const _: () = {
     impl PartialEq for Request {
         fn eq(&self, other: &Self) -> bool {
-                self.method == other.method &&
-                unsafe {self.path.normalized_bytes() == other.path.normalized_bytes()} &&
-                self.query == other.query &&
-                self.headers == other.headers &&
-                self.payload == other.payload
+            #[cfg(feature="ip")] if self.addr != other.addr {
+                return false
+            }
+
+            self.method == other.method &&
+            unsafe {self.path.normalized_bytes() == other.path.normalized_bytes()} &&
+            self.query == other.query &&
+            self.headers == other.headers &&
+            self.payload == other.payload
         }
     }
 };

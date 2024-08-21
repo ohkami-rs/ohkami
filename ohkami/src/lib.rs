@@ -35,18 +35,23 @@
     Can't activate multiple `rt_*` features at once!
 "}
 
-#[cfg(any(
-    all(feature="graceful", not(feature="rt_tokio")),
-))] compile_error! {"
-    In current versoin, `graceful` feature is only supported on `rt_tokio`.
-    Please wait for future development for other runtimes...
-"}
-
 #[cfg(not(feature="DEBUG"))]
 #[cfg(all(feature="rt_worker", not(target_arch="wasm32")))]
 compile_error! {"
     `rt_worker` must be activated on `wasm32` target!
     (We recommend to touch `.cargo/config.toml`: `[build] target = \"wasm32-unknown-unknown\"`)
+"}
+
+#[cfg(all(feature="rt_worker", feature="ip"))]
+compile_error! {"
+    Can't activate `ip` feature on `rt_worker`!
+"}
+
+#[cfg(any(
+    all(feature="graceful", not(feature="rt_tokio")),
+))] compile_error! {"
+    In current versoin, `graceful` feature is only supported on `rt_tokio`.
+    Please wait for future development for other runtimes...
 "}
 
 
@@ -231,6 +236,9 @@ pub mod utils {
 
         Timeout { proc, sleep: crate::__rt__::sleep(duration) }
     }
+
+    #[cfg(feature="ip")]
+    pub(crate) const IP_0000: std::net::IpAddr = std::net::IpAddr::V4(std::net::Ipv4Addr::new(0, 0, 0, 0));
 }
 
 #[cfg(feature="rt_worker")]
