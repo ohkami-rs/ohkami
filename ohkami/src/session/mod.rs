@@ -64,45 +64,33 @@ impl Session {
         }
 
         match timeout_in(Duration::from_secs(env::OHKAMI_KEEPALIVE_TIMEOUT()), async {
+            let mut req = Request::init();
+            let mut req = unsafe {Pin::new_unchecked(&mut req)};
             loop {
-                let mut req = Request::init();
-                let mut req = unsafe {Pin::new_unchecked(&mut req)};
+                req.clear();
                 match req.as_mut().read(&mut self.connection).await {
                     Ok(Some(())) => {
                         let close = matches!(req.headers.Connection(), Some("close" | "Close"));
 
-                        let res = match catch_unwind(AssertUnwindSafe(|| self.router.handle(req.get_mut()))) {
+                        let res = match catch_unwind(AssertUnwindSafe({
+                            let req = req.as_mut();
+                            || self.router.handle(req.get_mut())
+                        })) {
                             Ok(future) => future.await,
                             Err(panic) => panicking(panic),
                         };
                         let upgrade = res.send(&mut self.connection).await;
-                        if !upgrade.is_none() {
-                            break upgrade
-                        }
 
+                        if !upgrade.is_none() {break upgrade}
                         if close {break Upgrade::None}
                     }
                     Ok(None) => break Upgrade::None,
                     Err(res) => {res.send(&mut self.connection).await;},
-                };
+                }
             }
         }).await {
             Some(Upgrade::None) | None => {
                 crate::DEBUG!("about to shutdown connection");
-        
-                if let Some(err) = {
-                    #[cfg(feature="rt_tokio")] {use crate::__rt__::AsyncWriter;
-                        self.connection.shutdown().await
-                    }
-                    #[cfg(feature="rt_async-std")] {
-                        self.connection.shutdown(std::net::Shutdown::Both)
-                    }
-                }.err() {
-                    match err.kind() {
-                        std::io::ErrorKind::NotConnected => (),
-                        _ => panic!("Failed to shutdown stream: {err}")
-                    }
-                }
             }
 
             #[cfg(all(feature="ws", any(feature="rt_tokio",feature="rt_async-std")))]

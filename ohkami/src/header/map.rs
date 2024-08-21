@@ -14,6 +14,13 @@ impl<const N: usize, Value> IndexMap<N, Value> {
         }
     }
 
+    #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
+    #[inline]
+    pub(crate) fn clear(&mut self) {
+        for idx in &mut self.index {*idx = Self::NULL}
+        self.values.clear();
+    }
+
     #[inline(always)]
     pub(crate) unsafe fn get(&self, index: usize) -> Option<&Value> {
         match *self.index.get_unchecked(index) {

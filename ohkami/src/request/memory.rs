@@ -33,6 +33,12 @@ impl Store {
     pub(super) const fn init() -> Self {
         Self(None)
     }
+    #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
+    pub(super) fn clear(&mut self) {
+        if let Some(map) = &mut self.0 {
+            map.clear()
+        }
+    }
 
     #[inline] pub fn insert<Data: Send + Sync + 'static>(&mut self, value: Data) {
         self.0.get_or_insert_with(|| Box::new(HashMap::default()))

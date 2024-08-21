@@ -359,6 +359,15 @@ impl Headers {
         Self::init()
     }
 
+    #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
+    #[inline]
+    pub(crate) fn clear(&mut self) {
+        self.standard.clear();
+        if let Some(map) = &mut self.custom {
+            map.clear()
+        }
+    }
+
     #[inline] pub(crate) fn get_raw(&self, name: Header) -> Option<&CowSlice> {
         unsafe {self.standard.get(name as usize)}
     }
