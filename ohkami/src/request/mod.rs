@@ -186,6 +186,18 @@ impl Request {
             store:   Store::init(),
         }
     }
+    #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
+    #[inline]
+    pub(crate) fn clear(&mut self) {
+        for b in &mut *self.__buf__ {
+            match b {0 => break, _ => *b = 0}
+        }
+        self.path  = Path::uninit();
+        self.query = None;
+        self.headers.clear();
+        self.payload = None;
+        self.store.clear();
+    }
 
     #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
     #[inline]
