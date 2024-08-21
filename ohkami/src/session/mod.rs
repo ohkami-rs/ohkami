@@ -67,6 +67,7 @@ impl Session {
             let mut req = Request::init();
             let mut req = unsafe {Pin::new_unchecked(&mut req)};
             loop {
+                req.clear();
                 match req.as_mut().read(&mut self.connection).await {
                     Ok(Some(())) => {
                         let close = matches!(req.headers.Connection(), Some("close" | "Close"));
@@ -86,7 +87,6 @@ impl Session {
                     Ok(None) => break Upgrade::None,
                     Err(res) => {res.send(&mut self.connection).await;},
                 }
-                req.clear()
             }
         }).await {
             Some(Upgrade::None) | None => {

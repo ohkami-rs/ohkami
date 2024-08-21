@@ -189,14 +189,16 @@ impl Request {
     #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
     #[inline]
     pub(crate) fn clear(&mut self) {
-        for b in &mut *self.__buf__ {
-            match b {0 => break, _ => *b = 0}
-        }
-        self.path  = Path::uninit();
-        self.query = None;
-        self.headers.clear();
-        self.payload = None;
-        self.store.clear();
+        if self.__buf__[0] != 0 {
+            for b in &mut *self.__buf__ {
+                match b {0 => break, _ => *b = 0}
+            }
+            self.path  = Path::uninit();
+            self.query = None;
+            self.headers.clear();
+            self.payload = None;
+            self.store.clear();
+        } /* else: just after `init`ed or `clear`ed */
     }
 
     #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
