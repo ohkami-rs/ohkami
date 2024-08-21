@@ -7,7 +7,7 @@ use super::{Request, Method, BUF_SIZE, Path, QueryParams, Store};
 
 macro_rules! assert_parse {
     ($case:expr, $expected:expr) => {
-        let mut actual = Request::init();
+        let mut actual = Request::init(#[cfg(feature="ip")] crate::utils::IP_0000);
         let mut actual = unsafe {Pin::new_unchecked(&mut actual)};
         actual.as_mut().read(&mut $case.as_bytes()).await.ok();
 
@@ -79,6 +79,9 @@ fn parse_path() {
         ], None),
         payload: None,
         store:   Store::init(),
+
+        #[cfg(feature="ip")]
+        addr: crate::utils::IP_0000
     });
 
 
@@ -109,6 +112,9 @@ fn parse_path() {
             br#"{"name":"kanarus","age":20}"#
         ))),
         store: Store::init(),
+
+        #[cfg(feature="ip")]
+        addr: crate::utils::IP_0000
     });
 
     {
@@ -154,7 +160,9 @@ fn parse_path() {
             ),
             payload: Some(CowSlice::Own(Vec::from("first_name=John&last_name=Doe&action=Submit").into())),
             store:   Store::init(),
-            // #[cfg(feature="websocket")] upgrade_id: None,
+
+            #[cfg(feature="ip")]
+            addr: crate::utils::IP_0000
         });
     }
 }

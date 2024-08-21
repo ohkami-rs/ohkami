@@ -48,6 +48,7 @@ testing       = []
 sse           = ["ohkami_lib/stream"]
 ws            = ["dep:sha1"]
 graceful      = ["rt_tokio", "tokio/signal", "tokio/macros"]
+ip            = []
 
 ##### DEBUG #####
 DEBUG = [
@@ -60,6 +61,7 @@ DEBUG = [
 #    "testing",
 #    "sse",
 #    "ws",
+#    "ip",
 #    "rt_tokio",
 #    #"rt_async-std",
 #    #"rt_worker",

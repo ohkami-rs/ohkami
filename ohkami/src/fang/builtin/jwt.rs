@@ -414,7 +414,7 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
         let req_bytes = TestRequest::GET("/")
             .header("Authorization", "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE3MDY4MTEwNzUsInVzZXJfaWQiOiI5ZmMwMDViMi1mODU4LTQzMzYtODkwYS1mMWEyYWVmNjBhMjQifQ.AKp-0zvKK4Hwa6qCgxskckD04Snf0gpSG7U1LOpcC_I")
             .encode();
-        let mut req = Request::init();
+        let mut req = Request::init(#[cfg(feature="ip")] crate::utils::IP_0000);
         let mut req = unsafe {Pin::new_unchecked(&mut req)};
         req.as_mut().read(&mut &req_bytes[..]).await.ok();
 
@@ -427,7 +427,7 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
             // Modifed last `I` of the value above to `X`
             .header("Authorization", "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE3MDY4MTEwNzUsInVzZXJfaWQiOiI5ZmMwMDViMi1mODU4LTQzMzYtODkwYS1mMWEyYWVmNjBhMjQifQ.AKp-0zvKK4Hwa6qCgxskckD04Snf0gpSG7U1LOpcC_X")
             .encode();
-        let mut req = Request::init();
+        let mut req = Request::init(#[cfg(feature="ip")] crate::utils::IP_0000);
         let mut req = unsafe {Pin::new_unchecked(&mut req)};
         req.as_mut().read(&mut &req_bytes[..]).await.ok();
 
