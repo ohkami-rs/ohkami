@@ -82,12 +82,11 @@ impl Session {
 
                         if !upgrade.is_none() {break upgrade}
                         if close {break Upgrade::None}
-
-                        req.clear();
                     }
                     Ok(None) => break Upgrade::None,
                     Err(res) => {res.send(&mut self.connection).await;},
-                };
+                }
+                req.clear()
             }
         }).await {
             Some(Upgrade::None) | None => {
