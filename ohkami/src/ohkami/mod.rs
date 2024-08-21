@@ -283,9 +283,9 @@ impl Ohkami {
                         crate::DEBUG!("Accepted {accept:#?}");
 
                         #[cfg(not(feature="ip"))]
-                        let Ok((connection, _)) = accept.await else {continue};
+                        let Ok((connection, _)) = accept else {continue};
                         #[cfg(feature="ip")]
-                        let Ok((connection, addr)) = accept.await else {continue};
+                        let Ok((connection, addr)) = accept else {continue};
 
                         let session = Session::new(
                             router.clone(),
