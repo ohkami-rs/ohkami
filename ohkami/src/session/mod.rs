@@ -1,4 +1,4 @@
-#![cfg(any(feature="rt_tokio",feature="rt_async-std"))]
+#![cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_glommio"))]
 
 use std::{any::Any, pin::Pin, sync::Arc, time::Duration};
 use std::panic::{AssertUnwindSafe, catch_unwind};
@@ -14,7 +14,6 @@ mod env {
 
     use std::sync::OnceLock;
 
-    #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
     pub(crate) fn OHKAMI_KEEPALIVE_TIMEOUT() -> u64 {
         static OHKAMI_KEEPALIVE_TIMEOUT: OnceLock<u64> = OnceLock::new();
         *OHKAMI_KEEPALIVE_TIMEOUT.get_or_init(|| {
@@ -24,7 +23,7 @@ mod env {
         })
     }
 
-    #[cfg(all(feature="ws", any(feature="rt_tokio",feature="rt_async-std")))]
+    #[cfg(feature="ws")]
     pub(crate) fn OHKAMI_WEBSOCKET_TIMEOUT() -> u64 {
         static OHKAMI_WEBSOCKET_TIMEOUT: OnceLock<u64> = OnceLock::new();
         *OHKAMI_WEBSOCKET_TIMEOUT.get_or_init(|| {
@@ -102,7 +101,7 @@ impl Session {
                 crate::DEBUG!("about to shutdown connection");
             }
 
-            #[cfg(all(feature="ws", any(feature="rt_tokio",feature="rt_async-std")))]
+            #[cfg(feature="ws")]
             Some(Upgrade::WebSocket((config, handler))) => {
                 use crate::ws::{Connection, Message, CloseFrame, CloseCode};
 

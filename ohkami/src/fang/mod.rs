@@ -1,6 +1,6 @@
-#[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_worker"))]
+#[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_glommio",feature="rt_worker"))]
 mod handler;
-#[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_worker"))]
+#[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_glommio",feature="rt_worker"))]
 pub(crate) use handler::{Handler, IntoHandler};
 
 mod middleware;

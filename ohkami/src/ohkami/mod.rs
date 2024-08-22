@@ -1,4 +1,4 @@
-#![cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_worker"))]
+#![cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_glommio",feature="rt_worker"))]
 
 #[cfg(test)]
 mod _test;
@@ -12,7 +12,7 @@ use crate::fang::Fangs;
 use std::sync::Arc;
 use router::TrieRouter;
 
-#[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
+#[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_glommio"))]
 use crate::{__rt__, Session};
 
 
@@ -229,7 +229,7 @@ impl Ohkami {
         }
     }
 
-    #[cfg(any(feature="rt_tokio", feature="rt_async-std"))]
+    #[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_glommio"))]
     /// Start serving at `address`!
     /// 
     /// `address` is `{runtime}::net::ToSocketAddrs`：
@@ -265,7 +265,11 @@ impl Ohkami {
     /// ```
     pub async fn howl(self, address: impl __rt__::ToSocketAddrs) {
         let router = Arc::new(self.into_router().into_radix());
-        let listener = __rt__::TcpListener::bind(address).await.expect("Failed to bind TCP listener: {e}");
+
+        #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
+        let listener = __rt__::TcpListener::bind(address).await.expect("Failed to bind TCP listener");
+        #[cfg(feature="rt_glommio")]
+        let listener = __rt__::TcpListener::bind(address).expect("Failed to bind TCP listener");
         
         #[cfg(all(feature="rt_tokio", feature="graceful"))] {
             let ctrl_c = tokio::signal::ctrl_c();
@@ -344,6 +348,29 @@ impl Ohkami {
                     ).manage()
                 });
             }
+        }
+        #[cfg(feature="rt_glommio")] {
+            use glommio::{LocalExecutorPoolBuilder, PoolPlacement, CpuSet};
+
+            LocalExecutorPoolBuilder::new(PoolPlacement::MaxSpread(
+                ::num_cpus::get(),
+                CpuSet::online().ok()
+            )).on_all_shards(|| async {
+                loop {
+                    let Ok(connection) = listener.accept().await else {continue};
+
+                    #[cfg(feature="ip")]
+                    let Ok(addr) = connection.peer_addr() else {continue};
+
+                    glommio::spawn_local({
+                        Session::new(
+                            router.clone(),
+                            connection,
+                            #[cfg(feature="ip")] addr.ip()
+                        )
+                    }).detach();
+                }
+            }).expect("Failed to create executer pool");
         }
     }
 
