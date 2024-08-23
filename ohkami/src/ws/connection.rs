@@ -4,19 +4,8 @@ use super::{Message, Config};
 use crate::__rt__::{AsyncWriter, AsyncReader};
 
 
-#[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
-pub trait WebSocketConnection: AsyncWriter + AsyncReader + Unpin + Send {}
-#[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
-impl<C: AsyncWriter + AsyncReader + Unpin + Send> WebSocketConnection for C {}
-
-#[cfg(any(feature="rt_glommio"))]
-pub trait WebSocketConnection: AsyncWriter + AsyncReader + Unpin {}
-#[cfg(any(feature="rt_glommio"))]
-impl<C: AsyncWriter + AsyncReader + Unpin> WebSocketConnection for C {}
-
-
 /// WebSocket connection
-pub struct Connection<Conn: WebSocketConnection> {
+pub struct Connection<Conn: AsyncWriter + AsyncReader + Unpin> {
     conn:       Arc<UnsafeCell<(State, Conn)>>,
     config:     Config,
     n_buffered: usize,
@@ -26,10 +15,10 @@ pub struct Connection<Conn: WebSocketConnection> {
 enum State { Alive, Closed }
 
 const _: () = {
-    unsafe impl<Conn: WebSocketConnection> Send for Connection<Conn> {}
-    unsafe impl<Conn: WebSocketConnection> Sync for Connection<Conn> {}
+    #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
+    unsafe impl<Conn: AsyncWriter + AsyncReader + Unpin + Send> Send for Connection<Conn> {}
 
-    impl<Conn: WebSocketConnection> std::fmt::Debug for Connection<Conn> {
+    impl<Conn: AsyncWriter + AsyncReader + Unpin> std::fmt::Debug for Connection<Conn> {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             let (state, underlying) = unsafe {&*self.conn.get()};
             f.debug_struct("Connection")
@@ -40,7 +29,7 @@ const _: () = {
                 .finish()
         }
     }
-    impl<Conn: WebSocketConnection> Clone for Connection<Conn> {
+    impl<Conn: AsyncWriter + AsyncReader + Unpin> Clone for Connection<Conn> {
         fn clone(&self) -> Self {
             Connection {
                 conn:       Arc::clone(&self.conn),
@@ -50,7 +39,7 @@ const _: () = {
         }
     }
     
-    impl<Conn: WebSocketConnection> Connection<Conn> {
+    impl<Conn: AsyncWriter + AsyncReader + Unpin> Connection<Conn> {
         pub(crate) fn new(conn: Conn, config: Config) -> Self {
             let conn = Arc::new(UnsafeCell::new((State::Alive, conn)));
             Self { conn, config, n_buffered:0 }
@@ -118,7 +107,7 @@ pub(super) async fn flush(
 }
 // =============================================================================
 
-impl<Conn: WebSocketConnection> Connection<Conn> {
+impl<Conn: AsyncWriter + AsyncReader + Unpin> Connection<Conn> {
     /// Recieve a WebSocket message.
     /// 
     /// *note* : this automatically responds to a ping message

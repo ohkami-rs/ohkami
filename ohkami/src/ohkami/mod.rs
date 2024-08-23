@@ -271,66 +271,70 @@ impl Ohkami {
         #[cfg(feature="rt_glommio")]
         let listener = __rt__::TcpListener::bind(address).expect("Failed to bind TCP listener");
         
-        #[cfg(all(feature="rt_tokio", feature="graceful"))] {
-            let ctrl_c = tokio::signal::ctrl_c();
+        #[cfg(feature="rt_tokio")] {
+            #[cfg(feature="graceful")] {
+                let ctrl_c = tokio::signal::ctrl_c();
 
-            let (ctrl_c_tx, ctrl_c_rx) = tokio::sync::watch::channel(());
-            __rt__::task::spawn(async {
-                ctrl_c.await.expect("Something was wrong around Ctrl-C");
-                drop(ctrl_c_rx);
-            });
+                let (ctrl_c_tx, ctrl_c_rx) = tokio::sync::watch::channel(());
+                __rt__::task::spawn(async {
+                    ctrl_c.await.expect("Something was wrong around Ctrl-C");
+                    drop(ctrl_c_rx);
+                });
 
-            let (close_tx, close_rx) = tokio::sync::watch::channel(());
-            loop {
-                tokio::select! {
-                    accept = listener.accept() => {
-                        crate::DEBUG!("Accepted {accept:#?}");
+                let (close_tx, close_rx) = tokio::sync::watch::channel(());
+                loop {
+                    tokio::select! {
+                        accept = listener.accept() => {
+                            crate::DEBUG!("Accepted {accept:#?}");
 
-                        #[cfg(not(feature="ip"))]
-                        let Ok((connection, _)) = accept else {continue};
-                        #[cfg(feature="ip")]
-                        let Ok((connection, addr)) = accept else {continue};
+                            #[cfg(not(feature="ip"))]
+                            let Ok((connection, _)) = accept else {continue};
+                            #[cfg(feature="ip")]
+                            let Ok((connection, addr)) = accept else {continue};
 
-                        let session = Session::new(
+                            let session = Session::new(
+                                router.clone(),
+                                connection,
+                                #[cfg(feature="ip")] addr.ip()
+                            );
+
+                            let close_rx = close_rx.clone();
+                            __rt__::task::spawn(async {
+                                session.manage().await;
+                                drop(close_rx)
+                            });
+                        },
+                        _ = ctrl_c_tx.closed() => {
+                            crate::DEBUG!("Recieved Ctrl-C, trying graceful shutdown");
+                            drop(listener);
+                            break
+                        }
+                    }
+                }
+
+                crate::DEBUG!("Waiting {} session(s) to finish...", close_tx.receiver_count());
+                drop(close_rx);
+                close_tx.closed().await;       
+            }
+
+            #[cfg(not(feature="graceful"))] {
+                loop {
+                    #[cfg(not(feature="ip"))]
+                    let Ok((connection, _)) = listener.accept().await else {continue};
+                    #[cfg(feature="ip")]
+                    let Ok((connection, addr)) = listener.accept().await else {continue};
+
+                    __rt__::task::spawn({
+                        Session::new(
                             router.clone(),
                             connection,
                             #[cfg(feature="ip")] addr.ip()
-                        );
-
-                        let close_rx = close_rx.clone();
-                        __rt__::task::spawn(async {
-                            session.manage().await;
-                            drop(close_rx)
-                        });
-                    },
-                    _ = ctrl_c_tx.closed() => {
-                        crate::DEBUG!("Recieved Ctrl-C, trying graceful shutdown");
-                        drop(listener);
-                        break
-                    }
+                        ).manage()
+                    });
                 }
             }
-
-            crate::DEBUG!("Waiting {} session(s) to finish...", close_tx.receiver_count());
-            drop(close_rx);
-            close_tx.closed().await;
         }
-        #[cfg(all(feature="rt_tokio", not(feature="graceful")))] {
-            loop {
-                #[cfg(not(feature="ip"))]
-                let Ok((connection, _)) = listener.accept().await else {continue};
-                #[cfg(feature="ip")]
-                let Ok((connection, addr)) = listener.accept().await else {continue};
 
-                __rt__::task::spawn({
-                    Session::new(
-                        router.clone(),
-                        connection,
-                        #[cfg(feature="ip")] addr.ip()
-                    ).manage()
-                });
-            }
-        }
         #[cfg(feature="rt_async-std")] {
             use async_std::stream::StreamExt as _/* .next() */;
 
@@ -349,6 +353,7 @@ impl Ohkami {
                 });
             }
         }
+        
         #[cfg(feature="rt_glommio")] {
             loop {
                 let Ok(connection) = listener.accept().await else {continue};

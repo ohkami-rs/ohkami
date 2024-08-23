@@ -20,10 +20,10 @@ tasks:
       - check_rt_worker
 
   bench_dryrun:
-    dir: benches
     cmds:
-      - cargo bench --features DEBUG --no-run
-      - cargo check --bin hello
+      - cd benches && cargo bench --features DEBUG --no-run
+      - cd benches && cargo check
+      - cf benches_glommio && cargo check
 
   bench:
     dir: benches
