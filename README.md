@@ -6,7 +6,7 @@
 <br>
 
 - *macro-less and type-safe* APIs for intuitive and declarative code
-- *multiple runtimes* are supported：`tokio`, `async-std`, `worker` (Cloudflare Workers)
+- *multiple runtimes* are supported：`tokio`, `async-std`, `smol`, `glommio`, `worker` (Cloudflare Workers)
 
 <div align="right">
     <a href="https://github.com/ohkami-rs/ohkami/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/crates/l/ohkami.svg" /></a>
@@ -66,11 +66,16 @@ Hello, your_name!
 
 ## Feature flags
 
-### `"rt_tokio"`, `"rt_async-std"`, `"rt_glommio"`：native async runtime
+### `"rt_tokio"`, `"rt_async-std"`, `"rt_smol"`, `"rt_glommio"`
+
+Currently,
 
 - [tokio](https://github.com/tokio-rs/tokio)
 - [async-std](https://github.com/async-rs/async-std)
+- [smol](https://github.com/smol-rs/smol)
 - [glommio](https://github.com/DataDog/glommio)
+
+are supported as async runtime.
 
 ### `"rt_worker"`：Cloudflare Workers
 

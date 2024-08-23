@@ -1,0 +1,10 @@
+[package]
+name    = "ohkami_benches-with-smol"
+version = "0.0.0"
+edition = "2021"
+authors = ["kanarus <kanarus786@gmail.com>"]
+
+[dependencies]
+# set `default-features = false` to assure "DEBUG" feature be off even when DEBUGing `../ohkami`
+ohkami  = { path = "../ohkami", default-features = false, features = ["rt_smol"] }
+smol    = { version = "2" }
