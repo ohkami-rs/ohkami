@@ -1,13 +1,11 @@
 [package]
-name    = "ohkami_benches-with-smol"
+name    = "ohkami_benches_vs_actix-web"
 version = "0.0.0"
 edition = "2021"
 authors = ["kanarus <kanarus786@gmail.com>"]
 
 [dependencies]
-# set `default-features = false` to assure "DEBUG" feature be off even when DEBUGing `../ohkami`
-ohkami  = { path = "../ohkami", default-features = false, features = ["rt_smol"] }
-smol    = { version = "2" }
+actix-web = { version = "4" }
 
 [profile.release]
 opt-level = 3
