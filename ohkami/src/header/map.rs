@@ -14,7 +14,7 @@ impl<const N: usize, Value> IndexMap<N, Value> {
         }
     }
 
-    #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
+    #[allow(unused)]
     #[inline]
     pub(crate) fn clear(&mut self) {
         for idx in &mut self.index {*idx = Self::NULL}

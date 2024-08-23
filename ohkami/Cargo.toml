@@ -23,6 +23,7 @@ ohkami_macros = { version = "=0.8.0", path = "../ohkami_macros" }
 
 tokio         = { version = "1",   optional = true, features = ["net", "rt", "io-util", "sync", "time"] }
 async-std     = { version = "1",   optional = true }
+glommio       = { version = "0.9", optional = true }
 worker        = { version = "0.3", optional = true }
 
 byte_reader   = { workspace = true }
@@ -35,13 +36,17 @@ hmac          = { version = "0.12", default-features = false }
 sha2          = { version = "0.10", default-features = false }
 sha1          = { version = "0.10", optional = true, default-features = false }
 
+num_cpus      = { version = "1.16", optional = true }
+futures-util  = { version = "0.3",  optional = true, default-features = false, features = ["io"] }
+
 
 [features]
 default       = ["testing"]
 
-rt_tokio      = ["dep:tokio"]
-rt_async-std  = ["dep:async-std"]
-rt_worker     = ["dep:worker", "ohkami_macros/worker"]
+rt_tokio      = ["__rt__", "__rt_native__", "dep:tokio"]
+rt_async-std  = ["__rt__", "__rt_native__", "dep:async-std"]
+rt_glommio    = ["__rt__", "__rt_native__", "dep:glommio", "dep:num_cpus", "dep:futures-util"]
+rt_worker     = ["__rt__", "dep:worker",  "ohkami_macros/worker"]
 
 nightly       = []
 testing       = []
@@ -49,6 +54,10 @@ sse           = ["ohkami_lib/stream"]
 ws            = ["dep:sha1"]
 graceful      = ["rt_tokio", "tokio/signal", "tokio/macros"]
 ip            = []
+
+##### internal #####
+__rt__        = []
+__rt_native__ = []
 
 ##### DEBUG #####
 DEBUG = [
@@ -64,6 +73,7 @@ DEBUG = [
 #    "ip",
 #    "rt_tokio",
 #    #"rt_async-std",
+#    #"rt_glommio",
 #    #"rt_worker",
 #    "DEBUG",
 #]

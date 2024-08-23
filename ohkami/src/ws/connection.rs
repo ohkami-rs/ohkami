@@ -5,7 +5,7 @@ use crate::__rt__::{AsyncWriter, AsyncReader};
 
 
 /// WebSocket connection
-pub struct Connection<Conn: AsyncWriter + AsyncReader + Unpin + Send> {
+pub struct Connection<Conn: AsyncWriter + AsyncReader + Unpin> {
     conn:       Arc<UnsafeCell<(State, Conn)>>,
     config:     Config,
     n_buffered: usize,
@@ -15,10 +15,10 @@ pub struct Connection<Conn: AsyncWriter + AsyncReader + Unpin + Send> {
 enum State { Alive, Closed }
 
 const _: () = {
+    #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
     unsafe impl<Conn: AsyncWriter + AsyncReader + Unpin + Send> Send for Connection<Conn> {}
-    unsafe impl<Conn: AsyncWriter + AsyncReader + Unpin + Send> Sync for Connection<Conn> {}
 
-    impl<Conn: AsyncWriter + AsyncReader + Unpin + Send> std::fmt::Debug for Connection<Conn> {
+    impl<Conn: AsyncWriter + AsyncReader + Unpin> std::fmt::Debug for Connection<Conn> {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             let (state, underlying) = unsafe {&*self.conn.get()};
             f.debug_struct("Connection")
@@ -29,7 +29,7 @@ const _: () = {
                 .finish()
         }
     }
-    impl<Conn: AsyncWriter + AsyncReader + Unpin + Send> Clone for Connection<Conn> {
+    impl<Conn: AsyncWriter + AsyncReader + Unpin> Clone for Connection<Conn> {
         fn clone(&self) -> Self {
             Connection {
                 conn:       Arc::clone(&self.conn),
@@ -39,7 +39,7 @@ const _: () = {
         }
     }
     
-    impl<Conn: AsyncWriter + AsyncReader + Unpin + Send> Connection<Conn> {
+    impl<Conn: AsyncWriter + AsyncReader + Unpin> Connection<Conn> {
         pub(crate) fn new(conn: Conn, config: Config) -> Self {
             let conn = Arc::new(UnsafeCell::new((State::Alive, conn)));
             Self { conn, config, n_buffered:0 }
@@ -107,7 +107,7 @@ pub(super) async fn flush(
 }
 // =============================================================================
 
-impl<Conn: AsyncWriter + AsyncReader + Unpin + Send> Connection<Conn> {
+impl<Conn: AsyncWriter + AsyncReader + Unpin> Connection<Conn> {
     /// Recieve a WebSocket message.
     /// 
     /// *note* : this automatically responds to a ping message

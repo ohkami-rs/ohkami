@@ -29,8 +29,11 @@
 
 #[cfg(any(
     all(feature="rt_tokio",     feature="rt_async-std"),
-    all(feature="rt_async-std", feature="rt_worker"),
+    all(feature="rt_async-std", feature="rt_glommio"),
+    all(feature="rt_glommio",   feature="rt_worker"),
     all(feature="rt_worker",    feature="rt_tokio"),
+    all(feature="rt_tokio",     feature="rt_glommio"),
+    all(feature="rt_async-std", feature="rt_worker"),
 ))] compile_error! {"
     Can't activate multiple `rt_*` features at once!
 "}
@@ -67,26 +70,36 @@ mod __rt__ {
     pub(crate) use tokio::net::{TcpListener, TcpStream, ToSocketAddrs};
     #[cfg(feature="rt_async-std")]
     pub(crate) use async_std::net::{TcpListener, TcpStream, ToSocketAddrs};
+    #[cfg(feature="rt_glommio")]
+    pub(crate) use {glommio::net::{TcpListener, TcpStream}, std::net::ToSocketAddrs};
 
     #[cfg(feature="rt_tokio")]
     pub(crate) use tokio::task;
     #[cfg(feature="rt_async-std")]
     pub(crate) use async_std::task;
+    #[cfg(feature="rt_glommio")]
+    pub(crate) use glommio::task;
 
     #[cfg(feature="rt_tokio")]
     pub(crate) use tokio::time::sleep;
     #[cfg(feature="rt_async-std")]
     pub(crate) use async_std::task::sleep;
+    #[cfg(feature="rt_glommio")]
+    pub(crate) use glommio::timer::sleep;
 
     #[cfg(feature="rt_tokio")]
     pub(crate) use tokio::io::AsyncReadExt as AsyncReader;
     #[cfg(feature="rt_async-std")]
     pub(crate) use async_std::io::ReadExt as AsyncReader;
+    #[cfg(feature="rt_glommio")]
+    pub(crate) use futures_util::AsyncReadExt as AsyncReader;
 
     #[cfg(feature="rt_tokio")]
     pub(crate) use tokio::io::AsyncWriteExt as AsyncWriter;
     #[cfg(feature="rt_async-std")]
     pub(crate) use async_std::io::WriteExt as AsyncWriter;
+    #[cfg(feature="rt_glommio")]
+    pub(crate) use futures_util::AsyncWriteExt as AsyncWriter;
 }
 
 
@@ -102,23 +115,25 @@ pub use fang::{Fang, FangProc};
 
 pub mod format;
 
+#[cfg(feature="__rt_native__")]
 mod session;
-#[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
+#[cfg(feature="__rt_native__")]
 use session::Session;
 
+#[cfg(feature="__rt__")]
 mod ohkami;
-#[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_worker"))]
+#[cfg(feature="__rt__")]
 pub use ohkami::{Ohkami, Route};
 
 pub mod header;
 
 pub mod typed;
 
-#[cfg(all(feature="ws", any(feature="rt_tokio",feature="rt_async-std")))]
+#[cfg(all(feature="ws", feature="__rt_native__"))]
 pub mod ws;
 
 #[cfg(feature="testing")]
-#[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_worker"))]
+#[cfg(feature="__rt__")]
 pub mod testing;
 
 pub mod utils {
@@ -207,7 +222,7 @@ pub mod utils {
         }
     };
 
-    #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
+    #[cfg(feature="__rt_native__")]
     pub fn timeout_in<T>(
         duration: std::time::Duration,
         proc:     impl std::future::Future<Output = T>
@@ -234,11 +249,20 @@ pub mod utils {
             }
         }
 
+        #[cfg(feature="rt_glommio")]
+        /* for fang::builtin::timeout::Timeout::Proc::bite to return Send Future */
+        /* SAFETY: proc and sleep are executed on the same thread in rt_glommio */
+        /* ( glommio::timer::sleep itself returns not-Send Future because it's not needed due to the architecture ) */
+        unsafe impl<Sleep, Proc> Send for Timeout<Sleep, Proc> {}
+
         Timeout { proc, sleep: crate::__rt__::sleep(duration) }
     }
 
     #[cfg(feature="ip")]
-    pub(crate) const IP_0000: std::net::IpAddr = std::net::IpAddr::V4(std::net::Ipv4Addr::new(0, 0, 0, 0));
+    pub const IP_0000: std::net::IpAddr = std::net::IpAddr::V4(std::net::Ipv4Addr::new(0, 0, 0, 0));
+
+    #[cfg(feature="rt_glommio")]
+    pub use num_cpus;
 }
 
 #[cfg(feature="rt_worker")]
@@ -250,7 +274,7 @@ pub mod prelude {
     pub use crate::serde::{Serialize, Deserialize};
     pub use crate::format::JSON;
 
-    #[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_worker"))]
+    #[cfg(feature="__rt__")]
     pub use crate::{Route, Ohkami};
 }
 
@@ -296,7 +320,7 @@ pub mod __internal__ {
 
     /* for benchmarks */
     #[cfg(feature="DEBUG")]
-    #[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_worker"))]
+    #[cfg(feature="__rt__")]
     pub use crate::{
         request::{RequestHeader, RequestHeaders},
         response::{ResponseHeader, ResponseHeaders},

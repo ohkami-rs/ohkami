@@ -1,4 +1,4 @@
-#![cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_worker"))]
+#![cfg(feature="__rt__")]
 
 #[cfg(test)]
 mod _test;
@@ -12,7 +12,7 @@ use crate::fang::Fangs;
 use std::sync::Arc;
 use router::TrieRouter;
 
-#[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
+#[cfg(feature="__rt_native__")]
 use crate::{__rt__, Session};
 
 
@@ -229,18 +229,21 @@ impl Ohkami {
         }
     }
 
-    #[cfg(any(feature="rt_tokio", feature="rt_async-std"))]
+    #[cfg(feature="__rt_native__")]
     /// Start serving at `address`!
     /// 
-    /// `address` is `{runtime}::net::ToSocketAddrs`：
+    /// `address` is：
     /// 
-    /// - `tokio::net::ToSocketAddrs` if you use `tokio`
-    /// - `async_std::net::ToSocketAddrs` if you use `async-std`
+    /// - `tokio::net::ToSocketAddrs` if using `tokio`
+    /// - `async_std::net::ToSocketAddrs` if using `async-std`
+    /// - `std::net::ToSocketAddrs` if using `glommio`
     /// 
     /// *note* : Keep-Alive timeout is 42 seconds and this is not
     /// configureable by user (it'll be in future version...)
     /// 
     /// <br>
+    /// 
+    /// ---
     /// 
     /// *example.rs*
     /// ```no_run
@@ -263,70 +266,102 @@ impl Ohkami {
     ///     )).howl("localhost:5000").await
     /// }
     /// ```
+    /// 
+    /// ---
+    /// 
+    /// *example_glommio.rs*
+    /// ```ignore
+    /// use ohkami::prelude::*;
+    /// use ohkami::utils::num_cpus;
+    /// use glommio::{LocalExecutorPoolBuilder, PoolPlacement, CpuSet};
+    /// 
+    /// async fn hello() -> &'static str {
+    ///     "Hello, ohkami!"
+    /// }
+    /// 
+    /// fn main() {
+    ///     LocalExecutorPoolBuilder::new(PoolPlacement::MaxSpread(
+    ///         num_cpus::get(), CpuSet::online().ok()
+    ///     )).on_all_shards(|| {
+    ///         Ohkami::new((
+    ///             "/user/:id"
+    ///                 .GET(echo_id),
+    ///         )).howl("0.0.0.0:3000")
+    ///     }).unwrap().join_all();
+    /// }
+    /// ```
     pub async fn howl(self, address: impl __rt__::ToSocketAddrs) {
         let router = Arc::new(self.into_router().into_radix());
-        let listener = __rt__::TcpListener::bind(address).await.expect("Failed to bind TCP listener: {e}");
+
+        #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
+        let listener = __rt__::TcpListener::bind(address).await.expect("Failed to bind TCP listener");
+        #[cfg(feature="rt_glommio")]
+        let listener = __rt__::TcpListener::bind(address).expect("Failed to bind TCP listener");
         
-        #[cfg(all(feature="rt_tokio", feature="graceful"))] {
-            let ctrl_c = tokio::signal::ctrl_c();
+        #[cfg(feature="rt_tokio")] {
+            #[cfg(feature="graceful")] {
+                let ctrl_c = tokio::signal::ctrl_c();
 
-            let (ctrl_c_tx, ctrl_c_rx) = tokio::sync::watch::channel(());
-            __rt__::task::spawn(async {
-                ctrl_c.await.expect("Something was wrong around Ctrl-C");
-                drop(ctrl_c_rx);
-            });
+                let (ctrl_c_tx, ctrl_c_rx) = tokio::sync::watch::channel(());
+                __rt__::task::spawn(async {
+                    ctrl_c.await.expect("Something was wrong around Ctrl-C");
+                    drop(ctrl_c_rx);
+                });
 
-            let (close_tx, close_rx) = tokio::sync::watch::channel(());
-            loop {
-                tokio::select! {
-                    accept = listener.accept() => {
-                        crate::DEBUG!("Accepted {accept:#?}");
+                let (close_tx, close_rx) = tokio::sync::watch::channel(());
+                loop {
+                    tokio::select! {
+                        accept = listener.accept() => {
+                            crate::DEBUG!("Accepted {accept:#?}");
 
-                        #[cfg(not(feature="ip"))]
-                        let Ok((connection, _)) = accept else {continue};
-                        #[cfg(feature="ip")]
-                        let Ok((connection, addr)) = accept else {continue};
+                            #[cfg(not(feature="ip"))]
+                            let Ok((connection, _)) = accept else {continue};
+                            #[cfg(feature="ip")]
+                            let Ok((connection, addr)) = accept else {continue};
 
-                        let session = Session::new(
+                            let session = Session::new(
+                                router.clone(),
+                                connection,
+                                #[cfg(feature="ip")] addr.ip()
+                            );
+
+                            let close_rx = close_rx.clone();
+                            __rt__::task::spawn(async {
+                                session.manage().await;
+                                drop(close_rx)
+                            });
+                        },
+                        _ = ctrl_c_tx.closed() => {
+                            crate::DEBUG!("Recieved Ctrl-C, trying graceful shutdown");
+                            drop(listener);
+                            break
+                        }
+                    }
+                }
+
+                crate::DEBUG!("Waiting {} session(s) to finish...", close_tx.receiver_count());
+                drop(close_rx);
+                close_tx.closed().await;       
+            }
+
+            #[cfg(not(feature="graceful"))] {
+                loop {
+                    #[cfg(not(feature="ip"))]
+                    let Ok((connection, _)) = listener.accept().await else {continue};
+                    #[cfg(feature="ip")]
+                    let Ok((connection, addr)) = listener.accept().await else {continue};
+
+                    __rt__::task::spawn({
+                        Session::new(
                             router.clone(),
                             connection,
                             #[cfg(feature="ip")] addr.ip()
-                        );
-
-                        let close_rx = close_rx.clone();
-                        __rt__::task::spawn(async {
-                            session.manage().await;
-                            drop(close_rx)
-                        });
-                    },
-                    _ = ctrl_c_tx.closed() => {
-                        crate::DEBUG!("Recieved Ctrl-C, trying graceful shutdown");
-                        drop(listener);
-                        break
-                    }
+                        ).manage()
+                    });
                 }
             }
-
-            crate::DEBUG!("Waiting {} session(s) to finish...", close_tx.receiver_count());
-            drop(close_rx);
-            close_tx.closed().await;
         }
-        #[cfg(all(feature="rt_tokio", not(feature="graceful")))] {
-            loop {
-                #[cfg(not(feature="ip"))]
-                let Ok((connection, _)) = listener.accept().await else {continue};
-                #[cfg(feature="ip")]
-                let Ok((connection, addr)) = listener.accept().await else {continue};
 
-                __rt__::task::spawn({
-                    Session::new(
-                        router.clone(),
-                        connection,
-                        #[cfg(feature="ip")] addr.ip()
-                    ).manage()
-                });
-            }
-        }
         #[cfg(feature="rt_async-std")] {
             use async_std::stream::StreamExt as _/* .next() */;
 
@@ -343,6 +378,23 @@ impl Ohkami {
                         #[cfg(feature="ip")] addr.ip()
                     ).manage()
                 });
+            }
+        }
+        
+        #[cfg(feature="rt_glommio")] {
+            loop {
+                let Ok(connection) = listener.accept().await else {continue};
+
+                #[cfg(feature="ip")]
+                let Ok(addr) = connection.peer_addr() else {continue};
+
+                glommio::spawn_local({
+                    Session::new(
+                        router.clone(),
+                        connection,
+                        #[cfg(feature="ip")] addr.ip()
+                    ).manage()
+                }).detach();
             }
         }
     }

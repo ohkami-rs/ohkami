@@ -345,7 +345,7 @@ impl Headers {
     }
 }
 
-#[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_worker"))]
+#[cfg(feature="__rt__")]
 impl Headers {
     #[inline]
     pub(crate) fn init() -> Self {
@@ -359,7 +359,7 @@ impl Headers {
         Self::init()
     }
 
-    #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
+    #[cfg(feature="__rt_native__")]
     #[inline]
     pub(crate) fn clear(&mut self) {
         self.standard.clear();

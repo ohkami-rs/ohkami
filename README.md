@@ -66,9 +66,11 @@ Hello, your_name!
 
 ## Feature flags
 
-### `"rt_tokio"`, `"rt_async-std"`
+### `"rt_tokio"`, `"rt_async-std"`, `"rt_glommio"`：native async runtime
 
-Select a native async runtime
+- [tokio](https://github.com/tokio-rs/tokio)
+- [async-std](https://github.com/async-rs/async-std)
+- [glommio](https://github.com/DataDog/glommio)
 
 ### `"rt_worker"`：Cloudflare Workers
 

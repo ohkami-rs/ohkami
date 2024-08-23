@@ -3,10 +3,11 @@ resolver = "2"
 members  = [
     "ohkami",
     "ohkami_lib",
-    "ohkami_macros"
+    "ohkami_macros",
 ]
 exclude  = [
     "benches",
+    "benches_glommio",
 ]
 
 [workspace.dependencies]

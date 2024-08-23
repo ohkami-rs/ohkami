@@ -1,4 +1,4 @@
-#![cfg(all(feature="ws", any(feature="rt_tokio",feature="rt_async-std")))]
+#![cfg(all(feature="ws", feature="__rt_native__"))]
 
 mod connection;
 mod message;

@@ -1,4 +1,4 @@
-#![cfg(any(feature="rt_tokio",feature="rt_async-std"))]
+#![cfg(feature="__rt_native__")]
 
 use std::time::Duration;
 

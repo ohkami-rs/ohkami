@@ -7,7 +7,7 @@ pub use cors::CORS;
 mod jwt;
 pub use jwt::{JWT, JWTToken};
 
-#[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
+#[cfg(feature="__rt_native__")]
 mod timeout;
-#[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
+#[cfg(feature="__rt_native__")]
 pub use timeout::Timeout;
