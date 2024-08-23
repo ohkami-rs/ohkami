@@ -23,7 +23,7 @@ tasks:
     cmds:
       - cd benches && cargo bench --features DEBUG --no-run
       - cd benches && cargo check
-      - cf benches_glommio && cargo check
+      - cd benches_glommio && cargo check
 
   bench:
     dir: benches

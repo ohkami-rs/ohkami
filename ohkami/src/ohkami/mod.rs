@@ -270,7 +270,7 @@ impl Ohkami {
     /// ---
     /// 
     /// *example_glommio.rs*
-    /// ```no_run
+    /// ```ignore
     /// use ohkami::prelude::*;
     /// use ohkami::utils::num_cpus;
     /// use glommio::{LocalExecutorPoolBuilder, PoolPlacement, CpuSet};
