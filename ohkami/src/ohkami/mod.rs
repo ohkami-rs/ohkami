@@ -304,7 +304,7 @@ impl Ohkami {
                 let ctrl_c = tokio::signal::ctrl_c();
 
                 let (ctrl_c_tx, ctrl_c_rx) = tokio::sync::watch::channel(());
-                __rt__::task::spawn(async {
+                __rt__::spawn(async {
                     ctrl_c.await.expect("Something was wrong around Ctrl-C");
                     drop(ctrl_c_rx);
                 });
