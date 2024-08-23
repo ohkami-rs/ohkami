@@ -7,8 +7,10 @@ members  = [
 ]
 exclude  = [
     "benches",
-    "benches_smol",
-    "benches_glommio",
+    "benches_rt/glommio",
+    "benches_rt/smol",
+    "benches_rt/tokio",
+    "benches_rt/vs_actix-web",
 ]
 
 [workspace.dependencies]

@@ -6,5 +6,16 @@ authors = ["kanarus <kanarus786@gmail.com>"]
 
 [dependencies]
 # set `default-features = false` to assure "DEBUG" feature be off even when DEBUGing `../ohkami`
-ohkami  = { path = "../ohkami", default-features = false, features = ["rt_glommio"] }
+ohkami  = { path = "../../ohkami", default-features = false, features = ["rt_glommio"] }
 glommio = { version = "0.9" }
+
+[profile.release]
+opt-level = 3
+debug = false
+debug-assertions = false
+lto = true
+panic = "abort"
+incremental = false
+codegen-units = 1
+rpath = false
+strip = false
