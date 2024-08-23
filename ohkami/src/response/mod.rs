@@ -4,7 +4,7 @@ pub use status::Status;
 mod headers;
 pub use headers::{Headers as ResponseHeaders, SetHeaders};
 #[cfg(any(feature="testing", feature="DEBUG"))]
-#[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_glommio",feature="rt_worker"))]
+#[cfg(any(feature="__rt__"))]
 pub use headers::Header as ResponseHeader;
 
 mod content;
@@ -19,7 +19,7 @@ pub use into_response::IntoResponse;
 use std::borrow::Cow;
 use ohkami_lib::{CowSlice, Slice};
 
-#[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_glommio"))]
+#[cfg(feature="__rt_native__")]
 use crate::__rt__::AsyncWriter;
 #[cfg(feature="sse")]
 use crate::utils::StreamExt;
@@ -148,27 +148,27 @@ impl Response {
                     .ContentLength(None);
             }
 
-            #[cfg(all(feature="ws", any(feature="rt_tokio",feature="rt_async-std",feature="rt_glommio")))]
+            #[cfg(all(feature="ws", feature="__rt_native__"))]
             Content::WebSocket(_) => (),
         };
     }
 }
 
-#[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_glommio"))]
+#[cfg(feature="__rt_native__")]
 pub(super) enum Upgrade {
     None,
 
-    #[cfg(all(feature="ws", any(feature="rt_tokio",feature="rt_async-std",feature="rt_glommio")))]
+    #[cfg(all(feature="ws", feature="__rt_native__"))]
     WebSocket((crate::ws::Config, crate::ws::Handler)),
 }
-#[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_glommio"))]
+#[cfg(feature="__rt_native__")]
 impl Upgrade {
     #[inline(always)]
     pub(super) const fn is_none(&self) -> bool {
         matches!(self, Self::None)
     }
 }
-#[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_glommio"))]
+#[cfg(feature="__rt_native__")]
 impl Response {
     #[cfg_attr(not(feature="sse"), inline)]
     pub(crate) async fn send(mut self,
@@ -258,7 +258,7 @@ impl Response {
                 Upgrade::None
             }
 
-            #[cfg(all(feature="ws", any(feature="rt_tokio",feature="rt_async-std",feature="rt_glommio")))]
+            #[cfg(all(feature="ws", feature="__rt_native__"))]
             Content::WebSocket((config, handler)) => {
                 let mut buf = Vec::<u8>::with_capacity(
                     self.status.line().len() +
@@ -412,7 +412,7 @@ impl Response {
     }
 }
 
-#[cfg(all(feature="ws", any(feature="rt_tokio",feature="rt_async-std",feature="rt_glommio")))]
+#[cfg(all(feature="ws", feature="__rt_native__"))]
 impl Response {
     pub(crate) fn with_websocket(mut self,
         config:  crate::ws::Config,
@@ -446,7 +446,7 @@ const _: () = {
                         DummyStream
                     })),
 
-                    #[cfg(all(feature="ws", any(feature="rt_tokio",feature="rt_async-std",feature="rt_glommio")))]
+                    #[cfg(all(feature="ws", feature="__rt_native__"))]
                     Content::WebSocket(_) => Content::WebSocket((
                         crate::ws::Config::default(),
                         Box::new(|_| Box::pin(async {/* dummy handler */}))

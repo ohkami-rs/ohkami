@@ -1,4 +1,4 @@
-#![cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_glommio",feature="rt_worker"))]
+#![cfg(feature="__rt__")]
 
 #[cfg(test)]
 mod _test;
@@ -12,7 +12,7 @@ use crate::fang::Fangs;
 use std::sync::Arc;
 use router::TrieRouter;
 
-#[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_glommio"))]
+#[cfg(feature="__rt_native__")]
 use crate::{__rt__, Session};
 
 
@@ -229,18 +229,21 @@ impl Ohkami {
         }
     }
 
-    #[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_glommio"))]
+    #[cfg(feature="__rt_native__")]
     /// Start serving at `address`!
     /// 
-    /// `address` is `{runtime}::net::ToSocketAddrs`：
+    /// `address` is：
     /// 
-    /// - `tokio::net::ToSocketAddrs` if you use `tokio`
-    /// - `async_std::net::ToSocketAddrs` if you use `async-std`
+    /// - `tokio::net::ToSocketAddrs` if using `tokio`
+    /// - `async_std::net::ToSocketAddrs` if using `async-std`
+    /// - `std::net::ToSocketAddrs` if using `glommio`
     /// 
     /// *note* : Keep-Alive timeout is 42 seconds and this is not
     /// configureable by user (it'll be in future version...)
     /// 
     /// <br>
+    /// 
+    /// ---
     /// 
     /// *example.rs*
     /// ```no_run
@@ -261,6 +264,30 @@ impl Ohkami {
     ///         "/".GET(hello),
     ///         "/healthz".GET(health_check),
     ///     )).howl("localhost:5000").await
+    /// }
+    /// ```
+    /// 
+    /// ---
+    /// 
+    /// *example_glommio.rs*
+    /// ```no_run
+    /// use ohkami::prelude::*;
+    /// use ohkami::utils::num_cpus;
+    /// use glommio::{LocalExecutorPoolBuilder, PoolPlacement, CpuSet};
+    /// 
+    /// async fn hello() -> &'static str {
+    ///     "Hello, ohkami!"
+    /// }
+    /// 
+    /// fn main() {
+    ///     LocalExecutorPoolBuilder::new(PoolPlacement::MaxSpread(
+    ///         num_cpus::get(), CpuSet::online().ok()
+    ///     )).on_all_shards(|| {
+    ///         Ohkami::new((
+    ///             "/user/:id"
+    ///                 .GET(echo_id),
+    ///         )).howl("0.0.0.0:3000")
+    ///     }).unwrap().join_all();
     /// }
     /// ```
     pub async fn howl(self, address: impl __rt__::ToSocketAddrs) {

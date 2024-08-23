@@ -3,7 +3,7 @@ use ohkami_lib::CowSlice;
 #[cfg(feature="sse")]
 use ohkami_lib::Stream;
 
-#[cfg(all(feature="ws", any(feature="rt_tokio",feature="rt_async-std",feature="rt_glommio")))]
+#[cfg(all(feature="ws", feature="__rt_native__"))]
 use crate::ws::{Config, Handler};
 
 
@@ -15,7 +15,7 @@ pub enum Content {
     #[cfg(feature="sse")]
     Stream(std::pin::Pin<Box<dyn Stream<Item = Result<String, String>> + Send>>),
 
-    #[cfg(all(feature="ws", any(feature="rt_tokio",feature="rt_async-std",feature="rt_glommio")))]
+    #[cfg(all(feature="ws", feature="__rt_native__"))]
     WebSocket((Config, Handler)),
 } const _: () = {
     impl Default for Content {
@@ -46,7 +46,7 @@ pub enum Content {
                 #[cfg(feature="sse")]
                 Self::Stream(_)      => f.write_str("{stream}"),
 
-                #[cfg(all(feature="ws", any(feature="rt_tokio",feature="rt_async-std",feature="rt_glommio")))]
+                #[cfg(all(feature="ws", feature="__rt_native__"))]
                 Self::WebSocket(_)   => f.write_str("{websocket}"),
             }
         }

@@ -12,7 +12,7 @@ pub struct QueryParams(
 );
 
 impl QueryParams {
-    #[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_glommio",feature="rt_worker"))]
+    #[cfg(feature="__rt__")]
     #[inline(always)] pub(crate) fn new(bytes: &[u8]) -> Self {
         Self(Slice::from_bytes(bytes))
     }
@@ -46,7 +46,7 @@ impl QueryParams {
     }
 }
 
-#[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_glommio"))]
+#[cfg(feature="__rt_native__")]
 #[cfg(test)]
 const _: () = {
     impl<const N: usize> From<[(&'static str, &'static str); N]> for QueryParams {

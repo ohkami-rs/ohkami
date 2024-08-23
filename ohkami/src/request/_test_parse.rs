@@ -1,4 +1,4 @@
-#![cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_glommio"))]
+#![cfg(feature="__rt_native__")]
 
 #[allow(unused)]
 use super::{Request, Method, BUF_SIZE, Path, QueryParams, Store};

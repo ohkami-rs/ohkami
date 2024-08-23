@@ -4,8 +4,8 @@ pub use method::Method;
 mod path;
 pub(crate) use path::Path;
 
-mod queries;
-pub(crate) use queries::QueryParams;
+mod query;
+pub(crate) use query::QueryParams;
 
 mod headers;
 pub use headers::Headers as RequestHeaders;
@@ -25,7 +25,7 @@ pub use from_request::*;
 
 use ohkami_lib::{Slice, CowSlice};
 
-#[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_glommio"))]
+#[cfg(feature="__rt_native__")]
 use {
     crate::__rt__::AsyncReader,
 };
@@ -37,9 +37,9 @@ use {
 };
 
 
-#[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_glommio"))]
+#[cfg(feature="__rt_native__")]
 pub(crate) const BUF_SIZE: usize = 1 << 10;
-#[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_glommio"))]
+#[cfg(feature="__rt_native__")]
 pub(crate) const PAYLOAD_LIMIT: usize = 1 << 32;
 
 /// # HTTP Request
@@ -99,7 +99,7 @@ pub(crate) const PAYLOAD_LIMIT: usize = 1 << 32;
 /// }
 /// ```
 pub struct Request {
-    #[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_glommio"))]
+    #[cfg(feature="__rt_native__")]
     pub(super/* for test */) __buf__: Box<[u8; BUF_SIZE]>,
 
     #[cfg(feature="rt_worker")]
@@ -168,14 +168,14 @@ pub struct Request {
 }
 
 impl Request {
-    #[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_glommio",feature="rt_worker"))]
+    #[cfg(feature="__rt__")]
     #[inline]
     pub(crate) fn init(
         #[cfg(feature="ip")]
         addr: std::net::IpAddr
     ) -> Self {
         Self {
-            #[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_glommio"))]
+            #[cfg(feature="__rt_native__")]
             __buf__: Box::new([0; BUF_SIZE]),
 
             #[cfg(feature="rt_worker")]
@@ -196,7 +196,7 @@ impl Request {
             addr
         }
     }
-    #[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_glommio"))]
+    #[cfg(feature="__rt_native__")]
     #[inline]
     pub(crate) fn clear(&mut self) {
         if self.__buf__[0] != 0 {
@@ -211,7 +211,7 @@ impl Request {
         } /* else: just after `init`ed or `clear`ed */
     }
 
-    #[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_glommio"))]
+    #[cfg(feature="__rt_native__")]
     #[inline]
     pub(crate) async fn read(
         mut self: Pin<&mut Self>,
@@ -285,7 +285,7 @@ impl Request {
         Ok(Some(()))
     }
 
-    #[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_glommio"))]
+    #[cfg(feature="__rt_native__")]
     #[inline]
     async fn read_payload(
         stream:        &mut (impl AsyncReader + Unpin),
@@ -461,7 +461,7 @@ const _: () = {
     }
 };
 
-#[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_glommio",feature="rt_worker"))]
+#[cfg(feature="__rt__")]
 #[cfg(test)] const _: () = {
     impl PartialEq for Request {
         fn eq(&self, other: &Self) -> bool {

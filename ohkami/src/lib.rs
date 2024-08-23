@@ -115,25 +115,25 @@ pub use fang::{Fang, FangProc};
 
 pub mod format;
 
-#[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_glommio"))]
+#[cfg(feature="__rt_native__")]
 mod session;
-#[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_glommio"))]
+#[cfg(feature="__rt_native__")]
 use session::Session;
 
-#[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_glommio",feature="rt_worker"))]
+#[cfg(feature="__rt__")]
 mod ohkami;
-#[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_glommio",feature="rt_worker"))]
+#[cfg(feature="__rt__")]
 pub use ohkami::{Ohkami, Route};
 
 pub mod header;
 
 pub mod typed;
 
-#[cfg(all(feature="ws", any(feature="rt_tokio",feature="rt_async-std",feature="rt_glommio")))]
+#[cfg(all(feature="ws", feature="__rt_native__"))]
 pub mod ws;
 
 #[cfg(feature="testing")]
-#[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_glommio",feature="rt_worker"))]
+#[cfg(feature="__rt__")]
 pub mod testing;
 
 pub mod utils {
@@ -222,7 +222,7 @@ pub mod utils {
         }
     };
 
-    #[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_glommio"))]
+    #[cfg(feature="__rt_native__")]
     pub fn timeout_in<T>(
         duration: std::time::Duration,
         proc:     impl std::future::Future<Output = T>
@@ -268,7 +268,7 @@ pub mod prelude {
     pub use crate::serde::{Serialize, Deserialize};
     pub use crate::format::JSON;
 
-    #[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_glommio",feature="rt_worker"))]
+    #[cfg(feature="__rt__")]
     pub use crate::{Route, Ohkami};
 }
 
@@ -314,7 +314,7 @@ pub mod __internal__ {
 
     /* for benchmarks */
     #[cfg(feature="DEBUG")]
-    #[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_glommio",feature="rt_worker"))]
+    #[cfg(feature="__rt__")]
     pub use crate::{
         request::{RequestHeader, RequestHeaders},
         response::{ResponseHeader, ResponseHeaders},

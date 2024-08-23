@@ -74,7 +74,7 @@ const _: () = {
     }
 };
 
-#[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_glommio",feature="rt_worker"))]
+#[cfg(feature="__rt__")]
 const _: () = {
     impl Params {
         #[inline(always)]

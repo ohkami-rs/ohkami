@@ -1,5 +1,5 @@
 #![cfg(any(feature="testing", feature="DEBUG"))]
-#![cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_glommio",feature="rt_worker"))]
+#![cfg(feature="__rt__")]
 
 use ohkami_lib::CowSlice;
 
