@@ -1,6 +1,12 @@
 version: '3'
 
 tasks:
+  CI:
+    deps:
+      - test
+      - check
+      - bench_dryrun
+
   test:
     deps:
       - test_doc
@@ -25,8 +31,10 @@ tasks:
     cmds:
       - cd benches && cargo bench --features DEBUG --no-run
       - cd benches && cargo check
-      - cd benches_glommio && cargo check
-      - cd benches_smol && cargo check
+      - cd benches_rt/glommio && cargo check
+      - cd benches_rt/smol && cargo check
+      - cd benches_rt/tokio && cargo check
+      - cd benches_rt/vs_actix-web && cargo check
 
   bench:
     dir: benches
