@@ -6,6 +6,10 @@ tasks:
       - test
       - check
       - bench_dryrun
+  CI_stable:
+    deps:
+      - test
+      - check
 
   test:
     deps:
