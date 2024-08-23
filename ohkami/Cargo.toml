@@ -23,6 +23,7 @@ ohkami_macros = { version = "=0.8.0", path = "../ohkami_macros" }
 
 tokio         = { version = "1",   optional = true, features = ["net", "rt", "io-util", "sync", "time"] }
 async-std     = { version = "1",   optional = true }
+smol          = { version = "2",   optional = true }
 glommio       = { version = "0.9", optional = true }
 worker        = { version = "0.3", optional = true }
 
@@ -45,7 +46,8 @@ default       = ["testing"]
 
 rt_tokio      = ["__rt__", "__rt_native__", "dep:tokio"]
 rt_async-std  = ["__rt__", "__rt_native__", "dep:async-std"]
-rt_glommio    = ["__rt__", "__rt_native__", "dep:glommio", "dep:num_cpus", "dep:futures-util"]
+rt_smol       = ["__rt__", "__rt_native__", "dep:smol",    "dep:futures-util"]
+rt_glommio    = ["__rt__", "__rt_native__", "dep:glommio", "dep:futures-util", "dep:num_cpus"]
 rt_worker     = ["__rt__", "dep:worker",  "ohkami_macros/worker"]
 
 nightly       = []
@@ -71,8 +73,9 @@ DEBUG = [
 #    "sse",
 #    "ws",
 #    "ip",
-#    "rt_tokio",
+#    #"rt_tokio",
 #    #"rt_async-std",
+#    "rt_smol",
 #    #"rt_glommio",
 #    #"rt_worker",
 #    "DEBUG",

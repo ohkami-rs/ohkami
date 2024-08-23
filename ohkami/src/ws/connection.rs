@@ -15,7 +15,6 @@ pub struct Connection<Conn: AsyncWriter + AsyncReader + Unpin> {
 enum State { Alive, Closed }
 
 const _: () = {
-    #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
     unsafe impl<Conn: AsyncWriter + AsyncReader + Unpin + Send> Send for Connection<Conn> {}
 
     impl<Conn: AsyncWriter + AsyncReader + Unpin> std::fmt::Debug for Connection<Conn> {

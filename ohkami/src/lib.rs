@@ -1,4 +1,4 @@
-#![doc(html_root_url = "https://docs.rs/ohkami/0.20.0/ohkami/")]
+#![doc(html_root_url = "https://docs.rs/ohkami/0.20.0/ohkami")]
 
 /* Execute static tests for sample codes in README */
 #![cfg_attr(feature="DEBUG", doc = include_str!("../../README.md"))]
@@ -29,11 +29,15 @@
 
 #[cfg(any(
     all(feature="rt_tokio",     feature="rt_async-std"),
-    all(feature="rt_async-std", feature="rt_glommio"),
-    all(feature="rt_glommio",   feature="rt_worker"),
-    all(feature="rt_worker",    feature="rt_tokio"),
+    all(feature="rt_tokio",     feature="rt_smol"),
     all(feature="rt_tokio",     feature="rt_glommio"),
+    all(feature="rt_tokio",     feature="rt_worker"),
+    all(feature="rt_async-std", feature="rt_smol"),
+    all(feature="rt_async-std", feature="rt_glommio"),
     all(feature="rt_async-std", feature="rt_worker"),
+    all(feature="rt_smol",      feature="rt_glommio"),
+    all(feature="rt_smol",      feature="rt_worker"),
+    all(feature="rt_glommio",   feature="rt_worker"),
 ))] compile_error! {"
     Can't activate multiple `rt_*` features at once!
 "}
@@ -72,13 +76,17 @@ mod __rt__ {
     pub(crate) use async_std::net::{TcpListener, TcpStream, ToSocketAddrs};
     #[cfg(feature="rt_glommio")]
     pub(crate) use {glommio::net::{TcpListener, TcpStream}, std::net::ToSocketAddrs};
+    #[cfg(feature="rt_smol")]
+    pub(crate) use smol::net::{TcpListener, TcpStream, AsyncToSocketAddrs as ToSocketAddrs};
 
     #[cfg(feature="rt_tokio")]
-    pub(crate) use tokio::task;
+    pub(crate) use tokio::task::spawn;
     #[cfg(feature="rt_async-std")]
-    pub(crate) use async_std::task;
+    pub(crate) use async_std::task::spawn;
     #[cfg(feature="rt_glommio")]
-    pub(crate) use glommio::task;
+    pub(crate) use glommio::spawn_local as spawn;
+    #[cfg(feature="rt_smol")]
+    pub(crate) use smol::spawn;
 
     #[cfg(feature="rt_tokio")]
     pub(crate) use tokio::time::sleep;
@@ -86,6 +94,10 @@ mod __rt__ {
     pub(crate) use async_std::task::sleep;
     #[cfg(feature="rt_glommio")]
     pub(crate) use glommio::timer::sleep;
+    #[cfg(feature="rt_smol")]
+    pub(crate) async fn sleep(duration: std::time::Duration) {
+        smol::Timer::after(duration).await;
+    }
 
     #[cfg(feature="rt_tokio")]
     pub(crate) use tokio::io::AsyncReadExt as AsyncReader;
@@ -93,12 +105,16 @@ mod __rt__ {
     pub(crate) use async_std::io::ReadExt as AsyncReader;
     #[cfg(feature="rt_glommio")]
     pub(crate) use futures_util::AsyncReadExt as AsyncReader;
+    #[cfg(feature="rt_smol")]
+    pub(crate) use futures_util::AsyncReadExt as AsyncReader;
 
     #[cfg(feature="rt_tokio")]
     pub(crate) use tokio::io::AsyncWriteExt as AsyncWriter;
     #[cfg(feature="rt_async-std")]
     pub(crate) use async_std::io::WriteExt as AsyncWriter;
     #[cfg(feature="rt_glommio")]
+    pub(crate) use futures_util::AsyncWriteExt as AsyncWriter;
+    #[cfg(feature="rt_smol")]
     pub(crate) use futures_util::AsyncWriteExt as AsyncWriter;
 }
 

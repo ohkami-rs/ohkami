@@ -236,6 +236,7 @@ impl Ohkami {
     /// 
     /// - `tokio::net::ToSocketAddrs` if using `tokio`
     /// - `async_std::net::ToSocketAddrs` if using `async-std`
+    /// - `smol::net::AsyncToSocketAddrs` if using `smol`
     /// - `std::net::ToSocketAddrs` if using `glommio`
     /// 
     /// *note* : Keep-Alive timeout is 42 seconds and this is not
@@ -293,9 +294,9 @@ impl Ohkami {
     pub async fn howl(self, address: impl __rt__::ToSocketAddrs) {
         let router = Arc::new(self.into_router().into_radix());
 
-        #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
+        #[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_smol"))]
         let listener = __rt__::TcpListener::bind(address).await.expect("Failed to bind TCP listener");
-        #[cfg(feature="rt_glommio")]
+        #[cfg(any(feature="rt_glommio"))]
         let listener = __rt__::TcpListener::bind(address).expect("Failed to bind TCP listener");
         
         #[cfg(feature="rt_tokio")] {
@@ -303,7 +304,7 @@ impl Ohkami {
                 let ctrl_c = tokio::signal::ctrl_c();
 
                 let (ctrl_c_tx, ctrl_c_rx) = tokio::sync::watch::channel(());
-                __rt__::task::spawn(async {
+                __rt__::spawn(async {
                     ctrl_c.await.expect("Something was wrong around Ctrl-C");
                     drop(ctrl_c_rx);
                 });
@@ -326,7 +327,7 @@ impl Ohkami {
                             );
 
                             let close_rx = close_rx.clone();
-                            __rt__::task::spawn(async {
+                            __rt__::spawn(async {
                                 session.manage().await;
                                 drop(close_rx)
                             });
@@ -351,7 +352,7 @@ impl Ohkami {
                     #[cfg(feature="ip")]
                     let Ok((connection, addr)) = listener.accept().await else {continue};
 
-                    __rt__::task::spawn({
+                    __rt__::spawn({
                         Session::new(
                             router.clone(),
                             connection,
@@ -371,7 +372,7 @@ impl Ohkami {
                 #[cfg(feature="ip")]
                 let Ok(addr) = connection.peer_addr() else {continue};
 
-                __rt__::task::spawn({
+                __rt__::spawn({
                     Session::new(
                         router.clone(),
                         connection,
@@ -388,7 +389,24 @@ impl Ohkami {
                 #[cfg(feature="ip")]
                 let Ok(addr) = connection.peer_addr() else {continue};
 
-                glommio::spawn_local({
+                __rt__::spawn({
+                    Session::new(
+                        router.clone(),
+                        connection,
+                        #[cfg(feature="ip")] addr.ip()
+                    ).manage()
+                }).detach();
+            }
+        }
+
+        #[cfg(feature="rt_smol")] {
+            loop {
+                #[cfg(not(feature="ip"))]
+                let Ok((connection, _)) = listener.accept().await else {continue};
+                #[cfg(feature="ip")]
+                let Ok((connection, addr)) = listener.accept().await else {continue};
+
+                __rt__::spawn({
                     Session::new(
                         router.clone(),
                         connection,
