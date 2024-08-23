@@ -8,6 +8,7 @@ tasks:
       - test_no_rt
       - test_rt_tokio
       - test_rt_async-std
+      - test_rt_glommio
       - test_rt_worker
 
   check:
@@ -15,6 +16,7 @@ tasks:
       - check_no_rt
       - check_rt_tokio
       - check_rt_async-std
+      - check_rt_glommio
       - check_rt_worker
 
   bench_dryrun:
@@ -73,6 +75,15 @@ tasks:
       - cargo test --lib --features rt_async-std,DEBUG,{{.MAYBE_NIGHTLY}}
       - cargo test --lib --features rt_async-std,DEBUG,sse,ws,{{.MAYBE_NIGHTLY}}
 
+  test_rt_glommio:
+    vars:
+      MAYBE_NIGHTLY:
+        sh: cargo version | grep -q 'nightly' && echo 'nightly' || echo ''
+    dir: ohkami
+    cmds:
+      - cargo test --lib --features rt_glommio,DEBUG,{{.MAYBE_NIGHTLY}}
+      - cargo test --lib --features rt_glommio,DEBUG,sse,ws,{{.MAYBE_NIGHTLY}}
+
   test_rt_worker:
     vars:
       MAYBE_NIGHTLY:
@@ -119,6 +130,17 @@ tasks:
       - cargo check --lib --features rt_async-std,ip,{{.MAYBE_NIGHTLY}}
       - cargo check --lib --features rt_async-std,sse,{{.MAYBE_NIGHTLY}}
       - cargo check --lib --features rt_async-std,sse,ws,{{.MAYBE_NIGHTLY}}
+
+  check_rt_glommio:
+    vars:
+      MAYBE_NIGHTLY:
+        sh: cargo version | grep -q 'nightly' && echo 'nightly' || echo ''
+    dir: ohkami
+    cmds:
+      - cargo check --lib --features rt_glommio,{{.MAYBE_NIGHTLY}}
+      - cargo check --lib --features rt_glommio,ip,{{.MAYBE_NIGHTLY}}
+      - cargo check --lib --features rt_glommio,sse,{{.MAYBE_NIGHTLY}}
+      - cargo check --lib --features rt_glommio,sse,ws,{{.MAYBE_NIGHTLY}}
 
   check_rt_worker:
     vars:

@@ -350,27 +350,20 @@ impl Ohkami {
             }
         }
         #[cfg(feature="rt_glommio")] {
-            use glommio::{LocalExecutorPoolBuilder, PoolPlacement, CpuSet};
+            loop {
+                let Ok(connection) = listener.accept().await else {continue};
 
-            LocalExecutorPoolBuilder::new(PoolPlacement::MaxSpread(
-                ::num_cpus::get(),
-                CpuSet::online().ok()
-            )).on_all_shards(|| async {
-                loop {
-                    let Ok(connection) = listener.accept().await else {continue};
+                #[cfg(feature="ip")]
+                let Ok(addr) = connection.peer_addr() else {continue};
 
-                    #[cfg(feature="ip")]
-                    let Ok(addr) = connection.peer_addr() else {continue};
-
-                    glommio::spawn_local({
-                        Session::new(
-                            router.clone(),
-                            connection,
-                            #[cfg(feature="ip")] addr.ip()
-                        )
-                    }).detach();
-                }
-            }).expect("Failed to create executer pool");
+                glommio::spawn_local({
+                    Session::new(
+                        router.clone(),
+                        connection,
+                        #[cfg(feature="ip")] addr.ip()
+                    ).manage()
+                }).detach();
+            }
         }
     }
 

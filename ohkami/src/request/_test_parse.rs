@@ -1,41 +1,7 @@
-#![cfg(any(feature="rt_tokio", feature="rt_async-std"))]
+#![cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_glommio"))]
 
-use std::pin::Pin;
-use ohkami_lib::{Slice, CowSlice};
 #[allow(unused)]
 use super::{Request, Method, BUF_SIZE, Path, QueryParams, Store};
-
-macro_rules! assert_parse {
-    ($case:expr, $expected:expr) => {
-        let mut actual = Request::init(#[cfg(feature="ip")] crate::utils::IP_0000);
-        let mut actual = unsafe {Pin::new_unchecked(&mut actual)};
-        actual.as_mut().read(&mut $case.as_bytes()).await.ok();
-
-        let expected = $expected;
-
-        let _ = async {println!("<assert_parse>")}.await;
-
-        let __panic_message = format!("\n\
-            =====  actual  =====\n\
-            {actual:#?}\n\
-            \n\
-            ===== expected =====\n\
-            {expected:#?}\n\
-            \n\
-        ");
-
-        if actual.get_mut() != &expected {
-            panic!("{__panic_message}")
-        }
-    };
-}
-
-fn metadataize(input: &str) -> Box<[u8; BUF_SIZE]> {
-    let mut buf = [0; BUF_SIZE];
-    buf[..input.len().min(BUF_SIZE)]
-        .copy_from_slice(&input.as_bytes()[..input.len().min(BUF_SIZE)]);
-    Box::new(buf)
-}
 
 #[test]
 fn parse_path() {
@@ -52,8 +18,43 @@ fn parse_path() {
     assert_eq!(&*path, "/");
 }
 
+#[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
 #[crate::__rt__::test] async fn test_parse_request() {
     use super::{RequestHeader, RequestHeaders};
+    use std::pin::Pin;
+    use ohkami_lib::{Slice, CowSlice};
+
+    fn metadataize(input: &str) -> Box<[u8; BUF_SIZE]> {
+        let mut buf = [0; BUF_SIZE];
+        buf[..input.len().min(BUF_SIZE)]
+            .copy_from_slice(&input.as_bytes()[..input.len().min(BUF_SIZE)]);
+        Box::new(buf)
+    }
+
+    macro_rules! assert_parse {
+        ($case:expr, $expected:expr) => {
+            let mut actual = Request::init(#[cfg(feature="ip")] crate::utils::IP_0000);
+            let mut actual = unsafe {Pin::new_unchecked(&mut actual)};
+            actual.as_mut().read(&mut $case.as_bytes()).await.ok();
+
+            let expected = $expected;
+
+            let _ = async {println!("<assert_parse>")}.await;
+
+            let __panic_message = format!("\n\
+                =====  actual  =====\n\
+                {actual:#?}\n\
+                \n\
+                ===== expected =====\n\
+                {expected:#?}\n\
+                \n\
+            ");
+
+            if actual.get_mut() != &expected {
+                panic!("{__panic_message}")
+            }
+        };
+    }
 
     const CASE_1: &str = "\
         GET /hello.html HTTP/1.1\r\n\

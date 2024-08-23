@@ -434,7 +434,7 @@ impl Headers {
     }
 
     #[cfg(any(
-        feature="rt_tokio",feature="rt_async-std",
+        feature="rt_tokio",feature="rt_async-std",feature="rt_glommio",
         feature="DEBUG"
     ))]
     /// SAFETY: `buf` has remaining capacity of at least `self.size`

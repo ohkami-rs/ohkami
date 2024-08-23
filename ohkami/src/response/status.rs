@@ -24,7 +24,7 @@ macro_rules! status {
                     $( Self::$name => $message, )*
                 }
             }
-            #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
+            #[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_glommio"))]
             #[inline(always)] pub(crate) const fn line(&self) -> &'static [u8] {
                 match self {
                     $( Self::$name => concat!("HTTP/1.1 ", $message, "\r\n").as_bytes(), )*

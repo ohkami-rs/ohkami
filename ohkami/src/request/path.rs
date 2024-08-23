@@ -74,7 +74,7 @@ const _: () = {
     }
 };
 
-#[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_worker"))]
+#[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_glommio",feature="rt_worker"))]
 const _: () = {
     impl Params {
         #[inline(always)]
@@ -139,14 +139,15 @@ const _: () = {
             self.0.assume_init_ref().raw.as_bytes()
         }
     }
-};
-
-#[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
-#[cfg(test)] impl Path {
-    pub(crate) fn from_literal(literal: &'static str) -> Self {
-        Self(MaybeUninit::new(PathInner {
-            raw:    Slice::from_bytes(literal.as_bytes()),
-            params: Params::init(),
-        }))
+    
+    #[cfg(test)]
+    impl Path {
+        pub fn from_literal(literal: &'static str) -> Self {
+            Self(MaybeUninit::new(PathInner {
+                raw:    Slice::from_bytes(literal.as_bytes()),
+                params: Params::init(),
+            }))
+        }
     }
-}
+};
+    

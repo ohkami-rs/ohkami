@@ -1,5 +1,5 @@
 use ohkami::prelude::*;
-use ohkami::{serde::*, format::JSON};
+use ohkami::format::JSON;
 
 #[cfg(feature="DEBUG")]
 #[derive(Clone)]

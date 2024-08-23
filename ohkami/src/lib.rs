@@ -88,11 +88,15 @@ mod __rt__ {
     pub(crate) use tokio::io::AsyncReadExt as AsyncReader;
     #[cfg(feature="rt_async-std")]
     pub(crate) use async_std::io::ReadExt as AsyncReader;
+    #[cfg(feature="rt_glommio")]
+    pub(crate) use futures_util::AsyncReadExt as AsyncReader;
 
     #[cfg(feature="rt_tokio")]
     pub(crate) use tokio::io::AsyncWriteExt as AsyncWriter;
     #[cfg(feature="rt_async-std")]
     pub(crate) use async_std::io::WriteExt as AsyncWriter;
+    #[cfg(feature="rt_glommio")]
+    pub(crate) use futures_util::AsyncWriteExt as AsyncWriter;
 }
 
 
@@ -247,6 +251,9 @@ pub mod utils {
 
     #[cfg(feature="ip")]
     pub const IP_0000: std::net::IpAddr = std::net::IpAddr::V4(std::net::Ipv4Addr::new(0, 0, 0, 0));
+
+    #[cfg(feature="rt_glommio")]
+    pub use num_cpus;
 }
 
 #[cfg(feature="rt_worker")]

@@ -29,11 +29,11 @@ impl Hasher for TypeIDHasger {
     }
 }
 impl Store {
-    #[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_worker"))]
+    #[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_glommio",feature="rt_worker"))]
     pub(super) const fn init() -> Self {
         Self(None)
     }
-    #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
+    #[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_glommio"))]
     pub(super) fn clear(&mut self) {
         if let Some(map) = &mut self.0 {
             map.clear()

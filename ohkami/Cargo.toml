@@ -35,15 +35,17 @@ rustc-hash    = { version = "2.0" }
 hmac          = { version = "0.12", default-features = false }
 sha2          = { version = "0.10", default-features = false }
 sha1          = { version = "0.10", optional = true, default-features = false }
+
 num_cpus      = { version = "1.16", optional = true }
+futures-util  = { version = "0.3",  optional = true, default-features = false, features = ["io"] }
 
 
 [features]
-#default       = ["testing"]
+default       = ["testing"]
 
 rt_tokio      = ["dep:tokio"]
 rt_async-std  = ["dep:async-std"]
-rt_glommio    = ["dep:glommio", "dep:num_cpus"]
+rt_glommio    = ["dep:glommio", "dep:num_cpus", "dep:futures-util"]
 rt_worker     = ["dep:worker",  "ohkami_macros/worker"]
 
 nightly       = []
@@ -59,15 +61,15 @@ DEBUG = [
     "tokio?/rt-multi-thread",
     "async-std?/attributes",
 ]
-default = [
-    "nightly",
-    "testing",
-    "sse",
-    "ws",
-    "ip",
-    #"rt_tokio",
-    #"rt_async-std",
-    "rt_glommio",
-    #"rt_worker",
-    "DEBUG",
-]
+#default = [
+#    "nightly",
+#    "testing",
+#    "sse",
+#    "ws",
+#    "ip",
+#    #"rt_tokio",
+#    #"rt_async-std",
+#    "rt_glommio",
+#    #"rt_worker",
+#    "DEBUG",
+#]
