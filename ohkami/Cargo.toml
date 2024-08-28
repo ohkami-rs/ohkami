@@ -54,7 +54,7 @@ nightly       = []
 testing       = []
 sse           = ["ohkami_lib/stream"]
 ws            = ["dep:sha1"]
-graceful      = ["rt_tokio", "tokio/signal", "tokio/macros"]
+graceful      = ["tokio?/sync", "tokio?/signal", "tokio?/macros"]
 ip            = []
 
 ##### internal #####
