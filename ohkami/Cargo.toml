@@ -21,7 +21,7 @@ features      = ["rt_tokio", "nightly", "sse", "ws"]
 ohkami_lib    = { version = "=0.2.5", path = "../ohkami_lib" }
 ohkami_macros = { version = "=0.8.0", path = "../ohkami_macros" }
 
-tokio         = { version = "1",   optional = true, features = ["net", "rt", "io-util", "sync", "time"] }
+tokio         = { version = "1",   optional = true, features = ["net", "rt", "io-util", "time"] }
 async-std     = { version = "1",   optional = true }
 smol          = { version = "2",   optional = true }
 glommio       = { version = "0.9", optional = true }
