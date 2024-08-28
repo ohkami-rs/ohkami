@@ -16,6 +16,11 @@
 
 <br>
 
+## Benchmark Results
+
+- [Web Frameworks Benchmark](https://web-frameworks-benchmark.netlify.app/result?l=rust)
+
+
 ## Quick Start
 
 1. Add to `dependencies` :
@@ -62,20 +67,15 @@ $ curl http://localhost:3000/hello/your_name
 Hello, your_name!
 ```
 
-<br>
 
 ## Feature flags
 
-### `"rt_tokio"`, `"rt_async-std"`, `"rt_smol"`, `"rt_glommio"`
-
-Currently,
+### `"rt_tokio"`, `"rt_async-std"`, `"rt_smol"`, `"rt_glommio"`：async runtime
 
 - [tokio](https://github.com/tokio-rs/tokio)
 - [async-std](https://github.com/async-rs/async-std)
 - [smol](https://github.com/smol-rs/smol)
 - [glommio](https://github.com/DataDog/glommio)
-
-are supported as async runtime.
 
 ### `"rt_worker"`：Cloudflare Workers
 
@@ -154,9 +154,7 @@ Get and hold remote peer's IP address
 ### `"nightly"`：enable nightly-only functionalities
 
 - try response
-- in-place schema validation
 
-<br>
 
 ## Snippets
 
@@ -397,7 +395,6 @@ async fn test_my_ohkami() {
 }
 ```
 
-<br>
 
 ## Supported protocols
 
@@ -407,11 +404,6 @@ async fn test_my_ohkami() {
 - [ ] HTTPS
 - [x] Server-Sent Events
 - [x] WebSocket
-
-
-## Benchmark Results
-
-- [Web Frameworks Benchmark](https://web-frameworks-benchmark.netlify.app/result?l=rust)
 
 
 ## MSRV ( Minimum Supported Rust Version )
