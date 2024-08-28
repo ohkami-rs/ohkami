@@ -13,8 +13,7 @@ impl<'req, S: Deserialize<'req>> FromRequest<'req> for JSON<S> {
             return None
         }
         serde_json::from_slice(req.payload()?)
-            .map_err(super::super::reject)
-            .and_then(super::super::validated)
+            .map_err(super::reject)
             .map(Self).into()
     }
 }
@@ -22,9 +21,6 @@ impl<'req, S: Deserialize<'req>> FromRequest<'req> for JSON<S> {
 impl<S: Serialize> IntoResponse for JSON<S> {
     #[inline(always)]
     fn into_response(self) -> Response {
-        match super::super::validated(self.0) {
-            Ok(v)  => Response::OK().with_json(v),
-            Err(e) => e,
-        }
+        Response::OK().with_json(self.0)
     }
 }

@@ -13,19 +13,15 @@ impl<'req, S: Deserialize<'req>> FromRequest<'req> for URLEncoded<S> {
             return None
         }
         ohkami_lib::serde_urlencoded::from_bytes(req.payload()?)
-            .map_err(super::super::reject)
-            .and_then(super::super::validated)
+            .map_err(super::reject)
             .map(Self).into()
     }
 }
 
 impl<S: Serialize> IntoResponse for URLEncoded<S> {
     fn into_response(self) -> Response {
-        match super::super::validated(self.0) {
-            Ok(v) => Response::OK().with_payload("application/x-www-form-urlencoded",
-                ohkami_lib::serde_urlencoded::to_string(&v).unwrap().into_bytes()
-            ),
-            Err(e) => e
-        }
+        Response::OK().with_payload("application/x-www-form-urlencoded",
+            ohkami_lib::serde_urlencoded::to_string(&self.0).unwrap().into_bytes()
+        )
     }
 }

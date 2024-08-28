@@ -15,3 +15,9 @@ pub use html::HTML;
 
 mod query;
 pub use query::Query;
+
+
+#[cold] #[inline(never)]
+fn reject(msg: impl std::fmt::Display) -> crate::Response {
+    crate::Response::BadRequest().with_text(msg.to_string())
+}
