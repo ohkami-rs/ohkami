@@ -49,11 +49,6 @@ compile_error! {"
     (We recommend to touch `.cargo/config.toml`: `[build] target = \"wasm32-unknown-unknown\"`)
 "}
 
-#[cfg(all(feature="rt_worker", feature="ip"))]
-compile_error! {"
-    Can't activate `ip` feature on `rt_worker`!
-"}
-
 
 #[allow(unused)]
 mod __rt__ {
@@ -276,7 +271,7 @@ pub mod utils {
         Timeout { proc, sleep: crate::__rt__::sleep(duration) }
     }
 
-    #[cfg(feature="ip")]
+    #[cfg(feature="__rt_native__")]
     pub const IP_0000: std::net::IpAddr = std::net::IpAddr::V4(std::net::Ipv4Addr::new(0, 0, 0, 0));
 
     #[cfg(feature="rt_glommio")]

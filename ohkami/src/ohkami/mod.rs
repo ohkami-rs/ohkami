@@ -318,15 +318,12 @@ impl Ohkami {
             loop {
                 __rt__::select! {
                     accept = listener.accept() => {
-                        #[cfg(not(feature="ip"))]
-                        let Ok((connection, _)) = accept else {continue};
-                        #[cfg(feature="ip")]
                         let Ok((connection, addr)) = accept else {continue};
 
                         let session = Session::new(
                             router.clone(),
                             connection,
-                            #[cfg(feature="ip")] addr.ip()
+                            addr.ip()
                         );
 
                         let close_rx = close_rx.clone();
@@ -348,15 +345,12 @@ impl Ohkami {
             loop {
                 __rt__::select! {
                     accept = __rt__::FutureExt::fuse(listener.accept()) => {
-                        #[cfg(not(feature="ip"))]
-                        let Ok((connection, _)) = accept else {continue};
-                        #[cfg(feature="ip")]
                         let Ok((connection, addr)) = accept else {continue};
 
                         let session = Session::new(
                             router.clone(),
                             connection,
-                            #[cfg(feature="ip")] addr.ip()
+                            addr.ip()
                         );
 
                         let close_rx = close_rx.clone();
@@ -378,15 +372,12 @@ impl Ohkami {
             loop {
                 __rt__::select! {
                     accept = __rt__::FutureExt::fuse(listener.accept()) => {
-                        #[cfg(not(feature="ip"))]
-                        let Ok((connection, _)) = accept else {continue};
-                        #[cfg(feature="ip")]
                         let Ok((connection, addr)) = accept else {continue};
 
                         let session = Session::new(
                             router.clone(),
                             connection,
-                            #[cfg(feature="ip")] addr.ip()
+                            addr.ip()
                         );
 
                         let close_rx = close_rx.clone();
@@ -409,14 +400,12 @@ impl Ohkami {
                 __rt__::select! {
                     accept = __rt__::FutureExt::fuse(listener.accept()) => {
                         let Ok(connection) = accept else {continue};
-        
-                        #[cfg(feature="ip")]
                         let Ok(addr) = connection.peer_addr() else {continue};
         
                         let session = Session::new(
                             router.clone(),
                             connection,
-                            #[cfg(feature="ip")] addr.ip()
+                            addr.ip()
                         );
 
                         let close_rx = close_rx.clone();

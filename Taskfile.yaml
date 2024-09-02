@@ -137,7 +137,6 @@ tasks:
     dir: ohkami
     cmds:
       - cargo check --lib --features rt_tokio,{{.MAYBE_NIGHTLY}}
-      - cargo check --lib --features rt_tokio,ip,{{.MAYBE_NIGHTLY}}
       - cargo check --lib --features rt_tokio,sse,{{.MAYBE_NIGHTLY}}
       - cargo check --lib --features rt_tokio,sse,ws,{{.MAYBE_NIGHTLY}}
 
@@ -148,7 +147,6 @@ tasks:
     dir: ohkami
     cmds:
       - cargo check --lib --features rt_async-std,{{.MAYBE_NIGHTLY}}
-      - cargo check --lib --features rt_async-std,ip,{{.MAYBE_NIGHTLY}}
       - cargo check --lib --features rt_async-std,sse,{{.MAYBE_NIGHTLY}}
       - cargo check --lib --features rt_async-std,sse,ws,{{.MAYBE_NIGHTLY}}
 
@@ -159,7 +157,6 @@ tasks:
     dir: ohkami
     cmds:
       - cargo check --lib --features rt_smol,{{.MAYBE_NIGHTLY}}
-      - cargo check --lib --features rt_smol,ip,{{.MAYBE_NIGHTLY}}
       - cargo check --lib --features rt_smol,sse,{{.MAYBE_NIGHTLY}}
       - cargo check --lib --features rt_smol,sse,ws,{{.MAYBE_NIGHTLY}}
 
@@ -170,7 +167,6 @@ tasks:
     dir: ohkami
     cmds:
       - cargo check --lib --features rt_glommio,{{.MAYBE_NIGHTLY}}
-      - cargo check --lib --features rt_glommio,ip,{{.MAYBE_NIGHTLY}}
       - cargo check --lib --features rt_glommio,sse,{{.MAYBE_NIGHTLY}}
       - cargo check --lib --features rt_glommio,sse,ws,{{.MAYBE_NIGHTLY}}
 
