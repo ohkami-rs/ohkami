@@ -54,7 +54,6 @@ nightly       = []
 testing       = []
 sse           = ["ohkami_lib/stream"]
 ws            = ["dep:sha1"]
-ip            = []
 
 ##### internal #####
 __rt__        = []

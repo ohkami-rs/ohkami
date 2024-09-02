@@ -51,6 +51,7 @@ pub(crate) const PAYLOAD_LIMIT: usize = 1 << 32;
 /// - `path`
 /// - `queries`
 /// - `payload`
+/// - `ip`
 /// 
 /// and a `memory`.
 /// 
@@ -133,7 +134,7 @@ pub struct Request {
     /// Query params of this request
     /// 
     /// In handler, using a struct of expected schema
-    /// with `ohkami::typed::Query` attribute is recommended for *type-safe*
+    /// with `ohkami::format::Query` is recommended for *type-safe*
     /// query parsing.
     /// 
     /// ---
@@ -163,16 +164,21 @@ pub struct Request {
 
     store: Store,
 
-    #[cfg(feature="ip")]
-    pub addr: std::net::IpAddr
+    #[cfg(feature="__rt_native__")]
+    /// Remote ( directly connected ) peer's IP address
+    /// 
+    /// ---
+    /// 
+    /// **NOTE** : If a proxy is in front of Ohkami, this will be the proxy's address
+    pub ip: std::net::IpAddr,
 }
 
 impl Request {
     #[cfg(feature="__rt__")]
     #[inline]
     pub(crate) fn init(
-        #[cfg(feature="ip")]
-        addr: std::net::IpAddr
+        #[cfg(feature="__rt_native__")]
+        ip: std::net::IpAddr
     ) -> Self {
         Self {
             #[cfg(feature="__rt_native__")]
@@ -191,9 +197,9 @@ impl Request {
             headers: RequestHeaders::init(),
             payload: None,
             store:   Store::init(),
-
-            #[cfg(feature="ip")]
-            addr
+            
+            #[cfg(feature="__rt_native__")]
+            ip,
         }
     }
     #[cfg(feature="__rt_native__")]
@@ -452,8 +458,8 @@ const _: () = {
             if let Some(payload) = self.payload.as_ref().map(|cs| unsafe {cs.as_bytes()}) {
                 d.field("payload", &String::from_utf8_lossy(payload));
             }
-            #[cfg(feature="ip")] {
-                d.field("ip_address", &self.addr);
+            #[cfg(feature="__rt_native__")] {
+                d.field("ip", &self.ip);
             }
 
             d.finish()

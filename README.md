@@ -150,10 +150,6 @@ async fn main() {
 }
 ```
 
-### `"ip"`：remote IP address
-
-Get and hold remote peer's IP address
-
 ### `"nightly"`：enable nightly-only functionalities
 
 - try response

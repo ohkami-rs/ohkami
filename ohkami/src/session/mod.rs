@@ -37,24 +37,18 @@ mod env {
 pub(crate) struct Session {
     router:     Arc<RadixRouter>,
     connection: TcpStream,
-
-    #[cfg(feature="ip")]
-    addr: std::net::IpAddr
+    ip:         std::net::IpAddr,
 }
 impl Session {
     pub(crate) fn new(
         router:     Arc<RadixRouter>,
         connection: TcpStream,
-
-        #[cfg(feature="ip")]
-        addr: std::net::IpAddr
+        ip:         std::net::IpAddr
     ) -> Self {
         Self {
             router,
             connection,
-
-            #[cfg(feature="ip")]
-            addr
+            ip
         }
     }
 
@@ -72,7 +66,7 @@ impl Session {
         }
 
         match timeout_in(Duration::from_secs(env::OHKAMI_KEEPALIVE_TIMEOUT()), async {
-            let mut req = Request::init(#[cfg(feature="ip")] self.addr);
+            let mut req = Request::init(self.ip);
             let mut req = unsafe {Pin::new_unchecked(&mut req)};
             loop {
                 req.clear();
