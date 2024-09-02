@@ -12,7 +12,7 @@ on:
 jobs:
   auto_approve:
     if: |
-      github.event.pull_request.user.login == 'kana-rus' &&
+      github.event.pull_request.user.login == 'kanarus' &&
       !github.event.pull_request.draft
     permissions:
       pull-requests: write

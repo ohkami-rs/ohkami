@@ -9,12 +9,11 @@ pub(crate) mod router;
 pub use build::{Route, Routes};
 
 use crate::fang::Fangs;
-use ohkami_lib::signal;
 use std::sync::Arc;
 use router::TrieRouter;
 
 #[cfg(feature="__rt_native__")]
-use crate::{__rt__, Session};
+use {crate::{__rt__, Session}, ohkami_lib::signal};
 
 /// # Ohkami - a robust wolf who serves your web app
 /// 
