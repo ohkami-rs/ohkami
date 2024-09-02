@@ -54,7 +54,7 @@ nightly       = []
 testing       = []
 sse           = ["ohkami_lib/stream"]
 ws            = ["dep:sha1"]
-graceful      = ["tokio?/sync", "tokio?/signal", "tokio?/macros"]
+graceful      = ["dep:futures-util", "futures-util/async-await-macro", "ohkami_lib/signal"]
 ip            = []
 
 ##### internal #####
@@ -73,9 +73,10 @@ DEBUG = [
 #    "sse",
 #    "ws",
 #    "ip",
-#    #"rt_tokio",
+#    "graceful",
+#    "rt_tokio",
 #    #"rt_async-std",
-#    "rt_smol",
+#    #"rt_smol",
 #    #"rt_glommio",
 #    #"rt_worker",
 #    "DEBUG",

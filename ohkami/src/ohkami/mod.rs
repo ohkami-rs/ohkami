@@ -15,6 +15,9 @@ use router::TrieRouter;
 #[cfg(feature="__rt_native__")]
 use crate::{__rt__, Session};
 
+#[cfg(feature="graceful")]
+use ohkami_lib::signal;
+
 
 /// # Ohkami - a robust wolf who serves your web app
 /// 
@@ -301,18 +304,18 @@ impl Ohkami {
         
         #[cfg(feature="rt_tokio")] {
             #[cfg(feature="graceful")] {
-                let ctrl_c = tokio::signal::ctrl_c();
+                let ctrl_c = signal::ctrl_c();
 
-                let (ctrl_c_tx, ctrl_c_rx) = tokio::sync::watch::channel(());
+                let (ctrl_c_tx, ctrl_c_rx) = signal::watch::channel(());
                 __rt__::spawn(async {
                     ctrl_c.await.expect("Something was wrong around Ctrl-C");
                     drop(ctrl_c_rx);
                 });
 
-                let (close_tx, close_rx) = tokio::sync::watch::channel(());
+                let (close_tx, close_rx) = signal::watch::channel(());
                 loop {
-                    tokio::select! {
-                        accept = listener.accept() => {
+                    __rt__::select! {
+                        accept = __rt__::fused(listener.accept()) => {
                             crate::DEBUG!("Accepted {accept:#?}");
 
                             #[cfg(not(feature="ip"))]
@@ -332,7 +335,7 @@ impl Ohkami {
                                 drop(close_rx)
                             });
                         },
-                        _ = ctrl_c_tx.closed() => {
+                        _ = __rt__::fused(ctrl_c_tx.closed()) => {
                             crate::DEBUG!("Recieved Ctrl-C, trying graceful shutdown");
                             drop(listener);
                             break

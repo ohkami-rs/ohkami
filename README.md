@@ -78,7 +78,7 @@ Hello, your_name!
 
 ## Feature flags
 
-### `"rt_tokio"`, `"rt_async-std"`, `"rt_smol"`, `"rt_glommio"`：async runtime
+### `"rt_tokio"`, `"rt_async-std"`, `"rt_smol"`, `"rt_glommio"`：native async runtime
 
 - [tokio](https://github.com/tokio-rs/tokio)
 - [async-std](https://github.com/async-rs/async-std)

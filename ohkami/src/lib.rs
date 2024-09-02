@@ -116,6 +116,13 @@ mod __rt__ {
     pub(crate) use futures_util::AsyncWriteExt as AsyncWriter;
     #[cfg(feature="rt_smol")]
     pub(crate) use futures_util::AsyncWriteExt as AsyncWriter;
+
+    #[cfg(feature="graceful")]
+    pub(crate) use futures_util::select;
+    #[cfg(feature="graceful")]
+    #[inline] pub(crate) fn fused<T>(f: impl std::future::Future<Output = T>) -> impl futures_util::future::FusedFuture<Output = T> {
+        futures_util::FutureExt::fuse(f)
+    }
 }
 
 
