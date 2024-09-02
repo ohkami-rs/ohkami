@@ -1,5 +1,5 @@
 use std::{future::Future, pin::Pin};
-use super::Handler;
+use super::{Handler, SendOnNative, SendSyncOnNative, ResponseFuture};
 use crate::{Response, FromRequest, FromParam, Request, IntoResponse};
 
 
@@ -7,7 +7,7 @@ pub trait IntoHandler<T> {
     fn into_handler(self) -> Handler;
 }
 
-#[inline(never)] #[cold] fn __error__(e: Response) -> Pin<Box<dyn Future<Output = Response> + Send>> {
+#[inline(never)] #[cold] fn __error__(e: Response) -> Pin<Box<dyn ResponseFuture>> {
     Box::pin(async {e})
 }
 
@@ -26,9 +26,9 @@ pub trait IntoHandler<T> {
 const _: (/* no args */) = {
     impl<'req, F, Body, Fut> IntoHandler<fn()->Body> for F
     where
-        F:    Fn() -> Fut + Send + Sync + 'static,
+        F:    Fn() -> Fut + SendSyncOnNative + 'static,
         Body: IntoResponse,
-        Fut:  Future<Output = Body> + Send + 'static,
+        Fut:  Future<Output = Body> + SendOnNative + 'static,
     {
         fn into_handler(self) -> Handler {
             Handler::new(move |_| {
@@ -44,9 +44,9 @@ const _: (/* no args */) = {
 const _: (/* FromParam */) = {
     impl<'req, F, Fut, Body, P1:FromParam<'req>> IntoHandler<fn((P1,))->Body> for F
     where
-        F:    Fn(P1) -> Fut + Send + Sync + 'static,
+        F:    Fn(P1) -> Fut + SendSyncOnNative + 'static,
         Body: IntoResponse,
-        Fut:  Future<Output = Body> + Send + 'static,
+        Fut:  Future<Output = Body> + SendOnNative + 'static,
     {
         fn into_handler(self) -> Handler {
             Handler::new(move |req|
@@ -63,9 +63,9 @@ const _: (/* FromParam */) = {
 
     impl<'req, F, Body, Fut, P1:FromParam<'req>> IntoHandler<fn(((P1,),))->Body> for F
     where
-        F:    Fn((P1,)) -> Fut + Send + Sync + 'static,
+        F:    Fn((P1,)) -> Fut + SendSyncOnNative + 'static,
         Body: IntoResponse,
-        Fut:  Future<Output = Body> + Send + 'static,
+        Fut:  Future<Output = Body> + SendOnNative + 'static,
     {
         fn into_handler(self) -> Handler {
             Handler::new(move |req|
@@ -84,8 +84,8 @@ const _: (/* FromParam */) = {
 
     impl<'req, F, Fut, Body:IntoResponse, P1:FromParam<'req>, P2:FromParam<'req>> IntoHandler<fn(((P1, P2),))->Body> for F
     where
-        F:   Fn((P1, P2)) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Body> + Send + 'static,
+        F:   Fn((P1, P2)) -> Fut + SendSyncOnNative + 'static,
+        Fut: Future<Output = Body> + SendOnNative + 'static,
     {
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
@@ -105,8 +105,8 @@ const _: (/* FromParam */) = {
 const _: (/* FromRequest items */) = {
     impl<'req, F, Fut, Body:IntoResponse, Item1:FromRequest<'req>> IntoHandler<fn(Item1)->Body> for F
     where
-        F:   Fn(Item1) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Body> + Send + 'static,
+        F:   Fn(Item1) -> Fut + SendSyncOnNative + 'static,
+        Fut: Future<Output = Body> + SendOnNative + 'static,
     {
         fn into_handler(self) -> Handler {
             Handler::new(move |req|
@@ -123,8 +123,8 @@ const _: (/* FromRequest items */) = {
 
     impl<'req, F, Fut, Body:IntoResponse, Item1:FromRequest<'req>, Item2:FromRequest<'req>> IntoHandler<fn(Item1, Item2)->Body> for F
     where
-        F:   Fn(Item1, Item2) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Body> + Send + 'static,
+        F:   Fn(Item1, Item2) -> Fut + SendSyncOnNative + 'static,
+        Fut: Future<Output = Body> + SendOnNative + 'static,
     {
         fn into_handler(self) -> Handler {
             Handler::new(move |req|
@@ -142,8 +142,8 @@ const _: (/* FromRequest items */) = {
 
     impl<'req, F, Fut, Body:IntoResponse, Item1:FromRequest<'req>, Item2:FromRequest<'req>, Item3:FromRequest<'req>> IntoHandler<fn(Item1, Item2, Item3)->Body> for F
     where
-        F:   Fn(Item1, Item2, Item3) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Body> + Send + 'static,
+        F:   Fn(Item1, Item2, Item3) -> Fut + SendSyncOnNative + 'static,
+        Fut: Future<Output = Body> + SendOnNative + 'static,
     {
         fn into_handler(self) -> Handler {
             Handler::new(move |req|
@@ -162,8 +162,8 @@ const _: (/* FromRequest items */) = {
 
     impl<'req, F, Fut, Body:IntoResponse, Item1:FromRequest<'req>, Item2:FromRequest<'req>, Item3:FromRequest<'req>, Item4:FromRequest<'req>> IntoHandler<fn(Item1, Item2, Item3, Item4)->Body> for F
     where
-        F:   Fn(Item1, Item2, Item3, Item4) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Body> + Send + 'static,
+        F:   Fn(Item1, Item2, Item3, Item4) -> Fut + SendSyncOnNative + 'static,
+        Fut: Future<Output = Body> + SendOnNative + 'static,
     {
         fn into_handler(self) -> Handler {
             Handler::new(move |req|
@@ -185,8 +185,8 @@ const _: (/* FromRequest items */) = {
 const _: (/* one FromParam without tuple and FromRequest items */) = {
     impl<'req, F, Fut, Body:IntoResponse, P1:FromParam<'req>, Item1:FromRequest<'req>> IntoHandler<fn(((P1,),), Item1)->Body> for F
     where
-        F:   Fn(P1, Item1) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Body> + Send + 'static,
+        F:   Fn(P1, Item1) -> Fut + SendSyncOnNative + 'static,
+        Fut: Future<Output = Body> + SendOnNative + 'static,
     {
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
@@ -208,8 +208,8 @@ const _: (/* one FromParam without tuple and FromRequest items */) = {
 
     impl<'req, F, Fut, Body:IntoResponse, P1:FromParam<'req>, Item1:FromRequest<'req>, Item2:FromRequest<'req>> IntoHandler<fn(((P1,),), Item1, Item2)->Body> for F
     where
-        F:   Fn(P1, Item1, Item2) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Body> + Send + 'static,
+        F:   Fn(P1, Item1, Item2) -> Fut + SendSyncOnNative + 'static,
+        Fut: Future<Output = Body> + SendOnNative + 'static,
     {
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
@@ -232,8 +232,8 @@ const _: (/* one FromParam without tuple and FromRequest items */) = {
 
     impl<'req, F, Fut, Body:IntoResponse, P1:FromParam<'req>, Item1:FromRequest<'req>, Item2:FromRequest<'req>, Item3:FromRequest<'req>> IntoHandler<fn(((P1,),), Item1, Item2, Item3)->Body> for F
     where
-        F:   Fn(P1, Item1, Item2, Item3) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Body> + Send + 'static,
+        F:   Fn(P1, Item1, Item2, Item3) -> Fut + SendSyncOnNative + 'static,
+        Fut: Future<Output = Body> + SendOnNative + 'static,
     {
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
@@ -257,8 +257,8 @@ const _: (/* one FromParam without tuple and FromRequest items */) = {
 
     impl<'req, F, Fut, Body:IntoResponse, P1:FromParam<'req>, Item1:FromRequest<'req>, Item2:FromRequest<'req>, Item3:FromRequest<'req>, Item4:FromRequest<'req>> IntoHandler<fn(((P1,),), Item1, Item2, Item3, Item4)->Body> for F
     where
-        F:   Fn(P1, Item1, Item2, Item3, Item4) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Body> + Send + 'static,
+        F:   Fn(P1, Item1, Item2, Item3, Item4) -> Fut + SendSyncOnNative + 'static,
+        Fut: Future<Output = Body> + SendOnNative + 'static,
     {
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
@@ -285,8 +285,8 @@ const _: (/* one FromParam without tuple and FromRequest items */) = {
 const _: (/* one FromParam and FromRequest items */) = {
     impl<'req, F, Fut, Body:IntoResponse, P1:FromParam<'req>, Item1:FromRequest<'req>> IntoHandler<fn((P1,), Item1)->Body> for F
     where
-        F:   Fn((P1,), Item1) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Body> + Send + 'static,
+        F:   Fn((P1,), Item1) -> Fut + SendSyncOnNative + 'static,
+        Fut: Future<Output = Body> + SendOnNative + 'static,
     {
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
@@ -308,8 +308,8 @@ const _: (/* one FromParam and FromRequest items */) = {
 
     impl<'req, F, Fut, Body:IntoResponse, P1:FromParam<'req>, Item1:FromRequest<'req>, Item2:FromRequest<'req>> IntoHandler<fn((P1,), Item1, Item2)->Body> for F
     where
-        F:   Fn((P1,), Item1, Item2) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Body> + Send + 'static,
+        F:   Fn((P1,), Item1, Item2) -> Fut + SendSyncOnNative + 'static,
+        Fut: Future<Output = Body> + SendOnNative + 'static,
     {
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
@@ -332,8 +332,8 @@ const _: (/* one FromParam and FromRequest items */) = {
 
     impl<'req, F, Fut, Body:IntoResponse, P1:FromParam<'req>, Item1:FromRequest<'req>, Item2:FromRequest<'req>, Item3:FromRequest<'req>> IntoHandler<fn((P1,), Item1, Item2, Item3)->Body> for F
     where
-        F:   Fn((P1,), Item1, Item2, Item3) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Body> + Send + 'static,
+        F:   Fn((P1,), Item1, Item2, Item3) -> Fut + SendSyncOnNative + 'static,
+        Fut: Future<Output = Body> + SendOnNative + 'static,
     {
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
@@ -357,8 +357,8 @@ const _: (/* one FromParam and FromRequest items */) = {
 
     impl<'req, F, Fut, Body:IntoResponse, P1:FromParam<'req>, Item1:FromRequest<'req>, Item2:FromRequest<'req>, Item3:FromRequest<'req>, Item4:FromRequest<'req>> IntoHandler<fn((P1,), Item1, Item2, Item3, Item4)->Body> for F
     where
-        F:   Fn((P1,), Item1, Item2, Item3, Item4) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Body> + Send + 'static,
+        F:   Fn((P1,), Item1, Item2, Item3, Item4) -> Fut + SendSyncOnNative + 'static,
+        Fut: Future<Output = Body> + SendOnNative + 'static,
     {
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
@@ -385,8 +385,8 @@ const _: (/* one FromParam and FromRequest items */) = {
 const _: (/* two PathParams and FromRequest items */) = {
     impl<'req, F, Fut, Body:IntoResponse, P1:FromParam<'req>, P2:FromParam<'req>, Item1:FromRequest<'req>> IntoHandler<fn((P1, P2), Item1)->Body> for F
     where
-        F:   Fn((P1, P2), Item1) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Body> + Send + 'static,
+        F:   Fn((P1, P2), Item1) -> Fut + SendSyncOnNative + 'static,
+        Fut: Future<Output = Body> + SendOnNative + 'static,
     {
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
@@ -409,8 +409,8 @@ const _: (/* two PathParams and FromRequest items */) = {
 
     impl<'req, F, Fut, Body:IntoResponse, P1:FromParam<'req>, P2:FromParam<'req>, Item1:FromRequest<'req>, Item2:FromRequest<'req>> IntoHandler<fn((P1, P2), Item1, Item2)->Body> for F
     where
-        F:   Fn((P1, P2), Item1, Item2) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Body> + Send + 'static,
+        F:   Fn((P1, P2), Item1, Item2) -> Fut + SendSyncOnNative + 'static,
+        Fut: Future<Output = Body> + SendOnNative + 'static,
     {
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
@@ -434,8 +434,8 @@ const _: (/* two PathParams and FromRequest items */) = {
 
     impl<'req, F, Fut, Body:IntoResponse, P1:FromParam<'req>, P2:FromParam<'req>, Item1:FromRequest<'req>, Item2:FromRequest<'req>, Item3:FromRequest<'req>> IntoHandler<fn((P1, P2), Item1, Item2, Item3)->Body> for F
     where
-        F:   Fn((P1, P2), Item1, Item2, Item3) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Body> + Send + 'static,
+        F:   Fn((P1, P2), Item1, Item2, Item3) -> Fut + SendSyncOnNative + 'static,
+        Fut: Future<Output = Body> + SendOnNative + 'static,
     {
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
@@ -460,8 +460,8 @@ const _: (/* two PathParams and FromRequest items */) = {
 
     impl<'req, F, Fut, Body:IntoResponse, P1:FromParam<'req>, P2:FromParam<'req>, Item1:FromRequest<'req>, Item2:FromRequest<'req>, Item3:FromRequest<'req>, Item4:FromRequest<'req>> IntoHandler<fn((P1, P2), Item1, Item2, Item3, Item4)->Body> for F
     where
-        F:   Fn((P1, P2), Item1, Item2, Item3, Item4) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Body> + Send + 'static,
+        F:   Fn((P1, P2), Item1, Item2, Item3, Item4) -> Fut + SendSyncOnNative + 'static,
+        Fut: Future<Output = Body> + SendOnNative + 'static,
     {
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
@@ -487,7 +487,6 @@ const _: (/* two PathParams and FromRequest items */) = {
 };
 
 
-
 #[cfg(test)] #[test] fn handler_args() {
     async fn h0() -> &'static str {""}
 
@@ -503,9 +502,26 @@ const _: (/* two PathParams and FromRequest items */) = {
     }
     async fn h3(_param: P) -> String {format!("")}
 
+    #[cfg(feature="rt_worker")]
+    struct SomeJS {_ptr: *const u8}
+    #[cfg(feature="rt_worker")]
+    impl<'req> FromRequest<'req> for SomeJS {
+        type Error = std::convert::Infallible;
+        fn from_request(_: &'req Request) -> Option<Result<Self, Self::Error>> {
+            None
+        }
+    }
+    #[cfg(feature="rt_worker")]
+    async fn h4(_: SomeJS) -> String {format!("")}
+
     macro_rules! assert_handlers {
         ( $($function:ident)* ) => {
-            $( let _ = $function.into_handler(); )*
+            $( let _ = IntoHandler::into_handler($function); )*
         };
-    } assert_handlers! { h0 h1 h2 h3 }
+    }
+
+    assert_handlers! { h0 h1 h2 h3  }
+
+    #[cfg(feature="rt_worker")]
+    assert_handlers! { h4 }
 }

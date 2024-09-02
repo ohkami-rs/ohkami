@@ -9,6 +9,7 @@ pub trait Fangs {
     fn build(&self, inner: BoxedFPC) -> BoxedFPC;
 }
 
+#[allow(private_interfaces)]
 impl<F: Fang<BoxedFPC>> Fangs for F {
     fn build(&self, inner: BoxedFPC) -> BoxedFPC {
         BoxedFPC::from_proc(self.chain(inner))

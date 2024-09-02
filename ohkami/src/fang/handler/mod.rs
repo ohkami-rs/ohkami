@@ -2,6 +2,7 @@ mod into_handler;
 pub(crate) use into_handler::IntoHandler;
 
 use super::{FangProcCaller, BoxedFPC};
+use super::{SendOnNative, SendSyncOnNative, ResponseFuture};
 use crate::{Request, Response};
 use std::{pin::Pin, future::Future};
 
@@ -24,22 +25,27 @@ const _: () = {
 };
 
 impl Handler {
-    pub(crate) fn new(proc: impl
-        Fn(&mut Request) -> Pin<Box<dyn
-            Future<Output = Response> + Send + '_
-        >> + Send + Sync + 'static
+    pub(crate) fn new(
+        proc: impl Fn(&mut Request) -> Pin<Box<dyn ResponseFuture + '_>> + SendSyncOnNative + 'static
     ) -> Self {
-        struct HandlerProc<F: Fn(&mut Request) -> Pin<Box<dyn
-            Future<Output = Response> + Send + '_
-        >> + Send + Sync + 'static>(F);
+        struct HandlerProc<F>(F);
 
         const _: () = {
-            impl<F: Fn(&mut Request) -> Pin<Box<dyn
-                Future<Output = Response> + Send + '_
-            >> + Send + Sync + 'static>
-            FangProcCaller for HandlerProc<F> {
+            impl<F> FangProcCaller for HandlerProc<F>
+            where
+                F: Fn(&mut Request) -> Pin<Box<dyn ResponseFuture + '_>> + SendSyncOnNative + 'static
+            {
+                #[cfg(not(feature="rt_worker"))]
                 fn call_bite<'b>(&'b self, req: &'b mut Request) -> Pin<Box<dyn Future<Output = Response> + Send + 'b>> {
-                    (self.0)(req)
+                    // SAFETY: trait upcasting
+                    // trait upcasting coercion is experimental <https://github.com/rust-lang/rust/issues/65991>
+                    unsafe {std::mem::transmute((self.0)(req))}
+                }
+                #[cfg(feature="rt_worker")]
+                fn call_bite<'b>(&'b self, req: &'b mut Request) -> Pin<Box<dyn Future<Output = Response> + 'b>> {
+                    // SAFETY: trait upcasting
+                    // trait upcasting coercion is experimental <https://github.com/rust-lang/rust/issues/65991>
+                    unsafe {std::mem::transmute((self.0)(req))}
                 }
             }
         };
@@ -48,16 +54,23 @@ impl Handler {
     }
 }
 
+#[cfg(feature="rt_worker")]
+const _: () = {
+    unsafe impl Send for Handler {}
+    unsafe impl Sync for Handler {}
+};
+
 impl Handler {
-    pub(crate) fn default_not_found() -> Self {        
-        Handler({
-            static H: std::sync::OnceLock<Handler> = std::sync::OnceLock::new();
-            H.get_or_init(|| {
-                async fn not_found() -> Response {
-                    Response::NotFound()
-                }
-                not_found.into_handler()
-            }).0.clone()
-        })
+    pub(crate) fn default_not_found() -> Self {
+        use std::sync::LazyLock;
+
+        static NOT_FOUND: LazyLock<Handler> = LazyLock::new(|| {
+            async fn not_found() -> Response {
+                Response::NotFound()
+            }
+            not_found.into_handler()
+        });
+
+        Handler((&*NOT_FOUND).0.clone())
     }
 }
