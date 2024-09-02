@@ -78,7 +78,7 @@ Hello, your_name!
 
 ## Feature flags
 
-### `"rt_tokio"`, `"rt_async-std"`, `"rt_smol"`, `"rt_glommio"`：async runtime
+### `"rt_tokio"`, `"rt_async-std"`, `"rt_smol"`, `"rt_glommio"`：native async runtime
 
 - [tokio](https://github.com/tokio-rs/tokio)
 - [async-std](https://github.com/async-rs/async-std)
@@ -94,11 +94,6 @@ npm create cloudflare ./path/to/project -- --template https://github.com/ohkami-
 then your project directory has `wrangler.toml`, `package.json` and a Rust library crate. Local dev by `npm run dev` and deploy by `npm run deploy` !
 
 See README of the [template](https://github.com/ohkami-rs/ohkami-templates/tree/main/worker) for details.
-
-### `"graceful"`：Graceful Shutdown
-
-Automatically catch Ctrl-C ( SIGINT ) and perform graceful shutdown.\
-Currently, only supported on `rt_tokio`.
 
 ### `"sse"`：Server-Sent Events
 

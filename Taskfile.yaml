@@ -79,7 +79,6 @@ tasks:
     cmds:
       - cargo test --lib --features rt_tokio,DEBUG,{{.MAYBE_NIGHTLY}}
       - cargo test --lib --features rt_tokio,DEBUG,sse,ws,{{.MAYBE_NIGHTLY}}
-      - cargo test --lib --features rt_tokio,DEBUG,graceful,{{.MAYBE_NIGHTLY}}
 
   test_rt_async-std:
     vars:
@@ -141,8 +140,6 @@ tasks:
       - cargo check --lib --features rt_tokio,ip,{{.MAYBE_NIGHTLY}}
       - cargo check --lib --features rt_tokio,sse,{{.MAYBE_NIGHTLY}}
       - cargo check --lib --features rt_tokio,sse,ws,{{.MAYBE_NIGHTLY}}
-      - cargo check --lib --features rt_tokio,graceful,{{.MAYBE_NIGHTLY}}
-      - cargo check --lib --features rt_tokio,graceful,ip,{{.MAYBE_NIGHTLY}}
 
   check_rt_async-std:
     vars:

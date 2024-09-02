@@ -1,6 +1,6 @@
 [package]
 name          = "ohkami_lib"
-version       = "0.2.5"
+version       = "0.2.6"
 edition       = "2021"
 authors       = ["kanarus <kanarus786@gmail.com>"]
 description   = "Internal library for Ohkami - intuitive and declarative web framework"
@@ -16,10 +16,12 @@ license       = "MIT"
 serde            = { workspace = true }
 byte_reader      = { workspace = true }
 percent-encoding = { version = "2.3" }
-futures-core     = { version = "0.3", optional = true }
+futures-core     = { optional = true, version = "0.3" }
+tokio            = { optional = true, version = "1", features = ["sync", "signal"] }
 
 [features]
 stream = ["dep:futures-core"]
+signal = ["dep:tokio"]
 
 ### DEBUG ###
 #default = ["stream"]

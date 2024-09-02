@@ -5,7 +5,7 @@ edition = "2021"
 authors = ["kanarus <kanarus786@gmail.com>"]
 
 [features]
-DEBUG = ["ohkami/DEBUG", "ohkami/graceful"]
+DEBUG = ["ohkami/DEBUG"]
 # `--no-default-features` when running `bin/`
 default = ["DEBUG"]
 
@@ -25,14 +25,3 @@ hashbrown          = { version = "0.14.5", features = ["raw", "inline-more"] }
 [dev-dependencies]
 rand = "0.8.5"
 rand_chacha = "0.3.1"
-
-[profile.release]
-opt-level = 3
-debug = false
-debug-assertions = false
-lto = true
-panic = "abort"
-incremental = false
-codegen-units = 1
-rpath = false
-strip = false
