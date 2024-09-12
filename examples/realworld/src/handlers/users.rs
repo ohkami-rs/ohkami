@@ -1,4 +1,5 @@
-use ohkami::{typed::status::Created, format::JSON, Memory, Ohkami, Route};
+use ohkami::prelude::*;
+use ohkami::typed::status::Created;
 use sqlx::PgPool;
 use crate::{
     models::User,
@@ -20,7 +21,7 @@ pub fn users_ohkami() -> Ohkami {
 }
 
 async fn login(
-    pool: Memory<'_, PgPool>,
+    Memory(pool): Memory<'_, PgPool>,
     JSON(LoginRequest {
         user: LoginRequestUser { email, password },
     }): JSON<LoginRequest<'_>>,
@@ -30,7 +31,7 @@ async fn login(
         FROM users
         WHERE email = $1
     "#, email)
-        .fetch_one(*pool).await
+        .fetch_one(pool).await
         .map_err(RealWorldError::DB)?;
 
     db::verify_password(password, &credential.salt, &credential.password)?;
@@ -40,14 +41,14 @@ async fn login(
         FROM users AS u
         WHERE email = $1
     "#, email)
-        .fetch_one(*pool).await
+        .fetch_one(pool).await
         .map_err(RealWorldError::DB)?;
 
     Ok(JSON(u.into_user_response()?))
 }
 
 async fn register(
-    pool: Memory<'_, PgPool>,
+    Memory(pool): Memory<'_, PgPool>,
     JSON(RegisterRequest {
         user: RegisterRequestUser { username, email, password }
     }): JSON<RegisterRequest<'_>>,
@@ -60,7 +61,7 @@ async fn register(
                 u.name = $1
         )
     "#, username)
-        .fetch_one(*pool).await
+        .fetch_one(pool).await
         .map_err(RealWorldError::DB)?
         .exists.unwrap();
     if already_exists {
@@ -77,7 +78,7 @@ async fn register(
             VALUES ($1,    $2,   $3,       $4  )
         RETURNING id
     "#, email, username, hased_password.as_str(), salt.as_str())
-        .fetch_one(*pool).await
+        .fetch_one(pool).await
         .map_err(RealWorldError::DB)?
         .id;
 

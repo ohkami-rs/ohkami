@@ -7,6 +7,9 @@ pub use cors::CORS;
 mod jwt;
 pub use jwt::{JWT, JWTToken};
 
+mod memory;
+pub use memory::Memory;
+
 #[cfg(feature="__rt_native__")]
 mod timeout;
 #[cfg(feature="__rt_native__")]

@@ -106,15 +106,18 @@ pub struct UserEntity {
     pub bio:       Option<String>,
     pub image_url: Option<String>,
 } impl UserEntity {
+    pub fn into_user(self) -> Result<User, RealWorldError> {
+        Ok(User {
+            jwt:   config::issue_jwt_for_user_of_id(self.id)?,
+            email: self.email,
+            name:  self.name,
+            bio:   self.bio,
+            image: self.image_url,
+        })
+    }
     pub fn into_user_response(self) -> Result<UserResponse, RealWorldError> {
         Ok(UserResponse {
-            user: User {
-                jwt:   config::issue_jwt_for_user_of_id(self.id)?,
-                email: self.email,
-                name:  self.name,
-                bio:   self.bio,
-                image: self.image_url,
-            },
+            user: self.into_user()?
         })
     }
     pub fn into_profile_response_with(self, following: bool) -> ProfileResponse {

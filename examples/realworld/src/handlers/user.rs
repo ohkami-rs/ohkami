@@ -1,4 +1,4 @@
-use ohkami::{Ohkami, Route, Memory, format::JSON};
+use ohkami::prelude::*;
 use sqlx::PgPool;
 use crate::{
     fangs::Auth,
@@ -6,7 +6,7 @@ use crate::{
     models::response::UserResponse,
     models::request::{UpdateProfileRequest, UpdateProfileRequestUser},
     errors::RealWorldError,
-    config::{issue_jwt_for_user_of_id, JWTPayload},
+    config::JWTPayload,
     db::{UserEntity, hash_password},
 };
 
@@ -14,39 +14,23 @@ use crate::{
 pub fn user_ohkami() -> Ohkami {
     Ohkami::with(Auth::default(), (
         "/"
-            .GET(get_current_user)
+            .GET(get_user)
             .PUT(update),
     ))
 }
 
-async fn get_current_user(
-    pool: Memory<'_, PgPool>,
-    auth: Memory<'_, JWTPayload>,
+async fn get_user(
+    Memory(pool): Memory<'_, PgPool>,
+    Memory(auth): Memory<'_, JWTPayload>,
 ) -> Result<JSON<UserResponse>, RealWorldError> {
-    let u = sqlx::query_as!(UserEntity, r#"
-        SELECT id, email, name, bio, image_url
-        FROM users AS u
-        WHERE
-            u.id = $1
-    "#, auth.user_id)
-        .fetch_one(*pool).await
-        .map_err(RealWorldError::DB)?;
-
-    Ok(JSON(UserResponse {
-        user: User {
-            email: u.email,
-            jwt:   issue_jwt_for_user_of_id(u.id)?,
-            name:  u.name,
-            bio:   u.bio,
-            image: u.image_url,
-        },
-    }))
+    let user = util::get_current_user(pool, auth).await?;
+    Ok(JSON(UserResponse { user }))
 }
 
-async fn update<'h>(
-    JSON(req): JSON<UpdateProfileRequest<'h>>,
-    auth: Memory<'h, JWTPayload>,
-    pool: Memory<'h, PgPool>,
+async fn update(
+    JSON(req): JSON<UpdateProfileRequest<'_>>,
+    Memory(auth): Memory<'_, JWTPayload>,
+    Memory(pool): Memory<'_, PgPool>,
 ) -> Result<JSON<UserResponse>, RealWorldError> {
     let user_entity = {
         let UpdateProfileRequest {
@@ -81,15 +65,35 @@ async fn update<'h>(
         query.push(" RETURNING id, email, name, image_url, bio");
 
         if !set_once {
-            // Requested to update nothing, then
-            // not perform UPDATE query
-            return get_current_user(pool, auth).await
+            // Requested to update nothing, then not perform UPDATE query
+            let user = util::get_current_user(pool, auth).await?;
+            return Ok(JSON(UserResponse { user }))
         }
 
         query.build_query_as::<UserEntity>()
-            .fetch_one(*pool).await
+            .fetch_one(pool).await
             .map_err(RealWorldError::DB)?
     };
 
     Ok(JSON(user_entity.into_user_response()?))
+}
+
+mod util {
+    use super::*;
+
+    pub async fn get_current_user<'a>(
+        pool: &'a PgPool,
+        auth: &'a JWTPayload,
+    ) -> Result<User, RealWorldError> {
+        let u = sqlx::query_as!(UserEntity, r#"
+            SELECT id, email, name, bio, image_url
+            FROM users AS u
+            WHERE
+                u.id = $1
+        "#, auth.user_id)
+            .fetch_one(pool).await
+            .map_err(RealWorldError::DB)?;
+
+        Ok(u.into_user()?)
+    }
 }
