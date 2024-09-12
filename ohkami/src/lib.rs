@@ -117,7 +117,7 @@ mod __rt__ {
 
 
 mod request;
-pub use request::{Request, Method, FromRequest, FromParam, Memory};
+pub use request::{Request, Method, FromRequest, FromParam};
 pub use ::ohkami_macros::FromRequest;
 
 mod response;
@@ -286,6 +286,7 @@ pub mod prelude {
     pub use crate::utils::FangAction;
     pub use crate::serde::{Serialize, Deserialize};
     pub use crate::format::JSON;
+    pub use crate::fang::Memory;
 
     #[cfg(feature="__rt__")]
     pub use crate::{Route, Ohkami};

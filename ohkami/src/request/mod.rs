@@ -12,9 +12,8 @@ pub use headers::Headers as RequestHeaders;
 #[allow(unused)]
 pub use headers::Header as RequestHeader;
 
-mod memory;
-pub(crate) use memory::Store;
-pub use memory::Memory;
+mod store;
+pub(crate) use store::Store;
 
 mod from_request; 
 pub use from_request::*;
@@ -26,9 +25,8 @@ pub use from_request::*;
 use ohkami_lib::{Slice, CowSlice};
 
 #[cfg(feature="__rt_native__")]
-use {
-    crate::__rt__::AsyncReader,
-};
+use crate::__rt__::AsyncReader;
+
 #[allow(unused)]
 use {
     byte_reader::Reader,

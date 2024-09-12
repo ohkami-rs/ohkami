@@ -33,9 +33,7 @@ use crate::{Fang, FangProc, IntoResponse, Request, Response};
 /// ```no_run
 /// use ohkami::prelude::*;
 /// use ohkami::typed::status;
-/// use ohkami::format::JSON;
 /// use ohkami::fang::{JWT, JWTToken};
-/// use ohkami::serde::{Serialize, Deserialize};
 /// 
 /// 
 /// #[derive(Serialize, Deserialize)]
@@ -53,27 +51,20 @@ use crate::{Fang, FangProc, IntoResponse, Request, Response};
 /// async fn main() {
 ///     Ohkami::new((
 ///         "/auth".GET(auth),
-///         "/private".By(Ohkami::with(/*
-///             Automatically verify JWT token
-///             of a request and early returns an error
-///             response if it's invalid.
-///             If `Authorization` is valid, momorize the JWT
-///             payload in the request.
-///         */ our_jwt(), (
+///         "/private".By(Ohkami::with(our_jwt(), (
 ///             "/hello/:name".GET(hello),
 ///         )))
 ///     )).howl("localhost:3000").await
 /// }
 /// 
-/// 
-/// #[derive(Deserialize)]
-/// struct AuthRequest<'req> {
-///     name: &'req str
-/// }
-/// #[derive(Serialize)]
-/// struct AuthResponse {
-///     token: JWTToken
-/// }
+/// # #[derive(Deserialize)]
+/// # struct AuthRequest<'req> {
+/// #     name: &'req str
+/// # }
+/// # #[derive(Serialize)]
+/// # struct AuthResponse {
+/// #     token: JWTToken
+/// # }
 /// async fn auth(
 ///     JSON(req): JSON<AuthRequest<'_>>
 /// ) -> Result<JSON<AuthResponse>, Response> {
@@ -85,9 +76,8 @@ use crate::{Fang, FangProc, IntoResponse, Request, Response};
 ///     }))
 /// }
 /// 
-/// 
 /// async fn hello(name: &str,
-///     auth: ohkami::Memory<'_, OurJWTPayload>
+///     Memory(auth): Memory<'_, OurJWTPayload>
 /// ) -> String {
 ///     format!("Hello {name}, you're authorized!")
 /// }
@@ -440,8 +430,6 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
     #[test] async fn test_jwt_verify_senario() {
         use crate::prelude::*;
         use crate::testing::*;
-        use crate::{Memory, format::JSON};
-
         use std::{sync::OnceLock, sync::Mutex, collections::HashMap, borrow::Cow};
 
 
@@ -508,7 +496,7 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
         }
 
         async fn get_profile(
-            jwt_payload: Memory<'_, MyJWTPayload>
+            Memory(jwt_payload): Memory<'_, MyJWTPayload>
         ) -> Result<JSON<Profile>, APIError> {
             let r = &mut *repository().await.lock().unwrap();
 
