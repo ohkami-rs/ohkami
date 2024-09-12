@@ -18,7 +18,7 @@
 
 ## Benchmark Results
 
-- [Web Frameworks Benchmark](https://web-frameworks-benchmark.netlify.app/result?l=rust)
+- [Web Frameworks Benchmark](https://web-frameworks-benchmark.netlify.app/result)
 
 <!--
 
@@ -34,7 +34,7 @@
 
 ```toml
 [dependencies]
-ohkami = { version = "0.20", features = ["rt_tokio"] }
+ohkami = { version = "0.21", features = ["rt_tokio"] }
 tokio  = { version = "1",    features = ["full"] }
 ```
 
@@ -135,9 +135,9 @@ use ohkami::prelude::*;
 use ohkami::ws::{WebSocketContext, WebSocket, Message};
 
 async fn echo_text(c: WebSocketContext<'_>) -> WebSocket {
-    c.connect(|mut ws| async move {
-        while let Ok(Some(Message::Text(text))) = ws.recv().await {
-            ws.send(Message::Text(text)).await.expect("Failed to send text");
+    c.connect(|mut conn| async move {
+        while let Ok(Some(Message::Text(text))) = conn.recv().await {
+            conn.send(Message::Text(text)).await.expect("Failed to send text");
         }
     })
 }
@@ -162,7 +162,7 @@ async fn main() {
 
 Ohkami's request handling system is called "**fang**s", and middlewares are implemented on this.
 
-*builtin fang* : `CORS`, `JWT`, `BasicAuth`, `Timeout`
+*builtin fang* : `CORS`, `JWT`, `BasicAuth`, `Timeout`, `Memory`
 
 ```rust,no_run
 use ohkami::prelude::*;
@@ -195,10 +195,7 @@ async fn main() {
 
 ```rust
 use ohkami::prelude::*;
-use ohkami::typed::{status};
-use ohkami::format::JSON;
-/* `serde = 〜` is not needed in your [dependencies] */
-use ohkami::serde::{Serialize, Deserialize};
+use ohkami::typed::status;
 
 /* Deserialize for request */
 #[derive(Deserialize)]
@@ -228,8 +225,6 @@ async fn create_user(
 
 ```rust,no_run
 use ohkami::prelude::*;
-use ohkami::format::{Query, JSON};
-use ohkami::serde::{Serialize, Deserialize};
 
 #[tokio::main]
 async fn main() {
@@ -291,7 +286,6 @@ async fn main() {
 use ohkami::prelude::*;
 use ohkami::typed::status;
 use ohkami::format::{Multipart, File};
-use ohkami::serde::Deserialize;
 
 #[derive(Deserialize)]
 struct FormData<'req> {
@@ -322,8 +316,6 @@ async fn post_submit(
 ```rust,no_run
 use ohkami::prelude::*;
 use ohkami::typed::status;
-use ohkami::format::JSON;
-use ohkami::serde::Serialize;
 
 #[derive(Serialize)]
 struct User {
