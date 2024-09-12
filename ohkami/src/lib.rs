@@ -285,7 +285,7 @@ pub mod prelude {
     pub use crate::{Request, Response, IntoResponse, Method, Status};
     pub use crate::utils::FangAction;
     pub use crate::serde::{Serialize, Deserialize};
-    pub use crate::format::JSON;
+    pub use crate::format::{JSON, Query};
     pub use crate::fang::Memory;
 
     #[cfg(feature="__rt__")]

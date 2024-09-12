@@ -1,4 +1,5 @@
-use ohkami::{Ohkami, Route, Memory, typed::status::{Created, NoContent}, format::{JSON, Query}};
+use ohkami::prelude::*;
+use ohkami::typed::status::{Created, NoContent};
 use chrono::{DateTime, Utc};
 use sqlx::PgPool;
 use crate::{config::JWTPayload, errors::RealWorldError};
@@ -19,7 +20,7 @@ pub fn articles_ohkami() -> Ohkami {
 
     Ohkami::with((
         Auth::<JWTPayload>        ::with_condition(|req| auth_required(req)),
-        Auth::<Option<JWTPayload>>::with_condition(|req| ! auth_required(req)),
+        Auth::<Option<JWTPayload>>::with_condition(|req| !auth_required(req)),
     ), (//auth:
         "/"
             .GET(list)//optional
@@ -46,12 +47,12 @@ pub fn articles_ohkami() -> Ohkami {
 
 async fn list(
     Query(q): Query<ListArticlesQuery<'_>>,
-    auth: Memory<'_, Option<JWTPayload>>,
-    pool: Memory<'_, PgPool>,
+    Memory(auth): Memory<'_, Option<JWTPayload>>,
+    Memory(pool): Memory<'_, PgPool>,
 ) -> Result<JSON<MultipleArticlesResponse>, RealWorldError> {
-    let user_and_followings = match *auth {
+    let user_and_followings = match auth {
         None => UserAndFollowings::None,
-        Some(JWTPayload { user_id, .. }) => UserAndFollowings::from_user_id(*user_id, *pool).await?,
+        Some(JWTPayload { user_id, .. }) => UserAndFollowings::from_user_id(*user_id, pool).await?,
     };
 
     let articles_data = {
@@ -76,7 +77,7 @@ async fn list(
             let favoriter_id = sqlx::query!(r#"
                 SELECT id FROM users WHERE name = $1
             "#, favoriter)
-                .fetch_one(*pool).await
+                .fetch_one(pool).await
                 .map_err(RealWorldError::DB)?
                 .id;
 
@@ -92,7 +93,7 @@ async fn list(
             .push(" LIMIT ").push_bind(q.limit());
 
         query.build_query_as::<'_, ArticleEntity>()
-            .fetch_all(*pool).await
+            .fetch_all(pool).await
             .map_err(RealWorldError::DB)?
     };
 
@@ -108,10 +109,10 @@ async fn list(
 
 async fn feed(
     Query(q): Query<FeedArticleQuery>,
-    auth: Memory<'_, JWTPayload>,
-    pool: Memory<'_, PgPool>,
+    Memory(auth): Memory<'_, JWTPayload>,
+    Memory(pool): Memory<'_, PgPool>,
 ) -> Result<JSON<MultipleArticlesResponse>, RealWorldError> {
-    let uf = UserAndFollowings::from_user_id(auth.user_id, *pool).await?;
+    let uf = UserAndFollowings::from_user_id(auth.user_id, pool).await?;
 
     let articles = sqlx::QueryBuilder::new(ArticleEntity::base_query())
         .push(" HAVING author.id IN ").push_bind(uf.followings())
@@ -119,7 +120,7 @@ async fn feed(
         .push(" OFFSET ").push_bind(q.offset())
         .push(" LIMIT ").push_bind(q.limit())
         .build_query_as::<'_, ArticleEntity>()
-        .fetch_all(*pool).await
+        .fetch_all(pool).await
         .map_err(RealWorldError::DB)?.into_iter()
         .map(|a| a.into_article_with(&uf)).collect::<Vec<_>>();
 
@@ -130,12 +131,12 @@ async fn feed(
 }
 
 async fn get(slug: &str,
-    pool: Memory<'_, PgPool>,
+    Memory(pool): Memory<'_, PgPool>,
 ) -> Result<JSON<SingleArticleResponse>, RealWorldError> {
     let article = sqlx::QueryBuilder::new(ArticleEntity::base_query())
         .push(" HAVING a.slug = ").push_bind(slug)
         .build_query_as::<'_, ArticleEntity>()
-        .fetch_one(*pool).await
+        .fetch_one(pool).await
         .map_err(RealWorldError::DB)?
         .into_article_with(&UserAndFollowings::None);
 
@@ -146,8 +147,8 @@ async fn get(slug: &str,
 
 async fn create(
     JSON(req): JSON<CreateArticleRequest<'_>>,
-    auth: Memory<'_, JWTPayload>,
-    pool: Memory<'_, PgPool>,
+    Memory(auth): Memory<'_, JWTPayload>,
+    Memory(pool): Memory<'_, PgPool>,
 ) -> Result<Created<JSON<SingleArticleResponse>>, RealWorldError> {
     let author_id = auth.user_id;
     let slug = req.slug();
@@ -183,12 +184,12 @@ async fn create(
         let mut tag_ids = Vec::with_capacity(tags.len());
         for tag in tags {
             tag_ids.push(match sqlx::query_scalar!("SELECT id FROM tags WHERE name = $1", &**tag)
-                .fetch_optional(*pool).await
+                .fetch_optional(pool).await
                 .map_err(RealWorldError::DB)?
             {
                 Some(existing_id) => existing_id,
                 None => sqlx::query_scalar!("INSERT INTO tags (name) VALUES ($1) RETURNING id", &**tag)
-                    .fetch_one(*pool).await
+                    .fetch_one(pool).await
                     .map_err(RealWorldError::DB)?
             })
         }
@@ -212,7 +213,7 @@ async fn create(
         FROM users
         WHERE id = $1
     "#, author_id)
-        .fetch_one(*pool).await
+        .fetch_one(pool).await
         .map_err(RealWorldError::DB)?;
 
     Ok(Created(JSON(
@@ -240,13 +241,13 @@ async fn create(
 
 async fn update(slug: &str,
     JSON(body): JSON<UpdateArticleRequest<'_>>,
-    auth: Memory<'_, JWTPayload>,
-    pool: Memory<'_, PgPool>,
+    Memory(auth): Memory<'_, JWTPayload>,
+    Memory(pool): Memory<'_, PgPool>,
 ) -> Result<JSON<SingleArticleResponse>, RealWorldError> {
     let mut article = sqlx::QueryBuilder::new(ArticleEntity::base_query())
         .push(" HAVING a.slug = ").push_bind(slug)
         .build_query_as::<ArticleEntity>()
-        .fetch_one(*pool).await
+        .fetch_one(pool).await
         .map_err(RealWorldError::DB)?;
 
     if article.author_id != auth.user_id {
@@ -285,23 +286,22 @@ async fn update(slug: &str,
         .push(" WHERE slug = ").push_bind(slug)
         .push(" RETURNING updated_at ")
         .build_query_scalar::<DateTime<Utc>>()
-        .fetch_one(*pool).await
+        .fetch_one(pool).await
         .map_err(RealWorldError::DB)?;
 
     Ok(JSON(SingleArticleResponse {
         article: article.into_article_with(
-            &UserAndFollowings::from_user_id(auth.user_id, *pool).await?
+            &UserAndFollowings::from_user_id(auth.user_id, pool).await?
         )
     }))
 }
 
-async fn delete(
-    slug: &str,
-    auth: Memory<'_, JWTPayload>,
-    pool: Memory<'_, PgPool>,
+async fn delete(slug: &str,
+    Memory(auth): Memory<'_, JWTPayload>,
+    Memory(pool): Memory<'_, PgPool>,
 ) -> Result<NoContent, RealWorldError> {
     let n = sqlx::query!("DELETE FROM articles WHERE author_id = $1 AND slug = $2", auth.user_id, slug)
-        .execute(*pool).await
+        .execute(pool).await
         .map_err(RealWorldError::DB)?
         .rows_affected();
 
@@ -314,10 +314,10 @@ async fn delete(
 
 async fn add_comment(slug: &str,
     JSON(body): JSON<AddCommentRequest<'_>>,
-    auth: Memory<'_, JWTPayload>,
-    pool: Memory<'_, PgPool>,
+    Memory(auth): Memory<'_, JWTPayload>,
+    Memory(pool): Memory<'_, PgPool>,
 ) -> Result<Created<JSON<SingleCommentResponse>>, RealWorldError> {
-    let ariticle_id = article_id_by_slug(slug, *pool).await?;
+    let ariticle_id = article_id_by_slug(slug, pool).await?;
     let content = body.comment.content;
 
     let new_comment_id = sqlx::query_scalar!(r#"
@@ -326,7 +326,7 @@ async fn add_comment(slug: &str,
         ORDER BY created_at DESC
         LIMIT 1
     "#, ariticle_id)
-        .fetch_optional(*pool).await
+        .fetch_optional(pool).await
         .map_err(RealWorldError::DB)?
         .unwrap_or(0) + 1;
 
@@ -336,7 +336,7 @@ async fn add_comment(slug: &str,
             VALUES   ($1, $2,        $3,         $4     )
         RETURNING created_at
     "#, new_comment_id, auth.user_id, ariticle_id, content)
-        .fetch_one(*pool).await
+        .fetch_one(pool).await
         .map_err(RealWorldError::DB)?;
 
     let comment_author = sqlx::query!(r#"
@@ -344,7 +344,7 @@ async fn add_comment(slug: &str,
         FROM users
         WHERE id = $1
     "#, auth.user_id)
-        .fetch_one(*pool).await
+        .fetch_one(pool).await
         .map_err(RealWorldError::DB)?;
 
     Ok(Created(JSON(
@@ -366,14 +366,14 @@ async fn add_comment(slug: &str,
 }
 
 async fn get_comments(slug: &str,
-    auth: Memory<'_, Option<JWTPayload>>,
-    pool: Memory<'_, PgPool>,
+    Memory(auth): Memory<'_, Option<JWTPayload>>,
+    Memory(pool): Memory<'_, PgPool>,
 ) -> Result<JSON<MultipleCommentsResponse>, RealWorldError> {
-    let ariticle_id = article_id_by_slug(slug, *pool).await?;
+    let ariticle_id = article_id_by_slug(slug, pool).await?;
 
-    let uf = match *auth {
+    let uf = match auth {
         None => UserAndFollowings::None,
-        Some(JWTPayload { user_id, .. }) => UserAndFollowings::from_user_id(*user_id, *pool).await?,
+        Some(JWTPayload { user_id, .. }) => UserAndFollowings::from_user_id(*user_id, pool).await?,
     };
 
     let comments = sqlx::query_as!(CommentEntity, r#"
@@ -392,7 +392,7 @@ async fn get_comments(slug: &str,
         WHERE
             c.article_id = $1
     "#, ariticle_id)
-        .fetch_all(*pool).await
+        .fetch_all(pool).await
         .map_err(RealWorldError::DB)?.into_iter()
         .map(|c| c.into_comment_with(&uf)).collect();
 
@@ -402,10 +402,10 @@ async fn get_comments(slug: &str,
 }
 
 async fn delete_comment((slug, id): (&str, usize),
-    auth: Memory<'_, JWTPayload>,
-    pool: Memory<'_, PgPool>,
+    Memory(auth): Memory<'_, JWTPayload>,
+    Memory(pool): Memory<'_, PgPool>,
 ) -> Result<NoContent, RealWorldError> {
-    let ariticle_id = article_id_by_slug(slug, *pool).await?;
+    let ariticle_id = article_id_by_slug(slug, pool).await?;
 
     let n = sqlx::query!(r#"
         DELETE FROM comments
@@ -414,7 +414,7 @@ async fn delete_comment((slug, id): (&str, usize),
             article_id = $2 AND
             id = $3
     "#, auth.user_id, ariticle_id, id as i64)
-        .execute(*pool).await
+        .execute(pool).await
         .map_err(RealWorldError::DB)?
         .rows_affected();
 
@@ -426,37 +426,37 @@ async fn delete_comment((slug, id): (&str, usize),
 }
 
 async fn favorite(slug: &str,
-    auth: Memory<'_, JWTPayload>,
-    pool: Memory<'_, PgPool>,
+    Memory(auth): Memory<'_, JWTPayload>,
+    Memory(pool): Memory<'_, PgPool>,
 ) -> Result<JSON<SingleArticleResponse>, RealWorldError> {
-    let ariticle_id = article_id_by_slug(slug, *pool).await?;
+    let ariticle_id = article_id_by_slug(slug, pool).await?;
 
     sqlx::query!(r#"
         INSERT INTO
             users_favorite_articles (user_id, article_id)
             VALUES                  ($1,      $2        )
     "#, auth.user_id, ariticle_id)
-        .execute(*pool).await
+        .execute(pool).await
         .map_err(RealWorldError::DB)?;
 
     let article = sqlx::QueryBuilder::new(ArticleEntity::base_query())
         .push(" HAVING a.id = ").push_bind(ariticle_id)
         .build_query_as::<ArticleEntity>()
-        .fetch_one(*pool).await
+        .fetch_one(pool).await
         .map_err(RealWorldError::DB)?;
 
     Ok(JSON(SingleArticleResponse {
         article: article.into_article_with(
-            &UserAndFollowings::from_user_id(auth.user_id, *pool).await?
+            &UserAndFollowings::from_user_id(auth.user_id, pool).await?
         ),
     }))
 }
 
 async fn unfavorite(slug: &str,
-    auth: Memory<'_, JWTPayload>,
-    pool: Memory<'_, PgPool>,
+    Memory(auth): Memory<'_, JWTPayload>,
+    Memory(pool): Memory<'_, PgPool>,
 ) -> Result<JSON<SingleArticleResponse>, RealWorldError> {
-    let ariticle_id = article_id_by_slug(slug, *pool).await?;
+    let ariticle_id = article_id_by_slug(slug, pool).await?;
 
     let n = sqlx::query!(r#"
         DELETE FROM users_favorite_articles
@@ -464,7 +464,7 @@ async fn unfavorite(slug: &str,
             user_id = $1 AND
             article_id = $2
     "#, auth.user_id, ariticle_id)
-        .execute(*pool).await
+        .execute(pool).await
         .map_err(RealWorldError::DB)?
         .rows_affected();
 
@@ -477,12 +477,12 @@ async fn unfavorite(slug: &str,
     let article = sqlx::QueryBuilder::new(ArticleEntity::base_query())
         .push(" HAVING a.id = ").push_bind(ariticle_id)
         .build_query_as::<ArticleEntity>()
-        .fetch_one(*pool).await
+        .fetch_one(pool).await
         .map_err(RealWorldError::DB)?;
 
     Ok(JSON(SingleArticleResponse {
         article: article.into_article_with(
-            &UserAndFollowings::from_user_id(auth.user_id, *pool).await?
+            &UserAndFollowings::from_user_id(auth.user_id, pool).await?
         ),
     }))
 }

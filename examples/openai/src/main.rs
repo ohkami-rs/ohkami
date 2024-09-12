@@ -6,7 +6,6 @@ use error::Error;
 use models::{ChatMessage, ChatCompletions, Role};
 
 use ohkami::prelude::*;
-use ohkami::Memory;
 use ohkami::format::Text;
 use ohkami::typed::DataStream;
 use ohkami::utils::{StreamExt, stream};
@@ -29,12 +28,12 @@ async fn main() {
 }
 
 pub async fn relay_chat_completion(
-    api_key: Memory<'_, &'static str>,
+    Memory(api_key): Memory<'_, &'static str>,
     Text(message): Text<String>,
 ) -> Result<DataStream<String, Error>, Error> {
     let mut gpt_response = reqwest::Client::new()
         .post("https://api.openai.com/v1/chat/completions")
-        .bearer_auth(*api_key)
+        .bearer_auth(api_key)
         .json(&ChatCompletions {
             model:    "gpt-4o",
             stream:   true,
