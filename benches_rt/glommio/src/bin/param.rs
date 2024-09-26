@@ -1,5 +1,5 @@
 use ohkami::prelude::*;
-use ohkami::utils::num_cpus;
+use ohkami::util::num_cpus;
 use glommio::{LocalExecutorPoolBuilder, PoolPlacement, CpuSet};
 
 

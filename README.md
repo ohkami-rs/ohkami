@@ -103,7 +103,7 @@ Use some reverse proxy to do with HTTP/2,3.
 ```rust,no_run
 use ohkami::prelude::*;
 use ohkami::typed::DataStream;
-use ohkami::utils::stream;
+use ohkami::util::stream;
 use {tokio::time::sleep, std::time::Duration};
 
 async fn sse() -> DataStream<String> {

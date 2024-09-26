@@ -1,4 +1,4 @@
-use ohkami::utils::{stream, StreamExt};
+use ohkami::util::{stream, StreamExt};
 use tokio::time::sleep;
 
 

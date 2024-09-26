@@ -1,5 +1,5 @@
 use std::env;
-use ohkami::utils::{StreamExt, stream};
+use ohkami::util::{StreamExt, stream};
 use openai::models::{ChatCompletions, ChatMessage, Role};
 
 

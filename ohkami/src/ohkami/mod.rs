@@ -272,7 +272,7 @@ impl Ohkami {
     /// *example_glommio.rs*
     /// ```ignore
     /// use ohkami::prelude::*;
-    /// use ohkami::utils::num_cpus;
+    /// use ohkami::util::num_cpus;
     /// use glommio::{LocalExecutorPoolBuilder, PoolPlacement, CpuSet};
     /// 
     /// async fn hello() -> &'static str {

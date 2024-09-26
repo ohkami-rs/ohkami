@@ -9,7 +9,7 @@ pub use ::futures_core::{Stream, ready};
 /// 
 /// <br>
 /// 
-/// _**note**_ : It's recommended to just `use ohkami::utils::stream` and
+/// _**note**_ : It's recommended to just `use ohkami::util::stream` and
 /// call as **`stream::queue()`**, not direct `queue()`.
 /// 
 /// <br>
@@ -19,7 +19,7 @@ pub use ::futures_core::{Stream, ready};
 /// ```no_run
 /// use ohkami::prelude::*;
 /// use ohkami::typed::DataStream;
-/// use ohkami::utils::{StreamExt, stream};
+/// use ohkami::util::{StreamExt, stream};
 /// use tokio::time::sleep;
 /// 
 /// #[tokio::main]
@@ -45,7 +45,7 @@ pub use ::futures_core::{Stream, ready};
 /// use ohkami::prelude::*;
 /// use ohkami::Memory;
 /// use ohkami::typed::DataStream;
-/// use ohkami::utils::{StreamExt, stream};
+/// use ohkami::util::{StreamExt, stream};
 /// 
 /// pub async fn relay_chat_completion(
 ///     api_key: Memory<'_, &'static str>,

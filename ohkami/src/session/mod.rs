@@ -4,7 +4,7 @@ use std::{any::Any, pin::Pin, sync::Arc, time::Duration};
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use crate::__rt__::TcpStream;
 use crate::response::Upgrade;
-use crate::utils::timeout_in;
+use crate::util::timeout_in;
 use crate::ohkami::router::RadixRouter;
 use crate::{Request, Response};
 
