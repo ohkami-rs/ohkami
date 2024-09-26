@@ -1,5 +1,5 @@
 use ohkami::typed::DataStream;
-use ohkami::utils::StreamExt;
+use ohkami::util::StreamExt;
 
 
 #[tokio::main]

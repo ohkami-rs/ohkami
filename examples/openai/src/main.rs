@@ -8,7 +8,7 @@ use models::{ChatMessage, ChatCompletions, Role};
 use ohkami::prelude::*;
 use ohkami::format::Text;
 use ohkami::typed::DataStream;
-use ohkami::utils::{StreamExt, stream};
+use ohkami::util::{StreamExt, stream};
 
 
 #[tokio::main]

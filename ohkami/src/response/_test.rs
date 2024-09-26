@@ -26,7 +26,7 @@ macro_rules! assert_bytes_eq {
 #[crate::__rt__::test]
 async fn test_response_into_bytes() {
     let __now__ = ::ohkami_lib::imf_fixdate(
-        std::time::Duration::from_secs(crate::utils::unix_timestamp())
+        std::time::Duration::from_secs(crate::util::unix_timestamp())
     );
 
     let res = Response::NoContent();
@@ -107,7 +107,7 @@ async fn test_response_into_bytes() {
 #[crate::__rt__::test]
 async fn test_stream_response() {
     let __now__ = ::ohkami_lib::imf_fixdate(
-        std::time::Duration::from_secs(crate::utils::unix_timestamp())
+        std::time::Duration::from_secs(crate::util::unix_timestamp())
     );
 
     fn repeat_by<T, F: Fn(usize) -> T + Unpin>(

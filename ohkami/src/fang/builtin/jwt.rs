@@ -70,7 +70,7 @@ use crate::{Fang, FangProc, IntoResponse, Request, Response};
 /// ) -> Result<JSON<AuthResponse>, Response> {
 ///     Ok(JSON(AuthResponse {
 ///         token: our_jwt().issue(OurJWTPayload {
-///             iat: ohkami::utils::unix_timestamp(),
+///             iat: ohkami::util::unix_timestamp(),
 ///             user_name: req.name.to_string()
 ///         })
 ///     }))
@@ -314,7 +314,7 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
             .ok_or_else(|| Response::BadRequest())?;
         let payload: Payload = ::serde_json::from_slice(&base64::decode_url(payload_part))
             .map_err(|_| Response::InternalServerError())?;
-        let now = crate::utils::unix_timestamp();
+        let now = crate::util::unix_timestamp();
         if payload.get("nbf").is_some_and(|nbf| nbf.as_u64().unwrap_or(0) > now) {
             return Err(Response::Unauthorized().with_text(UNAUTHORIZED_MESSAGE))
         }
@@ -404,7 +404,7 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
         let req_bytes = TestRequest::GET("/")
             .header("Authorization", "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE3MDY4MTEwNzUsInVzZXJfaWQiOiI5ZmMwMDViMi1mODU4LTQzMzYtODkwYS1mMWEyYWVmNjBhMjQifQ.AKp-0zvKK4Hwa6qCgxskckD04Snf0gpSG7U1LOpcC_I")
             .encode();
-        let mut req = Request::init(crate::utils::IP_0000);
+        let mut req = Request::init(crate::util::IP_0000);
         let mut req = unsafe {Pin::new_unchecked(&mut req)};
         req.as_mut().read(&mut &req_bytes[..]).await.ok();
 
@@ -417,7 +417,7 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
             // Modifed last `I` of the value above to `X`
             .header("Authorization", "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE3MDY4MTEwNzUsInVzZXJfaWQiOiI5ZmMwMDViMi1mODU4LTQzMzYtODkwYS1mMWEyYWVmNjBhMjQifQ.AKp-0zvKK4Hwa6qCgxskckD04Snf0gpSG7U1LOpcC_X")
             .encode();
-        let mut req = Request::init(crate::utils::IP_0000);
+        let mut req = Request::init(crate::util::IP_0000);
         let mut req = unsafe {Pin::new_unchecked(&mut req)};
         req.as_mut().read(&mut &req_bytes[..]).await.ok();
 

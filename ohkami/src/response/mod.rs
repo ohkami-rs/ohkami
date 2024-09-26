@@ -22,7 +22,7 @@ use ohkami_lib::{CowSlice, Slice};
 #[cfg(feature="__rt_native__")]
 use crate::__rt__::AsyncWriter;
 #[cfg(feature="sse")]
-use crate::utils::StreamExt;
+use crate::util::StreamExt;
 
 
 /// # HTTP Response
@@ -124,7 +124,7 @@ impl Response {
     #[inline(always)]
     pub(crate) fn complete(&mut self) {
         self.headers.set().Date(::ohkami_lib::imf_fixdate(
-            std::time::Duration::from_secs(crate::utils::unix_timestamp())
+            std::time::Duration::from_secs(crate::util::unix_timestamp())
         ));
 
         match &self.content {

@@ -33,7 +33,7 @@ fn parse_path() {
 
     macro_rules! assert_parse {
         ($case:expr, $expected:expr) => {
-            let mut actual = Request::init(crate::utils::IP_0000);
+            let mut actual = Request::init(crate::util::IP_0000);
             let mut actual = unsafe {Pin::new_unchecked(&mut actual)};
             actual.as_mut().read(&mut $case.as_bytes()).await.ok();
 
@@ -80,7 +80,7 @@ fn parse_path() {
         ], None),
         payload: None,
         store:   Store::init(),
-        ip:      crate::utils::IP_0000
+        ip:      crate::util::IP_0000
     });
 
 
@@ -111,7 +111,7 @@ fn parse_path() {
             br#"{"name":"kanarus","age":20}"#
         ))),
         store: Store::init(),
-        ip:    crate::utils::IP_0000
+        ip:    crate::util::IP_0000
     });
 
     {
@@ -157,7 +157,7 @@ fn parse_path() {
             ),
             payload: Some(CowSlice::Own(Vec::from("first_name=John&last_name=Doe&action=Submit").into())),
             store:   Store::init(),
-            ip:      crate::utils::IP_0000
+            ip:      crate::util::IP_0000
         });
     }
 }

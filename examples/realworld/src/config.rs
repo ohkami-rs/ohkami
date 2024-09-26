@@ -1,5 +1,5 @@
 use std::sync::OnceLock;
-use ohkami::utils::unix_timestamp;
+use ohkami::util::unix_timestamp;
 use ohkami::serde::{Serialize, Deserialize};
 use ohkami::fang::{JWT, JWTToken};
 use uuid::Uuid;
