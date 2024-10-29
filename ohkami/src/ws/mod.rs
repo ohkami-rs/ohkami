@@ -19,11 +19,12 @@ use crate::{__rt__, FromRequest, IntoResponse, Request, Response};
 /// 
 /// *example.rs*
 /// ```
-/// use ohkami::ws::{WebSocketContext, WebSocket, Connection};
+/// use ohkami::ws::{WebSocketContext, WebSocket};
 /// 
 /// async fn ws(ctx: WebSocketContext<'_>) -> WebSocket {
-///     ctx.upgrade(|mut conn: Connection| async move {
+///     ctx.upgrade(|mut conn| async move {
 ///         conn.send("Hello, WebSocket! and bye...").await
+///             .expect("failed to send")
 ///     })
 /// }
 /// ```
@@ -41,10 +42,10 @@ const _: () = {
             } {
                 return Some(Err((|| Response::BadRequest().with_text("upgrade request must have `Connection: Upgrade`"))()))
             }
-            if req.headers.Upgrade()?.eq_ignore_ascii_case("websocket") {
+            if !(req.headers.Upgrade()?.eq_ignore_ascii_case("websocket")) {
                 return Some(Err((|| Response::BadRequest().with_text("upgrade request must have `Upgrade: websocket`"))()))
             }
-            if req.headers.SecWebSocketVersion()? != "13" {
+            if !(req.headers.SecWebSocketVersion()? == "13") {
                 return Some(Err((|| Response::BadRequest().with_text("upgrade request must have `Sec-WebSocket-Version: 13`"))()))
             }
 
@@ -60,13 +61,15 @@ const _: () = {
         /// 
         /// ## handler
         /// 
-        /// any `FnOnce + Send + Sync` returning `Future + Send` with following signature:
-        /// 
-        /// * `(Connection) -> () | std::io::Result<()>`
-        /// * `(ReadHalf, WriteHalf) -> () | std::io::Result<()>`
-        pub fn upgrade<T, C: mews::connection::UnderlyingConnection>(self,
-            handler: impl mews::handler::IntoHandler<C, T>
-        ) -> WebSocket<C> {
+        /// any `FnOnce(Connection) -> {impl Future<Output = ()> + Send} + Send + Sync`
+        pub fn upgrade<H, F, C: mews::connection::UnderlyingConnection>(
+            self,
+            handler: H
+        ) -> WebSocket<C>
+        where
+            H: FnOnce(Connection<C>) -> F + Send + Sync + 'static,
+            F: std::future::Future<Output = ()> + Send + 'static,
+        {
             self.upgrade_with(Config::default(), handler)
         }
 
@@ -74,14 +77,15 @@ const _: () = {
         /// 
         /// ## handler
         /// 
-        /// any `FnOnce + Send + Sync` returning `Future + Send` with following signature:
-        /// 
-        /// * `(Connection) -> () | std::io::Result<()>`
-        /// * `(ReadHalf, WriteHalf) -> () | std::io::Result<()>`
-        pub fn upgrade_with<T, C: mews::connection::UnderlyingConnection>(self,
+        /// any `FnOnce(Connection) -> {impl Future<Output = ()> + Send} + Send + Sync`
+        pub fn upgrade_with<H, F, C: mews::connection::UnderlyingConnection>(self,
             config:  Config,
-            handler: impl mews::handler::IntoHandler<C, T>
-        ) -> WebSocket<C> {
+            handler: H
+        ) -> WebSocket<C>
+        where
+            H: FnOnce(Connection<C>) -> F + Send + Sync + 'static,
+            F: std::future::Future<Output = ()> + Send + 'static,
+        {
             let (sign, session) = mews::WebSocketContext::new(self.sec_websocket_key)
                 .with(config)
                 .on_upgrade(handler);
@@ -100,11 +104,12 @@ const _: () = {
 /// 
 /// *example.rs*
 /// ```
-/// use ohkami::ws::{WebSocketContext, WebSocket, Connection};
+/// use ohkami::ws::{WebSocketContext, WebSocket};
 /// 
 /// async fn ws(ctx: WebSocketContext<'_>) -> WebSocket {
-///     ctx.upgrade(|mut conn: Connection| async move {
+///     ctx.upgrade(|mut conn| async move {
 ///         conn.send("Hello, WebSocket! and bye...").await
+///             .expect("failed to send")
 ///     })
 /// }
 /// ```
@@ -116,20 +121,32 @@ const _: () = {
 /// # use tokio::{join, spawn};
 /// # use tokio::time::{Duration, sleep};
 /// # 
-/// use ohkami::ws::{WebSocketContext, WebSocket, Message, ReadHalf, WriteHalf};
+/// use ohkami::ws::{WebSocketContext, WebSocket, Message};
 /// 
 /// async fn ws(ctx: WebSocketContext<'_>) -> WebSocket {
-///     ctx.upgrade(|mut r: ReadHalf, mut w: WriteHalf| async {
+///     ctx.upgrade(|c| async {
+///         let (mut r, mut w) = c.split();
 ///         tokio::join!( /* joining is necessary to prevent resource leak or unsafe situations */
 ///             tokio::spawn(async move {
 ///                 while let Some(Message::Text(
 ///                     text
 ///                 )) = r.recv().await.expect("failed to recieve") {
 ///                     println!("[->] {text}");
+///                     if text == "close" {break}
 ///                 }
 ///             }),
 ///             tokio::spawn(async move {
-///                 for text in ["abc", "def", "ghi", "jk", "lmno", "pqr", "stuvw", "xyz"] {
+///                 for text in [
+///                     "abc",
+///                     "def",
+///                     "ghi",
+///                     "jk",
+///                     "lmno",
+///                     "pqr",
+///                     "stuvw",
+///                     "xyz"
+///                 ] {
+///                     println!("[<-] {text}");
 ///                     w.send(text).await.expect("failed to send text");
 ///                     sleep(Duration::from_secs(1)).await;
 ///                 }

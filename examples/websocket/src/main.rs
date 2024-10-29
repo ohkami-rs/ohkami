@@ -1,9 +1,9 @@
 use ohkami::prelude::*;
-use ohkami::ws::{WebSocketContext, WebSocket, Message, Connection, ReadHalf, WriteHalf};
+use ohkami::ws::{WebSocketContext, WebSocket, Message};
 
 
 async fn echo_text(c: WebSocketContext<'_>) -> WebSocket {
-    c.upgrade(|mut c: Connection| async move {
+    c.upgrade(|mut c| async move {
         while let Ok(Some(Message::Text(text))) = c.recv().await {
             if text == "close" {
                 break
@@ -27,7 +27,7 @@ struct EchoTextSession<'ws> {
 }
 impl IntoResponse for EchoTextSession<'_> {
     fn into_response(self) -> Response {
-        self.ctx.upgrade(|mut c: Connection| async move {
+        self.ctx.upgrade(|mut c| async move {
             c.send(format!("Hello, {}!", self.name)).await.expect("failed to send");
         
             while let Ok(Some(Message::Text(text))) = c.recv().await {
@@ -44,7 +44,9 @@ impl IntoResponse for EchoTextSession<'_> {
 async fn echo_text_3(name: String,
     ctx: WebSocketContext<'_>
 ) -> WebSocket {
-    ctx.upgrade(|mut r: ReadHalf, mut w: WriteHalf| async {
+    ctx.upgrade(|c| async {
+        let (mut r, mut w) = c.split();
+
         let incoming = std::sync::Arc::new(tokio::sync::RwLock::new(std::collections::VecDeque::new()));
         let (close_tx, close_rx) = tokio::sync::watch::channel(());
 
@@ -110,7 +112,7 @@ async fn echo_text_3(name: String,
 
 
 async fn echo4(name: String, ws: WebSocketContext<'_>) -> WebSocket {
-    ws.upgrade(|mut c: Connection| async {
+    ws.upgrade(|mut c| async {
         /* spawn but not join the handle */
         tokio::spawn(async move {
             #[cfg(feature="DEBUG")] println!("\n{c:#?}");

@@ -92,9 +92,9 @@ impl Session {
             }
         }).await {
             None => crate::warning!("[WARNING] \
-                Session timeouted. In Ohkami, Keep-Alive timeout   \
+                Session timeouted. In Ohkami, Keep-Alive timeout \
                 is set to 42 seconds by default and is configurable \
-                via `OHKAMI_KEEPALIVE_TIMEOUT` environment variable. \
+                by `OHKAMI_KEEPALIVE_TIMEOUT` environment variable.\
             "),
 
             Some(Upgrade::None) => crate::DEBUG!("about to shutdown connection"),
@@ -103,10 +103,18 @@ impl Session {
             Some(Upgrade::WebSocket(ws)) => {
                 crate::DEBUG!("WebSocket session started");
 
-                ws.manage_with_timeout(
+                let aborted = ws.manage_with_timeout(
                     Duration::from_secs(env::OHKAMI_WEBSOCKET_TIMEOUT()),
                     self.connection
                 ).await;
+                if aborted {
+                    crate::warning!("[WARNING] \
+                        WebSocket session aborted by timeout. In Ohkami, \
+                        WebSocket timeout is set to 3600 seconds (1 hour) \
+                        by default and is configurable by `OHKAMI_WEBSOCKET_TIMEOUT` \
+                        environment variable.\
+                    ");
+                }
 
                 crate::DEBUG!("WebSocket session finished");
             }
