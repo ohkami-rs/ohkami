@@ -1,5 +1,3 @@
-pub mod base64;
-
 pub mod mime;
 
 pub mod num;

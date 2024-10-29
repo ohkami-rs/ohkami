@@ -33,27 +33,28 @@ serde         = { workspace = true }
 serde_json    = { version = "1.0" }
 rustc-hash    = { version = "2.0" }
 
+base64        = { version = "0.22" }
 hmac          = { version = "0.12", default-features = false }
 sha2          = { version = "0.10", default-features = false }
-sha1          = { version = "0.10", optional = true, default-features = false }
 
 num_cpus      = { version = "1.16", optional = true }
 futures-util  = { version = "0.3",  optional = true, default-features = false, features = ["io", "async-await-macro"] }
+mews          = { git = "https://github.com/ohkami-rs/mews", optional = true }
 
 
 [features]
 default       = ["testing"]
 
-rt_tokio      = ["__rt__", "__rt_native__", "dep:tokio",     "tokio/io-util", "tokio/macros",    "ohkami_lib/signal"]
-rt_async-std  = ["__rt__", "__rt_native__", "dep:async-std", "dep:futures-util",                 "ohkami_lib/signal"]
-rt_smol       = ["__rt__", "__rt_native__", "dep:smol",      "dep:futures-util",                 "ohkami_lib/signal"]
-rt_glommio    = ["__rt__", "__rt_native__", "dep:glommio",   "dep:futures-util", "dep:num_cpus", "ohkami_lib/signal"]
+rt_tokio      = ["__rt__", "__rt_native__", "dep:tokio",     "tokio/io-util", "tokio/macros",    "ohkami_lib/signal", "mews?/tokio"]
+rt_async-std  = ["__rt__", "__rt_native__", "dep:async-std", "dep:futures-util",                 "ohkami_lib/signal", "mews?/async-std"]
+rt_smol       = ["__rt__", "__rt_native__", "dep:smol",      "dep:futures-util",                 "ohkami_lib/signal", "mews?/smol"]
+rt_glommio    = ["__rt__", "__rt_native__", "dep:glommio",   "dep:futures-util", "dep:num_cpus", "ohkami_lib/signal", "mews?/glommio"]
 rt_worker     = ["__rt__", "dep:worker", "ohkami_macros/worker"]
 
 nightly       = []
 testing       = []
 sse           = ["ohkami_lib/stream"]
-ws            = ["dep:sha1"]
+ws            = ["dep:mews"]
 
 ##### internal #####
 __rt__        = []

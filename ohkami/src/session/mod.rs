@@ -91,40 +91,22 @@ impl Session {
                 }
             }
         }).await {
-            Some(Upgrade::None) | None => {
-                crate::DEBUG!("about to shutdown connection");
-            }
+            None => crate::warning!("[WARNING] \
+                Session timeouted. In Ohkami, Keep-Alive timeout   \
+                is set to 42 seconds by default and is configurable \
+                via `OHKAMI_KEEPALIVE_TIMEOUT` environment variable. \
+            "),
+
+            Some(Upgrade::None) => crate::DEBUG!("about to shutdown connection"),
 
             #[cfg(feature="ws")]
-            Some(Upgrade::WebSocket((config, handler))) => {
-                use crate::ws::{Connection, Message, CloseFrame, CloseCode};
-
+            Some(Upgrade::WebSocket(ws)) => {
                 crate::DEBUG!("WebSocket session started");
 
-                let mut conn = Connection::new(self.connection, config);
-
-                let close = timeout_in(Duration::from_secs(env::OHKAMI_WEBSOCKET_TIMEOUT()),
-                    handler(conn.clone())
+                ws.manage_with_timeout(
+                    Duration::from_secs(env::OHKAMI_WEBSOCKET_TIMEOUT()),
+                    self.connection
                 ).await;
-
-                if !conn.is_closed() {
-                    conn.send(Message::Close(Some(match close {
-                        Some(_) => {
-                            crate::DEBUG!("Closing WebSocket session...");
-                            CloseFrame {
-                                code:   CloseCode::Normal,
-                                reason: None
-                            }
-                        }
-                        None => {
-                            crate::warning!("[WARNING] WebSocket session is aborted by `OHKAMI_WEBSOCKET_TIMEOUT` (default to 1 hour, and can be set via environment variable)");
-                            CloseFrame {
-                                code:   CloseCode::Library(4000),
-                                reason: Some("OHKAMI_WEBSOCKET_TIMEOUT".into())
-                            }
-                        }
-                    }))).await.expect("Failed to send close message");
-                }
 
                 crate::DEBUG!("WebSocket session finished");
             }

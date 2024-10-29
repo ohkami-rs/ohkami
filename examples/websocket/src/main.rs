@@ -1,27 +1,14 @@
 use ohkami::prelude::*;
-use ohkami::ws::{WebSocketContext, WebSocket, Message};
-
-
-#[derive(Clone)]
-struct Logger;
-impl FangAction for Logger {
-    async fn fore<'a>(&'a self, req: &'a mut Request) -> Result<(), Response> {
-        Ok(println!("\n{req:#?}"))
-    }
-
-    async fn back<'a>(&'a self, res: &'a mut Response) {
-        println!("\n{res:#?}")
-    }
-}
+use ohkami::ws::{WebSocketContext, WebSocket, Message, Connection, ReadHalf, WriteHalf};
 
 
 async fn echo_text(c: WebSocketContext<'_>) -> WebSocket {
-    c.connect(|mut ws| async move {
-        while let Ok(Some(Message::Text(text))) = ws.recv().await {
+    c.upgrade(|mut c: Connection| async move {
+        while let Ok(Some(Message::Text(text))) = c.recv().await {
             if text == "close" {
                 break
             }
-            ws.send(Message::Text(text)).await.expect("Failed to send text");
+            c.send(text).await.expect("Failed to send text");
         }
     })
 }
@@ -40,15 +27,15 @@ struct EchoTextSession<'ws> {
 }
 impl IntoResponse for EchoTextSession<'_> {
     fn into_response(self) -> Response {
-        self.ctx.connect(|mut ws| async move {
-                ws.send(Message::Text(format!("Hello, {}!", self.name))).await.expect("failed to send");
+        self.ctx.upgrade(|mut c: Connection| async move {
+            c.send(format!("Hello, {}!", self.name)).await.expect("failed to send");
         
-                while let Ok(Some(Message::Text(text))) = ws.recv().await {
-                    if text == "close" {
-                        break
-                    }
-                    ws.send(Message::Text(text)).await.expect("failed to send text");
+            while let Ok(Some(Message::Text(text))) = c.recv().await {
+                if text == "close" {
+                    break
                 }
+                c.send(text).await.expect("failed to send text");
+            }
         }).into_response()
     }
 }
@@ -57,8 +44,7 @@ impl IntoResponse for EchoTextSession<'_> {
 async fn echo_text_3(name: String,
     ctx: WebSocketContext<'_>
 ) -> WebSocket {
-    ctx.connect(|ws| async {
-        let (mut r, mut w) = ws.split();
+    ctx.upgrade(|mut r: ReadHalf, mut w: WriteHalf| async {
         let incoming = std::sync::Arc::new(tokio::sync::RwLock::new(std::collections::VecDeque::new()));
         let (close_tx, close_rx) = tokio::sync::watch::channel(());
 
@@ -74,7 +60,7 @@ async fn echo_text_3(name: String,
                     }
                 }
             }),
-            tokio::task::spawn({
+            tokio::spawn({
                 let (mut close, incoming) = (close_rx.clone(), incoming.clone());
                 async move {
                     loop {
@@ -93,7 +79,7 @@ async fn echo_text_3(name: String,
                     }
                 }
             }),
-            tokio::task::spawn({
+            tokio::spawn({
                 let (name, close, closer, incoming) = (name, close_rx.clone(), close_tx, incoming.clone());
                 async move {
                     w.send(Message::Text(format!("Hello, {name}!"))).await.expect("failed to send");
@@ -101,7 +87,7 @@ async fn echo_text_3(name: String,
                     loop {
                         tokio::time::sleep(std::time::Duration::from_secs(1)).await;
 
-                        w.send(Message::Text(format!("tick"))).await.expect("failed to send");
+                        w.send("tick").await.expect("failed to send");
                         
                         let poped = {
                             let mut incoming = incoming.write().await;
@@ -111,7 +97,7 @@ async fn echo_text_3(name: String,
                         if let Some(text) = poped {
                             if text == "close" {closer.send(()).unwrap()}
                             
-                            w.send(Message::Text(text)).await.expect("failed to send");
+                            w.send(text).await.expect("failed to send");
                         }
 
                         if !close.has_changed().is_ok_and(|yes|!yes) {println!("break 3"); break}
@@ -123,8 +109,37 @@ async fn echo_text_3(name: String,
 }
 
 
+async fn echo4(name: String, ws: WebSocketContext<'_>) -> WebSocket {
+    ws.upgrade(|mut c: Connection| async {
+        /* spawn but not join the handle */
+        tokio::spawn(async move {
+            #[cfg(feature="DEBUG")] println!("\n{c:#?}");
+
+            c.send(name).await.expect("failed to send");
+            while let Ok(Some(Message::Text(text))) = c.recv().await {
+                #[cfg(feature="DEBUG")] println!("\n{c:#?}");
+
+                if dbg!(&text) == "close" {break}
+                c.send(text).await.expect("failed to send");
+            }
+        });
+    })
+}
+
+
 #[tokio::main]
 async fn main() {
+    #[derive(Clone)]
+    struct Logger;
+    impl FangAction for Logger {
+        async fn fore<'a>(&'a self, req: &'a mut Request) -> Result<(), Response> {
+            Ok(println!("\n{req:#?}"))
+        }
+        async fn back<'a>(&'a self, res: &'a mut Response) {
+            println!("\n{res:#?}")
+        }
+    }
+    
     Ohkami::with(Logger, (
         "/".Dir("./template").omit_extensions([".html"]),
         "/echo1".GET(echo_text),
@@ -132,22 +147,4 @@ async fn main() {
         "/echo3/:name".GET(echo_text_3),
         "/echo4/:name".GET(echo4),
     )).howl("localhost:3030").await
-}
-
-
-async fn echo4((name,): (String,), ws: WebSocketContext<'_>) -> WebSocket {
-    ws.connect(|mut c| async {
-        /* spawn but not await handle */
-        tokio::task::spawn(async move {
-            #[cfg(feature="DEBUG")] println!("\n{c:#?}");
-
-            c.send(Message::Text(name)).await.expect("failed to send");
-            while let Ok(Some(Message::Text(text))) = c.recv().await {
-                #[cfg(feature="DEBUG")] println!("\n{c:#?}");
-
-                if dbg!(&text) == "close" {break}
-                c.send(Message::Text(text)).await.expect("failed to send");
-            }
-        });
-    })
 }

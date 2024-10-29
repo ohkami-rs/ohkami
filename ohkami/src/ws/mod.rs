@@ -1,15 +1,15 @@
 #![cfg(all(feature="ws", feature="__rt_native__"))]
 
-mod connection;
-mod message;
-mod frame;
+pub use mews::{
+    Message,
+    CloseCode, CloseFrame,
+    Config,
+    Connection,
+    ReadHalf, WriteHalf,
+    connection,
+    split,
+};
 
-pub use message::{Message, CloseFrame};
-pub use frame::{CloseCode};
-pub use connection::Connection;
-#[cfg(feature="rt_tokio")] pub use connection::split;
-
-use std::{future::Future, pin::Pin};
 use crate::{__rt__, FromRequest, IntoResponse, Request, Response};
 
 
@@ -19,27 +19,29 @@ use crate::{__rt__, FromRequest, IntoResponse, Request, Response};
 /// 
 /// *example.rs*
 /// ```
-/// use ohkami::ws::{WebSocketContext, WebSocket, Message};
+/// use ohkami::ws::{WebSocketContext, WebSocket, Connection};
 /// 
 /// async fn ws(ctx: WebSocketContext<'_>) -> WebSocket {
-///     ctx.connect(|mut ws| async move {
-///         ws.send(Message::Text(
-///             "Hello, WebSocket! and bye...".to_string()
-///         )).await.expect("failed to send")
+///     ctx.upgrade(|mut conn: Connection| async move {
+///         conn.send("Hello, WebSocket! and bye...").await
 ///     })
 /// }
 /// ```
 pub struct WebSocketContext<'req> {
     sec_websocket_key: &'req str,
-} const _: () = {
+}
+const _: () = {
     impl<'req> FromRequest<'req> for WebSocketContext<'req> {
         type Error = Response;
 
         fn from_request(req: &'req Request) -> Option<Result<Self, Self::Error>> {
-            if !req.headers.Connection()?.contains("Upgrade") {
+            if {
+                let connection = req.headers.Connection()?;
+                !(connection.contains("Upgrade") || connection.contains("upgrade"))
+            } {
                 return Some(Err((|| Response::BadRequest().with_text("upgrade request must have `Connection: Upgrade`"))()))
             }
-            if req.headers.Upgrade()? != "websocket" {
+            if req.headers.Upgrade()?.eq_ignore_ascii_case("websocket") {
                 return Some(Err((|| Response::BadRequest().with_text("upgrade request must have `Upgrade: websocket`"))()))
             }
             if req.headers.SecWebSocketVersion()? != "13" {
@@ -53,36 +55,44 @@ pub struct WebSocketContext<'req> {
     }
 
     impl<'ctx> WebSocketContext<'ctx> {
-        pub fn connect<Fut: Future<Output = ()> + Send + 'static>(self,
-            handler: impl FnOnce(Connection<__rt__::TcpStream>) -> Fut + Send + Sync + 'static
-        ) -> WebSocket {
-            self.connect_with(Config::default(), handler)
+        /// create a `WebSocket` with the handler and default `Config`.
+        /// use [`upgrade_with`](WebSocketContext::upgrade_with) to provide a custom config.
+        /// 
+        /// ## handler
+        /// 
+        /// any `FnOnce + Send + Sync` returning `Future + Send` with following signature:
+        /// 
+        /// * `(Connection) -> () | std::io::Result<()>`
+        /// * `(ReadHalf, WriteHalf) -> () | std::io::Result<()>`
+        pub fn upgrade<T, C: mews::connection::UnderlyingConnection>(self,
+            handler: impl mews::handler::IntoHandler<C, T>
+        ) -> WebSocket<C> {
+            self.upgrade_with(Config::default(), handler)
         }
 
-        pub fn connect_with<Fut: Future<Output = ()> + Send + 'static>(self,
+        /// create a `WebSocket` with the config and handler.
+        /// 
+        /// ## handler
+        /// 
+        /// any `FnOnce + Send + Sync` returning `Future + Send` with following signature:
+        /// 
+        /// * `(Connection) -> () | std::io::Result<()>`
+        /// * `(ReadHalf, WriteHalf) -> () | std::io::Result<()>`
+        pub fn upgrade_with<T, C: mews::connection::UnderlyingConnection>(self,
             config:  Config,
-            handler: impl FnOnce(Connection<__rt__::TcpStream>) -> Fut + Send + Sync + 'static
-        ) -> WebSocket {
-            WebSocket {
-                config,
-                sec_websocket_key: sign(self.sec_websocket_key),
-                handler: Box::new(move |ws| Box::pin({
-                    let session = handler(ws);
-                    async {session.await}
-                }))
-            }
+            handler: impl mews::handler::IntoHandler<C, T>
+        ) -> WebSocket<C> {
+            let (sign, session) = mews::WebSocketContext::new(self.sec_websocket_key)
+                .with(config)
+                .on_upgrade(handler);
+            WebSocket { sign, session }
         }
     }
 };
 
-pub(crate) type Handler = Box<dyn
-    FnOnce(Connection<__rt__::TcpStream>) -> Pin<Box<dyn Future<Output = ()> + Send + 'static>>
-    + Send + Sync
->;
-
 /// # Response for upgrading to WebSocket
 /// 
-/// Perform the handshake with a `WebSocketContext`,
+/// Perform handshake with a `WebSocketContext`,
 /// establish a WebSocket connection,
 /// and run the given handler.
 /// 
@@ -90,66 +100,54 @@ pub(crate) type Handler = Box<dyn
 /// 
 /// *example.rs*
 /// ```
-/// use ohkami::ws::{WebSocketContext, WebSocket, Message};
+/// use ohkami::ws::{WebSocketContext, WebSocket, Connection};
 /// 
 /// async fn ws(ctx: WebSocketContext<'_>) -> WebSocket {
-///     ctx.connect(|mut ws| async move {
-///         ws.send(Message::Text(
-///             "Hello, WebSocket! and bye...".to_string()
-///         )).await.expect("failed to send")
+///     ctx.upgrade(|mut conn: Connection| async move {
+///         conn.send("Hello, WebSocket! and bye...").await
 ///     })
 /// }
 /// ```
-pub struct WebSocket {
-    config:            Config,
-    sec_websocket_key: String,
-    handler:           Handler,
-} impl IntoResponse for WebSocket {
+/// 
+/// <br>
+/// 
+/// *split_example.rs*
+/// ```
+/// # use tokio::{join, spawn};
+/// # use tokio::time::{Duration, sleep};
+/// # 
+/// use ohkami::ws::{WebSocketContext, WebSocket, Message, ReadHalf, WriteHalf};
+/// 
+/// async fn ws(ctx: WebSocketContext<'_>) -> WebSocket {
+///     ctx.upgrade(|mut r: ReadHalf, mut w: WriteHalf| async {
+///         tokio::join!( /* joining is necessary to prevent resource leak or unsafe situations */
+///             tokio::spawn(async move {
+///                 while let Some(Message::Text(
+///                     text
+///                 )) = r.recv().await.expect("failed to recieve") {
+///                     println!("[->] {text}");
+///                 }
+///             }),
+///             tokio::spawn(async move {
+///                 for text in ["abc", "def", "ghi", "jk", "lmno", "pqr", "stuvw", "xyz"] {
+///                     w.send(text).await.expect("failed to send text");
+///                     sleep(Duration::from_secs(1)).await;
+///                 }
+///             })
+///         );
+///     })
+/// }
+/// ```
+pub struct WebSocket<C: mews::connection::UnderlyingConnection = __rt__::TcpStream> {
+    sign:    String,
+    session: mews::WebSocket<C>,
+}
+impl IntoResponse for WebSocket {
     fn into_response(self) -> Response {
         Response::SwitchingProtocols().with_headers(|h|h
             .Connection("Upgrade")
             .Upgrade("websocket")
-            .SecWebSocketAccept(self.sec_websocket_key)
-        ).with_websocket(self.config, self.handler)
+            .SecWebSocketAccept(self.sign)
+        ).with_websocket(self.session)
     }
-}
-
-/// ## Note
-/// 
-/// - Currently, subprotocols via `Sec-WebSocket-Protocol` is not supported
-#[derive(Clone, Debug)]
-pub struct Config {
-    pub write_buffer_size:      usize,
-    pub max_write_buffer_size:  usize,
-    pub accept_unmasked_frames: bool,
-    pub max_message_size:       Option<usize>,
-    pub max_frame_size:         Option<usize>,
-} const _: () = {
-    impl Default for Config {
-        fn default() -> Self {
-            Self {
-                write_buffer_size:      128 * 1024, // 128 KiB
-                max_write_buffer_size:  usize::MAX,
-                accept_unmasked_frames: false,
-                max_message_size:       Some(64 << 20),
-                max_frame_size:         Some(16 << 20),
-            }
-        }
-    }
-};
-
-#[inline] fn sign(sec_websocket_key: &str) -> String {
-    use ::sha1::{Sha1, Digest};
-    use ohkami_lib::base64;
-
-    let mut sha1 = <Sha1 as Digest>::new();
-    sha1.update(sec_websocket_key.as_bytes());
-    sha1.update(b"258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
-    base64::encode(sha1.finalize())
-}
-
-#[cfg(test)]
-#[test] fn test_sign() {
-    /* example in https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API/Writing_WebSocket_servers#server_handshake_response */
-    assert_eq!(sign("dGhlIHNhbXBsZSBub25jZQ=="), "s3pPLMBiTxaQ9kYGzzhZRbK+xOo=");
 }

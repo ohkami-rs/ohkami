@@ -28,11 +28,11 @@ macro_rules! push_unchecked {
 #[doc(hidden)]
 #[macro_export]
 macro_rules! DEBUG {
-    ( $( $t:tt )* ) => {
+    ( $( $t:tt )* ) => {{
         #[cfg(feature="DEBUG")] {
             println!( $( $t )* );
         }
-    };
+    }};
 }
 
 pub use crate::fang::FangAction;

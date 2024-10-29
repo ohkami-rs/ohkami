@@ -4,7 +4,7 @@ use ohkami_lib::CowSlice;
 use ohkami_lib::Stream;
 
 #[cfg(all(feature="ws", feature="__rt_native__"))]
-use crate::ws::{Config, Handler};
+use mews::WebSocket;
 
 
 pub enum Content {
@@ -16,8 +16,9 @@ pub enum Content {
     Stream(std::pin::Pin<Box<dyn Stream<Item = Result<String, String>> + Send>>),
 
     #[cfg(all(feature="ws", feature="__rt_native__"))]
-    WebSocket((Config, Handler)),
-} const _: () = {
+    WebSocket(WebSocket),
+}
+const _: () = {
     impl Default for Content {
         fn default() -> Self {
             Self::None
