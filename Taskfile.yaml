@@ -1,60 +1,60 @@
-version: '3'
+version: 3
+
+vars:
+  maybe_nightly: { sh: cargo version | grep -q 'nightly' && echo 'nightly' || echo ''  }
 
 tasks:
   CI:
     deps:
-      - test
-      - check
-      - bench_dryrun
-  CI_stable:
-    deps:
-      - test
-      - check
+      - task: test
+      - task: check
+      - task: bench:dryrun
 
   test:
     deps:
-      - test_doc
-      - test_examples
-      - test_no_rt
-      - test_rt_tokio
-      - test_rt_async-std
-      - test_rt_smol
-      - test_rt_glommio
-      - test_rt_worker
+      - task: test:examples
+      - task: test:doc
+        # vars: { nightly: '{{.maybe_nightly}}' }
+      - task: test:no_rt
+        # vars: { nightly: '{{.maybe_nightly}}' }
+      - for:  [tokio, async-std, smol, glommio, worker]
+        task: test:rt
+        vars: { rt: '{{.ITEM}}' }
 
   check:
     deps:
-      - check_no_rt
-      - check_rt_tokio
-      - check_rt_async-std
-      - check_rt_smol
-      - check_rt_glommio
-      - check_rt_worker
+      - task: check:no_rt
+      - for:  [tokio, async-std, smol, glommio]
+        task: check:native_rt
+        vars: { native_rt: '{{.ITEM}}' }
+      - task: check:rt_worker
+        # vars: { nightly: '{{.maybe_nightly}}' }
 
-  bench_dryrun:
+  bench:dryrun:
+    status:
+      - (! cargo version | grep -q 'nightly')
     cmds:
       - cd benches && cargo bench --features DEBUG --no-run
-      - cd benches && cargo check
       - cd benches_rt/glommio && cargo check
       - cd benches_rt/smol && cargo check
       - cd benches_rt/tokio && cargo check
       - cd benches_rt/vs_actix-web && cargo check
 
   bench:
-    dir: benches
+    status:
+      - (! cargo version | grep -q 'nightly')
+    dir: ./benches
     cmds:
+      - task: bench:dryrun
       - cargo bench --features DEBUG
 
 #### tests ####
-  test_doc:
-    vars:
-      MAYBE_NIGHTLY:
-        sh: cargo version | grep -q 'nightly' && echo 'nightly' || echo ''
-    dir: ohkami
+  test:doc:
+    dir: ./ohkami
     cmds:
-      - cargo test --doc --features DEBUG,rt_tokio,sse,ws,{{.MAYBE_NIGHTLY}}
+      - cargo test --doc --features DEBUG,rt_tokio,sse,ws,{{.maybe_nightly}}
 
-  test_examples:
+  test:examples:
     dir: examples
     cmds:
       - docker compose -f ./realworld/docker-compose.yml up -d
@@ -62,119 +62,41 @@ tasks:
       - cargo test
       - docker compose -f ./realworld/docker-compose.yml down
 
-  test_no_rt:
-    vars:
-      MAYBE_NIGHTLY:
-        sh: cargo version | grep -q 'nightly' && echo 'nightly' || echo ''
-    dir: ohkami
+  test:no_rt:
+    dir: ./ohkami
     cmds:
-      - cargo test --lib --features DEBUG,{{.MAYBE_NIGHTLY}}
-      - cargo test --lib --features DEBUG,sse,ws,{{.MAYBE_NIGHTLY}}
+      - cargo test --lib --features DEBUG,{{.maybe_nightly}}
+      - cargo test --lib --features DEBUG,sse,ws,{{.maybe_nightly}}
 
-  test_rt_tokio:
-    vars:
-      MAYBE_NIGHTLY:
-        sh: cargo version | grep -q 'nightly' && echo 'nightly' || echo ''
-    dir: ohkami
+  test:rt:
+    dir: ./ohkami
     cmds:
-      - cargo test --lib --features rt_tokio,DEBUG,{{.MAYBE_NIGHTLY}}
-      - cargo test --lib --features rt_tokio,DEBUG,sse,ws,{{.MAYBE_NIGHTLY}}
-
-  test_rt_async-std:
-    vars:
-      MAYBE_NIGHTLY:
-        sh: cargo version | grep -q 'nightly' && echo 'nightly' || echo ''
-    dir: ohkami
-    cmds:
-      - cargo test --lib --features rt_async-std,DEBUG,{{.MAYBE_NIGHTLY}}
-      - cargo test --lib --features rt_async-std,DEBUG,sse,ws,{{.MAYBE_NIGHTLY}}
-
-  test_rt_smol:
-    vars:
-      MAYBE_NIGHTLY:
-        sh: cargo version | grep -q 'nightly' && echo 'nightly' || echo ''
-    dir: ohkami
-    cmds:
-      - cargo test --lib --features rt_smol,DEBUG,{{.MAYBE_NIGHTLY}}
-      - cargo test --lib --features rt_smol,DEBUG,sse,ws,{{.MAYBE_NIGHTLY}}
-
-  test_rt_glommio:
-    vars:
-      MAYBE_NIGHTLY:
-        sh: cargo version | grep -q 'nightly' && echo 'nightly' || echo ''
-    dir: ohkami
-    cmds:
-      - cargo test --lib --features rt_glommio,DEBUG,{{.MAYBE_NIGHTLY}}
-      - cargo test --lib --features rt_glommio,DEBUG,sse,ws,{{.MAYBE_NIGHTLY}}
-
-  test_rt_worker:
-    vars:
-      MAYBE_NIGHTLY:
-        sh: cargo version | grep -q 'nightly' && echo 'nightly' || echo ''
-    dir: ohkami
-    cmds:
-      - cargo test --lib --features rt_worker,DEBUG,{{.MAYBE_NIGHTLY}}
-      - cargo test --lib --features rt_worker,DEBUG,sse,ws,{{.MAYBE_NIGHTLY}}
+      - cargo test --lib --features rt_{{.rt}},DEBUG,{{.maybe_nightly}}
+      - cargo test --lib --features rt_{{.rt}},DEBUG,sse,ws,{{.maybe_nightly}}
 
 #### checks ####
   # Assure buildability without "DEBUG" feature
 
-  check_no_rt:
+  check:no_rt:
     vars:
       MAYBE_FEATURES_NIGHTLY:
         sh: cargo version | grep -q 'nightly' && echo '--features nightly' || echo ''
       MAYBE_FEATURES_NIGHTLY_full:
         sh: cargo version | grep -q 'nightly' && echo '--features nightly,sse,ws' || echo '--features testing'
-    dir: ohkami
+    dir: ./ohkami
     cmds:
       - cargo check --lib {{.MAYBE_FEATURES_NIGHTLY}}
       - cargo check --lib {{.MAYBE_FEATURES_NIGHTLY_full}}
 
-  check_rt_tokio:
-    vars:
-      MAYBE_NIGHTLY:
-        sh: cargo version | grep -q 'nightly' && echo 'nightly' || echo ''
-    dir: ohkami
+  check:native_rt:
+    dir: ./ohkami
     cmds:
-      - cargo check --lib --features rt_tokio,{{.MAYBE_NIGHTLY}}
-      - cargo check --lib --features rt_tokio,sse,{{.MAYBE_NIGHTLY}}
-      - cargo check --lib --features rt_tokio,sse,ws,{{.MAYBE_NIGHTLY}}
+      - cargo check --lib --features rt_{{.native_rt}},{{.maybe_nightly}}
+      - cargo check --lib --features rt_{{.native_rt}},sse,{{.maybe_nightly}}
+      - cargo check --lib --features rt_{{.native_rt}},sse,ws,{{.maybe_nightly}}
 
-  check_rt_async-std:
-    vars:
-      MAYBE_NIGHTLY:
-        sh: cargo version | grep -q 'nightly' && echo 'nightly' || echo ''
+  check:rt_worker:
     dir: ohkami
     cmds:
-      - cargo check --lib --features rt_async-std,{{.MAYBE_NIGHTLY}}
-      - cargo check --lib --features rt_async-std,sse,{{.MAYBE_NIGHTLY}}
-      - cargo check --lib --features rt_async-std,sse,ws,{{.MAYBE_NIGHTLY}}
-
-  check_rt_smol:
-    vars:
-      MAYBE_NIGHTLY:
-        sh: cargo version | grep -q 'nightly' && echo 'nightly' || echo ''
-    dir: ohkami
-    cmds:
-      - cargo check --lib --features rt_smol,{{.MAYBE_NIGHTLY}}
-      - cargo check --lib --features rt_smol,sse,{{.MAYBE_NIGHTLY}}
-      - cargo check --lib --features rt_smol,sse,ws,{{.MAYBE_NIGHTLY}}
-
-  check_rt_glommio:
-    vars:
-      MAYBE_NIGHTLY:
-        sh: cargo version | grep -q 'nightly' && echo 'nightly' || echo ''
-    dir: ohkami
-    cmds:
-      - cargo check --lib --features rt_glommio,{{.MAYBE_NIGHTLY}}
-      - cargo check --lib --features rt_glommio,sse,{{.MAYBE_NIGHTLY}}
-      - cargo check --lib --features rt_glommio,sse,ws,{{.MAYBE_NIGHTLY}}
-
-  check_rt_worker:
-    vars:
-      MAYBE_NIGHTLY:
-        sh: cargo version | grep -q 'nightly' && echo 'nightly' || echo ''
-    dir: ohkami
-    cmds:
-      - cargo check --target wasm32-unknown-unknown --lib --features rt_worker,{{.MAYBE_NIGHTLY}}
-      - cargo check --target wasm32-unknown-unknown --lib --features rt_worker,sse,ws,{{.MAYBE_NIGHTLY}}
+      - cargo check --target wasm32-unknown-unknown --lib --features rt_worker,{{.maybe_nightly}}
+      - cargo check --target wasm32-unknown-unknown --lib --features rt_worker,sse,ws,{{.maybe_nightly}}
