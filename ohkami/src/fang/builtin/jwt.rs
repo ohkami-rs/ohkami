@@ -3,7 +3,7 @@
 use crate::{Fang, FangProc, IntoResponse, Request, Response};
 use std::{borrow::Cow, marker::PhantomData};
 use serde::{Serialize, Deserialize};
-use base64::engine::{Engine as _, general_purpose::URL_SAFE as BASE64URL};
+use base64::engine::{Engine as _, general_purpose::URL_SAFE_NO_PAD as BASE64URL};
 
 
 /// # Builtin fang and helper for JWT config
@@ -303,7 +303,7 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
         }
 
         let header_part = parts.next()
-            .ok_or_else(|| Response::BadRequest())?;
+            .ok_or_else(Response::Unauthorized)?;
         let header: Header = part_value(header_part)?;
         if header.get("typ").is_some_and(|typ| !typ.as_str().unwrap_or_default().eq_ignore_ascii_case("JWT")) {
             return Err(Response::BadRequest())
@@ -311,12 +311,12 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
         if header.get("cty").is_some_and(|cty| !cty.as_str().unwrap_or_default().eq_ignore_ascii_case("JWT")) {
             return Err(Response::BadRequest())
         }
-        if header.get("alg").ok_or_else(|| Response::BadRequest())? != self.alg_str() {
+        if header.get("alg").ok_or_else(Response::Unauthorized)? != self.alg_str() {
             return Err(Response::BadRequest())
         }
 
         let payload_part = parts.next()
-            .ok_or_else(|| Response::BadRequest())?;
+            .ok_or_else(Response::Unauthorized)?;
         let payload: Payload = part_value(payload_part)?;
         let now = crate::util::unix_timestamp();
         if payload.get("nbf").is_some_and(|nbf| nbf.as_u64().unwrap_or(0) > now) {
@@ -330,9 +330,9 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
         }
 
         let signature_part = parts.next()
-            .ok_or_else(|| Response::BadRequest())?;
+            .ok_or_else(Response::Unauthorized)?;
         let requested_signature = BASE64URL.decode(signature_part)
-            .map_err(|_| Response::BadRequest().with_text("invalid base64"))?;
+            .map_err(|_| Response::Unauthorized())?;
 
         let is_correct_signature = {
             use ::sha2::{Sha256, Sha384, Sha512};

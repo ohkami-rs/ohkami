@@ -61,7 +61,7 @@ const _: () = {
         /// 
         /// ## handler
         /// 
-        /// any `FnOnce(Connection) -> {impl Future<Output = ()> + Send} + Send + Sync`
+        /// any 'static `FnOnce(Connection) -> {impl Future<Output = ()> + Send} + Send + Sync`
         pub fn upgrade<H, F, C: mews::connection::UnderlyingConnection>(
             self,
             handler: H
@@ -77,7 +77,7 @@ const _: () = {
         /// 
         /// ## handler
         /// 
-        /// any `FnOnce(Connection) -> {impl Future<Output = ()> + Send} + Send + Sync`
+        /// any 'static `FnOnce(Connection) -> {impl Future<Output = ()> + Send} + Send + Sync`
         pub fn upgrade_with<H, F, C: mews::connection::UnderlyingConnection>(self,
             config:  Config,
             handler: H

@@ -39,7 +39,7 @@ sha2          = { version = "0.10", default-features = false }
 
 num_cpus      = { version = "1.16", optional = true }
 futures-util  = { version = "0.3",  optional = true, default-features = false, features = ["io", "async-await-macro"] }
-mews          = { git = "https://github.com/ohkami-rs/mews", optional = true }
+mews          = { version = "0.1", optional = true }
 
 
 [features]
