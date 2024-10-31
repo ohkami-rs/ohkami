@@ -159,7 +159,7 @@ pub(super) enum Upgrade {
     None,
 
     #[cfg(all(feature="ws", feature="__rt_native__"))]
-    WebSocket((crate::ws::Config, crate::ws::Handler)),
+    WebSocket(mews::WebSocket),
 }
 #[cfg(feature="__rt_native__")]
 impl Upgrade {
@@ -259,7 +259,7 @@ impl Response {
             }
 
             #[cfg(all(feature="ws", feature="__rt_native__"))]
-            Content::WebSocket((config, handler)) => {
+            Content::WebSocket(ws) => {
                 let mut buf = Vec::<u8>::with_capacity(
                     self.status.line().len() +
                     self.headers.size
@@ -270,7 +270,7 @@ impl Response {
                 conn.write_all(&buf).await.expect("Failed to send response");
                 conn.flush().await.expect("Failed to flush connection");
 
-                Upgrade::WebSocket((config, handler))
+                Upgrade::WebSocket(ws)
             }
         }
     }
@@ -414,11 +414,8 @@ impl Response {
 
 #[cfg(all(feature="ws", feature="__rt_native__"))]
 impl Response {
-    pub(crate) fn with_websocket(mut self,
-        config:  crate::ws::Config,
-        handler: crate::ws::Handler
-    ) -> Self {
-        self.content = Content::WebSocket((config, handler));
+    pub(crate) fn with_websocket(mut self, ws: mews::WebSocket) -> Self {
+        self.content = Content::WebSocket(ws);
         self
     }
 }
@@ -430,7 +427,7 @@ const _: () = {
                 status:  self.status,
                 headers: self.headers.clone(),
                 content: match &self.content {
-                    Content::None           => Content::None,
+                    Content::None => Content::None,
 
                     Content::Payload(bytes) => Content::Payload(bytes.clone()),
                     
@@ -447,10 +444,10 @@ const _: () = {
                     })),
 
                     #[cfg(all(feature="ws", feature="__rt_native__"))]
-                    Content::WebSocket(_) => Content::WebSocket((
-                        crate::ws::Config::default(),
-                        Box::new(|_| Box::pin(async {/* dummy handler */}))
-                    )),
+                    Content::WebSocket(_) => Content::WebSocket({
+                        mews::WebSocketContext::new("dummy-context")
+                            .on_upgrade(|_| async {}).1
+                    }),
                 }
             };
             this.complete();

@@ -134,10 +134,10 @@ Currently, WebSocket on `rt_worker` is *not* supported.
 use ohkami::prelude::*;
 use ohkami::ws::{WebSocketContext, WebSocket, Message};
 
-async fn echo_text(c: WebSocketContext<'_>) -> WebSocket {
-    c.connect(|mut conn| async move {
+async fn echo_text(ctx: WebSocketContext<'_>) -> WebSocket {
+    ctx.upgrade(|mut conn| async move {
         while let Ok(Some(Message::Text(text))) = conn.recv().await {
-            conn.send(Message::Text(text)).await.expect("Failed to send text");
+            conn.send(text).await.expect("failed to send text");
         }
     })
 }

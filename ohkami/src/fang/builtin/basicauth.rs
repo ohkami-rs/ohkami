@@ -1,4 +1,5 @@
 use crate::prelude::*;
+use ::base64::engine::{Engine as _, general_purpose::STANDARD as BASE64};
 
 
 /// # Builtin fang for Basic Auth
@@ -74,7 +75,7 @@ const _: () = {
             .strip_prefix("Basic ").ok_or_else(unauthorized)?;
 
         let credential = String::from_utf8(
-            ohkami_lib::base64::decode(credential_base64.as_bytes())
+            BASE64.decode(credential_base64).map_err(|_| unauthorized())?
         ).map_err(|_| unauthorized())?;
 
         Ok(credential)
