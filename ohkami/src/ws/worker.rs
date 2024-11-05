@@ -1,3 +1,5 @@
+pub use ohkami_lib::stream::{Stream, StreamExt};
+
 use worker::{WebSocketPair, wasm_bindgen_futures};
 
 impl<'req> super::WebSocketContext<'req> {
