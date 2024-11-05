@@ -142,7 +142,7 @@ pub mod header;
 
 pub mod typed;
 
-#[cfg(all(feature="ws", feature="__rt_native__"))]
+#[cfg(feature="ws")]
 pub mod ws;
 
 #[cfg(feature="testing")]
