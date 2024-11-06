@@ -32,6 +32,6 @@ impl crate::IntoResponse for WebSocket {
     fn into_response(self) -> crate::Response {
         crate::Response::SwitchingProtocols().with_websocket(self.session)
         // let `worker` crate and Cloudflare Workers to do around
-        // `Sec-WebSocket-Accept` and other headers
+        // headers and something other
     }
 }
