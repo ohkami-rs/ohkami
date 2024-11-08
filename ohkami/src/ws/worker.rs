@@ -1,4 +1,5 @@
-use mews::{Message, CloseFrame, CloseCode};
+pub use mews::{Message, CloseFrame, CloseCode};
+
 use worker::{WebSocketPair, EventStream, wasm_bindgen_futures};
 
 impl<'req> super::WebSocketContext<'req> {
@@ -77,7 +78,8 @@ impl Connection {
     }
 
     #[inline]
-    pub async fn send(&mut self, message: Message) -> Result<(), worker::Error> {
+    pub async fn send(&mut self, message: impl Into<Message>) -> Result<(), worker::Error> {
+        let message = message.into();
         match message {
             Message::Text(text)         => self.ws.send_with_str(text),
             Message::Binary(binary)     => self.ws.send_with_bytes(binary),
@@ -87,6 +89,14 @@ impl Connection {
                 format!("`Connection::send` got `{message:?}`, but sending ping/pong is not supported on `rt_worker`")
             })(message)))
         }
+    }
+}
+impl Drop for Connection {
+    fn drop(&mut self) {
+        // https://developer.mozilla.org/en-US/docs/Web/API/WebSocket/close
+        // 
+        // > If the connection is already CLOSED, this method does nothing.
+        self.ws.close::<&str>(None, None).ok();
     }
 }
 
