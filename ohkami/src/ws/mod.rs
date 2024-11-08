@@ -27,9 +27,11 @@ pub struct WebSocketContext<'req> {
     #[allow(unused/* on rt_worker */)]
     sec_websocket_key: &'req str,
 }
+
 impl<'req> crate::FromRequest<'req> for WebSocketContext<'req> {
     type Error = crate::Response;
 
+    #[inline]
     fn from_request(req: &'req crate::Request) -> Option<Result<Self, Self::Error>> {
         if !matches!(req.headers.Connection()?, "Upgrade" | "upgrade") {
             return Some(Err((|| crate::Response::BadRequest().with_text("upgrade request must have `Connection: Upgrade`"))()))
@@ -44,5 +46,11 @@ impl<'req> crate::FromRequest<'req> for WebSocketContext<'req> {
         req.headers.SecWebSocketKey().map(|sec_websocket_key|
             Ok(Self { sec_websocket_key })
         )
+    }
+}
+
+impl<'req> WebSocketContext<'req> {
+    pub fn new(sec_websocket_key: &'req str) -> Self {
+        Self { sec_websocket_key }
     }
 }

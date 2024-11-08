@@ -119,6 +119,7 @@ pub fn bindings(env: TokenStream, bindings_struct: TokenStream) -> Result<TokenS
         KV,
         Service,
         Queue,
+        DurableObject,
     }
 
     let name = &bindings_struct.ident;
@@ -185,17 +186,32 @@ pub fn bindings(env: TokenStream, bindings_struct: TokenStream) -> Result<TokenS
             }
         }
 
+        if let Some(toml::Value::Table(durable_objects)) = config.get("durable_objects") {
+            if let Some(toml::Value::Array(durable_object_bindings)) = durable_objects.get("bindings") {
+                for binding in durable_object_bindings {
+                    let name = binding.as_table().ok_or_else(invalid_wrangler_toml)?
+                        .get("name").ok_or_else(|| callsite("Invalid wrangler.toml: a binding doesn't have `binding = \"...\"`"))?
+                        .as_str().ok_or_else(invalid_wrangler_toml)?;
+                    bindings.push((
+                        syn::parse_str(name).map_err(|e| callsite(format!("Can't bind binding `{name}` into struct: {e}")))?,
+                        Binding::DurableObject
+                    ))
+                }
+            }
+        }
+
         bindings
     };
 
     let declare_struct = {
         let fields = bindings.iter().map(|(name, binding)| {
             let ty = match binding {
-                Binding::Variable(_) => quote!(&'static str),
-                Binding::D1          => quote!(::worker::d1::D1Database),
-                Binding::KV          => quote!(::worker::kv::KvStore),
-                Binding::Queue       => quote!(::worker::Queue),
-                Binding::Service     => quote!(::worker::Fetcher),
+                Binding::Variable(_)   => quote!(&'static str),
+                Binding::D1            => quote!(::worker::d1::D1Database),
+                Binding::KV            => quote!(::worker::kv::KvStore),
+                Binding::Queue         => quote!(::worker::Queue),
+                Binding::Service       => quote!(::worker::Fetcher),
+                Binding::DurableObject => quote!(::worker::ObjectNamespace),
             };
 
             quote! {
@@ -261,7 +277,14 @@ pub fn bindings(env: TokenStream, bindings_struct: TokenStream) -> Result<TokenS
                             return ::std::option::Option::Some(::std::result::Result::Err(::ohkami::Response::InternalServerError()))
                         }
                     }
-                }
+                },
+                Binding::DurableObject => quote! {
+                    match req.env().durable_object(#name_str) {
+                        Ok(binding) => binding, Err(e) => {::worker::console_error!("{e}");
+                            return ::std::option::Option::Some(::std::result::Result::Err(::ohkami::Response::InternalServerError()))
+                        }
+                    }
+                },
             };
 
             quote! {
