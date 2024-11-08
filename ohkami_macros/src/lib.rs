@@ -37,13 +37,14 @@ pub fn worker(_: proc_macro::TokenStream, ohkami_fn: proc_macro::TokenStream) ->
 /// - Binded struct implements `FromRequest` and it can be used as an
 ///   handler argument
 /// 
-/// _**note**_ : `#[bindings]` only supports
+/// _**note**_ : `#[bindings]` supports
 /// 
 /// - KV
 /// - D1
 /// - Queue (producer)
 /// - Service
 /// - Variables
+/// - Durable Objects
 /// 
 /// in cuurent version, as `worker` crate does.
 /// ( `worker` supports secrets, but secrets aren't written in wrangler.toml... )
@@ -63,7 +64,6 @@ pub fn worker(_: proc_macro::TokenStream, ohkami_fn: proc_macro::TokenStream) ->
 /// #[bindings]
 /// struct Bindings;
 /// 
-/// #[worker::send]
 /// async fn handler(b: Bindings) -> String {
 ///     let data = b.MY_KV.get("data").text().await
 ///         .expect("Failed to get data");
