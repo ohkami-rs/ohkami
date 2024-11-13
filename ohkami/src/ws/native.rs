@@ -1,5 +1,3 @@
-#![cfg(feature="ws")]
-
 pub use mews::{
     Message,
     CloseCode, CloseFrame,
@@ -10,8 +8,6 @@ pub use mews::{
     connection,
     split,
 };
-
-use crate::{__rt__, FromRequest, IntoResponse, Request, Response};
 
 impl<'ctx> super::WebSocketContext<'ctx> {
     /// create a `WebSocket` with the handler and default `Config`.
@@ -112,13 +108,13 @@ impl<'ctx> super::WebSocketContext<'ctx> {
 ///     })
 /// }
 /// ```
-pub struct WebSocket<C: mews::connection::UnderlyingConnection = __rt__::TcpStream> {
+pub struct WebSocket<C: mews::connection::UnderlyingConnection = crate::__rt__::TcpStream> {
     sign:    String,
     session: Session<C>,
 }
-impl IntoResponse for WebSocket {
-    fn into_response(self) -> Response {
-        Response::SwitchingProtocols().with_headers(|h|h
+impl crate::IntoResponse for WebSocket {
+    fn into_response(self) -> crate::Response {
+        crate::Response::SwitchingProtocols().with_headers(|h|h
             .Connection("Upgrade")
             .Upgrade("websocket")
             .SecWebSocketAccept(self.sign)

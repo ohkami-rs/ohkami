@@ -3,7 +3,7 @@ use ohkami_lib::CowSlice;
 #[cfg(feature="sse")]
 use ohkami_lib::Stream;
 
-#[cfg(feature="ws")]
+#[cfg(all(feature="ws", feature="__rt__"))]
 use crate::ws::Session;
 
 
@@ -15,7 +15,7 @@ pub enum Content {
     #[cfg(feature="sse")]
     Stream(std::pin::Pin<Box<dyn Stream<Item = Result<String, String>> + Send>>),
 
-    #[cfg(feature="ws")]
+    #[cfg(all(feature="ws", feature="__rt__"))]
     WebSocket(Session),
 }
 const _: () = {
@@ -47,7 +47,7 @@ const _: () = {
                 #[cfg(feature="sse")]
                 Self::Stream(_)      => f.write_str("{stream}"),
 
-                #[cfg(feature="ws")]
+                #[cfg(all(feature="ws", feature="__rt__"))]
                 Self::WebSocket(_)   => f.write_str("{websocket}"),
             }
         }
