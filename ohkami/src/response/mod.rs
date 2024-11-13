@@ -120,6 +120,7 @@ impl Response {
         }
     }
 
+    #[cfg(feature="__rt__")]
     /// Complete HTTP spec
     #[inline(always)]
     pub(crate) fn complete(&mut self) {
@@ -148,131 +149,12 @@ impl Response {
                     .ContentLength(None);
             }
 
-            #[cfg(all(feature="ws", feature="__rt_native__"))]
-            Content::WebSocket(_) => (),
+            #[cfg(feature="ws")]
+            Content::WebSocket(_) => {
+                self.headers.set()
+                    .ContentLength(None);
+            }
         };
-    }
-}
-
-#[cfg(feature="__rt_native__")]
-pub(super) enum Upgrade {
-    None,
-
-    #[cfg(all(feature="ws", feature="__rt_native__"))]
-    WebSocket(mews::WebSocket),
-}
-#[cfg(feature="__rt_native__")]
-impl Upgrade {
-    #[inline(always)]
-    pub(super) const fn is_none(&self) -> bool {
-        matches!(self, Self::None)
-    }
-}
-#[cfg(feature="__rt_native__")]
-impl Response {
-    #[cfg_attr(not(feature="sse"), inline)]
-    pub(crate) async fn send(mut self,
-        conn: &mut (impl AsyncWriter + Unpin)
-    ) -> Upgrade {
-        self.complete();
-
-        match self.content {
-            Content::None => {
-                let mut buf = Vec::<u8>::with_capacity(
-                    self.status.line().len() +
-                    self.headers.size
-                ); unsafe {
-                    crate::push_unchecked!(buf <- self.status.line());
-                    self.headers.write_unchecked_to(&mut buf);
-                }
-                conn.write_all(&buf).await.expect("Failed to send response");
-                conn.flush().await.expect("Failed to flush connection");
-
-                Upgrade::None
-            }
-
-            Content::Payload(bytes) => {
-                let mut buf = Vec::<u8>::with_capacity(
-                    self.status.line().len() +
-                    self.headers.size +
-                    bytes.len()
-                ); unsafe {
-                    crate::push_unchecked!(buf <- self.status.line());
-                    self.headers.write_unchecked_to(&mut buf);
-                    crate::push_unchecked!(buf <- bytes);
-                }
-                conn.write_all(&buf).await.expect("Failed to send response");
-                conn.flush().await.expect("Failed to flush connection");
-
-                Upgrade::None
-            }
-
-            #[cfg(feature="sse")]
-            Content::Stream(mut stream) => {
-                let mut buf = Vec::<u8>::with_capacity(
-                    self.status.line().len() +
-                    self.headers.size
-                ); unsafe {
-                    crate::push_unchecked!(buf <- self.status.line());
-                    self.headers.write_unchecked_to(&mut buf);
-                }
-                conn.write_all(&buf).await.expect("Failed to send response");
-                conn.flush().await.expect("Failed to flush connection");
-
-                while let Some(chunk) = stream.next().await {
-                    match chunk {
-                        Err(msg)  => {
-                            crate::warning!("Error in stream: {msg}");
-                            break
-                        }
-                        Ok(chunk) => {
-                            let mut message = Vec::with_capacity(
-                                /* capacity for a single line */
-                                "data: ".len() + chunk.len() + "\n\n".len()
-                            );
-                            for line in chunk.split('\n') {
-                                message.extend_from_slice(b"data: ");
-                                message.extend_from_slice(line.as_bytes());
-                                message.push(b'\n');
-                            }
-                            message.push(b'\n');
-
-                            let size_hex_bytes = ohkami_lib::num::hexized_bytes(message.len());
-
-                            let mut chunk = Vec::from(&size_hex_bytes[size_hex_bytes.iter().position(|b| *b!=b'0').unwrap()..]);
-                            chunk.extend_from_slice(b"\r\n");
-                            chunk.append(&mut message);
-                            chunk.extend_from_slice(b"\r\n");
-
-                            #[cfg(feature="DEBUG")]
-                            println!("\n[sending chunk]\n{}", chunk.escape_ascii());
-
-                            conn.write_all(&chunk).await.expect("Failed to send response");
-                            conn.flush().await.expect("Failed to flush connection");
-                        }
-                    }
-                }
-                conn.write_all(b"0\r\n\r\n").await.expect("Failed to send response");
-                conn.flush().await.expect("Failed to flush connection");
-
-                Upgrade::None
-            }
-
-            #[cfg(all(feature="ws", feature="__rt_native__"))]
-            Content::WebSocket(ws) => {
-                let mut buf = Vec::<u8>::with_capacity(
-                    self.status.line().len() +
-                    self.headers.size
-                ); unsafe {
-                    crate::push_unchecked!(buf <- self.status.line());
-                    self.headers.write_unchecked_to(&mut buf);
-                }
-                conn.write_all(&buf).await.expect("Failed to send response");
-                conn.flush().await.expect("Failed to flush connection");
-
-                Upgrade::WebSocket(ws)
-            }
-        }
     }
 }
 
@@ -412,50 +294,149 @@ impl Response {
     }
 }
 
-#[cfg(all(feature="ws", feature="__rt_native__"))]
+#[cfg(feature="ws")]
 impl Response {
+    #[cfg(feature="__rt_native__")]
     pub(crate) fn with_websocket(mut self, ws: mews::WebSocket) -> Self {
         self.content = Content::WebSocket(ws);
         self
+    }
+    #[cfg(feature="rt_worker")]
+    pub(crate) fn with_websocket(mut self, ws: worker::WebSocket) -> Self {
+        self.content = Content::WebSocket(ws);
+        self
+    }
+}
+
+#[cfg(feature="__rt_native__")]
+pub(super) enum Upgrade {
+    None,
+
+    #[cfg(feature="ws")]
+    WebSocket(mews::WebSocket),
+}
+#[cfg(feature="__rt_native__")]
+impl Upgrade {
+    #[inline(always)]
+    pub(super) const fn is_none(&self) -> bool {
+        matches!(self, Self::None)
+    }
+}
+#[cfg(feature="__rt_native__")]
+impl Response {
+    #[cfg_attr(not(feature="sse"), inline)]
+    pub(crate) async fn send(mut self,
+        conn: &mut (impl AsyncWriter + Unpin)
+    ) -> Upgrade {
+        self.complete();
+
+        match self.content {
+            Content::None => {
+                let mut buf = Vec::<u8>::with_capacity(
+                    self.status.line().len() +
+                    self.headers.size
+                ); unsafe {
+                    crate::push_unchecked!(buf <- self.status.line());
+                    self.headers.write_unchecked_to(&mut buf);
+                }
+                conn.write_all(&buf).await.expect("Failed to send response");
+                conn.flush().await.expect("Failed to flush connection");
+
+                Upgrade::None
+            }
+
+            Content::Payload(bytes) => {
+                let mut buf = Vec::<u8>::with_capacity(
+                    self.status.line().len() +
+                    self.headers.size +
+                    bytes.len()
+                ); unsafe {
+                    crate::push_unchecked!(buf <- self.status.line());
+                    self.headers.write_unchecked_to(&mut buf);
+                    crate::push_unchecked!(buf <- bytes);
+                }
+                conn.write_all(&buf).await.expect("Failed to send response");
+                conn.flush().await.expect("Failed to flush connection");
+
+                Upgrade::None
+            }
+
+            #[cfg(feature="sse")]
+            Content::Stream(mut stream) => {
+                let mut buf = Vec::<u8>::with_capacity(
+                    self.status.line().len() +
+                    self.headers.size
+                ); unsafe {
+                    crate::push_unchecked!(buf <- self.status.line());
+                    self.headers.write_unchecked_to(&mut buf);
+                }
+                conn.write_all(&buf).await.expect("Failed to send response");
+                conn.flush().await.expect("Failed to flush connection");
+
+                while let Some(chunk) = stream.next().await {
+                    match chunk {
+                        Err(msg)  => {
+                            crate::warning!("Error in stream: {msg}");
+                            break
+                        }
+                        Ok(chunk) => {
+                            let mut message = Vec::with_capacity(
+                                /* capacity for a single line */
+                                "data: ".len() + chunk.len() + "\n\n".len()
+                            );
+                            for line in chunk.split('\n') {
+                                message.extend_from_slice(b"data: ");
+                                message.extend_from_slice(line.as_bytes());
+                                message.push(b'\n');
+                            }
+                            message.push(b'\n');
+
+                            let size_hex_bytes = ohkami_lib::num::hexized_bytes(message.len());
+
+                            let mut chunk = Vec::from(&size_hex_bytes[size_hex_bytes.iter().position(|b| *b!=b'0').unwrap()..]);
+                            chunk.extend_from_slice(b"\r\n");
+                            chunk.append(&mut message);
+                            chunk.extend_from_slice(b"\r\n");
+
+                            #[cfg(feature="DEBUG")]
+                            println!("\n[sending chunk]\n{}", chunk.escape_ascii());
+
+                            conn.write_all(&chunk).await.expect("Failed to send response");
+                            conn.flush().await.expect("Failed to flush connection");
+                        }
+                    }
+                }
+                conn.write_all(b"0\r\n\r\n").await.expect("Failed to send response");
+                conn.flush().await.expect("Failed to flush connection");
+
+                Upgrade::None
+            }
+
+            #[cfg(all(feature="ws", feature="__rt_native__"))]
+            Content::WebSocket(ws) => {
+                let mut buf = Vec::<u8>::with_capacity(
+                    self.status.line().len() +
+                    self.headers.size
+                ); unsafe {
+                    crate::push_unchecked!(buf <- self.status.line());
+                    self.headers.write_unchecked_to(&mut buf);
+                }
+                conn.write_all(&buf).await.expect("Failed to send response");
+                conn.flush().await.expect("Failed to flush connection");
+
+                Upgrade::WebSocket(ws)
+            }
+        }
     }
 }
 
 const _: () = {
     impl std::fmt::Debug for Response {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            let mut this = Self {
-                status:  self.status,
-                headers: self.headers.clone(),
-                content: match &self.content {
-                    Content::None => Content::None,
-
-                    Content::Payload(bytes) => Content::Payload(bytes.clone()),
-                    
-                    #[cfg(feature="sse")]
-                    Content::Stream(_) => Content::Stream(Box::pin({
-                        struct DummyStream;
-                        impl ohkami_lib::Stream for DummyStream {
-                            type Item = Result<String, String>;
-                            fn poll_next(self: std::pin::Pin<&mut Self>, _: &mut std::task::Context<'_>) -> std::task::Poll<Option<Self::Item>> {
-                                unreachable!()
-                            }
-                        }
-                        DummyStream
-                    })),
-
-                    #[cfg(all(feature="ws", feature="__rt_native__"))]
-                    Content::WebSocket(_) => Content::WebSocket({
-                        mews::WebSocketContext::new("dummy-context")
-                            .on_upgrade(|_| async {}).1
-                    }),
-                }
-            };
-            this.complete();
-
             f.debug_struct("Response")
-                .field("status",  &this.status)
-                .field("headers", &this.headers)
-                .field("content", &this.content)
+                .field("status",  &self.status)
+                .field("headers", &self.headers)
+                .field("content", &self.content)
                 .finish()
         }
     }
@@ -485,7 +466,7 @@ const _: () = {
 
         fn payload_serde_json_value(req: &Request) -> Result<::serde_json::Value, Response> {
             let payload = req.payload.as_deref()
-                .ok_or_else(|| Response::BadRequest())?;
+                .ok_or_else(Response::BadRequest)?;
             let value = serde_json::from_slice::<serde_json::Value>(payload)
                 .map_err(|_| Response::BadRequest())?;
             Ok(value)

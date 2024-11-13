@@ -9,8 +9,8 @@ pub use middleware::{Fangs, util::FangAction};
 mod builtin;
 pub use builtin::*;
 
-mod dispatch;
-pub(self) use dispatch::*;
+mod bound;
+pub(self) use bound::*;
 
 use crate::{Request, Response};
 use std::{future::Future, pin::Pin, ops::Deref};

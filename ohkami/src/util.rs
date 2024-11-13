@@ -30,7 +30,10 @@ macro_rules! push_unchecked {
 macro_rules! DEBUG {
     ( $( $t:tt )* ) => {{
         #[cfg(feature="DEBUG")] {
-            println!( $( $t )* );
+            eprintln!( $( $t )* );
+
+            #[cfg(feature="rt_worker")]
+            worker::console_debug!( $( $t )* );
         }
     }};
 }

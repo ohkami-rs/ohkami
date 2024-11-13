@@ -85,3 +85,10 @@ macro_rules! text_response {
     String
     std::borrow::Cow<'static, str>
 }
+
+#[cfg(feature="rt_worker")]
+impl IntoResponse for worker::Error {
+    fn into_response(self) -> Response {
+        Response::InternalServerError().with_text(self.to_string())
+    }
+}

@@ -34,7 +34,7 @@
 
 ```toml
 [dependencies]
-ohkami = { version = "0.20", features = ["rt_tokio"] }
+ohkami = { version = "0.21", features = ["rt_tokio"] }
 tokio  = { version = "1",    features = ["full"] }
 ```
 
@@ -127,8 +127,6 @@ async fn main() {
 
 Ohkami only handles `ws://`.\
 Use some reverse proxy to do with `wss://`.
-
-Currently, WebSocket on `rt_worker` is *not* supported.
 
 ```rust,no_run
 use ohkami::prelude::*;

@@ -37,13 +37,14 @@ pub fn worker(_: proc_macro::TokenStream, ohkami_fn: proc_macro::TokenStream) ->
 /// - Binded struct implements `FromRequest` and it can be used as an
 ///   handler argument
 /// 
-/// _**note**_ : `#[bindings]` only supports
+/// _**note**_ : `#[bindings]` supports
 /// 
 /// - KV
 /// - D1
 /// - Queue (producer)
 /// - Service
 /// - Variables
+/// - Durable Objects
 /// 
 /// in cuurent version, as `worker` crate does.
 /// ( `worker` supports secrets, but secrets aren't written in wrangler.toml... )
@@ -63,7 +64,6 @@ pub fn worker(_: proc_macro::TokenStream, ohkami_fn: proc_macro::TokenStream) ->
 /// #[bindings]
 /// struct Bindings;
 /// 
-/// #[worker::send]
 /// async fn handler(b: Bindings) -> String {
 ///     let data = b.MY_KV.get("data").text().await
 ///         .expect("Failed to get data");
@@ -77,10 +77,10 @@ pub fn worker(_: proc_macro::TokenStream, ohkami_fn: proc_macro::TokenStream) ->
 /// 
 /// _**tips**_ :
 /// 
-/// - You can switch envs by package features with some `#[cfg_attr(feature = "...", bindings(env_name))]`s
-/// - For rust-analyzer user : When you add an new binding into wrangler.toml,
-///   you will need to reload `#[bindings] struct ...;` to notice the new one to analyer.
-///   Then what you have to do is just deleting `;` and immediate restoring it.
+/// - You can switch between multiple `env`s by feature flags like `#[cfg_attr(feature = "...", bindings(env_name))]`
+/// - For `rust-analyzer` user : When you edit wrangler.toml around bindings,
+///   you'll need to reload `#[bindings] struct ...;` to notice the new bindings to rust-analyer.
+///   For that, what you have to do is just **deleting `;` and immediate restoring it**.
 #[cfg(feature="worker")]
 #[proc_macro_attribute]
 pub fn bindings(env: proc_macro::TokenStream, bindings_struct: proc_macro::TokenStream) -> proc_macro::TokenStream {

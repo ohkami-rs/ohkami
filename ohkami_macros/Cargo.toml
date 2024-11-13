@@ -3,7 +3,7 @@ proc-macro = true
 
 [package]
 name          = "ohkami_macros"
-version       = "0.8.0"
+version       = "0.21.0"
 edition       = "2021"
 authors       = ["kanarus <kanarus786@gmail.com>"]
 description   = "Proc macros for Ohkami - intuitive and declarative web framework"

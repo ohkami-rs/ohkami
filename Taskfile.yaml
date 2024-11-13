@@ -93,10 +93,13 @@ tasks:
     cmds:
       - cargo check --lib --features rt_{{.native_rt}},{{.maybe_nightly}}
       - cargo check --lib --features rt_{{.native_rt}},sse,{{.maybe_nightly}}
+      - cargo check --lib --features rt_{{.native_rt}},ws,{{.maybe_nightly}}
       - cargo check --lib --features rt_{{.native_rt}},sse,ws,{{.maybe_nightly}}
 
   check:rt_worker:
     dir: ohkami
     cmds:
       - cargo check --target wasm32-unknown-unknown --lib --features rt_worker,{{.maybe_nightly}}
+      - cargo check --target wasm32-unknown-unknown --lib --features rt_worker,sse,{{.maybe_nightly}}
+      - cargo check --target wasm32-unknown-unknown --lib --features rt_worker,ws,{{.maybe_nightly}}
       - cargo check --target wasm32-unknown-unknown --lib --features rt_worker,sse,ws,{{.maybe_nightly}}

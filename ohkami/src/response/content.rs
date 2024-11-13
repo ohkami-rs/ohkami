@@ -3,8 +3,8 @@ use ohkami_lib::CowSlice;
 #[cfg(feature="sse")]
 use ohkami_lib::Stream;
 
-#[cfg(all(feature="ws", feature="__rt_native__"))]
-use mews::WebSocket;
+#[cfg(all(feature="ws", feature="__rt__"))]
+use crate::ws::Session;
 
 
 pub enum Content {
@@ -15,8 +15,8 @@ pub enum Content {
     #[cfg(feature="sse")]
     Stream(std::pin::Pin<Box<dyn Stream<Item = Result<String, String>> + Send>>),
 
-    #[cfg(all(feature="ws", feature="__rt_native__"))]
-    WebSocket(WebSocket),
+    #[cfg(all(feature="ws", feature="__rt__"))]
+    WebSocket(Session),
 }
 const _: () = {
     impl Default for Content {
@@ -47,7 +47,7 @@ const _: () = {
                 #[cfg(feature="sse")]
                 Self::Stream(_)      => f.write_str("{stream}"),
 
-                #[cfg(all(feature="ws", feature="__rt_native__"))]
+                #[cfg(all(feature="ws", feature="__rt__"))]
                 Self::WebSocket(_)   => f.write_str("{websocket}"),
             }
         }
@@ -83,12 +83,15 @@ impl Content {
 impl Content {
     pub(crate) fn into_worker_response(self) -> ::worker::Response {
         match self {
-            Self::None           => ::worker::Response::empty().unwrap(),
+            Self::None           => ::worker::Response::empty(),
 
-            Self::Payload(bytes) => ::worker::Response::from_bytes(bytes.into()).unwrap(),
+            Self::Payload(bytes) => ::worker::Response::from_bytes(bytes.into()),
 
             #[cfg(feature="sse")]
-            Self::Stream(stream) => ::worker::Response::from_stream(stream).unwrap()
-        }
+            Self::Stream(stream) => ::worker::Response::from_stream(stream),
+
+            #[cfg(feature="ws")]
+            Self::WebSocket(ws)  => ::worker::Response::from_websocket(ws)
+        }.expect("failed to convert Ohkami Response to Workers one")
     }
 }
