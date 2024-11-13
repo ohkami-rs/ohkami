@@ -8,7 +8,7 @@ impl<'req> super::WebSocketContext<'req> {
         handler: H
     ) -> WebSocket
     where
-        H: FnOnce(Connection) -> F,
+        H: FnOnce(Connection) -> F + 'static,
         F: std::future::Future<Output = ()> + 'static
     {
         let WebSocketPair {
@@ -17,7 +17,14 @@ impl<'req> super::WebSocketContext<'req> {
         } = WebSocketPair::new().expect("failed to create WebSocketPair");
 
         ws.accept().ok();
-        wasm_bindgen_futures::spawn_local(handler(Connection::new(ws)));
+        wasm_bindgen_futures::spawn_local(async move {
+            handler(Connection::new(ws.clone())).await;
+            
+            // https://developer.mozilla.org/en-US/docs/Web/API/WebSocket/close
+            // 
+            // > If the connection is already CLOSED, this method does nothing.
+            ws.close::<&str>(None, None).ok();
+        });
 
         WebSocket(session)
     }
@@ -46,14 +53,13 @@ impl<'req> super::WebSocketContext<'req> {
 
 pub struct Connection {
     ws:     worker::WebSocket,
-    events: Option<EventStream<'static>>
+    events: Option<EventStream<'static>>,
 }
 impl Connection {
     fn new(ws: worker::WebSocket) -> Self {
         Self { ws, events:None }
     }
-}
-impl Connection {
+    
     pub async fn recv(&mut self) -> Result<Option<Message>, worker::Error> {
         use std::mem::transmute as unchecked_static;
         use ohkami_lib::StreamExt;
@@ -112,12 +118,40 @@ impl Connection {
         }
     }
 }
-impl Drop for Connection {
-    fn drop(&mut self) {
-        // https://developer.mozilla.org/en-US/docs/Web/API/WebSocket/close
-        // 
-        // > If the connection is already CLOSED, this method does nothing.
-        self.ws.close::<&str>(None, None).ok();
+pub mod split {
+    use super::*;
+
+    pub struct ReadHalf(Connection);
+    pub struct WriteHalf(worker::WebSocket);
+
+    impl super::Connection {
+        pub fn split(self) -> (ReadHalf, WriteHalf) {
+            let ws = self.ws.clone();
+            (ReadHalf(self), WriteHalf(ws))
+        }
+    }
+
+    impl ReadHalf {
+        #[inline]
+        pub async fn recv(&mut self) -> Result<Option<Message>, worker::Error> {
+            self.0.recv().await
+        }
+    }
+
+    impl WriteHalf {
+        #[inline]
+        pub async fn send(&mut self, message: impl Into<Message>) -> Result<(), worker::Error> {
+            let message = message.into();
+            match message {
+                Message::Text(text)         => self.0.send_with_str(text),
+                Message::Binary(binary)     => self.0.send_with_bytes(binary),
+                Message::Close(None)        => self.0.close::<&str>(None, None),
+                Message::Close(Some(frame)) => self.0.close(Some(frame.code.as_u16()), frame.reason),
+                Message::Ping(_) | Message::Pong(_) => Err(worker::Error::RustError((|message| {
+                    format!("`WriteHalf::send` got `{message:?}`, but sending ping/pong is not supported on `rt_worker`")
+                })(message)))
+            }
+        }
     }
 }
 
