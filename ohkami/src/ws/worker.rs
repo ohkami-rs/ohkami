@@ -19,7 +19,28 @@ impl<'req> super::WebSocketContext<'req> {
         ws.accept().ok();
         wasm_bindgen_futures::spawn_local(handler(Connection::new(ws)));
 
-        WebSocket { session }
+        WebSocket(session)
+    }
+
+    pub async fn upgrade_durable(
+        self,
+        durable_object: worker::Stub
+    ) -> Result<WebSocket, worker::Error> {
+        self.upgrade_durable_with(worker::Request::new_with_init(
+            "http://ws",
+            worker::RequestInit::new().with_headers(worker::Headers::from_iter([
+                ("Upgrade", "websocket")
+            ]))
+        ).unwrap(), durable_object).await
+    }
+    pub async fn upgrade_durable_with(
+        self,
+        req: worker::Request,
+        durable_object: worker::Stub
+    ) -> Result<WebSocket, worker::Error> {
+        durable_object.fetch_with_request(req).await?
+            .websocket().map(WebSocket)
+            .ok_or_else(|| worker::Error::RustError(format!("given Durable Object stub didn't respond with WebSocket")))
     }
 }
 
@@ -102,28 +123,26 @@ impl Drop for Connection {
 
 pub type Session = ::worker::WebSocket;
 
-pub struct WebSocket {
-    session: Session
-}
+pub struct WebSocket(Session);
 impl crate::IntoResponse for WebSocket {
     fn into_response(self) -> crate::Response {
-        crate::Response::SwitchingProtocols().with_websocket(self.session)
+        crate::Response::SwitchingProtocols().with_websocket(self.0)
         // let `worker` crate and Cloudflare Workers to do around
         // headers and something other
     }
 }
 impl From<worker::WebSocket> for WebSocket {
     fn from(session: worker::WebSocket) -> Self {
-        Self { session }
+        Self(session)
     }
 }
 impl Into<worker::WebSocket> for WebSocket {
     fn into(self) -> worker::WebSocket {
-        self.session
+        self.0
     }
 }
 impl Into<worker::Result<worker::Response>> for WebSocket {
     fn into(self) -> worker::Result<worker::Response> {
-        worker::Response::from_websocket(self.session)
+        worker::Response::from_websocket(self.0)
     }
 }
