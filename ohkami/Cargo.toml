@@ -43,7 +43,7 @@ mews          = { version = "0.1", optional = true }
 
 
 [features]
-#default       = ["testing"]
+default       = ["testing"]
 
 rt_tokio      = ["__rt__", "__rt_native__", "dep:tokio",     "tokio/io-util", "tokio/macros",    "ohkami_lib/signal", "mews?/tokio"]
 rt_async-std  = ["__rt__", "__rt_native__", "dep:async-std", "dep:futures-util",                 "ohkami_lib/signal", "mews?/async-std"]
@@ -65,15 +65,15 @@ DEBUG = [
     "tokio?/rt-multi-thread",
     "async-std?/attributes",
 ]
-default = [
-    "nightly",
-    "testing",
-    "sse",
-    "ws",
-    #"rt_tokio",
-    #"rt_async-std",
-    #"rt_smol",
-    #"rt_glommio",
-    "rt_worker",
-    "DEBUG",
-]
+#default = [
+#    "nightly",
+#    "testing",
+#    "sse",
+#    "ws",
+#    #"rt_tokio",
+#    #"rt_async-std",
+#    #"rt_smol",
+#    #"rt_glommio",
+#    "rt_worker",
+#    "DEBUG",
+#]
