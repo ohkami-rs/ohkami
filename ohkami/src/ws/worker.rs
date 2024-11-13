@@ -131,18 +131,52 @@ impl crate::IntoResponse for WebSocket {
         // headers and something other
     }
 }
-impl From<worker::WebSocket> for WebSocket {
-    fn from(session: worker::WebSocket) -> Self {
-        Self(session)
+
+/// A utility struct for storing *session* instances of type `S` associated with `worker::WebSocket`s.
+/// Primarily used in implementations of a Durable Object with WebSocket.
+pub struct SessionMap<S>(
+    Vec<(worker::WebSocket, S)>
+);
+impl<S> SessionMap<S> {
+    pub fn new() -> Self {
+        Self(Vec::new())
     }
-}
-impl Into<worker::WebSocket> for WebSocket {
-    fn into(self) -> worker::WebSocket {
-        self.0
+
+    pub fn insert(&mut self, ws: worker::WebSocket, session: S) -> worker::Result<()> {
+        if let Some(previos_session) = self.get_mut(&ws) {
+            *previos_session = session
+        } else {
+            self.0.push((ws, session));
+        }
+        Ok(())
     }
-}
-impl Into<worker::Result<worker::Response>> for WebSocket {
-    fn into(self) -> worker::Result<worker::Response> {
-        worker::Response::from_websocket(self.0)
+    pub fn remove(&mut self, ws: &worker::WebSocket) -> Option<S> {
+        ws.close::<&str>(None, None).ok();
+        if let Some(index) = self.index_of(ws) {
+            Some(self.0.remove(index).1)
+        } else {
+            None
+        }
+    }
+    fn index_of(&self, ws: &worker::WebSocket) -> Option<usize> {
+        self.0.iter().position(|(w, _)| w == ws)
+    }
+
+    pub fn get(&self, ws: &worker::WebSocket) -> Option<&S> {
+        let index = self.index_of(&ws)?;
+        let (_, session) = self.0.get(index)?;
+        Some(session)
+    }
+    pub fn get_mut(&mut self, ws: &worker::WebSocket) -> Option<&mut S> {
+        let index = self.index_of(&ws)?;
+        let (_, session) = self.0.get_mut(index)?;
+        Some(session)
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &(worker::WebSocket, S)> {
+        self.0.iter()
+    }
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut (worker::WebSocket, S)> {
+        self.0.iter_mut()
     }
 }
