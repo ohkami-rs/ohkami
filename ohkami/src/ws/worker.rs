@@ -1,6 +1,9 @@
 pub use mews::{Message, CloseFrame, CloseCode};
 
+pub(crate) use worker::WebSocket as Session;
+
 use worker::{WebSocketPair, EventStream, wasm_bindgen_futures};
+use std::rc::Rc;
 
 impl<'req> super::WebSocketContext<'req> {
     pub fn upgrade<H, F>(
@@ -17,13 +20,15 @@ impl<'req> super::WebSocketContext<'req> {
         } = WebSocketPair::new().expect("failed to create WebSocketPair");
 
         ws.accept().ok();
-        wasm_bindgen_futures::spawn_local(async move {
-            handler(Connection::new(ws.clone())).await;
-            
-            // https://developer.mozilla.org/en-US/docs/Web/API/WebSocket/close
-            // 
-            // > If the connection is already CLOSED, this method does nothing.
-            ws.close::<&str>(None, None).ok();
+        wasm_bindgen_futures::spawn_local({
+            let ws = Rc::new(ws);
+            async move {
+                handler(Connection::new(ws.clone())).await;
+                // https://developer.mozilla.org/en-US/docs/Web/API/WebSocket/close
+                // 
+                // > If the connection is already CLOSED, this method does nothing.
+                ws.close::<&str>(None, None).ok();
+            }
         });
 
         WebSocket(session)
@@ -52,11 +57,11 @@ impl<'req> super::WebSocketContext<'req> {
 }
 
 pub struct Connection {
-    ws:     worker::WebSocket,
+    ws:     Rc<worker::WebSocket>,
     events: Option<EventStream<'static>>,
 }
 impl Connection {
-    fn new(ws: worker::WebSocket) -> Self {
+    fn new(ws: Rc<worker::WebSocket>) -> Self {
         Self { ws, events:None }
     }
     
@@ -122,7 +127,7 @@ pub mod split {
     use super::*;
 
     pub struct ReadHalf(Connection);
-    pub struct WriteHalf(worker::WebSocket);
+    pub struct WriteHalf(Rc<worker::WebSocket>);
 
     impl super::Connection {
         pub fn split(self) -> (ReadHalf, WriteHalf) {
@@ -154,8 +159,6 @@ pub mod split {
         }
     }
 }
-
-pub type Session = ::worker::WebSocket;
 
 pub struct WebSocket(Session);
 impl crate::IntoResponse for WebSocket {
