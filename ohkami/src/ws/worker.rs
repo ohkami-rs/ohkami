@@ -190,7 +190,7 @@ impl<S> SessionMap<S> {
     pub fn remove(&mut self, ws: &worker::WebSocket) -> Option<S> {
         ws.close::<&str>(None, None).ok();
         if let Some(index) = self.index_of(ws) {
-            Some(self.0.remove(index).1)
+            Some(self.0.swap_remove(index).1)
         } else {
             None
         }
@@ -201,13 +201,11 @@ impl<S> SessionMap<S> {
 
     pub fn get(&self, ws: &worker::WebSocket) -> Option<&S> {
         let index = self.index_of(&ws)?;
-        let (_, session) = self.0.get(index)?;
-        Some(session)
+        Some(&self.0[index].1)
     }
     pub fn get_mut(&mut self, ws: &worker::WebSocket) -> Option<&mut S> {
         let index = self.index_of(&ws)?;
-        let (_, session) = self.0.get_mut(index)?;
-        Some(session)
+        Some(&mut self.0[index].1)
     }
 
     pub fn iter(&self) -> impl Iterator<Item = &(worker::WebSocket, S)> {
