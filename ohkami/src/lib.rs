@@ -123,6 +123,8 @@ pub use ::ohkami_macros::FromRequest;
 mod response;
 pub use response::{Response, Status, IntoResponse};
 
+mod router;
+
 pub mod fang;
 pub use fang::{Fang, FangProc};
 

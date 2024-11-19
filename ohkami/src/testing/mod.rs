@@ -28,7 +28,7 @@
 //! ```
 
 use crate::{Response, Request, Ohkami, Status, Method};
-use crate::ohkami::router::RadixRouter;
+use crate::router::RadixRouter;
 use crate::response::ResponseHeader;
 
 use std::borrow::Cow;

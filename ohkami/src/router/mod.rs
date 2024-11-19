@@ -1,5 +1,10 @@
 #![allow(non_snake_case)]
 
+mod _segments;
+mod _base;
+mod _final;
+mod _util;
+
 mod trie;
 pub(crate) use trie::TrieRouter;
 
