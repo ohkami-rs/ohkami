@@ -4,26 +4,47 @@ use std::{sync::Arc, ops::Range, collections::HashSet};
 
 
 pub(crate) struct Router {
-    id:      ID,
-    routes:  HashSet<&'static str>,
-    GET:     Node,
-    PUT:     Node,
-    POST:    Node,
-    PATCH:   Node,
-    DELETE:  Node,
-    OPTIONS: Node,
+    id:     ID,
+    routes: HashSet<&'static str>,
+    pub(super) GET:     Node,
+    pub(super) PUT:     Node,
+    pub(super) POST:    Node,
+    pub(super) PATCH:   Node,
+    pub(super) DELETE:  Node,
+    pub(super) OPTIONS: Node,
 }
 
-struct Node {
-    pattern:  Option<Pattern>,
-    handler:  Option<Handler>,
-    fangses:  FangsList,
-    children: Vec<Node>
+pub(super) struct Node {
+    pub(super) pattern:  Option<Pattern>,
+    pub(super) handler:  Option<Handler>,
+    pub(super) fangses:  FangsList,
+    pub(super) children: Vec<Node>
 }
 
-enum Pattern {
+pub(super) enum Pattern {
     Static { route: &'static str, range: Range<usize> },
     Param
+}
+impl Pattern {
+    fn merge_static_child(self, child: Pattern) -> Option<Pattern> {
+        match (self, child) {
+            (
+                Pattern::Static { route: this_route,  range: this_range },
+                Pattern::Static { route: child_route, range: child_range }
+            ) => {
+                if &child_route[(child_range.start - this_range.len())..(child_range.start)]
+                == &this_route[this_range.start..this_range.end] {                    
+                    Some(Pattern::Static {
+                        route: child_route,
+                        range: (child_range.start - this_range.len())..(child_range.end)
+                    })
+                } else {
+                    None
+                }
+            }
+            _ => None
+        }
+    }
 }
 
 #[derive(Clone)]

@@ -1,4 +1,4 @@
-use super::_util;
+use super::{_util, _base};
 use crate::fang::{FangProcCaller, BoxedFPC};
 use crate::{request::Path, response::Content};
 use crate::{Method, Request, Response};
@@ -13,48 +13,6 @@ pub(crate) struct Router {
     PATCH:   &'static Node,
     DELETE:  &'static Node,
     OPTIONS: &'static Node,
-}
-
-static NODE_BUFFER: std::sync::OnceLock<NodeBuffer> = std::sync::OnceLock::new();
-
-const NODE_BUFFER_SIZE: usize = 128;
-
-struct NodeBuffer([MaybeUninit<Node>; NODE_BUFFER_SIZE]);
-impl NodeBuffer {
-    fn init(nodes: Vec<Node>) -> Self {
-        if nodes.len() > NODE_BUFFER_SIZE {
-            panic!("Currently, number of router nodes must be up to {NODE_BUFFER_SIZE}.")
-        }
-
-        let mut buf = [const {MaybeUninit::uninit()}; NODE_BUFFER_SIZE];
-        for (i, node) in nodes.into_iter().enumerate() {
-            buf[i].write(node);
-        }
-
-        Self(buf)
-    }
-
-    #[inline]
-    unsafe fn get(&self, index: usize) -> &Node {
-        self.0.get_unchecked(index).assume_init_ref()
-    }
-
-    #[inline]
-    unsafe fn get_iter(&self, range: std::ops::Range<usize>) -> &[Node] {
-        &*(self.0.get_unchecked(range) as *const [MaybeUninit<Node>] as *const [Node])
-    }
-}
-
-pub(super) fn register_nodes(nodes: Vec<Node>) {
-    NODE_BUFFER.set(NodeBuffer::init(nodes)).ok().expect("something went wrong around NODE_BUFFER");
-}
-
-#[allow(non_snake_case)]
-fn NODES() -> &'static NodeBuffer {
-    #[cfg(debug_assertions)]
-    {NODE_BUFFER.get().expect("NODE_BUFFER is not initialized")}
-    #[cfg(not(debug_assertions))]
-    {unsafe {NODE_BUFFER.get().unwrap_unchecked()}}
 }
 
 struct Node {
@@ -153,3 +111,96 @@ impl Pattern {
         }
     }
 }
+
+
+impl From<_base::Node> for Node {
+    fn from(base: _base::Node) -> Self {
+        const NODE_BUFFER_SIZE: usize = 256;
+        struct NodeBuffer {
+            nodes: [std::mem::MaybeUninit<Node>; NODE_BUFFER_SIZE],
+            next:  usize,
+        }
+        impl NodeBuffer {
+            const fn new() -> Self {
+                Self {
+                    nodes: [const {std::mem::MaybeUninit::uninit()}; 256],
+                    next:  0
+                }
+            }
+            fn push(&mut self, node: _base::Node) {
+                if self.next == NODE_BUFFER_SIZE {
+                    panic!("NodeBuffer is already full!")
+                }
+                self.nodes[self.next].write(node);
+                self.next += 1;
+            }
+        }
+
+        ////////////////////////////////////////////////////////
+
+        static NODES: NodeBuffer = NodeBuffer::new();
+
+        fn finalize(base: _base::Node, next: usize) -> Node {
+            let curr = next;
+            for child in base.children {
+
+            }
+
+            todo!()
+        }
+
+        finalize(base, NODES.next)
+    }
+}
+
+impl From<_base::Pattern> for Pattern {
+    fn from(base: _base::Pattern) -> Self {
+        match base {
+            _base::Pattern::Static { route, range } => Self::Static(route[range].as_bytes()),
+            _base::Pattern::Param                   => Self::Param
+        }
+    }
+}
+
+// static NODE_BUFFER: std::sync::OnceLock<NodeBuffer> = std::sync::OnceLock::new();
+// 
+// const NODE_BUFFER_SIZE: usize = 128;
+// 
+// struct NodeBuffer([MaybeUninit<Node>; NODE_BUFFER_SIZE]);
+// impl NodeBuffer {
+//     fn init(nodes: Vec<Node>) -> Self {
+//         if nodes.len() > NODE_BUFFER_SIZE {
+//             panic!("Currently, number of router nodes must be up to {NODE_BUFFER_SIZE}.")
+//         }
+// 
+//         let mut buf = [const {MaybeUninit::uninit()}; NODE_BUFFER_SIZE];
+//         for (i, node) in nodes.into_iter().enumerate() {
+//             buf[i].write(node);
+//         }
+// 
+//         Self(buf)
+//     }
+// 
+//     #[inline]
+//     unsafe fn get(&self, index: usize) -> &Node {
+//         self.0.get_unchecked(index).assume_init_ref()
+//     }
+// 
+//     #[inline]
+//     unsafe fn get_iter(&self, range: std::ops::Range<usize>) -> &[Node] {
+//         &*(self.0.get_unchecked(range) as *const [MaybeUninit<Node>] as *const [Node])
+//     }
+// }
+// 
+// pub(super) fn register_nodes(nodes: Vec<Node>) {
+//     NODE_BUFFER.set(NodeBuffer::init(nodes)).ok().expect("something went wrong around NODE_BUFFER");
+// }
+// 
+// #[allow(non_snake_case)]
+// fn NODES() -> &'static NodeBuffer {
+//     #[cfg(debug_assertions)]
+//     {NODE_BUFFER.get().expect("NODE_BUFFER is not initialized")}
+//     #[cfg(not(debug_assertions))]
+//     {unsafe {NODE_BUFFER.get().unwrap_unchecked()}}
+// }
+// 
