@@ -15,3 +15,14 @@
     }; None
 }
 
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub(super) struct ID(usize);
+impl ID {
+    pub(super) fn new() -> Self {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+
+        static ID: AtomicUsize = AtomicUsize::new(1);
+        Self(ID.fetch_add(1, Ordering::Relaxed))
+    }
+}

@@ -17,6 +17,8 @@ pub(crate) struct Router {
 
 static NODE_BUFFER: std::sync::OnceLock<NodeBuffer> = std::sync::OnceLock::new();
 
+const NODE_BUFFER_SIZE: usize = 128;
+
 struct NodeBuffer([MaybeUninit<Node>; NODE_BUFFER_SIZE]);
 impl NodeBuffer {
     fn init(nodes: Vec<Node>) -> Self {
@@ -55,18 +57,16 @@ fn NODES() -> &'static NodeBuffer {
     {unsafe {NODE_BUFFER.get().unwrap_unchecked()}}
 }
 
-const NODE_BUFFER_SIZE: usize = 128;
-
 struct Node {
     pattern:  Pattern,
     proc:     BoxedFPC,
     catch:    BoxedFPC,
-    children: &'static [Node],
+    children: &'static [Node]
 }
 
 enum Pattern {
     Static(&'static [u8]),
-    Param,
+    Param
 }
 
 
