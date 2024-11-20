@@ -1,6 +1,6 @@
 use std::{borrow::Cow, sync::Arc};
 use super::{RouteSection, RouteSections};
-use crate::ohkami::build::{Handlers, ByAnother};
+use crate::ohkami::build::{HandlerSet, ByAnother};
 use crate::fang::{BoxedFPC, Fangs, Handler};
 
 
@@ -174,8 +174,8 @@ impl TrieRouter {
         self.id.clone()
     }
 
-    pub(crate) fn register_handlers(&mut self, handlers: Handlers) {
-        let Handlers { route, GET, PUT, POST, PATCH, DELETE } = handlers;
+    pub(crate) fn register_handlers(&mut self, handlers: HandlerSet) {
+        let HandlerSet { route, GET, PUT, POST, PATCH, DELETE } = handlers;
 
         let methods = if !self.routes.insert(route.literal()) {
             panic!("Duplicate routes registration: `{}`", route.literal())

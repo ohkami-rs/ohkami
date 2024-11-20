@@ -1,4 +1,4 @@
-use super::{_util, _base};
+use super::{util, base};
 use crate::fang::{FangProcCaller, BoxedFPC, Handler};
 use crate::{request::Path, response::Content};
 use crate::{Method, Request, Response};
@@ -146,7 +146,7 @@ impl Pattern {
                 if bytes.len() >= 2
                 && *unsafe {bytes.get_unchecked(0)} == b'/'
                 && *unsafe {bytes.get_unchecked(1)} != b'/' {
-                    let (param, remaining) = _util::split_next_section(unsafe {bytes.get_unchecked(1..)})?;
+                    let (param, remaining) = util::split_next_section(unsafe {bytes.get_unchecked(1..)})?;
                     unsafe {path.push_param(Slice::from_bytes(param))};
                     Some(remaining)
                 } else {
@@ -161,8 +161,8 @@ impl Pattern {
 const _: () = {
     static mut STACK: NodeStack = NodeStack::new();
 
-    impl From<_base::Router> for Router {
-        fn from(base: _base::Router) -> Self {
+    impl From<base::Router> for Router {
+        fn from(base: base::Router) -> Self {
             Router {
                 GET:     Node::from(base.GET),
                 PUT:     Node::from(base.PUT),
@@ -174,8 +174,8 @@ const _: () = {
         }
     }
     
-    impl From<_base::Node> for Node {
-        fn from(mut base: _base::Node) -> Self {
+    impl From<base::Node> for Node {
+        fn from(mut base: base::Node) -> Self {
             /* merge single-child static pattern and compress routing tree */
             while base.children.len() == 1
             && base.handler.is_none()
@@ -211,11 +211,11 @@ const _: () = {
         }
     }
 
-    impl From<_base::Pattern> for Pattern {
-        fn from(base: _base::Pattern) -> Self {
+    impl From<base::Pattern> for Pattern {
+        fn from(base: base::Pattern) -> Self {
             match base {
-                _base::Pattern::Static { route, range } => Self::Static(route[range].as_bytes()),
-                _base::Pattern::Param                   => Self::Param
+                base::Pattern::Static { route, range } => Self::Static(route[range].as_bytes()),
+                base::Pattern::Param                   => Self::Param
             }
         }
     }
