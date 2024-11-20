@@ -7,12 +7,12 @@ use std::mem::MaybeUninit;
 
 
 pub(crate) struct Router {
-    GET:     &'static Node,
-    PUT:     &'static Node,
-    POST:    &'static Node,
-    PATCH:   &'static Node,
-    DELETE:  &'static Node,
-    OPTIONS: &'static Node,
+    GET:     Node,
+    PUT:     Node,
+    POST:    Node,
+    PATCH:   Node,
+    DELETE:  Node,
+    OPTIONS: Node,
 }
 
 struct Node {
@@ -31,12 +31,12 @@ enum Pattern {
 impl Router {
     pub(crate) async fn handle(&self, req: &mut Request) -> Response {
         match req.method {
-            Method::GET     => self.GET,
-            Method::PUT     => self.PUT,
-            Method::POST    => self.POST,
-            Method::PATCH   => self.PATCH,
-            Method::DELETE  => self.DELETE,
-            Method::OPTIONS => self.OPTIONS,
+            Method::GET     => &self.GET,
+            Method::PUT     => &self.PUT,
+            Method::POST    => &self.POST,
+            Method::PATCH   => &self.PATCH,
+            Method::DELETE  => &self.DELETE,
+            Method::OPTIONS => &self.OPTIONS,
             Method::HEAD => return {
                 let mut res = self.GET.search(&mut req.path).call_bite(req).await;
                 {/* not `res.drop_content()` to leave `Content-Type`, `Content-Length` */
@@ -58,8 +58,52 @@ impl Node {
     fn search(&self, path: &mut Path) -> &dyn FangProcCaller {
         let mut bytes = unsafe {path.normalized_bytes()};
 
-        if bytes.is_empty() {/* e.g. GET / HTTP/1.1 */
-            return &self.proc/* proc registered to the root Node */
+        /*
+            When `GET / HTTP/1.1` is coming, here
+            
+            * `bytes` is `b""` (by the normalization).
+            * `self.pattern` is, an any pattern if compressed single-child,
+              or `Static(b"")` by default.
+
+            If compressed, the router has handlers only at or under the single pattern:
+
+            ```
+            /abc
+            ├── /xyz  # /abc/xyz
+            ├── /def  # /abc/def
+            :
+            ```
+
+            and of course `self.pattern.take_through` returns `None`,
+            `search` returns the catcher because no handler is registered to `/`.
+
+            If not compressed, in other words, the router has multiple canidates for
+            handler-routes under `/`:
+
+            ```
+            .             # /
+            ├── /xyz      # /xyz
+            │   ├── /pqr  # /xyz/pqr
+            │   └── /def  # /xyz/def
+            ├── /abc      # /abc
+            :
+            ```
+
+            and `self.pattern.take_through` successes by matching `b""`,
+            then `search` returns the proc (the handler if user registered, or
+            NotFound handler if not, with fangs).
+            When `GET /abc HTTP/1.1` is coming, this `self.pattern.take_through`
+            successes with `Some(b"/abc")`, then we just perform `bytes = b"/abc"`
+            and go to `'next_target` loop.
+        */
+        if let Some(remaining) = self.pattern.take_through(bytes, path) {
+            if remaining.is_empty() {
+                return &self.proc
+            } else {
+                bytes = remaining
+            }
+        } else {
+            return &self.catch
         }
 
         let mut target = self;
@@ -115,55 +159,54 @@ impl Pattern {
 
 
 const _: () = {
-    static mut NODES: NodeBuffer = NodeBuffer::new();
+    static mut STACK: NodeStack = NodeStack::new();
 
     impl From<_base::Router> for Router {
         fn from(base: _base::Router) -> Self {
-            fn registered(node: Node) -> &'static Node {
-                let nodes = unsafe {#[allow(static_mut_refs)] &mut NODES};
-                nodes.push(node);
-                nodes.get(nodes.next - 1)
-            }
             Router {
-                GET:     registered(Node::from(base.GET)),
-                PUT:     registered(Node::from(base.PUT)),
-                POST:    registered(Node::from(base.POST)),
-                PATCH:   registered(Node::from(base.PATCH)),
-                DELETE:  registered(Node::from(base.DELETE)),
-                OPTIONS: registered(Node::from(base.OPTIONS)),
+                GET:     Node::from(base.GET),
+                PUT:     Node::from(base.PUT),
+                POST:    Node::from(base.POST),
+                PATCH:   Node::from(base.PATCH),
+                DELETE:  Node::from(base.DELETE),
+                OPTIONS: Node::from(base.OPTIONS),
             }
         }
     }
     
     impl From<_base::Node> for Node {
         fn from(mut base: _base::Node) -> Self {
-            /* merge single-child static patterns to compress routing tree */
+            /* merge single-child static pattern and compress routing tree */
             while base.children.len() == 1
             && base.handler.is_none()
-            && base.pattern.as_ref().is_some_and(|p| p.is_static())
+            && base.pattern.as_ref().is_none_or(|p| p.is_static())
             && base.children[0].pattern.as_ref().unwrap(/* not root */).is_static() {
-                let child = base.children.pop().unwrap(/* checked: base.children.len() == 1 */);
+                let child = base.children.pop().unwrap(/* base.children.len() == 1 */);
                 base.children = child.children;
-                base.handler  = child.handler;
+                base.handler = child.handler;
                 base.fangses.extend(child.fangses);
-                base.pattern.replace(_base::Pattern::merge_statics(
-                    base.pattern.clone().unwrap(/* checked: base.pattern.as_ref().is_some_and(..) */),
-                    child.pattern.unwrap(/* not root */)
-                ).unwrap(/* both are Pattern::Static */));
+                base.pattern = Some(match base.pattern {
+                    None    => child.pattern.unwrap(/* not root */),
+                    Some(p) => p.merge_statics(child.pattern.unwrap(/* not root */)).unwrap(/* both are Pattern::Static */)
+                });
             }
 
-            let nodes = unsafe {#[allow(static_mut_refs)] &mut NODES};
+            let stack = unsafe {#[allow(static_mut_refs)] &mut STACK};
 
-            let n_chilren = base.children.len();
+            let mut direct_children = Vec::with_capacity(base.children.len());
             for child in base.children {
-                nodes.push(Node::from(child));
+                direct_children.push(Node::from(child));
             }
             
+            let n_children = direct_children.len();
+            for child in direct_children {
+                stack.push(child);
+            } /* here last `n_children` elements of `stack` are THE `children` */
             Node {
-                pattern:  base.pattern.map(Pattern::from).unwrap_or(Pattern::Static(&[])),
+                pattern:  base.pattern.map(Pattern::from).unwrap_or(Pattern::Static(b"")),
                 proc:     base.fangses.clone().into_proc_with(base.handler.unwrap_or(Handler::default_not_found())),
                 catch:    base.fangses.into_proc_with(Handler::default_not_found()),
-                children: nodes.slice((nodes.next - n_chilren)..(nodes.next))
+                children: stack.slice((stack.next - n_children)..(stack.next))
             }
         }
     }
@@ -177,12 +220,12 @@ const _: () = {
         }
     }
 
-    const NODE_BUFFER_SIZE: usize = 256;
-    struct NodeBuffer {
-        nodes: [std::mem::MaybeUninit<Node>; NODE_BUFFER_SIZE],
+    const NODE_STACK_SIZE: usize = 256;
+    struct NodeStack {
+        nodes: [std::mem::MaybeUninit<Node>; NODE_STACK_SIZE],
         next:  usize,
     }
-    impl NodeBuffer {
+    impl NodeStack {
         const fn new() -> Self {
             Self {
                 nodes: [const {std::mem::MaybeUninit::uninit()}; 256],
@@ -190,8 +233,8 @@ const _: () = {
             }
         }
         fn push(&mut self, node: Node) {
-            if self.next == NODE_BUFFER_SIZE {
-                panic!("NodeBuffer is already full!")
+            if self.next == NODE_STACK_SIZE {
+                panic!("NodeStack is already full!")
             }
             self.nodes[self.next].write(node);
             self.next += 1;
