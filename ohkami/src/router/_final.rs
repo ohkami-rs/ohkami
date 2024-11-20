@@ -1,5 +1,5 @@
 use super::{_util, _base};
-use crate::fang::{FangProcCaller, BoxedFPC};
+use crate::fang::{FangProcCaller, BoxedFPC, Handler};
 use crate::{request::Path, response::Content};
 use crate::{Method, Request, Response};
 use ohkami_lib::Slice;
@@ -57,6 +57,7 @@ impl Node {
     /// 2. zero or one `Pattern::Param` exists at the end
     fn search(&self, path: &mut Path) -> &dyn FangProcCaller {
         let mut bytes = unsafe {path.normalized_bytes()};
+
         if bytes.is_empty() {/* e.g. GET / HTTP/1.1 */
             return &self.proc/* proc registered to the root Node */
         }
@@ -113,94 +114,99 @@ impl Pattern {
 }
 
 
-impl From<_base::Node> for Node {
-    fn from(base: _base::Node) -> Self {
-        const NODE_BUFFER_SIZE: usize = 256;
-        struct NodeBuffer {
-            nodes: [std::mem::MaybeUninit<Node>; NODE_BUFFER_SIZE],
-            next:  usize,
-        }
-        impl NodeBuffer {
-            const fn new() -> Self {
-                Self {
-                    nodes: [const {std::mem::MaybeUninit::uninit()}; 256],
-                    next:  0
-                }
+const _: () = {
+    static mut NODES: NodeBuffer = NodeBuffer::new();
+
+    impl From<_base::Router> for Router {
+        fn from(base: _base::Router) -> Self {
+            fn registered(node: Node) -> &'static Node {
+                let nodes = unsafe {#[allow(static_mut_refs)] &mut NODES};
+                nodes.push(node);
+                nodes.get(nodes.next - 1)
             }
-            fn push(&mut self, node: _base::Node) {
-                if self.next == NODE_BUFFER_SIZE {
-                    panic!("NodeBuffer is already full!")
-                }
-                self.nodes[self.next].write(node);
-                self.next += 1;
+            Router {
+                GET:     registered(Node::from(base.GET)),
+                PUT:     registered(Node::from(base.PUT)),
+                POST:    registered(Node::from(base.POST)),
+                PATCH:   registered(Node::from(base.PATCH)),
+                DELETE:  registered(Node::from(base.DELETE)),
+                OPTIONS: registered(Node::from(base.OPTIONS)),
             }
         }
+    }
+    
+    impl From<_base::Node> for Node {
+        fn from(mut base: _base::Node) -> Self {
+            /* merge single-child static patterns to compress routing tree */
+            while base.children.len() == 1
+            && base.handler.is_none()
+            && base.pattern.as_ref().is_some_and(|p| p.is_static())
+            && base.children[0].pattern.as_ref().unwrap(/* not root */).is_static() {
+                let child = base.children.pop().unwrap(/* checked: base.children.len() == 1 */);
+                base.children = child.children;
+                base.handler  = child.handler;
+                base.fangses.extend(child.fangses);
+                base.pattern.replace(_base::Pattern::merge_statics(
+                    base.pattern.clone().unwrap(/* checked: base.pattern.as_ref().is_some_and(..) */),
+                    child.pattern.unwrap(/* not root */)
+                ).unwrap(/* both are Pattern::Static */));
+            }
 
-        ////////////////////////////////////////////////////////
+            let nodes = unsafe {#[allow(static_mut_refs)] &mut NODES};
 
-        static NODES: NodeBuffer = NodeBuffer::new();
-
-        fn finalize(base: _base::Node, next: usize) -> Node {
-            let curr = next;
+            let n_chilren = base.children.len();
             for child in base.children {
-
+                nodes.push(Node::from(child));
             }
-
-            todo!()
-        }
-
-        finalize(base, NODES.next)
-    }
-}
-
-impl From<_base::Pattern> for Pattern {
-    fn from(base: _base::Pattern) -> Self {
-        match base {
-            _base::Pattern::Static { route, range } => Self::Static(route[range].as_bytes()),
-            _base::Pattern::Param                   => Self::Param
+            
+            Node {
+                pattern:  base.pattern.map(Pattern::from).unwrap_or(Pattern::Static(&[])),
+                proc:     base.fangses.clone().into_proc_with(base.handler.unwrap_or(Handler::default_not_found())),
+                catch:    base.fangses.into_proc_with(Handler::default_not_found()),
+                children: nodes.slice((nodes.next - n_chilren)..(nodes.next))
+            }
         }
     }
-}
 
-// static NODE_BUFFER: std::sync::OnceLock<NodeBuffer> = std::sync::OnceLock::new();
-// 
-// const NODE_BUFFER_SIZE: usize = 128;
-// 
-// struct NodeBuffer([MaybeUninit<Node>; NODE_BUFFER_SIZE]);
-// impl NodeBuffer {
-//     fn init(nodes: Vec<Node>) -> Self {
-//         if nodes.len() > NODE_BUFFER_SIZE {
-//             panic!("Currently, number of router nodes must be up to {NODE_BUFFER_SIZE}.")
-//         }
-// 
-//         let mut buf = [const {MaybeUninit::uninit()}; NODE_BUFFER_SIZE];
-//         for (i, node) in nodes.into_iter().enumerate() {
-//             buf[i].write(node);
-//         }
-// 
-//         Self(buf)
-//     }
-// 
-//     #[inline]
-//     unsafe fn get(&self, index: usize) -> &Node {
-//         self.0.get_unchecked(index).assume_init_ref()
-//     }
-// 
-//     #[inline]
-//     unsafe fn get_iter(&self, range: std::ops::Range<usize>) -> &[Node] {
-//         &*(self.0.get_unchecked(range) as *const [MaybeUninit<Node>] as *const [Node])
-//     }
-// }
-// 
-// pub(super) fn register_nodes(nodes: Vec<Node>) {
-//     NODE_BUFFER.set(NodeBuffer::init(nodes)).ok().expect("something went wrong around NODE_BUFFER");
-// }
-// 
-// #[allow(non_snake_case)]
-// fn NODES() -> &'static NodeBuffer {
-//     #[cfg(debug_assertions)]
-//     {NODE_BUFFER.get().expect("NODE_BUFFER is not initialized")}
-//     #[cfg(not(debug_assertions))]
-//     {unsafe {NODE_BUFFER.get().unwrap_unchecked()}}
-// }
-// 
+    impl From<_base::Pattern> for Pattern {
+        fn from(base: _base::Pattern) -> Self {
+            match base {
+                _base::Pattern::Static { route, range } => Self::Static(route[range].as_bytes()),
+                _base::Pattern::Param                   => Self::Param
+            }
+        }
+    }
+
+    const NODE_BUFFER_SIZE: usize = 256;
+    struct NodeBuffer {
+        nodes: [std::mem::MaybeUninit<Node>; NODE_BUFFER_SIZE],
+        next:  usize,
+    }
+    impl NodeBuffer {
+        const fn new() -> Self {
+            Self {
+                nodes: [const {std::mem::MaybeUninit::uninit()}; 256],
+                next:  0
+            }
+        }
+        fn push(&mut self, node: Node) {
+            if self.next == NODE_BUFFER_SIZE {
+                panic!("NodeBuffer is already full!")
+            }
+            self.nodes[self.next].write(node);
+            self.next += 1;
+        }
+        fn get(&self, index: usize) -> &Node {
+            #[cfg(debug_assertions)] {
+                assert!(index < self.next)
+            }
+            unsafe {self.nodes.get_unchecked(index).assume_init_ref()}
+        }
+        fn slice(&self, range: std::ops::Range<usize>) -> &[Node] {
+            #[cfg(debug_assertions)] {
+                assert!(range.end < self.next)
+            }
+            unsafe {&*(self.nodes.get_unchecked(range) as *const [std::mem::MaybeUninit<Node>] as *const [Node])}
+        }
+    }
+};

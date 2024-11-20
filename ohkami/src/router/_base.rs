@@ -21,30 +21,10 @@ pub(super) struct Node {
     pub(super) children: Vec<Node>
 }
 
+#[derive(Clone)]
 pub(super) enum Pattern {
     Static { route: &'static str, range: Range<usize> },
     Param
-}
-impl Pattern {
-    fn merge_static_child(self, child: Pattern) -> Option<Pattern> {
-        match (self, child) {
-            (
-                Pattern::Static { route: this_route,  range: this_range },
-                Pattern::Static { route: child_route, range: child_range }
-            ) => {
-                if &child_route[(child_range.start - this_range.len())..(child_range.start)]
-                == &this_route[this_range.start..this_range.end] {                    
-                    Some(Pattern::Static {
-                        route: child_route,
-                        range: (child_range.start - this_range.len())..(child_range.end)
-                    })
-                } else {
-                    None
-                }
-            }
-            _ => None
-        }
-    }
 }
 
 #[derive(Clone)]
@@ -62,13 +42,13 @@ impl FangsList {
             self.0.push((id, fangs));
         }
     }
-    fn extend(&mut self, another: Self) {
+    pub(super) fn extend(&mut self, another: Self) {
         for (id, fangs) in another.0.into_iter() {
             self.add(id, fangs)
         }
     }
 
-    fn into_proc_with(self, handler: Handler) -> BoxedFPC {
+    pub(super) fn into_proc_with(self, handler: Handler) -> BoxedFPC {
         let mut iter = self.into_iter();
 
         match iter.next() {
@@ -89,5 +69,35 @@ impl FangsList {
     fn into_iter(self) -> impl Iterator<Item = Arc<dyn Fangs>> {
         self.0.into_iter()
             .map(|(_, fangs)| fangs)
+    }
+}
+
+impl Router {
+    pub(crate) fn new() -> Self
+}
+
+impl Pattern {
+    pub(super) fn is_static(&self) -> bool {
+        matches!(self, Pattern::Static { .. })
+    }
+
+    pub(super) fn merge_statics(self, child: Pattern) -> Option<Pattern> {
+        match (self, child) {
+            (
+                Pattern::Static { route: this_route,  range: this_range },
+                Pattern::Static { route: child_route, range: child_range }
+            ) => {
+                if &child_route[(child_range.start - this_range.len())..(child_range.start)]
+                == &this_route[this_range.start..this_range.end] {                    
+                    Some(Pattern::Static {
+                        route: child_route,
+                        range: (child_range.start - this_range.len())..(child_range.end)
+                    })
+                } else {
+                    None
+                }
+            }
+            _ => None
+        }
     }
 }
