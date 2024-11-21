@@ -22,6 +22,7 @@ struct Node {
     children: &'static [Node]
 }
 
+#[derive(PartialEq)]
 enum Pattern {
     Static(&'static [u8]),
     Param
@@ -197,7 +198,14 @@ const _: (/* conversions */) = {
             for child in base.children {
                 direct_children.push(Node::from(child));
             }
-            
+
+            direct_children.sort_by(|a, b| match (&a.pattern, &b.pattern) {
+                (Pattern::Static(a), Pattern::Static(b)) => a.cmp(b).reverse(),
+                (Pattern::Static(_), Pattern::Param)     => std::cmp::Ordering::Less,
+                (Pattern::Param,     Pattern::Static(_)) => std::cmp::Ordering::Greater,
+                _                                        => std::cmp::Ordering::Equal
+            });
+
             let n_children = direct_children.len();
             for child in direct_children {
                 stack.push(child);
@@ -245,7 +253,7 @@ const _: (/* conversions */) = {
             #[cfg(debug_assertions)] {
                 assert!(range.end < self.next)
             }
-            unsafe {&*(self.nodes.get_unchecked(range) as *const [std::mem::MaybeUninit<Node>] as *const [Node])}
+            unsafe {&*(self.nodes.get(range).unwrap() as *const [std::mem::MaybeUninit<Node>] as *const [Node])}
         }
     }
 };

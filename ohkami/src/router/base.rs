@@ -1,4 +1,4 @@
-use super::util::{ID, DebugSimpleOption};
+use super::util::{ID, DebugSimpleOption, DebugSimpleIterator};
 use super::segments::{RouteSegments, RouteSegment};
 use crate::fang::{BoxedFPC, Fangs, Handler};
 use crate::ohkami::build::{ByAnother, HandlerSet};
@@ -164,7 +164,11 @@ impl Router {
     }
 
     pub(crate) fn finalize(self) -> super::r#final::Router {
-        super::r#final::Router::from(self)
+        let r#final = super::r#final::Router::from(self);
+        #[cfg(feature="DEBUG")] {
+            println!("finalized: {final:?}")
+        }
+        r#final
     }
 
     pub(crate) fn merge_another(&mut self, another: ByAnother) {
@@ -405,9 +409,7 @@ const _: (/* Debugs */) = {
 
     impl std::fmt::Debug for FangsList {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            f.debug_list()
-                .entries(self.0.iter().map(|(id, _)| id))
-                .finish()
+            DebugSimpleIterator(self.0.iter().map(|(id, _)| id)).fmt(f)
         }
     }
 

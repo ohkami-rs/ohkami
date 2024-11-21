@@ -32,14 +32,33 @@ impl std::fmt::Debug for ID {
     }
 }
 
-pub(super) struct DebugSimpleOption<'opt, T: std::fmt::Debug>(
-    pub(super) &'opt Option<T>
+pub(super) struct DebugSimpleOption<'option, T: std::fmt::Debug>(
+    pub(super) &'option Option<T>
 );
-impl<'opt, T: std::fmt::Debug> std::fmt::Debug for DebugSimpleOption<'opt, T> {
+impl<'option, T: std::fmt::Debug> std::fmt::Debug for DebugSimpleOption<'option, T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self.0 {
             Some(t) => write!(f, "Some({t:?})"),
             None    => f.write_str("None")
         }
+    }
+}
+
+pub(super) struct DebugSimpleIterator<I: Iterator<Item: std::fmt::Debug> + Clone>(
+    pub(super) I
+);
+impl<I: Iterator<Item: std::fmt::Debug> + Clone> std::fmt::Debug for DebugSimpleIterator<I> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&{
+            let mut buf = String::new();
+            buf.push('[');
+            for item in self.0.clone() {
+                buf.push_str(&format!("{item:?}"));
+                buf.push(',');
+            }
+            if buf.ends_with(',') {buf.pop();}
+            buf.push(']');
+            buf
+        })
     }
 }
