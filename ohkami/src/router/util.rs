@@ -16,13 +16,30 @@
 }
 
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub(super) struct ID(usize);
+#[derive(Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub(crate) struct ID(usize);
 impl ID {
     pub(super) fn new() -> Self {
         use std::sync::atomic::{AtomicUsize, Ordering};
 
         static ID: AtomicUsize = AtomicUsize::new(1);
         Self(ID.fetch_add(1, Ordering::Relaxed))
+    }
+}
+impl std::fmt::Debug for ID {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+pub(super) struct DebugSimpleOption<'opt, T: std::fmt::Debug>(
+    pub(super) &'opt Option<T>
+);
+impl<'opt, T: std::fmt::Debug> std::fmt::Debug for DebugSimpleOption<'opt, T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self.0 {
+            Some(t) => write!(f, "Some({t:?})"),
+            None    => f.write_str("None")
+        }
     }
 }

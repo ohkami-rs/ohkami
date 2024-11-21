@@ -3,9 +3,9 @@ use crate::fang::{FangProcCaller, BoxedFPC, Handler};
 use crate::{request::Path, response::Content};
 use crate::{Method, Request, Response};
 use ohkami_lib::Slice;
-use std::mem::MaybeUninit;
 
 
+#[derive(Debug)]
 pub(crate) struct Router {
     GET:     Node,
     PUT:     Node,
@@ -158,7 +158,7 @@ impl Pattern {
 }
 
 
-const _: () = {
+const _: (/* conversions */) = {
     static mut STACK: NodeStack = NodeStack::new();
 
     impl From<base::Router> for Router {
@@ -215,7 +215,7 @@ const _: () = {
         fn from(base: base::Pattern) -> Self {
             match base {
                 base::Pattern::Static { route, range } => Self::Static(route[range].as_bytes()),
-                base::Pattern::Param                   => Self::Param
+                base::Pattern::Param  { .. }           => Self::Param
             }
         }
     }
@@ -232,6 +232,7 @@ const _: () = {
                 next:  0
             }
         }
+
         fn push(&mut self, node: Node) {
             if self.next == NODE_STACK_SIZE {
                 panic!("NodeStack is already full!")
@@ -239,17 +240,32 @@ const _: () = {
             self.nodes[self.next].write(node);
             self.next += 1;
         }
-        fn get(&self, index: usize) -> &Node {
-            #[cfg(debug_assertions)] {
-                assert!(index < self.next)
-            }
-            unsafe {self.nodes.get_unchecked(index).assume_init_ref()}
-        }
+
         fn slice(&self, range: std::ops::Range<usize>) -> &[Node] {
             #[cfg(debug_assertions)] {
                 assert!(range.end < self.next)
             }
             unsafe {&*(self.nodes.get_unchecked(range) as *const [std::mem::MaybeUninit<Node>] as *const [Node])}
+        }
+    }
+};
+
+const _: (/* Debugs */) = {
+    impl std::fmt::Debug for Node {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            f.debug_struct("")
+                .field("pattern",  &self.pattern)
+                .field("children", &self.children)
+                .finish()
+        }
+    }
+
+    impl std::fmt::Debug for Pattern {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            f.write_str(match self {
+                Self::Param     => ":param",
+                Self::Static(s) => std::str::from_utf8(s).unwrap(),
+            })
         }
     }
 };

@@ -1,11 +1,12 @@
-use super::util::ID;
+use super::util::{ID, DebugSimpleOption};
 use super::segments::{RouteSegments, RouteSegment};
 use crate::fang::{BoxedFPC, Fangs, Handler};
-use crate::ohkami::build::HandlerSet;
+use crate::ohkami::build::{ByAnother, HandlerSet};
 use std::{sync::Arc, ops::Range, collections::HashSet};
 
 
-pub(crate) struct Router {
+#[derive(Debug)]
+pub struct Router {
     id:     ID,
     routes: HashSet<&'static str>,
     pub(super) GET:     Node,
@@ -26,7 +27,7 @@ pub(super) struct Node {
 #[derive(Clone)]
 pub(super) enum Pattern {
     Static { route: &'static str, range: Range<usize> },
-    Param
+    Param  { name: &'static str }
 }
 
 #[derive(Clone)]
@@ -62,11 +63,6 @@ impl FangsList {
         }
     }
 
-    /// yield from most inner fangs
-    fn iter(&self) -> impl Iterator<Item = &Arc<dyn Fangs>> {
-        self.0.iter()
-            .map(|(_, fangs)| fangs)
-    }
     /// yield from most inner fangs
     fn into_iter(self) -> impl Iterator<Item = Arc<dyn Fangs>> {
         self.0.into_iter()
@@ -170,6 +166,27 @@ impl Router {
     pub(crate) fn finalize(self) -> super::r#final::Router {
         super::r#final::Router::from(self)
     }
+
+    pub(crate) fn merge_another(&mut self, another: ByAnother) {
+        let ByAnother { route, ohkami } = another;
+        let another_routes = ohkami.into_router();
+
+        macro_rules! merge {
+            ($( $method:ident ),*) => {$(
+                self.$method.merge_node(route.clone().into_iter(), another_routes.$method).expect("Can't merge Ohkamis");
+            )*};
+        } merge! { GET, PUT, POST, PATCH, DELETE, OPTIONS }
+    }
+
+    pub(crate) fn apply_fangs(&mut self, id: ID, fangs: Arc<dyn Fangs>) {
+        macro_rules! apply_to {
+            ($($method:ident),*) => {
+                $(
+                    self.$method.apply_fangs(id.clone(), fangs.clone());
+                )*
+            };
+        } apply_to! { GET, PUT, POST, PATCH, DELETE, OPTIONS }
+    }
 }
 
 impl Node {
@@ -226,7 +243,7 @@ impl Node {
 
     fn append_child(&mut self, new_child: Node) -> Result<(), String> {
         match new_child.pattern.as_ref().expect("Invalid child node: Child node must have pattern") {
-            Pattern::Param => {
+            Pattern::Param { .. } => {
                 self.children.push(new_child);
                 Ok(())
             }
@@ -257,6 +274,66 @@ impl Node {
             .then(|| self.handler = Some(new_handler))
             .ok_or_else(|| format!("Conflicting handler registering"))
     }
+
+    fn merge_node(
+        &mut self,
+        mut route_to_merge_root: RouteSegments,
+        another: Node,
+    ) -> Result<(), String> {
+        match route_to_merge_root.next() {
+            None => {
+                self.merge_here(another)?;
+                Ok(())
+            }
+            Some(pattern) => match self.machable_child_mut(pattern.clone().into()) {
+                Some(child) => child.merge_node(route_to_merge_root, another),
+                None => {
+                    let mut new_child = Node::new(pattern.into());
+                    new_child.merge_node(route_to_merge_root, another)?;
+                    self.append_child(new_child)?;
+                    Ok(())
+                }
+            }
+        }
+    }
+
+    fn merge_here(&mut self, another_root: Node) -> Result<(), String> {
+        if self.handler.is_some() {
+            return Err(format!(
+                "Can't merge another Ohkami at route that already has handler"
+            ))
+        }
+
+        let Node {
+            pattern:  None, /* another_root must be a root node and has pattern `None` */
+            fangses:  another_root_fangses,
+            handler:  another_root_handler,
+            children: another_root_children,
+        } = another_root else {
+            panic!("Unexpectedly called `Node::merge_here` where `another_root` is not root node")
+        };
+        
+        self.append_fangs(another_root_fangses);
+
+        if let Some(h) = another_root_handler {
+            self.set_handler(h)?;
+        }
+
+        for ac in another_root_children {
+            self.append_child(ac)?
+        }
+
+        Ok(())
+    }
+
+    /// MUST be called after all handlers are registered
+    fn apply_fangs(&mut self, id: ID, fangs: Arc<dyn Fangs>) {
+        for child in &mut self.children {
+            child.apply_fangs(id.clone(), fangs.clone())
+        }
+
+        self.fangses.add(id, fangs);
+    }
 }
 
 impl Pattern {
@@ -285,38 +362,61 @@ impl Pattern {
     }
 
     fn is_param(&self) -> bool {
-        matches!(self, Pattern::Param)
+        matches!(self, Pattern::Param { .. })
     }
 
     fn to_static(&self) -> Option<&str> {
         match self {
-            Self::Param                   => None,
+            Self::Param  { .. }           => None,
             Self::Static { route, range } => Some(&route[range.clone()])
         }
     }
 
     fn matches(&self, another: &Self) -> bool {
         match self {
-            Self::Param => another.is_param(),
-            Self::Static{..} => self.to_static() == another.to_static(),
+            Self::Param  { .. } => another.is_param(),
+            Self::Static { .. } => self.to_static() == another.to_static(),
         }
     }
 }
 
-impl From<RouteSegment> for Pattern {
-    fn from(segment: RouteSegment) -> Self {
-        match segment {
-            RouteSegment::Static { route, range } => Self::Static { route, range },
-            RouteSegment::Param                   => Self::Param
+const _: (/* conversions */) = {
+    impl From<RouteSegment> for Pattern {
+        fn from(segment: RouteSegment) -> Self {
+            match segment {
+                RouteSegment::Static { route, range } => Self::Static { route, range },
+                RouteSegment::Param  { name }         => Self::Param  { name }
+            }
         }
     }
-}
+};
 
-impl std::fmt::Debug for Pattern {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Param                   => f.write_str(":Param"),
-            Self::Static { route, range } => f.write_str(&route[range.clone()]),
+const _: (/* Debugs */) = {
+    impl std::fmt::Debug for Node {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            f.debug_struct("")
+                .field("pattern",  &DebugSimpleOption(&self.pattern))
+                .field("handler",  &DebugSimpleOption(&self.handler))
+                .field("fangs",    &self.fangses)
+                .field("children", &self.children)
+                .finish()
         }
     }
-}
+
+    impl std::fmt::Debug for FangsList {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            f.debug_list()
+                .entries(self.0.iter().map(|(id, _)| id))
+                .finish()
+        }
+    }
+
+    impl std::fmt::Debug for Pattern {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            match self {
+                Self::Param  { name }         => f.write_str(name),
+                Self::Static { route, range } => f.write_str(&route[range.clone()]),
+            }
+        }
+    }
+};
