@@ -150,7 +150,7 @@ impl Pattern {
                 if bytes.len() >= 2
                 && *unsafe {bytes.get_unchecked(0)} == b'/'
                 && *unsafe {bytes.get_unchecked(1)} != b'/' {
-                    let (param, remaining) = util::split_next_section(unsafe {bytes.get_unchecked(1..)})?;
+                    let (param, remaining) = util::split_next_section(unsafe {bytes.get_unchecked(1..)});
                     unsafe {path.push_param(Slice::from_bytes(param))};
                     crate::DEBUG!("[Pattern::take_through] Param => remaining = Some('{}')", remaining.escape_ascii());
                     Some(remaining)
