@@ -166,7 +166,7 @@ impl Router {
     pub(crate) fn finalize(self) -> super::r#final::Router {
         let r#final = super::r#final::Router::from(self);
         #[cfg(feature="DEBUG")] {
-            println!("finalized: {final:?}")
+            println!("finalized: {final:#?}")
         }
         r#final
     }
