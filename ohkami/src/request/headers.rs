@@ -21,15 +21,6 @@ pub struct SetHeaders<'set>(
 pub trait HeaderAction<'set> {
     fn perform(self, set: SetHeaders<'set>, key: Header) -> SetHeaders<'set>;
 } const _: () = {
-    // remove
-    impl<'set> HeaderAction<'set> for Option<()> {
-        #[inline]
-        fn perform(self, set: SetHeaders<'set>, key: Header) -> SetHeaders<'set> {
-            set.0.remove(key);
-            set
-        }
-    }
-
     // append
     impl<'set> HeaderAction<'set> for Append {
         #[inline]
@@ -58,21 +49,30 @@ pub trait HeaderAction<'set> {
             set
         }
     }
+
+    // remove
+    impl<'set> HeaderAction<'set> for () {
+        #[inline]
+        fn perform(self, set: SetHeaders<'set>, key: Header) -> SetHeaders<'set> {
+            set.0.remove(key);
+            set
+        }
+    }
+    impl<'set> HeaderAction<'set> for Option<Cow<'static, str>> {
+        #[inline]
+        fn perform(self, set: SetHeaders<'set>, key: Header) -> SetHeaders<'set> {
+            match self {
+                None => set.0.remove(key),
+                Some(v) => set.0.insert(key, CowSlice::from(v)),
+            }
+            set
+        }
+    }
 };
 
 pub trait CustomHeadersAction<'set> {
     fn perform(self, set: SetHeaders<'set>, key: &'static str) -> SetHeaders<'set>;
 } const _: () = {
-    // remove
-    impl<'set> CustomHeadersAction<'set> for Option<()> {
-        fn perform(self, set: SetHeaders<'set>, key: &'static str) -> SetHeaders<'set> {
-            if let Some(c) = &mut set.0.custom {
-                c.remove(&Slice::from_bytes(key.as_bytes()));
-            }
-            set
-        }
-    }
-
     // append
     impl<'set> CustomHeadersAction<'set> for Append {
         fn perform(self, set: SetHeaders<'set>, key: &'static str) -> SetHeaders<'set> {
@@ -106,6 +106,30 @@ pub trait CustomHeadersAction<'set> {
                 Slice::from_bytes(key.as_bytes()),
                 CowSlice::from(self)
             );
+            set
+        }
+    }
+
+    // remove
+    impl<'set> CustomHeadersAction<'set> for () {
+        fn perform(self, set: SetHeaders<'set>, key: &'static str) -> SetHeaders<'set> {
+            if let Some(c) = &mut set.0.custom {
+                c.remove(&Slice::from_bytes(key.as_bytes()));
+            }
+            set
+        }
+    }
+    impl<'set> CustomHeadersAction<'set> for Option<Cow<'static, str>> {
+        fn perform(self, set: SetHeaders<'set>, key: &'static str) -> SetHeaders<'set> {
+            match self {
+                None => if let Some(c) = &mut set.0.custom {
+                    c.remove(&Slice::from_bytes(key.as_bytes()));
+                }
+                Some(v) => set.0.insert_custom(
+                    Slice::from_bytes(key.as_bytes()),
+                    CowSlice::from(v)
+                )
+            }
             set
         }
     }

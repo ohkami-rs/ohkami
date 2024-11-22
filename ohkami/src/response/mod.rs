@@ -101,7 +101,7 @@ pub struct Response {
     /// 
     /// `{action}`:
     /// - just `{value}` to insert
-    /// - `None` to remove
+    /// - `None` or `()` to remove
     /// - `append({value})` to append
     /// 
     /// `{value}`: `String`, `&'static str`, `Cow<&'static, str>`
