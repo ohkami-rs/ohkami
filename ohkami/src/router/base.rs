@@ -2,7 +2,7 @@ use super::util::{ID, DebugSimpleOption, DebugSimpleIterator};
 use super::segments::{RouteSegments, RouteSegment};
 use crate::fang::{BoxedFPC, Fangs, Handler};
 use crate::ohkami::build::{ByAnother, HandlerSet};
-use std::{sync::Arc, ops::Range, collections::HashSet};
+use std::{sync::Arc, collections::HashSet};
 
 
 #[derive(Debug)]
@@ -26,8 +26,8 @@ pub(super) struct Node {
 
 #[derive(Clone)]
 pub(super) enum Pattern {
-    Static { route: &'static str, range: Range<usize> },
-    Param  { name: &'static str }
+    Static(&'static str),
+    Param (&'static str)
 }
 
 #[derive(Clone)]
@@ -115,52 +115,7 @@ impl Router {
             )*};
         } register! { GET, PUT, POST, PATCH, DELETE }
 
-        self.OPTIONS.register_handler(route, Handler::new(move |req| {
-            let mut available_methods = methods.clone();
-            if available_methods.contains(&"GET") {
-                available_methods.push("HEAD")
-            }
-            available_methods.push("OPTIONS");
-
-            Box::pin(async move {
-                #[cfg(debug_assertions)] {
-                    assert_eq!(req.method, crate::Method::OPTIONS);
-                }
-
-                match req.headers.AccessControlRequestMethod() {
-                    Some(method) => {
-                        /*
-                            Ohkami, by default, does nothing more than setting
-                            `Access-Control-Allow-Methods` to preflight request.
-                            CORS fang must override `Not Implemented` response,
-                            whitch is the default for a valid preflight request,
-                            by a successful one in its proc.
-                        */
-                        (if available_methods.contains(&method) {
-                            crate::Response::NotImplemented()
-                        } else {
-                            crate::Response::BadRequest()
-                        }).with_headers(|h| h
-                            .AccessControlAllowMethods(available_methods.join(", "))
-                        )
-                    }
-                    None => {
-                        /*
-                            For security reasons, Ohkami doesn't support the
-                            normal behavior to OPTIONS request like
-
-                            ```
-                            crate::Response::NoContent()
-                                .with_headers(|h| h
-                                    .Allow(available_methods.join(", "))
-                                )
-                            ```
-                        */
-                        crate::Response::NotFound()
-                    }
-                }
-            })
-        })).expect("Failed to register handler")
+        self.OPTIONS.register_handler(route, Handler::default_options_with(methods)).expect("Failed to register handler");
     }
 
     pub(crate) fn finalize(self) -> super::r#final::Router {
@@ -247,14 +202,13 @@ impl Node {
 
     fn append_child(&mut self, new_child: Node) -> Result<(), String> {
         match new_child.pattern.as_ref().expect("Invalid child node: Child node must have pattern") {
-            Pattern::Param { .. } => {
+            Pattern::Param(_) => {
                 self.children.push(new_child);
                 Ok(())
             }
-            Pattern::Static { route, range } => {
-                let s = &route[range.clone()];
+            Pattern::Static(s) => {
                 if self.children.iter().find(|c|
-                    c.pattern.as_ref().unwrap().to_static().is_some_and(|p| p == s)
+                    c.pattern.as_ref().unwrap().to_static().is_some_and(|p| p == *s)
                 ).is_some() {
                     let __position__ = match &self.pattern {
                         None    => format!("For the first part of route"),
@@ -347,20 +301,9 @@ impl Pattern {
 
     pub(super) fn merge_statics(self, child: Pattern) -> Option<Pattern> {
         match (self, child) {
-            (
-                Pattern::Static { route: this_route,  range: this_range },
-                Pattern::Static { route: child_route, range: child_range }
-            ) => {
-                if &child_route[(child_range.start - this_range.len())..(child_range.start)]
-                == &this_route[this_range.start..this_range.end] {                    
-                    Some(Pattern::Static {
-                        route: child_route,
-                        range: (child_range.start - this_range.len())..(child_range.end)
-                    })
-                } else {
-                    None
-                }
-            }
+            (Pattern::Static(s1), Pattern::Static(s2)) => Some(
+                Pattern::Static([s1, s2].concat().leak())
+            ),
             _ => None
         }
     }
@@ -371,15 +314,15 @@ impl Pattern {
 
     fn to_static(&self) -> Option<&str> {
         match self {
-            Self::Param  { .. }           => None,
-            Self::Static { route, range } => Some(&route[range.clone()])
+            Self::Param (_) => None,
+            Self::Static(s) => Some(s)
         }
     }
 
     fn matches(&self, another: &Self) -> bool {
         match self {
-            Self::Param  { .. } => another.is_param(),
-            Self::Static { .. } => self.to_static() == another.to_static(),
+            Self::Param (_) => another.is_param(),
+            Self::Static(_) => self.to_static() == another.to_static(),
         }
     }
 }
@@ -388,8 +331,8 @@ const _: (/* conversions */) = {
     impl From<RouteSegment> for Pattern {
         fn from(segment: RouteSegment) -> Self {
             match segment {
-                RouteSegment::Static { route, range } => Self::Static { route, range },
-                RouteSegment::Param  { name }         => Self::Param  { name }
+                RouteSegment::Static(s)    => Self::Static(s),
+                RouteSegment::Param (name) => Self::Param (name)
             }
         }
     }
@@ -416,8 +359,8 @@ const _: (/* Debugs */) = {
     impl std::fmt::Debug for Pattern {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             match self {
-                Self::Param  { name }         => f.write_str(name),
-                Self::Static { route, range } => f.write_str(&route[range.clone()]),
+                Self::Param (name) => f.write_str(name),
+                Self::Static(s)    => f.write_str(s),
             }
         }
     }

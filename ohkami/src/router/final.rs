@@ -227,8 +227,8 @@ const _: (/* conversions */) = {
     impl From<base::Pattern> for Pattern {
         fn from(base: base::Pattern) -> Self {
             match base {
-                base::Pattern::Static { route, range } => Self::Static(route[range].as_bytes()),
-                base::Pattern::Param  { .. }           => Self::Param
+                base::Pattern::Static(s) => Self::Static(s.as_bytes()),
+                base::Pattern::Param(_)  => Self::Param
             }
         }
     }

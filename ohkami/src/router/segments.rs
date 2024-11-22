@@ -1,5 +1,4 @@
 use std::collections::vec_deque::{IntoIter as VecDequeIterator, VecDeque};
-use std::ops::Range;
 
 
 #[derive(Clone, Debug)]
@@ -8,9 +7,8 @@ pub(crate) struct RouteSegments {
     segments: VecDequeIterator<RouteSegment>,
 }
 impl RouteSegments {
-    pub(crate) fn from_literal(literal: &'static str) -> Self {
-        if literal.is_empty() {panic!("Found an empty route")}
-        if !literal.starts_with('/') {panic!("Routes must start with '/': `{literal}`")}
+    pub(crate) fn from_literal(literal: &'static str) -> Self {        
+        if literal.is_empty() {panic!("found an empty route")}
 
         if literal == "/" {
             return Self {
@@ -19,16 +17,20 @@ impl RouteSegments {
             }
         }
 
-        let mut segments = VecDeque::new();
-        let mut i = 0;
-        for segment in literal.split('/').skip(1) {
-            let pos = i + 1/* '/' */ + segment.len();
-            let segment = match RouteSegment::new(literal, i..pos) {
-                Err(e) => panic!("{e}: `{literal}`"),
-                Ok(rs) => rs,
-            };
-            segments.push_back(segment);
-            i = pos;
+        if !literal.starts_with('/') {panic!("routes must start with '/': `{literal}`")}
+        if literal.ends_with('/') {panic!("routes must not ends with '/' except for \"/\": `{literal}`")}
+
+        let mut segments   = VecDeque::new();
+        let mut prev_slash = 0;
+        for slash in literal
+            .char_indices()
+            .filter_map(|(i, ch)| (ch == '/').then_some(i))
+            .skip(1)
+            .chain(Some(literal.len()))
+        {
+            segments.push_back(RouteSegment::new(&literal[prev_slash..slash])
+                .expect(&format!("invalid route `{literal}`")));
+            prev_slash = slash;
         }
 
         Self { literal, segments:segments.into_iter() }
@@ -49,11 +51,11 @@ const _: () = {
 
 #[derive(Clone)]
 pub(crate) enum RouteSegment {
-    Static { route: &'static str, range: Range<usize> },
-    Param  { name: &'static str },
+    Static(&'static str),
+    Param (&'static str),
 }
 impl RouteSegment {
-    pub(crate) fn new(route: &'static str, range: Range<usize>) -> Result<Self, String> {
+    pub(crate) fn new(segment: &'static str) -> Result<Self, String> {
         fn validate_segment_name(mut name: impl DoubleEndedIterator<Item = char>) -> Result<(), String> {
             let is_invalid_head_or_tail_char = |c: char| !/* NOT */ matches!(c,
                 '0'..='9' | 'a'..='z' | 'A'..='Z'
@@ -62,35 +64,38 @@ impl RouteSegment {
                 '.' | '-' | '_' | '0'..='9' | 'a'..='z' | 'A'..='Z'
             );
 
-            let head = name.next().ok_or(format!("Found an empty segment name"))?;
+            let head = name.next().ok_or(format!("found an empty segment name"))?;
             if is_invalid_head_or_tail_char(head) {
-                return Err(format!("Path segment can't start with '{head}'"))
+                return Err(format!("path segment can't start with '{head}'"))
             }
 
             if let Some(tail) = name.next_back() {
                 if is_invalid_head_or_tail_char(tail) {
-                    return Err(format!("Path segment can't end with '{tail}'"))
+                    return Err(format!("path segment can't end with '{tail}'"))
                 }
             }
 
             if name.any(is_invalid_char) {
-                return Err(format!("Path segment can only contain '.' | '-' | '_' | '0'..='9' | 'a'..='z' | 'A'..='Z'"))
+                return Err(format!("path segment can only contain '.' | '-' | '_' | '0'..='9' | 'a'..='z' | 'A'..='Z'"))
             }
 
             Ok(())
         }
 
-        let mut segment_chars = route[range.start+1/* skip '/' */..range.end].chars().peekable();
+        let mut segment_chars = segment.starts_with('/')
+            .then_some(&segment[1..]).ok_or_else(|| "path segment must start with '/'")?
+            .chars()
+            .peekable();
         match segment_chars.peek() {
             None => Err(format!("Found an empty route segment")),
             Some(':') => {
                 let _/* colon */ = segment_chars.next();
                 let _/* validation */ = validate_segment_name(segment_chars)?;
-                Ok(Self::Param { name: &route[range.start+1/* skip '/' */..range.end] })
+                Ok(Self::Param(segment))
             },
             _ => {
                 let _/* validation */ = validate_segment_name(segment_chars)?;
-                Ok(Self::Static { route, range })
+                Ok(Self::Static(segment))
             }
         }
     }
@@ -99,8 +104,8 @@ const _: () = {
     impl std::fmt::Debug for RouteSegment {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             match self {
-                Self::Param  { name }         => f.write_str(name),
-                Self::Static { route, range } => f.write_str(&route[range.clone()]),
+                Self::Param (name) => f.write_str(name),
+                Self::Static(s)    => f.write_str(s),
             }
         }
     }

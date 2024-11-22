@@ -73,4 +73,58 @@ impl Handler {
 
         Handler((&*NOT_FOUND).0.clone())
     }
+
+    pub(crate) fn default_options_with(mut available_methods: Vec<&'static str>) -> Self {
+        let available_methods: &'static [&'static str] = {
+            if available_methods.contains(&"GET") {
+                available_methods.push("HEAD")
+            }
+            available_methods.push("OPTIONS");
+            available_methods
+        }.leak();
+
+        let available_methods_str: &'static str =
+            available_methods.join(", ").leak();
+
+        Handler::new(move |req| {
+            Box::pin(async move {
+                #[cfg(debug_assertions)] {
+                    assert_eq!(req.method, crate::Method::OPTIONS);
+                }
+
+                match req.headers.AccessControlRequestMethod() {
+                    Some(method) => {
+                        /*
+                            Ohkami, by default, does nothing more than setting
+                            `Access-Control-Allow-Methods` to preflight request.
+                            CORS fang must override `Not Implemented` response,
+                            whitch is the default for a valid preflight request,
+                            by a successful one in its proc.
+                        */
+                        (if available_methods.contains(&method) {
+                            crate::Response::NotImplemented()
+                        } else {
+                            crate::Response::BadRequest()
+                        }).with_headers(|h| h
+                            .AccessControlAllowMethods(available_methods_str)
+                        )
+                    }
+                    None => {
+                        /*
+                            For security reasons, Ohkami doesn't support the
+                            normal behavior to OPTIONS request like
+
+                            ```
+                            crate::Response::NoContent()
+                                .with_headers(|h| h
+                                    .Allow(available_methods_str)
+                                )
+                            ```
+                        */
+                        crate::Response::NotFound()
+                    }
+                }
+            })
+        })
+    }
 }
