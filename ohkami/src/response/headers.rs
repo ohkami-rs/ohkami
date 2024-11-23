@@ -453,7 +453,7 @@ impl Headers {
             }
         }
         if let Some(custom) = self.custom.as_ref() {
-            for (k, v) in &**custom {
+            for (k, v) in custom.iter() {
                 crate::push_unchecked!(buf <- k.as_bytes());
                 crate::push_unchecked!(buf <- b": ");
                 crate::push_unchecked!(buf <- v.as_bytes());
