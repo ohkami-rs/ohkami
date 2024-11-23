@@ -1,12 +1,11 @@
-use crate::header::{IndexMap, Append, SetCookie, SetCookieBuilder};
+use crate::header::{IndexMap, TupleMap, Append, SetCookie, SetCookieBuilder};
 use std::borrow::Cow;
-use rustc_hash::FxHashMap;
 
 
 #[derive(Clone)]
 pub struct Headers {
     standard:  IndexMap<N_SERVER_HEADERS, Cow<'static, str>>,
-    custom:    Option<Box<FxHashMap<&'static str, Cow<'static, str>>>>,
+    custom:    Option<Box<TupleMap<&'static str, Cow<'static, str>>>>,
     setcookie: Option<Box<Vec<Cow<'static, str>>>>,
     pub(crate) size: usize,
 }
@@ -303,7 +302,7 @@ impl Headers {
         let self_len = value.len();
         match &mut self.custom {
             None => {
-                self.custom = Some(Box::new(FxHashMap::from_iter([(name, value)])));
+                self.custom = Some(Box::new(TupleMap::from_iter([(name, value)])));
                 self.size += name.len() + ": ".len() + self_len + "\r\n".len()
             }
             Some(custom) => {
@@ -339,7 +338,7 @@ impl Headers {
     #[inline]
     pub(crate) fn get_custom(&self, name: &'static str) -> Option<&str> {
         self.custom.as_ref()?
-            .get(name)
+            .get(&name)
             .map(Cow::as_ref)
     }
 
@@ -375,12 +374,12 @@ impl Headers {
 
         let custom = {
             if self.custom.is_none() {
-                self.custom = Some(Box::new(FxHashMap::default()));
+                self.custom = Some(Box::new(TupleMap::new()));
             }
             unsafe {self.custom.as_mut().unwrap_unchecked()}
         };
 
-        self.size += match custom.get_mut(name) {
+        self.size += match custom.get_mut(&name) {
             Some(v) => {
                 match v {
                     Cow::Owned(string) => {
