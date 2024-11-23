@@ -31,7 +31,6 @@ byte_reader   = { workspace = true }
 serde         = { workspace = true }
 
 serde_json    = { version = "1.0" }
-rustc-hash    = { version = "2.0" }
 
 base64        = { version = "0.22" }
 hmac          = { version = "0.12", default-features = false }
@@ -70,10 +69,10 @@ DEBUG = [
 #    "testing",
 #    "sse",
 #    "ws",
-#    #"rt_tokio",
+#    "rt_tokio",
 #    #"rt_async-std",
 #    #"rt_smol",
 #    #"rt_glommio",
-#    "rt_worker",
+#    #"rt_worker",
 #    "DEBUG",
 #]

@@ -1,12 +1,11 @@
-use crate::header::{IndexMap, Append};
+use crate::header::{IndexMap, TupleMap, Append};
 use std::borrow::Cow;
 use ohkami_lib::{CowSlice, Slice};
-use rustc_hash::FxHashMap;
 
 
 pub struct Headers {
     standard: IndexMap<N_CLIENT_HEADERS, CowSlice>,
-    custom:   Option<Box<FxHashMap<Slice, CowSlice>>>,
+    custom:   Option<Box<TupleMap<Slice, CowSlice>>>,
 }
 
 pub struct SetHeaders<'set>(
@@ -108,7 +107,7 @@ pub trait CustomHeadersAction<'set> {
         fn perform(self, set: SetHeaders<'set>, key: &'static str) -> SetHeaders<'set> {
             match self {
                 None => if let Some(c) = &mut set.0.custom {
-                    c.remove(&Slice::from_bytes(key.as_bytes()));
+                    c.remove(Slice::from_bytes(key.as_bytes()));
                 }
                 Some(v) => set.0.insert_custom(
                     Slice::from_bytes(key.as_bytes()),
@@ -167,7 +166,7 @@ macro_rules! Header {
 
             pub fn custom(self, name: &'static str, action: impl CustomHeadersAction<'set>) -> Self {
                 if self.0.custom.is_none() {
-                    self.0.custom = Some(Box::new(FxHashMap::default()));
+                    self.0.custom = Some(Box::new(TupleMap::new()));
                 }
                 action.perform(self, name)
             }
@@ -325,7 +324,7 @@ impl Headers {
     #[inline] pub(crate) fn insert_custom(&mut self, name: Slice, value: CowSlice) {
         match &mut self.custom {
             Some(c) => {c.insert(name, value);}
-            None => self.custom = Some(Box::new(FxHashMap::from_iter([
+            None => self.custom = Some(Box::new(TupleMap::from_iter([
                 (name, value)
             ])))
         }
@@ -337,7 +336,7 @@ impl Headers {
 
     #[inline] pub(crate) fn append_custom(&mut self, name: Slice, value: CowSlice) {
         if self.custom.is_none() {
-            self.custom = Some(Box::new(FxHashMap::default()))
+            self.custom = Some(Box::new(TupleMap::new()))
         }
 
         let c = unsafe {self.custom.as_mut().unwrap_unchecked()};
