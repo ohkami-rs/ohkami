@@ -54,9 +54,6 @@ compile_error! {"
 mod __rt__ {
     #[cfg(all(feature="rt_tokio"))]
     pub(crate) use tokio::test;
-    #[allow(unused)]
-    #[cfg(all(feature="rt_async-std"))]
-    pub(crate) use async_std::test;
 
     #[cfg(feature="rt_tokio")]
     pub(crate) use tokio::net::{TcpListener, TcpStream, ToSocketAddrs};

@@ -479,7 +479,7 @@ impl Headers {
         crate::push_unchecked!(buf <- b"\r\n");
     }
 
-    #[cfg(any(feature="DEBUG", test))]
+    #[cfg(any(feature="DEBUG", feature="__rt_native__"))]
     pub fn _write_to(&self, buf: &mut Vec<u8>) {
         buf.reserve(self.size);
         unsafe {self.write_unchecked_to(buf)}

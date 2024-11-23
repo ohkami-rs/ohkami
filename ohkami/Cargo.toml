@@ -60,10 +60,7 @@ __rt__        = []
 __rt_native__ = []
 
 ##### DEBUG #####
-DEBUG = [
-    "tokio?/rt-multi-thread",
-    "async-std?/attributes",
-]
+DEBUG = ["tokio?/rt-multi-thread"]
 #default = [
 #    "nightly",
 #    "testing",
@@ -74,5 +71,5 @@ DEBUG = [
 #    #"rt_smol",
 #    #"rt_glommio",
 #    #"rt_worker",
-#    "DEBUG",
+#    #"DEBUG",
 #]
