@@ -22,14 +22,6 @@ pub struct SetHeaders<'set>(
 pub trait HeaderAction<'action> {
     fn perform(self, set: SetHeaders<'action>, key: Header) -> SetHeaders<'action>;
 } const _: () = {
-    // remove
-    impl<'a> HeaderAction<'a> for Option<()> {
-        #[inline] fn perform(self, set: SetHeaders<'a>, key: Header) -> SetHeaders<'a> {
-            set.0.remove(key);
-            set
-        }
-    }
-
     // append
     impl<'a> HeaderAction<'a> for Append {
         #[inline] fn perform(self, set: SetHeaders<'a>, key: Header) -> SetHeaders<'a> {
@@ -57,20 +49,22 @@ pub trait HeaderAction<'action> {
             set
         }
     }
+
+    // remove or insert
+    impl<'a> HeaderAction<'a> for Option<Cow<'static, str>> {
+        #[inline] fn perform(self, set: SetHeaders<'a>, key: Header) -> SetHeaders<'a> {
+            match self {
+                None => set.0.remove(key),
+                Some(v) => set.0.insert(key, v),
+            }
+            set
+        }
+    }
 };
 
 pub trait CustomHeadersAction<'action> {
     fn perform(self, set: SetHeaders<'action>, key: &'static str) -> SetHeaders<'action>;
 } const _: () = {
-    /* remove */
-    impl<'set> CustomHeadersAction<'set> for Option<()> {
-        #[inline]
-        fn perform(self, set: SetHeaders<'set>, key: &'static str) -> SetHeaders<'set> {
-            set.0.remove_custom(key);
-            set
-        }
-    }
-
     /* append */
     impl<'set> CustomHeadersAction<'set> for Append {
         fn perform(self, set: SetHeaders<'set>, key: &'static str) -> SetHeaders<'set> {
@@ -95,6 +89,18 @@ pub trait CustomHeadersAction<'action> {
     impl<'set> CustomHeadersAction<'set> for Cow<'static, str> {
         fn perform(self, set: SetHeaders<'set>, key: &'static str) -> SetHeaders<'set> {
             set.0.insert_custom(key, self);
+            set
+        }
+    }
+
+    /* remove or insert */
+    impl<'set> CustomHeadersAction<'set> for Option<Cow<'static, str>> {
+        #[inline]
+        fn perform(self, set: SetHeaders<'set>, key: &'static str) -> SetHeaders<'set> {
+            match self {
+                None => set.0.remove_custom(key),
+                Some(v) => set.0.insert_custom(key, v),
+            }
             set
         }
     }
