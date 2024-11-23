@@ -3,8 +3,7 @@ pub use status::Status;
 
 mod headers;
 pub use headers::{Headers as ResponseHeaders, SetHeaders};
-#[cfg(any(feature="testing", feature="DEBUG"))]
-#[cfg(any(feature="__rt__"))]
+#[cfg(feature="DEBUG")]
 pub use headers::Header as ResponseHeader;
 
 mod content;
