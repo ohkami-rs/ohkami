@@ -100,6 +100,10 @@ impl<K: PartialEq, V> TupleMap<K, V> {
         }; None
     }
 
+    pub(crate) fn clear(&mut self) {
+        self.0.clear();
+    }
+
     pub(crate) fn iter(&self) -> impl Iterator<Item = &(K, V)> {
         self.0.iter()
     }
