@@ -7,7 +7,7 @@ pub(crate) struct IndexMap<const N: usize, Value> {
 /// 
 /// Usually, a web app handles 0 ~ 4 custom headers, and so
 /// simple `Vec<(K, V)>` is efficient than `HashMap<K, V>`
-/// to store/iterate/search.
+/// to store/iterate/mutate.
 pub(crate) struct TupleMap<K: PartialEq, V>(
     Vec<(K, V)>
 );
