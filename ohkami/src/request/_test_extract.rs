@@ -1,4 +1,4 @@
-#![cfg(any(feature="rt_tokio", feature="rt_async-std"))]
+#![cfg(feature="rt_tokio")]
 #![cfg(feature="testing")]
 
 use crate::prelude::*;

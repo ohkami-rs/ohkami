@@ -1,6 +1,6 @@
 #![allow(non_snake_case)]
 #![cfg(feature="testing")]
-#![cfg(any(feature="rt_tokio",feature="rt_async-std"))] // for `#[__rt__::test]`
+#![cfg(feature="rt_tokio")] // for `#[__rt__::test]`
 
 use crate::__rt__;
 use crate::prelude::*;

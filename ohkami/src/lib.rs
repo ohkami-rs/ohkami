@@ -52,11 +52,8 @@ compile_error! {"
 
 #[allow(unused)]
 mod __rt__ {
-    #[cfg(all(feature="rt_tokio", feature="DEBUG"))]
+    #[cfg(all(feature="rt_tokio"))]
     pub(crate) use tokio::test;
-    #[allow(unused)]
-    #[cfg(all(feature="rt_async-std", feature="DEBUG"))]
-    pub(crate) use async_std::test;
 
     #[cfg(feature="rt_tokio")]
     pub(crate) use tokio::net::{TcpListener, TcpStream, ToSocketAddrs};
@@ -207,7 +204,6 @@ pub mod __internal__ {
 
     /* for benchmarks */
     #[cfg(feature="DEBUG")]
-    #[cfg(feature="__rt__")]
     pub use crate::{
         request::{RequestHeader, RequestHeaders},
         response::{ResponseHeader, ResponseHeaders},
