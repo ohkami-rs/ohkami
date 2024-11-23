@@ -128,6 +128,8 @@ async fn main() {
 Ohkami only handles `ws://`.\
 Use some reverse proxy to do with `wss://`.
 
+WebSocket on Durable Object is available on `"rt_worker"`!
+
 ```rust,no_run
 use ohkami::prelude::*;
 use ohkami::ws::{WebSocketContext, WebSocket, Message};
