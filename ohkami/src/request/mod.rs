@@ -152,10 +152,14 @@ pub struct Request {
     /// 
     /// `{action}`:
     /// - just `{value}` to insert
-    /// - `None` or `()` to remove
-    /// - `append({value})` to append
+    /// - `None` to remove
+    /// - `header::append({value})` to append
     /// 
-    /// `{value}`: `String`, `&'static str`, `Cow<&'static, str>`
+    /// `{value}`:
+    /// - `String`
+    /// - `&'static str`
+    /// - `Cow<'static, str>`
+    /// - `Some(Cow<'static, str>)`
     pub headers: RequestHeaders,
 
     pub payload: Option<CowSlice>,

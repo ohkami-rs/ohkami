@@ -50,13 +50,7 @@ pub trait HeaderAction<'action> {
         }
     }
 
-    // remove
-    impl<'a> HeaderAction<'a> for () {
-        #[inline] fn perform(self, set: SetHeaders<'a>, key: Header) -> SetHeaders<'a> {
-            set.0.remove(key);
-            set
-        }
-    }
+    // remove or insert
     impl<'a> HeaderAction<'a> for Option<Cow<'static, str>> {
         #[inline] fn perform(self, set: SetHeaders<'a>, key: Header) -> SetHeaders<'a> {
             match self {
@@ -99,14 +93,7 @@ pub trait CustomHeadersAction<'action> {
         }
     }
 
-    /* remove */
-    impl<'set> CustomHeadersAction<'set> for () {
-        #[inline]
-        fn perform(self, set: SetHeaders<'set>, key: &'static str) -> SetHeaders<'set> {
-            set.0.remove_custom(key);
-            set
-        }
-    }
+    /* remove or insert */
     impl<'set> CustomHeadersAction<'set> for Option<Cow<'static, str>> {
         #[inline]
         fn perform(self, set: SetHeaders<'set>, key: &'static str) -> SetHeaders<'set> {

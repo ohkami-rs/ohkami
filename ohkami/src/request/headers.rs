@@ -50,14 +50,7 @@ pub trait HeaderAction<'set> {
         }
     }
 
-    // remove
-    impl<'set> HeaderAction<'set> for () {
-        #[inline]
-        fn perform(self, set: SetHeaders<'set>, key: Header) -> SetHeaders<'set> {
-            set.0.remove(key);
-            set
-        }
-    }
+    // remove or insert
     impl<'set> HeaderAction<'set> for Option<Cow<'static, str>> {
         #[inline]
         fn perform(self, set: SetHeaders<'set>, key: Header) -> SetHeaders<'set> {
@@ -110,15 +103,7 @@ pub trait CustomHeadersAction<'set> {
         }
     }
 
-    // remove
-    impl<'set> CustomHeadersAction<'set> for () {
-        fn perform(self, set: SetHeaders<'set>, key: &'static str) -> SetHeaders<'set> {
-            if let Some(c) = &mut set.0.custom {
-                c.remove(&Slice::from_bytes(key.as_bytes()));
-            }
-            set
-        }
-    }
+    // remove or insert
     impl<'set> CustomHeadersAction<'set> for Option<Cow<'static, str>> {
         fn perform(self, set: SetHeaders<'set>, key: &'static str) -> SetHeaders<'set> {
             match self {
