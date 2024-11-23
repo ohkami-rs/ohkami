@@ -164,7 +164,11 @@ macro_rules! Header {
                 }
             )*
 
+            #[deprecated = "use `.__` instead"]
             pub fn custom(self, name: &'static str, action: impl CustomHeadersAction<'set>) -> Self {
+                self.__(name, action)
+            }
+            pub fn __(self, name: &'static str, action: impl CustomHeadersAction<'set>) -> Self {
                 if self.0.custom.is_none() {
                     self.0.custom = Some(Box::new(TupleMap::new()));
                 }
@@ -181,13 +185,21 @@ macro_rules! Header {
                 /// except for `Cookie` that by semicolon (see `Cookies` helper method).
                 #[inline(always)]
                 pub fn $konst(&self) -> Option<&str> {
-                    self.get(Header::$konst)
+                    self.get_standard(Header::$konst)
                 }
             )*
 
+            #[deprecated = "use `.get` instead"]
             pub fn custom(&self, name: &str) -> Option<&str> {
+                self.get(name)
+            }
+            pub fn get(&self, name: &str) -> Option<&str> {
                 let value = self.custom.as_ref()?
-                    .get(&Slice::from_bytes(name.as_bytes()))?;
+                    .get(&Slice::from_bytes(name.as_bytes()))
+                    .or_else(|| {
+                        let standard = Header::from_bytes(name.as_bytes())?;
+                        unsafe {self.standard.get(standard as usize)}
+                    })?;
                 Some(std::str::from_utf8(unsafe {value.as_bytes()}).expect("Header value is not UTF-8"))
             }
         }
@@ -301,7 +313,7 @@ impl Headers {
         unsafe {self.standard.delete(name as usize)}
     }
 
-    #[inline] pub(crate) fn get(&self, name: Header) -> Option<&str> {
+    #[inline] pub(crate) fn get_standard(&self, name: Header) -> Option<&str> {
         unsafe {match self.standard.get(name as usize) {
             Some(cs) => Some(std::str::from_utf8(&cs).expect("non UTF-8 header value")),
             None => None

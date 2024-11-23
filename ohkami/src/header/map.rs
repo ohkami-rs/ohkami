@@ -100,6 +100,7 @@ impl<K: PartialEq, V> TupleMap<K, V> {
         }; None
     }
 
+    #[allow(unused)]
     pub(crate) fn clear(&mut self) {
         self.0.clear();
     }

@@ -24,8 +24,8 @@ use crate::header::append;
 #[test] fn append_custom_header() {
     let mut h = RequestHeaders::init();
 
-    h.set().custom("Custom-Header", append("A"));
-    assert_eq!(h.custom("Custom-Header"), Some("A"));
-    h.set().custom("Custom-Header", append("B"));
-    assert_eq!(h.custom("Custom-Header"), Some("A, B"));
+    h.set().__("Custom-Header", append("A"));
+    assert_eq!(h.get("Custom-Header"), Some("A"));
+    h.set().__("Custom-Header", append("B"));
+    assert_eq!(h.get("Custom-Header"), Some("A, B"));
 }

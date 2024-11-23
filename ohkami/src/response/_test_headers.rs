@@ -58,8 +58,8 @@ use super::ResponseHeaders;
 #[test] fn append_custom_header() {
     let mut h = ResponseHeaders::new();
 
-    h.set().custom("Custom-Header", append("A"));
-    assert_eq!(h.custom("Custom-Header"), Some("A"));
+    h.set().__("Custom-Header", append("A"));
+    assert_eq!(h.get("Custom-Header"), Some("A"));
     {
         let mut buf = Vec::new();
         h._write_to(&mut buf);
@@ -69,8 +69,8 @@ use super::ResponseHeaders;
         ");
     }
 
-    h.set().custom("Custom-Header", append("B"));
-    assert_eq!(h.custom("Custom-Header"), Some("A, B"));
+    h.set().__("Custom-Header", append("B"));
+    assert_eq!(h.get("Custom-Header"), Some("A, B"));
     {
         let mut buf = Vec::new();
         h._write_to(&mut buf);
