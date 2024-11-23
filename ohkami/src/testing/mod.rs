@@ -29,7 +29,6 @@
 
 use crate::{Response, Request, Ohkami, Status, Method};
 use crate::ohkami::router::RadixRouter;
-use crate::response::ResponseHeader;
 
 use std::borrow::Cow;
 use std::collections::HashMap;
@@ -188,9 +187,7 @@ impl TestResponse {
     }
 
     pub fn header(&self, name: &'static str) -> Option<&str> {
-        ResponseHeader::from_bytes(name.as_bytes())
-            .and_then(|h| self.0.headers.get(h))
-            .or_else(|| self.0.headers.get_custom(name))
+        self.0.headers.get(name)
     }
     pub fn headers(&self) -> impl Iterator<Item = (&str, &str)> {
         self.0.headers.iter()

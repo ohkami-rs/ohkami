@@ -157,8 +157,12 @@ macro_rules! Header {
                 }
             )*
 
-            #[inline]
+            #[deprecated = "use `.__` instead"]
             pub fn custom(self, name: &'static str, action: impl CustomHeadersAction<'set>) -> Self {
+                self.__(name, action)
+            }
+            #[inline]
+            pub fn __(self, name: &'static str, action: impl CustomHeadersAction<'set>) -> Self {
                 action.perform(self, name)
             }
         }
@@ -168,13 +172,18 @@ macro_rules! Header {
             $(
                 #[inline]
                 pub fn $konst(&self) -> Option<&str> {
-                    self.get(Header::$konst)
+                    self.get_standard(Header::$konst)
                 }
             )*
 
-            #[inline]
+            #[deprecated = "use `.get` instead"]
             pub fn custom(&self, name: &'static str) -> Option<&str> {
+                self.get(name)
+            }
+            #[inline]
+            pub fn get(&self, name: &'static str) -> Option<&str> {
                 self.get_custom(name)
+                    .or_else(|| self.get_standard(Header::from_bytes(name.as_bytes())?))
             }
         }
     };
@@ -246,11 +255,11 @@ const _: () = {
 
     #[allow(non_snake_case)]
     impl<'s> SetHeaders<'s> {
-        /// Add new `Set-Cookie` header in the response.
+        /// Add new `Set-Cookie` header to the response.
         /// 
         /// - When you call this N times, the response has N different
         ///   `Set-Cookie` headers.
-        /// - Cookie value (second argument) is precent encoded when the
+        /// - Cookie value (second argument) is percent-encoded when the
         ///   response is sended.
         /// 
         /// ---
@@ -261,8 +270,8 @@ const _: () = {
         /// fn mutate_header(res: &mut Response) {
         ///     res.headers.set()
         ///         .Server("ohkami")
-        ///         .SetCookie("id", "42", |d|d.Path("/").SameSiteLax())
-        ///         .SetCookie("name", "John", |d|d.Path("/where").SameSiteStrict());
+        ///         .SetCookie("id", "42", |d|d.Path("/").SameSiteStrict())
+        ///         .SetCookie("name", "John", |d|d.Path("/where").SameSiteLax());
         /// }
         /// ```
         #[inline]
@@ -332,7 +341,7 @@ impl Headers {
     }
 
     #[inline(always)]
-    pub(crate) fn get(&self, name: Header) -> Option<&str> {
+    pub(crate) fn get_standard(&self, name: Header) -> Option<&str> {
         unsafe {self.standard.get(name as usize)}.map(Cow::as_ref)
     }
     #[inline]
@@ -489,7 +498,7 @@ const _: () = {
     impl PartialEq for Headers {
         fn eq(&self, other: &Self) -> bool {
             for (k, v) in self.iter_standard() {
-                if other.get(Header::from_bytes(k.as_bytes()).unwrap()) != Some(v) {
+                if other.get_standard(Header::from_bytes(k.as_bytes()).unwrap()) != Some(v) {
                     return false
                 }
             }
@@ -511,7 +520,7 @@ const _: () = {
             for (k, v) in iter {
                 match Header::from_bytes(k.as_bytes()) {
                     Some(h) => this.insert(h, v.into()),
-                    None    => {this.set().custom(k, v.into());}
+                    None    => {this.set().__(k, v.into());}
                 }
             }
             this

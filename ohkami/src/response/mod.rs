@@ -94,8 +94,8 @@ pub struct Response {
 
     /// Headers of this response
     /// 
-    /// - `.{Name}()`, `.custom({Name})` to get the value
-    /// - `.set().{Name}({action})`, `.set().custom({Name}, {action})` to mutate the values
+    /// - `.{Name}()`, `.get({Name})` to get the value
+    /// - `.set().{Name}({action})`, `.set().__({Name}, {action})` to mutate the value
     /// 
     /// ---
     /// 
