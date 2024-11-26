@@ -451,8 +451,8 @@ impl Ohkami {
                 let router = self.into_router();
                 #[cfg(feature="DEBUG")] ::worker::console_debug!("Done `Ohkami::into_router`");
 
-                let router = router.into_radix();
-                #[cfg(feature="DEBUG")] ::worker::console_debug!("Done `Router::into_radix` (without compressions)");
+                let router = router.finalize();
+                #[cfg(feature="DEBUG")] ::worker::console_debug!("Done `Router::finalize` (without compressions)");
                 
                 let mut res = router.handle(&mut ohkami_req).await;
                 res.complete();

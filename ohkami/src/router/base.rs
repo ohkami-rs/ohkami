@@ -296,19 +296,6 @@ impl Node {
 }
 
 impl Pattern {
-    pub(super) fn is_static(&self) -> bool {
-        matches!(self, Pattern::Static { .. })
-    }
-
-    pub(super) fn merge_statics(self, child: Pattern) -> Option<Pattern> {
-        match (self, child) {
-            (Pattern::Static(s1), Pattern::Static(s2)) => Some(
-                Pattern::Static([s1, s2].concat().leak())
-            ),
-            _ => None
-        }
-    }
-
     fn is_param(&self) -> bool {
         matches!(self, Pattern::Param { .. })
     }
@@ -324,6 +311,21 @@ impl Pattern {
         match self {
             Self::Param (_) => another.is_param(),
             Self::Static(_) => self.to_static() == another.to_static(),
+        }
+    }
+
+    #[cfg(feature="__rt_native__")]
+    pub(super) fn is_static(&self) -> bool {
+        matches!(self, Pattern::Static { .. })
+    }
+
+    #[cfg(feature="__rt_native__")]
+    pub(super) fn merge_statics(self, child: Pattern) -> Option<Pattern> {
+        match (self, child) {
+            (Pattern::Static(s1), Pattern::Static(s2)) => Some(
+                Pattern::Static([s1, s2].concat().leak())
+            ),
+            _ => None
         }
     }
 }
