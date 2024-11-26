@@ -28,7 +28,7 @@
 //! ```
 
 use crate::{Response, Request, Ohkami, Status, Method};
-use crate::ohkami::router::RadixRouter;
+use crate::router::r#final::Router;
 
 use std::borrow::Cow;
 use std::collections::HashMap;
@@ -40,11 +40,11 @@ pub trait Testing {
     fn test(self) -> TestingOhkami;
 }
 
-pub struct TestingOhkami(Arc<RadixRouter>);
+pub struct TestingOhkami(Arc<Router>);
 
 impl Testing for Ohkami {
     fn test(self) -> TestingOhkami {
-        TestingOhkami(Arc::new(self.into_router().into_radix()))
+        TestingOhkami(Arc::new(self.into_router().finalize()))
     }
 }
 

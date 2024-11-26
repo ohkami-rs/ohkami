@@ -14,9 +14,7 @@ tasks:
     deps:
       - task: test:examples
       - task: test:doc
-        # vars: { nightly: '{{.maybe_nightly}}' }
       - task: test:no_rt
-        # vars: { nightly: '{{.maybe_nightly}}' }
       - for:  [tokio, async-std, smol, glommio, worker]
         task: test:rt
         vars: { rt: '{{.ITEM}}' }
@@ -28,7 +26,6 @@ tasks:
         task: check:native_rt
         vars: { native_rt: '{{.ITEM}}' }
       - task: check:rt_worker
-        # vars: { nightly: '{{.maybe_nightly}}' }
 
   bench:dryrun:
     status:

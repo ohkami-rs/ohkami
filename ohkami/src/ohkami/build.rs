@@ -1,24 +1,24 @@
 #![allow(non_snake_case, unused_mut)]
 
-use super::router::{TrieRouter, RouteSections};
+use crate::router::{base::Router, segments::RouteSegments};
 use crate::fang::{Handler, IntoHandler};
 use crate::response::Content;
 use crate::Ohkami;
 
 
-macro_rules! Handlers {
+macro_rules! HandlerSet {
     ($( $method:ident ),*) => {
-        pub struct Handlers {
-            pub(crate) route: RouteSections,
+        pub struct HandlerSet {
+            pub(crate) route: RouteSegments,
             $(
                 pub(crate) $method: Option<Handler>,
             )*
         }
         
-        impl Handlers {
+        impl HandlerSet {
             pub(crate) fn new(route_str: &'static str) -> Self {
                 Self {
-                    route:   RouteSections::from_literal(route_str),
+                    route:   RouteSegments::from_literal(route_str),
                     $(
                         $method: None,
                     )*
@@ -26,7 +26,7 @@ macro_rules! Handlers {
             }
         }
 
-        impl Handlers {
+        impl HandlerSet {
             $(
                 pub fn $method<T>(mut self, handler: impl IntoHandler<T>) -> Self {
                     self.$method.replace(handler.into_handler());
@@ -35,10 +35,10 @@ macro_rules! Handlers {
             )*
         }
     };
-} Handlers! { GET, PUT, POST, PATCH, DELETE }
+} HandlerSet! { GET, PUT, POST, PATCH, DELETE }
 
 pub struct ByAnother {
-    pub(crate) route:  RouteSections,
+    pub(crate) route:  RouteSegments,
     pub(crate) ohkami: Ohkami,
 }
 
@@ -76,7 +76,7 @@ pub struct Dir {
             let mut entries = fetch_entries(dir_path.clone())?;
             while let Some(entry) = entries.pop() {
                 if entry.is_file() {
-                    let path_sections = entry.canonicalize()?
+                    let path_Segments = entry.canonicalize()?
                         .components()
                         .skip(dir_path.components().count())
                         .map(|c| c.as_os_str().to_os_string()
@@ -88,7 +88,7 @@ pub struct Dir {
                         )
                         .collect::<std::io::Result<Vec<_>>>()?;
 
-                    if path_sections.last().unwrap().starts_with('.') {
+                    if path_Segments.last().unwrap().starts_with('.') {
                         crate::warning!("\
                             =========\n\
                             [WARNING] `Route::Dir`: found `{}` in directory `{}`, \
@@ -100,7 +100,7 @@ pub struct Dir {
                     }
 
                     files.push((
-                        path_sections,
+                        path_Segments,
                         std::fs::File::open(entry)?
                     ));
 
@@ -165,7 +165,7 @@ macro_rules! Route {
         /// ```
         pub trait Route {
             $(
-                fn $method<T>(self, handler: impl IntoHandler<T>) -> Handlers;
+                fn $method<T>(self, handler: impl IntoHandler<T>) -> HandlerSet;
             )*
 
             fn By(self, another: Ohkami) -> ByAnother;
@@ -175,8 +175,8 @@ macro_rules! Route {
 
         impl Route for &'static str {
             $(
-                fn $method<T>(self, handler: impl IntoHandler<T>) -> Handlers {
-                    let mut handlers = Handlers::new(self);
+                fn $method<T>(self, handler: impl IntoHandler<T>) -> HandlerSet {
+                    let mut handlers = HandlerSet::new(self);
                     handlers.$method.replace(handler.into_handler());
                     handlers
                 }
@@ -184,14 +184,14 @@ macro_rules! Route {
 
             fn By(self, another: Ohkami) -> ByAnother {
                 ByAnother {
-                    route:  RouteSections::from_literal(self),
+                    route:  RouteSegments::from_literal(self),
                     ohkami: another,
                 }
             }
 
             fn Dir(self, path: &'static str) -> Dir {
                 // Check `self` is valid route
-                let _ = RouteSections::from_literal(self);
+                let _ = RouteSegments::from_literal(self);
 
                 match Dir::new(
                     self,
@@ -207,22 +207,22 @@ macro_rules! Route {
 
 
 trait RoutingItem {
-    fn apply(self, router: &mut TrieRouter);
+    fn apply(self, router: &mut Router);
 } const _: () = {
-    impl RoutingItem for Handlers {
-        fn apply(self, router: &mut TrieRouter) {
+    impl RoutingItem for HandlerSet {
+        fn apply(self, router: &mut Router) {
             router.register_handlers(self)
         }
     }
 
     impl RoutingItem for ByAnother {
-        fn apply(self, router: &mut TrieRouter) {
+        fn apply(self, router: &mut Router) {
             router.merge_another(self)
         }
     }
 
     impl RoutingItem for Dir {
-        fn apply(self, router: &mut TrieRouter) {
+        fn apply(self, router: &mut Router) {
             #[derive(Clone)]
             struct StaticFileHandler {
                 mime:     &'static str,
@@ -230,8 +230,8 @@ trait RoutingItem {
             }
             const _: () = {
                 impl StaticFileHandler {
-                    fn new(path_sections: &[String], file: std::fs::File) -> Result<Self, String> {
-                        let filename = path_sections.last()
+                    fn new(path_Segments: &[String], file: std::fs::File) -> Result<Self, String> {
+                        let filename = path_Segments.last()
                             .ok_or_else(|| format!("[.Dir] got empty file path"))?;
                         let (_, extension) = filename.rsplit_once('.')
                             .ok_or_else(|| format!("[.Dir] got `{filename}`: In current version, ohkami doesn't support serving files that have no extenstion"))?;
@@ -280,7 +280,7 @@ trait RoutingItem {
             println!{ "[Dir] .files = {:#?}", self.files }
 
             let mut register = |path: Vec<String>, handler: StaticFileHandler| router.register_handlers(
-                Handlers::new(Box::leak({
+                HandlerSet::new(Box::leak({
                     let base_path = self.route.trim_end_matches('/').to_string();
                     match &*path.join("/") {
                         ""   => if !base_path.is_empty() {base_path} else {"/".into()},
@@ -338,19 +338,19 @@ trait RoutingItem {
     /// // This must be so annoying!!!
     /// ---
     impl RoutingItem for &'static str {
-        fn apply(self, _router: &mut TrieRouter) {}
+        fn apply(self, _router: &mut Router) {}
     }
 };
 
 pub trait Routes {
-    fn apply(self, router: &mut TrieRouter);
+    fn apply(self, router: &mut Router);
 }
 const _: () = {
     impl Routes for () {
-        fn apply(self, _router: &mut TrieRouter) {}
+        fn apply(self, _router: &mut Router) {}
     }
     impl<R: RoutingItem> Routes for R {
-        fn apply(self, router: &mut TrieRouter) {
+        fn apply(self, router: &mut Router) {
             <R as RoutingItem>::apply(self, router)
         }
     }
@@ -358,7 +358,7 @@ const _: () = {
     macro_rules! impl_for_tuple {
         ( $( $item:ident ),+ ) => {
             impl<$( $item: RoutingItem ),+> Routes for ( $($item,)+ ) {
-                fn apply(self, router: &mut TrieRouter) {
+                fn apply(self, router: &mut Router) {
                     let ( $( $item, )+ ) = self;
                     $(
                         <$item as RoutingItem>::apply($item, router);

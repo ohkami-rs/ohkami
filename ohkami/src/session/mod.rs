@@ -5,7 +5,7 @@ use std::panic::{AssertUnwindSafe, catch_unwind};
 use crate::__rt__::TcpStream;
 use crate::response::Upgrade;
 use crate::util::timeout_in;
-use crate::ohkami::router::RadixRouter;
+use crate::router::r#final::Router;
 use crate::{Request, Response};
 
 
@@ -35,13 +35,13 @@ mod env {
 }
 
 pub(crate) struct Session {
-    router:     Arc<RadixRouter>,
+    router:     Arc<Router>,
     connection: TcpStream,
     ip:         std::net::IpAddr,
 }
 impl Session {
     pub(crate) fn new(
-        router:     Arc<RadixRouter>,
+        router:     Arc<Router>,
         connection: TcpStream,
         ip:         std::net::IpAddr
     ) -> Self {

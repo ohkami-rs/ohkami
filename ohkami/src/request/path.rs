@@ -77,7 +77,6 @@ const _: () = {
 #[cfg(feature="__rt__")]
 const _: () = {
     impl Params {
-        #[inline(always)]
         const fn init() -> Self {
             Params { next: 0, list: [const {MaybeUninit::uninit()}; Params::LIMIT] }
         }
@@ -96,8 +95,7 @@ const _: () = {
     }
     
     impl Path {
-        #[inline]
-        pub(crate) fn uninit() -> Self {
+        pub(crate) const fn uninit() -> Self {
             Self(MaybeUninit::uninit())
         }
 

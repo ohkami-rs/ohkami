@@ -4,13 +4,12 @@
 mod _test;
 
 pub(crate) mod build;
-pub(crate) mod router;
 
 pub use build::{Route, Routes};
 
 use crate::fang::Fangs;
+use crate::router::base::Router;
 use std::sync::Arc;
-use router::TrieRouter;
 
 #[cfg(feature="__rt_native__")]
 use {crate::{__rt__, Session}, ohkami_lib::signal};
@@ -132,7 +131,7 @@ use {crate::{__rt__, Session}, ohkami_lib::signal};
 /// }
 /// ```
 pub struct Ohkami {
-    pub(crate) routes: TrieRouter,
+    pub(crate) routes: Router,
 
     /// apply just before merged to another or called `howl`
     pub(crate) fangs:  Option<Arc<dyn Fangs>>,
@@ -173,7 +172,7 @@ impl Ohkami {
     ///
     /// `{path params}` is a `FromParam` value or a tuple of them
     pub fn new(routes: impl build::Routes) -> Self {
-        let mut router = TrieRouter::new();
+        let mut router = Router::new();
         routes.apply(&mut router);
 
         Self {
@@ -219,7 +218,7 @@ impl Ohkami {
     /// # ;
     /// ```
     pub fn with(fangs: impl Fangs + 'static, routes: impl build::Routes) -> Self {
-        let mut router = TrieRouter::new();
+        let mut router = Router::new();
         routes.apply(&mut router);
 
         Self {
@@ -291,7 +290,7 @@ impl Ohkami {
     /// }
     /// ```
     pub async fn howl(self, address: impl __rt__::ToSocketAddrs) {
-        let router = Arc::new(self.into_router().into_radix());
+        let router = Arc::new(self.into_router().finalize());
 
         #[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_smol"))]
         let listener = __rt__::TcpListener::bind(address).await.expect("Failed to bind TCP listener");
@@ -453,7 +452,7 @@ impl Ohkami {
                 #[cfg(feature="DEBUG")] ::worker::console_debug!("Done `Ohkami::into_router`");
 
                 let router = router.into_radix();
-                #[cfg(feature="DEBUG")] ::worker::console_debug!("Done `TrieRouter::into_radix` (without compressions)");
+                #[cfg(feature="DEBUG")] ::worker::console_debug!("Done `Router::into_radix` (without compressions)");
                 
                 let mut res = router.handle(&mut ohkami_req).await;
                 res.complete();
@@ -473,7 +472,7 @@ impl Ohkami {
 }
 
 impl Ohkami {
-    pub(crate) fn into_router(self) -> TrieRouter {
+    pub(crate) fn into_router(self) -> Router {
         let Self { routes: mut router, fangs } = self;
 
         if let Some(fangs) = fangs {
