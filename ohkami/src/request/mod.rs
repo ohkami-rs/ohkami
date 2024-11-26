@@ -25,7 +25,7 @@ pub use from_request::*;
 use ohkami_lib::{Slice, CowSlice};
 
 #[cfg(feature="__rt_native__")]
-use crate::__rt__::AsyncReader;
+use crate::__rt__::AsyncRead;
 
 #[allow(unused)]
 use {
@@ -223,7 +223,7 @@ impl Request {
     #[inline]
     pub(crate) async fn read(
         mut self: Pin<&mut Self>,
-        stream:   &mut (impl AsyncReader + Unpin),
+        stream:   &mut (impl AsyncRead + Unpin),
     ) -> Result<Option<()>, crate::Response> {
         use crate::Response;
 
@@ -296,7 +296,7 @@ impl Request {
     #[cfg(feature="__rt_native__")]
     #[inline]
     async fn read_payload(
-        stream:        &mut (impl AsyncReader + Unpin),
+        stream:        &mut (impl AsyncRead + Unpin),
         remaining_buf: &[u8],
         size:          usize,
     ) -> CowSlice {

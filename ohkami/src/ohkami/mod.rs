@@ -12,7 +12,7 @@ use crate::router::base::Router;
 use std::sync::Arc;
 
 #[cfg(feature="__rt_native__")]
-use {crate::{__rt__, Session}, ohkami_lib::signal};
+use crate::{__rt__, Session};
 
 /// # Ohkami - a robust wolf who serves your web app
 /// 
@@ -227,6 +227,19 @@ impl Ohkami {
         }
     }
 
+    pub(crate) fn into_router(self) -> Router {
+        let Self { routes: mut router, fangs } = self;
+
+        if let Some(fangs) = fangs {
+            router.apply_fangs(router.id(), fangs);
+        }
+
+        #[cfg(feature="DEBUG")]
+        println!("{router:#?}");
+
+        router
+    }
+
     #[cfg(feature="__rt_native__")]
     /// Start serving at `address`!
     /// 
@@ -292,139 +305,54 @@ impl Ohkami {
     pub async fn howl(self, address: impl __rt__::ToSocketAddrs) {
         let router = Arc::new(self.into_router().finalize());
 
-        #[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_smol"))]
-        let listener = __rt__::TcpListener::bind(address).await.expect("Failed to bind TCP listener");
-        #[cfg(any(feature="rt_glommio"))]
-        let listener = __rt__::TcpListener::bind(address).expect("Failed to bind TCP listener");
-        
-        let (close_tx, close_rx) = signal::watch::channel(());
+        let listener = __rt__::bind(address).await;
 
-        let ctrl_c = signal::ctrl_c();
-        let (ctrl_c_tx, ctrl_c_rx) = signal::watch::channel(());
+        let (wg, inturrupt) = (sync::WaitGroup::new(), sync::CtrlC::new());
 
-        #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
-        __rt__::spawn(async {
-            ctrl_c.await.expect("Something was wrong around Ctrl-C");
-            drop(ctrl_c_rx);
-        });
-        #[cfg(any(feature="rt_smol",feature="rt_glommio"))]
-        __rt__::spawn(async {
-            ctrl_c.await.expect("Something was wrong around Ctrl-C");
-            drop(ctrl_c_rx);
-        }).detach();
+        loop {
+            let (accept, inturrupt) = (listener.accept(), inturrupt.inturrupted());
 
-        #[cfg(feature="rt_tokio")] {
-            loop {
-                __rt__::select! {
-                    accept = listener.accept() => {
-                        let Ok((connection, addr)) = accept else {continue};
+            #[cfg(any(feature="rt_async-std", feature="rt_smol", feature="rt_glommio"))]
+            let (accept, inturrupt) = {use ::futures_util::FutureExt;
+                (accept.fuse(), inturrupt.fuse())
+            };
 
-                        let session = Session::new(
-                            router.clone(),
-                            connection,
-                            addr.ip()
-                        );
+            __rt__::select! {
+                accept = accept => {
+                    let (connection, addr) = {
+                        #[cfg(any(feature="rt_tokio", feature="rt_async-std", feature="rt_smol"))] {
+                            let Ok((connection, addr)) = accept else {continue};
+                            (connection, addr)
+                        }
+                        #[cfg(any(feature="rt_glommio"))] {
+                            let Ok(connection) = accept else {continue};
+                            let Ok(addr) = connection.peer_addr() else {continue};
+                            (connection, addr)
+                        }
+                    };
 
-                        let close_rx = close_rx.clone();
-                        __rt__::spawn(async {
-                            session.manage().await;
-                            drop(close_rx)
-                        });
-                    }
-                    _ = ctrl_c_tx.closed() => {
-                        crate::DEBUG!("Recieved Ctrl-C, trying graceful shutdown");
-                        drop(listener);
-                        break
-                    }
+                    let session = Session::new(
+                        router.clone(),
+                        connection,
+                        addr.ip()
+                    );
+
+                    let wg = wg.add();
+                    __rt__::spawn(async move {
+                        session.manage().await;
+                        wg.done();
+                    });
+                }
+                _ = inturrupt => {
+                    crate::DEBUG!("Recieved Ctrl-C, trying graceful shutdown...");
+                    drop(listener);
+                    break
                 }
             }
         }
 
-        #[cfg(feature="rt_async-std")] {
-            loop {
-                __rt__::select! {
-                    accept = __rt__::FutureExt::fuse(listener.accept()) => {
-                        let Ok((connection, addr)) = accept else {continue};
-
-                        let session = Session::new(
-                            router.clone(),
-                            connection,
-                            addr.ip()
-                        );
-
-                        let close_rx = close_rx.clone();
-                        __rt__::spawn(async {
-                            session.manage().await;
-                            drop(close_rx)
-                        });
-                    }
-                    _ = __rt__::FutureExt::fuse(ctrl_c_tx.closed()) => {
-                        crate::DEBUG!("Recieved Ctrl-C, trying graceful shutdown");
-                        drop(listener);
-                        break
-                    }
-                }
-            }
-        }
-        
-        #[cfg(feature="rt_smol")] {
-            loop {
-                __rt__::select! {
-                    accept = __rt__::FutureExt::fuse(listener.accept()) => {
-                        let Ok((connection, addr)) = accept else {continue};
-
-                        let session = Session::new(
-                            router.clone(),
-                            connection,
-                            addr.ip()
-                        );
-
-                        let close_rx = close_rx.clone();
-                        __rt__::spawn(async {
-                            session.manage().await;
-                            drop(close_rx)
-                        }).detach();
-                    }
-                    _ = __rt__::FutureExt::fuse(ctrl_c_tx.closed()) => {
-                        crate::DEBUG!("Recieved Ctrl-C, trying graceful shutdown");
-                        drop(listener);
-                        break
-                    }
-                }
-            }
-        }
-
-        #[cfg(feature="rt_glommio")] {
-            loop {
-                __rt__::select! {
-                    accept = __rt__::FutureExt::fuse(listener.accept()) => {
-                        let Ok(connection) = accept else {continue};
-                        let Ok(addr) = connection.peer_addr() else {continue};
-        
-                        let session = Session::new(
-                            router.clone(),
-                            connection,
-                            addr.ip()
-                        );
-
-                        let close_rx = close_rx.clone();
-                        __rt__::spawn(async {
-                            session.manage().await;
-                            drop(close_rx)
-                        }).detach();
-                    }
-                    _ = __rt__::FutureExt::fuse(ctrl_c_tx.closed()) => {
-                        crate::DEBUG!("Recieved Ctrl-C, trying graceful shutdown");
-                        drop(listener);
-                        break
-                    }
-                }
-            }
-        }
-
-        crate::DEBUG!("Waiting {} session(s) to finish...", close_tx.receiver_count());
-        drop(close_rx);
-        close_tx.closed().await;
+        crate::DEBUG!("Waiting {} session(s) to finish...", wg.count());
+        wg.await;
     }
 
     #[cfg(feature="rt_worker")]
@@ -471,17 +399,101 @@ impl Ohkami {
     }
 }
 
-impl Ohkami {
-    pub(crate) fn into_router(self) -> Router {
-        let Self { routes: mut router, fangs } = self;
+#[cfg(feature="__rt_native__")]
+mod sync {
+    use std::sync::atomic::{AtomicUsize, AtomicBool, Ordering};
+    use std::ptr::NonNull;
 
-        if let Some(fangs) = fangs {
-            router.apply_fangs(router.id(), fangs);
+    use std::future::Future;
+    use std::task::{Context, Poll};
+    use std::pin::Pin;
+
+    pub struct WaitGroup(
+        NonNull<AtomicUsize>
+    );
+    const _: () = {
+        unsafe impl Send for WaitGroup {}
+        unsafe impl Sync for WaitGroup {}
+
+        impl Future for WaitGroup {
+            type Output = ();
+            fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+                if unsafe {self.0.as_ref()}.load(Ordering::Acquire) == 0 {
+                    Poll::Ready(())
+                } else {
+                    cx.waker().wake_by_ref();
+                    Poll::Pending
+                }
+            }
         }
 
-        #[cfg(feature="DEBUG")]
-        println!("{router:#?}");
+        impl WaitGroup {
+            pub fn new() -> Self {
+                let n = AtomicUsize::new(0);
+                let n = Box::leak(Box::new(n));
+                Self(NonNull::new(n).unwrap())
+            }
 
-        router
-    }
+            #[cfg(feature="DEBUG")]
+            pub fn count(&self) -> usize {
+                unsafe {self.0.as_ref()}.load(Ordering::Relaxed)
+            }
+
+            #[inline]
+            pub fn add(&self) -> Self {
+                let ptr = self.0;
+                unsafe {ptr.as_ref()}.fetch_add(1, Ordering::Relaxed);
+                Self(ptr)
+            }
+
+            #[inline]
+            pub fn done(&self) {
+                unsafe {self.0.as_ref()}.fetch_sub(1, Ordering::Release);
+            }
+        }
+    };
+
+    pub struct CtrlC;
+    const _: () = {
+        static INTURRUPTED: AtomicBool = AtomicBool::new(false);
+
+        impl Copy for CtrlC {}
+        impl Clone for CtrlC {fn clone(&self) -> Self {Self}}
+
+        impl CtrlC {
+            pub fn new() -> Self {
+                ::ctrlc::set_handler(|| INTURRUPTED.store(true, Ordering::Release))
+                    .expect("Something went wrong around Ctrl-C");
+                Self
+            }
+
+            pub const fn inturrupted(&self) -> impl Future<Output = ()> + 'static {
+                struct Inturrupt;
+                impl Future for Inturrupt {
+                    type Output = ();
+                    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+                        if INTURRUPTED.load(Ordering::Acquire) {
+                            Poll::Ready(())
+                        } else {
+                            cx.waker().wake_by_ref();
+                            Poll::Pending
+                        }
+                    }
+                }
+
+                Inturrupt
+            }
+        }
+    };
+}
+
+#[cfg(feature="testing")]
+#[cfg(test)]
+#[test] fn can_howl() {
+    __rt__::block_on(
+        crate::util::timeout_in(
+            std::time::Duration::from_secs(3),
+            Ohkami::new(()).howl("localhost:3000")
+        )
+    );
 }
