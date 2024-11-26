@@ -42,6 +42,12 @@
     Can't activate multiple `rt_*` features at once!
 "}
 
+#[cfg(all(feature="sse", not(feature="__rt__")))]
+compile_error! {"Can't activate `sse` feature without a `rt_*` feature"}
+
+#[cfg(all(feature="ws", not(feature="__rt__")))]
+compile_error! {"Can't activate `ws` feature without a `rt_*` feature"}
+
 #[cfg(not(feature="DEBUG"))]
 #[cfg(all(feature="rt_worker", not(target_arch="wasm32")))]
 compile_error! {"
@@ -112,7 +118,26 @@ mod __rt__ {
     #[cfg(feature="rt_glommio")]
     pub(crate) use futures_util::select;
 
-    pub(crate) fn spawn(task: impl std::future::Future<Output: Send + 'static> + Send + 'static) {
+    #[cfg(any(feature="rt_tokio"))]
+    pub(crate) const fn selectable<F: std::future::Future>(future: F) -> F {
+        future
+    }
+    #[cfg(any(feature="rt_async-std", feature="rt_smol", feature="rt_glommio"))]
+    pub(crate) fn selectable<F: std::future::Future>(future: F) -> ::futures_util::future::Fuse<F> {
+        ::futures_util::FutureExt::fuse(future)
+    }
+
+    #[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_smol"))]
+    mod task {
+        pub trait Task: std::future::Future<Output: Send + 'static> + Send + 'static {}
+        impl<F: std::future::Future<Output: Send + 'static> + Send + 'static> Task for F {}
+    }
+    #[cfg(any(feature="rt_glommio"))]
+    mod task {
+        pub trait Task: std::future::Future {}
+        impl<F: std::future::Future> Task for F {}
+    }
+    pub(crate) fn spawn(task: impl task::Task + 'static) {
         #[cfg(feature="rt_tokio")]
         tokio::task::spawn(task);
 
@@ -126,20 +151,6 @@ mod __rt__ {
         glommio::spawn_local(task).detach();
     }
 
-    pub(crate) fn spawn_blocking(task: impl FnOnce() + Send + 'static) {
-        #[cfg(feature="rt_tokio")]
-        tokio::task::spawn_blocking(task);
-
-        #[cfg(feature="rt_async-std")]
-        async_std::task::spawn_blocking(task);
-
-        #[cfg(feature="rt_smol")]
-        smol::spawn_blocking(task).detach();
-
-        #[cfg(feature="rt_glommio")]
-        glommio::spawn_local_blocking(task).detach();
-    }
-
     #[cfg(feature="testing")]
     #[cfg(test)]
     pub(crate) fn block_on(future: impl std::future::Future) {
@@ -150,13 +161,13 @@ mod __rt__ {
             .block_on(future);
 
         #[cfg(feature="rt_async-std")]
-        async_std::block_on(task);
+        async_std::task::block_on(future);
 
         #[cfg(feature="rt_smol")]
-        smol::block_on(task);
+        smol::block_on(future);
 
         #[cfg(feature="rt_glommio")]
-        glommio::block_on(task);
+        glommio::LocalExecutor::default().run(future);
     }
 }
 

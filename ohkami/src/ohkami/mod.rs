@@ -304,21 +304,14 @@ impl Ohkami {
     /// ```
     pub async fn howl(self, address: impl __rt__::ToSocketAddrs) {
         let router = Arc::new(self.into_router().finalize());
-
+        
         let listener = __rt__::bind(address).await;
 
         let (wg, inturrupt) = (sync::WaitGroup::new(), sync::CtrlC::new());
 
         loop {
-            let (accept, inturrupt) = (listener.accept(), inturrupt.inturrupted());
-
-            #[cfg(any(feature="rt_async-std", feature="rt_smol", feature="rt_glommio"))]
-            let (accept, inturrupt) = {use ::futures_util::FutureExt;
-                (accept.fuse(), inturrupt.fuse())
-            };
-
             __rt__::select! {
-                accept = accept => {
+                accept = __rt__::selectable(listener.accept()) => {
                     let (connection, addr) = {
                         #[cfg(any(feature="rt_tokio", feature="rt_async-std", feature="rt_smol"))] {
                             let Ok((connection, addr)) = accept else {continue};
@@ -343,7 +336,7 @@ impl Ohkami {
                         wg.done();
                     });
                 }
-                _ = inturrupt => {
+                _ = __rt__::selectable(inturrupt.inturrupted()) => {
                     crate::DEBUG!("Recieved Ctrl-C, trying graceful shutdown...");
                     drop(listener);
                     break
@@ -454,6 +447,7 @@ mod sync {
     };
 
     pub struct CtrlC;
+
     const _: () = {
         static INTURRUPTED: AtomicBool = AtomicBool::new(false);
 
@@ -462,8 +456,13 @@ mod sync {
 
         impl CtrlC {
             pub fn new() -> Self {
-                ::ctrlc::set_handler(|| INTURRUPTED.store(true, Ordering::Release))
-                    .expect("Something went wrong around Ctrl-C");
+
+                //std::sync::Once::new().call_once_force(|o| {
+                //    if o.is_poisoned() {return}
+                    ::ctrlc::try_set_handler(|| {
+                        INTURRUPTED.store(true, Ordering::Release)
+                    }).ok();//.expect("Something went wrong around Ctrl-C");
+                //});
                 Self
             }
 
@@ -473,9 +472,13 @@ mod sync {
                     type Output = ();
                     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
                         if INTURRUPTED.load(Ordering::Acquire) {
+                            crate::DEBUG!("[CtrlC::inturrupted] Ready");
                             Poll::Ready(())
                         } else {
+                            //crate::DEBUG!("[CtrlC::inturrupted] Pending");
+
                             cx.waker().wake_by_ref();
+
                             Poll::Pending
                         }
                     }
@@ -487,13 +490,13 @@ mod sync {
     };
 }
 
-#[cfg(feature="testing")]
+#[cfg(all(feature="testing", feature="__rt_native__"))]
 #[cfg(test)]
-#[test] fn can_howl() {
-    __rt__::block_on(
+#[test] fn can_howl_on_any_native_async_runtime() {
+    __rt__::block_on(async {
         crate::util::timeout_in(
             std::time::Duration::from_secs(3),
             Ohkami::new(()).howl("localhost:3000")
-        )
-    );
+        ).await
+    });
 }
