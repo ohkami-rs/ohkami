@@ -336,7 +336,7 @@ impl Ohkami {
                         wg.done();
                     });
                 }
-                _ = __rt__::selectable(inturrupt.inturrupted()) => {
+                _ = __rt__::selectable(inturrupt.catch()) => {
                     crate::DEBUG!("Recieved Ctrl-C, trying graceful shutdown...");
                     drop(listener);
                     break
@@ -394,11 +394,11 @@ impl Ohkami {
 
 #[cfg(feature="__rt_native__")]
 mod sync {
-    use std::sync::atomic::{AtomicUsize, AtomicBool, Ordering};
-    use std::ptr::NonNull;
+    use std::sync::atomic::{AtomicUsize, AtomicBool, AtomicPtr, Ordering};
+    use std::ptr::{NonNull, null_mut};
 
     use std::future::Future;
-    use std::task::{Context, Poll};
+    use std::task::{Context, Poll, Waker};
     use std::pin::Pin;
 
     pub struct WaitGroup(
@@ -412,6 +412,7 @@ mod sync {
             type Output = ();
             fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
                 if unsafe {self.0.as_ref()}.load(Ordering::Acquire) == 0 {
+                    crate::DEBUG!("[WaitGroup::poll] Ready");
                     Poll::Ready(())
                 } else {
                     cx.waker().wake_by_ref();
@@ -447,44 +448,46 @@ mod sync {
     };
 
     pub struct CtrlC;
-
     const _: () = {
-        static INTURRUPTED: AtomicBool = AtomicBool::new(false);
-
-        impl Copy for CtrlC {}
-        impl Clone for CtrlC {fn clone(&self) -> Self {Self}}
+        static CATCH: AtomicBool       = AtomicBool::new(false);
+        static WAKER: AtomicPtr<Waker> = AtomicPtr::new(null_mut());
 
         impl CtrlC {
-            pub fn new() -> Self {
-
-                //std::sync::Once::new().call_once_force(|o| {
-                //    if o.is_poisoned() {return}
-                    ::ctrlc::try_set_handler(|| {
-                        INTURRUPTED.store(true, Ordering::Release)
-                    }).ok();//.expect("Something went wrong around Ctrl-C");
-                //});
-                Self
-            }
-
-            pub const fn inturrupted(&self) -> impl Future<Output = ()> + 'static {
+            pub fn catch(&self) -> impl Future<Output = ()> + 'static {
                 struct Inturrupt;
                 impl Future for Inturrupt {
                     type Output = ();
                     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-                        if INTURRUPTED.load(Ordering::Acquire) {
-                            crate::DEBUG!("[CtrlC::inturrupted] Ready");
+                        if CATCH.load(Ordering::SeqCst) {
+                            crate::DEBUG!("[CtrlC::catch] Ready");
                             Poll::Ready(())
                         } else {
-                            //crate::DEBUG!("[CtrlC::inturrupted] Pending");
-
-                            cx.waker().wake_by_ref();
-
+                            let prev_waker = WAKER.swap(
+                                Box::into_raw(Box::new(cx.waker().clone())),
+                                // cx.waker() as *const Waker as *mut Waker,
+                                Ordering::SeqCst
+                            );
+                            if !prev_waker.is_null() {
+                                drop(unsafe {Box::from_raw(prev_waker)});
+                                //unsafe {prev_waker.drop_in_place()}
+                            }
                             Poll::Pending
                         }
                     }
                 }
-
                 Inturrupt
+            }
+
+            pub fn new() -> Self {
+                ::ctrlc::try_set_handler(|| {
+                    CATCH.store(true, Ordering::SeqCst);
+                    let waker = WAKER.swap(null_mut(), Ordering::SeqCst);
+                    if !waker.is_null() {
+                        unsafe {Box::from_raw(waker)}.wake();
+                        //unsafe {waker.read()}.wake();
+                    }
+                }).ok();//.expect("Something went wrong with Ctrl-C");
+                Self
             }
         }
     };
