@@ -131,6 +131,9 @@ mod session;
 use session::Session;
 
 #[cfg(feature="__rt__")]
+mod router;
+
+#[cfg(feature="__rt__")]
 mod ohkami;
 #[cfg(feature="__rt__")]
 pub use ohkami::{Ohkami, Route};
