@@ -50,9 +50,10 @@ compile_error! {"
 "}
 
 
-#[allow(unused)]
+#[cfg(feature="__rt_native__")]
 mod __rt__ {
-    #[cfg(all(feature="rt_tokio"))]
+    #[cfg(test)]
+    #[cfg(feature="rt_tokio")]
     pub(crate) use tokio::test;
 
     #[cfg(feature="rt_tokio")]
@@ -64,14 +65,14 @@ mod __rt__ {
     #[cfg(feature="rt_glommio")]
     pub(crate) use {glommio::net::{TcpListener, TcpStream}, std::net::ToSocketAddrs};
 
-    #[cfg(feature="rt_tokio")]
-    pub(crate) use tokio::task::spawn;
-    #[cfg(feature="rt_async-std")]
-    pub(crate) use async_std::task::spawn;
-    #[cfg(feature="rt_smol")]
-    pub(crate) use smol::spawn;
-    #[cfg(feature="rt_glommio")]
-    pub(crate) use glommio::spawn_local as spawn;
+    pub(crate) async fn bind(address: impl ToSocketAddrs) -> TcpListener {
+        let binded = TcpListener::bind(address);
+        
+        #[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_smol"))]
+        let binded = binded.await;
+        
+        binded.expect("Failed to bind TCP listener")
+    }
 
     #[cfg(feature="rt_tokio")]
     pub(crate) use tokio::time::sleep;
@@ -85,31 +86,83 @@ mod __rt__ {
     pub(crate) use glommio::timer::sleep;
 
     #[cfg(feature="rt_tokio")]
-    pub(crate) use tokio::io::AsyncReadExt as AsyncReader;
+    pub(crate) use tokio::io::AsyncReadExt as AsyncRead;
     #[cfg(feature="rt_async-std")]
-    pub(crate) use async_std::io::ReadExt as AsyncReader;
+    pub(crate) use async_std::io::ReadExt as AsyncRead;
     #[cfg(feature="rt_smol")]
-    pub(crate) use futures_util::AsyncReadExt as AsyncReader;
+    pub(crate) use futures_util::AsyncReadExt as AsyncRead;
     #[cfg(feature="rt_glommio")]
-    pub(crate) use futures_util::AsyncReadExt as AsyncReader;
+    pub(crate) use futures_util::AsyncReadExt as AsyncRead;
 
     #[cfg(feature="rt_tokio")]
-    pub(crate) use tokio::io::AsyncWriteExt as AsyncWriter;
+    pub(crate) use tokio::io::AsyncWriteExt as AsyncWrite;
     #[cfg(feature="rt_async-std")]
-    pub(crate) use async_std::io::WriteExt as AsyncWriter;
+    pub(crate) use async_std::io::WriteExt as AsyncWrite;
     #[cfg(feature="rt_smol")]
-    pub(crate) use futures_util::AsyncWriteExt as AsyncWriter;
+    pub(crate) use futures_util::AsyncWriteExt as AsyncWrite;
     #[cfg(feature="rt_glommio")]
-    pub(crate) use futures_util::AsyncWriteExt as AsyncWriter;
+    pub(crate) use futures_util::AsyncWriteExt as AsyncWrite;
 
     #[cfg(feature="rt_tokio")]
     pub(crate) use tokio::select;
     #[cfg(feature="rt_async-std")]
-    pub(crate) use futures_util::{select, FutureExt};
+    pub(crate) use futures_util::select;
     #[cfg(feature="rt_smol")]
-    pub(crate) use futures_util::{select, FutureExt};
+    pub(crate) use futures_util::select;
     #[cfg(feature="rt_glommio")]
-    pub(crate) use futures_util::{select, FutureExt};
+    pub(crate) use futures_util::select;
+
+    #[cfg(any(feature="rt_tokio"))]
+    pub(crate) const fn selectable<F: std::future::Future>(future: F) -> F {
+        future
+    }
+    #[cfg(any(feature="rt_async-std", feature="rt_smol", feature="rt_glommio"))]
+    pub(crate) fn selectable<F: std::future::Future>(future: F) -> ::futures_util::future::Fuse<F> {
+        ::futures_util::FutureExt::fuse(future)
+    }
+
+    #[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_smol"))]
+    mod task {
+        pub trait Task: std::future::Future<Output: Send + 'static> + Send + 'static {}
+        impl<F: std::future::Future<Output: Send + 'static> + Send + 'static> Task for F {}
+    }
+    #[cfg(any(feature="rt_glommio"))]
+    mod task {
+        pub trait Task: std::future::Future {}
+        impl<F: std::future::Future> Task for F {}
+    }
+    pub(crate) fn spawn(task: impl task::Task + 'static) {
+        #[cfg(feature="rt_tokio")]
+        tokio::task::spawn(task);
+
+        #[cfg(feature="rt_async-std")]
+        async_std::task::spawn(task);
+
+        #[cfg(feature="rt_smol")]
+        smol::spawn(task).detach();
+
+        #[cfg(feature="rt_glommio")]
+        glommio::spawn_local(task).detach();
+    }
+
+    #[cfg(feature="testing")]
+    #[cfg(test)]
+    pub(crate) fn block_on(future: impl std::future::Future) {
+        #[cfg(feature="rt_tokio")]
+        tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build().unwrap()
+            .block_on(future);
+
+        #[cfg(feature="rt_async-std")]
+        async_std::task::block_on(future);
+
+        #[cfg(feature="rt_smol")]
+        smol::block_on(future);
+
+        #[cfg(feature="rt_glommio")]
+        glommio::LocalExecutor::default().run(future);
+    }
 }
 
 

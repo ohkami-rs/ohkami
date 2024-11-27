@@ -19,7 +19,7 @@ use std::borrow::Cow;
 use ohkami_lib::{CowSlice, Slice};
 
 #[cfg(feature="__rt_native__")]
-use crate::__rt__::AsyncWriter;
+use crate::__rt__::AsyncWrite;
 #[cfg(feature="sse")]
 use crate::util::StreamExt;
 
@@ -329,7 +329,7 @@ impl Upgrade {
 impl Response {
     #[cfg_attr(not(feature="sse"), inline)]
     pub(crate) async fn send(mut self,
-        conn: &mut (impl AsyncWriter + Unpin)
+        conn: &mut (impl AsyncWrite + Unpin)
     ) -> Upgrade {
         self.complete();
 

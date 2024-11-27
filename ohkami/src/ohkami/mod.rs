@@ -12,7 +12,7 @@ use crate::router::base::Router;
 use std::sync::Arc;
 
 #[cfg(feature="__rt_native__")]
-use {crate::{__rt__, Session}, ohkami_lib::signal};
+use crate::{__rt__, Session};
 
 /// # Ohkami - a robust wolf who serves your web app
 /// 
@@ -227,6 +227,19 @@ impl Ohkami {
         }
     }
 
+    pub(crate) fn into_router(self) -> Router {
+        let Self { routes: mut router, fangs } = self;
+
+        if let Some(fangs) = fangs {
+            router.apply_fangs(router.id(), fangs);
+        }
+
+        #[cfg(feature="DEBUG")]
+        println!("{router:#?}");
+
+        router
+    }
+
     #[cfg(feature="__rt_native__")]
     /// Start serving at `address`!
     /// 
@@ -291,140 +304,48 @@ impl Ohkami {
     /// ```
     pub async fn howl(self, address: impl __rt__::ToSocketAddrs) {
         let router = Arc::new(self.into_router().finalize());
-
-        #[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_smol"))]
-        let listener = __rt__::TcpListener::bind(address).await.expect("Failed to bind TCP listener");
-        #[cfg(any(feature="rt_glommio"))]
-        let listener = __rt__::TcpListener::bind(address).expect("Failed to bind TCP listener");
         
-        let (close_tx, close_rx) = signal::watch::channel(());
+        let listener = __rt__::bind(address).await;
 
-        let ctrl_c = signal::ctrl_c();
-        let (ctrl_c_tx, ctrl_c_rx) = signal::watch::channel(());
+        let (wg, inturrupt) = (sync::WaitGroup::new(), sync::CtrlC::new());
 
-        #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
-        __rt__::spawn(async {
-            ctrl_c.await.expect("Something was wrong around Ctrl-C");
-            drop(ctrl_c_rx);
-        });
-        #[cfg(any(feature="rt_smol",feature="rt_glommio"))]
-        __rt__::spawn(async {
-            ctrl_c.await.expect("Something was wrong around Ctrl-C");
-            drop(ctrl_c_rx);
-        }).detach();
+        loop {
+            __rt__::select! {
+                accept = __rt__::selectable(listener.accept()) => {
+                    let (connection, addr) = {
+                        #[cfg(any(feature="rt_tokio", feature="rt_async-std", feature="rt_smol"))] {
+                            let Ok((connection, addr)) = accept else {continue};
+                            (connection, addr)
+                        }
+                        #[cfg(any(feature="rt_glommio"))] {
+                            let Ok(connection) = accept else {continue};
+                            let Ok(addr) = connection.peer_addr() else {continue};
+                            (connection, addr)
+                        }
+                    };
 
-        #[cfg(feature="rt_tokio")] {
-            loop {
-                __rt__::select! {
-                    accept = listener.accept() => {
-                        let Ok((connection, addr)) = accept else {continue};
+                    let session = Session::new(
+                        router.clone(),
+                        connection,
+                        addr.ip()
+                    );
 
-                        let session = Session::new(
-                            router.clone(),
-                            connection,
-                            addr.ip()
-                        );
-
-                        let close_rx = close_rx.clone();
-                        __rt__::spawn(async {
-                            session.manage().await;
-                            drop(close_rx)
-                        });
-                    }
-                    _ = ctrl_c_tx.closed() => {
-                        crate::DEBUG!("Recieved Ctrl-C, trying graceful shutdown");
-                        drop(listener);
-                        break
-                    }
+                    let wg = wg.add();
+                    __rt__::spawn(async move {
+                        session.manage().await;
+                        wg.done();
+                    });
+                }
+                _ = __rt__::selectable(inturrupt.catch()) => {
+                    crate::DEBUG!("Recieved Ctrl-C, trying graceful shutdown...");
+                    drop(listener);
+                    break
                 }
             }
         }
 
-        #[cfg(feature="rt_async-std")] {
-            loop {
-                __rt__::select! {
-                    accept = __rt__::FutureExt::fuse(listener.accept()) => {
-                        let Ok((connection, addr)) = accept else {continue};
-
-                        let session = Session::new(
-                            router.clone(),
-                            connection,
-                            addr.ip()
-                        );
-
-                        let close_rx = close_rx.clone();
-                        __rt__::spawn(async {
-                            session.manage().await;
-                            drop(close_rx)
-                        });
-                    }
-                    _ = __rt__::FutureExt::fuse(ctrl_c_tx.closed()) => {
-                        crate::DEBUG!("Recieved Ctrl-C, trying graceful shutdown");
-                        drop(listener);
-                        break
-                    }
-                }
-            }
-        }
-        
-        #[cfg(feature="rt_smol")] {
-            loop {
-                __rt__::select! {
-                    accept = __rt__::FutureExt::fuse(listener.accept()) => {
-                        let Ok((connection, addr)) = accept else {continue};
-
-                        let session = Session::new(
-                            router.clone(),
-                            connection,
-                            addr.ip()
-                        );
-
-                        let close_rx = close_rx.clone();
-                        __rt__::spawn(async {
-                            session.manage().await;
-                            drop(close_rx)
-                        }).detach();
-                    }
-                    _ = __rt__::FutureExt::fuse(ctrl_c_tx.closed()) => {
-                        crate::DEBUG!("Recieved Ctrl-C, trying graceful shutdown");
-                        drop(listener);
-                        break
-                    }
-                }
-            }
-        }
-
-        #[cfg(feature="rt_glommio")] {
-            loop {
-                __rt__::select! {
-                    accept = __rt__::FutureExt::fuse(listener.accept()) => {
-                        let Ok(connection) = accept else {continue};
-                        let Ok(addr) = connection.peer_addr() else {continue};
-        
-                        let session = Session::new(
-                            router.clone(),
-                            connection,
-                            addr.ip()
-                        );
-
-                        let close_rx = close_rx.clone();
-                        __rt__::spawn(async {
-                            session.manage().await;
-                            drop(close_rx)
-                        }).detach();
-                    }
-                    _ = __rt__::FutureExt::fuse(ctrl_c_tx.closed()) => {
-                        crate::DEBUG!("Recieved Ctrl-C, trying graceful shutdown");
-                        drop(listener);
-                        break
-                    }
-                }
-            }
-        }
-
-        crate::DEBUG!("Waiting {} session(s) to finish...", close_tx.receiver_count());
-        drop(close_rx);
-        close_tx.closed().await;
+        crate::DEBUG!("Waiting {} session(s) to finish...", wg.count());
+        wg.await;
     }
 
     #[cfg(feature="rt_worker")]
@@ -471,17 +392,148 @@ impl Ohkami {
     }
 }
 
-impl Ohkami {
-    pub(crate) fn into_router(self) -> Router {
-        let Self { routes: mut router, fangs } = self;
+#[cfg(feature="__rt_native__")]
+mod sync {
+    pub struct WaitGroup(std::ptr::NonNull<
+        std::sync::atomic::AtomicUsize
+    >);
+    const _: () = {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        use std::ptr::NonNull;
+        use std::future::Future;
+        use std::task::{Context, Poll};
+        use std::pin::Pin;
 
-        if let Some(fangs) = fangs {
-            router.apply_fangs(router.id(), fangs);
+        unsafe impl Send for WaitGroup {}
+        unsafe impl Sync for WaitGroup {}
+
+        impl Future for WaitGroup {
+            type Output = ();
+            fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+                if unsafe {self.0.as_ref()}.load(Ordering::Acquire) == 0 {
+                    crate::DEBUG!("[WaitGroup::poll] Ready");
+                    Poll::Ready(())
+                } else {
+                    cx.waker().wake_by_ref();
+                    Poll::Pending
+                }
+            }
         }
 
-        #[cfg(feature="DEBUG")]
-        println!("{router:#?}");
+        impl WaitGroup {
+            pub fn new() -> Self {
+                let n = AtomicUsize::new(0);
+                let n = Box::leak(Box::new(n));
+                Self(NonNull::new(n).unwrap())
+            }
 
-        router
-    }
+            #[cfg(feature="DEBUG")]
+            pub fn count(&self) -> usize {
+                unsafe {self.0.as_ref()}.load(Ordering::Relaxed)
+            }
+
+            #[inline]
+            pub fn add(&self) -> Self {
+                let ptr = self.0;
+                unsafe {ptr.as_ref()}.fetch_add(1, Ordering::Relaxed);
+                Self(ptr)
+            }
+
+            #[inline]
+            pub fn done(&self) {
+                unsafe {self.0.as_ref()}.fetch_sub(1, Ordering::Release);
+            }
+        }
+    };
+
+    pub struct CtrlC;
+    const _: () = {
+        use std::sync::atomic::{AtomicBool, Ordering};
+        use std::future::Future;
+        use std::task::{Context, Poll, Waker};
+        use std::pin::Pin;
+
+        #[cfg(any(feature="rt_tokio", feature="rt_async-std", feature="rt_smol"))]
+        use std::{sync::atomic::AtomicPtr, ptr::null_mut};
+        #[cfg(any(feature="rt_glommio"))]
+        use std::sync::Mutex;
+    
+        #[cfg(any(feature="rt_tokio", feature="rt_async-std", feature="rt_smol"))]
+        static WAKER: AtomicPtr<Waker> = AtomicPtr::new(null_mut());
+        #[cfg(any(feature="rt_glommio"))]
+        static WAKER: Mutex<Vec<(usize, Waker)>> = Mutex::new(Vec::new());
+
+        static CATCH: AtomicBool = AtomicBool::new(false);
+
+        impl CtrlC {
+            pub fn catch(&self) -> impl Future<Output = ()> + 'static {
+                return Inturrupt;
+
+                struct Inturrupt;
+                impl Future for Inturrupt {
+                    type Output = ();
+                    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+                        if CATCH.load(Ordering::SeqCst) {
+                            crate::DEBUG!("[CtrlC::catch] Ready");
+                            Poll::Ready(())
+                        } else {
+                            #[cfg(any(feature="rt_tokio", feature="rt_async-std", feature="rt_smol"))] {
+                                let prev_waker = WAKER.swap(
+                                    Box::into_raw(Box::new(cx.waker().clone())),
+                                    Ordering::SeqCst
+                                );
+                                if !prev_waker.is_null() {
+                                    unsafe {prev_waker.drop_in_place()}
+                                }
+                            }
+                            #[cfg(any(feature="rt_glommio"))] {
+                                let current_id = glommio::executor().id();
+                                let current_waker = cx.waker().clone();
+                                let mut lock = WAKER.lock().unwrap();
+                                match lock.iter_mut().find(|(id, _)| (*id == current_id)) {
+                                    Some(prev) => *prev = (current_id, current_waker),
+                                    None       => lock.push((current_id, current_waker)),
+                                }
+                            }
+                            Poll::Pending
+                        }
+                    }
+                }
+            }
+
+            pub fn new() -> Self {
+                #[cfg(any(feature="rt_tokio", feature="rt_async-std", feature="rt_smol"))]
+                ::ctrlc::set_handler(|| {
+                    CATCH.store(true, Ordering::SeqCst);
+                    let waker = WAKER.swap(null_mut(), Ordering::SeqCst);
+                    if !waker.is_null() {
+                        unsafe {Box::from_raw(waker)}.wake();
+                    }
+                }).expect("Something went wrong with Ctrl-C");
+
+                #[cfg(any(feature="rt_glommio"))]
+                ::ctrlc::try_set_handler(|| {
+                    CATCH.store(true, Ordering::SeqCst);
+                    let lock = &mut *WAKER.lock().unwrap();
+                    crate::DEBUG!("Finally {} executors on {} CPU", lock.len(), num_cpus::get());
+                    for (_, w) in std::mem::take(lock) {
+                        w.wake();
+                    }
+                }).ok();
+
+                Self
+            }
+        }
+    };
+}
+
+#[cfg(all(feature="testing", feature="__rt_native__"))]
+#[cfg(test)]
+#[test] fn can_howl_on_any_native_async_runtime() {
+    __rt__::block_on(async {
+        crate::util::timeout_in(
+            std::time::Duration::from_secs(3),
+            Ohkami::new(()).howl("localhost:3000")
+        ).await
+    });
 }

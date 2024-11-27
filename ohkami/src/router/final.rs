@@ -135,15 +135,15 @@ impl Pattern {
         bytes: &'b [u8],
         path:  &mut Path
     ) -> Option<&'b [u8]/* remaining part of `bytes` */> {
-        crate::DEBUG!("[Pattern::take_through] self: `{self:?}`, bytes: '{}'", bytes.escape_ascii());
+        //crate::DEBUG!("[Pattern::take_through] self: `{self:?}`, bytes: '{}'", bytes.escape_ascii());
         match self {
             Pattern::Static(s) => {
                 let size = s.len();
                 if bytes.len() >= size && *s == unsafe {bytes.get_unchecked(..size)} {
-                    crate::DEBUG!("[Pattern::take_through] Static => remaining = Some('{}')", bytes[size..].escape_ascii());
+                    //crate::DEBUG!("[Pattern::take_through] Static => remaining = Some('{}')", bytes[size..].escape_ascii());
                     Some(unsafe {bytes.get_unchecked(size..)})
                 } else {
-                    crate::DEBUG!("[Pattern::take_through] Static => remaining = None");
+                    //crate::DEBUG!("[Pattern::take_through] Static => remaining = None");
                     None
                 }
             }
@@ -153,10 +153,10 @@ impl Pattern {
                 && *unsafe {bytes.get_unchecked(1)} != b'/' {
                     let (param, remaining) = util::split_next_section(unsafe {bytes.get_unchecked(1..)});
                     unsafe {path.push_param(Slice::from_bytes(param))};
-                    crate::DEBUG!("[Pattern::take_through] Param => remaining = Some('{}')", remaining.escape_ascii());
+                    //crate::DEBUG!("[Pattern::take_through] Param => remaining = Some('{}')", remaining.escape_ascii());
                     Some(remaining)
                 } else {
-                    crate::DEBUG!("[Pattern::take_through] Param => remaining = None");
+                    //crate::DEBUG!("[Pattern::take_through] Param => remaining = None");
                     None
                 }
             }

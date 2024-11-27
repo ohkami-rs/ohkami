@@ -20,5 +20,3 @@ pub mod stream;
 #[cfg(feature="stream")]
 pub use stream::{Stream, StreamExt};
 
-#[cfg(feature="signal")]
-pub mod signal;
