@@ -394,17 +394,16 @@ impl Ohkami {
 
 #[cfg(feature="__rt_native__")]
 mod sync {
-    use std::sync::atomic::{AtomicUsize, AtomicBool, AtomicPtr, Ordering};
-    use std::ptr::{NonNull, null_mut};
-
-    use std::future::Future;
-    use std::task::{Context, Poll, Waker};
-    use std::pin::Pin;
-
-    pub struct WaitGroup(
-        NonNull<AtomicUsize>
-    );
+    pub struct WaitGroup(std::ptr::NonNull<
+        std::sync::atomic::AtomicUsize
+    >);
     const _: () = {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        use std::ptr::NonNull;
+        use std::future::Future;
+        use std::task::{Context, Poll};
+        use std::pin::Pin;
+
         unsafe impl Send for WaitGroup {}
         unsafe impl Sync for WaitGroup {}
 
@@ -449,11 +448,27 @@ mod sync {
 
     pub struct CtrlC;
     const _: () = {
-        static CATCH: AtomicBool       = AtomicBool::new(false);
+        use std::sync::atomic::{AtomicBool, Ordering};
+        use std::future::Future;
+        use std::task::{Context, Poll, Waker};
+        use std::pin::Pin;
+
+        #[cfg(any(feature="rt_tokio", feature="rt_async-std", feature="rt_smol"))]
+        use std::{sync::atomic::AtomicPtr, ptr::null_mut};
+        #[cfg(any(feature="rt_glommio"))]
+        use std::sync::Mutex;
+    
+        #[cfg(any(feature="rt_tokio", feature="rt_async-std", feature="rt_smol"))]
         static WAKER: AtomicPtr<Waker> = AtomicPtr::new(null_mut());
+        #[cfg(any(feature="rt_glommio"))]
+        static WAKER: Mutex<Vec<(usize, Waker)>> = Mutex::new(Vec::new());
+
+        static CATCH: AtomicBool = AtomicBool::new(false);
 
         impl CtrlC {
             pub fn catch(&self) -> impl Future<Output = ()> + 'static {
+                return Inturrupt;
+
                 struct Inturrupt;
                 impl Future for Inturrupt {
                     type Output = ();
@@ -462,31 +477,50 @@ mod sync {
                             crate::DEBUG!("[CtrlC::catch] Ready");
                             Poll::Ready(())
                         } else {
-                            let prev_waker = WAKER.swap(
-                                Box::into_raw(Box::new(cx.waker().clone())),
-                                // cx.waker() as *const Waker as *mut Waker,
-                                Ordering::SeqCst
-                            );
-                            if !prev_waker.is_null() {
-                                drop(unsafe {Box::from_raw(prev_waker)});
-                                //unsafe {prev_waker.drop_in_place()}
+                            #[cfg(any(feature="rt_tokio", feature="rt_async-std", feature="rt_smol"))] {
+                                let prev_waker = WAKER.swap(
+                                    cx.waker() as *const Waker as *mut Waker,
+                                    Ordering::SeqCst
+                                );
+                                if !prev_waker.is_null() {
+                                    unsafe {prev_waker.drop_in_place()}
+                                }
+                            }
+                            #[cfg(any(feature="rt_glommio"))] {
+                                let current_id = glommio::executor().id();
+                                let current_waker = cx.waker().clone();
+                                let mut lock = WAKER.lock().unwrap();
+                                match lock.iter_mut().find(|(id, _)| (*id == current_id)) {
+                                    Some(prev) => *prev = (current_id, current_waker),
+                                    None       => lock.push((current_id, current_waker)),
+                                }
                             }
                             Poll::Pending
                         }
                     }
                 }
-                Inturrupt
             }
 
             pub fn new() -> Self {
-                ::ctrlc::try_set_handler(|| {
+                #[cfg(any(feature="rt_tokio", feature="rt_async-std", feature="rt_smol"))]
+                ::ctrlc::set_handler(|| {
                     CATCH.store(true, Ordering::SeqCst);
                     let waker = WAKER.swap(null_mut(), Ordering::SeqCst);
                     if !waker.is_null() {
-                        unsafe {Box::from_raw(waker)}.wake();
-                        //unsafe {waker.read()}.wake();
+                        unsafe {waker.read()}.wake();
                     }
-                }).ok();//.expect("Something went wrong with Ctrl-C");
+                }).expect("Something went wrong with Ctrl-C");
+
+                #[cfg(any(feature="rt_glommio"))]
+                ::ctrlc::try_set_handler(|| {
+                    CATCH.store(true, Ordering::SeqCst);
+                    let lock = &mut *WAKER.lock().unwrap();
+                    crate::DEBUG!("Finally {} executors on {} CPU", lock.len(), num_cpus::get());
+                    for (_, w) in std::mem::take(lock) {
+                        w.wake();
+                    }
+                }).ok();
+
                 Self
             }
         }
