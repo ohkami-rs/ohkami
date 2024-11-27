@@ -42,12 +42,6 @@
     Can't activate multiple `rt_*` features at once!
 "}
 
-#[cfg(all(feature="sse", not(feature="__rt__")))]
-compile_error! {"Can't activate `sse` feature without a `rt_*` feature"}
-
-#[cfg(all(feature="ws", not(feature="__rt__")))]
-compile_error! {"Can't activate `ws` feature without a `rt_*` feature"}
-
 #[cfg(not(feature="DEBUG"))]
 #[cfg(all(feature="rt_worker", not(target_arch="wasm32")))]
 compile_error! {"
