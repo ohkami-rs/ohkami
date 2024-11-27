@@ -15,14 +15,14 @@ tasks:
       - task: test:examples
       - task: test:doc
       - task: test:no_rt
-      - for:  [tokio, async-std, smol, glommio, worker]
+      - for:  [tokio, async-std, smol, nio, glommio, worker]
         task: test:rt
         vars: { rt: '{{.ITEM}}' }
 
   check:
     deps:
       - task: check:no_rt
-      - for:  [tokio, async-std, smol, glommio]
+      - for:  [tokio, async-std, smol, nio, glommio]
         task: check:native_rt
         vars: { native_rt: '{{.ITEM}}' }
       - task: check:rt_worker
@@ -32,10 +32,9 @@ tasks:
       - (! cargo version | grep -q 'nightly')
     cmds:
       - cd benches && cargo bench --features DEBUG --no-run
-      - cd benches_rt/glommio && cargo check
-      - cd benches_rt/smol && cargo check
-      - cd benches_rt/tokio && cargo check
       - cd benches_rt/vs_actix-web && cargo check
+      - for: [tokio, smol, nio, glommio]
+        cmd: cd benches_rt/{{.ITEM}} && cargo check
 
   bench:
     status:

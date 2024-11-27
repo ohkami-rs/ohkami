@@ -11,7 +11,7 @@
 //! <br>
 //! 
 //! - *macro-less and type-safe* APIs for intuitive and declarative code
-//! - *multi runtimes* are supported：`tokio`, `async-std`, `worker` (Cloudflare Workers)
+//! - *multi runtimes* are supported：`tokio`, `async-std`, `smol`, `nio`, `glommio`, `worker` (Cloudflare Workers)
 //! 
 //! <div align="right">
 //!     <a href="https://github.com/ohkami-rs/ohkami/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/crates/l/ohkami.svg" /></a>
@@ -28,12 +28,12 @@
 
 
 #[cfg(any(
-    all(feature="rt_tokio",     any(feature="rt_async-std", feature="rt_smol",      feature="rt_nio",       feature="rt_glommio",   feature="rt_worker"   )),
-    all(feature="rt_async-std", any(feature="rt_smol",      feature="rt_nio",       feature="rt_glommio",   feature="rt_worker",    feature="rt_tokio"    )),
-    all(feature="rt_smol",      any(feature="rt_nio",       feature="rt_glommio",   feature="rt_worker",    feature="rt_tokio",     feature="rt_async-std")),
-    all(feature="rt_nio",       any(feature="rt_glommio",   feature="rt_worker",    feature="rt_tokio",     feature="rt_async-std", feature="rt_smol"     )),
-    all(feature="rt_glommio",   any(feature="rt_worker",    feature="rt_tokio",     feature="rt_async-std", feature="rt_smol",      feature="rt_nio"      )),
-    all(feature="rt_worker",    any(feature="rt_tokio",     feature="rt_async-std", feature="rt_smol",      feature="rt_nio",       feature="rt_glommio"  )),
+    all(feature="rt_tokio",      any(feature="rt_async-std", feature="rt_smol",      feature="rt_nio",       feature="rt_glommio",   feature="rt_worker"   )),
+    all(feature="rt_async-std",  any(feature="rt_smol",      feature="rt_nio",       feature="rt_glommio",   feature="rt_worker",    feature="rt_tokio"    )),
+    all(feature="rt_smol",       any(feature="rt_nio",       feature="rt_glommio",   feature="rt_worker",    feature="rt_tokio",     feature="rt_async-std")),
+    all(feature="rt_nio",        any(feature="rt_glommio",   feature="rt_worker",    feature="rt_tokio",     feature="rt_async-std", feature="rt_smol"     )),
+    all(feature="rt_glommio",    any(feature="rt_worker",    feature="rt_tokio",     feature="rt_async-std", feature="rt_smol",      feature="rt_nio"      )),
+    all(feature="rt_worker",     any(feature="rt_tokio",     feature="rt_async-std", feature="rt_smol",      feature="rt_nio",       feature="rt_glommio"  )),
 ))] compile_error! {"
     Can't activate multiple `rt_*` features at once!
 "}
@@ -154,29 +154,38 @@ mod __rt__ {
         glommio::spawn_local(task).detach();
     }
 
-    #[cfg(feature="testing")]
-    #[cfg(test)]
-    pub(crate) fn block_on(future: impl std::future::Future) {
-        #[cfg(feature="rt_tokio")]
-        tokio::runtime::Builder::new_current_thread()
-            .enable_all()
-            .build().unwrap()
-            .block_on(future);
+    #[cfg(all(test, feature="testing"))]
+    pub(crate) mod testing {
+        pub(crate) fn block_on(future: impl std::future::Future) {
+            #[cfg(feature="rt_tokio")]
+            tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build().unwrap()
+                .block_on(future);
 
-        #[cfg(feature="rt_async-std")]
-        async_std::task::block_on(future);
+            #[cfg(feature="rt_async-std")]
+            async_std::task::block_on(future);
 
-        #[cfg(feature="rt_smol")]
-        smol::block_on(future);
+            #[cfg(feature="rt_smol")]
+            smol::block_on(future);
 
-        #[cfg(feature="rt_nio")]
-        nio::runtime::Builder::new_multi_thread()
-            .enable_all()
-            .build().unwrap()
-            .block_on(future);
+            #[cfg(feature="rt_nio")]
+            nio::runtime::Builder::new_multi_thread()
+                .enable_all()
+                .build().unwrap()
+                .block_on(future);
 
-        #[cfg(feature="rt_glommio")]
-        glommio::LocalExecutor::default().run(future);
+            #[cfg(feature="rt_glommio")]
+            glommio::LocalExecutor::default().run(future);
+        }
+
+        pub(crate) const PORT: u16 = {
+            #[cfg(feature="rt_tokio")    ] {3001}
+            #[cfg(feature="rt_async-std")] {3002}
+            #[cfg(feature="rt_smol")     ] {3003}
+            #[cfg(feature="rt_nio")      ] {3004}
+            #[cfg(feature="rt_glommio")  ] {3005}
+        };
     }
 }
 

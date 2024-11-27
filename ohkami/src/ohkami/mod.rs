@@ -14,7 +14,7 @@ use std::sync::Arc;
 #[cfg(feature="__rt_native__")]
 use crate::{__rt__, Session};
 
-/// # Ohkami - a robust wolf who serves your web app
+/// # Ohkami - a smart wolf who serves your web app
 /// 
 /// <br>
 /// 
@@ -105,8 +105,9 @@ use crate::{__rt__, Session};
 /// `async ({path_params}?, {FromRequest type}s...) -> {IntoResponse type}`
 /// 
 /// #### path_params：
-/// A tuple of types that implement `FromParam` trait.\
-/// If the path contains only one parameter, then you can omit the tuple.\
+/// A tuple of types that implement `FromParam` trait e.g. `(&str, usize)`.\
+/// If the path contains only one parameter, then you can omit the tuple \
+/// e.g. just `param: &str`.\
 /// (In current ohkami, at most *2* path params can be handled.)
 /// 
 /// <br>
@@ -248,7 +249,7 @@ impl Ohkami {
     /// - `tokio::net::ToSocketAddrs` if using `tokio`
     /// - `async_std::net::ToSocketAddrs` if using `async-std`
     /// - `smol::net::AsyncToSocketAddrs` if using `smol`
-    /// - `std::net::ToSocketAddrs` if using `glommio`
+    /// - `std::net::ToSocketAddrs` if using `nio` or `glommio`
     /// 
     /// *note* : Keep-Alive timeout is 42 seconds and this is not
     /// configureable by user (it'll be in future version...)
@@ -530,10 +531,10 @@ mod sync {
 #[cfg(all(feature="testing", feature="__rt_native__"))]
 #[cfg(test)]
 #[test] fn can_howl_on_any_native_async_runtime() {
-    __rt__::block_on(async {
+    __rt__::testing::block_on(async {
         crate::util::timeout_in(
             std::time::Duration::from_secs(3),
-            Ohkami::new(()).howl("localhost:3000")
+            Ohkami::new(()).howl(("localhost", __rt__::testing::PORT))
         ).await
     });
 }
