@@ -24,6 +24,7 @@ ohkami_macros = { version = "=0.21.0", path = "../ohkami_macros" }
 tokio         = { version = "1",   optional = true, features = ["rt", "net", "time"] }
 async-std     = { version = "1",   optional = true }
 smol          = { version = "2",   optional = true }
+nio           = { version = "0.0", optional = true }
 glommio       = { version = "0.9", optional = true }
 worker        = { version = "0.4", optional = true }
 
@@ -39,16 +40,17 @@ sha2          = { version = "0.10", default-features = false }
 ctrlc         = { version = "3.4",  optional = true }
 num_cpus      = { version = "1.16", optional = true }
 futures-util  = { version = "0.3",  optional = true, default-features = false, features = ["io", "async-await-macro"] }
-mews          = { version = "0.1",  optional = true }
+mews          = { version = "0.2",  optional = true }
 
 
 [features]
 default       = ["testing"]
 
-rt_tokio      = ["__rt__", "__rt_native__", "dep:tokio",     "tokio/io-util", "tokio/macros",    "mews?/tokio"]
-rt_async-std  = ["__rt__", "__rt_native__", "dep:async-std", "dep:futures-util",                 "mews?/async-std"]
-rt_smol       = ["__rt__", "__rt_native__", "dep:smol",      "dep:futures-util",                 "mews?/smol"]
-rt_glommio    = ["__rt__", "__rt_native__", "dep:glommio",   "dep:futures-util", "dep:num_cpus", "mews?/glommio"]
+rt_tokio      = ["__rt__", "__rt_native__", "dep:tokio",     "tokio/io-util", "tokio/macros",    "mews?/rt_tokio"    ]
+rt_async-std  = ["__rt__", "__rt_native__", "dep:async-std", "dep:futures-util",                 "mews?/rt_async-std"]
+rt_smol       = ["__rt__", "__rt_native__", "dep:smol",      "dep:futures-util",                 "mews?/rt_smol"     ]
+rt_nio        = ["__rt__", "__rt_native__", "dep:nio",       "dep:tokio", "tokio/io-util",       "mews?/rt_nio"      ]
+rt_glommio    = ["__rt__", "__rt_native__", "dep:glommio",   "dep:futures-util", "dep:num_cpus", "mews?/rt_glommio"  ]
 rt_worker     = ["__rt__", "dep:worker", "ohkami_macros/worker"]
 
 nightly       = []
@@ -70,6 +72,7 @@ DEBUG = ["tokio?/rt-multi-thread"]
 #    "rt_tokio",
 #    #"rt_async-std",
 #    #"rt_smol",
+#    #"rt_nio",
 #    #"rt_glommio",
 #    #"rt_worker",
 #    #"DEBUG",

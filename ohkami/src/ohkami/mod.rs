@@ -14,7 +14,7 @@ use std::sync::Arc;
 #[cfg(feature="__rt_native__")]
 use crate::{__rt__, Session};
 
-/// # Ohkami - a robust wolf who serves your web app
+/// # Ohkami - a smart wolf who serves your web app
 /// 
 /// <br>
 /// 
@@ -105,8 +105,9 @@ use crate::{__rt__, Session};
 /// `async ({path_params}?, {FromRequest type}s...) -> {IntoResponse type}`
 /// 
 /// #### path_params：
-/// A tuple of types that implement `FromParam` trait.\
-/// If the path contains only one parameter, then you can omit the tuple.\
+/// A tuple of types that implement `FromParam` trait e.g. `(&str, usize)`.\
+/// If the path contains only one parameter, then you can omit the tuple \
+/// e.g. just `param: &str`.\
 /// (In current ohkami, at most *2* path params can be handled.)
 /// 
 /// <br>
@@ -248,7 +249,7 @@ impl Ohkami {
     /// - `tokio::net::ToSocketAddrs` if using `tokio`
     /// - `async_std::net::ToSocketAddrs` if using `async-std`
     /// - `smol::net::AsyncToSocketAddrs` if using `smol`
-    /// - `std::net::ToSocketAddrs` if using `glommio`
+    /// - `std::net::ToSocketAddrs` if using `nio` or `glommio`
     /// 
     /// *note* : Keep-Alive timeout is 42 seconds and this is not
     /// configureable by user (it'll be in future version...)
@@ -313,7 +314,7 @@ impl Ohkami {
             __rt__::select! {
                 accept = __rt__::selectable(listener.accept()) => {
                     let (connection, addr) = {
-                        #[cfg(any(feature="rt_tokio", feature="rt_async-std", feature="rt_smol"))] {
+                        #[cfg(any(feature="rt_tokio", feature="rt_async-std", feature="rt_smol", feature="rt_nio"))] {
                             let Ok((connection, addr)) = accept else {continue};
                             (connection, addr)
                         }
@@ -453,12 +454,12 @@ mod sync {
         use std::task::{Context, Poll, Waker};
         use std::pin::Pin;
 
-        #[cfg(any(feature="rt_tokio", feature="rt_async-std", feature="rt_smol"))]
+        #[cfg(any(feature="rt_tokio", feature="rt_async-std", feature="rt_smol", feature="rt_nio"))]
         use std::{sync::atomic::AtomicPtr, ptr::null_mut};
         #[cfg(any(feature="rt_glommio"))]
         use std::sync::Mutex;
     
-        #[cfg(any(feature="rt_tokio", feature="rt_async-std", feature="rt_smol"))]
+        #[cfg(any(feature="rt_tokio", feature="rt_async-std", feature="rt_smol", feature="rt_nio"))]
         static WAKER: AtomicPtr<Waker> = AtomicPtr::new(null_mut());
         #[cfg(any(feature="rt_glommio"))]
         static WAKER: Mutex<Vec<(usize, Waker)>> = Mutex::new(Vec::new());
@@ -477,7 +478,7 @@ mod sync {
                             crate::DEBUG!("[CtrlC::catch] Ready");
                             Poll::Ready(())
                         } else {
-                            #[cfg(any(feature="rt_tokio", feature="rt_async-std", feature="rt_smol"))] {
+                            #[cfg(any(feature="rt_tokio", feature="rt_async-std", feature="rt_smol", feature="rt_nio"))] {
                                 let prev_waker = WAKER.swap(
                                     Box::into_raw(Box::new(cx.waker().clone())),
                                     Ordering::SeqCst
@@ -502,7 +503,7 @@ mod sync {
             }
 
             pub fn new() -> Self {
-                #[cfg(any(feature="rt_tokio", feature="rt_async-std", feature="rt_smol"))]
+                #[cfg(any(feature="rt_tokio", feature="rt_async-std", feature="rt_smol", feature="rt_nio"))]
                 ::ctrlc::set_handler(|| {
                     CATCH.store(true, Ordering::SeqCst);
                     let waker = WAKER.swap(null_mut(), Ordering::SeqCst);
@@ -530,10 +531,10 @@ mod sync {
 #[cfg(all(feature="testing", feature="__rt_native__"))]
 #[cfg(test)]
 #[test] fn can_howl_on_any_native_async_runtime() {
-    __rt__::block_on(async {
+    __rt__::testing::block_on(async {
         crate::util::timeout_in(
             std::time::Duration::from_secs(3),
-            Ohkami::new(()).howl("localhost:3000")
+            Ohkami::new(()).howl(("localhost", __rt__::testing::PORT))
         ).await
     });
 }
