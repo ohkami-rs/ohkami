@@ -479,7 +479,7 @@ mod sync {
                         } else {
                             #[cfg(any(feature="rt_tokio", feature="rt_async-std", feature="rt_smol"))] {
                                 let prev_waker = WAKER.swap(
-                                    cx.waker() as *const Waker as *mut Waker,
+                                    Box::into_raw(Box::new(cx.waker().clone())),
                                     Ordering::SeqCst
                                 );
                                 if !prev_waker.is_null() {
@@ -507,7 +507,7 @@ mod sync {
                     CATCH.store(true, Ordering::SeqCst);
                     let waker = WAKER.swap(null_mut(), Ordering::SeqCst);
                     if !waker.is_null() {
-                        unsafe {waker.read()}.wake();
+                        unsafe {Box::from_raw(waker)}.wake();
                     }
                 }).expect("Something went wrong with Ctrl-C");
 
