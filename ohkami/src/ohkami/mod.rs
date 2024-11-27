@@ -313,7 +313,7 @@ impl Ohkami {
             __rt__::select! {
                 accept = __rt__::selectable(listener.accept()) => {
                     let (connection, addr) = {
-                        #[cfg(any(feature="rt_tokio", feature="rt_async-std", feature="rt_smol"))] {
+                        #[cfg(any(feature="rt_tokio", feature="rt_async-std", feature="rt_smol", feature="rt_nio"))] {
                             let Ok((connection, addr)) = accept else {continue};
                             (connection, addr)
                         }
@@ -453,12 +453,12 @@ mod sync {
         use std::task::{Context, Poll, Waker};
         use std::pin::Pin;
 
-        #[cfg(any(feature="rt_tokio", feature="rt_async-std", feature="rt_smol"))]
+        #[cfg(any(feature="rt_tokio", feature="rt_async-std", feature="rt_smol", feature="rt_nio"))]
         use std::{sync::atomic::AtomicPtr, ptr::null_mut};
         #[cfg(any(feature="rt_glommio"))]
         use std::sync::Mutex;
     
-        #[cfg(any(feature="rt_tokio", feature="rt_async-std", feature="rt_smol"))]
+        #[cfg(any(feature="rt_tokio", feature="rt_async-std", feature="rt_smol", feature="rt_nio"))]
         static WAKER: AtomicPtr<Waker> = AtomicPtr::new(null_mut());
         #[cfg(any(feature="rt_glommio"))]
         static WAKER: Mutex<Vec<(usize, Waker)>> = Mutex::new(Vec::new());
@@ -477,7 +477,7 @@ mod sync {
                             crate::DEBUG!("[CtrlC::catch] Ready");
                             Poll::Ready(())
                         } else {
-                            #[cfg(any(feature="rt_tokio", feature="rt_async-std", feature="rt_smol"))] {
+                            #[cfg(any(feature="rt_tokio", feature="rt_async-std", feature="rt_smol", feature="rt_nio"))] {
                                 let prev_waker = WAKER.swap(
                                     Box::into_raw(Box::new(cx.waker().clone())),
                                     Ordering::SeqCst
@@ -502,7 +502,7 @@ mod sync {
             }
 
             pub fn new() -> Self {
-                #[cfg(any(feature="rt_tokio", feature="rt_async-std", feature="rt_smol"))]
+                #[cfg(any(feature="rt_tokio", feature="rt_async-std", feature="rt_smol", feature="rt_nio"))]
                 ::ctrlc::set_handler(|| {
                     CATCH.store(true, Ordering::SeqCst);
                     let waker = WAKER.swap(null_mut(), Ordering::SeqCst);

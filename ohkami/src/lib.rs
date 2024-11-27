@@ -28,16 +28,12 @@
 
 
 #[cfg(any(
-    all(feature="rt_tokio",     feature="rt_async-std"),
-    all(feature="rt_tokio",     feature="rt_smol"),
-    all(feature="rt_tokio",     feature="rt_glommio"),
-    all(feature="rt_tokio",     feature="rt_worker"),
-    all(feature="rt_async-std", feature="rt_smol"),
-    all(feature="rt_async-std", feature="rt_glommio"),
-    all(feature="rt_async-std", feature="rt_worker"),
-    all(feature="rt_smol",      feature="rt_glommio"),
-    all(feature="rt_smol",      feature="rt_worker"),
-    all(feature="rt_glommio",   feature="rt_worker"),
+    all(feature="rt_tokio",     any(feature="rt_async-std", feature="rt_smol",      feature="rt_nio",       feature="rt_glommio",   feature="rt_worker"   )),
+    all(feature="rt_async-std", any(feature="rt_smol",      feature="rt_nio",       feature="rt_glommio",   feature="rt_worker",    feature="rt_tokio"    )),
+    all(feature="rt_smol",      any(feature="rt_nio",       feature="rt_glommio",   feature="rt_worker",    feature="rt_tokio",     feature="rt_async-std")),
+    all(feature="rt_nio",       any(feature="rt_glommio",   feature="rt_worker",    feature="rt_tokio",     feature="rt_async-std", feature="rt_smol"     )),
+    all(feature="rt_glommio",   any(feature="rt_worker",    feature="rt_tokio",     feature="rt_async-std", feature="rt_smol",      feature="rt_nio"      )),
+    all(feature="rt_worker",    any(feature="rt_tokio",     feature="rt_async-std", feature="rt_smol",      feature="rt_nio",       feature="rt_glommio"  )),
 ))] compile_error! {"
     Can't activate multiple `rt_*` features at once!
 "}
@@ -62,13 +58,15 @@ mod __rt__ {
     pub(crate) use async_std::net::{TcpListener, TcpStream, ToSocketAddrs};
     #[cfg(feature="rt_smol")]
     pub(crate) use smol::net::{TcpListener, TcpStream, AsyncToSocketAddrs as ToSocketAddrs};
+    #[cfg(feature="rt_nio")]
+    pub(crate) use {nio::net::{TcpListener, TcpStream}, std::net::ToSocketAddrs};
     #[cfg(feature="rt_glommio")]
     pub(crate) use {glommio::net::{TcpListener, TcpStream}, std::net::ToSocketAddrs};
 
     pub(crate) async fn bind(address: impl ToSocketAddrs) -> TcpListener {
         let binded = TcpListener::bind(address);
         
-        #[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_smol"))]
+        #[cfg(any(feature="rt_tokio", feature="rt_async-std", feature="rt_smol", feature="rt_nio"))]
         let binded = binded.await;
         
         binded.expect("Failed to bind TCP listener")
@@ -82,6 +80,8 @@ mod __rt__ {
     pub(crate) async fn sleep(duration: std::time::Duration) {
         smol::Timer::after(duration).await;
     }
+    #[cfg(feature="rt_nio")]
+    pub(crate) use nio::time::sleep;
     #[cfg(feature="rt_glommio")]
     pub(crate) use glommio::timer::sleep;
 
@@ -91,6 +91,8 @@ mod __rt__ {
     pub(crate) use async_std::io::ReadExt as AsyncRead;
     #[cfg(feature="rt_smol")]
     pub(crate) use futures_util::AsyncReadExt as AsyncRead;
+    #[cfg(feature="rt_nio")]
+    pub(crate) use tokio::io::AsyncReadExt as AsyncRead;
     #[cfg(feature="rt_glommio")]
     pub(crate) use futures_util::AsyncReadExt as AsyncRead;
 
@@ -100,6 +102,8 @@ mod __rt__ {
     pub(crate) use async_std::io::WriteExt as AsyncWrite;
     #[cfg(feature="rt_smol")]
     pub(crate) use futures_util::AsyncWriteExt as AsyncWrite;
+    #[cfg(feature="rt_nio")]
+    pub(crate) use tokio::io::AsyncWriteExt as AsyncWrite;
     #[cfg(feature="rt_glommio")]
     pub(crate) use futures_util::AsyncWriteExt as AsyncWrite;
 
@@ -109,10 +113,12 @@ mod __rt__ {
     pub(crate) use futures_util::select;
     #[cfg(feature="rt_smol")]
     pub(crate) use futures_util::select;
+    #[cfg(feature="rt_nio")]
+    pub(crate) use tokio::select;
     #[cfg(feature="rt_glommio")]
     pub(crate) use futures_util::select;
 
-    #[cfg(any(feature="rt_tokio"))]
+    #[cfg(any(feature="rt_tokio", feature="rt_nio"))]
     pub(crate) const fn selectable<F: std::future::Future>(future: F) -> F {
         future
     }
@@ -121,7 +127,7 @@ mod __rt__ {
         ::futures_util::FutureExt::fuse(future)
     }
 
-    #[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_smol"))]
+    #[cfg(any(feature="rt_tokio", feature="rt_async-std", feature="rt_smol", feature="rt_nio"))]
     mod task {
         pub trait Task: std::future::Future<Output: Send + 'static> + Send + 'static {}
         impl<F: std::future::Future<Output: Send + 'static> + Send + 'static> Task for F {}
@@ -141,6 +147,9 @@ mod __rt__ {
         #[cfg(feature="rt_smol")]
         smol::spawn(task).detach();
 
+        #[cfg(feature="rt_nio")]
+        nio::spawn(task);
+
         #[cfg(feature="rt_glommio")]
         glommio::spawn_local(task).detach();
     }
@@ -159,6 +168,12 @@ mod __rt__ {
 
         #[cfg(feature="rt_smol")]
         smol::block_on(future);
+
+        #[cfg(feature="rt_nio")]
+        nio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .build().unwrap()
+            .block_on(future);
 
         #[cfg(feature="rt_glommio")]
         glommio::LocalExecutor::default().run(future);
