@@ -154,7 +154,7 @@ mod __rt__ {
         glommio::spawn_local(task).detach();
     }
 
-    #[cfg(all(test, feature="testing"))]
+    #[cfg(all(test, debug_assertions))]
     pub(crate) mod testing {
         pub(crate) fn block_on(future: impl std::future::Future) {
             #[cfg(feature="rt_tokio")]
@@ -222,7 +222,7 @@ pub mod typed;
 #[cfg(feature="ws")]
 pub mod ws;
 
-#[cfg(feature="testing")]
+#[cfg(debug_assertions)]
 #[cfg(feature="__rt__")]
 pub mod testing;
 

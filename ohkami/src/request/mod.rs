@@ -330,7 +330,7 @@ impl Request {
     }
 
     #[cfg(feature="rt_worker")]
-    #[cfg(feature="testing")]
+    #[cfg(debug_assertions)]
     pub(crate) async fn read(mut self: Pin<&mut Self>,
         raw_bytes: &mut &[u8]
     ) -> Result<Option<()>, crate::Response> {

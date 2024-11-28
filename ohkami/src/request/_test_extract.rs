@@ -1,5 +1,5 @@
+#![cfg(debug_assertions)]
 #![cfg(feature="rt_tokio")]
-#![cfg(feature="testing")]
 
 use crate::prelude::*;
 use crate::testing::*;

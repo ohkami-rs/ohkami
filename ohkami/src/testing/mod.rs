@@ -1,3 +1,5 @@
+#![cfg(debug_assertions)]
+
 //! Ohkami testing tools
 //! 
 //! <br>

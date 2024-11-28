@@ -375,8 +375,8 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
 
 
 
+#[cfg(debug_assertions)]
 #[cfg(feature="rt_tokio")]
-#[cfg(feature="testing")]
 #[cfg(test)] mod test {
     use super::{JWT, JWTToken};
     use crate::__rt__::test;

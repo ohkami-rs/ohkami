@@ -78,7 +78,7 @@ tasks:
       MAYBE_FEATURES_NIGHTLY:
         sh: cargo version | grep -q 'nightly' && echo '--features nightly' || echo ''
       MAYBE_FEATURES_NIGHTLY_full:
-        sh: cargo version | grep -q 'nightly' && echo '--features nightly,sse,ws' || echo '--features testing'
+        sh: cargo version | grep -q 'nightly' && echo '--features nightly,sse,ws' || echo '--features sse,ws'
     dir: ./ohkami
     cmds:
       - cargo check --lib {{.MAYBE_FEATURES_NIGHTLY}}
