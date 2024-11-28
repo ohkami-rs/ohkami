@@ -1,23 +1,22 @@
 //! Most parts are based on [chrono](https://github.com/chronotope/chrono); MIT.
 
-use std::time::Duration;
-
 
 /// Current datetime by **IMF-fixdate** format like `Sun, 06 Nov 1994 08:49:37 GMT`, used in `Date` header.
 /// 
 /// (reference：[https://datatracker.ietf.org/doc/html/rfc9110#name-date-time-formats](https://datatracker.ietf.org/doc/html/rfc9110#name-date-time-formats))
-#[inline(always)] pub fn imf_fixdate(duration_since_unix_epoch: Duration) -> String {
-    UTCDateTime::from_duration_since_unix_epoch(duration_since_unix_epoch).into_imf_fixdate()
+#[inline(always)] pub fn imf_fixdate(unix_timestamp: u64) -> String {
+    UTCDateTime::from_duration_since_unix_epoch(unix_timestamp).into_imf_fixdate()
 }
 
 /// date time on UTC *to the second*
 pub struct UTCDateTime {
     date: Date,
     time: Time,
-} impl UTCDateTime {
+}
+impl UTCDateTime {
     #[inline]
-    pub fn from_duration_since_unix_epoch(system_now: Duration) -> Self {
-        let secs = system_now.as_secs() as i64;
+    pub fn from_duration_since_unix_epoch(unix_timestamp: u64) -> Self {
+        let secs = unix_timestamp as i64;
 
         let days = secs.div_euclid(86_400);
         let secs = secs.rem_euclid(86_400);
@@ -29,79 +28,76 @@ pub struct UTCDateTime {
     }
 
     pub fn into_imf_fixdate(self) -> String {
-        const IMF_FIXDATE_LEN: usize      = str::len("Sun, 06 Nov 1994 08:49:37 GMT");
-        const SHORT_WEEKDAYS:  [&str; 7]  = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-        const SHORT_MONTHS:    [&str; 12] = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        const SHORT_WEEKDAYS: [&[u8; 3]; 7 ] = [b"Sun", b"Mon", b"Tue", b"Wed", b"Thu", b"Fri", b"Sat"];
+        const SHORT_MONTHS:   [&[u8; 3]; 12] = [b"Jan", b"Feb", b"Mar", b"Apr", b"May", b"Jun", b"Jul", b"Aug", b"Sep", b"Oct", b"Nov", b"Dec"];
 
-        #[inline(always)]
-        fn push_hundreds(buf: &mut String, n: u8) {
-            #[cfg(debug_assertions)] assert! {
-                n < 100, "Called `push_hundreds` for `n` that's 100 or greater"
-            }
+        const IMF_FIXDATE_LEN: usize = str::len("Sun, 06 Nov 1994 08:49:37 GMT");
+        
+        let mut buf = [std::mem::MaybeUninit::<u8>::uninit(); IMF_FIXDATE_LEN];
+        let mut i = 0;
 
-            unsafe {
-                let (len, ptr) = (buf.len(), buf.as_mut_ptr());
-                std::ptr::write(ptr.add(len), n/10 + b'0');
-                std::ptr::write(ptr.add(len + 1), n%10 + b'0');
-                buf.as_mut_vec().set_len(len + 2)
-            }
+        macro_rules! fill {
+            ($bytes:expr) => {
+                for &b in $bytes {
+                    fill!(@b)
+                }
+            };
+            (@100> $byte:expr) => {{
+                #[cfg(debug_assertions)] {
+                    assert!($byte < 100)
+                }
+                fill!(@b'0' + $byte/10);
+                fill!(@b'0' + $byte%10);
+            }};
+            (@$byte:expr) => {{
+                #[cfg(debug_assertions)] {
+                    assert!(i < buf.len())
+                }
+                unsafe {buf.get_unchecked_mut(i)}.write($byte);
+                i += 1;
+            }};
         }
 
-        let mut buf = String::with_capacity(IMF_FIXDATE_LEN);
-        {
-            let Self { date, time } = self;
+        let UTCDateTime { date, time } = self;
+        let day  = date.day() as u8;
+        let year = date.year();
+        let (hour, min, sec) = time.hms();
 
-            macro_rules! push_unchecked {
-                ($s:expr) => {
-                    unsafe {
-                        let (buf_len, s_len) = (buf.len(), $s.len());
-                        std::ptr::copy_nonoverlapping(
-                            $s.as_ptr(),
-                            buf.as_mut_ptr().add(buf_len),
-                            s_len
-                        );
-                        buf.as_mut_vec().set_len(buf_len + s_len);
-                    }
-                };
-                (@ $s:expr) => {
-                    unsafe {
-                        let buf_len = buf.len();
-                        std::ptr::write(buf.as_mut_ptr().add(buf_len), $s);
-                        buf.as_mut_vec().set_len(buf_len + 1);
-                    }
-                };
-            }
-
-            push_unchecked!(SHORT_WEEKDAYS.get_unchecked(date.weekday().num_days_from_sunday() as usize));
-            push_unchecked!(", ");
-
-            let day = date.day() as u8;
-            if day < 10 {
-                push_unchecked!(@ b'0');
-                push_unchecked!(@ day + b'0');
-            } else {
-                push_hundreds(&mut buf, day);
-            }
-
-            push_unchecked!(@ b' ');
-            push_unchecked!(SHORT_MONTHS.get_unchecked(date.month_index() as usize));
-
-            push_unchecked!(@ b' ');
-            let year = date.year();
-            push_hundreds(&mut buf, (year / 100) as u8);
-            push_hundreds(&mut buf, (year % 100) as u8);
-
-            push_unchecked!(@ b' ');
-            let (hour, min, sec) = time.hms();
-            push_hundreds(&mut buf, hour as u8);
-            push_unchecked!(@ b':');
-            push_hundreds(&mut buf, min as u8);
-            push_unchecked!(@ b':');
-            push_hundreds(&mut buf, sec as u8);
-            
-            push_unchecked!(" GMT");
+        fill!(*unsafe {SHORT_WEEKDAYS.get_unchecked(date.weekday().num_days_from_sunday() as usize)});
+        fill!(b", ");
+        if day < 10 {
+            fill!(@b'0'); fill!(@b'0' + day)
+        } else {
+            fill!(@100> day)
         }
-        buf
+        fill!(@b' ');
+        fill!(*unsafe {SHORT_MONTHS.get_unchecked(date.month_index() as usize)});
+        fill!(@b' ');
+        fill!(@100> (year/100) as u8);
+        fill!(@100> (year%100) as u8);
+        fill!(@b' ');
+        fill!(@100> hour as u8);
+        fill!(@b':');
+        fill!(@100> min as u8);
+        fill!(@b':');
+        fill!(@100> sec as u8);
+        fill!(b" GMT");
+
+        #[cfg(debug_assertions)] {
+            assert_eq!(i, buf.len())
+        }
+
+        unsafe {
+            // SAFETY: Here `buf` is obviously valid UTF-8 byte array
+            String::from_utf8_unchecked(Vec::from(
+                // SAFETY:
+                // * The caller guarantees that all elements of the array are initialized
+                // * `MaybeUninit<T>` and T are guaranteed to have the same layout
+                // * `MaybeUninit` does not drop, so there are no double-frees
+                // And thus the conversion is safe
+                std::mem::transmute::<_, [u8; IMF_FIXDATE_LEN]>(buf)
+            ))
+        }
     }
 }
 
@@ -187,7 +183,8 @@ impl Date {
 #[derive(Debug, PartialEq)]
 struct Time {
     secs: u32,
-} impl Time {
+}
+impl Time {
     #[inline(always)] const fn from_seconds(secs: u32) -> Self {
         #[cfg(debug_assertions)] assert! {
             secs < 86_400
@@ -346,7 +343,8 @@ enum Weekday {
     Fri,
     Sat,
     Sun,
-} impl Weekday {
+}
+impl Weekday {
     #[inline] const fn from_u32_mod7(n: u32) -> Self {
         match n % 7 {
             0 => Self::Mon,
@@ -393,7 +391,7 @@ enum Weekday {
 
         use std::time::{SystemTime, UNIX_EPOCH};
         let system_now = SystemTime::now().duration_since(UNIX_EPOCH).expect("system time before Unix epoch");
-        let (expected, n) = (correct_now(), super::imf_fixdate(system_now));
+        let (expected, n) = (correct_now(), super::imf_fixdate(system_now.as_secs()));
         assert_eq!(expected, n);
     }
 }

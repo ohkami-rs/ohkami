@@ -127,9 +127,7 @@ impl Response {
     /// Complete HTTP spec
     #[inline(always)]
     pub(crate) fn complete(&mut self) {
-        self.headers.set().Date(::ohkami_lib::imf_fixdate(
-            std::time::Duration::from_secs(crate::util::unix_timestamp())
-        ));
+        self.headers.set().Date(::ohkami_lib::imf_fixdate(crate::util::unix_timestamp()));
 
         match &self.content {
             Content::None => {
