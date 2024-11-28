@@ -174,7 +174,7 @@ impl<Inner: FangProc> FangProc for CORSProc<Inner> {
 
 
 #[cfg(debug_assertions)]
-#[cfg(feature="rt_tokio")]
+#[cfg(all(feature="rt_tokio", feature="DEBUG"))]
 #[cfg(test)]
 mod test {
     use crate::prelude::*;

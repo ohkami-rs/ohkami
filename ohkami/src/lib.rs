@@ -49,7 +49,7 @@ compile_error! {"
 #[cfg(feature="__rt_native__")]
 mod __rt__ {
     #[cfg(test)]
-    #[cfg(feature="rt_tokio")]
+    #[cfg(all(feature="rt_tokio", feature="DEBUG"))]
     pub(crate) use tokio::test;
 
     #[cfg(feature="rt_tokio")]
@@ -107,25 +107,25 @@ mod __rt__ {
     #[cfg(feature="rt_glommio")]
     pub(crate) use futures_util::AsyncWriteExt as AsyncWrite;
 
-    #[cfg(feature="rt_tokio")]
-    pub(crate) use tokio::select;
-    #[cfg(feature="rt_async-std")]
-    pub(crate) use futures_util::select;
-    #[cfg(feature="rt_smol")]
-    pub(crate) use futures_util::select;
-    #[cfg(feature="rt_nio")]
-    pub(crate) use tokio::select;
-    #[cfg(feature="rt_glommio")]
-    pub(crate) use futures_util::select;
-
-    #[cfg(any(feature="rt_tokio", feature="rt_nio"))]
-    pub(crate) const fn selectable<F: std::future::Future>(future: F) -> F {
-        future
-    }
-    #[cfg(any(feature="rt_async-std", feature="rt_smol", feature="rt_glommio"))]
-    pub(crate) fn selectable<F: std::future::Future>(future: F) -> ::futures_util::future::Fuse<F> {
-        ::futures_util::FutureExt::fuse(future)
-    }
+    // #[cfg(feature="rt_tokio")]
+    // pub(crate) use tokio::select;
+    // #[cfg(feature="rt_async-std")]
+    // pub(crate) use futures_util::select;
+    // #[cfg(feature="rt_smol")]
+    // pub(crate) use futures_util::select;
+    // #[cfg(feature="rt_nio")]
+    // pub(crate) use tokio::select;
+    // #[cfg(feature="rt_glommio")]
+    // pub(crate) use futures_util::select;
+// 
+    // #[cfg(any(feature="rt_tokio", feature="rt_nio"))]
+    // pub(crate) const fn selectable<F: std::future::Future>(future: F) -> F {
+    //     future
+    // }
+    // #[cfg(any(feature="rt_async-std", feature="rt_smol", feature="rt_glommio"))]
+    // pub(crate) fn selectable<F: std::future::Future>(future: F) -> ::futures_util::future::Fuse<F> {
+    //     ::futures_util::FutureExt::fuse(future)
+    // }
 
     #[cfg(any(feature="rt_tokio", feature="rt_async-std", feature="rt_smol", feature="rt_nio"))]
     mod task {
