@@ -1,6 +1,6 @@
 #![allow(non_snake_case)]
 #![cfg(debug_assertions)]
-#![cfg(feature="rt_tokio")] // for `#[__rt__::test]`
+#![cfg(all(feature="rt_tokio", feature="DEBUG"))] // for `#[__rt__::test]`
 
 use crate::__rt__;
 use crate::prelude::*;

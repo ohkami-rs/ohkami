@@ -305,47 +305,40 @@ impl Ohkami {
     /// ```
     pub async fn howl(self, address: impl __rt__::ToSocketAddrs) {
         let router = Arc::new(self.into_router().finalize());
-        
         let listener = __rt__::bind(address).await;
 
-        let (wg, inturrupt) = (sync::WaitGroup::new(), sync::CtrlC::new());
+        let (wg, ctrl_c) = (sync::WaitGroup::new(), sync::CtrlC::new());
 
-        loop {
-            __rt__::select! {
-                accept = __rt__::selectable(listener.accept()) => {
-                    let (connection, addr) = {
-                        #[cfg(any(feature="rt_tokio", feature="rt_async-std", feature="rt_smol", feature="rt_nio"))] {
-                            let Ok((connection, addr)) = accept else {continue};
-                            (connection, addr)
-                        }
-                        #[cfg(any(feature="rt_glommio"))] {
-                            let Ok(connection) = accept else {continue};
-                            let Ok(addr) = connection.peer_addr() else {continue};
-                            (connection, addr)
-                        }
-                    };
-
-                    let session = Session::new(
-                        router.clone(),
-                        connection,
-                        addr.ip()
-                    );
-
-                    let wg = wg.add();
-                    __rt__::spawn(async move {
-                        session.manage().await;
-                        wg.done();
-                    });
+        while let Some(accept) = ctrl_c.until_interrupt(listener.accept()).await {
+            let (connection, addr) = {
+                #[cfg(any(feature="rt_tokio", feature="rt_async-std", feature="rt_smol", feature="rt_nio"))] {
+                    let Ok((connection, addr)) = accept else {continue};
+                    (connection, addr)
                 }
-                _ = __rt__::selectable(inturrupt.catch()) => {
-                    crate::DEBUG!("Recieved Ctrl-C, trying graceful shutdown...");
-                    drop(listener);
-                    break
+                #[cfg(any(feature="rt_glommio"))] {
+                    let Ok(connection) = accept else {continue};
+                    let Ok(addr) = connection.peer_addr() else {continue};
+                    (connection, addr)
                 }
-            }
+            };
+
+            let session = Session::new(
+                router.clone(),
+                connection,
+                addr.ip()
+            );
+
+            let wg = wg.add();
+            __rt__::spawn(async move {
+                session.manage().await;
+                wg.done();
+            });
         }
 
-        crate::DEBUG!("Waiting {} session(s) to finish...", wg.count());
+        crate::DEBUG!("interrupted, trying graceful shutdown...");
+        drop(listener);
+
+        crate::DEBUG!("waiting {} session(s) to finish...", wg.count());
         wg.await;
     }
 
@@ -467,41 +460,6 @@ mod sync {
         static CATCH: AtomicBool = AtomicBool::new(false);
 
         impl CtrlC {
-            pub fn catch(&self) -> impl Future<Output = ()> + 'static {
-                return Inturrupt;
-
-                struct Inturrupt;
-                impl Future for Inturrupt {
-                    type Output = ();
-                    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-                        if CATCH.load(Ordering::SeqCst) {
-                            crate::DEBUG!("[CtrlC::catch] Ready");
-                            Poll::Ready(())
-                        } else {
-                            #[cfg(any(feature="rt_tokio", feature="rt_async-std", feature="rt_smol", feature="rt_nio"))] {
-                                let prev_waker = WAKER.swap(
-                                    Box::into_raw(Box::new(cx.waker().clone())),
-                                    Ordering::SeqCst
-                                );
-                                if !prev_waker.is_null() {
-                                    unsafe {prev_waker.drop_in_place()}
-                                }
-                            }
-                            #[cfg(any(feature="rt_glommio"))] {
-                                let current_id = glommio::executor().id();
-                                let current_waker = cx.waker().clone();
-                                let mut lock = WAKER.lock().unwrap();
-                                match lock.iter_mut().find(|(id, _)| (*id == current_id)) {
-                                    Some(prev) => *prev = (current_id, current_waker),
-                                    None       => lock.push((current_id, current_waker)),
-                                }
-                            }
-                            Poll::Pending
-                        }
-                    }
-                }
-            }
-
             pub fn new() -> Self {
                 #[cfg(any(feature="rt_tokio", feature="rt_async-std", feature="rt_smol", feature="rt_nio"))]
                 ::ctrlc::set_handler(|| {
@@ -516,13 +474,53 @@ mod sync {
                 ::ctrlc::try_set_handler(|| {
                     CATCH.store(true, Ordering::SeqCst);
                     let lock = &mut *WAKER.lock().unwrap();
-                    crate::DEBUG!("Finally {} executors on {} CPU", lock.len(), num_cpus::get());
+                    crate::DEBUG!("Finally {} executors on {} CPU(s)", lock.len(), num_cpus::get());
                     for (_, w) in std::mem::take(lock) {
                         w.wake();
                     }
                 }).ok();
 
                 Self
+            }
+
+            pub fn until_interrupt<T>(&self, task: impl Future<Output = T>) -> impl Future<Output = Option<T>> {
+                return UntilInterrupt(task);
+
+                struct UntilInterrupt<F: Future>(F);
+                impl<F: Future> Future for UntilInterrupt<F> {
+                    type Output = Option<F::Output>;
+
+                    #[inline]
+                    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+                        match unsafe {Pin::new_unchecked(&mut self.get_unchecked_mut().0)}.poll(cx) {
+                            Poll::Ready(t) => Poll::Ready(Some(t)),
+                            Poll::Pending  => if CATCH.load(Ordering::SeqCst) {
+                                crate::DEBUG!("[CtrlC::catch] Ready");
+                                Poll::Ready(None)
+                            } else {
+                                #[cfg(any(feature="rt_tokio", feature="rt_async-std", feature="rt_smol", feature="rt_nio"))] {
+                                    let prev_waker = WAKER.swap(
+                                        Box::into_raw(Box::new(cx.waker().clone())),
+                                        Ordering::SeqCst
+                                    );
+                                    if !prev_waker.is_null() {
+                                        unsafe {prev_waker.drop_in_place()}
+                                    }
+                                }
+                                #[cfg(any(feature="rt_glommio"))] {
+                                    let current_id = glommio::executor().id();
+                                    let current_waker = cx.waker().clone();
+                                    let mut lock = WAKER.lock().unwrap();
+                                    match lock.iter_mut().find(|(id, _)| (*id == current_id)) {
+                                        Some(prev) => *prev = (current_id, current_waker),
+                                        None       => lock.push((current_id, current_waker)),
+                                    }
+                                }
+                                Poll::Pending
+                            }
+                        }
+                    }
+                }
             }
         }
     };

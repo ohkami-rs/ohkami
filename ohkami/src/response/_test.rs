@@ -1,7 +1,6 @@
-#![cfg(feature="rt_tokio")]
+#![cfg(all(feature="rt_tokio", feature="DEBUG"))]
 
 use crate::Response;
-
 
 macro_rules! assert_bytes_eq {
     ($res:expr, $expected:expr) => {

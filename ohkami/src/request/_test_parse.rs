@@ -18,7 +18,7 @@ fn parse_path() {
     assert_eq!(&*path, "/");
 }
 
-#[cfg(feature="rt_tokio")]
+#[cfg(all(feature="rt_tokio", feature="DEBUG"))]
 #[crate::__rt__::test] async fn test_parse_request() {
     use super::{RequestHeader, RequestHeaders};
     use std::pin::Pin;
