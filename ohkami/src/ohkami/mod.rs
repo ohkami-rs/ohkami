@@ -528,7 +528,7 @@ mod sync {
     };
 }
 
-#[cfg(all(feature="testing", feature="__rt_native__"))]
+#[cfg(all(debug_assertions, feature="__rt_native__"))]
 #[cfg(test)]
 #[test] fn can_howl_on_any_native_async_runtime() {
     __rt__::testing::block_on(async {

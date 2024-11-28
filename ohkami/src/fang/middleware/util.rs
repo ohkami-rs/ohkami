@@ -111,7 +111,7 @@ pub trait FangAction: Clone + Send + Sync + 'static {
 
 
 
-#[cfg(all(test, feature="testing", feature="rt_tokio"))]
+#[cfg(all(test, debug_assertions, feature="rt_tokio"))]
 mod test {
     use super::*;
     use crate::prelude::*;

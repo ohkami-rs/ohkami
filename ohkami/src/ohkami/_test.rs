@@ -1,5 +1,5 @@
 #![allow(non_snake_case)]
-#![cfg(feature="testing")]
+#![cfg(debug_assertions)]
 #![cfg(feature="rt_tokio")] // for `#[__rt__::test]`
 
 use crate::__rt__;
