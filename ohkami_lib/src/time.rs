@@ -5,7 +5,7 @@
 /// 
 /// (reference：[https://datatracker.ietf.org/doc/html/rfc9110#name-date-time-formats](https://datatracker.ietf.org/doc/html/rfc9110#name-date-time-formats))
 #[inline(always)] pub fn imf_fixdate(unix_timestamp: u64) -> String {
-    UTCDateTime::from_duration_since_unix_epoch(unix_timestamp).into_imf_fixdate()
+    UTCDateTime::from_unix_timestamp(unix_timestamp).into_imf_fixdate()
 }
 
 /// date time on UTC *to the second*
@@ -15,7 +15,7 @@ pub struct UTCDateTime {
 }
 impl UTCDateTime {
     #[inline]
-    pub fn from_duration_since_unix_epoch(unix_timestamp: u64) -> Self {
+    pub fn from_unix_timestamp(unix_timestamp: u64) -> Self {
         let secs = unix_timestamp as i64;
 
         let days = secs.div_euclid(86_400);
