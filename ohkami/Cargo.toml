@@ -94,5 +94,5 @@ DEBUG = ["tokio?/rt-multi-thread", "tokio?/macros"]
 #    #"rt_nio",
 #    #"rt_glommio",
 #    #"rt_worker",
-#    #"DEBUG",
+#    "DEBUG",
 #]
