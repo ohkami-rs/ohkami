@@ -44,27 +44,27 @@ mews          = { version = "0.2",  optional = true }
 
 
 [features]
-rt_tokio = ["__rt__", "__rt_native__",
+rt_tokio = ["__rt_native__",
     "dep:tokio","tokio/rt","tokio/net","tokio/time",
     "tokio/io-util",
     "mews?/rt_tokio",
 ]
-rt_async-std = ["__rt__", "__rt_native__",
+rt_async-std = ["__rt_native__",
     "dep:async-std",
     "dep:futures-util","futures-util/io",
     "mews?/rt_async-std",
 ]
-rt_smol = ["__rt__", "__rt_native__",
+rt_smol = ["__rt_native__",
     "dep:smol",
     "dep:futures-util","futures-util/io",
     "mews?/rt_smol",
 ]
-rt_nio = ["__rt__", "__rt_native__",
+rt_nio = ["__rt_native__",
     "dep:nio",
     "dep:tokio","tokio/io-util",
     "mews?/rt_nio"
 ]
-rt_glommio = ["__rt__", "__rt_native__",
+rt_glommio = ["__rt_native__",
     "dep:glommio",
     "dep:futures-util","futures-util/io",
     "mews?/rt_glommio",
@@ -80,7 +80,7 @@ ws      = ["ohkami_lib/stream", "dep:mews"]
 
 ##### internal #####
 __rt__        = []
-__rt_native__ = ["dep:ctrlc"]
+__rt_native__ = ["__rt__", "dep:ctrlc"]
 
 ##### DEBUG #####
 DEBUG = ["tokio?/rt-multi-thread", "tokio?/macros"]
