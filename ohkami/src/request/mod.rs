@@ -145,8 +145,8 @@ pub struct Request {
 
     /// Headers of this request
     /// 
-    /// - `.{Name}()`, `.custom({Name})` to get the value
-    /// - `.set().{Name}({action})`, `.set().custom({Name}, {action})` to mutate the values
+    /// - `.{Name}()`, `.get({Name})` to get the value
+    /// - `.set().{Name}({action})`, `.set().x({Name}, {action})` to mutate the values
     /// 
     /// ---
     /// 
