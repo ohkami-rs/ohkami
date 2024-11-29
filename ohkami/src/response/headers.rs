@@ -157,12 +157,12 @@ macro_rules! Header {
                 }
             )*
 
-            #[deprecated = "use `.__` instead"]
+            #[deprecated = "use `.x` instead"]
             pub fn custom(self, name: &'static str, action: impl CustomHeadersAction<'set>) -> Self {
-                self.__(name, action)
+                self.x(name, action)
             }
             #[inline]
-            pub fn __(self, name: &'static str, action: impl CustomHeadersAction<'set>) -> Self {
+            pub fn x(self, name: &'static str, action: impl CustomHeadersAction<'set>) -> Self {
                 action.perform(self, name)
             }
         }
@@ -520,7 +520,7 @@ const _: () = {
             for (k, v) in iter {
                 match Header::from_bytes(k.as_bytes()) {
                     Some(h) => this.insert(h, v.into()),
-                    None    => {this.set().__(k, v.into());}
+                    None    => {this.set().x(k, v.into());}
                 }
             }
             this

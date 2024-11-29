@@ -53,7 +53,7 @@ async fn test_response_into_bytes() {
     let mut res = Response::NotFound();
     res.headers.set()
         .Server("ohkami")
-        .__("Hoge-Header", "Something-Custom");
+        .x("Hoge-Header", "Something-Custom");
     assert_bytes_eq!(res, format!("\
         HTTP/1.1 404 Not Found\r\n\
         Server: ohkami\r\n\
@@ -66,7 +66,7 @@ async fn test_response_into_bytes() {
     let mut res = Response::NotFound();
     res.headers.set()
         .Server("ohkami")
-        .__("Hoge-Header", "Something-Custom")
+        .x("Hoge-Header", "Something-Custom")
         .SetCookie("id", "42", |d|d.Path("/").SameSiteLax())
         .SetCookie("name", "John", |d|d.Path("/where").SameSiteStrict());
     assert_bytes_eq!(res, format!("\
@@ -83,7 +83,7 @@ async fn test_response_into_bytes() {
     let mut res = Response::NotFound().with_text("sample text");
     res.headers.set()
         .Server("ohkami")
-        .__("Hoge-Header", "Something-Custom")
+        .x("Hoge-Header", "Something-Custom")
         .SetCookie("id", "42", |d|d.Path("/").SameSiteLax())
         .SetCookie("name", "John", |d|d.Path("/where").SameSiteStrict());
     assert_bytes_eq!(res, format!("\
@@ -139,7 +139,7 @@ async fn test_stream_response() {
         )
         .with_headers(|h| h
             .Server("ohkami")
-            .__("is-stream", "true")
+            .x("is-stream", "true")
             .SetCookie("name", "John", |d|d.Path("/where").SameSiteStrict())
         );
     assert_bytes_eq!(res, format!("\
@@ -177,7 +177,7 @@ async fn test_stream_response() {
         .with_headers(|h| h
             .Server("ohkami")
             .SetCookie("name", "John", |d|d.Path("/where").SameSiteStrict())
-            .__("is-stream", "true")
+            .x("is-stream", "true")
         );
     assert_bytes_eq!(res, format!("\
         HTTP/1.1 200 OK\r\n\

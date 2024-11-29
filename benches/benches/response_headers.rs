@@ -35,8 +35,8 @@ use ohkami_benches::response_headers::{
             .ProxyAuthenticate(black_box("Basic realm=\"Access to the internal site\""))
             .ReferrerPolicy(black_box("same-origin"))
             .XFrameOptions(black_box("DENY"))
-            .__("x-myapp-data", black_box("myappdata; excellent"))
-            .__("something", black_box("anything"))
+            .x("x-myapp-data", black_box("myappdata; excellent"))
+            .x("something", black_box("anything"))
         ;
     });
 }
@@ -81,8 +81,8 @@ use ohkami_benches::response_headers::{
             .ProxyAuthenticate(black_box("Basic realm=\"Access to the internal site\""))
             .ReferrerPolicy(black_box("same-origin"))
             .XFrameOptions(black_box("DENY"))
-            .__("x-myapp-data", black_box("myappdata; excellent"))
-            .__("something", black_box("anything"))
+            .x("x-myapp-data", black_box("myappdata; excellent"))
+            .x("something", black_box("anything"))
         ;
     });
 }
@@ -220,8 +220,8 @@ use ohkami_benches::response_headers::{
         .ProxyAuthenticate(black_box("Basic realm=\"Access to the internal site\""))
         .ReferrerPolicy(black_box("same-origin"))
         .XFrameOptions(black_box("DENY"))
-        .__("x-myapp-data", black_box("myappdata; excellent"))
-        .__("something", black_box("anything"))
+        .x("x-myapp-data", black_box("myappdata; excellent"))
+        .x("something", black_box("anything"))
     ;
 
     b.iter(|| {
@@ -240,8 +240,8 @@ use ohkami_benches::response_headers::{
             .ProxyAuthenticate(None)
             .ReferrerPolicy(None)
             .XFrameOptions(None)
-            .__("x-myapp-data", None)
-            .__("something", None)
+            .x("x-myapp-data", None)
+            .x("something", None)
         ;
     });
 }
@@ -474,8 +474,8 @@ use ohkami_benches::response_headers::{
         .ProxyAuthenticate(black_box("Basic realm=\"Access to the internal site\""))
         .ReferrerPolicy(black_box("same-origin"))
         .XFrameOptions(black_box("DENY"))
-        .__("x-myapp-data", black_box("myappdata; excellent"))
-        .__("something", black_box("anything"))
+        .x("x-myapp-data", black_box("myappdata; excellent"))
+        .x("something", black_box("anything"))
     ;
 
     let mut buf = Vec::new();

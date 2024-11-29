@@ -164,11 +164,11 @@ macro_rules! Header {
                 }
             )*
 
-            #[deprecated = "use `.__` instead"]
+            #[deprecated = "use `.x` instead"]
             pub fn custom(self, name: &'static str, action: impl CustomHeadersAction<'set>) -> Self {
-                self.__(name, action)
+                self.x(name, action)
             }
-            pub fn __(self, name: &'static str, action: impl CustomHeadersAction<'set>) -> Self {
+            pub fn x(self, name: &'static str, action: impl CustomHeadersAction<'set>) -> Self {
                 if self.0.custom.is_none() {
                     self.0.custom = Some(Box::new(TupleMap::new()));
                 }
