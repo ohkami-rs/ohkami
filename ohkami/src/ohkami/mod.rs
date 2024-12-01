@@ -251,8 +251,9 @@ impl Ohkami {
     /// - `smol::net::AsyncToSocketAddrs` if using `smol`
     /// - `std::net::ToSocketAddrs` if using `nio` or `glommio`
     /// 
-    /// *note* : Keep-Alive timeout is 42 seconds and this is not
-    /// configureable by user (it'll be in future version...)
+    /// *note* : Keep-Alive timeout is 42 seconds by default.
+    /// This is configureable by `OHKAMI_KEEPALIVE_TIMEOUT`
+    /// environment variable.
     /// 
     /// <br>
     /// 
