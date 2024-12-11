@@ -402,19 +402,6 @@ mod sync {
         unsafe impl Send for WaitGroup {}
         unsafe impl Sync for WaitGroup {}
 
-        impl Future for WaitGroup {
-            type Output = ();
-            fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-                if unsafe {self.0.as_ref()}.load(Ordering::Acquire) == 0 {
-                    crate::DEBUG!("[WaitGroup::poll] Ready");
-                    Poll::Ready(())
-                } else {
-                    cx.waker().wake_by_ref();
-                    Poll::Pending
-                }
-            }
-        }
-
         impl WaitGroup {
             pub fn new() -> Self {
                 let n = AtomicUsize::new(0);
@@ -434,9 +421,28 @@ mod sync {
                 Self(ptr)
             }
 
+            pub fn done(self) {
+                /* just drop */
+            }
+        }
+
+        impl Drop for WaitGroup {
             #[inline]
-            pub fn done(&self) {
+            fn drop(&mut self) {
                 unsafe {self.0.as_ref()}.fetch_sub(1, Ordering::Release);
+            }
+        }
+
+        impl Future for WaitGroup {
+            type Output = ();
+            fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+                if unsafe {self.0.as_ref()}.load(Ordering::Acquire) == 0 {
+                    crate::DEBUG!("[WaitGroup::poll] Ready");
+                    Poll::Ready(())
+                } else {
+                    cx.waker().wake_by_ref();
+                    Poll::Pending
+                }
             }
         }
     };
