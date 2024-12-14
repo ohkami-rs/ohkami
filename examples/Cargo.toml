@@ -4,7 +4,7 @@ members  = [
     "sse",
     "form",
     "hello",
-    "openai",
+    "chatgpt",
     "websocket",
     "realworld",
     "basic_auth",
