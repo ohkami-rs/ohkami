@@ -1,6 +1,5 @@
 use ohkami::prelude::*;
 
-
 #[derive(Debug)]
 pub enum Error {
     Fetch(reqwest::Error),
@@ -8,25 +7,21 @@ pub enum Error {
 
 impl IntoResponse for Error {
     fn into_response(self) -> Response {
+        println!("{self}");
         match self {
-            Self::Fetch(e) => Response::InternalServerError().with_text(e.to_string()),
+            Self::Fetch(_) => Response::InternalServerError(),
         }
     }
 }
 
 const _: () = {
     impl std::error::Error for Error {}
-    
     impl std::fmt::Display for Error {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            match self {
-                Self::Fetch(e) => e.fmt(f)
-            }
+            std::fmt::Debug::fmt(self, f)
         }
     }
-};
 
-const _: () = {
     impl From<reqwest::Error> for Error {
         fn from(e: reqwest::Error) -> Self {
             Self::Fetch(e)

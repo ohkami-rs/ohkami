@@ -2,6 +2,7 @@ pub mod error;
 pub mod fangs;
 pub mod models;
 
+use fangs::APIKey;
 use error::Error;
 use models::{ChatMessage, ChatCompletions, Role};
 
@@ -10,26 +11,22 @@ use ohkami::format::Text;
 use ohkami::sse::DataStream;
 use ohkami::util::StreamExt;
 
-
 #[tokio::main]
 async fn main() {
-    Ohkami::with((
-        fangs::WithAPIKey::from_env().expect("\
-            OpenAI API key is not found. \n\
-            \n\
-            [USAGE]\n\
-            Run `cargo run` with one of \n\
-              a. Set an environment variable `OPENAI_API_KEY` to your API key\n\
-              b. Pass your API key by command line arguments `-- --api-key ＜here＞`\n\
-        "),
-    ), (
+    let api_key = APIKey::from_env();
+
+    println!("Try:\n\
+        curl -v 'http://localhost:5050/chat-once' -H 'Content-Type: text/plain' -d '＜your question＞'\n\
+    ");
+
+    Ohkami::with(api_key, (
         "/chat-once".POST(relay_chat_completion),
     )).howl("localhost:5050").await
 }
 
 pub async fn relay_chat_completion(
-    Memory(api_key): Memory<'_, &'static str>,
-    Text(message): Text<String>,
+    Memory(APIKey(api_key)): Memory<'_, APIKey>,
+    Text(content): Text<String>,
 ) -> Result<DataStream, Error> {
     let mut gpt_response = reqwest::Client::new()
         .post("https://api.openai.com/v1/chat/completions")
@@ -39,8 +36,8 @@ pub async fn relay_chat_completion(
             stream:   true,
             messages: vec![
                 ChatMessage {
-                    role:    Role::user,
-                    content: message,
+                    role: Role::user,
+                    content,
                 }
             ],
         })
@@ -48,12 +45,13 @@ pub async fn relay_chat_completion(
         .bytes_stream();
 
     Ok(DataStream::new(|mut s| async move {
-        let mut push_line = |mut line: String| {
+        let mut send_line = |mut line: String| {
             #[cfg(debug_assertions)] {
                 assert!(line.ends_with("\n\n"))
             }
-
-            line.truncate(line.len() - 2);
+            if line.ends_with("\n\n") {
+                line.truncate(line.len() - 2);
+            }
 
             #[cfg(debug_assertions)] {
                 if line != "[DONE]" {
@@ -77,7 +75,7 @@ pub async fn relay_chat_completion(
             {
                 if let Some(data) = line.strip_prefix("data: ") {
                     if data.ends_with("\n\n") {
-                        push_line(data.to_string())
+                        send_line(data.to_string())
                     } else {
                         remaining = data.into()
                     }
@@ -85,7 +83,7 @@ pub async fn relay_chat_completion(
                     #[cfg(debug_assertions)] {
                         assert!(line.ends_with("\n\n"))
                     }
-                    push_line(std::mem::take(&mut remaining) + line)
+                    send_line(std::mem::take(&mut remaining) + line)
                 }
             }
         }

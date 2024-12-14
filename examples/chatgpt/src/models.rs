@@ -1,6 +1,5 @@
 use ohkami::serde::{Deserialize, Serialize};
 
-
 #[derive(Serialize)]
 pub struct ChatCompletions {
     pub model:    &'static str,
