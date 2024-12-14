@@ -7,8 +7,8 @@ use models::{ChatMessage, ChatCompletions, Role};
 
 use ohkami::prelude::*;
 use ohkami::format::Text;
-use ohkami::typed::DataStream;
-use ohkami::util::{StreamExt, stream};
+use ohkami::sse::DataStream;
+use ohkami::util::StreamExt;
 
 
 #[tokio::main]
@@ -30,7 +30,7 @@ async fn main() {
 pub async fn relay_chat_completion(
     Memory(api_key): Memory<'_, &'static str>,
     Text(message): Text<String>,
-) -> Result<DataStream<String, Error>, Error> {
+) -> Result<DataStream, Error> {
     let mut gpt_response = reqwest::Client::new()
         .post("https://api.openai.com/v1/chat/completions")
         .bearer_auth(api_key)
@@ -47,7 +47,7 @@ pub async fn relay_chat_completion(
         .send().await?
         .bytes_stream();
 
-    Ok(DataStream::from_stream(stream::queue(|mut q| async move {
+    Ok(DataStream::new(|mut s| async move {
         let mut push_line = |mut line: String| {
             #[cfg(debug_assertions)] {
                 assert!(line.ends_with("\n\n"))
@@ -67,7 +67,7 @@ pub async fn relay_chat_completion(
                 }
             }
 
-            q.push(Ok(line));
+            s.send(line);
         };
 
         let mut remaining = String::new();
@@ -89,5 +89,5 @@ pub async fn relay_chat_completion(
                 }
             }
         }
-    })))
+    }))
 }

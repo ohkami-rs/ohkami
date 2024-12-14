@@ -21,7 +21,7 @@ use ohkami_lib::{CowSlice, Slice};
 #[cfg(feature="__rt_native__")]
 use crate::__rt__::AsyncWrite;
 #[cfg(feature="sse")]
-use crate::util::StreamExt;
+use crate::{sse, util::{Stream, StreamExt}};
 
 
 /// # HTTP Response
@@ -266,27 +266,27 @@ impl Response {
 #[cfg(feature="sse")]
 impl Response {
     #[inline]
-    pub fn with_stream<
-        T: Into<String>,
-        E: std::error::Error,
-    >(mut self,
-        stream: impl ohkami_lib::Stream<Item = Result<T, E>> + Unpin + Send + 'static
+    pub fn with_stream<T: sse::Data>(
+        mut self,
+        stream: impl Stream<Item = T> + Unpin + Send + 'static
     ) -> Self {
         self.set_stream(stream);
         self
     }
 
     #[inline]
-    pub fn set_stream<
-        T: Into<String>,
-        E: std::error::Error,
-    >(&mut self, stream: impl ohkami_lib::Stream<Item = Result<T, E>> + Unpin + Send + 'static) {
-        let stream = Box::pin(stream.map(|res|
-            res
-            .map(Into::into)
-            .map_err(|e| e.to_string())
-        ));
+    pub fn set_stream<T: sse::Data>(
+        &mut self,
+        stream: impl Stream<Item = T> + Unpin + Send + 'static
+    ) {
+        self.set_stream_raw(Box::pin(stream.map(sse::Data::encode)));
+    }
 
+    #[inline]
+    pub fn set_stream_raw(
+        &mut self,
+        stream: std::pin::Pin<Box<dyn Stream<Item = String> + Send>>
+    ) {
         self.headers.set()
             .ContentType("text/event-stream")
             .CacheControl("no-cache, must-revalidate")
@@ -375,37 +375,29 @@ impl Response {
                 conn.flush().await.expect("Failed to flush connection");
 
                 while let Some(chunk) = stream.next().await {
-                    match chunk {
-                        Err(msg)  => {
-                            crate::warning!("Error in stream: {msg}");
-                            break
-                        }
-                        Ok(chunk) => {
-                            let mut message = Vec::with_capacity(
-                                /* capacity for a single line */
-                                "data: ".len() + chunk.len() + "\n\n".len()
-                            );
-                            for line in chunk.split('\n') {
-                                message.extend_from_slice(b"data: ");
-                                message.extend_from_slice(line.as_bytes());
-                                message.push(b'\n');
-                            }
-                            message.push(b'\n');
-
-                            let size_hex_bytes = ohkami_lib::num::hexized_bytes(message.len());
-
-                            let mut chunk = Vec::from(&size_hex_bytes[size_hex_bytes.iter().position(|b| *b!=b'0').unwrap()..]);
-                            chunk.extend_from_slice(b"\r\n");
-                            chunk.append(&mut message);
-                            chunk.extend_from_slice(b"\r\n");
-
-                            #[cfg(feature="DEBUG")]
-                            println!("\n[sending chunk]\n{}", chunk.escape_ascii());
-
-                            conn.write_all(&chunk).await.expect("Failed to send response");
-                            conn.flush().await.expect("Failed to flush connection");
-                        }
+                    let mut message = Vec::with_capacity(
+                        /* capacity for a single line */
+                        "data: ".len() + chunk.len() + "\n\n".len()
+                    );
+                    for line in chunk.split('\n') {
+                        message.extend_from_slice(b"data: ");
+                        message.extend_from_slice(line.as_bytes());
+                        message.push(b'\n');
                     }
+                    message.push(b'\n');
+
+                    let size_hex_bytes = ohkami_lib::num::hexized_bytes(message.len());
+
+                    let mut chunk = Vec::from(&size_hex_bytes[size_hex_bytes.iter().position(|b| *b!=b'0').unwrap()..]);
+                    chunk.extend_from_slice(b"\r\n");
+                    chunk.append(&mut message);
+                    chunk.extend_from_slice(b"\r\n");
+
+                    #[cfg(feature="DEBUG")]
+                    println!("\n[sending chunk]\n{}", chunk.escape_ascii());
+
+                    conn.write_all(&chunk).await.expect("Failed to send response");
+                    conn.flush().await.expect("Failed to flush connection");
                 }
                 conn.write_all(b"0\r\n\r\n").await.expect("Failed to send response");
                 conn.flush().await.expect("Failed to flush connection");
