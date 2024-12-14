@@ -1,8 +1,8 @@
 #![cfg(feature="sse")]
 
-use ohkami_lib::Stream;
+use ohkami_lib::{Stream, StreamExt};
 use ohkami_lib::stream::impls::{QueueStream, Queue};
-use std::{pin::Pin, future::Future};
+use std::{pin::Pin, future::Future, marker::PhantomData};
 
 /// Streaming response with data of type `T` (default: `String`).
 /// 
@@ -36,7 +36,8 @@ use std::{pin::Pin, future::Future};
 /// }
 /// ```
 pub struct DataStream<T: Data = String>(
-    Pin<Box<dyn Stream<Item = T> + Send>>
+    Pin<Box<dyn Stream<Item = String> + Send>>,
+    PhantomData<fn()->T>
 );
 
 pub trait Data: 'static {
@@ -54,7 +55,9 @@ const _: () = {
 impl<T: Data> crate::IntoResponse for DataStream<T> {
     #[inline]
     fn into_response(self) -> crate::Response {
-        crate::Response::OK().with_stream(self.0)
+        let mut res = crate::Response::OK();
+        res.set_stream_raw(self.0);/* no additional boxing */
+        res
     }
 }
 
@@ -63,7 +66,7 @@ where
     S: Stream<Item = T> + Send + 'static
 {
     fn from(stream: S) -> Self {
-        Self(Box::pin(stream))
+        Self(Box::pin(stream.map(Data::encode)), PhantomData)
     }
 }
 
@@ -96,9 +99,7 @@ impl<T: Data + Send + 'static> DataStream<T> {
         F:   FnOnce(handle::Stream<T>) -> Fut + Send + 'static,
         Fut: Future<Output = ()> + Send + 'static,
     {
-        Self(Box::pin(QueueStream::new(
-            |q| f(handle::Stream(q))
-        )))
+        Self(Box::pin(QueueStream::new(|q| f(handle::Stream::from(q)))), PhantomData)
     }
 }
 
@@ -106,12 +107,18 @@ pub mod handle {
     use super::*;
 
     pub struct Stream<T>(
-        pub(super) Queue<T>
+        pub(super) Queue<String>,
+        pub(super) PhantomData<fn()->T>
     );
-    impl<T> Stream<T> {
-        #[inline(always)]
+    impl<T> From<Queue<String>> for self::Stream<T> {
+        fn from(q: Queue<String>) -> Self {
+            Self(q, PhantomData)
+        }
+    }
+    impl<T: Data> self::Stream<T> {
+        #[inline]
         pub fn send(&mut self, data: impl Into<T>) {
-            self.0.push(data.into());
+            self.0.push(Data::encode(data.into()));
         }
     }
 }

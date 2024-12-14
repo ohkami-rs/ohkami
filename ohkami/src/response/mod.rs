@@ -21,7 +21,7 @@ use ohkami_lib::{CowSlice, Slice};
 #[cfg(feature="__rt_native__")]
 use crate::__rt__::AsyncWrite;
 #[cfg(feature="sse")]
-use crate::{sse, util::StreamExt};
+use crate::{sse, util::{Stream, StreamExt}};
 
 
 /// # HTTP Response
@@ -268,7 +268,7 @@ impl Response {
     #[inline]
     pub fn with_stream<T: sse::Data>(
         mut self,
-        stream: impl ohkami_lib::Stream<Item = T> + Unpin + Send + 'static
+        stream: impl Stream<Item = T> + Unpin + Send + 'static
     ) -> Self {
         self.set_stream(stream);
         self
@@ -277,10 +277,16 @@ impl Response {
     #[inline]
     pub fn set_stream<T: sse::Data>(
         &mut self,
-        stream: impl ohkami_lib::Stream<Item = T> + Unpin + Send + 'static
+        stream: impl Stream<Item = T> + Unpin + Send + 'static
     ) {
-        let stream = Box::pin(stream.map(sse::Data::encode));
+        self.set_stream_raw(Box::pin(stream.map(sse::Data::encode)));
+    }
 
+    #[inline]
+    pub fn set_stream_raw(
+        &mut self,
+        stream: std::pin::Pin<Box<dyn Stream<Item = String> + Send>>
+    ) {
         self.headers.set()
             .ContentType("text/event-stream")
             .CacheControl("no-cache, must-revalidate")
