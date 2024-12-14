@@ -111,43 +111,43 @@ pub use ::futures_core::{Stream, ready};
 ///     })))
 /// }
 /// ```
-pub fn queue<T, F, Fut>(f: F) -> stream::QueueStream<F, T, Fut>
+pub fn queue<T, F, Fut>(f: F) -> impls::QueueStream<F, T, Fut>
 where
-    F:   FnOnce(stream::Queue<T>) -> Fut,
+    F:   FnOnce(impls::Queue<T>) -> Fut,
     Fut: std::future::Future<Output = ()>,
 {
-    stream::QueueStream::new(f)
+    impls::QueueStream::new(f)
 }
 
-pub fn once<T>(item: T) -> stream::Once<T> {
-    stream::Once(Some(item))
+pub fn once<T>(item: T) -> impls::Once<T> {
+    impls::Once(Some(item))
 }
 
 pub trait StreamExt: Stream + Sized {
-    fn map<T, F: FnMut(Self::Item)->T>(self, f: F) -> stream::Map<Self, F>;
-    fn filter<P: FnMut(&Self::Item)->bool>(self, predicate: P) -> stream::Filter<Self, P>;
-    fn chain<A: Stream>(self, another: A) -> stream::Chain<Self, A>;
-    fn next(&mut self) -> stream::Next<'_, Self>;
+    fn map<T, F: FnMut(Self::Item)->T>(self, f: F) -> impls::Map<Self, F>;
+    fn filter<P: FnMut(&Self::Item)->bool>(self, predicate: P) -> impls::Filter<Self, P>;
+    fn chain<A: Stream>(self, another: A) -> impls::Chain<Self, A>;
+    fn next(&mut self) -> impls::Next<'_, Self>;
 }
 impl<S: Stream> StreamExt for S {
     #[inline]
-    fn map<T, F: FnMut(Self::Item)->T>(self, f: F) -> stream::Map<S, F> {
-        stream::Map { inner: self, f }
+    fn map<T, F: FnMut(Self::Item)->T>(self, f: F) -> impls::Map<S, F> {
+        impls::Map { inner: self, f }
     }
-    fn filter<P: FnMut(&Self::Item)->bool>(self, predicate: P) -> stream::Filter<S, P> {
-        stream::Filter { inner: self, predicate }
+    fn filter<P: FnMut(&Self::Item)->bool>(self, predicate: P) -> impls::Filter<S, P> {
+        impls::Filter { inner: self, predicate }
     }
-    fn chain<A: Stream>(self, another: A) -> stream::Chain<Self, A> {
-        stream::Chain { inner: self, another }
+    fn chain<A: Stream>(self, another: A) -> impls::Chain<Self, A> {
+        impls::Chain { inner: self, another }
     }
-    fn next(&mut self) -> stream::Next<'_, Self> {
-        stream::Next { inner: self }    
+    fn next(&mut self) -> impls::Next<'_, Self> {
+        impls::Next { inner: self }    
     }
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-mod stream {
+pub mod impls {
     use super::{Stream, ready};
     use std::task::{Poll, Context};
     use std::pin::Pin;
@@ -239,6 +239,7 @@ mod stream {
         S: Stream,
     {
         type Output = Option<S::Item>;
+        #[inline]
         fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
             (unsafe {self.map_unchecked_mut(|pin| &mut *pin.inner)})
                 .poll_next(cx)

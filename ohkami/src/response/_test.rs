@@ -133,9 +133,7 @@ async fn test_stream_response() {
 
     let res = Response::OK()
         .with_stream(
-            repeat_by(3, |i| Result::<_, std::convert::Infallible>::Ok(
-                format!("This is message#{i} !")
-            ))
+            repeat_by(3, |i| format!("This is message#{i} !"))
         )
         .with_headers(|h| h
             .Server("ohkami")
@@ -170,9 +168,7 @@ async fn test_stream_response() {
 
     let res = Response::OK()
         .with_stream(
-            repeat_by(3, |i| Result::<_, std::convert::Infallible>::Ok(
-                format!("This is message#{i}\nです")
-            ))
+            repeat_by(3, |i| format!("This is message#{i}\nです"))
         )
         .with_headers(|h| h
             .Server("ohkami")

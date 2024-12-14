@@ -13,7 +13,7 @@ pub enum Content {
     Payload(CowSlice),
 
     #[cfg(feature="sse")]
-    Stream(std::pin::Pin<Box<dyn Stream<Item = Result<String, String>> + Send>>),
+    Stream(std::pin::Pin<Box<dyn Stream<Item = String> + Send>>),
 
     #[cfg(all(feature="ws", feature="__rt__"))]
     WebSocket(Session),
@@ -88,7 +88,10 @@ impl Content {
             Self::Payload(bytes) => ::worker::Response::from_bytes(bytes.into()),
 
             #[cfg(feature="sse")]
-            Self::Stream(stream) => ::worker::Response::from_stream(stream),
+            Self::Stream(stream) => ::worker::Response::from_stream({
+                use {ohkami_lib::StreamExt, std::convert::Infallible};
+                stream.map(Result::<_, Infallible>::Ok)
+            }),
 
             #[cfg(feature="ws")]
             Self::WebSocket(ws)  => ::worker::Response::from_websocket(ws)

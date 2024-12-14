@@ -103,24 +103,25 @@ Use some reverse proxy to do with HTTP/2,3.
 
 ```rust,no_run
 use ohkami::prelude::*;
-use ohkami::typed::DataStream;
-use ohkami::util::stream;
-use {tokio::time::sleep, std::time::Duration};
+use ohkami::sse::DataStream;
+use tokio::time::{sleep, Duration};
 
-async fn sse() -> DataStream<String> {
-    DataStream::from_stream(stream::queue(|mut q| async move {
+async fn handler() -> DataStream {
+    DataStream::new(|mut s| async move {
+        s.send("starting streaming...");
         for i in 1..=5 {
             sleep(Duration::from_secs(1)).await;
-            q.add(format!("Hi, I'm message #{i} !"))
+            s.send(format!("MESSAGE #{i}"));
         }
-    }))
+        s.send("streaming finished!");
+    })
 }
 
 #[tokio::main]
 async fn main() {
     Ohkami::new((
-        "/sse".GET(sse),
-    )).howl("localhost:5050").await
+        "/sse".GET(handler),
+    )).howl("localhost:3020").await
 }
 ```
 

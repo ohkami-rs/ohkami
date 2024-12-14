@@ -107,26 +107,6 @@ mod __rt__ {
     #[cfg(feature="rt_glommio")]
     pub(crate) use futures_util::AsyncWriteExt as AsyncWrite;
 
-    // #[cfg(feature="rt_tokio")]
-    // pub(crate) use tokio::select;
-    // #[cfg(feature="rt_async-std")]
-    // pub(crate) use futures_util::select;
-    // #[cfg(feature="rt_smol")]
-    // pub(crate) use futures_util::select;
-    // #[cfg(feature="rt_nio")]
-    // pub(crate) use tokio::select;
-    // #[cfg(feature="rt_glommio")]
-    // pub(crate) use futures_util::select;
-// 
-    // #[cfg(any(feature="rt_tokio", feature="rt_nio"))]
-    // pub(crate) const fn selectable<F: std::future::Future>(future: F) -> F {
-    //     future
-    // }
-    // #[cfg(any(feature="rt_async-std", feature="rt_smol", feature="rt_glommio"))]
-    // pub(crate) fn selectable<F: std::future::Future>(future: F) -> ::futures_util::future::Fuse<F> {
-    //     ::futures_util::FutureExt::fuse(future)
-    // }
-
     #[cfg(any(feature="rt_tokio", feature="rt_async-std", feature="rt_smol", feature="rt_nio"))]
     mod task {
         pub trait Task: std::future::Future<Output: Send + 'static> + Send + 'static {}
@@ -218,6 +198,9 @@ pub use ohkami::{Ohkami, Route};
 pub mod header;
 
 pub mod typed;
+
+#[cfg(feature="sse")]
+pub mod sse;
 
 #[cfg(feature="ws")]
 pub mod ws;
