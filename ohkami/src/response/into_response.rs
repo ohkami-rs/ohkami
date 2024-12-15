@@ -3,7 +3,7 @@
 use crate::{Response, Status};
 
 
-/// A trait implemented by types that can be used as a return value of a handler.
+/// A trait implemented to be a return value of a handler
 /// 
 /// <br>
 /// 
@@ -59,7 +59,7 @@ impl<T:IntoResponse, E:IntoResponse> IntoResponse for Result<T, E> {
 }
 
 impl IntoResponse for std::convert::Infallible {
-    #[cold]
+    #[cold] #[inline(never)]
     fn into_response(self) -> Response {
         unsafe {std::hint::unreachable_unchecked()}
     }

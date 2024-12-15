@@ -170,17 +170,15 @@ mod __rt__ {
 }
 
 
+#[cfg(feature="openapi")]
+mod openapi;
+
 mod request;
 pub use request::{Request, Method, FromRequest, FromParam};
 pub use ::ohkami_macros::FromRequest;
 
 mod response;
 pub use response::{Response, Status, IntoResponse};
-
-pub mod fang;
-pub use fang::{Fang, FangProc};
-
-pub mod format;
 
 #[cfg(feature="__rt_native__")]
 mod session;
@@ -194,6 +192,11 @@ mod router;
 mod ohkami;
 #[cfg(feature="__rt__")]
 pub use ohkami::{Ohkami, Route};
+
+pub mod fang;
+pub use fang::{Fang, FangProc};
+
+pub mod format;
 
 pub mod header;
 

@@ -75,6 +75,7 @@ rt_worker = ["__rt__",
     "ohkami_macros/worker"
 ]
 nightly = []
+openapi = []
 sse     = ["ohkami_lib/stream"]
 ws      = ["ohkami_lib/stream", "dep:mews"]
 
@@ -84,15 +85,16 @@ __rt_native__ = ["__rt__", "dep:ctrlc"]
 
 ##### DEBUG #####
 DEBUG = ["tokio?/rt-multi-thread", "tokio?/macros"]
-#default = [
-#    "nightly",
-#    "sse",
-#    "ws",
-#    "rt_tokio",
-#    #"rt_async-std",
-#    #"rt_smol",
-#    #"rt_nio",
-#    #"rt_glommio",
-#    #"rt_worker",
-#    "DEBUG",
-#]
+default = [
+    "nightly",
+    "openapi",
+    "sse",
+    "ws",
+    "rt_tokio",
+    #"rt_async-std",
+    #"rt_smol",
+    #"rt_nio",
+    #"rt_glommio",
+    #"rt_worker",
+    "DEBUG",
+]
