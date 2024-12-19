@@ -110,6 +110,59 @@ impl Operations {
     }
 }
 
-// impl Operation {
-//     pub fn 
-// }
+impl Operation {
+    pub fn with(responses: Responses) -> Self {
+        Self {
+            responses,
+            operationId:  None,
+            tags:         Vec::new(),
+            summary:      None,
+            description:  None,
+            externalDocs: None,
+            parameters:   Vec::new(),
+            requestBody:  None,
+            security:     Vec::new(),
+            deprecated:   false
+        }
+    }
+
+    pub fn param(mut self, param: Parameter) -> Self {
+        self.parameters.push(param);
+        self
+    }
+
+    pub fn requestBody(mut self, requestBody: RequestBody) -> Self {
+        self.requestBody = Some(requestBody);
+        self
+    }
+
+    pub fn security<const N: usize>(mut self, schema: &'static str, scopes: [&'static str; N]) -> Self {
+        self.security.push(HashMap::from_iter([(schema, scopes.into())]));
+        self
+    }
+
+    pub fn operationId(mut self, operationId: &'static str) -> Self {
+        self.operationId = Some(operationId);
+        self
+    }
+    pub fn tags<const N: usize>(mut self, tags: [&'static str; N]) -> Self {
+        self.tags = tags.into();
+        self
+    }
+    pub fn summary(mut self, summary: &'static str) -> Self {
+        self.summary = Some(summary);
+        self
+    }
+    pub fn description(mut self, description: &'static str) -> Self {
+        self.description = Some(description);
+        self
+    }
+    pub fn externalDocs(mut self, externalDocs: ExternalDoc) -> Self {
+        self.externalDocs = Some(externalDocs);
+        self
+    }
+    pub fn deprecated(mut self) -> Self {
+        self.deprecated = true;
+        self
+    }
+}
