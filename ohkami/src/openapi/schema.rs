@@ -47,6 +47,8 @@ struct SchemaInner {
     default: Option<Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
     example: Option<Value>,
+    #[serde(rename = "enum", skip_serializing_if = "<[_]>::is_empty")]
+    enumerates: Vec<Value>,
     #[serde(skip_serializing_if = "_util::is_false")]
     deprecated: bool,
     #[serde(skip_serializing_if = "_util::is_false")]
@@ -61,8 +63,6 @@ struct SchemaInner {
     format: Option<&'static str>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pattern: Option<&'static str>,
-    #[serde(rename = "enum", skip_serializing_if = "<[_]>::is_empty")]
-    enumerates: Vec<&'static str>,
 
     /* object definition */
     #[serde(skip_serializing_if = "<[_]>::is_empty")]
@@ -280,6 +280,12 @@ impl<T: Type::SchemaType> Schema<T> {
         self.inner.example = Some(serde_json::to_value(example).expect("can't serialize given `example` value"));
         self
     }
+    pub fn enumerates<const N: usize, V: Serialize>(mut self, enumerates: [V; N]) -> Self {
+        self.inner.enumerates = enumerates.map(
+            |v| serde_json::to_value(v).expect("can't serialize given `enum` values")
+        ).into();
+        self
+    }
     pub fn deprecated(mut self) -> Self {
         self.inner.deprecated = true;
         self
@@ -306,10 +312,6 @@ impl Schema<Type::string> {
     }
     pub fn pattern(mut self, pattern: &'static str) -> Self {
         self.inner.pattern = Some(pattern);
-        self
-    }
-    pub fn enumerates<const N: usize>(mut self, enumerates: [&'static str; N]) -> Self {
-        self.inner.enumerates = enumerates.into();
         self
     }
 }
