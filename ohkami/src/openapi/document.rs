@@ -78,7 +78,7 @@ impl Document {
         servers: [Server; N]
     ) -> Self {
         Self {
-            openapi: "3",
+            openapi: "3.0.0",
             info:    Info { title, version, description:None },
             servers: servers.into(),
             paths:   Paths::new()

@@ -4,9 +4,7 @@ use std::collections::HashMap;
 use serde::Serialize;
 
 #[derive(Serialize)]
-pub struct Responses {
-    responses: HashMap<String, Response>
-}
+pub struct Responses(HashMap<String, Response>);
 
 #[derive(Serialize)]
 pub struct Response {
@@ -34,13 +32,11 @@ pub struct ResponseHeader {
 
 impl Responses {
     pub fn new(code: u16, response: Response) -> Self {
-        Self { responses: HashMap::from_iter([(
-            code.to_string(), response
-        )]) }
+        Self(HashMap::from_iter([(code.to_string(), response)]))
     }
 
     pub fn another(mut self, code: u16, response: Response) -> Self {
-        self.responses.insert(code.to_string(), response);
+        self.0.insert(code.to_string(), response);
         self
     }
 }
