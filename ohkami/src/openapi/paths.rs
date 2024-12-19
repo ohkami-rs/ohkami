@@ -1,6 +1,5 @@
 use super::{Parameter, RequestBody, Responses};
-use super::schema::{SchemaRef, Schema, Type::SchemaType};
-use super::_util::{Content, is_false};
+use super::_util::is_false;
 use std::collections::HashMap;
 use serde::Serialize;
 

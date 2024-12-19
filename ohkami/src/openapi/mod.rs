@@ -14,3 +14,7 @@ pub mod response;
 pub use response::{Responses, Response, ResponseHeader};
 
 pub mod paths;
+pub use paths::{Operations, Operation, ExternalDoc};
+
+pub mod document;
+pub use document::{Document, Server};
