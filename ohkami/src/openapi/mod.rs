@@ -8,6 +8,9 @@ pub mod schema;
 pub use schema::Schema;
 
 pub mod request;
-pub use request::RequestBody;
+pub use request::{Parameter, RequestBody};
 
 pub mod response;
+pub use response::{Responses, Response, ResponseHeader};
+
+pub mod paths;
