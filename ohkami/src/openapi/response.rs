@@ -54,8 +54,8 @@ impl Response {
         }
     }
 
-    pub fn content<T: SchemaType>(mut self, media_type: &'static str, schema: Schema<T>) -> Self {
-        self.content.insert(media_type, schema.into());
+    pub fn content(mut self, media_type: &'static str, schema: impl Into<SchemaRef>) -> Self {
+        self.content.insert(media_type, Content::from(schema.into()));
         self
     }
 
@@ -66,7 +66,7 @@ impl Response {
 }
 
 impl ResponseHeader {
-    pub fn of<T: SchemaType>(schema: Schema<T>) -> Self {
+    pub fn of(schema: impl Into<SchemaRef>) -> Self {
         Self {
             description: None,
             required:    true,
@@ -74,7 +74,7 @@ impl ResponseHeader {
             schema: schema.into()
         }
     }
-    pub fn optional<T: SchemaType>(schema: Schema<T>) -> Self {
+    pub fn optional(schema: impl Into<SchemaRef>) -> Self {
         Self {
             description: None,
             required:    false,

@@ -1,4 +1,4 @@
-use super::schema::{SchemaRef, Schema, Type::SchemaType};
+use super::schema::SchemaRef;
 use serde::Serialize;
 
 pub(crate) const fn is_false(bool: &bool) -> bool {
@@ -9,8 +9,8 @@ pub(crate) const fn is_false(bool: &bool) -> bool {
 pub(crate) struct Content {
     schema: SchemaRef
 }
-impl<T: SchemaType> From<Schema<T>> for Content {
-    fn from(schema: Schema<T>) -> Self {
+impl<T: Into<SchemaRef>> From<T> for Content {
+    fn from(schema: T) -> Self {
         Self { schema: schema.into() }
     }
 }

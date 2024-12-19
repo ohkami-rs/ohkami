@@ -124,23 +124,23 @@ pub struct RequestBody {
 }
 
 impl RequestBody {
-    pub fn new<T: SchemaType>(media_type: &'static str, schema: Schema<T>) -> Self {
+    pub fn new(media_type: &'static str, schema: impl Into<SchemaRef>) -> Self {
         Self {
             description: None,
             required:    true,
             content:     HashMap::from_iter([(
                 media_type,
-                schema.into()
+                Content::from(schema.into())
             )])
         }
     }
-    pub fn optional<T: SchemaType>(media_type: &'static str, schema: Schema<T>) -> Self {
+    pub fn optional(media_type: &'static str, schema: impl Into<SchemaRef>) -> Self {
         Self {
             description: None,
             required:    false,
             content:     HashMap::from_iter([(
                 media_type,
-                schema.into()
+                Content::from(schema.into())
             )])
         }
     }
@@ -150,8 +150,8 @@ impl RequestBody {
         self
     }
 
-    pub fn another<T: SchemaType>(mut self, media_type: &'static str, schema: Schema<T>) -> Self {
-        self.content.insert(media_type, schema.into());
+    pub fn another(mut self, media_type: &'static str, schema: impl Into<SchemaRef>) -> Self {
+        self.content.insert(media_type, Content::from(schema.into()));
         self
     }
 }
