@@ -20,7 +20,7 @@ impl RequestBody {
             required:    true,
             content:     HashMap::from_iter([(
                 media_type,
-                Content { schema: schema.into() }
+                schema.into()
             )])
         }
     }
@@ -30,7 +30,7 @@ impl RequestBody {
             required:    false,
             content:     HashMap::from_iter([(
                 media_type,
-                Content { schema: schema.into() }
+                schema.into()
             )])
         }
     }
@@ -41,7 +41,7 @@ impl RequestBody {
     }
 
     pub fn another<T: SchemaType>(mut self, media_type: &'static str, schema: Schema<T>) -> Self {
-        self.content.insert(media_type, Content { schema: schema.into() });
+        self.content.insert(media_type, schema.into());
         self
     }
 }
