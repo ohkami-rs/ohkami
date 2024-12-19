@@ -19,13 +19,17 @@ pub use paths::{Operations, Operation, ExternalDoc};
 pub mod document;
 pub use document::{Document, Server};
 
-#[doc(hidden)]
-pub mod private {
-    use super::schema::SchemaRef;
+pub mod support {
+    use super::{schema::SchemaRef, Parameter, RequestBody};
 
-    #[doc(hidden)]
     pub trait Schema {
         const NAME: &'static str;
         fn schema() -> impl Into<SchemaRef>;
     }
+
+    pub enum Input {
+        Param(Parameter),
+        Body(RequestBody),
+    }
 }
+pub use support::Input;

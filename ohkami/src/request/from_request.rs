@@ -39,6 +39,8 @@ pub trait FromRequest<'req>: Sized {
     
     fn from_request(req: &'req Request) -> Option<Result<Self, Self::Error>>;
 
+    #[cfg(all(debug_assertions, feature="openapi"))]
+    fn openapi_input() -> Option<crate::openapi::Input> {None}
 }
 const _: () = {
     impl<'req> FromRequest<'req> for &'req Request {
@@ -56,6 +58,9 @@ const _: () = {
                 Some(fr) => Some(fr.map(Some))
             }
         }
+
+        #[cfg(all(debug_assertions, feature="openapi"))]
+        fn openapi_input() -> Option<crate::openapi::Input> {FR::openapi_input()}
     }
 };
 #[cfg(feature="rt_worker")]
@@ -77,11 +82,12 @@ const _: () = {
 };
 
 
-/// "Retrieved from a path/query param".
+/// "Retrieved from a path param".
 /// 
 /// ### required
 /// - `type Errpr`
 /// - `fn from_param`
+/// - `fn openapi_param` (with `openapi` feature)
 /// 
 /// NOTE: *MUST NOT impl both `FromRequest` and `FromParam`*.
 pub trait FromParam<'p>: Sized {
@@ -107,6 +113,9 @@ pub trait FromParam<'p>: Sized {
                 })?
         ).map_err(IntoResponse::into_response)
     }
+
+    #[cfg(all(debug_assertions, feature="openapi"))]
+    fn openapi_param() -> crate::openapi::Parameter;
 } const _: () = {
     impl<'p> FromParam<'p> for String {
         type Error = std::convert::Infallible;
@@ -117,6 +126,11 @@ pub trait FromParam<'p>: Sized {
                 Cow::Owned(s)    => s,
                 Cow::Borrowed(s) => s.into()
             })
+        }
+
+        #[cfg(all(debug_assertions, feature="openapi"))]
+        fn openapi_param() -> crate::openapi::Parameter {
+            crate::openapi::Parameter::
         }
     }
     impl<'p> FromParam<'p> for Cow<'p, str> {
