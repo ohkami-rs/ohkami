@@ -170,8 +170,13 @@ mod __rt__ {
 }
 
 
+#[cfg(debug_assertions)]
 #[cfg(feature="openapi")]
-mod openapi;
+pub mod openapi;
+
+#[cfg(debug_assertions)]
+#[cfg(feature="__rt__")]
+pub mod testing;
 
 mod request;
 pub use request::{Request, Method, FromRequest, FromParam};
@@ -207,10 +212,6 @@ pub mod sse;
 
 #[cfg(feature="ws")]
 pub mod ws;
-
-#[cfg(debug_assertions)]
-#[cfg(feature="__rt__")]
-pub mod testing;
 
 pub mod util;
 
