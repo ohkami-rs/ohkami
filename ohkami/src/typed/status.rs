@@ -1,9 +1,12 @@
 use std::borrow::Cow;
 use crate::{IntoResponse, Response, Status};
 
+#[cfg(all(debug_assertions, feature="openapi"))]
+use crate::openapi;
+
 
 macro_rules! generate_statuses_as_types_containing_value {
-    ($( $status:ident : $message:literal, )*) => {
+    ($( $status:ident = $code:literal : $message:literal, )*) => {
         $(
             #[doc = "Type-safe `"]
             #[doc = $message]
@@ -20,6 +23,11 @@ macro_rules! generate_statuses_as_types_containing_value {
                     let mut res = self.0.into_response();
                     res.status = Status::$status;
                     res
+                }
+
+                #[cfg(all(debug_assertions, feature="openapi"))]
+                fn openapi_responses() -> openapi::Responses {
+                                        
                 }
             }
         )*
