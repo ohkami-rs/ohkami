@@ -438,6 +438,9 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
         use crate::testing::*;
         use std::{sync::OnceLock, sync::Mutex, collections::HashMap, borrow::Cow};
 
+        #[cfg(feature="openapi")]
+        use crate::openapi;
+
 
         fn my_jwt() -> JWT<MyJWTPayload> {
             JWT::default("myverysecretjwtsecretkey")
@@ -483,7 +486,8 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
             id:           usize,
             first_name:   String,
             familly_name: String,
-        } impl User {
+        }
+        impl User {
             fn profile(&self) -> Profile {
                 Profile {
                     id:           self.id,
@@ -499,6 +503,16 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
             id:           usize,
             first_name:   String,
             familly_name: String,
+        }
+        #[cfg(feature="openapi")]
+        impl openapi::support::Schema for Profile {
+            const NAME: &'static str = "Profile";
+            fn schema() -> impl Into<openapi::schema::SchemaRef> {
+                openapi::Schema::object()
+                    .property("id", openapi::Schema::integer().minimum(0))
+                    .property("first_name", openapi::Schema::string())
+                    .property("familly_name", openapi::Schema::string())
+            }
         }
 
         async fn get_profile(
@@ -516,6 +530,15 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
         struct SigninRequest<'s> {
             first_name:   &'s str,
             familly_name: &'s str,
+        }
+        #[cfg(feature="openapi")]
+        impl<'s> openapi::support::Schema for SigninRequest<'s> {
+            const NAME: &'static str = "SigninRequest";
+            fn schema() -> impl Into<openapi::schema::SchemaRef> {
+                openapi::Schema::object()
+                    .property("first_name", openapi::Schema::string())
+                    .property("familly_name", openapi::Schema::string())
+            }
         }
 
         async fn signin(
@@ -553,9 +576,7 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
             "/signin".By(Ohkami::new(
                 "/".PUT(signin),
             )),
-            "/profile".By(Ohkami::with((
-                my_jwt(),
-            ), (
+            "/profile".By(Ohkami::with((my_jwt(),), (
                 "/".GET(get_profile),
             ))),
         )).test();

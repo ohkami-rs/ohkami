@@ -3,8 +3,11 @@
 
 use crate::prelude::*;
 use crate::testing::*;
-use crate::{typed::status, format::JSON};
+use crate::{typed::status, format::{JSON, Query}};
 use ::serde::Deserialize;
+
+#[cfg(feature="openapi")]
+use crate::openapi;
 
 
 #[derive(Deserialize)]
@@ -13,15 +16,28 @@ struct User<'req> {
     name:     &'req str,
     password: &'req str,
 }
+#[cfg(feature="openapi")]
+impl<'req> openapi::support::Schema for User<'req> {
+    const NAME: &'static str = "User";
+    fn schema() -> impl Into<openapi::schema::SchemaRef> {
+        openapi::Schema::object()
+            .property("name", openapi::Schema::string())
+            .property("password", openapi::Schema::string())
+    }
+}
 
 #[derive(Deserialize)]
 struct HelloQuery<'req> {
     name:   &'req str,
     repeat: Option<usize>,
-} impl<'req> crate::FromRequest<'req> for HelloQuery<'req> {
-    type Error = Response;
-    fn from_request(req: &'req Request) -> Option<Result<Self, Self::Error>> {
-        req.query.as_ref().map(|q| q.parse().map_err(|_| Response::BadRequest()))
+}
+#[cfg(feature="openapi")]
+impl<'req> openapi::support::Schema for HelloQuery<'req> {
+    const NAME: &'static str = "HelloQuery";
+    fn schema() -> impl Into<openapi::schema::SchemaRef> {
+        openapi::Schema::object()
+            .property("name", openapi::Schema::string())
+            .optional("repeat", openapi::Schema::integer())
     }
 }
 
@@ -76,11 +92,11 @@ struct HelloQuery<'req> {
 
 #[crate::__rt__::test] async fn extract_optional_query() {
     async fn hello(
-        query: Option<HelloQuery<'_>>,
+        query: Option<Query<HelloQuery<'_>>>,
     ) -> String {
         match query {
             None => String::from("no query"),
-            Some(HelloQuery { name, repeat }) =>
+            Some(Query(HelloQuery { name, repeat })) =>
                 format!("Hello, {name}!").repeat(repeat.unwrap_or(1))
         }
     }

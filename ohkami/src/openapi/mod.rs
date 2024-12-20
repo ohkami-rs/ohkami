@@ -20,14 +20,11 @@ pub mod document;
 pub use document::{Document, Server};
 
 pub mod support {
-    use super::{schema::{SchemaRef, RawSchema}, Parameter, RequestBody};
+    use super::{schema::SchemaRef, Parameter, RequestBody};
 
     pub trait Schema {
         const NAME: &'static str;
         fn schema() -> impl Into<SchemaRef>;
-        fn fields() -> Vec<(&'static str, RawSchema)> {
-            Vec::new()
-        }
     }
 
     pub enum Input {

@@ -115,6 +115,11 @@ impl Into<SchemaRef> for RawSchema {
         SchemaRef::Inline(Box::new(self))
     }
 }
+impl RawSchema {
+    pub fn into_properties(self) -> Vec<(&'static str, SchemaRef)> {
+        self.properties.into()
+    }
+}
 
 #[derive(PartialEq)]
 #[allow(private_interfaces/* construct only via `From` */)]
@@ -145,6 +150,14 @@ impl<T: SchemaType> From<Schema<T>> for SchemaRef {
 impl From<&'static str> for SchemaRef {
     fn from(name: &'static str) -> Self {
         SchemaRef::Reference(name)
+    }
+}
+impl SchemaRef {
+    pub fn into_inline(self) -> Option<RawSchema> {
+        match self {
+            SchemaRef::Inline(raw)  => Some(*raw),
+            SchemaRef::Reference(_) => None
+        }
     }
 }
 

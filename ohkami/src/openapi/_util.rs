@@ -79,4 +79,10 @@ const _: () = {
             self.0.into_iter()
         }
     }
+
+    impl<K:PartialEq, V> Into<Vec<(K, V)>> for Map<K, V> {
+        fn into(self) -> Vec<(K, V)> {
+            self.0
+        }
+    }
 };
