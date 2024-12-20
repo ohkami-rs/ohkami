@@ -1,6 +1,5 @@
-use super::schema::{Schema, SchemaRef, Type::SchemaType};
-use super::_util::{Content, is_false};
-use std::collections::HashMap;
+use super::schema::SchemaRef;
+use super::_util::{Content, Map, is_false};
 use serde::Serialize;
 
 #[derive(Serialize)]
@@ -34,7 +33,7 @@ enum ParameterKind {
 }
 
 impl Parameter {
-    pub fn in_query<T: SchemaType>(name: &'static str, schema: Schema<T>) -> Self {
+    pub fn in_query(name: &'static str, schema: impl Into<SchemaRef>) -> Self {
         Self {
             kind: ParameterKind::query,
             name, schema:schema.into(),
@@ -42,7 +41,7 @@ impl Parameter {
             description:None, deprecated:false, style:None, explode:false,
         }
     }
-    pub fn maybe_in_query<T: SchemaType>(name: &'static str, schema: Schema<T>) -> Self {
+    pub fn maybe_in_query(name: &'static str, schema: impl Into<SchemaRef>) -> Self {
         Self {
             kind: ParameterKind::query,
             name, schema:schema.into(),
@@ -51,7 +50,7 @@ impl Parameter {
         }
     }
     
-    pub fn in_header<T: SchemaType>(name: &'static str, schema: Schema<T>) -> Self {
+    pub fn in_header(name: &'static str, schema: impl Into<SchemaRef>) -> Self {
         Self {
             kind: ParameterKind::header,
             name, schema:schema.into(),
@@ -59,7 +58,7 @@ impl Parameter {
             description:None, deprecated:false, style:None, explode:false,
         }
     }
-    pub fn maybe_in_header<T: SchemaType>(name: &'static str, schema: Schema<T>) -> Self {
+    pub fn maybe_in_header(name: &'static str, schema: impl Into<SchemaRef>) -> Self {
         Self {
             kind: ParameterKind::header,
             name, schema:schema.into(),
@@ -68,7 +67,7 @@ impl Parameter {
         }
     }
     
-    pub fn in_path<T: SchemaType>(name: &'static str, schema: Schema<T>) -> Self {
+    pub fn in_path(name: &'static str, schema: impl Into<SchemaRef>) -> Self {
         Self {
             kind: ParameterKind::path,
             name, schema:schema.into(),
@@ -76,7 +75,7 @@ impl Parameter {
             description:None, deprecated:false, style:None, explode:false,
         }
     }
-    pub fn maybe_in_path<T: SchemaType>(name: &'static str, schema: Schema<T>) -> Self {
+    pub fn maybe_in_path(name: &'static str, schema: impl Into<SchemaRef>) -> Self {
         Self {
             kind: ParameterKind::path,
             name, schema:schema.into(),
@@ -85,7 +84,7 @@ impl Parameter {
         }
     }
     
-    pub fn in_cookie<T: SchemaType>(name: &'static str, schema: Schema<T>) -> Self {
+    pub fn in_cookie(name: &'static str, schema: impl Into<SchemaRef>) -> Self {
         Self {
             kind: ParameterKind::cookie,
             name, schema:schema.into(),
@@ -93,7 +92,7 @@ impl Parameter {
             description:None, deprecated:false, style:None, explode:false,
         }
     }
-    pub fn maybe_in_cookie<T: SchemaType>(name: &'static str, schema: Schema<T>) -> Self {
+    pub fn maybe_in_cookie(name: &'static str, schema: impl Into<SchemaRef>) -> Self {
         Self {
             kind: ParameterKind::cookie,
             name, schema:schema.into(),
@@ -120,7 +119,7 @@ pub struct RequestBody {
 
     required: bool,
 
-    content: HashMap<&'static str, Content>
+    content: Map<&'static str, Content>
 }
 
 impl RequestBody {
@@ -128,7 +127,7 @@ impl RequestBody {
         Self {
             description: None,
             required:    true,
-            content:     HashMap::from_iter([(
+            content:     Map::from_iter([(
                 media_type,
                 Content::from(schema.into())
             )])
@@ -138,7 +137,7 @@ impl RequestBody {
         Self {
             description: None,
             required:    false,
-            content:     HashMap::from_iter([(
+            content:     Map::from_iter([(
                 media_type,
                 Content::from(schema.into())
             )])

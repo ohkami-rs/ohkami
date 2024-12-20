@@ -1,5 +1,4 @@
-use super::{paths::Paths, Operations};
-use std::collections::HashMap;
+use super::{paths::Paths, Operations, _util::Map};
 use serde::Serialize;
 
 #[derive(Serialize)]
@@ -27,7 +26,7 @@ pub struct Server {
     description: Option<&'static str>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    variables: Option<Box<HashMap<&'static str, ServerVariable>>>
+    variables: Option<Box<Map<&'static str, ServerVariable>>>
 }
 #[derive(Serialize)]
 struct ServerVariable {
@@ -58,7 +57,7 @@ impl Server {
         candidates: [&'static str; N]
     ) -> Self {
         if self.variables.is_none() {
-            self.variables = Some(Box::new(HashMap::new()))
+            self.variables = Some(Box::new(Map::new()))
         }
         self.variables.as_mut().unwrap().insert(
             name,

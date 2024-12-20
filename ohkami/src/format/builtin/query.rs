@@ -18,6 +18,10 @@ impl<'req, T: Incoming<'req>> FromRequest<'req> for Query<T> {
 
     #[cfg(all(debug_assertions, feature="openapi"))]
     fn openapi_input() -> Option<openapi::Input> {
-        Some(openapi::Input::Param(openapi::Parameter::in_query(, schema)))
+        Some(openapi::Input::Params(
+            T::fields().into_iter().map(|(name, schema)|
+                openapi::Parameter::in_query(name, schema)
+            ).collect()
+        ))
     }
 }

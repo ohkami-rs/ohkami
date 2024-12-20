@@ -1,20 +1,19 @@
 use super::schema::{SchemaRef, Schema, Type::SchemaType};
-use super::_util::{Content, is_false};
-use std::collections::HashMap;
+use super::_util::{Content, Map, is_false};
 use serde::Serialize;
 
 #[derive(Serialize)]
-pub struct Responses(HashMap<String, Response>);
+pub struct Responses(Map<String, Response>);
 
 #[derive(Serialize)]
 pub struct Response {
     description: &'static str,
 
-    #[serde(skip_serializing_if = "HashMap::is_empty")]
-    content: HashMap<&'static str, Content>,
+    #[serde(skip_serializing_if = "Map::is_empty")]
+    content: Map<&'static str, Content>,
 
-    #[serde(skip_serializing_if = "HashMap::is_empty")]
-    headers: HashMap<&'static str, ResponseHeader>
+    #[serde(skip_serializing_if = "Map::is_empty")]
+    headers: Map<&'static str, ResponseHeader>
 }
 
 #[derive(Serialize)]
@@ -32,7 +31,7 @@ pub struct ResponseHeader {
 
 impl Responses {
     pub fn new(code: u16, response: Response) -> Self {
-        Self(HashMap::from_iter([(code.to_string(), response)]))
+        Self(Map::from_iter([(code.to_string(), response)]))
     }
 
     pub fn or(mut self, code: u16, response: Response) -> Self {
@@ -41,7 +40,7 @@ impl Responses {
     }
 
     pub fn enumerated<const N: usize>(responses: [(u16, Response); N]) -> Self {
-        Self(HashMap::from_iter(responses.map(|(code, res)| (code.to_string(), res))))
+        Self(Map::from_iter(responses.map(|(code, res)| (code.to_string(), res))))
     }
 
     pub fn merge(&mut self, another: Self) {
@@ -49,21 +48,14 @@ impl Responses {
             self.0.insert(code, res);
         }
     }
-
-    // pub fn into_iter(self) -> impl Iterator<Item = (u16, Response)> {
-    //     self.0.into_iter().map(|(code, res)| (code.parse().unwrap(), res))
-    // }
-    // pub fn from_iter(iter: impl IntoIterator<Item = (u16, Response)>) -> Self {
-    //     Self(HashMap::from_iter(iter.into_iter().map(|(code, res)| (code.to_string(), res))))
-    // }
 }
 
 impl Response {
     pub fn when(description: &'static str) -> Self {
         Self {
             description,
-            content: HashMap::new(),
-            headers: HashMap::new(),
+            content: Map::new(),
+            headers: Map::new(),
         }
     }
 

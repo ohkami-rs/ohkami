@@ -1,11 +1,10 @@
 use super::{Parameter, RequestBody, Responses};
-use super::_util::is_false;
-use std::collections::HashMap;
+use super::_util::{is_false, Map};
 use serde::Serialize;
 
 #[derive(Serialize)]
 pub struct Paths(
-    HashMap<&'static str, Operations>
+    Map<&'static str, Operations>
 );
 
 #[derive(Serialize)]
@@ -49,7 +48,7 @@ pub struct Operation {
     responses: Responses,
 
     #[serde(skip_serializing_if = "Vec::is_empty")]
-    security: Vec<HashMap<&'static str, Vec<&'static str>>>,
+    security: Vec<Map<&'static str, Vec<&'static str>>>,
 
     #[serde(skip_serializing_if = "is_false")]
     deprecated: bool,
@@ -65,7 +64,7 @@ pub struct ExternalDoc {
 
 impl Paths {
     pub fn new() -> Self {
-        Self(HashMap::new())
+        Self(Map::new())
     }
 
     pub fn at(mut self, path: &'static str, operations: Operations) -> Self {
@@ -136,7 +135,7 @@ impl Operation {
     }
 
     pub fn security<const N: usize>(mut self, schema: &'static str, scopes: [&'static str; N]) -> Self {
-        self.security.push(HashMap::from_iter([(schema, scopes.into())]));
+        self.security.push(Map::from_iter([(schema, scopes.into())]));
         self
     }
 

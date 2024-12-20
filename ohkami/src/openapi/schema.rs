@@ -1,11 +1,11 @@
-use super::_util;
+use super::_util::{is_false, Map};
 use std::marker::PhantomData;
-use serde::{Serialize, ser::SerializeMap};
+use serde::Serialize;
 use serde_json::Value;
 
 #[derive(Serialize)]
 pub struct Schema<T: SchemaType> {
-    inner: SchemaInner,
+    raw: RawSchema,
     __type__: PhantomData<fn()->T>
 }
 
@@ -30,7 +30,7 @@ pub mod Type {
 }
 
 #[derive(Serialize, PartialEq)]
-struct SchemaInner {
+pub struct RawSchema {
     #[serde(rename = "type", skip_serializing_if = "str::is_empty")]
     __type__: &'static str,
     #[serde(skip_serializing_if = "<[_]>::is_empty")]
@@ -49,13 +49,13 @@ struct SchemaInner {
     example: Option<Value>,
     #[serde(rename = "enum", skip_serializing_if = "<[_]>::is_empty")]
     enumerates: Vec<Value>,
-    #[serde(skip_serializing_if = "_util::is_false")]
+    #[serde(skip_serializing_if = "is_false")]
     deprecated: bool,
-    #[serde(skip_serializing_if = "_util::is_false")]
+    #[serde(skip_serializing_if = "is_false")]
     nullable: bool,
-    #[serde(skip_serializing_if = "_util::is_false")]
+    #[serde(skip_serializing_if = "is_false")]
     readOnly: bool,
-    #[serde(skip_serializing_if = "_util::is_false")]
+    #[serde(skip_serializing_if = "is_false")]
     writeOnly: bool,
 
     /* string definition */
@@ -65,9 +65,8 @@ struct SchemaInner {
     pattern: Option<&'static str>,
 
     /* object definition */
-    #[serde(skip_serializing_if = "<[_]>::is_empty")]
-    #[serde(serialize_with = "serialize_properties")]
-    properties: Vec<(&'static str, SchemaRef)>,
+    #[serde(skip_serializing_if = "Map::is_empty")]
+    properties: Map<&'static str, SchemaRef>,
     #[serde(skip_serializing_if = "<[_]>::is_empty")]
     required: Vec<&'static str>,
 
@@ -86,7 +85,7 @@ struct SchemaInner {
     maxLength: Option<usize>,
     #[serde(skip_serializing_if = "Option::is_none")]
     minLength: Option<usize>,
-    #[serde(skip_serializing_if = "_util::is_false")]
+    #[serde(skip_serializing_if = "is_false")]
     uniqueItems: bool,
 
     /* number,integer definition */
@@ -94,28 +93,33 @@ struct SchemaInner {
     multipleOf: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     maximum: Option<f64>,
-    #[serde(skip_serializing_if = "_util::is_false")]
+    #[serde(skip_serializing_if = "is_false")]
     exclusiveMaximum: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     minimum: Option<f64>,
-    #[serde(skip_serializing_if = "_util::is_false")]
+    #[serde(skip_serializing_if = "is_false")]
     exclusiveMinimum: bool,
 }
-fn serialize_properties<S: serde::Serializer>(
-    properties: &[(&'static str, SchemaRef)],
-    serializer: S
-) -> Result<S::Ok, S::Error> {
-    let mut s = serializer.serialize_map(None)?;
-    for (k, v) in properties {
-        s.serialize_entry(k, v)?;
+impl<T: Type::SchemaType> From<Schema<T>> for RawSchema {
+    fn from(schema: Schema<T>) -> Self {
+        schema.raw
     }
-    s.end()
+}
+impl<T: Type::SchemaType> From<RawSchema> for Schema<T> {
+    fn from(raw: RawSchema) -> Self {
+        Self { raw, __type__:PhantomData }
+    }
+}
+impl Into<SchemaRef> for RawSchema {
+    fn into(self) -> SchemaRef {
+        SchemaRef::Inline(Box::new(self))
+    }
 }
 
 #[derive(PartialEq)]
 #[allow(private_interfaces/* construct only via `From` */)]
 pub enum SchemaRef {
-    Inline(Box<SchemaInner>),
+    Inline(Box<RawSchema>),
     Reference(&'static str)
 }
 impl Serialize for SchemaRef {
@@ -125,7 +129,7 @@ impl Serialize for SchemaRef {
     ) -> Result<S::Ok, S::Error> {
         match self {
             SchemaRef::Inline(schema)  => schema.serialize(serializer),
-            SchemaRef::Reference(name) => {
+            SchemaRef::Reference(name) => {use serde::ser::SerializeMap;
                 let mut s = serializer.serialize_map(None)?;
                 s.serialize_entry("$ref", &format!("#/components/schemas/{name}"))?;
                 s.end()
@@ -135,7 +139,7 @@ impl Serialize for SchemaRef {
 }
 impl<T: SchemaType> From<Schema<T>> for SchemaRef {
     fn from(schema: Schema<T>) -> Self {
-        SchemaRef::Inline(Box::new(schema.inner))
+        SchemaRef::Inline(Box::new(schema.raw))
     }
 }
 impl From<&'static str> for SchemaRef {
@@ -145,7 +149,7 @@ impl From<&'static str> for SchemaRef {
 }
 
 const _: (/* constructors */) = {
-    const ANY: SchemaInner = SchemaInner {
+    const ANY: RawSchema = RawSchema {
         __type__: Type::any::NAME,
         anyOf: Vec::new(),
         allOf: Vec::new(),
@@ -166,7 +170,7 @@ const _: (/* constructors */) = {
         enumerates: Vec::new(),
 
         /* object definition */
-        properties: Vec::new(),
+        properties: Map::new(),
         required:   Vec::new(),
 
         /* array definition */
@@ -191,7 +195,7 @@ const _: (/* constructors */) = {
         pub fn string() -> Self {
             Self {
                 __type__: PhantomData,
-                inner: SchemaInner { __type__: Type::string::NAME, ..ANY }
+                raw: RawSchema { __type__: Type::string::NAME, ..ANY }
             }
         }
     }
@@ -199,7 +203,7 @@ const _: (/* constructors */) = {
         pub fn number() -> Self {
             Self {
                 __type__: PhantomData,
-                inner: SchemaInner { __type__: Type::number::NAME, ..ANY }
+                raw: RawSchema { __type__: Type::number::NAME, ..ANY }
             }
         }
     }
@@ -207,7 +211,7 @@ const _: (/* constructors */) = {
         pub fn integer() -> Self {
             Self {
                 __type__: PhantomData,
-                inner: SchemaInner { __type__: Type::integer::NAME, ..ANY }
+                raw: RawSchema { __type__: Type::integer::NAME, ..ANY }
             }
         }
     }
@@ -215,7 +219,7 @@ const _: (/* constructors */) = {
         pub fn bool() -> Self {
             Self {
                 __type__: PhantomData,
-                inner: SchemaInner { __type__: Type::bool::NAME, ..ANY }
+                raw: RawSchema { __type__: Type::bool::NAME, ..ANY }
             }
         }
     }
@@ -223,7 +227,7 @@ const _: (/* constructors */) = {
         pub fn array() -> Self {
             Self {
                 __type__: PhantomData,
-                inner: SchemaInner { __type__: Type::array::NAME, ..ANY }
+                raw: RawSchema { __type__: Type::array::NAME, ..ANY }
             }
         }
     }
@@ -231,7 +235,7 @@ const _: (/* constructors */) = {
         pub fn object() -> Self {
             Self {
                 __type__: PhantomData,
-                inner: SchemaInner { __type__: Type::object::NAME, ..ANY }
+                raw: RawSchema { __type__: Type::object::NAME, ..ANY }
             }
         }
     }
@@ -239,7 +243,7 @@ const _: (/* constructors */) = {
         pub fn anyOf<const N: usize>(schema_refs: [&'static str; N]) -> Self {
             Self {
                 __type__: PhantomData,
-                inner: SchemaInner {
+                raw: RawSchema {
                     anyOf: schema_refs.map(SchemaRef::Reference).into(),
                     ..ANY
                 }
@@ -248,7 +252,7 @@ const _: (/* constructors */) = {
         pub fn allOf<const N: usize>(schema_refs: [&'static str; N]) -> Self {
             Self {
                 __type__: PhantomData,
-                inner: SchemaInner {
+                raw: RawSchema {
                     allOf: schema_refs.map(SchemaRef::Reference).into(),
                     ..ANY
                 }
@@ -257,7 +261,7 @@ const _: (/* constructors */) = {
         pub fn oneOf<const N: usize>(schema_refs: [&'static str; N]) -> Self {
             Self {
                 __type__: PhantomData,
-                inner: SchemaInner {
+                raw: RawSchema {
                     oneOf: schema_refs.map(SchemaRef::Reference).into(),
                     ..ANY
                 }
@@ -269,37 +273,37 @@ const _: (/* constructors */) = {
 /* metadata and flags */
 impl<T: Type::SchemaType> Schema<T> {
     pub fn description(mut self, description: &'static str) -> Self {
-        self.inner.description = Some(description);
+        self.raw.description = Some(description);
         self
     }
     pub fn default(mut self, default: impl Serialize) -> Self {
-        self.inner.default = Some(serde_json::to_value(default).expect("can't serialize given `default` value"));
+        self.raw.default = Some(serde_json::to_value(default).expect("can't serialize given `default` value"));
         self
     }
     pub fn example(mut self, example: impl Serialize) -> Self {
-        self.inner.example = Some(serde_json::to_value(example).expect("can't serialize given `example` value"));
+        self.raw.example = Some(serde_json::to_value(example).expect("can't serialize given `example` value"));
         self
     }
     pub fn enumerates<const N: usize, V: Serialize>(mut self, enumerates: [V; N]) -> Self {
-        self.inner.enumerates = enumerates.map(
+        self.raw.enumerates = enumerates.map(
             |v| serde_json::to_value(v).expect("can't serialize given `enum` values")
         ).into();
         self
     }
     pub fn deprecated(mut self) -> Self {
-        self.inner.deprecated = true;
+        self.raw.deprecated = true;
         self
     }
     pub fn nullable(mut self) -> Self {
-        self.inner.nullable = true;
+        self.raw.nullable = true;
         self
     }
     pub fn readOnly(mut self) -> Self {
-        self.inner.readOnly = true;
+        self.raw.readOnly = true;
         self
     }
     pub fn writeOnly(mut self) -> Self {
-        self.inner.writeOnly = true;
+        self.raw.writeOnly = true;
         self
     }
 }
@@ -307,11 +311,11 @@ impl<T: Type::SchemaType> Schema<T> {
 /* string definition */
 impl Schema<Type::string> {
     pub fn format(mut self, format: &'static str) -> Self {
-        self.inner.format = Some(format);
+        self.raw.format = Some(format);
         self
     }
     pub fn pattern(mut self, pattern: &'static str) -> Self {
-        self.inner.pattern = Some(pattern);
+        self.raw.pattern = Some(pattern);
         self
     }
 }
@@ -319,12 +323,12 @@ impl Schema<Type::string> {
 /* object definition */
 impl Schema<Type::object> {
     pub fn property(mut self, name: &'static str, schema: impl Into<SchemaRef>) -> Self {
-        self.inner.properties.push((name, schema.into()));
-        self.inner.required.push(name);
+        self.raw.properties.insert(name, schema.into());
+        self.raw.required.push(name);
         self
     }
     pub fn optional(mut self, name: &'static str, schema: impl Into<SchemaRef>) -> Self {
-        self.inner.properties.push((name, schema.into()));
+        self.raw.properties.insert(name, schema.into());
         self
     }
 }
@@ -332,35 +336,35 @@ impl Schema<Type::object> {
 /* array definition */
 impl Schema<Type::array> {
     pub fn items(mut self, schema: impl Into<SchemaRef>) -> Self {
-        self.inner.items = Some(schema.into());
+        self.raw.items = Some(schema.into());
         self
     }
     pub fn maxItems(mut self, maxItems: usize) -> Self {
-        self.inner.maxItems = Some(maxItems);
+        self.raw.maxItems = Some(maxItems);
         self
     }
     pub fn minItems(mut self, minItems: usize) -> Self {
-        self.inner.minItems = Some(minItems);
+        self.raw.minItems = Some(minItems);
         self
     }
     pub fn maxProperties(mut self, maxProperties: usize) -> Self {
-        self.inner.maxProperties = Some(maxProperties);
+        self.raw.maxProperties = Some(maxProperties);
         self
     }
     pub fn minProperties(mut self, minProperties: usize) -> Self {
-        self.inner.minProperties = Some(minProperties);
+        self.raw.minProperties = Some(minProperties);
         self
     }
     pub fn maxLength(mut self, maxLength: usize) -> Self {
-        self.inner.maxLength = Some(maxLength);
+        self.raw.maxLength = Some(maxLength);
         self
     }
     pub fn minLength(mut self, minLength: usize) -> Self {
-        self.inner.minLength = Some(minLength);
+        self.raw.minLength = Some(minLength);
         self
     }
     pub fn uniqueItems(mut self) -> Self {
-        self.inner.uniqueItems = true;
+        self.raw.uniqueItems = true;
         self
     }
 }
@@ -368,49 +372,49 @@ impl Schema<Type::array> {
 /* number,integer definition */
 impl Schema<Type::number> {
     pub fn multipleOf(mut self, n: impl Into<f64>) -> Self {
-        self.inner.multipleOf = Some(n.into());
+        self.raw.multipleOf = Some(n.into());
         self
     }
     pub fn maximum(mut self, maximum: impl Into<f64>) -> Self {
-        self.inner.maximum = Some(maximum.into());
+        self.raw.maximum = Some(maximum.into());
         self
     }
     pub fn exclusiveMaximum(mut self, maximum: impl Into<f64>) -> Self {
-        self.inner.maximum = Some(maximum.into());
-        self.inner.exclusiveMaximum = true;
+        self.raw.maximum = Some(maximum.into());
+        self.raw.exclusiveMaximum = true;
         self
     }
     pub fn minimum(mut self, minimum: impl Into<f64>) -> Self {
-        self.inner.minimum = Some(minimum.into());
+        self.raw.minimum = Some(minimum.into());
         self
     }
     pub fn exclusiveMinimum(mut self, minimum: impl Into<f64>) -> Self {
-        self.inner.minimum = Some(minimum.into());
-        self.inner.exclusiveMinimum = true;
+        self.raw.minimum = Some(minimum.into());
+        self.raw.exclusiveMinimum = true;
         self
     }
 }
 impl Schema<Type::integer> {
     pub fn multipleOf(mut self, n: i32) -> Self {
-        self.inner.multipleOf = Some(n.into());
+        self.raw.multipleOf = Some(n.into());
         self
     }
     pub fn maximum(mut self, maximum: i32) -> Self {
-        self.inner.maximum = Some(maximum.into());
+        self.raw.maximum = Some(maximum.into());
         self
     }
     pub fn exclusiveMaximum(mut self, maximum: i32) -> Self {
-        self.inner.maximum = Some(maximum.into());
-        self.inner.exclusiveMaximum = true;
+        self.raw.maximum = Some(maximum.into());
+        self.raw.exclusiveMaximum = true;
         self
     }
     pub fn minimum(mut self, minimum: i32) -> Self {
-        self.inner.minimum = Some(minimum.into());
+        self.raw.minimum = Some(minimum.into());
         self
     }
     pub fn exclusiveMinimum(mut self, minimum: i32) -> Self {
-        self.inner.minimum = Some(minimum.into());
-        self.inner.exclusiveMinimum = true;
+        self.raw.minimum = Some(minimum.into());
+        self.raw.exclusiveMinimum = true;
         self
     }
 }
@@ -418,7 +422,7 @@ impl Schema<Type::integer> {
 #[cfg(test)]
 fn __usability__() {
     let _user_schema = Schema::object()
-        .property("id", Schema::integer())
+        .property("id", Schema::integer().readOnly())
         .property("name", Schema::string())
-        .optional("age", Schema::integer());
+        .optional("age", Schema::integer().minimum(18).maximum(120));
 }
