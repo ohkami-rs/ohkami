@@ -124,7 +124,7 @@ pub struct RequestBody {
 }
 
 impl RequestBody {
-    pub fn new(media_type: &'static str, schema: impl Into<SchemaRef>) -> Self {
+    pub fn of(media_type: &'static str, schema: impl Into<SchemaRef>) -> Self {
         Self {
             description: None,
             required:    true,

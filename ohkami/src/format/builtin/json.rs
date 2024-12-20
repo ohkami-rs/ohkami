@@ -1,5 +1,5 @@
 use crate::{FromRequest, IntoResponse, Request, Response};
-use serde::{Deserialize, Serialize};
+use super::bound::{Incoming, Outgoing};
 
 #[cfg(all(debug_assertions, feature="openapi"))]
 use crate::openapi;
@@ -7,24 +7,7 @@ use crate::openapi;
 
 pub struct JSON<T>(pub T);
 
-#[cfg(all(debug_assertions, feature="openapi"))]
-mod bound {use super::*;
-    pub trait Incoming<'req>: Deserialize<'req> + openapi::support::Schema {}
-    impl<'req, T> Incoming<'req> for T where T: Deserialize<'req> + openapi::support::Schema {}
-
-    pub trait Outgoing: Serialize + openapi::support::Schema {}
-    impl<T> Outgoing for T where T: Serialize + openapi::support::Schema {}
-}
-#[cfg(not(all(debug_assertions, feature="openapi")))]
-mod bound {use super::*;
-    pub trait Incoming<'req>: Deserialize<'req> {}
-    impl<'req, T> Incoming<'req> for T where T: Deserialize<'req> {}
-
-    pub trait Outgoing: Serialize {}
-    impl<T> Outgoing for T where T: Serialize {}
-}
-
-impl<'req, T: bound::Incoming<'req>> FromRequest<'req> for JSON<T> {
+impl<'req, T: Incoming<'req>> FromRequest<'req> for JSON<T> {
     type Error = Response;
 
     #[inline(always)]
@@ -39,14 +22,14 @@ impl<'req, T: bound::Incoming<'req>> FromRequest<'req> for JSON<T> {
 
     #[cfg(all(debug_assertions, feature="openapi"))]
     fn openapi_input() -> Option<openapi::Input> {
-        Some(openapi::Input::Body(openapi::RequestBody::new(
+        Some(openapi::Input::Body(openapi::RequestBody::of(
             "application/json",
             T::schema()
         )))
     }
 }
 
-impl<T: bound::Outgoing> IntoResponse for JSON<T> {
+impl<T: Outgoing> IntoResponse for JSON<T> {
     #[inline(always)]
     fn into_response(self) -> Response {
         Response::OK().with_json(self.0)

@@ -19,7 +19,7 @@ impl<'req, T: From<&'req str>> FromRequest<'req> for Text<T> {
 
     #[cfg(all(debug_assertions, feature="openapi"))]
     fn openapi_input() -> Option<openapi::Input> {
-        Some(openapi::Input::Body(openapi::RequestBody::new(
+        Some(openapi::Input::Body(openapi::RequestBody::of(
             "text/plain",
             openapi::Schema::string()
         )))

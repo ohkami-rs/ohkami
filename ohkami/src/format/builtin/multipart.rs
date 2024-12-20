@@ -1,12 +1,15 @@
 use crate::{FromRequest, Request, Response};
-use serde::Deserialize;
+use super::bound::Incoming;
+
+#[cfg(all(debug_assertions, feature="openapi"))]
+use crate::openapi;
 
 
 pub use ohkami_lib::serde_multipart::File;
 
-pub struct Multipart<Schema>(pub Schema);
+pub struct Multipart<T>(pub T);
 
-impl<'req, S: Deserialize<'req>> FromRequest<'req> for Multipart<S> {
+impl<'req, T: Incoming<'req>> FromRequest<'req> for Multipart<T> {
     type Error = Response;
 
     #[inline]
@@ -17,5 +20,13 @@ impl<'req, S: Deserialize<'req>> FromRequest<'req> for Multipart<S> {
         ohkami_lib::serde_multipart::from_bytes(req.payload()?)
             .map_err(super::reject)
             .map(Self).into()
+    }
+
+    #[cfg(all(debug_assertions, feature="openapi"))]
+    fn openapi_input() -> Option<openapi::Input> {
+        Some(openapi::Input::Body(openapi::RequestBody::of(
+            "multipart/form-data",
+            T::schema()
+        )))
     }
 }

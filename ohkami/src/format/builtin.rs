@@ -21,3 +21,25 @@ pub use query::Query;
 fn reject(msg: impl std::fmt::Display) -> crate::Response {
     crate::Response::BadRequest().with_text(msg.to_string())
 }
+
+#[cfg(all(debug_assertions, feature="openapi"))]
+mod bound {
+    use crate::openapi;
+    use serde::{Serialize, Deserialize};
+
+    pub trait Incoming<'req>: Deserialize<'req> + openapi::support::Schema {}
+    impl<'req, T> Incoming<'req> for T where T: Deserialize<'req> + openapi::support::Schema {}
+
+    pub trait Outgoing: Serialize + openapi::support::Schema {}
+    impl<T> Outgoing for T where T: Serialize + openapi::support::Schema {}
+}
+#[cfg(not(all(debug_assertions, feature="openapi")))]
+mod bound {
+    use serde::{Serialize, Deserialize};
+
+    pub trait Incoming<'req>: Deserialize<'req> {}
+    impl<'req, T> Incoming<'req> for T where T: Deserialize<'req> {}
+
+    pub trait Outgoing: Serialize {}
+    impl<T> Outgoing for T where T: Serialize {}
+}
