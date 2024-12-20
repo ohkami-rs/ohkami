@@ -35,14 +35,31 @@ impl Responses {
         Self(HashMap::from_iter([(code.to_string(), response)]))
     }
 
-    pub fn another(mut self, code: u16, response: Response) -> Self {
+    pub fn or(mut self, code: u16, response: Response) -> Self {
         self.0.insert(code.to_string(), response);
         self
     }
+
+    pub fn enumerated<const N: usize>(responses: [(u16, Response); N]) -> Self {
+        Self(HashMap::from_iter(responses.map(|(code, res)| (code.to_string(), res))))
+    }
+
+    pub fn merge(&mut self, another: Self) {
+        for (code, res) in another.0 {
+            self.0.insert(code, res);
+        }
+    }
+
+    // pub fn into_iter(self) -> impl Iterator<Item = (u16, Response)> {
+    //     self.0.into_iter().map(|(code, res)| (code.parse().unwrap(), res))
+    // }
+    // pub fn from_iter(iter: impl IntoIterator<Item = (u16, Response)>) -> Self {
+    //     Self(HashMap::from_iter(iter.into_iter().map(|(code, res)| (code.to_string(), res))))
+    // }
 }
 
 impl Response {
-    pub fn of(description: &'static str) -> Self {
+    pub fn when(description: &'static str) -> Self {
         Self {
             description,
             content: HashMap::new(),

@@ -2,6 +2,9 @@
 
 use crate::{Response, Status};
 
+#[cfg(all(debug_assertions, feature="openapi"))]
+use crate::openapi;
+
 
 /// A trait implemented to be a return value of a handler
 /// 
@@ -35,6 +38,11 @@ use crate::{Response, Status};
 /// ```
 pub trait IntoResponse {
     fn into_response(self) -> Response;
+
+    #[cfg(all(debug_assertions, feature="openapi"))]
+    fn openapi_responses() -> openapi::Responses {
+        openapi::Responses::new(200, openapi::Response::when("OK"))
+    }
 }
 
 impl IntoResponse for Response {
@@ -55,6 +63,13 @@ impl<T:IntoResponse, E:IntoResponse> IntoResponse for Result<T, E> {
             Ok(ok) => ok.into_response(),
             Err(e) => e.into_response(),
         }
+    }
+
+    #[cfg(all(debug_assertions, feature="openapi"))]
+    fn openapi_responses() -> openapi::Responses {
+        let mut res = E::openapi_responses();
+        res.merge(T::openapi_responses());
+        res
     }
 }
 
@@ -78,6 +93,13 @@ macro_rules! text_response {
             fn into_response(self: $t) -> Response {
                 Response::OK().with_text(self)
             }
+
+            #[cfg(all(debug_assertions, feature="openapi"))]
+            fn openapi_responses() -> openapi::Responses {
+                openapi::Responses::new(200, openapi::Response::when("OK")
+                    .content("text/plain", openapi::Schema::string())
+                )
+            }
         }
     )*};
 } text_response! {
@@ -90,5 +112,10 @@ macro_rules! text_response {
 impl IntoResponse for worker::Error {
     fn into_response(self) -> Response {
         Response::InternalServerError().with_text(self.to_string())
+    }
+
+    #[cfg(all(debug_assertions, feature="openapi"))]
+    fn openapi_responses() -> openapi::Responses {
+        openapi::Responses::new(500, openapi::Response::when("Internal error in worker"))
     }
 }

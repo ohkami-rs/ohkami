@@ -16,7 +16,7 @@ use serde_json::json;
     .path("/users", Operations::new()
         .get(
             Operation::with(
-                Responses::new(200, Response::of("A JSON array of user names")
+                Responses::new(200, Response::when("A JSON array of user names")
                     .content("application/json", Schema::array().items(Schema::string()))
                 )
             )

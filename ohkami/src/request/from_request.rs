@@ -1,6 +1,9 @@
 use std::borrow::Cow;
 use crate::{util::ErrorMessage, IntoResponse, Request, Response};
 
+#[cfg(all(debug_assertions, feature="openapi"))]
+use crate::openapi;
+
 
 /// "Retirieved from a `Request`".
 /// 
@@ -40,7 +43,9 @@ pub trait FromRequest<'req>: Sized {
     fn from_request(req: &'req Request) -> Option<Result<Self, Self::Error>>;
 
     #[cfg(all(debug_assertions, feature="openapi"))]
-    fn openapi_input() -> Option<crate::openapi::Input> {None}
+    fn openapi_input() -> Option<openapi::Input> {
+        None
+    }
 }
 const _: () = {
     impl<'req> FromRequest<'req> for &'req Request {
@@ -51,6 +56,7 @@ const _: () = {
     }
     impl<'req, FR: FromRequest<'req>> FromRequest<'req> for Option<FR> {
         type Error = FR::Error;
+
         #[inline]
         fn from_request(req: &'req Request) -> Option<Result<Self, Self::Error>> {
             match FR::from_request(req) {
@@ -60,7 +66,9 @@ const _: () = {
         }
 
         #[cfg(all(debug_assertions, feature="openapi"))]
-        fn openapi_input() -> Option<crate::openapi::Input> {FR::openapi_input()}
+        fn openapi_input() -> Option<openapi::Input> {
+            FR::openapi_input()
+        }
     }
 };
 #[cfg(feature="rt_worker")]
@@ -87,7 +95,6 @@ const _: () = {
 /// ### required
 /// - `type Errpr`
 /// - `fn from_param`
-/// - `fn openapi_param` (with `openapi` feature)
 /// 
 /// NOTE: *MUST NOT impl both `FromRequest` and `FromParam`*.
 pub trait FromParam<'p>: Sized {
@@ -115,7 +122,9 @@ pub trait FromParam<'p>: Sized {
     }
 
     #[cfg(all(debug_assertions, feature="openapi"))]
-    fn openapi_param() -> crate::openapi::Parameter;
+    fn openapi_param() -> openapi::Parameter {
+        openapi::Parameter::in_path("", openapi::Schema::string())
+    }
 } const _: () = {
     impl<'p> FromParam<'p> for String {
         type Error = std::convert::Infallible;
@@ -126,11 +135,6 @@ pub trait FromParam<'p>: Sized {
                 Cow::Owned(s)    => s,
                 Cow::Borrowed(s) => s.into()
             })
-        }
-
-        #[cfg(all(debug_assertions, feature="openapi"))]
-        fn openapi_param() -> crate::openapi::Parameter {
-            crate::openapi::Parameter::
         }
     }
     impl<'p> FromParam<'p> for Cow<'p, str> {
@@ -188,6 +192,11 @@ pub trait FromParam<'p>: Sized {
                                 Ok(value)
                             }
                         }
+                    }
+
+                    #[cfg(all(debug_assertions, feature="openapi"))]
+                    fn openapi_param() -> openapi::Parameter {
+                        openapi::Parameter::in_path("", openapi::Schema::integer())
                     }
                 }
             )*
