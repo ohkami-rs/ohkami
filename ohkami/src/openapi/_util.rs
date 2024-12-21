@@ -24,15 +24,9 @@ impl<K:PartialEq, V> Map<K, V> {
     pub(crate) fn from_iter(iter: impl IntoIterator<Item = (K, V)>) -> Self {
         Self(Vec::from_iter(iter))
     }
-    pub(crate) fn iter(&self) -> impl Iterator<Item = &(K, V)> {
-        self.0.iter()
-    }
 
     pub(crate) fn is_empty(&self) -> bool {
         self.0.is_empty()
-    }
-    pub(crate) fn len(&self) -> usize {
-        self.0.len()
     }
 
     fn find(&self, key: &K) -> Option<usize> {
@@ -45,14 +39,6 @@ impl<K:PartialEq, V> Map<K, V> {
         match self.find(&key) {
             Some(i) => self.0[i].1 = value,
             None    => self.0.push((key, value)),
-        }
-    }
-}
-impl<K:PartialEq, V> Map<K, Vec<V>> {
-    pub(crate) fn insert_or_extend(&mut self, key: K, value: V) {
-        match self.find(&key) {
-            Some(i) => self.0[i].1.push(value),
-            None    => self.0.push((key, vec![value])),
         }
     }
 }

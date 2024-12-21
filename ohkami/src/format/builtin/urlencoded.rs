@@ -1,5 +1,6 @@
-use crate::{FromRequest, IntoResponse, Request, Response};
+use crate::{FromBody, IntoBody};
 use super::bound::{Incoming, Outgoing};
+use ohkami_lib::serde_urlencoded;
 
 #[cfg(all(debug_assertions, feature="openapi"))]
 use crate::openapi;
@@ -7,39 +8,26 @@ use crate::openapi;
 
 pub struct URLEncoded<T>(pub T);
 
-impl<'req, T: Incoming<'req>> FromRequest<'req> for URLEncoded<T> {
-    type Error = Response;
-
-    #[inline]
-    fn from_request(req: &'req Request) -> Option<Result<Self, Self::Error>> {
-        if req.headers.ContentType()? != "application/x-www-form-urlencoded" {
-            return None
-        }
-        ohkami_lib::serde_urlencoded::from_bytes(req.payload()?)
-            .map_err(super::reject)
-            .map(Self).into()
+impl<'req, T: Incoming<'req>> FromBody<'req> for URLEncoded<T> {
+    const MIME_TYPE: &'static str = "application/x-www-form-urlencoded";
+    fn from_body(body: &'req [u8]) -> Result<Self, impl std::fmt::Display> {
+        serde_urlencoded::from_bytes(body).map(URLEncoded)
     }
 
-    #[cfg(all(debug_assertions, feature="openapi"))]
-    fn openapi_input() -> Option<openapi::Input> {
-        Some(openapi::Input::Body(openapi::RequestBody::of(
-            "application/x-www-form-urlencoded",
-            T::schema()
-        )))
+    #[cfg(feature="openapi")]
+    fn openapi_requestbody() -> impl Into<openapi::schema::SchemaRef> {
+        T::schema()
     }
 }
 
-impl<T: Outgoing> IntoResponse for URLEncoded<T> {
-    fn into_response(self) -> Response {
-        Response::OK().with_payload("application/x-www-form-urlencoded",
-            ohkami_lib::serde_urlencoded::to_string(&self.0).unwrap().into_bytes()
-        )
+impl<T: Outgoing> IntoBody for URLEncoded<T> {
+    const MIME_TYPE: &'static str = "application/x-www-form-urlencoded";
+    fn into_body(self) -> Result<Vec<u8>, impl std::fmt::Display> {
+        serde_urlencoded::to_string(&self.0).map(String::into_bytes)
     }
 
-    #[cfg(all(debug_assertions, feature="openapi"))]
-    fn openapi_responses() -> openapi::Responses {
-        openapi::Responses::new(200, openapi::Response::when("OK")
-            .content("application/x-www-form-urlencoded", T::schema())
-        )
+    #[cfg(feature="openapi")]
+    fn openapi_responsebody() -> impl Into<openapi::schema::SchemaRef> {
+        T::schema()
     }
 }

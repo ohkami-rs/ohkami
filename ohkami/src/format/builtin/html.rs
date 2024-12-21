@@ -1,4 +1,4 @@
-use crate::{IntoResponse, Response};
+use crate::IntoBody;
 
 #[cfg(all(debug_assertions, feature="openapi"))]
 use crate::openapi;
@@ -6,15 +6,15 @@ use crate::openapi;
 
 pub struct HTML<T = String>(pub T);
 
-impl<T: Into<std::borrow::Cow<'static, str>>> IntoResponse for HTML<T> {
-    fn into_response(self) -> Response {
-        Response::OK().with_html(self.0)
+impl<T: Into<std::borrow::Cow<'static, str>>> IntoBody for HTML<T> {
+    const MIME_TYPE: &'static str = "text/html";
+    fn into_body(self) -> Result<Vec<u8>, impl std::fmt::Display> {
+        let cow: std::borrow::Cow<'static, str> = self.0.into();
+        Ok::<_, std::convert::Infallible>(cow.into_owned().into_bytes())
     }
 
     #[cfg(all(debug_assertions, feature="openapi"))]
-    fn openapi_responses() -> openapi::Responses {
-        openapi::Responses::new(200, openapi::Response::when("OK")
-            .content("text/html", openapi::Schema::string())
-        )
+    fn openapi_responsebody() -> impl Into<openapi::schema::SchemaRef> {
+        openapi::Schema::string()
     }
 }

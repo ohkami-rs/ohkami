@@ -45,6 +45,41 @@ pub trait IntoResponse {
     }
 }
 
+pub trait IntoBody {
+    const MIME_TYPE: &'static str;
+    fn into_body(self) -> Result<Vec<u8>, impl std::fmt::Display>;
+
+    #[cfg(feature="openapi")]
+    fn openapi_responsebody() -> impl Into<openapi::schema::SchemaRef>;
+}
+impl<B: IntoBody> IntoResponse for B {
+    #[inline]
+    fn into_response(self) -> Response {
+        match (Self::MIME_TYPE, self.into_body()) {
+            ("", _) => Response::OK(),
+            (mime, Ok(body)) => Response::OK().with_payload(mime, body),
+            (_, Err(_err)) => {
+                #[cfg(debug_assertions)] {
+                    eprintln!("Failed to serialize `{}` as `{}` in `IntoBody`: {_err}",
+                        std::any::type_name::<B>(),
+                        Self::MIME_TYPE
+                    )
+                }
+                Response::InternalServerError()
+            }
+        }
+    }
+
+    #[cfg(feature="openapi")]
+    fn openapi_responses() -> openapi::Responses {
+        let mut res = openapi::Response::when("OK");
+        if Self::MIME_TYPE != "" {
+            res = res.content(Self::MIME_TYPE, Self::openapi_responsebody());
+        }
+        openapi::Responses::new(200, res)
+    }
+}
+
 impl IntoResponse for Response {
     #[inline] fn into_response(self) -> Response {
         self
@@ -80,25 +115,36 @@ impl IntoResponse for std::convert::Infallible {
     }
 }
 
-impl IntoResponse for () {
-    fn into_response(self) -> Response {
-        Response::OK()
+impl IntoBody for () {
+    const MIME_TYPE: &'static str = "";
+
+    #[cold] #[inline(never)]
+    fn into_body(self) -> Result<Vec<u8>, impl std::fmt::Display> {
+        #[allow(unreachable_code)]
+        {unreachable!("`into_body` of `()`") as Result<Vec<u8>, std::convert::Infallible>}
+    }
+
+    #[cfg(feature="openapi")]
+    #[cold] #[inline(never)]
+    fn openapi_responsebody() -> impl Into<openapi::schema::SchemaRef> {
+        #[allow(unreachable_code)]
+        {unreachable!("`openapi_responsebody` of `()`") as openapi::schema::SchemaRef}
     }
 }
 
 macro_rules! text_response {
     ($( $t:ty )*) => {$(
-        impl IntoResponse for $t {
+        impl IntoBody for $t {
+            const MIME_TYPE: &'static str = "text/plain";
+
             #[inline(always)]
-            fn into_response(self: $t) -> Response {
-                Response::OK().with_text(self)
+            fn into_body(self) -> Result<Vec<u8>, impl std::fmt::Display> {
+                Ok::<_, std::convert::Infallible>(String::from(self).into_bytes())
             }
 
-            #[cfg(all(debug_assertions, feature="openapi"))]
-            fn openapi_responses() -> openapi::Responses {
-                openapi::Responses::new(200, openapi::Response::when("OK")
-                    .content("text/plain", openapi::Schema::string())
-                )
+            #[cfg(feature="openapi")]
+            fn openapi_responsebody() -> impl Into<openapi::schema::SchemaRef> {
+                openapi::Schema::string()
             }
         }
     )*};

@@ -179,11 +179,11 @@ pub mod openapi;
 pub mod testing;
 
 mod request;
-pub use request::{Request, Method, FromRequest, FromParam};
+pub use request::{Request, Method, FromRequest, FromParam, FromBody};
 pub use ::ohkami_macros::FromRequest;
 
 mod response;
-pub use response::{Response, Status, IntoResponse};
+pub use response::{Response, Status, IntoResponse, IntoBody};
 
 #[cfg(feature="__rt_native__")]
 mod session;

@@ -43,7 +43,7 @@ pub trait FromRequest<'req>: Sized {
     fn from_request(req: &'req Request) -> Option<Result<Self, Self::Error>>;
 
     #[cfg(all(debug_assertions, feature="openapi"))]
-    fn openapi_input() -> Option<openapi::Input> {
+    fn openapi_input() -> Option<openapi::support::Input> {
         None
     }
 }
@@ -66,7 +66,7 @@ const _: () = {
         }
 
         #[cfg(all(debug_assertions, feature="openapi"))]
-        fn openapi_input() -> Option<openapi::Input> {
+        fn openapi_input() -> Option<openapi::support::Input> {
             FR::openapi_input()
         }
     }
@@ -88,7 +88,6 @@ const _: () = {
         }
     }
 };
-
 
 /// "Retrieved from a path param".
 /// 
@@ -125,7 +124,8 @@ pub trait FromParam<'p>: Sized {
     fn openapi_param() -> openapi::Parameter {
         openapi::Parameter::in_path("", openapi::Schema::string())
     }
-} const _: () = {
+}
+const _: () = {
     impl<'p> FromParam<'p> for String {
         type Error = std::convert::Infallible;
 
@@ -203,3 +203,33 @@ pub trait FromParam<'p>: Sized {
         };
     } unsigned_integers! { u8, u16, u32, u64, u128, usize }
 };
+
+pub trait FromBody<'req>: Sized {
+    const MIME_TYPE: &'static str;
+    fn from_body(body: &'req [u8]) -> Result<Self, impl std::fmt::Display>;
+
+    #[cfg(feature="openapi")]
+    fn openapi_requestbody() -> impl Into<openapi::schema::SchemaRef>;
+}
+impl<'req, B: FromBody<'req>> FromRequest<'req> for B {
+    type Error = Response;
+    fn from_request(req: &'req Request) -> Option<Result<Self, Self::Error>> {
+        #[cold] #[inline(never)]
+        fn reject(msg: impl std::fmt::Display) -> Response {
+            Response::BadRequest().with_text(msg.to_string())
+        }
+
+        if req.headers.ContentType()? == B::MIME_TYPE {
+            Some(B::from_body(req.payload()?).map_err(reject))
+        } else {
+            None
+        }
+    }
+
+    #[cfg(feature="openapi")]
+    fn openapi_input() -> Option<openapi::support::Input> {
+        Some(openapi::support::Input::Body(openapi::RequestBody::of(
+            B::MIME_TYPE, B::openapi_requestbody()
+        )))
+    }
+}
