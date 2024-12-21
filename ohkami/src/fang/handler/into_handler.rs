@@ -39,9 +39,9 @@ const _: (/* no args */) = {
                 Box::pin(async move {
                     res.await.into_response()
                 })
-            }, #[cfg(feature="openapi")] openapi::Operation::with(
-                Body::openapi_responses()
-            ))
+            }, #[cfg(feature="openapi")] {
+                openapi::Operation::with(Body::openapi_responses())
+            })
         }
     }
 };
@@ -54,7 +54,7 @@ const _: (/* FromParam */) = {
         Fut:  Future<Output = Body> + SendOnNative + 'static,
     {
         fn into_handler(self) -> Handler {
-            Handler::new(move |req|
+            Handler::new(move |req| {
                 match P1::from_raw_param(unsafe {req.path.assume_one_param()}) {
                     Ok(p1) => {
                         let res = self(p1);
@@ -62,7 +62,10 @@ const _: (/* FromParam */) = {
                     }
                     Err(e) => __error__(e)
                 }
-            )
+            }, #[cfg(feature="openapi")] {
+                openapi::Operation::with(Body::openapi_responses())
+                    .param(P1::openapi_param())
+            })
         }
     }
 
@@ -73,7 +76,7 @@ const _: (/* FromParam */) = {
         Fut:  Future<Output = Body> + SendOnNative + 'static,
     {
         fn into_handler(self) -> Handler {
-            Handler::new(move |req|
+            Handler::new(move |req| {
                 // SAFETY: Due to the architecture of `Router`,
                 // `params` has already `append`ed once before this code
                 match P1::from_raw_param(unsafe {req.path.assume_one_param()}) {
@@ -83,7 +86,10 @@ const _: (/* FromParam */) = {
                     }
                     Err(e) => __error__(e)
                 }
-            )
+            }, #[cfg(feature="openapi")] {
+                openapi::Operation::with(Body::openapi_responses())
+                    .param(P1::openapi_param())
+            })
         }
     }
 
@@ -102,6 +108,10 @@ const _: (/* FromParam */) = {
                     }
                     (Err(e), _) | (_, Err(e)) => __error__(e),
                 }
+            }, #[cfg(feature="openapi")] {
+                openapi::Operation::with(Body::openapi_responses())
+                    .param(P1::openapi_param())
+                    .param(P2::openapi_param())
             })
         }
     }
@@ -114,7 +124,7 @@ const _: (/* FromRequest items */) = {
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
         fn into_handler(self) -> Handler {
-            Handler::new(move |req|
+            Handler::new(move |req| {
                 match from_request::<Item1>(req) {
                     Ok(item1) => {
                         let res = self(item1);
@@ -122,7 +132,10 @@ const _: (/* FromRequest items */) = {
                     }
                     Err(e) => __error__(e)
                 }
-            )
+            }, #[cfg(feature="openapi")] {
+                openapi::Operation::with(Body::openapi_responses())
+                    .input(Item1::openapi_input())
+            })
         }
     }
 

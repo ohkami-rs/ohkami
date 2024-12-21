@@ -163,4 +163,16 @@ impl Operation {
         self.deprecated = true;
         self
     }
+
+    pub(crate) fn input(mut self, input: Option<super::Input>) -> Self {
+        match input {
+            None => self,
+            Some(super::Input::Body(body)) => self.requestBody(body),
+            Some(super::Input::Param(param)) => self.param(param),
+            Some(super::Input::Params(params)) => {
+                for param in params {self = self.param(param)}
+                self
+            }
+        }
+    }
 }
