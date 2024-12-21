@@ -6,14 +6,22 @@ use super::{SendOnNative, SendSyncOnNative, ResponseFuture};
 use crate::{Request, Response};
 use std::{pin::Pin, future::Future};
 
+#[cfg(feature="openapi")]
+use crate::openapi;
+
 
 #[derive(Clone)]
-pub struct Handler(BoxedFPC);
+pub struct Handler {
+    proc: BoxedFPC,
+
+    #[cfg(feature="openapi")]
+    openapi_operation: openapi::Operation
+}
 
 const _: () = {
     impl Into<BoxedFPC> for Handler {
         fn into(self) -> BoxedFPC {
-            self.0
+            self.proc
         }
     }
 
@@ -29,7 +37,6 @@ impl Handler {
         proc: impl Fn(&mut Request) -> Pin<Box<dyn ResponseFuture + '_>> + SendSyncOnNative + 'static
     ) -> Self {
         struct HandlerProc<F>(F);
-
         const _: () = {
             impl<F> FangProcCaller for HandlerProc<F>
             where
@@ -50,7 +57,12 @@ impl Handler {
             }
         };
 
-        Self(BoxedFPC::from_proc(HandlerProc(proc)))
+        Self {
+            proc: BoxedFPC::from_proc(HandlerProc(proc)),
+
+            #[cfg(feature="openapi")]
+            openapi_operation: 
+        }
     }
 }
 

@@ -2,10 +2,10 @@ use super::schema::{SchemaRef, Schema, Type::SchemaType};
 use super::_util::{Content, Map, is_false};
 use serde::Serialize;
 
-#[derive(Serialize)]
+#[derive(Serialize, Clone)]
 pub struct Responses(Map<String, Response>);
 
-#[derive(Serialize)]
+#[derive(Serialize, Clone)]
 pub struct Response {
     description: &'static str,
 
@@ -16,7 +16,7 @@ pub struct Response {
     headers: Map<&'static str, ResponseHeader>
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Clone)]
 pub struct ResponseHeader {
     #[serde(skip_serializing_if = "Option::is_none")]
     description: Option<&'static str>,

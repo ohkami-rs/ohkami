@@ -25,7 +25,7 @@ pub struct Operations {
     options: Option<Operation>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Clone)]
 pub struct Operation {
     #[serde(skip_serializing_if = "Option::is_none")]
     operationId: Option<&'static str>,
@@ -54,7 +54,7 @@ pub struct Operation {
     deprecated: bool,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Clone)]
 pub struct ExternalDoc {
     pub url: &'static str,
 

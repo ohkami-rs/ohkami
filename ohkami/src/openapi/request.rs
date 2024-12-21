@@ -2,7 +2,7 @@ use super::schema::SchemaRef;
 use super::_util::{Content, Map, is_false};
 use serde::Serialize;
 
-#[derive(Serialize)]
+#[derive(Serialize, Clone)]
 pub struct Parameter {
     #[serde(rename = "in")]
     kind: ParameterKind,
@@ -24,7 +24,7 @@ pub struct Parameter {
     explode: bool,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Clone)]
 enum ParameterKind {
     query,
     header,
@@ -112,7 +112,7 @@ impl Parameter {
     }
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Clone)]
 pub struct RequestBody {
     #[serde(skip_serializing_if = "Option::is_none")]
     description: Option<&'static str>,

@@ -5,7 +5,7 @@ pub(crate) const fn is_false(bool: &bool) -> bool {
     !*bool
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Clone)]
 pub(crate) struct Content {
     schema: SchemaRef
 }
@@ -15,6 +15,7 @@ impl<T: Into<SchemaRef>> From<T> for Content {
     }
 }
 
+#[derive(Clone)]
 pub(crate) struct Map<K:PartialEq, V>(Vec<(K, V)>);
 impl<K:PartialEq, V> Map<K, V> {
     pub(crate) const fn new() -> Self {

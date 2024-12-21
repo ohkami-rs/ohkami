@@ -29,7 +29,7 @@ pub mod Type {
     impl SchemaType for any {const NAME: &'static str = "";}
 }
 
-#[derive(Serialize, PartialEq)]
+#[derive(Serialize, PartialEq, Clone)]
 pub struct RawSchema {
     #[serde(rename = "type", skip_serializing_if = "str::is_empty")]
     __type__: &'static str,
@@ -121,7 +121,7 @@ impl RawSchema {
     }
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Clone)]
 #[allow(private_interfaces/* construct only via `From` */)]
 pub enum SchemaRef {
     Inline(Box<RawSchema>),

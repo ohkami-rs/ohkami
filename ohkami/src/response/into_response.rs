@@ -55,10 +55,13 @@ pub trait IntoBody {
 impl<B: IntoBody> IntoResponse for B {
     #[inline]
     fn into_response(self) -> Response {
-        match (Self::MIME_TYPE, self.into_body()) {
-            ("", _) => Response::OK(),
-            (mime, Ok(body)) => Response::OK().with_payload(mime, body),
-            (_, Err(_err)) => {
+        if Self::MIME_TYPE == "" {// removed in optimization if it's not ""
+            return Response::OK()
+        }
+
+        match self.into_body() {
+            Ok(body) => Response::OK().with_payload(Self::MIME_TYPE, body),
+            Err(_err) => {
                 #[cfg(debug_assertions)] {
                     eprintln!("Failed to serialize `{}` as `{}` in `IntoBody`: {_err}",
                         std::any::type_name::<B>(),
