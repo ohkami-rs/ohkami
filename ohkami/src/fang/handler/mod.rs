@@ -34,7 +34,8 @@ const _: () = {
 
 impl Handler {
     pub(crate) fn new(
-        proc: impl Fn(&mut Request) -> Pin<Box<dyn ResponseFuture + '_>> + SendSyncOnNative + 'static
+        proc: impl Fn(&mut Request) -> Pin<Box<dyn ResponseFuture + '_>> + SendSyncOnNative + 'static,
+        #[cfg(feature="openapi")] openapi_operation: openapi::Operation
     ) -> Self {
         struct HandlerProc<F>(F);
         const _: () = {
@@ -61,7 +62,7 @@ impl Handler {
             proc: BoxedFPC::from_proc(HandlerProc(proc)),
 
             #[cfg(feature="openapi")]
-            openapi_operation: 
+            openapi_operation
         }
     }
 }
@@ -83,7 +84,14 @@ impl Handler {
             not_found.into_handler()
         });
 
-        Handler((&*NOT_FOUND).0.clone())
+        Handler {
+            proc: (&*NOT_FOUND).proc.clone(),
+
+            #[cfg(feature="openapi")]
+            openapi_operation: openapi::Operation::with(openapi::Responses::new(
+                404, openapi::Response::when("default not found")
+            ))
+        }
     }
 
     pub(crate) fn default_options_with(mut available_methods: Vec<&'static str>) -> Self {
@@ -137,6 +145,10 @@ impl Handler {
                     }
                 }
             })
-        })
+        }, #[cfg(feature="openapi")] openapi::Operation::with(
+            openapi::Responses::enumerated([
+                /* NEVER generate spec of OPTIONS operations */
+            ])
+        ))
     }
 }

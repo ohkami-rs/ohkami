@@ -35,6 +35,10 @@ macro_rules! status {
         #[allow(non_snake_case)]
         impl Response {
             $(
+                #[doc = "`"]
+                #[doc = $message]
+                #[doc = "`"]
+                #[doc = "empty Response"]
                 #[inline(always)]
                 pub fn $name() -> Self {
                     Self {

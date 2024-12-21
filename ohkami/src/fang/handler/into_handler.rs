@@ -2,6 +2,9 @@ use std::{future::Future, pin::Pin};
 use super::{Handler, SendOnNative, SendSyncOnNative, ResponseFuture};
 use crate::{Response, FromRequest, FromParam, Request, IntoResponse};
 
+#[cfg(feature="openapi")]
+use crate::openapi;
+
 
 pub trait IntoHandler<T> {
     fn into_handler(self) -> Handler;
@@ -36,7 +39,9 @@ const _: (/* no args */) = {
                 Box::pin(async move {
                     res.await.into_response()
                 })
-            })
+            }, #[cfg(feature="openapi")] openapi::Operation::with(
+                Body::openapi_responses()
+            ))
         }
     }
 };
