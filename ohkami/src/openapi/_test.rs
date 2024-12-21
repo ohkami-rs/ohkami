@@ -17,7 +17,7 @@ use serde_json::json;
         .get(
             Operation::with(
                 Responses::new(200, Response::when("A JSON array of user names")
-                    .content("application/json", Schema::array().items(Schema::string()))
+                    .content("application/json", array().items(string()))
                 )
             )
             .summary("Returns a list of users.")

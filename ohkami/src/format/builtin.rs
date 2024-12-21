@@ -27,11 +27,11 @@ mod bound {
     use crate::openapi;
     use serde::{Serialize, Deserialize};
 
-    pub trait Incoming<'req>: Deserialize<'req> + openapi::support::Schema {}
-    impl<'req, T> Incoming<'req> for T where T: Deserialize<'req> + openapi::support::Schema {}
+    pub trait Incoming<'req>: Deserialize<'req> + openapi::Schema {}
+    impl<'req, T> Incoming<'req> for T where T: Deserialize<'req> + openapi::Schema {}
 
-    pub trait Outgoing: Serialize + openapi::support::Schema {}
-    impl<T> Outgoing for T where T: Serialize + openapi::support::Schema {}
+    pub trait Outgoing: Serialize + openapi::Schema {}
+    impl<T> Outgoing for T where T: Serialize + openapi::Schema {}
 }
 #[cfg(not(all(debug_assertions, feature="openapi")))]
 mod bound {

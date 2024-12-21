@@ -505,13 +505,13 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
             familly_name: String,
         }
         #[cfg(feature="openapi")]
-        impl openapi::support::Schema for Profile {
+        impl openapi::Schema for Profile {
             const NAME: &'static str = "Profile";
             fn schema() -> impl Into<openapi::schema::SchemaRef> {
-                openapi::Schema::object()
-                    .property("id", openapi::Schema::integer().minimum(0))
-                    .property("first_name", openapi::Schema::string())
-                    .property("familly_name", openapi::Schema::string())
+                openapi::object()
+                    .property("id", openapi::integer().minimum(0))
+                    .property("first_name", openapi::string())
+                    .property("familly_name", openapi::string())
             }
         }
 
@@ -532,12 +532,12 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
             familly_name: &'s str,
         }
         #[cfg(feature="openapi")]
-        impl<'s> openapi::support::Schema for SigninRequest<'s> {
+        impl<'s> openapi::Schema for SigninRequest<'s> {
             const NAME: &'static str = "SigninRequest";
             fn schema() -> impl Into<openapi::schema::SchemaRef> {
-                openapi::Schema::object()
-                    .property("first_name", openapi::Schema::string())
-                    .property("familly_name", openapi::Schema::string())
+                openapi::object()
+                    .property("first_name", openapi::string())
+                    .property("familly_name", openapi::string())
             }
         }
 

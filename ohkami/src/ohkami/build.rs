@@ -273,7 +273,7 @@ trait RoutingItem {
                             res
                         }), #[cfg(feature="openapi")] {use crate::openapi;
                             openapi::Operation::with(openapi::Responses::new(200, openapi::Response::when("OK")
-                                .content(this.mime, openapi::Schema::string().format("binary"))
+                                .content(this.mime, openapi::string().format("binary"))
                             ))
                         })
                     }

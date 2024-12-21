@@ -15,6 +15,6 @@ impl<T: Into<std::borrow::Cow<'static, str>>> IntoBody for HTML<T> {
 
     #[cfg(all(debug_assertions, feature="openapi"))]
     fn openapi_responsebody() -> impl Into<openapi::schema::SchemaRef> {
-        openapi::Schema::string()
+        openapi::string()
     }
 }

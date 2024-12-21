@@ -14,7 +14,7 @@ impl<'req, T: From<&'req str>> FromBody<'req> for Text<T> {
 
     #[cfg(feature="openapi")]
     fn openapi_requestbody() -> impl Into<openapi::schema::SchemaRef> {
-        openapi::Schema::string()
+        openapi::string()
     }
 }
 
@@ -27,6 +27,6 @@ impl<T: Into<std::borrow::Cow<'static, str>>> IntoBody for Text<T> {
 
     #[cfg(all(debug_assertions, feature="openapi"))]
     fn openapi_responsebody() -> impl Into<openapi::schema::SchemaRef> {
-        openapi::Schema::string()
+        openapi::string()
     }
 }

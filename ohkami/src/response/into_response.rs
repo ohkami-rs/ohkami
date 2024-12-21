@@ -147,7 +147,7 @@ macro_rules! text_response {
 
             #[cfg(feature="openapi")]
             fn openapi_responsebody() -> impl Into<openapi::schema::SchemaRef> {
-                openapi::Schema::string()
+                openapi::string()
             }
         }
     )*};

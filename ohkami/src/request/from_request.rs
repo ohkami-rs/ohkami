@@ -43,7 +43,7 @@ pub trait FromRequest<'req>: Sized {
     fn from_request(req: &'req Request) -> Option<Result<Self, Self::Error>>;
 
     #[cfg(all(debug_assertions, feature="openapi"))]
-    fn openapi_input() -> Option<openapi::support::Input> {
+    fn openapi_input() -> Option<openapi::Input> {
         None
     }
 }
@@ -66,7 +66,7 @@ const _: () = {
         }
 
         #[cfg(all(debug_assertions, feature="openapi"))]
-        fn openapi_input() -> Option<openapi::support::Input> {
+        fn openapi_input() -> Option<openapi::Input> {
             FR::openapi_input()
         }
     }
@@ -122,7 +122,7 @@ pub trait FromParam<'p>: Sized {
 
     #[cfg(all(debug_assertions, feature="openapi"))]
     fn openapi_param() -> openapi::Parameter {
-        openapi::Parameter::in_path("", openapi::Schema::string())
+        openapi::Parameter::in_path("", openapi::string())
     }
 }
 const _: () = {
@@ -196,7 +196,7 @@ const _: () = {
 
                     #[cfg(all(debug_assertions, feature="openapi"))]
                     fn openapi_param() -> openapi::Parameter {
-                        openapi::Parameter::in_path("", openapi::Schema::integer())
+                        openapi::Parameter::in_path("", openapi::integer())
                     }
                 }
             )*
@@ -227,8 +227,8 @@ impl<'req, B: FromBody<'req>> FromRequest<'req> for B {
     }
 
     #[cfg(feature="openapi")]
-    fn openapi_input() -> Option<openapi::support::Input> {
-        Some(openapi::support::Input::Body(openapi::RequestBody::of(
+    fn openapi_input() -> Option<openapi::Input> {
+        Some(openapi::Input::Body(openapi::RequestBody::of(
             B::MIME_TYPE, B::openapi_requestbody()
         )))
     }

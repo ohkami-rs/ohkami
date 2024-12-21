@@ -17,12 +17,12 @@ struct User<'req> {
     password: &'req str,
 }
 #[cfg(feature="openapi")]
-impl<'req> openapi::support::Schema for User<'req> {
+impl<'req> openapi::Schema for User<'req> {
     const NAME: &'static str = "User";
     fn schema() -> impl Into<openapi::schema::SchemaRef> {
-        openapi::Schema::object()
-            .property("name", openapi::Schema::string())
-            .property("password", openapi::Schema::string())
+        openapi::object()
+            .property("name", openapi::string())
+            .property("password", openapi::string())
     }
 }
 
@@ -32,12 +32,12 @@ struct HelloQuery<'req> {
     repeat: Option<usize>,
 }
 #[cfg(feature="openapi")]
-impl<'req> openapi::support::Schema for HelloQuery<'req> {
+impl<'req> openapi::Schema for HelloQuery<'req> {
     const NAME: &'static str = "HelloQuery";
     fn schema() -> impl Into<openapi::schema::SchemaRef> {
-        openapi::Schema::object()
-            .property("name", openapi::Schema::string())
-            .optional("repeat", openapi::Schema::integer())
+        openapi::object()
+            .property("name", openapi::string())
+            .optional("repeat", openapi::integer())
     }
 }
 
