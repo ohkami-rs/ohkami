@@ -6,7 +6,7 @@ use crate::openapi;
 
 
 macro_rules! generate_statuses_as_types_containing_value {
-    ($( $status:ident = $code:literal : $message:literal, )*) => {
+    ($( $status:ident : $message:literal, )*) => {
         $(
             #[doc = "Type-safe `"]
             #[doc = $message]
@@ -27,7 +27,9 @@ macro_rules! generate_statuses_as_types_containing_value {
 
                 #[cfg(all(debug_assertions, feature="openapi"))]
                 fn openapi_responses() -> openapi::Responses {
-                                        
+                    let mut res = B::openapi_responses();
+                    res.unify($message.split_once(' ').unwrap().0.parse().unwrap());
+                    res
                 }
             }
         )*

@@ -48,6 +48,30 @@ impl Responses {
             self.0.insert(code, res);
         }
     }
+
+    pub fn unify(&mut self, code: u16) {
+        let mut current = std::mem::take(&mut self.0);
+        *self = {
+            let mut unified = Response::when("");
+
+            let mut content_stat = Map::<&'static str, Vec<Content>>::new();
+            let n_res_of_current = current.len();
+            for (_, res) in current {
+                for (media_type, content) in res.content {
+                    content_stat.insert_or_extend(media_type, content);
+                }
+            }
+
+            for (media_type, mut contents) in content_stat {
+                let all_have_the_media_type = contents.len() == n_res_of_current;
+                
+            }
+
+            // unified = unified.content(media_type, schema);
+
+            Self::new(code, unified)
+        };
+    }
 }
 
 impl Response {
