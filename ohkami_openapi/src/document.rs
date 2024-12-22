@@ -1,4 +1,4 @@
-use super::{paths::Paths, Operations, Response, schema::RawSchema, security::RawSecurityScheme, _util::Map};
+use super::{paths::{Paths, Operations}, schema::RawSchema, security::SecurityScheme, _util::Map};
 use serde::Serialize;
 
 #[derive(Serialize)]
@@ -71,43 +71,9 @@ impl Server {
 }
 
 #[derive(Serialize, Clone)]
-pub(crate) struct Components {
+pub struct Components {
     schemas:         Map<&'static str, RawSchema>,
-    responses:       Map<&'static str, Response>,
-    securitySchemes: Map<&'static str, RawSecurityScheme>,
-}
-impl Components {
-    pub(crate) fn new() -> Self {
-        Components {
-            schemas:         Map::new(),
-            responses:       Map::new(),
-            securitySchemes: Map::new(),
-        }        
-    }
-
-    pub fn register_schema(&mut self, name: &'static str, schema: impl Into<RawSchema>) {
-        let schema: RawSchema = schema.into();
-        match self.schemas.get(&name) {
-            Some(it) if *it == schema => return,
-            Some(_) => panic!("[OpenAPI] `components.schemas`: contradict registrations of multiple `{name}`s"),
-            None => self.schemas.insert(name, schema),
-        }
-    }
-    pub fn register_response(&mut self, name: &'static str, response: Response) {
-        match self.responses.get(&name) {
-            Some(it) if *it == response => return,
-            Some(_) => panic!("[OpenAPI] `components.responses`: contradict registrations of multiple `{name}`s"),
-            None => self.responses.insert(name, response),
-        }
-    }
-    pub fn register_securityScheme(&mut self, name: &'static str, securityScheme: impl Into<RawSecurityScheme>) {
-        let securityScheme: RawSecurityScheme = securityScheme.into();
-        match self.securitySchemes.get(&name) {
-            Some(it) if *it == securityScheme => return,
-            Some(_) => panic!("[OpenAPI] `components.securitySchemes`: contradict registrations of multiple `{name}`s"),
-            None => self.securitySchemes.insert(name, securityScheme),
-        }
-    }
+    securitySchemes: Map<&'static str, SecurityScheme>,
 }
 
 impl Document {
@@ -121,7 +87,7 @@ impl Document {
             info:       Info { title, version, description:None },
             servers:    servers.into(),
             paths:      Paths::new(),
-            components: Components::new()
+            components: Components { schemas:Map::new(), securitySchemes:Map::new() }
         }
     }
 
@@ -133,8 +99,22 @@ impl Document {
         self.paths = self.paths.at(path, operations);
         self
     }
-    pub(crate) fn components(mut self, components: Components) -> Self {
-        self.components = components;
-       self 
+    
+    pub fn register_schema(&mut self, schema: impl Into<RawSchema>) {
+        let schema: RawSchema = schema.into();
+        if let Some(name) = schema.__name__ {
+            match self.components.schemas.get(&name) {
+                Some(it) if *it == schema => return,
+                Some(_) => panic!("[OpenAPI] `components.schemas`: contradict registrations of multiple `{name}`s"),
+                None => self.components.schemas.insert(name, schema),
+            }
+        }
+    }
+    pub fn register_securityScheme(&mut self, securityScheme: SecurityScheme) {
+        match self.components.securitySchemes.get(&securityScheme.__name__) {
+            Some(it) if *it == securityScheme => return,
+            Some(_) => panic!("[OpenAPI] `components.securitySchemes`: contradict registrations of multiple `{}`s", securityScheme.__name__),
+            None => self.components.securitySchemes.insert(securityScheme.__name__, securityScheme),
+        }
     }
 }

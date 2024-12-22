@@ -115,6 +115,14 @@ const _: () = {
         fn chain(&self, inner: Inner) -> Self::Proc {
             JWTProc { inner, jwt: self.clone() }
         }
+
+        #[cfg(feature="openapi")]
+        fn openapi_map_operation(&self, operation: crate::openapi::Operation) -> crate::openapi::Operation {
+            use crate::openapi::security::{SecurityScheme, APIKey};
+            operation.security(SecurityScheme::APIKey(
+                "JWT", APIKey::header { name:  }
+            ), [])
+        }
     }
 
     pub struct JWTProc<
@@ -506,12 +514,12 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
         }
         #[cfg(feature="openapi")]
         impl openapi::Schema for Profile {
-            const NAME: &'static str = "Profile";
             fn schema() -> impl Into<openapi::schema::SchemaRef> {
-                openapi::object()
+                openapi::component("Profile", openapi::object()
                     .property("id", openapi::integer().minimum(0))
                     .property("first_name", openapi::string())
                     .property("familly_name", openapi::string())
+                )
             }
         }
 
@@ -533,11 +541,11 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
         }
         #[cfg(feature="openapi")]
         impl<'s> openapi::Schema for SigninRequest<'s> {
-            const NAME: &'static str = "SigninRequest";
             fn schema() -> impl Into<openapi::schema::SchemaRef> {
-                openapi::object()
+                openapi::component("SigninRequest", openapi::object()
                     .property("first_name", openapi::string())
                     .property("familly_name", openapi::string())
+                )
             }
         }
 

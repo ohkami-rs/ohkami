@@ -35,7 +35,7 @@ pub mod Type {
 #[derive(Serialize, PartialEq, Clone)]
 pub struct RawSchema {
     #[serde(skip)]
-    __name__: Option<&'static str>,
+    pub(crate) __name__: Option<&'static str>,
 
     #[serde(rename = "type", skip_serializing_if = "str::is_empty")]
     datatype: &'static str,
@@ -289,15 +289,16 @@ const _: (/* constructors */) = {
             }
         }
     }
+    impl<T: Type::SchemaType> Schema<T> {
+        pub fn component(name: &'static str, mut schema: Self) -> Self {
+            schema.raw.__name__ = Some(name);
+            schema
+        }
+    }
 };
 
 /* metadata and flags */
 impl<T: Type::SchemaType> Schema<T> {
-    pub(crate) fn __name__(mut self, __name__: &'static str) -> Self {
-        self.raw.__name__ = Some(__name__);
-        self
-    }
-
     pub fn description(mut self, description: &'static str) -> Self {
         self.raw.description = Some(description);
         self

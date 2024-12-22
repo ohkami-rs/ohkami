@@ -1,0 +1,17 @@
+[package]
+name          = "ohkami_openapi"
+version       = "0.21.0"
+edition       = "2021"
+authors       = ["kanarus <kanarus786@gmail.com>"]
+description   = "OpenAPI types for Ohkami - intuitive and declarative web framework"
+documentation = "https://docs.rs/ohkami_openapi"
+homepage      = "https://crates.io/crates/ohkami"
+repository    = "https://github.com/ohkami-rs/ohkami"
+readme        = "../README.md"
+keywords      = ["async", "http", "web", "server", "framework"]
+categories    = ["asynchronous", "web-programming::http-server", "network-programming", "wasm"]
+license       = "MIT"
+
+[dependencies]
+serde         = { workspace = true }
+serde_json    = { workspace = true }

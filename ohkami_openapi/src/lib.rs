@@ -5,7 +5,6 @@ mod _util;
 #[cfg(test)] mod _test;
 
 pub mod schema;
-pub use schema::SchemaRef;
 
 pub mod security;
 
@@ -13,13 +12,12 @@ pub mod request;
 pub use request::{Parameter, RequestBody};
 
 pub mod response;
-pub use response::{Responses, Response, ResponseHeader};
+pub use response::{Responses, Response};
 
 pub mod paths;
-pub use paths::{Operations, Operation, ExternalDoc};
+pub use paths::Operation;
 
 pub mod document;
-pub use document::{Document, Server};
 
 pub enum Input {
     Param(Parameter),
@@ -28,8 +26,11 @@ pub enum Input {
 }
 
 pub trait Schema {
-    const NAME: &'static str;
-    fn schema() -> impl Into<SchemaRef>;
+    fn schema() -> impl Into<schema::SchemaRef>;
+}
+
+pub fn component<T: schema::Type::SchemaType>(name: &'static str, schema: schema::Schema<T>) -> schema::Schema<T> {
+    schema::Schema::component(name, schema)
 }
 
 pub fn string() -> schema::Schema<schema::Type::string> {

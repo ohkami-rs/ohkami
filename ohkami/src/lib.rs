@@ -170,9 +170,10 @@ mod __rt__ {
 }
 
 
-#[cfg(debug_assertions)]
 #[cfg(feature="openapi")]
-pub mod openapi;
+pub mod openapi {
+    pub use ::ohkami_openapi::*;
+}
 
 #[cfg(debug_assertions)]
 #[cfg(feature="__rt__")]

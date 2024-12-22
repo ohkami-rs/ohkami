@@ -1,4 +1,4 @@
-use super::{Parameter, RequestBody, Responses, document::Components};
+use super::{Parameter, RequestBody, Responses, security::SecurityScheme};
 use super::_util::{is_false, Map};
 use serde::Serialize;
 
@@ -48,8 +48,21 @@ pub struct Operation {
     requestBody: Option<RequestBody>,
 
     #[serde(skip_serializing_if = "Vec::is_empty")]
-    security: Vec<Map<&'static str, Vec<&'static str>>>,
+    security: Vec<Map<SecuritySchemeName, Vec<&'static str>>>,
+
     responses: Responses,
+}
+#[derive(Clone)]
+struct SecuritySchemeName(SecurityScheme);
+impl PartialEq for SecuritySchemeName {
+    fn eq(&self, other: &Self) -> bool {
+        self.0.__name__ == other.0.__name__
+    }
+}
+impl Serialize for SecuritySchemeName {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(self.0.__name__)
+    }
 }
 
 #[derive(Serialize, Clone)]
@@ -132,8 +145,8 @@ impl Operation {
         self
     }
 
-    pub fn security<const N: usize>(mut self, schema: &'static str, scopes: [&'static str; N]) -> Self {
-        self.security.push(Map::from_iter([(schema, scopes.into())]));
+    pub fn security<const N: usize>(mut self, securityScheme: SecurityScheme, scopes: [&'static str; N]) -> Self {
+        self.security.push(Map::from_iter([(SecuritySchemeName(securityScheme), scopes.into())]));
         self
     }
 
@@ -162,7 +175,7 @@ impl Operation {
         self
     }
 
-    pub(crate) fn input(mut self, input: Option<super::Input>) -> Self {
+    pub fn input(mut self, input: Option<super::Input>) -> Self {
         match input {
             None => self,
             Some(super::Input::Body(body)) => self.requestBody(body),

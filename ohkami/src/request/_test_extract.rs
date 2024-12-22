@@ -18,11 +18,11 @@ struct User<'req> {
 }
 #[cfg(feature="openapi")]
 impl<'req> openapi::Schema for User<'req> {
-    const NAME: &'static str = "User";
     fn schema() -> impl Into<openapi::schema::SchemaRef> {
-        openapi::object()
+        openapi::component("User", openapi::object()
             .property("name", openapi::string())
             .property("password", openapi::string())
+        )
     }
 }
 
@@ -33,11 +33,11 @@ struct HelloQuery<'req> {
 }
 #[cfg(feature="openapi")]
 impl<'req> openapi::Schema for HelloQuery<'req> {
-    const NAME: &'static str = "HelloQuery";
     fn schema() -> impl Into<openapi::schema::SchemaRef> {
-        openapi::object()
+        openapi::component("HelloQuery", openapi::object()
             .property("name", openapi::string())
             .optional("repeat", openapi::integer())
+        )
     }
 }
 

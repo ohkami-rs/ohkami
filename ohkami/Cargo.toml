@@ -18,8 +18,9 @@ features      = ["rt_tokio", "nightly", "sse", "ws"]
 
 
 [dependencies]
-ohkami_lib    = { version = "=0.21.0", path = "../ohkami_lib" }
-ohkami_macros = { version = "=0.21.0", path = "../ohkami_macros" }
+ohkami_lib     = { version = "=0.21.0", path = "../ohkami_lib" }
+ohkami_macros  = { version = "=0.21.0", path = "../ohkami_macros" }
+ohkami_openapi = { optional = true, version = "=0.21.0", path = "../ohkami_openapi" }
 
 tokio         = { version = "1",   optional = true }
 async-std     = { version = "1",   optional = true }
@@ -30,8 +31,7 @@ worker        = { version = "0.4", optional = true }
 
 byte_reader   = { workspace = true }
 serde         = { workspace = true }
-
-serde_json    = { version = "1.0" }
+serde_json    = { workspace = true }
 
 base64        = { version = "0.22" }
 hmac          = { version = "0.12", default-features = false }
@@ -75,7 +75,7 @@ rt_worker = ["__rt__",
     "ohkami_macros/worker"
 ]
 nightly = []
-openapi = []
+openapi = ["dep:ohkami_openapi"]
 sse     = ["ohkami_lib/stream"]
 ws      = ["ohkami_lib/stream", "dep:mews"]
 
