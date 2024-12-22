@@ -83,10 +83,13 @@ use base64::engine::{Engine as _, general_purpose::URL_SAFE_NO_PAD as BASE64URL}
 /// }
 /// ```
 pub struct JWT<Payload> {
+    _payload:  PhantomData<Payload>,
     secret:    Cow<'static, str>,
     alg:       VerifyingAlgorithm,
     get_token: fn(&Request)->Option<&str>,
-    _payload:  PhantomData<Payload>,
+
+    #[cfg(feature="openapi")]
+    openapi_security: crate::openapi::security::APIKey
 }
 #[derive(Clone)]
 enum VerifyingAlgorithm {
@@ -99,10 +102,13 @@ const _: () = {
     impl<Payload> Clone for JWT<Payload> {
         fn clone(&self) -> Self {
             Self {
+                _payload:  PhantomData,
                 secret:    self.secret.clone(),
                 alg:       self.alg.clone(),
                 get_token: self.get_token.clone(),
-                _payload:  PhantomData
+
+                #[cfg(feature="openapi")]
+                openapi_security: self.openapi_security.clone()
             }
         }
     }
@@ -118,9 +124,9 @@ const _: () = {
 
         #[cfg(feature="openapi")]
         fn openapi_map_operation(&self, operation: crate::openapi::Operation) -> crate::openapi::Operation {
-            use crate::openapi::security::{SecurityScheme, APIKey};
+            use crate::openapi::security::SecurityScheme;
             operation.security(SecurityScheme::APIKey(
-                "JWT", APIKey::header { name:  }
+                "JWT", self.openapi_security.clone()
             ), [])
         }
     }
@@ -152,44 +158,65 @@ impl<Payload> JWT<Payload> {
     /// Just `new_256`; use HMAC-SHA256 as verifying algorithm
     #[inline] pub fn default(secret: impl Into<Cow<'static, str>>) -> Self {
         Self {
+            _payload:  PhantomData,
             secret:    secret.into(),
             alg:       VerifyingAlgorithm::HS256,
             get_token: Self::default_get,
-            _payload:  PhantomData
+
+            #[cfg(feature="openapi")]
+            openapi_security: crate::openapi::security::APIKey::header { name: "Authorization" }
         }
     }
     /// Use HMAC-SHA256 as verifying algorithm
     pub fn new_256(secret: impl Into<Cow<'static, str>>) -> Self {
         Self {
+            _payload:  PhantomData,
             secret:    secret.into(),
             alg:       VerifyingAlgorithm::HS256,
             get_token: Self::default_get,
-            _payload:  PhantomData
+
+            #[cfg(feature="openapi")]
+            openapi_security: crate::openapi::security::APIKey::header { name: "Authorization" }
         }
     }
     /// Use HMAC-SHA384 as verifying algorithm
     pub fn new_384(secret: impl Into<Cow<'static, str>>) -> Self {
         Self {
+            _payload:  PhantomData,
             secret:    secret.into(),
             alg:       VerifyingAlgorithm::HS384,
             get_token: Self::default_get,
-            _payload:  PhantomData
+
+            #[cfg(feature="openapi")]
+            openapi_security: crate::openapi::security::APIKey::header { name: "Authorization" }
         }
     }
     /// Use HMAC-SHA512 as verifying algorithm
     pub fn new_512(secret: impl Into<Cow<'static, str>>) -> Self {
         Self {
+            _payload:  PhantomData,
             secret:    secret.into(),
             alg:       VerifyingAlgorithm::HS512,
             get_token: Self::default_get,
-            _payload:  PhantomData
+
+            #[cfg(feature="openapi")]
+            openapi_security: crate::openapi::security::APIKey::header { name: "Authorization" }
         }
     }
 
     /// Customize get-token process in JWT verifying.
     /// 
     /// *default*: `req.headers.Authorization()?.strip_prefix("Bearer ")`
-    pub fn get_token_by(mut self, get_token: fn(&Request)->Option<&str>) -> Self {
+    pub fn get_token_by(
+        mut self,
+        get_token: fn(&Request)->Option<&str>,
+
+        #[cfg(feature="openapi")]
+        openapi_security: crate::openapi::security::APIKey
+    ) -> Self {
+        #[cfg(feature="openapi")] {
+            self.openapi_security = openapi_security;
+        }
         self.get_token = get_token;
         self
     }

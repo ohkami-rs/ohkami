@@ -29,6 +29,7 @@ pub struct SecurityScheme {
     flows: Option<oauth2::OAuthFlow>,
 }
 
+#[derive(Clone)]
 pub enum APIKey {
     header { name: &'static str },
     query  { name: &'static str },
