@@ -15,6 +15,9 @@ pub(self) use bound::*;
 use crate::{Request, Response};
 use std::{future::Future, pin::Pin, ops::Deref};
 
+#[cfg(feature="openapi")]
+use crate::openapi;
+
 
 /// # Core trait for Ohkami's Fang system
 /// 
@@ -57,6 +60,11 @@ use std::{future::Future, pin::Pin, ops::Deref};
 pub trait Fang<Inner: FangProc> {
     type Proc: FangProc;
     fn chain(&self, inner: Inner) -> Self::Proc;
+
+    #[cfg(feature="openapi")]
+    fn openapi_map_operation(&self, operation: openapi::Operation) -> openapi::Operation {
+        operation
+    }
 }
 
 pub trait FangProc: SendSyncOnNative + 'static {

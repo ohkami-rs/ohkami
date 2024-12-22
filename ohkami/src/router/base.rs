@@ -56,9 +56,9 @@ impl FangsList {
         let mut iter = self.into_iter();
 
         match iter.next() {
-            None => handler.into(),
+            None => handler.proc,
             Some(most_inner) => iter.fold(
-                most_inner.build(handler.into()),
+                most_inner.build(handler.proc),
                 |proc, fangs| fangs.build(proc)
             )
         }

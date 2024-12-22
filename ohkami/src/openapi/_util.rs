@@ -5,7 +5,7 @@ pub(crate) const fn is_false(bool: &bool) -> bool {
     !*bool
 }
 
-#[derive(Serialize, Clone)]
+#[derive(Serialize, Clone, PartialEq)]
 pub(crate) struct Content {
     schema: SchemaRef
 }

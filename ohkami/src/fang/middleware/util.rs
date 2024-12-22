@@ -1,6 +1,9 @@
 use super::super::{Fang, FangProc};
 use crate::{Request, Response};
 
+#[cfg(feature="openapi")]
+use crate::openapi;
+
 
 /// # Fang action - utility wrapper of `Fang`
 /// 
@@ -77,7 +80,13 @@ pub trait FangAction: Clone + Send + Sync + 'static {
     fn back<'a>(&'a self, res: &'a mut Response) -> impl std::future::Future<Output = ()> + Send {
         async {}
     }
-} const _: () = {
+
+    #[cfg(feature="openapi")]
+    fn openapi_map_operation(operation: openapi::Operation) -> openapi::Operation {
+        operation
+    }
+}
+const _: () = {
     impl<A: FangAction, I: FangProc> Fang<I> for A {
         type Proc = FangActionProc<A, I>;
         fn chain(&self, inner: I) -> Self::Proc {
@@ -85,6 +94,11 @@ pub trait FangAction: Clone + Send + Sync + 'static {
                 action: self.clone(),
                 inner
             }
+        }
+
+        #[cfg(feature="openapi")]
+        fn openapi_map_operation(&self, operation: openapi::Operation) -> openapi::Operation {
+            <Self as FangAction>::openapi_map_operation(operation)
         }
     }
 

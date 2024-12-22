@@ -145,7 +145,7 @@ const _: (/* FromRequest items */) = {
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
         fn into_handler(self) -> Handler {
-            Handler::new(move |req|
+            Handler::new(move |req| {
                 match (from_request::<Item1>(req), from_request::<Item2>(req)) {
                     (Ok(item1), Ok(item2)) => {
                         let res = self(item1, item2);
@@ -154,7 +154,11 @@ const _: (/* FromRequest items */) = {
                     (Err(e), _) |
                     (_, Err(e)) => __error__(e),
                 }
-            )
+            }, #[cfg(feature="openapi")] {
+                openapi::Operation::with(Body::openapi_responses())
+                    .input(Item1::openapi_input())
+                    .input(Item2::openapi_input())
+            })
         }
     }
 
@@ -164,7 +168,7 @@ const _: (/* FromRequest items */) = {
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
         fn into_handler(self) -> Handler {
-            Handler::new(move |req|
+            Handler::new(move |req| {
                 match (from_request::<Item1>(req), from_request::<Item2>(req), from_request::<Item3>(req)) {
                     (Ok(item1), Ok(item2), Ok(item3)) => {
                         let res = self(item1, item2, item3);
@@ -174,7 +178,12 @@ const _: (/* FromRequest items */) = {
                     (_, Err(e), _) |
                     (_, _, Err(e)) => __error__(e),
                 }
-            )
+            }, #[cfg(feature="openapi")] {
+                openapi::Operation::with(Body::openapi_responses())
+                    .input(Item1::openapi_input())
+                    .input(Item2::openapi_input())
+                    .input(Item3::openapi_input())
+            })
         }
     }
 
@@ -184,7 +193,7 @@ const _: (/* FromRequest items */) = {
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
         fn into_handler(self) -> Handler {
-            Handler::new(move |req|
+            Handler::new(move |req| {
                 match (from_request::<Item1>(req), from_request::<Item2>(req), from_request::<Item3>(req), from_request::<Item4>(req)) {
                     (Ok(item1), Ok(item2), Ok(item3), Ok(item4)) => {
                         let res = self(item1, item2, item3, item4);
@@ -195,7 +204,13 @@ const _: (/* FromRequest items */) = {
                     (_, _, Err(e),_) |
                     (_,_, _, Err(e)) => __error__(e),
                 }
-            )
+            }, #[cfg(feature="openapi")] {
+                openapi::Operation::with(Body::openapi_responses())
+                    .input(Item1::openapi_input())
+                    .input(Item2::openapi_input())
+                    .input(Item3::openapi_input())
+                    .input(Item4::openapi_input())
+            })
         }
     }
 };
@@ -220,6 +235,10 @@ const _: (/* one FromParam without tuple and FromRequest items */) = {
                     (Err(e), _) |
                     (_, Err(e)) => __error__(e),
                 }
+            }, #[cfg(feature="openapi")] {
+                openapi::Operation::with(Body::openapi_responses())
+                    .param(P1::openapi_param())
+                    .input(Item1::openapi_input())
             })
         }
     }
@@ -244,6 +263,11 @@ const _: (/* one FromParam without tuple and FromRequest items */) = {
                     (_,Err(e),_) |
                     (_,_,Err(e)) => __error__(e),
                 }
+            }, #[cfg(feature="openapi")] {
+                openapi::Operation::with(Body::openapi_responses())
+                    .param(P1::openapi_param())
+                    .input(Item1::openapi_input())
+                    .input(Item2::openapi_input())
             })
         }
     }
@@ -269,6 +293,12 @@ const _: (/* one FromParam without tuple and FromRequest items */) = {
                     (_,_,Err(e),_) |
                     (_,_,_,Err(e)) => __error__(e),
                 }
+            }, #[cfg(feature="openapi")] {
+                openapi::Operation::with(Body::openapi_responses())
+                    .param(P1::openapi_param())
+                    .input(Item1::openapi_input())
+                    .input(Item2::openapi_input())
+                    .input(Item3::openapi_input())
             })
         }
     }
@@ -295,6 +325,13 @@ const _: (/* one FromParam without tuple and FromRequest items */) = {
                     (_,_,_,Err(e),_) |
                     (_,_,_,_,Err(e)) => __error__(e),
                 }
+            }, #[cfg(feature="openapi")] {
+                openapi::Operation::with(Body::openapi_responses())
+                    .param(P1::openapi_param())
+                    .input(Item1::openapi_input())
+                    .input(Item2::openapi_input())
+                    .input(Item3::openapi_input())
+                    .input(Item4::openapi_input())
             })
         }
     }
@@ -320,6 +357,10 @@ const _: (/* one FromParam and FromRequest items */) = {
                     (Err(e),_) |
                     (_,Err(e)) => __error__(e),
                 }
+            }, #[cfg(feature="openapi")] {
+                openapi::Operation::with(Body::openapi_responses())
+                    .param(P1::openapi_param())
+                    .input(Item1::openapi_input())
             })
         }
     }
@@ -344,6 +385,11 @@ const _: (/* one FromParam and FromRequest items */) = {
                     (_,Err(e),_) |
                     (_,_,Err(e)) => __error__(e),
                 }
+            }, #[cfg(feature="openapi")] {
+                openapi::Operation::with(Body::openapi_responses())
+                    .param(P1::openapi_param())
+                    .input(Item1::openapi_input())
+                    .input(Item2::openapi_input())
             })
         }
     }
@@ -369,6 +415,12 @@ const _: (/* one FromParam and FromRequest items */) = {
                     (_,_,Err(e),_) |
                     (_,_,_,Err(e)) => __error__(e),
                 }
+            }, #[cfg(feature="openapi")] {
+                openapi::Operation::with(Body::openapi_responses())
+                    .param(P1::openapi_param())
+                    .input(Item1::openapi_input())
+                    .input(Item2::openapi_input())
+                    .input(Item3::openapi_input())
             })
         }
     }
@@ -395,6 +447,13 @@ const _: (/* one FromParam and FromRequest items */) = {
                     (_,_,_,Err(e),_) |
                     (_,_,_,_,Err(e)) => __error__(e),
                 }
+            }, #[cfg(feature="openapi")] {
+                openapi::Operation::with(Body::openapi_responses())
+                    .param(P1::openapi_param())
+                    .input(Item1::openapi_input())
+                    .input(Item2::openapi_input())
+                    .input(Item3::openapi_input())
+                    .input(Item4::openapi_input())
             })
         }
     }
@@ -421,6 +480,11 @@ const _: (/* two PathParams and FromRequest items */) = {
                     (_,Err(e),_) |
                     (_,_,Err(e)) => __error__(e),
                 }
+            }, #[cfg(feature="openapi")] {
+                openapi::Operation::with(Body::openapi_responses())
+                    .param(P1::openapi_param())
+                    .param(P2::openapi_param())
+                    .input(Item1::openapi_input())
             })
         }
     }
@@ -446,6 +510,12 @@ const _: (/* two PathParams and FromRequest items */) = {
                     (_,_,Err(e),_) |
                     (_,_,_,Err(e)) => __error__(e),
                 }
+            }, #[cfg(feature="openapi")] {
+                openapi::Operation::with(Body::openapi_responses())
+                    .param(P1::openapi_param())
+                    .param(P2::openapi_param())
+                    .input(Item1::openapi_input())
+                    .input(Item2::openapi_input())
             })
         }
     }
@@ -472,6 +542,13 @@ const _: (/* two PathParams and FromRequest items */) = {
                     (_,_,_,Err(e),_) |
                     (_,_,_,_,Err(e)) => __error__(e),
                 }
+            }, #[cfg(feature="openapi")] {
+                openapi::Operation::with(Body::openapi_responses())
+                    .param(P1::openapi_param())
+                    .param(P2::openapi_param())
+                    .input(Item1::openapi_input())
+                    .input(Item2::openapi_input())
+                    .input(Item3::openapi_input())
             })
         }
     }
@@ -499,6 +576,14 @@ const _: (/* two PathParams and FromRequest items */) = {
                     (_,_,_,_,Err(e),_) |
                     (_,_,_,_,_,Err(e)) => __error__(e),
                 }
+            }, #[cfg(feature="openapi")] {
+                openapi::Operation::with(Body::openapi_responses())
+                    .param(P1::openapi_param())
+                    .param(P2::openapi_param())
+                    .input(Item1::openapi_input())
+                    .input(Item2::openapi_input())
+                    .input(Item3::openapi_input())
+                    .input(Item4::openapi_input())
             })
         }
     }

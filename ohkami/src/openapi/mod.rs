@@ -7,6 +7,8 @@ mod _util;
 pub mod schema;
 pub use schema::SchemaRef;
 
+pub mod security;
+
 pub mod request;
 pub use request::{Parameter, RequestBody};
 

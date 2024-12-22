@@ -5,7 +5,7 @@ use serde::Serialize;
 #[derive(Serialize, Clone)]
 pub struct Responses(Map<String, Response>);
 
-#[derive(Serialize, Clone)]
+#[derive(Serialize, Clone, PartialEq)]
 pub struct Response {
     description: &'static str,
 
@@ -16,7 +16,7 @@ pub struct Response {
     headers: Map<&'static str, ResponseHeader>
 }
 
-#[derive(Serialize, Clone)]
+#[derive(Serialize, Clone, PartialEq)]
 pub struct ResponseHeader {
     #[serde(skip_serializing_if = "Option::is_none")]
     description: Option<&'static str>,

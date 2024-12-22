@@ -3,10 +3,9 @@ use std::marker::PhantomData;
 use serde::Serialize;
 use serde_json::Value;
 
-#[derive(Serialize)]
 pub struct Schema<T: SchemaType> {
-    raw: RawSchema,
-    __type__: PhantomData<fn()->T>
+    datatype: PhantomData<fn()->T>,
+    raw: RawSchema
 }
 
 use Type::SchemaType;
@@ -19,20 +18,29 @@ pub mod Type {
     pub struct object;
     pub struct any;
 
-    pub trait SchemaType {const NAME: &'static str;}
-    impl SchemaType for string {const NAME: &'static str = "string";}
-    impl SchemaType for number {const NAME: &'static str = "number";}
-    impl SchemaType for integer {const NAME: &'static str = "integer";}
-    impl SchemaType for bool {const NAME: &'static str = "bool";}
-    impl SchemaType for array {const NAME: &'static str = "array";}
-    impl SchemaType for object {const NAME: &'static str = "object";}
-    impl SchemaType for any {const NAME: &'static str = "";}
+    #[allow(private_bounds)]
+    pub trait SchemaType: Sealed {const NAME: &'static str;}
+    trait Sealed {const NAME: &'static str;}
+    impl<S: Sealed> SchemaType for S {const NAME: &'static str = <S as Sealed>::NAME;}
+
+    impl Sealed for string {const NAME: &'static str = "string";}
+    impl Sealed for number {const NAME: &'static str = "number";}
+    impl Sealed for integer {const NAME: &'static str = "integer";}
+    impl Sealed for bool {const NAME: &'static str = "bool";}
+    impl Sealed for array {const NAME: &'static str = "array";}
+    impl Sealed for object {const NAME: &'static str = "object";}
+    impl Sealed for any {const NAME: &'static str = "";}
 }
 
 #[derive(Serialize, PartialEq, Clone)]
 pub struct RawSchema {
+    #[serde(skip)]
+    __name__: Option<&'static str>,
+
     #[serde(rename = "type", skip_serializing_if = "str::is_empty")]
-    __type__: &'static str,
+    datatype: &'static str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    format: Option<&'static str>,
     #[serde(skip_serializing_if = "<[_]>::is_empty")]
     anyOf: Vec<SchemaRef>,
     #[serde(skip_serializing_if = "<[_]>::is_empty")]
@@ -59,8 +67,6 @@ pub struct RawSchema {
     writeOnly: bool,
 
     /* string definition */
-    #[serde(skip_serializing_if = "Option::is_none")]
-    format: Option<&'static str>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pattern: Option<&'static str>,
 
@@ -107,7 +113,7 @@ impl<T: Type::SchemaType> From<Schema<T>> for RawSchema {
 }
 impl<T: Type::SchemaType> From<RawSchema> for Schema<T> {
     fn from(raw: RawSchema) -> Self {
-        Self { raw, __type__:PhantomData }
+        Self { raw, datatype:PhantomData }
     }
 }
 impl Into<SchemaRef> for RawSchema {
@@ -163,7 +169,10 @@ impl SchemaRef {
 
 const _: (/* constructors */) = {
     const ANY: RawSchema = RawSchema {
-        __type__: Type::any::NAME,
+        __name__: None,
+
+        datatype: Type::any::NAME,
+        format: None,
         anyOf: Vec::new(),
         allOf: Vec::new(),
         oneOf: Vec::new(),
@@ -172,15 +181,14 @@ const _: (/* constructors */) = {
         description: None,
         default:     None,
         example:     None,
+        enumerates:  Vec::new(),
         deprecated:  false,
         nullable:    false,
         readOnly:    false,
         writeOnly:   false,
 
         /* string definition */
-        format:  None,
         pattern: None,
-        enumerates: Vec::new(),
 
         /* object definition */
         properties: Map::new(),
@@ -207,55 +215,55 @@ const _: (/* constructors */) = {
     impl Schema<Type::string> {
         pub fn string() -> Self {
             Self {
-                __type__: PhantomData,
-                raw: RawSchema { __type__: Type::string::NAME, ..ANY }
+                datatype: PhantomData,
+                raw: RawSchema { datatype: Type::string::NAME, ..ANY }
             }
         }
     }
     impl Schema<Type::number> {
         pub fn number() -> Self {
             Self {
-                __type__: PhantomData,
-                raw: RawSchema { __type__: Type::number::NAME, ..ANY }
+                datatype: PhantomData,
+                raw: RawSchema { datatype: Type::number::NAME, ..ANY }
             }
         }
     }
     impl Schema<Type::integer> {
         pub fn integer() -> Self {
             Self {
-                __type__: PhantomData,
-                raw: RawSchema { __type__: Type::integer::NAME, ..ANY }
+                datatype: PhantomData,
+                raw: RawSchema { datatype: Type::integer::NAME, ..ANY }
             }
         }
     }
     impl Schema<Type::bool> {
         pub fn bool() -> Self {
             Self {
-                __type__: PhantomData,
-                raw: RawSchema { __type__: Type::bool::NAME, ..ANY }
+                datatype: PhantomData,
+                raw: RawSchema { datatype: Type::bool::NAME, ..ANY }
             }
         }
     }
     impl Schema<Type::array> {
         pub fn array() -> Self {
             Self {
-                __type__: PhantomData,
-                raw: RawSchema { __type__: Type::array::NAME, ..ANY }
+                datatype: PhantomData,
+                raw: RawSchema { datatype: Type::array::NAME, ..ANY }
             }
         }
     }
     impl Schema<Type::object> {
         pub fn object() -> Self {
             Self {
-                __type__: PhantomData,
-                raw: RawSchema { __type__: Type::object::NAME, ..ANY }
+                datatype: PhantomData,
+                raw: RawSchema { datatype: Type::object::NAME, ..ANY }
             }
         }
     }
     impl Schema<Type::any> {
         pub fn anyOf<const N: usize>(schema_refs: [&'static str; N]) -> Self {
             Self {
-                __type__: PhantomData,
+                datatype: PhantomData,
                 raw: RawSchema {
                     anyOf: schema_refs.map(SchemaRef::Reference).into(),
                     ..ANY
@@ -264,7 +272,7 @@ const _: (/* constructors */) = {
         }
         pub fn allOf<const N: usize>(schema_refs: [&'static str; N]) -> Self {
             Self {
-                __type__: PhantomData,
+                datatype: PhantomData,
                 raw: RawSchema {
                     allOf: schema_refs.map(SchemaRef::Reference).into(),
                     ..ANY
@@ -273,7 +281,7 @@ const _: (/* constructors */) = {
         }
         pub fn oneOf<const N: usize>(schema_refs: [&'static str; N]) -> Self {
             Self {
-                __type__: PhantomData,
+                datatype: PhantomData,
                 raw: RawSchema {
                     oneOf: schema_refs.map(SchemaRef::Reference).into(),
                     ..ANY
@@ -285,6 +293,11 @@ const _: (/* constructors */) = {
 
 /* metadata and flags */
 impl<T: Type::SchemaType> Schema<T> {
+    pub(crate) fn __name__(mut self, __name__: &'static str) -> Self {
+        self.raw.__name__ = Some(__name__);
+        self
+    }
+
     pub fn description(mut self, description: &'static str) -> Self {
         self.raw.description = Some(description);
         self
@@ -384,6 +397,10 @@ impl Schema<Type::array> {
 
 /* number,integer definition */
 impl Schema<Type::number> {
+    pub fn format(mut self, format: &'static str) -> Self {
+        self.raw.format = Some(format);
+        self
+    }
     pub fn multipleOf(mut self, n: impl Into<f64>) -> Self {
         self.raw.multipleOf = Some(n.into());
         self
@@ -408,6 +425,10 @@ impl Schema<Type::number> {
     }
 }
 impl Schema<Type::integer> {
+    pub fn format(mut self, format: &'static str) -> Self {
+        self.raw.format = Some(format);
+        self
+    }
     pub fn multipleOf(mut self, n: i32) -> Self {
         self.raw.multipleOf = Some(n.into());
         self

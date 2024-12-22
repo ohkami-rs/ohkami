@@ -12,19 +12,13 @@ use crate::openapi;
 
 #[derive(Clone)]
 pub struct Handler {
-    proc: BoxedFPC,
+    pub(crate) proc: BoxedFPC,
 
     #[cfg(feature="openapi")]
-    openapi_operation: openapi::Operation
+    pub(crate) openapi_operation: openapi::Operation
 }
 
 const _: () = {
-    impl Into<BoxedFPC> for Handler {
-        fn into(self) -> BoxedFPC {
-            self.proc
-        }
-    }
-
     impl std::fmt::Debug for Handler {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             f.write_str("{handler}")

@@ -1,4 +1,4 @@
-use super::{Parameter, RequestBody, Responses};
+use super::{Parameter, RequestBody, Responses, document::Components};
 use super::_util::{is_false, Map};
 use serde::Serialize;
 
@@ -38,6 +38,8 @@ pub struct Operation {
     description:  Option<&'static str>,
     #[serde(skip_serializing_if = "Option::is_none")]
     externalDocs: Option<ExternalDoc>,
+    #[serde(skip_serializing_if = "is_false")]
+    deprecated: bool,
 
     #[serde(skip_serializing_if = "Vec::is_empty")]
     parameters: Vec<Parameter>,
@@ -45,13 +47,9 @@ pub struct Operation {
     #[serde(skip_serializing_if = "Option::is_none")]
     requestBody: Option<RequestBody>,
 
-    responses: Responses,
-
     #[serde(skip_serializing_if = "Vec::is_empty")]
     security: Vec<Map<&'static str, Vec<&'static str>>>,
-
-    #[serde(skip_serializing_if = "is_false")]
-    deprecated: bool,
+    responses: Responses,
 }
 
 #[derive(Serialize, Clone)]
@@ -117,10 +115,10 @@ impl Operation {
             summary:      None,
             description:  None,
             externalDocs: None,
+            deprecated:   false,
             parameters:   Vec::new(),
             requestBody:  None,
             security:     Vec::new(),
-            deprecated:   false
         }
     }
 
