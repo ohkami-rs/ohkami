@@ -7,7 +7,7 @@ use std::marker::PhantomData;
 #[derive(Serialize, Clone, PartialEq)]
 pub struct SecurityScheme {
     #[serde(skip)]
-    __name__: Option<&'static str>,
+    __name__: &'static str,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     description: Option<&'static str>,
@@ -29,80 +29,179 @@ pub struct SecurityScheme {
     openIdConnectUrl: Option<&'static str>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    flows: Option<OAuthFlows>,
+    flows: Option<oauth2::OAuthFlow>,
+}
+
+pub enum APIKey {
+    header { name: &'static str },
+    query  { name: &'static str },
+    cookie { name: &'static str },
+}
+
+#[derive(Serialize, Clone, PartialEq)]
+pub enum struct OAuthFlow {
+    authorizationCode {
+        authorizationUrl: &'static str,
+        tokenUrl:         &'static str,
+    },
+    implicit {
+        authorizationUrl: &'static str,
+    },
+    password {
+        tokenUrl: &'static str,
+    },
+    clientCredentials {
+        tokenUrl: &'static str,
+    },
+}
+mod oauth2 {
+    use super::{Serialize, Map};
+
+    #[derive(Serialize, Clone, PartialEq)]
+    pub enum OAuthFlow {
+        authorizationCode {
+            authorizationUrl: &'static str,
+            tokenUrl:         &'static str,
+            refreshUrl: Option<&'static str>, scopes: Map<&'static str, &'static str>
+        },
+        implicit {
+            authorizationUrl: &'static str,
+            refreshUrl: Option<&'static str>, scopes: Map<&'static str, &'static str>
+        },
+        password {
+            tokenUrl: &'static str,
+            refreshUrl: Option<&'static str>, scopes: Map<&'static str, &'static str>
+        },
+        clientCredentials {
+            tokenUrl: &'static str,
+            refreshUrl: Option<&'static str>, scopes: Map<&'static str, &'static str>
+        },
+    }
+
+    impl super::OAuthFlow {
+        pub fn refreshUrl(self, refreshUrl: &'static str) -> OAuthFlow {
+            OAuthFlow::from(self).refreshUrl(refreshUrl)
+        }
+
+        pub fn scope(self, name: &'static str, description: &'static str) -> OAuthFlow {
+            OAuthFlow::from(self).scope(name, description)
+        }
+    }
+    impl OAuthFlow {
+        pub fn refreshUrl(mut self, refreshUrl: &'static str) -> Self {
+            match &mut self {
+                | OAuthFlow::authorizationCode { refreshUrl, .. }
+                | OAuthFlow::implicit { refreshUrl, .. }
+                | OAuthFlow::password { refreshUrl, .. }
+                | OAuthFlow::clientCredentials { refreshUrl, .. }
+                => *refreshUrl = Some(refreshUrl)
+            }
+            self
+        }
+        pub fn scope(mut self, name: &'static str, description: &'static str) -> Self {
+            match &mut self {
+                | OAuthFlow::authorizationCode { scopes, .. }
+                | OAuthFlow::implicit { scopes, .. }
+                | OAuthFlow::password { scopes, .. }
+                | OAuthFlow::clientCredentials { scopes, .. }
+                => scopes.insert(name, description)
+            }
+            self
+        }
+    }
+    impl From<super::OAuthFlow> for OAuthFlow {
+        fn from(it: super::OAuthFlow) -> OAuthFlow {
+            match it {
+                super::OAuthFlow::authorizationCode {
+                    authorizationUrl: &'static str,
+                    tokenUrl:         &'static str,
+                } => Self::authorizationCode {
+                    authorizationUrl: &'static str,
+                    tokenUrl:         &'static str,
+                    refreshUrl:None, scopes:Map::new()
+                },
+                super::OAuthFlow::implicit {
+                    authorizationUrl: &'static str,
+                } => Self::implicit {
+                    authorizationUrl: &'static str,
+                    refreshUrl:None, scopes:Map::new()
+                },
+                super::OAuthFlow::password {
+                    tokenUrl: &'static str,
+                } => Self::password {
+                    tokenUrl: &'static str,
+                    refreshUrl:None, scopes:Map::new()
+                },
+                super::OAuthFlow::clientCredentials {
+                    tokenUrl: &'static str,
+                } => Self::clientCredentials {
+                    tokenUrl: &'static str,
+                    refreshUrl:None, scopes:Map::new()
+                },
+            }
+        }
+    }
 }
 
 impl SecurityScheme {
-    pub fn Basic() -> Self {
+    pub fn Basic(scheme_name: &'static str) -> Self {
         Self {
             __type__: PhantomData,
-            raw: RawSecurityScheme {__name__: None,
+            raw: RawSecurityScheme {
+                __name__:  scheme_name,
                 auth_type: "http",
                 scheme:    Some("basic"),
                 name:None, apikey_in:None, openIdConnectUrl:None, flows:None, description:None
             }
         }
     }
-    pub fn Bearer() -> Self {
+    pub fn Bearer(scheme_name: &'static str) -> Self {
         Self {
             __type__: PhantomData,
-            raw: RawSecurityScheme {__name__: None,
+            raw: RawSecurityScheme {
+                __name__:  scheme_name,
                 auth_type: "http",
                 scheme:    Some("bearer"),
                 name:None, apikey_in:None, openIdConnectUrl:None, flows:None, description:None
             }
         }
     }
-    pub fn OpenIDConnect(url: &'static str) -> Self {
+    pub fn OpenIDConnect(scheme_name: &'static str, url: &'static str) -> Self {
         Self {
             __type__: PhantomData,
-            raw: RawSecurityScheme {__name__: None,
+            raw: RawSecurityScheme {
+                __name__:         scheme_name,
                 auth_type:        "openIdConnect",
                 openIdConnectUrl: Some(url),
                 scheme:None, name:None, apikey_in:None, flows:None, description:None
             }
         }
     }
-    pub fn OAuth2(flows: OAuthFlows) -> Self {
+    pub fn APIKey(scheme_name: &'static str, apiKey: APIKey) -> Self {
+        let (name, apikey_in) = match apiKey {
+            APIKey::header { name } => (Some(name), Some("header")),
+            APIKey::query  { name } => (Some(name), Some("query")),
+            APIKey::cookie { name } => (Some(name), Some("cookie")),
+        };
         Self {
             __type__: PhantomData,
-            raw: RawSecurityScheme {__name__: None,
+            raw: RawSecurityScheme {
+                __name__:  scheme_name,
+                auth_type: "apiKey",
+                name,
+                apikey_in,
+                scheme:None, openIdConnectUrl:None, flows:None, description:None
+            }
+        }
+    }
+    pub fn OAuth2(scheme_name: &'static str, flow: impl Into<oauth2::OAuthFlow>) -> Self {
+        Self {
+            __type__: PhantomData,
+            raw: RawSecurityScheme {
+                __name__:  scheme_name,
                 auth_type: "oauth2",
-                flows,
+                flows:     Some(flow.into()),
                 openIdConnectUrl: None, scheme:None, name:None, apikey_in:None, description:None
-            }
-        }
-    }
-    pub fn APIKeyHeader(name: &'static str) -> Self {
-        Self {
-            __type__: PhantomData,
-            raw: RawSecurityScheme {__name__: None,
-                auth_type: "apiKey",
-                name:      Some(name),
-                apikey_in: Some("header"),
-                scheme:None, openIdConnectUrl:None, flows:None, description:None
-            }
-        }
-    }
-    pub fn APIKeyQuery(name: &'static str) -> Self {
-        Self {
-            __type__: PhantomData,
-            raw: RawSecurityScheme {__name__: None,
-                auth_type: "apiKey",
-                name:      Some(name),
-                apikey_in: Some("query"),
-                scheme:None, openIdConnectUrl:None, flows:None, description:None
-            }
-        }
-    }
-    pub fn APIKeyCookie(name: &'static str) -> Self {
-        Self {
-            __type__: PhantomData,
-            raw: RawSecurityScheme {__name__: None,
-                auth_type: "apiKey",
-                name:      Some(name),
-                apikey_in: Some("cookie"),
-                scheme:None, openIdConnectUrl:None, flows:None, description:None
             }
         }
     }
@@ -111,81 +210,4 @@ impl SecurityScheme {
         self.description = Some(description);
         self
     }
-    pub(crate) fn __name__(mut self, __name__: &'static str) -> Self {
-        self.__name__ = Some(description);
-        self
-    }
 }
-
-#[derive(Serialize, Clone, PartialEq)]
-pub struct OAuthFlows {
-    pub authorizationCode: Option<OAuthFlow>,
-    pub implicit:          Option<OAuthFlow>,
-    pub password:          Option<OAuthFlow>,
-    pub clientCredentials: Option<OAuthFlow>,
-}
-
-#[derive(Serialize, Clone, PartialEq)]
-struct OAuthFlow {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    authorizationUrl: Option<&'static str>,
-
-    #[serde(skip_serializing_if = "Option::is_none")]
-    tokenUrl: Option<&'static str>,
-    
-    #[serde(skip_serializing_if = "Option::is_none")]
-    refreshUrl: Option<&'static str>,
-    
-    scopes: Map<&'static str, &'static str>,
-}
-
-impl OAuthFlow {
-    pub fn authorizationCode(
-        authorizationUrl: &'static str,
-        tokenUrl: &'static str
-    ) -> Self {
-        Self {
-            authorizationUrl,
-            tokenUrl,
-            refreshUrl: None,
-            scopes:     Map::new()
-        }
-    }
-
-    pub fn implicit(authorizationUrl: &'static str) -> Self {
-        Self {
-            authorizationUrl,
-            tokenUrl:   None,
-            refreshUrl: None,
-            scopes:     Map::new()
-        }
-    }
-
-    pub fn password(tokenUrl: &'static str) -> Self {
-        Self {
-            tokenUrl,
-            authorizationUrl: None,
-            refreshUrl:       None,
-            scopes:           Map::new()
-        }
-    }
-
-    pub fn clientCredentials(tokenUrl: &'static str) -> Self {
-        Self {
-            tokenUrl,
-            authorizationUrl: None,
-            refreshUrl:       None,
-            scopes:           Map::new()
-        }
-    }
-
-    pub fn refreshUrl(mut self, refreshUrl: &'static str) -> Self {
-        self.refreshUrl = Some(refreshUrl);
-        self
-    }
-    pub fn scope(mut self, name: &'static str, description: &'static str) -> Self {
-        self.scopes.insert(name, description);
-        self
-    }
-}
-
