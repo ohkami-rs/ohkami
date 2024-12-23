@@ -372,6 +372,14 @@ const _: (/* Debugs */) = {
     impl std::fmt::Debug for Router {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             f.debug_struct("BaseRouter")
+                .field("GET", &self.GET)
+                .field("PUT", &self.PUT)
+                .field("POST", &self.POST)
+                .field("PATCH", &self.PATCH)
+                .field("DELETE", &self.DELETE)
+                .field("OPTIONS", &self.OPTIONS)
+                .field("id", &self.id)
+                .field("routes", &self.routes)
                 .finish()
         }
     }

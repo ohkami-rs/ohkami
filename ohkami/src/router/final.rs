@@ -5,7 +5,6 @@ use crate::{Method, Request, Response};
 use ohkami_lib::Slice;
 
 
-#[derive(Debug)]
 #[allow(non_snake_case)]
 pub(crate) struct Router {
     GET:     Node,
@@ -226,7 +225,21 @@ const _: (/* conversions */) = {
     }
 };
 
+#[cfg(feature="DEBUG")]
 const _: (/* Debugs */) = {
+    impl std::fmt::Debug for Router {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            f.debug_struct("FinalRouter")
+                .field("GET", &self.GET)
+                .field("PUT", &self.PUT)
+                .field("POST", &self.POST)
+                .field("PATCH", &self.PATCH)
+                .field("DELETE", &self.DELETE)
+                .field("OPTIONS", &self.OPTIONS)
+                .finish()
+        }
+    }
+
     impl std::fmt::Debug for Node {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             f.debug_struct("")
