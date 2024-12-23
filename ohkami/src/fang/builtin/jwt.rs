@@ -187,9 +187,9 @@ impl<Payload> JWT<Payload> {
     }
 
     fn new(alg: VerifyingAlgorithm, secret: impl Into<Cow<'static, str>>) -> Self {
-        #[inline(always)] fn get_token(req: &Request) -> Option<&str> {
-            req.headers.Authorization()?
-            .strip_prefix("Bearer ")
+        #[inline(always)]
+        fn get_token(req: &Request) -> Option<&str> {
+            req.headers.Authorization()?.strip_prefix("Bearer ")
         }
 
         Self {
@@ -216,9 +216,9 @@ impl<Payload> JWT<Payload> {
     }
     #[inline(always)] const fn header_str(&self) -> &'static str {
         match self.alg {
-            VerifyingAlgorithm::HS256 => "{\"typ\":\"JWT\",\"alg\":\"HS256\"}",
-            VerifyingAlgorithm::HS384 => "{\"typ\":\"JWT\",\"alg\":\"HS384\"}",
-            VerifyingAlgorithm::HS512 => "{\"typ\":\"JWT\",\"alg\":\"HS512\"}",
+            VerifyingAlgorithm::HS256 => r#"{"typ":"JWT","alg":"HS256"}"#,
+            VerifyingAlgorithm::HS384 => r#"{"typ":"JWT","alg":"HS384"}"#,
+            VerifyingAlgorithm::HS512 => r#"{"typ":"JWT","alg":"HS512"}"#,
         }
     }
 }

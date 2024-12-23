@@ -38,13 +38,6 @@
     Can't activate multiple `rt_*` features at once!
 "}
 
-#[cfg(not(feature="DEBUG"))]
-#[cfg(all(feature="rt_worker", not(target_arch="wasm32")))]
-compile_error! {"
-    `rt_worker` must be activated on `wasm32` target!
-    (We recommend to touch `.cargo/config.toml`: `[build] target = \"wasm32-unknown-unknown\"`)
-"}
-
 
 #[cfg(feature="__rt_native__")]
 mod __rt__ {
@@ -169,6 +162,10 @@ mod __rt__ {
     }
 }
 
+pub mod util;
+
+mod config;
+pub(crate) static CONFIG: config::Config = config::Config::new();
 
 #[cfg(feature="openapi")]
 pub mod openapi {
@@ -213,8 +210,6 @@ pub mod sse;
 
 #[cfg(feature="ws")]
 pub mod ws;
-
-pub mod util;
 
 #[cfg(feature="rt_worker")]
 pub use ::ohkami_macros::{worker, bindings};

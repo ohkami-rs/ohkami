@@ -8,37 +8,12 @@ use crate::util::timeout_in;
 use crate::router::r#final::Router;
 use crate::{Request, Response};
 
-
-mod env {
-    #![allow(unused, non_snake_case)]
-
-    use std::sync::OnceLock;
-
-    pub(crate) fn OHKAMI_KEEPALIVE_TIMEOUT() -> u64 {
-        static OHKAMI_KEEPALIVE_TIMEOUT: OnceLock<u64> = OnceLock::new();
-        *OHKAMI_KEEPALIVE_TIMEOUT.get_or_init(|| {
-            std::env::var("OHKAMI_KEEPALIVE_TIMEOUT").ok()
-                .map(|v| v.parse().ok()).flatten()
-                .unwrap_or(42)
-        })
-    }
-
-    #[cfg(feature="ws")]
-    pub(crate) fn OHKAMI_WEBSOCKET_TIMEOUT() -> u64 {
-        static OHKAMI_WEBSOCKET_TIMEOUT: OnceLock<u64> = OnceLock::new();
-        *OHKAMI_WEBSOCKET_TIMEOUT.get_or_init(|| {
-            std::env::var("OHKAMI_WEBSOCKET_TIMEOUT").ok()
-                .map(|v| v.parse().ok()).flatten()
-                .unwrap_or(1 * 60 * 60)
-        })
-    }
-}
-
 pub(crate) struct Session {
     router:     Arc<Router>,
     connection: TcpStream,
     ip:         std::net::IpAddr,
 }
+
 impl Session {
     pub(crate) fn new(
         router:     Arc<Router>,
@@ -65,7 +40,7 @@ impl Session {
             crate::Response::InternalServerError()
         }
 
-        match timeout_in(Duration::from_secs(env::OHKAMI_KEEPALIVE_TIMEOUT()), async {
+        match timeout_in(Duration::from_secs(crate::CONFIG.keepalive_timeout()), async {
             let mut req = Request::init(self.ip);
             let mut req = unsafe {Pin::new_unchecked(&mut req)};
             loop {
@@ -104,7 +79,7 @@ impl Session {
                 crate::DEBUG!("WebSocket session started");
 
                 let aborted = ws.manage_with_timeout(
-                    Duration::from_secs(env::OHKAMI_WEBSOCKET_TIMEOUT()),
+                    Duration::from_secs(crate::CONFIG.websocket_timeout()),
                     self.connection
                 ).await;
                 if aborted {

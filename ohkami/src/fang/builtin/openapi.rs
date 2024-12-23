@@ -17,6 +17,9 @@ impl OpenAPI {
 impl<Inner: FangProc> Fang<Inner> for OpenAPI {
     type Proc = Inner;
     fn chain(&self, inner: Inner) -> Self::Proc {
+        crate::CONFIG.openapi_filepath()
+            .set(self.file_path.clone())
+            .expect("[OpenAPI] Unexpected multiple `OpenAPI`s in a `Ohkami`");
         inner
     }
 }

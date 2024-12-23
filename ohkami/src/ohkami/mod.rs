@@ -4,7 +4,6 @@
 mod _test;
 
 pub(crate) mod build;
-
 pub use build::{Route, Routes};
 
 use crate::fang::Fangs;
@@ -137,7 +136,6 @@ pub struct Ohkami {
     /// apply just before merged to another or called `howl`
     pub(crate) fangs:  Option<Arc<dyn Fangs>>,
 }
-
 
 impl Ohkami {
     /// Create new `Ohkami` on the routing.
