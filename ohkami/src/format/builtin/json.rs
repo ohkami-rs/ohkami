@@ -1,7 +1,7 @@
 use crate::{FromBody, IntoBody};
 use super::bound::{Incoming, Outgoing};
 
-#[cfg(all(debug_assertions, feature="openapi"))]
+#[cfg(feature="openapi")]
 use crate::openapi;
 
 

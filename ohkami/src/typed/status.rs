@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 use crate::{IntoBody, IntoResponse, Response, Status};
 
-#[cfg(all(debug_assertions, feature="openapi"))]
+#[cfg(feature="openapi")]
 use crate::openapi;
 
 
@@ -25,7 +25,7 @@ macro_rules! generate_statuses_as_types_containing_value {
                     res
                 }
 
-                #[cfg(all(debug_assertions, feature="openapi"))]
+                #[cfg(feature="openapi")]
                 fn openapi_responses() -> openapi::Responses {
                     let (code, message) = $message.split_once(' ').unwrap();
                     let mut res = openapi::Response::when(message);

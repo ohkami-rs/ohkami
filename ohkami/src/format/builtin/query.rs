@@ -1,7 +1,7 @@
 use crate::{Response, FromRequest};
 use super::bound::Incoming;
 
-#[cfg(all(debug_assertions, feature="openapi"))]
+#[cfg(feature="openapi")]
 use crate::openapi;
 
 
@@ -16,7 +16,7 @@ impl<'req, T: Incoming<'req>> FromRequest<'req> for Query<T> {
             .map(Query).into()
     }
 
-    #[cfg(all(debug_assertions, feature="openapi"))]
+    #[cfg(feature="openapi")]
     fn openapi_input() -> Option<openapi::Input> {
         let schema = T::schema().into().into_inline()?;
         Some(openapi::Input::Params(

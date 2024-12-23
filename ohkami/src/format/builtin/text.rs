@@ -1,6 +1,6 @@
 use crate::{FromBody, IntoBody};
 
-#[cfg(all(debug_assertions, feature="openapi"))]
+#[cfg(feature="openapi")]
 use crate::openapi;
 
 
@@ -25,7 +25,7 @@ impl<T: Into<std::borrow::Cow<'static, str>>> IntoBody for Text<T> {
         Ok::<_, std::convert::Infallible>(cow.into_owned().into_bytes())
     }
 
-    #[cfg(all(debug_assertions, feature="openapi"))]
+    #[cfg(feature="openapi")]
     fn openapi_responsebody() -> impl Into<openapi::schema::SchemaRef> {
         openapi::string()
     }

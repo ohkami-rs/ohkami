@@ -2,7 +2,7 @@
 
 use crate::{Response, Status};
 
-#[cfg(all(debug_assertions, feature="openapi"))]
+#[cfg(feature="openapi")]
 use crate::openapi;
 
 
@@ -39,7 +39,7 @@ use crate::openapi;
 pub trait IntoResponse {
     fn into_response(self) -> Response;
 
-    #[cfg(all(debug_assertions, feature="openapi"))]
+    #[cfg(feature="openapi")]
     fn openapi_responses() -> openapi::Responses {
         openapi::Responses::new(200, openapi::Response::when("OK"))
     }
@@ -103,7 +103,7 @@ impl<T:IntoResponse, E:IntoResponse> IntoResponse for Result<T, E> {
         }
     }
 
-    #[cfg(all(debug_assertions, feature="openapi"))]
+    #[cfg(feature="openapi")]
     fn openapi_responses() -> openapi::Responses {
         let mut res = E::openapi_responses();
         res.merge(T::openapi_responses());
@@ -163,7 +163,7 @@ impl IntoResponse for worker::Error {
         Response::InternalServerError().with_text(self.to_string())
     }
 
-    #[cfg(all(debug_assertions, feature="openapi"))]
+    #[cfg(feature="openapi")]
     fn openapi_responses() -> openapi::Responses {
         openapi::Responses::new(500, openapi::Response::when("Internal error in worker"))
     }

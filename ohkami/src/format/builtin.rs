@@ -22,7 +22,7 @@ fn reject(msg: impl std::fmt::Display) -> crate::Response {
     crate::Response::BadRequest().with_text(msg.to_string())
 }
 
-#[cfg(all(debug_assertions, feature="openapi"))]
+#[cfg(feature="openapi")]
 mod bound {
     use crate::openapi;
     use serde::{Serialize, Deserialize};

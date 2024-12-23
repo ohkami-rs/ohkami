@@ -2,7 +2,7 @@ use crate::{FromBody, IntoBody};
 use super::bound::{Incoming, Outgoing};
 use ohkami_lib::serde_urlencoded;
 
-#[cfg(all(debug_assertions, feature="openapi"))]
+#[cfg(feature="openapi")]
 use crate::openapi;
 
 

@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 use crate::{util::ErrorMessage, IntoResponse, Request, Response};
 
-#[cfg(all(debug_assertions, feature="openapi"))]
+#[cfg(feature="openapi")]
 use crate::openapi;
 
 
@@ -42,7 +42,7 @@ pub trait FromRequest<'req>: Sized {
     
     fn from_request(req: &'req Request) -> Option<Result<Self, Self::Error>>;
 
-    #[cfg(all(debug_assertions, feature="openapi"))]
+    #[cfg(feature="openapi")]
     fn openapi_input() -> Option<openapi::Input> {
         None
     }
@@ -65,7 +65,7 @@ const _: () = {
             }
         }
 
-        #[cfg(all(debug_assertions, feature="openapi"))]
+        #[cfg(feature="openapi")]
         fn openapi_input() -> Option<openapi::Input> {
             FR::openapi_input()
         }
@@ -120,7 +120,7 @@ pub trait FromParam<'p>: Sized {
         ).map_err(IntoResponse::into_response)
     }
 
-    #[cfg(all(debug_assertions, feature="openapi"))]
+    #[cfg(feature="openapi")]
     fn openapi_param() -> openapi::Parameter {
         openapi::Parameter::in_path("", openapi::string())
     }
@@ -194,7 +194,7 @@ const _: () = {
                         }
                     }
 
-                    #[cfg(all(debug_assertions, feature="openapi"))]
+                    #[cfg(feature="openapi")]
                     fn openapi_param() -> openapi::Parameter {
                         openapi::Parameter::in_path("", openapi::integer())
                     }

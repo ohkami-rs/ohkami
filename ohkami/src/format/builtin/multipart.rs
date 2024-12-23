@@ -2,7 +2,7 @@ use crate::FromBody;
 use super::bound::Incoming;
 use ohkami_lib::serde_multipart;
 
-#[cfg(all(debug_assertions, feature="openapi"))]
+#[cfg(feature="openapi")]
 use crate::openapi;
 
 
