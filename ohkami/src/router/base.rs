@@ -54,24 +54,43 @@ impl FangsList {
         }
     }
 
-    pub(super) fn into_proc_with(self, handler: Handler) -> BoxedFPC {
-        let mut iter = self.into_iter();
-
-        match iter.next() {
-            None => handler.proc,
-            Some(most_inner) => iter.fold(
-                most_inner.build(handler.proc),
-                |proc, fangs| fangs.build(proc)
-            )
-        }
-    }
-
     /// yield from most inner fangs
     fn into_iter(self) -> impl Iterator<Item = Arc<dyn Fangs>> {
         self.0.into_iter()
             .map(|(_, fangs)| fangs)
     }
+
+    pub(super) fn into_proc_with(self, h: Handler) -> IntoProcWith {
+        let mut iter = self.into_iter();
+
+        #[cfg(not(feature="openapi"))]
+        match iter.next() {
+            None => h.proc,
+            Some(most_inner) => iter.fold(
+                most_inner.build(h.proc),
+                |proc, fangs| fangs.build(proc)
+            )
+        }
+        #[cfg(feature="openapi")]
+        match iter.next() {
+            None => (h.proc, h.openapi_operation),
+            Some(most_inner) => iter.fold(
+                (
+                    most_inner.build(h.proc),
+                    most_inner.openapi_map_operation(h.openapi_operation)
+                ),
+                |(proc, operation), fangs| (
+                    fangs.build(proc),
+                    fangs.openapi_map_operation(operation)
+                )
+            )
+        }
+    }
 }
+#[cfg(not(feature="openapi"))]
+type IntoProcWith = BoxedFPC;
+#[cfg(feature="openapi")]
+type IntoProcWith = (BoxedFPC, crate::openapi::Operation);
 
 impl Router {
     pub(crate) fn new() -> Self {
@@ -125,7 +144,11 @@ impl Router {
         self.OPTIONS.register_handler(route, Handler::default_options_with(methods)).expect("Failed to register handler");
     }
 
-    pub(crate) fn finalize(self) -> super::r#final::Router {
+    #[allow(unused_mut)]
+    pub(crate) fn finalize(mut self) -> super::r#final::Router {
+        #[cfg(feature="openapi")]
+        let routes = std::mem::take(&mut self.routes);
+
         let r#final = super::r#final::Router::from(self);
 
         #[cfg(feature="DEBUG")] {
@@ -142,7 +165,10 @@ impl Router {
                 title, version, servers.clone()
             );
 
-            todo!();
+            for route in routes {
+                let mut route = crate::request::Path::from_literal(route);
+
+            }
 
             let doc = serde_json::to_vec(&doc)
                 .expect("[OpenAPI] Failed to serialize document");

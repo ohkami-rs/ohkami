@@ -19,7 +19,10 @@ struct Node {
     pattern:  Pattern,
     proc:     BoxedFPC,
     catch:    BoxedFPC,
-    children: &'static [Node]
+    children: &'static [Node],
+
+    #[cfg(feature="openapi")]
+    openapi_operation: Option<crate::openapi::Operation>
 }
 
 #[derive(PartialEq)]
@@ -206,10 +209,15 @@ const _: (/* conversions */) = {
                 _                                                    => std::cmp::Ordering::Equal
             });
 
+            let openapi_operation = base.;
+
+            let catch = base.fangses.into_proc_with(Handler::default_not_found());
+            #[cfg(feature="openapi")] let catch = catch.0;
+
             Node {
                 pattern:  base.pattern.map(Pattern::from).unwrap_or(Pattern::Static(b"")),
                 proc:     base.fangses.clone().into_proc_with(base.handler.unwrap_or(Handler::default_not_found())),
-                catch:    base.fangses.into_proc_with(Handler::default_not_found()),
+                catch,
                 children: base.children.into_iter().map(Node::from).collect::<Vec<_>>().leak()
             }
         }

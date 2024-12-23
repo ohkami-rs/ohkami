@@ -7,6 +7,9 @@ use super::{Fang, BoxedFPC};
 pub trait Fangs {
     // returning box for object-safety
     fn build(&self, inner: BoxedFPC) -> BoxedFPC;
+
+    #[cfg(feature="openapi")]
+    fn openapi_map_operation(&self, operation: crate::openapi::Operation) -> crate::openapi::Operation;
 }
 
 #[allow(private_interfaces)]
@@ -15,11 +18,21 @@ const _: () = {
         fn build(&self, inner: BoxedFPC) -> BoxedFPC {
             BoxedFPC::from_proc(self.chain(inner))
         }
+
+        #[cfg(feature="openapi")]
+        fn openapi_map_operation(&self, operation: crate::openapi::Operation) -> crate::openapi::Operation {
+            <Self as Fang<BoxedFPC>>::openapi_map_operation(self, operation)
+        }
     }
 
     impl Fangs for () {
         fn build(&self, inner: BoxedFPC) -> BoxedFPC {
             inner
+        }
+
+        #[cfg(feature="openapi")]
+        fn openapi_map_operation(&self, operation: crate::openapi::Operation) -> crate::openapi::Operation {
+            operation
         }
     }
 
@@ -33,6 +46,12 @@ const _: () = {
                 f1.chain(inner)
             )
         }
+
+        #[cfg(feature="openapi")]
+        fn openapi_map_operation(&self, operation: crate::openapi::Operation) -> crate::openapi::Operation {
+            let (f1,) = self;
+            f1.openapi_map_operation(operation)
+        }
     }
 
     impl<
@@ -45,6 +64,14 @@ const _: () = {
                 f1.chain(
                     f2.chain(inner)
                 )
+            )
+        }
+
+        #[cfg(feature="openapi")]
+        fn openapi_map_operation(&self, operation: crate::openapi::Operation) -> crate::openapi::Operation {
+            let (f1, f2) = self;
+            f1.openapi_map_operation(
+                f2.openapi_map_operation(operation)
             )
         }
     }
@@ -64,6 +91,16 @@ const _: () = {
                 )
             )
         }
+
+        #[cfg(feature="openapi")]
+        fn openapi_map_operation(&self, operation: crate::openapi::Operation) -> crate::openapi::Operation {
+            let (f1, f2, f3) = self;
+            f1.openapi_map_operation(
+                f2.openapi_map_operation(
+                    f3.openapi_map_operation(operation)
+                )
+            )
+        }
     }
 
     impl<
@@ -80,6 +117,18 @@ const _: () = {
                         f3.chain(
                             f4.chain(inner)
                         )
+                    )
+                )
+            )
+        }
+
+        #[cfg(feature="openapi")]
+        fn openapi_map_operation(&self, operation: crate::openapi::Operation) -> crate::openapi::Operation {
+            let (f1, f2, f3, f4) = self;
+            f1.openapi_map_operation(
+                f2.openapi_map_operation(
+                    f3.openapi_map_operation(
+                        f4.openapi_map_operation(operation)
                     )
                 )
             )
@@ -107,6 +156,20 @@ const _: () = {
                 )
             )
         }
+
+        #[cfg(feature="openapi")]
+        fn openapi_map_operation(&self, operation: crate::openapi::Operation) -> crate::openapi::Operation {
+            let (f1, f2, f3, f4, f5) = self;
+            f1.openapi_map_operation(
+                f2.openapi_map_operation(
+                    f3.openapi_map_operation(
+                        f4.openapi_map_operation(
+                            f5.openapi_map_operation(operation)
+                        )
+                    )
+                )
+            )
+        }
     }
 
     impl<
@@ -127,6 +190,22 @@ const _: () = {
                                 f5.chain(
                                     f6.chain(inner)
                                 )
+                            )
+                        )
+                    )
+                )
+            )
+        }
+
+        #[cfg(feature="openapi")]
+        fn openapi_map_operation(&self, operation: crate::openapi::Operation) -> crate::openapi::Operation {
+            let (f1, f2, f3, f4, f5, f6) = self;
+            f1.openapi_map_operation(
+                f2.openapi_map_operation(
+                    f3.openapi_map_operation(
+                        f4.openapi_map_operation(
+                            f5.openapi_map_operation(
+                                f6.openapi_map_operation(operation)
                             )
                         )
                     )
@@ -162,6 +241,24 @@ const _: () = {
                 )
             )
         }
+
+        #[cfg(feature="openapi")]
+        fn openapi_map_operation(&self, operation: crate::openapi::Operation) -> crate::openapi::Operation {
+            let (f1, f2, f3, f4, f5, f6, f7) = self;
+            f1.openapi_map_operation(
+                f2.openapi_map_operation(
+                    f3.openapi_map_operation(
+                        f4.openapi_map_operation(
+                            f5.openapi_map_operation(
+                                f6.openapi_map_operation(
+                                    f7.openapi_map_operation(operation)
+                                )
+                            )
+                        )
+                    )
+                )
+            )
+        }
     }
 
     impl<
@@ -186,6 +283,26 @@ const _: () = {
                                         f7.chain(
                                             f8.chain(inner)
                                         )
+                                    )
+                                )
+                            )
+                        )
+                    )
+                )
+            )
+        }
+
+        #[cfg(feature="openapi")]
+        fn openapi_map_operation(&self, operation: crate::openapi::Operation) -> crate::openapi::Operation {
+            let (f1, f2, f3, f4, f5, f6, f7, f8) = self;
+            f1.openapi_map_operation(
+                f2.openapi_map_operation(
+                    f3.openapi_map_operation(
+                        f4.openapi_map_operation(
+                            f5.openapi_map_operation(
+                                f6.openapi_map_operation(
+                                    f7.openapi_map_operation(
+                                        f8.openapi_map_operation(operation)
                                     )
                                 )
                             )

@@ -138,9 +138,12 @@ const _: () = {
         }
     }
     
-    #[cfg(test)]
+    #[cfg(any(
+        test,
+        feature="openapi"
+    ))]
     impl Path {
-        pub fn from_literal(literal: &'static str) -> Self {
+        pub(crate) fn from_literal(literal: &'static str) -> Self {
             Self(MaybeUninit::new(PathInner {
                 raw:    Slice::from_bytes(literal.as_bytes()),
                 params: Params::init(),
