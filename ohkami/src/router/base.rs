@@ -4,10 +4,6 @@ use crate::fang::{BoxedFPC, Fangs, Handler};
 use crate::ohkami::build::{ByAnother, HandlerSet};
 use std::{sync::Arc, collections::HashSet};
 
-#[cfg(feature="openapi")]
-use crate::openapi;
-
-
 #[allow(non_snake_case)]
 pub struct Router {
     pub(super) GET:     Node,
@@ -21,7 +17,7 @@ pub struct Router {
     routes: HashSet<&'static str>,
 
     #[cfg(feature="openapi")]
-    openapi_doc: Option<openapi::document::Document>,
+    openapi_doc: Option<crate::openapi::document::Document>,
 }
 
 pub(super) struct Node {
@@ -131,9 +127,29 @@ impl Router {
 
     pub(crate) fn finalize(self) -> super::r#final::Router {
         let r#final = super::r#final::Router::from(self);
+
         #[cfg(feature="DEBUG")] {
             println!("finalized: {final:#?}")
         }
+
+        #[cfg(feature="openapi")]
+        if let Some(crate::config::OpenAPIMetadata {
+            file_path, title, version, servers
+        }) = crate::CONFIG.openapi_metadata().get() {
+            use crate::openapi;
+
+            let mut doc = openapi::document::Document::new(
+                title, version, servers.clone()
+            );
+
+            todo!();
+
+            let doc = serde_json::to_vec(&doc)
+                .expect("[OpenAPI] Failed to serialize document");
+            std::fs::write(file_path, doc)
+                .expect("[OpenAPI] Failed to write generated document");
+        }
+
         r#final
     }
 

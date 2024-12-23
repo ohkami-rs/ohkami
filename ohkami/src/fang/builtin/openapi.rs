@@ -1,22 +1,46 @@
 #![cfg(feature="openapi")]
 
-use crate::openapi::document::Server;
-use crate::config::OpenAPIMetadata;
-use crate::{Fang, FangProc};
+use crate::{config, openapi, Fang, FangProc};
 use std::path::PathBuf;
 
 
-pub struct OpenAPI(OpenAPIMetadata);
+pub struct OpenAPI(config::OpenAPIMetadata);
 
 impl OpenAPI {
+    /// Register metadata for generating OpenAPI document (JSON).
+    /// 
+    /// ## note
+    /// For now, YAML version is not supported!
+    /// 
+    /// ## example
+    /// 
+    /// ```
+    /// use ohkami::prelude::*;
+    /// use ohkami::fang::OpenAPI;
+    /// use ohkami::openapi::document::Server;
+    /// 
+    /// fn my_ohkami() -> Ohkami {
+    ///     Ohkami::with((
+    ///         OpenAPI::json("Sample API", "0.1.9", [
+    ///             Server::at("http://api.example.com/v1")
+    ///                 .description("Main (production) server"),
+    ///             Server::at("http://staging-api.example.com")
+    ///                 .description("Internal staging server for testing")
+    ///         ]),
+    ///     ), (
+    ///         "/hello"
+    ///             .GET(|| async {"Hello, OpenAPI!"}),
+    ///     ))
+    /// }
+    /// ```
     pub fn json(
         title:   &'static str,
         version: &'static str,
-        servers: impl Into<Vec<Server>>
+        servers: impl Into<Vec<openapi::document::Server>>
     ) -> Self {
+        let servers   = Into::<Vec<_>>::into(servers);
         let file_path = PathBuf::from("openapi.json");
-        let servers = Into::<Vec<_>>::into(servers);
-        Self(OpenAPIMetadata { title, version, servers, file_path })
+        Self(config::OpenAPIMetadata { title, version, servers, file_path })
     }
 
     /// Configure the file path to generate.
