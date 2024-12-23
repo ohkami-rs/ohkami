@@ -89,7 +89,7 @@ pub struct JWT<Payload> {
     get_token: fn(&Request)->Option<&str>,
 
     #[cfg(feature="openapi")]
-    openapi_security: crate::openapi::security::APIKey
+    openapi_security: crate::openapi::security::SecurityScheme
 }
 #[derive(Clone)]
 enum VerifyingAlgorithm {
@@ -124,10 +124,7 @@ const _: () = {
 
         #[cfg(feature="openapi")]
         fn openapi_map_operation(&self, operation: crate::openapi::Operation) -> crate::openapi::Operation {
-            use crate::openapi::security::SecurityScheme;
-            operation.security(SecurityScheme::APIKey(
-                "JWT", self.openapi_security.clone()
-            ), [])
+            operation.security(self.openapi_security.clone(), [])
         }
     }
 
@@ -157,51 +154,19 @@ const _: () = {
 impl<Payload> JWT<Payload> {
     /// Just `new_256`; use HMAC-SHA256 as verifying algorithm
     #[inline] pub fn default(secret: impl Into<Cow<'static, str>>) -> Self {
-        Self {
-            _payload:  PhantomData,
-            secret:    secret.into(),
-            alg:       VerifyingAlgorithm::HS256,
-            get_token: Self::default_get,
-
-            #[cfg(feature="openapi")]
-            openapi_security: crate::openapi::security::APIKey::header { name: "Authorization" }
-        }
+        Self::new_256(secret)
     }
     /// Use HMAC-SHA256 as verifying algorithm
     pub fn new_256(secret: impl Into<Cow<'static, str>>) -> Self {
-        Self {
-            _payload:  PhantomData,
-            secret:    secret.into(),
-            alg:       VerifyingAlgorithm::HS256,
-            get_token: Self::default_get,
-
-            #[cfg(feature="openapi")]
-            openapi_security: crate::openapi::security::APIKey::header { name: "Authorization" }
-        }
+        Self::new(VerifyingAlgorithm::HS256, secret)
     }
     /// Use HMAC-SHA384 as verifying algorithm
     pub fn new_384(secret: impl Into<Cow<'static, str>>) -> Self {
-        Self {
-            _payload:  PhantomData,
-            secret:    secret.into(),
-            alg:       VerifyingAlgorithm::HS384,
-            get_token: Self::default_get,
-
-            #[cfg(feature="openapi")]
-            openapi_security: crate::openapi::security::APIKey::header { name: "Authorization" }
-        }
+        Self::new(VerifyingAlgorithm::HS384, secret)
     }
     /// Use HMAC-SHA512 as verifying algorithm
     pub fn new_512(secret: impl Into<Cow<'static, str>>) -> Self {
-        Self {
-            _payload:  PhantomData,
-            secret:    secret.into(),
-            alg:       VerifyingAlgorithm::HS512,
-            get_token: Self::default_get,
-
-            #[cfg(feature="openapi")]
-            openapi_security: crate::openapi::security::APIKey::header { name: "Authorization" }
-        }
+        Self::new(VerifyingAlgorithm::HS512, secret)
     }
 
     /// Customize get-token process in JWT verifying.
@@ -212,7 +177,7 @@ impl<Payload> JWT<Payload> {
         get_token: fn(&Request)->Option<&str>,
 
         #[cfg(feature="openapi")]
-        openapi_security: crate::openapi::security::APIKey
+        openapi_security: crate::openapi::security::SecurityScheme
     ) -> Self {
         #[cfg(feature="openapi")] {
             self.openapi_security = openapi_security;
@@ -221,10 +186,25 @@ impl<Payload> JWT<Payload> {
         self
     }
 
-
-    #[inline(always)] fn default_get(req: &Request) -> Option<&str> {
-        req.headers.Authorization()?
+    fn new(alg: VerifyingAlgorithm, secret: impl Into<Cow<'static, str>>) -> Self {
+        #[inline(always)] fn get_token(req: &Request) -> Option<&str> {
+            req.headers.Authorization()?
             .strip_prefix("Bearer ")
+        }
+
+        Self {
+            alg,
+            get_token,
+
+            _payload: PhantomData,
+            secret: secret.into(),
+
+            #[cfg(feature="openapi")]
+            openapi_security: crate::openapi::security::SecurityScheme::Bearer(
+                "jwtAuth",
+                Some("JWT")
+            )
+        }
     }
 
     #[inline(always)] const fn alg_str(&self) -> &'static str {

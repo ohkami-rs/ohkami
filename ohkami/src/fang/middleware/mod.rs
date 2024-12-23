@@ -10,20 +10,13 @@ pub trait Fangs {
 }
 
 #[allow(private_interfaces)]
-impl<F: Fang<BoxedFPC>> Fangs for F {
-    fn build(&self, inner: BoxedFPC) -> BoxedFPC {
-        BoxedFPC::from_proc(self.chain(inner))
+const _: () = {
+    impl<F: Fang<BoxedFPC>> Fangs for F {
+        fn build(&self, inner: BoxedFPC) -> BoxedFPC {
+            BoxedFPC::from_proc(self.chain(inner))
+        }
     }
-}
-#[cfg(feature="openapi")]
-impl Fangs for super::OpenAPI {
-    fn build(&self, inner: BoxedFPC) -> BoxedFPC {
-        inner
-    }
-}
 
-#[allow(private_interfaces)]
-const _: (/* tuple fangs */) = {
     impl Fangs for () {
         fn build(&self, inner: BoxedFPC) -> BoxedFPC {
             inner
@@ -210,25 +203,28 @@ const _: (/* tuple fangs */) = {
 const _: (/* tuple fangs */) = {
     use super::OpenAPI;
 
+    #[allow(private_interfaces)]
+    #[cfg(feature="openapi")]
+    impl Fangs for OpenAPI {
+        fn build(&self, inner: BoxedFPC) -> BoxedFPC {
+            inner
+        }
+    }
+    
     impl<
-        F1: Fang<BoxedFPC>,
-    > Fangs for (F1,)
+    > Fangs for (OpenAPI,)
     where
     {
         fn build(&self, inner: BoxedFPC) -> BoxedFPC {
-            let (f1,) = self;
-            BoxedFPC::from_proc(
-                f1.chain(inner)
-            )
+            inner
         }
     }
 
     impl<
-        F1: Fang<F2::Proc>,
         F2: Fang<BoxedFPC>,
-    > Fangs for (F1, F2) {
+    > Fangs for (OpenAPI, F2) {
         fn build(&self, inner: BoxedFPC) -> BoxedFPC {
-            let (f1, f2) = self;
+            let (_, f2) = self;
             BoxedFPC::from_proc(
                 f1.chain(
                     f2.chain(inner)

@@ -23,6 +23,9 @@ pub struct SecurityScheme {
     scheme: Option<&'static str>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
+    bearerFormat: Option<&'static str>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
     openIdConnectUrl: Option<&'static str>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -30,10 +33,20 @@ pub struct SecurityScheme {
 }
 
 #[derive(Clone)]
-pub enum APIKey {
-    header { name: &'static str },
-    query  { name: &'static str },
-    cookie { name: &'static str },
+pub struct APIKey {
+    apikey_in: &'static str,
+    name:      &'static str,
+}
+impl APIKey {
+    pub fn header(name: &'static str) -> Self {
+        Self { apikey_in:"header", name }
+    }
+    pub fn query(name: &'static str) -> Self {
+        Self { apikey_in:"header", name }
+    }
+    pub fn cookie(name: &'static str) -> Self {
+        Self { apikey_in:"header", name }
+    }
 }
 
 #[derive(Serialize, Clone, PartialEq)]
@@ -148,14 +161,15 @@ impl SecurityScheme {
             __name__:  scheme_name,
             auth_type: "http",
             scheme:    Some("basic"),
-            name:None, apikey_in:None, openIdConnectUrl:None, flows:None, description:None
+            name:None, apikey_in:None, bearerFormat:None, openIdConnectUrl:None, flows:None, description:None
         }
     }
-    pub fn Bearer(scheme_name: &'static str) -> Self {
+    pub fn Bearer(scheme_name: &'static str, token_format: impl Into<Option<&'static str>>) -> Self {
         Self {
-            __name__:  scheme_name,
-            auth_type: "http",
-            scheme:    Some("bearer"),
+            __name__:     scheme_name,
+            auth_type:    "http",
+            scheme:       Some("bearer"),
+            bearerFormat: token_format.into(),
             name:None, apikey_in:None, openIdConnectUrl:None, flows:None, description:None
         }
     }
@@ -164,21 +178,16 @@ impl SecurityScheme {
             __name__:         scheme_name,
             auth_type:        "openIdConnect",
             openIdConnectUrl: Some(url),
-            scheme:None, name:None, apikey_in:None, flows:None, description:None
+            scheme:None, name:None, apikey_in:None, bearerFormat:None, flows:None, description:None
         }
     }
-    pub fn APIKey(scheme_name: &'static str, apiKey: APIKey) -> Self {
-        let (name, apikey_in) = match apiKey {
-            APIKey::header { name } => (Some(name), Some("header")),
-            APIKey::query  { name } => (Some(name), Some("query")),
-            APIKey::cookie { name } => (Some(name), Some("cookie")),
-        };
+    pub fn APIKey(scheme_name: &'static str, APIKey { apikey_in, name }: APIKey) -> Self {
         Self {
             __name__:  scheme_name,
             auth_type: "apiKey",
-            name,
-            apikey_in,
-            scheme:None, openIdConnectUrl:None, flows:None, description:None
+            name:      Some(name),
+            apikey_in: Some(apikey_in),
+            scheme:None, bearerFormat:None, openIdConnectUrl:None, flows:None, description:None
         }
     }
     pub fn OAuth2(scheme_name: &'static str, flow: impl Into<oauth2::OAuthFlow>) -> Self {
@@ -186,7 +195,7 @@ impl SecurityScheme {
             __name__:  scheme_name,
             auth_type: "oauth2",
             flows:     Some(flow.into()),
-            openIdConnectUrl: None, scheme:None, name:None, apikey_in:None, description:None
+            openIdConnectUrl: None, scheme:None, name:None, apikey_in:None, bearerFormat:None, description:None
         }
     }
 
