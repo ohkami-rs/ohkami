@@ -19,7 +19,4 @@ impl<Inner: FangProc> Fang<Inner> for OpenAPI {
     fn chain(&self, inner: Inner) -> Self::Proc {
         inner
     }
-    fn openapi_map_operation(&self, operation: crate::openapi::Operation) -> crate::openapi::Operation {
-        operation
-    }
 }

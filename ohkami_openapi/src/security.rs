@@ -164,7 +164,7 @@ impl SecurityScheme {
             name:None, apikey_in:None, bearerFormat:None, openIdConnectUrl:None, flows:None, description:None
         }
     }
-    pub fn Bearer(scheme_name: &'static str, token_format: impl Into<Option<&'static str>>) -> Self {
+    pub fn Bearer(scheme_name: &'static str, token_format: Option<&'static str>) -> Self {
         Self {
             __name__:     scheme_name,
             auth_type:    "http",

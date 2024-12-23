@@ -26,7 +26,6 @@ const _: () = {
     impl<
         F1: Fang<BoxedFPC>,
     > Fangs for (F1,)
-    where
     {
         fn build(&self, inner: BoxedFPC) -> BoxedFPC {
             let (f1,) = self;

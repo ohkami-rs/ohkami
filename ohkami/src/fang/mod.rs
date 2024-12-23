@@ -160,12 +160,3 @@ const _: () = {
         }
     }
 };
-
-impl FangProc for std::convert::Infallible {
-    async fn bite<'b>(&'b self, _: &'b mut Request) -> Response {
-        unsafe {std::hint::unreachable_unchecked()}
-    }
-    fn bite_boxed<'b>(&'b self, _: &'b mut Request) -> Pin<Box<dyn Future<Output = Response> + Send + 'b>> {
-        unsafe {std::hint::unreachable_unchecked()}
-    }
-}
