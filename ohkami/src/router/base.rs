@@ -159,15 +159,27 @@ impl Router {
         if let Some(crate::config::OpenAPIMetadata {
             file_path, title, version, servers
         }) = crate::CONFIG.openapi_metadata().get() {
-            use crate::openapi;
+            use crate::{openapi, Method};
 
             let mut doc = openapi::document::Document::new(
                 title, version, servers.clone()
             );
 
             for route in routes {
-                let mut route = crate::request::Path::from_literal(route);
-
+                for router in [
+                    &r#final.GET,
+                    &r#final.PUT,
+                    &r#final.POST,
+                    &r#final.PATCH,
+                    &r#final.DELETE,
+                    &r#final.OPTIONS,
+                ] {
+                    let mut route = crate::request::Path::from_literal(route);
+                    let (target, hit) = router.search_target(&mut route);
+                    
+                    todo!()
+                }
+                
             }
 
             let doc = serde_json::to_vec(&doc)

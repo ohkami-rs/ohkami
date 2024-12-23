@@ -7,22 +7,22 @@ use ohkami_lib::Slice;
 
 #[allow(non_snake_case)]
 pub(crate) struct Router {
-    GET:     Node,
-    PUT:     Node,
-    POST:    Node,
-    PATCH:   Node,
-    DELETE:  Node,
-    OPTIONS: Node,
+    pub(super) GET:     Node,
+    pub(super) PUT:     Node,
+    pub(super) POST:    Node,
+    pub(super) PATCH:   Node,
+    pub(super) DELETE:  Node,
+    pub(super) OPTIONS: Node,
 }
 
-struct Node {
+pub(super) struct Node {
     pattern:  Pattern,
     proc:     BoxedFPC,
     catch:    BoxedFPC,
     children: &'static [Node],
 
     #[cfg(feature="openapi")]
-    openapi_operation: Option<crate::openapi::Operation>
+    pub(super) openapi_operation: Option<crate::openapi::Operation>
 }
 
 #[derive(PartialEq)]
@@ -59,7 +59,13 @@ impl Node {
     /// 
     /// 1. all `Pattern::Static`s are sorted in reversed alphabetical order
     /// 2. zero or one `Pattern::Param` exists at the end
+    #[inline(always)]
     fn search(&self, path: &mut Path) -> &dyn FangProcCaller {
+        let (target, hit) = self.search_target(path);
+        if hit {&target.proc} else {&target.catch}
+    }
+
+    pub(super) fn search_target(&self, path: &mut Path) -> (&Self, bool) {
         let mut bytes = unsafe {path.normalized_bytes()};
 
         /*
@@ -100,14 +106,15 @@ impl Node {
             successes with `Some(b"/abc")`, then we just perform `bytes = b"/abc"`
             and go to `'next_target` loop.
         */
+        
         if let Some(remaining) = self.pattern.take_through(bytes, path) {
             if remaining.is_empty() {
-                return &self.proc
+                return (&self, true)
             } else {
                 bytes = remaining
             }
         } else {
-            return &self.catch
+            return (&self, false)
         }
 
         let mut target = self;
@@ -115,14 +122,14 @@ impl Node {
             for child in target.children {
                 if let Some(remaining) = child.pattern.take_through(bytes, path) {
                     if remaining.is_empty() {
-                        return &child.proc
+                        return (&child, false)
                     } else {
                         bytes  = remaining;
                         target = child;
                         continue 'next_target
                     }
                 }
-            }; return &target.catch
+            }; return (&target, false)
         }
     }
 }
@@ -209,16 +216,23 @@ const _: (/* conversions */) = {
                 _                                                    => std::cmp::Ordering::Equal
             });
 
-            let openapi_operation = base.;
+            #[cfg(feature="openapi")] let has_handler = base.handler.is_some();
+
+            let proc = base.fangses.clone().into_proc_with(base.handler.unwrap_or(Handler::default_not_found()));
+            #[cfg(feature="openapi")] let (proc, openapi_operation) = (proc.0, has_handler.then_some(proc.1));
 
             let catch = base.fangses.into_proc_with(Handler::default_not_found());
             #[cfg(feature="openapi")] let catch = catch.0;
 
             Node {
                 pattern:  base.pattern.map(Pattern::from).unwrap_or(Pattern::Static(b"")),
-                proc:     base.fangses.clone().into_proc_with(base.handler.unwrap_or(Handler::default_not_found())),
+                children: base.children.into_iter().map(Node::from).collect::<Vec<_>>().leak(),
+
+                proc,
                 catch,
-                children: base.children.into_iter().map(Node::from).collect::<Vec<_>>().leak()
+
+                #[cfg(feature="openapi")]
+                openapi_operation
             }
         }
     }
