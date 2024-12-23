@@ -204,7 +204,7 @@ const _: (/* conversions */) = {
                 (base::Pattern::Static(a), base::Pattern::Static(b)) => a.cmp(b).reverse(),
                 (base::Pattern::Static(_), base::Pattern::Param (_)) => std::cmp::Ordering::Less,
                 (base::Pattern::Param (_), base::Pattern::Static(_)) => std::cmp::Ordering::Greater,
-                _                                        => std::cmp::Ordering::Equal
+                _                                                    => std::cmp::Ordering::Equal
             });
 
             Node {

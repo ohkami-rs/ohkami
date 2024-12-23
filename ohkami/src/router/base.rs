@@ -4,18 +4,24 @@ use crate::fang::{BoxedFPC, Fangs, Handler};
 use crate::ohkami::build::{ByAnother, HandlerSet};
 use std::{sync::Arc, collections::HashSet};
 
+#[cfg(feature="openapi")]
+use crate::openapi;
 
-#[derive(Debug)]
+
 #[allow(non_snake_case)]
 pub struct Router {
-    id:     ID,
-    routes: HashSet<&'static str>,
     pub(super) GET:     Node,
     pub(super) PUT:     Node,
     pub(super) POST:    Node,
     pub(super) PATCH:   Node,
     pub(super) DELETE:  Node,
     pub(super) OPTIONS: Node,
+
+    id:     ID,
+    routes: HashSet<&'static str>,
+
+    #[cfg(feature="openapi")]
+    openapi_doc: Option<openapi::document::Document>,
 }
 
 pub(super) struct Node {
@@ -74,14 +80,18 @@ impl FangsList {
 impl Router {
     pub(crate) fn new() -> Self {
         Self {
-            id:      ID::new(),
-            routes:  HashSet::new(),
             GET:     Node::root(),
             PUT:     Node::root(),
             POST:    Node::root(),
             PATCH:   Node::root(),
             DELETE:  Node::root(),
             OPTIONS: Node::root(),
+
+            id:     ID::new(),
+            routes: HashSet::new(),
+
+            #[cfg(feature="openapi")]
+            openapi_doc: None
         }
     }
 
@@ -341,7 +351,15 @@ const _: (/* conversions */) = {
     }
 };
 
+#[cfg(feature="DEBUG")]
 const _: (/* Debugs */) = {
+    impl std::fmt::Debug for Router {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            f.debug_struct("BaseRouter")
+                .finish()
+        }
+    }
+
     impl std::fmt::Debug for Node {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             f.debug_struct("")

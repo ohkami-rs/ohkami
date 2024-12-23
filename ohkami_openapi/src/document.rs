@@ -19,7 +19,7 @@ struct Info {
     description: Option<&'static str>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Clone)]
 pub struct Server {
     url: &'static str,
 
@@ -29,7 +29,7 @@ pub struct Server {
     #[serde(skip_serializing_if = "Option::is_none")]
     variables: Option<Box<Map<&'static str, ServerVariable>>>
 }
-#[derive(Serialize)]
+#[derive(Serialize, Clone)]
 struct ServerVariable {
     default: &'static str,
 
@@ -77,10 +77,10 @@ pub struct Components {
 }
 
 impl Document {
-    pub fn new<const N: usize>(
+    pub fn new(
         title:   &'static str,
         version: &'static str,
-        servers: [Server; N]
+        servers: impl Into<Vec<Server>>
     ) -> Self {
         Self {
             openapi:    "3.0.0",
