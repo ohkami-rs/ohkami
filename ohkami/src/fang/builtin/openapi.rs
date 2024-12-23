@@ -1,5 +1,6 @@
 #![cfg(feature="openapi")]
 
+use super::super::{Fang, FangProc};
 use std::path::PathBuf;
 
 
@@ -13,7 +14,12 @@ impl OpenAPI {
     }
 }
 
-/*
-    `OpenAPI` doesn't impl `Fang`, but available in fangs tuple of `Ohkami::with`
-    due to special treatment in `Fangs` trait
-*/
+impl<Inner: FangProc> Fang<Inner> for OpenAPI {
+    type Proc = Inner;
+    fn chain(&self, inner: Inner) -> Self::Proc {
+        inner
+    }
+    fn openapi_map_operation(&self, operation: crate::openapi::Operation) -> crate::openapi::Operation {
+        operation
+    }
+}
