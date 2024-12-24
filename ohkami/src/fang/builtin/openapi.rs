@@ -17,7 +17,7 @@ impl OpenAPI {
     /// ```
     /// use ohkami::prelude::*;
     /// use ohkami::fang::OpenAPI;
-    /// use ohkami::openapi::document::Server;
+    /// use ohkami::openapi::Server;
     /// 
     /// fn my_ohkami() -> Ohkami {
     ///     Ohkami::with((

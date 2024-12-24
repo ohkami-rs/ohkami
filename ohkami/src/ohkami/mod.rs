@@ -383,6 +383,18 @@ impl Ohkami {
 
         res
     }
+
+    #[cfg(feature="openapi")]
+    pub fn gen_openapi_doc(self) {
+        if crate::CONFIG.openapi_metadata().get().is_none() {
+            crate::warning!("[Ohkami::gen_openapi_doc] `OpenAPI` fang is not found");
+        }
+        if std::panic::catch_unwind(|| std::fs::exists(".")).is_err() {
+            crate::warning!("[Ohkami::gen_openapi_doc] Can't access to file system");
+            panic!("[Ohkami::gen_openapi_doc] Can't access to file system")
+        }
+        let _ = self.into_router().finalize();
+    }
 }
 
 #[cfg(feature="__rt_native__")]

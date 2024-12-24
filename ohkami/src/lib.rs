@@ -170,6 +170,7 @@ pub(crate) static CONFIG: config::Config = config::Config::new();
 #[cfg(feature="openapi")]
 pub mod openapi {
     pub use ::ohkami_openapi::*;
+    pub use ::ohkami_openapi::document::Server;
 }
 
 #[cfg(debug_assertions)]
