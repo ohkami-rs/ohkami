@@ -7,12 +7,12 @@ use ohkami_lib::Slice;
 
 #[allow(non_snake_case)]
 pub(crate) struct Router {
-    pub(super) GET:     Node,
-    pub(super) PUT:     Node,
-    pub(super) POST:    Node,
-    pub(super) PATCH:   Node,
-    pub(super) DELETE:  Node,
-    pub(super) OPTIONS: Node,
+    GET:     Node,
+    PUT:     Node,
+    POST:    Node,
+    PATCH:   Node,
+    DELETE:  Node,
+    OPTIONS: Node,
 }
 
 pub(super) struct Node {
@@ -22,7 +22,7 @@ pub(super) struct Node {
     children: &'static [Node],
 
     #[cfg(feature="openapi")]
-    pub(super) openapi_operation: Option<crate::openapi::Operation>
+    openapi_operation: Option<crate::openapi::Operation>
 }
 
 #[derive(PartialEq)]
@@ -49,6 +49,71 @@ impl Router {
                 res
             }
         }.search(&mut req.path).call_bite(req).await
+    }
+
+    #[cfg(feature="openapi")]
+    pub(super) fn gen_openapi_doc(
+        &self,
+        routes:   impl IntoIterator<Item = &'static str>,
+        metadata: crate::config::OpenAPIMetadata,
+    ) {
+        let mut doc = crate::openapi::document::Document::new(
+            metadata.title,
+            metadata.version,
+            metadata.servers
+        );
+
+        for route in routes {
+            assert!(route.starts_with('/'));
+
+            let (openapi_path, openapi_path_param_names) = {
+                let (mut path, mut params) = (String::new(), Vec::new());
+                for segment in route.split('/').skip(1/* head empty */) {
+                    path += "/";
+                    if let Some(param) = segment.strip_prefix(':') {
+                        path += &["{", param, "}"].concat();
+                        params.push(param);
+                    } else {
+                        path += segment;
+                    }
+                }
+                (path, params)
+            };
+
+            let mut operations = crate::openapi::paths::Operations::new();
+            for (openapi_method, router) in [
+                ("get",    &self.GET),
+                ("put",    &self.PUT),
+                ("post",   &self.POST),
+                ("patch",  &self.PATCH),
+                ("delete", &self.DELETE),
+            ] {
+                let mut path = crate::request::Path::from_literal(route);
+                let (target, true) = router.search_target(&mut path) else {
+                    panic!("[OpenAPI] Unexpected not-found route `{route}`")
+                };
+
+                if let Some(mut operation) = target.openapi_operation.clone() {
+                    for param_name in &openapi_path_param_names {
+                        operation.replace_empty_param_name_with(param_name);
+                    }
+                    for security_scheme in operation.iter_securitySchemes() {
+                        doc.register_securityScheme_component(security_scheme);
+                    }
+                    for schema_component in operation.refize_schemas() {
+                        doc.register_schema_component(schema_component);
+                    }
+                    operations.register(openapi_method, operation);
+                };
+            }
+            
+            doc = doc.path(openapi_path, operations);
+        }
+
+        let doc = serde_json::to_vec(&doc)
+            .expect("[OpenAPI] Failed to serialize document");
+        std::fs::write(metadata.file_path, doc)
+            .expect("[OpenAPI] Failed to write generated document");
     }
 }
 

@@ -136,81 +136,6 @@ impl Router {
         self.OPTIONS.register_handler(route, Handler::default_options_with(methods)).expect("Failed to register handler");
     }
 
-    #[allow(unused_mut)]
-    pub(crate) fn finalize(mut self) -> super::r#final::Router {
-        #[cfg(feature="openapi")]
-        let routes = std::mem::take(&mut self.routes);
-
-        let r#final = super::r#final::Router::from(self);
-
-        #[cfg(feature="DEBUG")] {
-            println!("finalized: {final:#?}")
-        }
-
-        #[cfg(feature="openapi")]
-        if let Some(crate::config::OpenAPIMetadata {
-            file_path, title, version, servers
-        }) = crate::CONFIG.openapi_metadata().get() {
-            let mut doc = crate::openapi::document::Document::new(
-                title, version, servers.clone()
-            );
-
-            for route in routes {
-                assert!(route.starts_with('/'));
-
-                let (openapi_path, openapi_path_param_names) = {
-                    let (mut path, mut params) = (String::new(), Vec::new());
-                    for segment in route.split('/').skip(1/* head empty */) {
-                        path += "/";
-                        if let Some(param) = segment.strip_prefix(':') {
-                            path += &["{", param, "}"].concat();
-                            params.push(param);
-                        } else {
-                            path += segment;
-                        }
-                    }
-                    (path, params)
-                };
-
-                let mut operations = crate::openapi::paths::Operations::new();
-                for (openapi_method, router) in [
-                    ("get",    &r#final.GET),
-                    ("put",    &r#final.PUT),
-                    ("post",   &r#final.POST),
-                    ("patch",  &r#final.PATCH),
-                    ("delete", &r#final.DELETE),
-                ] {
-                    let mut path = crate::request::Path::from_literal(route);
-                    let (target, true) = router.search_target(&mut path) else {
-                        panic!("[OpenAPI] Unexpected not-found route `{route}`")
-                    };
-
-                    if let Some(mut operation) = target.openapi_operation.clone() {
-                        for param_name in &openapi_path_param_names {
-                            operation.replace_empty_param_name_with(param_name);
-                        }
-                        for security_scheme in operation.iter_securitySchemes() {
-                            doc.register_securityScheme_component(security_scheme);
-                        }
-                        for schema_component in operation.refize_schemas() {
-                            doc.register_schema_component(schema_component);
-                        }
-                        operations.register(openapi_method, operation);
-                    };
-                }
-                
-                doc = doc.path(openapi_path, operations);
-            }
-
-            let doc = serde_json::to_vec(&doc)
-                .expect("[OpenAPI] Failed to serialize document");
-            std::fs::write(file_path, doc)
-                .expect("[OpenAPI] Failed to write generated document");
-        }
-
-        r#final
-    }
-
     pub(crate) fn merge_another(&mut self, another: ByAnother) {
         let ByAnother { route, ohkami } = another;
         let another_routes = ohkami.into_router();
@@ -230,6 +155,25 @@ impl Router {
                 )*
             };
         } apply_to! { GET, PUT, POST, PATCH, DELETE, OPTIONS }
+    }
+
+    #[allow(unused_mut)]
+    pub(crate) fn finalize(mut self) -> super::r#final::Router {
+        #[cfg(feature="openapi")]
+        let routes = std::mem::take(&mut self.routes);
+
+        let r#final = super::r#final::Router::from(self);
+
+        #[cfg(feature="DEBUG")] {
+            println!("finalized: {final:#?}")
+        }
+
+        #[cfg(feature="openapi")]
+        if let Some(metadata) = crate::CONFIG.openapi_metadata().get() {
+            r#final.gen_openapi_doc(routes, metadata.clone());
+        }
+
+        r#final
     }
 }
 
