@@ -159,27 +159,49 @@ impl Router {
         if let Some(crate::config::OpenAPIMetadata {
             file_path, title, version, servers
         }) = crate::CONFIG.openapi_metadata().get() {
-            use crate::{openapi, Method};
-
-            let mut doc = openapi::document::Document::new(
+            let mut doc = crate::openapi::document::Document::new(
                 title, version, servers.clone()
             );
 
             for route in routes {
-                for router in [
-                    &r#final.GET,
-                    &r#final.PUT,
-                    &r#final.POST,
-                    &r#final.PATCH,
-                    &r#final.DELETE,
-                    &r#final.OPTIONS,
+                assert!(route.starts_with('/'));
+
+                let (openapi_path, openapi_path_param_names) = {
+                    let (mut path, mut params) = (String::new(), Vec::new());
+                    for segment in route.split('/').skip(1/* head empty */) {
+                        path += "/";
+                        if let Some(param) = segment.strip_prefix(':') {
+                            path += &["{", param, "}"].concat();
+                            params.push(param);
+                        } else {
+                            path += segment;
+                        }
+                    }
+                    (path, params)
+                };
+
+                let mut operations = crate::openapi::paths::Operations::new();
+                for (openapi_method, router) in [
+                    ("get",    &r#final.GET),
+                    ("put",    &r#final.PUT),
+                    ("post",   &r#final.POST),
+                    ("patch",  &r#final.PATCH),
+                    ("delete", &r#final.DELETE),
                 ] {
-                    let mut route = crate::request::Path::from_literal(route);
-                    let (target, hit) = router.search_target(&mut route);
-                    
-                    todo!()
+                    let mut path = crate::request::Path::from_literal(route);
+                    let (target, true) = router.search_target(&mut path) else {
+                        panic!("[OpenAPI] Unexpected not-found route `{route}`")
+                    };
+
+                    if let Some(mut operation) = target.openapi_operation.clone() {
+                        for param_name in &openapi_path_param_names {
+                            operation.replace_empty_param_name_with(param_name);
+                        }
+                        operations.register(openapi_method, operation);
+                    };
                 }
                 
+                doc = doc.path(openapi_path, operations);
             }
 
             let doc = serde_json::to_vec(&doc)

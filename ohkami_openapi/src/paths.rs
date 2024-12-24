@@ -4,26 +4,13 @@ use serde::Serialize;
 
 #[derive(Serialize)]
 pub struct Paths(
-    Map<&'static str, Operations>
+    Map<String, Operations>
 );
 
 #[derive(Serialize)]
-pub struct Operations {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    get:     Option<Operation>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    post:    Option<Operation>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    put:     Option<Operation>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    patch:   Option<Operation>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    delete:  Option<Operation>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    head:    Option<Operation>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    options: Option<Operation>,
-}
+pub struct Operations(
+    Map<&'static str, Operation>
+);
 
 #[derive(Serialize, Clone)]
 pub struct Operation {
@@ -78,44 +65,47 @@ impl Paths {
         Self(Map::new())
     }
 
-    pub fn at(mut self, path: &'static str, operations: Operations) -> Self {
-        self.0.insert(path, operations);
+    pub fn at(mut self, path: impl Into<String>, operations: Operations) -> Self {
+        self.0.insert(path.into(), operations);
         self
     }
 }
 
 impl Operations {
     pub fn new() -> Self {
-        Self { get:None, post:None, put:None, patch:None, delete:None, head:None, options:None }
+        Self(Map::new())
     }
 
     pub fn get(mut self, operation: Operation) -> Self {
-        self.get = Some(operation);
-        self
-    }
-    pub fn post(mut self, operation: Operation) -> Self {
-        self.post = Some(operation);
+        self.register("get", operation);
         self
     }
     pub fn put(mut self, operation: Operation) -> Self {
-        self.put = Some(operation);
+        self.register("put", operation);
+        self
+    }
+    pub fn post(mut self, operation: Operation) -> Self {
+        self.register("post", operation);
         self
     }
     pub fn patch(mut self, operation: Operation) -> Self {
-        self.patch = Some(operation);
+        self.register("patch", operation);
         self
     }
     pub fn delete(mut self, operation: Operation) -> Self {
-        self.delete = Some(operation);
+        self.register("delete", operation);
         self
     }
     pub fn options(mut self, operation: Operation) -> Self {
-        self.options = Some(operation);
+        self.register("options", operation);
         self
     }
-    pub fn head(mut self, operation: Operation) -> Self {
-        self.head = Some(operation);
-        self
+
+    #[doc(hidden)]
+    pub fn register(&mut self, method: &'static str, operation: Operation) {
+        if matches!(method, "get" | "put" | "post" | "patch" | "delete" | "options") {
+            self.0.insert(method, operation);
+        }
     }
 }
 
@@ -138,6 +128,12 @@ impl Operation {
     pub fn param(mut self, param: Parameter) -> Self {
         self.parameters.push(param);
         self
+    }
+    #[doc(hidden)]
+    pub fn replace_empty_param_name_with(&mut self, name: &'static str) {
+        if let Some(empty_param) = self.parameters.iter_mut().find(|p| p.name.is_empty()) {
+            empty_param.name = name;
+        }
     }
 
     pub fn requestBody(mut self, requestBody: RequestBody) -> Self {

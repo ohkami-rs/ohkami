@@ -7,7 +7,7 @@ pub struct Parameter {
     #[serde(rename = "in")]
     kind: ParameterKind,
 
-    name:   &'static str,
+    pub(crate) name: &'static str,
     schema: SchemaRef,
 
     #[serde(skip_serializing_if = "Option::is_none")]

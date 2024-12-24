@@ -95,7 +95,7 @@ impl Document {
         self.info.description = Some(description);
         self
     }
-    pub fn path(mut self, path: &'static str, operations: Operations) -> Self {
+    pub fn path(mut self, path: impl Into<String>, operations: Operations) -> Self {
         self.paths = self.paths.at(path, operations);
         self
     }
