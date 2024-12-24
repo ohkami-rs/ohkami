@@ -1,4 +1,4 @@
-use super::schema::SchemaRef;
+use super::schema::{SchemaRef, RawSchema};
 use super::_util::{Content, Map, is_false};
 use serde::Serialize;
 
@@ -8,7 +8,7 @@ pub struct Parameter {
     kind: ParameterKind,
 
     pub(crate) name: &'static str,
-    schema: SchemaRef,
+    pub(crate) schema: SchemaRef,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     description: Option<&'static str>,
@@ -152,5 +152,9 @@ impl RequestBody {
     pub fn another(mut self, media_type: &'static str, schema: impl Into<SchemaRef>) -> Self {
         self.content.insert(media_type, Content::from(schema.into()));
         self
+    }
+
+    pub(crate) fn refize_schemas(&mut self) -> impl Iterator<Item = RawSchema> + '_ {
+        self.content.values_mut().map(Content::refize_schema).flatten()
     }
 }

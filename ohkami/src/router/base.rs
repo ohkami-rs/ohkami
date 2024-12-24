@@ -6,18 +6,14 @@ use std::{sync::Arc, collections::HashSet};
 
 #[allow(non_snake_case)]
 pub struct Router {
+    id:     ID,
+    routes: HashSet<&'static str>,
     pub(super) GET:     Node,
     pub(super) PUT:     Node,
     pub(super) POST:    Node,
     pub(super) PATCH:   Node,
     pub(super) DELETE:  Node,
     pub(super) OPTIONS: Node,
-
-    id:     ID,
-    routes: HashSet<&'static str>,
-
-    #[cfg(feature="openapi")]
-    openapi_doc: Option<crate::openapi::document::Document>,
 }
 
 pub(super) struct Node {
@@ -95,18 +91,14 @@ type IntoProcWith = (BoxedFPC, crate::openapi::Operation);
 impl Router {
     pub(crate) fn new() -> Self {
         Self {
+            id:      ID::new(),
+            routes:  HashSet::new(),
             GET:     Node::root(),
             PUT:     Node::root(),
             POST:    Node::root(),
             PATCH:   Node::root(),
             DELETE:  Node::root(),
             OPTIONS: Node::root(),
-
-            id:     ID::new(),
-            routes: HashSet::new(),
-
-            #[cfg(feature="openapi")]
-            openapi_doc: None
         }
     }
 
@@ -196,6 +188,12 @@ impl Router {
                     if let Some(mut operation) = target.openapi_operation.clone() {
                         for param_name in &openapi_path_param_names {
                             operation.replace_empty_param_name_with(param_name);
+                        }
+                        for security_scheme in operation.iter_securitySchemes() {
+                            doc.register_securityScheme_component(security_scheme);
+                        }
+                        for schema_component in operation.refize_schemas() {
+                            doc.register_schema_component(schema_component);
                         }
                         operations.register(openapi_method, operation);
                     };

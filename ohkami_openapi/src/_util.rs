@@ -1,4 +1,4 @@
-use super::schema::SchemaRef;
+use super::schema::{SchemaRef, RawSchema};
 use serde::{ser::SerializeMap, Serialize};
 
 pub(crate) const fn is_false(bool: &bool) -> bool {
@@ -14,9 +14,16 @@ impl<T: Into<SchemaRef>> From<T> for Content {
         Self { schema: schema.into() }
     }
 }
+impl Content {
+    pub(crate) fn refize_schema(&mut self) -> Option<RawSchema> {
+        self.schema.refize()
+    }
+}
 
 #[derive(Clone)]
-pub(crate) struct Map<K:PartialEq, V>(Vec<(K, V)>);
+pub(crate) struct Map<K:PartialEq, V>(
+    Vec<(K, V)>
+);
 impl<K:PartialEq, V> Map<K, V> {
     pub(crate) const fn new() -> Self {
         Self(Vec::new())
@@ -41,6 +48,13 @@ impl<K:PartialEq, V> Map<K, V> {
             Some(i) => self.0[i].1 = value,
             None    => self.0.push((key, value)),
         }
+    }
+
+    pub(crate) fn into_keys(self) -> impl Iterator<Item = K> {
+        self.0.into_iter().map(|(k, _)| k)
+    }
+    pub(crate) fn values_mut(&mut self) -> impl Iterator<Item = &mut V> {
+        self.0.iter_mut().map(|(_, v)| v)
     }
 }
 const _: () = {

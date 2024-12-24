@@ -165,6 +165,15 @@ impl SchemaRef {
             SchemaRef::Reference(_) => None
         }
     }
+
+    pub(crate) fn refize(&mut self) -> Option<RawSchema> {
+        match self {
+            SchemaRef::Inline(raw) => if let Some(name) = raw.__name__ {
+                let raw = std::mem::replace(self, SchemaRef::Reference(name));
+                Some(raw.into_inline().unwrap())
+            } else {None}, _ => None
+        }
+    }
 }
 
 const _: (/* constructors */) = {

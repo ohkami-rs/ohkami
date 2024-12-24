@@ -1,4 +1,4 @@
-use super::schema::{SchemaRef, Schema, Type::SchemaType};
+use super::schema::{SchemaRef, Schema, RawSchema, Type::SchemaType};
 use super::_util::{Content, Map, is_false};
 use serde::Serialize;
 
@@ -48,6 +48,10 @@ impl Responses {
             self.0.insert(code, res);
         }
     }
+
+    pub(crate) fn refize_schemas(&mut self) -> impl Iterator<Item = RawSchema> + '_ {
+        self.0.values_mut().map(Response::refize_schemas).flatten()
+    }
 }
 
 impl Response {
@@ -67,6 +71,16 @@ impl Response {
     pub fn header(mut self, name: &'static str, header: impl Into<ResponseHeader>) -> Self {
         self.headers.insert(name, header.into());
         self
+    }
+
+    pub(self) fn refize_schemas(&mut self) -> impl Iterator<Item = RawSchema> {
+        let mut refizeds = vec![];
+        for content in self.content.values_mut() {
+            if let Some(refized) = content.refize_schema() {
+                refizeds.push(refized);
+            }
+        }
+        refizeds.into_iter()
     }
 }
 

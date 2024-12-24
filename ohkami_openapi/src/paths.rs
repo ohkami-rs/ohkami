@@ -1,4 +1,5 @@
 use super::{Parameter, RequestBody, Responses, security::SecurityScheme};
+use super::schema::RawSchema;
 use super::_util::{is_false, Map};
 use serde::Serialize;
 
@@ -129,12 +130,6 @@ impl Operation {
         self.parameters.push(param);
         self
     }
-    #[doc(hidden)]
-    pub fn replace_empty_param_name_with(&mut self, name: &'static str) {
-        if let Some(empty_param) = self.parameters.iter_mut().find(|p| p.name.is_empty()) {
-            empty_param.name = name;
-        }
-    }
 
     pub fn requestBody(mut self, requestBody: RequestBody) -> Self {
         self.requestBody = Some(requestBody);
@@ -181,5 +176,32 @@ impl Operation {
                 self
             }
         }
+    }
+
+    #[doc(hidden)]
+    pub fn replace_empty_param_name_with(&mut self, name: &'static str) {
+        if let Some(empty_param) = self.parameters.iter_mut().find(|p| p.name.is_empty()) {
+            empty_param.name = name;
+        }
+    }
+
+    #[doc(hidden)]
+    pub fn iter_securitySchemes(&self) -> impl Iterator<Item = SecurityScheme> {
+        self.security.clone().into_iter()
+            .map(|map| {
+                let [SecuritySchemeName(ss)] = map.clone()
+                    .into_keys()
+                    .collect::<Vec<_>>()
+                    .try_into().ok()
+                    .expect("[OpenAPI] Unexpected multiple keys in one element of SecurityRequirement");
+                ss
+            })
+    }
+    #[doc(hidden)]
+    pub fn refize_schemas(&mut self) -> impl Iterator<Item = RawSchema> + '_ {
+        [/* SchemaRef */].into_iter()
+            .chain(self.parameters.iter_mut().map(|p| p.schema.refize()).flatten())
+            .chain(self.requestBody.as_mut().map(RequestBody::refize_schemas).into_iter().flatten())
+            .chain(self.responses.refize_schemas())
     }
 }

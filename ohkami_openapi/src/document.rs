@@ -100,7 +100,8 @@ impl Document {
         self
     }
     
-    pub fn register_schema(&mut self, schema: impl Into<RawSchema>) {
+    #[doc(hidden)]
+    pub fn register_schema_component(&mut self, schema: impl Into<RawSchema>) {
         let schema: RawSchema = schema.into();
         if let Some(name) = schema.__name__ {
             match self.components.schemas.get(&name) {
@@ -110,7 +111,8 @@ impl Document {
             }
         }
     }
-    pub fn register_securityScheme(&mut self, securityScheme: SecurityScheme) {
+    #[doc(hidden)]
+    pub fn register_securityScheme_component(&mut self, securityScheme: SecurityScheme) {
         match self.components.securitySchemes.get(&securityScheme.__name__) {
             Some(it) if *it == securityScheme => return,
             Some(_) => panic!("[OpenAPI] `components.securitySchemes`: contradict registrations of multiple `{}`s", securityScheme.__name__),
