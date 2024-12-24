@@ -303,7 +303,16 @@ impl Ohkami {
     /// }
     /// ```
     pub async fn howl(self, address: impl __rt__::ToSocketAddrs) {
-        let router = Arc::new(self.into_router().finalize());
+        let f = self.into_router().finalize();
+        #[cfg(not(feature="openapi"))] let router = Arc::new(f);
+        #[cfg(feature="openapi")] let router = Arc::new(f.0);
+        #[cfg(feature="openapi")] if let Some(doc) = f.1 {
+            std::fs::write(
+                &crate::CONFIG.openapi_metadata().get().unwrap().file_path,
+                serde_json::to_vec(&doc).unwrap()
+            ).expect("[OpenAPI] Failed to write document to specified file");
+        }
+
         let listener = __rt__::bind(address).await;
 
         let (wg, ctrl_c) = (sync::WaitGroup::new(), sync::CtrlC::new());
@@ -366,6 +375,7 @@ impl Ohkami {
                 #[cfg(feature="DEBUG")] ::worker::console_debug!("Done `Ohkami::into_router`");
 
                 let router = router.finalize();
+                #[cfg(feature="openapi")] let router = router.0;
                 #[cfg(feature="DEBUG")] ::worker::console_debug!("Done `Router::finalize` (without compressions)");
                 
                 let mut res = router.handle(&mut ohkami_req).await;
@@ -393,7 +403,11 @@ impl Ohkami {
             crate::warning!("[Ohkami::gen_openapi_doc] Can't access to file system");
             panic!("[Ohkami::gen_openapi_doc] Can't access to file system")
         }
-        let _ = self.into_router().finalize();
+        let (_, Some(doc)) = self.into_router().finalize() else {
+            panic!("[Ohkami::gen_openapi_doc] Unexpectedly no OpenAPI doc found")
+        };
+
+        todo!()
     }
 }
 

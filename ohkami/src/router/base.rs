@@ -158,7 +158,7 @@ impl Router {
     }
 
     #[allow(unused_mut)]
-    pub(crate) fn finalize(mut self) -> super::r#final::Router {
+    pub(crate) fn finalize(mut self) -> Finilized {
         #[cfg(feature="openapi")]
         let routes = std::mem::take(&mut self.routes);
 
@@ -168,14 +168,20 @@ impl Router {
             println!("finalized: {final:#?}")
         }
 
-        #[cfg(feature="openapi")]
-        if let Some(metadata) = crate::CONFIG.openapi_metadata().get() {
-            r#final.gen_openapi_doc(routes, metadata.clone());
+        #[cfg(feature="openapi")] {
+            let doc = crate::CONFIG.openapi_metadata().get()
+                .map(|m| r#final.gen_openapi_doc(routes, m.clone()));
+            return (r#final, doc)
         }
-
-        r#final
+        #[cfg(not(feature="openapi"))] {
+            return r#final
+        }
     }
 }
+#[cfg(feature="openapi")]
+type Finilized = (super::r#final::Router, Option<crate::openapi::document::Document>);
+#[cfg(not(feature="openapi"))]
+type Finilized = super::r#final::Router;
 
 impl Node {
     fn root() -> Self {

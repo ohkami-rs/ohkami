@@ -56,7 +56,7 @@ impl Router {
         &self,
         routes:   impl IntoIterator<Item = &'static str>,
         metadata: crate::config::OpenAPIMetadata,
-    ) {
+    ) -> crate::openapi::document::Document {
         let mut doc = crate::openapi::document::Document::new(
             metadata.title,
             metadata.version,
@@ -110,10 +110,7 @@ impl Router {
             doc = doc.path(openapi_path, operations);
         }
 
-        let doc = serde_json::to_vec(&doc)
-            .expect("[OpenAPI] Failed to serialize document");
-        std::fs::write(metadata.file_path, doc)
-            .expect("[OpenAPI] Failed to write generated document");
+        doc
     }
 }
 
