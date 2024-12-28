@@ -64,7 +64,9 @@ impl Response {
     }
 
     pub fn content(mut self, media_type: &'static str, schema: impl Into<SchemaRef>) -> Self {
-        self.content.insert(media_type, Content::from(schema.into()));
+        if media_type != "" {
+            self.content.insert(media_type, Content::from(schema.into()));
+        }
         self
     }
 

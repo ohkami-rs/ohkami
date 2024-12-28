@@ -107,7 +107,7 @@ use crate::{__rt__, Session};
 /// A tuple of types that implement `FromParam` trait e.g. `(&str, usize)`.\
 /// If the path contains only one parameter, then you can omit the tuple \
 /// e.g. just `param: &str`.\
-/// (In current ohkami, at most *2* path params can be handled.)
+/// (Current ohkami handles at most *2* path params.)
 /// 
 /// <br>
 /// 

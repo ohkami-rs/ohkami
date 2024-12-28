@@ -4,7 +4,6 @@ use crate::{IntoBody, IntoResponse, Response, Status};
 #[cfg(feature="openapi")]
 use crate::openapi;
 
-
 macro_rules! generate_statuses_as_types_containing_value {
     ($( $status:ident : $message:literal, )*) => {
         $(
