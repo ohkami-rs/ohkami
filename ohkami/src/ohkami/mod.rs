@@ -355,7 +355,7 @@ impl Ohkami {
 
         let ohkami_res = match take_over {
             Ok(()) => {#[cfg(feature="DEBUG")] ::worker::console_debug!("`take_over` succeed");
-                let (router, _) = self.router.finalize();
+                let (router, _) = self.into_router().finalize();
                 #[cfg(feature="DEBUG")] ::worker::console_debug!("Done `self.router.finalize`");
                 
                 let mut res = router.handle(&mut ohkami_req).await;
@@ -385,7 +385,7 @@ impl Ohkami {
             router: self.router.clone(),
             fangs:  self.fangs.clone()
         }).into_router().finalize();
-        
+
         let doc = router.gen_openapi_doc(routes.clone(), metadata.clone());
 
         std::fs::write(metadata.file_path, serde_json::to_vec(&doc).unwrap())
