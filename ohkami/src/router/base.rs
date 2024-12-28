@@ -4,6 +4,7 @@ use crate::fang::{BoxedFPC, Fangs, Handler};
 use crate::ohkami::build::{ByAnother, HandlerSet};
 use std::{sync::Arc, collections::HashSet};
 
+#[cfg_attr(feature="openapi", derive(Clone))]
 #[allow(non_snake_case)]
 pub struct Router {
     id:     ID,
@@ -16,6 +17,7 @@ pub struct Router {
     pub(super) OPTIONS: Node,
 }
 
+#[cfg_attr(feature="openapi", derive(Clone))]
 pub(super) struct Node {
     pub(super) pattern:  Option<Pattern>,
     pub(super) handler:  Option<Handler>,
@@ -158,8 +160,7 @@ impl Router {
     }
 
     #[allow(unused_mut)]
-    pub(crate) fn finalize(mut self) -> Finilized {
-        #[cfg(feature="openapi")]
+    pub(crate) fn finalize(mut self) -> (super::r#final::Router, HashSet<&'static str>) {
         let routes = std::mem::take(&mut self.routes);
 
         let r#final = super::r#final::Router::from(self);
@@ -168,20 +169,9 @@ impl Router {
             println!("finalized: {final:#?}")
         }
 
-        #[cfg(feature="openapi")] {
-            let doc = crate::CONFIG.openapi_metadata().get()
-                .map(|m| r#final.gen_openapi_doc(routes, m.clone()));
-            return (r#final, doc)
-        }
-        #[cfg(not(feature="openapi"))] {
-            return r#final
-        }
+        (r#final, routes)
     }
 }
-#[cfg(feature="openapi")]
-type Finilized = (super::r#final::Router, Option<crate::openapi::document::Document>);
-#[cfg(not(feature="openapi"))]
-type Finilized = super::r#final::Router;
 
 impl Node {
     fn root() -> Self {

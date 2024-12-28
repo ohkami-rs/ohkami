@@ -131,10 +131,10 @@ use crate::{__rt__, Session};
 /// }
 /// ```
 pub struct Ohkami {
-    pub(crate) routes: Router,
+    router: Router,
 
     /// apply just before merged to another or called `howl`
-    pub(crate) fangs:  Option<Arc<dyn Fangs>>,
+    fangs: Option<Arc<dyn Fangs>>,
 }
 
 impl Ohkami {
@@ -173,11 +173,7 @@ impl Ohkami {
     pub fn new(routes: impl build::Routes) -> Self {
         let mut router = Router::new();
         routes.apply(&mut router);
-
-        Self {
-            routes: router,
-            fangs:  None,
-        }
+        Self { router, fangs: None, }
     }
 
     /// Create new ohkami with the fangs on the routing.
@@ -219,15 +215,11 @@ impl Ohkami {
     pub fn with(fangs: impl Fangs + 'static, routes: impl build::Routes) -> Self {
         let mut router = Router::new();
         routes.apply(&mut router);
-
-        Self {
-            routes: router,
-            fangs:  Some(Arc::new(fangs)),
-        }
+        Self { router, fangs: Some(Arc::new(fangs)) }
     }
 
     pub(crate) fn into_router(self) -> Router {
-        let Self { routes: mut router, fangs } = self;
+        let Self { fangs, mut router } = self;
 
         if let Some(fangs) = fangs {
             router.apply_fangs(router.id(), fangs);
@@ -303,15 +295,8 @@ impl Ohkami {
     /// }
     /// ```
     pub async fn howl(self, address: impl __rt__::ToSocketAddrs) {
-        let f = self.into_router().finalize();
-        #[cfg(not(feature="openapi"))] let router = Arc::new(f);
-        #[cfg(feature="openapi")] let router = Arc::new(f.0);
-        #[cfg(feature="openapi")] if let Some(doc) = f.1 {
-            std::fs::write(
-                &crate::CONFIG.openapi_metadata().get().unwrap().file_path,
-                serde_json::to_vec(&doc).unwrap()
-            ).expect("[OpenAPI] Failed to write document to specified file");
-        }
+        let (router, _) = self.router.finalize();
+        let router = Arc::new(router);
 
         let listener = __rt__::bind(address).await;
 
@@ -370,13 +355,8 @@ impl Ohkami {
 
         let ohkami_res = match take_over {
             Ok(()) => {#[cfg(feature="DEBUG")] ::worker::console_debug!("`take_over` succeed");
-
-                let router = self.into_router();
-                #[cfg(feature="DEBUG")] ::worker::console_debug!("Done `Ohkami::into_router`");
-
-                let router = router.finalize();
-                #[cfg(feature="openapi")] let router = router.0;
-                #[cfg(feature="DEBUG")] ::worker::console_debug!("Done `Router::finalize` (without compressions)");
+                let (router, _) = self.router.finalize();
+                #[cfg(feature="DEBUG")] ::worker::console_debug!("Done `self.router.finalize`");
                 
                 let mut res = router.handle(&mut ohkami_req).await;
                 res.complete();
@@ -395,19 +375,17 @@ impl Ohkami {
     }
 
     #[cfg(feature="openapi")]
-    pub fn gen_openapi_doc(self) {
-        if crate::CONFIG.openapi_metadata().get().is_none() {
-            crate::warning!("[Ohkami::gen_openapi_doc] `OpenAPI` fang is not found");
-        }
+    pub fn generate(&self, metadata: crate::openapi::OpenAPI) {
         if std::panic::catch_unwind(|| std::fs::exists(".")).is_err() {
             crate::warning!("[Ohkami::gen_openapi_doc] Can't access to file system");
             panic!("[Ohkami::gen_openapi_doc] Can't access to file system")
         }
-        let (_, Some(doc)) = self.into_router().finalize() else {
-            panic!("[Ohkami::gen_openapi_doc] Unexpectedly no OpenAPI doc found")
-        };
 
-        todo!()
+        let (router, routes) = self.router.clone().finalize();
+        let doc = router.gen_openapi_doc(routes.clone(), metadata.clone());
+
+        std::fs::write(metadata.file_path, serde_json::to_vec(&doc).unwrap())
+            .expect("[OpenAPI] Failed to write document to specified file");
     }
 }
 

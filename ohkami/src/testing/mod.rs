@@ -46,8 +46,7 @@ pub struct TestingOhkami(Arc<Router>);
 
 impl Testing for Ohkami {
     fn test(self) -> TestingOhkami {
-        let f = self.into_router().finalize();
-        #[cfg(feature="openapi")] let f = f.0;
+        let (f, _) = self.into_router().finalize();
         TestingOhkami(Arc::new(f))
     }
 }

@@ -14,8 +14,3 @@ pub use memory::Memory;
 mod timeout;
 #[cfg(feature="__rt_native__")]
 pub use timeout::Timeout;
-
-#[cfg(feature="openapi")]
-mod openapi;
-#[cfg(feature="openapi")]
-pub use openapi::OpenAPI;

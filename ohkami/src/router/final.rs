@@ -52,10 +52,10 @@ impl Router {
     }
 
     #[cfg(feature="openapi")]
-    pub(super) fn gen_openapi_doc(
+    pub(crate) fn gen_openapi_doc(
         &self,
         routes:   impl IntoIterator<Item = &'static str>,
-        metadata: crate::config::OpenAPIMetadata,
+        metadata: crate::openapi::OpenAPI,
     ) -> crate::openapi::document::Document {
         let mut doc = crate::openapi::document::Document::new(
             metadata.title,
