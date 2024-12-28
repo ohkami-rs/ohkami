@@ -184,7 +184,7 @@ impl Node {
             for child in target.children {
                 if let Some(remaining) = child.pattern.take_through(bytes, path) {
                     if remaining.is_empty() {
-                        return (&child, false)
+                        return (&child, true)
                     } else {
                         bytes  = remaining;
                         target = child;

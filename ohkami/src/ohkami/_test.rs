@@ -86,7 +86,7 @@ fn my_ohkami() -> Ohkami {
     let head_res = t.oneshot(req).await;
     assert_eq!(head_res.text(), None);
     assert_eq!(
-        {let mut h = get_res.headers().filter(|(name, _)| *name != "Content-Length").collect::<Vec<_>>(); h.sort(); h},
+        {let mut h = get_res.headers().collect::<Vec<_>>(); h.sort(); h},
         {let mut h = head_res.headers().collect::<Vec<_>>(); h.sort(); h}
     );
 
@@ -100,7 +100,7 @@ fn my_ohkami() -> Ohkami {
     let head_res = t.oneshot(req).await;
     assert_eq!(head_res.text(), None);
     assert_eq!(
-        {let mut h = get_res.headers().filter(|(name, _)| *name != "Content-Length").collect::<Vec<_>>(); h.sort(); h},
+        {let mut h = get_res.headers().collect::<Vec<_>>(); h.sort(); h},
         {let mut h = head_res.headers().collect::<Vec<_>>(); h.sort(); h}
     );
 
@@ -112,7 +112,7 @@ fn my_ohkami() -> Ohkami {
     let head_res = t.oneshot(req).await;
     assert_eq!(head_res.text(), None);
     assert_eq!(
-        {let mut h = get_res.headers().filter(|(name, _)| *name != "Content-Length").collect::<Vec<_>>(); h.sort(); h},
+        {let mut h = get_res.headers().collect::<Vec<_>>(); h.sort(); h},
         {let mut h = head_res.headers().collect::<Vec<_>>(); h.sort(); h}
     );
 
