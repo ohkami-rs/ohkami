@@ -295,7 +295,7 @@ impl Ohkami {
     /// }
     /// ```
     pub async fn howl(self, address: impl __rt__::ToSocketAddrs) {
-        let (router, _) = self.router.finalize();
+        let (router, _) = self.into_router().finalize();
         let router = Arc::new(router);
 
         let listener = __rt__::bind(address).await;
@@ -381,7 +381,11 @@ impl Ohkami {
             panic!("[Ohkami::gen_openapi_doc] Can't access to file system")
         }
 
-        let (router, routes) = self.router.clone().finalize();
+        let (router, routes) = (Self {
+            router: self.router.clone(),
+            fangs:  self.fangs.clone()
+        }).into_router().finalize();
+        
         let doc = router.gen_openapi_doc(routes.clone(), metadata.clone());
 
         std::fs::write(metadata.file_path, serde_json::to_vec(&doc).unwrap())
