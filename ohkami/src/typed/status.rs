@@ -29,8 +29,8 @@ macro_rules! generate_statuses_as_types_containing_value {
                 fn openapi_responses() -> openapi::Responses {
                     let (code, message) = $message.split_once(' ').unwrap();
                     let mut res = openapi::Response::when(message);
-                    if B::MIME_TYPE != "" {
-                        res = res.content(B::MIME_TYPE, B::openapi_responsebody())
+                    if B::CONTENT_TYPE != "" {
+                        res = res.content(B::CONTENT_TYPE, B::openapi_responsebody())
                     }
                     openapi::Responses::new(code.parse().unwrap(), res)
                 }

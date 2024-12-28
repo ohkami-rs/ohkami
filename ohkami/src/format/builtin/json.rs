@@ -22,7 +22,7 @@ impl<'req, T: Incoming<'req>> FromBody<'req> for JSON<T> {
 }
 
 impl<T: Outgoing> IntoBody for JSON<T> {
-    const MIME_TYPE: &'static str = "application/json";
+    const CONTENT_TYPE: &'static str = "application/json";
 
     #[inline]
     fn into_body(self) -> Result<Vec<u8>, impl std::fmt::Display> {

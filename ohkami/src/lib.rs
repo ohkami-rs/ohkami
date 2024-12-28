@@ -191,7 +191,7 @@ pub mod openapi {
         /// use ohkami::prelude::*;
         /// use ohkami::openapi::{OpenAPI, Server};
         /// 
-        /// // Very ordinal Ohkami definition
+        /// // An ordinal Ohkami definition, not special
         /// fn my_ohkami() -> Ohkami {
         ///     Ohkami::new((
         ///         "/hello"
@@ -203,6 +203,7 @@ pub mod openapi {
         /// async fn main() {
         ///     let o = my_ohkami();
         /// 
+        ///     // Here generate the JSON file
         ///     o.generate(OpenAPI::json("Sample API", "0.1.9", [
         ///         Server::at("http://api.example.com/v1")
         ///             .description("Main (production) server"),

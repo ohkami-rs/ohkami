@@ -46,7 +46,9 @@ pub trait IntoResponse {
 }
 
 pub trait IntoBody {
-    const MIME_TYPE: &'static str;
+    /// e.g. `text/html; charset=UTF-8`
+    const CONTENT_TYPE: &'static str;
+
     fn into_body(self) -> Result<Vec<u8>, impl std::fmt::Display>;
 
     #[cfg(feature="openapi")]
@@ -55,17 +57,17 @@ pub trait IntoBody {
 impl<B: IntoBody> IntoResponse for B {
     #[inline]
     fn into_response(self) -> Response {
-        if Self::MIME_TYPE == "" {// removed in optimization if it's not ""
+        if Self::CONTENT_TYPE == "" {// removed by optimization if it's not ""
             return Response::OK()
         }
 
         match self.into_body() {
-            Ok(body) => Response::OK().with_payload(Self::MIME_TYPE, body),
+            Ok(body) => Response::OK().with_payload(Self::CONTENT_TYPE, body),
             Err(_err) => {
                 #[cfg(debug_assertions)] {
                     eprintln!("Failed to serialize `{}` as `{}` in `IntoBody`: {_err}",
                         std::any::type_name::<B>(),
-                        Self::MIME_TYPE
+                        Self::CONTENT_TYPE
                     )
                 }
                 Response::InternalServerError()
@@ -76,8 +78,8 @@ impl<B: IntoBody> IntoResponse for B {
     #[cfg(feature="openapi")]
     fn openapi_responses() -> openapi::Responses {
         let mut res = openapi::Response::when("OK");
-        if Self::MIME_TYPE != "" {
-            res = res.content(Self::MIME_TYPE, Self::openapi_responsebody());
+        if Self::CONTENT_TYPE != "" {
+            res = res.content(Self::CONTENT_TYPE, Self::openapi_responsebody());
         }
         openapi::Responses::new(200, res)
     }
@@ -119,7 +121,7 @@ impl IntoResponse for std::convert::Infallible {
 }
 
 impl IntoBody for () {
-    const MIME_TYPE: &'static str = "";
+    const CONTENT_TYPE: &'static str = "";
 
     #[cold] #[inline(never)]
     fn into_body(self) -> Result<Vec<u8>, impl std::fmt::Display> {
@@ -138,7 +140,7 @@ impl IntoBody for () {
 macro_rules! text_response {
     ($( $t:ty )*) => {$(
         impl IntoBody for $t {
-            const MIME_TYPE: &'static str = "text/plain";
+            const CONTENT_TYPE: &'static str = "text/plain; charset=UTF-8";
 
             #[inline(always)]
             fn into_body(self) -> Result<Vec<u8>, impl std::fmt::Display> {
