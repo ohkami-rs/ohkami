@@ -254,10 +254,14 @@ const _: (/* constructors */) = {
         }
     }
     impl Schema<Type::array> {
-        pub fn array() -> Self {
+        pub fn array(items: impl Into<SchemaRef>) -> Self {
             Self {
                 datatype: PhantomData,
-                raw: RawSchema { datatype: Type::array::NAME, ..ANY }
+                raw: RawSchema {
+                    datatype: Type::array::NAME,
+                    items:    Some(items.into()),
+                    ..ANY
+                }
             }
         }
     }
@@ -371,10 +375,6 @@ impl Schema<Type::object> {
 
 /* array definition */
 impl Schema<Type::array> {
-    pub fn items(mut self, schema: impl Into<SchemaRef>) -> Self {
-        self.raw.items = Some(schema.into());
-        self
-    }
     pub fn maxItems(mut self, maxItems: usize) -> Self {
         self.raw.maxItems = Some(maxItems);
         self

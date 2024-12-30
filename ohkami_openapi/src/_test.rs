@@ -17,7 +17,7 @@ use serde_json::json;
         .get(
             Operation::with(
                 Responses::new(200, Response::when("A JSON array of user names")
-                    .content("application/json", array().items(string()))
+                    .content("application/json", array(string()))
                 )
             )
             .summary("Returns a list of users.")
@@ -26,7 +26,7 @@ use serde_json::json;
     );
 
     assert_eq!(serde_json::to_value(doc).unwrap(), json!({
-        "openapi": "3.0.0",
+        "openapi": "3.1.0",
         "info": {
             "title": "Sample API",
             "description": "Optional multiline or single-line description in [CommonMark](http://commonmark.org/help/) or HTML.",

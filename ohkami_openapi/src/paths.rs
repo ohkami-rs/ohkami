@@ -166,12 +166,12 @@ impl Operation {
         self
     }
 
-    pub fn input(mut self, input: Option<super::Input>) -> Self {
+    pub fn input(mut self, input: Option<crate::request::Input>) -> Self {
         match input {
             None => self,
-            Some(super::Input::Body(body)) => self.requestBody(body),
-            Some(super::Input::Param(param)) => self.param(param),
-            Some(super::Input::Params(params)) => {
+            Some(crate::request::Input::Body(body)) => self.requestBody(body),
+            Some(crate::request::Input::Param(param)) => self.param(param),
+            Some(crate::request::Input::Params(params)) => {
                 for param in params {self = self.param(param)}
                 self
             }

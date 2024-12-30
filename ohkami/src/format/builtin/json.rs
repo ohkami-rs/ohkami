@@ -1,11 +1,11 @@
 use crate::{FromBody, IntoBody};
-use super::bound::{Incoming, Outgoing};
+use super::bound::{self, Incoming, Outgoing};
 
 #[cfg(feature="openapi")]
 use crate::openapi;
 
 
-pub struct JSON<T>(pub T);
+pub struct JSON<T: bound::Schema>(pub T);
 
 impl<'req, T: Incoming<'req>> FromBody<'req> for JSON<T> {
     const MIME_TYPE: &'static str = "application/json";

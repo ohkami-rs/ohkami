@@ -158,3 +158,9 @@ impl RequestBody {
         self.content.values_mut().map(Content::refize_schema).flatten()
     }
 }
+
+pub enum Input {
+    Param(Parameter),
+    Params(Vec<Parameter>),
+    Body(RequestBody),
+}

@@ -12,6 +12,7 @@ tasks:
 
   test:
     deps:
+      - task: test:deps
       - task: test:examples
       - task: test:doc
       - task: test:no_rt
@@ -45,6 +46,11 @@ tasks:
       - cargo bench --features DEBUG
 
 #### tests ####
+  test:deps:
+    cmds:
+      - cargo test -p ohkami_lib
+      - cargo test -p ohkami_openapi
+
   test:doc:
     dir: ./ohkami
     cmds:

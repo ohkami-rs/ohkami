@@ -365,6 +365,14 @@ const _: (/* conversions */) = {
     }
 };
 
+impl std::fmt::Debug for Pattern {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Param (name) => f.write_str(name),
+            Self::Static(s)    => f.write_str(s),
+        }
+    }
+}
 #[cfg(feature="DEBUG")]
 const _: (/* Debugs */) = {
     impl std::fmt::Debug for Router {
@@ -399,12 +407,4 @@ const _: (/* Debugs */) = {
         }
     }
 
-    impl std::fmt::Debug for Pattern {
-        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            match self {
-                Self::Param (name) => f.write_str(name),
-                Self::Static(s)    => f.write_str(s),
-            }
-        }
-    }
 };

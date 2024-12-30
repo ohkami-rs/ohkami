@@ -1,11 +1,11 @@
 use crate::{Response, FromRequest};
-use super::bound::Incoming;
+use super::bound::{self, Incoming};
 
 #[cfg(feature="openapi")]
 use crate::openapi;
 
 
-pub struct Query<Schema>(pub Schema);
+pub struct Query<T: bound::Schema>(pub T);
 
 impl<'req, T: Incoming<'req>> FromRequest<'req> for Query<T> {
     type Error = Response;
@@ -17,9 +17,9 @@ impl<'req, T: Incoming<'req>> FromRequest<'req> for Query<T> {
     }
 
     #[cfg(feature="openapi")]
-    fn openapi_input() -> Option<openapi::Input> {
+    fn openapi_input() -> Option<openapi::request::Input> {
         let schema = T::schema().into().into_inline()?;
-        Some(openapi::Input::Params(
+        Some(openapi::request::Input::Params(
             schema.into_properties().into_iter().map(|(name, schema)|
                 openapi::Parameter::in_query(name, schema)
             ).collect()

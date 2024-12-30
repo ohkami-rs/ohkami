@@ -83,7 +83,7 @@ impl Document {
         servers: impl Into<Vec<Server>>
     ) -> Self {
         Self {
-            openapi:    "3.0.0",
+            openapi:    "3.1.0",
             info:       Info { title, version, description:None },
             servers:    servers.into(),
             paths:      Paths::new(),

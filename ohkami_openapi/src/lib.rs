@@ -18,16 +18,6 @@ pub use paths::Operation;
 
 pub mod document;
 
-pub enum Input {
-    Param(Parameter),
-    Params(Vec<Parameter>),
-    Body(RequestBody),
-}
-
-pub trait Schema {
-    fn schema() -> impl Into<schema::SchemaRef>;
-}
-
 pub fn component<T: schema::Type::SchemaType>(name: &'static str, schema: schema::Schema<T>) -> schema::Schema<T> {
     schema::Schema::component(name, schema)
 }
@@ -44,8 +34,8 @@ pub fn integer() -> schema::Schema<schema::Type::integer> {
 pub fn bool() -> schema::Schema<schema::Type::bool> {
     schema::Schema::bool()
 }
-pub fn array() -> schema::Schema<schema::Type::array> {
-    schema::Schema::array()
+pub fn array(items: impl Into<schema::SchemaRef>) -> schema::Schema<schema::Type::array> {
+    schema::Schema::array(items)
 }
 pub fn object() -> schema::Schema<schema::Type::object> {
     schema::Schema::object()
@@ -59,3 +49,26 @@ pub fn allOf<const N: usize>(schema_refs: [&'static str; N]) -> schema::Schema<s
 pub fn oneOf<const N: usize>(schema_refs: [&'static str; N]) -> schema::Schema<schema::Type::any> {
     schema::Schema::oneOf(schema_refs)
 }
+
+pub trait Schema {
+    fn schema() -> impl Into<schema::SchemaRef>;
+}
+const _: () = {
+    impl<S: Schema> Schema for Vec<S> {
+        fn schema() -> impl Into<schema::SchemaRef> {
+            array(S::schema())
+        }
+    }
+
+    impl<S: Schema> Schema for [S] {
+        fn schema() -> impl Into<schema::SchemaRef> {
+            array(S::schema())
+        }
+    }
+    
+    impl<const N: usize, S: Schema> Schema for [S; N] {
+        fn schema() -> impl Into<schema::SchemaRef> {
+            array(S::schema())
+        }
+    }
+};

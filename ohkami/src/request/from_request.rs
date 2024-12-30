@@ -43,7 +43,7 @@ pub trait FromRequest<'req>: Sized {
     fn from_request(req: &'req Request) -> Option<Result<Self, Self::Error>>;
 
     #[cfg(feature="openapi")]
-    fn openapi_input() -> Option<openapi::Input> {
+    fn openapi_input() -> Option<openapi::request::Input> {
         None
     }
 }
@@ -66,7 +66,7 @@ const _: () = {
         }
 
         #[cfg(feature="openapi")]
-        fn openapi_input() -> Option<openapi::Input> {
+        fn openapi_input() -> Option<openapi::request::Input> {
             FR::openapi_input()
         }
     }
@@ -229,8 +229,8 @@ impl<'req, B: FromBody<'req>> FromRequest<'req> for B {
     }
 
     #[cfg(feature="openapi")]
-    fn openapi_input() -> Option<openapi::Input> {
-        Some(openapi::Input::Body(openapi::RequestBody::of(
+    fn openapi_input() -> Option<openapi::request::Input> {
+        Some(openapi::request::Input::Body(openapi::RequestBody::of(
             B::MIME_TYPE, B::openapi_requestbody()
         )))
     }

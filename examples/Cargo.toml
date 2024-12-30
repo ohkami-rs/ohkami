@@ -5,6 +5,7 @@ members  = [
     "form",
     "hello",
     "chatgpt",
+    "openapi",
     "websocket",
     "realworld",
     "basic_auth",

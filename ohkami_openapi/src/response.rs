@@ -34,13 +34,18 @@ impl Responses {
         Self(Map::from_iter([(code.to_string(), response)]))
     }
 
+    pub fn enumerated<const N: usize>(responses: [(u16, Response); N]) -> Self {
+        Self(Map::from_iter(responses.map(|(code, res)| (code.to_string(), res))))
+    }
+
     pub fn or(mut self, code: u16, response: Response) -> Self {
         self.0.insert(code.to_string(), response);
         self
     }
 
-    pub fn enumerated<const N: usize>(responses: [(u16, Response); N]) -> Self {
-        Self(Map::from_iter(responses.map(|(code, res)| (code.to_string(), res))))
+    pub fn or_default(mut self, default_response: Response) -> Self {
+        self.0.insert("default".to_string(), default_response);
+        self
     }
 
     pub fn merge(&mut self, another: Self) {

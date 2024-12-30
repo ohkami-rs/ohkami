@@ -1,5 +1,5 @@
 use crate::FromBody;
-use super::bound::Incoming;
+use super::bound::{self, Incoming};
 use ohkami_lib::serde_multipart;
 
 #[cfg(feature="openapi")]
@@ -8,7 +8,7 @@ use crate::openapi;
 
 pub use ohkami_lib::serde_multipart::File;
 
-pub struct Multipart<T>(pub T);
+pub struct Multipart<T: bound::Schema>(pub T);
 
 impl<'req, T: Incoming<'req>> FromBody<'req> for Multipart<T> {
     const MIME_TYPE: &'static str = "multipart/form-data";
