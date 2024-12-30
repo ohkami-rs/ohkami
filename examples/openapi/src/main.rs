@@ -82,7 +82,7 @@ async fn create_pet(
 
     let created_pet = {
         let db = &mut *db.write().await;
-        let id = db.len() as u64;
+        let id = db.len() as u64 + 1;
         let created = Pet {
             id,
             name: req.name.to_string(),
@@ -125,7 +125,9 @@ async fn show_pet_by_id(
 struct Pet {
     id:   u64,
     name: String,
-    tag:  Option<String>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    tag: Option<String>,
 }
 impl openapi::Schema for Pet {
     fn schema() -> impl Into<openapi::schema::SchemaRef> {
@@ -153,7 +155,7 @@ impl openapi::Schema for Error {
 impl IntoResponse for Error {
     fn into_response(self) -> Response {
         Response::of(Status::from(self.code))
-            .with_text(self.message)
+            .with_json(self)
     }
     fn openapi_responses() -> openapi::Responses {
         openapi::Responses::enumerated([])
