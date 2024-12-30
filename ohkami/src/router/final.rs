@@ -89,11 +89,11 @@ impl Router {
                 ("delete", &self.DELETE),
             ] {
                 let mut path = crate::request::Path::from_literal(route);
-                let (target, true) = router.search_target(&mut path) else {
-                    panic!("[OpenAPI] Unexpected not-found route `{route}`")
-                };
 
-                if let Some(mut operation) = target.openapi_operation.clone() {
+                if let (target, true) = router.search_target(&mut path) {
+                    let Some(mut operation) = target.openapi_operation.clone() else {
+                        panic!("[OpenAPI] Unexpected not-found route `{route}`")
+                    };
                     for param_name in &openapi_path_param_names {
                         operation.replace_empty_param_name_with(param_name);
                     }

@@ -21,10 +21,10 @@ impl Content {
 }
 
 #[derive(Clone)]
-pub(crate) struct Map<K:PartialEq, V>(
+pub(crate) struct Map<K:PartialEq+PartialOrd, V>(
     Vec<(K, V)>
 );
-impl<K:PartialEq, V> Map<K, V> {
+impl<K:PartialEq+PartialOrd, V> Map<K, V> {
     pub(crate) const fn new() -> Self {
         Self(Vec::new())
     }
@@ -46,7 +46,10 @@ impl<K:PartialEq, V> Map<K, V> {
     pub(crate) fn insert(&mut self, key: K, value: V) {
         match self.find(&key) {
             Some(i) => self.0[i].1 = value,
-            None    => self.0.push((key, value)),
+            None => {
+                self.0.push((key, value));
+                self.0.sort_unstable_by(|a, b| PartialOrd::partial_cmp(&a.0, &b.0).unwrap_or(std::cmp::Ordering::Equal));
+            }
         }
     }
 
@@ -58,7 +61,7 @@ impl<K:PartialEq, V> Map<K, V> {
     }
 }
 const _: () = {
-    impl<K:PartialEq, V> Serialize for Map<K, V>
+    impl<K:PartialEq+PartialOrd, V> Serialize for Map<K, V>
     where
         K:Serialize, V:Serialize
     {
@@ -71,7 +74,7 @@ const _: () = {
         }
     }
 
-    impl<K:PartialEq, V> PartialEq for Map<K, V>
+    impl<K:PartialEq+PartialOrd, V> PartialEq for Map<K, V>
     where
         V: PartialEq
     {
@@ -85,7 +88,7 @@ const _: () = {
         }
     }
 
-    impl<K:PartialEq, V> IntoIterator for Map<K, V> {
+    impl<K:PartialEq+PartialOrd, V> IntoIterator for Map<K, V> {
         type Item = (K, V);
         type IntoIter = std::vec::IntoIter<(K, V)>;
         fn into_iter(self) -> Self::IntoIter {
@@ -93,13 +96,13 @@ const _: () = {
         }
     }
 
-    impl<K:PartialEq, V> Into<Vec<(K, V)>> for Map<K, V> {
+    impl<K:PartialEq+PartialOrd, V> Into<Vec<(K, V)>> for Map<K, V> {
         fn into(self) -> Vec<(K, V)> {
             self.0
         }
     }
 
-    impl<K:PartialEq, V> Default for Map<K, V> {
+    impl<K:PartialEq+PartialOrd, V> Default for Map<K, V> {
         fn default() -> Self {
             Self(Vec::new())
         }

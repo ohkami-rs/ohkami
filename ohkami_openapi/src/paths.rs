@@ -47,6 +47,11 @@ impl PartialEq for SecuritySchemeName {
         self.0.__name__ == other.0.__name__
     }
 }
+impl PartialOrd for SecuritySchemeName {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        PartialOrd::partial_cmp(self.0.__name__, other.0.__name__)
+    }
+}
 impl Serialize for SecuritySchemeName {
     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         serializer.serialize_str(self.0.__name__)

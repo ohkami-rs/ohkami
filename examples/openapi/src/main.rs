@@ -43,7 +43,7 @@ async fn main() {
         openapi::Server::at("http://petstore.example.api/v1")
     ]));
 
-    o.howl("localhost:5050").await
+    // o.howl("localhost:5050").await
 }
 
 

@@ -183,7 +183,7 @@ pub mod openapi {
         /// Register metadata for generating OpenAPI document (JSON).
         /// 
         /// ## note
-        /// For now, YAML version is not supported!
+        /// YAML version is not supported now.
         /// 
         /// ## example
         /// 
@@ -228,10 +228,6 @@ pub mod openapi {
         /// 
         /// ## default
         /// `openapi.json`
-        /// 
-        /// ## note
-        /// In current cargo workspace, a relative path is treated as
-        /// *relative to the workspace root directory*.
         pub fn path(mut self, path: impl Into<std::path::PathBuf>) -> Self {
             self.file_path = path.into();
             self
