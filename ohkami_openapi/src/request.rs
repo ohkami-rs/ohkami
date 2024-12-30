@@ -13,8 +13,8 @@ pub struct Parameter {
     #[serde(skip_serializing_if = "Option::is_none")]
     description: Option<&'static str>,
 
-    #[serde(skip_serializing_if = "is_false")]
     required: bool,
+    
     #[serde(skip_serializing_if = "is_false")]
     deprecated: bool,
 

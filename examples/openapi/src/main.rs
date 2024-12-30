@@ -40,10 +40,10 @@ async fn main() {
     ));
 
     o.generate(openapi::OpenAPI::json("Petstore API", "1.0.0", [
-        openapi::Server::at("http://petstore.example.api/v1")
+        openapi::Server::at("http://localhost:5050")
     ]));
 
-    // o.howl("localhost:5050").await
+    o.howl("localhost:5050").await
 }
 
 

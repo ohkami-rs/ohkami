@@ -1,4 +1,4 @@
-use super::util::{ID, DebugSimpleOption, DebugSimpleIterator};
+use super::util::ID;
 use super::segments::{RouteSegments, RouteSegment};
 use crate::fang::{BoxedFPC, Fangs, Handler};
 use crate::ohkami::build::{ByAnother, HandlerSet};
@@ -375,6 +375,8 @@ impl std::fmt::Debug for Pattern {
 }
 #[cfg(feature="DEBUG")]
 const _: (/* Debugs */) = {
+    use super::util::{DebugSimpleIterator, DebugSimpleOption};
+
     impl std::fmt::Debug for Router {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             f.debug_struct("BaseRouter")

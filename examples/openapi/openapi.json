@@ -6,7 +6,7 @@
   },
   "servers": [
     {
-      "url": "http://petstore.example.api/v1"
+      "url": "http://localhost:5050"
     }
   ],
   "paths": {
@@ -20,7 +20,7 @@
               "type": "integer",
               "format": "uint64"
             },
-            "required": true
+            "required": false
           }
         ],
         "responses": {
