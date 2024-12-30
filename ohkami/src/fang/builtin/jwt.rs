@@ -46,21 +46,17 @@ use base64::engine::{Engine as _, general_purpose::URL_SAFE_NO_PAD as BASE64URL}
 ///     JWT::default("OUR_JWT_SECRET_KEY")
 /// }
 /// 
-/// 
-/// #[tokio::main]
-/// async fn main() {
-///     Ohkami::new((
-///         "/auth".GET(auth),
-///         "/private".By(Ohkami::with(our_jwt(), (
-///             "/hello/:name".GET(hello),
-///         )))
-///     )).howl("localhost:3000").await
+/// async fn hello(name: &str,
+///     Memory(auth): Memory<'_, OurJWTPayload>
+/// ) -> String {
+///     format!("Hello {name}, you're authorized!")
 /// }
 /// 
 /// # #[derive(Deserialize)]
 /// # struct AuthRequest<'req> {
 /// #     name: &'req str
 /// # }
+/// # 
 /// # #[derive(Serialize)]
 /// # struct AuthResponse {
 /// #     token: JWTToken
@@ -76,10 +72,14 @@ use base64::engine::{Engine as _, general_purpose::URL_SAFE_NO_PAD as BASE64URL}
 ///     }))
 /// }
 /// 
-/// async fn hello(name: &str,
-///     Memory(auth): Memory<'_, OurJWTPayload>
-/// ) -> String {
-///     format!("Hello {name}, you're authorized!")
+/// #[tokio::main]
+/// async fn main() {
+///     Ohkami::new((
+///         "/auth".GET(auth),
+///         "/private".By(Ohkami::with(our_jwt(), (
+///             "/hello/:name".GET(hello),
+///         )))
+///     )).howl("localhost:3000").await
 /// }
 /// ```
 pub struct JWT<Payload> {
