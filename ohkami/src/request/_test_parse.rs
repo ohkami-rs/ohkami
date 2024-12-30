@@ -70,7 +70,7 @@ fn parse_path() {
         __buf__: metadataize(CASE_1),
         method:  Method::GET,
         path:    Path::from_literal("/hello.html"),
-        query:   None,
+        query:   QueryParams::new(b""),
         headers: RequestHeaders::from_iters([
             (RequestHeader::Host,           "www.tutorialspoint.com"),
             (RequestHeader::UserAgent,      "Mozilla/4.0"),
@@ -99,7 +99,7 @@ fn parse_path() {
         __buf__: metadataize(CASE_2),
         method:  Method::POST,
         path:    Path::from_literal("/signup"),
-        query:   None,
+        query:   QueryParams::new(b""),
         headers: RequestHeaders::from_iters([
             (RequestHeader::Host,           "www.tutorialspoint.com"),
             (RequestHeader::UserAgent,      "Mozilla/4.0"),
@@ -135,10 +135,10 @@ fn parse_path() {
             __buf__: metadataize(CASE_3),
             method:  Method::POST,
             path:    Path::from_literal("/foo.php"),
-            query:   Some(QueryParams::from([
+            query:   QueryParams::from([
                 ("query", "1"),
                 ("q2",    "xxx"),
-            ])),
+            ]),
             headers: RequestHeaders::from_iters(
                 [
                     (RequestHeader::Host,           "localhost"),

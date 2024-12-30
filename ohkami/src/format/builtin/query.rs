@@ -11,7 +11,7 @@ impl<'req, T: Incoming<'req>> FromRequest<'req> for Query<T> {
     type Error = Response;
 
     fn from_request(req: &'req crate::Request) -> Option<Result<Self, Self::Error>> {
-        req.query.as_ref()?.parse()
+        req.query.parse()
             .map_err(super::reject)
             .map(Query).into()
     }

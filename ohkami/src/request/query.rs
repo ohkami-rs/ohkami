@@ -13,7 +13,7 @@ pub struct QueryParams(
 
 impl QueryParams {
     #[cfg(feature="__rt__")]
-    #[inline(always)] pub(crate) fn new(bytes: &[u8]) -> Self {
+    #[inline(always)] pub(crate) const fn new(bytes: &[u8]) -> Self {
         Self(Slice::from_bytes(bytes))
     }
 
