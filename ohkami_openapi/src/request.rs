@@ -102,8 +102,11 @@ impl Parameter {
     }
 
     pub fn description(mut self, description: &'static str) -> Self {
-        self.description = Some(description);
+        self.set_description(description);
         self
+    }
+    pub(crate) fn set_description(&mut self, description: &'static str) {
+        self.description = Some(description);
     }
 
     pub fn deprecated(mut self) -> Self {
@@ -145,8 +148,11 @@ impl RequestBody {
     }
 
     pub fn description(mut self, description: &'static str) -> Self {
-        self.description = Some(description);
+        self.set_description(description);
         self
+    }
+    pub(crate) fn set_description(&mut self, description: &'static str) {
+        self.description = Some(description);
     }
 
     pub fn another(mut self, media_type: &'static str, schema: impl Into<SchemaRef>) -> Self {

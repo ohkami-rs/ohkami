@@ -57,6 +57,12 @@ impl Responses {
     pub(crate) fn refize_schemas(&mut self) -> impl Iterator<Item = RawSchema> + '_ {
         self.0.values_mut().map(Response::refize_schemas).flatten()
     }
+
+    pub(crate) fn override_response_description(&mut self, status: &str, new_description: String) {
+        if let Some(response) = self.0.get_mut(status) {
+            response.description = new_description;
+        }
+    }
 }
 
 impl Response {

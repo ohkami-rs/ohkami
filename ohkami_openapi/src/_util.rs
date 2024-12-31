@@ -43,6 +43,9 @@ impl<K:PartialEq+PartialOrd, V> Map<K, V> {
     pub(crate) fn get(&self, key: &K) -> Option<&V> {
         self.find(key).map(|i| &self.0[i].1)
     }
+    pub(crate) fn get_mut(&mut self, key: &K) -> Option<&mut V> {
+        self.find(key).map(|i| &mut self.0[i].1)
+    }
     pub(crate) fn insert(&mut self, key: K, value: V) {
         match self.find(&key) {
             Some(i) => self.0[i].1 = value,

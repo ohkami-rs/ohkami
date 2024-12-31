@@ -209,4 +209,21 @@ impl Operation {
             .chain(self.requestBody.as_mut().map(RequestBody::refize_schemas).into_iter().flatten())
             .chain(self.responses.refize_schemas())
     }
+
+    #[doc(hidden)]
+    pub fn override_param_description(&mut self, name: &'static str, new_description: &'static str) {
+        if let Some(param) = self.parameters.iter_mut().find(|p| p.name == name) {
+            param.set_description(new_description);
+        }
+    }
+    #[doc(hidden)]
+    pub fn override_requestBody_description(&mut self, new_description: &'static str) {
+        if let Some(requestBody) = &mut self.requestBody {
+            requestBody.set_description(new_description);
+        }
+    }
+    #[doc(hidden)]
+    pub fn override_response_description(&mut self, status: &str, new_description: &'static str) {
+        self.responses.override_response_description(status, new_description);
+    }
 }

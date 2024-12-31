@@ -160,16 +160,16 @@ pub(super) fn operation(meta: TokenStream, handler: TokenStream) -> syn::Result<
                     op = op.summary(#value);
                 },
                 DescriptionTarget::RequestBody => quote! {
-
+                    op.override_requestBody_description(#value);
                 },
                 DescriptionTarget::DefaultResponse => quote! {
-
+                    op.override_response_description("default", #value);
                 },
                 DescriptionTarget::Response { status: u16 } => quote! {
-
+                    op.override_response_description(&#status.to_string(), #value);
                 },
                 DescriptionTarget::Param { name: String } => quote! {
-
+                    op.override_param_description(#name, #value);
                 },
             });
         }
