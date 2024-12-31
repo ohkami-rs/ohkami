@@ -172,6 +172,8 @@ pub mod openapi {
     pub use ::ohkami_openapi::*;
     pub use ::ohkami_openapi::document::Server;
 
+    pub use ::ohkami_macros::{Schema, operation};
+
     #[derive(Clone)]
     pub struct OpenAPI {
         pub(crate) file_path: std::path::PathBuf,
@@ -260,7 +262,7 @@ mod ohkami;
 pub use ohkami::{Ohkami, Route};
 
 pub mod fang;
-pub use fang::{Fang, FangProc};
+pub use fang::{handler, Fang, FangProc};
 
 pub mod format;
 

@@ -1,3 +1,5 @@
+#![cfg(feature="worker")]
+
 use proc_macro2::{Span, TokenStream};
 use syn::{spanned::Spanned, Error, Ident, ItemFn, ItemStruct, Result};
 use quote::quote;

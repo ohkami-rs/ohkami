@@ -1,5 +1,5 @@
 mod into_handler;
-pub(crate) use into_handler::IntoHandler;
+pub use into_handler::IntoHandler;
 
 use super::{FangProcCaller, BoxedFPC};
 use super::{SendOnNative, SendSyncOnNative, ResponseFuture};
@@ -144,5 +144,16 @@ impl Handler {
                 /* NEVER generate spec of OPTIONS operations */
             ])
         ))
+    }
+}
+
+#[cfg(feature="openapi")]
+impl Handler {
+    pub fn map_openapi_operation(
+        mut self,
+        map: impl FnOnce(openapi::Operation)->openapi::Operation
+    ) -> Self {
+        self.openapi_operation = map(self.openapi_operation);
+        self
     }
 }
