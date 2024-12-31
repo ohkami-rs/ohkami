@@ -11,7 +11,7 @@ pub(super) fn derive_schema(input: TokenStream) -> syn::Result<TokenStream> {
 pub(super) fn operation(meta: TokenStream, handler: TokenStream) -> syn::Result<TokenStream> {
     #[allow(non_snake_case)]
     struct OperationMeta {
-        operationId: Option<String>,
+        operationId:  Option<String>,
         descriptions: Vec<DescriptionOverride>,
     }
 
@@ -105,31 +105,13 @@ pub(super) fn operation(meta: TokenStream, handler: TokenStream) -> syn::Result<
     let handler_vis  = handler.vis;
     let handler_name = handler.ident;
 
-    let description = handler.attrs.into_iter()
-        .flat_map(|a| match a.meta {
-            Meta::NameValue(MetaNameValue { path,
-                eq_token:_,
-                value: Expr::Lit(ExprLit { lit: Lit::Str(value), .. })
-            }) if path.get_ident().is_some_and(|i| i == "doc")
-            => Some(value.value()),
-            _ => None
-        })
-        .fold(String::new(), |mut description, doc| {
-            let mut unescaped_doc = String::with_capacity(doc.len());
-            {
-                let mut chars = doc.chars().peekable();
-                while let Some(ch) = chars.next() {
-                    if ch == '\\' && chars.peek().is_some_and(char::is_ascii_punctuation) {
-                        /* do nothing to unescape the next charactor */
-                    } else {
-                        unescaped_doc.push(ch);
-                    }
-                }
-            }
-
-            description + &unescaped_doc
-        });
-
+    let doc_attrs = handler.attrs.iter()
+        .filter(|a| matches!(a.meta,
+            Meta::NameValue(MetaNameValue {
+                path, ..
+            } if path.get_ident().is_some_and(|i| i == "doc")
+        )));
+    
     let handler = {
         let mut handler = handler.clone();
         handler.vis = Visibility::Public(Token![pub]);
@@ -139,12 +121,67 @@ pub(super) fn operation(meta: TokenStream, handler: TokenStream) -> syn::Result<
     let modify_op = {
         let mut modify_op = TokenStream::new();
 
+        let description = doc_attrs.cloned()
+            .flat_map(|a| match a.meta {
+                Meta::NameValue(MetaNameValue {
+                    value: Expr::Lit(ExprLit { lit: Lit::Str(value), .. }), ..
+                }) => Some(value.value()),
+                _ => unreachable!("invalid `#[doc = /* value */]`")
+            })
+            .fold(String::new(), |mut description, doc| {
+                let mut unescaped_doc = String::with_capacity(doc.len()); {
+                    let mut chars = doc.chars().peekable();
+                    while let Some(ch) = chars.next() {
+                        if ch == '\\' && chars.peek().is_some_and(char::is_ascii_punctuation) {
+                            /* do nothing to unescape the next charactor */
+                        } else {
+                            unescaped_doc.push(ch);
+                        }
+                    }
+                }
+                description + &unescaped_doc
+            });
+
+        if !description.is_empty() {
+            modify_op.extend(quote! {
+                op = op.description(#description);
+            });
+        }
+
+        if let Some(operationId) = meta.operationId {
+            modify_op.extend(quote! {
+                op = op.operationId(#operationId);
+            });
+        }
+
+        for DescriptionOverride { key, value } in meta.descriptions {
+            modify_op.extend(match key {
+                DescriptionTarget::Summary => quote! {
+                    op = op.summary(#value);
+                },
+                DescriptionTarget::RequestBody => quote! {
+
+                },
+                DescriptionTarget::DefaultResponse => quote! {
+
+                },
+                DescriptionTarget::Response { status: u16 } => quote! {
+
+                },
+                DescriptionTarget::Param { name: String } => quote! {
+
+                },
+            });
+        }
+
         modify_op
     };
 
     Ok(quote! {
+        #(#doc_attrs)*
         #[allow(non_camelcase_types)]
         #handler_vis struct #handler_name;
+
         const _: () = {
             mod operation {
                 use super::*;
