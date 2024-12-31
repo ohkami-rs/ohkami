@@ -2,7 +2,7 @@
 
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{ItemFn, Visibility, Ident, LitInt, LitStr, token, Token};
+use syn::{ItemFn, Visibility, Ident, LitInt, LitStr, Meta, MetaNameValue, Expr, ExprLit, Lit, token, Token};
 
 pub(super) fn derive_schema(input: TokenStream) -> syn::Result<TokenStream> {
     todo!()
@@ -12,15 +12,14 @@ pub(super) fn operation(meta: TokenStream, handler: TokenStream) -> syn::Result<
     #[allow(non_snake_case)]
     struct OperationMeta {
         operationId: Option<String>,
-        description: Option<String>,
-        overrides:   Vec<Override>,
+        descriptions: Vec<DescriptionOverride>,
     }
 
-    struct Override {
-        key:   OverrideTarget,
+    struct DescriptionOverride {
+        key:   DescriptionTarget,
         value: String,
     }
-    enum OverrideTarget {
+    enum DescriptionTarget {
         Summary,
         RequestBody,
         DefaultResponse,
@@ -33,28 +32,28 @@ pub(super) fn operation(meta: TokenStream, handler: TokenStream) -> syn::Result<
         syn::custom_keyword!(requestBody);
     }
 
-    impl syn::parse::Parse for Override {
+    impl syn::parse::Parse for DescriptionOverride {
         fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
             let key = if false {
             } else if input.peek(override_keyword::summary) {
                 input.parse::<override_keyword::summary>()?;
-                OverrideTarget::Summary
+                DescriptionTarget::Summary
 
             } else if input.peek(override_keyword::requestBody) {
                 input.parse::<override_keyword::requestBody>()?;
-                OverrideTarget::RequestBody
+                DescriptionTarget::RequestBody
 
             } else if input.peek(Token![default]) {
                 input.parse::<Token![default]>()?;
-                OverrideTarget::DefaultResponse
+                DescriptionTarget::DefaultResponse
 
             } else if input.peek(LitInt) {
                 let status = input.parse::<LitInt>()?.base10_parse()?;
-                OverrideTarget::Response { status }
+                DescriptionTarget::Response { status }
                 
             } else if input.peek(Ident) {
                 let name = input.parse::<Ident>()?.to_string();
-                OverrideTarget::Param { name }
+                DescriptionTarget::Param { name }
 
             } else {
                 return Err(syn::Error::new(input.span(), format!("\
@@ -79,24 +78,22 @@ pub(super) fn operation(meta: TokenStream, handler: TokenStream) -> syn::Result<
 
     impl syn::parse::Parse for OperationMeta {
         fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
-            let description = None/* load later */;
-
             let operationId = input.peek(Ident)
                 .then(|| input.parse())
                 .transpose()?;
 
-            let overrides = input.peek(token::Brace)
+            let descriptions = input.peek(token::Brace)
                 .then(|| {
-                    let overrides; syn::braced!(overrides in input);
-                    overrides
-                        .parse_terminated(Override::parse, Token![,])
+                    let descriptions; syn::braced!(descriptions in input);
+                    descriptions
+                        .parse_terminated(DescriptionOverride::parse, Token![,])
                         .map(|iter| iter.collect::<Vec<_>>())
                 })
                 .transpose()?
                 .unwrap_or_default();
 
 
-            Ok(Self { operationId, description, overrides })
+            Ok(Self { operationId, descriptions })
         }
     }
 
@@ -107,6 +104,31 @@ pub(super) fn operation(meta: TokenStream, handler: TokenStream) -> syn::Result<
     let handler = syn::parse2::<ItemFn>(handler)?;
     let handler_vis  = handler.vis;
     let handler_name = handler.ident;
+
+    let description = handler.attrs.into_iter()
+        .flat_map(|a| match a.meta {
+            Meta::NameValue(MetaNameValue { path,
+                eq_token:_,
+                value: Expr::Lit(ExprLit { lit: Lit::Str(value), .. })
+            }) if path.get_ident().is_some_and(|i| i == "doc")
+            => Some(value.value()),
+            _ => None
+        })
+        .fold(String::new(), |mut description, doc| {
+            let mut unescaped_doc = String::with_capacity(doc.len());
+            {
+                let mut chars = doc.chars().peekable();
+                while let Some(ch) = chars.next() {
+                    if ch == '\\' && chars.peek().is_some_and(char::is_ascii_punctuation) {
+                        /* do nothing to unescape the next charactor */
+                    } else {
+                        unescaped_doc.push(ch);
+                    }
+                }
+            }
+
+            description + &unescaped_doc
+        });
 
     let handler = {
         let mut handler = handler.clone();
