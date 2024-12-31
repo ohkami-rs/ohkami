@@ -1,9 +1,8 @@
 #![cfg(feature="openapi")]
 
-use std::collections::HashMap;
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{ItemFn, Visibility, Token};
+use syn::{ItemFn, Visibility, Ident, LitInt, LitStr, token, Token};
 
 pub(super) fn derive_schema(input: TokenStream) -> syn::Result<TokenStream> {
     todo!()
@@ -12,21 +11,92 @@ pub(super) fn derive_schema(input: TokenStream) -> syn::Result<TokenStream> {
 pub(super) fn operation(meta: TokenStream, handler: TokenStream) -> syn::Result<TokenStream> {
     #[allow(non_snake_case)]
     struct OperationMeta {
-        summary:               Option<String>,
-        description:           Option<String>,
-        operationId:           Option<String>,
-        description_overrides: HashMap<DescriptionTarget, String>,
+        operationId: Option<String>,
+        description: Option<String>,
+        overrides:   Vec<Override>,
     }
-    #[derive(PartialEq, PartialOrd)]
-    enum DescriptionTarget {
+
+    struct Override {
+        key:   OverrideTarget,
+        value: String,
+    }
+    enum OverrideTarget {
+        Summary,
         RequestBody,
+        DefaultResponse,
+        Response { status: u16 },
         Param { name: String },
-        Response { status: String },
     }
 
-    impl syn::Parse for OperationMeta {
-        fn parse(input: syn::ParseBuf) -> syn::Result<Self> {
+    mod override_keyword {
+        syn::custom_keyword!(summary);
+        syn::custom_keyword!(requestBody);
+    }
 
+    impl syn::parse::Parse for Override {
+        fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+            let key = if false {
+            } else if input.peek(override_keyword::summary) {
+                input.parse::<override_keyword::summary>()?;
+                OverrideTarget::Summary
+
+            } else if input.peek(override_keyword::requestBody) {
+                input.parse::<override_keyword::requestBody>()?;
+                OverrideTarget::RequestBody
+
+            } else if input.peek(Token![default]) {
+                input.parse::<Token![default]>()?;
+                OverrideTarget::DefaultResponse
+
+            } else if input.peek(LitInt) {
+                let status = input.parse::<LitInt>()?.base10_parse()?;
+                OverrideTarget::Response { status }
+                
+            } else if input.peek(Ident) {
+                let name = input.parse::<Ident>()?.to_string();
+                OverrideTarget::Param { name }
+
+            } else {
+                return Err(syn::Error::new(input.span(), format!("\
+                    Unepected description key: `{}`. Expected one of\n\
+                    - summary       (.summary)\n\
+                    - requestBody   (.requestBody.description)\n\
+                    - default       (.responses.default.description)\n\
+                    - <status:int>  (.responses.<status>.description)\n\
+                    - <param:ident> (.parameters.<param>.description)\n\
+                ",
+                    input.parse2::<TokenStream>()?
+                )))
+            };
+
+            input.parse::<Token![:]>()?;
+
+            let value = input.parse::<LitStr>()?.value();
+
+            Ok(Self { key, value })
+        }
+    }
+
+    impl syn::parse::Parse for OperationMeta {
+        fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+            let description = None/* load later */;
+
+            let operationId = input.peek(Ident)
+                .then(|| input.parse())
+                .transpose()?;
+
+            let overrides = input.peek(token::Brace)
+                .then(|| {
+                    let overrides; syn::braced!(overrides in input);
+                    overrides
+                        .parse_terminated(Override::parse, Token![,])
+                        .map(|iter| iter.collect::<Vec<_>>())
+                })
+                .transpose()?
+                .unwrap_or_default();
+
+
+            Ok(Self { operationId, description, overrides })
         }
     }
 

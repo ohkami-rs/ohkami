@@ -18,28 +18,28 @@ pub fn derive_schema(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
 
 #[cfg(feature="openapi")]
 /// ```ignore
-/// /* sets operationId */
+/// /* custom operationId (default: name of the fn) */
 /// #[operation(get_hello)]
 /// /// description for `get_hello` operation
 /// async fn hello() -> Result<String, MyError> {
 ///     //...
 /// }
 /// 
-/// /* sets operationId and summary */
+/// /* custom operationId and summary */
 /// #[operation(get_hello2 { summary: "HELLO greeting" })]
 /// /// description for `get_hello2` operation
 /// async fn hello2() -> Result<String, MyError> {
 ///     //...
 /// }
 /// 
-/// /* sets summary */
+/// /* custom summary */
 /// #[operation({ summary: "HELLO greeting" })]
 /// /// description for `hello3` operation
 /// async fn hello3() -> Result<String, MyError> {
 ///     //...
 /// }
 /// 
-/// /* sets operationId and some descriptions */
+/// /* custom operationId and some descriptions */
 /// #[operation(get_hello4 {
 ///     requestBody: "User name (text/plain).",
 ///     200: "Successfully returning a HELLO greeting for the user",
