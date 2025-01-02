@@ -2,12 +2,90 @@
 
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{ItemFn, Visibility, Ident, LitInt, LitStr, Meta, MetaNameValue, Expr, ExprLit, Lit, token, Token};
+use syn::{ItemFn, ItemStruct, ItemEnum, Fields, FieldsNamed, FieldsUnnamed, Visibility, Ident, LitInt, LitStr, Meta, MetaNameValue, Expr, ExprLit, Lit, token, Token};
 
 pub(super) fn derive_schema(input: TokenStream) -> syn::Result<TokenStream> {
-    let input = syn::parse2::<ItemStruct <-- enum?>(input);
+    return match syn::parse2::<Item>(input)? {
+        Item::Struct(s) => derive_schema_for_struct(s),
+        Item::Enum(e)   => derive_schema_for_enum(s),
+        _ => Err(syn::Error::new(syn::Span::call_site(), "#[derive(Schema)] takes struct or enum"))
+    };
 
-    todo!()
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+
+    struct OpenAPIAttributes {
+        inline:    bool,
+        component: Option<String>,
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+
+    fn derive_schema_for_struct(s: ItemStruct) -> syn::Result<TokenStream> {
+        let name = &s.ident;
+        let (impl_generics, ty_generics, where_clause) = s.generics.split_for_impl();
+
+        let openapi_container_attrs = openapi_attrs(&s.attrs);
+        let serde_container_attrs = serde_attrs(&s.attrs);
+
+        let mut schema = match &s.fields {
+            Fields::Named(fields) => {
+                let mut properties = Vec::with_capacity(fields.len());
+                for f in fields {
+                    let openapi_attrs = openapi_attrs(&f.attrs);
+                    let serde_attrs = serde_attrs(&f.attrs);
+
+                    if serde_attrs.skip {
+                        continue
+                    }
+
+                    let property_or_optional =
+                        if is_option(&f.ty) || openapi_attrs.optional;
+
+                    let property_name = match serde_attrs.rename {
+                        Some(rename) => rename,
+                        None => {
+                            let ident = f.ident.as_ref().unwrap(/* Named */);
+                            LitStr::new(ident.span(), &ident_to_string())
+                        }
+                    };
+
+                    properties.push(quote! {
+                        .#property_or_optional(#property_name)
+                    });
+                }
+
+                quote! {
+                    openapi::object() #(#properties)*
+                }
+            }
+            Fields::Unnamed(fields) if fields.len() == 1 => {}
+            Fields::Unnamed(fields) if fields.len() == 0 | Fields::Unit => {}
+            Fields::Unnamed(fields) => {assert!(fields.len() >= 2);}
+        };
+
+        if !openapi_container_attrs.inline {
+            schema =  {
+                let component_name = LitStr::new(
+                    name.span(),
+                    openapi_attrs.component.unwrap_or(name.to_string())
+                );
+                quote! {
+                    openapi::component(#component_name, #schema)
+                }
+            }
+        }
+
+        Ok(quote! {
+            impl #impl_generics ::ohkami::openapi::Schema for #name #ty_generics
+            #where_clause
+            {
+                fn schema() -> ::ohkami::schema::Schema {
+                    use ::ohkami::openapi;
+                    #schema
+                }
+            }
+        })
+    }
 }
 
 pub(super) fn operation(meta: TokenStream, handler: TokenStream) -> syn::Result<TokenStream> {
