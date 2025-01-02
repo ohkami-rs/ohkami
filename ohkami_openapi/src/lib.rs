@@ -40,14 +40,14 @@ pub fn array(items: impl Into<schema::SchemaRef>) -> schema::Schema<schema::Type
 pub fn object() -> schema::Schema<schema::Type::object> {
     schema::Schema::object()
 }
-pub fn anyOf<const N: usize>(schema_refs: [&'static str; N]) -> schema::Schema<schema::Type::any> {
-    schema::Schema::anyOf(schema_refs)
+pub fn anyOf(schemas: impl schema::SchemaList) -> schema::Schema<schema::Type::any> {
+    schema::Schema::anyOf(schemas)
 }
-pub fn allOf<const N: usize>(schema_refs: [&'static str; N]) -> schema::Schema<schema::Type::any> {
-    schema::Schema::allOf(schema_refs)
+pub fn allOf(schemas: impl schema::SchemaList) -> schema::Schema<schema::Type::any> {
+    schema::Schema::allOf(schemas)
 }
-pub fn oneOf<const N: usize>(schema_refs: [&'static str; N]) -> schema::Schema<schema::Type::any> {
-    schema::Schema::oneOf(schema_refs)
+pub fn oneOf(schemas: impl schema::SchemaList) -> schema::Schema<schema::Type::any> {
+    schema::Schema::oneOf(schemas)
 }
 
 pub trait Schema {

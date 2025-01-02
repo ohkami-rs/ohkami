@@ -178,6 +178,13 @@ impl SchemaRef {
     }
 }
 
+impl<T: Type::SchemaType> Schema<T> {
+    pub fn component(name: &'static str, mut schema: Self) -> Self {
+        schema.raw.__name__ = Some(name);
+        schema
+    }
+}
+
 const _: (/* constructors */) = {
     const ANY: RawSchema = RawSchema {
         __name__: None,
@@ -276,41 +283,57 @@ const _: (/* constructors */) = {
         }
     }
     impl Schema<Type::any> {
-        pub fn anyOf<const N: usize>(schema_refs: [&'static str; N]) -> Self {
+        pub fn anyOf(schemas: impl SchemaList) -> Self {
             Self {
                 datatype: PhantomData,
                 raw: RawSchema {
-                    anyOf: schema_refs.map(SchemaRef::Reference).into(),
+                    anyOf: SchemaList::collect(schemas),
                     ..ANY
                 }
             }
         }
-        pub fn allOf<const N: usize>(schema_refs: [&'static str; N]) -> Self {
+        pub fn allOf(schemas: impl SchemaList) -> Self {
             Self {
                 datatype: PhantomData,
                 raw: RawSchema {
-                    allOf: schema_refs.map(SchemaRef::Reference).into(),
+                    allOf: SchemaList::collect(schemas),
                     ..ANY
                 }
             }
         }
-        pub fn oneOf<const N: usize>(schema_refs: [&'static str; N]) -> Self {
+        pub fn oneOf(schemas: impl SchemaList) -> Self {
             Self {
                 datatype: PhantomData,
                 raw: RawSchema {
-                    oneOf: schema_refs.map(SchemaRef::Reference).into(),
+                    oneOf: SchemaList::collect(schemas),
                     ..ANY
                 }
             }
-        }
-    }
-    impl<T: Type::SchemaType> Schema<T> {
-        pub fn component(name: &'static str, mut schema: Self) -> Self {
-            schema.raw.__name__ = Some(name);
-            schema
         }
     }
 };
+
+pub trait SchemaList {
+    fn collect(self) -> Vec<SchemaRef>;
+}
+impl<S: Into<SchemaRef>> SchemaList for S {
+    fn collect(self) -> Vec<SchemaRef> {vec![self]}
+}
+macro_rules! tuple_schemalist {
+    ($($S:ident),*) => {
+        #[allow(non_snake_case)]
+        impl<$($S: Into<SchemaRef>),*> SchemaList for ($($S,)*) {
+            fn collect(self) -> Vec<SchemaRef> {
+                let ($($S,)*) = self;
+                vec![$($S.into()),*]
+            }
+        }
+    }
+}
+tuple_schemalist!(S1);
+tuple_schemalist!(S1, S2);
+tuple_schemalist!(S1, S2, S3);
+tuple_schemalist!(S1, S2, S3, S4);
 
 /* metadata and flags */
 impl<T: Type::SchemaType> Schema<T> {

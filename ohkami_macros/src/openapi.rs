@@ -5,6 +5,8 @@ use quote::quote;
 use syn::{ItemFn, Visibility, Ident, LitInt, LitStr, Meta, MetaNameValue, Expr, ExprLit, Lit, token, Token};
 
 pub(super) fn derive_schema(input: TokenStream) -> syn::Result<TokenStream> {
+    let input = syn::parse2::<ItemStruct <-- enum?>(input);
+
     todo!()
 }
 
