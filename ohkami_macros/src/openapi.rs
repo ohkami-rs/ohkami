@@ -14,11 +14,54 @@ pub(super) fn derive_schema(input: TokenStream) -> syn::Result<TokenStream> {
     ///////////////////////////////////////////////////////////////////////////////////////////////
 
     struct ContainerAttributes {
-        openapi_inline:    bool,
-        openapi_component: Option<String>,
+        openapi_inline:          bool,
+        openapi_component:       Option<String>,
         serde_rename:            Option<String>,
-        serde_rename_all:        Option<Case>,
-        serde_rename_all_fields: Option<Case>,
+        serde_rename_all:        Cases,
+        serde_rename_all_fields: Cases,
+        serde_tag:               Option<String>,
+        serde_content:           Option<String>,
+        serde_untagged:          bool,
+        serde_default:           bool,
+        serde_transparent:       bool,
+        serde_from:              Option<String>,
+        serde_try_from:          Option<String>,
+        serde_into:              Option<String>,
+    }
+
+    struct FieldAttributes {
+        openapi_schema_with:       Option<String>,
+        serde_rename:              Cases,
+        serde_alias:               Option<String>,
+        serde_default:             bool,
+        serde_flatten:             bool,
+        serde_skip:                bool,
+        serde_skip_serializing:    bool,
+        serde_skip_deserializing:  bool,
+        serde_skip_serializing_if: Option<String>,
+        serde_serialize_with:      Option<String>,
+        serde_deserialize_with:    Option<String>,
+        serde_with:                Option<String>,
+    }
+
+    struct VariantAttributes {
+        openapi_schema_with:       Option<String>,
+        serde_rename:              Cases,
+        serde_alias:               Option<String>,
+        serde_rename_all:          Cases,
+        serde_skip:                bool,
+        serde_skip_serializing:    bool,
+        serde_skip_deserializing:  bool,
+        serde_skip_serializing_if: Option<String>,
+        serde_serialize_with:      Option<String>,
+        serde_deserialize_with:    Option<String>,
+        serde_other:               bool,
+        serde_untagged:            bool,
+    }
+
+    struct Cases {
+        serailize:   Option<Case>,
+        deserialize: Option<Case>,
     }
 
     // based on https://github.com/serde-rs/serde/blob/930401b0dd58a809fce34da091b8aa3d6083cb33/serde_derive/src/internals/case.rs
