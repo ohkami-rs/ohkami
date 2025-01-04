@@ -3,13 +3,6 @@ pub(crate) struct EqValue<T: From<String> = String>(
     Option<T>
 );
 
-impl<T: From<String>> std::ops::Deref for EqValue<T> {
-    type Target = Option<T>;
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
 impl<T: From<String>> Parse for EqValue {
     fn parse(input: syn::ParseStream) -> syn::Result<Self> {
         input.peek(token::Eq).then(|| {
@@ -20,36 +13,47 @@ impl<T: From<String>> Parse for EqValue {
     }
 }
 
+impl<T: From<String>> std::ops::Deref for EqValue<T> {
+    type Target = Option<T>;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
 /////////////////////////////////////////////////////////////////////
 
 #[derive(Default)]
 pub(crate) struct Separatable<T: From<String>> {
-    pub(crate) serailize:   Option<T>,
-    pub(crate) deserialize: Option<T>,
+    span:        syn::Span,
+    serailize:   Option<T>,
+    deserialize: Option<T>,
 }
 
 impl<T: From<String>> Parse for Separatable {
     fn parse(input: syn::ParseStream) -> syn::Result<Self> {
+        let mut span        = syn::Span::call_site();
         let mut serailize   = None;
         let mut deserialize = None;
 
         if input.peek(token::Eq) {
             let _ = input.parse::<token::Eq>()?;
-            let t = input.parse::<LitStr>()?.value().into();
-
-            serailize   = Some(t.clone());
-            deserialize = Some(t);
+            let l = input.parse::<LitStr>()?;
+            
+            span        = l.span();
+            serailize   = Some(l.value().into());
+            deserialize = Some(l.value().into());
 
         } else if input.peek(token::Brace) {
             let b; syn::braced!(b in input);
             while let Ok(i) = b.parse::<Ident>() {
                 let _ = b.parse::<token::Eq>()?;
-                let t = let t = b.parse::<LitStr>()?.value().into();
+                let l = b.parse::<LitStr>()?;
 
+                span = l.span();
                 if i == "serialize" {
-                    serailize = Some(t)
+                    serailize = Some(l.value())
                 } else if i == "deserialize" {
-                    deserialize = Some(t)
+                    deserialize = Some(l.value())
                 }
 
                 if b.peek(token::Comma) {
@@ -58,6 +62,21 @@ impl<T: From<String>> Parse for Separatable {
             }
         }
 
-        Ok(Self { serialize, deserialize })
+        Ok(Self { span, serialize, deserialize })
+    }
+}
+
+impl<T: From<String>> Separatable<T> {
+    fn value(&self) -> syn::Result<Option<(syn::Span, &T)>> {
+        match (&self.serialize, &self.deserialize) {
+            (None,    None   )           => Ok(None),
+            (Some(s), None   )           => Ok(Some(s.span(), s)),
+            (None,    Some(d))           => Ok(Some(d.span(), d)),
+            (Some(s), Some(d)) if s == d => Ok(Some(s.span(), s)),
+            _ => Err(syn::Error::new(
+                self.span.clone(), "#[derive(Schema)] doesn't support \
+                #[serde(rename())] with both `serialize = ...` and `deserialize = ...`"
+            ))
+        }
     }
 }

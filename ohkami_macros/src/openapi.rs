@@ -41,13 +41,13 @@ pub(super) fn derive_schema(input: TokenStream) -> syn::Result<TokenStream> {
                         || field_attrs.serde.skip_deserializing
                         || field_attrs.serde.skip_serializing_if.is_some();
 
-                    let property_name = match field_attrs.rename {
-                        Some(rename) => rename,
-                        None => {
-                            let ident = f.ident.as_ref().unwrap(/* Named */);
-                            LitStr::new(ident.span(), &ident_to_string())
-                        }
-                    };
+                    let property_name = match field_attrs.serde.rename.value()? {
+                            Some((span, rename)) => LitStr::new(span, rename),
+                            None => {
+                                let ident = f.ident.as_ref().unwrap(/* Named */);
+                                LitStr::new(ident.span(), &ident.to_string())
+                            }
+                        };
 
                     let property_schema = {
                         if let Some(inner_option) = inner_option {quote! {
@@ -68,7 +68,14 @@ pub(super) fn derive_schema(input: TokenStream) -> syn::Result<TokenStream> {
                     openapi::object() #(#properties)*
                 }
             }
-            Fields::Unnamed(fields) if fields.len() == 1 => {}
+            Fields::Unnamed(fields) if fields.len() == 1 => {
+                let [field] = fields.try_into().unwrap();
+                let ty = &field.ty;
+
+                quote! {
+                    openapi::Schema::schema()
+                }
+            }
             Fields::Unnamed(fields) if fields.len() == 0 | Fields::Unit => {}
             Fields::Unnamed(fields) => {assert!(fields.len() >= 2);}
         };

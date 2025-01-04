@@ -49,7 +49,7 @@ impl syn::Parse for ContainerAttributes {
 
 #[derive(Default)]
 pub(crate) struct FieldAttributes {
-    pub(crate) rename:              Separatable<Case>,
+    pub(crate) rename:              Separatable<String>,
     pub(crate) alias:               EqValue,
     pub(crate) default:             bool,
     pub(crate) flatten:             bool,
@@ -86,7 +86,7 @@ impl syn::Parse for FieldAttributes {
 
 #[derive(Default)]
 pub(crate) struct VariantAttributes {
-    pub(crate) rename:              Separatable<Case>,
+    pub(crate) rename:              Separatable<String>,
     pub(crate) alias:               EqValue,
     pub(crate) rename_all:          Separatable<Case>,
     pub(crate) skip:                bool,
