@@ -68,6 +68,7 @@ pub(super) fn derive_schema(input: TokenStream) -> syn::Result<TokenStream> {
                     openapi::object() #(#properties)*
                 }
             }
+
             Fields::Unnamed(fields) if fields.len() == 1 => {
                 let [field] = fields.try_into().unwrap();
                 let ty = &field.ty;
@@ -76,7 +77,9 @@ pub(super) fn derive_schema(input: TokenStream) -> syn::Result<TokenStream> {
                     openapi::Schema::schema()
                 }
             }
+
             Fields::Unnamed(fields) if fields.len() == 0 | Fields::Unit => {}
+            
             Fields::Unnamed(fields) => {assert!(fields.len() >= 2);}
         };
 
