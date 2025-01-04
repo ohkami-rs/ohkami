@@ -2,8 +2,8 @@
 
 mod attributes;
 
-use attribtues::{ContainerAttributes, FieldAttributes, VariantAttributes};
-
+use self::attribtues::{ContainerAttributes, FieldAttributes, VariantAttributes};
+use crate::util::{is_Option, inner_Option};
 use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{ItemFn, ItemStruct, ItemEnum, Fields, FieldsNamed, FieldsUnnamed, Visibility, Ident, LitInt, LitStr, Meta, MetaNameValue, Expr, ExprLit, Lit, Attribute, token, Token};
@@ -31,8 +31,15 @@ pub(super) fn derive_schema(input: TokenStream) -> syn::Result<TokenStream> {
                         continue
                     }
 
-                    let property_or_optional =
-                        if is_option(&f.ty) || openapi_attrs.optional;
+                    let ty = &f.ty;
+                    let inner_option = inner_Option(ty);
+
+                    let is_optional_field = inner_option.is_some()
+                        || field_attrs.serde.default
+                        || field_attrs.serde.skip
+                        || field_attrs.serde.skip_serializing
+                        || field_attrs.serde.skip_deserializing
+                        || field_attrs.serde.skip_serializing_if.is_some();
 
                     let property_name = match field_attrs.rename {
                         Some(rename) => rename,
@@ -42,9 +49,19 @@ pub(super) fn derive_schema(input: TokenStream) -> syn::Result<TokenStream> {
                         }
                     };
 
-                    properties.push(quote! {
-                        .#property_or_optional(#property_name)
-                    });
+                    let property_schema = {
+                        if let Some(inner_option) = inner_option {quote! {
+                            openapi::Schema::schema(#inner_option)
+                        }} else {quote! {
+                            openapi::Schema::schema(#ty)
+                        }}
+                    };
+
+                    properties.push(if is_optional_field {quote! {
+                        .optional(#property_name, #property_schema)
+                    }} else {quote! {
+                        .property(#property_name, #property_schema)
+                    }});
                 }
 
                 quote! {
