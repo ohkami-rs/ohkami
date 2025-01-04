@@ -1,8 +1,12 @@
 #![cfg(feature="openapi")]
 
+mod attributes;
+
+use attribtues::{ContainerAttributes, FieldAttributes, VariantAttributes};
+
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{ItemFn, ItemStruct, ItemEnum, Fields, FieldsNamed, FieldsUnnamed, Visibility, Ident, LitInt, LitStr, Meta, MetaNameValue, Expr, ExprLit, Lit, token, Token};
+use syn::{ItemFn, ItemStruct, ItemEnum, Fields, FieldsNamed, FieldsUnnamed, Visibility, Ident, LitInt, LitStr, Meta, MetaNameValue, Expr, ExprLit, Lit, Attribute, token, Token};
 
 pub(super) fn derive_schema(input: TokenStream) -> syn::Result<TokenStream> {
     return match syn::parse2::<Item>(input)? {
@@ -11,140 +15,26 @@ pub(super) fn derive_schema(input: TokenStream) -> syn::Result<TokenStream> {
         _ => Err(syn::Error::new(syn::Span::call_site(), "#[derive(Schema)] takes struct or enum"))
     };
 
-    ///////////////////////////////////////////////////////////////////////////////////////////////
-
-    struct ContainerAttributes {
-        openapi_inline:          bool,
-        openapi_component:       Option<String>,
-        serde_rename:            Option<String>,
-        serde_rename_all:        Cases,
-        serde_rename_all_fields: Cases,
-        serde_tag:               Option<String>,
-        serde_content:           Option<String>,
-        serde_untagged:          bool,
-        serde_default:           bool,
-        serde_transparent:       bool,
-        serde_from:              Option<String>,
-        serde_try_from:          Option<String>,
-        serde_into:              Option<String>,
-    }
-
-    struct FieldAttributes {
-        openapi_schema_with:       Option<String>,
-        serde_rename:              Cases,
-        serde_alias:               Option<String>,
-        serde_default:             bool,
-        serde_flatten:             bool,
-        serde_skip:                bool,
-        serde_skip_serializing:    bool,
-        serde_skip_deserializing:  bool,
-        serde_skip_serializing_if: Option<String>,
-        serde_serialize_with:      Option<String>,
-        serde_deserialize_with:    Option<String>,
-        serde_with:                Option<String>,
-    }
-
-    struct VariantAttributes {
-        openapi_schema_with:       Option<String>,
-        serde_rename:              Cases,
-        serde_alias:               Option<String>,
-        serde_rename_all:          Cases,
-        serde_skip:                bool,
-        serde_skip_serializing:    bool,
-        serde_skip_deserializing:  bool,
-        serde_skip_serializing_if: Option<String>,
-        serde_serialize_with:      Option<String>,
-        serde_deserialize_with:    Option<String>,
-        serde_other:               bool,
-        serde_untagged:            bool,
-    }
-
-    struct Cases {
-        serailize:   Option<Case>,
-        deserialize: Option<Case>,
-    }
-
-    // based on https://github.com/serde-rs/serde/blob/930401b0dd58a809fce34da091b8aa3d6083cb33/serde_derive/src/internals/case.rs
-    enum Case { Lower, Upper, Pascal, Camel, Snake, ScreamingSnake, Kebab, ScreamingKebab }
-    impl Case {
-        fn from_str(s: &str) -> Option<Self> {
-            match s {
-                "lowercase"            => Self::Lower,
-                "UPPERCASE"            => Self::Upper,
-                "PascalCase"           => Self::Pascal,
-                "camelCase"            => Self::Camel,
-                "snake_case"           => Self::Snake,
-                "SCREAMING_SNAKE_CASE" => Self::ScreamingSnake,
-                "kebab-case"           => Self::Kebab,
-                "SCREAMING-KEBAB-CASE" => Self::ScreamingKebab,
-            }
-        }
-        fn apply_to_field(self, field: &str) -> String {
-            match self {
-                Self::Lower | Self::Snake => field.to_string(),
-                Self::Upper => field.to_ascii_uppercase(),
-                Self::Pascal => field
-                    .split('_')
-                    .map(|s| s[..1].to_ascii_uppercase() + &s[1..])
-                    .collect(),
-                Self::Camel => {
-                    let pascal = Self::Pascal.apply_to_field(field);
-                    pascal[..1].to_ascii_lowercase() + &pascal[1..]
-                }
-                Self::ScreamingSnake => Self::Upper.apply_to_field(field),
-                Self::Kebab => field.replace('_', "-"),
-                Self::ScreamingKebab => Self::ScreamingSnake
-                    .apply_to_field(field)
-                    .replace('_', "-"),
-            }
-        }
-        fn apply_to_variant(self, variant: &str) -> String {
-            match self {
-                Self::Pascal => variant.to_string(),
-                Self::Lower => variant.to_ascii_lowercase(),
-                Self::Upper => variant.to_ascii_uppercase(),
-                Self::Camel => variant[..1].to_ascii_lowercase() + &variant[1..],
-                Self::Snake => variant
-                    .split(char::is_uppercase)
-                    .map(str::to_ascii_lowercase())
-                    .collect::<Vec<_>>().join("_"),
-                Self::ScreamingSnake => Self::Snake
-                    .apply_to_variant(variant)
-                    .to_ascii_uppercase(),
-                Self::Kebab => Self::Snake
-                    .apply_to_variant(variant)
-                    .replace('_', "-"),
-                Self::ScreamingKebab => Self::ScreamingSnake
-                    .apply_to_variant(variant)
-                    .replace('_', "-"),
-            }
-        }
-    }
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////
-
     fn derive_schema_for_struct(s: ItemStruct) -> syn::Result<TokenStream> {
         let name = &s.ident;
         let (impl_generics, ty_generics, where_clause) = s.generics.split_for_impl();
 
-        let openapi_container_attrs = openapi_attrs(&s.attrs);
-        let serde_container_attrs = serde_attrs(&s.attrs);
+        let container_attrs = ContainerAttributes::new(&s.attrs);
 
         let mut schema = match &s.fields {
             Fields::Named(fields) => {
                 let mut properties = Vec::with_capacity(fields.len());
                 for f in fields {
-                    let openapi_attrs = openapi_attrs(&f.attrs);
-                    let serde_attrs = serde_attrs(&f.attrs);
+                    let field_attrs = FieldAttributes::new(&f.attrs);
 
-                    if serde_attrs.skip {
+                    if field_attrs.skip {
                         continue
                     }
 
                     let property_or_optional =
                         if is_option(&f.ty) || openapi_attrs.optional;
 
-                    let property_name = match serde_attrs.rename {
+                    let property_name = match field_attrs.rename {
                         Some(rename) => rename,
                         None => {
                             let ident = f.ident.as_ref().unwrap(/* Named */);
@@ -166,11 +56,11 @@ pub(super) fn derive_schema(input: TokenStream) -> syn::Result<TokenStream> {
             Fields::Unnamed(fields) => {assert!(fields.len() >= 2);}
         };
 
-        if !openapi_container_attrs.inline {
+        if container_attrs.component.yes {
             schema =  {
                 let component_name = LitStr::new(
                     name.span(),
-                    openapi_attrs.component.unwrap_or(name.to_string())
+                    container_attrs.component.name.unwrap_or(&name.to_string())
                 );
                 quote! {
                     openapi::component(#component_name, #schema)
