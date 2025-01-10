@@ -3,7 +3,32 @@ use super::_util::{Content, Map, is_false};
 use serde::Serialize;
 
 #[derive(Serialize, Clone)]
-pub struct Responses(Map<String, Response>);
+pub struct Responses(Map<Status, Response>);
+
+#[derive(Clone, PartialEq, PartialOrd)]
+pub enum Status {
+    Code(u16),
+    Default,
+}
+impl Serialize for Status {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        (match self {
+            Self::Code(code) => std::borrow::Cow::Owned(code.to_string()),
+            Self::Default    => std::borrow::Cow::Borrowed("default")
+        }).serialize(serializer)
+    }
+}
+impl From<u16> for Status {
+    fn from(code: u16) -> Self {Self::Code(code)}
+}
+impl From<&str> for Status {
+    fn from(s: &str) -> Self {
+        match s {
+            "default" => Self::Default,
+            _ => Self::Code(s.parse().expect("invalid status code"))
+        }
+    }
+}
 
 #[derive(Serialize, Clone, PartialEq)]
 pub struct Response {
@@ -31,20 +56,20 @@ pub struct ResponseHeader {
 
 impl Responses {
     pub fn new(code: u16, response: Response) -> Self {
-        Self(Map::from_iter([(code.to_string(), response)]))
+        Self(Map::from_iter([(Status::Code(code), response)]))
     }
 
     pub fn enumerated<const N: usize>(responses: [(u16, Response); N]) -> Self {
-        Self(Map::from_iter(responses.map(|(code, res)| (code.to_string(), res))))
+        Self(Map::from_iter(responses.map(|(code, res)| (Status::Code(code), res))))
     }
 
     pub fn or(mut self, code: u16, response: Response) -> Self {
-        self.0.insert(code.to_string(), response);
+        self.0.insert(Status::Code(code), response);
         self
     }
 
     pub fn or_default(mut self, default_response: Response) -> Self {
-        self.0.insert("default".to_string(), default_response);
+        self.0.insert(Status::Default, default_response);
         self
     }
 
@@ -58,8 +83,9 @@ impl Responses {
         self.0.values_mut().map(Response::refize_schemas).flatten()
     }
 
-    pub(crate) fn override_response_description(&mut self, status: &String, new_description: &'static str) {
-        if let Some(response) = self.0.get_mut(status) {
+    pub(crate) fn override_response_description(&mut self, status: impl Into<Status>, new_description: &'static str) {
+        let status = status.into();
+        if let Some(response) = self.0.get_mut(&status) {
             response.description = new_description;
         }
     }

@@ -482,7 +482,6 @@ pub(super) fn operation(meta: TokenStream, handler: TokenStream) -> syn::Result<
                     }
                 },
                 DescriptionTarget::Response { status } => {
-                    let status = LitStr::new(&status.to_string(), Span::call_site());
                     quote! {
                         op.override_response_description(#status, #value);
                     }
