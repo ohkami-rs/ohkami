@@ -88,7 +88,7 @@ pub(super) fn derive_schema(input: TokenStream) -> syn::Result<TokenStream> {
 
             let mut schema = schema_of_fields({
                 let mut fields = v.fields;
-                if let Some((span, case)) = container_attrs.serde.rename_all_fields.value() {
+                if let Some((span, case)) = container_attrs.serde.rename_all_fields.value()? {
                     for f in fields {
                         f.ident = Some(Ident::new(
                             span,
@@ -99,7 +99,7 @@ pub(super) fn derive_schema(input: TokenStream) -> syn::Result<TokenStream> {
                 fields
             }, &container_attrs);
             
-            if let Some((span, name)) = variant_attrs.serde.rename.value() {
+            if let Some((span, name)) = variant_attrs.serde.rename.value()? {
                 v.ident = Ident::new(
                     span,
                     &case.apply_to_variant(&v.ident.to_string())
@@ -280,10 +280,12 @@ pub(super) fn derive_schema(input: TokenStream) -> syn::Result<TokenStream> {
                 };
 
                 if let Some(description) = extract_doc_comment(&f.attrs) {
-                    let description = LitStr::new(Span::call_site(), &description);
-                    schema.extend(quote! {
-                        .description(#description)
-                    })
+                    schema = {
+                        let description = LitStr::new(Span::call_site(), &description);
+                        quote! {
+                            #schema.description(#description)
+                        }
+                    };
                 }
 
                 schema
