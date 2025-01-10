@@ -223,7 +223,7 @@ impl Operation {
         }
     }
     #[doc(hidden)]
-    pub fn override_response_description(&mut self, status: &str, new_description: &'static str) {
+    pub fn override_response_description(&mut self, status: &String, new_description: &'static str) {
         self.responses.override_response_description(status, new_description);
     }
 }

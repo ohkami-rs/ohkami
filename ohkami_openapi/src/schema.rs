@@ -173,9 +173,9 @@ impl SchemaRef {
         let mut component_schemas = vec![];
         match self {
             SchemaRef::Inline(raw) => {
-                component_schemas.extend(self.anyOf.refize());
-                component_schemas.extend(self.allOf.refize());
-                component_schemas.extend(self.oneOf.refize());
+                raw.anyOf.iter_mut().for_each(|s| component_schemas.extend(s.refize()));
+                raw.allOf.iter_mut().for_each(|s| component_schemas.extend(s.refize()));
+                raw.oneOf.iter_mut().for_each(|s| component_schemas.extend(s.refize()));
                 if let Some(name) = raw.__name__ {
                     let raw = std::mem::replace(self, SchemaRef::Reference(name));
                     component_schemas.push(raw.into_inline().unwrap());
@@ -183,7 +183,7 @@ impl SchemaRef {
             }
             _ => ()
         }
-        component_schemas
+        component_schemas.into_iter()
     }
 }
 
@@ -326,7 +326,7 @@ pub trait SchemaList {
     fn collect(self) -> Vec<SchemaRef>;
 }
 impl<S: Into<SchemaRef>> SchemaList for S {
-    fn collect(self) -> Vec<SchemaRef> {vec![self]}
+    fn collect(self) -> Vec<SchemaRef> {vec![self.into()]}
 }
 macro_rules! tuple_schemalist {
     ($($S:ident),*) => {

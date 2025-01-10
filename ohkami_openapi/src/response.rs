@@ -58,7 +58,7 @@ impl Responses {
         self.0.values_mut().map(Response::refize_schemas).flatten()
     }
 
-    pub(crate) fn override_response_description(&mut self, status: &str, new_description: String) {
+    pub(crate) fn override_response_description(&mut self, status: &String, new_description: &'static str) {
         if let Some(response) = self.0.get_mut(status) {
             response.description = new_description;
         }
