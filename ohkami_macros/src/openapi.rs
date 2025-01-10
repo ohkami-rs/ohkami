@@ -22,12 +22,12 @@ pub(super) fn derive_schema(input: TokenStream) -> syn::Result<TokenStream> {
         let container_attrs = ContainerAttributes::new(&s.attrs);
 
         let mut schema = match &s.fields {
-            Fields::Named(fields) => {
+            Fields::Named(fields) => {/* object */
                 let mut properties = Vec::with_capacity(fields.len());
                 for f in fields {
                     let field_attrs = FieldAttributes::new(&f.attrs);
 
-                    if field_attrs.skip {
+                    if field_attrs.serde.skip {
                         continue
                     }
 
@@ -35,7 +35,7 @@ pub(super) fn derive_schema(input: TokenStream) -> syn::Result<TokenStream> {
                     if let Some((span, case)) = container_attrs.rename_all.value()? {
                         ident = Ident::new(&case.apply_to_field(&f.ident.to_string()), span);
                     }
-                    if let Some((span, ident)) = field_attrs.rename.value()? {
+                    if let Some((span, ident)) = field_attrs.serde.rename.value()? {
                         ident = Ident::new(&*ident, span);
                     }
 
@@ -57,7 +57,7 @@ pub(super) fn derive_schema(input: TokenStream) -> syn::Result<TokenStream> {
                         }}
                     };
 
-                    if field_attrs.flatten {
+                    if field_attrs.serde.flatten {
                         properties.push(quote! {
                             for (property_name, property_schema, required) in #property_schema.into_properties() {
                                 if required {
@@ -69,7 +69,7 @@ pub(super) fn derive_schema(input: TokenStream) -> syn::Result<TokenStream> {
                         })
                     } else {
                         let property_name = LitStr::new(ident.span(), &ident.to_string());
-                                           
+
                         properties.push(if is_optional_field {quote! {
                             schema = schema.optional(#property_name, #property_schema);
                         }} else {quote! {
@@ -81,21 +81,37 @@ pub(super) fn derive_schema(input: TokenStream) -> syn::Result<TokenStream> {
                 quote! {
                     let mut schema = openapi::object();
                     #(#properties)*
+                    schema
                 }
             }
 
-            Fields::Unnamed(fields) if fields.len() == 1 => {
-                let [field] = fields.try_into().unwrap();
-                let ty = &field.ty;
+            Fields::Unnamed(mut fields) if fields.len() == 1 => {/* newtype */
+                let f = fields.pop().unwrap(/* fields.len() == 1 */);
+
+                let ty = &f.ty;
 
                 quote! {
-                    openapi::Schema::schema()
+                    openapi::Schema::schema(#ty)
                 }
             }
 
-            Fields::Unnamed(fields) if fields.len() == 0 | Fields::Unit => {}
+            Fields::Unit | Fields::Unnamed(fields) if fields.len() == 0 => {/* empty */
+                quote! {
+                    openapi::object()
+                }
+            }
 
-            Fields::Unnamed(fields) => {assert!(fields.len() >= 2);}
+            Fields::Unnamed(fields) => {assert!(fields.len() >= 2);
+                let types = fields.iter()
+                    .map(|f| &f.ty)
+                    .map(|t| quote! { openapi::Schema::schema(#t) });
+
+                quote! {
+                    openapi::array(openapi::oneOf(
+                        (#(#types,)*)
+                    ))
+                }
+            }
         };
 
         if container_attrs.component.yes {

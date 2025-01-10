@@ -174,7 +174,8 @@ impl SchemaRef {
             SchemaRef::Inline(raw) => if let Some(name) = raw.__name__ {
                 let raw = std::mem::replace(self, SchemaRef::Reference(name));
                 Some(raw.into_inline().unwrap())
-            } else {None}, _ => None
+            } else {None},
+            _ => None
         }
     }
 }
