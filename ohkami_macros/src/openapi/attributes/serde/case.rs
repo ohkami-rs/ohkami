@@ -2,8 +2,8 @@
 //!
 //! based on https://github.com/serde-rs/serde/blob/930401b0dd58a809fce34da091b8aa3d6083cb33/serde_derive/src/internals/case.rs
 
-#[derive(Clone, Copy)]
-enum Case {
+#[derive(Clone, Copy, PartialEq)]
+pub(crate) enum Case {
     Lower,
     Upper,
     Pascal,
@@ -22,28 +22,16 @@ impl From<String> for Case {
 
 impl Case {
     pub(crate) const fn from_str(s: &str) -> Option<Self> {
-        match s {
-            "lowercase"            => Self::Lower,
-            "UPPERCASE"            => Self::Upper,
-            "PascalCase"           => Self::Pascal,
-            "camelCase"            => Self::Camel,
-            "snake_case"           => Self::Snake,
-            "SCREAMING_SNAKE_CASE" => Self::ScreamingSnake,
-            "kebab-case"           => Self::Kebab,
-            "SCREAMING-KEBAB-CASE" => Self::ScreamingKebab,
-        }
-    }
-
-    pub(crate) const fn as_str(&self) -> &'static str {
-        match self {
-            Self::Lower          => "lowercase",
-            Self::Upper          => "UPPERCASE",
-            Self::Pascal         => "PascalCase",
-            Self::Camel          => "camelCase",
-            Self::Snake          => "snake_case",
-            Self::ScreamingSnake => "SCREAMING_SNAKE_CASE",
-            Self::Kebab          => "kebab-case",
-            Self::ScreamingKebab => "SCREAMING-KEBAB-CASE",
+        match s.as_bytes() {
+            b"lowercase"            => Some(Self::Lower),
+            b"UPPERCASE"            => Some(Self::Upper),
+            b"PascalCase"           => Some(Self::Pascal),
+            b"camelCase"            => Some(Self::Camel),
+            b"snake_case"           => Some(Self::Snake),
+            b"SCREAMING_SNAKE_CASE" => Some(Self::ScreamingSnake),
+            b"kebab-case"           => Some(Self::Kebab),
+            b"SCREAMING-KEBAB-CASE" => Some(Self::ScreamingKebab),
+            _ => None
         }
     }
 
@@ -75,7 +63,7 @@ impl Case {
             Self::Camel => variant[..1].to_ascii_lowercase() + &variant[1..],
             Self::Snake => variant
                 .split(char::is_uppercase)
-                .map(str::to_ascii_lowercase())
+                .map(str::to_ascii_lowercase)
                 .collect::<Vec<_>>().join("_"),
             Self::ScreamingSnake => Self::Snake
                 .apply_to_variant(variant)

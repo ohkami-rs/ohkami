@@ -3,6 +3,7 @@
 //! and we just need to intercept them.
 
 use super::{Case, EqValue, Separatable};
+use syn::{token, Ident};
 
 #[derive(Default)]
 pub(crate) struct ContainerAttributes {
@@ -18,9 +19,9 @@ pub(crate) struct ContainerAttributes {
     pub(crate) try_from:          EqValue,
     pub(crate) into:              EqValue,
 }
-impl syn::Parse for ContainerAttributes {
-    fn parse(input: syn::ParseStream) -> syn::Result<Self> {
-        let mut this = Default::default();
+impl syn::parse::Parse for ContainerAttributes {
+    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+        let mut this = ContainerAttributes::default();
 
         while let Ok(i) = input.parse::<Ident>() {
             match &*i.to_string() {
@@ -31,7 +32,7 @@ impl syn::Parse for ContainerAttributes {
                 "content"           => this.content           = input.parse()?,
                 "untagged"          => this.untagged          = true,
                 "default"           => this.default           = true,
-                "tranparent"        => this.tranparent        = true,
+                "transparent"       => this.transparent       = true,
                 "from"              => this.from              = input.parse()?,
                 "try_from"          => this.try_from          = input.parse()?,
                 "into"              => this.into              = input.parse()?,
@@ -58,9 +59,9 @@ pub(crate) struct FieldAttributes {
     pub(crate) skip_deserializing:  bool,
     pub(crate) skip_serializing_if: EqValue,
 }
-impl syn::Parse for FieldAttributes {
-    fn parse(input: syn::ParseStream) -> syn::Result<Self> {
-        let mut this = Default::default();
+impl syn::parse::Parse for FieldAttributes {
+    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+        let mut this = FieldAttributes::default();
 
         while let Ok(i) = input.parse::<Ident>() {
             match &*i.to_string() {
@@ -96,9 +97,9 @@ pub(crate) struct VariantAttributes {
     pub(crate) other:               bool,
     pub(crate) untagged:            bool,
 }
-impl syn::Parse for VariantAttributes {
-    fn parse(input: syn::ParseStream) -> syn::Result<Self> {
-        let mut this = Default::default();
+impl syn::parse::Parse for VariantAttributes {
+    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+        let mut this = VariantAttributes::default();
 
         while let Ok(i) = input.parse::<Ident>() {
             match &*i.to_string() {

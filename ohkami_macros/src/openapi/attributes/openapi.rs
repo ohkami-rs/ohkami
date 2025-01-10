@@ -1,3 +1,5 @@
+use syn::{token, Ident, LitStr};
+
 #[derive(Default)]
 pub(crate) struct ContainerAttributes {
     pub(crate) component: ComponentConfig,
@@ -9,7 +11,7 @@ pub(crate) struct ComponentConfig {
 }
 impl syn::parse::Parse for ContainerAttributes {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
-        let mut this = Default::default();
+        let mut this = ContainerAttributes::default();
         while let Ok(i) = input.parse::<Ident>() {
             match &*i.to_string() {
                 "component" => {
@@ -38,13 +40,13 @@ pub(crate) struct FieldAttributes {
 }
 impl syn::parse::Parse for FieldAttributes {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
-        let mut this = Default::default();
+        let mut this = FieldAttributes::default();
 
         while let Ok(i) = input.parse::<Ident>() {
             match &*i.to_string() {
                 "schema_with" => {
                     let _ = input.parse::<token::Eq>()?;
-                    let l = input.parse::<token::LitStr>()?;
+                    let l = input.parse::<LitStr>()?;
                     this.schema_with = Some(l.value());
                 },
                 other => return Err(syn::Error::new(i.span(), format!("\
@@ -66,13 +68,13 @@ pub(crate) struct VariantAttributes {
 }
 impl syn::parse::Parse for VariantAttributes {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
-        let mut this = Default::default();
+        let mut this = VariantAttributes::default();
 
         while let Ok(i) = input.parse::<Ident>() {
             match &*i.to_string() {
                 "schema_with" => {
                     let _ = input.parse::<token::Eq>()?;
-                    let l = input.parse::<token::LitStr>()?;
+                    let l = input.parse::<LitStr>()?;
                     this.schema_with = Some(l.value());
                 },
                 other => return Err(syn::Error::new(i.span(), format!("\

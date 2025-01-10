@@ -1,15 +1,25 @@
-#[derive(Default)]
+use syn::{token, LitStr, Ident};
+use proc_macro2::Span;
+
+////////////////////////////////////////////////////////////
+
 pub(crate) struct EqValue<T: From<String> = String>(
     Option<T>
 );
 
-impl<T: From<String>> Parse for EqValue {
-    fn parse(input: syn::ParseStream) -> syn::Result<Self> {
+impl<T: From<String>> Default for EqValue<T> {
+    fn default() -> Self {
+        Self(None)
+    }
+}
+
+impl<T: From<String>> syn::parse::Parse for EqValue<T> {
+    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
         input.peek(token::Eq).then(|| {
-            let _ = input.peek::<token::Eq>()?;
-            let l = input.peek::<LitStr>()?;
-            Ok(Self(l.value().into()))
-        }).transpose()
+            let _ = input.parse::<token::Eq>()?;
+            let l = input.parse::<LitStr>()?;
+            Ok(l.value().into())
+        }).transpose().map(Self)
     }
 }
 
@@ -20,19 +30,29 @@ impl<T: From<String>> std::ops::Deref for EqValue<T> {
     }
 }
 
-/////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////
 
-#[derive(Default, Clone)]
+#[derive(Clone)]
 pub(crate) struct Separatable<T: From<String>> {
-    span:        syn::Span,
-    serailize:   Option<T>,
+    span:        Span,
+    serialize:   Option<T>,
     deserialize: Option<T>,
 }
 
-impl<T: From<String>> Parse for Separatable {
-    fn parse(input: syn::ParseStream) -> syn::Result<Self> {
-        let mut span        = syn::Span::call_site();
-        let mut serailize   = None;
+impl<T: From<String>> Default for Separatable<T> {
+    fn default() -> Self {
+        Self {
+            span:        Span::call_site(),
+            serialize:   None,
+            deserialize: None,
+        }
+    }
+}
+
+impl<T: From<String>> syn::parse::Parse for Separatable<T> {
+    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+        let mut span        = Span::call_site();
+        let mut serialize   = None;
         let mut deserialize = None;
 
         if input.peek(token::Eq) {
@@ -40,7 +60,7 @@ impl<T: From<String>> Parse for Separatable {
             let l = input.parse::<LitStr>()?;
             
             span        = l.span();
-            serailize   = Some(l.value().into());
+            serialize   = Some(l.value().into());
             deserialize = Some(l.value().into());
 
         } else if input.peek(token::Brace) {
@@ -51,9 +71,9 @@ impl<T: From<String>> Parse for Separatable {
 
                 span = l.span();
                 if i == "serialize" {
-                    serailize = Some(l.value())
+                    serialize = Some(l.value().into())
                 } else if i == "deserialize" {
-                    deserialize = Some(l.value())
+                    deserialize = Some(l.value().into())
                 }
 
                 if b.peek(token::Comma) {
@@ -66,17 +86,16 @@ impl<T: From<String>> Parse for Separatable {
     }
 }
 
-impl<T: From<String>> Separatable<T> {
-    pub(crate) fn is_empty(&self) -> bool {
-        self.serailize.is_none() && self.deserialize.is_none()
-    }
-
-    pub(crate) fn value(&self) -> syn::Result<Option<(syn::Span, &T)>> {
+impl<T: From<String>> Separatable<T>
+where
+    T: PartialEq
+{
+    pub(crate) fn value(&self) -> syn::Result<Option<(Span, &T)>> {
         match (&self.serialize, &self.deserialize) {
             (None,    None   )           => Ok(None),
-            (Some(s), None   )           => Ok(Some(s.span(), s)),
-            (None,    Some(d))           => Ok(Some(d.span(), d)),
-            (Some(s), Some(d)) if s == d => Ok(Some(s.span(), s)),
+            (Some(s), None   )           => Ok(Some((self.span.clone(), s))),
+            (None,    Some(d))           => Ok(Some((self.span.clone(), d))),
+            (Some(s), Some(d)) if s == d => Ok(Some((self.span.clone(), s))),
             _ => Err(syn::Error::new(
                 self.span.clone(), "#[derive(Schema)] doesn't support \
                 #[serde(rename())] with both `serialize = ...` and `deserialize = ...`"

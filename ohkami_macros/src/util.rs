@@ -1,6 +1,10 @@
+#![allow(unused)]
+
+use syn::{Expr, ExprLit, Lit, Attribute};
+
 #[allow(non_snake_case)]
-pub(crate) fn is_Option(&ty: syn::Type) -> bool {
-    let ty = ty.to_token_stream().to_string();
+pub(crate) fn is_Option(ty: &syn::Type) -> bool {
+    let ty = quote::ToTokens::to_token_stream(ty).to_string();
     ty.ends_with(" >") && (
         ty.starts_with("Option < ") ||
         ty.starts_with("std::option::Option < ") ||
@@ -11,8 +15,8 @@ pub(crate) fn is_Option(&ty: syn::Type) -> bool {
 }
 
 #[allow(non_snake_case)]
-pub(crate) fn inner_Option(&ty: syn::Type) -> Option<syn::Type> {
-    let ty = ty.to_token_stream().to_string();
+pub(crate) fn inner_Option(ty: &syn::Type) -> Option<syn::Type> {
+    let ty = quote::ToTokens::to_token_stream(ty).to_string();
     match ty.split_once(" < ")? {
         (
             | "Option"
@@ -28,27 +32,36 @@ pub(crate) fn inner_Option(&ty: syn::Type) -> Option<syn::Type> {
     }
 }
 
+pub(crate) fn extract_doc_attrs(attrs: &[syn::Attribute]) -> Vec<syn::Attribute> {
+    attrs.iter()
+        .filter(|a| a.meta.require_name_value().is_ok_and(
+            |m| m.path.get_ident().is_some_and(|i| i == "doc")
+        ))
+        .map(Attribute::clone)
+        .collect()
+}
+
 pub(crate) fn extract_doc_comment(attrs: &[syn::Attribute]) -> Option<String> {
     let mut doc = String::new();
 
     for a in attrs.iter()
         .filter_map(|a| a.meta.require_name_value().ok())
-        .filter(|a| a.path.get_ident().is_some_and(|i| i == "doc"))
+        .filter(|m| m.path.get_ident().is_some_and(|i| i == "doc"))
     {
-        let Expr::Lit(ExprLit { lit: Lit::Str(raw_doc), .. }) = a.value else {continue};
+        let Expr::Lit(ExprLit { lit: Lit::Str(raw_doc), .. }) = &a.value else {continue};
         if !doc.is_empty() {
             doc.push('\n')
         }
-        doc.extend(unescaped_doc_attr(raw_doc.value()));
+        doc.push_str(&unescaped_doc_attr(raw_doc.value()));
     }
 
     (!doc.is_empty()).then_some(doc)
 }
 
 fn unescaped_doc_attr(raw_doc: String) -> String {
-    let mut unescaped = String::with_capacity(doc.len());
+    let mut unescaped = String::with_capacity(raw_doc.len());
     {
-        let mut chars = doc.chars().peekable();
+        let mut chars = raw_doc.chars().peekable();
         while let Some(ch) = chars.next() {
             if ch == '\\' && chars.peek().is_some_and(char::is_ascii_punctuation) {
                 /* do nothing to unescape the next charactor */
