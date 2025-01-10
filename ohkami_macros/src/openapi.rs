@@ -75,7 +75,17 @@ pub(super) fn derive_schema(input: TokenStream) -> syn::Result<TokenStream> {
 
         let mut container_attrs = ContainerAttributes::new(&e.attrs);
 
-        let variant_schemas = e.variants.into_iter().map(|mut v| {
+        let variant_schemas = e.variants.into_iter().filter_map(|mut v| {
+            let mut variant_attrs = VariantAttributes::new(&v.attrs);
+
+            if variant_attrs.serde.skip
+            || variant_attrs.serde.skip_serializing
+            || variant_attrs.serde.skip_deserializing
+            || variant_attrs.serde.skip_serializing_if.is_some()
+            {
+                return None
+            }
+
             let mut schema = schema_of_fields({
                 let mut fields = v.fields;
                 if let Some((span, case)) = container_attrs.serde.rename_all_fields.value() {
@@ -89,8 +99,6 @@ pub(super) fn derive_schema(input: TokenStream) -> syn::Result<TokenStream> {
                 fields
             }, &container_attrs);
             
-            let mut variant_attrs = VariantAttributes::new(&v.attrs);
-
             if let Some((span, name)) = variant_attrs.serde.rename.value() {
                 v.ident = Ident::new(
                     span,
@@ -99,7 +107,8 @@ pub(super) fn derive_schema(input: TokenStream) -> syn::Result<TokenStream> {
             }
 
             let tag = LitStr::new(v.ident.span(), &v.ident.to_string());
-            match (
+
+            Some(match (
                 &*container_attrs.serde.tag,
                 &*container_attrs.serde.content,
                 untagged
@@ -133,7 +142,7 @@ pub(super) fn derive_schema(input: TokenStream) -> syn::Result<TokenStream> {
                     }
 
                 }
-            }
+            })
         });
 
         let mut enum_schema = quote! {
