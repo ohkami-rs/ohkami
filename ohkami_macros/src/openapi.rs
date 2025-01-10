@@ -108,7 +108,7 @@ pub(super) fn derive_schema(input: TokenStream) -> syn::Result<TokenStream> {
 
             let tag = LitStr::new(v.ident.span(), &v.ident.to_string());
 
-            Some(match (
+            schema = match (
                 &*container_attrs.serde.tag,
                 &*container_attrs.serde.content,
                 untagged
@@ -142,7 +142,18 @@ pub(super) fn derive_schema(input: TokenStream) -> syn::Result<TokenStream> {
                     }
 
                 }
-            })
+            };
+
+            if let Some(description) = extract_doc_comment(&v.attrs) {
+                schema = {
+                    let description = LitStr::new(Span::call_site(), description);
+                    quote! {
+                        #schema.description(#description)
+                    }
+                };
+            }
+
+            Some(schema)
         });
 
         let mut enum_schema = quote! {
