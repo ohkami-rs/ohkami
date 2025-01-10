@@ -122,6 +122,7 @@ impl Into<SchemaRef> for RawSchema {
     }
 }
 impl RawSchema {
+    #[doc(hidden)]
     pub fn into_properties(self) -> Vec<(&'static str, SchemaRef, bool)> {
         self.properties.into_iter()
             .map(|(name, schema)| (name, schema, self.required.contains(&name)))

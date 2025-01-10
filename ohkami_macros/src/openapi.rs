@@ -31,6 +31,14 @@ pub(super) fn derive_schema(input: TokenStream) -> syn::Result<TokenStream> {
                         continue
                     }
 
+                    let mut ident = f.ident.clone().unwrap(/* Named */);
+                    if let Some((span, case)) = container_attrs.rename_all.value()? {
+                        ident = Ident::new(&case.apply_to_field(&f.ident.to_string()), span);
+                    }
+                    if let Some((span, ident)) = field_attrs.rename.value()? {
+                        ident = Ident::new(&*ident, span);
+                    }
+
                     let ty = &f.ty;
                     let inner_option = inner_Option(ty);
 
@@ -41,14 +49,6 @@ pub(super) fn derive_schema(input: TokenStream) -> syn::Result<TokenStream> {
                         || field_attrs.serde.skip_deserializing
                         || field_attrs.serde.skip_serializing_if.is_some();
 
-                    let property_name = match field_attrs.serde.rename.value()? {
-                            Some((span, rename)) => LitStr::new(span, rename),
-                            None => {
-                                let ident = f.ident.as_ref().unwrap(/* Named */);
-                                LitStr::new(ident.span(), &ident.to_string())
-                            }
-                        };
-
                     let property_schema = {
                         if let Some(inner_option) = inner_option {quote! {
                             openapi::Schema::schema(#inner_option)
@@ -57,15 +57,30 @@ pub(super) fn derive_schema(input: TokenStream) -> syn::Result<TokenStream> {
                         }}
                     };
 
-                    properties.push(if is_optional_field {quote! {
-                        .optional(#property_name, #property_schema)
-                    }} else {quote! {
-                        .property(#property_name, #property_schema)
-                    }});
+                    if field_attrs.flatten {
+                        properties.push(quote! {
+                            for (property_name, property_schema, required) in #property_schema.into_properties() {
+                                if required {
+                                    schema = schema.property(property_name, property_schema);
+                                } else {
+                                    schema = schema.optional(property_name, property_schema);
+                                }
+                            }
+                        })
+                    } else {
+                        let property_name = LitStr::new(ident.span(), &ident.to_string());
+                                           
+                        properties.push(if is_optional_field {quote! {
+                            schema = schema.optional(#property_name, #property_schema);
+                        }} else {quote! {
+                            schema = schema.property(#property_name, #property_schema);
+                        }});
+                    }
                 }
 
                 quote! {
-                    openapi::object() #(#properties)*
+                    let mut schema = openapi::object();
+                    #(#properties)*
                 }
             }
 
@@ -79,7 +94,7 @@ pub(super) fn derive_schema(input: TokenStream) -> syn::Result<TokenStream> {
             }
 
             Fields::Unnamed(fields) if fields.len() == 0 | Fields::Unit => {}
-            
+
             Fields::Unnamed(fields) => {assert!(fields.len() >= 2);}
         };
 
