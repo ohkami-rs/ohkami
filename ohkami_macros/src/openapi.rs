@@ -3,8 +3,8 @@
 mod attributes;
 
 use self::attribtues::{ContainerAttributes, FieldAttributes, VariantAttributes};
-use crate::util::{is_Option, inner_Option};
-use proc_macro2::TokenStream;
+use crate::util::{is_Option, inner_Option, extract_doc_comment};
+use proc_macro2::{TokenStream, Span};
 use quote::quote;
 use syn::{ItemFn, ItemStruct, ItemEnum, Fields, FieldsNamed, FieldsUnnamed, Visibility, Ident, LitInt, LitStr, Meta, MetaNameValue, Expr, ExprLit, Lit, Attribute, token, Token};
 
@@ -21,7 +21,7 @@ pub(super) fn derive_schema(input: TokenStream) -> syn::Result<TokenStream> {
 
         let container_attrs = ContainerAttributes::new(&s.attrs);
 
-        let mut schema = match &s.fields {
+        let mut struct_schema = match &s.fields {
             Fields::Named(fields) => {/* object */
                 let mut properties = Vec::with_capacity(fields.len());
                 for f in fields {
@@ -49,13 +49,19 @@ pub(super) fn derive_schema(input: TokenStream) -> syn::Result<TokenStream> {
                         || field_attrs.serde.skip_deserializing
                         || field_attrs.serde.skip_serializing_if.is_some();
 
-                    let property_schema = {
+                    let mut property_schema = {
                         if let Some(inner_option) = inner_option {quote! {
-                            openapi::Schema::schema(#inner_option)
+                            ::ohkami::openapi::Schema::schema(#inner_option)
                         }} else {quote! {
-                            openapi::Schema::schema(#ty)
+                            ::ohkami::openapi::Schema::schema(#ty)
                         }}
                     };
+                    if let Some(description) = extract_doc_comment(&f.attrs) {
+                        let description = LitStr::new(Span::call_site, &description);
+                        property_schema.extend(quote! {
+                            .description(#description)
+                        })
+                    }
 
                     if field_attrs.serde.flatten {
                         properties.push(quote! {
@@ -79,9 +85,11 @@ pub(super) fn derive_schema(input: TokenStream) -> syn::Result<TokenStream> {
                 }
 
                 quote! {
-                    let mut schema = openapi::object();
-                    #(#properties)*
-                    schema
+                    {
+                        let mut schema = ::ohkami::openapi::object();
+                        #(#properties)*
+                        schema
+                    }
                 }
             }
 
@@ -90,38 +98,69 @@ pub(super) fn derive_schema(input: TokenStream) -> syn::Result<TokenStream> {
 
                 let ty = &f.ty;
 
-                quote! {
-                    openapi::Schema::schema(#ty)
+                let mut schema = quote! {
+                    ::ohkami::openapi::Schema::schema(#ty)
+                };
+
+                if let Some(description) = extract_doc_comment(&f.attrs) {
+                    let description = LitStr::new(Span::call_site(), &description);
+                    schema.extend(quote! {
+                        .description(#description)
+                    })
                 }
+
+                schema
             }
 
             Fields::Unit | Fields::Unnamed(fields) if fields.len() == 0 => {/* empty */
                 quote! {
-                    openapi::object()
+                    ::ohkami::openapi::object()
                 }
             }
 
             Fields::Unnamed(fields) => {assert!(fields.len() >= 2);
-                let types = fields.iter()
-                    .map(|f| &f.ty)
-                    .map(|t| quote! { openapi::Schema::schema(#t) });
+                let type_schemas = fields.iter().map(|f| {
+                    let ty = &f.ty;
+                    let mut schema = quote! {
+                        ::ohkami::openapi::Schema::schema(#ty)
+                    };
+                    if let Some(description) = extract_doc_comment(&f.attrs) {
+                        let description = LitStr::new(Span::call_site(), &description);
+                        schema.extend(quote! {
+                            .description(#description)
+                        })
+                    }
+                    schema
+                });
 
                 quote! {
-                    openapi::array(openapi::oneOf(
-                        (#(#types,)*)
+                    ::ohkami::openapi::array(::ohkami::openapi::oneOf(
+                        (#(#type_schemas,)*)
                     ))
                 }
             }
         };
 
-        if container_attrs.component.yes {
-            schema =  {
-                let component_name = LitStr::new(
+        if container_attrs.openapi.component.yes {
+            struct_schema = {
+                let mut component_name = LitStr::new(
                     name.span(),
-                    container_attrs.component.name.unwrap_or(&name.to_string())
+                    container_attrs.openapi.component.name.as_ref().unwrap_or(&name.to_string())
                 );
+                if let Some((span, rename)) = container_attrs.serde.rename.value()? {
+                    component_name = LitStr::new(span, &rename);
+                }
                 quote! {
-                    openapi::component(#component_name, #schema)
+                    ::ohkami::openapi::component(#component_name, #struct_schema)
+                }
+            };
+        }
+
+        if let Some(description) = extract_doc_comment(&s.attrs) {
+            struct_schema = {
+                let description = LitStr::new(Span::call_site(), description);
+                quote! {
+                    #struct_schema.description(#description)
                 }
             }
         }
@@ -131,7 +170,49 @@ pub(super) fn derive_schema(input: TokenStream) -> syn::Result<TokenStream> {
             #where_clause
             {
                 fn schema() -> ::ohkami::schema::Schema {
-                    use ::ohkami::openapi;
+                    #struct_schema
+                }
+            }
+        })
+    }
+
+    fn derive_schema_for_enum(e: ItemEnum) -> syn::Result<TokenStream> {
+        let name = &e.ident;
+        let (impl_generics, ty_generics, where_clause) = e.generics.split_for_impl();
+
+        let container_attrs = ContainerAttributes::new(&e.attrs);
+
+        let mut enum_schema = {};
+
+        if container_attrs.openapi.component.yes {
+            enum_schema =  {
+                let mut component_name = LitStr::new(
+                    name.span(),
+                    container_attrs.openapi.component.name.as_ref().unwrap_or(&name.to_string())
+                );
+                if let Some((span, rename)) = container_attrs.serde.rename.value()? {
+                    component_name = LitStr::new(span, &rename);
+                }
+                quote! {
+                    ::ohkami::openapi::component(#component_name, #enum_schema)
+                }
+            }
+        }
+
+        if let Some(description) = extract_doc_comment(&e.attrs) {
+            enum_schema = {
+                let description = LitStr::new(Span::call_site(), description);
+                quote! {
+                    #enum_schema.description(#description)
+                }
+            }
+        }
+
+        Ok(quote! {
+            impl #impl_generics ::ohkami::openapi::Schema for #name #ty_generics
+            #where_clause
+            {
+                fn schema() -> ::ohkami::schema::Schema {
                     #schema
                 }
             }
@@ -236,13 +317,6 @@ pub(super) fn operation(meta: TokenStream, handler: TokenStream) -> syn::Result<
     let handler_vis  = handler.vis;
     let handler_name = handler.ident;
 
-    let doc_attrs = handler.attrs.iter()
-        .filter(|a| matches!(a.meta,
-            Meta::NameValue(MetaNameValue {
-                path, ..
-            } if path.get_ident().is_some_and(|i| i == "doc")
-        )));
-    
     let handler = {
         let mut handler = handler.clone();
         handler.vis = Visibility::Public(Token![pub]);
@@ -252,28 +326,7 @@ pub(super) fn operation(meta: TokenStream, handler: TokenStream) -> syn::Result<
     let modify_op = {
         let mut modify_op = TokenStream::new();
 
-        let description = doc_attrs.cloned()
-            .flat_map(|a| match a.meta {
-                Meta::NameValue(MetaNameValue {
-                    value: Expr::Lit(ExprLit { lit: Lit::Str(value), .. }), ..
-                }) => Some(value.value()),
-                _ => unreachable!("invalid `#[doc = /* value */]`")
-            })
-            .fold(String::new(), |mut description, doc| {
-                let mut unescaped_doc = String::with_capacity(doc.len()); {
-                    let mut chars = doc.chars().peekable();
-                    while let Some(ch) = chars.next() {
-                        if ch == '\\' && chars.peek().is_some_and(char::is_ascii_punctuation) {
-                            /* do nothing to unescape the next charactor */
-                        } else {
-                            unescaped_doc.push(ch);
-                        }
-                    }
-                }
-                description + &unescaped_doc
-            });
-
-        if !description.is_empty() {
+        if let Some(description) = extract_doc_comment(&handler.attrs) {
             modify_op.extend(quote! {
                 op = op.description(#description);
             });
