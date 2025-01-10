@@ -22,7 +22,7 @@ impl<T: From<String>> std::ops::Deref for EqValue<T> {
 
 /////////////////////////////////////////////////////////////////////
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub(crate) struct Separatable<T: From<String>> {
     span:        syn::Span,
     serailize:   Option<T>,
@@ -67,7 +67,11 @@ impl<T: From<String>> Parse for Separatable {
 }
 
 impl<T: From<String>> Separatable<T> {
-    fn value(&self) -> syn::Result<Option<(syn::Span, &T)>> {
+    pub(crate) fn is_empty(&self) -> bool {
+        self.serailize.is_none() && self.deserialize.is_none()
+    }
+
+    pub(crate) fn value(&self) -> syn::Result<Option<(syn::Span, &T)>> {
         match (&self.serialize, &self.deserialize) {
             (None,    None   )           => Ok(None),
             (Some(s), None   )           => Ok(Some(s.span(), s)),

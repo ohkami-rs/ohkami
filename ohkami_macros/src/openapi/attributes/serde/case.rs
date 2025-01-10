@@ -34,6 +34,19 @@ impl Case {
         }
     }
 
+    pub(crate) const fn as_str(&self) -> &'static str {
+        match self {
+            Self::Lower          => "lowercase",
+            Self::Upper          => "UPPERCASE",
+            Self::Pascal         => "PascalCase",
+            Self::Camel          => "camelCase",
+            Self::Snake          => "snake_case",
+            Self::ScreamingSnake => "SCREAMING_SNAKE_CASE",
+            Self::Kebab          => "kebab-case",
+            Self::ScreamingKebab => "SCREAMING-KEBAB-CASE",
+        }
+    }
+
     pub(crate) fn apply_to_field(self, field: &str) -> String {
         match self {
             Self::Lower | Self::Snake => field.to_string(),

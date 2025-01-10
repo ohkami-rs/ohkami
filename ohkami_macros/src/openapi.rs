@@ -21,7 +21,164 @@ pub(super) fn derive_schema(input: TokenStream) -> syn::Result<TokenStream> {
 
         let container_attrs = ContainerAttributes::new(&s.attrs);
 
-        let mut struct_schema = match &s.fields {
+        let mut struct_schema = schema_of_fields({
+            let mut fields = s.fields;
+            if let Some((span, case)) = container_attrs.serde.rename_all.value() {
+                for f in fields {
+                    f.ident = Some(Ident::new(
+                        span,
+                        &case.apply_to_field(&f.ident.to_string())
+                    ));
+                }
+            }
+            fields
+        }, &container_attrs);
+
+        if container_attrs.openapi.component.yes {
+            struct_schema = {
+                let mut component_name = LitStr::new(
+                    name.span(),
+                    container_attrs.openapi.component.name.as_ref().unwrap_or(&name.to_string())
+                );
+                if let Some((span, rename)) = container_attrs.serde.rename.value()? {
+                    component_name = LitStr::new(span, &rename);
+                }
+                quote! {
+                    ::ohkami::openapi::component(#component_name, #struct_schema)
+                }
+            };
+        }
+
+        if let Some(description) = extract_doc_comment(&s.attrs) {
+            struct_schema = {
+                let description = LitStr::new(Span::call_site(), description);
+                quote! {
+                    #struct_schema.description(#description)
+                }
+            };
+        }
+
+        Ok(quote! {
+            impl #impl_generics ::ohkami::openapi::Schema for #name #ty_generics
+            #where_clause
+            {
+                fn schema() -> ::ohkami::schema::Schema {
+                    #struct_schema
+                }
+            }
+        })
+    }
+
+    fn derive_schema_for_enum(e: ItemEnum) -> syn::Result<TokenStream> {
+        let name = &e.ident;
+        let (impl_generics, ty_generics, where_clause) = e.generics.split_for_impl();
+
+        let mut container_attrs = ContainerAttributes::new(&e.attrs);
+
+        let variant_schemas = e.variants.into_iter().map(|mut v| {
+            let mut schema = schema_of_fields({
+                let mut fields = v.fields;
+                if let Some((span, case)) = container_attrs.serde.rename_all_fields.value() {
+                    for f in fields {
+                        f.ident = Some(Ident::new(
+                            span,
+                            &case.apply_to_field(&f.ident.to_string())
+                        ));
+                    }
+                }
+                fields
+            }, &container_attrs);
+            
+            let mut variant_attrs = VariantAttributes::new(&v.attrs);
+
+            if let Some((span, name)) = variant_attrs.serde.rename.value() {
+                v.ident = Ident::new(
+                    span,
+                    &case.apply_to_variant(&v.ident.to_string())
+                );
+            }
+
+            let tag = LitStr::new(v.ident.span(), &v.ident.to_string());
+            match (
+                &*container_attrs.serde.tag,
+                &*container_attrs.serde.content,
+                untagged
+            ) {
+                (_, _, true) => {/* Untagged */
+                    schema
+                }
+
+                (None, _, _) => {/* Externally tagged */
+                    quote! {
+                        ::ohkami::openapi::object()
+                            .property(#tag, #schema)
+                    }
+                }
+
+                (Some(t), None, _) => {/* Internally tagged */
+                    let t = LitStr::new(Span::call_site(), t);
+                    quote! {
+                        #schema
+                            .property(#t, #tag)
+                    }
+                }
+
+                (Some(t), Some(c), _) => {/* Adjacently tagged */
+                    let t = LitStr::new(Span::call_site(), t);
+                    let c = LitStr::new(Span::call_site(), c);
+                    quote! {
+                        ::ohkami::openapi::object()
+                            .property(#t, #tag)
+                            .property(#c, #schema)
+                    }
+
+                }
+            }
+        });
+
+        let mut enum_schema = quote! {
+            ::ohkami::openapi::oneOf(
+                ( #(#variant_schemas,)* )
+            )
+        };
+
+        if container_attrs.openapi.component.yes {
+            enum_schema =  {
+                let mut component_name = LitStr::new(
+                    name.span(),
+                    container_attrs.openapi.component.name.as_ref().unwrap_or(&name.to_string())
+                );
+                if let Some((span, rename)) = container_attrs.serde.rename.value()? {
+                    component_name = LitStr::new(span, &rename);
+                }
+                quote! {
+                    ::ohkami::openapi::component(#component_name, #enum_schema)
+                }
+            };
+        }
+
+        if let Some(description) = extract_doc_comment(&e.attrs) {
+            enum_schema = {
+                let description = LitStr::new(Span::call_site(), description);
+                quote! {
+                    #enum_schema.description(#description)
+                }
+            };
+        }
+
+        Ok(quote! {
+            impl #impl_generics ::ohkami::openapi::Schema for #name #ty_generics
+            #where_clause
+            {
+                fn schema() -> ::ohkami::schema::Schema {
+                    #schema
+                }
+            }
+        })
+    }
+
+    fn schema_of_fields(fields: Fields, container_attrs: &ContainerAttributes) -> TokenStream {
+        match fields {
             Fields::Named(fields) => {/* object */
                 let mut properties = Vec::with_capacity(fields.len());
                 for f in fields {
@@ -139,84 +296,7 @@ pub(super) fn derive_schema(input: TokenStream) -> syn::Result<TokenStream> {
                     ))
                 }
             }
-        };
-
-        if container_attrs.openapi.component.yes {
-            struct_schema = {
-                let mut component_name = LitStr::new(
-                    name.span(),
-                    container_attrs.openapi.component.name.as_ref().unwrap_or(&name.to_string())
-                );
-                if let Some((span, rename)) = container_attrs.serde.rename.value()? {
-                    component_name = LitStr::new(span, &rename);
-                }
-                quote! {
-                    ::ohkami::openapi::component(#component_name, #struct_schema)
-                }
-            };
         }
-
-        if let Some(description) = extract_doc_comment(&s.attrs) {
-            struct_schema = {
-                let description = LitStr::new(Span::call_site(), description);
-                quote! {
-                    #struct_schema.description(#description)
-                }
-            }
-        }
-
-        Ok(quote! {
-            impl #impl_generics ::ohkami::openapi::Schema for #name #ty_generics
-            #where_clause
-            {
-                fn schema() -> ::ohkami::schema::Schema {
-                    #struct_schema
-                }
-            }
-        })
-    }
-
-    fn derive_schema_for_enum(e: ItemEnum) -> syn::Result<TokenStream> {
-        let name = &e.ident;
-        let (impl_generics, ty_generics, where_clause) = e.generics.split_for_impl();
-
-        let container_attrs = ContainerAttributes::new(&e.attrs);
-
-        let mut enum_schema = {};
-
-        if container_attrs.openapi.component.yes {
-            enum_schema =  {
-                let mut component_name = LitStr::new(
-                    name.span(),
-                    container_attrs.openapi.component.name.as_ref().unwrap_or(&name.to_string())
-                );
-                if let Some((span, rename)) = container_attrs.serde.rename.value()? {
-                    component_name = LitStr::new(span, &rename);
-                }
-                quote! {
-                    ::ohkami::openapi::component(#component_name, #enum_schema)
-                }
-            }
-        }
-
-        if let Some(description) = extract_doc_comment(&e.attrs) {
-            enum_schema = {
-                let description = LitStr::new(Span::call_site(), description);
-                quote! {
-                    #enum_schema.description(#description)
-                }
-            }
-        }
-
-        Ok(quote! {
-            impl #impl_generics ::ohkami::openapi::Schema for #name #ty_generics
-            #where_clause
-            {
-                fn schema() -> ::ohkami::schema::Schema {
-                    #schema
-                }
-            }
-        })
     }
 }
 
