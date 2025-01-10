@@ -89,7 +89,7 @@ impl Response {
     pub(self) fn refize_schemas(&mut self) -> impl Iterator<Item = RawSchema> {
         let mut refizeds = vec![];
         for content in self.content.values_mut() {
-            if let Some(refized) = content.refize_schema() {
+            for refized in content.refize_schema() {
                 refizeds.push(refized);
             }
         }

@@ -15,7 +15,7 @@ impl<T: Into<SchemaRef>> From<T> for Content {
     }
 }
 impl Content {
-    pub(crate) fn refize_schema(&mut self) -> Option<RawSchema> {
+    pub(crate) fn refize_schema(&mut self) -> impl Iterator<Item = RawSchema> {
         self.schema.refize()
     }
 }

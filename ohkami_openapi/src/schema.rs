@@ -169,14 +169,21 @@ impl SchemaRef {
         }
     }
 
-    pub(crate) fn refize(&mut self) -> Option<RawSchema> {
+    pub(crate) fn refize(&mut self) -> impl Iterator<Item = RawSchema> {
+        let mut component_schemas = vec![];
         match self {
-            SchemaRef::Inline(raw) => if let Some(name) = raw.__name__ {
-                let raw = std::mem::replace(self, SchemaRef::Reference(name));
-                Some(raw.into_inline().unwrap())
-            } else {None},
-            _ => None
+            SchemaRef::Inline(raw) => {
+                component_schemas.extend(self.anyOf.refize());
+                component_schemas.extend(self.allOf.refize());
+                component_schemas.extend(self.oneOf.refize());
+                if let Some(name) = raw.__name__ {
+                    let raw = std::mem::replace(self, SchemaRef::Reference(name));
+                    component_schemas.push(raw.into_inline().unwrap());
+                }
+            }
+            _ => ()
         }
+        component_schemas
     }
 }
 
