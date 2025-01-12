@@ -485,15 +485,17 @@ pub(super) fn operation(meta: TokenStream, handler: TokenStream) -> syn::Result<
     let modify_op = {
         let mut modify_op = TokenStream::new();
 
+        let operation_id = match meta.operationId {
+            Some(operation_id) => LitStr::new(&operation_id, Span::call_site()),
+            None => LitStr::new(&handler.sig.ident.to_string(), handler.sig.ident.span())
+        };
+        modify_op.extend(quote! {
+            op = op.operationId(#operation_id);
+        });
+
         if let Some(description) = extract_doc_comment(&handler.attrs) {
             modify_op.extend(quote! {
                 op = op.description(#description);
-            });
-        }
-
-        if let Some(operation_id) = meta.operationId {
-            modify_op.extend(quote! {
-                op = op.operationId(#operation_id);
             });
         }
 
@@ -533,7 +535,7 @@ pub(super) fn operation(meta: TokenStream, handler: TokenStream) -> syn::Result<
 
     Ok(quote! {
         #(#doc_attrs_copy)*
-        #[allow(non_camelcase_types)]
+        #[allow(non_camel_case_types)]
         #handler_vis struct #handler_name;
 
         const _: () = {
@@ -545,7 +547,7 @@ pub(super) fn operation(meta: TokenStream, handler: TokenStream) -> syn::Result<
             impl ::ohkami::handler::IntoHandler<#handler_name> for #handler_name {
                 fn into_handler(self) -> ::ohkami::handler::Handler {
                     ::ohkami::handler::IntoHandler::into_handler(operation::#handler_name)
-                        .map_openapi_operation(|op| { #modify_op })
+                        .map_openapi_operation(|mut op| { #modify_op op })
                 }
             }
         };

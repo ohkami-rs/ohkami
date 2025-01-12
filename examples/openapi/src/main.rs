@@ -46,7 +46,7 @@ async fn main() {
     o.howl("localhost:5050").await
 }
 
-
+#[openapi::operation({200: "All pets stored in this pet store"})]
 async fn list_pets(
     Query(q): Query<ListPetsMeta>,
     Memory(db): Memory<'_, Arc<mock::DB>>,
@@ -65,6 +65,7 @@ struct ListPetsMeta {
     limit: Option<usize>,
 }
 
+#[openapi::operation(createPet)]
 async fn create_pet(
     JSON(req): JSON<CreatePetRequest<'_>>,
     Memory(db): Memory<'_, Arc<mock::DB>>,
@@ -98,6 +99,13 @@ struct CreatePetRequest<'req> {
     tag:  Option<&'req str>,
 }
 
+#[openapi::operation(showPetById {
+    summary: "find a pet of the `id`",
+    200: "Successfully found a pet",
+    default: "Something went wrong in finding a pet",
+})]
+/// Find a pet of the `id`.
+/// The parameter `id` must be unsigned 64-bit integer.
 async fn show_pet_by_id(
     id: u64,
     Memory(db): Memory<'_, Arc<mock::DB>>,
