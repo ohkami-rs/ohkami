@@ -219,7 +219,10 @@ pub(super) fn derive_schema(input: TokenStream) -> syn::Result<TokenStream> {
                 for f in named {
                     let field_attrs = FieldAttributes::new(&f.attrs)?;
 
-                    if field_attrs.serde.skip {
+                    if field_attrs.serde.skip
+                    || field_attrs.serde.skip_serializing
+                    || field_attrs.serde.skip_deserializing
+                    {
                         continue
                     }
 
@@ -236,9 +239,6 @@ pub(super) fn derive_schema(input: TokenStream) -> syn::Result<TokenStream> {
 
                     let is_optional_field = inner_option.is_some()
                         || field_attrs.serde.default
-                        || field_attrs.serde.skip
-                        || field_attrs.serde.skip_serializing
-                        || field_attrs.serde.skip_deserializing
                         || field_attrs.serde.skip_serializing_if.is_some();
 
                     let mut property_schema = {
@@ -329,23 +329,41 @@ pub(super) fn derive_schema(input: TokenStream) -> syn::Result<TokenStream> {
                 })
             }
 
-            Fields::Unnamed(FieldsUnnamed { paren_token:_, unnamed }) => {assert!(unnamed.len() >= 2);
-                let type_schemas = unnamed.iter().map(|f| {
-                    let ty = &f.ty;
+            Fields::Unnamed(FieldsUnnamed { paren_token:_, unnamed }) => {assert!(unnamed.len() >= 2);/* array of oneOf */
+                let mut type_schemas = Vec::with_capacity(unnamed.len());
+                for u in unnamed {
+                    let field_attrs = FieldAttributes::new(&u.attrs)?;
+
+                    if field_attrs.serde.skip
+                    || field_attrs.serde.skip_serializing
+                    || field_attrs.serde.skip_deserializing
+                    {
+                        continue
+                    }
+
+                    let ty = match inner_Option(&u.ty) {
+                        Some(inner_option) => inner_option,
+                        None => u.ty.clone()
+                    };
+
                     let mut schema = quote! {
                         ::ohkami::openapi::schema::Schema::<::ohkami::openapi::schema::Type::any>::from(
                             <#ty as ::ohkami::openapi::Schema>::schema()
                                 .into(/* SchemaRef */).into_inline().unwrap()
                         )
                     };
-                    if let Some(description) = extract_doc_comment(&f.attrs) {
-                        let description = LitStr::new(&description, Span::call_site());
-                        schema.extend(quote! {
-                            .description(#description)
-                        })
+
+                    if let Some(description) = extract_doc_comment(&u.attrs) {
+                        schema = {
+                            let description = LitStr::new(&description, Span::call_site());
+                            quote! {
+                                #schema.description(#description)
+                            }
+                        };
                     }
-                    schema
-                });
+
+                    type_schemas.push(schema)
+                }
 
                 Ok(quote! {
                     ::ohkami::openapi::array(::ohkami::openapi::oneOf(
