@@ -58,15 +58,11 @@ async fn list_pets(
     
     Ok(JSON(pets))
 }
-#[derive(Deserialize)]
+#[derive(Deserialize, openapi::Schema)]
+/// metadata for `list_pets` operation
 struct ListPetsMeta {
+    /// limit of number of pets responded by `list_pets` operation
     limit: Option<usize>,
-}
-impl openapi::Schema for ListPetsMeta {
-    fn schema() -> impl Into<openapi::schema::SchemaRef> {
-        openapi::object()
-            .optional("limit", openapi::integer().format("uint64"))
-    }
 }
 
 async fn create_pet(

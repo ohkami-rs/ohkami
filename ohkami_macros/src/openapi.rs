@@ -68,7 +68,7 @@ pub(super) fn derive_schema(input: TokenStream) -> syn::Result<TokenStream> {
             impl #impl_generics ::ohkami::openapi::Schema for #name #ty_generics
             #where_clause
             {
-                fn schema() -> ::ohkami::schema::Schema {
+                fn schema() -> impl Into<::ohkami::openapi::schema::SchemaRef> {
                     #struct_schema
                 }
             }
@@ -205,7 +205,7 @@ pub(super) fn derive_schema(input: TokenStream) -> syn::Result<TokenStream> {
             impl #impl_generics ::ohkami::openapi::Schema for #name #ty_generics
             #where_clause
             {
-                fn schema() -> ::ohkami::schema::Schema {
+                fn schema() -> impl Into<::ohkami::openapi::schema::SchemaRef> {
                     #enum_schema
                 }
             }
@@ -243,16 +243,25 @@ pub(super) fn derive_schema(input: TokenStream) -> syn::Result<TokenStream> {
 
                     let mut property_schema = {
                         if let Some(inner_option) = inner_option {quote! {
-                            ::ohkami::openapi::Schema::schema(#inner_option)
+                            ::ohkami::openapi::schema::Schema::<::ohkami::openapi::schema::Type::any>::from(
+                                <#inner_option as ::ohkami::openapi::Schema>::schema()
+                                    .into(/* SchemaRef */).into_inline().unwrap()
+                            )
                         }} else {quote! {
-                            ::ohkami::openapi::Schema::schema(#ty)
+                            ::ohkami::openapi::schema::Schema::<::ohkami::openapi::schema::Type::any>::from(
+                                <#ty as ::ohkami::openapi::Schema>::schema()
+                                    .into(/* SchemaRef */).into_inline().unwrap()
+                            )
                         }}
                     };
+
                     if let Some(description) = extract_doc_comment(&f.attrs) {
-                        let description = LitStr::new(&description, Span::call_site());
-                        property_schema.extend(quote! {
-                            .description(#description)
-                        })
+                        property_schema = {
+                            let description = LitStr::new(&description, Span::call_site());
+                            quote! {
+                                #property_schema.description(#description)
+                            }
+                        };
                     }
 
                     if field_attrs.serde.flatten {
@@ -291,7 +300,10 @@ pub(super) fn derive_schema(input: TokenStream) -> syn::Result<TokenStream> {
                 let ty = &f.ty;
 
                 let mut schema = quote! {
-                    ::ohkami::openapi::Schema::schema(#ty)
+                    ::ohkami::openapi::schema::Schema::<::ohkami::openapi::schema::Type::any>::from(
+                        <#ty as ::ohkami::openapi::Schema>::schema()
+                            .into(/* SchemaRef */).into_inline().unwrap()
+                    )
                 };
 
                 if let Some(description) = extract_doc_comment(&f.attrs) {
@@ -321,7 +333,10 @@ pub(super) fn derive_schema(input: TokenStream) -> syn::Result<TokenStream> {
                 let type_schemas = unnamed.iter().map(|f| {
                     let ty = &f.ty;
                     let mut schema = quote! {
-                        ::ohkami::openapi::Schema::schema(#ty)
+                        ::ohkami::openapi::schema::Schema::<::ohkami::openapi::schema::Type::any>::from(
+                            <#ty as ::ohkami::openapi::Schema>::schema()
+                                .into(/* SchemaRef */).into_inline().unwrap()
+                        )
                     };
                     if let Some(description) = extract_doc_comment(&f.attrs) {
                         let description = LitStr::new(&description, Span::call_site());

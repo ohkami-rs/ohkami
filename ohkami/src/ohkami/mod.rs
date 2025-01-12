@@ -388,7 +388,10 @@ impl Ohkami {
 
         let doc = router.gen_openapi_doc(routes.clone(), metadata.clone());
 
-        std::fs::write(metadata.file_path, serde_json::to_vec_pretty(&doc).unwrap())
+        let mut doc = serde_json::to_vec_pretty(&doc).unwrap();
+        doc.push(b'\n');
+
+        std::fs::write(metadata.file_path, doc)
             .expect("[OpenAPI] Failed to write document to file");
     }
 }

@@ -54,18 +54,95 @@ pub trait Schema {
     fn schema() -> impl Into<schema::SchemaRef>;
 }
 const _: () = {
+    impl Schema for &str {
+        fn schema() -> impl Into<schema::SchemaRef> {
+            string()
+        }
+    }
+    impl Schema for String {
+        fn schema() -> impl Into<schema::SchemaRef> {
+            string()
+        }
+    }
+    impl Schema for std::sync::Arc<String> {
+        fn schema() -> impl Into<schema::SchemaRef> {
+            string()
+        }
+    }
+
+    impl Schema for u8 {
+        fn schema() -> impl Into<schema::SchemaRef> {
+            integer()
+        }
+    }
+    impl Schema for u16 {
+        fn schema() -> impl Into<schema::SchemaRef> {
+            integer()
+        }
+    }
+    impl Schema for u32 {
+        fn schema() -> impl Into<schema::SchemaRef> {
+            integer()
+        }
+    }
+    impl Schema for u64 {
+        fn schema() -> impl Into<schema::SchemaRef> {
+            integer()
+        }
+    }
+    impl Schema for usize {
+        fn schema() -> impl Into<schema::SchemaRef> {
+            integer()
+        }
+    }
+
+    impl Schema for i8 {
+        fn schema() -> impl Into<schema::SchemaRef> {
+            integer()
+        }
+    }
+    impl Schema for i16 {
+        fn schema() -> impl Into<schema::SchemaRef> {
+            integer()
+        }
+    }
+    impl Schema for i32 {
+        fn schema() -> impl Into<schema::SchemaRef> {
+            integer().format("int32")
+        }
+    }
+    impl Schema for i64 {
+        fn schema() -> impl Into<schema::SchemaRef> {
+            integer().format("int64")
+        }
+    }
+    impl Schema for isize {
+        fn schema() -> impl Into<schema::SchemaRef> {
+            integer()
+        }
+    }
+
+    impl Schema for f32 {
+        fn schema() -> impl Into<schema::SchemaRef> {
+            number().format("float")
+        }
+    }
+    impl Schema for f64 {
+        fn schema() -> impl Into<schema::SchemaRef> {
+            number().format("double")
+        }
+    }
+
     impl<S: Schema> Schema for Vec<S> {
         fn schema() -> impl Into<schema::SchemaRef> {
             array(S::schema())
         }
     }
-
     impl<S: Schema> Schema for [S] {
         fn schema() -> impl Into<schema::SchemaRef> {
             array(S::schema())
         }
-    }
-    
+    }    
     impl<const N: usize, S: Schema> Schema for [S; N] {
         fn schema() -> impl Into<schema::SchemaRef> {
             array(S::schema())
