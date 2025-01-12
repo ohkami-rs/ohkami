@@ -23,9 +23,9 @@ Now you can fetch the Ohkami in a type-safe way:
 cd client
 npm install
 
-# generate type-safe API client from openapi.json
+# generate type definitions from openapi.json
 npm run gen
 
-# run client app to interact with Ohkami
+# run client app to perform type-safe interaction with Ohkami
 npm run main
 ```
