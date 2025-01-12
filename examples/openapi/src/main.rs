@@ -71,7 +71,7 @@ async fn create_pet(
 ) -> Result<status::Created<JSON<Pet>>, Error> {
     if db.read().await.values().any(|p| p.name == req.name) {
         return Err(Error {
-            code: 400,
+            status_code: 400,
             message: format!("A pet of name `{}` already exists", req.name)
         })
     }
@@ -90,17 +90,12 @@ async fn create_pet(
 
     Ok(status::Created(JSON(created_pet)))
 }
-#[derive(Deserialize)]
+#[derive(Deserialize, openapi::Schema)]
+#[openapi(component)]
 struct CreatePetRequest<'req> {
+    #[serde(rename = "petName")]
     name: &'req str,
     tag:  Option<&'req str>,
-}
-impl openapi::Schema for CreatePetRequest<'_> {
-    fn schema() -> impl Into<openapi::schema::SchemaRef> {
-        openapi::object()
-            .property("name", openapi::string())
-            .optional("tag", openapi::string())
-    }
 }
 
 async fn show_pet_by_id(
@@ -110,14 +105,15 @@ async fn show_pet_by_id(
     let pet = db.read().await.get(&id)
         .cloned()
         .ok_or_else(|| Error {
-            code: 404,
+            status_code: 404,
             message: format!("A pet of id `{id}` not found"),
         })?;
     Ok(JSON(pet))
 }
 
 
-#[derive(Serialize, Clone)]
+#[derive(Serialize, Clone, openapi::Schema)]
+#[openapi(component)]
 struct Pet {
     id:   u64,
     name: String,
@@ -125,32 +121,17 @@ struct Pet {
     #[serde(skip_serializing_if = "Option::is_none")]
     tag: Option<String>,
 }
-impl openapi::Schema for Pet {
-    fn schema() -> impl Into<openapi::schema::SchemaRef> {
-        openapi::component("Pet", openapi::object()
-            .property("id", openapi::integer().format("uint64"))
-            .property("name", openapi::string())
-            .optional("tag", openapi::string())
-        )
-    }
-}
 
-#[derive(Serialize)]
+#[derive(Serialize, openapi::Schema)]
+#[openapi(component)]
+#[serde(rename_all = "camelCase")]
 struct Error {
-    code:    u16,
-    message: String,
-}
-impl openapi::Schema for Error {
-    fn schema() -> impl Into<openapi::schema::SchemaRef> {
-        openapi::component("Error", openapi::object()
-            .property("code", openapi::integer().format("uint32"))
-            .property("message", openapi::string())
-        )
-    }
+    status_code: u16,
+    message:     String,
 }
 impl IntoResponse for Error {
     fn into_response(self) -> Response {
-        Response::of(Status::from(self.code))
+        Response::of(Status::from(self.status_code))
             .with_json(self)
     }
     fn openapi_responses() -> openapi::Responses {

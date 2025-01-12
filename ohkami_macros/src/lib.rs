@@ -11,7 +11,7 @@ mod worker;
 
 
 #[cfg(feature="openapi")]
-#[proc_macro_derive(Schema, attributes())]
+#[proc_macro_derive(Schema, attributes(openapi))]
 pub fn derive_schema(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     openapi::derive_schema(input.into())
         .unwrap_or_else(syn::Error::into_compile_error)

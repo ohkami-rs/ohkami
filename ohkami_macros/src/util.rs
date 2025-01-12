@@ -52,7 +52,7 @@ pub(crate) fn extract_doc_comment(attrs: &[syn::Attribute]) -> Option<String> {
         if !doc.is_empty() {
             doc.push('\n')
         }
-        doc.push_str(&unescaped_doc_attr(raw_doc.value()));
+        doc.push_str(unescaped_doc_attr(raw_doc.value()).trim());
     }
 
     (!doc.is_empty()).then_some(doc)
