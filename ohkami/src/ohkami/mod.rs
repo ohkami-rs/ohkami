@@ -375,6 +375,7 @@ impl Ohkami {
     }
 
     #[cfg(feature="openapi")]
+    #[cfg_attr(feature="rt_worker", cfg(not(target_arch="wasm32-unknown-unknown")/* need to be executed on dev-machine, not on a worker */))]
     pub fn generate(&self, metadata: crate::openapi::OpenAPI) {
         if std::panic::catch_unwind(|| std::fs::exists(".")).is_err() {
             crate::warning!("[Ohkami::gen_openapi_doc] Can't access to file system");

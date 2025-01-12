@@ -6,7 +6,7 @@
   "author": "",
   "type": "module",
   "scripts": {
-    "main": "node --experimental-strip-types --experimental-transform-types --no-warnings=ExperimentalWarning src/main.ts",
+    "main": "node --experimental-strip-types --no-warnings=ExperimentalWarning src/main.ts",
     "gen": "npx openapi-typescript ../openapi.json -o ./openapi.d.ts"
   },
   "dependencies": {
