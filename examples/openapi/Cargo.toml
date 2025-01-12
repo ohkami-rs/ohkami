@@ -9,3 +9,4 @@ tokio   = { workspace = true }
 
 [features]
 default = ["ohkami/openapi"]
+DEBUG   = ["ohkami/DEBUG"]

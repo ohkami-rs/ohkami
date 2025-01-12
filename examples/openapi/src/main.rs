@@ -27,16 +27,32 @@ mod mock {
     };
 }
 
+#[derive(Clone)]
+struct Logger;
+impl FangAction for Logger {
+    async fn fore<'a>(&'a self, req: &'a mut Request) -> Result<(), Response> {
+        println!("[Logger] req: {req:?}");
+        Ok(())
+    }
+
+    async fn back<'a>(&'a self, res: &'a mut Response) {
+        println!("[Logger] res: {res:?}");
+    }
+}
+
 #[tokio::main]
 async fn main() {
     let db = Arc::new(mock::DB::new());
 
-    let o = Ohkami::with(Memory::new(db), (
+    let o = Ohkami::with((
+        Logger,
+        Memory::new(db),
+    ), (
         "/pets"
             .GET(list_pets)
             .POST(create_pet),
         "/pets/:petId"
-            .GET(show_pet_by_id)
+            .GET(show_pet_by_id),
     ));
 
     o.generate(openapi::OpenAPI::json("Petstore API", "1.0.0", [
