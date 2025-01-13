@@ -2,13 +2,15 @@
 
 set -Ceu
 
-cd petstore && \
+SAMPLES=$(pwd)
+
+cd $SAMPLES/petstore && \
     timeout -sKILL 3 cargo run &
-cd petstore/client && \
+cd $SAMPLES/petstore/client && \
     npm install && npm run gen && npm run main
 test $? -ne 0 && exit 1 || :
 
-cd realworld && \
+cd $SAMPLES/realworld && \
     docker compose up -d && \
     sleep 5 && \
     sqlx migrate run && \

@@ -13,8 +13,9 @@ tasks:
   test:
     deps:
       - task: test:deps
-      - task: test:examples
       - task: test:doc
+      - task: test:examples
+      - task: test:samples
       - task: test:no_rt
       - for:  [tokio, async-std, smol, nio, glommio, worker]
         task: test:rt
