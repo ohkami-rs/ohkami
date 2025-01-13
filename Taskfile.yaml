@@ -60,10 +60,13 @@ tasks:
   test:examples:
     dir: examples
     cmds:
-      - docker compose -f ./realworld/docker-compose.yml up -d
-      - cd ./realworld && sleep 5 && sqlx migrate run
       - cargo test
-      - docker compose -f ./realworld/docker-compose.yml down
+
+  test:samples:
+    dir: samples
+    cmds:
+      - chmod +x ./test.sh
+      - ./test.sh
 
   test:no_rt:
     dir: ./ohkami

@@ -7,6 +7,7 @@ members  = [
     "ohkami_openapi",
 ]
 exclude  = [
+    "samples",
     "benches",
     "benches_rt/glommio",
     "benches_rt/nio",

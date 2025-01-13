@@ -8,11 +8,15 @@ pub(crate) struct Config {
 }
 
 impl Config {
+    #[cfg(feature="__rt_native__")]
     pub(crate) fn keepalive_timeout(&self) -> u64 {
-        *self.keepalive_timeout
+        *(&*self.keepalive_timeout)
     }
+
+    #[cfg(feature="__rt_native__")]
+    #[cfg(feature="ws")]
     pub(crate) fn websocket_timeout(&self) -> u64 {
-        *self.websocket_timeout
+        *(&*self.websocket_timeout)
     }
 }
 
