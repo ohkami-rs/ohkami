@@ -3,6 +3,20 @@
 use super::*;
 use serde_json::json;
 
+macro_rules! assert_eq {
+    ($left:expr, $right:expr) => {{
+        let (left, right) = ($left, $right);
+        if $left != $right {
+            panic!("\
+                \n[left]\n\
+                {left:#?}\n\
+                \n[right]\n\
+                {right:#?}\n\
+            ")
+        }
+    }};
+}
+
 #[test] fn test_openapi_doc_serialization() {
     let doc = document::Document::new(
         "Sample API", "0.1.9", [
@@ -25,7 +39,7 @@ use serde_json::json;
         )
     );
 
-    assert_eq!(serde_json::to_value(doc).unwrap(), json!({
+    assert_eq!(serde_json::to_value(&doc).unwrap(), json!({
         "openapi": "3.1.0",
         "info": {
             "title": "Sample API",
@@ -64,6 +78,10 @@ use serde_json::json;
                     }
                 }
             }
+        },
+        "components": {
+            "schemas": {},
+            "securitySchemes": {}
         }
     }));
 }

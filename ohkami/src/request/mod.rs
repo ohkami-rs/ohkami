@@ -353,7 +353,7 @@ impl Request {
         // SAFETY: Just calling for request bytes and `self.__url__` is already initialized
         unsafe {let __url__ = self.__url__.assume_init_ref();
             let path = Slice::from_bytes(__url__.path().as_bytes()).as_bytes();
-            self.query = __url__.query().map(|str| QueryParams::new(str.as_bytes()));
+            self.query = QueryParams::new(__url__.query().unwrap_or_default().as_bytes());
             self.path.init_with_request_bytes(path)?;
         }
 
@@ -403,7 +403,7 @@ impl Request {
         // SAFETY: Just calling for request bytes and `self.__url__` is already initialized
         unsafe {let __url__ = self.__url__.assume_init_ref();
             let path = Slice::from_bytes(__url__.path().as_bytes()).as_bytes();
-            self.query = __url__.query().map(|str| QueryParams::new(str.as_bytes()));
+            self.query = QueryParams::new(__url__.query().unwrap_or_default().as_bytes());
             self.path.init_with_request_bytes(path)?;
         }
 

@@ -90,15 +90,11 @@ impl<'req> openapi::Schema for HelloQuery<'req> {
     }
 }
 
-#[crate::__rt__::test] async fn extract_optional_query() {
+#[crate::__rt__::test] async fn extract_query() {
     async fn hello(
-        query: Option<Query<HelloQuery<'_>>>,
+        Query(HelloQuery { name, repeat }): Query<HelloQuery<'_>>,
     ) -> String {
-        match query {
-            None => String::from("no query"),
-            Some(Query(HelloQuery { name, repeat })) =>
-                format!("Hello, {name}!").repeat(repeat.unwrap_or(1))
-        }
+        format!("Hello, {name}!").repeat(repeat.unwrap_or(1))
     }
 
     let t = Ohkami::new((
@@ -109,13 +105,15 @@ impl<'req> openapi::Schema for HelloQuery<'req> {
         let req = TestRequest::GET("/")
             .query("name", "ohkami");
         let res = t.oneshot(req).await;
+        assert_eq!(res.status().code(), 200);
         assert_eq!(res.text(), Some("Hello, ohkami!"));
     }
 
     {
         let req = TestRequest::GET("/");
         let res = t.oneshot(req).await;
-        assert_eq!(res.text(), Some("no query"));
+        assert_eq!(res.status().code(), 400);
+        assert_eq!(res.text(), Some("missing field `name`"));
     }
 
     {
@@ -123,6 +121,7 @@ impl<'req> openapi::Schema for HelloQuery<'req> {
             .query("name",   "ohkami")
             .query("repeat", "3");
         let res = t.oneshot(req).await;
+        assert_eq!(res.status().code(), 200);
         assert_eq!(res.text(), Some(
             "Hello, ohkami!Hello, ohkami!Hello, ohkami!"
         ));
