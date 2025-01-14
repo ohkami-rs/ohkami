@@ -1,6 +1,6 @@
 use super::util::ID;
 use super::segments::{RouteSegments, RouteSegment};
-use crate::fang::{BoxedFPC, Fangs, Handler};
+use crate::fang::{BoxedFPC, Fangs, handler::Handler};
 use crate::ohkami::build::{ByAnother, HandlerSet};
 use std::{sync::Arc, collections::HashSet};
 
@@ -165,9 +165,7 @@ impl Router {
 
         let r#final = super::r#final::Router::from(self);
 
-        #[cfg(feature="DEBUG")] {
-            println!("finalized: {final:#?}")
-        }
+        crate::DEBUG!("finalized: {final:#?}");
 
         (r#final, routes)
     }

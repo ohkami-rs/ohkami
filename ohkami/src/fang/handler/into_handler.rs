@@ -592,9 +592,9 @@ const _: (/* two PathParams and FromRequest items */) = {
 
 #[cfg(test)] #[test] fn handler_args() {
     async fn h0() -> &'static str {""}
-
     async fn h1(_param: String) -> Response {todo!()}
     async fn h2(_param: &str) -> Response {todo!()}
+    async fn h3(_params: (&str, u64)) -> Response {todo!()}
 
     struct P;
     impl<'p> FromParam<'p> for P {
@@ -603,7 +603,7 @@ const _: (/* two PathParams and FromRequest items */) = {
             Ok(Self)
         }
     }
-    async fn h3(_param: P) -> String {format!("")}
+    async fn h4(_param: P) -> String {format!("")}
 
     #[cfg(feature="rt_worker")]
     struct SomeJS {_ptr: *const u8}
@@ -615,7 +615,7 @@ const _: (/* two PathParams and FromRequest items */) = {
         }
     }
     #[cfg(feature="rt_worker")]
-    async fn h4(_: SomeJS) -> String {format!("")}
+    async fn h5(_: SomeJS) -> String {format!("")}
 
     macro_rules! assert_handlers {
         ( $($function:ident)* ) => {
@@ -623,8 +623,8 @@ const _: (/* two PathParams and FromRequest items */) = {
         };
     }
 
-    assert_handlers! { h0 h1 h2 h3  }
+    assert_handlers! { h0 h1 h2 h3 h4 }
 
     #[cfg(feature="rt_worker")]
-    assert_handlers! { h4 }
+    assert_handlers! { h5 }
 }

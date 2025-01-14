@@ -1,4 +1,4 @@
-#![cfg(all(feature="rt_tokio", feature="DEBUG"))]
+#![cfg(all(test, feature="__rt_native__", feature="DEBUG"))]
 
 use crate::Response;
 
@@ -6,7 +6,9 @@ macro_rules! assert_bytes_eq {
     ($res:expr, $expected:expr) => {
         {
             let mut res_bytes = Vec::new();
-            $res.send(&mut res_bytes).await;
+            crate::__rt__::testing::block_on(
+                $res.send(&mut res_bytes)
+            );
 
             if res_bytes != $expected {
                 panic!("\n\
@@ -22,8 +24,8 @@ macro_rules! assert_bytes_eq {
     };
 }
 
-#[crate::__rt__::test]
-async fn test_response_into_bytes() {
+#[test]
+fn test_response_into_bytes() {
     let __now__ = ::ohkami_lib::imf_fixdate(crate::util::unix_timestamp());
 
     let res = Response::NoContent();
@@ -101,8 +103,8 @@ async fn test_response_into_bytes() {
 }
 
 #[cfg(feature="sse")]
-#[crate::__rt__::test]
-async fn test_stream_response() {
+#[test]
+fn test_stream_response() {
     let __now__ = ::ohkami_lib::imf_fixdate(crate::util::unix_timestamp());
 
     fn repeat_by<T, F: Fn(usize) -> T + Unpin>(

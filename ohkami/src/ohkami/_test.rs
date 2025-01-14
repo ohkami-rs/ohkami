@@ -1,8 +1,6 @@
 #![allow(non_snake_case)]
-#![cfg(debug_assertions)]
-#![cfg(all(feature="rt_tokio", feature="DEBUG"))] // for `#[__rt__::test]`
+#![cfg(all(test, feature="__rt_native__", feature="DEBUG"))]
 
-use crate::__rt__;
 use crate::prelude::*;
 use crate::testing::*;
 
@@ -73,99 +71,103 @@ fn my_ohkami() -> Ohkami {
     ))
 }
 
-#[crate::__rt__::test] async fn test_handler_registration() {
+#[test] fn test_handler_registration() {
     let t = my_ohkami().test();
 
-    /* GET /health */
+    crate::__rt__::testing::block_on(async {
 
-    let req = TestRequest::GET("/health");
-    let get_res = t.oneshot(req).await;
-    assert_eq!(get_res.text(), Some("health_check"));
+        /* GET /health */
 
-    let req = TestRequest::HEAD("/health");
-    let head_res = t.oneshot(req).await;
-    assert_eq!(head_res.text(), None);
-    assert_eq!(
-        {let mut h = get_res.headers().collect::<Vec<_>>(); h.sort(); h},
-        {let mut h = head_res.headers().collect::<Vec<_>>(); h.sort(); h}
-    );
+        let req = TestRequest::GET("/health");
+        let get_res = t.oneshot(req).await;
+        assert_eq!(get_res.text(), Some("health_check"));
 
-    /* GET /api/profiles/:username */
+        let req = TestRequest::HEAD("/health");
+        let head_res = t.oneshot(req).await;
+        assert_eq!(head_res.text(), None);
+        assert_eq!(
+            {let mut h = get_res.headers().collect::<Vec<_>>(); h.sort(); h},
+            {let mut h = head_res.headers().collect::<Vec<_>>(); h.sort(); h}
+        );
 
-    let req = TestRequest::GET("/api/profiles");
-    let get_res = t.oneshot(req).await;
-    assert_eq!(get_res.status(), Status::NotFound);
+        /* GET /api/profiles/:username */
 
-    let req = TestRequest::HEAD("/api/profiles");
-    let head_res = t.oneshot(req).await;
-    assert_eq!(head_res.text(), None);
-    assert_eq!(
-        {let mut h = get_res.headers().collect::<Vec<_>>(); h.sort(); h},
-        {let mut h = head_res.headers().collect::<Vec<_>>(); h.sort(); h}
-    );
+        let req = TestRequest::GET("/api/profiles");
+        let get_res = t.oneshot(req).await;
+        assert_eq!(get_res.status(), Status::NotFound);
 
-    let req = TestRequest::GET("/api/profiles/123");
-    let get_res = t.oneshot(req).await;
-    assert_eq!(get_res.text(), Some("get_profile of user `123`"));
+        let req = TestRequest::HEAD("/api/profiles");
+        let head_res = t.oneshot(req).await;
+        assert_eq!(head_res.text(), None);
+        assert_eq!(
+            {let mut h = get_res.headers().collect::<Vec<_>>(); h.sort(); h},
+            {let mut h = head_res.headers().collect::<Vec<_>>(); h.sort(); h}
+        );
 
-    let req = TestRequest::HEAD("/api/profiles/123");
-    let head_res = t.oneshot(req).await;
-    assert_eq!(head_res.text(), None);
-    assert_eq!(
-        {let mut h = get_res.headers().collect::<Vec<_>>(); h.sort(); h},
-        {let mut h = head_res.headers().collect::<Vec<_>>(); h.sort(); h}
-    );
+        let req = TestRequest::GET("/api/profiles/123");
+        let get_res = t.oneshot(req).await;
+        assert_eq!(get_res.text(), Some("get_profile of user `123`"));
 
-
-    /* POST,DELETE /api/profiles/:username/follow */
-
-    let req = TestRequest::GET("/api/profiles/the_user/follow");
-    let res = t.oneshot(req).await;
-    assert_eq!(res.status(), Status::NotFound);
-
-    let req = TestRequest::POST("/api/profiles/the_user");
-    let res = t.oneshot(req).await;
-    assert_eq!(res.status(), Status::NotFound);
-
-    let req = TestRequest::POST("/api/profiles/the_user/follow");
-    let res = t.oneshot(req).await;
-    assert_eq!(res.status(), Status::OK);
-
-    let req = TestRequest::POST("/api/profiles/the_user/follow");
-    let res = t.oneshot(req).await;
-    assert_eq!(res.text(), Some("follow_user `the_user`"));
-
-    let req = TestRequest::DELETE("/api/profiles/the_user/follow");
-    let res = t.oneshot(req).await;
-    assert_eq!(res.text(), Some("unfollow_user `the_user`"));
-
-    /* GET /api/articles/feed */
-
-    let req = TestRequest::GET("/api/articles/feed");
-    let res = t.oneshot(req).await;
-    assert_eq!(res.text(), Some("get_feed"));
+        let req = TestRequest::HEAD("/api/profiles/123");
+        let head_res = t.oneshot(req).await;
+        assert_eq!(head_res.text(), None);
+        assert_eq!(
+            {let mut h = get_res.headers().collect::<Vec<_>>(); h.sort(); h},
+            {let mut h = head_res.headers().collect::<Vec<_>>(); h.sort(); h}
+        );
 
 
-    /* GET,PUT,DELETE /api/articles/:slug */
+        /* POST,DELETE /api/profiles/:username/follow */
 
-    let req = TestRequest::GET("/api/articles/ohkami123456");
-    let res = t.oneshot(req).await;
-    assert_eq!(res.text(), Some("get_article ohkami123456"));
+        let req = TestRequest::GET("/api/profiles/the_user/follow");
+        let res = t.oneshot(req).await;
+        assert_eq!(res.status(), Status::NotFound);
 
-    let req = TestRequest::PUT("/api/articles/abcdef123");
-    let res = t.oneshot(req).await;
-    assert_eq!(res.text(), Some("put_article abcdef123"));
+        let req = TestRequest::POST("/api/profiles/the_user");
+        let res = t.oneshot(req).await;
+        assert_eq!(res.status(), Status::NotFound);
+
+        let req = TestRequest::POST("/api/profiles/the_user/follow");
+        let res = t.oneshot(req).await;
+        assert_eq!(res.status(), Status::OK);
+
+        let req = TestRequest::POST("/api/profiles/the_user/follow");
+        let res = t.oneshot(req).await;
+        assert_eq!(res.text(), Some("follow_user `the_user`"));
+
+        let req = TestRequest::DELETE("/api/profiles/the_user/follow");
+        let res = t.oneshot(req).await;
+        assert_eq!(res.text(), Some("unfollow_user `the_user`"));
+
+        /* GET /api/articles/feed */
+
+        let req = TestRequest::GET("/api/articles/feed");
+        let res = t.oneshot(req).await;
+        assert_eq!(res.text(), Some("get_feed"));
 
 
-    /* DELETE /api/articles/:slug/comments/:id */
+        /* GET,PUT,DELETE /api/articles/:slug */
 
-    let req = TestRequest::DELETE("/api/articles/__prototype__/comments/42");
-    let res = t.oneshot(req).await;
-    assert_eq!(res.text(), Some("delete_comment __prototype__ / 42"));
+        let req = TestRequest::GET("/api/articles/ohkami123456");
+        let res = t.oneshot(req).await;
+        assert_eq!(res.text(), Some("get_article ohkami123456"));
+
+        let req = TestRequest::PUT("/api/articles/abcdef123");
+        let res = t.oneshot(req).await;
+        assert_eq!(res.text(), Some("put_article abcdef123"));
+
+
+        /* DELETE /api/articles/:slug/comments/:id */
+
+        let req = TestRequest::DELETE("/api/articles/__prototype__/comments/42");
+        let res = t.oneshot(req).await;
+        assert_eq!(res.text(), Some("delete_comment __prototype__ / 42"));
+
+    });
 }
 
 
-#[crate::__rt__::test] async fn test_fang_registration() {
+#[test] fn test_fang_registration() {
     use std::sync::{OnceLock, Mutex};
     use crate::{Fang, FangProc};
 
@@ -194,57 +196,60 @@ fn my_ohkami() -> Ohkami {
 
     async fn h() -> &'static str {"h"}
 
+    crate::__rt__::testing::block_on(async {
 
-    /*===== with no nests =====*/
-    *N().lock().unwrap() = 0;
+        /*===== with no nests =====*/
+        *N().lock().unwrap() = 0;
 
-    let t = Ohkami::with((Increment,), (
-        "/a"  .GET(h),
-        "/a/b".GET(h),
-    )).test();
+        let t = Ohkami::with((Increment,), (
+            "/a"  .GET(h),
+            "/a/b".GET(h),
+        )).test();
 
-    let req = TestRequest::GET("/a");
-    t.oneshot(req).await;
-    assert_eq!(*N().lock().unwrap(), 1);
+        let req = TestRequest::GET("/a");
+        t.oneshot(req).await;
+        assert_eq!(*N().lock().unwrap(), 1);
 
-    let req = TestRequest::GET("/a");
-    t.oneshot(req).await;
-    assert_eq!(*N().lock().unwrap(), 2);
+        let req = TestRequest::GET("/a");
+        t.oneshot(req).await;
+        assert_eq!(*N().lock().unwrap(), 2);
 
-    let req = TestRequest::GET("/a/b");
-    t.oneshot(req).await;
-    assert_eq!(*N().lock().unwrap(), 3);
+        let req = TestRequest::GET("/a/b");
+        t.oneshot(req).await;
+        assert_eq!(*N().lock().unwrap(), 3);
 
-    
-    /*===== with nests =====*/
-    *N().lock().unwrap() = 0;
 
-    let t = Ohkami::with((Increment,), (
-        "/a"  .GET(h),
-        "/a/b".GET(h),
-        "/a/b/c".By(Ohkami::with((), (
-            "/d"  .GET(h),
-            "/d/e".GET(h),
-        )))
-    )).test();
+        /*===== with nests =====*/
+        *N().lock().unwrap() = 0;
 
-    let req = TestRequest::GET("/a");
-    t.oneshot(req).await;
-    assert_eq!(*N().lock().unwrap(), 1);
+        let t = Ohkami::with((Increment,), (
+            "/a"  .GET(h),
+            "/a/b".GET(h),
+            "/a/b/c".By(Ohkami::with((), (
+                "/d"  .GET(h),
+                "/d/e".GET(h),
+            )))
+        )).test();
 
-    let req = TestRequest::GET("/a/b");
-    t.oneshot(req).await;
-    assert_eq!(*N().lock().unwrap(), 2);
-    let req = TestRequest::GET("/a/b/c/d");
-    t.oneshot(req).await;
-    assert_eq!(*N().lock().unwrap(), 3);
+        let req = TestRequest::GET("/a");
+        t.oneshot(req).await;
+        assert_eq!(*N().lock().unwrap(), 1);
 
-    let req = TestRequest::GET("/a/b/c/d/e");
-    t.oneshot(req).await;
-    assert_eq!(*N().lock().unwrap(), 4);
+        let req = TestRequest::GET("/a/b");
+        t.oneshot(req).await;
+        assert_eq!(*N().lock().unwrap(), 2);
+        let req = TestRequest::GET("/a/b/c/d");
+        t.oneshot(req).await;
+        assert_eq!(*N().lock().unwrap(), 3);
+
+        let req = TestRequest::GET("/a/b/c/d/e");
+        t.oneshot(req).await;
+        assert_eq!(*N().lock().unwrap(), 4);
+
+    });
 }
 
-#[__rt__::test] async fn test_fangs_nesting() {
+#[test] fn test_fangs_nesting() {
     use std::sync::{Mutex, OnceLock};
     use crate::{Fang, FangProc, Ohkami};
 
@@ -308,66 +313,68 @@ fn my_ohkami() -> Ohkami {
         ))),
     )).test();
 
-    {MESSAGES().lock().unwrap().clear();
-        let req = TestRequest::GET("/abc");
-        let res = t.oneshot(req).await;
+    crate::__rt__::testing::block_on(async {
+        {MESSAGES().lock().unwrap().clear();
+            let req = TestRequest::GET("/abc");
+            let res = t.oneshot(req).await;
 
-        assert_eq!(res.status(), Status::OK);
-        assert_eq!(&*MESSAGES().lock().unwrap(), &[
-            "Hello, Amelia!",
-            "Bye, Amelia!",
-        ]);
-    }
+            assert_eq!(res.status(), Status::OK);
+            assert_eq!(&*MESSAGES().lock().unwrap(), &[
+                "Hello, Amelia!",
+                "Bye, Amelia!",
+            ]);
+        }
 
-    {MESSAGES().lock().unwrap().clear();
-        let req = TestRequest::GET("/def");
-        let res = t.oneshot(req).await;
+        {MESSAGES().lock().unwrap().clear();
+            let req = TestRequest::GET("/def");
+            let res = t.oneshot(req).await;
 
-        assert_eq!(res.status(), Status::OK);
-        assert_eq!(&*MESSAGES().lock().unwrap(), &[
-            "Hello, Amelia!",
-            "Hello, Brooks!",
-            "Hello, Carter!",
-            "Bye, Carter!",
-            "Bye, Brooks!",
-            "Bye, Amelia!",
-        ]);
-    }
+            assert_eq!(res.status(), Status::OK);
+            assert_eq!(&*MESSAGES().lock().unwrap(), &[
+                "Hello, Amelia!",
+                "Hello, Brooks!",
+                "Hello, Carter!",
+                "Bye, Carter!",
+                "Bye, Brooks!",
+                "Bye, Amelia!",
+            ]);
+        }
 
-    {MESSAGES().lock().unwrap().clear();
-        let req = TestRequest::GET("/def/jklmno");
-        let res = t.oneshot(req).await;
+        {MESSAGES().lock().unwrap().clear();
+            let req = TestRequest::GET("/def/jklmno");
+            let res = t.oneshot(req).await;
 
-        assert_eq!(res.status(), Status::NotFound);
-        assert_eq!(&*MESSAGES().lock().unwrap(), &[
-            "Hello, Amelia!",
-            "Hello, Brooks!",
-            "Hello, Carter!",
-            "Bye, Carter!",
-            "Bye, Brooks!",
-            "Bye, Amelia!",
-        ]);
-    }
+            assert_eq!(res.status(), Status::NotFound);
+            assert_eq!(&*MESSAGES().lock().unwrap(), &[
+                "Hello, Amelia!",
+                "Hello, Brooks!",
+                "Hello, Carter!",
+                "Bye, Carter!",
+                "Bye, Brooks!",
+                "Bye, Amelia!",
+            ]);
+        }
 
-    {MESSAGES().lock().unwrap().clear();
-        let req = TestRequest::GET("/def/jkl/mno");
-        let res = t.oneshot(req).await;
+        {MESSAGES().lock().unwrap().clear();
+            let req = TestRequest::GET("/def/jkl/mno");
+            let res = t.oneshot(req).await;
 
-        assert_eq!(res.status(), Status::OK);
-        assert_eq!(&*MESSAGES().lock().unwrap(), &[
-            "Hello, Amelia!",
-            "Hello, Brooks!",
-            "Hello, Carter!",
-            "Hello, Daniel!",
-            "Bye, Daniel!",
-            "Bye, Carter!",
-            "Bye, Brooks!",
-            "Bye, Amelia!",
-        ]);
-    }
+            assert_eq!(res.status(), Status::OK);
+            assert_eq!(&*MESSAGES().lock().unwrap(), &[
+                "Hello, Amelia!",
+                "Hello, Brooks!",
+                "Hello, Carter!",
+                "Hello, Daniel!",
+                "Bye, Daniel!",
+                "Bye, Carter!",
+                "Bye, Brooks!",
+                "Bye, Amelia!",
+            ]);
+        }
+    });
 }
 
-#[__rt__::test] async fn test_pararell_registering() {
+#[test] fn test_pararell_registering() {
     async fn hello_help() -> &'static str {
         "Hi, this is `hello` api. \
         Call me with your name as a path parameter:\n\
@@ -378,115 +385,121 @@ fn my_ohkami() -> Ohkami {
         format!("Hello, {name}!")
     }
 
+    crate::__rt__::testing::block_on(async {
 
-    /* register static pattern in ahead */
+        /* register static pattern in ahead */
 
-    let t = Ohkami::new((
-        "/hello/help" .GET(hello_help),
-        "/hello/:name".GET(hello),
-    )).test();
+        let t = Ohkami::new((
+            "/hello/help" .GET(hello_help),
+            "/hello/:name".GET(hello),
+        )).test();
 
-    let req = TestRequest::GET("/hello/help");
-    let res = t.oneshot(req).await;
-    assert_eq!(res.status(), Status::OK);
-    assert_eq!(res.text(),   Some(
-        "Hi, this is `hello` api. \
-        Call me with your name as a path parameter:\n\
-        \t `GET /hello/{you name here}`"
-    ));
+        let req = TestRequest::GET("/hello/help");
+        let res = t.oneshot(req).await;
+        assert_eq!(res.status(), Status::OK);
+        assert_eq!(res.text(),   Some(
+            "Hi, this is `hello` api. \
+            Call me with your name as a path parameter:\n\
+            \t `GET /hello/{you name here}`"
+        ));
 
-    let req = TestRequest::GET("/hello/Mr.%20wolf");
-    let res = t.oneshot(req).await;
-    assert_eq!(res.status(), Status::OK);
-    assert_eq!(res.text(),   Some("Hello, Mr. wolf!"));
+        let req = TestRequest::GET("/hello/Mr.%20wolf");
+        let res = t.oneshot(req).await;
+        assert_eq!(res.status(), Status::OK);
+        assert_eq!(res.text(),   Some("Hello, Mr. wolf!"));
 
 
-    /* register param pattern in ahead */
+        /* register param pattern in ahead */
 
-    let t = Ohkami::new((
-        "/hello/:name".GET(hello),
-        "/hello/help" .GET(hello_help),
-    )).test();
+        let t = Ohkami::new((
+            "/hello/:name".GET(hello),
+            "/hello/help" .GET(hello_help),
+        )).test();
 
-    let req = TestRequest::GET("/hello/help");
-    let res = t.oneshot(req).await;
-    assert_eq!(res.status(), Status::OK);
-    assert_eq!(res.text(),   Some(
-        "Hi, this is `hello` api. \
-        Call me with your name as a path parameter:\n\
-        \t `GET /hello/{you name here}`"
-    ));
+        let req = TestRequest::GET("/hello/help");
+        let res = t.oneshot(req).await;
+        assert_eq!(res.status(), Status::OK);
+        assert_eq!(res.text(),   Some(
+            "Hi, this is `hello` api. \
+            Call me with your name as a path parameter:\n\
+            \t `GET /hello/{you name here}`"
+        ));
 
-    let req = TestRequest::GET("/hello/Mr.%20wolf");
-    let res = t.oneshot(req).await;
-    assert_eq!(res.status(), Status::OK);
-    assert_eq!(res.text(),   Some("Hello, Mr. wolf!"));
+        let req = TestRequest::GET("/hello/Mr.%20wolf");
+        let res = t.oneshot(req).await;
+        assert_eq!(res.status(), Status::OK);
+        assert_eq!(res.text(),   Some("Hello, Mr. wolf!"));
+
+    });
 }
 
 #[test]
 #[should_panic(expected = "Duplicate routes registration: `/abc`")]
 fn duplcate_routes_registration() {
-    Ohkami::new((
+    let _ = Ohkami::new((
         "/abc".GET(|| async {"GET"}),
         "/abc".PUT(|| async {"PUT"}),
     ));
 }
 
-#[__rt__::test]
-async fn prefixy_routes() {
-    let t = Ohkami::new((
-        "/abcd".GET(|| async {"This is abcd"}),
-        "/abc".GET(|| async {"This is abc"}),
-    )).test(); {
-        let req = TestRequest::GET("/abc");
-        let res = t.oneshot(req).await;
-        assert_eq!(res.status(), Status::OK);
-        assert_eq!(res.text(), Some("This is abc"));
-    } {
-        let req = TestRequest::GET("/ab");
-        let res = t.oneshot(req).await;
-        assert_eq!(res.status(), Status::NotFound);
-    } {
-        let req = TestRequest::GET("/abc2");
-        let res = t.oneshot(req).await;
-        assert_eq!(res.status(), Status::NotFound);
-    } {
-        let req = TestRequest::GET("/abcd");
-        let res = t.oneshot(req).await;
-        assert_eq!(res.status(), Status::OK);
-        assert_eq!(res.text(), Some("This is abcd"));
-    } {
-        let req = TestRequest::GET("/abcde");
-        let res = t.oneshot(req).await;
-        assert_eq!(res.status(), Status::NotFound);
-    }
+#[test] fn prefixy_routes() {
+    crate::__rt__::testing::block_on(async {
+        let t = Ohkami::new((
+            "/abcd".GET(|| async {"This is abcd"}),
+            "/abc".GET(|| async {"This is abc"}),
+        )).test();
 
-    /* reversed; MUST have the same behavior */
-    
-    let t = Ohkami::new((
-        "/abc".GET(|| async {"This is abc"}),
-        "/abcd".GET(|| async {"This is abcd"}),
-    )).test(); {
-        let req = TestRequest::GET("/abc");
-        let res = t.oneshot(req).await;
-        assert_eq!(res.status(), Status::OK);
-        assert_eq!(res.text(), Some("This is abc"));
-    } {
-        let req = TestRequest::GET("/ab");
-        let res = t.oneshot(req).await;
-        assert_eq!(res.status(), Status::NotFound);
-    } {
-        let req = TestRequest::GET("/abc2");
-        let res = t.oneshot(req).await;
-        assert_eq!(res.status(), Status::NotFound);
-    } {
-        let req = TestRequest::GET("/abcd");
-        let res = t.oneshot(req).await;
-        assert_eq!(res.status(), Status::OK);
-        assert_eq!(res.text(), Some("This is abcd"));
-    } {
-        let req = TestRequest::GET("/abcde");
-        let res = t.oneshot(req).await;
-        assert_eq!(res.status(), Status::NotFound);
-    }
+        {
+            let req = TestRequest::GET("/abc");
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status(), Status::OK);
+            assert_eq!(res.text(), Some("This is abc"));
+        } {
+            let req = TestRequest::GET("/ab");
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status(), Status::NotFound);
+        } {
+            let req = TestRequest::GET("/abc2");
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status(), Status::NotFound);
+        } {
+            let req = TestRequest::GET("/abcd");
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status(), Status::OK);
+            assert_eq!(res.text(), Some("This is abcd"));
+        } {
+            let req = TestRequest::GET("/abcde");
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status(), Status::NotFound);
+        }
+
+        /* reversed; MUST have the same behavior */
+
+        let t = Ohkami::new((
+            "/abc".GET(|| async {"This is abc"}),
+            "/abcd".GET(|| async {"This is abcd"}),
+        )).test(); {
+            let req = TestRequest::GET("/abc");
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status(), Status::OK);
+            assert_eq!(res.text(), Some("This is abc"));
+        } {
+            let req = TestRequest::GET("/ab");
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status(), Status::NotFound);
+        } {
+            let req = TestRequest::GET("/abc2");
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status(), Status::NotFound);
+        } {
+            let req = TestRequest::GET("/abcd");
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status(), Status::OK);
+            assert_eq!(res.text(), Some("This is abcd"));
+        } {
+            let req = TestRequest::GET("/abcde");
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status(), Status::NotFound);
+        }
+    });
 }

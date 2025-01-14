@@ -12,6 +12,7 @@ use crate::openapi;
 
 #[derive(Clone)]
 pub struct Handler {
+    #[allow(dead_code/* read only in router */)]
     pub(crate) proc: BoxedFPC,
 
     #[cfg(feature="openapi")]
@@ -67,6 +68,7 @@ const _: () = {
     unsafe impl Sync for Handler {}
 };
 
+#[cfg(feature="__rt__")]
 impl Handler {
     pub(crate) fn default_not_found() -> Self {
         use std::sync::LazyLock;

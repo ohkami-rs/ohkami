@@ -125,14 +125,14 @@ const _: () = {
 
 
 
-#[cfg(all(test, debug_assertions, feature="rt_tokio", feature="DEBUG"))]
+#[cfg(all(test, debug_assertions, feature="__rt_native__", feature="DEBUG"))]
 mod test {
     use super::*;
     use crate::prelude::*;
     use crate::testing::*;
 
-    #[crate::__rt__::test]
-    async fn availablity() {
+    #[test]
+    fn availablity() {
         use std::sync::{Mutex, OnceLock};
 
         fn messages() -> &'static Mutex<Vec<String>> {
@@ -187,17 +187,19 @@ mod test {
             "/greet".POST(|| async {"Hi, I'm Handler!"}),
         )).test();
 
-        {
-            let req = TestRequest::POST("/greet");
-            let res = t.oneshot(req).await;
+        crate::__rt__::testing::block_on(async {
+            {
+                let req = TestRequest::POST("/greet");
+                let res = t.oneshot(req).await;
 
-            assert_eq!(res.status(), Status::OK);
-            assert_eq!(&*messages().lock().unwrap(), &[
-                "Hello, Clerk!",
-                "Hello, John!",
-                "Bye, John!",
-                "Bye, Clerk!",
-            ]);
-        }
+                assert_eq!(res.status(), Status::OK);
+                assert_eq!(&*messages().lock().unwrap(), &[
+                    "Hello, Clerk!",
+                    "Hello, John!",
+                    "Bye, John!",
+                    "Bye, Clerk!",
+                ]);
+            }
+        });
     }
 }

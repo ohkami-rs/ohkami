@@ -1,5 +1,4 @@
-#![cfg(debug_assertions)]
-#![cfg(all(feature="rt_tokio", feature="DEBUG"))]
+#![cfg(all(test, feature="__rt_native__", feature="DEBUG"))]
 
 use crate::prelude::*;
 use crate::testing::*;
@@ -41,7 +40,7 @@ impl<'req> openapi::Schema for HelloQuery<'req> {
     }
 }
 
-#[crate::__rt__::test] async fn extract_required_payload() {
+#[test] fn extract_required_payload() {
     async fn create_user(
         JSON(_user): JSON<User<'_>>
     ) -> status::Created {
@@ -52,17 +51,19 @@ impl<'req> openapi::Schema for HelloQuery<'req> {
         "/".POST(create_user),
     )).test();
 
-    {
-        let req = TestRequest::POST("/")
-            .json_lit(r#"{
-                "name": "kanarus",
-                "password": "passw0rd"
-            }"#);
-        let _ = t.oneshot(req).await;
-    }
+    crate::__rt__::testing::block_on(async {
+        {
+            let req = TestRequest::POST("/")
+                .json_lit(r#"{
+                    "name": "kanarus",
+                    "password": "passw0rd"
+                }"#);
+            let _ = t.oneshot(req).await;
+        }
+    });
 }
 
-#[crate::__rt__::test] async fn extract_optional_payload() {
+#[test] fn extract_optional_payload() {
     async fn post_user(
         body: Option<JSON<User<'_>>>,
     ) -> &'static str {
@@ -73,24 +74,25 @@ impl<'req> openapi::Schema for HelloQuery<'req> {
         "/".POST(post_user),
     )).test();
 
-    {
-        let req = TestRequest::POST("/")
-            .json_lit(r#"{
-                "name": "kanarus",
-                "password": "passw0rd"
-            }"#);
-        let res = t.oneshot(req).await;
-        assert_eq!(res.text(), Some("some"));
-    }
-
-    {
-        let req = TestRequest::POST("/");
-        let res = t.oneshot(req).await;
-        assert_eq!(res.text(), Some("none"));
-    }
+    crate::__rt__::testing::block_on(async {
+        {
+            let req = TestRequest::POST("/")
+                .json_lit(r#"{
+                    "name": "kanarus",
+                    "password": "passw0rd"
+                }"#);
+            let res = t.oneshot(req).await;
+            assert_eq!(res.text(), Some("some"));
+        }
+        {
+            let req = TestRequest::POST("/");
+            let res = t.oneshot(req).await;
+            assert_eq!(res.text(), Some("none"));
+        }
+    });
 }
 
-#[crate::__rt__::test] async fn extract_query() {
+#[test] fn extract_query() {
     async fn hello(
         Query(HelloQuery { name, repeat }): Query<HelloQuery<'_>>,
     ) -> String {
@@ -101,29 +103,29 @@ impl<'req> openapi::Schema for HelloQuery<'req> {
         "/".GET(hello),
     )).test();
 
-    {
-        let req = TestRequest::GET("/")
-            .query("name", "ohkami");
-        let res = t.oneshot(req).await;
-        assert_eq!(res.status().code(), 200);
-        assert_eq!(res.text(), Some("Hello, ohkami!"));
-    }
-
-    {
-        let req = TestRequest::GET("/");
-        let res = t.oneshot(req).await;
-        assert_eq!(res.status().code(), 400);
-        assert_eq!(res.text(), Some("missing field `name`"));
-    }
-
-    {
-        let req = TestRequest::GET("/")
-            .query("name",   "ohkami")
-            .query("repeat", "3");
-        let res = t.oneshot(req).await;
-        assert_eq!(res.status().code(), 200);
-        assert_eq!(res.text(), Some(
-            "Hello, ohkami!Hello, ohkami!Hello, ohkami!"
-        ));
-    }
+    crate::__rt__::testing::block_on(async {
+        {
+            let req = TestRequest::GET("/")
+                .query("name", "ohkami");
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status().code(), 200);
+            assert_eq!(res.text(), Some("Hello, ohkami!"));
+        }
+        {
+            let req = TestRequest::GET("/");
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status().code(), 400);
+            assert_eq!(res.text(), Some("missing field `name`"));
+        }
+        {
+            let req = TestRequest::GET("/")
+                .query("name",   "ohkami")
+                .query("repeat", "3");
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status().code(), 200);
+            assert_eq!(res.text(), Some(
+                "Hello, ohkami!Hello, ohkami!Hello, ohkami!"
+            ));
+        }
+    });
 }

@@ -113,12 +113,6 @@ pub fn timeout_in<T>(
         }
     }
 
-    #[cfg(feature="rt_glommio")]
-    /* for fang::builtin::timeout::Timeout::Proc::bite to return Send Future */
-    /* SAFETY: proc and sleep are executed on the same thread in rt_glommio */
-    /* ( glommio::timer::sleep itself returns not-Send Future because it's not needed due to the architecture ) */
-    unsafe impl<Sleep, Proc> Send for Timeout<Sleep, Proc> {}
-
     Timeout { proc, sleep: crate::__rt__::sleep(duration) }
 }
 

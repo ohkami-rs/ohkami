@@ -1,5 +1,4 @@
 pub mod handler;
-pub use handler::{Handler, IntoHandler};
 
 mod middleware;
 pub use middleware::{Fangs, util::FangAction};

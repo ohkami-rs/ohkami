@@ -142,11 +142,11 @@ const _: () = {
         }
     }
     
-    #[cfg(any(
-        test,
-        feature="openapi"
-    ))]
     impl Path {
+        #[cfg(any(
+            all(feature="__rt_native__", feature="DEBUG", test),
+            all(feature="__rt__", feature="openapi"),
+        ))]
         pub(crate) fn from_literal(literal: &'static str) -> Self {
             Self(MaybeUninit::new(PathInner {
                 raw:    Slice::from_bytes(literal.as_bytes()),

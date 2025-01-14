@@ -1,4 +1,4 @@
-#![cfg(feature="rt_tokio")]
+#![cfg(test)]
 
 use crate::header::{append, SameSitePolicy, SetCookie};
 use super::ResponseHeaders;
