@@ -5,7 +5,7 @@ set -Ceu
 SAMPLES=$(pwd)
 
 cd $SAMPLES/petstore && \
-    cargo build &&
+    cargo build && \
     timeout -sKILL 3 cargo run &
 cd $SAMPLES/petstore/client && \
     sleep 1 && \
@@ -15,7 +15,7 @@ test $? -ne 0 && exit 1 || :
 cd $SAMPLES/readme-openapi && \
     timeout -sKILL 1 cargo run &
 cd $SAMPLES/readme-openapi && \
-    sleep 1 &&
+    sleep 1 && \
     diff -q openapi.json openapi.json.sample
 test $? -ne 0 && exit 2 || :
 
