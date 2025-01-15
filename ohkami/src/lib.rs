@@ -227,7 +227,7 @@ pub mod openapi {
             ///     let o = my_ohkami();
             /// 
             ///     // Here generate the JSON file
-            ///     o.generate(OpenAPI::json("Sample API", "0.1.9", [
+            ///     o.spit_out(OpenAPI::json("Sample API", "0.1.9", [
             ///         Server::at("http://api.example.com/v1")
             ///             .description("Main (production) server"),
             ///         Server::at("http://staging-api.example.com")

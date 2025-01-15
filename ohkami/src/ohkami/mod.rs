@@ -373,10 +373,10 @@ impl Ohkami {
     }
 
     #[cfg(feature="openapi")]
-    pub fn generate(&self, metadata: crate::openapi::OpenAPI) {
+    pub fn spit_out(&self, metadata: crate::openapi::OpenAPI) {
         if std::panic::catch_unwind(|| std::fs::exists(".")).is_err() {
-            crate::warning!("[Ohkami::gen_openapi_doc] Can't access to file system");
-            panic!("[Ohkami::gen_openapi_doc] Can't access to file system")
+            crate::warning!("[Ohkami::spit_out] Can't access to file system");
+            panic!("[Ohkami::spit_out] Can't access to file system")
         }
 
         let (router, routes) = (Self {
