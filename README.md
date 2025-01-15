@@ -154,15 +154,16 @@ async fn main() {
 
 ### `"openapi"`：OpenAPI document generation
 
-Ohkami supports *Consistent-As-Possible* OpenAPI document generation, where the most part of consistency between document and behavior is automatically assured by Ohkami's internal work.
+Ohkami supports *as consistent as possible* OpenAPI document generation, where most of the consistency between document and behavior is automatically assured by Ohkami's internal work.
 
 Only you have to
 
 - Derive `openapi::Schema` for all your schema structs
 - Make your `Ohkami` call `.spit_out({openapi::OpenAPI})`
 
-to generate consistent OpenAPI document ( moreover, the former is checked in compile-time ).\
-You don't need to take care of writing accurate methods, paths, parameters, contents, ... for the OpenAPI feature; All they are done by Ohkami.
+to generate consistent OpenAPI document. You don't need to take care of writing accurate methods, paths, parameters, contents, ... for this OpenAPI feature; All they are done by Ohkami.
+
+Of course, you can flexibly customize schemas ( by hand-implemetation of `Schema` ), descriptions or other parts ( by `#[operation]` attribute ).
 
 ```rust,ignore
 use ohkami::prelude::*;
