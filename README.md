@@ -226,10 +226,10 @@ async fn main() {
 ```
 
 - Currently, only **JSON** is supported as the document format.
-- When the binary size matters, you should prepare a feature flag activating `ohkami/openapi` in your package, and put all your codes around `openapi` behind that feature via `#[cfg(feature = ...)]`, `#[cfg_attr(feature = ...)]`.
+- When the binary size matters, you should prepare a feature flag activating `ohkami/openapi` in your package, and put all your codes around `openapi` behind that feature via `#[cfg(feature = ...)]` or `#[cfg_attr(feature = ...)]`.
 - On `rt_worker`, you need to **separate `spit_out` process** from `Ohkami` ( `#[worker]` in `lib.rs` ) itself, call it in a **binary package** importing your `Ohkami` from `lib.rs`, and compile/execute it in **native target** for your computer, not in `wasm32-unknown-unknown` for Cloudflare Workers ( becasue `spit_out` requires access to your local file system ) .
 
-### `"nightly"`：enable nightly-only functionalities
+### `"nightly"`：nightly-only functionalities
 
 - try response
 
