@@ -64,6 +64,11 @@ const _: () = {
             string()
         }
     }
+    impl Schema for std::borrow::Cow<'_, str> {
+        fn schema() -> impl Into<schema::SchemaRef> {
+            string()
+        }
+    }
     impl Schema for std::sync::Arc<String> {
         fn schema() -> impl Into<schema::SchemaRef> {
             string()
