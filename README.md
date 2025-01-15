@@ -173,15 +173,18 @@ use ohkami::openapi;
 
 // Derive `Schema` trait to generate
 // the schema of this struct in OpenAPI document.
-#[derive(Serialize, openapi::Schema)]
-struct User {
-    id: usize,
-    name: String,
-}
-
 #[derive(Deserialize, openapi::Schema)]
 struct CreateUser<'req> {
     name: &'req str,
+}
+
+#[derive(Serialize, openapi::Schema)]
+// `#[openapi(component)]` to define it as component
+// in OpenAPI document.
+#[openapi(component)]
+struct User {
+    id: usize,
+    name: String,
 }
 
 async fn create_user(
@@ -193,7 +196,7 @@ async fn create_user(
     }))
 }
 
-// (optionally) You can set operationId, summary,
+// (optionally) Set operationId, summary,
 // or override descriptions by `operation` attribute.
 #[openapi::operation({
     summary: "...",

@@ -176,6 +176,7 @@ impl SchemaRef {
                 raw.anyOf.iter_mut().for_each(|s| component_schemas.extend(s.refize()));
                 raw.allOf.iter_mut().for_each(|s| component_schemas.extend(s.refize()));
                 raw.oneOf.iter_mut().for_each(|s| component_schemas.extend(s.refize()));
+                raw.items.as_mut().map(|s| component_schemas.extend(s.refize()));
                 if let Some(name) = raw.__name__ {
                     let raw = std::mem::replace(self, SchemaRef::Reference(name));
                     component_schemas.push(raw.into_inline().unwrap());
