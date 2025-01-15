@@ -6,16 +6,14 @@ SAMPLES=$(pwd)
 
 cd $SAMPLES/petstore && \
     cargo build && \
-    timeout -sKILL 3 cargo run &
-cd $SAMPLES/petstore/client && \
-    sleep 1 && \
+    (timeout -sKILL 5 cargo run &) && \
+    cd client && \
     npm install && npm run gen && npm run main
 test $? -ne 0 && exit 1 || :
 
 cd $SAMPLES/readme-openapi && \
-    timeout -sKILL 1 cargo run &
-cd $SAMPLES/readme-openapi && \
-    sleep 1 && \
+    cargo build && \
+    (timeout -sKILL 1 cargo run &) && \
     diff -q openapi.json openapi.json.sample
 test $? -ne 0 && exit 2 || :
 
