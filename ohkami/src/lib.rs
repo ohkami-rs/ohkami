@@ -205,10 +205,10 @@ pub mod openapi {
         impl OpenAPI {
             /// Register metadata for generating OpenAPI document (JSON).
             /// 
-            /// ## note
+            /// ### note
             /// YAML version is not supported now.
             /// 
-            /// ## example
+            /// ### example
             /// 
             /// ```no_run
             /// use ohkami::prelude::*;

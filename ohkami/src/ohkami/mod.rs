@@ -373,10 +373,53 @@ impl Ohkami {
     }
 
     #[cfg(feature="openapi")]
+    /// Generate OpenAPI document file.
+    /// 
+    /// ### note
+    /// 
+    /// - When the binary size matters, you should prepare a feature flag
+    ///   activating `ohkami/openapi` in your package, and put all your codes
+    ///   around `openapi` behind that feature via `#[cfg(feature = ...)]` or
+    ///   `#[cfg_attr(feature = ...)]`.
+    /// - On `rt_worker`, you need to **separate `spit_out` process** from `Ohkami`
+    ///   ( `#[worker]` in `lib.rs` ) itself, call it in a **binary package**
+    ///   importing your `Ohkami` from `lib.rs`, and compile/execute it in **native target**
+    ///   for your computer, not in `wasm32-unknown-unknown` for Cloudflare Workers ( becasue
+    ///   `spit_out` requires access to your local file system ) .
+    /// 
+    /// ### example
+    /// 
+    /// ```no_run
+    /// use ohkami::prelude::*;
+    /// use ohkami::openapi::{OpenAPI, Server};
+    /// 
+    /// // An ordinal Ohkami definition, not special
+    /// fn my_ohkami() -> Ohkami {
+    ///     Ohkami::new((
+    ///         "/hello"
+    ///             .GET(|| async {"Hello, OpenAPI!"}),
+    ///     ))
+    /// }
+    /// 
+    /// #[tokio::main]
+    /// async fn main() {
+    ///     let o = my_ohkami();
+    /// 
+    ///     // Here generate the JSON file
+    ///     o.spit_out(OpenAPI::json("Sample API", "0.1.9", [
+    ///         Server::at("http://api.example.com/v1")
+    ///             .description("Main (production) server"),
+    ///         Server::at("http://staging-api.example.com")
+    ///             .description("Internal staging server for testing")
+    ///     ]));
+    /// 
+    ///     o.howl("localhost:5000").await
+    /// }
+    /// ```
     pub fn spit_out(&self, metadata: crate::openapi::OpenAPI) {
         if std::panic::catch_unwind(|| std::fs::exists(".")).is_err() {
-            crate::warning!("[Ohkami::spit_out] Can't access to file system");
-            panic!("[Ohkami::spit_out] Can't access to file system")
+            crate::warning!("[Ohkami::spit_out] Can't access file system");
+            panic!("[Ohkami::spit_out] Can't access file system")
         }
 
         let (router, routes) = (Self {
