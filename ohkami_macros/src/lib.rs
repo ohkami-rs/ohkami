@@ -1,10 +1,66 @@
+mod util;
+
 mod serde;
 mod from_request;
+
+#[cfg(feature="openapi")]
+mod openapi;
 
 #[cfg(feature="worker")]
 mod worker;
 
 
+#[cfg(feature="openapi")]
+#[proc_macro_derive(Schema, attributes(openapi))]
+pub fn derive_schema(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    openapi::derive_schema(input.into())
+        .unwrap_or_else(syn::Error::into_compile_error)
+        .into()
+}
+
+#[cfg(feature="openapi")]
+/// ```ignore
+/// /* custom operationId (default: name of the fn) */
+/// #[operation(get_hello)]
+/// /// description for `get_hello` operation
+/// async fn hello() -> Result<String, MyError> {
+///     //...
+/// }
+/// 
+/// /* custom operationId and summary */
+/// #[operation(get_hello2 { summary: "HELLO greeting" })]
+/// /// description for `get_hello2` operation
+/// async fn hello2() -> Result<String, MyError> {
+///     //...
+/// }
+/// 
+/// /* custom summary */
+/// #[operation({ summary: "HELLO greeting" })]
+/// /// description for `hello3` operation
+/// async fn hello3() -> Result<String, MyError> {
+///     //...
+/// }
+/// 
+/// /* custom operationId and some descriptions */
+/// #[operation(get_hello4 {
+///     requestBody: "User name (text/plain).",
+///     200: "Successfully returning a HELLO greeting for the user",
+/// })]
+/// /// description for `get_hello4` operation
+/// async fn hello4(
+///     Text(name): Text,
+/// ) -> Result<String, MyError> {
+///     //...
+/// }
+/// ```
+#[proc_macro_attribute]
+pub fn operation(args: proc_macro::TokenStream, handler: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    openapi::operation(args.into(), handler.into())
+        .unwrap_or_else(syn::Error::into_compile_error)
+        .into()
+}
+
+#[cfg(feature="worker")]
 /// Create an worker Ohkami, running on Cloudflare Workers !
 /// 
 /// - This only handle `fetch` event.
@@ -22,7 +78,6 @@ mod worker;
 ///     ))
 /// }
 /// ```
-#[cfg(feature="worker")]
 #[proc_macro_attribute]
 pub fn worker(_: proc_macro::TokenStream, ohkami_fn: proc_macro::TokenStream) -> proc_macro::TokenStream {
     worker::worker(ohkami_fn.into())
@@ -30,6 +85,7 @@ pub fn worker(_: proc_macro::TokenStream, ohkami_fn: proc_macro::TokenStream) ->
         .into()
 }
 
+#[cfg(feature="worker")]
 /// Automatically bind bindings in wrangler.toml to Rust struct.
 /// 
 /// - This uses the default (top-level) env by default. You can configure it
@@ -81,7 +137,6 @@ pub fn worker(_: proc_macro::TokenStream, ohkami_fn: proc_macro::TokenStream) ->
 /// - For `rust-analyzer` user : When you edit wrangler.toml around bindings,
 ///   you'll need to reload `#[bindings] struct ...;` to notice the new bindings to rust-analyer.
 ///   For that, what you have to do is just **deleting `;` and immediate restoring it**.
-#[cfg(feature="worker")]
 #[proc_macro_attribute]
 pub fn bindings(env: proc_macro::TokenStream, bindings_struct: proc_macro::TokenStream) -> proc_macro::TokenStream {
     worker::bindings(env.into(), bindings_struct.into())

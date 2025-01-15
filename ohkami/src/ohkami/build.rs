@@ -1,7 +1,7 @@
 #![allow(non_snake_case, unused_mut)]
 
 use crate::router::{base::Router, segments::RouteSegments};
-use crate::fang::{Handler, IntoHandler};
+use crate::fang::handler::{Handler, IntoHandler};
 use crate::response::Content;
 use crate::Ohkami;
 
@@ -236,7 +236,7 @@ trait RoutingItem {
                         let (_, extension) = filename.rsplit_once('.')
                             .ok_or_else(|| format!("[.Dir] got `{filename}`: In current version, ohkami doesn't support serving files that have no extenstion"))?;
                         let mime = ohkami_lib::mime::get_by_extension(extension)
-                            .ok_or_else(|| format!("[.Dir] got `{filename}`: ohkami doesn't know the extension `{extension}`"))?;
+                            .ok_or_else(|| format!("[.Dir] got `{filename}`: ohkami doesn't know extension `{extension}`"))?;
 
                         let mut content = vec![
                             u8::default();
@@ -271,7 +271,11 @@ trait RoutingItem {
                                 });
                             }
                             res
-                        }))
+                        }), #[cfg(feature="openapi")] {use crate::openapi;
+                            openapi::Operation::with(openapi::Responses::new(200, openapi::Response::when("OK")
+                                .content(this.mime, openapi::string().format("binary"))
+                            ))
+                        })
                     }
                 }
             };

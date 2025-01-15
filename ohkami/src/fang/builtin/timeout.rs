@@ -75,8 +75,8 @@ const _: () = {
 };
 
 
-#[cfg(all(test, debug_assertions, feature="rt_tokio", feature="DEBUG"))]
-#[crate::__rt__::test] async fn test_timeout() {
+#[cfg(all(test, debug_assertions, feature="__rt_native__", feature="DEBUG"))]
+#[test] fn test_timeout() {
     use crate::prelude::*;
     use crate::testing::*;
 
@@ -94,27 +94,28 @@ const _: () = {
         "/greet/:name/:sleep".GET(lazy_greeting),
     )).test();
 
-
-    {
-        let req = TestRequest::GET("/greet");
-        let res = t.oneshot(req).await;
-        assert_eq!(res.status(), Status::NotFound);
-    }
-    {
-        let req = TestRequest::PUT("/greet/ohkami/1");
-        let res = t.oneshot(req).await;
-        assert_eq!(res.status(), Status::NotFound);
-    }
-    {
-        let req = TestRequest::GET("/greet/ohkami/1");
-        let res = t.oneshot(req).await;
-        assert_eq!(res.status(), Status::OK);
-        assert_eq!(res.text(),   Some("Hello, ohkami!"));
-    }
-    {
-        let req = TestRequest::GET("/greet/ohkami/3");
-        let res = t.oneshot(req).await;
-        assert_eq!(res.status(), Status::InternalServerError);
-        assert_eq!(res.text(),   Some("timeout"));
-    }
+    crate::__rt__::testing::block_on(async {
+        {
+            let req = TestRequest::GET("/greet");
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status(), Status::NotFound);
+        }
+        {
+            let req = TestRequest::PUT("/greet/ohkami/1");
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status(), Status::NotFound);
+        }
+        {
+            let req = TestRequest::GET("/greet/ohkami/1");
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status(), Status::OK);
+            assert_eq!(res.text(),   Some("Hello, ohkami!"));
+        }
+        {
+            let req = TestRequest::GET("/greet/ohkami/3");
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status(), Status::InternalServerError);
+            assert_eq!(res.text(),   Some("timeout"));
+        }
+    });
 }

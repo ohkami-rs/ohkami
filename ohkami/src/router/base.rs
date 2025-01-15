@@ -1,11 +1,10 @@
-use super::util::{ID, DebugSimpleOption, DebugSimpleIterator};
+use super::util::ID;
 use super::segments::{RouteSegments, RouteSegment};
-use crate::fang::{BoxedFPC, Fangs, Handler};
+use crate::fang::{BoxedFPC, Fangs, handler::Handler};
 use crate::ohkami::build::{ByAnother, HandlerSet};
 use std::{sync::Arc, collections::HashSet};
 
-
-#[derive(Debug)]
+#[cfg_attr(feature="openapi", derive(Clone))]
 #[allow(non_snake_case)]
 pub struct Router {
     id:     ID,
@@ -18,6 +17,7 @@ pub struct Router {
     pub(super) OPTIONS: Node,
 }
 
+#[cfg_attr(feature="openapi", derive(Clone))]
 pub(super) struct Node {
     pub(super) pattern:  Option<Pattern>,
     pub(super) handler:  Option<Handler>,
@@ -52,24 +52,43 @@ impl FangsList {
         }
     }
 
-    pub(super) fn into_proc_with(self, handler: Handler) -> BoxedFPC {
-        let mut iter = self.into_iter();
-
-        match iter.next() {
-            None => handler.into(),
-            Some(most_inner) => iter.fold(
-                most_inner.build(handler.into()),
-                |proc, fangs| fangs.build(proc)
-            )
-        }
-    }
-
     /// yield from most inner fangs
     fn into_iter(self) -> impl Iterator<Item = Arc<dyn Fangs>> {
         self.0.into_iter()
             .map(|(_, fangs)| fangs)
     }
+
+    pub(super) fn into_proc_with(self, h: Handler) -> IntoProcWith {
+        let mut iter = self.into_iter();
+
+        #[cfg(not(feature="openapi"))]
+        match iter.next() {
+            None => h.proc,
+            Some(most_inner) => iter.fold(
+                most_inner.build(h.proc),
+                |proc, fangs| fangs.build(proc)
+            )
+        }
+        #[cfg(feature="openapi")]
+        match iter.next() {
+            None => (h.proc, h.openapi_operation),
+            Some(most_inner) => iter.fold(
+                (
+                    most_inner.build(h.proc),
+                    most_inner.openapi_map_operation(h.openapi_operation)
+                ),
+                |(proc, operation), fangs| (
+                    fangs.build(proc),
+                    fangs.openapi_map_operation(operation)
+                )
+            )
+        }
+    }
 }
+#[cfg(not(feature="openapi"))]
+type IntoProcWith = BoxedFPC;
+#[cfg(feature="openapi")]
+type IntoProcWith = (BoxedFPC, crate::openapi::Operation);
 
 impl Router {
     pub(crate) fn new() -> Self {
@@ -119,14 +138,6 @@ impl Router {
         self.OPTIONS.register_handler(route, Handler::default_options_with(methods)).expect("Failed to register handler");
     }
 
-    pub(crate) fn finalize(self) -> super::r#final::Router {
-        let r#final = super::r#final::Router::from(self);
-        #[cfg(feature="DEBUG")] {
-            println!("finalized: {final:#?}")
-        }
-        r#final
-    }
-
     pub(crate) fn merge_another(&mut self, another: ByAnother) {
         let ByAnother { route, ohkami } = another;
         let another_routes = ohkami.into_router();
@@ -146,6 +157,17 @@ impl Router {
                 )*
             };
         } apply_to! { GET, PUT, POST, PATCH, DELETE, OPTIONS }
+    }
+
+    #[allow(unused_mut)]
+    pub(crate) fn finalize(mut self) -> (super::r#final::Router, HashSet<&'static str>) {
+        let routes = std::mem::take(&mut self.routes);
+
+        let r#final = super::r#final::Router::from(self);
+
+        crate::DEBUG!("finalized: {final:#?}");
+
+        (r#final, routes)
     }
 }
 
@@ -341,7 +363,33 @@ const _: (/* conversions */) = {
     }
 };
 
+impl std::fmt::Debug for Pattern {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Param (name) => f.write_str(name),
+            Self::Static(s)    => f.write_str(s),
+        }
+    }
+}
+#[cfg(feature="DEBUG")]
 const _: (/* Debugs */) = {
+    use super::util::{DebugSimpleIterator, DebugSimpleOption};
+
+    impl std::fmt::Debug for Router {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            f.debug_struct("BaseRouter")
+                .field("GET", &self.GET)
+                .field("PUT", &self.PUT)
+                .field("POST", &self.POST)
+                .field("PATCH", &self.PATCH)
+                .field("DELETE", &self.DELETE)
+                .field("OPTIONS", &self.OPTIONS)
+                .field("id", &self.id)
+                .field("routes", &self.routes)
+                .finish()
+        }
+    }
+
     impl std::fmt::Debug for Node {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             f.debug_struct("")
@@ -359,12 +407,4 @@ const _: (/* Debugs */) = {
         }
     }
 
-    impl std::fmt::Debug for Pattern {
-        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            match self {
-                Self::Param (name) => f.write_str(name),
-                Self::Static(s)    => f.write_str(s),
-            }
-        }
-    }
 };

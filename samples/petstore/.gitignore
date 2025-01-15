@@ -1,0 +1,4 @@
+openapi.json
+client/package-lock.json
+client/node_modules
+client/openapi.d.ts

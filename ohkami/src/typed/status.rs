@@ -1,6 +1,8 @@
 use std::borrow::Cow;
-use crate::{IntoResponse, Response, Status};
+use crate::{IntoBody, IntoResponse, Response, Status};
 
+#[cfg(feature="openapi")]
+use crate::openapi;
 
 macro_rules! generate_statuses_as_types_containing_value {
     ($( $status:ident : $message:literal, )*) => {
@@ -12,14 +14,24 @@ macro_rules! generate_statuses_as_types_containing_value {
 
             #[allow(non_camel_case_types)]
             #[allow(private_bounds)]
-            pub struct $status<B: IntoResponse = ()>(pub B);
+            pub struct $status<B: IntoBody = ()>(pub B);
 
-            impl<B: IntoResponse> IntoResponse for $status<B> {
+            impl<B: IntoBody> IntoResponse for $status<B> {
                 #[inline]
                 fn into_response(self) -> Response {
                     let mut res = self.0.into_response();
                     res.status = Status::$status;
                     res
+                }
+
+                #[cfg(feature="openapi")]
+                fn openapi_responses() -> openapi::Responses {
+                    let (code, message) = $message.split_once(' ').unwrap();
+                    let mut res = openapi::Response::when(message);
+                    if B::CONTENT_TYPE != "" {
+                        res = res.content(B::CONTENT_TYPE, B::openapi_responsebody())
+                    }
+                    openapi::Responses::new(code.parse().unwrap(), res)
                 }
             }
         )*

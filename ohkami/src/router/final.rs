@@ -1,11 +1,10 @@
 use super::{util, base};
-use crate::fang::{FangProcCaller, BoxedFPC, Handler};
+use crate::fang::{FangProcCaller, BoxedFPC, handler::Handler};
 use crate::{request::Path, response::Content};
 use crate::{Method, Request, Response};
 use ohkami_lib::Slice;
 
 
-#[derive(Debug)]
 #[allow(non_snake_case)]
 pub(crate) struct Router {
     GET:     Node,
@@ -16,11 +15,14 @@ pub(crate) struct Router {
     OPTIONS: Node,
 }
 
-struct Node {
+pub(super) struct Node {
     pattern:  Pattern,
     proc:     BoxedFPC,
     catch:    BoxedFPC,
-    children: &'static [Node]
+    children: &'static [Node],
+
+    #[cfg(feature="openapi")]
+    openapi_operation: Option<crate::openapi::Operation>
 }
 
 #[derive(PartialEq)]
@@ -48,6 +50,68 @@ impl Router {
             }
         }.search(&mut req.path).call_bite(req).await
     }
+
+    #[cfg(feature="openapi")]
+    pub(crate) fn gen_openapi_doc(
+        &self,
+        routes:   impl IntoIterator<Item = &'static str>,
+        metadata: crate::openapi::OpenAPI,
+    ) -> crate::openapi::document::Document {
+        let mut doc = crate::openapi::document::Document::new(
+            metadata.title,
+            metadata.version,
+            metadata.servers
+        );
+
+        for route in routes {
+            assert!(route.starts_with('/'));
+
+            let (openapi_path, openapi_path_param_names) = {
+                let (mut path, mut params) = (String::new(), Vec::new());
+                for segment in route.split('/').skip(1/* head empty */) {
+                    path += "/";
+                    if let Some(param) = segment.strip_prefix(':') {
+                        path += &["{", param, "}"].concat();
+                        params.push(param);
+                    } else {
+                        path += segment;
+                    }
+                }
+                (path, params)
+            };
+
+            let mut operations = crate::openapi::paths::Operations::new();
+            for (openapi_method, router) in [
+                ("get",    &self.GET),
+                ("put",    &self.PUT),
+                ("post",   &self.POST),
+                ("patch",  &self.PATCH),
+                ("delete", &self.DELETE),
+            ] {
+                let mut path = crate::request::Path::from_literal(route);
+
+                if let (target, true) = router.search_target(&mut path) {
+                    let Some(mut operation) = target.openapi_operation.clone() else {
+                        panic!("[OpenAPI] Unexpected not-found route `{route}`")
+                    };
+                    for param_name in &openapi_path_param_names {
+                        operation.replace_empty_param_name_with(param_name);
+                    }
+                    for security_scheme in operation.iter_securitySchemes() {
+                        doc.register_securityScheme_component(security_scheme);
+                    }
+                    for schema_component in operation.refize_schemas() {
+                        doc.register_schema_component(schema_component);
+                    }
+                    operations.register(openapi_method, operation);
+                };
+            }
+            
+            doc = doc.path(openapi_path, operations);
+        }
+
+        doc
+    }
 }
 
 impl Node {
@@ -57,7 +121,13 @@ impl Node {
     /// 
     /// 1. all `Pattern::Static`s are sorted in reversed alphabetical order
     /// 2. zero or one `Pattern::Param` exists at the end
+    #[inline(always)]
     fn search(&self, path: &mut Path) -> &dyn FangProcCaller {
+        let (target, hit) = self.search_target(path);
+        if hit {&target.proc} else {&target.catch}
+    }
+
+    pub(super) fn search_target(&self, path: &mut Path) -> (&Self, bool) {
         let mut bytes = unsafe {path.normalized_bytes()};
 
         /*
@@ -98,14 +168,15 @@ impl Node {
             successes with `Some(b"/abc")`, then we just perform `bytes = b"/abc"`
             and go to `'next_target` loop.
         */
+        
         if let Some(remaining) = self.pattern.take_through(bytes, path) {
             if remaining.is_empty() {
-                return &self.proc
+                return (&self, true)
             } else {
                 bytes = remaining
             }
         } else {
-            return &self.catch
+            return (&self, false)
         }
 
         let mut target = self;
@@ -113,14 +184,14 @@ impl Node {
             for child in target.children {
                 if let Some(remaining) = child.pattern.take_through(bytes, path) {
                     if remaining.is_empty() {
-                        return &child.proc
+                        return (&child, true)
                     } else {
                         bytes  = remaining;
                         target = child;
                         continue 'next_target
                     }
                 }
-            }; return &target.catch
+            }; return (&target, false)
         }
     }
 }
@@ -135,15 +206,12 @@ impl Pattern {
         bytes: &'b [u8],
         path:  &mut Path
     ) -> Option<&'b [u8]/* remaining part of `bytes` */> {
-        //crate::DEBUG!("[Pattern::take_through] self: `{self:?}`, bytes: '{}'", bytes.escape_ascii());
         match self {
             Pattern::Static(s) => {
                 let size = s.len();
                 if bytes.len() >= size && *s == unsafe {bytes.get_unchecked(..size)} {
-                    //crate::DEBUG!("[Pattern::take_through] Static => remaining = Some('{}')", bytes[size..].escape_ascii());
                     Some(unsafe {bytes.get_unchecked(size..)})
                 } else {
-                    //crate::DEBUG!("[Pattern::take_through] Static => remaining = None");
                     None
                 }
             }
@@ -153,10 +221,8 @@ impl Pattern {
                 && *unsafe {bytes.get_unchecked(1)} != b'/' {
                     let (param, remaining) = util::split_next_section(unsafe {bytes.get_unchecked(1..)});
                     unsafe {path.push_param(Slice::from_bytes(param))};
-                    //crate::DEBUG!("[Pattern::take_through] Param => remaining = Some('{}')", remaining.escape_ascii());
                     Some(remaining)
                 } else {
-                    //crate::DEBUG!("[Pattern::take_through] Param => remaining = None");
                     None
                 }
             }
@@ -204,14 +270,26 @@ const _: (/* conversions */) = {
                 (base::Pattern::Static(a), base::Pattern::Static(b)) => a.cmp(b).reverse(),
                 (base::Pattern::Static(_), base::Pattern::Param (_)) => std::cmp::Ordering::Less,
                 (base::Pattern::Param (_), base::Pattern::Static(_)) => std::cmp::Ordering::Greater,
-                _                                        => std::cmp::Ordering::Equal
+                _                                                    => std::cmp::Ordering::Equal
             });
+
+            #[cfg(feature="openapi")] let has_handler = base.handler.is_some();
+
+            let proc = base.fangses.clone().into_proc_with(base.handler.unwrap_or(Handler::default_not_found()));
+            #[cfg(feature="openapi")] let (proc, openapi_operation) = (proc.0, has_handler.then_some(proc.1));
+
+            let catch = base.fangses.into_proc_with(Handler::default_not_found());
+            #[cfg(feature="openapi")] let catch = catch.0;
 
             Node {
                 pattern:  base.pattern.map(Pattern::from).unwrap_or(Pattern::Static(b"")),
-                proc:     base.fangses.clone().into_proc_with(base.handler.unwrap_or(Handler::default_not_found())),
-                catch:    base.fangses.into_proc_with(Handler::default_not_found()),
-                children: base.children.into_iter().map(Node::from).collect::<Vec<_>>().leak()
+                children: base.children.into_iter().map(Node::from).collect::<Vec<_>>().leak(),
+
+                proc,
+                catch,
+
+                #[cfg(feature="openapi")]
+                openapi_operation
             }
         }
     }
@@ -226,7 +304,21 @@ const _: (/* conversions */) = {
     }
 };
 
+#[cfg(feature="DEBUG")]
 const _: (/* Debugs */) = {
+    impl std::fmt::Debug for Router {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            f.debug_struct("FinalRouter")
+                .field("GET", &self.GET)
+                .field("PUT", &self.PUT)
+                .field("POST", &self.POST)
+                .field("PATCH", &self.PATCH)
+                .field("DELETE", &self.DELETE)
+                .field("OPTIONS", &self.OPTIONS)
+                .finish()
+        }
+    }
+
     impl std::fmt::Debug for Node {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             f.debug_struct("")

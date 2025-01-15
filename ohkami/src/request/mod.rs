@@ -141,7 +141,7 @@ pub struct Request {
     /// like `?ids=1&ids=17&ids=42`.
     /// Please use, for instance, comma-separated format like
     /// `?ids=1,17,42` ( URL-encoded to `?ids=1%2C17%2C42` )
-    pub query: Option<QueryParams>,
+    pub query: QueryParams,
 
     /// Headers of this request
     /// 
@@ -195,7 +195,7 @@ impl Request {
 
             method:  Method::GET,
             path:    Path::uninit(),
-            query:   None,
+            query:   QueryParams::new(b""),
             headers: RequestHeaders::init(),
             payload: None,
             store:   Store::init(),
@@ -212,7 +212,7 @@ impl Request {
                 match b {0 => break, _ => *b = 0}
             }
             self.path  = Path::uninit();
-            self.query = None;
+            self.query = QueryParams::new(b"");
             self.headers.clear();
             self.payload = None;
             self.store.clear();
@@ -257,7 +257,7 @@ impl Request {
         self.path.init_with_request_bytes(r.read_while(|b| !matches!(b, b' ' | b'?')))?;
 
         if r.consume_oneof([" ", "?"]).unwrap() == 1 {
-            self.query = Some(QueryParams::new(r.read_while(|b| b != &b' ')));
+            self.query = QueryParams::new(r.read_while(|b| b != &b' '));
             r.advance_by(1);
         }
 
@@ -353,7 +353,7 @@ impl Request {
         // SAFETY: Just calling for request bytes and `self.__url__` is already initialized
         unsafe {let __url__ = self.__url__.assume_init_ref();
             let path = Slice::from_bytes(__url__.path().as_bytes()).as_bytes();
-            self.query = __url__.query().map(|str| QueryParams::new(str.as_bytes()));
+            self.query = QueryParams::new(__url__.query().unwrap_or_default().as_bytes());
             self.path.init_with_request_bytes(path)?;
         }
 
@@ -403,7 +403,7 @@ impl Request {
         // SAFETY: Just calling for request bytes and `self.__url__` is already initialized
         unsafe {let __url__ = self.__url__.assume_init_ref();
             let path = Slice::from_bytes(__url__.path().as_bytes()).as_bytes();
-            self.query = __url__.query().map(|str| QueryParams::new(str.as_bytes()));
+            self.query = QueryParams::new(__url__.query().unwrap_or_default().as_bytes());
             self.path.init_with_request_bytes(path)?;
         }
 

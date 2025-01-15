@@ -1,5 +1,5 @@
 #![cfg(any(debug_assertions, feature="DEBUG"))]
-#![cfg(feature="__rt__")]
+#![cfg(all(test, feature="__rt__"))]
 
 use ohkami_lib::CowSlice;
 

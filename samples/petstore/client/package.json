@@ -1,0 +1,20 @@
+{
+  "name": "client",
+  "version": "1.0.0",
+  "description": "",
+  "license": "ISC",
+  "author": "",
+  "type": "module",
+  "scripts": {
+    "main": "node --experimental-strip-types --no-warnings=ExperimentalWarning src/main.ts",
+    "gen": "npx openapi-typescript ../openapi.json -o ./openapi.d.ts"
+  },
+  "dependencies": {
+    "openapi-fetch": "^0.13.4"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "openapi-typescript": "^7.5.2",
+    "typescript": "^5.7.3"
+  }
+}

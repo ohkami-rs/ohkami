@@ -1,10 +1,7 @@
-#![cfg(feature="__rt__")]
-
 #[cfg(test)]
 mod _test;
 
 pub(crate) mod build;
-
 pub use build::{Route, Routes};
 
 use crate::fang::Fangs;
@@ -108,7 +105,7 @@ use crate::{__rt__, Session};
 /// A tuple of types that implement `FromParam` trait e.g. `(&str, usize)`.\
 /// If the path contains only one parameter, then you can omit the tuple \
 /// e.g. just `param: &str`.\
-/// (In current ohkami, at most *2* path params can be handled.)
+/// (Current ohkami handles at most *2* path params.)
 /// 
 /// <br>
 /// 
@@ -132,12 +129,11 @@ use crate::{__rt__, Session};
 /// }
 /// ```
 pub struct Ohkami {
-    pub(crate) routes: Router,
+    router: Router,
 
     /// apply just before merged to another or called `howl`
-    pub(crate) fangs:  Option<Arc<dyn Fangs>>,
+    fangs: Option<Arc<dyn Fangs>>,
 }
-
 
 impl Ohkami {
     /// Create new `Ohkami` on the routing.
@@ -175,11 +171,7 @@ impl Ohkami {
     pub fn new(routes: impl build::Routes) -> Self {
         let mut router = Router::new();
         routes.apply(&mut router);
-
-        Self {
-            routes: router,
-            fangs:  None,
-        }
+        Self { router, fangs: None, }
     }
 
     /// Create new ohkami with the fangs on the routing.
@@ -221,15 +213,11 @@ impl Ohkami {
     pub fn with(fangs: impl Fangs + 'static, routes: impl build::Routes) -> Self {
         let mut router = Router::new();
         routes.apply(&mut router);
-
-        Self {
-            routes: router,
-            fangs:  Some(Arc::new(fangs)),
-        }
+        Self { router, fangs: Some(Arc::new(fangs)) }
     }
 
     pub(crate) fn into_router(self) -> Router {
-        let Self { routes: mut router, fangs } = self;
+        let Self { fangs, mut router } = self;
 
         if let Some(fangs) = fangs {
             router.apply_fangs(router.id(), fangs);
@@ -305,7 +293,9 @@ impl Ohkami {
     /// }
     /// ```
     pub async fn howl(self, address: impl __rt__::ToSocketAddrs) {
-        let router = Arc::new(self.into_router().finalize());
+        let (router, _) = self.into_router().finalize();
+        let router = Arc::new(router);
+
         let listener = __rt__::bind(address).await;
 
         let (wg, ctrl_c) = (sync::WaitGroup::new(), sync::CtrlC::new());
@@ -363,12 +353,8 @@ impl Ohkami {
 
         let ohkami_res = match take_over {
             Ok(()) => {#[cfg(feature="DEBUG")] ::worker::console_debug!("`take_over` succeed");
-
-                let router = self.into_router();
-                #[cfg(feature="DEBUG")] ::worker::console_debug!("Done `Ohkami::into_router`");
-
-                let router = router.finalize();
-                #[cfg(feature="DEBUG")] ::worker::console_debug!("Done `Router::finalize` (without compressions)");
+                let (router, _) = self.into_router().finalize();
+                #[cfg(feature="DEBUG")] ::worker::console_debug!("Done `self.router.finalize`");
                 
                 let mut res = router.handle(&mut ohkami_req).await;
                 res.complete();
@@ -384,6 +370,70 @@ impl Ohkami {
         #[cfg(feature="DEBUG")] ::worker::console_debug!("Done `ohkami::Response` --into--> `worker::Response`: {res:?}");
 
         res
+    }
+
+    #[cfg(feature="openapi")]
+    /// Generate OpenAPI document file.
+    /// 
+    /// ### note
+    /// 
+    /// - When the binary size matters, you should prepare a feature flag
+    ///   activating `ohkami/openapi` in your package, and put all your codes
+    ///   around `openapi` behind that feature via `#[cfg(feature = ...)]` or
+    ///   `#[cfg_attr(feature = ...)]`.
+    /// - On `rt_worker`, you need to **separate `spit_out` process** from `Ohkami`
+    ///   ( `#[worker]` in `lib.rs` ) itself, call it in a **binary package**
+    ///   importing your `Ohkami` from `lib.rs`, and compile/execute it in **native target**
+    ///   for your computer, not in `wasm32-unknown-unknown` for Cloudflare Workers ( becasue
+    ///   `spit_out` requires access to your local file system ) .
+    /// 
+    /// ### example
+    /// 
+    /// ```no_run
+    /// use ohkami::prelude::*;
+    /// use ohkami::openapi::{OpenAPI, Server};
+    /// 
+    /// // An ordinal Ohkami definition, not special
+    /// fn my_ohkami() -> Ohkami {
+    ///     Ohkami::new((
+    ///         "/hello"
+    ///             .GET(|| async {"Hello, OpenAPI!"}),
+    ///     ))
+    /// }
+    /// 
+    /// #[tokio::main]
+    /// async fn main() {
+    ///     let o = my_ohkami();
+    /// 
+    ///     // Here generate the JSON file
+    ///     o.spit_out(OpenAPI::json("Sample API", "0.1.9", [
+    ///         Server::at("http://api.example.com/v1")
+    ///             .description("Main (production) server"),
+    ///         Server::at("http://staging-api.example.com")
+    ///             .description("Internal staging server for testing")
+    ///     ]));
+    /// 
+    ///     o.howl("localhost:5000").await
+    /// }
+    /// ```
+    pub fn spit_out(&self, metadata: crate::openapi::OpenAPI) {
+        if std::panic::catch_unwind(|| std::fs::exists(".")).is_err() {
+            crate::warning!("[Ohkami::spit_out] Can't access file system");
+            panic!("[Ohkami::spit_out] Can't access file system")
+        }
+
+        let (router, routes) = (Self {
+            router: self.router.clone(),
+            fangs:  self.fangs.clone()
+        }).into_router().finalize();
+
+        let doc = router.gen_openapi_doc(routes.clone(), metadata.clone());
+
+        let mut doc = serde_json::to_vec_pretty(&doc).unwrap();
+        doc.push(b'\n');
+
+        std::fs::write(metadata.file_path, doc)
+            .expect("[OpenAPI] Failed to write document to file");
     }
 }
 

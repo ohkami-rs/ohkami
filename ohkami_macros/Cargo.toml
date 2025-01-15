@@ -18,12 +18,12 @@ readme        = "../README.md"
 [dependencies]
 proc-macro2   = "1.0"
 quote         = "1.0"
-syn           = { version = "1.0", features = ["full"] }
+syn           = { version = "2.0", features = ["full"] }
 toml          = { optional = true, version = "0.8.12", features = ["parse"], default-features = false }
 
 [features]
-worker = ["dep:toml"]
+worker  = ["dep:toml"]
+openapi = []
 
 ##### DEBUG #####
-#DEBUG   = ["worker"]
-#default = ["DEBUG"]
+#default = ["worker", "openapi"]

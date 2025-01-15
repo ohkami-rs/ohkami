@@ -1,6 +1,9 @@
 use super::super::{Fang, FangProc};
 use crate::{Request, Response};
 
+#[cfg(feature="openapi")]
+use crate::openapi;
+
 
 /// # Fang action - utility wrapper of `Fang`
 /// 
@@ -77,7 +80,13 @@ pub trait FangAction: Clone + Send + Sync + 'static {
     fn back<'a>(&'a self, res: &'a mut Response) -> impl std::future::Future<Output = ()> + Send {
         async {}
     }
-} const _: () = {
+
+    #[cfg(feature="openapi")]
+    fn openapi_map_operation(operation: openapi::Operation) -> openapi::Operation {
+        operation
+    }
+}
+const _: () = {
     impl<A: FangAction, I: FangProc> Fang<I> for A {
         type Proc = FangActionProc<A, I>;
         fn chain(&self, inner: I) -> Self::Proc {
@@ -85,6 +94,11 @@ pub trait FangAction: Clone + Send + Sync + 'static {
                 action: self.clone(),
                 inner
             }
+        }
+
+        #[cfg(feature="openapi")]
+        fn openapi_map_operation(&self, operation: openapi::Operation) -> openapi::Operation {
+            <Self as FangAction>::openapi_map_operation(operation)
         }
     }
 
@@ -111,14 +125,14 @@ pub trait FangAction: Clone + Send + Sync + 'static {
 
 
 
-#[cfg(all(test, debug_assertions, feature="rt_tokio", feature="DEBUG"))]
+#[cfg(all(test, debug_assertions, feature="__rt_native__", feature="DEBUG"))]
 mod test {
     use super::*;
     use crate::prelude::*;
     use crate::testing::*;
 
-    #[crate::__rt__::test]
-    async fn availablity() {
+    #[test]
+    fn availablity() {
         use std::sync::{Mutex, OnceLock};
 
         fn messages() -> &'static Mutex<Vec<String>> {
@@ -173,17 +187,19 @@ mod test {
             "/greet".POST(|| async {"Hi, I'm Handler!"}),
         )).test();
 
-        {
-            let req = TestRequest::POST("/greet");
-            let res = t.oneshot(req).await;
+        crate::__rt__::testing::block_on(async {
+            {
+                let req = TestRequest::POST("/greet");
+                let res = t.oneshot(req).await;
 
-            assert_eq!(res.status(), Status::OK);
-            assert_eq!(&*messages().lock().unwrap(), &[
-                "Hello, Clerk!",
-                "Hello, John!",
-                "Bye, John!",
-                "Bye, Clerk!",
-            ]);
-        }
+                assert_eq!(res.status(), Status::OK);
+                assert_eq!(&*messages().lock().unwrap(), &[
+                    "Hello, Clerk!",
+                    "Hello, John!",
+                    "Bye, John!",
+                    "Bye, Clerk!",
+                ]);
+            }
+        });
     }
 }

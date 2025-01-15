@@ -152,7 +152,87 @@ async fn main() {
 }
 ```
 
-### `"nightly"`：enable nightly-only functionalities
+### `"openapi"`：OpenAPI document generation
+
+Ohkami supports *as consistent as possible* OpenAPI document generation, where most of the consistency between document and behavior is automatically assured by Ohkami's internal work.
+
+Only you have to
+
+- Derive `openapi::Schema` for all your schema structs
+- Make your `Ohkami` call `.spit_out({openapi::OpenAPI})`
+
+to generate consistent OpenAPI document. You don't need to take care of writing accurate methods, paths, parameters, contents, ... for this OpenAPI feature; All they are done by Ohkami.
+
+Of course, you can flexibly customize schemas ( by hand-implemetation of `Schema` ), descriptions or other parts ( by `#[operation]` attribute ).
+
+```rust,ignore
+use ohkami::prelude::*;
+use ohkami::format::JSON;
+use ohkami::typed::status;
+use ohkami::openapi;
+
+// Derive `Schema` trait to generate
+// the schema of this struct in OpenAPI document.
+#[derive(Deserialize, openapi::Schema)]
+struct CreateUser<'req> {
+    name: &'req str,
+}
+
+#[derive(Serialize, openapi::Schema)]
+// `#[openapi(component)]` to define it as component
+// in OpenAPI document.
+#[openapi(component)]
+struct User {
+    id: usize,
+    name: String,
+}
+
+async fn create_user(
+    JSON(CreateUser { name }): JSON<CreateUser<'_>>
+) -> status::Created<JSON<User>> {
+    status::Created(JSON(User {
+        id: 42,
+        name: name.to_string()
+    }))
+}
+
+// (optionally) Set operationId, summary,
+// or override descriptions by `operation` attribute.
+#[openapi::operation({
+    summary: "...",
+    200: "List of all users",
+})]
+/// This doc comment is used for the
+/// `description` field of OpenAPI document
+async fn list_users() -> JSON<Vec<User>> {
+    JSON(vec![])
+}
+
+#[tokio::main]
+async fn main() {
+    let o = Ohkami::new((
+        "/users"
+            .GET(list_users)
+            .POST(create_user),
+    ));
+
+    // This make your Ohkami spit out `openapi.json`
+    // ( the file name is configurable ).
+    o.spit_out(openapi::OpenAPI::json(
+        "Users Server", "0.1.0", [
+            openapi::Server::at("localhost:5000"),
+        ]
+    ));
+
+    o.howl("localhost:5000").await;
+}
+```
+
+- Currently, only **JSON** is supported as the document format.
+- When the binary size matters, you should prepare a feature flag activating `ohkami/openapi` in your package, and put all your codes around `openapi` behind that feature via `#[cfg(feature = ...)]` or `#[cfg_attr(feature = ...)]`.
+- On `rt_worker`, you need to **separate `spit_out` process** from `Ohkami` ( `#[worker]` in `lib.rs` ) itself, call it in a **binary package** importing your `Ohkami` from `lib.rs`, and compile/execute it in **native target** for your computer, not in `wasm32-unknown-unknown` for Cloudflare Workers ( becasue `spit_out` requires access to your local file system ) .
+
+### `"nightly"`：nightly-only functionalities
 
 - try response
 

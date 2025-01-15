@@ -38,20 +38,9 @@
     Can't activate multiple `rt_*` features at once!
 "}
 
-#[cfg(not(feature="DEBUG"))]
-#[cfg(all(feature="rt_worker", not(target_arch="wasm32")))]
-compile_error! {"
-    `rt_worker` must be activated on `wasm32` target!
-    (We recommend to touch `.cargo/config.toml`: `[build] target = \"wasm32-unknown-unknown\"`)
-"}
-
 
 #[cfg(feature="__rt_native__")]
 mod __rt__ {
-    #[cfg(test)]
-    #[cfg(all(feature="rt_tokio", feature="DEBUG"))]
-    pub(crate) use tokio::test;
-
     #[cfg(feature="rt_tokio")]
     pub(crate) use tokio::net::{TcpListener, TcpStream, ToSocketAddrs};
     #[cfg(feature="rt_async-std")]
@@ -83,7 +72,25 @@ mod __rt__ {
     #[cfg(feature="rt_nio")]
     pub(crate) use nio::time::sleep;
     #[cfg(feature="rt_glommio")]
-    pub(crate) use glommio::timer::sleep;
+    pub(crate) fn sleep(duration: std::time::Duration) -> impl std::future::Future<Output = ()> + Send {
+        return SendFuture(glommio::timer::sleep(duration));
+
+        ///////////////////////////////////////////////////////////
+
+        use std::{future::Future, pin::Pin, task::{Context, Poll}};
+
+        struct SendFuture<F>(F);
+
+        // SAFETY: sleep is executed on the same thread in glommio
+        unsafe impl<F> Send for SendFuture<F> {}
+
+        impl<F: Future<Output = ()>> Future for SendFuture<F> {
+            type Output = ();
+            fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+                unsafe {self.map_unchecked_mut(|this| &mut this.0)}.poll(cx)
+            }
+        }
+    }
 
     #[cfg(feature="rt_tokio")]
     pub(crate) use tokio::io::AsyncReadExt as AsyncRead;
@@ -134,7 +141,7 @@ mod __rt__ {
         glommio::spawn_local(task).detach();
     }
 
-    #[cfg(all(test, debug_assertions))]
+    #[cfg(test)]
     pub(crate) mod testing {
         pub(crate) fn block_on(future: impl std::future::Future) {
             #[cfg(feature="rt_tokio")]
@@ -169,18 +176,99 @@ mod __rt__ {
     }
 }
 
+pub mod util;
+
+#[cfg(feature="__rt_native__")]
+mod config;
+#[cfg(feature="__rt_native__")]
+pub(crate) static CONFIG: config::Config = config::Config::new();
+
+#[cfg(feature="openapi")]
+pub mod openapi {
+    pub use ::ohkami_openapi::*;
+    pub use ::ohkami_openapi::document::Server;
+    pub use ::ohkami_macros::{Schema, operation};
+
+    #[cfg(feature="__rt__")]
+    pub use generate::*;
+    #[cfg(feature="__rt__")]
+    mod generate {
+        use super::*;
+
+        #[derive(Clone)]
+        pub struct OpenAPI {
+            pub(crate) file_path: std::path::PathBuf,
+            pub(crate) title:     &'static str,
+            pub(crate) version:   &'static str,
+            pub(crate) servers:   Vec<crate::openapi::document::Server>,
+        }
+        impl OpenAPI {
+            /// Register metadata for generating OpenAPI document (JSON).
+            /// 
+            /// ### note
+            /// YAML version is not supported now.
+            /// 
+            /// ### example
+            /// 
+            /// ```no_run
+            /// use ohkami::prelude::*;
+            /// use ohkami::openapi::{OpenAPI, Server};
+            /// 
+            /// // An ordinal Ohkami definition, not special
+            /// fn my_ohkami() -> Ohkami {
+            ///     Ohkami::new((
+            ///         "/hello"
+            ///             .GET(|| async {"Hello, OpenAPI!"}),
+            ///     ))
+            /// }
+            /// 
+            /// #[tokio::main]
+            /// async fn main() {
+            ///     let o = my_ohkami();
+            /// 
+            ///     // Here generate the JSON file
+            ///     o.spit_out(OpenAPI::json("Sample API", "0.1.9", [
+            ///         Server::at("http://api.example.com/v1")
+            ///             .description("Main (production) server"),
+            ///         Server::at("http://staging-api.example.com")
+            ///             .description("Internal staging server for testing")
+            ///     ]));
+            /// 
+            ///     o.howl("localhost:5000").await
+            /// }
+            /// ```
+            pub fn json(
+                title:   &'static str,
+                version: &'static str,
+                servers: impl Into<Vec<document::Server>>
+            ) -> Self {
+                let servers   = Into::<Vec<_>>::into(servers);
+                let file_path = std::path::PathBuf::from("openapi.json");
+                Self { title, version, servers, file_path }
+            }
+        
+            /// Configure the file path to generate.
+            /// 
+            /// ## default
+            /// `openapi.json`
+            pub fn path(mut self, path: impl Into<std::path::PathBuf>) -> Self {
+                self.file_path = path.into();
+                self
+            }
+        }    
+    }
+}
+
+#[cfg(debug_assertions)]
+#[cfg(feature="__rt__")]
+pub mod testing;
 
 mod request;
-pub use request::{Request, Method, FromRequest, FromParam};
+pub use request::{Request, Method, FromRequest, FromParam, FromBody};
 pub use ::ohkami_macros::FromRequest;
 
 mod response;
-pub use response::{Response, Status, IntoResponse};
-
-pub mod fang;
-pub use fang::{Fang, FangProc};
-
-pub mod format;
+pub use response::{Response, Status, IntoResponse, IntoBody};
 
 #[cfg(feature="__rt_native__")]
 mod session;
@@ -195,6 +283,11 @@ mod ohkami;
 #[cfg(feature="__rt__")]
 pub use ohkami::{Ohkami, Route};
 
+pub mod fang;
+pub use fang::{handler, Fang, FangProc};
+
+pub mod format;
+
 pub mod header;
 
 pub mod typed;
@@ -204,12 +297,6 @@ pub mod sse;
 
 #[cfg(feature="ws")]
 pub mod ws;
-
-#[cfg(debug_assertions)]
-#[cfg(feature="__rt__")]
-pub mod testing;
-
-pub mod util;
 
 #[cfg(feature="rt_worker")]
 pub use ::ohkami_macros::{worker, bindings};

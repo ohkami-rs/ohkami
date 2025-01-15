@@ -1,6 +1,9 @@
 use crate::prelude::*;
 use ::base64::engine::{Engine as _, general_purpose::STANDARD as BASE64};
 
+#[cfg(feature="openapi")]
+use crate::openapi;
+
 
 /// # Builtin fang for Basic Auth
 /// 
@@ -114,6 +117,12 @@ const _: () = {
                 .ok_or_else(unauthorized)?;
 
             Ok(())
+        }
+
+        #[cfg(feature="openapi")]
+        fn openapi_map_operation(operation: openapi::Operation) -> openapi::Operation {
+            use openapi::security::SecurityScheme;
+            operation.security(SecurityScheme::Basic("basicAuth"), [])
         }
     }
 };

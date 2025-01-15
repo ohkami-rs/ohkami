@@ -1,26 +1,36 @@
-use crate::{FromRequest, IntoResponse, Request, Response};
-use serde::{Deserialize, Serialize};
+use crate::{FromBody, IntoBody};
+use super::bound::{self, Incoming, Outgoing};
+
+#[cfg(feature="openapi")]
+use crate::openapi;
 
 
-pub struct JSON<Schema>(pub Schema);
+pub struct JSON<T: bound::Schema>(pub T);
 
-impl<'req, S: Deserialize<'req>> FromRequest<'req> for JSON<S> {
-    type Error = Response;
+impl<'req, T: Incoming<'req>> FromBody<'req> for JSON<T> {
+    const MIME_TYPE: &'static str = "application/json";
 
-    #[inline(always)]
-    fn from_request(req: &'req Request) -> Option<Result<Self, Self::Error>> {
-        if req.headers.ContentType()? != "application/json" {
-            return None
-        }
-        serde_json::from_slice(req.payload()?)
-            .map_err(super::reject)
-            .map(Self).into()
+    #[inline]
+    fn from_body(body: &'req [u8]) -> Result<Self, impl std::fmt::Display> {
+        serde_json::from_slice(body).map(JSON)
+    }
+
+    #[cfg(feature="openapi")]
+    fn openapi_requestbody() -> impl Into<openapi::schema::SchemaRef> {
+        T::schema()
     }
 }
 
-impl<S: Serialize> IntoResponse for JSON<S> {
-    #[inline(always)]
-    fn into_response(self) -> Response {
-        Response::OK().with_json(self.0)
+impl<T: Outgoing> IntoBody for JSON<T> {
+    const CONTENT_TYPE: &'static str = "application/json";
+
+    #[inline]
+    fn into_body(self) -> Result<Vec<u8>, impl std::fmt::Display> {
+        serde_json::to_vec(&self.0)
+    }
+
+    #[cfg(feature="openapi")]
+    fn openapi_responsebody() -> impl Into<openapi::schema::SchemaRef> {
+        T::schema()
     }
 }

@@ -1,0 +1,18 @@
+[package]
+name    = "realworld"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+ohkami             = { path = "../../ohkami", features = ["rt_tokio"] }
+tokio              = { version = "1", features = ["full"] }
+tracing            = "0.1"
+tracing-subscriber = "0.3"
+sqlx               = { version = "0.7.3", features = ["runtime-tokio-native-tls", "postgres", "macros", "chrono", "uuid"] }
+chrono             = "0.4"
+dotenvy            = "0.15"
+argon2             = "0.5"
+uuid               = { version = "1.6", features = ["serde", "v4"] }
+
+[features]
+openapi = ["ohkami/openapi"]

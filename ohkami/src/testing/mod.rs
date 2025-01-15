@@ -46,7 +46,8 @@ pub struct TestingOhkami(Arc<Router>);
 
 impl Testing for Ohkami {
     fn test(self) -> TestingOhkami {
-        TestingOhkami(Arc::new(self.into_router().finalize()))
+        let (f, _) = self.into_router().finalize();
+        TestingOhkami(Arc::new(f))
     }
 }
 

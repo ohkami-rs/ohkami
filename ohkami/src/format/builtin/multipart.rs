@@ -1,21 +1,24 @@
-use crate::{FromRequest, Request, Response};
-use serde::Deserialize;
+use crate::FromBody;
+use super::bound::{self, Incoming};
+use ohkami_lib::serde_multipart;
+
+#[cfg(feature="openapi")]
+use crate::openapi;
 
 
 pub use ohkami_lib::serde_multipart::File;
 
-pub struct Multipart<Schema>(pub Schema);
+pub struct Multipart<T: bound::Schema>(pub T);
 
-impl<'req, S: Deserialize<'req>> FromRequest<'req> for Multipart<S> {
-    type Error = Response;
+impl<'req, T: Incoming<'req>> FromBody<'req> for Multipart<T> {
+    const MIME_TYPE: &'static str = "multipart/form-data";
 
-    #[inline]
-    fn from_request(req: &'req Request) -> Option<Result<Self, Self::Error>> {
-        if req.headers.ContentType()? != "multipart/form-data" {
-            return None
-        }
-        ohkami_lib::serde_multipart::from_bytes(req.payload()?)
-            .map_err(super::reject)
-            .map(Self).into()
+    fn from_body(body: &'req [u8]) -> Result<Self, impl std::fmt::Display> {
+        serde_multipart::from_bytes(body).map(Multipart)
+    }
+
+    #[cfg(feature="openapi")]
+    fn openapi_requestbody() -> impl Into<openapi::schema::SchemaRef> {
+        T::schema()
     }
 }
