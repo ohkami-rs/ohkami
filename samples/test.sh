@@ -10,6 +10,7 @@ cd $SAMPLES/petstore && \
         npm install && \
         cd .. && \
     (timeout -sKILL 5 cargo run &) && \
+    sleep 1 && \
     cd client && \
         npm run gen && \
         npm run main
@@ -18,6 +19,7 @@ test $? -ne 0 && exit 1 || :
 cd $SAMPLES/readme-openapi && \
     cargo build && \
     (timeout -sKILL 1 cargo run &) && \
+    sleep 1 && \
     diff -q openapi.json openapi.json.sample
 test $? -ne 0 && exit 2 || :
 
