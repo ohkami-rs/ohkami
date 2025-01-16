@@ -171,13 +171,13 @@ impl Operation {
         self
     }
 
-    pub fn inbound(mut self, inbound: Option<crate::Inbound>) -> Self {
+    pub fn inbound(mut self, inbound: crate::Inbound) -> Self {
         match inbound {
-            None => self,
-            Some(crate::Inbound::Security { scheme, scopes }) => self.security(scheme, scopes),
-            Some(crate::Inbound::Body(body)) => self.requestBody(body),
-            Some(crate::Inbound::Param(param)) => self.param(param),
-            Some(crate::Inbound::Params(params)) => {
+            crate::Inbound::None => self,
+            crate::Inbound::Security { scheme, scopes } => self.security(scheme, scopes),
+            crate::Inbound::Body(body) => self.requestBody(body),
+            crate::Inbound::Param(param) => self.param(param),
+            crate::Inbound::Params(params) => {
                 for param in params {self = self.param(param)}
                 self
             },

@@ -17,9 +17,11 @@ impl<'req, T: Incoming<'req>> FromRequest<'req> for Query<T> {
     }
 
     #[cfg(feature="openapi")]
-    fn openapi_inbound() -> Option<openapi::Inbound> {
-        let schema: openapi::schema::RawSchema = T::schema().into().into_inline()?;
-        Some(openapi::Inbound::Params(
+    fn openapi_inbound() -> openapi::Inbound {
+        let Some(schema) = T::schema().into().into_inline() else {
+            return openapi::Inbound::None
+        };
+        openapi::Inbound::Params(
             schema.into_properties().into_iter().map(|(name, schema, required)|
                 if required {
                     openapi::Parameter::in_query(name, schema)
@@ -27,6 +29,6 @@ impl<'req, T: Incoming<'req>> FromRequest<'req> for Query<T> {
                     openapi::Parameter::maybe_in_query(name, schema)
                 }
             ).collect()
-        ))
+        )
     }
 }

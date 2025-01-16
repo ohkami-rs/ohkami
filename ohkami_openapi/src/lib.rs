@@ -20,6 +20,7 @@ pub use paths::Operation;
 pub mod document;
 
 pub enum Inbound {
+    None,
     Param(Parameter),
     Params(Vec<Parameter>),
     Body(RequestBody),

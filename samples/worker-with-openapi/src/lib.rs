@@ -19,10 +19,10 @@ pub fn ohkami() -> Ohkami {
     /* `pages` directory is served via `--assets pages` flag (see package.json) */
 
     let openapi_doc_server_ohkami = Ohkami::with(BasicAuth {
-        name: "ohkami",
+        username: "ohkami",
         password: Bindings::OPENAPI_DOC_PASSWORD
     }, (
-        "/".GET(|| async {include_str!("openapi.json")})
+        "/".GET(|| async {include_str!("../openapi.json")})
     ));
 
     let api_ohkami = Ohkami::new((
@@ -36,10 +36,9 @@ pub fn ohkami() -> Ohkami {
     ))
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 #[cfg_attr(feature="openapi", derive(Schema))]
-struct UserResponse {
-    id:      i32,
+struct UserProfile {
     name:    String,
     country: Option<String>,
     age:     Option<u8>,
@@ -47,10 +46,10 @@ struct UserResponse {
 
 async fn list_users(
     Bindings { DB, .. }: Bindings
-) -> Result<JSON<Vec<UserResponse>>, APIError> {
-    let users = DB.prepare("SELECT id, name, country, age FROM users ORDER BY id")
+) -> Result<JSON<Vec<UserProfile>>, APIError> {
+    let users = DB.prepare("SELECT name, country, age FROM users ORDER BY id")
         .all().await?
-        .results::<UserResponse>()?;
+        .results::<UserProfile>()?;
 
     Ok(JSON(users))
 }
@@ -66,7 +65,7 @@ struct SignUpRequest<'req> {
 async fn sign_up(
     JSON(req): JSON<SignUpRequest<'_>>,
     Bindings { DB, .. }: Bindings,
-) -> Result<status::Created<JSON<UserResponse>>, APIError> {
+) -> Result<status::Created<JSON<UserProfile>>, APIError> {
     let already_used = DB.prepare("SELECT EXISTS (SELECT id FROM users WHERE name = ?)")
         .bind(&[req.name.into()])?
         .first::<u8>(Some("exists")).await?;
@@ -75,13 +74,11 @@ async fn sign_up(
         APIError::UserNameAlreadyUsed(req.name.into())
     )?;
 
-    let id = DB.prepare("INSERT INTO users (name, token) VALUES (?, ?) RETURNING id")
-        .bind(&[req.name.into(), req.token.into()])
-        .first::<i32>(Some("id")).await?
-        .unwrap();
+    let id = DB.prepare("INSERT INTO users (name, token) VALUES (?, ?)")
+        .bind(&[req.name.into(), req.token.into()])?
+        .run().await?;
     
-    Ok(status::Created(JSON(UserResponse {
-        id,
+    Ok(status::Created(JSON(UserProfile {
         name:    req.name.into(),
         country: None,
         age:     None,
@@ -89,7 +86,7 @@ async fn sign_up(
 }
 
 struct Token<'req>(&'req str);
-impl<'req> FromRequest<'req> for Token<'req> {
+impl<'req> ohkami::FromRequest<'req> for Token<'req> {
     type Error = std::convert::Infallible;
     
     fn from_request(req: &'req Request) -> Option<Result<Self, Self::Error>> {
@@ -98,24 +95,22 @@ impl<'req> FromRequest<'req> for Token<'req> {
             .strip_prefix("Bearer ")?;
         Some(Ok(Self(token)))
     }
-}
-impl Token<'_> {
-    fn required() -> impl Fang {
-        return TokenAuth;
 
-        #[derive(Clone)]
-        struct TokenAuth;
-        impl FangAction for TokenAuth {
-            #[cfg(feature="openapi")]
-            fn openapi_map_operation(operation: openapi::Operation) -> openapi::Operation {
-                use openapi::security::SecurityScheme;
-                operation.security(SecurityScheme::Bearer("tokenAuth", None), [])
-            }
+    #[cfg(feature="openapi")]
+    fn openapi_inbound() -> openapi::Inbound {
+        openapi::Inbound::Security {
+            scheme: openapi::SecurityScheme::Bearer("tokenAuth", None),
+            scopes: &[]
         }
     }
 }
 
+struct Tweet {
+    content:   String,
+    posted_at: u64,
+}
+
 async fn post_tweet(
     Token(token): Token<'_>,
-    Bindings { DB, .. }: Bindings,    
-)
+    Bindings { DB, .. }: Bindings,
+) -> Result<>
