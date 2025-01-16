@@ -124,7 +124,7 @@ const _: () = {
 
         #[cfg(feature="openapi")]
         fn openapi_map_operation(&self, operation: crate::openapi::Operation) -> crate::openapi::Operation {
-            operation.security(self.openapi_security.clone(), [])
+            operation.security(self.openapi_security.clone(), &[])
         }
     }
 

@@ -141,7 +141,7 @@ impl Operation {
         self
     }
 
-    pub fn security<const N: usize>(mut self, securityScheme: SecurityScheme, scopes: [&'static str; N]) -> Self {
+    pub fn security(mut self, securityScheme: SecurityScheme, scopes: &[&'static str]) -> Self {
         self.security.push(Map::from_iter([(SecuritySchemeName(securityScheme), scopes.into())]));
         self
     }
@@ -171,15 +171,16 @@ impl Operation {
         self
     }
 
-    pub fn input(mut self, input: Option<crate::request::Input>) -> Self {
-        match input {
+    pub fn inbound(mut self, inbound: Option<crate::Inbound>) -> Self {
+        match inbound {
             None => self,
-            Some(crate::request::Input::Body(body)) => self.requestBody(body),
-            Some(crate::request::Input::Param(param)) => self.param(param),
-            Some(crate::request::Input::Params(params)) => {
+            Some(crate::Inbound::Security { scheme, scopes }) => self.security(scheme, scopes),
+            Some(crate::Inbound::Body(body)) => self.requestBody(body),
+            Some(crate::Inbound::Param(param)) => self.param(param),
+            Some(crate::Inbound::Params(params)) => {
                 for param in params {self = self.param(param)}
                 self
-            }
+            },
         }
     }
 

@@ -134,7 +134,7 @@ const _: (/* FromRequest items */) = {
                 }
             }, #[cfg(feature="openapi")] {
                 openapi::Operation::with(Body::openapi_responses())
-                    .input(Item1::openapi_input())
+                    .inbound(Item1::openapi_inbound())
             })
         }
     }
@@ -156,8 +156,8 @@ const _: (/* FromRequest items */) = {
                 }
             }, #[cfg(feature="openapi")] {
                 openapi::Operation::with(Body::openapi_responses())
-                    .input(Item1::openapi_input())
-                    .input(Item2::openapi_input())
+                    .inbound(Item1::openapi_inbound())
+                    .inbound(Item2::openapi_inbound())
             })
         }
     }
@@ -180,9 +180,9 @@ const _: (/* FromRequest items */) = {
                 }
             }, #[cfg(feature="openapi")] {
                 openapi::Operation::with(Body::openapi_responses())
-                    .input(Item1::openapi_input())
-                    .input(Item2::openapi_input())
-                    .input(Item3::openapi_input())
+                    .inbound(Item1::openapi_inbound())
+                    .inbound(Item2::openapi_inbound())
+                    .inbound(Item3::openapi_inbound())
             })
         }
     }
@@ -206,10 +206,10 @@ const _: (/* FromRequest items */) = {
                 }
             }, #[cfg(feature="openapi")] {
                 openapi::Operation::with(Body::openapi_responses())
-                    .input(Item1::openapi_input())
-                    .input(Item2::openapi_input())
-                    .input(Item3::openapi_input())
-                    .input(Item4::openapi_input())
+                    .inbound(Item1::openapi_inbound())
+                    .inbound(Item2::openapi_inbound())
+                    .inbound(Item3::openapi_inbound())
+                    .inbound(Item4::openapi_inbound())
             })
         }
     }
@@ -238,7 +238,7 @@ const _: (/* one FromParam without tuple and FromRequest items */) = {
             }, #[cfg(feature="openapi")] {
                 openapi::Operation::with(Body::openapi_responses())
                     .param(P1::openapi_param())
-                    .input(Item1::openapi_input())
+                    .inbound(Item1::openapi_inbound())
             })
         }
     }
@@ -266,8 +266,8 @@ const _: (/* one FromParam without tuple and FromRequest items */) = {
             }, #[cfg(feature="openapi")] {
                 openapi::Operation::with(Body::openapi_responses())
                     .param(P1::openapi_param())
-                    .input(Item1::openapi_input())
-                    .input(Item2::openapi_input())
+                    .inbound(Item1::openapi_inbound())
+                    .inbound(Item2::openapi_inbound())
             })
         }
     }
@@ -296,9 +296,9 @@ const _: (/* one FromParam without tuple and FromRequest items */) = {
             }, #[cfg(feature="openapi")] {
                 openapi::Operation::with(Body::openapi_responses())
                     .param(P1::openapi_param())
-                    .input(Item1::openapi_input())
-                    .input(Item2::openapi_input())
-                    .input(Item3::openapi_input())
+                    .inbound(Item1::openapi_inbound())
+                    .inbound(Item2::openapi_inbound())
+                    .inbound(Item3::openapi_inbound())
             })
         }
     }
@@ -328,10 +328,10 @@ const _: (/* one FromParam without tuple and FromRequest items */) = {
             }, #[cfg(feature="openapi")] {
                 openapi::Operation::with(Body::openapi_responses())
                     .param(P1::openapi_param())
-                    .input(Item1::openapi_input())
-                    .input(Item2::openapi_input())
-                    .input(Item3::openapi_input())
-                    .input(Item4::openapi_input())
+                    .inbound(Item1::openapi_inbound())
+                    .inbound(Item2::openapi_inbound())
+                    .inbound(Item3::openapi_inbound())
+                    .inbound(Item4::openapi_inbound())
             })
         }
     }
@@ -360,7 +360,7 @@ const _: (/* one FromParam and FromRequest items */) = {
             }, #[cfg(feature="openapi")] {
                 openapi::Operation::with(Body::openapi_responses())
                     .param(P1::openapi_param())
-                    .input(Item1::openapi_input())
+                    .inbound(Item1::openapi_inbound())
             })
         }
     }
@@ -388,8 +388,8 @@ const _: (/* one FromParam and FromRequest items */) = {
             }, #[cfg(feature="openapi")] {
                 openapi::Operation::with(Body::openapi_responses())
                     .param(P1::openapi_param())
-                    .input(Item1::openapi_input())
-                    .input(Item2::openapi_input())
+                    .inbound(Item1::openapi_inbound())
+                    .inbound(Item2::openapi_inbound())
             })
         }
     }
@@ -418,9 +418,9 @@ const _: (/* one FromParam and FromRequest items */) = {
             }, #[cfg(feature="openapi")] {
                 openapi::Operation::with(Body::openapi_responses())
                     .param(P1::openapi_param())
-                    .input(Item1::openapi_input())
-                    .input(Item2::openapi_input())
-                    .input(Item3::openapi_input())
+                    .inbound(Item1::openapi_inbound())
+                    .inbound(Item2::openapi_inbound())
+                    .inbound(Item3::openapi_inbound())
             })
         }
     }
@@ -450,10 +450,10 @@ const _: (/* one FromParam and FromRequest items */) = {
             }, #[cfg(feature="openapi")] {
                 openapi::Operation::with(Body::openapi_responses())
                     .param(P1::openapi_param())
-                    .input(Item1::openapi_input())
-                    .input(Item2::openapi_input())
-                    .input(Item3::openapi_input())
-                    .input(Item4::openapi_input())
+                    .inbound(Item1::openapi_inbound())
+                    .inbound(Item2::openapi_inbound())
+                    .inbound(Item3::openapi_inbound())
+                    .inbound(Item4::openapi_inbound())
             })
         }
     }
@@ -484,7 +484,7 @@ const _: (/* two PathParams and FromRequest items */) = {
                 openapi::Operation::with(Body::openapi_responses())
                     .param(P1::openapi_param())
                     .param(P2::openapi_param())
-                    .input(Item1::openapi_input())
+                    .inbound(Item1::openapi_inbound())
             })
         }
     }
@@ -514,8 +514,8 @@ const _: (/* two PathParams and FromRequest items */) = {
                 openapi::Operation::with(Body::openapi_responses())
                     .param(P1::openapi_param())
                     .param(P2::openapi_param())
-                    .input(Item1::openapi_input())
-                    .input(Item2::openapi_input())
+                    .inbound(Item1::openapi_inbound())
+                    .inbound(Item2::openapi_inbound())
             })
         }
     }
@@ -546,9 +546,9 @@ const _: (/* two PathParams and FromRequest items */) = {
                 openapi::Operation::with(Body::openapi_responses())
                     .param(P1::openapi_param())
                     .param(P2::openapi_param())
-                    .input(Item1::openapi_input())
-                    .input(Item2::openapi_input())
-                    .input(Item3::openapi_input())
+                    .inbound(Item1::openapi_inbound())
+                    .inbound(Item2::openapi_inbound())
+                    .inbound(Item3::openapi_inbound())
             })
         }
     }
@@ -580,10 +580,10 @@ const _: (/* two PathParams and FromRequest items */) = {
                 openapi::Operation::with(Body::openapi_responses())
                     .param(P1::openapi_param())
                     .param(P2::openapi_param())
-                    .input(Item1::openapi_input())
-                    .input(Item2::openapi_input())
-                    .input(Item3::openapi_input())
-                    .input(Item4::openapi_input())
+                    .inbound(Item1::openapi_inbound())
+                    .inbound(Item2::openapi_inbound())
+                    .inbound(Item3::openapi_inbound())
+                    .inbound(Item4::openapi_inbound())
             })
         }
     }

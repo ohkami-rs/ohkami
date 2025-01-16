@@ -7,7 +7,9 @@ use ohkami::prelude::*;
 use ohkami::fang::BasicAuth;
 use ohkami::typed::status;
 use ohkami::format::JSON;
-use ohkami::openapi::{operation, Schema};
+
+#[cfg(feature="openapi")]
+use ohkami::openapi::{self, operation, Schema};
 
 #[ohkami::bindings]
 struct Bindings;
@@ -34,7 +36,7 @@ pub fn ohkami() -> Ohkami {
     ))
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize)]
 #[cfg_attr(feature="openapi", derive(Schema))]
 struct UserResponse {
     id:      i32,
@@ -53,6 +55,8 @@ async fn list_users(
     Ok(JSON(users))
 }
 
+#[derive(Deserialize)]
+#[cfg_attr(feature="openapi", derive(Schema))]
 struct SignUpRequest<'req> {
     name: &'req str,
     /// just for demo
@@ -84,6 +88,34 @@ async fn sign_up(
     })))
 }
 
-async fn post_tweet(
+struct Token<'req>(&'req str);
+impl<'req> FromRequest<'req> for Token<'req> {
+    type Error = std::convert::Infallible;
     
+    fn from_request(req: &'req Request) -> Option<Result<Self, Self::Error>> {
+        let token = req.headers
+            .Authorization()?
+            .strip_prefix("Bearer ")?;
+        Some(Ok(Self(token)))
+    }
+}
+impl Token<'_> {
+    fn required() -> impl Fang {
+        return TokenAuth;
+
+        #[derive(Clone)]
+        struct TokenAuth;
+        impl FangAction for TokenAuth {
+            #[cfg(feature="openapi")]
+            fn openapi_map_operation(operation: openapi::Operation) -> openapi::Operation {
+                use openapi::security::SecurityScheme;
+                operation.security(SecurityScheme::Bearer("tokenAuth", None), [])
+            }
+        }
+    }
+}
+
+async fn post_tweet(
+    Token(token): Token<'_>,
+    Bindings { DB, .. }: Bindings,    
 )

@@ -6,6 +6,7 @@ mod _util;
 pub mod schema;
 
 pub mod security;
+pub use security::SecurityScheme;
 
 pub mod request;
 pub use request::{Parameter, RequestBody};
@@ -17,6 +18,13 @@ pub mod paths;
 pub use paths::Operation;
 
 pub mod document;
+
+pub enum Inbound {
+    Param(Parameter),
+    Params(Vec<Parameter>),
+    Body(RequestBody),
+    Security { scheme: SecurityScheme, scopes: &'static [&'static str] },
+}
 
 pub fn component<T: schema::Type::SchemaType>(name: &'static str, schema: schema::Schema<T>) -> schema::Schema<T> {
     schema::Schema::component(name, schema)
