@@ -1,0 +1,12 @@
+{
+	"name": "ohkami-worker-with-openapi",
+	"version": "0.1.0",
+	"private": true,
+	"scripts": {
+		"deploy": "export OHKAMI_WORKER_DEV='' && wrangler deploy --assets pages",
+		"dev": "export OHKAMI_WORKER_DEV=1 && wrangler dev"
+	},
+	"devDependencies": {
+		"wrangler": "^3.50"
+	}
+}
