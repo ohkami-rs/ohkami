@@ -49,12 +49,14 @@ async fn main() {
     ));
 
     // This make your Ohkami spit out `openapi.json`
-    // ( the file name is configurable ).
-    o.spit_out(openapi::OpenAPI::json(
-        "Users Server", "0.1.0", [
+    // ( the file name is configurable by `.generate_to` ).
+    o.generate(openapi::OpenAPI {
+        title: "Users Server",
+        version: "0.1.0",
+        servers: &[
             openapi::Server::at("localhost:5000"),
         ]
-    ));
+    });
 
     o.howl("localhost:5000").await;
 }

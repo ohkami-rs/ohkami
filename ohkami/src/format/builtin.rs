@@ -36,7 +36,7 @@ mod bound {
     pub trait Outgoing: Serialize + openapi::Schema {}
     impl<T> Outgoing for T where T: Serialize + openapi::Schema {}
 }
-#[cfg(not(all(debug_assertions, feature="openapi")))]
+#[cfg(not(feature="openapi"))]
 mod bound {
     use serde::{Serialize, Deserialize};
 

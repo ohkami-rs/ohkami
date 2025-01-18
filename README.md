@@ -217,12 +217,14 @@ async fn main() {
     ));
 
     // This make your Ohkami spit out `openapi.json`
-    // ( the file name is configurable ).
-    o.spit_out(openapi::OpenAPI::json(
-        "Users Server", "0.1.0", [
+    // ( the file name is configurable by `.generate_to` ).
+    o.generate(openapi::OpenAPI {
+        title: "Users Server",
+        version: "0.1.0",
+        servers: &[
             openapi::Server::at("localhost:5000"),
         ]
-    ));
+    });
 
     o.howl("localhost:5000").await;
 }
@@ -230,7 +232,6 @@ async fn main() {
 
 - Currently, only **JSON** is supported as the document format.
 - When the binary size matters, you should prepare a feature flag activating `ohkami/openapi` in your package, and put all your codes around `openapi` behind that feature via `#[cfg(feature = ...)]` or `#[cfg_attr(feature = ...)]`.
-- On `rt_worker`, you need to **separate `spit_out` process** from `Ohkami` ( `#[worker]` in `lib.rs` ) itself, call it in a **binary package** importing your `Ohkami` from `lib.rs`, and compile/execute it in **native target** for your computer, not in `wasm32-unknown-unknown` for Cloudflare Workers ( becasue `spit_out` requires access to your local file system ) .
 
 ### `"nightly"`：nightly-only functionalities
 

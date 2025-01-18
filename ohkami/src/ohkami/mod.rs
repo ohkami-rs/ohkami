@@ -373,19 +373,18 @@ impl Ohkami {
     }
 
     #[cfg(feature="openapi")]
-    /// Generate OpenAPI document file.
+    #[cfg(feature="__rt_native__")]
+    /// Generate OpenAPI document.
     /// 
     /// ### note
-    /// 
+    ///  
+    /// - Currently, only **JSON** is supported as the document format.
     /// - When the binary size matters, you should prepare a feature flag
     ///   activating `ohkami/openapi` in your package, and put all your codes
     ///   around `openapi` behind that feature via `#[cfg(feature = ...)]` or
     ///   `#[cfg_attr(feature = ...)]`.
-    /// - On `rt_worker`, you need to **separate `spit_out` process** from `Ohkami`
-    ///   ( `#[worker]` in `lib.rs` ) itself, call it in a **binary package**
-    ///   importing your `Ohkami` from `lib.rs`, and compile/execute it in **native target**
-    ///   for your computer, not in `wasm32-unknown-unknown` for Cloudflare Workers ( becasue
-    ///   `spit_out` requires access to your local file system ) .
+    /// - This generates `openapi.json`. Use `generate_to` to configure the
+    ///   file path.
     /// 
     /// ### example
     /// 
@@ -405,36 +404,47 @@ impl Ohkami {
     /// async fn main() {
     ///     let o = my_ohkami();
     /// 
-    ///     // Here generate the JSON file
-    ///     o.spit_out(OpenAPI::json("Sample API", "0.1.9", [
-    ///         Server::at("http://api.example.com/v1")
-    ///             .description("Main (production) server"),
-    ///         Server::at("http://staging-api.example.com")
-    ///             .description("Internal staging server for testing")
-    ///     ]));
+    ///     // Here generating openapi.json
+    ///     o.generate(OpenAPI {
+    ///         title: "Sample API",
+    ///         version: "0.1.9",
+    ///         servers: &[
+    ///             Server::at("http://api.example.com/v1")
+    ///                 .description("Main (production) server"),
+    ///             Server::at("http://staging-api.example.com")
+    ///                 .description("Internal staging server for testing")
+    ///         ]
+    ///      });
     /// 
     ///     o.howl("localhost:5000").await
     /// }
     /// ```
-    pub fn spit_out(&self, metadata: crate::openapi::OpenAPI) {
-        if std::panic::catch_unwind(|| std::fs::exists(".")).is_err() {
-            crate::warning!("[Ohkami::spit_out] Can't access file system");
-            panic!("[Ohkami::spit_out] Can't access file system")
-        }
+    pub fn generate(&self, openapi: crate::openapi::OpenAPI) {
+        self.generate_to("openapi.json", openapi)
+    }
+
+    #[cfg(feature="openapi")]
+    #[cfg(feature="__rt_native__")]
+    pub fn generate_to(&self, file_path: impl AsRef<std::path::Path>, openapi: crate::openapi::OpenAPI) {
+        let file_path = file_path.as_ref();
 
         let (router, routes) = (Self {
             router: self.router.clone(),
             fangs:  self.fangs.clone()
         }).into_router().finalize();
 
-        let doc = router.gen_openapi_doc(routes.clone(), metadata.clone());
+        let doc = router.gen_openapi_doc(routes, openapi);
 
-        let mut doc = serde_json::to_vec_pretty(&doc).unwrap();
+        let mut doc = ::serde_json::to_vec(&doc).expect("failed to serialize OpenAPI document");
         doc.push(b'\n');
 
-        std::fs::write(metadata.file_path, doc)
-            .expect("[OpenAPI] Failed to write document to file");
+        std::fs::write(file_path, doc).expect(&format!("failed to write OpenAPI document JSON to {}", file_path.display()))
     }
+
+    #[cfg(feature="openapi")]
+    #[cfg(feature="rt_worker")]
+    #[doc(hidden)]
+    pub fn __openapi_json__(&self, file_path: impl AsRef<std::path::Path>) 
 }
 
 #[cfg(feature="__rt_native__")]

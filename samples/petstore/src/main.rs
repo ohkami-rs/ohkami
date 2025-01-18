@@ -55,9 +55,13 @@ async fn main() {
             .GET(show_pet_by_id),
     ));
 
-    o.spit_out(openapi::OpenAPI::json("Petstore API", "1.0.0", [
-        openapi::Server::at("http://localhost:5050")
-    ]));
+    o.generate(openapi::OpenAPI {
+        title: "Petstore API",
+        version: "1.0.0",
+        servers: &[
+            openapi::Server::at("http://localhost:5050")
+        ]
+    });
 
     o.howl("localhost:5050").await
 }

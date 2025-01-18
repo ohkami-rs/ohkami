@@ -388,6 +388,7 @@ impl Headers {
         }
     }
 
+    #[cfg(any(feature="__rt_native__", all(feature="rt_worker", debug_assertions)))]
     #[inline] pub(crate) fn get_raw(&self, name: Header) -> Option<&CowSlice> {
         unsafe {self.standard.get(name as usize)}
     }

@@ -10,6 +10,12 @@ worker = { version = "0.5", features = ["d1"] }
 thiserror = "1.0"
 console_error_panic_hook = "0.1"
 
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[profile.release]
+opt-level = "s"
+
 [features]
 openapi = ["ohkami/openapi"]
 DEBUG   = ["ohkami/DEBUG"]
