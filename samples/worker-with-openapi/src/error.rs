@@ -1,3 +1,5 @@
+use crate::model::ID;
+
 #[derive(Debug, thiserror::Error)]
 pub(crate) enum APIError {
     #[error("Error in worker: {0}")]
@@ -5,6 +7,12 @@ pub(crate) enum APIError {
 
     #[error("User name `{0}` is already used")]
     UserNameAlreadyUsed(String),
+
+    #[error("User (id = {id}) not found")]
+    UserNotFound { id: ID },
+
+    #[error("User (id = {me}) tried modifying other user (id = {other})")]
+    TryModifyingOtherUser { me: ID, other: ID },
 }
 
 impl ohkami::IntoResponse for APIError {
@@ -13,7 +21,9 @@ impl ohkami::IntoResponse for APIError {
         match &self {
             Self::Worker(_) => ohkami::Response::InternalServerError(),
             Self::UserNameAlreadyUsed(_) => ohkami::Response::BadRequest()  
-                .with_text(self.to_string())
+                .with_text(self.to_string()),
+            Self::UserNotFound { .. } => ohkami::Response::NotFound(),
+            Self::TryModifyingOtherUser { .. } => ohkami::Response::Forbidden(),
         }
     }
 }

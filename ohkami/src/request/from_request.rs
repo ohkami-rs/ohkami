@@ -175,23 +175,11 @@ const _: () = {
                     type Error = ErrorMessage;
 
                     fn from_param(param: Cow<'p, str>) -> Result<Self, Self::Error> {
-                        let digit_bytes = param.as_bytes();
-                        (digit_bytes.len() > 0).then_some(())
-                            .ok_or_else(|| ErrorMessage(format!("Unexpected path params: Expected a number nut found an empty string")))?;
-                        match digit_bytes {
-                            [b'0'] => Ok(0),
-                            [b'0', ..] => Err((|| ErrorMessage(format!("Unexpected path params `{}`: Expected a number but it starts with '0'", digit_bytes.escape_ascii())))()),
-                            _ => {
-                                let mut value: $unsigned_int = 0;
-                                for d in digit_bytes {
-                                    match d {
-                                        b'0'..=b'9' => value = value * 10 + (*d - b'0') as $unsigned_int,
-                                        _ => return Err((|| ErrorMessage(format!("Unexpected path params `{}`: Expected a number but it contains a non-digit charactor", digit_bytes.escape_ascii())))())
-                                    }
-                                }
-                                Ok(value)
-                            }
-                        }
+                        ::byte_reader::Reader::new(param.as_bytes())
+                            .read_uint()
+                            .map(|i| Self::try_from(i).ok())
+                            .flatten()
+                            .ok_or_else(|| ErrorMessage(format!("Unexpected path param")))
                     }
 
                     #[cfg(feature="openapi")]
@@ -201,7 +189,30 @@ const _: () = {
                 }
             )*
         };
-    } unsigned_integers! { u8, u16, u32, u64, u128, usize }
+    } unsigned_integers! { u8, u16, u32, u64, usize }
+
+    macro_rules! signed_integers {
+        ($( $signed_int:ty ),*) => {
+            $(
+                impl<'p> FromParam<'p> for $signed_int {
+                    type Error = ErrorMessage;
+
+                    fn from_param(param: Cow<'p, str>) -> Result<Self, Self::Error> {
+                        ::byte_reader::Reader::new(param.as_bytes())
+                            .read_int()
+                            .map(|i| Self::try_from(i).ok())
+                            .flatten()
+                            .ok_or_else(|| ErrorMessage(format!("Unexpected path param")))
+                    }
+
+                    #[cfg(feature="openapi")]
+                    fn openapi_param() -> openapi::Parameter {
+                        openapi::Parameter::in_path("", openapi::integer())
+                    }
+                }
+            )*
+        };
+    } signed_integers! { i8, i16, i32, i64, isize }
 };
 
 pub trait FromBody<'req>: Sized {

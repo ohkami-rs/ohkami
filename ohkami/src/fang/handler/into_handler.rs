@@ -1,5 +1,5 @@
 use std::{future::Future, pin::Pin};
-use super::{Handler, SendOnNative, SendSyncOnNative, ResponseFuture};
+use super::{Handler, SendOnNative, SendSyncOnNative, SendOnNativeFuture};
 use crate::{Response, FromRequest, FromParam, Request, IntoResponse};
 
 #[cfg(feature="openapi")]
@@ -10,7 +10,7 @@ pub trait IntoHandler<T> {
     fn into_handler(self) -> Handler;
 }
 
-#[inline(never)] #[cold] fn __error__(e: Response) -> Pin<Box<dyn ResponseFuture>> {
+#[inline(never)] #[cold] fn __error__(e: Response) -> Pin<Box<dyn SendOnNativeFuture<Response>>> {
     Box::pin(async {e})
 }
 

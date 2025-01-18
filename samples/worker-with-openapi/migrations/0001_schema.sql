@@ -1,13 +1,13 @@
 -- Migration number: 0001 	 2025-01-15T23:14:42.890Z
 
 CREATE TABLE IF NOT EXISTS users (
-    id      integer     NOT NULL PRIMARY KEY,
-    token   varchar(64) NOT NULL, -- just for demo
-    name    varchar(64) NOT NULL,
-    country varchar(64),
-    age     integer,
+    id       integer NOT NULL PRIMARY KEY,
+    token    text    NOT NULL, -- just for demo
+    name     text    NOT NULL,
+    location text,
+    age      integer,
 
-    UNIQUE (name)
+    UNIQUE (name, token)
 );
 
 CREATE TABLE IF NOT EXISTS tweets (

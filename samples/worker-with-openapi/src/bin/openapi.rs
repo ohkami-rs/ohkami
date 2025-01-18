@@ -1,3 +1,7 @@
+//! ```sh
+//! CARGO_BUILD_TARGET=(rustc -vV | grep 'host' | sed 's/host: //') cargo run --bin openapi
+//! ```
+
 #![cfg(feature="openapi")]
 
 use ohkami::openapi;

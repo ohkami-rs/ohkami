@@ -1,9 +1,8 @@
-use crate::Response;
 use super::FangProcCaller;
 use std::future::Future;
 
 
-pub(super) use dispatch::*;
+pub use dispatch::*;
 
 #[cfg(not(feature="rt_worker"))]
 mod dispatch {
@@ -24,8 +23,8 @@ mod dispatch {
 }
 
 #[allow(unused)]
-pub(crate) trait ResponseFuture: Future<Output = Response> + SendOnNative {}
-impl<R: Future<Output = Response> + SendOnNative> ResponseFuture for R {}
+pub trait SendOnNativeFuture<T>: Future<Output = T> + SendOnNative {}
+impl<T, F: Future<Output = T> + SendOnNative> SendOnNativeFuture<T> for F {}
 
-pub(crate) trait FPCBound: FangProcCaller + SendSyncOnNative {}
+pub trait FPCBound: FangProcCaller + SendSyncOnNative {}
 impl<T: FangProcCaller + SendSyncOnNative> FPCBound for T {}
