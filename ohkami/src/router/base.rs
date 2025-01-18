@@ -142,9 +142,15 @@ impl Router {
         let ByAnother { route, ohkami } = another;
         let another_routes = ohkami.into_router();
 
+        crate::DEBUG!("merging following Ohkamis at {route:?}: \n\
+            self: {self:#?}\n\
+            another: {another_routes:#?}\n\
+        ");
+
         macro_rules! merge {
             ($( $method:ident ),*) => {$(
-                self.$method.merge_node(route.clone().into_iter(), another_routes.$method).expect("Can't merge Ohkamis");
+                self.$method.merge_node(route.clone().into_iter(), another_routes.$method)
+                    .expect(&format!("Can't merge Ohkamis ({})", stringify!($method)));
             )*};
         } merge! { GET, PUT, POST, PATCH, DELETE, OPTIONS }
     }
@@ -279,12 +285,6 @@ impl Node {
     }
 
     fn merge_here(&mut self, another_root: Node) -> Result<(), String> {
-        if self.handler.is_some() {
-            return Err(format!(
-                "Can't merge another Ohkami at route that already has handler"
-            ))
-        }
-
         let Node {
             pattern:  None, /* another_root must be a root node and has pattern `None` */
             fangses:  another_root_fangses,
@@ -294,11 +294,16 @@ impl Node {
             panic!("Unexpectedly called `Node::merge_here` where `another_root` is not root node")
         };
         
-        self.append_fangs(another_root_fangses);
-
         if let Some(h) = another_root_handler {
+            if self.handler.is_some() {
+                return Err(format!(
+                    "Conflicting handler definitions"
+                ))
+            }
             self.set_handler(h)?;
         }
+
+        self.append_fangs(another_root_fangses);
 
         for ac in another_root_children {
             self.append_child(ac)?

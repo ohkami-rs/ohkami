@@ -64,7 +64,7 @@ async fn edit_profile(id: ID,
     Bindings { DB, .. }: Bindings,
 ) -> Result<(), APIError> {
     if *user_id != id {
-        return Err(APIError::TryModifyingOtherUser { me: *user_id, other: id });
+        return Err(APIError::ModifyingOtherUser { me: *user_id, other: id });
     }
 
     macro_rules! make_set_clause {
