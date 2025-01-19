@@ -26,4 +26,17 @@ impl ohkami::IntoResponse for APIError {
             Self::ModifyingOtherUser { .. } => ohkami::Response::Forbidden(),
         }
     }
+
+    #[cfg(feature="openapi")]
+    fn openapi_responses() -> ohkami::openapi::Responses {
+        use ohkami::openapi::{self, Response};
+
+        ohkami::openapi::Responses::enumerated([
+            (500, Response::when("Error in worker")),
+            (400, Response::when("Username already used")
+                .content("text/plain", openapi::string())),
+            (404, Response::when("User not found")),
+            (403, Response::when("Modyfing other user"))
+        ])
+    }
 }

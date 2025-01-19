@@ -346,7 +346,9 @@ impl Node {
             child.apply_fangs(id.clone(), fangs.clone())
         }
 
-        self.fangses.add(id, fangs);
+        if self.handler.is_some() {
+            self.fangses.add(id, fangs);
+        }
     }
 }
 

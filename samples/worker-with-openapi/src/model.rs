@@ -12,6 +12,7 @@ pub(super) type Timestamp = u64;
 
 #[derive(Serialize, Deserialize)]
 #[cfg_attr(feature="openapi", derive(Schema))]
+#[cfg_attr(feature="openapi", openapi(component))]
 pub(super) struct UserProfile {
     pub(super) name:     String,
     pub(super) location: Option<String>,

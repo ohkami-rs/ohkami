@@ -59,6 +59,14 @@ impl<T: Data> crate::IntoResponse for DataStream<T> {
         res.set_stream_raw(self.0);/* no additional boxing */
         res
     }
+
+    #[cfg(feature="openapi")]
+    fn openapi_responses() -> crate::openapi::Responses {
+        crate::openapi::Responses::new(
+            200,
+            crate::openapi::Response::when("OK")
+        )
+    }
 }
 
 impl<T: Data, S> From<S> for DataStream<T>

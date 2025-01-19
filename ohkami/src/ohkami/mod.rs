@@ -419,15 +419,15 @@ impl Ohkami {
     ///     o.howl("localhost:5000").await
     /// }
     /// ```
-    pub fn generate(&self, openapi: crate::openapi::OpenAPI) {
-        self.generate_to("openapi.json", openapi)
+    pub fn generate(&self, metadata: crate::openapi::OpenAPI) {
+        self.generate_to("openapi.json", metadata)
     }
 
     #[cfg(feature="openapi")]
     #[cfg(feature="__rt_native__")]
-    pub fn generate_to(&self, file_path: impl AsRef<std::path::Path>, openapi: crate::openapi::OpenAPI) {
+    pub fn generate_to(&self, file_path: impl AsRef<std::path::Path>, metadata: crate::openapi::OpenAPI) {
         let file_path = file_path.as_ref();
-        std::fs::write(file_path, self.__openapi_document_bytes__())
+        std::fs::write(file_path, self.__openapi_document_bytes__(metadata))
             .expect(&format!("failed to write OpenAPI document JSON to {}", file_path.display()))
     }
 
