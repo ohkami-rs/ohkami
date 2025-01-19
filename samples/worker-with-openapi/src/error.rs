@@ -32,7 +32,7 @@ impl ohkami::IntoResponse for APIError {
         use ohkami::openapi::{self, Response};
 
         ohkami::openapi::Responses::enumerated([
-            (500, Response::when("Error in worker")),
+            (500, Response::when("Worker's internal error")),
             (400, Response::when("Username already used")
                 .content("text/plain", openapi::string())),
             (404, Response::when("User not found")),

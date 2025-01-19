@@ -77,7 +77,11 @@ impl<B: IntoBody> IntoResponse for B {
     fn openapi_responses() -> openapi::Responses {
         let mut res = openapi::Response::when("OK");
         if Self::CONTENT_TYPE != "" {
-            res = res.content(Self::CONTENT_TYPE, Self::openapi_responsebody());
+            let mime_type = match Self::CONTENT_TYPE.split_once(';') {
+                None => Self::CONTENT_TYPE,
+                Some((mime_type, _)) => mime_type
+            };
+            res = res.content(mime_type, Self::openapi_responsebody());
         }
         openapi::Responses::new(200, res)
     }
