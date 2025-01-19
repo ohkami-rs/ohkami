@@ -194,7 +194,7 @@ pub mod openapi {
     pub struct OpenAPI {
         pub title:   &'static str,
         pub version: &'static str,
-        pub servers: &'static [crate::openapi::document::Server],
+        pub servers: Vec<crate::openapi::document::Server>,
     }
 }
 

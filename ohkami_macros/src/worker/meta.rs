@@ -6,7 +6,7 @@ use syn::{token, Ident, Lit, LitStr};
 pub(super) struct WorkerMeta {
     pub(super) title:   LitStr,
     pub(super) version: LitStr,
-    pub(super) servers: Option<Vec<Server>>,
+    pub(super) servers: Vec<Server>,
 }
 
 pub(super) struct Server {
@@ -41,7 +41,13 @@ const _: (/* TryDefault */) = {
             Ok(Self {
                 title:   LitStr::new(package_json["name"].as_str().unwrap(), Span::call_site()),
                 version: LitStr::new(package_json["version"].as_str().unwrap(), Span::call_site()),
-                servers: None
+                servers: vec![
+                    Server {
+                        url:         LitStr::new("/", Span::call_site()),
+                        description: None,
+                        variables:   None,
+                    }
+                ]
             })
         }
     }
@@ -94,10 +100,10 @@ const _: (/* Parse */) = {
                         }
                         "servers" => {
                             let _ = meta.parse::<token::Colon>()?;
-                            this.servers = Some({
+                            this.servers = {
                                 let servers; syn::bracketed!(servers in meta);
                                 servers.parse_terminated(Server::parse, token::Comma)?.into_iter().collect()
-                            });
+                            };
                         }
                         _ => {/* accept any other fields for documentation purpose */
                             let _ = meta.parse::<token::Colon>()?;

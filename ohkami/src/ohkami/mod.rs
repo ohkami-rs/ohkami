@@ -408,7 +408,7 @@ impl Ohkami {
     ///     o.generate(OpenAPI {
     ///         title: "Sample API",
     ///         version: "0.1.9",
-    ///         servers: &[
+    ///         servers: vec![
     ///             Server::at("http://api.example.com/v1")
     ///                 .description("Main (production) server"),
     ///             Server::at("http://staging-api.example.com")

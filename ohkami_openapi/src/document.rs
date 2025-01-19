@@ -7,6 +7,8 @@ pub struct Document {
     info:       Info,
     servers:    Vec<Server>,
     paths:      Paths,
+
+    #[serde(skip_serializing_if = "Components::is_empty")]
     components: Components,
 }
 
@@ -72,8 +74,15 @@ impl Server {
 
 #[derive(Serialize, Clone)]
 pub struct Components {
+    #[serde(skip_serializing_if = "Map::is_empty")]
     schemas:         Map<&'static str, RawSchema>,
+    #[serde(skip_serializing_if = "Map::is_empty")]
     securitySchemes: Map<&'static str, SecurityScheme>,
+}
+impl Components {
+    fn is_empty(&self) -> bool {
+        self.schemas.is_empty() && self.securitySchemes.is_empty()
+    }
 }
 
 impl Document {

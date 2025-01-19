@@ -26,8 +26,7 @@ pub fn worker(args: TokenStream, ohkami_fn: TokenStream) -> Result<TokenStream> 
     let openapi_fn = cfg!(feature="openapi").then_some({
         let title   = worker_meta.title;
         let version = worker_meta.version;
-        let servers = worker_meta.servers
-            .unwrap_or_else(Vec::new).into_iter()
+        let servers = worker_meta.servers.into_iter()
             .map(|meta::Server { url, description, variables }| {
                 let mut def = quote! {
                     ::ohkami::openapi::Server::at(#url)
@@ -60,7 +59,7 @@ pub fn worker(args: TokenStream, ohkami_fn: TokenStream) -> Result<TokenStream> 
                     ohkami.__openapi_document_bytes__(::ohkami::openapi::OpenAPI {
                         title:   #title,
                         version: #version,
-                        servers: &[ #(#servers,)* ],
+                        servers: vec![ #(#servers),* ],
                     })
                 }
             };
