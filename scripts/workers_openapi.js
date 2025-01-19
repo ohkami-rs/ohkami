@@ -1,7 +1,8 @@
 #! /usr/bin/env node
 
 import { writeFileSync, existsSync, rmSync } from 'node:fs';
-import { execSync } from 'node:child_process';
+import { exec, spawn } from 'node:child_process';
+import { promisify } from 'node:util';
 import { cwd, exit as __raw_exit__ } from 'node:process';
 import { join } from 'node:path';
 
@@ -16,8 +17,8 @@ const app = (() => {
         /** @type {string} */
         #outputPath = "openapi.json";
 
-        /** @type {string} */
-        #additionalOptions = "";
+        /** @type {[string]} */
+        #additionalOptions = [];
 
         /**
          * Based on https://refspecs.linuxbase.org/LSB_5.0.0/LSB-Core-generic/LSB-Core-generic/iniscrptact.html,
@@ -38,10 +39,7 @@ const app = (() => {
                             i += 2;
                             break;
                         case "--":
-                            this.#additionalOptions =
-                                process.argv
-                                    .slice(i + 1)
-                                    .join(" ");
+                            this.#additionalOptions = process.argv.slice(i + 1);
                             i = process.argv.length;
                             break;
                         default:
@@ -73,9 +71,14 @@ const app = (() => {
          * @returns {void}
          * */
         exit(message) {
+            if (existsSync(app.WASMPACK_OUT_DIR)) {
+                rmSync(app.WASMPACK_OUT_DIR, { recursive: true, force: true });
+            }
+        
             if (typeof message == 'string') {
                 console.error(message);
             }
+            
             const code = this.#code;
             this.#code += 1;
             __raw_exit__(code);
@@ -90,21 +93,37 @@ try {
         rmSync(app.WASMPACK_OUT_DIR, { recursive: true, force: true });
     }
 
-    /**
-     * `wasm-pack` is expected to be available because
-     * it's a dependency of `worker-build`.
-     * */
-    execSync(`
-        wasm-pack build \
-            --dev \
-            --no-opt \
-            --no-pack \
-            --no-typescript \
-            --target nodejs \
-            --out-dir ${app.WASMPACK_OUT_DIR} \
-            --out-name ${app.WASMPACK_OUT_NAME} \
-            -- ${app.additionalOptions} \
-    `);
+    await new Promise((resolve, reject) => {
+        /**
+         * `wasm-pack` is expected to be available because
+         * it's a dependency of `worker-build`.
+         * */
+        const wasmpack_build = spawn("wasm-pack", [
+            "build",
+            "--dev",
+            "--no-opt",
+            "--no-pack",
+            "--no-typescript",
+            "--target", "nodejs",
+            "--out-dir", app.WASMPACK_OUT_DIR,
+            "--out-name", app.WASMPACK_OUT_NAME,
+            "--", ...app.additionalOptions
+        ], { stdio: "inherit" });
+
+        wasmpack_build.on("close", (code) => {
+            if (code === 0) {resolve()} else {app.exit()}
+        });
+        wasmpack_build.on("exit", (code) => {
+            if (code === 0) {resolve()} else {app.exit()}
+        });
+
+        wasmpack_build.on("error", (err) => {
+            reject(err);
+        });
+        wasmpack_build.on("disconnect", () => {
+            reject("disconnected");
+        });
+    });
 
 } catch (e) {
     app.exit(`Build failed: ${e}`);
@@ -127,11 +146,4 @@ try {
 
 } catch (e) {
     app.exit(`Generation failed: ${e}`);
-}
-
-try {
-    rmSync(app.WASMPACK_OUT_DIR, { recursive: true, force: true });
-
-} catch (e) {
-    app.exit(`Failed to clean up: ${e}`)
 }
