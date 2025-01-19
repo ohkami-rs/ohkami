@@ -34,6 +34,7 @@ pub(super) struct SignUpRequest<'req> {
 
 #[derive(Serialize, Deserialize, Clone)]
 #[cfg_attr(feature="openapi", derive(Schema))]
+#[cfg_attr(feature="openapi", openapi(component))]
 pub(super) struct Tweet {
     pub(super) user_id:   ID,
     pub(super) user_name: String,

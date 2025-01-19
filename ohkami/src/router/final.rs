@@ -94,23 +94,25 @@ impl Router {
 
                 crate::DEBUG!("[gen_openapi_doc] searching `{openapi_method} {route}`");
 
-                if let (target, true) = router.search_target(&mut path) {
-                    crate::DEBUG!("[gen_openapi_doc] found");
-
-                    let Some(mut operation) = target.openapi_operation.clone() else {
-                        panic!("[OpenAPI] Unexpected not-found route `{openapi_method} {route}`")
-                    };
-                    for param_name in &openapi_path_param_names {
-                        operation.replace_empty_param_name_with(param_name);
-                    }
-                    for security_scheme in operation.iter_securitySchemes() {
-                        doc.register_securityScheme_component(security_scheme);
-                    }
-                    for schema_component in operation.refize_schemas() {
-                        doc.register_schema_component(schema_component);
-                    }
-                    operations.register(openapi_method, operation);
+                let (target, true) = router.search_target(&mut path) else {
+                    continue
                 };
+                let Some(mut operation) = target.openapi_operation.clone() else {
+                    continue
+                };
+
+                crate::DEBUG!("[gen_openapi_doc] found");
+                        
+                for param_name in &openapi_path_param_names {
+                    operation.replace_empty_param_name_with(param_name);
+                }
+                for security_scheme in operation.iter_securitySchemes() {
+                    doc.register_securityScheme_component(security_scheme);
+                }
+                for schema_component in operation.refize_schemas() {
+                    doc.register_schema_component(schema_component);
+                }
+                operations.register(openapi_method, operation);
             }
             
             doc = doc.path(openapi_path, operations);
