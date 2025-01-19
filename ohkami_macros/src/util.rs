@@ -105,7 +105,7 @@ fn unescaped_doc_attr(raw_doc: String) -> String {
 fn find_a_file_in_workspace(file_path: impl AsRef<Path>) -> Result<File, io::Error> {
     let file_path: &Path = file_path.as_ref();
 
-    let cargo_toml = {
+    let cargo_toml: toml::Value = {use std::io::Read;
         let mut file = File::open("Cargo.toml")?;
         let mut buf  = String::new();
         file.read_to_string(&mut buf)?;
@@ -121,11 +121,11 @@ fn find_a_file_in_workspace(file_path: impl AsRef<Path>) -> Result<File, io::Err
         .ok_or_else(|| io::Error::new(ErrorKind::InvalidInput, "\
             assumed as Cargo workspace, but `workspace.members` \
             array is not found in Cargo.toml at project root. \
-        "));
+        "))?;
 
     let mut matching_files = Vec::with_capacity(1);
     for member in workspace_members {
-        if let Ok(file) = File::open(Path::new(member).join(file_path)) {
+        if let Ok(file) = File::open(Path::new(member.as_str().unwrap()).join(file_path)) {
             matching_files.push(file)
         }
     }
@@ -135,12 +135,12 @@ fn find_a_file_in_workspace(file_path: impl AsRef<Path>) -> Result<File, io::Err
             Ok(file)
         }
         (None, _) => {
-            Err(Error::new(ErrorKind::NotFound, format!(
+            Err(io::Error::new(ErrorKind::NotFound, format!(
                 "No workspace member having `{}` found.", file_path.display()
             )))
         }
         (Some(_), false) => {
-            Err(Error::new(ErrorKind::Other, format!(
+            Err(io::Error::new(ErrorKind::Other, format!(
                 "Multiple workspace members have `{}`, this is not supported", file_path.display()
             )))
         }

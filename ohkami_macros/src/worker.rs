@@ -49,16 +49,21 @@ pub fn worker(args: TokenStream, ohkami_fn: TokenStream) -> Result<TokenStream> 
             });
 
         quote! {
-            #[doc(hidden)]
-            #[::worker::wasm_bindgen::prelude::wasm_bindgen(js_name = "OpenAPIDocumentBytes")]
-            pub fn __openapi_document_bytes__() -> Vec<u8> {
-                let ohkami: ::ohkami::Ohkami = #gen_ohkami();
-                ohkami.__openapi_document_bytes__(::ohkami::openapi::OpenAPI {
-                    title:   #title,
-                    version: #version,
-                    servers: &[ #(#servers,) ],
-                })
-            }
+            const _: () = {
+                // `#[wasm_bindgen]` direcly references this modules in epxpaned code
+                use ::worker::wasm_bindgen;
+
+                #[doc(hidden)]
+                #[::worker::wasm_bindgen::prelude::wasm_bindgen(js_name = "OpenAPIDocumentBytes")]
+                pub fn __openapi_document_bytes__() -> Vec<u8> {
+                    let ohkami: ::ohkami::Ohkami = #gen_ohkami;
+                    ohkami.__openapi_document_bytes__(::ohkami::openapi::OpenAPI {
+                        title:   #title,
+                        version: #version,
+                        servers: &[ #(#servers,)* ],
+                    })
+                }
+            };
         }
     });
 
@@ -105,7 +110,7 @@ pub fn bindings(env: TokenStream, bindings_struct: TokenStream) -> Result<TokenS
         }
     }
 
-    let wrangler_toml: toml::Value = {use std::{io::Read, fs::File};
+    let wrangler_toml: toml::Value = {use std::io::Read;
         let mut file = util::find_a_file_in_maybe_workspace("wrangler.toml")
             .map_err(|e| callsite(e.to_string()))?;
         let mut buf = String::new();

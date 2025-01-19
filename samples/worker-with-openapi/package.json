@@ -5,7 +5,7 @@
 	"scripts": {
 		"deploy": "export OHKAMI_WORKER_DEV='' && wrangler deploy --assets pages",
 		"dev": "export OHKAMI_WORKER_DEV=1 && wrangler dev",
-		"openapi": "wasm-pack build --no-typescript --no-pack --target nodejs --out-dir worker_openapi"
+		"openapi": "node ../scripts/workers_openapi.js"
 	},
 	"devDependencies": {
 		"wrangler": "^3.50"

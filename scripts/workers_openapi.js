@@ -9,21 +9,25 @@ const app = (() => {
         /** @type {string} @readonly */
         WORKER_BUILD_OUTPUT_DIR = "workers_openapi-worker_build-output";
 
-        /** @type {string} */
-        #outputPath;
+        /** @type {string} @readonly */
+        WORKER_BUILD_OUT_NAME = "workers_openapi-worker_build";
 
-        /** @type {number} */
-        #code;
+        /** @type {string} */
+        #outputPath = "openapi.json";
+
+        /**
+         * Based on https://refspecs.linuxbase.org/LSB_5.0.0/LSB-Core-generic/LSB-Core-generic/iniscrptact.html,
+         * we'll use codes in *reserved for application use* range as exit codes
+         * 
+         * @type {number}
+         * */
+        #code = 150;
 
         constructor() {
-            /**
-             * Based on https://refspecs.linuxbase.org/LSB_5.0.0/LSB-Core-generic/LSB-Core-generic/iniscrptact.html,
-             * we'll use codes in *reserved for application use* range as exit codes
-             * */
-            this.#code = 150;
-
-            let [, , path] = process.argv;
-            this.#outputPath = path || "openapi.json";
+            {
+                let [, , path] = process.argv;
+                if (path) this.#outputPath = path;
+            }
 
             try {
                 if (!existsSync("Cargo.toml")) throw new Error("`Cargo.toml` directory not found");
@@ -68,16 +72,17 @@ try {
             --out-dir ${app.WORKER_BUILD_OUTPUT_DIR}
     `);
 } catch (e) {
-    app.exit();
+    app.exit(`: ${e}`);
 }
 
-
-// ..
-
-
-try {
-    writeFileSync(app.outputPath, );
-} catch (e) {
-
-    CLI.exit(1);
-}
+// try {
+//     
+// } catch (e) {
+//     
+// }
+// 
+// try {
+//     writeFileSync(app.outputPath, );
+// } catch (e) {
+//     app.exit();
+// }

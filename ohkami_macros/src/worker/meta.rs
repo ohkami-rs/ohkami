@@ -1,3 +1,4 @@
+use crate::util;
 use proc_macro2::Span;
 use syn::{token, Ident, Lit, LitStr};
 
@@ -20,14 +21,14 @@ pub(super) struct ServerVariable {
     pub(super) description: Option<LitStr>,
 }
 
-trait TryDefault {
-    fn try_default() -> syn::Result<Self>
+trait TryDefault: Sized {
+    fn try_default() -> syn::Result<Self>;
 }
 const _: (/* TryDefault */) = {
     impl TryDefault for WorkerMeta {
         fn try_default() -> syn::Result<Self> {
-            let package_json = {
-                let file = util::find_a_file_in_maybe_workspace("package.json")
+            let package_json = {use std::io::Read;
+                let mut file = util::find_a_file_in_maybe_workspace("package.json")
                     .map_err(|e| syn::Error::new(Span::call_site(), e.to_string()))?;
                 let mut buf = String::new();
                 file.read_to_string(&mut buf)
@@ -35,18 +36,18 @@ const _: (/* TryDefault */) = {
                 serde_json::from_str(&buf).ok()
                     .and_then(|j| match j {serde_json::Value::Object(obj) => Some(obj), _ => None})
                     .expect("invalid package.json")
-            }
+            };
 
             Ok(Self {
-                title:   LitStr::new(&package_json["name"], Span::call_site()),
-                version: LitStr::new(&package_json["version"], Span::call_site()),
-                servers: vec![]
+                title:   LitStr::new(package_json["name"].as_str().unwrap(), Span::call_site()),
+                version: LitStr::new(package_json["version"].as_str().unwrap(), Span::call_site()),
+                servers: None
             })
         }
     }
 
     impl TryDefault for Server {
-        fn default() -> syn::Result<Self> {
+        fn try_default() -> syn::Result<Self> {
             Ok(Self {
                 url:         LitStr::new("/", Span::call_site()),
                 description: None,
@@ -56,11 +57,13 @@ const _: (/* TryDefault */) = {
     }
 
     impl TryDefault for ServerVariable {
-        Ok(Self {
-            r#default:   LitStr::new("", Span::call_site()),
-            r#enum:      None,
-            description: None,
-        })
+        fn try_default() -> syn::Result<Self> {
+            Ok(Self {
+                r#default:   LitStr::new("", Span::call_site()),
+                r#enum:      None,
+                description: None,
+            })
+        }
     }
 };
 
@@ -90,14 +93,14 @@ const _: (/* Parse */) = {
                             };
                         }
                         "servers" => {
-                            let _ = meta.parse::<Colon>()?;
+                            let _ = meta.parse::<token::Colon>()?;
                             this.servers = Some({
                                 let servers; syn::bracketed!(servers in meta);
-                                servers.parse_terminated(Server::parse, token::Comma)?.collect()
+                                servers.parse_terminated(Server::parse, token::Comma)?.into_iter().collect()
                             });
                         }
                         _ => {/* accept any other fields for documentation purpose */
-                            let _ = meta.parse::<Colon>()?;
+                            let _ = meta.parse::<token::Colon>()?;
                             if meta.peek(token::Brace) {
                                 let _object; syn::braced!(_object in meta);
                             } else if meta.peek(Lit) {
@@ -135,7 +138,7 @@ const _: (/* Parse */) = {
                         this.variables = Some({
                             let mut variables = Vec::<(LitStr, ServerVariable)>::new();
                             {
-                                let vars; syn::braced(vars in tokens);
+                                let vars; syn::braced!(vars in tokens);
                                 while let Ok(name) = vars.parse::<Ident>() {
                                     variables.push({
                                         let name = LitStr::new(&name.to_string(), name.span());
@@ -149,7 +152,7 @@ const _: (/* Parse */) = {
                         });
                     }
                     _ => {/* accept any other fields for documentation purpose */
-                        let _ = tokens.parse::<Colon>()?;
+                        let _ = tokens.parse::<token::Colon>()?;
                         if tokens.peek(token::Brace) {
                             let _object; syn::braced!(_object in tokens);
                         } else if tokens.peek(Lit) {
@@ -181,7 +184,10 @@ const _: (/* Parse */) = {
                         let _ = tokens.parse::<token::Colon>()?;
                         this.r#enum = Some({
                             let variants; syn::bracketed!(variants in tokens);
-                            variants.parse_terminated(LitStr::parse, token::Comma)?.collect()
+                            variants.parse_terminated(
+                                <LitStr as syn::parse::Parse>::parse,
+                                token::Comma
+                            )?.into_iter().collect()
                         });
                     }
                     "description" => {
@@ -189,7 +195,7 @@ const _: (/* Parse */) = {
                         this.description = Some(tokens.parse::<LitStr>()?);
                     }
                     _ => {/* accept any other fields for documentation purpose */
-                        let _ = tokens.parse::<Colon>()?;
+                        let _ = tokens.parse::<token::Colon>()?;
                         if tokens.peek(token::Brace) {
                             let _object; syn::braced!(_object in tokens);
                         } else if tokens.peek(Lit) {
