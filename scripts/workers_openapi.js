@@ -1,8 +1,7 @@
 #! /usr/bin/env node
 
 import { writeFileSync, existsSync, rmSync } from 'node:fs';
-import { exec, spawn } from 'node:child_process';
-import { promisify } from 'node:util';
+import { spawn } from 'node:child_process';
 import { cwd, exit as __raw_exit__ } from 'node:process';
 import { join } from 'node:path';
 
