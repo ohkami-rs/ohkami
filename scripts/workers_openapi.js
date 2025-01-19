@@ -16,6 +16,9 @@ const app = (() => {
         /** @type {string} */
         #outputPath = "openapi.json";
 
+        /** @type {string} */
+        #additionalOptions = "";
+
         /**
          * Based on https://refspecs.linuxbase.org/LSB_5.0.0/LSB-Core-generic/LSB-Core-generic/iniscrptact.html,
          * we'll use codes in *reserved for application use* range as exit codes
@@ -25,9 +28,26 @@ const app = (() => {
         #code = 150;
 
         constructor() {
-            {
-                let [, , path] = process.argv;
-                if (path) this.#outputPath = path;
+            if (process.argv.length > 2) {
+                let i = 2;
+                while (i < process.argv.length) {
+                    switch (process.argv[i]) {
+                        case "--out":
+                        case "-o":
+                            this.#outputPath = process.argv[i + 1];
+                            i += 2;
+                            break;
+                        case "--":
+                            this.#additionalOptions =
+                                process.argv
+                                    .slice(i + 1)
+                                    .join(" ");
+                            i = process.argv.length;
+                            break;
+                        default:
+                            this.exit(`Unexpected flag specified: ${process.argv[i]}`);
+                    }
+                }
             }
 
             try {
@@ -41,6 +61,11 @@ const app = (() => {
         /** @returns {string} */
         get outputPath() {
             return this.#outputPath;
+        }
+
+        /** @returns {string} */
+        get additionalOptions() {
+            return this.#additionalOptions;
         }
 
         /**
@@ -78,6 +103,7 @@ try {
             --target nodejs \
             --out-dir ${app.WASMPACK_OUT_DIR} \
             --out-name ${app.WASMPACK_OUT_NAME} \
+            -- ${app.additionalOptions} \
     `);
 
 } catch (e) {
