@@ -489,6 +489,14 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
                     Self::UserNotFound => Response::InternalServerError().with_text("User was not found"),
                 }
             }
+
+            #[cfg(feature="openapi")]
+            fn openapi_responses() -> crate::openapi::Responses {
+                crate::openapi::Responses::enumerated([
+                    (500, crate::openapi::Response::when("User was not found")
+                        .content("text/plain", crate::openapi::string()))
+                ])
+            }
         }
 
 

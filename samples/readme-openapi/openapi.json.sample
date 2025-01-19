@@ -82,7 +82,6 @@
           "name"
         ]
       }
-    },
-    "securitySchemes": {}
+    }
   }
 }
