@@ -427,7 +427,13 @@ impl Ohkami {
     #[cfg(feature="__rt_native__")]
     pub fn generate_to(&self, file_path: impl AsRef<std::path::Path>, openapi: crate::openapi::OpenAPI) {
         let file_path = file_path.as_ref();
+        std::fs::write(file_path, self.__openapi_document_bytes__())
+            .expect(&format!("failed to write OpenAPI document JSON to {}", file_path.display()))
+    }
 
+    #[cfg(feature="openapi")]
+    #[doc(hidden)]
+    pub fn __openapi_document_bytes__(&self, openapi: crate::openapi::OpenAPI) -> Vec<u8> {
         let (router, routes) = (Self {
             router: self.router.clone(),
             fangs:  self.fangs.clone()
@@ -435,16 +441,11 @@ impl Ohkami {
 
         let doc = router.gen_openapi_doc(routes, openapi);
 
-        let mut doc = ::serde_json::to_vec(&doc).expect("failed to serialize OpenAPI document");
-        doc.push(b'\n');
+        let mut bytes = ::serde_json::to_vec(&doc).expect("failed to serialize OpenAPI document");
+        bytes.push(b'\n');
 
-        std::fs::write(file_path, doc).expect(&format!("failed to write OpenAPI document JSON to {}", file_path.display()))
+        bytes
     }
-
-    #[cfg(feature="openapi")]
-    #[cfg(feature="rt_worker")]
-    #[doc(hidden)]
-    pub fn __openapi_json__(&self, file_path: impl AsRef<std::path::Path>) 
 }
 
 #[cfg(feature="__rt_native__")]

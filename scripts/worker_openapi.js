@@ -1,5 +1,3 @@
 #! /usr/bin/env node
 
-const [,, wasmPath] = process.argv;
-
-console.log(`wasmPath = ${wasmPath}`);
+const [, , outPath] = process.argv;
