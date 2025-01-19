@@ -86,8 +86,8 @@ pub fn operation(args: proc_macro::TokenStream, handler: proc_macro::TokenStream
 /// {
 ///     title: string,
 ///     version: string | number,
-///     servers: {
-///         [string]: {
+///     servers: [
+///         {
 ///             url: string,
 ///             description: string,
 ///             variables: {
@@ -97,11 +97,11 @@ pub fn operation(args: proc_macro::TokenStream, handler: proc_macro::TokenStream
 ///                 }
 ///             }
 ///         }
-///     }
+///     ]
 /// }
 /// ```
 /// 
-/// Actually **every field is optional** and **any other field is acceptable**,
+/// Actually **every field is optional** and **any other fields are acceptable**,
 /// but when `openapi` feature is activated, these fields are used for the
 /// document generation ( if missing, some default values will be used ).
 #[proc_macro_attribute]
