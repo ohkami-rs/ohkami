@@ -141,13 +141,17 @@ impl Router {
     }
 
     pub(crate) fn merge_another(&mut self, another: ByAnother) {
-        let ByAnother { route, ohkami } = another;
+        let ByAnother { route, mut ohkami } = another;
         let another_routes = ohkami.into_router();
 
         crate::DEBUG!("merging following Ohkamis at {route:?}: \n\
             self: {self:#?}\n\
             another: {another_routes:#?}\n\
         ");
+
+        for route in &another_routes.routes {
+            self.routes.insert(route);
+        }
 
         macro_rules! merge {
             ($( $method:ident $( ( allow_override_handler = $allow_override_handler:literal ) )? ),*) => {

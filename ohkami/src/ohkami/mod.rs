@@ -439,6 +439,8 @@ impl Ohkami {
             fangs:  self.fangs.clone()
         }).into_router().finalize();
 
+        crate::DEBUG!("[openapi_document_bytes] routes = {routes:#?}, router = {router:#?}");
+
         let doc = router.gen_openapi_doc(routes, openapi);
 
         let mut bytes = ::serde_json::to_vec_pretty(&doc).expect("failed to serialize OpenAPI document");
