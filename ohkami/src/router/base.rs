@@ -141,7 +141,7 @@ impl Router {
     }
 
     pub(crate) fn merge_another(&mut self, another: ByAnother) {
-        let ByAnother { route, mut ohkami } = another;
+        let ByAnother { route, ohkami } = another;
         let another_routes = ohkami.into_router();
 
         crate::DEBUG!("merging following Ohkamis at {route:?}: \n\
@@ -149,8 +149,12 @@ impl Router {
             another: {another_routes:#?}\n\
         ");
 
-        for route in &another_routes.routes {
-            self.routes.insert(route);
+        for another_route in &another_routes.routes {
+            self.routes.insert([
+                route.literal().trim_end_matches('/'),
+                "/",
+                another_route.trim_start_matches('/')
+            ].concat().leak().trim_end_matches('/'));
         }
 
         macro_rules! merge {
@@ -176,6 +180,8 @@ impl Router {
             GET, PUT, POST, PATCH, DELETE,
             OPTIONS(allow_override_handler = true)
         }
+
+        crate::DEBUG!("merged: {self:#?}");
     }
 
     pub(crate) fn apply_fangs(&mut self, id: ID, fangs: Arc<dyn Fangs>) {
@@ -372,7 +378,11 @@ impl Pattern {
     pub(super) fn merge_statics(self, child: Pattern) -> Option<Pattern> {
         match (self, child) {
             (Pattern::Static(s1), Pattern::Static(s2)) => Some(
-                Pattern::Static([s1, s2].concat().leak())
+                Pattern::Static([
+                    s1.trim_end_matches('/'),
+                    "/",
+                    s2.trim_start_matches('/')
+                ].concat().leak().trim_end_matches('/'))
             ),
             _ => None
         }

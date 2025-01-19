@@ -92,9 +92,13 @@ impl Router {
             ] {
                 let mut path = crate::request::Path::from_literal(route);
 
+                crate::DEBUG!("[gen_openapi_doc] searching `{openapi_method} {route}`");
+
                 if let (target, true) = router.search_target(&mut path) {
+                    crate::DEBUG!("[gen_openapi_doc] found");
+
                     let Some(mut operation) = target.openapi_operation.clone() else {
-                        panic!("[OpenAPI] Unexpected not-found route `{route}`")
+                        panic!("[OpenAPI] Unexpected not-found route `{openapi_method} {route}`")
                     };
                     for param_name in &openapi_path_param_names {
                         operation.replace_empty_param_name_with(param_name);
@@ -323,10 +327,26 @@ const _: (/* Debugs */) = {
 
     impl std::fmt::Debug for Node {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            f.debug_struct("")
+            let mut d = f.debug_struct("");
+            d
                 .field("pattern",  &self.pattern)
-                .field("children", &self.children)
-                .finish()
+                .field("children", &self.children);
+
+            #[cfg(feature="openapi")] {
+                struct DebugOperaion<'d>(Option<&'d crate::openapi::Operation>);
+                impl std::fmt::Debug for DebugOperaion<'_> {
+                    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                        f.write_str(if self.0.is_some() {
+                            "Some({operation})"
+                        } else {
+                            "None"
+                        })
+                    }
+                }
+                d.field("operation", &DebugOperaion(self.openapi_operation.as_ref()));
+            }
+            
+            d.finish()
         }
     }
 
