@@ -14,7 +14,20 @@ use ohkami::format::JSON;
 #[ohkami::bindings]
 struct Bindings;
 
-#[ohkami::worker]
+#[ohkami::worker({
+    title: "Sample API",
+    version: "0.1.0",
+    servers: [
+        {
+            url: "http://localhost:8787",
+            description: "local dev",
+        },
+        {
+            url: "https://worker-with-openapi.YOUR_NAME.workers.dev",
+            description: "production"
+        }
+    ],
+})]
 pub fn ohkami() -> Ohkami {
     #[cfg(debug_assertions)]
     console_error_panic_hook::set_once();

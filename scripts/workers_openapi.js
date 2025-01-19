@@ -128,3 +128,10 @@ try {
 } catch (e) {
     app.exit(`Generation failed: ${e}`);
 }
+
+try {
+    rmSync(app.WASMPACK_OUT_DIR, { recursive: true, force: true });
+
+} catch (e) {
+    app.exit(`Failed to clean up: ${e}`)
+}

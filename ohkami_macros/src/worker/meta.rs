@@ -129,6 +129,7 @@ const _: (/* Parse */) = {
             let mut this = Server::try_default()?;
 
             let tokens; syn::braced!(tokens in input);
+            // panic!("tokens = `{}`", tokens.to_string());
             while let Ok(i) = tokens.parse::<Ident>() {
                 match &*i.to_string() {
                     "url" => {
@@ -166,9 +167,9 @@ const _: (/* Parse */) = {
                         }
                     }
                 }
-            }
-            if tokens.peek(token::Comma) {
-                let _ = tokens.parse::<token::Comma>()?;
+                if tokens.peek(token::Comma) {
+                    let _ = tokens.parse::<token::Comma>()?;
+                }
             }
 
             Ok(this)
