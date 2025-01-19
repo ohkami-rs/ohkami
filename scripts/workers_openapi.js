@@ -1,16 +1,17 @@
 #! /usr/bin/env node
 
-import { writeFileSync, existsSync } from 'node:fs';
+import { writeFileSync, existsSync, rmSync } from 'node:fs';
 import { execSync } from 'node:child_process';
-import { exit as __raw_exit__ } from 'node:process';
+import { cwd, exit as __raw_exit__ } from 'node:process';
+import { join } from 'node:path';
 
 const app = (() => {
     class App {
         /** @type {string} @readonly */
-        WORKER_BUILD_OUTPUT_DIR = "workers_openapi-worker_build-output";
+        WASMPACK_OUT_DIR = "workers_openapi-worker_build-out";
 
         /** @type {string} @readonly */
-        WORKER_BUILD_OUT_NAME = "workers_openapi-worker_build";
+        WASMPACK_OUT_NAME = "workers_openapi-worker_build";
 
         /** @type {string} */
         #outputPath = "openapi.json";
@@ -60,29 +61,44 @@ const app = (() => {
 })();
 
 try {
-    // `wasm-pack` is expected to be available
-    // because it's a dependency of `worker-build`.
+    if (existsSync(app.WASMPACK_OUT_DIR)) {
+        rmSync(app.WASMPACK_OUT_DIR, { recursive: true, force: true });
+    }
+
+    /**
+     * `wasm-pack` is expected to be available because
+     * it's a dependency of `worker-build`.
+     * */
     execSync(`
-        wasm-pack build
-            --dev
-            --no-opt
-            --no-pack
-            --no-typescript
-            --target nodejs
-            --out-dir ${app.WORKER_BUILD_OUTPUT_DIR}
+        wasm-pack build \
+            --dev \
+            --no-opt \
+            --no-pack \
+            --no-typescript \
+            --target nodejs \
+            --out-dir ${app.WASMPACK_OUT_DIR} \
+            --out-name ${app.WASMPACK_OUT_NAME} \
     `);
+
 } catch (e) {
-    app.exit(`: ${e}`);
+    app.exit(`Build failed: ${e}`);
 }
 
-// try {
-//     
-// } catch (e) {
-//     
-// }
-// 
-// try {
-//     writeFileSync(app.outputPath, );
-// } catch (e) {
-//     app.exit();
-// }
+try {
+    const wasmpack_js = await import(join(
+        cwd(),
+        app.WASMPACK_OUT_DIR,
+        `${app.WASMPACK_OUT_NAME}.js`
+    ));
+    if (!wasmpack_js.OpenAPIDocumentBytes) {
+        throw new Error("Not activating Ohkami's `openapi` feature flag");
+    }
+
+    /** @type {Uint8Array} */
+    const OpenAPIDocumentBytes = wasmpack_js.OpenAPIDocumentBytes();
+
+    writeFileSync(app.outputPath, OpenAPIDocumentBytes);
+
+} catch (e) {
+    app.exit(`Generation failed: ${e}`);
+}
