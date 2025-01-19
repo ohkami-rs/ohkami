@@ -8,10 +8,10 @@ import { join } from 'node:path';
 const app = (() => {
     class App {
         /** @type {string} @readonly */
-        WASMPACK_OUT_DIR = "workers_openapi-worker_build-out";
+        WASMPACK_OUT_DIR = ".ohkami-workers_openapi-worker_build-out";
 
         /** @type {string} @readonly */
-        WASMPACK_OUT_NAME = "workers_openapi-worker_build";
+        WASMPACK_OUT_NAME = ".ohkami-workers_openapi-worker_build";
 
         /** @type {string} */
         #outputPath = "openapi.json";

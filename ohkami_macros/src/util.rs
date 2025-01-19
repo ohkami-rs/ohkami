@@ -102,6 +102,7 @@ fn unescaped_doc_attr(raw_doc: String) -> String {
     unescaped
 }
 
+#[cfg(feature="worker")]
 fn find_a_file_in_workspace(file_path: impl AsRef<Path>) -> Result<File, io::Error> {
     let file_path: &Path = file_path.as_ref();
 

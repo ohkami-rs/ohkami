@@ -441,7 +441,7 @@ impl Ohkami {
 
         let doc = router.gen_openapi_doc(routes, openapi);
 
-        let mut bytes = ::serde_json::to_vec(&doc).expect("failed to serialize OpenAPI document");
+        let mut bytes = ::serde_json::to_vec_pretty(&doc).expect("failed to serialize OpenAPI document");
         bytes.push(b'\n');
 
         bytes
