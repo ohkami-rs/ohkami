@@ -232,7 +232,7 @@ async fn main() {
 
 - Currently, only **JSON** is supported as the document format.
 - When the binary size matters, you should prepare a feature flag activating `ohkami/openapi` in your package, and put all your codes around `openapi` behind that feature via `#[cfg(feature = ...)]` or `#[cfg_attr(feature = ...)]`.
-- In `rt_worker`, `.generate` is not available because `Ohkami` can't have access to your local filesystem from `wasm32` binary on Minifalre. So ohkami provides [a CLI tool](./scripts/workers_openapi.js) to generate document from `#[ohkami::worker] Ohkami` with `openapi` feature. See [templates](https://github.com/ohkami-rs/ohkami-templates) for working example.
+- In `rt_worker`, `.generate` is not available because `Ohkami` can't have access to your local filesystem by `wasm32` binary on Minifalre. So ohkami provides [a CLI tool](./scripts/workers_openapi.js) to generate document from `#[ohkami::worker] Ohkami` with `openapi` feature.
 
 ### `"nightly"`：nightly-only functionalities
 
