@@ -34,17 +34,18 @@ jobs:
           toolchain: ${{ matrix.toolchain }}
           targets:   x86_64-unknown-linux-gnu, wasm32-unknown-unknown
 
-      - name: Cache cargo subcommands
-        id:   cache_cargo_subcommands
+      - name: Cache cargo commands
+        id:   cache_cargo_bin
         uses: actions/cache@v3
         with:
-          key:  ${{ runner.os }}-cargo-install--sqlx-sccache
+          key:  ${{ runner.os }}-cargo-bin
           path: ~/.cargo/bin
-      - name: Install cargo subcommands
-        if:   ${{ steps.cache_cargo_subcommands.outputs.cache-hit != 'true' }}
+      - name: Install cargo commands
+        if:   ${{ steps.cache_cargo_bin.outputs.cache-hit != 'true' }}
         run:  |
           cargo install sqlx-cli --no-default-features --features native-tls,postgres
           cargo install sccache  --locked
+          cargo install worker-build
 
       - name: Setup sccache
         run:  |
