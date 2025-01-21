@@ -33,6 +33,6 @@ test $? -ne 0 && exit 153 || :
 
 cd $SAMPLES/worker-with-openapi && \
     cp wrangler.toml.sample wrangler.toml && \
-    (test -f openapi.json || (touch openapi.json && echo '{}' >> openapi.json)) && \
+    (test -f openapi.json || echo '{}' >> openapi.json) && \
     npm run openapi
 test $? -ne 0 && exit 154 || :
