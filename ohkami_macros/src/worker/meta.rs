@@ -69,27 +69,26 @@ const _: (/* TryDefault */) = {
                         .expect("invalid `routes` of wrangler.toml")
                         .trim_end_matches(&['/', '*']);
                     servers.push(Server {
+                        url:         to_url(pattern),
                         description: None,
                         variables:   None,
-                        url: if pattern.contains("://") {
-                            LitStr::new(pattern, Span::call_site())
-                        } else {
-                            LitStr::new(&format!("https://{pattern}"), Span::call_site())
-                        }
                     });
                 }
             } else if let Some(route) = wrangler_toml.get("route").and_then(|r| r.as_str()) {
                 let route = route.trim_end_matches(&['/', '*']);
                 servers.push(Server {
+                    url:         to_url(route),
                     description: None,
                     variables:   None,
-                    url: if route.contains("://") {
-                        LitStr::new(route, Span::call_site())
-                    } else {
-                        LitStr::new(&format!("https://{route}"), Span::call_site())
-                    }
                 });
             };
+            fn to_url(route_pattern: &str) -> LitStr {
+                if route_pattern.contains("://") {
+                    LitStr::new(route_pattern, Span::call_site())
+                } else {
+                    LitStr::new(&format!("https://{route_pattern}"), Span::call_site())
+                }
+            }
             if servers.len() == 1 + 1 {
                 servers[1].description = Some(LitStr::new("production", Span::call_site()));
             }

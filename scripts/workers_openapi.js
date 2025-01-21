@@ -92,30 +92,29 @@ try {
         rmSync(app.WASMPACK_OUT_DIR, { recursive: true, force: true });
     }
 
-    await new Promise((resolve, reject) => {
-        /**
-         * `wasm-pack` is expected to be available because
-         * it's a dependency of `worker-build`.
-         * */
-        const wasmpack_build = spawn("wasm-pack", [
-            "build",
-            "--dev",
-            "--no-opt",
-            "--no-pack",
-            "--no-typescript",
-            "--target", "nodejs",
-            "--out-dir", app.WASMPACK_OUT_DIR,
-            "--out-name", app.WASMPACK_OUT_NAME,
-            "--", ...app.additionalOptions
-        ], { stdio: "inherit" });
+    /**
+     * `wasm-pack` is expected to be available because
+     * it's a dependency of `worker-build`.
+     * */
+    const wasmpack_build = spawn("wasm-pack", [
+        "build",
+        "--dev",
+        "--no-opt",
+        "--no-pack",
+        "--no-typescript",
+        "--target", "nodejs",
+        "--out-dir", app.WASMPACK_OUT_DIR,
+        "--out-name", app.WASMPACK_OUT_NAME,
+        "--", ...app.additionalOptions
+    ], { stdio: "inherit" });
 
+    await new Promise((resolve, reject) => {
         wasmpack_build.on("close", (code) => {
             if (code === 0) {resolve()} else {app.exit()}
         });
         wasmpack_build.on("exit", (code) => {
             if (code === 0) {resolve()} else {app.exit()}
         });
-
         wasmpack_build.on("error", (err) => {
             reject(err);
         });
