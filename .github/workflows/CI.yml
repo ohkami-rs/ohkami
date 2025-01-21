@@ -27,6 +27,8 @@ jobs:
         with:
           node-version: latest
 
+      - run: npm install -g wrangler
+
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ matrix.toolchain }}
