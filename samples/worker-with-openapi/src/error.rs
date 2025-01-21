@@ -29,12 +29,11 @@ impl ohkami::IntoResponse for APIError {
 
     #[cfg(feature="openapi")]
     fn openapi_responses() -> ohkami::openapi::Responses {
-        use ohkami::openapi::{self, Response};
+        use ohkami::openapi::Response;
 
         ohkami::openapi::Responses::enumerated([
             (500, Response::when("Worker's internal error")),
-            (400, Response::when("Username already used")
-                .content("text/plain", openapi::string())),
+            (400, Response::when("Username already used")),
             (404, Response::when("User not found")),
             (403, Response::when("Modyfing other user"))
         ])
