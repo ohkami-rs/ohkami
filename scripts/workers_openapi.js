@@ -100,8 +100,8 @@ const app = (() => {
          * @returns {void}
          * */
         exit(code, message) {
-            if (existsSync(app.WASMPACK_OUT_DIR)) {
-                rmSync(app.WASMPACK_OUT_DIR, { recursive: true, force: true });
+            if (existsSync(this.WASMPACK_OUT_DIR)) {
+                rmSync(this.WASMPACK_OUT_DIR, { recursive: true, force: true });
             }
         
             if (typeof message == 'string') {
