@@ -1,7 +1,7 @@
 #! /usr/bin/env node
 
 import { writeFileSync, readFileSync, existsSync, rmSync } from 'node:fs';
-import { spawn } from 'node:child_process';
+import { execSync, spawn } from 'node:child_process';
 import { cwd, exit as __raw_exit__ } from 'node:process';
 import { join } from 'node:path';
 
@@ -126,15 +126,14 @@ const app = (() => {
 })();
 
 try {
+    const e = new TextDecoder();
+
     /**
      * ```e.g.
      * │ kanarus      │ 0xx000x000x0000000x0xxx0x000xx00 │
      * ```
      */
     const wrangler_whoami = spawn("wrangler", ["whoami"]);
-
-    const e = new TextDecoder();
-
     await new Promise((resolve, reject) => {
         wrangler_whoami.on("close", (code) => {
             if (code === 0) {resolve()} else {reject(`'wrangler whoami' closed with ${code}`)}
@@ -167,6 +166,35 @@ try {
 }
 
 try {
+    const wasmpack_is_installed = (() => {
+        try {
+            execSync("which wasm-pack");
+            return true;
+        } catch (e) {
+            return false;
+        }
+    })();
+    if (!wasmpack_is_installed) {
+        const cargo_install_wasmpack = spawn("cargo", [
+            "install",
+            "wasm-pack"
+        ], { stdio: "inherit" });
+        await new Promise((resolve, reject) => {
+            cargo_install_wasmpack.on("close", (code) => {
+                if (code === 0) {resolve()} else {reject(`'cargo install' closed with ${code}`)}
+            });
+            cargo_install_wasmpack.on("exit", (code) => {
+                if (code === 0) {resolve()} else {reject(`'cargo install' exited with ${code}`)}
+            });
+            cargo_install_wasmpack.on("error", (err) => {
+                reject(`'cargo install' failed: ${err}`);
+            });
+            cargo_install_wasmpack.on("disconnect", () => {
+                reject(`'cargo install' disconnected`);
+            });
+        });
+    }
+
     if (existsSync(app.WASMPACK_OUT_DIR)) {
         rmSync(app.WASMPACK_OUT_DIR, { recursive: true, force: true });
     }
@@ -182,7 +210,6 @@ try {
         "--out-name", app.WASMPACK_OUT_NAME,
         "--", ...app.additionalOptions
     ], { stdio: "inherit" });
-
     await new Promise((resolve, reject) => {
         wasmpack_build.on("close", (code) => {
             if (code === 0) {resolve()} else {reject(`'wasm-pack build' closed with ${code}`)}
