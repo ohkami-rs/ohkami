@@ -34,9 +34,9 @@ jobs:
           toolchain: ${{ matrix.toolchain }}
           targets:   x86_64-unknown-linux-gnu, wasm32-unknown-unknown
 
-      - name: Cache cargo commands
+      - name: Cache cargo bin
         id:   cache_cargo_bin
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           key:  ${{ runner.os }}-cargo-bin
           path: ~/.cargo/bin
@@ -45,7 +45,7 @@ jobs:
         run:  |
           cargo install sqlx-cli --no-default-features --features native-tls,postgres
           cargo install sccache  --locked
-          cargo install worker-build
+          cargo install wasm-pack worker-build
 
       - name: Setup sccache
         run:  |
@@ -53,7 +53,7 @@ jobs:
           echo "rustc-wrapper = \"$HOME/.cargo/bin/sccache\"" >> $HOME/.cargo/config.toml
       - name: Cache sccahe dir
         id:   cahce_sccahe_dir
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           key:  ${{ runner.os }}-sccahe-dir
           path: ~/.cache/sccache

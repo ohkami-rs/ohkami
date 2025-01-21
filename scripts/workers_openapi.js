@@ -171,10 +171,6 @@ try {
         rmSync(app.WASMPACK_OUT_DIR, { recursive: true, force: true });
     }
 
-    /**
-     * `wasm-pack` is expected to be available because
-     * it's a dependency of `worker-build`.
-     * */
     const wasmpack_build = spawn("wasm-pack", [
         "build",
         "--dev",
@@ -198,7 +194,7 @@ try {
             reject(`'wasm-pack build' failed: ${err}`);
         });
         wasmpack_build.on("disconnect", () => {
-            reject(`'wasm-pack' build disconnected`);
+            reject(`'wasm-pack build' disconnected`);
         });
     });
 } catch (e) {
