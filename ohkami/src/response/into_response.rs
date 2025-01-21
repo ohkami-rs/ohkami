@@ -40,9 +40,7 @@ pub trait IntoResponse {
     fn into_response(self) -> Response;
 
     #[cfg(feature="openapi")]
-    fn openapi_responses() -> openapi::Responses {
-        openapi::Responses::new(200, openapi::Response::when("OK"))
-    }
+    fn openapi_responses() -> openapi::Responses;
 }
 
 pub trait IntoBody {
@@ -79,7 +77,11 @@ impl<B: IntoBody> IntoResponse for B {
     fn openapi_responses() -> openapi::Responses {
         let mut res = openapi::Response::when("OK");
         if Self::CONTENT_TYPE != "" {
-            res = res.content(Self::CONTENT_TYPE, Self::openapi_responsebody());
+            let mime_type = match Self::CONTENT_TYPE.split_once(';') {
+                None => Self::CONTENT_TYPE,
+                Some((mime_type, _)) => mime_type
+            };
+            res = res.content(mime_type, Self::openapi_responsebody());
         }
         openapi::Responses::new(200, res)
     }
@@ -89,11 +91,21 @@ impl IntoResponse for Response {
     #[inline] fn into_response(self) -> Response {
         self
     }
+
+    #[cfg(feature="openapi")]
+    fn openapi_responses() -> openapi::Responses {
+        openapi::Responses::new(200, openapi::Response::when("OK"))
+    }
 }
 
 impl IntoResponse for Status {
     #[inline(always)] fn into_response(self) -> Response {
         Response::of(self)
+    }
+
+    #[cfg(feature="openapi")]
+    fn openapi_responses() -> openapi::Responses {
+        openapi::Responses::new(200, openapi::Response::when("OK"))
     }
 }
 
@@ -117,6 +129,11 @@ impl IntoResponse for std::convert::Infallible {
     #[cold] #[inline(never)]
     fn into_response(self) -> Response {
         unsafe {std::hint::unreachable_unchecked()}
+    }
+
+    #[cfg(feature="openapi")]
+    fn openapi_responses() -> openapi::Responses {
+        openapi::Responses::enumerated([])
     }
 }
 

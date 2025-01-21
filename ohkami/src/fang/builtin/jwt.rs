@@ -124,7 +124,7 @@ const _: () = {
 
         #[cfg(feature="openapi")]
         fn openapi_map_operation(&self, operation: crate::openapi::Operation) -> crate::openapi::Operation {
-            operation.security(self.openapi_security.clone(), [])
+            operation.security(self.openapi_security.clone(), &[])
         }
     }
 
@@ -488,6 +488,14 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
                 match self {
                     Self::UserNotFound => Response::InternalServerError().with_text("User was not found"),
                 }
+            }
+
+            #[cfg(feature="openapi")]
+            fn openapi_responses() -> crate::openapi::Responses {
+                crate::openapi::Responses::enumerated([
+                    (500, crate::openapi::Response::when("User was not found")
+                        .content("text/plain", crate::openapi::string()))
+                ])
             }
         }
 

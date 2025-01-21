@@ -111,9 +111,9 @@ impl Router {
     pub(crate) fn register_handlers(&mut self, handlers: HandlerSet) {
         let HandlerSet { route, GET, PUT, POST, PATCH, DELETE } = handlers;
 
-        let methods = if !self.routes.insert(route.literal()) {
-            panic!("Duplicate routes registration: `{}`", route.literal())
-        } else {
+        self.routes.insert(route.literal());
+
+        let methods = {
             macro_rules! allow_methods {
                 ($($method:ident),*) => {{
                     let mut methods = Vec::new();
@@ -124,29 +124,64 @@ impl Router {
                     )*
                     methods
                 }}
-            } allow_methods! { GET, PUT, POST, PATCH, DELETE }
+            }
+            allow_methods! { GET, PUT, POST, PATCH, DELETE }
         };
 
         macro_rules! register {
             ($( $method:ident ),*) => {$(
                 if let Some(h) = $method {
-                    self.$method.register_handler(route.clone(), h).expect("Failed to register handler");
+                    self.$method.register_handler(route.clone(), h, false).expect("Failed to register handler");
                 }
             )*};
-        } register! { GET, PUT, POST, PATCH, DELETE }
+        }
+        register! { GET, PUT, POST, PATCH, DELETE }
 
-        self.OPTIONS.register_handler(route, Handler::default_options_with(methods)).expect("Failed to register handler");
+        self.OPTIONS.register_handler(route, Handler::default_options_with(methods), true).expect("Failed to register handler");
     }
 
     pub(crate) fn merge_another(&mut self, another: ByAnother) {
         let ByAnother { route, ohkami } = another;
         let another_routes = ohkami.into_router();
 
+        crate::DEBUG!("merging following Ohkamis at {route:?}: \n\
+            self: {self:#?}\n\
+            another: {another_routes:#?}\n\
+        ");
+
+        for another_route in &another_routes.routes {
+            self.routes.insert([
+                route.literal().trim_end_matches('/'),
+                "/",
+                another_route.trim_start_matches('/')
+            ].concat().leak().trim_end_matches('/'));
+        }
+
         macro_rules! merge {
-            ($( $method:ident ),*) => {$(
-                self.$method.merge_node(route.clone().into_iter(), another_routes.$method).expect("Can't merge Ohkamis");
-            )*};
-        } merge! { GET, PUT, POST, PATCH, DELETE, OPTIONS }
+            ($( $method:ident $( ( allow_override_handler = $allow_override_handler:literal ) )? ),*) => {
+                $(
+                    {
+                        #[allow(unused_mut, unused_assignments)]
+                        let mut allow_override_handler = false;
+                        $( allow_override_handler = $allow_override_handler; )?
+
+                        self.$method
+                            .merge_node(
+                                route.clone().into_iter(),
+                                another_routes.$method,
+                                allow_override_handler
+                            )
+                            .expect(&format!("Can't merge Ohkamis ({})", stringify!($method)));
+                    }
+                )*
+            };
+        }
+        merge! {
+            GET, PUT, POST, PATCH, DELETE,
+            OPTIONS(allow_override_handler = true)
+        }
+
+        crate::DEBUG!("merged: {self:#?}");
     }
 
     pub(crate) fn apply_fangs(&mut self, id: ID, fangs: Arc<dyn Fangs>) {
@@ -200,21 +235,22 @@ impl Node {
 
     fn register_handler(
         &mut self,
-        mut route: RouteSegments,
-        handler:   Handler,
+        mut route:      RouteSegments,
+        handler:        Handler,
+        allow_override: bool,
     ) -> Result<(), String> {
         match route.next() {
             None => {
-                self.set_handler(handler)?;
+                self.set_handler(handler, allow_override)?;
                 Ok(())
             }
             Some(segment) => {
                 let pattern = Pattern::from(segment);
                 match self.machable_child_mut(pattern.clone().into()) {
-                    Some(child) => child.register_handler(route, handler),
-                    None        => {
+                    Some(child) => child.register_handler(route, handler, allow_override),
+                    None => {
                         let mut child = Node::new(pattern.into());
-                        child.register_handler(route, handler)?;
+                        child.register_handler(route, handler, allow_override)?;
                         self.append_child(child)?;
                         Ok(())
                     }
@@ -250,27 +286,30 @@ impl Node {
         self.fangses.extend(fangs);
     }
 
-    fn set_handler(&mut self, new_handler: Handler) -> Result<(), String> {
-        self.handler.is_none()
-            .then(|| self.handler = Some(new_handler))
-            .ok_or_else(|| format!("Conflicting handler registering"))
+    fn set_handler(&mut self, new_handler: Handler, allow_override: bool) -> Result<(), String> {
+        if self.handler.is_some() && !allow_override {
+            return Err(format!("Conflicting handler registering"))
+        }
+        self.handler = Some(new_handler);
+        Ok(())
     }
 
     fn merge_node(
         &mut self,
         mut route_to_merge_root: RouteSegments,
         another: Node,
+        allow_override_handler: bool
     ) -> Result<(), String> {
         match route_to_merge_root.next() {
             None => {
-                self.merge_here(another)?;
+                self.merge_here(another, allow_override_handler)?;
                 Ok(())
             }
             Some(pattern) => match self.machable_child_mut(pattern.clone().into()) {
-                Some(child) => child.merge_node(route_to_merge_root, another),
+                Some(child) => child.merge_node(route_to_merge_root, another, allow_override_handler),
                 None => {
                     let mut new_child = Node::new(pattern.into());
-                    new_child.merge_node(route_to_merge_root, another)?;
+                    new_child.merge_node(route_to_merge_root, another, allow_override_handler)?;
                     self.append_child(new_child)?;
                     Ok(())
                 }
@@ -278,13 +317,7 @@ impl Node {
         }
     }
 
-    fn merge_here(&mut self, another_root: Node) -> Result<(), String> {
-        if self.handler.is_some() {
-            return Err(format!(
-                "Can't merge another Ohkami at route that already has handler"
-            ))
-        }
-
+    fn merge_here(&mut self, another_root: Node, allow_override_handler: bool) -> Result<(), String> {
         let Node {
             pattern:  None, /* another_root must be a root node and has pattern `None` */
             fangses:  another_root_fangses,
@@ -297,7 +330,7 @@ impl Node {
         self.append_fangs(another_root_fangses);
 
         if let Some(h) = another_root_handler {
-            self.set_handler(h)?;
+            self.set_handler(h, allow_override_handler)?;
         }
 
         for ac in another_root_children {
@@ -313,7 +346,9 @@ impl Node {
             child.apply_fangs(id.clone(), fangs.clone())
         }
 
-        self.fangses.add(id, fangs);
+        if self.handler.is_some() {
+            self.fangses.add(id, fangs);
+        }
     }
 }
 
@@ -345,7 +380,11 @@ impl Pattern {
     pub(super) fn merge_statics(self, child: Pattern) -> Option<Pattern> {
         match (self, child) {
             (Pattern::Static(s1), Pattern::Static(s2)) => Some(
-                Pattern::Static([s1, s2].concat().leak())
+                Pattern::Static([
+                    s1.trim_end_matches('/'),
+                    "/",
+                    s2.trim_start_matches('/')
+                ].concat().leak().trim_end_matches('/'))
             ),
             _ => None
         }

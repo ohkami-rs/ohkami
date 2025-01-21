@@ -83,6 +83,15 @@ const _: () = {
         fn into_response(self) -> crate::Response {
             crate::Response::InternalServerError().with_text(self.0)
         }
+
+        #[cfg(feature="openapi")]
+        fn openapi_responses() -> crate::openapi::Responses {
+            crate::openapi::Responses::new(
+                500,
+                crate::openapi::Response::when("Something went wrong")
+                    .content("text/plain", crate::openapi::string())
+            )
+        }
     }
 };
 

@@ -78,10 +78,6 @@ macro_rules! assert_eq {
                     }
                 }
             }
-        },
-        "components": {
-            "schemas": {},
-            "securitySchemes": {}
         }
     }));
 }

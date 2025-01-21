@@ -100,6 +100,15 @@ macro_rules! generate_statuses_as_types_with_no_value {
                 fn into_response(self) -> Response {
                     Status::$status.into_response()
                 }
+
+                #[cfg(feature="openapi")]
+                fn openapi_responses() -> crate::openapi::Responses {
+                    let (code, message) = $message.split_once(' ').unwrap();
+                    openapi::Responses::new(
+                        code.parse().unwrap(),
+                        openapi::Response::when(message)
+                    )
+                }
             }
         )*
     };
@@ -142,6 +151,15 @@ macro_rules! generate_redirects {
                     res.headers.set()
                         .Location(self.location);
                     res
+                }
+
+                #[cfg(feature="openapi")]
+                fn openapi_responses() -> crate::openapi::Responses {
+                    let (code, message) = $message.split_once(' ').unwrap();
+                    openapi::Responses::new(
+                        code.parse().unwrap(),
+                        openapi::Response::when(message)
+                    )
                 }
             }
         )*

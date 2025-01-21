@@ -1,0 +1,23 @@
+[package]
+name    = "worker-with-openapi"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# set `default-features = false` to assure "DEBUG" feature be off even when DEBUGing `../ohkami`
+ohkami = { path = "../../ohkami", default-features = false, features = ["rt_worker"] }
+worker = { version = "0.5", features = ["d1"] }
+thiserror = "1.0"
+console_error_panic_hook = "0.1"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[profile.release]
+opt-level = "s"
+
+[features]
+openapi = ["ohkami/openapi"]
+DEBUG   = ["ohkami/DEBUG"]
+
+default = ["openapi"]

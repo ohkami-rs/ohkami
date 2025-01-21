@@ -27,22 +27,25 @@ jobs:
         with:
           node-version: latest
 
+      - run: npm install -g wrangler
+
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ matrix.toolchain }}
           targets:   x86_64-unknown-linux-gnu, wasm32-unknown-unknown
 
-      - name: Cache cargo subcommands
-        id:   cache_cargo_subcommands
-        uses: actions/cache@v3
+      - name: Cache cargo bin
+        id:   cache_cargo_bin
+        uses: actions/cache@v4
         with:
-          key:  ${{ runner.os }}-cargo-install--sqlx-sccache
+          key:  ${{ runner.os }}-cargo-bin
           path: ~/.cargo/bin
-      - name: Install cargo subcommands
-        if:   ${{ steps.cache_cargo_subcommands.outputs.cache-hit != 'true' }}
+      - name: Install cargo commands
+        if:   ${{ steps.cache_cargo_bin.outputs.cache-hit != 'true' }}
         run:  |
           cargo install sqlx-cli --no-default-features --features native-tls,postgres
           cargo install sccache  --locked
+          cargo install wasm-pack worker-build
 
       - name: Setup sccache
         run:  |
@@ -50,7 +53,7 @@ jobs:
           echo "rustc-wrapper = \"$HOME/.cargo/bin/sccache\"" >> $HOME/.cargo/config.toml
       - name: Cache sccahe dir
         id:   cahce_sccahe_dir
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           key:  ${{ runner.os }}-sccahe-dir
           path: ~/.cache/sccache

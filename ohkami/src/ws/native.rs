@@ -120,4 +120,12 @@ impl crate::IntoResponse for WebSocket {
             .SecWebSocketAccept(self.sign)
         ).with_websocket(self.session)
     }
+
+    #[cfg(feature="openapi")]
+    fn openapi_responses() -> crate::openapi::Responses {
+        crate::openapi::Responses::new(
+            101,
+            crate::openapi::Response::when("Upgrade to WebSocket")
+        )
+    }
 }

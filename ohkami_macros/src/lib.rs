@@ -78,9 +78,35 @@ pub fn operation(args: proc_macro::TokenStream, handler: proc_macro::TokenStream
 ///     ))
 /// }
 /// ```
+/// ---
+/// 
+/// `#[worker]` accepts an argument in following format for *document purpose*:
+/// 
+/// ```ts
+/// {
+///     title: string,
+///     version: string | number,
+///     servers: [
+///         {
+///             url: string,
+///             description: string,
+///             variables: {
+///                 [string]: {
+///                     default: string,
+///                     enum: [string],
+///                 }
+///             }
+///         }
+///     ]
+/// }
+/// ```
+/// 
+/// Actually **every field is optional** and **any other fields are acceptable**,
+/// but when `openapi` feature is activated, these fields are used for the
+/// document generation ( if missing, some default values will be used ).
 #[proc_macro_attribute]
-pub fn worker(_: proc_macro::TokenStream, ohkami_fn: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    worker::worker(ohkami_fn.into())
+pub fn worker(args: proc_macro::TokenStream, ohkami_fn: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    worker::worker(args.into(), ohkami_fn.into())
         .unwrap_or_else(syn::Error::into_compile_error)
         .into()
 }

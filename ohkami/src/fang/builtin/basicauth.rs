@@ -99,6 +99,12 @@ const _: () = {
 
             Ok(())
         }
+
+        #[cfg(feature="openapi")]
+        fn openapi_map_operation(operation: openapi::Operation) -> openapi::Operation {
+            use openapi::security::SecurityScheme;
+            operation.security(SecurityScheme::Basic("basicAuth"), &[])
+        }
     }
 
     impl<S, const N: usize> FangAction for [BasicAuth<S>; N]
@@ -122,7 +128,7 @@ const _: () = {
         #[cfg(feature="openapi")]
         fn openapi_map_operation(operation: openapi::Operation) -> openapi::Operation {
             use openapi::security::SecurityScheme;
-            operation.security(SecurityScheme::Basic("basicAuth"), [])
+            operation.security(SecurityScheme::Basic("basicAuth"), &[])
         }
     }
 };

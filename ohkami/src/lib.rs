@@ -190,72 +190,11 @@ pub mod openapi {
     pub use ::ohkami_macros::{Schema, operation};
 
     #[cfg(feature="__rt__")]
-    pub use generate::*;
-    #[cfg(feature="__rt__")]
-    mod generate {
-        use super::*;
-
-        #[derive(Clone)]
-        pub struct OpenAPI {
-            pub(crate) file_path: std::path::PathBuf,
-            pub(crate) title:     &'static str,
-            pub(crate) version:   &'static str,
-            pub(crate) servers:   Vec<crate::openapi::document::Server>,
-        }
-        impl OpenAPI {
-            /// Register metadata for generating OpenAPI document (JSON).
-            /// 
-            /// ### note
-            /// YAML version is not supported now.
-            /// 
-            /// ### example
-            /// 
-            /// ```no_run
-            /// use ohkami::prelude::*;
-            /// use ohkami::openapi::{OpenAPI, Server};
-            /// 
-            /// // An ordinal Ohkami definition, not special
-            /// fn my_ohkami() -> Ohkami {
-            ///     Ohkami::new((
-            ///         "/hello"
-            ///             .GET(|| async {"Hello, OpenAPI!"}),
-            ///     ))
-            /// }
-            /// 
-            /// #[tokio::main]
-            /// async fn main() {
-            ///     let o = my_ohkami();
-            /// 
-            ///     // Here generate the JSON file
-            ///     o.spit_out(OpenAPI::json("Sample API", "0.1.9", [
-            ///         Server::at("http://api.example.com/v1")
-            ///             .description("Main (production) server"),
-            ///         Server::at("http://staging-api.example.com")
-            ///             .description("Internal staging server for testing")
-            ///     ]));
-            /// 
-            ///     o.howl("localhost:5000").await
-            /// }
-            /// ```
-            pub fn json(
-                title:   &'static str,
-                version: &'static str,
-                servers: impl Into<Vec<document::Server>>
-            ) -> Self {
-                let servers   = Into::<Vec<_>>::into(servers);
-                let file_path = std::path::PathBuf::from("openapi.json");
-                Self { title, version, servers, file_path }
-            }
-        
-            /// Configure the file path to generate.
-            /// 
-            /// ## default
-            /// `openapi.json`
-            pub fn path(mut self, path: impl Into<std::path::PathBuf>) -> Self {
-                self.file_path = path.into();
-                self
-            }
-        }    
+    #[derive(Clone)]
+    pub struct OpenAPI {
+        pub title:   &'static str,
+        pub version: &'static str,
+        pub servers: Vec<crate::openapi::document::Server>,
     }
 }
 

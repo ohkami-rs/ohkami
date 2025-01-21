@@ -2,9 +2,9 @@ mod into_handler;
 pub use into_handler::IntoHandler;
 
 use super::{FangProcCaller, BoxedFPC};
-use super::{SendOnNative, SendSyncOnNative, ResponseFuture};
+use super::{SendOnNative, SendSyncOnNative, SendOnNativeFuture};
 use crate::{Request, Response};
-use std::{pin::Pin, future::Future};
+use std::pin::Pin;
 
 #[cfg(feature="openapi")]
 use crate::openapi;
@@ -29,23 +29,16 @@ const _: () = {
 
 impl Handler {
     pub(crate) fn new(
-        proc: impl Fn(&mut Request) -> Pin<Box<dyn ResponseFuture + '_>> + SendSyncOnNative + 'static,
+        proc: impl Fn(&mut Request) -> Pin<Box<dyn SendOnNativeFuture<Response> + '_>> + SendSyncOnNative + 'static,
         #[cfg(feature="openapi")] openapi_operation: openapi::Operation
     ) -> Self {
         struct HandlerProc<F>(F);
         const _: () = {
             impl<F> FangProcCaller for HandlerProc<F>
             where
-                F: Fn(&mut Request) -> Pin<Box<dyn ResponseFuture + '_>> + SendSyncOnNative + 'static
+                F: Fn(&mut Request) -> Pin<Box<dyn SendOnNativeFuture<Response> + '_>> + SendSyncOnNative + 'static
             {
-                #[cfg(not(feature="rt_worker"))]
-                fn call_bite<'b>(&'b self, req: &'b mut Request) -> Pin<Box<dyn Future<Output = Response> + Send + 'b>> {
-                    // SAFETY: trait upcasting
-                    // trait upcasting coercion is experimental <https://github.com/rust-lang/rust/issues/65991>
-                    unsafe {std::mem::transmute((self.0)(req))}
-                }
-                #[cfg(feature="rt_worker")]
-                fn call_bite<'b>(&'b self, req: &'b mut Request) -> Pin<Box<dyn Future<Output = Response> + 'b>> {
+                fn call_bite<'b>(&'b self, req: &'b mut Request) -> Pin<Box<dyn SendOnNativeFuture<Response> + 'b>> {
                     // SAFETY: trait upcasting
                     // trait upcasting coercion is experimental <https://github.com/rust-lang/rust/issues/65991>
                     unsafe {std::mem::transmute((self.0)(req))}

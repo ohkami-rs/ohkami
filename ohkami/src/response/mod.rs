@@ -477,4 +477,10 @@ const _: () = {
                 .with_headers(self.headers.into())
         }
     }
+
+    impl From<worker::Error> for Response {
+        fn from(err: worker::Error) -> Response {
+            IntoResponse::into_response(err)
+        }
+    }
 };

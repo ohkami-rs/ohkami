@@ -434,11 +434,35 @@ fn my_ohkami() -> Ohkami {
 }
 
 #[test]
-#[should_panic(expected = "Duplicate routes registration: `/abc`")]
 fn duplcate_routes_registration() {
     let _ = Ohkami::new((
         "/abc".GET(|| async {"GET"}),
         "/abc".PUT(|| async {"PUT"}),
+    ));
+}
+
+#[test]
+fn method_dependent_fang_applying() {
+    #[derive(Clone)]
+    struct SomeFang;
+    impl crate::prelude::FangAction for SomeFang {}
+
+    async fn handler() {}
+
+    let _ = Ohkami::new((
+        "/users"
+            .GET(handler)
+            .POST(handler),
+        "/users/:id"
+            .GET(handler),
+        "/users/:id".By(Ohkami::with(SomeFang, "/"
+            .PUT(handler),
+        )),
+        "/tweets"
+            .GET(handler),
+        "/tweets".By(Ohkami::with(SomeFang, "/"
+            .POST(handler),
+        ))
     ));
 }
 
