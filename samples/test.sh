@@ -32,5 +32,6 @@ cd $SAMPLES/realworld && \
 test $? -ne 0 && exit 153 || :
 
 cd $SAMPLES/worker-with-openapi && \
+    cp wrangler.toml.sample wrangler.toml && \
     npm run openapi
 test $? -ne 0 && exit 154 || :

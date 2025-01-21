@@ -1,0 +1,16 @@
+name = "ohkami-worker-with-openapi"
+main = "build/worker/shim.mjs"
+compatibility_date = "2024-04-19"
+
+# `worker-build` is required (run `cargo install worker-build` to install)
+
+[build]
+command = "test $OHKAMI_WORKER_DEV && worker-build --dev || worker-build -- --no-default-features"
+
+[vars]
+OPENAPI_DOC_PASSWORD = "openapi"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "db"
+database_id = "xxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
