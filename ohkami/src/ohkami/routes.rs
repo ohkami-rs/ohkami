@@ -221,6 +221,15 @@ trait RoutingItem {
         }
     }
 
+    impl RoutingItem for Ohkami {
+        fn apply(self, router: &mut Router) {
+            router.merge_another(ByAnother {
+                route:  RouteSegments::from_literal("/"),
+                ohkami: self,
+            })
+        }
+    }
+
     impl RoutingItem for Dir {
         fn apply(self, router: &mut Router) {
             #[derive(Clone)]

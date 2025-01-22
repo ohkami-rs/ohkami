@@ -44,10 +44,7 @@ impl FangAction for Logger {
 async fn main() {
     let db = Arc::new(mock::DB::new());
 
-    let o = Ohkami::with((
-        Logger,
-        Memory::new(db),
-    ), (
+    let o = Ohkami::with(Memory::new(db), (
         "/pets"
             .GET(list_pets)
             .POST(create_pet),
@@ -63,7 +60,8 @@ async fn main() {
         ]
     });
 
-    o.howl("localhost:5050").await
+    Ohkami::with_global(Logger, o)
+        .howl("localhost:5050").await
 }
 
 #[openapi::operation({200: "All pets stored in this pet store"})]

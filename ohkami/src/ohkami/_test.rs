@@ -442,6 +442,76 @@ fn duplcate_routes_registration() {
 }
 
 #[test]
+fn with_global_fangs() {
+    async fn list_pets() -> &'static str {"list"}
+    async fn create_pet() -> &'static str {"created"}
+    async fn show_pet_by_id() -> &'static str {"found"}
+
+    let o = || Ohkami::new((
+        "/pets"
+            .GET(list_pets)
+            .POST(create_pet),
+        "/pets/:petId"
+            .GET(show_pet_by_id),
+    ));
+
+    use std::sync::{Mutex, LazyLock};
+
+    fn count() -> &'static Mutex<usize> {
+        static COUNT: LazyLock<Mutex<usize>> =
+            LazyLock::new(|| Mutex::new(0));
+        &*COUNT
+    }
+
+    #[derive(Clone)]
+    struct Logger;
+    impl FangAction for Logger {
+        async fn fore<'a>(&'a self, _req: &'a mut Request) -> Result<(), Response> {
+            *count().lock().unwrap() += 1;
+            Ok(())
+        }
+    }
+
+    /* with_global(Logger, o()) */
+    crate::__rt__::testing::block_on(async {
+        let t = Ohkami::with_global(Logger, o()).test();
+        {
+            let req = TestRequest::GET("/");
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status(), Status::NotFound);
+            assert_eq!(res.text(), None);
+            assert_eq!(*count().lock().unwrap(), 1);
+        }
+        {
+            let req = TestRequest::GET("/pets");
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status(), Status::OK);
+            assert_eq!(res.text(), Some("list"));
+            assert_eq!(*count().lock().unwrap(), 2);
+        }
+    });
+
+    /* with(Logger, o()) */
+    crate::__rt__::testing::block_on(async {
+        let t = Ohkami::with(Logger, o()).test();
+        {
+            let req = TestRequest::GET("/");
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status(), Status::NotFound);
+            assert_eq!(res.text(), None);
+            assert_eq!(*count().lock().unwrap(), 2);
+        }
+        {
+            let req = TestRequest::GET("/pets");
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status(), Status::OK);
+            assert_eq!(res.text(), Some("list"));
+            assert_eq!(*count().lock().unwrap(), 3);
+        }
+    });
+}
+
+#[test]
 fn method_dependent_fang_applying() {
     {
         #[derive(Clone)]
@@ -521,9 +591,10 @@ fn method_dependent_fang_applying() {
             "/auth".By(Ohkami::with_global(Count2, // `with_global` applies `Count2` on `/auth` independent of method
                 "/".PUT(|| async {"authed"}),
             )),
-            "/auth".By(Ohkami::with(Auth, // `with` applies `Auth` only on `POST /auth`
+            "/auth".By(Ohkami::with(Auth, (// `with` applies `Auth` only on `POST /auth`
                 "/".POST(|| async {"auth control"}),
-            )),
+                "/d".DELETE(|| async {"deleted"}),
+            ))),
         )).test();
 
         {
@@ -531,7 +602,6 @@ fn method_dependent_fang_applying() {
             let res = t.oneshot(req).await;
             assert_eq!(res.status(), Status::OK);
             assert_eq!(res.text(), Some("Hello, GET"));
-
             assert_eq!(*global_count().lock().unwrap(), 1);
             assert_eq!(*local_count().lock().unwrap(), 0);
         }
@@ -571,6 +641,15 @@ fn method_dependent_fang_applying() {
             assert_eq!(*global_count().lock().unwrap(), 5);
             assert_eq!(*local_count().lock().unwrap(), 8);
         }
+        {
+            // Logger (with_global) + Auth (with) + Count2 (with_global)
+            let req = TestRequest::DELETE("/auth/d");
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status(), Status::OK);
+            assert_eq!(res.text(), Some("deleted"));
+            assert_eq!(*global_count().lock().unwrap(), 6);
+            assert_eq!(*local_count().lock().unwrap(), 11);
+        }
 
         {
             // Logger (with_global)
@@ -578,8 +657,8 @@ fn method_dependent_fang_applying() {
             let res = t.oneshot(req).await;
             assert_eq!(res.status(), Status::NotFound);
             assert_eq!(res.text(), None);
-            assert_eq!(*global_count().lock().unwrap(), 6);
-            assert_eq!(*local_count().lock().unwrap(), 8);
+            assert_eq!(*global_count().lock().unwrap(), 7);
+            assert_eq!(*local_count().lock().unwrap(), 11);
         }
         {
             // Logger (with_global) + Count2 (with_global)
@@ -587,8 +666,17 @@ fn method_dependent_fang_applying() {
             let res = t.oneshot(req).await;
             assert_eq!(res.status(), Status::NotFound);
             assert_eq!(res.text(), None);
-            assert_eq!(*global_count().lock().unwrap(), 7);
-            assert_eq!(*local_count().lock().unwrap(), 10);
+            assert_eq!(*global_count().lock().unwrap(), 8);
+            assert_eq!(*local_count().lock().unwrap(), 13);
+        }
+        {
+            // Logger (with_global) + Count2 (with_global)
+            let req = TestRequest::DELETE("/auth/wrong");
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status(), Status::NotFound);
+            assert_eq!(res.text(), None);
+            assert_eq!(*global_count().lock().unwrap(), 9);
+            assert_eq!(*local_count().lock().unwrap(), 15); // <--
         }
     });
 }

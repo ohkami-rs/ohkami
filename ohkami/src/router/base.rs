@@ -46,7 +46,7 @@ impl FangsList {
             self.0.push((id, fangs));
         }
     }
-    pub(super) fn extend(&mut self, another: Self) {
+    pub(super) fn append(&mut self, another: Self) {
         for (id, fangs) in another.0.into_iter() {
             self.add(id, fangs)
         }
@@ -283,7 +283,7 @@ impl Node {
     }
 
     fn append_fangs(&mut self, fangs: FangsList) {
-        self.fangses.extend(fangs);
+        self.fangses.append(fangs);
     }
 
     fn set_handler(&mut self, new_handler: Handler, allow_override: bool) -> Result<(), String> {
