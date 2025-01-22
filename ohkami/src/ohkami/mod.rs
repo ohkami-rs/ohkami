@@ -1,8 +1,8 @@
 #[cfg(test)]
 mod _test;
 
-pub(crate) mod build;
-pub use build::{Route, Routes};
+pub(crate) mod routes;
+pub use routes::{Route, Routes};
 
 use crate::fang::Fangs;
 use crate::router::base::Router;
@@ -81,7 +81,7 @@ use crate::{__rt__, Session};
 /// # }
 /// 
 /// fn my_ohkami() -> Ohkami {
-///     let api_ohkami = Ohkami::with((Auth,), (
+///     let api_ohkami = Ohkami::with(Auth, (
 ///         "/users"
 ///             .POST(create_user),
 ///         "/users/:id"
@@ -130,9 +130,28 @@ use crate::{__rt__, Session};
 /// ```
 pub struct Ohkami {
     router: Router,
+    /// apply just before merged to another, or just before `howl`ing
+    fangs:  Option<FangSet>,
+}
 
-    /// apply just before merged to another or called `howl`
-    fangs: Option<Arc<dyn Fangs>>,
+#[derive(Clone)]
+struct FangSet {
+    fangs:              Arc<dyn Fangs>,
+    method_independent: bool,
+}
+impl FangSet {
+    fn global(fangs: impl Fangs + 'static) -> Self {
+        Self {
+            fangs:              Arc::new(fangs),
+            method_independent: true,
+        }
+    }
+    fn local(fangs: impl Fangs + 'static) -> Self {
+        Self {
+            fangs:              Arc::new(fangs),
+            method_independent: false,
+        }
+    }
 }
 
 impl Ohkami {
@@ -168,19 +187,61 @@ impl Ohkami {
     /// > `({path params}, {FromRequest values},...) -> {IntoResponse value}`
     ///
     /// `{path params}` is a `FromParam` value or a tuple of them
-    pub fn new(routes: impl build::Routes) -> Self {
+    pub fn new(routes: impl routes::Routes) -> Self {
         let mut router = Router::new();
         routes.apply(&mut router);
         Self { router, fangs: None, }
     }
 
-    /// Create new ohkami with the fangs on the routing.
+    /// Create `Ohkami` with the fangs that bites requests/responses over routes
+    /// of this `Ohkami` *independent of method*. This is useful for something
+    /// like logger. If you'd like to apply fangs only before/after your handlers,
+    /// use [`Ohkami::on`](Ohkami::on) instead!
     /// 
     /// ---
     ///
-    /// `fangs: impl Fangs` is an tuple of `Fang` items.
+    /// `fangs`: A tuple of `Fang` items. You can omit tuple when `fangs` contains only one `Fang`.
     /// 
-    /// **NOTE**: You can omit tuple when `fangs` contains only one `Fang`.
+    /// <br>
+    /// 
+    /// ---
+    /// 
+    /// ```
+    /// use ohkami::prelude::*;
+    /// 
+    /// #[derive(Clone)]
+    /// struct Logger;
+    /// impl FangAction for Logger {
+    ///     //...
+    /// }
+    /// 
+    /// # async fn handler1() -> &'static str {"1"}
+    /// # async fn handler2() -> &'static str {"2"}
+    /// # async fn handler3() -> &'static str {"3"}
+    /// #
+    /// # let _ =
+    /// Ohkami::with(Logger, (
+    ///     "/a"
+    ///         .GET(handler1)
+    ///         .POST(handler2),
+    ///     "/b"
+    ///         .PUT(handler3),
+    ///     //...
+    /// ))
+    /// # ;
+    /// ```
+    pub fn with(fangs: impl Fangs + 'static, routes: impl routes::Routes) -> Self {
+        let mut router = Router::new();
+        routes.apply(&mut router);
+        Self { router, fangs: Some(FangSet::global(fangs)) }
+    }
+
+    /// Create new `Ohkami` with the fangs that bites requests/responses before/after
+    /// the handlers of this `Ohkami`.
+    /// 
+    /// ---
+    ///
+    /// `fangs`: A tuple of `Fang` items. You can omit tuple when `fangs` contains only one `Fang`.
     /// 
     /// <br>
     /// 
@@ -200,7 +261,7 @@ impl Ohkami {
     /// # async fn handler3() -> &'static str {"3"}
     /// #
     /// # let _ =
-    /// Ohkami::with(AuthFang, (
+    /// Ohkami::on(AuthFang, (
     ///     "/a"
     ///         .GET(handler1)
     ///         .POST(handler2),
@@ -210,17 +271,17 @@ impl Ohkami {
     /// ))
     /// # ;
     /// ```
-    pub fn with(fangs: impl Fangs + 'static, routes: impl build::Routes) -> Self {
+    pub fn on(fangs: impl Fangs + 'static, routes: impl routes::Routes) -> Self {
         let mut router = Router::new();
         routes.apply(&mut router);
-        Self { router, fangs: Some(Arc::new(fangs)) }
+        Self { router, fangs: Some(FangSet::local(fangs)) }
     }
 
     pub(crate) fn into_router(self) -> Router {
         let Self { fangs, mut router } = self;
 
-        if let Some(fangs) = fangs {
-            router.apply_fangs(router.id(), fangs);
+        if let Some(FangSet { fangs, method_independent }) = fangs {
+            router.apply_fangs(router.id(), fangs, method_independent);
         }
 
         #[cfg(feature="DEBUG")]

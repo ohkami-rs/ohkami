@@ -32,12 +32,12 @@ pub fn ohkami() -> Ohkami {
             .POST(sign_up),
         "/users/:id"
             .GET(show_user_profile),
-        "/users/:id".By(Ohkami::with(TokenAuth, "/"
+        "/users/:id".By(Ohkami::on(TokenAuth, "/"
             .PUT(edit_profile),
         )),
         "/tweets"
             .GET(list_tweets),
-        "/tweets".By(Ohkami::with(TokenAuth, "/"
+        "/tweets".By(Ohkami::on(TokenAuth, "/"
             .POST(post_tweet),
         ))
     ));

@@ -1,7 +1,7 @@
 use super::util::ID;
 use super::segments::{RouteSegments, RouteSegment};
 use crate::fang::{BoxedFPC, Fangs, handler::Handler};
-use crate::ohkami::build::{ByAnother, HandlerSet};
+use crate::ohkami::routes::{ByAnother, HandlerSet};
 use std::{sync::Arc, collections::HashSet};
 
 #[cfg_attr(feature="openapi", derive(Clone))]
@@ -184,11 +184,11 @@ impl Router {
         crate::DEBUG!("merged: {self:#?}");
     }
 
-    pub(crate) fn apply_fangs(&mut self, id: ID, fangs: Arc<dyn Fangs>) {
+    pub(crate) fn apply_fangs(&mut self, id: ID, fangs: Arc<dyn Fangs>, method_independent: bool) {
         macro_rules! apply_to {
             ($($method:ident),*) => {
                 $(
-                    self.$method.apply_fangs(id.clone(), fangs.clone());
+                    self.$method.apply_fangs(id.clone(), fangs.clone(), method_independent);
                 )*
             };
         } apply_to! { GET, PUT, POST, PATCH, DELETE, OPTIONS }
@@ -341,13 +341,17 @@ impl Node {
     }
 
     /// MUST be called after all handlers are registered
-    fn apply_fangs(&mut self, id: ID, fangs: Arc<dyn Fangs>) {
+    fn apply_fangs(&mut self, id: ID, fangs: Arc<dyn Fangs>, method_independent: bool) {
         for child in &mut self.children {
-            child.apply_fangs(id.clone(), fangs.clone())
+            child.apply_fangs(id.clone(), fangs.clone(), method_independent)
         }
 
-        if self.handler.is_some() {
+        if method_independent {
             self.fangses.add(id, fangs);
+        } else {
+            if self.handler.is_some() {
+                self.fangses.add(id, fangs);
+            }
         }
     }
 }
