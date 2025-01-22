@@ -184,11 +184,11 @@ impl Router {
         crate::DEBUG!("merged: {self:#?}");
     }
 
-    pub(crate) fn apply_fangs(&mut self, id: ID, fangs: Arc<dyn Fangs>, method_independent: bool) {
+    pub(crate) fn apply_fangs(&mut self, id: ID, fangs: Arc<dyn Fangs>) {
         macro_rules! apply_to {
             ($($method:ident),*) => {
                 $(
-                    self.$method.apply_fangs(id.clone(), fangs.clone(), method_independent);
+                    self.$method.apply_fangs(id.clone(), fangs.clone());
                 )*
             };
         } apply_to! { GET, PUT, POST, PATCH, DELETE, OPTIONS }
@@ -341,18 +341,14 @@ impl Node {
     }
 
     /// MUST be called after all handlers are registered
-    fn apply_fangs(&mut self, id: ID, fangs: Arc<dyn Fangs>, method_independent: bool) {
+    fn apply_fangs(&mut self, id: ID, fangs: Arc<dyn Fangs>) {
         for child in &mut self.children {
-            child.apply_fangs(id.clone(), fangs.clone(), method_independent)
+            child.apply_fangs(id.clone(), fangs.clone())
         }
 
-        if method_independent {
-            self.fangses.add(id, fangs);
-        } else {
-            if self.handler.is_some() {
-                self.fangses.add(id, fangs);
-            }
-        }
+        // Add even when `self.handler.is_none()`. They are used later
+        // for applying to `Handler::default_notfound`s in `finalize`.
+        self.fangses.add(id, fangs);
     }
 }
 

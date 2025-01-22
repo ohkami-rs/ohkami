@@ -44,6 +44,58 @@ pub fn articles_ohkami() -> Ohkami {
     ))
 }
 
+// pub fn articles_ohkami() -> Ohkami {
+//     Ohkami::new((
+//         "/"
+//             .GET(list.with(Auth::optional()))
+//             .POST(create.with(Auth::required())),
+//         "/feed"
+//             .GET(feed.with(Auth::required())),
+//         "/:slug"
+//             .GET(get)
+//             .PUT(update.with(Auth::required()))
+//             .DELETE(delete.with(Auth::required())),
+//         "/:slug/comments"
+//             .POST(add_comment.with(Auth::required()))
+//             .GET(get_comments.with(Auth::optional())),
+//         "/:slug/comments/:id"
+//             .DELETE(delete_comment.with(Auth::required())),
+//         "/:slug/favorite"
+//             .POST(favorite.with(Auth::required()))
+//             .DELETE(unfavorite.with(Auth::required()))
+//     ))
+// }
+
+pub fn articles_ohkami() -> Ohkami {
+    Ohkami::new((
+        "/"
+            .GET((
+                Auth::optional(),
+                SomeFang::new(),
+                list
+            ))
+            .POST(((
+                Auth::required(),
+                SomeFang::new()
+            ), create)),
+        "/feed"
+            .GET((Auth::required(), feed)),
+        "/:slug"
+            .GET(get)
+            .PUT((Auth::required(), update))
+            .DELETE((Auth::required(), delete)),
+        "/:slug/comments"
+            .POST((Auth::required(), add_comment))
+            .GET((Auth::optional(), get_comments)),
+        "/:slug/comments/:id"
+            .DELETE((Auth::required(), delete_comment)),
+        "/:slug/favorite"
+            .POST((Auth::required(), favorite))
+            .DELETE((Auth::required(), unfavorite))
+    ))
+}
+
+
 
 async fn list(
     Query(q): Query<ListArticlesQuery<'_>>,

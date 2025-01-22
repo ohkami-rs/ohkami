@@ -135,9 +135,9 @@ pub struct Ohkami {
 }
 
 #[derive(Clone)]
-struct FangSet {
-    fangs:              Arc<dyn Fangs>,
-    method_independent: bool,
+pub(crate) struct FangSet {
+    pub(crate) fangs: Arc<dyn Fangs>,
+    pub(crate) method_ndependent: bool,
 }
 impl FangSet {
     fn global(fangs: impl Fangs + 'static) -> Self {
