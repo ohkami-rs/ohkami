@@ -182,6 +182,4 @@ const _: () = {
             assert_eq!(res.status().code(), 401);
         }
     });
-
-    panic!("{}", BASE64.encode("ohkami:openapi"));
 }
