@@ -8,10 +8,6 @@
     {
       "url": "http://localhost:8787",
       "description": "local dev"
-    },
-    {
-      "url": "https://ohkami-worker-with-openapi.kanarus.workers.dev",
-      "description": "production"
     }
   ],
   "paths": {
