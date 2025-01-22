@@ -443,27 +443,154 @@ fn duplcate_routes_registration() {
 
 #[test]
 fn method_dependent_fang_applying() {
-    #[derive(Clone)]
-    struct SomeFang;
-    impl crate::prelude::FangAction for SomeFang {}
+    {
+        #[derive(Clone)]
+        struct SomeFang;
+        impl crate::prelude::FangAction for SomeFang {}
 
-    async fn handler() {}
+        async fn handler() {}
 
-    let _ = Ohkami::new((
-        "/users"
-            .GET(handler)
-            .POST(handler),
-        "/users/:id"
-            .GET(handler),
-        "/users/:id".By(Ohkami::with(SomeFang, "/"
-            .PUT(handler),
-        )),
-        "/tweets"
-            .GET(handler),
-        "/tweets".By(Ohkami::with(SomeFang, "/"
-            .POST(handler),
-        ))
-    ));
+        let _ = Ohkami::new((
+            "/users"
+                .GET(handler)
+                .POST(handler),
+            "/users/:id"
+                .GET(handler),
+            "/users/:id".By(Ohkami::with(SomeFang, "/"
+                .PUT(handler),
+            )),
+            "/tweets"
+                .GET(handler),
+            "/tweets".By(Ohkami::with(SomeFang, "/"
+                .POST(handler),
+            ))
+        )); // no panic
+    }
+
+    crate::__rt__::testing::block_on(async {
+        use std::sync::{Mutex, LazyLock};
+
+        fn global_count() -> &'static Mutex<usize> {
+            static GLOBAL_COUNT: LazyLock<Mutex<usize>> =
+                LazyLock::new(|| Mutex::new(0));
+            &*GLOBAL_COUNT
+        }
+
+        fn local_count() -> &'static Mutex<usize> {
+            static LOCAL_COUNT: LazyLock<Mutex<usize>> =
+                LazyLock::new(|| Mutex::new(0));
+            &*LOCAL_COUNT
+        }
+
+        #[derive(Clone)]
+        struct Logger;
+        impl FangAction for Logger {
+            async fn fore<'a>(&'a self, _req: &'a mut Request) -> Result<(), Response> {
+                *global_count().lock().unwrap() += 1;
+                Ok(())
+            }
+        }
+
+        #[derive(Clone)]
+        struct Auth;
+        impl FangAction for Auth {
+            async fn fore<'a>(&'a self, _req: &'a mut Request) -> Result<(), Response> {
+                *local_count().lock().unwrap() += 1;
+                Ok(())
+            }
+        }
+        
+        #[derive(Clone)]
+        struct Count2;
+        impl FangAction for Count2 {
+            async fn fore<'a>(&'a self, _req: &'a mut Request) -> Result<(), Response> {
+                *local_count().lock().unwrap() += 2;
+                Ok(())
+            }
+        }
+        
+        let t = Ohkami::with_global(Logger, ( // `with_global` applies `Logger` on any route independent of method
+            "/"
+                .GET(|| async {"Hello, GET"}),
+            "/".By(Ohkami::with(Auth, // `with` applies `Auth` only on `PUT /`
+                "/".PUT(|| async {"Hello, PUT"}),
+            )),
+            "/auth".By(Ohkami::new(
+                "/".GET(|| async {"auth page"}),
+            )),
+            "/auth".By(Ohkami::with_global(Count2, // `with_global` applies `Count2` on `/auth` independent of method
+                "/".PUT(|| async {"authed"}),
+            )),
+            "/auth".By(Ohkami::with(Auth, // `with` applies `Auth` only on `POST /auth`
+                "/".POST(|| async {"auth control"}),
+            )),
+        )).test();
+
+        {
+            let req = TestRequest::GET("/");
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status(), Status::OK);
+            assert_eq!(res.text(), Some("Hello, GET"));
+
+            assert_eq!(*global_count().lock().unwrap(), 1);
+            assert_eq!(*local_count().lock().unwrap(), 0);
+        }
+        {
+            // Logger (with_global) + Auth (with)
+            let req = TestRequest::PUT("/");
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status(), Status::OK);
+            assert_eq!(res.text(), Some("Hello, PUT"));
+            assert_eq!(*global_count().lock().unwrap(), 2);
+            assert_eq!(*local_count().lock().unwrap(), 1);
+        }
+        {
+            // Logger (with_global) + Count2 (with_global)
+            let req = TestRequest::GET("/auth");
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status(), Status::OK);
+            assert_eq!(res.text(), Some("auth page"));
+            assert_eq!(*global_count().lock().unwrap(), 3);
+            assert_eq!(*local_count().lock().unwrap(), 3);
+        }
+        {
+            // Logger (with_global) + Count2 (with_global)
+            let req = TestRequest::PUT("/auth");
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status(), Status::OK);
+            assert_eq!(res.text(), Some("authed"));
+            assert_eq!(*global_count().lock().unwrap(), 4);
+            assert_eq!(*local_count().lock().unwrap(), 5);
+        }
+        {
+            // Logger (with_global) + Auth (with) + Count2 (with_global)
+            let req = TestRequest::POST("/auth");
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status(), Status::OK);
+            assert_eq!(res.text(), Some("auth control"));
+            assert_eq!(*global_count().lock().unwrap(), 5);
+            assert_eq!(*local_count().lock().unwrap(), 8);
+        }
+
+        {
+            // Logger (with_global)
+            let req = TestRequest::GET("/wrong");
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status(), Status::NotFound);
+            assert_eq!(res.text(), None);
+            assert_eq!(*global_count().lock().unwrap(), 6);
+            assert_eq!(*local_count().lock().unwrap(), 8);
+        }
+        {
+            // Logger (with_global) + Count2 (with_global)
+            let req = TestRequest::GET("/auth/wrong");
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status(), Status::NotFound);
+            assert_eq!(res.text(), None);
+            assert_eq!(*global_count().lock().unwrap(), 7);
+            assert_eq!(*local_count().lock().unwrap(), 10);
+        }
+    });
 }
 
 #[test] fn prefixy_routes() {

@@ -196,7 +196,7 @@ impl Ohkami {
     /// Create `Ohkami` with the fangs that bites requests/responses over routes
     /// of this `Ohkami` *independent of method*. This is useful for something
     /// like logger. If you'd like to apply fangs only before/after your handlers,
-    /// use [`Ohkami::on`](Ohkami::on) instead!
+    /// use [`Ohkami::with`](Ohkami::with) instead!
     /// 
     /// ---
     ///
@@ -220,7 +220,7 @@ impl Ohkami {
     /// # async fn handler3() -> &'static str {"3"}
     /// #
     /// # let _ =
-    /// Ohkami::with(Logger, (
+    /// Ohkami::with_global(Logger, (
     ///     "/a"
     ///         .GET(handler1)
     ///         .POST(handler2),
@@ -230,7 +230,7 @@ impl Ohkami {
     /// ))
     /// # ;
     /// ```
-    pub fn with(fangs: impl Fangs + 'static, routes: impl routes::Routes) -> Self {
+    pub fn with_global(fangs: impl Fangs + 'static, routes: impl routes::Routes) -> Self {
         let mut router = Router::new();
         routes.apply(&mut router);
         Self { router, fangs: Some(FangSet::global(fangs)) }
@@ -261,7 +261,7 @@ impl Ohkami {
     /// # async fn handler3() -> &'static str {"3"}
     /// #
     /// # let _ =
-    /// Ohkami::on(AuthFang, (
+    /// Ohkami::with(AuthFang, (
     ///     "/a"
     ///         .GET(handler1)
     ///         .POST(handler2),
@@ -271,7 +271,7 @@ impl Ohkami {
     /// ))
     /// # ;
     /// ```
-    pub fn on(fangs: impl Fangs + 'static, routes: impl routes::Routes) -> Self {
+    pub fn with(fangs: impl Fangs + 'static, routes: impl routes::Routes) -> Self {
         let mut router = Router::new();
         routes.apply(&mut router);
         Self { router, fangs: Some(FangSet::local(fangs)) }
