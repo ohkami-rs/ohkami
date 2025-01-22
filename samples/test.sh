@@ -31,8 +31,16 @@ cd $SAMPLES/realworld && \
     docker compose down
 test $? -ne 0 && exit 153 || :
 
+cd $SAMPLES/streaming && \
+    cargo build && \
+    (timeout -sKILL 1 cargo run &) && \
+    sleep 1 && \
+    diff -q openapi.json openapi.json.sample
+test $? -ne 0 && exit 154 || :
+
 cd $SAMPLES/worker-with-openapi && \
     cp wrangler.toml.sample wrangler.toml && \
     (test -f openapi.json || echo '{}' >> openapi.json) && \
-    npm run openapi
-test $? -ne 0 && exit 154 || :
+    npm run openapi && \
+    diff -q openapi.json openapi.json.sample
+test $? -ne 0 && exit 155 || :
