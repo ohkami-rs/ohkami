@@ -132,3 +132,56 @@ const _: () = {
         }
     }
 };
+
+
+#[cfg(test)]
+#[cfg(feature="__rt_native__")]
+#[test] fn test_basicauth() {
+    use super::*;
+    use crate::prelude::*;
+    use crate::testing::*;
+
+    let t = Ohkami::new((
+        "/hello".GET(|| async {"Hello!"}),
+        "/private".By(Ohkami::with(
+            BasicAuth {
+                username: "ohkami",
+                password: "password"
+            },
+            "/".GET(|| async {"Hello, private!"})
+        ))
+    )).test();
+
+    crate::__rt__::testing::block_on(async {
+        {
+            let req = TestRequest::GET("/hello");
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status().code(), 200);
+            assert_eq!(res.text(), Some("Hello!"));
+        }
+        {
+            let req = TestRequest::GET("/private");
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status().code(), 401);
+        }
+        {
+            let req = TestRequest::GET("/private")
+                .header("Authorization", format!(
+                    "Basic {}", BASE64.encode("ohkami:password")
+                ));
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status().code(), 200);
+            assert_eq!(res.text(), Some("Hello, private!"));
+        }
+        {
+            let req = TestRequest::GET("/private")
+                .header("Authorization", format!(
+                    "Basic {}", BASE64.encode("ohkami:wrong")
+                ));
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status().code(), 401);
+        }
+    });
+
+    panic!("{}", BASE64.encode("ohkami:openapi"));
+}

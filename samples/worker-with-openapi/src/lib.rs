@@ -3,7 +3,7 @@ mod fang;
 mod model;
 
 use error::APIError;
-use fang::{TokenAuth, TokenAuthed};
+use fang::{TokenAuth, TokenAuthed, Logger};
 use model::*;
 
 use ohkami::prelude::*;
@@ -44,7 +44,7 @@ pub fn ohkami() -> Ohkami {
         ))
     ));
 
-    Ohkami::new((
+    Ohkami::with(Logger, (
         "/openapi.json".By(openapi_doc_server_ohkami),
         "/api".By(api_ohkami)
     ))
@@ -53,7 +53,7 @@ pub fn ohkami() -> Ohkami {
 async fn show_user_profile(id: ID,
     Bindings { DB, .. }: Bindings,
 ) -> Result<JSON<UserProfile>, APIError> {
-    let user_proifle = DB.prepare("SELECT name, location, age FROM users WHERE id = ?")
+    let user_proifle = DB.prepare("SELECT id, name, location, age FROM users WHERE id = ?")
         .bind(&[id.into()])?
         .first::<UserProfile>(None).await?
         .ok_or(APIError::UserNotFound { id })?;
@@ -89,7 +89,7 @@ async fn edit_profile(id: ID,
 
     if let Some((set_clause, mut params)) = make_set_clause!(location, age) {
         params.push((*user_id).into());
-        DB.prepare(["UPDATE users ", &set_clause, " WHERE user_id = ?"].concat())
+        DB.prepare(["UPDATE users ", &set_clause, " WHERE id = ?"].concat())
             .bind(&params)?
             .run().await?;
     }
@@ -100,7 +100,7 @@ async fn edit_profile(id: ID,
 async fn list_users(
     Bindings { DB, .. }: Bindings,
 ) -> Result<JSON<Vec<UserProfile>>, APIError> {
-    let users = DB.prepare("SELECT name, location, age FROM users ORDER BY id")
+    let users = DB.prepare("SELECT id, name, location, age FROM users ORDER BY id")
         .all().await?
         .results::<UserProfile>()?;
 
@@ -111,19 +111,25 @@ async fn sign_up(
     JSON(req): JSON<SignUpRequest<'_>>,
     Bindings { DB, .. }: Bindings,
 ) -> Result<status::Created<JSON<UserProfile>>, APIError> {
-    let already_used = DB.prepare("SELECT exists (SELECT id FROM users WHERE name = ?)")
+    let already_used = DB.prepare("SELECT EXISTS (SELECT id FROM users WHERE name = ?) as e")
         .bind(&[req.name.into()])?
-        .first::<u8>(Some("exists")).await?;
+        .first::<u8>(Some("e")).await?;
 
     (already_used != Some(1)).then_some(()).ok_or_else(||
         APIError::UserNameAlreadyUsed(req.name.into())
     )?;
 
-    DB.prepare("INSERT INTO users (name, token) VALUES (?, ?)")
+    let id = DB.prepare("INSERT INTO users (name, token) VALUES (?, ?) RETURNING id")
         .bind(&[req.name.into(), req.token.into()])?
-        .run().await?;
+        .first::<ID>(Some("id")).await?
+        .ok_or_else(|| APIError::Internal(format!(
+            "Failed to insert user (name = `{}`, token = `{}`) and fetch id",
+            req.name,
+            req.token
+        )))?;
     
     Ok(status::Created(JSON(UserProfile {
+        id,
         name:     req.name.into(),
         location: None,
         age:      None,
@@ -156,10 +162,10 @@ async fn post_tweet(
     Memory(TokenAuthed { user_id, user_name }): Memory<'_, TokenAuthed>,
     Bindings { DB, .. }: Bindings,
 ) -> Result<status::Created<JSON<Tweet>>, APIError> {
-    let timestamp = ohkami::util::unix_timestamp();
+    let timestamp = crate::model::timestamp_now();
 
     DB.prepare("INSERT INTO tweets (user_id, content, posted_at) VALUES (?, ?, ?)")
-        .bind(&[(*user_id).into(), req.content.into(), timestamp.into()])?
+        .bind(&[(*user_id).into(), req.content.into(), (&*timestamp).into()])?
         .run().await?;
 
     Ok(status::Created(JSON(Tweet {

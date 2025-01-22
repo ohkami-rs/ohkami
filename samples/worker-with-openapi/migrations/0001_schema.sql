@@ -14,7 +14,5 @@ CREATE TABLE IF NOT EXISTS tweets (
     id        integer NOT NULL PRIMARY KEY,
     user_id   integer NOT NULL,
     content   text    NOT NULL,
-    posted_at integer NOT NULL, -- unix timestamp
-
-    FOREIGN KEY user_id REFERENCES users (id)
+    posted_at text    NOT NULL  -- unix timestamp as text
 );
