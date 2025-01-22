@@ -40,7 +40,18 @@ pub struct DataStream<T: Data = String>(
     PhantomData<fn()->T>
 );
 
-pub trait Data: 'static {
+#[cfg(not(feature="openapi"))]
+mod bound {
+    pub trait Bound {}
+    impl<T> Bound for T {}
+}
+#[cfg(feature="openapi")]
+mod bound {
+    pub trait Bound: crate::openapi::Schema {}
+    impl<T: crate::openapi::Schema> Bound for T {}
+}
+
+pub trait Data: bound::Bound + 'static {
     fn encode(self) -> String;
 }
 const _: () = {
@@ -64,7 +75,8 @@ impl<T: Data> crate::IntoResponse for DataStream<T> {
     fn openapi_responses() -> crate::openapi::Responses {
         crate::openapi::Responses::new(
             200,
-            crate::openapi::Response::when("OK")
+            crate::openapi::Response::when("Streaming")
+                .content("text/event-stream", <T as crate::openapi::Schema>::schema())
         )
     }
 }

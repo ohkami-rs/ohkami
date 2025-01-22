@@ -90,7 +90,11 @@ impl Router {
                 ("patch",  &self.PATCH),
                 ("delete", &self.DELETE),
             ] {
-                let mut path = crate::request::Path::from_literal(route);
+                let mut path = crate::request::Path::from_literal(
+                    // this is intended even when route == "/", then to "",
+                    // samely as `Path::init_with_request_bytes`
+                    route.trim_end_matches('/')
+                );
 
                 crate::DEBUG!("[gen_openapi_doc] searching `{openapi_method} {route}`");
 
