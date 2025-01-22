@@ -23,17 +23,17 @@ struct TokenSchema<'req> {
 
 impl FangAction for TokenAuth {
     async fn fore<'a>(&'a self, req: &'a mut Request) -> Result<(), Response> {
-        let authorization = req.headers
+        let authorization_bearer = req.headers
             .Authorization().ok_or_else(Response::BadRequest)?
             .strip_prefix("Bearer ").ok_or_else(Response::BadRequest)?;
 
         let TokenSchema { user_id, token } =
-            json::from_str(authorization)
-                .inspect_err(|e| worker::console_error!("Failed to parse TokenSchema `{authorization}`: {e}"))
+            json::from_str(authorization_bearer)
+                .inspect_err(|e| worker::console_error!("Failed to parse TokenSchema `{authorization_bearer}`: {e}"))
                 .map_err(|_| Response::Unauthorized())?;
 
         let Bindings { DB, .. } = FromRequest::from_request(req).unwrap()?;
-        let user_name = DB.prepare("SELECT name FROM users WHERE id = ? AND token = ? LIMIT 1")
+        let user_name = DB.prepare("SELECT name FROM users WHERE id = ? AND token = ?")
             .bind(&[user_id.into(), token.into()])?
             .first::<String>(Some("name")).await?
             .ok_or_else(Response::Unauthorized)?;
@@ -48,5 +48,18 @@ impl FangAction for TokenAuth {
             openapi::SecurityScheme::Bearer("tokenAuth", Some("JSON (user_id, token)")),
             &[]
         )
+    }
+}
+
+
+#[derive(Clone)]
+pub(super) struct Logger;
+impl FangAction for Logger {
+    async fn fore<'a>(&'a self, req: &'a mut Request) -> Result<(), Response> {
+        worker::console_log!("{req:?}");
+        Ok(())
+    }
+    async fn back<'a>(&'a self, res: &'a mut Response) {
+        worker::console_log!("{res:?}");
     }
 }

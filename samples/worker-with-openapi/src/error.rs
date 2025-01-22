@@ -5,6 +5,9 @@ pub(crate) enum APIError {
     #[error("Error in worker: {0}")]
     Worker(#[from] ::worker::Error),
 
+    #[error("Internal error: {0}")]
+    Internal(String),
+
     #[error("User name `{0}` is already used")]
     UserNameAlreadyUsed(String),
 
@@ -20,6 +23,7 @@ impl ohkami::IntoResponse for APIError {
         ::worker::console_error!("{self}");
         match &self {
             Self::Worker(_) => ohkami::Response::InternalServerError(),
+            Self::Internal(_) => ohkami::Response::InternalServerError(),
             Self::UserNameAlreadyUsed(_) => ohkami::Response::BadRequest()  
                 .with_text(self.to_string()),
             Self::UserNotFound { .. } => ohkami::Response::NotFound(),
@@ -33,8 +37,6 @@ impl ohkami::IntoResponse for APIError {
 
         ohkami::openapi::Responses::enumerated([
             (500, Response::when("Worker's internal error")),
-            (400, Response::when("Username already used")),
-            (404, Response::when("User not found")),
             (403, Response::when("Modyfing other user"))
         ])
     }

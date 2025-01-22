@@ -8,12 +8,17 @@ pub(super) type ID = i32;
 
 pub(super) type Age = u8;
 
-pub(super) type Timestamp = u64;
+pub(super) type Timestamp = String;
+
+pub(super) fn timestamp_now() -> Timestamp {
+    ohkami::util::unix_timestamp().to_string()
+}
 
 #[derive(Serialize, Deserialize)]
 #[cfg_attr(feature="openapi", derive(Schema))]
 #[cfg_attr(feature="openapi", openapi(component))]
 pub(super) struct UserProfile {
+    pub(super) id:       ID,
     pub(super) name:     String,
     pub(super) location: Option<String>,
     pub(super) age:      Option<Age>,

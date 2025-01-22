@@ -27,14 +27,8 @@
               }
             }
           },
-          "400": {
-            "description": "Username already used"
-          },
           "403": {
             "description": "Modyfing other user"
-          },
-          "404": {
-            "description": "User not found"
           },
           "500": {
             "description": "Worker's internal error"
@@ -76,14 +70,8 @@
               }
             }
           },
-          "400": {
-            "description": "Username already used"
-          },
           "403": {
             "description": "Modyfing other user"
-          },
-          "404": {
-            "description": "User not found"
           },
           "500": {
             "description": "Worker's internal error"
@@ -107,14 +95,8 @@
               }
             }
           },
-          "400": {
-            "description": "Username already used"
-          },
           "403": {
             "description": "Modyfing other user"
-          },
-          "404": {
-            "description": "User not found"
           },
           "500": {
             "description": "Worker's internal error"
@@ -155,14 +137,8 @@
               }
             }
           },
-          "400": {
-            "description": "Username already used"
-          },
           "403": {
             "description": "Modyfing other user"
-          },
-          "404": {
-            "description": "User not found"
           },
           "500": {
             "description": "Worker's internal error"
@@ -193,14 +169,8 @@
               }
             }
           },
-          "400": {
-            "description": "Username already used"
-          },
           "403": {
             "description": "Modyfing other user"
-          },
-          "404": {
-            "description": "User not found"
           },
           "500": {
             "description": "Worker's internal error"
@@ -245,14 +215,8 @@
           "200": {
             "description": "OK"
           },
-          "400": {
-            "description": "Username already used"
-          },
           "403": {
             "description": "Modyfing other user"
-          },
-          "404": {
-            "description": "User not found"
           },
           "500": {
             "description": "Worker's internal error"
@@ -291,7 +255,7 @@
             "type": "string"
           },
           "posted_at": {
-            "type": "integer"
+            "type": "string"
           },
           "user_id": {
             "type": "integer",
@@ -314,6 +278,10 @@
           "age": {
             "type": "integer"
           },
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
           "location": {
             "type": "string"
           },
@@ -322,6 +290,7 @@
           }
         },
         "required": [
+          "id",
           "name"
         ]
       }
