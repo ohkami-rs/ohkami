@@ -19,8 +19,6 @@ pub fn ohkami() -> Ohkami {
     #[cfg(debug_assertions)]
     console_error_panic_hook::set_once();
 
-    /* `pages` directory is served via `--assets pages` flag (see package.json) */
-
     let openapi_doc_server_ohkami = Ohkami::with(BasicAuth {
         username: "ohkami",
         password: Bindings::OPENAPI_DOC_PASSWORD
