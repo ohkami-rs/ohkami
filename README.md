@@ -252,23 +252,32 @@ Ohkami's request handling system is called "**fang**s", and middlewares are impl
 use ohkami::prelude::*;
 
 #[derive(Clone)]
-struct GreetingFang;
+struct GreetingFang(usize);
 
 /* utility trait; automatically impl `Fang` trait */
 impl FangAction for GreetingFang {
     async fn fore<'a>(&'a self, req: &'a mut Request) -> Result<(), Response> {
-        println!("Welcomm request!: {req:?}");
+        let Self(id) = self;
+        println!("[{id}] Welcome request!: {req:?}");
         Ok(())
     }
     async fn back<'a>(&'a self, res: &'a mut Response) {
-        println!("Go, response!: {res:?}");
+        let Self(id) = self;
+        println!("[{id}] Go, response!: {res:?}");
     }
 }
 
 #[tokio::main]
 async fn main() {
-    Ohkami::with(GreetingFang, (
-        "/".GET(|| async {"Hello, fangs!"})
+    // `with` registers to a Ohkami
+    Ohkami::with(GreetingFang(1), (
+        "/hello"
+            .GET(|| async {"Hello, fangs!"})
+            .POST((
+                // This registers *local fangs* to a handler
+                GreetingFang(2),
+                || async {"I'm `POST /hello`!"}
+            ))
     )).howl("localhost:3000").await
 }
 ```
