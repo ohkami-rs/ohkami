@@ -269,12 +269,14 @@ impl FangAction for GreetingFang {
 
 #[tokio::main]
 async fn main() {
-    // `with` registers to a Ohkami
-    Ohkami::with(GreetingFang(1), (
+    Ohkami::new((
+        // register fangs to a Ohkami
+        GreetingFang(1),
+        
         "/hello"
             .GET(|| async {"Hello, fangs!"})
             .POST((
-                // This registers *local fangs* to a handler
+                // register *local fangs* to a handler
                 GreetingFang(2),
                 || async {"I'm `POST /hello`!"}
             ))

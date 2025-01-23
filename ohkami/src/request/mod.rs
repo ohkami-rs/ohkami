@@ -74,9 +74,9 @@ pub(crate) const PAYLOAD_LIMIT: usize = 1 << 32;
 /// 
 /// #[tokio::main]
 /// async fn main() {
-///     Ohkami::with(LogRequest,
+///     Ohkami::new((LogRequest,
 ///         "/".GET(|| async {"Hello, world!"})
-///     ).howl("localhost:8000").await
+///     )).howl("localhost:8000").await
 /// }
 /// ```
 /// 
