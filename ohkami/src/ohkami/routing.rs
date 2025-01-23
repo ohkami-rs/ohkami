@@ -359,23 +359,21 @@ const _: () = {
     }
 };
 
-pub trait Routing<Fangs = ()> {
+pub trait Routing<Fangs> {
     fn apply(self, target: &mut Ohkami);
 }
 const _: () = {
-    impl Routing for () {
+    impl Routing<()> for () {
         fn apply(self, _target: &mut Ohkami) {}
     }
-
-    impl<R: RoutingItem> Routing for R {
+    impl<R: RoutingItem> Routing<()> for R {
         fn apply(self, target: &mut Ohkami) {
             <R as RoutingItem>::apply(self, &mut target.router)
         }
     }
-
     macro_rules! routing {
         ( $( $item:ident ),+ ) => {
-            impl<$( $item: RoutingItem ),+> Routing for ( $($item,)+ ) {
+            impl<$( $item: RoutingItem ),+> Routing<()> for ( $($item,)+ ) {
                 fn apply(self, target: &mut Ohkami) {
                     let ( $( $item, )+ ) = self;
                     $(
@@ -393,6 +391,19 @@ const _: () = {
     routing!(R1, R2, R3, R4, R5, R6);
     routing!(R1, R2, R3, R4, R5, R6, R7);
     routing!(R1, R2, R3, R4, R5, R6, R7, R8);
+
+    /// for better developer experience
+    impl<F: Fang<BoxedFPC> + 'static> Routing<std::marker::PhantomData<F>> for F {
+        fn apply(self, target: &mut Ohkami) {
+            target.fangs = Some(Arc::new(self));
+        }
+    }
+    impl<F: Fang<BoxedFPC> + 'static> Routing<(std::marker::PhantomData<F>,)> for (F,) {
+        fn apply(self, target: &mut Ohkami) {
+            let (f,) = self;
+            target.fangs = Some(Arc::new(f));
+        }
+    }
 
     macro_rules! routing_with_1_fang {
         ( $( $item:ident ),+ ) => {
