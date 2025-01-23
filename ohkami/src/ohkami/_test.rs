@@ -447,14 +447,6 @@ fn with_global_fangs() {
     async fn create_pet() -> &'static str {"created"}
     async fn show_pet_by_id() -> &'static str {"found"}
 
-    let o = || Ohkami::new((
-        "/pets"
-            .GET(list_pets)
-            .POST(create_pet),
-        "/pets/:petId"
-            .GET(show_pet_by_id),
-    ));
-
     use std::sync::{Mutex, LazyLock};
 
     fn count() -> &'static Mutex<usize> {
@@ -472,15 +464,21 @@ fn with_global_fangs() {
         }
     }
 
-    /* with_global(Logger, o()) */
+    /* `with` fangs */
     crate::__rt__::testing::block_on(async {
-        let t = Ohkami::with_global(Logger, o()).test();
+        let t = Ohkami::with(Logger, (
+            "/pets"
+                .GET(list_pets)
+                .POST(create_pet),
+            "/pets/:petId"
+                .GET(show_pet_by_id),
+        )).test();
         {
             let req = TestRequest::GET("/");
             let res = t.oneshot(req).await;
             assert_eq!(res.status(), Status::NotFound);
             assert_eq!(res.text(), None);
-            assert_eq!(*count().lock().unwrap(), 1);
+            assert_eq!(*count().lock().unwrap(), 1); // called even when NotFound
         }
         {
             let req = TestRequest::GET("/pets");
@@ -491,15 +489,21 @@ fn with_global_fangs() {
         }
     });
 
-    /* with(Logger, o()) */
+    /* local fangs */
     crate::__rt__::testing::block_on(async {
-        let t = Ohkami::with(Logger, o()).test();
+        let t = Ohkami::new((
+            "/pets"
+                .GET((Logger, list_pets))
+                .POST((Logger, create_pet)),
+            "/pets/:petId"
+                .GET((Logger, show_pet_by_id)),
+        )).test();
         {
             let req = TestRequest::GET("/");
             let res = t.oneshot(req).await;
             assert_eq!(res.status(), Status::NotFound);
             assert_eq!(res.text(), None);
-            assert_eq!(*count().lock().unwrap(), 2);
+            assert_eq!(*count().lock().unwrap(), 2); // not changed from previous one
         }
         {
             let req = TestRequest::GET("/pets");
@@ -579,21 +583,23 @@ fn method_dependent_fang_applying() {
             }
         }
         
-        let t = Ohkami::with_global(Logger, ( // `with_global` applies `Logger` on any route independent of method
+        let t = Ohkami::with(Logger, ( // `with` applies `Logger` on any route
             "/"
                 .GET(|| async {"Hello, GET"}),
-            "/".By(Ohkami::with(Auth, // `with` applies `Auth` only on `PUT /`
-                "/".PUT(|| async {"Hello, PUT"}),
+            "/".By(Ohkami::new(
+                // locally applies `Auth` for `PUT /`
+                "/".PUT((Auth, || async {"Hello, PUT"})),
             )),
             "/auth".By(Ohkami::new(
                 "/".GET(|| async {"auth page"}),
             )),
-            "/auth".By(Ohkami::with_global(Count2, // `with_global` applies `Count2` on `/auth` independent of method
+            "/auth".By(Ohkami::with(Count2, // `with` applies `Count2` any on `/auth`
                 "/".PUT(|| async {"authed"}),
             )),
-            "/auth".By(Ohkami::with(Auth, (// `with` applies `Auth` only on `POST /auth`
-                "/".POST(|| async {"auth control"}),
-                "/d".DELETE(|| async {"deleted"}),
+            "/auth".By(Ohkami::new((
+                // locally applies `Auth` for `POST /auth`, `DELETE /auth/d`
+                "/".POST((Auth, || async {"auth control"})),
+                "/d".DELETE((Auth, || async {"deleted"})),
             ))),
         )).test();
 

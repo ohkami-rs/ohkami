@@ -131,27 +131,7 @@ use crate::{__rt__, Session};
 pub struct Ohkami {
     router: Router,
     /// apply just before merged to another, or just before `howl`ing
-    fangs:  Option<FangSet>,
-}
-
-#[derive(Clone)]
-pub(crate) struct FangSet {
-    pub(crate) fangs: Arc<dyn Fangs>,
-    pub(crate) method_ndependent: bool,
-}
-impl FangSet {
-    fn global(fangs: impl Fangs + 'static) -> Self {
-        Self {
-            fangs:              Arc::new(fangs),
-            method_independent: true,
-        }
-    }
-    fn local(fangs: impl Fangs + 'static) -> Self {
-        Self {
-            fangs:              Arc::new(fangs),
-            method_independent: false,
-        }
-    }
+    fangs:  Option<Arc<dyn Fangs>>,
 }
 
 impl Ohkami {
@@ -193,60 +173,20 @@ impl Ohkami {
         Self { router, fangs: None, }
     }
 
-    /// Create `Ohkami` with the fangs that bites requests/responses over routes
-    /// of this `Ohkami` *independent of method*. This is useful for something
-    /// like logger. If you'd like to apply fangs only before/after your handlers,
-    /// use [`Ohkami::with`](Ohkami::with) instead!
+    /// Create new `Ohkami` with the fangs that bites requests/responses
+    /// came to the `routes`.
     /// 
-    /// ---
-    ///
-    /// `fangs`: A tuple of `Fang` items. You can omit tuple when `fangs` contains only one `Fang`.
+    /// This always call the fangs when a request came to this `Ohkami`
+    /// even if the request path is not registered ( so Ohkami respond
+    /// with `404 Not Found` ).
+    /// If you'd like to call a fang only around a handler, use *local fangs*.
     /// 
-    /// <br>
+    /// ### args
     /// 
-    /// ---
+    /// - `fangs`: A tuple of `Fang` items. You can omit tuple when `fangs` contains only one `Fang`.
+    /// - `routes`: See [`Ohkami::new`](Ohkami::new)
     /// 
-    /// ```
-    /// use ohkami::prelude::*;
-    /// 
-    /// #[derive(Clone)]
-    /// struct Logger;
-    /// impl FangAction for Logger {
-    ///     //...
-    /// }
-    /// 
-    /// # async fn handler1() -> &'static str {"1"}
-    /// # async fn handler2() -> &'static str {"2"}
-    /// # async fn handler3() -> &'static str {"3"}
-    /// #
-    /// # let _ =
-    /// Ohkami::with_global(Logger, (
-    ///     "/a"
-    ///         .GET(handler1)
-    ///         .POST(handler2),
-    ///     "/b"
-    ///         .PUT(handler3),
-    ///     //...
-    /// ))
-    /// # ;
-    /// ```
-    pub fn with_global(fangs: impl Fangs + 'static, routes: impl routes::Routes) -> Self {
-        let mut router = Router::new();
-        routes.apply(&mut router);
-        Self { router, fangs: Some(FangSet::global(fangs)) }
-    }
-
-    /// Create new `Ohkami` with the fangs that bites requests/responses before/after
-    /// the handlers of this `Ohkami`.
-    /// 
-    /// ---
-    ///
-    /// `fangs`: A tuple of `Fang` items. You can omit tuple when `fangs` contains only one `Fang`.
-    /// 
-    /// <br>
-    /// 
-    /// ---
-    /// 
+    /// ### example
     /// ```
     /// use ohkami::prelude::*;
     /// 
@@ -274,14 +214,14 @@ impl Ohkami {
     pub fn with(fangs: impl Fangs + 'static, routes: impl routes::Routes) -> Self {
         let mut router = Router::new();
         routes.apply(&mut router);
-        Self { router, fangs: Some(FangSet::local(fangs)) }
+        Self { router, fangs: Some(Arc::new(fangs)) }
     }
 
     pub(crate) fn into_router(self) -> Router {
         let Self { fangs, mut router } = self;
 
-        if let Some(FangSet { fangs, method_independent }) = fangs {
-            router.apply_fangs(router.id(), fangs, method_independent);
+        if let Some(fangs) = fangs {
+            router.apply_fangs(router.id(), fangs);
         }
 
         #[cfg(feature="DEBUG")]
