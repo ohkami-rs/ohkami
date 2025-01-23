@@ -102,17 +102,15 @@ async fn main() {
 
     tracing::info!("Started listening on http://localhost:3000");
 
-    Ohkami::with((
+    Ohkami::new((
         fangs::LogRequest,
-    ), (
         "/hc" .GET(health_handler::health_check),
-        "/api".By(Ohkami::with((
+        "/api".By(Ohkami::new((
             fangs::SetServer,
-        ), (
-            "/query".
-                GET(hello_handler::hello_by_query),
-            "/json".
-                POST(hello_handler::hello_by_json),
+            "/query"
+                .GET(hello_handler::hello_by_query),
+            "/json"
+                .POST(hello_handler::hello_by_json),
         ))),
     )).howl("localhost:3000").await
 }

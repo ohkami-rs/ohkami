@@ -15,16 +15,15 @@ use crate::FromRequest;
 /// async fn main() {
 ///     let sample_data = Arc::new(String::from("ohkami"));
 /// 
-///     Ohkami::with(
+///     Ohkami::new((
 ///         Memory::new(sample_data), // <--
-///         (
-///             "/hello".GET(hello),
-///         )
-///     ).howl("0.0.0.0:8080").await
+///         "/hello"
+///             .GET(hello),
+///     )).howl("0.0.0.0:8080").await
 /// }
 /// 
 /// async fn hello(
-///     Memory(name): Memory<'_, String>,
+///     Memory(name): Memory<'_, String>, // <--
 /// ) -> String {
 ///     format!("Hello, {name}!")
 /// }

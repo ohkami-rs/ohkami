@@ -12,7 +12,8 @@ use crate::{
 
 
 pub fn user_ohkami() -> Ohkami {
-    Ohkami::with(Auth::required(), (
+    Ohkami::new((
+        Auth::required(),
         "/"
             .GET(get_user)
             .PUT(update),

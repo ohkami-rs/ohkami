@@ -201,7 +201,7 @@ fn my_ohkami() -> Ohkami {
         /*===== with no nests =====*/
         *N().lock().unwrap() = 0;
 
-        let t = Ohkami::with((Increment,), (
+        let t = Ohkami::new((Increment,
             "/a"  .GET(h),
             "/a/b".GET(h),
         )).test();
@@ -222,10 +222,10 @@ fn my_ohkami() -> Ohkami {
         /*===== with nests =====*/
         *N().lock().unwrap() = 0;
 
-        let t = Ohkami::with((Increment,), (
+        let t = Ohkami::new((Increment,
             "/a"  .GET(h),
             "/a/b".GET(h),
-            "/a/b/c".By(Ohkami::with((), (
+            "/a/b/c".By(Ohkami::new((
                 "/d"  .GET(h),
                 "/d/e".GET(h),
             )))
@@ -291,24 +291,20 @@ fn my_ohkami() -> Ohkami {
     async fn h() -> &'static str {"handler"}
 
 
-    let t = Ohkami::with((
+    let t = Ohkami::new((
         HelloFang { name: "Amelia" },
-    ), (
         "/abc".GET(h),
-        "/def".By(Ohkami::with((
+        "/def".By(Ohkami::new((
             HelloFang { name: "Brooks" },
             HelloFang { name: "Carter" },
-        ), (
             "/".GET(h),
-            "/jkl".By(Ohkami::with((
+            "/jkl".By(Ohkami::new((
                 HelloFang { name: "Daniel" },
-            ), (
                 "/mno".GET(h),
             )))
         ))),
-        "/pqr".By(Ohkami::with((
+        "/pqr".By(Ohkami::new((
             HelloFang { name: "Evelyn" },
-        ), (
             "/stu".GET(h),
         ))),
     )).test();
@@ -464,9 +460,9 @@ fn with_global_fangs() {
         }
     }
 
-    /* `with` fangs */
+    /* global fangs */
     crate::__rt__::testing::block_on(async {
-        let t = Ohkami::with(Logger, (
+        let t = Ohkami::new((Logger,
             "/pets"
                 .GET(list_pets)
                 .POST(create_pet),
@@ -530,14 +526,14 @@ fn method_dependent_fang_applying() {
                 .POST(handler),
             "/users/:id"
                 .GET(handler),
-            "/users/:id".By(Ohkami::with(SomeFang, "/"
+            "/users/:id".By(Ohkami::new((SomeFang, "/"
                 .PUT(handler),
-            )),
+            ))),
             "/tweets"
                 .GET(handler),
-            "/tweets".By(Ohkami::with(SomeFang, "/"
+            "/tweets".By(Ohkami::new((SomeFang, "/"
                 .POST(handler),
-            ))
+            )))
         )); // no panic
     }
 
@@ -583,24 +579,29 @@ fn method_dependent_fang_applying() {
             }
         }
         
-        let t = Ohkami::with(Logger, ( // `with` applies `Logger` on any route
+        let t = Ohkami::new((Logger, // applies `Logger` on any route
             "/"
                 .GET(|| async {"Hello, GET"}),
-            "/".By(Ohkami::new(
+            "/".By(Ohkami::new((
                 // locally applies `Auth` for `PUT /`
-                "/".PUT((Auth, || async {"Hello, PUT"})),
-            )),
-            "/auth".By(Ohkami::new(
-                "/".GET(|| async {"auth page"}),
-            )),
-            "/auth".By(Ohkami::with(Count2, // `with` applies `Count2` any on `/auth`
-                "/".PUT(|| async {"authed"}),
-            )),
+                "/"
+                    .PUT((Auth, || async {"Hello, PUT"})),
+            ))),
+            "/auth".By(Ohkami::new((
+                "/"
+                    .GET(|| async {"auth page"}),
+            ))),
+            "/auth".By(Ohkami::new((Count2, // applies `Count2` on any `/auth`
+                "/"
+                    .PUT(|| async {"authed"}),
+            ))),
             "/auth".By(Ohkami::new((
                 // locally applies `Auth` for `POST /auth`, `DELETE /auth/d`
-                "/".POST((Auth, || async {"auth control"})),
-                "/d".DELETE((Auth, || async {"deleted"})),
-            ))),
+                "/"
+                    .POST((Auth, || async {"auth control"})),
+                "/d"
+                    .DELETE((Auth, || async {"deleted"})),
+            )))
         )).test();
 
         {

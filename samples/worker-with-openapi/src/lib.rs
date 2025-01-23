@@ -19,12 +19,13 @@ pub fn ohkami() -> Ohkami {
     #[cfg(debug_assertions)]
     console_error_panic_hook::set_once();
 
-    let openapi_doc_server_ohkami = Ohkami::with(BasicAuth {
-        username: "ohkami",
-        password: Bindings::OPENAPI_DOC_PASSWORD
-    },
+    let openapi_doc_server_ohkami = Ohkami::new((
+        BasicAuth {
+            username: "ohkami",
+            password: Bindings::OPENAPI_DOC_PASSWORD
+        },
         "/".GET(|| async {include_str!("../openapi.json")})
-    );
+    ));
 
     let api_ohkami = Ohkami::new((
         "/users"
@@ -38,7 +39,8 @@ pub fn ohkami() -> Ohkami {
             .POST((TokenAuth, post_tweet)),
     ));
 
-    Ohkami::with(Logger, (
+    Ohkami::new((
+        Logger,
         "/openapi.json".By(openapi_doc_server_ohkami),
         "/api".By(api_ohkami)
     ))

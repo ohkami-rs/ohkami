@@ -12,10 +12,9 @@ pub fn realworld_ohkami(
     pool: PgPool,
 ) -> Ohkami {
     Ohkami::new(
-        "/api".By(Ohkami::with((
+        "/api".By(Ohkami::new((
             Logger,
             Memory::new(pool),
-        ), (
             "/users"   .By(users::users_ohkami()),
             "/user"    .By(user::user_ohkami()),
             "/profiles".By(profiles::profiles_ohkami()),

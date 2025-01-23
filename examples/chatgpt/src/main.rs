@@ -19,8 +19,10 @@ async fn main() {
         curl -v 'http://localhost:5050/chat-once' -H 'Content-Type: text/plain' -d '＜your question＞'\n\
     ");
 
-    Ohkami::with(api_key, (
-        "/chat-once".POST(relay_chat_completion),
+    Ohkami::new((
+        api_key,
+        "/chat-once"
+            .POST(relay_chat_completion),
     )).howl("localhost:5050").await
 }
 

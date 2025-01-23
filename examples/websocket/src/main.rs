@@ -142,7 +142,7 @@ async fn main() {
         }
     }
     
-    Ohkami::with(Logger, (
+    Ohkami::new((Logger,
         "/".Dir("./template").omit_extensions([".html"]),
         "/echo1".GET(echo_text),
         "/echo2/:name".GET(echo_text_2),

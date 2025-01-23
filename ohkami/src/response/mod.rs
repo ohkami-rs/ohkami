@@ -54,9 +54,9 @@ use crate::{sse, util::{Stream, StreamExt}};
 /// 
 /// #[tokio::main]
 /// async fn main() {
-///     Ohkami::with(SetHeaders,
+///     Ohkami::new((SetHeaders,
 ///         "/".GET(|| async {"Hello, ohkami!"})
-///     ).howl("localhost:5050").await
+///     )).howl("localhost:5050").await
 /// }
 /// ```
 /// 
