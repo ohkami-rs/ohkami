@@ -1,8 +1,8 @@
 #[cfg(test)]
 mod _test;
 
-pub(crate) mod build;
-pub use build::{Route, Routes};
+pub(crate) mod routes;
+pub use routes::{Route, Routes};
 
 use crate::fang::Fangs;
 use crate::router::base::Router;
@@ -81,7 +81,7 @@ use crate::{__rt__, Session};
 /// # }
 /// 
 /// fn my_ohkami() -> Ohkami {
-///     let api_ohkami = Ohkami::with((Auth,), (
+///     let api_ohkami = Ohkami::with(Auth, (
 ///         "/users"
 ///             .POST(create_user),
 ///         "/users/:id"
@@ -130,9 +130,8 @@ use crate::{__rt__, Session};
 /// ```
 pub struct Ohkami {
     router: Router,
-
-    /// apply just before merged to another or called `howl`
-    fangs: Option<Arc<dyn Fangs>>,
+    /// apply just before merged to another, or just before `howl`ing
+    fangs:  Option<Arc<dyn Fangs>>,
 }
 
 impl Ohkami {
@@ -168,24 +167,27 @@ impl Ohkami {
     /// > `({path params}, {FromRequest values},...) -> {IntoResponse value}`
     ///
     /// `{path params}` is a `FromParam` value or a tuple of them
-    pub fn new(routes: impl build::Routes) -> Self {
+    pub fn new(routes: impl routes::Routes) -> Self {
         let mut router = Router::new();
         routes.apply(&mut router);
         Self { router, fangs: None, }
     }
 
-    /// Create new ohkami with the fangs on the routing.
+    /// Create new `Ohkami` with the fangs that bites requests/responses
+    /// came to the `routes`.
     /// 
-    /// ---
-    ///
-    /// `fangs: impl Fangs` is an tuple of `Fang` items.
+    /// This always call the fangs when a request came to this `Ohkami`
+    /// even if the request path is not registered ( so Ohkami respond
+    /// with `404 Not Found` ).
+    /// If you'd like to call a fang only around a handler, use *local fangs* like
+    /// `"/route".GET((Fang1::new(), Fang2, handler))`.
     /// 
-    /// **NOTE**: You can omit tuple when `fangs` contains only one `Fang`.
+    /// ### args
     /// 
-    /// <br>
+    /// - `fangs`: A tuple of `Fang` items. You can omit tuple when `fangs` contains only one `Fang`.
+    /// - `routes`: See [`Ohkami::new`](Ohkami::new)
     /// 
-    /// ---
-    /// 
+    /// ### example
     /// ```
     /// use ohkami::prelude::*;
     /// 
@@ -210,7 +212,7 @@ impl Ohkami {
     /// ))
     /// # ;
     /// ```
-    pub fn with(fangs: impl Fangs + 'static, routes: impl build::Routes) -> Self {
+    pub fn with(fangs: impl Fangs + 'static, routes: impl routes::Routes) -> Self {
         let mut router = Router::new();
         routes.apply(&mut router);
         Self { router, fangs: Some(Arc::new(fangs)) }

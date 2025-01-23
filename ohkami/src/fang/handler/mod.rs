@@ -1,6 +1,7 @@
 mod into_handler;
-pub use into_handler::IntoHandler;
+mod with_local_fangs;
 
+pub use self::into_handler::IntoHandler;
 use super::{FangProcCaller, BoxedFPC};
 use super::{SendOnNative, SendSyncOnNative, SendOnNativeFuture};
 use crate::{Request, Response};

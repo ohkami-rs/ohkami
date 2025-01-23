@@ -45,8 +45,7 @@ async fn main() {
     let db = Arc::new(mock::DB::new());
 
     let o = Ohkami::with((
-        Logger,
-        Memory::new(db),
+        Logger, Memory::new(db)
     ), (
         "/pets"
             .GET(list_pets)

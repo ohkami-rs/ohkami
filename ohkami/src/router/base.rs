@@ -1,7 +1,7 @@
 use super::util::ID;
 use super::segments::{RouteSegments, RouteSegment};
 use crate::fang::{BoxedFPC, Fangs, handler::Handler};
-use crate::ohkami::build::{ByAnother, HandlerSet};
+use crate::ohkami::routes::{ByAnother, HandlerSet};
 use std::{sync::Arc, collections::HashSet};
 
 #[cfg_attr(feature="openapi", derive(Clone))]
@@ -46,7 +46,7 @@ impl FangsList {
             self.0.push((id, fangs));
         }
     }
-    pub(super) fn extend(&mut self, another: Self) {
+    pub(super) fn append(&mut self, another: Self) {
         for (id, fangs) in another.0.into_iter() {
             self.add(id, fangs)
         }
@@ -283,7 +283,7 @@ impl Node {
     }
 
     fn append_fangs(&mut self, fangs: FangsList) {
-        self.fangses.extend(fangs);
+        self.fangses.append(fangs);
     }
 
     fn set_handler(&mut self, new_handler: Handler, allow_override: bool) -> Result<(), String> {
@@ -346,9 +346,9 @@ impl Node {
             child.apply_fangs(id.clone(), fangs.clone())
         }
 
-        if self.handler.is_some() {
-            self.fangses.add(id, fangs);
-        }
+        // Add even when `self.handler.is_none()`. They are used later
+        // for applying to `Handler::default_notfound`s in `finalize`.
+        self.fangses.add(id, fangs);
     }
 }
 

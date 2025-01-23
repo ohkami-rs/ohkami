@@ -262,13 +262,14 @@ const _: (/* conversions */) = {
             #[cfg(feature="__rt_native__")]
             /* merge single-child static pattern and compress routing tree */
             while base.children.len() == 1
-            && base.handler.is_none()
-            && base.pattern.as_ref().is_none_or(|p| p.is_static())
-            && base.children[0].pattern.as_ref().unwrap(/* not root */).is_static() {
+               && base.handler.is_none()
+               && base.pattern.as_ref().is_none_or(|p| p.is_static())
+               && base.children[0].pattern.as_ref().unwrap(/* not root */).is_static()
+            {
                 let child = base.children.pop().unwrap(/* base.children.len() == 1 */);
                 base.children = child.children;
                 base.handler = child.handler;
-                base.fangses.extend(child.fangses);
+                base.fangses.append(child.fangses);
                 base.pattern = Some(match base.pattern {
                     None    => child.pattern.unwrap(/* not root */),
                     Some(p) => p.merge_statics(child.pattern.unwrap(/* not root */)).unwrap(/* both are Pattern::Static */)
