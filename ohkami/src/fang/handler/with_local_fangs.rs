@@ -12,7 +12,7 @@ where
         Handler {
             proc: Fangs::build(&f, h.proc),
             #[cfg(feature="openapi")]
-            operation: Fangs::openapi_map_operation(&f, h.operation)
+            openapi_operation: Fangs::openapi_map_operation(&f, h.openapi_operation)
         }
     }
 }
@@ -29,7 +29,7 @@ where
         Handler {
             proc: Fangs::build(&f, h.proc),
             #[cfg(feature="openapi")]
-            operation: Fangs::openapi_map_operation(&f, h.operation)
+            openapi_operation: Fangs::openapi_map_operation(&f, h.openapi_operation)
         }
     }
 }
@@ -47,7 +47,7 @@ where
         Handler {
             proc: Fangs::build(&f, h.proc),
             #[cfg(feature="openapi")]
-            operation: Fangs::openapi_map_operation(&f, h.operation)
+            openapi_operation: Fangs::openapi_map_operation(&f, h.openapi_operation)
         }
     }
 }
@@ -66,7 +66,7 @@ where
         Handler {
             proc: Fangs::build(&f, h.proc),
             #[cfg(feature="openapi")]
-            operation: Fangs::openapi_map_operation(&f, h.operation)
+            openapi_operation: Fangs::openapi_map_operation(&f, h.openapi_operation)
         }
     }
 }

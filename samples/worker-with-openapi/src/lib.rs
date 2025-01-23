@@ -31,18 +31,14 @@ pub fn ohkami() -> Ohkami {
             .GET(list_users)
             .POST(sign_up),
         "/users/:id"
-            .GET(show_user_profile),
-        "/users/:id".By(Ohkami::with(TokenAuth, "/"
-            .PUT(edit_profile),
-        )),
+            .GET(show_user_profile)
+            .PUT((TokenAuth, edit_profile)),
         "/tweets"
-            .GET(list_tweets),
-        "/tweets".By(Ohkami::with(TokenAuth, "/"
-            .POST(post_tweet),
-        ))
+            .GET(list_tweets)
+            .POST((TokenAuth, post_tweet)),
     ));
 
-    Ohkami::with_global(Logger, (
+    Ohkami::with(Logger, (
         "/openapi.json".By(openapi_doc_server_ohkami),
         "/api".By(api_ohkami)
     ))

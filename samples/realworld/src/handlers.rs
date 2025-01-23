@@ -5,9 +5,8 @@ mod articles;
 mod tags;
 
 use sqlx::PgPool;
-use ohkami::{Ohkami, Route};
-use crate::fangs::{ConnectionPool, Logger};
-
+use ohkami::{Ohkami, Route, fang::Memory};
+use crate::fangs::Logger;
 
 pub fn realworld_ohkami(
     pool: PgPool,
@@ -15,7 +14,7 @@ pub fn realworld_ohkami(
     Ohkami::new(
         "/api".By(Ohkami::with((
             Logger,
-            ConnectionPool::from(pool),
+            Memory::new(pool),
         ), (
             "/users"   .By(users::users_ohkami()),
             "/user"    .By(user::user_ohkami()),

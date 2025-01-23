@@ -9,7 +9,7 @@ use crate::db::UserEntity;
 
 
 pub fn profiles_ohkami() -> Ohkami {
-    Ohkami::with(Auth::default(), (
+    Ohkami::with(Auth::required(), (
         "/:username"
             .GET(get_profile),
         "/:username/follow"

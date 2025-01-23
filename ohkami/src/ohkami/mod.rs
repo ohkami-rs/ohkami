@@ -179,7 +179,8 @@ impl Ohkami {
     /// This always call the fangs when a request came to this `Ohkami`
     /// even if the request path is not registered ( so Ohkami respond
     /// with `404 Not Found` ).
-    /// If you'd like to call a fang only around a handler, use *local fangs*.
+    /// If you'd like to call a fang only around a handler, use *local fangs* like
+    /// `"/route".GET((Fang1::new(), Fang2, handler))`.
     /// 
     /// ### args
     /// 

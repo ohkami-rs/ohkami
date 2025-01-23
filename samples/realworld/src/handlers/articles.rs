@@ -12,92 +12,29 @@ use crate::models::{
     response::{SingleArticleResponse, MultipleArticlesResponse, SingleCommentResponse, MultipleCommentsResponse},
 };
 
-
-pub fn articles_ohkami() -> Ohkami {
-    fn auth_required(req: &ohkami::Request) -> bool {
-        (!req.method.isGET()) || req.path.ends_with("/feed")
-    }
-
-    Ohkami::with((
-        Auth::<JWTPayload>        ::with_condition(|req| auth_required(req)),
-        Auth::<Option<JWTPayload>>::with_condition(|req| !auth_required(req)),
-    ), (//auth:
-        "/"
-            .GET(list)//optional
-            .POST(create),//required
-        "/feed"
-            .GET(feed),//required
-        "/:slug".By(Ohkami::new((
-            "/"
-                .GET(get)//no
-                .PUT(update)//required
-                .DELETE(delete),//required
-            "/comments"
-                .POST(add_comment)//required
-                .GET(get_comments),//optional
-            "/comments/:id"
-                .DELETE(delete_comment),//required
-            "/favorite"
-                .POST(favorite)//required
-                .DELETE(unfavorite)//required
-        )))
-    ))
-}
-
-// pub fn articles_ohkami() -> Ohkami {
-//     Ohkami::new((
-//         "/"
-//             .GET(list.with(Auth::optional()))
-//             .POST(create.with(Auth::required())),
-//         "/feed"
-//             .GET(feed.with(Auth::required())),
-//         "/:slug"
-//             .GET(get)
-//             .PUT(update.with(Auth::required()))
-//             .DELETE(delete.with(Auth::required())),
-//         "/:slug/comments"
-//             .POST(add_comment.with(Auth::required()))
-//             .GET(get_comments.with(Auth::optional())),
-//         "/:slug/comments/:id"
-//             .DELETE(delete_comment.with(Auth::required())),
-//         "/:slug/favorite"
-//             .POST(favorite.with(Auth::required()))
-//             .DELETE(unfavorite.with(Auth::required()))
-//     ))
-// }
-
 pub fn articles_ohkami() -> Ohkami {
     Ohkami::new((
         "/"
-            .GET((
-                Auth::optional(),
-                SomeFang::new(),
-                list
-            ))
-            .POST(((
-                Auth::required(),
-                SomeFang::new()
-            ), create)),
+            .GET((Auth::optional(), list_articles))
+            .POST((Auth::required(), create_article)),
         "/feed"
-            .GET((Auth::required(), feed)),
+            .GET((Auth::required(), feed_articles)),
         "/:slug"
-            .GET(get)
-            .PUT((Auth::required(), update))
-            .DELETE((Auth::required(), delete)),
+            .GET(get_article_by_slug)
+            .PUT((Auth::required(), update_article))
+            .DELETE((Auth::required(), delete_article)),
         "/:slug/comments"
-            .POST((Auth::required(), add_comment))
-            .GET((Auth::optional(), get_comments)),
+            .POST((Auth::required(), add_article_comment))
+            .GET((Auth::optional(), get_article_comments)),
         "/:slug/comments/:id"
-            .DELETE((Auth::required(), delete_comment)),
+            .DELETE((Auth::required(), delete_article_comment_by_id)),
         "/:slug/favorite"
-            .POST((Auth::required(), favorite))
-            .DELETE((Auth::required(), unfavorite))
+            .POST((Auth::required(), favorite_article))
+            .DELETE((Auth::required(), unfavorite_article))
     ))
 }
 
-
-
-async fn list(
+async fn list_articles(
     Query(q): Query<ListArticlesQuery<'_>>,
     Memory(auth): Memory<'_, Option<JWTPayload>>,
     Memory(pool): Memory<'_, PgPool>,
@@ -159,7 +96,7 @@ async fn list(
     }))
 }
 
-async fn feed(
+async fn feed_articles(
     Query(q): Query<FeedArticleQuery>,
     Memory(auth): Memory<'_, JWTPayload>,
     Memory(pool): Memory<'_, PgPool>,
@@ -182,7 +119,7 @@ async fn feed(
     }))
 }
 
-async fn get(slug: &str,
+async fn get_article_by_slug(slug: &str,
     Memory(pool): Memory<'_, PgPool>,
 ) -> Result<JSON<SingleArticleResponse>, RealWorldError> {
     let article = sqlx::QueryBuilder::new(ArticleEntity::base_query())
@@ -197,7 +134,7 @@ async fn get(slug: &str,
     }))
 }
 
-async fn create(
+async fn create_article(
     JSON(req): JSON<CreateArticleRequest<'_>>,
     Memory(auth): Memory<'_, JWTPayload>,
     Memory(pool): Memory<'_, PgPool>,
@@ -291,7 +228,7 @@ async fn create(
     )))
 }
 
-async fn update(slug: &str,
+async fn update_article(slug: &str,
     JSON(body): JSON<UpdateArticleRequest<'_>>,
     Memory(auth): Memory<'_, JWTPayload>,
     Memory(pool): Memory<'_, PgPool>,
@@ -348,7 +285,7 @@ async fn update(slug: &str,
     }))
 }
 
-async fn delete(slug: &str,
+async fn delete_article(slug: &str,
     Memory(auth): Memory<'_, JWTPayload>,
     Memory(pool): Memory<'_, PgPool>,
 ) -> Result<NoContent, RealWorldError> {
@@ -364,7 +301,7 @@ async fn delete(slug: &str,
     }
 }
 
-async fn add_comment(slug: &str,
+async fn add_article_comment(slug: &str,
     JSON(body): JSON<AddCommentRequest<'_>>,
     Memory(auth): Memory<'_, JWTPayload>,
     Memory(pool): Memory<'_, PgPool>,
@@ -417,7 +354,7 @@ async fn add_comment(slug: &str,
     )))
 }
 
-async fn get_comments(slug: &str,
+async fn get_article_comments(slug: &str,
     Memory(auth): Memory<'_, Option<JWTPayload>>,
     Memory(pool): Memory<'_, PgPool>,
 ) -> Result<JSON<MultipleCommentsResponse>, RealWorldError> {
@@ -453,7 +390,7 @@ async fn get_comments(slug: &str,
     ))
 }
 
-async fn delete_comment((slug, id): (&str, usize),
+async fn delete_article_comment_by_id((slug, id): (&str, usize),
     Memory(auth): Memory<'_, JWTPayload>,
     Memory(pool): Memory<'_, PgPool>,
 ) -> Result<NoContent, RealWorldError> {
@@ -477,7 +414,7 @@ async fn delete_comment((slug, id): (&str, usize),
     }
 }
 
-async fn favorite(slug: &str,
+async fn favorite_article(slug: &str,
     Memory(auth): Memory<'_, JWTPayload>,
     Memory(pool): Memory<'_, PgPool>,
 ) -> Result<JSON<SingleArticleResponse>, RealWorldError> {
@@ -504,7 +441,7 @@ async fn favorite(slug: &str,
     }))
 }
 
-async fn unfavorite(slug: &str,
+async fn unfavorite_article(slug: &str,
     Memory(auth): Memory<'_, JWTPayload>,
     Memory(pool): Memory<'_, PgPool>,
 ) -> Result<JSON<SingleArticleResponse>, RealWorldError> {
