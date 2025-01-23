@@ -1,8 +1,8 @@
 #[cfg(test)]
 mod _test;
 
-pub(crate) mod routes;
-pub use routes::{Route, Routes};
+pub(crate) mod routing;
+pub use routing::{Route, Routing};
 
 use crate::fang::Fangs;
 use crate::router::base::Router;
@@ -81,7 +81,8 @@ use crate::{__rt__, Session};
 /// # }
 /// 
 /// fn my_ohkami() -> Ohkami {
-///     let api_ohkami = Ohkami::with(Auth, (
+///     let api_ohkami = Ohkami::new((
+///         Auth,
 ///         "/users"
 ///             .POST(create_user),
 ///         "/users/:id"
@@ -124,7 +125,7 @@ use crate::{__rt__, Session};
 ///     todo!()
 /// }
 /// 
-/// async fn handler_2(str_param: &str) -> Response {
+/// async fn handler_2(param: &str) -> Response {
 ///     todo!()
 /// }
 /// ```
@@ -135,87 +136,13 @@ pub struct Ohkami {
 }
 
 impl Ohkami {
-    /// Create new `Ohkami` on the routing.
-    /// 
-    /// ---
-    ///
-    /// `routes` is a routing item or a tuple of them :
-    /// 
-    /// ```
-    /// # use ohkami::Route;
-    /// #
-    /// # async fn handler1() -> &'static str {"1"}
-    /// # async fn handler2() -> &'static str {"2"}
-    /// # async fn handler3() -> &'static str {"3"}
-    /// #
-    /// # let _ =
-    /// (
-    ///     "/a"
-    ///         .GET(handler1)
-    ///         .POST(handler2),
-    ///     "/b"
-    ///         .PUT(handler3),
-    ///     //...
-    /// )
-    /// # ;
-    /// ```
-    /// 
-    /// ---
-    /// 
-    /// Handler is an _**async**_ function :
-    /// 
-    /// > `({path params}, {FromRequest values},...) -> {IntoResponse value}`
-    ///
-    /// `{path params}` is a `FromParam` value or a tuple of them
-    pub fn new(routes: impl routes::Routes) -> Self {
-        let mut router = Router::new();
-        routes.apply(&mut router);
-        Self { router, fangs: None, }
-    }
-
-    /// Create new `Ohkami` with the fangs that bites requests/responses
-    /// came to the `routes`.
-    /// 
-    /// This always call the fangs when a request came to this `Ohkami`
-    /// even if the request path is not registered ( so Ohkami respond
-    /// with `404 Not Found` ).
-    /// If you'd like to call a fang only around a handler, use *local fangs* like
-    /// `"/route".GET((Fang1::new(), Fang2, handler))`.
-    /// 
-    /// ### args
-    /// 
-    /// - `fangs`: A tuple of `Fang` items. You can omit tuple when `fangs` contains only one `Fang`.
-    /// - `routes`: See [`Ohkami::new`](Ohkami::new)
-    /// 
-    /// ### example
-    /// ```
-    /// use ohkami::prelude::*;
-    /// 
-    /// #[derive(Clone)]
-    /// struct AuthFang;
-    /// impl FangAction for AuthFang {
-    ///     //...
-    /// }
-    /// 
-    /// # async fn handler1() -> &'static str {"1"}
-    /// # async fn handler2() -> &'static str {"2"}
-    /// # async fn handler3() -> &'static str {"3"}
-    /// #
-    /// # let _ =
-    /// Ohkami::with(AuthFang, (
-    ///     "/a"
-    ///         .GET(handler1)
-    ///         .POST(handler2),
-    ///     "/b"
-    ///         .PUT(handler3),
-    ///     //...
-    /// ))
-    /// # ;
-    /// ```
-    pub fn with(fangs: impl Fangs + 'static, routes: impl routes::Routes) -> Self {
-        let mut router = Router::new();
-        routes.apply(&mut router);
-        Self { router, fangs: Some(Arc::new(fangs)) }
+    pub fn new<Fangs>(routing: impl routing::Routing<Fangs>) -> Self {
+        let mut this = Self {
+            router: Router::new(),
+            fangs:  None,
+        };
+        routing.apply(&mut this);
+        this
     }
 
     pub(crate) fn into_router(self) -> Router {

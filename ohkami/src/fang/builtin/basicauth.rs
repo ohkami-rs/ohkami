@@ -143,13 +143,13 @@ const _: () = {
 
     let t = Ohkami::new((
         "/hello".GET(|| async {"Hello!"}),
-        "/private".By(Ohkami::with(
+        "/private".By(Ohkami::new((
             BasicAuth {
                 username: "ohkami",
                 password: "password"
             },
             "/".GET(|| async {"Hello, private!"})
-        ))
+        )))
     )).test();
 
     crate::__rt__::testing::block_on(async {

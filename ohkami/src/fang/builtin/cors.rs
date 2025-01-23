@@ -183,7 +183,7 @@ mod test {
 
     #[test] fn options_request() {
         crate::__rt__::testing::block_on(async {
-            let t = Ohkami::with((),
+            let t = Ohkami::new(
                 "/hello".POST(|| async {"Hello!"})
             ).test(); {
                 let req = TestRequest::OPTIONS("/");
@@ -196,9 +196,9 @@ mod test {
                 assert_eq!(res.text(), None);
             }
 
-            let t = Ohkami::with(CORS::new("https://example.x.y.z"),
+            let t = Ohkami::new((CORS::new("https://example.x.y.z"),
                 "/hello".POST(|| async {"Hello!"})
-            ).test(); {
+            )).test(); {
                 let req = TestRequest::OPTIONS("/");
                 let res = t.oneshot(req).await;
                 assert_eq!(res.status(), Status::NotFound);
@@ -225,9 +225,9 @@ mod test {
 
     #[test] fn cors_headers() {
         crate::__rt__::testing::block_on(async {
-            let t = Ohkami::with(CORS::new("https://example.example"),
+            let t = Ohkami::new((CORS::new("https://example.example"),
                 "/".GET(|| async {"Hello!"})
-            ).test(); {
+            )).test(); {
                 let req = TestRequest::GET("/");
                 let res = t.oneshot(req).await;
 
@@ -243,14 +243,14 @@ mod test {
                 assert_eq!(res.header("Vary"), None);
             }
 
-            let t = Ohkami::with(
+            let t = Ohkami::new((
                 CORS::new("https://example.example")
                     .AllowCredentials()
                     .AllowHeaders(["Content-Type", "X-Custom"]),
                 "/abc"
                     .GET(|| async {"Hello!"})
                     .PUT(|| async {"Hello!"})
-            ).test(); {
+            )).test(); {
                 let req = TestRequest::OPTIONS("/abc");
                 let res = t.oneshot(req).await;
 
@@ -310,12 +310,12 @@ mod test {
                 assert_eq!(res.header("Vary"), None);
             }
 
-            let t = Ohkami::with(
+            let t = Ohkami::new((
                 CORS::new("*")
                     .AllowHeaders(["Content-Type", "X-Custom"])
                     .MaxAge(1024),
                 "/".POST(|| async {"Hello!"})
-            ).test(); {
+            )).test(); {
                 let req = TestRequest::OPTIONS("/");
                 let res = t.oneshot(req).await;
 

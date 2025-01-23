@@ -88,9 +88,8 @@ const _: () = {
         format!("Hello, {name}!")
     }
 
-    let t = Ohkami::with((
+    let t = Ohkami::new((
         Timeout::by_secs(2),
-    ), (
         "/greet/:name/:sleep".GET(lazy_greeting),
     )).test();
 

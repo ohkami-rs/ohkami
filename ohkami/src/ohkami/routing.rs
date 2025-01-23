@@ -1,9 +1,11 @@
 #![allow(non_snake_case, unused_mut)]
 
 use crate::router::{base::Router, segments::RouteSegments};
+use crate::fang::{Fang, BoxedFPC};
 use crate::fang::handler::{Handler, IntoHandler};
 use crate::response::Content;
 use crate::Ohkami;
+use std::sync::Arc;
 
 
 macro_rules! HandlerSet {
@@ -53,7 +55,8 @@ pub struct Dir {
 
     /// File extensions (leading `.` trimmed) that should not be appeared in handling path
     pub(crate) omit_extensions: Option<Box<[&'static str]>>,
-} impl Dir {
+}
+impl Dir {
     fn new(route: &'static str, dir_path: std::path::PathBuf) -> std::io::Result<Self> {
         let dir_path = dir_path.canonicalize()?;
 
@@ -208,7 +211,8 @@ macro_rules! Route {
 
 trait RoutingItem {
     fn apply(self, router: &mut Router);
-} const _: () = {
+}
+const _: () = {
     impl RoutingItem for HandlerSet {
         fn apply(self, router: &mut Router) {
             router.register_handlers(self)
@@ -355,45 +359,144 @@ trait RoutingItem {
     }
 };
 
-pub trait Routes {
-    fn apply(self, router: &mut Router);
+pub trait Routing<Fangs = ()> {
+    fn apply(self, target: &mut Ohkami);
 }
 const _: () = {
-    impl Routes for () {
-        fn apply(self, _router: &mut Router) {}
+    impl Routing for () {
+        fn apply(self, _target: &mut Ohkami) {}
     }
-    impl<R: RoutingItem> Routes for R {
-        fn apply(self, router: &mut Router) {
-            <R as RoutingItem>::apply(self, router)
+
+    impl<R: RoutingItem> Routing for R {
+        fn apply(self, target: &mut Ohkami) {
+            <R as RoutingItem>::apply(self, &mut target.router)
         }
     }
 
-    macro_rules! impl_for_tuple {
+    macro_rules! routing {
         ( $( $item:ident ),+ ) => {
-            impl<$( $item: RoutingItem ),+> Routes for ( $($item,)+ ) {
-                fn apply(self, router: &mut Router) {
+            impl<$( $item: RoutingItem ),+> Routing for ( $($item,)+ ) {
+                fn apply(self, target: &mut Ohkami) {
                     let ( $( $item, )+ ) = self;
                     $(
-                        <$item as RoutingItem>::apply($item, router);
+                        <$item as RoutingItem>::apply($item, &mut target.router);
                     )+
                 }
             }
         };
     }
-    impl_for_tuple!(R1);
-    impl_for_tuple!(R1, R2);
-    impl_for_tuple!(R1, R2, R3);
-    impl_for_tuple!(R1, R2, R3, R4);
-    impl_for_tuple!(R1, R2, R3, R4, R5);
-    impl_for_tuple!(R1, R2, R3, R4, R5, R6);
-    impl_for_tuple!(R1, R2, R3, R4, R5, R6, R7);
-    impl_for_tuple!(R1, R2, R3, R4, R5, R6, R7, R8);
-    impl_for_tuple!(R1, R2, R3, R4, R5, R6, R7, R8, R9);
-    impl_for_tuple!(R1, R2, R3, R4, R5, R6, R7, R8, R9, R10);
-    impl_for_tuple!(R1, R2, R3, R4, R5, R6, R7, R8, R9, R10, R11);
-    impl_for_tuple!(R1, R2, R3, R4, R5, R6, R7, R8, R9, R10, R11, R12);
-    impl_for_tuple!(R1, R2, R3, R4, R5, R6, R7, R8, R9, R10, R11, R12, R13);
-    impl_for_tuple!(R1, R2, R3, R4, R5, R6, R7, R8, R9, R10, R11, R12, R13, R14);
-    impl_for_tuple!(R1, R2, R3, R4, R5, R6, R7, R8, R9, R10, R11, R12, R13, R14, R15);
-    impl_for_tuple!(R1, R2, R3, R4, R5, R6, R7, R8, R9, R10, R11, R12, R13, R14, R15, R16);
+    routing!(R1);
+    routing!(R1, R2);
+    routing!(R1, R2, R3);
+    routing!(R1, R2, R3, R4);
+    routing!(R1, R2, R3, R4, R5);
+    routing!(R1, R2, R3, R4, R5, R6);
+    routing!(R1, R2, R3, R4, R5, R6, R7);
+    routing!(R1, R2, R3, R4, R5, R6, R7, R8);
+
+    macro_rules! routing_with_1_fang {
+        ( $( $item:ident ),+ ) => {
+            impl<F1, $( $item: RoutingItem ),+> Routing<(F1,)> for ( F1, $($item,)+ )
+            where
+                F1: Fang<BoxedFPC> + 'static,
+            {
+                fn apply(self, target: &mut Ohkami) {
+                    let ( f1, $( $item, )+ ) = self;
+                    target.fangs = Some(Arc::new(f1));
+                    $(
+                        <$item as RoutingItem>::apply($item, &mut target.router);
+                    )+
+                }
+            }
+        };
+    }
+    routing_with_1_fang!(R1);
+    routing_with_1_fang!(R1, R2);
+    routing_with_1_fang!(R1, R2, R3);
+    routing_with_1_fang!(R1, R2, R3, R4);
+    routing_with_1_fang!(R1, R2, R3, R4, R5);
+    routing_with_1_fang!(R1, R2, R3, R4, R5, R6);
+    routing_with_1_fang!(R1, R2, R3, R4, R5, R6, R7);
+    routing_with_1_fang!(R1, R2, R3, R4, R5, R6, R7, R8);
+
+    macro_rules! routing_with_2_fangs {
+        ( $( $item:ident ),+ ) => {
+            impl<F1, F2, $( $item: RoutingItem ),+> Routing<(F1, F2)> for ( F1, F2, $($item,)+ )
+            where
+                F1: Fang<F2::Proc> + 'static,
+                F2: Fang<BoxedFPC> + 'static,
+            {
+                fn apply(self, target: &mut Ohkami) {
+                    let ( f1, f2, $( $item, )+ ) = self;
+                    target.fangs = Some(Arc::new((f1, f2)));
+                    $(
+                        <$item as RoutingItem>::apply($item, &mut target.router);
+                    )+
+                }
+            }
+        };
+    }
+    routing_with_2_fangs!(R1);
+    routing_with_2_fangs!(R1, R2);
+    routing_with_2_fangs!(R1, R2, R3);
+    routing_with_2_fangs!(R1, R2, R3, R4);
+    routing_with_2_fangs!(R1, R2, R3, R4, R5);
+    routing_with_2_fangs!(R1, R2, R3, R4, R5, R6);
+    routing_with_2_fangs!(R1, R2, R3, R4, R5, R6, R7);
+    routing_with_2_fangs!(R1, R2, R3, R4, R5, R6, R7, R8);
+
+    macro_rules! routing_with_3_fangs {
+        ( $( $item:ident ),+ ) => {
+            impl<F1, F2, F3, $( $item: RoutingItem ),+> Routing<(F1, F2, F3)> for ( F1, F2, F3, $($item,)+ )
+            where
+                F1: Fang<F2::Proc> + 'static,
+                F2: Fang<F3::Proc> + 'static,
+                F3: Fang<BoxedFPC> + 'static,
+            {
+                fn apply(self, target: &mut Ohkami) {
+                    let ( f1, f2, f3, $( $item, )+ ) = self;
+                    target.fangs = Some(Arc::new((f1, f2, f3)));
+                    $(
+                        <$item as RoutingItem>::apply($item, &mut target.router);
+                    )+
+                }
+            }
+        };
+    }
+    routing_with_3_fangs!(R1);
+    routing_with_3_fangs!(R1, R2);
+    routing_with_3_fangs!(R1, R2, R3);
+    routing_with_3_fangs!(R1, R2, R3, R4);
+    routing_with_3_fangs!(R1, R2, R3, R4, R5);
+    routing_with_3_fangs!(R1, R2, R3, R4, R5, R6);
+    routing_with_3_fangs!(R1, R2, R3, R4, R5, R6, R7);
+    routing_with_3_fangs!(R1, R2, R3, R4, R5, R6, R7, R8);
+
+    macro_rules! routing_with_4_fangs {
+        ( $( $item:ident ),+ ) => {
+            impl<F1, F2, F3, F4, $( $item: RoutingItem ),+> Routing<(F1, F2, F3, F4)> for ( F1, F2, F3, F4, $($item,)+ )
+            where
+                F1: Fang<F2::Proc> + 'static,
+                F2: Fang<F3::Proc> + 'static,
+                F3: Fang<F4::Proc> + 'static,
+                F4: Fang<BoxedFPC> + 'static,
+            {
+                fn apply(self, target: &mut Ohkami) {
+                    let ( f1, f2, f3, f4, $( $item, )+ ) = self;
+                    target.fangs = Some(Arc::new((f1, f2, f3, f4)));
+                    $(
+                        <$item as RoutingItem>::apply($item, &mut target.router);
+                    )+
+                }
+            }
+        };
+    }
+    routing_with_4_fangs!(R1);
+    routing_with_4_fangs!(R1, R2);
+    routing_with_4_fangs!(R1, R2, R3);
+    routing_with_4_fangs!(R1, R2, R3, R4);
+    routing_with_4_fangs!(R1, R2, R3, R4, R5);
+    routing_with_4_fangs!(R1, R2, R3, R4, R5, R6);
+    routing_with_4_fangs!(R1, R2, R3, R4, R5, R6, R7);
+    routing_with_4_fangs!(R1, R2, R3, R4, R5, R6, R7, R8);
 };

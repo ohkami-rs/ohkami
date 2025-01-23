@@ -602,7 +602,7 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
             "/signin".By(Ohkami::new(
                 "/".PUT(signin),
             )),
-            "/profile".By(Ohkami::with((my_jwt(),), (
+            "/profile".By(Ohkami::new((my_jwt(),
                 "/".GET(get_profile),
             ))),
         )).test();

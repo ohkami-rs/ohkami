@@ -184,11 +184,11 @@ mod test {
             }
         }
 
-        let t = Ohkami::with((
+        let t = Ohkami::new((
             GreetingFang { name: "Clerk" },
             GreetingFangWithAction { name: "John" },
-        ), (
-            "/greet".POST(|| async {"Hi, I'm Handler!"}),
+            "/greet"
+                .POST(|| async {"Hi, I'm Handler!"}),
         )).test();
 
         crate::__rt__::testing::block_on(async {
