@@ -20,7 +20,7 @@ use std::time::Duration;
 /// 
 /// #[tokio::main]
 /// async fn main() {
-///     Ohkami::with(Timeout::by_secs(10), (
+///     Ohkami::new((Timeout::by_secs(10),
 ///         "/hello/:sleep".GET(sleeping_hello),
 ///     )).howl("0.0.0.0:3000").await
 /// }

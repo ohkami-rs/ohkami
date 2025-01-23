@@ -76,7 +76,7 @@ use base64::engine::{Engine as _, general_purpose::URL_SAFE_NO_PAD as BASE64URL}
 /// async fn main() {
 ///     Ohkami::new((
 ///         "/auth".GET(auth),
-///         "/private".By(Ohkami::with(our_jwt(), (
+///         "/private".By(Ohkami::new((our_jwt(),
 ///             "/hello/:name".GET(hello),
 ///         )))
 ///     )).howl("localhost:3000").await

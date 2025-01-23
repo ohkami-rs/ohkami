@@ -14,15 +14,13 @@ use crate::{header::append, Fang, FangProc, Request, Response, Status};
 /// 
 /// #[tokio::main]
 /// async fn main() {
-///     Ohkami::with((
+///     Ohkami::new((
 ///         CORS::new("https://foo.bar.org")
 ///             .AllowHeaders(["Content-Type", "X-Requested-With"])
 ///             .AllowCredentials()
 ///             .MaxAge(86400),
-///     ), (
-///         "/api".GET(|| async {
-///             "Hello, CORS!"
-///         }),
+///         "/api"
+///             .GET(|| async {"Hello, CORS!"}),
 ///     )).howl("localhost:8080").await
 /// }
 /// ```
