@@ -359,7 +359,7 @@ const _: () = {
     }
 };
 
-pub trait Routing<Fangs> {
+pub trait Routing<Fangs = ()> {
     fn apply(self, target: &mut Ohkami);
 }
 const _: () = {

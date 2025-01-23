@@ -136,12 +136,20 @@ pub struct Ohkami {
 }
 
 impl Ohkami {
-    pub fn new<Fangs>(routing: impl routing::Routing<Fangs>) -> Self {
+    pub fn new<Fangs>(routing: impl Routing<Fangs>) -> Self {
         let mut this = Self {
             router: Router::new(),
             fangs:  None,
         };
         routing.apply(&mut this);
+        this
+    }
+    pub fn with(fangs: impl Fangs + 'static, routes: impl Routing) -> Self {
+        let mut this = Self {
+            router: Router::new(),
+            fangs:  Some(Arc::new(fangs)),
+        };
+        routes.apply(&mut this);
         this
     }
 
