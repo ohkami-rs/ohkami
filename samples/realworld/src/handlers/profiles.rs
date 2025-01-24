@@ -20,8 +20,8 @@ pub fn profiles_ohkami() -> Ohkami {
 }
 
 async fn get_profile(username: &str,
-    Memory(auth): Memory<'_, JWTPayload>,
-    Memory(pool): Memory<'_, PgPool>
+    Context(auth): Context<'_, JWTPayload>,
+    Context(pool): Context<'_, PgPool>
 ) -> Result<JSON<ProfileResponse>, RealWorldError> {
     let the_user = UserEntity::get_by_name(username, pool).await?;
 
@@ -44,8 +44,8 @@ async fn get_profile(username: &str,
 }
 
 async fn follow(username: &str,
-    Memory(auth): Memory<'_, JWTPayload>,
-    Memory(pool): Memory<'_, PgPool>,
+    Context(auth): Context<'_, JWTPayload>,
+    Context(pool): Context<'_, PgPool>,
 ) -> Result<JSON<ProfileResponse>, RealWorldError> {
     let by_existing_user = sqlx::query!(r#"
         SELECT EXISTS (
@@ -81,8 +81,8 @@ async fn follow(username: &str,
 }
 
 async fn unfollow(username: &str,
-    Memory(auth): Memory<'_, JWTPayload>,
-    Memory(pool): Memory<'_, PgPool>,
+    Context(auth): Context<'_, JWTPayload>,
+    Context(pool): Context<'_, PgPool>,
 ) -> Result<JSON<ProfileResponse>, RealWorldError> {
     let followee = UserEntity::get_by_name(username, pool).await?;
 

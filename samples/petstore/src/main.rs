@@ -46,7 +46,7 @@ async fn main() {
 
     let o = Ohkami::new((
         Logger,
-        Memory::new(db),
+        Context::new(db),
         "/pets"
             .GET(list_pets)
             .POST(create_pet),
@@ -68,7 +68,7 @@ async fn main() {
 #[openapi::operation({200: "All pets stored in this pet store"})]
 async fn list_pets(
     Query(q): Query<ListPetsMeta>,
-    Memory(db): Memory<'_, Arc<mock::DB>>,
+    Context(db): Context<'_, Arc<mock::DB>>,
 ) -> Result<JSON<Vec<Pet>>, Error> {
     let mut pets = db.read().await.values().cloned().collect::<Vec<_>>();
     if let Some(limit) = q.limit {
@@ -87,7 +87,7 @@ struct ListPetsMeta {
 #[openapi::operation(createPet)]
 async fn create_pet(
     JSON(req): JSON<CreatePetRequest<'_>>,
-    Memory(db): Memory<'_, Arc<mock::DB>>,
+    Context(db): Context<'_, Arc<mock::DB>>,
 ) -> Result<status::Created<JSON<Pet>>, Error> {
     if db.read().await.values().any(|p| p.name == req.name) {
         return Err(Error {
@@ -127,7 +127,7 @@ struct CreatePetRequest<'req> {
 /// The parameter `id` must be unsigned 64-bit integer.
 async fn show_pet_by_id(
     id: u64,
-    Memory(db): Memory<'_, Arc<mock::DB>>,
+    Context(db): Context<'_, Arc<mock::DB>>,
 ) -> Result<JSON<Pet>, Error> {
     let pet = db.read().await.get(&id)
         .cloned()

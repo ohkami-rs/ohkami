@@ -1,4 +1,6 @@
-/// # Request Contexts
+use crate::{Request, Response, FromRequest, fang::FangAction};
+
+/// # Request Context
 /// 
 /// Memorize and retrieve any data within a request.
 /// 
@@ -25,9 +27,30 @@
 ///     format!("Hello, {name}!")
 /// }
 /// ```
+#[derive(Clone)]
 pub struct Context<'req, T: Send + Sync + 'static>(pub &'req T);
 
-impl<'req, T: Send + Sync + 'static> crate::FromRequest<'req> for Context<'req, T> {
+impl<T: Send + Sync + 'static> Context<'static, T>
+where
+    T: Clone
+{
+    pub fn new(data: T) -> impl FangAction {
+        return ContextAction(data);
+
+        #[derive(Clone)]
+        struct ContextAction<T: Clone + Send + Sync + 'static>(T);
+
+        impl<T: Clone + Send + Sync + 'static> FangAction for ContextAction<T> {
+            #[inline]
+            async fn fore<'a>(&'a self, req: &'a mut Request) -> Result<(), Response> {
+                req.memorize(self.0.clone());
+                Ok(())
+            }
+        }
+    }
+}
+
+impl<'req, T: Send + Sync + 'static> FromRequest<'req> for Context<'req, T> {
     type Error = std::convert::Infallible;
 
     #[inline]
@@ -46,48 +69,3 @@ impl<'req, T: Send + Sync + 'static> crate::FromRequest<'req> for Context<'req, 
         }
     }
 }
-
-const _: () = {
-    use crate::fang::{Fang, FangProc};
-
-    impl<'req, Data: Clone + Send + Sync + 'static> Context<'req, Data> {
-        #[allow(private_interfaces)]
-        pub fn new(data: Data) -> UseContext<Data> {
-            UseContext(data)
-        }
-    }
-
-    pub struct UseContext<Data: Clone + Send + Sync + 'static>(
-        Data
-    );
-    impl<Data: Clone + Send + Sync + 'static, Inner: FangProc>
-    Fang<Inner> for UseContext<Data> {
-        type Proc = UseContextProc<Data, Inner>;
-        fn chain(&self, inner: Inner) -> Self::Proc {
-            UseContextProc { data: self.0.clone(), inner }
-        }
-    }
-
-    pub struct UseContextProc<
-        Data:  Clone + Send + Sync + 'static,
-        Inner: FangProc,
-    > {
-        data:  Data,
-        inner: Inner,
-    }
-    impl<Data: Clone + Send + Sync + 'static, Inner: FangProc>
-    FangProc for UseContextProc<Data, Inner> {
-        #[cfg(not(feature="rt_worker"))]
-        #[inline]
-        fn bite<'b>(&'b self, req: &'b mut crate::Request) -> impl std::future::Future<Output = crate::Response> + Send {
-            req.memorize(self.data.clone());
-            self.inner.bite(req)
-        }
-        #[cfg(feature="rt_worker")]
-        #[inline]
-        fn bite<'b>(&'b self, req: &'b mut crate::Request) -> impl std::future::Future<Output = crate::Response> {
-            req.memorize(self.data.clone());
-            self.inner.bite(req)
-        }
-    }
-};

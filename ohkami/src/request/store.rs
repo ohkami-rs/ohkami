@@ -28,7 +28,7 @@ impl Store {
         if self.0.is_none() {
             self.0 = Some(Box::new(TupleMap::new()));
         }
-        unsafe {self.0.as_mut().unwrap_unchecked()}
+        (unsafe {self.0.as_mut().unwrap_unchecked()})
             .insert(TypeId::of::<Data>(), Box::new(value));
     }
 

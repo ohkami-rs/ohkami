@@ -11,7 +11,7 @@ pub fn tags_ohkami() -> Ohkami {
 }
 
 async fn get(
-    Memory(pool): Memory<'_, PgPool>
+    Context(pool): Context<'_, PgPool>
 ) -> Result<JSON<ListOfTagsResponse<'static>>, RealWorldError> {
     let tags = sqlx::query!(r#"
         SELECT name

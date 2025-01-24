@@ -16,6 +16,7 @@ impl std::hash::Hasher for AsIsHasher {
             
 macro_rules! tuplemap_vs_hashmap {
     ($name:ident : size = $size:literal, iter = $search_iteration:literal) => {
+        #[allow(non_snake_case)]
         mod $name {
             use super::*;
 
@@ -109,3 +110,7 @@ tuplemap_vs_hashmap!(size2_search100 : size = 2, iter = 100);
 tuplemap_vs_hashmap!(size4_search2__ : size = 4, iter = 2  );
 tuplemap_vs_hashmap!(size4_search10_ : size = 4, iter = 10 );
 tuplemap_vs_hashmap!(size4_search100 : size = 4, iter = 100);
+
+tuplemap_vs_hashmap!(size8_search2__ : size = 8, iter = 2  );
+tuplemap_vs_hashmap!(size8_search10_ : size = 8, iter = 10 );
+tuplemap_vs_hashmap!(size8_search100 : size = 8, iter = 100);

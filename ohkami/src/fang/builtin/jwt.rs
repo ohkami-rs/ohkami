@@ -47,7 +47,7 @@ use base64::engine::{Engine as _, general_purpose::URL_SAFE_NO_PAD as BASE64URL}
 /// }
 /// 
 /// async fn hello(name: &str,
-///     Memory(auth): Memory<'_, OurJWTPayload>
+///     Context(auth): Context<'_, OurJWTPayload>
 /// ) -> String {
 ///     format!("Hello {name}, you're authorized!")
 /// }
@@ -542,7 +542,7 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
         }
 
         async fn get_profile(
-            Memory(jwt_payload): Memory<'_, MyJWTPayload>
+            Context(jwt_payload): Context<'_, MyJWTPayload>
         ) -> Result<JSON<Profile>, APIError> {
             let r = &mut *repository().await.lock().unwrap();
 
