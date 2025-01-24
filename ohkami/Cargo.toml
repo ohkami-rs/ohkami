@@ -1,16 +1,16 @@
 [package]
 name          = "ohkami"
-version       = "0.21.0"
-edition       = "2021"
-authors       = ["kanarus <kanarus786@gmail.com>"]
 description   = "Build web app in intuitive and declarative code"
 documentation = "https://docs.rs/ohkami"
-homepage      = "https://crates.io/crates/ohkami"
-repository    = "https://github.com/ohkami-rs/ohkami"
-readme        = "../README.md"
-keywords      = ["async", "http", "web", "server", "framework"]
-categories    = ["asynchronous", "web-programming::http-server", "network-programming", "wasm"]
-license       = "MIT"
+version       = { workspace = true }
+edition       = { workspace = true }
+authors       = { workspace = true }
+homepage      = { workspace = true }
+repository    = { workspace = true }
+readme        = { workspace = true }
+keywords      = { workspace = true }
+categories    = { workspace = true }
+license       = { workspace = true }
 
 
 [package.metadata.docs.rs]

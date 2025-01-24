@@ -1,16 +1,16 @@
 [package]
 name          = "ohkami_lib"
-version       = "0.21.0"
-edition       = "2021"
-authors       = ["kanarus <kanarus786@gmail.com>"]
-description   = "Internal library for Ohkami - intuitive and declarative web framework"
-documentation = "https://docs.rs/ohkami"
-homepage      = "https://crates.io/crates/ohkami"
-repository    = "https://github.com/ohkami-rs/ohkami"
-readme        = "../README.md"
-keywords      = ["async", "http", "web", "server", "framework"]
-categories    = ["asynchronous", "web-programming::http-server", "network-programming", "wasm"]
-license       = "MIT"
+description   = "internal library for Ohkami - intuitive and declarative web framework"
+documentation = "https://docs.rs/ohkami_lib"
+version       = { workspace = true }
+edition       = { workspace = true }
+authors       = { workspace = true }
+homepage      = { workspace = true }
+repository    = { workspace = true }
+readme        = { workspace = true }
+keywords      = { workspace = true }
+categories    = { workspace = true }
+license       = { workspace = true }
 
 [dependencies]
 serde            = { workspace = true }
