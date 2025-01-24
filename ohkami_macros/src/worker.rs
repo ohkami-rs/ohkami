@@ -50,11 +50,11 @@ pub fn worker(args: TokenStream, ohkami_fn: TokenStream) -> Result<TokenStream> 
         quote! {
             const _: () = {
                 // `#[wasm_bindgen]` direcly references this modules in epxpaned code
-                use ::worker::wasm_bindgen;
+                use ::worker::{wasm_bindgen, wasm_bindgen_futures};
 
                 #[doc(hidden)]
                 #[::worker::wasm_bindgen::prelude::wasm_bindgen(js_name = "OpenAPIDocumentBytes")]
-                pub fn __openapi_document_bytes__() -> Vec<u8> {
+                pub async fn __openapi_document_bytes__() -> Vec<u8> {
                     let ohkami: ::ohkami::Ohkami = #gen_ohkami;
                     ohkami.__openapi_document_bytes__(::ohkami::openapi::OpenAPI {
                         title:   #title,

@@ -241,7 +241,7 @@ try {
     }
 
     /** @type {Uint8Array} */
-    let OpenAPIDocumentBytes = wasmpack_js.OpenAPIDocumentBytes();
+    let OpenAPIDocumentBytes = await wasmpack_js.OpenAPIDocumentBytes();
 
     {
         let OpenAPIDocumentJSON = JSON.parse(
