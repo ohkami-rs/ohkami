@@ -98,7 +98,7 @@ const app = (() => {
          * @param {number} code 
          * @param {string | undefined} message 
          * @returns {void}
-         * */
+         */
         exit(code, message) {
             if (existsSync(this.WASMPACK_OUT_DIR)) {
                 rmSync(this.WASMPACK_OUT_DIR, { recursive: true, force: true });
@@ -128,11 +128,6 @@ const app = (() => {
 try {
     const e = new TextDecoder();
 
-    /**
-     * ```e.g.
-     * │ kanarus      │ 0xx000x000x0000000x0xxx0x000xx00 │
-     * ```
-     */
     const wrangler_whoami = spawn("wrangler", ["whoami"]);
     await new Promise((resolve, reject) => {
         wrangler_whoami.on("close", (code) => {
@@ -153,7 +148,14 @@ try {
         wrangler_whoami.stdout.on("data", (data) => {
             for (const line of e.decode(data).trimEnd().split("\n")) {
                 if (/^🔓|Scope|-/.test(line)) break;
+
                 console.log(line);
+
+                /**
+                 * ```e.g.
+                 * │ kanarus      │ 0xx000x000x0000000x0xxx0x000xx00 │
+                 * ```
+                 */
                 if (/^│ .* \s*│ [0-9a-z]{32} │$/.test(line)) {                
                     app.cloudflareAccountName = line.split("│")[1].trim();
                     resolve();
@@ -260,7 +262,7 @@ try {
          * This process should not be done in `#[ohkami::worker]` attribute's
          * background becasue of heavy latency of `wrangler whoami`, causing
          * too bad developer experience for rust-analyzer users.
-        */
+         */
         if (app.workerName && app.cloudflareAccountName && !app.noWorkersDevDomain) {
             if (OpenAPIDocumentJSON.servers
                 .filter((s) => !(s.url.includes("localhost")))
