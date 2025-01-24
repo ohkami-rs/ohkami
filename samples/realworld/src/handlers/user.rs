@@ -21,8 +21,8 @@ pub fn user_ohkami() -> Ohkami {
 }
 
 async fn get_user(
-    Memory(pool): Memory<'_, PgPool>,
-    Memory(auth): Memory<'_, JWTPayload>,
+    Context(pool): Context<'_, PgPool>,
+    Context(auth): Context<'_, JWTPayload>,
 ) -> Result<JSON<UserResponse>, RealWorldError> {
     let user = util::get_current_user(pool, auth).await?;
     Ok(JSON(UserResponse { user }))
@@ -30,8 +30,8 @@ async fn get_user(
 
 async fn update(
     JSON(req): JSON<UpdateProfileRequest<'_>>,
-    Memory(auth): Memory<'_, JWTPayload>,
-    Memory(pool): Memory<'_, PgPool>,
+    Context(auth): Context<'_, JWTPayload>,
+    Context(pool): Context<'_, PgPool>,
 ) -> Result<JSON<UserResponse>, RealWorldError> {
     let user_entity = {
         let UpdateProfileRequest {

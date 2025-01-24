@@ -21,7 +21,7 @@ pub fn users_ohkami() -> Ohkami {
 }
 
 async fn login(
-    Memory(pool): Memory<'_, PgPool>,
+    Context(pool): Context<'_, PgPool>,
     JSON(LoginRequest {
         user: LoginRequestUser { email, password },
     }): JSON<LoginRequest<'_>>,
@@ -48,7 +48,7 @@ async fn login(
 }
 
 async fn register(
-    Memory(pool): Memory<'_, PgPool>,
+    Context(pool): Context<'_, PgPool>,
     JSON(RegisterRequest {
         user: RegisterRequestUser { username, email, password }
     }): JSON<RegisterRequest<'_>>,

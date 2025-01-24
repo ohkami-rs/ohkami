@@ -59,7 +59,7 @@ async fn show_user_profile(id: ID,
 
 async fn edit_profile(id: ID,
     JSON(req): JSON<EditProfileRequest<'_>>,
-    Memory(TokenAuthed { user_id, .. }): Memory<'_, TokenAuthed>,
+    Context(TokenAuthed { user_id, .. }): Context<'_, TokenAuthed>,
     Bindings { DB, .. }: Bindings,
 ) -> Result<(), APIError> {
     if *user_id != id {
@@ -155,7 +155,7 @@ async fn list_tweets(
 
 async fn post_tweet(
     JSON(req): JSON<PostTweetRequest<'_>>,
-    Memory(TokenAuthed { user_id, user_name }): Memory<'_, TokenAuthed>,
+    Context(TokenAuthed { user_id, user_name }): Context<'_, TokenAuthed>,
     Bindings { DB, .. }: Bindings,
 ) -> Result<status::Created<JSON<Tweet>>, APIError> {
     let timestamp = crate::model::timestamp_now();

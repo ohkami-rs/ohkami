@@ -27,7 +27,7 @@ async fn main() {
 }
 
 pub async fn relay_chat_completion(
-    Memory(APIKey(api_key)): Memory<'_, APIKey>,
+    Context(APIKey(api_key)): Context<'_, APIKey>,
     Text(content): Text<String>,
 ) -> Result<DataStream, Error> {
     let mut gpt_response = reqwest::Client::new()

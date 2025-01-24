@@ -36,8 +36,8 @@ pub fn articles_ohkami() -> Ohkami {
 
 async fn list_articles(
     Query(q): Query<ListArticlesQuery<'_>>,
-    Memory(auth): Memory<'_, Option<JWTPayload>>,
-    Memory(pool): Memory<'_, PgPool>,
+    Context(auth): Context<'_, Option<JWTPayload>>,
+    Context(pool): Context<'_, PgPool>,
 ) -> Result<JSON<MultipleArticlesResponse>, RealWorldError> {
     let user_and_followings = match auth {
         None => UserAndFollowings::None,
@@ -98,8 +98,8 @@ async fn list_articles(
 
 async fn feed_articles(
     Query(q): Query<FeedArticleQuery>,
-    Memory(auth): Memory<'_, JWTPayload>,
-    Memory(pool): Memory<'_, PgPool>,
+    Context(auth): Context<'_, JWTPayload>,
+    Context(pool): Context<'_, PgPool>,
 ) -> Result<JSON<MultipleArticlesResponse>, RealWorldError> {
     let uf = UserAndFollowings::from_user_id(auth.user_id, pool).await?;
 
@@ -120,7 +120,7 @@ async fn feed_articles(
 }
 
 async fn get_article_by_slug(slug: &str,
-    Memory(pool): Memory<'_, PgPool>,
+    Context(pool): Context<'_, PgPool>,
 ) -> Result<JSON<SingleArticleResponse>, RealWorldError> {
     let article = sqlx::QueryBuilder::new(ArticleEntity::base_query())
         .push(" HAVING a.slug = ").push_bind(slug)
@@ -136,8 +136,8 @@ async fn get_article_by_slug(slug: &str,
 
 async fn create_article(
     JSON(req): JSON<CreateArticleRequest<'_>>,
-    Memory(auth): Memory<'_, JWTPayload>,
-    Memory(pool): Memory<'_, PgPool>,
+    Context(auth): Context<'_, JWTPayload>,
+    Context(pool): Context<'_, PgPool>,
 ) -> Result<Created<JSON<SingleArticleResponse>>, RealWorldError> {
     let author_id = auth.user_id;
     let slug = req.slug();
@@ -230,8 +230,8 @@ async fn create_article(
 
 async fn update_article(slug: &str,
     JSON(body): JSON<UpdateArticleRequest<'_>>,
-    Memory(auth): Memory<'_, JWTPayload>,
-    Memory(pool): Memory<'_, PgPool>,
+    Context(auth): Context<'_, JWTPayload>,
+    Context(pool): Context<'_, PgPool>,
 ) -> Result<JSON<SingleArticleResponse>, RealWorldError> {
     let mut article = sqlx::QueryBuilder::new(ArticleEntity::base_query())
         .push(" HAVING a.slug = ").push_bind(slug)
@@ -286,8 +286,8 @@ async fn update_article(slug: &str,
 }
 
 async fn delete_article(slug: &str,
-    Memory(auth): Memory<'_, JWTPayload>,
-    Memory(pool): Memory<'_, PgPool>,
+    Context(auth): Context<'_, JWTPayload>,
+    Context(pool): Context<'_, PgPool>,
 ) -> Result<NoContent, RealWorldError> {
     let n = sqlx::query!("DELETE FROM articles WHERE author_id = $1 AND slug = $2", auth.user_id, slug)
         .execute(pool).await
@@ -303,8 +303,8 @@ async fn delete_article(slug: &str,
 
 async fn add_article_comment(slug: &str,
     JSON(body): JSON<AddCommentRequest<'_>>,
-    Memory(auth): Memory<'_, JWTPayload>,
-    Memory(pool): Memory<'_, PgPool>,
+    Context(auth): Context<'_, JWTPayload>,
+    Context(pool): Context<'_, PgPool>,
 ) -> Result<Created<JSON<SingleCommentResponse>>, RealWorldError> {
     let ariticle_id = article_id_by_slug(slug, pool).await?;
     let content = body.comment.content;
@@ -355,8 +355,8 @@ async fn add_article_comment(slug: &str,
 }
 
 async fn get_article_comments(slug: &str,
-    Memory(auth): Memory<'_, Option<JWTPayload>>,
-    Memory(pool): Memory<'_, PgPool>,
+    Context(auth): Context<'_, Option<JWTPayload>>,
+    Context(pool): Context<'_, PgPool>,
 ) -> Result<JSON<MultipleCommentsResponse>, RealWorldError> {
     let ariticle_id = article_id_by_slug(slug, pool).await?;
 
@@ -391,8 +391,8 @@ async fn get_article_comments(slug: &str,
 }
 
 async fn delete_article_comment_by_id((slug, id): (&str, usize),
-    Memory(auth): Memory<'_, JWTPayload>,
-    Memory(pool): Memory<'_, PgPool>,
+    Context(auth): Context<'_, JWTPayload>,
+    Context(pool): Context<'_, PgPool>,
 ) -> Result<NoContent, RealWorldError> {
     let ariticle_id = article_id_by_slug(slug, pool).await?;
 
@@ -415,8 +415,8 @@ async fn delete_article_comment_by_id((slug, id): (&str, usize),
 }
 
 async fn favorite_article(slug: &str,
-    Memory(auth): Memory<'_, JWTPayload>,
-    Memory(pool): Memory<'_, PgPool>,
+    Context(auth): Context<'_, JWTPayload>,
+    Context(pool): Context<'_, PgPool>,
 ) -> Result<JSON<SingleArticleResponse>, RealWorldError> {
     let ariticle_id = article_id_by_slug(slug, pool).await?;
 
@@ -442,8 +442,8 @@ async fn favorite_article(slug: &str,
 }
 
 async fn unfavorite_article(slug: &str,
-    Memory(auth): Memory<'_, JWTPayload>,
-    Memory(pool): Memory<'_, PgPool>,
+    Context(auth): Context<'_, JWTPayload>,
+    Context(pool): Context<'_, PgPool>,
 ) -> Result<JSON<SingleArticleResponse>, RealWorldError> {
     let ariticle_id = article_id_by_slug(slug, pool).await?;
 

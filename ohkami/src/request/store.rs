@@ -1,34 +1,14 @@
-use std::{
-    any::{Any, TypeId},
-    collections::HashMap,
-    hash::{Hasher, BuildHasherDefault},
-};
-
+use ohkami_lib::map::TupleMap;
+use std::any::{Any, TypeId};
 
 pub struct Store(
     Option<Box<
-        HashMap<
+        TupleMap<
             TypeId,
-            Box<dyn Any + Send + Sync>,
-            BuildHasherDefault<TypeIDHasger>,
+            Box<dyn Any + Send + Sync>
         >
     >>
 );
-
-#[derive(Default)]
-struct TypeIDHasger(u64);
-impl Hasher for TypeIDHasger {
-    #[cold] fn write(&mut self, _: &[u8]) {
-        unsafe {std::hint::unreachable_unchecked()}
-    }
-
-    #[inline(always)] fn write_u64(&mut self, type_id_value: u64) {
-        self.0 = type_id_value
-    }
-    #[inline(always)] fn finish(&self) -> u64 {
-        self.0
-    }
-}
 
 impl Store {
     #[cfg(feature="__rt__")]
@@ -43,18 +23,23 @@ impl Store {
         }
     }
 
-    #[inline] pub fn insert<Data: Send + Sync + 'static>(&mut self, value: Data) {
-        self.0.get_or_insert_with(|| Box::new(HashMap::default()))
+    #[inline]
+    pub fn insert<Data: Send + Sync + 'static>(&mut self, value: Data) {
+        if self.0.is_none() {
+            self.0 = Some(Box::new(TupleMap::new()));
+        }
+        (unsafe {self.0.as_mut().unwrap_unchecked()})
             .insert(TypeId::of::<Data>(), Box::new(value));
     }
 
-    #[inline] pub fn get<Data: Send + Sync + 'static>(&self) -> Option<&Data> {
+    #[inline]
+    pub fn get<Data: Send + Sync + 'static>(&self) -> Option<&Data> {
         self.0.as_ref().and_then(|map| map
             .get(&TypeId::of::<Data>())
             .map(|boxed| {
                 let data: &dyn Any = &**boxed;
                 #[cfg(debug_assertions)] {
-                    assert!(data.is::<Data>(), "Request's Memory is poisoned!!!");
+                    assert!(data.is::<Data>(), "Request store is poisoned!!!");
                 }
                 unsafe { &*(data as *const dyn Any as *const Data) }
             })
