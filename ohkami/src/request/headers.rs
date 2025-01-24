@@ -1,6 +1,6 @@
-use crate::header::{IndexMap, TupleMap, Append};
+use crate::header::{IndexMap, Append};
 use std::borrow::Cow;
-use ohkami_lib::{CowSlice, Slice};
+use ohkami_lib::{CowSlice, Slice, map::TupleMap};
 
 
 pub struct Headers {

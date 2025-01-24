@@ -1,3 +1,5 @@
+pub mod map;
+
 pub mod mime;
 
 pub mod num;

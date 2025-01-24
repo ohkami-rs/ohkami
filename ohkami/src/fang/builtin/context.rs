@@ -1,7 +1,4 @@
-use crate::FromRequest;
-
-
-/// # Memory of a Request
+/// # Request Contexts
 /// 
 /// Memorize and retrieve any data within a request.
 /// 
@@ -16,33 +13,32 @@ use crate::FromRequest;
 ///     let sample_data = Arc::new(String::from("ohkami"));
 /// 
 ///     Ohkami::new((
-///         Memory::new(sample_data), // <--
+///         Context::new(sample_data), // <--
 ///         "/hello"
 ///             .GET(hello),
 ///     )).howl("0.0.0.0:8080").await
 /// }
 /// 
 /// async fn hello(
-///     Memory(name): Memory<'_, String>, // <--
+///     Context(name): Context<'_, Arc<String>>, // <--
 /// ) -> String {
 ///     format!("Hello, {name}!")
 /// }
 /// ```
-pub struct Memory<'req, Data: Send + Sync + 'static>(pub &'req Data);
+pub struct Context<'req, T: Send + Sync + 'static>(pub &'req T);
 
-impl<'req, Data: Send + Sync + 'static>
-FromRequest<'req> for Memory<'req, Data> {
+impl<'req, T: Send + Sync + 'static> crate::FromRequest<'req> for Context<'req, T> {
     type Error = std::convert::Infallible;
 
     #[inline]
     fn from_request(req: &'req crate::Request) -> Option<Result<Self, Self::Error>> {
-        match req.memorized::<Data>().map(Memory) {
-            Some(d) => Some(Ok(d)),
+        match req.memorized::<T>() {
+            Some(d) => Some(Ok(Self(d))),
             None => {
                 #[cfg(debug_assertions)] {
                     crate::warning!(
-                        "`Memory` of type `{}` was not found",
-                        std::any::type_name::<Data>()
+                        "Context of `{}` doesn't exist",
+                        std::any::type_name::<T>()
                     )
                 }
                 None
@@ -54,25 +50,25 @@ FromRequest<'req> for Memory<'req, Data> {
 const _: () = {
     use crate::fang::{Fang, FangProc};
 
-    impl<'req, Data: Clone + Send + Sync + 'static> Memory<'req, Data> {
+    impl<'req, Data: Clone + Send + Sync + 'static> Context<'req, Data> {
         #[allow(private_interfaces)]
-        pub fn new(data: Data) -> UseMemory<Data> {
-            UseMemory(data)
+        pub fn new(data: Data) -> UseContext<Data> {
+            UseContext(data)
         }
     }
 
-    pub struct UseMemory<Data: Clone + Send + Sync + 'static>(
+    pub struct UseContext<Data: Clone + Send + Sync + 'static>(
         Data
     );
     impl<Data: Clone + Send + Sync + 'static, Inner: FangProc>
-    Fang<Inner> for UseMemory<Data> {
-        type Proc = UseMemoryProc<Data, Inner>;
+    Fang<Inner> for UseContext<Data> {
+        type Proc = UseContextProc<Data, Inner>;
         fn chain(&self, inner: Inner) -> Self::Proc {
-            UseMemoryProc { data: self.0.clone(), inner }
+            UseContextProc { data: self.0.clone(), inner }
         }
     }
 
-    pub struct UseMemoryProc<
+    pub struct UseContextProc<
         Data:  Clone + Send + Sync + 'static,
         Inner: FangProc,
     > {
@@ -80,7 +76,7 @@ const _: () = {
         inner: Inner,
     }
     impl<Data: Clone + Send + Sync + 'static, Inner: FangProc>
-    FangProc for UseMemoryProc<Data, Inner> {
+    FangProc for UseContextProc<Data, Inner> {
         #[cfg(not(feature="rt_worker"))]
         #[inline]
         fn bite<'b>(&'b self, req: &'b mut crate::Request) -> impl std::future::Future<Output = crate::Response> + Send {

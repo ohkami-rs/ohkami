@@ -1,4 +1,5 @@
-use crate::header::{IndexMap, TupleMap, Append, SetCookie, SetCookieBuilder};
+use crate::header::{IndexMap, Append, SetCookie, SetCookieBuilder};
+use ohkami_lib::map::TupleMap;
 use std::borrow::Cow;
 
 

@@ -245,7 +245,7 @@ pub mod prelude {
     pub use crate::util::FangAction;
     pub use crate::serde::{Serialize, Deserialize};
     pub use crate::format::{JSON, Query};
-    pub use crate::fang::Memory;
+    pub use crate::fang::Context;
 
     #[cfg(feature="__rt__")]
     pub use crate::{Route, Ohkami};
