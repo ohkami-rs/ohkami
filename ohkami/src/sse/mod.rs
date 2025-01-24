@@ -8,7 +8,7 @@ use std::{pin::Pin, future::Future, marker::PhantomData};
 /// 
 /// **note**: `T` is requried to impl `sse::Data` to be encoded to `String`
 /// for the specification of Server-Sent Events (see, for example,
-/// https://html.spec.whatwg.org/multipage/server-sent-events.html#event-stream-interpretation)
+/// <https://html.spec.whatwg.org/multipage/server-sent-events.html#event-stream-interpretation>)
 /// 
 /// ---
 /// 

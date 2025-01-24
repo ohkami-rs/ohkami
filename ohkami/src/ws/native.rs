@@ -11,7 +11,7 @@ pub use mews::{
 
 impl<'ctx> super::WebSocketContext<'ctx> {
     /// create a `WebSocket` with the handler and default `Config`.
-    /// use [`upgrade_with`](WebSocketContext::upgrade_with) to provide a custom config.
+    /// use [`upgrade_with`](crate::ws::WebSocketContext::upgrade_with) to provide a custom config.
     /// 
     /// ## handler
     /// 
