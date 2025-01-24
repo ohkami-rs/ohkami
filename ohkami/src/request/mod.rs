@@ -166,7 +166,7 @@ pub struct Request {
 
     store: Store,
 
-    #[cfg(feature="__rt_native__")]
+    #[cfg(feature="__rt__")]
     /// Remote ( directly connected ) peer's IP address
     /// 
     /// ---
@@ -184,6 +184,11 @@ impl Request {
     ) -> Self {
         Self {
             #[cfg(feature="__rt_native__")]
+            ip,
+            #[cfg(feature="rt_worker")]
+            ip: crate::util::IP_0000,/* tetative */
+
+            #[cfg(feature="__rt_native__")]
             __buf__: Box::new([0; BUF_SIZE]),
 
             #[cfg(feature="rt_worker")]
@@ -199,9 +204,6 @@ impl Request {
             headers: RequestHeaders::init(),
             payload: None,
             store:   Store::init(),
-            
-            #[cfg(feature="__rt_native__")]
-            ip,
         }
     }
     #[cfg(feature="__rt_native__")]
@@ -331,10 +333,13 @@ impl Request {
 
     #[cfg(feature="rt_worker")]
     #[cfg(debug_assertions)]
+    /// Used in `testing` module
     pub(crate) async fn read(mut self: Pin<&mut Self>,
         raw_bytes: &mut &[u8]
     ) -> Result<Option<()>, crate::Response> {
         use crate::Response;
+
+        self.ip = crate::util::IP_0000;
 
         let mut r = Reader::new(raw_bytes);
 
@@ -414,6 +419,10 @@ impl Request {
             .into()
         ));
 
+        if let Some(ip) = self.headers.get("cf-connecting-ip") {
+            self.ip = ip.parse().unwrap(/* We think Cloudflare provides valid value here... */);
+        }
+
         Ok(())
     }
 }
@@ -451,19 +460,16 @@ const _: () = {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             let mut d = f.debug_struct("Request");
             let d = &mut d;
-
             d
+                .field("ip",      &self.ip)
                 .field("method",  &self.method)
                 .field("path",    &self.path.str())
                 .field("queries", &self.query)
-                .field("headers", &self.headers);
+                .field("headers", &self.headers)
+            ;
             if let Some(payload) = self.payload.as_ref().map(|cs| unsafe {cs.as_bytes()}) {
                 d.field("payload", &String::from_utf8_lossy(payload));
             }
-            #[cfg(feature="__rt_native__")] {
-                d.field("ip", &self.ip);
-            }
-
             d.finish()
         }
     }
