@@ -460,16 +460,22 @@ const _: () = {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             let mut d = f.debug_struct("Request");
             let d = &mut d;
+
+            #[cfg(feature="__rt__")] {
+                d.field("ip", &self.ip);
+            }
+
             d
-                .field("ip",      &self.ip)
                 .field("method",  &self.method)
                 .field("path",    &self.path.str())
                 .field("queries", &self.query)
                 .field("headers", &self.headers)
             ;
+
             if let Some(payload) = self.payload.as_ref().map(|cs| unsafe {cs.as_bytes()}) {
                 d.field("payload", &String::from_utf8_lossy(payload));
             }
+            
             d.finish()
         }
     }
