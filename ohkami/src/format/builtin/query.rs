@@ -5,6 +5,17 @@ use super::bound::{self, Incoming};
 use crate::openapi;
 
 
+/// # Query parameters
+/// 
+/// Deserialize query parameters into an instance of type `T`.
+/// 
+/// ### note
+/// 
+/// When a request doesn't have query parameters, `Option<Query<T>>` in a handler
+/// tries to deserialize an *empty query string*, not skip deserializing
+/// returning `None`.
+/// This may be unexpected behavior and just *`Query<T>` with `Option<_>` fields*
+/// is recommended to express *optional query params*.
 pub struct Query<T: bound::Schema>(pub T);
 
 impl<'req, T: Incoming<'req>> FromRequest<'req> for Query<T> {
