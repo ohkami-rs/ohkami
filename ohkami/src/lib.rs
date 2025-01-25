@@ -1,4 +1,4 @@
-#![doc(html_root_url = "https://docs.rs/ohkami/0.21.0")]
+#![doc(html_root_url = "https://docs.rs/ohkami/0.21.1")]
 
 /* Execute static tests for sample codes in README */
 #![cfg_attr(feature="DEBUG", doc = include_str!("../../README.md"))]
