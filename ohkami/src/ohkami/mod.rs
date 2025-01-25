@@ -99,10 +99,10 @@ use crate::{__rt__, Session};
 /// 
 /// <br>
 /// 
-/// #### handler schema：
-/// `async ({path_params}?, {FromRequest type}s...) -> {IntoResponse type}`
+/// #### handler schema :
+/// `async ({path params}?, {FromRequest type}s...) -> {IntoResponse type}`
 /// 
-/// #### path_params：
+/// #### path params :
 /// A tuple of types that implement `FromParam` trait e.g. `(&str, usize)`.\
 /// If the path contains only one parameter, then you can omit the tuple \
 /// e.g. just `param: &str`.\
@@ -170,6 +170,15 @@ impl Ohkami {
     /// # ;
     /// ```
     /// 
+    /// #### handler :
+    /// `async ({path params}?, {FromRequest type}s...) -> {IntoResponse type}`
+    /// 
+    /// #### path params :
+    /// A tuple of types that implement `FromParam` trait e.g. `(&str, usize)`.\
+    /// If the path contains only one parameter, then you can omit the tuple \
+    /// e.g. just `param: &str`.\
+    /// (Current ohkami handles at most *2* path params.)
+    /// 
     /// ### note
     /// 
     /// Fangs of this `routing` tuple are *always* called when a request once
@@ -190,6 +199,7 @@ impl Ohkami {
     /// Ohkami::new((
     ///     "/users/:id"
     ///         .GET((Auth, SomeFang, get_user_profile)),
+    ///         // apply `Auth`, `SomeFang` only on `GET /users/:id`
     /// ))
     /// # ;
     /// ```
