@@ -45,8 +45,21 @@ const app = (() => {
                 this.exit(150, `Expected a wrangler project, but ${e}`)
             }
 
-            if (process.argv.length > 2) {
-                let i = 2;
+            const cliArgsStartIndex = (() => {
+                /** this script is executed via `node -e ...` and no CLI arguments are given */
+                if (process.argv.length === 1) return 1;
+
+                const argv1 = process.argv[1];
+                if (argv1.startsWith("/") || argv1.startsWith("C:") || argv1.startsWith("D:")) {
+                    /** this script is executed by `node workers_openapi.js` */
+                    return 2;
+                } else {
+                    /** this script is executed via `node -e ...` */
+                    return 1;
+                }
+            })();
+            if (process.argv.length > cliArgsStartIndex) {
+                let i = cliArgsStartIndex;
                 while (i < process.argv.length) {
                     switch (process.argv[i]) {
                         case "--out":
