@@ -12,6 +12,9 @@ keywords      = { workspace = true }
 categories    = { workspace = true }
 license       = { workspace = true }
 
+[package.metadata.docs.rs]
+features      = ["stream", "signal"]
+
 [dependencies]
 serde            = { workspace = true }
 byte_reader      = { workspace = true }
