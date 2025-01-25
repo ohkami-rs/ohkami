@@ -130,22 +130,22 @@ const app = (() => {
 try {
     const e = new TextDecoder();
 
-    const wrangler_whoami = spawn("wrangler", ["whoami"]);
+    const wrangler_whoami = spawn("npx", ["wrangler", "whoami"]);
     await new Promise((resolve, reject) => {
         wrangler_whoami.on("close", (code) => {
-            if (code === 0) {resolve()} else {reject(`'wrangler whoami' closed with ${code}`)}
+            if (code === 0) {resolve()} else {reject(`'npx wrangler whoami' closed with ${code}`)}
         });
         wrangler_whoami.on("exit", (code) => {
-            if (code === 0) {resolve()} else {reject(`'wrangler whoami' exited with ${code}`)}
+            if (code === 0) {resolve()} else {reject(`'npx wrangler whoami' exited with ${code}`)}
         });
         wrangler_whoami.on("error", (err) => {
-            reject(`'wrangler whoami' failed: ${err}`);
+            reject(`'npx wrangler whoami' failed: ${err}`);
         });
         wrangler_whoami.on("disconnect", () => {
-            reject(`'wasm-pack build' disconnected`);
+            reject(`'npx wrangler whoami' disconnected`);
         });
 
-        /////////////////////////////////////////////
+        //////////////////////////////////////////////////////////////
 
         wrangler_whoami.stdout.on("data", (data) => {
             for (const line of e.decode(data).trimEnd().split("\n")) {
