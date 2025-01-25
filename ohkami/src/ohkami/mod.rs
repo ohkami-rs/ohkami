@@ -146,9 +146,9 @@ impl Ohkami {
     /// use ohkami::Route;
     /// 
     /// # use ohkami::fang::FangAction;
-    /// # struct Logger;
+    /// # #[derive(Clone)] struct Logger;
     /// # impl FangAction for Logger {}
-    /// # struct Auth;
+    /// # #[derive(Clone)] struct Auth;
     /// # impl FangAction for Auth {}
     /// # async fn get_handler() {}
     /// # async fn put_handler() {}
@@ -167,7 +167,7 @@ impl Ohkami {
     ///     "/route2/:param"
     ///         .POST(post_handler),
     /// )
-    /// #;
+    /// # ;
     /// ```
     /// 
     /// ### note
@@ -179,17 +179,19 @@ impl Ohkami {
     /// method and path, consider using *local fangs* :
     /// 
     /// ```
-    /// use ohkami::Route;
+    /// use ohkami::{Ohkami, Route};
     /// 
-    /// # struct Auth;
+    /// # #[derive(Clone)] struct Auth;
     /// # impl ohkami::fang::FangAction for Auth {}
-    /// # struct SomeFang;
+    /// # #[derive(Clone)] struct SomeFang;
     /// # impl ohkami::fang::FangAction for SomeFang {}
     /// # async fn get_user_profile() {}
+    /// # let _ =
     /// Ohkami::new((
     ///     "/users/:id"
     ///         .GET((Auth, SomeFang, get_user_profile)),
     /// ))
+    /// # ;
     /// ```
     pub fn new<Fangs>(routing: impl Routing<Fangs>) -> Self {
         let mut this = Self {
