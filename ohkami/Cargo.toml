@@ -23,9 +23,9 @@ ohkami_macros  = { version = "=0.21.1", path = "../ohkami_macros" }
 ohkami_openapi = { optional = true, version = "=0.21.1", path = "../ohkami_openapi" }
 
 # workspace dependencies
-byte_reader   = { workspace = true }
-serde         = { workspace = true }
-serde_json    = { workspace = true }
+byte_reader = { workspace = true }
+serde       = { workspace = true }
+serde_json  = { workspace = true }
 
 # runtimes
 tokio     = { version = "1",   optional = true }
