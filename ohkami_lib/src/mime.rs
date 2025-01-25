@@ -3,13 +3,13 @@
 /// In current version, this **ONLY** support **UTF-8** as charset of `text/〜` files !
 pub const fn get_by_extension(extension: &str) -> Option<&'static str> {
     match extension.as_bytes() {
-        b"txt"   => Some("text/plain; charset=UTF-8"),
-        b"html"  => Some("text/html; charset=UTF-8"),
-        b"css"   => Some("text/css; charset=UTF-8"),
+        b"txt"   => Some("text/plain"),
+        b"html"  => Some("text/html"),
+        b"css"   => Some("text/css"),
         b"js"    => Some("text/javascript"),
         b"xml"   => Some("text/xml"),
-        b"csv"   => Some("text/csv; charset=UTF-8"),
-        b"tsv"   => Some("text/tab-separated-values; charset=UTF-8"),
+        b"csv"   => Some("text/csv"),
+        b"tsv"   => Some("text/tab-separated-values"),
         b"vcard" => Some("text/vcard"),
 
         b"jpeg"  => Some("image/jpeg"),

@@ -6,7 +6,9 @@
 <br>
 
 - *macro-less and type-safe* APIs for intuitive and declarative code
-- *multiple runtimes* are supported：`tokio`, `async-std`, `smol`, `glommio`, `worker` (Cloudflare Workers)
+- *various runtimes* are supported：`tokio`, `async-std`, `smol`, `nio`, `glommio` and `worker` (Cloudflare Workers)
+- *extremely fast*：[Web Frameworks Benchmark](https://web-frameworks-benchmark.netlify.app/result)
+- no-network testing, well-structured middlewares, Server-Sent Events, WebSocket, OpenAPI document genration, ...
 
 <div align="right">
     <a href="https://github.com/ohkami-rs/ohkami/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/crates/l/ohkami.svg" /></a>
@@ -14,13 +16,13 @@
     <a href="https://crates.io/crates/ohkami"><img alt="crates.io" src="https://img.shields.io/crates/v/ohkami" /></a>
 </div>
 
+<!--
+
 <br>
 
 ## Benchmark Results
 
 - [Web Frameworks Benchmark](https://web-frameworks-benchmark.netlify.app/result)
-
-<!--
 
 - [TechEmpower's Benchmark](https://www.techempower.com/benchmarks)
 
@@ -34,7 +36,7 @@
 
 ```toml
 [dependencies]
-ohkami = { version = "0.20", features = ["rt_tokio"] }
+ohkami = { version = "0.21", features = ["rt_tokio"] }
 tokio  = { version = "1",    features = ["full"] }
 ```
 
@@ -78,11 +80,12 @@ Hello, your_name!
 
 ## Feature flags
 
-### `"rt_tokio"`, `"rt_async-std"`, `"rt_smol"`, `"rt_glommio"`：native async runtime
+### `"rt_tokio"`, `"rt_async-std"`, `"rt_smol"`, `"rt_nio"`, `"rt_glommio"`：native async runtime
 
 - [tokio](https://github.com/tokio-rs/tokio)
 - [async-std](https://github.com/async-rs/async-std)
 - [smol](https://github.com/smol-rs/smol)
+- [nio](https://github.com/nurmohammed840/nio)
 - [glommio](https://github.com/DataDog/glommio)
 
 ### `"rt_worker"`：Cloudflare Workers
@@ -93,7 +96,7 @@ npm create cloudflare ./path/to/project -- --template https://github.com/ohkami-
 
 then your project directory has `wrangler.toml`, `package.json` and a Rust library crate. Local dev by `npm run dev` and deploy by `npm run deploy` !
 
-See README of the [template](https://github.com/ohkami-rs/ohkami-templates/tree/main/worker) for details.
+See README of [template](https://github.com/ohkami-rs/ohkami-templates/tree/main/worker) for details.
 
 ### `"sse"`：Server-Sent Events
 
@@ -102,24 +105,25 @@ Use some reverse proxy to do with HTTP/2,3.
 
 ```rust,no_run
 use ohkami::prelude::*;
-use ohkami::typed::DataStream;
-use ohkami::util::stream;
-use {tokio::time::sleep, std::time::Duration};
+use ohkami::sse::DataStream;
+use tokio::time::{sleep, Duration};
 
-async fn sse() -> DataStream<String> {
-    DataStream::from_stream(stream::queue(|mut q| async move {
+async fn handler() -> DataStream {
+    DataStream::new(|mut s| async move {
+        s.send("starting streaming...");
         for i in 1..=5 {
             sleep(Duration::from_secs(1)).await;
-            q.add(format!("Hi, I'm message #{i} !"))
+            s.send(format!("MESSAGE #{i}"));
         }
-    }))
+        s.send("streaming finished!");
+    })
 }
 
 #[tokio::main]
 async fn main() {
     Ohkami::new((
-        "/sse".GET(sse),
-    )).howl("localhost:5050").await
+        "/sse".GET(handler),
+    )).howl("localhost:3020").await
 }
 ```
 
@@ -128,16 +132,16 @@ async fn main() {
 Ohkami only handles `ws://`.\
 Use some reverse proxy to do with `wss://`.
 
-Currently, WebSocket on `rt_worker` is *not* supported.
+WebSocket on Durable Object is available on `"rt_worker"`!
 
 ```rust,no_run
 use ohkami::prelude::*;
 use ohkami::ws::{WebSocketContext, WebSocket, Message};
 
-async fn echo_text(c: WebSocketContext<'_>) -> WebSocket {
-    c.connect(|mut conn| async move {
+async fn echo_text(ctx: WebSocketContext<'_>) -> WebSocket {
+    ctx.upgrade(|mut conn| async move {
         while let Ok(Some(Message::Text(text))) = conn.recv().await {
-            conn.send(Message::Text(text)).await.expect("Failed to send text");
+            conn.send(text).await.expect("failed to send text");
         }
     })
 }
@@ -150,7 +154,89 @@ async fn main() {
 }
 ```
 
-### `"nightly"`：enable nightly-only functionalities
+### `"openapi"`：OpenAPI document generation
+
+Ohkami supports *as consistent as possible* OpenAPI document generation, where most of the consistency between document and behavior is automatically assured by Ohkami's internal work.
+
+Only you have to
+
+- Derive `openapi::Schema` for all your schema structs
+- Make your `Ohkami` call `.generate(openapi::OpenAPI { ... })`
+
+to generate consistent OpenAPI document. You don't need to take care of writing accurate methods, paths, parameters, contents, ... for this OpenAPI feature; All they are done by Ohkami.
+
+Of course, you can flexibly customize schemas ( by hand-implemetation of `Schema` ), descriptions or other parts ( by `#[operation]` attribute and `openapi_*` hooks ).
+
+```rust,ignore
+use ohkami::prelude::*;
+use ohkami::format::JSON;
+use ohkami::typed::status;
+use ohkami::openapi;
+
+// Derive `Schema` trait to generate
+// the schema of this struct in OpenAPI document.
+#[derive(Deserialize, openapi::Schema)]
+struct CreateUser<'req> {
+    name: &'req str,
+}
+
+#[derive(Serialize, openapi::Schema)]
+// `#[openapi(component)]` to define it as component
+// in OpenAPI document.
+#[openapi(component)]
+struct User {
+    id: usize,
+    name: String,
+}
+
+async fn create_user(
+    JSON(CreateUser { name }): JSON<CreateUser<'_>>
+) -> status::Created<JSON<User>> {
+    status::Created(JSON(User {
+        id: 42,
+        name: name.to_string()
+    }))
+}
+
+// (optionally) Set operationId, summary,
+// or override descriptions by `operation` attribute.
+#[openapi::operation({
+    summary: "...",
+    200: "List of all users",
+})]
+/// This doc comment is used for the
+/// `description` field of OpenAPI document
+async fn list_users() -> JSON<Vec<User>> {
+    JSON(vec![])
+}
+
+#[tokio::main]
+async fn main() {
+    let o = Ohkami::new((
+        "/users"
+            .GET(list_users)
+            .POST(create_user),
+    ));
+
+    // This make your Ohkami spit out `openapi.json`
+    // ( the file name is configurable by `.generate_to` ).
+    o.generate(openapi::OpenAPI {
+        title: "Users Server",
+        version: "0.1.0",
+        servers: vec![
+            openapi::Server::at("localhost:5000"),
+        ]
+    });
+
+    o.howl("localhost:5000").await;
+}
+```
+
+- Currently, only **JSON** is supported as the document format.
+- When the binary size matters, you should prepare a feature flag activating `ohkami/openapi` in your package, and put all your codes around `openapi` behind that feature via `#[cfg(feature = ...)]` or `#[cfg_attr(feature = ...)]`.
+- In `rt_worker`, `.generate` is not available because `Ohkami` can't have access to your local filesystem by `wasm32` binary on Minifalre. So ohkami provides [a CLI tool](./scripts/workers_openapi.js) to generate document from `#[ohkami::worker] Ohkami` with `openapi` feature.
+
+### `"nightly"`：nightly-only functionalities
 
 - try response
 
@@ -162,29 +248,40 @@ async fn main() {
 
 Ohkami's request handling system is called "**fang**s", and middlewares are implemented on this.
 
-*builtin fang* : `CORS`, `JWT`, `BasicAuth`, `Timeout`, `Memory`
+*builtin fang* : `CORS`, `JWT`, `BasicAuth`, `Timeout`, `Context`
 
 ```rust,no_run
 use ohkami::prelude::*;
 
 #[derive(Clone)]
-struct GreetingFang;
+struct GreetingFang(usize);
 
 /* utility trait; automatically impl `Fang` trait */
 impl FangAction for GreetingFang {
     async fn fore<'a>(&'a self, req: &'a mut Request) -> Result<(), Response> {
-        println!("Welcomm request!: {req:?}");
+        let Self(id) = self;
+        println!("[{id}] Welcome request!: {req:?}");
         Ok(())
     }
     async fn back<'a>(&'a self, res: &'a mut Response) {
-        println!("Go, response!: {res:?}");
+        let Self(id) = self;
+        println!("[{id}] Go, response!: {res:?}");
     }
 }
 
 #[tokio::main]
 async fn main() {
-    Ohkami::with(GreetingFang, (
-        "/".GET(|| async {"Hello, fangs!"})
+    Ohkami::new((
+        // register fangs to a Ohkami
+        GreetingFang(1),
+        
+        "/hello"
+            .GET(|| async {"Hello, fangs!"})
+            .POST((
+                // register *local fangs* to a handler
+                GreetingFang(2),
+                || async {"I'm `POST /hello`!"}
+            ))
     )).howl("localhost:3000").await
 }
 ```

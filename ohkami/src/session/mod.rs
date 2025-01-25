@@ -5,43 +5,18 @@ use std::panic::{AssertUnwindSafe, catch_unwind};
 use crate::__rt__::TcpStream;
 use crate::response::Upgrade;
 use crate::util::timeout_in;
-use crate::ohkami::router::RadixRouter;
+use crate::router::r#final::Router;
 use crate::{Request, Response};
 
-
-mod env {
-    #![allow(unused, non_snake_case)]
-
-    use std::sync::OnceLock;
-
-    pub(crate) fn OHKAMI_KEEPALIVE_TIMEOUT() -> u64 {
-        static OHKAMI_KEEPALIVE_TIMEOUT: OnceLock<u64> = OnceLock::new();
-        *OHKAMI_KEEPALIVE_TIMEOUT.get_or_init(|| {
-            std::env::var("OHKAMI_KEEPALIVE_TIMEOUT").ok()
-                .map(|v| v.parse().ok()).flatten()
-                .unwrap_or(42)
-        })
-    }
-
-    #[cfg(feature="ws")]
-    pub(crate) fn OHKAMI_WEBSOCKET_TIMEOUT() -> u64 {
-        static OHKAMI_WEBSOCKET_TIMEOUT: OnceLock<u64> = OnceLock::new();
-        *OHKAMI_WEBSOCKET_TIMEOUT.get_or_init(|| {
-            std::env::var("OHKAMI_WEBSOCKET_TIMEOUT").ok()
-                .map(|v| v.parse().ok()).flatten()
-                .unwrap_or(1 * 60 * 60)
-        })
-    }
-}
-
 pub(crate) struct Session {
-    router:     Arc<RadixRouter>,
+    router:     Arc<Router>,
     connection: TcpStream,
     ip:         std::net::IpAddr,
 }
+
 impl Session {
     pub(crate) fn new(
-        router:     Arc<RadixRouter>,
+        router:     Arc<Router>,
         connection: TcpStream,
         ip:         std::net::IpAddr
     ) -> Self {
@@ -65,7 +40,7 @@ impl Session {
             crate::Response::InternalServerError()
         }
 
-        match timeout_in(Duration::from_secs(env::OHKAMI_KEEPALIVE_TIMEOUT()), async {
+        match timeout_in(Duration::from_secs(crate::CONFIG.keepalive_timeout()), async {
             let mut req = Request::init(self.ip);
             let mut req = unsafe {Pin::new_unchecked(&mut req)};
             loop {
@@ -91,39 +66,29 @@ impl Session {
                 }
             }
         }).await {
-            Some(Upgrade::None) | None => {
-                crate::DEBUG!("about to shutdown connection");
-            }
+            None => crate::warning!("[WARNING] \
+                Session timeouted. In Ohkami, Keep-Alive timeout \
+                is set to 42 seconds by default and is configurable \
+                by `OHKAMI_KEEPALIVE_TIMEOUT` environment variable.\
+            "),
+
+            Some(Upgrade::None) => crate::DEBUG!("about to shutdown connection"),
 
             #[cfg(feature="ws")]
-            Some(Upgrade::WebSocket((config, handler))) => {
-                use crate::ws::{Connection, Message, CloseFrame, CloseCode};
-
+            Some(Upgrade::WebSocket(ws)) => {
                 crate::DEBUG!("WebSocket session started");
 
-                let mut conn = Connection::new(self.connection, config);
-
-                let close = timeout_in(Duration::from_secs(env::OHKAMI_WEBSOCKET_TIMEOUT()),
-                    handler(conn.clone())
+                let aborted = ws.manage_with_timeout(
+                    Duration::from_secs(crate::CONFIG.websocket_timeout()),
+                    self.connection
                 ).await;
-
-                if !conn.is_closed() {
-                    conn.send(Message::Close(Some(match close {
-                        Some(_) => {
-                            crate::DEBUG!("Closing WebSocket session...");
-                            CloseFrame {
-                                code:   CloseCode::Normal,
-                                reason: None
-                            }
-                        }
-                        None => {
-                            crate::warning!("[WARNING] WebSocket session is aborted by `OHKAMI_WEBSOCKET_TIMEOUT` (default to 1 hour, and can be set via environment variable)");
-                            CloseFrame {
-                                code:   CloseCode::Library(4000),
-                                reason: Some("OHKAMI_WEBSOCKET_TIMEOUT".into())
-                            }
-                        }
-                    }))).await.expect("Failed to send close message");
+                if aborted {
+                    crate::warning!("[WARNING] \
+                        WebSocket session aborted by timeout. In Ohkami, \
+                        WebSocket timeout is set to 3600 seconds (1 hour) \
+                        by default and is configurable by `OHKAMI_WEBSOCKET_TIMEOUT` \
+                        environment variable.\
+                    ");
                 }
 
                 crate::DEBUG!("WebSocket session finished");

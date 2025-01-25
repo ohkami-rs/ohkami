@@ -25,7 +25,7 @@ pub use from_request::*;
 use ohkami_lib::{Slice, CowSlice};
 
 #[cfg(feature="__rt_native__")]
-use crate::__rt__::AsyncReader;
+use crate::__rt__::AsyncRead;
 
 #[allow(unused)]
 use {
@@ -74,9 +74,9 @@ pub(crate) const PAYLOAD_LIMIT: usize = 1 << 32;
 /// 
 /// #[tokio::main]
 /// async fn main() {
-///     Ohkami::with(LogRequest,
+///     Ohkami::new((LogRequest,
 ///         "/".GET(|| async {"Hello, world!"})
-///     ).howl("localhost:8000").await
+///     )).howl("localhost:8000").await
 /// }
 /// ```
 /// 
@@ -141,28 +141,32 @@ pub struct Request {
     /// like `?ids=1&ids=17&ids=42`.
     /// Please use, for instance, comma-separated format like
     /// `?ids=1,17,42` ( URL-encoded to `?ids=1%2C17%2C42` )
-    pub query: Option<QueryParams>,
+    pub query: QueryParams,
 
     /// Headers of this request
     /// 
-    /// - `.{Name}()`, `.custom({Name})` to get the value
-    /// - `.set().{Name}({action})`, `.set().custom({Name}, {action})` to mutate the values
+    /// - `.{Name}()`, `.get("{Name}")` to get the value
+    /// - `.set().{Name}({action})`, `.set().x("{Name}", {action})` to mutate the values
     /// 
     /// ---
     /// 
     /// `{action}`:
     /// - just `{value}` to insert
     /// - `None` to remove
-    /// - `append({value})` to append
+    /// - `header::append({value})` to append
     /// 
-    /// `{value}`: `String`, `&'static str`, `Cow<&'static, str>`
+    /// `{value}`:
+    /// - `String`
+    /// - `&'static str`
+    /// - `Cow<'static, str>`
+    /// - `Some(Cow<'static, str>)`
     pub headers: RequestHeaders,
 
     pub payload: Option<CowSlice>,
 
     store: Store,
 
-    #[cfg(feature="__rt_native__")]
+    #[cfg(feature="__rt__")]
     /// Remote ( directly connected ) peer's IP address
     /// 
     /// ---
@@ -180,6 +184,11 @@ impl Request {
     ) -> Self {
         Self {
             #[cfg(feature="__rt_native__")]
+            ip,
+            #[cfg(feature="rt_worker")]
+            ip: crate::util::IP_0000,/* tetative */
+
+            #[cfg(feature="__rt_native__")]
             __buf__: Box::new([0; BUF_SIZE]),
 
             #[cfg(feature="rt_worker")]
@@ -191,13 +200,10 @@ impl Request {
 
             method:  Method::GET,
             path:    Path::uninit(),
-            query:   None,
+            query:   QueryParams::new(b""),
             headers: RequestHeaders::init(),
             payload: None,
             store:   Store::init(),
-            
-            #[cfg(feature="__rt_native__")]
-            ip,
         }
     }
     #[cfg(feature="__rt_native__")]
@@ -208,7 +214,7 @@ impl Request {
                 match b {0 => break, _ => *b = 0}
             }
             self.path  = Path::uninit();
-            self.query = None;
+            self.query = QueryParams::new(b"");
             self.headers.clear();
             self.payload = None;
             self.store.clear();
@@ -219,7 +225,7 @@ impl Request {
     #[inline]
     pub(crate) async fn read(
         mut self: Pin<&mut Self>,
-        stream:   &mut (impl AsyncReader + Unpin),
+        stream:   &mut (impl AsyncRead + Unpin),
     ) -> Result<Option<()>, crate::Response> {
         use crate::Response;
 
@@ -253,7 +259,7 @@ impl Request {
         self.path.init_with_request_bytes(r.read_while(|b| !matches!(b, b' ' | b'?')))?;
 
         if r.consume_oneof([" ", "?"]).unwrap() == 1 {
-            self.query = Some(QueryParams::new(r.read_while(|b| b != &b' ')));
+            self.query = QueryParams::new(r.read_while(|b| b != &b' '));
             r.advance_by(1);
         }
 
@@ -292,7 +298,7 @@ impl Request {
     #[cfg(feature="__rt_native__")]
     #[inline]
     async fn read_payload(
-        stream:        &mut (impl AsyncReader + Unpin),
+        stream:        &mut (impl AsyncRead + Unpin),
         remaining_buf: &[u8],
         size:          usize,
     ) -> CowSlice {
@@ -326,11 +332,14 @@ impl Request {
     }
 
     #[cfg(feature="rt_worker")]
-    #[cfg(feature="testing")]
+    #[cfg(debug_assertions)]
+    /// Used in `testing` module
     pub(crate) async fn read(mut self: Pin<&mut Self>,
         raw_bytes: &mut &[u8]
     ) -> Result<Option<()>, crate::Response> {
         use crate::Response;
+
+        self.ip = crate::util::IP_0000;
 
         let mut r = Reader::new(raw_bytes);
 
@@ -349,7 +358,7 @@ impl Request {
         // SAFETY: Just calling for request bytes and `self.__url__` is already initialized
         unsafe {let __url__ = self.__url__.assume_init_ref();
             let path = Slice::from_bytes(__url__.path().as_bytes()).as_bytes();
-            self.query = __url__.query().map(|str| QueryParams::new(str.as_bytes()));
+            self.query = QueryParams::new(__url__.query().unwrap_or_default().as_bytes());
             self.path.init_with_request_bytes(path)?;
         }
 
@@ -399,7 +408,7 @@ impl Request {
         // SAFETY: Just calling for request bytes and `self.__url__` is already initialized
         unsafe {let __url__ = self.__url__.assume_init_ref();
             let path = Slice::from_bytes(__url__.path().as_bytes()).as_bytes();
-            self.query = __url__.query().map(|str| QueryParams::new(str.as_bytes()));
+            self.query = QueryParams::new(__url__.query().unwrap_or_default().as_bytes());
             self.path.init_with_request_bytes(path)?;
         }
 
@@ -409,6 +418,10 @@ impl Request {
             .map_err(|_| Response::InternalServerError().with_text("Failed to read request payload"))?
             .into()
         ));
+
+        if let Some(ip) = self.headers.get("cf-connecting-ip") {
+            self.ip = ip.parse().unwrap(/* We think Cloudflare provides valid value here... */);
+        }
 
         Ok(())
     }
@@ -448,18 +461,21 @@ const _: () = {
             let mut d = f.debug_struct("Request");
             let d = &mut d;
 
+            #[cfg(feature="__rt__")] {
+                d.field("ip", &self.ip);
+            }
+
             d
                 .field("method",  &self.method)
                 .field("path",    &self.path.str())
                 .field("queries", &self.query)
-                .field("headers", &self.headers);
+                .field("headers", &self.headers)
+            ;
+
             if let Some(payload) = self.payload.as_ref().map(|cs| unsafe {cs.as_bytes()}) {
                 d.field("payload", &String::from_utf8_lossy(payload));
             }
-            #[cfg(feature="__rt_native__")] {
-                d.field("ip", &self.ip);
-            }
-
+            
             d.finish()
         }
     }

@@ -12,33 +12,31 @@ tasks:
 
   test:
     deps:
-      - task: test:examples
+      - task: test:deps
       - task: test:doc
-        # vars: { nightly: '{{.maybe_nightly}}' }
+      - task: test:examples
+      - task: test:samples
       - task: test:no_rt
-        # vars: { nightly: '{{.maybe_nightly}}' }
-      - for:  [tokio, async-std, smol, glommio, worker]
+      - for:  [tokio, async-std, smol, nio, glommio, worker]
         task: test:rt
         vars: { rt: '{{.ITEM}}' }
 
   check:
     deps:
       - task: check:no_rt
-      - for:  [tokio, async-std, smol, glommio]
+      - for:  [tokio, async-std, smol, nio, glommio]
         task: check:native_rt
         vars: { native_rt: '{{.ITEM}}' }
       - task: check:rt_worker
-        # vars: { nightly: '{{.maybe_nightly}}' }
 
   bench:dryrun:
     status:
       - (! cargo version | grep -q 'nightly')
     cmds:
       - cd benches && cargo bench --features DEBUG --no-run
-      - cd benches_rt/glommio && cargo check
-      - cd benches_rt/smol && cargo check
-      - cd benches_rt/tokio && cargo check
       - cd benches_rt/vs_actix-web && cargo check
+      - for: [tokio, smol, nio, glommio]
+        cmd: cd benches_rt/{{.ITEM}} && cargo check
 
   bench:
     status:
@@ -49,54 +47,69 @@ tasks:
       - cargo bench --features DEBUG
 
 #### tests ####
+  test:deps:
+    cmds:
+      - cargo test -p ohkami_lib
+      - cargo test -p ohkami_openapi
+
   test:doc:
     dir: ./ohkami
     cmds:
-      - cargo test --doc --features DEBUG,rt_tokio,sse,ws,{{.maybe_nightly}}
+      - cargo test --doc --no-default-features --features DEBUG,rt_tokio,sse,ws,{{.maybe_nightly}}
+      # not activating `openapi` feature for testability of README sample codes
 
   test:examples:
     dir: examples
     cmds:
-      - docker compose -f ./realworld/docker-compose.yml up -d
-      - cd ./realworld && sleep 5 && sqlx migrate run
       - cargo test
-      - docker compose -f ./realworld/docker-compose.yml down
+
+  test:samples:
+    dir: samples
+    cmds:
+      - chmod +x ./test.sh
+      - ./test.sh
 
   test:no_rt:
     dir: ./ohkami
     cmds:
       - cargo test --lib --features DEBUG,{{.maybe_nightly}}
       - cargo test --lib --features DEBUG,sse,ws,{{.maybe_nightly}}
+      - cargo test --lib --features DEBUG,openapi,{{.maybe_nightly}}
 
   test:rt:
     dir: ./ohkami
     cmds:
       - cargo test --lib --features rt_{{.rt}},DEBUG,{{.maybe_nightly}}
       - cargo test --lib --features rt_{{.rt}},DEBUG,sse,ws,{{.maybe_nightly}}
+      - cargo test --lib --features rt_{{.rt}},DEBUG,openapi,{{.maybe_nightly}}
 
 #### checks ####
   # Assure buildability without "DEBUG" feature
 
   check:no_rt:
     vars:
-      MAYBE_FEATURES_NIGHTLY:
+      MAYBE_NIGHTLY_FEATURES:
         sh: cargo version | grep -q 'nightly' && echo '--features nightly' || echo ''
-      MAYBE_FEATURES_NIGHTLY_full:
-        sh: cargo version | grep -q 'nightly' && echo '--features nightly,sse,ws' || echo '--features testing'
     dir: ./ohkami
     cmds:
-      - cargo check --lib {{.MAYBE_FEATURES_NIGHTLY}}
-      - cargo check --lib {{.MAYBE_FEATURES_NIGHTLY_full}}
+      - cargo check --lib {{.MAYBE_NIGHTLY_FEATURES}}
+      - cargo check --lib --features sse,ws,{{.maybe_nightly}}
+      - cargo check --lib --features openapi,{{.maybe_nightly}}
 
   check:native_rt:
     dir: ./ohkami
     cmds:
       - cargo check --lib --features rt_{{.native_rt}},{{.maybe_nightly}}
       - cargo check --lib --features rt_{{.native_rt}},sse,{{.maybe_nightly}}
+      - cargo check --lib --features rt_{{.native_rt}},ws,{{.maybe_nightly}}
       - cargo check --lib --features rt_{{.native_rt}},sse,ws,{{.maybe_nightly}}
+      - cargo check --lib --features rt_{{.native_rt}},openapi,{{.maybe_nightly}}
 
   check:rt_worker:
     dir: ohkami
     cmds:
       - cargo check --target wasm32-unknown-unknown --lib --features rt_worker,{{.maybe_nightly}}
+      - cargo check --target wasm32-unknown-unknown --lib --features rt_worker,sse,{{.maybe_nightly}}
+      - cargo check --target wasm32-unknown-unknown --lib --features rt_worker,ws,{{.maybe_nightly}}
       - cargo check --target wasm32-unknown-unknown --lib --features rt_worker,sse,ws,{{.maybe_nightly}}
+      - cargo check --target wasm32-unknown-unknown --lib --features rt_worker,openapi,{{.maybe_nightly}}

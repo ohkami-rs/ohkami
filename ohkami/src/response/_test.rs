@@ -1,13 +1,14 @@
-#![cfg(any(feature="rt_tokio", feature="rt_async-std"))]
+#![cfg(all(test, feature="__rt_native__", feature="DEBUG"))]
 
 use crate::Response;
-
 
 macro_rules! assert_bytes_eq {
     ($res:expr, $expected:expr) => {
         {
             let mut res_bytes = Vec::new();
-            $res.send(&mut res_bytes).await;
+            crate::__rt__::testing::block_on(
+                $res.send(&mut res_bytes)
+            );
 
             if res_bytes != $expected {
                 panic!("\n\
@@ -23,11 +24,9 @@ macro_rules! assert_bytes_eq {
     };
 }
 
-#[crate::__rt__::test]
-async fn test_response_into_bytes() {
-    let __now__ = ::ohkami_lib::imf_fixdate(
-        std::time::Duration::from_secs(crate::util::unix_timestamp())
-    );
+#[test]
+fn test_response_into_bytes() {
+    let __now__ = ::ohkami_lib::imf_fixdate(crate::util::unix_timestamp());
 
     let res = Response::NoContent();
     assert_bytes_eq!(res, format!("\
@@ -56,7 +55,7 @@ async fn test_response_into_bytes() {
     let mut res = Response::NotFound();
     res.headers.set()
         .Server("ohkami")
-        .custom("Hoge-Header", "Something-Custom");
+        .x("Hoge-Header", "Something-Custom");
     assert_bytes_eq!(res, format!("\
         HTTP/1.1 404 Not Found\r\n\
         Server: ohkami\r\n\
@@ -69,7 +68,7 @@ async fn test_response_into_bytes() {
     let mut res = Response::NotFound();
     res.headers.set()
         .Server("ohkami")
-        .custom("Hoge-Header", "Something-Custom")
+        .x("Hoge-Header", "Something-Custom")
         .SetCookie("id", "42", |d|d.Path("/").SameSiteLax())
         .SetCookie("name", "John", |d|d.Path("/where").SameSiteStrict());
     assert_bytes_eq!(res, format!("\
@@ -86,7 +85,7 @@ async fn test_response_into_bytes() {
     let mut res = Response::NotFound().with_text("sample text");
     res.headers.set()
         .Server("ohkami")
-        .custom("Hoge-Header", "Something-Custom")
+        .x("Hoge-Header", "Something-Custom")
         .SetCookie("id", "42", |d|d.Path("/").SameSiteLax())
         .SetCookie("name", "John", |d|d.Path("/where").SameSiteStrict());
     assert_bytes_eq!(res, format!("\
@@ -104,11 +103,9 @@ async fn test_response_into_bytes() {
 }
 
 #[cfg(feature="sse")]
-#[crate::__rt__::test]
-async fn test_stream_response() {
-    let __now__ = ::ohkami_lib::imf_fixdate(
-        std::time::Duration::from_secs(crate::util::unix_timestamp())
-    );
+#[test]
+fn test_stream_response() {
+    let __now__ = ::ohkami_lib::imf_fixdate(crate::util::unix_timestamp());
 
     fn repeat_by<T, F: Fn(usize) -> T + Unpin>(
         n: usize,
@@ -138,13 +135,11 @@ async fn test_stream_response() {
 
     let res = Response::OK()
         .with_stream(
-            repeat_by(3, |i| Result::<_, std::convert::Infallible>::Ok(
-                format!("This is message#{i} !")
-            ))
+            repeat_by(3, |i| format!("This is message#{i} !"))
         )
         .with_headers(|h| h
             .Server("ohkami")
-            .custom("is-stream", "true")
+            .x("is-stream", "true")
             .SetCookie("name", "John", |d|d.Path("/where").SameSiteStrict())
         );
     assert_bytes_eq!(res, format!("\
@@ -175,14 +170,12 @@ async fn test_stream_response() {
 
     let res = Response::OK()
         .with_stream(
-            repeat_by(3, |i| Result::<_, std::convert::Infallible>::Ok(
-                format!("This is message#{i}\nです")
-            ))
+            repeat_by(3, |i| format!("This is message#{i}\nです"))
         )
         .with_headers(|h| h
             .Server("ohkami")
-            .custom("is-stream", "true")
             .SetCookie("name", "John", |d|d.Path("/where").SameSiteStrict())
+            .x("is-stream", "true")
         );
     assert_bytes_eq!(res, format!("\
         HTTP/1.1 200 OK\r\n\

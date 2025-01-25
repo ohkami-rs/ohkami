@@ -1,21 +1,17 @@
-#![cfg(feature="__rt__")]
-
 #[cfg(test)]
 mod _test;
 
-pub(crate) mod build;
-pub(crate) mod router;
-
-pub use build::{Route, Routes};
+pub(crate) mod routing;
+pub use routing::{Route, Routing};
 
 use crate::fang::Fangs;
+use crate::router::base::Router;
 use std::sync::Arc;
-use router::TrieRouter;
 
 #[cfg(feature="__rt_native__")]
-use {crate::{__rt__, Session}, ohkami_lib::signal};
+use crate::{__rt__, Session};
 
-/// # Ohkami - a robust wolf who serves your web app
+/// # Ohkami - a smart wolf who serves your web app
 /// 
 /// <br>
 /// 
@@ -85,7 +81,8 @@ use {crate::{__rt__, Session}, ohkami_lib::signal};
 /// # }
 /// 
 /// fn my_ohkami() -> Ohkami {
-///     let api_ohkami = Ohkami::with((Auth,), (
+///     let api_ohkami = Ohkami::new((
+///         Auth,
 ///         "/users"
 ///             .POST(create_user),
 ///         "/users/:id"
@@ -102,13 +99,14 @@ use {crate::{__rt__, Session}, ohkami_lib::signal};
 /// 
 /// <br>
 /// 
-/// #### handler schema：
-/// `async ({path_params}?, {FromRequest type}s...) -> {IntoResponse type}`
+/// #### handler schema :
+/// `async ({path params}?, {FromRequest type}s...) -> {IntoResponse type}`
 /// 
-/// #### path_params：
-/// A tuple of types that implement `FromParam` trait.\
-/// If the path contains only one parameter, then you can omit the tuple.\
-/// (In current ohkami, at most *2* path params can be handled.)
+/// #### path params :
+/// A tuple of types that implement `FromParam` trait e.g. `(&str, usize)`.\
+/// If the path contains only one parameter, then you can omit the tuple \
+/// e.g. just `param: &str`.\
+/// (Current ohkami handles at most *2* path params.)
 /// 
 /// <br>
 /// 
@@ -127,105 +125,118 @@ use {crate::{__rt__, Session}, ohkami_lib::signal};
 ///     todo!()
 /// }
 /// 
-/// async fn handler_2(str_param: &str) -> Response {
+/// async fn handler_2(param: &str) -> Response {
 ///     todo!()
 /// }
 /// ```
 pub struct Ohkami {
-    pub(crate) routes: TrieRouter,
-
-    /// apply just before merged to another or called `howl`
-    pub(crate) fangs:  Option<Arc<dyn Fangs>>,
+    router: Router,
+    /// apply just before merged to another, or just before `howl`ing
+    fangs:  Option<Arc<dyn Fangs>>,
 }
 
-
 impl Ohkami {
-    /// Create new `Ohkami` on the routing.
+    /// Create Ohkami by the routing
     /// 
-    /// ---
-    ///
-    /// `routes` is a routing item or a tuple of them :
+    /// ### routing
+    /// 
+    /// A tuple like
     /// 
     /// ```
-    /// # use ohkami::Route;
-    /// #
-    /// # async fn handler1() -> &'static str {"1"}
-    /// # async fn handler2() -> &'static str {"2"}
-    /// # async fn handler3() -> &'static str {"3"}
-    /// #
+    /// use ohkami::Route;
+    /// 
+    /// # use ohkami::fang::FangAction;
+    /// # #[derive(Clone)] struct Logger;
+    /// # impl FangAction for Logger {}
+    /// # #[derive(Clone)] struct Auth;
+    /// # impl FangAction for Auth {}
+    /// # async fn get_handler() {}
+    /// # async fn put_handler() {}
+    /// # async fn post_handler() {}
+    /// # 
     /// # let _ =
     /// (
-    ///     "/a"
-    ///         .GET(handler1)
-    ///         .POST(handler2),
-    ///     "/b"
-    ///         .PUT(handler3),
-    ///     //...
+    ///     // 0 or more fangs of this Ohkami
+    ///     Logger,
+    ///     Auth,
+    ///     
+    ///     // 0 or more handler routes
+    ///     "/route1"
+    ///         .GET(get_handler)
+    ///         .PUT(put_handler),
+    ///     "/route2/:param"
+    ///         .POST(post_handler),
     /// )
     /// # ;
     /// ```
     /// 
-    /// ---
+    /// #### handler :
+    /// `async ({path params}?, {FromRequest type}s...) -> {IntoResponse type}`
     /// 
-    /// Handler is an _**async**_ function :
+    /// #### path params :
+    /// A tuple of types that implement `FromParam` trait e.g. `(&str, usize)`.\
+    /// If the path contains only one parameter, then you can omit the tuple \
+    /// e.g. just `param: &str`.\
+    /// (Current ohkami handles at most *2* path params.)
     /// 
-    /// > `({path params}, {FromRequest values},...) -> {IntoResponse value}`
-    ///
-    /// `{path params}` is a `FromParam` value or a tuple of them
-    pub fn new(routes: impl build::Routes) -> Self {
-        let mut router = TrieRouter::new();
-        routes.apply(&mut router);
-
-        Self {
-            routes: router,
-            fangs:  None,
-        }
-    }
-
-    /// Create new ohkami with the fangs on the routing.
+    /// ### note
     /// 
-    /// ---
-    ///
-    /// `fangs: impl Fangs` is an tuple of `Fang` items.
+    /// Fangs of this `routing` tuple are *always* called when a request once
+    /// comes to this `Ohkami` *independent of its method or detail path*.
     /// 
-    /// **NOTE**: You can omit tuple when `fangs` contains only one `Fang`.
-    /// 
-    /// <br>
-    /// 
-    /// ---
+    /// If you need to apply some fangs only for a request to specific
+    /// method and path, consider using *local fangs* :
     /// 
     /// ```
-    /// use ohkami::prelude::*;
+    /// use ohkami::{Ohkami, Route};
     /// 
-    /// #[derive(Clone)]
-    /// struct AuthFang;
-    /// impl FangAction for AuthFang {
-    ///     //...
-    /// }
-    /// 
-    /// # async fn handler1() -> &'static str {"1"}
-    /// # async fn handler2() -> &'static str {"2"}
-    /// # async fn handler3() -> &'static str {"3"}
-    /// #
+    /// # #[derive(Clone)] struct Auth;
+    /// # impl ohkami::fang::FangAction for Auth {}
+    /// # #[derive(Clone)] struct SomeFang;
+    /// # impl ohkami::fang::FangAction for SomeFang {}
+    /// # async fn get_user_profile() {}
     /// # let _ =
-    /// Ohkami::with(AuthFang, (
-    ///     "/a"
-    ///         .GET(handler1)
-    ///         .POST(handler2),
-    ///     "/b"
-    ///         .PUT(handler3),
-    ///     //...
+    /// Ohkami::new((
+    ///     "/users/:id"
+    ///         .GET((Auth, SomeFang, get_user_profile)),
+    ///         // apply `Auth`, `SomeFang` only on `GET /users/:id`
     /// ))
     /// # ;
     /// ```
-    pub fn with(fangs: impl Fangs + 'static, routes: impl build::Routes) -> Self {
-        let mut router = TrieRouter::new();
-        routes.apply(&mut router);
-
-        Self {
-            routes: router,
+    pub fn new<Fangs>(routing: impl Routing<Fangs>) -> Self {
+        let mut this = Self {
+            router: Router::new(),
+            fangs:  None,
+        };
+        routing.apply(&mut this);
+        this
+    }
+    /// Create Ohkami by the fangs and routing
+    /// 
+    /// ### note
+    /// 
+    /// This is almost the same as [`Ohkami::new`](crate::Ohkami::new), but
+    /// takes fangs and handler routes separately.
+    pub fn with(fangs: impl Fangs + 'static, routes: impl Routing) -> Self {
+        let mut this = Self {
+            router: Router::new(),
             fangs:  Some(Arc::new(fangs)),
+        };
+        routes.apply(&mut this);
+        this
+    }
+
+    pub(crate) fn into_router(self) -> Router {
+        let Self { fangs, mut router } = self;
+
+        if let Some(fangs) = fangs {
+            router.apply_fangs(router.id(), fangs);
         }
+
+        #[cfg(feature="DEBUG")]
+        println!("{router:#?}");
+
+        router
     }
 
     #[cfg(feature="__rt_native__")]
@@ -236,10 +247,11 @@ impl Ohkami {
     /// - `tokio::net::ToSocketAddrs` if using `tokio`
     /// - `async_std::net::ToSocketAddrs` if using `async-std`
     /// - `smol::net::AsyncToSocketAddrs` if using `smol`
-    /// - `std::net::ToSocketAddrs` if using `glommio`
+    /// - `std::net::ToSocketAddrs` if using `nio` or `glommio`
     /// 
-    /// *note* : Keep-Alive timeout is 42 seconds and this is not
-    /// configureable by user (it'll be in future version...)
+    /// *note* : Keep-Alive timeout is 42 seconds by default.
+    /// This is configureable by `OHKAMI_KEEPALIVE_TIMEOUT`
+    /// environment variable.
     /// 
     /// <br>
     /// 
@@ -291,141 +303,44 @@ impl Ohkami {
     /// }
     /// ```
     pub async fn howl(self, address: impl __rt__::ToSocketAddrs) {
-        let router = Arc::new(self.into_router().into_radix());
+        let (router, _) = self.into_router().finalize();
+        let router = Arc::new(router);
 
-        #[cfg(any(feature="rt_tokio",feature="rt_async-std",feature="rt_smol"))]
-        let listener = __rt__::TcpListener::bind(address).await.expect("Failed to bind TCP listener");
-        #[cfg(any(feature="rt_glommio"))]
-        let listener = __rt__::TcpListener::bind(address).expect("Failed to bind TCP listener");
-        
-        let (close_tx, close_rx) = signal::watch::channel(());
+        let listener = __rt__::bind(address).await;
 
-        let ctrl_c = signal::ctrl_c();
-        let (ctrl_c_tx, ctrl_c_rx) = signal::watch::channel(());
+        let (wg, ctrl_c) = (sync::WaitGroup::new(), sync::CtrlC::new());
 
-        #[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
-        __rt__::spawn(async {
-            ctrl_c.await.expect("Something was wrong around Ctrl-C");
-            drop(ctrl_c_rx);
-        });
-        #[cfg(any(feature="rt_smol",feature="rt_glommio"))]
-        __rt__::spawn(async {
-            ctrl_c.await.expect("Something was wrong around Ctrl-C");
-            drop(ctrl_c_rx);
-        }).detach();
-
-        #[cfg(feature="rt_tokio")] {
-            loop {
-                __rt__::select! {
-                    accept = listener.accept() => {
-                        let Ok((connection, addr)) = accept else {continue};
-
-                        let session = Session::new(
-                            router.clone(),
-                            connection,
-                            addr.ip()
-                        );
-
-                        let close_rx = close_rx.clone();
-                        __rt__::spawn(async {
-                            session.manage().await;
-                            drop(close_rx)
-                        });
-                    }
-                    _ = ctrl_c_tx.closed() => {
-                        crate::DEBUG!("Recieved Ctrl-C, trying graceful shutdown");
-                        drop(listener);
-                        break
-                    }
+        while let Some(accept) = ctrl_c.until_interrupt(listener.accept()).await {
+            let (connection, addr) = {
+                #[cfg(any(feature="rt_tokio", feature="rt_async-std", feature="rt_smol", feature="rt_nio"))] {
+                    let Ok((connection, addr)) = accept else {continue};
+                    (connection, addr)
                 }
-            }
+                #[cfg(any(feature="rt_glommio"))] {
+                    let Ok(connection) = accept else {continue};
+                    let Ok(addr) = connection.peer_addr() else {continue};
+                    (connection, addr)
+                }
+            };
+
+            let session = Session::new(
+                router.clone(),
+                connection,
+                addr.ip()
+            );
+
+            let wg = wg.add();
+            __rt__::spawn(async move {
+                session.manage().await;
+                wg.done();
+            });
         }
 
-        #[cfg(feature="rt_async-std")] {
-            loop {
-                __rt__::select! {
-                    accept = __rt__::FutureExt::fuse(listener.accept()) => {
-                        let Ok((connection, addr)) = accept else {continue};
+        crate::DEBUG!("interrupted, trying graceful shutdown...");
+        drop(listener);
 
-                        let session = Session::new(
-                            router.clone(),
-                            connection,
-                            addr.ip()
-                        );
-
-                        let close_rx = close_rx.clone();
-                        __rt__::spawn(async {
-                            session.manage().await;
-                            drop(close_rx)
-                        });
-                    }
-                    _ = __rt__::FutureExt::fuse(ctrl_c_tx.closed()) => {
-                        crate::DEBUG!("Recieved Ctrl-C, trying graceful shutdown");
-                        drop(listener);
-                        break
-                    }
-                }
-            }
-        }
-        
-        #[cfg(feature="rt_smol")] {
-            loop {
-                __rt__::select! {
-                    accept = __rt__::FutureExt::fuse(listener.accept()) => {
-                        let Ok((connection, addr)) = accept else {continue};
-
-                        let session = Session::new(
-                            router.clone(),
-                            connection,
-                            addr.ip()
-                        );
-
-                        let close_rx = close_rx.clone();
-                        __rt__::spawn(async {
-                            session.manage().await;
-                            drop(close_rx)
-                        }).detach();
-                    }
-                    _ = __rt__::FutureExt::fuse(ctrl_c_tx.closed()) => {
-                        crate::DEBUG!("Recieved Ctrl-C, trying graceful shutdown");
-                        drop(listener);
-                        break
-                    }
-                }
-            }
-        }
-
-        #[cfg(feature="rt_glommio")] {
-            loop {
-                __rt__::select! {
-                    accept = __rt__::FutureExt::fuse(listener.accept()) => {
-                        let Ok(connection) = accept else {continue};
-                        let Ok(addr) = connection.peer_addr() else {continue};
-        
-                        let session = Session::new(
-                            router.clone(),
-                            connection,
-                            addr.ip()
-                        );
-
-                        let close_rx = close_rx.clone();
-                        __rt__::spawn(async {
-                            session.manage().await;
-                            drop(close_rx)
-                        }).detach();
-                    }
-                    _ = __rt__::FutureExt::fuse(ctrl_c_tx.closed()) => {
-                        crate::DEBUG!("Recieved Ctrl-C, trying graceful shutdown");
-                        drop(listener);
-                        break
-                    }
-                }
-            }
-        }
-
-        crate::DEBUG!("Waiting {} session(s) to finish...", close_tx.receiver_count());
-        drop(close_rx);
-        close_tx.closed().await;
+        crate::DEBUG!("waiting {} session(s) to finish...", wg.count());
+        wg.await;
     }
 
     #[cfg(feature="rt_worker")]
@@ -448,12 +363,8 @@ impl Ohkami {
 
         let ohkami_res = match take_over {
             Ok(()) => {#[cfg(feature="DEBUG")] ::worker::console_debug!("`take_over` succeed");
-
-                let router = self.into_router();
-                #[cfg(feature="DEBUG")] ::worker::console_debug!("Done `Ohkami::into_router`");
-
-                let router = router.into_radix();
-                #[cfg(feature="DEBUG")] ::worker::console_debug!("Done `TrieRouter::into_radix` (without compressions)");
+                let (router, _) = self.into_router().finalize();
+                #[cfg(feature="DEBUG")] ::worker::console_debug!("Done `self.router.finalize`");
                 
                 let mut res = router.handle(&mut ohkami_req).await;
                 res.complete();
@@ -470,19 +381,238 @@ impl Ohkami {
 
         res
     }
+
+    #[cfg(feature="openapi")]
+    #[cfg(feature="__rt_native__")]
+    /// Generate OpenAPI document.
+    /// 
+    /// ### note
+    ///  
+    /// - Currently, only **JSON** is supported as the document format.
+    /// - When the binary size matters, you should prepare a feature flag
+    ///   activating `ohkami/openapi` in your package, and put all your codes
+    ///   around `openapi` behind that feature via `#[cfg(feature = ...)]` or
+    ///   `#[cfg_attr(feature = ...)]`.
+    /// - This generates `openapi.json`. Use `generate_to` to configure the
+    ///   file path.
+    /// 
+    /// ### example
+    /// 
+    /// ```no_run
+    /// use ohkami::prelude::*;
+    /// use ohkami::openapi::{OpenAPI, Server};
+    /// 
+    /// // An ordinal Ohkami definition, not special
+    /// fn my_ohkami() -> Ohkami {
+    ///     Ohkami::new((
+    ///         "/hello"
+    ///             .GET(|| async {"Hello, OpenAPI!"}),
+    ///     ))
+    /// }
+    /// 
+    /// #[tokio::main]
+    /// async fn main() {
+    ///     let o = my_ohkami();
+    /// 
+    ///     // Here generating openapi.json
+    ///     o.generate(OpenAPI {
+    ///         title: "Sample API",
+    ///         version: "0.1.9",
+    ///         servers: vec![
+    ///             Server::at("http://api.example.com/v1")
+    ///                 .description("Main (production) server"),
+    ///             Server::at("http://staging-api.example.com")
+    ///                 .description("Internal staging server for testing")
+    ///         ]
+    ///      });
+    /// 
+    ///     o.howl("localhost:5000").await
+    /// }
+    /// ```
+    pub fn generate(&self, metadata: crate::openapi::OpenAPI) {
+        self.generate_to("openapi.json", metadata)
+    }
+
+    #[cfg(feature="openapi")]
+    #[cfg(feature="__rt_native__")]
+    pub fn generate_to(&self, file_path: impl AsRef<std::path::Path>, metadata: crate::openapi::OpenAPI) {
+        let file_path = file_path.as_ref();
+        std::fs::write(file_path, self.__openapi_document_bytes__(metadata))
+            .expect(&format!("failed to write OpenAPI document JSON to {}", file_path.display()))
+    }
+
+    #[cfg(feature="openapi")]
+    #[doc(hidden)]
+    pub fn __openapi_document_bytes__(&self, openapi: crate::openapi::OpenAPI) -> Vec<u8> {
+        let (router, routes) = (Self {
+            router: self.router.clone(),
+            fangs:  self.fangs.clone()
+        }).into_router().finalize();
+
+        crate::DEBUG!("[openapi_document_bytes] routes = {routes:#?}, router = {router:#?}");
+
+        let doc = router.gen_openapi_doc(routes, openapi);
+
+        let mut bytes = ::serde_json::to_vec_pretty(&doc).expect("failed to serialize OpenAPI document");
+        bytes.push(b'\n');
+
+        bytes
+    }
 }
 
-impl Ohkami {
-    pub(crate) fn into_router(self) -> TrieRouter {
-        let Self { routes: mut router, fangs } = self;
+#[cfg(feature="__rt_native__")]
+mod sync {
+    pub struct WaitGroup(std::ptr::NonNull<
+        std::sync::atomic::AtomicUsize
+    >);
+    const _: () = {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        use std::ptr::NonNull;
+        use std::future::Future;
+        use std::task::{Context, Poll};
+        use std::pin::Pin;
 
-        if let Some(fangs) = fangs {
-            router.apply_fangs(router.id(), fangs);
+        unsafe impl Send for WaitGroup {}
+        unsafe impl Sync for WaitGroup {}
+
+        impl WaitGroup {
+            pub fn new() -> Self {
+                let n = AtomicUsize::new(0);
+                let n = Box::leak(Box::new(n));
+                Self(NonNull::new(n).unwrap())
+            }
+
+            #[cfg(feature="DEBUG")]
+            pub fn count(&self) -> usize {
+                unsafe {self.0.as_ref()}.load(Ordering::Relaxed)
+            }
+
+            #[inline]
+            pub fn add(&self) -> Self {
+                let ptr = self.0;
+                unsafe {ptr.as_ref()}.fetch_add(1, Ordering::Relaxed);
+                Self(ptr)
+            }
+
+            pub fn done(self) {
+                /* just drop */
+            }
         }
 
-        #[cfg(feature="DEBUG")]
-        println!("{router:#?}");
+        impl Drop for WaitGroup {
+            #[inline]
+            fn drop(&mut self) {
+                unsafe {self.0.as_ref()}.fetch_sub(1, Ordering::Release);
+            }
+        }
 
-        router
-    }
+        impl Future for WaitGroup {
+            type Output = ();
+            fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+                if unsafe {self.0.as_ref()}.load(Ordering::Acquire) == 0 {
+                    crate::DEBUG!("[WaitGroup::poll] Ready");
+                    Poll::Ready(())
+                } else {
+                    cx.waker().wake_by_ref();
+                    Poll::Pending
+                }
+            }
+        }
+    };
+
+    pub struct CtrlC;
+    const _: () = {
+        use std::sync::atomic::{AtomicBool, Ordering};
+        use std::future::Future;
+        use std::task::{Context, Poll, Waker};
+        use std::pin::Pin;
+
+        #[cfg(any(feature="rt_tokio", feature="rt_async-std", feature="rt_smol", feature="rt_nio"))]
+        use std::{sync::atomic::AtomicPtr, ptr::null_mut};
+        #[cfg(any(feature="rt_glommio"))]
+        use std::sync::Mutex;
+    
+        #[cfg(any(feature="rt_tokio", feature="rt_async-std", feature="rt_smol", feature="rt_nio"))]
+        static WAKER: AtomicPtr<Waker> = AtomicPtr::new(null_mut());
+        #[cfg(any(feature="rt_glommio"))]
+        static WAKER: Mutex<Vec<(usize, Waker)>> = Mutex::new(Vec::new());
+
+        static CATCH: AtomicBool = AtomicBool::new(false);
+
+        impl CtrlC {
+            pub fn new() -> Self {
+                #[cfg(any(feature="rt_tokio", feature="rt_async-std", feature="rt_smol", feature="rt_nio"))]
+                ::ctrlc::set_handler(|| {
+                    CATCH.store(true, Ordering::SeqCst);
+                    let waker = WAKER.swap(null_mut(), Ordering::SeqCst);
+                    if !waker.is_null() {
+                        unsafe {Box::from_raw(waker)}.wake();
+                    }
+                }).expect("Something went wrong with Ctrl-C");
+
+                #[cfg(any(feature="rt_glommio"))]
+                ::ctrlc::try_set_handler(|| {
+                    CATCH.store(true, Ordering::SeqCst);
+                    let lock = &mut *WAKER.lock().unwrap();
+                    crate::DEBUG!("Finally {} executors on {} CPU(s)", lock.len(), num_cpus::get());
+                    for (_, w) in std::mem::take(lock) {
+                        w.wake();
+                    }
+                }).ok();
+
+                Self
+            }
+
+            pub fn until_interrupt<T>(&self, task: impl Future<Output = T>) -> impl Future<Output = Option<T>> {
+                return UntilInterrupt(task);
+
+                struct UntilInterrupt<F: Future>(F);
+                impl<F: Future> Future for UntilInterrupt<F> {
+                    type Output = Option<F::Output>;
+
+                    #[inline]
+                    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+                        match unsafe {Pin::new_unchecked(&mut self.get_unchecked_mut().0)}.poll(cx) {
+                            Poll::Ready(t) => Poll::Ready(Some(t)),
+                            Poll::Pending  => if CATCH.load(Ordering::SeqCst) {
+                                crate::DEBUG!("[CtrlC::catch] Ready");
+                                Poll::Ready(None)
+                            } else {
+                                #[cfg(any(feature="rt_tokio", feature="rt_async-std", feature="rt_smol", feature="rt_nio"))] {
+                                    let prev_waker = WAKER.swap(
+                                        Box::into_raw(Box::new(cx.waker().clone())),
+                                        Ordering::SeqCst
+                                    );
+                                    if !prev_waker.is_null() {
+                                        unsafe {prev_waker.drop_in_place()}
+                                    }
+                                }
+                                #[cfg(any(feature="rt_glommio"))] {
+                                    let current_id = glommio::executor().id();
+                                    let current_waker = cx.waker().clone();
+                                    let mut lock = WAKER.lock().unwrap();
+                                    match lock.iter_mut().find(|(id, _)| (*id == current_id)) {
+                                        Some(prev) => *prev = (current_id, current_waker),
+                                        None       => lock.push((current_id, current_waker)),
+                                    }
+                                }
+                                Poll::Pending
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    };
+}
+
+#[cfg(all(debug_assertions, feature="__rt_native__"))]
+#[cfg(test)]
+#[test] fn can_howl_on_any_native_async_runtime() {
+    __rt__::testing::block_on(async {
+        crate::util::timeout_in(
+            std::time::Duration::from_secs(3),
+            Ohkami::new(()).howl(("localhost", __rt__::testing::PORT))
+        ).await
+    });
 }

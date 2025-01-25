@@ -24,7 +24,8 @@ struct FormData<'req> {
 }
 
 async fn post_submit(
-    Multipart(form): Multipart<FormData<'_>>) -> NoContent {
+    Multipart(form): Multipart<FormData<'_>>
+) -> NoContent {
     println!("\n\
         ===== submit =====\n\
         [account name] {:?}\n\
@@ -52,7 +53,7 @@ impl FangAction for Logger {
 
 #[tokio::main]
 async fn main() {
-    Ohkami::with((Logger,), (
+    Ohkami::new((Logger,
         "/form"  .GET(get_form),
         "/submit".POST(post_submit),
     )).howl("localhost:5000").await

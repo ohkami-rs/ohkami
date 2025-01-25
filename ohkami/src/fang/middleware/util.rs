@@ -1,5 +1,9 @@
 use super::super::{Fang, FangProc};
+use super::super::bound::{SendSyncOnNative, SendOnNativeFuture};
 use crate::{Request, Response};
+
+#[cfg(feature="openapi")]
+use crate::openapi;
 
 
 /// # Fang action - utility wrapper of `Fang`
@@ -62,22 +66,31 @@ use crate::{Request, Response};
 ///     }
 /// }
 /// ```
-pub trait FangAction: Clone + Send + Sync + 'static {
+pub trait FangAction: Clone + SendSyncOnNative + 'static {
     /// *fore fang*, that bites a request before a handler.
     /// 
-    /// **Default**: just return `Ok(())`
+    /// ### default
+    /// just return `Ok(())`
     #[allow(unused_variables)]
-    fn fore<'a>(&'a self, req: &'a mut Request) -> impl std::future::Future<Output = Result<(), Response>> + Send {
+    fn fore<'a>(&'a self, req: &'a mut Request) -> impl SendOnNativeFuture<Result<(), Response>> {
         async {Ok(())}
     }
+
     /// *back fang*, that bites a response after a handler.
     /// 
-    /// **Default**: just return `()`
+    /// ### default
+    /// just return `()`
     #[allow(unused_variables)]
-    fn back<'a>(&'a self, res: &'a mut Response) -> impl std::future::Future<Output = ()> + Send {
+    fn back<'a>(&'a self, res: &'a mut Response) -> impl SendOnNativeFuture<()> {
         async {}
     }
-} const _: () = {
+
+    #[cfg(feature="openapi")]
+    fn openapi_map_operation(operation: openapi::Operation) -> openapi::Operation {
+        operation
+    }
+}
+const _: () = {
     impl<A: FangAction, I: FangProc> Fang<I> for A {
         type Proc = FangActionProc<A, I>;
         fn chain(&self, inner: I) -> Self::Proc {
@@ -85,6 +98,11 @@ pub trait FangAction: Clone + Send + Sync + 'static {
                 action: self.clone(),
                 inner
             }
+        }
+
+        #[cfg(feature="openapi")]
+        fn openapi_map_operation(&self, operation: openapi::Operation) -> openapi::Operation {
+            <Self as FangAction>::openapi_map_operation(operation)
         }
     }
 
@@ -111,14 +129,14 @@ pub trait FangAction: Clone + Send + Sync + 'static {
 
 
 
-#[cfg(all(test, feature="testing", any(feature="rt_tokio",feature="rt_async-std")))]
+#[cfg(all(test, debug_assertions, feature="__rt_native__", feature="DEBUG"))]
 mod test {
     use super::*;
     use crate::prelude::*;
     use crate::testing::*;
 
-    #[crate::__rt__::test]
-    async fn availablity() {
+    #[test]
+    fn availablity() {
         use std::sync::{Mutex, OnceLock};
 
         fn messages() -> &'static Mutex<Vec<String>> {
@@ -166,24 +184,26 @@ mod test {
             }
         }
 
-        let t = Ohkami::with((
+        let t = Ohkami::new((
             GreetingFang { name: "Clerk" },
             GreetingFangWithAction { name: "John" },
-        ), (
-            "/greet".POST(|| async {"Hi, I'm Handler!"}),
+            "/greet"
+                .POST(|| async {"Hi, I'm Handler!"}),
         )).test();
 
-        {
-            let req = TestRequest::POST("/greet");
-            let res = t.oneshot(req).await;
+        crate::__rt__::testing::block_on(async {
+            {
+                let req = TestRequest::POST("/greet");
+                let res = t.oneshot(req).await;
 
-            assert_eq!(res.status(), Status::OK);
-            assert_eq!(&*messages().lock().unwrap(), &[
-                "Hello, Clerk!",
-                "Hello, John!",
-                "Bye, John!",
-                "Bye, Clerk!",
-            ]);
-        }
+                assert_eq!(res.status(), Status::OK);
+                assert_eq!(&*messages().lock().unwrap(), &[
+                    "Hello, Clerk!",
+                    "Hello, John!",
+                    "Bye, John!",
+                    "Bye, Clerk!",
+                ]);
+            }
+        });
     }
 }

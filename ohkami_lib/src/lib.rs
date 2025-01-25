@@ -1,4 +1,4 @@
-pub mod base64;
+pub mod map;
 
 pub mod mime;
 
@@ -22,5 +22,3 @@ pub mod stream;
 #[cfg(feature="stream")]
 pub use stream::{Stream, StreamExt};
 
-#[cfg(feature="signal")]
-pub mod signal;

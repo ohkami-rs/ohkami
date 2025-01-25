@@ -1,3 +1,5 @@
+#![cfg(debug_assertions)]
+
 //! Ohkami testing tools
 //! 
 //! <br>
@@ -28,8 +30,7 @@
 //! ```
 
 use crate::{Response, Request, Ohkami, Status, Method};
-use crate::ohkami::router::RadixRouter;
-use crate::response::ResponseHeader;
+use crate::router::r#final::Router;
 
 use std::borrow::Cow;
 use std::collections::HashMap;
@@ -41,11 +42,12 @@ pub trait Testing {
     fn test(self) -> TestingOhkami;
 }
 
-pub struct TestingOhkami(Arc<RadixRouter>);
+pub struct TestingOhkami(Arc<Router>);
 
 impl Testing for Ohkami {
     fn test(self) -> TestingOhkami {
-        TestingOhkami(Arc::new(self.into_router().into_radix()))
+        let (f, _) = self.into_router().finalize();
+        TestingOhkami(Arc::new(f))
     }
 }
 
@@ -188,9 +190,7 @@ impl TestResponse {
     }
 
     pub fn header(&self, name: &'static str) -> Option<&str> {
-        ResponseHeader::from_bytes(name.as_bytes())
-            .and_then(|h| self.0.headers.get(h))
-            .or_else(|| self.0.headers.get_custom(name))
+        self.0.headers.get(name)
     }
     pub fn headers(&self) -> impl Iterator<Item = (&str, &str)> {
         self.0.headers.iter()

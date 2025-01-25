@@ -1,9 +1,9 @@
 use proc_macro2::{Span, TokenStream};
-use syn::{Field, GenericParam, ItemStruct, Lifetime, LifetimeDef, Result};
+use syn::{Field, ItemStruct, GenericParam, LifetimeParam, Lifetime};
 use quote::quote;
 
 
-pub(super) fn derive_from_request(target: TokenStream) -> Result<TokenStream> {
+pub(super) fn derive_from_request(target: TokenStream) -> syn::Result<TokenStream> {
     let s: ItemStruct = syn::parse2(target)?;
 
     let name = &s.ident;
@@ -14,7 +14,7 @@ pub(super) fn derive_from_request(target: TokenStream) -> Result<TokenStream> {
 
     let impl_lifetime = match s.generics.lifetimes().count() {
         0 => {
-            let il = GenericParam::Lifetime(LifetimeDef::new(
+            let il = GenericParam::Lifetime(LifetimeParam::new(
                 Lifetime::new("'__impl_from_request_lifetime", Span::call_site())
             ));
             generics_params_l.push(il.clone());

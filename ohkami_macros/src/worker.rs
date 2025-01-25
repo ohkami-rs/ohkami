@@ -1,9 +1,15 @@
+#![cfg(feature="worker")]
+
+mod meta;
+
+use crate::util;
 use proc_macro2::{Span, TokenStream};
 use syn::{spanned::Spanned, Error, Ident, ItemFn, ItemStruct, Result};
 use quote::quote;
 
 
-pub fn worker(ohkami_fn: TokenStream) -> Result<TokenStream> {
+pub fn worker(args: TokenStream, ohkami_fn: TokenStream) -> Result<TokenStream> {
+    let worker_meta: meta::WorkerMeta = syn::parse2(args)?;
     let ohkami_fn: ItemFn = syn::parse2(ohkami_fn)?;
 
     let gen_ohkami = {
@@ -17,8 +23,53 @@ pub fn worker(ohkami_fn: TokenStream) -> Result<TokenStream> {
         }
     };
 
+    let openapi_fn = cfg!(feature="openapi").then_some({
+        let title   = worker_meta.title;
+        let version = worker_meta.version;
+        let servers = worker_meta.servers.into_iter()
+            .map(|meta::Server { url, description, variables }| {
+                let mut def = quote! {
+                    ::ohkami::openapi::Server::at(#url)
+                };
+                if let Some(description) = description {
+                    def.extend(quote! {
+                        .description(#description)
+                    });
+                }
+                if let Some(variables) = variables {
+                    for (name, meta::ServerVariable { r#default, r#enum, .. }) in variables {
+                        let candidates = r#enum.unwrap_or_else(Vec::new);
+                        def.extend(quote! {
+                            .var(#name, #r#default, [ #(#candidates),* ])
+                        });
+                    }
+                }
+                def
+            });
+
+        quote! {
+            const _: () = {
+                // `#[wasm_bindgen]` direcly references this modules in epxpaned code
+                use ::worker::{wasm_bindgen, wasm_bindgen_futures};
+
+                #[doc(hidden)]
+                #[::worker::wasm_bindgen::prelude::wasm_bindgen(js_name = "OpenAPIDocumentBytes")]
+                pub async fn __openapi_document_bytes__() -> Vec<u8> {
+                    let ohkami: ::ohkami::Ohkami = #gen_ohkami;
+                    ohkami.__openapi_document_bytes__(::ohkami::openapi::OpenAPI {
+                        title:   #title,
+                        version: #version,
+                        servers: vec![ #(#servers),* ],
+                    })
+                }
+            };
+        }
+    });
+
     Ok(quote! {
         #ohkami_fn
+
+        #openapi_fn
 
         #[::worker::event(fetch)]
         async fn main(
@@ -31,7 +82,6 @@ pub fn worker(ohkami_fn: TokenStream) -> Result<TokenStream> {
         }
     })
 }
-
 
 pub fn bindings(env: TokenStream, bindings_struct: TokenStream) -> Result<TokenStream> {
     fn callsite(msg: impl std::fmt::Display) -> Error {
@@ -59,50 +109,18 @@ pub fn bindings(env: TokenStream, bindings_struct: TokenStream) -> Result<TokenS
         }
     }
 
-    let wrangler_toml: toml::Value = {use std::{io::Read, fs::File};
-        let mut file = File::open("wrangler.toml").or_else(|_| {
-            /* workspace mode */
-
-            let cargo_toml = {
-                let mut file = File::open("Cargo.toml").map_err(|_| callsite("Cargo.toml is not found"))?;
-                let mut buf = String::new();
-                file.read_to_string(&mut buf).map_err(|_| callsite("wrangler.toml found but it's not readable"))?;
-                toml::from_str::<toml::Value>(&buf).map_err(|_| callsite("Failed to read wrangler.toml"))?
-            };
-
-            let Some(workspace) = cargo_toml.as_table().unwrap().get("workspace") else {
-                return Err(callsite("Unexpectedly no `workspace` found in project root Cargo.toml"))
-            };
-            let members = workspace
-                .as_table().ok_or_else(|| callsite("Invalid Cargo.toml"))?
-                .get("members").ok_or_else(|| callsite("No `members` found in `[workspace]`"))?
-                .as_array().ok_or_else(|| callsite("Invalid `workspace.members`"))?;
-
-            let mut wrangler_tomls = Vec::with_capacity(1);
-            for member in members {
-                let path = member.as_str().ok_or_else(|| callsite("Invalid member"))?;
-                if let Ok(wrangler_toml) = File::open(std::path::PathBuf::from_iter([path, "wrangler.toml"])) {
-                    wrangler_tomls.push(wrangler_toml)
-                }
-            }
-
-            (wrangler_tomls.len() == 1)
-                .then_some(wrangler_tomls.pop().unwrap())
-                .ok_or_else(|| callsite("More than one workspace members have wrangler.toml, which is not supported"))
-        }).map_err(|_| callsite("\
-            `wrangler.toml` doesn't exists or isn't readable. \
-            Or, if you call me in a workspace, maybe more then one members have \
-            `wrangler.toml`s and it's not supported. \
-        "))?;
-
+    let wrangler_toml: toml::Value = {use std::io::Read;
+        let mut file = util::find_a_file_in_maybe_workspace("wrangler.toml")
+            .map_err(|e| callsite(e.to_string()))?;
         let mut buf = String::new();
-        file.read_to_string(&mut buf).map_err(|_| callsite("wrangler.toml found but it's not readable"))?;
-        toml::from_str(&buf).map_err(|_| callsite("Failed to read wrangler.toml"))?
+        file.read_to_string(&mut buf)
+            .map_err(|_| callsite("wrangler.toml found but it's not readable"))?;
+        toml::from_str(&buf)
+            .map_err(|_| callsite("Failed to read wrangler.toml"))?
     };
 
     let config: &toml::Table = {
         let top_level = wrangler_toml.as_table().ok_or_else(invalid_wrangler_toml)?;
-
         match env {
             None      => top_level,
             Some(env) => top_level
@@ -119,6 +137,7 @@ pub fn bindings(env: TokenStream, bindings_struct: TokenStream) -> Result<TokenS
         KV,
         Service,
         Queue,
+        DurableObject,
     }
 
     let name = &bindings_struct.ident;
@@ -185,17 +204,32 @@ pub fn bindings(env: TokenStream, bindings_struct: TokenStream) -> Result<TokenS
             }
         }
 
+        if let Some(toml::Value::Table(durable_objects)) = config.get("durable_objects") {
+            if let Some(toml::Value::Array(durable_object_bindings)) = durable_objects.get("bindings") {
+                for binding in durable_object_bindings {
+                    let name = binding.as_table().ok_or_else(invalid_wrangler_toml)?
+                        .get("name").ok_or_else(|| callsite("Invalid wrangler.toml: a binding doesn't have `binding = \"...\"`"))?
+                        .as_str().ok_or_else(invalid_wrangler_toml)?;
+                    bindings.push((
+                        syn::parse_str(name).map_err(|e| callsite(format!("Can't bind binding `{name}` into struct: {e}")))?,
+                        Binding::DurableObject
+                    ))
+                }
+            }
+        }
+
         bindings
     };
 
     let declare_struct = {
         let fields = bindings.iter().map(|(name, binding)| {
             let ty = match binding {
-                Binding::Variable(_) => quote!(&'static str),
-                Binding::D1          => quote!(::worker::d1::D1Database),
-                Binding::KV          => quote!(::worker::kv::KvStore),
-                Binding::Queue       => quote!(::worker::Queue),
-                Binding::Service     => quote!(::worker::Fetcher),
+                Binding::Variable(_)   => quote!(&'static str),
+                Binding::D1            => quote!(::worker::d1::D1Database),
+                Binding::KV            => quote!(::worker::kv::KvStore),
+                Binding::Queue         => quote!(::worker::Queue),
+                Binding::Service       => quote!(::worker::Fetcher),
+                Binding::DurableObject => quote!(::worker::ObjectNamespace),
             };
 
             quote! {
@@ -261,7 +295,14 @@ pub fn bindings(env: TokenStream, bindings_struct: TokenStream) -> Result<TokenS
                             return ::std::option::Option::Some(::std::result::Result::Err(::ohkami::Response::InternalServerError()))
                         }
                     }
-                }
+                },
+                Binding::DurableObject => quote! {
+                    match req.env().durable_object(#name_str) {
+                        Ok(binding) => binding, Err(e) => {::worker::console_error!("{e}");
+                            return ::std::option::Option::Some(::std::result::Result::Err(::ohkami::Response::InternalServerError()))
+                        }
+                    }
+                },
             };
 
             quote! {

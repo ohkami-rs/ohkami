@@ -32,9 +32,22 @@ macro_rules! status {
             }
         }
 
+        impl From<u16> for Status {
+            fn from(code: u16) -> Self {
+                match code {
+                    $($code => Self::$name,)*
+                    _ => panic!("Status code out of range: `{code}`")
+                }
+            }
+        }
+
         #[allow(non_snake_case)]
         impl Response {
             $(
+                #[doc = "`"]
+                #[doc = $message]
+                #[doc = "`"]
+                #[doc = "empty Response"]
                 #[inline(always)]
                 pub fn $name() -> Self {
                     Self {

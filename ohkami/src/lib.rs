@@ -11,13 +11,9 @@
 //! <br>
 //! 
 //! - *macro-less and type-safe* APIs for intuitive and declarative code
-//! - *multi runtimes* are supported：`tokio`, `async-std`, `worker` (Cloudflare Workers)
-//! 
-//! <div align="right">
-//!     <a href="https://github.com/ohkami-rs/ohkami/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/crates/l/ohkami.svg" /></a>
-//!     <a href="https://github.com/ohkami-rs/ohkami/actions"><img alt="build check status of ohkami" src="https://github.com/ohkami-rs/ohkami/actions/workflows/CI.yml/badge.svg"/></a>
-//!     <a href="https://crates.io/crates/ohkami"><img alt="crates.io" src="https://img.shields.io/crates/v/ohkami" /></a>
-//! </div>
+//! - *various runtimes* are supported：`tokio`, `async-std`, `smol`, `nio`, `glommio` and `worker` (Cloudflare Workers)
+//! - *extremely fast*：[Web Frameworks Benchmark](https://web-frameworks-benchmark.netlify.app/result)
+//! - no-network testing, well-structured middlewares, Server-Sent Events, WebSocket, OpenAPI document genration, ...
 
 
 #![allow(incomplete_features)]
@@ -28,53 +24,38 @@
 
 
 #[cfg(any(
-    all(feature="rt_tokio",     feature="rt_async-std"),
-    all(feature="rt_tokio",     feature="rt_smol"),
-    all(feature="rt_tokio",     feature="rt_glommio"),
-    all(feature="rt_tokio",     feature="rt_worker"),
-    all(feature="rt_async-std", feature="rt_smol"),
-    all(feature="rt_async-std", feature="rt_glommio"),
-    all(feature="rt_async-std", feature="rt_worker"),
-    all(feature="rt_smol",      feature="rt_glommio"),
-    all(feature="rt_smol",      feature="rt_worker"),
-    all(feature="rt_glommio",   feature="rt_worker"),
+    all(feature="rt_tokio",      any(feature="rt_async-std", feature="rt_smol",      feature="rt_nio",       feature="rt_glommio",   feature="rt_worker"   )),
+    all(feature="rt_async-std",  any(feature="rt_smol",      feature="rt_nio",       feature="rt_glommio",   feature="rt_worker",    feature="rt_tokio"    )),
+    all(feature="rt_smol",       any(feature="rt_nio",       feature="rt_glommio",   feature="rt_worker",    feature="rt_tokio",     feature="rt_async-std")),
+    all(feature="rt_nio",        any(feature="rt_glommio",   feature="rt_worker",    feature="rt_tokio",     feature="rt_async-std", feature="rt_smol"     )),
+    all(feature="rt_glommio",    any(feature="rt_worker",    feature="rt_tokio",     feature="rt_async-std", feature="rt_smol",      feature="rt_nio"      )),
+    all(feature="rt_worker",     any(feature="rt_tokio",     feature="rt_async-std", feature="rt_smol",      feature="rt_nio",       feature="rt_glommio"  )),
 ))] compile_error! {"
     Can't activate multiple `rt_*` features at once!
 "}
 
-#[cfg(not(feature="DEBUG"))]
-#[cfg(all(feature="rt_worker", not(target_arch="wasm32")))]
-compile_error! {"
-    `rt_worker` must be activated on `wasm32` target!
-    (We recommend to touch `.cargo/config.toml`: `[build] target = \"wasm32-unknown-unknown\"`)
-"}
 
-
-#[allow(unused)]
+#[cfg(feature="__rt_native__")]
 mod __rt__ {
-    #[cfg(all(feature="rt_tokio", feature="DEBUG"))]
-    pub(crate) use tokio::test;
-    #[allow(unused)]
-    #[cfg(all(feature="rt_async-std", feature="DEBUG"))]
-    pub(crate) use async_std::test;
-
     #[cfg(feature="rt_tokio")]
     pub(crate) use tokio::net::{TcpListener, TcpStream, ToSocketAddrs};
     #[cfg(feature="rt_async-std")]
     pub(crate) use async_std::net::{TcpListener, TcpStream, ToSocketAddrs};
     #[cfg(feature="rt_smol")]
     pub(crate) use smol::net::{TcpListener, TcpStream, AsyncToSocketAddrs as ToSocketAddrs};
+    #[cfg(feature="rt_nio")]
+    pub(crate) use {nio::net::{TcpListener, TcpStream}, std::net::ToSocketAddrs};
     #[cfg(feature="rt_glommio")]
     pub(crate) use {glommio::net::{TcpListener, TcpStream}, std::net::ToSocketAddrs};
 
-    #[cfg(feature="rt_tokio")]
-    pub(crate) use tokio::task::spawn;
-    #[cfg(feature="rt_async-std")]
-    pub(crate) use async_std::task::spawn;
-    #[cfg(feature="rt_smol")]
-    pub(crate) use smol::spawn;
-    #[cfg(feature="rt_glommio")]
-    pub(crate) use glommio::spawn_local as spawn;
+    pub(crate) async fn bind(address: impl ToSocketAddrs) -> TcpListener {
+        let binded = TcpListener::bind(address);
+        
+        #[cfg(any(feature="rt_tokio", feature="rt_async-std", feature="rt_smol", feature="rt_nio"))]
+        let binded = binded.await;
+        
+        binded.expect("Failed to bind TCP listener")
+    }
 
     #[cfg(feature="rt_tokio")]
     pub(crate) use tokio::time::sleep;
@@ -84,49 +65,145 @@ mod __rt__ {
     pub(crate) async fn sleep(duration: std::time::Duration) {
         smol::Timer::after(duration).await;
     }
+    #[cfg(feature="rt_nio")]
+    pub(crate) use nio::time::sleep;
     #[cfg(feature="rt_glommio")]
-    pub(crate) use glommio::timer::sleep;
+    pub(crate) fn sleep(duration: std::time::Duration) -> impl std::future::Future<Output = ()> + Send {
+        return SendFuture(glommio::timer::sleep(duration));
+
+        ///////////////////////////////////////////////////////////
+
+        use std::{future::Future, pin::Pin, task::{Context, Poll}};
+
+        struct SendFuture<F>(F);
+
+        // SAFETY: sleep is executed on the same thread in glommio
+        unsafe impl<F> Send for SendFuture<F> {}
+
+        impl<F: Future<Output = ()>> Future for SendFuture<F> {
+            type Output = ();
+            fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+                unsafe {self.map_unchecked_mut(|this| &mut this.0)}.poll(cx)
+            }
+        }
+    }
 
     #[cfg(feature="rt_tokio")]
-    pub(crate) use tokio::io::AsyncReadExt as AsyncReader;
+    pub(crate) use tokio::io::AsyncReadExt as AsyncRead;
     #[cfg(feature="rt_async-std")]
-    pub(crate) use async_std::io::ReadExt as AsyncReader;
+    pub(crate) use async_std::io::ReadExt as AsyncRead;
     #[cfg(feature="rt_smol")]
-    pub(crate) use futures_util::AsyncReadExt as AsyncReader;
+    pub(crate) use futures_util::AsyncReadExt as AsyncRead;
+    #[cfg(feature="rt_nio")]
+    pub(crate) use tokio::io::AsyncReadExt as AsyncRead;
     #[cfg(feature="rt_glommio")]
-    pub(crate) use futures_util::AsyncReadExt as AsyncReader;
+    pub(crate) use futures_util::AsyncReadExt as AsyncRead;
 
     #[cfg(feature="rt_tokio")]
-    pub(crate) use tokio::io::AsyncWriteExt as AsyncWriter;
+    pub(crate) use tokio::io::AsyncWriteExt as AsyncWrite;
     #[cfg(feature="rt_async-std")]
-    pub(crate) use async_std::io::WriteExt as AsyncWriter;
+    pub(crate) use async_std::io::WriteExt as AsyncWrite;
     #[cfg(feature="rt_smol")]
-    pub(crate) use futures_util::AsyncWriteExt as AsyncWriter;
+    pub(crate) use futures_util::AsyncWriteExt as AsyncWrite;
+    #[cfg(feature="rt_nio")]
+    pub(crate) use tokio::io::AsyncWriteExt as AsyncWrite;
     #[cfg(feature="rt_glommio")]
-    pub(crate) use futures_util::AsyncWriteExt as AsyncWriter;
+    pub(crate) use futures_util::AsyncWriteExt as AsyncWrite;
 
-    #[cfg(feature="rt_tokio")]
-    pub(crate) use tokio::select;
-    #[cfg(feature="rt_async-std")]
-    pub(crate) use futures_util::{select, FutureExt};
-    #[cfg(feature="rt_smol")]
-    pub(crate) use futures_util::{select, FutureExt};
-    #[cfg(feature="rt_glommio")]
-    pub(crate) use futures_util::{select, FutureExt};
+    #[cfg(any(feature="rt_tokio", feature="rt_async-std", feature="rt_smol", feature="rt_nio"))]
+    mod task {
+        pub trait Task: std::future::Future<Output: Send + 'static> + Send + 'static {}
+        impl<F: std::future::Future<Output: Send + 'static> + Send + 'static> Task for F {}
+    }
+    #[cfg(any(feature="rt_glommio"))]
+    mod task {
+        pub trait Task: std::future::Future {}
+        impl<F: std::future::Future> Task for F {}
+    }
+    pub(crate) fn spawn(task: impl task::Task + 'static) {
+        #[cfg(feature="rt_tokio")]
+        tokio::task::spawn(task);
+
+        #[cfg(feature="rt_async-std")]
+        async_std::task::spawn(task);
+
+        #[cfg(feature="rt_smol")]
+        smol::spawn(task).detach();
+
+        #[cfg(feature="rt_nio")]
+        nio::spawn(task);
+
+        #[cfg(feature="rt_glommio")]
+        glommio::spawn_local(task).detach();
+    }
+
+    #[cfg(test)]
+    pub(crate) mod testing {
+        pub(crate) fn block_on(future: impl std::future::Future) {
+            #[cfg(feature="rt_tokio")]
+            tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build().unwrap()
+                .block_on(future);
+
+            #[cfg(feature="rt_async-std")]
+            async_std::task::block_on(future);
+
+            #[cfg(feature="rt_smol")]
+            smol::block_on(future);
+
+            #[cfg(feature="rt_nio")]
+            nio::runtime::Builder::new_multi_thread()
+                .enable_all()
+                .build().unwrap()
+                .block_on(future);
+
+            #[cfg(feature="rt_glommio")]
+            glommio::LocalExecutor::default().run(future);
+        }
+
+        pub(crate) const PORT: u16 = {
+            #[cfg(feature="rt_tokio")    ] {3001}
+            #[cfg(feature="rt_async-std")] {3002}
+            #[cfg(feature="rt_smol")     ] {3003}
+            #[cfg(feature="rt_nio")      ] {3004}
+            #[cfg(feature="rt_glommio")  ] {3005}
+        };
+    }
 }
 
+pub mod util;
+
+#[cfg(feature="__rt_native__")]
+mod config;
+#[cfg(feature="__rt_native__")]
+pub(crate) static CONFIG: config::Config = config::Config::new();
+
+#[cfg(feature="openapi")]
+pub mod openapi {
+    pub use ::ohkami_openapi::*;
+    pub use ::ohkami_openapi::document::Server;
+    pub use ::ohkami_macros::{Schema, operation};
+
+    #[cfg(feature="__rt__")]
+    #[derive(Clone)]
+    pub struct OpenAPI {
+        pub title:   &'static str,
+        pub version: &'static str,
+        pub servers: Vec<crate::openapi::document::Server>,
+    }
+}
+
+#[cfg(debug_assertions)]
+#[cfg(feature="__rt__")]
+pub mod testing;
 
 mod request;
-pub use request::{Request, Method, FromRequest, FromParam};
+pub use request::{Request, Method, FromRequest, FromParam, FromBody};
 pub use ::ohkami_macros::FromRequest;
 
 mod response;
-pub use response::{Response, Status, IntoResponse};
-
-pub mod fang;
-pub use fang::{Fang, FangProc};
-
-pub mod format;
+pub use response::{Response, Status, IntoResponse, IntoBody};
 
 #[cfg(feature="__rt_native__")]
 mod session;
@@ -134,22 +211,27 @@ mod session;
 use session::Session;
 
 #[cfg(feature="__rt__")]
+mod router;
+
+#[cfg(feature="__rt__")]
 mod ohkami;
 #[cfg(feature="__rt__")]
 pub use ohkami::{Ohkami, Route};
+
+pub mod fang;
+pub use fang::{handler, Fang, FangProc};
+
+pub mod format;
 
 pub mod header;
 
 pub mod typed;
 
-#[cfg(all(feature="ws", feature="__rt_native__"))]
+#[cfg(feature="sse")]
+pub mod sse;
+
+#[cfg(feature="ws")]
 pub mod ws;
-
-#[cfg(feature="testing")]
-#[cfg(feature="__rt__")]
-pub mod testing;
-
-pub mod util;
 
 #[cfg(feature="rt_worker")]
 pub use ::ohkami_macros::{worker, bindings};
@@ -159,7 +241,7 @@ pub mod prelude {
     pub use crate::util::FangAction;
     pub use crate::serde::{Serialize, Deserialize};
     pub use crate::format::{JSON, Query};
-    pub use crate::fang::Memory;
+    pub use crate::fang::Context;
 
     #[cfg(feature="__rt__")]
     pub use crate::{Route, Ohkami};
@@ -207,7 +289,6 @@ pub mod __internal__ {
 
     /* for benchmarks */
     #[cfg(feature="DEBUG")]
-    #[cfg(feature="__rt__")]
     pub use crate::{
         request::{RequestHeader, RequestHeaders},
         response::{ResponseHeader, ResponseHeaders},

@@ -1,12 +1,11 @@
 use crate::header::{IndexMap, Append};
 use std::borrow::Cow;
-use ohkami_lib::{CowSlice, Slice};
-use rustc_hash::FxHashMap;
+use ohkami_lib::{CowSlice, Slice, map::TupleMap};
 
 
 pub struct Headers {
     standard: IndexMap<N_CLIENT_HEADERS, CowSlice>,
-    custom:   Option<Box<FxHashMap<Slice, CowSlice>>>,
+    custom:   Option<Box<TupleMap<Slice, CowSlice>>>,
 }
 
 pub struct SetHeaders<'set>(
@@ -21,15 +20,6 @@ pub struct SetHeaders<'set>(
 pub trait HeaderAction<'set> {
     fn perform(self, set: SetHeaders<'set>, key: Header) -> SetHeaders<'set>;
 } const _: () = {
-    // remove
-    impl<'set> HeaderAction<'set> for Option<()> {
-        #[inline]
-        fn perform(self, set: SetHeaders<'set>, key: Header) -> SetHeaders<'set> {
-            set.0.remove(key);
-            set
-        }
-    }
-
     // append
     impl<'set> HeaderAction<'set> for Append {
         #[inline]
@@ -58,21 +48,23 @@ pub trait HeaderAction<'set> {
             set
         }
     }
+
+    // remove or insert
+    impl<'set> HeaderAction<'set> for Option<Cow<'static, str>> {
+        #[inline]
+        fn perform(self, set: SetHeaders<'set>, key: Header) -> SetHeaders<'set> {
+            match self {
+                None => set.0.remove(key),
+                Some(v) => set.0.insert(key, CowSlice::from(v)),
+            }
+            set
+        }
+    }
 };
 
 pub trait CustomHeadersAction<'set> {
     fn perform(self, set: SetHeaders<'set>, key: &'static str) -> SetHeaders<'set>;
 } const _: () = {
-    // remove
-    impl<'set> CustomHeadersAction<'set> for Option<()> {
-        fn perform(self, set: SetHeaders<'set>, key: &'static str) -> SetHeaders<'set> {
-            if let Some(c) = &mut set.0.custom {
-                c.remove(&Slice::from_bytes(key.as_bytes()));
-            }
-            set
-        }
-    }
-
     // append
     impl<'set> CustomHeadersAction<'set> for Append {
         fn perform(self, set: SetHeaders<'set>, key: &'static str) -> SetHeaders<'set> {
@@ -106,6 +98,22 @@ pub trait CustomHeadersAction<'set> {
                 Slice::from_bytes(key.as_bytes()),
                 CowSlice::from(self)
             );
+            set
+        }
+    }
+
+    // remove or insert
+    impl<'set> CustomHeadersAction<'set> for Option<Cow<'static, str>> {
+        fn perform(self, set: SetHeaders<'set>, key: &'static str) -> SetHeaders<'set> {
+            match self {
+                None => if let Some(c) = &mut set.0.custom {
+                    c.remove(Slice::from_bytes(key.as_bytes()));
+                }
+                Some(v) => set.0.insert_custom(
+                    Slice::from_bytes(key.as_bytes()),
+                    CowSlice::from(v)
+                )
+            }
             set
         }
     }
@@ -156,9 +164,13 @@ macro_rules! Header {
                 }
             )*
 
+            #[deprecated = "use `.x` instead"]
             pub fn custom(self, name: &'static str, action: impl CustomHeadersAction<'set>) -> Self {
+                self.x(name, action)
+            }
+            pub fn x(self, name: &'static str, action: impl CustomHeadersAction<'set>) -> Self {
                 if self.0.custom.is_none() {
-                    self.0.custom = Some(Box::new(FxHashMap::default()));
+                    self.0.custom = Some(Box::new(TupleMap::new()));
                 }
                 action.perform(self, name)
             }
@@ -173,13 +185,21 @@ macro_rules! Header {
                 /// except for `Cookie` that by semicolon (see `Cookies` helper method).
                 #[inline(always)]
                 pub fn $konst(&self) -> Option<&str> {
-                    self.get(Header::$konst)
+                    self.get_standard(Header::$konst)
                 }
             )*
 
+            #[deprecated = "use `.get` instead"]
             pub fn custom(&self, name: &str) -> Option<&str> {
+                self.get(name)
+            }
+            pub fn get(&self, name: &str) -> Option<&str> {
                 let value = self.custom.as_ref()?
-                    .get(&Slice::from_bytes(name.as_bytes()))?;
+                    .get(&Slice::from_bytes(name.as_bytes()))
+                    .or_else(|| {
+                        let standard = Header::from_bytes(name.as_bytes())?;
+                        unsafe {self.standard.get(standard as usize)}
+                    })?;
                 Some(std::str::from_utf8(unsafe {value.as_bytes()}).expect("Header value is not UTF-8"))
             }
         }
@@ -293,7 +313,7 @@ impl Headers {
         unsafe {self.standard.delete(name as usize)}
     }
 
-    #[inline] pub(crate) fn get(&self, name: Header) -> Option<&str> {
+    #[inline] pub(crate) fn get_standard(&self, name: Header) -> Option<&str> {
         unsafe {match self.standard.get(name as usize) {
             Some(cs) => Some(std::str::from_utf8(&cs).expect("non UTF-8 header value")),
             None => None
@@ -316,7 +336,7 @@ impl Headers {
     #[inline] pub(crate) fn insert_custom(&mut self, name: Slice, value: CowSlice) {
         match &mut self.custom {
             Some(c) => {c.insert(name, value);}
-            None => self.custom = Some(Box::new(FxHashMap::from_iter([
+            None => self.custom = Some(Box::new(TupleMap::from_iter([
                 (name, value)
             ])))
         }
@@ -328,7 +348,7 @@ impl Headers {
 
     #[inline] pub(crate) fn append_custom(&mut self, name: Slice, value: CowSlice) {
         if self.custom.is_none() {
-            self.custom = Some(Box::new(FxHashMap::default()))
+            self.custom = Some(Box::new(TupleMap::new()))
         }
 
         let c = unsafe {self.custom.as_mut().unwrap_unchecked()};
@@ -368,6 +388,7 @@ impl Headers {
         }
     }
 
+    #[cfg(any(feature="__rt_native__", all(feature="rt_worker", debug_assertions)))]
     #[inline] pub(crate) fn get_raw(&self, name: Header) -> Option<&CowSlice> {
         unsafe {self.standard.get(name as usize)}
     }

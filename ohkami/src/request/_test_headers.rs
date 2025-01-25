@@ -1,5 +1,5 @@
-#![cfg(any(feature="testing", feature="DEBUG"))]
-#![cfg(feature="__rt__")]
+#![cfg(any(debug_assertions, feature="DEBUG"))]
+#![cfg(all(test, feature="__rt__"))]
 
 use ohkami_lib::CowSlice;
 
@@ -24,8 +24,8 @@ use crate::header::append;
 #[test] fn append_custom_header() {
     let mut h = RequestHeaders::init();
 
-    h.set().custom("Custom-Header", append("A"));
-    assert_eq!(h.custom("Custom-Header"), Some("A"));
-    h.set().custom("Custom-Header", append("B"));
-    assert_eq!(h.custom("Custom-Header"), Some("A, B"));
+    h.set().x("Custom-Header", append("A"));
+    assert_eq!(h.get("Custom-Header"), Some("A"));
+    h.set().x("Custom-Header", append("B"));
+    assert_eq!(h.get("Custom-Header"), Some("A, B"));
 }

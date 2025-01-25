@@ -28,11 +28,14 @@ macro_rules! push_unchecked {
 #[doc(hidden)]
 #[macro_export]
 macro_rules! DEBUG {
-    ( $( $t:tt )* ) => {
+    ( $( $t:tt )* ) => {{
         #[cfg(feature="DEBUG")] {
-            println!( $( $t )* );
+            eprintln!( $( $t )* );
+
+            #[cfg(feature="rt_worker")]
+            worker::console_debug!( $( $t )* );
         }
-    };
+    }};
 }
 
 pub use crate::fang::FangAction;
@@ -80,6 +83,15 @@ const _: () = {
         fn into_response(self) -> crate::Response {
             crate::Response::InternalServerError().with_text(self.0)
         }
+
+        #[cfg(feature="openapi")]
+        fn openapi_responses() -> crate::openapi::Responses {
+            crate::openapi::Responses::new(
+                500,
+                crate::openapi::Response::when("Something went wrong")
+                    .content("text/plain", crate::openapi::string())
+            )
+        }
     }
 };
 
@@ -110,16 +122,9 @@ pub fn timeout_in<T>(
         }
     }
 
-    #[cfg(feature="rt_glommio")]
-    /* for fang::builtin::timeout::Timeout::Proc::bite to return Send Future */
-    /* SAFETY: proc and sleep are executed on the same thread in rt_glommio */
-    /* ( glommio::timer::sleep itself returns not-Send Future because it's not needed due to the architecture ) */
-    unsafe impl<Sleep, Proc> Send for Timeout<Sleep, Proc> {}
-
     Timeout { proc, sleep: crate::__rt__::sleep(duration) }
 }
 
-#[cfg(feature="__rt_native__")]
 pub const IP_0000: std::net::IpAddr = std::net::IpAddr::V4(std::net::Ipv4Addr::new(0, 0, 0, 0));
 
 #[cfg(feature="rt_glommio")]

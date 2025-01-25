@@ -1,4 +1,4 @@
-#![cfg(any(feature="rt_tokio",feature="rt_async-std"))]
+#![cfg(test)]
 
 use crate::header::{append, SameSitePolicy, SetCookie};
 use super::ResponseHeaders;
@@ -58,8 +58,8 @@ use super::ResponseHeaders;
 #[test] fn append_custom_header() {
     let mut h = ResponseHeaders::new();
 
-    h.set().custom("Custom-Header", append("A"));
-    assert_eq!(h.custom("Custom-Header"), Some("A"));
+    h.set().x("Custom-Header", append("A"));
+    assert_eq!(h.get("Custom-Header"), Some("A"));
     {
         let mut buf = Vec::new();
         h._write_to(&mut buf);
@@ -69,8 +69,8 @@ use super::ResponseHeaders;
         ");
     }
 
-    h.set().custom("Custom-Header", append("B"));
-    assert_eq!(h.custom("Custom-Header"), Some("A, B"));
+    h.set().x("Custom-Header", append("B"));
+    assert_eq!(h.get("Custom-Header"), Some("A, B"));
     {
         let mut buf = Vec::new();
         h._write_to(&mut buf);

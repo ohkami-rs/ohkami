@@ -25,9 +25,12 @@ pub struct Append(pub(crate) Cow<'static, str>);
 /// 
 /// #[tokio::main]
 /// async fn main() {
-///     Ohkami::with(AppendServer("ohkami"),
+///     Ohkami::new((
+///         AppendServer("ohkami"),
+///         
 ///         "/".GET(|| async {"Hello, append!"})
-///     ).howl("localhost:3000").await
+/// 
+///     )).howl("localhost:3000").await
 /// }
 /// ```
 #[inline]

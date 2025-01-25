@@ -1,4 +1,4 @@
-#![cfg(feature="__rt_native__")]
+#![cfg(all(test, feature="__rt_native__", feature="DEBUG"))]
 
 #[allow(unused)]
 use super::{Request, Method, BUF_SIZE, Path, QueryParams, Store};
@@ -18,8 +18,7 @@ fn parse_path() {
     assert_eq!(&*path, "/");
 }
 
-#[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
-#[crate::__rt__::test] async fn test_parse_request() {
+#[test] fn test_parse_request() {
     use super::{RequestHeader, RequestHeaders};
     use std::pin::Pin;
     use ohkami_lib::{Slice, CowSlice};
@@ -35,11 +34,14 @@ fn parse_path() {
         ($case:expr, $expected:expr) => {
             let mut actual = Request::init(crate::util::IP_0000);
             let mut actual = unsafe {Pin::new_unchecked(&mut actual)};
-            actual.as_mut().read(&mut $case.as_bytes()).await.ok();
+            
+            crate::__rt__::testing::block_on({
+                actual.as_mut().read(&mut $case.as_bytes())
+            });//.await.ok();
 
             let expected = $expected;
 
-            let _ = async {println!("<assert_parse>")}.await;
+            println!("<assert_parse>");
 
             let __panic_message = format!("\n\
                 =====  actual  =====\n\
@@ -70,7 +72,7 @@ fn parse_path() {
         __buf__: metadataize(CASE_1),
         method:  Method::GET,
         path:    Path::from_literal("/hello.html"),
-        query:   None,
+        query:   QueryParams::new(b""),
         headers: RequestHeaders::from_iters([
             (RequestHeader::Host,           "www.tutorialspoint.com"),
             (RequestHeader::UserAgent,      "Mozilla/4.0"),
@@ -99,7 +101,7 @@ fn parse_path() {
         __buf__: metadataize(CASE_2),
         method:  Method::POST,
         path:    Path::from_literal("/signup"),
-        query:   None,
+        query:   QueryParams::new(b""),
         headers: RequestHeaders::from_iters([
             (RequestHeader::Host,           "www.tutorialspoint.com"),
             (RequestHeader::UserAgent,      "Mozilla/4.0"),
@@ -135,10 +137,10 @@ fn parse_path() {
             __buf__: metadataize(CASE_3),
             method:  Method::POST,
             path:    Path::from_literal("/foo.php"),
-            query:   Some(QueryParams::from([
+            query:   QueryParams::from([
                 ("query", "1"),
                 ("q2",    "xxx"),
-            ])),
+            ]),
             headers: RequestHeaders::from_iters(
                 [
                     (RequestHeader::Host,           "localhost"),

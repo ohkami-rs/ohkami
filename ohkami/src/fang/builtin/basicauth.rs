@@ -1,4 +1,8 @@
 use crate::prelude::*;
+use ::base64::engine::{Engine as _, general_purpose::STANDARD as BASE64};
+
+#[cfg(feature="openapi")]
+use crate::openapi;
 
 
 /// # Builtin fang for Basic Auth
@@ -26,14 +30,16 @@ use crate::prelude::*;
 /// #[tokio::main]
 /// async fn main() {
 ///     Ohkami::new((
-///         "/hello".GET(|| async {"Hello, public!"}),
-///         "/private".By(Ohkami::with(
+///         "/hello"
+///             .GET(|| async {"Hello, public!"}),
+///         "/private".By(Ohkami::new((
 ///             BasicAuth {
 ///                 username: "master of hello",
 ///                 password: "world"
 ///             },
-///             "/hello".GET(|| async {"Hello, private :)"})
-///         ))
+///             "/hello"
+///                 .GET(|| async {"Hello, private :)"})
+///         )))
 ///     )).howl("localhost:8888").await
 /// }
 /// ```
@@ -74,7 +80,7 @@ const _: () = {
             .strip_prefix("Basic ").ok_or_else(unauthorized)?;
 
         let credential = String::from_utf8(
-            ohkami_lib::base64::decode(credential_base64.as_bytes())
+            BASE64.decode(credential_base64).map_err(|_| unauthorized())?
         ).map_err(|_| unauthorized())?;
 
         Ok(credential)
@@ -95,6 +101,12 @@ const _: () = {
 
             Ok(())
         }
+
+        #[cfg(feature="openapi")]
+        fn openapi_map_operation(operation: openapi::Operation) -> openapi::Operation {
+            use openapi::security::SecurityScheme;
+            operation.security(SecurityScheme::Basic("basicAuth"), &[])
+        }
     }
 
     impl<S, const N: usize> FangAction for [BasicAuth<S>; N]
@@ -114,5 +126,62 @@ const _: () = {
 
             Ok(())
         }
+
+        #[cfg(feature="openapi")]
+        fn openapi_map_operation(operation: openapi::Operation) -> openapi::Operation {
+            use openapi::security::SecurityScheme;
+            operation.security(SecurityScheme::Basic("basicAuth"), &[])
+        }
     }
 };
+
+
+#[cfg(test)]
+#[cfg(feature="__rt_native__")]
+#[test] fn test_basicauth() {
+    use super::*;
+    use crate::prelude::*;
+    use crate::testing::*;
+
+    let t = Ohkami::new((
+        "/hello".GET(|| async {"Hello!"}),
+        "/private".By(Ohkami::new((
+            BasicAuth {
+                username: "ohkami",
+                password: "password"
+            },
+            "/".GET(|| async {"Hello, private!"})
+        )))
+    )).test();
+
+    crate::__rt__::testing::block_on(async {
+        {
+            let req = TestRequest::GET("/hello");
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status().code(), 200);
+            assert_eq!(res.text(), Some("Hello!"));
+        }
+        {
+            let req = TestRequest::GET("/private");
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status().code(), 401);
+        }
+        {
+            let req = TestRequest::GET("/private")
+                .header("Authorization", format!(
+                    "Basic {}", BASE64.encode("ohkami:password")
+                ));
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status().code(), 200);
+            assert_eq!(res.text(), Some("Hello, private!"));
+        }
+        {
+            let req = TestRequest::GET("/private")
+                .header("Authorization", format!(
+                    "Basic {}", BASE64.encode("ohkami:wrong")
+                ));
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status().code(), 401);
+        }
+    });
+}

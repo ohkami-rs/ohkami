@@ -1,9 +1,9 @@
 #![allow(non_snake_case, non_camel_case_types)]
 
+use crate::{Fang, FangProc, IntoResponse, Request, Response};
 use std::{borrow::Cow, marker::PhantomData};
 use serde::{Serialize, Deserialize};
-use ohkami_lib::base64;
-use crate::{Fang, FangProc, IntoResponse, Request, Response};
+use base64::engine::{Engine as _, general_purpose::URL_SAFE_NO_PAD as BASE64URL};
 
 
 /// # Builtin fang and helper for JWT config
@@ -46,21 +46,17 @@ use crate::{Fang, FangProc, IntoResponse, Request, Response};
 ///     JWT::default("OUR_JWT_SECRET_KEY")
 /// }
 /// 
-/// 
-/// #[tokio::main]
-/// async fn main() {
-///     Ohkami::new((
-///         "/auth".GET(auth),
-///         "/private".By(Ohkami::with(our_jwt(), (
-///             "/hello/:name".GET(hello),
-///         )))
-///     )).howl("localhost:3000").await
+/// async fn hello(name: &str,
+///     Context(auth): Context<'_, OurJWTPayload>
+/// ) -> String {
+///     format!("Hello {name}, you're authorized!")
 /// }
 /// 
 /// # #[derive(Deserialize)]
 /// # struct AuthRequest<'req> {
 /// #     name: &'req str
 /// # }
+/// # 
 /// # #[derive(Serialize)]
 /// # struct AuthResponse {
 /// #     token: JWTToken
@@ -76,17 +72,24 @@ use crate::{Fang, FangProc, IntoResponse, Request, Response};
 ///     }))
 /// }
 /// 
-/// async fn hello(name: &str,
-///     Memory(auth): Memory<'_, OurJWTPayload>
-/// ) -> String {
-///     format!("Hello {name}, you're authorized!")
+/// #[tokio::main]
+/// async fn main() {
+///     Ohkami::new((
+///         "/auth".GET(auth),
+///         "/private".By(Ohkami::new((our_jwt(),
+///             "/hello/:name".GET(hello),
+///         )))
+///     )).howl("localhost:3000").await
 /// }
 /// ```
 pub struct JWT<Payload> {
+    _payload:  PhantomData<Payload>,
     secret:    Cow<'static, str>,
     alg:       VerifyingAlgorithm,
     get_token: fn(&Request)->Option<&str>,
-    _payload:  PhantomData<Payload>,
+
+    #[cfg(feature="openapi")]
+    openapi_security: crate::openapi::security::SecurityScheme
 }
 #[derive(Clone)]
 enum VerifyingAlgorithm {
@@ -99,10 +102,13 @@ const _: () = {
     impl<Payload> Clone for JWT<Payload> {
         fn clone(&self) -> Self {
             Self {
+                _payload:  PhantomData,
                 secret:    self.secret.clone(),
                 alg:       self.alg.clone(),
                 get_token: self.get_token.clone(),
-                _payload:  PhantomData
+
+                #[cfg(feature="openapi")]
+                openapi_security: self.openapi_security.clone()
             }
         }
     }
@@ -114,6 +120,11 @@ const _: () = {
         type Proc = JWTProc<Inner, Payload>;
         fn chain(&self, inner: Inner) -> Self::Proc {
             JWTProc { inner, jwt: self.clone() }
+        }
+
+        #[cfg(feature="openapi")]
+        fn openapi_map_operation(&self, operation: crate::openapi::Operation) -> crate::openapi::Operation {
+            operation.security(self.openapi_security.clone(), &[])
         }
     }
 
@@ -143,53 +154,57 @@ const _: () = {
 impl<Payload> JWT<Payload> {
     /// Just `new_256`; use HMAC-SHA256 as verifying algorithm
     #[inline] pub fn default(secret: impl Into<Cow<'static, str>>) -> Self {
-        Self {
-            secret:    secret.into(),
-            alg:       VerifyingAlgorithm::HS256,
-            get_token: Self::default_get,
-            _payload:  PhantomData
-        }
+        Self::new_256(secret)
     }
     /// Use HMAC-SHA256 as verifying algorithm
     pub fn new_256(secret: impl Into<Cow<'static, str>>) -> Self {
-        Self {
-            secret:    secret.into(),
-            alg:       VerifyingAlgorithm::HS256,
-            get_token: Self::default_get,
-            _payload:  PhantomData
-        }
+        Self::new(VerifyingAlgorithm::HS256, secret)
     }
     /// Use HMAC-SHA384 as verifying algorithm
     pub fn new_384(secret: impl Into<Cow<'static, str>>) -> Self {
-        Self {
-            secret:    secret.into(),
-            alg:       VerifyingAlgorithm::HS384,
-            get_token: Self::default_get,
-            _payload:  PhantomData
-        }
+        Self::new(VerifyingAlgorithm::HS384, secret)
     }
     /// Use HMAC-SHA512 as verifying algorithm
     pub fn new_512(secret: impl Into<Cow<'static, str>>) -> Self {
-        Self {
-            secret:    secret.into(),
-            alg:       VerifyingAlgorithm::HS512,
-            get_token: Self::default_get,
-            _payload:  PhantomData
-        }
+        Self::new(VerifyingAlgorithm::HS512, secret)
     }
 
     /// Customize get-token process in JWT verifying.
     /// 
     /// *default*: `req.headers.Authorization()?.strip_prefix("Bearer ")`
-    pub fn get_token_by(mut self, get_token: fn(&Request)->Option<&str>) -> Self {
+    pub fn get_token_by(
+        mut self,
+        get_token: fn(&Request)->Option<&str>,
+
+        #[cfg(feature="openapi")]
+        openapi_security: crate::openapi::security::SecurityScheme
+    ) -> Self {
+        #[cfg(feature="openapi")] {
+            self.openapi_security = openapi_security;
+        }
         self.get_token = get_token;
         self
     }
 
+    fn new(alg: VerifyingAlgorithm, secret: impl Into<Cow<'static, str>>) -> Self {
+        #[inline(always)]
+        fn get_token(req: &Request) -> Option<&str> {
+            req.headers.Authorization()?.strip_prefix("Bearer ")
+        }
 
-    #[inline(always)] fn default_get(req: &Request) -> Option<&str> {
-        req.headers.Authorization()?
-            .strip_prefix("Bearer ")
+        Self {
+            alg,
+            get_token,
+
+            _payload: PhantomData,
+            secret: secret.into(),
+
+            #[cfg(feature="openapi")]
+            openapi_security: crate::openapi::security::SecurityScheme::Bearer(
+                "jwtAuth",
+                Some("JWT")
+            )
+        }
     }
 
     #[inline(always)] const fn alg_str(&self) -> &'static str {
@@ -201,9 +216,9 @@ impl<Payload> JWT<Payload> {
     }
     #[inline(always)] const fn header_str(&self) -> &'static str {
         match self.alg {
-            VerifyingAlgorithm::HS256 => "{\"typ\":\"JWT\",\"alg\":\"HS256\"}",
-            VerifyingAlgorithm::HS384 => "{\"typ\":\"JWT\",\"alg\":\"HS384\"}",
-            VerifyingAlgorithm::HS512 => "{\"typ\":\"JWT\",\"alg\":\"HS512\"}",
+            VerifyingAlgorithm::HS256 => r#"{"typ":"JWT","alg":"HS256"}"#,
+            VerifyingAlgorithm::HS384 => r#"{"typ":"JWT","alg":"HS384"}"#,
+            VerifyingAlgorithm::HS512 => r#"{"typ":"JWT","alg":"HS512"}"#,
         }
     }
 }
@@ -236,9 +251,9 @@ impl<Payload: Serialize> JWT<Payload> {
     /// Build JWT token with the payload.
     #[inline] pub fn issue(self, payload: Payload) -> JWTToken {
         let unsigned_token = {
-            let mut ut = base64::encode_url(self.header_str());
+            let mut ut = BASE64URL.encode(self.header_str());
             ut.push('.');
-            ut.push_str(&base64::encode_url(::serde_json::to_vec(&payload).expect("Failed to serialze payload")));
+            ut.push_str(&BASE64URL.encode(::serde_json::to_vec(&payload).expect("Failed to serialze payload")));
             ut
         };
 
@@ -247,17 +262,17 @@ impl<Payload: Serialize> JWT<Payload> {
             use ::hmac::{Hmac, Mac};
 
             match &self.alg {
-                VerifyingAlgorithm::HS256 => base64::encode_url({
+                VerifyingAlgorithm::HS256 => BASE64URL.encode({
                     let mut s = Hmac::<Sha256>::new_from_slice(self.secret.as_bytes()).unwrap();
                     s.update(unsigned_token.as_bytes());
                     s.finalize().into_bytes()
                 }),
-                VerifyingAlgorithm::HS384 => base64::encode_url({
+                VerifyingAlgorithm::HS384 => BASE64URL.encode({
                     let mut s = Hmac::<Sha384>::new_from_slice(self.secret.as_bytes()).unwrap();
                     s.update(unsigned_token.as_bytes());
                     s.finalize().into_bytes()
                 }),
-                VerifyingAlgorithm::HS512 => base64::encode_url({
+                VerifyingAlgorithm::HS512 => BASE64URL.encode({
                     let mut s = Hmac::<Sha512>::new_from_slice(self.secret.as_bytes()).unwrap();
                     s.update(unsigned_token.as_bytes());
                     s.finalize().into_bytes()
@@ -289,31 +304,35 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
 
         const UNAUTHORIZED_MESSAGE: &str = "missing or malformed jwt";
 
-        type Header  = ::serde_json::Value;
-        type Payload = ::serde_json::Value;
-
         let mut parts = (self.get_token)(req)
             .ok_or_else(|| Response::Unauthorized().with_text(UNAUTHORIZED_MESSAGE))?
             .split('.');
 
+        type Header  = ::serde_json::Value;
+        type Payload = ::serde_json::Value;
+        fn part_value(part: &str) -> Result<::serde_json::Value, Response> {
+            let part = BASE64URL.decode(part)
+                .map_err(|_| Response::BadRequest().with_text("invalid base64"))?;
+            ::serde_json::from_slice(&part)
+                .map_err(|_| Response::BadRequest().with_text("invalid json"))
+        }
+
         let header_part = parts.next()
-            .ok_or_else(|| Response::BadRequest())?;
-        let header: Header = ::serde_json::from_slice(&base64::decode_url(header_part))
-            .map_err(|_| Response::InternalServerError())?;
+            .ok_or_else(Response::Unauthorized)?;
+        let header: Header = part_value(header_part)?;
         if header.get("typ").is_some_and(|typ| !typ.as_str().unwrap_or_default().eq_ignore_ascii_case("JWT")) {
             return Err(Response::BadRequest())
         }
         if header.get("cty").is_some_and(|cty| !cty.as_str().unwrap_or_default().eq_ignore_ascii_case("JWT")) {
             return Err(Response::BadRequest())
         }
-        if header.get("alg").ok_or_else(|| Response::BadRequest())? != self.alg_str() {
+        if header.get("alg").ok_or_else(Response::Unauthorized)? != self.alg_str() {
             return Err(Response::BadRequest())
         }
 
         let payload_part = parts.next()
-            .ok_or_else(|| Response::BadRequest())?;
-        let payload: Payload = ::serde_json::from_slice(&base64::decode_url(payload_part))
-            .map_err(|_| Response::InternalServerError())?;
+            .ok_or_else(Response::Unauthorized)?;
+        let payload: Payload = part_value(payload_part)?;
         let now = crate::util::unix_timestamp();
         if payload.get("nbf").is_some_and(|nbf| nbf.as_u64().unwrap_or(0) > now) {
             return Err(Response::Unauthorized().with_text(UNAUTHORIZED_MESSAGE))
@@ -325,8 +344,10 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
             return Err(Response::Unauthorized().with_text(UNAUTHORIZED_MESSAGE))
         }
 
-        let signature_part = parts.next().ok_or_else(|| Response::BadRequest())?;
-        let requested_signature = base64::decode_url(signature_part);
+        let signature_part = parts.next()
+            .ok_or_else(Response::Unauthorized)?;
+        let requested_signature = BASE64URL.decode(signature_part)
+            .map_err(|_| Response::Unauthorized())?;
 
         let is_correct_signature = {
             use ::sha2::{Sha256, Sha384, Sha512};
@@ -369,13 +390,12 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
 
 
 
-#[cfg(any(feature="rt_tokio",feature="rt_async-std"))]
-#[cfg(feature="testing")]
+#[cfg(debug_assertions)]
+#[cfg(all(feature="__rt_native__", feature="DEBUG"))]
 #[cfg(test)] mod test {
     use super::{JWT, JWTToken};
-    use crate::__rt__::test;
 
-    #[test] async fn test_jwt_issue() {
+    #[test] fn test_jwt_issue() {
         /* NOTE: 
             `serde_json::to_vec` automatically sorts original object's keys
             in alphabetical order. e.t., here
@@ -395,7 +415,7 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
         }
     }
 
-    #[test] async fn test_jwt_verify() {
+    #[test] fn test_jwt_verify() {
         use crate::{Request, testing::TestRequest, Status};
         use std::pin::Pin;
 
@@ -406,7 +426,9 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
             .encode();
         let mut req = Request::init(crate::util::IP_0000);
         let mut req = unsafe {Pin::new_unchecked(&mut req)};
-        req.as_mut().read(&mut &req_bytes[..]).await.ok();
+        crate::__rt__::testing::block_on({
+            req.as_mut().read(&mut &req_bytes[..])
+        });
 
         assert_eq!(
             my_jwt.verified(&req.as_ref()).unwrap(),
@@ -419,7 +441,9 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
             .encode();
         let mut req = Request::init(crate::util::IP_0000);
         let mut req = unsafe {Pin::new_unchecked(&mut req)};
-        req.as_mut().read(&mut &req_bytes[..]).await.ok();
+        crate::__rt__::testing::block_on({
+            req.as_mut().read(&mut &req_bytes[..])
+        });
 
         assert_eq!(
             my_jwt.verified(&req.as_ref()).unwrap_err().status,
@@ -427,10 +451,13 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
         );
     }
 
-    #[test] async fn test_jwt_verify_senario() {
+    #[test] fn test_jwt_verify_senario() {
         use crate::prelude::*;
         use crate::testing::*;
         use std::{sync::OnceLock, sync::Mutex, collections::HashMap, borrow::Cow};
+
+        #[cfg(feature="openapi")]
+        use crate::openapi;
 
 
         fn my_jwt() -> JWT<MyJWTPayload> {
@@ -462,6 +489,14 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
                     Self::UserNotFound => Response::InternalServerError().with_text("User was not found"),
                 }
             }
+
+            #[cfg(feature="openapi")]
+            fn openapi_responses() -> crate::openapi::Responses {
+                crate::openapi::Responses::enumerated([
+                    (500, crate::openapi::Response::when("User was not found")
+                        .content("text/plain", crate::openapi::string()))
+                ])
+            }
         }
 
 
@@ -477,7 +512,8 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
             id:           usize,
             first_name:   String,
             familly_name: String,
-        } impl User {
+        }
+        impl User {
             fn profile(&self) -> Profile {
                 Profile {
                     id:           self.id,
@@ -494,9 +530,19 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
             first_name:   String,
             familly_name: String,
         }
+        #[cfg(feature="openapi")]
+        impl openapi::Schema for Profile {
+            fn schema() -> impl Into<openapi::schema::SchemaRef> {
+                openapi::component("Profile", openapi::object()
+                    .property("id", openapi::integer().minimum(0))
+                    .property("first_name", openapi::string())
+                    .property("familly_name", openapi::string())
+                )
+            }
+        }
 
         async fn get_profile(
-            Memory(jwt_payload): Memory<'_, MyJWTPayload>
+            Context(jwt_payload): Context<'_, MyJWTPayload>
         ) -> Result<JSON<Profile>, APIError> {
             let r = &mut *repository().await.lock().unwrap();
 
@@ -510,6 +556,15 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
         struct SigninRequest<'s> {
             first_name:   &'s str,
             familly_name: &'s str,
+        }
+        #[cfg(feature="openapi")]
+        impl<'s> openapi::Schema for SigninRequest<'s> {
+            fn schema() -> impl Into<openapi::schema::SchemaRef> {
+                openapi::component("SigninRequest", openapi::object()
+                    .property("first_name", openapi::string())
+                    .property("familly_name", openapi::string())
+                )
+            }
         }
 
         async fn signin(
@@ -547,130 +602,131 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
             "/signin".By(Ohkami::new(
                 "/".PUT(signin),
             )),
-            "/profile".By(Ohkami::with((
-                my_jwt(),
-            ), (
+            "/profile".By(Ohkami::new((my_jwt(),
                 "/".GET(get_profile),
             ))),
         )).test();
         
 
-        let req = TestRequest::PUT("/signin");
-        let res = t.oneshot(req).await;
-        assert_eq!(res.status(), Status::BadRequest);
+        crate::__rt__::testing::block_on(async {
 
-        let req = TestRequest::GET("/profile");
-        let res = t.oneshot(req).await;
-        assert_eq!(res.status(), Status::Unauthorized);
-        assert_eq!(res.text(),   Some("missing or malformed jwt"));
+            let req = TestRequest::PUT("/signin");
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status(), Status::BadRequest);
+
+            let req = TestRequest::GET("/profile");
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status(), Status::Unauthorized);
+            assert_eq!(res.text(),   Some("missing or malformed jwt"));
 
 
-        let req = TestRequest::PUT("/signin")
-            .json(SigninRequest {
-                first_name:   "ohkami",
-                familly_name: "framework",
+            let req = TestRequest::PUT("/signin")
+                .json(SigninRequest {
+                    first_name:   "ohkami",
+                    familly_name: "framework",
+                });
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status(), Status::OK);
+            let jwt_1 = dbg!(res.text().unwrap());
+
+            let req = TestRequest::GET("/profile")
+                .header("Authorization", format!("Bearer {jwt_1}"));
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status(), Status::OK);
+            assert_eq!(res.json::<Profile>().unwrap().unwrap(), Profile {
+                id:           1,
+                first_name:   String::from("ohkami"),
+                familly_name: String::from("framework"),
             });
-        let res = t.oneshot(req).await;
-        assert_eq!(res.status(), Status::OK);
-        let jwt_1 = dbg!(res.text().unwrap());
 
-        let req = TestRequest::GET("/profile")
-            .header("Authorization", format!("Bearer {jwt_1}"));
-        let res = t.oneshot(req).await;
-        assert_eq!(res.status(), Status::OK);
-        assert_eq!(res.json::<Profile>().unwrap().unwrap(), Profile {
-            id:           1,
-            first_name:   String::from("ohkami"),
-            familly_name: String::from("framework"),
-        });
-
-        let req = TestRequest::GET("/profile")
-            .header("Authorization", format!("Bearer {jwt_1}x"));
-        let res = t.oneshot(req).await;
-        assert_eq!(res.status(), Status::Unauthorized);
-        assert_eq!(res.text(),   Some("missing or malformed jwt"));
+            let req = TestRequest::GET("/profile")
+                .header("Authorization", format!("Bearer {jwt_1}x"));
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status(), Status::Unauthorized);
+            assert_eq!(res.text(),   Some("missing or malformed jwt"));
 
 
-        assert_eq! {
-            &*repository().await.lock().unwrap(),
-            &HashMap::from([
-                (1, User {
-                    id:           1,
-                    first_name:   format!("ohkami"),
-                    familly_name: format!("framework"),
-                }),
-            ])
-        }
+            assert_eq! {
+                &*repository().await.lock().unwrap(),
+                &HashMap::from([
+                    (1, User {
+                        id:           1,
+                        first_name:   format!("ohkami"),
+                        familly_name: format!("framework"),
+                    }),
+                ])
+            }
 
 
-        let req = TestRequest::PUT("/signin")
-            .json(SigninRequest {
-                first_name:   "Leonhard",
-                familly_name: "Euler",
+            let req = TestRequest::PUT("/signin")
+                .json(SigninRequest {
+                    first_name:   "Leonhard",
+                    familly_name: "Euler",
+                });
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status(), Status::OK);
+            let jwt_2 = dbg!(res.text().unwrap());
+
+            let req = TestRequest::GET("/profile")
+                .header("Authorization", format!("Bearer {jwt_2}"));
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status(), Status::OK);
+            assert_eq!(res.json::<Profile>().unwrap().unwrap(), Profile {
+                id:           2,
+                first_name:   String::from("Leonhard"),
+                familly_name: String::from("Euler"),
             });
-        let res = t.oneshot(req).await;
-        assert_eq!(res.status(), Status::OK);
-        let jwt_2 = dbg!(res.text().unwrap());
 
-        let req = TestRequest::GET("/profile")
-            .header("Authorization", format!("Bearer {jwt_2}"));
-        let res = t.oneshot(req).await;
-        assert_eq!(res.status(), Status::OK);
-        assert_eq!(res.json::<Profile>().unwrap().unwrap(), Profile {
-            id:           2,
-            first_name:   String::from("Leonhard"),
-            familly_name: String::from("Euler"),
+
+            assert_eq! {
+                &*repository().await.lock().unwrap(),
+                &HashMap::from([
+                    (1, User {
+                        id:           1,
+                        first_name:   format!("ohkami"),
+                        familly_name: format!("framework"),
+                    }),
+                    (2, User {
+                        id:           2,
+                        first_name:   format!("Leonhard"),
+                        familly_name: format!("Euler"),
+                    }),
+                ])
+            }
+
+
+            let req = TestRequest::GET("/profile")
+                .header("Authorization", format!("Bearer {jwt_1}"));
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status(), Status::OK);
+            assert_eq!(res.json::<Profile>().unwrap().unwrap(), Profile {
+                id:           1,
+                first_name:   String::from("ohkami"),
+                familly_name: String::from("framework"),
+            });
+
+            let req = TestRequest::GET("/profile")
+                .header("Authorization", format!("Bearer {jwt_2}0000"));
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status(), Status::Unauthorized);
+            assert_eq!(res.text(),   Some("missing or malformed jwt"));
+
+
+            assert_eq! {
+                &*repository().await.lock().unwrap(),
+                &HashMap::from([
+                    (1, User {
+                        id:           1,
+                        first_name:   String::from("ohkami"),
+                        familly_name: String::from("framework"),
+                    }),
+                    (2, User {
+                        id:           2,
+                        first_name:   String::from("Leonhard"),
+                        familly_name: String::from("Euler"),
+                    }),
+                ])
+            }
         });
-
-
-        assert_eq! {
-            &*repository().await.lock().unwrap(),
-            &HashMap::from([
-                (1, User {
-                    id:           1,
-                    first_name:   format!("ohkami"),
-                    familly_name: format!("framework"),
-                }),
-                (2, User {
-                    id:           2,
-                    first_name:   format!("Leonhard"),
-                    familly_name: format!("Euler"),
-                }),
-            ])
-        }
-
-
-        let req = TestRequest::GET("/profile")
-            .header("Authorization", format!("Bearer {jwt_1}"));
-        let res = t.oneshot(req).await;
-        assert_eq!(res.status(), Status::OK);
-        assert_eq!(res.json::<Profile>().unwrap().unwrap(), Profile {
-            id:           1,
-            first_name:   String::from("ohkami"),
-            familly_name: String::from("framework"),
-        });
-
-        let req = TestRequest::GET("/profile")
-            .header("Authorization", format!("Bearer {jwt_2}0000"));
-        let res = t.oneshot(req).await;
-        assert_eq!(res.status(), Status::Unauthorized);
-        assert_eq!(res.text(),   Some("missing or malformed jwt"));
-
-
-        assert_eq! {
-            &*repository().await.lock().unwrap(),
-            &HashMap::from([
-                (1, User {
-                    id:           1,
-                    first_name:   String::from("ohkami"),
-                    familly_name: String::from("framework"),
-                }),
-                (2, User {
-                    id:           2,
-                    first_name:   String::from("Leonhard"),
-                    familly_name: String::from("Euler"),
-                }),
-            ])
-        }
     }
 }

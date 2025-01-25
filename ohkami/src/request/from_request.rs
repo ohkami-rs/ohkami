@@ -1,6 +1,9 @@
 use std::borrow::Cow;
 use crate::{util::ErrorMessage, IntoResponse, Request, Response};
 
+#[cfg(feature="openapi")]
+use crate::openapi;
+
 
 /// "Retirieved from a `Request`".
 /// 
@@ -39,6 +42,10 @@ pub trait FromRequest<'req>: Sized {
     
     fn from_request(req: &'req Request) -> Option<Result<Self, Self::Error>>;
 
+    #[cfg(feature="openapi")]
+    fn openapi_inbound() -> openapi::Inbound {
+        openapi::Inbound::None
+    }
 }
 const _: () = {
     impl<'req> FromRequest<'req> for &'req Request {
@@ -49,12 +56,18 @@ const _: () = {
     }
     impl<'req, FR: FromRequest<'req>> FromRequest<'req> for Option<FR> {
         type Error = FR::Error;
+
         #[inline]
         fn from_request(req: &'req Request) -> Option<Result<Self, Self::Error>> {
             match FR::from_request(req) {
                 None     => Some(Ok(None)),
                 Some(fr) => Some(fr.map(Some))
             }
+        }
+
+        #[cfg(feature="openapi")]
+        fn openapi_inbound() -> openapi::Inbound {
+            FR::openapi_inbound()
         }
     }
 };
@@ -76,8 +89,7 @@ const _: () = {
     }
 };
 
-
-/// "Retrieved from a path/query param".
+/// "Retrieved from a path param".
 /// 
 /// ### required
 /// - `type Errpr`
@@ -107,7 +119,13 @@ pub trait FromParam<'p>: Sized {
                 })?
         ).map_err(IntoResponse::into_response)
     }
-} const _: () = {
+
+    #[cfg(feature="openapi")]
+    fn openapi_param() -> openapi::Parameter {
+        openapi::Parameter::in_path("", openapi::string())
+    }
+}
+const _: () = {
     impl<'p> FromParam<'p> for String {
         type Error = std::convert::Infallible;
 
@@ -157,26 +175,74 @@ pub trait FromParam<'p>: Sized {
                     type Error = ErrorMessage;
 
                     fn from_param(param: Cow<'p, str>) -> Result<Self, Self::Error> {
-                        let digit_bytes = param.as_bytes();
-                        (digit_bytes.len() > 0).then_some(())
-                            .ok_or_else(|| ErrorMessage(format!("Unexpected path params: Expected a number nut found an empty string")))?;
-                        match digit_bytes {
-                            [b'0'] => Ok(0),
-                            [b'0', ..] => Err((|| ErrorMessage(format!("Unexpected path params `{}`: Expected a number but it starts with '0'", digit_bytes.escape_ascii())))()),
-                            _ => {
-                                let mut value: $unsigned_int = 0;
-                                for d in digit_bytes {
-                                    match d {
-                                        b'0'..=b'9' => value = value * 10 + (*d - b'0') as $unsigned_int,
-                                        _ => return Err((|| ErrorMessage(format!("Unexpected path params `{}`: Expected a number but it contains a non-digit charactor", digit_bytes.escape_ascii())))())
-                                    }
-                                }
-                                Ok(value)
-                            }
-                        }
+                        ::byte_reader::Reader::new(param.as_bytes())
+                            .read_uint()
+                            .map(|i| Self::try_from(i).ok())
+                            .flatten()
+                            .ok_or_else(|| ErrorMessage(format!("Unexpected path param")))
+                    }
+
+                    #[cfg(feature="openapi")]
+                    fn openapi_param() -> openapi::Parameter {
+                        openapi::Parameter::in_path("", openapi::integer())
                     }
                 }
             )*
         };
-    } unsigned_integers! { u8, u16, u32, u64, u128, usize }
+    } unsigned_integers! { u8, u16, u32, u64, usize }
+
+    macro_rules! signed_integers {
+        ($( $signed_int:ty ),*) => {
+            $(
+                impl<'p> FromParam<'p> for $signed_int {
+                    type Error = ErrorMessage;
+
+                    fn from_param(param: Cow<'p, str>) -> Result<Self, Self::Error> {
+                        ::byte_reader::Reader::new(param.as_bytes())
+                            .read_int()
+                            .map(|i| Self::try_from(i).ok())
+                            .flatten()
+                            .ok_or_else(|| ErrorMessage(format!("Unexpected path param")))
+                    }
+
+                    #[cfg(feature="openapi")]
+                    fn openapi_param() -> openapi::Parameter {
+                        openapi::Parameter::in_path("", openapi::integer())
+                    }
+                }
+            )*
+        };
+    } signed_integers! { i8, i16, i32, i64, isize }
 };
+
+pub trait FromBody<'req>: Sized {
+    /// e.g. `application/json` `text/html`
+    const MIME_TYPE: &'static str;
+
+    fn from_body(body: &'req [u8]) -> Result<Self, impl std::fmt::Display>;
+
+    #[cfg(feature="openapi")]
+    fn openapi_requestbody() -> impl Into<openapi::schema::SchemaRef>;
+}
+impl<'req, B: FromBody<'req>> FromRequest<'req> for B {
+    type Error = Response;
+    fn from_request(req: &'req Request) -> Option<Result<Self, Self::Error>> {
+        #[cold] #[inline(never)]
+        fn reject(msg: impl std::fmt::Display) -> Response {
+            Response::BadRequest().with_text(msg.to_string())
+        }
+
+        if req.headers.ContentType()?.starts_with(B::MIME_TYPE) {
+            Some(B::from_body(req.payload()?).map_err(reject))
+        } else {
+            None
+        }
+    }
+
+    #[cfg(feature="openapi")]
+    fn openapi_inbound() -> openapi::Inbound {
+        openapi::Inbound::Body(openapi::RequestBody::of(
+            B::MIME_TYPE, B::openapi_requestbody()
+        ))
+    }
+}

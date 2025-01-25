@@ -44,6 +44,16 @@ const _: () = {
             if bytes.is_empty() {return Cow::Borrowed("/")}
             percent_decode_utf8(bytes).expect("Non UTF-8 path params")
         }
+
+        #[inline] pub(crate) unsafe fn assume_one_param<'p>(&self) -> &'p [u8] {
+            self.0.assume_init_ref().params.list.get_unchecked(0).assume_init_ref().as_bytes()
+        }
+        #[inline] pub(crate) unsafe fn assume_two_params<'p>(&self) -> (&'p [u8], &'p [u8]) {
+            (
+                self.0.assume_init_ref().params.list.get_unchecked(0).assume_init_ref().as_bytes(),
+                self.0.assume_init_ref().params.list.get_unchecked(1).assume_init_ref().as_bytes()
+            )
+        }
     }
 
     impl std::ops::Deref for Path {
@@ -77,7 +87,6 @@ const _: () = {
 #[cfg(feature="__rt__")]
 const _: () = {
     impl Params {
-        #[inline(always)]
         const fn init() -> Self {
             Params { next: 0, list: [const {MaybeUninit::uninit()}; Params::LIMIT] }
         }
@@ -96,8 +105,7 @@ const _: () = {
     }
     
     impl Path {
-        #[inline]
-        pub(crate) fn uninit() -> Self {
+        pub(crate) const fn uninit() -> Self {
             Self(MaybeUninit::uninit())
         }
 
@@ -128,21 +136,18 @@ const _: () = {
         #[inline] pub(crate) unsafe fn push_param(&mut self, param: Slice) {
             self.0.assume_init_mut().params.push(param)
         }
-        #[inline] pub(crate) unsafe fn assume_one_param<'p>(&self) -> &'p [u8] {
-            self.0.assume_init_ref().params.list.get_unchecked(0).assume_init_ref().as_bytes()
-        }
-        #[inline] pub(crate) unsafe fn assume_two_params<'p>(&self) -> (&'p [u8], &'p [u8]) {
-            (self.0.assume_init_ref().params.list.get_unchecked(0).assume_init_ref().as_bytes(), self.0.assume_init_ref().params.list.get_unchecked(1).assume_init_ref().as_bytes())
-        }
 
         #[inline] pub(crate) unsafe fn normalized_bytes<'req>(&self) -> &'req [u8] {
             self.0.assume_init_ref().raw.as_bytes()
         }
     }
     
-    #[cfg(test)]
     impl Path {
-        pub fn from_literal(literal: &'static str) -> Self {
+        #[cfg(any(
+            all(feature="__rt_native__", feature="DEBUG", test),
+            all(feature="__rt__", feature="openapi"),
+        ))]
+        pub(crate) fn from_literal(literal: &'static str) -> Self {
             Self(MaybeUninit::new(PathInner {
                 raw:    Slice::from_bytes(literal.as_bytes()),
                 params: Params::init(),

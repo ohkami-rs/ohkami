@@ -1,12 +1,12 @@
 use crate::header::{IndexMap, Append, SetCookie, SetCookieBuilder};
+use ohkami_lib::map::TupleMap;
 use std::borrow::Cow;
-use rustc_hash::FxHashMap;
 
 
 #[derive(Clone)]
 pub struct Headers {
     standard:  IndexMap<N_SERVER_HEADERS, Cow<'static, str>>,
-    custom:    Option<Box<FxHashMap<&'static str, Cow<'static, str>>>>,
+    custom:    Option<Box<TupleMap<&'static str, Cow<'static, str>>>>,
     setcookie: Option<Box<Vec<Cow<'static, str>>>>,
     pub(crate) size: usize,
 }
@@ -22,14 +22,6 @@ pub struct SetHeaders<'set>(
 pub trait HeaderAction<'action> {
     fn perform(self, set: SetHeaders<'action>, key: Header) -> SetHeaders<'action>;
 } const _: () = {
-    // remove
-    impl<'a> HeaderAction<'a> for Option<()> {
-        #[inline] fn perform(self, set: SetHeaders<'a>, key: Header) -> SetHeaders<'a> {
-            set.0.remove(key);
-            set
-        }
-    }
-
     // append
     impl<'a> HeaderAction<'a> for Append {
         #[inline] fn perform(self, set: SetHeaders<'a>, key: Header) -> SetHeaders<'a> {
@@ -57,20 +49,22 @@ pub trait HeaderAction<'action> {
             set
         }
     }
+
+    // remove or insert
+    impl<'a> HeaderAction<'a> for Option<Cow<'static, str>> {
+        #[inline] fn perform(self, set: SetHeaders<'a>, key: Header) -> SetHeaders<'a> {
+            match self {
+                None => set.0.remove(key),
+                Some(v) => set.0.insert(key, v),
+            }
+            set
+        }
+    }
 };
 
 pub trait CustomHeadersAction<'action> {
     fn perform(self, set: SetHeaders<'action>, key: &'static str) -> SetHeaders<'action>;
 } const _: () = {
-    /* remove */
-    impl<'set> CustomHeadersAction<'set> for Option<()> {
-        #[inline]
-        fn perform(self, set: SetHeaders<'set>, key: &'static str) -> SetHeaders<'set> {
-            set.0.remove_custom(key);
-            set
-        }
-    }
-
     /* append */
     impl<'set> CustomHeadersAction<'set> for Append {
         fn perform(self, set: SetHeaders<'set>, key: &'static str) -> SetHeaders<'set> {
@@ -95,6 +89,18 @@ pub trait CustomHeadersAction<'action> {
     impl<'set> CustomHeadersAction<'set> for Cow<'static, str> {
         fn perform(self, set: SetHeaders<'set>, key: &'static str) -> SetHeaders<'set> {
             set.0.insert_custom(key, self);
+            set
+        }
+    }
+
+    /* remove or insert */
+    impl<'set> CustomHeadersAction<'set> for Option<Cow<'static, str>> {
+        #[inline]
+        fn perform(self, set: SetHeaders<'set>, key: &'static str) -> SetHeaders<'set> {
+            match self {
+                None => set.0.remove_custom(key),
+                Some(v) => set.0.insert_custom(key, v),
+            }
             set
         }
     }
@@ -152,8 +158,12 @@ macro_rules! Header {
                 }
             )*
 
-            #[inline]
+            #[deprecated = "use `.x` instead"]
             pub fn custom(self, name: &'static str, action: impl CustomHeadersAction<'set>) -> Self {
+                self.x(name, action)
+            }
+            #[inline]
+            pub fn x(self, name: &'static str, action: impl CustomHeadersAction<'set>) -> Self {
                 action.perform(self, name)
             }
         }
@@ -163,13 +173,18 @@ macro_rules! Header {
             $(
                 #[inline]
                 pub fn $konst(&self) -> Option<&str> {
-                    self.get(Header::$konst)
+                    self.get_standard(Header::$konst)
                 }
             )*
 
-            #[inline]
+            #[deprecated = "use `.get` instead"]
             pub fn custom(&self, name: &'static str) -> Option<&str> {
+                self.get(name)
+            }
+            #[inline]
+            pub fn get(&self, name: &'static str) -> Option<&str> {
                 self.get_custom(name)
+                    .or_else(|| self.get_standard(Header::from_bytes(name.as_bytes())?))
             }
         }
     };
@@ -241,11 +256,11 @@ const _: () = {
 
     #[allow(non_snake_case)]
     impl<'s> SetHeaders<'s> {
-        /// Add new `Set-Cookie` header in the response.
+        /// Add new `Set-Cookie` header to the response.
         /// 
         /// - When you call this N times, the response has N different
         ///   `Set-Cookie` headers.
-        /// - Cookie value (second argument) is precent encoded when the
+        /// - Cookie value (second argument) is percent-encoded when the
         ///   response is sended.
         /// 
         /// ---
@@ -256,8 +271,8 @@ const _: () = {
         /// fn mutate_header(res: &mut Response) {
         ///     res.headers.set()
         ///         .Server("ohkami")
-        ///         .SetCookie("id", "42", |d|d.Path("/").SameSiteLax())
-        ///         .SetCookie("name", "John", |d|d.Path("/where").SameSiteStrict());
+        ///         .SetCookie("id", "42", |d|d.Path("/").SameSiteStrict())
+        ///         .SetCookie("name", "John", |d|d.Path("/where").SameSiteLax());
         /// }
         /// ```
         #[inline]
@@ -297,7 +312,7 @@ impl Headers {
         let self_len = value.len();
         match &mut self.custom {
             None => {
-                self.custom = Some(Box::new(FxHashMap::from_iter([(name, value)])));
+                self.custom = Some(Box::new(TupleMap::from_iter([(name, value)])));
                 self.size += name.len() + ": ".len() + self_len + "\r\n".len()
             }
             Some(custom) => {
@@ -327,13 +342,13 @@ impl Headers {
     }
 
     #[inline(always)]
-    pub(crate) fn get(&self, name: Header) -> Option<&str> {
+    pub(crate) fn get_standard(&self, name: Header) -> Option<&str> {
         unsafe {self.standard.get(name as usize)}.map(Cow::as_ref)
     }
     #[inline]
     pub(crate) fn get_custom(&self, name: &'static str) -> Option<&str> {
         self.custom.as_ref()?
-            .get(name)
+            .get(&name)
             .map(Cow::as_ref)
     }
 
@@ -369,12 +384,12 @@ impl Headers {
 
         let custom = {
             if self.custom.is_none() {
-                self.custom = Some(Box::new(FxHashMap::default()));
+                self.custom = Some(Box::new(TupleMap::new()));
             }
             unsafe {self.custom.as_mut().unwrap_unchecked()}
         };
 
-        self.size += match custom.get_mut(name) {
+        self.size += match custom.get_mut(&name) {
             Some(v) => {
                 match v {
                     Cow::Owned(string) => {
@@ -448,7 +463,7 @@ impl Headers {
             }
         }
         if let Some(custom) = self.custom.as_ref() {
-            for (k, v) in &**custom {
+            for (k, v) in custom.iter() {
                 crate::push_unchecked!(buf <- k.as_bytes());
                 crate::push_unchecked!(buf <- b": ");
                 crate::push_unchecked!(buf <- v.as_bytes());
@@ -465,7 +480,7 @@ impl Headers {
         crate::push_unchecked!(buf <- b"\r\n");
     }
 
-    #[cfg(feature="DEBUG")]
+    #[cfg(any(feature="DEBUG", feature="__rt_native__"))]
     pub fn _write_to(&self, buf: &mut Vec<u8>) {
         buf.reserve(self.size);
         unsafe {self.write_unchecked_to(buf)}
@@ -484,7 +499,7 @@ const _: () = {
     impl PartialEq for Headers {
         fn eq(&self, other: &Self) -> bool {
             for (k, v) in self.iter_standard() {
-                if other.get(Header::from_bytes(k.as_bytes()).unwrap()) != Some(v) {
+                if other.get_standard(Header::from_bytes(k.as_bytes()).unwrap()) != Some(v) {
                     return false
                 }
             }
@@ -506,7 +521,7 @@ const _: () = {
             for (k, v) in iter {
                 match Header::from_bytes(k.as_bytes()) {
                     Some(h) => this.insert(h, v.into()),
-                    None    => {this.set().custom(k, v.into());}
+                    None    => {this.set().x(k, v.into());}
                 }
             }
             this

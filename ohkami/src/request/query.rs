@@ -13,7 +13,7 @@ pub struct QueryParams(
 
 impl QueryParams {
     #[cfg(feature="__rt__")]
-    #[inline(always)] pub(crate) fn new(bytes: &[u8]) -> Self {
+    #[inline(always)] pub(crate) const fn new(bytes: &[u8]) -> Self {
         Self(Slice::from_bytes(bytes))
     }
 
@@ -36,13 +36,13 @@ impl QueryParams {
 
         unsafe {self.0.as_bytes()}
             .split(|b| b==&b'&')
-            .map(|kv| {
+            .filter_map(|kv| (!kv.is_empty()).then(|| {
                 let eq = kv.iter().position(|b| b==&b'=').expect("invalid query params: missing `=`");
                 (
                     decoded_utf8(unsafe {kv.get_unchecked(..eq)}),
                     decoded_utf8(unsafe {kv.get_unchecked(eq+1..)})
                 )
-            })
+            }))
     }
 }
 

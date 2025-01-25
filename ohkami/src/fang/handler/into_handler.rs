@@ -1,13 +1,16 @@
 use std::{future::Future, pin::Pin};
-use super::{Handler, SendOnNative, SendSyncOnNative, ResponseFuture};
+use super::{Handler, SendOnNative, SendSyncOnNative, SendOnNativeFuture};
 use crate::{Response, FromRequest, FromParam, Request, IntoResponse};
+
+#[cfg(feature="openapi")]
+use crate::openapi;
 
 
 pub trait IntoHandler<T> {
     fn into_handler(self) -> Handler;
 }
 
-#[inline(never)] #[cold] fn __error__(e: Response) -> Pin<Box<dyn ResponseFuture>> {
+#[inline(never)] #[cold] fn __error__(e: Response) -> Pin<Box<dyn SendOnNativeFuture<Response>>> {
     Box::pin(async {e})
 }
 
@@ -36,6 +39,8 @@ const _: (/* no args */) = {
                 Box::pin(async move {
                     res.await.into_response()
                 })
+            }, #[cfg(feature="openapi")] {
+                openapi::Operation::with(Body::openapi_responses())
             })
         }
     }
@@ -49,7 +54,7 @@ const _: (/* FromParam */) = {
         Fut:  Future<Output = Body> + SendOnNative + 'static,
     {
         fn into_handler(self) -> Handler {
-            Handler::new(move |req|
+            Handler::new(move |req| {
                 match P1::from_raw_param(unsafe {req.path.assume_one_param()}) {
                     Ok(p1) => {
                         let res = self(p1);
@@ -57,7 +62,10 @@ const _: (/* FromParam */) = {
                     }
                     Err(e) => __error__(e)
                 }
-            )
+            }, #[cfg(feature="openapi")] {
+                openapi::Operation::with(Body::openapi_responses())
+                    .param(P1::openapi_param())
+            })
         }
     }
 
@@ -68,7 +76,7 @@ const _: (/* FromParam */) = {
         Fut:  Future<Output = Body> + SendOnNative + 'static,
     {
         fn into_handler(self) -> Handler {
-            Handler::new(move |req|
+            Handler::new(move |req| {
                 // SAFETY: Due to the architecture of `Router`,
                 // `params` has already `append`ed once before this code
                 match P1::from_raw_param(unsafe {req.path.assume_one_param()}) {
@@ -78,7 +86,10 @@ const _: (/* FromParam */) = {
                     }
                     Err(e) => __error__(e)
                 }
-            )
+            }, #[cfg(feature="openapi")] {
+                openapi::Operation::with(Body::openapi_responses())
+                    .param(P1::openapi_param())
+            })
         }
     }
 
@@ -97,6 +108,10 @@ const _: (/* FromParam */) = {
                     }
                     (Err(e), _) | (_, Err(e)) => __error__(e),
                 }
+            }, #[cfg(feature="openapi")] {
+                openapi::Operation::with(Body::openapi_responses())
+                    .param(P1::openapi_param())
+                    .param(P2::openapi_param())
             })
         }
     }
@@ -109,7 +124,7 @@ const _: (/* FromRequest items */) = {
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
         fn into_handler(self) -> Handler {
-            Handler::new(move |req|
+            Handler::new(move |req| {
                 match from_request::<Item1>(req) {
                     Ok(item1) => {
                         let res = self(item1);
@@ -117,7 +132,10 @@ const _: (/* FromRequest items */) = {
                     }
                     Err(e) => __error__(e)
                 }
-            )
+            }, #[cfg(feature="openapi")] {
+                openapi::Operation::with(Body::openapi_responses())
+                    .inbound(Item1::openapi_inbound())
+            })
         }
     }
 
@@ -127,7 +145,7 @@ const _: (/* FromRequest items */) = {
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
         fn into_handler(self) -> Handler {
-            Handler::new(move |req|
+            Handler::new(move |req| {
                 match (from_request::<Item1>(req), from_request::<Item2>(req)) {
                     (Ok(item1), Ok(item2)) => {
                         let res = self(item1, item2);
@@ -136,7 +154,11 @@ const _: (/* FromRequest items */) = {
                     (Err(e), _) |
                     (_, Err(e)) => __error__(e),
                 }
-            )
+            }, #[cfg(feature="openapi")] {
+                openapi::Operation::with(Body::openapi_responses())
+                    .inbound(Item1::openapi_inbound())
+                    .inbound(Item2::openapi_inbound())
+            })
         }
     }
 
@@ -146,7 +168,7 @@ const _: (/* FromRequest items */) = {
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
         fn into_handler(self) -> Handler {
-            Handler::new(move |req|
+            Handler::new(move |req| {
                 match (from_request::<Item1>(req), from_request::<Item2>(req), from_request::<Item3>(req)) {
                     (Ok(item1), Ok(item2), Ok(item3)) => {
                         let res = self(item1, item2, item3);
@@ -156,7 +178,12 @@ const _: (/* FromRequest items */) = {
                     (_, Err(e), _) |
                     (_, _, Err(e)) => __error__(e),
                 }
-            )
+            }, #[cfg(feature="openapi")] {
+                openapi::Operation::with(Body::openapi_responses())
+                    .inbound(Item1::openapi_inbound())
+                    .inbound(Item2::openapi_inbound())
+                    .inbound(Item3::openapi_inbound())
+            })
         }
     }
 
@@ -166,7 +193,7 @@ const _: (/* FromRequest items */) = {
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
         fn into_handler(self) -> Handler {
-            Handler::new(move |req|
+            Handler::new(move |req| {
                 match (from_request::<Item1>(req), from_request::<Item2>(req), from_request::<Item3>(req), from_request::<Item4>(req)) {
                     (Ok(item1), Ok(item2), Ok(item3), Ok(item4)) => {
                         let res = self(item1, item2, item3, item4);
@@ -177,7 +204,13 @@ const _: (/* FromRequest items */) = {
                     (_, _, Err(e),_) |
                     (_,_, _, Err(e)) => __error__(e),
                 }
-            )
+            }, #[cfg(feature="openapi")] {
+                openapi::Operation::with(Body::openapi_responses())
+                    .inbound(Item1::openapi_inbound())
+                    .inbound(Item2::openapi_inbound())
+                    .inbound(Item3::openapi_inbound())
+                    .inbound(Item4::openapi_inbound())
+            })
         }
     }
 };
@@ -202,6 +235,10 @@ const _: (/* one FromParam without tuple and FromRequest items */) = {
                     (Err(e), _) |
                     (_, Err(e)) => __error__(e),
                 }
+            }, #[cfg(feature="openapi")] {
+                openapi::Operation::with(Body::openapi_responses())
+                    .param(P1::openapi_param())
+                    .inbound(Item1::openapi_inbound())
             })
         }
     }
@@ -226,6 +263,11 @@ const _: (/* one FromParam without tuple and FromRequest items */) = {
                     (_,Err(e),_) |
                     (_,_,Err(e)) => __error__(e),
                 }
+            }, #[cfg(feature="openapi")] {
+                openapi::Operation::with(Body::openapi_responses())
+                    .param(P1::openapi_param())
+                    .inbound(Item1::openapi_inbound())
+                    .inbound(Item2::openapi_inbound())
             })
         }
     }
@@ -251,6 +293,12 @@ const _: (/* one FromParam without tuple and FromRequest items */) = {
                     (_,_,Err(e),_) |
                     (_,_,_,Err(e)) => __error__(e),
                 }
+            }, #[cfg(feature="openapi")] {
+                openapi::Operation::with(Body::openapi_responses())
+                    .param(P1::openapi_param())
+                    .inbound(Item1::openapi_inbound())
+                    .inbound(Item2::openapi_inbound())
+                    .inbound(Item3::openapi_inbound())
             })
         }
     }
@@ -277,6 +325,13 @@ const _: (/* one FromParam without tuple and FromRequest items */) = {
                     (_,_,_,Err(e),_) |
                     (_,_,_,_,Err(e)) => __error__(e),
                 }
+            }, #[cfg(feature="openapi")] {
+                openapi::Operation::with(Body::openapi_responses())
+                    .param(P1::openapi_param())
+                    .inbound(Item1::openapi_inbound())
+                    .inbound(Item2::openapi_inbound())
+                    .inbound(Item3::openapi_inbound())
+                    .inbound(Item4::openapi_inbound())
             })
         }
     }
@@ -302,6 +357,10 @@ const _: (/* one FromParam and FromRequest items */) = {
                     (Err(e),_) |
                     (_,Err(e)) => __error__(e),
                 }
+            }, #[cfg(feature="openapi")] {
+                openapi::Operation::with(Body::openapi_responses())
+                    .param(P1::openapi_param())
+                    .inbound(Item1::openapi_inbound())
             })
         }
     }
@@ -326,6 +385,11 @@ const _: (/* one FromParam and FromRequest items */) = {
                     (_,Err(e),_) |
                     (_,_,Err(e)) => __error__(e),
                 }
+            }, #[cfg(feature="openapi")] {
+                openapi::Operation::with(Body::openapi_responses())
+                    .param(P1::openapi_param())
+                    .inbound(Item1::openapi_inbound())
+                    .inbound(Item2::openapi_inbound())
             })
         }
     }
@@ -351,6 +415,12 @@ const _: (/* one FromParam and FromRequest items */) = {
                     (_,_,Err(e),_) |
                     (_,_,_,Err(e)) => __error__(e),
                 }
+            }, #[cfg(feature="openapi")] {
+                openapi::Operation::with(Body::openapi_responses())
+                    .param(P1::openapi_param())
+                    .inbound(Item1::openapi_inbound())
+                    .inbound(Item2::openapi_inbound())
+                    .inbound(Item3::openapi_inbound())
             })
         }
     }
@@ -377,6 +447,13 @@ const _: (/* one FromParam and FromRequest items */) = {
                     (_,_,_,Err(e),_) |
                     (_,_,_,_,Err(e)) => __error__(e),
                 }
+            }, #[cfg(feature="openapi")] {
+                openapi::Operation::with(Body::openapi_responses())
+                    .param(P1::openapi_param())
+                    .inbound(Item1::openapi_inbound())
+                    .inbound(Item2::openapi_inbound())
+                    .inbound(Item3::openapi_inbound())
+                    .inbound(Item4::openapi_inbound())
             })
         }
     }
@@ -403,6 +480,11 @@ const _: (/* two PathParams and FromRequest items */) = {
                     (_,Err(e),_) |
                     (_,_,Err(e)) => __error__(e),
                 }
+            }, #[cfg(feature="openapi")] {
+                openapi::Operation::with(Body::openapi_responses())
+                    .param(P1::openapi_param())
+                    .param(P2::openapi_param())
+                    .inbound(Item1::openapi_inbound())
             })
         }
     }
@@ -428,6 +510,12 @@ const _: (/* two PathParams and FromRequest items */) = {
                     (_,_,Err(e),_) |
                     (_,_,_,Err(e)) => __error__(e),
                 }
+            }, #[cfg(feature="openapi")] {
+                openapi::Operation::with(Body::openapi_responses())
+                    .param(P1::openapi_param())
+                    .param(P2::openapi_param())
+                    .inbound(Item1::openapi_inbound())
+                    .inbound(Item2::openapi_inbound())
             })
         }
     }
@@ -454,6 +542,13 @@ const _: (/* two PathParams and FromRequest items */) = {
                     (_,_,_,Err(e),_) |
                     (_,_,_,_,Err(e)) => __error__(e),
                 }
+            }, #[cfg(feature="openapi")] {
+                openapi::Operation::with(Body::openapi_responses())
+                    .param(P1::openapi_param())
+                    .param(P2::openapi_param())
+                    .inbound(Item1::openapi_inbound())
+                    .inbound(Item2::openapi_inbound())
+                    .inbound(Item3::openapi_inbound())
             })
         }
     }
@@ -481,6 +576,14 @@ const _: (/* two PathParams and FromRequest items */) = {
                     (_,_,_,_,Err(e),_) |
                     (_,_,_,_,_,Err(e)) => __error__(e),
                 }
+            }, #[cfg(feature="openapi")] {
+                openapi::Operation::with(Body::openapi_responses())
+                    .param(P1::openapi_param())
+                    .param(P2::openapi_param())
+                    .inbound(Item1::openapi_inbound())
+                    .inbound(Item2::openapi_inbound())
+                    .inbound(Item3::openapi_inbound())
+                    .inbound(Item4::openapi_inbound())
             })
         }
     }
@@ -489,9 +592,9 @@ const _: (/* two PathParams and FromRequest items */) = {
 
 #[cfg(test)] #[test] fn handler_args() {
     async fn h0() -> &'static str {""}
-
     async fn h1(_param: String) -> Response {todo!()}
     async fn h2(_param: &str) -> Response {todo!()}
+    async fn h3(_params: (&str, u64)) -> Response {todo!()}
 
     struct P;
     impl<'p> FromParam<'p> for P {
@@ -500,7 +603,7 @@ const _: (/* two PathParams and FromRequest items */) = {
             Ok(Self)
         }
     }
-    async fn h3(_param: P) -> String {format!("")}
+    async fn h4(_param: P) -> String {format!("")}
 
     #[cfg(feature="rt_worker")]
     struct SomeJS {_ptr: *const u8}
@@ -512,7 +615,7 @@ const _: (/* two PathParams and FromRequest items */) = {
         }
     }
     #[cfg(feature="rt_worker")]
-    async fn h4(_: SomeJS) -> String {format!("")}
+    async fn h5(_: SomeJS) -> String {format!("")}
 
     macro_rules! assert_handlers {
         ( $($function:ident)* ) => {
@@ -520,8 +623,8 @@ const _: (/* two PathParams and FromRequest items */) = {
         };
     }
 
-    assert_handlers! { h0 h1 h2 h3  }
+    assert_handlers! { h0 h1 h2 h3 h4 }
 
     #[cfg(feature="rt_worker")]
-    assert_handlers! { h4 }
+    assert_handlers! { h5 }
 }

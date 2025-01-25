@@ -1,22 +1,32 @@
-use crate::{FromRequest, IntoResponse, Request, Response};
+use crate::{FromBody, IntoBody};
+
+#[cfg(feature="openapi")]
+use crate::openapi;
 
 
 pub struct Text<T>(pub T);
 
-impl<'req, T: From<&'req str>> FromRequest<'req> for Text<T> {
-    type Error = Response;
-    fn from_request(req: &'req Request) -> Option<Result<Self, Self::Error>> {
-        if !req.headers.ContentType()?.starts_with("text/plain") {
-            return None
-        }
-        std::str::from_utf8(req.payload()?)
-            .map_err(super::reject)
-            .map(|s| Self(T::from(s))).into()
+impl<'req, T: From<&'req str>> FromBody<'req> for Text<T> {
+    const MIME_TYPE: &'static str = "text/plain";
+    fn from_body(body: &'req [u8]) -> Result<Self, impl std::fmt::Display> {
+        std::str::from_utf8(body).map(|s| Text(s.into()))
+    }
+
+    #[cfg(feature="openapi")]
+    fn openapi_requestbody() -> impl Into<openapi::schema::SchemaRef> {
+        openapi::string()
     }
 }
 
-impl<T: Into<std::borrow::Cow<'static, str>>> IntoResponse for Text<T> {
-    fn into_response(self) -> Response {
-        Response::OK().with_text(self.0)
+impl<T: Into<std::borrow::Cow<'static, str>>> IntoBody for Text<T> {
+    const CONTENT_TYPE: &'static str = "text/plain; charset=UTF-8";
+    fn into_body(self) -> Result<Vec<u8>, impl std::fmt::Display> {
+        let cow: std::borrow::Cow<'static, str> = self.0.into();
+        Ok::<_, std::convert::Infallible>(cow.into_owned().into_bytes())
+    }
+
+    #[cfg(feature="openapi")]
+    fn openapi_responsebody() -> impl Into<openapi::schema::SchemaRef> {
+        openapi::string()
     }
 }

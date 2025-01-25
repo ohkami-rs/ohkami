@@ -1,0 +1,20 @@
+[package]
+name          = "ohkami_openapi"
+description   = "OpenAPI types for Ohkami - intuitive and declarative web framework"
+documentation = "https://docs.rs/ohkami_openapi"
+version       = { workspace = true }
+edition       = { workspace = true }
+authors       = { workspace = true }
+homepage      = { workspace = true }
+repository    = { workspace = true }
+readme        = { workspace = true }
+keywords      = { workspace = true }
+categories    = { workspace = true }
+license       = { workspace = true }
+
+[dependencies]
+serde      = { workspace = true }
+serde_json = { workspace = true }
+
+[features]
+no-release-serialize = []
