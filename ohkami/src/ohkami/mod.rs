@@ -136,6 +136,61 @@ pub struct Ohkami {
 }
 
 impl Ohkami {
+    /// Create Ohkami by the routing
+    /// 
+    /// ### routing
+    /// 
+    /// A tuple like
+    /// 
+    /// ```
+    /// use ohkami::Route;
+    /// 
+    /// # use ohkami::fang::FangAction;
+    /// # struct Logger;
+    /// # impl FangAction for Logger {}
+    /// # struct Auth;
+    /// # impl FangAction for Auth {}
+    /// # async fn get_handler() {}
+    /// # async fn put_handler() {}
+    /// # async fn post_handler() {}
+    /// # 
+    /// # let _ =
+    /// (
+    ///     // 0 or more fangs of this Ohkami
+    ///     Logger,
+    ///     Auth,
+    ///     
+    ///     // 0 or more handler routes
+    ///     "/route1"
+    ///         .GET(get_handler)
+    ///         .PUT(put_handler),
+    ///     "/route2/:param"
+    ///         .POST(post_handler),
+    /// )
+    /// #;
+    /// ```
+    /// 
+    /// ### note
+    /// 
+    /// Fangs of this `routing` tuple are *always* called when a request once
+    /// comes to this `Ohkami` *independent of its method or detail path*.
+    /// 
+    /// If you need to apply some fangs only for a request to specific
+    /// method and path, consider using *local fangs* :
+    /// 
+    /// ```
+    /// use ohkami::Route;
+    /// 
+    /// # struct Auth;
+    /// # impl ohkami::fang::FangAction for Auth {}
+    /// # struct SomeFang;
+    /// # impl ohkami::fang::FangAction for SomeFang {}
+    /// # async fn get_user_profile() {}
+    /// Ohkami::new((
+    ///     "/users/:id"
+    ///         .GET((Auth, SomeFang, get_user_profile)),
+    /// ))
+    /// ```
     pub fn new<Fangs>(routing: impl Routing<Fangs>) -> Self {
         let mut this = Self {
             router: Router::new(),
@@ -144,6 +199,12 @@ impl Ohkami {
         routing.apply(&mut this);
         this
     }
+    /// Create Ohkami by the fangs and routing
+    /// 
+    /// ### note
+    /// 
+    /// This is almost the same as [`Ohkami::new`](crate::Ohkami::new), but
+    /// takes fangs and handler routes separately.
     pub fn with(fangs: impl Fangs + 'static, routes: impl Routing) -> Self {
         let mut this = Self {
             router: Router::new(),
