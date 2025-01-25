@@ -6,7 +6,9 @@
 <br>
 
 - *macro-less and type-safe* APIs for intuitive and declarative code
-- *multiple runtimes* are supported：`tokio`, `async-std`, `smol`, `nio`, `glommio`, `worker` (Cloudflare Workers)
+- *various runtimes* are supported：`tokio`, `async-std`, `smol`, `nio`, `glommio` and `worker` (Cloudflare Workers)
+- *extremely fast*：[Web Frameworks Benchmark](https://web-frameworks-benchmark.netlify.app/result)
+- no-network testing, well-structured middlewares, Server-Sent Events, WebSocket, OpenAPI document genration, ...
 
 <div align="right">
     <a href="https://github.com/ohkami-rs/ohkami/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/crates/l/ohkami.svg" /></a>
@@ -14,13 +16,13 @@
     <a href="https://crates.io/crates/ohkami"><img alt="crates.io" src="https://img.shields.io/crates/v/ohkami" /></a>
 </div>
 
+<!--
+
 <br>
 
 ## Benchmark Results
 
 - [Web Frameworks Benchmark](https://web-frameworks-benchmark.netlify.app/result)
-
-<!--
 
 - [TechEmpower's Benchmark](https://www.techempower.com/benchmarks)
 
@@ -94,7 +96,7 @@ npm create cloudflare ./path/to/project -- --template https://github.com/ohkami-
 
 then your project directory has `wrangler.toml`, `package.json` and a Rust library crate. Local dev by `npm run dev` and deploy by `npm run deploy` !
 
-See README of the [template](https://github.com/ohkami-rs/ohkami-templates/tree/main/worker) for details.
+See README of [template](https://github.com/ohkami-rs/ohkami-templates/tree/main/worker) for details.
 
 ### `"sse"`：Server-Sent Events
 
@@ -159,7 +161,7 @@ Ohkami supports *as consistent as possible* OpenAPI document generation, where m
 Only you have to
 
 - Derive `openapi::Schema` for all your schema structs
-- Make your `Ohkami` call `.generate({openapi::OpenAPI})`
+- Make your `Ohkami` call `.generate(openapi::OpenAPI { ... })`
 
 to generate consistent OpenAPI document. You don't need to take care of writing accurate methods, paths, parameters, contents, ... for this OpenAPI feature; All they are done by Ohkami.
 
