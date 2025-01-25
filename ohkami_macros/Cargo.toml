@@ -16,7 +16,7 @@ categories    = { workspace = true }
 license       = { workspace = true }
 
 [package.metadata.docs.rs]
-features = ["worker", "openapi"]
+features      = ["worker", "openapi"]
 
 [dependencies]
 proc-macro2 = "1.0"
