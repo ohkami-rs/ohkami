@@ -59,7 +59,9 @@ const app = (() => {
                             i = process.argv.length;
                             break;
                         default:
-                            this.exit(151, `Unexpected flag specified: ${process.argv[i]}`);
+                            this.#additionalOptions = process.argv.slice(i);
+                            i = process.argv.length;
+                            break;
                     }
                 }
             }
@@ -227,7 +229,7 @@ try {
         });
     });
 } catch (e) {
-    app.exit(153, `Build failed: ${e}`);
+    app.exit(151, `Build failed: ${e}`);
 }
 
 try {
@@ -284,11 +286,11 @@ try {
     writeFileSync(app.outputPath, OpenAPIDocumentBytes);
 
 } catch (e) {
-    app.exit(154, `Generation failed: ${e}`);
+    app.exit(152, `Generation failed: ${e}`);
 }
 
 try {
     rmSync(app.WASMPACK_OUT_DIR, { recursive: true, force: true });
 } catch (e) {
-    app.exit(155, `Cleaning up failed: ${e}`);
+    app.exit(153, `Cleaning up failed: ${e}`);
 }
