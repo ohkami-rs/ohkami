@@ -12,12 +12,6 @@
 //! 
 //! - *macro-less and type-safe* APIs for intuitive and declarative code
 //! - *multi runtimes* are supported：`tokio`, `async-std`, `smol`, `nio`, `glommio`, `worker` (Cloudflare Workers)
-//! 
-//! <div align="right">
-//!     <a href="https://github.com/ohkami-rs/ohkami/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/crates/l/ohkami.svg" /></a>
-//!     <a href="https://github.com/ohkami-rs/ohkami/actions"><img alt="build check status of ohkami" src="https://github.com/ohkami-rs/ohkami/actions/workflows/CI.yml/badge.svg"/></a>
-//!     <a href="https://crates.io/crates/ohkami"><img alt="crates.io" src="https://img.shields.io/crates/v/ohkami" /></a>
-//! </div>
 
 
 #![allow(incomplete_features)]
