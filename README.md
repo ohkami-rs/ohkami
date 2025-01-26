@@ -16,18 +16,6 @@
     <a href="https://crates.io/crates/ohkami"><img alt="crates.io" src="https://img.shields.io/crates/v/ohkami" /></a>
 </div>
 
-<!--
-
-<br>
-
-## Benchmark Results
-
-- [Web Frameworks Benchmark](https://web-frameworks-benchmark.netlify.app/result)
-
-- [TechEmpower's Benchmark](https://www.techempower.com/benchmarks)
-
--->
-
 <br>
 
 ## Quick Start
@@ -36,7 +24,7 @@
 
 ```toml
 [dependencies]
-ohkami = { version = "0.21", features = ["rt_tokio"] }
+ohkami = { version = "0.22", features = ["rt_tokio"] }
 tokio  = { version = "1",    features = ["full"] }
 ```
 
