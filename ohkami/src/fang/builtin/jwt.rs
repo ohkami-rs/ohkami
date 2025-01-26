@@ -492,7 +492,7 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
 
             #[cfg(feature="openapi")]
             fn openapi_responses() -> crate::openapi::Responses {
-                crate::openapi::Responses::enumerated([
+                crate::openapi::Responses::new([
                     (500, crate::openapi::Response::when("User was not found")
                         .content("text/plain", crate::openapi::string()))
                 ])

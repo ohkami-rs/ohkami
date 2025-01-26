@@ -31,7 +31,10 @@ macro_rules! generate_statuses_as_types_containing_value {
                     if B::CONTENT_TYPE != "" {
                         res = res.content(B::CONTENT_TYPE, B::openapi_responsebody())
                     }
-                    openapi::Responses::new(code.parse().unwrap(), res)
+                    openapi::Responses::new([(
+                        code.parse().unwrap(),
+                        res
+                    )])
                 }
             }
         )*
@@ -104,10 +107,10 @@ macro_rules! generate_statuses_as_types_with_no_value {
                 #[cfg(feature="openapi")]
                 fn openapi_responses() -> crate::openapi::Responses {
                     let (code, message) = $message.split_once(' ').unwrap();
-                    openapi::Responses::new(
+                    openapi::Responses::new([(
                         code.parse().unwrap(),
                         openapi::Response::when(message)
-                    )
+                    )])
                 }
             }
         )*
@@ -156,10 +159,10 @@ macro_rules! generate_redirects {
                 #[cfg(feature="openapi")]
                 fn openapi_responses() -> crate::openapi::Responses {
                     let (code, message) = $message.split_once(' ').unwrap();
-                    openapi::Responses::new(
+                    openapi::Responses::new([(
                         code.parse().unwrap(),
                         openapi::Response::when(message)
-                    )
+                    )])
                 }
             }
         )*
