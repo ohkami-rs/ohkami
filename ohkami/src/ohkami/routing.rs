@@ -285,9 +285,11 @@ const _: () = {
                             }
                             res
                         }), #[cfg(feature="openapi")] {use crate::openapi;
-                            openapi::Operation::with(openapi::Responses::new(200, openapi::Response::when("OK")
-                                .content(this.mime, openapi::string().format("binary"))
-                            ))
+                            openapi::Operation::with(openapi::Responses::new([(
+                                200,
+                                openapi::Response::when("OK")
+                                    .content(this.mime, openapi::string().format("binary"))
+                            )]))
                         })
                     }
                 }

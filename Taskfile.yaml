@@ -73,15 +73,17 @@ tasks:
     dir: ./ohkami
     cmds:
       - cargo test --lib --features DEBUG,{{.maybe_nightly}}
-      - cargo test --lib --features DEBUG,sse,ws,{{.maybe_nightly}}
-      - cargo test --lib --features DEBUG,openapi,{{.maybe_nightly}}
+      - cargo test --lib --features DEBUG,sse,{{.maybe_nightly}}
+      - cargo test --lib --features DEBUG,ws,{{.maybe_nightly}}
+      - cargo test --lib --features DEBUG,sse,ws,openapi,{{.maybe_nightly}}
 
   test:rt:
     dir: ./ohkami
     cmds:
       - cargo test --lib --features rt_{{.rt}},DEBUG,{{.maybe_nightly}}
-      - cargo test --lib --features rt_{{.rt}},DEBUG,sse,ws,{{.maybe_nightly}}
-      - cargo test --lib --features rt_{{.rt}},DEBUG,openapi,{{.maybe_nightly}}
+      - cargo test --lib --features rt_{{.rt}},DEBUG,sse,{{.maybe_nightly}}
+      - cargo test --lib --features rt_{{.rt}},DEBUG,ws,{{.maybe_nightly}}
+      - cargo test --lib --features rt_{{.rt}},DEBUG,sse,ws,openapi,{{.maybe_nightly}}
 
 #### checks ####
   # Assure buildability without "DEBUG" feature
@@ -93,8 +95,9 @@ tasks:
     dir: ./ohkami
     cmds:
       - cargo check --lib {{.MAYBE_NIGHTLY_FEATURES}}
-      - cargo check --lib --features sse,ws,{{.maybe_nightly}}
-      - cargo check --lib --features openapi,{{.maybe_nightly}}
+      - cargo check --lib --features sse,{{.maybe_nightly}}
+      - cargo check --lib --features ws,{{.maybe_nightly}}
+      - cargo check --lib --features sse,ws,openapi,{{.maybe_nightly}}
 
   check:native_rt:
     dir: ./ohkami
@@ -102,8 +105,7 @@ tasks:
       - cargo check --lib --features rt_{{.native_rt}},{{.maybe_nightly}}
       - cargo check --lib --features rt_{{.native_rt}},sse,{{.maybe_nightly}}
       - cargo check --lib --features rt_{{.native_rt}},ws,{{.maybe_nightly}}
-      - cargo check --lib --features rt_{{.native_rt}},sse,ws,{{.maybe_nightly}}
-      - cargo check --lib --features rt_{{.native_rt}},openapi,{{.maybe_nightly}}
+      - cargo check --lib --features rt_{{.native_rt}},sse,ws,openapi,{{.maybe_nightly}}
 
   check:rt_worker:
     dir: ohkami
@@ -111,5 +113,4 @@ tasks:
       - cargo check --target wasm32-unknown-unknown --lib --features rt_worker,{{.maybe_nightly}}
       - cargo check --target wasm32-unknown-unknown --lib --features rt_worker,sse,{{.maybe_nightly}}
       - cargo check --target wasm32-unknown-unknown --lib --features rt_worker,ws,{{.maybe_nightly}}
-      - cargo check --target wasm32-unknown-unknown --lib --features rt_worker,sse,ws,{{.maybe_nightly}}
-      - cargo check --target wasm32-unknown-unknown --lib --features rt_worker,openapi,{{.maybe_nightly}}
+      - cargo check --target wasm32-unknown-unknown --lib --features rt_worker,sse,ws,openapi,{{.maybe_nightly}}

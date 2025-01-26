@@ -162,7 +162,7 @@ impl IntoResponse for Error {
             .with_json(self)
     }
     fn openapi_responses() -> openapi::Responses {
-        openapi::Responses::enumerated([])
+        openapi::Responses::new([])
             .or_default(openapi::Response::when("Unexpected error")
                 .content("application/json", <Self as openapi::Schema>::schema())
             )

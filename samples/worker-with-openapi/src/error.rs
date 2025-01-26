@@ -35,7 +35,7 @@ impl ohkami::IntoResponse for APIError {
     fn openapi_responses() -> ohkami::openapi::Responses {
         use ohkami::openapi::Response;
 
-        ohkami::openapi::Responses::enumerated([
+        ohkami::openapi::Responses::new([
             (500, Response::when("Worker's internal error")),
             (403, Response::when("Modyfing other user"))
         ])

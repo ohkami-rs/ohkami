@@ -30,9 +30,10 @@ macro_rules! assert_eq {
     .path("/users", paths::Operations::new()
         .get(
             Operation::with(
-                Responses::new(200, Response::when("A JSON array of user names")
-                    .content("application/json", array(string()))
-                )
+                Responses::new([(
+                    200, Response::when("A JSON array of user names")
+                        .content("application/json", array(string()))
+                )])
             )
             .summary("Returns a list of users.")
             .description("Optional extended description in CommonMark or HTML.")

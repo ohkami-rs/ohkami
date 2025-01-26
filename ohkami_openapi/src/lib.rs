@@ -12,7 +12,7 @@ pub mod request;
 pub use request::{Parameter, RequestBody};
 
 pub mod response;
-pub use response::{Responses, Response};
+pub use response::{Responses, Response, Status};
 
 pub mod paths;
 pub use paths::Operation;

@@ -167,6 +167,14 @@ impl crate::IntoResponse for WebSocket {
         // let `worker` crate and Cloudflare Workers to do around
         // headers and something other
     }
+
+    #[cfg(feature="openapi")]
+    fn openapi_responses() -> crate::openapi::Responses {
+        crate::openapi::Responses::new([(
+            101,
+            crate::openapi::Response::when("Upgrade to WebSocket")
+        )])
+    }
 }
 
 /// A utility struct for storing *session* instances of type `S` associated with `worker::WebSocket`s.

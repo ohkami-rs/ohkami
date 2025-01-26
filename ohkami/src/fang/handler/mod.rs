@@ -78,9 +78,9 @@ impl Handler {
             proc: (&*NOT_FOUND).proc.clone(),
 
             #[cfg(feature="openapi")]
-            openapi_operation: openapi::Operation::with(openapi::Responses::new(
+            openapi_operation: openapi::Operation::with(openapi::Responses::new([(
                 404, openapi::Response::when("default not found")
-            ))
+            )]))
         }
     }
 
@@ -136,7 +136,7 @@ impl Handler {
                 }
             })
         }, #[cfg(feature="openapi")] openapi::Operation::with(
-            openapi::Responses::enumerated([
+            openapi::Responses::new([
                 /* NEVER generate spec of OPTIONS operations */
             ])
         ))
