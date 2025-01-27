@@ -121,15 +121,17 @@ pub fn worker(args: proc_macro::TokenStream, ohkami_fn: proc_macro::TokenStream)
 /// 
 /// _**note**_ : `#[bindings]` supports
 /// 
+/// - AI
 /// - KV
+/// - R2
 /// - D1
 /// - Queue (producer)
 /// - Service
 /// - Variables
 /// - Durable Objects
 /// 
-/// in cuurent version, as `worker` crate does.
-/// ( `worker` supports secrets, but secrets aren't written in wrangler.toml... )
+/// in cuurent version.
+/// ( secrets are not written in wrangler.toml... )
 /// 
 /// <br>
 /// 
