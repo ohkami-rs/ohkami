@@ -151,13 +151,14 @@ Only you have to
 - Derive `openapi::Schema` for all your schema structs
 - Make your `Ohkami` call `.generate(openapi::OpenAPI { ... })`
 
-to generate consistent OpenAPI document. You don't need to take care of writing accurate methods, paths, parameters, contents, ... for this OpenAPI feature; All they are done by Ohkami.
+to generate consistent OpenAPI document.
+
+You don't need to take care of writing accurate methods, paths, parameters, contents, ... for this OpenAPI feature; All they are done by Ohkami.
 
 Of course, you can flexibly customize schemas ( by hand-implemetation of `Schema` ), descriptions or other parts ( by `#[operation]` attribute and `openapi_*` hooks ).
 
 ```rust,ignore
 use ohkami::prelude::*;
-use ohkami::format::JSON;
 use ohkami::typed::status;
 use ohkami::openapi;
 
@@ -211,7 +212,7 @@ async fn main() {
     o.generate(openapi::OpenAPI {
         title: "Users Server",
         version: "0.1.0",
-        servers: vec![
+        servers: &[
             openapi::Server::at("localhost:5000"),
         ]
     });

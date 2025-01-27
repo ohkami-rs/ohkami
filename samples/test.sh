@@ -4,6 +4,11 @@ set -Ceu
 
 SAMPLES=$(pwd)
 
+cd $SAMPLES/openapi-tags && \
+    cargo run && \
+    diff openapi.json openapi.json.sample
+test $? -ne 0 && exit 150 || :
+
 cd $SAMPLES/petstore && \
     cargo build && \
     cd client && \
