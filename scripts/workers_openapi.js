@@ -16,6 +16,9 @@ const app = (() => {
         /** @type {string} */
         #outputPath = "openapi.json";
 
+        /** @type {boolean} */
+        #skipLogin = false;
+
         /** @type {[string]} */
         #additionalOptions = [];
 
@@ -67,6 +70,10 @@ const app = (() => {
                             this.#outputPath = process.argv[i + 1];
                             i += 2;
                             break;
+                        case "--skip-login":
+                            this.#skipLogin = true;
+                            i += 1;
+                            break;
                         case "--":
                             this.#additionalOptions = process.argv.slice(i + 1);
                             i = process.argv.length;
@@ -85,6 +92,11 @@ const app = (() => {
             return this.#outputPath;
         }
 
+        /** @returns {boolean} */
+        get skipLogin() {
+            return this.#skipLogin;
+        }
+
         /** @returns {string} */
         get additionalOptions() {
             return this.#additionalOptions;
@@ -100,7 +112,7 @@ const app = (() => {
             return this.#workerName;
         }
 
-        /** @returns {string | null} */
+        /** @returns {string | undefined} */
         get cloudflareAccountName() {
             return this.#cloudflareAccountName;
         }
@@ -141,6 +153,11 @@ const app = (() => {
 })();
 
 try {
+    if (app.skipLogin) {
+        /* goto `catch` and skip `wrangler whoami` */
+        throw "specified `--skip-login`";
+    }
+
     const e = new TextDecoder();
 
     const wrangler_whoami = spawn("npx", ["wrangler", "whoami"]);
@@ -179,7 +196,7 @@ try {
         });
     });
 } catch (e) {
-    app.warn(`Error or unexpected output of wrangler: ${e}`);
+    app.warn(`skipping login: ${e}`);
 }
 
 try {

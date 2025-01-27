@@ -54,6 +54,15 @@ test $? -ne 0 && exit 156 || :
 cd $SAMPLES/worker-with-openapi && \
     cp wrangler.toml.sample wrangler.toml && \
     (test -f openapi.json || echo '{}' >> openapi.json) && \
-    npm run openapi && \
-    diff openapi.json openapi.json.sample
+    npm run openapi -- --skip-login && \
+    diff openapi.json openapi.json.sample && \
+    # FIXME : to generic way (this is a stopgap for testing
+    # this functionality in at least my local env)
+    (test $(whoami) = kanarus && \
+        npm run openapi && \
+        cp openapi.json.loggedin.sample tmp.json && \
+        sed -i "s/{{ ACCOUNT_NAME }}/kanarus/" tmp.json && \
+        diff openapi.json tmp.json \
+        ; (test -f tmp.json && rm tmp.json) \
+    || :)
 test $? -ne 0 && exit 157 || :
