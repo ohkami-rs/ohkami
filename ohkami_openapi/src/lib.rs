@@ -163,4 +163,10 @@ const _: () = {
             S::schema()
         }
     }
+
+    impl<S: Schema> Schema for &S {
+        fn schema() -> impl Into<schema::SchemaRef> {
+            S::schema()
+        }
+    }
 };
