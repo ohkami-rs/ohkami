@@ -1,5 +1,4 @@
 use ohkami::prelude::*;
-use ohkami::format::JSON;
 use ohkami::typed::status;
 use ohkami::openapi;
 
