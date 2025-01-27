@@ -9,7 +9,6 @@ mod openapi;
 #[cfg(feature="worker")]
 mod worker;
 
-
 #[cfg(feature="openapi")]
 #[proc_macro_derive(Schema, attributes(openapi))]
 pub fn derive_schema(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
@@ -109,6 +108,69 @@ pub fn worker(args: proc_macro::TokenStream, ohkami_fn: proc_macro::TokenStream)
     worker::worker(args.into(), ohkami_fn.into())
         .unwrap_or_else(syn::Error::into_compile_error)
         .into()
+}
+
+#[cfg(feature="worker")]
+/// Integrate the struct with Workers runtime as a Durable Object.\
+/// This requires to impl `DurableObject` trait and the trait requires this attribute.
+/// 
+/// ### Example
+/// 
+/// ```
+/// use worker::{State, Env};
+/// use ohkami::DurableObject;
+/// 
+/// # struct User;
+/// # struct Message;
+/// 
+/// #[DurableObject]
+/// pub struct Chatroom {
+///     users: Vec<User>,
+///     messages: Vec<Message>,
+///     state: State,
+///     env: Env, // access `Env` across requests, use inside `fetch`
+/// }
+/// 
+/// impl DurableObject for Chatroom {
+///     fn new(state: State, env: Env) -> Self {
+///         Self {
+///             users: vec![],
+///             messages: vec![],
+///             state,
+///             env,
+///         }
+///     }
+/// 
+///     async fn fetch(&mut self, _req: Request) -> worker::Result<worker::Response> {
+///         // do some work when a worker makes a request to this DO
+///         worker::Response::ok(&format!("{} active users.", self.users.len()))
+///     }
+/// }
+/// ```
+/// 
+/// ### Note
+/// 
+/// You can specify the usage of the Durable Object via an argument in order to control WASM/JS outout:
+/// 
+/// * `fetch`: simple `fetch` target
+/// * `alarm`: with [Alarms API](https://developers.cloudflare.com/durable-objects/examples/alarms-api/)
+/// * `websocket`: [WebSocket server](https://developers.cloudflare.com/durable-objects/examples/websocket-hibernation-server/)
+/// 
+/// ```ignore
+/// #[DurableObject(fetch)]
+/// pub struct Chatroom {
+///     users: Vec<User>,
+///     messages: Vec<Message>,
+///     state: State,
+///     env: Env, // access `Env` across requests, use inside `fetch`
+/// }
+/// ```
+#[proc_macro_attribute]
+#[allow(non_snake_case)]
+pub fn DurableObject(args: proc_macro::TokenStream, input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    worker::DurableObject(args.into(), input.into())
+        .unwrap_or_else(syn::Error::into_compile_error)
+        .into()       
 }
 
 #[cfg(feature="worker")]
@@ -216,13 +278,6 @@ pub fn Deserialize(data: proc_macro::TokenStream) -> proc_macro::TokenStream {
         .into()
 }
 
-#[doc(hidden)]
-#[proc_macro_attribute]
-pub fn consume_struct(_: proc_macro::TokenStream, _: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    proc_macro::TokenStream::new()
-}
-
-
 /// # `#[derive(FromRequest)]`
 /// 
 /// Automatically impl `FromRequest` for a struct composed of
@@ -250,4 +305,10 @@ pub fn derive_from_request(target: proc_macro::TokenStream) -> proc_macro::Token
     from_request::derive_from_request(target.into())
         .unwrap_or_else(|e| e.into_compile_error())
         .into()
+}
+
+#[doc(hidden)]
+#[proc_macro_attribute]
+pub fn consume_struct(_: proc_macro::TokenStream, _: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    proc_macro::TokenStream::new()
 }

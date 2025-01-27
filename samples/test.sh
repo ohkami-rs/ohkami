@@ -42,9 +42,13 @@ cd $SAMPLES/worker-bindings && \
     cargo check
 test $? -ne 0 && exit 155 || :
 
+cd $SAMPLES/worker-durable-websocket && \
+    cargo check
+test $? -ne 0 && exit 156 || :
+
 cd $SAMPLES/worker-with-openapi && \
     cp wrangler.toml.sample wrangler.toml && \
     (test -f openapi.json || echo '{}' >> openapi.json) && \
     npm run openapi && \
     diff openapi.json openapi.json.sample
-test $? -ne 0 && exit 156 || :
+test $? -ne 0 && exit 157 || :

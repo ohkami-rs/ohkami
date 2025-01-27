@@ -9,6 +9,7 @@ members  = [
 exclude  = [
     "samples",
     "benches",
+    "benches_rt/async-std",
     "benches_rt/glommio",
     "benches_rt/nio",
     "benches_rt/smol",
