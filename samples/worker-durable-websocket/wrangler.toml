@@ -1,0 +1,17 @@
+name = "ohkami-worker-durable-websocket"
+main = "build/worker/shim.mjs"
+compatibility_date = "2024-04-19"
+
+# `worker-build` and `wasm-pack` is required
+# (run `cargo install wasm-pack worker-build` to install)
+
+[build]
+command = "test $OHKAMI_WORKER_DEV && worker-build --dev || worker-build -- --no-default-features"
+
+[[durable_objects.bindings]]
+name       = "ROOMS"
+class_name = "Room"
+
+[[migrations]]
+tag         = "v1"
+new_classes = ["Room"]

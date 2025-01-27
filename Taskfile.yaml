@@ -35,7 +35,7 @@ tasks:
     cmds:
       - cd benches && cargo bench --features DEBUG --no-run
       - cd benches_rt/vs_actix-web && cargo check
-      - for: [tokio, smol, nio, glommio]
+      - for: [tokio, async-std, smol, nio, glommio]
         cmd: cd benches_rt/{{.ITEM}} && cargo check
 
   bench:
@@ -59,12 +59,12 @@ tasks:
       # not activating `openapi` feature for testability of README sample codes
 
   test:examples:
-    dir: examples
+    dir: ./examples
     cmds:
       - cargo test
 
   test:samples:
-    dir: samples
+    dir: ./samples
     cmds:
       - chmod +x ./test.sh
       - ./test.sh
@@ -108,7 +108,7 @@ tasks:
       - cargo check --lib --features rt_{{.native_rt}},sse,ws,openapi,{{.maybe_nightly}}
 
   check:rt_worker:
-    dir: ohkami
+    dir: ./ohkami
     cmds:
       - cargo check --target wasm32-unknown-unknown --lib --features rt_worker,{{.maybe_nightly}}
       - cargo check --target wasm32-unknown-unknown --lib --features rt_worker,sse,{{.maybe_nightly}}

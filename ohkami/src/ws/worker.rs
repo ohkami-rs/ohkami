@@ -38,8 +38,9 @@ impl<'req> super::WebSocketContext<'req> {
     /// 
     /// ### example
     /// 
-    /// *room.rs*
+    /// *src/room.rs*
     /// ```no_run
+    /// use ohkami::serde::{Serialize, Deserialize};
     /// use ohkami::ws::SessionMap;
     /// use ohkami::DurableObject; // <--
     /// 
@@ -47,7 +48,12 @@ impl<'req> super::WebSocketContext<'req> {
     /// struct Room {
     ///     name:     Option<String>,
     ///     state:    worker::State,
-    ///     sessions: SessionMap,
+    ///     sessions: SessionMap<Session>,
+    /// }
+    /// 
+    /// #[derive(Serialize, Deserialize)]
+    /// struct Session {
+    ///     username: String,
     /// }
     /// 
     /// impl DurableObject for Room {
@@ -56,7 +62,7 @@ impl<'req> super::WebSocketContext<'req> {
     /// 
     ///         // restore sessions if woken up from hibernation
     ///         for ws in state.get_websockets() {
-    ///             if let Some(session) = Session::restore(&ws) {
+    ///             if let Ok(Some(session)) = ws.deserialize_attachment() {
     ///                 sessions.insert(ws, session).unwrap();
     ///             }
     ///         }
@@ -73,7 +79,7 @@ impl<'req> super::WebSocketContext<'req> {
     /// 
     ///     async fn websocket_message(
     ///         &mut self,
-    ///         ws:      WebSocket,
+    ///         ws:      worker::WebSocket,
     ///         message: worker::WebSocketIncomingMessage,
     ///     ) -> worker::Result<()> {
     ///         todo!()
@@ -86,18 +92,20 @@ impl<'req> super::WebSocketContext<'req> {
     /// #..........................#
     /// 
     /// [[durable_objects.bindings]]
-    /// name = "ROOMS"
+    /// name       = "ROOMS"
     /// class_name = "Room" # <-- struct name
     /// 
     /// [[migrations]]
-    /// tag = "v1"
+    /// tag         = "v1"
     /// new_classes = ["Room"]
     /// 
     /// #..........................#
     /// ```
     /// 
-    /// *lib.rs*
+    /// *src/lib.rs*
     /// ```
+    /// mod room;
+    /// 
     /// use ohkami::prelude::*;
     /// use ohkami::ws::{WebSocketContext, WebSocket};
     /// 
@@ -107,7 +115,7 @@ impl<'req> super::WebSocketContext<'req> {
     /// #[ohkami::worker]
     /// async fn main() -> Ohkami {
     ///     Ohkami::new((
-    ///         "/ws/:room_name".GET(ws_chatroom)
+    ///         "/ws/:room_name".GET(ws_chatroom),
     ///     ))
     /// }
     /// 
