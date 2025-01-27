@@ -57,7 +57,7 @@ async fn main() {
     o.generate(openapi::OpenAPI {
         title: "Petstore API",
         version: "1.0.0",
-        servers: vec![
+        servers: &[
             openapi::Server::at("http://localhost:5050")
         ]
     });

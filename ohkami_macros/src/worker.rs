@@ -27,26 +27,27 @@ pub fn worker(args: TokenStream, ohkami_fn: TokenStream) -> Result<TokenStream> 
     let openapi_fn = cfg!(feature="openapi").then_some({
         let title   = worker_meta.title;
         let version = worker_meta.version;
-        let servers = worker_meta.servers.into_iter()
-            .map(|meta::Server { url, description, variables }| {
-                let mut def = quote! {
-                    ::ohkami::openapi::Server::at(#url)
-                };
-                if let Some(description) = description {
+        let servers = worker_meta.servers.into_iter().map(|meta::Server {
+            url, description, variables
+        }| {
+            let mut def = quote! {
+                ::ohkami::openapi::Server::at(#url)
+            };
+            if let Some(description) = description {
+                def.extend(quote! {
+                    .description(#description)
+                });
+            }
+            if let Some(variables) = variables {
+                for (name, meta::ServerVariable { r#default, r#enum, .. }) in variables {
+                    let candidates = r#enum.unwrap_or_else(Vec::new);
                     def.extend(quote! {
-                        .description(#description)
+                        .var(#name, #r#default, [ #(#candidates),* ])
                     });
                 }
-                if let Some(variables) = variables {
-                    for (name, meta::ServerVariable { r#default, r#enum, .. }) in variables {
-                        let candidates = r#enum.unwrap_or_else(Vec::new);
-                        def.extend(quote! {
-                            .var(#name, #r#default, [ #(#candidates),* ])
-                        });
-                    }
-                }
-                def
-            });
+            }
+            def
+        });
 
         quote! {
             const _: () = {
@@ -60,7 +61,7 @@ pub fn worker(args: TokenStream, ohkami_fn: TokenStream) -> Result<TokenStream> 
                     ohkami.__openapi_document_bytes__(::ohkami::openapi::OpenAPI {
                         title:   #title,
                         version: #version,
-                        servers: vec![ #(#servers),* ],
+                        servers: &[ #(#servers),* ],
                     })
                 }
             };

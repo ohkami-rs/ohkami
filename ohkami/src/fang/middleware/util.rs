@@ -86,7 +86,7 @@ pub trait FangAction: Clone + SendSyncOnNative + 'static {
     }
 
     #[cfg(feature="openapi")]
-    fn openapi_map_operation(operation: openapi::Operation) -> openapi::Operation {
+    fn openapi_map_operation(&self, operation: openapi::Operation) -> openapi::Operation {
         operation
     }
 }
@@ -102,7 +102,7 @@ const _: () = {
 
         #[cfg(feature="openapi")]
         fn openapi_map_operation(&self, operation: openapi::Operation) -> openapi::Operation {
-            <Self as FangAction>::openapi_map_operation(operation)
+            <Self as FangAction>::openapi_map_operation(self, operation)
         }
     }
 

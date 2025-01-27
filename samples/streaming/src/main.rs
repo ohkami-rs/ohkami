@@ -12,7 +12,7 @@ async fn main() {
     o.generate(OpenAPI {
         title:   "Streaming Sample API",
         version: "0.1.0",
-        servers: vec![Server::at("http://localhost:8080")]
+        servers: &[Server::at("http://localhost:8080")]
     });
 
     o.howl("localhost:8080").await

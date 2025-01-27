@@ -43,7 +43,7 @@ impl FangAction for TokenAuth {
     }
 
     #[cfg(feature="openapi")]
-    fn openapi_map_operation(operation: openapi::Operation) -> openapi::Operation {
+    fn openapi_map_operation(&self, operation: openapi::Operation) -> openapi::Operation {
         operation.security(
             openapi::SecurityScheme::Bearer("tokenAuth", Some("JSON (user_id, token)")),
             &[]

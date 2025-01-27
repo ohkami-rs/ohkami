@@ -177,21 +177,6 @@ mod config;
 #[cfg(feature="__rt_native__")]
 pub(crate) static CONFIG: config::Config = config::Config::new();
 
-#[cfg(feature="openapi")]
-pub mod openapi {
-    pub use ::ohkami_openapi::*;
-    pub use ::ohkami_openapi::document::Server;
-    pub use ::ohkami_macros::{Schema, operation};
-
-    #[cfg(feature="__rt__")]
-    #[derive(Clone)]
-    pub struct OpenAPI {
-        pub title:   &'static str,
-        pub version: &'static str,
-        pub servers: Vec<crate::openapi::document::Server>,
-    }
-}
-
 #[cfg(debug_assertions)]
 #[cfg(feature="__rt__")]
 pub mod testing;
@@ -274,20 +259,65 @@ pub mod serde {
     pub use ::serde_json as json;
 }
 
-#[doc(hidden)]
-pub mod __internal__ {
-    pub use ::serde;
+#[cfg(feature="openapi")]
+pub mod openapi {
+    pub use ::ohkami_openapi::*;
+    pub use ::ohkami_openapi::document::Server;
+    pub use ::ohkami_macros::{Schema, operation};
 
-    pub use ohkami_macros::consume_struct;
+    #[cfg(feature="__rt__")]
+    #[derive(Clone)]
+    pub struct OpenAPI<'s> {
+        pub title:   &'static str,
+        pub version: &'static str,
+        pub servers: &'s [Server],
+    }
 
-    pub use crate::fang::Fangs;
+    /// A fang to set OpenAPI tag for handlers of a `Ohkami`
+    /// 
+    /// ## note
+    /// 
+    /// * OpenAPI tags are inherited and stacked for child `Ohkami`s (if any).
+    /// * This is a fang, but introduces NO runtime overhead.
+    /// 
+    /// ## example
+    /// 
+    /// ```ignore
+    /// use ohkami::prelude::*;
+    /// use ohkami::openapi;
+    /// 
+    /// #[tokio::main]
+    /// async fn main() {
+    ///     let users_ohkami = Ohkami::new((
+    ///         openapi::Tag("users"),
+    ///         "/"
+    ///             .GET(list_users),
+    ///             .POST(create_user),
+    ///         "/:id"
+    ///             .GET(get_user_profile),
+    ///     ));
+    ///     
+    ///     Ohkami::new((
+    ///         "/users".By(users_ohkami),
+    ///         
+    ///         // ...
+    ///     )).howl("localhost:5050").await
+    /// }
+    /// # async fn list_users() {}
+    /// # async fn create_user() {}
+    /// # async fn get_user_profile() {}
+    /// ```
+    pub struct Tag(pub &'static str);
+    impl<I: crate::FangProc> crate::Fang<I> for Tag {
+        /// just pass `inner` through
+        type Proc = I;
+        fn chain(&self, inner: I) -> Self::Proc {inner}
 
-    /* for benchmarks */
-    #[cfg(feature="DEBUG")]
-    pub use crate::{
-        request::{RequestHeader, RequestHeaders},
-        response::{ResponseHeader, ResponseHeaders},
-    };
+        /// add tag for operations of `Ohkami` having this `Tag`
+        fn openapi_map_operation(&self, operation: Operation) -> Operation {
+            operation.with_tag(self.0)
+        }
+    }
 }
 
 #[cfg(feature="rt_worker")]
@@ -379,4 +409,20 @@ mod worker_ext {
             unimplemented!("websocket_error() handler not implemented")
         }
     }
+}
+
+#[doc(hidden)]
+pub mod __internal__ {
+    pub use ::serde;
+
+    pub use ohkami_macros::consume_struct;
+
+    pub use crate::fang::Fangs;
+
+    /* for benchmarks */
+    #[cfg(feature="DEBUG")]
+    pub use crate::{
+        request::{RequestHeader, RequestHeaders},
+        response::{ResponseHeader, ResponseHeaders},
+    };
 }

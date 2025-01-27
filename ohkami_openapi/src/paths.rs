@@ -150,8 +150,8 @@ impl Operation {
         self.operationId = Some(operationId);
         self
     }
-    pub fn tags<const N: usize>(mut self, tags: [&'static str; N]) -> Self {
-        self.tags = tags.into();
+    pub fn with_tag(mut self, tag: &'static str) -> Self {
+        self.tags.push(tag);
         self
     }
     pub fn summary(mut self, summary: &'static str) -> Self {

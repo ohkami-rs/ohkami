@@ -53,7 +53,7 @@ async fn main() {
     o.generate(openapi::OpenAPI {
         title: "Users Server",
         version: "0.1.0",
-        servers: vec![
+        servers: &[
             openapi::Server::at("localhost:5000"),
         ]
     });
