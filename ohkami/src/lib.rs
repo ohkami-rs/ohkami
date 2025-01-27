@@ -373,8 +373,8 @@ mod worker_ext {
         async fn fetch(&mut self, req: worker::Request) -> worker::Result<worker::Response>;
         
         async fn alarm(&mut self) -> worker::Result<worker::Response> {
-            worker::console_error!("alarm() handler not implemented");
-            unimplemented!("alarm() handler not implemented")
+            worker::console_error!("alarm() handler is not implemented");
+            Err(worker::Error::RustError("alarm() handler is not implemented".into()))
         }
         
         #[allow(unused_variables)]
@@ -383,8 +383,7 @@ mod worker_ext {
             ws: worker::WebSocket,
             message: worker::WebSocketIncomingMessage,
         ) -> worker::Result<()> {
-            worker::console_error!("websocket_message() handler not implemented");
-            unimplemented!("websocket_message() handler not implemented")
+            Ok(())
         }
         
         #[allow(unused_variables)]
@@ -395,8 +394,7 @@ mod worker_ext {
             reason: String,
             was_clean: bool,
         ) -> worker::Result<()> {
-            worker::console_error!("websocket_close() handler not implemented");
-            unimplemented!("websocket_close() handler not implemented")
+            Ok(())
         }
         
         #[allow(unused_variables)]
@@ -405,8 +403,7 @@ mod worker_ext {
             ws: worker::WebSocket,
             error: worker::Error,
         ) -> worker::Result<()> {
-            worker::console_error!("websocket_error() handler not implemented");
-            unimplemented!("websocket_error() handler not implemented")
+            Ok(())
         }
     }
 }
