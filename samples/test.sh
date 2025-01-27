@@ -54,6 +54,6 @@ test $? -ne 0 && exit 156 || :
 cd $SAMPLES/worker-with-openapi && \
     cp wrangler.toml.sample wrangler.toml && \
     (test -f openapi.json || echo '{}' >> openapi.json) && \
-    npm run openapi && \
+    npm run openapi -- --skip-login && \
     diff openapi.json openapi.json.sample
 test $? -ne 0 && exit 157 || :
