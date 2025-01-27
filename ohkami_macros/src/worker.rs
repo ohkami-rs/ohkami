@@ -1,6 +1,7 @@
 #![cfg(feature="worker")]
 
 mod meta;
+mod durable;
 
 use crate::util;
 use proc_macro2::{Span, TokenStream};
@@ -337,5 +338,59 @@ pub fn bindings(env: TokenStream, bindings_struct: TokenStream) -> Result<TokenS
         #impl_bindings
         #impl_from_request
         #impl_send_sync
+    })
+}
+
+#[allow(non_snake_case)]
+pub fn DurableObject(args: TokenStream, object: TokenStream) -> syn::Result<TokenStream> {
+    use self::durable::{DurableObjectType, bindgen_methods};
+
+    let durable_object_type = (!args.is_empty())
+        .then(|| syn::parse2::<DurableObjectType>(args))
+        .transpose()?;
+    
+    let object = syn::parse2::<ItemStruct>(object)?;
+
+    let methods = match durable_object_type {
+        // if not specified, bindgen all.
+        None => vec![
+            bindgen_methods::core(),
+            bindgen_methods::alarm(),
+            bindgen_methods::websocket(),
+        ],
+
+        // if specified, bindgen only related methods.
+        Some(DurableObjectType::Fetch) => vec![
+            bindgen_methods::core(),
+        ],
+        Some(DurableObjectType::Alarm) => vec![
+            bindgen_methods::core(),
+            bindgen_methods::alarm(),
+        ],
+        Some(DurableObjectType::WebSocket) => vec![
+            bindgen_methods::core(),
+            bindgen_methods::websocket(),
+        ],
+    };
+
+    let name = &object.ident;
+    Ok(quote! {
+        #object
+
+        impl ::ohkami::has_DurableObject_attribute for #name {}
+
+        const _: () = {
+            // `#[wasm_bindgen]` attribute fully uses this module
+            use ::worker::wasm_bindgen;
+
+            #[::worker::wasm_bindgen::prelude::wasm_bindgen]
+            #[::ohkami::__internal__::consume_struct]
+            #object
+
+            #[::worker::wasm_bindgen::prelude::wasm_bindgen]
+            impl #name {
+                #(#methods)*
+            }
+        };
     })
 }
