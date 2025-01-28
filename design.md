@@ -27,6 +27,8 @@ fn main() -> Result<(), ::std::boxed::Box<dyn ::std::error::Error + Send + Sync>
 
     /// APIGateway{Request, Response} :
     /// 
+    /// [note] only handle version 2
+    /// 
     /// https://docs.aws.amazon.com/ja_jp/lambda/latest/dg/urls-invocation.html
     /// https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-develop-integrations-lambda.html#http-api-develop-integrations-lambda.proxy-format
     async fn __lambda__(

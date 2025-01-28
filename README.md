@@ -88,9 +88,11 @@ then `＜project dir＞` will have `wrangler.toml`, `package.json` and a Rust li
 
 See README of [template](https://github.com/ohkami-rs/ohkami-templates/tree/main/worker) for details.
 
-### `"rt_lambda"` : AWS Lambda
+### `"rt_lambda"`, `"apigateway"` : AWS Lambda
 
 Works with [lambda_runtime](https://crates.io/crates/lambda_runtime) crate.
+
+Ohkami provides optimized implementation for Function URLs by default in `"rt_lambda"`. You can additionally activate `"apigateway"` feature to use generic implementation.
 
 [cargo lambda](https://crates.io/crates/cargo-lambda) will be good to scaffold :
 
@@ -134,7 +136,8 @@ async fn main() {
 Ohkami only handles `ws://`.\
 Use some reverse proxy to do with `wss://`.
 
-WebSocket on Durable Object is available on `"rt_worker"`!
+* WebSocket on or not on Durable Object is available on `"rt_worker"`!
+* In `"rt_lambda"`, WebSocket is available only with additional `"apigateway"` feature ( because default specialization for Function URLs ) .
 
 ```rust,no_run
 use ohkami::prelude::*;
