@@ -6,7 +6,7 @@
 <br>
 
 - *macro-less and type-safe* APIs for intuitive and declarative code
-- *various runtimes* are supported：`tokio`, `async-std`, `smol`, `nio`, `glommio` and `worker` (Cloudflare Workers)
+- *various runtimes* are supported：`tokio`, `async-std`, `smol`, `nio`, `glommio` and `worker` (Cloudflare Workers), `lambda` (AWS Lambda)
 - *extremely fast*：[Web Frameworks Benchmark](https://web-frameworks-benchmark.netlify.app/result)
 - no-network testing, well-structured middlewares, Server-Sent Events, WebSocket, OpenAPI document genration, ...
 
@@ -68,7 +68,7 @@ Hello, your_name!
 
 ## Feature flags
 
-### `"rt_tokio"`, `"rt_async-std"`, `"rt_smol"`, `"rt_nio"`, `"rt_glommio"`：native async runtime
+### `"rt_tokio"`, `"rt_async-std"`, `"rt_smol"`, `"rt_nio"`, `"rt_glommio"` : native async runtime
 
 - [tokio](https://github.com/tokio-rs/tokio)
 - [async-std](https://github.com/async-rs/async-std)
@@ -76,17 +76,31 @@ Hello, your_name!
 - [nio](https://github.com/nurmohammed840/nio)
 - [glommio](https://github.com/DataDog/glommio)
 
-### `"rt_worker"`：Cloudflare Workers
+### `"rt_worker"` : Cloudflare Workers
+
+Works with [worker](https://crates.io/crates/worker) crate.
 
 ```sh
-npm create cloudflare ./path/to/project -- --template https://github.com/ohkami-rs/ohkami-templates/worker
+npm create cloudflare ＜project dir＞ -- --template https://github.com/ohkami-rs/ohkami-templates/worker
 ```
 
-then your project directory has `wrangler.toml`, `package.json` and a Rust library crate. Local dev by `npm run dev` and deploy by `npm run deploy` !
+then `＜project dir＞` will have `wrangler.toml`, `package.json` and a Rust library crate. Local dev by `npm run dev` and deploy by `npm run deploy` !
 
 See README of [template](https://github.com/ohkami-rs/ohkami-templates/tree/main/worker) for details.
 
-### `"sse"`：Server-Sent Events
+### `"rt_lambda"` : AWS Lambda
+
+Works with [lambda_runtime](https://crates.io/crates/lambda_runtime) crate.
+
+[cargo lambda](https://crates.io/crates/cargo-lambda) will be good to scaffold :
+
+```sh
+cargo lambda new ＜project dir＞ --template https://github.com/ohkami-rs/ohkami-templates/lambda
+```
+
+(todo document)
+
+### `"sse"` : Server-Sent Events
 
 Ohkami responds with HTTP/1.1 `Transfer-Encoding: chunked`.\
 Use some reverse proxy to do with HTTP/2,3.
@@ -115,7 +129,7 @@ async fn main() {
 }
 ```
 
-### `"ws"`：WebSocket
+### `"ws"` : WebSocket
 
 Ohkami only handles `ws://`.\
 Use some reverse proxy to do with `wss://`.
@@ -142,7 +156,7 @@ async fn main() {
 }
 ```
 
-### `"openapi"`：OpenAPI document generation
+### `"openapi"` : OpenAPI document generation
 
 Ohkami supports *as consistent as possible* OpenAPI document generation, where most of the consistency between document and behavior is automatically assured by Ohkami's internal work.
 
@@ -225,7 +239,7 @@ async fn main() {
 - When the binary size matters, you should prepare a feature flag activating `ohkami/openapi` in your package, and put all your codes around `openapi` behind that feature via `#[cfg(feature = ...)]` or `#[cfg_attr(feature = ...)]`.
 - In `rt_worker`, `.generate` is not available because `Ohkami` can't have access to your local filesystem by `wasm32` binary on Minifalre. So ohkami provides [a CLI tool](./scripts/workers_openapi.js) to generate document from `#[ohkami::worker] Ohkami` with `openapi` feature.
 
-### `"nightly"`：nightly-only functionalities
+### `"nightly"` : nightly-only functionalities
 
 - try response
 
