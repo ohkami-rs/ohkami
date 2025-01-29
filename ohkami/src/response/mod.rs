@@ -489,18 +489,28 @@ const _: () = {
 const _: () = {
     use crate::x_lambda::LambdaResponse;
     use ::lambda_runtime::FunctionResponse;
-    use std::pin::Pin;
+    use std::{pin::Pin, convert::Infallible};
     use ohkami_lib::;
 
-    impl Into<FunctionResponse<LambdaResponse, Pin<Box<>>>> for Response {
-        fn into(mut self) -> FunctionResponse<LambdaResponse, Pin<Box<>>> {
-            let cookies = self.headers.set_cookie.take().map(|box_vec_cow_str| {
-                let mut vec_string = Vec::with_capacity(box_vec_cow_str.len());
-                for cow_str in box_vec_cow_str {
-                    vec_string.push(cow_str.into_owned());
-                }
-                vec_string
-            });
+    impl Into<FunctionResponse<
+        LambdaResponse,
+        Pin<Box<dyn Stream<Item = Result<String, Infallible>> + Send>>
+    >> for
+    impl Response {
+        pub(crate) async fn into_lambda_function_response(mut self) -> FunctionResponse<
+            LambdaResponse,
+            Pin<Box<dyn Stream<Item = Result<String, Infallible>> + Send>>
+        > {
+            let cookies = self.headers
+                .set_cookie
+                .take(/* remove `Set-Cookie` from app's own headers */)
+                .map(|box_vec_cow_str| {
+                    let mut vec_string = Vec::with_capacity(box_vec_cow_str.len());
+                    for cow_str in box_vec_cow_str {
+                        vec_string.push(cow_str.into_owned());
+                    }
+                    vec_string
+                });
 
             match self.content {
                 Content::None => {
@@ -533,7 +543,7 @@ const _: () = {
                 #[cfg(feature="sse")]
                 Content::Stream(stream) => {
                     FunctionResponse::StreamingResponse(::lambda_runtime::StreamingResponse {
-                        stream: Box::pin(stream.map(Result::<_, std::convert::Infallible>::Ok)),
+                        stream: Box::pin(stream.map(Result::<_, Infallible>::Ok)),
                         metadata_prelude: ::lambda_runtime::MetadataPrelude {
                             // `StatusCode` of `http` crate
                             status_code: unsafe {
@@ -560,13 +570,16 @@ const _: () = {
 
                         // x_lambda::LambdaWebSocketRequestContext を
                         // ws(::lambda)::WebSocket の中に持っておけばよさそう
+
+                        // それをここで ws.send().await みたいに呼べるように
+                        // tokio::net::TcpStream::connect() して POST するメソッドを作る
                     }
 
                     FunctionResponse::BufferedResponse(LambdaResponse {
-                        statusCode: self.status.code(),
-                        headers: self.headers,
-                        cookies,
-                        body: None,
+                        statusCode:      200,
+                        headers:         None,
+                        cookies:         None,
+                        body:            None,
                         isBase64Encoded: None,
                     })
                 }
