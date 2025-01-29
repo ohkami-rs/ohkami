@@ -52,6 +52,12 @@ impl<const N: usize, Value> IndexMap<N, Value> {
         self.values.iter()
             .filter(|(i, _)| *unsafe {self.index.get_unchecked(*i)} != Self::NULL)
     }
+
+    #[inline(always)]
+    pub(crate) fn into_iter(self) -> impl Iterator<Item = (usize, Value)> {
+        self.values.into_iter()
+            .filter(|(i, _)| *unsafe {self.index.get_unchecked(*i)} != Self::NULL)
+    }
 }
 
 const _: () = {

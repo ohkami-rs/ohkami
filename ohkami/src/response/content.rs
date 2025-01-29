@@ -94,7 +94,8 @@ impl Content {
             }),
 
             #[cfg(feature="ws")]
-            Self::WebSocket(ws)  => ::worker::Response::from_websocket(ws)
+            Self::WebSocket(ws)  => ::worker::Response::from_websocket(ws),
+            
         }.expect("failed to convert Ohkami Response to Workers one")
     }
 }

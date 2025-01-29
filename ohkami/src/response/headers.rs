@@ -435,7 +435,7 @@ impl Headers {
             ))
     }
 
-    pub(crate) fn iter(&self) -> impl Iterator<Item = (&str, &str)> {
+    pub fn iter(&self) -> impl Iterator<Item = (&str, &str)> {
         self.iter_standard()
             .chain(self.custom.as_ref()
                 .into_iter()
@@ -446,6 +446,28 @@ impl Headers {
                 .flatten()
                 .map(|sc| ("Set-Cookie", sc))
             )
+    }
+    pub fn into_iter(self) -> impl Iterator<Item = (&'static str, Cow<'static, str>)> {
+        /*    
+            standard:  IndexMap<N_SERVER_HEADERS, Cow<'static, str>>,
+            custom:    Option<Box<TupleMap<&'static str, Cow<'static, str>>>>,
+            setcookie: Option<Box<Vec<Cow<'static, str>>>>,
+        */
+
+        let standard = self.standard.into_iter()
+            .map(|(i, v)| (
+                unsafe {std::mem::transmute::<_, Header>(*i as u8)}.as_str(),
+                v
+            ));
+        let custom = self.custom.into_iter()
+            .flat_map(|tm|
+                tm.into_iter()
+            );
+        let set_cookie = self.set_cookie.into_iter()
+            .flat_map(|sc|
+                sc.into_iter()
+            );
+        standard.chain(custom).chain(set_cookie)
     }
 
     #[cfg(any(

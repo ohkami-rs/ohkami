@@ -489,9 +489,11 @@ const _: () = {
 const _: () = {
     use crate::x_lambda::LambdaResponse;
     use ::lambda_runtime::FunctionResponse;
+    use std::pin::Pin;
+    use ohkami_lib::;
 
-    impl Into<FunctionResponse<LambdaResponse>> for Response {
-        fn into(mut self) -> FunctionResponse<LambdaResponse> {
+    impl Into<FunctionResponse<LambdaResponse, Pin<Box<>>>> for Response {
+        fn into(mut self) -> FunctionResponse<LambdaResponse, Pin<Box<>>> {
             let cookies = self.headers.set_cookie.take().map(|box_vec_cow_str| {
                 let mut vec_string = Vec::with_capacity(box_vec_cow_str.len());
                 for cow_str in box_vec_cow_str {
@@ -530,7 +532,29 @@ const _: () = {
                 
                 #[cfg(feature="sse")]
                 Content::Stream(stream) => {
-                    
+                    FunctionResponse::StreamingResponse(::lambda_runtime::StreamingResponse {
+                        stream: Box::pin(stream.map(Result::<_, std::convert::Infallible>::Ok)),
+                        metadata_prelude: ::lambda_runtime::MetadataPrelude {
+                            // `StatusCode` of `http` crate
+                            status_code: unsafe {
+                                TryFrom::<u16>::try_from(self.status.code()).unwrap_unchecked()
+                            },
+                            // `HeaderMap` of `http` crate
+                            headers: FromIterator/*::<HeaderName, HeaderValue>*/::from_iter(
+                                headers.into_iter()
+                                    .map(|(n, v): (&'static str, Cow<'static, str>)| (
+                                        TryFrom::<&str>::try_from(n).unwrap(),
+                                        TryFrom::<String>::try_from(v.into_owned()).unwrap()
+                                    ))
+                            ),
+                            cookies
+                        }
+                    })
+                }
+
+                #[cfg(feature="ws")]
+                Content::WebSocket(ws) => {
+                    todo!()
                 }
             }
         }

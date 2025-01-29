@@ -51,6 +51,9 @@ impl<K: PartialEq, V> TupleMap<K, V> {
     pub fn iter(&self) -> impl Iterator<Item = &(K, V)> {
         self.0.iter()
     }
+    pub fn into_iter(&self) -> impl Iterator<Item = (K, V)> {
+        self.0.into_iter()
+    }
 }
 
 impl<K: PartialEq, V: PartialEq> PartialEq for TupleMap<K, V> {
