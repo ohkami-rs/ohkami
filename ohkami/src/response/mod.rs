@@ -484,3 +484,55 @@ const _: () = {
         }
     }
 };
+
+#[cfg(feature="rt_lambda")]
+const _: () = {
+    use crate::x_lambda::LambdaResponse;
+    use ::lambda_runtime::FunctionResponse;
+
+    impl Into<FunctionResponse<LambdaResponse>> for Response {
+        fn into(mut self) -> FunctionResponse<LambdaResponse> {
+            let cookies = self.headers.set_cookie.take().map(|box_vec_cow_str| {
+                let mut vec_string = Vec::with_capacity(box_vec_cow_str.len());
+                for cow_str in box_vec_cow_str {
+                    vec_string.push(cow_str.into_owned());
+                }
+                vec_string
+            });
+
+            match self.content {
+                Content::None => {
+                    FunctionResponse::BufferedResponse(LambdaResponse {
+                        statusCode: self.status.code(),
+                        headers: self.headers,
+                        cookies,
+                        body: None,
+                        isBase64Encoded: None,
+                    })
+                }
+
+                Content::Payload(cow_slice) => {
+                    let (encoded, body) = if let Ok(string) = String::from_utf8(body.into()) {
+                        (false, string)
+                    } else {
+                        use ::base64::engine::{Engine as _, general_purpose::STANDARD as BASE64};
+                        (true, BASE64.encode(&*body))
+                    };
+
+                    FunctionResponse::BufferedResponse(LambdaResponse {
+                        statusCode: self.status.code(),
+                        headers: self.headers,
+                        cookies,
+                        body: Some(body),
+                        isBase64Encoded: Some(encoded),
+                    })
+                }
+                
+                #[cfg(feature="sse")]
+                Content::Stream(stream) => {
+                    
+                }
+            }
+        }
+    }
+};

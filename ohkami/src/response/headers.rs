@@ -7,8 +7,8 @@ use std::borrow::Cow;
 pub struct Headers {
     standard:  IndexMap<N_SERVER_HEADERS, Cow<'static, str>>,
     custom:    Option<Box<TupleMap<&'static str, Cow<'static, str>>>>,
-    setcookie: Option<Box<Vec<Cow<'static, str>>>>,
-    pub(crate) size: usize,
+    pub(super) setcookie: Option<Box<Vec<Cow<'static, str>>>>,
+    pub(super) size: usize,
 }
 
 pub struct SetHeaders<'set>(

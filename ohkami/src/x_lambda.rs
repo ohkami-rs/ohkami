@@ -21,9 +21,9 @@ use serde::{Serialize, Deserialize};
 pub struct LambdaResponse {
     statusCode: u16,
     headers: ResponseHeaders,
-    cookies: Vec<String>,
+    cookies: Option<Vec<String>>,
     body: Option<String>,
-    isBase64Encoded: bool,
+    isBase64Encoded: Option<bool>,
 }
 
 #[derive(Deserialize)]
