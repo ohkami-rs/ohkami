@@ -64,3 +64,39 @@ impl<K: Clone + PartialEq, V: Clone> Clone for TupleMap<K, V> {
         Self(self.0.clone())
     }
 }
+
+impl<'de, K:PartialEq, V> serde::Deserialize<'de> for TupleMap<K, V> {
+    fn deserialize<D: serde::Deserializer<'de>>(
+        deserializer: D
+    ) -> Result<Self, D::Error> {
+        return deserializer.visit_map(TupleMapVisitor(std::marker::PhantomData));
+
+        /////////////////////////////////////////////////////////////////////////
+        
+        use serde::de::{Deserialize, MapAccess, Visitor};
+        
+        struct TupleMapVisitor<K, V>(std::marker::PhantomData<fn()->(K, V)>);
+
+        impl<'de, K:PartialEq, V> Visitor<'de> for TupleMapVisitor<K, V>
+        where
+            K: Deserialize<'de>,
+            V: Deserialize<'de>,
+        {
+            type Value = TupleMap<K, V>;
+
+            fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                f.write_str("a map")
+            }
+
+            #[inline]
+            fn visit_map<A: MapAccess<'de>>(self, mut access: A) -> Result<Self::Value, A::Error> {
+                let mut map = TupleMap::new();
+                while let Some((k, v)) = access.next_entry()? {
+                    map.insert(k, v);
+                }
+                Ok(map)
+            }
+        }
+
+    }
+}
