@@ -4,9 +4,9 @@
 
 //! Based on
 //! 
-//! * <https://docs.aws.amazon.com/apigateway/latest/developerguide/set-up-lambda-proxy-integrations.html#api-gateway-simple-proxy-for-lambda-input-format>
 //! * <https://github.com/DefinitelyTyped/DefinitelyTyped/blob/master/types/aws-lambda/trigger/api-gateway-proxy.d.ts>
 //! 
+//! * <https://docs.aws.amazon.com/apigateway/latest/developerguide/set-up-lambda-proxy-integrations.html>
 //! * <https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-websocket-api-integration-requests.html>
 
 #[cfg(all(feature="ws", not(feature="apigateway")))]
@@ -18,7 +18,7 @@ use serde_json::Map as JsonMap;
 use serde::{Serialize, Deserialize};
 
 #[derive(Serialize)]
-pub struct LambdaHTTPResponse {
+pub struct LambdaResponse {
     statusCode: u16,
     headers: ResponseHeaders,
     cookies: Vec<String>,

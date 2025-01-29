@@ -382,6 +382,37 @@ impl Ohkami {
         res
     }
 
+    #[cfg(feature="rt_lambda")]
+    #[doc(hidden)]
+    /// APIGateway{Request, Response} :
+    /// 
+    /// [note] only handle version 2
+    /// 
+    /// https://docs.aws.amazon.com/ja_jp/lambda/latest/dg/urls-invocation.html
+    /// https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-develop-integrations-lambda.html
+    fn __lambda__(self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        let handler = |req: ::lambda_runtime::LambdaEvent<crate::x_lambda::LambdaRequest>| async move {
+            let mut ohkami_req = crate::Request::init();
+            let mut ohkami_req = unsafe {std::pin::Pin::new_unchecked(&mut ohkami_req)};
+            ohkami_req.as_mut().take_over(req).await?;
+
+            let (router, _) = o.into_router().finalize();
+            let mut ohkami_res = router.handle(&mut ohkami_req).await;
+            ohkami_res.complete();
+
+            Result::<
+                ::lambda_runtime::FunctionResponse<crate::x_lambda::LambdaResponse>,
+                Box<dyn std::error::Error + Send + Sync>
+            >::Ok(ohkami_res.into())
+        };
+
+        ::tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .build()
+            .unwrap()
+            .block_on(::lambda_runtime::run(handler))
+    }
+
     #[cfg(feature="openapi")]
     #[cfg(feature="__rt_native__")]
     /// Generate OpenAPI document.
