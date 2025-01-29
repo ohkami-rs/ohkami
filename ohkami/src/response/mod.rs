@@ -554,7 +554,21 @@ const _: () = {
 
                 #[cfg(feature="ws")]
                 Content::WebSocket(ws) => {
-                    todo!()
+                    todo! {
+                        // https://docs.aws.amazon.com/ja_jp/apigateway/latest/developerguide/apigateway-how-to-call-websocket-api-connections.html
+                        "POST https://{api-id}.execute-api.us-east-1.amazonaws.com/{stage}/@connections/{connection_id}"
+
+                        // x_lambda::LambdaWebSocketRequestContext を
+                        // ws(::lambda)::WebSocket の中に持っておけばよさそう
+                    }
+
+                    FunctionResponse::BufferedResponse(LambdaResponse {
+                        statusCode: self.status.code(),
+                        headers: self.headers,
+                        cookies,
+                        body: None,
+                        isBase64Encoded: None,
+                    })
                 }
             }
         }

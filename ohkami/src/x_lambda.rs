@@ -19,11 +19,11 @@ use serde::{Serialize, Deserialize};
 
 #[derive(Serialize)]
 pub struct LambdaResponse {
-    statusCode: u16,
-    headers: ResponseHeaders,
-    cookies: Option<Vec<String>>,
-    body: Option<String>,
-    isBase64Encoded: Option<bool>,
+    pub statusCode: u16,
+    pub headers: ResponseHeaders,
+    pub cookies: Option<Vec<String>>,
+    pub body: Option<String>,
+    pub isBase64Encoded: Option<bool>,
 }
 
 #[derive(Deserialize)]
@@ -55,51 +55,52 @@ pub enum LambdaRequest {
 }
 
 #[derive(Deserialize)]
-struct LambdaHTTPRequestContext {
+pub struct LambdaHTTPRequestContext {
     /* @skip accountId: String, */
-    apiId: String,
+    pub apiId: String,
     #[cfg(feature="apigateway")]
-    authentication: Option<LambdaRequestAuthentication>,
-    authorizer: Option<LambdaRequestAuthorizer>,
-    domainName: String,
+    pub authentication: Option<LambdaRequestAuthentication>,
+    pub authorizer: Option<LambdaRequestAuthorizer>,
+    #[cfg(feature="apigateway")]
+    pub domainName: String,
     /* @skip domainPrefix: String, */
-    http: LambdaHTTPRequestDetails,
-    requestId: String,
+    pub http: LambdaHTTPRequestDetails,
+    pub requestId: String,
     /* @unused routeKey: "$default", */
     /* @unused stage: "$default", */
     /* @skip time: String, // timeEpoch is enough */
-    timeEpoch: u64,
+    pub timeEpoch: u64,
 }
 
 #[derive(Deserialize)]
-struct LambdaWebSocketRequestContext {
-    apiId: String,
+pub struct LambdaWebSocketRequestContext {
+    pub apiId: String,
     /* @skip connectedAt: u64, */
-    connectionId: String,
-    /* @skip domainName: String, */
-    eventType: LambdaWebSocketEventType,
+    pub connectionId: String,
+    pub domainName: String,
+    pub eventType: LambdaWebSocketEventType,
     /* @skip extendedRequestId: String, */
-    routeKey: String,
+    pub routeKey: String,
     /* @skip messageDirection: "IN", */
-    messageId: String,
-    requestId: String,
+    pub messageId: String,
+    pub requestId: String,
     /* @skip requestTime: String, // requestTimeEpoch is enough */
-    requestTimeEpoch: u64,
-    stage: String,
+    pub requestTimeEpoch: u64,
+    pub stage: String,
 }
 
 #[derive(Deserialize)]
-struct LambdaHTTPRequestDetails {
-    method: Method,
-    path: String,
+pub struct LambdaHTTPRequestDetails {
+    pub method: Method,
+    pub path: String,
     /* @skip protocol: String, */
-    sourceIp: std::net::IpAddr,
+    pub sourceIp: std::net::IpAddr,
     /* @skip userAgent: String, */
 }
 
 #[cfg(feature="ws")]
 #[derive(Deserialize)]
-enum LambdaWebSocketEventType {
+pub enum LambdaWebSocketEventType {
     CONNECT,
     DISCONNECT,
     MESSAGE,
@@ -107,22 +108,22 @@ enum LambdaWebSocketEventType {
 
 #[cfg(feature="apigateway")]
 #[derive(Deserialize)]
-struct LambdaRequestAuthentication {
-    clientCertPem: String,
-    issuerDN: String,
-    subjectDN: String,
-    serialNumber: String,
-    validity: LambdaRequestAuthenticationValidity,
+pub struct LambdaRequestAuthentication {
+    pub clientCertPem: String,
+    pub issuerDN: String,
+    pub subjectDN: String,
+    pub serialNumber: String,
+    pub validity: LambdaRequestAuthenticationValidity,
 }
 #[cfg(feature="apigateway")]
 #[derive(Deserialize)]
-struct LambdaRequestAuthenticationValidity {
-    notAfter: String,
-    notBefore: String,
+pub struct LambdaRequestAuthenticationValidity {
+    pub notAfter: String,
+    pub notBefore: String,
 }
 
 #[derive(Deserialize)]
-enum LambdaRequestAuthorizer {
+pub enum LambdaRequestAuthorizer {
     iam {
         accessKey: String,
         accountId: String,
