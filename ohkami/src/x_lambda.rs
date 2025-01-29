@@ -1,33 +1,61 @@
 #![cfg(feature="rt_lambda")]
 
-//! Based on <https://docs.aws.amazon.com/apigateway/latest/developerguide/set-up-lambda-proxy-integrations.html#api-gateway-simple-proxy-for-lambda-input-format>
+#![allow(non_snake_cases, non_camel_case_types)]
 
-use crate::{Method, request::RequestHeaders};
+//! Based on
+//! 
+//! * <https://docs.aws.amazon.com/apigateway/latest/developerguide/set-up-lambda-proxy-integrations.html#api-gateway-simple-proxy-for-lambda-input-format>
+//! * <https://github.com/DefinitelyTyped/DefinitelyTyped/blob/master/types/aws-lambda/trigger/api-gateway-proxy.d.ts>
+//! 
+//! * <https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-websocket-api-integration-requests.html>
+
+#[cfg(all(feature="ws", not(feature="apigateway")))]
+compile_error!("On `rt_lambda`, `ws` can't be activated without `apigateway` !");
+
+use crate::{Method, request::RequestHeaders, response::ResponseHeaders};
 use ohkami_lib::TupleMap;
 use serde_json::Map as JsonMap;
+use serde::{Serialize, Deserialize};
 
-#[derive(Deserialize)]
-#[allow(non_snake_cases)]
-pub struct LambdaRequest {
-    /* @skip version: "2.0", */
-    /* @unused routeKey: "$default", */
-    /* @skip rawPath: String, // use requestContext.http.path */
-    rawQueryString: String,
+#[derive(Serialize)]
+pub struct LambdaHTTPResponse {
+    statusCode: u16,
+    headers: ResponseHeaders,
     cookies: Vec<String>,
-    headers: RequestHeaders,
-    /* @skip queryStringParameters */
-    requestContext: LambdaRequestContext,
     body: Option<String>,
-    #[cfg(feature="apigateway"/* useless in Function URLs because Ohkami howls at the single entry point and handle all */)]
-    pathParameters: TupleMap<String, String>,
     isBase64Encoded: bool,
-    #[cfg(feature="apigateway")]
-    stageVariables: TupleMap<String, String>,
 }
 
 #[derive(Deserialize)]
-#[allow(non_snake_cases)]
-struct LambdaRequestContext {
+#[serde(untagged)]
+pub enum LambdaRequest {
+    HTTP {
+        /* @skip version: "2.0", */
+        /* @unused routeKey: "$default", */
+        /* @skip rawPath: String, // using requestContext.http.path */
+        rawQueryString: String,
+        cookies: Vec<String>,
+        headers: RequestHeaders,
+        #[cfg(feature="apigateway"/* useless in Function URLs because Ohkami howls at the single entry point and handle all */)]
+        pathParameters: TupleMap<String, String>,
+        /* @skip queryStringParameters, // parsing rawQueryString */
+        requestContext: LambdaHTTPRequestContext,
+        body: Option<String>,
+        isBase64Encoded: bool,
+        #[cfg(feature="apigateway")]
+        stageVariables: TupleMap<String, String>,
+    },
+    #[cfg(feature="ws")]
+    WebSocket {
+        requestContext: LambdaWebSocketRequestContext,
+        body: Option<String>,
+        isBase64Encoded: bool,
+        stageVariables: TupleMap<String, String>
+    },
+}
+
+#[derive(Deserialize)]
+struct LambdaHTTPRequestContext {
     /* @skip accountId: String, */
     apiId: String,
     #[cfg(feature="apigateway")]
@@ -35,34 +63,65 @@ struct LambdaRequestContext {
     authorizer: Option<LambdaRequestAuthorizer>,
     domainName: String,
     /* @skip domainPrefix: String, */
-    http: LambdaRequestHTTP,
+    http: LambdaHTTPRequestDetails,
     requestId: String,
-    /* @unused routeKey: "$default" */
-    /* @unused stage: "$default" */
-    /* @skip time: String, */
+    /* @unused routeKey: "$default", */
+    /* @unused stage: "$default", */
+    /* @skip time: String, // timeEpoch is enough */
     timeEpoch: u64,
+}
+
+#[derive(Deserialize)]
+struct LambdaWebSocketRequestContext {
+    apiId: String,
+    /* @skip connectedAt: u64, */
+    connectionId: String,
+    /* @skip domainName: String, */
+    eventType: LambdaWebSocketEventType,
+    /* @skip extendedRequestId: String, */
+    routeKey: String,
+    /* @skip messageDirection: "IN", */
+    messageId: String,
+    requestId: String,
+    /* @skip requestTime: String, // requestTimeEpoch is enough */
+    requestTimeEpoch: u64,
+    stage: String,
+}
+
+#[derive(Deserialize)]
+struct LambdaHTTPRequestDetails {
+    method: Method,
+    path: String,
+    /* @skip protocol: String, */
+    sourceIp: std::net::IpAddr,
+    /* @skip userAgent: String, */
+}
+
+#[cfg(feature="ws")]
+#[derive(Deserialize)]
+enum LambdaWebSocketEventType {
+    CONNECT,
+    DISCONNECT,
+    MESSAGE,
 }
 
 #[cfg(feature="apigateway")]
 #[derive(Deserialize)]
-#[allow(non_snake_cases)]
 struct LambdaRequestAuthentication {
     clientCertPem: String,
-    subjectDN: String,
     issuerDN: String,
+    subjectDN: String,
     serialNumber: String,
     validity: LambdaRequestAuthenticationValidity,
 }
 #[cfg(feature="apigateway")]
 #[derive(Deserialize)]
-#[allow(non_snake_cases)]
 struct LambdaRequestAuthenticationValidity {
     notAfter: String,
     notBefore: String,
 }
 
 #[derive(Deserialize)]
-#[allow(non_snake_cases, non_camel_case_types)]
 enum LambdaRequestAuthorizer {
     iam {
         accessKey: String,
@@ -78,14 +137,4 @@ enum LambdaRequestAuthorizer {
         claims: JsonMap,
         scopes: Vec<String>,
     },
-}
-
-#[derive(Deserialize)]
-#[allow(non_snake_cases)]
-struct LambdaRequestHTTP {
-    method: Method,
-    path: String,
-    /* @skip protocol */
-    sourceIp: std::net::IpAddr,
-    /* @skip userAgent */
 }

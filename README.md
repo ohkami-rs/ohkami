@@ -136,9 +136,6 @@ async fn main() {
 Ohkami only handles `ws://`.\
 Use some reverse proxy to do with `wss://`.
 
-* WebSocket on or not on Durable Object is available on `"rt_worker"`!
-* In `"rt_lambda"`, WebSocket is available only with additional `"apigateway"` feature ( because default specialization for Function URLs ) .
-
 ```rust,no_run
 use ohkami::prelude::*;
 use ohkami::ws::{WebSocketContext, WebSocket, Message};
@@ -158,6 +155,9 @@ async fn main() {
     )).howl("localhost:3030").await
 }
 ```
+
+* On `"rt_worker"`, WebSocket on or not on Durable Object is available!
+* On `"rt_lambda"`, WebSocket is available only with additional `"apigateway"` feature ( because default specialization for Function URLs ) . Due to the architecture of Amazon API Gateway's, a `#[lambda] Ohkami` for WebSocket can only handle the WebSocket events, and is deploied as an independent Lambda function binded to a WebSocket API route.
 
 ### `"openapi"` : OpenAPI document generation
 
