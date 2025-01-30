@@ -25,146 +25,272 @@ compile_error!("On `rt_lambda`, `ws` can't be activated without `apigateway` !")
     }
 
 */
-use crate::util::ErrorMessage;
-use std::{future::Future, marker::PhantomData};
 
-pub struct LambdaWebSocket<E: TryFrom<LambdaWebSocketEvent, std::error::Error> = LambdaWebSocketEvent> {
-    pub context: internal::LambdaWebSocketRequestContext,
-    pub event: E,
-    client: Option<tokio::net::TcpStream>
-}
+pub use ws::*;
+mod ws {
+    use crate::util::ErrorMessage;
+    use std::{future::Future, marker::PhantomData};
 
-impl<E: TryFrom<LambdaWebSocketEvent, std::error::Error>> LambdaWebSocket<E> {
-    pub async fn send(&mut self, data: ) -> Result<(), impl std::error::Error> {
-
+    struct Client {
+        host: String,
+        path: String,
+        conn: tokio::net::TcpStream,
     }
+    struct ClientInit {
+        domain_name: &str,
+        stage: &str,
+        connection_id: &str,
+    }
+    impl Client {
+        /// Create backend client based on
+        /// <https://docs.aws.amazon.com/en_us/apigateway/latest/developerguide/apigateway-how-to-call-websocket-api-connections.html>
+        async fn new(init: ClientInit) -> Result<Self, impl std::error::Error> {
+            use ::ohkami_lib::percent_encode;
 
-    pub async fn handle<F, Fut>(h: F) ->
-        impl lambda_runtime::Service<
-            lambda_runtime::LambdaEvent<internal::LambdaWebSocketRequest>,
-            Response = internal::LambdaResponse
-        >
-    where
-        F:   Fn(E) -> Fut,
-        Fut: Future<Output = Result<(), lambda_runtime::Error>>,
-    {
-        use lambda_runtime::{Service, LambdaEvent};
-        use internal::{LambdaWebSocketRequest, LambdaResponse};
-        use std::{task};
-
-        struct LambdaWebSocketService<F, Fut> {
-            handler: F,
-            __fut__: PhantomData<Fut>,
-            // __event__: PhantomData<E>,
+            let conn = tokio::net::TcpStream::connect(init.domain_name).await?;
+            let host = init.domain_name.to_owned();
+            let path = format!(
+                "/{stage}/%40connections/{connection_id}",
+                stage = percent_encode(init.stage),
+                connection_id = percent_encode(init.connection_id)
+            );
+            Ok(Self { host, conn })
         }
 
-        impl Service<LambdaEvent<LambdaWebSocketRequest>, E, F, Fut> for LambdaWebSocketService<F, Fut>
+        async fn fetch(
+            &mut self,
+            method: &'static str,
+            body: Option<&[u8]>,
+        ) -> Result<(), impl std::error::Error> {
+            use ohkami_lib::num::itoa;
+            use tokio::io::AsyncWriteExt;
+
+            let mut request = Vec::with_capacity(
+                method.len() + " ".len() + self.path.len() + " HTTP/1.1\r\n".len() +
+                "host: ".len() + self.host.len() + "\r\n".len() +
+                "\r\n".len() +
+                body.as_ref().map(|b|
+                    "content-length: ".len() + (1 + b.len().ilog10()) + "\r\n".len() +
+                    b.len()
+                ).unwrap_or(0)
+            );
+            {
+                request.push(method.as_bytes());
+                request.push(b" ");
+                request.push(self.path.as_bytes());
+                request.push(b" HTTP/1.1\r\n");
+                {
+                    request.push(b"host: ");
+                    request.push(self.host.as_bytes());
+                    request.push(b"\r\n");
+                }
+                if let Some(ref body) = body {
+                    request.push(b"content-length: ");
+                    request.push(itoa(body.len()).as_bytes());
+                    request.push(b"\r\n");
+                }
+                request.push(b"\r\n");
+                if let Some(body) = body {
+                    request.push(body);
+                }
+            }
+
+            self.conn.write_all(request).await?;
+
+            Ok(())
+        }
+    }
+
+    /// ```no_run
+    /// use ohkami::{LambdaWebSocket, LambdaWebSocketMESSAGE};
+    /// use lambda_runtime::Error;
+    /// 
+    /// #[ohkami::lambda]
+    /// async fn main() -> Result<(), Error> {
+    ///     lambda_runtime::run(LambdaWebSocket::handle(echo)).await
+    /// }
+    /// 
+    /// async fn echo(
+    ///     ws: LambdaWebSocket<LamdaWebSocketMESSAGE>
+    /// ) -> Result<(), Error> {
+    ///     ws.send(ws.event).await?;
+    ///     Ok(())
+    /// }
+    /// ```
+    pub struct LambdaWebSocket<E: TryFrom<LambdaWebSocketEvent, std::error::Error> = LambdaWebSocketEvent> {
+        pub context: internal::LambdaWebSocketRequestContext,
+        pub event: E,
+        client: Option<Client>
+    }
+
+    impl<E: TryFrom<LambdaWebSocketEvent, std::error::Error>> LambdaWebSocket<E> {
+        async fn client(&mut self) -> Result<&mut tokio::net::TcpStream, impl std::error::Error> {
+            if self.client.is_none() {
+                self.client = Client::new(ClientInit {
+                    domain_name: self.context.domainName,
+                    stage: self.context.stage,
+                    connection_id: self.context.connectionId,
+                }).await?;
+            }
+            Ok(unsafe {self.client.as_mut().unwrap_unchecked()})
+        }
+
+        pub async fn send(&mut self, data: impl Into<LambdaWebSocketMESSAGE>) -> Result<(), impl std::error::Error> {
+            self.client().await?.fetch("POST", Some(match data.into() {
+                LambdaWebSocketMESSAGE::Text(t) => t.as_bytes(),
+                LambdaWebSocketMESSAGE::Binary(b) => b.as_bytes()
+            })).await
+        }
+        pub async fn close(mut self) -> Result<(), impl std::error::Error> {
+            self.client().await?.fetch("DELETE", None).await
+        }
+
+        pub async fn handle<F, Fut>(h: F) ->
+            impl lambda_runtime::Service<
+                lambda_runtime::LambdaEvent<internal::LambdaWebSocketRequest>,
+                Response = internal::LambdaResponse
+            >
         where
             F:   Fn(E) -> Fut,
-            E:   TryFrom<LambdaWebSocketEvent, std::error::Error>,
             Fut: Future<Output = Result<(), lambda_runtime::Error>>,
         {
-            type Response = LambdaResponse;
-            type Error = lambda_runtime::Error;
-            type Future = impl Future<Output = Result<(), lambda_runtime::Error>>;
+            use lambda_runtime::{Service, LambdaEvent};
+            use internal::{LambdaWebSocketRequest, LambdaResponse};
 
-            fn poll_ready(&mut self, cx: &mut task::Context<'_>) -> task::Poll<Result<(), Self::Error>> {
-                task::Poll::Ready(Ok(()))
+            struct LambdaWebSocketService<F, Fut> {
+                handler: F,
+                __fut__: PhantomData<Fut>,
             }
 
-            fn call(&mut self, req: LambdaEvent<LambdaWebSocketRequest>) -> Self::Future {
-                let payload: internal::LambdaWebSocketRequest = req.payload;
-                
-                let e = LambdaWebSocketEvent {
-                    event: match &payload.requestContext.eventType {
-                        internal::LambdaWebSocketEventType::CONNECT => {
-                            LambdaWebSocketEvent::CONNECT(LambdaWebSocketCONNECT)
-                        }
-                        internal::LambdaWebSocketEventType::DISCONNECT => {
-                            LambdaWebSocketEvent::DISCONNECT(LambdaWebSocketDISCONNECT)
-                        }
-                        internal::LambdaWebSocketEventType::MESSAGE => {
-                            let body = payload.body
-                                .ok_or_else(|| Box::new(ErrorMessage("Got MESSAGE event, but not `body` found".into())))?;
-                            let body = if payload.isBase64Encoded {
-                                use ::base64::engine::{Engine as _, general_purpose::STANDARD as BASE64};
-                                LambdaWebSocketMESSAGE::Binary(BASE64.decode(body)?)
-                            } else {
-                                LambdaWebSocketMESSAGE::Text(body)
-                            };
-                            LambdaWebSocketEvent::MESSAGE(body)
-                        }
-                    },
-                    context: payload.requestContext,
-                };
+            impl Service<LambdaEvent<LambdaWebSocketRequest>, E, F, Fut> for LambdaWebSocketService<F, Fut>
+            where
+                F:   Fn(E) -> Fut,
+                E:   TryFrom<LambdaWebSocketEvent, std::error::Error>,
+                Fut: Future<Output = Result<(), lambda_runtime::Error>>,
+            {
+                type Response = LambdaResponse;
+                type Error = lambda_runtime::Error;
+                type Future = impl Future<Output = Result<(), lambda_runtime::Error>>;
 
-                (self.handler)(E::try_from(e)?)
+                fn poll_ready(&mut self, cx: &mut std::task::Context<'_>) -> std::task::Poll<Result<(), Self::Error>> {
+                    std::task::Poll::Ready(Ok(()))
+                }
+
+                fn call(&mut self, req: LambdaEvent<LambdaWebSocketRequest>) -> Self::Future {
+                    let payload: internal::LambdaWebSocketRequest = req.payload;
+
+                    let e = LambdaWebSocketEvent {
+                        event: match &payload.requestContext.eventType {
+                            internal::LambdaWebSocketEventType::CONNECT => {
+                                LambdaWebSocketEvent::CONNECT(LambdaWebSocketCONNECT)
+                            }
+                            internal::LambdaWebSocketEventType::DISCONNECT => {
+                                LambdaWebSocketEvent::DISCONNECT(LambdaWebSocketDISCONNECT)
+                            }
+                            internal::LambdaWebSocketEventType::MESSAGE => {
+                                let body = payload.body
+                                    .ok_or_else(|| Box::new(ErrorMessage("Got MESSAGE event, but not `body` found".into())))?;
+                                let body = if payload.isBase64Encoded {
+                                    use ::base64::engine::{Engine as _, general_purpose::STANDARD as BASE64};
+                                    LambdaWebSocketMESSAGE::Binary(BASE64.decode(body)?)
+                                } else {
+                                    LambdaWebSocketMESSAGE::Text(body)
+                                };
+                                LambdaWebSocketEvent::MESSAGE(body)
+                            }
+                        },
+                        context: payload.requestContext,
+                    };
+
+                    (self.handler)(E::try_from(e)?)
+                }
             }
         }
     }
-}
 
-pub enum LambdaWebSocketEvent {
-    CONNECT(LambdaWebSocketCONNECT),
-    DISCONNECT(LambdaWebSocketDISCONNECT),
-    MESSAGE(LambdaWebSocketMESSAGE),
-}
-impl TryFrom<LambdaWebSocketEvent> for LambdaWebSocketEvent {
-    type Error = std::convert::Infallible;
-    fn try_from(e: LambdaWebSocketEvent) -> Result<Self, Self::Error> {
-        Ok(e)
+    pub enum LambdaWebSocketEvent {
+        CONNECT(LambdaWebSocketCONNECT),
+        DISCONNECT(LambdaWebSocketDISCONNECT),
+        MESSAGE(LambdaWebSocketMESSAGE),
     }
-}
-
-pub struct LambdaWebSocketCONNECT;
-impl TryFrom<LambdaWebSocketEvent> for LambdaWebSocketCONNECT {
-    type Error = ErrorMessage;
-    fn try_from(e: LambdaWebSocketEvent) -> Result<Self, Self::Error> {
-        match e {
-            LambdaWebSocketEvent::CONNECT(it) => Ok(it),
-            LambdaWebSocketEvent::DISCONNECT(_) => Err(ErrorMessage(
-                "Expected CONNECT event, but got DISCONNECT".into()
-            )),
-            LambdaWebSocketEvent::MESSAGE(_) => Err(ErrorMessage(
-                "Expected CONNECT event, but got MESSAGE".into()
-            )),
+    impl TryFrom<LambdaWebSocketEvent> for LambdaWebSocketEvent {
+        type Error = std::convert::Infallible;
+        fn try_from(e: LambdaWebSocketEvent) -> Result<Self, Self::Error> {
+            Ok(e)
         }
     }
-}
 
-pub struct LambdaWebSocketDISCONNECT;
-impl TryFrom<LambdaWebSocketEvent> for LambdaWebSocketDISCONNECT {
-    type Error = ErrorMessage;
-    fn try_from(e: LambdaWebSocketEvent) -> Result<Self, Self::Error> {
-        match e {
-            LambdaWebSocketEvent::DISCONNECT(it) => Ok(it),
-            LambdaWebSocketEvent::MESSAGE(_) => Err(ErrorMessage(
-                "Expected DISCONNECT event, but got MESSAGE".into()
-            )),
-            LambdaWebSocketEvent::CONNECT(_) => Err(ErrorMessage(
-                "Expected DISCONNECT event, but got CONNECT".into()
-            )),
+    pub struct LambdaWebSocketCONNECT;
+    impl TryFrom<LambdaWebSocketEvent> for LambdaWebSocketCONNECT {
+        type Error = ErrorMessage;
+        fn try_from(e: LambdaWebSocketEvent) -> Result<Self, Self::Error> {
+            match e {
+                LambdaWebSocketEvent::CONNECT(it) => Ok(it),
+                LambdaWebSocketEvent::DISCONNECT(_) => Err(ErrorMessage(
+                    "Expected CONNECT event, but got DISCONNECT".into()
+                )),
+                LambdaWebSocketEvent::MESSAGE(_) => Err(ErrorMessage(
+                    "Expected CONNECT event, but got MESSAGE".into()
+                )),
+            }
         }
     }
-}
 
-pub enum LambdaWebSocketMESSAGE {
-    Text(String),
-    Binary(Vec<u8>),
-}
-impl TryFrom<LambdaWebSocketEvent> for LambdaWebSocketMESSAGE {
-    type Error = ErrorMessage;
-    fn try_from(e: LambdaWebSocketEvent) -> Result<Self, Self::Error> {
-        match e {
-            LambdaWebSocketEvent::MESSAGE(it) => Ok(it),
-            LambdaWebSocketEvent::CONNECT(_) => Err(ErrorMessage(
-                "Expected MESSAGE event, but got CONNECT".into()
-            )),
-            LambdaWebSocketEvent::DISCONNECT(_) => Err(ErrorMessage(
-                "Expected MESSAGE event, but got DISCONNECT".into()
-            )),
+    pub struct LambdaWebSocketDISCONNECT;
+    impl TryFrom<LambdaWebSocketEvent> for LambdaWebSocketDISCONNECT {
+        type Error = ErrorMessage;
+        fn try_from(e: LambdaWebSocketEvent) -> Result<Self, Self::Error> {
+            match e {
+                LambdaWebSocketEvent::DISCONNECT(it) => Ok(it),
+                LambdaWebSocketEvent::MESSAGE(_) => Err(ErrorMessage(
+                    "Expected DISCONNECT event, but got MESSAGE".into()
+                )),
+                LambdaWebSocketEvent::CONNECT(_) => Err(ErrorMessage(
+                    "Expected DISCONNECT event, but got CONNECT".into()
+                )),
+            }
         }
     }
+
+    pub enum LambdaWebSocketMESSAGE {
+        Text(String),
+        Binary(Vec<u8>),
+    }
+    impl TryFrom<LambdaWebSocketEvent> for LambdaWebSocketMESSAGE {
+        type Error = ErrorMessage;
+        fn try_from(e: LambdaWebSocketEvent) -> Result<Self, Self::Error> {
+            match e {
+                LambdaWebSocketEvent::MESSAGE(it) => Ok(it),
+                LambdaWebSocketEvent::CONNECT(_) => Err(ErrorMessage(
+                    "Expected MESSAGE event, but got CONNECT".into()
+                )),
+                LambdaWebSocketEvent::DISCONNECT(_) => Err(ErrorMessage(
+                    "Expected MESSAGE event, but got DISCONNECT".into()
+                )),
+            }
+        }
+    }
+    const _: () = {
+        impl From<String> for LambdaWebSocketMESSAGE {
+            fn from(text: String) -> Self {Self::Text(text)}
+        }
+        impl From<&str> for LambdaWebSocketMESSAGE {
+            fn from(text: &str) -> Self {Self::Text(text.to_owned())}
+        }
+        impl From<std::borrow::Cow<str>> for LambdaWebSocketMESSAGE {
+            fn from(text: String) -> Self {Self::Text(text.into())}
+        }
+
+        impl From<Vec<u8>> for LambdaWebSocketMESSAGE {
+            fn from(binary: Vec<u8>) -> Self {Self::binary(binary)}
+        }
+        impl From<&[u8]> for LambdaWebSocketMESSAGE {
+            fn from(binary: &[u8]) -> Self {Self::binary(binary.to_owned())}
+        }
+        impl From<std::borrow::Cow<[u8]>> for LambdaWebSocketMESSAGE {
+            fn from(binary: std::borrow::<[u8]>) -> Self {Self::binary(binary.into())}
+        }
+    };
 }
 
 pub(crate) use internal::*;
