@@ -10,10 +10,10 @@ pub struct Context {
     >>,
 
     #[cfg(feature="rt_worker")]
-    worker: std::mem::MaybeUninit<(::worker::Context, ::worker::Env)>,
+    worker: Option<Box<(::worker::Context, ::worker::Env)>>,
 
     #[cfg(feature="rt_lambda")]
-    lambda: std::mem::MaybeUninit<crate::x_lambda::LambdaHTTPRequestContext>,
+    lambda: Option<Box<crate::x_lambda::LambdaHTTPRequestContext>>,
 }
 
 impl Context {
@@ -23,10 +23,10 @@ impl Context {
             store: None,
 
             #[cfg(feature="rt_worker")]
-            worker: std::mem::MaybeUninit::uninit(),
+            worker: None,
 
             #[cfg(feature="rt_lambda")]
-            lambda: std::mem::MaybeUninit::uninit(),
+            lambda: None,
         }
     }
 
@@ -75,12 +75,12 @@ impl Context {
     #[cfg(feature="rt_worker")]
     /// SAFETY: MUST be called after `load`
     pub unsafe fn worker(&self) -> &::worker::Env {
-        self.worker.assume_init_ref()
+        self.worker.as_ref().unwrap_unchecked()
     }
 
     #[cfg(feature="rt_lambda")]
     /// SAFETY: MUST be called after `load`
     pub unsafe fn (&self) -> &crate::x_lambda::LambdaHTTPRequestContext {
-        &self.lambda.assume_init_ref()
+        self.lambda.as_ref().unwrap_unchecked()
     }
 }
