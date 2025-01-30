@@ -43,7 +43,7 @@ where
         impl<T: Clone + Send + Sync + 'static> FangAction for ContextAction<T> {
             #[inline]
             async fn fore<'a>(&'a self, req: &'a mut Request) -> Result<(), Response> {
-                req.memorize(self.0.clone());
+                req.ctx.set(self.0.clone());
                 Ok(())
             }
         }
@@ -55,7 +55,7 @@ impl<'req, T: Send + Sync + 'static> FromRequest<'req> for Context<'req, T> {
 
     #[inline]
     fn from_request(req: &'req crate::Request) -> Option<Result<Self, Self::Error>> {
-        match req.memorized::<T>() {
+        match req.ctx.get::<T>() {
             Some(d) => Some(Ok(Self(d))),
             None => {
                 #[cfg(debug_assertions)] {

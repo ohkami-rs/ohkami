@@ -83,7 +83,6 @@ rt_lambda = ["__rt__",
     "dep:lambda_runtime",
     "dep:tokio", "tokio/rt", # lambda_runtime internally depends on tokio runtime
 ]
-apigateway = []
 nightly    = []
 openapi    = ["dep:ohkami_openapi", "ohkami_macros/openapi"]
 sse        = ["ohkami_lib/stream"]

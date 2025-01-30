@@ -17,14 +17,14 @@ tasks:
       - task: test:examples
       - task: test:samples
       - task: test:no_rt
-      - for:  [tokio, async-std, smol, nio, glommio, worker]
+      - for:  [tokio, async-std, smol, nio, glommio, worker, lambda]
         task: test:rt
         vars: { rt: '{{.ITEM}}' }
 
   check:
     deps:
       - task: check:no_rt
-      - for:  [tokio, async-std, smol, nio, glommio]
+      - for:  [tokio, async-std, smol, nio, glommio, lambda]
         task: check:native_rt
         vars: { native_rt: '{{.ITEM}}' }
       - task: check:rt_worker

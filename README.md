@@ -88,11 +88,9 @@ then `＜project dir＞` will have `wrangler.toml`, `package.json` and a Rust li
 
 See README of [template](https://github.com/ohkami-rs/ohkami-templates/tree/main/worker) for details.
 
-### `"rt_lambda"`, `"apigateway"` : AWS Lambda
+### `"rt_lambda"` : AWS Lambda
 
 Works with [lambda_runtime](https://crates.io/crates/lambda_runtime) crate.
-
-Ohkami provides optimized implementation for Function URLs by default in `"rt_lambda"`. You can additionally activate `"apigateway"` feature to use generic implementation.
 
 [cargo lambda](https://crates.io/crates/cargo-lambda) will be good to scaffold :
 
@@ -157,7 +155,7 @@ async fn main() {
 ```
 
 * On `"rt_worker"`, WebSocket on or not on Durable Object is available!
-* On `"rt_lambda"`, WebSocket is available only with additional `"apigateway"` feature ( because default specialization for Function URLs ) . Due to the architecture of Amazon API Gateway's, a `#[lambda] Ohkami` for WebSocket can only handle the WebSocket events, and is deploied as an independent Lambda function binded to a WebSocket API route.
+* On `"rt_lambda"`, due to the architecture of Amazon API Gateway's, a `#[lambda] Ohkami` for WebSocket can only handle the WebSocket events, and is deploied as an independent Lambda function binded to a WebSocket API route.
 
 ### `"openapi"` : OpenAPI document generation
 

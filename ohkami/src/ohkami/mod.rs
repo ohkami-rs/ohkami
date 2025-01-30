@@ -385,28 +385,43 @@ impl Ohkami {
     #[cfg(feature="rt_lambda")]
     pub fn lambda(self) -> impl ::lambda_runtime::Service<
         ::lambda_runtime::LambdaEvent<crate::x_lambda::LambdaHTTPRequest>,
-        Response = 
+        Response = ::lambda_runtime::FunctionResponse<
+            crate::x_lambda::LambdaResponse,
+            std::pin::Pin<Box<dyn ohkami_lib::Stream<Item = Result<String, std::convert::Infallible>> + Send>>
+        >,
+        Error: std::error::Error,
     > {
-        let handler = |req: | async move {
-            let mut ohkami_req = crate::Request::init();
-            let mut ohkami_req = unsafe {std::pin::Pin::new_unchecked(&mut ohkami_req)};
-            ohkami_req.as_mut().take_over(req).await?;
+        return OhkamiService(self);
 
-            let (router, _) = o.into_router().finalize();
-            let mut ohkami_res = router.handle(&mut ohkami_req).await;
-            ohkami_res.complete();
+        ///////////////////////////////////////////////////////////////
 
-            Result::<
-                ::lambda_runtime::FunctionResponse<crate::x_lambda::LambdaResponse>,
-                Box<dyn std::error::Error + Send + Sync>
-            >::Ok(ohkami_res.into())
-        };
+        use crate::_lambda::{LambdaHTTPRequest, LambdaResponse};
+        use ::lambda_runtime::{Service, LambdaEvent, FunctionResponse};
 
-        ::tokio::runtime::Builder::new_multi_thread()
-            .enable_all()
-            .build()
-            .unwrap()
-            .block_on(::lambda_runtime::run(handler))
+        struct OhkamiService(Option<Ohkami>);
+        impl Service<LambdaEvent<LambdaHTTPRequest>> for OhkamiService {
+            type Response = LambdaResponse;
+            type Future = impl Future<Output = Result<Self::Response, Self::Error>>;
+            type Error = impl std::error::Error;
+
+            fn poll_ready(&mut self, cx: &mut std::task::Context<'_>) -> std::task::Poll<Result<(), Self::Error>> {
+                std::task::Poll::Ready(Ok())
+            }
+
+            fn call(&mut self, req: LambdaEvent<LambdaHTTPRequest>) -> Self::Future {
+                let o: Ohkami = self.0.take().expect("`Ohkami::lambda` was called more than once for an `Ohkami` instance");
+
+                let mut ohkami_req = crate::Request::init();
+                let mut ohkami_req = unsafe {std::pin::Pin::new_unchecked(&mut ohkami_req)};
+                ohkami_req.as_mut().take_over(req)?;
+
+                let (router, _) = o.into_router().finalize();
+                let mut ohkami_res = router.handle(&mut ohkami_req).await;
+                ohkami_res.complete();
+
+                Ok(ohkami_res.into())
+            }
+        }
     }
 
     #[cfg(feature="openapi")]

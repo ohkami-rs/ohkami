@@ -12,8 +12,8 @@ pub use headers::Headers as RequestHeaders;
 #[allow(unused)]
 pub use headers::Header as RequestHeader;
 
-mod store;
-pub(crate) use store::Store;
+mod context;
+use context::Context;
 
 mod from_request; 
 pub use from_request::*;
@@ -104,6 +104,9 @@ pub struct Request {
     #[cfg(feature="rt_worker")]
     pub(super/* for test */) __url__: std::mem::MaybeUninit<::worker::Url>,
 
+    #[cfg(feature="rt_lambda")]
+    pub(super/* for test */) __query__: std::mem::MaybeUninit<Box<str>>,
+
     /// HTTP method of this request
     /// 
     /// ---
@@ -160,7 +163,7 @@ pub struct Request {
 
     pub payload: Option<CowSlice>,
 
-    store: Store,
+    pub ctx: Context,
 
     #[cfg(feature="__rt__")]
     /// Remote ( directly connected ) peer's IP address
@@ -181,25 +184,22 @@ impl Request {
         Self {
             #[cfg(feature="__rt_native__")]
             ip,
-            #[cfg(feature="rt_worker")]
-            ip: crate::util::IP_0000,/* tetative */
+            #[cfg(any(feature="rt_worker", feature="rt_lambda"))]
+            ip: crate::util::IP_0000/* tetative */,
 
             #[cfg(feature="__rt_native__")]
             __buf__: Box::new([0; BUF_SIZE]),
-
             #[cfg(feature="rt_worker")]
             __url__: std::mem::MaybeUninit::uninit(),
-            #[cfg(feature="rt_worker")]
-            env:     std::mem::MaybeUninit::uninit(),
-            #[cfg(feature="rt_worker")]
-            ctx:     std::mem::MaybeUninit::uninit(),
+            #[cfg(feature="rt_lambda")]
+            __query__: std::mem::MaybeUninit::uninit(),
 
             method:  Method::GET,
             path:    Path::uninit(),
             query:   QueryParams::new(b""),
             headers: RequestHeaders::init(),
             payload: None,
-            store:   Store::init(),
+            context: Context::init(),
         }
     }
     #[cfg(feature="__rt_native__")]
@@ -213,7 +213,7 @@ impl Request {
             self.query = QueryParams::new(b"");
             self.headers.clear();
             self.payload = None;
-            self.store.clear();
+            self.ctx.clear();
         } /* else: just after `init`ed or `clear`ed */
     }
 
@@ -390,8 +390,7 @@ impl Request {
         env:     ::worker::Env,
         ctx:     ::worker::Context,
     ) -> Result<(), crate::Response> {use crate::Response;
-        self.env.write(env);
-        self.ctx.write(ctx);
+        self.ctx.load((ctx, env));
 
         self.method = Method::from_worker(req.method())
             .ok_or_else(|| Response::NotImplemented().with_text("ohkami doesn't support `CONNECT`, `TRACE` method"))?;
@@ -421,6 +420,39 @@ impl Request {
 
         Ok(())
     }
+
+    #[cfg(feature="rt_lambda")]
+    pub(crate) fn take_over(mut self: Pin<&mut self>,
+        req: ::lambda_runtime::LambdaEvent<crate::LambdaHTTPRequest>
+    ) -> Result<(), impl std::error::Error> {
+        self.__query__.write(req.rawQueryString.into_boxed_str()); unsafe {
+            self.query = QueryParams::new(self.__query__.assume_init_ref().as_bytes());
+        }
+
+        self.ctx.load(req.requestContext); {
+            let http = &self.lambda().http;
+
+            self.ip = http.sourceIp;
+            self.method = http.method;
+            self.path.init_with_request_bytes(http.path.as_bytes());
+        }
+
+        self.headers = req.headers;
+        self.headers.set().Cookie(req.cookies.join("; "));
+
+        if let Some(body) = req.body {
+            self.payload = Some(CowSlice::Own(
+                if req.isBase64Encoded {
+                    use ::base64::engine::{Engine as _, general_purpose::STANDARD as BASE64};
+                    BASE64.decode(req.body)?
+                } else {
+                    req.body.into_bytes()
+                }
+            ));
+        }
+
+        Ok(())
+    }
 }
 
 #[cfg(feature="rt_worker")]
@@ -440,7 +472,7 @@ impl Request {
 #[cfg(feature="rt_lambda")]
 impl Request {
     #[inline]
-    pub fn lambda_context(&self) -> &crate::x_lambda::LambdaHTTPRequestContext {
+    pub fn lambda(&self) -> &crate::x_lambda::LambdaHTTPRequestContext {
         // SAFETY: user can touch here only after `self.ctx.load(...)`
         unsafe {self.ctx.lambda()}
     }
@@ -450,15 +482,6 @@ impl Request {
     #[inline]
     pub fn payload(&self) -> Option<&[u8]> {
         self.payload.as_deref()
-    }
-
-    /// Memorize any data within this request object
-    #[inline] pub fn memorize<Value: Send + Sync + 'static>(&mut self, value: Value) {
-        self.store.insert(value)
-    }
-    /// Retrieve a data memorized in this request (using the type as key)
-    #[inline] pub fn memorized<Value: Send + Sync + 'static>(&self) -> Option<&Value> {
-        self.store.get()
     }
 }
 

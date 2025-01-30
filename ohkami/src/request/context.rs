@@ -10,7 +10,7 @@ pub struct Context {
     >>,
 
     #[cfg(feature="rt_worker")]
-    worker: Option<Box<(::worker::Context, ::worker::Env)>>,
+    worker: std::mem::MaybeUninit<(::worker::Context, ::worker::Env)>,
 
     #[cfg(feature="rt_lambda")]
     lambda: Option<Box<crate::x_lambda::LambdaHTTPRequestContext>>,
@@ -31,13 +31,13 @@ impl Context {
     }
 
     #[cfg(feature="rt_worker")]
-    pub(super) fn load(&mut self, ctx: ::worker::Context, env: ::worker::Env) {
-        self.worker.write((ctx, env));
+    pub(super) fn load(&mut self, worker: (::worker::Context, ::worker::Env)) {
+        self.worker.write(worker);
     }
 
     #[cfg(feature="rt_lambda")]
     pub(super) fn load(&mut self, request_context: crate::x_lambda::LambdaHTTPRequestContext) {
-        self.lambda.write(request_context);
+        self.lambda = Some(Box::new(request_context));
     }
 
     #[cfg(feature="__rt_native__")]
@@ -73,14 +73,16 @@ impl Context {
     }
 
     #[cfg(feature="rt_worker")]
+    #[inline(always)]
     /// SAFETY: MUST be called after `load`
-    pub unsafe fn worker(&self) -> &::worker::Env {
-        self.worker.as_ref().unwrap_unchecked()
+    pub(super) unsafe fn worker(&self) -> &::worker::Env {
+        self.worker.assume_init_ref()
     }
 
     #[cfg(feature="rt_lambda")]
+    #[inline(always)]
     /// SAFETY: MUST be called after `load`
-    pub unsafe fn (&self) -> &crate::x_lambda::LambdaHTTPRequestContext {
+    pub(super) unsafe fn lambda(&self) -> &crate::x_lambda::LambdaHTTPRequestContext {
         self.lambda.as_ref().unwrap_unchecked()
     }
 }
