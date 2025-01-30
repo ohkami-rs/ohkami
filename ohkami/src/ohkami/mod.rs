@@ -383,15 +383,11 @@ impl Ohkami {
     }
 
     #[cfg(feature="rt_lambda")]
-    #[doc(hidden)]
-    /// APIGateway{Request, Response} :
-    /// 
-    /// [note] only handle version 2
-    /// 
-    /// https://docs.aws.amazon.com/ja_jp/lambda/latest/dg/urls-invocation.html
-    /// https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-develop-integrations-lambda.html
-    pub fn __lambda__(self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        let handler = |req: ::lambda_runtime::LambdaEvent<crate::x_lambda::LambdaRequest>| async move {
+    pub fn lambda(self) -> impl ::lambda_runtime::Service<
+        ::lambda_runtime::LambdaEvent<crate::x_lambda::LambdaHTTPRequest>,
+        Response = 
+    > {
+        let handler = |req: | async move {
             let mut ohkami_req = crate::Request::init();
             let mut ohkami_req = unsafe {std::pin::Pin::new_unchecked(&mut ohkami_req)};
             ohkami_req.as_mut().take_over(req).await?;

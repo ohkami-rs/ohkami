@@ -10,24 +10,10 @@ pub struct Context {
     >>,
 
     #[cfg(feature="rt_worker")]
-    worker: WorkerContext,
+    worker: std::mem::MaybeUninit<(::worker::Context, ::worker::Env)>,
 
     #[cfg(feature="rt_lambda")]
-    lambda: LambdaContext,
-}
-
-#[cfg(feature="rt_worker")]
-struct WorkerContext {
-    ctx: ::worker::Context,
-    env: ::worker::Env,
-}
-
-#[cfg(feature="rt_lambda")]
-enum LambdaContext {
-    HTTP(::crate::x_lambda::LambdaHTTPRequestContext),
-
-    #[cfg(feature="ws")]
-    WebSocket(::crate::x_lambda::LambdaWebSocketRequestContext),
+    lambda: std::mem::MaybeUninit<crate::x_lambda::LambdaHTTPRequestContext>,
 }
 
 impl Context {
@@ -37,12 +23,25 @@ impl Context {
             store: None,
 
             #[cfg(feature="rt_worker")]
-            worker: ,
+            worker: std::mem::MaybeUninit::uninit(),
+
+            #[cfg(feature="rt_lambda")]
+            lambda: std::mem::MaybeUninit::uninit(),
         }
     }
 
-    #[allow(unused)]
-    pub(crate) fn clear(&mut self) {
+    #[cfg(feature="rt_worker")]
+    pub(super) fn load(&mut self, ctx: ::worker::Context, env: ::worker::Env) {
+        self.worker.write((ctx, env));
+    }
+
+    #[cfg(feature="rt_lambda")]
+    pub(super) fn load(&mut self, request_context: crate::x_lambda::LambdaHTTPRequestContext) {
+        self.lambda.write(request_context);
+    }
+
+    #[cfg(feature="__rt_native__")]
+    pub(super) fn clear(&mut self) {
         if let Some(map) = &mut self.store {
             map.clear()
         }
@@ -71,5 +70,17 @@ impl Context {
                 unsafe { &*(data as *const dyn Any as *const Data) }
             })
         )
+    }
+
+    #[cfg(feature="rt_worker")]
+    /// SAFETY: MUST be called after `load`
+    pub unsafe fn worker(&self) -> &::worker::Env {
+        self.worker.assume_init_ref()
+    }
+
+    #[cfg(feature="rt_lambda")]
+    /// SAFETY: MUST be called after `load`
+    pub unsafe fn (&self) -> &crate::x_lambda::LambdaHTTPRequestContext {
+        &self.lambda.assume_init_ref()
     }
 }

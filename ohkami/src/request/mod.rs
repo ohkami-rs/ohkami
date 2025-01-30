@@ -103,10 +103,6 @@ pub struct Request {
 
     #[cfg(feature="rt_worker")]
     pub(super/* for test */) __url__: std::mem::MaybeUninit<::worker::Url>,
-    #[cfg(feature="rt_worker")]
-    env: std::mem::MaybeUninit<::worker::Env>,
-    #[cfg(feature="rt_worker")]
-    ctx: std::mem::MaybeUninit<::worker::Context>,
 
     /// HTTP method of this request
     /// 
@@ -431,11 +427,22 @@ impl Request {
 impl Request {
     #[inline]
     pub fn env(&self) -> &::worker::Env {
-        unsafe {self.env.assume_init_ref()}
+        // SAFETY: user can touch here only after `self.ctx.load(...)`
+        &(unsafe {self.ctx.worker()}).0
     }
     #[inline]
     pub fn context(&self) -> &::worker::Context {
-        unsafe {self.ctx.assume_init_ref()}
+        // SAFETY: user can touch here only after `self.ctx.load(...)`
+        &(unsafe {self.ctx.worker()}).1
+    }
+}
+
+#[cfg(feature="rt_lambda")]
+impl Request {
+    #[inline]
+    pub fn lambda_context(&self) -> &crate::x_lambda::LambdaHTTPRequestContext {
+        // SAFETY: user can touch here only after `self.ctx.load(...)`
+        unsafe {self.ctx.lambda()}
     }
 }
 
