@@ -5,27 +5,6 @@
 #[cfg(all(feature="ws", not(feature="apigateway")))]
 compile_error!("On `rt_lambda`, `ws` can't be activated without `apigateway` !");
 
-/*
-
-    #[derive(Deserialize)]
-    pub struct LambdaWebSocketRequestContext {
-        pub apiId: String,
-        /* @skip connectedAt: u64, */
-        pub connectionId: String,
-        pub domainName: String,
-        pub eventType: LambdaWebSocketEventType,
-        /* @skip extendedRequestId: String, */
-        pub routeKey: String,
-        /* @skip messageDirection: "IN", */
-        pub messageId: String,
-        pub requestId: String,
-        /* @skip requestTime: String, // requestTimeEpoch is enough */
-        pub requestTimeEpoch: u64,
-        pub stage: String,
-    }
-
-*/
-
 pub use ws::*;
 mod ws {
     use crate::util::ErrorMessage;

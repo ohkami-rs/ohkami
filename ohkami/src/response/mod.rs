@@ -296,6 +296,7 @@ impl Response {
 }
 
 #[cfg(feature="ws")]
+/// Of course here no method for rt_lambda exists; see x_lambda.rs
 impl Response {
     #[cfg(feature="__rt_native__")]
     pub(crate) fn with_websocket(mut self, ws: mews::WebSocket) -> Self {
@@ -491,12 +492,17 @@ const _: () = {
     use ::lambda_runtime::FunctionResponse;
     use std::{pin::Pin, convert::Infallible};
 
-    impl Response {
-        pub(crate) async fn into_lambda_function_response(mut self) -> FunctionResponse<
+    impl Into<FunctionResponse<
+        LambdaResponse,
+        Pin<Box<dyn Stream<Item = Result<String, Infallible>> + Send>>
+    >> for Response {
+        pub(crate) fn into(self) -> FunctionResponse<
             LambdaResponse,
             Pin<Box<dyn Stream<Item = Result<String, Infallible>> + Send>>
         > {
-            let cookies = self.headers
+            let mut headers = self.headers;
+
+            let cookies = headers
                 .set_cookie
                 .take(/* remove `Set-Cookie` from app's own headers */)
                 .map(|box_vec_cow_str| {
@@ -511,7 +517,7 @@ const _: () = {
                 Content::None => {
                     FunctionResponse::BufferedResponse(LambdaResponse {
                         statusCode: self.status.code(),
-                        headers: self.headers,
+                        headers,
                         cookies,
                         body: None,
                         isBase64Encoded: None,
@@ -528,7 +534,7 @@ const _: () = {
 
                     FunctionResponse::BufferedResponse(LambdaResponse {
                         statusCode: self.status.code(),
-                        headers: self.headers,
+                        headers,
                         cookies,
                         body: Some(body),
                         isBase64Encoded: Some(encoded),
@@ -554,28 +560,6 @@ const _: () = {
                             ),
                             cookies
                         }
-                    })
-                }
-
-                #[cfg(feature="ws")]
-                Content::WebSocket(ws) => {
-                    todo! {
-                        // https://docs.aws.amazon.com/ja_jp/apigateway/latest/developerguide/apigateway-how-to-call-websocket-api-connections.html
-                        "POST https://{api-id}.execute-api.us-east-1.amazonaws.com/{stage}/@connections/{connection_id}"
-
-                        // x_lambda::LambdaWebSocketRequestContext を
-                        // ws(::lambda)::WebSocket の中に持っておけばよさそう
-
-                        // それをここで ws.send().await みたいに呼べるように
-                        // tokio::net::TcpStream::connect() して POST するメソッドを作る
-                    }
-
-                    FunctionResponse::BufferedResponse(LambdaResponse {
-                        statusCode:      200,
-                        headers:         None,
-                        cookies:         None,
-                        body:            None,
-                        isBase64Encoded: None,
                     })
                 }
             }
