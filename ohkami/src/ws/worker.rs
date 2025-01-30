@@ -1,3 +1,5 @@
+#![cfg(feature="rt_worker")]
+
 pub use mews::{Message, CloseFrame, CloseCode};
 
 pub(crate) use worker::WebSocket as Session;

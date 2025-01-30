@@ -8,6 +8,10 @@ mod worker;
 #[cfg(feature="rt_worker")]
 pub use self::worker::*;
 
+#[cfg(feature="rt_lambda")]
+mod lambda;
+pub use self::lambda::*;
+
 /// # Context for WebSocket handshake
 /// 
 /// `.upgrade` performs handshake and creates a WebSocket session.
@@ -32,6 +36,9 @@ pub use self::worker::*;
 pub struct WebSocketContext<'req> {
     #[allow(unused/* on rt_worker */)]
     sec_websocket_key: &'req str,
+
+    #[cfg(feature="rt_lambda")]
+    
 }
 
 impl<'req> crate::FromRequest<'req> for WebSocketContext<'req> {

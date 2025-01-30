@@ -490,12 +490,7 @@ const _: () = {
     use crate::x_lambda::LambdaResponse;
     use ::lambda_runtime::FunctionResponse;
     use std::{pin::Pin, convert::Infallible};
-    use ohkami_lib::;
 
-    impl Into<FunctionResponse<
-        LambdaResponse,
-        Pin<Box<dyn Stream<Item = Result<String, Infallible>> + Send>>
-    >> for
     impl Response {
         pub(crate) async fn into_lambda_function_response(mut self) -> FunctionResponse<
             LambdaResponse,

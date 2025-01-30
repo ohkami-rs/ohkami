@@ -1,3 +1,5 @@
+## HTTP
+
 ```toml:Cargo.toml
 [dependencies]
 ohkami = { version = "0.22", features = ["rt_lambda"] }
@@ -6,54 +8,62 @@ lambda_runtime = "0.13"
 
 ```rust:main.rs
 use ohkami::prelude::*;
+use lambda_runtime::Error;
 
 #[ohkami::lambda]
-async fn lambda() -> Result<Ohkami, impl std::error::Error + 'static> {
-    Ohkami::new((
+async fn main() -> Result<(), Error> {
+    // Just an ordinary Ohkami 
+    let o = Ohkami::new((
         "/".GET(|| async {"Hello, lambda!"}),
-    ))
+    ));
+    
+    lambda_runtime::run(o).await
 }
 ```
 
-↓
 
-```rust
-fn main() -> Result<(), ::std::boxed::Box<dyn ::std::error::Error + Send + Sync>> {
-    async fn lambda() -> Result<Ohkami, impl std::error::Error + 'static> {
-        Ohkami::new((
-            "/".GET(|| async {"Hello, lambda!"}),
-        ))
-    }
+## WebSocket
 
-    /// APIGateway{Request, Response} :
-    /// 
-    /// [note] only handle version 2
-    /// 
-    /// https://docs.aws.amazon.com/ja_jp/lambda/latest/dg/urls-invocation.html
-    /// https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-develop-integrations-lambda.html#http-api-develop-integrations-lambda.proxy-format
-    async fn __lambda__(
-        req: ::lambda_runtime::LambdaEvent<::ohkami::__internal__::APIGatewayRequest>
-    ) -> Result<
-        ::lambda_runtime::FunctionResponse<::ohkami::__internal__::APIGatewayResponse>,
-        ::std::boxed::Box<dyn ::std::error::Error + Send + Sync>
-    > {
-        let o: ::ohkami::Ohkami = lambda().await?;
+Ohkami doesn't handle WebSocket on `rt_lambda`, just provides some utilities.
 
-        let mut ohkami_req = crate::Request::init();
-        let mut ohkami_req = unsafe {std::pin::Pin::new_unchecked(&mut ohkami_req)};
-        ohkami_req.as_mut().take_over(req).await?;
+```toml:Cargo.toml
+[dependencies]
+ohkami = { version = "0.22", features = [
+    "rt_lambda",
 
-        let (router, _) = o.into_router().finalize();
-        let mut ohkami_res = router.handle(&mut ohkami_req).await;
-        ohkami_res.complete();
+    # `apigateway` is also required
+    "apigateway", "ws"
+] }
+```
 
-        Ok(ohkami_res.into())
-    }
+```rust:main.rs
+use ohkami::{LambdaWebSocket, LambdaWebSocketMESSAGE};
+use lambda_runtime::Error;
 
-    ::ohkami::__internal__::tokio::runtime::Builder::new_multi_thread()
-        .enable_all()
-        .build()
-        .unwrap()
-        .block_on(::lambda_runtime::run(__lambda__))
+#[ohkami::lambda]
+async fn main() -> Result<(), Error> {
+    lambda_runtime::run(LambdaWebSocket::handle(echo)).await
+}
+
+async fn echo(
+    ws: LambdaWebSocket<LamdaWebSocketMESSAGE>
+) -> Result<(), Error> {
+    /*
+        generic ( ws: LambdaWebSocket<_ = LambdaWebScoketEvent> )
+    */
+    // match ws.event {
+    //     | LambdaWebSocketEvent::CONNECT(_)
+    //     | LambdaWebSocketEvent::DISCONNECT(_)
+    //     => unreachable!("This Lambda is for MESSAGE event!"),
+    // 
+    //     LambdaWebSocketEvent::MESSAGE(LambdaWebSocketMESSAGE {
+    //         body,
+    //         ..
+    //     }) => ws.send(body).await
+    // }
+
+    ws.send(ws.event.body()).await?;
+
+    Ok(())
 }
 ```
