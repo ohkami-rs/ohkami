@@ -496,7 +496,7 @@ const _: () = {
         LambdaResponse,
         Pin<Box<dyn Stream<Item = Result<String, Infallible>> + Send>>
     >> for Response {
-        pub(crate) fn into(self) -> FunctionResponse<
+        fn into(self) -> FunctionResponse<
             LambdaResponse,
             Pin<Box<dyn Stream<Item = Result<String, Infallible>> + Send>>
         > {

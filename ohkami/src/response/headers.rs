@@ -456,18 +456,18 @@ impl Headers {
 
         let standard = self.standard.into_iter()
             .map(|(i, v)| (
-                unsafe {std::mem::transmute::<_, Header>(*i as u8)}.as_str(),
+                unsafe {std::mem::transmute::<_, Header>(i as u8)}.as_str(),
                 v
             ));
         let custom = self.custom.into_iter()
             .flat_map(|tm|
                 tm.into_iter()
             );
-        let set_cookie = self.set_cookie.into_iter()
+        let setcookie = self.setcookie.into_iter()
             .flat_map(|sc|
-                sc.into_iter()
+                sc.into_iter().map(|sc| ("Set-Cookie", sc))
             );
-        standard.chain(custom).chain(set_cookie)
+        standard.chain(custom).chain(setcookie)
     }
 
     #[cfg(any(

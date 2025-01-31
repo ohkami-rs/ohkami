@@ -1,9 +1,6 @@
 #![cfg(feature="rt_lambda")]
 
-#![allow(non_snake_cases, non_camel_case_types)]
-
-#[cfg(all(feature="ws", not(feature="apigateway")))]
-compile_error!("On `rt_lambda`, `ws` can't be activated without `apigateway` !");
+#![allow(non_snake_case, non_camel_case_types)]
 
 pub(crate) use internal::*;
 /// Internal interfances between Lambda Events.
@@ -16,8 +13,8 @@ pub(crate) use internal::*;
 pub(crate) mod internal {
     use crate::{Method, request::RequestHeaders, response::ResponseHeaders};
     use ohkami_lib::TupleMap;
-    use serde_json::Map as JsonMap;
     use serde::{Serialize, Deserialize};
+    type JsonMap = serde_json::Map<String, serde_json::Value>;
 
     #[derive(Serialize)]
     pub struct LambdaResponse {
@@ -186,7 +183,7 @@ mod ws {
                 "host: ".len() + self.host.len() + "\r\n".len() +
                 "\r\n".len() +
                 body.as_ref().map(|b|
-                    "content-length: 128000\r\n".len() +
+                    "content-length: 32000\r\n".len() +
                     "content-type: application/octet-stream\r\n".len() +
                     b.len()
                 ).unwrap_or(0)
@@ -214,7 +211,7 @@ mod ws {
                     request.push(body);
                 }
             }
-z
+
             self.conn.write_all(request).await?;
 
             Ok(())

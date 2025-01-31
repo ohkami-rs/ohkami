@@ -422,8 +422,11 @@ impl Request {
     }
 
     #[cfg(feature="rt_lambda")]
-    pub(crate) fn take_over(mut self: Pin<&mut self>,
-        req: ::lambda_runtime::LambdaEvent<crate::LambdaHTTPRequest>
+    pub(crate) fn take_over(mut self: Pin<&mut Self>,
+        ::lambda_runtime::LambdaEvent<crate::LambdaHTTPRequest> {
+            payload: req,
+            context: _   
+        }: ::lambda_runtime::LambdaEvent<crate::LambdaHTTPRequest>
     ) -> Result<(), impl std::error::Error> {
         self.__query__.write(req.rawQueryString.into_boxed_str()); unsafe {
             self.query = QueryParams::new(self.__query__.assume_init_ref().as_bytes());
@@ -444,7 +447,7 @@ impl Request {
             self.payload = Some(CowSlice::Own(
                 if req.isBase64Encoded {
                     use ::base64::engine::{Engine as _, general_purpose::STANDARD as BASE64};
-                    BASE64.decode(req.body)?
+                    BASE64.decode(req.body)?.into_boxed_slice()
                 } else {
                     req.body.into_bytes()
                 }

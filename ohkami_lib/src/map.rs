@@ -51,7 +51,7 @@ impl<K: PartialEq, V> TupleMap<K, V> {
     pub fn iter(&self) -> impl Iterator<Item = &(K, V)> {
         self.0.iter()
     }
-    pub fn into_iter(&self) -> impl Iterator<Item = (K, V)> {
+    pub fn into_iter(self) -> impl Iterator<Item = (K, V)> {
         self.0.into_iter()
     }
 }
@@ -68,22 +68,24 @@ impl<K: Clone + PartialEq, V: Clone> Clone for TupleMap<K, V> {
     }
 }
 
-impl<'de, K:PartialEq, V> serde::Deserialize<'de> for TupleMap<K, V> {
+impl<'de, K:PartialEq, V> serde::Deserialize<'de> for TupleMap<K, V>
+where
+    K: serde::Deserialize<'de>,
+    V: serde::Deserialize<'de>,
+{
     fn deserialize<D: serde::Deserializer<'de>>(
         deserializer: D
     ) -> Result<Self, D::Error> {
-        return deserializer.visit_map(TupleMapVisitor(std::marker::PhantomData));
+        return deserializer.deserialize_map(TupleMapVisitor(std::marker::PhantomData));
 
         /////////////////////////////////////////////////////////////////////////
         
-        use serde::de::{Deserialize, MapAccess, Visitor};
-        
         struct TupleMapVisitor<K, V>(std::marker::PhantomData<fn()->(K, V)>);
 
-        impl<'de, K:PartialEq, V> Visitor<'de> for TupleMapVisitor<K, V>
+        impl<'de, K:PartialEq, V> serde::de::Visitor<'de> for TupleMapVisitor<K, V>
         where
-            K: Deserialize<'de>,
-            V: Deserialize<'de>,
+            K: serde::Deserialize<'de>,
+            V: serde::Deserialize<'de>,
         {
             type Value = TupleMap<K, V>;
 
@@ -92,7 +94,7 @@ impl<'de, K:PartialEq, V> serde::Deserialize<'de> for TupleMap<K, V> {
             }
 
             #[inline]
-            fn visit_map<A: MapAccess<'de>>(self, mut access: A) -> Result<Self::Value, A::Error> {
+            fn visit_map<A: serde::de::MapAccess<'de>>(self, mut access: A) -> Result<Self::Value, A::Error> {
                 let mut map = TupleMap::new();
                 while let Some((k, v)) = access.next_entry()? {
                     map.insert(k, v);

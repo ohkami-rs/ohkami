@@ -144,7 +144,7 @@ const _: () = {
                 Ok(payload) => payload,
                 Err(errres) => return errres
             };
-            req.memorize(jwt_payload);
+            req.ctx.set(jwt_payload);
 
             self.inner.bite(req).await.into_response()
         }

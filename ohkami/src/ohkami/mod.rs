@@ -395,7 +395,7 @@ impl Ohkami {
 
         ///////////////////////////////////////////////////////////////
 
-        use crate::_lambda::{LambdaHTTPRequest, LambdaResponse};
+        use crate::x_lambda::{LambdaHTTPRequest, LambdaResponse};
         use ::lambda_runtime::{Service, LambdaEvent, FunctionResponse};
 
         struct OhkamiService(Option<Ohkami>);
@@ -411,15 +411,17 @@ impl Ohkami {
             fn call(&mut self, req: LambdaEvent<LambdaHTTPRequest>) -> Self::Future {
                 let o: Ohkami = self.0.take().expect("`Ohkami::lambda` was called more than once for an `Ohkami` instance");
 
-                let mut ohkami_req = crate::Request::init();
-                let mut ohkami_req = unsafe {std::pin::Pin::new_unchecked(&mut ohkami_req)};
-                ohkami_req.as_mut().take_over(req)?;
+                async move {
+                    let mut ohkami_req = crate::Request::init();
+                    let mut ohkami_req = unsafe {std::pin::Pin::new_unchecked(&mut ohkami_req)};
+                    ohkami_req.as_mut().take_over(req)?;
 
-                let (router, _) = o.into_router().finalize();
-                let mut ohkami_res = router.handle(&mut ohkami_req).await;
-                ohkami_res.complete();
+                    let (router, _) = o.into_router().finalize();
+                    let mut ohkami_res = router.handle(&mut ohkami_req).await;
+                    ohkami_res.complete();
 
-                Ok(ohkami_res.into())
+                    Ok(ohkami_res.into())
+                }
             }
         }
     }
