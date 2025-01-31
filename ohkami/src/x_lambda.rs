@@ -176,7 +176,7 @@ mod ws {
         async fn fetch(
             &mut self,
             method: &'static str,
-            body: Option<&[u8]>,
+            body: Option<LambdaWebSocketMESSAGE>,
         ) -> Result<(), impl std::error::Error> {
             use ohkami_lib::num::itoa;
             use tokio::io::AsyncWriteExt;
@@ -186,7 +186,8 @@ mod ws {
                 "host: ".len() + self.host.len() + "\r\n".len() +
                 "\r\n".len() +
                 body.as_ref().map(|b|
-                    "content-length: ".len() + (1 + b.len().ilog10()) + "\r\n".len() +
+                    "content-length: 128000\r\n".len() +
+                    "content-type: application/octet-stream\r\n".len() +
                     b.len()
                 ).unwrap_or(0)
             );
@@ -204,13 +205,16 @@ mod ws {
                     request.push(b"content-length: ");
                     request.push(itoa(body.len()).as_bytes());
                     request.push(b"\r\n");
+                    request.push(b"content-type: ");
+                    request.push(if body.is_text() {b"text/plain"} else {b"application/octet-stream"});
+                    request.push(b"\r\n");
                 }
                 request.push(b"\r\n");
                 if let Some(body) = body {
                     request.push(body);
                 }
             }
-
+z
             self.conn.write_all(request).await?;
 
             Ok(())
@@ -402,6 +406,21 @@ mod ws {
     pub enum LambdaWebSocketMESSAGE {
         Text(String),
         Binary(Vec<u8>),
+    }
+    impl LambdaWebSocketMESSAGE {
+        pub fn len(&self) -> usize {
+            match self {
+                Self::Text(t) => t.len(),
+                Self::Binary(b) => b.len(),
+            }
+        }
+
+        pub fn is_text(&self) -> bool {
+            matches!(self, Self::Text(_))
+        }
+        pub fn is_binary(&self) -> bool {
+            matches!(self, Self::Binary(_))
+        }
     }
     impl TryFrom<LambdaWebSocketEvent> for LambdaWebSocketMESSAGE {
         type Error = ErrorMessage;
