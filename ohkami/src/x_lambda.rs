@@ -12,19 +12,68 @@ pub(crate) use internal::*;
 /// * <https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-websocket-api-integration-requests.html>
 pub(crate) mod internal {
     use crate::{Method, request::RequestHeaders, response::ResponseHeaders};
-    use ohkami_lib::TupleMap;
+    use ohkami_lib::map::TupleMap;
     use serde::{Serialize, Deserialize};
     type JsonMap = serde_json::Map<String, serde_json::Value>;
+
+    fn serialize_headers<S: serde::Serializer>(
+        h: &ResponseHeaders,
+        s: S,
+    ) -> Result<S::Ok, S::Error> {
+        todo!()
+    }
+
+    fn deserialize_headers<'de, D: serde::Deserializer<'de>>(d: D) -> Result<RequestHeaders, D::Error> {
+        return d.deserialize_map(HeadersVisitor);
+
+        /////////////////////////////////////////////////////////////////////////
+        
+        struct HeadersVisitor;
+
+        impl<'de> serde::de::Visitor<'de> for HeadersVisitor {
+            type Value = RequestHeaders;
+
+            fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                f.write_str("a map")
+            }
+
+            #[inline]
+            fn visit_map<A: serde::de::MapAccess<'de>>(self, mut access: A) -> Result<Self::Value, A::Error> {
+                let mut h = RequestHeaders::new();
+                while let Some((k, v)) = access.next_entry::<&str, &str>()? {
+                    // in this context, there's no assurance
+                    // that `v` lives enough
+                    let v: Vec<u8> = v.to_owned().into_bytes();
+
+                    if let Some(s) = crate::request::RequestHeader::from_bytes(k.as_bytes()) {
+                        h.insert(s, v.into());
+
+                    } else {
+                        // this will be allowed here becasue
+                        // one Lambda function isn't process a lot of requests
+                        let k: &'static str = k.to_owned().leak();
+
+                        h.insert_custom(
+                            ohkami_lib::Slice::from_bytes(k.as_bytes()),
+                            v.into()
+                        );
+                    }
+                }
+                Ok(h)
+            }
+        }
+    }
 
     #[derive(Serialize)]
     pub struct LambdaResponse {
         pub statusCode: u16,
+        #[serde(serialize_with = "serialize_headers")]
         pub headers: ResponseHeaders,
-        #[serde(skip_serialize_if = "Option::is_none")]
+        #[serde(skip_serializing_if = "Option::is_none")]
         pub cookies: Option<Vec<String>>,
-        #[serde(skip_serialize_if = "Option::is_none")]
+        #[serde(skip_serializing_if = "Option::is_none")]
         pub body: Option<String>,
-        #[serde(skip_serialize_if = "Option::is_none")]
+        #[serde(skip_serializing_if = "Option::is_none")]
         pub isBase64Encoded: Option<bool>,
     }
 
@@ -35,19 +84,11 @@ pub(crate) mod internal {
         /* @skip rawPath: String, // using requestContext.http.path */
         pub rawQueryString: String,
         pub cookies: Vec<String>,
+        #[serde(deserialize_with = "deserialize_headers")]
         pub headers: RequestHeaders,
         /* @skip pathParameters: TupleMap<String, String>, */
         /* @skip queryStringParameters, // parsing rawQueryString */
         pub requestContext: LambdaHTTPRequestContext,
-        pub body: Option<String>,
-        pub isBase64Encoded: bool,
-        pub stageVariables: TupleMap<String, String>,
-    }
-
-    #[cfg(feature="ws")]
-    #[derive(Deserialize)]
-    pub struct LambdaWebSocketRequest {
-        pub requestContext: LambdaWebSocketRequestContext,
         pub body: Option<String>,
         pub isBase64Encoded: bool,
         pub stageVariables: TupleMap<String, String>,
@@ -69,24 +110,6 @@ pub(crate) mod internal {
         pub timeEpoch: u64,
     }
 
-    #[cfg(feature="ws")]
-    #[derive(Deserialize)]
-    pub struct LambdaWebSocketRequestContext {
-        pub apiId: String,
-        /* @skip connectedAt: u64, */
-        pub connectionId: String,
-        pub domainName: String,
-        pub eventType: LambdaWebSocketEventType,
-        /* @skip extendedRequestId: String, */
-        pub routeKey: String,
-        /* @skip messageDirection: "IN", */
-        pub messageId: String,
-        pub requestId: String,
-        /* @skip requestTime: String, // requestTimeEpoch is enough */
-        pub requestTimeEpoch: u64,
-        pub stage: String,
-    }
-
     #[derive(Deserialize)]
     pub struct LambdaHTTPRequestDetails {
         pub method: Method,
@@ -94,14 +117,6 @@ pub(crate) mod internal {
         /* @skip protocol: String, */
         pub sourceIp: std::net::IpAddr,
         /* @skip userAgent: String, */
-    }
-
-    #[cfg(feature="ws")]
-    #[derive(Deserialize)]
-    pub enum LambdaWebSocketEventType {
-        CONNECT,
-        DISCONNECT,
-        MESSAGE,
     }
 
     #[derive(Deserialize)]
@@ -136,6 +151,7 @@ pub(crate) mod internal {
     }
 }
 
+/* TODO
 #[cfg(feature="ws")]
 pub use ws::*;
 #[cfg(feature="ws")]
@@ -143,6 +159,38 @@ mod ws {
     use super::internal;
     use crate::util::ErrorMessage;
     use std::{future::Future, marker::PhantomData};
+
+    #[derive(Deserialize)]
+    pub struct LambdaWebSocketRequest {
+        pub requestContext: LambdaWebSocketRequestContext,
+        pub body: Option<String>,
+        pub isBase64Encoded: bool,
+        pub stageVariables: TupleMap<String, String>,
+    }
+
+    #[derive(Deserialize)]
+    pub struct LambdaWebSocketRequestContext {
+        pub apiId: String,
+        /* @skip connectedAt: u64, */
+        pub connectionId: String,
+        pub domainName: String,
+        pub eventType: LambdaWebSocketEventType,
+        /* @skip extendedRequestId: String, */
+        pub routeKey: String,
+        /* @skip messageDirection: "IN", */
+        pub messageId: String,
+        pub requestId: String,
+        /* @skip requestTime: String, // requestTimeEpoch is enough */
+        pub requestTimeEpoch: u64,
+        pub stage: String,
+    }
+
+    #[derive(Deserialize)]
+    pub enum LambdaWebSocketEventType {
+        CONNECT,
+        DISCONNECT,
+        MESSAGE,
+    }
 
     struct Client {
         host: String,
@@ -455,3 +503,4 @@ mod ws {
         }
     };
 }
+*/

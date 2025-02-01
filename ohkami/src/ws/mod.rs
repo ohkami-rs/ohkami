@@ -8,10 +8,6 @@ mod worker;
 #[cfg(feature="rt_worker")]
 pub use self::worker::*;
 
-#[cfg(feature="rt_lambda")]
-mod lambda;
-pub use self::lambda::*;
-
 /// # Context for WebSocket handshake
 /// 
 /// `.upgrade` performs handshake and creates a WebSocket session.

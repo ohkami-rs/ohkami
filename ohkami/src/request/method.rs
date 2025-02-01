@@ -100,4 +100,12 @@ const _: () = {
             })
         }
     }
+
+    impl<'de> serde::Deserialize<'de> for Method {
+        #[inline]
+        fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+            let s = <&'de str>::deserialize(d)?;
+            Method::from_bytes(s.as_bytes()).ok_or_else(|| serde::de::Error::custom("unknown HTTP method"))
+        }
+    }
 };

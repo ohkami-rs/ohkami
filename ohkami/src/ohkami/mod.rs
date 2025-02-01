@@ -391,21 +391,24 @@ impl Ohkami {
         >,
         Error: std::error::Error,
     > {
-        return OhkamiService(self);
+        return OhkamiService(Some(self));
 
         ///////////////////////////////////////////////////////////////
 
-        use crate::x_lambda::{LambdaHTTPRequest, LambdaResponse};
-        use ::lambda_runtime::{Service, LambdaEvent, FunctionResponse};
+        use crate::x_lambda::LambdaHTTPRequest;
+        use ::lambda_runtime::{Service, LambdaEvent};
 
         struct OhkamiService(Option<Ohkami>);
         impl Service<LambdaEvent<LambdaHTTPRequest>> for OhkamiService {
-            type Response = LambdaResponse;
-            type Future = impl Future<Output = Result<Self::Response, Self::Error>>;
+            type Response = ::lambda_runtime::FunctionResponse<
+                crate::x_lambda::LambdaResponse,
+                std::pin::Pin<Box<dyn ohkami_lib::Stream<Item = Result<String, std::convert::Infallible>> + Send>>
+            >;
+            type Future = impl std::future::Future<Output = Result<Self::Response, Self::Error>>;
             type Error = impl std::error::Error;
 
-            fn poll_ready(&mut self, cx: &mut std::task::Context<'_>) -> std::task::Poll<Result<(), Self::Error>> {
-                std::task::Poll::Ready(Ok())
+            fn poll_ready(&mut self, _cx: &mut std::task::Context<'_>) -> std::task::Poll<Result<(), Self::Error>> {
+                std::task::Poll::Ready(Result::<(), Self::Error>::Ok(()))
             }
 
             fn call(&mut self, req: LambdaEvent<LambdaHTTPRequest>) -> Self::Future {
@@ -420,7 +423,7 @@ impl Ohkami {
                     let mut ohkami_res = router.handle(&mut ohkami_req).await;
                     ohkami_res.complete();
 
-                    Ok(ohkami_res.into())
+                    Result::<Self::Response, Self::Error>::Ok(ohkami_res.into())
                 }
             }
         }

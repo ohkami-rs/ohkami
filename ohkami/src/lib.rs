@@ -218,8 +218,10 @@ pub mod ws;
 
 #[cfg(feature="rt_lambda")]
 mod x_lambda;
+/* TODO
 #[cfg(feature="rt_lambda")]
 pub use x_lambda::*;
+*/
 
 #[cfg(feature="rt_worker")]
 mod x_worker;

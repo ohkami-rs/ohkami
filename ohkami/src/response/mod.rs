@@ -489,6 +489,7 @@ const _: () = {
 #[cfg(feature="rt_lambda")]
 const _: () = {
     use crate::x_lambda::LambdaResponse;
+    use ohkami_lib::Stream;
     use ::lambda_runtime::FunctionResponse;
     use std::{pin::Pin, convert::Infallible};
 
@@ -503,11 +504,11 @@ const _: () = {
             let mut headers = self.headers;
 
             let cookies = headers
-                .set_cookie
-                .take(/* remove `Set-Cookie` from app's own headers */)
+                .setcookie
+                .take(/* remove `Set-Cookie`s from app's own headers */)
                 .map(|box_vec_cow_str| {
                     let mut vec_string = Vec::with_capacity(box_vec_cow_str.len());
-                    for cow_str in box_vec_cow_str {
+                    for cow_str in *box_vec_cow_str {
                         vec_string.push(cow_str.into_owned());
                     }
                     vec_string
@@ -524,12 +525,12 @@ const _: () = {
                     })
                 }
 
-                Content::Payload(cow_slice) => {
-                    let (encoded, body) = if let Ok(string) = String::from_utf8(body.into()) {
-                        (false, string)
+                Content::Payload(p) => {
+                    let (encoded, body) = if let Ok(s) = std::str::from_utf8(&*p) {
+                        (false, String::from(s))
                     } else {
                         use ::base64::engine::{Engine as _, general_purpose::STANDARD as BASE64};
-                        (true, BASE64.encode(&*body))
+                        (true, BASE64.encode(&*p))
                     };
 
                     FunctionResponse::BufferedResponse(LambdaResponse {

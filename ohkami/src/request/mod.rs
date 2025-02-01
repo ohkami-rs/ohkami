@@ -163,7 +163,7 @@ pub struct Request {
 
     pub payload: Option<CowSlice>,
 
-    pub ctx: Context,
+    pub context: Context,
 
     #[cfg(feature="__rt__")]
     /// Remote ( directly connected ) peer's IP address
@@ -197,7 +197,7 @@ impl Request {
             method:  Method::GET,
             path:    Path::uninit(),
             query:   QueryParams::new(b""),
-            headers: RequestHeaders::init(),
+            headers: RequestHeaders::new(),
             payload: None,
             context: Context::init(),
         }
@@ -213,7 +213,7 @@ impl Request {
             self.query = QueryParams::new(b"");
             self.headers.clear();
             self.payload = None;
-            self.ctx.clear();
+            self.context.clear();
         } /* else: just after `init`ed or `clear`ed */
     }
 
@@ -390,7 +390,7 @@ impl Request {
         env:     ::worker::Env,
         ctx:     ::worker::Context,
     ) -> Result<(), crate::Response> {use crate::Response;
-        self.ctx.load((ctx, env));
+        self.context.load((ctx, env));
 
         self.method = Method::from_worker(req.method())
             .ok_or_else(|| Response::NotImplemented().with_text("ohkami doesn't support `CONNECT`, `TRACE` method"))?;
@@ -423,21 +423,19 @@ impl Request {
 
     #[cfg(feature="rt_lambda")]
     pub(crate) fn take_over(mut self: Pin<&mut Self>,
-        ::lambda_runtime::LambdaEvent<crate::LambdaHTTPRequest> {
+        ::lambda_runtime::LambdaEvent {
             payload: req,
             context: _   
-        }: ::lambda_runtime::LambdaEvent<crate::LambdaHTTPRequest>
-    ) -> Result<(), impl std::error::Error> {
+        }: ::lambda_runtime::LambdaEvent<crate::x_lambda::LambdaHTTPRequest>
+    ) -> Result<(), Box<dyn std::error::Error>> {
         self.__query__.write(req.rawQueryString.into_boxed_str()); unsafe {
             self.query = QueryParams::new(self.__query__.assume_init_ref().as_bytes());
         }
 
-        self.ctx.load(req.requestContext); {
-            let http = &self.lambda().http;
-
-            self.ip = http.sourceIp;
-            self.method = http.method;
-            self.path.init_with_request_bytes(http.path.as_bytes());
+        self.context.load(req.requestContext); {
+            self.ip = self.lambda().http.sourceIp;
+            self.method = self.lambda().http.method;
+            self.path.init_with_request_bytes(self.lambda().http.path.as_bytes());
         }
 
         self.headers = req.headers;
@@ -445,16 +443,16 @@ impl Request {
 
         if let Some(body) = req.body {
             self.payload = Some(CowSlice::Own(
-                if req.isBase64Encoded {
+                (if req.isBase64Encoded {
                     use ::base64::engine::{Engine as _, general_purpose::STANDARD as BASE64};
-                    BASE64.decode(req.body)?.into_boxed_slice()
+                    BASE64.decode(body)?
                 } else {
-                    req.body.into_bytes()
-                }
+                    body.into_bytes()
+                }).into_boxed_slice()
             ));
         }
 
-        Ok(())
+        Result::<(), Box<dyn std::error::Error>>::Ok(())
     }
 }
 
@@ -462,13 +460,13 @@ impl Request {
 impl Request {
     #[inline]
     pub fn env(&self) -> &::worker::Env {
-        // SAFETY: user can touch here only after `self.ctx.load(...)`
-        &(unsafe {self.ctx.worker()}).0
+        // SAFETY: user can touch here only after `self.context.load(...)`
+        &(unsafe {self.context.worker()}).0
     }
     #[inline]
     pub fn context(&self) -> &::worker::Context {
-        // SAFETY: user can touch here only after `self.ctx.load(...)`
-        &(unsafe {self.ctx.worker()}).1
+        // SAFETY: user can touch here only after `self.context.load(...)`
+        &(unsafe {self.context.worker()}).1
     }
 }
 
@@ -476,8 +474,8 @@ impl Request {
 impl Request {
     #[inline]
     pub fn lambda(&self) -> &crate::x_lambda::LambdaHTTPRequestContext {
-        // SAFETY: user can touch here only after `self.ctx.load(...)`
-        unsafe {self.ctx.lambda()}
+        // SAFETY: user can touch here only after `self.context.load(...)`
+        unsafe {self.context.lambda()}
     }
 }
 

@@ -368,7 +368,7 @@ impl Headers {
 #[cfg(feature="__rt__")]
 impl Headers {
     #[inline]
-    pub(crate) fn init() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             standard: IndexMap::new(),
             custom:   None,
@@ -376,7 +376,7 @@ impl Headers {
     }
     #[cfg(feature="DEBUG")]
     pub fn _init() -> Self {
-        Self::init()
+        Self::new()
     }
 
     #[cfg(feature="__rt_native__")]
@@ -398,7 +398,7 @@ impl Headers {
         iter:   impl IntoIterator<Item = (Header, &'static str)>,
         custom: impl IntoIterator<Item = (&'static str, &'static str)>,
     ) -> Self {
-        let mut this = Self::init();
+        let mut this = Self::new();
         for (k, v) in iter {
             this.insert(k, CowSlice::Ref(Slice::from_bytes(v.as_bytes())))
         }
