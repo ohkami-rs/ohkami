@@ -2,9 +2,6 @@
 
 #![allow(non_snake_case, non_camel_case_types)]
 
-#[cfg(feature="ws")]
-compile_error!("`ws` is currently not supported on `rt_lambda`!");
-
 pub(crate) use internal::*;
 /// Internal interfances between Lambda Events.
 /// 
@@ -20,10 +17,10 @@ pub(crate) mod internal {
     type JsonMap = serde_json::Map<String, serde_json::Value>;
 
     fn serialize_headers<S: serde::Serializer>(
-        _h: &ResponseHeaders,
-        _s: S,
+        h: &ResponseHeaders,
+        s: S,
     ) -> Result<S::Ok, S::Error> {
-        todo!()
+        s.collect_map(h.iter())
     }
 
     fn deserialize_headers<'de, D: serde::Deserializer<'de>>(d: D) -> Result<RequestHeaders, D::Error> {

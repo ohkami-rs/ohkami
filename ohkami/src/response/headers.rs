@@ -448,12 +448,6 @@ impl Headers {
             )
     }
     pub fn into_iter(self) -> impl Iterator<Item = (&'static str, Cow<'static, str>)> {
-        /*    
-            standard:  IndexMap<N_SERVER_HEADERS, Cow<'static, str>>,
-            custom:    Option<Box<TupleMap<&'static str, Cow<'static, str>>>>,
-            setcookie: Option<Box<Vec<Cow<'static, str>>>>,
-        */
-
         let standard = self.standard.into_iter()
             .map(|(i, v)| (
                 unsafe {std::mem::transmute::<_, Header>(i as u8)}.as_str(),
