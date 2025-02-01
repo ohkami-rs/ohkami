@@ -389,7 +389,7 @@ impl Ohkami {
             crate::x_lambda::LambdaResponse,
             std::pin::Pin<Box<dyn ohkami_lib::Stream<Item = Result<String, std::convert::Infallible>> + Send>>
         >,
-        Error: std::error::Error,
+        Error = lambda_runtime::Error,
     > {
         return OhkamiService(Some(self));
 
@@ -405,10 +405,10 @@ impl Ohkami {
                 std::pin::Pin<Box<dyn ohkami_lib::Stream<Item = Result<String, std::convert::Infallible>> + Send>>
             >;
             type Future = impl std::future::Future<Output = Result<Self::Response, Self::Error>>;
-            type Error = impl std::error::Error;
+            type Error = lambda_runtime::Error;
 
             fn poll_ready(&mut self, _cx: &mut std::task::Context<'_>) -> std::task::Poll<Result<(), Self::Error>> {
-                std::task::Poll::Ready(Result::<(), Self::Error>::Ok(()))
+                std::task::Poll::Ready(Ok(()))
             }
 
             fn call(&mut self, req: LambdaEvent<LambdaHTTPRequest>) -> Self::Future {
@@ -423,7 +423,8 @@ impl Ohkami {
                     let mut ohkami_res = router.handle(&mut ohkami_req).await;
                     ohkami_res.complete();
 
-                    Result::<Self::Response, Self::Error>::Ok(ohkami_res.into())
+                    //Result::<Self::Response, lambda_runtime::Error>::
+                    Ok(ohkami_res.into())
                 }
             }
         }

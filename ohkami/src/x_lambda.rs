@@ -17,8 +17,8 @@ pub(crate) mod internal {
     type JsonMap = serde_json::Map<String, serde_json::Value>;
 
     fn serialize_headers<S: serde::Serializer>(
-        h: &ResponseHeaders,
-        s: S,
+        _h: &ResponseHeaders,
+        _s: S,
     ) -> Result<S::Ok, S::Error> {
         todo!()
     }

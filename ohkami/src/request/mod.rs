@@ -427,15 +427,19 @@ impl Request {
             payload: req,
             context: _   
         }: ::lambda_runtime::LambdaEvent<crate::x_lambda::LambdaHTTPRequest>
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    ) -> Result<(), lambda_runtime::Error> {
         self.__query__.write(req.rawQueryString.into_boxed_str()); unsafe {
             self.query = QueryParams::new(self.__query__.assume_init_ref().as_bytes());
         }
 
         self.context.load(req.requestContext); {
-            self.ip = self.lambda().http.sourceIp;
+            let path_bytes = unsafe {
+                let bytes = self.lambda().http.path.as_bytes();
+                std::slice::from_raw_parts(bytes.as_ptr(), bytes.len())
+            };
+            self.path.init_with_request_bytes(path_bytes);
             self.method = self.lambda().http.method;
-            self.path.init_with_request_bytes(self.lambda().http.path.as_bytes());
+            self.ip = self.lambda().http.sourceIp;
         }
 
         self.headers = req.headers;
@@ -452,7 +456,7 @@ impl Request {
             ));
         }
 
-        Result::<(), Box<dyn std::error::Error>>::Ok(())
+        Result::<(), lambda_runtime::Error>::Ok(())
     }
 }
 
