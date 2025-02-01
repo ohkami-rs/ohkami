@@ -404,8 +404,12 @@ impl Ohkami {
                 crate::x_lambda::LambdaResponse,
                 std::pin::Pin<Box<dyn ohkami_lib::Stream<Item = Result<String, std::convert::Infallible>> + Send>>
             >;
-            type Future = impl std::future::Future<Output = Result<Self::Response, Self::Error>>;
             type Error = lambda_runtime::Error;
+
+            #[cfg(feature="nightly")]
+            type Future = impl std::future::Future<Output = Result<Self::Response, Self::Error>>;
+            #[cfg(not(feature="nightly"))]
+            type Future = std::pin::Pin<Box<dyn std::future::Future<Output = Result<Self::Response, Self::Error>>>>;
 
             fn poll_ready(&mut self, _cx: &mut std::task::Context<'_>) -> std::task::Poll<Result<(), Self::Error>> {
                 std::task::Poll::Ready(Ok(()))
@@ -414,7 +418,7 @@ impl Ohkami {
             fn call(&mut self, req: LambdaEvent<LambdaHTTPRequest>) -> Self::Future {
                 let o: Ohkami = self.0.take().expect("`Ohkami::lambda` was called more than once for an `Ohkami` instance");
 
-                async move {
+                let f = async move {
                     let mut ohkami_req = crate::Request::init();
                     let mut ohkami_req = unsafe {std::pin::Pin::new_unchecked(&mut ohkami_req)};
                     ohkami_req.as_mut().take_over(req)?;
@@ -425,7 +429,10 @@ impl Ohkami {
 
                     //Result::<Self::Response, lambda_runtime::Error>::
                     Ok(ohkami_res.into())
-                }
+                };
+
+                #[cfg(feature="nightly")] {f}
+                #[cfg(not(feature="nightly"))] {Box::pin(f)}
             }
         }
     }

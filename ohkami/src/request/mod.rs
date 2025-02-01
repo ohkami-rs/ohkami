@@ -327,8 +327,9 @@ impl Request {
         }
     }
 
-    #[cfg(feature="rt_worker")]
-    #[cfg(debug_assertions)]
+
+    #[cfg(debug_assertions/* for `ohkami::testing` */)]
+    #[cfg(any(feature="rt_worker", feature="rt_lambda"))]
     /// Used in `testing` module
     pub(crate) async fn read(mut self: Pin<&mut Self>,
         raw_bytes: &mut &[u8]
@@ -346,16 +347,38 @@ impl Request {
 
         r.next_if(|b| *b==b' ').ok_or_else(Response::BadRequest)?;
         
-        self.__url__.write({
-            let mut url = String::from("http://test.ohkami");
-            url.push_str(std::str::from_utf8(r.read_while(|b| b != &b' ')).unwrap());
-            ::worker::Url::parse(&url).unwrap()
-        });
-        // SAFETY: Just calling for request bytes and `self.__url__` is already initialized
-        unsafe {let __url__ = self.__url__.assume_init_ref();
-            let path = Slice::from_bytes(__url__.path().as_bytes()).as_bytes();
-            self.query = QueryParams::new(__url__.query().unwrap_or_default().as_bytes());
-            self.path.init_with_request_bytes(path)?;
+        #[cfg(feature="rt_worker")] {
+            self.__url__.write({
+                let mut url = String::from("http://test.ohkami");
+                url.push_str(std::str::from_utf8(r.read_while(|b| b != &b' ')).unwrap());
+                ::worker::Url::parse(&url).unwrap()
+            });
+            // SAFETY: calling after `self.__url__` is already initialized
+            unsafe {let __url__ = self.__url__.assume_init_ref();
+                let path = Slice::from_bytes(__url__.path().as_bytes()).as_bytes();
+                self.query = QueryParams::new(__url__.query().unwrap_or_default().as_bytes());
+                self.path.init_with_request_bytes(path)?;
+            }
+        }
+
+        #[cfg(feature="rt_lambda")] {
+            let path_bytes = r.read_while(|b| b != &b' ' && b != &b'?');
+            self.path.init_with_request_bytes(path_bytes)?;
+
+            if r.next_if(|b| *b == b'?').is_some() {                
+                self.__query__.write(
+                    std::str::from_utf8(r.read_while(|b| b != &b' '))
+                        .unwrap()
+                        .to_owned()
+                        .into_boxed_str()
+                );
+                // SAFETY: calling after `self.__query__` is already initialized
+                unsafe {
+                    self.query = QueryParams::new(self.__query__.assume_init_ref().as_bytes());
+                }
+            }
+
+            r.next_if(|b| *b==b' ').ok_or_else(Response::BadRequest)?;
         }
 
         r.consume("HTTP/1.1\r\n").ok_or_else(Response::HTTPVersionNotSupported)?;
@@ -363,13 +386,16 @@ impl Request {
         while r.consume("\r\n").is_none() {
             let key_bytes = r.read_while(|b| b != &b':');
             r.consume(": ").ok_or_else(Response::BadRequest)?;
-            let value = CowSlice::Ref(Slice::from_bytes(r.read_while(|b| b != &b'\r')));
+            let value = CowSlice::Own(r.read_while(|b| b != &b'\r').to_owned().into_boxed_slice());
             r.consume("\r\n").ok_or_else(Response::BadRequest)?;
 
             if let Some(key) = RequestHeader::from_bytes(key_bytes) {
                 self.headers.append(key, value);
             } else {
-                self.headers.insert_custom(Slice::from_bytes(key_bytes), value)
+                self.headers.insert_custom(
+                    Slice::from_bytes(Box::leak(key_bytes.to_owned().into_boxed_slice())),
+                    value
+                )
             }
         }
 
@@ -437,7 +463,7 @@ impl Request {
                 let bytes = self.lambda().http.path.as_bytes();
                 std::slice::from_raw_parts(bytes.as_ptr(), bytes.len())
             };
-            self.path.init_with_request_bytes(path_bytes);
+            self.path.init_with_request_bytes(path_bytes).map_err(|_| crate::util::ErrorMessage("unsupported path format".into()))?;
             self.method = self.lambda().http.method;
             self.ip = self.lambda().http.sourceIp;
         }
