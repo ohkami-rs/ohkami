@@ -8,7 +8,7 @@ use crate::header::append;
 
 
 #[test] fn append_header() {
-    let mut h = RequestHeaders::init();
+    let mut h = RequestHeaders::new();
 
     h.append(RequestHeader::Origin, CowSlice::from("A".as_bytes()));
     assert_eq!(h.Origin(), Some("A"));
@@ -22,7 +22,7 @@ use crate::header::append;
 }
 
 #[test] fn append_custom_header() {
-    let mut h = RequestHeaders::init();
+    let mut h = RequestHeaders::new();
 
     h.set().x("Custom-Header", append("A"));
     assert_eq!(h.get("Custom-Header"), Some("A"));

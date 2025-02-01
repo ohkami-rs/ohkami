@@ -23,7 +23,7 @@ impl Context {
             store: None,
 
             #[cfg(feature="rt_worker")]
-            worker: None,
+            worker: std::mem::MaybeUninit::uninit(),
 
             #[cfg(feature="rt_lambda")]
             lambda: None,
@@ -75,7 +75,7 @@ impl Context {
     #[cfg(feature="rt_worker")]
     #[inline(always)]
     /// SAFETY: MUST be called after `load`
-    pub(super) unsafe fn worker(&self) -> &::worker::Env {
+    pub(super) unsafe fn worker(&self) -> &(::worker::Context, ::worker::Env) {
         self.worker.assume_init_ref()
     }
 

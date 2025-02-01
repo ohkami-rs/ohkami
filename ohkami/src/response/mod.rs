@@ -544,7 +544,7 @@ const _: () = {
                 
                 #[cfg(feature="sse")]
                 Content::Stream(stream) => {
-                    FunctionResponse::StreamingResponse(::lambda_runtime::StreamingResponse {
+                    FunctionResponse::StreamingResponse(::lambda_runtime::StreamResponse {
                         stream: Box::pin(stream.map(Result::<_, Infallible>::Ok)),
                         metadata_prelude: ::lambda_runtime::MetadataPrelude {
                             // `StatusCode` of `http` crate
@@ -559,7 +559,7 @@ const _: () = {
                                         TryFrom::<String>::try_from(v.into_owned()).unwrap()
                                     ))
                             ),
-                            cookies
+                            cookies: cookies.unwrap_or_else(Vec::new)
                         }
                     })
                 }
