@@ -2,6 +2,9 @@
 
 #![allow(non_snake_case, non_camel_case_types)]
 
+#[cfg(feature="ws")]
+compile_error!("`ws` is currently not supported on `rt_lambda`!");
+
 pub(crate) use internal::*;
 /// Internal interfances between Lambda Events.
 /// 

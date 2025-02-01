@@ -150,6 +150,7 @@ impl Response {
                     .ContentLength(None);
             }
 
+            #[cfg(not(feature="rt_lambda"/* currently */))]
             #[cfg(feature="ws")]
             Content::WebSocket(_) => {
                 self.headers.set()

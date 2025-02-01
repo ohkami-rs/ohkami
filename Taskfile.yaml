@@ -24,10 +24,11 @@ tasks:
   check:
     deps:
       - task: check:no_rt
-      - for:  [tokio, async-std, smol, nio, glommio, lambda]
-        task: check:native_rt
-        vars: { native_rt: '{{.ITEM}}' }
+      - for:  [tokio, async-std, smol, nio, glommio]
+        task: check:rt-native_target
+        vars: { rt-native_target: '{{.ITEM}}' }
       - task: check:rt_worker
+      - task: check:rt_lambda
 
   bench:dryrun:
     status:
@@ -99,13 +100,13 @@ tasks:
       - cargo check --lib --features ws,{{.maybe_nightly}}
       - cargo check --lib --features sse,ws,openapi,{{.maybe_nightly}}
 
-  check:native_rt:
+  check:rt-native_target:
     dir: ./ohkami
     cmds:
-      - cargo check --lib --features rt_{{.native_rt}},{{.maybe_nightly}}
-      - cargo check --lib --features rt_{{.native_rt}},sse,{{.maybe_nightly}}
-      - cargo check --lib --features rt_{{.native_rt}},ws,{{.maybe_nightly}}
-      - cargo check --lib --features rt_{{.native_rt}},sse,ws,openapi,{{.maybe_nightly}}
+      - cargo check --lib --features rt_{{.rt-native_target}},{{.maybe_nightly}}
+      - cargo check --lib --features rt_{{.rt-native_target}},sse,{{.maybe_nightly}}
+      - cargo check --lib --features rt_{{.rt-native_target}},ws,{{.maybe_nightly}}
+      - cargo check --lib --features rt_{{.rt-native_target}},sse,ws,openapi,{{.maybe_nightly}}
 
   check:rt_worker:
     dir: ./ohkami
