@@ -156,7 +156,18 @@ impl<'u, 'de> serde::Deserializer<'de> for &'u mut URLEncodedDeserializer<'de> {
             serde::de::Error::custom(format!("Expected to be decoded to an UTF-8, but got `{}`: {e}", section.escape_ascii()))
         )? {
             Cow::Borrowed(str) => visitor.visit_borrowed_str(str),
-            Cow::Owned(string) => visitor.visit_string(string),
+            Cow::Owned(string) => visitor.visit_string(string)
+                .map_err(|e: Self::Error| {
+                    #[cfg(debug_assertions)] {
+                        serde::de::Error::custom(format!(
+                            "{e}. [DEBUG] maybe you need to use `String` or `Cow<str>` \
+                            instead of `&str` to accept percent-decoded value"
+                        ))
+                    }
+                    #[cfg(not(debug_assertions))] {
+                        e
+                    }
+                }),
         }
     }
     fn deserialize_string<V>(self, visitor: V) -> Result<V::Value, Self::Error>
