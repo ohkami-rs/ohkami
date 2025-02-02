@@ -84,23 +84,50 @@ Works with [worker](https://crates.io/crates/worker) crate.
 npm create cloudflare ＜project dir＞ -- --template https://github.com/ohkami-rs/ohkami-templates/worker
 ```
 
-then `＜project dir＞` will have `wrangler.toml`, `package.json` and a Rust library crate. Local dev by `npm run dev` and deploy by `npm run deploy` !
+then `＜project dir＞` will have `wrangler.toml`, `package.json` and a Rust library crate.
+
+A `#[ohkami::worker]` (async/sync) fn returning `Ohkami` is the Worker definition.
+
+Local dev by `npm run dev` and deploy by `npm run deploy` !
 
 See README of [template](https://github.com/ohkami-rs/ohkami-templates/tree/main/worker) for details.
 
 ### `"rt_lambda"` : AWS Lambda
 
-**experimental**
+**experimental**, WebSocket is not supported now
 
-Works with [lambda_runtime](https://crates.io/crates/lambda_runtime) crate.
+Works with [lambda_runtime](https://crates.io/crates/lambda_runtime) crate ( and tokio ).
 
-[cargo lambda](https://crates.io/crates/cargo-lambda) will be good to scaffold :
+[cargo lambda](https://crates.io/crates/cargo-lambda) will be good partner.
+
+Let's :
 
 ```sh
 cargo lambda new ＜project dir＞ --template https://github.com/ohkami-rs/ohkami-templates/lambda
 ```
 
-(todo document)
+`lambda_runtime::run(your_ohkami)` is the entry point of Lambda Function.
+
+Local dev by
+
+```sh
+cargo lambda watch
+```
+
+and deploy by
+
+```sh
+cargo lambda build --release [--compiler cargo]
+cargo lambda deploy --enable-function-url [--role ＜arn-of-a-iam-role＞]
+```
+
+See
+
+* README of [template](https://github.com/ohkami-rs/ohkami-templates/tree/main/lambda)
+* [Cargo Lambda document](https://www.cargo-lambda.info)
+
+for details.
+
 
 ### `"sse"` : Server-Sent Events
 

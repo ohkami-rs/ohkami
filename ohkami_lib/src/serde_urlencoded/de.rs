@@ -295,11 +295,11 @@ impl<'u, 'de> serde::Deserializer<'de> for &'u mut URLEncodedDeserializer<'de> {
         let section = self.next_section().unwrap();
         let section = std::str::from_utf8(section)
             .map_err(|_| serde::de::Error::custom(
-                format!("Expected a f32, but got `{}`", section.escape_ascii())
+                format!("Expected a number, but got `{}`", section.escape_ascii())
             ))?;
         visitor.visit_f32(
             section.parse().map_err(|_| serde::de::Error::custom(
-                format!("Expected a f32, but got `{section}`")
+                format!("Expected a number, but got `{section}`")
             ))?
         )
     }
@@ -312,11 +312,11 @@ impl<'u, 'de> serde::Deserializer<'de> for &'u mut URLEncodedDeserializer<'de> {
         let section = self.next_section().unwrap();
         let section = std::str::from_utf8(section)
             .map_err(|_| serde::de::Error::custom(
-                format!("Expected a f64, but got `{}`", section.escape_ascii())
+                format!("Expected a number, but got `{}`", section.escape_ascii())
             ))?;
         visitor.visit_f64(
             section.parse().map_err(|_| serde::de::Error::custom(
-                format!("Expected a f64, but got `{section}`")
+                format!("Expected a number, but got `{section}`")
             ))?
         )
     }
@@ -330,11 +330,11 @@ impl<'u, 'de> serde::Deserializer<'de> for &'u mut URLEncodedDeserializer<'de> {
         let section = self.next_section().unwrap();
         let section = std::str::from_utf8(section)
             .map_err(|_| serde::de::Error::custom(
-                format!("Expected a i8, but got `{}`", section.escape_ascii())
+                format!("Expected an integer, but got `{}`", section.escape_ascii())
             ))?;
         visitor.visit_i8(
             section.parse().map_err(|_| serde::de::Error::custom(
-                format!("Expected a i8, but got `{section}`")
+                format!("Expected an integer, but got `{section}`")
             ))?
         )
     }
@@ -347,11 +347,11 @@ impl<'u, 'de> serde::Deserializer<'de> for &'u mut URLEncodedDeserializer<'de> {
         let section = self.next_section().unwrap();
         let section = std::str::from_utf8(section)
             .map_err(|_| serde::de::Error::custom(
-                format!("Expected a i16, but got `{}`", section.escape_ascii())
+                format!("Expected an integer, but got `{}`", section.escape_ascii())
             ))?;
         visitor.visit_i16(
             section.parse().map_err(|_| serde::de::Error::custom(
-                format!("Expected a i16, but got `{section}`")
+                format!("Expected an integer, but got `{section}`")
             ))?
         )
     }
@@ -364,11 +364,11 @@ impl<'u, 'de> serde::Deserializer<'de> for &'u mut URLEncodedDeserializer<'de> {
         let section = self.next_section().unwrap();
         let section = std::str::from_utf8(section)
             .map_err(|_| serde::de::Error::custom(
-                format!("Expected a i32, but got `{}`", section.escape_ascii())
+                format!("Expected an integer, but got `{}`", section.escape_ascii())
             ))?;
         visitor.visit_i32(
             section.parse().map_err(|_| serde::de::Error::custom(
-                format!("Expected a i32, but got `{section}`")
+                format!("Expected an integer, but got `{section}`")
             ))?
         )
     }
@@ -381,11 +381,11 @@ impl<'u, 'de> serde::Deserializer<'de> for &'u mut URLEncodedDeserializer<'de> {
         let section = self.next_section().unwrap();
         let section = std::str::from_utf8(section)
             .map_err(|_| serde::de::Error::custom(
-                format!("Expected a i64, but got `{}`", section.escape_ascii())
+                format!("Expected an integer, but got `{}`", section.escape_ascii())
             ))?;
         visitor.visit_i64(
             section.parse().map_err(|_| serde::de::Error::custom(
-                format!("Expected a i64, but got `{section}`")
+                format!("Expected an integer, but got `{section}`")
             ))?
         )
     }
@@ -399,11 +399,11 @@ impl<'u, 'de> serde::Deserializer<'de> for &'u mut URLEncodedDeserializer<'de> {
         let section = self.next_section().unwrap();
         let section = std::str::from_utf8(section)
             .map_err(|_| serde::de::Error::custom(
-                format!("Expected a u8, but got `{}`", section.escape_ascii())
+                format!("Expected an integer, but got `{}`", section.escape_ascii())
             ))?;
         visitor.visit_u8(
             section.parse().map_err(|_| serde::de::Error::custom(
-                format!("Expected a u8, but got `{section}`")
+                format!("Expected an integer, but got `{section}`")
             ))?
         )
     }
@@ -416,11 +416,11 @@ impl<'u, 'de> serde::Deserializer<'de> for &'u mut URLEncodedDeserializer<'de> {
         let section = self.next_section().unwrap();
         let section = std::str::from_utf8(section)
             .map_err(|_| serde::de::Error::custom(
-                format!("Expected a u16, but got `{}`", section.escape_ascii())
+                format!("Expected an integer, but got `{}`", section.escape_ascii())
             ))?;
         visitor.visit_u16(
             section.parse().map_err(|_| serde::de::Error::custom(
-                format!("Expected a u16, but got `{section}`")
+                format!("Expected an integer, but got `{section}`")
             ))?
         )
     }
@@ -433,11 +433,11 @@ impl<'u, 'de> serde::Deserializer<'de> for &'u mut URLEncodedDeserializer<'de> {
         let section = self.next_section().unwrap();
         let section = std::str::from_utf8(section)
             .map_err(|_| serde::de::Error::custom(
-                format!("Expected a u32, but got `{}`", section.escape_ascii())
+                format!("Expected an integer, but got `{}`", section.escape_ascii())
             ))?;
         visitor.visit_u32(
             section.parse().map_err(|_| serde::de::Error::custom(
-                format!("Expected a u32, but got `{section}`")
+                format!("Expected an integer, but got `{section}`")
             ))?
         )
     }
@@ -450,11 +450,11 @@ impl<'u, 'de> serde::Deserializer<'de> for &'u mut URLEncodedDeserializer<'de> {
         let section = self.next_section().unwrap();
         let section = std::str::from_utf8(section)
             .map_err(|_| serde::de::Error::custom(
-                format!("Expected a u64, but got `{}`", section.escape_ascii())
+                format!("Expected an integer, but got `{}`", section.escape_ascii())
             ))?;
         visitor.visit_u64(
             section.parse().map_err(|_| serde::de::Error::custom(
-                format!("Expected a u64, but got `{section}`")
+                format!("Expected an integer, but got `{section}`")
             ))?
         )
     }
