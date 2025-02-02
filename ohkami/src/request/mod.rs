@@ -469,7 +469,9 @@ impl Request {
         }
 
         self.headers = req.headers;
-        self.headers.set().Cookie(req.cookies.join("; "));
+        if !req.cookies.is_empty() {
+            self.headers.set().Cookie(req.cookies.join("; "));
+        }
 
         if let Some(body) = req.body {
             self.payload = Some(CowSlice::Own(

@@ -517,6 +517,9 @@ impl Ohkami {
 
 const _: () = {
     #[cfg(feature="rt_lambda")]
+    static ROUTER: std::sync::OnceLock<crate::router::r#final::Router> = std::sync::OnceLock::new();
+
+    #[cfg(feature="rt_lambda")]
     impl lambda_runtime::Service<
         lambda_runtime::LambdaEvent<
             crate::x_lambda::LambdaHTTPRequest
@@ -534,6 +537,13 @@ const _: () = {
         type Future = std::pin::Pin<Box<dyn std::future::Future<Output = Result<Self::Response, Self::Error>>>>;
 
         fn poll_ready(&mut self, _cx: &mut std::task::Context<'_>) -> std::task::Poll<Result<(), Self::Error>> {
+            if ROUTER.get().is_none() {                
+                let o = std::mem::replace(self, Ohkami::new(()));
+                let (router, _) = o.into_router().finalize();
+                
+                ROUTER.set(router).ok().expect("`ROUTER.set()` was called more than once for an `Ohkami` instance");
+            }
+
             std::task::Poll::Ready(Ok(()))
         }
 
@@ -541,31 +551,12 @@ const _: () = {
             &mut self,
             req: lambda_runtime::LambdaEvent<crate::x_lambda::LambdaHTTPRequest>
         ) -> Self::Future {
-            static ALREADY_CALLED_MARKER_FANGS: std::sync::LazyLock<Arc<()>>
-                = std::sync::LazyLock::new(|| Arc::new(()));
-
-            if self.fangs.as_ref().is_some_and(|fangs| Arc::ptr_eq(
-                fangs, unsafe {&*(
-                    (&*ALREADY_CALLED_MARKER_FANGS) as
-                    *const Arc<()> as
-                    *const Arc<dyn Fangs>
-                )}
-            )) {
-                panic!("`<Ohkami as Service>::call` was called more than once for an `Ohkami` instance")
-            }
-            
-            let o = std::mem::replace(self, Ohkami {
-                fangs: Some(ALREADY_CALLED_MARKER_FANGS.clone()),
-                router: Router::new()
-            });
-
             let f = async move {
                 let mut ohkami_req = crate::Request::init();
                 let mut ohkami_req = unsafe {std::pin::Pin::new_unchecked(&mut ohkami_req)};
                 ohkami_req.as_mut().take_over(req)?;
 
-                let (router, _) = o.into_router().finalize();
-                let mut ohkami_res = router.handle(&mut ohkami_req).await;
+                let mut ohkami_res = ROUTER.get().unwrap().handle(&mut ohkami_req).await;
                 ohkami_res.complete();
 
                 Ok(ohkami_res.into())
