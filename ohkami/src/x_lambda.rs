@@ -84,22 +84,27 @@ pub(crate) mod internal {
         /* @unused routeKey: "$default", */
         /* @skip rawPath: String, // using requestContext.http.path */
         pub rawQueryString: String,
+        #[serde(default)]
         pub cookies: Vec<String>,
         #[serde(deserialize_with = "deserialize_headers")]
         pub headers: RequestHeaders,
         /* @skip pathParameters: TupleMap<String, String>, */
         /* @skip queryStringParameters, // parsing rawQueryString */
         pub requestContext: LambdaHTTPRequestContext,
+        #[serde(default)]
         pub body: Option<String>,
         pub isBase64Encoded: bool,
-        pub stageVariables: TupleMap<String, String>,
+        #[serde(default)]
+        pub stageVariables: Option<Box<TupleMap<String, String>>>,
     }
 
     #[derive(Deserialize)]
     pub struct LambdaHTTPRequestContext {
         /* @skip accountId: String, */
         pub apiId: String,
+        #[serde(default)]
         pub authentication: Option<LambdaRequestAuthentication>,
+        #[serde(default)]
         pub authorizer: Option<LambdaRequestAuthorizer>,
         pub domainName: String,
         /* @skip domainPrefix: String, // domainName is enough */
