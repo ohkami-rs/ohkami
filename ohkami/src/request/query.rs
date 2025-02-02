@@ -36,13 +36,26 @@ impl QueryParams {
 
         unsafe {self.0.as_bytes()}
             .split(|b| b==&b'&')
-            .filter_map(|kv| (!kv.is_empty()).then(|| {
-                let eq = kv.iter().position(|b| b==&b'=').expect("invalid query params: missing `=`");
-                (
-                    decoded_utf8(unsafe {kv.get_unchecked(..eq)}),
-                    decoded_utf8(unsafe {kv.get_unchecked(eq+1..)})
-                )
-            }))
+            .filter_map(|kv| {
+                match kv.iter().position(|b| b == &b'=') {
+                    None => {
+                        #[cfg(debug_assertions)] {
+                            crate::warning!("skipping an invalid query param: missing `=`");
+                        }
+                        None
+                    }
+                    Some(0) => {
+                        #[cfg(debug_assertions)] {
+                            crate::warning!("skipping an invalid query param: empty key");
+                        }
+                        None
+                    }
+                    Some(n) => Some((
+                        decoded_utf8(unsafe {kv.get_unchecked(..n)}),
+                        decoded_utf8(unsafe {kv.get_unchecked(n+1..)})
+                    ))
+                }
+            })
     }
 }
 
