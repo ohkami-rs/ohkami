@@ -528,7 +528,7 @@ const _: () = {
 
                 Content::Payload(p) => {
                     let (encoded, body) = if let Ok(s) = std::str::from_utf8(&*p) {
-                        (false, String::from(s))
+                        (false, s.into())
                     } else {
                         use ::base64::engine::{Engine as _, general_purpose::STANDARD as BASE64};
                         (true, BASE64.encode(&*p))

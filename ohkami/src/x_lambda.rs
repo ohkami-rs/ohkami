@@ -65,6 +65,7 @@ pub(crate) mod internal {
     }
 
     #[derive(Serialize)]
+    #[cfg_attr(test, derive(Debug, PartialEq))]
     pub struct LambdaResponse {
         pub statusCode: u16,
         #[serde(serialize_with = "serialize_headers")]
@@ -504,3 +505,158 @@ mod ws {
     };
 }
 */
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{Ohkami, Route, Method};
+
+    fn new_req(
+        method: Method,
+        path: &'static str,
+        body: Option<String>
+    ) -> lambda_runtime::LambdaEvent<LambdaHTTPRequest> {
+        lambda_runtime::LambdaEvent {
+            context: Default::default(),
+            payload: LambdaHTTPRequest {
+                rawQueryString: String::new(),
+                cookies: Vec::new(),
+                headers: crate::request::RequestHeaders::new(),
+                body,
+                isBase64Encoded: false,
+                stageVariables: ohkami_lib::map::TupleMap::new(),
+                requestContext: LambdaHTTPRequestContext {
+                    apiId: String::new(),
+                    authentication: None,
+                    authorizer: None,
+                    domainName: String::new(),
+                    requestId: String::new(),
+                    timeEpoch: 0,
+                    http: LambdaHTTPRequestDetails {
+                        method,
+                        path: String::from(path),
+                        sourceIp: crate::util::IP_0000,
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn lambda_runtime_run_ohkami() {
+        let _/* : impl Future */ = lambda_runtime::run(Ohkami::new(()).lambda());
+    }
+
+    #[test]
+    fn ohkami_service_call() {
+        tokio::runtime::Runtime::new().unwrap().block_on(async {
+            {
+                let mut o = Ohkami::new((
+                    "/hello".GET(|| async {"Hello, Service!"}),
+                ));
+    
+                let res = <Ohkami as lambda_runtime::Service<
+                    lambda_runtime::LambdaEvent<
+                        crate::x_lambda::LambdaHTTPRequest
+                    >
+                >>::call(&mut o, new_req(
+                    Method::GET,
+                    "/",
+                    None
+                )).await.unwrap();
+
+                let lambda_runtime::FunctionResponse::BufferedResponse(res) = res else {
+                    panic!("Unexpected `StreamingResponse`")
+                };
+
+                assert_eq!(res, LambdaResponse {
+                    statusCode: 404,
+                    headers: crate::response::ResponseHeaders::from_iter([
+                        ("Date", ohkami_lib::imf_fixdate(crate::util::unix_timestamp())),
+                        ("Content-Length", "0".into()),
+                    ]),
+                    cookies: None,
+                    body: None,
+                    isBase64Encoded: None,
+                });
+            }
+            {
+                let mut o = Ohkami::new((
+                    "/hello".GET(|| async {"Hello, Service!"}),
+                ));
+    
+                let res = <Ohkami as lambda_runtime::Service<
+                    lambda_runtime::LambdaEvent<
+                        crate::x_lambda::LambdaHTTPRequest
+                    >
+                >>::call(&mut o, new_req(
+                    Method::GET,
+                    "/hello",
+                    None
+                )).await.unwrap();
+
+                let lambda_runtime::FunctionResponse::BufferedResponse(res) = res else {
+                    panic!("Unexpected `StreamingResponse`")
+                };
+
+                assert_eq!(res, LambdaResponse {
+                    statusCode: 200,
+                    headers: crate::response::ResponseHeaders::from_iter([
+                        ("Date", ohkami_lib::imf_fixdate(crate::util::unix_timestamp())),
+                        ("Content-Length", "15".into()),
+                        ("Content-Type", "text/plain; charset=UTF-8".into()),
+                    ]),
+                    cookies: None,
+                    body: Some("Hello, Service!".into()),
+                    isBase64Encoded: Some(false),
+                });
+            }
+        });
+    }
+
+    #[test]
+    #[should_panic = "<Ohkami as Service>::call` was called more than once for an `Ohkami` instance"]
+    fn ohkami_service_call_panic_on_twice() {
+        tokio::runtime::Runtime::new().unwrap().block_on(async {
+            let mut o = Ohkami::new((
+                "/hello".GET(|| async {"Hello, Service!"}),
+            ));
+    
+            let res = <Ohkami as lambda_runtime::Service<
+                lambda_runtime::LambdaEvent<
+                    crate::x_lambda::LambdaHTTPRequest
+                >
+            >>::call(&mut o, new_req(
+                Method::GET,
+                "/hello",
+                None
+            )).await.unwrap();
+
+            let lambda_runtime::FunctionResponse::BufferedResponse(res) = res else {
+                panic!("Unexpected `StreamingResponse`")
+            };
+
+            assert_eq!(res, LambdaResponse {
+                statusCode: 200,
+                headers: crate::response::ResponseHeaders::from_iter([
+                    ("Date", ohkami_lib::imf_fixdate(crate::util::unix_timestamp())),
+                    ("Content-Length", "15".into()),
+                    ("Content-Type", "text/plain; charset=UTF-8".into()),
+                ]),
+                cookies: None,
+                body: Some("Hello, Service!".into()),
+                isBase64Encoded: Some(false),
+            });
+
+            let _ = <Ohkami as lambda_runtime::Service<
+                lambda_runtime::LambdaEvent<
+                    crate::x_lambda::LambdaHTTPRequest
+                >
+            >>::call(&mut o, new_req(
+                Method::GET,
+                "/hello",
+                None
+            )); /* panics as second call */
+        });
+    }
+}

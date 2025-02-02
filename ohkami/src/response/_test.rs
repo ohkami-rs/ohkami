@@ -2,6 +2,12 @@
 
 use crate::Response;
 
+macro_rules! response_dump {
+    ($dump:literal) => {
+        response_dump!($dump, NOW = ::ohkami_lib::imf_fixdate(crate::util::unix_timestamp()))
+    }
+}
+
 macro_rules! assert_bytes_eq {
     ($res:expr, $expected:expr) => {
         {
@@ -26,28 +32,28 @@ macro_rules! assert_bytes_eq {
 
 #[test]
 fn test_response_into_bytes() {
-    let __now__ = ::ohkami_lib::imf_fixdate(crate::util::unix_timestamp());
+    let now = || ::ohkami_lib::imf_fixdate(crate::util::unix_timestamp());
 
     let res = Response::NoContent();
-    assert_bytes_eq!(res, format!("\
+    assert_bytes_eq!(res, response_dump!("\
         HTTP/1.1 204 No Content\r\n\
-        Date: {__now__}\r\n\
+        Date: {NOW}\r\n\
         \r\n\
     ").into_bytes());
 
     let mut res = Response::NoContent();
     res.headers.set().Server("ohkami");
-    assert_bytes_eq!(res, format!("\
+    assert_bytes_eq!(res, response_dump!("\
         HTTP/1.1 204 No Content\r\n\
         Server: ohkami\r\n\
-        Date: {__now__}\r\n\
+        Date: {NOW}\r\n\
         \r\n\
     ").into_bytes());
 
     let res = Response::NotFound();
-    assert_bytes_eq!(res, format!("\
+    assert_bytes_eq!(res, response_dump!("\
         HTTP/1.1 404 Not Found\r\n\
-        Date: {__now__}\r\n\
+        Date: {NOW}\r\n\
         Content-Length: 0\r\n\
         \r\n\
     ").into_bytes());
@@ -56,10 +62,10 @@ fn test_response_into_bytes() {
     res.headers.set()
         .Server("ohkami")
         .x("Hoge-Header", "Something-Custom");
-    assert_bytes_eq!(res, format!("\
+    assert_bytes_eq!(res, response_dump!("\
         HTTP/1.1 404 Not Found\r\n\
         Server: ohkami\r\n\
-        Date: {__now__}\r\n\
+        Date: {NOW}\r\n\
         Content-Length: 0\r\n\
         Hoge-Header: Something-Custom\r\n\
         \r\n\
@@ -71,10 +77,10 @@ fn test_response_into_bytes() {
         .x("Hoge-Header", "Something-Custom")
         .SetCookie("id", "42", |d|d.Path("/").SameSiteLax())
         .SetCookie("name", "John", |d|d.Path("/where").SameSiteStrict());
-    assert_bytes_eq!(res, format!("\
+    assert_bytes_eq!(res, response_dump!("\
         HTTP/1.1 404 Not Found\r\n\
         Server: ohkami\r\n\
-        Date: {__now__}\r\n\
+        Date: {NOW}\r\n\
         Content-Length: 0\r\n\
         Hoge-Header: Something-Custom\r\n\
         Set-Cookie: id=42; Path=/; SameSite=Lax\r\n\
@@ -88,11 +94,11 @@ fn test_response_into_bytes() {
         .x("Hoge-Header", "Something-Custom")
         .SetCookie("id", "42", |d|d.Path("/").SameSiteLax())
         .SetCookie("name", "John", |d|d.Path("/where").SameSiteStrict());
-    assert_bytes_eq!(res, format!("\
+    assert_bytes_eq!(res, response_dump!("\
         HTTP/1.1 404 Not Found\r\n\
         Content-Type: text/plain; charset=UTF-8\r\n\
         Server: ohkami\r\n\
-        Date: {__now__}\r\n\
+        Date: {NOW}\r\n\
         Content-Length: 11\r\n\
         Hoge-Header: Something-Custom\r\n\
         Set-Cookie: id=42; Path=/; SameSite=Lax\r\n\
@@ -135,20 +141,20 @@ fn test_stream_response() {
 
     let res = Response::OK()
         .with_stream(
-            repeat_by(3, |i| format!("This is message#{i} !"))
+            repeat_by(3, |i| response_dump!("This is message#{i} !"))
         )
         .with_headers(|h| h
             .Server("ohkami")
             .x("is-stream", "true")
             .SetCookie("name", "John", |d|d.Path("/where").SameSiteStrict())
         );
-    assert_bytes_eq!(res, format!("\
+    assert_bytes_eq!(res, response_dump!("\
         HTTP/1.1 200 OK\r\n\
         Content-Type: text/event-stream\r\n\
         Cache-Control: no-cache, must-revalidate\r\n\
         Transfer-Encoding: chunked\r\n\
         Server: ohkami\r\n\
-        Date: {__now__}\r\n\
+        Date: {NOW}\r\n\
         is-stream: true\r\n\
         Set-Cookie: name=John; Path=/where; SameSite=Strict\r\n\
         \r\n\
@@ -170,20 +176,20 @@ fn test_stream_response() {
 
     let res = Response::OK()
         .with_stream(
-            repeat_by(3, |i| format!("This is message#{i}\nです"))
+            repeat_by(3, |i| response_dump!("This is message#{i}\nです"))
         )
         .with_headers(|h| h
             .Server("ohkami")
             .SetCookie("name", "John", |d|d.Path("/where").SameSiteStrict())
             .x("is-stream", "true")
         );
-    assert_bytes_eq!(res, format!("\
+    assert_bytes_eq!(res, response_dump!("\
         HTTP/1.1 200 OK\r\n\
         Content-Type: text/event-stream\r\n\
         Cache-Control: no-cache, must-revalidate\r\n\
         Transfer-Encoding: chunked\r\n\
         Server: ohkami\r\n\
-        Date: {__now__}\r\n\
+        Date: {NOW}\r\n\
         is-stream: true\r\n\
         Set-Cookie: name=John; Path=/where; SameSite=Strict\r\n\
         \r\n\

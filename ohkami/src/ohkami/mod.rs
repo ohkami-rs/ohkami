@@ -515,6 +515,68 @@ impl Ohkami {
     }
 }
 
+const _: () = {
+    #[cfg(feature="rt_lambda")]
+    impl lambda_runtime::Service<
+        lambda_runtime::LambdaEvent<
+            crate::x_lambda::LambdaHTTPRequest
+        >
+    > for Ohkami {
+        type Response = lambda_runtime::FunctionResponse<
+            crate::x_lambda::LambdaResponse,
+            std::pin::Pin<Box<dyn ohkami_lib::Stream<Item = Result<String, std::convert::Infallible>> + Send>>
+        >;
+        type Error = lambda_runtime::Error;
+
+        #[cfg(feature="nightly")]
+        type Future = impl std::future::Future<Output = Result<Self::Response, Self::Error>>;
+        #[cfg(not(feature="nightly"))]
+        type Future = std::pin::Pin<Box<dyn std::future::Future<Output = Result<Self::Response, Self::Error>>>>;
+
+        fn poll_ready(&mut self, _cx: &mut std::task::Context<'_>) -> std::task::Poll<Result<(), Self::Error>> {
+            std::task::Poll::Ready(Ok(()))
+        }
+
+        fn call(
+            &mut self,
+            req: lambda_runtime::LambdaEvent<crate::x_lambda::LambdaHTTPRequest>
+        ) -> Self::Future {
+            static ALREADY_CALLED_MARKER_FANGS: std::sync::LazyLock<Arc<()>>
+                = std::sync::LazyLock::new(|| Arc::new(()));
+
+            if self.fangs.as_ref().is_some_and(|fangs| Arc::ptr_eq(
+                fangs, unsafe {&*(
+                    (&*ALREADY_CALLED_MARKER_FANGS) as
+                    *const Arc<()> as
+                    *const Arc<dyn Fangs>
+                )}
+            )) {
+                panic!("`<Ohkami as Service>::call` was called more than once for an `Ohkami` instance")
+            }
+            
+            let o = std::mem::replace(self, Ohkami {
+                fangs: Some(ALREADY_CALLED_MARKER_FANGS.clone()),
+                router: Router::new()
+            });
+
+            let f = async move {
+                let mut ohkami_req = crate::Request::init();
+                let mut ohkami_req = unsafe {std::pin::Pin::new_unchecked(&mut ohkami_req)};
+                ohkami_req.as_mut().take_over(req)?;
+
+                let (router, _) = o.into_router().finalize();
+                let mut ohkami_res = router.handle(&mut ohkami_req).await;
+                ohkami_res.complete();
+
+                Ok(ohkami_res.into())
+            };
+
+            #[cfg(feature="nightly")] {f}
+            #[cfg(not(feature="nightly"))] {Box::pin(f)}
+        }
+    }
+};
+
 #[cfg(feature="__rt_native__")]
 mod sync {
     pub struct WaitGroup(std::ptr::NonNull<

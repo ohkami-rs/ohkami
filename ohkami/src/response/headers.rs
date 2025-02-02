@@ -531,8 +531,8 @@ const _: () = {
     impl Headers {
         pub fn from_iter(iter: impl IntoIterator<Item = (
             &'static str,
-            impl Into<Cow<'static, str>>)>
-        ) -> Self {
+            impl Into<Cow<'static, str>
+        >)>) -> Self {
             let mut this = Headers::new();
             for (k, v) in iter {
                 match Header::from_bytes(k.as_bytes()) {
