@@ -382,61 +382,6 @@ impl Ohkami {
         res
     }
 
-    #[cfg(feature="rt_lambda")]
-    pub fn lambda(self) -> impl ::lambda_runtime::Service<
-        ::lambda_runtime::LambdaEvent<crate::x_lambda::LambdaHTTPRequest>,
-        Response = ::lambda_runtime::FunctionResponse<
-            crate::x_lambda::LambdaResponse,
-            std::pin::Pin<Box<dyn ohkami_lib::Stream<Item = Result<String, std::convert::Infallible>> + Send>>
-        >,
-        Error = lambda_runtime::Error,
-    > {
-        return OhkamiService(Some(self));
-
-        ///////////////////////////////////////////////////////////////
-
-        use crate::x_lambda::LambdaHTTPRequest;
-        use ::lambda_runtime::{Service, LambdaEvent};
-
-        struct OhkamiService(Option<Ohkami>);
-        impl Service<LambdaEvent<LambdaHTTPRequest>> for OhkamiService {
-            type Response = ::lambda_runtime::FunctionResponse<
-                crate::x_lambda::LambdaResponse,
-                std::pin::Pin<Box<dyn ohkami_lib::Stream<Item = Result<String, std::convert::Infallible>> + Send>>
-            >;
-            type Error = lambda_runtime::Error;
-
-            #[cfg(feature="nightly")]
-            type Future = impl std::future::Future<Output = Result<Self::Response, Self::Error>>;
-            #[cfg(not(feature="nightly"))]
-            type Future = std::pin::Pin<Box<dyn std::future::Future<Output = Result<Self::Response, Self::Error>>>>;
-
-            fn poll_ready(&mut self, _cx: &mut std::task::Context<'_>) -> std::task::Poll<Result<(), Self::Error>> {
-                std::task::Poll::Ready(Ok(()))
-            }
-
-            fn call(&mut self, req: LambdaEvent<LambdaHTTPRequest>) -> Self::Future {
-                let o: Ohkami = self.0.take().expect("`Ohkami::lambda` was called more than once for an `Ohkami` instance");
-
-                let f = async move {
-                    let mut ohkami_req = crate::Request::init();
-                    let mut ohkami_req = unsafe {std::pin::Pin::new_unchecked(&mut ohkami_req)};
-                    ohkami_req.as_mut().take_over(req)?;
-
-                    let (router, _) = o.into_router().finalize();
-                    let mut ohkami_res = router.handle(&mut ohkami_req).await;
-                    ohkami_res.complete();
-
-                    //Result::<Self::Response, lambda_runtime::Error>::
-                    Ok(ohkami_res.into())
-                };
-
-                #[cfg(feature="nightly")] {f}
-                #[cfg(not(feature="nightly"))] {Box::pin(f)}
-            }
-        }
-    }
-
     #[cfg(feature="openapi")]
     #[cfg(feature="__rt_native__")]
     /// Generate OpenAPI document.
