@@ -94,7 +94,10 @@ See README of [template](https://github.com/ohkami-rs/ohkami-templates/tree/main
 
 ### `"rt_lambda"` : AWS Lambda
 
-**experimental**, WebSocket is not supported now
+**experimental**
+
+* Runs on both `Function URLs` and `API Gateway`.
+* WebSocket is not supported now.
 
 Works with [lambda_runtime](https://crates.io/crates/lambda_runtime) crate ( and tokio ).
 
@@ -106,7 +109,7 @@ Let's :
 cargo lambda new ＜project dir＞ --template https://github.com/ohkami-rs/ohkami-templates/lambda
 ```
 
-`lambda_runtime::run(your_ohkami)` is the entry point of Lambda Function.
+`lambda_runtime::run(your_ohkami)` make `you_ohkami` runs on Lambda Function.
 
 Local dev by
 
@@ -119,7 +122,6 @@ and deploy by
 ```sh
 cargo lambda build --release [--compiler cargo]
 cargo lambda deploy [--role ＜arn-of-a-iam-role＞]
-    # `--enable-function-url` enables Function URL
 ```
 
 See
