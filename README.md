@@ -118,7 +118,8 @@ and deploy by
 
 ```sh
 cargo lambda build --release [--compiler cargo]
-cargo lambda deploy --enable-function-url [--role ＜arn-of-a-iam-role＞]
+cargo lambda deploy [--role ＜arn-of-a-iam-role＞]
+    # `--enable-function-url` enables Function URL
 ```
 
 See
