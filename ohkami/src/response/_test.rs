@@ -32,8 +32,6 @@ macro_rules! assert_bytes_eq {
 
 #[test]
 fn test_response_into_bytes() {
-    let now = || ::ohkami_lib::imf_fixdate(crate::util::unix_timestamp());
-
     let res = Response::NoContent();
     assert_bytes_eq!(res, response_dump!("\
         HTTP/1.1 204 No Content\r\n\
@@ -141,7 +139,7 @@ fn test_stream_response() {
 
     let res = Response::OK()
         .with_stream(
-            repeat_by(3, |i| response_dump!("This is message#{i} !"))
+            repeat_by(3, |i| format!("This is message#{i} !"))
         )
         .with_headers(|h| h
             .Server("ohkami")
