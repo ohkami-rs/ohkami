@@ -174,7 +174,7 @@ fn test_stream_response() {
 
     let res = Response::OK()
         .with_stream(
-            repeat_by(3, |i| fprmat!("This is message#{i}\nです"))
+            repeat_by(3, |i| format!("This is message#{i}\nです"))
         )
         .with_headers(|h| h
             .Server("ohkami")
