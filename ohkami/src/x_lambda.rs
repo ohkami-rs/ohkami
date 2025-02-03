@@ -511,10 +511,12 @@ mod ws {
 }
 */
 
+#[cfg(feature="nightly"/* `noop_waker` is stabilized in 1.85.0 and then remove this cfg */)]
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::{Ohkami, Route, Method};
+    use std::task::{Waker, Context};
 
     fn new_req(
         method: Method,
@@ -529,7 +531,7 @@ mod tests {
                 headers: crate::request::RequestHeaders::new(),
                 body,
                 isBase64Encoded: false,
-                stageVariables: ohkami_lib::map::TupleMap::new(),
+                stageVariables: None,
                 requestContext: LambdaHTTPRequestContext {
                     apiId: String::new(),
                     authentication: None,
@@ -548,18 +550,24 @@ mod tests {
     }
 
     #[test]
-    fn lambda_runtime_run_ohkami() {
-        let _/* : impl Future */ = lambda_runtime::run(Ohkami::new(()).lambda());
+    fn lambda_runtime_run_ohkami_compiles() {
+        let _/* : impl Future */ = lambda_runtime::run(Ohkami::new(()));
     }
 
     #[test]
-    fn ohkami_service_call() {
+    fn ohkami_service_call_once() {
         tokio::runtime::Runtime::new().unwrap().block_on(async {
             {
                 let mut o = Ohkami::new((
                     "/hello".GET(|| async {"Hello, Service!"}),
                 ));
-    
+
+                let _ = <Ohkami as lambda_runtime::Service<
+                    lambda_runtime::LambdaEvent<
+                        crate::x_lambda::LambdaHTTPRequest
+                    >
+                >>::poll_ready(&mut o, &mut Context::from_waker(Waker::noop()));
+
                 let res = <Ohkami as lambda_runtime::Service<
                     lambda_runtime::LambdaEvent<
                         crate::x_lambda::LambdaHTTPRequest
@@ -589,7 +597,13 @@ mod tests {
                 let mut o = Ohkami::new((
                     "/hello".GET(|| async {"Hello, Service!"}),
                 ));
-    
+
+                let _ = <Ohkami as lambda_runtime::Service<
+                    lambda_runtime::LambdaEvent<
+                        crate::x_lambda::LambdaHTTPRequest
+                    >
+                >>::poll_ready(&mut o, &mut Context::from_waker(Waker::noop()));
+        
                 let res = <Ohkami as lambda_runtime::Service<
                     lambda_runtime::LambdaEvent<
                         crate::x_lambda::LambdaHTTPRequest
@@ -620,12 +634,17 @@ mod tests {
     }
 
     #[test]
-    #[should_panic = "<Ohkami as Service>::call` was called more than once for an `Ohkami` instance"]
-    fn ohkami_service_call_panic_on_twice() {
+    fn ohkami_service_call_multiple_times() {
         tokio::runtime::Runtime::new().unwrap().block_on(async {
             let mut o = Ohkami::new((
                 "/hello".GET(|| async {"Hello, Service!"}),
             ));
+
+            let _ = <Ohkami as lambda_runtime::Service<
+                lambda_runtime::LambdaEvent<
+                    crate::x_lambda::LambdaHTTPRequest
+                >
+            >>::poll_ready(&mut o, &mut Context::from_waker(Waker::noop()));
     
             let res = <Ohkami as lambda_runtime::Service<
                 lambda_runtime::LambdaEvent<

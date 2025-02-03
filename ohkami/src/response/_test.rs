@@ -4,7 +4,7 @@ use crate::Response;
 
 macro_rules! response_dump {
     ($dump:literal) => {
-        response_dump!($dump, NOW = ::ohkami_lib::imf_fixdate(crate::util::unix_timestamp()))
+        format!($dump, NOW = ::ohkami_lib::imf_fixdate(crate::util::unix_timestamp()))
     }
 }
 
