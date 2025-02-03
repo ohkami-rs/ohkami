@@ -107,7 +107,7 @@ Works with [lambda_runtime](https://crates.io/crates/lambda_runtime) crate ( and
 Let's :
 
 ```sh
-cargo lambda new ＜project dir＞ --template https://github.com/ohkami-rs/ohkami-templates/lambda
+cargo lambda new ＜project dir＞ --template https://github.com/ohkami-rs/ohkami-templates
 ```
 
 `lambda_runtime::run(your_ohkami)` make `you_ohkami` runs on Lambda Function.
