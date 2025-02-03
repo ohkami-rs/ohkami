@@ -96,8 +96,8 @@ See README of [template](https://github.com/ohkami-rs/ohkami-templates/tree/main
 
 **experimental**
 
-* Both `Function URLs` and `API Gateway` are supported.
-* WebSocket is not supported now.
+* Both `Function URLs` and `API Gateway` are supported
+* WebSocket is not supported now
 * Please let us know any bugs or unexpected behavior on [PR](https://github.com/ohkami-rs/ohkami/pulls)!
 
 Works with [lambda_runtime](https://crates.io/crates/lambda_runtime) crate ( and tokio ).
