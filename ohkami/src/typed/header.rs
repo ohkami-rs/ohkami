@@ -80,7 +80,7 @@ macro_rules! typed_header {
             fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
                 f.write_str(stringify!($Name))?;
                 f.write_str("(")?;
-                write!(f, "{:?}", self.0);
+                write!(f, "{:?}", self.0)?;
                 f.write_str(")")?;
                 Ok(())
             }
