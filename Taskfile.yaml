@@ -17,16 +17,16 @@ tasks:
       - task: test:examples
       - task: test:samples
       - task: test:no_rt
-      - for:  [tokio, async-std, smol, nio, glommio, worker]
+      - for:  [tokio, async-std, smol, nio, glommio, lambda, worker]
         task: test:rt
         vars: { rt: '{{.ITEM}}' }
 
   check:
     deps:
       - task: check:no_rt
-      - for:  [tokio, async-std, smol, nio, glommio]
-        task: check:native_rt
-        vars: { native_rt: '{{.ITEM}}' }
+      - for:  [tokio, async-std, smol, nio, glommio, lambda]
+        task: check:rt-native_target
+        vars: { rt: '{{.ITEM}}' }
       - task: check:rt_worker
 
   bench:dryrun:
@@ -99,13 +99,13 @@ tasks:
       - cargo check --lib --features ws,{{.maybe_nightly}}
       - cargo check --lib --features sse,ws,openapi,{{.maybe_nightly}}
 
-  check:native_rt:
+  check:rt-native_target:
     dir: ./ohkami
     cmds:
-      - cargo check --lib --features rt_{{.native_rt}},{{.maybe_nightly}}
-      - cargo check --lib --features rt_{{.native_rt}},sse,{{.maybe_nightly}}
-      - cargo check --lib --features rt_{{.native_rt}},ws,{{.maybe_nightly}}
-      - cargo check --lib --features rt_{{.native_rt}},sse,ws,openapi,{{.maybe_nightly}}
+      - cargo check --lib --features rt_{{.rt}},{{.maybe_nightly}}
+      - cargo check --lib --features rt_{{.rt}},sse,{{.maybe_nightly}}
+      - cargo check --lib --features rt_{{.rt}},ws,{{.maybe_nightly}}
+      - cargo check --lib --features rt_{{.rt}},sse,ws,openapi,{{.maybe_nightly}}
 
   check:rt_worker:
     dir: ./ohkami

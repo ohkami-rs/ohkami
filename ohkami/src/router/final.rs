@@ -259,8 +259,9 @@ const _: (/* conversions */) = {
     
     impl From<base::Node> for Node {
         fn from(mut base: base::Node) -> Self {
+            /* skip compression on edge runtimes */
             #[cfg(feature="__rt_native__")]
-            /* merge single-child static pattern and compress routing tree */
+            /* compress: merge single-child static pattern and compress routing tree */
             while base.children.len() == 1
                && base.handler.is_none()
                && base.pattern.as_ref().is_none_or(|p| p.is_static())

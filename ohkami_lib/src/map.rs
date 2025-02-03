@@ -51,6 +51,9 @@ impl<K: PartialEq, V> TupleMap<K, V> {
     pub fn iter(&self) -> impl Iterator<Item = &(K, V)> {
         self.0.iter()
     }
+    pub fn into_iter(self) -> impl Iterator<Item = (K, V)> {
+        self.0.into_iter()
+    }
 }
 
 impl<K: PartialEq, V: PartialEq> PartialEq for TupleMap<K, V> {
@@ -62,5 +65,42 @@ impl<K: PartialEq, V: PartialEq> PartialEq for TupleMap<K, V> {
 impl<K: Clone + PartialEq, V: Clone> Clone for TupleMap<K, V> {
     fn clone(&self) -> Self {
         Self(self.0.clone())
+    }
+}
+
+impl<'de, K:PartialEq, V> serde::Deserialize<'de> for TupleMap<K, V>
+where
+    K: serde::Deserialize<'de>,
+    V: serde::Deserialize<'de>,
+{
+    fn deserialize<D: serde::Deserializer<'de>>(
+        deserializer: D
+    ) -> Result<Self, D::Error> {
+        return deserializer.deserialize_map(TupleMapVisitor(std::marker::PhantomData));
+
+        /////////////////////////////////////////////////////////////////////////
+        
+        struct TupleMapVisitor<K, V>(std::marker::PhantomData<fn()->(K, V)>);
+
+        impl<'de, K:PartialEq, V> serde::de::Visitor<'de> for TupleMapVisitor<K, V>
+        where
+            K: serde::Deserialize<'de>,
+            V: serde::Deserialize<'de>,
+        {
+            type Value = TupleMap<K, V>;
+
+            fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                f.write_str("a map")
+            }
+
+            #[inline]
+            fn visit_map<A: serde::de::MapAccess<'de>>(self, mut access: A) -> Result<Self::Value, A::Error> {
+                let mut map = TupleMap::new();
+                while let Some((k, v)) = access.next_entry()? {
+                    map.insert(k, v);
+                }
+                Ok(map)
+            }
+        }
     }
 }

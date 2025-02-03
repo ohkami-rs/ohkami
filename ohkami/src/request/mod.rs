@@ -12,8 +12,8 @@ pub use headers::Headers as RequestHeaders;
 #[allow(unused)]
 pub use headers::Header as RequestHeader;
 
-mod store;
-pub(crate) use store::Store;
+mod context;
+use context::Context;
 
 mod from_request; 
 pub use from_request::*;
@@ -103,10 +103,9 @@ pub struct Request {
 
     #[cfg(feature="rt_worker")]
     pub(super/* for test */) __url__: std::mem::MaybeUninit<::worker::Url>,
-    #[cfg(feature="rt_worker")]
-    env: std::mem::MaybeUninit<::worker::Env>,
-    #[cfg(feature="rt_worker")]
-    ctx: std::mem::MaybeUninit<::worker::Context>,
+
+    #[cfg(feature="rt_lambda")]
+    pub(super/* for test */) __query__: std::mem::MaybeUninit<Box<str>>,
 
     /// HTTP method of this request
     /// 
@@ -164,7 +163,7 @@ pub struct Request {
 
     pub payload: Option<CowSlice>,
 
-    store: Store,
+    pub context: Context,
 
     #[cfg(feature="__rt__")]
     /// Remote ( directly connected ) peer's IP address
@@ -185,25 +184,22 @@ impl Request {
         Self {
             #[cfg(feature="__rt_native__")]
             ip,
-            #[cfg(feature="rt_worker")]
-            ip: crate::util::IP_0000,/* tetative */
+            #[cfg(any(feature="rt_worker", feature="rt_lambda"))]
+            ip: crate::util::IP_0000/* tetative */,
 
             #[cfg(feature="__rt_native__")]
             __buf__: Box::new([0; BUF_SIZE]),
-
             #[cfg(feature="rt_worker")]
             __url__: std::mem::MaybeUninit::uninit(),
-            #[cfg(feature="rt_worker")]
-            env:     std::mem::MaybeUninit::uninit(),
-            #[cfg(feature="rt_worker")]
-            ctx:     std::mem::MaybeUninit::uninit(),
+            #[cfg(feature="rt_lambda")]
+            __query__: std::mem::MaybeUninit::uninit(),
 
             method:  Method::GET,
             path:    Path::uninit(),
             query:   QueryParams::new(b""),
-            headers: RequestHeaders::init(),
+            headers: RequestHeaders::new(),
             payload: None,
-            store:   Store::init(),
+            context: Context::init(),
         }
     }
     #[cfg(feature="__rt_native__")]
@@ -217,7 +213,7 @@ impl Request {
             self.query = QueryParams::new(b"");
             self.headers.clear();
             self.payload = None;
-            self.store.clear();
+            self.context.clear();
         } /* else: just after `init`ed or `clear`ed */
     }
 
@@ -331,8 +327,9 @@ impl Request {
         }
     }
 
-    #[cfg(feature="rt_worker")]
-    #[cfg(debug_assertions)]
+
+    #[cfg(debug_assertions/* for `ohkami::testing` */)]
+    #[cfg(any(feature="rt_worker", feature="rt_lambda"))]
     /// Used in `testing` module
     pub(crate) async fn read(mut self: Pin<&mut Self>,
         raw_bytes: &mut &[u8]
@@ -350,16 +347,38 @@ impl Request {
 
         r.next_if(|b| *b==b' ').ok_or_else(Response::BadRequest)?;
         
-        self.__url__.write({
-            let mut url = String::from("http://test.ohkami");
-            url.push_str(std::str::from_utf8(r.read_while(|b| b != &b' ')).unwrap());
-            ::worker::Url::parse(&url).unwrap()
-        });
-        // SAFETY: Just calling for request bytes and `self.__url__` is already initialized
-        unsafe {let __url__ = self.__url__.assume_init_ref();
-            let path = Slice::from_bytes(__url__.path().as_bytes()).as_bytes();
-            self.query = QueryParams::new(__url__.query().unwrap_or_default().as_bytes());
-            self.path.init_with_request_bytes(path)?;
+        #[cfg(feature="rt_worker")] {
+            self.__url__.write({
+                let mut url = String::from("http://test.ohkami");
+                url.push_str(std::str::from_utf8(r.read_while(|b| b != &b' ')).unwrap());
+                ::worker::Url::parse(&url).unwrap()
+            });
+            // SAFETY: calling after `self.__url__` is already initialized
+            unsafe {let __url__ = self.__url__.assume_init_ref();
+                let path = Slice::from_bytes(__url__.path().as_bytes()).as_bytes();
+                self.query = QueryParams::new(__url__.query().unwrap_or_default().as_bytes());
+                self.path.init_with_request_bytes(path)?;
+            }
+        }
+
+        #[cfg(feature="rt_lambda")] {
+            let path_bytes = r.read_while(|b| b != &b' ' && b != &b'?');
+            self.path.init_with_request_bytes(path_bytes)?;
+
+            if r.next_if(|b| *b == b'?').is_some() {                
+                self.__query__.write(
+                    std::str::from_utf8(r.read_while(|b| b != &b' '))
+                        .unwrap()
+                        .to_owned()
+                        .into_boxed_str()
+                );
+                // SAFETY: calling after `self.__query__` is already initialized
+                unsafe {
+                    self.query = QueryParams::new(self.__query__.assume_init_ref().as_bytes());
+                }
+            }
+
+            r.next_if(|b| *b==b' ').ok_or_else(Response::BadRequest)?;
         }
 
         r.consume("HTTP/1.1\r\n").ok_or_else(Response::HTTPVersionNotSupported)?;
@@ -367,13 +386,16 @@ impl Request {
         while r.consume("\r\n").is_none() {
             let key_bytes = r.read_while(|b| b != &b':');
             r.consume(": ").ok_or_else(Response::BadRequest)?;
-            let value = CowSlice::Ref(Slice::from_bytes(r.read_while(|b| b != &b'\r')));
+            let value = CowSlice::Own(r.read_while(|b| b != &b'\r').to_owned().into_boxed_slice());
             r.consume("\r\n").ok_or_else(Response::BadRequest)?;
 
             if let Some(key) = RequestHeader::from_bytes(key_bytes) {
                 self.headers.append(key, value);
             } else {
-                self.headers.insert_custom(Slice::from_bytes(key_bytes), value)
+                self.headers.insert_custom(
+                    Slice::from_bytes(Box::leak(key_bytes.to_owned().into_boxed_slice())),
+                    value
+                )
             }
         }
 
@@ -394,8 +416,7 @@ impl Request {
         env:     ::worker::Env,
         ctx:     ::worker::Context,
     ) -> Result<(), crate::Response> {use crate::Response;
-        self.env.write(env);
-        self.ctx.write(ctx);
+        self.context.load((ctx, env));
 
         self.method = Method::from_worker(req.method())
             .ok_or_else(|| Response::NotImplemented().with_text("ohkami doesn't support `CONNECT`, `TRACE` method"))?;
@@ -425,17 +446,68 @@ impl Request {
 
         Ok(())
     }
+
+    #[cfg(feature="rt_lambda")]
+    pub(crate) fn take_over(mut self: Pin<&mut Self>,
+        ::lambda_runtime::LambdaEvent {
+            payload: req,
+            context: _   
+        }: ::lambda_runtime::LambdaEvent<crate::x_lambda::LambdaHTTPRequest>
+    ) -> Result<(), lambda_runtime::Error> {
+        self.__query__.write(req.rawQueryString.into_boxed_str()); unsafe {
+            self.query = QueryParams::new(self.__query__.assume_init_ref().as_bytes());
+        }
+
+        self.context.load(req.requestContext); {
+            let path_bytes = unsafe {
+                let bytes = self.lambda().http.path.as_bytes();
+                std::slice::from_raw_parts(bytes.as_ptr(), bytes.len())
+            };
+            self.path.init_with_request_bytes(path_bytes).map_err(|_| crate::util::ErrorMessage("unsupported path format".into()))?;
+            self.method = self.lambda().http.method;
+            self.ip = self.lambda().http.sourceIp;
+        }
+
+        self.headers = req.headers;
+        if !req.cookies.is_empty() {
+            self.headers.set().Cookie(req.cookies.join("; "));
+        }
+
+        if let Some(body) = req.body {
+            self.payload = Some(CowSlice::Own(
+                (if req.isBase64Encoded {
+                    use ::base64::engine::{Engine as _, general_purpose::STANDARD as BASE64};
+                    BASE64.decode(body)?
+                } else {
+                    body.into_bytes()
+                }).into_boxed_slice()
+            ));
+        }
+
+        Result::<(), lambda_runtime::Error>::Ok(())
+    }
 }
 
 #[cfg(feature="rt_worker")]
 impl Request {
     #[inline]
     pub fn env(&self) -> &::worker::Env {
-        unsafe {self.env.assume_init_ref()}
+        // SAFETY: user can touch here only after `self.context.load(...)`
+        &(unsafe {self.context.worker()}).1
     }
     #[inline]
     pub fn context(&self) -> &::worker::Context {
-        unsafe {self.ctx.assume_init_ref()}
+        // SAFETY: user can touch here only after `self.context.load(...)`
+        &(unsafe {self.context.worker()}).0
+    }
+}
+
+#[cfg(feature="rt_lambda")]
+impl Request {
+    #[inline]
+    pub fn lambda(&self) -> &crate::x_lambda::LambdaHTTPRequestContext {
+        // SAFETY: user can touch here only after `self.context.load(...)`
+        unsafe {self.context.lambda()}
     }
 }
 
@@ -443,15 +515,6 @@ impl Request {
     #[inline]
     pub fn payload(&self) -> Option<&[u8]> {
         self.payload.as_deref()
-    }
-
-    /// Memorize any data within this request object
-    #[inline] pub fn memorize<Value: Send + Sync + 'static>(&mut self, value: Value) {
-        self.store.insert(value)
-    }
-    /// Retrieve a data memorized in this request (using the type as key)
-    #[inline] pub fn memorized<Value: Send + Sync + 'static>(&self) -> Option<&Value> {
-        self.store.get()
     }
 }
 

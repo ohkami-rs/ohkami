@@ -6,7 +6,7 @@
 <br>
 
 - *macro-less and type-safe* APIs for intuitive and declarative code
-- *various runtimes* are supported：`tokio`, `async-std`, `smol`, `nio`, `glommio` and `worker` (Cloudflare Workers)
+- *various runtimes* are supported：`tokio`, `async-std`, `smol`, `nio`, `glommio` and `worker` (Cloudflare Workers), `lambda` (AWS Lambda)
 - *extremely fast*：[Web Frameworks Benchmark](https://web-frameworks-benchmark.netlify.app/result)
 - no-network testing, well-structured middlewares, Server-Sent Events, WebSocket, OpenAPI document genration, ...
 
@@ -68,7 +68,7 @@ Hello, your_name!
 
 ## Feature flags
 
-### `"rt_tokio"`, `"rt_async-std"`, `"rt_smol"`, `"rt_nio"`, `"rt_glommio"`：native async runtime
+### `"rt_tokio"`, `"rt_async-std"`, `"rt_smol"`, `"rt_nio"`, `"rt_glommio"` : native async runtime
 
 - [tokio](https://github.com/tokio-rs/tokio)
 - [async-std](https://github.com/async-rs/async-std)
@@ -76,17 +76,64 @@ Hello, your_name!
 - [nio](https://github.com/nurmohammed840/nio)
 - [glommio](https://github.com/DataDog/glommio)
 
-### `"rt_worker"`：Cloudflare Workers
+### `"rt_worker"` : Cloudflare Workers
+
+Works with [worker](https://crates.io/crates/worker) crate.
 
 ```sh
-npm create cloudflare ./path/to/project -- --template https://github.com/ohkami-rs/ohkami-templates/worker
+npm create cloudflare ＜project dir＞ -- --template https://github.com/ohkami-rs/ohkami-templates/worker
 ```
 
-then your project directory has `wrangler.toml`, `package.json` and a Rust library crate. Local dev by `npm run dev` and deploy by `npm run deploy` !
+then `＜project dir＞` will have `wrangler.toml`, `package.json` and a Rust library crate.
+
+A `#[ohkami::worker]` (async/sync) fn returning `Ohkami` is the Worker definition.
+
+Local dev by `npm run dev` and deploy by `npm run deploy` !
 
 See README of [template](https://github.com/ohkami-rs/ohkami-templates/tree/main/worker) for details.
 
-### `"sse"`：Server-Sent Events
+### `"rt_lambda"` : AWS Lambda
+
+**experimental**
+
+* Both `Function URLs` and `API Gateway` are supported.
+* WebSocket is not supported now.
+* Please let us know any bugs or unexpected behavior on [PR](https://github.com/ohkami-rs/ohkami/pulls)!
+
+Works with [lambda_runtime](https://crates.io/crates/lambda_runtime) crate ( and tokio ).
+
+[cargo lambda](https://crates.io/crates/cargo-lambda) will be good partner.
+
+Let's :
+
+```sh
+cargo lambda new ＜project dir＞ --template https://github.com/ohkami-rs/ohkami-templates
+```
+
+`lambda_runtime::run(your_ohkami)` make `you_ohkami` runs on Lambda Function.
+
+Local dev by
+
+```sh
+cargo lambda watch
+```
+
+and deploy by
+
+```sh
+cargo lambda build --release [--compiler cargo]
+cargo lambda deploy [--role ＜arn-of-a-iam-role＞]
+```
+
+See
+
+* README of [template](https://github.com/ohkami-rs/ohkami-templates/tree/main/lambda)
+* [Cargo Lambda document](https://www.cargo-lambda.info)
+
+for details.
+
+
+### `"sse"` : Server-Sent Events
 
 Ohkami responds with HTTP/1.1 `Transfer-Encoding: chunked`.\
 Use some reverse proxy to do with HTTP/2,3.
@@ -115,12 +162,10 @@ async fn main() {
 }
 ```
 
-### `"ws"`：WebSocket
+### `"ws"` : WebSocket
 
 Ohkami only handles `ws://`.\
 Use some reverse proxy to do with `wss://`.
-
-WebSocket on Durable Object is available on `"rt_worker"`!
 
 ```rust,no_run
 use ohkami::prelude::*;
@@ -142,7 +187,10 @@ async fn main() {
 }
 ```
 
-### `"openapi"`：OpenAPI document generation
+* On `"rt_worker"`, WebSocket on or not on Durable Object is available!
+* On `"rt_lambda"`, WebSocket is currently not supported.
+
+### `"openapi"` : OpenAPI document generation
 
 Ohkami supports *as consistent as possible* OpenAPI document generation, where most of the consistency between document and behavior is automatically assured by Ohkami's internal work.
 
@@ -225,7 +273,7 @@ async fn main() {
 - When the binary size matters, you should prepare a feature flag activating `ohkami/openapi` in your package, and put all your codes around `openapi` behind that feature via `#[cfg(feature = ...)]` or `#[cfg_attr(feature = ...)]`.
 - In `rt_worker`, `.generate` is not available because `Ohkami` can't have access to your local filesystem by `wasm32` binary on Minifalre. So ohkami provides [a CLI tool](./scripts/workers_openapi.js) to generate document from `#[ohkami::worker] Ohkami` with `openapi` feature.
 
-### `"nightly"`：nightly-only functionalities
+### `"nightly"` : nightly-only functionalities
 
 - try response
 

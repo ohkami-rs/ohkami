@@ -3,6 +3,7 @@ use ohkami_lib::CowSlice;
 #[cfg(feature="sse")]
 use ohkami_lib::Stream;
 
+#[cfg(not(feature="rt_lambda"/* currently */))]
 #[cfg(all(feature="ws", feature="__rt__"))]
 use crate::ws::Session;
 
@@ -15,6 +16,7 @@ pub enum Content {
     #[cfg(feature="sse")]
     Stream(std::pin::Pin<Box<dyn Stream<Item = String> + Send>>),
 
+    #[cfg(not(feature="rt_lambda"/* currently */))]
     #[cfg(all(feature="ws", feature="__rt__"))]
     WebSocket(Session),
 }
@@ -47,6 +49,7 @@ const _: () = {
                 #[cfg(feature="sse")]
                 Self::Stream(_)      => f.write_str("{stream}"),
 
+                #[cfg(not(feature="rt_lambda"/* currently */))]
                 #[cfg(all(feature="ws", feature="__rt__"))]
                 Self::WebSocket(_)   => f.write_str("{websocket}"),
             }
@@ -94,7 +97,8 @@ impl Content {
             }),
 
             #[cfg(feature="ws")]
-            Self::WebSocket(ws)  => ::worker::Response::from_websocket(ws)
+            Self::WebSocket(ws)  => ::worker::Response::from_websocket(ws),
+            
         }.expect("failed to convert Ohkami Response to Workers one")
     }
 }

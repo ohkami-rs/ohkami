@@ -7,8 +7,8 @@ use std::borrow::Cow;
 pub struct Headers {
     standard:  IndexMap<N_SERVER_HEADERS, Cow<'static, str>>,
     custom:    Option<Box<TupleMap<&'static str, Cow<'static, str>>>>,
-    setcookie: Option<Box<Vec<Cow<'static, str>>>>,
-    pub(crate) size: usize,
+    pub(super) setcookie: Option<Box<Vec<Cow<'static, str>>>>,
+    pub(super) size: usize,
 }
 
 pub struct SetHeaders<'set>(
@@ -435,7 +435,7 @@ impl Headers {
             ))
     }
 
-    pub(crate) fn iter(&self) -> impl Iterator<Item = (&str, &str)> {
+    pub fn iter(&self) -> impl Iterator<Item = (&str, &str)> {
         self.iter_standard()
             .chain(self.custom.as_ref()
                 .into_iter()
@@ -446,6 +446,22 @@ impl Headers {
                 .flatten()
                 .map(|sc| ("Set-Cookie", sc))
             )
+    }
+    pub fn into_iter(self) -> impl Iterator<Item = (&'static str, Cow<'static, str>)> {
+        let standard = self.standard.into_iter()
+            .map(|(i, v)| (
+                unsafe {std::mem::transmute::<_, Header>(i as u8)}.as_str(),
+                v
+            ));
+        let custom = self.custom.into_iter()
+            .flat_map(|tm|
+                tm.into_iter()
+            );
+        let setcookie = self.setcookie.into_iter()
+            .flat_map(|sc|
+                sc.into_iter().map(|sc| ("Set-Cookie", sc))
+            );
+        standard.chain(custom).chain(setcookie)
     }
 
     #[cfg(any(
@@ -515,8 +531,8 @@ const _: () = {
     impl Headers {
         pub fn from_iter(iter: impl IntoIterator<Item = (
             &'static str,
-            impl Into<Cow<'static, str>>)>
-        ) -> Self {
+            impl Into<Cow<'static, str>
+        >)>) -> Self {
             let mut this = Headers::new();
             for (k, v) in iter {
                 match Header::from_bytes(k.as_bytes()) {

@@ -1,3 +1,5 @@
+#![cfg(feature="__rt_native__")]
+
 pub use mews::{
     Message,
     CloseCode, CloseFrame,
