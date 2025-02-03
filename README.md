@@ -8,7 +8,7 @@
 - *macro-less and type-safe* APIs for intuitive and declarative code
 - *various runtimes* are supported：`tokio`, `async-std`, `smol`, `nio`, `glommio` and `worker` (Cloudflare Workers), `lambda` (AWS Lambda)
 - *extremely fast*：[Web Frameworks Benchmark](https://web-frameworks-benchmark.netlify.app/result)
-- no-network testing, well-structured middlewares, Server-Sent Events, WebSocket, OpenAPI document genration, ...
+- no-network testing, well-structured middlewares, Server-Sent Events, WebSocket, OpenAPI document generation, ...
 
 <div align="right">
     <a href="https://github.com/ohkami-rs/ohkami/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/crates/l/ohkami.svg" /></a>
@@ -127,7 +127,7 @@ cargo lambda deploy [--role ＜arn-of-a-iam-role＞]
 
 See
 
-* README of [template](https://github.com/ohkami-rs/ohkami-templates/tree/main/lambda)
+* README of [template](https://github.com/ohkami-rs/ohkami-templates/tree/main/template)
 * [Cargo Lambda document](https://www.cargo-lambda.info)
 
 for details.
@@ -187,7 +187,7 @@ async fn main() {
 }
 ```
 
-* On `"rt_worker"`, WebSocket on or not on Durable Object is available!
+* On `"rt_worker"`, both normal ( stateless ) WebSocket and WebSocket on Durable Object are available!
 * On `"rt_lambda"`, WebSocket is currently not supported.
 
 ### `"openapi"` : OpenAPI document generation
