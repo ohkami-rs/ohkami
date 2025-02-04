@@ -13,8 +13,6 @@ use crate::{__rt__, Session};
 
 /// # Ohkami - a smart wolf who serves your web app
 /// 
-/// <br>
-/// 
 /// *example.rs*
 /// ```
 /// # use ohkami::prelude::*;
@@ -99,16 +97,14 @@ use crate::{__rt__, Session};
 /// 
 /// <br>
 /// 
-/// #### handler schema :
+/// ### handler schema
 /// `async ({path params}?, {FromRequest type}s...) -> {IntoResponse type}`
 /// 
-/// #### path params :
+/// ### path params
 /// A tuple of types that implement `FromParam` trait e.g. `(&str, usize)`.\
 /// If the path contains only one parameter, then you can omit the tuple \
 /// e.g. just `param: &str`.\
 /// (Current ohkami handles at most *2* path params.)
-/// 
-/// <br>
 /// 
 /// ```
 /// use ohkami::prelude::*;
@@ -156,7 +152,7 @@ impl Ohkami {
     /// # 
     /// # let _ =
     /// (
-    ///     // 0 or more fangs of this Ohkami
+    ///     // 0 or more `Fang`s of this Ohkami
     ///     Logger,
     ///     Auth,
     ///     
@@ -170,10 +166,10 @@ impl Ohkami {
     /// # ;
     /// ```
     /// 
-    /// #### handler :
+    /// ### handler
     /// `async ({path params}?, {FromRequest type}s...) -> {IntoResponse type}`
     /// 
-    /// #### path params :
+    /// ### path params
     /// A tuple of types that implement `FromParam` trait e.g. `(&str, usize)`.\
     /// If the path contains only one parameter, then you can omit the tuple \
     /// e.g. just `param: &str`.\
@@ -212,8 +208,6 @@ impl Ohkami {
         this
     }
     /// Create Ohkami by the fangs and routing
-    /// 
-    /// ### note
     /// 
     /// This is almost the same as [`Ohkami::new`](crate::Ohkami::new), but
     /// takes fangs and handler routes separately.
@@ -254,8 +248,6 @@ impl Ohkami {
     /// environment variable.
     /// 
     /// <br>
-    /// 
-    /// ---
     /// 
     /// *example.rs*
     /// ```no_run

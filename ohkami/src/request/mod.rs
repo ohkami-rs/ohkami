@@ -51,13 +51,11 @@ pub(crate) const PAYLOAD_LIMIT: usize = 1 << 32;
 /// - `payload`
 /// - `ip`
 /// 
-/// and a `memory`.
+/// and a `context`.
 /// 
 /// <br>
 /// 
-/// ## Usages
-/// 
-/// ---
+/// ## Usage
 /// 
 /// *in_fang.rs*
 /// ```no_run
@@ -108,9 +106,7 @@ pub struct Request {
     pub(super/* for test */) __query__: std::mem::MaybeUninit<Box<str>>,
 
     /// HTTP method of this request
-    /// 
-    /// ---
-    /// 
+    ///
     /// **Note** : In current version, custom HTTP methods are *not supported*,
     /// in other words, now Ohkami just knows `GET`, `PUT`, `POST`, `PATCH`,
     /// `DELETE`, `HEAD`, `OPTIONS`.
@@ -120,8 +116,6 @@ pub struct Request {
     /// 
     /// - `.params()` to iterate path params
     /// - `.str()` to ( URL-decode and ) get as `&str`
-    /// 
-    /// ---
     /// 
     /// **Note** : In current version, path with schema and origin in request line
     /// is *not supported*, in other words, now Ohkami just handles requests like
@@ -134,8 +128,6 @@ pub struct Request {
     /// with `ohkami::format::Query` is recommended for *type-safe*
     /// query parsing.
     /// 
-    /// ---
-    /// 
     /// **Note** : Ohkami doesn't support multiple same query keys having each value
     /// like `?ids=1&ids=17&ids=42`.
     /// Please use, for instance, comma-separated format like
@@ -144,10 +136,8 @@ pub struct Request {
 
     /// Headers of this request
     /// 
-    /// - `.{Name}()`, `.get("{Name}")` to get the value
-    /// - `.set().{Name}({action})`, `.set().x("{Name}", {action})` to mutate the values
-    /// 
-    /// ---
+    /// - `.{Name}()`, `.get("{Name}")` to get value
+    /// - `.set().{Name}({action})`, `.set().x("{Name}", {action})` to mutate values
     /// 
     /// `{action}`:
     /// - just `{value}` to insert
@@ -168,7 +158,8 @@ pub struct Request {
     #[cfg(feature="__rt__")]
     /// Remote ( directly connected ) peer's IP address
     /// 
-    /// ---
+    /// Default value is `0.0.0.0`. this will be seen in testing or when Cloudlare Workers
+    /// doesn't show ip.
     /// 
     /// **NOTE** : If a proxy is in front of Ohkami, this will be the proxy's address
     pub ip: std::net::IpAddr,

@@ -358,26 +358,24 @@ pub fn Deserialize(data: proc_macro::TokenStream) -> proc_macro::TokenStream {
         .into()
 }
 
-/// # `#[derive(FromRequest)]`
-/// 
-/// Automatically impl `FromRequest` for a struct composed of
+/// Deriving `FromRequest` impl for a struct composed of
 /// `FromRequest` types
 /// 
 /// <br>
 /// 
 /// *example.rs*
 /// ```ignore
-/// use ohkami::FromRequest;
+/// use ohkami::fang::Context;
 /// use sqlx::PgPool;
 /// 
-/// #[derive(FromRequest)]
+/// #[derive(ohkami::FromRequest)]
 /// struct MyItems1<'req> {
-///     db: ohkami::Memory<'req, PgPool>,
+///     db: Context<'req, PgPool>,
 /// }
 /// 
 /// #[derive(FromRequest)]
-/// struct MyItems2(
-///     MyItems<'req>,
+/// struct MyItems2<'req>(
+///     MyItems1<'req>,
 /// );
 /// ```
 #[proc_macro_derive(FromRequest)]
