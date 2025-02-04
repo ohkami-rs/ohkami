@@ -260,7 +260,7 @@ pub fn DurableObject(args: proc_macro::TokenStream, input: proc_macro::TokenStre
 ///   For that, all you have to do is just **deleting `;` and immediate restoring it**.
 #[proc_macro_attribute]
 pub fn bindings(env_name: proc_macro::TokenStream, bindings_struct: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    worker::bindings(env.into(), bindings_struct.into())
+    worker::bindings(env_name.into(), bindings_struct.into())
         .unwrap_or_else(syn::Error::into_compile_error)
         .into()
 }
