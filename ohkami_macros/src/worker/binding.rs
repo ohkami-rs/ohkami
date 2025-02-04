@@ -55,15 +55,15 @@ impl Binding {
     pub fn collect_from_env(env: &toml::Table) -> Result<Vec<(Ident, Self)>, syn::Error> {
         fn invalid_wrangler_toml() -> syn::Error {
             syn::Error::new(
-                "Invalid wrangler.toml: a binding doesn't have `binding = \"...\"`, or some unexpected structure",
-                Span::call_site()
+                Span::call_site(),
+                "Invalid wrangler.toml: a binding doesn't have `binding = \"...\"`, or some unexpected structure"
             )
         }
 
         fn invalid_name(name: &str) -> syn::Error {
             syn::Error::new(
-                format!("Can't bind binding `{name}` into Rust struct field"),
-                Span::call_site()
+                Span::call_site(),
+                format!("Can't bind binding `{name}` into Rust struct field")
             )
         }
 
@@ -73,8 +73,9 @@ impl Binding {
             t.get(field)
                 .and_then(|b| b.as_str())
                 .ok_or_else(invalid_wrangler_toml)
-                .and_then(|b| syn::parse_str::<Ident>(name))
-                .map_err(|_| invalid_name(name))
+                .and_then(|name| syn::parse_str::<Ident>(name)
+                    .map_err(|_| invalid_name(name))
+                )
         }
 
         fn binding_of(t: &toml::Table) -> Result<Ident, syn::Error> {
@@ -84,10 +85,10 @@ impl Binding {
             get_field_as_ident(t, "name")
         }
 
-        fn table_array(a: &toml::Array) -> Result<impl IntoIterator<Item = &toml::Table>, syn::Error> {
+        fn table_array(a: &toml::value::Array) -> Result<impl IntoIterator<Item = &toml::Table>, syn::Error> {
             a.iter()
                 .map(|v| v.as_table().ok_or_else(invalid_wrangler_toml))
-                .collect()
+                .collect::<Result<Vec<_>, _>>()
         }
 
         ///////////////////////////////////////////////////////////////////////////////////////////
@@ -96,11 +97,14 @@ impl Binding {
 
         if let Some(toml::Value::Table(vars)) = env.get("vars") {
             for (name, value) in vars {
-                let value = value.as_str().ok_or_else(|| callsite("`#[bindings]` doesn't support JSON values in `vars` binding"))?;
-                bindings.push((
-                    syn::parse_str(name).map_err(|_| invalid_name(name))?,
-                    Self::Variable(value.into())
-                ))
+                let name = syn::parse_str(name).map_err(|_| invalid_name(name))?;
+                let value = value.as_str()
+                    .ok_or_else(|| syn::Error::new(
+                        Span::call_site(),
+                        "`#[bindings]` doesn't support JSON values in `vars` binding"
+                    ))?
+                    .to_owned();
+                bindings.push((name, Self::Variable(value)))
             }
         }
         if let Some(toml::Value::Table(ai)) = env.get("ai") {

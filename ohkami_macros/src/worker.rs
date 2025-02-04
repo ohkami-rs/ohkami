@@ -7,11 +7,11 @@ mod binding;
 use crate::util;
 
 use proc_macro2::{Span, TokenStream};
-use syn::{spanned::Spanned, Error, Ident, ItemFn, ItemStruct, Result};
 use quote::quote;
+use syn::{spanned::Spanned, Error, Ident, ItemFn, ItemStruct, Fields, LitStr};
 
 
-pub fn worker(args: TokenStream, ohkami_fn: TokenStream) -> Result<TokenStream> {
+pub fn worker(args: TokenStream, ohkami_fn: TokenStream) -> Result<TokenStream, syn::Error> {
     let worker_meta: meta::WorkerMeta = syn::parse2(args)?;
     let ohkami_fn: ItemFn = syn::parse2(ohkami_fn)?;
 
@@ -87,7 +87,7 @@ pub fn worker(args: TokenStream, ohkami_fn: TokenStream) -> Result<TokenStream> 
     })
 }
 
-pub fn bindings(env_name: TokenStream, bindings_struct: TokenStream) -> Result<TokenStream> {
+pub fn bindings(env_name: TokenStream, bindings_struct: TokenStream) -> Result<TokenStream, syn::Error> {
     use self::binding::Binding;
 
     fn callsite(msg: impl std::fmt::Display) -> Error {
@@ -97,14 +97,7 @@ pub fn bindings(env_name: TokenStream, bindings_struct: TokenStream) -> Result<T
         Error::new(Span::call_site(), "Invalid wrangler.toml")
     }
 
-    let bindings_struct: ItemStruct = syn::parse2(bindings_struct)?; {
-        if !bindings_struct.generics.params.is_empty() {
-            return Err(Error::new(
-                bindings_struct.generics.params.span(),
-                "`#[bindings]` doesn't support generics"
-            ))
-        }
-    }
+    //////////////////////////////////////////////////////////////////////////////////////////////////////
 
     let wrangler_toml: toml::Value = {use std::io::Read;
         let mut file = util::find_a_file_in_maybe_workspace("wrangler.toml")
@@ -116,7 +109,7 @@ pub fn bindings(env_name: TokenStream, bindings_struct: TokenStream) -> Result<T
             .map_err(|_| callsite("Failed to read wrangler.toml"))?
     };
 
-    let env: &toml::Table = {        
+    let env: &toml::Table = {
         let top_level = wrangler_toml.as_table().ok_or_else(invalid_wrangler_toml)?;
         let env_name: Option<Ident> = (!env_name.is_empty()).then(|| syn::parse2(env_name)).transpose()?;
         match env_name {
@@ -129,48 +122,100 @@ pub fn bindings(env_name: TokenStream, bindings_struct: TokenStream) -> Result<T
         }
     };
 
-    let name = &bindings_struct.ident;
-    let vis  = &bindings_struct.vis;
-
     let bindings: Vec<(Ident, Binding)> = Binding::collect_from_env(&env)?;
 
-    let declare_struct = {
-        let fields = bindings.iter().map(|(name, binding)| {
-            let ty = binding.tokens_ty();
-            quote! {
-                #vis #name: #ty
-            }
-        });
+    let bindings_struct: ItemStruct = syn::parse2(bindings_struct)?; {
+        if !bindings_struct.generics.params.is_empty() {
+            return Err(Error::new(
+                bindings_struct.generics.params.span(),
+                "`#[bindings]` doesn't support generics"
+            ))
+        }
+    }
 
-        quote! {
-            #[allow(non_snake_case)]
-            #vis struct #name {
-                #( #fields ),*
+    let vis  = &bindings_struct.vis;
+    let name = &bindings_struct.ident;
+
+    let named_fields = match &bindings_struct.fields {
+        Fields::Unit => None,
+        Fields::Named(n) => Some(n.named
+            .iter()
+            .map(|field| field.ident.as_ref().unwrap())
+            .collect::<Vec<_>>()
+        ),
+        Fields::Unnamed(u) => return Err(Error::new(
+            u.span(),
+            "`#[bindings]` doesn't support unnamed fields"
+        )),
+    };
+
+    let declare_struct = match &named_fields {
+        Some(n) => {
+            for field_name in n {
+                if !bindings.iter().any(|(name, _)| name == *field_name) {
+                    return Err(syn::Error::new(
+                        field_name.span(),
+                        format!("No binding named `{field_name}` found")
+                    ));
+                }
+            }
+            quote! {
+                #[allow(non_snake_case)]
+                #bindings_struct
+            }
+        }
+        None => {
+            let fields = bindings.iter().map(|(name, binding)| {
+                let ty = binding.tokens_ty();
+                quote! {
+                    #vis #name: #ty
+                }
+            });
+            quote! {
+                #[allow(non_snake_case)]
+                #vis struct #name {
+                    #( #fields ),*
+                }
             }
         }
     };
 
-    let impl_bindings = {
-        let methods = bindings.iter()
-            .filter_map(|(name, binding)| match binding {
-                Binding::Variable(var) => Some(quote! {
-                    #vis const #name: &'static str = #var;
-                }),
-                _ => None
+    let const_vars = {
+        let consts = bindings.iter()
+            .filter_map(|(name, binding)|
+                match binding {
+                    Binding::Variable(value) => Some((name, value)),
+                    _ => None
+                }
+            )
+            .filter(|(name, _)| match &named_fields {
+                None => true,
+                Some(n) => n.iter().any(|field_name| name == field_name)
+            })
+            .map(|(name, value)| {
+                let value = LitStr::new(&value, Span::call_site());
+                quote! {
+                    #vis const #name: &'static str = #value;
+                }
             });
 
         quote! {
             #[allow(non_snake_case)]
             impl #name {
-                #( #methods )*
+                #( #consts )*
             }
         }
     };
 
     let impl_from_request = {
-        let extract = bindings.iter().map(|(name, binding)| {
-            binding.tokens_extract_as_field(name)
-        });
+        let extract = bindings.iter()
+            .filter(|(name, _)| match &named_fields {
+                None => true,
+                Some(n) => n.iter().any(|field_name| name == *field_name)
+            })
+            .map(|(name, binding)| {
+                binding.tokens_extract_as_field(name)
+            });
 
         quote! {
             impl<'req> ::ohkami::FromRequest<'req> for #name {
@@ -188,23 +233,27 @@ pub fn bindings(env_name: TokenStream, bindings_struct: TokenStream) -> Result<T
         }
     };
 
-    let impl_send_sync = (!bindings.is_empty()).then_some(
-        quote! {
+    let impl_send_sync = if
+        bindings.is_empty() || named_fields.is_some_and(|n| n.is_empty())
+    {
+        None
+    } else {
+        Some(quote! {
             unsafe impl ::std::marker::Send for #name {}
             unsafe impl ::std::marker::Sync for #name {}
-        }
-    );
+        })
+    };
 
     Ok(quote! {
         #declare_struct
-        #impl_bindings
+        #const_vars
         #impl_from_request
         #impl_send_sync
     })
 }
 
 #[allow(non_snake_case)]
-pub fn DurableObject(args: TokenStream, object: TokenStream) -> syn::Result<TokenStream> {
+pub fn DurableObject(args: TokenStream, object: TokenStream) -> Result<TokenStream, syn::Error> {
     use self::durable::{DurableObjectType, bindgen_methods};
 
     let durable_object_type = (!args.is_empty())
