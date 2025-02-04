@@ -181,7 +181,64 @@ pub fn DurableObject(args: proc_macro::TokenStream, input: proc_macro::TokenStre
 /// - Binded struct implements `FromRequest` and it can be used as an
 ///   handler argument
 /// 
-/// _**note**_ : `#[bindings]` supports
+/// <br>
+/// 
+/// ## 2 ways of binding
+/// 
+/// following wrangler.toml for example :
+/// 
+/// ```ignore
+/// [[kv_namespaces]]
+/// binding = "MY_KV"
+/// id      = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+/// ```
+/// 
+/// ### Auto binding mode
+/// 
+/// For **unit struct**, `#[bindings]` automatically collects **all** bindings from
+/// your *wrangler.toml* and generates fields for them.
+/// 
+/// ```ignore
+/// #[ohkami::bindings]
+/// struct Bindings;
+/// 
+/// async fn handler(b: Bindings) -> String {
+///     let data = b.MY_KV.get("data").text().await
+///         .expect("Failed to get data");
+/// 
+///     //...
+/// }
+/// ```
+/// 
+/// ### Manual binding mode
+/// 
+/// For **struct with named fields**, `#[bindings]` just collects bindings
+/// that have the **same name as its fields** from  your *wrangler.toml*,
+/// 
+/// In this way, types in `ohkami::bindings` module are useful to avoid
+/// inconsistency and unclear namings of `worker` crate's binding types.
+/// 
+/// ```ignore
+/// use ohkami::bindings;
+/// 
+/// #[bindings]
+/// struct Bindings {
+///     MY_KV: bindings::KV,
+/// }
+/// 
+/// async fn handler(b: Bindings) -> String {
+///     let data = b.MY_KV.get("data").text().await
+///         .expect("Failed to get data");
+/// 
+///     //...
+/// }
+/// ```
+/// 
+/// <br>
+/// 
+/// ## Note
+/// 
+/// `#[bindings]` currently supports
 /// 
 /// - AI
 /// - KV
@@ -192,43 +249,17 @@ pub fn DurableObject(args: proc_macro::TokenStream, input: proc_macro::TokenStre
 /// - Variables
 /// - Durable Objects
 /// 
-/// in cuurent version.
-/// ( secrets are not written in wrangler.toml... )
-/// 
 /// <br>
 /// 
-/// ---
-/// *wrangler.toml*
-/// ```ignore
-/// [[kv_namespaces]]
-/// binding = "MY_KV"
-/// id      = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-/// ```
-/// ---
-/// *lib.rs*
-/// ```ignore
-/// #[bindings]
-/// struct Bindings;
+/// ## Tips
 /// 
-/// async fn handler(b: Bindings) -> String {
-///     let data = b.MY_KV.get("data").text().await
-///         .expect("Failed to get data");
-/// 
-///     //...
-/// }
-/// ```
-/// ---
-/// 
-/// <br>
-/// 
-/// _**tips**_ :
-/// 
-/// - You can switch between multiple `env`s by feature flags like `#[cfg_attr(feature = "...", bindings(env_name))]`
+/// - You can switch between multiple `env`s by feature flags
+///   like `#[cfg_attr(feature = "...", bindings(env_name))]`.
 /// - For `rust-analyzer` user : When you edit wrangler.toml around bindings,
-///   you'll need to reload `#[bindings] struct ...;` to notice the new bindings to rust-analyer.
-///   For that, what you have to do is just **deleting `;` and immediate restoring it**.
+///   you'll need to notify the change of `#[bindings]` if you're using auto binding mode.
+///   For that, all you have to do is just **deleting `;` and immediate restoring it**.
 #[proc_macro_attribute]
-pub fn bindings(env: proc_macro::TokenStream, bindings_struct: proc_macro::TokenStream) -> proc_macro::TokenStream {
+pub fn bindings(env_name: proc_macro::TokenStream, bindings_struct: proc_macro::TokenStream) -> proc_macro::TokenStream {
     worker::bindings(env.into(), bindings_struct.into())
         .unwrap_or_else(syn::Error::into_compile_error)
         .into()

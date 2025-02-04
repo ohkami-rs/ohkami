@@ -200,7 +200,7 @@ pub fn bindings(env_name: TokenStream, bindings_struct: TokenStream) -> Result<T
             });
 
         quote! {
-            #[allow(non_snake_case)]
+            #[allow(non_upper_case_globals)]
             impl #name {
                 #( #consts )*
             }
