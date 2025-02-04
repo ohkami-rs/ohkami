@@ -1,5 +1,14 @@
-#[ohkami::bindings]
-struct Bindings;
+use ohkami::bindings;
+
+#[bindings]
+struct AutoBindings;
+
+#[bindings]
+struct ManualBindings {
+    VARIABLE_1: bindings::Var,
+    DB: bindings::D1,
+    MY_KVSTORE: bindings::KV,
+}
 
 macro_rules! static_assert_eq_str {
     ($left:expr, $right:literal) => {
@@ -19,12 +28,12 @@ macro_rules! static_assert_eq_str {
     };
 }
 
-fn __test_bindings__(bindings: Bindings) {
+fn __test_auto_bindings__(bindings: AutoBindings) {
     fn assert_send_sync<T: Send + Sync>() {}
-    assert_send_sync::<Bindings>();
+    assert_send_sync::<AutoBindings>();
 
-    static_assert_eq_str!(Bindings::VARIABLE_1, "hoge");
-    static_assert_eq_str!(Bindings::VARIABLE_2, "super fun");
+    static_assert_eq_str!(AutoBindings::VARIABLE_1, "hoge");
+    static_assert_eq_str!(AutoBindings::VARIABLE_2, "super fun");
 
     let _: worker::Ai = bindings.INTELIGENT;
 
@@ -39,4 +48,15 @@ fn __test_bindings__(bindings: Bindings) {
     let _: worker::Queue = bindings.MY_QUEUE;
 
     let _: worker::ObjectNamespace = bindings.RATE_LIMITER;
+}
+
+fn __test_manual_bindings__(bindings: ManualBindings) {
+    fn assert_send_sync<T: Send + Sync>() {}
+    assert_send_sync::<ManualBindings>();
+
+    static_assert_eq_str!(ManualBindings::VARIABLE_1, "hoge");
+
+    let _: worker::D1Database = bindings.DB;
+
+    let _: worker::kv::KvStore = bindings.MY_KVSTORE;
 }

@@ -1,7 +1,18 @@
 #![cfg(feature="rt_worker")]
 
 pub use ::ohkami_macros::{worker, bindings, DurableObject};
-    
+
+pub mod bindings {
+    pub type Var           = &'static str;
+    pub type AI            = ::worker::Ai;
+    pub type KV            = ::worker::kv::KvStore;
+    pub type R2            = ::worker::Bucket;
+    pub type Service       = ::worker::Fetcher;
+    pub type DurableObject = ::worker::ObjectNamespace;
+    pub type D1            = ::worker::d1::D1Database;
+    pub type Queue         = ::worker::Queue;
+}
+
 #[doc(hidden)]
 #[allow(non_camel_case_types)]
 pub trait has_DurableObject_attribute {}

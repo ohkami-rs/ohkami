@@ -76,7 +76,7 @@ rt_glommio = ["__rt_native__",
     "dep:num_cpus",
 ]
 rt_worker = ["__rt__",
-    "dep:worker",
+    "dep:worker", "worker/d1", "worker/queue",
     "ohkami_macros/worker",
 ]
 rt_lambda = ["__rt__",

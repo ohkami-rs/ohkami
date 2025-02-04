@@ -2,14 +2,16 @@
 
 mod meta;
 mod durable;
+mod binding;
 
 use crate::util;
+
 use proc_macro2::{Span, TokenStream};
-use syn::{spanned::Spanned, Error, Ident, ItemFn, ItemStruct, Result};
 use quote::quote;
+use syn::{spanned::Spanned, Error, Ident, ItemFn, ItemStruct, Fields, LitStr};
 
 
-pub fn worker(args: TokenStream, ohkami_fn: TokenStream) -> Result<TokenStream> {
+pub fn worker(args: TokenStream, ohkami_fn: TokenStream) -> Result<TokenStream, syn::Error> {
     let worker_meta: meta::WorkerMeta = syn::parse2(args)?;
     let ohkami_fn: ItemFn = syn::parse2(ohkami_fn)?;
 
@@ -85,7 +87,9 @@ pub fn worker(args: TokenStream, ohkami_fn: TokenStream) -> Result<TokenStream> 
     })
 }
 
-pub fn bindings(env: TokenStream, bindings_struct: TokenStream) -> Result<TokenStream> {
+pub fn bindings(env_name: TokenStream, bindings_struct: TokenStream) -> Result<TokenStream, syn::Error> {
+    use self::binding::Binding;
+
     fn callsite(msg: impl std::fmt::Display) -> Error {
         Error::new(Span::call_site(), msg)
     }
@@ -93,23 +97,7 @@ pub fn bindings(env: TokenStream, bindings_struct: TokenStream) -> Result<TokenS
         Error::new(Span::call_site(), "Invalid wrangler.toml")
     }
 
-    let env: Option<Ident> = (!env.is_empty()).then(|| syn::parse2(env)).transpose()?;
-
-    let bindings_struct: ItemStruct = syn::parse2(bindings_struct)?; {
-        if !bindings_struct.generics.params.is_empty() {
-            return Err(Error::new(
-                bindings_struct.generics.params.span(),
-                "`#[bindings]` doesn't support generics"
-            ))
-        }
-        if !bindings_struct.fields.is_empty() {
-            return Err(Error::new(
-                bindings_struct.span(),
-                "`#[bindings]` doesn't support input structs with fields. \
-                Use unit struct like `struct Bindings;`."
-            ))
-        }
-    }
+    //////////////////////////////////////////////////////////////////////////////////////////////////////
 
     let wrangler_toml: toml::Value = {use std::io::Read;
         let mut file = util::find_a_file_in_maybe_workspace("wrangler.toml")
@@ -121,195 +109,113 @@ pub fn bindings(env: TokenStream, bindings_struct: TokenStream) -> Result<TokenS
             .map_err(|_| callsite("Failed to read wrangler.toml"))?
     };
 
-    let config: &toml::Table = {
+    let env: &toml::Table = {
         let top_level = wrangler_toml.as_table().ok_or_else(invalid_wrangler_toml)?;
-        match env {
+        let env_name: Option<Ident> = (!env_name.is_empty()).then(|| syn::parse2(env_name)).transpose()?;
+        match env_name {
             None      => top_level,
-            Some(env) => top_level
-                .get("env").ok_or_else(|| callsite(format!("env `{env}` is not found in wrangler.toml")))?
-                .as_table().ok_or_else(invalid_wrangler_toml)?
-                .get(&env.to_string()).ok_or_else(|| callsite(format!("env `{env}` is not found in wrangler.toml")))?
-                .as_table().ok_or_else(invalid_wrangler_toml)?
+            Some(env) => top_level.get("env")
+                .and_then(|e| e.as_table())
+                .and_then(|t| t.get(&env.to_string()))
+                .and_then(|e| e.as_table())
+                .ok_or_else(|| callsite(format!("env `{env}` is not found in wrangler.toml")))?
         }
     };
 
-    enum Binding {
-        Variable(String),
-        AI,
-        D1,
-        KV,
-        R2,
-        Service,
-        Queue,
-        DurableObject,
-    }
+    let bindings: Vec<(Ident, Binding)> = Binding::collect_from_env(&env)?;
 
-    let name = &bindings_struct.ident;
-    let vis  = &bindings_struct.vis;
-
-    let bindings: Vec<(Ident, Binding)> = {
-        let mut bindings = Vec::new();
-
-        if let Some(toml::Value::Table(vars)) = config.get("vars") {
-            for (name, value) in vars {
-                let value = value.as_str().ok_or_else(|| callsite("`#[bindings]` doesn't support JSON values in `vars` binding"))?;
-                bindings.push((
-                    syn::parse_str(name).map_err(|e| callsite(format!("Can't bind binding `{name}` into struct: {e}")))?,
-                    Binding::Variable(value.into())
-                ))
-            }
-        }
-        if let Some(toml::Value::Table(ai)) = config.get("ai") {
-            let name = ai
-                .get("binding").ok_or_else(|| callsite("Invalid wrangler.toml: a binding doesn't have `binding = \"...\"`"))?
-                .as_str().ok_or_else(invalid_wrangler_toml)?;
-            bindings.push((
-                syn::parse_str(name).map_err(|e| callsite(format!("Can't bind binding `{name}` into struct: {e}")))?,
-                Binding::AI
+    let bindings_struct: ItemStruct = syn::parse2(bindings_struct)?; {
+        if !bindings_struct.generics.params.is_empty() {
+            return Err(Error::new(
+                bindings_struct.generics.params.span(),
+                "`#[bindings]` doesn't support generics"
             ))
         }
-        if let Some(toml::Value::Array(d1_databases)) = config.get("d1_databases") {
-            for binding in d1_databases {
-                let name = binding.as_table().ok_or_else(invalid_wrangler_toml)?
-                    .get("binding").ok_or_else(|| callsite("Invalid wrangler.toml: a binding doesn't have `binding = \"...\"`"))?
-                    .as_str().ok_or_else(invalid_wrangler_toml)?;
-                bindings.push((
-                    syn::parse_str(name).map_err(|e| callsite(format!("Can't bind binding `{name}` into struct: {e}")))?,
-                    Binding::D1
-                ))
-            }
-        }
-        if let Some(toml::Value::Array(kv_namespaces)) = config.get("kv_namespaces") {
-            for binding in kv_namespaces {
-                let name = binding.as_table().ok_or_else(invalid_wrangler_toml)?
-                    .get("binding").ok_or_else(|| callsite("Invalid wrangler.toml: a binding doesn't have `binding = \"...\"`"))?
-                    .as_str().ok_or_else(invalid_wrangler_toml)?;
-                bindings.push((
-                    syn::parse_str(name).map_err(|e| callsite(format!("Can't bind binding `{name}` into struct: {e}")))?,
-                    Binding::KV
-                ))
-            }
-        }
-        if let Some(toml::Value::Array(r2_buckets)) = config.get("r2_buckets") {
-            for binding in r2_buckets {
-                let name = binding.as_table().ok_or_else(invalid_wrangler_toml)?
-                    .get("binding").ok_or_else(|| callsite("Invalid wrangler.toml: a binding doesn't have `binding = \"...\"`"))?
-                    .as_str().ok_or_else(invalid_wrangler_toml)?;
-                bindings.push((
-                    syn::parse_str(name).map_err(|e| callsite(format!("Can't bind binding `{name}` into struct: {e}")))?,
-                    Binding::R2
-                ))
-            }
-        }
-        if let Some(toml::Value::Array(services)) = config.get("services") {
-            for binding in services {
-                let name = binding.as_table().ok_or_else(invalid_wrangler_toml)?
-                    .get("binding").ok_or_else(|| callsite("Invalid wrangler.toml: a binding doesn't have `binding = \"...\"`"))?
-                    .as_str().ok_or_else(invalid_wrangler_toml)?;
-                bindings.push((
-                    syn::parse_str(name).map_err(|e| callsite(format!("Can't bind binding `{name}` into struct: {e}")))?,
-                    Binding::Service
-                ))
-            }
-        }
-        if let Some(toml::Value::Table(queues)) = config.get("queues") {
-            if let Some(toml::Value::Array(producers)) = queues.get("producers") {
-                for binding in producers {
-                    let name = binding.as_table().ok_or_else(invalid_wrangler_toml)?
-                        .get("binding").ok_or_else(|| callsite("Invalid wrangler.toml: a binding doesn't have `binding = \"...\"`"))?
-                        .as_str().ok_or_else(invalid_wrangler_toml)?;
-                    bindings.push((
-                        syn::parse_str(name).map_err(|e| callsite(format!("Can't bind binding `{name}` into struct: {e}")))?,
-                        Binding::Queue
-                    ))
-                }
-            }
-        }
-        if let Some(toml::Value::Table(durable_objects)) = config.get("durable_objects") {
-            if let Some(toml::Value::Array(durable_object_bindings)) = durable_objects.get("bindings") {
-                for binding in durable_object_bindings {
-                    let name = binding.as_table().ok_or_else(invalid_wrangler_toml)?
-                        .get("name").ok_or_else(|| callsite("Invalid wrangler.toml: a binding doesn't have `binding = \"...\"`"))?
-                        .as_str().ok_or_else(invalid_wrangler_toml)?;
-                    bindings.push((
-                        syn::parse_str(name).map_err(|e| callsite(format!("Can't bind binding `{name}` into struct: {e}")))?,
-                        Binding::DurableObject
-                    ))
-                }
-            }
-        }
+    }
 
-        bindings
+    let vis  = &bindings_struct.vis;
+    let name = &bindings_struct.ident;
+
+    let named_fields = match &bindings_struct.fields {
+        Fields::Unit => None,
+        Fields::Named(n) => Some(n.named
+            .iter()
+            .map(|field| field.ident.as_ref().unwrap())
+            .collect::<Vec<_>>()
+        ),
+        Fields::Unnamed(u) => return Err(Error::new(
+            u.span(),
+            "`#[bindings]` doesn't support unnamed fields"
+        )),
     };
 
-    let declare_struct = {
-        let fields = bindings.iter().map(|(name, binding)| {
-            let ty = match binding {
-                Binding::Variable(_)   => quote!(&'static str),
-                Binding::AI            => quote!(::worker::Ai),
-                Binding::D1            => quote!(::worker::d1::D1Database),
-                Binding::KV            => quote!(::worker::kv::KvStore),
-                Binding::R2            => quote!(::worker::Bucket),
-                Binding::Queue         => quote!(::worker::Queue),
-                Binding::Service       => quote!(::worker::Fetcher),
-                Binding::DurableObject => quote!(::worker::ObjectNamespace),
-            };
-
+    let declare_struct = match &named_fields {
+        Some(n) => {
+            for field_name in n {
+                if !bindings.iter().any(|(name, _)| name == *field_name) {
+                    return Err(syn::Error::new(
+                        field_name.span(),
+                        format!("No binding named `{field_name}` found")
+                    ));
+                }
+            }
             quote! {
-                #vis #name: #ty
+                #[allow(non_snake_case)]
+                #bindings_struct
             }
-        });
-
-        quote! {
-            #[allow(non_snake_case)]
-            #vis struct #name {
-                #( #fields ),*
+        }
+        None => {
+            let fields = bindings.iter().map(|(name, binding)| {
+                let ty = binding.tokens_ty();
+                quote! {
+                    #vis #name: #ty
+                }
+            });
+            quote! {
+                #[allow(non_snake_case)]
+                #vis struct #name {
+                    #( #fields ),*
+                }
             }
         }
     };
 
-    let impl_bindings = {
-        let methods = bindings.iter()
-            .filter_map(|(name, binding)| match binding {
-                Binding::Variable(var) => Some(quote! {
-                    #vis const #name: &'static str = #var;
-                }),
-                _ => None
+    let const_vars = {
+        let consts = bindings.iter()
+            .filter_map(|(name, binding)|
+                match binding {
+                    Binding::Variable(value) => Some((name, value)),
+                    _ => None
+                }
+            )
+            .filter(|(name, _)| match &named_fields {
+                None => true,
+                Some(n) => n.iter().any(|field_name| name == field_name)
+            })
+            .map(|(name, value)| {
+                let value = LitStr::new(&value, Span::call_site());
+                quote! {
+                    #vis const #name: &'static str = #value;
+                }
             });
 
         quote! {
-            #[allow(non_snake_case)]
+            #[allow(non_upper_case_globals)]
             impl #name {
-                #( #methods )*
+                #( #consts )*
             }
         }
     };
 
     let impl_from_request = {
-        let extract = bindings.iter().map(|(name, binding)| {
-            let name_str = name.to_string();
-
-            let from_env = |get: TokenStream| quote! {
-                #name: match req.env().#get {
-                    Ok(binding) => binding,
-                    Err(e) => {
-                        ::worker::console_error!("{e}");
-                        return ::std::option::Option::Some(::std::result::Result::Err(::ohkami::Response::InternalServerError()));
-                    }
-                }
-            };
-
-            match binding {
-                Binding::Variable(value) => quote! { #name: #value },
-                Binding::AI              => from_env(quote! { ai(#name_str) }),
-                Binding::D1              => from_env(quote! { d1(#name_str) }),
-                Binding::KV              => from_env(quote! { kv(#name_str) }),
-                Binding::R2              => from_env(quote! { bucket(#name_str) }),
-                Binding::Queue           => from_env(quote! { queue(#name_str) }),
-                Binding::Service         => from_env(quote! { service(#name_str) }),
-                Binding::DurableObject   => from_env(quote! { durable_object(#name_str) }),
-            }
-        });
+        let extract = bindings.iter()
+            .filter(|(name, _)| match &named_fields {
+                None => true,
+                Some(n) => n.iter().any(|field_name| name == *field_name)
+            })
+            .map(|(name, binding)| {
+                binding.tokens_extract_as_field(name)
+            });
 
         quote! {
             impl<'req> ::ohkami::FromRequest<'req> for #name {
@@ -327,23 +233,27 @@ pub fn bindings(env: TokenStream, bindings_struct: TokenStream) -> Result<TokenS
         }
     };
 
-    let impl_send_sync = (!bindings.is_empty()).then_some(
-        quote! {
+    let impl_send_sync = if
+        bindings.is_empty() || named_fields.is_some_and(|n| n.is_empty())
+    {
+        None
+    } else {
+        Some(quote! {
             unsafe impl ::std::marker::Send for #name {}
             unsafe impl ::std::marker::Sync for #name {}
-        }
-    );
+        })
+    };
 
     Ok(quote! {
         #declare_struct
-        #impl_bindings
+        #const_vars
         #impl_from_request
         #impl_send_sync
     })
 }
 
 #[allow(non_snake_case)]
-pub fn DurableObject(args: TokenStream, object: TokenStream) -> syn::Result<TokenStream> {
+pub fn DurableObject(args: TokenStream, object: TokenStream) -> Result<TokenStream, syn::Error> {
     use self::durable::{DurableObjectType, bindgen_methods};
 
     let durable_object_type = (!args.is_empty())
