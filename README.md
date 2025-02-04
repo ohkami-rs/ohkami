@@ -92,6 +92,8 @@ Local dev by `npm run dev` and deploy by `npm run deploy` !
 
 See README of [template](https://github.com/ohkami-rs/ohkami-templates/tree/main/worker) for details.
 
+Or, here are [Workers + OpenAPI template](https://github.com/ohkami-rs/ohkami-templates/tree/main/worker-openapi) and [Workers + SPA with Yew template](https://github.com/ohkami-rs/ohkami-templates/tree/main/worker_yew_spa).
+
 ### `"rt_lambda"` : AWS Lambda
 
 **experimental**
@@ -121,8 +123,8 @@ cargo lambda watch
 and deploy by
 
 ```sh
-cargo lambda build --release [--compiler cargo]
-cargo lambda deploy [--role ＜arn-of-a-iam-role＞]
+cargo lambda build --release [--compiler cargo] [and more]
+cargo lambda deploy [--role ＜arn-of-a-iam-role＞] [and more]
 ```
 
 See
@@ -131,7 +133,6 @@ See
 * [Cargo Lambda document](https://www.cargo-lambda.info)
 
 for details.
-
 
 ### `"sse"` : Server-Sent Events
 
@@ -532,11 +533,9 @@ async fn test_my_ohkami() {
 - [x] Server-Sent Events
 - [x] WebSocket
 
-
 ## MSRV ( Minimum Supported Rust Version )
 
 Latest stable
-
 
 ## License
 

@@ -10,6 +10,55 @@ mod openapi;
 mod worker;
 
 #[cfg(feature="openapi")]
+/// # Deriving `openapi::Schema`
+/// 
+/// register the struct as a `schema` of OpenAPI document
+/// 
+/// <br>
+/// 
+/// ## Helper attributes
+/// 
+/// ### Container attributes
+/// 
+/// - `#[openapi(component)]` : define the schema in `components`
+/// 
+/// ### Field attributes
+/// 
+/// no field attributes yet
+/// 
+/// ### Variant attributes
+/// 
+/// no variant attributes yet
+/// 
+/// <br>
+/// 
+/// ## Example
+/// 
+/// ```ignore
+/// use ohkami::prelude::*;
+/// use ohkami::openapi;
+/// 
+/// #[derive(Deserialize, openapi::Schema)]
+/// struct HelloRequest<'req> {
+///     name: Option<&'req str>,
+///     repeat: Option<usize>,
+/// }
+/// 
+/// async fn hello(
+///     JSON(req): JSON<HelloRequest<'_>>,
+/// ) -> String {
+///     let name = req.name.unwrap_or("world");
+///     let repeat = req.name.repeat.unwrap_or(1);
+///     vec![format!("Hello, {name}!"); repeat].join(" ")
+/// }
+/// 
+/// #[tokio::main]
+/// async fn main() {
+///     Ohkami::new((
+///         "/hello".GET(hello),
+///     )).howl("localhost:3000").await
+/// }
+/// ```
 #[proc_macro_derive(Schema, attributes(openapi))]
 pub fn derive_schema(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     openapi::derive_schema(input.into())
