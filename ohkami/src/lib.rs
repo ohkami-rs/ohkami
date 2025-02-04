@@ -11,7 +11,7 @@
 //! - *macro-less and type-safe* APIs for intuitive and declarative code
 //! - *various runtimes* are supported：`tokio`, `async-std`, `smol`, `nio`, `glommio` and `worker` (Cloudflare Workers)
 //! - *extremely fast*：[Web Frameworks Benchmark](https://web-frameworks-benchmark.netlify.app/result)
-//! - no-network testing, well-structured middlewares, Server-Sent Events, WebSocket, OpenAPI document genration, ...
+//! - no-network testing, well-structured middlewares, Server-Sent Events, WebSocket, OpenAPI document generation, ...
 
 
 #![allow(incomplete_features)]

@@ -34,9 +34,7 @@ use crate::{sse, util::{Stream, StreamExt}};
 /// 
 /// <br>
 /// 
-/// ## Usages
-/// 
-/// ---
+/// ## Usage
 /// 
 /// *in_fang.rs*
 /// ```no_run
@@ -93,8 +91,8 @@ pub struct Response {
 
     /// Headers of this response
     /// 
-    /// - `.{Name}()`, `.get("{Name}")` to get the value
-    /// - `.set().{Name}({action})`, `.set().x("{Name}", {action})` to mutate the value
+    /// - `.{Name}()`, `.get("{Name}")` to get value
+    /// - `.set().{Name}({action})`, `.set().x("{Name}", {action})` to mutate values
     /// 
     /// ---
     /// 
