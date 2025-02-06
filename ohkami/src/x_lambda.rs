@@ -513,6 +513,8 @@ mod ws {
 
 #[cfg(feature="nightly"/* `noop_waker` is stabilized in 1.85.0 and then remove this cfg */)]
 #[cfg(test)]
+/// FIXME
+/// this is flaky; sometimes cause a timing conflict around `static ROUTER` (in ohkami/mod.rs, used for Service impl)
 mod tests {
     use super::*;
     use crate::{Ohkami, Route, Method};
