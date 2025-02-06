@@ -100,7 +100,7 @@ impl IntoResponse for Response {
 
 impl IntoResponse for Status {
     #[inline(always)] fn into_response(self) -> Response {
-        Response::of(self)
+        Response::new(self)
     }
 
     #[cfg(feature="openapi")]
