@@ -150,7 +150,7 @@ macro_rules! generate_redirects {
             impl IntoResponse for $status {
                 #[inline]
                 fn into_response(self) -> Response {
-                    let mut res = Response::of(Status::$status);
+                    let mut res = Response::new(Status::$status);
                     res.headers.set()
                         .Location(self.location);
                     res

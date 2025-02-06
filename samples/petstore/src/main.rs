@@ -158,7 +158,7 @@ struct Error {
 }
 impl IntoResponse for Error {
     fn into_response(self) -> Response {
-        Response::of(Status::from(self.status_code))
+        Response::new(Status::from(self.status_code))
             .with_json(self)
     }
     fn openapi_responses() -> openapi::Responses {

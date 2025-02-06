@@ -113,7 +113,7 @@ pub struct Response {
 
 impl Response {
     #[inline(always)]
-    pub fn of(status: Status) -> Self {
+    pub fn new(status: Status) -> Self {
         Self {
             status,
             headers: ResponseHeaders::new(),
