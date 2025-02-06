@@ -20,7 +20,7 @@
 /// 
 /// async fn sign_up(
 ///     Multipart(form): Multipart<SignUpForm<'_>>,
-///     pool: Memory<'_, PgPool>,
+///     pool: Context<'_, PgPool>,
 /// ) -> Result<String, APIError> {
 ///     //...
 /// }

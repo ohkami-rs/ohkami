@@ -112,7 +112,7 @@ Let's :
 cargo lambda new ＜project dir＞ --template https://github.com/ohkami-rs/ohkami-templates
 ```
 
-`lambda_runtime::run(your_ohkami)` make `you_ohkami` runs on Lambda Function.
+`lambda_runtime::run(your_ohkami)` make `you_ohkami` run on Lambda Function.
 
 Local dev by
 
@@ -193,7 +193,9 @@ async fn main() {
 
 ### `"openapi"` : OpenAPI document generation
 
-Ohkami supports *as consistent as possible* OpenAPI document generation, where most of the consistency between document and behavior is automatically assured by Ohkami's internal work.
+`"openapi"` provides highly integrated OpenAPI support.
+
+This enables *as consistent as possible* OpenAPI document generation, where most of the consistency between document and behavior is automatically assured by Ohkami's internal work.
 
 Only you have to
 
@@ -270,7 +272,7 @@ async fn main() {
 }
 ```
 
-- Currently, only **JSON** is supported as the document format.
+- Currently, only JSON is supported as the document format.
 - When the binary size matters, you should prepare a feature flag activating `ohkami/openapi` in your package, and put all your codes around `openapi` behind that feature via `#[cfg(feature = ...)]` or `#[cfg_attr(feature = ...)]`.
 - In `rt_worker`, `.generate` is not available because `Ohkami` can't have access to your local filesystem by `wasm32` binary on Minifalre. So ohkami provides [a CLI tool](./scripts/workers_openapi.js) to generate document from `#[ohkami::worker] Ohkami` with `openapi` feature.
 

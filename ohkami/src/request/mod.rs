@@ -153,6 +153,9 @@ pub struct Request {
 
     pub payload: Option<CowSlice>,
 
+    /// Request context.
+    /// 
+    /// `.set({T})` / `.get::<T>()` to memorize data to / retrieve it from request.
     pub context: Context,
 
     #[cfg(feature="__rt__")]

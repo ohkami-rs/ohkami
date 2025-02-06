@@ -6,7 +6,7 @@ use crate::{Response, Status};
 use crate::openapi;
 
 
-/// A trait implemented to be a return value of a handler
+/// A trait implemented to be a returned value of a handler
 /// 
 /// <br>
 /// 

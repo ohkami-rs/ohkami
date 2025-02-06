@@ -35,7 +35,7 @@ use crate::openapi;
 /// 
 /// <br>
 /// 
-/// NOTE: *MUST NOT impl both `FromRequest` and `FromParam`*.
+/// NOTE: *MUST NOT impl both `FromRequest` and `FromParam` or `FromHeader`*.
 pub trait FromRequest<'req>: Sized {
     /// If this extraction never fails, `std::convert::Infallible` is recomended.
     type Error: IntoResponse;

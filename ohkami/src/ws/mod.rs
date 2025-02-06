@@ -12,7 +12,9 @@ pub use self::worker::*;
 /// 
 /// `.upgrade` performs handshake and creates a WebSocket session.
 /// 
-/// *note* : The session is timeout in 3600 seconds ( = 1 hour )
+/// ### note
+/// 
+/// On native runtimes, the session is timeout in 3600 seconds ( = 1 hour )
 /// by default. This is configurable by `OHKAMI_WEBSOCKET_TIMEOUT`
 /// environment variable.
 /// 
