@@ -19,6 +19,8 @@ cd $SAMPLES/petstore && \
     cd client && \
         npm run gen && \
         npm run main
+# FIXME
+# this is a little flaky; sometimes cause connection refused
 test $? -ne 0 && exit 151 || :
 
 cd $SAMPLES/readme-openapi && \
