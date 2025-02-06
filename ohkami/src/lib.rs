@@ -273,6 +273,7 @@ pub mod serde {
 }
 
 #[cfg(feature="openapi")]
+/// # Highly integrated OpenAPI support for Ohkami
 pub mod openapi {
     pub use ::ohkami_openapi::*;
     pub use ::ohkami_openapi::document::Server;

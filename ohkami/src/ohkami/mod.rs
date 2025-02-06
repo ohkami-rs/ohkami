@@ -13,9 +13,11 @@ use crate::{__rt__, Session};
 
 /// # Ohkami - a smart wolf who serves your web app
 /// 
+/// ## Definition
+/// 
 /// *example.rs*
 /// ```
-/// # use ohkami::prelude::*;
+/// use ohkami::prelude::*;
 /// # use ohkami::serde::Serialize;
 /// # use ohkami::typed::status::{OK, Created};
 /// # use ohkami::format::JSON;
@@ -123,6 +125,92 @@ use crate::{__rt__, Session};
 /// 
 /// async fn handler_2(param: &str) -> Response {
 ///     todo!()
+/// }
+/// ```
+/// 
+/// <br>
+/// 
+/// ## Serving
+/// 
+/// ### native async runtimes
+/// 
+/// `.howl(address)` to start serving.
+/// 
+/// ```no_run
+/// # fn my_ohkami() -> ohkami::Ohkami {ohkami::Ohkami::new(())}
+/// # 
+/// #[tokio::main]
+/// async fn main() {
+///     let o = my_ohkami();
+///     
+///     o.howl("localhost:5000").await
+/// }
+/// ```
+/// 
+/// ### worker ( Cloudflare Workers )
+/// 
+/// - [worker](https://crates.io/crates/worker)
+/// 
+/// `#[ohkami::worker]` ( async ) fn returning `Ohkami` is the
+/// Worker definition.
+/// 
+/// ```ignore
+/// # fn my_ohkami() -> ohkami::Ohkami {ohkami::Ohkami::new(())}
+/// # 
+/// #[ohkami::worker]
+/// async fn worker() -> Ohkami {
+///     my_ohkami()
+/// }
+/// ```
+/// 
+/// ### lambda ( AWS Lambda )
+/// 
+/// - [lambda_runtime](https://crates.io/crates/lambda_runtime) ( and [tokio](https://crates.io/crates/tokio) )
+/// 
+/// Pass to `lambda_runtime::run` is the way to let your `Ohkami`
+/// work on AWS Lambda.
+/// 
+/// ```ignore
+/// # fn my_ohkami() -> ohkami::Ohkami {ohkami::Ohkami::new(())}
+/// # 
+/// #[tokio::main]
+/// async fn main() -> Result<(), lambda_runtime::Error> {
+///     lambda_runtime::run(my_ohkami()).await
+/// }
+/// ```
+/// 
+/// <br>
+/// 
+/// ## Testing
+/// 
+/// Ohkami support **no-network** testing :
+/// 
+/// ```
+/// use ohkami::prelude::*;
+/// 
+/// # fn my_ohkami() -> ohkami::Ohkami {
+/// #     ohkami::Ohkami::new(())
+/// # }
+/// 
+/// #[cfg(test)]
+/// #[tokio::test]
+/// async fn test_ohkami() {
+///     use ohkami::testing::*; // <--
+///     
+///     let t = my_ohkami()
+///         .test(); // <--
+///     
+///     {
+///         let req = TestRequest::GET("/");
+///         let res = t.oneshot(req).await;
+///         assert_eq!(res.status(), Status::OK);
+///         assert_eq!(res.text(), Some("Hello, world!"));
+///     }
+///     {
+///         let req = TestRequest::POST("/");
+///         let res = t.oneshot(req).await;
+///         assert_eq!(res.status(), Status::NotFound);
+///     }
 /// }
 /// ```
 pub struct Ohkami {
