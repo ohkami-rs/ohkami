@@ -35,7 +35,8 @@ impl QueryParams {
         }
 
         let bytes = unsafe {self.0.as_bytes()};
-        (!bytes.is_empty()).then(|| bytes
+        (if bytes.is_empty() {None} else {Some(
+            bytes
             .split(|b| b == &b'&')
             .filter_map(|kv| {
                 match kv.iter().position(|b| b == &b'=') {
@@ -61,7 +62,7 @@ impl QueryParams {
                     ))
                 }
             })
-        ).into_iter().flatten()
+        )}).into_iter().flatten()
     }
 }
 
@@ -94,6 +95,7 @@ const _: () = {
     }
 };
 
+#[cfg(not(feature="rt_worker"))]
 #[cfg(test)]
 #[test] fn query_iter() {
     let case = QueryParams(Slice::from_bytes(b"abc=def&xyz=123"));
