@@ -13,18 +13,16 @@ categories    = { workspace = true }
 license       = { workspace = true }
 
 [package.metadata.docs.rs]
-features      = ["stream", "signal"]
+features      = ["stream"]
 
 [dependencies]
 serde            = { workspace = true }
 byte_reader      = { workspace = true }
 percent-encoding = { version = "2.3" }
 futures-core     = { optional = true, version = "0.3" }
-tokio            = { optional = true, version = "1", features = ["sync", "signal"] }
 
 [features]
 stream = ["dep:futures-core"]
-signal = ["dep:tokio"]
 
 ### DEBUG ###
 #default = ["stream"]
