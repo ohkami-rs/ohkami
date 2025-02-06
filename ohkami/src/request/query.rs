@@ -23,7 +23,7 @@ impl QueryParams {
         ohkami_lib::serde_urlencoded::from_bytes(unsafe {self.0.as_bytes()})
     }
 
-    #[inline] pub fn iter(&self) -> impl Iterator<
+    pub fn iter(&self) -> impl Iterator<
         Item = (Cow<'_, str>, Cow<'_, str>)
     > {
         #[inline(always)]
@@ -34,13 +34,19 @@ impl QueryParams {
             }
         }
 
-        unsafe {self.0.as_bytes()}
-            .split(|b| b==&b'&')
+        let bytes = unsafe {self.0.as_bytes()};
+        (if bytes.is_empty() {None} else {Some(
+            bytes
+            .split(|b| b == &b'&')
             .filter_map(|kv| {
                 match kv.iter().position(|b| b == &b'=') {
                     None => {
                         #[cfg(debug_assertions)] {
-                            crate::warning!("skipping an invalid query param: missing `=`");
+                            if kv.is_empty() {
+                                crate::warning!("skipping an invalid query param: trailing `&`");
+                            } else {
+                                crate::warning!("skipping an invalid query param: missing `=`");
+                            }
                         }
                         None
                     }
@@ -56,8 +62,17 @@ impl QueryParams {
                     ))
                 }
             })
+        )}).into_iter().flatten()
     }
 }
+
+const _: () = {
+    impl std::fmt::Debug for QueryParams {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            f.debug_map().entries(self.iter()).finish()
+        }
+    }
+};
 
 #[cfg(feature="__rt_native__")]
 #[cfg(test)]
@@ -80,10 +95,44 @@ const _: () = {
     }
 };
 
-const _: () = {
-    impl std::fmt::Debug for QueryParams {
-        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            f.debug_map().entries(self.iter()).finish()
-        }
-    }
-};
+#[cfg(not(feature="rt_worker"))]
+#[cfg(test)]
+#[test] fn query_iter() {
+    let case = QueryParams(Slice::from_bytes(b"abc=def&xyz=123"));
+    assert_eq!(case.iter().collect::<Vec<_>>(), [
+        ("abc".into(), "def".into()),
+        ("xyz".into(), "123".into()),
+    ]);
+
+    let case = QueryParams(Slice::from_bytes(b"abc=def&xyz=%E4%B8%80%E4%BA%8C%E4%B8%89"));
+    assert_eq!(case.iter().collect::<Vec<_>>(), [
+        ("abc".into(), "def".into()),
+        ("xyz".into(), "一二三".into()),
+    ]);
+
+    let case = QueryParams(Slice::from_bytes(b"abc=def&xyz="));
+    assert_eq!(case.iter().collect::<Vec<_>>(), [
+        ("abc".into(), "def".into()),
+        ("xyz".into(), "".into()),
+    ]);
+
+    let case = QueryParams(Slice::from_bytes(b"abc=def&xyz"));
+    // skipping an invalid query param: missing `=`
+    assert_eq!(case.iter().collect::<Vec<_>>(), [
+        ("abc".into(), "def".into()),
+    ]);
+
+    let case = QueryParams(Slice::from_bytes(b"abc=def&"));
+    // skipping an invalid query param: trailing `&`
+    assert_eq!(case.iter().collect::<Vec<_>>(), [
+        ("abc".into(), "def".into()),
+    ]);
+
+    let case = QueryParams(Slice::from_bytes(b"abc=def"));
+    assert_eq!(case.iter().collect::<Vec<_>>(), [
+        ("abc".into(), "def".into()),
+    ]);
+
+    let case = QueryParams(Slice::from_bytes(b""));
+    assert_eq!(case.iter().collect::<Vec<_>>(), []);
+}
