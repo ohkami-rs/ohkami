@@ -6,11 +6,11 @@ use crate::openapi;
 
 pub struct HTML<T = String>(pub T);
 
-impl<T: Into<std::borrow::Cow<'static, str>>> IntoBody for HTML<T> {
+impl<T: Into<String>> IntoBody for HTML<T> {
     const CONTENT_TYPE: &'static str = "text/html; charset=UTF-8";
+
     fn into_body(self) -> Result<Vec<u8>, impl std::fmt::Display> {
-        let cow: std::borrow::Cow<'static, str> = self.0.into();
-        Ok::<_, std::convert::Infallible>(cow.into_owned().into_bytes())
+        Result::<_, std::convert::Infallible>::Ok(self.0.into().into_bytes())
     }
 
     #[cfg(feature="openapi")]

@@ -15,7 +15,6 @@ use crate::openapi;
 /// 
 /// <br>
 /// 
-/// ---
 /// *example.rs*
 /// ```
 /// use ohkami::prelude::*;
@@ -31,11 +30,12 @@ use crate::openapi;
 ///     }
 /// }
 /// ```
-/// ---
 /// 
 /// <br>
 /// 
-/// NOTE: *MUST NOT impl both `FromRequest` and `FromParam` or `FromHeader`*.
+/// ### Note
+/// 
+/// *MUST NOT impl both `FromRequest` and `FromParam`*.
 pub trait FromRequest<'req>: Sized {
     /// If this extraction never fails, `std::convert::Infallible` is recomended.
     type Error: IntoResponse;

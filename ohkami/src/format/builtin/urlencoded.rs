@@ -10,6 +10,7 @@ pub struct URLEncoded<T: bound::Schema>(pub T);
 
 impl<'req, T: Incoming<'req>> FromBody<'req> for URLEncoded<T> {
     const MIME_TYPE: &'static str = "application/x-www-form-urlencoded";
+    
     fn from_body(body: &'req [u8]) -> Result<Self, impl std::fmt::Display> {
         serde_urlencoded::from_bytes(body).map(URLEncoded)
     }
@@ -22,6 +23,7 @@ impl<'req, T: Incoming<'req>> FromBody<'req> for URLEncoded<T> {
 
 impl<T: Outgoing> IntoBody for URLEncoded<T> {
     const CONTENT_TYPE: &'static str = "application/x-www-form-urlencoded";
+
     fn into_body(self) -> Result<Vec<u8>, impl std::fmt::Display> {
         serde_urlencoded::to_string(&self.0).map(String::into_bytes)
     }
