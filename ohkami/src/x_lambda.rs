@@ -557,19 +557,20 @@ mod tests {
     }
 
     #[test]
-    fn ohkami_service_call_once() {
+    fn ohkami_service_call() {
         tokio::runtime::Runtime::new().unwrap().block_on(async {
-            {
-                let mut o = Ohkami::new((
-                    "/hello".GET(|| async {"Hello, Service!"}),
-                ));
-
-                let _ = <Ohkami as lambda_runtime::Service<
-                    lambda_runtime::LambdaEvent<
-                        crate::x_lambda::LambdaHTTPRequest
-                    >
-                >>::poll_ready(&mut o, &mut Context::from_waker(Waker::noop()));
-
+            let mut o = Ohkami::new((
+                "/hello".GET(|| async {"Hello, Service!"}),
+            ));
+    
+            /* poll_ready first */
+            let _ = <Ohkami as lambda_runtime::Service<
+                lambda_runtime::LambdaEvent<
+                    crate::x_lambda::LambdaHTTPRequest
+                >
+            >>::poll_ready(&mut o, &mut Context::from_waker(Waker::noop()));
+        
+            {/* 404 */
                 let res = <Ohkami as lambda_runtime::Service<
                     lambda_runtime::LambdaEvent<
                         crate::x_lambda::LambdaHTTPRequest
@@ -579,33 +580,51 @@ mod tests {
                     "/",
                     None
                 )).await.unwrap();
-
+    
                 let lambda_runtime::FunctionResponse::BufferedResponse(res) = res else {
                     panic!("Unexpected `StreamingResponse`")
                 };
-
+    
                 assert_eq!(res, LambdaResponse {
                     statusCode: 404,
                     headers: crate::response::ResponseHeaders::from_iter([
                         ("Date", ohkami_lib::imf_fixdate(crate::util::unix_timestamp())),
                         ("Content-Length", "0".into()),
+                        // ("Content-Type", "text/plain; charset=UTF-8".into()),
                     ]),
                     cookies: None,
-                    body: None,
-                    isBase64Encoded: None,
+                    body: None,//Some("Hello, Service!".into()),
+                    isBase64Encoded: None,//Some(false),
                 });
             }
-            {
-                let mut o = Ohkami::new((
-                    "/hello".GET(|| async {"Hello, Service!"}),
-                ));
-
-                let _ = <Ohkami as lambda_runtime::Service<
+            {/* OK */
+                let res = <Ohkami as lambda_runtime::Service<
                     lambda_runtime::LambdaEvent<
                         crate::x_lambda::LambdaHTTPRequest
                     >
-                >>::poll_ready(&mut o, &mut Context::from_waker(Waker::noop()));
-        
+                >>::call(&mut o, new_req(
+                    Method::GET,
+                    "/hello",
+                    None
+                )).await.unwrap();
+    
+                let lambda_runtime::FunctionResponse::BufferedResponse(res) = res else {
+                    panic!("Unexpected `StreamingResponse`")
+                };
+    
+                assert_eq!(res, LambdaResponse {
+                    statusCode: 200,
+                    headers: crate::response::ResponseHeaders::from_iter([
+                        ("Date", ohkami_lib::imf_fixdate(crate::util::unix_timestamp())),
+                        ("Content-Length", "15".into()),
+                        ("Content-Type", "text/plain; charset=UTF-8".into()),
+                    ]),
+                    cookies: None,
+                    body: Some("Hello, Service!".into()),
+                    isBase64Encoded: Some(false),
+                });
+            }
+            {/* OK twice */
                 let res = <Ohkami as lambda_runtime::Service<
                     lambda_runtime::LambdaEvent<
                         crate::x_lambda::LambdaHTTPRequest
@@ -619,7 +638,7 @@ mod tests {
                 let lambda_runtime::FunctionResponse::BufferedResponse(res) = res else {
                     panic!("Unexpected `StreamingResponse`")
                 };
-
+    
                 assert_eq!(res, LambdaResponse {
                     statusCode: 200,
                     headers: crate::response::ResponseHeaders::from_iter([
@@ -632,57 +651,6 @@ mod tests {
                     isBase64Encoded: Some(false),
                 });
             }
-        });
-    }
-
-    #[test]
-    fn ohkami_service_call_multiple_times() {
-        tokio::runtime::Runtime::new().unwrap().block_on(async {
-            let mut o = Ohkami::new((
-                "/hello".GET(|| async {"Hello, Service!"}),
-            ));
-
-            let _ = <Ohkami as lambda_runtime::Service<
-                lambda_runtime::LambdaEvent<
-                    crate::x_lambda::LambdaHTTPRequest
-                >
-            >>::poll_ready(&mut o, &mut Context::from_waker(Waker::noop()));
-    
-            let res = <Ohkami as lambda_runtime::Service<
-                lambda_runtime::LambdaEvent<
-                    crate::x_lambda::LambdaHTTPRequest
-                >
-            >>::call(&mut o, new_req(
-                Method::GET,
-                "/hello",
-                None
-            )).await.unwrap();
-
-            let lambda_runtime::FunctionResponse::BufferedResponse(res) = res else {
-                panic!("Unexpected `StreamingResponse`")
-            };
-
-            assert_eq!(res, LambdaResponse {
-                statusCode: 200,
-                headers: crate::response::ResponseHeaders::from_iter([
-                    ("Date", ohkami_lib::imf_fixdate(crate::util::unix_timestamp())),
-                    ("Content-Length", "15".into()),
-                    ("Content-Type", "text/plain; charset=UTF-8".into()),
-                ]),
-                cookies: None,
-                body: Some("Hello, Service!".into()),
-                isBase64Encoded: Some(false),
-            });
-
-            let _ = <Ohkami as lambda_runtime::Service<
-                lambda_runtime::LambdaEvent<
-                    crate::x_lambda::LambdaHTTPRequest
-                >
-            >>::call(&mut o, new_req(
-                Method::GET,
-                "/hello",
-                None
-            )); /* panics as second call */
         });
     }
 }
