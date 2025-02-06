@@ -28,7 +28,7 @@ impl FangAction for Auth {
         let payload = JWT::<crate::config::JWTPayload>::default(secret)
             .verified(req)
             .map_err(IntoResponse::into_response)?;
-        req.memorize(payload);
+        req.context.set(payload);
         Ok(())
     }
 }

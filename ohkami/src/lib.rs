@@ -1,5 +1,3 @@
-#![doc(html_root_url = "https://docs.rs/ohkami/0.21.0")]
-
 /* Execute static tests for sample codes in README */
 #![cfg_attr(feature="DEBUG", doc = include_str!("../../README.md"))]
 
@@ -13,13 +11,14 @@
 //! - *macro-less and type-safe* APIs for intuitive and declarative code
 //! - *various runtimes* are supported：`tokio`, `async-std`, `smol`, `nio`, `glommio` and `worker` (Cloudflare Workers)
 //! - *extremely fast*：[Web Frameworks Benchmark](https://web-frameworks-benchmark.netlify.app/result)
-//! - no-network testing, well-structured middlewares, Server-Sent Events, WebSocket, OpenAPI document genration, ...
+//! - no-network testing, well-structured middlewares, Server-Sent Events, WebSocket, OpenAPI document generation, ...
 
 
 #![allow(incomplete_features)]
 #![cfg_attr(feature="nightly", feature(
     specialization,
     try_trait_v2,
+    impl_trait_in_assoc_type,
 ))]
 
 
@@ -179,21 +178,6 @@ mod config;
 #[cfg(feature="__rt_native__")]
 pub(crate) static CONFIG: config::Config = config::Config::new();
 
-#[cfg(feature="openapi")]
-pub mod openapi {
-    pub use ::ohkami_openapi::*;
-    pub use ::ohkami_openapi::document::Server;
-    pub use ::ohkami_macros::{Schema, operation};
-
-    #[cfg(feature="__rt__")]
-    #[derive(Clone)]
-    pub struct OpenAPI {
-        pub title:   &'static str,
-        pub version: &'static str,
-        pub servers: Vec<crate::openapi::document::Server>,
-    }
-}
-
 #[cfg(debug_assertions)]
 #[cfg(feature="__rt__")]
 pub mod testing;
@@ -233,8 +217,17 @@ pub mod sse;
 #[cfg(feature="ws")]
 pub mod ws;
 
+#[cfg(feature="rt_lambda")]
+mod x_lambda;
+/* TODO
+#[cfg(feature="rt_lambda")]
+pub use x_lambda::*;
+*/
+
 #[cfg(feature="rt_worker")]
-pub use ::ohkami_macros::{worker, bindings};
+mod x_worker;
+#[cfg(feature="rt_worker")]
+pub use x_worker::*;
 
 pub mod prelude {
     pub use crate::{Request, Response, IntoResponse, Method, Status};
@@ -277,6 +270,67 @@ pub mod serde {
     pub use ::serde::ser::{self, Serialize, Serializer};
     pub use ::serde::de::{self, Deserialize, Deserializer};
     pub use ::serde_json as json;
+}
+
+#[cfg(feature="openapi")]
+pub mod openapi {
+    pub use ::ohkami_openapi::*;
+    pub use ::ohkami_openapi::document::Server;
+    pub use ::ohkami_macros::{Schema, operation};
+
+    #[cfg(feature="__rt__")]
+    #[derive(Clone)]
+    pub struct OpenAPI<'s> {
+        pub title:   &'static str,
+        pub version: &'static str,
+        pub servers: &'s [Server],
+    }
+
+    /// A fang to set OpenAPI tag for handlers of a `Ohkami`
+    /// 
+    /// ## note
+    /// 
+    /// * OpenAPI tags are inherited and stacked for child `Ohkami`s (if any).
+    /// * This is a fang, but introduces NO runtime overhead.
+    /// 
+    /// ## example
+    /// 
+    /// ```ignore
+    /// use ohkami::prelude::*;
+    /// use ohkami::openapi;
+    /// 
+    /// #[tokio::main]
+    /// async fn main() {
+    ///     let users_ohkami = Ohkami::new((
+    ///         openapi::Tag("users"),
+    ///         "/"
+    ///             .GET(list_users),
+    ///             .POST(create_user),
+    ///         "/:id"
+    ///             .GET(get_user_profile),
+    ///     ));
+    ///     
+    ///     Ohkami::new((
+    ///         "/users".By(users_ohkami),
+    ///         
+    ///         // ...
+    ///     )).howl("localhost:5050").await
+    /// }
+    /// # async fn list_users() {}
+    /// # async fn create_user() {}
+    /// # async fn get_user_profile() {}
+    /// ```
+    pub struct Tag(pub &'static str);
+    impl<I: crate::FangProc> crate::Fang<I> for Tag {
+        /// just pass `inner` through
+        type Proc = I;
+        fn chain(&self, inner: I) -> Self::Proc {inner}
+
+        /// add tag for operations of `Ohkami` having this `Tag`
+        fn openapi_map_operation(&self, operation: Operation) -> Operation {
+            operation.with_tag(self.0)
+        }
+    }
 }
 
 #[doc(hidden)]

@@ -34,9 +34,7 @@ use crate::{sse, util::{Stream, StreamExt}};
 /// 
 /// <br>
 /// 
-/// ## Usages
-/// 
-/// ---
+/// ## Usage
 /// 
 /// *in_fang.rs*
 /// ```no_run
@@ -93,8 +91,8 @@ pub struct Response {
 
     /// Headers of this response
     /// 
-    /// - `.{Name}()`, `.get("{Name}")` to get the value
-    /// - `.set().{Name}({action})`, `.set().x("{Name}", {action})` to mutate the value
+    /// - `.{Name}()`, `.get("{Name}")` to get value
+    /// - `.set().{Name}({action})`, `.set().x("{Name}", {action})` to mutate values
     /// 
     /// ---
     /// 
@@ -115,7 +113,7 @@ pub struct Response {
 
 impl Response {
     #[inline(always)]
-    pub fn of(status: Status) -> Self {
+    pub fn new(status: Status) -> Self {
         Self {
             status,
             headers: ResponseHeaders::new(),
@@ -150,6 +148,7 @@ impl Response {
                     .ContentLength(None);
             }
 
+            #[cfg(not(feature="rt_lambda"/* currently */))]
             #[cfg(feature="ws")]
             Content::WebSocket(_) => {
                 self.headers.set()
@@ -296,6 +295,7 @@ impl Response {
 }
 
 #[cfg(feature="ws")]
+/// Of course here no method for rt_lambda exists; see x_lambda.rs
 impl Response {
     #[cfg(feature="__rt_native__")]
     pub(crate) fn with_websocket(mut self, ws: mews::WebSocket) -> Self {
@@ -481,6 +481,88 @@ const _: () = {
     impl From<worker::Error> for Response {
         fn from(err: worker::Error) -> Response {
             IntoResponse::into_response(err)
+        }
+    }
+};
+
+#[cfg(feature="rt_lambda")]
+const _: () = {
+    use crate::x_lambda::LambdaResponse;
+    use ohkami_lib::Stream;
+    use ::lambda_runtime::FunctionResponse;
+    use std::{pin::Pin, convert::Infallible};
+
+    impl Into<FunctionResponse<
+        LambdaResponse,
+        Pin<Box<dyn Stream<Item = Result<String, Infallible>> + Send>>
+    >> for Response {
+        fn into(self) -> FunctionResponse<
+            LambdaResponse,
+            Pin<Box<dyn Stream<Item = Result<String, Infallible>> + Send>>
+        > {
+            let mut headers = self.headers;
+
+            let cookies = headers
+                .setcookie
+                .take(/* remove `Set-Cookie`s from app's own headers */)
+                .map(|box_vec_cow_str| {
+                    let mut vec_string = Vec::with_capacity(box_vec_cow_str.len());
+                    for cow_str in *box_vec_cow_str {
+                        vec_string.push(cow_str.into_owned());
+                    }
+                    vec_string
+                });
+
+            match self.content {
+                Content::None => {
+                    FunctionResponse::BufferedResponse(LambdaResponse {
+                        statusCode: self.status.code(),
+                        headers,
+                        cookies,
+                        body: None,
+                        isBase64Encoded: None,
+                    })
+                }
+
+                Content::Payload(p) => {
+                    let (encoded, body) = if let Ok(s) = std::str::from_utf8(&*p) {
+                        (false, s.into())
+                    } else {
+                        use ::base64::engine::{Engine as _, general_purpose::STANDARD as BASE64};
+                        (true, BASE64.encode(&*p))
+                    };
+
+                    FunctionResponse::BufferedResponse(LambdaResponse {
+                        statusCode: self.status.code(),
+                        headers,
+                        cookies,
+                        body: Some(body),
+                        isBase64Encoded: Some(encoded),
+                    })
+                }
+                
+                #[cfg(feature="sse")]
+                Content::Stream(stream) => {
+                    FunctionResponse::StreamingResponse(::lambda_runtime::StreamResponse {
+                        stream: Box::pin(stream.map(Result::<_, Infallible>::Ok)),
+                        metadata_prelude: ::lambda_runtime::MetadataPrelude {
+                            // `StatusCode` of `http` crate
+                            status_code: unsafe {
+                                TryFrom::<u16>::try_from(self.status.code()).unwrap_unchecked()
+                            },
+                            // `HeaderMap` of `http` crate
+                            headers: FromIterator/*::<HeaderName, HeaderValue>*/::from_iter(
+                                headers.into_iter()
+                                    .map(|(n, v): (&'static str, Cow<'static, str>)| (
+                                        TryFrom::<&str>::try_from(n).unwrap(),
+                                        TryFrom::<String>::try_from(v.into_owned()).unwrap()
+                                    ))
+                            ),
+                            cookies: cookies.unwrap_or_else(Vec::new)
+                        }
+                    })
+                }
+            }
         }
     }
 };

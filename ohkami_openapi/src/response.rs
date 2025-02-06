@@ -55,12 +55,8 @@ pub struct ResponseHeader {
 }
 
 impl Responses {
-    pub fn new(code: u16, response: Response) -> Self {
-        Self(Map::from_iter([(Status::Code(code), response)]))
-    }
-
-    pub fn enumerated<const N: usize>(responses: [(u16, Response); N]) -> Self {
-        Self(Map::from_iter(responses.map(|(code, res)| (Status::Code(code), res))))
+    pub fn new<const N: usize>(code_responses: [(u16, Response); N]) -> Self {
+        Self(Map::from_iter(code_responses.map(|(code, res)| (Status::Code(code), res))))
     }
 
     pub fn or(mut self, code: u16, response: Response) -> Self {

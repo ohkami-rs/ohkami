@@ -57,7 +57,7 @@ async fn main() {
     o.generate(openapi::OpenAPI {
         title: "Petstore API",
         version: "1.0.0",
-        servers: vec![
+        servers: &[
             openapi::Server::at("http://localhost:5050")
         ]
     });
@@ -158,11 +158,11 @@ struct Error {
 }
 impl IntoResponse for Error {
     fn into_response(self) -> Response {
-        Response::of(Status::from(self.status_code))
+        Response::new(Status::from(self.status_code))
             .with_json(self)
     }
     fn openapi_responses() -> openapi::Responses {
-        openapi::Responses::enumerated([])
+        openapi::Responses::new([])
             .or_default(openapi::Response::when("Unexpected error")
                 .content("application/json", <Self as openapi::Schema>::schema())
             )

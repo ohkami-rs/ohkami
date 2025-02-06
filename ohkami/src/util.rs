@@ -86,11 +86,11 @@ const _: () = {
 
         #[cfg(feature="openapi")]
         fn openapi_responses() -> crate::openapi::Responses {
-            crate::openapi::Responses::new(
+            crate::openapi::Responses::new([(
                 500,
                 crate::openapi::Response::when("Something went wrong")
                     .content("text/plain", crate::openapi::string())
-            )
+            )])
         }
     }
 };

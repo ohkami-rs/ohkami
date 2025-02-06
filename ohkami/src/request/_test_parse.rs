@@ -1,7 +1,7 @@
 #![cfg(all(test, feature="__rt_native__", feature="DEBUG"))]
 
 #[allow(unused)]
-use super::{Request, Method, BUF_SIZE, Path, QueryParams, Store};
+use super::{Request, Method, BUF_SIZE, Path, QueryParams, Context};
 
 #[test]
 fn parse_path() {
@@ -81,7 +81,7 @@ fn parse_path() {
             (RequestHeader::AcceptEncoding, "gzip, deflate"),
         ], None),
         payload: None,
-        store:   Store::init(),
+        context: Context::init(),
         ip:      crate::util::IP_0000
     });
 
@@ -112,8 +112,8 @@ fn parse_path() {
         payload: Some(CowSlice::Ref(Slice::from_bytes(
             br#"{"name":"kanarus","age":20}"#
         ))),
-        store: Store::init(),
-        ip:    crate::util::IP_0000
+        context: Context::init(),
+        ip:      crate::util::IP_0000
     });
 
     {
@@ -158,7 +158,7 @@ fn parse_path() {
                 ]
             ),
             payload: Some(CowSlice::Own(Vec::from("first_name=John&last_name=Doe&action=Submit").into())),
-            store:   Store::init(),
+            context: Context::init(),
             ip:      crate::util::IP_0000
         });
     }

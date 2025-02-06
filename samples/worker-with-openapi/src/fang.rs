@@ -38,12 +38,12 @@ impl FangAction for TokenAuth {
             .first::<String>(Some("name")).await?
             .ok_or_else(Response::Unauthorized)?;
 
-        req.memorize(TokenAuthed { user_id, user_name });
+        req.context.set(TokenAuthed { user_id, user_name });
         Ok(())
     }
 
     #[cfg(feature="openapi")]
-    fn openapi_map_operation(operation: openapi::Operation) -> openapi::Operation {
+    fn openapi_map_operation(&self, operation: openapi::Operation) -> openapi::Operation {
         operation.security(
             openapi::SecurityScheme::Bearer("tokenAuth", Some("JSON (user_id, token)")),
             &[]

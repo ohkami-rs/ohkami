@@ -12,35 +12,40 @@ keywords      = { workspace = true }
 categories    = { workspace = true }
 license       = { workspace = true }
 
-
 [package.metadata.docs.rs]
 features      = ["rt_tokio", "nightly", "sse", "ws"]
 
 
 [dependencies]
-ohkami_lib     = { version = "=0.21.0", path = "../ohkami_lib" }
-ohkami_macros  = { version = "=0.21.0", path = "../ohkami_macros" }
-ohkami_openapi = { optional = true, version = "=0.21.0", path = "../ohkami_openapi" }
+# workspace members
+ohkami_lib     = { version = "=0.22.0", path = "../ohkami_lib" }
+ohkami_macros  = { version = "=0.22.0", path = "../ohkami_macros" }
+ohkami_openapi = { optional = true, version = "=0.22.0", path = "../ohkami_openapi" }
 
-tokio         = { version = "1",   optional = true }
-async-std     = { version = "1",   optional = true }
-smol          = { version = "2",   optional = true }
-nio           = { version = "0.0", optional = true }
-glommio       = { version = "0.9", optional = true }
-worker        = { version = "0.5", optional = true }
+# workspace dependencies
+byte_reader = { workspace = true }
+serde       = { workspace = true }
+serde_json  = { workspace = true }
 
-byte_reader   = { workspace = true }
-serde         = { workspace = true }
-serde_json    = { workspace = true }
+# runtimes
+tokio          = { version = "1",    optional = true }
+async-std      = { version = "1",    optional = true }
+smol           = { version = "2",    optional = true }
+nio            = { version = "0.0",  optional = true }
+glommio        = { version = "0.9",  optional = true }
+worker         = { version = "0.5",  optional = true }
+lambda_runtime = { version = "0.13", optional = true }
 
-base64        = { version = "0.22" }
-hmac          = { version = "0.12", default-features = false }
-sha2          = { version = "0.10", default-features = false }
+# encoding / crypto
+base64 = { version = "0.22" }
+hmac   = { version = "0.12", default-features = false }
+sha2   = { version = "0.10", default-features = false }
 
-ctrlc         = { version = "3.4",  optional = true }
-num_cpus      = { version = "1.16", optional = true }
-futures-util  = { version = "0.3",  optional = true, default-features = false }
-mews          = { version = "0.2",  optional = true }
+# optional
+ctrlc        = { version = "3.4",  optional = true }
+num_cpus     = { version = "1.16", optional = true }
+futures-util = { version = "0.3",  optional = true, default-features = false }
+mews         = { version = "0.2",  optional = true }
 
 
 [features]
@@ -62,7 +67,7 @@ rt_smol = ["__rt_native__",
 rt_nio = ["__rt_native__",
     "dep:nio",
     "dep:tokio","tokio/io-util",
-    "mews?/rt_nio"
+    "mews?/rt_nio",
 ]
 rt_glommio = ["__rt_native__",
     "dep:glommio",
@@ -71,8 +76,13 @@ rt_glommio = ["__rt_native__",
     "dep:num_cpus",
 ]
 rt_worker = ["__rt__",
-    "dep:worker",
-    "ohkami_macros/worker"
+    "dep:worker", "worker/d1", "worker/queue",
+    "ohkami_macros/worker",
+]
+rt_lambda = ["__rt__",
+    "dep:lambda_runtime",
+    "dep:tokio", "tokio/rt", # lambda_runtime internally depends on tokio runtime
+    "ohkami_lib/stream",     # lambda_runtime's interface always requires stream
 ]
 nightly = []
 openapi = ["dep:ohkami_openapi", "ohkami_macros/openapi"]

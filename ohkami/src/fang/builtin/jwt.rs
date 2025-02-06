@@ -144,7 +144,7 @@ const _: () = {
                 Ok(payload) => payload,
                 Err(errres) => return errres
             };
-            req.memorize(jwt_payload);
+            req.context.set(jwt_payload);
 
             self.inner.bite(req).await.into_response()
         }
@@ -492,7 +492,7 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
 
             #[cfg(feature="openapi")]
             fn openapi_responses() -> crate::openapi::Responses {
-                crate::openapi::Responses::enumerated([
+                crate::openapi::Responses::new([
                     (500, crate::openapi::Response::when("User was not found")
                         .content("text/plain", crate::openapi::string()))
                 ])

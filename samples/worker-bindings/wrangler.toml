@@ -1,0 +1,33 @@
+name = "worker-bindings-test"
+
+[vars]
+VARIABLE_1 = "hoge"
+VARIABLE_2 = "super fun"
+
+[ai]
+binding = "INTELIGENT"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "db"
+database_id = "xxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+
+[[kv_namespaces]]
+binding = "MY_KVSTORE"
+id = "<BINDING_ID>"
+
+[[r2_buckets]]
+binding = 'MY_BUCKET'
+bucket_name = '<YOUR_BUCKET_NAME>'
+
+[[services]]
+binding = "S"
+service = "<WORKER_NAME>"
+
+[[queues.producers]]
+queue = "my-queue"
+binding = "MY_QUEUE"
+
+[[durable_objects.bindings]]
+name = "RATE_LIMITER"
+class_name = "RateLimiter"

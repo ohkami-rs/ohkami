@@ -8,12 +8,6 @@ authors = ["kanarus <kanarus786@gmail.com>"]
 actix-web = { version = "4" }
 
 [profile.release]
-opt-level = 3
-debug = false
-debug-assertions = false
-lto = true
-panic = "abort"
-incremental = false
+lto           = true
+panic         = "abort"
 codegen-units = 1
-rpath = false
-strip = false

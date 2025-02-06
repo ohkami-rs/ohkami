@@ -83,7 +83,7 @@ impl<B: IntoBody> IntoResponse for B {
             };
             res = res.content(mime_type, Self::openapi_responsebody());
         }
-        openapi::Responses::new(200, res)
+        openapi::Responses::new([(200, res)])
     }
 }
 
@@ -94,18 +94,18 @@ impl IntoResponse for Response {
 
     #[cfg(feature="openapi")]
     fn openapi_responses() -> openapi::Responses {
-        openapi::Responses::new(200, openapi::Response::when("OK"))
+        openapi::Responses::new([])
     }
 }
 
 impl IntoResponse for Status {
     #[inline(always)] fn into_response(self) -> Response {
-        Response::of(self)
+        Response::new(self)
     }
 
     #[cfg(feature="openapi")]
     fn openapi_responses() -> openapi::Responses {
-        openapi::Responses::new(200, openapi::Response::when("OK"))
+        openapi::Responses::new([])
     }
 }
 
@@ -133,7 +133,7 @@ impl IntoResponse for std::convert::Infallible {
 
     #[cfg(feature="openapi")]
     fn openapi_responses() -> openapi::Responses {
-        openapi::Responses::enumerated([])
+        openapi::Responses::new([])
     }
 }
 
@@ -184,6 +184,6 @@ impl IntoResponse for worker::Error {
 
     #[cfg(feature="openapi")]
     fn openapi_responses() -> openapi::Responses {
-        openapi::Responses::new(500, openapi::Response::when("Internal error in worker"))
+        openapi::Responses::new([(500, openapi::Response::when("Internal error in worker"))])
     }
 }

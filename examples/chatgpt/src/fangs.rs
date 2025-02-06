@@ -29,7 +29,7 @@ impl APIKey {
 
 impl FangAction for APIKey {
     async fn fore<'a>(&'a self, req: &'a mut Request) -> Result<(), Response> {
-        req.memorize(self.clone());
+        req.context.set(self.clone());
         Ok(())
     }
 }

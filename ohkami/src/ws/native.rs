@@ -1,3 +1,5 @@
+#![cfg(feature="__rt_native__")]
+
 pub use mews::{
     Message,
     CloseCode, CloseFrame,
@@ -123,9 +125,9 @@ impl crate::IntoResponse for WebSocket {
 
     #[cfg(feature="openapi")]
     fn openapi_responses() -> crate::openapi::Responses {
-        crate::openapi::Responses::new(
+        crate::openapi::Responses::new([(
             101,
             crate::openapi::Response::when("Upgrade to WebSocket")
-        )
+        )])
     }
 }

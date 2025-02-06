@@ -9,6 +9,7 @@ members  = [
 exclude  = [
     "samples",
     "benches",
+    "benches_rt/async-std",
     "benches_rt/glommio",
     "benches_rt/nio",
     "benches_rt/smol",
@@ -17,7 +18,7 @@ exclude  = [
 ]
 
 [workspace.package]
-version    = "0.21.0"
+version    = "0.22.0"
 edition    = "2021"
 authors    = ["kanarus <kanarus786@gmail.com>"]
 homepage   = "https://crates.io/crates/ohkami"

@@ -12,7 +12,7 @@ pub mod request;
 pub use request::{Parameter, RequestBody};
 
 pub mod response;
-pub use response::{Responses, Response};
+pub use response::{Responses, Response, Status};
 
 pub mod paths;
 pub use paths::Operation;
@@ -69,16 +69,6 @@ const _: () = {
         }
     }
     impl Schema for String {
-        fn schema() -> impl Into<schema::SchemaRef> {
-            string()
-        }
-    }
-    impl Schema for std::borrow::Cow<'_, str> {
-        fn schema() -> impl Into<schema::SchemaRef> {
-            string()
-        }
-    }
-    impl Schema for std::sync::Arc<String> {
         fn schema() -> impl Into<schema::SchemaRef> {
             string()
         }
@@ -160,6 +150,23 @@ const _: () = {
     impl<const N: usize, S: Schema> Schema for [S; N] {
         fn schema() -> impl Into<schema::SchemaRef> {
             array(S::schema())
+        }
+    }
+
+    impl<S: Schema + ToOwned> Schema for std::borrow::Cow<'_, S> {
+        fn schema() -> impl Into<schema::SchemaRef> {
+            S::schema()
+        }
+    }
+    impl<S: Schema> Schema for std::sync::Arc<S> {
+        fn schema() -> impl Into<schema::SchemaRef> {
+            S::schema()
+        }
+    }
+
+    impl<S: Schema> Schema for &S {
+        fn schema() -> impl Into<schema::SchemaRef> {
+            S::schema()
         }
     }
 };

@@ -13,8 +13,6 @@ use crate::{__rt__, Session};
 
 /// # Ohkami - a smart wolf who serves your web app
 /// 
-/// <br>
-/// 
 /// *example.rs*
 /// ```
 /// # use ohkami::prelude::*;
@@ -99,16 +97,14 @@ use crate::{__rt__, Session};
 /// 
 /// <br>
 /// 
-/// #### handler schema :
+/// ### handler schema
 /// `async ({path params}?, {FromRequest type}s...) -> {IntoResponse type}`
 /// 
-/// #### path params :
+/// ### path params
 /// A tuple of types that implement `FromParam` trait e.g. `(&str, usize)`.\
 /// If the path contains only one parameter, then you can omit the tuple \
 /// e.g. just `param: &str`.\
 /// (Current ohkami handles at most *2* path params.)
-/// 
-/// <br>
 /// 
 /// ```
 /// use ohkami::prelude::*;
@@ -156,7 +152,7 @@ impl Ohkami {
     /// # 
     /// # let _ =
     /// (
-    ///     // 0 or more fangs of this Ohkami
+    ///     // 0 or more `Fang`s of this Ohkami
     ///     Logger,
     ///     Auth,
     ///     
@@ -170,10 +166,10 @@ impl Ohkami {
     /// # ;
     /// ```
     /// 
-    /// #### handler :
+    /// ### handler
     /// `async ({path params}?, {FromRequest type}s...) -> {IntoResponse type}`
     /// 
-    /// #### path params :
+    /// ### path params
     /// A tuple of types that implement `FromParam` trait e.g. `(&str, usize)`.\
     /// If the path contains only one parameter, then you can omit the tuple \
     /// e.g. just `param: &str`.\
@@ -212,8 +208,6 @@ impl Ohkami {
         this
     }
     /// Create Ohkami by the fangs and routing
-    /// 
-    /// ### note
     /// 
     /// This is almost the same as [`Ohkami::new`](crate::Ohkami::new), but
     /// takes fangs and handler routes separately.
@@ -254,8 +248,6 @@ impl Ohkami {
     /// environment variable.
     /// 
     /// <br>
-    /// 
-    /// ---
     /// 
     /// *example.rs*
     /// ```no_run
@@ -418,7 +410,7 @@ impl Ohkami {
     ///     o.generate(OpenAPI {
     ///         title: "Sample API",
     ///         version: "0.1.9",
-    ///         servers: vec![
+    ///         servers: &[
     ///             Server::at("http://api.example.com/v1")
     ///                 .description("Main (production) server"),
     ///             Server::at("http://staging-api.example.com")
@@ -459,6 +451,59 @@ impl Ohkami {
         bytes
     }
 }
+
+const _: () = {
+    #[cfg(feature="rt_lambda")]
+    static ROUTER: std::sync::OnceLock<crate::router::r#final::Router> = std::sync::OnceLock::new();
+
+    #[cfg(feature="rt_lambda")]
+    impl lambda_runtime::Service<
+        lambda_runtime::LambdaEvent<
+            crate::x_lambda::LambdaHTTPRequest
+        >
+    > for Ohkami {
+        type Response = lambda_runtime::FunctionResponse<
+            crate::x_lambda::LambdaResponse,
+            std::pin::Pin<Box<dyn ohkami_lib::Stream<Item = Result<String, std::convert::Infallible>> + Send>>
+        >;
+        type Error = lambda_runtime::Error;
+
+        #[cfg(feature="nightly")]
+        type Future = impl std::future::Future<Output = Result<Self::Response, Self::Error>>;
+        #[cfg(not(feature="nightly"))]
+        type Future = std::pin::Pin<Box<dyn std::future::Future<Output = Result<Self::Response, Self::Error>>>>;
+
+        fn poll_ready(&mut self, _cx: &mut std::task::Context<'_>) -> std::task::Poll<Result<(), Self::Error>> {
+            if ROUTER.get().is_none() {                
+                let o = std::mem::replace(self, Ohkami::new(()));
+                let (router, _) = o.into_router().finalize();
+                
+                ROUTER.set(router).ok().expect("`ROUTER.set()` was called more than once for an `Ohkami` instance");
+            }
+
+            std::task::Poll::Ready(Ok(()))
+        }
+
+        fn call(
+            &mut self,
+            req: lambda_runtime::LambdaEvent<crate::x_lambda::LambdaHTTPRequest>
+        ) -> Self::Future {
+            let f = async move {
+                let mut ohkami_req = crate::Request::init();
+                let mut ohkami_req = unsafe {std::pin::Pin::new_unchecked(&mut ohkami_req)};
+                ohkami_req.as_mut().take_over(req)?;
+
+                let mut ohkami_res = ROUTER.get().unwrap().handle(&mut ohkami_req).await;
+                ohkami_res.complete();
+
+                Ok(ohkami_res.into())
+            };
+
+            #[cfg(feature="nightly")] {f}
+            #[cfg(not(feature="nightly"))] {Box::pin(f)}
+        }
+    }
+};
 
 #[cfg(feature="__rt_native__")]
 mod sync {

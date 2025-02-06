@@ -73,11 +73,11 @@ impl<T: Data> crate::IntoResponse for DataStream<T> {
 
     #[cfg(feature="openapi")]
     fn openapi_responses() -> crate::openapi::Responses {
-        crate::openapi::Responses::new(
+        crate::openapi::Responses::new([(
             200,
             crate::openapi::Response::when("Streaming")
                 .content("text/event-stream", <T as crate::openapi::Schema>::schema())
-        )
+        )])
     }
 }
 
