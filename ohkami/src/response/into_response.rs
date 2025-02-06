@@ -94,7 +94,7 @@ impl IntoResponse for Response {
 
     #[cfg(feature="openapi")]
     fn openapi_responses() -> openapi::Responses {
-        openapi::Responses::new([(200, openapi::Response::when("OK"))])
+        openapi::Responses::new([])
     }
 }
 
@@ -105,7 +105,7 @@ impl IntoResponse for Status {
 
     #[cfg(feature="openapi")]
     fn openapi_responses() -> openapi::Responses {
-        openapi::Responses::new([(200, openapi::Response::when("OK"))])
+        openapi::Responses::new([])
     }
 }
 
