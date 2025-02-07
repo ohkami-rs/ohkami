@@ -5,6 +5,8 @@ use crate::{Response, Status};
 #[cfg(feature="openapi")]
 use crate::openapi;
 
+use std::borrow::Cow;
+
 
 /// A trait implemented to be a returned value of a handler
 /// 
@@ -47,7 +49,7 @@ pub trait IntoBody {
     /// e.g. `text/html; charset=UTF-8`
     const CONTENT_TYPE: &'static str;
 
-    fn into_body(self) -> Result<Vec<u8>, impl std::fmt::Display>;
+    fn into_body(self) -> Result<Cow<'static, [u8]>, impl std::fmt::Display>;
 
     #[cfg(feature="openapi")]
     fn openapi_responsebody() -> impl Into<openapi::schema::SchemaRef>;
@@ -55,7 +57,7 @@ pub trait IntoBody {
 impl<B: IntoBody> IntoResponse for B {
     #[inline]
     fn into_response(self) -> Response {
-        if Self::CONTENT_TYPE == "" {// removed by optimization if it's not ""
+        if const {Self::CONTENT_TYPE.is_empty()} {// removed by optimization if it's not ""
             return Response::OK()
         }
 
@@ -141,9 +143,9 @@ impl IntoBody for () {
     const CONTENT_TYPE: &'static str = "";
 
     #[cold] #[inline(never)]
-    fn into_body(self) -> Result<Vec<u8>, impl std::fmt::Display> {
+    fn into_body(self) -> Result<Cow<'static, [u8]>, impl std::fmt::Display> {
         #[allow(unreachable_code)]
-        {unreachable!("`into_body` of `()`") as Result<Vec<u8>, std::convert::Infallible>}
+        {unreachable!("`into_body` of `()`") as Result<Cow<'static, [u8]>, std::convert::Infallible>}
     }
 
     #[cfg(feature="openapi")]
@@ -155,13 +157,14 @@ impl IntoBody for () {
 }
 
 macro_rules! text_response {
-    ($( $t:ty )*) => {$(
+    ($( $t:ty: $this:ident => $conv:expr ),*) => {$(
         impl IntoBody for $t {
             const CONTENT_TYPE: &'static str = "text/plain; charset=UTF-8";
 
             #[inline(always)]
-            fn into_body(self) -> Result<Vec<u8>, impl std::fmt::Display> {
-                Ok::<_, std::convert::Infallible>(String::from(self).into_bytes())
+            fn into_body(self) -> Result<Cow<'static, [u8]>, impl std::fmt::Display> {
+                let $this = self;
+                Ok::<_, std::convert::Infallible>($conv)
             }
 
             #[cfg(feature="openapi")]
@@ -171,9 +174,12 @@ macro_rules! text_response {
         }
     )*};
 } text_response! {
-    &'static str
-    String
-    std::borrow::Cow<'static, str>
+    &'static str:      s => Cow::Borrowed(s.as_bytes()),
+    String:            s => Cow::Owned(s.into_bytes()),
+    Cow<'static, str>: s => match s {
+        Cow::Owned(s)    => Cow::Owned(s.into_bytes()),
+        Cow::Borrowed(s) => Cow::Borrowed(s.as_bytes()),
+    }
 }
 
 #[cfg(feature="rt_worker")]
