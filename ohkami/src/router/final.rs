@@ -108,7 +108,7 @@ impl Router {
                 crate::DEBUG!("[gen_openapi_doc] found");
                         
                 for param_name in &openapi_path_param_names {
-                    operation.replace_empty_param_name_with(param_name);
+                    operation.assign_path_param_name(param_name);
                 }
                 for security_scheme in operation.iter_securitySchemes() {
                     doc.register_securityScheme_component(security_scheme);

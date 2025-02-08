@@ -122,7 +122,7 @@ pub trait FromParam<'p>: Sized {
 
     #[cfg(feature="openapi")]
     fn openapi_param() -> openapi::Parameter {
-        openapi::Parameter::in_path("", openapi::string())
+        openapi::Parameter::in_path(openapi::string())
     }
 }
 const _: () = {
@@ -184,7 +184,7 @@ const _: () = {
 
                     #[cfg(feature="openapi")]
                     fn openapi_param() -> openapi::Parameter {
-                        openapi::Parameter::in_path("", openapi::integer())
+                        openapi::Parameter::in_path(openapi::integer())
                     }
                 }
             )*
@@ -207,7 +207,7 @@ const _: () = {
 
                     #[cfg(feature="openapi")]
                     fn openapi_param() -> openapi::Parameter {
-                        openapi::Parameter::in_path("", openapi::integer())
+                        openapi::Parameter::in_path(openapi::integer())
                     }
                 }
             )*
