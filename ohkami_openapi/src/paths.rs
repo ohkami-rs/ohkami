@@ -184,6 +184,34 @@ impl Operation {
         }
     }
 
+    pub fn param_description(
+        mut self,
+        name: &'static str,
+        new_description: &'static str
+    ) -> Self {
+        if let Some(param) = self.parameters.iter_mut().find(|p| p.name == name) {
+            param.set_description(new_description);
+        }
+        self
+    }
+    pub fn requestBody_description(
+        mut self,
+        new_description: &'static str
+    ) -> Self {
+        if let Some(requestBody) = &mut self.requestBody {
+            requestBody.set_description(new_description);
+        }
+        self
+    }
+    pub fn response_description(
+        mut self,
+        status: impl Into<super::response::Status>,
+        new_description: &'static str
+    ) -> Self {
+        self.responses.override_response_description(status, new_description);
+        self
+    }
+
     #[doc(hidden)]
     pub fn replace_empty_param_name_with(&mut self, name: &'static str) {
         if let Some(empty_param) = self.parameters.iter_mut().find(|p| p.name.is_empty()) {
@@ -210,21 +238,16 @@ impl Operation {
             .chain(self.requestBody.as_mut().map(RequestBody::refize_schemas).into_iter().flatten())
             .chain(self.responses.refize_schemas())
     }
+}
 
-    #[doc(hidden)]
-    pub fn override_param_description(&mut self, name: &'static str, new_description: &'static str) {
-        if let Some(param) = self.parameters.iter_mut().find(|p| p.name == name) {
-            param.set_description(new_description);
-        }
-    }
-    #[doc(hidden)]
-    pub fn override_requestBody_description(&mut self, new_description: &'static str) {
-        if let Some(requestBody) = &mut self.requestBody {
-            requestBody.set_description(new_description);
-        }
-    }
-    #[doc(hidden)]
-    pub fn override_response_description(&mut self, status: impl Into<super::response::Status>, new_description: &'static str) {
-        self.responses.override_response_description(status, new_description);
+#[cfg(test)]
+#[test] fn map_openapi_operation_compiles() {
+    #[allow(unused)]
+    fn map_openapi_operation(op: Operation) -> Operation {
+        op
+        .operationId("list_users")
+        .description("This doc comment is used for the\n`description` field of OpenAPI document")
+        .summary("...")
+        .response_description(200, "List of all users")
     }
 }

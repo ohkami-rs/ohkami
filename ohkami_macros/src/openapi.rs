@@ -508,23 +508,23 @@ pub(super) fn operation(meta: TokenStream, handler: TokenStream) -> syn::Result<
                 },
                 DescriptionTarget::RequestBody => {
                     quote! {
-                        op.override_requestBody_description(#value);
+                        op = op.requestBody_description(#value);
                     }
                 },
                 DescriptionTarget::DefaultResponse => {
                     quote! {
-                        op.override_response_description("default", #value);
+                        op = op.response_description("default", #value);
                     }
                 },
                 DescriptionTarget::Response { status } => {
                     quote! {
-                        op.override_response_description(#status, #value);
+                        op = op.response_description(#status, #value);
                     }
                 },
                 DescriptionTarget::Param { name } => {
                     let name = LitStr::new(&name, Span::call_site());
                     quote! {
-                        op.override_param_description(#name, #value);
+                        op = op.param_description(#name, #value);
                     }
                 },
             });
