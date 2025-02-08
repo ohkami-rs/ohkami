@@ -1,4 +1,5 @@
 use crate::{FromBody, IntoBody};
+use std::borrow::Cow;
 
 #[cfg(feature="openapi")]
 use crate::openapi;
@@ -8,6 +9,7 @@ pub struct Text<T>(pub T);
 
 impl<'req, T: From<&'req str>> FromBody<'req> for Text<T> {
     const MIME_TYPE: &'static str = "text/plain";
+
     fn from_body(body: &'req [u8]) -> Result<Self, impl std::fmt::Display> {
         std::str::from_utf8(body).map(|s| Text(s.into()))
     }
@@ -18,11 +20,14 @@ impl<'req, T: From<&'req str>> FromBody<'req> for Text<T> {
     }
 }
 
-impl<T: Into<std::borrow::Cow<'static, str>>> IntoBody for Text<T> {
+impl<T: Into<Cow<'static, str>>> IntoBody for Text<T> {
     const CONTENT_TYPE: &'static str = "text/plain; charset=UTF-8";
-    fn into_body(self) -> Result<Vec<u8>, impl std::fmt::Display> {
-        let cow: std::borrow::Cow<'static, str> = self.0.into();
-        Ok::<_, std::convert::Infallible>(cow.into_owned().into_bytes())
+
+    fn into_body(self) -> Result<Cow<'static, [u8]>, impl std::fmt::Display> {
+        Result::<_, std::convert::Infallible>::Ok(match self.0.into() {
+            Cow::Owned(s) => Cow::Owned(s.into_bytes()),
+            Cow::Borrowed(s) => Cow::Borrowed(s.as_bytes()),
+        })
     }
 
     #[cfg(feature="openapi")]

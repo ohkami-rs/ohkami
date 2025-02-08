@@ -1,5 +1,6 @@
 use crate::{FromBody, IntoBody};
 use super::bound::{self, Incoming, Outgoing};
+use std::borrow::Cow;
 
 #[cfg(feature="openapi")]
 use crate::openapi;
@@ -25,8 +26,8 @@ impl<T: Outgoing> IntoBody for JSON<T> {
     const CONTENT_TYPE: &'static str = "application/json";
 
     #[inline]
-    fn into_body(self) -> Result<Vec<u8>, impl std::fmt::Display> {
-        serde_json::to_vec(&self.0)
+    fn into_body(self) -> Result<Cow<'static, [u8]>, impl std::fmt::Display> {
+        serde_json::to_vec(&self.0).map(Cow::Owned)
     }
 
     #[cfg(feature="openapi")]
