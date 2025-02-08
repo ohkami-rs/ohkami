@@ -232,3 +232,15 @@ impl Operation {
             .chain(self.responses.refize_schemas())
     }
 }
+
+#[cfg(test)]
+#[test] fn map_openapi_operation_compiles() {
+    #[allow(unused)]
+    fn map_openapi_operation(op: Operation) -> Operation {
+        op
+        .operationId("list_users")
+        .description("This doc comment is used for the\n`description` field of OpenAPI document")
+        .summary("...")
+        .response_description(200, "List of all users")
+    }
+}
