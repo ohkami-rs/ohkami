@@ -184,6 +184,15 @@ impl Operation {
         }
     }
 
+    pub fn response_description(
+        mut self,
+        status: impl Into<super::response::Status>,
+        description: &'static str
+    ) -> Self {
+        self.override_response_description(status, description);
+        self
+    }
+
     #[doc(hidden)]
     pub fn replace_empty_param_name_with(&mut self, name: &'static str) {
         if let Some(empty_param) = self.parameters.iter_mut().find(|p| p.name.is_empty()) {
