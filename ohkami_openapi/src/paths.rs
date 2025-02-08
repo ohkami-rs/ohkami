@@ -213,8 +213,11 @@ impl Operation {
     }
 
     #[doc(hidden)]
-    pub fn replace_empty_param_name_with(&mut self, name: &'static str) {
-        if let Some(empty_param) = self.parameters.iter_mut().find(|p| p.name.is_empty()) {
+    pub fn assign_path_param_name(&mut self, name: &'static str) {
+        if let Some(empty_param) = self.parameters.iter_mut()
+            .filter(|p| p.is_path())
+            .find(|p| p.name.is_empty())
+        {
             empty_param.name = name;
         }
     }
