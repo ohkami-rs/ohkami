@@ -52,9 +52,9 @@ impl Router {
     }
 
     #[cfg(feature="openapi")]
-    pub(crate) fn gen_openapi_doc(
+    pub(crate) fn gen_openapi_doc<'r>(
         &self,
-        routes:   impl IntoIterator<Item = &'static str>,
+        routes: impl Iterator<Item = &'r str>,
         metadata: crate::openapi::OpenAPI,
     ) -> crate::openapi::document::Document {
         let mut doc = crate::openapi::document::Document::new(
@@ -90,11 +90,11 @@ impl Router {
                 ("patch",  &self.PATCH),
                 ("delete", &self.DELETE),
             ] {
-                let mut path = crate::request::Path::from_literal(
+                let mut path = unsafe {crate::request::Path::from_str_unchecked(
                     // this is intended even when route == "/", then to "",
                     // samely as `Path::init_with_request_bytes`
                     route.trim_end_matches('/')
-                );
+                )};
 
                 crate::DEBUG!("[gen_openapi_doc] searching `{openapi_method} {route}`");
 
@@ -108,7 +108,7 @@ impl Router {
                 crate::DEBUG!("[gen_openapi_doc] found");
                         
                 for param_name in &openapi_path_param_names {
-                    operation.assign_path_param_name(param_name);
+                    operation.assign_path_param_name(param_name.to_string());
                 }
                 for security_scheme in operation.iter_securitySchemes() {
                     doc.register_securityScheme_component(security_scheme);
@@ -118,7 +118,7 @@ impl Router {
                 }
                 operations.register(openapi_method, operation);
             }
-            
+
             doc = doc.path(openapi_path, operations);
         }
 
@@ -311,8 +311,11 @@ const _: (/* conversions */) = {
     impl From<base::Pattern> for Pattern {
         fn from(base: base::Pattern) -> Self {
             match base {
-                base::Pattern::Static(s) => Self::Static(s.as_bytes()),
-                base::Pattern::Param(_)  => Self::Param
+                base::Pattern::Param(_)  => Self::Param,
+                base::Pattern::Static(s) => Self::Static(match s {
+                    std::borrow::Cow::Borrowed(s) => s.as_bytes(),
+                    std::borrow::Cow::Owned(s) => s.leak().as_bytes(),
+                }),
             }
         }
     }

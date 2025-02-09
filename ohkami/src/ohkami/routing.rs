@@ -8,19 +8,41 @@ use crate::Ohkami;
 use std::sync::Arc;
 
 
+#[derive(Clone)]
+pub(crate) struct HandlerMeta {
+    pub(crate) name: &'static str,
+    pub(crate) n_params: usize,
+}
+impl HandlerMeta {
+    fn new<T, H: IntoHandler<T>>(h: &H) -> Self {
+        Self {
+            name: std::any::type_name::<H>(),
+            n_params: h.n_params(),
+        }
+    }
+}
+impl std::fmt::Debug for HandlerMeta {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        f.debug_struct("HandlerMeta")
+            .field("name", &self.name)
+            .field("n_params", &self.n_params)
+            .finish()
+    }
+}
+
 macro_rules! HandlerSet {
     ($( $method:ident ),*) => {
         pub struct HandlerSet {
             pub(crate) route: RouteSegments,
             $(
-                pub(crate) $method: Option<Handler>,
+                pub(crate) $method: Option<(Handler, HandlerMeta)>,
             )*
         }
         
         impl HandlerSet {
             pub(crate) fn new(route_str: &'static str) -> Self {
                 Self {
-                    route:   RouteSegments::from_literal(route_str),
+                    route: RouteSegments::from_literal(route_str),
                     $(
                         $method: None,
                     )*
@@ -30,8 +52,9 @@ macro_rules! HandlerSet {
 
         impl HandlerSet {
             $(
-                pub fn $method<T>(mut self, handler: impl IntoHandler<T>) -> Self {
-                    self.$method.replace(handler.into_handler());
+                pub fn $method<T, H: IntoHandler<T>>(mut self, handler: H) -> Self {
+                    let meta = HandlerMeta::new::<T, H>(&handler);
+                    self.$method = Some((handler.into_handler(), meta));
                     self
                 }
             )*
@@ -179,9 +202,7 @@ macro_rules! Route {
         impl Route for &'static str {
             $(
                 fn $method<T>(self, handler: impl IntoHandler<T>) -> HandlerSet {
-                    let mut handlers = HandlerSet::new(self);
-                    handlers.$method.replace(handler.into_handler());
-                    handlers
+                    HandlerSet::new(self).$method(handler)
                 }
             )*
 
@@ -270,6 +291,8 @@ const _: () = {
                 }
                 
                 impl IntoHandler<std::fs::File> for StaticFileHandler {
+                    fn n_params(&self) -> usize {0}
+                
                     fn into_handler(self) -> Handler {
                         let this: &'static StaticFileHandler
                             = Box::leak(Box::new(self));

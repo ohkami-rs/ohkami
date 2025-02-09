@@ -7,6 +7,7 @@ use crate::openapi;
 
 
 pub trait IntoHandler<T> {
+    fn n_params(&self) -> usize;
     fn into_handler(self) -> Handler;
 }
 
@@ -33,6 +34,8 @@ const _: (/* no args */) = {
         Body: IntoResponse,
         Fut:  Future<Output = Body> + SendOnNative + 'static,
     {
+        fn n_params(&self) -> usize {0}
+
         fn into_handler(self) -> Handler {
             Handler::new(move |_| {
                 let res = self();
@@ -53,6 +56,8 @@ const _: (/* FromParam */) = {
         Body: IntoResponse,
         Fut:  Future<Output = Body> + SendOnNative + 'static,
     {
+        fn n_params(&self) -> usize {1}
+
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
                 match P1::from_raw_param(unsafe {req.path.assume_one_param()}) {
@@ -75,10 +80,11 @@ const _: (/* FromParam */) = {
         Body: IntoResponse,
         Fut:  Future<Output = Body> + SendOnNative + 'static,
     {
+        fn n_params(&self) -> usize {1}
+
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
-                // SAFETY: Due to the architecture of `Router`,
-                // `params` has already `append`ed once before this code
+                // SAFETY: `crate::Route` has already checked the number of params
                 match P1::from_raw_param(unsafe {req.path.assume_one_param()}) {
                     Ok(p1) => {
                         let res = self((p1,));
@@ -98,6 +104,8 @@ const _: (/* FromParam */) = {
         F:   Fn((P1, P2)) -> Fut + SendSyncOnNative + 'static,
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
+        fn n_params(&self) -> usize {2}
+
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
                 let (p1, p2) = unsafe {req.path.assume_two_params()};
@@ -123,6 +131,8 @@ const _: (/* FromRequest items */) = {
         F:   Fn(Item1) -> Fut + SendSyncOnNative + 'static,
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
+        fn n_params(&self) -> usize {0}
+
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
                 match from_request::<Item1>(req) {
@@ -144,6 +154,8 @@ const _: (/* FromRequest items */) = {
         F:   Fn(Item1, Item2) -> Fut + SendSyncOnNative + 'static,
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
+        fn n_params(&self) -> usize {0}
+
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
                 match (from_request::<Item1>(req), from_request::<Item2>(req)) {
@@ -167,6 +179,8 @@ const _: (/* FromRequest items */) = {
         F:   Fn(Item1, Item2, Item3) -> Fut + SendSyncOnNative + 'static,
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
+        fn n_params(&self) -> usize {0}
+
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
                 match (from_request::<Item1>(req), from_request::<Item2>(req), from_request::<Item3>(req)) {
@@ -192,6 +206,8 @@ const _: (/* FromRequest items */) = {
         F:   Fn(Item1, Item2, Item3, Item4) -> Fut + SendSyncOnNative + 'static,
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
+        fn n_params(&self) -> usize {0}
+
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
                 match (from_request::<Item1>(req), from_request::<Item2>(req), from_request::<Item3>(req), from_request::<Item4>(req)) {
@@ -221,10 +237,11 @@ const _: (/* one FromParam without tuple and FromRequest items */) = {
         F:   Fn(P1, Item1) -> Fut + SendSyncOnNative + 'static,
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
+        fn n_params(&self) -> usize {1}
+
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
-                // SAFETY: Due to the architecture of `Router`,
-                // `params` has already `append`ed once before this code
+                // SAFETY: `crate::Route` has already checked the number of params
                 let p1 = unsafe {req.path.assume_one_param()};
 
                 match (P1::from_raw_param(p1), from_request(req)) {
@@ -248,10 +265,11 @@ const _: (/* one FromParam without tuple and FromRequest items */) = {
         F:   Fn(P1, Item1, Item2) -> Fut + SendSyncOnNative + 'static,
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
+        fn n_params(&self) -> usize {1}
+
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
-                // SAFETY: Due to the architecture of `Router`,
-                // `params` has already `append`ed once before this code
+                // SAFETY: `crate::Route` has already checked the number of params
                 let p1 = unsafe {req.path.assume_one_param()};
 
                 match (P1::from_raw_param(p1), from_request::<Item1>(req), from_request::<Item2>(req)) {
@@ -277,10 +295,11 @@ const _: (/* one FromParam without tuple and FromRequest items */) = {
         F:   Fn(P1, Item1, Item2, Item3) -> Fut + SendSyncOnNative + 'static,
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
+        fn n_params(&self) -> usize {1}
+
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
-                // SAFETY: Due to the architecture of `Router`,
-                // `params` has already `append`ed once before this code
+                // SAFETY: `crate::Route` has already checked the number of params
                 let p1 = unsafe {req.path.assume_one_param()};
 
                 match (P1::from_raw_param(p1), from_request::<Item1>(req), from_request::<Item2>(req), from_request::<Item3>(req)) {
@@ -308,10 +327,11 @@ const _: (/* one FromParam without tuple and FromRequest items */) = {
         F:   Fn(P1, Item1, Item2, Item3, Item4) -> Fut + SendSyncOnNative + 'static,
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
+        fn n_params(&self) -> usize {1}
+
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
-                // SAFETY: Due to the architecture of `Router`,
-                // `params` has already `append`ed once before this code
+                // SAFETY: `crate::Route` has already checked the number of params
                 let p1 = unsafe {req.path.assume_one_param()};
 
                 match (P1::from_raw_param(p1), from_request::<Item1>(req), from_request::<Item2>(req), from_request::<Item3>(req), from_request::<Item4>(req)) {
@@ -343,10 +363,11 @@ const _: (/* one FromParam and FromRequest items */) = {
         F:   Fn((P1,), Item1) -> Fut + SendSyncOnNative + 'static,
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
+        fn n_params(&self) -> usize {1}
+
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
-                // SAFETY: Due to the architecture of `Router`,
-                // `params` has already `append`ed once before this code
+                // SAFETY: `crate::Route` has already checked the number of params
                 let p1 = unsafe {req.path.assume_one_param()};
 
                 match (P1::from_raw_param(p1), from_request::<Item1>(req)) {
@@ -370,10 +391,11 @@ const _: (/* one FromParam and FromRequest items */) = {
         F:   Fn((P1,), Item1, Item2) -> Fut + SendSyncOnNative + 'static,
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
+        fn n_params(&self) -> usize {1}
+
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
-                // SAFETY: Due to the architecture of `Router`,
-                // `params` has already `append`ed once before this code
+                // SAFETY: `crate::Route` has already checked the number of params
                 let p1 = unsafe {req.path.assume_one_param()};
 
                 match (P1::from_raw_param(p1), from_request::<Item1>(req), from_request::<Item2>(req)) {
@@ -399,10 +421,11 @@ const _: (/* one FromParam and FromRequest items */) = {
         F:   Fn((P1,), Item1, Item2, Item3) -> Fut + SendSyncOnNative + 'static,
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
+        fn n_params(&self) -> usize {1}
+
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
-                // SAFETY: Due to the architecture of `Router`,
-                // `params` has already `append`ed once before this code
+                // SAFETY: `crate::Route` has already checked the number of params
                 let p1 = unsafe {req.path.assume_one_param()};
                 
                 match (P1::from_raw_param(p1), from_request::<Item1>(req), from_request::<Item2>(req), from_request::<Item3>(req)) {
@@ -430,10 +453,11 @@ const _: (/* one FromParam and FromRequest items */) = {
         F:   Fn((P1,), Item1, Item2, Item3, Item4) -> Fut + SendSyncOnNative + 'static,
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
+        fn n_params(&self) -> usize {1}
+
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
-                // SAFETY: Due to the architecture of `Router`,
-                // `params` has already `append`ed once before this code
+                // SAFETY: `crate::Route` has already checked the number of params
                 let p1 = unsafe {req.path.assume_one_param()};
                 
                 match (P1::from_raw_param(p1), from_request::<Item1>(req), from_request::<Item2>(req), from_request::<Item3>(req), from_request::<Item4>(req)) {
@@ -465,10 +489,11 @@ const _: (/* two PathParams and FromRequest items */) = {
         F:   Fn((P1, P2), Item1) -> Fut + SendSyncOnNative + 'static,
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
+        fn n_params(&self) -> usize {2}
+
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
-                // SAFETY: Due to the architecture of `Router`,
-                // `params` has already `append`ed twice before this code
+                // SAFETY: `crate::Route` has already checked the number of params
                 let (p1, p2) = unsafe {req.path.assume_two_params()};
 
                 match (FromParam::from_raw_param(p1), FromParam::from_raw_param(p2), from_request::<Item1>(req)) {
@@ -494,10 +519,11 @@ const _: (/* two PathParams and FromRequest items */) = {
         F:   Fn((P1, P2), Item1, Item2) -> Fut + SendSyncOnNative + 'static,
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
+        fn n_params(&self) -> usize {2}
+
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
-                // SAFETY: Due to the architecture of `Router`,
-                // `params` has already `append`ed twice before this code
+                // SAFETY: `crate::Route` has already checked the number of params
                 let (p1, p2) = unsafe {req.path.assume_two_params()};
 
                 match (FromParam::from_raw_param(p1), FromParam::from_raw_param(p2), from_request::<Item1>(req), from_request::<Item2>(req)) {
@@ -525,10 +551,11 @@ const _: (/* two PathParams and FromRequest items */) = {
         F:   Fn((P1, P2), Item1, Item2, Item3) -> Fut + SendSyncOnNative + 'static,
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
+        fn n_params(&self) -> usize {2}
+
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
-                // SAFETY: Due to the architecture of `Router`,
-                // `params` has already `append`ed twice before this code
+                // SAFETY: `crate::Route` has already checked the number of params
                 let (p1, p2) = unsafe {req.path.assume_two_params()};
 
                 match (FromParam::from_raw_param(p1), FromParam::from_raw_param(p2), from_request::<Item1>(req), from_request::<Item2>(req), from_request::<Item3>(req)) {
@@ -558,10 +585,11 @@ const _: (/* two PathParams and FromRequest items */) = {
         F:   Fn((P1, P2), Item1, Item2, Item3, Item4) -> Fut + SendSyncOnNative + 'static,
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
+        fn n_params(&self) -> usize {2}
+
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
-                // SAFETY: Due to the architecture of `Router`,
-                // `params` has already `append`ed twice before this code
+                // SAFETY: `crate::Route` has already checked the number of params
                 let (p1, p2) = unsafe {req.path.assume_two_params()};
 
                 match (FromParam::from_raw_param(p1), FromParam::from_raw_param(p2), from_request::<Item1>(req), from_request::<Item2>(req), from_request::<Item3>(req), from_request::<Item4>(req)) {

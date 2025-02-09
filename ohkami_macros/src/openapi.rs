@@ -545,6 +545,10 @@ pub(super) fn operation(meta: TokenStream, handler: TokenStream) -> syn::Result<
             }
 
             impl ::ohkami::handler::IntoHandler<#handler_name> for #handler_name {
+                fn n_params(&self) -> usize {
+                    ::ohkami::handler::IntoHandler::n_params(&operation::#handler_name)
+                }
+
                 fn into_handler(self) -> ::ohkami::handler::Handler {
                     ::ohkami::handler::IntoHandler::into_handler(operation::#handler_name)
                         .map_openapi_operation(|mut op| { #modify_op op })

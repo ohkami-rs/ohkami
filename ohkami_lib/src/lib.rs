@@ -1,4 +1,5 @@
 pub mod map;
+pub use map::TupleMap;
 
 pub mod mime;
 

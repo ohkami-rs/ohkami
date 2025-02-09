@@ -143,13 +143,17 @@ const _: () = {
     }
     
     impl Path {
-        #[cfg(any(
-            all(feature="__rt_native__", feature="DEBUG", test),
-            all(feature="__rt__", feature="openapi"),
-        ))]
+        #[cfg(all(feature="__rt_native__", feature="DEBUG", test))]
         pub(crate) fn from_literal(literal: &'static str) -> Self {
+            // SAFETY: `literal` is 'static
+            unsafe {Self::from_str_unchecked(literal)}
+        }
+    
+        #[allow(unused)]
+        /// SAFETY: `s` outlives the actual (used) lifetime of `Path`
+        pub(crate) unsafe fn from_str_unchecked(s: &str) -> Self {
             Self(MaybeUninit::new(PathInner {
-                raw:    Slice::from_bytes(literal.as_bytes()),
+                raw:    Slice::from_bytes(s.trim_end_matches('/').as_bytes()),
                 params: Params::init(),
             }))
         }

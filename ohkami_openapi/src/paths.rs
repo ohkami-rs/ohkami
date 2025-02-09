@@ -213,12 +213,12 @@ impl Operation {
     }
 
     #[doc(hidden)]
-    pub fn assign_path_param_name(&mut self, name: &'static str) {
+    pub fn assign_path_param_name(&mut self, name: impl Into<std::borrow::Cow<'static, str>>) {
         if let Some(empty_param) = self.parameters.iter_mut()
             .filter(|p| p.is_path())
             .find(|p| p.name.is_empty())
         {
-            empty_param.name = name;
+            empty_param.name = name.into();
         }
     }
 
