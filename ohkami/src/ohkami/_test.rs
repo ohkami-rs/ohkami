@@ -763,19 +763,32 @@ fn panics_unexpected_path_params() {
 
     let _ = Ohkami::new((
         "/hello".GET(hello_name),
-    ));
+    )).test(); /* panics here on finalize */
 }
 
 #[test]
+#[should_panic =
+    "handler `ohkami::ohkami::_test::check_path_params_counted_accumulatedly::hello_name_age` \
+    requires 2 path param(s) \
+    BUT the route `/hello/:name` captures only 1 param(s)"
+]
 fn check_path_params_counted_accumulatedly() {
     async fn hello_name(name: &str) -> String {
         format!("Hello, {name}!")
     }
+    async fn hello_name_age((name, age): (&str, u8)) -> String {
+        format!("Hello, {name} ({age})!")
+    }
 
-    /* should_not_panic */
     let _ = Ohkami::new((
         "/hello/:name".By(Ohkami::new((
             "/".GET(hello_name),
         ))),
-    ));
+    )).test(); /* NOT panics here */
+
+    let _ = Ohkami::new((
+        "/hello/:name".By(Ohkami::new((
+            "/".GET(hello_name_age),
+        ))),
+    )).test(); /* panics here */
 }

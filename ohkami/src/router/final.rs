@@ -64,7 +64,7 @@ impl Router {
         );
 
         for route in routes {
-            crate::DEBUG!("[gen_openapi_doc] route = `{method} {route}`");
+            crate::DEBUG!("[gen_openapi_doc] route = `{route}`");
 
             assert!(route.starts_with('/'));
 

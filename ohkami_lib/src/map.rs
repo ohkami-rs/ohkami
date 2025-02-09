@@ -74,6 +74,18 @@ impl<K: Clone + PartialEq, V: Clone> Clone for TupleMap<K, V> {
     }
 }
 
+impl<K:PartialEq, V> std::fmt::Debug for TupleMap<K, V>
+where
+    K: std::fmt::Debug,
+    V: std::fmt::Debug,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        f.debug_map()
+            .entries(self.iter().map(|&(ref k, ref v)| (k, v)))
+            .finish()
+    }
+}
+
 impl<'de, K:PartialEq, V> serde::Deserialize<'de> for TupleMap<K, V>
 where
     K: serde::Deserialize<'de>,

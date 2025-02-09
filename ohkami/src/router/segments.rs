@@ -53,7 +53,7 @@ impl RouteSegments {
             self.literal().trim_end_matches('/'),
             another.literal().trim_start_matches('/')
         ));
-        if literal.ends_with('/') {
+        if literal != "/" && literal.ends_with('/') {
             let _ = literal.to_mut().pop();
         }
 
@@ -67,6 +67,11 @@ impl std::ops::Deref for RouteSegments {
     type Target = str;
     fn deref(&self) -> &Self::Target {
         &self.literal
+    }
+}
+impl std::fmt::Display for RouteSegments {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        f.write_str(&**self)
     }
 }
 

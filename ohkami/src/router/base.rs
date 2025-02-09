@@ -402,13 +402,13 @@ impl Pattern {
     #[cfg(feature="__rt_native__")]
     pub(super) fn merge_statics(self, child: Pattern) -> Option<Pattern> {
         match (self, child) {
-            (Pattern::Static(s1), Pattern::Static(s2)) => Some(
-                Pattern::Static(Cow::Owned([
-                    s1.trim_end_matches('/'),
-                    "/",
-                    s2.trim_start_matches('/')
-                ].concat().trim_end_matches('/').to_string()))
-            ),
+            (Pattern::Static(s1), Pattern::Static(s2)) => Some(Pattern::Static(Cow::Owned({
+                let mut merged = format!("{}/{}", s1.trim_end_matches('/'), s2.trim_start_matches('/'));
+                if merged != "/" && merged.ends_with('/') {
+                    let _ = merged.pop();
+                }
+                merged
+            }))),
             _ => None
         }
     }
