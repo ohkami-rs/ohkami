@@ -1,4 +1,4 @@
-use super::{util, base, segments::RouteSegments};
+use super::{util, base};
 use crate::fang::{FangProcCaller, BoxedFPC, handler::Handler};
 use crate::{request::Path, response::Content};
 use crate::{Method, Request, Response};
@@ -52,9 +52,9 @@ impl Router {
     }
 
     #[cfg(feature="openapi")]
-    pub(crate) fn gen_openapi_doc(
+    pub(crate) fn gen_openapi_doc<'r>(
         &self,
-        routes: impl Iterator<Item = RouteSegments>,
+        routes: impl Iterator<Item = &'r str>,
         metadata: crate::openapi::OpenAPI,
     ) -> crate::openapi::document::Document {
         let mut doc = crate::openapi::document::Document::new(
