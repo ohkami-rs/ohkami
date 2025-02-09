@@ -44,6 +44,12 @@ impl<K: PartialEq, V> TupleMap<K, V> {
         }; None
     }
 
+    pub fn append(&mut self, another: Self) {
+        for (k, v) in another.into_iter() {
+            self.insert(k, v);
+        }
+    }
+
     pub fn clear(&mut self) {
         self.0.clear();
     }

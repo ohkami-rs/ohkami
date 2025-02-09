@@ -8,12 +8,34 @@ use crate::Ohkami;
 use std::sync::Arc;
 
 
+#[derive(Clone)]
+pub(crate) struct HandlerMeta {
+    pub(crate) name: &'static str,
+    pub(crate) n_params: usize,
+}
+impl HandlerMeta {
+    fn new<T, H: IntoHandler<T>>() -> Self {
+        Self {
+            name: std::any::type_name::<H>(),
+            n_params: <H as IntoHandler<T>>::N_PARAMS,
+        }
+    }
+}
+impl std::fmt::Debug for HandlerMeta {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        f.debug_struct("HandlerMeta")
+            .field("name", &self.name)
+            .field("n_params", &self.n_params)
+            .finish()
+    }
+}
+
 macro_rules! HandlerSet {
     ($( $method:ident ),*) => {
         pub struct HandlerSet {
             pub(crate) route: RouteSegments,
             $(
-                pub(crate) $method: Option<Handler>,
+                pub(crate) $method: Option<(Handler, HandlerMeta)>,
             )*
         }
         
@@ -31,15 +53,10 @@ macro_rules! HandlerSet {
         impl HandlerSet {
             $(
                 pub fn $method<T, H: IntoHandler<T>>(mut self, handler: H) -> Self {
-                    assert!(
-                        <H as IntoHandler<T>>::N_PARAMS <= self.route.n_params(),
-                        "handler `{}` requires {} path param(s) \
-                        BUT the route `{}` captures only {} param(s)",
-                        std::any::type_name::<H>(), <H as IntoHandler<T>>::N_PARAMS,
-                        self.route.literal(), self.route.n_params()
-                    );
-
-                    self.$method = Some(handler.into_handler());
+                    self.$method = Some((
+                        handler.into_handler(),
+                        HandlerMeta::new::<T, H>()
+                    ));
                     self
                 }
             )*

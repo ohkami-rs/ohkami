@@ -1,14 +1,16 @@
 use super::util::ID;
-use super::segments::{RouteSegment, RouteSegmentsIterator};
+use super::segments::{RouteSegment, RouteSegments, RouteSegmentsIterator};
+use crate::Method;
 use crate::fang::{BoxedFPC, Fangs, handler::Handler};
-use crate::ohkami::routing::{ByAnother, HandlerSet};
-use std::{sync::Arc, collections::HashSet};
+use crate::ohkami::routing::{ByAnother, HandlerSet, HandlerMeta};
+use ohkami_lib::map::TupleMap;
+use std::{sync::Arc, borrow::Cow, collections::HashMap};
 
 #[cfg_attr(feature="openapi", derive(Clone))]
 #[allow(non_snake_case)]
 pub struct Router {
     id:     ID,
-    routes: HashSet<&'static str>,
+    routes: HashMap<RouteSegments, TupleMap<Method, HandlerMeta>>,
     pub(super) GET:     Node,
     pub(super) PUT:     Node,
     pub(super) POST:    Node,
@@ -27,8 +29,8 @@ pub(super) struct Node {
 
 #[derive(Clone)]
 pub(super) enum Pattern {
-    Static(&'static str),
-    Param (&'static str)
+    Static(Cow<'static, str>),
+    Param (Cow<'static, str>)
 }
 
 #[derive(Clone)]
@@ -94,7 +96,7 @@ impl Router {
     pub(crate) fn new() -> Self {
         Self {
             id:      ID::new(),
-            routes:  HashSet::new(),
+            routes:  HashMap::new(),
             GET:     Node::root(),
             PUT:     Node::root(),
             POST:    Node::root(),
@@ -110,8 +112,6 @@ impl Router {
 
     pub(crate) fn register_handlers(&mut self, handlers: HandlerSet) {
         let HandlerSet { route, GET, PUT, POST, PATCH, DELETE } = handlers;
-
-        self.routes.insert(route.literal());
 
         let methods = {
             macro_rules! allow_methods {
@@ -130,10 +130,14 @@ impl Router {
 
         macro_rules! register {
             ($( $method:ident ),*) => {$(
-                if let Some(h) = $method {
+                if let Some((handler, meta)) = $method {
+                    self.routes.entry(route.clone())
+                        .and_modify(|it| {it.insert(Method::$method, meta.clone());})
+                        .or_insert_with(|| TupleMap::from_iter([(Method::$method, meta)]));
+
                     self.$method.register_handler(
                         route.clone().into_iter(),
-                        h,
+                        handler,
                         false
                     ).expect("Failed to register handler");
                 }
@@ -157,12 +161,10 @@ impl Router {
             another: {another_routes:#?}\n\
         ");
 
-        for another_route in &another_routes.routes {
-            self.routes.insert([
-                route.literal().trim_end_matches('/'),
-                "/",
-                another_route.trim_start_matches('/')
-            ].concat().leak().trim_end_matches('/'));
+        for (another_route, map) in &another_routes.routes {
+            self.routes.entry(RouteSegments::merged(route.clone(), another_route.clone()))
+                .and_modify(|it| it.append(map.clone()))
+                .or_insert_with(|| map.clone());
         }
 
         macro_rules! merge {
@@ -202,9 +204,22 @@ impl Router {
         } apply_to! { GET, PUT, POST, PATCH, DELETE, OPTIONS }
     }
 
-    #[allow(unused_mut)]
-    pub(crate) fn finalize(mut self) -> (super::r#final::Router, HashSet<&'static str>) {
+    pub(crate) fn finalize(mut self) -> (
+        super::r#final::Router,
+        HashMap<RouteSegments, TupleMap<Method, HandlerMeta>>
+    ) {
         let routes = std::mem::take(&mut self.routes);
+        for (route, handlers_meta) in &routes {
+            for (_method, handler_meta) in handlers_meta.iter() {
+                assert!(
+                    handler_meta.n_params <= route.n_params(),
+                    "handler `{}` requires {} path param(s) \
+                    BUT the route `{}` captures only {} param(s)",
+                    handler_meta.name, handler_meta.n_params,
+                    route.literal(), route.n_params()
+                );
+            }
+        }
 
         let r#final = super::r#final::Router::from(self);
 
@@ -388,11 +403,11 @@ impl Pattern {
     pub(super) fn merge_statics(self, child: Pattern) -> Option<Pattern> {
         match (self, child) {
             (Pattern::Static(s1), Pattern::Static(s2)) => Some(
-                Pattern::Static([
+                Pattern::Static(Cow::Owned([
                     s1.trim_end_matches('/'),
                     "/",
                     s2.trim_start_matches('/')
-                ].concat().leak().trim_end_matches('/'))
+                ].concat().trim_end_matches('/').to_string()))
             ),
             _ => None
         }

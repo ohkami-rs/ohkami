@@ -765,3 +765,17 @@ fn panics_unexpected_path_params() {
         "/hello".GET(hello_name),
     ));
 }
+
+#[test]
+fn check_path_params_counted_accumulatedly() {
+    async fn hello_name(name: &str) -> String {
+        format!("Hello, {name}!")
+    }
+
+    /* should_not_panic */
+    let _ = Ohkami::new((
+        "/hello/:name".By(Ohkami::new((
+            "/".GET(hello_name),
+        ))),
+    ));
+}
