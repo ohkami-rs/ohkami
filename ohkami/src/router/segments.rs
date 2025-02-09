@@ -1,20 +1,17 @@
-use std::collections::vec_deque::{IntoIter as VecDequeIterator, VecDeque};
+use std::collections::VecDeque;
 
 
 #[derive(Clone, Debug)]
 pub(crate) struct RouteSegments {
     literal: &'static str,
-    segments: VecDequeIterator<RouteSegment>,
+    segments: VecDeque<RouteSegment>,
 }
 impl RouteSegments {
     pub(crate) fn from_literal(literal: &'static str) -> Self {        
         if literal.is_empty() {panic!("found an empty route")}
 
         if literal == "/" {
-            return Self {
-                literal,
-                segments: VecDeque::new().into_iter()
-            }
+            return Self { literal, segments: VecDeque::new() }
         }
 
         if !literal.starts_with('/') {panic!("routes must start with '/': `{literal}`")}
@@ -33,21 +30,19 @@ impl RouteSegments {
             prev_slash = slash;
         }
 
-        Self { literal, segments:segments.into_iter() }
+        Self { literal, segments }
     }
 
-    pub(crate)  fn literal(&self) -> &'static str {
+    pub(crate) fn literal(&self) -> &'static str {
         self.literal
     }
-}
-const _: () = {
-    impl Iterator for RouteSegments {
-        type Item = RouteSegment;
-        fn next(&mut self) -> Option<Self::Item> {
-            self.segments.next()
-        }
+
+    pub(crate) fn n_params(&self) -> usize {
+        self.segments.iter()
+            .filter(|s| matches!(s, RouteSegment::Param(_)))
+            .count()
     }
-};
+}
 
 #[derive(Clone)]
 pub(crate) enum RouteSegment {
@@ -100,13 +95,28 @@ impl RouteSegment {
         }
     }
 }
-const _: () = {
-    impl std::fmt::Debug for RouteSegment {
-        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            match self {
-                Self::Param (name) => f.write_str(name),
-                Self::Static(s)    => f.write_str(s),
-            }
+impl std::fmt::Debug for RouteSegment {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Param (name) => f.write_str(name),
+            Self::Static(s)    => f.write_str(s),
         }
     }
-};
+}
+
+pub(crate) struct RouteSegmentsIterator(
+    std::collections::vec_deque::IntoIter<RouteSegment>
+);
+impl Iterator for RouteSegmentsIterator {
+    type Item = RouteSegment;
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.next()
+    }
+}
+impl IntoIterator for RouteSegments {
+    type Item = RouteSegment;
+    type IntoIter = RouteSegmentsIterator;
+    fn into_iter(self) -> Self::IntoIter {
+        RouteSegmentsIterator(self.segments.into_iter())
+    }
+}

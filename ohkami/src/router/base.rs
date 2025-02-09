@@ -1,5 +1,5 @@
 use super::util::ID;
-use super::segments::{RouteSegments, RouteSegment};
+use super::segments::{RouteSegment, RouteSegmentsIterator};
 use crate::fang::{BoxedFPC, Fangs, handler::Handler};
 use crate::ohkami::routing::{ByAnother, HandlerSet};
 use std::{sync::Arc, collections::HashSet};
@@ -131,13 +131,21 @@ impl Router {
         macro_rules! register {
             ($( $method:ident ),*) => {$(
                 if let Some(h) = $method {
-                    self.$method.register_handler(route.clone(), h, false).expect("Failed to register handler");
+                    self.$method.register_handler(
+                        route.clone().into_iter(),
+                        h,
+                        false
+                    ).expect("Failed to register handler");
                 }
             )*};
         }
         register! { GET, PUT, POST, PATCH, DELETE }
 
-        self.OPTIONS.register_handler(route, Handler::default_options_with(methods), true).expect("Failed to register handler");
+        self.OPTIONS.register_handler(
+            route.into_iter(),
+            Handler::default_options_with(methods),
+            true
+        ).expect("Failed to register handler");
     }
 
     pub(crate) fn merge_another(&mut self, another: ByAnother) {
@@ -235,7 +243,7 @@ impl Node {
 
     fn register_handler(
         &mut self,
-        mut route:      RouteSegments,
+        mut route:      RouteSegmentsIterator,
         handler:        Handler,
         allow_override: bool,
     ) -> Result<(), String> {
@@ -296,7 +304,7 @@ impl Node {
 
     fn merge_node(
         &mut self,
-        mut route_to_merge_root: RouteSegments,
+        mut route_to_merge_root: RouteSegmentsIterator,
         another: Node,
         allow_override_handler: bool
     ) -> Result<(), String> {

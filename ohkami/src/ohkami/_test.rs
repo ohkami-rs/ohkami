@@ -749,3 +749,20 @@ fn method_dependent_fang_applying() {
         }
     });
 }
+
+#[test]
+#[should_panic =
+    "handler `ohkami::ohkami::_test::panics_unexpected_path_params::hello_name` \
+    requires 1 path param(s) \
+    BUT the route `/hello` captures only 0 param(s)"
+]
+fn panics_unexpected_path_params() {
+    async fn hello_name(name: &str) -> String {
+        format!("Hello, {name}!")
+    }
+
+    let _ = Ohkami::new((
+        "/hello".GET(hello_name),
+    ));
+}
+

@@ -7,6 +7,7 @@ use crate::openapi;
 
 
 pub trait IntoHandler<T> {
+    const N_PARAMS: usize;
     fn into_handler(self) -> Handler;
 }
 
@@ -33,6 +34,8 @@ const _: (/* no args */) = {
         Body: IntoResponse,
         Fut:  Future<Output = Body> + SendOnNative + 'static,
     {
+        const N_PARAMS: usize = 0;
+
         fn into_handler(self) -> Handler {
             Handler::new(move |_| {
                 let res = self();
@@ -53,6 +56,8 @@ const _: (/* FromParam */) = {
         Body: IntoResponse,
         Fut:  Future<Output = Body> + SendOnNative + 'static,
     {
+        const N_PARAMS: usize = 1;
+
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
                 match P1::from_raw_param(unsafe {req.path.assume_one_param()}) {
@@ -75,6 +80,8 @@ const _: (/* FromParam */) = {
         Body: IntoResponse,
         Fut:  Future<Output = Body> + SendOnNative + 'static,
     {
+        const N_PARAMS: usize = 1;
+
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
                 // SAFETY: Due to the architecture of `Router`,
@@ -98,6 +105,8 @@ const _: (/* FromParam */) = {
         F:   Fn((P1, P2)) -> Fut + SendSyncOnNative + 'static,
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
+        const N_PARAMS: usize = 2;
+
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
                 let (p1, p2) = unsafe {req.path.assume_two_params()};
@@ -123,6 +132,8 @@ const _: (/* FromRequest items */) = {
         F:   Fn(Item1) -> Fut + SendSyncOnNative + 'static,
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
+        const N_PARAMS: usize = 0;
+
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
                 match from_request::<Item1>(req) {
@@ -144,6 +155,8 @@ const _: (/* FromRequest items */) = {
         F:   Fn(Item1, Item2) -> Fut + SendSyncOnNative + 'static,
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
+        const N_PARAMS: usize = 0;
+
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
                 match (from_request::<Item1>(req), from_request::<Item2>(req)) {
@@ -167,6 +180,8 @@ const _: (/* FromRequest items */) = {
         F:   Fn(Item1, Item2, Item3) -> Fut + SendSyncOnNative + 'static,
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
+        const N_PARAMS: usize = 0;
+
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
                 match (from_request::<Item1>(req), from_request::<Item2>(req), from_request::<Item3>(req)) {
@@ -192,6 +207,8 @@ const _: (/* FromRequest items */) = {
         F:   Fn(Item1, Item2, Item3, Item4) -> Fut + SendSyncOnNative + 'static,
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
+        const N_PARAMS: usize = 0;
+
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
                 match (from_request::<Item1>(req), from_request::<Item2>(req), from_request::<Item3>(req), from_request::<Item4>(req)) {
@@ -221,6 +238,8 @@ const _: (/* one FromParam without tuple and FromRequest items */) = {
         F:   Fn(P1, Item1) -> Fut + SendSyncOnNative + 'static,
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
+        const N_PARAMS: usize = 1;
+
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
                 // SAFETY: Due to the architecture of `Router`,
@@ -248,6 +267,8 @@ const _: (/* one FromParam without tuple and FromRequest items */) = {
         F:   Fn(P1, Item1, Item2) -> Fut + SendSyncOnNative + 'static,
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
+        const N_PARAMS: usize = 1;
+
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
                 // SAFETY: Due to the architecture of `Router`,
@@ -277,6 +298,8 @@ const _: (/* one FromParam without tuple and FromRequest items */) = {
         F:   Fn(P1, Item1, Item2, Item3) -> Fut + SendSyncOnNative + 'static,
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
+        const N_PARAMS: usize = 1;
+
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
                 // SAFETY: Due to the architecture of `Router`,
@@ -308,6 +331,8 @@ const _: (/* one FromParam without tuple and FromRequest items */) = {
         F:   Fn(P1, Item1, Item2, Item3, Item4) -> Fut + SendSyncOnNative + 'static,
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
+        const N_PARAMS: usize = 1;
+
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
                 // SAFETY: Due to the architecture of `Router`,
@@ -343,6 +368,8 @@ const _: (/* one FromParam and FromRequest items */) = {
         F:   Fn((P1,), Item1) -> Fut + SendSyncOnNative + 'static,
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
+        const N_PARAMS: usize = 1;
+
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
                 // SAFETY: Due to the architecture of `Router`,
@@ -370,6 +397,8 @@ const _: (/* one FromParam and FromRequest items */) = {
         F:   Fn((P1,), Item1, Item2) -> Fut + SendSyncOnNative + 'static,
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
+        const N_PARAMS: usize = 1;
+
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
                 // SAFETY: Due to the architecture of `Router`,
@@ -399,6 +428,8 @@ const _: (/* one FromParam and FromRequest items */) = {
         F:   Fn((P1,), Item1, Item2, Item3) -> Fut + SendSyncOnNative + 'static,
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
+        const N_PARAMS: usize = 1;
+
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
                 // SAFETY: Due to the architecture of `Router`,
@@ -430,6 +461,8 @@ const _: (/* one FromParam and FromRequest items */) = {
         F:   Fn((P1,), Item1, Item2, Item3, Item4) -> Fut + SendSyncOnNative + 'static,
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
+        const N_PARAMS: usize = 1;
+
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
                 // SAFETY: Due to the architecture of `Router`,
@@ -465,6 +498,8 @@ const _: (/* two PathParams and FromRequest items */) = {
         F:   Fn((P1, P2), Item1) -> Fut + SendSyncOnNative + 'static,
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
+        const N_PARAMS: usize = 2;
+
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
                 // SAFETY: Due to the architecture of `Router`,
@@ -494,6 +529,8 @@ const _: (/* two PathParams and FromRequest items */) = {
         F:   Fn((P1, P2), Item1, Item2) -> Fut + SendSyncOnNative + 'static,
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
+        const N_PARAMS: usize = 2;
+
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
                 // SAFETY: Due to the architecture of `Router`,
@@ -525,6 +562,8 @@ const _: (/* two PathParams and FromRequest items */) = {
         F:   Fn((P1, P2), Item1, Item2, Item3) -> Fut + SendSyncOnNative + 'static,
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
+        const N_PARAMS: usize = 2;
+
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
                 // SAFETY: Due to the architecture of `Router`,
@@ -558,6 +597,8 @@ const _: (/* two PathParams and FromRequest items */) = {
         F:   Fn((P1, P2), Item1, Item2, Item3, Item4) -> Fut + SendSyncOnNative + 'static,
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
+        const N_PARAMS: usize = 2;
+
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
                 // SAFETY: Due to the architecture of `Router`,
