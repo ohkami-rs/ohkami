@@ -14,10 +14,10 @@ pub(crate) struct HandlerMeta {
     pub(crate) n_params: usize,
 }
 impl HandlerMeta {
-    fn new<T, H: IntoHandler<T>>() -> Self {
+    fn new<T, H: IntoHandler<T>>(h: &H) -> Self {
         Self {
             name: std::any::type_name::<H>(),
-            n_params: <H as IntoHandler<T>>::N_PARAMS,
+            n_params: h.n_params(),
         }
     }
 }
@@ -53,10 +53,8 @@ macro_rules! HandlerSet {
         impl HandlerSet {
             $(
                 pub fn $method<T, H: IntoHandler<T>>(mut self, handler: H) -> Self {
-                    self.$method = Some((
-                        handler.into_handler(),
-                        HandlerMeta::new::<T, H>()
-                    ));
+                    let meta = HandlerMeta::new::<T, H>(&handler);
+                    self.$method = Some((handler.into_handler(), meta));
                     self
                 }
             )*
@@ -293,7 +291,7 @@ const _: () = {
                 }
                 
                 impl IntoHandler<std::fs::File> for StaticFileHandler {
-                    const N_PARAMS: usize = 0;
+                    fn n_params(&self) -> usize {0}
                 
                     fn into_handler(self) -> Handler {
                         let this: &'static StaticFileHandler

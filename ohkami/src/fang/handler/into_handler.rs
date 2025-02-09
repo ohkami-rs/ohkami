@@ -7,7 +7,7 @@ use crate::openapi;
 
 
 pub trait IntoHandler<T> {
-    const N_PARAMS: usize;
+    fn n_params(&self) -> usize;
     fn into_handler(self) -> Handler;
 }
 
@@ -34,7 +34,7 @@ const _: (/* no args */) = {
         Body: IntoResponse,
         Fut:  Future<Output = Body> + SendOnNative + 'static,
     {
-        const N_PARAMS: usize = 0;
+        fn n_params(&self) -> usize {0}
 
         fn into_handler(self) -> Handler {
             Handler::new(move |_| {
@@ -56,7 +56,7 @@ const _: (/* FromParam */) = {
         Body: IntoResponse,
         Fut:  Future<Output = Body> + SendOnNative + 'static,
     {
-        const N_PARAMS: usize = 1;
+        fn n_params(&self) -> usize {1}
 
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
@@ -80,7 +80,7 @@ const _: (/* FromParam */) = {
         Body: IntoResponse,
         Fut:  Future<Output = Body> + SendOnNative + 'static,
     {
-        const N_PARAMS: usize = 1;
+        fn n_params(&self) -> usize {1}
 
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
@@ -104,7 +104,7 @@ const _: (/* FromParam */) = {
         F:   Fn((P1, P2)) -> Fut + SendSyncOnNative + 'static,
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
-        const N_PARAMS: usize = 2;
+        fn n_params(&self) -> usize {2}
 
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
@@ -131,7 +131,7 @@ const _: (/* FromRequest items */) = {
         F:   Fn(Item1) -> Fut + SendSyncOnNative + 'static,
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
-        const N_PARAMS: usize = 0;
+        fn n_params(&self) -> usize {0}
 
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
@@ -154,7 +154,7 @@ const _: (/* FromRequest items */) = {
         F:   Fn(Item1, Item2) -> Fut + SendSyncOnNative + 'static,
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
-        const N_PARAMS: usize = 0;
+        fn n_params(&self) -> usize {0}
 
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
@@ -179,7 +179,7 @@ const _: (/* FromRequest items */) = {
         F:   Fn(Item1, Item2, Item3) -> Fut + SendSyncOnNative + 'static,
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
-        const N_PARAMS: usize = 0;
+        fn n_params(&self) -> usize {0}
 
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
@@ -206,7 +206,7 @@ const _: (/* FromRequest items */) = {
         F:   Fn(Item1, Item2, Item3, Item4) -> Fut + SendSyncOnNative + 'static,
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
-        const N_PARAMS: usize = 0;
+        fn n_params(&self) -> usize {0}
 
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
@@ -237,7 +237,7 @@ const _: (/* one FromParam without tuple and FromRequest items */) = {
         F:   Fn(P1, Item1) -> Fut + SendSyncOnNative + 'static,
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
-        const N_PARAMS: usize = 1;
+        fn n_params(&self) -> usize {1}
 
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
@@ -265,7 +265,7 @@ const _: (/* one FromParam without tuple and FromRequest items */) = {
         F:   Fn(P1, Item1, Item2) -> Fut + SendSyncOnNative + 'static,
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
-        const N_PARAMS: usize = 1;
+        fn n_params(&self) -> usize {1}
 
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
@@ -295,7 +295,7 @@ const _: (/* one FromParam without tuple and FromRequest items */) = {
         F:   Fn(P1, Item1, Item2, Item3) -> Fut + SendSyncOnNative + 'static,
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
-        const N_PARAMS: usize = 1;
+        fn n_params(&self) -> usize {1}
 
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
@@ -327,7 +327,7 @@ const _: (/* one FromParam without tuple and FromRequest items */) = {
         F:   Fn(P1, Item1, Item2, Item3, Item4) -> Fut + SendSyncOnNative + 'static,
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
-        const N_PARAMS: usize = 1;
+        fn n_params(&self) -> usize {1}
 
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
@@ -363,7 +363,7 @@ const _: (/* one FromParam and FromRequest items */) = {
         F:   Fn((P1,), Item1) -> Fut + SendSyncOnNative + 'static,
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
-        const N_PARAMS: usize = 1;
+        fn n_params(&self) -> usize {1}
 
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
@@ -391,7 +391,7 @@ const _: (/* one FromParam and FromRequest items */) = {
         F:   Fn((P1,), Item1, Item2) -> Fut + SendSyncOnNative + 'static,
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
-        const N_PARAMS: usize = 1;
+        fn n_params(&self) -> usize {1}
 
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
@@ -421,7 +421,7 @@ const _: (/* one FromParam and FromRequest items */) = {
         F:   Fn((P1,), Item1, Item2, Item3) -> Fut + SendSyncOnNative + 'static,
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
-        const N_PARAMS: usize = 1;
+        fn n_params(&self) -> usize {1}
 
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
@@ -453,7 +453,7 @@ const _: (/* one FromParam and FromRequest items */) = {
         F:   Fn((P1,), Item1, Item2, Item3, Item4) -> Fut + SendSyncOnNative + 'static,
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
-        const N_PARAMS: usize = 1;
+        fn n_params(&self) -> usize {1}
 
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
@@ -489,7 +489,7 @@ const _: (/* two PathParams and FromRequest items */) = {
         F:   Fn((P1, P2), Item1) -> Fut + SendSyncOnNative + 'static,
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
-        const N_PARAMS: usize = 2;
+        fn n_params(&self) -> usize {2}
 
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
@@ -519,7 +519,7 @@ const _: (/* two PathParams and FromRequest items */) = {
         F:   Fn((P1, P2), Item1, Item2) -> Fut + SendSyncOnNative + 'static,
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
-        const N_PARAMS: usize = 2;
+        fn n_params(&self) -> usize {2}
 
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
@@ -551,7 +551,7 @@ const _: (/* two PathParams and FromRequest items */) = {
         F:   Fn((P1, P2), Item1, Item2, Item3) -> Fut + SendSyncOnNative + 'static,
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
-        const N_PARAMS: usize = 2;
+        fn n_params(&self) -> usize {2}
 
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
@@ -585,7 +585,7 @@ const _: (/* two PathParams and FromRequest items */) = {
         F:   Fn((P1, P2), Item1, Item2, Item3, Item4) -> Fut + SendSyncOnNative + 'static,
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
-        const N_PARAMS: usize = 2;
+        fn n_params(&self) -> usize {2}
 
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
