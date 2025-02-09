@@ -765,4 +765,3 @@ fn panics_unexpected_path_params() {
         "/hello".GET(hello_name),
     ));
 }
-

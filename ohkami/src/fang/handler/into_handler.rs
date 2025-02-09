@@ -84,8 +84,7 @@ const _: (/* FromParam */) = {
 
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
-                // SAFETY: Due to the architecture of `Router`,
-                // `params` has already `append`ed once before this code
+                // SAFETY: `crate::Route` has already checked the number of params
                 match P1::from_raw_param(unsafe {req.path.assume_one_param()}) {
                     Ok(p1) => {
                         let res = self((p1,));
@@ -242,8 +241,7 @@ const _: (/* one FromParam without tuple and FromRequest items */) = {
 
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
-                // SAFETY: Due to the architecture of `Router`,
-                // `params` has already `append`ed once before this code
+                // SAFETY: `crate::Route` has already checked the number of params
                 let p1 = unsafe {req.path.assume_one_param()};
 
                 match (P1::from_raw_param(p1), from_request(req)) {
@@ -271,8 +269,7 @@ const _: (/* one FromParam without tuple and FromRequest items */) = {
 
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
-                // SAFETY: Due to the architecture of `Router`,
-                // `params` has already `append`ed once before this code
+                // SAFETY: `crate::Route` has already checked the number of params
                 let p1 = unsafe {req.path.assume_one_param()};
 
                 match (P1::from_raw_param(p1), from_request::<Item1>(req), from_request::<Item2>(req)) {
@@ -302,8 +299,7 @@ const _: (/* one FromParam without tuple and FromRequest items */) = {
 
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
-                // SAFETY: Due to the architecture of `Router`,
-                // `params` has already `append`ed once before this code
+                // SAFETY: `crate::Route` has already checked the number of params
                 let p1 = unsafe {req.path.assume_one_param()};
 
                 match (P1::from_raw_param(p1), from_request::<Item1>(req), from_request::<Item2>(req), from_request::<Item3>(req)) {
@@ -335,8 +331,7 @@ const _: (/* one FromParam without tuple and FromRequest items */) = {
 
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
-                // SAFETY: Due to the architecture of `Router`,
-                // `params` has already `append`ed once before this code
+                // SAFETY: `crate::Route` has already checked the number of params
                 let p1 = unsafe {req.path.assume_one_param()};
 
                 match (P1::from_raw_param(p1), from_request::<Item1>(req), from_request::<Item2>(req), from_request::<Item3>(req), from_request::<Item4>(req)) {
@@ -372,8 +367,7 @@ const _: (/* one FromParam and FromRequest items */) = {
 
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
-                // SAFETY: Due to the architecture of `Router`,
-                // `params` has already `append`ed once before this code
+                // SAFETY: `crate::Route` has already checked the number of params
                 let p1 = unsafe {req.path.assume_one_param()};
 
                 match (P1::from_raw_param(p1), from_request::<Item1>(req)) {
@@ -401,8 +395,7 @@ const _: (/* one FromParam and FromRequest items */) = {
 
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
-                // SAFETY: Due to the architecture of `Router`,
-                // `params` has already `append`ed once before this code
+                // SAFETY: `crate::Route` has already checked the number of params
                 let p1 = unsafe {req.path.assume_one_param()};
 
                 match (P1::from_raw_param(p1), from_request::<Item1>(req), from_request::<Item2>(req)) {
@@ -432,8 +425,7 @@ const _: (/* one FromParam and FromRequest items */) = {
 
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
-                // SAFETY: Due to the architecture of `Router`,
-                // `params` has already `append`ed once before this code
+                // SAFETY: `crate::Route` has already checked the number of params
                 let p1 = unsafe {req.path.assume_one_param()};
                 
                 match (P1::from_raw_param(p1), from_request::<Item1>(req), from_request::<Item2>(req), from_request::<Item3>(req)) {
@@ -465,8 +457,7 @@ const _: (/* one FromParam and FromRequest items */) = {
 
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
-                // SAFETY: Due to the architecture of `Router`,
-                // `params` has already `append`ed once before this code
+                // SAFETY: `crate::Route` has already checked the number of params
                 let p1 = unsafe {req.path.assume_one_param()};
                 
                 match (P1::from_raw_param(p1), from_request::<Item1>(req), from_request::<Item2>(req), from_request::<Item3>(req), from_request::<Item4>(req)) {
@@ -502,8 +493,7 @@ const _: (/* two PathParams and FromRequest items */) = {
 
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
-                // SAFETY: Due to the architecture of `Router`,
-                // `params` has already `append`ed twice before this code
+                // SAFETY: `crate::Route` has already checked the number of params
                 let (p1, p2) = unsafe {req.path.assume_two_params()};
 
                 match (FromParam::from_raw_param(p1), FromParam::from_raw_param(p2), from_request::<Item1>(req)) {
@@ -533,8 +523,7 @@ const _: (/* two PathParams and FromRequest items */) = {
 
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
-                // SAFETY: Due to the architecture of `Router`,
-                // `params` has already `append`ed twice before this code
+                // SAFETY: `crate::Route` has already checked the number of params
                 let (p1, p2) = unsafe {req.path.assume_two_params()};
 
                 match (FromParam::from_raw_param(p1), FromParam::from_raw_param(p2), from_request::<Item1>(req), from_request::<Item2>(req)) {
@@ -566,8 +555,7 @@ const _: (/* two PathParams and FromRequest items */) = {
 
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
-                // SAFETY: Due to the architecture of `Router`,
-                // `params` has already `append`ed twice before this code
+                // SAFETY: `crate::Route` has already checked the number of params
                 let (p1, p2) = unsafe {req.path.assume_two_params()};
 
                 match (FromParam::from_raw_param(p1), FromParam::from_raw_param(p2), from_request::<Item1>(req), from_request::<Item2>(req), from_request::<Item3>(req)) {
@@ -601,8 +589,7 @@ const _: (/* two PathParams and FromRequest items */) = {
 
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
-                // SAFETY: Due to the architecture of `Router`,
-                // `params` has already `append`ed twice before this code
+                // SAFETY: `crate::Route` has already checked the number of params
                 let (p1, p2) = unsafe {req.path.assume_two_params()};
 
                 match (FromParam::from_raw_param(p1), FromParam::from_raw_param(p2), from_request::<Item1>(req), from_request::<Item2>(req), from_request::<Item3>(req), from_request::<Item4>(req)) {
