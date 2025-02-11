@@ -4,10 +4,15 @@ set -Ceu
 
 SAMPLES=$(pwd)
 
-cd $SAMPLES/openapi-tags && \
+cd $SAMPLES/openapi-schema-enums && \
     cargo run && \
     diff openapi.json openapi.json.sample
 test $? -ne 0 && exit 150 || :
+
+cd $SAMPLES/openapi-tags && \
+    cargo run && \
+    diff openapi.json openapi.json.sample
+test $? -ne 0 && exit 151 || :
 
 cd $SAMPLES/petstore && \
     cargo build && \
@@ -21,14 +26,14 @@ cd $SAMPLES/petstore && \
         npm run main
 # FIXME
 # this is a little flaky; sometimes cause connection refused
-test $? -ne 0 && exit 151 || :
+test $? -ne 0 && exit 152 || :
 
 cd $SAMPLES/readme-openapi && \
     cargo build && \
     (timeout -sKILL 1 cargo run &) && \
     sleep 1 && \
     diff openapi.json openapi.json.sample
-test $? -ne 0 && exit 152 || :
+test $? -ne 0 && exit 153 || :
 
 cd $SAMPLES/realworld && \
     docker compose up -d && \
@@ -36,22 +41,22 @@ cd $SAMPLES/realworld && \
     sqlx migrate run && \
     cargo test && \
     docker compose down
-test $? -ne 0 && exit 153 || :
+test $? -ne 0 && exit 154 || :
 
 cd $SAMPLES/streaming && \
     cargo build && \
     (timeout -sKILL 1 cargo run &) && \
     sleep 1 && \
     diff openapi.json openapi.json.sample
-test $? -ne 0 && exit 154 || :
+test $? -ne 0 && exit 155 || :
 
 cd $SAMPLES/worker-bindings && \
     cargo check
-test $? -ne 0 && exit 155 || :
+test $? -ne 0 && exit 156 || :
 
 cd $SAMPLES/worker-durable-websocket && \
     cargo check
-test $? -ne 0 && exit 156 || :
+test $? -ne 0 && exit 157 || :
 
 cd $SAMPLES/worker-with-openapi && \
     cp wrangler.toml.sample wrangler.toml && \
@@ -67,4 +72,4 @@ cd $SAMPLES/worker-with-openapi && \
         diff openapi.json tmp.json \
         ; (test -f tmp.json && rm tmp.json) \
     || :)
-test $? -ne 0 && exit 157 || :
+test $? -ne 0 && exit 158 || :
