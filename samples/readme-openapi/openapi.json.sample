@@ -32,6 +32,7 @@
         }
       },
       "post": {
+        "operationId": "create_user",
         "requestBody": {
           "required": true,
           "content": {
