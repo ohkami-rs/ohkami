@@ -404,6 +404,34 @@ async fn search(
 }
 ```
 
+### Database connection management with `Context`
+
+```rust,no_run
+use ohkami::prelude::*;
+use ohkami::typed::status;
+use sqlx::postgres::{PgPoolOptions, PgPool};
+
+#[tokio::main]
+async fn main() {
+    let pool = PgPoolOptions::new()
+        .connect("postgres://ohkami:password@localhost:5432/db").await
+        .expect("failed to connect");
+
+    Ohkami::new((
+        Context::new(pool),
+        "/users".POST(create_user),
+    )).howl("localhost:5050").await
+}
+
+async fn create_user(
+    Context(pool): Context<'_, PgPool>,
+) -> status::Created {
+    //...
+
+    status::Created(())
+}
+```
+
 ### Static directory serving
 
 ```rust,no_run
