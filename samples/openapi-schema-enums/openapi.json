@@ -135,19 +135,7 @@
                       "type": "object",
                       "properties": {
                         "User": {
-                          "type": "object",
-                          "properties": {
-                            "age": {
-                              "type": "integer"
-                            },
-                            "name": {
-                              "type": "string"
-                            }
-                          },
-                          "required": [
-                            "name",
-                            "age"
-                          ]
+                          "$ref": "#/components/schemas/User"
                         }
                       },
                       "required": [
@@ -158,18 +146,7 @@
                       "type": "object",
                       "properties": {
                         "Task": {
-                          "type": "object",
-                          "properties": {
-                            "description": {
-                              "type": "string"
-                            },
-                            "title": {
-                              "type": "string"
-                            }
-                          },
-                          "required": [
-                            "title"
-                          ]
+                          "$ref": "#/components/schemas/Task"
                         }
                       },
                       "required": [
@@ -272,6 +249,35 @@
           "green"
         ]
       },
+      "Task": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "title"
+        ]
+      },
+      "User": {
+        "type": "object",
+        "properties": {
+          "age": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "age"
+        ]
+      },
       "UserOrTaskComponent": {
         "oneOf": [
           {
@@ -327,19 +333,7 @@
             "type": "object",
             "properties": {
               "User": {
-                "type": "object",
-                "properties": {
-                  "age": {
-                    "type": "integer"
-                  },
-                  "name": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "name",
-                  "age"
-                ]
+                "$ref": "#/components/schemas/User"
               }
             },
             "required": [
@@ -350,18 +344,7 @@
             "type": "object",
             "properties": {
               "Task": {
-                "type": "object",
-                "properties": {
-                  "description": {
-                    "type": "string"
-                  },
-                  "title": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "title"
-                ]
+                "$ref": "#/components/schemas/Task"
               }
             },
             "required": [
