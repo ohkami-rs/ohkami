@@ -83,6 +83,13 @@ enum UserOrTaskNewtype {
 }
 
 #[derive(Serialize, openapi::Schema)]
+#[serde(untagged)]
+enum UserOrTaskUntaggedNewtype {
+    User(User),
+    Task(Task),
+}
+
+#[derive(Serialize, openapi::Schema)]
 #[openapi(component)]
 enum UserOrTaskNewtypeComponent {
     User(User),
@@ -123,6 +130,8 @@ fn main() {
         "/user-or-task-newtype"
             .GET(dummy_handler!(UserOrTaskNewtype))
             .PUT(dummy_handler!(UserOrTaskNewtypeComponent)),
+        "/user-or-task-untagged-newtype"
+            .GET(dummy_handler!(UserOrTaskUntaggedNewtype)),
     ));
 
     o.generate(openapi::OpenAPI {

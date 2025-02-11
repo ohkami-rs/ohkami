@@ -237,6 +237,30 @@
           }
         }
       }
+    },
+    "/user-or-task-untagged-newtype": {
+      "get": {
+        "operationId": "dummy",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/User"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Task"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
