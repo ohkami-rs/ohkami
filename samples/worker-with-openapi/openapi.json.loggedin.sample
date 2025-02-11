@@ -17,6 +17,7 @@
   "paths": {
     "/api/tweets": {
       "get": {
+        "operationId": "list_tweets",
         "responses": {
           "200": {
             "description": "OK",
@@ -40,6 +41,7 @@
         }
       },
       "post": {
+        "operationId": "post_tweet",
         "requestBody": {
           "required": true,
           "content": {
@@ -85,6 +87,7 @@
     },
     "/api/users": {
       "get": {
+        "operationId": "list_users",
         "responses": {
           "200": {
             "description": "OK",
@@ -108,6 +111,7 @@
         }
       },
       "post": {
+        "operationId": "sign_up",
         "requestBody": {
           "required": true,
           "content": {
@@ -152,6 +156,7 @@
     },
     "/api/users/{id}": {
       "get": {
+        "operationId": "show_user_profile",
         "parameters": [
           {
             "in": "path",
@@ -182,6 +187,7 @@
         }
       },
       "put": {
+        "operationId": "edit_profile",
         "parameters": [
           {
             "in": "path",

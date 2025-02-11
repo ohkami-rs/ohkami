@@ -11,12 +11,15 @@ pub trait IntoHandler<T> {
     fn into_handler(self) -> Handler;
 }
 
-#[inline(never)] #[cold] fn __error__(e: Response) -> Pin<Box<dyn SendOnNativeFuture<Response>>> {
+
+#[inline(never)] #[cold]
+fn __error__(e: Response) -> Pin<Box<dyn SendOnNativeFuture<Response>>> {
     Box::pin(async {e})
 }
 
 /* FIXME: omit unsafe... */
-#[inline(always)] fn from_request<'fr, 'req, R: FromRequest<'fr>>(
+#[inline(always)]
+fn from_request<'fr, 'req, R: FromRequest<'fr>>(
     req: &'req Request
 ) -> Result<R, Response> {
     <R as FromRequest>::from_request(unsafe {
@@ -24,6 +27,20 @@ pub trait IntoHandler<T> {
     })
         .ok_or_else(|| Response::BadRequest().with_text("missing something expected in request"))?
         .map_err(IntoResponse::into_response)
+}
+
+#[cfg(feature="openapi")]
+fn with_default_operation_id<F>(op: openapi::Operation) -> openapi::Operation {
+    let (_/*path_from_crate_root*/, type_name) = std::any::type_name::<F>()
+        .rsplit_once("::")
+        .expect("unexpected format of std::any::type_name");
+        
+    /* when like `Ohkami::new(("/".GET(|| async {"Hello, world!"}),))` */
+    if type_name == "{{closure}}" {
+        op
+    } else {
+        op.operationId(type_name)
+    }
 }
 
 
@@ -43,7 +60,7 @@ const _: (/* no args */) = {
                     res.await.into_response()
                 })
             }, #[cfg(feature="openapi")] {
-                openapi::Operation::with(Body::openapi_responses())
+                with_default_operation_id::<F>(openapi::Operation::with(Body::openapi_responses()))
             })
         }
     }
@@ -68,7 +85,7 @@ const _: (/* FromParam */) = {
                     Err(e) => __error__(e)
                 }
             }, #[cfg(feature="openapi")] {
-                openapi::Operation::with(Body::openapi_responses())
+                with_default_operation_id::<F>(openapi::Operation::with(Body::openapi_responses()))
                     .param(P1::openapi_param())
             })
         }
@@ -93,7 +110,7 @@ const _: (/* FromParam */) = {
                     Err(e) => __error__(e)
                 }
             }, #[cfg(feature="openapi")] {
-                openapi::Operation::with(Body::openapi_responses())
+                with_default_operation_id::<F>(openapi::Operation::with(Body::openapi_responses()))
                     .param(P1::openapi_param())
             })
         }
@@ -117,7 +134,7 @@ const _: (/* FromParam */) = {
                     (Err(e), _) | (_, Err(e)) => __error__(e),
                 }
             }, #[cfg(feature="openapi")] {
-                openapi::Operation::with(Body::openapi_responses())
+                with_default_operation_id::<F>(openapi::Operation::with(Body::openapi_responses()))
                     .param(P1::openapi_param())
                     .param(P2::openapi_param())
             })
@@ -143,7 +160,7 @@ const _: (/* FromRequest items */) = {
                     Err(e) => __error__(e)
                 }
             }, #[cfg(feature="openapi")] {
-                openapi::Operation::with(Body::openapi_responses())
+                with_default_operation_id::<F>(openapi::Operation::with(Body::openapi_responses()))
                     .inbound(Item1::openapi_inbound())
             })
         }
@@ -167,7 +184,7 @@ const _: (/* FromRequest items */) = {
                     (_, Err(e)) => __error__(e),
                 }
             }, #[cfg(feature="openapi")] {
-                openapi::Operation::with(Body::openapi_responses())
+                with_default_operation_id::<F>(openapi::Operation::with(Body::openapi_responses()))
                     .inbound(Item1::openapi_inbound())
                     .inbound(Item2::openapi_inbound())
             })
@@ -193,7 +210,7 @@ const _: (/* FromRequest items */) = {
                     (_, _, Err(e)) => __error__(e),
                 }
             }, #[cfg(feature="openapi")] {
-                openapi::Operation::with(Body::openapi_responses())
+                with_default_operation_id::<F>(openapi::Operation::with(Body::openapi_responses()))
                     .inbound(Item1::openapi_inbound())
                     .inbound(Item2::openapi_inbound())
                     .inbound(Item3::openapi_inbound())
@@ -221,7 +238,7 @@ const _: (/* FromRequest items */) = {
                     (_,_, _, Err(e)) => __error__(e),
                 }
             }, #[cfg(feature="openapi")] {
-                openapi::Operation::with(Body::openapi_responses())
+                with_default_operation_id::<F>(openapi::Operation::with(Body::openapi_responses()))
                     .inbound(Item1::openapi_inbound())
                     .inbound(Item2::openapi_inbound())
                     .inbound(Item3::openapi_inbound())
@@ -253,7 +270,7 @@ const _: (/* one FromParam without tuple and FromRequest items */) = {
                     (_, Err(e)) => __error__(e),
                 }
             }, #[cfg(feature="openapi")] {
-                openapi::Operation::with(Body::openapi_responses())
+                with_default_operation_id::<F>(openapi::Operation::with(Body::openapi_responses()))
                     .param(P1::openapi_param())
                     .inbound(Item1::openapi_inbound())
             })
@@ -282,7 +299,7 @@ const _: (/* one FromParam without tuple and FromRequest items */) = {
                     (_,_,Err(e)) => __error__(e),
                 }
             }, #[cfg(feature="openapi")] {
-                openapi::Operation::with(Body::openapi_responses())
+                with_default_operation_id::<F>(openapi::Operation::with(Body::openapi_responses()))
                     .param(P1::openapi_param())
                     .inbound(Item1::openapi_inbound())
                     .inbound(Item2::openapi_inbound())
@@ -313,7 +330,7 @@ const _: (/* one FromParam without tuple and FromRequest items */) = {
                     (_,_,_,Err(e)) => __error__(e),
                 }
             }, #[cfg(feature="openapi")] {
-                openapi::Operation::with(Body::openapi_responses())
+                with_default_operation_id::<F>(openapi::Operation::with(Body::openapi_responses()))
                     .param(P1::openapi_param())
                     .inbound(Item1::openapi_inbound())
                     .inbound(Item2::openapi_inbound())
@@ -346,7 +363,7 @@ const _: (/* one FromParam without tuple and FromRequest items */) = {
                     (_,_,_,_,Err(e)) => __error__(e),
                 }
             }, #[cfg(feature="openapi")] {
-                openapi::Operation::with(Body::openapi_responses())
+                with_default_operation_id::<F>(openapi::Operation::with(Body::openapi_responses()))
                     .param(P1::openapi_param())
                     .inbound(Item1::openapi_inbound())
                     .inbound(Item2::openapi_inbound())
@@ -379,7 +396,7 @@ const _: (/* one FromParam and FromRequest items */) = {
                     (_,Err(e)) => __error__(e),
                 }
             }, #[cfg(feature="openapi")] {
-                openapi::Operation::with(Body::openapi_responses())
+                with_default_operation_id::<F>(openapi::Operation::with(Body::openapi_responses()))
                     .param(P1::openapi_param())
                     .inbound(Item1::openapi_inbound())
             })
@@ -408,7 +425,7 @@ const _: (/* one FromParam and FromRequest items */) = {
                     (_,_,Err(e)) => __error__(e),
                 }
             }, #[cfg(feature="openapi")] {
-                openapi::Operation::with(Body::openapi_responses())
+                with_default_operation_id::<F>(openapi::Operation::with(Body::openapi_responses()))
                     .param(P1::openapi_param())
                     .inbound(Item1::openapi_inbound())
                     .inbound(Item2::openapi_inbound())
@@ -439,7 +456,7 @@ const _: (/* one FromParam and FromRequest items */) = {
                     (_,_,_,Err(e)) => __error__(e),
                 }
             }, #[cfg(feature="openapi")] {
-                openapi::Operation::with(Body::openapi_responses())
+                with_default_operation_id::<F>(openapi::Operation::with(Body::openapi_responses()))
                     .param(P1::openapi_param())
                     .inbound(Item1::openapi_inbound())
                     .inbound(Item2::openapi_inbound())
@@ -472,7 +489,7 @@ const _: (/* one FromParam and FromRequest items */) = {
                     (_,_,_,_,Err(e)) => __error__(e),
                 }
             }, #[cfg(feature="openapi")] {
-                openapi::Operation::with(Body::openapi_responses())
+                with_default_operation_id::<F>(openapi::Operation::with(Body::openapi_responses()))
                     .param(P1::openapi_param())
                     .inbound(Item1::openapi_inbound())
                     .inbound(Item2::openapi_inbound())
@@ -506,7 +523,7 @@ const _: (/* two PathParams and FromRequest items */) = {
                     (_,_,Err(e)) => __error__(e),
                 }
             }, #[cfg(feature="openapi")] {
-                openapi::Operation::with(Body::openapi_responses())
+                with_default_operation_id::<F>(openapi::Operation::with(Body::openapi_responses()))
                     .param(P1::openapi_param())
                     .param(P2::openapi_param())
                     .inbound(Item1::openapi_inbound())
@@ -537,7 +554,7 @@ const _: (/* two PathParams and FromRequest items */) = {
                     (_,_,_,Err(e)) => __error__(e),
                 }
             }, #[cfg(feature="openapi")] {
-                openapi::Operation::with(Body::openapi_responses())
+                with_default_operation_id::<F>(openapi::Operation::with(Body::openapi_responses()))
                     .param(P1::openapi_param())
                     .param(P2::openapi_param())
                     .inbound(Item1::openapi_inbound())
@@ -570,7 +587,7 @@ const _: (/* two PathParams and FromRequest items */) = {
                     (_,_,_,_,Err(e)) => __error__(e),
                 }
             }, #[cfg(feature="openapi")] {
-                openapi::Operation::with(Body::openapi_responses())
+                with_default_operation_id::<F>(openapi::Operation::with(Body::openapi_responses()))
                     .param(P1::openapi_param())
                     .param(P2::openapi_param())
                     .inbound(Item1::openapi_inbound())
@@ -605,7 +622,7 @@ const _: (/* two PathParams and FromRequest items */) = {
                     (_,_,_,_,_,Err(e)) => __error__(e),
                 }
             }, #[cfg(feature="openapi")] {
-                openapi::Operation::with(Body::openapi_responses())
+                with_default_operation_id::<F>(openapi::Operation::with(Body::openapi_responses()))
                     .param(P1::openapi_param())
                     .param(P2::openapi_param())
                     .inbound(Item1::openapi_inbound())

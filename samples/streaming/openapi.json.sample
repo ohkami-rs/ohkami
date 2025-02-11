@@ -12,6 +12,7 @@
   "paths": {
     "/": {
       "get": {
+        "operationId": "intervally_hello",
         "responses": {
           "200": {
             "description": "Streaming",
@@ -28,6 +29,7 @@
     },
     "/once": {
       "get": {
+        "operationId": "hello_once",
         "responses": {
           "200": {
             "description": "OK",
