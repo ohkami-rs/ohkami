@@ -108,3 +108,7 @@ DEBUG = ["tokio?/rt-multi-thread", "tokio?/macros"]
 #    #"rt_worker",
 #    "DEBUG",
 #]
+
+
+[dev-dependencies]
+sqlx = { version = "0.8", features = ["runtime-tokio", "postgres"] }
