@@ -31,7 +31,7 @@ impl Binding {
         let name_str = LitStr::new(&name.to_string(), name.span());
 
         let from_env = |getter: TokenStream| quote! {
-            #name: match req.env().#getter {
+            #name: match req.context.env().#getter {
                 Ok(binding) => binding,
                 Err(e) => {
                     ::worker::console_error!("{e}");

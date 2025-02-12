@@ -156,6 +156,13 @@ pub struct Request {
     /// Request context.
     /// 
     /// `.set({T})` / `.get::<T>()` to memorize data to / retrieve it from request.
+    /// 
+    /// In `rt_worker`:
+    /// - `.env()` to get `worker::Env`
+    /// - `.worker()` to get `worker::Context`
+    /// 
+    /// In `rt_lambda`:
+    /// - `.lambda()` to get `requestContext` of Lambda request
     pub context: Context,
 
     #[cfg(feature="__rt__")]
@@ -454,12 +461,12 @@ impl Request {
 
         self.context.load(req.requestContext); {
             let path_bytes = unsafe {
-                let bytes = self.lambda().http.path.as_bytes();
+                let bytes = self.context.lambda().http.path.as_bytes();
                 std::slice::from_raw_parts(bytes.as_ptr(), bytes.len())
             };
             self.path.init_with_request_bytes(path_bytes).map_err(|_| crate::util::ErrorMessage("unsupported path format".into()))?;
-            self.method = self.lambda().http.method;
-            self.ip = self.lambda().http.sourceIp;
+            self.method = self.context.lambda().http.method;
+            self.ip = self.context.lambda().http.sourceIp;
         }
 
         self.headers = req.headers;
@@ -479,29 +486,6 @@ impl Request {
         }
 
         Result::<(), lambda_runtime::Error>::Ok(())
-    }
-}
-
-#[cfg(feature="rt_worker")]
-impl Request {
-    #[inline]
-    pub fn env(&self) -> &::worker::Env {
-        // SAFETY: user can touch here only after `self.context.load(...)`
-        &(unsafe {self.context.worker()}).1
-    }
-    #[inline]
-    pub fn context(&self) -> &::worker::Context {
-        // SAFETY: user can touch here only after `self.context.load(...)`
-        &(unsafe {self.context.worker()}).0
-    }
-}
-
-#[cfg(feature="rt_lambda")]
-impl Request {
-    #[inline]
-    pub fn lambda(&self) -> &crate::x_lambda::LambdaHTTPRequestContext {
-        // SAFETY: user can touch here only after `self.context.load(...)`
-        unsafe {self.context.lambda()}
     }
 }
 
