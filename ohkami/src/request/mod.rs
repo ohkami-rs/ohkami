@@ -156,6 +156,13 @@ pub struct Request {
     /// Request context.
     /// 
     /// `.set({T})` / `.get::<T>()` to memorize data to / retrieve it from request.
+    /// 
+    /// In `rt_worker`:
+    /// - `.env()` to get `worker::Env`
+    /// - `.worker()` to get `worker::Context`
+    /// 
+    /// In `rt_lambda`:
+    /// - `.lambda()` to get `RequestContext` of Lambda request
     pub context: Context,
 
     #[cfg(feature="__rt__")]
