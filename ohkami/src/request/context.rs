@@ -75,20 +75,20 @@ impl Context {
     #[cfg(feature="rt_worker")]
     #[inline(always)]
     pub fn worker(&self) -> &::worker::Context {
-        // SAFETY: User can touch here **ONLY AFTER `Request::load`**
+        // SAFETY: User can touch here **ONLY AFTER `Self::load`** called by `Request`
         unsafe {&self.worker.assume_init_ref().0}
     }
     #[cfg(feature="rt_worker")]
     #[inline(always)]
     pub fn env(&self) -> &::worker::Env {
-        // SAFETY: User can touch here **ONLY AFTER `Request::load`**
+        // SAFETY: User can touch here **ONLY AFTER `Self::load`** called by `Request`
         unsafe {&self.worker.assume_init_ref().1}
     }
 
     #[cfg(feature="rt_lambda")]
     #[inline(always)]
     pub fn lambda(&self) -> &crate::x_lambda::LambdaHTTPRequestContext {
-        // SAFETY: User can touch here **ONLY AFTER `Request::load`**
+        // SAFETY: User can touch here **ONLY AFTER `Self::load`** called by `Request`
         unsafe {self.lambda.as_ref().unwrap_unchecked()}
     }
 }

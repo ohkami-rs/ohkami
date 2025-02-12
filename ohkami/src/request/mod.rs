@@ -162,7 +162,7 @@ pub struct Request {
     /// - `.worker()` to get `worker::Context`
     /// 
     /// In `rt_lambda`:
-    /// - `.lambda()` to get `RequestContext` of Lambda request
+    /// - `.lambda()` to get `requestContext` of Lambda request
     pub context: Context,
 
     #[cfg(feature="__rt__")]
@@ -461,12 +461,12 @@ impl Request {
 
         self.context.load(req.requestContext); {
             let path_bytes = unsafe {
-                let bytes = self.lambda().http.path.as_bytes();
+                let bytes = self.context.lambda().http.path.as_bytes();
                 std::slice::from_raw_parts(bytes.as_ptr(), bytes.len())
             };
             self.path.init_with_request_bytes(path_bytes).map_err(|_| crate::util::ErrorMessage("unsupported path format".into()))?;
-            self.method = self.lambda().http.method;
-            self.ip = self.lambda().http.sourceIp;
+            self.method = self.context.lambda().http.method;
+            self.ip = self.context.lambda().http.sourceIp;
         }
 
         self.headers = req.headers;
