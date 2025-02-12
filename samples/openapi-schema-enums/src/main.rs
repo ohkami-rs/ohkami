@@ -26,10 +26,13 @@ enum ColorComponent {
 
 #[derive(Serialize, openapi::Schema)]
 enum UserOrTask {
+    #[serde(rename = "user")]
     User {
+        #[serde(rename = "username")]
         name: String,
         age:  u8,
     },
+    #[serde(rename = "task")]
     Task {
         title: String,
         description: Option<String>,
