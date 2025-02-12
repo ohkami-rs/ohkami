@@ -192,12 +192,12 @@
                         "age": {
                           "type": "integer"
                         },
-                        "name": {
+                        "username": {
                           "type": "string"
                         }
                       },
                       "required": [
-                        "name",
+                        "username",
                         "age"
                       ]
                     },
@@ -249,7 +249,19 @@
                 "schema": {
                   "oneOf": [
                     {
-                      "$ref": "#/components/schemas/User"
+                      "type": "object",
+                      "properties": {
+                        "age": {
+                          "type": "integer"
+                        },
+                        "username": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "username",
+                        "age"
+                      ]
                     },
                     {
                       "$ref": "#/components/schemas/Task"
@@ -333,7 +345,7 @@
               "Task": {
                 "type": "object",
                 "properties": {
-                  "description": {
+                  "body": {
                     "type": "string"
                   },
                   "title": {
@@ -357,7 +369,19 @@
             "type": "object",
             "properties": {
               "User": {
-                "$ref": "#/components/schemas/User"
+                "type": "object",
+                "properties": {
+                  "age": {
+                    "type": "integer"
+                  },
+                  "username": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "username",
+                  "age"
+                ]
               }
             },
             "required": [
@@ -385,12 +409,12 @@
               "age": {
                 "type": "integer"
               },
-              "name": {
+              "username": {
                 "type": "string"
               }
             },
             "required": [
-              "name",
+              "username",
               "age"
             ]
           },

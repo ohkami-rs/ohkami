@@ -42,6 +42,7 @@ enum UserOrTask {
 #[derive(Serialize, openapi::Schema)]
 #[serde(untagged)]
 enum UserOrTaskUntagged {
+    #[openapi(schema_with = "schema_fn::user")]
     User {
         name: String,
         age:  u8,
@@ -59,6 +60,7 @@ enum UserOrTaskComponent {
         name: String,
         age:  u8,
     },
+    #[openapi(schema_with = "schema_fn::task")]
     Task {
         title: String,
         description: Option<String>,
@@ -69,6 +71,7 @@ enum UserOrTaskComponent {
 #[openapi(component)]
 #[serde(untagged)]
 enum UserOrTaskUntaggedComponent {
+    #[openapi(schema_with = "schema_fn::user")]
     User {
         name: String,
         age:  u8,
@@ -88,6 +91,7 @@ enum UserOrTaskNewtype {
 #[derive(Serialize, openapi::Schema)]
 #[serde(untagged)]
 enum UserOrTaskUntaggedNewtype {
+    #[openapi(schema_with = "schema_fn::user")]
     User(User),
     Task(Task),
 }
@@ -95,6 +99,7 @@ enum UserOrTaskUntaggedNewtype {
 #[derive(Serialize, openapi::Schema)]
 #[openapi(component)]
 enum UserOrTaskNewtypeComponent {
+    #[openapi(schema_with = "schema_fn::user")]
     User(User),
     Task(Task),
 }
@@ -111,6 +116,23 @@ struct User {
 struct Task {
     title:       String,
     description: Option<String>,
+}
+
+mod schema_fn {
+    use ohkami::openapi;
+
+    pub fn user() -> impl Into<openapi::schema::SchemaRef> {
+        openapi::object()
+            .property("username", openapi::string())
+            .property("age", openapi::integer())
+    }
+
+    pub fn task() -> impl Into<openapi::schema::SchemaRef> {
+        openapi::object()
+            .property("title", openapi::string())
+            .optional("body", openapi::string())
+
+    }
 }
 
 fn main() {

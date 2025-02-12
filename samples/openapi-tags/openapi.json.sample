@@ -47,7 +47,8 @@
                     "type": "object",
                     "properties": {
                       "description": {
-                        "type": "string"
+                        "type": "string",
+                        "format": "Japanese"
                       },
                       "id": {
                         "type": "integer",
