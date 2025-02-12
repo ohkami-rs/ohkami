@@ -482,29 +482,6 @@ impl Request {
     }
 }
 
-#[cfg(feature="rt_worker")]
-impl Request {
-    #[inline]
-    pub fn env(&self) -> &::worker::Env {
-        // SAFETY: user can touch here only after `self.context.load(...)`
-        &(unsafe {self.context.worker()}).1
-    }
-    #[inline]
-    pub fn context(&self) -> &::worker::Context {
-        // SAFETY: user can touch here only after `self.context.load(...)`
-        &(unsafe {self.context.worker()}).0
-    }
-}
-
-#[cfg(feature="rt_lambda")]
-impl Request {
-    #[inline]
-    pub fn lambda(&self) -> &crate::x_lambda::LambdaHTTPRequestContext {
-        // SAFETY: user can touch here only after `self.context.load(...)`
-        unsafe {self.context.lambda()}
-    }
-}
-
 impl Request {
     #[inline]
     pub fn payload(&self) -> Option<&[u8]> {
