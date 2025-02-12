@@ -56,30 +56,30 @@
                     {
                       "type": "object",
                       "properties": {
-                        "User": {
+                        "user": {
                           "type": "object",
                           "properties": {
                             "age": {
                               "type": "integer"
                             },
-                            "name": {
+                            "username": {
                               "type": "string"
                             }
                           },
                           "required": [
-                            "name",
+                            "username",
                             "age"
                           ]
                         }
                       },
                       "required": [
-                        "User"
+                        "user"
                       ]
                     },
                     {
                       "type": "object",
                       "properties": {
-                        "Task": {
+                        "task": {
                           "type": "object",
                           "properties": {
                             "description": {
@@ -95,7 +95,7 @@
                         }
                       },
                       "required": [
-                        "Task"
+                        "task"
                       ]
                     }
                   ]
