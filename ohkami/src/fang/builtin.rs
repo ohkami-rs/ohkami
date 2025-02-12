@@ -10,6 +10,9 @@ pub use jwt::{JWT, JWTToken};
 mod context;
 pub use context::Context;
 
+mod helmet;
+pub use helmet::Helmet;
+
 #[cfg(feature="__rt_native__")]
 mod timeout;
 #[cfg(feature="__rt_native__")]
