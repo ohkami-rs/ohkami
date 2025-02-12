@@ -20,15 +20,24 @@ mod worker;
 /// 
 /// ### Container attributes
 /// 
-/// - `#[openapi(component)]` : define the schema in `components`
+/// #### `#[openapi(component)]`
+/// Define the schema in `components`
 /// 
 /// ### Field attributes
 /// 
-/// no field attributes yet
+/// #### `#[openapi(schema_with = "schema_fn")]`
+/// Use `schema_fn()` instead for the field. `schema_fn`:
+/// 
+/// - must be callable as `fn() -> impl Into<ohkami::openapi::SchemaRef>`
+/// - can be a path like `schema_fns::a_schema`
 /// 
 /// ### Variant attributes
 /// 
-/// no variant attributes yet
+/// #### `#[openapi(schema_with = "schema_fn")]`
+/// Use `schema_fn()` instead for the variant. `schema_fn`:
+/// 
+/// - must be callable as `fn() -> impl Into<ohkami::openapi::SchemaRef>`
+/// - can be a path like `schema_fns::a_schema`
 /// 
 /// <br>
 /// 
