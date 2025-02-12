@@ -4,6 +4,7 @@ mod _util;
 #[cfg(test)] mod _test;
 
 pub mod schema;
+pub use schema::SchemaRef;
 
 pub mod security;
 pub use security::SecurityScheme;

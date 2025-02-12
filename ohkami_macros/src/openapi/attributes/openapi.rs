@@ -41,7 +41,6 @@ pub(crate) struct FieldAttributes {
 impl syn::parse::Parse for FieldAttributes {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
         let mut this = FieldAttributes::default();
-
         while let Ok(i) = input.parse::<Ident>() {
             match &*i.to_string() {
                 "schema_with" => {
@@ -69,7 +68,6 @@ pub(crate) struct VariantAttributes {
 impl syn::parse::Parse for VariantAttributes {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
         let mut this = VariantAttributes::default();
-
         while let Ok(i) = input.parse::<Ident>() {
             match &*i.to_string() {
                 "schema_with" => {

@@ -6,7 +6,7 @@ use self::attributes::{ContainerAttributes, FieldAttributes, VariantAttributes};
 use crate::util::{inner_Option, extract_doc_comment, extract_doc_attrs};
 use proc_macro2::{TokenStream, Span};
 use quote::quote;
-use syn::{Item, ItemFn, ItemStruct, ItemEnum, Fields, FieldsNamed, FieldsUnnamed, Variant, Visibility, Ident, LitInt, LitStr, Type, token, Token, punctuated::Punctuated};
+use syn::{Item, ItemFn, ItemStruct, ItemEnum, Fields, FieldsNamed, FieldsUnnamed, Variant, Visibility, Ident, LitInt, LitStr, Type, Path, token, Token, punctuated::Punctuated};
 
 pub(super) fn derive_schema(input: TokenStream) -> syn::Result<TokenStream> {
     return match syn::parse2::<Item>(input)? {
@@ -147,6 +147,15 @@ pub(super) fn derive_schema(input: TokenStream) -> syn::Result<TokenStream> {
                         ident = Ident::new(&rename, span);
                     }
 
+                    if let Some(schema_with) = &field_attrs.openapi.schema_with {
+                        let property_name = LitStr::new(&ident.to_string(), ident.span());
+                        let schema_with = syn::parse_str::<Path>(schema_with)?;
+                        properties.push(quote! {
+                            schema = schema.property(#property_name, #schema_with());
+                        });
+                        continue
+                    }
+
                     let ty = &f.ty;
                     let inner_option = inner_Option(ty);
 
@@ -212,11 +221,18 @@ pub(super) fn derive_schema(input: TokenStream) -> syn::Result<TokenStream> {
 
                 let ty = &f.ty;
 
-                let mut schema = quote! {
-                    ::ohkami::openapi::schema::Schema::<::ohkami::openapi::schema::Type::any>::from(
-                        <#ty as ::ohkami::openapi::Schema>::schema()
-                            .into(/* SchemaRef */).into_inline().unwrap()
-                    )
+                let mut schema = if let Some(schema_with) = &FieldAttributes::new(&f.attrs)?.openapi.schema_with {
+                    let schema_with = syn::parse_str::<Path>(schema_with)?;
+                    quote! {
+                        #schema_with()
+                    }
+                } else {
+                    quote! {
+                        ::ohkami::openapi::schema::Schema::<::ohkami::openapi::schema::Type::any>::from(
+                            <#ty as ::ohkami::openapi::Schema>::schema()
+                                .into(/* SchemaRef */).into_inline().unwrap()
+                        )
+                    }
                 };
 
                 if let Some(description) = extract_doc_comment(&f.attrs) {
@@ -251,6 +267,14 @@ pub(super) fn derive_schema(input: TokenStream) -> syn::Result<TokenStream> {
                     || field_attrs.serde.skip_serializing
                     || field_attrs.serde.skip_deserializing
                     {
+                        continue
+                    }
+
+                    if let Some(schema_with) = &field_attrs.openapi.schema_with {
+                        let schema_with = syn::parse_str::<Path>(schema_with)?;
+                        type_schemas.push(quote! {
+                            #schema_with()
+                        });
                         continue
                     }
 
@@ -354,7 +378,14 @@ pub(super) fn derive_schema(input: TokenStream) -> syn::Result<TokenStream> {
                     }
                 }
 
-                let mut schema = schema_of_fields(v.fields, &container_attrs)?;
+                let mut schema = if let Some(schema_with) = &variant_attrs.openapi.schema_with {
+                    let schema_with = syn::parse_str::<Path>(schema_with)?;
+                    quote! {
+                        #schema_with()
+                    }
+                } else {
+                    schema_of_fields(v.fields, &container_attrs)?
+                };
 
                 schema = match (
                     &*container_attrs.serde.tag,
