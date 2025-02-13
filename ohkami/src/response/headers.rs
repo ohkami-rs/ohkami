@@ -213,6 +213,7 @@ macro_rules! Header {
     ContentSecurityPolicyReportOnly: b"Content-Security-Policy-Report-Only",
     ContentType:                     b"Content-Type",
     CrossOriginEmbedderPolicy:       b"Cross-Origin-Embedder-Policy",
+    CrossOriginResourcePolicy:       b"Cross-Origin-Resource-Policy",
     Date:                            b"Date",
     ETag:                            b"ETag",
     Expires:                         b"Expires",
