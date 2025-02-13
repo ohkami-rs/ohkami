@@ -44,6 +44,66 @@ pub struct CSP {
     pub block_all_mixed_content:   Option<&'static str>,
 }
 
+/// ## Example
+/// 
+/// ```
+/// use ohkami::prelude::*;
+/// use ohkami::fang::{Helmet, Sandbox};
+/// 
+/// #[tokio::main]
+/// async fn main() {
+///     Ohkami::new((
+///         Helmet {
+///             sandbox: Sandbox::allow_forms | Sandbox::allow_same_origin,
+///             ..Default::default()
+///         },
+///         "/hello".GET(|| async {"Hello, helmet!"})
+///     )).howl("localhost:3000").await
+/// }
+/// ```
+#[derive(Clone)]
+pub struct Sandbox(u16);
+const _: () = {
+    #[allow(non_upper_case_globals)]
+    impl Sandbox {
+        pub const allow_forms                    = Self(0b0000000001u16),
+        pub const allow_same_origin              = Self(0b0000000010u16),
+        pub const allow_scripts                  = Self(0b0000000100u16),
+        pub const allow_popups                   = Self(0b0000001000u16),
+        pub const allow_modals                   = Self(0b0000010000u16),
+        pub const allow_orientation_lock         = Self(0b0000100000u16),
+        pub const allow_pointer_lock             = Self(0b0001000000u16),
+        pub const allow_presentation             = Self(0b0010000000u16),
+        pub const allow_popups_to_escape_sandbox = Self(0b0100000000u16),
+        pub const allow_top_navigation           = Self(0b1000000000u16),
+    }
+
+    impl std::ops::BitOr for Sandbox {
+        type Output = Self;
+
+        fn bitor(self, rhs: Self) -> Self::Output {
+            Self(self.0 | rhs.0)
+        }
+    }
+
+    impl Sandbox {
+        pub(self) fn build(&self) -> String {
+            let mut result = String::from("sandbox");
+            if self.0 & Self::allow_forms.0 != 0                    {result.push_str(" allow-forms");}
+            if self.0 & Self::allow_same_origin.0 != 0              {result.push_str(" allow-same-origin");}
+            if self.0 & Self::allow_scripts.0 != 0                  {result.push_str(" allow-scripts");}
+            if self.0 & Self::allow_popups.0 != 0                   {result.push_str(" allow-popups");}
+            if self.0 & Self::allow_modals.0 != 0                   {result.push_str(" allow-modals");}
+            if self.0 & Self::allow_orientation_lock.0 != 0         {result.push_str(" allow-orientation-lock");}
+            if self.0 & Self::allow_pointer_lock.0 != 0             {result.push_str(" allow-pointer-lock");}
+            if self.0 & Self::allow_presentation.0 != 0             {result.push_str(" allow-presentation");}
+            if self.0 & Self::allow_popups_to_escape_sandbox.0 != 0 {result.push_str(" allow-popups-to-escape-sandbox");}
+            if self.0 & Self::allow_top_navigation.0 != 0           {result.push_str(" allow-top-navigation");}
+            result
+        }
+    }
+};
+
 const _: () = {
     use crate::{Request, Response, Fang, FangProc};
     use std::sync::OnceLock;
