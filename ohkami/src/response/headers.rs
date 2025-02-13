@@ -188,7 +188,7 @@ macro_rules! Header {
             }
         }
     };
-} Header! {45;
+} Header! {47;
     AcceptRanges:                    b"Accept-Ranges",
     AccessControlAllowCredentials:   b"Access-Control-Allow-Credentials",
     AccessControlAllowHeaders:       b"Access-Control-Allow-Headers",
