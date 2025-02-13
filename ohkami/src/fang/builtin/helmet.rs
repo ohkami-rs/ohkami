@@ -388,19 +388,33 @@ pub mod src {
         (const $src:expr) => {SourceList { this: $src.build_const(), list: Vec::new() }};
         (hash $src:expr) => {SourceList { this: $src.build_hash(), list: Vec::new() }};
     }
+    /// `*`
     pub const any:            SourceList = this!(const Source::any);
+    /// `data:`
     pub const data:           SourceList = this!(const Source::data);
+    /// `https:`
     pub const https:          SourceList = this!(const Source::https);
+    /// `'none'`
     pub const none:           SourceList = this!(const Source::none);
+    /// `'self'`
     pub const self_origin:    SourceList = this!(const Source::self_origin);
+    /// `'strict-dynamic'`
     pub const strict_dynamic: SourceList = this!(const Source::strict_dynamic);
+    /// `'unsafe-inline'`
     pub const unsafe_inline:  SourceList = this!(const Source::unsafe_inline);
+    /// `'unsafe-eval'`
     pub const unsafe_eval:    SourceList = this!(const Source::unsafe_eval);
+    /// `'unsafe-hashes'`
     pub const unsafe_hashes:  SourceList = this!(const Source::unsafe_hashes);
+    /// like `domain.example.com`, `*.example.com`, `https://cdn.com`
     pub fn domain(domain: &'static str) -> SourceList {this!(const Source::domain(domain))}
+    /// `'sha256-{sha256}'`
     pub fn sha256(sha256: String) -> SourceList {this!(hash Source::sha256(sha256))}
+    /// `'sha384-{sha384}'`
     pub fn sha384(sha384: String) -> SourceList {this!(hash Source::sha384(sha384))}
+    /// `'sha512-{sha512}'`
     pub fn sha512(sha512: String) -> SourceList {this!(hash Source::sha512(sha512))}
+    /// `'nonce-{nonce}'`
     pub fn nonce(nonce:  String) -> SourceList {this!(hash Source::nonce(nonce))}
 
     impl std::ops::BitOr for SourceList {
