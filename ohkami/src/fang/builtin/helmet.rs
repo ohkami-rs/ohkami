@@ -441,3 +441,87 @@ const _: () = {
         }
     }
 };
+
+
+
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::prelude::*;
+    use crate::testing::*;
+    use std::collections::HashSet;
+
+    #[test]
+    fn test_helmet_set_headers() {
+        let t = Ohkami::new((
+            Helmet::default(),
+            "/hello".GET(|| async {"Hello, helmet!"}),
+        )).test();
+
+        crate::__rt__::testing::block_on(async {
+            /* matched case */
+            {
+                let req = TestRequest::GET("/hello");
+                let res = t.oneshot(req).await;
+                assert_eq!(res.status().code(), 200);
+                assert_eq!(res.text().unwrap(), "Hello, helmet!");
+                assert_eq!(res.headers().collect::<HashSet<_>>(), HashSet::from_iter([
+                    ("Cross-Origin-Embedder-Policy", "require-corp"),
+                    ("Cross-Origin-Resource-Policy", "same-origin"),
+                    ("Referrer-Policy", "no-referrer"),
+                    ("Strict-Transport-Security", "max-age=15552000; includeSubDomains"),
+                    ("X-Content-Type-Options", "nosniff"),
+                    ("X-Frame-Options", "SAMEORIGIN"),
+                    
+                    ("Content-Type", "text/plain; charset=UTF-8"),
+                    ("Content-Length", "14"),
+                ]));
+            }
+
+            /* any Not Found cases */
+            {
+                let req = TestRequest::GET("/");
+                let res = t.oneshot(req).await;
+                assert_eq!(res.status().code(), 404);
+                assert_eq!(res.text(), None);
+                assert_eq!(res.headers().collect::<HashSet<_>>(), HashSet::from_iter([
+                    ("Cross-Origin-Embedder-Policy", "require-corp"),
+                    ("Cross-Origin-Resource-Policy", "same-origin"),
+                    ("Referrer-Policy", "no-referrer"),
+                    ("Strict-Transport-Security", "max-age=15552000; includeSubDomains"),
+                    ("X-Content-Type-Options", "nosniff"),
+                    ("X-Frame-Options", "SAMEORIGIN"),
+                ]));
+            }
+            {
+                let req = TestRequest::POST("/hello");
+                let res = t.oneshot(req).await;
+                assert_eq!(res.status().code(), 404);
+                assert_eq!(res.text(), None);
+                assert_eq!(res.headers().collect::<HashSet<_>>(), HashSet::from_iter([
+                    ("Cross-Origin-Embedder-Policy", "require-corp"),
+                    ("Cross-Origin-Resource-Policy", "same-origin"),
+                    ("Referrer-Policy", "no-referrer"),
+                    ("Strict-Transport-Security", "max-age=15552000; includeSubDomains"),
+                    ("X-Content-Type-Options", "nosniff"),
+                    ("X-Frame-Options", "SAMEORIGIN"),
+                ]));
+            }
+            {
+                let req = TestRequest::DELETE("/");
+                let res = t.oneshot(req).await;
+                assert_eq!(res.status().code(), 404);
+                assert_eq!(res.text(), None);
+                assert_eq!(res.headers().collect::<HashSet<_>>(), HashSet::from_iter([
+                    ("Cross-Origin-Embedder-Policy", "require-corp"),
+                    ("Cross-Origin-Resource-Policy", "same-origin"),
+                    ("Referrer-Policy", "no-referrer"),
+                    ("Strict-Transport-Security", "max-age=15552000; includeSubDomains"),
+                    ("X-Content-Type-Options", "nosniff"),
+                    ("X-Frame-Options", "SAMEORIGIN"),
+                ]));
+            }
+        });
+    }
+}
