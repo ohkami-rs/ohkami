@@ -1,16 +1,30 @@
 /// based on <https://hono.dev/docs/middleware/builtin/secure-headers>,
 /// with removing non-standard or deprecated headers
+/// 
+/// ## Example
+/// 
+/// ```no_run
+/// use ohkami::prelude::*;
+/// use ohkami::fang::Helmet;
+/// 
+/// #[tokio::main]
+/// async fn main() {
+///     Ohkami::new((Helmet::default(),
+///         "/hello".GET(|| async {"Hello, Helmet!"}),
+///     )).howl("localhost:4040").await
+/// }
+/// ```
 #[derive(Clone)]
 #[allow(non_snake_case)]
 pub struct Helmet {
-    pub ContentSecurityPolicy:           Option<CSP>,
-    pub ContentSecurityPolicyReportOnly: Option<CSP>,
-    pub CrossOriginEmbedderPolicy:       &'static str,
-    pub CrossOriginResourcePolicy:       &'static str,
-    pub ReferrerPolicy:                  &'static str,
-    pub StrictTransportSecurity:         &'static str,
-    pub XContentTypeOptions:             &'static str,
-    pub XFrameOptions:                   &'static str,
+    ContentSecurityPolicy:           Option<CSP>,
+    ContentSecurityPolicyReportOnly: Option<CSP>,
+    CrossOriginEmbedderPolicy:       &'static str,
+    CrossOriginResourcePolicy:       &'static str,
+    ReferrerPolicy:                  &'static str,
+    StrictTransportSecurity:         &'static str,
+    XContentTypeOptions:             &'static str,
+    XFrameOptions:                   &'static str,
 }
 const _: () = {
     impl Default for Helmet {
@@ -25,6 +39,42 @@ const _: () = {
                 XContentTypeOptions:             "nosniff",
                 XFrameOptions:                   "SAMEORIGIN",
             }
+        }
+    }
+
+    #[allow(non_snake_case)]
+    impl Helmet {
+        /// default: no setting
+        pub fn ContentSecurityPolicy(mut self, csp: CSP) -> Self {
+            self.ContentSecurityPolicy = Some(csp); self
+        }
+        /// default: no setting
+        pub fn ContentSecurityPolicyReportOnly(mut self, csp: CSP) -> Self {
+            self.ContentSecurityPolicyReportOnly = Some(csp); self
+        }
+        /// default: `"require-corp"`
+        pub fn CrossOriginEmbedderPolicy(mut self, CrossOriginEmbedderPolicy: &'static str) -> Self {
+            self.CrossOriginEmbedderPolicy = CrossOriginEmbedderPolicy; self
+        }
+        /// default: `"same-origin"`
+        pub fn CrossOriginResourcePolicy(mut self, CrossOriginResourcePolicy: &'static str) -> Self {
+            self.CrossOriginResourcePolicy = CrossOriginResourcePolicy; self
+        }
+        /// default: `"no-referrer"`
+        pub fn ReferrerPolicy(mut self, ReferrerPolicy: &'static str) -> Self {
+            self.ReferrerPolicy = ReferrerPolicy; self
+        }
+        /// default: `"max-age=15552000; includeSubDomains"`
+        pub fn StrictTransportSecurity(mut self, StrictTransportSecurity: &'static str) -> Self {
+            self.StrictTransportSecurity = StrictTransportSecurity; self
+        }
+        /// default: `"nosniff"`
+        pub fn XContentTypeOptions(mut self, XContentTypeOptions: &'static str) -> Self {
+            self.XContentTypeOptions = XContentTypeOptions; self
+        }
+        /// default: `"SAMEORIGIN"`
+        pub fn XFrameOptions(mut self, XFrameOptions: &'static str) -> Self {
+            self.XFrameOptions = XFrameOptions; self
         }
     }
 
@@ -60,28 +110,46 @@ const _: () = {
 };
 
 /// based on <https://content-security-policy.com>
+/// 
+/// ## Example
+/// 
+/// ```no_run
+/// use ohkami::prelude::*;
+/// use ohkami::fang::helmet::{Helmet, CSP, sandbox::{allow_forms, allow_same_origin}};
+/// 
+/// #[tokio::main]
+/// async fn main() {
+///     Ohkami::new((
+///         Helmet::default()
+///             .ContentSecurityPolicy(CSP {
+///                 sandbox: allow_forms | allow_same_origin,
+///                 ..Default::default()
+///             }),
+///     )).howl("localhost:4040").await
+/// }
+/// ```
 #[derive(Clone, Default)]
 pub struct CSP {
-    pub default_src:               SourceList,
-    pub script_src:                SourceList,
-    pub style_src:                 SourceList,
-    pub img_src:                   SourceList,
-    pub connect_src:               SourceList,
-    pub font_src:                  SourceList,
-    pub object_src:                SourceList,
-    pub media_src:                 SourceList,
-    pub frame_src:                 SourceList,
-    pub sandbox:                   Sandbox,
+    pub default_src:               source::SourceList,
+    pub script_src:                source::SourceList,
+    pub style_src:                 source::SourceList,
+    pub img_src:                   source::SourceList,
+    pub connect_src:               source::SourceList,
+    pub font_src:                  source::SourceList,
+    pub object_src:                source::SourceList,
+    pub media_src:                 source::SourceList,
+    pub frame_src:                 source::SourceList,
+    pub sandbox:                   sandbox::Sandbox,
     pub report_uri:                &'static str,
-    pub child_src:                 SourceList,
+    pub child_src:                 source::SourceList,
     pub form_action:               &'static str,
     pub frame_ancestors:           &'static str,
     pub plugin_types:              &'static str,
     pub base_uri:                  &'static str,
     pub report_to:                 &'static str,
-    pub worker_src:                SourceList,
-    pub manifest_src:              SourceList,
-    pub prefetch_src:              SourceList,
+    pub worker_src:                source::SourceList,
+    pub manifest_src:              source::SourceList,
+    pub prefetch_src:              source::SourceList,
     pub navifate_to:               &'static str,
     pub require_trusted_types_for: &'static str,
     pub trusted_types:             &'static str,
@@ -143,40 +211,36 @@ const _: () = {
 
 /// ## Example
 /// 
-/// ```
+/// ```no_run
 /// use ohkami::prelude::*;
-/// use ohkami::fang::helmet::{Helmet, CSP, Sandbox::{allow_forms, allow_same_origin}};
+/// use ohkami::fang::helmet::{Helmet, CSP, sandbox::{allow_forms, allow_same_origin}};
 /// 
 /// #[tokio::main]
 /// async fn main() {
 ///     Ohkami::new((
-///         Helmet {
-///             ContentSecurityPolicy: Some(CSP {
+///         Helmet::default()
+///             .ContentSecurityPolicy(CSP {
 ///                 sandbox: allow_forms | allow_same_origin,
 ///                 ..Default::default()
 ///             }),
-///             ..Default::default()
-///         },
-///         "/hello".GET(|| async {"Hello, helmet!"})
-///     )).howl("localhost:3000").await
+///     )).howl("localhost:4040").await
 /// }
 /// ```
-#[derive(Clone)]
-pub struct Sandbox(u16);
-const _: () = {
-    #[allow(non_upper_case_globals)]
-    impl Sandbox {
-        pub const allow_forms:                    Self = Self(0b0000000001u16);
-        pub const allow_same_origin:              Self = Self(0b0000000010u16);
-        pub const allow_scripts:                  Self = Self(0b0000000100u16);
-        pub const allow_popups:                   Self = Self(0b0000001000u16);
-        pub const allow_modals:                   Self = Self(0b0000010000u16);
-        pub const allow_orientation_lock:         Self = Self(0b0000100000u16);
-        pub const allow_pointer_lock:             Self = Self(0b0001000000u16);
-        pub const allow_presentation:             Self = Self(0b0010000000u16);
-        pub const allow_popups_to_escape_sandbox: Self = Self(0b0100000000u16);
-        pub const allow_top_navigation:           Self = Self(0b1000000000u16);
-    }
+#[allow(non_upper_case_globals)]
+pub mod sandbox {
+    #[derive(Clone)]
+    pub struct Sandbox(u16);
+
+    pub const allow_forms:                    Sandbox = Sandbox(0b0000000001u16);
+    pub const allow_same_origin:              Sandbox = Sandbox(0b0000000010u16);
+    pub const allow_scripts:                  Sandbox = Sandbox(0b0000000100u16);
+    pub const allow_popups:                   Sandbox = Sandbox(0b0000001000u16);
+    pub const allow_modals:                   Sandbox = Sandbox(0b0000010000u16);
+    pub const allow_orientation_lock:         Sandbox = Sandbox(0b0000100000u16);
+    pub const allow_pointer_lock:             Sandbox = Sandbox(0b0001000000u16);
+    pub const allow_presentation:             Sandbox = Sandbox(0b0010000000u16);
+    pub const allow_popups_to_escape_sandbox: Sandbox = Sandbox(0b0100000000u16);
+    pub const allow_top_navigation:           Sandbox = Sandbox(0b1000000000u16);
 
     impl std::ops::BitOr for Sandbox {
         type Output = Self;
@@ -193,53 +257,53 @@ const _: () = {
     }
 
     impl Sandbox {
-        pub(self) const fn is_empty(&self) -> bool {
+        pub(super) const fn is_empty(&self) -> bool {
             self.0 == 0b0000000000u16
         }
 
-        pub(self) fn build(&self) -> String {
+        pub(super) fn build(&self) -> String {
             let mut result = String::new();
-            if self.0 & Self::allow_forms.0 != 0                    {result.push_str(" allow-forms");}
-            if self.0 & Self::allow_same_origin.0 != 0              {result.push_str(" allow-same-origin");}
-            if self.0 & Self::allow_scripts.0 != 0                  {result.push_str(" allow-scripts");}
-            if self.0 & Self::allow_popups.0 != 0                   {result.push_str(" allow-popups");}
-            if self.0 & Self::allow_modals.0 != 0                   {result.push_str(" allow-modals");}
-            if self.0 & Self::allow_orientation_lock.0 != 0         {result.push_str(" allow-orientation-lock");}
-            if self.0 & Self::allow_pointer_lock.0 != 0             {result.push_str(" allow-pointer-lock");}
-            if self.0 & Self::allow_presentation.0 != 0             {result.push_str(" allow-presentation");}
-            if self.0 & Self::allow_popups_to_escape_sandbox.0 != 0 {result.push_str(" allow-popups-to-escape-sandbox");}
-            if self.0 & Self::allow_top_navigation.0 != 0           {result.push_str(" allow-top-navigation");}
+            if self.0 & allow_forms.0 != 0                    {result.push_str(" allow-forms");}
+            if self.0 & allow_same_origin.0 != 0              {result.push_str(" allow-same-origin");}
+            if self.0 & allow_scripts.0 != 0                  {result.push_str(" allow-scripts");}
+            if self.0 & allow_popups.0 != 0                   {result.push_str(" allow-popups");}
+            if self.0 & allow_modals.0 != 0                   {result.push_str(" allow-modals");}
+            if self.0 & allow_orientation_lock.0 != 0         {result.push_str(" allow-orientation-lock");}
+            if self.0 & allow_pointer_lock.0 != 0             {result.push_str(" allow-pointer-lock");}
+            if self.0 & allow_presentation.0 != 0             {result.push_str(" allow-presentation");}
+            if self.0 & allow_popups_to_escape_sandbox.0 != 0 {result.push_str(" allow-popups-to-escape-sandbox");}
+            if self.0 & allow_top_navigation.0 != 0           {result.push_str(" allow-top-navigation");}
             result
         }
     }
-};
+}
 
 /// ## Example
 /// 
-/// ```
+/// ```no_run
 /// use ohkami::prelude::*;
-/// use ohkami::fang::helmet::{Helmet, CSP, SourceList::{self_origin, data}};
+/// use ohkami::fang::helmet::{Helmet, CSP, source::{self_origin, data}};
 /// 
 /// #[tokio::main]
 /// async fn main() {
 ///     Ohkami::new((
-///         Helmet {
-///             ContentSecurityPolicy: Some(CSP {
+///         Helmet::default()
+///             .ContentSecurityPolicy(CSP {
 ///                 script_src: self_origin | data,
 ///                 ..Default::default()
 ///             }),
-///             ..Default::default()
-///         },
 ///         "/hello".GET(|| async {"Hello, helmet!"})
 ///     )).howl("localhost:3000").await
 /// }
 /// ```
-#[derive(Clone, Default)]
-pub struct SourceList {
-    this: std::borrow::Cow<'static, str>,
-    list: Vec<std::borrow::Cow<'static, str>>,
-}
-const _: () = {
+#[allow(non_upper_case_globals)]
+pub mod source {
+    #[derive(Clone, Default)]
+    pub struct SourceList {
+        this: std::borrow::Cow<'static, str>,
+        list: Vec<std::borrow::Cow<'static, str>>,
+    }
+
     #[derive(Clone)]
     #[allow(non_camel_case_types)]
     pub enum Source {
@@ -259,7 +323,7 @@ const _: () = {
         nonce(String),
     }
     impl Source {
-        pub(self) const fn build_const(&self) -> std::borrow::Cow<'static, str> {
+        const fn build_const(&self) -> std::borrow::Cow<'static, str> {
             match self {
                 Self::any            => std::borrow::Cow::Borrowed("*"),
                 Self::data           => std::borrow::Cow::Borrowed("data:"),
@@ -277,7 +341,7 @@ const _: () = {
                 Self::nonce(_)  => unreachable!(),
             }
         }
-        pub(self) fn build_hash(&self) -> std::borrow::Cow<'static, str> {
+        fn build_hash(&self) -> std::borrow::Cow<'static, str> {
             match self {
                 Self::any            => unreachable!(),
                 Self::data           => unreachable!(),
@@ -301,23 +365,20 @@ const _: () = {
         (const $src:expr) => {SourceList { this: $src.build_const(), list: Vec::new() }};
         (hash $src:expr) => {SourceList { this: $src.build_hash(), list: Vec::new() }};
     }
-    #[allow(non_upper_case_globals)]
-    impl SourceList {
-        pub const any:            Self = this!(const Source::any);
-        pub const data:           Self = this!(const Source::data);
-        pub const https:          Self = this!(const Source::https);
-        pub const none:           Self = this!(const Source::none);
-        pub const self_origin:    Self = this!(const Source::self_origin);
-        pub const strict_dynamic: Self = this!(const Source::strict_dynamic);
-        pub const unsafe_inline:  Self = this!(const Source::unsafe_inline);
-        pub const unsafe_eval:    Self = this!(const Source::unsafe_eval);
-        pub const unsafe_hashes:  Self = this!(const Source::unsafe_hashes);
-        pub fn domain(domain: &'static str) -> Self {this!(const Source::domain(domain))}
-        pub fn sha256(sha256: String) -> Self {this!(hash Source::sha256(sha256))}
-        pub fn sha384(sha384: String) -> Self {this!(hash Source::sha384(sha384))}
-        pub fn sha512(sha512: String) -> Self {this!(hash Source::sha512(sha512))}
-        pub fn nonce (nonce:  String) -> Self {this!(hash Source::nonce(nonce))}
-    }
+    pub const any:            SourceList = this!(const Source::any);
+    pub const data:           SourceList = this!(const Source::data);
+    pub const https:          SourceList = this!(const Source::https);
+    pub const none:           SourceList = this!(const Source::none);
+    pub const self_origin:    SourceList = this!(const Source::self_origin);
+    pub const strict_dynamic: SourceList = this!(const Source::strict_dynamic);
+    pub const unsafe_inline:  SourceList = this!(const Source::unsafe_inline);
+    pub const unsafe_eval:    SourceList = this!(const Source::unsafe_eval);
+    pub const unsafe_hashes:  SourceList = this!(const Source::unsafe_hashes);
+    pub fn domain(domain: &'static str) -> SourceList {this!(const Source::domain(domain))}
+    pub fn sha256(sha256: String) -> SourceList {this!(hash Source::sha256(sha256))}
+    pub fn sha384(sha384: String) -> SourceList {this!(hash Source::sha384(sha384))}
+    pub fn sha512(sha512: String) -> SourceList {this!(hash Source::sha512(sha512))}
+    pub fn nonce(nonce:  String) -> SourceList {this!(hash Source::nonce(nonce))}
 
     impl std::ops::BitOr for SourceList {
         type Output = Self;
@@ -330,11 +391,11 @@ const _: () = {
     }
 
     impl SourceList {
-        pub(self) fn is_empty(&self) -> bool {
+        pub(super) fn is_empty(&self) -> bool {
             self.this.is_empty()
         }
 
-        pub(self) fn build(&self) -> String {
+        pub(super) fn build(&self) -> String {
             let mut result = String::from(&*self.this);
             if !self.list.is_empty() {
                 for s in &self.list {
@@ -345,7 +406,7 @@ const _: () = {
             result
         }
     }
-};
+}
 
 const _: () = {
     use crate::{Request, Response, Fang, FangProc};
