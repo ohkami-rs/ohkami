@@ -48,13 +48,13 @@ pub struct CSP {
 /// 
 /// ```
 /// use ohkami::prelude::*;
-/// use ohkami::fang::{Helmet, Sandbox};
+/// use ohkami::fang::{Helmet, Sandbox::{allow_forms, allow_same_origin}};
 /// 
 /// #[tokio::main]
 /// async fn main() {
 ///     Ohkami::new((
 ///         Helmet {
-///             sandbox: Sandbox::allow_forms | Sandbox::allow_same_origin,
+///             sandbox: allow_forms | allow_same_origin,
 ///             ..Default::default()
 ///         },
 ///         "/hello".GET(|| async {"Hello, helmet!"})
@@ -101,6 +101,17 @@ const _: () = {
             if self.0 & Self::allow_top_navigation.0 != 0           {result.push_str(" allow-top-navigation");}
             result
         }
+    }
+};
+
+pub struct SourceList {
+    directive: u16,
+    value: Option<Box<String>>,
+}
+const _: () = {
+    #[allow(non_upper_case_globals)]
+    impl SourceList {
+        
     }
 };
 
