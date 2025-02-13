@@ -145,13 +145,16 @@ const _: () = {
 /// 
 /// ```
 /// use ohkami::prelude::*;
-/// use ohkami::fang::{Helmet, Sandbox::{allow_forms, allow_same_origin}};
+/// use ohkami::fang::helmet::{Helmet, CSP, Sandbox::{allow_forms, allow_same_origin}};
 /// 
 /// #[tokio::main]
 /// async fn main() {
 ///     Ohkami::new((
 ///         Helmet {
-///             sandbox: allow_forms | allow_same_origin,
+///             ContentSecurityPolicy: Some(CSP {
+///                 sandbox: allow_forms | allow_same_origin,
+///                 ..Default::default()
+///             }),
 ///             ..Default::default()
 ///         },
 ///         "/hello".GET(|| async {"Hello, helmet!"})
@@ -215,13 +218,16 @@ const _: () = {
 /// 
 /// ```
 /// use ohkami::prelude::*;
-/// use ohkami::fang::{Helmet, SouceList::{self_origin, data}};
+/// use ohkami::fang::helmet::{Helmet, CSP, SourceList::{self_origin, data}};
 /// 
 /// #[tokio::main]
 /// async fn main() {
 ///     Ohkami::new((
 ///         Helmet {
-///             script_src: self_origin | data,
+///             ContentSecurityPolicy: Some(CSP {
+///                 script_src: self_origin | data,
+///                 ..Default::default()
+///             }),
 ///             ..Default::default()
 ///         },
 ///         "/hello".GET(|| async {"Hello, helmet!"})
@@ -351,9 +357,8 @@ const _: () = {
             static SET_HEADERS: OnceLock<Box<dyn Fn(&mut Response) + Send + Sync>> = OnceLock::new();
 
             let set_headers = SET_HEADERS.get_or_init(|| {
-                /* clone only once */
+                /* clone **only once** */
                 let helmet = self.clone();
-
                 Box::new(move |res: &mut Response| {helmet.apply(res)})
             });
 

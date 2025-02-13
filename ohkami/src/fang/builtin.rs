@@ -10,7 +10,7 @@ pub use jwt::{JWT, JWTToken};
 mod context;
 pub use context::Context;
 
-mod helmet;
+pub mod helmet;
 pub use helmet::Helmet;
 
 #[cfg(feature="__rt_native__")]
