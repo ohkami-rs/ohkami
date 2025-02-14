@@ -10,7 +10,7 @@ mod bound;
 use bound::*;
 
 use crate::{Request, Response};
-use std::{pin::Pin, ops::Deref};
+use std::{pin::Pin, ops::Deref, future::Future};
 
 #[cfg(feature="openapi")]
 use crate::openapi;
@@ -65,7 +65,21 @@ pub trait Fang<Inner: FangProc> {
 }
 
 pub trait FangProc: SendSyncOnNative + 'static {
-    fn bite<'b>(&'b self, req: &'b mut Request) -> impl SendOnNativeFuture<Response>;
+    // Here not using `-> impl SendOnNativeFuture` for
+    // rust-analyzer's completion.
+    // Currently rust-analyzer can complete `-> Future` methods
+    // as `async fn ...` **only when** it returns exactly one of:
+    // 
+    // * `-> impl Future<Output = T>`
+    // * `-> impl Future<Output = T> + Send`
+    // * `-> impl Future<Output = T> + Send + 'lifetime`
+    // 
+    // so `-> impl SendOnNativeFuture<T>` prevents his completion...
+
+    #[cfg(any(feature="rt_worker",))]
+    fn bite<'b>(&'b self, req: &'b mut Request) -> impl Future<Output = Response>;
+    #[cfg(not(any(feature="rt_worker",)))]
+    fn bite<'b>(&'b self, req: &'b mut Request) -> impl Future<Output = Response> + Send;
 
     /// Mainly used for override `bite` when itself returns `Pin<Box<dyn Future>>`.
     /// 
@@ -114,6 +128,7 @@ const _: () = {
     }
 
     impl FangProc for BoxedFPC {
+        #[allow(refining_impl_trait)]
         #[inline(always)]
         fn bite<'b>(&'b self, req: &'b mut Request) -> impl SendOnNativeFuture<Response> {
             self.0.call_bite(req)

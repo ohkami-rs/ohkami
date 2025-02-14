@@ -71,6 +71,7 @@ mod tasks {
     struct Task {
         id:          i32,
         title:       String,
+        #[openapi(schema_with = "description_schema")]
         description: String,
     }
 
@@ -88,6 +89,11 @@ mod tasks {
         JSON(req): JSON<EditTask<'_>>
     ) -> status::NoContent {
         status::NoContent
+    }
+
+    fn description_schema() -> impl Into<openapi::SchemaRef> {
+        openapi::string()
+            .format("Japanese")
     }
 }
 

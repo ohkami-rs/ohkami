@@ -3,6 +3,7 @@ use ohkami::bindings;
 #[bindings]
 struct AutoBindings;
 
+#[allow(unused)]
 #[bindings]
 struct ManualBindings {
     VARIABLE_1: bindings::Var,

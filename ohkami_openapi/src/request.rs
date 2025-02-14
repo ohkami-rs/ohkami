@@ -7,7 +7,7 @@ pub struct Parameter {
     #[serde(rename = "in")]
     kind: ParameterKind,
 
-    pub(crate) name: &'static str,
+    pub(crate) name: std::borrow::Cow<'static, str>,
     pub(crate) schema: SchemaRef,
 
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -26,17 +26,43 @@ pub struct Parameter {
 
 #[derive(Serialize, Clone)]
 enum ParameterKind {
+    path,
     query,
     header,
-    path,
     cookie,
 }
 
 impl Parameter {
+    pub(crate) fn is_path(&self) -> bool {
+        matches!(self.kind, ParameterKind::path)
+    }
+}
+
+impl Parameter {
+    pub fn in_path(schema: impl Into<SchemaRef>) -> Self {
+        Self {
+            kind: ParameterKind::path,
+            name: "".into(), // initialize with empty name (will be assigned later by `Operation::assign_path_param_name`)
+            schema: schema.into(),
+            required: true,
+            description:None, deprecated:false, style:None, explode:false,
+        }
+    }
+    pub fn maybe_in_path(schema: impl Into<SchemaRef>) -> Self {
+        Self {
+            kind: ParameterKind::path,
+            name: "".into(), // initialize with empty name (will be assigned later by `Operation::assign_path_param_name`)
+            schema: schema.into(),
+            required: false,
+            description:None, deprecated:false, style:None, explode:false,
+        }
+    }
+
     pub fn in_query(name: &'static str, schema: impl Into<SchemaRef>) -> Self {
         Self {
             kind: ParameterKind::query,
-            name, schema:schema.into(),
+            name: name.into(),
+            schema: schema.into(),
             required: true,
             description:None, deprecated:false, style:None, explode:false,
         }
@@ -44,7 +70,8 @@ impl Parameter {
     pub fn maybe_in_query(name: &'static str, schema: impl Into<SchemaRef>) -> Self {
         Self {
             kind: ParameterKind::query,
-            name, schema:schema.into(),
+            name: name.into(),
+            schema: schema.into(),
             required: false,
             description:None, deprecated:false, style:None, explode:false,
         }
@@ -53,7 +80,8 @@ impl Parameter {
     pub fn in_header(name: &'static str, schema: impl Into<SchemaRef>) -> Self {
         Self {
             kind: ParameterKind::header,
-            name, schema:schema.into(),
+            name: name.into(),
+            schema: schema.into(),
             required: true,
             description:None, deprecated:false, style:None, explode:false,
         }
@@ -61,24 +89,8 @@ impl Parameter {
     pub fn maybe_in_header(name: &'static str, schema: impl Into<SchemaRef>) -> Self {
         Self {
             kind: ParameterKind::header,
-            name, schema:schema.into(),
-            required: false,
-            description:None, deprecated:false, style:None, explode:false,
-        }
-    }
-    
-    pub fn in_path(name: &'static str, schema: impl Into<SchemaRef>) -> Self {
-        Self {
-            kind: ParameterKind::path,
-            name, schema:schema.into(),
-            required: true,
-            description:None, deprecated:false, style:None, explode:false,
-        }
-    }
-    pub fn maybe_in_path(name: &'static str, schema: impl Into<SchemaRef>) -> Self {
-        Self {
-            kind: ParameterKind::path,
-            name, schema:schema.into(),
+            name: name.into(),
+            schema: schema.into(),
             required: false,
             description:None, deprecated:false, style:None, explode:false,
         }
@@ -87,7 +99,8 @@ impl Parameter {
     pub fn in_cookie(name: &'static str, schema: impl Into<SchemaRef>) -> Self {
         Self {
             kind: ParameterKind::cookie,
-            name, schema:schema.into(),
+            name: name.into(),
+            schema: schema.into(),
             required: true,
             description:None, deprecated:false, style:None, explode:false,
         }
@@ -95,7 +108,8 @@ impl Parameter {
     pub fn maybe_in_cookie(name: &'static str, schema: impl Into<SchemaRef>) -> Self {
         Self {
             kind: ParameterKind::cookie,
-            name, schema:schema.into(),
+            name: name.into(),
+            schema: schema.into(),
             required: false,
             description:None, deprecated:false, style:None, explode:false,
         }

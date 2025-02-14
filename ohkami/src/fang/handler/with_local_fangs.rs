@@ -6,6 +6,8 @@ impl<H: IntoHandler<T>, T, F1> IntoHandler<(F1, H, T)> for (F1, H)
 where
     F1: Fang<BoxedFPC>
 {
+    fn n_params(&self) -> usize {self.1.n_params()}
+
     fn into_handler(self) -> Handler {
         let (f, h) = self;
         let h = h.into_handler();
@@ -22,6 +24,8 @@ where
     F1: Fang<F2::Proc>,
     F2: Fang<BoxedFPC>,
 {
+    fn n_params(&self) -> usize {self.2.n_params()}
+
     fn into_handler(self) -> Handler {
         let (f1, f2, h) = self;
         let h = h.into_handler();
@@ -40,6 +44,8 @@ where
     F2: Fang<F3::Proc>,
     F3: Fang<BoxedFPC>,
 {
+    fn n_params(&self) -> usize {self.3.n_params()}
+
     fn into_handler(self) -> Handler {
         let (f1, f2, f3, h) = self;
         let h = h.into_handler();
@@ -59,6 +65,8 @@ where
     F3: Fang<F4::Proc>,
     F4: Fang<BoxedFPC>,
 {
+    fn n_params(&self) -> usize {self.4.n_params()}
+
     fn into_handler(self) -> Handler {
         let (f1, f2, f3, f4, h) = self;
         let h = h.into_handler();

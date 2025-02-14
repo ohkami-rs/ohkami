@@ -173,6 +173,7 @@ impl SchemaRef {
         let mut component_schemas = vec![];
         match self {
             SchemaRef::Inline(raw) => {
+                raw.properties.values_mut().for_each(|s| component_schemas.extend(s.refize()));
                 raw.anyOf.iter_mut().for_each(|s| component_schemas.extend(s.refize()));
                 raw.allOf.iter_mut().for_each(|s| component_schemas.extend(s.refize()));
                 raw.oneOf.iter_mut().for_each(|s| component_schemas.extend(s.refize()));

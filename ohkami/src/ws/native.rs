@@ -116,11 +116,13 @@ pub struct WebSocket<C: mews::connection::UnderlyingConnection = crate::__rt__::
 }
 impl crate::IntoResponse for WebSocket {
     fn into_response(self) -> crate::Response {
-        crate::Response::SwitchingProtocols().with_headers(|h|h
+        let mut res = crate::Response::SwitchingProtocols();
+        res.content = crate::response::Content::WebSocket(self.session);
+        res.with_headers(|h|h
             .Connection("Upgrade")
             .Upgrade("websocket")
             .SecWebSocketAccept(self.sign)
-        ).with_websocket(self.session)
+        )
     }
 
     #[cfg(feature="openapi")]

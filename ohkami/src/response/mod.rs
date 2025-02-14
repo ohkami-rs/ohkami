@@ -122,39 +122,34 @@ impl Response {
     }
 
     #[cfg(feature="__rt__")]
-    /// Complete HTTP spec
-    #[inline(always)]
+    /// complete HTTP spec
+    /// 
+    /// should be called, like, just after router's handling
     pub(crate) fn complete(&mut self) {
-        self.headers.set().Date(::ohkami_lib::imf_fixdate(crate::util::unix_timestamp()));
-
-        match &self.content {
-            Content::None => {
-                match self.status {
-                    Status::NoContent => self.headers.set()
-                        .ContentLength(None),
-                    _ => self.headers.set()
-                        .ContentLength("0")
-                };
+        match (&self.content, &self.status) {
+            (_, Status::NoContent) => {
+                if !/* not */self.headers.ContentLength().is_none() {
+                    self.headers.set().ContentLength(None);
+                }
+                if !/* not */matches!(self.content, Content::None) {
+                    self.content = Content::None;
+                }
             }
-
-            Content::Payload(bytes) => {
-                self.headers.set()
-                    .ContentLength(ohkami_lib::num::itoa(bytes.len()));
-            }
-
             #[cfg(feature="sse")]
-            Content::Stream(_) => {
-                self.headers.set()
-                    .ContentLength(None);
+            (Content::Stream(_), _) => {
+                if !/* not */self.headers.ContentLength().is_none() {
+                    self.headers.set().ContentLength(None);
+                }
             }
-
             #[cfg(not(feature="rt_lambda"/* currently */))]
-            #[cfg(feature="ws")]
-            Content::WebSocket(_) => {
-                self.headers.set()
-                    .ContentLength(None);
+            #[cfg(all(feature="ws", feature="__rt__"))]
+            (Content::WebSocket(_), _) => {
+                if !/* not */self.headers.ContentLength().is_none() {
+                    self.headers.set().ContentLength(None);
+                }
             }
-        };
+            _ => (/* let it go by user's responsibility */)
+        }
     }
 }
 
@@ -177,16 +172,18 @@ impl Response {
         self
     }
 
+    #[inline]
     pub fn set_payload(&mut self,
         content_type: &'static str,
         content:      impl Into<Cow<'static, [u8]>>,
     ) {
-        let content = content.into();
+        let content: Cow<'static, [u8]> = content.into();
         self.headers.set()
             .ContentType(content_type)
-            .ContentLength(content.len().to_string());
+            .ContentLength(ohkami_lib::num::itoa(content.len()));
         self.content = Content::Payload(content.into());
     }
+    #[inline]
     pub fn with_payload(mut self,
         content_type: &'static str,
         content:      impl Into<Cow<'static, [u8]>>,
@@ -198,33 +195,35 @@ impl Response {
         self.content.as_bytes()
     }
 
-    #[inline] pub fn set_text<Text: Into<Cow<'static, str>>>(&mut self, text: Text) {
-        let body = text.into();
+    #[inline]
+    pub fn set_text<Text: Into<Cow<'static, str>>>(&mut self, text: Text) {
+        let body: Cow<'static, str> = text.into();
 
         self.headers.set()
-            .ContentType("text/plain; charset=UTF-8");
+            .ContentType("text/plain; charset=UTF-8")
+            .ContentLength(ohkami_lib::num::itoa(body.len()));
         self.content = Content::Payload(match body {
             Cow::Borrowed(str) => CowSlice::Ref(Slice::from_bytes(str.as_bytes())),
             Cow::Owned(string) => CowSlice::Own(string.into_bytes().into()),
         });
     }
-    #[inline(always)] pub fn with_text<Text: Into<Cow<'static, str>>>(mut self, text: Text) -> Self {
+    #[inline(always)]
+    pub fn with_text<Text: Into<Cow<'static, str>>>(mut self, text: Text) -> Self {
         self.set_text(text);
         self
     }
 
-    #[inline(always)]
     pub fn set_html<HTML: Into<Cow<'static, str>>>(&mut self, html: HTML) {
-        let body = html.into();
+        let body: Cow<'static, str> = html.into();
 
         self.headers.set()
-            .ContentType("text/html; charset=UTF-8");
+            .ContentType("text/html; charset=UTF-8")
+            .ContentLength(ohkami_lib::num::itoa(body.len()));
         self.content = Content::Payload(match body {
             Cow::Borrowed(str) => CowSlice::Ref(Slice::from_bytes(str.as_bytes())),
             Cow::Owned(string) => CowSlice::Own(string.into_bytes().into()),
         });
     }
-    #[inline(always)]
     pub fn with_html<HTML: Into<Cow<'static, str>>>(mut self, html: HTML) -> Self {
         self.set_html(html);
         self
@@ -233,9 +232,9 @@ impl Response {
     #[inline(always)]
     pub fn set_json<JSON: serde::Serialize>(&mut self, json: JSON) {
         let body = ::serde_json::to_vec(&json).unwrap();
-
         self.headers.set()
-            .ContentType("application/json");
+            .ContentType("application/json")
+            .ContentLength(ohkami_lib::num::itoa(body.len()));
         self.content = Content::Payload(body.into());
     }
     #[inline(always)]
@@ -244,7 +243,7 @@ impl Response {
         self
     }
 
-    /// SAFETY: Argument `json_lit` is **valid JSON**
+    /// SAFETY: argument `json_lit` must be **valid JSON**
     pub unsafe fn set_json_lit<JSONLiteral: Into<Cow<'static, str>>>(&mut self, json_lit: JSONLiteral) {
         let body = match json_lit.into() {
             Cow::Borrowed(str) => Cow::Borrowed(str.as_bytes()),
@@ -252,10 +251,11 @@ impl Response {
         };
 
         self.headers.set()
-            .ContentType("application/json");
+            .ContentType("application/json")
+            .ContentLength(ohkami_lib::num::itoa(body.len()));
         self.content = Content::Payload(body.into());
     }
-    /// SAFETY: Argument `json_lit` is **valid JSON**
+    /// SAFETY: argument `json_lit` must be **valid JSON**
     pub unsafe fn with_json_lit<JSONLiteral: Into<Cow<'static, str>>>(mut self, json_lit: JSONLiteral) -> Self {
         self.set_json_lit(json_lit);
         self
@@ -264,7 +264,6 @@ impl Response {
 
 #[cfg(feature="sse")]
 impl Response {
-    #[inline]
     pub fn with_stream<T: sse::Data>(
         mut self,
         stream: impl Stream<Item = T> + Unpin + Send + 'static
@@ -273,7 +272,6 @@ impl Response {
         self
     }
 
-    #[inline]
     pub fn set_stream<T: sse::Data>(
         &mut self,
         stream: impl Stream<Item = T> + Unpin + Send + 'static
@@ -281,31 +279,16 @@ impl Response {
         self.set_stream_raw(Box::pin(stream.map(sse::Data::encode)));
     }
 
-    #[inline]
     pub fn set_stream_raw(
         &mut self,
         stream: std::pin::Pin<Box<dyn Stream<Item = String> + Send>>
     ) {
         self.headers.set()
+            .ContentLength(None)
             .ContentType("text/event-stream")
             .CacheControl("no-cache, must-revalidate")
             .TransferEncoding("chunked");
         self.content = Content::Stream(stream);
-    }
-}
-
-#[cfg(feature="ws")]
-/// Of course here no method for rt_lambda exists; see x_lambda.rs
-impl Response {
-    #[cfg(feature="__rt_native__")]
-    pub(crate) fn with_websocket(mut self, ws: mews::WebSocket) -> Self {
-        self.content = Content::WebSocket(ws);
-        self
-    }
-    #[cfg(feature="rt_worker")]
-    pub(crate) fn with_websocket(mut self, ws: worker::WebSocket) -> Self {
-        self.content = Content::WebSocket(ws);
-        self
     }
 }
 
@@ -326,11 +309,10 @@ impl Upgrade {
 #[cfg(feature="__rt_native__")]
 impl Response {
     #[cfg_attr(not(feature="sse"), inline)]
-    pub(crate) async fn send(mut self,
+    pub(crate) async fn send(
+        self,
         conn: &mut (impl AsyncWrite + Unpin)
     ) -> Upgrade {
-        self.complete();
-
         match self.content {
             Content::None => {
                 let mut buf = Vec::<u8>::with_capacity(

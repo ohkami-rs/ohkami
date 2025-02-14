@@ -446,9 +446,7 @@ impl Ohkami {
                 let (router, _) = self.into_router().finalize();
                 #[cfg(feature="DEBUG")] ::worker::console_debug!("Done `self.router.finalize`");
                 
-                let mut res = router.handle(&mut ohkami_req).await;
-                res.complete();
-                res
+                router.handle(&mut ohkami_req).await
             }
             Err(e) => {#[cfg(feature="DEBUG")] ::worker::console_debug!("`take_over` returned an error response: {e:?}");
                 e
@@ -531,7 +529,7 @@ impl Ohkami {
 
         crate::DEBUG!("[openapi_document_bytes] routes = {routes:#?}, router = {router:#?}");
 
-        let doc = router.gen_openapi_doc(routes, openapi);
+        let doc = router.gen_openapi_doc(routes.keys().map(|r| &**r), openapi);
 
         let mut bytes = ::serde_json::to_vec_pretty(&doc).expect("failed to serialize OpenAPI document");
         bytes.push(b'\n');

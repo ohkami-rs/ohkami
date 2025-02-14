@@ -1,0 +1,8 @@
+[package]
+name    = "openapi-schema-from-into"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# set `default-features = false` to assure "DEBUG" feature be off even when DEBUGing `../ohkami`
+ohkami  = { path = "../../ohkami", default-features = false, features = ["rt_tokio", "openapi"] }

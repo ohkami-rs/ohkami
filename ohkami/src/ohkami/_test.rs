@@ -749,3 +749,46 @@ fn method_dependent_fang_applying() {
         }
     });
 }
+
+#[test]
+#[should_panic =
+    "handler `ohkami::ohkami::_test::panics_unexpected_path_params::hello_name` \
+    requires 1 path param(s) \
+    BUT the route `/hello` captures only 0 param(s)"
+]
+fn panics_unexpected_path_params() {
+    async fn hello_name(name: &str) -> String {
+        format!("Hello, {name}!")
+    }
+
+    let _ = Ohkami::new((
+        "/hello".GET(hello_name),
+    )).test(); /* panics here on finalize */
+}
+
+#[test]
+#[should_panic =
+    "handler `ohkami::ohkami::_test::check_path_params_counted_accumulatedly::hello_name_age` \
+    requires 2 path param(s) \
+    BUT the route `/hello/:name` captures only 1 param(s)"
+]
+fn check_path_params_counted_accumulatedly() {
+    async fn hello_name(name: &str) -> String {
+        format!("Hello, {name}!")
+    }
+    async fn hello_name_age((name, age): (&str, u8)) -> String {
+        format!("Hello, {name} ({age})!")
+    }
+
+    let _ = Ohkami::new((
+        "/hello/:name".By(Ohkami::new((
+            "/".GET(hello_name),
+        ))),
+    )).test(); /* NOT panics here */
+
+    let _ = Ohkami::new((
+        "/hello/:name".By(Ohkami::new((
+            "/".GET(hello_name_age),
+        ))),
+    )).test(); /* panics here */
+}

@@ -77,14 +77,14 @@ const _: () = {
         type Error = std::convert::Infallible;
         #[inline(always)]
         fn from_request(req: &'req Request) -> Option<Result<Self, Self::Error>> {
-            Some(Ok(req.env()))
+            Some(Ok(req.context.env()))
         }
     }
     impl<'req> FromRequest<'req> for &'req ::worker::Context {
         type Error = std::convert::Infallible;
         #[inline(always)]
         fn from_request(req: &'req Request) -> Option<Result<Self, Self::Error>> {
-            Some(Ok(req.context()))
+            Some(Ok(req.context.worker()))
         }
     }
 };
@@ -122,7 +122,7 @@ pub trait FromParam<'p>: Sized {
 
     #[cfg(feature="openapi")]
     fn openapi_param() -> openapi::Parameter {
-        openapi::Parameter::in_path("", openapi::string())
+        openapi::Parameter::in_path(openapi::string())
     }
 }
 const _: () = {
@@ -184,7 +184,7 @@ const _: () = {
 
                     #[cfg(feature="openapi")]
                     fn openapi_param() -> openapi::Parameter {
-                        openapi::Parameter::in_path("", openapi::integer())
+                        openapi::Parameter::in_path(openapi::integer())
                     }
                 }
             )*
@@ -207,7 +207,7 @@ const _: () = {
 
                     #[cfg(feature="openapi")]
                     fn openapi_param() -> openapi::Parameter {
-                        openapi::Parameter::in_path("", openapi::integer())
+                        openapi::Parameter::in_path(openapi::integer())
                     }
                 }
             )*

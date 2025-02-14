@@ -7,15 +7,19 @@ use crate::openapi;
 
 
 pub trait IntoHandler<T> {
+    fn n_params(&self) -> usize;
     fn into_handler(self) -> Handler;
 }
 
-#[inline(never)] #[cold] fn __error__(e: Response) -> Pin<Box<dyn SendOnNativeFuture<Response>>> {
+
+#[inline(never)] #[cold]
+fn __error__(e: Response) -> Pin<Box<dyn SendOnNativeFuture<Response>>> {
     Box::pin(async {e})
 }
 
 /* FIXME: omit unsafe... */
-#[inline(always)] fn from_request<'fr, 'req, R: FromRequest<'fr>>(
+#[inline(always)]
+fn from_request<'fr, 'req, R: FromRequest<'fr>>(
     req: &'req Request
 ) -> Result<R, Response> {
     <R as FromRequest>::from_request(unsafe {
@@ -23,6 +27,20 @@ pub trait IntoHandler<T> {
     })
         .ok_or_else(|| Response::BadRequest().with_text("missing something expected in request"))?
         .map_err(IntoResponse::into_response)
+}
+
+#[cfg(feature="openapi")]
+fn with_default_operation_id<F>(op: openapi::Operation) -> openapi::Operation {
+    let (_/*path_from_crate_root*/, type_name) = std::any::type_name::<F>()
+        .rsplit_once("::")
+        .expect("unexpected format of std::any::type_name");
+        
+    /* when like `Ohkami::new(("/".GET(|| async {"Hello, world!"}),))` */
+    if type_name == "{{closure}}" {
+        op
+    } else {
+        op.operationId(type_name)
+    }
 }
 
 
@@ -33,6 +51,8 @@ const _: (/* no args */) = {
         Body: IntoResponse,
         Fut:  Future<Output = Body> + SendOnNative + 'static,
     {
+        fn n_params(&self) -> usize {0}
+
         fn into_handler(self) -> Handler {
             Handler::new(move |_| {
                 let res = self();
@@ -40,7 +60,7 @@ const _: (/* no args */) = {
                     res.await.into_response()
                 })
             }, #[cfg(feature="openapi")] {
-                openapi::Operation::with(Body::openapi_responses())
+                with_default_operation_id::<F>(openapi::Operation::with(Body::openapi_responses()))
             })
         }
     }
@@ -53,6 +73,8 @@ const _: (/* FromParam */) = {
         Body: IntoResponse,
         Fut:  Future<Output = Body> + SendOnNative + 'static,
     {
+        fn n_params(&self) -> usize {1}
+
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
                 match P1::from_raw_param(unsafe {req.path.assume_one_param()}) {
@@ -63,7 +85,7 @@ const _: (/* FromParam */) = {
                     Err(e) => __error__(e)
                 }
             }, #[cfg(feature="openapi")] {
-                openapi::Operation::with(Body::openapi_responses())
+                with_default_operation_id::<F>(openapi::Operation::with(Body::openapi_responses()))
                     .param(P1::openapi_param())
             })
         }
@@ -75,10 +97,11 @@ const _: (/* FromParam */) = {
         Body: IntoResponse,
         Fut:  Future<Output = Body> + SendOnNative + 'static,
     {
+        fn n_params(&self) -> usize {1}
+
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
-                // SAFETY: Due to the architecture of `Router`,
-                // `params` has already `append`ed once before this code
+                // SAFETY: `crate::Route` has already checked the number of params
                 match P1::from_raw_param(unsafe {req.path.assume_one_param()}) {
                     Ok(p1) => {
                         let res = self((p1,));
@@ -87,7 +110,7 @@ const _: (/* FromParam */) = {
                     Err(e) => __error__(e)
                 }
             }, #[cfg(feature="openapi")] {
-                openapi::Operation::with(Body::openapi_responses())
+                with_default_operation_id::<F>(openapi::Operation::with(Body::openapi_responses()))
                     .param(P1::openapi_param())
             })
         }
@@ -98,6 +121,8 @@ const _: (/* FromParam */) = {
         F:   Fn((P1, P2)) -> Fut + SendSyncOnNative + 'static,
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
+        fn n_params(&self) -> usize {2}
+
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
                 let (p1, p2) = unsafe {req.path.assume_two_params()};
@@ -109,7 +134,7 @@ const _: (/* FromParam */) = {
                     (Err(e), _) | (_, Err(e)) => __error__(e),
                 }
             }, #[cfg(feature="openapi")] {
-                openapi::Operation::with(Body::openapi_responses())
+                with_default_operation_id::<F>(openapi::Operation::with(Body::openapi_responses()))
                     .param(P1::openapi_param())
                     .param(P2::openapi_param())
             })
@@ -123,6 +148,8 @@ const _: (/* FromRequest items */) = {
         F:   Fn(Item1) -> Fut + SendSyncOnNative + 'static,
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
+        fn n_params(&self) -> usize {0}
+
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
                 match from_request::<Item1>(req) {
@@ -133,7 +160,7 @@ const _: (/* FromRequest items */) = {
                     Err(e) => __error__(e)
                 }
             }, #[cfg(feature="openapi")] {
-                openapi::Operation::with(Body::openapi_responses())
+                with_default_operation_id::<F>(openapi::Operation::with(Body::openapi_responses()))
                     .inbound(Item1::openapi_inbound())
             })
         }
@@ -144,6 +171,8 @@ const _: (/* FromRequest items */) = {
         F:   Fn(Item1, Item2) -> Fut + SendSyncOnNative + 'static,
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
+        fn n_params(&self) -> usize {0}
+
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
                 match (from_request::<Item1>(req), from_request::<Item2>(req)) {
@@ -155,7 +184,7 @@ const _: (/* FromRequest items */) = {
                     (_, Err(e)) => __error__(e),
                 }
             }, #[cfg(feature="openapi")] {
-                openapi::Operation::with(Body::openapi_responses())
+                with_default_operation_id::<F>(openapi::Operation::with(Body::openapi_responses()))
                     .inbound(Item1::openapi_inbound())
                     .inbound(Item2::openapi_inbound())
             })
@@ -167,6 +196,8 @@ const _: (/* FromRequest items */) = {
         F:   Fn(Item1, Item2, Item3) -> Fut + SendSyncOnNative + 'static,
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
+        fn n_params(&self) -> usize {0}
+
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
                 match (from_request::<Item1>(req), from_request::<Item2>(req), from_request::<Item3>(req)) {
@@ -179,7 +210,7 @@ const _: (/* FromRequest items */) = {
                     (_, _, Err(e)) => __error__(e),
                 }
             }, #[cfg(feature="openapi")] {
-                openapi::Operation::with(Body::openapi_responses())
+                with_default_operation_id::<F>(openapi::Operation::with(Body::openapi_responses()))
                     .inbound(Item1::openapi_inbound())
                     .inbound(Item2::openapi_inbound())
                     .inbound(Item3::openapi_inbound())
@@ -192,6 +223,8 @@ const _: (/* FromRequest items */) = {
         F:   Fn(Item1, Item2, Item3, Item4) -> Fut + SendSyncOnNative + 'static,
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
+        fn n_params(&self) -> usize {0}
+
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
                 match (from_request::<Item1>(req), from_request::<Item2>(req), from_request::<Item3>(req), from_request::<Item4>(req)) {
@@ -205,7 +238,7 @@ const _: (/* FromRequest items */) = {
                     (_,_, _, Err(e)) => __error__(e),
                 }
             }, #[cfg(feature="openapi")] {
-                openapi::Operation::with(Body::openapi_responses())
+                with_default_operation_id::<F>(openapi::Operation::with(Body::openapi_responses()))
                     .inbound(Item1::openapi_inbound())
                     .inbound(Item2::openapi_inbound())
                     .inbound(Item3::openapi_inbound())
@@ -221,10 +254,11 @@ const _: (/* one FromParam without tuple and FromRequest items */) = {
         F:   Fn(P1, Item1) -> Fut + SendSyncOnNative + 'static,
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
+        fn n_params(&self) -> usize {1}
+
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
-                // SAFETY: Due to the architecture of `Router`,
-                // `params` has already `append`ed once before this code
+                // SAFETY: `crate::Route` has already checked the number of params
                 let p1 = unsafe {req.path.assume_one_param()};
 
                 match (P1::from_raw_param(p1), from_request(req)) {
@@ -236,7 +270,7 @@ const _: (/* one FromParam without tuple and FromRequest items */) = {
                     (_, Err(e)) => __error__(e),
                 }
             }, #[cfg(feature="openapi")] {
-                openapi::Operation::with(Body::openapi_responses())
+                with_default_operation_id::<F>(openapi::Operation::with(Body::openapi_responses()))
                     .param(P1::openapi_param())
                     .inbound(Item1::openapi_inbound())
             })
@@ -248,10 +282,11 @@ const _: (/* one FromParam without tuple and FromRequest items */) = {
         F:   Fn(P1, Item1, Item2) -> Fut + SendSyncOnNative + 'static,
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
+        fn n_params(&self) -> usize {1}
+
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
-                // SAFETY: Due to the architecture of `Router`,
-                // `params` has already `append`ed once before this code
+                // SAFETY: `crate::Route` has already checked the number of params
                 let p1 = unsafe {req.path.assume_one_param()};
 
                 match (P1::from_raw_param(p1), from_request::<Item1>(req), from_request::<Item2>(req)) {
@@ -264,7 +299,7 @@ const _: (/* one FromParam without tuple and FromRequest items */) = {
                     (_,_,Err(e)) => __error__(e),
                 }
             }, #[cfg(feature="openapi")] {
-                openapi::Operation::with(Body::openapi_responses())
+                with_default_operation_id::<F>(openapi::Operation::with(Body::openapi_responses()))
                     .param(P1::openapi_param())
                     .inbound(Item1::openapi_inbound())
                     .inbound(Item2::openapi_inbound())
@@ -277,10 +312,11 @@ const _: (/* one FromParam without tuple and FromRequest items */) = {
         F:   Fn(P1, Item1, Item2, Item3) -> Fut + SendSyncOnNative + 'static,
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
+        fn n_params(&self) -> usize {1}
+
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
-                // SAFETY: Due to the architecture of `Router`,
-                // `params` has already `append`ed once before this code
+                // SAFETY: `crate::Route` has already checked the number of params
                 let p1 = unsafe {req.path.assume_one_param()};
 
                 match (P1::from_raw_param(p1), from_request::<Item1>(req), from_request::<Item2>(req), from_request::<Item3>(req)) {
@@ -294,7 +330,7 @@ const _: (/* one FromParam without tuple and FromRequest items */) = {
                     (_,_,_,Err(e)) => __error__(e),
                 }
             }, #[cfg(feature="openapi")] {
-                openapi::Operation::with(Body::openapi_responses())
+                with_default_operation_id::<F>(openapi::Operation::with(Body::openapi_responses()))
                     .param(P1::openapi_param())
                     .inbound(Item1::openapi_inbound())
                     .inbound(Item2::openapi_inbound())
@@ -308,10 +344,11 @@ const _: (/* one FromParam without tuple and FromRequest items */) = {
         F:   Fn(P1, Item1, Item2, Item3, Item4) -> Fut + SendSyncOnNative + 'static,
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
+        fn n_params(&self) -> usize {1}
+
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
-                // SAFETY: Due to the architecture of `Router`,
-                // `params` has already `append`ed once before this code
+                // SAFETY: `crate::Route` has already checked the number of params
                 let p1 = unsafe {req.path.assume_one_param()};
 
                 match (P1::from_raw_param(p1), from_request::<Item1>(req), from_request::<Item2>(req), from_request::<Item3>(req), from_request::<Item4>(req)) {
@@ -326,7 +363,7 @@ const _: (/* one FromParam without tuple and FromRequest items */) = {
                     (_,_,_,_,Err(e)) => __error__(e),
                 }
             }, #[cfg(feature="openapi")] {
-                openapi::Operation::with(Body::openapi_responses())
+                with_default_operation_id::<F>(openapi::Operation::with(Body::openapi_responses()))
                     .param(P1::openapi_param())
                     .inbound(Item1::openapi_inbound())
                     .inbound(Item2::openapi_inbound())
@@ -343,10 +380,11 @@ const _: (/* one FromParam and FromRequest items */) = {
         F:   Fn((P1,), Item1) -> Fut + SendSyncOnNative + 'static,
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
+        fn n_params(&self) -> usize {1}
+
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
-                // SAFETY: Due to the architecture of `Router`,
-                // `params` has already `append`ed once before this code
+                // SAFETY: `crate::Route` has already checked the number of params
                 let p1 = unsafe {req.path.assume_one_param()};
 
                 match (P1::from_raw_param(p1), from_request::<Item1>(req)) {
@@ -358,7 +396,7 @@ const _: (/* one FromParam and FromRequest items */) = {
                     (_,Err(e)) => __error__(e),
                 }
             }, #[cfg(feature="openapi")] {
-                openapi::Operation::with(Body::openapi_responses())
+                with_default_operation_id::<F>(openapi::Operation::with(Body::openapi_responses()))
                     .param(P1::openapi_param())
                     .inbound(Item1::openapi_inbound())
             })
@@ -370,10 +408,11 @@ const _: (/* one FromParam and FromRequest items */) = {
         F:   Fn((P1,), Item1, Item2) -> Fut + SendSyncOnNative + 'static,
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
+        fn n_params(&self) -> usize {1}
+
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
-                // SAFETY: Due to the architecture of `Router`,
-                // `params` has already `append`ed once before this code
+                // SAFETY: `crate::Route` has already checked the number of params
                 let p1 = unsafe {req.path.assume_one_param()};
 
                 match (P1::from_raw_param(p1), from_request::<Item1>(req), from_request::<Item2>(req)) {
@@ -386,7 +425,7 @@ const _: (/* one FromParam and FromRequest items */) = {
                     (_,_,Err(e)) => __error__(e),
                 }
             }, #[cfg(feature="openapi")] {
-                openapi::Operation::with(Body::openapi_responses())
+                with_default_operation_id::<F>(openapi::Operation::with(Body::openapi_responses()))
                     .param(P1::openapi_param())
                     .inbound(Item1::openapi_inbound())
                     .inbound(Item2::openapi_inbound())
@@ -399,10 +438,11 @@ const _: (/* one FromParam and FromRequest items */) = {
         F:   Fn((P1,), Item1, Item2, Item3) -> Fut + SendSyncOnNative + 'static,
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
+        fn n_params(&self) -> usize {1}
+
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
-                // SAFETY: Due to the architecture of `Router`,
-                // `params` has already `append`ed once before this code
+                // SAFETY: `crate::Route` has already checked the number of params
                 let p1 = unsafe {req.path.assume_one_param()};
                 
                 match (P1::from_raw_param(p1), from_request::<Item1>(req), from_request::<Item2>(req), from_request::<Item3>(req)) {
@@ -416,7 +456,7 @@ const _: (/* one FromParam and FromRequest items */) = {
                     (_,_,_,Err(e)) => __error__(e),
                 }
             }, #[cfg(feature="openapi")] {
-                openapi::Operation::with(Body::openapi_responses())
+                with_default_operation_id::<F>(openapi::Operation::with(Body::openapi_responses()))
                     .param(P1::openapi_param())
                     .inbound(Item1::openapi_inbound())
                     .inbound(Item2::openapi_inbound())
@@ -430,10 +470,11 @@ const _: (/* one FromParam and FromRequest items */) = {
         F:   Fn((P1,), Item1, Item2, Item3, Item4) -> Fut + SendSyncOnNative + 'static,
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
+        fn n_params(&self) -> usize {1}
+
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
-                // SAFETY: Due to the architecture of `Router`,
-                // `params` has already `append`ed once before this code
+                // SAFETY: `crate::Route` has already checked the number of params
                 let p1 = unsafe {req.path.assume_one_param()};
                 
                 match (P1::from_raw_param(p1), from_request::<Item1>(req), from_request::<Item2>(req), from_request::<Item3>(req), from_request::<Item4>(req)) {
@@ -448,7 +489,7 @@ const _: (/* one FromParam and FromRequest items */) = {
                     (_,_,_,_,Err(e)) => __error__(e),
                 }
             }, #[cfg(feature="openapi")] {
-                openapi::Operation::with(Body::openapi_responses())
+                with_default_operation_id::<F>(openapi::Operation::with(Body::openapi_responses()))
                     .param(P1::openapi_param())
                     .inbound(Item1::openapi_inbound())
                     .inbound(Item2::openapi_inbound())
@@ -465,10 +506,11 @@ const _: (/* two PathParams and FromRequest items */) = {
         F:   Fn((P1, P2), Item1) -> Fut + SendSyncOnNative + 'static,
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
+        fn n_params(&self) -> usize {2}
+
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
-                // SAFETY: Due to the architecture of `Router`,
-                // `params` has already `append`ed twice before this code
+                // SAFETY: `crate::Route` has already checked the number of params
                 let (p1, p2) = unsafe {req.path.assume_two_params()};
 
                 match (FromParam::from_raw_param(p1), FromParam::from_raw_param(p2), from_request::<Item1>(req)) {
@@ -481,7 +523,7 @@ const _: (/* two PathParams and FromRequest items */) = {
                     (_,_,Err(e)) => __error__(e),
                 }
             }, #[cfg(feature="openapi")] {
-                openapi::Operation::with(Body::openapi_responses())
+                with_default_operation_id::<F>(openapi::Operation::with(Body::openapi_responses()))
                     .param(P1::openapi_param())
                     .param(P2::openapi_param())
                     .inbound(Item1::openapi_inbound())
@@ -494,10 +536,11 @@ const _: (/* two PathParams and FromRequest items */) = {
         F:   Fn((P1, P2), Item1, Item2) -> Fut + SendSyncOnNative + 'static,
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
+        fn n_params(&self) -> usize {2}
+
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
-                // SAFETY: Due to the architecture of `Router`,
-                // `params` has already `append`ed twice before this code
+                // SAFETY: `crate::Route` has already checked the number of params
                 let (p1, p2) = unsafe {req.path.assume_two_params()};
 
                 match (FromParam::from_raw_param(p1), FromParam::from_raw_param(p2), from_request::<Item1>(req), from_request::<Item2>(req)) {
@@ -511,7 +554,7 @@ const _: (/* two PathParams and FromRequest items */) = {
                     (_,_,_,Err(e)) => __error__(e),
                 }
             }, #[cfg(feature="openapi")] {
-                openapi::Operation::with(Body::openapi_responses())
+                with_default_operation_id::<F>(openapi::Operation::with(Body::openapi_responses()))
                     .param(P1::openapi_param())
                     .param(P2::openapi_param())
                     .inbound(Item1::openapi_inbound())
@@ -525,10 +568,11 @@ const _: (/* two PathParams and FromRequest items */) = {
         F:   Fn((P1, P2), Item1, Item2, Item3) -> Fut + SendSyncOnNative + 'static,
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
+        fn n_params(&self) -> usize {2}
+
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
-                // SAFETY: Due to the architecture of `Router`,
-                // `params` has already `append`ed twice before this code
+                // SAFETY: `crate::Route` has already checked the number of params
                 let (p1, p2) = unsafe {req.path.assume_two_params()};
 
                 match (FromParam::from_raw_param(p1), FromParam::from_raw_param(p2), from_request::<Item1>(req), from_request::<Item2>(req), from_request::<Item3>(req)) {
@@ -543,7 +587,7 @@ const _: (/* two PathParams and FromRequest items */) = {
                     (_,_,_,_,Err(e)) => __error__(e),
                 }
             }, #[cfg(feature="openapi")] {
-                openapi::Operation::with(Body::openapi_responses())
+                with_default_operation_id::<F>(openapi::Operation::with(Body::openapi_responses()))
                     .param(P1::openapi_param())
                     .param(P2::openapi_param())
                     .inbound(Item1::openapi_inbound())
@@ -558,10 +602,11 @@ const _: (/* two PathParams and FromRequest items */) = {
         F:   Fn((P1, P2), Item1, Item2, Item3, Item4) -> Fut + SendSyncOnNative + 'static,
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
+        fn n_params(&self) -> usize {2}
+
         fn into_handler(self) -> Handler {
             Handler::new(move |req| {
-                // SAFETY: Due to the architecture of `Router`,
-                // `params` has already `append`ed twice before this code
+                // SAFETY: `crate::Route` has already checked the number of params
                 let (p1, p2) = unsafe {req.path.assume_two_params()};
 
                 match (FromParam::from_raw_param(p1), FromParam::from_raw_param(p2), from_request::<Item1>(req), from_request::<Item2>(req), from_request::<Item3>(req), from_request::<Item4>(req)) {
@@ -577,7 +622,7 @@ const _: (/* two PathParams and FromRequest items */) = {
                     (_,_,_,_,_,Err(e)) => __error__(e),
                 }
             }, #[cfg(feature="openapi")] {
-                openapi::Operation::with(Body::openapi_responses())
+                with_default_operation_id::<F>(openapi::Operation::with(Body::openapi_responses()))
                     .param(P1::openapi_param())
                     .param(P2::openapi_param())
                     .inbound(Item1::openapi_inbound())

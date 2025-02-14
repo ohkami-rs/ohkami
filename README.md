@@ -7,8 +7,7 @@
 
 - *macro-less and type-safe* APIs for intuitive and declarative code
 - *various runtimes* are supported：`tokio`, `async-std`, `smol`, `nio`, `glommio` and `worker` (Cloudflare Workers), `lambda` (AWS Lambda)
-- *extremely fast*：[Web Frameworks Benchmark](https://web-frameworks-benchmark.netlify.app/result)
-- no-network testing, well-structured middlewares, Server-Sent Events, WebSocket, OpenAPI document generation, ...
+- extremely fast, no-network testing, well-structured middlewares, Server-Sent Events, WebSocket, highly integrated OpenAPI document generation, ...
 
 <div align="right">
     <a href="https://github.com/ohkami-rs/ohkami/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/crates/l/ohkami.svg" /></a>
@@ -24,7 +23,7 @@
 
 ```toml
 [dependencies]
-ohkami = { version = "0.22", features = ["rt_tokio"] }
+ohkami = { version = "0.23", features = ["rt_tokio"] }
 tokio  = { version = "1",    features = ["full"] }
 ```
 
@@ -195,7 +194,7 @@ async fn main() {
 
 `"openapi"` provides highly integrated OpenAPI support.
 
-This enables *as consistent as possible* OpenAPI document generation, where most of the consistency between document and behavior is automatically assured by Ohkami's internal work.
+This enables **macro-less**, *as consistent as possible* OpenAPI document generation, where most of the consistency between document and behavior is automatically assured by Ohkami's internal work.
 
 Only you have to
 
@@ -284,48 +283,6 @@ async fn main() {
 
 ## Snippets
 
-### Middlewares
-
-Ohkami's request handling system is called "**fang**s", and middlewares are implemented on this.
-
-*builtin fang* : `CORS`, `JWT`, `BasicAuth`, `Timeout`, `Context`
-
-```rust,no_run
-use ohkami::prelude::*;
-
-#[derive(Clone)]
-struct GreetingFang(usize);
-
-/* utility trait; automatically impl `Fang` trait */
-impl FangAction for GreetingFang {
-    async fn fore<'a>(&'a self, req: &'a mut Request) -> Result<(), Response> {
-        let Self(id) = self;
-        println!("[{id}] Welcome request!: {req:?}");
-        Ok(())
-    }
-    async fn back<'a>(&'a self, res: &'a mut Response) {
-        let Self(id) = self;
-        println!("[{id}] Go, response!: {res:?}");
-    }
-}
-
-#[tokio::main]
-async fn main() {
-    Ohkami::new((
-        // register fangs to a Ohkami
-        GreetingFang(1),
-        
-        "/hello"
-            .GET(|| async {"Hello, fangs!"})
-            .POST((
-                // register *local fangs* to a handler
-                GreetingFang(2),
-                || async {"I'm `POST /hello`!"}
-            ))
-    )).howl("localhost:3000").await
-}
-```
-
 ### Typed payload
 
 *builtin payload* : `JSON`, `Text`, `HTML`, `URLEncoded`, `Multipart`
@@ -366,10 +323,10 @@ use ohkami::prelude::*;
 #[tokio::main]
 async fn main() {
     Ohkami::new((
-        "/hello/:name"
-            .GET(hello),
         "/hello/:name/:n"
             .GET(hello_n),
+        "/hello/:name"
+            .GET(hello),
         "/search"
             .GET(search),
     )).howl("localhost:5000").await
@@ -401,6 +358,81 @@ async fn search(
     JSON(vec![
         SearchResult { title: String::from("ohkami") },
     ])
+}
+```
+
+### Middlewares
+
+Ohkami's request handling system is called "**fang**s", and middlewares are implemented on this.
+
+*builtin fang* :
+
+- `Context` *( typed interaction with reuqest context )*
+- `CORS`, `JWT`, `BasicAuth`
+- `Timeout` *( native runtime )*
+- `Enamel` *( experimantal; security headers )*
+
+```rust,no_run
+use ohkami::prelude::*;
+
+#[derive(Clone)]
+struct GreetingFang(usize);
+
+/* utility trait; automatically impl `Fang` trait */
+impl FangAction for GreetingFang {
+    async fn fore<'a>(&'a self, req: &'a mut Request) -> Result<(), Response> {
+        let Self(id) = self;
+        println!("[{id}] Welcome request!: {req:?}");
+        Ok(())
+    }
+    async fn back<'a>(&'a self, res: &'a mut Response) {
+        let Self(id) = self;
+        println!("[{id}] Go, response!: {res:?}");
+    }
+}
+
+#[tokio::main]
+async fn main() {
+    Ohkami::new((
+        // register fangs to a Ohkami
+        GreetingFang(1),
+        
+        "/hello"
+            .GET(|| async {"Hello, fangs!"})
+            .POST((
+                // register *local fangs* to a handler
+                GreetingFang(2),
+                || async {"I'm `POST /hello`!"}
+            ))
+    )).howl("localhost:3000").await
+}
+```
+
+### Database connection management with `Context`
+
+```rust,no_run
+use ohkami::prelude::*;
+use ohkami::typed::status;
+use sqlx::postgres::{PgPoolOptions, PgPool};
+
+#[tokio::main]
+async fn main() {
+    let pool = PgPoolOptions::new()
+        .connect("postgres://ohkami:password@localhost:5432/db").await
+        .expect("failed to connect");
+
+    Ohkami::new((
+        Context::new(pool),
+        "/users".POST(create_user),
+    )).howl("localhost:5050").await
+}
+
+async fn create_user(
+    Context(pool): Context<'_, PgPool>,
+) -> status::Created {
+    //...
+
+    status::Created(())
 }
 ```
 

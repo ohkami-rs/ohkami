@@ -44,6 +44,12 @@ impl<K: PartialEq, V> TupleMap<K, V> {
         }; None
     }
 
+    pub fn append(&mut self, another: Self) {
+        for (k, v) in another.into_iter() {
+            self.insert(k, v);
+        }
+    }
+
     pub fn clear(&mut self) {
         self.0.clear();
     }
@@ -65,6 +71,18 @@ impl<K: PartialEq, V: PartialEq> PartialEq for TupleMap<K, V> {
 impl<K: Clone + PartialEq, V: Clone> Clone for TupleMap<K, V> {
     fn clone(&self) -> Self {
         Self(self.0.clone())
+    }
+}
+
+impl<K:PartialEq, V> std::fmt::Debug for TupleMap<K, V>
+where
+    K: std::fmt::Debug,
+    V: std::fmt::Debug,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        f.debug_map()
+            .entries(self.iter().map(|&(ref k, ref v)| (k, v)))
+            .finish()
     }
 }
 
