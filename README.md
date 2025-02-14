@@ -24,7 +24,7 @@
 
 ```toml
 [dependencies]
-ohkami = { version = "0.22", features = ["rt_tokio"] }
+ohkami = { version = "0.23", features = ["rt_tokio"] }
 tokio  = { version = "1",    features = ["full"] }
 ```
 
