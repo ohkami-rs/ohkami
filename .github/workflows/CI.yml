@@ -11,8 +11,8 @@ jobs:
 
     strategy:
       matrix:
-        toolchain: [stable, nightly]
-        task: [test, check, bench:dryrun]
+        toolchain: ['stable', 'nightly']
+        task: ['test', 'check', 'bench:dryrun']
 
     steps:
       - uses: actions/checkout@v4
