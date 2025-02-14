@@ -284,48 +284,6 @@ async fn main() {
 
 ## Snippets
 
-### Middlewares
-
-Ohkami's request handling system is called "**fang**s", and middlewares are implemented on this.
-
-*builtin fang* : `Context`, `CORS`, `JWT`, `BasicAuth`, `Timeout`, `Enamel` *( experimantal )*
-
-```rust,no_run
-use ohkami::prelude::*;
-
-#[derive(Clone)]
-struct GreetingFang(usize);
-
-/* utility trait; automatically impl `Fang` trait */
-impl FangAction for GreetingFang {
-    async fn fore<'a>(&'a self, req: &'a mut Request) -> Result<(), Response> {
-        let Self(id) = self;
-        println!("[{id}] Welcome request!: {req:?}");
-        Ok(())
-    }
-    async fn back<'a>(&'a self, res: &'a mut Response) {
-        let Self(id) = self;
-        println!("[{id}] Go, response!: {res:?}");
-    }
-}
-
-#[tokio::main]
-async fn main() {
-    Ohkami::new((
-        // register fangs to a Ohkami
-        GreetingFang(1),
-        
-        "/hello"
-            .GET(|| async {"Hello, fangs!"})
-            .POST((
-                // register *local fangs* to a handler
-                GreetingFang(2),
-                || async {"I'm `POST /hello`!"}
-            ))
-    )).howl("localhost:3000").await
-}
-```
-
 ### Typed payload
 
 *builtin payload* : `JSON`, `Text`, `HTML`, `URLEncoded`, `Multipart`
@@ -401,6 +359,53 @@ async fn search(
     JSON(vec![
         SearchResult { title: String::from("ohkami") },
     ])
+}
+```
+
+### Middlewares
+
+Ohkami's request handling system is called "**fang**s", and middlewares are implemented on this.
+
+*builtin fang* :
+
+- `Context` *( typed interaction with reuqest context )*
+- `CORS`, `JWT`, `BasicAuth`
+- `Timeout` *( native runtime )*
+- `Enamel` *( experimantal; security headers )*
+
+```rust,no_run
+use ohkami::prelude::*;
+
+#[derive(Clone)]
+struct GreetingFang(usize);
+
+/* utility trait; automatically impl `Fang` trait */
+impl FangAction for GreetingFang {
+    async fn fore<'a>(&'a self, req: &'a mut Request) -> Result<(), Response> {
+        let Self(id) = self;
+        println!("[{id}] Welcome request!: {req:?}");
+        Ok(())
+    }
+    async fn back<'a>(&'a self, res: &'a mut Response) {
+        let Self(id) = self;
+        println!("[{id}] Go, response!: {res:?}");
+    }
+}
+
+#[tokio::main]
+async fn main() {
+    Ohkami::new((
+        // register fangs to a Ohkami
+        GreetingFang(1),
+        
+        "/hello"
+            .GET(|| async {"Hello, fangs!"})
+            .POST((
+                // register *local fangs* to a handler
+                GreetingFang(2),
+                || async {"I'm `POST /hello`!"}
+            ))
+    )).howl("localhost:3000").await
 }
 ```
 
