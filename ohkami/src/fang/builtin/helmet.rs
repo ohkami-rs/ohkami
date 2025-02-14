@@ -583,4 +583,35 @@ mod test {
             }
         });
     }
+
+    #[test]
+    fn helmet_disable_header() {
+        let t = Ohkami::new((
+            Helmet::default()
+                .CrossOriginEmbedderPolicy("")
+                .CrossOriginResourcePolicy(""),
+            "/hello"
+                .GET(|| async {"Hello, helmet!"}),
+        )).test();
+
+        crate::__rt__::testing::block_on(async {
+            {
+                let req = TestRequest::GET("/hello");
+                let res = t.oneshot(req).await;
+                assert_eq!(res.status().code(), 200);
+                assert_eq!(res.text().unwrap(), "Hello, helmet!");
+                assert_eq!(res.headers().collect::<HashSet<_>>(), HashSet::from_iter([
+                    /* ("Cross-Origin-Embedder-Policy", "require-corp"), */
+                    /* ("Cross-Origin-Resource-Policy", "same-origin"), */
+                    ("Referrer-Policy", "no-referrer"),
+                    ("Strict-Transport-Security", "max-age=15552000; includeSubDomains"),
+                    ("X-Content-Type-Options", "nosniff"),
+                    ("X-Frame-Options", "SAMEORIGIN"),
+
+                    ("Content-Type", "text/plain; charset=UTF-8"),
+                    ("Content-Length", "14"),
+                ]));
+            }
+        });
+    }
 }
