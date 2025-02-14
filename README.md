@@ -8,7 +8,7 @@
 - *macro-less and type-safe* APIs for intuitive and declarative code
 - *various runtimes* are supported：`tokio`, `async-std`, `smol`, `nio`, `glommio` and `worker` (Cloudflare Workers), `lambda` (AWS Lambda)
 - *extremely fast*：[Web Frameworks Benchmark](https://web-frameworks-benchmark.netlify.app/result)
-- no-network testing, well-structured middlewares, Server-Sent Events, WebSocket, OpenAPI document generation, ...
+- no-network testing, well-structured middlewares, Server-Sent Events, WebSocket, highly integrated OpenAPI document generation, ...
 
 <div align="right">
     <a href="https://github.com/ohkami-rs/ohkami/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/crates/l/ohkami.svg" /></a>
@@ -195,7 +195,7 @@ async fn main() {
 
 `"openapi"` provides highly integrated OpenAPI support.
 
-This enables *as consistent as possible* OpenAPI document generation, where most of the consistency between document and behavior is automatically assured by Ohkami's internal work.
+This enables **macro-less**, *as consistent as possible* OpenAPI document generation, where most of the consistency between document and behavior is automatically assured by Ohkami's internal work.
 
 Only you have to
 
