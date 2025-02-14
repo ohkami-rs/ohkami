@@ -11,7 +11,8 @@ jobs:
 
     strategy:
       matrix:
-        toolchain: [stable, nightly]
+        toolchain: ['stable', 'nightly']
+        task: ['check', 'test:core', 'test:other', 'bench:dryrun']
 
     steps:
       - uses: actions/checkout@v4
@@ -61,4 +62,4 @@ jobs:
       - name: Run tasks
         run:  |
           sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
-          task CI
+          task ${{ matrix.task }}
