@@ -1,6 +1,7 @@
 use super::super::{Fang, FangProc};
-use super::super::bound::{SendSyncOnNative, SendOnNativeFuture};
+use super::super::bound::SendSyncOnNative;
 use crate::{Request, Response};
+use std::future::Future;
 
 #[cfg(feature="openapi")]
 use crate::openapi;
@@ -67,21 +68,52 @@ use crate::openapi;
 /// }
 /// ```
 pub trait FangAction: Clone + SendSyncOnNative + 'static {
+    // Here not using `-> impl SendOnNativeFuture` for
+    // rust-analyzer's completion.
+    // Currently rust-analyzer can complete `-> Future` methods
+    // as `async fn ...` **only when** it returns exactly one of:
+    // 
+    // * `-> impl Future<Output = T>`
+    // * `-> impl Future<Output = T> + Send`
+    // * `-> impl Future<Output = T> + Send + 'lifetime`
+    // 
+    // so `-> impl SendOnNativeFuture<T>` prevents his completion...
+
+    #[cfg(any(feature="rt_worker",))]
     /// *fore fang*, that bites a request before a handler.
     /// 
     /// ### default
     /// just return `Ok(())`
     #[allow(unused_variables)]
-    fn fore<'a>(&'a self, req: &'a mut Request) -> impl SendOnNativeFuture<Result<(), Response>> {
+    fn fore<'a>(&'a self, req: &'a mut Request) -> impl Future<Output = Result<(), Response>> {
+        async {Ok(())}
+    }
+    #[cfg(not(any(feature="rt_worker",)))]
+    /// *fore fang*, that bites a request before a handler.
+    /// 
+    /// ### default
+    /// just return `Ok(())`
+    #[allow(unused_variables)]
+    fn fore<'a>(&'a self, req: &'a mut Request) -> impl Future<Output = Result<(), Response>> + Send {
         async {Ok(())}
     }
 
-    /// *back fang*, that bites a response after a handler.
+    #[cfg(any(feature="rt_worker",))]
+    /// *back fang*, that bites a generated response.
     /// 
     /// ### default
     /// just return `()`
     #[allow(unused_variables)]
-    fn back<'a>(&'a self, res: &'a mut Response) -> impl SendOnNativeFuture<()> {
+    fn back<'a>(&'a self, res: &'a mut Response) -> impl Future<Output = ()> {
+        async {}
+    }
+    #[cfg(not(any(feature="rt_worker",)))]
+    /// *back fang*, that bites a generated response.
+    /// 
+    /// ### default
+    /// just return `()`
+    #[allow(unused_variables)]
+    fn back<'a>(&'a self, res: &'a mut Response) -> impl Future<Output = ()> + Send {
         async {}
     }
 
@@ -90,6 +122,7 @@ pub trait FangAction: Clone + SendSyncOnNative + 'static {
         operation
     }
 }
+
 const _: () = {
     impl<A: FangAction, I: FangProc> Fang<I> for A {
         type Proc = FangActionProc<A, I>;
