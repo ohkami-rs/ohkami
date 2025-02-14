@@ -1,8 +1,14 @@
 #![cfg(test)]
+#![cfg(feature="__rt_native__")]
 
 use crate::header::{append, SameSitePolicy, SetCookie};
 use super::ResponseHeaders;
 
+macro_rules! headers_dump {
+    ($dump:literal) => {
+        format!($dump, NOW = ::ohkami_lib::imf_fixdate(crate::util::unix_timestamp()))
+    }
+}
 
 #[test] fn insert_and_write() {
     let mut h = ResponseHeaders::new();
@@ -10,7 +16,12 @@ use super::ResponseHeaders;
     {
         let mut buf = Vec::new();
         h._write_to(&mut buf);
-        assert_eq!(std::str::from_utf8(&buf).unwrap(), "Server: A\r\n\r\n");
+        assert_eq!(std::str::from_utf8(&buf).unwrap(), headers_dump!("\
+            Date: {NOW}\r\n\
+            Content-Length: 0\r\n\
+            Server: A\r\n\
+            \r\n\
+        "));
     }
 
     let mut h = ResponseHeaders::new();
@@ -20,12 +31,13 @@ use super::ResponseHeaders;
     {
         let mut buf = Vec::new();
         h._write_to(&mut buf);
-        assert_eq!(std::str::from_utf8(&buf).unwrap(), "\
+        assert_eq!(std::str::from_utf8(&buf).unwrap(), headers_dump!("\
+            Date: {NOW}\r\n\
+            Content-Length: 42\r\n\
             Server: B\r\n\
             Content-Type: text/html\r\n\
-            Content-Length: 42\r\n\
             \r\n\
-        ");
+        "));
     }
 }
 
@@ -37,10 +49,12 @@ use super::ResponseHeaders;
     {
         let mut buf = Vec::new();
         h._write_to(&mut buf);
-        assert_eq!(std::str::from_utf8(&buf).unwrap(), "\
+        assert_eq!(std::str::from_utf8(&buf).unwrap(), headers_dump!("\
+            Date: {NOW}\r\n\
+            Content-Length: 0\r\n\
             Server: X\r\n\
             \r\n\
-        ");
+        "));
     }
 
     h.set().Server(append("Y"));
@@ -48,10 +62,12 @@ use super::ResponseHeaders;
     {
         let mut buf = Vec::new();
         h._write_to(&mut buf);
-        assert_eq!(std::str::from_utf8(&buf).unwrap(), "\
+        assert_eq!(std::str::from_utf8(&buf).unwrap(), headers_dump!("\
+            Date: {NOW}\r\n\
+            Content-Length: 0\r\n\
             Server: X, Y\r\n\
             \r\n\
-        ");
+        "));
     }
 }
 
@@ -63,10 +79,12 @@ use super::ResponseHeaders;
     {
         let mut buf = Vec::new();
         h._write_to(&mut buf);
-        assert_eq!(std::str::from_utf8(&buf).unwrap(), "\
+        assert_eq!(std::str::from_utf8(&buf).unwrap(), headers_dump!("\
+            Date: {NOW}\r\n\
+            Content-Length: 0\r\n\
             Custom-Header: A\r\n\
             \r\n\
-        ");
+        "));
     }
 
     h.set().x("Custom-Header", append("B"));
@@ -74,10 +92,12 @@ use super::ResponseHeaders;
     {
         let mut buf = Vec::new();
         h._write_to(&mut buf);
-        assert_eq!(std::str::from_utf8(&buf).unwrap(), "\
+        assert_eq!(std::str::from_utf8(&buf).unwrap(), headers_dump!("\
+            Date: {NOW}\r\n\
+            Content-Length: 0\r\n\
             Custom-Header: A, B\r\n\
             \r\n\
-        ");
+        "));
     }
 }
 

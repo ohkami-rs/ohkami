@@ -2,28 +2,29 @@
 
 use crate::Response;
 
-macro_rules! response_dump {
-    ($dump:literal) => {
-        format!($dump, NOW = ::ohkami_lib::imf_fixdate(crate::util::unix_timestamp()))
-    }
-}
-
-macro_rules! assert_bytes_eq {
-    ($res:expr, $expected:expr) => {
+macro_rules! assert_response_bytes_eq {
+    ($res:expr, $expected:literal) => {
         {
+            $res.complete();
+
+            /* avoid flakiness of 1 sec difference */
+            let now = $res.headers.Date()
+                .expect("No `Date` header in res")
+                .to_string(/* `$res` moves by `.send` */);
+
             let mut res_bytes = Vec::new();
             crate::__rt__::testing::block_on(
                 $res.send(&mut res_bytes)
             );
 
-            if res_bytes != $expected {
+            if res_bytes != format!($expected, NOW = now).into_bytes() {
                 panic!("\n\
                     [got]\n\
                     {}\n\
                     [expected]\n\
                     {}\n",
                     (res_bytes).escape_ascii(),
-                    ($expected).escape_ascii(),
+                    $expected,
                 )
             }
         }
@@ -32,42 +33,42 @@ macro_rules! assert_bytes_eq {
 
 #[test]
 fn test_response_into_bytes() {
-    let res = Response::NoContent();
-    assert_bytes_eq!(res, response_dump!("\
+    let mut res = Response::NoContent();
+    assert_response_bytes_eq!(res, "\
         HTTP/1.1 204 No Content\r\n\
         Date: {NOW}\r\n\
         \r\n\
-    ").into_bytes());
+    ");
 
     let mut res = Response::NoContent();
     res.headers.set().Server("ohkami");
-    assert_bytes_eq!(res, response_dump!("\
+    assert_response_bytes_eq!(res, "\
         HTTP/1.1 204 No Content\r\n\
-        Server: ohkami\r\n\
         Date: {NOW}\r\n\
+        Server: ohkami\r\n\
         \r\n\
-    ").into_bytes());
+    ");
 
-    let res = Response::NotFound();
-    assert_bytes_eq!(res, response_dump!("\
+    let mut res = Response::NotFound();
+    assert_response_bytes_eq!(res, "\
         HTTP/1.1 404 Not Found\r\n\
         Date: {NOW}\r\n\
         Content-Length: 0\r\n\
         \r\n\
-    ").into_bytes());
+    ");
 
     let mut res = Response::NotFound();
     res.headers.set()
         .Server("ohkami")
         .x("Hoge-Header", "Something-Custom");
-    assert_bytes_eq!(res, response_dump!("\
+    assert_response_bytes_eq!(res, "\
         HTTP/1.1 404 Not Found\r\n\
-        Server: ohkami\r\n\
         Date: {NOW}\r\n\
         Content-Length: 0\r\n\
+        Server: ohkami\r\n\
         Hoge-Header: Something-Custom\r\n\
         \r\n\
-    ").into_bytes());
+    ");
 
     let mut res = Response::NotFound();
     res.headers.set()
@@ -75,16 +76,16 @@ fn test_response_into_bytes() {
         .x("Hoge-Header", "Something-Custom")
         .SetCookie("id", "42", |d|d.Path("/").SameSiteLax())
         .SetCookie("name", "John", |d|d.Path("/where").SameSiteStrict());
-    assert_bytes_eq!(res, response_dump!("\
+    assert_response_bytes_eq!(res, "\
         HTTP/1.1 404 Not Found\r\n\
-        Server: ohkami\r\n\
         Date: {NOW}\r\n\
         Content-Length: 0\r\n\
+        Server: ohkami\r\n\
         Hoge-Header: Something-Custom\r\n\
         Set-Cookie: id=42; Path=/; SameSite=Lax\r\n\
         Set-Cookie: name=John; Path=/where; SameSite=Strict\r\n\
         \r\n\
-    ").into_bytes());
+    ");
 
     let mut res = Response::NotFound().with_text("sample text");
     res.headers.set()
@@ -92,18 +93,18 @@ fn test_response_into_bytes() {
         .x("Hoge-Header", "Something-Custom")
         .SetCookie("id", "42", |d|d.Path("/").SameSiteLax())
         .SetCookie("name", "John", |d|d.Path("/where").SameSiteStrict());
-    assert_bytes_eq!(res, response_dump!("\
+    assert_response_bytes_eq!(res, "\
         HTTP/1.1 404 Not Found\r\n\
-        Content-Type: text/plain; charset=UTF-8\r\n\
-        Server: ohkami\r\n\
         Date: {NOW}\r\n\
         Content-Length: 11\r\n\
+        Content-Type: text/plain; charset=UTF-8\r\n\
+        Server: ohkami\r\n\
         Hoge-Header: Something-Custom\r\n\
         Set-Cookie: id=42; Path=/; SameSite=Lax\r\n\
         Set-Cookie: name=John; Path=/where; SameSite=Strict\r\n\
         \r\n\
         sample text\
-    ").into_bytes());
+    ");
 }
 
 #[cfg(feature="sse")]
@@ -137,7 +138,7 @@ fn test_stream_response() {
         Repeat { f, n, count: 0 }
     }
 
-    let res = Response::OK()
+    let mut res = Response::OK()
         .with_stream(
             repeat_by(3, |i| format!("This is message#{i} !"))
         )
@@ -146,13 +147,13 @@ fn test_stream_response() {
             .x("is-stream", "true")
             .SetCookie("name", "John", |d|d.Path("/where").SameSiteStrict())
         );
-    assert_bytes_eq!(res, response_dump!("\
+    assert_response_bytes_eq!(res, "\
         HTTP/1.1 200 OK\r\n\
+        Date: {NOW}\r\n\
         Content-Type: text/event-stream\r\n\
         Cache-Control: no-cache, must-revalidate\r\n\
         Transfer-Encoding: chunked\r\n\
         Server: ohkami\r\n\
-        Date: {NOW}\r\n\
         is-stream: true\r\n\
         Set-Cookie: name=John; Path=/where; SameSite=Strict\r\n\
         \r\n\
@@ -170,9 +171,9 @@ fn test_stream_response() {
         \r\n\
         0\r\n\
         \r\n\
-    ").into_bytes());
+    ");
 
-    let res = Response::OK()
+    let mut res = Response::OK()
         .with_stream(
             repeat_by(3, |i| format!("This is message#{i}\nです"))
         )
@@ -181,13 +182,13 @@ fn test_stream_response() {
             .SetCookie("name", "John", |d|d.Path("/where").SameSiteStrict())
             .x("is-stream", "true")
         );
-    assert_bytes_eq!(res, response_dump!("\
+    assert_response_bytes_eq!(res, "\
         HTTP/1.1 200 OK\r\n\
+        Date: {NOW}\r\n\
         Content-Type: text/event-stream\r\n\
         Cache-Control: no-cache, must-revalidate\r\n\
         Transfer-Encoding: chunked\r\n\
         Server: ohkami\r\n\
-        Date: {NOW}\r\n\
         is-stream: true\r\n\
         Set-Cookie: name=John; Path=/where; SameSite=Strict\r\n\
         \r\n\
@@ -208,5 +209,5 @@ fn test_stream_response() {
         \r\n\
         0\r\n\
         \r\n\
-    ").into_bytes());
+    ");
 }

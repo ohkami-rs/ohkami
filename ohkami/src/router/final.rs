@@ -34,21 +34,30 @@ enum Pattern {
 
 impl Router {
     pub(crate) async fn handle(&self, req: &mut Request) -> Response {
-        match req.method {
-            Method::GET     => &self.GET,
-            Method::PUT     => &self.PUT,
-            Method::POST    => &self.POST,
-            Method::PATCH   => &self.PATCH,
-            Method::DELETE  => &self.DELETE,
-            Method::OPTIONS => &self.OPTIONS,
-            Method::HEAD => return {
-                let mut res = self.GET.search(&mut req.path).call_bite(req).await;
-                {/* not `res.drop_content()` to leave `Content-Type`, `Content-Length` */
+        let mut res = 'handle: {
+            (match req.method {
+                Method::GET     => &self.GET,
+                Method::PUT     => &self.PUT,
+                Method::POST    => &self.POST,
+                Method::PATCH   => &self.PATCH,
+                Method::DELETE  => &self.DELETE,
+                Method::OPTIONS => &self.OPTIONS,
+
+                Method::HEAD => {
+                    let mut res = self.GET.search(&mut req.path).call_bite(req).await;
+
+                    /* not `res.drop_content()` to keep `Content-Type`, `Content-Length` */
                     res.content = Content::None;
+
+                    break 'handle res
                 }
-                res
-            }
-        }.search(&mut req.path).call_bite(req).await
+
+            }).search(&mut req.path).call_bite(req).await
+        };
+
+        res.complete();
+
+        res
     }
 
     #[cfg(feature="openapi")]

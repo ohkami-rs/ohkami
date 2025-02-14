@@ -188,7 +188,7 @@ macro_rules! Header {
             }
         }
     };
-} Header! {45;
+} Header! {47;
     AcceptRanges:                    b"Accept-Ranges",
     AccessControlAllowCredentials:   b"Access-Control-Allow-Credentials",
     AccessControlAllowHeaders:       b"Access-Control-Allow-Headers",
@@ -212,6 +212,8 @@ macro_rules! Header {
     ContentSecurityPolicy:           b"Content-Security-Policy",
     ContentSecurityPolicyReportOnly: b"Content-Security-Policy-Report-Only",
     ContentType:                     b"Content-Type",
+    CrossOriginEmbedderPolicy:       b"Cross-Origin-Embedder-Policy",
+    CrossOriginResourcePolicy:       b"Cross-Origin-Resource-Policy",
     Date:                            b"Date",
     ETag:                            b"ETag",
     Expires:                         b"Expires",
@@ -416,12 +418,18 @@ impl Headers {
 impl Headers {
     #[inline]
     pub(crate) fn new() -> Self {
-        Self {
+        let mut this = Self {
             standard:  IndexMap::new(),
             custom:    None,
             setcookie: None,
             size:      "\r\n".len(),
-        }
+        };
+
+        this.set()
+            .Date(ohkami_lib::imf_fixdate(crate::util::unix_timestamp()))
+            .ContentLength("0");
+
+        this
     }
     #[cfg(feature="DEBUG")]
     #[doc(hidden)]

@@ -446,9 +446,7 @@ impl Ohkami {
                 let (router, _) = self.into_router().finalize();
                 #[cfg(feature="DEBUG")] ::worker::console_debug!("Done `self.router.finalize`");
                 
-                let mut res = router.handle(&mut ohkami_req).await;
-                res.complete();
-                res
+                router.handle(&mut ohkami_req).await
             }
             Err(e) => {#[cfg(feature="DEBUG")] ::worker::console_debug!("`take_over` returned an error response: {e:?}");
                 e
