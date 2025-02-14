@@ -12,14 +12,20 @@ tasks:
 
   test:
     deps:
-      - task: test:deps
-      - task: test:doc
-      - task: test:examples
-      - task: test:samples
+      - task: test:core
+      - task: test:other
+  test:core:
+    deps:
       - task: test:no_rt
       - for:  [tokio, async-std, smol, nio, glommio, lambda, worker]
         task: test:rt
         vars: { rt: '{{.ITEM}}' }
+  test:other:
+    deps:
+      - task: test:deps
+      - task: test:doc
+      - task: test:examples
+      - task: test:samples
 
   check:
     deps:
