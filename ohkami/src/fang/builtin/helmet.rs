@@ -14,7 +14,6 @@
 ///     )).howl("localhost:4040").await
 /// }
 /// ```
-#[derive(Clone)]
 pub struct Helmet(std::sync::Arc<HelmetFields>);
 #[allow(non_snake_case)]
 struct HelmetFields {
@@ -125,9 +124,26 @@ const _: () = {
         }
     }
 
-    impl crate::fang::FangAction for Helmet {
-        async fn back<'a>(&'a self, res: &'a mut crate::Response) {
-            self.apply(res);
+    use crate::{Request, Response, Fang, FangProc};
+
+    impl<I: FangProc> Fang<I> for Helmet {
+        type Proc = HelmetProc<I>;
+        fn chain(&self, inner: I) -> Self::Proc {
+            let helmet = Helmet(std::sync::Arc::clone(&self.0));
+            HelmetProc { helmet, inner }
+        }
+    }
+
+    pub struct HelmetProc<I: FangProc> {
+        helmet: Helmet,
+        inner: I,
+    }
+
+    impl<I: FangProc> FangProc for HelmetProc<I> {
+        async fn bite<'f>(&'f self, req: &'f mut Request) -> Response {
+            let mut res = self.inner.bite(req).await;
+            self.helmet.apply(&mut res);
+            res
         }
     }
 };
