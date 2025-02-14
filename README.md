@@ -288,7 +288,7 @@ async fn main() {
 
 Ohkami's request handling system is called "**fang**s", and middlewares are implemented on this.
 
-*builtin fang* : `CORS`, `JWT`, `BasicAuth`, `Timeout`, `Context`
+*builtin fang* : `Context`, `CORS`, `JWT`, `BasicAuth`, `Timeout`, `Enamel` *( experimantal )*
 
 ```rust,no_run
 use ohkami::prelude::*;
@@ -366,10 +366,10 @@ use ohkami::prelude::*;
 #[tokio::main]
 async fn main() {
     Ohkami::new((
-        "/hello/:name"
-            .GET(hello),
         "/hello/:name/:n"
             .GET(hello_n),
+        "/hello/:name"
+            .GET(hello),
         "/search"
             .GET(search),
     )).howl("localhost:5000").await

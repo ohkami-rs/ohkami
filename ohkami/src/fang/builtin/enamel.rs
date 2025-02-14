@@ -1,22 +1,42 @@
-/// based on <https://hono.dev/docs/middleware/builtin/secure-headers>,
+/// # Builtin security headers fang
+/// 
+/// Based on <https://hono.dev/docs/middleware/builtin/secure-headers>,
 /// with removing non-standard or deprecated headers
+/// 
+/// ## What it does
+/// 
+/// By default, adds to response headers :
+/// 
+/// - `Cross-Origin-Embedder-Policy` to `require-corp`
+/// - `Cross-Origin-Resource-Policy` to `same-origin`
+/// - `Referrer-Policy` to `no-referrer`
+/// - `Strict-Transport-Security` to `max-age=15552000; includeSubDomains`
+/// - `X-Content-Type-Options` to `nosniff`
+/// - `XFrameOptions` to `SAMEORIGIN`
+/// 
+/// Each of these defaults can be overrided by corresponded builder method.
+/// 
+/// Additionally, `Content-Security-Policy` or `Content-Security-Policy-Report-Only`
+/// can be set by the methods with `enamel::CSP`.
 /// 
 /// ## Example
 /// 
 /// ```no_run
 /// use ohkami::prelude::*;
-/// use ohkami::fang::Helmet;
+/// use ohkami::fang::Enamel;
 /// 
 /// #[tokio::main]
 /// async fn main() {
-///     Ohkami::new((Helmet::default(),
-///         "/hello".GET(|| async {"Hello, Helmet!"}),
+///     Ohkami::new((Enamel::default(),
+///         "/hello".GET(|| async {"Hello, Enamel!"}),
 ///     )).howl("localhost:4040").await
 /// }
 /// ```
-pub struct Helmet(std::sync::Arc<HelmetFields>);
+pub struct Enamel(
+    std::sync::Arc<EnamelFields>
+);
 #[allow(non_snake_case)]
-struct HelmetFields {
+struct EnamelFields {
     ContentSecurityPolicy:           Option<CSP>,
     ContentSecurityPolicyReportOnly: Option<CSP>,
     CrossOriginEmbedderPolicy:       &'static str,
@@ -27,9 +47,9 @@ struct HelmetFields {
     XFrameOptions:                   &'static str,
 }
 const _: () = {
-    impl Default for Helmet {
+    impl Default for Enamel {
         fn default() -> Self {
-            Self(std::sync::Arc::new(HelmetFields {
+            Self(std::sync::Arc::new(EnamelFields {
                 ContentSecurityPolicy:           None,
                 ContentSecurityPolicyReportOnly: None,
                 CrossOriginEmbedderPolicy:       "require-corp",
@@ -42,12 +62,12 @@ const _: () = {
         }
     }
 
-    fn inner_mut(h: &mut Helmet) -> &mut HelmetFields {
-        std::sync::Arc::get_mut(&mut h.0).expect("Helmet unexpectedly already cloned by someone before Fang::chain")
+    fn inner_mut(h: &mut Enamel) -> &mut EnamelFields {
+        std::sync::Arc::get_mut(&mut h.0).expect("Enamel unexpectedly already cloned by someone before Fang::chain")
     }
 
     #[allow(non_snake_case)]
-    impl Helmet {
+    impl Enamel {
         /// default: no setting
         pub fn ContentSecurityPolicy(mut self, csp: CSP) -> Self {
             inner_mut(&mut self).ContentSecurityPolicy = Some(csp); self
@@ -94,7 +114,7 @@ const _: () = {
         }
     }
 
-    impl Helmet {
+    impl Enamel {
         fn apply(&self, res: &mut crate::Response) {
             let mut h = res.headers.set();
             if let Some(csp) = &self.0.ContentSecurityPolicy {
@@ -126,40 +146,42 @@ const _: () = {
 
     use crate::{Request, Response, Fang, FangProc};
 
-    impl<I: FangProc> Fang<I> for Helmet {
-        type Proc = HelmetProc<I>;
+    impl<I: FangProc> Fang<I> for Enamel {
+        type Proc = EnamelProc<I>;
         fn chain(&self, inner: I) -> Self::Proc {
-            let helmet = Helmet(std::sync::Arc::clone(&self.0));
-            HelmetProc { helmet, inner }
+            let enamel = Enamel(std::sync::Arc::clone(&self.0));
+            EnamelProc { enamel, inner }
         }
     }
 
-    pub struct HelmetProc<I: FangProc> {
-        helmet: Helmet,
+    pub struct EnamelProc<I: FangProc> {
+        enamel: Enamel,
         inner: I,
     }
 
-    impl<I: FangProc> FangProc for HelmetProc<I> {
+    impl<I: FangProc> FangProc for EnamelProc<I> {
         async fn bite<'f>(&'f self, req: &'f mut Request) -> Response {
             let mut res = self.inner.bite(req).await;
-            self.helmet.apply(&mut res);
+            self.enamel.apply(&mut res);
             res
         }
     }
 };
 
-/// based on <https://content-security-policy.com>
+/// # Typed `Content-Security-Policy` for `fang::Enamel`
+/// 
+/// Based on <https://content-security-policy.com>
 /// 
 /// ## Example
 /// 
 /// ```no_run
 /// use ohkami::prelude::*;
-/// use ohkami::fang::helmet::{Helmet, CSP, sandbox::{allow_forms, allow_same_origin}};
+/// use ohkami::fang::enamel::{Enamel, CSP, sandbox::{allow_forms, allow_same_origin}};
 /// 
 /// #[tokio::main]
 /// async fn main() {
 ///     Ohkami::new((
-///         Helmet::default()
+///         Enamel::default()
 ///             .ContentSecurityPolicy(CSP {
 ///                 sandbox: allow_forms | allow_same_origin,
 ///                 ..Default::default()
@@ -249,16 +271,18 @@ const _: () = {
     }
 };
 
+/// # `sandbox` configuration for `enamel::CSP`
+/// 
 /// ## Example
 /// 
 /// ```no_run
 /// use ohkami::prelude::*;
-/// use ohkami::fang::helmet::{Helmet, CSP, sandbox::{allow_forms, allow_same_origin}};
+/// use ohkami::fang::enamel::{Enamel, CSP, sandbox::{allow_forms, allow_same_origin}};
 /// 
 /// #[tokio::main]
 /// async fn main() {
 ///     Ohkami::new((
-///         Helmet::default()
+///         Enamel::default()
 ///             .ContentSecurityPolicy(CSP {
 ///                 sandbox: allow_forms | allow_same_origin,
 ///                 ..Default::default()
@@ -318,21 +342,23 @@ pub mod sandbox {
     }
 }
 
+/// # Source List configuration for `enamel::CSP`
+/// 
 /// ## Example
 /// 
 /// ```no_run
 /// use ohkami::prelude::*;
-/// use ohkami::fang::helmet::{Helmet, CSP, src::{self_origin, data}};
+/// use ohkami::fang::enamel::{Enamel, CSP, src::{self_origin, data}};
 /// 
 /// #[tokio::main]
 /// async fn main() {
 ///     Ohkami::new((
-///         Helmet::default()
+///         Enamel::default()
 ///             .ContentSecurityPolicy(CSP {
 ///                 script_src: self_origin | data,
 ///                 ..Default::default()
 ///             }),
-///         "/hello".GET(|| async {"Hello, helmet!"})
+///         "/hello".GET(|| async {"Hello, enamel!"})
 ///     )).howl("localhost:3000").await
 /// }
 /// ```
@@ -470,10 +496,10 @@ mod test {
     use std::collections::HashSet;
 
     #[test]
-    fn helmet_set_headers() {
+    fn enamel_set_headers() {
         let t = Ohkami::new((
-            Helmet::default(),
-            "/hello".GET(|| async {"Hello, helmet!"}),
+            Enamel::default(),
+            "/hello".GET(|| async {"Hello, enamel!"}),
         )).test();
 
         crate::__rt__::testing::block_on(async {
@@ -482,7 +508,7 @@ mod test {
                 let req = TestRequest::GET("/hello");
                 let res = t.oneshot(req).await;
                 assert_eq!(res.status().code(), 200);
-                assert_eq!(res.text().unwrap(), "Hello, helmet!");
+                assert_eq!(res.text().unwrap(), "Hello, enamel!");
                 assert_eq!(res.headers().collect::<HashSet<_>>(), HashSet::from_iter([
                     ("Cross-Origin-Embedder-Policy", "require-corp"),
                     ("Cross-Origin-Resource-Policy", "same-origin"),
@@ -543,12 +569,12 @@ mod test {
     }
 
     #[test]
-    fn helmet_csp() {
+    fn enamel_csp() {
         use src::{self_origin, https, domain};
         use sandbox::{allow_forms, allow_modals};
     
         let t = Ohkami::new((
-            Helmet::default()
+            Enamel::default()
                 .ContentSecurityPolicy(CSP {
                     default_src: self_origin | https | domain("*.example.com"),
                     sandbox:     allow_forms | allow_modals,
@@ -556,7 +582,7 @@ mod test {
                     ..Default::default()
                 }),
             "/hello"
-                .GET(|| async {"Hello, helmet!"}),
+                .GET(|| async {"Hello, enamel!"}),
         )).test();
 
         crate::__rt__::testing::block_on(async {
@@ -564,7 +590,7 @@ mod test {
                 let req = TestRequest::GET("/hello");
                 let res = t.oneshot(req).await;
                 assert_eq!(res.status().code(), 200);
-                assert_eq!(res.text().unwrap(), "Hello, helmet!");
+                assert_eq!(res.text().unwrap(), "Hello, enamel!");
                 assert_eq!(res.headers().collect::<HashSet<_>>(), HashSet::from_iter([
                     /* defaults */
                     ("Cross-Origin-Embedder-Policy", "require-corp"),
@@ -585,13 +611,13 @@ mod test {
     }
 
     #[test]
-    fn helmet_disable_header() {
+    fn enamel_disable_header() {
         let t = Ohkami::new((
-            Helmet::default()
+            Enamel::default()
                 .CrossOriginEmbedderPolicy("")
                 .CrossOriginResourcePolicy(""),
             "/hello"
-                .GET(|| async {"Hello, helmet!"}),
+                .GET(|| async {"Hello, enamel!"}),
         )).test();
 
         crate::__rt__::testing::block_on(async {
@@ -599,7 +625,7 @@ mod test {
                 let req = TestRequest::GET("/hello");
                 let res = t.oneshot(req).await;
                 assert_eq!(res.status().code(), 200);
-                assert_eq!(res.text().unwrap(), "Hello, helmet!");
+                assert_eq!(res.text().unwrap(), "Hello, enamel!");
                 assert_eq!(res.headers().collect::<HashSet<_>>(), HashSet::from_iter([
                     /* ("Cross-Origin-Embedder-Policy", "require-corp"), */
                     /* ("Cross-Origin-Resource-Policy", "same-origin"), */
