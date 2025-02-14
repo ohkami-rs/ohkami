@@ -489,6 +489,7 @@ pub mod src {
 
 
 #[cfg(test)]
+#[cfg(feature="__rt_native__")]
 mod test {
     use super::*;
     use crate::prelude::*;

@@ -126,19 +126,29 @@ impl Response {
     /// 
     /// should be called, like, just after router's handling
     pub(crate) fn complete(&mut self) {
-        if matches!((&self.content, &self.status),
-            | (_, Status::NoContent)
-            | (Content::Stream(_), _)
-            | (Content::WebSocket(_), _)
-        ) {
-            if !/* not */self.headers.ContentLength().is_none() {
-                self.headers.set().ContentLength(None);
+        match (&self.content, &self.status) {
+            (_, Status::NoContent) => {
+                if !/* not */self.headers.ContentLength().is_none() {
+                    self.headers.set().ContentLength(None);
+                }
+                if !/* not */matches!(self.content, Content::None) {
+                    self.content = Content::None;
+                }
             }
-
-            if self.status == Status::NoContent
-            && !/* not */matches!(self.content, Content::None) {
-                self.content = Content::None;
+            #[cfg(feature="sse")]
+            (Content::Stream(_), _) => {
+                if !/* not */self.headers.ContentLength().is_none() {
+                    self.headers.set().ContentLength(None);
+                }
             }
+            #[cfg(not(feature="rt_lambda"/* currently */))]
+            #[cfg(all(feature="ws", feature="__rt__"))]
+            (Content::WebSocket(_), _) => {
+                if !/* not */self.headers.ContentLength().is_none() {
+                    self.headers.set().ContentLength(None);
+                }
+            }
+            _ => (/* let it go by user's responsibility */)
         }
     }
 }

@@ -263,7 +263,7 @@ pub struct WebSocket(Session);
 impl crate::IntoResponse for WebSocket {
     fn into_response(self) -> crate::Response {
         let mut res = crate::Response::SwitchingProtocols();
-        res.content = crate::response::Content::Websocket(self.0);
+        res.content = crate::response::Content::WebSocket(self.0);
         res /*        
             let `worker` crate and Cloudflare Workers to do around
             headers and something other

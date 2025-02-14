@@ -1,4 +1,5 @@
 #![cfg(test)]
+#![cfg(feature="__rt_native__")]
 
 use crate::header::{append, SameSitePolicy, SetCookie};
 use super::ResponseHeaders;

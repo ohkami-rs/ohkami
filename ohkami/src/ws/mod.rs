@@ -1,3 +1,5 @@
+#![cfg(feature="ws")]
+
 #[cfg(feature="__rt_native__")]
 mod native;
 #[cfg(feature="__rt_native__")]
