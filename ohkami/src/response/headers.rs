@@ -418,12 +418,18 @@ impl Headers {
 impl Headers {
     #[inline]
     pub(crate) fn new() -> Self {
-        Self {
+        let mut this = Self {
             standard:  IndexMap::new(),
             custom:    None,
             setcookie: None,
             size:      "\r\n".len(),
-        }
+        };
+
+        this.set()
+            .Date(ohkami_lib::imf_fixdate(crate::util::unix_timestamp()))
+            .ContentLength("0");
+
+        this
     }
     #[cfg(feature="DEBUG")]
     #[doc(hidden)]

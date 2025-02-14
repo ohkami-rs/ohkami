@@ -16,7 +16,7 @@ pub use into_response::{IntoResponse, IntoBody};
 #[cfg(test)] mod _test_headers;
 
 use std::borrow::Cow;
-use ohkami_lib::{CowSlice, Slice, num};
+use ohkami_lib::{CowSlice, Slice};
 
 #[cfg(feature="__rt_native__")]
 use crate::__rt__::AsyncWrite;
@@ -122,39 +122,24 @@ impl Response {
     }
 
     #[cfg(feature="__rt__")]
-    /// Complete HTTP spec
-    #[inline(always)]
+    /// complete HTTP spec
+    /// 
+    /// should be called, like, just after router's handling
     pub(crate) fn complete(&mut self) {
-        self.headers.set().Date(::ohkami_lib::imf_fixdate(crate::util::unix_timestamp()));
-
-        match &self.content {
-            Content::None => {
-                match self.status {
-                    Status::NoContent => self.headers.set()
-                        .ContentLength(None),
-                    _ => self.headers.set()
-                        .ContentLength("0")
-                };
+        if matches!((&self.content, &self.status),
+            | (_, Status::NoContent)
+            | (Content::Stream(_), _)
+            | (Content::WebSocket(_), _)
+        ) {
+            if !/* not */self.headers.ContentLength().is_none() {
+                self.headers.set().ContentLength(None);
             }
 
-            Content::Payload(bytes) => {
-                self.headers.set()
-                    .ContentLength(ohkami_lib::num::itoa(bytes.len()));
+            if self.status == Status::NoContent
+            && !/* not */matches!(self.content, Content::None) {
+                self.content = Content::None;
             }
-
-            #[cfg(feature="sse")]
-            Content::Stream(_) => {
-                self.headers.set()
-                    .ContentLength(None);
-            }
-
-            #[cfg(not(feature="rt_lambda"/* currently */))]
-            #[cfg(feature="ws")]
-            Content::WebSocket(_) => {
-                self.headers.set()
-                    .ContentLength(None);
-            }
-        };
+        }
     }
 }
 
@@ -182,10 +167,10 @@ impl Response {
         content_type: &'static str,
         content:      impl Into<Cow<'static, [u8]>>,
     ) {
-        let content = content.into();
+        let content: Cow<'static, [u8]> = content.into();
         self.headers.set()
             .ContentType(content_type)
-            .ContentLength(num::itoa(content.len()));
+            .ContentLength(ohkami_lib::num::itoa(content.len()));
         self.content = Content::Payload(content.into());
     }
     #[inline]
@@ -206,7 +191,7 @@ impl Response {
 
         self.headers.set()
             .ContentType("text/plain; charset=UTF-8")
-            .ContentLength(num::itoa(body.len()));
+            .ContentLength(ohkami_lib::num::itoa(body.len()));
         self.content = Content::Payload(match body {
             Cow::Borrowed(str) => CowSlice::Ref(Slice::from_bytes(str.as_bytes())),
             Cow::Owned(string) => CowSlice::Own(string.into_bytes().into()),
@@ -223,7 +208,7 @@ impl Response {
 
         self.headers.set()
             .ContentType("text/html; charset=UTF-8")
-            .ContentLength(num::itoa(body.len()));
+            .ContentLength(ohkami_lib::num::itoa(body.len()));
         self.content = Content::Payload(match body {
             Cow::Borrowed(str) => CowSlice::Ref(Slice::from_bytes(str.as_bytes())),
             Cow::Owned(string) => CowSlice::Own(string.into_bytes().into()),
@@ -239,7 +224,7 @@ impl Response {
         let body = ::serde_json::to_vec(&json).unwrap();
         self.headers.set()
             .ContentType("application/json")
-            .ContentLength(num::itoa(body.len()));
+            .ContentLength(ohkami_lib::num::itoa(body.len()));
         self.content = Content::Payload(body.into());
     }
     #[inline(always)]
@@ -256,7 +241,8 @@ impl Response {
         };
 
         self.headers.set()
-            .ContentType("application/json");
+            .ContentType("application/json")
+            .ContentLength(ohkami_lib::num::itoa(body.len()));
         self.content = Content::Payload(body.into());
     }
     /// SAFETY: argument `json_lit` must be **valid JSON**
@@ -288,25 +274,11 @@ impl Response {
         stream: std::pin::Pin<Box<dyn Stream<Item = String> + Send>>
     ) {
         self.headers.set()
+            .ContentLength(None)
             .ContentType("text/event-stream")
             .CacheControl("no-cache, must-revalidate")
             .TransferEncoding("chunked");
         self.content = Content::Stream(stream);
-    }
-}
-
-#[cfg(feature="ws")]
-/// Of course here no method for rt_lambda exists; see x_lambda.rs
-impl Response {
-    #[cfg(feature="__rt_native__")]
-    pub(crate) fn with_websocket(mut self, ws: mews::WebSocket) -> Self {
-        self.content = Content::WebSocket(ws);
-        self
-    }
-    #[cfg(feature="rt_worker")]
-    pub(crate) fn with_websocket(mut self, ws: worker::WebSocket) -> Self {
-        self.content = Content::WebSocket(ws);
-        self
     }
 }
 
@@ -327,11 +299,10 @@ impl Upgrade {
 #[cfg(feature="__rt_native__")]
 impl Response {
     #[cfg_attr(not(feature="sse"), inline)]
-    pub(crate) async fn send(mut self,
+    pub(crate) async fn send(
+        self,
         conn: &mut (impl AsyncWrite + Unpin)
     ) -> Upgrade {
-        self.complete();
-
         match self.content {
             Content::None => {
                 let mut buf = Vec::<u8>::with_capacity(

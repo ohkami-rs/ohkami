@@ -509,7 +509,7 @@ mod test {
                 let res = t.oneshot(req).await;
                 assert_eq!(res.status().code(), 200);
                 assert_eq!(res.text().unwrap(), "Hello, enamel!");
-                assert_eq!(res.headers().collect::<HashSet<_>>(), HashSet::from_iter([
+                assert_eq!(res.headers().filter(|(h, _)| *h != "Date").collect::<HashSet<_>>(), HashSet::from_iter([
                     ("Cross-Origin-Embedder-Policy", "require-corp"),
                     ("Cross-Origin-Resource-Policy", "same-origin"),
                     ("Referrer-Policy", "no-referrer"),
@@ -528,13 +528,15 @@ mod test {
                 let res = t.oneshot(req).await;
                 assert_eq!(res.status().code(), 404);
                 assert_eq!(res.text(), None);
-                assert_eq!(res.headers().collect::<HashSet<_>>(), HashSet::from_iter([
+                assert_eq!(res.headers().filter(|(h, _)| *h != "Date").collect::<HashSet<_>>(), HashSet::from_iter([
                     ("Cross-Origin-Embedder-Policy", "require-corp"),
                     ("Cross-Origin-Resource-Policy", "same-origin"),
                     ("Referrer-Policy", "no-referrer"),
                     ("Strict-Transport-Security", "max-age=15552000; includeSubDomains"),
                     ("X-Content-Type-Options", "nosniff"),
                     ("X-Frame-Options", "SAMEORIGIN"),
+
+                    ("Content-Length", "0"),
                 ]));
             }
             {
@@ -542,13 +544,15 @@ mod test {
                 let res = t.oneshot(req).await;
                 assert_eq!(res.status().code(), 404);
                 assert_eq!(res.text(), None);
-                assert_eq!(res.headers().collect::<HashSet<_>>(), HashSet::from_iter([
+                assert_eq!(res.headers().filter(|(h, _)| *h != "Date").collect::<HashSet<_>>(), HashSet::from_iter([
                     ("Cross-Origin-Embedder-Policy", "require-corp"),
                     ("Cross-Origin-Resource-Policy", "same-origin"),
                     ("Referrer-Policy", "no-referrer"),
                     ("Strict-Transport-Security", "max-age=15552000; includeSubDomains"),
                     ("X-Content-Type-Options", "nosniff"),
                     ("X-Frame-Options", "SAMEORIGIN"),
+
+                    ("Content-Length", "0"),
                 ]));
             }
             {
@@ -556,13 +560,15 @@ mod test {
                 let res = t.oneshot(req).await;
                 assert_eq!(res.status().code(), 404);
                 assert_eq!(res.text(), None);
-                assert_eq!(res.headers().collect::<HashSet<_>>(), HashSet::from_iter([
+                assert_eq!(res.headers().filter(|(h, _)| *h != "Date").collect::<HashSet<_>>(), HashSet::from_iter([
                     ("Cross-Origin-Embedder-Policy", "require-corp"),
                     ("Cross-Origin-Resource-Policy", "same-origin"),
                     ("Referrer-Policy", "no-referrer"),
                     ("Strict-Transport-Security", "max-age=15552000; includeSubDomains"),
                     ("X-Content-Type-Options", "nosniff"),
                     ("X-Frame-Options", "SAMEORIGIN"),
+
+                    ("Content-Length", "0"),
                 ]));
             }
         });
@@ -591,7 +597,7 @@ mod test {
                 let res = t.oneshot(req).await;
                 assert_eq!(res.status().code(), 200);
                 assert_eq!(res.text().unwrap(), "Hello, enamel!");
-                assert_eq!(res.headers().collect::<HashSet<_>>(), HashSet::from_iter([
+                assert_eq!(res.headers().filter(|(h, _)| *h != "Date").collect::<HashSet<_>>(), HashSet::from_iter([
                     /* defaults */
                     ("Cross-Origin-Embedder-Policy", "require-corp"),
                     ("Cross-Origin-Resource-Policy", "same-origin"),
@@ -626,7 +632,7 @@ mod test {
                 let res = t.oneshot(req).await;
                 assert_eq!(res.status().code(), 200);
                 assert_eq!(res.text().unwrap(), "Hello, enamel!");
-                assert_eq!(res.headers().collect::<HashSet<_>>(), HashSet::from_iter([
+                assert_eq!(res.headers().filter(|(h, _)| *h != "Date").collect::<HashSet<_>>(), HashSet::from_iter([
                     /* ("Cross-Origin-Embedder-Policy", "require-corp"), */
                     /* ("Cross-Origin-Resource-Policy", "same-origin"), */
                     ("Referrer-Policy", "no-referrer"),

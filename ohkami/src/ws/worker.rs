@@ -262,9 +262,12 @@ pub mod split {
 pub struct WebSocket(Session);
 impl crate::IntoResponse for WebSocket {
     fn into_response(self) -> crate::Response {
-        crate::Response::SwitchingProtocols().with_websocket(self.0)
-        // let `worker` crate and Cloudflare Workers to do around
-        // headers and something other
+        let mut res = crate::Response::SwitchingProtocols();
+        res.content = crate::response::Content::Websocket(self.0);
+        res /*        
+            let `worker` crate and Cloudflare Workers to do around
+            headers and something other
+        */
     }
 
     #[cfg(feature="openapi")]
