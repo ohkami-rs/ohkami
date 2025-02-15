@@ -207,27 +207,40 @@ pub fn bindings(env_name: TokenStream, bindings_struct: TokenStream) -> Result<T
         }
     };
 
-    let impl_from_request = {
+    let impl_new = {
         let extract = bindings.iter()
             .filter(|(name, _)| match &named_fields {
                 None => true,
                 Some(n) => n.iter().any(|field_name| name == *field_name)
             })
             .map(|(name, binding)| {
-                binding.tokens_extract_as_field(name)
+                binding.tokens_extract_from_env(name)
             });
 
+        quote! {
+            impl #name {
+                #[allow(unused)]
+                #vis fn new(env: &::worker::Env) -> ::worker::Result<Self> {
+                    Ok(Self { #( #extract ),* })
+                }
+            }
+        }
+    };
+
+    let impl_from_request = {
         quote! {
             impl<'req> ::ohkami::FromRequest<'req> for #name {
                 type Error = ::ohkami::Response;
                 fn from_request(
                     req: &'req ::ohkami::Request
                 ) -> ::std::option::Option<::std::result::Result<Self, Self::Error>> {
-                    ::std::option::Option::Some(::std::result::Result::Ok(
-                        Self {
-                            #( #extract ),*
-                        }
-                    ))
+                    ::std::option::Option::Some(
+                        Self::new(req.context.env())
+                            .map_err(|e| {
+                                ::worker::console_error!("FromRequest failed: {e}");
+                                e.into()
+                            })
+                    )
                 }
             }
         }
@@ -247,6 +260,7 @@ pub fn bindings(env_name: TokenStream, bindings_struct: TokenStream) -> Result<T
     Ok(quote! {
         #declare_struct
         #const_vars
+        #impl_new
         #impl_from_request
         #impl_send_sync
     })

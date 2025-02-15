@@ -27,17 +27,15 @@ impl Binding {
         }
     }
 
-    pub fn tokens_extract_as_field(&self, name: &Ident) -> TokenStream {
+    pub fn tokens_extract_from_env(&self, name: &Ident) -> TokenStream {
         let name_str = LitStr::new(&name.to_string(), name.span());
 
         let from_env = |getter: TokenStream| quote! {
-            #name: match req.context.env().#getter {
-                Ok(binding) => binding,
-                Err(e) => {
-                    ::worker::console_error!("{e}");
-                    return ::std::option::Option::Some(::std::result::Result::Err(::ohkami::Response::InternalServerError()));
-                }
-            }
+            #name: env.#getter?
+                // {
+                //     ::worker::console_error!("{e}");
+                //     return ::std::option::Option::Some(::std::result::Result::Err(::ohkami::Response::InternalServerError()));
+                // }
         };
 
         match self {

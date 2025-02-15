@@ -61,3 +61,9 @@ fn __test_manual_bindings__(bindings: ManualBindings) {
 
     let _: worker::kv::KvStore = bindings.MY_KVSTORE;
 }
+
+fn __test_bindings_new__(env: &worker::Env) -> Result<(), worker::Error> {
+    let _: AutoBindings = AutoBindings::new(env)?;
+    let _: ManualBindings = ManualBindings::new(env)?;
+    Ok(())
+}
