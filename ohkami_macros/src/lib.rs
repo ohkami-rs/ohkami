@@ -296,16 +296,17 @@ pub fn DurableObject(args: proc_macro::TokenStream, input: proc_macro::TokenStre
 /// 
 /// ## Note
 /// 
-/// `#[bindings]` currently supports
-/// 
-/// - AI
-/// - KV
-/// - R2
-/// - D1
-/// - Queue (producer)
-/// - Service
-/// - Variables
-/// - Durable Objects
+/// - `#[bindings]` currently supports
+///   - AI
+///   - KV
+///   - R2
+///   - D1
+///   - Queue (producer)
+///   - Service
+///   - Variables
+///   - Durable Objects
+/// - `Queue` may cause a lot of *WARNING*s in `npm run dev`, but
+///   it's not an actual problem and `Queue` binding does work.
 /// 
 /// <br>
 /// 
