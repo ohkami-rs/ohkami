@@ -1,6 +1,7 @@
 #![allow(non_snake_case, non_camel_case_types)]
 
 use crate::{Fang, FangProc, IntoResponse, Request, Response};
+use crate::fang::{SendSyncOnNative, SendOnNative};
 use std::{borrow::Cow, marker::PhantomData};
 use serde::{Serialize, Deserialize};
 use base64::engine::{Engine as _, general_purpose::URL_SAFE_NO_PAD as BASE64URL};
@@ -12,7 +13,7 @@ use base64::engine::{Engine as _, general_purpose::URL_SAFE_NO_PAD as BASE64URL}
 /// 
 /// ## fang
 /// 
-/// For each request, get JWT token and verify based on given config and `Payload: Deserialize`.
+/// For each request, get JWT token and verify based on given config and `Payload: for<'de> Deserialize<'de>`.
 /// 
 /// ## helper
 /// 
@@ -114,8 +115,8 @@ const _: () = {
     }
 
     impl<
-        Inner: FangProc + Sync,
-        Payload: Serialize + for<'de> Deserialize<'de> + Send + Sync + 'static,
+        Inner: FangProc + SendOnNative,
+        Payload: Serialize + for<'de> Deserialize<'de> + SendSyncOnNative + 'static,
     > Fang<Inner> for JWT<Payload> {
         type Proc = JWTProc<Inner, Payload>;
         fn chain(&self, inner: Inner) -> Self::Proc {
@@ -136,8 +137,8 @@ const _: () = {
         jwt:   JWT<Payload>,
     }
     impl<
-        Inner: FangProc + Sync,
-        Payload: Serialize + for<'de> Deserialize<'de> + Send + Sync + 'static,
+        Inner: FangProc + SendOnNative,
+        Payload: Serialize + for<'de> Deserialize<'de> + SendSyncOnNative + 'static,
     > FangProc for JWTProc<Inner, Payload> {
         async fn bite<'b>(&'b self, req: &'b mut Request) -> Response {
             let jwt_payload = match self.jwt.verified(req) {
@@ -389,6 +390,14 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
 
 
 
+
+#[cfg(test)]
+#[test] fn jwt_fang_bound() {
+    use crate::fang::{Fang, BoxedFPC};
+    fn assert_fang<T: Fang<BoxedFPC>>() {}
+
+    assert_fang::<JWT<String>>();
+}
 
 #[cfg(debug_assertions)]
 #[cfg(all(feature="__rt_native__", feature="DEBUG"))]

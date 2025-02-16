@@ -7,7 +7,7 @@ mod builtin;
 pub use builtin::*;
 
 mod bound;
-use bound::*;
+pub(crate) use bound::*;
 
 use crate::{Request, Response};
 use std::{pin::Pin, ops::Deref, future::Future};

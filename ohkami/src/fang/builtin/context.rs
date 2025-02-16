@@ -1,4 +1,5 @@
-use crate::{Request, Response, FromRequest, fang::FangAction};
+use crate::{Request, Response, FromRequest};
+use crate::fang::{FangAction, SendSyncOnNative};
 
 /// # Request Context
 /// 
@@ -28,9 +29,9 @@ use crate::{Request, Response, FromRequest, fang::FangAction};
 /// }
 /// ```
 #[derive(Clone)]
-pub struct Context<'req, T: Send + Sync + 'static>(pub &'req T);
+pub struct Context<'req, T: SendSyncOnNative + 'static>(pub &'req T);
 
-impl<T: Send + Sync + 'static> Context<'static, T>
+impl<T: SendSyncOnNative + 'static> Context<'static, T>
 where
     T: Clone
 {
@@ -38,9 +39,9 @@ where
         return ContextAction(data);
 
         #[derive(Clone)]
-        struct ContextAction<T: Clone + Send + Sync + 'static>(T);
+        struct ContextAction<T: Clone + SendSyncOnNative + 'static>(T);
 
-        impl<T: Clone + Send + Sync + 'static> FangAction for ContextAction<T> {
+        impl<T: Clone + SendSyncOnNative + 'static> FangAction for ContextAction<T> {
             #[inline]
             async fn fore<'a>(&'a self, req: &'a mut Request) -> Result<(), Response> {
                 req.context.set(self.0.clone());
@@ -50,7 +51,7 @@ where
     }
 }
 
-impl<'req, T: Send + Sync + 'static> FromRequest<'req> for Context<'req, T> {
+impl<'req, T: SendSyncOnNative + 'static> FromRequest<'req> for Context<'req, T> {
     type Error = std::convert::Infallible;
 
     #[inline]
@@ -67,5 +68,17 @@ impl<'req, T: Send + Sync + 'static> FromRequest<'req> for Context<'req, T> {
                 None
             }
         }
+    }
+}
+
+
+#[cfg(test)]
+mod test {
+    #[test]
+    fn context_fang_bount() {
+        use crate::fang::{Fang, BoxedFPC};
+        fn assert_fang<T: Fang<BoxedFPC>>(_: T) {}
+
+        assert_fang(super::Context::new(String::new()));
     }
 }
