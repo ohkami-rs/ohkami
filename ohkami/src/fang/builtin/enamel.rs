@@ -5,7 +5,7 @@
 /// 
 /// ## What it does
 /// 
-/// By default, adds to response headers :
+/// By default, sets to response headers :
 /// 
 /// - `Cross-Origin-Embedder-Policy` to `require-corp`
 /// - `Cross-Origin-Resource-Policy` to `same-origin`
@@ -487,6 +487,14 @@ pub mod src {
     }
 }
 
+#[cfg(test)]
+#[test]
+fn enamel_fang_bound() {
+    use crate::fang::{Fang, BoxedFPC};
+    fn assert_fang<T: Fang<BoxedFPC>>() {}
+
+    assert_fang::<Enamel>();
+}
 
 #[cfg(test)]
 #[cfg(feature="__rt_native__")]
