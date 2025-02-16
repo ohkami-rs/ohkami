@@ -132,11 +132,10 @@ pub fn bindings(env_name: TokenStream, bindings_struct: TokenStream) -> Result<T
             ))
         }
     }
-
     let vis  = &bindings_struct.vis;
     let name = &bindings_struct.ident;
 
-    let named_fields = match &bindings_struct.fields {
+    let field_names = match &bindings_struct.fields {
         Fields::Unit => None,
         Fields::Named(n) => Some(n.named
             .iter()
@@ -149,16 +148,32 @@ pub fn bindings(env_name: TokenStream, bindings_struct: TokenStream) -> Result<T
         )),
     };
 
-    let declare_struct = match &named_fields {
+    let declare_struct = match &field_names {
         Some(n) => {
-            for field_name in n {
-                if !bindings.iter().any(|(name, _)| name == *field_name) {
-                    return Err(syn::Error::new(
+            let mut var_field_indexes = Vec::with_capacity(n.len());
+            for (i, field_name) in n.iter().enumerate() {
+                let binding_type = bindings.iter()
+                    .find_map(|(name, b)| (name == *field_name).then_some(b))
+                    .ok_or_else(|| syn::Error::new(
                         field_name.span(),
                         format!("No binding named `{field_name}` found")
-                    ));
+                    ))?;
+                if matches!(binding_type, Binding::Variable(_)) {
+                    var_field_indexes.push(i);
                 }
             }
+
+            let mut bindings_struct = bindings_struct.clone();
+            for i in var_field_indexes {
+                let Fields::Named(n) = &mut bindings_struct.fields else {unreachable!()};
+                n.named.get_mut(i).unwrap().attrs.push(syn::Attribute {
+                    pound_token: Default::default(),
+                    style: syn::AttrStyle::Outer,
+                    bracket_token: Default::default(),
+                    meta: syn::parse_str("allow(unused)")?
+                });
+            }
+
             quote! {
                 #[allow(non_snake_case)]
                 #bindings_struct
@@ -188,7 +203,7 @@ pub fn bindings(env_name: TokenStream, bindings_struct: TokenStream) -> Result<T
                     _ => None
                 }
             )
-            .filter(|(name, _)| match &named_fields {
+            .filter(|(name, _)| match &field_names {
                 None => true,
                 Some(n) => n.iter().any(|field_name| name == field_name)
             })
@@ -209,7 +224,7 @@ pub fn bindings(env_name: TokenStream, bindings_struct: TokenStream) -> Result<T
 
     let impl_new = {
         let extract = bindings.iter()
-            .filter(|(name, _)| match &named_fields {
+            .filter(|(name, _)| match &field_names {
                 None => true,
                 Some(n) => n.iter().any(|field_name| name == *field_name)
             })
@@ -247,7 +262,7 @@ pub fn bindings(env_name: TokenStream, bindings_struct: TokenStream) -> Result<T
     };
 
     let impl_send_sync = if
-        bindings.is_empty() || named_fields.is_some_and(|n| n.is_empty())
+        bindings.is_empty() || field_names.is_some_and(|n| n.is_empty())
     {
         None
     } else {

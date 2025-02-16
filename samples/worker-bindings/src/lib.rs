@@ -3,11 +3,15 @@ use ohkami::bindings;
 #[bindings]
 struct AutoBindings;
 
-#[allow(unused)]
 #[bindings]
 struct ManualBindings {
+    /* automatically `#[allow(unused)]` */
     VARIABLE_1: bindings::Var,
+
+    #[allow(unused)]
     DB: bindings::D1,
+
+    #[allow(unused)]
     MY_KVSTORE: bindings::KV,
 }
 
