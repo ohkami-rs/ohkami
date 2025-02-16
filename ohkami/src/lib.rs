@@ -9,9 +9,10 @@
 //! <br>
 //! 
 //! - *macro-less and type-safe* APIs for intuitive and declarative code
-//! - *various runtimes* are supported：`tokio`, `async-std`, `smol`, `nio`, `glommio` and `worker` (Cloudflare Workers)
-//! - *extremely fast*：[Web Frameworks Benchmark](https://web-frameworks-benchmark.netlify.app/result)
-//! - no-network testing, well-structured middlewares, Server-Sent Events, WebSocket, OpenAPI document generation, ...
+//! - *various runtimes* are supported：`tokio`, `async-std`, `smol`, `nio`, `glommio` and `worker` (Cloudflare Workers), `lambda` (AWS Lambda)
+//! - extremely fast, no-network testing, well-structured middlewares, Server-Sent Events, WebSocket, highly integrated OpenAPI document generation, ...
+//! 
+//! See [GitHub repo](https://github.com/ohkami-rs/ohkami) for details!
 
 
 #![allow(incomplete_features)]
