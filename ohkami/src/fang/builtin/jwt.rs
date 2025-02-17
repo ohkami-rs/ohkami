@@ -192,7 +192,7 @@ impl<Payload> JWT<Payload> {
     }
 
     #[cfg(feature="openapi")]
-    pub fn openapi_security(&self) -> openapi::SecurityScheme {
+    pub fn openapi_security(&self) -> crate::openapi::SecurityScheme {
         self.openapi_security.clone()
     }
 
