@@ -26,5 +26,5 @@ mod dispatch {
 pub trait SendOnNativeFuture<T>: Future<Output = T> + SendOnNative {}
 impl<T, F: Future<Output = T> + SendOnNative> SendOnNativeFuture<T> for F {}
 
-pub trait FPCBound: FangProcCaller + SendSyncOnNative {}
+pub(crate) trait FPCBound: FangProcCaller + SendSyncOnNative {}
 impl<T: FangProcCaller + SendSyncOnNative> FPCBound for T {}

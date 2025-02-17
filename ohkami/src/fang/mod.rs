@@ -6,7 +6,7 @@ pub use middleware::{Fangs, util::FangAction};
 mod builtin;
 pub use builtin::*;
 
-mod bound;
+pub mod bound;
 pub(crate) use bound::*;
 
 use crate::{Request, Response};
