@@ -125,7 +125,7 @@ const _: () = {
 
         #[cfg(feature="openapi")]
         fn openapi_map_operation(&self, operation: crate::openapi::Operation) -> crate::openapi::Operation {
-            operation.security(self.openapi_security.clone(), &[])
+            operation.security(self.openapi_security(), &[])
         }
     }
 
@@ -185,6 +185,15 @@ impl<Payload> JWT<Payload> {
         }
         self.get_token = get_token;
         self
+    }
+
+    pub fn get_token_fn(&self) -> &fn(&Request)->Option<&str> {
+        &self.get_token
+    }
+
+    #[cfg(feature="openapi")]
+    pub fn openapi_security(&self) -> openapi::SecurityScheme {
+        self.openapi_security.clone()
     }
 
     fn new(alg: VerifyingAlgorithm, secret: impl Into<Cow<'static, str>>) -> Self {
