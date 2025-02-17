@@ -40,6 +40,8 @@ macro_rules! DEBUG {
 
 pub use crate::fang::FangAction;
 
+pub use crate::fang::bound::{SendOnNative, SendSyncOnNative};
+
 #[cfg(feature="sse")]
 pub use ohkami_lib::stream::{self, Stream, StreamExt};
 
