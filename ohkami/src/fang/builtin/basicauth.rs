@@ -1,6 +1,5 @@
 use crate::prelude::*;
 use crate::fang::SendSyncOnNative;
-use ::base64::engine::{Engine as _, general_purpose::STANDARD as BASE64};
 
 #[cfg(feature="openapi")]
 use crate::openapi;
@@ -76,15 +75,9 @@ const _: () = {
 
     #[inline]
     fn basic_credential_of(req: &Request) -> Result<String, Response> {
-        let credential_base64 = req.headers
-            .Authorization().ok_or_else(unauthorized)?
-            .strip_prefix("Basic ").ok_or_else(unauthorized)?;
-
-        let credential = String::from_utf8(
-            BASE64.decode(credential_base64).map_err(|_| unauthorized())?
-        ).map_err(|_| unauthorized())?;
-
-        Ok(credential)
+        (|| crate::util::base64_decode_utf8(
+            req.headers.Authorization()?.strip_prefix("Basic ")?
+        ).ok())().ok_or_else(unauthorized)
     }
 
     impl<S> FangAction for BasicAuth<S>
@@ -150,7 +143,6 @@ mod test {
     #[cfg(feature="__rt_native__")]
     #[test] fn test_basicauth() {
         use super::*;
-        //use crate::prelude::*;
         use crate::testing::*;
 
         let t = Ohkami::new((
@@ -179,7 +171,7 @@ mod test {
             {
                 let req = TestRequest::GET("/private")
                     .header("Authorization", format!(
-                        "Basic {}", BASE64.encode("ohkami:password")
+                        "Basic {}", crate::util::base64_encode("ohkami:password")
                     ));
                 let res = t.oneshot(req).await;
                 assert_eq!(res.status().code(), 200);
@@ -188,7 +180,7 @@ mod test {
             {
                 let req = TestRequest::GET("/private")
                     .header("Authorization", format!(
-                        "Basic {}", BASE64.encode("ohkami:wrong")
+                        "Basic {}", crate::util::base64_encode("ohkami:wrong")
                     ));
                 let res = t.oneshot(req).await;
                 assert_eq!(res.status().code(), 401);
