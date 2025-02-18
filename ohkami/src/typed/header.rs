@@ -199,7 +199,7 @@ impl<'req, Fields: crate::format::bound::Incoming<'req>> FromRequest<'req> for C
     #[cfg(feature="openapi")]
     fn openapi_inbound() -> crate::openapi::Inbound {
         let Some(schema) = Fields::schema().into().into_inline() else {
-            return crateopenapi::Inbound::None
+            return crate::openapi::Inbound::None
         };
         crate::openapi::Inbound::Params(
             schema.into_properties().into_iter().map(|(name, schema, required)|
