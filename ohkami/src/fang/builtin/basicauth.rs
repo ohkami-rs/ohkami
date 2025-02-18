@@ -143,7 +143,6 @@ mod test {
     #[cfg(feature="__rt_native__")]
     #[test] fn test_basicauth() {
         use super::*;
-        //use crate::prelude::*;
         use crate::testing::*;
 
         let t = Ohkami::new((
@@ -172,7 +171,7 @@ mod test {
             {
                 let req = TestRequest::GET("/private")
                     .header("Authorization", format!(
-                        "Basic {}", BASE64.encode("ohkami:password")
+                        "Basic {}", crate::util::base64_encode("ohkami:password")
                     ));
                 let res = t.oneshot(req).await;
                 assert_eq!(res.status().code(), 200);
@@ -181,7 +180,7 @@ mod test {
             {
                 let req = TestRequest::GET("/private")
                     .header("Authorization", format!(
-                        "Basic {}", BASE64.encode("ohkami:wrong")
+                        "Basic {}", crate::util::base64_encode("ohkami:wrong")
                     ));
                 let res = t.oneshot(req).await;
                 assert_eq!(res.status().code(), 401);
