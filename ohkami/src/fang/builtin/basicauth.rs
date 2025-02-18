@@ -1,6 +1,5 @@
 use crate::prelude::*;
 use crate::fang::SendSyncOnNative;
-use ::base64::engine::{Engine as _, general_purpose::STANDARD as BASE64};
 
 #[cfg(feature="openapi")]
 use crate::openapi;
@@ -76,15 +75,9 @@ const _: () = {
 
     #[inline]
     fn basic_credential_of(req: &Request) -> Result<String, Response> {
-        let credential_base64 = req.headers
-            .Authorization().ok_or_else(unauthorized)?
-            .strip_prefix("Basic ").ok_or_else(unauthorized)?;
-
-        let credential = String::from_utf8(
-            BASE64.decode(credential_base64).map_err(|_| unauthorized())?
-        ).map_err(|_| unauthorized())?;
-
-        Ok(credential)
+        (|| crate::util::base64_decode_utf8(
+                req.headers.Authorization()?.strip_prefix("Basic")?
+        ).ok())().ok_or_else(unauthorized)
     }
 
     impl<S> FangAction for BasicAuth<S>

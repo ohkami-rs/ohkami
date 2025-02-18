@@ -477,8 +477,7 @@ impl Request {
         if let Some(body) = req.body {
             self.payload = Some(CowSlice::Own(
                 (if req.isBase64Encoded {
-                    use ::base64::engine::{Engine as _, general_purpose::STANDARD as BASE64};
-                    BASE64.decode(body)?
+                    crate::util::base64_decode(body)?
                 } else {
                     body.into_bytes()
                 }).into_boxed_slice()

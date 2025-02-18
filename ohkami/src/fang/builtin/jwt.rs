@@ -4,7 +4,6 @@ use crate::{Fang, FangProc, IntoResponse, Request, Response};
 use crate::fang::{SendSyncOnNative, SendOnNative};
 use std::{borrow::Cow, marker::PhantomData};
 use serde::{Serialize, Deserialize};
-use base64::engine::{Engine as _, general_purpose::URL_SAFE_NO_PAD as BASE64URL};
 
 
 /// # Builtin fang and helper for JWT config
@@ -261,9 +260,9 @@ impl<Payload: Serialize> JWT<Payload> {
     /// Build JWT token with the payload.
     #[inline] pub fn issue(self, payload: Payload) -> JWTToken {
         let unsigned_token = {
-            let mut ut = BASE64URL.encode(self.header_str());
+            let mut ut = crate::util::base64_url_encode(self.header_str());
             ut.push('.');
-            ut.push_str(&BASE64URL.encode(::serde_json::to_vec(&payload).expect("Failed to serialze payload")));
+            ut.push_str(&crate::util::base64_url_encode(::serde_json::to_vec(&payload).expect("Failed to serialze payload")));
             ut
         };
 
@@ -272,17 +271,17 @@ impl<Payload: Serialize> JWT<Payload> {
             use ::hmac::{Hmac, Mac};
 
             match &self.alg {
-                VerifyingAlgorithm::HS256 => BASE64URL.encode({
+                VerifyingAlgorithm::HS256 => crate::util::base64_url_encode({
                     let mut s = Hmac::<Sha256>::new_from_slice(self.secret.as_bytes()).unwrap();
                     s.update(unsigned_token.as_bytes());
                     s.finalize().into_bytes()
                 }),
-                VerifyingAlgorithm::HS384 => BASE64URL.encode({
+                VerifyingAlgorithm::HS384 => crate::util::base64_url_encode({
                     let mut s = Hmac::<Sha384>::new_from_slice(self.secret.as_bytes()).unwrap();
                     s.update(unsigned_token.as_bytes());
                     s.finalize().into_bytes()
                 }),
-                VerifyingAlgorithm::HS512 => BASE64URL.encode({
+                VerifyingAlgorithm::HS512 => crate::util::base64_url_encode({
                     let mut s = Hmac::<Sha512>::new_from_slice(self.secret.as_bytes()).unwrap();
                     s.update(unsigned_token.as_bytes());
                     s.finalize().into_bytes()
@@ -321,7 +320,7 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
         type Header  = ::serde_json::Value;
         type Payload = ::serde_json::Value;
         fn part_value(part: &str) -> Result<::serde_json::Value, Response> {
-            let part = BASE64URL.decode(part)
+            let part = crate::util::base64_url_decode(part)
                 .map_err(|_| Response::BadRequest().with_text("invalid base64"))?;
             ::serde_json::from_slice(&part)
                 .map_err(|_| Response::BadRequest().with_text("invalid json"))
@@ -356,7 +355,7 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
 
         let signature_part = parts.next()
             .ok_or_else(Response::Unauthorized)?;
-        let requested_signature = BASE64URL.decode(signature_part)
+        let requested_signature = crate::util::base64_url_decode(signature_part)
             .map_err(|_| Response::Unauthorized())?;
 
         let is_correct_signature = {
