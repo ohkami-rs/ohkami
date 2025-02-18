@@ -76,7 +76,7 @@ const _: () = {
     #[inline]
     fn basic_credential_of(req: &Request) -> Result<String, Response> {
         (|| crate::util::base64_decode_utf8(
-                req.headers.Authorization()?.strip_prefix("Basic")?
+            req.headers.Authorization()?.strip_prefix("Basic ")?
         ).ok())().ok_or_else(unauthorized)
     }
 
