@@ -161,7 +161,7 @@ typed_header! {
 /// #[derive(Deserialize)]
 /// struct CookieSchema<'req> {
 ///     session_id: &'req str,
-///     metadata: Optin<&'req str>,
+///     metadata: Option<&'req str>,
 /// }
 /// 
 /// /// expecting request headers contains something like:
