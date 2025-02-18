@@ -23,7 +23,7 @@ fn reject(msg: impl std::fmt::Display) -> crate::Response {
 }
 
 #[cfg(feature="openapi")]
-mod bound {
+pub mod bound {
     use crate::openapi;
     use serde::{Serialize, Deserialize};
 
@@ -37,7 +37,7 @@ mod bound {
     impl<T> Outgoing for T where T: Serialize + openapi::Schema {}
 }
 #[cfg(not(feature="openapi"))]
-mod bound {
+pub mod bound {
     use serde::{Serialize, Deserialize};
 
     pub trait Schema: {}
