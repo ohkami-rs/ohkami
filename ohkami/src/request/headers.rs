@@ -270,17 +270,9 @@ impl Headers {
     /// Util method to parse semicolon-separated Cookies into an iterator of
     /// `(name, value)`.
     /// 
-    /// Invalid Cookie that doesn't contain `=` or contains multiple `=`s is just ignored.
+    /// internally uses [`ohkami::util::iter_cookies`](crate::util::iter_cookies).
     pub fn Cookies(&self) -> impl Iterator<Item = (&str, &str)> {
-        self.Cookie()
-            .map(|cookie_list| cookie_list.split("; ")
-                .filter_map(|key_value| {
-                    let mut key_value = key_value.split('=');
-                    let key   = key_value.next()?;
-                    let value = key_value.next()?;
-                    key_value.next().is_none().then_some((key, value))
-                })
-            ).into_iter().flatten()
+        self.Cookie().map(crate::util::iter_cookies).into_iter().flatten()
     }
 
     pub(crate) fn iter(&self) -> impl Iterator<Item = (&str, &str)> {

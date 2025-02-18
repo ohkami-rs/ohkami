@@ -68,6 +68,35 @@ pub use ohkami_lib::stream::{self, Stream, StreamExt};
     (worker::js_sys::Date::now() / 1000.) as _
 }
 
+/// Parse semicolon-separated Cookies into an iterator of`(name, value)`.
+/// 
+/// ## Note
+/// 
+/// Invalid Cookie that doesn't contain `=` or contains multiple `=`s is just ignored.
+/// 
+/// ## Example
+/// 
+/// ```
+/// # fn main() {
+/// let mut cookies = ohkami::util::iter_cookies(
+///     "PHPSESSID=298zf09hf012fh2; csrftoken=u32t4o3tb3gg43; _gat=1"
+/// );
+/// 
+/// assert_eq!(cookies.next(), Some(("PHPSESSID", "298zf09hf012fh2")));
+/// assert_eq!(cookies.next(), Some(("csrftoken", "u32t4o3tb3gg43")));
+/// assert_eq!(cookies.next(), Some(("_gat", "1")));
+/// assert_eq!(cookies.next(), None);
+/// # }
+/// ```
+pub fn iter_cookies(raw: &str) -> impl Iterator<Item = (&str, &str)> {
+    raw.split("; ").filter_map(|key_value| {
+        let mut key_value = key_value.split('=');
+        let key   = key_value.next()?;
+        let value = key_value.next()?;
+        key_value.next().is_none().then_some((key, value))
+    })
+}
+
 pub struct ErrorMessage(pub String);
 const _: () = {
     impl std::fmt::Debug for ErrorMessage {
