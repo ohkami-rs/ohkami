@@ -44,6 +44,7 @@ pub use crate::fang::bound::{SendOnNative, SendSyncOnNative};
 
 pub use ohkami_lib::{percent_decode, percent_decode_utf8, percent_encode};
 
+#[inline]
 pub fn base64_decode(input: impl AsRef<[u8]>) -> Result<Vec<u8>, base64::DecodeError> {
     use ::base64::engine::{Engine as _, general_purpose::STANDARD};
     STANDARD.decode(input)
@@ -56,6 +57,7 @@ pub fn base64_decode_utf8(input: impl AsRef<[u8]>) -> Result<String, base64::Dec
         base64::DecodeError::InvalidByte(pos, e.as_bytes()[pos + 1])
     })
 }
+#[inline]
 pub fn base64_encode(input: impl AsRef<[u8]>) -> String {
     use ::base64::engine::{Engine as _, general_purpose::STANDARD};
     STANDARD.encode(input)
@@ -64,6 +66,7 @@ pub fn base64_url_decode(input: impl AsRef<[u8]>) -> Result<Vec<u8>, base64::Dec
     use ::base64::engine::{Engine as _, general_purpose::URL_SAFE_NO_PAD};
     URL_SAFE_NO_PAD.decode(input)
 }
+#[inline]
 pub fn base64_url_encode(input: impl AsRef<[u8]>) -> String {
     use ::base64::engine::{Engine as _, general_purpose::URL_SAFE_NO_PAD};
     URL_SAFE_NO_PAD.encode(input)
