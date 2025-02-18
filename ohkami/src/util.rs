@@ -83,7 +83,7 @@ pub use ohkami_lib::stream::{self, Stream, StreamExt};
 /// );
 /// 
 /// assert_eq!(cookies.next(), Some(("PHPSESSID", "298zf09hf012fh2")));
-/// assert_eq!(cookies.next(), Some(("csrftoken", "u32t4o3tb3gg43"));
+/// assert_eq!(cookies.next(), Some(("csrftoken", "u32t4o3tb3gg43")));
 /// assert_eq!(cookies.next(), Some(("_gat", "1")));
 /// assert_eq!(cookies.next(), None);
 /// # }
