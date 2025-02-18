@@ -1,5 +1,5 @@
-use std::borrow::Cow;
 use crate::{IntoBody, IntoResponse, Response, Status};
+use crate::response::{ResponseHeaders, SetHeaders, Content};
 
 #[cfg(feature="openapi")]
 use crate::openapi;
@@ -137,23 +137,29 @@ macro_rules! generate_redirects {
             #[doc = $message]
             #[doc = "` response using the `location` as `Location` header value"]
             pub struct $status {
-                location: Cow<'static, str>,
+                headers: ResponseHeaders,
             }
             impl $status {
                 pub fn $contructor(location: impl Into<::std::borrow::Cow<'static, str>>) -> Self {
-                    Self {
-                        location: location.into(),
-                    }
+                    let mut headers = ResponseHeaders::new();
+                    headers.set().Location(location.into());
+                    Self { headers }
+                }
+
+                pub fn with_headers(mut self, set: impl FnOnce(SetHeaders)->SetHeaders) -> Self {
+                    set(self.headers.set());
+                    self
                 }
             }
 
             impl IntoResponse for $status {
                 #[inline]
                 fn into_response(self) -> Response {
-                    let mut res = Response::new(Status::$status);
-                    res.headers.set()
-                        .Location(self.location);
-                    res
+                    Response {
+                        status: Status::$status,
+                        headers: self.headers,
+                        content: Content::None,
+                    }
                 }
 
                 #[cfg(feature="openapi")]
