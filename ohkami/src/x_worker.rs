@@ -3,6 +3,8 @@
 pub use ::ohkami_macros::{worker, bindings, DurableObject};
 
 pub mod bindings {
+    /// `Var` binding can also be accessed via associated const
+    /// of the same name.
     pub type Var           = &'static str;
     pub type AI            = ::worker::Ai;
     pub type KV            = ::worker::kv::KvStore;
