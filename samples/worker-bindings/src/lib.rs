@@ -3,11 +3,15 @@ use ohkami::bindings;
 #[bindings]
 struct AutoBindings;
 
-#[allow(unused)]
 #[bindings]
 struct ManualBindings {
+    /* automatically `#[allow(unused)]` */
     VARIABLE_1: bindings::Var,
+
+    #[allow(unused)]
     DB: bindings::D1,
+
+    #[allow(unused)]
     MY_KVSTORE: bindings::KV,
 }
 
@@ -60,4 +64,10 @@ fn __test_manual_bindings__(bindings: ManualBindings) {
     let _: worker::D1Database = bindings.DB;
 
     let _: worker::kv::KvStore = bindings.MY_KVSTORE;
+}
+
+fn __test_bindings_new__(env: &worker::Env) -> Result<(), worker::Error> {
+    let _: AutoBindings = AutoBindings::new(env)?;
+    let _: ManualBindings = ManualBindings::new(env)?;
+    Ok(())
 }

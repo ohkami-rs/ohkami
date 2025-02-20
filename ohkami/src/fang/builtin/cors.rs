@@ -172,14 +172,21 @@ impl<Inner: FangProc> FangProc for CORSProc<Inner> {
 
 
 #[cfg(debug_assertions)]
-#[cfg(all(feature="__rt_native__", feature="DEBUG"))]
 #[cfg(test)]
 mod test {
-    use crate::prelude::*;
-    use crate::testing::*;
-    use super::CORS;
+    #[test] fn cors_fang_bound() {
+        use crate::fang::{Fang, BoxedFPC};
+        fn assert_fang<T: Fang<BoxedFPC>>() {}
 
+        assert_fang::<super::CORS>();
+    }
+
+    #[cfg(all(feature="__rt_native__", feature="DEBUG"))]
     #[test] fn options_request() {
+        use crate::prelude::*;
+        use crate::testing::*;
+        use super::CORS;
+    
         crate::__rt__::testing::block_on(async {
             let t = Ohkami::new(
                 "/hello".POST(|| async {"Hello!"})
@@ -221,7 +228,12 @@ mod test {
         });
     }
 
+    #[cfg(all(feature="__rt_native__", feature="DEBUG"))]
     #[test] fn cors_headers() {
+        use crate::prelude::*;
+        use crate::testing::*;
+        use super::CORS;
+    
         crate::__rt__::testing::block_on(async {
             let t = Ohkami::new((CORS::new("https://example.example"),
                 "/".GET(|| async {"Hello!"})
