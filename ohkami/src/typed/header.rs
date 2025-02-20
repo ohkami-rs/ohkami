@@ -204,9 +204,9 @@ impl<'req, Fields: crate::format::bound::Incoming<'req>> FromRequest<'req> for C
         crate::openapi::Inbound::Params(
             schema.into_properties().into_iter().map(|(name, schema, required)|
                 if required {
-                    crate::openapi::Parameter::in_query(name, schema)
+                    crate::openapi::Parameter::in_cookie(name, schema)
                 } else {
-                    crate::openapi::Parameter::maybe_in_query(name, schema)
+                    crate::openapi::Parameter::maybe_in_cookie(name, schema)
                 }
             ).collect()
         )
