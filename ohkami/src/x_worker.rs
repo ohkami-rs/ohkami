@@ -10,6 +10,8 @@ pub mod bindings {
     pub type Service       = ::worker::Fetcher;
     pub type DurableObject = ::worker::ObjectNamespace;
     pub type D1            = ::worker::d1::D1Database;
+    /// `Queue` may cause a lot of *WARNING*s on `npm run dev`, but
+    /// it's not an actual problem and `Queue` binding does work.
     pub type Queue         = ::worker::Queue;
 }
 

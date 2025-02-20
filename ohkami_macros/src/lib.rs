@@ -305,7 +305,7 @@ pub fn DurableObject(args: proc_macro::TokenStream, input: proc_macro::TokenStre
 ///   - Service
 ///   - Variables
 ///   - Durable Objects
-/// - `Queue` may cause a lot of *WARNING*s in `npm run dev`, but
+/// - `Queue` may cause a lot of *WARNING*s on `npm run dev`, but
 ///   it's not an actual problem and `Queue` binding does work.
 /// 
 /// <br>
