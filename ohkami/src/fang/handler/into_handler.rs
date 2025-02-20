@@ -30,16 +30,35 @@ fn from_request<'fr, 'req, R: FromRequest<'fr>>(
 }
 
 #[cfg(feature="openapi")]
-fn with_default_operation_id<F>(op: openapi::Operation) -> openapi::Operation {
-    let (_/*path_from_crate_root*/, type_name) = std::any::type_name::<F>()
+fn get_type_identifier<F>() -> &'static str {
+    let type_name = std::any::type_name::<F>();
+
+    let type_path = if type_name.ends_with('>') {
+        /* `type_name` has generics like `playground::handler<alloc::string::String>` */
+        /* ref: <https://play.rust-lang.org/?version=stable&mode=debug&edition=2021&gist=e02e32853dddf5385769d1718c481814> */
+        let (type_path, _/*generics*/) = type_name
+            .rsplit_once('<')
+            .expect("unexpectedly independent `>` in std::any::type_name");
+        type_path
+    } else {
+        type_name
+    };
+
+    let (_/*path from crate root*/, type_ident) = type_path
         .rsplit_once("::")
         .expect("unexpected format of std::any::type_name");
-        
+    type_ident
+}
+
+#[cfg(feature="openapi")]
+fn with_default_operation_id<F>(op: openapi::Operation) -> openapi::Operation {
+    let type_ident = get_type_identifier::<F>();
+
     /* when like `Ohkami::new(("/".GET(|| async {"Hello, world!"}),))` */
-    if type_name == "{{closure}}" {
+    if type_ident == "{{closure}}" {
         op
     } else {
-        op.operationId(type_name)
+        op.operationId(type_ident)
     }
 }
 
@@ -635,7 +654,8 @@ const _: (/* two PathParams and FromRequest items */) = {
 };
 
 
-#[cfg(test)] #[test] fn handler_args() {
+#[cfg(test)]
+#[test] fn handler_args() {
     async fn h0() -> &'static str {""}
     async fn h1(_param: String) -> Response {todo!()}
     async fn h2(_param: &str) -> Response {todo!()}
@@ -672,4 +692,11 @@ const _: (/* two PathParams and FromRequest items */) = {
 
     #[cfg(feature="rt_worker")]
     assert_handlers! { h5 }
+}
+
+#[cfg(feature="openapi")]
+#[cfg(test)]
+#[test] fn test_get_type_ident() {
+    assert_eq!(get_type_identifier::<String>(), "String");
+    assert_eq!(get_type_identifier::<std::sync::Arc<String>>(), "Arc");
 }
