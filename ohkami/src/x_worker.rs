@@ -3,6 +3,8 @@
 pub use ::ohkami_macros::{worker, bindings, DurableObject};
 
 pub mod bindings {
+    /// `Var` binding can also be accessed via associated const
+    /// of the same name.
     pub type Var           = &'static str;
     pub type AI            = ::worker::Ai;
     pub type KV            = ::worker::kv::KvStore;
@@ -10,6 +12,8 @@ pub mod bindings {
     pub type Service       = ::worker::Fetcher;
     pub type DurableObject = ::worker::ObjectNamespace;
     pub type D1            = ::worker::d1::D1Database;
+    /// `Queue` may cause a lot of *WARNING*s on `npm run dev`, but
+    /// it's not an actual problem and `Queue` binding does work.
     pub type Queue         = ::worker::Queue;
 }
 

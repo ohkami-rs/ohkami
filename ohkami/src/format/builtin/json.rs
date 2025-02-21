@@ -5,7 +5,60 @@ use std::borrow::Cow;
 #[cfg(feature="openapi")]
 use crate::openapi;
 
-
+/// # JSON format
+/// 
+/// When `openapi` feature is activated, schema bound additionally
+/// requires `openapi::Schema`.
+/// 
+/// ## Request
+/// 
+/// - content type: `application/json`
+/// - schema bound: `Deserialize<'_>`
+/// 
+/// ### example
+/// 
+/// ```
+/// # enum MyError {}
+/// use ohkami::format::JSON;
+/// use ohkami::serde::Deserialize;
+/// 
+/// #[derive(Deserialize)]
+/// struct CreateUserRequest<'req> {
+///     name: &'req str,
+///     age: Option<u8>,
+/// }
+/// 
+/// async fn create_user(
+///     JSON(body): JSON<CreateUserRequest<'_>>,
+/// ) -> Result<(), MyError> {
+///     todo!()
+/// }
+/// ```
+/// 
+/// ## Response
+/// 
+/// - content type: `application/json`
+/// - schema bound: `Serialize`
+/// 
+/// ### example
+/// 
+/// ```
+/// # enum MyError {}
+/// use ohkami::format::JSON;
+/// use ohkami::serde::Serialize;
+/// 
+/// #[derive(Serialize)]
+/// struct User {
+///     name: String,
+///     age: Option<u8>,
+/// }
+/// 
+/// async fn get_user(
+///     id: &str,
+/// ) -> Result<JSON<User>, MyError> {
+///     todo!()
+/// }
+/// ```
 pub struct JSON<T: bound::Schema>(pub T);
 
 impl<'req, T: Incoming<'req>> FromBody<'req> for JSON<T> {

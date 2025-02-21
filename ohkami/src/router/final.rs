@@ -63,7 +63,7 @@ impl Router {
     #[cfg(feature="openapi")]
     pub(crate) fn gen_openapi_doc<'r>(
         &self,
-        routes: impl Iterator<Item = &'r str>,
+        routes: impl Iterator<Item = (&'r str, impl Iterator<Item = Method>)>,
         metadata: crate::openapi::OpenAPI,
     ) -> crate::openapi::document::Document {
         let mut doc = crate::openapi::document::Document::new(
@@ -72,7 +72,7 @@ impl Router {
             metadata.servers
         );
 
-        for route in routes {
+        for (route, methods) in routes {
             crate::DEBUG!("[gen_openapi_doc] route = `{route}`");
 
             assert!(route.starts_with('/'));
@@ -92,13 +92,16 @@ impl Router {
             };
 
             let mut operations = crate::openapi::paths::Operations::new();
-            for (openapi_method, router) in [
-                ("get",    &self.GET),
-                ("put",    &self.PUT),
-                ("post",   &self.POST),
-                ("patch",  &self.PATCH),
-                ("delete", &self.DELETE),
-            ] {
+            for method in methods {
+                let (openapi_method, router) = match method {
+                    Method::GET    => ("get",    &self.GET),
+                    Method::PUT    => ("put",    &self.PUT),
+                    Method::POST   => ("post",   &self.POST),
+                    Method::PATCH  => ("patch",  &self.PATCH),
+                    Method::DELETE => ("delete", &self.DELETE),
+                    _ => continue
+                };
+                
                 let mut path = unsafe {crate::request::Path::from_str_unchecked(
                     // this is intended even when route == "/", then to "",
                     // samely as `Path::init_with_request_bytes`
