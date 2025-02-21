@@ -4,7 +4,35 @@ use std::borrow::Cow;
 #[cfg(feature="openapi")]
 use crate::openapi;
 
-
+/// # HTML format
+/// 
+/// ## Request
+/// 
+/// not supported
+/// 
+/// ## Response
+/// 
+/// - content type: `text/html; charset=UTF-8`
+/// - schema bound: `Into<Cow<'static, str>>`
+/// 
+/// ### example
+/// 
+/// ```
+/// use ohkami::format::HTML;
+/// 
+/// async fn handler() -> HTML<&'static str> {
+///     HTML(r#"
+///         <html>
+///             <head>
+///                 <title>Sample Document</title>
+///             </head>
+///             <body>
+///                 <h1>Sample Document</h1>
+///             </body>
+///         </html>
+///     "#)
+/// }
+/// ```
 pub struct HTML<T = String>(pub T);
 
 impl<T: Into<Cow<'static, str>>> IntoBody for HTML<T> {

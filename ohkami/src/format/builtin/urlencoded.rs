@@ -6,7 +6,60 @@ use std::borrow::Cow;
 #[cfg(feature="openapi")]
 use crate::openapi;
 
-
+/// # URL encoded format
+/// 
+/// When `openapi` feature is activated, schema bound additionally
+/// requires `openapi::Schema`.
+/// 
+/// ## Request
+/// 
+/// - content type: `application/x-www-form-urlencoded`
+/// - schema bound: `Deserialize<'_>`
+/// 
+/// ### example
+/// 
+/// ```
+/// # enum MyError {}
+/// use ohkami::format::URLEncoded;
+/// use ohkami::serde::Deserialize;
+/// 
+/// #[derive(Deserialize)]
+/// struct CreateUserRequest<'req> {
+///     name: &'req str,
+///     age: Option<u8>,
+/// }
+/// 
+/// async fn create_user(
+///     URLEncoded(body): URLEncoded<CreateUserRequest<'_>>,
+/// ) -> Result<(), MyError> {
+///     todo!()
+/// }
+/// ```
+/// 
+/// ## Response
+/// 
+/// - content type: `application/x-www-form-urlencoded`
+/// - schema bound: `Serialize`
+/// 
+/// ### example
+/// 
+/// ```
+/// # enum MyError {}
+/// use ohkami::format::URLEncoded;
+/// use ohkami::serde::Serialize;
+/// 
+/// #[derive(Serialize)]
+/// struct User {
+///     name: String,
+///     age: Option<u8>,
+/// }
+/// 
+/// async fn get_user(
+///     id: &str,
+/// ) -> Result<URLEncoded<User>, MyError> {
+///     todo!()
+/// }
+/// ```
 pub struct URLEncoded<T: bound::Schema>(pub T);
 
 impl<'req, T: Incoming<'req>> FromBody<'req> for URLEncoded<T> {
