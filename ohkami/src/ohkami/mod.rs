@@ -297,7 +297,7 @@ impl Ohkami {
     /// ```
     /// use ohkami::{Ohkami, Route};
     /// 
-    /// # fn __() {
+    /// # fn __() -> Ohkami {
     /// # let another_ohkami = Ohkami::new(());
     /// Ohkami::new(
     ///     "/route".By(another_ohkami),
@@ -317,7 +317,7 @@ impl Ohkami {
     /// ```
     /// use ohkami::{Ohkami, Route};
     /// 
-    /// # fn __() {
+    /// # fn __() -> Ohkami {
     /// # let another_ohkami = Ohkami::new(());
     /// Ohkami::new(
     ///     "/public".Dir("./path/to/dir"),
