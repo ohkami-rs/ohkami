@@ -15,6 +15,8 @@ use crate::{__rt__, Session};
 /// 
 /// ## Definition
 /// 
+/// See [`Ohkami::new`] for more detail.
+/// 
 /// *example.rs*
 /// ```
 /// use ohkami::prelude::*;
@@ -99,34 +101,21 @@ use crate::{__rt__, Session};
 /// 
 /// <br>
 /// 
-/// ### handler schema
-/// `async ({path params}?, {FromRequest type}s...) -> {IntoResponse type}`
+/// ### handler signature
+/// 
+/// `async ({path params}?, {FromRequest<'_> type}s...) -> {IntoResponse type}`
+/// 
+/// On native runtimes or `rt_lambda`,
+/// 
+/// - handler itself must be `Send` + `Sync`
+/// - returned `Future` must be `Send`
 /// 
 /// ### path params
+/// 
 /// A tuple of types that implement `FromParam` trait e.g. `(&str, usize)`.\
 /// If the path contains only one parameter, then you can omit the tuple \
 /// e.g. just `param: &str`.\
 /// (Current ohkami handles at most *2* path params.)
-/// 
-/// ```
-/// use ohkami::prelude::*;
-/// 
-/// struct MyParam;
-/// impl<'p> ohkami::FromParam<'p> for MyParam {
-///     type Error = std::convert::Infallible;
-///     fn from_param(param: std::borrow::Cow<'p, str>) -> Result<Self, Self::Error> {
-///         Ok(MyParam)
-///     }
-/// }
-/// 
-/// async fn handler_1(param: (MyParam,)) -> Response {
-///     todo!()
-/// }
-/// 
-/// async fn handler_2(param: &str) -> Response {
-///     todo!()
-/// }
-/// ```
 /// 
 /// <br>
 /// 
@@ -183,11 +172,15 @@ use crate::{__rt__, Session};
 /// 
 /// ## Testing
 /// 
-/// Ohkami support **no-network** testing :
+/// Ohkami support **no-network** testing.
+/// 
+/// Currently this may not work on `rt_worker`. Consider generating HTTP client
+/// types with `openapi` feature and performaing tests using the client with Ohkami
+/// running by `npm run dev`.
 /// 
 /// ```
 /// use ohkami::prelude::*;
-/// 
+/// # 
 /// # fn my_ohkami() -> ohkami::Ohkami {
 /// #     ohkami::Ohkami::new(())
 /// # }
@@ -222,6 +215,13 @@ pub struct Ohkami {
 impl Ohkami {
     /// Create Ohkami by the routing
     /// 
+    /// ### route
+    /// 
+    /// - `/`
+    /// - `(/:?[a-zA-Z0-9_\-\.]+)+`
+    /// 
+    /// Segments starting with `:` defines *path params*.
+    /// 
     /// ### routing
     /// 
     /// A tuple like
@@ -254,14 +254,76 @@ impl Ohkami {
     /// # ;
     /// ```
     /// 
-    /// ### handler
-    /// `async ({path params}?, {FromRequest type}s...) -> {IntoResponse type}`
+    /// ### handler signature
+    /// 
+    /// `async ({path params}?, {FromRequest<'_> type}s...) -> {IntoResponse type}`
+    /// 
+    /// On native runtimes or `rt_lambda`,
+    /// 
+    /// - handler itself must be `Send` + `Sync`
+    /// - returned `Future` must be `Send`
     /// 
     /// ### path params
+    /// 
     /// A tuple of types that implement `FromParam` trait e.g. `(&str, usize)`.\
     /// If the path contains only one parameter, then you can omit the tuple \
     /// e.g. just `param: &str`.\
     /// (Current ohkami handles at most *2* path params.)
+    /// 
+    /// ```
+    /// use ohkami::prelude::*;
+    /// 
+    /// struct MyParam;
+    /// impl<'p> ohkami::FromParam<'p> for MyParam {
+    ///     type Error = std::convert::Infallible;
+    ///     fn from_param(param: std::borrow::Cow<'p, str>) -> Result<Self, Self::Error> {
+    ///         Ok(MyParam)
+    ///     }
+    /// }
+    /// 
+    /// async fn handler_1(param: (MyParam,)) -> Response {
+    ///     todo!()
+    /// }
+    /// 
+    /// async fn handler_2(param: &str) -> Response {
+    ///     todo!()
+    /// }
+    /// ```
+    /// 
+    /// ### nesting
+    /// 
+    /// `Route::By` creates a nested route:
+    /// 
+    /// ```
+    /// use ohkami::{Ohkami, Route};
+    /// 
+    /// # fn __() -> Ohkami {
+    /// # let another_ohkami = Ohkami::new(());
+    /// Ohkami::new(
+    ///     "/route".By(another_ohkami),
+    /// )
+    /// # }
+    /// ```
+    /// 
+    /// ### static directory serving
+    /// 
+    /// `.Dir` mounts a directory and generates handlers
+    /// for serving each static file in it.
+    /// 
+    /// This doesn't work on `rt_worker` ( of course because there Ohkami can't
+    /// touch your local file system ). Consider using `asset` of wrangler.{toml/json}
+    /// ( or `--asset` flag of `npm run {dev/deploy}` )
+    /// 
+    /// ```
+    /// use ohkami::{Ohkami, Route};
+    /// 
+    /// # fn __() -> Ohkami {
+    /// # let another_ohkami = Ohkami::new(());
+    /// Ohkami::new(
+    ///     "/public".Dir("./path/to/dir"),
+    /// )
+    /// # }
+    /// ```
     /// 
     /// ### note
     /// 
