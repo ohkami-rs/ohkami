@@ -32,10 +32,6 @@ impl Binding {
 
         let from_env = |getter: TokenStream| quote! {
             #name: env.#getter?
-                // {
-                //     ::worker::console_error!("{e}");
-                //     return ::std::option::Option::Some(::std::result::Result::Err(::ohkami::Response::InternalServerError()));
-                // }
         };
 
         match self {
