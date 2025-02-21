@@ -7,7 +7,35 @@ use crate::openapi;
 
 /// # Query parameters
 /// 
-/// Deserialize query parameters into an instance of type `T`.
+/// Deserialize query parameters in a request into an instance of
+/// schema type `T: Deserialize<'_>`.
+/// 
+/// When `openapi` feature is activated, schema bound additionally
+/// requires `openapi::Schema`.
+/// 
+/// ### example
+/// 
+/// ```
+/// # enum MyError {}
+/// use ohkami::format::{JSON, Query};
+/// use ohkami::serde::Deserialize;
+/// 
+/// #[derive(Deserialize)]
+/// struct ListUsersMeta<'req> {
+///     name_prefix: Option<&'req str>,
+///     min_age: Option<u8>,
+///     max_age: Option<u8>,
+///     limit: Option<usize>,
+/// }
+/// # #[derive(ohkami::serde::Serialize)]
+/// # struct User {}
+/// 
+/// async fn list_users(
+///     Query(meta): Query<ListUsersMeta<'_>>,
+/// ) -> Result<JSON<Vec<User>>, MyError> {
+///     todo!()
+/// }
+/// ```
 /// 
 /// ### note
 /// 
