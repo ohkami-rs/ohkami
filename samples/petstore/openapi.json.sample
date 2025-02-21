@@ -136,6 +136,16 @@
       },
       "put": {
         "operationId": "edit_pet_profile",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "petId",
+            "schema": {
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK"

@@ -141,7 +141,7 @@ async fn show_pet_by_id(
     Ok(JSON(pet))
 }
 
-async fn edit_pet_profile() {}
+async fn edit_pet_profile(_id: u64) {}
 
 async fn show_pets_detail() {}
 
