@@ -529,7 +529,10 @@ impl Ohkami {
 
         crate::DEBUG!("[openapi_document_bytes] routes = {routes:#?}, router = {router:#?}");
 
-        let doc = router.gen_openapi_doc(routes.keys().map(|r| &**r), openapi);
+        let doc = router.gen_openapi_doc(
+            routes.iter().map(|(r, map)| (&**r, map.keys().copied())),
+            openapi
+        );
 
         let mut bytes = ::serde_json::to_vec_pretty(&doc).expect("failed to serialize OpenAPI document");
         bytes.push(b'\n');

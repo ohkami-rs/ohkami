@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-ohkami             = { path = "../../ohkami", features = ["rt_tokio"] }
+ohkami             = { path = "../../ohkami", default-features = false, features = ["rt_tokio"] }
 tokio              = { version = "1", features = ["full"] }
 tracing            = "0.1"
 tracing-subscriber = "0.3"

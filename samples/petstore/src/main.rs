@@ -51,7 +51,10 @@ async fn main() {
             .GET(list_pets)
             .POST(create_pet),
         "/pets/:petId"
-            .GET(show_pet_by_id),
+            .GET(show_pet_by_id)
+            .PUT(edit_pet_profile),
+        "/pets/admin"
+            .GET(show_pets_detail),
     ));
 
     o.generate(openapi::OpenAPI {
@@ -137,6 +140,10 @@ async fn show_pet_by_id(
         })?;
     Ok(JSON(pet))
 }
+
+async fn edit_pet_profile(_id: u64) {}
+
+async fn show_pets_detail() {}
 
 
 #[derive(Serialize, Clone, openapi::Schema)]

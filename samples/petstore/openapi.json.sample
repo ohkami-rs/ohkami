@@ -86,6 +86,16 @@
         }
       }
     },
+    "/pets/admin": {
+      "get": {
+        "operationId": "show_pets_detail",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/pets/{petId}": {
       "get": {
         "operationId": "showPetById",
@@ -121,6 +131,24 @@
                 }
               }
             }
+          }
+        }
+      },
+      "put": {
+        "operationId": "edit_pet_profile",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "petId",
+            "schema": {
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
           }
         }
       }
