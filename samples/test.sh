@@ -21,12 +21,12 @@ test $? -ne 0 && exit 152 || :
 
 cd $SAMPLES/petstore && \
     cargo build && \
-    diff openapi.json openapi.json.sample && \
     cd client && \
         npm install && \
         cd .. && \
     (timeout -sKILL 5 cargo run &) && \
     sleep 1 && \
+    diff openapi.json openapi.json.sample && \
     cd client && \
         npm run gen && \
         npm run main
