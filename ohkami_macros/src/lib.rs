@@ -314,7 +314,7 @@ pub fn DurableObject(args: proc_macro::TokenStream, input: proc_macro::TokenStre
 /// 
 /// - You can switch between multiple `env`s by feature flags
 ///   like `#[cfg_attr(feature = "...", bindings(env_name))]`.
-/// - For `rust-analyzer` user : When you edit wrangler.toml around bindings,
+/// - For `rust-analyzer` user : When you edit wrangler.toml around bindings in **auto binding mode**,
 ///   you'll need to notify the change of `#[bindings]` if you're using auto binding mode.
 ///   For that, all you have to do is just **deleting `;` and immediate restoring it**.
 #[proc_macro_attribute]

@@ -135,11 +135,14 @@ pub fn bindings(env_name: TokenStream, bindings_struct: TokenStream) -> Result<T
     let vis  = &bindings_struct.vis;
     let name = &bindings_struct.ident;
 
-    let field_names = match &bindings_struct.fields {
+    let named_fields = match &bindings_struct.fields {
         Fields::Unit => None,
         Fields::Named(n) => Some(n.named
             .iter()
-            .map(|field| field.ident.as_ref().unwrap())
+            .map(|field| (
+                field.ident.as_ref().unwrap(),
+                util::extract_doc_comment(&field.attrs)
+            ))
             .collect::<Vec<_>>()
         ),
         Fields::Unnamed(u) => return Err(Error::new(
@@ -148,10 +151,10 @@ pub fn bindings(env_name: TokenStream, bindings_struct: TokenStream) -> Result<T
         )),
     };
 
-    let declare_struct = match &field_names {
+    let declare_struct = match &named_fields {
         Some(n) => {
             let mut var_field_indexes = Vec::with_capacity(n.len());
-            for (i, field_name) in n.iter().enumerate() {
+            for (i, (field_name, _)) in n.iter().enumerate() {
                 let binding_type = bindings.iter()
                     .find_map(|(name, b)| (name == *field_name).then_some(b))
                     .ok_or_else(|| syn::Error::new(
@@ -203,13 +206,21 @@ pub fn bindings(env_name: TokenStream, bindings_struct: TokenStream) -> Result<T
                     _ => None
                 }
             )
-            .filter(|(name, _)| match &field_names {
-                None => true,
-                Some(n) => n.iter().any(|field_name| name == field_name)
+            .filter_map(|(name, value)| match &named_fields {
+                None => Some((name, value, None)),
+                Some(n) => n.iter().find_map(|(field_name, doc)|
+                    (name == *field_name).then_some((name, value, doc.as_ref()))
+                )
             })
-            .map(|(name, value)| {
+            .map(|(name, value, doc)| {
                 let value = LitStr::new(&value, Span::call_site());
+                let doc = doc.as_ref()
+                    .map(|d| {
+                        let d = LitStr::new(d, Span::call_site());
+                        quote! { #[doc = #d] }
+                    });
                 quote! {
+                    #doc
                     #vis const #name: &'static str = #value;
                 }
             });
@@ -224,9 +235,9 @@ pub fn bindings(env_name: TokenStream, bindings_struct: TokenStream) -> Result<T
 
     let impl_new = {
         let extract = bindings.iter()
-            .filter(|(name, _)| match &field_names {
+            .filter(|(name, _)| match &named_fields {
                 None => true,
-                Some(n) => n.iter().any(|field_name| name == *field_name)
+                Some(n) => n.iter().any(|(field_name, _)| name == *field_name)
             })
             .map(|(name, binding)| {
                 binding.tokens_extract_from_env(name)
@@ -262,7 +273,7 @@ pub fn bindings(env_name: TokenStream, bindings_struct: TokenStream) -> Result<T
     };
 
     let impl_send_sync = if
-        bindings.is_empty() || field_names.is_some_and(|n| n.is_empty())
+        bindings.is_empty() || named_fields.is_some_and(|n| n.is_empty())
     {
         None
     } else {
