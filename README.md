@@ -23,7 +23,7 @@
 
 ```toml
 [dependencies]
-ohkami = { version = "0.23", features = ["rt_tokio"] }
+ohkami = { version = "0.24", features = ["rt_tokio"] }
 tokio  = { version = "1",    features = ["full"] }
 ```
 
@@ -363,7 +363,9 @@ async fn search(
 
 ### Middlewares
 
-Ohkami's request handling system is called "**fang**s", and middlewares are implemented on this.
+Ohkami's request handling system is called "**fang**s", and handlers and middlewares are built on this.
+
+There are two types of fangs : *global fangs* and *local fangs*. While global fangs are registered to an `Ohkami`, local fangs are applied to a specific handler.
 
 *builtin fang* :
 
@@ -394,9 +396,8 @@ impl FangAction for GreetingFang {
 #[tokio::main]
 async fn main() {
     Ohkami::new((
-        // register fangs to a Ohkami
+        // register *global fangs* to an Ohkami
         GreetingFang(1),
-        
         "/hello"
             .GET(|| async {"Hello, fangs!"})
             .POST((
