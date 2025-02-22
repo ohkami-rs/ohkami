@@ -206,6 +206,81 @@ use crate::{__rt__, Session};
 ///     }
 /// }
 /// ```
+/// 
+/// <br>
+/// 
+/// ## Generics DI
+/// 
+/// A way of DI -*Dependency Injection*- is **generics** :
+/// 
+/// ```
+/// use ohkami::prelude::*;
+/// 
+/// # //////////////////////////////////////////////////////////////////////
+/// # /// errors
+/// # 
+/// # enum MyError {
+/// #     Sqlx(sqlx::Error),
+/// # }
+/// # impl IntoResponse for MyError {
+/// #     fn into_response(self) -> Response {
+/// #         match self {
+/// #             Self::Sqlx(e) => Response::InternalServerError(),
+/// #         }
+/// #     }
+/// # }
+/// # 
+/// //////////////////////////////////////////////////////////////////////
+/// /// repository
+/// 
+/// trait Repository: Send + Sync + 'static {
+///     fn get_user_name_by_id(
+///         &self,
+///         id: i64,
+///     ) -> impl Future<Output = Result<String, MyError>> + Send;
+/// }
+/// 
+/// struct PostgresRepository(sqlx::PgPool);
+/// impl Repository for PostgresRepository {
+///     async fn get_user_name_by_id(&self, id: i64) -> Result<String, MyError> {
+///         let sql = r#"
+///             SELECT name FROM users WHERE id = $1
+///         "#;
+///         sqlx::query_scalar::<_, String>(sql)
+///             .bind(id)
+///             .fetch_one(&self.0)
+///             .await
+///             .map_err(MyError::Sqlx)
+///     }
+/// }
+/// 
+/// //////////////////////////////////////////////////////////////////////
+/// /// routes
+/// 
+/// #[derive(Serialize)]
+/// struct User {
+///     id: u32,
+///     name: String,
+/// }
+/// 
+/// async fn get_user<R: Repository>(
+///     id: u32,
+///     Context(r): Context<'_, R>,
+/// ) -> Result<JSON<User>, MyError> {
+///     let user_name = r.get_user_name_by_id(id as i64).await?;
+/// 
+///     Ok(JSON(User {
+///         id: user_row.id as u32,
+///         name: user_name,
+///     }))
+/// }
+/// 
+/// fn users_ohkami<R: Repository>() -> Ohkami {
+///     Ohkami::new((
+///         "/:id".GET(get_user::<R>),
+///     ))
+/// }
+/// ```
 pub struct Ohkami {
     router: Router,
     /// apply just before merged to another, or just before `howl`ing
