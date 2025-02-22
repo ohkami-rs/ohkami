@@ -458,19 +458,19 @@ impl IntoResponse for MyError {
 
 #[derive(Serialize)]
 struct User {
-    id: u64,
+    id: u32,
     name: String,
 }
 
 async fn get_user(
-    id: u64,
+    id: u32,
     Context(pool): Context<'_, sqlx::PgPool>,
 ) -> Result<JSON<User>, MyError> {
     let sql = r#"
         SELECT name FROM users WHERE id = $1
     "#;
-    let name = sqlx::query_salor_as::<_, String>(sql)
-        .bind(id)
+    let name = sqlx::query_scalar::<_, String>(sql)
+        .bind(id as i64)
         .fetch_one(pool)
         .await
         .map_err(MyError::Sqlx)?;
