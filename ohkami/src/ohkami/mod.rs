@@ -270,7 +270,7 @@ use crate::{__rt__, Session};
 ///     let user_name = r.get_user_name_by_id(id as i64).await?;
 /// 
 ///     Ok(JSON(User {
-///         id: user_row.id as u32,
+///         id: id as u32,
 ///         name: user_name,
 ///     }))
 /// }
