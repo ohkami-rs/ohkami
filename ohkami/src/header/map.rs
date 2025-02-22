@@ -23,27 +23,27 @@ impl<const N: usize, Value> IndexMap<N, Value> {
 
     #[inline(always)]
     pub(crate) unsafe fn get(&self, index: usize) -> Option<&Value> {
-        match *self.index.get_unchecked(index) {
+        unsafe {match *self.index.get_unchecked(index) {
             Self::NULL => None,
             index      => Some(&self.values.get_unchecked(index as usize).1)
-        }
+        }}
     }
     #[inline(always)]
     pub(crate) unsafe fn get_mut(&mut self, index: usize) -> Option<&mut Value> {
-        match *self.index.get_unchecked(index) {
+        unsafe {match *self.index.get_unchecked(index) {
             Self::NULL => None,
             index      => Some(&mut self.values.get_unchecked_mut(index as usize).1)
-        }
+        }}
     }
 
     #[inline(always)]
     pub(crate) unsafe fn delete(&mut self, index: usize) {
-        *self.index.get_unchecked_mut(index) = Self::NULL
+        unsafe {*self.index.get_unchecked_mut(index) = Self::NULL}
     }
 
     #[inline(always)]
     pub(crate) unsafe fn set(&mut self, index: usize, value: Value) {
-        *self.index.get_unchecked_mut(index) = self.values.len() as u8;
+        unsafe {*self.index.get_unchecked_mut(index) = self.values.len() as u8}
         self.values.push((index, value));
     }
 

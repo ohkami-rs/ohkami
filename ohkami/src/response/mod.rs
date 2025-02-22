@@ -257,7 +257,7 @@ impl Response {
     }
     /// SAFETY: argument `json_lit` must be **valid JSON**
     pub unsafe fn with_json_lit<JSONLiteral: Into<Cow<'static, str>>>(mut self, json_lit: JSONLiteral) -> Self {
-        self.set_json_lit(json_lit);
+        unsafe {self.set_json_lit(json_lit);}
         self
     }
 }

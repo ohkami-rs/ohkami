@@ -478,30 +478,32 @@ impl Headers {
     ))]
     /// SAFETY: `buf` has remaining capacity of at least `self.size`
     pub(crate) unsafe fn write_unchecked_to(&self, buf: &mut Vec<u8>) {
-        for (i, v) in self.standard.iter() {
-            let h = std::mem::transmute::<_, Header>(*i as u8); {
-                crate::push_unchecked!(buf <- h.as_bytes());
-                crate::push_unchecked!(buf <- b": ");
-                crate::push_unchecked!(buf <- v.as_bytes());
-                crate::push_unchecked!(buf <- b"\r\n");
+        unsafe {
+            for (i, v) in self.standard.iter() {
+                let h = std::mem::transmute::<_, Header>(*i as u8); {
+                    crate::push_unchecked!(buf <- h.as_bytes());
+                    crate::push_unchecked!(buf <- b": ");
+                    crate::push_unchecked!(buf <- v.as_bytes());
+                    crate::push_unchecked!(buf <- b"\r\n");
+                }
             }
-        }
-        if let Some(custom) = self.custom.as_ref() {
-            for (k, v) in custom.iter() {
-                crate::push_unchecked!(buf <- k.as_bytes());
-                crate::push_unchecked!(buf <- b": ");
-                crate::push_unchecked!(buf <- v.as_bytes());
-                crate::push_unchecked!(buf <- b"\r\n");
+            if let Some(custom) = self.custom.as_ref() {
+                for (k, v) in custom.iter() {
+                    crate::push_unchecked!(buf <- k.as_bytes());
+                    crate::push_unchecked!(buf <- b": ");
+                    crate::push_unchecked!(buf <- v.as_bytes());
+                    crate::push_unchecked!(buf <- b"\r\n");
+                }
             }
-        }
-        if let Some(setcookies) = self.setcookie.as_ref() {
-            for setcookie in &**setcookies {
-                crate::push_unchecked!(buf <- b"Set-Cookie: ");
-                crate::push_unchecked!(buf <- setcookie.as_bytes());
-                crate::push_unchecked!(buf <- b"\r\n");
+            if let Some(setcookies) = self.setcookie.as_ref() {
+                for setcookie in &**setcookies {
+                    crate::push_unchecked!(buf <- b"Set-Cookie: ");
+                    crate::push_unchecked!(buf <- setcookie.as_bytes());
+                    crate::push_unchecked!(buf <- b"\r\n");
+                }
             }
+            crate::push_unchecked!(buf <- b"\r\n");
         }
-        crate::push_unchecked!(buf <- b"\r\n");
     }
 
     #[cfg(any(feature="DEBUG", feature="__rt_native__"))]

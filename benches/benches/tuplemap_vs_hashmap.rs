@@ -26,7 +26,7 @@ macro_rules! tuplemap_vs_hashmap {
                 use rand::prelude::*;
             
                 let mut rng = rand_chacha::ChaCha8Rng::seed_from_u64(314159265358979);
-                let keys: [u64; $size] = std::array::from_fn(|_| rng.gen());
+                let keys: [u64; $size] = std::array::from_fn(|_| rng.r#gen());
             
                 b.iter(|| -> TupleMap<u64, Box<String>> {
                     TupleMap::<u64, Box<String>>::from_iter(
@@ -41,7 +41,7 @@ macro_rules! tuplemap_vs_hashmap {
                 use rand::prelude::*;
             
                 let mut rng = rand_chacha::ChaCha8Rng::seed_from_u64(314159265358979);
-                let keys: [u64; $size] = std::array::from_fn(|_| rng.gen());
+                let keys: [u64; $size] = std::array::from_fn(|_| rng.r#gen());
 
                 let map = TupleMap::<u64, Box<String>>::from_iter(
                     keys.map(|k| (k, Box::new(k.to_string())))
@@ -64,7 +64,7 @@ macro_rules! tuplemap_vs_hashmap {
                 use rand::prelude::*;
                 
                 let mut rng = rand_chacha::ChaCha8Rng::seed_from_u64(314159265358979);
-                let keys: [u64; $size] = std::array::from_fn(|_| rng.gen());            
+                let keys: [u64; $size] = std::array::from_fn(|_| rng.r#gen());            
             
                 b.iter(|| -> HashMap::<u64, Box<String>, BuildHasherDefault<AsIsHasher>> {
                     HashMap::<u64, Box<String>, BuildHasherDefault<AsIsHasher>>::from_iter(
@@ -79,7 +79,7 @@ macro_rules! tuplemap_vs_hashmap {
                 use rand::prelude::*;
                 
                 let mut rng = rand_chacha::ChaCha8Rng::seed_from_u64(314159265358979);
-                let keys: [u64; $size] = std::array::from_fn(|_| rng.gen());
+                let keys: [u64; $size] = std::array::from_fn(|_| rng.r#gen());
 
                 let map = HashMap::<u64, Box<String>, BuildHasherDefault<AsIsHasher>>::from_iter(
                     keys.map(|k| (k, Box::new(k.to_string())))

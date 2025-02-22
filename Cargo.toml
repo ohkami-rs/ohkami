@@ -1,5 +1,5 @@
 [workspace]
-resolver = "2"
+resolver = "3"
 members  = [
     "ohkami",
     "ohkami_lib",
@@ -18,8 +18,8 @@ exclude  = [
 ]
 
 [workspace.package]
-version    = "0.23.2"
-edition    = "2021"
+version    = "0.24.0"
+edition    = "2024"
 authors    = ["kanarus <kanarus786@gmail.com>"]
 homepage   = "https://crates.io/crates/ohkami"
 repository = "https://github.com/ohkami-rs/ohkami"

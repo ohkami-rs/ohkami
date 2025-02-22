@@ -463,71 +463,81 @@ mod candiate {#![allow(unused)]
         };
         #[inline(always)]
         unsafe fn raw_d4l(v: &mut *mut u8, x: u32) {
-            invariant!(x < 10000);
-            match x {
-                0..=9 => {
-                    **v = x as u8 | 0x30;
-                    *v = v.add(1);
+            unsafe {
+                invariant!(x < 10000);
+                match x {
+                    0..=9 => {
+                        **v = x as u8 | 0x30;
+                        *v = v.add(1);
+                    }
+                    10..=99 => {
+                        v.copy_from_nonoverlapping((D4[x as usize] >> 16).to_le_bytes().as_ptr(), 2);
+                        *v = v.add(2);
+                    }
+                    100..=999 => {
+                        v.copy_from_nonoverlapping((D4[x as usize] >> 8).to_le_bytes().as_ptr(), 3);
+                        *v = v.add(3);
+                    }
+                    1000..=9999 => {
+                        v.copy_from_nonoverlapping(D4[x as usize].to_le_bytes().as_ptr(), 4);
+                        *v = v.add(4);
+                    }
+                    _ => core::hint::unreachable_unchecked(),
                 }
-                10..=99 => {
-                    v.copy_from_nonoverlapping((D4[x as usize] >> 16).to_le_bytes().as_ptr(), 2);
-                    *v = v.add(2);
-                }
-                100..=999 => {
-                    v.copy_from_nonoverlapping((D4[x as usize] >> 8).to_le_bytes().as_ptr(), 3);
-                    *v = v.add(3);
-                }
-                1000..=9999 => {
-                    v.copy_from_nonoverlapping(D4[x as usize].to_le_bytes().as_ptr(), 4);
-                    *v = v.add(4);
-                }
-                _ => core::hint::unreachable_unchecked(),
             }
         }
         #[inline(always)]
         unsafe fn raw_d4(v: &mut *mut u8, x: u32) {
-            invariant!(x < 1_0000);
-            v.copy_from_nonoverlapping(D4[x as usize].to_le_bytes().as_ptr(), 4);
-            *v = v.add(4);
+            unsafe {
+                invariant!(x < 1_0000);
+                v.copy_from_nonoverlapping(D4[x as usize].to_le_bytes().as_ptr(), 4);
+                *v = v.add(4);
+            }
         }
         #[inline(always)]
         unsafe fn raw_d8l(v: &mut *mut u8, x: u32) {
-            invariant!(x < 1_0000_0000);
-            if x < 10000 {
-                raw_d4l(v, x);
-            } else {
-                let (y0, y1) = (x / 1_0000, x % 1_0000);
-                raw_d4l(v, y0);
-                raw_d4(v, y1);
+            unsafe {
+                invariant!(x < 1_0000_0000);
+                if x < 10000 {
+                    raw_d4l(v, x);
+                } else {
+                    let (y0, y1) = (x / 1_0000, x % 1_0000);
+                    raw_d4l(v, y0);
+                    raw_d4(v, y1);
+                }
             }
         }
         #[inline(always)]
         unsafe fn raw_d8(v: &mut *mut u8, x: u32) {
-            invariant!(x < 1_0000_0000);
-            let (y0, y1) = (x / 1_0000, x % 1_0000);
-            v.copy_from_nonoverlapping((((D4[y1 as usize] as u64) << 32) | (D4[y0 as usize] as u64)).to_le_bytes().as_ptr(), 8);
-            *v = v.add(8);
+            unsafe {
+                invariant!(x < 1_0000_0000);
+                let (y0, y1) = (x / 1_0000, x % 1_0000);
+                v.copy_from_nonoverlapping((((D4[y1 as usize] as u64) << 32) | (D4[y0 as usize] as u64)).to_le_bytes().as_ptr(), 8);
+                *v = v.add(8);
+            }
         }
         #[inline(always)]
         pub unsafe fn raw_u64(v: &mut *mut u8, x: u64) {
-            match x {
-                0..=9999_9999 => {
-                    raw_d8l(v, x as u32);
-                }
-                1_0000_0000..=9999_9999_9999_9999 => {
-                    let (z0, z1) = ((x / 1_0000_0000) as u32, (x % 1_0000_0000) as u32);
-                    raw_d8l(v, z0);
-                    raw_d8(v, z1);
-                }
-                1_0000_0000_0000_0000..=u64::MAX => {
-                    let (y0, y1) = (
-                        (x / 1_0000_0000_0000_0000) as u32,
-                        x % 1_0000_0000_0000_0000,
-                    );
-                    let (z0, z1) = ((y1 / 1_0000_0000) as u32, (y1 % 1_0000_0000) as u32);
-                    raw_d8l(v, y0);
-                    raw_d8(v, z0);
-                    raw_d8(v, z1);
+            unsafe {
+                match x {
+                    0..=9999_9999 => {
+                        raw_d8l(v, x as u32);
+                    }
+                    1_0000_0000..=9999_9999_9999_9999 => {
+                        let (z0, z1) = ((x / 1_0000_0000) as u32, (x % 1_0000_0000) as u32);
+                        raw_d8l(v, z0);
+                        raw_d8(v, z1);
+                    }
+                    1_0000_0000_0000_0000..=u64::MAX => {
+                        let (y0, y1) = (
+                            (x / 1_0000_0000_0000_0000) as u32,
+                            x % 1_0000_0000_0000_0000,
+                        );
+                        let (z0, z1) = ((y1 / 1_0000_0000) as u32, (y1 % 1_0000_0000) as u32);
+                        raw_d8l(v, y0);
+                        raw_d8(v, z0);
+                        raw_d8(v, z1);
+                    }
                 }
             }
         }

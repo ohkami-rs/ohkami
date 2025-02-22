@@ -11,7 +11,7 @@ impl Slice {
     /// SAFETY: `head` is non-null pointer
     #[inline(always)] pub unsafe fn new_unchecked(head: *const u8, size: usize) -> Self {
         Self {
-            head: NonNull::new_unchecked(head as _),
+            head: unsafe {NonNull::new_unchecked(head as _)},
             size,
         }
     }
@@ -23,7 +23,7 @@ impl Slice {
     }
     
     #[inline(always)] pub const unsafe fn as_bytes<'b>(&self) -> &'b [u8] {
-        std::slice::from_raw_parts(self.head.as_ptr(), self.size)
+        unsafe {std::slice::from_raw_parts(self.head.as_ptr(), self.size)}
     }
 }
 const _: () = {
@@ -87,7 +87,7 @@ impl CowSlice {
                 std::mem::swap(&mut appended, array)
             }
             Self::Ref(slice) => {
-                let mut vec: Vec<_> = slice.as_bytes().into();
+                let mut vec: Vec<_> = unsafe {slice.as_bytes()}.into();
                 vec.extend_from_slice(bytes);
                 *self = Self::Own(vec.into_boxed_slice());
             }
@@ -98,7 +98,7 @@ impl CowSlice {
     pub unsafe fn into_cow_static_bytes_uncheked(self) -> Cow<'static, [u8]> {
         match self {
             Self::Own(array) => Cow::Owned(array.into()),
-            Self::Ref(slice) => Cow::Borrowed(slice.as_bytes()),
+            Self::Ref(slice) => Cow::Borrowed(unsafe {slice.as_bytes()}),
         }
     }
 }

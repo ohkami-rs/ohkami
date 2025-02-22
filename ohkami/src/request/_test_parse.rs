@@ -32,13 +32,15 @@ fn parse_path() {
 
     macro_rules! assert_parse {
         ($case:expr, $expected:expr) => {
+            let mut case = $case.as_bytes();
+
             let mut actual = Request::init(crate::util::IP_0000);
             let mut actual = unsafe {Pin::new_unchecked(&mut actual)};
             
             crate::__rt__::testing::block_on({
-                actual.as_mut().read(&mut $case.as_bytes())
-            });//.await.ok();
-
+                actual.as_mut().read(&mut case)
+            });
+            
             let expected = $expected;
 
             println!("<assert_parse>");

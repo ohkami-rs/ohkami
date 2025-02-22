@@ -46,13 +46,13 @@ const _: () = {
         }
 
         #[inline] pub(crate) unsafe fn assume_one_param<'p>(&self) -> &'p [u8] {
-            self.0.assume_init_ref().params.list.get_unchecked(0).assume_init_ref().as_bytes()
+            unsafe {self.0.assume_init_ref().params.list.get_unchecked(0).assume_init_ref().as_bytes()}
         }
         #[inline] pub(crate) unsafe fn assume_two_params<'p>(&self) -> (&'p [u8], &'p [u8]) {
-            (
+            unsafe {(
                 self.0.assume_init_ref().params.list.get_unchecked(0).assume_init_ref().as_bytes(),
                 self.0.assume_init_ref().params.list.get_unchecked(1).assume_init_ref().as_bytes()
-            )
+            )}
         }
     }
 
@@ -134,11 +134,11 @@ const _: () = {
         }
 
         #[inline] pub(crate) unsafe fn push_param(&mut self, param: Slice) {
-            self.0.assume_init_mut().params.push(param)
+            unsafe {self.0.assume_init_mut().params.push(param)}
         }
 
         #[inline] pub(crate) unsafe fn normalized_bytes<'req>(&self) -> &'req [u8] {
-            self.0.assume_init_ref().raw.as_bytes()
+            unsafe {self.0.assume_init_ref().raw.as_bytes()}
         }
     }
     
