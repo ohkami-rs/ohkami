@@ -48,7 +48,7 @@ impl Parameter {
             description:None, deprecated:false, style:None, explode:false,
         }
     }
-    pub fn maybe_in_path(schema: impl Into<SchemaRef>) -> Self {
+    pub fn in_path_optional(schema: impl Into<SchemaRef>) -> Self {
         Self {
             kind: ParameterKind::path,
             name: "".into(), // initialize with empty name (will be assigned later by `Operation::assign_path_param_name`)
@@ -67,7 +67,7 @@ impl Parameter {
             description:None, deprecated:false, style:None, explode:false,
         }
     }
-    pub fn maybe_in_query(name: &'static str, schema: impl Into<SchemaRef>) -> Self {
+    pub fn in_query_optional(name: &'static str, schema: impl Into<SchemaRef>) -> Self {
         Self {
             kind: ParameterKind::query,
             name: name.into(),
@@ -86,7 +86,7 @@ impl Parameter {
             description:None, deprecated:false, style:None, explode:false,
         }
     }
-    pub fn maybe_in_header(name: &'static str, schema: impl Into<SchemaRef>) -> Self {
+    pub fn in_header_optional(name: &'static str, schema: impl Into<SchemaRef>) -> Self {
         Self {
             kind: ParameterKind::header,
             name: name.into(),
@@ -105,7 +105,7 @@ impl Parameter {
             description:None, deprecated:false, style:None, explode:false,
         }
     }
-    pub fn maybe_in_cookie(name: &'static str, schema: impl Into<SchemaRef>) -> Self {
+    pub fn in_cookie_optional(name: &'static str, schema: impl Into<SchemaRef>) -> Self {
         Self {
             kind: ParameterKind::cookie,
             name: name.into(),

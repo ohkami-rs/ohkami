@@ -65,7 +65,7 @@ impl<'req, T: Incoming<'req>> FromRequest<'req> for Query<T> {
                 if required {
                     openapi::Parameter::in_query(name, schema)
                 } else {
-                    openapi::Parameter::maybe_in_query(name, schema)
+                    openapi::Parameter::in_query_optional(name, schema)
                 }
             ).collect()
         )
