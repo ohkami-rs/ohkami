@@ -8,21 +8,32 @@ use crate::util;
 
 use proc_macro2::{Span, TokenStream};
 use quote::quote;
-use syn::{spanned::Spanned, Error, Ident, ItemFn, ItemStruct, Fields, LitStr};
+use syn::{spanned::Spanned, Error, Ident, ItemFn, FnArg, ItemStruct, Fields, LitStr};
 
 
 pub fn worker(args: TokenStream, ohkami_fn: TokenStream) -> Result<TokenStream, syn::Error> {
     let worker_meta: meta::WorkerMeta = syn::parse2(args)?;
+
     let ohkami_fn: ItemFn = syn::parse2(ohkami_fn)?;
+    if ohkami_fn.sig.inputs.len() >= 2 {
+        return Err(syn::Error::new(
+            ohkami_fn.span(),
+            "`#[worker]` doesn't support multiple arguments of the fn, \
+            accepting 0 args or single arg which impls `FromEnv`."
+        ))
+    }
 
     let gen_ohkami = {
-        let name     = &ohkami_fn.sig.ident;
+        let name = &ohkami_fn.sig.ident;
+        let env = ohkami_fn.sig.inputs.first().map(|_| quote! {
+            <::ohkami::FromEnv>::from_env(&env)?
+        });
         let awaiting = ohkami_fn.sig.asyncness.is_some().then_some(quote! {
             .await
         });
 
         quote! {
-            #name()#awaiting
+            #name(#env)#awaiting
         }
     };
 
@@ -51,6 +62,16 @@ pub fn worker(args: TokenStream, ohkami_fn: TokenStream) -> Result<TokenStream, 
             def
         });
 
+        let dummy_env_def = ohkami_fn.sig.inputs.first().map(|a| {
+            let ty = match a {
+                FnArg::Receiver(r) => &r.ty,
+                FnArg::Typed(p) => &p.ty,
+            };
+            quote! {
+                let env = <#ty as ::ohkami::FromEnv>::dummy_env();
+            }
+        });
+
         quote! {
             const _: () = {
                 // `#[wasm_bindgen]` direcly references this modules in epxpaned code
@@ -59,6 +80,7 @@ pub fn worker(args: TokenStream, ohkami_fn: TokenStream) -> Result<TokenStream, 
                 #[doc(hidden)]
                 #[::worker::wasm_bindgen::prelude::wasm_bindgen(js_name = "OpenAPIDocumentBytes")]
                 pub async fn __openapi_document_bytes__() -> Vec<u8> {
+                    #dummy_env_def
                     let ohkami: ::ohkami::Ohkami = #gen_ohkami;
                     ohkami.__openapi_document_bytes__(::ohkami::openapi::OpenAPI {
                         title:   #title,
@@ -272,6 +294,32 @@ pub fn bindings(env_name: TokenStream, bindings_struct: TokenStream) -> Result<T
         }
     };
 
+    let impl_from_env = {
+        let bindings_meta = bindings.iter()
+            .filter(|(name, _)| named_fields.as_ref().is_none_or(
+                |n| n.iter().any(|(field_name, _)| *field_name == name)
+            ))
+            .map(|(name, binding)| {
+                let binding_name = LitStr::new(&name.to_string(), name.span());
+                let binding_type = LitStr::new(binding.binding_type(), Span::call_site());
+                quote! {
+                    (#binding_name, #binding_type)
+                }
+            });
+
+        quote! {
+            impl ::ohkami::FromEnv for #name {
+                fn from_env(env: &worker::Env) -> Result<Self, worker::Error> {
+                    Self::new(env)
+                }
+
+                fn bindings_meta() -> &'static [(&'static str, &'static str)] {
+                    &[#(#bindings_meta),*]
+                }
+            }
+        }
+    };
+
     let impl_send_sync = if
         bindings.is_empty() || named_fields.is_some_and(|n| n.is_empty())
     {
@@ -288,6 +336,7 @@ pub fn bindings(env_name: TokenStream, bindings_struct: TokenStream) -> Result<T
         #const_vars
         #impl_new
         #impl_from_request
+        #impl_from_env
         #impl_send_sync
     })
 }

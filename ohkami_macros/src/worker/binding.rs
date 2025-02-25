@@ -14,6 +14,19 @@ pub enum Binding {
 }
 
 impl Binding {
+    pub fn binding_type(&self) -> &'static str {
+        match self {
+            Self::Variable(_) => "String",
+            Self::AI => "Ai",
+            Self::D1 => "D1Database",
+            Self::KV => "$KV",
+            Self::R2 => "R2Bucket",
+            Self::Service => "Fetcher",
+            Self::Queue => "WorkerQueue",
+            Self::DurableObject => "DurableObjectNamespace",
+        }
+    }
+
     pub fn tokens_ty(&self) -> TokenStream {
         match self {
             Self::Variable(_)   => quote!(&'static str),
