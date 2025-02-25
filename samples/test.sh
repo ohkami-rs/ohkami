@@ -57,7 +57,9 @@ cd $SAMPLES/streaming && \
 test $? -ne 0 && exit 156 || :
 
 cd $SAMPLES/worker-bindings && \
-    cargo check
+    cargo check && \
+    wasm-pack build --target nodejs --dev --no-opt --no-pack --no-typescript && \
+    node dummy_env_test.js
 test $? -ne 0 && exit 157 || :
 
 cd $SAMPLES/worker-durable-websocket && \
