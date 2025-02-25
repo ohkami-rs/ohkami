@@ -42,10 +42,10 @@ impl APIKey {
         Self { apikey_in:"header", name }
     }
     pub fn query(name: &'static str) -> Self {
-        Self { apikey_in:"header", name }
+        Self { apikey_in:"query", name }
     }
     pub fn cookie(name: &'static str) -> Self {
-        Self { apikey_in:"header", name }
+        Self { apikey_in:"cookie", name }
     }
 }
 
