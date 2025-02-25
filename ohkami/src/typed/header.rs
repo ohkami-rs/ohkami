@@ -206,7 +206,7 @@ impl<'req, Fields: crate::format::bound::Incoming<'req>> FromRequest<'req> for C
                 if required {
                     crate::openapi::Parameter::in_cookie(name, schema)
                 } else {
-                    crate::openapi::Parameter::maybe_in_cookie(name, schema)
+                    crate::openapi::Parameter::in_cookie_optional(name, schema)
                 }
             ).collect()
         )
