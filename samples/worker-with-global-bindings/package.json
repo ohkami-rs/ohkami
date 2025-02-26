@@ -1,0 +1,13 @@
+{
+	"name": "ohkami-with-global-bindings",
+	"version": "0.1.0",
+	"private": true,
+	"scripts": {
+		"deploy": "export OHKAMI_WORKER_DEV='' && wrangler deploy",
+		"dev": "export OHKAMI_WORKER_DEV=1 && wrangler dev",
+		"openapi": "node ../../scripts/workers_openapi.js"
+	},
+	"devDependencies": {
+		"wrangler": "^3.50"
+	}
+}

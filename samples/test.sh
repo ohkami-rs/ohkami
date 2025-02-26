@@ -57,12 +57,18 @@ cd $SAMPLES/streaming && \
 test $? -ne 0 && exit 156 || :
 
 cd $SAMPLES/worker-bindings && \
-    cargo check
+    cargo check && \
+    wasm-pack build --target nodejs --dev --no-opt --no-pack --no-typescript && \
+    node dummy_env_test.js
 test $? -ne 0 && exit 157 || :
 
 cd $SAMPLES/worker-durable-websocket && \
     cargo check
 test $? -ne 0 && exit 158 || :
+
+cd $SAMPLES/worker-with-global-bindings && \
+    npm run openapi
+test $? -ne 0 && exit 159 || :
 
 cd $SAMPLES/worker-with-openapi && \
     cp wrangler.toml.sample wrangler.toml && \
@@ -78,4 +84,4 @@ cd $SAMPLES/worker-with-openapi && \
         diff openapi.json tmp.json \
         ; (test -f tmp.json && rm tmp.json) \
     || :)
-test $? -ne 0 && exit 159 || :
+test $? -ne 0 && exit 160 || :

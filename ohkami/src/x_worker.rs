@@ -2,6 +2,36 @@
 
 pub use ::ohkami_macros::{worker, bindings, DurableObject};
 
+pub trait FromEnv: Sized {
+    fn from_env(env: &worker::Env) -> Result<Self, worker::Error>;
+
+    #[doc(hidden)]
+    fn bindings_meta() -> &'static [(&'static str, &'static str)] {
+        &[]
+    }
+    #[doc(hidden)]
+    fn dummy_env() -> worker::Env {
+        use worker::wasm_bindgen::{JsCast, closure::Closure};
+        use worker::js_sys::{Object, Reflect, Function};
+
+        let env = Object::new();
+        for (binding_name, binding_type) in Self::bindings_meta() {
+            let binding = Object::new();
+            if !binding_type.starts_with('$') {
+                let constructor = Function::unchecked_from_js(Closure::<dyn Fn()>::new(|| {}).into_js_value());
+                {
+                    let attributes = Object::new();
+                    Reflect::set(&attributes, &"value".into(), &(*binding_type).into()).unwrap();
+                    Reflect::define_property(&constructor, &"name".into(), &attributes).unwrap();
+                }
+                Reflect::set(&binding, &"constructor".into(), &constructor).unwrap();
+            }
+            Reflect::set(&env, &(*binding_name).into(), &binding).unwrap();
+        }
+        worker::Env::unchecked_from_js(env.unchecked_into())
+    }
+}
+
 pub mod bindings {
     /// `Var` binding can also be accessed via associated const
     /// of the same name.
