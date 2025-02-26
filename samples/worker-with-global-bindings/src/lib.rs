@@ -9,7 +9,7 @@ struct Bindings {
 
 #[ohkami::worker]
 async fn ohkami(Bindings { DB, MY_KV }: Bindings) -> Ohkami {
-    // just check to be able to retrieve
+    // just check to be able to retrieve even in openapi generation
     let _ = MY_KV;
 
     Ohkami::new((
@@ -131,7 +131,7 @@ mod routes {
 
     #[derive(Serialize)]
     #[cfg_attr(feature="openapi", derive(ohkami::openapi::Schema))]
-    struct User {
+    pub struct User {
         id: u32,
         name: String,
         age: Option<u8>,
@@ -139,7 +139,7 @@ mod routes {
 
     #[derive(Deserialize)]
     #[cfg_attr(feature="openapi", derive(ohkami::openapi::Schema))]
-    struct CreateUserRequest<'req> {
+    pub struct CreateUserRequest<'req> {
         name: &'req str,
         age: Option<u8>,
     }

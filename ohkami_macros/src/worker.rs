@@ -26,7 +26,7 @@ pub fn worker(args: TokenStream, ohkami_fn: TokenStream) -> Result<TokenStream, 
     let gen_ohkami = {
         let name = &ohkami_fn.sig.ident;
         let env = ohkami_fn.sig.inputs.first().map(|_| quote! {
-            <::ohkami::FromEnv>::from_env(&env)?
+            ::ohkami::FromEnv::from_env(&env).expect("`#[worker]` bindings arg has wrong `FromEnv` impl")
         });
         let awaiting = ohkami_fn.sig.asyncness.is_some().then_some(quote! {
             .await

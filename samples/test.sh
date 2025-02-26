@@ -66,6 +66,10 @@ cd $SAMPLES/worker-durable-websocket && \
     cargo check
 test $? -ne 0 && exit 158 || :
 
+cd $SAMPLES/worker-with-global-bindings && \
+    npm run openapi
+test $? -ne 0 && exit 159 || :
+
 cd $SAMPLES/worker-with-openapi && \
     cp wrangler.toml.sample wrangler.toml && \
     (test -f openapi.json || echo '{}' >> openapi.json) && \
@@ -80,4 +84,4 @@ cd $SAMPLES/worker-with-openapi && \
         diff openapi.json tmp.json \
         ; (test -f tmp.json && rm tmp.json) \
     || :)
-test $? -ne 0 && exit 159 || :
+test $? -ne 0 && exit 160 || :
