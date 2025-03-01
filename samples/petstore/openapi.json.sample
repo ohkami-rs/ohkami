@@ -73,6 +73,9 @@
               }
             }
           },
+          "500": {
+            "description": "an internal error"
+          },
           "default": {
             "description": "Unexpected error",
             "content": {
