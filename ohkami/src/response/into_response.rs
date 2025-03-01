@@ -42,7 +42,9 @@ pub trait IntoResponse {
     fn into_response(self) -> Response;
 
     #[cfg(feature="openapi")]
-    fn openapi_responses() -> openapi::Responses;
+    fn openapi_responses() -> openapi::Responses {
+        openapi::Responses::new([])
+    }
 }
 
 pub trait IntoBody {
