@@ -87,7 +87,11 @@ struct ListPetsMeta {
     limit: Option<usize>,
 }
 
-#[openapi::operation(createPet)]
+#[openapi::operation(createPet {
+    // 500 is not defined in `Error::openapi_responses`,
+    // but this *overrides* it to this description
+    500: "an internal error",
+})]
 async fn create_pet(
     JSON(req): JSON<CreatePetRequest<'_>>,
     Context(db): Context<'_, Arc<mock::DB>>,
