@@ -219,3 +219,59 @@ macro_rules! generate_redirects {
     TemporaryRedirect / to : "307 Temporary Redirect",
     PermanentRedirect / to : "308 Permanent Redirect",
 }
+
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn typed_success_status() {
+        assert_eq!(
+            Created("Hello, world!")
+                .into_response(),
+            Response::Created()
+                .with_text("Hello, world!")
+        );
+
+        assert_eq!(
+            Created("Hello, world!")
+                .with_headers(|h| h
+                    .Server("ohkami")
+                    .Vary("origin")
+                )
+                .into_response(),
+            Response::Created()
+                .with_text("Hello, world!")
+                .with_headers(|h| h
+                    .Server("ohkami")
+                    .Vary("origin")
+                )
+        );
+    }
+
+    #[test]
+    fn typed_redirect() {
+        assert_eq!(
+            Found::at("https://example.com")
+                .into_response(),
+            Response::Found()
+                .with_headers(|h| h
+                    .Location("https://example.com")
+                )
+        );
+
+        assert_eq!(
+            Found::at("https://example.com")
+                .with_headers(|h| h
+                    .Server("ohkami")
+                )
+                .into_response(),
+            Response::Found()
+                .with_headers(|h| h
+                    .Location("https://example.com")
+                    .Server("ohkami")
+                )
+        );
+    }
+}
