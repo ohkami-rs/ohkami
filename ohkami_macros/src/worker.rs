@@ -1,5 +1,6 @@
 #![cfg(feature="worker")]
 
+mod wrangler;
 mod meta;
 mod durable;
 mod binding;
@@ -112,39 +113,12 @@ pub fn worker(args: TokenStream, ohkami_fn: TokenStream) -> Result<TokenStream, 
 pub fn bindings(env_name: TokenStream, bindings_struct: TokenStream) -> Result<TokenStream, syn::Error> {
     use self::binding::Binding;
 
-    fn callsite(msg: impl std::fmt::Display) -> Error {
-        Error::new(Span::call_site(), msg)
-    }
-    fn invalid_wrangler_toml() -> Error {
-        Error::new(Span::call_site(), "Invalid wrangler.toml")
-    }
-
-    //////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    let wrangler_toml: toml::Value = {use std::io::Read;
-        let mut file = util::find_a_file_in_maybe_workspace("wrangler.toml")
-            .map_err(|e| callsite(e.to_string()))?;
-        let mut buf = String::new();
-        file.read_to_string(&mut buf)
-            .map_err(|_| callsite("wrangler.toml found but it's not readable"))?;
-        toml::from_str(&buf)
-            .map_err(|_| callsite("Failed to read wrangler.toml"))?
+    let bindings: Vec<(Ident, Binding)> = {
+        let env_name: Option<Ident> = (!env_name.is_empty())
+            .then(|| syn::parse2(env_name))
+            .transpose()?;
+        Binding::collect_from_env(env_name)?
     };
-
-    let env: &toml::Table = {
-        let top_level = wrangler_toml.as_table().ok_or_else(invalid_wrangler_toml)?;
-        let env_name: Option<Ident> = (!env_name.is_empty()).then(|| syn::parse2(env_name)).transpose()?;
-        match env_name {
-            None      => top_level,
-            Some(env) => top_level.get("env")
-                .and_then(|e| e.as_table())
-                .and_then(|t| t.get(&env.to_string()))
-                .and_then(|e| e.as_table())
-                .ok_or_else(|| callsite(format!("env `{env}` is not found in wrangler.toml")))?
-        }
-    };
-
-    let bindings: Vec<(Ident, Binding)> = Binding::collect_from_env(&env)?;
 
     let bindings_struct: ItemStruct = syn::parse2(bindings_struct)?; {
         if !bindings_struct.generics.params.is_empty() {
