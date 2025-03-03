@@ -23,10 +23,7 @@ macro_rules! eprintln {
 macro_rules! WARNING {
     ( $( $t:tt )* ) => {{
         $crate::eprintln!(
-            "[ohkami][WARNING][{}:{}:{}] {}",
-            file!(),
-            line!(),
-            column!(),
+            "[ohkami:WARNS] {}",
             format_args!($($t)*)
         );
     }};
@@ -37,10 +34,7 @@ macro_rules! WARNING {
 macro_rules! ERROR {
     ( $($t:tt)* ) => {
         $crate::eprintln!(
-            "[ohkami][ERROR][{}:{}:{}] {}",
-            file!(),
-            line!(),
-            column!(),
+            "[ohkami:ERROR] {}",
             format_args!($($t)*)
         );
     };
@@ -52,10 +46,7 @@ macro_rules! DEBUG {
     ( $( $t:tt )* ) => {{
         #[cfg(feature="DEBUG")] {
             $crate::eprintln!(
-                "[ohkami][DEBUG][{}:{}:{}] {}",
-                file!(),
-                line!(),
-                column!(),
+                "[ohkami:DEBUG] {}",
                 format_args!($($t)*)
             );
         }
