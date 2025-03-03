@@ -43,16 +43,16 @@ impl QueryParams {
                     None => {
                         #[cfg(debug_assertions)] {
                             if kv.is_empty() {
-                                crate::warning!("skipping an invalid query param: trailing `&`");
+                                crate::WARNING!("skipping an invalid query param: trailing `&`");
                             } else {
-                                crate::warning!("skipping an invalid query param: missing `=`");
+                                crate::WARNING!("skipping an invalid query param: missing `=`");
                             }
                         }
                         None
                     }
                     Some(0) => {
                         #[cfg(debug_assertions)] {
-                            crate::warning!("skipping an invalid query param: empty key");
+                            crate::WARNING!("skipping an invalid query param: empty key");
                         }
                         None
                     }

@@ -60,7 +60,7 @@ impl<'req, T: SendSyncOnNative + 'static> FromRequest<'req> for Context<'req, T>
             Some(d) => Some(Ok(Self(d))),
             None => {
                 #[cfg(debug_assertions)] {
-                    crate::warning!(
+                    crate::WARNING!(
                         "Context of `{}` doesn't exist",
                         std::any::type_name::<T>()
                     )

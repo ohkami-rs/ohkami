@@ -7,21 +7,60 @@ use crate::openapi;
 macro_rules! generate_statuses_as_types_containing_value {
     ($( $status:ident : $message:literal, )*) => {
         $(
+            /// Generate type-safe `
+            #[doc = $message]
+            /// ` response with the `body: B`.
+            /// 
+            /// Use `()` to represent an empty content.
+            /// 
+            /// This is an alias of `{TheStatus}::new(body)`.
+            #[allow(non_snake_case)]
+            pub fn $status<B: IntoBody>(body: B) -> $status<B> {
+                $status::<B>::new(body)
+            }
+
             #[doc = "Type-safe `"]
             #[doc = $message]
             #[doc = "` response.<br>"]
-            #[doc = "Use `()` (default) to represent an empty content."]
-
-            #[allow(non_camel_case_types)]
+            #[doc = "Use `()` ( default of `B` ) to represent an empty content."]
             #[allow(private_bounds)]
-            pub struct $status<B: IntoBody = ()>(pub B);
+            pub struct $status<B: IntoBody = ()> {
+                body: B,
+                headers: ResponseHeaders,
+            }
+
+            impl<B: IntoBody> $status<B> {
+                pub fn new(body: B) -> Self {
+                    Self { body, headers: ResponseHeaders::new() }
+                }
+
+                pub fn with_headers(mut self, set: impl FnOnce(SetHeaders)->SetHeaders) -> Self {
+                    set(self.headers.set());
+                    self
+                }
+            }
 
             impl<B: IntoBody> IntoResponse for $status<B> {
                 #[inline]
                 fn into_response(self) -> Response {
-                    let mut res = self.0.into_response();
-                    res.status = Status::$status;
-                    res
+                    let body = match self.body.into_body() {
+                        Ok(body) => body,
+                        Err(e) => {
+                            crate::ERROR!("<{} as IntoBody>::into_body() failed: {e}", std::any::type_name::<B>());
+                            return Response::InternalServerError();
+                        }
+                    };
+
+                    let mut headers = self.headers;
+                    headers.set()
+                        .ContentType(B::CONTENT_TYPE)
+                        .ContentLength(ohkami_lib::num::itoa(body.len()));
+                    
+                    Response {
+                        status: Status::$status,
+                        headers,
+                        content: Content::Payload(body.into())
+                    }
                 }
 
                 #[cfg(feature="openapi")]
@@ -66,7 +105,7 @@ macro_rules! generate_statuses_as_types_containing_value {
     UnsupportedMediaType          : "415 Unsupported Media Type",
     RangeNotSatisfiable           : "416 Range Not Satisfiable",
     ExceptionFailed               : "417 Exception Failed",
-    Im_a_teapot                   : "418 I'm a teapot",
+    ImATeapot                     : "418 I'm a teapot",
     MisdirectedRequest            : "421 Misdirected Request",
     UnprocessableEntity           : "422 Unprocessable Entity",
     Locked                        : "423 Locked",

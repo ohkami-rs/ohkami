@@ -231,7 +231,7 @@ impl Request {
             Err(e) => return match e.kind() {
                 std::io::ErrorKind::ConnectionReset => Ok(None),
                 _ => Err((|err| {
-                    crate::warning!("Failed to read stream: {err}");
+                    crate::WARNING!("Failed to read stream: {err}");
                     Response::InternalServerError()
                 })(e))
             },

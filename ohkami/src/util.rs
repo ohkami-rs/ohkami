@@ -1,11 +1,64 @@
 #[doc(hidden)]
-#[macro_export]
-macro_rules! warning {
-    ( $( $t:tt )* ) => {{
-        eprintln!( $( $t )* );
+#[cold] #[inline(never)]
+pub fn eprintln(error: impl std::fmt::Display) {
+    #[cfg(not(feature = "rt_worker"))]
+    std::eprintln!("{error}");
 
-        #[cfg(feature="rt_worker")]
-        worker::console_log!( $( $t )* );
+    #[cfg(feature="rt_worker")]
+    worker::console_error!("{error}");
+}
+
+/// just `eprintln`, but working both on native / Workers.
+#[macro_export]
+macro_rules! eprintln {
+    ( $( $t:tt )* ) => {
+        $crate::util::eprintln(
+            format_args!($($t)*)
+        );
+    };
+}
+
+#[doc(hidden)]
+#[macro_export]
+macro_rules! WARNING {
+    ( $( $t:tt )* ) => {{
+        $crate::eprintln!(
+            "[ohkami][WARNING][{}:{}:{}] {}",
+            file!(),
+            line!(),
+            column!(),
+            format_args!($($t)*)
+        );
+    }};
+}
+
+#[doc(hidden)]
+#[macro_export]
+macro_rules! ERROR {
+    ( $($t:tt)* ) => {
+        $crate::eprintln!(
+            "[ohkami][ERROR][{}:{}:{}] {}",
+            file!(),
+            line!(),
+            column!(),
+            format_args!($($t)*)
+        );
+    };
+}
+
+#[doc(hidden)]
+#[macro_export]
+macro_rules! DEBUG {
+    ( $( $t:tt )* ) => {{
+        #[cfg(feature="DEBUG")] {
+            $crate::eprintln!(
+                "[ohkami][DEBUG][{}:{}:{}] {}",
+                file!(),
+                line!(),
+                column!(),
+                format_args!($($t)*)
+            );
+        }
     }};
 }
 
@@ -23,19 +76,6 @@ macro_rules! push_unchecked {
             $buf.set_len(buf_len + bytes_len);
         }
     };
-}
-
-#[doc(hidden)]
-#[macro_export]
-macro_rules! DEBUG {
-    ( $( $t:tt )* ) => {{
-        #[cfg(feature="DEBUG")] {
-            eprintln!( $( $t )* );
-
-            #[cfg(feature="rt_worker")]
-            worker::console_debug!( $( $t )* );
-        }
-    }};
 }
 
 pub use crate::fang::FangAction;

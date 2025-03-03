@@ -111,7 +111,7 @@ pub trait FromParam<'p>: Sized {
         Self::from_param(
             ohkami_lib::percent_decode_utf8(raw_param)
                 .map_err(|_e| {
-                    #[cfg(debug_assertions)] crate::warning!(
+                    #[cfg(debug_assertions)] crate::WARNING!(
                         "Failed to decode percent encoded param `{}`: {_e}",
                         raw_param.escape_ascii()
                     );
@@ -155,7 +155,7 @@ const _: () = {
                 Cow::Owned(_) => Err({
                     #[cold] #[inline(never)]
                     fn unexpected(param: &str) -> ErrorMessage {                        
-                        crate::warning!("\
+                        crate::WARNING!("\
                             `&str` can't handle percent encoded parameters. \
                             Use `Cow<'_, str>` or `String` to handle them. \
                         ");
