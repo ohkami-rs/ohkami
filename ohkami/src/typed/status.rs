@@ -43,15 +43,16 @@ macro_rules! generate_statuses_as_types_containing_value {
             impl<B: IntoBody> IntoResponse for $status<B> {
                 #[inline]
                 fn into_response(self) -> Response {
-                    let body = match (const {B::CONTENT_TYPE}, self.body.into_body()) {
-                        ("", _) => {// will be removed by optimization if it's not
-                            return Response::OK();
-                        }
-                        (_, Err(e)) => {
+                    if const {B::CONTENT_TYPE.is_empty()} {// will be removed by optimization if it's not
+                        return Response::OK();
+                    }
+                    
+                    let body = match self.body.into_body() {
+                        Ok(body) => body,
+                        Err(e) => {
                             crate::ERROR!("<{} as IntoBody>::into_body() failed: {e}", std::any::type_name::<B>());
                             return Response::InternalServerError();
                         }
-                        (_, Ok(body)) => body,
                     };
 
                     let mut headers = self.headers;
