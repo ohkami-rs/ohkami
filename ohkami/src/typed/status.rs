@@ -9,7 +9,7 @@ macro_rules! generate_statuses_as_types_containing_value {
         $(
             /// Generate type-safe `
             #[doc = $message]
-            /// ` response with the `body: B`.
+            /// ` response type with the `body: B`.
             /// 
             /// Use `()` to represent an empty content.
             /// 
@@ -21,7 +21,7 @@ macro_rules! generate_statuses_as_types_containing_value {
 
             #[doc = "Type-safe `"]
             #[doc = $message]
-            #[doc = "` response.<br>"]
+            #[doc = "` response type.<br>"]
             #[doc = "Use `()` ( default of `B` ) to represent an empty content."]
             #[allow(private_bounds)]
             pub struct $status<B: IntoBody = ()> {
@@ -134,7 +134,7 @@ macro_rules! generate_statuses_as_types_with_no_value {
         $(
             #[doc = "Type-safe `"]
             #[doc = $message]
-            #[doc = "` response"]
+            #[doc = "` response type"]
             pub struct $status;
 
             impl IntoResponse for $status {
@@ -174,7 +174,7 @@ macro_rules! generate_redirects {
         $(
             #[doc = "Type-safe `"]
             #[doc = $message]
-            #[doc = "` response using the `location` as `Location` header value"]
+            #[doc = "` response type using the `location` as `Location` header value"]
             pub struct $status {
                 headers: ResponseHeaders,
             }
