@@ -7,21 +7,21 @@ use crate::openapi;
 macro_rules! generate_statuses_as_types_containing_value {
     ($( $status:ident : $message:literal, )*) => {
         $(
-            /// Generate type-safe `
+            /// Generate`
             #[doc = $message]
             /// ` response type with the `body: B`.
             /// 
             /// Use `()` to represent an empty content.
             /// 
-            /// This is an alias of `{TheStatus}::new(body)`.
+            /// This is an alias of `typed::{TheStatus}::new(body)`.
             #[allow(non_snake_case)]
             pub fn $status<B: IntoBody>(body: B) -> $status<B> {
                 $status::<B>::new(body)
             }
 
-            #[doc = "Type-safe `"]
+            #[doc = "Typed `"]
             #[doc = $message]
-            #[doc = "` response type.<br>"]
+            #[doc = "` response.<br>"]
             #[doc = "Use `()` ( default of `B` ) to represent an empty content."]
             #[allow(private_bounds)]
             pub struct $status<B: IntoBody = ()> {
@@ -132,9 +132,9 @@ macro_rules! generate_statuses_as_types_containing_value {
 macro_rules! generate_statuses_as_types_with_no_value {
     ($( $status:ident : $message:literal, )*) => {
         $(
-            #[doc = "Type-safe `"]
+            #[doc = "Typed `"]
             #[doc = $message]
-            #[doc = "` response type"]
+            #[doc = "` response"]
             pub struct $status;
 
             impl IntoResponse for $status {
@@ -172,9 +172,9 @@ macro_rules! generate_statuses_as_types_with_no_value {
 macro_rules! generate_redirects {
     ($( $status:ident / $contructor:ident : $message:literal, )*) => {
         $(
-            #[doc = "Type-safe `"]
+            #[doc = "Typed `"]
             #[doc = $message]
-            #[doc = "` response type using the `location` as `Location` header value"]
+            #[doc = "` response using the `location` as `Location` header value"]
             pub struct $status {
                 headers: ResponseHeaders,
             }
