@@ -31,11 +31,11 @@ impl Session {
         #[cold] #[inline(never)]
         fn panicking(panic: Box<dyn Any + Send>) -> Response {
             if let Some(msg) = panic.downcast_ref::<String>() {
-                crate::warning!("[Panicked]: {msg}");
+                crate::WARNING!("panic: {msg}");
             } else if let Some(msg) = panic.downcast_ref::<&str>() {
-                crate::warning!("[Panicked]: {msg}");
+                crate::WARNING!("panic: {msg}");
             } else {
-                crate::warning!("[Panicked]");
+                crate::WARNING!("panic");
             }
             crate::Response::InternalServerError()
         }
@@ -66,7 +66,7 @@ impl Session {
                 }
             }
         }).await {
-            None => crate::warning!("[WARNING] \
+            None => crate::WARNING!("\
                 Session timeouted. In Ohkami, Keep-Alive timeout \
                 is set to 42 seconds by default and is configurable \
                 by `OHKAMI_KEEPALIVE_TIMEOUT` environment variable.\
@@ -83,7 +83,7 @@ impl Session {
                     self.connection
                 ).await;
                 if aborted {
-                    crate::warning!("[WARNING] \
+                    crate::WARNING!("\
                         WebSocket session aborted by timeout. In Ohkami, \
                         WebSocket timeout is set to 3600 seconds (1 hour) \
                         by default and is configurable by `OHKAMI_WEBSOCKET_TIMEOUT` \

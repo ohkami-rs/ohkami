@@ -246,7 +246,7 @@ const _: () = {
                 setcookies.iter().filter_map(|raw| match SetCookie::from_raw(raw) {
                     Ok(valid) => Some(valid),
                     Err(_err) => {
-                        #[cfg(debug_assertions)] crate::warning!(
+                        #[cfg(debug_assertions)] crate::WARNING!(
                             "Invalid `Set-Cookie`: {_err}"
                         );
                         None

@@ -115,7 +115,7 @@ impl Dir {
                         .collect::<std::io::Result<Vec<_>>>()?;
 
                     if path_Segments.last().unwrap().starts_with('.') {
-                        crate::warning!("\
+                        crate::WARNING!("\
                             =========\n\
                             [WARNING] `Route::Dir`: found `{}` in directory `{}`, \
                             are you sure to serve this file？\n\

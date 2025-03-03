@@ -87,7 +87,7 @@ impl CORS {
 
     pub fn AllowCredentials(mut self) -> Self {
         if self.AllowOrigin.is_any() {
-            #[cfg(debug_assertions)] crate::warning!("\
+            #[cfg(debug_assertions)] crate::WARNING!("\
                 [WRANING] \
                 'Access-Control-Allow-Origin' header \
                 must not have wildcard '*' when the request's credentials mode is 'include' \
