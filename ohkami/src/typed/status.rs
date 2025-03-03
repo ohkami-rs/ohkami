@@ -46,7 +46,7 @@ macro_rules! generate_statuses_as_types_containing_value {
                     if const {B::CONTENT_TYPE.is_empty()} {// will be removed by optimization if it's not
                         return Response::OK();
                     }
-                    
+
                     let body = match self.body.into_body() {
                         Ok(body) => body,
                         Err(e) => {
@@ -224,7 +224,7 @@ macro_rules! generate_redirects {
     PermanentRedirect / to : "308 Permanent Redirect",
 }
 
-
+#[cfg(not(feature = "rt_worker"/* panics due to `cannot call wasm-bindgen imported functions on non-wasm targets` */))]
 #[cfg(test)]
 mod test {
     use super::*;
