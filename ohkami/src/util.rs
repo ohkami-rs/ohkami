@@ -46,7 +46,10 @@ macro_rules! DEBUG {
     ( $( $t:tt )* ) => {{
         #[cfg(feature="DEBUG")] {
             $crate::eprintln!(
-                "[ohkami:DEBUG] {}",
+                "[ohkami:DEBUG] {}:{}:{} {}",
+                file!(),
+                line!(),
+                column!(),
                 format_args!($($t)*)
             );
         }
