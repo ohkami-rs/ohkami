@@ -79,6 +79,14 @@ Hello, your_name!
 
 Works with [worker](https://crates.io/crates/worker) crate.
 
+Ohkami has first-class support for Cloudflare Workers. For example,
+
+- provides `#[bindings]`, `ws::SessionMap` helper
+- provides better `DurableObject`
+- not require `Send` `Sync` bound for handlers or fangs
+
+And also maintains useful project template. Run :
+
 ```sh
 npm create cloudflare ＜project dir＞ -- --template https://github.com/ohkami-rs/ohkami-templates/worker
 ```
