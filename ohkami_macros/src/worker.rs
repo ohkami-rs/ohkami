@@ -275,7 +275,15 @@ pub fn bindings(env_name: TokenStream, bindings_struct: TokenStream) -> Result<T
             ))
             .map(|(name, binding)| {
                 let binding_name = LitStr::new(&name.to_string(), name.span());
-                let binding_type = LitStr::new(binding.binding_type(), Span::call_site());
+                let binding_type = match binding.binding_type() {
+                    Some(t) => {
+                        let t = LitStr::new(t, Span::call_site());
+                        quote! { Some(#t) }
+                    }
+                    None => {
+                        quote! { None }
+                    }
+                };
                 quote! {
                     (#binding_name, #binding_type)
                 }
@@ -287,7 +295,7 @@ pub fn bindings(env_name: TokenStream, bindings_struct: TokenStream) -> Result<T
                     Self::new(env)
                 }
 
-                fn bindings_meta() -> &'static [(&'static str, &'static str)] {
+                fn bindings_meta() -> &'static [(&'static str, Option<&'static str>)] {
                     &[#(#bindings_meta),*]
                 }
             }
