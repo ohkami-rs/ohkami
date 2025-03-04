@@ -91,7 +91,7 @@ And also maintains useful project template. Run :
 npm create cloudflare ＜project dir＞ -- --template https://github.com/ohkami-rs/ohkami-templates/worker
 ```
 
-then `＜project dir＞` will have `wrangler.toml`, `package.json` and a Rust library crate.
+then `＜project dir＞` will have `wrangler.jsonc`, `package.json` and a Rust library crate.
 
 A `#[ohkami::worker]` (async/sync) fn returning `Ohkami` is the Worker definition.
 
