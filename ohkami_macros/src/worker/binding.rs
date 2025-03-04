@@ -1,6 +1,6 @@
 use proc_macro2::{TokenStream, Span};
-use quote::quote;
 use syn::{Ident, LitStr};
+use quote::quote;
 
 pub enum Binding {
     Variable(String),
@@ -58,100 +58,120 @@ impl Binding {
             Self::DurableObject   => from_env(quote! { durable_object(#name_str) }),
         }
     }
+}
 
-    pub fn collect_from_env(env: &toml::Table) -> Result<Vec<(Ident, Self)>, syn::Error> {
-        fn invalid_wrangler_toml() -> syn::Error {
-            syn::Error::new(
-                Span::call_site(),
-                "Invalid wrangler.toml: a binding doesn't have `binding = \"...\"`, or some unexpected structure"
-            )
-        }
+#[derive(serde::Deserialize, Default)]
+struct EnvBindingCollection {
+    vars:            Option<std::collections::BTreeMap<String, String>>,
+    ai:              Option<BindingDeclare>,
+    d1_databases:    Option<Vec<BindingDeclare>>,
+    kv_namespaces:   Option<Vec<BindingDeclare>>,
+    r2_buckets:      Option<Vec<BindingDeclare>>,
+    services:        Option<Vec<BindingDeclare>>,
+    queues:          Option<QueueProducers>,
+    durable_objects: Option<BindingsArray>,
+    // #[serde(flatten)]
+    // root: BindingCollection,
+    #[serde(default)]
+    env: std::collections::BTreeMap<String, EnvBindingCollection>,
+}
 
-        fn invalid_name(name: &str) -> syn::Error {
-            syn::Error::new(
-                Span::call_site(),
-                format!("Can't bind binding `{name}` into Rust struct field")
-            )
-        }
+// #[derive(serde::Deserialize, Default)]
+// struct BindingCollection {
+//     vars:            Option<std::collections::BTreeMap<String, String>>,
+//     ai:              Option<BindingDeclare>,
+//     d1_databases:    Option<Vec<BindingDeclare>>,
+//     kv_namespaces:   Option<Vec<BindingDeclare>>,
+//     r2_buckets:      Option<Vec<BindingDeclare>>,
+//     services:        Option<Vec<BindingDeclare>>,
+//     queues:          Option<QueueProducers>,
+//     durable_objects: Option<BindingsArray>,
+// }
 
-        ///////////////////////////////////////////////////////////////////////////////////////////
+#[derive(serde::Deserialize)]
+struct BindingDeclare {
+    binding: String,
+}
 
-        fn get_field_as_ident(t: &toml::Table, field: &str) -> Result<Ident, syn::Error> {
-            t.get(field)
-                .and_then(|b| b.as_str())
-                .ok_or_else(invalid_wrangler_toml)
-                .and_then(|name| syn::parse_str::<Ident>(name)
-                    .map_err(|_| invalid_name(name))
-                )
-        }
+#[derive(serde::Deserialize)]
+struct QueueProducers {
+    producers: Vec<BindingDeclare>,
+}
 
-        fn binding_of(t: &toml::Table) -> Result<Ident, syn::Error> {
-            get_field_as_ident(t, "binding")
-        }
-        fn name_of(t: &toml::Table) -> Result<Ident, syn::Error> {
-            get_field_as_ident(t, "name")
-        }
+#[derive(serde::Deserialize)]
+struct BindingsArray {
+    bindings: Vec<BindingName>,
+}
 
-        fn table_array(a: &toml::value::Array) -> Result<impl IntoIterator<Item = &toml::Table>, syn::Error> {
-            a.iter()
-                .map(|v| v.as_table().ok_or_else(invalid_wrangler_toml))
-                .collect::<Result<Vec<_>, _>>()
-        }
+#[derive(serde::Deserialize)]
+struct BindingName {
+    name: String,
+}
 
-        ///////////////////////////////////////////////////////////////////////////////////////////
-
-        let mut bindings = Vec::new();
-
-        if let Some(toml::Value::Table(vars)) = env.get("vars") {
-            for (name, value) in vars {
-                let name = syn::parse_str(name).map_err(|_| invalid_name(name))?;
-                let value = value.as_str()
-                    .ok_or_else(|| syn::Error::new(
-                        Span::call_site(),
-                        "`#[bindings]` doesn't support JSON values in `vars` binding"
-                    ))?
-                    .to_owned();
-                bindings.push((name, Self::Variable(value)))
+impl Binding {
+    pub fn collect_from_env(env_name: Option<Ident>) -> Result<Vec<(Ident, Self)>, syn::Error> {
+        let mut config = super::wrangler::parse_wrangler::<EnvBindingCollection>()
+            .map_err(|e| syn::Error::new(Span::call_site(), e))?;
+        let config = match env_name.as_ref() {
+            None => config,
+            Some(name) => {
+                let config = config.env.get_mut(&name.to_string())
+                    .ok_or_else(|| syn::Error::new(name.span(), format!("env `{name}` is not found in wrangler config")))?;
+                std::mem::take(config)
             }
-        }
-        if let Some(toml::Value::Table(ai)) = env.get("ai") {
-            bindings.push((binding_of(ai)?, Self::AI))
-        }
-        if let Some(toml::Value::Array(d1_databases)) = env.get("d1_databases") {
-            for d1 in table_array(d1_databases)? {
-                bindings.push((binding_of(d1)?, Self::D1))
-            }
-        }
-        if let Some(toml::Value::Array(kv_namespaces)) = env.get("kv_namespaces") {
-            for kv in table_array(kv_namespaces)? {
-                bindings.push((binding_of(kv)?, Self::KV))
-            }
-        }
-        if let Some(toml::Value::Array(r2_buckets)) = env.get("r2_buckets") {
-            for r2 in table_array(r2_buckets)? {
-                bindings.push((binding_of(r2)?, Self::R2))
-            }
-        }
-        if let Some(toml::Value::Array(services)) = env.get("services") {
-            for service in table_array(services)? {
-                bindings.push((binding_of(service)?, Self::Service))
-            }
-        }
-        if let Some(toml::Value::Table(queues)) = env.get("queues") {
-            if let Some(toml::Value::Array(producers)) = queues.get("producers") {
-                for producer in table_array(producers)? {
-                    bindings.push((binding_of(producer)?, Self::Queue))
+        };
+
+        let mut collection = Vec::new();
+        {
+            if let Some(vars) = config.vars {
+                for (name, value) in vars {
+                    collection.push((name, Self::Variable(value)));
                 }
             }
-        }
-        if let Some(toml::Value::Table(durable_objects)) = env.get("durable_objects") {
-            if let Some(toml::Value::Array(durable_object_bindings)) = durable_objects.get("bindings") {
-                for durable_object in table_array(durable_object_bindings)? {
-                    bindings.push((name_of(durable_object)?, Self::DurableObject))
+            if let Some(BindingDeclare { binding }) = config.ai {
+                collection.push((binding, Self::AI));
+            }
+            if let Some(d1_databases) = config.d1_databases {
+                for BindingDeclare { binding } in d1_databases {
+                    collection.push((binding, Self::D1));
                 }
             }
+            if let Some(kv_namespaces) = config.kv_namespaces {
+                for BindingDeclare { binding } in kv_namespaces {
+                    collection.push((binding, Self::KV));
+                }
+            }
+            if let Some(r2_buckets) = config.r2_buckets {
+                for BindingDeclare { binding } in r2_buckets {
+                    collection.push((binding, Self::R2));
+                }
+            }
+            if let Some(services) = config.services {
+                for BindingDeclare { binding } in services {
+                    collection.push((binding, Self::Service));
+                }
+            }
+            if let Some(QueueProducers { producers }) = config.queues {
+                for BindingDeclare { binding } in producers {
+                    collection.push((binding, Self::Queue));
+                }
+            }
+            if let Some(BindingsArray { bindings }) = config.durable_objects {
+                for BindingName { name } in bindings {
+                    collection.push((name, Self::DurableObject));
+                }
+            }   
         }
 
-        Ok(bindings)
+        collection
+            .into_iter()
+            .map(|(name, binding)| {
+                let name = syn::parse_str(&name).map_err(|_| syn::Error::new(
+                    Span::call_site(),
+                    format!("can't handle binding name `{name}` as a Rust identifier")
+                ))?;
+                Ok((name, binding))
+            })
+            .collect()
     }
 }

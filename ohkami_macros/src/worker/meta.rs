@@ -28,8 +28,9 @@ const _: (/* TryDefault */) = {
     impl TryDefault for WorkerMeta {
         fn try_default() -> syn::Result<Self> {
             let package_json = {use std::io::Read;
-                let mut file = util::find_a_file_in_maybe_workspace("package.json")
-                    .map_err(|e| syn::Error::new(Span::call_site(), e.to_string()))?;
+                let mut file = util::find_file_at_package_or_workspace_root("package.json")
+                    .map_err(|e| syn::Error::new(Span::call_site(), e.to_string()))?
+                    .ok_or_else(|| syn::Error::new(Span::call_site(), "`package.json` is not found"))?;
                 let mut buf = String::new();
                 file.read_to_string(&mut buf)
                     .map_err(|e| syn::Error::new(Span::call_site(), e.to_string()))?;
@@ -38,19 +39,22 @@ const _: (/* TryDefault */) = {
                     .expect("invalid package.json")
             };
 
-            let wrangler_toml = {use std::io::Read;
-                let mut file = util::find_a_file_in_maybe_workspace("wrangler.toml")
-                    .map_err(|e| syn::Error::new(Span::call_site(), e.to_string()))?;
-                let mut buf = String::new();
-                file.read_to_string(&mut buf)
-                    .map_err(|e| syn::Error::new(Span::call_site(), e.to_string()))?;
-                toml::from_str(&buf).ok()
-                    .and_then(|t| match t {toml::Value::Table(t) => Some(t), _ => None})
-                    .expect("invalid wrangler.toml")
+            let wrangler_config = {
+                #[derive(serde::Deserialize)]
+                struct RouteConfig {
+                    routes: Option<Vec<RoutePattern>>,
+                    route: Option<String>,
+                }
+                #[derive(serde::Deserialize)]
+                struct RoutePattern {
+                    pattern: String,
+                }
+
+                super::wrangler::parse_wrangler::<RouteConfig>()
+                    .expect("invalid or not found wrangler config")
             };
 
             let title = LitStr::new(package_json["name"].as_str().unwrap(), Span::call_site());
-
             let version = LitStr::new(package_json["version"].as_str().unwrap(), Span::call_site());
 
             let mut servers = vec![
@@ -60,28 +64,6 @@ const _: (/* TryDefault */) = {
                     variables:   None,
                 }
             ];
-            if let Some(routes) = wrangler_toml.get("routes").and_then(|r| r.as_array()) {
-                for route in routes {
-                    let pattern = route
-                        .as_table()
-                        .and_then(|r| r.get("pattern"))
-                        .and_then(|p| p.as_str())
-                        .expect("invalid `routes` of wrangler.toml")
-                        .trim_end_matches(&['/', '*']);
-                    servers.push(Server {
-                        url:         to_url(pattern),
-                        description: None,
-                        variables:   None,
-                    });
-                }
-            } else if let Some(route) = wrangler_toml.get("route").and_then(|r| r.as_str()) {
-                let route = route.trim_end_matches(&['/', '*']);
-                servers.push(Server {
-                    url:         to_url(route),
-                    description: None,
-                    variables:   None,
-                });
-            };
             fn to_url(route_pattern: &str) -> LitStr {
                 if route_pattern.contains("://") {
                     LitStr::new(route_pattern, Span::call_site())
@@ -89,6 +71,22 @@ const _: (/* TryDefault */) = {
                     LitStr::new(&format!("https://{route_pattern}"), Span::call_site())
                 }
             }
+            if let Some(routes) = wrangler_config.routes {
+                for route in routes {
+                    servers.push(Server {
+                        url:         to_url(route.pattern.trim_end_matches(&['/', '*'])),
+                        description: None,
+                        variables:   None,
+                    });
+                }
+            } else if let Some(route) = wrangler_config.route {
+                servers.push(Server {
+                    url:         to_url(route.trim_end_matches(&['/', '*'])),
+                    description: None,
+                    variables:   None,
+                });
+            };
+
             if servers.len() == 1 + 1 {
                 servers[1].description = Some(LitStr::new("production", Span::call_site()));
             }
