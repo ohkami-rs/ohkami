@@ -14,16 +14,16 @@ pub enum Binding {
 }
 
 impl Binding {
-    pub fn binding_type(&self) -> &'static str {
+    pub fn binding_type(&self) -> Option<&'static str> {
         match self {
-            Self::Variable(_) => "String",
-            Self::AI => "Ai",
-            Self::D1 => "D1Database",
-            Self::KV => "$KV",
-            Self::R2 => "R2Bucket",
-            Self::Service => "Fetcher",
-            Self::Queue => "WorkerQueue",
-            Self::DurableObject => "DurableObjectNamespace",
+            Self::KV => None,
+            Self::Variable(_)   => Some("String"),
+            Self::AI            => Some("Ai"),
+            Self::D1            => Some("D1Database"),
+            Self::R2            => Some("R2Bucket"),
+            Self::Service       => Some("Fetcher"),
+            Self::Queue         => Some("WorkerQueue"),
+            Self::DurableObject => Some("DurableObjectNamespace"),
         }
     }
 
@@ -70,23 +70,10 @@ struct EnvBindingCollection {
     services:        Option<Vec<BindingDeclare>>,
     queues:          Option<QueueProducers>,
     durable_objects: Option<BindingsArray>,
-    // #[serde(flatten)]
-    // root: BindingCollection,
+
     #[serde(default)]
     env: std::collections::BTreeMap<String, EnvBindingCollection>,
 }
-
-// #[derive(serde::Deserialize, Default)]
-// struct BindingCollection {
-//     vars:            Option<std::collections::BTreeMap<String, String>>,
-//     ai:              Option<BindingDeclare>,
-//     d1_databases:    Option<Vec<BindingDeclare>>,
-//     kv_namespaces:   Option<Vec<BindingDeclare>>,
-//     r2_buckets:      Option<Vec<BindingDeclare>>,
-//     services:        Option<Vec<BindingDeclare>>,
-//     queues:          Option<QueueProducers>,
-//     durable_objects: Option<BindingsArray>,
-// }
 
 #[derive(serde::Deserialize)]
 struct BindingDeclare {
