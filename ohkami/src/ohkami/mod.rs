@@ -105,10 +105,10 @@ use crate::{__rt__, Session};
 /// 
 /// `async ({path params}?, {FromRequest<'_> type}s...) -> {IntoResponse type}`
 /// 
-/// On native runtimes or `rt_lambda`,
+/// - handler itself must be `Send` + `Sync` + 'static
+/// - returned `Future` must be `Send` + 'static
 /// 
-/// - handler itself must be `Send` + `Sync`
-/// - returned `Future` must be `Send`
+/// excpet for `rt_worker`, where `Send` or `Sync` bound is not required.
 /// 
 /// ### path params
 /// 
