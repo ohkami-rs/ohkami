@@ -60,34 +60,42 @@ impl Binding {
     }
 }
 
-#[derive(serde::Deserialize)]
-struct EnvBindingCollection {
-    #[serde(flatten)]
-    root: BindingCollection,
-    #[serde(default)]
-    env: std::collections::BTreeMap<String, BindingCollection>,
-}
-
 #[derive(serde::Deserialize, Default)]
-struct BindingCollection {
+struct EnvBindingCollection {
     vars:            Option<std::collections::BTreeMap<String, String>>,
-    ai:              Option<BindingName>,
-    d1_databases:    Option<Vec<BindingName>>,
-    kv_namespaces:   Option<Vec<BindingName>>,
-    r2_buckets:      Option<Vec<BindingName>>,
-    services:        Option<Vec<BindingName>>,
+    ai:              Option<BindingDeclare>,
+    d1_databases:    Option<Vec<BindingDeclare>>,
+    kv_namespaces:   Option<Vec<BindingDeclare>>,
+    r2_buckets:      Option<Vec<BindingDeclare>>,
+    services:        Option<Vec<BindingDeclare>>,
     queues:          Option<QueueProducers>,
     durable_objects: Option<BindingsArray>,
+    // #[serde(flatten)]
+    // root: BindingCollection,
+    #[serde(default)]
+    env: std::collections::BTreeMap<String, EnvBindingCollection>,
 }
 
+// #[derive(serde::Deserialize, Default)]
+// struct BindingCollection {
+//     vars:            Option<std::collections::BTreeMap<String, String>>,
+//     ai:              Option<BindingDeclare>,
+//     d1_databases:    Option<Vec<BindingDeclare>>,
+//     kv_namespaces:   Option<Vec<BindingDeclare>>,
+//     r2_buckets:      Option<Vec<BindingDeclare>>,
+//     services:        Option<Vec<BindingDeclare>>,
+//     queues:          Option<QueueProducers>,
+//     durable_objects: Option<BindingsArray>,
+// }
+
 #[derive(serde::Deserialize)]
-struct BindingName {
+struct BindingDeclare {
     binding: String,
 }
 
 #[derive(serde::Deserialize)]
 struct QueueProducers {
-    producers: Vec<BindingName>,
+    producers: Vec<BindingDeclare>,
 }
 
 #[derive(serde::Deserialize)]
@@ -95,12 +103,17 @@ struct BindingsArray {
     bindings: Vec<BindingName>,
 }
 
+#[derive(serde::Deserialize)]
+struct BindingName {
+    name: String,
+}
+
 impl Binding {
     pub fn collect_from_env(env_name: Option<Ident>) -> Result<Vec<(Ident, Self)>, syn::Error> {
         let mut config = super::wrangler::parse_wrangler::<EnvBindingCollection>()
             .map_err(|e| syn::Error::new(Span::call_site(), e))?;
         let config = match env_name.as_ref() {
-            None => config.root,
+            None => config,
             Some(name) => {
                 let config = config.env.get_mut(&name.to_string())
                     .ok_or_else(|| syn::Error::new(name.span(), format!("env `{name}` is not found in wrangler config")))?;
@@ -115,37 +128,37 @@ impl Binding {
                     collection.push((name, Self::Variable(value)));
                 }
             }
-            if let Some(BindingName { binding }) = config.ai {
+            if let Some(BindingDeclare { binding }) = config.ai {
                 collection.push((binding, Self::AI));
             }
             if let Some(d1_databases) = config.d1_databases {
-                for BindingName { binding } in d1_databases {
+                for BindingDeclare { binding } in d1_databases {
                     collection.push((binding, Self::D1));
                 }
             }
             if let Some(kv_namespaces) = config.kv_namespaces {
-                for BindingName { binding } in kv_namespaces {
+                for BindingDeclare { binding } in kv_namespaces {
                     collection.push((binding, Self::KV));
                 }
             }
             if let Some(r2_buckets) = config.r2_buckets {
-                for BindingName { binding } in r2_buckets {
+                for BindingDeclare { binding } in r2_buckets {
                     collection.push((binding, Self::R2));
                 }
             }
             if let Some(services) = config.services {
-                for BindingName { binding } in services {
+                for BindingDeclare { binding } in services {
                     collection.push((binding, Self::Service));
                 }
             }
             if let Some(QueueProducers { producers }) = config.queues {
-                for BindingName { binding } in producers {
+                for BindingDeclare { binding } in producers {
                     collection.push((binding, Self::Queue));
                 }
             }
             if let Some(BindingsArray { bindings }) = config.durable_objects {
-                for BindingName { binding } in bindings {
-                    collection.push((binding, Self::DurableObject));
+                for BindingName { name } in bindings {
+                    collection.push((name, Self::DurableObject));
                 }
             }   
         }

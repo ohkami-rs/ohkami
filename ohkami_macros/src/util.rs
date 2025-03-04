@@ -113,16 +113,18 @@ fn find_file_at_workspace_root(file_path: impl AsRef<Path>) -> Result<Option<Fil
         toml::from_str(&buf).expect("Invalid Cargo.toml")
     };
 
-    let workspace_members = cargo_toml
-        .as_table()
-        .and_then(|c| c.get("workspace"))
-        .and_then(|w| w.as_table())
-        .and_then(|w| w.get("members"))
-        .and_then(|m| m.as_array())
-        .ok_or_else(|| io::Error::new(ErrorKind::InvalidInput, "\
-            assumed as Cargo workspace becuase `` is not found at package root, \
-            but Cargo.toml at project root has no `workspace.members` array. \
-        "))?;
+    fn get_workspace_members(cargo_toml: &toml::Value) -> Option<&toml::value::Array> {
+        cargo_toml
+            .as_table()?
+            .get("workspace")?
+            .as_table()?
+            .get("members")?
+            .as_array()
+    }
+
+    let Some(workspace_members) = get_workspace_members(&cargo_toml) else {
+        return Ok(None)
+    };
 
     let mut matching_files = Vec::with_capacity(1);
     for member in workspace_members {
