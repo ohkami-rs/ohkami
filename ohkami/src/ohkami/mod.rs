@@ -879,11 +879,26 @@ mod sync {
 
 #[cfg(all(debug_assertions, feature="__rt_native__"))]
 #[cfg(test)]
-#[test] fn can_howl_on_any_native_async_runtime() {
-    __rt__::testing::block_on(async {
-        crate::util::timeout_in(
-            std::time::Duration::from_secs(3),
-            Ohkami::new(()).howl(("localhost", __rt__::testing::PORT))
-        ).await
-    });
+mod test {
+    use super::*;
+
+    #[test] fn can_howl_on_any_native_async_runtime() {
+        __rt__::testing::block_on(async {
+            crate::util::timeout_in(
+                std::time::Duration::from_secs(3),
+                Ohkami::new(()).howl(("localhost", __rt__::testing::PORT))
+            ).await
+        });
+    }
+
+    #[test] fn ohkami_is_send_sync_static_on_native() {
+        fn is_send_sync_static<T: Send + Sync + 'static>(_: T) {}
+
+        let o = Ohkami::new((
+            crate::fang::Context::new(String::from("resource")),
+            "/".GET(async || {"Hello, world!"})
+        ));
+
+        is_send_sync_static(o);
+    }
 }
