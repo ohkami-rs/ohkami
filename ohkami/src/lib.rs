@@ -48,13 +48,23 @@ mod __rt__ {
     #[cfg(feature="rt_glommio")]
     pub(crate) use {glommio::net::{TcpListener, TcpStream}, std::net::ToSocketAddrs};
 
-    pub(crate) async fn bind(address: impl ToSocketAddrs) -> TcpListener {
-        let binded = TcpListener::bind(address);
-        
-        #[cfg(any(feature="rt_tokio", feature="rt_async-std", feature="rt_smol", feature="rt_nio"))]
-        let binded = binded.await;
-        
-        binded.expect("Failed to bind TCP listener")
+    pub trait IntoTcpListener<T> {
+        fn ino_tcp_listener(self) -> impl Future<Output = TcpListener>;
+    }
+    impl IntoTcpListener<()> for TcpListener {
+        async fn ino_tcp_listener(self) -> TcpListener {
+            self
+        }
+    }
+    impl<A: ToSocketAddrs> IntoTcpListener<A> for A {
+        async fn ino_tcp_listener(self) -> TcpListener {
+            let binded = TcpListener::bind(self);
+
+            #[cfg(not(feature="rt_glommio"))]
+            let binded = binded.await;
+
+            binded.expect("Failed to bind TCP listener")
+        }
     }
 
     #[cfg(feature="rt_tokio")]
