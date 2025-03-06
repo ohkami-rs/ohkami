@@ -521,6 +521,31 @@ impl Ohkami {
     ///     }).unwrap().join_all();
     /// }
     /// ```
+    /// 
+    /// ---
+    /// 
+    /// *example_with_tcp_listener.rs*
+    /// ```no_run
+    /// use ohkami::prelude::*;
+    /// use tokio::net::TcpSocket; // <---
+    /// 
+    /// #[tokio::main]
+    /// async fn main() -> std::io::Result<()> {
+    ///     let socket = TcpSocket::new_v4()?;
+    /// 
+    ///     socket.bind("0.0.0.0:5000".parse().unwrap())?;
+    ///
+    ///     let listener = socket.listen(1024)?;
+    /// 
+    ///     Ohkami::new((
+    ///         "/".GET(async || {
+    ///             "Hello, TcpListener!"
+    ///         }),
+    ///     )).howl(listener).await;
+    /// 
+    ///     Ok(())
+    /// }
+    /// ```
     pub async fn howl<T>(self, bind: impl __rt__::IntoTcpListener<T>) {
         let (router, _) = self.into_router().finalize();
         let router = Arc::new(router);
