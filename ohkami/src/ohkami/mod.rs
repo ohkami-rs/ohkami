@@ -459,14 +459,16 @@ impl Ohkami {
     }
 
     #[cfg(feature="__rt_native__")]
-    /// Start serving at `address`!
+    /// Bind this `Ohkami` to an address and start serving !
     /// 
-    /// `address` is：
+    /// `bind` is：
     /// 
-    /// - `tokio::net::ToSocketAddrs` if using `tokio`
-    /// - `async_std::net::ToSocketAddrs` if using `async-std`
-    /// - `smol::net::AsyncToSocketAddrs` if using `smol`
-    /// - `std::net::ToSocketAddrs` if using `nio` or `glommio`
+    /// - `tokio::net::ToSocketAddrs` item or `tokio::net::TcpListener`
+    /// - `async_std::net::ToSocketAddrs` item or `async_std::net::TcpListener`
+    /// - `smol::net::AsyncToSocketAddrs` item or `smol::net::TcpListener`
+    /// - `std::net::ToSocketAddrs` item or `{glommio, nio}::net::TcpListener`
+    /// 
+    /// for each async runtime.
     /// 
     /// *note* : Keep-Alive timeout is 42 seconds by default.
     /// This is configureable by `OHKAMI_KEEPALIVE_TIMEOUT`
@@ -519,11 +521,36 @@ impl Ohkami {
     ///     }).unwrap().join_all();
     /// }
     /// ```
-    pub async fn howl(self, address: impl __rt__::ToSocketAddrs) {
+    /// 
+    /// ---
+    /// 
+    /// *example_with_tcp_listener.rs*
+    /// ```no_run
+    /// use ohkami::prelude::*;
+    /// use tokio::net::TcpSocket; // <---
+    /// 
+    /// #[tokio::main]
+    /// async fn main() -> std::io::Result<()> {
+    ///     let socket = TcpSocket::new_v4()?;
+    /// 
+    ///     socket.bind("0.0.0.0:5000".parse().unwrap())?;
+    ///
+    ///     let listener = socket.listen(1024)?;
+    /// 
+    ///     Ohkami::new((
+    ///         "/".GET(async || {
+    ///             "Hello, TcpListener!"
+    ///         }),
+    ///     )).howl(listener).await;
+    /// 
+    ///     Ok(())
+    /// }
+    /// ```
+    pub async fn howl<T>(self, bind: impl __rt__::IntoTcpListener<T>) {
         let (router, _) = self.into_router().finalize();
         let router = Arc::new(router);
 
-        let listener = __rt__::bind(address).await;
+        let listener = bind.ino_tcp_listener().await;
 
         let (wg, ctrl_c) = (sync::WaitGroup::new(), sync::CtrlC::new());
 
