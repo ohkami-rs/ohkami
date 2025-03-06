@@ -54,7 +54,7 @@ use crate::openapi;
 /// };
 /// 
 /// ```
-pub trait Fang<Inner: FangProc> {
+pub trait Fang<Inner: FangProc>: SendSyncOnNative + 'static {
     type Proc: FangProc;
     fn chain(&self, inner: Inner) -> Self::Proc;
 
