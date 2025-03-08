@@ -818,83 +818,111 @@ mod sync {
         }
     };
 
-    pub struct CtrlC;
+    pub struct CtrlC { index: usize }
     const _: () = {
-        use std::sync::atomic::{AtomicBool, Ordering};
-        use std::future::Future;
+        use std::sync::atomic::{AtomicBool, AtomicUsize, AtomicPtr, Ordering};
         use std::task::{Context, Poll, Waker};
         use std::pin::Pin;
+        use std::ptr::null_mut;
 
-        #[cfg(any(feature="rt_tokio", feature="rt_async-std", feature="rt_smol", feature="rt_nio"))]
-        use std::{sync::atomic::AtomicPtr, ptr::null_mut};
-        #[cfg(any(feature="rt_glommio"))]
-        use std::sync::Mutex;
-    
-        #[cfg(any(feature="rt_tokio", feature="rt_async-std", feature="rt_smol", feature="rt_nio"))]
-        static WAKER: AtomicPtr<Waker> = AtomicPtr::new(null_mut());
-        #[cfg(any(feature="rt_glommio"))]
-        static WAKER: Mutex<Vec<(usize, Waker)>> = Mutex::new(Vec::new());
+        static INTERRUPTED: AtomicBool = AtomicBool::new(false);
 
-        static CATCH: AtomicBool = AtomicBool::new(false);
+        /* write access is used when pushing initial (null) AtomicPtr in `Ctrlc::new` */
+        static WAKERS: std::sync::RwLock<Vec<AtomicPtr<Waker>>> = std::sync::RwLock::new(Vec::new());
 
         impl CtrlC {
             pub fn new() -> Self {
-                #[cfg(any(feature="rt_tokio", feature="rt_async-std", feature="rt_smol", feature="rt_nio"))]
-                ::ctrlc::set_handler(|| {
-                    CATCH.store(true, Ordering::SeqCst);
-                    let waker = WAKER.swap(null_mut(), Ordering::SeqCst);
-                    if !waker.is_null() {
-                        unsafe {Box::from_raw(waker)}.wake();
-                    }
-                }).expect("Something went wrong with Ctrl-C");
+                /*
+                    When finally get Ctrl-C signal, let's set `INTERRUPTED` to true and
+                    wake all wakers for Ohkamis on one or more threads.
 
-                #[cfg(any(feature="rt_glommio"))]
-                ::ctrlc::try_set_handler(|| {
-                    CATCH.store(true, Ordering::SeqCst);
-                    let lock = &mut *WAKER.lock().unwrap();
-                    crate::DEBUG!("Finally {} executors on {} CPU(s)", lock.len(), num_cpus::get());
-                    for (_, w) in std::mem::take(lock) {
-                        w.wake();
+                    This is intended to work correctly in both :
+
+                    1. A single Ohkami is running on multi-thread async runtime.
+                    2. Spawning some threads and single-thread Ohkami is running on
+                       each thread with single-thread async runtime.
+                       - glommio is designed to do so
+                       - even in other runtimes, sometimes this way of entrypoint
+                         with `SO_REUSEADDR` may work in better performance than ordinary
+                         one with multi-thread runtime.
+
+                    For case 1., we only have to hold the single `AtomicPtr<Waker>`
+                    corresponded to the Ohkami in `static WAKER`, and here retrieve/wake it :
+
+                    ```
+                    ::ctrlc::set_handler(|| {
+                        INTERRUPTED.store(true, Ordering::SeqCst);
+                        let waker = WAKER.swap(null_mut(), Ordering::SeqCst);
+                        if !waker.is_null() {
+                            unsafe {Box::from_raw(waker)}.wake();
+                        }
+                    }).expect("Something went wrong with Ctrl-C");
+
+                    ```
+
+                    But taking case 2. into consideration, we must terminate other threads
+                    together with the main thread in this handler. So we have to hold
+                    all `Waker`s in `WAKERS` and wake each them.
+                */
+                ::ctrlc::set_handler(|| {
+                    INTERRUPTED.store(true, Ordering::SeqCst);
+
+                    let wakers = WAKERS.read().unwrap();
+                    crate::DEBUG!("CtrlC handler: Waiting for {} Ohkami(s)", wakers.len());
+                    for w in &*wakers {
+                        let w = w.swap(null_mut(), Ordering::SeqCst);
+                        if !w.is_null() {
+                            (unsafe {Box::from_raw(w)}).wake();
+                        }
                     }
                 }).ok();
 
-                Self
+                let index = {
+                    static WAKER_INDEX: AtomicUsize = AtomicUsize::new(0);
+                    WAKER_INDEX.fetch_add(1, Ordering::Relaxed)
+                };
+
+                #[cfg(debug_assertions)] {
+                    assert_eq!(index, WAKERS.read().unwrap().len());
+                }
+
+                /* ensure that `WAKERS` has the same numbers of `Waker`s as `CtrlC` instances */
+                WAKERS.write().unwrap().push(AtomicPtr::new(null_mut()));
+
+                Self { index }
             }
 
             pub fn until_interrupt<T>(&self, task: impl Future<Output = T>) -> impl Future<Output = Option<T>> {
-                return UntilInterrupt(task);
+                return UntilInterrupt { index: self.index, task };
 
-                struct UntilInterrupt<F: Future>(F);
+                struct UntilInterrupt<F: Future> {
+                    index: usize,
+                    task:  F,
+                }
                 impl<F: Future> Future for UntilInterrupt<F> {
                     type Output = Option<F::Output>;
 
                     #[inline]
                     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-                        match unsafe {Pin::new_unchecked(&mut self.get_unchecked_mut().0)}.poll(cx) {
+                        let UntilInterrupt { index, task } = unsafe {self.get_unchecked_mut()};
+
+                        match unsafe {Pin::new_unchecked(task)}.poll(cx) {
                             Poll::Ready(t) => Poll::Ready(Some(t)),
-                            Poll::Pending  => if CATCH.load(Ordering::SeqCst) {
-                                crate::DEBUG!("[CtrlC::catch] Ready");
-                                Poll::Ready(None)
-                            } else {
-                                #[cfg(any(feature="rt_tokio", feature="rt_async-std", feature="rt_smol", feature="rt_nio"))] {
-                                    let prev_waker = WAKER.swap(
+                            Poll::Pending => match INTERRUPTED.load(Ordering::SeqCst) {
+                                true => {
+                                    crate::DEBUG!("[CtrlC::catch] Ready");
+                                    Poll::Ready(None)
+                                }
+                                false => {
+                                    let prev_waker = WAKERS.read().unwrap()[*index].swap(
                                         Box::into_raw(Box::new(cx.waker().clone())),
                                         Ordering::SeqCst
                                     );
                                     if !prev_waker.is_null() {
                                         unsafe {prev_waker.drop_in_place()}
                                     }
+                                    Poll::Pending
                                 }
-                                #[cfg(any(feature="rt_glommio"))] {
-                                    let current_id = glommio::executor().id();
-                                    let current_waker = cx.waker().clone();
-                                    let mut lock = WAKER.lock().unwrap();
-                                    match lock.iter_mut().find(|(id, _)| (*id == current_id)) {
-                                        Some(prev) => *prev = (current_id, current_waker),
-                                        None       => lock.push((current_id, current_waker)),
-                                    }
-                                }
-                                Poll::Pending
                             }
                         }
                     }

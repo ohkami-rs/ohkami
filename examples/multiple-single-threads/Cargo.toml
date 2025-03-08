@@ -1,0 +1,13 @@
+[package]
+name    = "multiple-single-threads"
+version = "0.1.0"
+edition = "2024"
+authors = ["kanarus <kanarus786@gmail.com>"]
+
+[dependencies]
+ohkami   = { workspace = true }
+tokio    = { workspace = true }
+num_cpus = "1.16"
+
+[features]
+DEBUG = ["ohkami/DEBUG"]

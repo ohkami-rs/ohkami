@@ -11,6 +11,7 @@ members  = [
     "static_files",
     "json_response",
     "derive_from_request",
+    "multiple-single-threads",
 ]
 
 [workspace.dependencies]
