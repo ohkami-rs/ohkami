@@ -820,12 +820,15 @@ mod sync {
 
     pub struct CtrlC { index: usize }
     const _: () = {
-        use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+        use std::sync::atomic::{AtomicBool, AtomicUsize, AtomicPtr, Ordering};
         use std::task::{Context, Poll, Waker};
         use std::pin::Pin;
+        use std::ptr::null_mut;
 
         static INTERRUPTED: AtomicBool = AtomicBool::new(false);
-        static WAKERS: std::sync::Mutex<Vec<Waker>> = std::sync::Mutex::new(Vec::new());
+
+        /* write access is used when pushing initial (null) AtomicPtr in `Ctrlc::new` */
+        static WAKERS: std::sync::RwLock<Vec<AtomicPtr<Waker>>> = std::sync::RwLock::new(Vec::new());
 
         impl CtrlC {
             pub fn new() -> Self {
@@ -864,10 +867,13 @@ mod sync {
                 ::ctrlc::set_handler(|| {
                     INTERRUPTED.store(true, Ordering::SeqCst);
 
-                    let mut wakers = WAKERS.lock().unwrap();
+                    let wakers = WAKERS.read().unwrap();
                     crate::DEBUG!("CtrlC handler: Waiting for {} Ohkami(s)", wakers.len());
-                    for w in std::mem::take(&mut *wakers) {
-                        w.wake();
+                    for w in &*wakers {
+                        let w = w.swap(null_mut(), Ordering::SeqCst);
+                        if !w.is_null() {
+                            (unsafe {Box::from_raw(w)}).wake();
+                        }
                     }
                 }).ok();
 
@@ -876,8 +882,12 @@ mod sync {
                     WAKER_INDEX.fetch_add(1, Ordering::Relaxed)
                 };
 
+                #[cfg(debug_assertions)] {
+                    assert_eq!(index, WAKERS.read().unwrap().len());
+                }
+
                 /* ensure that `WAKERS` has the same numbers of `Waker`s as `CtrlC` instances */
-                WAKERS.lock().unwrap().push(Waker::noop().clone());
+                WAKERS.write().unwrap().push(AtomicPtr::new(null_mut()));
 
                 Self { index }
             }
@@ -898,12 +908,21 @@ mod sync {
 
                         match unsafe {Pin::new_unchecked(task)}.poll(cx) {
                             Poll::Ready(t) => Poll::Ready(Some(t)),
-                            Poll::Pending  => if INTERRUPTED.load(Ordering::SeqCst) {
-                                crate::DEBUG!("[CtrlC::catch] Ready");
-                                Poll::Ready(None)
-                            } else {
-                                WAKERS.lock().unwrap()[*index] = cx.waker().clone();
-                                Poll::Pending
+                            Poll::Pending => match INTERRUPTED.load(Ordering::SeqCst) {
+                                true => {
+                                    crate::DEBUG!("[CtrlC::catch] Ready");
+                                    Poll::Ready(None)
+                                }
+                                false => {
+                                    let prev_waker = WAKERS.read().unwrap()[*index].swap(
+                                        Box::into_raw(Box::new(cx.waker().clone())),
+                                        Ordering::SeqCst
+                                    );
+                                    if !prev_waker.is_null() {
+                                        unsafe {prev_waker.drop_in_place()}
+                                    }
+                                    Poll::Pending
+                                }
                             }
                         }
                     }
