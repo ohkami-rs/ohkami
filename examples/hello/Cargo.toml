@@ -11,3 +11,4 @@ tracing-subscriber = { workspace = true }
 
 [features]
 nightly = ["ohkami/nightly"]
+DEBUG   = ["ohkami/DEBUG"]

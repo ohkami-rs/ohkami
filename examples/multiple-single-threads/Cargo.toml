@@ -8,3 +8,6 @@ authors = ["kanarus <kanarus786@gmail.com>"]
 ohkami   = { workspace = true }
 tokio    = { workspace = true }
 num_cpus = "1.16"
+
+[features]
+DEBUG = ["ohkami/DEBUG"]
