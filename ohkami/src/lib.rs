@@ -149,27 +149,29 @@ mod __rt__ {
 
     #[cfg(test)]
     pub(crate) mod testing {
-        pub(crate) fn block_on(future: impl std::future::Future) {
+        pub(crate) fn block_on<F: Future>(future: F) -> F::Output {
             #[cfg(feature="rt_tokio")]
-            tokio::runtime::Builder::new_current_thread()
+            return tokio::runtime::Builder::new_current_thread()
                 .enable_all()
-                .build().unwrap()
+                .build()
+                .unwrap()
                 .block_on(future);
 
             #[cfg(feature="rt_async-std")]
-            async_std::task::block_on(future);
+            return async_std::task::block_on(future);
 
             #[cfg(feature="rt_smol")]
-            smol::block_on(future);
+            return smol::block_on(future);
 
             #[cfg(feature="rt_nio")]
-            nio::runtime::Builder::new_multi_thread()
+            return nio::runtime::Builder::new_multi_thread()
                 .enable_all()
-                .build().unwrap()
+                .build()
+                .unwrap()
                 .block_on(future);
 
             #[cfg(feature="rt_glommio")]
-            glommio::LocalExecutor::default().run(future);
+            return glommio::LocalExecutor::default().run(future);
         }
 
         pub(crate) const PORT: u16 = {

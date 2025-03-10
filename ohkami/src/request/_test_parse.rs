@@ -3,6 +3,10 @@
 #[allow(unused)]
 use super::{Request, Method, BUF_SIZE, Path, QueryParams, Context};
 
+use super::{RequestHeader, RequestHeaders};
+use std::pin::Pin;
+use ohkami_lib::{Slice, CowSlice};
+
 #[test]
 fn parse_path() {
     let mut path = Path::uninit();
@@ -18,48 +22,46 @@ fn parse_path() {
     assert_eq!(&*path, "/");
 }
 
+macro_rules! assert_parse {
+    ($case:expr, $expected:expr) => {
+        let mut case = $case.as_bytes();
+
+        let mut actual = Request::init(crate::util::IP_0000);
+        let mut actual = unsafe {Pin::new_unchecked(&mut actual)};
+        
+        let result = crate::__rt__::testing::block_on({
+            actual.as_mut().read(&mut case)
+        });
+
+        assert_eq!(result, Ok(Some(())));
+        
+        let expected = $expected;
+
+        println!("<assert_parse>");
+
+        let __panic_message = format!("\n\
+            =====  actual  =====\n\
+            {actual:#?}\n\
+            \n\
+            ===== expected =====\n\
+            {expected:#?}\n\
+            \n\
+        ");
+
+        if actual.get_mut() != &expected {
+            panic!("{__panic_message}")
+        }
+    };
+}
+
+fn metadataize(input: &str) -> Box<[u8; BUF_SIZE]> {
+    let mut buf = [0; BUF_SIZE];
+    buf[..input.len().min(BUF_SIZE)]
+        .copy_from_slice(&input.as_bytes()[..input.len().min(BUF_SIZE)]);
+    Box::new(buf)
+}
+
 #[test] fn test_parse_request() {
-    use super::{RequestHeader, RequestHeaders};
-    use std::pin::Pin;
-    use ohkami_lib::{Slice, CowSlice};
-
-    fn metadataize(input: &str) -> Box<[u8; BUF_SIZE]> {
-        let mut buf = [0; BUF_SIZE];
-        buf[..input.len().min(BUF_SIZE)]
-            .copy_from_slice(&input.as_bytes()[..input.len().min(BUF_SIZE)]);
-        Box::new(buf)
-    }
-
-    macro_rules! assert_parse {
-        ($case:expr, $expected:expr) => {
-            let mut case = $case.as_bytes();
-
-            let mut actual = Request::init(crate::util::IP_0000);
-            let mut actual = unsafe {Pin::new_unchecked(&mut actual)};
-            
-            crate::__rt__::testing::block_on({
-                actual.as_mut().read(&mut case)
-            });
-            
-            let expected = $expected;
-
-            println!("<assert_parse>");
-
-            let __panic_message = format!("\n\
-                =====  actual  =====\n\
-                {actual:#?}\n\
-                \n\
-                ===== expected =====\n\
-                {expected:#?}\n\
-                \n\
-            ");
-
-            if actual.get_mut() != &expected {
-                panic!("{__panic_message}")
-            }
-        };
-    }
-
     const CASE_1: &str = "\
         GET /hello.html HTTP/1.1\r\n\
         User-Agent: Mozilla/4.0\r\n\
@@ -164,4 +166,54 @@ fn parse_path() {
             ip:      crate::util::IP_0000
         });
     }
+}
+
+#[test] fn test_parse_request_large() {
+    const LARGE_TOKEN: &str = "\
+        This-is-a-sample-of-very-long-bearer-token-in-authorizatino-header-\
+        for-testing-request-parsing-for-requests-that-have-so-large-header-\
+        values-that-exceed-pre-allocated-BUF_SIZE-.-This-is-required-,-for-\
+        example-,-when-some-requests-are-expected-to-have-large-JWT-payloads-.\
+        This-is-a-sample-of-very-long-bearer-token-in-authorizatino-header-\
+        for-testing-request-parsing-for-requests-that-have-so-large-header-\
+        values-that-exceed-pre-allocated-BUF_SIZE-.-This-is-required-,-for-\
+        example-,-when-some-requests-are-expected-to-have-large-JWT-payloads-.\
+        This-is-a-sample-of-very-long-bearer-token-in-authorizatino-header-\
+        for-testing-request-parsing-for-requests-that-have-so-large-header-\
+        values-that-exceed-pre-allocated-BUF_SIZE-.-This-is-required-,-for-\
+        example-,-when-some-requests-are-expected-to-have-large-JWT-payloads-.\
+        This-is-a-sample-of-very-long-bearer-token-in-authorizatino-header-\
+        for-testing-request-parsing-for-requests-that-have-so-large-header-\
+        values-that-exceed-pre-allocated-BUF_SIZE-.-This-is-required-,-for-\
+        example-,-when-some-requests-are-expected-to-have-large-JWT-payloads-.\
+        This-is-a-sample-of-very-long-bearer-token-in-authorizatino-header-\
+        for-testing-request-parsing-for-requests-that-have-so-large-header-\
+        values-that-exceed-pre-allocated-BUF_SIZE-.-This-is-required-,-for-\
+        example-,-when-some-requests-are-expected-to-have-large-JWT-payloads-.\
+    ";
+
+    assert!(LARGE_TOKEN.len() > super::BUF_SIZE);
+
+    let case = format!("\
+        GET /posts HTTP/1.1\r\n\
+        Host: localhost\r\n\
+        Connection: keep-alive\r\n\
+        Authorization: Bearer {LARGE_TOKEN}\r\n\
+        \r\n\
+    ");
+
+    assert_parse!(case, Request {
+        __buf__: metadataize(&*case),
+        method:  Method::GET,
+        path:    Path::from_literal("/post"),
+        query:   QueryParams::new(b""),
+        headers: RequestHeaders::from_iters([
+            (RequestHeader::Host,          "localhost"),
+            (RequestHeader::Connection,    "keep-alive"),
+            (RequestHeader::Authorization, LARGE_TOKEN),
+        ], None),
+        payload: None,
+        context: Context::init(),
+        ip:      crate::util::IP_0000,
+    });
 }
