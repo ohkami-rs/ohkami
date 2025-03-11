@@ -1,7 +1,7 @@
 #![cfg(all(test, feature="__rt_native__", feature="DEBUG"))]
 
 #[allow(unused)]
-use super::{Request, Method, BUF_SIZE, Path, QueryParams, Context};
+use super::{Request, Method, Path, QueryParams, Context};
 
 use super::{RequestHeader, RequestHeaders};
 use std::pin::Pin;
@@ -54,11 +54,12 @@ macro_rules! assert_parse {
     };
 }
 
-fn metadataize(input: &str) -> Box<[u8; BUF_SIZE]> {
-    let mut buf = [0; BUF_SIZE];
-    buf[..input.len().min(BUF_SIZE)]
-        .copy_from_slice(&input.as_bytes()[..input.len().min(BUF_SIZE)]);
-    Box::new(buf)
+fn metadataize(input: &str) -> Box<[u8]> {
+    let buf_size = crate::CONFIG.request_bufsize();
+    let mut buf = vec![0; buf_size];
+    buf[..input.len().min(buf_size)]
+        .copy_from_slice(&input.as_bytes()[..input.len().min(buf_size)]);
+    buf.into_boxed_slice()
 }
 
 #[test] fn test_parse_request() {
@@ -169,7 +170,7 @@ fn metadataize(input: &str) -> Box<[u8; BUF_SIZE]> {
 }
 
 #[test] fn test_parse_request_large() {
-    const LARGE_TOKEN: &str = "\
+    const LARGE_TOKEN: &str = "Bearer \
         This-is-a-sample-of-very-long-bearer-token-in-authorizatino-header-\
         for-testing-request-parsing-for-requests-that-have-so-large-header-\
         values-that-exceed-pre-allocated-BUF_SIZE-.-This-is-required-,-for-\
@@ -192,20 +193,24 @@ fn metadataize(input: &str) -> Box<[u8; BUF_SIZE]> {
         example-,-when-some-requests-are-expected-to-have-large-JWT-payloads-.\
     ";
 
-    assert!(LARGE_TOKEN.len() > super::BUF_SIZE);
+    /* `LARGE_TOKEN` itself is already larger than default `request_bufsize` */
+    assert!(LARGE_TOKEN.len() > (1 << 10));
+
+    /* override `request_bufsize` via environment variable */
+    unsafe {std::env::set_var("OHKAMI_REQUEST_BUFSIZE", "2048")};
 
     let case = format!("\
         GET /posts HTTP/1.1\r\n\
         Host: localhost\r\n\
         Connection: keep-alive\r\n\
-        Authorization: Bearer {LARGE_TOKEN}\r\n\
+        Authorization: {LARGE_TOKEN}\r\n\
         \r\n\
     ");
 
     assert_parse!(case, Request {
         __buf__: metadataize(&*case),
         method:  Method::GET,
-        path:    Path::from_literal("/post"),
+        path:    Path::from_literal("/posts"),
         query:   QueryParams::new(b""),
         headers: RequestHeaders::from_iters([
             (RequestHeader::Host,          "localhost"),
