@@ -263,9 +263,24 @@ impl Request {
 
         while r.consume("\r\n").is_none() {
             let key_bytes = r.read_while(|b| b != &b':');
-            r.consume(": ").ok_or_else(Response::BadRequest)?;
+            r.consume(": ").ok_or_else(|| {
+                crate::WARNING!("\
+                    [Request::read] Header key is not found. \
+                    Maybe request buffer size is not enough. \
+                    Try to set `OHKAMI_REQUEST_BUFSIZE` to larger value.\
+                ");
+                Response::BadRequest()
+            })?;
+            
             let value = CowSlice::Ref(Slice::from_bytes(r.read_while(|b| b != &b'\r')));
-            r.consume("\r\n").ok_or_else(Response::BadRequest)?;
+            r.consume("\r\n").ok_or_else(|| {
+                crate::WARNING!("\
+                    [Request::read] Header value is not found. \
+                    Maybe request buffer size is not enough. \
+                    Try to set `OHKAMI_REQUEST_BUFSIZE` to larger value.\
+                ");
+                Response::BadRequest()
+            })?;
 
             if let Some(key) = RequestHeader::from_bytes(key_bytes) {
                 self.headers.append(key, value);
