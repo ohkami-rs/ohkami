@@ -267,17 +267,19 @@ impl Request {
                 crate::WARNING!("\
                     [Request::read] Header key is not found. \
                     Maybe request buffer size is not enough. \
-                    Try to set `OHKAMI_REQUEST_BUFSIZE` to larger value.\
+                    Try to set `OHKAMI_REQUEST_BUFSIZE` to larger value \
+                    (default: 2048).\
                 ");
                 Response::BadRequest()
             })?;
-            
+
             let value = CowSlice::Ref(Slice::from_bytes(r.read_while(|b| b != &b'\r')));
             r.consume("\r\n").ok_or_else(|| {
                 crate::WARNING!("\
                     [Request::read] Header value is not found. \
                     Maybe request buffer size is not enough. \
-                    Try to set `OHKAMI_REQUEST_BUFSIZE` to larger value.\
+                    Try to set `OHKAMI_REQUEST_BUFSIZE` to larger value \
+                    (default: 2048).\
                 ");
                 Response::BadRequest()
             })?;
