@@ -38,7 +38,7 @@ impl Config {
                 .ok()
                 .map(|v| v.parse().ok())
                 .flatten()
-                .unwrap_or(1 << 10)
+                .unwrap_or(1 << 11)
             ),
 
             #[cfg(feature="__rt_native__")]
