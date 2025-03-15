@@ -60,6 +60,8 @@ mod test {
     use ohkami::testing::*;
 
     /// regression test for https://github.com/ohkami-rs/ohkami/issues/433
+    /// 
+    /// run with `OHKAMI_REQUEST_BUFSIZE=4096` or larger
     #[tokio::test]
     async fn test_large_jwt() {
         struct LargeJwtSub;
@@ -84,9 +86,6 @@ mod test {
             }
         }
         
-        // SAFETY: this crate contains only this single test
-        unsafe {std::env::set_var("OHKAMI_REQUEST_BUFSIZE", (1 << 12).to_string())};
-
         dotenvy::dotenv().ok();
 
         let t = ohkami::<LargeJwtSub>().test();
