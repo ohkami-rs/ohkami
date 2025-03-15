@@ -191,13 +191,33 @@ fn metadataize(input: &str) -> Box<[u8]> {
         for-testing-request-parsing-for-requests-that-have-so-large-header-\
         values-that-exceed-pre-allocated-BUF_SIZE-.-This-is-required-,-for-\
         example-,-when-some-requests-are-expected-to-have-large-JWT-payloads-.\
+        This-is-a-sample-of-very-long-bearer-token-in-authorizatino-header-\
+        for-testing-request-parsing-for-requests-that-have-so-large-header-\
+        values-that-exceed-pre-allocated-BUF_SIZE-.-This-is-required-,-for-\
+        example-,-when-some-requests-are-expected-to-have-large-JWT-payloads-.\
+        This-is-a-sample-of-very-long-bearer-token-in-authorizatino-header-\
+        for-testing-request-parsing-for-requests-that-have-so-large-header-\
+        values-that-exceed-pre-allocated-BUF_SIZE-.-This-is-required-,-for-\
+        example-,-when-some-requests-are-expected-to-have-large-JWT-payloads-.\
+        This-is-a-sample-of-very-long-bearer-token-in-authorizatino-header-\
+        for-testing-request-parsing-for-requests-that-have-so-large-header-\
+        values-that-exceed-pre-allocated-BUF_SIZE-.-This-is-required-,-for-\
+        example-,-when-some-requests-are-expected-to-have-large-JWT-payloads-.\
+        This-is-a-sample-of-very-long-bearer-token-in-authorizatino-header-\
+        for-testing-request-parsing-for-requests-that-have-so-large-header-\
+        values-that-exceed-pre-allocated-BUF_SIZE-.-This-is-required-,-for-\
+        example-,-when-some-requests-are-expected-to-have-large-JWT-payloads-.\
+        This-is-a-sample-of-very-long-bearer-token-in-authorizatino-header-\
+        for-testing-request-parsing-for-requests-that-have-so-large-header-\
+        values-that-exceed-pre-allocated-BUF_SIZE-.-This-is-required-,-for-\
+        example-,-when-some-requests-are-expected-to-have-large-JWT-payloads-.\
     ";
 
     /* `LARGE_TOKEN` itself is already larger than default `request_bufsize` */
-    assert!(LARGE_TOKEN.len() > (1 << 10));
+    assert!(LARGE_TOKEN.len() > (1 << 11));
 
     /* override `request_bufsize` via environment variable */
-    unsafe {std::env::set_var("OHKAMI_REQUEST_BUFSIZE", "2048")};
+    unsafe {std::env::set_var("OHKAMI_REQUEST_BUFSIZE", "4096")};
 
     let case = format!("\
         GET /posts HTTP/1.1\r\n\
