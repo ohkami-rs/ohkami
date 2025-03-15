@@ -218,7 +218,6 @@ impl Request {
     }
 
     #[cfg(feature="__rt_native__")]
-    #[inline]
     pub(crate) async fn read(
         mut self: Pin<&mut Self>,
         stream:   &mut (impl AsyncRead + Unpin),
@@ -345,8 +344,8 @@ impl Request {
     }
 
 
-    #[cfg(debug_assertions/* for `ohkami::testing` */)]
     #[cfg(any(feature="rt_worker", feature="rt_lambda"))]
+    #[cfg(debug_assertions/* for `ohkami::testing` */)]
     /// Used in `testing` module
     pub(crate) async fn read(mut self: Pin<&mut Self>,
         raw_bytes: &mut &[u8]
