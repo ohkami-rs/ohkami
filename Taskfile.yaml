@@ -67,7 +67,8 @@ tasks:
   test:examples:
     dir: ./examples
     cmds:
-      - cargo test
+      - chmod +x ./test.sh
+      - ./test.sh
 
   test:samples:
     dir: ./samples

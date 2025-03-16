@@ -34,10 +34,9 @@ use {
     std::borrow::Cow,
 };
 
-
 #[cfg(feature="__rt_native__")]
-pub(crate) const BUF_SIZE: usize = 1 << 10;
-#[cfg(feature="__rt_native__")]
+/// reject requests having `Content-Length` larger than this limit
+/// (as `413 Payload Too Large`) for resource security reason
 pub(crate) const PAYLOAD_LIMIT: usize = 1 << 32;
 
 /// # HTTP Request
@@ -97,7 +96,7 @@ pub(crate) const PAYLOAD_LIMIT: usize = 1 << 32;
 /// ```
 pub struct Request {
     #[cfg(feature="__rt_native__")]
-    pub(super/* for test */) __buf__: Box<[u8; BUF_SIZE]>,
+    pub(super/* for test */) __buf__: Box<[u8]>,
 
     #[cfg(feature="rt_worker")]
     pub(super/* for test */) __url__: std::mem::MaybeUninit<::worker::Url>,
@@ -189,7 +188,7 @@ impl Request {
             ip: crate::util::IP_0000/* tetative */,
 
             #[cfg(feature="__rt_native__")]
-            __buf__: Box::new([0; BUF_SIZE]),
+            __buf__: vec![0u8; crate::CONFIG.request_bufsize()].into_boxed_slice(),
             #[cfg(feature="rt_worker")]
             __url__: std::mem::MaybeUninit::uninit(),
             #[cfg(feature="rt_lambda")]
@@ -219,7 +218,6 @@ impl Request {
     }
 
     #[cfg(feature="__rt_native__")]
-    #[inline]
     pub(crate) async fn read(
         mut self: Pin<&mut Self>,
         stream:   &mut (impl AsyncRead + Unpin),
@@ -264,9 +262,26 @@ impl Request {
 
         while r.consume("\r\n").is_none() {
             let key_bytes = r.read_while(|b| b != &b':');
-            r.consume(": ").ok_or_else(Response::BadRequest)?;
+            r.consume(": ").ok_or_else(|| {
+                crate::WARNING!("\
+                    [Request::read] Unexpected end of headers! \
+                    Maybe request buffer size is not enough. \
+                    Try to set `OHKAMI_REQUEST_BUFSIZE` to larger value \
+                    (default: 2048).\
+                ");
+                Response::BadRequest()
+            })?;
+
             let value = CowSlice::Ref(Slice::from_bytes(r.read_while(|b| b != &b'\r')));
-            r.consume("\r\n").ok_or_else(Response::BadRequest)?;
+            r.consume("\r\n").ok_or_else(|| {
+                crate::WARNING!("\
+                    [Request::read] Unexpected end of headers! \
+                    Maybe request buffer size is not enough. \
+                    Try to set `OHKAMI_REQUEST_BUFSIZE` to larger value \
+                    (default: 2048).\
+                ");
+                Response::BadRequest()
+            })?;
 
             if let Some(key) = RequestHeader::from_bytes(key_bytes) {
                 self.headers.append(key, value);
@@ -329,8 +344,8 @@ impl Request {
     }
 
 
-    #[cfg(debug_assertions/* for `ohkami::testing` */)]
     #[cfg(any(feature="rt_worker", feature="rt_lambda"))]
+    #[cfg(debug_assertions/* for `ohkami::testing` */)]
     /// Used in `testing` module
     pub(crate) async fn read(mut self: Pin<&mut Self>,
         raw_bytes: &mut &[u8]

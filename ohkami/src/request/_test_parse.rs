@@ -1,7 +1,11 @@
 #![cfg(all(test, feature="__rt_native__", feature="DEBUG"))]
 
 #[allow(unused)]
-use super::{Request, Method, BUF_SIZE, Path, QueryParams, Context};
+use super::{Request, Method, Path, QueryParams, Context};
+
+use super::{RequestHeader, RequestHeaders};
+use std::pin::Pin;
+use ohkami_lib::{Slice, CowSlice};
 
 #[test]
 fn parse_path() {
@@ -18,48 +22,47 @@ fn parse_path() {
     assert_eq!(&*path, "/");
 }
 
+macro_rules! assert_parse {
+    ($case:expr, $expected:expr) => {
+        let mut case = $case.as_bytes();
+
+        let mut actual = Request::init(crate::util::IP_0000);
+        let mut actual = unsafe {Pin::new_unchecked(&mut actual)};
+        
+        let result = crate::__rt__::testing::block_on({
+            actual.as_mut().read(&mut case)
+        });
+
+        assert_eq!(result, Ok(Some(())));
+        
+        let expected = $expected;
+
+        println!("<assert_parse>");
+
+        let __panic_message = format!("\n\
+            =====  actual  =====\n\
+            {actual:#?}\n\
+            \n\
+            ===== expected =====\n\
+            {expected:#?}\n\
+            \n\
+        ");
+
+        if actual.get_mut() != &expected {
+            panic!("{__panic_message}")
+        }
+    };
+}
+
+fn metadataize(input: &str) -> Box<[u8]> {
+    let buf_size = crate::CONFIG.request_bufsize();
+    let mut buf = vec![0; buf_size];
+    buf[..input.len().min(buf_size)]
+        .copy_from_slice(&input.as_bytes()[..input.len().min(buf_size)]);
+    buf.into_boxed_slice()
+}
+
 #[test] fn test_parse_request() {
-    use super::{RequestHeader, RequestHeaders};
-    use std::pin::Pin;
-    use ohkami_lib::{Slice, CowSlice};
-
-    fn metadataize(input: &str) -> Box<[u8; BUF_SIZE]> {
-        let mut buf = [0; BUF_SIZE];
-        buf[..input.len().min(BUF_SIZE)]
-            .copy_from_slice(&input.as_bytes()[..input.len().min(BUF_SIZE)]);
-        Box::new(buf)
-    }
-
-    macro_rules! assert_parse {
-        ($case:expr, $expected:expr) => {
-            let mut case = $case.as_bytes();
-
-            let mut actual = Request::init(crate::util::IP_0000);
-            let mut actual = unsafe {Pin::new_unchecked(&mut actual)};
-            
-            crate::__rt__::testing::block_on({
-                actual.as_mut().read(&mut case)
-            });
-            
-            let expected = $expected;
-
-            println!("<assert_parse>");
-
-            let __panic_message = format!("\n\
-                =====  actual  =====\n\
-                {actual:#?}\n\
-                \n\
-                ===== expected =====\n\
-                {expected:#?}\n\
-                \n\
-            ");
-
-            if actual.get_mut() != &expected {
-                panic!("{__panic_message}")
-            }
-        };
-    }
-
     const CASE_1: &str = "\
         GET /hello.html HTTP/1.1\r\n\
         User-Agent: Mozilla/4.0\r\n\

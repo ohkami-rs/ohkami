@@ -446,7 +446,7 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
         let mut req = unsafe {Pin::new_unchecked(&mut req)};
         crate::__rt__::testing::block_on({
             req.as_mut().read(&mut req_bytes)
-        });
+        }).unwrap();
 
         assert_eq!(
             my_jwt.verified(&req.as_ref()).unwrap(),
@@ -462,7 +462,7 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
         let mut req = unsafe {Pin::new_unchecked(&mut req)};
         crate::__rt__::testing::block_on({
             req.as_mut().read(&mut req_bytes)
-        });
+        }).unwrap();
 
         assert_eq!(
             my_jwt.verified(&req.as_ref()).unwrap_err().status,
