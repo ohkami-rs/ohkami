@@ -1,6 +1,9 @@
 #[cfg(test)]
 mod _test;
 
+#[cfg(feature="__rt_native__")]
+mod dir;
+
 pub(crate) mod routing;
 pub use routing::{Route, Routing};
 
