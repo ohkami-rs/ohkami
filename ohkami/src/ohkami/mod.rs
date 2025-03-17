@@ -385,8 +385,7 @@ impl Ohkami {
     /// 
     /// ### static directory serving
     /// 
-    /// `.Dir` mounts a directory and generates handlers
-    /// for serving each static file in it.
+    /// `.Dir` mounts a directory and serves all files in it/its sub directories.
     /// 
     /// This doesn't work on `rt_worker` ( of course because there Ohkami can't
     /// touch your local file system ). Consider using `asset` of wrangler.{toml/json}

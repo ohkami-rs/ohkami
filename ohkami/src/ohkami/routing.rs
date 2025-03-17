@@ -68,7 +68,6 @@ pub struct ByAnother {
     pub(crate) ohkami: Ohkami,
 }
 
-
 macro_rules! Route {
     ($( $method:ident ),*) => {
         /// Core trait for Ohkami's routing definition.
@@ -109,6 +108,7 @@ macro_rules! Route {
 
             fn By(self, another: Ohkami) -> ByAnother;
 
+            #[cfg(feature="__rt_native__")]
             fn Dir(self, static_files_dir_path: &'static str) -> Dir;
         }
 
@@ -126,6 +126,7 @@ macro_rules! Route {
                 }
             }
 
+            #[cfg(feature="__rt_native__")]
             fn Dir(self, path: &'static str) -> Dir {
                 // Check `self` is valid route
                 let _ = RouteSegments::from_literal(self);
@@ -141,7 +142,6 @@ macro_rules! Route {
         }
     };
 } Route! { GET, PUT, POST, PATCH, DELETE }
-
 
 trait RoutingItem {
     fn apply(self, router: &mut Router);
