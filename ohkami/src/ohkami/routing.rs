@@ -3,10 +3,11 @@
 use crate::router::{base::Router, segments::RouteSegments};
 use crate::fang::{Fang, BoxedFPC};
 use crate::fang::handler::{Handler, IntoHandler};
-use crate::response::Content;
 use crate::Ohkami;
 use std::sync::Arc;
 
+#[cfg(feature="__rt_native__")]
+use super::dir::{Dir, StaticFileHandler};
 
 #[derive(Clone)]
 pub(crate) struct HandlerMeta {
@@ -67,95 +68,6 @@ pub struct ByAnother {
     pub(crate) ohkami: Ohkami,
 }
 
-pub struct Dir {
-    pub(crate) route: &'static str,
-    pub(crate) files: Vec<(
-        Vec<String>,
-        std::fs::File,
-    )>,
-
-    /*=== config ===*/
-
-    /// File extensions (leading `.` trimmed) that should not be appeared in handling path
-    pub(crate) omit_extensions: Option<Box<[&'static str]>>,
-}
-impl Dir {
-    fn new(route: &'static str, dir_path: std::path::PathBuf) -> std::io::Result<Self> {
-        let dir_path = dir_path.canonicalize()?;
-
-        if !dir_path.is_dir() {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidInput,
-                format!("{} is not directory", dir_path.display()))
-            )
-        }
-
-        let mut files = Vec::new(); {
-            fn fetch_entries(
-                dir: std::path::PathBuf
-            ) -> std::io::Result<Vec<std::path::PathBuf>> {
-                dir.read_dir()?
-                    .map(|de| de.map(|de| de.path()))
-                    .collect()
-            }
-
-            let mut entries = fetch_entries(dir_path.clone())?;
-            while let Some(entry) = entries.pop() {
-                if entry.is_file() {
-                    let path_Segments = entry.canonicalize()?
-                        .components()
-                        .skip(dir_path.components().count())
-                        .map(|c| c.as_os_str().to_os_string()
-                            .into_string()
-                            .map_err(|os_string| std::io::Error::new(
-                                std::io::ErrorKind::InvalidData,
-                                format!("Can't read a path segment `{}`", os_string.as_encoded_bytes().escape_ascii())
-                            ))
-                        )
-                        .collect::<std::io::Result<Vec<_>>>()?;
-
-                    if path_Segments.last().unwrap().starts_with('.') {
-                        crate::WARNING!("\
-                            =========\n\
-                            [WARNING] `Route::Dir`: found `{}` in directory `{}`, \
-                            are you sure to serve this file？\n\
-                            =========\n",
-                            entry.display(),
-                            dir_path.display(),
-                        )
-                    }
-
-                    files.push((
-                        path_Segments,
-                        std::fs::File::open(entry)?
-                    ));
-
-                } else if entry.is_dir() {
-                    entries.append(&mut fetch_entries(entry)?)
-
-                } else {
-                    continue
-                }
-            }
-        }
-
-        Ok(Self {
-            route,
-            files,
-
-            omit_extensions: None,
-        })
-    }
-
-    pub fn omit_extensions<const N: usize>(mut self, target_extensions: [&'static str; N]) -> Self {
-        self.omit_extensions = Some(Box::new(
-            target_extensions.map(|ext| ext.trim_start_matches('.'))
-        ));
-        self
-    }
-}
-
-
 macro_rules! Route {
     ($( $method:ident ),*) => {
         /// Core trait for Ohkami's routing definition.
@@ -196,6 +108,7 @@ macro_rules! Route {
 
             fn By(self, another: Ohkami) -> ByAnother;
 
+            #[cfg(feature="__rt_native__")]
             fn Dir(self, static_files_dir_path: &'static str) -> Dir;
         }
 
@@ -213,6 +126,7 @@ macro_rules! Route {
                 }
             }
 
+            #[cfg(feature="__rt_native__")]
             fn Dir(self, path: &'static str) -> Dir {
                 // Check `self` is valid route
                 let _ = RouteSegments::from_literal(self);
@@ -228,7 +142,6 @@ macro_rules! Route {
         }
     };
 } Route! { GET, PUT, POST, PATCH, DELETE }
-
 
 trait RoutingItem {
     fn apply(self, router: &mut Router);
@@ -255,103 +168,56 @@ const _: () = {
         }
     }
 
+    #[cfg(feature="__rt_native__")]
     impl RoutingItem for Dir {
         fn apply(self, router: &mut Router) {
-            #[derive(Clone)]
-            struct StaticFileHandler {
-                mime:     &'static str,
-                content:  std::sync::Arc<Vec<u8>>,
-            }
-            const _: () = {
-                impl StaticFileHandler {
-                    fn new(path_Segments: &[String], file: std::fs::File) -> Result<Self, String> {
-                        let filename = path_Segments.last()
-                            .ok_or_else(|| format!("[.Dir] got empty file path"))?;
-                        let (_, extension) = filename.rsplit_once('.')
-                            .ok_or_else(|| format!("[.Dir] got `{filename}`: In current version, ohkami doesn't support serving files that have no extenstion"))?;
-                        let mime = ohkami_lib::mime::get_by_extension(extension)
-                            .ok_or_else(|| format!("[.Dir] got `{filename}`: ohkami doesn't know extension `{extension}`"))?;
+            crate::DEBUG!("[Dir] files = {:#?}", self.files);
 
-                        let mut content = vec![
-                            u8::default();
-                            file.metadata().unwrap().len() as usize
-                        ]; {use std::io::Read;
-                            let mut file = file;
-                            file.read_exact(&mut content)
-                                .map_err(|e| e.to_string())?;
-                        }
+            let mut register = |file_path: std::path::PathBuf, handler: StaticFileHandler| {
+                let file_path = file_path
+                    .iter()
+                    .map(|s| s.to_str().expect(&format!("invalid path to serve: `{}`", s.to_string_lossy())))
+                    .collect::<Vec<_>>()
+                    .join("/");
 
-                        if mime.starts_with("text/")
-                        && std::str::from_utf8(&content).is_err() {
-                            return Err(format!("[.Dir] got `{filename}`: Ohkami doesn't support non UTF-8 text file"))
-                        }
-
-                        Ok(Self { mime, content:std::sync::Arc::new(content) })
-                    }
-                }
-                
-                impl IntoHandler<std::fs::File> for StaticFileHandler {
-                    fn n_params(&self) -> usize {0}
-                
-                    fn into_handler(self) -> Handler {
-                        let this: &'static StaticFileHandler
-                            = Box::leak(Box::new(self));
-
-                        Handler::new(|_| Box::pin(async {
-                            let mut res = crate::Response::OK();
-                            {
-                                res.headers.set().ContentType(this.mime);
-                                res.content = Content::Payload({
-                                    let content: &'static [u8] = &this.content;
-                                    content.into()
-                                });
-                            }
-                            res
-                        }), #[cfg(feature="openapi")] {use crate::openapi;
-                            openapi::Operation::with(openapi::Responses::new([(
-                                200,
-                                openapi::Response::when("OK")
-                                    .content(this.mime, openapi::string().format("binary"))
-                            )]))
-                        })
-                    }
-                }
-            };
-
-            #[cfg(feature="DEBUG")]
-            println!{ "[Dir] .files = {:#?}", self.files }
-
-            let mut register = |path: Vec<String>, handler: StaticFileHandler| router.register_handlers(
-                HandlerSet::new(Box::leak({
+                let path = {
                     let base_path = self.route.trim_end_matches('/').to_string();
-                    match &*path.join("/") {
-                        ""   => if !base_path.is_empty() {base_path} else {"/".into()},
-                        some => base_path + "/" + some,
+                    match &*file_path {
+                        "" => if !base_path.is_empty() {base_path} else {"/".into()},
+                        fp => base_path + "/" + fp,
                     }
-                }.into_boxed_str())).GET(handler)
-            );
-
-            for (mut path, file) in self.files {
-                let mut handler = match StaticFileHandler::new(&path, file) {
-                    Ok(h) => h,
-                    Err(msg) => panic!("{msg}")
                 };
 
-                if matches!(&**path.last().unwrap(), "index.html") {
-                    if !(self.omit_extensions.as_ref().is_some_and(|exts| exts.contains(&"html"))) {
-                        register(path.clone(), handler.clone());
-                    }
+                router.register_handlers(
+                    HandlerSet::new(path.leak()).GET(handler)
+                )
+            };
 
-                    path.pop();
+            for (mut path, file) in self.files {
+                let handler = StaticFileHandler::new(&path, file)
+                    .expect(&format!("can't serve file: `{}`", path.display()));
+
+                let file_name = path.file_name().unwrap().to_str()
+                    .expect(&format!("invalid path to serve: `{}`", path.display()))
+                    .to_string();
+
+                if (!self.serve_dotfiles) && file_name.starts_with('.') {
+                    continue
                 }
 
-                if let Some(exts) = self.omit_extensions.as_ref() {
-                    for ext in exts.iter() {
-                        if let Some(filename) = path.last().and_then(|p| p.strip_suffix(&format!(".{ext}"))) {
-                            let filename_len = filename.len();
-                            path.last_mut().unwrap().truncate(filename_len);
-                            break
+                for ext_to_omit in self.omit_extensions {
+                    if let Some(without_ext) = file_name.strip_suffix(&format!(".{ext_to_omit}")) {
+                        let _ = path.pop();
+
+                        if without_ext == "index" && *ext_to_omit == "html" {
+                            // If the file is `index.html` and `.html` is omitted,
+                            // the path should be `/` instead of `/index`.
+                            assert_eq!(file_name, "index.html");
+                        } else {
+                            path.push(without_ext);
                         }
+
+                        break
                     }
                 }
 
