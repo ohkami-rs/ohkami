@@ -4,6 +4,9 @@ set -Cue
 
 EXAMPLES=$(pwd)
 
+cd $EXAMPLES/static_files && \
+    cargo test
+
 cd $EXAMPLES/jwt && \
     cp .env.sample .env
 cd $EXAMPLES/jwt && \
