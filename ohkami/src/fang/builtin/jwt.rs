@@ -652,7 +652,7 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
                 .header("Authorization", format!("Bearer {jwt_1}"));
             let res = t.oneshot(req).await;
             assert_eq!(res.status(), Status::OK);
-            assert_eq!(res.json::<Profile>().unwrap().unwrap(), Profile {
+            assert_eq!(res.json::<Profile>().unwrap(), Profile {
                 id:           1,
                 first_name:   String::from("ohkami"),
                 familly_name: String::from("framework"),
@@ -690,7 +690,7 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
                 .header("Authorization", format!("Bearer {jwt_2}"));
             let res = t.oneshot(req).await;
             assert_eq!(res.status(), Status::OK);
-            assert_eq!(res.json::<Profile>().unwrap().unwrap(), Profile {
+            assert_eq!(res.json::<Profile>().unwrap(), Profile {
                 id:           2,
                 first_name:   String::from("Leonhard"),
                 familly_name: String::from("Euler"),
@@ -718,7 +718,7 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
                 .header("Authorization", format!("Bearer {jwt_1}"));
             let res = t.oneshot(req).await;
             assert_eq!(res.status(), Status::OK);
-            assert_eq!(res.json::<Profile>().unwrap().unwrap(), Profile {
+            assert_eq!(res.json::<Profile>().unwrap(), Profile {
                 id:           1,
                 first_name:   String::from("ohkami"),
                 familly_name: String::from("framework"),

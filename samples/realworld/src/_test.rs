@@ -101,7 +101,7 @@ pub async fn senario() {
 
     let UserResponse {
         user: User { email, jwt, name, bio, image }
-    } = res.json().unwrap().unwrap();
+    } = res.json().unwrap();
 
     assert_eq!(email, "jake@jake.jake");
     assert_eq!(name,  "Jacob");
@@ -119,7 +119,7 @@ pub async fn senario() {
 
     let UserResponse {
         user: User { email, jwt, name, bio, image }
-    } = res.json().unwrap().unwrap();
+    } = res.json().unwrap();
 
     assert_eq!(email, "jake@jake.jake");
     assert_eq!(name, "Jacob");
@@ -145,7 +145,7 @@ pub async fn senario() {
 
     let UserResponse {
         user: User { email, jwt, name, bio, image }
-    } = res.json().unwrap().unwrap();
+    } = res.json().unwrap();
 
     assert_eq!(email, "jake@jake.jake");
     assert_eq!(name,  "Jacob");
@@ -160,7 +160,7 @@ pub async fn senario() {
     let res = t.oneshot(req).await;
 
     assert_eq!(res.status(), Status::OK);
-    assert_eq!(res.json::<ListOfTagsResponse>().unwrap().unwrap(), ListOfTagsResponse {
+    assert_eq!(res.json::<ListOfTagsResponse>().unwrap(), ListOfTagsResponse {
         tags: Vec::new()
     });
 
@@ -181,7 +181,7 @@ pub async fn senario() {
 
     assert_eq!(res.status(), Status::Created);
 
-    let SingleArticleResponse { article } = res.json().unwrap().unwrap();
+    let SingleArticleResponse { article } = res.json().unwrap();
 
     assert_eq!(article.title,           "How to train your dragon");
     assert_eq!(article.slug,            "How-to-train-your-dragon");
@@ -204,7 +204,7 @@ pub async fn senario() {
     let res = t.oneshot(req).await;
 
     assert_eq!(res.status(), Status::OK);
-    assert_eq!(res.json::<ListOfTagsResponse>().unwrap().unwrap(), ListOfTagsResponse {
+    assert_eq!(res.json::<ListOfTagsResponse>().unwrap(), ListOfTagsResponse {
         tags: vec![Tag::new("reactjs"), Tag::new("angularjs"), Tag::new("dragons")]
     });
 
