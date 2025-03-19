@@ -4,6 +4,9 @@ mod append;
 pub use append::append;
 pub(crate) use append::Append;
 
+mod etag;
+pub use etag::ETag;
+
 mod setcookie;
 pub(crate) use setcookie::*;
 

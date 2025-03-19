@@ -195,7 +195,7 @@ const _: () = {
             };
 
             for (mut path, file) in self.files {
-                let handler = StaticFileHandler::new(&path, file)
+                let handler = StaticFileHandler::new(&path, file, self.etag)
                     .expect(&format!("can't serve file: `{}`", path.display()));
 
                 let file_name = path.file_name().unwrap().to_str()

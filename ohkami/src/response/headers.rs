@@ -188,7 +188,7 @@ macro_rules! Header {
             }
         }
     };
-} Header! {47;
+} Header! {48;
     AcceptRanges:                    b"Accept-Ranges",
     AccessControlAllowCredentials:   b"Access-Control-Allow-Credentials",
     AccessControlAllowHeaders:       b"Access-Control-Allow-Headers",
@@ -219,6 +219,7 @@ macro_rules! Header {
     Expires:                         b"Expires",
     Link:                            b"Link",
     Location:                        b"Location",
+    LastModified:                    b"Last-Modified",
     ProxyAuthenticate:               b"Proxy-Authenticate",
     ReferrerPolicy:                  b"Referrer-Policy",
     Refresh:                         b"Refresh",
