@@ -68,4 +68,87 @@ mod test {
             assert_eq!(res.content("text/html"), Some(include_str!("../public/blog/index.html").as_bytes()));
         }
     }
+
+    #[tokio::test]
+    async fn test_omit_dot_html() {
+        let t = ohkami(Options {
+            omit_dot_html: true,
+            ..Default::default()
+        }).test();
+
+        // dotfiles are not served
+        {
+            let req = TestRequest::GET("/.env.sample");
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status().code(), 404);
+        }
+
+        // .js is served as text/javascript
+        {
+            let req = TestRequest::GET("/index.js");
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status().code(), 200);
+            assert_eq!(res.content("text/javascript"), Some(include_str!("../public/index.js").as_bytes()));
+        }
+
+        // .html is served as text/html without extension and index.html is served at /
+        {
+            let req = TestRequest::GET("/"); // <---
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status().code(), 200);
+            assert_eq!(res.content("text/html"), Some(include_str!("../public/index.html").as_bytes()));
+
+            let req = TestRequest::GET("/about"); // <---
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status().code(), 200);
+            assert_eq!(res.content("text/html"), Some(include_str!("../public/about.html").as_bytes()));
+
+            let req = TestRequest::GET("/blog"); // <---
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status().code(), 200);
+            assert_eq!(res.content("text/html"), Some(include_str!("../public/blog/index.html").as_bytes()));
+        }
+    }
+
+    #[tokio::test]
+    async fn test_serve_dotfiles() {
+        let t = ohkami(Options {
+            serve_dotfiles: true,
+            ..Default::default()
+        }).test();
+
+        // !!! dotfiles are served !!!
+        {
+            let req = TestRequest::GET("/.env.sample");
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status().code(), 200);
+            assert_eq!(res.content("application/octet-stream"), Some(include_str!("../public/.env.sample").as_bytes()));
+        }
+
+        // .js is served as text/javascript
+        {
+            let req = TestRequest::GET("/index.js");
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status().code(), 200);
+            assert_eq!(res.content("text/javascript"), Some(include_str!("../public/index.js").as_bytes()));
+        }
+
+        // .html is served as text/html with extension
+        {
+            let req = TestRequest::GET("/index.html");
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status().code(), 200);
+            assert_eq!(res.content("text/html"), Some(include_str!("../public/index.html").as_bytes()));
+
+            let req = TestRequest::GET("/about.html");
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status().code(), 200);
+            assert_eq!(res.content("text/html"), Some(include_str!("../public/about.html").as_bytes()));
+
+            let req = TestRequest::GET("/blog/index.html");
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status().code(), 200);
+            assert_eq!(res.content("text/html"), Some(include_str!("../public/blog/index.html").as_bytes()));
+        }
+    }
 }

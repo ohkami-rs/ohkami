@@ -215,7 +215,7 @@ impl TestResponse {
         } else {None}
     }
     pub fn content(&self, content_type: &'static str) -> Option<&[u8]> {
-        if self.0.headers.ContentType()? == content_type {
+        if self.0.headers.ContentType()?.starts_with(content_type) {
             self.0.content.as_bytes()
         } else {None}
     }
