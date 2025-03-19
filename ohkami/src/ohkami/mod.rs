@@ -14,6 +14,12 @@ use std::sync::Arc;
 #[cfg(feature="__rt_native__")]
 use crate::{__rt__, Session};
 
+#[cfg(all(feature="__rt_native__", feature="rt_tokio", feature="tls"))]
+use tokio_rustls::TlsAcceptor;
+
+#[cfg(all(feature="__rt_native__", feature="rt_tokio", feature="tls"))]
+use crate::tls::TlsStream;
+
 /// # Ohkami - a smart wolf who serves your web app
 /// 
 /// ## Definition
@@ -585,6 +591,100 @@ impl Ohkami {
         crate::DEBUG!("interrupted, trying graceful shutdown...");
         drop(listener);
 
+        crate::DEBUG!("waiting {} session(s) to finish...", wg.count());
+        wg.await;
+    }
+
+    #[cfg(all(feature="__rt_native__", feature="rt_tokio"))]
+    /// Bind this `Ohkami` to an address and start serving with TLS/HTTPS support!
+    /// 
+    /// This method works like `howl` but upgrades connections to HTTPS using the provided
+    /// rustls configuration. This functionality is only available with the `rt_tokio` feature.
+    /// 
+    /// ### Parameters
+    /// 
+    /// - `bind`: Same as `howl`, can be a socket address or TcpListener
+    /// - `tls_config`: A rustls server configuration containing your certificates and keys
+    /// 
+    /// ### Example
+    /// 
+    /// ```no_run
+    /// use ohkami::prelude::*;
+    /// use rustls::{ServerConfig, Certificate, PrivateKey};
+    /// use std::fs::File;
+    /// use std::io::BufReader;
+    /// 
+    /// async fn hello() -> &'static str {
+    ///     "Hello, secure ohkami!"
+    /// }
+    /// 
+    /// #[tokio::main]
+    /// async fn main() -> std::io::Result<()> {
+    ///     // Initialize rustls crypto provider
+    ///     match rustls::crypto::ring::default_provider().install_default() {
+    //          Ok(_) => println!("Successfully installed rustls crypto provider"),
+    //          Err(e) => {
+    //              eprintln!("Failed to install rustls crypto provider: {:?}", e);
+    //              std::process::exit(1);
+    //          }
+    //      }
+    ///     // Load certificates and private key
+    ///     let cert_file = File::open("path/to/cert.pem")?;
+    ///     let key_file = File::open("path/to/key.pem")?;
+    ///     
+    ///     let cert_chain = rustls_pemfile::certs(&mut BufReader::new(cert_file))
+    ///         .map(|certs| certs.into_iter().map(Certificate).collect())
+    ///         .unwrap_or_default();
+    ///     
+    ///     let key = rustls_pemfile::pkcs8_private_keys(&mut BufReader::new(key_file))
+    ///         .next()
+    ///         .map(|key| PrivateKey(key))
+    ///         .expect("Failed to load private key");
+    ///     
+    ///     // Build TLS configuration
+    ///     let tls_config = ServerConfig::builder()
+    ///         .with_safe_defaults()
+    ///         .with_no_client_auth()
+    ///         .with_single_cert(cert_chain, key)
+    ///         .expect("Failed to build TLS configuration");
+    ///     
+    ///     // Create and run Ohkami with HTTPS
+    ///     Ohkami::new((
+    ///         "/".GET(hello),
+    ///     )).howl_tls("0.0.0.0:8443", tls_config).await;
+    ///     
+    ///     Ok(())
+    /// }
+    /// ```
+    pub async fn howl_tls<T>(self, bind: impl __rt__::IntoTcpListener<T>, tls_config: rustls::ServerConfig) {    
+        let (router, _) = self.into_router().finalize();
+        let router = Arc::new(router);
+        let tls_acceptor = TlsAcceptor::from(Arc::new(tls_config));
+    
+        let listener = bind.ino_tcp_listener().await;
+        let (wg, ctrl_c) = (sync::WaitGroup::new(), sync::CtrlC::new());
+    
+        while let Some(accept) = ctrl_c.until_interrupt(listener.accept()).await {
+            let Ok((tcp_stream, addr)) = accept else { continue };
+            
+            let Ok(tls_stream) = tls_acceptor.accept(tcp_stream).await else { continue };
+            
+            let session = Session::new(
+                router.clone(),
+                TlsStream(tls_stream),
+                addr.ip()
+            );
+    
+            let wg = wg.add();
+            tokio::spawn(async move {
+                session.manage().await;
+                wg.done();
+            });
+        }
+    
+        crate::DEBUG!("interrupted, trying graceful shutdown...");
+        drop(listener);
+    
         crate::DEBUG!("waiting {} session(s) to finish...", wg.count());
         wg.await;
     }

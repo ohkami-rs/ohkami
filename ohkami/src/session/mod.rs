@@ -1,29 +1,33 @@
-#![cfg(feature="__rt_native__")]
-
-use std::{any::Any, pin::Pin, sync::Arc, time::Duration};
-use std::panic::{AssertUnwindSafe, catch_unwind};
-use crate::__rt__::TcpStream;
+#[cfg(feature = "__rt_native__")]
+use crate::router::r#final::Router;
 use crate::response::Upgrade;
 use crate::util::timeout_in;
-use crate::router::r#final::Router;
 use crate::{Request, Response};
+use std::panic::{AssertUnwindSafe, catch_unwind};
+use std::{any::Any, pin::Pin, sync::Arc, time::Duration};
 
-pub(crate) struct Session {
-    router:     Arc<Router>,
-    connection: TcpStream,
-    ip:         std::net::IpAddr,
+#[cfg(feature = "rt_tokio")]
+use tokio::io::{AsyncRead, AsyncWrite};
+#[cfg(any(feature = "rt_async-std", feature = "rt_smol"))]
+use futures_util::io::{AsyncRead, AsyncWrite};
+#[cfg(feature = "rt_glommio")]
+use glommio::io::{AsyncRead, AsyncWrite};
+
+pub(crate) struct Session<S> {
+    router: Arc<Router>,
+    connection: S, // Changed connection to generic type for TcpStream and TlsStream
+    ip: std::net::IpAddr,
 }
 
-impl Session {
-    pub(crate) fn new(
-        router:     Arc<Router>,
-        connection: TcpStream,
-        ip:         std::net::IpAddr
-    ) -> Self {
+impl<S> Session<S> 
+where
+    S: AsyncRead + AsyncWrite + Unpin,
+{
+    pub(crate) fn new(router: Arc<Router>, connection: S, ip: std::net::IpAddr) -> Self {
         Self {
             router,
             connection,
-            ip
+            ip,
         }
     }
 
