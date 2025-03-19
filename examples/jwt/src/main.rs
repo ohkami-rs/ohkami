@@ -93,8 +93,7 @@ mod test {
         let req = TestRequest::GET("/auth");
         let res = t.oneshot(req).await;
         let AuthResponse { token } = res.json()
-            .expect("`/auth` response doesn't contain a token")
-            .expect("`/auth` response is not `AuthResponse`");
+            .expect("`/auth` response doesn't contain a token");
 
         let req = TestRequest::GET("/private")
             .header("Authorization", format!("Bearer {token}"));

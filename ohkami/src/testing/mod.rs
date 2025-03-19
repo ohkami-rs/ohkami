@@ -221,14 +221,12 @@ impl TestResponse {
                 bytes.escape_ascii()
             )))
     }
-    pub fn json<'d, T: serde::Deserialize<'d>>(&'d self) -> Option<Result<T, serde_json::Error>> {
+    pub fn json<'d, T: serde::Deserialize<'d>>(&'d self) -> Option<T> {
         self.content("application/json")
-            .map(|bytes| serde_json::from_slice(bytes)
-                // .expect(&f!(
-                //     "Failed to deserialize json payload as {}: {}",
-                //     std::any::type_name::<T>(),
-                //     bytes.escape_ascii()
-                // ))
-            )
+            .map(|bytes| serde_json::from_slice(bytes).expect(&f!(
+                "Failed to deserialize json payload as {}: {}",
+                std::any::type_name::<T>(),
+                bytes.escape_ascii()
+            )))
     }
 }
