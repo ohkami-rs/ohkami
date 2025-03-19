@@ -214,4 +214,9 @@ impl TestResponse {
             Some(serde_json::from_slice(body))
         } else {None}
     }
+    pub fn content(&self, content_type: &'static str) -> Option<&[u8]> {
+        if self.0.headers.ContentType()?.starts_with(content_type) {
+            self.0.content.as_bytes()
+        } else {None}
+    }
 }

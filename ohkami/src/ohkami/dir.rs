@@ -38,12 +38,12 @@ impl Dir {
             while let Some(entry) = entries.pop() {
                 if entry.is_file() {
                     files.push((
-                        entry.clone(),
+                        entry.iter().skip(dir_path.iter().count()).collect(),
                         std::fs::File::open(entry)?
                     ));
 
                 } else if entry.is_dir() {
-                    entries.append(&mut fetch_entries(entry)?)
+                    entries.extend(fetch_entries(entry)?);
 
                 } else {
                     continue

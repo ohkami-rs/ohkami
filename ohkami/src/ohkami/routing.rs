@@ -177,6 +177,7 @@ const _: () = {
                 let file_path = file_path
                     .iter()
                     .map(|s| s.to_str().expect(&format!("invalid path to serve: `{}`", s.to_string_lossy())))
+                    .filter(|s| !matches!(*s, "" | "/"))
                     .collect::<Vec<_>>()
                     .join("/");
 
