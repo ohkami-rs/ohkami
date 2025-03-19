@@ -196,27 +196,39 @@ impl TestResponse {
         self.0.headers.iter()
     }
 
+    pub fn content(&self, content_type: &'static str) -> Option<&[u8]> {
+        let _= self.0.headers.ContentType()?.starts_with(content_type)
+            .then_some(())?;
+        let bytes = self.0.content.as_bytes()?;
+        assert_eq!(
+            bytes.len(),
+            self.0.headers.ContentLength()?.parse::<usize>().unwrap(),
+            "Content-Length does not match the actual content length"
+        );
+        Some(bytes)
+    }
     pub fn text(&self) -> Option<&str> {
-        if self.0.headers.ContentType()?.starts_with("text/plain") {
-            let body = self.0.content.as_bytes()?;
-            Some(std::str::from_utf8(body).expect(&f!("Response content is not UTF-8: {}", body.escape_ascii())))
-        } else {None}
+        self.content("text/plain")
+            .map(|bytes| std::str::from_utf8(bytes).expect(&f!(
+                "Response content is not UTF-8: {}",
+                bytes.escape_ascii()
+            )))
     }
     pub fn html(&self) -> Option<&str> {
-        if self.0.headers.ContentType()?.starts_with("text/html") {
-            let body = self.0.content.as_bytes()?;
-            Some(std::str::from_utf8(body).expect(&f!("Response content is not UTF-8: {}", body.escape_ascii())))
-        } else {None}
+        self.content("text/html")
+            .map(|bytes| std::str::from_utf8(bytes).expect(&f!(
+                "Response content is not UTF-8: {}",
+                bytes.escape_ascii()
+            )))
     }
-    pub fn json<'d, JSON: serde::Deserialize<'d>>(&'d self) -> Option<serde_json::Result<JSON>> {
-        if self.0.headers.ContentType()?.starts_with("application/json") {
-            let body = self.0.content.as_bytes()?;
-            Some(serde_json::from_slice(body))
-        } else {None}
-    }
-    pub fn content(&self, content_type: &'static str) -> Option<&[u8]> {
-        if self.0.headers.ContentType()?.starts_with(content_type) {
-            self.0.content.as_bytes()
-        } else {None}
+    pub fn json<'d, T: serde::Deserialize<'d>>(&'d self) -> Option<Result<T, serde_json::Error>> {
+        self.content("application/json")
+            .map(|bytes| serde_json::from_slice(bytes)
+                // .expect(&f!(
+                //     "Failed to deserialize json payload as {}: {}",
+                //     std::any::type_name::<T>(),
+                //     bytes.escape_ascii()
+                // ))
+            )
     }
 }

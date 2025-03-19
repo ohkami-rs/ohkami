@@ -111,11 +111,11 @@ impl IntoHandler<File> for StaticFileHandler {
         Handler::new(|_| Box::pin(async {
             let mut res = crate::Response::OK();
             {
-                res.headers.set().ContentType(this.mime);
-                res.content = Content::Payload({
-                    let content: &'static [u8] = &this.content;
-                    content.into()
-                });
+                let content: &'static [u8] = &this.content;
+                res.headers.set()
+                    .ContentType(this.mime)
+                    .ContentLength(ohkami_lib::num::itoa(content.len()));
+                res.content = Content::Payload(content.into());
             }
             res
         }), #[cfg(feature="openapi")] {use crate::openapi;
