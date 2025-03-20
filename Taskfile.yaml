@@ -16,6 +16,7 @@ tasks:
       - task: test:other
   test:core:
     deps:
+      - task: test:tls
       - task: test:no_rt
       - for:  [tokio, async-std, smol, nio, glommio, lambda, worker]
         task: test:rt
@@ -29,6 +30,7 @@ tasks:
 
   check:
     deps:
+      - task: check:tls
       - task: check:no_rt
       - for:  [tokio, async-std, smol, nio, glommio, lambda]
         task: check:rt-native_target
@@ -91,6 +93,10 @@ tasks:
       - cargo test --lib --features rt_{{.rt}},DEBUG,sse,{{.maybe_nightly}}
       - cargo test --lib --features rt_{{.rt}},DEBUG,ws,{{.maybe_nightly}}
       - cargo test --lib --features rt_{{.rt}},DEBUG,sse,ws,openapi,{{.maybe_nightly}}
+
+  test:tls: # currently depending on tokio-rustls and works only on tokio
+    dir: ./ohkami
+    cmds:
       - cargo test --lib --features rt_tokio,DEBUG,tls,{{.maybe_nightly}}
       - cargo test --lib --features rt_tokio,DEBUG,sse,ws,tls,{{.maybe_nightly}}
 
@@ -115,6 +121,10 @@ tasks:
       - cargo check --lib --features rt_{{.rt}},sse,{{.maybe_nightly}}
       - cargo check --lib --features rt_{{.rt}},ws,{{.maybe_nightly}}
       - cargo check --lib --features rt_{{.rt}},sse,ws,openapi,{{.maybe_nightly}}
+
+  check:tls: # currently depending on tokio-rustls and works only on tokio
+    dir: ./ohkami
+    cmds:
       - cargo check --lib --features rt_tokio,tls,{{.maybe_nightly}}
       - cargo check --lib --features rt_tokio,sse,ws,tls,{{.maybe_nightly}}
 
