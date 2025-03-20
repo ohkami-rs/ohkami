@@ -32,7 +32,7 @@ impl WebSocketUpgradeable for TcpStream {
 #[cfg(feature="ws")]
 impl<S> Session<S>
 where
-    S: AsyncRead + AsyncWrite + Unpin + Send + 'static + WebSocketUpgradeable,
+    S: AsyncRead + AsyncWrite + Unpin + WebSocketUpgradeable,
 {
     pub(crate) fn new(
         router: Arc<Router>,
@@ -126,7 +126,7 @@ where
 #[cfg(not(feature="ws"))]
 impl<S> Session<S>
 where
-    S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
+    S: AsyncRead + AsyncWrite + Unpin,
 {
     pub(crate) fn new(
         router: Arc<Router>,
