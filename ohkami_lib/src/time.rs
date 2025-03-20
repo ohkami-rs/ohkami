@@ -1,6 +1,5 @@
 //! Most parts are based on [chrono](https://github.com/chronotope/chrono); MIT.
 
-
 /// Current datetime by **IMF-fixdate** format like `Sun, 06 Nov 1994 08:49:37 GMT`, used in `Date` header.
 /// 
 /// (reference：[https://datatracker.ietf.org/doc/html/rfc9110#name-date-time-formats](https://datatracker.ietf.org/doc/html/rfc9110#name-date-time-formats))
@@ -8,7 +7,87 @@
     UTCDateTime::from_unix_timestamp(unix_timestamp).into_imf_fixdate()
 }
 
+const SHORT_WEEKDAYS: [&[u8; 3]; 7 ] = [b"Sun", b"Mon", b"Tue", b"Wed", b"Thu", b"Fri", b"Sat"];
+const SHORT_MONTHS:   [&[u8; 3]; 12] = [b"Jan", b"Feb", b"Mar", b"Apr", b"May", b"Jun", b"Jul", b"Aug", b"Sep", b"Oct", b"Nov", b"Dec"];
+
+const IMF_FIXDATE_LEN: usize = str::len("Sun, 06 Nov 1994 08:49:37 GMT");
+
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
+pub struct ImfFixdate {
+    year:  u16,
+    month: u8,
+    day:   u8,
+    hour:  u8,
+    min:   u8,
+    sec:   u8,
+}
+impl ImfFixdate {
+    pub fn parse(s: &str) -> Result<Self, String> {
+        let mut r = ::byte_reader::Reader::new(s.as_bytes());
+
+        let _ = r.consume_oneof(SHORT_WEEKDAYS)
+            .ok_or_else(|| format!("invalid weekday: `{s}`"))?;
+
+        r.consume(b", ").ok_or_else(|| format!("invalid separator: `{s}`"))?;
+
+        let day = r.read_uint()
+            .and_then(|n| u8::try_from(n).ok())
+            .ok_or_else(|| format!("invalid day: `{s}`"))?;
+
+        r.consume(b" ").ok_or_else(|| format!("invalid separator: `{s}`"))?;
+
+        let month = r.consume_oneof(SHORT_MONTHS)
+            .and_then(|index| u8::try_from(index).ok())
+            .ok_or_else(|| format!("invalid month: `{s}`"))?;
+
+        r.consume(b" ").ok_or_else(|| format!("invalid separator: `{s}`"))?;
+
+        let year = r.read_uint()
+            .and_then(|n| u16::try_from(n).ok())
+            .ok_or_else(|| format!("invalid year: `{s}`"))?;
+
+        r.consume(b" ").ok_or_else(|| format!("invalid separator: `{s}`"))?;
+
+        let hour = r.read_uint()
+            .and_then(|n| u8::try_from(n).ok())
+            .ok_or_else(|| format!("invalid hour: `{s}`"))?;
+
+        r.consume(b":").ok_or_else(|| format!("invalid separator: `{s}`"))?;
+
+        let min = r.read_uint()
+            .and_then(|n| u8::try_from(n).ok())
+            .ok_or_else(|| format!("invalid minute: `{s}`"))?;
+
+        r.consume(b":").ok_or_else(|| format!("invalid separator: `{s}`"))?;
+
+        let sec = r.read_uint()
+            .and_then(|n| u8::try_from(n).ok())
+            .ok_or_else(|| format!("invalid second: `{s}`"))?;
+
+        r.consume(b" GMT").ok_or_else(|| format!("invalid timezone: `{s}`"))?;
+
+        Ok(ImfFixdate { year, month, day, hour, min, sec })
+    }
+}
+impl PartialOrd for ImfFixdate {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+impl Ord for ImfFixdate {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        std::cmp::Ordering::Equal
+            .then(self.year.cmp(&other.year))
+            .then(self.month.cmp(&other.month))
+            .then(self.day.cmp(&other.day))
+            .then(self.hour.cmp(&other.hour))
+            .then(self.min.cmp(&other.min))
+            .then(self.sec.cmp(&other.sec))
+    }
+}
+
 /// date time on UTC *to the second*
+#[derive(Clone, Copy)]
 pub struct UTCDateTime {
     date: Date,
     time: Time,
@@ -28,11 +107,6 @@ impl UTCDateTime {
     }
 
     pub fn into_imf_fixdate(self) -> String {
-        const SHORT_WEEKDAYS: [&[u8; 3]; 7 ] = [b"Sun", b"Mon", b"Tue", b"Wed", b"Thu", b"Fri", b"Sat"];
-        const SHORT_MONTHS:   [&[u8; 3]; 12] = [b"Jan", b"Feb", b"Mar", b"Apr", b"May", b"Jun", b"Jul", b"Aug", b"Sep", b"Oct", b"Nov", b"Dec"];
-
-        const IMF_FIXDATE_LEN: usize = str::len("Sun, 06 Nov 1994 08:49:37 GMT");
-        
         let mut buf = [std::mem::MaybeUninit::<u8>::uninit(); IMF_FIXDATE_LEN];
         let mut i = 0;
 
@@ -102,7 +176,7 @@ impl UTCDateTime {
 }
 
 /// (year << 13) | of
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 struct Date(i32);
 impl Date {
     fn from_days(days: i32) -> Self {
@@ -180,7 +254,7 @@ impl Date {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 struct Time {
     secs: u32,
 }

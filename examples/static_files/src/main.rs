@@ -3,21 +3,24 @@ use ohkami::prelude::*;
 struct Options {
     omit_dot_html: bool,
     serve_dotfiles: bool,
+    etag: Option<fn(&std::fs::File) -> String>,
 }
 impl Default for Options {
     fn default() -> Self {
         Self {
             omit_dot_html: false,
             serve_dotfiles: false,
+            etag: None,
         }
     }
 }
 
-fn ohkami(Options { omit_dot_html, serve_dotfiles }: Options) -> Ohkami {
+fn ohkami(Options { omit_dot_html, serve_dotfiles, etag }: Options) -> Ohkami {
     Ohkami::new((
         "/".Dir("./public")
             .omit_extensions(if omit_dot_html {&["html"]} else {&[]})
-            .serve_dotfiles(serve_dotfiles),
+            .serve_dotfiles(serve_dotfiles)
+            .etag(etag),
     ))
 }
 
