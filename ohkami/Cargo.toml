@@ -91,7 +91,7 @@ nightly = []
 openapi = ["dep:ohkami_openapi", "ohkami_macros/openapi"]
 sse     = ["ohkami_lib/stream"]
 ws      = ["ohkami_lib/stream", "dep:mews"]
-tls     = ["__rt_native__", "rt_tokio", "dep:rustls", "dep:tokio-rustls"]
+tls     = ["rt_tokio", "dep:rustls", "dep:tokio-rustls"]  # currently depending on tokio-rustls and works only on tokio
 
 ##### internal #####
 __rt__        = []
@@ -104,6 +104,7 @@ DEBUG = ["tokio?/rt-multi-thread", "tokio?/macros"]
 #    "openapi",
 #    "sse",
 #    "ws",
+#    "tls",
 #    "rt_tokio",
 #    #"rt_async-std",
 #    #"rt_smol",
@@ -114,5 +115,7 @@ DEBUG = ["tokio?/rt-multi-thread", "tokio?/macros"]
 #]
 
 
-[dev-dependencies]
+[dev-dependencies] # for doc test
 sqlx = { version = "0.8", features = ["runtime-tokio", "postgres", "macros"] }
+rustls = { version = "0.23", features = ["ring"] }
+rustls-pemfile = { version = "2.2" }

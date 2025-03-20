@@ -61,7 +61,7 @@ tasks:
   test:doc:
     dir: ./ohkami
     cmds:
-      - cargo test --doc --no-default-features --features DEBUG,rt_tokio,sse,ws,{{.maybe_nightly}}
+      - cargo test --doc --no-default-features --features DEBUG,rt_tokio,sse,ws,tls,{{.maybe_nightly}}
       # not activating `openapi` feature for testability of README sample codes
 
   test:examples:
@@ -91,6 +91,8 @@ tasks:
       - cargo test --lib --features rt_{{.rt}},DEBUG,sse,{{.maybe_nightly}}
       - cargo test --lib --features rt_{{.rt}},DEBUG,ws,{{.maybe_nightly}}
       - cargo test --lib --features rt_{{.rt}},DEBUG,sse,ws,openapi,{{.maybe_nightly}}
+      - cargo test --lib --features rt_tokio,DEBUG,tls,{{.maybe_nightly}}
+      - cargo test --lib --features rt_tokio,DEBUG,sse,ws,tls,{{.maybe_nightly}}
 
 #### checks ####
   # Assure buildability without "DEBUG" feature
@@ -113,6 +115,8 @@ tasks:
       - cargo check --lib --features rt_{{.rt}},sse,{{.maybe_nightly}}
       - cargo check --lib --features rt_{{.rt}},ws,{{.maybe_nightly}}
       - cargo check --lib --features rt_{{.rt}},sse,ws,openapi,{{.maybe_nightly}}
+      - cargo check --lib --features rt_tokio,tls,{{.maybe_nightly}}
+      - cargo check --lib --features rt_tokio,sse,ws,tls,{{.maybe_nightly}}
 
   check:rt_worker:
     dir: ./ohkami

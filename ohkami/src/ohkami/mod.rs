@@ -610,7 +610,9 @@ impl Ohkami {
     /// 
     /// ```no_run
     /// use ohkami::prelude::*;
-    /// use rustls::{ServerConfig, Certificate, PrivateKey};
+    /// use rustls::ServerConfig;
+    /// use rustls::pki_types::{CertificateDer, PrivateKeyDer};
+    /// 
     /// use std::fs::File;
     /// use std::io::BufReader;
     /// 
@@ -621,33 +623,31 @@ impl Ohkami {
     /// #[tokio::main]
     /// async fn main() -> std::io::Result<()> {
     ///     // Initialize rustls crypto provider
-    ///     match rustls::crypto::ring::default_provider().install_default() {
-    //          Ok(_) => println!("Successfully installed rustls crypto provider"),
-    //          Err(e) => {
-    //              eprintln!("Failed to install rustls crypto provider: {:?}", e);
-    //              std::process::exit(1);
-    //          }
-    //      }
+    ///     rustls::crypto::ring::default_provider().install_default()
+    ///         .expect("Failed to install rustls crypto provider");
+    /// 
     ///     // Load certificates and private key
-    ///     let cert_file = File::open("path/to/cert.pem")?;
-    ///     let key_file = File::open("path/to/key.pem")?;
+    ///     let cert_file = File::open("server.crt")?;
+    ///     let key_file = File::open("server.key")?;
     ///     
     ///     let cert_chain = rustls_pemfile::certs(&mut BufReader::new(cert_file))
-    ///         .map(|certs| certs.into_iter().map(Certificate).collect())
-    ///         .unwrap_or_default();
+    ///         .map(|cd| cd.map(CertificateDer::from))
+    ///         .collect::<Result<Vec<_>, _>>()?;
     ///     
-    ///     let key = rustls_pemfile::pkcs8_private_keys(&mut BufReader::new(key_file))
-    ///         .next()
-    ///         .map(|key| PrivateKey(key))
-    ///         .expect("Failed to load private key");
-    ///     
+    ///     let key = rustls_pemfile::read_one(&mut BufReader::new(key_file))?
+    ///         .map(|p| match p {
+    ///             rustls_pemfile::Item::Pkcs1Key(k) => PrivateKeyDer::Pkcs1(k),
+    ///             rustls_pemfile::Item::Pkcs8Key(k) => PrivateKeyDer::Pkcs8(k),
+    ///             _ => panic!("Unexpected private key type"),
+    ///         })
+    ///         .expect("Failed to read private key");
+    /// 
     ///     // Build TLS configuration
     ///     let tls_config = ServerConfig::builder()
-    ///         .with_safe_defaults()
     ///         .with_no_client_auth()
     ///         .with_single_cert(cert_chain, key)
     ///         .expect("Failed to build TLS configuration");
-    ///     
+    /// 
     ///     // Create and run Ohkami with HTTPS
     ///     Ohkami::new((
     ///         "/".GET(hello),
@@ -655,6 +655,17 @@ impl Ohkami {
     ///     
     ///     Ok(())
     /// }
+    /// ```
+    /// 
+    /// ```sh
+    /// $ openssl req -x509 -newkey rsa:4096 -nodes -keyout server.key -out server.crt -days 365 -subj "/CN=localhost"
+    /// 
+    /// $ cargo run
+    /// ```
+    /// 
+    /// ```sh
+    /// $ curl --insecure https://localhost:8443
+    /// Hello, secure ohkami!
     /// ```
     pub async fn howl_tls<T>(self, bind: impl __rt__::IntoTcpListener<T>, tls_config: rustls::ServerConfig) {    
         let (router, _) = self.into_router().finalize();
