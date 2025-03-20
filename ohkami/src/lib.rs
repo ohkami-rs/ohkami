@@ -175,7 +175,7 @@ mod __rt__ {
         }
 
         pub(crate) const PORT: u16 = {
-            #[cfg(feature="rt_tokio")    ] {3001}
+            #[cfg(feature="rt_tokio")    ] {if cfg!(feature="tls") {9443} else {3001}}
             #[cfg(feature="rt_async-std")] {3002}
             #[cfg(feature="rt_smol")     ] {3003}
             #[cfg(feature="rt_nio")      ] {3004}
