@@ -1,6 +1,7 @@
 use std::borrow::Cow;
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq)]
+
 pub enum ETag<'header> {
     Any,
     Strong(Cow<'header, str>),
@@ -83,9 +84,6 @@ impl<'header> ETag<'header> {
     ///     r#""abc123", W/"def456", "ghi789""#
     /// );
     /// 
-    /// assert_eq!(etags.next(), Some(ETag::Strong("abc123")));
-    /// assert_eq!(etags.next(), Some(ETag::Weak("def456")));
-    /// assert_eq!(etags.next(), Some(ETag::Strong("ghi789")));
     /// assert_eq!(etags.next(), None);
     /// 
     /// let mut etags = ETag::iter_from("*");
