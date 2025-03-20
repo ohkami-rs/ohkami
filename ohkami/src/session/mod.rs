@@ -5,17 +5,11 @@ use crate::util::timeout_in;
 use crate::{Request, Response};
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::{any::Any, pin::Pin, sync::Arc, time::Duration};
-
-#[cfg(feature = "rt_tokio")]
-use tokio::io::{AsyncRead, AsyncWrite};
-#[cfg(any(feature = "rt_async-std", feature = "rt_smol"))]
-use futures_util::io::{AsyncRead, AsyncWrite};
-#[cfg(feature = "rt_glommio")]
-use glommio::io::{AsyncRead, AsyncWrite};
+use crate::__rt__::{AsyncRead, AsyncWrite};
 
 pub(crate) struct Session<S> {
     router: Arc<Router>,
-    connection: S, // Changed connection to generic type for TcpStream and TlsStream
+    connection: S,
     ip: std::net::IpAddr,
 }
 

@@ -1,5 +1,4 @@
-use tokio::io::AsyncRead;
-use tokio::io::AsyncWrite;
+use tokio::io::{AsyncRead, AsyncWrite};
 pub struct TlsStream(pub tokio_rustls::server::TlsStream<tokio::net::TcpStream>);
 
 impl AsyncRead for TlsStream {
@@ -12,7 +11,6 @@ impl AsyncRead for TlsStream {
             std::task::Poll::Ready(Err(e)) => {
                 if e.to_string().contains("close_notify") {
                     std::task::Poll::Ready(Ok(()))
-                    //Re-impl TlsStream's AsyncRead & AsyncWrite just for this, to prevent panic on abrupt client TLS connection close. Probably not a great idea, but it works I guess...
                 } else {
                     std::task::Poll::Ready(Err(e))
                 }

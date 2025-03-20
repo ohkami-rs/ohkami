@@ -595,7 +595,7 @@ impl Ohkami {
         wg.await;
     }
 
-    #[cfg(all(feature="__rt_native__", feature="rt_tokio"))]
+    #[cfg(all(feature="__rt_native__", feature="rt_tokio", feature="tls"))]
     /// Bind this `Ohkami` to an address and start serving with TLS/HTTPS support!
     /// 
     /// This method works like `howl` but upgrades connections to HTTPS using the provided
