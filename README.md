@@ -283,9 +283,89 @@ async fn main() {
 - When the binary size matters, you should prepare a feature flag activating `ohkami/openapi` in your package, and put all your codes around `openapi` behind that feature via `#[cfg(feature = ...)]` or `#[cfg_attr(feature = ...)]`.
 - In `rt_worker`, `.generate` is not available because `Ohkami` can't have access to your local filesystem by `wasm32` binary on Minifalre. So ohkami provides [a CLI tool](./scripts/workers_openapi.js) to generate document from `#[ohkami::worker] Ohkami` with `openapi` feature.
 
+### `"tls"`
+
+HTTPS support up on [rustls](https://github.com/rustls) ecosystem.
+
+- Currently, only works with `rt_tokio`.
+- Currently, only HTTP/1.1 over TLS is supported.
+- You should prepare your own certificate and private key files.
+
+Example :
+
+```sh
+$ openssl req -x509 -newkey rsa:4096 -nodes -keyout server.key -out server.crt -days 365 -subj "/CN=localhost"
+```
+
+```toml
+[dependencies]
+ohkami = { version = "0.24", features = ["rt_tokio", "tls"] }
+tokio  = { version = "1",    features = ["full"] }
+rustls = { version = "0.22", features = ["ring"] }
+rustls-pemfile = "2.2"
+```
+
+```rust,no_run
+use ohkami::prelude::*;
+use rustls::ServerConfig;
+use rustls::pki_types::{CertificateDer, PrivateKeyDer};
+use std::fs::File;
+use std::io::BufReader;
+
+async fn hello() -> &'static str {
+    "Hello, secure ohkami!"
+}
+
+#[tokio::main]
+async fn main() -> std::io::Result<()> {
+    // Initialize rustls crypto provider
+    rustls::crypto::ring::default_provider().install_default()
+        .expect("Failed to install rustls crypto provider");
+
+    // Load certificates and private key
+    let cert_file = File::open("server.crt")?;
+    let key_file = File::open("server.key")?;
+    
+    let cert_chain = rustls_pemfile::certs(&mut BufReader::new(cert_file))
+        .map(|cd| cd.map(CertificateDer::from))
+        .collect::<Result<Vec<_>, _>>()?;
+    
+    let key = rustls_pemfile::read_one(&mut BufReader::new(key_file))?
+        .map(|p| match p {
+            rustls_pemfile::Item::Pkcs1Key(k) => PrivateKeyDer::Pkcs1(k),
+            rustls_pemfile::Item::Pkcs8Key(k) => PrivateKeyDer::Pkcs8(k),
+            _ => panic!("Unexpected private key type"),
+        })
+        .expect("Failed to read private key");
+
+    // Build TLS configuration
+    let tls_config = ServerConfig::builder()
+        .with_no_client_auth()
+        .with_single_cert(cert_chain, key)
+        .expect("Failed to build TLS configuration");
+
+    // Create and run Ohkami with HTTPS
+    Ohkami::new((
+        "/".GET(hello),
+    )).howl_tls("0.0.0.0:8443", tls_config).await;
+    
+    Ok(())
+}
+```
+
+```sh
+$ cargo run
+```
+
+```sh
+$ curl https://localhost:8443 --insecure  # for self-signed certificate
+Hello, secure ohkami!
+```
+
 ### `"nightly"` : nightly-only functionalities
 
 - try response
+- internal performance optimizations
 
 <br>
 
@@ -712,7 +792,7 @@ async fn main() {
 - [x] HTTP/1.1
 - [ ] HTTP/2
 - [ ] HTTP/3
-- [ ] HTTPS
+- [x] HTTPS
 - [x] Server-Sent Events
 - [x] WebSocket
 
