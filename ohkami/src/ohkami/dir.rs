@@ -1,7 +1,7 @@
 #![cfg(feature="__rt_native__")]
 
 use crate::handler::{Handler, IntoHandler};
-use crate::header::ETag;
+use crate::header::{ETag, Encoding, AcceptEncoding, QValue};
 use ohkami_lib::time::ImfFixdate;
 use std::{io, fs::File};
 use std::path::{PathBuf, Path};
@@ -86,13 +86,13 @@ impl Dir {
     }
 }
 
-#[derive(Clone)]
 pub(super) struct StaticFileHandler {
     last_modified: ImfFixdate,
     last_modified_str: String,
     etag: Option<ETag<'static>>,
     mime: &'static str,
-    content: std::sync::Arc<Vec<u8>>,
+    content: Vec<u8>,
+    encodings: Option<Vec<Encoding>>,
 }
 
 impl StaticFileHandler {
@@ -118,7 +118,7 @@ impl StaticFileHandler {
             .transpose()
             .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
 
-        let mime = ::mime_guess::from_path(path)
+        let mime = ::mime_guess::from_path(&path)
             .first_raw()
             .unwrap_or("application/octet-stream");
 
@@ -130,12 +130,21 @@ impl StaticFileHandler {
             file.read_exact(&mut content)?;
         }
 
+        let mut encodings = None;
+        while let Some(encoding) = path.extension()
+            .and_then(|ext| ext.to_str())
+            .and_then(Encoding::from_extension)
+        {
+            encodings.get_or_insert_with(Vec::new).push(encoding);
+        }
+
         Ok(Self {
             last_modified,
             last_modified_str,
             etag,
             mime,
-            content: std::sync::Arc::new(content)
+            content,
+            encodings,
         })
     }
 }
@@ -147,7 +156,19 @@ impl IntoHandler<File> for StaticFileHandler {
         let this: &'static StaticFileHandler = Box::leak(Box::new(self));
 
         Handler::new(|req| Box::pin(async {
-            use crate::{Response, header::ETag};
+            use crate::Response;
+
+            let accept_encoding = req.headers.AcceptEncoding()
+                .map(AcceptEncoding::parse)
+                .unwrap_or_default();
+            if !/*not*/ this.encodings
+                .as_deref()
+                .unwrap_or(&[Encoding::Identity])
+                .iter()
+                .all(|e| accept_encoding.accepts(*e))
+            {
+                
+            }
 
             if let (Some(if_none_match), Some(etag)) = (req.headers.IfNoneMatch(), &this.etag) {
                 if ETag::iter_from(if_none_match).any(|it| it.matches(etag)) {
@@ -167,7 +188,7 @@ impl IntoHandler<File> for StaticFileHandler {
                 .with_payload(this.mime, &*this.content)
                 .with_headers(|h| h
                     .LastModified(&*this.last_modified_str)
-                    .ETag(this.etag.as_ref().map(|etag| etag.serialize()))
+                    .ETag(this.etag.as_ref().map(ETag::serialize))
                 )
         }), #[cfg(feature="openapi")] {use crate::openapi;
             openapi::Operation::with(openapi::Responses::new([

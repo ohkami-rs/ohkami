@@ -10,6 +10,16 @@ pub enum Encoding {
 }
 
 impl Encoding {
+    pub const fn name(&self) -> &'static str {
+        match self {
+            Encoding::Gzip => "gzip",
+            Encoding::Deflate => "deflate",
+            Encoding::Brotli => "br",
+            Encoding::Zstd => "zstd",
+            Encoding::Identity => "identity",
+        }
+    }
+
     pub const fn parse(value: &str) -> Option<Self> {
         match value.as_bytes() {
             b"gzip" => Some(Encoding::Gzip),
@@ -18,16 +28,6 @@ impl Encoding {
             b"zstd" => Some(Encoding::Zstd),
             b"identity" => Some(Encoding::Identity),
             _ => None,
-        }
-    }
-
-    pub const fn name(&self) -> &'static str {
-        match self {
-            Encoding::Gzip => "gzip",
-            Encoding::Deflate => "deflate",
-            Encoding::Brotli => "br",
-            Encoding::Zstd => "zstd",
-            Encoding::Identity => "identity",
         }
     }
 
@@ -40,8 +40,19 @@ impl Encoding {
             Encoding::Identity => None,
         }
     }
+
+    pub const fn from_extension(ext: &str) -> Option<Self> {
+        match ext.as_bytes() {
+            b"gz" => Some(Encoding::Gzip),
+            b"deflate" => Some(Encoding::Deflate),
+            b"br" => Some(Encoding::Brotli),
+            b"zst" => Some(Encoding::Zstd),
+            _ => None,
+        }
+    }
 }
 
+#[derive(Default)]
 pub struct AcceptEncoding {
     gzip: QValue,
     deflate: QValue,
@@ -116,6 +127,16 @@ impl AcceptEncoding {
         ];
         encodings.sort_unstable_by(|(q1, _), (q2, _)| q2.cmp(q1));
         encodings.into_iter().filter_map(|(q, encoding)| (!q.is_zero()).then_some(encoding))
+    }
+
+    pub const fn accepts(&self, encoding: Encoding) -> bool {
+        match encoding {
+            Encoding::Gzip => !self.gzip.is_zero(),
+            Encoding::Deflate => !self.deflate.is_zero(),
+            Encoding::Brotli => !self.br.is_zero(),
+            Encoding::Zstd => !self.zstd.is_zero(),
+            Encoding::Identity => !self.identity.is_zero(),
+        }
     }
 }
 

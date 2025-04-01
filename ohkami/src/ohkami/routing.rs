@@ -106,10 +106,18 @@ macro_rules! Route {
                 fn $method<T>(self, handler: impl IntoHandler<T>) -> HandlerSet;
             )*
 
+            /// Route to another Ohkami instance.
             fn By(self, another: Ohkami) -> ByAnother;
 
             #[cfg(feature="__rt_native__")]
-            fn Dir(self, static_files_dir_path: &'static str) -> Dir;
+            /// Serve static files from a directory.
+            /// 
+            /// Common comprssion formats (gzip, deflate, br, zstd) are supported.
+            /// Files with these extensions are **not** served directly and
+            /// served with the original file name.
+            /// 
+            /// See methods's docs for options.
+            fn Dir(self, static_dir_path: &'static str) -> Dir;
         }
 
         impl Route for &'static str {
@@ -194,6 +202,7 @@ const _: () = {
                 )
             };
 
+            let mut handler_map = std::collections::HashMap::new();
             for (mut path, file) in self.files {
                 let handler = StaticFileHandler::new(&path, file, self.etag)
                     .expect(&format!("can't serve file: `{}`", path.display()));
@@ -221,6 +230,14 @@ const _: () = {
                         break
                     }
                 }
+
+                handler_map
+                    .entry(path.clone())
+                    .or_insert_with(Vec::new)
+                    .push(handler);
+            }
+
+            for (path, static_file_handlers) in handler_map {
 
                 register(path, handler);
             }
