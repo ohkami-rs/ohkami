@@ -211,10 +211,10 @@ impl StaticFileHandler {
 
         let mut compressed = Vec::new();
         for (encoding, file) in compressed_files {
-            // Check if the compressed file is newer than the source file
+            // Check if the compressed file is not older than the source file
             // because the compressed file may be generated from the source file
             // and we want to avoid serving an outdated compressed file.
-            if modified_unix_timestamp(&file)? < modified_unix_timestamp(&source_file)? {
+            if modified_unix_timestamp(&file)? <= modified_unix_timestamp(&source_file)? {
                 crate::WARNING!(
                     "[Dir] skipping outdated compressed file {}.{}: older than source file {}",
                     path.display(), encoding.to_extension(),
