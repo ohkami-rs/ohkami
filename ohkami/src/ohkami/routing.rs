@@ -179,8 +179,6 @@ const _: () = {
     #[cfg(feature="__rt_native__")]
     impl RoutingItem for Dir {
         fn apply(self, router: &mut Router) {
-            crate::DEBUG!("[Dir] files = {:#?}", self.files);
-
             let mut register = |file_path: std::path::PathBuf, handler: StaticFileHandler| {
                 let file_path = file_path
                     .iter()
@@ -202,9 +200,8 @@ const _: () = {
                 )
             };
 
-            let mut handler_map = std::collections::HashMap::new();
-            for (mut path, file) in self.files {
-                let handler = StaticFileHandler::new(&path, file, self.etag)
+            for (mut path, files) in self.files.into_iter() {
+                let handler = StaticFileHandler::new(&path, files, self.etag)
                     .expect(&format!("can't serve file: `{}`", path.display()));
 
                 let file_name = path.file_name().unwrap().to_str()
@@ -230,14 +227,6 @@ const _: () = {
                         break
                     }
                 }
-
-                handler_map
-                    .entry(path.clone())
-                    .or_insert_with(Vec::new)
-                    .push(handler);
-            }
-
-            for (path, static_file_handlers) in handler_map {
 
                 register(path, handler);
             }

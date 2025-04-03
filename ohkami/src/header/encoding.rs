@@ -104,6 +104,16 @@ impl CompressionEncoding {
             }
         }
     }
+
+    pub fn to_content_encoding(&self) -> std::borrow::Cow<'static, str> {
+        match self {
+            Self::Single(encoding) => encoding.name().into(),
+            Self::Multiple(encodings) => {
+                let enc = encodings.iter().map(Encoding::name).collect::<Vec<_>>().join(", ");
+                enc.into()
+            }
+        }
+    }
 }
 
 #[derive(Default)]
@@ -190,6 +200,12 @@ impl AcceptEncoding {
             Encoding::Brotli => !self.br.is_zero(),
             Encoding::Zstd => !self.zstd.is_zero(),
             Encoding::Identity => !self.identity.is_zero(),
+        }
+    }
+    pub fn accepts_compression(&self, encoding: &CompressionEncoding) -> bool {
+        match encoding {
+            CompressionEncoding::Single(encoding) => self.accepts(*encoding),
+            CompressionEncoding::Multiple(encodings) => encodings.iter().all(|e| self.accepts(*e)),
         }
     }
 }

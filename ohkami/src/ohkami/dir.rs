@@ -1,22 +1,22 @@
 #![cfg(feature="__rt_native__")]
 
 use crate::handler::{Handler, IntoHandler};
-use crate::header::{ETag, Encoding, CompressionEncoding, AcceptEncoding, QValue};
+use crate::header::{ETag, Encoding, CompressionEncoding, AcceptEncoding};
 use ohkami_lib::{time::ImfFixdate, map::TupleMap};
 use std::{io, fs::File};
 use std::path::{PathBuf, Path};
 
 pub struct Dir {
-    pub(crate) route: &'static str,
-    pub(crate) files: TupleMap<PathBuf, Vec<StaticFile>>,
+    pub(super) route: &'static str,
+    pub(super) files: TupleMap<PathBuf, Vec<StaticFile>>,
 
     /*=== config ===*/
-    pub(crate) serve_dotfiles: bool,
-    pub(crate) omit_extensions: &'static [&'static str],
-    pub(crate) etag: Option<fn(&File) -> String>,
+    pub(super) serve_dotfiles: bool,
+    pub(super) omit_extensions: &'static [&'static str],
+    pub(super) etag: Option<fn(&File) -> String>,
 }
 
-enum StaticFile {
+pub(super) enum StaticFile {
     Source {
         file: File,
     },
@@ -131,12 +131,10 @@ impl Dir {
     }
 }
 
-type StaticFileContent = &'static [u8];
-
-fn static_file_content(mut file: File) -> io::Result<StaticFileContent> {
+fn read(mut file: File) -> io::Result<Vec<u8>> {
     let mut content = vec![0; file.metadata()?.len() as usize];    
     io::Read::read_exact(&mut file, &mut content)?;
-    Ok(content.leak())
+    Ok(content)
 }
 
 fn modified_unix_timestamp(file: &File) -> io::Result<u64> {
@@ -154,8 +152,8 @@ pub(super) struct StaticFileHandler {
     last_modified_str: String,
     etag: Option<ETag<'static>>,
     mime: &'static str,
-    content: StaticFileContent,
-    compressed: Vec<(CompressionEncoding, StaticFileContent)>,
+    content: Vec<u8>,
+    compressed: Vec<(CompressionEncoding, Vec<u8>)>,
 }
 
 impl StaticFileHandler {
@@ -217,7 +215,7 @@ impl StaticFileHandler {
                 continue
             }
 
-            let content = static_file_content(file)?;
+            let content = read(file)?;
             compressed.push((encoding, content));
         }
 
@@ -227,16 +225,8 @@ impl StaticFileHandler {
             etag,
             mime,
             compressed,
-            content: static_file_content(source_file)?,
+            content: read(source_file)?,
         })
-    }
-
-    fn register_compression(
-        &mut self,
-        encoding: CompressionEncoding,
-        content: StaticFileContent,
-    ) {
-        self.compressed.push((encoding, content));
     }
 }
 
@@ -244,13 +234,13 @@ impl IntoHandler<File> for StaticFileHandler {
     fn n_params(&self) -> usize {0}
 
     fn into_handler(self) -> Handler {
-        let this: &'static StaticFileHandler = Box::leak(Box::new(self));
+        let this = Box::leak(Box::new(self));
 
         Handler::new(|req| Box::pin(async {
             use crate::Response;
 
-            // Check if the client's cache is still valid
-            // and then return 304 Not Modified
+            // Check if client's cache is still valid
+            // and then return 304 Not Modified.
             if let (Some(if_none_match), Some(etag)) = (req.headers.IfNoneMatch(), &this.etag) {
                 if ETag::iter_from(if_none_match).any(|it| it.matches(etag)) {
                     return Response::NotModified();
@@ -264,23 +254,39 @@ impl IntoHandler<File> for StaticFileHandler {
                 }
             }
 
-            // let accept_encoding = req.headers.AcceptEncoding()
-            //     .map(AcceptEncoding::parse)
-            //     .unwrap_or_default();
-            // if !/*not*/ this.encodings
-            //     .as_deref()
-            //     .unwrap_or(&[Encoding::Identity])
-            //     .iter()
-            //     .all(|e| accept_encoding.accepts(*e))
-            // {
-            //     TODO
-            // }
+            // Check if client's Accept-Encoding header matches the available encodings
+            // and determine which encoding to use.
+            // 
+            // If no matching encoding is found, try falling back to the original content.
+            // Then, if client doesn't accept identity encoding, return 406 Not Acceptable
+            // instead of returning the original content.
+            let (encoding, content) = {
+                match req.headers.AcceptEncoding().map(AcceptEncoding::parse) {
+                    None => {
+                        (None, &*this.content)
+                    }
+                    Some(ae) => {
+                        if let Some((encoding, content)) = this
+                            .compressed
+                            .iter()
+                            .find(|(ce, _)| ae.accepts_compression(ce))
+                        {
+                            (Some(encoding), &**content)
+                        } else if ae.accepts(Encoding::Identity) {
+                            (None, &*this.content)
+                        } else {
+                            return Response::NotAcceptable();
+                        }
+                    }
+                }
+            };
 
             Response::OK()
-                .with_payload(this.mime, &*this.content)
+                .with_payload(this.mime, content)
                 .with_headers(|h| h
                     .LastModified(&*this.last_modified_str)
                     .ETag(this.etag.as_ref().map(ETag::serialize))
+                    .ContentEncoding(encoding.map(CompressionEncoding::to_content_encoding))
                 )
         }), #[cfg(feature="openapi")] {use crate::openapi;
             openapi::Operation::with(openapi::Responses::new([
