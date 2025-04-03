@@ -1,19 +1,61 @@
 #![cfg(feature="__rt_native__")]
 
 use crate::handler::{Handler, IntoHandler};
-use crate::header::{ETag, Encoding, AcceptEncoding, QValue};
-use ohkami_lib::time::ImfFixdate;
+use crate::header::{ETag, Encoding, CompressionEncoding, AcceptEncoding, QValue};
+use ohkami_lib::{time::ImfFixdate, map::TupleMap};
 use std::{io, fs::File};
 use std::path::{PathBuf, Path};
 
 pub struct Dir {
     pub(crate) route: &'static str,
-    pub(crate) files: Vec<(PathBuf, File)>,
+    pub(crate) files: TupleMap<PathBuf, Vec<StaticFile>>,
 
     /*=== config ===*/
     pub(crate) serve_dotfiles: bool,
     pub(crate) omit_extensions: &'static [&'static str],
     pub(crate) etag: Option<fn(&File) -> String>,
+}
+
+enum StaticFile {
+    Source {
+        file: File,
+    },
+    Compression {
+        encodings: CompressionEncoding,
+        file: File,
+    },
+}
+impl StaticFile {
+    fn new(path: &Path) -> io::Result<(Self, &Path)> {
+        let file = File::open(path)?;
+        match CompressionEncoding::from_file_path(path) {
+            None => Ok((
+                Self::Source { file },
+                path
+            )),
+            Some((encodings, source)) => Ok((
+                Self::Compression {
+                    encodings,
+                    file,
+                },
+                source
+            ))
+        }
+    }
+
+    fn into_file(self) -> File {
+        match self {
+            Self::Source { file } => file,
+            Self::Compression { file, .. } => file,
+        }
+    }
+
+    fn is_source(&self) -> bool {
+        match self {
+            Self::Source { .. } => true,
+            Self::Compression { .. } => false,
+        }
+    }
 }
 
 impl Dir {
@@ -23,11 +65,11 @@ impl Dir {
         if !dir_path.is_dir() {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidInput,
-                format!("{} is not directory", dir_path.display()))
+                format!("{} is not a directory", dir_path.display()))
             )
         }
 
-        let mut files = Vec::<(PathBuf, File)>::new(); {
+        let mut files = TupleMap::<PathBuf, Vec<StaticFile>>::new(); {
             fn fetch_entries(
                 dir: PathBuf
             ) -> io::Result<Vec<PathBuf>> {
@@ -37,15 +79,18 @@ impl Dir {
             }
 
             let mut entries = fetch_entries(dir_path.clone())?;
-            while let Some(entry) = entries.pop() {
-                if entry.is_file() {
-                    files.push((
-                        entry.iter().skip(dir_path.iter().count()).collect(),
-                        File::open(entry)?
-                    ));
+            while let Some(path) = entries.pop() {
+                if path.is_file() {
+                    let (file, source_path) = StaticFile::new(&path)?;
+                    let source_path = source_path.to_owned();
+                    if let Some(them) = files.get_mut(&source_path) {
+                        them.push(file);
+                    } else {
+                        files.insert(source_path, vec![file]);
+                    }
 
-                } else if entry.is_dir() {
-                    entries.extend(fetch_entries(entry)?);
+                } else if path.is_dir() {
+                    entries.extend(fetch_entries(path)?);
 
                 } else {
                     continue
@@ -86,35 +131,71 @@ impl Dir {
     }
 }
 
+type StaticFileContent = &'static [u8];
+
+fn static_file_content(mut file: File) -> io::Result<StaticFileContent> {
+    let mut content = vec![0; file.metadata()?.len() as usize];    
+    io::Read::read_exact(&mut file, &mut content)?;
+    Ok(content.leak())
+}
+
+fn modified_unix_timestamp(file: &File) -> io::Result<u64> {
+    let ts = file
+        .metadata()?
+        .modified()?
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
+    Ok(ts)
+}
+
 pub(super) struct StaticFileHandler {
     last_modified: ImfFixdate,
     last_modified_str: String,
     etag: Option<ETag<'static>>,
     mime: &'static str,
-    content: Vec<u8>,
-    encodings: Option<Vec<Encoding>>,
+    content: StaticFileContent,
+    compressed: Vec<(CompressionEncoding, StaticFileContent)>,
 }
 
 impl StaticFileHandler {
     pub(super) fn new(
         path: &Path,
-        file: File,
+        mut files: Vec<StaticFile>,
         get_etag: Option<fn(&File) -> String>,
     ) -> io::Result<Self> {
+        let (source_file, compressed_files) = {
+            let s = files.iter().position(StaticFile::is_source)
+                .ok_or_else(|| io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    format!("No source file found for {}", path.display())
+                ))?;
+            
+            if files.iter().any(|f| f.is_source()) {
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    format!("Multiple source files found for {}", path.display())
+                ));
+            }
+
+            (
+                files.swap_remove(s).into_file(),
+                files.into_iter().map(|f| {
+                    let StaticFile::Compression { encodings, file } = f else {unreachable!()};
+                    (encodings, file)
+                })
+            )
+        };
+
         let last_modified_str = ohkami_lib::time::UTCDateTime::from_unix_timestamp(
-            file
-            .metadata()?
-            .modified()?
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_secs()
+            modified_unix_timestamp(&source_file)?
         ).into_imf_fixdate();
 
         let last_modified =  ImfFixdate::parse(&last_modified_str)
             .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
 
         let etag = get_etag
-            .map(|f| ETag::new(f(&file)))
+            .map(|f| ETag::new(f(&source_file)))
             .transpose()
             .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
 
@@ -122,20 +203,22 @@ impl StaticFileHandler {
             .first_raw()
             .unwrap_or("application/octet-stream");
 
-        let mut content = vec![
-            u8::default();
-            file.metadata().unwrap().len() as usize
-        ]; {use io::Read;
-            let mut file = file;
-            file.read_exact(&mut content)?;
-        }
+        let mut compressed = Vec::new();
+        for (encoding, file) in compressed_files {
+            // Check if the compressed file is newer than the source file
+            // because the compressed file may be generated from the source file
+            // and we want to avoid serving an outdated compressed file.
+            if modified_unix_timestamp(&file)? < modified_unix_timestamp(&source_file)? {
+                crate::WARNING!(
+                    "[Dir] skipping outdated compressed file {}.{}: older than source file {}",
+                    path.display(), encoding.to_extension(),
+                    path.display()
+                );
+                continue
+            }
 
-        let mut encodings = None;
-        while let Some(encoding) = path.extension()
-            .and_then(|ext| ext.to_str())
-            .and_then(Encoding::from_extension)
-        {
-            encodings.get_or_insert_with(Vec::new).push(encoding);
+            let content = static_file_content(file)?;
+            compressed.push((encoding, content));
         }
 
         Ok(Self {
@@ -143,9 +226,17 @@ impl StaticFileHandler {
             last_modified_str,
             etag,
             mime,
-            content,
-            encodings,
+            compressed,
+            content: static_file_content(source_file)?,
         })
+    }
+
+    fn register_compression(
+        &mut self,
+        encoding: CompressionEncoding,
+        content: StaticFileContent,
+    ) {
+        self.compressed.push((encoding, content));
     }
 }
 
@@ -158,24 +249,13 @@ impl IntoHandler<File> for StaticFileHandler {
         Handler::new(|req| Box::pin(async {
             use crate::Response;
 
-            let accept_encoding = req.headers.AcceptEncoding()
-                .map(AcceptEncoding::parse)
-                .unwrap_or_default();
-            if !/*not*/ this.encodings
-                .as_deref()
-                .unwrap_or(&[Encoding::Identity])
-                .iter()
-                .all(|e| accept_encoding.accepts(*e))
-            {
-                
-            }
-
+            // Check if the client's cache is still valid
+            // and then return 304 Not Modified
             if let (Some(if_none_match), Some(etag)) = (req.headers.IfNoneMatch(), &this.etag) {
                 if ETag::iter_from(if_none_match).any(|it| it.matches(etag)) {
                     return Response::NotModified();
                 }
-            }
-            if let Some(if_modified_since) = req.headers.IfModifiedSince() {
+            } else if let Some(if_modified_since) = req.headers.IfModifiedSince() {
                 let Ok(if_modified_since) = ImfFixdate::parse(if_modified_since) else {
                     return Response::BadRequest();
                 };
@@ -183,6 +263,18 @@ impl IntoHandler<File> for StaticFileHandler {
                     return Response::NotModified();
                 }
             }
+
+            // let accept_encoding = req.headers.AcceptEncoding()
+            //     .map(AcceptEncoding::parse)
+            //     .unwrap_or_default();
+            // if !/*not*/ this.encodings
+            //     .as_deref()
+            //     .unwrap_or(&[Encoding::Identity])
+            //     .iter()
+            //     .all(|e| accept_encoding.accepts(*e))
+            // {
+            //     TODO
+            // }
 
             Response::OK()
                 .with_payload(this.mime, &*this.content)

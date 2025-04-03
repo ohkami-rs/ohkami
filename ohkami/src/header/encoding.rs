@@ -1,4 +1,5 @@
 use super::QValue;
+use std::{path::Path, ffi::OsStr};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Encoding {
@@ -41,13 +42,66 @@ impl Encoding {
         }
     }
 
-    pub const fn from_extension(ext: &str) -> Option<Self> {
-        match ext.as_bytes() {
+    pub fn from_extension(ext: &OsStr) -> Option<Self> {
+        match ext.to_str()?.as_bytes() {
             b"gz" => Some(Encoding::Gzip),
             b"deflate" => Some(Encoding::Deflate),
             b"br" => Some(Encoding::Brotli),
             b"zst" => Some(Encoding::Zstd),
             _ => None,
+        }
+    }
+}
+
+pub enum CompressionEncoding {
+    Single(Encoding),
+    Multiple(Box<Vec<Encoding>>),
+}
+
+impl From<Encoding> for CompressionEncoding {
+    fn from(encoding: Encoding) -> Self {
+        Self::Single(encoding)
+    }
+}
+
+impl CompressionEncoding {
+    /// Create a `CompressionEncoding` from a file path and return it with
+    /// the original path with compression-extensions removed.
+    /// 
+    /// The file path must be a file, and the encoding is determined by the file extension.
+    /// For example, if the file path is `foo.txt.gz`, the encoding will be `Gzip`.
+    /// If the file path has no encoding, `None` is returned.
+    /// If the file path has multiple encodings, they will be returned in the order they were applied.
+    /// For example, if the file path is `foo.txt.gz.br`, the encodings will be `Gzip` and `Brotli`.
+    pub fn from_file_path<'p>(mut p: &'p Path) -> Option<(Self, &'p Path)> {
+        if !p.is_file() {
+            return None;
+        }
+
+        let mut encodings = Vec::new();
+        while let Some(e) = p.extension().and_then(Encoding::from_extension) {
+            encodings.push(e);
+            p = Path::new(p.file_stem()?);
+        }
+        // Reverse to the order the encodings were applied
+        encodings.reverse();
+
+        match encodings.len() {
+            0 => None,
+            1 => Some((Self::Single(encodings.pop().unwrap()), p)),
+            _ => Some((Self::Multiple(Box::new(encodings)), p)),
+        }
+    }
+
+    pub fn to_extension(&self) -> std::borrow::Cow<'static, str> {
+        match self {
+            Self::Single(encoding) => {
+                encoding.extension().unwrap_or_default().into()
+            }
+            Self::Multiple(encodings) => {
+                let ext = encodings.iter().flat_map(Encoding::extension).collect::<Vec<_>>().join(".");
+                ext.into()
+            }
         }
     }
 }

@@ -8,7 +8,7 @@ mod etag;
 pub use etag::ETag;
 
 mod encoding;
-pub use encoding::{Encoding, AcceptEncoding};
+pub use encoding::{Encoding, CompressionEncoding, AcceptEncoding};
 
 mod qvalue;
 pub use qvalue::QValue;

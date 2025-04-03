@@ -1,4 +1,4 @@
-/// Key-Value map mainly used to store custom headers.
+/// Key-Value map to handle a few entires.
 /// 
 /// Usually, a web app handles 0 ~ 4 custom headers, and so
 /// simple `Vec<(K, V)>` is efficient than `HashMap<K, V>`
