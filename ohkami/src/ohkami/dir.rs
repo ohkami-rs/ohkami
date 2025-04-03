@@ -21,7 +21,7 @@ pub(super) enum StaticFile {
         file: File,
     },
     Compression {
-        encodings: CompressionEncoding,
+        encoding: CompressionEncoding,
         file: File,
     },
 }
@@ -33,9 +33,9 @@ impl StaticFile {
                 Self::Source { file },
                 path
             )),
-            Some((encodings, source)) => Ok((
+            Some((encoding, source)) => Ok((
                 Self::Compression {
-                    encodings,
+                    encoding,
                     file,
                 },
                 source
@@ -82,10 +82,13 @@ impl Dir {
             while let Some(path) = entries.pop() {
                 if path.is_file() {
                     let (file, source_path) = StaticFile::new(&path)?;
-                    let source_path = source_path.to_owned();
-                    if let Some(them) = files.get_mut(&source_path) {
+                    if let Some(them) = files.get_mut(source_path) {
                         them.push(file);
                     } else {
+                        let source_path = source_path
+                            .iter()
+                            .skip(dir_path.iter().count())
+                            .collect::<PathBuf>();
                         files.insert(source_path, vec![file]);
                     }
 
@@ -163,11 +166,15 @@ impl StaticFileHandler {
         get_etag: Option<fn(&File) -> String>,
     ) -> io::Result<Self> {
         let (source_file, compressed_files) = {
-            let s = files.iter().position(StaticFile::is_source)
+            let source = files.swap_remove(
+                files
+                .iter()
+                .position(StaticFile::is_source)
                 .ok_or_else(|| io::Error::new(
                     io::ErrorKind::InvalidData,
                     format!("No source file found for {}", path.display())
-                ))?;
+                ))?
+            );
             
             if files.iter().any(|f| f.is_source()) {
                 return Err(io::Error::new(
@@ -177,10 +184,11 @@ impl StaticFileHandler {
             }
 
             (
-                files.swap_remove(s).into_file(),
+                source.into_file(),
+                // here `files` is guaranteed to have only compressed files
                 files.into_iter().map(|f| {
-                    let StaticFile::Compression { encodings, file } = f else {unreachable!()};
-                    (encodings, file)
+                    let StaticFile::Compression { encoding, file } = f else {unreachable!()};
+                    (encoding, file)
                 })
             )
         };
@@ -266,14 +274,17 @@ impl IntoHandler<File> for StaticFileHandler {
                         (None, &*this.content)
                     }
                     Some(ae) => {
+                        // TODO: use QValue to select the best encoding
                         if let Some((encoding, content)) = this
                             .compressed
                             .iter()
                             .find(|(ce, _)| ae.accepts_compression(ce))
                         {
                             (Some(encoding), &**content)
+
                         } else if ae.accepts(Encoding::Identity) {
                             (None, &*this.content)
+
                         } else {
                             return Response::NotAcceptable();
                         }

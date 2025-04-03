@@ -16,15 +16,23 @@ impl<K: PartialEq, V> TupleMap<K, V> {
     }
 
     #[inline]
-    pub fn get(&self, key: &K) -> Option<&V> {
+    pub fn get<Q>(&self, key: &Q) -> Option<&V>
+    where
+        K: std::borrow::Borrow<Q>,
+        Q: PartialEq + ?Sized,
+    {
         for (k, v) in &self.0 {
-            if key == k {return Some(v)}
+            if key == k.borrow() {return Some(v)}
         }; None
     }
     #[inline]
-    pub fn get_mut(&mut self, key: &K) -> Option<&mut V> {
+    pub fn get_mut<Q>(&mut self, key: &Q) -> Option<&mut V>
+    where
+        K: std::borrow::Borrow<Q>,
+        Q: PartialEq + ?Sized,
+    {
         for (k, v) in &mut self.0 {
-            if key == k {return Some(v)}
+            if key == k.borrow() {return Some(v)}
         }; None
     }
 

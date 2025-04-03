@@ -112,9 +112,12 @@ macro_rules! Route {
             #[cfg(feature="__rt_native__")]
             /// Serve static files from a directory.
             /// 
-            /// Common comprssion formats (gzip, deflate, br, zstd) are supported.
-            /// Files with these extensions are **not** served directly and
-            /// served with the original file name.
+            /// * Common comprssion formats ( `gzip`, `deflate`, `br`, `zstd` ) are supported.
+            ///   They are automatically detected by the file name and
+            ///   used by handler at the original file name.
+            /// 
+            /// * Files with these extensions are **not** served directly and
+            ///   served with the original file name.
             /// 
             /// See methods's docs for options.
             fn Dir(self, static_dir_path: &'static str) -> Dir;
@@ -179,6 +182,8 @@ const _: () = {
     #[cfg(feature="__rt_native__")]
     impl RoutingItem for Dir {
         fn apply(self, router: &mut Router) {
+            crate::DEBUG!("[Dir] entries: {:?}", self.files.keys().collect::<Vec<_>>());
+
             let mut register = |file_path: std::path::PathBuf, handler: StaticFileHandler| {
                 let file_path = file_path
                     .iter()
