@@ -157,11 +157,11 @@ mod test {
 
     #[tokio::test]
     async fn test_precompress() {
-        // `sub.js` has a pre-compressed version `sub.js.gz` and `sub.js.br`
-        // which is served if the client accepts gzip or brotli encoding.
+        // `../public/sub.js` has pre-compressed version: `sub.js.gz` and `sub.js.br`
         // 
-        // brotli version is smaller than gzip version, so it is preferred
-        // if the client accepts both.
+        // * they are used for response when the client accepts gzip or brotli encoding.
+        // * brotli version is smaller than gzip version, so it is preferred
+        //   if the client accepts it.
         let t = ohkami(Default::default()).test();
 
         // sub.js.br is used for requests that accept brotli
@@ -215,6 +215,32 @@ mod test {
             assert_eq!(res.status().code(), 200);
             assert_eq!(res.header("Content-Encoding"), None);
             assert_eq!(res.content("text/javascript"), Some(include_str!("../public/index.js").as_bytes()));
+        }
+
+        // respond with 406 Not Acceptable if
+        // no precompressed version is accepted
+        // and the request does not accept even identity
+        {
+            let req = TestRequest::GET("/sub.js")
+                .header("Accept-Encoding", "deflate, identity;q=0");
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status().code(), 406);
+            assert_eq!(res.header("Content-Encoding"), None);
+            assert_eq!(res.content("text/javascript"), None);
+
+            let req = TestRequest::GET("/sub.js")
+                .header("Accept-Encoding", "*;q=0");
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status().code(), 406);
+            assert_eq!(res.header("Content-Encoding"), None);
+            assert_eq!(res.content("text/javascript"), None);
+
+            let req = TestRequest::GET("/index.js")
+                .header("Accept-Encoding", "identity;q=0");
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status().code(), 406);
+            assert_eq!(res.header("Content-Encoding"), None);
+            assert_eq!(res.content("text/javascript"), None);
         }
     }
 }
