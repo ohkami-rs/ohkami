@@ -106,10 +106,21 @@ macro_rules! Route {
                 fn $method<T>(self, handler: impl IntoHandler<T>) -> HandlerSet;
             )*
 
+            /// Route to another Ohkami instance.
             fn By(self, another: Ohkami) -> ByAnother;
 
             #[cfg(feature="__rt_native__")]
-            fn Dir(self, static_files_dir_path: &'static str) -> Dir;
+            /// Serve static files from a directory.
+            /// 
+            /// Common comprssion formats ( `gzip`, `deflate`, `br`, `zstd` )
+            /// are supported : pre-compressed files by these algorithms are
+            /// automatically detected by the file extension and used by handler
+            /// at the original file name, not directly by the file name.
+            /// (e.g. not served at `GET /index.js.gz`, but used for response for `GET /index.js`)
+            /// Both pre-compressed file(s) and the original file are required to be in the directory.
+            /// 
+            /// See methods's docs for options.
+            fn Dir(self, static_dir_path: &'static str) -> Dir;
         }
 
         impl Route for &'static str {
@@ -171,7 +182,7 @@ const _: () = {
     #[cfg(feature="__rt_native__")]
     impl RoutingItem for Dir {
         fn apply(self, router: &mut Router) {
-            crate::DEBUG!("[Dir] files = {:#?}", self.files);
+            crate::DEBUG!("[Dir] entries: {:?}", self.files.keys().collect::<Vec<_>>());
 
             let mut register = |file_path: std::path::PathBuf, handler: StaticFileHandler| {
                 let file_path = file_path
@@ -194,8 +205,8 @@ const _: () = {
                 )
             };
 
-            for (mut path, file) in self.files {
-                let handler = StaticFileHandler::new(&path, file, self.etag)
+            for (mut path, files) in self.files.into_iter() {
+                let handler = StaticFileHandler::new(&path, files, self.etag)
                     .expect(&format!("can't serve file: `{}`", path.display()));
 
                 let file_name = path.file_name().unwrap().to_str()

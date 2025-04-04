@@ -204,7 +204,7 @@ macro_rules! Header {
     CDNCacheControl:                 b"CDN-Cache-Control",
     Connection:                      b"Connection",
     ContentDisposition:              b"Content-Disposition",
-    ContentEncoding:                 b"Content-Ecoding",
+    ContentEncoding:                 b"Content-Encoding",
     ContentLanguage:                 b"Content-Language",
     ContentLength:                   b"Content-Length",
     ContentLocation:                 b"Content-Location",
