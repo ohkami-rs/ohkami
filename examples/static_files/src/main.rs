@@ -157,11 +157,15 @@ mod test {
 
     #[tokio::test]
     async fn test_precompressed() {
-        // `../public/sub.js` has pre-compressed version: `sub.js.gz` and `sub.js.br`
+        // `../public/sub.js` and `../public/blog/second.html` have pre-compressed version:
         // 
-        // * they are used for response when the client accepts gzip or brotli encoding.
-        // * brotli version is smaller than gzip version, so it is preferred
-        //   if the client accepts it.
+        // - `../public/sub.js.gz`
+        // - `../public/sub.js.br`
+        // - `../public/blog/second.html.gz`
+        // 
+        // They are used for response when the client accepts gzip or brotli encoding.
+        // Then, brotli version is smaller than gzip version, so it is preferred
+        // when the client accepts it.
         let t = ohkami(Default::default()).test();
 
         // sub.js.br is used for requests that accept brotli
@@ -241,6 +245,43 @@ mod test {
             assert_eq!(res.status().code(), 406);
             assert_eq!(res.header("Content-Encoding"), None);
             assert_eq!(res.content("text/javascript"), None);
+        }
+
+        // precompressed files in subdirectory are used with no problem
+        {
+            let req = TestRequest::GET("/blog/second.html");
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status().code(), 200);
+            assert_eq!(res.header("Content-Encoding"), Some("gzip"));
+            assert_eq!(res.content("text/html"), Some(include_bytes!("../public/blog/second.html.gz").as_slice()));
+
+            let req = TestRequest::GET("/blog/second.html")
+                .header("Accept-Encoding", "deflate, gzip;q=0");
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status().code(), 200);
+            assert_eq!(res.header("Content-Encoding"), None);
+            assert_eq!(res.content("text/html"), Some(include_str!("../public/blog/second.html").as_bytes()));
+
+            let req = TestRequest::GET("/blog/second.html")
+                .header("Accept-Encoding", "br");
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status().code(), 200);
+            assert_eq!(res.header("Content-Encoding"), None);
+            assert_eq!(res.content("text/html"), Some(include_str!("../public/blog/second.html").as_bytes()));
+
+            let req = TestRequest::GET("/blog/second.html")
+                .header("Accept-Encoding", "gzip;q=0, identity;q=0");
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status().code(), 406);
+            assert_eq!(res.header("Content-Encoding"), None);
+            assert_eq!(res.content("text/html"), None);
+
+            let req = TestRequest::GET("/blog/second.html")
+                .header("Accept-Encoding", "*;q=0");
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status().code(), 406);
+            assert_eq!(res.header("Content-Encoding"), None);
+            assert_eq!(res.content("text/html"), None);
         }
     }
 }
