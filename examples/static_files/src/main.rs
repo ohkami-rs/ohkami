@@ -219,7 +219,7 @@ mod test {
 
         // respond with 406 Not Acceptable if
         // no precompressed version is accepted
-        // and the request does not accept even identity
+        // and the request explicitly forbids identity
         {
             let req = TestRequest::GET("/sub.js")
                 .header("Accept-Encoding", "deflate, identity;q=0");
