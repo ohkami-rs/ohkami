@@ -112,12 +112,12 @@ macro_rules! Route {
             #[cfg(feature="__rt_native__")]
             /// Serve static files from a directory.
             /// 
-            /// * Common comprssion formats ( `gzip`, `deflate`, `br`, `zstd` ) are supported.
-            ///   They are automatically detected by the file name and
-            ///   used by handler at the original file name.
-            /// 
-            /// * Files with these extensions are **not** served directly and
-            ///   served with the original file name.
+            /// Common comprssion formats ( `gzip`, `deflate`, `br`, `zstd` )
+            /// are supported : pre-compressed files by these algorithms are
+            /// automatically detected by the file extension and used by handler
+            /// at the original file name, not directly by the file name.
+            /// (e.g. not served at `GET /index.js.gz`, but used for response for `GET /index.js`)
+            /// Both pre-compressed file(s) and the original file are required to be in the directory.
             /// 
             /// See methods's docs for options.
             fn Dir(self, static_dir_path: &'static str) -> Dir;
