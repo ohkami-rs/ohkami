@@ -156,7 +156,7 @@ mod test {
     }
 
     #[tokio::test]
-    async fn test_precompress() {
+    async fn test_precompressed() {
         // `../public/sub.js` has pre-compressed version: `sub.js.gz` and `sub.js.br`
         // 
         // * they are used for response when the client accepts gzip or brotli encoding.
