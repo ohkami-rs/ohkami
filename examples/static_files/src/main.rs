@@ -168,5 +168,30 @@ mod test {
             assert_eq!(res.header("Content-Encoding"), Some("gzip"));
             assert_eq!(res.content("text/javascript"), Some(include_bytes!("../public/sub.js.gz").as_slice()));
         }
+
+        // fallback to .js if request rejects all available encodings
+        {
+            let req = TestRequest::GET("/sub.js")
+                .header("Accept-Encoding", "gzip;q=0");
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status().code(), 200);
+            assert_eq!(res.header("Content-Encoding"), None);
+            assert_eq!(res.content("text/javascript"), Some(include_str!("../public/sub.js").as_bytes()));
+
+            let req = TestRequest::GET("/sub.js")
+                .header("Accept-Encoding", "br, deflate");
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status().code(), 200);
+            assert_eq!(res.header("Content-Encoding"), None);
+            assert_eq!(res.content("text/javascript"), Some(include_str!("../public/sub.js").as_bytes()));
+        }
+
+        // fallback to .js if .js.gz is not found
+        {
+            let req = TestRequest::GET("/index.js");
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status().code(), 200);
+            assert_eq!(res.content("text/javascript"), Some(include_str!("../public/index.js").as_bytes()));
+        }
     }
 }
