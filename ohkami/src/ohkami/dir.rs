@@ -246,7 +246,7 @@ impl StaticFileHandler {
 
         crate::DEBUG!(
             "[Dir] precompressed files for {}: {:?}",
-            path.file_name().unwrap().display(),
+            path.display(),
             compressed.iter().map(|(ce, _)| ce).collect::<Vec<_>>()
         );
 
