@@ -2,7 +2,7 @@
 // It is a wrapper around a u16 value, which represents the quality value
 // as a real number with at most 3 decimal places.
 // For example, a QValue of 0.5 would be represented as 500.
-#[derive(Debug, PartialEq, PartialOrd, Eq, Ord, Clone, Copy)]
+#[derive(PartialEq, PartialOrd, Eq, Ord, Clone, Copy)]
 pub struct QValue(pub(crate) u16);
 
 impl QValue {
@@ -35,6 +35,12 @@ impl QValue {
 impl Default for QValue {
     fn default() -> Self {
         Self(1000)
+    }
+}
+
+impl std::fmt::Debug for QValue {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "q={}", self.0 as f32 / 1000.0)
     }
 }
 

@@ -240,6 +240,12 @@ impl StaticFileHandler {
             compressed.push((encoding, content));
         }
 
+        crate::DEBUG!(
+            "[Dir] precompressed files for {}: {:?}",
+            path.file_name().unwrap().display(),
+            compressed.iter().map(|(ce, _)| ce).collect::<Vec<_>>()
+        );
+
         Ok(Self {
             last_modified,
             last_modified_str,
@@ -288,11 +294,15 @@ impl IntoHandler<File> for StaticFileHandler {
                     .map(AcceptEncoding::parse)
                     .unwrap_or_default();
 
+                crate::DEBUG!("[Dir] Accept-Encoding: {:?}", ae);
+                crate::DEBUG!("[Dir] precompressed canidadates: {:?}", this.compressed.iter().map(|(ce, _)| ce).collect::<Vec<_>>());
+
                 if let Some((encoding, content)) = this
                     .compressed
                     .iter()
                     .find(|(ce, _)| ae.accepts_compression(ce))
                 {
+                    crate::DEBUG!("[Dir] using precompressed: {:?}", encoding);
                     (Some(encoding), &**content)
 
                 } else if ae.accepts(Encoding::Identity) {

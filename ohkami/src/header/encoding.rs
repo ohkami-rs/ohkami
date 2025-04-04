@@ -58,9 +58,9 @@ pub enum CompressionEncoding {
     Multiple(Box<Vec<Encoding>>),
 }
 
-impl From<Encoding> for CompressionEncoding {
-    fn from(encoding: Encoding) -> Self {
-        Self::Single(encoding)
+impl std::fmt::Debug for CompressionEncoding {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "CompressionEncoding({})", self.to_content_encoding())
     }
 }
 
@@ -116,7 +116,7 @@ impl CompressionEncoding {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct AcceptEncoding {
     gzip: QValue,
     deflate: QValue,
