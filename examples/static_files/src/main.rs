@@ -157,40 +157,63 @@ mod test {
 
     #[tokio::test]
     async fn test_precompress() {
+        // `sub.js` has a pre-compressed version `sub.js.gz` and `sub.js.br`
+        // which is served if the client accepts gzip or brotli encoding.
+        // 
+        // brotli version is smaller than gzip version, so it is preferred
+        // if the client accepts both.
         let t = ohkami(Default::default()).test();
 
-        // .js.gz is served at .js as text/javascript
-        // and compressed with gzip
+        // sub.js.br is used for requests that accept brotli
         {
             let req = TestRequest::GET("/sub.js");
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status().code(), 200);
+            assert_eq!(res.header("Content-Encoding"), Some("br"));
+            assert_eq!(res.content("text/javascript"), Some(include_bytes!("../public/sub.js.br").as_slice()));
+        }
+
+        // sub.js.gz is used for requests that does not accept brotli and accepts gzip
+        {
+            let req = TestRequest::GET("/sub.js")
+                .header("Accept-Encoding", "gzip, deflate");
             let res = t.oneshot(req).await;
             assert_eq!(res.status().code(), 200);
             assert_eq!(res.header("Content-Encoding"), Some("gzip"));
             assert_eq!(res.content("text/javascript"), Some(include_bytes!("../public/sub.js.gz").as_slice()));
         }
 
-        // fallback to .js if request rejects all available encodings
+        {
+            let req = TestRequest::GET("/sub.js");
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status().code(), 200);
+            assert_eq!(res.header("Content-Encoding"), Some("br"));
+            assert_eq!(res.content("text/javascript"), Some(include_bytes!("../public/sub.js.br").as_slice()));
+        }
+
+        // fallback to .js if request does not accept all prepared compressions
         {
             let req = TestRequest::GET("/sub.js")
-                .header("Accept-Encoding", "gzip;q=0");
+                .header("Accept-Encoding", "gzip;q=0, br;q=0");
             let res = t.oneshot(req).await;
             assert_eq!(res.status().code(), 200);
             assert_eq!(res.header("Content-Encoding"), None);
             assert_eq!(res.content("text/javascript"), Some(include_str!("../public/sub.js").as_bytes()));
 
             let req = TestRequest::GET("/sub.js")
-                .header("Accept-Encoding", "br, deflate");
+                .header("Accept-Encoding", "deflate, identity");
             let res = t.oneshot(req).await;
             assert_eq!(res.status().code(), 200);
             assert_eq!(res.header("Content-Encoding"), None);
             assert_eq!(res.content("text/javascript"), Some(include_str!("../public/sub.js").as_bytes()));
         }
 
-        // fallback to .js if .js.gz is not found
+        // fallback to .js if no precompressed version is found
         {
             let req = TestRequest::GET("/index.js");
             let res = t.oneshot(req).await;
             assert_eq!(res.status().code(), 200);
+            assert_eq!(res.header("Content-Encoding"), None);
             assert_eq!(res.content("text/javascript"), Some(include_str!("../public/index.js").as_bytes()));
         }
     }
