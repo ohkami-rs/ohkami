@@ -33,6 +33,7 @@ async-std      = { version = "1",    optional = true }
 smol           = { version = "2",    optional = true }
 nio            = { version = "0.0",  optional = true }
 glommio        = { version = "0.9",  optional = true }
+monoio         = { version = "0.2",  optional = true, default-features = false }
 worker         = { version = "0.5",  optional = true }
 lambda_runtime = { version = "0.13", optional = true }
 
@@ -78,6 +79,11 @@ rt_glommio = ["__rt_native__",
     "mews?/rt_glommio",
     "dep:num_cpus",
 ]
+rt_monoio = ["__rt_native__",
+    "dep:monoio",
+    "mews?/rt_monoio",
+    "dep:num_cpus",
+]
 rt_worker = ["__rt__",
     "dep:worker", "worker/d1", "worker/queue",
     "ohkami_macros/worker",
@@ -110,6 +116,7 @@ DEBUG = ["tokio?/rt-multi-thread", "tokio?/macros"]
 #    #"rt_smol",
 #    #"rt_nio",
 #    #"rt_glommio",
+#    #"rt_monoio",
 #    #"rt_worker",
 #    "DEBUG",
 #]
