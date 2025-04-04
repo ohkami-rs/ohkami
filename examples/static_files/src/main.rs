@@ -155,5 +155,18 @@ mod test {
         }
     }
 
-    
+    #[tokio::test]
+    async fn test_precompress() {
+        let t = ohkami(Default::default()).test();
+
+        // .js.gz is served at .js as text/javascript
+        // and compressed with gzip
+        {
+            let req = TestRequest::GET("/sub.js");
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status().code(), 200);
+            assert_eq!(res.header("Content-Encoding"), Some("gzip"));
+            assert_eq!(res.content("text/javascript"), Some(include_bytes!("../public/sub.js.gz").as_slice()));
+        }
+    }
 }

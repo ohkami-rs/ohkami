@@ -227,7 +227,7 @@ impl StaticFileHandler {
             // Check if the compressed file is not older than the source file
             // because the compressed file may be generated from the source file
             // and we want to avoid serving an outdated compressed file.
-            if modified_unix_timestamp(&file)? <= modified_unix_timestamp(&source_file)? {
+            if modified_unix_timestamp(&file)? < modified_unix_timestamp(&source_file)? {
                 crate::WARNING!(
                     "[Dir] skipping outdated compressed file {}.{}: older than source file {}",
                     path.display(), encoding.to_extension(),
@@ -282,25 +282,24 @@ impl IntoHandler<File> for StaticFileHandler {
             // Then, if client doesn't accept identity encoding, return 406 Not Acceptable
             // instead of returning the original content.
             let (encoding, content) = {
-                match req.headers.AcceptEncoding().map(AcceptEncoding::parse) {
-                    None => {
-                        (None, &*this.content)
-                    }
-                    Some(ae) => {
-                        if let Some((encoding, content)) = this
-                            .compressed
-                            .iter()
-                            .find(|(ce, _)| ae.accepts_compression(ce))
-                        {
-                            (Some(encoding), &**content)
+                let ae = req
+                    .headers
+                    .AcceptEncoding()
+                    .map(AcceptEncoding::parse)
+                    .unwrap_or_default();
 
-                        } else if ae.accepts(Encoding::Identity) {
-                            (None, &*this.content)
+                if let Some((encoding, content)) = this
+                    .compressed
+                    .iter()
+                    .find(|(ce, _)| ae.accepts_compression(ce))
+                {
+                    (Some(encoding), &**content)
 
-                        } else {
-                            return Response::NotAcceptable();
-                        }
-                    }
+                } else if ae.accepts(Encoding::Identity) {
+                    (None, &*this.content)
+
+                } else {
+                    return Response::NotAcceptable();
                 }
             };
 

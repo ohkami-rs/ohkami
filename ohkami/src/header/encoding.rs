@@ -126,16 +126,17 @@ pub struct AcceptEncoding {
 }
 
 impl AcceptEncoding {
-    pub fn parse(value: &str) -> Self {
+    pub fn parse(s: &str) -> Self {
         enum EncodingOrAny {
             Encoding(Encoding),
             Any,
         }
         impl EncodingOrAny {
-            fn parse(value: &str) -> Option<Self> {
-                match value {
+            #[inline]
+            fn parse(s: &str) -> Option<Self> {
+                match s {
                     "*" => Some(Self::Any),
-                    _ => Encoding::parse(value).map(Self::Encoding),
+                    _ => Encoding::parse(s).map(Self::Encoding),
                 }
             }
         }
@@ -148,7 +149,7 @@ impl AcceptEncoding {
 
         let mut any = None;
 
-        for part in value.split(',').map(str::trim) {
+        for part in s.split(',').map(str::trim) {
             let (encoding, q) = part
                 .split_once(';')
                 .and_then(|(encoding, q)| Some((EncodingOrAny::parse(encoding), QValue::parse(q)?)))
@@ -177,7 +178,10 @@ impl AcceptEncoding {
             deflate: deflate.unwrap_or(QValue(0)),
             br: br.unwrap_or(QValue(0)),
             zstd: zstd.unwrap_or(QValue(0)),
-            identity: identity.unwrap_or(QValue(0)),
+            // identity is acceptable unless explicitly set to q=0 in request,
+            // but of course compressions are prefered if available.
+            // so we set it to 1, minimum non-zero value.
+            identity: identity.unwrap_or(QValue(1)),
         }
     }
 
@@ -221,21 +225,21 @@ mod tests {
         assert_eq!(accept_encoding.deflate, QValue(0));
         assert_eq!(accept_encoding.br, QValue(1000));
         assert_eq!(accept_encoding.zstd, QValue(0));
-        assert_eq!(accept_encoding.identity, QValue(0));
+        assert_eq!(accept_encoding.identity, QValue(1));
 
         let accept_encoding = AcceptEncoding::parse("gzip, deflate, br");
         assert_eq!(accept_encoding.gzip, QValue(1000));
         assert_eq!(accept_encoding.deflate, QValue(1000));
         assert_eq!(accept_encoding.br, QValue(1000));
         assert_eq!(accept_encoding.zstd, QValue(0));
-        assert_eq!(accept_encoding.identity, QValue(0));
+        assert_eq!(accept_encoding.identity, QValue(1));
 
         let accept_encoding = AcceptEncoding::parse("gzip;q=0.5, deflate;q=0.8, br;q=1.0");
         assert_eq!(accept_encoding.gzip, QValue(500));
         assert_eq!(accept_encoding.deflate, QValue(800));
         assert_eq!(accept_encoding.br, QValue(1000));
         assert_eq!(accept_encoding.zstd, QValue(0));
-        assert_eq!(accept_encoding.identity, QValue(0));
+        assert_eq!(accept_encoding.identity, QValue(1));
 
         let accept_encoding = AcceptEncoding::parse("*");
         assert_eq!(accept_encoding.gzip, QValue(1000));
@@ -250,6 +254,14 @@ mod tests {
         assert_eq!(accept_encoding.br, QValue(1000));
         assert_eq!(accept_encoding.zstd, QValue(900));
         assert_eq!(accept_encoding.identity, QValue(900));
+
+        let accept_encoding = AcceptEncoding::parse("gzip;q=0.5, identity;q=0");
+        assert_eq!(accept_encoding.gzip, QValue(500));
+        assert_eq!(accept_encoding.deflate, QValue(0));
+        assert_eq!(accept_encoding.br, QValue(0));
+        assert_eq!(accept_encoding.zstd, QValue(0));
+        // by explicitly set to q=0
+        assert_eq!(accept_encoding.identity, QValue(0));
     }
 
     #[test]
@@ -257,21 +269,66 @@ mod tests {
         let accept_encoding = AcceptEncoding::parse("br");
         let mut iter = accept_encoding.iter_in_preferred_order();
         assert_eq!(iter.next(), Some(Encoding::Brotli));
+        assert_eq!(iter.next(), Some(Encoding::Identity));
         assert_eq!(iter.next(), None);
 
         // gzip and deflate have the same qvalue, so the order is not guaranteed
         let accept_encoding = AcceptEncoding::parse("gzip, deflate, br");
         let encodings = accept_encoding.iter_in_preferred_order().collect::<Vec<_>>();
-        assert_eq!(encodings.len(), 3);
+        assert_eq!(encodings.len(), 4);
         assert!(encodings.contains(&Encoding::Gzip));
         assert!(encodings.contains(&Encoding::Deflate));
         assert!(encodings.contains(&Encoding::Brotli));
+        assert!(encodings.contains(&Encoding::Identity));
 
         let accept_encoding = AcceptEncoding::parse("gzip;q=0.5, deflate;q=0.8, br;q=1.0");
         let mut iter = accept_encoding.iter_in_preferred_order();
         assert_eq!(iter.next(), Some(Encoding::Brotli));
         assert_eq!(iter.next(), Some(Encoding::Deflate));
         assert_eq!(iter.next(), Some(Encoding::Gzip));
+        assert_eq!(iter.next(), Some(Encoding::Identity));
         assert_eq!(iter.next(), None);
+    }
+
+    #[test]
+    fn test_accept() {
+        let accept_encoding = AcceptEncoding::default();
+        assert!(accept_encoding.accepts(Encoding::Identity));
+        assert!(accept_encoding.accepts(Encoding::Gzip));
+        assert!(accept_encoding.accepts(Encoding::Deflate));
+        assert!(accept_encoding.accepts(Encoding::Brotli));
+        assert!(accept_encoding.accepts(Encoding::Zstd));
+
+        let accept_encoding = AcceptEncoding::parse("br");
+        // identity is accaptable unless explicitly set to q=0 in request
+        assert!(accept_encoding.accepts(Encoding::Identity));
+        assert!(accept_encoding.accepts(Encoding::Brotli));
+        assert!(!accept_encoding.accepts(Encoding::Gzip));
+        assert!(!accept_encoding.accepts(Encoding::Deflate));
+        assert!(!accept_encoding.accepts(Encoding::Zstd));
+
+        let accept_encoding = AcceptEncoding::parse("gzip, deflate, br");
+        // identity is accaptable unless explicitly set to q=0 in request
+        assert!(accept_encoding.accepts(Encoding::Identity));
+        assert!(accept_encoding.accepts(Encoding::Gzip));
+        assert!(accept_encoding.accepts(Encoding::Deflate));
+        assert!(accept_encoding.accepts(Encoding::Brotli));
+        assert!(!accept_encoding.accepts(Encoding::Zstd));
+
+        let accept_encoding = AcceptEncoding::parse("gzip;q=0.5, deflate;q=0.8, br;q=1.0");
+        // identity is accaptable unless explicitly set to q=0 in request
+        assert!(accept_encoding.accepts(Encoding::Identity));
+        assert!(accept_encoding.accepts(Encoding::Gzip));
+        assert!(accept_encoding.accepts(Encoding::Deflate));
+        assert!(accept_encoding.accepts(Encoding::Brotli));
+        assert!(!accept_encoding.accepts(Encoding::Zstd));
+
+        let accept_encoding = AcceptEncoding::parse("gzip;q=0.5, identity;q=0");
+        // here identity is NOT acceptable because of explicit q=0
+        assert!(!accept_encoding.accepts(Encoding::Identity));
+        assert!(accept_encoding.accepts(Encoding::Gzip));
+        assert!(!accept_encoding.accepts(Encoding::Brotli));
+        assert!(!accept_encoding.accepts(Encoding::Deflate));
+        assert!(!accept_encoding.accepts(Encoding::Zstd));
     }
 }
