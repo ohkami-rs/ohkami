@@ -1,5 +1,6 @@
 use super::QValue;
-use std::{path::Path, ffi::OsStr};
+use std::ffi::OsStr;
+use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Encoding {
@@ -73,15 +74,17 @@ impl CompressionEncoding {
     /// If the file path has no encoding, `None` is returned.
     /// If the file path has multiple encodings, they will be returned in the order they were applied.
     /// For example, if the file path is `foo.txt.gz.br`, the encodings will be `Gzip` and `Brotli`.
-    pub fn from_file_path<'p>(mut p: &'p Path) -> Option<(Self, &'p Path)> {
+    pub fn from_file_path(p: &Path) -> Option<(Self, PathBuf)> {
         if !p.is_file() {
             return None;
         }
 
+        let mut p = p.to_owned();
+
         let mut encodings = Vec::new();
         while let Some(e) = p.extension().and_then(Encoding::from_extension) {
             encodings.push(e);
-            p = Path::new(p.file_stem()?);
+            p.set_extension("");
         }
         // Reverse to the order the encodings were applied
         encodings.reverse();

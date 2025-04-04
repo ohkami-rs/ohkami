@@ -26,19 +26,19 @@ pub(super) enum StaticFile {
     },
 }
 impl StaticFile {
-    fn new(path: &Path) -> io::Result<(Self, &Path)> {
+    fn new(path: &Path) -> io::Result<(Self, std::borrow::Cow<'_, Path>)> {
         let file = File::open(path)?;
         match CompressionEncoding::from_file_path(path) {
             None => Ok((
                 Self::Source { file },
-                path
+                path.into()
             )),
             Some((encoding, source)) => Ok((
                 Self::Compressed {
                     encoding,
                     file,
                 },
-                source
+                source.into()
             ))
         }
     }
@@ -82,16 +82,18 @@ impl Dir {
             while let Some(path) = entries.pop() {
                 if path.is_file() {
                     let (file, source_path) = StaticFile::new(&path)?;
-                    if let Some(them) = files.get_mut(source_path) {
+                    let source_path = source_path
+                        .canonicalize()?
+                        .strip_prefix(&dir_path)
+                        .map_err(|_| io::Error::new(
+                            io::ErrorKind::InvalidData,
+                            format!("{} is not a child of {}", path.display(), dir_path.display())
+                        ))?
+                        .to_owned();
+                    if let Some(them) = files.get_mut(&source_path) {
                         them.push(file);
                     } else {
-                        let source_path = source_path
-                            .iter()
-                            .skip(dir_path.iter().count())
-                            .collect::<PathBuf>();
-                        if !source_path.as_path().as_os_str().is_empty() {
-                            files.insert(source_path, vec![file]);
-                        }
+                        files.insert(source_path, vec![file]);
                     }
 
                 } else if path.is_dir() {
