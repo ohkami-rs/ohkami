@@ -20,7 +20,7 @@ pub(super) enum StaticFile {
     Source {
         file: File,
     },
-    Compression {
+    Compressed {
         encoding: CompressionEncoding,
         file: File,
     },
@@ -34,7 +34,7 @@ impl StaticFile {
                 path
             )),
             Some((encoding, source)) => Ok((
-                Self::Compression {
+                Self::Compressed {
                     encoding,
                     file,
                 },
@@ -46,14 +46,14 @@ impl StaticFile {
     fn into_file(self) -> File {
         match self {
             Self::Source { file } => file,
-            Self::Compression { file, .. } => file,
+            Self::Compressed { file, .. } => file,
         }
     }
 
     fn is_source(&self) -> bool {
         match self {
             Self::Source { .. } => true,
-            Self::Compression { .. } => false,
+            Self::Compressed { .. } => false,
         }
     }
 }
@@ -140,6 +140,13 @@ fn read(mut file: File) -> io::Result<Vec<u8>> {
     Ok(content)
 }
 
+fn cmp_size(f: &File, g: &File) -> std::cmp::Ordering {
+    u64::cmp(
+        &f.metadata().map(|m| m.len()).unwrap_or(u64::MAX),
+        &g.metadata().map(|m| m.len()).unwrap_or(u64::MAX)
+    )
+}
+
 fn modified_unix_timestamp(file: &File) -> io::Result<u64> {
     let ts = file
         .metadata()?
@@ -174,8 +181,9 @@ impl StaticFileHandler {
                     io::ErrorKind::InvalidData,
                     format!("No source file found for {}", path.display())
                 ))?
-            );
+            ).into_file();
             
+            // Check `files` contains single source file
             if files.iter().any(|f| f.is_source()) {
                 return Err(io::Error::new(
                     io::ErrorKind::InvalidData,
@@ -183,14 +191,19 @@ impl StaticFileHandler {
                 ));
             }
 
-            (
-                source.into_file(),
-                // here `files` is guaranteed to have only compressed files
-                files.into_iter().map(|f| {
-                    let StaticFile::Compression { encoding, file } = f else {unreachable!()};
+            let mut compressed = files
+                .into_iter()
+                .map(|f| {
+                    // here `files` is guaranteed to have only compressed files
+                    let StaticFile::Compressed { encoding, file } = f else {unreachable!()};
                     (encoding, file)
                 })
-            )
+                .collect::<Vec<_>>();
+
+            // Put priority on how small each compressed file is
+            compressed.sort_unstable_by(|(_, f), (_, g)| cmp_size(f, g));
+
+            (source, compressed)
         };
 
         let last_modified_str = ohkami_lib::time::UTCDateTime::from_unix_timestamp(
@@ -274,7 +287,6 @@ impl IntoHandler<File> for StaticFileHandler {
                         (None, &*this.content)
                     }
                     Some(ae) => {
-                        // TODO: use QValue to select the best encoding
                         if let Some((encoding, content)) = this
                             .compressed
                             .iter()

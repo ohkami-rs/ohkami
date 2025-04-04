@@ -154,4 +154,6 @@ mod test {
             assert_eq!(res.content("text/html"), Some(include_str!("../public/blog/index.html").as_bytes()));
         }
     }
+
+    
 }
