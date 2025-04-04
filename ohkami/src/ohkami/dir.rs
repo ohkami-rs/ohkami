@@ -89,7 +89,9 @@ impl Dir {
                             .iter()
                             .skip(dir_path.iter().count())
                             .collect::<PathBuf>();
-                        files.insert(source_path, vec![file]);
+                        if !source_path.as_path().as_os_str().is_empty() {
+                            files.insert(source_path, vec![file]);
+                        }
                     }
 
                 } else if path.is_dir() {
