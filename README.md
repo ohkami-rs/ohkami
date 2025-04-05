@@ -287,9 +287,10 @@ async fn main() {
 
 HTTPS support up on [rustls](https://github.com/rustls) ecosystem.
 
+- Call `howls` instead of `howl` to run with TLS ( as `https` to `http`, `wss` to `ws` ).
+- You should prepare your own certificate and private key files.
 - Currently, only works with `rt_tokio`.
 - Currently, only HTTP/1.1 over TLS is supported.
-- You should prepare your own certificate and private key files.
 
 Example :
 
@@ -347,7 +348,7 @@ async fn main() -> std::io::Result<()> {
     // Create and run Ohkami with HTTPS
     Ohkami::new((
         "/".GET(hello),
-    )).howl_tls("0.0.0.0:8443", tls_config).await;
+    )).howls("0.0.0.0:8443", tls_config).await;
     
     Ok(())
 }

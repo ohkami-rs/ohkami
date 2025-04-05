@@ -667,7 +667,7 @@ impl Ohkami {
     /// $ curl --insecure https://localhost:8443
     /// Hello, secure ohkami!
     /// ```
-    pub async fn howl_tls<T>(self, bind: impl __rt__::IntoTcpListener<T>, tls_config: rustls::ServerConfig) {    
+    pub async fn howls<T>(self, bind: impl __rt__::IntoTcpListener<T>, tls_config: rustls::ServerConfig) {    
         let (router, _) = self.into_router().finalize();
         let router = Arc::new(router);
         let tls_acceptor = TlsAcceptor::from(Arc::new(tls_config));
