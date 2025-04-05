@@ -24,12 +24,11 @@
 
 
 #[cfg(any(
-    all(feature="rt_tokio",      any(feature="rt_async-std", feature="rt_smol",      feature="rt_nio",       feature="rt_glommio",   feature="rt_worker"   )),
-    all(feature="rt_async-std",  any(feature="rt_smol",      feature="rt_nio",       feature="rt_glommio",   feature="rt_worker",    feature="rt_tokio"    )),
-    all(feature="rt_smol",       any(feature="rt_nio",       feature="rt_glommio",   feature="rt_worker",    feature="rt_tokio",     feature="rt_async-std")),
-    all(feature="rt_nio",        any(feature="rt_glommio",   feature="rt_worker",    feature="rt_tokio",     feature="rt_async-std", feature="rt_smol"     )),
-    all(feature="rt_glommio",    any(feature="rt_worker",    feature="rt_tokio",     feature="rt_async-std", feature="rt_smol",      feature="rt_nio"      )),
-    all(feature="rt_worker",     any(feature="rt_tokio",     feature="rt_async-std", feature="rt_smol",      feature="rt_nio",       feature="rt_glommio"  )),
+    all(feature="rt_tokio",      any(feature="rt_smol",      feature="rt_nio",       feature="rt_glommio",   feature="rt_worker"   )),
+    all(feature="rt_smol",       any(feature="rt_nio",       feature="rt_glommio",   feature="rt_worker",    feature="rt_tokio"    )),
+    all(feature="rt_nio",        any(feature="rt_glommio",   feature="rt_worker",    feature="rt_tokio",     feature="rt_smol"     )),
+    all(feature="rt_glommio",    any(feature="rt_worker",    feature="rt_tokio",     feature="rt_smol",      feature="rt_nio"      )),
+    all(feature="rt_worker",     any(feature="rt_tokio",     feature="rt_smol",      feature="rt_nio",       feature="rt_glommio"  )),
 ))] compile_error! {"
     Can't activate multiple `rt_*` features at once!
 "}

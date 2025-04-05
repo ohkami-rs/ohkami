@@ -29,7 +29,6 @@ serde_json  = { workspace = true }
 
 # runtimes
 tokio          = { version = "1",    optional = true }
-async-std      = { version = "1",    optional = true }
 smol           = { version = "2",    optional = true }
 nio            = { version = "0.0",  optional = true }
 glommio        = { version = "0.9",  optional = true }
@@ -56,11 +55,6 @@ rt_tokio = ["__rt_native__",
     "dep:tokio","tokio/rt","tokio/net","tokio/time",
     "tokio/io-util",
     "mews?/rt_tokio",
-]
-rt_async-std = ["__rt_native__",
-    "dep:async-std",
-    "dep:futures-util","futures-util/io",
-    "mews?/rt_async-std",
 ]
 rt_smol = ["__rt_native__",
     "dep:smol",
@@ -106,7 +100,6 @@ DEBUG = ["tokio?/rt-multi-thread", "tokio?/macros"]
 #    "ws",
 #    "tls",
 #    "rt_tokio",
-#    #"rt_async-std",
 #    #"rt_smol",
 #    #"rt_nio",
 #    #"rt_glommio",

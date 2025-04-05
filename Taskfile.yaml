@@ -18,7 +18,7 @@ tasks:
     deps:
       - task: test:tls
       - task: test:no_rt
-      - for:  [tokio, async-std, smol, nio, glommio, lambda, worker]
+      - for:  [tokio, smol, nio, glommio, lambda, worker]
         task: test:rt
         vars: { rt: '{{.ITEM}}' }
   test:other:
@@ -32,7 +32,7 @@ tasks:
     deps:
       - task: check:tls
       - task: check:no_rt
-      - for:  [tokio, async-std, smol, nio, glommio, lambda]
+      - for:  [tokio, smol, nio, glommio, lambda]
         task: check:rt-native_target
         vars: { rt: '{{.ITEM}}' }
       - task: check:rt_worker
@@ -43,7 +43,7 @@ tasks:
     cmds:
       - cd benches && cargo bench --features DEBUG --no-run
       - cd benches_rt/vs_actix-web && cargo check
-      - for: [tokio, async-std, smol, nio, glommio]
+      - for: [tokio, smol, nio, glommio]
         cmd: cd benches_rt/{{.ITEM}} && cargo check
 
   bench:
