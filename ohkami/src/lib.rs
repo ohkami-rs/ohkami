@@ -9,7 +9,7 @@
 //! <br>
 //! 
 //! - *macro-less and type-safe* APIs for intuitive and declarative code
-//! - *various runtimes* are supported：`tokio`, `async-std`, `smol`, `nio`, `glommio` and `worker` (Cloudflare Workers), `lambda` (AWS Lambda)
+//! - *various runtimes* are supported：`tokio`, `smol`, `nio`, `glommio` and `worker` (Cloudflare Workers), `lambda` (AWS Lambda)
 //! - extremely fast, no-network testing, well-structured middlewares, Server-Sent Events, WebSocket, highly integrated OpenAPI document generation, ...
 //! 
 //! See [GitHub repo](https://github.com/ohkami-rs/ohkami) for details!
@@ -38,8 +38,6 @@
 mod __rt__ {
     #[cfg(feature="rt_tokio")]
     pub(crate) use tokio::net::{TcpListener, TcpStream, ToSocketAddrs};
-    #[cfg(feature="rt_async-std")]
-    pub(crate) use async_std::net::{TcpListener, TcpStream, ToSocketAddrs};
     #[cfg(feature="rt_smol")]
     pub(crate) use smol::net::{TcpListener, TcpStream, AsyncToSocketAddrs as ToSocketAddrs};
     #[cfg(feature="rt_nio")]
@@ -68,8 +66,6 @@ mod __rt__ {
 
     #[cfg(feature="rt_tokio")]
     pub(crate) use tokio::time::sleep;
-    #[cfg(feature="rt_async-std")]
-    pub(crate) use async_std::task::sleep;
     #[cfg(feature="rt_smol")]
     pub(crate) async fn sleep(duration: std::time::Duration) {
         smol::Timer::after(duration).await;
@@ -99,8 +95,6 @@ mod __rt__ {
 
     #[cfg(feature="rt_tokio")]
     pub(crate) use tokio::io::AsyncReadExt as AsyncRead;
-    #[cfg(feature="rt_async-std")]
-    pub(crate) use async_std::io::ReadExt as AsyncRead;
     #[cfg(feature="rt_smol")]
     pub(crate) use futures_util::AsyncReadExt as AsyncRead;
     #[cfg(feature="rt_nio")]
@@ -110,8 +104,6 @@ mod __rt__ {
 
     #[cfg(feature="rt_tokio")]
     pub(crate) use tokio::io::AsyncWriteExt as AsyncWrite;
-    #[cfg(feature="rt_async-std")]
-    pub(crate) use async_std::io::WriteExt as AsyncWrite;
     #[cfg(feature="rt_smol")]
     pub(crate) use futures_util::AsyncWriteExt as AsyncWrite;
     #[cfg(feature="rt_nio")]
@@ -119,7 +111,7 @@ mod __rt__ {
     #[cfg(feature="rt_glommio")]
     pub(crate) use futures_util::AsyncWriteExt as AsyncWrite;
 
-    #[cfg(any(feature="rt_tokio", feature="rt_async-std", feature="rt_smol", feature="rt_nio"))]
+    #[cfg(any(feature="rt_tokio", feature="rt_smol", feature="rt_nio"))]
     mod task {
         pub trait Task: std::future::Future<Output: Send + 'static> + Send + 'static {}
         impl<F: std::future::Future<Output: Send + 'static> + Send + 'static> Task for F {}
@@ -132,9 +124,6 @@ mod __rt__ {
     pub(crate) fn spawn(task: impl task::Task + 'static) {
         #[cfg(feature="rt_tokio")]
         tokio::task::spawn(task);
-
-        #[cfg(feature="rt_async-std")]
-        async_std::task::spawn(task);
 
         #[cfg(feature="rt_smol")]
         smol::spawn(task).detach();
@@ -156,9 +145,6 @@ mod __rt__ {
                 .unwrap()
                 .block_on(future);
 
-            #[cfg(feature="rt_async-std")]
-            return async_std::task::block_on(future);
-
             #[cfg(feature="rt_smol")]
             return smol::block_on(future);
 
@@ -175,7 +161,6 @@ mod __rt__ {
 
         pub(crate) const PORT: u16 = {
             #[cfg(feature="rt_tokio")    ] {if cfg!(feature="tls") {9443} else {3001}}
-            #[cfg(feature="rt_async-std")] {3002}
             #[cfg(feature="rt_smol")     ] {3003}
             #[cfg(feature="rt_nio")      ] {3004}
             #[cfg(feature="rt_glommio")  ] {3005}

@@ -6,7 +6,7 @@
 <br>
 
 - *macro-less and type-safe* APIs for intuitive and declarative code
-- *various runtimes* are supported：`tokio`, `async-std`, `smol`, `nio`, `glommio` and `worker` (Cloudflare Workers), `lambda` (AWS Lambda)
+- *various runtimes* are supported：`tokio`, `smol`, `nio`, `glommio` and `worker` (Cloudflare Workers), `lambda` (AWS Lambda)
 - extremely fast, no-network testing, well-structured middlewares, Server-Sent Events, WebSocket, highly integrated OpenAPI document generation, ...
 
 <div align="right">
@@ -67,10 +67,9 @@ Hello, your_name!
 
 ## Feature flags
 
-### `"rt_tokio"`, `"rt_async-std"`, `"rt_smol"`, `"rt_nio"`, `"rt_glommio"` : native async runtime
+### `"rt_tokio"`, `"rt_smol"`, `"rt_nio"`, `"rt_glommio"` : native async runtime
 
 - [tokio](https://github.com/tokio-rs/tokio)
-- [async-std](https://github.com/async-rs/async-std)
 - [smol](https://github.com/smol-rs/smol)
 - [nio](https://github.com/nurmohammed840/nio)
 - [glommio](https://github.com/DataDog/glommio)
