@@ -564,7 +564,7 @@ impl Ohkami {
 
         while let Some(accept) = ctrl_c.until_interrupt(listener.accept()).await {
             let (connection, addr) = {
-                #[cfg(any(feature="rt_tokio", feature="rt_async-std", feature="rt_smol", feature="rt_nio"))] {
+                #[cfg(any(feature="rt_tokio", feature="rt_smol", feature="rt_nio"))] {
                     let Ok((connection, addr)) = accept else {continue};
                     (connection, addr)
                 }
