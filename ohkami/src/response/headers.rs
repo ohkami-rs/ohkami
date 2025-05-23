@@ -479,7 +479,7 @@ impl Headers {
     /// SAFETY: `buf` has remaining capacity of at least `self.size`
     pub(crate) unsafe fn write_unchecked_to(&self, buf: &mut Vec<u8>) {
         for (i, v) in self.standard.iter() {
-            let h = std::mem::transmute::<_, Header>(*i as u8); {
+            let h = std::mem::transmute::<_, Header>(i as u8); {
                 crate::push_unchecked!(buf <- h.as_bytes());
                 crate::push_unchecked!(buf <- b": ");
                 crate::push_unchecked!(buf <- v.as_bytes());
