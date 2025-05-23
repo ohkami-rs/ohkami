@@ -438,7 +438,7 @@ impl Headers {
     pub(crate) fn iter_standard(&self) -> impl Iterator<Item = (&str, &str)> {
         self.standard.iter()
             .map(|(i, v)| (
-                unsafe {std::mem::transmute::<_, Header>(*i as u8)}.as_str(),
+                unsafe {std::mem::transmute::<_, Header>(i as u8)}.as_str(),
                 &**v
             ))
     }

@@ -1,17 +1,7 @@
 [workspace]
 resolver = "2"
-members  = [
-    "sse",
-    "form",
-    "hello",
-    "chatgpt",
-    "websocket",
-    "basic_auth",
-    "quick_start",
-    "static_files",
-    "json_response",
-    "derive_from_request",
-]
+members  = ["*"]
+exclude  = ["target"]
 
 [workspace.dependencies]
 # set `default-features = false` to assure "DEBUG" feature be off even when DEBUGing `../ohkami`
