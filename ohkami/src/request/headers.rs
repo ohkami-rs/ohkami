@@ -278,7 +278,7 @@ impl Headers {
     pub(crate) fn iter(&self) -> impl Iterator<Item = (&str, &str)> {
         self.standard.iter()
             .map(|(i, v)| (
-                unsafe {std::mem::transmute::<_, Header>(*i as u8).as_str()},
+                unsafe {std::mem::transmute::<_, Header>(i as u8).as_str()},
                 std::str::from_utf8(v).expect("Non UTF-8 header value")
             ))
             .chain(self.custom.as_ref()
