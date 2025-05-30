@@ -40,7 +40,8 @@ impl<C: Connection> Session<C> {
     }
 
     pub(crate) async fn manage(mut self) {
-        #[cold] #[inline(never)]
+        #[cold]
+        #[inline(never)]
         fn panicking(panic: Box<dyn Any + Send>) -> Response {
             if let Some(msg) = panic.downcast_ref::<String>() {
                 crate::WARNING!("[Panicked]: {msg}");
@@ -50,6 +51,17 @@ impl<C: Connection> Session<C> {
                 crate::WARNING!("[Panicked]");
             }
             crate::Response::InternalServerError()
+        }
+
+        #[cold]
+        #[inline(never)]
+        fn handle_send_failure(error: std::io::Error) {
+            use std::io::ErrorKind::*;
+            if matches!(error.kind(), BrokenPipe | ConnectionReset | ConnectionAborted) {
+                crate::WARNING!("Client disconnected before response could be sent: {error}");
+            } else {
+                crate::ERROR!("Failed to send response to the client: {error}");
+            }
         }
 
         let mut req = Request::init(self.ip);
@@ -83,7 +95,13 @@ impl<C: Connection> Session<C> {
                                 Ok(future) => future.await,
                                 Err(panic) => panicking(panic),
                             };
-                            let upgrade = res.send(&mut self.connection).await;
+                            let upgrade = match res.send(&mut self.connection).await {
+                                Ok(upgrade) => upgrade,
+                                Err(e) => {
+                                    handle_send_failure(e);
+                                    break Upgrade::None;
+                                }
+                            };
 
                             if !upgrade.is_none() {
                                 break upgrade;
@@ -94,7 +112,11 @@ impl<C: Connection> Session<C> {
                         },
                         Ok(None) => break Upgrade::None,
                         Err(res) => {
-                            res.send(&mut self.connection).await;
+                            if let Err(e) = res.send(&mut self.connection).await {
+                                handle_send_failure(e);
+                                break Upgrade::None;
+                            }
+                            // here response was sent, so assuming just request was malformed and we can continue
                             continue;
                         },
                     }
