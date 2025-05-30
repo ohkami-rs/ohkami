@@ -40,7 +40,8 @@ impl<C: Connection> Session<C> {
     }
 
     pub(crate) async fn manage(mut self) {
-        #[cold] #[inline(never)]
+        #[cold]
+        #[inline(never)]
         fn panicking(panic: Box<dyn Any + Send>) -> Response {
             if let Some(msg) = panic.downcast_ref::<String>() {
                 crate::WARNING!("[Panicked]: {msg}");
@@ -50,6 +51,17 @@ impl<C: Connection> Session<C> {
                 crate::WARNING!("[Panicked]");
             }
             crate::Response::InternalServerError()
+        }
+
+        #[cold]
+        #[inline(never)]
+        fn handle_send_failure(error: std::io::Error) {
+            use std::io::ErrorKind::*;
+            if matches!(error.kind(), BrokenPipe | ConnectionReset | ConnectionAborted) {
+                crate::warning!("[WARNING] Client disconnected before response could be sent: {error}");
+            } else {
+                crate::warning!("[ERROR] Failed to send response to the client: {error}");
+            }
         }
 
         let mut req = Request::init(self.ip);
@@ -83,18 +95,18 @@ impl<C: Connection> Session<C> {
                                 Ok(future) => future.await,
                                 Err(panic) => panicking(panic),
                             };
-                            let upgrade = res.send(&mut self.connection).await;
+                            let upgrade = res.send(&mut self.connection).await?;
 
                             if !upgrade.is_none() {
-                                break upgrade;
+                                break Ok(upgrade);
                             }
                             if close {
-                                break Upgrade::None;
+                                break Ok(Upgrade::None);
                             }
                         },
-                        Ok(None) => break Upgrade::None,
+                        Ok(None) => break Ok(Upgrade::None),
                         Err(res) => {
-                            res.send(&mut self.connection).await;
+                            res.send(&mut self.connection).await?;
                             continue;
                         },
                     }
@@ -103,11 +115,12 @@ impl<C: Connection> Session<C> {
         };
 
         match upgrade {
-            Upgrade::None => {
+            Err(e) => handle_send_failure(e),
+            Ok(Upgrade::None) => {
                 crate::DEBUG!("about to shutdown connection");
             },
             #[cfg(feature="ws")]
-            Upgrade::WebSocket(ws) => {
+            Ok(Upgrade::WebSocket(ws)) => {
                 match self.connection.into_websocket_stream() {
                     Ok(tcp_stream) => {
                         crate::DEBUG!("WebSocket session started");

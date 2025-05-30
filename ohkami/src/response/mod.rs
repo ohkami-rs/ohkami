@@ -312,7 +312,7 @@ impl Response {
     pub(crate) async fn send(
         self,
         conn: &mut (impl AsyncWrite + Unpin)
-    ) -> Upgrade {
+    ) -> std::io::Result<Upgrade> {
         match self.content {
             Content::None => {
                 let mut buf = Vec::<u8>::with_capacity(
@@ -322,10 +322,10 @@ impl Response {
                     crate::push_unchecked!(buf <- self.status.line());
                     self.headers.write_unchecked_to(&mut buf);
                 }
-                conn.write_all(&buf).await.expect("Failed to send response");
-                conn.flush().await.expect("Failed to flush connection");
+                conn.write_all(&buf).await?;
+                conn.flush().await?;
 
-                Upgrade::None
+                Ok(Upgrade::None)
             }
 
             Content::Payload(bytes) => {
@@ -338,10 +338,10 @@ impl Response {
                     self.headers.write_unchecked_to(&mut buf);
                     crate::push_unchecked!(buf <- bytes);
                 }
-                conn.write_all(&buf).await.expect("Failed to send response");
-                conn.flush().await.expect("Failed to flush connection");
+                conn.write_all(&buf).await?;
+                conn.flush().await?;
 
-                Upgrade::None
+                Ok(Upgrade::None)
             }
 
             #[cfg(feature="sse")]
@@ -353,8 +353,8 @@ impl Response {
                     crate::push_unchecked!(buf <- self.status.line());
                     self.headers.write_unchecked_to(&mut buf);
                 }
-                conn.write_all(&buf).await.expect("Failed to send response");
-                conn.flush().await.expect("Failed to flush connection");
+                conn.write_all(&buf).await?;
+                conn.flush().await?;
 
                 while let Some(chunk) = stream.next().await {
                     let mut message = Vec::with_capacity(
@@ -378,13 +378,13 @@ impl Response {
                     #[cfg(feature="DEBUG")]
                     println!("\n[sending chunk]\n{}", chunk.escape_ascii());
 
-                    conn.write_all(&chunk).await.expect("Failed to send response");
-                    conn.flush().await.expect("Failed to flush connection");
+                    conn.write_all(&chunk).await?;
+                    conn.flush().await?;
                 }
-                conn.write_all(b"0\r\n\r\n").await.expect("Failed to send response");
-                conn.flush().await.expect("Failed to flush connection");
+                conn.write_all(b"0\r\n\r\n").await?;
+                conn.flush().await?;
 
-                Upgrade::None
+                Ok(Upgrade::None)
             }
 
             #[cfg(all(feature="ws", feature="__rt_native__"))]
@@ -396,10 +396,10 @@ impl Response {
                     crate::push_unchecked!(buf <- self.status.line());
                     self.headers.write_unchecked_to(&mut buf);
                 }
-                conn.write_all(&buf).await.expect("Failed to send response");
-                conn.flush().await.expect("Failed to flush connection");
+                conn.write_all(&buf).await?;
+                conn.flush().await?;
 
-                Upgrade::WebSocket(ws)
+                Ok(Upgrade::WebSocket(ws))
             }
         }
     }
