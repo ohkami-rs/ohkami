@@ -58,9 +58,9 @@ impl<C: Connection> Session<C> {
         fn handle_send_failure(error: std::io::Error) {
             use std::io::ErrorKind::*;
             if matches!(error.kind(), BrokenPipe | ConnectionReset | ConnectionAborted) {
-                crate::warning!("[WARNING] Client disconnected before response could be sent: {error}");
+                crate::WARNING!("Client disconnected before response could be sent: {error}");
             } else {
-                crate::warning!("[ERROR] Failed to send response to the client: {error}");
+                crate::ERROR!("Failed to send response to the client: {error}");
             }
         }
 
@@ -95,18 +95,28 @@ impl<C: Connection> Session<C> {
                                 Ok(future) => future.await,
                                 Err(panic) => panicking(panic),
                             };
-                            let upgrade = res.send(&mut self.connection).await?;
+                            let upgrade = match res.send(&mut self.connection).await {
+                                Ok(upgrade) => upgrade,
+                                Err(e) => {
+                                    handle_send_failure(e);
+                                    break Upgrade::None;
+                                }
+                            };
 
                             if !upgrade.is_none() {
-                                break Ok(upgrade);
+                                break upgrade;
                             }
                             if close {
-                                break Ok(Upgrade::None);
+                                break Upgrade::None;
                             }
                         },
-                        Ok(None) => break Ok(Upgrade::None),
+                        Ok(None) => break Upgrade::None,
                         Err(res) => {
-                            res.send(&mut self.connection).await?;
+                            if let Err(e) = res.send(&mut self.connection).await {
+                                handle_send_failure(e);
+                                break Upgrade::None;
+                            }
+                            // here response was sent, so assuming just request was malformed and we can continue
                             continue;
                         },
                     }
@@ -115,12 +125,11 @@ impl<C: Connection> Session<C> {
         };
 
         match upgrade {
-            Err(e) => handle_send_failure(e),
-            Ok(Upgrade::None) => {
+            Upgrade::None => {
                 crate::DEBUG!("about to shutdown connection");
             },
             #[cfg(feature="ws")]
-            Ok(Upgrade::WebSocket(ws)) => {
+            Upgrade::WebSocket(ws) => {
                 match self.connection.into_websocket_stream() {
                     Ok(tcp_stream) => {
                         crate::DEBUG!("WebSocket session started");
