@@ -28,7 +28,8 @@ impl Session {
     }
 
     pub(crate) async fn manage(mut self) {
-        #[cold] #[inline(never)]
+        #[cold]
+        #[inline(never)]
         fn panicking(panic: Box<dyn Any + Send>) -> Response {
             if let Some(msg) = panic.downcast_ref::<String>() {
                 crate::warning!("[Panicked]: {msg}");
@@ -38,6 +39,17 @@ impl Session {
                 crate::warning!("[Panicked]");
             }
             crate::Response::InternalServerError()
+        }
+
+        #[cold]
+        #[inline(never)]
+        fn handle_send_failure(error: std::io::Error) {
+            use std::io::ErrorKind::*;
+            if matches!(error.kind(), BrokenPipe | ConnectionReset | ConnectionAborted) {
+                crate::warning!("[WARNING] Client disconnected before response could be sent: {error}");
+            } else {
+                crate::warning!("[ERROR] Failed to send response to the client: {error}");
+            }
         }
 
         match timeout_in(Duration::from_secs(crate::CONFIG.keepalive_timeout()), async {
@@ -56,13 +68,13 @@ impl Session {
                             Ok(future) => future.await,
                             Err(panic) => panicking(panic),
                         };
-                        let upgrade = res.send(&mut self.connection).await;
+                        let upgrade = res.send(&mut self.connection).await?;
 
-                        if !upgrade.is_none() {break upgrade}
-                        if close {break Upgrade::None}
+                        if !upgrade.is_none() {break Ok(upgrade);}
+                        if close {break Ok(Upgrade::None);}
                     }
-                    Ok(None) => break Upgrade::None,
-                    Err(res) => {res.send(&mut self.connection).await;},
+                    Ok(None) => {break Ok(Upgrade::None);}
+                    Err(res) => {res.send(&mut self.connection).await?;}
                 }
             }
         }).await {
@@ -72,10 +84,12 @@ impl Session {
                 by `OHKAMI_KEEPALIVE_TIMEOUT` environment variable.\
             "),
 
-            Some(Upgrade::None) => crate::DEBUG!("about to shutdown connection"),
+            Some(Err(e)) => handle_send_failure(e),
+
+            Some(Ok(Upgrade::None)) => crate::DEBUG!("about to shutdown connection"),
 
             #[cfg(feature="ws")]
-            Some(Upgrade::WebSocket(ws)) => {
+            Some(Ok(Upgrade::WebSocket(ws))) => {
                 crate::DEBUG!("WebSocket session started");
 
                 let aborted = ws.manage_with_timeout(
