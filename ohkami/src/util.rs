@@ -34,7 +34,7 @@ macro_rules! INFO {
 macro_rules! WARNING {
     ( $( $t:tt )* ) => {{
         $crate::eprintln!(
-            "[ohkami:WARNS] {}",
+            "[ohkami:WARNING] {}",
             format_args!($($t)*)
         );
     }};
