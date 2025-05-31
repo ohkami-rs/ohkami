@@ -693,10 +693,10 @@ impl Ohkami {
             });
         }
     
-        crate::DEBUG!("interrupted, trying graceful shutdown...");
+        crate::INFO!("interrupted, trying graceful shutdown...");
         drop(listener);
     
-        crate::DEBUG!("waiting {} session(s) to finish...", wg.count());
+        crate::INFO!("waiting {} session(s) to finish...", wg.count());
         wg.await;
     }
 
@@ -893,7 +893,6 @@ mod sync {
                 Self(NonNull::new(n).unwrap())
             }
 
-            #[cfg(feature="DEBUG")]
             pub fn count(&self) -> usize {
                 unsafe {self.0.as_ref()}.load(Ordering::Relaxed)
             }
