@@ -588,10 +588,10 @@ impl Ohkami {
             });
         }
 
-        crate::DEBUG!("interrupted, trying graceful shutdown...");
+        crate::INFO!("interrupted, trying graceful shutdown...");
         drop(listener);
 
-        crate::DEBUG!("waiting {} session(s) to finish...", wg.count());
+        crate::INFO!("waiting {} session(s) to finish...", wg.count());
         wg.await;
     }
 

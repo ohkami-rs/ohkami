@@ -20,6 +20,17 @@ macro_rules! eprintln {
 
 #[doc(hidden)]
 #[macro_export]
+macro_rules! INFO {
+    ( $( $t:tt )* ) => {{
+        $crate::eprintln!(
+            "[ohkami:INFO] {}",
+            format_args!($($t)*)
+        );
+    }};
+}
+
+#[doc(hidden)]
+#[macro_export]
 macro_rules! WARNING {
     ( $( $t:tt )* ) => {{
         $crate::eprintln!(
