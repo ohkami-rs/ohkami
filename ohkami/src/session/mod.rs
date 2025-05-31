@@ -76,8 +76,8 @@ impl<C: Connection> Session<C> {
 
             match read_result {
                 None => {
-                    crate::WARNING!("\
-                        Session timeouted. In Ohkami, Keep-Alive timeout \
+                    crate::DEBUG!("\
+                        Reached Keep-Alive timeout. In Ohkami, Keep-Alive timeout \
                         is set to 42 seconds by default and is configurable \
                         by `OHKAMI_KEEPALIVE_TIMEOUT` environment variable.\
                     ");
