@@ -76,7 +76,7 @@ impl<C: Connection> Session<C> {
 
             match read_result {
                 None => {
-                    crate::WARNING!("\
+                    crate::DEBUG!("\
                         Session timeouted. In Ohkami, Keep-Alive timeout \
                         is set to 42 seconds by default and is configurable \
                         by `OHKAMI_KEEPALIVE_TIMEOUT` environment variable.\
@@ -139,7 +139,7 @@ impl<C: Connection> Session<C> {
                             tcp_stream
                         ).await;
                         if aborted {
-                            crate::WARNING!("\
+                            crate::DEBUG!("\
                                 WebSocket session aborted by timeout. In Ohkami, \
                                 WebSocket timeout is set to 3600 seconds (1 hour) \
                                 by default and is configurable by `OHKAMI_WEBSOCKET_TIMEOUT` \
