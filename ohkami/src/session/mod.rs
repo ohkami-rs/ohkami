@@ -78,7 +78,7 @@ impl<C: Connection> Session<C> {
                 None => {
                     crate::DEBUG!("\
                         Reached Keep-Alive timeout. In Ohkami, Keep-Alive timeout \
-                        is set to 42 seconds by default and is configurable \
+                        is set to 30 seconds by default and is configurable \
                         by `OHKAMI_KEEPALIVE_TIMEOUT` environment variable.\
                     ");
                     break Upgrade::None;
