@@ -25,14 +25,18 @@ impl Config {
         Self {
             #[cfg(feature="__rt_native__")]
             keepalive_timeout: std::sync::LazyLock::new(|| std::env::var("OHKAMI_KEEPALIVE_TIMEOUT")
-                .ok().map(|v| v.parse().ok()).flatten()
-                .unwrap_or(42)
+                .ok()
+                .map(|v| v.parse().ok())
+                .flatten()
+                .unwrap_or(30) // 30 seconds
             ),
             #[cfg(feature="__rt_native__")]
             #[cfg(feature="ws")]
             websocket_timeout: std::sync::LazyLock::new(|| std::env::var("OHKAMI_WEBSOCKET_TIMEOUT")
-                .ok().map(|v| v.parse().ok()).flatten()
-                .unwrap_or(42)
+                .ok()
+                .map(|v| v.parse().ok())
+                .flatten()
+                .unwrap_or(1 * 60 * 60) // 1 hour
             ),
         }
     }

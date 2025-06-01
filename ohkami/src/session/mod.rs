@@ -80,7 +80,7 @@ impl Session {
         }).await {
             None => crate::warning!("[WARNING] \
                 Session timeouted. In Ohkami, Keep-Alive timeout \
-                is set to 42 seconds by default and is configurable \
+                is set to 30 seconds by default and is configurable \
                 by `OHKAMI_KEEPALIVE_TIMEOUT` environment variable.\
             "),
 
