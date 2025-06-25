@@ -561,7 +561,7 @@ const _: () = {
     impl Into<::worker::Headers> for Headers {
         #[inline(always)]
         fn into(self) -> ::worker::Headers {
-            let mut h = ::worker::Headers::new();
+            let h = ::worker::Headers::new();
             for (k, v) in self.iter() {
                 if let Err(_e) = h.append(k, v) {
                     #[cfg(feature="DEBUG")] println!("`worker::Headers::append` failed: {_e:?}");
