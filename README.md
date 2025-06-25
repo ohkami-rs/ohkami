@@ -77,7 +77,7 @@ Hello, your_name!
 
 ### `"rt_worker"` : Cloudflare Workers
 
-- [worker](https://github.com/cloudflare/workers-rs) _v0.6.\*_
+- [worker](https://github.com/cloudflare/workers-rs) _v0.5.\*_
 
 ```sh
 npm create cloudflare ＜project dir＞ -- --template https://github.com/ohkami-rs/ohkami-templates/worker
