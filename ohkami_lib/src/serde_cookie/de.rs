@@ -37,7 +37,7 @@ pub mod valid {
     }
 
     #[inline]
-    pub fn value(mut bytes: &[u8]) -> Result<std::borrow::Cow<str>, super::super::Error> {
+    pub fn value(mut bytes: &[u8]) -> Result<std::borrow::Cow<'_, str>, super::super::Error> {
         use std::borrow::Cow;
 
         if bytes.len() >= 2 && bytes[0] == b'"' && bytes[bytes.len() - 1] == b'"' {
