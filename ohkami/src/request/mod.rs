@@ -269,7 +269,7 @@ impl Request {
                     Try to set `OHKAMI_REQUEST_BUFSIZE` to larger value \
                     (default: 2048).\
                 ");
-                Response::BadRequest()
+                Response::RequestHeaderFieldsTooLarge()
             })?;
 
             let value = CowSlice::Ref(Slice::from_bytes(r.read_while(|b| b != &b'\r')));
@@ -280,7 +280,7 @@ impl Request {
                     Try to set `OHKAMI_REQUEST_BUFSIZE` to larger value \
                     (default: 2048).\
                 ");
-                Response::BadRequest()
+                Response::RequestHeaderFieldsTooLarge()
             })?;
 
             if let Some(key) = RequestHeader::from_bytes(key_bytes) {
@@ -401,9 +401,25 @@ impl Request {
 
         while r.consume("\r\n").is_none() {
             let key_bytes = r.read_while(|b| b != &b':');
-            r.consume(": ").ok_or_else(Response::BadRequest)?;
+            r.consume(": ").ok_or_else(|| {
+                crate::WARNING!("\
+                    [Request::read] Unexpected end of headers! \
+                    Maybe request buffer size is not enough. \
+                    Try to set `OHKAMI_REQUEST_BUFSIZE` to larger value \
+                    (default: 2048).\
+                ");
+                Response::RequestHeaderFieldsTooLarge()
+            })?;
             let value = CowSlice::Own(r.read_while(|b| b != &b'\r').to_owned().into_boxed_slice());
-            r.consume("\r\n").ok_or_else(Response::BadRequest)?;
+            r.consume("\r\n").ok_or_else(|| {
+                crate::WARNING!("\
+                    [Request::read] Unexpected end of headers! \
+                    Maybe request buffer size is not enough. \
+                    Try to set `OHKAMI_REQUEST_BUFSIZE` to larger value \
+                    (default: 2048).\
+                ");
+                Response::RequestHeaderFieldsTooLarge()
+            })?;
 
             if let Some(key) = RequestHeader::from_bytes(key_bytes) {
                 self.headers.append(key, value);
