@@ -69,14 +69,14 @@ Hello, your_name!
 
 ### `"rt_tokio"`, `"rt_smol"`, `"rt_nio"`, `"rt_glommio"` : native async runtime
 
-- [tokio](https://github.com/tokio-rs/tokio)
-- [smol](https://github.com/smol-rs/smol)
-- [nio](https://github.com/nurmohammed840/nio)
-- [glommio](https://github.com/DataDog/glommio)
+- [tokio](https://github.com/tokio-rs/tokio) _v1.\*.\*_
+- [smol](https://github.com/smol-rs/smol) _v2.\*.\*_
+- [nio](https://github.com/nurmohammed840/nio) _v0.0.\*_
+- [glommio](https://github.com/DataDog/glommio) _v0.9.\*_
 
 ### `"rt_worker"` : Cloudflare Workers
 
-Works with [worker](https://crates.io/crates/worker) crate.
+- [worker](https://github.com/cloudflare/workers-rs) _v0.6.\*_
 
 Ohkami has first-class support for Cloudflare Workers. For example,
 
@@ -102,17 +102,11 @@ Or, here are [Workers + OpenAPI template](https://github.com/ohkami-rs/ohkami-te
 
 ### `"rt_lambda"` : AWS Lambda
 
-**experimental**
+- [lambda_runtime](https://github.com/awslabs/aws-lambda-rust-runtime) _v0.13.\*_ (with `tokio`)
 
-* Both `Function URLs` and `API Gateway` are supported
-* WebSocket is not supported now
-* Please let us know any bugs or unexpected behavior on [PR](https://github.com/ohkami-rs/ohkami/pulls)!
+Both `Function URLs` and `API Gateway` are supported, and WebSocket is not supported.
 
-Works with [lambda_runtime](https://crates.io/crates/lambda_runtime) crate ( and tokio ).
-
-[cargo lambda](https://crates.io/crates/cargo-lambda) will be good partner.
-
-Let's :
+[cargo lambda](https://crates.io/crates/cargo-lambda) will be good partner. Let's run :
 
 ```sh
 cargo lambda new ＜project dir＞ --template https://github.com/ohkami-rs/ohkami-templates
