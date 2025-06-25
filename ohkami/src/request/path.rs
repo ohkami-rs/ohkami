@@ -29,7 +29,7 @@ const _: () = {
     }
 
     impl Path {
-        pub fn params(&self) -> impl Iterator<Item = Cow<str>> {
+        pub fn params(&self) -> impl Iterator<Item = Cow<'_, str>> {
             unsafe {self.0.assume_init_ref()}
                 .params.iter()
                 .map(|slice| percent_decode_utf8(unsafe {slice.as_bytes()})
@@ -39,7 +39,7 @@ const _: () = {
         /// Get request path as `Cow::Borrowed(&str)` if it's not percent-encoded, or,
         /// decode it into `Cow::Owned(String)` if encoded in the original request.
         #[inline]
-        pub fn str(&self) -> Cow<str> {
+        pub fn str(&self) -> Cow<'_, str> {
             let bytes = unsafe {self.0.assume_init_ref().raw.as_bytes()};
             if bytes.is_empty() {return Cow::Borrowed("/")}
             percent_decode_utf8(bytes).expect("Non UTF-8 path params")
