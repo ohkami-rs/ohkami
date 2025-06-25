@@ -54,6 +54,9 @@ jobs:
           echo "rustc-wrapper = \"$HOME/.cargo/bin/sccache\"" >> $HOME/.cargo/config.toml
       - name: Cache sccahe dir
         id:   cahce_sccahe_dir
+        # cache sccache directory after the most large task
+        # in order to maximize cache hit
+        if:   ${{ matrix.task == 'test:other' }}
         uses: actions/cache@v4
         with:
           key:  ${{ runner.os }}-sccahe-dir
