@@ -1,7 +1,7 @@
 [package]
-name    = "worker-with-openapi"
+name    = "worker-with-global-bindings"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
 # set `default-features = false` to assure "DEBUG" feature be off even when DEBUGing `../ohkami`
@@ -18,6 +18,6 @@ opt-level = "s"
 
 [features]
 openapi = ["ohkami/openapi"]
-DEBUG   = ["ohkami/DEBUG"]
 
+# `--no-default-features` in release profile
 default = ["openapi"]
