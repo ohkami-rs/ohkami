@@ -233,7 +233,7 @@ pub mod prelude {
     pub use crate::{Request, Response, IntoResponse, Method, Status};
     pub use crate::util::FangAction;
     pub use crate::serde::{Serialize, Deserialize};
-    pub use crate::format::{JSON, Query};
+    pub use crate::format::{Json, Query};
     pub use crate::fang::Context;
 
     #[cfg(feature="__rt__")]

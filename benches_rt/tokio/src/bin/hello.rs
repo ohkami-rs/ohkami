@@ -1,13 +1,13 @@
 use ohkami::prelude::*;
-use ohkami::format::JSON;
+use ohkami::format::Json;
 
 #[derive(Serialize)]
 struct Message {
     message: String
 }
 
-async fn hello(name: &str) -> JSON<Message> {
-    JSON(Message {
+async fn hello(name: &str) -> Json<Message> {
+    Json(Message {
         message: format!("Hello, {name}!")
     })
 }

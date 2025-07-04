@@ -1,5 +1,5 @@
 use ohkami::{Ohkami, Route};
-use ohkami::format::JSON;
+use ohkami::format::Json;
 use ohkami::serde::Serialize;
 
 
@@ -9,15 +9,15 @@ struct User {
     name: String,
 }
 
-async fn single_user() -> JSON<User> {
-    JSON(User {
+async fn single_user() -> Json<User> {
+    Json(User {
         id:   42,
         name: String::from("ohkami"),
     })
 }
 
-async fn multiple_users() -> JSON<Vec<User>> {
-    JSON(vec![
+async fn multiple_users() -> Json<Vec<User>> {
+    Json(vec![
         User {
             id:   42,
             name: String::from("ohkami"),

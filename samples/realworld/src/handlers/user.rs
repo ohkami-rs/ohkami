@@ -6,7 +6,7 @@ use crate::{
     models::response::UserResponse,
     models::request::{UpdateProfileRequest, UpdateProfileRequestUser},
     errors::RealWorldError,
-    config::JWTPayload,
+    config::JwtPayload,
     db::{UserEntity, hash_password},
 };
 
@@ -22,17 +22,17 @@ pub fn user_ohkami() -> Ohkami {
 
 async fn get_user(
     Context(pool): Context<'_, PgPool>,
-    Context(auth): Context<'_, JWTPayload>,
-) -> Result<JSON<UserResponse>, RealWorldError> {
+    Context(auth): Context<'_, JwtPayload>,
+) -> Result<Json<UserResponse>, RealWorldError> {
     let user = util::get_current_user(pool, auth).await?;
-    Ok(JSON(UserResponse { user }))
+    Ok(Json(UserResponse { user }))
 }
 
 async fn update(
-    JSON(req): JSON<UpdateProfileRequest<'_>>,
-    Context(auth): Context<'_, JWTPayload>,
+    Json(req): Json<UpdateProfileRequest<'_>>,
+    Context(auth): Context<'_, JwtPayload>,
     Context(pool): Context<'_, PgPool>,
-) -> Result<JSON<UserResponse>, RealWorldError> {
+) -> Result<Json<UserResponse>, RealWorldError> {
     let user_entity = {
         let UpdateProfileRequest {
             user: UpdateProfileRequestUser {
@@ -68,7 +68,7 @@ async fn update(
         if !set_once {
             // Requested to update nothing, then not perform UPDATE query
             let user = util::get_current_user(pool, auth).await?;
-            return Ok(JSON(UserResponse { user }))
+            return Ok(Json(UserResponse { user }))
         }
 
         query.build_query_as::<UserEntity>()
@@ -76,7 +76,7 @@ async fn update(
             .map_err(RealWorldError::DB)?
     };
 
-    Ok(JSON(user_entity.into_user_response()?))
+    Ok(Json(user_entity.into_user_response()?))
 }
 
 mod util {
@@ -84,7 +84,7 @@ mod util {
 
     pub async fn get_current_user<'a>(
         pool: &'a PgPool,
-        auth: &'a JWTPayload,
+        auth: &'a JwtPayload,
     ) -> Result<User, RealWorldError> {
         let u = sqlx::query_as!(UserEntity, r#"
             SELECT id, email, name, bio, image_url

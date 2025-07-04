@@ -138,7 +138,7 @@ mod schema_fn {
 fn main() {
     macro_rules! dummy_handler {
         ($return_type:ty) => {
-            {async fn dummy() -> JSON<$return_type> {todo!()}; dummy}
+            {async fn dummy() -> Json<$return_type> {todo!()}; dummy}
         };
     }
 

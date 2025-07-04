@@ -8,6 +8,10 @@
     {
       "url": "http://localhost:8787",
       "description": "local dev"
+    },
+    {
+      "url": "https://worker-bindings-test.kanarus.workers.dev",
+      "description": "production"
     }
   ],
   "paths": {

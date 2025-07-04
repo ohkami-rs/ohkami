@@ -1,8 +1,8 @@
 use ohkami::prelude::*;
-use ohkami::fang::{JWT, JWTToken};
+use ohkami::fang::{Jwt, JwtToken};
 
-fn jwt() -> JWT<JwtPayload> {
-    JWT::default(std::env::var("JWT_SECRET").unwrap())
+fn jwt() -> Jwt<JwtPayload> {
+    Jwt::default(std::env::var("JWT_SECRET").unwrap())
 }
 
 #[derive(Serialize, Deserialize)]
@@ -23,16 +23,16 @@ impl JwtSub for DefaultJwtSub {
 #[derive(Serialize)]
 #[cfg_attr(test, derive(Deserialize))]
 struct AuthResponse {
-    token: JWTToken,
+    token: JwtToken,
 }
 
-async fn auth<S: JwtSub>() -> JSON<AuthResponse> {
+async fn auth<S: JwtSub>() -> Json<AuthResponse> {
     let token = jwt().issue(JwtPayload {
         sub: S::sub(),
         exp: ohkami::util::unix_timestamp() + 86400,
     });
 
-    JSON(AuthResponse { token })
+    Json(AuthResponse { token })
 }
 
 async fn private(

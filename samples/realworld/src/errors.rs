@@ -1,4 +1,4 @@
-use ohkami::{IntoResponse, serde::Serialize, format::JSON};
+use ohkami::{IntoResponse, serde::Serialize, format::Json};
 use std::borrow::Cow;
 
 
@@ -34,7 +34,7 @@ impl IntoResponse for RealWorldError {
         
         match self {
             Self::Validation { body } => UnprocessableEntity(
-                JSON(ValidationErrorFormat {
+                Json(ValidationErrorFormat {
                     errors: ValidationError {
                         body: vec![body.into()],
                     },

@@ -20,7 +20,7 @@ use crate::openapi;
 /// 
 /// ```
 /// # enum MyError {}
-/// use ohkami::format::URLEncoded;
+/// use ohkami::format::UrlEncoded;
 /// use ohkami::serde::Deserialize;
 /// 
 /// #[derive(Deserialize)]
@@ -30,7 +30,7 @@ use crate::openapi;
 /// }
 /// 
 /// async fn create_user(
-///     URLEncoded(body): URLEncoded<CreateUserRequest<'_>>,
+///     UrlEncoded(body): UrlEncoded<CreateUserRequest<'_>>,
 /// ) -> Result<(), MyError> {
 ///     todo!()
 /// }
@@ -45,7 +45,7 @@ use crate::openapi;
 /// 
 /// ```
 /// # enum MyError {}
-/// use ohkami::format::URLEncoded;
+/// use ohkami::format::UrlEncoded;
 /// use ohkami::serde::Serialize;
 /// 
 /// #[derive(Serialize)]
@@ -56,17 +56,17 @@ use crate::openapi;
 /// 
 /// async fn get_user(
 ///     id: &str,
-/// ) -> Result<URLEncoded<User>, MyError> {
+/// ) -> Result<UrlEncoded<User>, MyError> {
 ///     todo!()
 /// }
 /// ```
-pub struct URLEncoded<T: bound::Schema>(pub T);
+pub struct UrlEncoded<T: bound::Schema>(pub T);
 
-impl<'req, T: Incoming<'req>> FromBody<'req> for URLEncoded<T> {
+impl<'req, T: Incoming<'req>> FromBody<'req> for UrlEncoded<T> {
     const MIME_TYPE: &'static str = "application/x-www-form-urlencoded";
 
     fn from_body(body: &'req [u8]) -> Result<Self, impl std::fmt::Display> {
-        serde_urlencoded::from_bytes(body).map(URLEncoded)
+        serde_urlencoded::from_bytes(body).map(UrlEncoded)
     }
 
     #[cfg(feature="openapi")]
@@ -75,7 +75,7 @@ impl<'req, T: Incoming<'req>> FromBody<'req> for URLEncoded<T> {
     }
 }
 
-impl<T: Outgoing> IntoBody for URLEncoded<T> {
+impl<T: Outgoing> IntoBody for UrlEncoded<T> {
     const CONTENT_TYPE: &'static str = "application/x-www-form-urlencoded";
 
     fn into_body(self) -> Result<Cow<'static, [u8]>, impl std::fmt::Display> {

@@ -1,17 +1,17 @@
 mod json;
-pub use json::JSON;
+pub use json::Json;
 
 mod multipart;
 pub use multipart::{Multipart, File};
 
 mod urlencoded;
-pub use urlencoded::URLEncoded;
+pub use urlencoded::UrlEncoded;
 
 mod text;
 pub use text::Text;
 
 mod html;
-pub use html::HTML;
+pub use html::Html;
 
 mod query;
 pub use query::Query;

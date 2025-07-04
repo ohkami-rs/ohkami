@@ -31,7 +31,7 @@ use crate::tls::TlsStream;
 /// use ohkami::prelude::*;
 /// # use ohkami::serde::Serialize;
 /// # use ohkami::typed::status::{OK, Created};
-/// # use ohkami::format::JSON;
+/// # use ohkami::format::Json;
 /// # use ohkami::{Fang, FangProc};
 /// 
 /// struct Auth;
@@ -71,16 +71,16 @@ use crate::tls::TlsStream;
 /// #     Status::NoContent
 /// # }
 /// # 
-/// # async fn create_user() -> Created<JSON<User>> {
-/// #     Created(JSON(User {
+/// # async fn create_user() -> Created<Json<User>> {
+/// #     Created(Json(User {
 /// #         id:   42,
 /// #         name: String::from("ohkami"),
 /// #         age:  None,
 /// #     }))
 /// # }
 /// # 
-/// # async fn get_user_by_id(id: usize) -> Result<JSON<User>, APIError> {
-/// #     Ok(JSON(User {
+/// # async fn get_user_by_id(id: usize) -> Result<Json<User>, APIError> {
+/// #     Ok(Json(User {
 /// #         id,
 /// #         name: String::from("ohkami"),
 /// #         age:  Some(2),
@@ -275,10 +275,10 @@ use crate::tls::TlsStream;
 /// async fn get_user<R: Repository>(
 ///     id: u32,
 ///     Context(r): Context<'_, R>,
-/// ) -> Result<JSON<User>, MyError> {
+/// ) -> Result<Json<User>, MyError> {
 ///     let user_name = r.get_user_name_by_id(id as i64).await?;
 /// 
-///     Ok(JSON(User {
+///     Ok(Json(User {
 ///         id: id as u32,
 ///         name: user_name,
 ///     }))

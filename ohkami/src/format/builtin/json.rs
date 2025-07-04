@@ -19,7 +19,7 @@ use crate::openapi;
 /// 
 /// ```
 /// # enum MyError {}
-/// use ohkami::format::JSON;
+/// use ohkami::format::Json;
 /// use ohkami::serde::Deserialize;
 /// 
 /// #[derive(Deserialize)]
@@ -29,7 +29,7 @@ use crate::openapi;
 /// }
 /// 
 /// async fn create_user(
-///     JSON(body): JSON<CreateUserRequest<'_>>,
+///     Json(body): Json<CreateUserRequest<'_>>,
 /// ) -> Result<(), MyError> {
 ///     todo!()
 /// }
@@ -44,7 +44,7 @@ use crate::openapi;
 /// 
 /// ```
 /// # enum MyError {}
-/// use ohkami::format::JSON;
+/// use ohkami::format::Json;
 /// use ohkami::serde::Serialize;
 /// 
 /// #[derive(Serialize)]
@@ -55,18 +55,18 @@ use crate::openapi;
 /// 
 /// async fn get_user(
 ///     id: &str,
-/// ) -> Result<JSON<User>, MyError> {
+/// ) -> Result<Json<User>, MyError> {
 ///     todo!()
 /// }
 /// ```
-pub struct JSON<T: bound::Schema>(pub T);
+pub struct Json<T: bound::Schema>(pub T);
 
-impl<'req, T: Incoming<'req>> FromBody<'req> for JSON<T> {
+impl<'req, T: Incoming<'req>> FromBody<'req> for Json<T> {
     const MIME_TYPE: &'static str = "application/json";
 
     #[inline]
     fn from_body(body: &'req [u8]) -> Result<Self, impl std::fmt::Display> {
-        serde_json::from_slice(body).map(JSON)
+        serde_json::from_slice(body).map(Json)
     }
 
     #[cfg(feature="openapi")]
@@ -75,7 +75,7 @@ impl<'req, T: Incoming<'req>> FromBody<'req> for JSON<T> {
     }
 }
 
-impl<T: Outgoing> IntoBody for JSON<T> {
+impl<T: Outgoing> IntoBody for Json<T> {
     const CONTENT_TYPE: &'static str = "application/json";
 
     #[inline]

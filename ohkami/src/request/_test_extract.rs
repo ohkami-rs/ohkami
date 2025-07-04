@@ -2,7 +2,7 @@
 
 use crate::prelude::*;
 use crate::testing::*;
-use crate::{typed::status, format::{JSON, Query}};
+use crate::{typed::status, format::{Json, Query}};
 use ::serde::Deserialize;
 
 #[cfg(feature="openapi")]
@@ -42,7 +42,7 @@ impl<'req> openapi::Schema for HelloQuery<'req> {
 
 #[test] fn extract_required_payload() {
     async fn create_user(
-        JSON(_user): JSON<User<'_>>
+        Json(_user): Json<User<'_>>
     ) -> status::Created {
         status::Created(())
     }
@@ -65,7 +65,7 @@ impl<'req> openapi::Schema for HelloQuery<'req> {
 
 #[test] fn extract_optional_payload() {
     async fn post_user(
-        body: Option<JSON<User<'_>>>,
+        body: Option<Json<User<'_>>>,
     ) -> &'static str {
         if body.is_none() {"none"} else {"some"}
     }

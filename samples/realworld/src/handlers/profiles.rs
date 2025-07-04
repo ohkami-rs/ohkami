@@ -2,7 +2,7 @@ use std::borrow::Cow;
 
 use ohkami::prelude::*;
 use sqlx::PgPool;
-use crate::config::JWTPayload;
+use crate::config::JwtPayload;
 use crate::{fangs::Auth, errors::RealWorldError};
 use crate::models::response::ProfileResponse;
 use crate::db::UserEntity;
@@ -20,9 +20,9 @@ pub fn profiles_ohkami() -> Ohkami {
 }
 
 async fn get_profile(username: &str,
-    Context(auth): Context<'_, JWTPayload>,
+    Context(auth): Context<'_, JwtPayload>,
     Context(pool): Context<'_, PgPool>
-) -> Result<JSON<ProfileResponse>, RealWorldError> {
+) -> Result<Json<ProfileResponse>, RealWorldError> {
     let the_user = UserEntity::get_by_name(username, pool).await?;
 
     let following_the_user = sqlx::query!(r#"
@@ -38,15 +38,15 @@ async fn get_profile(username: &str,
         .map_err(RealWorldError::DB)?
         .exists.unwrap();
 
-    Ok(JSON(
+    Ok(Json(
         the_user.into_profile_response_with(following_the_user)
     ))
 }
 
 async fn follow(username: &str,
-    Context(auth): Context<'_, JWTPayload>,
+    Context(auth): Context<'_, JwtPayload>,
     Context(pool): Context<'_, PgPool>,
-) -> Result<JSON<ProfileResponse>, RealWorldError> {
+) -> Result<Json<ProfileResponse>, RealWorldError> {
     let by_existing_user = sqlx::query!(r#"
         SELECT EXISTS (
             SELECT id
@@ -75,15 +75,15 @@ async fn follow(username: &str,
         .execute(pool).await
         .map_err(RealWorldError::DB)?;
 
-    Ok(JSON(
+    Ok(Json(
         followee.into_profile_response_with(true)
     ))
 }
 
 async fn unfollow(username: &str,
-    Context(auth): Context<'_, JWTPayload>,
+    Context(auth): Context<'_, JwtPayload>,
     Context(pool): Context<'_, PgPool>,
-) -> Result<JSON<ProfileResponse>, RealWorldError> {
+) -> Result<Json<ProfileResponse>, RealWorldError> {
     let followee = UserEntity::get_by_name(username, pool).await?;
 
     let deletion_count = sqlx::query!(r#"
@@ -105,5 +105,5 @@ async fn unfollow(username: &str,
         )))
     }
 
-    Ok(JSON(followee.into_profile_response_with(false)))
+    Ok(Json(followee.into_profile_response_with(false)))
 }

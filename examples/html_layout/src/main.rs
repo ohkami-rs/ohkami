@@ -1,6 +1,6 @@
 use ohkami::prelude::*;
 use ohkami::serde::Deserialize;
-use ohkami::format::{Query, HTML};
+use ohkami::format::{Query, Html};
 use uibeam::{UI, Beam};
 
 struct Layout {
@@ -87,10 +87,10 @@ struct CounterMeta {
     init: Option<i32>,
 }
 
-async fn index(Query(q): Query<CounterMeta>) -> HTML<std::borrow::Cow<'static, str>> {
+async fn index(Query(q): Query<CounterMeta>) -> Html<std::borrow::Cow<'static, str>> {
     let initial_count = q.init.unwrap_or(0);
     
-    HTML(uibeam::shoot(UI! {
+    Html(uibeam::shoot(UI! {
         <Counter initial_count={initial_count} />
     }))
 }
