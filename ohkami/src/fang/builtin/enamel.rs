@@ -12,7 +12,7 @@
 /// - `Referrer-Policy` to `no-referrer`
 /// - `Strict-Transport-Security` to `max-age=15552000; includeSubDomains`
 /// - `X-Content-Type-Options` to `nosniff`
-/// - `XFrameOptions` to `SAMEORIGIN`
+/// - `X-Frame-Options` to `SAMEORIGIN`
 /// 
 /// Each of these defaults can be overrided by corresponded builder method.
 /// 
@@ -37,27 +37,27 @@ pub struct Enamel(
 );
 #[allow(non_snake_case)]
 struct EnamelFields {
-    ContentSecurityPolicy:           Option<CSP>,
-    ContentSecurityPolicyReportOnly: Option<CSP>,
-    CrossOriginEmbedderPolicy:       &'static str,
-    CrossOriginResourcePolicy:       &'static str,
-    ReferrerPolicy:                  &'static str,
-    StrictTransportSecurity:         &'static str,
-    XContentTypeOptions:             &'static str,
-    XFrameOptions:                   &'static str,
+    content_security_policy:           Option<CSP>,
+    content_security_policy_report_only: Option<CSP>,
+    cross_origin_embedder_policy:       &'static str,
+    corss_origin_resource_policy:       &'static str,
+    referrer_policy:                  &'static str,
+    strict_transport_security:         &'static str,
+    x_content_type_options:             &'static str,
+    x_frame_options:                   &'static str,
 }
 const _: () = {
     impl Default for Enamel {
         fn default() -> Self {
             Self(std::sync::Arc::new(EnamelFields {
-                ContentSecurityPolicy:           None,
-                ContentSecurityPolicyReportOnly: None,
-                CrossOriginEmbedderPolicy:       "require-corp",
-                CrossOriginResourcePolicy:       "same-origin",
-                ReferrerPolicy:                  "no-referrer",
-                StrictTransportSecurity:         "max-age=15552000; includeSubDomains",
-                XContentTypeOptions:             "nosniff",
-                XFrameOptions:                   "SAMEORIGIN",
+                content_security_policy:           None,
+                content_security_policy_report_only: None,
+                cross_origin_embedder_policy:       "require-corp",
+                corss_origin_resource_policy:       "same-origin",
+                referrer_policy:                  "no-referrer",
+                strict_transport_security:         "max-age=15552000; includeSubDomains",
+                x_content_type_options:             "nosniff",
+                x_frame_options:                   "SAMEORIGIN",
             }))
         }
     }
@@ -69,77 +69,77 @@ const _: () = {
     #[allow(non_snake_case)]
     impl Enamel {
         /// default: no setting
-        pub fn ContentSecurityPolicy(mut self, csp: CSP) -> Self {
-            inner_mut(&mut self).ContentSecurityPolicy = Some(csp); self
+        pub fn content_security_policy(mut self, csp: CSP) -> Self {
+            inner_mut(&mut self).content_security_policy = Some(csp); self
         }
         /// default: no setting
-        pub fn ContentSecurityPolicyReportOnly(mut self, csp: CSP) -> Self {
-            inner_mut(&mut self).ContentSecurityPolicyReportOnly = Some(csp); self
+        pub fn content_security_policy_report_only(mut self, csp: CSP) -> Self {
+            inner_mut(&mut self).content_security_policy_report_only = Some(csp); self
         }
         /// default: `"require-corp"`
         /// 
         /// set to `""` ( empty string ) for disabling the header
-        pub fn CrossOriginEmbedderPolicy(mut self, CrossOriginEmbedderPolicy: &'static str) -> Self {
-            inner_mut(&mut self).CrossOriginEmbedderPolicy = CrossOriginEmbedderPolicy; self
+        pub fn cross_origin_embedder_policy(mut self, cross_origin_embedder_policy: &'static str) -> Self {
+            inner_mut(&mut self).cross_origin_embedder_policy = cross_origin_embedder_policy; self
         }
         /// default: `"same-origin"`
         /// 
         /// set to `""` ( empty string ) for disabling the header
-        pub fn CrossOriginResourcePolicy(mut self, CrossOriginResourcePolicy: &'static str) -> Self {
-            inner_mut(&mut self).CrossOriginResourcePolicy = CrossOriginResourcePolicy; self
+        pub fn corss_origin_resource_policy(mut self, corss_origin_resource_policy: &'static str) -> Self {
+            inner_mut(&mut self).corss_origin_resource_policy = corss_origin_resource_policy; self
         }
         /// default: `"no-referrer"`
         /// 
         /// set to `""` ( empty string ) for disabling the header
-        pub fn ReferrerPolicy(mut self, ReferrerPolicy: &'static str) -> Self {
-            inner_mut(&mut self).ReferrerPolicy = ReferrerPolicy; self
+        pub fn referrer_policy(mut self, referrer_policy: &'static str) -> Self {
+            inner_mut(&mut self).referrer_policy = referrer_policy; self
         }
         /// default: `"max-age=15552000; includeSubDomains"`
         /// 
         /// set to `""` ( empty string ) for disabling the header
-        pub fn StrictTransportSecurity(mut self, StrictTransportSecurity: &'static str) -> Self {
-            inner_mut(&mut self).StrictTransportSecurity = StrictTransportSecurity; self
+        pub fn strict_transport_security(mut self, strict_transport_security: &'static str) -> Self {
+            inner_mut(&mut self).strict_transport_security = strict_transport_security; self
         }
         /// default: `"nosniff"`
         /// 
         /// set to `""` ( empty string ) for disabling the header
-        pub fn XContentTypeOptions(mut self, XContentTypeOptions: &'static str) -> Self {
-            inner_mut(&mut self).XContentTypeOptions = XContentTypeOptions; self
+        pub fn x_content_type_options(mut self, x_content_type_options: &'static str) -> Self {
+            inner_mut(&mut self).x_content_type_options = x_content_type_options; self
         }
         /// default: `"SAMEORIGIN"`
         /// 
         /// set to `""` ( empty string ) for disabling the header
-        pub fn XFrameOptions(mut self, XFrameOptions: &'static str) -> Self {
-            inner_mut(&mut self).XFrameOptions = XFrameOptions; self
+        pub fn x_frame_options(mut self, x_frame_options: &'static str) -> Self {
+            inner_mut(&mut self).x_frame_options = x_frame_options; self
         }
     }
 
     impl Enamel {
         fn apply(&self, res: &mut crate::Response) {
             let mut h = res.headers.set();
-            if let Some(csp) = &self.0.ContentSecurityPolicy {
+            if let Some(csp) = &self.0.content_security_policy {
                 h = h.ContentSecurityPolicy(csp.build());
             }
-            if let Some(csp) = &self.0.ContentSecurityPolicyReportOnly {
+            if let Some(csp) = &self.0.content_security_policy_report_only {
                 h = h.ContentSecurityPolicyReportOnly(csp.build());
             }
-            if !self.0.CrossOriginEmbedderPolicy.is_empty() {
-                h = h.CrossOriginEmbedderPolicy(self.0.CrossOriginEmbedderPolicy);
+            if !self.0.cross_origin_embedder_policy.is_empty() {
+                h = h.CrossOriginEmbedderPolicy(self.0.cross_origin_embedder_policy);
             }
-            if !self.0.CrossOriginResourcePolicy.is_empty() {
-                h = h.CrossOriginResourcePolicy(self.0.CrossOriginResourcePolicy);
+            if !self.0.corss_origin_resource_policy.is_empty() {
+                h = h.CrossOriginEmbedderPolicy(self.0.corss_origin_resource_policy);
             }
-            if !self.0.ReferrerPolicy.is_empty() {
-                h = h.ReferrerPolicy(self.0.ReferrerPolicy);
+            if !self.0.referrer_policy.is_empty() {
+                h = h.ReferrerPolicy(self.0.referrer_policy);
             }
-            if !self.0.StrictTransportSecurity.is_empty() {
-                h = h.StrictTransportSecurity(self.0.StrictTransportSecurity);
+            if !self.0.strict_transport_security.is_empty() {
+                h = h.StrictTransportSecurity(self.0.strict_transport_security);
             }
-            if !self.0.XContentTypeOptions.is_empty() {
-                h = h.XContentTypeOptions(self.0.XContentTypeOptions);
+            if !self.0.x_content_type_options.is_empty() {
+                h = h.XContentTypeOptions(self.0.x_content_type_options);
             }
-            if !self.0.XFrameOptions.is_empty() {
-                h.XFrameOptions(self.0.XFrameOptions);
+            if !self.0.x_frame_options.is_empty() {
+                h.XFrameOptions(self.0.x_frame_options);
             }
         }
     }
@@ -182,7 +182,7 @@ const _: () = {
 /// async fn main() {
 ///     Ohkami::new((
 ///         Enamel::default()
-///             .ContentSecurityPolicy(CSP {
+///             .content_security_policy(CSP {
 ///                 sandbox: allow_forms | allow_same_origin,
 ///                 ..Default::default()
 ///             }),
@@ -283,7 +283,7 @@ const _: () = {
 /// async fn main() {
 ///     Ohkami::new((
 ///         Enamel::default()
-///             .ContentSecurityPolicy(CSP {
+///             .content_security_policy(CSP {
 ///                 sandbox: allow_forms | allow_same_origin,
 ///                 ..Default::default()
 ///             }),
@@ -354,7 +354,7 @@ pub mod sandbox {
 /// async fn main() {
 ///     Ohkami::new((
 ///         Enamel::default()
-///             .ContentSecurityPolicy(CSP {
+///             .content_security_policy(CSP {
 ///                 script_src: self_origin | data,
 ///                 ..Default::default()
 ///             }),
@@ -590,7 +590,7 @@ mod test {
     
         let t = Ohkami::new((
             Enamel::default()
-                .ContentSecurityPolicy(CSP {
+                .content_security_policy(CSP {
                     default_src: self_origin | https | domain("*.example.com"),
                     sandbox:     allow_forms | allow_modals,
                     report_uri:  "https://my-report.uri",
@@ -629,8 +629,8 @@ mod test {
     fn enamel_disable_header() {
         let t = Ohkami::new((
             Enamel::default()
-                .CrossOriginEmbedderPolicy("")
-                .CrossOriginResourcePolicy(""),
+                .cross_origin_embedder_policy("")
+                .corss_origin_resource_policy(""),
             "/hello"
                 .GET(|| async {"Hello, enamel!"}),
         )).test();
