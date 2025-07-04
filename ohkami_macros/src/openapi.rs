@@ -577,7 +577,7 @@ pub(super) fn operation(meta: TokenStream, handler: TokenStream) -> syn::Result<
                 },
                 DescriptionTarget::RequestBody => {
                     quote! {
-                        op = op.requestBody_description(#value);
+                        op = op.requestbody_description(#value);
                     }
                 },
                 DescriptionTarget::DefaultResponse => {
