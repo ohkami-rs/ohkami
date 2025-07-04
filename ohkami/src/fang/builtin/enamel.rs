@@ -135,7 +135,7 @@ const _: () = {
                 h = h.CrossOriginEmbedderPolicy(self.0.cross_origin_embedder_policy);
             }
             if !self.0.corss_origin_resource_policy.is_empty() {
-                h = h.CrossOriginEmbedderPolicy(self.0.corss_origin_resource_policy);
+                h = h.CrossOriginResourcePolicy(self.0.corss_origin_resource_policy);
             }
             if !self.0.referrer_policy.is_empty() {
                 h = h.ReferrerPolicy(self.0.referrer_policy);
@@ -533,7 +533,6 @@ mod test {
                     ("Strict-Transport-Security", "max-age=15552000; includeSubDomains"),
                     ("X-Content-Type-Options", "nosniff"),
                     ("X-Frame-Options", "SAMEORIGIN"),
-
                     ("Content-Type", "text/plain; charset=UTF-8"),
                     ("Content-Length", "14"),
                 ]));
