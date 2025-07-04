@@ -23,10 +23,12 @@ pub struct SecurityScheme {
     scheme: Option<&'static str>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    bearerFormat: Option<&'static str>,
+    #[serde(rename = "bearerFormat")]
+    bearer_format: Option<&'static str>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    openIdConnectUrl: Option<&'static str>,
+    #[serde(rename = "openIdConnectUrl")]
+    openidconnect_url: Option<&'static str>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     flows: Option<oauth2::OAuthFlow>,
@@ -156,46 +158,46 @@ mod oauth2 {
 }
 
 impl SecurityScheme {
-    pub fn Basic(scheme_name: &'static str) -> Self {
+    pub fn basic(scheme_name: &'static str) -> Self {
         Self {
             __name__:  scheme_name,
             auth_type: "http",
             scheme:    Some("basic"),
-            name:None, apikey_in:None, bearerFormat:None, openIdConnectUrl:None, flows:None, description:None
+            name:None, apikey_in:None, bearer_format:None, openidconnect_url:None, flows:None, description:None
         }
     }
-    pub fn Bearer(scheme_name: &'static str, token_format: Option<&'static str>) -> Self {
+    pub fn bearer(scheme_name: &'static str, token_format: Option<&'static str>) -> Self {
         Self {
             __name__:     scheme_name,
             auth_type:    "http",
             scheme:       Some("bearer"),
-            bearerFormat: token_format.into(),
-            name:None, apikey_in:None, openIdConnectUrl:None, flows:None, description:None
+            bearer_format: token_format.into(),
+            name:None, apikey_in:None, openidconnect_url:None, flows:None, description:None
         }
     }
-    pub fn OpenIDConnect(scheme_name: &'static str, url: &'static str) -> Self {
+    pub fn openidconnect(scheme_name: &'static str, url: &'static str) -> Self {
         Self {
             __name__:         scheme_name,
             auth_type:        "openIdConnect",
-            openIdConnectUrl: Some(url),
-            scheme:None, name:None, apikey_in:None, bearerFormat:None, flows:None, description:None
+            openidconnect_url: Some(url),
+            scheme:None, name:None, apikey_in:None, bearer_format:None, flows:None, description:None
         }
     }
-    pub fn APIKey(scheme_name: &'static str, APIKey { apikey_in, name }: APIKey) -> Self {
+    pub fn apikey(scheme_name: &'static str, APIKey { apikey_in, name }: APIKey) -> Self {
         Self {
             __name__:  scheme_name,
             auth_type: "apiKey",
             name:      Some(name),
             apikey_in: Some(apikey_in),
-            scheme:None, bearerFormat:None, openIdConnectUrl:None, flows:None, description:None
+            scheme:None, bearer_format:None, openidconnect_url:None, flows:None, description:None
         }
     }
-    pub fn OAuth2(scheme_name: &'static str, flow: impl Into<oauth2::OAuthFlow>) -> Self {
+    pub fn oauth2(scheme_name: &'static str, flow: impl Into<oauth2::OAuthFlow>) -> Self {
         Self {
             __name__:  scheme_name,
             auth_type: "oauth2",
             flows:     Some(flow.into()),
-            openIdConnectUrl: None, scheme:None, name:None, apikey_in:None, bearerFormat:None, description:None
+            openidconnect_url: None, scheme:None, name:None, apikey_in:None, bearer_format:None, description:None
         }
     }
 
