@@ -54,7 +54,7 @@ mod worker;
 /// }
 /// 
 /// async fn hello(
-///     JSON(req): JSON<HelloRequest<'_>>,
+///     Json(req): Json<HelloRequest<'_>>,
 /// ) -> String {
 ///     let name = req.name.unwrap_or("world");
 ///     let repeat = req.name.repeat.unwrap_or(1);

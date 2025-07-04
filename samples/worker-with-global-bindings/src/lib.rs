@@ -114,7 +114,7 @@ mod repository {
 mod routes {
     use crate::repository::{self, UserRepository};
     use ohkami::{Ohkami, Route};
-    use ohkami::format::JSON;
+    use ohkami::format::Json;
     use ohkami::fang::Context;
     use ohkami::typed::status;
     use ohkami::serde::{Serialize, Deserialize};
@@ -146,10 +146,10 @@ mod routes {
 
     pub async fn list_users<U: UserRepository>(
         Context(r): Context<'_, U>,
-    ) -> Result<JSON<Vec<User>>, crate::Error> {
+    ) -> Result<Json<Vec<User>>, crate::Error> {
         let user_rows = r.get_all().await?;
 
-        Ok(JSON(user_rows.into_iter().map(|r| User {
+        Ok(Json(user_rows.into_iter().map(|r| User {
             id: r.id,
             name: r.name,
             age: r.age,
@@ -159,11 +159,11 @@ mod routes {
     pub async fn show_user<U: UserRepository>(
         id: u32,
         Context(r): Context<'_, U>,
-    ) -> Result<JSON<User>, crate::Error> {
+    ) -> Result<Json<User>, crate::Error> {
         let user_row = r.get_by_id(id).await?
             .ok_or(crate::Error::UserIdNotFound { id })?;
 
-        Ok(JSON(User {
+        Ok(Json(User {
             id: user_row.id,
             name: user_row.name,
             age: user_row.age,
@@ -171,15 +171,15 @@ mod routes {
     }
 
     pub async fn create_user<U: UserRepository>(
-        JSON(req): JSON<CreateUserRequest<'_>>,
+        Json(req): Json<CreateUserRequest<'_>>,
         Context(r): Context<'_, U>,
-    ) -> Result<status::Created<JSON<User>>, crate::Error> {
+    ) -> Result<status::Created<Json<User>>, crate::Error> {
         let created_id = r.create_returning_id(repository::CreateUserParams {
             name: &req.name,
             age: req.age,
         }).await?;
 
-        Ok(status::Created(JSON(User {
+        Ok(status::Created(Json(User {
             id: created_id,
             name: req.name.to_string(),
             age: req.age,

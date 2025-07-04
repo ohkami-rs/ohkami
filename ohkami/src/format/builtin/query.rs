@@ -17,7 +17,7 @@ use crate::openapi;
 /// 
 /// ```
 /// # enum MyError {}
-/// use ohkami::format::{JSON, Query};
+/// use ohkami::format::{Json, Query};
 /// use ohkami::serde::Deserialize;
 /// 
 /// #[derive(Deserialize)]
@@ -32,7 +32,7 @@ use crate::openapi;
 /// 
 /// async fn list_users(
 ///     Query(meta): Query<ListUsersMeta<'_>>,
-/// ) -> Result<JSON<Vec<User>>, MyError> {
+/// ) -> Result<Json<Vec<User>>, MyError> {
 ///     todo!()
 /// }
 /// ```

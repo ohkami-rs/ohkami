@@ -31,22 +31,22 @@ mod users {
         age:  Option<u8>,
     }
 
-    async fn list_users() -> JSON<Vec<User>> {
-        JSON(vec![])
+    async fn list_users() -> Json<Vec<User>> {
+        Json(vec![])
     }
 
     async fn create_user(
-        JSON(req): JSON<CreateUser<'_>>,
-    ) -> status::Created<JSON<User>> {
-        status::Created(JSON(User {
+        Json(req): Json<CreateUser<'_>>,
+    ) -> status::Created<Json<User>> {
+        status::Created(Json(User {
             id:   42,
             name: req.name.into(),
             age:  req.age
         }))
     }
 
-    async fn get_user_profile(id: i32) -> JSON<User> {
-        JSON(User {
+    async fn get_user_profile(id: i32) -> Json<User> {
+        Json(User {
             id,
             name: "unknown".into(),
             age:  Some(42)
@@ -81,12 +81,12 @@ mod tasks {
         description: Option<&'req str>,
     }
 
-    async fn list_tasks() -> JSON<Vec<Task>> {
-        JSON(vec![])
+    async fn list_tasks() -> Json<Vec<Task>> {
+        Json(vec![])
     }
 
     async fn edit_task(
-        JSON(req): JSON<EditTask<'_>>
+        Json(req): Json<EditTask<'_>>
     ) -> status::NoContent {
         status::NoContent
     }

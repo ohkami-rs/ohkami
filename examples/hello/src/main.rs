@@ -8,7 +8,7 @@ mod health_handler {
 
 
 mod hello_handler {
-    use ohkami::format::{Query, JSON};
+    use ohkami::format::{Query, Json};
     use ohkami::serde::Deserialize;
 
     #[derive(Deserialize)]
@@ -50,7 +50,7 @@ mod hello_handler {
     }
 
     pub async fn hello_by_json(
-        JSON(HelloRequest { name, repeat }): JSON<HelloRequest<'_>>
+        Json(HelloRequest { name, repeat }): Json<HelloRequest<'_>>
     ) -> String {
         tracing::info!("\
             Called `hello_by_json`\

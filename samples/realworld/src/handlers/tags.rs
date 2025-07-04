@@ -12,7 +12,7 @@ pub fn tags_ohkami() -> Ohkami {
 
 async fn get(
     Context(pool): Context<'_, PgPool>
-) -> Result<JSON<ListOfTagsResponse<'static>>, RealWorldError> {
+) -> Result<Json<ListOfTagsResponse<'static>>, RealWorldError> {
     let tags = sqlx::query!(r#"
         SELECT name
         FROM tags
@@ -20,5 +20,5 @@ async fn get(
         .map_err(RealWorldError::DB)?.into_iter()
         .map(|n| Tag::new(n.name)).collect();
 
-    Ok(JSON(ListOfTagsResponse { tags }))
+    Ok(Json(ListOfTagsResponse { tags }))
 }

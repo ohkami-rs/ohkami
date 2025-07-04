@@ -230,9 +230,9 @@ struct User {
 }
 
 async fn create_user(
-    JSON(CreateUser { name }): JSON<CreateUser<'_>>
-) -> status::Created<JSON<User>> {
-    status::Created(JSON(User {
+    Json(CreateUser { name }): Json<CreateUser<'_>>
+) -> status::Created<Json<User>> {
+    status::Created(Json(User {
         id: 42,
         name: name.to_string()
     }))
@@ -246,8 +246,8 @@ async fn create_user(
 })]
 /// This doc comment is used for the
 /// `description` field of OpenAPI document
-async fn list_users() -> JSON<Vec<User>> {
-    JSON(vec![])
+async fn list_users() -> Json<Vec<User>> {
+    Json(vec![])
 }
 
 #[tokio::main]
@@ -272,7 +272,7 @@ async fn main() {
 }
 ```
 
-- Currently, only JSON is supported as the document format.
+- Currently, only Json is supported as the document format.
 - When the binary size matters, you should prepare a feature flag activating `ohkami/openapi` in your package, and put all your codes around `openapi` behind that feature via `#[cfg(feature = ...)]` or `#[cfg_attr(feature = ...)]`.
 - In `rt_worker`, `.generate` is not available because `Ohkami` can't have access to your local filesystem by `wasm32` binary on Minifalre. So ohkami provides [a CLI tool](./scripts/workers_openapi.js) to generate document from `#[ohkami::worker] Ohkami` with `openapi` feature.
 
@@ -367,7 +367,7 @@ Hello, secure ohkami!
 
 ### Typed payload
 
-*builtin payload* : `JSON`, `Text`, `HTML`, `URLEncoded`, `Multipart`
+*builtin payload* : `Json`, `Text`, `Html`, `UrlEncoded`, `Multipart`
 
 ```rust
 use ohkami::prelude::*;
@@ -387,9 +387,9 @@ struct User {
 }
 
 async fn create_user(
-    JSON(req): JSON<CreateUserRequest<'_>>
-) -> status::Created<JSON<User>> {
-    status::Created(JSON(
+    Json(req): Json<CreateUserRequest<'_>>
+) -> status::Created<Json<User>> {
+    status::Created(Json(
         User {
             name: String::from(req.name)
         }
@@ -436,8 +436,8 @@ struct SearchResult {
 
 async fn search(
     Query(query): Query<SearchQuery<'_>>
-) -> JSON<Vec<SearchResult>> {
-    JSON(vec![
+) -> Json<Vec<SearchResult>> {
+    Json(vec![
         SearchResult { title: String::from("ohkami") },
     ])
 }
@@ -452,8 +452,8 @@ There are two types of fangs : *global fangs* and *local fangs*. While global fa
 *builtin fang* :
 
 - `Context` *( typed interaction with reuqest context )*
-- `CORS`, `JWT`, `BasicAuth`
-- `Timeout` *( native runtime )*
+- `Cors`, `Jwt`, `BasicAuth`
+- `Timeout` *( native runtime only )*
 - `Enamel` *( experimantal; security headers )*
 
 ```rust,no_run
@@ -524,7 +524,7 @@ async fn create_user(
 ```rust,no_run
 use ohkami::{Response, IntoResponse};
 use ohkami::serde::Serialize;
-use ohkami::format::JSON;
+use ohkami::format::Json;
 use ohkami::fang::Context;
 
 enum MyError {
@@ -547,7 +547,7 @@ struct User {
 async fn get_user(
     id: u32,
     Context(pool): Context<'_, sqlx::PgPool>,
-) -> Result<JSON<User>, MyError> {
+) -> Result<Json<User>, MyError> {
     let sql = r#"
         SELECT name FROM users WHERE id = $1
     "#;
@@ -557,7 +557,7 @@ async fn get_user(
         .await
         .map_err(MyError::Sqlx)?;
 
-    Ok(JSON(User { id, name }))
+    Ok(Json(User { id, name }))
 }
 ```
 
@@ -627,16 +627,16 @@ struct User {
     name: String
 }
 
-async fn list_users() -> JSON<Vec<User>> {
-    JSON(vec![
+async fn list_users() -> Json<Vec<User>> {
+    Json(vec![
         User { name: String::from("actix") },
         User { name: String::from("axum") },
         User { name: String::from("ohkami") },
     ])
 }
 
-async fn create_user() -> status::Created<JSON<User>> {
-    status::Created(JSON(User {
+async fn create_user() -> status::Created<Json<User>> {
+    status::Created(Json(User {
         name: String::from("ohkami web framework")
     }))
 }
@@ -753,10 +753,10 @@ struct User {
 async fn get_user<R: Repository>(
     id: u32,
     Context(r): Context<'_, R>,
-) -> Result<JSON<User>, MyError> {
+) -> Result<Json<User>, MyError> {
     let user_row = r.get_user_by_id(id as i64).await?;
 
-    Ok(JSON(User {
+    Ok(Json(User {
         id: user_row.id as u32,
         name: user_row.name,
     }))

@@ -2,10 +2,10 @@ mod basicauth;
 pub use basicauth::BasicAuth;
 
 mod cors;
-pub use cors::CORS;
+pub use cors::Cors;
 
 mod jwt;
-pub use jwt::{JWT, JWTToken};
+pub use jwt::{Jwt, JwtToken};
 
 mod context;
 pub use context::Context;

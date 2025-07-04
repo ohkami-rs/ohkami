@@ -33,21 +33,21 @@ use serde::{Serialize, Deserialize};
 /// ```no_run
 /// use ohkami::prelude::*;
 /// use ohkami::typed::status;
-/// use ohkami::fang::{JWT, JWTToken};
+/// use ohkami::fang::{Jwt, JwtToken};
 /// 
 /// 
 /// #[derive(Serialize, Deserialize)]
-/// struct OurJWTPayload {
+/// struct OurJwtPayload {
 ///     iat:       u64,
 ///     user_name: String,
 /// }
 /// 
-/// fn our_jwt() -> JWT<OurJWTPayload> {
-///     JWT::default("OUR_JWT_SECRET_KEY")
+/// fn our_jwt() -> Jwt<OurJwtPayload> {
+///     Jwt::default("OUR_JWT_SECRET_KEY")
 /// }
 /// 
 /// async fn hello(name: &str,
-///     Context(auth): Context<'_, OurJWTPayload>
+///     Context(auth): Context<'_, OurJwtPayload>
 /// ) -> String {
 ///     format!("Hello {name}, you're authorized!")
 /// }
@@ -59,13 +59,13 @@ use serde::{Serialize, Deserialize};
 /// # 
 /// # #[derive(Serialize)]
 /// # struct AuthResponse {
-/// #     token: JWTToken
+/// #     token: JwtToken
 /// # }
 /// async fn auth(
-///     JSON(req): JSON<AuthRequest<'_>>
-/// ) -> Result<JSON<AuthResponse>, Response> {
-///     Ok(JSON(AuthResponse {
-///         token: our_jwt().issue(OurJWTPayload {
+///     Json(req): Json<AuthRequest<'_>>
+/// ) -> Result<Json<AuthResponse>, Response> {
+///     Ok(Json(AuthResponse {
+///         token: our_jwt().issue(OurJwtPayload {
 ///             iat: ohkami::util::unix_timestamp(),
 ///             user_name: req.name.to_string()
 ///         })
@@ -82,7 +82,7 @@ use serde::{Serialize, Deserialize};
 ///     )).howl("localhost:3000").await
 /// }
 /// ```
-pub struct JWT<Payload> {
+pub struct Jwt<Payload> {
     _payload:  PhantomData<Payload>,
     secret:    Cow<'static, str>,
     alg:       VerifyingAlgorithm,
@@ -99,7 +99,7 @@ enum VerifyingAlgorithm {
 }
 
 const _: () = {
-    impl<Payload> Clone for JWT<Payload> {
+    impl<Payload> Clone for Jwt<Payload> {
         fn clone(&self) -> Self {
             Self {
                 _payload:  PhantomData,
@@ -116,10 +116,10 @@ const _: () = {
     impl<
         Inner: FangProc + SendOnNative,
         Payload: Serialize + for<'de> Deserialize<'de> + SendSyncOnNative + 'static,
-    > Fang<Inner> for JWT<Payload> {
-        type Proc = JWTProc<Inner, Payload>;
+    > Fang<Inner> for Jwt<Payload> {
+        type Proc = JwtProc<Inner, Payload>;
         fn chain(&self, inner: Inner) -> Self::Proc {
-            JWTProc { inner, jwt: self.clone() }
+            JwtProc { inner, jwt: self.clone() }
         }
 
         #[cfg(feature="openapi")]
@@ -128,17 +128,17 @@ const _: () = {
         }
     }
 
-    pub struct JWTProc<
+    pub struct JwtProc<
         Inner: FangProc,
         Payload: Serialize + for<'de> Deserialize<'de>,
     > {
         inner: Inner,
-        jwt:   JWT<Payload>,
+        jwt:   Jwt<Payload>,
     }
     impl<
         Inner: FangProc + SendOnNative,
         Payload: Serialize + for<'de> Deserialize<'de> + SendSyncOnNative + 'static,
-    > FangProc for JWTProc<Inner, Payload> {
+    > FangProc for JwtProc<Inner, Payload> {
         async fn bite<'b>(&'b self, req: &'b mut Request) -> Response {
             let jwt_payload = match self.jwt.verified(req) {
                 Ok(payload) => payload,
@@ -151,7 +151,7 @@ const _: () = {
     }
 };
 
-impl<Payload> JWT<Payload> {
+impl<Payload> Jwt<Payload> {
     /// Just `new_256`; use HMAC-SHA256 as verifying algorithm
     #[inline] pub fn default(secret: impl Into<Cow<'static, str>>) -> Self {
         Self::new_256(secret)
@@ -232,33 +232,33 @@ impl<Payload> JWT<Payload> {
     }
 }
 
-/// Struct holding JWT token issued by `JWT::issue`.
+/// Type of JWT token issued by `Jwt::issue`.
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub struct JWTToken(String);
+pub struct JwtToken(String);
 const _: () = {
-    impl std::fmt::Display for JWTToken {
+    impl std::fmt::Display for JwtToken {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             std::fmt::Display::fmt(&self.0, f)
         }
     }
 
-    impl std::ops::Deref for JWTToken {
+    impl std::ops::Deref for JwtToken {
         type Target = str;
         fn deref(&self) -> &Self::Target {
             &self.0
         }
     }
 
-    impl Into<String> for JWTToken {
+    impl Into<String> for JwtToken {
         fn into(self) -> String {
             self.0
         }
     }
 };
 
-impl<Payload: Serialize> JWT<Payload> {
+impl<Payload: Serialize> Jwt<Payload> {
     /// Build JWT token with the payload.
-    #[inline] pub fn issue(self, payload: Payload) -> JWTToken {
+    #[inline] pub fn issue(self, payload: Payload) -> JwtToken {
         let unsigned_token = {
             let mut ut = crate::util::base64_url_encode(self.header_str());
             ut.push('.');
@@ -292,11 +292,11 @@ impl<Payload: Serialize> JWT<Payload> {
         let mut token = unsigned_token;
         token.push('.');
         token.push_str(&signature);
-        JWTToken(token)
+        JwtToken(token)
     }
 }
 
-impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
+impl<Payload: for<'de> Deserialize<'de>> Jwt<Payload> {
     /// Verify JWT in requests' `Authorization` header and early return error response if
     /// it's missing or malformed.
     pub fn verify(&self, req: &Request) -> Result<(), Response> {
@@ -404,13 +404,13 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
     use crate::fang::{Fang, BoxedFPC};
     fn assert_fang<T: Fang<BoxedFPC>>() {}
 
-    assert_fang::<JWT<String>>();
+    assert_fang::<Jwt<String>>();
 }
 
 #[cfg(debug_assertions)]
 #[cfg(all(feature="__rt_native__", feature="DEBUG"))]
 #[cfg(test)] mod test {
-    use super::{JWT, JWTToken};
+    use super::{Jwt, JwtToken};
 
     #[test] fn test_jwt_issue() {
         /* NOTE: 
@@ -427,7 +427,7 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
             ```
         */
         assert_eq! {
-            &*JWT::default("secret").issue(::serde_json::json!({"name":"kanarus","id":42,"iat":1516239022})),
+            &*Jwt::default("secret").issue(::serde_json::json!({"name":"kanarus","id":42,"iat":1516239022})),
             "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE1MTYyMzkwMjIsImlkIjo0MiwibmFtZSI6ImthbmFydXMifQ.dt43rLwmy4_GA_84LMC1m5CwVc59P9as_nRFldVCH7g"
         }
     }
@@ -436,7 +436,7 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
         use crate::{Request, testing::TestRequest, Status};
         use std::pin::Pin;
 
-        let my_jwt = JWT::<::serde_json::Value>::default("ohkami-realworld-jwt-authorization-secret-key");
+        let my_jwt = Jwt::<::serde_json::Value>::default("ohkami-realworld-jwt-authorization-secret-key");
 
         let req_bytes = TestRequest::GET("/")
             .header("Authorization", "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE3MDY4MTEwNzUsInVzZXJfaWQiOiI5ZmMwMDViMi1mODU4LTQzMzYtODkwYS1mMWEyYWVmNjBhMjQifQ.AKp-0zvKK4Hwa6qCgxskckD04Snf0gpSG7U1LOpcC_I")
@@ -479,20 +479,20 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
         use crate::openapi;
 
 
-        fn my_jwt() -> JWT<MyJWTPayload> {
-            JWT::default("myverysecretjwtsecretkey")
+        fn my_jwt() -> Jwt<MyJwtPayload> {
+            Jwt::default("myverysecretjwtsecretkey")
         }
 
         #[derive(serde::Serialize, serde::Deserialize)]
-        struct MyJWTPayload {
+        struct MyJwtPayload {
             iat:     u64,
             user_id: usize,
         }
 
-        fn issue_jwt_for_user(user: &User) -> JWTToken {
+        fn issue_jwt_for_user(user: &User) -> JwtToken {
             use std::time::{UNIX_EPOCH, SystemTime};
 
-            my_jwt().issue(MyJWTPayload {
+            my_jwt().issue(MyJwtPayload {
                 user_id: user.id,
                 iat:     SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs(),
             })
@@ -561,14 +561,14 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
         }
 
         async fn get_profile(
-            Context(jwt_payload): Context<'_, MyJWTPayload>
-        ) -> Result<JSON<Profile>, APIError> {
+            Context(jwt_payload): Context<'_, MyJwtPayload>
+        ) -> Result<Json<Profile>, APIError> {
             let r = &mut *repository().await.lock().unwrap();
 
             let user = r.get(&jwt_payload.user_id)
                 .ok_or_else(|| APIError::UserNotFound)?;
 
-            Ok(JSON(user.profile()))
+            Ok(Json(user.profile()))
         }
 
         #[derive(serde::Deserialize, serde::Serialize/* for test */)]
@@ -587,7 +587,7 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
         }
 
         async fn signin(
-            JSON(req): JSON<SigninRequest<'_>>
+            Json(req): Json<SigninRequest<'_>>
         ) -> String/* for test */ {
             let r = &mut *repository().await.lock().unwrap();
 

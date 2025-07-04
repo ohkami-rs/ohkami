@@ -76,10 +76,10 @@ impl From<User> for UserResponse {
 fn main() {
     macro_rules! dummy_handler {
         (-> $return_type:ty) => {
-            {async fn dummy() -> JSON<$return_type> {todo!()}; dummy}
+            {async fn dummy() -> Json<$return_type> {todo!()}; dummy}
         };
         ($req_type:ty) => {
-            {async fn dummy(_: JSON<$req_type>) {}; dummy}
+            {async fn dummy(_: Json<$req_type>) {}; dummy}
         };
     }
 
