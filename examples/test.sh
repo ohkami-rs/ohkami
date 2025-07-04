@@ -4,6 +4,17 @@ set -Cue
 
 EXAMPLES=$(pwd)
 
+# First, check the buildability of all examples
+for directory in ./*/; do
+    if [ "$(basename $directory)" != "target" ]; then
+        cd $directory
+        cargo check
+        cd ..
+    fi
+done
+
+# Now, run tests for each example if needed
+
 cd $EXAMPLES/static_files && \
     cargo test
 
