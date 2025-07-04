@@ -53,18 +53,24 @@ impl APIKey {
 
 #[derive(Serialize, Clone, PartialEq)]
 pub enum OAuthFlow {
-    authorizationCode {
-        authorizationUrl: &'static str,
-        tokenUrl:         &'static str,
+    #[serde(rename = "authorizationCode")]
+    AuthorizationCode {
+        #[serde(rename = "authorizationUrl")]
+        authorization_url: &'static str,
+        #[serde(rename = "tokenUrl")]
+        token_url:         &'static str,
     },
-    implicit {
-        authorizationUrl: &'static str,
+    #[serde(rename = "implicit")]
+    Implicit {
+        authorization_url: &'static str,
     },
-    password {
-        tokenUrl: &'static str,
+    #[serde(rename = "password")]
+    Password {
+        token_url: &'static str,
     },
-    clientCredentials {
-        tokenUrl: &'static str,
+    #[serde(rename = "clientCredentials")]
+    ClientCredentials {
+        token_url: &'static str,
     },
 }
 mod oauth2 {
@@ -73,28 +79,49 @@ mod oauth2 {
     #[derive(Serialize, Clone, PartialEq)]
     #[allow(private_interfaces)]
     pub enum OAuthFlow {
-        authorizationCode {
-            authorizationUrl: &'static str,
-            tokenUrl:         &'static str,
-            refreshUrl: Option<&'static str>, scopes: Map<&'static str, &'static str>
+        #[serde(rename = "authorizationCode")]
+        AuthorizationCode {
+            #[serde(rename = "authorizationUrl")]
+            authorization_url: &'static str,
+            #[serde(rename = "tokenUrl")]
+            token_url: &'static str,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            #[serde(rename = "refreshUrl")]
+            refresh_url: Option<&'static str>,
+            scopes: Map<&'static str, &'static str>
         },
-        implicit {
-            authorizationUrl: &'static str,
-            refreshUrl: Option<&'static str>, scopes: Map<&'static str, &'static str>
+        #[serde(rename = "implicit")]
+        Implicit {
+            #[serde(rename = "authorizationUrl")]
+            authorization_url: &'static str,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            #[serde(rename = "refreshUrl")]
+            refresh_url: Option<&'static str>,
+            scopes: Map<&'static str, &'static str>
         },
-        password {
-            tokenUrl: &'static str,
-            refreshUrl: Option<&'static str>, scopes: Map<&'static str, &'static str>
+        #[serde(rename = "password")]
+        Password {
+            #[serde(rename = "tokenUrl")]
+            token_url: &'static str,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            #[serde(rename = "refreshUrl")]
+            refresh_url: Option<&'static str>,
+            scopes: Map<&'static str, &'static str>
         },
-        clientCredentials {
-            tokenUrl: &'static str,
-            refreshUrl: Option<&'static str>, scopes: Map<&'static str, &'static str>
+        #[serde(rename = "clientCredentials")]
+        ClientCredentials {
+            #[serde(rename = "tokenUrl")]
+            token_url: &'static str,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            #[serde(rename = "refreshUrl")]
+            refresh_url: Option<&'static str>,
+            scopes: Map<&'static str, &'static str>
         },
     }
 
     impl super::OAuthFlow {
-        pub fn refreshUrl(self, refreshUrl: &'static str) -> OAuthFlow {
-            OAuthFlow::from(self).refreshUrl(refreshUrl)
+        pub fn refresh_url(self, refresh_url: &'static str) -> OAuthFlow {
+            OAuthFlow::from(self).refresh_url(refresh_url)
         }
 
         pub fn scope(self, name: &'static str, description: &'static str) -> OAuthFlow {
@@ -102,22 +129,22 @@ mod oauth2 {
         }
     }
     impl OAuthFlow {
-        pub fn refreshUrl(mut self, url: &'static str) -> Self {
+        pub fn refresh_url(mut self, url: &'static str) -> Self {
             match &mut self {
-                | OAuthFlow::authorizationCode { refreshUrl, .. }
-                | OAuthFlow::implicit { refreshUrl, .. }
-                | OAuthFlow::password { refreshUrl, .. }
-                | OAuthFlow::clientCredentials { refreshUrl, .. }
-                => *refreshUrl = Some(url)
+                | OAuthFlow::AuthorizationCode { refresh_url, .. }
+                | OAuthFlow::Implicit { refresh_url, .. }
+                | OAuthFlow::Password { refresh_url, .. }
+                | OAuthFlow::ClientCredentials { refresh_url, .. }
+                => *refresh_url = Some(url)
             }
             self
         }
         pub fn scope(mut self, name: &'static str, description: &'static str) -> Self {
             match &mut self {
-                | OAuthFlow::authorizationCode { scopes, .. }
-                | OAuthFlow::implicit { scopes, .. }
-                | OAuthFlow::password { scopes, .. }
-                | OAuthFlow::clientCredentials { scopes, .. }
+                | OAuthFlow::AuthorizationCode { scopes, .. }
+                | OAuthFlow::Implicit { scopes, .. }
+                | OAuthFlow::Password { scopes, .. }
+                | OAuthFlow::ClientCredentials { scopes, .. }
                 => scopes.insert(name, description)
             }
             self
@@ -126,31 +153,31 @@ mod oauth2 {
     impl From<super::OAuthFlow> for OAuthFlow {
         fn from(it: super::OAuthFlow) -> OAuthFlow {
             match it {
-                super::OAuthFlow::authorizationCode {
-                    authorizationUrl,
-                    tokenUrl,
-                } => Self::authorizationCode {
-                    authorizationUrl,
-                    tokenUrl,
-                    refreshUrl:None, scopes:Map::new()
+                super::OAuthFlow::AuthorizationCode {
+                    authorization_url,
+                    token_url,
+                } => Self::AuthorizationCode {
+                    authorization_url,
+                    token_url,
+                    refresh_url:None, scopes:Map::new()
                 },
-                super::OAuthFlow::implicit {
-                    authorizationUrl,
-                } => Self::implicit {
-                    authorizationUrl,
-                    refreshUrl:None, scopes:Map::new()
+                super::OAuthFlow::Implicit {
+                    authorization_url,
+                } => Self::Implicit {
+                    authorization_url,
+                    refresh_url:None, scopes:Map::new()
                 },
-                super::OAuthFlow::password {
-                    tokenUrl,
-                } => Self::password {
-                    tokenUrl,
-                    refreshUrl:None, scopes:Map::new()
+                super::OAuthFlow::Password {
+                    token_url,
+                } => Self::Password {
+                    token_url,
+                    refresh_url:None, scopes:Map::new()
                 },
-                super::OAuthFlow::clientCredentials {
-                    tokenUrl,
-                } => Self::clientCredentials {
-                    tokenUrl,
-                    refreshUrl:None, scopes:Map::new()
+                super::OAuthFlow::ClientCredentials {
+                    token_url,
+                } => Self::ClientCredentials {
+                    token_url,
+                    refresh_url:None, scopes:Map::new()
                 },
             }
         }
