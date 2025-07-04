@@ -27,7 +27,7 @@ pub struct Operation {
     description:  Option<&'static str>,
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "externalDocs")]
-    external_cocs: Option<ExternalDoc>,
+    external_docs: Option<ExternalDoc>,
     #[serde(skip_serializing_if = "is_false")]
     deprecated: bool,
 
@@ -126,7 +126,7 @@ impl Operation {
             tags:         Vec::new(),
             summary:      None,
             description:  None,
-            external_cocs: None,
+            external_docs: None,
             deprecated:   false,
             parameters:   Vec::new(),
             requestbody:  None,
@@ -165,8 +165,8 @@ impl Operation {
         self.description = Some(description);
         self
     }
-    pub fn external_cocs(mut self, external_cocs: ExternalDoc) -> Self {
-        self.external_cocs = Some(external_cocs);
+    pub fn external_docs(mut self, external_docs: ExternalDoc) -> Self {
+        self.external_docs = Some(external_docs);
         self
     }
     pub fn deprecated(mut self) -> Self {
