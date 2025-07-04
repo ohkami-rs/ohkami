@@ -26,12 +26,12 @@ use crate::{header::append, Fang, FangProc, Request, Response, Status};
 /// ```
 #[derive(Clone)]
 pub struct Cors {
-    pub(crate) allow_origin:      AccessControlAllowOrigin,
+    /* pub(crate) allow_methods: Option<String>, // owe to `Handler::default_not_found()` */
+    pub(crate) allow_origin: AccessControlAllowOrigin,
     pub(crate) allow_credentials: bool,
-    pub(crate) allow_methods:     Option<String>,
-    pub(crate) allow_headers:     Option<String>,
-    pub(crate) expose_headers:    Option<String>,
-    pub(crate) max_age:           Option<u32>,
+    pub(crate) allow_headers: Option<String>,
+    pub(crate) expose_headers: Option<String>,
+    pub(crate) max_age: Option<u32>,
 }
 
 #[derive(Clone)]
@@ -69,21 +69,11 @@ impl Cors {
         Self {
             allow_origin:      AccessControlAllowOrigin::from_literal(origin),
             allow_credentials: false,
-            allow_methods:     None,
             allow_headers:     None,
             expose_headers:    None,
             max_age:           None,
         }
     }
-
-    /* Always use default for now...
-    /// Override `Access-Control-Allow-Methods` header value, it's default to
-    /// all available methods on the request path.
-    pub fn allow_methods<const N: usize>(mut self, methods: [Method; N]) -> Self {
-        self.allow_methods = Some(methods.map(|m| m.as_str()).join(", "));
-        self
-    }
-    */
 
     pub fn allow_credentials(mut self, yes: bool) -> Self {
         if yes {
@@ -131,37 +121,24 @@ impl<Inner: FangProc> FangProc for CORSProc<Inner> {
     async fn bite<'b>(&'b self, req: &'b mut Request) -> Response {
         let mut res = self.inner.bite(req).await;
 
-        let mut h = res.headers.set();
-
-        h = h.AccessControlAllowOrigin(self.cors.allow_origin.as_str());
-        if self.cors.allow_origin.is_any() {
-            h = h.Vary("Origin");
-        }
-        if self.cors.allow_credentials {
-            h = h.AccessControlAllowCredentials("true");
-        }
-        if let Some(expose_headers) = &self.cors.expose_headers {
-            h = h.AccessControlExposeHeaders(expose_headers.to_string());
-        }
-
+        res.headers.set()
+            .access_control_allow_origin(self.cors.allow_origin.as_str())
+            .vary(self.cors.allow_origin.is_any().then_some("Origin".into()))
+            .access_control_allow_credentials(self.cors.allow_credentials.then_some("true".into()))
+            .access_control_expose_headers(self.cors.expose_headers.as_ref().map(|s| s.to_string().into()));
         if req.method.isOPTIONS() {
-            if let Some(max_age) = self.cors.max_age {
-                h = h.AccessControlMaxAge(max_age.to_string());
+            res.headers.set()
+                .access_control_max_age(self.cors.max_age.map(|v| v.to_string().into()));
+            if let Some(allow_headers) = self.cors.allow_headers.as_ref() && !allow_headers.is_empty() {
+                res.headers.set()
+                    .access_control_allow_headers(allow_headers.to_string())
+                    .vary(append("Access-Control-Request-Headers"));
             }
-            if let Some(allow_methods) = &self.cors.allow_methods {
-                h = h.AccessControlAllowMethods(allow_methods.to_string());
-            }
-            if let Some(allow_headers) = self.cors.allow_headers.as_deref()
-                .or_else(|| req.headers.AccessControlRequestHeaders())
-            {
-                h = h.AccessControlAllowHeaders(allow_headers.to_string())
-                    .Vary(append("Access-Control-Request-Headers"));
-            }
-
-            /* override default `Not Implemented` response for valid preflight */
             if res.status == Status::NotImplemented {
+                // override default `NotImplemented` response for valid preflight.
+                // see `Handler::default_not_found()`.
                 res.status = Status::OK;
-                h.ContentType(None).ContentLength(None);
+                res.headers.set().content_type(None).content_length(None);
             }
         }
 

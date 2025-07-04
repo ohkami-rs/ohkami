@@ -12,7 +12,7 @@ macro_rules! headers_dump {
 
 #[test] fn insert_and_write() {
     let mut h = ResponseHeaders::new();
-    h.set().Server("A");
+    h.set().server("A");
     {
         let mut buf = Vec::new();
         h._write_to(&mut buf);
@@ -25,9 +25,9 @@ macro_rules! headers_dump {
     }
 
     let mut h = ResponseHeaders::new();
-    h.set().Server("A").ContentType("application/json");
-    h.set().Server("B").ContentLength("100");
-    h.set().ContentType("text/html").ContentLength("42");
+    h.set().server("A").content_type("application/json");
+    h.set().server("B").content_length("100");
+    h.set().content_type("text/html").content_length("42");
     {
         let mut buf = Vec::new();
         h._write_to(&mut buf);
@@ -44,8 +44,8 @@ macro_rules! headers_dump {
 #[test] fn append_header() {
     let mut h = ResponseHeaders::new();
 
-    h.set().Server(append("X"));
-    assert_eq!(h.Server(), Some("X"));
+    h.set().server(append("X"));
+    assert_eq!(h.server(), Some("X"));
     {
         let mut buf = Vec::new();
         h._write_to(&mut buf);
@@ -57,8 +57,8 @@ macro_rules! headers_dump {
         "));
     }
 
-    h.set().Server(append("Y"));
-    assert_eq!(h.Server(), Some("X, Y"));
+    h.set().server(append("Y"));
+    assert_eq!(h.server(), Some("X, Y"));
     {
         let mut buf = Vec::new();
         h._write_to(&mut buf);
@@ -103,44 +103,44 @@ macro_rules! headers_dump {
 
 #[test] fn parse_setcookie_headers() {
     let mut h = ResponseHeaders::new();
-    h.set().SetCookie("id", "42", |d|d.Path("/").SameSiteLax().Secure());
-    assert_eq!(h.SetCookie().collect::<Vec<_>>(), [
+    h.set().set_cookie("id", "42", |d|d.path("/").same_site_lax().secure(true));
+    assert_eq!(h.set_cookie().collect::<Vec<_>>(), [
         SetCookie {
-            Cookie:   ("id", "42".into()),
-            Expires:  None,
-            MaxAge:   None,
-            Domain:   None,
-            Path:     Some("/".into()),
-            Secure:   Some(true),
-            HttpOnly: None,
-            SameSite: Some(SameSitePolicy::Lax),
+            cookie:   ("id", "42".into()),
+            expires:  None,
+            max_age:   None,
+            domain:   None,
+            path:     Some("/".into()),
+            secure:   Some(true),
+            http_only: None,
+            same_site: Some(SameSitePolicy::Lax),
         }
     ]);
 
     let mut h = ResponseHeaders::new();
     h.set()
-        .SetCookie("id", "10", |d|d.Path("/").SameSiteLax().Secure())
-        .SetCookie("id", "42", |d|d.MaxAge(1280).HttpOnly().Path("/where").SameSiteLax().Secure());
-    assert_eq!(h.SetCookie().collect::<Vec<_>>(), [
+        .set_cookie("id", "10", |d|d.path("/").same_site_lax().secure(true))
+        .set_cookie("id", "42", |d|d.max_age(1280).http_only().path("/where").same_site_lax().secure(true));
+    assert_eq!(h.set_cookie().collect::<Vec<_>>(), [
         SetCookie {
-            Cookie:   ("id", "10".into()),
-            Expires:  None,
-            MaxAge:   None,
-            Domain:   None,
-            Path:     Some("/".into()),
-            Secure:   Some(true),
-            HttpOnly: None,
-            SameSite: Some(SameSitePolicy::Lax),
+            cookie:   ("id", "10".into()),
+            expires:  None,
+            max_age:   None,
+            domain:   None,
+            path:     Some("/".into()),
+            secure:   Some(true),
+            http_only: None,
+            same_site: Some(SameSitePolicy::Lax),
         },
         SetCookie {
-            Cookie:   ("id", "42".into()),
-            Expires:  None,
-            MaxAge:   Some(1280),
-            Domain:   None,
-            Path:     Some("/where".into()),
-            Secure:   Some(true),
-            HttpOnly: Some(true),
-            SameSite: Some(SameSitePolicy::Lax),
+            cookie:   ("id", "42".into()),
+            expires:  None,
+            max_age:   Some(1280),
+            domain:   None,
+            path:     Some("/where".into()),
+            secure:   Some(true),
+            http_only: Some(true),
+            same_site: Some(SameSitePolicy::Lax),
         },
     ]);
 }

@@ -272,11 +272,11 @@ impl IntoHandler<File> for StaticFileHandler {
 
             // Check if client's cache is still valid
             // and then return 304 Not Modified.
-            if let (Some(if_none_match), Some(etag)) = (req.headers.IfNoneMatch(), &this.etag) {
+            if let (Some(if_none_match), Some(etag)) = (req.headers.if_none_match(), &this.etag) {
                 if ETag::iter_from(if_none_match).any(|it| it.matches(etag)) {
                     return Response::NotModified();
                 }
-            } else if let Some(if_modified_since) = req.headers.IfModifiedSince() {
+            } else if let Some(if_modified_since) = req.headers.if_modified_since() {
                 let Ok(if_modified_since) = ImfFixdate::parse(if_modified_since) else {
                     return Response::BadRequest();
                 };
@@ -292,11 +292,7 @@ impl IntoHandler<File> for StaticFileHandler {
             // Then, if client doesn't accept identity encoding, return 406 Not Acceptable
             // instead of returning the original content.
             let (encoding, content) = {
-                let ae = req
-                    .headers
-                    .AcceptEncoding()
-                    .map(AcceptEncoding::parse)
-                    .unwrap_or_default();
+                let ae = req.headers.accept_encoding().map(AcceptEncoding::parse).unwrap_or_default();
 
                 crate::DEBUG!("[Dir] Accept-Encoding: {:?}", ae);
                 crate::DEBUG!("[Dir] precompressed canidadates: {:?}", this.compressed.iter().map(|(ce, _)| ce).collect::<Vec<_>>());
@@ -320,9 +316,9 @@ impl IntoHandler<File> for StaticFileHandler {
             Response::OK()
                 .with_payload(this.mime, content)
                 .with_headers(|h| h
-                    .LastModified(&*this.last_modified_str)
-                    .ETag(this.etag.as_ref().map(ETag::serialize))
-                    .ContentEncoding(encoding.map(CompressionEncoding::to_content_encoding))
+                    .last_modified(&*this.last_modified_str)
+                    .etag(this.etag.as_ref().map(ETag::serialize))
+                    .content_encoding(encoding.map(CompressionEncoding::to_content_encoding))
                 )
         }), #[cfg(feature="openapi")] {use crate::openapi;
             openapi::Operation::with(openapi::Responses::new([

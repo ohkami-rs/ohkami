@@ -11,14 +11,14 @@ use crate::header::append;
     let mut h = RequestHeaders::new();
 
     h.append(RequestHeader::Origin, CowSlice::from("A".as_bytes()));
-    assert_eq!(h.Origin(), Some("A"));
+    assert_eq!(h.origin(), Some("A"));
     h.append(RequestHeader::Origin, CowSlice::from("B".as_bytes()));
-    assert_eq!(h.Origin(), Some("A, B"));
+    assert_eq!(h.origin(), Some("A, B"));
 
-    h.set().Accept(append("X"));
-    assert_eq!(h.Accept(), Some("X"));
-    h.set().Accept(append("Y"));
-    assert_eq!(h.Accept(), Some("X, Y"));
+    h.set().accept(append("X"));
+    assert_eq!(h.accept(), Some("X"));
+    h.set().accept(append("Y"));
+    assert_eq!(h.accept(), Some("X, Y"));
 }
 
 #[test] fn append_custom_header() {

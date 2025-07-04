@@ -15,11 +15,11 @@ pub fn realworld_ohkami(
         "/api".By(Ohkami::new((
             Logger,
             Context::new(pool),
-            "/users"   .By(users::users_ohkami()),
-            "/user"    .By(user::user_ohkami()),
+            "/users".By(users::users_ohkami()),
+            "/user".By(user::user_ohkami()),
             "/profiles".By(profiles::profiles_ohkami()),
             "/articles".By(articles::articles_ohkami()),
-            "/tags"    .By(tags::tags_ohkami()),
+            "/tags".By(tags::tags_ohkami()),
         ))
     ))
 }

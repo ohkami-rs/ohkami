@@ -13,8 +13,10 @@ pub struct Headers {
 
 pub struct SetHeaders<'set>(
     &'set mut Headers
-); impl Headers {
-    #[inline] pub fn set(&mut self) -> SetHeaders<'_> {
+);
+impl Headers {
+    #[inline]
+    pub fn set(&mut self) -> SetHeaders<'_> {
         SetHeaders(self)
     }
 }
@@ -107,7 +109,7 @@ pub trait CustomHeadersAction<'action> {
 };
 
 macro_rules! Header {
-    ($N:literal; $( $konst:ident: $name_bytes:literal, )*) => {
+    ($N:literal; $( $method:ident($konst:ident): $name_bytes:literal, )*) => {
         pub(crate) const N_SERVER_HEADERS: usize = $N;
         const _: [Header; N_SERVER_HEADERS] = [$(Header::$konst),*];
 
@@ -153,8 +155,13 @@ macro_rules! Header {
         impl<'set> SetHeaders<'set> {
             $(
                 #[inline]
-                pub fn $konst(self, action: impl HeaderAction<'set>) -> Self {
+                pub fn $method(self, action: impl HeaderAction<'set>) -> Self {
                     action.perform(self, Header::$konst)
+                }
+
+                #[deprecated = "Use snake_case method instead"]
+                pub fn $konst(self, action: impl HeaderAction<'set>) -> Self {
+                    self.$method(action)
                 }
             )*
 
@@ -172,8 +179,13 @@ macro_rules! Header {
         impl Headers {
             $(
                 #[inline]
-                pub fn $konst(&self) -> Option<&str> {
+                pub fn $method(&self) -> Option<&str> {
                     self.get_standard(Header::$konst)
+                }
+
+                #[deprecated = "Use snake_case method instead"]
+                pub fn $konst(&self) -> Option<&str> {
+                    self.$method()
                 }
             )*
 
@@ -189,60 +201,60 @@ macro_rules! Header {
         }
     };
 } Header! {48;
-    AcceptRanges:                    b"Accept-Ranges",
-    AccessControlAllowCredentials:   b"Access-Control-Allow-Credentials",
-    AccessControlAllowHeaders:       b"Access-Control-Allow-Headers",
-    AccessControlAllowMethods:       b"Access-Control-Allow-Methods",
-    AccessControlAllowOrigin:        b"Access-Control-Allow-Origin",
-    AccessControlExposeHeaders:      b"Access-Control-Expose-Headers",
-    AccessControlMaxAge:             b"Access-Control-Max-Age",
-    Age:                             b"Age",
-    Allow:                           b"Allow",
-    AltSvc:                          b"Alt-Svc",
-    CacheControl:                    b"Cache-Control",
-    CacheStatus:                     b"Cache-Status",
-    CDNCacheControl:                 b"CDN-Cache-Control",
-    Connection:                      b"Connection",
-    ContentDisposition:              b"Content-Disposition",
-    ContentEncoding:                 b"Content-Encoding",
-    ContentLanguage:                 b"Content-Language",
-    ContentLength:                   b"Content-Length",
-    ContentLocation:                 b"Content-Location",
-    ContentRange:                    b"Content-Range",
-    ContentSecurityPolicy:           b"Content-Security-Policy",
-    ContentSecurityPolicyReportOnly: b"Content-Security-Policy-Report-Only",
-    ContentType:                     b"Content-Type",
-    CrossOriginEmbedderPolicy:       b"Cross-Origin-Embedder-Policy",
-    CrossOriginResourcePolicy:       b"Cross-Origin-Resource-Policy",
-    Date:                            b"Date",
-    ETag:                            b"ETag",
-    Expires:                         b"Expires",
-    Link:                            b"Link",
-    Location:                        b"Location",
-    LastModified:                    b"Last-Modified",
-    ProxyAuthenticate:               b"Proxy-Authenticate",
-    ReferrerPolicy:                  b"Referrer-Policy",
-    Refresh:                         b"Refresh",
-    RetryAfter:                      b"Retry-After",
-    SecWebSocketAccept:              b"Sec-WebSocket-Accept",
-    SecWebSocketProtocol:            b"Sec-WebSocket-Protocol",
-    SecWebSocketVersion:             b"Sec-WebSocket-Version",
-    Server:                          b"Server",
-    StrictTransportSecurity:         b"Strict-Transport-Security",
-    Trailer:                         b"Trailer",
-    TransferEncoding:                b"Transfer-Encoding",
-    Upgrade:                         b"Upgrade",
-    Vary:                            b"Vary",
-    Via:                             b"Via",
-    XContentTypeOptions:             b"X-Content-Type-Options",
-    XFrameOptions:                   b"X-Frame-Options",
-    WWWAuthenticate:                 b"WWW-Authenticate",
+    accept_ranges(AcceptRanges): b"Accept-Ranges",
+    access_control_allow_credentials(AccessControlAllowCredentials): b"Access-Control-Allow-Credentials",
+    access_control_allow_headers(AccessControlAllowHeaders): b"Access-Control-Allow-Headers",
+    access_control_allow_methods(AccessControlAllowMethods): b"Access-Control-Allow-Methods",
+    access_control_allow_origin(AccessControlAllowOrigin): b"Access-Control-Allow-Origin",
+    access_control_expose_headers(AccessControlExposeHeaders): b"Access-Control-Expose-Headers",
+    access_control_max_age(AccessControlMaxAge): b"Access-Control-Max-Age",
+    age(Age): b"Age",
+    allow(Allow): b"Allow",
+    alt_svc(AltSvc): b"Alt-Svc",
+    cache_control(CacheControl): b"Cache-Control",
+    cache_status(CacheStatus): b"Cache-Status",
+    cdn_cache_control(CDNCacheControl): b"CDN-Cache-Control",
+    connection(Connection): b"Connection",
+    content_dispotision(ContentDisposition): b"Content-Disposition",
+    content_encoding(ContentEncoding): b"Content-Encoding",
+    content_language(ContentLanguage): b"Content-Language",
+    content_length(ContentLength): b"Content-Length",
+    content_location(ContentLocation): b"Content-Location",
+    content_range(ContentRange): b"Content-Range",
+    content_security_policy(ContentSecurityPolicy): b"Content-Security-Policy",
+    content_security_policy_report_only(ContentSecurityPolicyReportOnly): b"Content-Security-Policy-Report-Only",
+    content_type(ContentType): b"Content-Type",
+    cross_origin_embedder_policy(CrossOriginEmbedderPolicy): b"Cross-Origin-Embedder-Policy",
+    cross_origin_resource_policy(CrossOriginResourcePolicy): b"Cross-Origin-Resource-Policy",
+    date(Date): b"Date",
+    etag(ETag): b"ETag",
+    expires(Expires): b"Expires",
+    link(Link): b"Link",
+    location(Location): b"Location",
+    last_modified(LastModified): b"Last-Modified",
+    proxy_authenticate(ProxyAuthenticate): b"Proxy-Authenticate",
+    referrer_policy(ReferrerPolicy): b"Referrer-Policy",
+    refresh(Refresh): b"Refresh",
+    retry_after(RetryAfter): b"Retry-After",
+    sec_websocket_accept(SecWebSocketAccept): b"Sec-WebSocket-Accept",
+    sec_websocket_protocol(SecWebSocketProtocol): b"Sec-WebSocket-Protocol",
+    sec_websocket_version(SecWebSocketVersion): b"Sec-WebSocket-Version",
+    server(Server): b"Server",
+    strict_transport_security(StrictTransportSecurity): b"Strict-Transport-Security",
+    trailer(Trailer): b"Trailer",
+    transfer_encoding(TransferEncoding): b"Transfer-Encoding",
+    upgrade(Upgrade): b"Upgrade",
+    vary(Vary): b"Vary",
+    via(Via): b"Via",
+    x_content_type_options(XContentTypeOptions): b"X-Content-Type-Options",
+    x_frame_options(XFrameOptions): b"X-Frame-Options",
+    www_authenticate(WWWAuthenticate): b"WWW-Authenticate",
 }
 
 const _: () = {
     #[allow(non_snake_case)]
     impl Headers {
-        pub fn SetCookie(&self) -> impl Iterator<Item = SetCookie<'_>> {
+        pub fn set_cookie(&self) -> impl Iterator<Item = SetCookie<'_>> {
             self.setcookie.as_ref().map(|setcookies|
                 setcookies.iter().filter_map(|raw| match SetCookie::from_raw(raw) {
                     Ok(valid) => Some(valid),
@@ -273,13 +285,13 @@ const _: () = {
         /// 
         /// fn mutate_header(res: &mut Response) {
         ///     res.headers.set()
-        ///         .Server("ohkami")
-        ///         .SetCookie("id", "42", |d|d.Path("/").SameSiteStrict())
-        ///         .SetCookie("name", "John", |d|d.Path("/where").SameSiteLax());
+        ///         .server("ohkami")
+        ///         .set_cookie("id", "42", |d|d.path("/").same_site_strict())
+        ///         .set_cookie("name", "John", |d|d.path("/where").same_site_lax());
         /// }
         /// ```
         #[inline]
-        pub fn SetCookie(self,
+        pub fn set_cookie(self,
             name:  &'static str,
             value: impl Into<Cow<'static, str>>,
             directives: impl FnOnce(SetCookieBuilder)->SetCookieBuilder
@@ -427,8 +439,8 @@ impl Headers {
         };
 
         this.set()
-            .Date(ohkami_lib::imf_fixdate(crate::util::unix_timestamp()))
-            .ContentLength("0");
+            .date(ohkami_lib::imf_fixdate(crate::util::unix_timestamp()))
+            .content_length("0");
 
         this
     }

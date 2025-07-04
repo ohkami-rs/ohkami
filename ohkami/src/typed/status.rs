@@ -57,8 +57,8 @@ macro_rules! generate_statuses_as_types_containing_value {
 
                     let mut headers = self.headers;
                     headers.set()
-                        .ContentType(B::CONTENT_TYPE)
-                        .ContentLength(ohkami_lib::num::itoa(body.len()));
+                        .content_type(B::CONTENT_TYPE)
+                        .content_length(ohkami_lib::num::itoa(body.len()));
                     
                     Response {
                         status: Status::$status,
@@ -185,7 +185,7 @@ macro_rules! generate_redirects {
             impl $status {
                 pub fn $contructor(location: impl Into<::std::borrow::Cow<'static, str>>) -> Self {
                     let mut headers = ResponseHeaders::new();
-                    headers.set().Location(location.into());
+                    headers.set().location(location.into());
                     Self { headers }
                 }
 
@@ -241,15 +241,15 @@ mod test {
         assert_eq!(
             Created("Hello, world!")
                 .with_headers(|h| h
-                    .Server("ohkami")
-                    .Vary("origin")
+                    .server("ohkami")
+                    .vary("origin")
                 )
                 .into_response(),
             Response::Created()
                 .with_text("Hello, world!")
                 .with_headers(|h| h
-                    .Server("ohkami")
-                    .Vary("origin")
+                    .server("ohkami")
+                    .vary("origin")
                 )
         );
     }
@@ -261,20 +261,20 @@ mod test {
                 .into_response(),
             Response::Found()
                 .with_headers(|h| h
-                    .Location("https://example.com")
+                    .location("https://example.com")
                 )
         );
 
         assert_eq!(
             Found::at("https://example.com")
                 .with_headers(|h| h
-                    .Server("ohkami")
+                    .server("ohkami")
                 )
                 .into_response(),
             Response::Found()
                 .with_headers(|h| h
-                    .Location("https://example.com")
-                    .Server("ohkami")
+                    .location("https://example.com")
+                    .server("ohkami")
                 )
         );
     }

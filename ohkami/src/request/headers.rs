@@ -120,7 +120,7 @@ pub trait CustomHeadersAction<'set> {
 };
 
 macro_rules! Header {
-    ($N:literal; $( $konst:ident: $name_bytes:literal | $lower_case:literal $(| $other_pattern:literal)* , )*) => {
+    ($N:literal; $( $method:ident($konst:ident): $name_bytes:literal | $lower_case:literal $(| $other_pattern:literal)* , )*) => {
         pub(crate) const N_CLIENT_HEADERS: usize = $N;
         const _: [Header; N_CLIENT_HEADERS] = [$(Header::$konst),*];
 
@@ -159,15 +159,16 @@ macro_rules! Header {
         impl<'set> SetHeaders<'set> {
             $(
                 #[inline(always)]
-                pub fn $konst(self, action: impl HeaderAction<'set>) -> Self {
+                pub fn $method(self, action: impl HeaderAction<'set>) -> Self {
                     action.perform(self, Header::$konst)
+                }
+
+                #[deprecated = "Use snake_case method instead"]
+                pub fn $konst(self, action: impl HeaderAction<'set>) -> Self {
+                    self.$method(action)
                 }
             )*
 
-            #[deprecated = "use `.x` instead"]
-            pub fn custom(self, name: &'static str, action: impl CustomHeadersAction<'set>) -> Self {
-                self.x(name, action)
-            }
             pub fn x(self, name: &'static str, action: impl CustomHeadersAction<'set>) -> Self {
                 if self.0.custom.is_none() {
                     self.0.custom = Some(Box::new(TupleMap::new()));
@@ -184,15 +185,16 @@ macro_rules! Header {
                 /// Multiple values are conbined into a comma-separated string, that can be iterated just by `.split(", ")`,\
                 /// except for `Cookie` that by semicolon (see `Cookies` helper method).
                 #[inline(always)]
-                pub fn $konst(&self) -> Option<&str> {
+                pub fn $method(&self) -> Option<&str> {
                     self.get_standard(Header::$konst)
+                }
+
+                #[deprecated = "Use snake_case method instead"]
+                pub fn $konst(&self) -> Option<&str> {
+                    self.$method()
                 }
             )*
 
-            #[deprecated = "use `.get` instead"]
-            pub fn custom(&self, name: &str) -> Option<&str> {
-                self.get(name)
-            }
             pub fn get(&self, name: &str) -> Option<&str> {
                 let value = self.custom.as_ref()?
                     .get(&Slice::from_bytes(name.as_bytes()))
@@ -217,52 +219,52 @@ macro_rules! Header {
         }
     };
 } Header! {46;
-    Accept:                      b"Accept" | b"accept",
-    AcceptEncoding:              b"Accept-Encoding" | b"accept-encoding",
-    AcceptLanguage:              b"Accept-Language" | b"accept-language",
-    AccessControlRequestHeaders: b"Access-Control-Request-Headers" | b"access-control-request-headers",
-    AccessControlRequestMethod:  b"Access-Control-Request-Method" | b"access-control-request-method",
-    Authorization:               b"Authorization" | b"authorization",
-    CacheControl:                b"Cache-Control" | b"cache-control",
-    Connection:                  b"Connection" | b"connection",
-    ContentDisposition:          b"Content-Disposition" | b"content-disposition",
-    ContentEncoding:             b"Content-Encoding" | b"content-encoding",
-    ContentLanguage:             b"Content-Language" | b"content-language",
-    ContentLength:               b"Content-Length" | b"content-length",
-    ContentLocation:             b"Content-Location" | b"content-location",
-    ContentType:                 b"Content-Type" | b"content-type",
-    Cookie:                      b"Cookie" | b"cookie",
-    Date:                        b"Date" | b"date",
-    Expect:                      b"Expect" | b"expect",
-    Forwarded:                   b"Forwarded" | b"forwarded",
-    From:                        b"From" | b"from",
-    Host:                        b"Host" | b"host",
-    IfMatch:                     b"If-Match" | b"if-match",
-    IfModifiedSince:             b"If-Modified-Since" | b"if-modified-since",
-    IfNoneMatch:                 b"If-None-Match" | b"if-none-match",
-    IfRange:                     b"If-Range" | b"if-range",
-    IfUnmodifiedSince:           b"If-Unmodified-Since" | b"if-unmodified-since",
-    Link:                        b"Link" | b"link",
-    MaxForwards:                 b"Max-Forwards" | b"max-forwards",
-    Origin:                      b"Origin" | b"origin",
-    ProxyAuthorization:          b"Proxy-Authorization" | b"proxy-authorization",
-    Range:                       b"Range" | b"range",
-    Referer:                     b"Referer" | b"referer",
-    SecFetchDest:                b"Sec-Fetch-Dest" | b"sec-fetch-dest",
-    SecFetchMode:                b"Sec-Fetch-Mode" | b"sec-fetch-mode",
-    SecFetchSite:                b"Sec-Fetch-Site" | b"sec-fetch-site",
-    SecFetchUser:                b"Sec-Fetch-User" | b"sec-fetch-user",
-    SecWebSocketExtensions:      b"Sec-WebSocket-Extensions" | b"sec-websocket-extensions",
-    SecWebSocketKey:             b"Sec-WebSocket-Key" | b"sec-websocket-key",
-    SecWebSocketProtocol:        b"Sec-WebSocket-Protocol" | b"sec-websocket-protocol",
-    SecWebSocketVersion:         b"Sec-WebSocket-Version" | b"sec-websocket-version",
-    TE:                          b"TE" | b"te",
-    Trailer:                     b"Trailer" | b"trailer",
-    TransferEncoding:            b"Transfer-Encoding" | b"transfer-encoding",
-    UserAgent:                   b"User-Agent" | b"user-agent",
-    Upgrade:                     b"Upgrade" | b"upgrade",
-    UpgradeInsecureRequests:     b"Upgrade-Insecure-Requests" | b"upgrade-insecure-requests",
-    Via:                         b"Via" | b"via",
+    accept(Accept): b"Accept" | b"accept",
+    accept_encoding(AcceptEncoding): b"Accept-Encoding" | b"accept-encoding",
+    accept_language(AcceptLanguage): b"Accept-Language" | b"accept-language",
+    access_control_request_headers(AccessControlRequestHeaders): b"Access-Control-Request-Headers" | b"access-control-request-headers",
+    access_control_request_method(AccessControlRequestMethod): b"Access-Control-Request-Method" | b"access-control-request-method",
+    authorization(Authorization): b"Authorization" | b"authorization",
+    cache_control(CacheControl): b"Cache-Control" | b"cache-control",
+    connection(Connection): b"Connection" | b"connection",
+    content_disposition(ContentDisposition): b"Content-Disposition" | b"content-disposition",
+    content_encoding(ContentEncoding): b"Content-Encoding" | b"content-encoding",
+    content_laguage(ContentLanguage): b"Content-Language" | b"content-language",
+    content_length(ContentLength): b"Content-Length" | b"content-length",
+    content_location(ContentLocation): b"Content-Location" | b"content-location",
+    content_type(ContentType): b"Content-Type" | b"content-type",
+    cookie(Cookie): b"Cookie" | b"cookie",
+    date(Date): b"Date" | b"date",
+    expect(Expect): b"Expect" | b"expect",
+    forwarded(Forwarded): b"Forwarded" | b"forwarded",
+    from(From): b"From" | b"from",
+    host(Host): b"Host" | b"host",
+    if_match(IfMatch): b"If-Match" | b"if-match",
+    if_modified_since(IfModifiedSince): b"If-Modified-Since" | b"if-modified-since",
+    if_none_match(IfNoneMatch): b"If-None-Match" | b"if-none-match",
+    if_range(IfRange): b"If-Range" | b"if-range",
+    if_unmodified_since(IfUnmodifiedSince): b"If-Unmodified-Since" | b"if-unmodified-since",
+    link(Link): b"Link" | b"link",
+    max_forwards(MaxForwards): b"Max-Forwards" | b"max-forwards",
+    origin(Origin): b"Origin" | b"origin",
+    proxy_authorization(ProxyAuthorization): b"Proxy-Authorization" | b"proxy-authorization",
+    range(Range): b"Range" | b"range",
+    referer(Referer): b"Referer" | b"referer",
+    sec_fetch_dest(SecFetchDest): b"Sec-Fetch-Dest" | b"sec-fetch-dest",
+    sec_fetch_mode(SecFetchMode): b"Sec-Fetch-Mode" | b"sec-fetch-mode",
+    sec_fetch_site(SecFetchSite): b"Sec-Fetch-Site" | b"sec-fetch-site",
+    sec_fetch_user(SecFetchUser): b"Sec-Fetch-User" | b"sec-fetch-user",
+    sec_websocket_extensions(SecWebSocketExtensions): b"Sec-WebSocket-Extensions" | b"sec-websocket-extensions",
+    sec_websocket_key(SecWebSocketKey): b"Sec-WebSocket-Key" | b"sec-websocket-key",
+    sec_websocket_protocol(SecWebSocketProtocol): b"Sec-WebSocket-Protocol" | b"sec-websocket-protocol",
+    sec_websocket_version(SecWebSocketVersion): b"Sec-WebSocket-Version" | b"sec-websocket-version",
+    te(TE): b"TE" | b"te",
+    trailer(Trailer): b"Trailer" | b"trailer",
+    transfer_encoding(TransferEncoding): b"Transfer-Encoding" | b"transfer-encoding",
+    user_agent(UserAgent): b"User-Agent" | b"user-agent",
+    upgrade(Upgrade): b"Upgrade" | b"upgrade",
+    upgrade_insecure_requests(UpgradeInsecureRequests): b"Upgrade-Insecure-Requests" | b"upgrade-insecure-requests",
+    via(Via): b"Via" | b"via",
 }
 
 #[allow(non_snake_case)]
@@ -272,7 +274,7 @@ impl Headers {
     /// 
     /// internally uses [`ohkami::util::iter_cookies`](crate::util::iter_cookies).
     pub fn Cookies(&self) -> impl Iterator<Item = (&str, &str)> {
-        self.Cookie().map(crate::util::iter_cookies).into_iter().flatten()
+        self.cookie().map(crate::util::iter_cookies).into_iter().flatten()
     }
 
     pub(crate) fn iter(&self) -> impl Iterator<Item = (&str, &str)> {
@@ -288,7 +290,7 @@ impl Headers {
                     std::str::from_utf8(unsafe {v.as_bytes()}).expect("Header value is not UTF-8"),
                 )))
             )
-            .chain(self.Cookie().map(|c| ("Cookie", c)))
+            .chain(self.cookie().map(|c| ("Cookie", c)))
     }
 }
 

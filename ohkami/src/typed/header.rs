@@ -36,7 +36,7 @@ const _: () = {
 };
 
 macro_rules! typed_header {
-    ($( $Name:ident : $key:literal ),* $(,)?) => {$(
+    ($( $method:ident($Name:ident) : $key:literal ),* $(,)?) => {$(
         /// Extract the request header value as an type implementing
         /// [`FromHeader<'_>`](crate::typed::header::FromHeader) trait
         /// ( By default, `&str` and `String` implement it ) .
@@ -74,7 +74,7 @@ macro_rules! typed_header {
             type Error = <Value as FromHeader<'req>>::Error;
 
             fn from_request(req: &'req Request) -> Option<Result<Self, Self::Error>> {
-                let raw = req.headers.$Name()?;
+                let raw = req.headers.$method()?;
                 Some(Value::from_header(raw).map(Self))
             }
 
@@ -98,52 +98,52 @@ macro_rules! typed_header {
     )*};
 }
 typed_header! {
-    Accept:                      "Accept",
-    AcceptEncoding:              "Accept-Encoding",
-    AcceptLanguage:              "Accept-Language",
-    AccessControlRequestHeaders: "Access-Control-Request-Headers",
-    AccessControlRequestMethod:  "Access-Control-Request-Method",
-    Authorization:               "Authorization",
-    CacheControl:                "Cache-Control",
-    Connection:                  "Connection",
-    ContentDisposition:          "Content-Disposition",
-    ContentEncoding:             "Content-Encoding",
-    ContentLanguage:             "Content-Language",
-    ContentLength:               "Content-Length",
-    ContentLocation:             "Content-Location",
-    ContentType:                 "Content-Type",
-    /* Cookie:                      "Cookie", // specialize */
-    Date:                        "Date",
-    Expect:                      "Expect",
-    Forwarded:                   "Forwarded",
-    From:                        "From",
-    Host:                        "Host",
-    IfMatch:                     "If-Match",
-    IfModifiedSince:             "If-Modified-Since",
-    IfNoneMatch:                 "If-None-Match",
-    IfRange:                     "If-Range",
-    IfUnmodifiedSince:           "If-Unmodified-Since",
-    Link:                        "Link",
-    MaxForwards:                 "Max-Forwards",
-    Origin:                      "Origin",
-    ProxyAuthorization:          "Proxy-Authorization",
-    Range:                       "Range",
-    Referer:                     "Referer",
-    SecFetchDest:                "Sec-Fetch-Dest",
-    SecFetchMode:                "Sec-Fetch-Mode",
-    SecFetchSite:                "Sec-Fetch-Site",
-    SecFetchUser:                "Sec-Fetch-User",
-    SecWebSocketExtensions:      "Sec-WebSocket-Extensions",
-    SecWebSocketKey:             "Sec-WebSocket-Key",
-    SecWebSocketProtocol:        "Sec-WebSocket-Protocol",
-    SecWebSocketVersion:         "Sec-WebSocket-Version",
-    TE:                          "TE",
-    Trailer:                     "Trailer",
-    TransferEncoding:            "Transfer-Encoding",
-    UserAgent:                   "User-Agent",
-    Upgrade:                     "Upgrade",
-    UpgradeInsecureRequests:     "Upgrade-Insecure-Requests",
-    Via:                         "Via",
+    accept(Accept): "Accept",
+    accept_encoding(AcceptEncoding): "Accept-Encoding",
+    accept_language(AcceptLanguage): "Accept-Language",
+    access_control_request_headers(AccessControlRequestHeaders): "Access-Control-Request-Headers",
+    access_control_request_method(AccessControlRequestMethod): "Access-Control-Request-Method",
+    authorization(Authorization): "Authorization",
+    cache_control(CacheControl): "Cache-Control",
+    connection(Connection): "Connection",
+    content_disposition(ContentDisposition): "Content-Disposition",
+    content_encoding(ContentEncoding): "Content-Encoding",
+    content_laguage(ContentLanguage): "Content-Language",
+    content_length(ContentLength): "Content-Length",
+    content_location(ContentLocation): "Content-Location",
+    content_type(ContentType): "Content-Type",
+    /* cookie(Cookie): "Cookie", : specialize later... */
+    date(Date): "Date",
+    expect(Expect): "Expect",
+    forwarded(Forwarded): "Forwarded",
+    from(From): "From",
+    host(Host): "Host",
+    if_match(IfMatch): "If-Match",
+    if_modified_since(IfModifiedSince): "If-Modified-Since",
+    if_none_match(IfNoneMatch): "If-None-Match",
+    if_range(IfRange): "If-Range",
+    if_unmodified_since(IfUnmodifiedSince): "If-Unmodified-Since",
+    link(Link): "Link",
+    max_forwards(MaxForwards): "Max-Forwards",
+    origin(Origin): "Origin",
+    proxy_authorization(ProxyAuthorization): "Proxy-Authorization",
+    range(Range): "Range",
+    referer(Referer): "Referer",
+    sec_fetch_dest(SecFetchDest): "Sec-Fetch-Dest",
+    sec_fetch_mode(SecFetchMode): "Sec-Fetch-Mode",
+    sec_fetch_site(SecFetchSite): "Sec-Fetch-Site",
+    sec_fetch_user(SecFetchUser): "Sec-Fetch-User",
+    sec_websocket_extensions(SecWebSocketExtensions): "Sec-WebSocket-Extensions",
+    sec_websocket_key(SecWebSocketKey): "Sec-WebSocket-Key",
+    sec_websocket_protocol(SecWebSocketProtocol): "Sec-WebSocket-Protocol",
+    sec_websocket_version(SecWebSocketVersion): "Sec-WebSocket-Version",
+    te(TE): "TE",
+    trailer(Trailer): "Trailer",
+    transfer_encoding(TransferEncoding): "Transfer-Encoding",
+    user_agent(UserAgent): "User-Agent",
+    upgrade(Upgrade): "Upgrade",
+    upgrade_insecure_requests(UpgradeInsecureRequests): "Upgrade-Insecure-Requests",
+    via(Via): "Via",
 }
 
 /// Extract `Cookie` header value and parse to a type implementing `Deserialize<'_>`.
@@ -188,7 +188,8 @@ impl<'req, Fields: crate::format::bound::Incoming<'req>> FromRequest<'req> for C
     type Error = crate::typed::status::Unauthorized<String>;
 
     fn from_request(req: &'req Request) -> Option<Result<Self, Self::Error>> {
-        req.headers.Cookie().map(|raw| ohkami_lib::serde_cookie::from_str::<Fields>(raw)
+        req.headers.cookie()
+            .map(|raw| ohkami_lib::serde_cookie::from_str::<Fields>(raw)
             .map(Cookie)
             .map_err(|e| crate::typed::status::Unauthorized(format!(
                 "missing or invalid Cookie: {e}"
