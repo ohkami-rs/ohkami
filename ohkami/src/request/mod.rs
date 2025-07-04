@@ -135,8 +135,8 @@ pub struct Request {
 
     /// Headers of this request
     /// 
-    /// - `.{Name}()`, `.get("{Name}")` to get value
-    /// - `.set().{Name}({action})`, `.set().x("{Name}", {action})` to mutate values
+    /// - `.{name}()`, `.get("{name}")` to get value
+    /// - `.set().{name}({action})`, `.set().x("{name}", {action})` to mutate values
     /// 
     /// `{action}`:
     /// - just `{value}` to insert
@@ -502,7 +502,7 @@ impl Request {
 
         self.headers = req.headers;
         if !req.cookies.is_empty() {
-            self.headers.set().Cookie(req.cookies.join("; "));
+            self.headers.set().cookie(req.cookies.join("; "));
         }
 
         if let Some(body) = req.body {

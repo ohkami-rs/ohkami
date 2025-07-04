@@ -32,7 +32,7 @@
 ///     )).howl("localhost:4040").await
 /// }
 /// ```
-pub struct Enamel(
+pub struct Enamel(// clone in `Fang::chain`
     std::sync::Arc<EnamelFields>
 );
 #[allow(non_snake_case)]
@@ -124,30 +124,29 @@ const _: () = {
 
     impl Enamel {
         fn apply(&self, res: &mut crate::Response) {
-            let mut h = res.headers.set();
             if let Some(csp) = &self.0.content_security_policy {
-                h = h.ContentSecurityPolicy(csp.build());
+                res.headers.set().content_security_policy(csp.build());
             }
             if let Some(csp) = &self.0.content_security_policy_report_only {
-                h = h.ContentSecurityPolicyReportOnly(csp.build());
+                res.headers.set().content_security_policy_report_only(csp.build());
             }
             if !self.0.cross_origin_embedder_policy.is_empty() {
-                h = h.CrossOriginEmbedderPolicy(self.0.cross_origin_embedder_policy);
+                res.headers.set().cross_origin_embedder_policy(self.0.cross_origin_embedder_policy);
             }
             if !self.0.corss_origin_resource_policy.is_empty() {
-                h = h.CrossOriginResourcePolicy(self.0.corss_origin_resource_policy);
+                res.headers.set().cross_origin_resource_policy(self.0.corss_origin_resource_policy);
             }
             if !self.0.referrer_policy.is_empty() {
-                h = h.ReferrerPolicy(self.0.referrer_policy);
+                res.headers.set().referrer_policy(self.0.referrer_policy);
             }
             if !self.0.strict_transport_security.is_empty() {
-                h = h.StrictTransportSecurity(self.0.strict_transport_security);
+                res.headers.set().strict_transport_security(self.0.strict_transport_security);
             }
             if !self.0.x_content_type_options.is_empty() {
-                h = h.XContentTypeOptions(self.0.x_content_type_options);
+                res.headers.set().x_content_type_options(self.0.x_content_type_options);
             }
             if !self.0.x_frame_options.is_empty() {
-                h.XFrameOptions(self.0.x_frame_options);
+                res.headers.set().x_frame_options(self.0.x_frame_options);
             }
         }
     }

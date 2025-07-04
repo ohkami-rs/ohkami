@@ -69,14 +69,14 @@ where
 const _: () = {
     fn unauthorized() -> Response {
         Response::Unauthorized().with_headers(|h|h
-            .WWWAuthenticate("Basic realm=\"Secure Area\"")
+            .www_authenticate("Basic realm=\"Secure Area\"")
         )
     }
 
     #[inline]
     fn basic_credential_of(req: &Request) -> Result<String, Response> {
         (|| crate::util::base64_decode_utf8(
-            req.headers.Authorization()?.strip_prefix("Basic ")?
+            req.headers.authorization()?.strip_prefix("Basic ")?
         ).ok())().ok_or_else(unauthorized)
     }
 

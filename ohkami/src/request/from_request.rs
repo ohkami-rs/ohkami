@@ -232,7 +232,7 @@ impl<'req, B: FromBody<'req>> FromRequest<'req> for B {
             Response::BadRequest().with_text(msg.to_string())
         }
 
-        if req.headers.ContentType()?.starts_with(B::MIME_TYPE) {
+        if req.headers.content_type()?.starts_with(B::MIME_TYPE) {
             Some(B::from_body(req.payload()?).map_err(reject))
         } else {
             None

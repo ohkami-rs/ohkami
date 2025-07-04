@@ -68,8 +68,7 @@ mod fangs {
     pub struct SetServer;
     impl FangAction for SetServer {
         fn back<'a>(&'a self, res: &'a mut Response) -> impl std::future::Future<Output = ()> + Send {
-            res.headers.set()
-                .Server("ohkami");
+            res.headers.set().server("ohkami");
 
             tracing::info!("\
                 Called `SetServer`\n\

@@ -3,7 +3,7 @@ use std::borrow::Cow;
 
 pub struct Append(pub(crate) Cow<'static, str>);
 
-/// Passed to `{Request/Response}.headers.set().Name( 〜 )` and
+/// Passed to `{Request/Response}.headers.set().{name}( 〜 )` and
 /// append `value` to the header.
 /// 
 /// Here appended values are combined by `,`.
@@ -18,8 +18,7 @@ pub struct Append(pub(crate) Cow<'static, str>);
 /// struct AppendServer(&'static str);
 /// impl FangAction for AppendServer {
 ///     async fn back<'b>(&'b self, res: &'b mut Response) {
-///         res.headers.set()
-///             .Server(append(self.0));
+///         res.headers.set().server(append(self.0));
 ///     }
 /// }
 /// 

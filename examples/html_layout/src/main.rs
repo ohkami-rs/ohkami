@@ -31,7 +31,7 @@ impl Layout {
 
         impl FangAction for Fang {
             async fn back(&self, res: &mut Response) {
-                if res.headers.ContentType().is_some_and(|x| x.starts_with("text/html")) {
+                if res.headers.content_type().is_some_and(|x| x.starts_with("text/html")) {
                     let content = res.drop_content().into_bytes().unwrap();
                     let content = std::str::from_utf8(&*content).unwrap();
                     res.set_html(uibeam::shoot(UI! {

@@ -119,9 +119,9 @@ impl crate::IntoResponse for WebSocket {
         let mut res = crate::Response::SwitchingProtocols();
         res.content = crate::response::Content::WebSocket(self.session);
         res.with_headers(|h|h
-            .Connection("Upgrade")
-            .Upgrade("websocket")
-            .SecWebSocketAccept(self.sign)
+            .connection("Upgrade")
+            .upgrade("websocket")
+            .sec_websocket_accept(self.sign)
         )
     }
 

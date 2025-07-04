@@ -197,12 +197,12 @@ impl TestResponse {
     }
 
     pub fn content(&self, content_type: &'static str) -> Option<&[u8]> {
-        let _= self.0.headers.ContentType()?.starts_with(content_type)
+        let _= self.0.headers.content_type()?.starts_with(content_type)
             .then_some(())?;
         let bytes = self.0.content.as_bytes()?;
         assert_eq!(
             bytes.len(),
-            self.0.headers.ContentLength()?.parse::<usize>().unwrap(),
+            self.0.headers.content_length()?.parse::<usize>().unwrap(),
             "Content-Length does not match the actual content length"
         );
         Some(bytes)

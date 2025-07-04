@@ -24,7 +24,7 @@ struct TokenSchema<'req> {
 impl FangAction for TokenAuth {
     async fn fore<'a>(&'a self, req: &'a mut Request) -> Result<(), Response> {
         let authorization_bearer = req.headers
-            .Authorization().ok_or_else(Response::BadRequest)?
+            .authorization().ok_or_else(Response::BadRequest)?
             .strip_prefix("Bearer ").ok_or_else(Response::BadRequest)?;
 
         let TokenSchema { user_id, token } =

@@ -84,25 +84,27 @@ impl Handler {
         }
     }
 
-    pub(crate) fn default_options_with(mut available_methods: Vec<&'static str>) -> Self {
+    pub(crate) fn default_options_with(available_methods: Vec<&'static str>) -> Self {
         let available_methods: &'static [&'static str] = {
-            if available_methods.contains(&"GET") {
-                available_methods.push("HEAD")
+            let mut methods = available_methods;
+            if methods.contains(&"GET") {
+                methods.push("HEAD")
             }
-            available_methods.push("OPTIONS");
-            available_methods
+            methods.push("OPTIONS");
+            methods
         }.leak();
 
         let available_methods_str: &'static str =
             available_methods.join(", ").leak();
 
+        /* see `fang::Cors` for more detail about what to do here */
         Handler::new(move |req| {
             Box::pin(async move {
                 #[cfg(debug_assertions)] {
                     assert_eq!(req.method, crate::Method::OPTIONS);
                 }
 
-                match req.headers.AccessControlRequestMethod() {
+                match req.headers.access_control_request_method() {
                     Some(method) => {
                         /*
                             Ohkami, by default, does nothing more than setting
@@ -116,7 +118,7 @@ impl Handler {
                         } else {
                             crate::Response::BadRequest()
                         }).with_headers(|h| h
-                            .AccessControlAllowMethods(available_methods_str)
+                            .access_control_allow_methods(available_methods_str)
                         )
                     }
                     None => {
@@ -127,7 +129,7 @@ impl Handler {
                             ```
                             crate::Response::NoContent()
                                 .with_headers(|h| h
-                                    .Allow(available_methods_str)
+                                    .allow(available_methods_str)
                                 )
                             ```
                         */

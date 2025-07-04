@@ -86,7 +86,7 @@ impl<C: Connection> Session<C> {
                 Some(result) => {
                     match result {
                         Ok(Some(())) => {
-                            let close = matches!(req.headers.Connection(), Some("close" | "Close"));
+                            let close = matches!(req.headers.connection(), Some("close" | "Close"));
 
                             let res = match catch_unwind(AssertUnwindSafe({
                                 let req = req.as_mut();

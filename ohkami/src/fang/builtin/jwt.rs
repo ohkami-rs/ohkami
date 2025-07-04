@@ -171,7 +171,7 @@ impl<Payload> Jwt<Payload> {
 
     /// Customize get-token process in JWT verifying.
     /// 
-    /// *default*: `req.headers.Authorization()?.strip_prefix("Bearer ")`
+    /// *default*: `req.headers.authorization()?.strip_prefix("Bearer ")`
     pub fn get_token_by(
         mut self,
         get_token: fn(&Request)->Option<&str>,
@@ -198,7 +198,7 @@ impl<Payload> Jwt<Payload> {
     fn new(alg: VerifyingAlgorithm, secret: impl Into<Cow<'static, str>>) -> Self {
         #[inline(always)]
         fn get_token(req: &Request) -> Option<&str> {
-            req.headers.Authorization()?.strip_prefix("Bearer ")
+            req.headers.authorization()?.strip_prefix("Bearer ")
         }
 
         Self {

@@ -19,7 +19,7 @@ impl Auth {
 }
 impl FangAction for Auth {
     async fn fore<'a>(&'a self, req: &'a mut Request) -> Result<(), Response> {
-        if req.headers.Authorization().is_none() && self.optional {
+        if req.headers.authorization().is_none() && self.optional {
             return Ok(());
         }
 
