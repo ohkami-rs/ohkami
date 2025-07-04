@@ -16,7 +16,8 @@ pub struct Operations(
 #[derive(Serialize, Clone)]
 pub struct Operation {
     #[serde(skip_serializing_if = "Option::is_none")]
-    operationId: Option<&'static str>,
+    #[serde(rename = "operationId")]
+    operation_id: Option<&'static str>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     tags: Vec<&'static str>,
 
@@ -119,7 +120,7 @@ impl Operation {
     pub fn with(responses: Responses) -> Self {
         Self {
             responses,
-            operationId:  None,
+            operation_id: None,
             tags:         Vec::new(),
             summary:      None,
             description:  None,
@@ -146,8 +147,8 @@ impl Operation {
         self
     }
 
-    pub fn operationId(mut self, operationId: &'static str) -> Self {
-        self.operationId = Some(operationId);
+    pub fn operation_id(mut self, operation_id: &'static str) -> Self {
+        self.operation_id = Some(operation_id);
         self
     }
     pub fn with_tag(mut self, tag: &'static str) -> Self {
@@ -223,7 +224,7 @@ impl Operation {
     }
 
     #[doc(hidden)]
-    pub fn iter_securitySchemes(&self) -> impl Iterator<Item = SecurityScheme> {
+    pub fn iter_security_schemes(&self) -> impl Iterator<Item = SecurityScheme> {
         self.security.clone().into_iter()
             .map(|map| {
                 let [SecuritySchemeName(ss)] = map.clone()
@@ -248,7 +249,7 @@ impl Operation {
     #[allow(unused)]
     fn map_openapi_operation(op: Operation) -> Operation {
         op
-        .operationId("list_users")
+        .operation_id("list_users")
         .description("This doc comment is used for the\n`description` field of OpenAPI document")
         .summary("...")
         .response_description(200, "List of all users")

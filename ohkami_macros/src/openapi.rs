@@ -303,7 +303,7 @@ pub(super) fn derive_schema(input: TokenStream) -> syn::Result<TokenStream> {
                 }
 
                 Ok(quote! {
-                    ::ohkami::openapi::array(::ohkami::openapi::oneOf(
+                    ::ohkami::openapi::array(::ohkami::openapi::one_of(
                         (#(#type_schemas,)*)
                     ))
                 })
@@ -436,7 +436,7 @@ pub(super) fn derive_schema(input: TokenStream) -> syn::Result<TokenStream> {
             }
 
             Ok(quote! {
-                ::ohkami::openapi::oneOf(
+                ::ohkami::openapi::one_of(
                     ( #(#variant_schemas,)* )
                 )
             })
@@ -447,7 +447,7 @@ pub(super) fn derive_schema(input: TokenStream) -> syn::Result<TokenStream> {
 pub(super) fn operation(meta: TokenStream, handler: TokenStream) -> syn::Result<TokenStream> {
     #[allow(non_snake_case)]
     struct OperationMeta {
-        operationId:  Option<String>,
+        operation_id:  Option<String>,
         descriptions: Vec<DescriptionOverride>,
     }
 
@@ -514,7 +514,7 @@ pub(super) fn operation(meta: TokenStream, handler: TokenStream) -> syn::Result<
     impl syn::parse::Parse for OperationMeta {
         fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
             #[allow(non_snake_case)]
-            let operationId = input.peek(Ident)
+            let operation_id = input.peek(Ident)
                 .then(|| input.parse::<Ident>().map(|i| i.to_string()))
                 .transpose()?;
 
@@ -529,7 +529,7 @@ pub(super) fn operation(meta: TokenStream, handler: TokenStream) -> syn::Result<
                 .unwrap_or_default();
 
 
-            Ok(Self { operationId, descriptions })
+            Ok(Self { operation_id, descriptions })
         }
     }
 
@@ -554,12 +554,12 @@ pub(super) fn operation(meta: TokenStream, handler: TokenStream) -> syn::Result<
     let modify_op = {
         let mut modify_op = TokenStream::new();
 
-        let operation_id = match meta.operationId {
+        let operation_id = match meta.operation_id {
             Some(operation_id) => LitStr::new(&operation_id, Span::call_site()),
             None => LitStr::new(&handler.sig.ident.to_string(), handler.sig.ident.span())
         };
         modify_op.extend(quote! {
-            op = op.operationId(#operation_id);
+            op = op.operation_id(#operation_id);
         });
 
         if let Some(description) = extract_doc_comment(&handler.attrs) {

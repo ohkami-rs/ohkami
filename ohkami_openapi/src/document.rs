@@ -75,13 +75,14 @@ impl Server {
 #[derive(Serialize, Clone)]
 pub struct Components {
     #[serde(skip_serializing_if = "Map::is_empty")]
-    schemas:         Map<&'static str, RawSchema>,
+    schemas: Map<&'static str, RawSchema>,
     #[serde(skip_serializing_if = "Map::is_empty")]
-    securitySchemes: Map<&'static str, SecurityScheme>,
+    #[serde(rename = "securitySchemes")]
+    security_schemes: Map<&'static str, SecurityScheme>,
 }
 impl Components {
     fn is_empty(&self) -> bool {
-        self.schemas.is_empty() && self.securitySchemes.is_empty()
+        self.schemas.is_empty() && self.security_schemes.is_empty()
     }
 }
 
@@ -96,7 +97,7 @@ impl Document {
             info:       Info { title, version, description:None },
             servers:    servers.into(),
             paths:      Paths::new(),
-            components: Components { schemas:Map::new(), securitySchemes:Map::new() }
+            components: Components { schemas:Map::new(), security_schemes:Map::new() }
         }
     }
 
@@ -122,10 +123,10 @@ impl Document {
     }
     #[doc(hidden)]
     pub fn register_securityScheme_component(&mut self, securityScheme: SecurityScheme) {
-        match self.components.securitySchemes.get(&securityScheme.__name__) {
+        match self.components.security_schemes.get(&securityScheme.__name__) {
             Some(it) if *it == securityScheme => return,
-            Some(_) => panic!("[OpenAPI] `components.securitySchemes`: contradict registrations of multiple `{}`s", securityScheme.__name__),
-            None => self.components.securitySchemes.insert(securityScheme.__name__, securityScheme),
+            Some(_) => panic!("[OpenAPI] `components.security_schemes`: contradict registrations of multiple `{}`s", securityScheme.__name__),
+            None => self.components.security_schemes.insert(securityScheme.__name__, securityScheme),
         }
     }
 }

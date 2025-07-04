@@ -50,14 +50,14 @@ pub fn array(items: impl Into<schema::SchemaRef>) -> schema::Schema<schema::Type
 pub fn object() -> schema::Schema<schema::Type::object> {
     schema::Schema::object()
 }
-pub fn anyOf(schemas: impl schema::SchemaList) -> schema::Schema<schema::Type::any> {
-    schema::Schema::anyOf(schemas)
+pub fn any_of(schemas: impl schema::SchemaList) -> schema::Schema<schema::Type::any> {
+    schema::Schema::any_of(schemas)
 }
-pub fn allOf(schemas: impl schema::SchemaList) -> schema::Schema<schema::Type::any> {
-    schema::Schema::allOf(schemas)
+pub fn all_of(schemas: impl schema::SchemaList) -> schema::Schema<schema::Type::any> {
+    schema::Schema::all_of(schemas)
 }
-pub fn oneOf(schemas: impl schema::SchemaList) -> schema::Schema<schema::Type::any> {
-    schema::Schema::oneOf(schemas)
+pub fn one_of(schemas: impl schema::SchemaList) -> schema::Schema<schema::Type::any> {
+    schema::Schema::one_of(schemas)
 }
 
 pub trait Schema {
