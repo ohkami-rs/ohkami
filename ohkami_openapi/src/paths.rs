@@ -26,6 +26,7 @@ pub struct Operation {
     #[serde(skip_serializing_if = "Option::is_none")]
     description:  Option<&'static str>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "externalDocs")]
     external_cocs: Option<ExternalDoc>,
     #[serde(skip_serializing_if = "is_false")]
     deprecated: bool,
