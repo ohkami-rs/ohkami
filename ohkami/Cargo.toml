@@ -33,7 +33,7 @@ smol           = { version = "2",    optional = true }
 nio            = { version = "0.0",  optional = true }
 glommio        = { version = "0.9",  optional = true }
 worker         = { version = "0.6",  optional = true }
-lambda_runtime = { version = "0.13", optional = true }
+lambda_runtime = { version = "0.14", optional = true }
 
 # encoding / crypto
 base64 = { version = "0.22" }

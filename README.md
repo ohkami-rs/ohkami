@@ -102,7 +102,7 @@ Or, here are [Workers + OpenAPI template](https://github.com/ohkami-rs/ohkami-te
 
 ### `"rt_lambda"` : AWS Lambda
 
-- [lambda_runtime](https://github.com/awslabs/aws-lambda-rust-runtime) _v0.13.\*_ (with `tokio`)
+- [lambda_runtime](https://github.com/awslabs/aws-lambda-rust-runtime) _v0.14.\*_ (with `tokio`)
 
 Both `Function URLs` and `API Gateway` are supported, and WebSocket is not supported.
 
