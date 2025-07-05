@@ -58,7 +58,7 @@ fn with_default_operation_id<F>(op: openapi::Operation) -> openapi::Operation {
     if type_ident == "{{closure}}" {
         op
     } else {
-        op.operationId(type_ident)
+        op.operation_id(type_ident)
     }
 }
 

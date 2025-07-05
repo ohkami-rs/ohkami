@@ -42,11 +42,14 @@ pub struct RawSchema {
     #[serde(skip_serializing_if = "Option::is_none")]
     format: Option<&'static str>,
     #[serde(skip_serializing_if = "<[_]>::is_empty")]
-    anyOf: Vec<SchemaRef>,
+    #[serde(rename = "anyOf")]
+    any_of: Vec<SchemaRef>,
     #[serde(skip_serializing_if = "<[_]>::is_empty")]
-    allOf: Vec<SchemaRef>,
+    #[serde(rename = "allOf")]
+    all_of: Vec<SchemaRef>,
     #[serde(skip_serializing_if = "<[_]>::is_empty")]
-    oneOf: Vec<SchemaRef>,
+    #[serde(rename = "oneOf")]
+    one_of: Vec<SchemaRef>,
 
     /* metadata and flags */
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -62,9 +65,11 @@ pub struct RawSchema {
     #[serde(skip_serializing_if = "is_false")]
     nullable: bool,
     #[serde(skip_serializing_if = "is_false")]
-    readOnly: bool,
+    #[serde(rename = "readOnly")]
+    read_only: bool,
     #[serde(skip_serializing_if = "is_false")]
-    writeOnly: bool,
+    #[serde(rename = "writeOnly")]
+    write_only: bool,
 
     /* string definition */
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -80,31 +85,41 @@ pub struct RawSchema {
     #[serde(skip_serializing_if = "Option::is_none")]
     items: Option<SchemaRef>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    maxItems: Option<usize>,
+    #[serde(rename = "maxItems")]
+    max_items: Option<usize>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    minItems: Option<usize>,
+    #[serde(rename = "minItems")]
+    min_items: Option<usize>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    maxProperties: Option<usize>,
+    #[serde(rename = "maxProperties")]
+    max_properties: Option<usize>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    minProperties: Option<usize>,
+    #[serde(rename = "maxProperties")]
+    min_properties: Option<usize>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    maxLength: Option<usize>,
+    #[serde(rename = "maxLength")]
+    max_length: Option<usize>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    minLength: Option<usize>,
+    #[serde(rename = "maxLength")]
+    min_length: Option<usize>,
     #[serde(skip_serializing_if = "is_false")]
-    uniqueItems: bool,
+    #[serde(rename = "uniqueItems")]
+    unique_items: bool,
 
     /* number,integer definition */
     #[serde(skip_serializing_if = "Option::is_none")]
-    multipleOf: Option<f64>,
+    #[serde(rename = "multipleOf")]
+    multiple_of: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     maximum: Option<f64>,
     #[serde(skip_serializing_if = "is_false")]
-    exclusiveMaximum: bool,
+    #[serde(rename = "exclusiveMaximum")]
+    exclusive_maximum: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     minimum: Option<f64>,
     #[serde(skip_serializing_if = "is_false")]
-    exclusiveMinimum: bool,
+    #[serde(rename = "exclusiveMinimum")]
+    exclusive_minimum: bool,
 }
 impl<T: Type::SchemaType> From<Schema<T>> for RawSchema {
     fn from(schema: Schema<T>) -> Self {
@@ -174,9 +189,9 @@ impl SchemaRef {
         match self {
             SchemaRef::Inline(raw) => {
                 raw.properties.values_mut().for_each(|s| component_schemas.extend(s.refize()));
-                raw.anyOf.iter_mut().for_each(|s| component_schemas.extend(s.refize()));
-                raw.allOf.iter_mut().for_each(|s| component_schemas.extend(s.refize()));
-                raw.oneOf.iter_mut().for_each(|s| component_schemas.extend(s.refize()));
+                raw.any_of.iter_mut().for_each(|s| component_schemas.extend(s.refize()));
+                raw.all_of.iter_mut().for_each(|s| component_schemas.extend(s.refize()));
+                raw.one_of.iter_mut().for_each(|s| component_schemas.extend(s.refize()));
                 raw.items.as_mut().map(|s| component_schemas.extend(s.refize()));
                 if let Some(name) = raw.__name__ {
                     let raw = std::mem::replace(self, SchemaRef::Reference(name));
@@ -202,9 +217,9 @@ const _: (/* constructors */) = {
 
         datatype: Type::any::NAME,
         format: None,
-        anyOf: Vec::new(),
-        allOf: Vec::new(),
-        oneOf: Vec::new(),
+        any_of: Vec::new(),
+        all_of: Vec::new(),
+        one_of: Vec::new(),
 
         /* metadata and flags */
         description: None,
@@ -213,8 +228,8 @@ const _: (/* constructors */) = {
         enumerates:  Vec::new(),
         deprecated:  false,
         nullable:    false,
-        readOnly:    false,
-        writeOnly:   false,
+        read_only:    false,
+        write_only:   false,
 
         /* string definition */
         pattern: None,
@@ -225,20 +240,20 @@ const _: (/* constructors */) = {
 
         /* array definition */
         items:         None,
-        maxItems:      None,
-        minItems:      None,
-        maxProperties: None,
-        minProperties: None,
-        maxLength:     None,
-        minLength:     None,
-        uniqueItems:   false,
+        max_items:      None,
+        min_items:      None,
+        max_properties: None,
+        min_properties: None,
+        max_length:     None,
+        min_length:     None,
+        unique_items:   false,
 
         /* number,integer definition */
-        multipleOf:       None,
+        multiple_of:       None,
         maximum:          None,
-        exclusiveMaximum: false,
+        exclusive_maximum: false,
         minimum:          None,
-        exclusiveMinimum: false,
+        exclusive_minimum: false,
     };
 
     impl Schema<Type::string> {
@@ -294,29 +309,29 @@ const _: (/* constructors */) = {
         }
     }
     impl Schema<Type::any> {
-        pub fn anyOf(schemas: impl SchemaList) -> Self {
+        pub fn any_of(schemas: impl SchemaList) -> Self {
             Self {
                 datatype: PhantomData,
                 raw: RawSchema {
-                    anyOf: SchemaList::collect(schemas),
+                    any_of: SchemaList::collect(schemas),
                     ..ANY
                 }
             }
         }
-        pub fn allOf(schemas: impl SchemaList) -> Self {
+        pub fn all_of(schemas: impl SchemaList) -> Self {
             Self {
                 datatype: PhantomData,
                 raw: RawSchema {
-                    allOf: SchemaList::collect(schemas),
+                    all_of: SchemaList::collect(schemas),
                     ..ANY
                 }
             }
         }
-        pub fn oneOf(schemas: impl SchemaList) -> Self {
+        pub fn one_of(schemas: impl SchemaList) -> Self {
             Self {
                 datatype: PhantomData,
                 raw: RawSchema {
-                    oneOf: SchemaList::collect(schemas),
+                    one_of: SchemaList::collect(schemas),
                     ..ANY
                 }
             }
@@ -374,12 +389,12 @@ impl<T: Type::SchemaType> Schema<T> {
         self.raw.nullable = true;
         self
     }
-    pub fn readOnly(mut self) -> Self {
-        self.raw.readOnly = true;
+    pub fn read_only(mut self) -> Self {
+        self.raw.read_only = true;
         self
     }
-    pub fn writeOnly(mut self) -> Self {
-        self.raw.writeOnly = true;
+    pub fn write_only(mut self) -> Self {
+        self.raw.write_only = true;
         self
     }
 }
@@ -411,32 +426,32 @@ impl Schema<Type::object> {
 
 /* array definition */
 impl Schema<Type::array> {
-    pub fn maxItems(mut self, maxItems: usize) -> Self {
-        self.raw.maxItems = Some(maxItems);
+    pub fn max_items(mut self, max_items: usize) -> Self {
+        self.raw.max_items = Some(max_items);
         self
     }
-    pub fn minItems(mut self, minItems: usize) -> Self {
-        self.raw.minItems = Some(minItems);
+    pub fn min_items(mut self, min_items: usize) -> Self {
+        self.raw.min_items = Some(min_items);
         self
     }
-    pub fn maxProperties(mut self, maxProperties: usize) -> Self {
-        self.raw.maxProperties = Some(maxProperties);
+    pub fn max_properties(mut self, max_properties: usize) -> Self {
+        self.raw.max_properties = Some(max_properties);
         self
     }
-    pub fn minProperties(mut self, minProperties: usize) -> Self {
-        self.raw.minProperties = Some(minProperties);
+    pub fn min_properties(mut self, min_properties: usize) -> Self {
+        self.raw.min_properties = Some(min_properties);
         self
     }
-    pub fn maxLength(mut self, maxLength: usize) -> Self {
-        self.raw.maxLength = Some(maxLength);
+    pub fn max_length(mut self, max_length: usize) -> Self {
+        self.raw.max_length = Some(max_length);
         self
     }
-    pub fn minLength(mut self, minLength: usize) -> Self {
-        self.raw.minLength = Some(minLength);
+    pub fn min_length(mut self, min_length: usize) -> Self {
+        self.raw.min_length = Some(min_length);
         self
     }
-    pub fn uniqueItems(mut self) -> Self {
-        self.raw.uniqueItems = true;
+    pub fn unique_items(mut self) -> Self {
+        self.raw.unique_items = true;
         self
     }
 }
@@ -447,26 +462,26 @@ impl Schema<Type::number> {
         self.raw.format = Some(format);
         self
     }
-    pub fn multipleOf(mut self, n: impl Into<f64>) -> Self {
-        self.raw.multipleOf = Some(n.into());
+    pub fn multiple_of(mut self, n: impl Into<f64>) -> Self {
+        self.raw.multiple_of = Some(n.into());
         self
     }
     pub fn maximum(mut self, maximum: impl Into<f64>) -> Self {
         self.raw.maximum = Some(maximum.into());
         self
     }
-    pub fn exclusiveMaximum(mut self, maximum: impl Into<f64>) -> Self {
+    pub fn exclusive_maximum(mut self, maximum: impl Into<f64>) -> Self {
         self.raw.maximum = Some(maximum.into());
-        self.raw.exclusiveMaximum = true;
+        self.raw.exclusive_maximum = true;
         self
     }
     pub fn minimum(mut self, minimum: impl Into<f64>) -> Self {
         self.raw.minimum = Some(minimum.into());
         self
     }
-    pub fn exclusiveMinimum(mut self, minimum: impl Into<f64>) -> Self {
+    pub fn exclusive_minimum(mut self, minimum: impl Into<f64>) -> Self {
         self.raw.minimum = Some(minimum.into());
-        self.raw.exclusiveMinimum = true;
+        self.raw.exclusive_minimum = true;
         self
     }
 }
@@ -475,26 +490,26 @@ impl Schema<Type::integer> {
         self.raw.format = Some(format);
         self
     }
-    pub fn multipleOf(mut self, n: i32) -> Self {
-        self.raw.multipleOf = Some(n.into());
+    pub fn multiple_of(mut self, n: i32) -> Self {
+        self.raw.multiple_of = Some(n.into());
         self
     }
     pub fn maximum(mut self, maximum: i32) -> Self {
         self.raw.maximum = Some(maximum.into());
         self
     }
-    pub fn exclusiveMaximum(mut self, maximum: i32) -> Self {
+    pub fn exclusive_maximum(mut self, maximum: i32) -> Self {
         self.raw.maximum = Some(maximum.into());
-        self.raw.exclusiveMaximum = true;
+        self.raw.exclusive_maximum = true;
         self
     }
     pub fn minimum(mut self, minimum: i32) -> Self {
         self.raw.minimum = Some(minimum.into());
         self
     }
-    pub fn exclusiveMinimum(mut self, minimum: i32) -> Self {
+    pub fn exclusive_minimum(mut self, minimum: i32) -> Self {
         self.raw.minimum = Some(minimum.into());
-        self.raw.exclusiveMinimum = true;
+        self.raw.exclusive_minimum = true;
         self
     }
 }
@@ -502,7 +517,7 @@ impl Schema<Type::integer> {
 #[cfg(test)]
 fn __usability__() {
     let _user_schema = Schema::object()
-        .property("id", Schema::integer().readOnly())
+        .property("id", Schema::integer().read_only())
         .property("name", Schema::string())
         .optional("age", Schema::integer().minimum(18).maximum(120));
 }

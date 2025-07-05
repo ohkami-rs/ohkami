@@ -209,7 +209,7 @@ impl<Payload> Jwt<Payload> {
             secret: secret.into(),
 
             #[cfg(feature="openapi")]
-            openapi_security: crate::openapi::security::SecurityScheme::Bearer(
+            openapi_security: crate::openapi::security::SecurityScheme::bearer(
                 "jwtAuth",
                 Some("JWT")
             )

@@ -99,7 +99,7 @@ const _: () = {
         #[cfg(feature="openapi")]
         fn openapi_map_operation(&self, operation: openapi::Operation) -> openapi::Operation {
             use openapi::security::SecurityScheme;
-            operation.security(SecurityScheme::Basic("basicAuth"), &[])
+            operation.security(SecurityScheme::basic("basicAuth"), &[])
         }
     }
 
@@ -124,7 +124,7 @@ const _: () = {
         #[cfg(feature="openapi")]
         fn openapi_map_operation(&self, operation: openapi::Operation) -> openapi::Operation {
             use openapi::security::SecurityScheme;
-            operation.security(SecurityScheme::Basic("basicAuth"), &[])
+            operation.security(SecurityScheme::basic("basicAuth"), &[])
         }
     }
 };

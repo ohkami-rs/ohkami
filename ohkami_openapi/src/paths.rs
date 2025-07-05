@@ -16,7 +16,8 @@ pub struct Operations(
 #[derive(Serialize, Clone)]
 pub struct Operation {
     #[serde(skip_serializing_if = "Option::is_none")]
-    operationId: Option<&'static str>,
+    #[serde(rename = "operationId")]
+    operation_id: Option<&'static str>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     tags: Vec<&'static str>,
 
@@ -25,7 +26,8 @@ pub struct Operation {
     #[serde(skip_serializing_if = "Option::is_none")]
     description:  Option<&'static str>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    externalDocs: Option<ExternalDoc>,
+    #[serde(rename = "externalDocs")]
+    external_docs: Option<ExternalDoc>,
     #[serde(skip_serializing_if = "is_false")]
     deprecated: bool,
 
@@ -33,7 +35,8 @@ pub struct Operation {
     parameters: Vec<Parameter>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    requestBody: Option<RequestBody>,
+    #[serde(rename = "requestBody")]
+    requestbody: Option<RequestBody>,
 
     #[serde(skip_serializing_if = "Vec::is_empty")]
     security: Vec<Map<SecuritySchemeName, Vec<&'static str>>>,
@@ -119,14 +122,14 @@ impl Operation {
     pub fn with(responses: Responses) -> Self {
         Self {
             responses,
-            operationId:  None,
+            operation_id: None,
             tags:         Vec::new(),
             summary:      None,
             description:  None,
-            externalDocs: None,
+            external_docs: None,
             deprecated:   false,
             parameters:   Vec::new(),
-            requestBody:  None,
+            requestbody:  None,
             security:     Vec::new(),
         }
     }
@@ -136,8 +139,8 @@ impl Operation {
         self
     }
 
-    pub fn requestBody(mut self, requestBody: RequestBody) -> Self {
-        self.requestBody = Some(requestBody);
+    pub fn requestbody(mut self, requestbody: RequestBody) -> Self {
+        self.requestbody = Some(requestbody);
         self
     }
 
@@ -146,8 +149,8 @@ impl Operation {
         self
     }
 
-    pub fn operationId(mut self, operationId: &'static str) -> Self {
-        self.operationId = Some(operationId);
+    pub fn operation_id(mut self, operation_id: &'static str) -> Self {
+        self.operation_id = Some(operation_id);
         self
     }
     pub fn with_tag(mut self, tag: &'static str) -> Self {
@@ -162,8 +165,8 @@ impl Operation {
         self.description = Some(description);
         self
     }
-    pub fn externalDocs(mut self, externalDocs: ExternalDoc) -> Self {
-        self.externalDocs = Some(externalDocs);
+    pub fn external_docs(mut self, external_docs: ExternalDoc) -> Self {
+        self.external_docs = Some(external_docs);
         self
     }
     pub fn deprecated(mut self) -> Self {
@@ -175,7 +178,7 @@ impl Operation {
         match inbound {
             crate::Inbound::None => self,
             crate::Inbound::Security { scheme, scopes } => self.security(scheme, scopes),
-            crate::Inbound::Body(body) => self.requestBody(body),
+            crate::Inbound::Body(body) => self.requestbody(body),
             crate::Inbound::Param(param) => self.param(param),
             crate::Inbound::Params(params) => {
                 for param in params {self = self.param(param)}
@@ -194,12 +197,12 @@ impl Operation {
         }
         self
     }
-    pub fn requestBody_description(
+    pub fn requestbody_description(
         mut self,
         new_description: &'static str
     ) -> Self {
-        if let Some(requestBody) = &mut self.requestBody {
-            requestBody.set_description(new_description);
+        if let Some(requestbody) = &mut self.requestbody {
+            requestbody.set_description(new_description);
         }
         self
     }
@@ -223,7 +226,7 @@ impl Operation {
     }
 
     #[doc(hidden)]
-    pub fn iter_securitySchemes(&self) -> impl Iterator<Item = SecurityScheme> {
+    pub fn iter_security_schemes(&self) -> impl Iterator<Item = SecurityScheme> {
         self.security.clone().into_iter()
             .map(|map| {
                 let [SecuritySchemeName(ss)] = map.clone()
@@ -238,7 +241,7 @@ impl Operation {
     pub fn refize_schemas(&mut self) -> impl Iterator<Item = RawSchema> + '_ {
         [/* RawSchema */].into_iter()
             .chain(self.parameters.iter_mut().map(|p| p.schema.refize()).flatten())
-            .chain(self.requestBody.as_mut().map(RequestBody::refize_schemas).into_iter().flatten())
+            .chain(self.requestbody.as_mut().map(RequestBody::refize_schemas).into_iter().flatten())
             .chain(self.responses.refize_schemas())
     }
 }
@@ -248,7 +251,7 @@ impl Operation {
     #[allow(unused)]
     fn map_openapi_operation(op: Operation) -> Operation {
         op
-        .operationId("list_users")
+        .operation_id("list_users")
         .description("This doc comment is used for the\n`description` field of OpenAPI document")
         .summary("...")
         .response_description(200, "List of all users")
