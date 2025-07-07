@@ -180,7 +180,7 @@ pub(crate) static CONFIG: config::Config = config::Config::new();
 pub mod testing;
 
 mod request;
-pub use request::{Request, Method, FromRequest, FromParam, FromBody};
+pub use request::{Request, Method, FromRequest, FromBody};
 pub use ::ohkami_macros::FromRequest;
 
 mod response;
@@ -206,6 +206,7 @@ pub use fang::{handler, Fang, FangProc};
 mod tls;
 
 pub mod format;
+pub use crate::format::{Path, Query};
 
 pub mod header;
 
@@ -233,7 +234,7 @@ pub mod prelude {
     pub use crate::{Request, Response, IntoResponse, Method, Status};
     pub use crate::util::FangAction;
     pub use crate::serde::{Serialize, Deserialize};
-    pub use crate::format::{Json, Query};
+    pub use crate::format::{Path, Query, Json};
     pub use crate::fang::Context;
 
     #[cfg(feature="__rt__")]

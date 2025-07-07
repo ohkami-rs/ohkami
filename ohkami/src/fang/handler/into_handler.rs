@@ -1,19 +1,18 @@
 use std::{future::Future, pin::Pin};
 use super::{Handler, SendOnNative, SendSyncOnNative, SendOnNativeFuture};
-use crate::{Response, FromRequest, FromParam, Request, IntoResponse};
+use crate::{Request, Response, FromRequest, IntoResponse};
 
 #[cfg(feature="openapi")]
 use crate::openapi;
-
 
 pub trait IntoHandler<T> {
     fn n_params(&self) -> usize;
     fn into_handler(self) -> Handler;
 }
 
-
-#[inline(never)] #[cold]
-fn __error__(e: Response) -> Pin<Box<dyn SendOnNativeFuture<Response>>> {
+#[cold]
+#[inline(never)]
+fn error_response(e: Response) -> Pin<Box<dyn SendOnNativeFuture<Response>>> {
     Box::pin(async {e})
 }
 
@@ -62,613 +61,233 @@ fn with_default_operation_id<F>(op: openapi::Operation) -> openapi::Operation {
     }
 }
 
+impl<'req, F, Fut, Res> IntoHandler<fn() -> Res> for F
+where
+    F:   Fn() -> Fut + SendSyncOnNative + 'static,
+    Res: IntoResponse,
+    Fut: Future<Output = Res> + SendOnNative + 'static,
+{
+    fn n_params(&self) -> usize {0}
 
-const _: (/* no args */) = {
-    impl<'req, F, Body, Fut> IntoHandler<fn()->Body> for F
-    where
-        F:    Fn() -> Fut + SendSyncOnNative + 'static,
-        Body: IntoResponse,
-        Fut:  Future<Output = Body> + SendOnNative + 'static,
-    {
-        fn n_params(&self) -> usize {0}
-
-        fn into_handler(self) -> Handler {
-            Handler::new(move |_| {
-                let res = self();
-                Box::pin(async move {
-                    res.await.into_response()
-                })
-            }, #[cfg(feature="openapi")] {
-                with_default_operation_id::<F>(openapi::Operation::with(Body::openapi_responses()))
-            })
-        }
+    fn into_handler(self) -> Handler {
+        Handler::new(move |_| {
+            let res = self();
+            Box::pin(async move {res.await.into_response()})
+        }, #[cfg(feature="openapi")] {
+            with_default_operation_id::<F>(openapi::Operation::with(Res::openapi_responses()))
+        })
     }
-};
+}
 
-const _: (/* FromParam */) = {
-    impl<'req, F, Fut, Body, P1:FromParam<'req>> IntoHandler<fn((P1,))->Body> for F
-    where
-        F:    Fn(P1) -> Fut + SendSyncOnNative + 'static,
-        Body: IntoResponse,
-        Fut:  Future<Output = Body> + SendOnNative + 'static,
-    {
-        fn n_params(&self) -> usize {1}
+impl<'req, F, Fut, Res, Req1> IntoHandler<fn(Req1) -> Res> for F
+where
+    F:   Fn(Req1) -> Fut + SendSyncOnNative + 'static,
+    Res: IntoResponse,
+    Fut: Future<Output = Res> + SendOnNative + 'static,
+    Req1: FromRequest<'req>,
+{
+    fn n_params(&self) -> usize {
+        Req1::n_params()
+    }
 
-        fn into_handler(self) -> Handler {
-            Handler::new(move |req| {
-                match P1::from_raw_param(unsafe {req.path.assume_one_param()}) {
-                    Ok(p1) => {
-                        let res = self(p1);
-                        Box::pin(async move {res.await.into_response()})
-                    }
-                    Err(e) => __error__(e)
+    fn into_handler(self) -> Handler {
+        Handler::new(move |req| {
+            match from_request::<Req1>(req) {
+                Ok(req1) => {
+                    let res = self(req1);
+                    Box::pin(async move {res.await.into_response()})
                 }
-            }, #[cfg(feature="openapi")] {
-                with_default_operation_id::<F>(openapi::Operation::with(Body::openapi_responses()))
-                    .param(P1::openapi_param())
-            })
-        }
+                Err(e) => error_response(e)
+            }
+        }, #[cfg(feature="openapi")] {
+            with_default_operation_id::<F>(openapi::Operation::with(Res::openapi_responses()))
+                .inbound(Req1::openapi_inbound())
+        })
+    }
+}
+
+impl<'req, F, Fut, Res, Req1, Req2> IntoHandler<fn(Req1, Req2) -> Res> for F
+where
+    F:   Fn(Req1, Req2) -> Fut + SendSyncOnNative + 'static,
+    Res: IntoResponse,
+    Fut: Future<Output = Res> + SendOnNative + 'static,
+    Req1: FromRequest<'req>,
+    Req2: FromRequest<'req>,
+{
+    fn n_params(&self) -> usize {
+        Req1::n_params() + Req2::n_params()
     }
 
-    impl<'req, F, Body, Fut, P1:FromParam<'req>> IntoHandler<fn(((P1,),))->Body> for F
-    where
-        F:    Fn((P1,)) -> Fut + SendSyncOnNative + 'static,
-        Body: IntoResponse,
-        Fut:  Future<Output = Body> + SendOnNative + 'static,
-    {
-        fn n_params(&self) -> usize {1}
-
-        fn into_handler(self) -> Handler {
-            Handler::new(move |req| {
-                // SAFETY: `crate::Route` has already checked the number of params
-                match P1::from_raw_param(unsafe {req.path.assume_one_param()}) {
-                    Ok(p1) => {
-                        let res = self((p1,));
-                        Box::pin(async move {res.await.into_response()})
-                    }
-                    Err(e) => __error__(e)
+    fn into_handler(self) -> Handler {
+        Handler::new(move |req| {
+            match (from_request::<Req1>(req), from_request::<Req2>(req)) {
+                (Ok(req1), Ok(req2)) => {
+                    let res = self(req1, req2);
+                    Box::pin(async move {res.await.into_response()})
                 }
-            }, #[cfg(feature="openapi")] {
-                with_default_operation_id::<F>(openapi::Operation::with(Body::openapi_responses()))
-                    .param(P1::openapi_param())
-            })
-        }
+                (Err(e), _) | (_, Err(e)) => error_response(e),
+            }
+        }, #[cfg(feature="openapi")] {
+            with_default_operation_id::<F>(openapi::Operation::with(Res::openapi_responses()))
+                .inbound(Req1::openapi_inbound())
+                .inbound(Req2::openapi_inbound())
+        })
+    }
+}
+
+impl<'req, F, Fut, Res, Req1, Req2, Req3> IntoHandler<fn(Req1, Req2, Req3) -> Res> for F
+where
+    F:   Fn(Req1, Req2, Req3) -> Fut + SendSyncOnNative + 'static,
+    Res: IntoResponse,
+    Fut: Future<Output = Res> + SendOnNative + 'static,
+    Req1: FromRequest<'req>,
+    Req2: FromRequest<'req>,
+    Req3: FromRequest<'req>,
+{
+    fn n_params(&self) -> usize {
+        Req1::n_params() + Req2::n_params() + Req3::n_params()
     }
 
-    impl<'req, F, Fut, Body:IntoResponse, P1:FromParam<'req>, P2:FromParam<'req>> IntoHandler<fn(((P1, P2),))->Body> for F
-    where
-        F:   Fn((P1, P2)) -> Fut + SendSyncOnNative + 'static,
-        Fut: Future<Output = Body> + SendOnNative + 'static,
-    {
-        fn n_params(&self) -> usize {2}
-
-        fn into_handler(self) -> Handler {
-            Handler::new(move |req| {
-                let (p1, p2) = unsafe {req.path.assume_two_params()};
-                match (P1::from_raw_param(p1), P2::from_raw_param(p2)) {
-                    (Ok(p1), Ok(p2)) => {
-                        let res = self((p1, p2));
-                        Box::pin(async move {res.await.into_response()})
-                    }
-                    (Err(e), _) | (_, Err(e)) => __error__(e),
+    fn into_handler(self) -> Handler {
+        Handler::new(move |req| {
+            match (from_request::<Req1>(req), from_request::<Req2>(req), from_request::<Req3>(req)) {
+                (Ok(req1), Ok(req2), Ok(req3)) => {
+                    let res = self(req1, req2, req3);
+                    Box::pin(async move {res.await.into_response()})
                 }
-            }, #[cfg(feature="openapi")] {
-                with_default_operation_id::<F>(openapi::Operation::with(Body::openapi_responses()))
-                    .param(P1::openapi_param())
-                    .param(P2::openapi_param())
-            })
-        }
+                (Err(e), _, _) | (_, Err(e), _) | (_, _, Err(e)) => error_response(e),
+            }
+        }, #[cfg(feature="openapi")] {
+            with_default_operation_id::<F>(openapi::Operation::with(Res::openapi_responses()))
+                .inbound(Req1::openapi_inbound())
+                .inbound(Req2::openapi_inbound())
+                .inbound(Req3::openapi_inbound())
+        })
     }
-};
+}
 
-const _: (/* FromRequest items */) = {
-    impl<'req, F, Fut, Body:IntoResponse, Item1:FromRequest<'req>> IntoHandler<fn(Item1)->Body> for F
-    where
-        F:   Fn(Item1) -> Fut + SendSyncOnNative + 'static,
-        Fut: Future<Output = Body> + SendOnNative + 'static,
-    {
-        fn n_params(&self) -> usize {0}
+impl<'req, F, Fut, Res, Req1, Req2, Req3, Req4> IntoHandler<fn(Req1, Req2, Req3, Req4) -> Res> for F
+where
+    F:   Fn(Req1, Req2, Req3, Req4) -> Fut + SendSyncOnNative + 'static,
+    Res: IntoResponse,
+    Fut: Future<Output = Res> + SendOnNative + 'static,
+    Req1: FromRequest<'req>,
+    Req2: FromRequest<'req>,
+    Req3: FromRequest<'req>,
+    Req4: FromRequest<'req>,
+{
+    fn n_params(&self) -> usize {
+        Req1::n_params() + Req2::n_params() + Req3::n_params() + Req4::n_params()
+    }
 
-        fn into_handler(self) -> Handler {
-            Handler::new(move |req| {
-                match from_request::<Item1>(req) {
-                    Ok(item1) => {
-                        let res = self(item1);
-                        Box::pin(async move {res.await.into_response()})
-                    }
-                    Err(e) => __error__(e)
+    fn into_handler(self) -> Handler {
+        Handler::new(move |req| {
+            match (from_request::<Req1>(req), from_request::<Req2>(req), from_request::<Req3>(req), from_request::<Req4>(req)) {
+                (Ok(req1), Ok(req2), Ok(req3), Ok(req4)) => {
+                    let res = self(req1, req2, req3, req4);
+                    Box::pin(async move {res.await.into_response()})
                 }
-            }, #[cfg(feature="openapi")] {
-                with_default_operation_id::<F>(openapi::Operation::with(Body::openapi_responses()))
-                    .inbound(Item1::openapi_inbound())
-            })
-        }
+                (Err(e), _, _, _) | (_, Err(e), _, _) | (_, _, Err(e), _) | (_, _, _, Err(e)) => error_response(e),
+            }
+        }, #[cfg(feature="openapi")] {
+            with_default_operation_id::<F>(openapi::Operation::with(Res::openapi_responses()))
+                .inbound(Req1::openapi_inbound())
+                .inbound(Req2::openapi_inbound())
+                .inbound(Req3::openapi_inbound())
+                .inbound(Req4::openapi_inbound())
+        })
+    }
+}
+
+impl<'req, F, Fut, Body, Req1, Req2, Req3, Req4, Req5> IntoHandler<fn(Req1, Req2, Req3, Req4, Req5) -> Body> for F
+where
+    F:   Fn(Req1, Req2, Req3, Req4, Req5) -> Fut + SendSyncOnNative + 'static,
+    Body: IntoResponse,
+    Fut: Future<Output = Body> + SendOnNative + 'static,
+    Req1: FromRequest<'req>,
+    Req2: FromRequest<'req>,
+    Req3: FromRequest<'req>,
+    Req4: FromRequest<'req>,
+    Req5: FromRequest<'req>,
+{
+    fn n_params(&self) -> usize {
+        Req1::n_params() + Req2::n_params() + Req3::n_params() + Req4::n_params() + Req5::n_params()
     }
 
-    impl<'req, F, Fut, Body:IntoResponse, Item1:FromRequest<'req>, Item2:FromRequest<'req>> IntoHandler<fn(Item1, Item2)->Body> for F
-    where
-        F:   Fn(Item1, Item2) -> Fut + SendSyncOnNative + 'static,
-        Fut: Future<Output = Body> + SendOnNative + 'static,
-    {
-        fn n_params(&self) -> usize {0}
-
-        fn into_handler(self) -> Handler {
-            Handler::new(move |req| {
-                match (from_request::<Item1>(req), from_request::<Item2>(req)) {
-                    (Ok(item1), Ok(item2)) => {
-                        let res = self(item1, item2);
-                        Box::pin(async move {res.await.into_response()})
-                    }
-                    (Err(e), _) |
-                    (_, Err(e)) => __error__(e),
+    fn into_handler(self) -> Handler {
+        Handler::new(move |req| {
+            match (from_request::<Req1>(req), from_request::<Req2>(req), from_request::<Req3>(req), from_request::<Req4>(req), from_request::<Req5>(req)) {
+                (Ok(req1), Ok(req2), Ok(req3), Ok(req4), Ok(req5)) => {
+                    let res = self(req1, req2, req3, req4, req5);
+                    Box::pin(async move {res.await.into_response()})
                 }
-            }, #[cfg(feature="openapi")] {
-                with_default_operation_id::<F>(openapi::Operation::with(Body::openapi_responses()))
-                    .inbound(Item1::openapi_inbound())
-                    .inbound(Item2::openapi_inbound())
-            })
-        }
+                (Err(e), _, _, _, _) | (_, Err(e), _, _, _) | (_, _, Err(e), _, _) | (_, _, _, Err(e), _) | (_, _, _, _, Err(e)) => error_response(e),
+            }
+        }, #[cfg(feature="openapi")] {
+            with_default_operation_id::<F>(openapi::Operation::with(Body::openapi_responses()))
+                .inbound(Req1::openapi_inbound())
+                .inbound(Req2::openapi_inbound())
+                .inbound(Req3::openapi_inbound())
+                .inbound(Req4::openapi_inbound())
+                .inbound(Req5::openapi_inbound())
+        })
+    }
+}
+
+impl<'req, F, Fut, Body, Req1, Req2, Req3, Req4, Req5, Req6> IntoHandler<fn(Req1, Req2, Req3, Req4, Req5, Req6) -> Body> for F
+where
+    F:   Fn(Req1, Req2, Req3, Req4, Req5, Req6) -> Fut + SendSyncOnNative + 'static,
+    Body: IntoResponse,
+    Fut: Future<Output = Body> + SendOnNative + 'static,
+    Req1: FromRequest<'req>,
+    Req2: FromRequest<'req>,
+    Req3: FromRequest<'req>,
+    Req4: FromRequest<'req>,
+    Req5: FromRequest<'req>,
+    Req6: FromRequest<'req>,
+{
+    fn n_params(&self) -> usize {
+        Req1::n_params() + Req2::n_params() + Req3::n_params() + Req4::n_params() + Req5::n_params() + Req6::n_params()
     }
 
-    impl<'req, F, Fut, Body:IntoResponse, Item1:FromRequest<'req>, Item2:FromRequest<'req>, Item3:FromRequest<'req>> IntoHandler<fn(Item1, Item2, Item3)->Body> for F
-    where
-        F:   Fn(Item1, Item2, Item3) -> Fut + SendSyncOnNative + 'static,
-        Fut: Future<Output = Body> + SendOnNative + 'static,
-    {
-        fn n_params(&self) -> usize {0}
-
-        fn into_handler(self) -> Handler {
-            Handler::new(move |req| {
-                match (from_request::<Item1>(req), from_request::<Item2>(req), from_request::<Item3>(req)) {
-                    (Ok(item1), Ok(item2), Ok(item3)) => {
-                        let res = self(item1, item2, item3);
-                        Box::pin(async move {res.await.into_response()})
-                    }
-                    (Err(e), _, _) |
-                    (_, Err(e), _) |
-                    (_, _, Err(e)) => __error__(e),
+    fn into_handler(self) -> Handler {
+        Handler::new(move |req| {
+            match (from_request::<Req1>(req), from_request::<Req2>(req), from_request::<Req3>(req), from_request::<Req4>(req), from_request::<Req5>(req), from_request::<Req6>(req)) {
+                (Ok(req1), Ok(req2), Ok(req3), Ok(req4), Ok(req5), Ok(req6)) => {
+                    let res = self(req1, req2, req3, req4, req5, req6);
+                    Box::pin(async move {res.await.into_response()})
                 }
-            }, #[cfg(feature="openapi")] {
-                with_default_operation_id::<F>(openapi::Operation::with(Body::openapi_responses()))
-                    .inbound(Item1::openapi_inbound())
-                    .inbound(Item2::openapi_inbound())
-                    .inbound(Item3::openapi_inbound())
-            })
-        }
+                (Err(e), _, _, _, _, _) | (_, Err(e), _, _, _, _) | (_, _, Err(e), _, _, _) | (_, _, _, Err(e), _, _) | (_, _, _, _, Err(e), _) | (_, _, _, _, _, Err(e)) => error_response(e),
+            }
+        }, #[cfg(feature="openapi")] {
+            with_default_operation_id::<F>(openapi::Operation::with(Body::openapi_responses()))
+                .inbound(Req1::openapi_inbound())
+                .inbound(Req2::openapi_inbound())
+                .inbound(Req3::openapi_inbound())
+                .inbound(Req4::openapi_inbound())
+                .inbound(Req5::openapi_inbound())
+                .inbound(Req6::openapi_inbound())
+        })
     }
-
-    impl<'req, F, Fut, Body:IntoResponse, Item1:FromRequest<'req>, Item2:FromRequest<'req>, Item3:FromRequest<'req>, Item4:FromRequest<'req>> IntoHandler<fn(Item1, Item2, Item3, Item4)->Body> for F
-    where
-        F:   Fn(Item1, Item2, Item3, Item4) -> Fut + SendSyncOnNative + 'static,
-        Fut: Future<Output = Body> + SendOnNative + 'static,
-    {
-        fn n_params(&self) -> usize {0}
-
-        fn into_handler(self) -> Handler {
-            Handler::new(move |req| {
-                match (from_request::<Item1>(req), from_request::<Item2>(req), from_request::<Item3>(req), from_request::<Item4>(req)) {
-                    (Ok(item1), Ok(item2), Ok(item3), Ok(item4)) => {
-                        let res = self(item1, item2, item3, item4);
-                        Box::pin(async move {res.await.into_response()})
-                    }
-                    (Err(e), _, _,_) |
-                    (_, Err(e), _,_) |
-                    (_, _, Err(e),_) |
-                    (_,_, _, Err(e)) => __error__(e),
-                }
-            }, #[cfg(feature="openapi")] {
-                with_default_operation_id::<F>(openapi::Operation::with(Body::openapi_responses()))
-                    .inbound(Item1::openapi_inbound())
-                    .inbound(Item2::openapi_inbound())
-                    .inbound(Item3::openapi_inbound())
-                    .inbound(Item4::openapi_inbound())
-            })
-        }
-    }
-};
-
-const _: (/* one FromParam without tuple and FromRequest items */) = {
-    impl<'req, F, Fut, Body:IntoResponse, P1:FromParam<'req>, Item1:FromRequest<'req>> IntoHandler<fn(((P1,),), Item1)->Body> for F
-    where
-        F:   Fn(P1, Item1) -> Fut + SendSyncOnNative + 'static,
-        Fut: Future<Output = Body> + SendOnNative + 'static,
-    {
-        fn n_params(&self) -> usize {1}
-
-        fn into_handler(self) -> Handler {
-            Handler::new(move |req| {
-                // SAFETY: `crate::Route` has already checked the number of params
-                let p1 = unsafe {req.path.assume_one_param()};
-
-                match (P1::from_raw_param(p1), from_request(req)) {
-                    (Ok(p1), Ok(item1)) => {
-                        let res = self(p1, item1);
-                        Box::pin(async move {res.await.into_response()})
-                    },
-                    (Err(e), _) |
-                    (_, Err(e)) => __error__(e),
-                }
-            }, #[cfg(feature="openapi")] {
-                with_default_operation_id::<F>(openapi::Operation::with(Body::openapi_responses()))
-                    .param(P1::openapi_param())
-                    .inbound(Item1::openapi_inbound())
-            })
-        }
-    }
-
-    impl<'req, F, Fut, Body:IntoResponse, P1:FromParam<'req>, Item1:FromRequest<'req>, Item2:FromRequest<'req>> IntoHandler<fn(((P1,),), Item1, Item2)->Body> for F
-    where
-        F:   Fn(P1, Item1, Item2) -> Fut + SendSyncOnNative + 'static,
-        Fut: Future<Output = Body> + SendOnNative + 'static,
-    {
-        fn n_params(&self) -> usize {1}
-
-        fn into_handler(self) -> Handler {
-            Handler::new(move |req| {
-                // SAFETY: `crate::Route` has already checked the number of params
-                let p1 = unsafe {req.path.assume_one_param()};
-
-                match (P1::from_raw_param(p1), from_request::<Item1>(req), from_request::<Item2>(req)) {
-                    (Ok(p1), Ok(item1), Ok(item2)) => {
-                        let res = self(p1, item1, item2);
-                        Box::pin(async move {res.await.into_response()})
-                    }
-                    (Err(e),_,_) |
-                    (_,Err(e),_) |
-                    (_,_,Err(e)) => __error__(e),
-                }
-            }, #[cfg(feature="openapi")] {
-                with_default_operation_id::<F>(openapi::Operation::with(Body::openapi_responses()))
-                    .param(P1::openapi_param())
-                    .inbound(Item1::openapi_inbound())
-                    .inbound(Item2::openapi_inbound())
-            })
-        }
-    }
-
-    impl<'req, F, Fut, Body:IntoResponse, P1:FromParam<'req>, Item1:FromRequest<'req>, Item2:FromRequest<'req>, Item3:FromRequest<'req>> IntoHandler<fn(((P1,),), Item1, Item2, Item3)->Body> for F
-    where
-        F:   Fn(P1, Item1, Item2, Item3) -> Fut + SendSyncOnNative + 'static,
-        Fut: Future<Output = Body> + SendOnNative + 'static,
-    {
-        fn n_params(&self) -> usize {1}
-
-        fn into_handler(self) -> Handler {
-            Handler::new(move |req| {
-                // SAFETY: `crate::Route` has already checked the number of params
-                let p1 = unsafe {req.path.assume_one_param()};
-
-                match (P1::from_raw_param(p1), from_request::<Item1>(req), from_request::<Item2>(req), from_request::<Item3>(req)) {
-                    (Ok(p1), Ok(item1), Ok(item2), Ok(item3)) => {
-                        let res = self(p1, item1, item2, item3);
-                        Box::pin(async move {res.await.into_response()})
-                    }
-                    (Err(e),_,_,_) |
-                    (_,Err(e),_,_) |
-                    (_,_,Err(e),_) |
-                    (_,_,_,Err(e)) => __error__(e),
-                }
-            }, #[cfg(feature="openapi")] {
-                with_default_operation_id::<F>(openapi::Operation::with(Body::openapi_responses()))
-                    .param(P1::openapi_param())
-                    .inbound(Item1::openapi_inbound())
-                    .inbound(Item2::openapi_inbound())
-                    .inbound(Item3::openapi_inbound())
-            })
-        }
-    }
-
-    impl<'req, F, Fut, Body:IntoResponse, P1:FromParam<'req>, Item1:FromRequest<'req>, Item2:FromRequest<'req>, Item3:FromRequest<'req>, Item4:FromRequest<'req>> IntoHandler<fn(((P1,),), Item1, Item2, Item3, Item4)->Body> for F
-    where
-        F:   Fn(P1, Item1, Item2, Item3, Item4) -> Fut + SendSyncOnNative + 'static,
-        Fut: Future<Output = Body> + SendOnNative + 'static,
-    {
-        fn n_params(&self) -> usize {1}
-
-        fn into_handler(self) -> Handler {
-            Handler::new(move |req| {
-                // SAFETY: `crate::Route` has already checked the number of params
-                let p1 = unsafe {req.path.assume_one_param()};
-
-                match (P1::from_raw_param(p1), from_request::<Item1>(req), from_request::<Item2>(req), from_request::<Item3>(req), from_request::<Item4>(req)) {
-                    (Ok(p1), Ok(item1), Ok(item2), Ok(item3), Ok(item4)) => {
-                        let res = self(p1, item1, item2, item3, item4);
-                        Box::pin(async move {res.await.into_response()})
-                    }
-                    (Err(e),_,_,_,_) |
-                    (_,Err(e),_,_,_) |
-                    (_,_,Err(e),_,_) |
-                    (_,_,_,Err(e),_) |
-                    (_,_,_,_,Err(e)) => __error__(e),
-                }
-            }, #[cfg(feature="openapi")] {
-                with_default_operation_id::<F>(openapi::Operation::with(Body::openapi_responses()))
-                    .param(P1::openapi_param())
-                    .inbound(Item1::openapi_inbound())
-                    .inbound(Item2::openapi_inbound())
-                    .inbound(Item3::openapi_inbound())
-                    .inbound(Item4::openapi_inbound())
-            })
-        }
-    }
-};
-
-const _: (/* one FromParam and FromRequest items */) = {
-    impl<'req, F, Fut, Body:IntoResponse, P1:FromParam<'req>, Item1:FromRequest<'req>> IntoHandler<fn((P1,), Item1)->Body> for F
-    where
-        F:   Fn((P1,), Item1) -> Fut + SendSyncOnNative + 'static,
-        Fut: Future<Output = Body> + SendOnNative + 'static,
-    {
-        fn n_params(&self) -> usize {1}
-
-        fn into_handler(self) -> Handler {
-            Handler::new(move |req| {
-                // SAFETY: `crate::Route` has already checked the number of params
-                let p1 = unsafe {req.path.assume_one_param()};
-
-                match (P1::from_raw_param(p1), from_request::<Item1>(req)) {
-                    (Ok(p1), Ok(item1)) => {
-                        let res = self((p1,), item1);
-                        Box::pin(async move {res.await.into_response()})
-                    }
-                    (Err(e),_) |
-                    (_,Err(e)) => __error__(e),
-                }
-            }, #[cfg(feature="openapi")] {
-                with_default_operation_id::<F>(openapi::Operation::with(Body::openapi_responses()))
-                    .param(P1::openapi_param())
-                    .inbound(Item1::openapi_inbound())
-            })
-        }
-    }
-
-    impl<'req, F, Fut, Body:IntoResponse, P1:FromParam<'req>, Item1:FromRequest<'req>, Item2:FromRequest<'req>> IntoHandler<fn((P1,), Item1, Item2)->Body> for F
-    where
-        F:   Fn((P1,), Item1, Item2) -> Fut + SendSyncOnNative + 'static,
-        Fut: Future<Output = Body> + SendOnNative + 'static,
-    {
-        fn n_params(&self) -> usize {1}
-
-        fn into_handler(self) -> Handler {
-            Handler::new(move |req| {
-                // SAFETY: `crate::Route` has already checked the number of params
-                let p1 = unsafe {req.path.assume_one_param()};
-
-                match (P1::from_raw_param(p1), from_request::<Item1>(req), from_request::<Item2>(req)) {
-                    (Ok(p1), Ok(item1), Ok(item2)) => {
-                        let res = self((p1,), item1, item2);
-                        Box::pin(async move {res.await.into_response()})
-                    }
-                    (Err(e),_,_) |
-                    (_,Err(e),_) |
-                    (_,_,Err(e)) => __error__(e),
-                }
-            }, #[cfg(feature="openapi")] {
-                with_default_operation_id::<F>(openapi::Operation::with(Body::openapi_responses()))
-                    .param(P1::openapi_param())
-                    .inbound(Item1::openapi_inbound())
-                    .inbound(Item2::openapi_inbound())
-            })
-        }
-    }
-
-    impl<'req, F, Fut, Body:IntoResponse, P1:FromParam<'req>, Item1:FromRequest<'req>, Item2:FromRequest<'req>, Item3:FromRequest<'req>> IntoHandler<fn((P1,), Item1, Item2, Item3)->Body> for F
-    where
-        F:   Fn((P1,), Item1, Item2, Item3) -> Fut + SendSyncOnNative + 'static,
-        Fut: Future<Output = Body> + SendOnNative + 'static,
-    {
-        fn n_params(&self) -> usize {1}
-
-        fn into_handler(self) -> Handler {
-            Handler::new(move |req| {
-                // SAFETY: `crate::Route` has already checked the number of params
-                let p1 = unsafe {req.path.assume_one_param()};
-                
-                match (P1::from_raw_param(p1), from_request::<Item1>(req), from_request::<Item2>(req), from_request::<Item3>(req)) {
-                    (Ok(p1), Ok(item1), Ok(item2), Ok(item3)) => {
-                        let res = self((p1,), item1, item2, item3);
-                        Box::pin(async move {res.await.into_response()})
-                    }
-                    (Err(e),_,_,_) |
-                    (_,Err(e),_,_) |
-                    (_,_,Err(e),_) |
-                    (_,_,_,Err(e)) => __error__(e),
-                }
-            }, #[cfg(feature="openapi")] {
-                with_default_operation_id::<F>(openapi::Operation::with(Body::openapi_responses()))
-                    .param(P1::openapi_param())
-                    .inbound(Item1::openapi_inbound())
-                    .inbound(Item2::openapi_inbound())
-                    .inbound(Item3::openapi_inbound())
-            })
-        }
-    }
-
-    impl<'req, F, Fut, Body:IntoResponse, P1:FromParam<'req>, Item1:FromRequest<'req>, Item2:FromRequest<'req>, Item3:FromRequest<'req>, Item4:FromRequest<'req>> IntoHandler<fn((P1,), Item1, Item2, Item3, Item4)->Body> for F
-    where
-        F:   Fn((P1,), Item1, Item2, Item3, Item4) -> Fut + SendSyncOnNative + 'static,
-        Fut: Future<Output = Body> + SendOnNative + 'static,
-    {
-        fn n_params(&self) -> usize {1}
-
-        fn into_handler(self) -> Handler {
-            Handler::new(move |req| {
-                // SAFETY: `crate::Route` has already checked the number of params
-                let p1 = unsafe {req.path.assume_one_param()};
-                
-                match (P1::from_raw_param(p1), from_request::<Item1>(req), from_request::<Item2>(req), from_request::<Item3>(req), from_request::<Item4>(req)) {
-                    (Ok(p1), Ok(item1), Ok(item2), Ok(item3), Ok(item4)) => {
-                        let res = self((p1,), item1, item2, item3, item4);
-                        Box::pin(async move {res.await.into_response()})
-                    }
-                    (Err(e),_,_,_,_) |
-                    (_,Err(e),_,_,_) |
-                    (_,_,Err(e),_,_) |
-                    (_,_,_,Err(e),_) |
-                    (_,_,_,_,Err(e)) => __error__(e),
-                }
-            }, #[cfg(feature="openapi")] {
-                with_default_operation_id::<F>(openapi::Operation::with(Body::openapi_responses()))
-                    .param(P1::openapi_param())
-                    .inbound(Item1::openapi_inbound())
-                    .inbound(Item2::openapi_inbound())
-                    .inbound(Item3::openapi_inbound())
-                    .inbound(Item4::openapi_inbound())
-            })
-        }
-    }
-};
-
-const _: (/* two PathParams and FromRequest items */) = {
-    impl<'req, F, Fut, Body:IntoResponse, P1:FromParam<'req>, P2:FromParam<'req>, Item1:FromRequest<'req>> IntoHandler<fn((P1, P2), Item1)->Body> for F
-    where
-        F:   Fn((P1, P2), Item1) -> Fut + SendSyncOnNative + 'static,
-        Fut: Future<Output = Body> + SendOnNative + 'static,
-    {
-        fn n_params(&self) -> usize {2}
-
-        fn into_handler(self) -> Handler {
-            Handler::new(move |req| {
-                // SAFETY: `crate::Route` has already checked the number of params
-                let (p1, p2) = unsafe {req.path.assume_two_params()};
-
-                match (FromParam::from_raw_param(p1), FromParam::from_raw_param(p2), from_request::<Item1>(req)) {
-                    (Ok(p1), Ok(p2), Ok(item1)) => {
-                        let res = self((p1, p2), item1); 
-                        Box::pin(async move {res.await.into_response()})
-                    }
-                    (Err(e),_,_) |
-                    (_,Err(e),_) |
-                    (_,_,Err(e)) => __error__(e),
-                }
-            }, #[cfg(feature="openapi")] {
-                with_default_operation_id::<F>(openapi::Operation::with(Body::openapi_responses()))
-                    .param(P1::openapi_param())
-                    .param(P2::openapi_param())
-                    .inbound(Item1::openapi_inbound())
-            })
-        }
-    }
-
-    impl<'req, F, Fut, Body:IntoResponse, P1:FromParam<'req>, P2:FromParam<'req>, Item1:FromRequest<'req>, Item2:FromRequest<'req>> IntoHandler<fn((P1, P2), Item1, Item2)->Body> for F
-    where
-        F:   Fn((P1, P2), Item1, Item2) -> Fut + SendSyncOnNative + 'static,
-        Fut: Future<Output = Body> + SendOnNative + 'static,
-    {
-        fn n_params(&self) -> usize {2}
-
-        fn into_handler(self) -> Handler {
-            Handler::new(move |req| {
-                // SAFETY: `crate::Route` has already checked the number of params
-                let (p1, p2) = unsafe {req.path.assume_two_params()};
-
-                match (FromParam::from_raw_param(p1), FromParam::from_raw_param(p2), from_request::<Item1>(req), from_request::<Item2>(req)) {
-                    (Ok(p1), Ok(p2), Ok(item1), Ok(item2)) => {
-                        let res = self((p1, p2), item1, item2);
-                        Box::pin(async move {res.await.into_response()})
-                    }
-                    (Err(e),_,_,_) |
-                    (_,Err(e),_,_) |
-                    (_,_,Err(e),_) |
-                    (_,_,_,Err(e)) => __error__(e),
-                }
-            }, #[cfg(feature="openapi")] {
-                with_default_operation_id::<F>(openapi::Operation::with(Body::openapi_responses()))
-                    .param(P1::openapi_param())
-                    .param(P2::openapi_param())
-                    .inbound(Item1::openapi_inbound())
-                    .inbound(Item2::openapi_inbound())
-            })
-        }
-    }
-
-    impl<'req, F, Fut, Body:IntoResponse, P1:FromParam<'req>, P2:FromParam<'req>, Item1:FromRequest<'req>, Item2:FromRequest<'req>, Item3:FromRequest<'req>> IntoHandler<fn((P1, P2), Item1, Item2, Item3)->Body> for F
-    where
-        F:   Fn((P1, P2), Item1, Item2, Item3) -> Fut + SendSyncOnNative + 'static,
-        Fut: Future<Output = Body> + SendOnNative + 'static,
-    {
-        fn n_params(&self) -> usize {2}
-
-        fn into_handler(self) -> Handler {
-            Handler::new(move |req| {
-                // SAFETY: `crate::Route` has already checked the number of params
-                let (p1, p2) = unsafe {req.path.assume_two_params()};
-
-                match (FromParam::from_raw_param(p1), FromParam::from_raw_param(p2), from_request::<Item1>(req), from_request::<Item2>(req), from_request::<Item3>(req)) {
-                    (Ok(p1), Ok(p2), Ok(item1), Ok(item2), Ok(item3)) => {
-                        let res = self((p1, p2), item1, item2, item3);
-                        Box::pin(async move {res.await.into_response()})
-                    }
-                    (Err(e),_,_,_,_) |
-                    (_,Err(e),_,_,_) |
-                    (_,_,Err(e),_,_) |
-                    (_,_,_,Err(e),_) |
-                    (_,_,_,_,Err(e)) => __error__(e),
-                }
-            }, #[cfg(feature="openapi")] {
-                with_default_operation_id::<F>(openapi::Operation::with(Body::openapi_responses()))
-                    .param(P1::openapi_param())
-                    .param(P2::openapi_param())
-                    .inbound(Item1::openapi_inbound())
-                    .inbound(Item2::openapi_inbound())
-                    .inbound(Item3::openapi_inbound())
-            })
-        }
-    }
-
-    impl<'req, F, Fut, Body:IntoResponse, P1:FromParam<'req>, P2:FromParam<'req>, Item1:FromRequest<'req>, Item2:FromRequest<'req>, Item3:FromRequest<'req>, Item4:FromRequest<'req>> IntoHandler<fn((P1, P2), Item1, Item2, Item3, Item4)->Body> for F
-    where
-        F:   Fn((P1, P2), Item1, Item2, Item3, Item4) -> Fut + SendSyncOnNative + 'static,
-        Fut: Future<Output = Body> + SendOnNative + 'static,
-    {
-        fn n_params(&self) -> usize {2}
-
-        fn into_handler(self) -> Handler {
-            Handler::new(move |req| {
-                // SAFETY: `crate::Route` has already checked the number of params
-                let (p1, p2) = unsafe {req.path.assume_two_params()};
-
-                match (FromParam::from_raw_param(p1), FromParam::from_raw_param(p2), from_request::<Item1>(req), from_request::<Item2>(req), from_request::<Item3>(req), from_request::<Item4>(req)) {
-                    (Ok(p1), Ok(p2), Ok(item1), Ok(item2), Ok(item3), Ok(item4)) => {
-                        let res = self((p1, p2), item1, item2, item3, item4);
-                        Box::pin(async move {res.await.into_response()})
-                    }
-                    (Err(e),_,_,_,_,_) |
-                    (_,Err(e),_,_,_,_) |
-                    (_,_,Err(e),_,_,_) |
-                    (_,_,_,Err(e),_,_) |
-                    (_,_,_,_,Err(e),_) |
-                    (_,_,_,_,_,Err(e)) => __error__(e),
-                }
-            }, #[cfg(feature="openapi")] {
-                with_default_operation_id::<F>(openapi::Operation::with(Body::openapi_responses()))
-                    .param(P1::openapi_param())
-                    .param(P2::openapi_param())
-                    .inbound(Item1::openapi_inbound())
-                    .inbound(Item2::openapi_inbound())
-                    .inbound(Item3::openapi_inbound())
-                    .inbound(Item4::openapi_inbound())
-            })
-        }
-    }
-};
-
+}
 
 #[cfg(test)]
 #[test] fn handler_args() {
-    async fn h0() -> &'static str {""}
-    async fn h1(_param: String) -> Response {todo!()}
-    async fn h2(_param: &str) -> Response {todo!()}
-    async fn h3(_params: (&str, u64)) -> Response {todo!()}
+    use crate::{Path, format::FromParam};
 
-    struct P;
-    impl<'p> FromParam<'p> for P {
+    async fn h0() -> &'static str {""}
+    async fn h1(Path(_param): Path<String>) -> Response {todo!()}
+    async fn h2(Path(_param): Path<&str>) -> Response {todo!()}
+    async fn h3(Path(_params): Path<(&str, u64)>) -> Response {todo!()}
+
+    struct P1<'req>(std::marker::PhantomData<&'req ()>);
+    impl<'p> FromParam<'p> for P1<'p> {
         type Error = std::convert::Infallible;
         fn from_param(_param: std::borrow::Cow<'p, str>) -> Result<Self, Self::Error> {
-            Ok(Self)
+            Ok(Self(Default::default()))
         }
     }
-    async fn h4(_param: P) -> String {format!("")}
+    async fn h4(Path(_param): Path<P1<'_>>) -> String {format!("")}
 
     #[cfg(feature="rt_worker")]
     struct SomeJS {_ptr: *const u8}
