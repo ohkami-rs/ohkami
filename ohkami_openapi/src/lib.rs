@@ -64,7 +64,7 @@ pub trait Schema {
     fn schema() -> impl Into<schema::SchemaRef>;
 }
 const _: () = {
-    impl Schema for &str {
+    impl Schema for str {
         fn schema() -> impl Into<schema::SchemaRef> {
             string()
         }
@@ -154,18 +154,18 @@ const _: () = {
         }
     }
 
-    impl<S: Schema + ToOwned> Schema for std::borrow::Cow<'_, S> {
+    impl<S: Schema + ToOwned + ?Sized> Schema for std::borrow::Cow<'_, S> {
         fn schema() -> impl Into<schema::SchemaRef> {
             S::schema()
         }
     }
-    impl<S: Schema> Schema for std::sync::Arc<S> {
+    impl<S: Schema + ?Sized> Schema for std::sync::Arc<S> {
         fn schema() -> impl Into<schema::SchemaRef> {
             S::schema()
         }
     }
 
-    impl<S: Schema> Schema for &S {
+    impl<S: Schema + ?Sized> Schema for &S {
         fn schema() -> impl Into<schema::SchemaRef> {
             S::schema()
         }
