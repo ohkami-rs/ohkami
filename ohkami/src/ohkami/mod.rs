@@ -28,26 +28,31 @@ use crate::tls::TlsStream;
 /// 
 /// *example.rs*
 /// ```
-/// use ohkami::prelude::*;
+/// use ohkami::{fang::FangAction, IntoResponse, Response, Request};
 /// # use ohkami::serde::Serialize;
-/// # use ohkami::typed::status::{OK, Created};
-/// # use ohkami::format::Json;
-/// # use ohkami::{Fang, FangProc};
+/// # use ohkami::typed::status;
+/// # use ohkami::format::{Path, Json};
 /// 
+/// // custom fangs
+/// #[derive(Clone)]
 /// struct Auth;
-/// impl<I: FangProc> Fang<I> for Auth {
-///     /* 〜 */
-/// #   type Proc = AuthProc;
-/// #   fn chain(&self, inner: I) -> Self::Proc {
-/// #       AuthProc
-/// #   }
-/// # }
-/// # struct AuthProc;
-/// # impl FangProc for AuthProc {
-/// #     async fn bite<'b>(&'b self, req: &'b mut Request) -> Response {
-/// #         Response::NotImplemented()
-/// #     }
-/// # }
+/// impl FangAction for Auth {
+///     async fn fore<'b>(&'b self, req: &'b mut Request) -> Result<(), Response> {
+///         Err(Response::NotImplemented())
+///     }
+/// }
+/// 
+/// // custom error
+/// enum ApiError {
+///     UserNotFound,
+/// }
+/// impl IntoResponse for ApiError {
+///     fn into_response(self) -> Response {
+///         match self {
+///             Self::UserNotFound => Response::InternalServerError()
+///         }
+///     }
+/// }
 /// 
 /// # #[derive(Serialize)]
 /// # struct User {
@@ -56,30 +61,19 @@ use crate::tls::TlsStream;
 /// #     age:  Option<usize>,
 /// # }
 /// # 
-/// # enum APIError {
-/// #     UserNotFound
-/// # }
-/// # impl IntoResponse for APIError {
-/// #     fn into_response(self) -> Response {
-/// #         match self {
-/// #             Self::UserNotFound => Response::InternalServerError()
-/// #         }
-/// #     }
+/// # async fn health_check() -> status::NoContent {
+/// #     status::NoContent
 /// # }
 /// # 
-/// # async fn health_check() -> impl IntoResponse {
-/// #     Status::NoContent
-/// # }
-/// # 
-/// # async fn create_user() -> Created<Json<User>> {
-/// #     Created(Json(User {
+/// # async fn create_user() -> status::Created<Json<User>> {
+/// #     status::Created(Json(User {
 /// #         id:   42,
 /// #         name: String::from("ohkami"),
 /// #         age:  None,
 /// #     }))
 /// # }
 /// # 
-/// # async fn get_user_by_id(id: usize) -> Result<Json<User>, APIError> {
+/// # async fn get_user_by_id(Path(id): Path<usize>) -> Result<Json<User>, ApiError> {
 /// #     Ok(Json(User {
 /// #         id,
 /// #         name: String::from("ohkami"),
@@ -87,9 +81,13 @@ use crate::tls::TlsStream;
 /// #     }))
 /// # }
 /// # 
-/// # async fn update_user(id: usize) -> impl IntoResponse {
-/// #     Status::OK
+/// # async fn update_user(Path(id): Path<usize>) -> status::NoContent {
+/// #     status::NoContent
 /// # }
+/// 
+/// // Ohkami definition
+/// 
+/// use ohkami::{Ohkami, Route};
 /// 
 /// fn my_ohkami() -> Ohkami {
 ///     let api_ohkami = Ohkami::new((
@@ -102,7 +100,7 @@ use crate::tls::TlsStream;
 ///     ));
 /// 
 ///     Ohkami::new((
-///         "/hc" .GET(health_check),
+///         "/hc".GET(health_check),
 ///         "/api".By(api_ohkami),
 ///     ))
 /// }
@@ -112,19 +110,67 @@ use crate::tls::TlsStream;
 /// 
 /// ### handler signature
 /// 
-/// `async ({path params}?, {FromRequest<'_> type}s...) -> {IntoResponse type}`
+/// `async ({FromRequest<'_> type}s...) -> {IntoResponse type}`
 /// 
 /// - handler itself must be `Send` + `Sync` + 'static
 /// - returned `Future` must be `Send` + 'static
 /// 
 /// excpet for `rt_worker`, where `Send` or `Sync` bound is not required.
 /// 
-/// ### path params
+/// For example:
 /// 
-/// A tuple of types that implement `FromParam` trait e.g. `(&str, usize)`.\
-/// If the path contains only one parameter, then you can omit the tuple \
-/// e.g. just `param: &str`.\
-/// (Current ohkami handles at most *2* path params.)
+/// ```
+/// # enum ApiError {}
+/// # impl ohkami::IntoResponse for ApiError {
+/// #    fn into_response(self) -> ohkami::Response {todo!()}
+/// # }
+/// 
+/// use ohkami::serde::Serialize;
+/// use ohkami::typed::status;
+/// use ohkami::format::{Path, Json};
+/// 
+/// #[derive(Serialize)]
+/// struct User {
+///     id:   usize,
+///     name: String,
+///     age:  Option<usize>,
+/// }
+/// 
+/// async fn health_check() -> status::NoContent {
+///     status::NoContent
+/// }
+/// 
+/// async fn create_user() -> status::Created<Json<User>> {
+///     status::Created(Json(User {
+///         id:   42,
+///         name: String::from("ohkami"),
+///         age:  None,
+///     }))
+/// }
+/// 
+/// async fn get_user_by_id(
+///     Path(id): Path<usize>
+/// ) -> Result<Json<User>, ApiError> {
+///     Ok(Json(User {
+///         id,
+///         name: String::from("ohkami"),
+///         age:  Some(2),
+///     }))
+/// }
+/// 
+/// async fn update_user(Path(id): Path<usize>) -> status::NoContent {
+///     status::NoContent
+/// }
+/// 
+/// # /// assert `IntoHandler` impl
+/// # fn __assert__() {
+/// #     fn assert_impl_into_handler<T, H: ohkami::fang::handler::IntoHandler<T>>(h: H) {}
+/// #     assert_impl_into_handler(health_check);
+/// #     assert_impl_into_handler(create_user);
+/// #     assert_impl_into_handler(get_user_by_id);
+/// #     assert_impl_into_handler(update_user);
+/// # }
+/// ```
 /// 
 /// <br>
 /// 
@@ -188,8 +234,6 @@ use crate::tls::TlsStream;
 /// running by `npm run dev`.
 /// 
 /// ```
-/// use ohkami::prelude::*;
-/// # 
 /// # fn my_ohkami() -> ohkami::Ohkami {
 /// #     ohkami::Ohkami::new(())
 /// # }
@@ -223,8 +267,12 @@ use crate::tls::TlsStream;
 /// A way of DI -*Dependency Injection*- is **generics** :
 /// 
 /// ```
-/// use ohkami::prelude::*;
+/// use ohkami::{Ohkami, Route};
+/// use ohkami::format::{Path, Json};
+/// use ohkami::fang::Context;
+/// use ohkami::serde::Serialize;
 /// 
+/// # use ohkami::{IntoResponse, Response};
 /// # //////////////////////////////////////////////////////////////////////
 /// # /// errors
 /// # 
@@ -242,7 +290,7 @@ use crate::tls::TlsStream;
 /// //////////////////////////////////////////////////////////////////////
 /// /// repository
 /// 
-/// trait Repository: Send + Sync + 'static {
+/// trait UserRepository: Send + Sync + 'static {
 ///     fn get_user_name_by_id(
 ///         &self,
 ///         id: i64,
@@ -250,7 +298,7 @@ use crate::tls::TlsStream;
 /// }
 /// 
 /// struct PostgresRepository(sqlx::PgPool);
-/// impl Repository for PostgresRepository {
+/// impl UserRepository for PostgresRepository {
 ///     async fn get_user_name_by_id(&self, id: i64) -> Result<String, MyError> {
 ///         let sql = r#"
 ///             SELECT name FROM users WHERE id = $1
@@ -272,8 +320,8 @@ use crate::tls::TlsStream;
 ///     name: String,
 /// }
 /// 
-/// async fn get_user<R: Repository>(
-///     id: u32,
+/// async fn get_user<R: UserRepository>(
+///     Path(id): Path<u32>,
 ///     Context(r): Context<'_, R>,
 /// ) -> Result<Json<User>, MyError> {
 ///     let user_name = r.get_user_name_by_id(id as i64).await?;
@@ -284,7 +332,7 @@ use crate::tls::TlsStream;
 ///     }))
 /// }
 /// 
-/// fn users_ohkami<R: Repository>() -> Ohkami {
+/// fn users_ohkami<R: UserRepository>() -> Ohkami {
 ///     Ohkami::new((
 ///         "/:id".GET(get_user::<R>),
 ///     ))
@@ -340,39 +388,12 @@ impl Ohkami {
     /// 
     /// ### handler signature
     /// 
-    /// `async ({path params}?, {FromRequest<'_> type}s...) -> {IntoResponse type}`
+    /// `async ({FromRequest<'_> type}s...) -> {IntoResponse type}`
     /// 
     /// On native runtimes or `rt_lambda`,
     /// 
     /// - handler itself must be `Send` + `Sync`
     /// - returned `Future` must be `Send`
-    /// 
-    /// ### path params
-    /// 
-    /// A tuple of types that implement `FromParam` trait e.g. `(&str, usize)`.\
-    /// If the path contains only one parameter, then you can omit the tuple \
-    /// e.g. just `param: &str`.\
-    /// (Current ohkami handles at most *2* path params.)
-    /// 
-    /// ```
-    /// use ohkami::prelude::*;
-    /// 
-    /// struct MyParam;
-    /// impl<'p> ohkami::FromParam<'p> for MyParam {
-    ///     type Error = std::convert::Infallible;
-    ///     fn from_param(param: std::borrow::Cow<'p, str>) -> Result<Self, Self::Error> {
-    ///         Ok(MyParam)
-    ///     }
-    /// }
-    /// 
-    /// async fn handler_1(param: (MyParam,)) -> Response {
-    ///     todo!()
-    /// }
-    /// 
-    /// async fn handler_2(param: &str) -> Response {
-    ///     todo!()
-    /// }
-    /// ```
     /// 
     /// ### nesting
     /// 

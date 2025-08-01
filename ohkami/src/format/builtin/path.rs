@@ -21,9 +21,13 @@ use crate::openapi;
 /// ### example
 /// 
 /// ```no_run
+/// use ohkami::{Ohkami, Route};
 /// use ohkami::format::{Json, Path};
 /// 
 /// # enum MyError {}
+/// # impl ohkami::IntoResponse for MyError {
+/// #     fn into_response(self) -> ohkami::Response {todo!()}
+/// # }
 /// # #[derive(ohkami::serde::Serialize)]
 /// # struct Team {}
 /// # #[derive(ohkami::serde::Serialize)]
@@ -31,20 +35,18 @@ use crate::openapi;
 /// 
 /// async fn get_team_info(
 ///     Path(id): Path<&str>,
-/// ) -> Result<Team, MyError> {
+/// ) -> Result<Json<Team>, MyError> {
 ///     todo!()
 /// }
 /// 
 /// async fn get_user_info(
 ///    Path((team_id, user_id)): Path<(&str, &str)>,
-/// ) -> Result<User, MyError> {
+/// ) -> Result<Json<User>, MyError> {
 ///    todo!()
 /// }
 /// 
 /// #[tokio::main]
 /// async fn main() {
-///     use ohkami::{Ohkami, Route};
-/// 
 ///     Ohkami::new((
 ///         "/teams/:id"
 ///             .GET(get_team_info),
