@@ -83,7 +83,7 @@ const _: () = {
     use crate::testing::*;
 
     async fn lazy_greeting(
-        (name, sleep): (&str, u64)
+        Path((name, sleep)): Path<(&str, u64)>
     ) -> String {
         crate::__rt__::sleep(Duration::from_secs(sleep)).await;
 

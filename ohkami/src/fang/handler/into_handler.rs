@@ -281,6 +281,12 @@ where
     async fn h3(Path(_params): Path<(&str, u64)>) -> Response {todo!()}
 
     struct P1<'req>(std::marker::PhantomData<&'req ()>);
+    #[cfg(feature="openapi")]
+    impl<'p> crate::openapi::Schema for P1<'p> {
+        fn schema() -> impl Into<crate::openapi::SchemaRef> {
+            crate::openapi::string()
+        }
+    }
     impl<'p> FromParam<'p> for P1<'p> {
         type Error = std::convert::Infallible;
         fn from_param(_param: std::borrow::Cow<'p, str>) -> Result<Self, Self::Error> {
