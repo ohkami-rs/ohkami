@@ -19,7 +19,8 @@ pub fn profiles_ohkami() -> Ohkami {
     ))
 }
 
-async fn get_profile(username: &str,
+async fn get_profile(
+    Path(username): Path<&str>,
     Context(auth): Context<'_, JwtPayload>,
     Context(pool): Context<'_, PgPool>
 ) -> Result<Json<ProfileResponse>, RealWorldError> {
@@ -43,7 +44,8 @@ async fn get_profile(username: &str,
     ))
 }
 
-async fn follow(username: &str,
+async fn follow(
+    Path(username): Path<&str>,
     Context(auth): Context<'_, JwtPayload>,
     Context(pool): Context<'_, PgPool>,
 ) -> Result<Json<ProfileResponse>, RealWorldError> {
@@ -80,7 +82,8 @@ async fn follow(username: &str,
     ))
 }
 
-async fn unfollow(username: &str,
+async fn unfollow(
+    Path(username): Path<&str>,
     Context(auth): Context<'_, JwtPayload>,
     Context(pool): Context<'_, PgPool>,
 ) -> Result<Json<ProfileResponse>, RealWorldError> {

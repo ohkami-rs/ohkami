@@ -45,7 +45,7 @@ mod users {
         }))
     }
 
-    async fn get_user_profile(id: i32) -> Json<User> {
+    async fn get_user_profile(Path(id): Path<i32>) -> Json<User> {
         Json(User {
             id,
             name: "unknown".into(),

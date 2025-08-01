@@ -60,7 +60,8 @@
                           "type": "object",
                           "properties": {
                             "age": {
-                              "type": "integer"
+                              "type": "integer",
+                              "format": "uint8"
                             },
                             "username": {
                               "type": "string"
@@ -303,7 +304,8 @@
         "type": "object",
         "properties": {
           "age": {
-            "type": "integer"
+            "type": "integer",
+            "format": "uint8"
           },
           "name": {
             "type": "string"
@@ -323,7 +325,8 @@
                 "type": "object",
                 "properties": {
                   "age": {
-                    "type": "integer"
+                    "type": "integer",
+                    "format": "uint8"
                   },
                   "name": {
                     "type": "string"

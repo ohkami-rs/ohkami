@@ -1,5 +1,5 @@
 use ohkami::prelude::*;
-use ohkami::format::{Json, Query};
+use ohkami::format::{Json, Path, Query};
 use ohkami::typed::status;
 use ohkami::openapi;
 use std::sync::Arc;
@@ -133,7 +133,7 @@ struct CreatePetRequest<'req> {
 /// Find a pet of the `id`.
 /// The parameter `id` must be unsigned 64-bit integer.
 async fn show_pet_by_id(
-    id: u64,
+    Path(id): Path<u64>,
     Context(db): Context<'_, Arc<mock::DB>>,
 ) -> Result<Json<Pet>, Error> {
     let pet = db.read().await.get(&id)
@@ -145,7 +145,7 @@ async fn show_pet_by_id(
     Ok(Json(pet))
 }
 
-async fn edit_pet_profile(_id: u64) {}
+async fn edit_pet_profile(Path(_id): Path<u64>) {}
 
 async fn show_pets_detail() {}
 

@@ -121,7 +121,8 @@
                     "type": "object",
                     "properties": {
                       "age": {
-                        "type": "integer"
+                        "type": "integer",
+                        "format": "uint8"
                       },
                       "id": {
                         "type": "integer",
@@ -156,7 +157,8 @@
                 "type": "object",
                 "properties": {
                   "age": {
-                    "type": "integer"
+                    "type": "integer",
+                    "format": "uint8"
                   },
                   "name": {
                     "type": "string"
@@ -178,7 +180,8 @@
                   "type": "object",
                   "properties": {
                     "age": {
-                      "type": "integer"
+                      "type": "integer",
+                      "format": "uint8"
                     },
                     "id": {
                       "type": "integer",
@@ -211,7 +214,8 @@
             "in": "path",
             "name": "id",
             "schema": {
-              "type": "integer"
+              "type": "integer",
+              "format": "int32"
             },
             "required": true
           }
@@ -225,7 +229,8 @@
                   "type": "object",
                   "properties": {
                     "age": {
-                      "type": "integer"
+                      "type": "integer",
+                      "format": "uint8"
                     },
                     "id": {
                       "type": "integer",

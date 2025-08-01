@@ -77,22 +77,22 @@ const _: () = {
 
     impl Schema for u8 {
         fn schema() -> impl Into<schema::SchemaRef> {
-            integer()
+            integer().format("uint8")
         }
     }
     impl Schema for u16 {
         fn schema() -> impl Into<schema::SchemaRef> {
-            integer()
+            integer().format("uint16")
         }
     }
     impl Schema for u32 {
         fn schema() -> impl Into<schema::SchemaRef> {
-            integer()
+            integer().format("uint32")
         }
     }
     impl Schema for u64 {
         fn schema() -> impl Into<schema::SchemaRef> {
-            integer()
+            integer().format("uint64")
         }
     }
     impl Schema for usize {
@@ -103,12 +103,12 @@ const _: () = {
 
     impl Schema for i8 {
         fn schema() -> impl Into<schema::SchemaRef> {
-            integer()
+            integer().format("int8")
         }
     }
     impl Schema for i16 {
         fn schema() -> impl Into<schema::SchemaRef> {
-            integer()
+            integer().format("int16")
         }
     }
     impl Schema for i32 {

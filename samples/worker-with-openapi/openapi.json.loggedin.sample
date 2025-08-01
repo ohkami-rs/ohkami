@@ -10,7 +10,7 @@
       "description": "local dev"
     },
     {
-      "url": "https://ohkami-worker-with-openapi.{{ ACCOUNT_NAME }}.workers.dev",
+      "url": "https://ohkami-worker-with-openapi.kanarus.workers.dev",
       "description": "production"
     }
   ],
@@ -162,7 +162,8 @@
             "in": "path",
             "name": "id",
             "schema": {
-              "type": "integer"
+              "type": "integer",
+              "format": "int32"
             },
             "required": true
           }
@@ -193,7 +194,8 @@
             "in": "path",
             "name": "id",
             "schema": {
-              "type": "integer"
+              "type": "integer",
+              "format": "int32"
             },
             "required": true
           }
@@ -206,7 +208,8 @@
                 "type": "object",
                 "properties": {
                   "age": {
-                    "type": "integer"
+                    "type": "integer",
+                    "format": "uint8"
                   },
                   "location": {
                     "type": "string"
@@ -286,7 +289,8 @@
         "type": "object",
         "properties": {
           "age": {
-            "type": "integer"
+            "type": "integer",
+            "format": "uint8"
           },
           "id": {
             "type": "integer",
