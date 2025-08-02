@@ -119,7 +119,8 @@ async fn feed_articles(
     }))
 }
 
-async fn get_article_by_slug(slug: &str,
+async fn get_article_by_slug(
+    Path(slug): Path<&str>,
     Context(pool): Context<'_, PgPool>,
 ) -> Result<Json<SingleArticleResponse>, RealWorldError> {
     let article = sqlx::QueryBuilder::new(ArticleEntity::base_query())
@@ -228,7 +229,8 @@ async fn create_article(
     )))
 }
 
-async fn update_article(slug: &str,
+async fn update_article(
+    Path(slug): Path<&str>,
     Json(body): Json<UpdateArticleRequest<'_>>,
     Context(auth): Context<'_, JwtPayload>,
     Context(pool): Context<'_, PgPool>,
@@ -285,7 +287,8 @@ async fn update_article(slug: &str,
     }))
 }
 
-async fn delete_article(slug: &str,
+async fn delete_article(
+    Path(slug): Path<&str>,
     Context(auth): Context<'_, JwtPayload>,
     Context(pool): Context<'_, PgPool>,
 ) -> Result<NoContent, RealWorldError> {
@@ -301,7 +304,8 @@ async fn delete_article(slug: &str,
     }
 }
 
-async fn add_article_comment(slug: &str,
+async fn add_article_comment(
+    Path(slug): Path<&str>,
     Json(body): Json<AddCommentRequest<'_>>,
     Context(auth): Context<'_, JwtPayload>,
     Context(pool): Context<'_, PgPool>,
@@ -354,7 +358,8 @@ async fn add_article_comment(slug: &str,
     )))
 }
 
-async fn get_article_comments(slug: &str,
+async fn get_article_comments(
+    Path(slug): Path<&str>,
     Context(auth): Context<'_, Option<JwtPayload>>,
     Context(pool): Context<'_, PgPool>,
 ) -> Result<Json<MultipleCommentsResponse>, RealWorldError> {
@@ -390,7 +395,8 @@ async fn get_article_comments(slug: &str,
     ))
 }
 
-async fn delete_article_comment_by_id((slug, id): (&str, usize),
+async fn delete_article_comment_by_id(
+    Path((slug, id)): Path<(&str, usize)>,
     Context(auth): Context<'_, JwtPayload>,
     Context(pool): Context<'_, PgPool>,
 ) -> Result<NoContent, RealWorldError> {
@@ -414,7 +420,8 @@ async fn delete_article_comment_by_id((slug, id): (&str, usize),
     }
 }
 
-async fn favorite_article(slug: &str,
+async fn favorite_article(
+    Path(slug): Path<&str>,
     Context(auth): Context<'_, JwtPayload>,
     Context(pool): Context<'_, PgPool>,
 ) -> Result<Json<SingleArticleResponse>, RealWorldError> {
@@ -441,7 +448,8 @@ async fn favorite_article(slug: &str,
     }))
 }
 
-async fn unfavorite_article(slug: &str,
+async fn unfavorite_article(
+    Path(slug): Path<&str>,
     Context(auth): Context<'_, JwtPayload>,
     Context(pool): Context<'_, PgPool>,
 ) -> Result<Json<SingleArticleResponse>, RealWorldError> {

@@ -1,5 +1,4 @@
-use std::borrow::Cow;
-use crate::{util::ErrorMessage, IntoResponse, Request, Response};
+use crate::{IntoResponse, Request, Response};
 
 #[cfg(feature="openapi")]
 use crate::openapi;
@@ -46,6 +45,12 @@ pub trait FromRequest<'req>: Sized {
     fn openapi_inbound() -> openapi::Inbound {
         openapi::Inbound::None
     }
+
+    #[doc(hidden)]
+    /// intent to be used by `format::Path` and by the assertion in `router::base::Router::finalize`
+    fn n_params() -> usize {
+        0
+    }
 }
 const _: () = {
     impl<'req> FromRequest<'req> for &'req Request {
@@ -87,132 +92,6 @@ const _: () = {
             Some(Ok(req.context.worker()))
         }
     }
-};
-
-/// "Retrieved from a path param".
-/// 
-/// ### required
-/// - `type Errpr`
-/// - `fn from_param`
-/// 
-/// NOTE: *MUST NOT impl both `FromRequest` and `FromParam`*.
-pub trait FromParam<'p>: Sized {
-    /// If this extraction never fails, `std::convert::Infallible` is recomended.
-    type Error: IntoResponse;
-
-    /// `param` is already percent-decoded：
-    /// 
-    /// - `Cow::Borrowed(&'p str)` if not encoded in request
-    /// - `Cow::Owned(String)` if encoded and ohkami has decoded
-    fn from_param(param: Cow<'p, str>) -> Result<Self, Self::Error>;
-
-    #[inline(always)]
-    fn from_raw_param(raw_param: &'p [u8]) -> Result<Self, Response> {
-        Self::from_param(
-            ohkami_lib::percent_decode_utf8(raw_param)
-                .map_err(|_e| {
-                    #[cfg(debug_assertions)] crate::WARNING!(
-                        "Failed to decode percent encoded param `{}`: {_e}",
-                        raw_param.escape_ascii()
-                    );
-                    Response::InternalServerError()
-                })?
-        ).map_err(IntoResponse::into_response)
-    }
-
-    #[cfg(feature="openapi")]
-    fn openapi_param() -> openapi::Parameter {
-        openapi::Parameter::in_path(openapi::string())
-    }
-}
-const _: () = {
-    impl<'p> FromParam<'p> for String {
-        type Error = std::convert::Infallible;
-
-        #[inline(always)]
-        fn from_param(param: Cow<'p, str>) -> Result<Self, Self::Error> {
-            Ok(match param {
-                Cow::Owned(s)    => s,
-                Cow::Borrowed(s) => s.into()
-            })
-        }
-    }
-    impl<'p> FromParam<'p> for Cow<'p, str> {
-        type Error = std::convert::Infallible;
-
-        #[inline(always)]
-        fn from_param(param: Cow<'p, str>) -> Result<Self, Self::Error> {
-            Ok(param)
-        }
-    }
-    impl<'p> FromParam<'p> for &'p str {
-        type Error = ErrorMessage;
-
-        #[inline(always)]
-        fn from_param(param: Cow<'p, str>) -> Result<Self, Self::Error> {
-            match param {
-                Cow::Borrowed(s) => Ok(s),
-                Cow::Owned(_) => Err({
-                    #[cold] #[inline(never)]
-                    fn unexpected(param: &str) -> ErrorMessage {                        
-                        crate::WARNING!("\
-                            `&str` can't handle percent encoded parameters. \
-                            Use `Cow<'_, str>` or `String` to handle them. \
-                        ");
-                        ErrorMessage(format!(    
-                            "Unexpected path params `{param}`: percent encoded"
-                        ))
-                    } unexpected(&param)
-                }),
-            }
-        }
-    }
-
-    macro_rules! unsigned_integers {
-        ($( $unsigned_int:ty ),*) => {
-            $(
-                impl<'p> FromParam<'p> for $unsigned_int {
-                    type Error = ErrorMessage;
-
-                    fn from_param(param: Cow<'p, str>) -> Result<Self, Self::Error> {
-                        ::byte_reader::Reader::new(param.as_bytes())
-                            .read_uint()
-                            .map(|i| Self::try_from(i).ok())
-                            .flatten()
-                            .ok_or_else(|| ErrorMessage(format!("Unexpected path param")))
-                    }
-
-                    #[cfg(feature="openapi")]
-                    fn openapi_param() -> openapi::Parameter {
-                        openapi::Parameter::in_path(openapi::integer())
-                    }
-                }
-            )*
-        };
-    } unsigned_integers! { u8, u16, u32, u64, usize }
-
-    macro_rules! signed_integers {
-        ($( $signed_int:ty ),*) => {
-            $(
-                impl<'p> FromParam<'p> for $signed_int {
-                    type Error = ErrorMessage;
-
-                    fn from_param(param: Cow<'p, str>) -> Result<Self, Self::Error> {
-                        ::byte_reader::Reader::new(param.as_bytes())
-                            .read_int()
-                            .map(|i| Self::try_from(i).ok())
-                            .flatten()
-                            .ok_or_else(|| ErrorMessage(format!("Unexpected path param")))
-                    }
-
-                    #[cfg(feature="openapi")]
-                    fn openapi_param() -> openapi::Parameter {
-                        openapi::Parameter::in_path(openapi::integer())
-                    }
-                }
-            )*
-        };
-    } signed_integers! { i8, i16, i32, i64, isize }
 };
 
 pub trait FromBody<'req>: Sized {

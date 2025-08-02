@@ -2,6 +2,8 @@ use crate::FromBody;
 use super::bound::{self, Incoming};
 use ohkami_lib::serde_multipart;
 
+pub use ohkami_lib::serde_multipart::File;
+
 #[cfg(feature="openapi")]
 use crate::openapi;
 
@@ -46,8 +48,6 @@ use crate::openapi;
 /// ## Response
 /// 
 /// not supported
-pub use ohkami_lib::serde_multipart::File;
-
 pub struct Multipart<T: bound::Schema>(pub T);
 
 impl<'req, T: Incoming<'req>> FromBody<'req> for Multipart<T> {

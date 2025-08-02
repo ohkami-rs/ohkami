@@ -29,10 +29,12 @@
                     "type": "object",
                     "properties": {
                       "age": {
-                        "type": "integer"
+                        "type": "integer",
+                        "format": "uint8"
                       },
                       "id": {
-                        "type": "integer"
+                        "type": "integer",
+                        "format": "uint32"
                       },
                       "name": {
                         "type": "string"
@@ -59,7 +61,8 @@
                 "type": "object",
                 "properties": {
                   "age": {
-                    "type": "integer"
+                    "type": "integer",
+                    "format": "uint8"
                   },
                   "name": {
                     "type": "string"
@@ -81,10 +84,12 @@
                   "type": "object",
                   "properties": {
                     "age": {
-                      "type": "integer"
+                      "type": "integer",
+                      "format": "uint8"
                     },
                     "id": {
-                      "type": "integer"
+                      "type": "integer",
+                      "format": "uint32"
                     },
                     "name": {
                       "type": "string"
@@ -109,7 +114,8 @@
             "in": "path",
             "name": "id",
             "schema": {
-              "type": "integer"
+              "type": "integer",
+              "format": "uint32"
             },
             "required": true
           }
@@ -123,10 +129,12 @@
                   "type": "object",
                   "properties": {
                     "age": {
-                      "type": "integer"
+                      "type": "integer",
+                      "format": "uint8"
                     },
                     "id": {
-                      "type": "integer"
+                      "type": "integer",
+                      "format": "uint32"
                     },
                     "name": {
                       "type": "string"

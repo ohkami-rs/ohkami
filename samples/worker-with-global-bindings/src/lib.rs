@@ -114,7 +114,7 @@ mod repository {
 mod routes {
     use crate::repository::{self, UserRepository};
     use ohkami::{Ohkami, Route};
-    use ohkami::format::Json;
+    use ohkami::format::{Path, Json};
     use ohkami::fang::Context;
     use ohkami::typed::status;
     use ohkami::serde::{Serialize, Deserialize};
@@ -157,7 +157,7 @@ mod routes {
     }
 
     pub async fn show_user<U: UserRepository>(
-        id: u32,
+        Path(id): Path<u32>,
         Context(r): Context<'_, U>,
     ) -> Result<Json<User>, crate::Error> {
         let user_row = r.get_by_id(id).await?

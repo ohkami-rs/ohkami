@@ -15,15 +15,15 @@ async fn echo_text(c: WebSocketContext<'_>) -> WebSocket {
 
 
 async fn echo_text_2(
-    name: String,
-    ctx:  WebSocketContext<'_>
+    Path(name): Path<String>,
+    ctx: WebSocketContext<'_>
 ) -> EchoTextSession<'_> {
     EchoTextSession { name, ctx }
 }
 
 struct EchoTextSession<'ws> {
     name: String,
-    ctx:  WebSocketContext<'ws>,
+    ctx: WebSocketContext<'ws>,
 }
 impl IntoResponse for EchoTextSession<'_> {
     fn into_response(self) -> Response {
@@ -41,7 +41,8 @@ impl IntoResponse for EchoTextSession<'_> {
 }
 
 
-async fn echo_text_3(name: String,
+async fn echo_text_3(
+    Path(name): Path<String>,
     ctx: WebSocketContext<'_>
 ) -> WebSocket {
     ctx.upgrade(|c| async {
@@ -111,7 +112,7 @@ async fn echo_text_3(name: String,
 }
 
 
-async fn echo4(name: String, ws: WebSocketContext<'_>) -> WebSocket {
+async fn echo4(Path(name): Path<String>, ws: WebSocketContext<'_>) -> WebSocket {
     ws.upgrade(|mut c| async {
         /* spawn but not join the handle */
         tokio::spawn(async move {

@@ -30,14 +30,13 @@ tokio  = { version = "1",    features = ["full"] }
 2. Write your first code with Ohkami : [examples/quick_start](https://github.com/ohkami-rs/ohkami/blob/main/examples/quick_start/src/main.rs)
 
 ```rust,no_run
-use ohkami::prelude::*;
-use ohkami::typed::status;
+use ohkami::{Ohkami, Route, format::Path, typed::status};
 
 async fn health_check() -> status::NoContent {
     status::NoContent
 }
 
-async fn hello(name: &str) -> String {
+async fn hello(Path(name): Path<&str>) -> String {
     format!("Hello, {name}!")
 }
 
@@ -140,7 +139,7 @@ Ohkami responds with HTTP/1.1 `Transfer-Encoding: chunked`.\
 Use some reverse proxy to do with HTTP/2,3.
 
 ```rust,no_run
-use ohkami::prelude::*;
+use ohkami::{Ohkami, Route};
 use ohkami::sse::DataStream;
 use tokio::time::{sleep, Duration};
 
@@ -169,7 +168,7 @@ Ohkami only handles `ws://`.\
 Use some reverse proxy to do with `wss://`.
 
 ```rust,no_run
-use ohkami::prelude::*;
+use ohkami::{Ohkami, Route};
 use ohkami::ws::{WebSocketContext, WebSocket, Message};
 
 async fn echo_text(ctx: WebSocketContext<'_>) -> WebSocket {
@@ -209,8 +208,8 @@ You don't need to take care of writing accurate methods, paths, parameters, cont
 Of course, you can flexibly customize schemas ( by hand-implemetation of `Schema` ), descriptions or other parts ( by `#[operation]` attribute and `openapi_*` hooks ).
 
 ```rust,ignore
-use ohkami::prelude::*;
-use ohkami::typed::status;
+use ohkami::{Ohkami, Route};
+use ohkami::{format::Json, typed::status};
 use ohkami::openapi;
 
 // Derive `Schema` trait to generate
@@ -300,7 +299,7 @@ rustls-pemfile = "2.2"
 ```
 
 ```rust,no_run
-use ohkami::prelude::*;
+use ohkami::{Ohkami, Route};
 use rustls::ServerConfig;
 use rustls::pki_types::{CertificateDer, PrivateKeyDer};
 use std::fs::File;
@@ -370,8 +369,8 @@ Hello, secure ohkami!
 *builtin payload* : `Json`, `Text`, `Html`, `UrlEncoded`, `Multipart`
 
 ```rust
-use ohkami::prelude::*;
-use ohkami::typed::status;
+use ohkami::{format::Json, typed::status};
+use ohkami::serde::{Deserialize, Serialize};
 
 /* Deserialize for request */
 #[derive(Deserialize)]
@@ -399,8 +398,12 @@ async fn create_user(
 
 ### Typed params
 
+*builtin params* : `Path`, `Query`
+
 ```rust,no_run
-use ohkami::prelude::*;
+use ohkami::{Ohkami, Route};
+use ohkami::format::{Path, Query, Json};
+use ohkami::serde::{Deserialize, Serialize};
 
 #[tokio::main]
 async fn main() {
@@ -414,11 +417,13 @@ async fn main() {
     )).howl("localhost:5000").await
 }
 
-async fn hello(name: &str) -> String {
+async fn hello(Path(name): Path<&str>) -> String {
     format!("Hello, {name}!")
 }
 
-async fn hello_n((name, n): (&str, usize)) -> String {
+async fn hello_n(
+    Path((name, n)): Path<(&str, usize)>
+) -> String {
     vec![format!("Hello, {name}!"); n].join(" ")
 }
 
@@ -524,7 +529,7 @@ async fn create_user(
 ```rust,no_run
 use ohkami::{Response, IntoResponse};
 use ohkami::serde::Serialize;
-use ohkami::format::Json;
+use ohkami::format::{Path, Json};
 use ohkami::fang::Context;
 
 enum MyError {
@@ -545,7 +550,7 @@ struct User {
 }
 
 async fn get_user(
-    id: u32,
+    Path(id): Path<u32>,
     Context(pool): Context<'_, sqlx::PgPool>,
 ) -> Result<Json<User>, MyError> {
     let sql = r#"
@@ -575,12 +580,12 @@ async fn get_user(
 ### Static directory serving
 
 ```rust,no_run
-use ohkami::prelude::*;
+use ohkami::{Ohkami, Route};
 
 #[tokio::main]
 async fn main() {
     Ohkami::new((
-        "/".Dir("./dist"),
+        "/".Dir("./dist"), // `Route::Dir("path/to/dir")`
     )).howl("0.0.0.0:3030").await
 }
 ```
@@ -588,9 +593,9 @@ async fn main() {
 ### File upload
 
 ```rust,no_run
-use ohkami::prelude::*;
 use ohkami::typed::status;
 use ohkami::format::{Multipart, File};
+use ohkami::serde::Deserialize;
 
 #[derive(Deserialize)]
 struct FormData<'req> {
@@ -619,8 +624,9 @@ async fn post_submit(
 ### Pack of Ohkamis
 
 ```rust,no_run
-use ohkami::prelude::*;
-use ohkami::typed::status;
+use ohkami::{Ohkami, Route};
+use ohkami::{format::Json, typed::status};
+use serde::Serialize;
 
 #[derive(Serialize)]
 struct User {
@@ -667,7 +673,7 @@ async fn main() {
 ### Testing
 
 ```rust
-use ohkami::prelude::*;
+use ohkami::{Ohkami, Route};
 use ohkami::testing::*; // <--
 
 fn hello_ohkami() -> Ohkami {
@@ -695,7 +701,10 @@ async fn test_my_ohkami() {
 ### DI by generics
 
 ```rust,no_run
-use ohkami::prelude::*;
+use ohkami::{Ohkami, Route, Response, IntoResponse};
+use ohkami::fang::Context;
+use ohkami::format::{Json, Path};
+use ohkami::serde::Serialize;
 
 //////////////////////////////////////////////////////////////////////
 /// errors
@@ -714,7 +723,7 @@ impl IntoResponse for MyError {
 //////////////////////////////////////////////////////////////////////
 /// repository
 
-trait Repository: Send + Sync + 'static {
+trait UserRepository: Send + Sync + 'static {
     fn get_user_by_id(
         &self,
         id: i64,
@@ -727,8 +736,8 @@ struct UserRow {
     name: String,
 }
 
-struct PostgresRepository(sqlx::PgPool);
-impl Repository for PostgresRepository {
+struct PostgresUserRepository(sqlx::PgPool);
+impl UserRepository for PostgresUserRepository {
     async fn get_user_by_id(&self, id: i64) -> Result<UserRow, MyError> {
         let sql = r#"
             SELECT id, name FROM users WHERE id = $1
@@ -750,8 +759,8 @@ struct User {
     name: String,
 }
 
-async fn get_user<R: Repository>(
-    id: u32,
+async fn get_user<R: UserRepository>(
+    Path(id): Path<u32>,
     Context(r): Context<'_, R>,
 ) -> Result<Json<User>, MyError> {
     let user_row = r.get_user_by_id(id as i64).await?;
@@ -762,7 +771,7 @@ async fn get_user<R: Repository>(
     }))
 }
 
-fn users_ohkami<R: Repository>() -> Ohkami {
+fn users_ohkami<R: UserRepository>() -> Ohkami {
     Ohkami::new((
         "/:id".GET(get_user::<R>),
     ))
@@ -774,7 +783,7 @@ fn users_ohkami<R: Repository>() -> Ohkami {
 #[tokio::main]
 async fn main() {
     Ohkami::new((
-        "/users".By(users_ohkami::<PostgresRepository>()),
+        "/users".By(users_ohkami::<PostgresUserRepository>()),
     )).howl("0.0.0.0:4040").await
 }
 ```

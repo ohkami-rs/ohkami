@@ -5,7 +5,7 @@ async fn health_check() -> status::NoContent {
     status::NoContent
 }
 
-async fn hello(name: &str) -> String {
+async fn hello(Path(name): Path<&str>) -> String {
     format!("Hello, {name}!")
 }
 

@@ -31,10 +31,10 @@ use serde::{Serialize, Deserialize};
 /// 
 /// *example.rs*
 /// ```no_run
-/// use ohkami::prelude::*;
-/// use ohkami::typed::status;
-/// use ohkami::fang::{Jwt, JwtToken};
-/// 
+/// use ohkami::{Ohkami, Route, Response};
+/// use ohkami::{format::{Path, Json}, typed::status};
+/// use ohkami::fang::{Context, Jwt, JwtToken};
+/// use ohkami::serde::{Serialize, Deserialize};
 /// 
 /// #[derive(Serialize, Deserialize)]
 /// struct OurJwtPayload {
@@ -46,7 +46,8 @@ use serde::{Serialize, Deserialize};
 ///     Jwt::default("OUR_JWT_SECRET_KEY")
 /// }
 /// 
-/// async fn hello(name: &str,
+/// async fn hello(
+///     Path(name): Path<&str>,
 ///     Context(auth): Context<'_, OurJwtPayload>
 /// ) -> String {
 ///     format!("Hello {name}, you're authorized!")
@@ -76,7 +77,8 @@ use serde::{Serialize, Deserialize};
 /// async fn main() {
 ///     Ohkami::new((
 ///         "/auth".GET(auth),
-///         "/private".By(Ohkami::new((our_jwt(),
+///         "/private".By(Ohkami::new((
+///             our_jwt(),
 ///             "/hello/:name".GET(hello),
 ///         )))
 ///     )).howl("localhost:3000").await

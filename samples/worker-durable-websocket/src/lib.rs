@@ -13,7 +13,8 @@ async fn main() -> Ohkami {
     ))
 }
 
-async fn ws_chatroom(room_name: &str,
+async fn ws_chatroom(
+    Path(room_name): Path<&str>,
     ctx: WebSocketContext<'_>,
     Bindings { ROOMS, .. }: Bindings,
 ) -> Result<WebSocket, worker::Error> {

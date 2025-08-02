@@ -12,14 +12,14 @@ fn my_ohkami() -> Ohkami {
 
     let profiles_ohkami = Ohkami::new((
         "/:username"
-            .GET(|username: String| async  move {
+            .GET(|Path(username): Path<String>| async  move {
                 format!("get_profile of user `{username}`")
             }),
         "/:username/follow"
-            .POST(|username: String| async move {
+            .POST(|Path(username): Path<String>| async move {
                 format!("follow_user `{username}`")
             })
-            .DELETE(|username: String| async move {
+            .DELETE(|Path(username): Path<String>| async move {
                 format!("unfollow_user `{username}`")
             })
     ));
@@ -32,31 +32,31 @@ fn my_ohkami() -> Ohkami {
             .GET(|| async {"get_feed"}),
         "/:slug".By(Ohkami::new((
             "/"
-                .GET(|slug: String| async move {
+                .GET(|Path(slug): Path<String>| async move {
                     format!("get_article {slug}")
                 })
-                .PUT(|slug: String| async move {
+                .PUT(|Path(slug): Path<String>| async move {
                     format!("put_article {slug}")
                 })
-                .DELETE(|slug: String| async move {
+                .DELETE(|Path(slug): Path<String>| async move {
                     format!("delete_article {slug}")
                 }),
             "/comments"
-                .POST(|slug: String| async move {
+                .POST(|Path(slug): Path<String>| async move {
                     format!("post_comments {slug}")
                 })
-                .GET(|slug: String| async move {
+                .GET(|Path(slug): Path<String>| async move {
                     format!("get_comments {slug}")
                 }),
             "/comments/:id"
-                .DELETE(|(slug, id): (String, usize)| async move {
+                .DELETE(|Path((slug, id)): Path<(String, usize)>| async move {
                     format!("delete_comment {slug} / {id}")
                 }),
             "/favorite"
-                .POST(|slug: String| async move {
+                .POST(|Path(slug): Path<String>| async move {
                     format!("favorite_article {slug}")
                 })
-                .DELETE(|slug: String| async move {
+                .DELETE(|Path(slug): Path<String>| async move {
                     format!("unfavorite_article {slug}")
                 }),
         )))
@@ -377,7 +377,7 @@ fn my_ohkami() -> Ohkami {
         \t `GET /hello/{you name here}`"
     }
 
-    async fn hello(name: std::borrow::Cow<'_, str>) -> String {
+    async fn hello(Path(name): Path<std::borrow::Cow<'_, str>>) -> String {
         format!("Hello, {name}!")
     }
 
@@ -757,7 +757,7 @@ fn method_dependent_fang_applying() {
     BUT the route `/hello` captures only 0 param(s)"
 ]
 fn panics_unexpected_path_params() {
-    async fn hello_name(name: &str) -> String {
+    async fn hello_name(Path(name): Path<&str>) -> String {
         format!("Hello, {name}!")
     }
 
@@ -773,10 +773,10 @@ fn panics_unexpected_path_params() {
     BUT the route `/hello/:name` captures only 1 param(s)"
 ]
 fn check_path_params_counted_accumulatedly() {
-    async fn hello_name(name: &str) -> String {
+    async fn hello_name(Path(name): Path<&str>) -> String {
         format!("Hello, {name}!")
     }
-    async fn hello_name_age((name, age): (&str, u8)) -> String {
+    async fn hello_name_age(Path((name, age)): Path<(&str, u8)>) -> String {
         format!("Hello, {name} ({age})!")
     }
 

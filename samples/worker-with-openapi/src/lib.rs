@@ -46,7 +46,8 @@ pub fn ohkami() -> Ohkami {
     ))
 }
 
-async fn show_user_profile(id: ID,
+async fn show_user_profile(
+    Path(id): Path<ID>,
     Bindings { DB, .. }: Bindings,
 ) -> Result<Json<UserProfile>, APIError> {
     let user_proifle = DB.prepare("SELECT id, name, location, age FROM users WHERE id = ?")
@@ -57,7 +58,8 @@ async fn show_user_profile(id: ID,
     Ok(Json(user_proifle))
 }
 
-async fn edit_profile(id: ID,
+async fn edit_profile(
+    Path(id): Path<ID>,
     Json(req): Json<EditProfileRequest<'_>>,
     Context(TokenAuthed { user_id, .. }): Context<'_, TokenAuthed>,
     Bindings { DB, .. }: Bindings,

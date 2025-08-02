@@ -13,6 +13,9 @@ pub use text::Text;
 mod html;
 pub use html::Html;
 
+mod path;
+pub use path::{Path, FromParam};
+
 mod query;
 pub use query::Query;
 
