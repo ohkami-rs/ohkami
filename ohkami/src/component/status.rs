@@ -1,4 +1,5 @@
-use crate::{IntoBody, IntoResponse, Response, Status};
+use super::body::IntoBody;
+use crate::{IntoResponse, Response, Status};
 use crate::response::{ResponseHeaders, SetHeaders, Content};
 
 #[cfg(feature="openapi")]

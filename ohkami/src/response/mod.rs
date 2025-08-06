@@ -10,7 +10,7 @@ mod content;
 pub use content::Content;
 
 mod into_response;
-pub use into_response::{IntoResponse, IntoBody};
+pub use into_response::IntoResponse;
 
 #[cfg(test)] mod _test;
 #[cfg(test)] mod _test_headers;

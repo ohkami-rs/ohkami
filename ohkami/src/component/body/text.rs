@@ -1,4 +1,4 @@
-use crate::{FromBody, IntoBody};
+use super::{FromBody, IntoBody};
 use std::borrow::Cow;
 
 #[cfg(feature="openapi")]

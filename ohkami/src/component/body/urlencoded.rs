@@ -1,5 +1,5 @@
 use super::super::bound::{self, Incoming, Outgoing};
-use crate::{FromBody, IntoBody};
+use super::{FromBody, IntoBody};
 use ohkami_lib::serde_urlencoded;
 use std::borrow::Cow;
 

@@ -17,7 +17,7 @@ use crate::openapi;
 /// 
 /// ```
 /// # enum MyError {}
-/// use ohkami::format::{Json, Query};
+/// use ohkami::typed::{Json, Query};
 /// use ohkami::serde::Deserialize;
 /// 
 /// #[derive(Deserialize)]

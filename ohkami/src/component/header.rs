@@ -185,13 +185,13 @@ typed_header! {
 pub struct Cookie<Fields>(pub Fields);
 
 impl<'req, Fields: super::bound::Incoming<'req>> FromRequest<'req> for Cookie<Fields> {
-    type Error = crate::typed::status::Unauthorized<String>;
+    type Error = crate::component::status::Unauthorized<String>;
 
     fn from_request(req: &'req Request) -> Option<Result<Self, Self::Error>> {
         req.headers.cookie()
             .map(|raw| ohkami_lib::serde_cookie::from_str::<Fields>(raw)
             .map(Cookie)
-            .map_err(|e| crate::typed::status::Unauthorized(format!(
+            .map_err(|e| crate::component::status::Unauthorized(format!(
                 "missing or invalid Cookie: {e}"
             )))
         )

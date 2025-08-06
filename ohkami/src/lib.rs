@@ -180,11 +180,11 @@ pub(crate) static CONFIG: config::Config = config::Config::new();
 pub mod testing;
 
 mod request;
-pub use request::{Request, Method, FromRequest, FromBody};
+pub use request::{Request, Method, FromRequest};
 pub use ::ohkami_macros::FromRequest;
 
 mod response;
-pub use response::{Response, Status, IntoResponse, IntoBody};
+pub use response::{Response, Status, IntoResponse};
 
 #[cfg(feature="__rt_native__")]
 mod session;
@@ -207,8 +207,8 @@ mod tls;
 
 pub mod header;
 
-pub mod typed;
-pub use typed::{body::Json, header::Cookie, param::{FromParam, Path, Query}};
+pub mod component;
+pub use component::{body::Json, header::Cookie, param::{FromParam, Path, Query}};
 
 #[cfg(feature="sse")]
 pub mod sse;

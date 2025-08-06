@@ -1,5 +1,5 @@
 use super::super::bound::{self, Incoming};
-use crate::FromBody;
+use super::FromBody;
 use ohkami_lib::serde_multipart;
 
 pub use ohkami_lib::serde_multipart::File;

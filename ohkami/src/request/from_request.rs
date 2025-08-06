@@ -1,4 +1,4 @@
-use crate::{IntoResponse, Request, Response};
+use crate::{IntoResponse, Request};
 
 #[cfg(feature="openapi")]
 use crate::openapi;
@@ -93,35 +93,3 @@ const _: () = {
         }
     }
 };
-
-pub trait FromBody<'req>: Sized {
-    /// e.g. `application/json` `text/html`
-    const MIME_TYPE: &'static str;
-
-    fn from_body(body: &'req [u8]) -> Result<Self, impl std::fmt::Display>;
-
-    #[cfg(feature="openapi")]
-    fn openapi_requestbody() -> impl Into<openapi::schema::SchemaRef>;
-}
-impl<'req, B: FromBody<'req>> FromRequest<'req> for B {
-    type Error = Response;
-    fn from_request(req: &'req Request) -> Option<Result<Self, Self::Error>> {
-        #[cold] #[inline(never)]
-        fn reject(msg: impl std::fmt::Display) -> Response {
-            Response::BadRequest().with_text(msg.to_string())
-        }
-
-        if req.headers.content_type()?.starts_with(B::MIME_TYPE) {
-            Some(B::from_body(req.payload()?).map_err(reject))
-        } else {
-            None
-        }
-    }
-
-    #[cfg(feature="openapi")]
-    fn openapi_inbound() -> openapi::Inbound {
-        openapi::Inbound::Body(openapi::RequestBody::of(
-            B::MIME_TYPE, B::openapi_requestbody()
-        ))
-    }
-}

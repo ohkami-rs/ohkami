@@ -16,7 +16,7 @@ mod context;
 use context::Context;
 
 mod from_request; 
-pub use from_request::*;
+pub use from_request::FromRequest;
 
 #[cfg(test)] mod _test_parse;
 #[cfg(test)] mod _test_extract;
