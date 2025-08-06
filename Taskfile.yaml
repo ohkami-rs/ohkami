@@ -44,7 +44,7 @@ tasks:
 
   bench:dryrun:
     status:
-      - (! cargo version | grep -q 'nightly')
+      - '[ "{{.maybe_nightly}}" != nightly ]' # skip if not nightly
     cmds:
       - cd benches && cargo bench --features DEBUG --no-run
       - cd benches_rt/vs_actix-web && cargo check
@@ -53,7 +53,7 @@ tasks:
 
   bench:
     status:
-      - (! cargo version | grep -q 'nightly')
+      - '[ "{{.maybe_nightly}}" != nightly ]' # skip if not nightly
     dir: ./benches
     cmds:
       - task: bench:dryrun
