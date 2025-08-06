@@ -8,6 +8,6 @@ fn main() {
         .expect("Failed building the Runtime")
         .block_on(Ohkami::new((
             "/user/:id"
-                .GET(|id: String| async {id}),
+                .GET(|Path(id): Path<String>| async {id}),
         )).howl("0.0.0.0:3000"))
 }
