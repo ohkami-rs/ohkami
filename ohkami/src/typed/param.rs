@@ -22,7 +22,7 @@ use crate::openapi;
 /// 
 /// #[derive(Deserialize)]
 /// struct ListUsersMeta<'req> {
-///     name_prefix: Option<&'req str>,
+///     prefix: Option<&'req str>,
 ///     min_age: Option<u8>,
 ///     max_age: Option<u8>,
 ///     limit: Option<usize>,
@@ -37,11 +37,15 @@ use crate::openapi;
 /// }
 /// ```
 /// 
+/// ```shell
+/// $ curl 'http://localhost:5050/users?prefix=ohkami&limit=100'
+/// ```
+/// 
 /// ### note
 /// 
 /// When a request doesn't have query parameters, `Option<Query<T>>` in a handler
 /// tries to deserialize an *empty query string*, not skip deserializing
-/// returning `None`.
+/// with returning `None`.
 /// This may be unexpected behavior and just *`Query<T>` with `Option<_>` fields*
 /// is recommended to express *optional query params*.
 pub struct Query<T: bound::Schema>(pub T);
