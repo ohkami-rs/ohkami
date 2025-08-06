@@ -48,7 +48,7 @@ tasks:
     cmds:
       - cd benches && cargo bench --features DEBUG --no-run
       - cd benches_rt/vs_actix-web && cargo check
-      - for: [tokio, smol, nio, glommio]
+      - for: [tokio, smol, glommio] # [tokio, smol, nio, glommio]
         cmd: cd benches_rt/{{.ITEM}} && cargo check
 
   bench:
