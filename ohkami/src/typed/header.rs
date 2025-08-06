@@ -150,7 +150,7 @@ typed_header! {
 /// 
 /// ## Note
 /// 
-/// In `openapi` feature activated, the type is also required to impl `openapi::Schema`.
+/// When `openapi` feature activated, the type is also required to impl `openapi::Schema`.
 /// 
 /// ## Example
 /// 
@@ -184,7 +184,7 @@ typed_header! {
 /// ```
 pub struct Cookie<Fields>(pub Fields);
 
-impl<'req, Fields: crate::format::bound::Incoming<'req>> FromRequest<'req> for Cookie<Fields> {
+impl<'req, Fields: super::bound::Incoming<'req>> FromRequest<'req> for Cookie<Fields> {
     type Error = crate::typed::status::Unauthorized<String>;
 
     fn from_request(req: &'req Request) -> Option<Result<Self, Self::Error>> {

@@ -205,12 +205,10 @@ pub use fang::{handler, Fang, FangProc};
 #[cfg(all(feature="__rt_native__", feature="rt_tokio", feature="tls"))]
 mod tls;
 
-pub mod format;
-pub use crate::format::{Path, Query};
-
 pub mod header;
 
 pub mod typed;
+pub use typed::{body::Json, header::Cookie, param::{FromParam, Path, Query}};
 
 #[cfg(feature="sse")]
 pub mod sse;
@@ -231,10 +229,9 @@ mod x_worker;
 pub use x_worker::*;
 
 pub mod prelude {
-    pub use crate::{Request, Response, IntoResponse, Method, Status};
+    pub use crate::{Request, Response, IntoResponse, Method, Status, Path, Query, Json};
     pub use crate::util::FangAction;
     pub use crate::serde::{Serialize, Deserialize};
-    pub use crate::format::{Path, Query, Json};
     pub use crate::fang::Context;
 
     #[cfg(feature="__rt__")]

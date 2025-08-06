@@ -1,5 +1,5 @@
+use super::super::bound::{self, Incoming, Outgoing};
 use crate::{FromBody, IntoBody};
-use super::bound::{self, Incoming, Outgoing};
 use std::borrow::Cow;
 
 #[cfg(feature="openapi")]

@@ -273,7 +273,7 @@ where
 
 #[cfg(test)]
 #[test] fn handler_args() {
-    use crate::{Path, format::FromParam};
+    use crate::{Path, FromParam};
 
     async fn h0() -> &'static str {""}
     async fn h1(Path(_param): Path<String>) -> Response {todo!()}
