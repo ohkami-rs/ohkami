@@ -790,7 +790,12 @@ fn users_ohkami<R: UserRepository>() -> Ohkami {
 
 #[tokio::main]
 async fn main() {
+    let pool = sqlx::PgPool::connect("postgres://ohkami:password@localhost:5432/db")
+        .await
+        .expect("failed to connect to database");
+    
     Ohkami::new((
+        Context::new(PostgresUserRepository(pool)),
         "/users".By(users_ohkami::<PostgresUserRepository>()),
     )).howl("0.0.0.0:4040").await
 }
