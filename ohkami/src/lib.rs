@@ -200,15 +200,15 @@ mod ohkami;
 pub use ohkami::{Ohkami, Route};
 
 pub mod fang;
-pub use fang::{handler, Fang, FangProc};
+pub use fang::{handler, Fang, FangProc, FangAction};
 
 #[cfg(all(feature="__rt_native__", feature="rt_tokio", feature="tls"))]
 mod tls;
 
 pub mod header;
 
-pub mod component;
-pub use component::{body::Json, header::Cookie, param::{FromParam, Path, Query}};
+pub mod handle;
+pub use handle::{Json, Cookie, Path, Query};
 
 #[cfg(feature="sse")]
 pub mod sse;

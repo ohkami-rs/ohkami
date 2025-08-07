@@ -14,7 +14,7 @@
 //! ## Example
 //! 
 //! ```
-//! use ohkami::component::Json;
+//! use ohkami::handle::Json;
 //! use ohkami::serde::{Serialize, Deserialize};
 //! 
 //! #[derive(Deserialize)]

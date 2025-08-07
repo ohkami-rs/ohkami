@@ -31,7 +31,7 @@ tokio  = { version = "1",    features = ["full"] }
 
 ```rust,no_run
 use ohkami::{Ohkami, Route};
-use ohkami::component::{Path, status};
+use ohkami::handle::{Path, status};
 
 async fn health_check() -> status::NoContent {
     status::NoContent
@@ -210,7 +210,7 @@ Of course, you can flexibly customize schemas ( by hand-implemetation of `Schema
 
 ```rust,ignore
 use ohkami::{Ohkami, Route};
-use ohkami::component::{Json, status};
+use ohkami::handle::{Json, status};
 use ohkami::openapi;
 
 // Derive `Schema` trait to generate
@@ -365,12 +365,15 @@ Hello, secure ohkami!
 
 ## Snippets
 
-### Typed payload
+### Typed body
 
-*builtin payload* : `Json`, `Text`, `Html`, `UrlEncoded`, `Multipart`
+Ohkami provides `handle` APIs: handler parts for declarative way to
+extract request data and construct response data.
+
+*builtin body handles* : `Json`, `Text`, `Html`, `UrlEncoded`, `Multipart`
 
 ```rust
-use ohkami::component::{Json, status};
+use ohkami::handle::{Json, status};
 use ohkami::serde::{Deserialize, Serialize};
 
 /* Deserialize for request */
@@ -399,11 +402,11 @@ async fn create_user(
 
 ### Typed params
 
-*builtin params* : `Path`, `Query`
+*builtin param handles* : `Path`, `Query`
 
 ```rust,no_run
 use ohkami::{Ohkami, Route};
-use ohkami::component::{Path, Query, Json};
+use ohkami::handle::{Path, Query, Json};
 use ohkami::serde::{Deserialize, Serialize};
 
 #[tokio::main]
@@ -501,7 +504,8 @@ async fn main() {
 
 ```rust,no_run
 use ohkami::{Ohkami, Route};
-use ohkami::component::status;
+use ohkami::handle::status;
+use ohkami::fang::Context;
 use sqlx::postgres::{PgPoolOptions, PgPool};
 
 #[tokio::main]
@@ -529,7 +533,7 @@ async fn create_user(
 
 ```rust,no_run
 use ohkami::{Response, IntoResponse};
-use ohkami::component::{Path, Json};
+use ohkami::handle::{Path, Json};
 use ohkami::serde::Serialize;
 use ohkami::fang::Context;
 
@@ -593,8 +597,10 @@ async fn main() {
 
 ### File upload
 
+`Multipart` built-in `body` handle and `File` helper:
+
 ```rust,no_run
-use ohkami::component::{status, body::{Multipart, File}};
+use ohkami::handle::{status, body::{Multipart, File}};
 use ohkami::serde::Deserialize;
 
 #[derive(Deserialize)]
@@ -623,9 +629,11 @@ async fn post_submit(
 
 ### Pack of Ohkamis
 
+Nest `Ohkami`s by `Route::By`:
+
 ```rust,no_run
 use ohkami::{Ohkami, Route};
-use ohkami::component::{Json, status};
+use ohkami::handle::{Json, status};
 use serde::Serialize;
 
 #[derive(Serialize)]
@@ -702,7 +710,7 @@ async fn test_my_ohkami() {
 
 ```rust,no_run
 use ohkami::{Ohkami, Route, Response, IntoResponse};
-use ohkami::component::{Json, Path};
+use ohkami::handle::{Json, Path};
 use ohkami::fang::Context;
 use ohkami::serde::Serialize;
 

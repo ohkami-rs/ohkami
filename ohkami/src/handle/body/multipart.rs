@@ -21,7 +21,7 @@ use crate::openapi;
 /// 
 /// ```
 /// # enum MyError {}
-/// use ohkami::component::body::{Multipart, File};
+/// use ohkami::handle::body::{Multipart, File};
 /// use ohkami::serde::Deserialize;
 /// 
 /// #[derive(Deserialize)]

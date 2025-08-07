@@ -17,7 +17,7 @@ use crate::openapi;
 /// 
 /// ```
 /// # enum MyError {}
-/// use ohkami::component::{Json, Query};
+/// use ohkami::handle::{Json, Query};
 /// use ohkami::serde::Deserialize;
 /// 
 /// #[derive(Deserialize)]
@@ -93,7 +93,7 @@ impl<'req, T: bound::Incoming<'req>> FromRequest<'req> for Query<T> {
 /// 
 /// ```no_run
 /// use ohkami::{Ohkami, Route};
-/// use ohkami::component::{Json, Path};
+/// use ohkami::handle::{Json, Path};
 /// 
 /// # enum MyError {}
 /// # impl ohkami::IntoResponse for MyError {

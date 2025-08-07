@@ -13,7 +13,7 @@
 //! ## Example
 //! 
 //! ```
-//! use ohkami::component::{Path, Json, status};
+//! use ohkami::handle::{Path, Json, status};
 //! use ohkami::serde::{Serialize, Deserialize};
 //! 
 //! #[derive(Deserialize)]

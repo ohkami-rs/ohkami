@@ -30,7 +30,7 @@ use crate::tls::TlsStream;
 /// ```
 /// use ohkami::{fang::FangAction, IntoResponse, Response, Request};
 /// # use ohkami::serde::Serialize;
-/// # use ohkami::component::{status, Path, Json};
+/// # use ohkami::handle::{status, Path, Json};
 /// 
 /// // custom fangs
 /// #[derive(Clone)]
@@ -125,7 +125,7 @@ use crate::tls::TlsStream;
 /// # }
 /// 
 /// use ohkami::serde::Serialize;
-/// use ohkami::component::{status, Path, Json};
+/// use ohkami::handle::{status, Path, Json};
 /// 
 /// #[derive(Serialize)]
 /// struct User {
@@ -266,7 +266,7 @@ use crate::tls::TlsStream;
 /// 
 /// ```
 /// use ohkami::{Ohkami, Route};
-/// use ohkami::component::{Path, Json};
+/// use ohkami::handle::{Path, Json};
 /// use ohkami::fang::Context;
 /// use ohkami::serde::Serialize;
 /// 
@@ -506,7 +506,7 @@ impl Ohkami {
     /// *example.rs*
     /// ```no_run
     /// use ohkami::{Ohkami, Route};
-    /// use ohkami::component::status;
+    /// use ohkami::handle::status;
     /// 
     /// async fn hello() -> &'static str {
     ///     "Hello, ohkami!"
@@ -773,7 +773,7 @@ impl Ohkami {
     /// ### example
     /// 
     /// ```no_run
-    /// use ohkami::Ohkami;
+    /// use ohkami::{Ohkami, Route};
     /// use ohkami::openapi::{OpenAPI, Server};
     /// 
     /// // An ordinal Ohkami definition, not special

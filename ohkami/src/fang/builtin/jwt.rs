@@ -32,7 +32,7 @@ use serde::{Serialize, Deserialize};
 /// *example.rs*
 /// ```no_run
 /// use ohkami::{Ohkami, Route, Response};
-/// use ohkami::{format::{Path, Json}, typed::status};
+/// use ohkami::handle::{Path, Json, status};
 /// use ohkami::fang::{Context, Jwt, JwtToken};
 /// use ohkami::serde::{Serialize, Deserialize};
 /// 
