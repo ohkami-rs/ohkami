@@ -48,8 +48,8 @@ macro_rules! typed_header {
         /// here extracting `Authorization` header value as `&str`.
         /// 
         /// ```no_run
-        /// use ohkami::prelude::*;
-        /// use ohkami::typed::header;
+        /// use ohkami::{Ohkami, Route};
+        /// use ohkami::handle::header;
         /// 
         /// async fn private_handler(
         ///     header::Authorization(a): header::Authorization<&str>,
@@ -150,13 +150,13 @@ typed_header! {
 /// 
 /// ## Note
 /// 
-/// In `openapi` feature activated, the type is also required to impl `openapi::Schema`.
+/// When `openapi` feature activated, the type is also required to impl `openapi::Schema`.
 /// 
 /// ## Example
 /// 
 /// ```no_run
 /// use ohkami::prelude::*;
-/// use ohkami::typed::header;
+/// use ohkami::handle::header;
 /// 
 /// #[derive(Deserialize)]
 /// struct CookieSchema<'req> {
@@ -184,14 +184,14 @@ typed_header! {
 /// ```
 pub struct Cookie<Fields>(pub Fields);
 
-impl<'req, Fields: crate::format::bound::Incoming<'req>> FromRequest<'req> for Cookie<Fields> {
-    type Error = crate::typed::status::Unauthorized<String>;
+impl<'req, Fields: super::bound::Incoming<'req>> FromRequest<'req> for Cookie<Fields> {
+    type Error = crate::handle::status::Unauthorized<String>;
 
     fn from_request(req: &'req Request) -> Option<Result<Self, Self::Error>> {
         req.headers.cookie()
             .map(|raw| ohkami_lib::serde_cookie::from_str::<Fields>(raw)
             .map(Cookie)
-            .map_err(|e| crate::typed::status::Unauthorized(format!(
+            .map_err(|e| crate::handle::status::Unauthorized(format!(
                 "missing or invalid Cookie: {e}"
             )))
         )

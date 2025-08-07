@@ -7,7 +7,7 @@ use error::Error;
 use models::{ChatMessage, ChatCompletions, Role};
 
 use ohkami::prelude::*;
-use ohkami::format::Text;
+use ohkami::handle::body::Text;
 use ohkami::sse::DataStream;
 use ohkami::util::StreamExt;
 

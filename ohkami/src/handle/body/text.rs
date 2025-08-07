@@ -1,4 +1,4 @@
-use crate::{FromBody, IntoBody};
+use super::{FromBody, IntoBody};
 use std::borrow::Cow;
 
 #[cfg(feature="openapi")]
@@ -14,7 +14,7 @@ use crate::openapi;
 /// ### example
 /// 
 /// ```
-/// use ohkami::format::Text;
+/// use ohkami::handle::body::Text;
 /// 
 /// async fn accept_text(
 ///     Text(text): Text<&str>,
@@ -37,7 +37,7 @@ use crate::openapi;
 /// ### example
 /// 
 /// ```
-/// use ohkami::format::Text;
+/// use ohkami::handle::body::Text;
 /// 
 /// async fn handler() -> Text<&'static str> {
 ///     Text(r#"

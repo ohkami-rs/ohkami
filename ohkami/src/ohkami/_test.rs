@@ -516,7 +516,7 @@ fn method_dependent_fang_applying() {
     {
         #[derive(Clone)]
         struct SomeFang;
-        impl crate::prelude::FangAction for SomeFang {}
+        impl crate::FangAction for SomeFang {}
 
         async fn handler() {}
 

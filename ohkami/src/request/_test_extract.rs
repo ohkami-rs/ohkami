@@ -2,7 +2,7 @@
 
 use crate::prelude::*;
 use crate::testing::*;
-use crate::{typed::status, format::{Json, Query}};
+use crate::handle::{status, Json, Query};
 use ::serde::Deserialize;
 
 #[cfg(feature="openapi")]

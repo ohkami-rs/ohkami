@@ -6,10 +6,9 @@ use error::APIError;
 use fang::{TokenAuth, TokenAuthed, Logger};
 use model::*;
 
-use ohkami::prelude::*;
-use ohkami::fang::BasicAuth;
-use ohkami::typed::status;
-use ohkami::format::Json;
+use ohkami::{Ohkami, Route};
+use ohkami::fang::{BasicAuth, Context};
+use ohkami::handle::{status, Path, Json};
 
 #[ohkami::bindings]
 struct Bindings;

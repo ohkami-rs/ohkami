@@ -1,5 +1,5 @@
-use crate::{FromBody, IntoBody};
-use super::bound::{self, Incoming, Outgoing};
+use super::super::bound::{self, Incoming, Outgoing};
+use super::{FromBody, IntoBody};
 use std::borrow::Cow;
 
 #[cfg(feature="openapi")]
@@ -19,7 +19,7 @@ use crate::openapi;
 /// 
 /// ```
 /// # enum MyError {}
-/// use ohkami::format::Json;
+/// use ohkami::handle::Json;
 /// use ohkami::serde::Deserialize;
 /// 
 /// #[derive(Deserialize)]
@@ -44,7 +44,7 @@ use crate::openapi;
 /// 
 /// ```
 /// # enum MyError {}
-/// use ohkami::format::Json;
+/// use ohkami::handle::Json;
 /// use ohkami::serde::Serialize;
 /// 
 /// #[derive(Serialize)]

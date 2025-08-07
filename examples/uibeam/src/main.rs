@@ -1,6 +1,6 @@
 use ohkami::prelude::*;
 use ohkami::serde::Deserialize;
-use ohkami::format::{Query, Html};
+use ohkami::handle::{Query, body::Html};
 use uibeam::{UI, Beam};
 
 struct Layout {

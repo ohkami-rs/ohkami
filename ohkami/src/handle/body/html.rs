@@ -1,4 +1,4 @@
-use crate::IntoBody;
+use super::IntoBody;
 use std::borrow::Cow;
 
 #[cfg(feature="openapi")]
@@ -21,7 +21,7 @@ use crate::openapi;
 /// ### example
 /// 
 /// ```
-/// use ohkami::format::Html;
+/// use ohkami::handle::body::Html;
 /// 
 /// async fn handler() -> Html<&'static str> {
 ///     Html(r#"

@@ -30,7 +30,8 @@ tokio  = { version = "1",    features = ["full"] }
 2. Write your first code with Ohkami : [examples/quick_start](https://github.com/ohkami-rs/ohkami/blob/main/examples/quick_start/src/main.rs)
 
 ```rust,no_run
-use ohkami::{Ohkami, Route, format::Path, typed::status};
+use ohkami::{Ohkami, Route};
+use ohkami::handle::{Path, status};
 
 async fn health_check() -> status::NoContent {
     status::NoContent
@@ -209,7 +210,7 @@ Of course, you can flexibly customize schemas ( by hand-implemetation of `Schema
 
 ```rust,ignore
 use ohkami::{Ohkami, Route};
-use ohkami::{format::Json, typed::status};
+use ohkami::handle::{Json, status};
 use ohkami::openapi;
 
 // Derive `Schema` trait to generate
@@ -364,12 +365,15 @@ Hello, secure ohkami!
 
 ## Snippets
 
-### Typed payload
+### Typed body
 
-*builtin payload* : `Json`, `Text`, `Html`, `UrlEncoded`, `Multipart`
+Ohkami provides `handle` APIs: handler parts for declarative way to
+extract request data and construct response data.
+
+*builtin body handles* : `Json`, `Text`, `Html`, `UrlEncoded`, `Multipart`
 
 ```rust
-use ohkami::{format::Json, typed::status};
+use ohkami::handle::{Json, status};
 use ohkami::serde::{Deserialize, Serialize};
 
 /* Deserialize for request */
@@ -398,11 +402,11 @@ async fn create_user(
 
 ### Typed params
 
-*builtin params* : `Path`, `Query`
+*builtin param handles* : `Path`, `Query`
 
 ```rust,no_run
 use ohkami::{Ohkami, Route};
-use ohkami::format::{Path, Query, Json};
+use ohkami::handle::{Path, Query, Json};
 use ohkami::serde::{Deserialize, Serialize};
 
 #[tokio::main]
@@ -462,7 +466,7 @@ There are two types of fangs : *global fangs* and *local fangs*. While global fa
 - `Enamel` *( experimantal; security headers )*
 
 ```rust,no_run
-use ohkami::prelude::*;
+use ohkami::{Ohkami, Route, FangAction, Request, Response};
 
 #[derive(Clone)]
 struct GreetingFang(usize);
@@ -499,8 +503,9 @@ async fn main() {
 ### Database connection management with `Context`
 
 ```rust,no_run
-use ohkami::prelude::*;
-use ohkami::typed::status;
+use ohkami::{Ohkami, Route};
+use ohkami::handle::status;
+use ohkami::fang::Context;
 use sqlx::postgres::{PgPoolOptions, PgPool};
 
 #[tokio::main]
@@ -528,8 +533,8 @@ async fn create_user(
 
 ```rust,no_run
 use ohkami::{Response, IntoResponse};
+use ohkami::handle::{Path, Json};
 use ohkami::serde::Serialize;
-use ohkami::format::{Path, Json};
 use ohkami::fang::Context;
 
 enum MyError {
@@ -592,9 +597,10 @@ async fn main() {
 
 ### File upload
 
+`Multipart` built-in `body` handle and `File` helper:
+
 ```rust,no_run
-use ohkami::typed::status;
-use ohkami::format::{Multipart, File};
+use ohkami::handle::{status, body::{Multipart, File}};
 use ohkami::serde::Deserialize;
 
 #[derive(Deserialize)]
@@ -623,9 +629,11 @@ async fn post_submit(
 
 ### Pack of Ohkamis
 
+Nest `Ohkami`s by `Route::By`:
+
 ```rust,no_run
 use ohkami::{Ohkami, Route};
-use ohkami::{format::Json, typed::status};
+use ohkami::handle::{Json, status};
 use serde::Serialize;
 
 #[derive(Serialize)]
@@ -702,8 +710,8 @@ async fn test_my_ohkami() {
 
 ```rust,no_run
 use ohkami::{Ohkami, Route, Response, IntoResponse};
+use ohkami::handle::{Json, Path};
 use ohkami::fang::Context;
-use ohkami::format::{Json, Path};
 use ohkami::serde::Serialize;
 
 //////////////////////////////////////////////////////////////////////

@@ -1,5 +1,5 @@
 mod health_handler {
-    use ohkami::typed::status::NoContent;
+    use ohkami::handle::status::NoContent;
 
     pub async fn health_check() -> NoContent {
         NoContent
@@ -8,7 +8,7 @@ mod health_handler {
 
 
 mod hello_handler {
-    use ohkami::format::{Query, Json};
+    use ohkami::handle::{Query, Json};
     use ohkami::serde::Deserialize;
 
     #[derive(Deserialize)]
@@ -93,7 +93,7 @@ mod fangs {
 
 #[tokio::main]
 async fn main() {
-    use ohkami::prelude::*;
+    use ohkami::{Ohkami, Route};
 
     tracing_subscriber::fmt()
         .with_max_level(tracing::Level::INFO)

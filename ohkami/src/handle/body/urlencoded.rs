@@ -1,5 +1,5 @@
-use crate::{FromBody, IntoBody};
-use super::bound::{self, Incoming, Outgoing};
+use super::super::bound::{self, Incoming, Outgoing};
+use super::{FromBody, IntoBody};
 use ohkami_lib::serde_urlencoded;
 use std::borrow::Cow;
 
@@ -20,7 +20,7 @@ use crate::openapi;
 /// 
 /// ```
 /// # enum MyError {}
-/// use ohkami::format::UrlEncoded;
+/// use ohkami::handle::body::UrlEncoded;
 /// use ohkami::serde::Deserialize;
 /// 
 /// #[derive(Deserialize)]
@@ -45,7 +45,7 @@ use crate::openapi;
 /// 
 /// ```
 /// # enum MyError {}
-/// use ohkami::format::UrlEncoded;
+/// use ohkami::handle::body::UrlEncoded;
 /// use ohkami::serde::Serialize;
 /// 
 /// #[derive(Serialize)]

@@ -1,5 +1,5 @@
-use crate::FromBody;
-use super::bound::{self, Incoming};
+use super::super::bound::{self, Incoming};
+use super::FromBody;
 use ohkami_lib::serde_multipart;
 
 pub use ohkami_lib::serde_multipart::File;
@@ -21,7 +21,7 @@ use crate::openapi;
 /// 
 /// ```
 /// # enum MyError {}
-/// use ohkami::format::{Multipart, File};
+/// use ohkami::handle::body::{Multipart, File};
 /// use ohkami::serde::Deserialize;
 /// 
 /// #[derive(Deserialize)]
