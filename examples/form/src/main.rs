@@ -1,8 +1,6 @@
 use ohkami::prelude::*;
-use ohkami::typed::status::NoContent;
-use ohkami::format::{Multipart, File};
+use ohkami::handle::{status::NoContent, body::{Multipart, File}};
 use ohkami::serde::Deserialize;
-
 
 struct FormTemplate;
 impl ohkami::IntoResponse for FormTemplate {

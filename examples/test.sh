@@ -13,7 +13,7 @@ for directory in ./*/; do
     fi
 done
 
-# Now, run tests for each example if needed
+# Now, additionally run tests for each example if needed
 
 cd $EXAMPLES/static_files && \
     cargo test
@@ -27,7 +27,7 @@ cd $EXAMPLES/jwt && \
 cd $EXAMPLES/jwt && \
     OHKAMI_REQUEST_BUFSIZE=4096 cargo test
 
-cd $EXAMPLES/html_layout && \
+cd $EXAMPLES/uibeam && \
     cargo build && \
     (timeout -sKILL 5 cargo run &) && \
     sleep 1 && \

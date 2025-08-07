@@ -56,6 +56,9 @@
 use crate::{Request, Response, FromRequest, IntoResponse};
 use std::borrow::Cow;
 
+#[cfg(feature="openapi")]
+use crate::openapi;
+
 pub trait FromBody<'req>: Sized {
     /// e.g. `application/json` `text/html`
     const MIME_TYPE: &'static str;
