@@ -206,7 +206,11 @@ to generate consistent OpenAPI document.
 
 You don't need to take care of writing accurate methods, paths, parameters, contents, ... for this OpenAPI feature; All they are done by Ohkami.
 
-Of course, you can flexibly customize schemas ( by hand-implemetation of `Schema` ), descriptions or other parts ( by `#[operation]` attribute and `openapi_*` hooks ).
+Of course, you can flexibly
+
+- customize schemas by manual implemetation of `Schema` trait
+- customize descriptions or other parts by `#[operation]` attribute and `openapi_*` hooks of `FromRequest`, `IntoResponse`, `Fang (Action)`
+- put `tag`s for grouping operations by `openapi::Tag` fang
 
 ```rust,ignore
 use ohkami::{Ohkami, Route};
@@ -272,7 +276,7 @@ async fn main() {
 }
 ```
 
-- Currently, only Json is supported as the document format.
+- Currently, only JSON is supported as the document format.
 - When the binary size matters, you should prepare a feature flag activating `ohkami/openapi` in your package, and put all your codes around `openapi` behind that feature via `#[cfg(feature = ...)]` or `#[cfg_attr(feature = ...)]`.
 - In `rt_worker`, `.generate` is not available because `Ohkami` can't have access to your local filesystem by `wasm32` binary on Minifalre. So ohkami provides [a CLI tool](./scripts/workers_openapi.js) to generate document from `#[ohkami::worker] Ohkami` with `openapi` feature.
 
