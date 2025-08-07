@@ -48,8 +48,8 @@ macro_rules! typed_header {
         /// here extracting `Authorization` header value as `&str`.
         /// 
         /// ```no_run
-        /// use ohkami::prelude::*;
-        /// use ohkami::typed::header;
+        /// use ohkami::{Ohkami, Route};
+        /// use ohkami::component::header;
         /// 
         /// async fn private_handler(
         ///     header::Authorization(a): header::Authorization<&str>,
@@ -156,7 +156,7 @@ typed_header! {
 /// 
 /// ```no_run
 /// use ohkami::prelude::*;
-/// use ohkami::typed::header;
+/// use ohkami::component::header;
 /// 
 /// #[derive(Deserialize)]
 /// struct CookieSchema<'req> {

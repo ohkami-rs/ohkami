@@ -21,7 +21,7 @@ use crate::openapi;
 /// ### example
 /// 
 /// ```
-/// use ohkami::format::Html;
+/// use ohkami::component::body::Html;
 /// 
 /// async fn handler() -> Html<&'static str> {
 ///     Html(r#"

@@ -30,8 +30,7 @@ use crate::tls::TlsStream;
 /// ```
 /// use ohkami::{fang::FangAction, IntoResponse, Response, Request};
 /// # use ohkami::serde::Serialize;
-/// # use ohkami::typed::status;
-/// # use ohkami::format::{Path, Json};
+/// # use ohkami::component::{status, Path, Json};
 /// 
 /// // custom fangs
 /// #[derive(Clone)]
@@ -126,8 +125,7 @@ use crate::tls::TlsStream;
 /// # }
 /// 
 /// use ohkami::serde::Serialize;
-/// use ohkami::typed::status;
-/// use ohkami::format::{Path, Json};
+/// use ohkami::component::{status, Path, Json};
 /// 
 /// #[derive(Serialize)]
 /// struct User {
@@ -268,7 +266,7 @@ use crate::tls::TlsStream;
 /// 
 /// ```
 /// use ohkami::{Ohkami, Route};
-/// use ohkami::format::{Path, Json};
+/// use ohkami::component::{Path, Json};
 /// use ohkami::fang::Context;
 /// use ohkami::serde::Serialize;
 /// 
@@ -507,8 +505,8 @@ impl Ohkami {
     /// 
     /// *example.rs*
     /// ```no_run
-    /// use ohkami::prelude::*;
-    /// use ohkami::typed::status;
+    /// use ohkami::{Ohkami, Route};
+    /// use ohkami::component::status;
     /// 
     /// async fn hello() -> &'static str {
     ///     "Hello, ohkami!"
@@ -531,7 +529,7 @@ impl Ohkami {
     /// 
     /// *example_glommio.rs*
     /// ```ignore
-    /// use ohkami::prelude::*;
+    /// use ohkami::{Ohkami, Route};
     /// use ohkami::util::num_cpus;
     /// use glommio::{LocalExecutorPoolBuilder, PoolPlacement, CpuSet};
     /// 
@@ -555,7 +553,7 @@ impl Ohkami {
     /// 
     /// *example_with_tcp_listener.rs*
     /// ```no_run
-    /// use ohkami::prelude::*;
+    /// use ohkami::{Ohkami, Route};
     /// use tokio::net::TcpSocket; // <---
     /// 
     /// #[tokio::main]
@@ -630,7 +628,7 @@ impl Ohkami {
     /// ### Example
     /// 
     /// ```no_run
-    /// use ohkami::prelude::*;
+    /// use ohkami::{Ohkami, Route};
     /// use rustls::ServerConfig;
     /// use rustls::pki_types::{CertificateDer, PrivateKeyDer};
     /// 
@@ -775,7 +773,7 @@ impl Ohkami {
     /// ### example
     /// 
     /// ```no_run
-    /// use ohkami::prelude::*;
+    /// use ohkami::Ohkami;
     /// use ohkami::openapi::{OpenAPI, Server};
     /// 
     /// // An ordinal Ohkami definition, not special

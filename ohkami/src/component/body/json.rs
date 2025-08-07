@@ -19,7 +19,7 @@ use crate::openapi;
 /// 
 /// ```
 /// # enum MyError {}
-/// use ohkami::format::Json;
+/// use ohkami::component::Json;
 /// use ohkami::serde::Deserialize;
 /// 
 /// #[derive(Deserialize)]

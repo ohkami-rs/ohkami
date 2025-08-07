@@ -14,7 +14,7 @@
 //! 
 //! ```
 //! use ohkami::component::{Path, Json, status};
-//! use ohkami::serde::Serialize;
+//! use ohkami::serde::{Serialize, Deserialize};
 //! 
 //! #[derive(Deserialize)]
 //! struct CreateUserRequest<'req> {
