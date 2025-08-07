@@ -295,8 +295,9 @@ use crate::tls::TlsStream;
 ///     ) -> impl Future<Output = Result<String, MyError>> + Send;
 /// }
 /// 
-/// struct PostgresRepository(sqlx::PgPool);
-/// impl UserRepository for PostgresRepository {
+/// #[derive(Clone)]
+/// struct PostgresUserRepository(sqlx::PgPool);
+/// impl UserRepository for PostgresUserRepository {
 ///     async fn get_user_name_by_id(&self, id: i64) -> Result<String, MyError> {
 ///         let sql = r#"
 ///             SELECT name FROM users WHERE id = $1

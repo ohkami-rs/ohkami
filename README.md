@@ -744,6 +744,7 @@ struct UserRow {
     name: String,
 }
 
+#[derive(Clone)]
 struct PostgresUserRepository(sqlx::PgPool);
 impl UserRepository for PostgresUserRepository {
     async fn get_user_by_id(&self, id: i64) -> Result<UserRow, MyError> {
