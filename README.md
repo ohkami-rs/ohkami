@@ -744,6 +744,7 @@ struct UserRow {
     name: String,
 }
 
+#[derive(Clone)]
 struct PostgresUserRepository(sqlx::PgPool);
 impl UserRepository for PostgresUserRepository {
     async fn get_user_by_id(&self, id: i64) -> Result<UserRow, MyError> {
@@ -790,7 +791,12 @@ fn users_ohkami<R: UserRepository>() -> Ohkami {
 
 #[tokio::main]
 async fn main() {
+    let pool = sqlx::PgPool::connect("postgres://ohkami:password@localhost:5432/db")
+        .await
+        .expect("failed to connect to database");
+    
     Ohkami::new((
+        Context::new(PostgresUserRepository(pool)),
         "/users".By(users_ohkami::<PostgresUserRepository>()),
     )).howl("0.0.0.0:4040").await
 }

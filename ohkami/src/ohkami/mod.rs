@@ -262,9 +262,9 @@ use crate::tls::TlsStream;
 /// 
 /// ## Generics DI
 /// 
-/// A way of DI -*Dependency Injection*- is **generics** :
+/// A way of DI is **generics** :
 /// 
-/// ```
+/// ```no_run
 /// use ohkami::{Ohkami, Route};
 /// use ohkami::handle::{Path, Json};
 /// use ohkami::fang::Context;
@@ -295,8 +295,9 @@ use crate::tls::TlsStream;
 ///     ) -> impl Future<Output = Result<String, MyError>> + Send;
 /// }
 /// 
-/// struct PostgresRepository(sqlx::PgPool);
-/// impl UserRepository for PostgresRepository {
+/// #[derive(Clone)]
+/// struct PostgresUserRepository(sqlx::PgPool);
+/// impl UserRepository for PostgresUserRepository {
 ///     async fn get_user_name_by_id(&self, id: i64) -> Result<String, MyError> {
 ///         let sql = r#"
 ///             SELECT name FROM users WHERE id = $1
@@ -334,6 +335,21 @@ use crate::tls::TlsStream;
 ///     Ohkami::new((
 ///         "/:id".GET(get_user::<R>),
 ///     ))
+/// }
+/// 
+/// //////////////////////////////////////////////////////////////////////
+/// /// entry point
+/// 
+/// #[tokio::main]
+/// async fn main() {
+///     let pool = sqlx::PgPool::connect("postgres://ohkami:password@localhost:5432/db")
+///         .await
+///         .expect("failed to connect to database");
+///     
+///     Ohkami::new((
+///         Context::new(PostgresUserRepository(pool)),
+///         "/users".By(users_ohkami::<PostgresUserRepository>()),
+///     )).howl("0.0.0.0:4040").await
 /// }
 /// ```
 pub struct Ohkami {
