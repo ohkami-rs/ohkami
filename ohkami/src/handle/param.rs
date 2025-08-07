@@ -134,8 +134,8 @@ pub struct Path<T>(pub T);
 /// is required to be impl.
 /// 
 /// ### required
-/// - `type Errpr`
-/// - `fn from_param`
+/// - `type Error: IntoResponse`
+/// - `fn from_param(param: Cow<'p, str>) -> Result<Self, Self::Error>`
 pub trait FromParam<'p>: bound::Schema + Sized {
     /// If this extraction never fails, `std::convert::Infallible` is recomended.
     type Error: IntoResponse;
@@ -245,6 +245,21 @@ const _: () = {
         };
     }
     signed_integers! { i8, i16, i32, i64, isize }
+    
+    impl<'p> FromParam<'p> for uuid::Uuid {
+        type Error = Response;
+        
+        fn from_param(param: Cow<'p, str>) -> Result<Self, Self::Error> {
+            uuid::Uuid::try_parse(&param).map_err(|_| {
+                #[cfg(debug_assertions)] {
+                    crate::WARNING!(
+                        "Failed to parse UUID from path param `{param}`",
+                    );
+                }
+                Response::BadRequest().with_text("unexpected path")
+            })
+        }
+    }
 };
 
 impl<'req, P: FromParam<'req>> FromRequest<'req> for Path<P> {
