@@ -137,6 +137,12 @@ const _: () = {
             number().format("double")
         }
     }
+    
+    impl Schema for uuid::Uuid {
+        fn schema() -> impl Into<schema::SchemaRef> {
+            string().format("uuid")
+        }
+    }
 
     impl<S: Schema> Schema for Vec<S> {
         fn schema() -> impl Into<schema::SchemaRef> {
