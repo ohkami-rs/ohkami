@@ -7,8 +7,8 @@ use crate::openapi;
 /// "Retirieved from a `Request`".
 /// 
 /// ### required
-/// - `type Errpr`
-/// - `fn from_request`
+/// - `type Errpr: IntoResponse`
+/// - `fn from_request(req: &Request) -> Option<Result<Self, Self::Error>>`
 /// 
 /// Of course, you can manually implement for your structs that can be extracted from a request：
 /// 

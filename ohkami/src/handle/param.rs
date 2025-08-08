@@ -136,6 +136,13 @@ pub struct Path<T>(pub T);
 /// ### required
 /// - `type Error: IntoResponse`
 /// - `fn from_param(param: Cow<'p, str>) -> Result<Self, Self::Error>`
+/// 
+/// ### default impls
+/// - `String` ... own a param as it is, percent decoded
+/// - `&str` ... borrow a param, only accepting non-encoded one, rejecting if percent encoded
+/// - `Cow<'_, str>` ... own decoded if percent encoded, or borrow if not encoded
+/// - `uuid::Uuid` ... parsed from a percent-decoded param
+/// - primitive integers ... parsed from a percent-decoded param
 pub trait FromParam<'p>: bound::Schema + Sized {
     /// If this extraction never fails, `std::convert::Infallible` is recomended.
     type Error: IntoResponse;
@@ -202,7 +209,8 @@ const _: () = {
                         ErrorMessage(format!(    
                             "Unexpected path params `{param}`: percent encoded"
                         ))
-                    } unexpected(&param)
+                    }
+                    unexpected(&param)
                 }),
             }
         }
@@ -212,14 +220,22 @@ const _: () = {
         ($( $unsigned_int:ty ),*) => {
             $(
                 impl<'p> FromParam<'p> for $unsigned_int {
-                    type Error = ErrorMessage;
+                    type Error = Response;
 
                     fn from_param(param: Cow<'p, str>) -> Result<Self, Self::Error> {
                         ::byte_reader::Reader::new(param.as_bytes())
                             .read_uint()
                             .map(|i| Self::try_from(i).ok())
                             .flatten()
-                            .ok_or_else(|| ErrorMessage(format!("Unexpected path param")))
+                            .ok_or_else(|| {
+                                #[cfg(debug_assertions)] {
+                                    crate::WARNING!(
+                                        "Failed to parse `{}` from path param `{}`",
+                                        stringify!($unsigned_int), param
+                                    );
+                                }
+                                Response::BadRequest().with_text("invalid path")
+                            })
                     }
                 }
             )*
@@ -231,14 +247,22 @@ const _: () = {
         ($( $signed_int:ty ),*) => {
             $(
                 impl<'p> FromParam<'p> for $signed_int {
-                    type Error = ErrorMessage;
+                    type Error = Response;
 
                     fn from_param(param: Cow<'p, str>) -> Result<Self, Self::Error> {
                         ::byte_reader::Reader::new(param.as_bytes())
                             .read_int()
                             .map(|i| Self::try_from(i).ok())
                             .flatten()
-                            .ok_or_else(|| ErrorMessage(format!("Unexpected path param")))
+                            .ok_or_else(|| {
+                                #[cfg(debug_assertions)] {
+                                    crate::WARNING!(
+                                        "Failed to parse `{}` from path param `{}`",
+                                        stringify!($signed_int), param
+                                    );
+                                }
+                                Response::BadRequest().with_text("invalid path")
+                            })
                     }
                 }
             )*
@@ -256,7 +280,7 @@ const _: () = {
                         "Failed to parse UUID from path param `{param}`",
                     );
                 }
-                Response::BadRequest().with_text("unexpected path")
+                Response::BadRequest().with_text("invalid path")
             })
         }
     }
