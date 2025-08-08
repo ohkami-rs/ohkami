@@ -94,7 +94,7 @@ npm create cloudflare ＜project dir＞ -- --template https://github.com/ohkami-
 
 then `＜project dir＞` will have `wrangler.jsonc`, `package.json` and a Rust library crate.
 
-A `#[ohkami::worker]` (async/sync) fn returning `Ohkami` is the Worker definition.
+`#[ohkami::worker] async? fn({bindings}?) -> Ohkami` is the Worker definition.
 
 Local dev by `npm run dev` and deploy by `npm run deploy` !
 

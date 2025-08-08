@@ -121,10 +121,11 @@ pub fn operation(args: proc_macro::TokenStream, handler: proc_macro::TokenStream
 /// Create an worker Ohkami, running on Cloudflare Workers !
 /// 
 /// - This only handle `fetch` event.
-/// - Expected signature: `() -> Ohkami` ( both sync/async are available )
+/// - Expected signature: `() -> Ohkami` or `(bindings) -> Ohkami` ( both sync/async are available )
+/// 
+/// `(bindings) -> Ohkami` pattern is called **global bindings**.
 /// 
 /// ---
-/// *lib.rs*
 /// ```ignore
 /// use ohkami::prelude::*;
 /// 
@@ -132,6 +133,34 @@ pub fn operation(args: proc_macro::TokenStream, handler: proc_macro::TokenStream
 /// fn my_ohkami() -> Ohkami {
 ///     Ohkami::new((
 ///         "/".GET(|| async {"Hello, world!"})
+///     ))
+/// }
+/// ```
+/// ---
+/// ```ignore
+/// use ohkami::{prelude::*, worker, bindings};
+/// 
+/// #[bindings]
+/// struct Bindings {
+///     MY_KV: bindings::KV,
+/// }
+/// 
+/// async fn get_from_kv(
+///     Path(key): Path<String>,
+///     Context(kv): Context<'_, bindings::KV>,
+/// ) -> Result<String, worker::Error> {
+///     kv.get(&key).text().await?.ok_or_else(|| worker::Error::RustError(
+///         format!("Key '{}' not found in KV", key)
+///     ))
+/// }
+/// 
+/// #[worker]
+///              // global bindings
+/// fn my_ohkami(b: Bindings) -> Ohkami {
+///     Ohkami::new((
+///         Context::new(b.MY_KV),
+///         "/".GET(|| async {"Hello, world!"}),
+///         "/kv/:key".GET(get_from_kv),
 ///     ))
 /// }
 /// ```
