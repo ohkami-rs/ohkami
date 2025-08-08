@@ -77,15 +77,16 @@ test $? -ne 0 && exit 160 || :
 cd $SAMPLES/worker-with-openapi && \
     cp wrangler.toml.sample wrangler.toml && \
     (test -f openapi.json || echo '{}' >> openapi.json) && \
-    npm run openapi -- --skip-login && \
+    npm run openapi && \
     diff openapi.json openapi.json.sample && \
-    # FIXME : to generic way (this is a stopgap for testing
-    # this functionality in at least my local env)
-    (test $(whoami) = kanarus && \
-        npm run openapi && \
-        cp openapi.json.loggedin.sample tmp.json && \
-        sed -i "s/{{ ACCOUNT_NAME }}/kanarus/" tmp.json && \
-        diff openapi.json tmp.json \
-        ; (test -f tmp.json && rm tmp.json) \
-    || :)
+    sed -i -r 's/^#\[ohkami::worker.*]$/#[ohkami::worker({ title: "Ohkami Worker with OpenAPI", version: "0.1.1", servers: [] })]/' ./src/lib.rs && \
+    npm run openapi && \
+    diff openapi.json openapi.json.manual-title-version-empty_servers.sample && \
+    sed -i -r 's/^#\[ohkami::worker.*]$/#[ohkami::worker({ title: "Ohkami Worker with OpenAPI", version: "0.1.2", servers: [{url: "https:\/\/example.example.workers.dev"}] })]/' ./src/lib.rs && \
+    npm run openapi && \
+    diff openapi.json openapi.json.manual-title-version-nonempty_servers.sample && \
+    sed -i -r 's/^#\[ohkami::worker.*]$/#[ohkami::worker({servers: [{url: "https:\/\/example.example.workers.dev"}]})]/' ./src/lib.rs && \
+    npm run openapi && \
+    diff openapi.json openapi.json.manual-only_nonempty_servers.sample && \
+    sed -i -r 's/^#\[ohkami::worker.*]$/#[ohkami::worker]/' ./src/lib.rs # reset to default
 test $? -ne 0 && exit 161 || :

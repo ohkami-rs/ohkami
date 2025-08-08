@@ -17,7 +17,6 @@ crate-type = ["cdylib", "rlib"]
 opt-level = "s"
 
 [features]
+default = ["openapi"]
 openapi = ["ohkami/openapi"]
 DEBUG   = ["ohkami/DEBUG"]
-
-default = ["openapi"]

@@ -16,34 +16,12 @@ const app = (() => {
         /** @type {string} */
         #outputPath = "openapi.json";
 
-        /** @type {boolean} */
-        #skipLogin = false;
-
         /** @type {[string]} */
         #additionalOptions = [];
-
-        /** @type {boolean} */
-        #noWorkersDevDomain = false;
-
-        /** @type {string | undefined} */
-        #workerName;
-
-        /** @type {string | undefined} */
-        #cloudflareAccountName;
 
         constructor() {
             try {
                 const wrangler_toml = readFileSync("wrangler.toml");
-                for (const line of wrangler_toml.toString('utf-8').split("\n")) {
-                    if (/^workers_dev\s*=\s*false\s*(#.*)?$/.test(line)) {
-                        this.#noWorkersDevDomain = true;
-                    } else {
-                        const nameMatch = /^name\s*=\s*"([a-zA-Z0-9_\-]+)"\s*(#.*)?$/.exec(line);
-                        if (nameMatch?.length >= 2) {
-                            this.#workerName = nameMatch[1];
-                        }
-                    }
-                }
             } catch (e) {
                 this.exit(150, `Expected a wrangler project, but ${e}`)
             }
@@ -70,10 +48,6 @@ const app = (() => {
                             this.#outputPath = process.argv[i + 1];
                             i += 2;
                             break;
-                        case "--skip-login":
-                            this.#skipLogin = true;
-                            i += 1;
-                            break;
                         case "--":
                             this.#additionalOptions = process.argv.slice(i + 1);
                             i = process.argv.length;
@@ -92,33 +66,9 @@ const app = (() => {
             return this.#outputPath;
         }
 
-        /** @returns {boolean} */
-        get skipLogin() {
-            return this.#skipLogin;
-        }
-
         /** @returns {string} */
         get additionalOptions() {
             return this.#additionalOptions;
-        }
-
-        /** @returns {boolean} */
-        get noWorkersDevDomain() {
-            return this.#noWorkersDevDomain;
-        }
-
-        /** @returns {string} */
-        get workerName() {
-            return this.#workerName;
-        }
-
-        /** @returns {string | undefined} */
-        get cloudflareAccountName() {
-            return this.#cloudflareAccountName;
-        }
-        /** @param {string} AccountName */
-        set cloudflareAccountName(AccountName) {
-            this.#cloudflareAccountName = AccountName;
         }
 
         /**
@@ -151,53 +101,6 @@ const app = (() => {
 
     return new App();
 })();
-
-try {
-    if (app.skipLogin) {
-        /* goto `catch` and skip `wrangler whoami` */
-        throw "specified `--skip-login`";
-    }
-
-    const e = new TextDecoder();
-
-    const wrangler_whoami = spawn("npx", ["wrangler", "whoami"]);
-    await new Promise((resolve, reject) => {
-        wrangler_whoami.on("close", (code) => {
-            if (code === 0) {resolve()} else {reject(`'npx wrangler whoami' closed with ${code}`)}
-        });
-        wrangler_whoami.on("exit", (code) => {
-            if (code === 0) {resolve()} else {reject(`'npx wrangler whoami' exited with ${code}`)}
-        });
-        wrangler_whoami.on("error", (err) => {
-            reject(`'npx wrangler whoami' failed: ${err}`);
-        });
-        wrangler_whoami.on("disconnect", () => {
-            reject(`'npx wrangler whoami' disconnected`);
-        });
-
-        //////////////////////////////////////////////////////////////
-
-        wrangler_whoami.stdout.on("data", (data) => {
-            for (const line of e.decode(data).trimEnd().split("\n")) {
-                if (/^🔓|Scope|-/.test(line)) break;
-
-                console.log(line);
-
-                /**
-                 * ```e.g.
-                 * │ kanarus      │ 0xx000x000x0000000x0xxx0x000xx00 │
-                 * ```
-                 */
-                if (/^│ .* \s*│ [0-9a-z]{32} │$/.test(line)) {                
-                    app.cloudflareAccountName = line.split("│")[1].trim();
-                    resolve();
-                }
-            }
-        });
-    });
-} catch (e) {
-    app.warn(`skipping login: ${e}`);
-}
 
 try {
     const wasmpack_is_installed = (() => {
@@ -274,47 +177,24 @@ try {
 
     /** @type {Uint8Array} */
     let OpenAPIDocumentBytes = await wasmpack_js.OpenAPIDocumentBytes();
-
     {
         let OpenAPIDocumentJSON = JSON.parse(
             (new TextDecoder()).decode(OpenAPIDocumentBytes)
         );
-
-        if (OpenAPIDocumentJSON.servers
-            .filter((s) => s.url.includes("localhost"))
-            .length === 0
-        ) {
-            OpenAPIDocumentJSON.servers.push({
+        
+        if ((OpenAPIDocumentJSON.servers ?? []).length === 0) {
+            OpenAPIDocumentJSON.servers = [{
                 url: `http://localhost:8787`,
                 description: "local dev",
-            });
+            }];
         }
-
-        /**
-         * This process should not be done in `#[ohkami::worker]` attribute's
-         * background becasue of heavy latency of `wrangler whoami`, causing
-         * too bad developer experience for rust-analyzer users.
-         */
-        if (app.workerName && app.cloudflareAccountName && !app.noWorkersDevDomain) {
-            if (OpenAPIDocumentJSON.servers
-                .filter((s) => !(s.url.includes("localhost")))
-                .length === 0
-            ) {
-                OpenAPIDocumentJSON.servers.push({
-                    url: `https://${app.workerName}.${app.cloudflareAccountName}.workers.dev`,
-                    description: "production",
-                });
-            }
-        }
-
+        
         OpenAPIDocumentBytes = (new TextEncoder()).encode(
             JSON.stringify(OpenAPIDocumentJSON, null, 2)
             + "\n"
         );
     }
-
     writeFileSync(app.outputPath, OpenAPIDocumentBytes);
-
 } catch (e) {
     app.exit(152, `Generation failed: ${e}`);
 }
