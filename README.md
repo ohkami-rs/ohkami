@@ -96,13 +96,17 @@ A `#[ohkami::worker]` (async/sync) fn returning `Ohkami` is the Worker definitio
 
 Local dev by `npm run dev` and deploy by `npm run deploy` !
 
-See README of [template](https://github.com/ohkami-rs/ohkami-templates/tree/main/worker) for details.
+See
 
-Or, here are [Workers + OpenAPI template](https://github.com/ohkami-rs/ohkami-templates/tree/main/worker-openapi) and [Workers + SPA with Yew template](https://github.com/ohkami-rs/ohkami-templates/tree/main/worker_yew_spa).
+- [template](https://github.com/ohkami-rs/ohkami-templates)
+- `worker-*` samples in [samples directory](https://github.com/ohkami-rs/ohkami/tree/main/samples)
+- `#[worker]`'s documentation in [macro definitions](https://github.com/ohkami-rs/ohkami/tree/main/ohkami_macros/src/lib.rs)
+
+for wokring examples and detailed usage of `#[worker]` (and/or `openapi`).
 
 ### `"rt_lambda"` : AWS Lambda
 
-- [lambda_runtime](https://github.com/awslabs/aws-lambda-rust-runtime) _v0.14.\*_ (with `tokio`)
+- [lambda_runtime](https://github.com/awslabs/aws-lambda-rust-runtime) _v0.14.\*_ with `tokio`
 
 Both `Function URLs` and `API Gateway` are supported, and WebSocket is not supported.
 
