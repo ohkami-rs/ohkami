@@ -79,11 +79,14 @@ cd $SAMPLES/worker-with-openapi && \
     (test -f openapi.json || echo '{}' >> openapi.json) && \
     npm run openapi && \
     diff openapi.json openapi.json.sample && \
-    sed -i -r 's/^#\[ohkami::worker.*]$/#[ohkami::worker({ title: "Ohkami Worker with OpenAPI", version: "0.1.0", servers: [] })]/' ./src/lib.rs && \
+    sed -i -r 's/^#\[ohkami::worker.*]$/#[ohkami::worker({ title: "Ohkami Worker with OpenAPI", version: "0.1.1", servers: [] })]/' ./src/lib.rs && \
     npm run openapi && \
-    diff openapi.json openapi.json.manual-empty_servers.sample && \
-    sed -i -r 's/^#\[ohkami::worker.*]$/#[ohkami::worker({ title: "Ohkami Worker with OpenAPI", version: "0.1.0", servers: [{url: "https:\/\/example.example.workers.dev"}] })]/' ./src/lib.rs && \
+    diff openapi.json openapi.json.manual-title-version-empty_servers.sample && \
+    sed -i -r 's/^#\[ohkami::worker.*]$/#[ohkami::worker({ title: "Ohkami Worker with OpenAPI", version: "0.1.2", servers: [{url: "https:\/\/example.example.workers.dev"}] })]/' ./src/lib.rs && \
     npm run openapi && \
-    diff openapi.json openapi.json.manual-nonempty_servers.sample && \
+    diff openapi.json openapi.json.manual-title-version-nonempty_servers.sample && \
+    sed -i -r 's/^#\[ohkami::worker.*]$/#[ohkami::worker({servers: [{url: "https:\/\/example.example.workers.dev"}]})]/' ./src/lib.rs && \
+    npm run openapi && \
+    diff openapi.json openapi.json.manual-only_nonempty_servers.sample && \
     sed -i -r 's/^#\[ohkami::worker.*]$/#[ohkami::worker]/' ./src/lib.rs # reset to default
 test $? -ne 0 && exit 161 || :

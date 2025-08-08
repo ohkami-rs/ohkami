@@ -2,11 +2,12 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Ohkami Worker with OpenAPI",
-    "version": "0.1.0"
+    "version": "0.1.1"
   },
   "servers": [
     {
-      "url": "https://example.example.workers.dev"
+      "url": "http://localhost:8787",
+      "description": "local dev"
     }
   ],
   "paths": {

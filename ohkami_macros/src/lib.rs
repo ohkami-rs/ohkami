@@ -146,11 +146,11 @@ pub fn operation(args: proc_macro::TokenStream, handler: proc_macro::TokenStream
 ///     servers: [
 ///         {
 ///             url: string,
-///             description?: string,
-///             variables?: {
+///             description: string,
+///             variables: {
 ///                 [string]: {
 ///                     default: string,
-///                     enum?: [string],
+///                     enum: [string],
 ///                 }
 ///             }
 ///         }
@@ -158,7 +158,9 @@ pub fn operation(args: proc_macro::TokenStream, handler: proc_macro::TokenStream
 /// }
 /// ```
 /// 
-/// like:
+/// Every field is optional.
+/// 
+/// example:
 /// 
 /// ---
 /// *lib.rs*
@@ -187,7 +189,7 @@ pub fn operation(args: proc_macro::TokenStream, handler: proc_macro::TokenStream
 /// ```
 /// ---
 /// 
-/// Actually **every field is optional** and **any other fields are acceptable**,
+/// **Every field is optional** and **any other fields are acceptable**,
 /// but when `openapi` feature is activated, these fields are used for the
 /// document generation ( if missing, some default values will be used ).
 #[proc_macro_attribute]
