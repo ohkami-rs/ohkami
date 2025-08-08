@@ -78,11 +78,13 @@ Hello, your_name!
 
 - [worker](https://github.com/cloudflare/workers-rs) _v0.6.\*_
 
-Ohkami has first-class support for Cloudflare Workers. For example,
+Ohkami has first-class support for Cloudflare Workers:
 
-- provides `#[bindings]`, `ws::SessionMap` helper
-- provides better `DurableObject`
+- `#[worker]` macro to define a Worker
+- `#[bindings]`, `ws::SessionMap` helper
+- better `DurableObject`
 - not require `Send` `Sync` bound for handlers or fangs
+- [worker_openapi.js](https://github.com/ohkami-rs/ohkami/tree/main/scripts/worker_openapi.js) script to generate OpenAPI document from `#[worker]` fn
 
 And also maintains useful project template. Run :
 
@@ -98,9 +100,9 @@ Local dev by `npm run dev` and deploy by `npm run deploy` !
 
 See
 
-- [template](https://github.com/ohkami-rs/ohkami-templates)
-- `worker-*` samples in [samples directory](https://github.com/ohkami-rs/ohkami/tree/main/samples)
-- `#[worker]`'s documentation in [macro definitions](https://github.com/ohkami-rs/ohkami/tree/main/ohkami_macros/src/lib.rs)
+- `worker.*` temaplates in [template repository](https://github.com/ohkami-rs/ohkami-templates)
+- `worker.*` samples in [samples directory](https://github.com/ohkami-rs/ohkami/tree/main/samples)
+- `#[worker]`'s documentation comment in [macro definitions](https://github.com/ohkami-rs/ohkami/tree/main/ohkami_macros/src/lib.rs)
 
 for wokring examples and detailed usage of `#[worker]` (and/or `openapi`).
 
