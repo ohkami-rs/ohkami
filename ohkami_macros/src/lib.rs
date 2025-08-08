@@ -146,17 +146,46 @@ pub fn operation(args: proc_macro::TokenStream, handler: proc_macro::TokenStream
 ///     servers: [
 ///         {
 ///             url: string,
-///             description: string,
-///             variables: {
+///             description?: string,
+///             variables?: {
 ///                 [string]: {
 ///                     default: string,
-///                     enum: [string],
+///                     enum?: [string],
 ///                 }
 ///             }
 ///         }
 ///     ]
 /// }
 /// ```
+/// 
+/// like:
+/// 
+/// ---
+/// *lib.rs*
+/// ```ignore
+/// use ohkami::prelude::*;
+/// 
+/// #[ohkami::worker({
+///     title: "My Ohkami Worker",
+///     version: "1.0.0",
+///     servers: [
+///         {
+///             url: "https://my-worker.example.com",
+///             description: "My Ohkami Worker server",
+///         },
+///         {
+///             url: "http://localhost:8787",
+///             description: "My Ohkami Worker server for local development",
+///         }
+///     ]
+/// })]
+/// fn my_ohkami() -> Ohkami {
+///     Ohkami::new((
+///         "/".GET(|| async {"Hello, world!"})
+///     ))
+/// }
+/// ```
+/// ---
 /// 
 /// Actually **every field is optional** and **any other fields are acceptable**,
 /// but when `openapi` feature is activated, these fields are used for the

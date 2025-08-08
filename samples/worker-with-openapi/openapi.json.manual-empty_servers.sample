@@ -1,17 +1,13 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "ohkami-worker-with-openapi",
+    "title": "Ohkami Worker with OpenAPI",
     "version": "0.1.0"
   },
   "servers": [
     {
       "url": "http://localhost:8787",
       "description": "local dev"
-    },
-    {
-      "url": "https://ohkami-worker-with-openapi.kanarus.workers.dev",
-      "description": "production"
     }
   ],
   "paths": {
