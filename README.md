@@ -78,11 +78,13 @@ Hello, your_name!
 
 - [worker](https://github.com/cloudflare/workers-rs) _v0.6.\*_
 
-Ohkami has first-class support for Cloudflare Workers. For example,
+Ohkami has first-class support for Cloudflare Workers:
 
-- provides `#[bindings]`, `ws::SessionMap` helper
-- provides better `DurableObject`
+- `#[worker]` macro to define a Worker
+- `#[bindings]`, `ws::SessionMap` helper
+- better `DurableObject`
 - not require `Send` `Sync` bound for handlers or fangs
+- [worker_openapi.js](https://github.com/ohkami-rs/ohkami/tree/main/scripts/worker_openapi.js) script to generate OpenAPI document from `#[worker]` fn
 
 And also maintains useful project template. Run :
 
@@ -92,17 +94,21 @@ npm create cloudflare ＜project dir＞ -- --template https://github.com/ohkami-
 
 then `＜project dir＞` will have `wrangler.jsonc`, `package.json` and a Rust library crate.
 
-A `#[ohkami::worker]` (async/sync) fn returning `Ohkami` is the Worker definition.
+`#[ohkami::worker] async? fn({bindings}?) -> Ohkami` is the Worker definition.
 
 Local dev by `npm run dev` and deploy by `npm run deploy` !
 
-See README of [template](https://github.com/ohkami-rs/ohkami-templates/tree/main/worker) for details.
+See
 
-Or, here are [Workers + OpenAPI template](https://github.com/ohkami-rs/ohkami-templates/tree/main/worker-openapi) and [Workers + SPA with Yew template](https://github.com/ohkami-rs/ohkami-templates/tree/main/worker_yew_spa).
+- `worker.*` temaplates in [template repository](https://github.com/ohkami-rs/ohkami-templates)
+- `worker.*` samples in [samples directory](https://github.com/ohkami-rs/ohkami/tree/main/samples)
+- `#[worker]`'s documentation comment in [macro definitions](https://github.com/ohkami-rs/ohkami/tree/main/ohkami_macros/src/lib.rs)
+
+for wokring examples and detailed usage of `#[worker]` (and/or `openapi`).
 
 ### `"rt_lambda"` : AWS Lambda
 
-- [lambda_runtime](https://github.com/awslabs/aws-lambda-rust-runtime) _v0.14.\*_ (with `tokio`)
+- [lambda_runtime](https://github.com/awslabs/aws-lambda-rust-runtime) _v0.14.\*_ with `tokio`
 
 Both `Function URLs` and `API Gateway` are supported, and WebSocket is not supported.
 
