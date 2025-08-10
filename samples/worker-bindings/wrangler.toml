@@ -31,3 +31,7 @@ binding = "MY_QUEUE"
 [[durable_objects.bindings]]
 name = "RATE_LIMITER"
 class_name = "RateLimiter"
+
+[[hyperdrive]]
+binding = "HYPERDRIVE"
+id = "<YOUR_DATABASE_ID>"

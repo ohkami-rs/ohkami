@@ -94,19 +94,19 @@ __rt_native__ = ["__rt__", "dep:mime_guess", "dep:ctrlc"]
 
 ##### DEBUG #####
 DEBUG = ["tokio?/rt-multi-thread", "tokio?/macros"]
-#default = [
-#    "nightly",
-#    "openapi",
-#    "sse",
-#    "ws",
-#    "tls",
-#    "rt_tokio",
-#    #"rt_smol",
-#    #"rt_nio",
-#    #"rt_glommio",
-#    #"rt_worker",
-#    "DEBUG",
-#]
+default = [
+    "nightly",
+    "openapi",
+    "sse",
+    "ws",
+    #"tls",
+    #"rt_tokio",
+    #"rt_smol",
+    #"rt_nio",
+    #"rt_glommio",
+    "rt_worker",
+    "DEBUG",
+]
 
 
 [dev-dependencies] # for doc test
