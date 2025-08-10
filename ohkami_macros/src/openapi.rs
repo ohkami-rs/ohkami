@@ -614,8 +614,8 @@ pub(super) fn operation(meta: TokenStream, handler: TokenStream) -> syn::Result<
             }
 
             impl ::ohkami::handler::IntoHandler<#handler_name> for #handler_name {
-                fn n_params(&self) -> usize {
-                    ::ohkami::handler::IntoHandler::n_params(&operation::#handler_name)
+                fn n_pathparams(&self) -> usize {
+                    ::ohkami::handler::IntoHandler::n_pathparams(&operation::#handler_name)
                 }
 
                 fn into_handler(self) -> ::ohkami::handler::Handler {

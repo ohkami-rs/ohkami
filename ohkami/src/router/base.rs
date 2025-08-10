@@ -212,11 +212,11 @@ impl Router {
         for (route, handlers_meta) in &routes {
             for (_method, handler_meta) in handlers_meta.iter() {
                 assert!(
-                    handler_meta.n_params <= route.n_params(),
+                    handler_meta.n_pathparams <= route.n_pathparams(),
                     "handler `{}` requires {} path param(s) \
-                    BUT the route `{}` captures only {} param(s)",
-                    handler_meta.name, handler_meta.n_params,
-                    route.literal(), route.n_params()
+                    BUT the route `{}` captures only {} path param(s)",
+                    handler_meta.name, handler_meta.n_pathparams,
+                    route.literal(), route.n_pathparams()
                 );
             }
         }

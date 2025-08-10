@@ -12,13 +12,13 @@ use super::dir::{Dir, StaticFileHandler};
 #[derive(Clone)]
 pub(crate) struct HandlerMeta {
     pub(crate) name: &'static str,
-    pub(crate) n_params: usize,
+    pub(crate) n_pathparams: usize,
 }
 impl HandlerMeta {
     fn new<T, H: IntoHandler<T>>(h: &H) -> Self {
         Self {
             name: std::any::type_name::<H>(),
-            n_params: h.n_params(),
+            n_pathparams: h.n_pathparams(),
         }
     }
 }
@@ -26,7 +26,7 @@ impl std::fmt::Debug for HandlerMeta {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         f.debug_struct("HandlerMeta")
             .field("name", &self.name)
-            .field("n_params", &self.n_params)
+            .field("n_pathparams", &self.n_pathparams)
             .finish()
     }
 }

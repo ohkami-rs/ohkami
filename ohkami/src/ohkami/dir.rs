@@ -262,7 +262,7 @@ impl StaticFileHandler {
 }
 
 impl IntoHandler<File> for StaticFileHandler {
-    fn n_params(&self) -> usize {0}
+    fn n_pathparams(&self) -> usize {0}
 
     fn into_handler(self) -> Handler {
         let this = Box::leak(Box::new(self));
