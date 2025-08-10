@@ -1,25 +1,26 @@
 use super::super::bound::{self, Incoming, Outgoing};
-use super::{FromBody, IntoBody};
+use super::{FromContent, IntoContent};
+use ohkami_lib::serde_urlencoded;
 use std::borrow::Cow;
 
 #[cfg(feature="openapi")]
 use crate::openapi;
 
-/// # JSON format
+/// # URL encoded format
 /// 
 /// When `openapi` feature is activated, schema bound additionally
 /// requires `openapi::Schema`.
 /// 
 /// ## Request
 /// 
-/// - content type: `application/json`
+/// - content type: `application/x-www-form-urlencoded`
 /// - schema bound: `Deserialize<'_>`
 /// 
 /// ### example
 /// 
 /// ```
 /// # enum MyError {}
-/// use ohkami::handle::Json;
+/// use ohkami::claw::content::UrlEncoded;
 /// use ohkami::serde::Deserialize;
 /// 
 /// #[derive(Deserialize)]
@@ -29,7 +30,7 @@ use crate::openapi;
 /// }
 /// 
 /// async fn create_user(
-///     Json(body): Json<CreateUserRequest<'_>>,
+///     UrlEncoded(body): UrlEncoded<CreateUserRequest<'_>>,
 /// ) -> Result<(), MyError> {
 ///     todo!()
 /// }
@@ -37,14 +38,14 @@ use crate::openapi;
 /// 
 /// ## Response
 /// 
-/// - content type: `application/json`
+/// - content type: `application/x-www-form-urlencoded`
 /// - schema bound: `Serialize`
 /// 
 /// ### example
 /// 
 /// ```
 /// # enum MyError {}
-/// use ohkami::handle::Json;
+/// use ohkami::claw::content::UrlEncoded;
 /// use ohkami::serde::Serialize;
 /// 
 /// #[derive(Serialize)]
@@ -55,18 +56,17 @@ use crate::openapi;
 /// 
 /// async fn get_user(
 ///     id: &str,
-/// ) -> Result<Json<User>, MyError> {
+/// ) -> Result<UrlEncoded<User>, MyError> {
 ///     todo!()
 /// }
 /// ```
-pub struct Json<T: bound::Schema>(pub T);
+pub struct UrlEncoded<T: bound::Schema>(pub T);
 
-impl<'req, T: Incoming<'req>> FromBody<'req> for Json<T> {
-    const MIME_TYPE: &'static str = "application/json";
+impl<'req, T: Incoming<'req>> FromContent<'req> for UrlEncoded<T> {
+    const MIME_TYPE: &'static str = "application/x-www-form-urlencoded";
 
-    #[inline]
-    fn from_body(body: &'req [u8]) -> Result<Self, impl std::fmt::Display> {
-        serde_json::from_slice(body).map(Json)
+    fn from_content(body: &'req [u8]) -> Result<Self, impl std::fmt::Display> {
+        serde_urlencoded::from_bytes(body).map(UrlEncoded)
     }
 
     #[cfg(feature="openapi")]
@@ -75,12 +75,11 @@ impl<'req, T: Incoming<'req>> FromBody<'req> for Json<T> {
     }
 }
 
-impl<T: Outgoing> IntoBody for Json<T> {
-    const CONTENT_TYPE: &'static str = "application/json";
+impl<T: Outgoing> IntoContent for UrlEncoded<T> {
+    const CONTENT_TYPE: &'static str = "application/x-www-form-urlencoded";
 
-    #[inline]
-    fn into_body(self) -> Result<Cow<'static, [u8]>, impl std::fmt::Display> {
-        serde_json::to_vec(&self.0).map(Cow::Owned)
+    fn into_content(self) -> Result<Cow<'static, [u8]>, impl std::fmt::Display> {
+        serde_urlencoded::to_string(&self.0).map(|s| Cow::Owned(s.into_bytes()))
     }
 
     #[cfg(feature="openapi")]

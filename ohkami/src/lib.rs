@@ -207,8 +207,8 @@ mod tls;
 
 pub mod header;
 
-pub mod handle;
-pub use handle::{Json, Cookie, Path, Query};
+pub mod claw;
+pub use claw::{Json, Cookie, Path, Query};
 
 #[cfg(feature="sse")]
 pub mod sse;

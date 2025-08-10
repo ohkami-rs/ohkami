@@ -1,4 +1,4 @@
-use super::body::IntoBody;
+use super::content::IntoContent;
 use crate::{IntoResponse, Response, Status};
 use crate::response::{ResponseHeaders, SetHeaders, Content};
 
@@ -10,29 +10,29 @@ macro_rules! generate_statuses_as_types_containing_value {
         $(
             /// Generate`
             #[doc = $message]
-            /// ` response type with the `body: B`.
+            /// ` response type with the `content: C`.
             /// 
             /// Use `()` to represent an empty content.
             /// 
-            /// This is an alias of `typed::{TheStatus}::new(body)`.
+            /// This is an alias of `typed::{TheStatus}::new(content)`.
             #[allow(non_snake_case)]
-            pub fn $status<B: IntoBody>(body: B) -> $status<B> {
-                $status::<B>::new(body)
+            pub fn $status<C: IntoContent>(content: C) -> $status<C> {
+                $status::<C>::new(content)
             }
 
             #[doc = "Typed `"]
             #[doc = $message]
             #[doc = "` response.<br>"]
-            #[doc = "Use `()` ( default of `B` ) to represent an empty content."]
+            #[doc = "Use `()` ( default of `C` ) to represent an empty content."]
             #[allow(private_bounds)]
-            pub struct $status<B: IntoBody = ()> {
-                body: B,
+            pub struct $status<C: IntoContent = ()> {
+                content: C,
                 headers: ResponseHeaders,
             }
 
-            impl<B: IntoBody> $status<B> {
-                pub fn new(body: B) -> Self {
-                    Self { body, headers: ResponseHeaders::new() }
+            impl<C: IntoContent> $status<C> {
+                pub fn new(content: C) -> Self {
+                    Self { content, headers: ResponseHeaders::new() }
                 }
 
                 pub fn with_headers(mut self, set: impl FnOnce(SetHeaders)->SetHeaders) -> Self {
@@ -41,30 +41,30 @@ macro_rules! generate_statuses_as_types_containing_value {
                 }
             }
 
-            impl<B: IntoBody> IntoResponse for $status<B> {
+            impl<C: IntoContent> IntoResponse for $status<C> {
                 #[inline]
                 fn into_response(self) -> Response {
-                    if const {B::CONTENT_TYPE.is_empty()} {// will be removed by optimization if it's not
+                    if const {C::CONTENT_TYPE.is_empty()} {// will be removed by optimization if it's not
                         return Response::OK();
                     }
 
-                    let body = match self.body.into_body() {
-                        Ok(body) => body,
+                    let content = match self.content.into_content() {
+                        Ok(content) => content,
                         Err(e) => {
-                            crate::ERROR!("<{} as IntoBody>::into_body() failed: {e}", std::any::type_name::<B>());
+                            crate::ERROR!("<{} as IntoContent>::into_content() failed: {e}", std::any::type_name::<C>());
                             return Response::InternalServerError();
                         }
                     };
 
                     let mut headers = self.headers;
                     headers.set()
-                        .content_type(B::CONTENT_TYPE)
-                        .content_length(ohkami_lib::num::itoa(body.len()));
+                        .content_type(C::CONTENT_TYPE)
+                        .content_length(ohkami_lib::num::itoa(content.len()));
                     
                     Response {
                         status: Status::$status,
                         headers,
-                        content: Content::Payload(body.into())
+                        content: Content::Payload(content.into())
                     }
                 }
 
@@ -72,8 +72,8 @@ macro_rules! generate_statuses_as_types_containing_value {
                 fn openapi_responses() -> openapi::Responses {
                     let (code, message) = $message.split_once(' ').unwrap();
                     let mut res = openapi::Response::when(message);
-                    if B::CONTENT_TYPE != "" {
-                        res = res.content(B::CONTENT_TYPE, B::openapi_responsebody())
+                    if C::CONTENT_TYPE != "" {
+                        res = res.content(C::CONTENT_TYPE, C::openapi_responsebody())
                     }
                     openapi::Responses::new([(
                         code.parse().unwrap(),

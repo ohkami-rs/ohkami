@@ -30,7 +30,7 @@ use crate::tls::TlsStream;
 /// ```
 /// use ohkami::{fang::FangAction, IntoResponse, Response, Request};
 /// # use ohkami::serde::Serialize;
-/// # use ohkami::handle::{status, Path, Json};
+/// # use ohkami::claw::{status, Path, Json};
 /// 
 /// // custom fangs
 /// #[derive(Clone)]
@@ -125,7 +125,7 @@ use crate::tls::TlsStream;
 /// # }
 /// 
 /// use ohkami::serde::Serialize;
-/// use ohkami::handle::{status, Path, Json};
+/// use ohkami::claw::{status, Path, Json};
 /// 
 /// #[derive(Serialize)]
 /// struct User {
@@ -266,7 +266,7 @@ use crate::tls::TlsStream;
 /// 
 /// ```no_run
 /// use ohkami::{Ohkami, Route};
-/// use ohkami::handle::{Path, Json};
+/// use ohkami::claw::{Path, Json};
 /// use ohkami::fang::Context;
 /// use ohkami::serde::Serialize;
 /// 
@@ -522,7 +522,7 @@ impl Ohkami {
     /// *example.rs*
     /// ```no_run
     /// use ohkami::{Ohkami, Route};
-    /// use ohkami::handle::status;
+    /// use ohkami::claw::status;
     /// 
     /// async fn hello() -> &'static str {
     ///     "Hello, ohkami!"

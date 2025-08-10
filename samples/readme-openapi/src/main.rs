@@ -1,5 +1,5 @@
 use ohkami::prelude::*;
-use ohkami::handle::status;
+use ohkami::claw::status;
 use ohkami::openapi;
 
 // Derive `Schema` trait to generate the schema of this struct in OpenAPI document.

@@ -1,5 +1,5 @@
 use ohkami::prelude::*;
-use ohkami::handle::status::{Created, NoContent};
+use ohkami::claw::status::{Created, NoContent};
 use chrono::{DateTime, Utc};
 use sqlx::PgPool;
 use crate::{config::JwtPayload, errors::RealWorldError};

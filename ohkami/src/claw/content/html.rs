@@ -1,4 +1,4 @@
-use super::IntoBody;
+use super::IntoContent;
 use std::borrow::Cow;
 
 #[cfg(feature="openapi")]
@@ -21,7 +21,7 @@ use crate::openapi;
 /// ### example
 /// 
 /// ```
-/// use ohkami::handle::body::Html;
+/// use ohkami::claw::content::Html;
 /// 
 /// async fn handler() -> Html<&'static str> {
 ///     Html(r#"
@@ -38,10 +38,10 @@ use crate::openapi;
 /// ```
 pub struct Html<T = String>(pub T);
 
-impl<T: Into<Cow<'static, str>>> IntoBody for Html<T> {
+impl<T: Into<Cow<'static, str>>> IntoContent for Html<T> {
     const CONTENT_TYPE: &'static str = "text/html; charset=UTF-8";
 
-    fn into_body(self) -> Result<Cow<'static, [u8]>, impl std::fmt::Display> {
+    fn into_content(self) -> Result<Cow<'static, [u8]>, impl std::fmt::Display> {
         Result::<_, std::convert::Infallible>::Ok(match self.0.into() {
             Cow::Owned(s) => Cow::Owned(s.into_bytes()),
             Cow::Borrowed(s) => Cow::Borrowed(s.as_bytes()),
