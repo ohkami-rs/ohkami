@@ -1,5 +1,6 @@
 use std::{future::Future, pin::Pin};
 use super::{Handler, SendOnNative, SendSyncOnNative, SendOnNativeFuture};
+use super::super::{Fang, BoxedFPC, middleware::Fangs};
 use crate::{Request, Response, FromRequest, IntoResponse};
 
 #[cfg(feature="openapi")]
@@ -60,6 +61,10 @@ fn with_default_operation_id<F>(op: openapi::Operation) -> openapi::Operation {
         op.operation_id(type_ident)
     }
 }
+
+/*
+ * `IntoHandler` implementations for async functions
+ */
 
 impl<'req, F, Fut, Res> IntoHandler<fn() -> Res> for F
 where
@@ -268,6 +273,91 @@ where
                 .inbound(Req5::openapi_inbound())
                 .inbound(Req6::openapi_inbound())
         })
+    }
+}
+
+/*
+ * `IntoHandler` implementations for handlers with local fangs
+ */
+
+#[diagnostic::do_not_recommend]
+impl<H: IntoHandler<T>, T, F1> IntoHandler<(F1, H, T)> for (F1, H)
+where
+    F1: Fang<BoxedFPC>
+{
+    fn n_pathparams(&self) -> usize {self.1.n_pathparams()}
+
+    fn into_handler(self) -> Handler {
+        let (f, h) = self;
+        let h = h.into_handler();
+        Handler {
+            proc: Fangs::build(&f, h.proc),
+            #[cfg(feature="openapi")]
+            openapi_operation: Fangs::openapi_map_operation(&f, h.openapi_operation)
+        }
+    }
+}
+
+#[diagnostic::do_not_recommend]
+impl<H: IntoHandler<T>, T, F1, F2> IntoHandler<(F1, F2, H, T)> for (F1, F2, H)
+where
+    F1: Fang<F2::Proc>,
+    F2: Fang<BoxedFPC>,
+{
+    fn n_pathparams(&self) -> usize {self.2.n_pathparams()}
+
+    fn into_handler(self) -> Handler {
+        let (f1, f2, h) = self;
+        let h = h.into_handler();
+        let f = (f1, f2);
+        Handler {
+            proc: Fangs::build(&f, h.proc),
+            #[cfg(feature="openapi")]
+            openapi_operation: Fangs::openapi_map_operation(&f, h.openapi_operation)
+        }
+    }
+}
+
+#[diagnostic::do_not_recommend]
+impl<H: IntoHandler<T>, T, F1, F2, F3> IntoHandler<(F1, F2, F3, H, T)> for (F1, F2, F3, H)
+where
+    F1: Fang<F2::Proc>,
+    F2: Fang<F3::Proc>,
+    F3: Fang<BoxedFPC>,
+{
+    fn n_pathparams(&self) -> usize {self.3.n_pathparams()}
+
+    fn into_handler(self) -> Handler {
+        let (f1, f2, f3, h) = self;
+        let h = h.into_handler();
+        let f = (f1, f2, f3);
+        Handler {
+            proc: Fangs::build(&f, h.proc),
+            #[cfg(feature="openapi")]
+            openapi_operation: Fangs::openapi_map_operation(&f, h.openapi_operation)
+        }
+    }
+}
+
+#[diagnostic::do_not_recommend]
+impl<H: IntoHandler<T>, T, F1, F2, F3, F4> IntoHandler<(F1, F2, F3, F4, H, T)> for (F1, F2, F3, F4, H)
+where
+    F1: Fang<F2::Proc>,
+    F2: Fang<F3::Proc>,
+    F3: Fang<F4::Proc>,
+    F4: Fang<BoxedFPC>,
+{
+    fn n_pathparams(&self) -> usize {self.4.n_pathparams()}
+
+    fn into_handler(self) -> Handler {
+        let (f1, f2, f3, f4, h) = self;
+        let h = h.into_handler();
+        let f = (f1, f2, f3, f4);
+        Handler {
+            proc: Fangs::build(&f, h.proc),
+            #[cfg(feature="openapi")]
+            openapi_operation: Fangs::openapi_map_operation(&f, h.openapi_operation)
+        }
     }
 }
 
