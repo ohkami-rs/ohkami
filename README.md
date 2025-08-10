@@ -64,6 +64,135 @@ Hello, your_name!
 ```
 
 <br>
+    
+## Core APIs
+
+### `Route`
+
+`Route` is the core trait to define Ohkami's routing:
+
+- `.GET()`, `.POST()`, `.PUT()`, `.PATCH()`, `.DELETE()`, `.OPTIONS()` to define API endpoints
+- `.By({another Ohkami})` to nest `Ohkami`s
+- `.Dir({dir_path})` to serve static directory
+  (pre-compressed files with `gzip`, `deflate`, `br`, `zstd` are supported)
+
+Here `GET`, `POST`, etc. takes a *handler* function:
+
+```rust,ignore
+async fn({FromRequest type},*) -> {IntoResponse type}
+```
+
+On native runtimes, whole a handler must be `Send + Sync + 'static`
+and the return type must be `Send + 'static`.
+
+### `claw`s
+
+Ohkami provides `claw` API: handler parts for declarative way to
+extract request data and construct response data.
+
+- `content` - content {extracted from request / for response} of specific format as type
+  - built-in: `Json<T>`, `Text<T>`, `Html<T>`, `UrlEncoded<T>`, `Multipart<T>`
+- `param` - parameter extracted from request as type
+  - built-in: `Path<P>`, `Query<T>`
+- `header` - specific header extracted from request as type
+  - built-in: types for standard request headers
+- `status` - response with specific status code as type
+  - built-in: types for standard response status codes
+
+Here `T` means a type that implements `serde::Deserialize` for request and `serde::Serialize` for response,
+and `P` means a type that implements `FromParam` or a tuple of such types.
+
+Additionally, the number of path parameters extracted by `Path` is *automatically asserted*
+to be the same or less than the number of path parameters contained in the route path.
+
+```rust,ignore
+async fn handler0(
+    Path(param): Path<FromParamType>,
+) -> Json<SerializeType> {
+    // ...
+}
+
+async fn handler1(
+    Json(req): Json<Deserialize0>,
+    Path((param0, param1)): Path<(FromParam0, FromParam1)>,
+    Query(query): Query<Deserialize1>,
+) -> status::Created<Json<Serialize0>> {
+    // ...
+}
+```
+
+### `fang`s
+
+Ohkami's request handling system is called `fang`; all handlers and middlewares are built on it.
+
+*(simplified for description)*
+```rust,ignore
+pub trait Fang<Inner: FangProc> {
+    type Proc: FangProc;
+    fn chain(&self, inner: Inner) -> Self::Proc;
+}
+
+pub trait FangProc {
+    async fn bite<'b>(&'b self, req: &'b mut Request) -> Response;
+}
+```
+
+built-in:
+
+- `BasicAuth`, `Cors`, `Jwt` (authentication and security)
+- `Context` (reuqest context)
+- `Enamel` (security headers; experimantal)
+- `Timeout` (handling timeout; native runtime only)
+- `openapi::Tag` (tag for OpenAPI document generation; `openapi` feature only)
+
+Ohkami provides `FangAction` utility trait to implement `Fang` trait easily:
+
+*(simplified for description)*
+```rust,ignore
+pub trait FangAction {
+    async fn fore<'a>(&'a self, req: &'a mut Request) -> Result<(), Response> {
+        // default implementation is empty
+        Ok(())
+    }
+    async fn back<'a>(&'a self, res: &'a mut Response) {
+        // default implementation is empty
+    }
+}
+```
+
+Additionally, you can apply fangs both as *global fangs* to an `Ohkami` or
+as *local fangs* to a specific handler (described below).
+
+### `Ohkami`
+
+`Ohkami` is the main entry point of Ohkami application:
+a collection of `Route`s and `Fang`s, and provides `.howl()`/`.howls()` method to run the application.
+
+```rust,ignore
+Ohkami::new((
+    // global fangs
+    Fang1,
+    Fang2,
+    // routes
+    "/hello"
+        .GET(hello_handler)
+        .POST(hello_post_handler),
+    "/goodbye"
+        .GET((
+            // local fangs
+            Fang3,
+            Fang4,
+            goodbye_handler // handler
+        )),
+)).howl("localhost:3000").await;
+```
+
+`.howls()`, `tls` feature only, is used to run Ohkami with TLS (HTTPS) support
+with [`rustls`](https://github.com/rustls) ecosystem (described in `tls` feature section).
+
+`howl(s)` supports graceful shutdown by `Ctrl-C` or `SIGTERM` signal on native runtimes.
+
+<br>
 
 ## Feature flags
 
@@ -377,11 +506,6 @@ Hello, secure ohkami!
 
 ### Typed content
 
-Ohkami provides `claws` API: handler parts for declarative way to
-extract request data and construct response data.
-
-*built-in content claws* : `Json`, `Text`, `Html`, `UrlEncoded`, `Multipart`
-
 ```rust
 use ohkami::claw::{Json, status};
 use ohkami::serde::{Deserialize, Serialize};
@@ -411,8 +535,6 @@ async fn create_user(
 ```
 
 ### Typed params
-
-*built-in param claws* : `Path`, `Query`
 
 ```rust,no_run
 use ohkami::{Ohkami, Route};
@@ -463,17 +585,6 @@ async fn search(
 ```
 
 ### Middlewares
-
-Ohkami's request handling system is called "**fang**s", and handlers and middlewares are built on this.
-
-There are two types of fangs : *global fangs* and *local fangs*. While global fangs are registered to an `Ohkami`, local fangs are applied to a specific handler.
-
-*builtin fang* :
-
-- `Context` *( typed interaction with reuqest context )*
-- `Cors`, `Jwt`, `BasicAuth`
-- `Timeout` *( native runtime only )*
-- `Enamel` *( experimantal; security headers )*
 
 ```rust,no_run
 use ohkami::{Ohkami, Route, FangAction, Request, Response};
@@ -581,7 +692,7 @@ async fn get_user(
 }
 ```
 
-[thiserror](https://crates.io/crates/thiserror) will improve error conversion:
+[thiserror](https://crates.io/crates/thiserror) may improve such error conversion:
 
 ```rust,ignore
     let name = sqlx::query_salor_as::<_, String>(sql)
@@ -600,14 +711,14 @@ use ohkami::{Ohkami, Route};
 #[tokio::main]
 async fn main() {
     Ohkami::new((
-        "/".Dir("./dist"), // `Route::Dir("path/to/dir")`
+        "/".Dir("./dist"),
     )).howl("0.0.0.0:3030").await
 }
 ```
 
 ### File upload
 
-`Multipart` built-in `body` handle and `File` helper:
+`Multipart` built-in claw and `File` helper:
 
 ```rust,no_run
 use ohkami::claw::{status, content::{Multipart, File}};
@@ -638,8 +749,6 @@ async fn post_submit(
 ```
 
 ### Pack of Ohkamis
-
-Nest `Ohkami`s by `Route::By`:
 
 ```rust,no_run
 use ohkami::{Ohkami, Route};
