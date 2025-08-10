@@ -594,8 +594,9 @@ impl Ohkami {
         let router = Arc::new(router);
 
         let listener = bind.ino_tcp_listener().await;
-
         let (wg, ctrl_c) = (sync::WaitGroup::new(), sync::CtrlC::new());
+        
+        crate::INFO!("start serving on {}", listener.local_addr().unwrap());
 
         while let Some(accept) = ctrl_c.until_interrupt(listener.accept()).await {
             let (connection, addr) = {
@@ -710,6 +711,8 @@ impl Ohkami {
         let listener = bind.ino_tcp_listener().await;
         let (wg, ctrl_c) = (sync::WaitGroup::new(), sync::CtrlC::new());
     
+        crate::INFO!("start serving on {}", listener.local_addr().unwrap());
+
         while let Some(accept) = ctrl_c.until_interrupt(listener.accept()).await {
             let Ok((tcp_stream, addr)) = accept else { continue };
             
