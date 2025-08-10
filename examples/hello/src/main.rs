@@ -99,8 +99,6 @@ async fn main() {
         .with_max_level(tracing::Level::INFO)
         .init();
 
-    tracing::info!("Started listening on http://localhost:3000");
-
     Ohkami::new((
         fangs::LogRequest,
         "/hc" .GET(health_handler::health_check),
