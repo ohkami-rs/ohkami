@@ -1,5 +1,5 @@
 use ohkami::prelude::*;
-use ohkami::handle::{Path, Json};
+use ohkami::claw::{Path, Json};
 
 #[derive(Serialize)]
 struct Message {

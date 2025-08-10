@@ -116,10 +116,10 @@ impl<T: Data + Send + 'static> DataStream<T> {
     /// ```
     pub fn new<F, Fut>(f: F) -> Self
     where
-        F:   FnOnce(handle::Stream<T>) -> Fut + Send + 'static,
+        F:   FnOnce(claw::Stream<T>) -> Fut + Send + 'static,
         Fut: Future<Output = ()> + Send + 'static,
     {
-        Self(Box::pin(QueueStream::new(|q| f(handle::Stream::from(q)))), PhantomData)
+        Self(Box::pin(QueueStream::new(|q| f(claw::Stream::from(q)))), PhantomData)
     }
 }
 

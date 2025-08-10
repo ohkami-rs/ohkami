@@ -1,5 +1,5 @@
 use ohkami::{Ohkami, Route};
-use ohkami::handle::{status, Path};
+use ohkami::claw::{status, Path};
 
 async fn health_check() -> status::NoContent {
     status::NoContent

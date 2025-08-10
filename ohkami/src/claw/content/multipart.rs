@@ -1,5 +1,5 @@
 use super::super::bound::{self, Incoming};
-use super::FromBody;
+use super::FromContent;
 use ohkami_lib::serde_multipart;
 
 pub use ohkami_lib::serde_multipart::File;
@@ -21,7 +21,7 @@ use crate::openapi;
 /// 
 /// ```
 /// # enum MyError {}
-/// use ohkami::handle::body::{Multipart, File};
+/// use ohkami::claw::content::{Multipart, File};
 /// use ohkami::serde::Deserialize;
 /// 
 /// #[derive(Deserialize)]
@@ -50,10 +50,10 @@ use crate::openapi;
 /// not supported
 pub struct Multipart<T: bound::Schema>(pub T);
 
-impl<'req, T: Incoming<'req>> FromBody<'req> for Multipart<T> {
+impl<'req, T: Incoming<'req>> FromContent<'req> for Multipart<T> {
     const MIME_TYPE: &'static str = "multipart/form-data";
 
-    fn from_body(body: &'req [u8]) -> Result<Self, impl std::fmt::Display> {
+    fn from_content(body: &'req [u8]) -> Result<Self, impl std::fmt::Display> {
         serde_multipart::from_bytes(body).map(Multipart)
     }
 

@@ -114,7 +114,7 @@ mod repository {
 mod routes {
     use crate::repository::{self, UserRepository};
     use ohkami::{Ohkami, Route};
-    use ohkami::handle::{Path, Json, status};
+    use ohkami::claw::{Path, Json, status};
     use ohkami::fang::Context;
     use ohkami::serde::{Serialize, Deserialize};
 

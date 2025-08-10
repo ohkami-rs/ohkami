@@ -8,7 +8,7 @@ use model::*;
 
 use ohkami::{Ohkami, Route};
 use ohkami::fang::{BasicAuth, Context};
-use ohkami::handle::{status, Path, Json};
+use ohkami::claw::{status, Path, Json};
 
 #[ohkami::bindings]
 struct Bindings;

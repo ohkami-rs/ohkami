@@ -1,9 +1,9 @@
-//! # `body` components
+//! # `content` claws
 //! 
-//! This module provides components for typed handling of request and response bodies
-//! via the `FromBody` and `IntoBody` traits.
+//! These claws provides typed handling of request and response bodies
+//! via the `FromContent` and `IntoContent` traits.
 //! 
-//! Built-in body formats include:
+//! Built-in content claws:
 //! 
 //! - `Json`: `application/json` request/response body
 //! - `UrlEncoded`: `application/x-www-form-urlencoded` request/response body
@@ -14,7 +14,7 @@
 //! ## Example
 //! 
 //! ```
-//! use ohkami::handle::Json;
+//! use ohkami::claw::Json;
 //! use ohkami::serde::{Serialize, Deserialize};
 //! 
 //! #[derive(Deserialize)]
@@ -59,21 +59,21 @@ use std::borrow::Cow;
 #[cfg(feature="openapi")]
 use crate::openapi;
 
-pub trait FromBody<'req>: Sized {
+pub trait FromContent<'req>: Sized {
     /// e.g. `application/json` `text/html`
     const MIME_TYPE: &'static str;
 
-    fn from_body(body: &'req [u8]) -> Result<Self, impl std::fmt::Display>;
+    fn from_content(body: &'req [u8]) -> Result<Self, impl std::fmt::Display>;
 
     #[cfg(feature="openapi")]
     fn openapi_requestbody() -> impl Into<openapi::schema::SchemaRef>;
 }
-impl<'req, B: FromBody<'req>> FromRequest<'req> for B {
+impl<'req, B: FromContent<'req>> FromRequest<'req> for B {
     type Error = Response;
     
     fn from_request(req: &'req Request) -> Option<Result<Self, Self::Error>> {
         if req.headers.content_type()?.starts_with(B::MIME_TYPE) {
-            Some(B::from_body(req.payload()?).map_err(super::reject))
+            Some(B::from_content(req.payload()?).map_err(super::reject))
         } else {
             None
         }
@@ -87,27 +87,27 @@ impl<'req, B: FromBody<'req>> FromRequest<'req> for B {
     }
 }
 
-pub trait IntoBody {
+pub trait IntoContent {
     /// e.g. `text/html; charset=UTF-8`
     const CONTENT_TYPE: &'static str;
 
-    fn into_body(self) -> Result<Cow<'static, [u8]>, impl std::fmt::Display>;
+    fn into_content(self) -> Result<Cow<'static, [u8]>, impl std::fmt::Display>;
 
     #[cfg(feature="openapi")]
     fn openapi_responsebody() -> impl Into<openapi::schema::SchemaRef>;
 }
-impl<B: IntoBody> IntoResponse for B {
+impl<B: IntoContent> IntoResponse for B {
     #[inline]
     fn into_response(self) -> Response {
         if const {Self::CONTENT_TYPE.is_empty()} {// removed by optimization if it's not ""
             return Response::OK()
         }
 
-        match self.into_body() {
+        match self.into_content() {
             Ok(body) => Response::OK().with_payload(Self::CONTENT_TYPE, body),
             Err(_err) => {
                 #[cfg(debug_assertions)] {
-                    eprintln!("Failed to serialize `{}` as `{}` in `IntoBody`: {_err}",
+                    eprintln!("Failed to serialize `{}` as `{}` in `IntoContent`: {_err}",
                         std::any::type_name::<B>(),
                         Self::CONTENT_TYPE
                     )
@@ -130,11 +130,11 @@ impl<B: IntoBody> IntoResponse for B {
         openapi::Responses::new([(200, res)])
     }
 }
-impl IntoBody for () {
+impl IntoContent for () {
     const CONTENT_TYPE: &'static str = "";
 
     #[cold] #[inline(never)]
-    fn into_body(self) -> Result<Cow<'static, [u8]>, impl std::fmt::Display> {
+    fn into_content(self) -> Result<Cow<'static, [u8]>, impl std::fmt::Display> {
         #[allow(unreachable_code)]
         {unreachable!("`into_body` of `()`") as Result<Cow<'static, [u8]>, std::convert::Infallible>}
     }
@@ -148,11 +148,11 @@ impl IntoBody for () {
 }
 macro_rules! text_response {
     ($( $t:ty: $this:ident => $conv:expr ),*) => {$(
-        impl IntoBody for $t {
+        impl IntoContent for $t {
             const CONTENT_TYPE: &'static str = "text/plain; charset=UTF-8";
 
             #[inline(always)]
-            fn into_body(self) -> Result<Cow<'static, [u8]>, impl std::fmt::Display> {
+            fn into_content(self) -> Result<Cow<'static, [u8]>, impl std::fmt::Display> {
                 let $this = self;
                 Ok::<_, std::convert::Infallible>($conv)
             }
