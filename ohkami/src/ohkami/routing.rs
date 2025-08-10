@@ -101,7 +101,7 @@ macro_rules! Route {
         ///     )).howl("localhost:3000").await
         /// }
         /// ```
-        pub trait Route {
+        pub trait Route: Sized {
             $(
                 fn $method<T>(self, handler: impl IntoHandler<T>) -> HandlerSet;
             )*
