@@ -101,7 +101,7 @@ macro_rules! Route {
         ///     )).howl("localhost:3000").await
         /// }
         /// ```
-        pub trait Route {
+        pub trait Route: Sized {
             $(
                 fn $method<T>(self, handler: impl IntoHandler<T>) -> HandlerSet;
             )*
@@ -120,7 +120,13 @@ macro_rules! Route {
             /// Both pre-compressed file(s) and the original file are required to be in the directory.
             /// 
             /// See methods's docs for options.
-            fn Dir(self, static_dir_path: &'static str) -> Dir;
+            fn Mount(self, directory_path: impl AsRef<std::path::Path>) -> Dir;
+            
+            #[deprecated(note = "Use `Mount` instead")]
+            #[cfg(feature="__rt_native__")]
+            fn Dir(self, path: &'static str) -> Dir {
+                self.Mount(path)
+            }
         }
 
         impl Route for &'static str {
@@ -138,17 +144,11 @@ macro_rules! Route {
             }
 
             #[cfg(feature="__rt_native__")]
-            fn Dir(self, path: &'static str) -> Dir {
+            fn Mount(self, path: impl AsRef<std::path::Path>) -> Dir {
                 // Check `self` is valid route
                 let _ = RouteSegments::from_literal(self);
-
-                match Dir::new(
-                    self,
-                    path.into()
-                ) {
-                    Ok(dir) => dir,
-                    Err(e) => panic!("{e}")
-                }
+                
+                Dir::new(self, path.as_ref()).expect(&format!("invalid path to serve: `{}`", path.as_ref().display()))
             }
         }
     };

@@ -17,7 +17,7 @@ impl Default for Options {
 
 fn ohkami(Options { omit_dot_html, serve_dotfiles, etag }: Options) -> Ohkami {
     Ohkami::new((
-        "/".Dir("./public")
+        "/".Mount("./public")
             .omit_extensions(if omit_dot_html {&["html"]} else {&[]})
             .serve_dotfiles(serve_dotfiles)
             .etag(etag),
