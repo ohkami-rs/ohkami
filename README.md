@@ -610,7 +610,7 @@ async fn main() {
 `Multipart` built-in `body` handle and `File` helper:
 
 ```rust,no_run
-use ohkami::claw::{status, body::{Multipart, File}};
+use ohkami::claw::{status, content::{Multipart, File}};
 use ohkami::serde::Deserialize;
 
 #[derive(Deserialize)]
