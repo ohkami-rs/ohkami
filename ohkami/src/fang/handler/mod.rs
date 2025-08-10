@@ -1,5 +1,4 @@
 mod into_handler;
-mod with_local_fangs;
 
 pub use self::into_handler::IntoHandler;
 use super::{FangProcCaller, BoxedFPC};
@@ -9,7 +8,6 @@ use std::pin::Pin;
 
 #[cfg(feature="openapi")]
 use crate::openapi;
-
 
 #[derive(Clone)]
 pub struct Handler {
