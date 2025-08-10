@@ -6,7 +6,7 @@ use crate::{Request, Response, FromRequest, IntoResponse};
 use crate::openapi;
 
 pub trait IntoHandler<T> {
-    fn n_params(&self) -> usize;
+    fn n_pathparams(&self) -> usize;
     fn into_handler(self) -> Handler;
 }
 
@@ -67,7 +67,7 @@ where
     Res: IntoResponse,
     Fut: Future<Output = Res> + SendOnNative + 'static,
 {
-    fn n_params(&self) -> usize {0}
+    fn n_pathparams(&self) -> usize {0}
 
     fn into_handler(self) -> Handler {
         Handler::new(move |_| {
@@ -86,8 +86,8 @@ where
     Fut: Future<Output = Res> + SendOnNative + 'static,
     Req1: FromRequest<'req>,
 {
-    fn n_params(&self) -> usize {
-        Req1::n_params()
+    fn n_pathparams(&self) -> usize {
+        Req1::n_pathparams()
     }
 
     fn into_handler(self) -> Handler {
@@ -114,8 +114,8 @@ where
     Req1: FromRequest<'req>,
     Req2: FromRequest<'req>,
 {
-    fn n_params(&self) -> usize {
-        Req1::n_params() + Req2::n_params()
+    fn n_pathparams(&self) -> usize {
+        Req1::n_pathparams().max(Req2::n_pathparams())
     }
 
     fn into_handler(self) -> Handler {
@@ -144,8 +144,8 @@ where
     Req2: FromRequest<'req>,
     Req3: FromRequest<'req>,
 {
-    fn n_params(&self) -> usize {
-        Req1::n_params() + Req2::n_params() + Req3::n_params()
+    fn n_pathparams(&self) -> usize {
+        Req1::n_pathparams().max(Req2::n_pathparams()).max(Req3::n_pathparams())
     }
 
     fn into_handler(self) -> Handler {
@@ -176,8 +176,8 @@ where
     Req3: FromRequest<'req>,
     Req4: FromRequest<'req>,
 {
-    fn n_params(&self) -> usize {
-        Req1::n_params() + Req2::n_params() + Req3::n_params() + Req4::n_params()
+    fn n_pathparams(&self) -> usize {
+        Req1::n_pathparams().max(Req2::n_pathparams()).max(Req3::n_pathparams()).max(Req4::n_pathparams())
     }
 
     fn into_handler(self) -> Handler {
@@ -210,8 +210,8 @@ where
     Req4: FromRequest<'req>,
     Req5: FromRequest<'req>,
 {
-    fn n_params(&self) -> usize {
-        Req1::n_params() + Req2::n_params() + Req3::n_params() + Req4::n_params() + Req5::n_params()
+    fn n_pathparams(&self) -> usize {
+        Req1::n_pathparams().max(Req2::n_pathparams()).max(Req3::n_pathparams()).max(Req4::n_pathparams()).max(Req5::n_pathparams())
     }
 
     fn into_handler(self) -> Handler {
@@ -246,8 +246,8 @@ where
     Req5: FromRequest<'req>,
     Req6: FromRequest<'req>,
 {
-    fn n_params(&self) -> usize {
-        Req1::n_params() + Req2::n_params() + Req3::n_params() + Req4::n_params() + Req5::n_params() + Req6::n_params()
+    fn n_pathparams(&self) -> usize {
+        Req1::n_pathparams().max(Req2::n_pathparams()).max(Req3::n_pathparams()).max(Req4::n_pathparams()).max(Req5::n_pathparams()).max(Req6::n_pathparams())
     }
 
     fn into_handler(self) -> Handler {

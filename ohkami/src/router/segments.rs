@@ -41,7 +41,7 @@ impl RouteSegments {
         &self.literal
     }
 
-    pub(crate) fn n_params(&self) -> usize {
+    pub(crate) fn n_pathparams(&self) -> usize {
         self.segments.iter()
             .filter(|s| matches!(s, RouteSegment::Param(_)))
             .count()

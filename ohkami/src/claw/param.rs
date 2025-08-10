@@ -305,7 +305,7 @@ impl<'req, P: FromParam<'req>> FromRequest<'req> for Path<P> {
         openapi::Inbound::Params(vec![P::openapi_param()])
     }
 
-    fn n_params() -> usize {
+    fn n_pathparams() -> usize {
         1
     }
 }
@@ -324,7 +324,7 @@ impl<'req, P1: FromParam<'req>> FromRequest<'req> for Path<(P1,)> {
         openapi::Inbound::Params(vec![P1::openapi_param()])
     }
 
-    fn n_params() -> usize {
+    fn n_pathparams() -> usize {
         1
     }
 }
@@ -349,7 +349,7 @@ impl<'req, P1: FromParam<'req>, P2: FromParam<'req>> FromRequest<'req> for Path<
         ])
     }
 
-    fn n_params() -> usize {
+    fn n_pathparams() -> usize {
         2
     }
 }

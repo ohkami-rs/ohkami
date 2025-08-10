@@ -18,9 +18,9 @@ use crate::openapi;
 /// ```
 /// use ohkami::prelude::*;
 /// 
-/// struct IsGETRequest(bool);
+/// struct IsGetRequest(bool);
 /// 
-/// impl ohkami::FromRequest<'_> for IsGETRequest {
+/// impl ohkami::FromRequest<'_> for IsGetRequest {
 ///     type Error = std::convert::Infallible;
 ///     fn from_request(req: &Request) -> Option<Result<Self, Self::Error>> {
 ///         Some(Ok(Self(
@@ -47,10 +47,8 @@ pub trait FromRequest<'req>: Sized {
     }
 
     #[doc(hidden)]
-    /// intent to be used by `format::Path` and by the assertion in `router::base::Router::finalize`
-    fn n_params() -> usize {
-        0
-    }
+    /// intent to be used by `claw::param::Path` and by the assertion in `router::base::Router::finalize`
+    fn n_pathparams() -> usize {0}
 }
 const _: () = {
     impl<'req> FromRequest<'req> for &'req Request {
