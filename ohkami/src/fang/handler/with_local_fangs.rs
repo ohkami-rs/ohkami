@@ -1,7 +1,7 @@
 use super::{Handler, IntoHandler};
 use super::super::{Fang, BoxedFPC, middleware::Fangs};
 
-
+#[diagnostic::do_not_recommend]
 impl<H: IntoHandler<T>, T, F1> IntoHandler<(F1, H, T)> for (F1, H)
 where
     F1: Fang<BoxedFPC>
@@ -19,6 +19,7 @@ where
     }
 }
 
+#[diagnostic::do_not_recommend]
 impl<H: IntoHandler<T>, T, F1, F2> IntoHandler<(F1, F2, H, T)> for (F1, F2, H)
 where
     F1: Fang<F2::Proc>,
@@ -38,6 +39,7 @@ where
     }
 }
 
+#[diagnostic::do_not_recommend]
 impl<H: IntoHandler<T>, T, F1, F2, F3> IntoHandler<(F1, F2, F3, H, T)> for (F1, F2, F3, H)
 where
     F1: Fang<F2::Proc>,
@@ -58,6 +60,7 @@ where
     }
 }
 
+#[diagnostic::do_not_recommend]
 impl<H: IntoHandler<T>, T, F1, F2, F3, F4> IntoHandler<(F1, F2, F3, F4, H, T)> for (F1, F2, F3, F4, H)
 where
     F1: Fang<F2::Proc>,
