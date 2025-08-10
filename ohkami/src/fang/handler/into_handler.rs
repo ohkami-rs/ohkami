@@ -275,7 +275,7 @@ where
 #[test] fn handler_args() {
     use crate::claw::param::{Path, FromParam};
 
-    async fn h0(_: String) -> &'static str {""}
+    async fn h0() -> &'static str {""}
     async fn h1(Path(_param): Path<String>) -> Response {todo!()}
     async fn h2(Path(_param): Path<&str>) -> Response {todo!()}
     async fn h3(Path(_params): Path<(&str, u64)>) -> Response {todo!()}
