@@ -16,6 +16,8 @@ pub trait FromEnv: Sized {
     /// - `"Fetcher"` for Service binding (ref: https://github.com/cloudflare/workers-rs/blob/38af58acc4e54b29c73336c1720188f3c3e86cc4/worker/src/fetcher.rs#L94-L96)
     /// - `"DurableObjectNamespace"` for DurableObject binding (ref: https://github.com/cloudflare/workers-rs/blob/38af58acc4e54b29c73336c1720188f3c3e86cc4/worker/src/durable.rs#L742-L744)
     /// - `"D1Database"` for D1 binding (ref: https://github.com/cloudflare/workers-rs/blob/38af58acc4e54b29c73336c1720188f3c3e86cc4/worker/src/d1/mod.rs#L83-L101)
+    /// - `"Hyperdrive"` for Hyperdrive binding (ref: https://github.com/cloudflare/workers-rs/blob/3e4d7cd2b511b39994be0ad111554c773405d3e4/worker/src/hyperdrive.rs#L12-L14)
+    /// - `"WorkerQueue"` for Queue binding (ref: https://github.com/cloudflare/workers-rs/blob/3e4d7cd2b511b39994be0ad111554c773405d3e4/worker/src/queue.rs#L318-L320)
     fn bindings_meta() -> &'static [(&'static str, Option<&'static str>)] {
         &[]
     }
@@ -52,6 +54,7 @@ pub mod bindings {
     pub type Service       = ::worker::Fetcher;
     pub type DurableObject = ::worker::ObjectNamespace;
     pub type D1            = ::worker::d1::D1Database;
+    pub type Hyperdrive    = ::worker::Hyperdrive;
     /// `Queue` may cause a lot of *WARNING*s on `npm run dev`, but
     /// it's not an actual problem and `Queue` binding does work.
     pub type Queue         = ::worker::Queue;

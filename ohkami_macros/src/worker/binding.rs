@@ -11,6 +11,7 @@ pub enum Binding {
     Service,
     Queue,
     DurableObject,
+    Hyperdrive,
 }
 
 impl Binding {
@@ -24,6 +25,7 @@ impl Binding {
             Self::Service       => Some("Fetcher"),
             Self::Queue         => Some("WorkerQueue"),
             Self::DurableObject => Some("DurableObjectNamespace"),
+            Self::Hyperdrive    => Some("Hyperdrive"),
         }
     }
 
@@ -37,6 +39,7 @@ impl Binding {
             Self::Queue         => quote!(::worker::Queue),
             Self::Service       => quote!(::worker::Fetcher),
             Self::DurableObject => quote!(::worker::ObjectNamespace),
+            Self::Hyperdrive    => quote!(::worker::Hyperdrive),
         }
     }
 
@@ -56,6 +59,7 @@ impl Binding {
             Self::Queue           => from_env(quote! { queue(#name_str) }),
             Self::Service         => from_env(quote! { service(#name_str) }),
             Self::DurableObject   => from_env(quote! { durable_object(#name_str) }),
+            Self::Hyperdrive      => from_env(quote! { hyperdrive(#name_str) }),
         }
     }
 }
@@ -70,6 +74,7 @@ struct EnvBindingCollection {
     services:        Option<Vec<BindingDeclare>>,
     queues:          Option<QueueProducers>,
     durable_objects: Option<BindingsArray>,
+    hyperdrive:      Option<Vec<BindingDeclare>>,
 
     #[serde(default)]
     env: std::collections::BTreeMap<String, EnvBindingCollection>,
@@ -147,7 +152,12 @@ impl Binding {
                 for BindingName { name } in bindings {
                     collection.push((name, Self::DurableObject));
                 }
-            }   
+            }
+            if let Some(hyperdrive) = config.hyperdrive {
+                for BindingDeclare { binding } in hyperdrive {
+                    collection.push((binding, Self::Hyperdrive));
+                }
+            }
         }
 
         collection

@@ -54,6 +54,8 @@ fn __test_auto_bindings__(bindings: AutoBindings) {
     let _: worker::Queue = bindings.MY_QUEUE;
 
     let _: worker::ObjectNamespace = bindings.RATE_LIMITER;
+    
+    let _: worker::Hyperdrive = bindings.HYPERDRIVE;
 }
 
 fn __test_manual_bindings__(bindings: ManualBindings) {
