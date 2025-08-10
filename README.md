@@ -99,11 +99,12 @@ extract request data and construct response data.
 - `status` - response with specific status code as type
   - built-in: types for standard response status codes
 
-Here `T` means a type that implements `serde::Deserialize` for request and `serde::Serialize` for response,
-and `P` means a type that implements `FromParam` or a tuple of such types.
+( `T` means a type that implements `serde::Deserialize` for request and `serde::Serialize` for response,
+and `P` means a type that implements `FromParam` or a tuple of such types. )
 
-Additionally, the number of path parameters extracted by `Path` is *automatically asserted*
-to be the same or less than the number of path parameters contained in the route path.
+The number of path parameters extracted by `Path` is **automatically asserted**
+to be the same or less than the number of path parameters contained in the route path
+when the handler is registered to routing.
 
 ```rust,ignore
 async fn handler0(
@@ -125,8 +126,9 @@ async fn handler1(
 
 Ohkami's request handling system is called `fang`; all handlers and middlewares are built on it.
 
-*(simplified for description)*
 ```rust,ignore
+/* simplified for description */
+
 pub trait Fang<Inner: FangProc> {
     type Proc: FangProc;
     fn chain(&self, inner: Inner) -> Self::Proc;
@@ -139,7 +141,7 @@ pub trait FangProc {
 
 built-in:
 
-- `BasicAuth`, `Cors`, `Jwt` (authentication and security)
+- `BasicAuth`, `Cors`, `Jwt` (authentication/security)
 - `Context` (reuqest context)
 - `Enamel` (security headers; experimantal)
 - `Timeout` (handling timeout; native runtime only)
@@ -147,8 +149,9 @@ built-in:
 
 Ohkami provides `FangAction` utility trait to implement `Fang` trait easily:
 
-*(simplified for description)*
 ```rust,ignore
+/* simplified for description */
+
 pub trait FangAction {
     async fn fore<'a>(&'a self, req: &'a mut Request) -> Result<(), Response> {
         // default implementation is empty
@@ -160,8 +163,8 @@ pub trait FangAction {
 }
 ```
 
-Additionally, you can apply fangs both as *global fangs* to an `Ohkami` or
-as *local fangs* to a specific handler (described below).
+Additionally, you can apply fangs both as **global fangs** to an `Ohkami` or
+as **local fangs** to a specific handler (described below).
 
 ### `Ohkami`
 
@@ -187,7 +190,7 @@ Ohkami::new((
 )).howl("localhost:3000").await;
 ```
 
-`.howls()`, `tls` feature only, is used to run Ohkami with TLS (HTTPS) support
+`.howls()` (`tls` feature only), is used to run Ohkami with TLS (HTTPS) support
 with [`rustls`](https://github.com/rustls) ecosystem (described in `tls` feature section).
 
 `howl(s)` supports graceful shutdown by `Ctrl-C` or `SIGTERM` signal on native runtimes.
