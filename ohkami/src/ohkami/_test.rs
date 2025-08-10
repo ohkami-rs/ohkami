@@ -754,7 +754,7 @@ fn method_dependent_fang_applying() {
 #[should_panic =
     "handler `ohkami::ohkami::_test::panics_unexpected_path_params::hello_name` \
     requires 1 path param(s) \
-    BUT the route `/hello` captures only 0 param(s)"
+    BUT the route `/hello` captures only 0 path param(s)"
 ]
 fn panics_unexpected_path_params() {
     async fn hello_name(Path(name): Path<&str>) -> String {
@@ -770,7 +770,7 @@ fn panics_unexpected_path_params() {
 #[should_panic =
     "handler `ohkami::ohkami::_test::check_path_params_counted_accumulatedly::hello_name_age` \
     requires 2 path param(s) \
-    BUT the route `/hello/:name` captures only 1 param(s)"
+    BUT the route `/hello/:name` captures only 1 path param(s)"
 ]
 fn check_path_params_counted_accumulatedly() {
     async fn hello_name(Path(name): Path<&str>) -> String {
