@@ -59,7 +59,7 @@ impl StaticFile {
 }
 
 impl Dir {
-    pub(super) fn new(route: &'static str, dir_path: PathBuf) -> io::Result<Self> {
+    pub(super) fn new(route: &'static str, dir_path: &Path) -> io::Result<Self> {
         let dir_path = dir_path.canonicalize()?;
 
         if !dir_path.is_dir() {

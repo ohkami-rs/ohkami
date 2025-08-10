@@ -73,7 +73,7 @@ Hello, your_name!
 
 - `.GET()`, `.POST()`, `.PUT()`, `.PATCH()`, `.DELETE()`, `.OPTIONS()` to define API endpoints
 - `.By({another Ohkami})` to nest `Ohkami`s
-- `.Dir({dir_path})` to serve static directory
+- `.Mount({directory_path})` to serve static directory
   (pre-compressed files with `gzip`, `deflate`, `br`, `zstd` are supported)
 
 Here `GET`, `POST`, etc. takes a *handler* function:
@@ -714,7 +714,7 @@ use ohkami::{Ohkami, Route};
 #[tokio::main]
 async fn main() {
     Ohkami::new((
-        "/".Dir("./dist"),
+        "/".Mount("./dist"),
     )).howl("0.0.0.0:3030").await
 }
 ```

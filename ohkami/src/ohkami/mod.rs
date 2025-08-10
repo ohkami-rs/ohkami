@@ -426,7 +426,7 @@ impl Ohkami {
     /// 
     /// ### static directory serving
     /// 
-    /// `.Dir` mounts a directory and serves all files in it/its sub directories.
+    /// `.Mount({directory_path})` mounts a directory and serves all files in it/its sub directories.
     /// 
     /// This doesn't work on `rt_worker` ( of course because there Ohkami can't
     /// touch your local file system ). Consider using `asset` of wrangler.{toml/json}
@@ -438,7 +438,7 @@ impl Ohkami {
     /// # fn __() -> Ohkami {
     /// # let another_ohkami = Ohkami::new(());
     /// Ohkami::new(
-    ///     "/public".Dir("./path/to/dir"),
+    ///     "/public".Mount("./path/to/dir"),
     /// )
     /// # }
     /// ```
