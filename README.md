@@ -83,7 +83,7 @@ async fn({FromRequest type},*) -> {IntoResponse type}
 ```
 
 On native runtimes, whole a handler must be `Send + Sync + 'static`
-and the return type must be `Send + 'static`.
+and the return future must be `Send + 'static`.
 
 ### `claw`s
 
