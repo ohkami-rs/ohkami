@@ -73,7 +73,7 @@ Hello, your_name!
 
 - `.GET()`, `.POST()`, `.PUT()`, `.PATCH()`, `.DELETE()`, `.OPTIONS()` to define API endpoints
 - `.By({another Ohkami})` to nest `Ohkami`s
-- `.Mount({directory_path})` to serve static directory
+- `.Mount({directory path})` to serve static directory
   (pre-compressed files with `gzip`, `deflate`, `br`, `zstd` are supported)
 
 Here `GET`, `POST`, etc. takes a *handler* function:
@@ -90,17 +90,23 @@ and the return type must be `Send + 'static`.
 Ohkami provides `claw` API: handler parts for declarative way to
 extract request data and construct response data.
 
-- `content` - content {extracted from request / for response} of specific format as type
+- `content` - typed content {extracted from request / for response} of specific format
   - built-in: `Json<T>`, `Text<T>`, `Html<T>`, `UrlEncoded<T>`, `Multipart<T>`
-- `param` - parameter extracted from request as type
+- `param` - typed parameters extracted from request
   - built-in: `Path<P>`, `Query<T>`
-- `header` - specific header extracted from request as type
+- `header` - types for specific header extracted from request
   - built-in: types for standard request headers
-- `status` - response with specific status code as type
+- `status` - types for response with specific status code
   - built-in: types for standard response status codes
 
-( `T` means a type that implements `serde::Deserialize` for request and `serde::Serialize` for response,
-and `P` means a type that implements `FromParam` or a tuple of such types. )
+<sm><i>(
+here <code>T</code> means a type that implements
+<code>serde::Deserialize</code> for request and
+<code>serde::Serialize</code> for response,
+and <code>P</code> means a type that implements
+<code>FromParam</code> or
+a tuple of such types.
+)</i></sm>
 
 The number of path parameters extracted by `Path` is **automatically asserted**
 to be the same or less than the number of path parameters contained in the route path
@@ -190,7 +196,7 @@ Ohkami::new((
 )).howl("localhost:3000").await;
 ```
 
-`.howls()` (`tls` feature only), is used to run Ohkami with TLS (HTTPS) support
+`.howls()` (`tls` feature only) is used to run Ohkami with TLS (HTTPS) support
 with [`rustls`](https://github.com/rustls) ecosystem (described in `tls` feature section).
 
 `howl(s)` supports graceful shutdown by `Ctrl-C` or `SIGTERM` signal on native runtimes.
