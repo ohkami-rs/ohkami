@@ -612,9 +612,9 @@ impl Ohkami {
             };
 
             let session = Session::new(
-                router.clone(),
                 connection,
-                addr.ip()
+                addr.ip(),
+                router.clone(),
             );
 
             let wg = wg.add();
@@ -719,9 +719,9 @@ impl Ohkami {
             let Ok(tls_stream) = tls_acceptor.accept(tcp_stream).await else { continue };
             
             let session = Session::new(
-                router.clone(),
                 TlsStream(tls_stream),
-                addr.ip()
+                addr.ip(),
+                router.clone(),
             );
     
             let wg = wg.add();

@@ -12,7 +12,7 @@ pub use self::worker::*;
 
 /// # Context for WebSocket handshake
 /// 
-/// `.upgrade` performs handshake and creates a WebSocket session.
+/// `.upgrade(~)` performs handshake and creates a WebSocket session.
 /// 
 /// ### note
 /// 
@@ -63,4 +63,9 @@ impl<'req> WebSocketContext<'req> {
     pub fn new(sec_websocket_key: &'req str) -> Self {
         Self { sec_websocket_key }
     }
+    
+    /*
+        `.upgrade(~)` and something are implemented in
+        `native` or `worker` submodule
+    */
 }

@@ -1,41 +1,32 @@
 #![cfg(feature="__rt_native__")]
 
+mod connection;
+
 use std::{any::Any, pin::Pin, sync::Arc, time::Duration};
 use std::panic::{AssertUnwindSafe, catch_unwind};
-use crate::__rt__::{AsyncRead, AsyncWrite};
 use crate::response::Upgrade;
 use crate::util::timeout_in;
 use crate::router::r#final::Router;
 use crate::{Request, Response};
 
-pub(crate) struct Session<C> {
+pub use self::connection::Connection;
+
+pub(crate) struct Session {
+    connection: Connection,
     router: Arc<Router>,
-    connection: C,
     ip: std::net::IpAddr,
 }
 
-pub(crate) trait Connection: AsyncRead + AsyncWrite + Unpin {
-    #[cfg(feature="ws")]
-    fn into_websocket_stream(self) -> Result<crate::__rt__::TcpStream, &'static str>;
-}
-
-impl Connection for crate::__rt__::TcpStream {
-    #[cfg(feature="ws")]
-    fn into_websocket_stream(self) -> Result<crate::__rt__::TcpStream, &'static str> {
-        Ok(self)
-    }
-}
-
-impl<C: Connection> Session<C> {
+impl Session {
     pub(crate) fn new(
+        connection: impl Into<Connection>,
+        ip: std::net::IpAddr,
         router: Arc<Router>,
-        connection: C,
-        ip: std::net::IpAddr
     ) -> Self {
         Self {
+            connection: connection.into(),
+            ip,
             router,
-            connection,
-            ip
         }
     }
 
@@ -128,31 +119,25 @@ impl<C: Connection> Session<C> {
             Upgrade::None => {
                 crate::DEBUG!("about to shutdown connection");
             },
+            
             #[cfg(feature="ws")]
             Upgrade::WebSocket(ws) => {
-                match self.connection.into_websocket_stream() {
-                    Ok(tcp_stream) => {
-                        crate::DEBUG!("WebSocket session started");
+                crate::DEBUG!("WebSocket session started");
 
-                        let aborted = ws.manage_with_timeout(
-                            Duration::from_secs(crate::CONFIG.websocket_timeout()),
-                            tcp_stream
-                        ).await;
-                        if aborted {
-                            crate::WARNING!("\
-                                WebSocket session aborted by timeout. In Ohkami, \
-                                WebSocket timeout is set to 3600 seconds (1 hour) \
-                                by default and is configurable by `OHKAMI_WEBSOCKET_TIMEOUT` \
-                                environment variable.\
-                            ");
-                        }
-
-                        crate::DEBUG!("WebSocket session finished");
-                    },
-                    Err(msg) => {
-                        crate::WARNING!("{msg}");
-                    }
+                let aborted = ws.manage_with_timeout(
+                    Duration::from_secs(crate::CONFIG.websocket_timeout()),
+                    self.connection
+                ).await;
+                if aborted {
+                    crate::WARNING!("\
+                        WebSocket session aborted by timeout. In Ohkami, \
+                        WebSocket timeout is set to 3600 seconds (1 hour) \
+                        by default and is configurable by `OHKAMI_WEBSOCKET_TIMEOUT` \
+                        environment variable.\
+                    ");
                 }
+
+                crate::DEBUG!("WebSocket session finished");
             },
         }
     }

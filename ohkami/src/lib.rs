@@ -202,7 +202,7 @@ pub use ohkami::{Ohkami, Route};
 pub mod fang;
 pub use fang::{handler, Fang, FangProc, FangAction};
 
-#[cfg(all(feature="__rt_native__", feature="rt_tokio", feature="tls"))]
+#[cfg(feature="tls")]
 mod tls;
 
 pub mod header;

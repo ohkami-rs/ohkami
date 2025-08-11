@@ -1,13 +1,8 @@
+#![cfg(feature="tls")]
+
 use tokio::io::{AsyncRead, AsyncWrite};
 
 pub struct TlsStream(pub tokio_rustls::server::TlsStream<tokio::net::TcpStream>);
-
-impl crate::session::Connection for TlsStream {
-    #[cfg(feature="ws")]
-    fn into_websocket_stream(self) -> Result<crate::__rt__::TcpStream, &'static str> {
-        Err("WebSocket connections are not supported over TLS yet")
-    }
-}
 
 impl AsyncRead for TlsStream {
     fn poll_read(

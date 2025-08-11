@@ -197,7 +197,8 @@ Ohkami::new((
 ```
 
 `.howls()` (`tls` feature only) is used to run Ohkami with TLS (HTTPS) support
-with [`rustls`](https://github.com/rustls) ecosystem (described in `tls` feature section).
+with `tokio` and [`rustls`](https://github.com/rustls) ecosystem
+(currently `rt_tokio` only / described in `tls` feature section).
 
 `howl(s)` supports graceful shutdown by `Ctrl-C` or `SIGTERM` signal on native runtimes.
 
