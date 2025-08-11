@@ -221,7 +221,7 @@ Ohkami has first-class support for Cloudflare Workers:
 And also maintains useful project template. Run :
 
 ```sh
-npm create cloudflare ＜project dir＞ -- --template https://github.com/ohkami-rs/ohkami-templates/worker
+npm create cloudflare ＜project dir＞ -- --template https://github.com/ohkami-rs/templates/worker
 ```
 
 then `＜project dir＞` will have `wrangler.jsonc`, `package.json` and a Rust library crate.
@@ -232,7 +232,7 @@ Local dev by `npm run dev` and deploy by `npm run deploy` !
 
 See
 
-- `worker.*` temaplates in [template repository](https://github.com/ohkami-rs/ohkami-templates)
+- `worker.*` temaplates in [template repository](https://github.com/ohkami-rs/templates)
 - `worker.*` samples in [samples directory](https://github.com/ohkami-rs/ohkami/tree/main/samples)
 - `#[worker]`'s documentation comment in [macro definitions](https://github.com/ohkami-rs/ohkami/tree/main/ohkami_macros/src/lib.rs)
 
@@ -247,7 +247,7 @@ Both `Function URLs` and `API Gateway` are supported, and WebSocket is not suppo
 [cargo lambda](https://crates.io/crates/cargo-lambda) will be good partner. Let's run :
 
 ```sh
-cargo lambda new ＜project dir＞ --template https://github.com/ohkami-rs/ohkami-templates
+cargo lambda new ＜project dir＞ --template https://github.com/ohkami-rs/templates
 ```
 
 `lambda_runtime::run(your_ohkami)` make `you_ohkami` run on Lambda Function.
@@ -267,7 +267,7 @@ cargo lambda deploy [--role ＜arn-of-a-iam-role＞] [and more]
 
 See
 
-* README of [template](https://github.com/ohkami-rs/ohkami-templates/tree/main/template)
+* README of [template](https://github.com/ohkami-rs/templates/tree/main/template)
 * [Cargo Lambda document](https://www.cargo-lambda.info)
 
 for details.
