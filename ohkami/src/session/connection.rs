@@ -155,8 +155,8 @@ const _: () = {
         fn poll_read(
             self: std::pin::Pin<&mut Self>, 
             cx: &mut std::task::Context<'_>, 
-            buf: &mut smol::io::ReadBuf<'_>
-        ) -> std::task::Poll<std::io::Result<()>> {
+            buf: &[u8]
+        ) -> std::task::Poll<std::io::Result<usize>> {
             match std::pin::Pin::into_inner(self) {
                 Self::Tcp(stream) => std::pin::Pin::new(stream).poll_read(cx, buf),
             }
@@ -211,8 +211,8 @@ const _: () = {
         fn poll_read(
             self: std::pin::Pin<&mut Self>, 
             cx: &mut std::task::Context<'_>, 
-            buf: &mut glommio::io::ReadBuf<'_>
-        ) -> std::task::Poll<std::io::Result<()>> {
+            buf: &[u8]
+        ) -> std::task::Poll<std::io::Result<usize>> {
             match std::pin::Pin::into_inner(self) {
                 Self::Tcp(stream) => std::pin::Pin::new(stream).poll_read(cx, buf),
             }
