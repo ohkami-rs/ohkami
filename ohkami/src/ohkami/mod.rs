@@ -714,12 +714,23 @@ impl Ohkami {
         crate::INFO!("start serving on {}", listener.local_addr().unwrap());
 
         while let Some(accept) = ctrl_c.until_interrupt(listener.accept()).await {
-            let Ok((tcp_stream, addr)) = accept else { continue };
+            crate::DEBUG!("accept: {accept:?}");
             
-            let Ok(tls_stream) = tls_acceptor.accept(tcp_stream).await else { continue };
+            let Ok((connection, addr)) = accept else { continue };
+            
+            let connection = match ctrl_c.until_interrupt(tls_acceptor.accept(connection)).await {
+                None => break,
+                Some(Ok(tls_stream)) => TlsStream(tls_stream),
+                Some(Err(e)) => {
+                    crate::ERROR!("TLS accept error: {e}");
+                    continue;
+                }
+            };
+            
+            crate::DEBUG!("accepted TLS connection: {connection:?}");
             
             let session = Session::new(
-                TlsStream(tls_stream),
+                connection,
                 addr.ip(),
                 router.clone(),
             );

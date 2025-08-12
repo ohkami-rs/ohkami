@@ -4,6 +4,12 @@ use tokio::io::{AsyncRead, AsyncWrite};
 
 pub struct TlsStream(pub tokio_rustls::server::TlsStream<tokio::net::TcpStream>);
 
+impl std::fmt::Debug for TlsStream {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
 impl AsyncRead for TlsStream {
     fn poll_read(
         mut self: std::pin::Pin<&mut Self>, 

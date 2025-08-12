@@ -1,3 +1,4 @@
+#[derive(Debug)]
 pub enum Connection {
     Tcp(crate::__rt__::TcpStream),
     #[cfg(feature="tls")]
