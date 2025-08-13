@@ -68,81 +68,6 @@ const _: () = {
             }
         }
     }
-    
-    #[cfg(feature="ws")]
-    #[cfg(not(feature="tls"))]
-    impl<'split> mews::Splitable<'split> for Connection {
-        type ReadHalf = <crate::__rt__::TcpStream as mews::Splitable<'split>>::ReadHalf;
-        type WriteHalf = <crate::__rt__::TcpStream as mews::Splitable<'split>>::WriteHalf;
-        fn split(&'split mut self) -> (Self::ReadHalf, Self::WriteHalf) {
-            match self {
-                Self::Tcp(stream) => stream.split(),
-            }
-        }
-    }
-    #[cfg(feature="ws")]
-    #[cfg(feature="tls")]
-    impl<'split> mews::Splitable<'split> for Connection {
-        // generic split impl, maybe a few less efficient than simple `TcpStream` split
-        type ReadHalf = TokioIoReadHalf<'split, Connection>;
-        type WriteHalf = TokioIoWriteHalf<'split, Connection>;
-        fn split(&'split mut self) -> (Self::ReadHalf, Self::WriteHalf) {
-            let (r, w) = futures_util::lock::BiLock::new(self);
-            (TokioIoReadHalf(r), TokioIoWriteHalf(w))
-        }
-    }
-    /* based on https://github.com/rust-lang/futures-rs/blob/de9274e655b2fff8c9630a259a473b71a6b79dda/futures-util/src/io/split.rs */    
-    #[cfg(all(feature="ws", feature="tls"))]
-    pub struct TokioIoReadHalf<'split, T>(
-        futures_util::lock::BiLock<&'split mut T>
-    );
-    #[cfg(all(feature="ws", feature="tls"))]
-    pub struct TokioIoWriteHalf<'split, T>(
-        futures_util::lock::BiLock<&'split mut T>
-    );
-    #[cfg(all(feature="ws", feature="tls"))]
-    fn lock_and_then<T, U, E>(
-        lock: &futures_util::lock::BiLock<T>,
-        cx: &mut std::task::Context<'_>,
-        f: impl FnOnce(std::pin::Pin<&mut T>, &mut std::task::Context<'_>) -> std::task::Poll<Result<U, E>>
-    ) -> std::task::Poll<Result<U, E>> {
-        let mut l = futures_util::ready!(lock.poll_lock(cx));
-        f(l.as_pin_mut(), cx)
-    }
-    #[cfg(all(feature="ws", feature="tls"))]
-    impl<'split, T: tokio::io::AsyncRead + Unpin> tokio::io::AsyncRead for TokioIoReadHalf<'split, T> {
-        fn poll_read(
-            self: std::pin::Pin<&mut Self>, 
-            cx: &mut std::task::Context<'_>, 
-            buf: &mut tokio::io::ReadBuf<'_>
-        ) -> std::task::Poll<std::io::Result<()>> {
-            lock_and_then(&self.0, cx, |l, cx| l.poll_read(cx, buf))
-        }
-    }
-    #[cfg(all(feature="ws", feature="tls"))]
-    impl<'split, T: tokio::io::AsyncWrite + Unpin> tokio::io::AsyncWrite for TokioIoWriteHalf<'split, T> {
-        fn poll_write(
-            self: std::pin::Pin<&mut Self>, 
-            cx: &mut std::task::Context<'_>, 
-            buf: &[u8]
-        ) -> std::task::Poll<std::io::Result<usize>> {
-            lock_and_then(&self.0, cx, |l, cx| l.poll_write(cx, buf))
-        }
-
-        fn poll_flush(
-            self: std::pin::Pin<&mut Self>, 
-            cx: &mut std::task::Context<'_>
-        ) -> std::task::Poll<std::io::Result<()>> {
-            lock_and_then(&self.0, cx, |l, cx| l.poll_flush(cx))
-        }
-
-        fn poll_shutdown(
-            self: std::pin::Pin<&mut Self>, 
-            cx: &mut std::task::Context<'_>
-        ) -> std::task::Poll<std::io::Result<()>> {
-            lock_and_then(&self.0, cx, |l, cx| l.poll_shutdown(cx))
-        }
-    }
 };
 
 /*
@@ -155,7 +80,7 @@ const _: () = {
         fn poll_read(
             self: std::pin::Pin<&mut Self>, 
             cx: &mut std::task::Context<'_>, 
-            buf: &[u8]
+            buf: &mut [u8]
         ) -> std::task::Poll<std::io::Result<usize>> {
             match std::pin::Pin::into_inner(self) {
                 Self::Tcp(stream) => std::pin::Pin::new(stream).poll_read(cx, buf),
@@ -183,23 +108,12 @@ const _: () = {
             }
         }
 
-        fn poll_shutdown(
+        fn poll_close(
             self: std::pin::Pin<&mut Self>, 
             cx: &mut std::task::Context<'_>
         ) -> std::task::Poll<std::io::Result<()>> {
             match std::pin::Pin::into_inner(self) {
-                Self::Tcp(stream) => std::pin::Pin::new(stream).poll_shutdown(cx),
-            }
-        }
-    }
-    
-    #[cfg(feature="ws")]
-    impl<'split> mews::Splitable<'split> for Connection {
-        type ReadHalf = <crate::__rt__::TcpStream as mews::Splitable>::ReadHalf;
-        type WriteHalf = <crate::__rt__::TcpStream as mews::Splitable>::WriteHalf;
-        fn split(&'split mut self) -> (Self::ReadHalf, Self::WriteHalf) {
-            match std::pin::Pin::into_inner(self) {
-                Self::Tcp(stream) => stream.split(),
+                Self::Tcp(stream) => std::pin::Pin::new(stream).poll_close(cx),
             }
         }
     }
@@ -211,7 +125,7 @@ const _: () = {
         fn poll_read(
             self: std::pin::Pin<&mut Self>, 
             cx: &mut std::task::Context<'_>, 
-            buf: &[u8]
+            buf: &mut [u8]
         ) -> std::task::Poll<std::io::Result<usize>> {
             match std::pin::Pin::into_inner(self) {
                 Self::Tcp(stream) => std::pin::Pin::new(stream).poll_read(cx, buf),
@@ -239,23 +153,12 @@ const _: () = {
             }
         }
 
-        fn poll_shutdown(
+        fn poll_close(
             self: std::pin::Pin<&mut Self>, 
             cx: &mut std::task::Context<'_>
         ) -> std::task::Poll<std::io::Result<()>> {
             match std::pin::Pin::into_inner(self) {
-                Self::Tcp(stream) => std::pin::Pin::new(stream).poll_shutdown(cx),
-            }
-        }
-    }
-    
-    #[cfg(feature="ws")]
-    impl<'split> mews::Splitable<'split> for Connection {
-        type ReadHalf = <crate::__rt__::TcpStream as mews::Splitable>::ReadHalf;
-        type WriteHalf = <crate::__rt__::TcpStream as mews::Splitable>::WriteHalf;
-        fn split(&'split mut self) -> (Self::ReadHalf, Self::WriteHalf) {
-            match std::pin::Pin::into_inner(self) {
-                Self::Tcp(stream) => stream.split(),
+                Self::Tcp(stream) => std::pin::Pin::new(stream).poll_close(cx),
             }
         }
     }
