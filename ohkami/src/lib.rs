@@ -202,9 +202,6 @@ pub use ohkami::{Ohkami, Route};
 pub mod fang;
 pub use fang::{handler, Fang, FangProc, FangAction};
 
-#[cfg(feature="tls")]
-mod tls;
-
 pub mod header;
 
 pub mod claw;

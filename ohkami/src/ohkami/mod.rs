@@ -14,11 +14,10 @@ use std::sync::Arc;
 #[cfg(feature="__rt_native__")]
 use crate::{__rt__, Session};
 
-#[cfg(all(feature="__rt_native__", feature="rt_tokio", feature="tls"))]
-use tokio_rustls::TlsAcceptor;
-
-#[cfg(all(feature="__rt_native__", feature="rt_tokio", feature="tls"))]
-use crate::tls::TlsStream;
+// #[cfg(all(feature="__rt_native__", feature="rt_tokio", feature="tls"))]
+// use tokio_rustls::TlsAcceptor;
+// #[cfg(all(feature="__rt_native__", feature="rt_tokio", feature="tls"))]
+// use crate::tls::TlsStream;
 
 /// # Ohkami - a smart wolf who serves your web app
 /// 
@@ -706,7 +705,7 @@ impl Ohkami {
     pub async fn howls<T>(self, bind: impl __rt__::IntoTcpListener<T>, tls_config: rustls::ServerConfig) {    
         let (router, _) = self.into_router().finalize();
         let router = Arc::new(router);
-        let tls_acceptor = TlsAcceptor::from(Arc::new(tls_config));
+        let tls_acceptor = anysc_rustls::TlsAcceptor::from(Arc::new(tls_config));
     
         let listener = bind.ino_tcp_listener().await;
         let (wg, ctrl_c) = (sync::WaitGroup::new(), sync::CtrlC::new());
@@ -720,7 +719,7 @@ impl Ohkami {
             
             let connection = match ctrl_c.until_interrupt(tls_acceptor.accept(connection)).await {
                 None => break,
-                Some(Ok(tls_stream)) => TlsStream(tls_stream),
+                Some(Ok(tls_stream)) => tls_stream,
                 Some(Err(e)) => {
                     crate::ERROR!("TLS accept error: {e}");
                     continue;

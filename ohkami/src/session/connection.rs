@@ -2,7 +2,7 @@
 pub enum Connection {
     Tcp(crate::__rt__::TcpStream),
     #[cfg(feature="tls")]
-    Tls(crate::tls::TlsStream),
+    Tls(anysc_rustls::server::TlsStream<crate::__rt__::TcpStream>),
 }
 
 impl From<crate::__rt__::TcpStream> for Connection {
@@ -11,8 +11,8 @@ impl From<crate::__rt__::TcpStream> for Connection {
     }
 }
 #[cfg(feature="tls")]
-impl From<crate::tls::TlsStream> for Connection {
-    fn from(stream: crate::tls::TlsStream) -> Self {
+impl From<anysc_rustls::server::TlsStream<crate::__rt__::TcpStream>> for Connection {
+    fn from(stream: anysc_rustls::server::TlsStream<crate::__rt__::TcpStream>) -> Self {
         Self::Tls(stream)
     }
 }
@@ -70,10 +70,6 @@ const _: () = {
     }
 };
 
-/*
- * Currently `tls` feature is only supported on `rt_tokio`.
- */
-
 #[cfg(feature="rt_smol")]
 const _: () = {
     impl smol::io::AsyncRead for Connection {
@@ -84,6 +80,8 @@ const _: () = {
         ) -> std::task::Poll<std::io::Result<usize>> {
             match std::pin::Pin::into_inner(self) {
                 Self::Tcp(stream) => std::pin::Pin::new(stream).poll_read(cx, buf),
+                #[cfg(feature="tls")]
+                Self::Tls(stream) => std::pin::Pin::new(stream).poll_read(cx, buf),
             }
         }
     }
@@ -96,6 +94,8 @@ const _: () = {
         ) -> std::task::Poll<std::io::Result<usize>> {
             match std::pin::Pin::into_inner(self) {
                 Self::Tcp(stream) => std::pin::Pin::new(stream).poll_write(cx, buf),
+                #[cfg(feature="tls")]
+                Self::Tls(stream) => std::pin::Pin::new(stream).poll_write(cx, buf),
             }
         }
 
@@ -105,6 +105,8 @@ const _: () = {
         ) -> std::task::Poll<std::io::Result<()>> {
             match std::pin::Pin::into_inner(self) {
                 Self::Tcp(stream) => std::pin::Pin::new(stream).poll_flush(cx),
+                #[cfg(feature="tls")]
+                Self::Tls(stream) => std::pin::Pin::new(stream).poll_flush(cx),
             }
         }
 
@@ -114,6 +116,8 @@ const _: () = {
         ) -> std::task::Poll<std::io::Result<()>> {
             match std::pin::Pin::into_inner(self) {
                 Self::Tcp(stream) => std::pin::Pin::new(stream).poll_close(cx),
+                #[cfg(feature="tls")]
+                Self::Tls(stream) => std::pin::Pin::new(stream).poll_close(cx),
             }
         }
     }
@@ -129,6 +133,8 @@ const _: () = {
         ) -> std::task::Poll<std::io::Result<usize>> {
             match std::pin::Pin::into_inner(self) {
                 Self::Tcp(stream) => std::pin::Pin::new(stream).poll_read(cx, buf),
+                #[cfg(feature="tls")]
+                Self::Tls(stream) => std::pin::Pin::new(stream).poll_read(cx, buf),
             }
         }
     }
@@ -141,6 +147,8 @@ const _: () = {
         ) -> std::task::Poll<std::io::Result<usize>> {
             match std::pin::Pin::into_inner(self) {
                 Self::Tcp(stream) => std::pin::Pin::new(stream).poll_write(cx, buf),
+                #[cfg(feature="tls")]
+                Self::Tls(stream) => std::pin::Pin::new(stream).poll_write(cx, buf),
             }
         }
 
@@ -150,6 +158,8 @@ const _: () = {
         ) -> std::task::Poll<std::io::Result<()>> {
             match std::pin::Pin::into_inner(self) {
                 Self::Tcp(stream) => std::pin::Pin::new(stream).poll_flush(cx),
+                #[cfg(feature="tls")]
+                Self::Tls(stream) => std::pin::Pin::new(stream).poll_flush(cx),
             }
         }
 
@@ -159,6 +169,8 @@ const _: () = {
         ) -> std::task::Poll<std::io::Result<()>> {
             match std::pin::Pin::into_inner(self) {
                 Self::Tcp(stream) => std::pin::Pin::new(stream).poll_close(cx),
+                #[cfg(feature="tls")]
+                Self::Tls(stream) => std::pin::Pin::new(stream).poll_close(cx),
             }
         }
     }

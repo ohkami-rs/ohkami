@@ -2,7 +2,7 @@
 
 use tokio::io::{AsyncRead, AsyncWrite};
 
-pub struct TlsStream(pub tokio_rustls::server::TlsStream<tokio::net::TcpStream>);
+pub struct TlsStream(pub(crate) anysc_rustls::server::TlsStream<crate::__rt__::TcpStream>);
 
 impl std::fmt::Debug for TlsStream {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
