@@ -1112,16 +1112,16 @@ mod test {
     #[test]
     fn can_howl_with_tls_on_any_native_async_runtime() {
         __rt__::testing::block_on(async {
-            let cert_file = std::fs::File::open("test-cert.pem")
+            let mut cert_file = std::fs::File::open("test-cert.pem")
                 .expect("Failed to open certificate file");
-            let cert_chain = rustls_pemfile::certs(&mut std::io::BufReader::new(cert_file))
+            let mut key_file = std::fs::File::open("test-key.pem")
+                .expect("Failed to open private key file");
+            
+            let cert_chain = rustls_pemfile::certs(&mut std::io::BufReader::new(&cert_file))
                 .map(|cd| cd.map(CertificateDer::from))
                 .collect::<Result<Vec<_>, _>>()
-                .expect("Failed to read certificate chain");
-            
-            let key_file = std::fs::File::open("test-key.pem")
-                .expect("Failed to open private key file");
-            let key = rustls_pemfile::read_one(&mut std::io::BufReader::new(key_file))
+                .expect("Failed to read certificate chain");            
+            let key = rustls_pemfile::read_one(&mut std::io::BufReader::new(&key_file))
                 .expect("Failed to read private key")
                 .map(|p| match p {
                     rustls_pemfile::Item::Pkcs1Key(k) => PrivateKeyDer::Pkcs1(k),
