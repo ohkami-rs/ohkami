@@ -1097,7 +1097,9 @@ mod sync {
 mod test {
     use super::*;
 
-    #[test] fn can_howl_on_any_native_async_runtime() {
+    #[cfg(not(feature="tls"))]
+    #[test]
+    fn can_howl_on_any_native_async_runtime() {
         __rt__::testing::block_on(async {
             crate::util::timeout_in(
                 std::time::Duration::from_secs(3),
@@ -1105,8 +1107,43 @@ mod test {
             ).await
         });
     }
+    
+    #[cfg(feature="tls")]
+    #[test]
+    fn can_howl_with_tls_on_any_native_async_runtime() {
+        __rt__::testing::block_on(async {
+            let cert_file = std::fs::File::open("test-cert.pem")
+                .expect("Failed to open certificate file");
+            let cert_chain = rustls_pemfile::certs(&mut std::io::BufReader::new(cert_file))
+                .map(|cd| cd.map(CertificateDer::from))
+                .collect::<Result<Vec<_>, _>>()
+                .expect("Failed to read certificate chain");
+            
+            let key_file = std::fs::File::open("test-key.pem")
+                .expect("Failed to open private key file");
+            let key = rustls_pemfile::read_one(&mut std::io::BufReader::new(key_file))
+                .expect("Failed to read private key")
+                .map(|p| match p {
+                    rustls_pemfile::Item::Pkcs1Key(k) => PrivateKeyDer::Pkcs1(k),
+                    rustls_pemfile::Item::Pkcs8Key(k) => PrivateKeyDer::Pkcs8(k),
+                    _ => panic!("Unexpected private key type"),
+                })
+                .expect("Failed to read private key");
+        
+            let tls_config = rustls::ServerConfig::builder()
+                .with_no_client_auth()
+                .with_single_cert(cert_chain, key)
+                .expect("Failed to build TLS configuration");
 
-    #[test] fn ohkami_is_send_sync_static_on_native() {
+            crate::util::timeout_in(
+                std::time::Duration::from_secs(3),
+                Ohkami::new(()).howls(("localhost", __rt__::testing::PORT), tls_config)
+            ).await
+        });
+    }
+
+    #[test]
+    fn ohkami_is_send_sync_static_on_native() {
         fn is_send_sync_static<T: Send + Sync + 'static>(_: T) {}
 
         let o = Ohkami::new((

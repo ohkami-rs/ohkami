@@ -38,7 +38,7 @@ tasks:
       - task: check:tls
       - task: check:no_rt
       - for:  [tokio, smol, glommio, lambda] # [tokio, smol, nio, glommio, lambda]
-        task: check:rt-native_target
+        task: check:rt-native
         vars: { rt: '{{.ITEM}}' }
       - task: check:rt_worker
 
@@ -98,12 +98,8 @@ tasks:
       - cargo test --lib --features rt_{{.rt}},DEBUG,sse,{{.maybe_nightly}}
       - cargo test --lib --features rt_{{.rt}},DEBUG,ws,{{.maybe_nightly}}
       - cargo test --lib --features rt_{{.rt}},DEBUG,sse,ws,openapi,{{.maybe_nightly}}
-
-  test:tls: # currently depending on tokio-rustls and works only on tokio
-    dir: ./ohkami
-    cmds:
-      - cargo test --lib --features rt_tokio,DEBUG,tls,{{.maybe_nightly}}
-      - cargo test --lib --features rt_tokio,DEBUG,sse,ws,tls,{{.maybe_nightly}}
+      - cargo test --lib --features rt_{{.rt}},DEBUG,tls,{{.maybe_nightly}}
+      - cargo test --lib --features rt_{{.rt}},DEBUG,sse,ws,tls,{{.maybe_nightly}}
 
 #### checks ####
   # Assure buildability without "DEBUG" feature
@@ -119,19 +115,15 @@ tasks:
       - cargo check --lib --features ws,{{.maybe_nightly}}
       - cargo check --lib --features sse,ws,openapi,{{.maybe_nightly}}
 
-  check:rt-native_target:
+  check:rt-native:
     dir: ./ohkami
     cmds:
       - cargo check --lib --features rt_{{.rt}},{{.maybe_nightly}}
       - cargo check --lib --features rt_{{.rt}},sse,{{.maybe_nightly}}
       - cargo check --lib --features rt_{{.rt}},ws,{{.maybe_nightly}}
       - cargo check --lib --features rt_{{.rt}},sse,ws,openapi,{{.maybe_nightly}}
-
-  check:tls: # currently depending on tokio-rustls and works only on tokio
-    dir: ./ohkami
-    cmds:
-      - cargo check --lib --features rt_tokio,tls,{{.maybe_nightly}}
-      - cargo check --lib --features rt_tokio,sse,ws,tls,{{.maybe_nightly}}
+      - cargo check --lib --features rt_{{.rt}},tls,{{.maybe_nightly}}
+      - cargo check --lib --features rt_{{.rt}},sse,ws,tls,{{.maybe_nightly}}
 
   check:rt_worker:
     dir: ./ohkami
