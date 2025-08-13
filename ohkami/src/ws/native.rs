@@ -6,10 +6,12 @@ pub use mews::{
     Config,
     Connection,
     ReadHalf, WriteHalf,
-    WebSocket as Session,
     connection,
     split,
 };
+
+/// used in `crate::response::content::Content::WebSocket`
+pub(crate) type Session = mews::WebSocket<crate::session::Connection>;
 
 impl<'ctx> super::WebSocketContext<'ctx> {
     /// create a `WebSocket` with the handler and default `Config`.
@@ -18,12 +20,12 @@ impl<'ctx> super::WebSocketContext<'ctx> {
     /// ## handler
     /// 
     /// any 'static `FnOnce(Connection) -> {impl Future<Output = ()> + Send} + Send + Sync`
-    pub fn upgrade<H, F, C: mews::connection::UnderlyingConnection>(
+    pub fn upgrade<H, F>(
         self,
         handler: H
-    ) -> WebSocket<C>
+    ) -> WebSocket
     where
-        H: FnOnce(Connection<C>) -> F + Send + Sync + 'static,
+        H: FnOnce(Connection<crate::session::Connection>) -> F + Send + Sync + 'static,
         F: std::future::Future<Output = ()> + Send + 'static,
     {
         self.upgrade_with(Config::default(), handler)
@@ -34,12 +36,12 @@ impl<'ctx> super::WebSocketContext<'ctx> {
     /// ## handler
     /// 
     /// any 'static `FnOnce(Connection) -> {impl Future<Output = ()> + Send} + Send + Sync`
-    pub fn upgrade_with<H, F, C: mews::connection::UnderlyingConnection>(self,
+    pub fn upgrade_with<H, F>(self,
         config:  Config,
         handler: H
-    ) -> WebSocket<C>
+    ) -> WebSocket
     where
-        H: FnOnce(Connection<C>) -> F + Send + Sync + 'static,
+        H: FnOnce(Connection<crate::session::Connection>) -> F + Send + Sync + 'static,
         F: std::future::Future<Output = ()> + Send + 'static,
     {
         let (sign, session) = mews::WebSocketContext::new(self.sec_websocket_key)
@@ -110,9 +112,9 @@ impl<'ctx> super::WebSocketContext<'ctx> {
 ///     })
 /// }
 /// ```
-pub struct WebSocket<C: mews::connection::UnderlyingConnection = crate::__rt__::TcpStream> {
+pub struct WebSocket {
     sign:    String,
-    session: Session<C>,
+    session: Session,
 }
 impl crate::IntoResponse for WebSocket {
     fn into_response(self) -> crate::Response {

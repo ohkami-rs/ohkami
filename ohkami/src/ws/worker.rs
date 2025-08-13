@@ -2,7 +2,8 @@
 
 pub use mews::{Message, CloseFrame, CloseCode};
 
-pub(crate) use worker::WebSocket as Session;
+/// used in `crate::response::content::Content::WebSocket`
+pub(crate) type Session = worker::WebSocket;
 
 use worker::{WebSocketPair, EventStream, wasm_bindgen_futures};
 use std::rc::Rc;

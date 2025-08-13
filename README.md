@@ -197,9 +197,10 @@ Ohkami::new((
 ```
 
 `.howls()` (`tls` feature only) is used to run Ohkami with TLS (HTTPS) support
-with [`rustls`](https://github.com/rustls) ecosystem (described in `tls` feature section).
+with `tokio` and [`rustls`](https://github.com/rustls) ecosystem
+(currently `rt_tokio` only / described in `tls` feature section).
 
-`howl(s)` supports graceful shutdown by `Ctrl-C` or `SIGTERM` signal on native runtimes.
+`howl(s)` supports graceful shutdown by `Ctrl-C` ( `SIGINT` ) on native runtimes.
 
 <br>
 
@@ -308,9 +309,6 @@ async fn main() {
 ```
 
 ### `"ws"` : WebSocket
-
-Ohkami only handles `ws://`.\
-Use some reverse proxy to do with `wss://`.
 
 ```rust,no_run
 use ohkami::{Ohkami, Route};
@@ -443,7 +441,7 @@ $ openssl req -x509 -newkey rsa:4096 -nodes -keyout server.key -out server.crt -
 [dependencies]
 ohkami = { version = "0.24", features = ["rt_tokio", "tls"] }
 tokio  = { version = "1",    features = ["full"] }
-rustls = { version = "0.22", features = ["ring"] }
+rustls = { version = "0.23", features = ["ring"] }
 rustls-pemfile = "2.2"
 ```
 

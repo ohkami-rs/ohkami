@@ -46,7 +46,7 @@ mime_guess   = { version = "2.0", optional = true }
 ctrlc        = { version = "3.4",  optional = true }
 num_cpus     = { version = "1.17", optional = true }
 futures-util = { version = "0.3",  optional = true, default-features = false }
-mews         = { version = "0.2",  optional = true }
+mews         = { version = "0.4",  optional = true }
 rustls       = { version = "0.23.23", optional = true }
 tokio-rustls = { version = "0.26.2", optional = true }
 
@@ -65,7 +65,7 @@ rt_smol = ["__rt_native__",
 rt_nio = ["__rt_native__",
     "dep:nio",
     "dep:tokio","tokio/io-util",
-    "mews?/rt_nio",
+    #"mews?/rt_nio",
 ]
 rt_glommio = ["__rt_native__",
     "dep:glommio",
@@ -85,7 +85,7 @@ rt_lambda = ["__rt__",
 nightly = []
 openapi = ["dep:ohkami_openapi", "ohkami_macros/openapi"]
 sse     = ["ohkami_lib/stream"]
-ws      = ["ohkami_lib/stream", "dep:mews"]
+ws      = ["ohkami_lib/stream", "dep:mews", "dep:futures-util", "futures-util/io", "futures-util/unstable","futures-util/bilock"]
 tls     = ["rt_tokio", "dep:rustls", "dep:tokio-rustls"]  # currently depending on tokio-rustls and works only on tokio
 
 ##### internal #####

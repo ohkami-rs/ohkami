@@ -295,7 +295,7 @@ pub(super) enum Upgrade {
     None,
 
     #[cfg(feature="ws")]
-    WebSocket(mews::WebSocket),
+    WebSocket(mews::WebSocket<crate::session::Connection>),
 }
 #[cfg(feature="__rt_native__")]
 impl Upgrade {
