@@ -34,6 +34,9 @@ jobs:
         with:
           toolchain: ${{ matrix.toolchain }}
           targets:   x86_64-unknown-linux-gnu, wasm32-unknown-unknown
+      - name: WORKAROUND-FOR-nightly-2025-08-12
+        if:   ${{ matrix.toolchain == 'nightly' }}
+        run:  rustup default nightly-2025-08-08
 
       - name: Cache cargo bin
         id:   cache_cargo_bin
