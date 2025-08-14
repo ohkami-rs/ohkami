@@ -179,7 +179,7 @@ const _: () = {
 };
 
 #[cfg(feature="__rt_native__")]
-pub fn timeout_in<T>(
+pub fn with_timeout<T>(
     duration: std::time::Duration,
     proc:     impl std::future::Future<Output = T>
 ) -> impl std::future::Future<Output = Option<T>> {
