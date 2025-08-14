@@ -55,17 +55,15 @@ impl Session {
             }
         }
 
-        let mut req = Request::init(self.ip);
-        let mut req = unsafe { Pin::new_unchecked(&mut req) };
+        let mut req = Request::uninit(self.ip);
+        let mut req = Pin::new(&mut req);
         let upgrade = loop {
             req.clear();
             // Apply a fresh timeout for each read, thus resetting the timer on activity.
-            let read_result = with_timeout(
+            match with_timeout(
                 Duration::from_secs(crate::CONFIG.keepalive_timeout()),
-                async { req.as_mut().read(&mut self.connection).await }
-            ).await;
-
-            match read_result {
+                req.as_mut().read(&mut self.connection)
+            ).await {
                 None => {
                     crate::DEBUG!("\
                         Reached Keep-Alive timeout. In Ohkami, Keep-Alive timeout \

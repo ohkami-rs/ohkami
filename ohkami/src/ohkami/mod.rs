@@ -771,10 +771,10 @@ impl Ohkami {
     ) -> ::worker::Response {
         crate::DEBUG!("Called `#[ohkami::worker]`; req: {req:?}");
 
-        let mut ohkami_req = crate::Request::init();
+        let mut ohkami_req = crate::Request::uninit();
         crate::DEBUG!("Done `ohkami::Request::init`");
 
-        let mut ohkami_req = unsafe {std::pin::Pin::new_unchecked(&mut ohkami_req)};
+        let mut ohkami_req = std::pin::Pin::new(&mut ohkami_req);
         crate::DEBUG!("Put request in `Pin`");
 
         let take_over = ohkami_req.as_mut().take_over(req, env, ctx).await;
@@ -918,8 +918,8 @@ const _: () = {
             req: lambda_runtime::LambdaEvent<crate::x_lambda::LambdaHTTPRequest>
         ) -> Self::Future {
             let f = async move {
-                let mut ohkami_req = crate::Request::init();
-                let mut ohkami_req = unsafe {std::pin::Pin::new_unchecked(&mut ohkami_req)};
+                let mut ohkami_req = crate::Request::uninit();
+                let mut ohkami_req = std::pin::Pin::new(&mut ohkami_req);
                 ohkami_req.as_mut().take_over(req)?;
 
                 let mut ohkami_res = ROUTER.get().unwrap().handle(&mut ohkami_req).await;

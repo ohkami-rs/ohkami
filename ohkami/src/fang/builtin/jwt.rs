@@ -444,8 +444,8 @@ impl<Payload: for<'de> Deserialize<'de>> Jwt<Payload> {
             .header("Authorization", "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE3MDY4MTEwNzUsInVzZXJfaWQiOiI5ZmMwMDViMi1mODU4LTQzMzYtODkwYS1mMWEyYWVmNjBhMjQifQ.AKp-0zvKK4Hwa6qCgxskckD04Snf0gpSG7U1LOpcC_I")
             .encode();
         let mut req_bytes = &req_bytes[..];
-        let mut req = Request::init(crate::util::IP_0000);
-        let mut req = unsafe {Pin::new_unchecked(&mut req)};
+        let mut req = Request::uninit(crate::util::IP_0000);
+        let mut req = Pin::new(&mut req);
         crate::__rt__::testing::block_on({
             req.as_mut().read(&mut req_bytes)
         }).unwrap();
@@ -460,8 +460,8 @@ impl<Payload: for<'de> Deserialize<'de>> Jwt<Payload> {
             .header("Authorization", "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE3MDY4MTEwNzUsInVzZXJfaWQiOiI5ZmMwMDViMi1mODU4LTQzMzYtODkwYS1mMWEyYWVmNjBhMjQifQ.AKp-0zvKK4Hwa6qCgxskckD04Snf0gpSG7U1LOpcC_X")
             .encode();
         let mut req_bytes = &req_bytes[..];
-        let mut req = Request::init(crate::util::IP_0000);
-        let mut req = unsafe {Pin::new_unchecked(&mut req)};
+        let mut req = Request::uninit(crate::util::IP_0000);
+        let mut req = Pin::new(&mut req);
         crate::__rt__::testing::block_on({
             req.as_mut().read(&mut req_bytes)
         }).unwrap();
