@@ -50,17 +50,28 @@ mod __rt__ {
     pub(crate) use {nio::net::{TcpListener, TcpStream}, std::net::ToSocketAddrs};
     #[cfg(feature="rt_glommio")]
     pub(crate) use {glommio::net::{TcpListener, TcpStream}, std::net::ToSocketAddrs};
+    
+    pub(crate) async fn accept(listener: &TcpListener) -> std::io::Result<(TcpStream, std::net::SocketAddr)> {
+        #[cfg(any(feature="rt_tokio", feature="rt_smol", feature="rt_nio"))] {
+            listener.accept().await
+        }
+        #[cfg(any(feature="rt_glommio"))] {
+            let connection = listener.accept().await?;
+            let addr = connection.peer_addr()?;
+            Ok((connection, addr))
+        }
+    }
 
     pub trait IntoTcpListener<T> {
-        fn ino_tcp_listener(self) -> impl Future<Output = TcpListener>;
+        fn into_tcp_listener(self) -> impl Future<Output = TcpListener>;
     }
     impl IntoTcpListener<()> for TcpListener {
-        async fn ino_tcp_listener(self) -> TcpListener {
+        async fn into_tcp_listener(self) -> TcpListener {
             self
         }
     }
     impl<A: ToSocketAddrs> IntoTcpListener<A> for A {
-        async fn ino_tcp_listener(self) -> TcpListener {
+        async fn into_tcp_listener(self) -> TcpListener {
             let binded = TcpListener::bind(self);
 
             #[cfg(not(feature="rt_glommio"))]
@@ -176,8 +187,6 @@ pub use response::{Response, Status, IntoResponse};
 
 #[cfg(feature="__rt_native__")]
 mod session;
-#[cfg(feature="__rt_native__")]
-use session::Session;
 
 #[cfg(feature="__rt__")]
 mod router;
