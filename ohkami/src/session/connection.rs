@@ -70,7 +70,7 @@ const _: () = {
     }
 };
 
-#[cfg(feature="__io__futures__")]
+#[cfg(feature="__io_futures__")]
 const _: () = {
     impl futures_util::io::AsyncRead for Connection {
         fn poll_read(
