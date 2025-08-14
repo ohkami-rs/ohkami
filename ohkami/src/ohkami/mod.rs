@@ -499,7 +499,7 @@ impl Ohkami {
         self,
         bind: impl __rt__::IntoTcpListener<T>,
         #[cfg(feature="tls")]
-        tls_config: impl Into<Option<rustls::ServerConfig>>,
+        tls_config: Option<rustls::ServerConfig>,
     ) {
         let (router, _) = self.into_router().finalize();
         let router = Arc::new(router);
@@ -508,10 +508,9 @@ impl Ohkami {
         let (wg, ctrl_c) = (sync::WaitGroup::new(), sync::CtrlC::new());
         
         #[cfg(feature="tls")]
-        let tls_acceptor = tls_config.into().map(|it| anysc_rustls::TlsAcceptor::from(Arc::new(it)));
+        let tls_acceptor = tls_config.map(|it| anysc_rustls::TlsAcceptor::from(Arc::new(it)));
         
         crate::INFO!("start serving on {}", listener.local_addr().unwrap());
-
         while let Some(accept) = ctrl_c.until_interrupt(__rt__::accept(&listener)).await {
             let Ok((connection, address)) = accept else {continue};
 
@@ -624,6 +623,8 @@ impl Ohkami {
     /// 
     /// `howls` takes an additional parameter than `howl`:
     /// A `rutsls::ServerConfig` containing your certificates and keys.
+    /// 
+    /// See [`howl`] for the `bind` argument.
     /// 
     /// Example:
     /// 
