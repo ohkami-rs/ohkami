@@ -177,7 +177,7 @@ pub struct Request {
 impl Request {
     #[cfg(feature="__rt__")]
     #[inline]
-    pub(crate) fn init(
+    pub(crate) fn uninit(
         #[cfg(feature="__rt_native__")]
         ip: std::net::IpAddr
     ) -> Self {
