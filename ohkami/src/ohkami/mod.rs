@@ -14,11 +14,10 @@ use std::sync::Arc;
 #[cfg(feature="__rt_native__")]
 use crate::{__rt__, Session};
 
-#[cfg(all(feature="__rt_native__", feature="rt_tokio", feature="tls"))]
-use tokio_rustls::TlsAcceptor;
-
-#[cfg(all(feature="__rt_native__", feature="rt_tokio", feature="tls"))]
-use crate::tls::TlsStream;
+// #[cfg(all(feature="__rt_native__", feature="rt_tokio", feature="tls"))]
+// use tokio_rustls::TlsAcceptor;
+// #[cfg(all(feature="__rt_native__", feature="rt_tokio", feature="tls"))]
+// use crate::tls::TlsStream;
 
 /// # Ohkami - a smart wolf who serves your web app
 /// 
@@ -631,11 +630,12 @@ impl Ohkami {
         wg.await;
     }
 
-    #[cfg(all(feature="__rt_native__", feature="rt_tokio", feature="tls"))]
-    /// Bind this `Ohkami` to an address and start serving with TLS/HTTPS support!
+    #[cfg(all(feature="__rt_native__", feature="tls"))]
+    /// Bind this `Ohkami` to an address and start serving with TLS/HTTPS support,
+    /// powered by [`rustls`](https://github.com/rustls) ecosystem!
     /// 
     /// This method works like `howl` but upgrades connections to HTTPS using the provided
-    /// rustls configuration. This functionality is only available with the `rt_tokio` feature.
+    /// rustls configuration.
     /// 
     /// ### Parameters
     /// 
@@ -703,10 +703,13 @@ impl Ohkami {
     /// $ curl --insecure https://localhost:8443
     /// Hello, secure ohkami!
     /// ```
+    /// 
+    /// For localhost-testing with browser (or `curl` without `--insecure`),
+    /// [`mkcert`](https://github.com/FiloSottile/mkcert) is highly recommended.
     pub async fn howls<T>(self, bind: impl __rt__::IntoTcpListener<T>, tls_config: rustls::ServerConfig) {    
         let (router, _) = self.into_router().finalize();
         let router = Arc::new(router);
-        let tls_acceptor = TlsAcceptor::from(Arc::new(tls_config));
+        let tls_acceptor = anysc_rustls::TlsAcceptor::from(Arc::new(tls_config));
     
         let listener = bind.ino_tcp_listener().await;
         let (wg, ctrl_c) = (sync::WaitGroup::new(), sync::CtrlC::new());
@@ -716,11 +719,21 @@ impl Ohkami {
         while let Some(accept) = ctrl_c.until_interrupt(listener.accept()).await {
             crate::DEBUG!("accept: {accept:?}");
             
-            let Ok((connection, addr)) = accept else { continue };
-            
+            let (connection, addr) = {
+                #[cfg(any(feature="rt_tokio", feature="rt_smol", feature="rt_nio"))] {
+                    let Ok((connection, addr)) = accept else {continue};
+                    (connection, addr)
+                }
+                #[cfg(any(feature="rt_glommio"))] {
+                    let Ok(connection) = accept else {continue};
+                    let Ok(addr) = connection.peer_addr() else {continue};
+                    (connection, addr)
+                }
+            };
+
             let connection = match ctrl_c.until_interrupt(tls_acceptor.accept(connection)).await {
                 None => break,
-                Some(Ok(tls_stream)) => TlsStream(tls_stream),
+                Some(Ok(tls_stream)) => tls_stream,
                 Some(Err(e)) => {
                     crate::ERROR!("TLS accept error: {e}");
                     continue;
@@ -736,7 +749,7 @@ impl Ohkami {
             );
     
             let wg = wg.add();
-            tokio::spawn(async move {
+            __rt__::spawn(async move {
                 session.manage().await;
                 wg.done();
             });
@@ -1093,12 +1106,14 @@ mod sync {
     };
 }
 
-#[cfg(all(debug_assertions, feature="__rt_native__"))]
+#[cfg(feature="__rt_native__")]
 #[cfg(test)]
 mod test {
     use super::*;
 
-    #[test] fn can_howl_on_any_native_async_runtime() {
+    #[cfg(not(feature="tls"))]
+    #[test]
+    fn can_howl_on_any_native_async_runtime() {
         __rt__::testing::block_on(async {
             crate::util::timeout_in(
                 std::time::Duration::from_secs(3),
@@ -1106,8 +1121,87 @@ mod test {
             ).await
         });
     }
+    
+    #[cfg(feature="tls")]
+    #[test]
+    fn can_howl_with_tls_on_any_native_async_runtime() {
+        let openssl_x509_newkey = |out_path: &str, keyout_path: &str| -> std::io::Result<()> {
+            std::process::Command::new("openssl")
+                .args([
+                    "req", "-x509", "-newkey", "rsa:4096", "-nodes",
+                    "-out", out_path, "-keyout", keyout_path,
+                    "-days", "365", "-subj", "/CN=localhost"
+                ])
+                .status()
+                .map(|status| status.success().then_some(()).ok_or_else(|| {
+                    std::io::Error::new(
+                        std::io::ErrorKind::Other,
+                        "Failed to generate test certificate and key with OpenSSL"
+                    )
+                }))
+                .flatten()
+        };
+        
+        let is_pem_alive = |path: &std::path::Path| -> bool {
+            if !path.exists() {
+                return false;
+            }
+            
+            if {
+                let now = std::time::SystemTime::now();
+                let created = path.metadata().unwrap().created().unwrap();
+                now.duration_since(created).unwrap().as_secs() >= 60 * 60 * 24 * 365
+            } {
+                return false;
+            }
+            
+            true
+        };
+        
+        __rt__::testing::block_on(async {
+            rustls::crypto::ring::default_provider().install_default().ok();
+        
+            let (cert_file_path, key_file_path) = {
+                let target_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                    .parent().unwrap()
+                    .join("target");
+                (target_dir.join("test-cert.pem"), target_dir.join("test-key.pem"))
+            };
+            
+            if !{is_pem_alive(&cert_file_path) && is_pem_alive(&key_file_path)} {
+                openssl_x509_newkey(
+                    cert_file_path.to_str().unwrap(),
+                    key_file_path.to_str().unwrap()
+                ).expect("`openssl` failed");
+            }
+            
+            let cert_chain = rustls_pemfile::certs(&mut std::io::BufReader::new(std::fs::File::open(cert_file_path).unwrap()))
+                .map(|cd| cd.map(rustls::pki_types::CertificateDer::from))
+                .collect::<Result<Vec<_>, _>>()
+                .expect("Failed to read certificate chain");            
+            let key = rustls_pemfile::read_one(&mut std::io::BufReader::new(std::fs::File::open(key_file_path).unwrap()))
+                .expect("Failed to read private key")
+                .map(|p| match p {
+                    rustls_pemfile::Item::Pkcs1Key(k) => rustls::pki_types::PrivateKeyDer::Pkcs1(k),
+                    rustls_pemfile::Item::Pkcs8Key(k) => rustls::pki_types::PrivateKeyDer::Pkcs8(k),
+                    _ => panic!("Unexpected private key type"),
+                })
+                .expect("Failed to read private key");
+        
+            let tls_config = rustls::ServerConfig::builder()
+                .with_no_client_auth()
+                .with_single_cert(cert_chain, key)
+                .expect("Failed to build TLS configuration");
 
-    #[test] fn ohkami_is_send_sync_static_on_native() {
+            crate::util::timeout_in(
+                std::time::Duration::from_secs(3),
+                Ohkami::new(()).howls(("localhost", __rt__::testing::PORT), tls_config)
+            ).await
+        });
+    }
+
+    #[test]
+    fn ohkami_is_send_sync_static_on_native() {
         fn is_send_sync_static<T: Send + Sync + 'static>(_: T) {}
 
         let o = Ohkami::new((

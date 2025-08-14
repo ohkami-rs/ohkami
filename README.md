@@ -197,8 +197,7 @@ Ohkami::new((
 ```
 
 `.howls()` (`tls` feature only) is used to run Ohkami with TLS (HTTPS) support
-with `tokio` and [`rustls`](https://github.com/rustls) ecosystem
-(currently `rt_tokio` only / described in `tls` feature section).
+upon [`rustls`](https://github.com/rustls) ecosystem.
 
 `howl(s)` supports graceful shutdown by `Ctrl-C` ( `SIGINT` ) on native runtimes.
 
@@ -427,8 +426,7 @@ async fn main() {
 HTTPS support up on [rustls](https://github.com/rustls) ecosystem.
 
 - Call `howls` instead of `howl` to run with TLS ( as `https` to `http`, `wss` to `ws` ).
-- You should prepare your own certificate and private key files.
-- Currently, only works with `rt_tokio`.
+- You must prepare your own certificate and private key files.
 - Currently, only HTTP/1.1 over TLS is supported.
 
 Example :
@@ -501,6 +499,9 @@ $ cargo run
 $ curl https://localhost:8443 --insecure  # for self-signed certificate
 Hello, secure ohkami!
 ```
+
+For localhost-testing with browser (or `curl` without `--insecure`),
+[`mkcert`](https://github.com/FiloSottile/mkcert) is highly recommended.
 
 ### `"nightly"` : nightly-only functionalities
 

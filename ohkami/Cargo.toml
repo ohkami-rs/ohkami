@@ -13,7 +13,7 @@ categories    = { workspace = true }
 license       = { workspace = true }
 
 [package.metadata.docs.rs]
-features      = ["rt_tokio", "nightly", "sse", "ws"]
+features = ["rt_tokio", "nightly", "sse", "ws", "tls"]
 
 
 [dependencies]
@@ -47,29 +47,25 @@ ctrlc        = { version = "3.4",  optional = true }
 num_cpus     = { version = "1.17", optional = true }
 futures-util = { version = "0.3",  optional = true, default-features = false }
 mews         = { version = "0.4",  optional = true }
-rustls       = { version = "0.23.23", optional = true }
-tokio-rustls = { version = "0.26.2", optional = true }
+rustls       = { version = "0.23", optional = true }
+anysc-rustls = { version = "0.1", optional = true }
 
 
 [features]
-rt_tokio = ["__rt_native__",
+rt_tokio = ["__rt_native__", "__io_tokio__",
     "dep:tokio","tokio/rt","tokio/net","tokio/time",
-    "tokio/io-util",
     "mews?/rt_tokio",
 ]
-rt_smol = ["__rt_native__",
+rt_smol = ["__rt_native__", "__io_futures__",
     "dep:smol",
-    "dep:futures-util","futures-util/io",
     "mews?/rt_smol",
 ]
-rt_nio = ["__rt_native__",
+rt_nio = ["__rt_native__", "__io_tokio__",
     "dep:nio",
-    "dep:tokio","tokio/io-util",
     #"mews?/rt_nio",
 ]
-rt_glommio = ["__rt_native__",
+rt_glommio = ["__rt_native__", "__io_futures__",
     "dep:glommio",
-    "dep:futures-util","futures-util/io",
     "mews?/rt_glommio",
     "dep:num_cpus",
 ]
@@ -86,11 +82,13 @@ nightly = []
 openapi = ["dep:ohkami_openapi", "ohkami_macros/openapi"]
 sse     = ["ohkami_lib/stream"]
 ws      = ["ohkami_lib/stream", "dep:mews", "dep:futures-util", "futures-util/io", "futures-util/unstable","futures-util/bilock"]
-tls     = ["rt_tokio", "dep:rustls", "dep:tokio-rustls"]  # currently depending on tokio-rustls and works only on tokio
+tls     = ["dep:rustls", "dep:anysc-rustls"]
 
 ##### internal #####
-__rt__        = []
-__rt_native__ = ["__rt__", "dep:mime_guess", "dep:ctrlc"]
+__rt__         = []
+__rt_native__  = ["__rt__", "dep:mime_guess", "dep:ctrlc"]
+__io_tokio__   = ["dep:tokio","tokio/io-util", "anysc-rustls?/io_tokio"]
+__io_futures__ = ["dep:futures-util","futures-util/io", "anysc-rustls?/io_futures"]
 
 ##### DEBUG #####
 DEBUG = ["tokio?/rt-multi-thread", "tokio?/macros"]
