@@ -1,19 +1,14 @@
 mod de;
-mod file;
 mod parse;
 
 #[cfg(test)] mod _test_de;
 #[cfg(test)] mod _test_parse;
-
-
-pub use file::File;
 
 #[inline(always)]
 pub fn from_bytes<'de, D: serde::Deserialize<'de>>(input: &'de [u8]) -> Result<D, Error> {
     let mut d = de::MultipartDesrializer::new(input)?;
     D::deserialize(&mut d)
 }
-
 
 use std::borrow::Cow;
 #[derive(Debug)]
@@ -37,6 +32,7 @@ const _: () = {
         }
     }
 };
+
 #[allow(non_snake_case)]
 impl Error {
     const fn NotSupportedMultipartMixed() -> Self {
