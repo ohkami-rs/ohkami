@@ -261,6 +261,7 @@ impl Response {
 }
 
 #[cfg(feature="sse")]
+#[cfg_attr(docsrs, doc(cfg(feature = "sse")))]
 impl Response {
     pub fn with_stream<T: sse::Data>(
         mut self,
@@ -423,6 +424,7 @@ const _: () = {
 };
 
 #[cfg(feature="nightly")]
+#[cfg_attr(docsrs, doc(cfg(feature = "nightly")))]
 const _: () = {
     use std::{ops::FromResidual, convert::Infallible};
 

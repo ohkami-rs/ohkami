@@ -630,6 +630,7 @@ impl Ohkami {
     }
 
     #[cfg(all(feature="__rt_native__", feature="tls"))]
+    #[cfg_attr(docsrs, doc(cfg(feature = "tls")))]
     /// Bind this `Ohkami` to an address and start serving with TLS/HTTPS support,
     /// powered by [`rustls`](https://github.com/rustls) ecosystem!
     /// 
