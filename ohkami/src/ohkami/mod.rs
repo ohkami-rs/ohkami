@@ -495,6 +495,59 @@ impl Ohkami {
     }
 
     #[cfg(feature="__rt_native__")]
+    async fn howl_core<T>(
+        self,
+        bind: impl __rt__::IntoTcpListener<T>,
+        #[cfg(feature="tls")]
+        tls_config: impl Into<Option<rustls::ServerConfig>>,
+    ) {
+        let (router, _) = self.into_router().finalize();
+        let router = Arc::new(router);
+
+        let listener = bind.into_tcp_listener().await;
+        let (wg, ctrl_c) = (sync::WaitGroup::new(), sync::CtrlC::new());
+        
+        #[cfg(feature="tls")]
+        let tls_acceptor = tls_config.into().map(|it| anysc_rustls::TlsAcceptor::from(Arc::new(it)));
+        
+        crate::INFO!("start serving on {}", listener.local_addr().unwrap());
+
+        while let Some(accept) = ctrl_c.until_interrupt(__rt__::accept(&listener)).await {
+            let Ok((connection, address)) = accept else {continue};
+
+            #[cfg(feature="tls")]
+            let connection: session::Connection = match &tls_acceptor {
+                None => connection.into(),
+                Some(tls_acceptor) => match ctrl_c.until_interrupt(tls_acceptor.accept(connection)).await {
+                    None => break,
+                    Some(Ok(tls_stream)) => tls_stream.into(),
+                    Some(Err(e)) => {
+                        crate::ERROR!("TLS accept error: {e}");
+                        continue;
+                    }
+                }
+            };
+
+            let session = session::Session::new(
+                connection,
+                address.ip(),
+                router.clone(),
+            );
+            
+            let wg = wg.add();
+            __rt__::spawn(async move {
+                session.manage().await;
+                wg.done();
+            });
+        }
+
+        crate::INFO!("interrupted, trying graceful shutdown...");
+        drop(listener);
+
+        crate::INFO!("waiting {} session(s) to finish...", wg.count());
+        wg.await;
+    }
+    
     /// Bind this `Ohkami` to an address and start serving !
     /// 
     /// `bind` is：
@@ -541,14 +594,12 @@ impl Ohkami {
     /// *example_with_tcp_listener.rs*
     /// ```no_run
     /// use ohkami::{Ohkami, Route};
-    /// use tokio::net::TcpSocket; // <---
+    /// use tokio::net::TcpSocket;
     /// 
     /// #[tokio::main]
     /// async fn main() -> std::io::Result<()> {
     ///     let socket = TcpSocket::new_v4()?;
-    /// 
     ///     socket.bind("0.0.0.0:5000".parse().unwrap())?;
-    ///
     ///     let listener = socket.listen(1024)?;
     /// 
     ///     Ohkami::new((
@@ -560,20 +611,19 @@ impl Ohkami {
     ///     Ok(())
     /// }
     /// ```
+    #[cfg(feature="__rt_native__")]
+    pub async fn howl<T>(
+        self,
+        bind: impl __rt__::IntoTcpListener<T>,
+    ) {
+        self.howl_core(bind, #[cfg(feature="tls")] None).await
+    }
+    
+    /// Bind this `Ohkami` to an address and start serving with TLS support
+    /// (**`tls` feature is required**).
     /// 
-    /// ---
-    /// 
-    /// ## TLS support
-    /// 
-    /// `tls` feature enables TLS support:
-    /// 
-    /// ```toml
-    /// [dependencies]
-    /// ohkami = { version = "...", features = [..., "tls"] }
-    /// ```
-    /// 
-    /// Then `howl` takes an additional parameter `tls_config`:
-    /// A `rutsls::ServerConfig` containing your certificates and keys, or `None` meaning no TLS.
+    /// `howls` takes an additional parameter than `howl`:
+    /// A `rutsls::ServerConfig` containing your certificates and keys.
     /// 
     /// Example:
     /// 
@@ -648,58 +698,15 @@ impl Ohkami {
     /// 
     /// For localhost-testing with browser (or `curl` without `--insecure`),
     /// [`mkcert`](https://github.com/FiloSottile/mkcert) is highly recommended.
-    pub async fn howl<T>(
+    #[cfg(feature="__rt_native__")]
+    #[cfg(feature="tls")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "tls")))]
+    pub async fn howls<T>(
         self,
         bind: impl __rt__::IntoTcpListener<T>,
-        #[cfg(feature="tls")]
-        #[cfg_attr(docsrs, doc(cfg(feature = "tls")))]
-        tls_config: impl Into<Option<rustls::ServerConfig>>,
+        tls_config: rustls::ServerConfig,
     ) {
-        let (router, _) = self.into_router().finalize();
-        let router = Arc::new(router);
-
-        let listener = bind.into_tcp_listener().await;
-        let (wg, ctrl_c) = (sync::WaitGroup::new(), sync::CtrlC::new());
-        
-        #[cfg(feature="tls")]
-        let tls_acceptor = tls_config.into().map(|it| anysc_rustls::TlsAcceptor::from(Arc::new(it)));
-        
-        crate::INFO!("start serving on {}", listener.local_addr().unwrap());
-
-        while let Some(accept) = ctrl_c.until_interrupt(__rt__::accept(&listener)).await {
-            let Ok((connection, address)) = accept else {continue};
-
-            #[cfg(feature="tls")]
-            let connection: session::Connection = match &tls_acceptor {
-                None => connection.into(),
-                Some(tls_acceptor) => match ctrl_c.until_interrupt(tls_acceptor.accept(connection)).await {
-                    None => break,
-                    Some(Ok(tls_stream)) => tls_stream.into(),
-                    Some(Err(e)) => {
-                        crate::ERROR!("TLS accept error: {e}");
-                        continue;
-                    }
-                }
-            };
-
-            let session = session::Session::new(
-                connection,
-                address.ip(),
-                router.clone(),
-            );
-            
-            let wg = wg.add();
-            __rt__::spawn(async move {
-                session.manage().await;
-                wg.done();
-            });
-        }
-
-        crate::INFO!("interrupted, trying graceful shutdown...");
-        drop(listener);
-
-        crate::INFO!("waiting {} session(s) to finish...", wg.count());
-        wg.await;
+        self.howl_core(bind, Some(tls_config)).await
     }
 
     #[cfg(feature="rt_worker")]
@@ -1136,7 +1143,7 @@ mod test {
 
             crate::util::with_timeout(
                 std::time::Duration::from_secs(3),
-                Ohkami::new(()).howl(("localhost", __rt__::testing::PORT), tls_config)
+                Ohkami::new(()).howls(("localhost", __rt__::testing::PORT), tls_config)
             ).await
         });
     }
