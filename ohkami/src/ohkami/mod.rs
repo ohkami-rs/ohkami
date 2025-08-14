@@ -1111,17 +1111,58 @@ mod test {
     #[cfg(feature="tls")]
     #[test]
     fn can_howl_with_tls_on_any_native_async_runtime() {
-        __rt__::testing::block_on(async {
-            let mut cert_file = std::fs::File::open("test-cert.pem")
-                .expect("Failed to open certificate file");
-            let mut key_file = std::fs::File::open("test-key.pem")
-                .expect("Failed to open private key file");
+        let openssl_x509_newkey = || -> std::io::Result<()> {
+            std::process::Command::new("openssl")
+                .args([
+                    "req", "-x509", "-newkey", "rsa:4096", "-nodes",
+                    "-out", "test-cert.pem", "-keuout", "test-key.pem",
+                    "-days", "365", "-subj", "'/CN=localhost'"
+                ])
+                .status()
+                .map(|status| status.success().then_some(()).ok_or_else(|| {
+                    std::io::Error::new(
+                        std::io::ErrorKind::Other,
+                        "Failed to generate test certificate and key with OpenSSL"
+                    )
+                }))
+                .flatten()
+        };
+        
+        let is_pem_alive = |path: &std::path::Path| -> bool {
+            let path = path.as_ref();
             
-            let cert_chain = rustls_pemfile::certs(&mut std::io::BufReader::new(&cert_file))
+            if !path.exists() {
+                return false;
+            }
+            
+            if {
+                let now = std::time::SystemTime::now();
+                let created = path.metadata().unwrap().created().unwrap();
+                now.duration_since(created).unwrap().as_secs() >= 60 * 60 * 24 * 365
+            } {
+                return false;
+            }
+            
+            true
+        };
+        
+        __rt__::testing::block_on(async {
+            let (cert_file_path, key_file_path) = {
+                let target_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                    .parent().unwrap()
+                    .join("target");
+                (target_dir.join("test-cert.pem"), target_dir.join("test-key.pem"))
+            };
+            
+            if !{is_pem_alive(&cert_file_path) && is_pem_alive(&key_file_path)} {
+                openssl_x509_newkey().expect("`openssl` failed");
+            }
+            
+            let cert_chain = rustls_pemfile::certs(&mut std::io::BufReader::new(std::fs::File::open(cert_file_path)))
                 .map(|cd| cd.map(CertificateDer::from))
                 .collect::<Result<Vec<_>, _>>()
                 .expect("Failed to read certificate chain");            
-            let key = rustls_pemfile::read_one(&mut std::io::BufReader::new(&key_file))
+            let key = rustls_pemfile::read_one(&mut std::io::BufReader::new(std::fs::File::open(key_file_path)))
                 .expect("Failed to read private key")
                 .map(|p| match p {
                     rustls_pemfile::Item::Pkcs1Key(k) => PrivateKeyDer::Pkcs1(k),
