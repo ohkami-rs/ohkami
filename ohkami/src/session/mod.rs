@@ -2,14 +2,14 @@
 
 mod connection;
 
+pub use self::connection::Connection;
+
 use std::{any::Any, pin::Pin, sync::Arc, time::Duration};
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use crate::response::Upgrade;
 use crate::util::with_timeout;
 use crate::router::r#final::Router;
 use crate::{Request, Response};
-
-pub use self::connection::Connection;
 
 pub(crate) struct Session {
     connection: Connection,

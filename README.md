@@ -425,7 +425,7 @@ async fn main() {
 
 HTTPS support up on [rustls](https://github.com/rustls) ecosystem.
 
-- Call `howls` instead of `howl` to run with TLS ( as `https` to `http`, `wss` to `ws` ).
+- Call `howls` ( as `https` to `http`, `wss` to `ws` ) instead of `howl` to run with TLS.
 - You must prepare your own certificate and private key files.
 - Currently, only HTTP/1.1 over TLS is supported.
 
