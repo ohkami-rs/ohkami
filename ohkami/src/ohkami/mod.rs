@@ -678,8 +678,7 @@ impl Ohkami {
     ///     // Create and run Ohkami with HTTPS
     ///     Ohkami::new((
     ///         "/".GET(hello),
-    ///     )).howl("0.0.0.0:8443", tls_config).await;
-    ///     //.howl("0.0.0.0:8000", None).await; // <-- for HTTP without TLS
+    ///     )).howls("0.0.0.0:8443", tls_config).await;
     ///     
     ///     Ok(())
     /// }
