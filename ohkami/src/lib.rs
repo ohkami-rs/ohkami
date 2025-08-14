@@ -14,6 +14,7 @@
 //! 
 //! See [GitHub repo](https://github.com/ohkami-rs/ohkami) for details!
 
+#![cfg_attr(docsrs, feature(doc_cfg))]
 
 #![allow(incomplete_features)]
 #![cfg_attr(feature="nightly", feature(
@@ -195,9 +196,11 @@ pub mod claw;
 pub use claw::{Json, Cookie, Path, Query};
 
 #[cfg(feature="sse")]
+#[cfg_attr(docsrs, doc(cfg(feature = "sse")))]
 pub mod sse;
 
 #[cfg(feature="ws")]
+#[cfg_attr(docsrs, doc(cfg(feature = "ws")))]
 pub mod ws;
 
 #[cfg(feature="rt_lambda")]
@@ -255,6 +258,7 @@ pub mod serde {
 }
 
 #[cfg(feature="openapi")]
+#[cfg_attr(docsrs, doc(cfg(feature = "openapi")))]
 /// # Highly integrated OpenAPI support for Ohkami
 pub mod openapi {
     pub use ::ohkami_openapi::*;
