@@ -36,6 +36,11 @@
 
 #[cfg(feature="__rt_native__")]
 mod __rt__ {
+    #[cfg(feature="__io_tokio__")]
+    pub(crate) use tokio::io::{AsyncReadExt as AsyncRead, AsyncWriteExt as AsyncWrite};
+    #[cfg(feature="__io_futures__")]
+    pub(crate) use futures_util::{AsyncReadExt as AsyncRead, AsyncWriteExt as AsyncWrite};
+
     #[cfg(feature="rt_tokio")]
     pub(crate) use tokio::net::{TcpListener, TcpStream, ToSocketAddrs};
     #[cfg(feature="rt_smol")]
@@ -92,24 +97,6 @@ mod __rt__ {
             }
         }
     }
-
-    #[cfg(feature="rt_tokio")]
-    pub(crate) use tokio::io::AsyncReadExt as AsyncRead;
-    #[cfg(feature="rt_smol")]
-    pub(crate) use futures_util::AsyncReadExt as AsyncRead;
-    #[cfg(feature="rt_nio")]
-    pub(crate) use tokio::io::AsyncReadExt as AsyncRead;
-    #[cfg(feature="rt_glommio")]
-    pub(crate) use futures_util::AsyncReadExt as AsyncRead;
-
-    #[cfg(feature="rt_tokio")]
-    pub(crate) use tokio::io::AsyncWriteExt as AsyncWrite;
-    #[cfg(feature="rt_smol")]
-    pub(crate) use futures_util::AsyncWriteExt as AsyncWrite;
-    #[cfg(feature="rt_nio")]
-    pub(crate) use tokio::io::AsyncWriteExt as AsyncWrite;
-    #[cfg(feature="rt_glommio")]
-    pub(crate) use futures_util::AsyncWriteExt as AsyncWrite;
 
     #[cfg(any(feature="rt_tokio", feature="rt_smol", feature="rt_nio"))]
     mod task {

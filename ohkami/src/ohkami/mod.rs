@@ -494,8 +494,7 @@ impl Ohkami {
             router.apply_fangs(router.id(), fangs);
         }
 
-        #[cfg(feature="DEBUG")]
-        println!("{router:#?}");
+        crate::DEBUG!("{router:#?}");
 
         router
     }
@@ -769,32 +768,33 @@ impl Ohkami {
         env: ::worker::Env,
         ctx: ::worker::Context,
     ) -> ::worker::Response {
-        #[cfg(feature="DEBUG")] ::worker::console_debug!("Called `#[ohkami::worker]`; req: {req:?}");
+        crate::DEBUG!("Called `#[ohkami::worker]`; req: {req:?}");
 
         let mut ohkami_req = crate::Request::init();
-        #[cfg(feature="DEBUG")] ::worker::console_debug!("Done `ohkami::Request::init`");
+        crate::DEBUG!("Done `ohkami::Request::init`");
 
         let mut ohkami_req = unsafe {std::pin::Pin::new_unchecked(&mut ohkami_req)};
-        #[cfg(feature="DEBUG")] ::worker::console_debug!("Put request in `Pin`");
+        crate::DEBUG!("Put request in `Pin`");
 
         let take_over = ohkami_req.as_mut().take_over(req, env, ctx).await;
-        #[cfg(feature="DEBUG")] ::worker::console_debug!("Done `ohkami::Request::take_over`: {ohkami_req:?}");
+        crate::DEBUG!("Done `ohkami::Request::take_over`: {ohkami_req:?}");
 
         let ohkami_res = match take_over {
-            Ok(()) => {#[cfg(feature="DEBUG")] ::worker::console_debug!("`take_over` succeed");
+            Ok(()) => {
+                crate::DEBUG!("`take_over` succeed");
                 let (router, _) = self.into_router().finalize();
-                #[cfg(feature="DEBUG")] ::worker::console_debug!("Done `self.router.finalize`");
-                
+                crate::DEBUG!("Done `self.router.finalize`");
                 router.handle(&mut ohkami_req).await
             }
-            Err(e) => {#[cfg(feature="DEBUG")] ::worker::console_debug!("`take_over` returned an error response: {e:?}");
+            Err(e) => {
+                crate::DEBUG!("`take_over` returned an error response: {e:?}");
                 e
             }
         };
-        #[cfg(feature="DEBUG")] ::worker::console_debug!("Successfully generated ohkami::Response: {ohkami_res:?}");
+        crate::DEBUG!("Successfully generated ohkami::Response: {ohkami_res:?}");
 
         let res = ohkami_res.into();
-        #[cfg(feature="DEBUG")] ::worker::console_debug!("Done `ohkami::Response` --into--> `worker::Response`: {res:?}");
+        crate::DEBUG!("Done `ohkami::Response` --into--> `worker::Response`: {res:?}");
 
         res
     }
