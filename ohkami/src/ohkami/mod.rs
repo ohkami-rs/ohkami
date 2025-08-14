@@ -1116,7 +1116,7 @@ mod test {
     #[test]
     fn can_howl_on_any_native_async_runtime() {
         __rt__::testing::block_on(async {
-            crate::util::timeout_in(
+            crate::util::with_timeout(
                 std::time::Duration::from_secs(3),
                 Ohkami::new(()).howl(("localhost", __rt__::testing::PORT))
             ).await
@@ -1194,7 +1194,7 @@ mod test {
                 .with_single_cert(cert_chain, key)
                 .expect("Failed to build TLS configuration");
 
-            crate::util::timeout_in(
+            crate::util::with_timeout(
                 std::time::Duration::from_secs(3),
                 Ohkami::new(()).howls(("localhost", __rt__::testing::PORT), tls_config)
             ).await

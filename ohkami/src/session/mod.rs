@@ -5,7 +5,7 @@ mod connection;
 use std::{any::Any, pin::Pin, sync::Arc, time::Duration};
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use crate::response::Upgrade;
-use crate::util::timeout_in;
+use crate::util::with_timeout;
 use crate::router::r#final::Router;
 use crate::{Request, Response};
 
@@ -60,7 +60,7 @@ impl Session {
         let upgrade = loop {
             req.clear();
             // Apply a fresh timeout for each read, thus resetting the timer on activity.
-            let read_result = timeout_in(
+            let read_result = with_timeout(
                 Duration::from_secs(crate::CONFIG.keepalive_timeout()),
                 async { req.as_mut().read(&mut self.connection).await }
             ).await;
