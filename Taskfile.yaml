@@ -3,11 +3,6 @@ version: 3
 vars:
   maybe_nightly: { sh: cargo version | grep -q 'nightly' && echo 'nightly' || echo ''  }
 
-# 2025-08-07
-# temporarily omitting `nio` runtime from CI tasks
-# because the latest published version of `nio` (0.0.1) fails to build
-# (ref: for example, https://github.com/ohkami-rs/ohkami/pull/493#issuecomment-3146636452)
-
 tasks:
   CI:
     deps:
@@ -22,7 +17,7 @@ tasks:
   test:core:
     deps:
       - task: test:no_rt
-      - for:  [tokio, smol, glommio, lambda, worker] # [tokio, smol, nio, glommio, lambda, worker]
+      - for:  [tokio, smol, nio, glommio, lambda, worker]
         task: test:rt
         vars: { rt: '{{.ITEM}}' }
   test:other:
@@ -35,7 +30,7 @@ tasks:
   check:
     deps:
       - task: check:no_rt
-      - for:  [tokio, smol, glommio, lambda] # [tokio, smol, nio, glommio, lambda]
+      - for:  [tokio, smol, nio, glommio, lambda]
         task: check:rt-native
         vars: { rt: '{{.ITEM}}' }
       - task: check:rt_worker
@@ -46,7 +41,7 @@ tasks:
     cmds:
       - cd benches && cargo bench --features DEBUG --no-run
       - cd benches_rt/vs_actix-web && cargo check
-      - for: [tokio, smol, glommio] # [tokio, smol, nio, glommio]
+      - for: [tokio, smol, nio, glommio]
         cmd: cd benches_rt/{{.ITEM}} && cargo check
 
   bench:

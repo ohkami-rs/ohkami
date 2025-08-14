@@ -62,7 +62,7 @@ rt_smol = ["__rt_native__", "__io_futures__",
 ]
 rt_nio = ["__rt_native__", "__io_tokio__",
     "dep:nio",
-    #"mews?/rt_nio",
+    "mews?/rt_nio",
 ]
 rt_glommio = ["__rt_native__", "__io_futures__",
     "dep:glommio",
