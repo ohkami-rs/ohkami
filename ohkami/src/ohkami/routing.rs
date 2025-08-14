@@ -218,10 +218,13 @@ const _: () = {
                 }
 
                 for ext_to_omit in self.omit_extensions {
+                    // normalize it
+                    let ext_to_omit = ext_to_omit.trim_start_matches('.');
+                    
                     if let Some(without_ext) = file_name.strip_suffix(&format!(".{ext_to_omit}")) {
                         let _ = path.pop();
 
-                        if without_ext == "index" && *ext_to_omit == "html" {
+                        if without_ext == "index" && ext_to_omit == "html" {
                             // If the file is `index.html` and `.html` is omitted,
                             // the path should be `/` instead of `/index`.
                             assert_eq!(file_name, "index.html");
