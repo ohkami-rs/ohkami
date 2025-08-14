@@ -21,7 +21,6 @@ tasks:
       - task: test:other
   test:core:
     deps:
-      - task: test:tls
       - task: test:no_rt
       - for:  [tokio, smol, glommio, lambda, worker] # [tokio, smol, nio, glommio, lambda, worker]
         task: test:rt
@@ -35,7 +34,6 @@ tasks:
 
   check:
     deps:
-      - task: check:tls
       - task: check:no_rt
       - for:  [tokio, smol, glommio, lambda] # [tokio, smol, nio, glommio, lambda]
         task: check:rt-native

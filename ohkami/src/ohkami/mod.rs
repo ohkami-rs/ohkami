@@ -630,11 +630,12 @@ impl Ohkami {
         wg.await;
     }
 
-    #[cfg(all(feature="__rt_native__", feature="rt_tokio", feature="tls"))]
-    /// Bind this `Ohkami` to an address and start serving with TLS/HTTPS support!
+    #[cfg(all(feature="__rt_native__", feature="tls"))]
+    /// Bind this `Ohkami` to an address and start serving with TLS/HTTPS support,
+    /// powered by [`rustls`](https://github.com/rustls) ecosystem!
     /// 
     /// This method works like `howl` but upgrades connections to HTTPS using the provided
-    /// rustls configuration. This functionality is only available with the `rt_tokio` feature.
+    /// rustls configuration.
     /// 
     /// ### Parameters
     /// 
@@ -702,6 +703,9 @@ impl Ohkami {
     /// $ curl --insecure https://localhost:8443
     /// Hello, secure ohkami!
     /// ```
+    /// 
+    /// For localhost-testing with browser (or `curl` without `--insecure`),
+    /// [`mkcert`](https://github.com/FiloSottile/mkcert) is highly recommended.
     pub async fn howls<T>(self, bind: impl __rt__::IntoTcpListener<T>, tls_config: rustls::ServerConfig) {    
         let (router, _) = self.into_router().finalize();
         let router = Arc::new(router);
@@ -715,8 +719,18 @@ impl Ohkami {
         while let Some(accept) = ctrl_c.until_interrupt(listener.accept()).await {
             crate::DEBUG!("accept: {accept:?}");
             
-            let Ok((connection, addr)) = accept else { continue };
-            
+            let (connection, addr) = {
+                #[cfg(any(feature="rt_tokio", feature="rt_smol", feature="rt_nio"))] {
+                    let Ok((connection, addr)) = accept else {continue};
+                    (connection, addr)
+                }
+                #[cfg(any(feature="rt_glommio"))] {
+                    let Ok(connection) = accept else {continue};
+                    let Ok(addr) = connection.peer_addr() else {continue};
+                    (connection, addr)
+                }
+            };
+
             let connection = match ctrl_c.until_interrupt(tls_acceptor.accept(connection)).await {
                 None => break,
                 Some(Ok(tls_stream)) => tls_stream,
@@ -735,7 +749,7 @@ impl Ohkami {
             );
     
             let wg = wg.add();
-            tokio::spawn(async move {
+            __rt__::spawn(async move {
                 session.manage().await;
                 wg.done();
             });
@@ -1092,7 +1106,7 @@ mod sync {
     };
 }
 
-#[cfg(all(debug_assertions, feature="__rt_native__"))]
+#[cfg(feature="__rt_native__")]
 #[cfg(test)]
 mod test {
     use super::*;
@@ -1111,12 +1125,12 @@ mod test {
     #[cfg(feature="tls")]
     #[test]
     fn can_howl_with_tls_on_any_native_async_runtime() {
-        let openssl_x509_newkey = || -> std::io::Result<()> {
+        let openssl_x509_newkey = |out_path: &str, keyout_path: &str| -> std::io::Result<()> {
             std::process::Command::new("openssl")
                 .args([
                     "req", "-x509", "-newkey", "rsa:4096", "-nodes",
-                    "-out", "test-cert.pem", "-keuout", "test-key.pem",
-                    "-days", "365", "-subj", "'/CN=localhost'"
+                    "-out", out_path, "-keyout", keyout_path,
+                    "-days", "365", "-subj", "/CN=localhost"
                 ])
                 .status()
                 .map(|status| status.success().then_some(()).ok_or_else(|| {
@@ -1129,8 +1143,6 @@ mod test {
         };
         
         let is_pem_alive = |path: &std::path::Path| -> bool {
-            let path = path.as_ref();
-            
             if !path.exists() {
                 return false;
             }
@@ -1147,6 +1159,8 @@ mod test {
         };
         
         __rt__::testing::block_on(async {
+            rustls::crypto::ring::default_provider().install_default().ok();
+        
             let (cert_file_path, key_file_path) = {
                 let target_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
                     .parent().unwrap()
@@ -1155,18 +1169,21 @@ mod test {
             };
             
             if !{is_pem_alive(&cert_file_path) && is_pem_alive(&key_file_path)} {
-                openssl_x509_newkey().expect("`openssl` failed");
+                openssl_x509_newkey(
+                    cert_file_path.to_str().unwrap(),
+                    key_file_path.to_str().unwrap()
+                ).expect("`openssl` failed");
             }
             
-            let cert_chain = rustls_pemfile::certs(&mut std::io::BufReader::new(std::fs::File::open(cert_file_path)))
-                .map(|cd| cd.map(CertificateDer::from))
+            let cert_chain = rustls_pemfile::certs(&mut std::io::BufReader::new(std::fs::File::open(cert_file_path).unwrap()))
+                .map(|cd| cd.map(rustls::pki_types::CertificateDer::from))
                 .collect::<Result<Vec<_>, _>>()
                 .expect("Failed to read certificate chain");            
-            let key = rustls_pemfile::read_one(&mut std::io::BufReader::new(std::fs::File::open(key_file_path)))
+            let key = rustls_pemfile::read_one(&mut std::io::BufReader::new(std::fs::File::open(key_file_path).unwrap()))
                 .expect("Failed to read private key")
                 .map(|p| match p {
-                    rustls_pemfile::Item::Pkcs1Key(k) => PrivateKeyDer::Pkcs1(k),
-                    rustls_pemfile::Item::Pkcs8Key(k) => PrivateKeyDer::Pkcs8(k),
+                    rustls_pemfile::Item::Pkcs1Key(k) => rustls::pki_types::PrivateKeyDer::Pkcs1(k),
+                    rustls_pemfile::Item::Pkcs8Key(k) => rustls::pki_types::PrivateKeyDer::Pkcs8(k),
                     _ => panic!("Unexpected private key type"),
                 })
                 .expect("Failed to read private key");

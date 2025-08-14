@@ -15,7 +15,7 @@ macro_rules! assert_response_bytes_eq {
             let mut res_bytes = Vec::new();
             crate::__rt__::testing::block_on(
                 $res.send(&mut res_bytes)
-            );
+            ).expect("`Response::send` failed");
 
             if res_bytes != format!($expected, NOW = now).into_bytes() {
                 panic!("\n\
