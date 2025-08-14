@@ -13,7 +13,7 @@ categories    = { workspace = true }
 license       = { workspace = true }
 
 [package.metadata.docs.rs]
-features      = ["rt_tokio", "nightly", "sse", "ws"]
+features = ["rt_tokio", "nightly", "sse", "ws", "tls"]
 
 
 [dependencies]
