@@ -373,8 +373,7 @@ impl Response {
                     chunk.append(&mut message);
                     chunk.extend_from_slice(b"\r\n");
 
-                    #[cfg(feature="DEBUG")]
-                    println!("\n[sending chunk]\n{}", chunk.escape_ascii());
+                    crate::DEBUG!("\n[sending chunk]\n{}", chunk.escape_ascii());
 
                     conn.write_all(&chunk).await?;
                     conn.flush().await?;

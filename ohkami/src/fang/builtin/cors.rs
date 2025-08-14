@@ -2,7 +2,6 @@
 
 use crate::{header::append, Fang, FangProc, Request, Response, Status};
 
-
 /// # Builtin fang for CORS config
 /// 
 /// <br>
@@ -38,22 +37,26 @@ pub struct Cors {
 pub(crate) enum AccessControlAllowOrigin {
     Any,
     Only(&'static str),
-} impl AccessControlAllowOrigin {
-    #[inline(always)] pub(crate) const fn is_any(&self) -> bool {
+}
+impl AccessControlAllowOrigin {
+    #[inline(always)]
+    pub(crate) const fn is_any(&self) -> bool {
         match self {
             Self::Any => true,
             _ => false,
         }
     }
 
-    #[inline(always)] pub(crate) const fn from_literal(lit: &'static str) -> Self {
+    #[inline(always)]
+    pub(crate) const fn from_literal(lit: &'static str) -> Self {
         match lit.as_bytes() {
             b"*"   => Self::Any,
             origin => Self::Only(unsafe{std::str::from_utf8_unchecked(origin)}),
         }
     }
 
-    #[inline(always)] pub(crate) const fn as_str(&self) -> &'static str {
+    #[inline(always)]
+    pub(crate) const fn as_str(&self) -> &'static str {
         match self {
             Self::Any          => "*",
             Self::Only(origin) => origin,
@@ -78,11 +81,12 @@ impl Cors {
     pub fn allow_credentials(mut self, yes: bool) -> Self {
         if yes {
             if self.allow_origin.is_any() {
-                #[cfg(debug_assertions)] crate::WARNING!("\
-                [WRANING] \
-                'Access-Control-Allow-Origin' header \
-                must not have wildcard '*' when the request's credentials mode is 'include' \
-                ");
+                #[cfg(debug_assertions)] {
+                    crate::WARNING!("\
+                        'Access-Control-Allow-Origin' header \
+                        must not have wildcard '*' when the request's credentials mode is 'include' \
+                    ");
+                }
                 return self
             }
             self.allow_credentials = true;
@@ -142,20 +146,16 @@ impl<Inner: FangProc> FangProc for CORSProc<Inner> {
             }
         }
 
-        #[cfg(feature="DEBUG")]
-        println!("After CORS proc: res = {res:#?}");
+        crate::DEBUG!("After CORS proc: res = {res:#?}");
 
         res
     }
 }
 
-
-
-
-#[cfg(debug_assertions)]
 #[cfg(test)]
 mod test {
-    #[test] fn cors_fang_bound() {
+    #[test]
+    fn cors_fang_bound() {
         use crate::fang::{Fang, BoxedFPC};
         fn assert_fang<T: Fang<BoxedFPC>>() {}
 
@@ -163,7 +163,8 @@ mod test {
     }
 
     #[cfg(all(feature="__rt_native__", feature="DEBUG"))]
-    #[test] fn options_request() {
+    #[test]
+    fn options_request() {
         use crate::prelude::*;
         use crate::testing::*;
         use super::Cors;

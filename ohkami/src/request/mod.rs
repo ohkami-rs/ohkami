@@ -317,22 +317,20 @@ impl Request {
         let remaining_buf_len = remaining_buf.len();
 
         if remaining_buf_len == 0 || *unsafe {remaining_buf.get_unchecked(0)} == 0 {
-            #[cfg(feature="DEBUG")] println!("\n[read_payload] case: remaining_buf.is_empty() || remaining_buf[0] == 0\n");
+            crate::DEBUG!("\n[read_payload] case: remaining_buf.is_empty() || remaining_buf[0] == 0\n");
 
             let mut bytes = vec![0; size].into_boxed_slice();
             stream.read_exact(&mut bytes).await.unwrap();
             CowSlice::Own(bytes)
 
         } else if size <= remaining_buf_len {
-            #[cfg(feature="DEBUG")] println!("\n[read_payload] case: starts_at + size <= BUF_SIZE\n");
+            crate::DEBUG!("\n[read_payload] case: starts_at + size <= BUF_SIZE\n");
 
             #[allow(unused_unsafe/* I don't know why but rustc sometimes put warnings to this unsafe as unnecessary */)]
-            CowSlice::Ref(unsafe {
-                Slice::new_unchecked(remaining_buf.as_ptr(), size)
-            })
+            CowSlice::Ref(unsafe {Slice::new_unchecked(remaining_buf.as_ptr(), size)})
 
         } else {
-            #[cfg(feature="DEBUG")] println!("\n[read_payload] case: else\n");
+            crate::DEBUG!("\n[read_payload] case: else\n");
 
             let mut bytes = vec![0; size].into_boxed_slice();
             unsafe {// SAFETY: Here size > remaining_buf_len
@@ -456,7 +454,7 @@ impl Request {
         self.__url__.write(req.url()
             .map_err(|_| Response::BadRequest().with_text("Invalid request URL"))?
         );
-        #[cfg(feature="DEBUG")] worker::console_debug!("Load __url__: {:?}", self.__url__);
+        crate::DEBUG!("Load __url__: {:?}", self.__url__);
 
         // SAFETY: Just calling for request bytes and `self.__url__` is already initialized
         unsafe {let __url__ = self.__url__.assume_init_ref();

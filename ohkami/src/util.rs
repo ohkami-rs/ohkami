@@ -1,31 +1,11 @@
 #[doc(hidden)]
-#[cold] #[inline(never)]
-pub fn eprintln(error: impl std::fmt::Display) {
-    #[cfg(not(feature = "rt_worker"))]
-    std::eprintln!("{error}");
-
-    #[cfg(feature="rt_worker")]
-    worker::console_error!("{error}");
-}
-
-/// just `eprintln`, but working both on native / Workers.
-#[macro_export]
-macro_rules! eprintln {
-    ( $( $t:tt )* ) => {
-        $crate::util::eprintln(
-            format_args!($($t)*)
-        );
-    };
-}
-
-#[doc(hidden)]
 #[macro_export]
 macro_rules! INFO {
     ( $( $t:tt )* ) => {{
-        $crate::eprintln!(
-            "[ohkami:INFO] {}",
-            format_args!($($t)*)
-        );
+        #[cfg(not(feature = "rt_worker"))]
+        std::println!("[ohkami:INFO] {}", format_args!($($t)*));
+        #[cfg(feature="rt_worker")]
+        worker::console_info!("[ohkami:INFO] {}", format_args!($($t)*));
     }};
 }
 
@@ -33,38 +13,35 @@ macro_rules! INFO {
 #[macro_export]
 macro_rules! WARNING {
     ( $( $t:tt )* ) => {{
-        $crate::eprintln!(
-            "[ohkami:WARNING] {}",
-            format_args!($($t)*)
-        );
+        #[cfg(not(feature = "rt_worker"))]
+        std::println!("[ohkami:WARNING] {}", format_args!($($t)*));
+        #[cfg(feature="rt_worker")]
+        worker::console_warn!("[ohkami:WARNING] {}", format_args!($($t)*));
     }};
 }
 
 #[doc(hidden)]
 #[macro_export]
 macro_rules! ERROR {
-    ( $($t:tt)* ) => {
-        $crate::eprintln!(
-            "[ohkami:ERROR] {}",
-            format_args!($($t)*)
-        );
-    };
+    ( $($t:tt)* ) => {{
+        #[cfg(not(feature = "rt_worker"))]
+        std::eprintln!("[ohkami:ERROR] {}", format_args!($($t)*));
+        #[cfg(feature="rt_worker")]
+        worker::console_error!("[ohkami:ERROR] {}", format_args!($($t)*));
+    }};
 }
 
 #[doc(hidden)]
 #[macro_export]
 macro_rules! DEBUG {
-    ( $( $t:tt )* ) => {{
+    ( $( $t:tt )* ) => {
         #[cfg(feature="DEBUG")] {
-            $crate::eprintln!(
-                "[ohkami:DEBUG] {}:{}:{} {}",
-                file!(),
-                line!(),
-                column!(),
-                format_args!($($t)*)
-            );
+            #[cfg(not(feature = "rt_worker"))]
+            std::eprintln!("[ohkami:DEBUG] {}:{}:{} {}", file!(), line!(), column!(), format_args!($($t)*));
+            #[cfg(feature="rt_worker")]
+            worker::console_debug!("[ohkami:DEBUG] {}:{}:{} {}", file!(), line!(), column!(), format_args!($($t)*));
         }
-    }};
+    };
 }
 
 #[doc(hidden)]

@@ -576,7 +576,7 @@ const _: () = {
             let h = ::worker::Headers::new();
             for (k, v) in self.iter() {
                 if let Err(_e) = h.append(k, v) {
-                    #[cfg(feature="DEBUG")] println!("`worker::Headers::append` failed: {_e:?}");
+                    crate::DEBUG!("`worker::Headers::append` failed: {_e:?}");
                 }
             }
             h
