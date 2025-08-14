@@ -1,6 +1,7 @@
 use ohkami::prelude::*;
 
 struct Options {
+    omit_html: bool,
     omit_dot_html: bool,
     serve_dotfiles: bool,
     etag: Option<fn(&std::fs::File) -> String>,
@@ -8,6 +9,7 @@ struct Options {
 impl Default for Options {
     fn default() -> Self {
         Self {
+            omit_html: false,
             omit_dot_html: false,
             serve_dotfiles: false,
             etag: None,
@@ -15,10 +17,17 @@ impl Default for Options {
     }
 }
 
-fn ohkami(Options { omit_dot_html, serve_dotfiles, etag }: Options) -> Ohkami {
+fn ohkami(Options { omit_html, omit_dot_html, serve_dotfiles, etag }: Options) -> Ohkami {
+    let omit_extensions = match (omit_html, omit_dot_html) {
+        (true, true) => &["html", ".html"],
+        (true, false) => &["html"],
+        (false, true) => &[".html"],
+        (false, false) => &[],
+    };
+    
     Ohkami::new((
         "/".Mount("./public")
-            .omit_extensions(if omit_dot_html {&["html"]} else {&[]})
+            .omit_extensions(omit_extensions)
             .serve_dotfiles(serve_dotfiles)
             .etag(etag),
     ))
@@ -72,6 +81,46 @@ mod test {
         }
     }
 
+    #[tokio::test]
+    async fn test_omit_html() {
+        let t = ohkami(Options {
+            omit_html: true,
+            ..Default::default()
+        }).test();
+
+        // dotfiles are not served
+        {
+            let req = TestRequest::GET("/.env.sample");
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status().code(), 404);
+        }
+
+        // .js is served as text/javascript
+        {
+            let req = TestRequest::GET("/index.js");
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status().code(), 200);
+            assert_eq!(res.content("text/javascript"), Some(include_str!("../public/index.js").as_bytes()));
+        }
+
+        // .html is served as text/html without extension and index.html is served at /
+        {
+            let req = TestRequest::GET("/"); // <---
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status().code(), 200);
+            assert_eq!(res.content("text/html"), Some(include_str!("../public/index.html").as_bytes()));
+
+            let req = TestRequest::GET("/about"); // <---
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status().code(), 200);
+            assert_eq!(res.content("text/html"), Some(include_str!("../public/about.html").as_bytes()));
+
+            let req = TestRequest::GET("/blog"); // <---
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status().code(), 200);
+            assert_eq!(res.content("text/html"), Some(include_str!("../public/blog/index.html").as_bytes()));
+        }
+    }
     #[tokio::test]
     async fn test_omit_dot_html() {
         let t = ohkami(Options {

@@ -114,7 +114,7 @@ impl Dir {
         })
     }
 
-    /// Whether to serve dotfiles like `.abc` (default: false)
+    /// Whether to serve dotfiles like `.gitignore` (default: false)
     /// 
     /// When `false`, files of name starting with `.` will be ignored.
     pub fn serve_dotfiles(mut self, yes: bool) -> Self {
@@ -122,10 +122,13 @@ impl Dir {
         self
     }
 
-    /// File extensions (leading `.` trimmed) that should not be appeared in server path.
-    /// For example, if you omit `[".html"]`, `/abc.html` will be served at `/abc` instead of `/abc.html`.
+    /// File extensions that should not be appeared in server path.
     /// 
-    /// As a special case, `index.html` will be served at `/` when `".html"` is omitted.
+    /// For example, if you omit `&["html"]` or `&[".html"]` (both styles works the same),
+    /// `/abc.html` will be served at `/abc` instead of `/abc.html`.
+    /// 
+    /// As a special case, `index.html` will be served at `/path/to/dir`
+    /// instead of `/path/to/dir/index` when `.html` is omitted.
     pub fn omit_extensions(mut self, extensions_to_omit: &'static [&'static str]) -> Self {
         self.omit_extensions = extensions_to_omit;
         self
