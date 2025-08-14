@@ -19,10 +19,10 @@ impl Default for Options {
 
 fn ohkami(Options { omit_html, omit_dot_html, serve_dotfiles, etag }: Options) -> Ohkami {
     let omit_extensions = match (omit_html, omit_dot_html) {
-        (true, true) => &["html", ".html"],
-        (true, false) => &["html"],
-        (false, true) => &[".html"],
-        (false, false) => &[],
+        (true, true) => &["html", ".html"][..],
+        (true, false) => &["html"][..],
+        (false, true) => &[".html"][..],
+        (false, false) => &[][..],
     };
     
     Ohkami::new((
