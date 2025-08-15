@@ -8,6 +8,8 @@ use std::sync::Arc;
 /// - doc: https://go.dev/doc/go1.25#nethttppkgnethttp
 /// - code: https://cs.opensource.google/go/go/+/refs/tags/go1.25.0:src/net/http/csrf.go
 /// 
+/// providing a token-less CSRF protection mechanism, with support for byppassing trusted origins.
+/// 
 /// ## Usage
 /// 
 /// ### Single Server Service
@@ -58,9 +60,24 @@ impl Csrf {
     }
     
     pub fn with_trusted_origins(trusted_origins: impl IntoIterator<Item = &'static str>) -> Self {
-        Csrf {
-            trusted_origins: Arc::new(trusted_origins.into_iter().collect()),
+        let trusted_origins = trusted_origins.into_iter().collect::<Vec<_>>();
+        
+        for origin in &trusted_origins {
+            let Some((scheme, rest)) = origin.split_once("://") else {
+                panic!("invalid origin `{origin}`: scheme is required")
+            };
+            if !matches!(scheme, "http" | "https") {
+                panic!("invalid origin `{origin}`: scheme must be 'http' or 'https'");
+            }
+            if rest.contains(['/', '?', '#']) {
+                panic!("invalid origin `{origin}`: path, query and fragment are not allowed");
+            }
+            if rest.is_empty() || !rest.starts_with(|x: char| x.is_ascii_alphanumeric()) {
+                panic!("invalid origin `{origin}`: host is required");
+            }
         }
+        
+        Csrf { trusted_origins: Arc::new(trusted_origins) }
     }
 }
 
