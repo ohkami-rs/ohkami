@@ -147,7 +147,7 @@ pub trait FangProc {
 
 built-in:
 
-- `BasicAuth`, `Cors`, `Jwt` (authentication/security)
+- `BasicAuth`, `Cors`, `Csrf`, `Jwt` (authentication/security)
 - `Context` (reuqest context)
 - `Enamel` (security headers; experimantal)
 - `Timeout` (handling timeout; native runtime only)

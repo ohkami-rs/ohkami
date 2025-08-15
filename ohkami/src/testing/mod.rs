@@ -1,4 +1,5 @@
 #![cfg(debug_assertions)]
+#![cfg(feature="__rt__")]
 
 //! Ohkami testing tools
 //! 
@@ -29,14 +30,12 @@
 //! }
 //! ```
 
-use crate::{Response, Request, Ohkami, Status, Method};
+pub use crate::{Response, Request, Ohkami, Status, Method};
 use crate::router::r#final::Router;
-
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::{pin::Pin, future::Future, format as f};
-
 
 pub trait Testing {
     fn test(self) -> TestingOhkami;
