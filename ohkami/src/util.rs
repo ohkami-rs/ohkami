@@ -37,7 +37,7 @@ macro_rules! DEBUG {
     ( $( $t:tt )* ) => {
         #[cfg(feature="DEBUG")] {
             #[cfg(not(feature = "rt_worker"))]
-            std::eprintln!("[ohkami:DEBUG] {}:{}:{} {}", file!(), line!(), column!(), format_args!($($t)*));
+            std::println!("[ohkami:DEBUG] {}:{}:{} {}", file!(), line!(), column!(), format_args!($($t)*));
             #[cfg(feature="rt_worker")]
             worker::console_debug!("[ohkami:DEBUG] {}:{}:{} {}", file!(), line!(), column!(), format_args!($($t)*));
         }
