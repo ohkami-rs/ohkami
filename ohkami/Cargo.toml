@@ -1,6 +1,6 @@
 [package]
 name          = "ohkami"
-description   = "Build web app in intuitive and declarative code"
+description   = "A performant, declarative, and runtime-flexible web framework for Rust"
 documentation = "https://docs.rs/ohkami"
 version       = { workspace = true }
 edition       = { workspace = true }

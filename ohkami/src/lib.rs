@@ -3,7 +3,7 @@
 
 //! <div align="center">
 //!     <h1>Ohkami</h1>
-//!     Ohkami <em>- [狼] wolf in Japanese -</em> is intuitive and declarative web framework.
+//!     Ohkami <em>- [狼] wolf in Japanese -</em> is a performant, declarative, and runtime-flexible web framework for Rust.
 //! </div>
 //! 
 //! <br>
