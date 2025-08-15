@@ -23,7 +23,8 @@ impl Method {
         }
     }
     #[cfg(feature="rt_worker")]
-    #[inline(always)] pub(crate) const fn from_worker(w: ::worker::Method) -> Option<Self> {
+    #[inline(always)]
+    pub(crate) const fn from_worker(w: ::worker::Method) -> Option<Self> {
         match w {
             ::worker::Method::Get     => Some(Self::GET),
             ::worker::Method::Put     => Some(Self::PUT),
@@ -36,7 +37,8 @@ impl Method {
         }
     }
 
-    #[inline] pub const fn as_str(&self) -> &'static str {
+    #[inline]
+    pub const fn as_str(&self) -> &'static str {
         match self {
             Self::GET     => "GET",
             Self::PUT     => "PUT",
@@ -47,8 +49,15 @@ impl Method {
             Self::OPTIONS => "OPTIONS",
         }
     }
+    
+    #[inline]
+    pub const fn is_safe(&self) -> bool {
+        matches!(self, Self::GET | Self::HEAD | Self::OPTIONS)
+    }
 }
-#[allow(non_snake_case)] impl Method {
+
+#[allow(non_snake_case)]
+impl Method {
     pub const fn isGET(&self) -> bool {
         matches!(self, Method::GET)
     }
