@@ -72,8 +72,15 @@ impl Csrf {
             if rest.contains(['/', '?', '#']) {
                 panic!("invalid origin `{origin}`: path, query and fragment are not allowed");
             }
-            if rest.is_empty() || !rest.starts_with(|x: char| x.is_ascii_alphanumeric()) {
-                panic!("invalid origin `{origin}`: host is required");
+            let (host, port) = rest.split_once(':').map_or((rest, None), |(h, p)| (h, Some(p)));
+            if port.is_some_and(|p| !p.chars().all(|c| c.is_ascii_digit())) {
+                panic!("invalid origin `{origin}`: port must be a number");
+            }
+            if !host.chars().all(|c| matches!(c, 'a'..='z' | 'A'..='Z' | '0'..='9' | '-' | '.' | '_')) {
+                panic!("invalid origin `{origin}`: invalid host");
+            }
+            if !host.starts_with(|c: char| c.is_ascii_alphabetic()) {
+                panic!("invalid origin `{origin}`: host must start with an alphabetic character");
             }
         }
         
@@ -161,7 +168,7 @@ mod tests {
     }}
     
     #[test]
-    fn test_csrf_protect_sec_fetch_site() {
+    fn test_sec_fetch_site() {
         let t = Ohkami::new((
             Csrf::new(),
             "/".GET(async || ()).PUT(async || ()).POST(async || ()),
@@ -188,5 +195,49 @@ mod tests {
                 assert_eq!(res.status(), expected);
             }
         });
+    }
+    
+    #[test]
+    fn test_trusted_origins() {
+        let t = Ohkami::new((
+            Csrf::with_trusted_origins(["https://trusted.example"]),
+            "/".POST(async || ()),
+        )).test();
+        
+        crate::__rt__::testing::block_on(async {
+            for (req, expected) in [
+                (x!(POST).header("origin", "https://trusted.example"), Status::OK),
+                (x!(POST).header("origin", "https://trusted.example").header("sec-fetch-site", "cross-site"), Status::OK),
+                (x!(POST).header("origin", "https://attacker.example"), Status::Forbidden),
+                (x!(POST).header("origin", "https://attacker.example").header("sec-fetch-site", "cross-site"), Status::Forbidden),
+            ] {
+                let res = t.oneshot(req).await;
+                assert_eq!(res.status(), expected);
+            }
+        });
+    }
+    
+    #[test]
+    fn test_invalid_trusted_origins() {
+        for (trusted_origin, should_judged_as_invalid) in [
+            ("https://example.com", false),
+            ("https://example.com:8080", false),
+            ("http://example.com", false),
+            ("example.com", true), // missing scheme
+            ("https://", true), // missing host
+            ("https://example.com/", true), // path is not allowed
+            ("https://example.com/path", true), // path is not allowed
+            ("https://example.com?query=1", true), // query is not allowed
+            ("https://example.com#fragment", true), // fragment is not allowed
+            ("https://ex ample.com", true), // invalid host
+            ("", true), // empty string
+            ("null", true), // missing scheme
+            ("https://example.com:port", true), // invalid port
+        ] {
+            let is_judged_as_invalid = std::panic::catch_unwind(|| {
+                let _ = Csrf::with_trusted_origins([trusted_origin]);
+            }).is_err();
+            assert_eq!(is_judged_as_invalid, should_judged_as_invalid, "unexpected result for trusted origin `{trusted_origin}`");
+        }
     }
 }
