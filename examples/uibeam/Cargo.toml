@@ -1,5 +1,5 @@
 [package]
-name    = "html_layout"
+name    = "uibeam"
 version = "0.0.0"
 edition = "2024"
 
