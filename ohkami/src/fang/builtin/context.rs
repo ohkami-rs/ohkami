@@ -28,7 +28,7 @@ use crate::fang::{FangAction, SendSyncOnNative};
 ///     format!("Hello, {name}!")
 /// }
 /// ```
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Context<'req, T: SendSyncOnNative + 'static>(pub &'req T);
 
 impl<T: SendSyncOnNative + 'static> Context<'static, T>

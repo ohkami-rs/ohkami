@@ -23,7 +23,7 @@ use crate::{header::append, Fang, FangProc, Request, Response, Status};
 ///     )).howl("localhost:8080").await
 /// }
 /// ```
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Cors {
     /* pub(crate) allow_methods: Option<String>, // owe to `Handler::default_not_found()` */
     pub(crate) allow_origin: AccessControlAllowOrigin,
@@ -33,7 +33,7 @@ pub struct Cors {
     pub(crate) max_age: Option<u32>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub(crate) enum AccessControlAllowOrigin {
     Any,
     Only(&'static str),

@@ -43,7 +43,7 @@ use crate::openapi;
 ///     )).howl("localhost:8888").await
 /// }
 /// ```
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct BasicAuth<S>
 where
     S: AsRef<str> + Clone + SendSyncOnNative + 'static

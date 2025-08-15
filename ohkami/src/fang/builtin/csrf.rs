@@ -47,7 +47,7 @@ use std::sync::Arc;
 ///     )).howl("0.0.0.0:5000").await
 /// }
 /// ```
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Csrf {
     trusted_origins: Arc<Vec<&'static str>>,
 }

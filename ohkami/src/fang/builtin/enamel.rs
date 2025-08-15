@@ -32,9 +32,11 @@
 ///     )).howl("localhost:4040").await
 /// }
 /// ```
+#[derive(Debug)]
 pub struct Enamel(// clone in `Fang::chain`
     std::sync::Arc<EnamelFields>
 );
+#[derive(Debug)]
 #[allow(non_snake_case)]
 struct EnamelFields {
     content_security_policy: Option<CSP>,
@@ -196,6 +198,7 @@ const _: () = {
 ///     )).howl("localhost:4040").await
 /// }
 /// ```
+#[derive(Debug)]
 #[derive(Default)]
 pub struct CSP {
     pub default_src:               src::SourceList,
@@ -347,6 +350,12 @@ pub mod sandbox {
             result
         }
     }
+    
+    impl std::fmt::Debug for Sandbox {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            f.write_str(&self.build())
+        }
+    }
 }
 
 /// # Source List configuration for `enamel::CSP`
@@ -490,6 +499,12 @@ pub mod src {
                 }
             }
             result
+        }
+    }
+    
+    impl std::fmt::Debug for SourceList {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            f.write_str(&self.build())
         }
     }
 }
