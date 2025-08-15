@@ -3,7 +3,7 @@ proc-macro = true
 
 [package]
 name          = "ohkami_macros"
-description   = "proc macros for Ohkami - intuitive and declarative web framework"
+description   = "proc macros for Ohkami - A performant, declarative, and runtime-flexible web framework for Rust"
 documentation = "https://docs.rs/ohkami_macros"
 version       = { workspace = true }
 edition       = { workspace = true }

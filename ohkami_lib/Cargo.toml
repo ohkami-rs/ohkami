@@ -1,6 +1,6 @@
 [package]
 name          = "ohkami_lib"
-description   = "internal library for Ohkami - intuitive and declarative web framework"
+description   = "internal library for Ohkami - A performant, declarative, and runtime-flexible web framework for Rust"
 documentation = "https://docs.rs/ohkami_lib"
 version       = { workspace = true }
 edition       = { workspace = true }
