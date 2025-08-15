@@ -24,7 +24,7 @@ use std::sync::Arc;
 ///     Ohkami::new((
 ///         Csrf::new(),
 ///         "/".GET(|| async {"Hello, CSRF!"}),
-///     ))
+///     )).howl("0.0.0.0:3000").await
 /// }
 /// ```
 /// 
@@ -44,7 +44,7 @@ use std::sync::Arc;
 ///             "https://example.org",
 ///         ]),
 ///         "/".GET(|| async {"Hello, CSRF!"}),
-///     ))
+///     )).howl("0.0.0.0:5000").await
 /// }
 /// ```
 #[derive(Clone)]
