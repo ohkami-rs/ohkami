@@ -146,3 +146,47 @@ const _: () = {
         }
     }
 };
+
+#[cfg(test)]
+#[cfg(feature="__rt_native__")]
+mod tests {
+    //! based on https://cs.opensource.google/go/go/+/refs/tags/go1.25.0:src/net/http/csrf_test.go
+    
+    use super::*;
+    use crate::testing::*;
+    use crate::{Ohkami, Route};
+    
+    macro_rules! x {($method:ident) => {
+        TestRequest::$method("/").header("host", "example.com")
+    }}
+    
+    #[test]
+    fn test_csrf_protect_sec_fetch_site() {
+        let t = Ohkami::new((
+            Csrf::new(),
+            "/".GET(async || ()).PUT(async || ()).POST(async || ()),
+        )).test();
+        
+        crate::__rt__::testing::block_on(async {            
+            for (req, expected) in [
+                (x!(POST).header("sec-fetch-site", "same-origin"), Status::OK),
+                (x!(POST).header("sec-fetch-site", "none"), Status::OK),
+                (x!(POST).header("sec-fetch-site", "cross-site"), Status::Forbidden),
+                (x!(POST).header("sec-fetch-site", "same-site"), Status::Forbidden),
+                
+                (x!(POST), Status::OK),
+                (x!(POST).header("origin", "https://example.com"), Status::OK),
+                (x!(POST).header("origin", "https://attacker.example"), Status::Forbidden),
+                (x!(POST).header("origin", "null"), Status::Forbidden),
+                
+                (x!(GET).header("sec-fetch-site", "cross-site"), Status::OK),
+                (x!(HEAD).header("sec-fetch-site", "cross-site"), Status::OK),
+                (x!(OPTIONS).header("sec-fetch-site", "cross-site"), Status::NotFound), // see `fang::handler::Handler::default_options_with`
+                (x!(PUT).header("sec-fetch-site", "cross-site"), Status::Forbidden),
+            ] {
+                let res = t.oneshot(req).await;
+                assert_eq!(res.status(), expected);
+            }
+        });
+    }
+}
