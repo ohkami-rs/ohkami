@@ -191,10 +191,10 @@ impl<'req, Fields: super::bound::Incoming<'req>> FromRequest<'req> for Cookie<Fi
         req.headers.cookie()
             .map(|raw| ohkami_lib::serde_cookie::from_str::<Fields>(raw)
             .map(Cookie)
-            .map_err(|e| {
+            .map_err(|_e| {
                 #[cfg(debug_assertions)] {
                     crate::WARNING!(
-                        "{e:?}: failed to parse Cookie header as `{}`: `{raw}`",
+                        "{_e:?}: failed to parse Cookie header as `{}`: `{raw}`",
                         std::any::type_name::<Fields>()
                     );
                 }
