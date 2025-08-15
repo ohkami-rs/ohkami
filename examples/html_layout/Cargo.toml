@@ -1,0 +1,9 @@
+[package]
+name    = "html_layout"
+version = "0.0.0"
+edition = "2024"
+
+[dependencies]
+ohkami = { workspace = true }
+tokio  = { workspace = true }
+uibeam = "0.2"
