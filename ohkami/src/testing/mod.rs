@@ -65,7 +65,7 @@ impl TestingOhkami {
                 Err(res) => res,
             };
 
-            TestResponse::new(res)
+            TestResponse(res)
         };
 
         Oneshot(Box::new(res))
@@ -74,20 +74,23 @@ impl TestingOhkami {
 
 pub struct Oneshot(
     Box<dyn Future<Output = TestResponse>>
-); impl Future for Oneshot {
+);
+impl Future for Oneshot {
     type Output = TestResponse;
     fn poll(self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> std::task::Poll<Self::Output> {
         unsafe {self.map_unchecked_mut(|this| this.0.as_mut())}.poll(cx)
     }
 }
 
+#[derive(Debug)]
 pub struct TestRequest {
     method:  Method,
     path:    Cow<'static, str>,
     queries: HashMap<Cow<'static, str>, Cow<'static, str>>,
     headers: HashMap<Cow<'static, str>, Cow<'static, str>>,
     content: Option<Cow<'static, [u8]>>,
-} impl TestRequest {
+}
+impl TestRequest {
     pub(crate) fn encode(self) -> Vec<u8> {
         let Self { method, path, queries, headers, content } = self;
 
@@ -174,15 +177,8 @@ impl TestRequest {
     }
 }
 
-
-pub struct TestResponse(
-    Response
-);
-impl TestResponse {
-    fn new(response: Response) -> Self {
-        Self(response)
-    }
-}
+#[derive(Debug)]
+pub struct TestResponse(Response);
 impl TestResponse {
     pub fn status(&self) -> Status {
         self.0.status

@@ -34,7 +34,7 @@ use std::time::Duration;
 /// }
 /// ```
 /// ---
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct Timeout(Duration);
 impl Timeout {
     pub fn by(duration: Duration) -> Self {
