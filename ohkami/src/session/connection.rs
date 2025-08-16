@@ -6,12 +6,14 @@ pub enum Connection {
 }
 
 impl From<crate::__rt__::TcpStream> for Connection {
+    #[inline]
     fn from(stream: crate::__rt__::TcpStream) -> Self {
         Self::Tcp(stream)
     }
 }
 #[cfg(feature="tls")]
 impl From<anysc_rustls::server::TlsStream<crate::__rt__::TcpStream>> for Connection {
+    #[inline]
     fn from(stream: anysc_rustls::server::TlsStream<crate::__rt__::TcpStream>) -> Self {
         Self::Tls(stream)
     }
@@ -20,6 +22,7 @@ impl From<anysc_rustls::server::TlsStream<crate::__rt__::TcpStream>> for Connect
 #[cfg(feature="__io_tokio__")]
 const _: () = {
     impl tokio::io::AsyncRead for Connection {
+        #[inline(always)]
         fn poll_read(
             self: std::pin::Pin<&mut Self>, 
             cx: &mut std::task::Context<'_>, 
@@ -34,6 +37,7 @@ const _: () = {
     }
     
     impl tokio::io::AsyncWrite for Connection {
+        #[inline(always)]
         fn poll_write(
             self: std::pin::Pin<&mut Self>, 
             cx: &mut std::task::Context<'_>, 
@@ -46,6 +50,7 @@ const _: () = {
             }
         }
 
+        #[inline]
         fn poll_flush(
             self: std::pin::Pin<&mut Self>, 
             cx: &mut std::task::Context<'_>
@@ -73,6 +78,7 @@ const _: () = {
 #[cfg(feature="__io_futures__")]
 const _: () = {
     impl futures_util::io::AsyncRead for Connection {
+        #[inline(always)]
         fn poll_read(
             self: std::pin::Pin<&mut Self>, 
             cx: &mut std::task::Context<'_>, 
@@ -87,6 +93,7 @@ const _: () = {
     }
     
     impl futures_util::io::AsyncWrite for Connection {
+        #[inline(always)]
         fn poll_write(
             self: std::pin::Pin<&mut Self>, 
             cx: &mut std::task::Context<'_>, 
@@ -99,6 +106,7 @@ const _: () = {
             }
         }
 
+        #[inline]
         fn poll_flush(
             self: std::pin::Pin<&mut Self>, 
             cx: &mut std::task::Context<'_>
