@@ -1,5 +1,5 @@
 /// returning `(next_section, remaining <starting with '/'>)` or `(path, empty)`
-#[inline]
+#[inline(always)]
 pub(super) fn split_next_section(
     path: &[u8]
 ) -> (&[u8], &[u8]) {

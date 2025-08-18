@@ -203,7 +203,7 @@ impl Request {
         }
     }
     #[cfg(feature="__rt_native__")]
-    #[inline]
+    #[inline(always)]
     pub(crate) fn clear(&mut self) {
         if self.__buf__[0] != 0 {
             for b in &mut *self.__buf__ {

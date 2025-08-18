@@ -121,10 +121,11 @@ impl Response {
         }
     }
 
-    #[cfg(feature="__rt__")]
     /// complete HTTP spec
     /// 
     /// should be called, like, just after router's handling
+    #[cfg(feature="__rt__")]
+    #[inline(always)]
     pub(crate) fn complete(&mut self) {
         match (&self.content, &self.status) {
             (_, Status::NoContent) => {

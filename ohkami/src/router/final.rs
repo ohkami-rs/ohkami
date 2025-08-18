@@ -33,6 +33,7 @@ enum Pattern {
 
 
 impl Router {
+    #[inline(always)]
     pub(crate) async fn handle(&self, req: &mut Request) -> Response {
         let mut res = 'handle: {
             (match req.method {
@@ -224,7 +225,7 @@ impl Pattern {
     /// ## Precondition
     /// 
     /// `self`, if `Static`, must hold bytes starting with `/` e.g. `/abc`, `/`, `/abc/xyz`
-    #[inline]
+    #[inline(always)]
     fn take_through<'b>(
         &self,
         bytes: &'b [u8],

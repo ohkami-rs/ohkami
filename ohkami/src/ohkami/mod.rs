@@ -928,6 +928,8 @@ mod sync {
 
         impl Future for WaitGroup {
             type Output = ();
+            
+            #[inline(always)]
             fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
                 if unsafe {self.0.as_ref()}.load(Ordering::Acquire) == 0 {
                     crate::DEBUG!("[WaitGroup::poll] Ready");
@@ -1014,6 +1016,7 @@ mod sync {
                 Self { index }
             }
 
+            #[inline(always)]
             pub fn until_interrupt<T>(&self, task: impl Future<Output = T>) -> impl Future<Output = Option<T>> {
                 return UntilInterrupt { index: self.index, task };
 

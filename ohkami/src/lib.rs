@@ -51,7 +51,7 @@ mod __rt__ {
     #[cfg(feature="rt_glommio")]
     pub(crate) use {glommio::net::{TcpListener, TcpStream}, std::net::ToSocketAddrs};
     
-    #[inline]
+    #[inline(always)]
     pub(crate) async fn accept(listener: &TcpListener) -> std::io::Result<(TcpStream, std::net::SocketAddr)> {
         #[cfg(any(feature="rt_tokio", feature="rt_smol", feature="rt_nio"))] {
             listener.accept().await
