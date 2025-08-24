@@ -1,7 +1,5 @@
 use std::borrow::Cow;
-use ohkami_lib::percent_decode;
-use super::Slice;
-
+use ohkami_lib::{percent_decode_utf8, Slice};
 
 #[derive(PartialEq)]
 pub struct QueryParams(
@@ -23,17 +21,7 @@ impl QueryParams {
         ohkami_lib::serde_urlencoded::from_bytes(unsafe {self.0.as_bytes()})
     }
 
-    pub fn iter(&self) -> impl Iterator<
-        Item = (Cow<'_, str>, Cow<'_, str>)
-    > {
-        #[inline(always)]
-        fn decoded_utf8(maybe_encoded: &[u8]) -> Cow<'_, str> {
-            match percent_decode(maybe_encoded) {
-                Cow::Borrowed(bytes) => String::from_utf8_lossy(bytes),
-                Cow::Owned(vec)      => String::from_utf8_lossy(&vec).into_owned().into(),
-            }
-        }
-
+    pub fn iter(&self) -> impl Iterator<Item = (Cow<'_, str>, Cow<'_, str>)> {
         let bytes = unsafe {self.0.as_bytes()};
         (if bytes.is_empty() {None} else {Some(
             bytes
@@ -57,8 +45,8 @@ impl QueryParams {
                         None
                     }
                     Some(n) => Some((
-                        decoded_utf8(unsafe {kv.get_unchecked(..n)}),
-                        decoded_utf8(unsafe {kv.get_unchecked(n+1..)})
+                        percent_decode_utf8(unsafe {kv.get_unchecked(..n)}).ok()?,
+                        percent_decode_utf8(unsafe {kv.get_unchecked(n+1..)}).ok()?
                     ))
                 }
             })

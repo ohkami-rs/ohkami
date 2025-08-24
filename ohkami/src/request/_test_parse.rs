@@ -11,15 +11,15 @@ use ohkami_lib::{Slice, CowSlice};
 fn parse_path() {
     let mut path = Path::uninit();
     path.init_with_request_bytes(b"/abc").unwrap();
-    assert_eq!(&*path, "/abc");
+    assert_eq!(path.str(), "/abc");
 
     let mut path = Path::uninit();
     path.init_with_request_bytes(b"/abc/").unwrap();
-    assert_eq!(&*path, "/abc");
+    assert_eq!(path.str(), "/abc");
 
     let mut path = Path::uninit();
     path.init_with_request_bytes(b"/").unwrap();
-    assert_eq!(&*path, "/");
+    assert_eq!(path.str(), "/");
 }
 
 macro_rules! assert_parse {
