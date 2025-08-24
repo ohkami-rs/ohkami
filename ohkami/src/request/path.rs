@@ -1,7 +1,6 @@
 use std::{borrow::Cow, mem::MaybeUninit};
 use ohkami_lib::{percent_decode_utf8, Slice};
 
-
 pub struct Path(
     MaybeUninit<PathInner>
 );
@@ -30,45 +29,41 @@ const _: () = {
 
     impl Path {
         pub fn params(&self) -> impl Iterator<Item = Cow<'_, str>> {
-            unsafe {self.0.assume_init_ref()}
-                .params.iter()
+            (unsafe {self.0.assume_init_ref()})
+                .params
+                .iter()
                 .map(|slice| percent_decode_utf8(unsafe {slice.as_bytes()})
-                .expect("Non UTF-8 path params"))
+                    .unwrap_or_else(|_| String::from_utf8_lossy(unsafe {slice.as_bytes()}))
+                )
         }
 
+        #[inline]
+        pub fn as_bytes(&self) -> &[u8] {
+            let bytes = unsafe {self.0.assume_init_ref().raw.as_bytes()};
+            if bytes.is_empty() {b"/"} else {bytes}
+        }
         /// Get request path as `Cow::Borrowed(&str)` if it's not percent-encoded, or,
         /// decode it into `Cow::Owned(String)` if encoded in the original request.
+        /// 
+        /// Or if the path is not valid UTF-8, it returns `Cow::Owned(String)` with
+        /// lossy conversion.
         #[inline]
         pub fn str(&self) -> Cow<'_, str> {
             let bytes = unsafe {self.0.assume_init_ref().raw.as_bytes()};
             if bytes.is_empty() {return Cow::Borrowed("/")}
-            percent_decode_utf8(bytes).expect("Non UTF-8 path params")
+            percent_decode_utf8(bytes).unwrap_or_else(|_| String::from_utf8_lossy(bytes))
         }
 
-        #[inline] pub(crate) unsafe fn assume_one_param<'p>(&self) -> &'p [u8] {
+        #[inline]
+        pub(crate) unsafe fn assume_one_param<'p>(&self) -> &'p [u8] {
             unsafe {self.0.assume_init_ref().params.list.get_unchecked(0).assume_init_ref().as_bytes()}
         }
-        #[inline] pub(crate) unsafe fn assume_two_params<'p>(&self) -> (&'p [u8], &'p [u8]) {
+        #[inline]
+        pub(crate) unsafe fn assume_two_params<'p>(&self) -> (&'p [u8], &'p [u8]) {
             unsafe {(
                 self.0.assume_init_ref().params.list.get_unchecked(0).assume_init_ref().as_bytes(),
                 self.0.assume_init_ref().params.list.get_unchecked(1).assume_init_ref().as_bytes()
             )}
-        }
-    }
-
-    impl std::ops::Deref for Path {
-        type Target = str;
-        #[inline]
-        fn deref(&self) -> &Self::Target {
-            self.as_ref()
-        }
-    }
-    impl AsRef<str> for Path {
-        #[inline]
-        fn as_ref(&self) -> &str {
-            let bytes = &unsafe {self.0.assume_init_ref().raw.as_bytes()};
-            if bytes.is_empty() {return "/"}
-            std::str::from_utf8(bytes).expect("Non UTF-8 path params")
         }
     }
 

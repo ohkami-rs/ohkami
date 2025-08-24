@@ -202,7 +202,7 @@ macro_rules! Header {
                         let standard = Header::from_bytes(name.as_bytes())?;
                         unsafe {self.standard.get(standard as usize)}
                     })?;
-                Some(std::str::from_utf8(unsafe {value.as_bytes()}).expect("Header value is not UTF-8"))
+                std::str::from_utf8(unsafe {value.as_bytes()}).ok()
             }
         }
 
@@ -279,16 +279,15 @@ impl Headers {
 
     pub(crate) fn iter(&self) -> impl Iterator<Item = (&str, &str)> {
         self.standard.iter()
-            .map(|(i, v)| (
+            .filter_map(|(i, v)| Some((
                 unsafe {std::mem::transmute::<_, Header>(i as u8).as_str()},
-                std::str::from_utf8(v).expect("Non UTF-8 header value")
-            ))
-            .chain(self.custom.as_ref()
-                .into_iter()
-                .flat_map(|hm| hm.iter().map(|(k, v)| (
-                    std::str::from_utf8(unsafe {k.as_bytes()}).expect("Header value is not UTF-8"),
-                    std::str::from_utf8(unsafe {v.as_bytes()}).expect("Header value is not UTF-8"),
-                )))
+                std::str::from_utf8(v).ok()?
+            )))
+            .chain(self.custom.as_ref().into_iter()
+                .flat_map(|hm| hm.iter().filter_map(|(k, v)| Some((
+                    std::str::from_utf8(unsafe {k.as_bytes()}).ok()?,
+                    std::str::from_utf8(unsafe {v.as_bytes()}).ok()?,
+                ))))
             )
             .chain(self.cookie().map(|c| ("Cookie", c)))
     }
@@ -309,7 +308,7 @@ impl Headers {
 
     #[inline] pub(crate) fn get_standard(&self, name: Header) -> Option<&str> {
         unsafe {match self.standard.get(name as usize) {
-            Some(cs) => Some(std::str::from_utf8(&cs).expect("non UTF-8 header value")),
+            Some(cs) => std::str::from_utf8(&cs).ok(),
             None => None
         }}
     }
