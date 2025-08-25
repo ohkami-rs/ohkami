@@ -22,7 +22,9 @@ pub use from_request::FromRequest;
 #[cfg(test)] mod _test_extract;
 #[cfg(test)] mod _test_headers;
 
-use ohkami_lib::{Slice, CowSlice};
+use ohkami_lib::CowSlice;
+#[cfg(feature="__rt__")]
+use ohkami_lib::Slice;
 
 #[cfg(feature="__rt_native__")]
 use crate::__rt__::AsyncRead;

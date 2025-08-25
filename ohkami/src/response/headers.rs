@@ -1,11 +1,11 @@
-use crate::header::{IndexMap, Append, SetCookie, SetCookieBuilder};
+use crate::header::{ByteArrayMap, Append, SetCookie, SetCookieBuilder};
 use ohkami_lib::map::TupleMap;
 use std::borrow::Cow;
 
 
 #[derive(Clone)]
 pub struct Headers {
-    standard:  IndexMap<N_SERVER_HEADERS, Cow<'static, str>>,
+    standard:  ByteArrayMap<N_SERVER_HEADERS, Cow<'static, str>>,
     custom:    Option<Box<TupleMap<&'static str, Cow<'static, str>>>>,
     pub(super) setcookie: Option<Box<Vec<Cow<'static, str>>>>,
     pub(super) size: usize,
@@ -311,10 +311,10 @@ impl Headers {
     #[inline(always)]
     pub(crate) fn insert(&mut self, name: Header, value: Cow<'static, str>) {
         let (name_len, value_len) = (name.len(), value.len());
-        match unsafe {self.standard.get_mut(name as usize)} {
+        match unsafe {self.standard.get_mut(name as u8)} {
             None => {
                 self.size += name_len + ": ".len() + value_len + "\r\n".len();
-                unsafe {self.standard.set(name as usize, value)}
+                unsafe {self.standard.set(name as u8, value)}
             }
             Some(old) => {
                 self.size -= old.len(); self.size += value_len;
@@ -343,10 +343,10 @@ impl Headers {
     #[inline]
     pub(crate) fn remove(&mut self, name: Header) {
         let name_len = name.len();
-        if let Some(v) = unsafe {self.standard.get(name as usize)} {
+        if let Some(v) = unsafe {self.standard.get(name as u8)} {
             self.size -= name_len + ": ".len() + v.len() + "\r\n".len()
         }
-        unsafe {self.standard.delete(name as usize)}
+        unsafe {self.standard.delete(name as u8)}
     }
     pub(crate) fn remove_custom(&mut self, name: &'static str) {
         if let Some(c) = self.custom.as_mut() {
@@ -358,7 +358,7 @@ impl Headers {
 
     #[inline(always)]
     pub(crate) fn get_standard(&self, name: Header) -> Option<&str> {
-        unsafe {self.standard.get(name as usize)}.map(Cow::as_ref)
+        unsafe {self.standard.get(name as u8)}.map(Cow::as_ref)
     }
     #[inline]
     pub(crate) fn get_custom(&self, name: &'static str) -> Option<&str> {
@@ -369,7 +369,7 @@ impl Headers {
 
     pub(crate) fn append(&mut self, name: Header, value: Cow<'static, str>) {
         let value_len = value.len();
-        let target = unsafe {self.standard.get_mut(name as usize)};
+        let target = unsafe {self.standard.get_mut(name as u8)};
 
         self.size += match target {
             Some(v) => {
@@ -389,7 +389,7 @@ impl Headers {
                 ", ".len() + value_len
             }
             None => {
-                unsafe {self.standard.set(name as usize, value)}
+                unsafe {self.standard.set(name as u8, value)}
                 name.len() + ": ".len() + value_len + "\r\n".len()
             }
         };
@@ -432,7 +432,7 @@ impl Headers {
     #[inline]
     pub(crate) fn new() -> Self {
         let mut this = Self {
-            standard:  IndexMap::new(),
+            standard:  ByteArrayMap::new(),
             custom:    None,
             setcookie: None,
             size:      "\r\n".len(),
@@ -451,7 +451,7 @@ impl Headers {
     pub(crate) fn iter_standard(&self) -> impl Iterator<Item = (&str, &str)> {
         self.standard.iter()
             .map(|(i, v)| (
-                unsafe {std::mem::transmute::<_, Header>(i as u8)}.as_str(),
+                unsafe {std::mem::transmute::<_, Header>(*i)}.as_str(),
                 &**v
             ))
     }
@@ -471,7 +471,7 @@ impl Headers {
     pub fn into_iter(self) -> impl Iterator<Item = (&'static str, Cow<'static, str>)> {
         let standard = self.standard.into_iter()
             .map(|(i, v)| (
-                unsafe {std::mem::transmute::<_, Header>(i as u8)}.as_str(),
+                unsafe {std::mem::transmute::<_, Header>(i)}.as_str(),
                 v
             ));
         let custom = self.custom.into_iter()
@@ -493,7 +493,7 @@ impl Headers {
     pub(crate) unsafe fn write_unchecked_to(&self, buf: &mut Vec<u8>) {
         unsafe {
             for (i, v) in self.standard.iter() {
-                let h = std::mem::transmute::<_, Header>(i as u8); {
+                let h = std::mem::transmute::<_, Header>(*i); {
                     crate::push_unchecked!(buf <- h.as_bytes());
                     crate::push_unchecked!(buf <- b": ");
                     crate::push_unchecked!(buf <- v.as_bytes());

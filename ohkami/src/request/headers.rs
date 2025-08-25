@@ -1,10 +1,10 @@
-use crate::header::{IndexMap, Append};
+use crate::header::{ByteArrayMap, Append};
 use std::borrow::Cow;
 use ohkami_lib::{CowSlice, Slice, map::TupleMap};
 
 
 pub struct Headers {
-    standard: IndexMap<N_CLIENT_HEADERS, CowSlice>,
+    standard: ByteArrayMap<N_CLIENT_HEADERS, CowSlice>,
     custom:   Option<Box<TupleMap<Slice, CowSlice>>>,
 }
 
@@ -200,7 +200,7 @@ macro_rules! Header {
                     .get(&Slice::from_bytes(name.as_bytes()))
                     .or_else(|| {
                         let standard = Header::from_bytes(name.as_bytes())?;
-                        unsafe {self.standard.get(standard as usize)}
+                        unsafe {self.standard.get(standard as u8)}
                     })?;
                 std::str::from_utf8(unsafe {value.as_bytes()}).ok()
             }
@@ -280,7 +280,7 @@ impl Headers {
     pub(crate) fn iter(&self) -> impl Iterator<Item = (&str, &str)> {
         self.standard.iter()
             .filter_map(|(i, v)| Some((
-                unsafe {std::mem::transmute::<_, Header>(i as u8).as_str()},
+                unsafe {std::mem::transmute::<_, Header>(*i).as_str()},
                 std::str::from_utf8(v).ok()?
             )))
             .chain(self.custom.as_ref().into_iter()
@@ -295,7 +295,7 @@ impl Headers {
 
 impl Headers {
     #[inline(always)] pub(crate) fn insert(&mut self, name: Header, value: CowSlice) {
-        unsafe {self.standard.set(name as usize, value)}
+        unsafe {self.standard.set(name as u8, value)}
     }
     #[cfg(feature="DEBUG")]
     #[inline(always)] pub fn _insert(&mut self, name: Header, value: CowSlice) {
@@ -303,11 +303,11 @@ impl Headers {
     }
 
     pub(crate) fn remove(&mut self, name: Header) {
-        unsafe {self.standard.delete(name as usize)}
+        unsafe {self.standard.delete(name as u8)}
     }
 
     #[inline] pub(crate) fn get_standard(&self, name: Header) -> Option<&str> {
-        unsafe {match self.standard.get(name as usize) {
+        unsafe {match self.standard.get(name as u8) {
             Some(cs) => std::str::from_utf8(&cs).ok(),
             None => None
         }}
@@ -315,8 +315,8 @@ impl Headers {
 
     #[inline(always)]
     pub(crate) fn append(&mut self, name: Header, value: CowSlice) {
-        unsafe {match self.standard.get_mut(name as usize) {
-            None    => self.standard.set(name as usize, value),
+        unsafe {match self.standard.get_mut(name as u8) {
+            None    => self.standard.set(name as u8, value),
             Some(v) => {
                 v.extend_from_slice(b", ");
                 v.extend_from_slice(&value);
@@ -363,7 +363,7 @@ impl Headers {
     #[inline]
     pub(crate) fn new() -> Self {
         Self {
-            standard: IndexMap::new(),
+            standard: ByteArrayMap::new(),
             custom:   None,
         }
     }
@@ -389,7 +389,7 @@ impl Headers {
         ))
     ))]
     #[inline] pub(crate) fn get_raw(&self, name: Header) -> Option<&CowSlice> {
-        unsafe {self.standard.get(name as usize)}
+        unsafe {self.standard.get(name as u8)}
     }
 
     #[allow(unused)]
