@@ -294,11 +294,13 @@ impl Headers {
 }
 
 impl Headers {
-    #[inline(always)] pub(crate) fn insert(&mut self, name: Header, value: CowSlice) {
-        unsafe {self.standard.set(name as u8, value)}
+    #[inline(always)]
+    pub(crate) fn insert(&mut self, name: Header, value: CowSlice) {
+        unsafe {self.standard.insert(name as u8, value)}
     }
     #[cfg(feature="DEBUG")]
-    #[inline(always)] pub fn _insert(&mut self, name: Header, value: CowSlice) {
+    #[inline(always)]
+    pub fn _insert(&mut self, name: Header, value: CowSlice) {
         self.insert(name, value)
     }
 
@@ -306,7 +308,8 @@ impl Headers {
         unsafe {self.standard.delete(name as u8)}
     }
 
-    #[inline] pub(crate) fn get_standard(&self, name: Header) -> Option<&str> {
+    #[inline]
+    pub(crate) fn get_standard(&self, name: Header) -> Option<&str> {
         unsafe {match self.standard.get(name as u8) {
             Some(cs) => std::str::from_utf8(&cs).ok(),
             None => None
@@ -316,7 +319,7 @@ impl Headers {
     #[inline(always)]
     pub(crate) fn append(&mut self, name: Header, value: CowSlice) {
         unsafe {match self.standard.get_mut(name as u8) {
-            None    => self.standard.set(name as u8, value),
+            None => self.standard.insert_new(name as u8, value),
             Some(v) => {
                 v.extend_from_slice(b", ");
                 v.extend_from_slice(&value);
@@ -326,7 +329,8 @@ impl Headers {
 }
 
 impl Headers {
-    #[inline] pub(crate) fn insert_custom(&mut self, name: Slice, value: CowSlice) {
+    #[inline]
+    pub(crate) fn insert_custom(&mut self, name: Slice, value: CowSlice) {
         match &mut self.custom {
             Some(c) => {c.insert(name, value);}
             None => self.custom = Some(Box::new(TupleMap::from_iter([
@@ -335,11 +339,13 @@ impl Headers {
         }
     }
     #[cfg(feature="DEBUG")]
-    #[inline] pub fn _insert_custom(&mut self, name: Slice, value: CowSlice) {
+    #[inline]
+    pub fn _insert_custom(&mut self, name: Slice, value: CowSlice) {
         self.insert_custom(name, value)
     }
 
-    #[inline] pub(crate) fn append_custom(&mut self, name: Slice, value: CowSlice) {
+    #[inline]
+    pub(crate) fn append_custom(&mut self, name: Slice, value: CowSlice) {
         if self.custom.is_none() {
             self.custom = Some(Box::new(TupleMap::new()))
         }

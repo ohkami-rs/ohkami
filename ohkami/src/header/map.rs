@@ -58,7 +58,7 @@ impl<const N: usize, Value> ByteArrayMap<N, Value> {
     }
 
     #[inline(always)]
-    pub(crate) unsafe fn set(&mut self, byte: Byte, value: Value) {
+    pub(crate) unsafe fn insert(&mut self, byte: Byte, value: Value) {
         let index_mut = unsafe {self.indices.get_unchecked_mut(byte as usize)};
         match *index_mut {
             NULL => {
@@ -69,6 +69,19 @@ impl<const N: usize, Value> ByteArrayMap<N, Value> {
                 unsafe {self.entries.get_unchecked_mut(index as usize).1 = value};
             }
         }
+    }
+    /// Additional SAFETY requirement from `insert`: the `byte` must not already exist in the map.
+    #[inline(always)]
+    pub(crate) unsafe fn insert_new(&mut self, byte: Byte, value: Value) {
+        #[cfg(debug_assertions)] {
+            assert_eq!(
+                unsafe {*self.indices.get_unchecked(byte as usize)},
+                NULL,
+                "ByteArrayMap::insert_new: the byte `{byte}` already exists in the map"
+            );
+        }
+        unsafe {*self.indices.get_unchecked_mut(byte as usize) = self.entries.len() as u8};
+        self.entries.push((byte, value));
     }
 
     #[inline(always)]
@@ -111,10 +124,10 @@ mod test {
     fn test_index_map_iter_simple() {
         let mut map = ByteArrayMap::<8, &'static str>::new();
     
-        unsafe {map.set(0, "a")};
-        unsafe {map.set(1, "b")};
-        unsafe {map.set(2, "c")};
-        unsafe {map.set(3, "d")};
+        unsafe {map.insert(0, "a")};
+        unsafe {map.insert(1, "b")};
+        unsafe {map.insert(2, "c")};
+        unsafe {map.insert(3, "d")};
 
         assert_eq!(
             map.into_iter().collect::<HashMap<_, _>>(),
@@ -126,10 +139,10 @@ mod test {
     fn test_index_map_iter_with_delete() {
         let mut map = ByteArrayMap::<8, &'static str>::new();
     
-        unsafe {map.set(0, "a")};
-        unsafe {map.set(1, "b")};
-        unsafe {map.set(2, "c")};
-        unsafe {map.set(3, "d")};
+        unsafe {map.insert(0, "a")};
+        unsafe {map.insert(1, "b")};
+        unsafe {map.insert(2, "c")};
+        unsafe {map.insert(3, "d")};
 
         unsafe {map.delete(1)};
         unsafe {map.delete(3)};
@@ -144,16 +157,16 @@ mod test {
     fn test_index_map_get_with_delete_and_other_set() {
         let mut map = ByteArrayMap::<8, &'static str>::new();
     
-        unsafe {map.set(0, "a")};
-        unsafe {map.set(1, "b")};
-        unsafe {map.set(2, "c")};
-        unsafe {map.set(3, "d")};
+        unsafe {map.insert(0, "a")};
+        unsafe {map.insert(1, "b")};
+        unsafe {map.insert(2, "c")};
+        unsafe {map.insert(3, "d")};
 
         unsafe {map.delete(1)};
         unsafe {map.delete(3)};
 
-        unsafe {map.set(4, "e")};
-        unsafe {map.set(5, "f")};
+        unsafe {map.insert(4, "e")};
+        unsafe {map.insert(5, "f")};
 
         assert_eq!(unsafe {map.get(0)}, Some(&"a"));
         assert_eq!(unsafe {map.get(1)}, None);
@@ -167,16 +180,16 @@ mod test {
     fn test_index_map_get_with_delete_and_overset() {
         let mut map = ByteArrayMap::<8, &'static str>::new();
     
-        unsafe {map.set(0, "a")};
-        unsafe {map.set(1, "b")};
-        unsafe {map.set(2, "c")};
-        unsafe {map.set(3, "d")};
+        unsafe {map.insert(0, "a")};
+        unsafe {map.insert(1, "b")};
+        unsafe {map.insert(2, "c")};
+        unsafe {map.insert(3, "d")};
 
         unsafe {map.delete(1)};
         unsafe {map.delete(3)};
 
-        unsafe {map.set(1, "e")};
-        unsafe {map.set(3, "f")};
+        unsafe {map.insert(1, "e")};
+        unsafe {map.insert(3, "f")};
 
         assert_eq!(unsafe {map.get(0)}, Some(&"a"));
         assert_eq!(unsafe {map.get(1)}, Some(&"e"));
@@ -188,16 +201,16 @@ mod test {
     fn test_index_map_iter_with_delete_and_overset() {
         let mut map = ByteArrayMap::<8, &'static str>::new();
     
-        unsafe {map.set(0, "a")};
-        unsafe {map.set(1, "b")};
-        unsafe {map.set(2, "c")};
-        unsafe {map.set(3, "d")};
+        unsafe {map.insert(0, "a")};
+        unsafe {map.insert(1, "b")};
+        unsafe {map.insert(2, "c")};
+        unsafe {map.insert(3, "d")};
 
         unsafe {map.delete(1)};
         unsafe {map.delete(3)};
 
-        unsafe {map.set(1, "e")};
-        unsafe {map.set(3, "f")};
+        unsafe {map.insert(1, "e")};
+        unsafe {map.insert(3, "f")};
 
         assert_eq!(
             map.into_iter().collect::<HashMap<_, _>>(),

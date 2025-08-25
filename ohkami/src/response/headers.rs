@@ -314,7 +314,7 @@ impl Headers {
         match unsafe {self.standard.get_mut(name as u8)} {
             None => {
                 self.size += name_len + ": ".len() + value_len + "\r\n".len();
-                unsafe {self.standard.set(name as u8, value)}
+                unsafe {self.standard.insert_new(name as u8, value)}
             }
             Some(old) => {
                 self.size -= old.len(); self.size += value_len;
@@ -389,7 +389,7 @@ impl Headers {
                 ", ".len() + value_len
             }
             None => {
-                unsafe {self.standard.set(name as u8, value)}
+                unsafe {self.standard.insert_new(name as u8, value)}
                 name.len() + ": ".len() + value_len + "\r\n".len()
             }
         };
