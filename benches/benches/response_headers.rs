@@ -475,9 +475,10 @@ use ohkami_benches::response_headers::{
         .x("something", black_box("anything"))
     ;
 
-    let mut buf = Vec::new();
-    b.iter(|| {
+    b.iter(|| -> Vec<u8> {
+        let mut buf = Vec::new();
         h._write_to(&mut buf);
+        buf
     });
 }
 /*
@@ -502,9 +503,10 @@ use ohkami_benches::response_headers::{
         .custom("something", black_box("anything"))
     ;
 
-    let mut buf = Vec::new();
-    b.iter(|| {
+    b.iter(|| -> Vec<u8> {
+        let mut buf = Vec::new();
         h.write_standards_to(&mut buf);
+        buf
     });
 }
 #[bench] fn write_heap_ohkami_nosize(b: &mut test::Bencher) {
@@ -528,9 +530,10 @@ use ohkami_benches::response_headers::{
         .custom("something", black_box("anything"))
     ;
 
-    let mut buf = Vec::new();
-    b.iter(|| {
+    b.iter(|| -> Vec<u8> {
+        let mut buf = Vec::new();
         h.write_to(&mut buf);
+        buf
     });
 }
 #[bench] fn write_heap_ohkami_only_standards_nosize(b: &mut test::Bencher) {
@@ -554,9 +557,10 @@ use ohkami_benches::response_headers::{
         .custom("something", black_box("anything"))
     ;
 
-    let mut buf = Vec::new();
-    b.iter(|| {
+    b.iter(|| -> Vec<u8> {
+        let mut buf = Vec::new();
         h.write_standards_to(&mut buf);
+        buf
     });
 }
 */
@@ -580,8 +584,8 @@ use ohkami_benches::response_headers::{
     h.insert(HeaderName::from_static("x-myapp-data"), HeaderValue::from_static(black_box("myappdata; excellent")));
     h.insert(HeaderName::from_static("something"), HeaderValue::from_static(black_box("anything")));
 
-    let mut buf = Vec::new();
-    b.iter(|| {
+    b.iter(|| -> Vec<u8> {
+        let mut buf = Vec::new();
         for (k, v) in h.iter() {
             buf.extend_from_slice(k.as_str().as_bytes());
             buf.extend(b": ");
@@ -589,6 +593,7 @@ use ohkami_benches::response_headers::{
             buf.extend(b"\r\n");
         }
         buf.extend(b"\r\n");
+        buf
     });
 }
 
@@ -612,9 +617,10 @@ use ohkami_benches::response_headers::{
         .insert("something", black_box("anything"))
     ;
 
-    let mut buf = Vec::new();
-    b.iter(|| {
+    b.iter(|| -> Vec<u8> {
+        let mut buf = Vec::new();
         h.write_to(&mut buf);
+        buf
     });
 }
 
@@ -638,9 +644,10 @@ use ohkami_benches::response_headers::{
         .custom("something", black_box("anything"))
     ;
 
-    let mut buf = Vec::new();
-    b.iter(|| {
+    b.iter(|| -> Vec<u8> {
+        let mut buf = Vec::new();
         h.write_to(&mut buf);
+        buf
     });
 }
 
@@ -664,8 +671,9 @@ use ohkami_benches::response_headers::{
         .insert_from_reqbytes(b"something", black_box(b"anything"))
     ;
 
-    let mut buf = Vec::new();
-    b.iter(|| {
+    b.iter(|| -> Vec<u8> {
+        let mut buf = Vec::new();
         h.write_to(&mut buf);
+        buf
     });
 }
