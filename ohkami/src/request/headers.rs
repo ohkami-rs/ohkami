@@ -326,6 +326,11 @@ impl Headers {
             }
         }}
     }
+    #[cfg(feature="DEBUG")]
+    #[inline]
+    pub fn _append(&mut self, name: Header, value: CowSlice) {
+        self.append(name, value)
+    }
 }
 
 impl Headers {
