@@ -43,7 +43,7 @@ use crate::openapi;
 ///     )).howl("localhost:8888").await
 /// }
 /// ```
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct BasicAuth<S>
 where
     S: AsRef<str> + Clone + SendSyncOnNative + 'static
@@ -69,14 +69,14 @@ where
 const _: () = {
     fn unauthorized() -> Response {
         Response::Unauthorized().with_headers(|h|h
-            .WWWAuthenticate("Basic realm=\"Secure Area\"")
+            .www_authenticate("Basic realm=\"Secure Area\"")
         )
     }
 
     #[inline]
     fn basic_credential_of(req: &Request) -> Result<String, Response> {
         (|| crate::util::base64_decode_utf8(
-            req.headers.Authorization()?.strip_prefix("Basic ")?
+            req.headers.authorization()?.strip_prefix("Basic ")?
         ).ok())().ok_or_else(unauthorized)
     }
 
@@ -99,7 +99,7 @@ const _: () = {
         #[cfg(feature="openapi")]
         fn openapi_map_operation(&self, operation: openapi::Operation) -> openapi::Operation {
             use openapi::security::SecurityScheme;
-            operation.security(SecurityScheme::Basic("basicAuth"), &[])
+            operation.security(SecurityScheme::basic("basicAuth"), &[])
         }
     }
 
@@ -124,7 +124,7 @@ const _: () = {
         #[cfg(feature="openapi")]
         fn openapi_map_operation(&self, operation: openapi::Operation) -> openapi::Operation {
             use openapi::security::SecurityScheme;
-            operation.security(SecurityScheme::Basic("basicAuth"), &[])
+            operation.security(SecurityScheme::basic("basicAuth"), &[])
         }
     }
 };

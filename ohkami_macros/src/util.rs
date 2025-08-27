@@ -69,15 +69,15 @@ pub(crate) fn extract_doc_comment(attrs: &[syn::Attribute]) -> Option<String> {
 /// So, if found the file by simple reading of `file_path`, this returns the file,
 /// but if not found, this assumes a Cargo workspace and search all `workspace.members`
 /// to find one having file at `file_path`.
-pub(crate) fn find_a_file_in_maybe_workspace(file_path: impl AsRef<Path>) -> Result<File, io::Error> {
+pub(crate) fn find_file_at_package_or_workspace_root(file_path: impl AsRef<Path>) -> Result<Option<File>, io::Error> {
     let file_path: &Path = file_path.as_ref();
 
     match File::open(file_path) {
         Ok(file) => {
-            Ok(file)
+            Ok(Some(file))
         }
         Err(e) if matches!(e.kind(), ErrorKind::NotFound) => {
-            find_a_file_in_workspace(file_path)
+            find_file_at_workspace_root(file_path)
         }
         Err(e) => {
             Err(e)
@@ -103,7 +103,7 @@ fn unescaped_doc_attr(raw_doc: String) -> String {
 }
 
 #[cfg(feature="worker")]
-fn find_a_file_in_workspace(file_path: impl AsRef<Path>) -> Result<File, io::Error> {
+fn find_file_at_workspace_root(file_path: impl AsRef<Path>) -> Result<Option<File>, io::Error> {
     let file_path: &Path = file_path.as_ref();
 
     let cargo_toml: toml::Value = {use std::io::Read;
@@ -113,16 +113,18 @@ fn find_a_file_in_workspace(file_path: impl AsRef<Path>) -> Result<File, io::Err
         toml::from_str(&buf).expect("Invalid Cargo.toml")
     };
 
-    let workspace_members = cargo_toml
-        .as_table()
-        .and_then(|c| c.get("workspace"))
-        .and_then(|w| w.as_table())
-        .and_then(|w| w.get("members"))
-        .and_then(|m| m.as_array())
-        .ok_or_else(|| io::Error::new(ErrorKind::InvalidInput, "\
-            assumed as Cargo workspace, but `workspace.members` \
-            array is not found in Cargo.toml at project root. \
-        "))?;
+    fn get_workspace_members(cargo_toml: &toml::Value) -> Option<&toml::value::Array> {
+        cargo_toml
+            .as_table()?
+            .get("workspace")?
+            .as_table()?
+            .get("members")?
+            .as_array()
+    }
+
+    let Some(workspace_members) = get_workspace_members(&cargo_toml) else {
+        return Ok(None)
+    };
 
     let mut matching_files = Vec::with_capacity(1);
     for member in workspace_members {
@@ -133,12 +135,10 @@ fn find_a_file_in_workspace(file_path: impl AsRef<Path>) -> Result<File, io::Err
 
     match (matching_files.pop(), matching_files.is_empty()) {
         (Some(file), true) => {
-            Ok(file)
+            Ok(Some(file))
         }
         (None, _) => {
-            Err(io::Error::new(ErrorKind::NotFound, format!(
-                "No workspace member having `{}` found.", file_path.display()
-            )))
+            Ok(None)
         }
         (Some(_), false) => {
             Err(io::Error::new(ErrorKind::Other, format!(

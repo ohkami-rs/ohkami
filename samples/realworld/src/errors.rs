@@ -1,6 +1,5 @@
-use ohkami::{IntoResponse, serde::Serialize, format::JSON};
+use ohkami::{IntoResponse, serde::Serialize};
 use std::borrow::Cow;
-
 
 #[derive(Debug)]
 pub enum RealWorldError {
@@ -30,21 +29,21 @@ pub struct ValidationError {
 
 impl IntoResponse for RealWorldError {
     fn into_response(self) -> ohkami::Response {
-        use ohkami::typed::status::*;
+        use ohkami::claw::{status, Json};
         
         match self {
-            Self::Validation { body } => UnprocessableEntity(
-                JSON(ValidationErrorFormat {
+            Self::Validation { body } => status::UnprocessableEntity(
+                Json(ValidationErrorFormat {
                     errors: ValidationError {
                         body: vec![body.into()],
                     },
                 }
             )).into_response(),
-            Self::Config(err_msg)       => InternalServerError(err_msg).into_response(),
-            Self::DB(sqlx_err)          => InternalServerError(sqlx_err.to_string()).into_response(),
-            Self::NotFound(nf)          => NotFound(nf).into_response(),
-            Self::Unauthorized(msg)     => Unauthorized(msg).into_response(),
-            Self::FoundUnexpectedly(fu) => BadRequest(fu).into_response(),
+            Self::Config(err_msg)       => status::InternalServerError(err_msg).into_response(),
+            Self::DB(sqlx_err)          => status::InternalServerError(sqlx_err.to_string()).into_response(),
+            Self::NotFound(nf)          => status::NotFound(nf).into_response(),
+            Self::Unauthorized(msg)     => status::Unauthorized(msg).into_response(),
+            Self::FoundUnexpectedly(fu) => status::BadRequest(fu).into_response(),
         }
     }
 }

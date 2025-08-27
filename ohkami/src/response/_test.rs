@@ -8,14 +8,14 @@ macro_rules! assert_response_bytes_eq {
             $res.complete();
 
             /* avoid flakiness of 1 sec difference */
-            let now = $res.headers.Date()
+            let now = $res.headers.date()
                 .expect("No `Date` header in res")
                 .to_string(/* `$res` moves by `.send` */);
 
             let mut res_bytes = Vec::new();
             crate::__rt__::testing::block_on(
                 $res.send(&mut res_bytes)
-            );
+            ).expect("`Response::send` failed");
 
             if res_bytes != format!($expected, NOW = now).into_bytes() {
                 panic!("\n\
@@ -41,7 +41,7 @@ fn test_response_into_bytes() {
     ");
 
     let mut res = Response::NoContent();
-    res.headers.set().Server("ohkami");
+    res.headers.set().server("ohkami");
     assert_response_bytes_eq!(res, "\
         HTTP/1.1 204 No Content\r\n\
         Date: {NOW}\r\n\
@@ -59,7 +59,7 @@ fn test_response_into_bytes() {
 
     let mut res = Response::NotFound();
     res.headers.set()
-        .Server("ohkami")
+        .server("ohkami")
         .x("Hoge-Header", "Something-Custom");
     assert_response_bytes_eq!(res, "\
         HTTP/1.1 404 Not Found\r\n\
@@ -72,10 +72,10 @@ fn test_response_into_bytes() {
 
     let mut res = Response::NotFound();
     res.headers.set()
-        .Server("ohkami")
+        .server("ohkami")
         .x("Hoge-Header", "Something-Custom")
-        .SetCookie("id", "42", |d|d.Path("/").SameSiteLax())
-        .SetCookie("name", "John", |d|d.Path("/where").SameSiteStrict());
+        .set_cookie("id", "42", |d|d.path("/").same_site_lax())
+        .set_cookie("name", "John", |d|d.path("/where").same_site_strict());
     assert_response_bytes_eq!(res, "\
         HTTP/1.1 404 Not Found\r\n\
         Date: {NOW}\r\n\
@@ -89,10 +89,10 @@ fn test_response_into_bytes() {
 
     let mut res = Response::NotFound().with_text("sample text");
     res.headers.set()
-        .Server("ohkami")
+        .server("ohkami")
         .x("Hoge-Header", "Something-Custom")
-        .SetCookie("id", "42", |d|d.Path("/").SameSiteLax())
-        .SetCookie("name", "John", |d|d.Path("/where").SameSiteStrict());
+        .set_cookie("id", "42", |d|d.path("/").same_site_lax())
+        .set_cookie("name", "John", |d|d.path("/where").same_site_strict());
     assert_response_bytes_eq!(res, "\
         HTTP/1.1 404 Not Found\r\n\
         Date: {NOW}\r\n\
@@ -143,9 +143,9 @@ fn test_stream_response() {
             repeat_by(3, |i| format!("This is message#{i} !"))
         )
         .with_headers(|h| h
-            .Server("ohkami")
+            .server("ohkami")
             .x("is-stream", "true")
-            .SetCookie("name", "John", |d|d.Path("/where").SameSiteStrict())
+            .set_cookie("name", "John", |d|d.path("/where").same_site_strict())
         );
     assert_response_bytes_eq!(res, "\
         HTTP/1.1 200 OK\r\n\
@@ -178,8 +178,8 @@ fn test_stream_response() {
             repeat_by(3, |i| format!("This is message#{i}\nです"))
         )
         .with_headers(|h| h
-            .Server("ohkami")
-            .SetCookie("name", "John", |d|d.Path("/where").SameSiteStrict())
+            .server("ohkami")
+            .set_cookie("name", "John", |d|d.path("/where").same_site_strict())
             .x("is-stream", "true")
         );
     assert_response_bytes_eq!(res, "\

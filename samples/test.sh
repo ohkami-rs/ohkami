@@ -57,25 +57,36 @@ cd $SAMPLES/streaming && \
 test $? -ne 0 && exit 156 || :
 
 cd $SAMPLES/worker-bindings && \
-    cargo check
+    cargo check && \
+    wasm-pack build --target nodejs --dev --no-opt --no-pack --no-typescript && \
+    node dummy_env_test.js
 test $? -ne 0 && exit 157 || :
+
+cd $SAMPLES/worker-bindings-jsonc && \
+    cargo check
+test $? -ne 0 && exit 158 || :
 
 cd $SAMPLES/worker-durable-websocket && \
     cargo check
-test $? -ne 0 && exit 158 || :
+test $? -ne 0 && exit 159 || :
+
+cd $SAMPLES/worker-with-global-bindings && \
+    npm run openapi
+test $? -ne 0 && exit 160 || :
 
 cd $SAMPLES/worker-with-openapi && \
     cp wrangler.toml.sample wrangler.toml && \
     (test -f openapi.json || echo '{}' >> openapi.json) && \
-    npm run openapi -- --skip-login && \
+    npm run openapi && \
     diff openapi.json openapi.json.sample && \
-    # FIXME : to generic way (this is a stopgap for testing
-    # this functionality in at least my local env)
-    (test $(whoami) = kanarus && \
-        npm run openapi && \
-        cp openapi.json.loggedin.sample tmp.json && \
-        sed -i "s/{{ ACCOUNT_NAME }}/kanarus/" tmp.json && \
-        diff openapi.json tmp.json \
-        ; (test -f tmp.json && rm tmp.json) \
-    || :)
-test $? -ne 0 && exit 159 || :
+    sed -i -r 's/^#\[ohkami::worker.*]$/#[ohkami::worker({ title: "Ohkami Worker with OpenAPI", version: "0.1.1", servers: [] })]/' ./src/lib.rs && \
+    npm run openapi && \
+    diff openapi.json openapi.json.manual-title-version-empty_servers.sample && \
+    sed -i -r 's/^#\[ohkami::worker.*]$/#[ohkami::worker({ title: "Ohkami Worker with OpenAPI", version: "0.1.2", servers: [{url: "https:\/\/example.example.workers.dev"}] })]/' ./src/lib.rs && \
+    npm run openapi && \
+    diff openapi.json openapi.json.manual-title-version-nonempty_servers.sample && \
+    sed -i -r 's/^#\[ohkami::worker.*]$/#[ohkami::worker({servers: [{url: "https:\/\/example.example.workers.dev"}]})]/' ./src/lib.rs && \
+    npm run openapi && \
+    diff openapi.json openapi.json.manual-only_nonempty_servers.sample && \
+    sed -i -r 's/^#\[ohkami::worker.*]$/#[ohkami::worker]/' ./src/lib.rs # reset to default
+test $? -ne 0 && exit 161 || :

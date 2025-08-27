@@ -15,15 +15,15 @@ async fn echo_text(c: WebSocketContext<'_>) -> WebSocket {
 
 
 async fn echo_text_2(
-    name: String,
-    ctx:  WebSocketContext<'_>
+    Path(name): Path<String>,
+    ctx: WebSocketContext<'_>
 ) -> EchoTextSession<'_> {
     EchoTextSession { name, ctx }
 }
 
 struct EchoTextSession<'ws> {
     name: String,
-    ctx:  WebSocketContext<'ws>,
+    ctx: WebSocketContext<'ws>,
 }
 impl IntoResponse for EchoTextSession<'_> {
     fn into_response(self) -> Response {
@@ -41,7 +41,8 @@ impl IntoResponse for EchoTextSession<'_> {
 }
 
 
-async fn echo_text_3(name: String,
+async fn echo_text_3(
+    Path(name): Path<String>,
     ctx: WebSocketContext<'_>
 ) -> WebSocket {
     ctx.upgrade(|c| async {
@@ -111,7 +112,7 @@ async fn echo_text_3(name: String,
 }
 
 
-async fn echo4(name: String, ws: WebSocketContext<'_>) -> WebSocket {
+async fn echo4(Path(name): Path<String>, ws: WebSocketContext<'_>) -> WebSocket {
     ws.upgrade(|mut c| async {
         /* spawn but not join the handle */
         tokio::spawn(async move {
@@ -142,11 +143,54 @@ async fn main() {
         }
     }
     
-    Ohkami::new((Logger,
-        "/".Dir("./template").omit_extensions([".html"]),
+    #[cfg(feature="tls")]
+    let tls_config = {        
+        use rustls::ServerConfig;
+        use rustls::pki_types::{CertificateDer, PrivateKeyDer};
+        use std::fs::File;
+        use std::io::BufReader;
+        
+        // Initialize rustls crypto provider
+        rustls::crypto::ring::default_provider().install_default()
+            .expect("Failed to install rustls crypto provider");
+    
+        // Load certificates and private key
+        let cert_file = File::open("./cert.pem").expect("Failed to open certificate file");
+        let key_file = File::open("./key.pem").expect("Failed to open private key file");
+        
+        let cert_chain = rustls_pemfile::certs(&mut BufReader::new(cert_file))
+            .map(|cd| cd.map(CertificateDer::from))
+            .collect::<Result<Vec<_>, _>>()
+            .expect("Failed to read certificate chain");
+        
+        let key = rustls_pemfile::read_one(&mut BufReader::new(key_file))
+            .expect("Failed to read private key")
+            .map(|p| match p {
+                rustls_pemfile::Item::Pkcs1Key(k) => PrivateKeyDer::Pkcs1(k),
+                rustls_pemfile::Item::Pkcs8Key(k) => PrivateKeyDer::Pkcs8(k),
+                _ => panic!("Unexpected private key type"),
+            })
+            .expect("Failed to read private key");
+    
+        // Build TLS configuration
+        ServerConfig::builder()
+            .with_no_client_auth()
+            .with_single_cert(cert_chain, key)
+            .expect("Failed to build TLS configuration")
+    };
+    
+    let o = Ohkami::new((
+        Logger,
+        "/".Mount("./template").omit_extensions(&["html"]),
         "/echo1".GET(echo_text),
         "/echo2/:name".GET(echo_text_2),
         "/echo3/:name".GET(echo_text_3),
         "/echo4/:name".GET(echo4),
-    )).howl("localhost:3030").await
+    ));
+    
+    #[cfg(not(feature="tls"))]
+    o.howl("localhost:3030").await;
+    
+    #[cfg(feature="tls")]
+    o.howls("localhost:3030", tls_config).await;
 }

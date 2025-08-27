@@ -1,6 +1,6 @@
 use ohkami::prelude::*;
 
-async fn sleeping_hello(secs: u64) -> &'static str {
+async fn sleeping_hello(Path(secs): Path<u64>) -> &'static str {
     tokio::time::sleep(std::time::Duration::from_secs(secs)).await;
     "Hello, sleep!"
 }

@@ -6,6 +6,6 @@ To test [issue #459](https://github.com/ohkami-rs/ohkami/issues/459), run `cargo
 timeout -sKILL 0.01 curl localhost:5000
 ```
 
-This makes server panic, and may lead to `process didn't exit successfully`, as for v0.23.3.
+As for v0.23.3, this will cause server panic, and may lead to `process didn't exit successfully`.
 
 v0.23.4 fixes the behavior to safely print warnings.

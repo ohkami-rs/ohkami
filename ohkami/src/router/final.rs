@@ -33,6 +33,7 @@ enum Pattern {
 
 
 impl Router {
+    #[inline(always)]
     pub(crate) async fn handle(&self, req: &mut Request) -> Response {
         let mut res = 'handle: {
             (match req.method {
@@ -122,7 +123,7 @@ impl Router {
                 for param_name in &openapi_path_param_names {
                     operation.assign_path_param_name(param_name.to_string());
                 }
-                for security_scheme in operation.iter_securitySchemes() {
+                for security_scheme in operation.iter_security_schemes() {
                     doc.register_securityScheme_component(security_scheme);
                 }
                 for schema_component in operation.refize_schemas() {
@@ -224,7 +225,7 @@ impl Pattern {
     /// ## Precondition
     /// 
     /// `self`, if `Static`, must hold bytes starting with `/` e.g. `/abc`, `/`, `/abc/xyz`
-    #[inline]
+    #[inline(always)]
     fn take_through<'b>(
         &self,
         bytes: &'b [u8],

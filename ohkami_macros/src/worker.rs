@@ -1,5 +1,6 @@
 #![cfg(feature="worker")]
 
+mod wrangler;
 mod meta;
 mod durable;
 mod binding;
@@ -8,21 +9,32 @@ use crate::util;
 
 use proc_macro2::{Span, TokenStream};
 use quote::quote;
-use syn::{spanned::Spanned, Error, Ident, ItemFn, ItemStruct, Fields, LitStr};
+use syn::{spanned::Spanned, Error, Ident, ItemFn, FnArg, ItemStruct, Fields, LitStr};
 
 
 pub fn worker(args: TokenStream, ohkami_fn: TokenStream) -> Result<TokenStream, syn::Error> {
     let worker_meta: meta::WorkerMeta = syn::parse2(args)?;
+
     let ohkami_fn: ItemFn = syn::parse2(ohkami_fn)?;
+    if ohkami_fn.sig.inputs.len() >= 2 {
+        return Err(syn::Error::new(
+            ohkami_fn.span(),
+            "`#[worker]` doesn't support multiple arguments of the fn, \
+            accepting 0 args or single arg which impls `FromEnv`."
+        ))
+    }
 
     let gen_ohkami = {
-        let name     = &ohkami_fn.sig.ident;
+        let name = &ohkami_fn.sig.ident;
+        let env = ohkami_fn.sig.inputs.first().map(|_| quote! {
+            ::ohkami::FromEnv::from_env(&env).expect("`#[worker]` bindings arg has wrong `FromEnv` impl")
+        });
         let awaiting = ohkami_fn.sig.asyncness.is_some().then_some(quote! {
             .await
         });
 
         quote! {
-            #name()#awaiting
+            #name(#env)#awaiting
         }
     };
 
@@ -51,6 +63,16 @@ pub fn worker(args: TokenStream, ohkami_fn: TokenStream) -> Result<TokenStream, 
             def
         });
 
+        let dummy_env_def = ohkami_fn.sig.inputs.first().map(|a| {
+            let ty = match a {
+                FnArg::Receiver(r) => &r.ty,
+                FnArg::Typed(p) => &p.ty,
+            };
+            quote! {
+                let env = <#ty as ::ohkami::FromEnv>::dummy_env();
+            }
+        });
+
         quote! {
             const _: () = {
                 // `#[wasm_bindgen]` direcly references this modules in epxpaned code
@@ -59,6 +81,7 @@ pub fn worker(args: TokenStream, ohkami_fn: TokenStream) -> Result<TokenStream, 
                 #[doc(hidden)]
                 #[::worker::wasm_bindgen::prelude::wasm_bindgen(js_name = "OpenAPIDocumentBytes")]
                 pub async fn __openapi_document_bytes__() -> Vec<u8> {
+                    #dummy_env_def
                     let ohkami: ::ohkami::Ohkami = #gen_ohkami;
                     ohkami.__openapi_document_bytes__(::ohkami::openapi::OpenAPI {
                         title:   #title,
@@ -90,39 +113,12 @@ pub fn worker(args: TokenStream, ohkami_fn: TokenStream) -> Result<TokenStream, 
 pub fn bindings(env_name: TokenStream, bindings_struct: TokenStream) -> Result<TokenStream, syn::Error> {
     use self::binding::Binding;
 
-    fn callsite(msg: impl std::fmt::Display) -> Error {
-        Error::new(Span::call_site(), msg)
-    }
-    fn invalid_wrangler_toml() -> Error {
-        Error::new(Span::call_site(), "Invalid wrangler.toml")
-    }
-
-    //////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    let wrangler_toml: toml::Value = {use std::io::Read;
-        let mut file = util::find_a_file_in_maybe_workspace("wrangler.toml")
-            .map_err(|e| callsite(e.to_string()))?;
-        let mut buf = String::new();
-        file.read_to_string(&mut buf)
-            .map_err(|_| callsite("wrangler.toml found but it's not readable"))?;
-        toml::from_str(&buf)
-            .map_err(|_| callsite("Failed to read wrangler.toml"))?
+    let bindings: Vec<(Ident, Binding)> = {
+        let env_name: Option<Ident> = (!env_name.is_empty())
+            .then(|| syn::parse2(env_name))
+            .transpose()?;
+        Binding::collect_from_env(env_name)?
     };
-
-    let env: &toml::Table = {
-        let top_level = wrangler_toml.as_table().ok_or_else(invalid_wrangler_toml)?;
-        let env_name: Option<Ident> = (!env_name.is_empty()).then(|| syn::parse2(env_name)).transpose()?;
-        match env_name {
-            None      => top_level,
-            Some(env) => top_level.get("env")
-                .and_then(|e| e.as_table())
-                .and_then(|t| t.get(&env.to_string()))
-                .and_then(|e| e.as_table())
-                .ok_or_else(|| callsite(format!("env `{env}` is not found in wrangler.toml")))?
-        }
-    };
-
-    let bindings: Vec<(Ident, Binding)> = Binding::collect_from_env(&env)?;
 
     let bindings_struct: ItemStruct = syn::parse2(bindings_struct)?; {
         if !bindings_struct.generics.params.is_empty() {
@@ -272,6 +268,40 @@ pub fn bindings(env_name: TokenStream, bindings_struct: TokenStream) -> Result<T
         }
     };
 
+    let impl_from_env = {
+        let bindings_meta = bindings.iter()
+            .filter(|(name, _)| named_fields.as_ref().is_none_or(
+                |n| n.iter().any(|(field_name, _)| *field_name == name)
+            ))
+            .map(|(name, binding)| {
+                let binding_name = LitStr::new(&name.to_string(), name.span());
+                let binding_type = match binding.binding_type() {
+                    Some(t) => {
+                        let t = LitStr::new(t, Span::call_site());
+                        quote! { Some(#t) }
+                    }
+                    None => {
+                        quote! { None }
+                    }
+                };
+                quote! {
+                    (#binding_name, #binding_type)
+                }
+            });
+
+        quote! {
+            impl ::ohkami::FromEnv for #name {
+                fn from_env(env: &worker::Env) -> Result<Self, worker::Error> {
+                    Self::new(env)
+                }
+
+                fn bindings_meta() -> &'static [(&'static str, Option<&'static str>)] {
+                    &[#(#bindings_meta),*]
+                }
+            }
+        }
+    };
+
     let impl_send_sync = if
         bindings.is_empty() || named_fields.is_some_and(|n| n.is_empty())
     {
@@ -288,6 +318,7 @@ pub fn bindings(env_name: TokenStream, bindings_struct: TokenStream) -> Result<T
         #const_vars
         #impl_new
         #impl_from_request
+        #impl_from_env
         #impl_send_sync
     })
 }

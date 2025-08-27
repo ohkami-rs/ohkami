@@ -1,12 +1,12 @@
-use ohkami::fang::{JWT, FangAction};
+use ohkami::fang::{Jwt, FangAction};
 use ohkami::{IntoResponse, Request, Response};
 
 
-/// memorizes `crate::config::JWTPayload`
+/// memorizes `crate::config::JwtPayload`
 #[derive(Clone)]
 pub struct Auth {
     /// When `true`, not reject the request when it doesn't have any credential
-    /// and just let it go without JWTPayload
+    /// and just let it go without JwtPayload
     optional: bool,
 }
 impl Auth {
@@ -19,13 +19,13 @@ impl Auth {
 }
 impl FangAction for Auth {
     async fn fore<'a>(&'a self, req: &'a mut Request) -> Result<(), Response> {
-        if req.headers.Authorization().is_none() && self.optional {
+        if req.headers.authorization().is_none() && self.optional {
             return Ok(());
         }
 
         let secret = crate::config::JWT_SECRET_KEY()
             .map_err(IntoResponse::into_response)?;
-        let payload = JWT::<crate::config::JWTPayload>::default(secret)
+        let payload = Jwt::<crate::config::JwtPayload>::default(secret)
             .verified(req)
             .map_err(IntoResponse::into_response)?;
         req.context.set(payload);

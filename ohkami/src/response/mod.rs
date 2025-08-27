@@ -10,7 +10,7 @@ mod content;
 pub use content::Content;
 
 mod into_response;
-pub use into_response::{IntoResponse, IntoBody};
+pub use into_response::IntoResponse;
 
 #[cfg(test)] mod _test;
 #[cfg(test)] mod _test_headers;
@@ -45,8 +45,8 @@ use crate::{sse, util::{Stream, StreamExt}};
 /// impl FangAction for SetHeaders {
 ///     async fn back<'a>(&'a self, res: &'a mut Response) {
 ///         res.headers.set()
-///             .Server("ohkami")
-///             .Vary("Origin");
+///             .server("ohkami")
+///             .vary("Origin");
 ///     }
 /// }
 /// 
@@ -91,8 +91,8 @@ pub struct Response {
 
     /// Headers of this response
     /// 
-    /// - `.{Name}()`, `.get("{Name}")` to get value
-    /// - `.set().{Name}({action})`, `.set().x("{Name}", {action})` to mutate values
+    /// - `.{name}()`, `.get("{name}")` to get value
+    /// - `.set().{name}({action})`, `.set().x("{name}", {action})` to mutate values
     /// 
     /// ---
     /// 
@@ -121,15 +121,16 @@ impl Response {
         }
     }
 
-    #[cfg(feature="__rt__")]
     /// complete HTTP spec
     /// 
     /// should be called, like, just after router's handling
+    #[cfg(feature="__rt__")]
+    #[inline(always)]
     pub(crate) fn complete(&mut self) {
         match (&self.content, &self.status) {
             (_, Status::NoContent) => {
-                if !/* not */self.headers.ContentLength().is_none() {
-                    self.headers.set().ContentLength(None);
+                if !/* not */self.headers.content_length().is_none() {
+                    self.headers.set().content_length(None);
                 }
                 if !/* not */matches!(self.content, Content::None) {
                     self.content = Content::None;
@@ -137,15 +138,15 @@ impl Response {
             }
             #[cfg(feature="sse")]
             (Content::Stream(_), _) => {
-                if !/* not */self.headers.ContentLength().is_none() {
-                    self.headers.set().ContentLength(None);
+                if !/* not */self.headers.content_length().is_none() {
+                    self.headers.set().content_length(None);
                 }
             }
             #[cfg(not(feature="rt_lambda"/* currently */))]
             #[cfg(all(feature="ws", feature="__rt__"))]
             (Content::WebSocket(_), _) => {
-                if !/* not */self.headers.ContentLength().is_none() {
-                    self.headers.set().ContentLength(None);
+                if !/* not */self.headers.content_length().is_none() {
+                    self.headers.set().content_length(None);
                 }
             }
             _ => (/* let it go by user's responsibility */)
@@ -155,16 +156,14 @@ impl Response {
 
 impl Response {
     #[inline]
-    pub fn with_headers(mut self, h: impl FnOnce(SetHeaders)->SetHeaders) -> Self {
-        h(self.headers.set());
+    pub fn with_headers(mut self, f: impl FnOnce(SetHeaders)->SetHeaders) -> Self {
+        f(self.headers.set());
         self
     }
 
     pub fn drop_content(&mut self) -> Content {
         let old_content = self.content.take();
-        self.headers.set()
-            .ContentType(None)
-            .ContentLength(None);
+        self.headers.set().content_type(None).content_length(None);
         old_content
     }
     pub fn without_content(mut self) -> Self {
@@ -179,8 +178,8 @@ impl Response {
     ) {
         let content: Cow<'static, [u8]> = content.into();
         self.headers.set()
-            .ContentType(content_type)
-            .ContentLength(ohkami_lib::num::itoa(content.len()));
+            .content_type(content_type)
+            .content_length(ohkami_lib::num::itoa(content.len()));
         self.content = Content::Payload(content.into());
     }
     #[inline]
@@ -200,8 +199,8 @@ impl Response {
         let body: Cow<'static, str> = text.into();
 
         self.headers.set()
-            .ContentType("text/plain; charset=UTF-8")
-            .ContentLength(ohkami_lib::num::itoa(body.len()));
+            .content_type("text/plain; charset=UTF-8")
+            .content_length(ohkami_lib::num::itoa(body.len()));
         self.content = Content::Payload(match body {
             Cow::Borrowed(str) => CowSlice::Ref(Slice::from_bytes(str.as_bytes())),
             Cow::Owned(string) => CowSlice::Own(string.into_bytes().into()),
@@ -217,8 +216,8 @@ impl Response {
         let body: Cow<'static, str> = html.into();
 
         self.headers.set()
-            .ContentType("text/html; charset=UTF-8")
-            .ContentLength(ohkami_lib::num::itoa(body.len()));
+            .content_type("text/html; charset=UTF-8")
+            .content_length(ohkami_lib::num::itoa(body.len()));
         self.content = Content::Payload(match body {
             Cow::Borrowed(str) => CowSlice::Ref(Slice::from_bytes(str.as_bytes())),
             Cow::Owned(string) => CowSlice::Own(string.into_bytes().into()),
@@ -233,8 +232,8 @@ impl Response {
     pub fn set_json<JSON: serde::Serialize>(&mut self, json: JSON) {
         let body = ::serde_json::to_vec(&json).unwrap();
         self.headers.set()
-            .ContentType("application/json")
-            .ContentLength(ohkami_lib::num::itoa(body.len()));
+            .content_type("application/json")
+            .content_length(ohkami_lib::num::itoa(body.len()));
         self.content = Content::Payload(body.into());
     }
     #[inline(always)]
@@ -251,18 +250,19 @@ impl Response {
         };
 
         self.headers.set()
-            .ContentType("application/json")
-            .ContentLength(ohkami_lib::num::itoa(body.len()));
+            .content_type("application/json")
+            .content_length(ohkami_lib::num::itoa(body.len()));
         self.content = Content::Payload(body.into());
     }
     /// SAFETY: argument `json_lit` must be **valid JSON**
     pub unsafe fn with_json_lit<JSONLiteral: Into<Cow<'static, str>>>(mut self, json_lit: JSONLiteral) -> Self {
-        self.set_json_lit(json_lit);
+        unsafe {self.set_json_lit(json_lit);}
         self
     }
 }
 
 #[cfg(feature="sse")]
+#[cfg_attr(docsrs, doc(cfg(feature = "sse")))]
 impl Response {
     pub fn with_stream<T: sse::Data>(
         mut self,
@@ -284,10 +284,10 @@ impl Response {
         stream: std::pin::Pin<Box<dyn Stream<Item = String> + Send>>
     ) {
         self.headers.set()
-            .ContentLength(None)
-            .ContentType("text/event-stream")
-            .CacheControl("no-cache, must-revalidate")
-            .TransferEncoding("chunked");
+            .content_length(None)
+            .content_type("text/event-stream")
+            .cache_control("no-cache, must-revalidate")
+            .transfer_encoding("chunked");
         self.content = Content::Stream(stream);
     }
 }
@@ -297,7 +297,7 @@ pub(super) enum Upgrade {
     None,
 
     #[cfg(feature="ws")]
-    WebSocket(mews::WebSocket),
+    WebSocket(mews::WebSocket<crate::session::Connection>),
 }
 #[cfg(feature="__rt_native__")]
 impl Upgrade {
@@ -375,8 +375,7 @@ impl Response {
                     chunk.append(&mut message);
                     chunk.extend_from_slice(b"\r\n");
 
-                    #[cfg(feature="DEBUG")]
-                    println!("\n[sending chunk]\n{}", chunk.escape_ascii());
+                    crate::DEBUG!("\n[sending chunk]\n{}", chunk.escape_ascii());
 
                     conn.write_all(&chunk).await?;
                     conn.flush().await?;
@@ -426,6 +425,7 @@ const _: () = {
 };
 
 #[cfg(feature="nightly")]
+#[cfg_attr(docsrs, doc(cfg(feature = "nightly")))]
 const _: () = {
     use std::{ops::FromResidual, convert::Infallible};
 
@@ -436,10 +436,8 @@ const _: () = {
     }
 
     #[cfg(test)]
-    fn try_response() {
-        use crate::Request;
-
-        fn payload_serde_json_value(req: &Request) -> Result<::serde_json::Value, Response> {
+    fn _try_response() {// compiles
+        fn payload_serde_json_value(req: &crate::Request) -> Result<::serde_json::Value, Response> {
             let payload = req.payload.as_deref()
                 .ok_or_else(Response::BadRequest)?;
             let value = serde_json::from_slice::<serde_json::Value>(payload)

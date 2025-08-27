@@ -101,7 +101,7 @@ macro_rules! status {
     415 UnsupportedMediaType          : "415 Unsupported Media Type",
     416 RangeNotSatisfiable           : "416 Range Not Satisfiable",
     417 ExceptionFailed               : "417 Exception Failed",
-    418 Im_a_teapot                   : "418 I'm a teapot",
+    418 ImATeapot                     : "418 I'm a teapot",
     421 MisdirectedRequest            : "421 Misdirected Request",
     422 UnprocessableEntity           : "422 Unprocessable Entity",
     423 Locked                        : "423 Locked",

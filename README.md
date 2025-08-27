@@ -1,13 +1,13 @@
 <div align="center">
     <h1>Ohkami</h1>
-    Ohkami <em>- [狼] wolf in Japanese -</em> is intuitive and declarative web framework.
+    Ohkami <em>- [狼] wolf in Japanese -</em> is a performant, declarative, and runtime-flexible web framework for Rust.
 </div>
 
 <br>
 
-- *macro-less and type-safe* APIs for intuitive and declarative code
-- *various runtimes* are supported：`tokio`, `async-std`, `smol`, `nio`, `glommio` and `worker` (Cloudflare Workers), `lambda` (AWS Lambda)
-- extremely fast, no-network testing, well-structured middlewares, Server-Sent Events, WebSocket, highly integrated OpenAPI document generation, ...
+- *macro-less and type-safe* APIs for declarative, ergonomic code
+- *runtime-flexible* ： `tokio`, `smol`, `nio`, `glommio` and `worker` (Cloudflare Workers), `lambda` (AWS Lambda)
+- good performance, no-network testing, well-structured middlewares, Server-Sent Events, WebSocket, highly integrated OpenAPI document generation, ...
 
 <div align="right">
     <a href="https://github.com/ohkami-rs/ohkami/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/crates/l/ohkami.svg" /></a>
@@ -23,21 +23,21 @@
 
 ```toml
 [dependencies]
-ohkami = { version = "0.23", features = ["rt_tokio"] }
+ohkami = { version = "0.24", features = ["rt_tokio"] }
 tokio  = { version = "1",    features = ["full"] }
 ```
 
 2. Write your first code with Ohkami : [examples/quick_start](https://github.com/ohkami-rs/ohkami/blob/main/examples/quick_start/src/main.rs)
 
 ```rust,no_run
-use ohkami::prelude::*;
-use ohkami::typed::status;
+use ohkami::{Ohkami, Route};
+use ohkami::claw::{Path, status};
 
 async fn health_check() -> status::NoContent {
     status::NoContent
 }
 
-async fn hello(name: &str) -> String {
+async fn hello(Path(name): Path<&str>) -> String {
     format!("Hello, {name}!")
 }
 
@@ -64,45 +64,196 @@ Hello, your_name!
 ```
 
 <br>
+    
+## Core APIs
+
+### `Route`
+
+`Route` is the core trait to define Ohkami's routing:
+
+- `.GET()`, `.POST()`, `.PUT()`, `.PATCH()`, `.DELETE()`, `.OPTIONS()` to define API endpoints
+- `.By({another Ohkami})` to nest `Ohkami`s
+- `.Mount({directory path})` to serve static directory
+  (pre-compressed files with `gzip`, `deflate`, `br`, `zstd` are supported)
+
+Here `GET`, `POST`, etc. takes a *handler* function:
+
+```rust,ignore
+async fn({FromRequest type},*) -> {IntoResponse type}
+```
+
+On native runtimes, whole a handler must be `Send + Sync + 'static`
+and the return future must be `Send + 'static`.
+
+### `claw`s
+
+Ohkami provides `claw` API: handler parts for declarative way to
+extract request data and construct response data.
+
+- `content` - typed content {extracted from request / for response} of specific format
+  - built-in: `Json<T>`, `Text<T>`, `Html<T>`, `UrlEncoded<T>`, `Multipart<T>`
+- `param` - typed parameters extracted from request
+  - built-in: `Path<P>`, `Query<T>`
+- `header` - types for specific header extracted from request
+  - built-in: types for standard request headers
+- `status` - types for response with specific status code
+  - built-in: types for standard response status codes
+
+<sm><i>(
+here <code>T</code> means a type that implements
+<code>serde::Deserialize</code> for request and
+<code>serde::Serialize</code> for response,
+and <code>P</code> means a type that implements
+<code>FromParam</code> or
+a tuple of such types.
+)</i></sm>
+
+The number of path parameters extracted by `Path` is **automatically asserted**
+to be the same or less than the number of path parameters contained in the route path
+when the handler is registered to routing.
+
+```rust,ignore
+async fn handler0(
+    Path(param): Path<FromParamType>,
+) -> Json<SerializeType> {
+    // ...
+}
+
+async fn handler1(
+    Json(req): Json<Deserialize0>,
+    Path((param0, param1)): Path<(FromParam0, FromParam1)>,
+    Query(query): Query<Deserialize1>,
+) -> status::Created<Json<Serialize0>> {
+    // ...
+}
+```
+
+### `fang`s
+
+Ohkami's request handling system is called `fang`; all handlers and middlewares are built on it.
+
+```rust,ignore
+/* simplified for description */
+
+pub trait Fang<Inner: FangProc> {
+    type Proc: FangProc;
+    fn chain(&self, inner: Inner) -> Self::Proc;
+}
+
+pub trait FangProc {
+    async fn bite<'b>(&'b self, req: &'b mut Request) -> Response;
+}
+```
+
+built-in:
+
+- `BasicAuth`, `Cors`, `Csrf`, `Jwt` (authentication/security)
+- `Context` (reuqest context)
+- `Enamel` (security headers; experimantal)
+- `Timeout` (handling timeout; native runtime only)
+- `openapi::Tag` (tag for OpenAPI document generation; `openapi` feature only)
+
+Ohkami provides `FangAction` utility trait to implement `Fang` trait easily:
+
+```rust,ignore
+/* simplified for description */
+
+pub trait FangAction {
+    async fn fore<'a>(&'a self, req: &'a mut Request) -> Result<(), Response> {
+        // default implementation is empty
+        Ok(())
+    }
+    async fn back<'a>(&'a self, res: &'a mut Response) {
+        // default implementation is empty
+    }
+}
+```
+
+Additionally, you can apply fangs both as **global fangs** to an `Ohkami` or
+as **local fangs** to a specific handler (described below).
+
+### `Ohkami`
+
+`Ohkami` is the main entry point of Ohkami application:
+a collection of `Route`s and `Fang`s, and provides `.howl()`/`.howls()` method to run the application.
+
+```rust,ignore
+Ohkami::new((
+    // global fangs
+    Fang1,
+    Fang2,
+    // routes
+    "/hello"
+        .GET(hello_handler)
+        .POST(hello_post_handler),
+    "/goodbye"
+        .GET((
+            // local fangs
+            Fang3,
+            Fang4,
+            goodbye_handler // handler
+        )),
+)).howl("localhost:3000").await;
+```
+
+`.howls()` (`tls` feature only) is used to run Ohkami with TLS (HTTPS) support
+upon [`rustls`](https://github.com/rustls) ecosystem.
+
+`howl(s)` supports graceful shutdown by `Ctrl-C` ( `SIGINT` ) on native runtimes.
+
+<br>
 
 ## Feature flags
 
-### `"rt_tokio"`, `"rt_async-std"`, `"rt_smol"`, `"rt_nio"`, `"rt_glommio"` : native async runtime
+### `"rt_tokio"`, `"rt_smol"`, `"rt_nio"`, `"rt_glommio"` : native async runtime
 
 - [tokio](https://github.com/tokio-rs/tokio) _v1.\*.\*_
-- [async-std](https://github.com/async-rs/async-std) _v1.\*.\*_
 - [smol](https://github.com/smol-rs/smol) _v2.\*.\*_
 - [nio](https://github.com/nurmohammed840/nio) _v0.0.\*_
 - [glommio](https://github.com/DataDog/glommio) _v0.9.\*_
 
 ### `"rt_worker"` : Cloudflare Workers
 
-- [worker](https://github.com/cloudflare/workers-rs) _v0.5.\*_
+- [worker](https://github.com/cloudflare/workers-rs) _v0.6.\*_
+
+Ohkami has first-class support for Cloudflare Workers:
+
+- `#[worker]` macro to define a Worker
+- `#[bindings]`, `ws::SessionMap` helper
+- better `DurableObject`
+- not require `Send` `Sync` bound for handlers or fangs
+- [worker_openapi.js](https://github.com/ohkami-rs/ohkami/tree/main/scripts/worker_openapi.js) script to generate OpenAPI document from `#[worker]` fn
+
+And also maintains useful project template. Run :
 
 ```sh
-npm create cloudflare ＜project dir＞ -- --template https://github.com/ohkami-rs/ohkami-templates/worker
+npm create cloudflare ＜project dir＞ -- --template https://github.com/ohkami-rs/templates/worker
 ```
 
-then `＜project dir＞` will have `wrangler.toml`, `package.json` and a Rust library crate.
+then `＜project dir＞` will have `wrangler.jsonc`, `package.json` and a Rust library crate.
 
-A `#[ohkami::worker]` (async/sync) fn returning `Ohkami` is the Worker definition.
+`#[ohkami::worker] async? fn({bindings}?) -> Ohkami` is the Worker definition.
 
 Local dev by `npm run dev` and deploy by `npm run deploy` !
 
-See README of [template](https://github.com/ohkami-rs/ohkami-templates/tree/main/worker) for details.
+See
 
-Or, here are [Workers + OpenAPI template](https://github.com/ohkami-rs/ohkami-templates/tree/main/worker-openapi) and [Workers + SPA with Yew template](https://github.com/ohkami-rs/ohkami-templates/tree/main/worker_yew_spa).
+- `worker.*` temaplates in [template repository](https://github.com/ohkami-rs/templates)
+- `worker.*` samples in [samples directory](https://github.com/ohkami-rs/ohkami/tree/main/samples)
+- `#[worker]`'s documentation comment in [macro definitions](https://github.com/ohkami-rs/ohkami/tree/main/ohkami_macros/src/lib.rs)
+
+for wokring examples and detailed usage of `#[worker]` (and/or `openapi`).
 
 ### `"rt_lambda"` : AWS Lambda
 
-- [lambda_runtime](https://github.com/awslabs/aws-lambda-rust-runtime) _v0.13.\*_ (with `tokio`)
+- [lambda_runtime](https://github.com/awslabs/aws-lambda-rust-runtime) _v0.14.\*_ with `tokio`
 
 Both `Function URLs` and `API Gateway` are supported, and WebSocket is not supported.
 
 [cargo lambda](https://crates.io/crates/cargo-lambda) will be good partner. Let's run :
 
 ```sh
-cargo lambda new ＜project dir＞ --template https://github.com/ohkami-rs/ohkami-templates
+cargo lambda new ＜project dir＞ --template https://github.com/ohkami-rs/templates
 ```
 
 `lambda_runtime::run(your_ohkami)` make `you_ohkami` run on Lambda Function.
@@ -122,7 +273,7 @@ cargo lambda deploy [--role ＜arn-of-a-iam-role＞] [and more]
 
 See
 
-* README of [template](https://github.com/ohkami-rs/ohkami-templates/tree/main/template)
+* README of [template](https://github.com/ohkami-rs/templates/tree/main/template)
 * [Cargo Lambda document](https://www.cargo-lambda.info)
 
 for details.
@@ -133,7 +284,7 @@ Ohkami responds with HTTP/1.1 `Transfer-Encoding: chunked`.\
 Use some reverse proxy to do with HTTP/2,3.
 
 ```rust,no_run
-use ohkami::prelude::*;
+use ohkami::{Ohkami, Route};
 use ohkami::sse::DataStream;
 use tokio::time::{sleep, Duration};
 
@@ -158,11 +309,8 @@ async fn main() {
 
 ### `"ws"` : WebSocket
 
-Ohkami only handles `ws://`.\
-Use some reverse proxy to do with `wss://`.
-
 ```rust,no_run
-use ohkami::prelude::*;
+use ohkami::{Ohkami, Route};
 use ohkami::ws::{WebSocketContext, WebSocket, Message};
 
 async fn echo_text(ctx: WebSocketContext<'_>) -> WebSocket {
@@ -199,11 +347,15 @@ to generate consistent OpenAPI document.
 
 You don't need to take care of writing accurate methods, paths, parameters, contents, ... for this OpenAPI feature; All they are done by Ohkami.
 
-Of course, you can flexibly customize schemas ( by hand-implemetation of `Schema` ), descriptions or other parts ( by `#[operation]` attribute and `openapi_*` hooks ).
+Of course, you can flexibly
+
+- customize schemas by manual implemetation of `Schema` trait
+- customize descriptions or other parts by `#[operation]` attribute and `openapi_*` hooks of `FromRequest`, `IntoResponse`, `Fang (Action)`
+- put `tag`s for grouping operations by `openapi::Tag` fang
 
 ```rust,ignore
-use ohkami::prelude::*;
-use ohkami::typed::status;
+use ohkami::{Ohkami, Route};
+use ohkami::claw::{Json, status};
 use ohkami::openapi;
 
 // Derive `Schema` trait to generate
@@ -223,9 +375,9 @@ struct User {
 }
 
 async fn create_user(
-    JSON(CreateUser { name }): JSON<CreateUser<'_>>
-) -> status::Created<JSON<User>> {
-    status::Created(JSON(User {
+    Json(CreateUser { name }): Json<CreateUser<'_>>
+) -> status::Created<Json<User>> {
+    status::Created(Json(User {
         id: 42,
         name: name.to_string()
     }))
@@ -239,8 +391,8 @@ async fn create_user(
 })]
 /// This doc comment is used for the
 /// `description` field of OpenAPI document
-async fn list_users() -> JSON<Vec<User>> {
-    JSON(vec![])
+async fn list_users() -> Json<Vec<User>> {
+    Json(vec![])
 }
 
 #[tokio::main]
@@ -269,21 +421,102 @@ async fn main() {
 - When the binary size matters, you should prepare a feature flag activating `ohkami/openapi` in your package, and put all your codes around `openapi` behind that feature via `#[cfg(feature = ...)]` or `#[cfg_attr(feature = ...)]`.
 - In `rt_worker`, `.generate` is not available because `Ohkami` can't have access to your local filesystem by `wasm32` binary on Minifalre. So ohkami provides [a CLI tool](./scripts/workers_openapi.js) to generate document from `#[ohkami::worker] Ohkami` with `openapi` feature.
 
+### `"tls"`
+
+HTTPS support up on [rustls](https://github.com/rustls) ecosystem.
+
+- Call `howls` ( as `https` to `http`, `wss` to `ws` ) instead of `howl` to run with TLS.
+- You must prepare your own certificate and private key files.
+- Currently, only HTTP/1.1 over TLS is supported.
+
+Example :
+
+```sh
+$ openssl req -x509 -newkey rsa:4096 -nodes -keyout server.key -out server.crt -days 365 -subj "/CN=localhost"
+```
+
+```toml
+[dependencies]
+ohkami = { version = "0.24", features = ["rt_tokio", "tls"] }
+tokio  = { version = "1",    features = ["full"] }
+rustls = { version = "0.23", features = ["ring"] }
+rustls-pemfile = "2.2"
+```
+
+```rust,no_run
+use ohkami::{Ohkami, Route};
+use rustls::ServerConfig;
+use rustls::pki_types::{CertificateDer, PrivateKeyDer};
+use std::fs::File;
+use std::io::BufReader;
+
+async fn hello() -> &'static str {
+    "Hello, secure ohkami!"
+}
+
+#[tokio::main]
+async fn main() -> std::io::Result<()> {
+    // Initialize rustls crypto provider
+    rustls::crypto::ring::default_provider().install_default()
+        .expect("Failed to install rustls crypto provider");
+
+    // Load certificates and private key
+    let cert_file = File::open("server.crt")?;
+    let key_file = File::open("server.key")?;
+    
+    let cert_chain = rustls_pemfile::certs(&mut BufReader::new(cert_file))
+        .map(|cd| cd.map(CertificateDer::from))
+        .collect::<Result<Vec<_>, _>>()?;
+    
+    let key = rustls_pemfile::read_one(&mut BufReader::new(key_file))?
+        .map(|p| match p {
+            rustls_pemfile::Item::Pkcs1Key(k) => PrivateKeyDer::Pkcs1(k),
+            rustls_pemfile::Item::Pkcs8Key(k) => PrivateKeyDer::Pkcs8(k),
+            _ => panic!("Unexpected private key type"),
+        })
+        .expect("Failed to read private key");
+
+    // Build TLS configuration
+    let tls_config = ServerConfig::builder()
+        .with_no_client_auth()
+        .with_single_cert(cert_chain, key)
+        .expect("Failed to build TLS configuration");
+
+    // Create and run Ohkami with HTTPS
+    Ohkami::new((
+        "/".GET(hello),
+    )).howls("0.0.0.0:8443", tls_config).await;
+    
+    Ok(())
+}
+```
+
+```sh
+$ cargo run
+```
+
+```sh
+$ curl https://localhost:8443 --insecure  # for self-signed certificate
+Hello, secure ohkami!
+```
+
+For localhost-testing with browser (or `curl` without `--insecure`),
+[`mkcert`](https://github.com/FiloSottile/mkcert) is highly recommended.
+
 ### `"nightly"` : nightly-only functionalities
 
 - try response
+- internal performance optimizations
 
 <br>
 
 ## Snippets
 
-### Typed payload
-
-*builtin payload* : `JSON`, `Text`, `HTML`, `URLEncoded`, `Multipart`
+### Typed content
 
 ```rust
-use ohkami::prelude::*;
-use ohkami::typed::status;
+use ohkami::claw::{Json, status};
+use ohkami::serde::{Deserialize, Serialize};
 
 /* Deserialize for request */
 #[derive(Deserialize)]
@@ -299,9 +532,9 @@ struct User {
 }
 
 async fn create_user(
-    JSON(req): JSON<CreateUserRequest<'_>>
-) -> status::Created<JSON<User>> {
-    status::Created(JSON(
+    Json(req): Json<CreateUserRequest<'_>>
+) -> status::Created<Json<User>> {
+    status::Created(Json(
         User {
             name: String::from(req.name)
         }
@@ -312,7 +545,9 @@ async fn create_user(
 ### Typed params
 
 ```rust,no_run
-use ohkami::prelude::*;
+use ohkami::{Ohkami, Route};
+use ohkami::claw::{Path, Query, Json};
+use ohkami::serde::{Deserialize, Serialize};
 
 #[tokio::main]
 async fn main() {
@@ -326,11 +561,13 @@ async fn main() {
     )).howl("localhost:5000").await
 }
 
-async fn hello(name: &str) -> String {
+async fn hello(Path(name): Path<&str>) -> String {
     format!("Hello, {name}!")
 }
 
-async fn hello_n((name, n): (&str, usize)) -> String {
+async fn hello_n(
+    Path((name, n)): Path<(&str, usize)>
+) -> String {
     vec![format!("Hello, {name}!"); n].join(" ")
 }
 
@@ -348,8 +585,8 @@ struct SearchResult {
 
 async fn search(
     Query(query): Query<SearchQuery<'_>>
-) -> JSON<Vec<SearchResult>> {
-    JSON(vec![
+) -> Json<Vec<SearchResult>> {
+    Json(vec![
         SearchResult { title: String::from("ohkami") },
     ])
 }
@@ -357,17 +594,8 @@ async fn search(
 
 ### Middlewares
 
-Ohkami's request handling system is called "**fang**s", and middlewares are implemented on this.
-
-*builtin fang* :
-
-- `Context` *( typed interaction with reuqest context )*
-- `CORS`, `JWT`, `BasicAuth`
-- `Timeout` *( native runtime )*
-- `Enamel` *( experimantal; security headers )*
-
 ```rust,no_run
-use ohkami::prelude::*;
+use ohkami::{Ohkami, Route, FangAction, Request, Response};
 
 #[derive(Clone)]
 struct GreetingFang(usize);
@@ -388,9 +616,8 @@ impl FangAction for GreetingFang {
 #[tokio::main]
 async fn main() {
     Ohkami::new((
-        // register fangs to a Ohkami
+        // register *global fangs* to an Ohkami
         GreetingFang(1),
-        
         "/hello"
             .GET(|| async {"Hello, fangs!"})
             .POST((
@@ -405,8 +632,9 @@ async fn main() {
 ### Database connection management with `Context`
 
 ```rust,no_run
-use ohkami::prelude::*;
-use ohkami::typed::status;
+use ohkami::{Ohkami, Route};
+use ohkami::claw::status;
+use ohkami::fang::Context;
 use sqlx::postgres::{PgPoolOptions, PgPool};
 
 #[tokio::main]
@@ -430,25 +658,79 @@ async fn create_user(
 }
 ```
 
+### Typed errors
+
+```rust,no_run
+use ohkami::{Response, IntoResponse};
+use ohkami::claw::{Path, Json};
+use ohkami::serde::Serialize;
+use ohkami::fang::Context;
+
+enum MyError {
+    Sqlx(sqlx::Error),
+}
+impl IntoResponse for MyError {
+    fn into_response(self) -> Response {
+        match self {
+            Self::Sqlx(e) => Response::InternalServerError(),
+        }
+    }
+}
+
+#[derive(Serialize)]
+struct User {
+    id: u32,
+    name: String,
+}
+
+async fn get_user(
+    Path(id): Path<u32>,
+    Context(pool): Context<'_, sqlx::PgPool>,
+) -> Result<Json<User>, MyError> {
+    let sql = r#"
+        SELECT name FROM users WHERE id = $1
+    "#;
+    let name = sqlx::query_scalar::<_, String>(sql)
+        .bind(id as i64)
+        .fetch_one(pool)
+        .await
+        .map_err(MyError::Sqlx)?;
+
+    Ok(Json(User { id, name }))
+}
+```
+
+[thiserror](https://crates.io/crates/thiserror) may improve such error conversion:
+
+```rust,ignore
+    let name = sqlx::query_salor_as::<_, String>(sql)
+        .bind(id)
+        .fetch_one(pool)
+        // .await
+        // .map_err(MyError::Sqlx)?;
+        .await?;
+```
+
 ### Static directory serving
 
 ```rust,no_run
-use ohkami::prelude::*;
+use ohkami::{Ohkami, Route};
 
 #[tokio::main]
 async fn main() {
     Ohkami::new((
-        "/".Dir("./dist"),
+        "/".Mount("./dist"),
     )).howl("0.0.0.0:3030").await
 }
 ```
 
 ### File upload
 
+`Multipart` built-in claw and `File` helper:
+
 ```rust,no_run
-use ohkami::prelude::*;
-use ohkami::typed::status;
-use ohkami::format::{Multipart, File};
+use ohkami::claw::{status, content::{Multipart, File}};
+use ohkami::serde::Deserialize;
 
 #[derive(Deserialize)]
 struct FormData<'req> {
@@ -477,24 +759,25 @@ async fn post_submit(
 ### Pack of Ohkamis
 
 ```rust,no_run
-use ohkami::prelude::*;
-use ohkami::typed::status;
+use ohkami::{Ohkami, Route};
+use ohkami::claw::{Json, status};
+use serde::Serialize;
 
 #[derive(Serialize)]
 struct User {
     name: String
 }
 
-async fn list_users() -> JSON<Vec<User>> {
-    JSON(vec![
+async fn list_users() -> Json<Vec<User>> {
+    Json(vec![
         User { name: String::from("actix") },
         User { name: String::from("axum") },
         User { name: String::from("ohkami") },
     ])
 }
 
-async fn create_user() -> status::Created<JSON<User>> {
-    status::Created(JSON(User {
+async fn create_user() -> status::Created<Json<User>> {
+    status::Created(Json(User {
         name: String::from("ohkami web framework")
     }))
 }
@@ -525,7 +808,7 @@ async fn main() {
 ### Testing
 
 ```rust
-use ohkami::prelude::*;
+use ohkami::{Ohkami, Route};
 use ohkami::testing::*; // <--
 
 fn hello_ohkami() -> Ohkami {
@@ -550,6 +833,102 @@ async fn test_my_ohkami() {
 }
 ```
 
+### DI by generics
+
+```rust,no_run
+use ohkami::{Ohkami, Route, Response, IntoResponse};
+use ohkami::claw::{Json, Path};
+use ohkami::fang::Context;
+use ohkami::serde::Serialize;
+
+//////////////////////////////////////////////////////////////////////
+/// errors
+
+enum MyError {
+    Sqlx(sqlx::Error),
+}
+impl IntoResponse for MyError {
+    fn into_response(self) -> Response {
+        match self {
+            Self::Sqlx(e) => Response::InternalServerError(),
+        }
+    }
+}
+
+//////////////////////////////////////////////////////////////////////
+/// repository
+
+trait UserRepository: Send + Sync + 'static {
+    fn get_user_by_id(
+        &self,
+        id: i64,
+    ) -> impl Future<Output = Result<UserRow, MyError>> + Send;
+}
+
+#[derive(sqlx::FromRow)]
+struct UserRow {
+    id: i64,
+    name: String,
+}
+
+#[derive(Clone)]
+struct PostgresUserRepository(sqlx::PgPool);
+impl UserRepository for PostgresUserRepository {
+    async fn get_user_by_id(&self, id: i64) -> Result<UserRow, MyError> {
+        let sql = r#"
+            SELECT id, name FROM users WHERE id = $1
+        "#;
+        sqlx::query_as::<_, UserRow>(sql)
+            .bind(id)
+            .fetch_one(&self.0)
+            .await
+            .map_err(MyError::Sqlx)
+    }
+}
+
+//////////////////////////////////////////////////////////////////////
+/// routes
+
+#[derive(Serialize)]
+struct User {
+    id: u32,
+    name: String,
+}
+
+async fn get_user<R: UserRepository>(
+    Path(id): Path<u32>,
+    Context(r): Context<'_, R>,
+) -> Result<Json<User>, MyError> {
+    let user_row = r.get_user_by_id(id as i64).await?;
+
+    Ok(Json(User {
+        id: user_row.id as u32,
+        name: user_row.name,
+    }))
+}
+
+fn users_ohkami<R: UserRepository>() -> Ohkami {
+    Ohkami::new((
+        "/:id".GET(get_user::<R>),
+    ))
+}
+
+//////////////////////////////////////////////////////////////////////
+/// entry point
+
+#[tokio::main]
+async fn main() {
+    let pool = sqlx::PgPool::connect("postgres://ohkami:password@localhost:5432/db")
+        .await
+        .expect("failed to connect to database");
+    
+    Ohkami::new((
+        Context::new(PostgresUserRepository(pool)),
+        "/users".By(users_ohkami::<PostgresUserRepository>()),
+    )).howl("0.0.0.0:4040").await
+}
+```
+
 <br>
 
 ## Supported protocols
@@ -557,7 +936,7 @@ async fn test_my_ohkami() {
 - [x] HTTP/1.1
 - [ ] HTTP/2
 - [ ] HTTP/3
-- [ ] HTTPS
+- [x] HTTPS
 - [x] Server-Sent Events
 - [x] WebSocket
 
@@ -567,4 +946,4 @@ Latest stable
 
 ## License
 
-ohkami is licensed under MIT LICENSE ( [LICENSE](https://github.com/ohkami-rs/ohkami/blob/main/LICENSE) or [https://opensource.org/licenses/MIT](https://opensource.org/licenses/MIT) ).
+Ohkami is licensed under MIT LICENSE ( [LICENSE](https://github.com/ohkami-rs/ohkami/blob/main/LICENSE) or [https://opensource.org/licenses/MIT](https://opensource.org/licenses/MIT) ).

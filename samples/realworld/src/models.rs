@@ -1,5 +1,5 @@
 use ohkami::serde::{Serialize, Deserialize};
-use ohkami::fang::JWTToken;
+use ohkami::fang::JwtToken;
 use chrono::{DateTime, Utc};
 
 pub mod request;
@@ -34,7 +34,7 @@ mod serde_datetime {
 pub struct User {
     pub email: String,
     #[serde(rename = "token")]
-    pub jwt:   JWTToken,
+    pub jwt:   JwtToken,
     #[serde(rename = "username")]
     pub name:  String,
     pub bio:   Option<String>,

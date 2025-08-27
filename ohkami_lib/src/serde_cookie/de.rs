@@ -79,7 +79,7 @@ impl<'de> CookieDeserializer<'de> {
         let ptr = self.input.as_ptr();
 
         // SAFETY: Caller has to check that `0 <= mid <= self.len()`
-        let (take, remaining) = (from_raw_parts(ptr, n), from_raw_parts(ptr.add(n), len - n));
+        let (take, remaining) = unsafe {(from_raw_parts(ptr, n), from_raw_parts(ptr.add(n), len - n))};
         self.input = remaining;
 
         take

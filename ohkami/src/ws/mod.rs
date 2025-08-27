@@ -12,7 +12,7 @@ pub use self::worker::*;
 
 /// # Context for WebSocket handshake
 /// 
-/// `.upgrade` performs handshake and creates a WebSocket session.
+/// `.upgrade(~)` performs handshake and creates a WebSocket session.
 /// 
 /// ### note
 /// 
@@ -43,17 +43,17 @@ impl<'req> crate::FromRequest<'req> for WebSocketContext<'req> {
 
     #[inline]
     fn from_request(req: &'req crate::Request) -> Option<Result<Self, Self::Error>> {
-        if !matches!(req.headers.Connection()?, "Upgrade" | "upgrade") {
+        if !matches!(req.headers.connection()?, "Upgrade" | "upgrade") {
             return Some(Err((|| crate::Response::BadRequest().with_text("upgrade request must have `Connection: Upgrade`"))()))
         }
-        if !(req.headers.Upgrade()?.eq_ignore_ascii_case("websocket")) {
+        if !(req.headers.upgrade()?.eq_ignore_ascii_case("websocket")) {
             return Some(Err((|| crate::Response::BadRequest().with_text("upgrade request must have `Upgrade: websocket`"))()))
         }
-        if !(req.headers.SecWebSocketVersion()? == "13") {
+        if !(req.headers.sec_websocket_version()? == "13") {
             return Some(Err((|| crate::Response::BadRequest().with_text("upgrade request must have `Sec-WebSocket-Version: 13`"))()))
         }
 
-        req.headers.SecWebSocketKey().map(|sec_websocket_key|
+        req.headers.sec_websocket_key().map(|sec_websocket_key|
             Ok(Self { sec_websocket_key })
         )
     }
@@ -63,4 +63,9 @@ impl<'req> WebSocketContext<'req> {
     pub fn new(sec_websocket_key: &'req str) -> Self {
         Self { sec_websocket_key }
     }
+    
+    /*
+        `.upgrade(~)` and something are implemented in
+        `native` or `worker` submodule
+    */
 }

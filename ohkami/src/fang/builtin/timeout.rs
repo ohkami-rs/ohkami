@@ -14,25 +14,27 @@ use std::time::Duration;
 /// ---
 /// *example.rs*
 /// ```no_run
-/// use ohkami::prelude::*;
-/// use ohkami::fang::Timeout;
+/// use ohkami::{Ohkami, Route};
+/// use ohkami::{claw::Path, fang::Timeout};
 /// use std::time::Duration;
 /// 
 /// #[tokio::main]
 /// async fn main() {
-///     Ohkami::new((Timeout::by_secs(10),
+///     Ohkami::new((
+///         Timeout::by_secs(10),
 ///         "/hello/:sleep".GET(sleeping_hello),
 ///     )).howl("0.0.0.0:3000").await
 /// }
 /// 
-/// async fn sleeping_hello(sleep: u64) -> &'static str {
+/// async fn sleeping_hello(
+///     Path(sleep): Path<u64>
+/// ) -> &'static str {
 ///     tokio::time::sleep(Duration::from_secs(sleep)).await;
-///     
 ///     "Hello, I was sleeping ):"
 /// }
 /// ```
 /// ---
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct Timeout(Duration);
 impl Timeout {
     pub fn by(duration: Duration) -> Self {
@@ -68,7 +70,7 @@ const _: () = {
     }
     impl<Inner: FangProc> FangProc for TimeoutProc<Inner> {
         async fn bite<'b>(&'b self, req: &'b mut Request) -> Response {
-            crate::util::timeout_in(self.time, self.inner.bite(req)).await
+            crate::util::with_timeout(self.time, self.inner.bite(req)).await
                 .unwrap_or_else(|| Response::InternalServerError().with_text("timeout"))
         }
     }
@@ -81,7 +83,7 @@ const _: () = {
     use crate::testing::*;
 
     async fn lazy_greeting(
-        (name, sleep): (&str, u64)
+        Path((name, sleep)): Path<(&str, u64)>
     ) -> String {
         crate::__rt__::sleep(Duration::from_secs(sleep)).await;
 

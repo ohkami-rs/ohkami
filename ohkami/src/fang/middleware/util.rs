@@ -70,49 +70,48 @@ use crate::openapi;
 pub trait FangAction: Clone + SendSyncOnNative + 'static {
     // Here not using `-> impl SendOnNativeFuture` for
     // rust-analyzer's completion.
-    // Currently rust-analyzer can complete `-> Future` methods
-    // as `async fn ...` **only when** it returns exactly one of:
-    // 
-    // * `-> impl Future<Output = T>`
-    // * `-> impl Future<Output = T> + Send`
-    // * `-> impl Future<Output = T> + Send + 'lifetime`
-    // 
-    // so `-> impl SendOnNativeFuture<T>` prevents his completion...
+    // Currently rust-analyzer can perform completion for `-> impl Future` methods
+    // as `async fn ...` **only when** it returns exactly `impl Future (+ something)*`,
+    // and he can't do it for `-> impl SendOnNativeFuture<T>`.
 
-    #[cfg(any(feature="rt_worker",))]
     /// *fore fang*, that bites a request before a handler.
     /// 
     /// ### default
     /// just return `Ok(())`
+    #[cfg(any(feature="rt_worker",))]
     #[allow(unused_variables)]
+    #[inline(always)]
     fn fore<'a>(&'a self, req: &'a mut Request) -> impl Future<Output = Result<(), Response>> {
         async {Ok(())}
     }
-    #[cfg(not(any(feature="rt_worker",)))]
     /// *fore fang*, that bites a request before a handler.
     /// 
     /// ### default
     /// just return `Ok(())`
+    #[cfg(not(any(feature="rt_worker",)))]
     #[allow(unused_variables)]
+    #[inline(always)]
     fn fore<'a>(&'a self, req: &'a mut Request) -> impl Future<Output = Result<(), Response>> + Send {
         async {Ok(())}
     }
 
-    #[cfg(any(feature="rt_worker",))]
     /// *back fang*, that bites a generated response.
     /// 
     /// ### default
     /// just return `()`
+    #[cfg(any(feature="rt_worker",))]
     #[allow(unused_variables)]
+    #[inline(always)]
     fn back<'a>(&'a self, res: &'a mut Response) -> impl Future<Output = ()> {
         async {}
     }
-    #[cfg(not(any(feature="rt_worker",)))]
     /// *back fang*, that bites a generated response.
     /// 
     /// ### default
     /// just return `()`
+    #[cfg(not(any(feature="rt_worker",)))]
     #[allow(unused_variables)]
+    #[inline(always)]
     fn back<'a>(&'a self, res: &'a mut Response) -> impl Future<Output = ()> + Send {
         async {}
     }

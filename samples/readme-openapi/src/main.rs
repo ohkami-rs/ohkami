@@ -1,17 +1,15 @@
 use ohkami::prelude::*;
-use ohkami::typed::status;
+use ohkami::claw::status;
 use ohkami::openapi;
 
-// Derive `Schema` trait to generate
-// the schema of this struct in OpenAPI document.
+// Derive `Schema` trait to generate the schema of this struct in OpenAPI document.
 #[derive(Deserialize, openapi::Schema)]
 struct CreateUser<'req> {
     name: &'req str,
 }
 
 #[derive(Serialize, openapi::Schema)]
-// `#[openapi(component)]` to define it as component
-// in OpenAPI document.
+// `#[openapi(component)]` to define it as component in OpenAPI document.
 #[openapi(component)]
 struct User {
     id: usize,
@@ -19,24 +17,23 @@ struct User {
 }
 
 async fn create_user(
-    JSON(CreateUser { name }): JSON<CreateUser<'_>>
-) -> status::Created<JSON<User>> {
-    status::Created(JSON(User {
+    Json(CreateUser { name }): Json<CreateUser<'_>>
+) -> status::Created<Json<User>> {
+    status::Created(Json(User {
         id: 42,
         name: name.to_string()
     }))
 }
 
-// (optionally) Set operationId, summary,
-// or override descriptions by `operation` attribute.
+// (optionally) Set operationId, summary, or override descriptions by `operation` attribute.
 #[openapi::operation({
     summary: "...",
     200: "List of all users",
 })]
 /// This doc comment is used for the
 /// `description` field of OpenAPI document
-async fn list_users() -> JSON<Vec<User>> {
-    JSON(vec![])
+async fn list_users() -> Json<Vec<User>> {
+    Json(vec![])
 }
 
 #[tokio::main]
@@ -47,8 +44,7 @@ async fn main() {
             .POST(create_user),
     ));
 
-    // This make your Ohkami spit out `openapi.json`
-    // ( the file name is configurable by `.generate_to` ).
+    // This make your Ohkami spit out `openapi.json` ( the file name is configurable by `.generate_to` ).
     o.generate(openapi::OpenAPI {
         title: "Users Server",
         version: "0.1.0",

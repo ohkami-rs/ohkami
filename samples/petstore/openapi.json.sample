@@ -73,6 +73,9 @@
               }
             }
           },
+          "500": {
+            "description": "an internal error"
+          },
           "default": {
             "description": "Unexpected error",
             "content": {
@@ -106,7 +109,8 @@
             "in": "path",
             "name": "petId",
             "schema": {
-              "type": "integer"
+              "type": "integer",
+              "format": "uint64"
             },
             "required": true
           }
@@ -141,7 +145,8 @@
             "in": "path",
             "name": "petId",
             "schema": {
-              "type": "integer"
+              "type": "integer",
+              "format": "uint64"
             },
             "required": true
           }
@@ -177,7 +182,8 @@
             "type": "string"
           },
           "statusCode": {
-            "type": "integer"
+            "type": "integer",
+            "format": "uint16"
           }
         },
         "required": [
@@ -189,7 +195,8 @@
         "type": "object",
         "properties": {
           "id": {
-            "type": "integer"
+            "type": "integer",
+            "format": "uint64"
           },
           "name": {
             "type": "string"

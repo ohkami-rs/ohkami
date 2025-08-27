@@ -1,6 +1,6 @@
 [package]
 name          = "ohkami_openapi"
-description   = "OpenAPI types for Ohkami - intuitive and declarative web framework"
+description   = "OpenAPI types for Ohkami - A performant, declarative, and runtime-flexible web framework for Rust"
 documentation = "https://docs.rs/ohkami_openapi"
 version       = { workspace = true }
 edition       = { workspace = true }
@@ -15,6 +15,9 @@ license       = { workspace = true }
 [dependencies]
 serde      = { workspace = true }
 serde_json = { workspace = true }
+
+# for built-in utility impl of `Schema` trait
+uuid = { version = "1.17" }
 
 [features]
 no-release-serialize = []

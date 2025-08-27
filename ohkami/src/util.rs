@@ -1,12 +1,47 @@
 #[doc(hidden)]
 #[macro_export]
-macro_rules! warning {
+macro_rules! INFO {
     ( $( $t:tt )* ) => {{
-        eprintln!( $( $t )* );
-
+        #[cfg(not(feature = "rt_worker"))]
+        std::println!("[ohkami:INFO] {}", format_args!($($t)*));
         #[cfg(feature="rt_worker")]
-        worker::console_log!( $( $t )* );
+        worker::console_info!("[ohkami:INFO] {}", format_args!($($t)*));
     }};
+}
+
+#[doc(hidden)]
+#[macro_export]
+macro_rules! WARNING {
+    ( $( $t:tt )* ) => {{
+        #[cfg(not(feature = "rt_worker"))]
+        std::println!("[ohkami:WARNING] {}", format_args!($($t)*));
+        #[cfg(feature="rt_worker")]
+        worker::console_warn!("[ohkami:WARNING] {}", format_args!($($t)*));
+    }};
+}
+
+#[doc(hidden)]
+#[macro_export]
+macro_rules! ERROR {
+    ( $($t:tt)* ) => {{
+        #[cfg(not(feature = "rt_worker"))]
+        std::eprintln!("[ohkami:ERROR] {}", format_args!($($t)*));
+        #[cfg(feature="rt_worker")]
+        worker::console_error!("[ohkami:ERROR] {}", format_args!($($t)*));
+    }};
+}
+
+#[doc(hidden)]
+#[macro_export]
+macro_rules! DEBUG {
+    ( $( $t:tt )* ) => {
+        #[cfg(feature="DEBUG")] {
+            #[cfg(not(feature = "rt_worker"))]
+            std::println!("[ohkami:DEBUG] {}:{}:{} {}", file!(), line!(), column!(), format_args!($($t)*));
+            #[cfg(feature="rt_worker")]
+            worker::console_debug!("[ohkami:DEBUG] {}:{}:{} {}", file!(), line!(), column!(), format_args!($($t)*));
+        }
+    };
 }
 
 #[doc(hidden)]
@@ -23,19 +58,6 @@ macro_rules! push_unchecked {
             $buf.set_len(buf_len + bytes_len);
         }
     };
-}
-
-#[doc(hidden)]
-#[macro_export]
-macro_rules! DEBUG {
-    ( $( $t:tt )* ) => {{
-        #[cfg(feature="DEBUG")] {
-            eprintln!( $( $t )* );
-
-            #[cfg(feature="rt_worker")]
-            worker::console_debug!( $( $t )* );
-        }
-    }};
 }
 
 pub use crate::fang::FangAction;
@@ -157,7 +179,7 @@ const _: () = {
 };
 
 #[cfg(feature="__rt_native__")]
-pub fn timeout_in<T>(
+pub fn with_timeout<T>(
     duration: std::time::Duration,
     proc:     impl std::future::Future<Output = T>
 ) -> impl std::future::Future<Output = Option<T>> {

@@ -6,10 +6,9 @@ use error::APIError;
 use fang::{TokenAuth, TokenAuthed, Logger};
 use model::*;
 
-use ohkami::prelude::*;
-use ohkami::fang::BasicAuth;
-use ohkami::typed::status;
-use ohkami::format::JSON;
+use ohkami::{Ohkami, Route};
+use ohkami::fang::{BasicAuth, Context};
+use ohkami::claw::{status, Path, Json};
 
 #[ohkami::bindings]
 struct Bindings;
@@ -18,14 +17,6 @@ struct Bindings;
 pub fn ohkami() -> Ohkami {
     #[cfg(debug_assertions)]
     console_error_panic_hook::set_once();
-
-    let openapi_doc_server_ohkami = Ohkami::new((
-        BasicAuth {
-            username: "ohkami",
-            password: Bindings::OPENAPI_DOC_PASSWORD
-        },
-        "/".GET(|| async {include_str!("../openapi.json")})
-    ));
 
     let api_ohkami = Ohkami::new((
         "/users"
@@ -41,24 +32,29 @@ pub fn ohkami() -> Ohkami {
 
     Ohkami::new((
         Logger,
-        "/openapi.json".By(openapi_doc_server_ohkami),
+        "/openapi.json".GET((
+            BasicAuth { username: "ohkami", password: Bindings::OPENAPI_DOC_PASSWORD },
+            async || include_str!("../openapi.json")
+        )),
         "/api".By(api_ohkami)
     ))
 }
 
-async fn show_user_profile(id: ID,
+async fn show_user_profile(
+    Path(id): Path<ID>,
     Bindings { DB, .. }: Bindings,
-) -> Result<JSON<UserProfile>, APIError> {
+) -> Result<Json<UserProfile>, APIError> {
     let user_proifle = DB.prepare("SELECT id, name, location, age FROM users WHERE id = ?")
         .bind(&[id.into()])?
         .first::<UserProfile>(None).await?
         .ok_or(APIError::UserNotFound { id })?;
     
-    Ok(JSON(user_proifle))
+    Ok(Json(user_proifle))
 }
 
-async fn edit_profile(id: ID,
-    JSON(req): JSON<EditProfileRequest<'_>>,
+async fn edit_profile(
+    Path(id): Path<ID>,
+    Json(req): Json<EditProfileRequest<'_>>,
     Context(TokenAuthed { user_id, .. }): Context<'_, TokenAuthed>,
     Bindings { DB, .. }: Bindings,
 ) -> Result<(), APIError> {
@@ -95,18 +91,18 @@ async fn edit_profile(id: ID,
 
 async fn list_users(
     Bindings { DB, .. }: Bindings,
-) -> Result<JSON<Vec<UserProfile>>, APIError> {
+) -> Result<Json<Vec<UserProfile>>, APIError> {
     let users = DB.prepare("SELECT id, name, location, age FROM users ORDER BY id")
         .all().await?
         .results::<UserProfile>()?;
 
-    Ok(JSON(users))
+    Ok(Json(users))
 }
 
 async fn sign_up(
-    JSON(req): JSON<SignUpRequest<'_>>,
+    Json(req): Json<SignUpRequest<'_>>,
     Bindings { DB, .. }: Bindings,
-) -> Result<status::Created<JSON<UserProfile>>, APIError> {
+) -> Result<status::Created<Json<UserProfile>>, APIError> {
     let already_used = DB.prepare("SELECT EXISTS (SELECT id FROM users WHERE name = ?) as e")
         .bind(&[req.name.into()])?
         .first::<u8>(Some("e")).await?;
@@ -124,7 +120,7 @@ async fn sign_up(
             req.token
         )))?;
     
-    Ok(status::Created(JSON(UserProfile {
+    Ok(status::Created(Json(UserProfile {
         id,
         name:     req.name.into(),
         location: None,
@@ -134,7 +130,7 @@ async fn sign_up(
 
 async fn list_tweets(
     Bindings { DB, .. }: Bindings
-) -> Result<JSON<Vec<Tweet>>, APIError> {
+) -> Result<Json<Vec<Tweet>>, APIError> {
     let tweets = DB.prepare("\
         SELECT \
             t.user_id, \
@@ -150,21 +146,21 @@ async fn list_tweets(
             t.posted_at \
     ").all().await?.results::<Tweet>()?;
 
-    Ok(JSON(tweets))
+    Ok(Json(tweets))
 }
 
 async fn post_tweet(
-    JSON(req): JSON<PostTweetRequest<'_>>,
+    Json(req): Json<PostTweetRequest<'_>>,
     Context(TokenAuthed { user_id, user_name }): Context<'_, TokenAuthed>,
     Bindings { DB, .. }: Bindings,
-) -> Result<status::Created<JSON<Tweet>>, APIError> {
+) -> Result<status::Created<Json<Tweet>>, APIError> {
     let timestamp = crate::model::timestamp_now();
 
     DB.prepare("INSERT INTO tweets (user_id, content, posted_at) VALUES (?, ?, ?)")
         .bind(&[(*user_id).into(), req.content.into(), (&*timestamp).into()])?
         .run().await?;
 
-    Ok(status::Created(JSON(Tweet {
+    Ok(status::Created(Json(Tweet {
         user_id:   *user_id,
         user_name: user_name.into(),
         content:   req.content.into(),

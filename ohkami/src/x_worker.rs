@@ -2,6 +2,48 @@
 
 pub use ::ohkami_macros::{worker, bindings, DurableObject};
 
+pub trait FromEnv: Sized {
+    fn from_env(env: &worker::Env) -> Result<Self, worker::Error>;
+
+    #[doc(hidden)]
+    /// list of bindings: `(BindingName, Option<BindingType>)`
+    /// 
+    /// `Option<BindingType>` is `None` for KV binding and `Some` holding :
+    /// 
+    /// - `"String"` for Variable binding (ref: https://github.com/cloudflare/workers-rs/blob/38af58acc4e54b29c73336c1720188f3c3e86cc4/worker/src/env.rs#L138-L140)
+    /// - `"Ai"` for AI binding (ref: https://github.com/cloudflare/workers-rs/blob/38af58acc4e54b29c73336c1720188f3c3e86cc4/worker/src/ai.rs#L63-L79)
+    /// - `"R2Bucket"` for R2 binding (ref: https://github.com/cloudflare/workers-rs/blob/38af58acc4e54b29c73336c1720188f3c3e86cc4/worker/src/r2/mod.rs#L131-L133)
+    /// - `"Fetcher"` for Service binding (ref: https://github.com/cloudflare/workers-rs/blob/38af58acc4e54b29c73336c1720188f3c3e86cc4/worker/src/fetcher.rs#L94-L96)
+    /// - `"DurableObjectNamespace"` for DurableObject binding (ref: https://github.com/cloudflare/workers-rs/blob/38af58acc4e54b29c73336c1720188f3c3e86cc4/worker/src/durable.rs#L742-L744)
+    /// - `"D1Database"` for D1 binding (ref: https://github.com/cloudflare/workers-rs/blob/38af58acc4e54b29c73336c1720188f3c3e86cc4/worker/src/d1/mod.rs#L83-L101)
+    /// - `"Hyperdrive"` for Hyperdrive binding (ref: https://github.com/cloudflare/workers-rs/blob/3e4d7cd2b511b39994be0ad111554c773405d3e4/worker/src/hyperdrive.rs#L12-L14)
+    /// - `"WorkerQueue"` for Queue binding (ref: https://github.com/cloudflare/workers-rs/blob/3e4d7cd2b511b39994be0ad111554c773405d3e4/worker/src/queue.rs#L318-L320)
+    fn bindings_meta() -> &'static [(&'static str, Option<&'static str>)] {
+        &[]
+    }
+    #[doc(hidden)]
+    fn dummy_env() -> worker::Env {
+        use worker::wasm_bindgen::{JsCast, closure::Closure};
+        use worker::js_sys::{Object, Reflect, Function};
+
+        let env = Object::new();
+        for (binding_name, binding_type) in Self::bindings_meta() {
+            let binding = Object::new();
+            if let Some(binding_type) = binding_type {
+                let constructor = Function::unchecked_from_js(Closure::<dyn Fn()>::new(|| {}).into_js_value());
+                {
+                    let attributes = Object::new();
+                    Reflect::set(&attributes, &"value".into(), &(*binding_type).into()).unwrap();
+                    Reflect::define_property(&constructor, &"name".into(), &attributes).unwrap();
+                }
+                Reflect::set(&binding, &"constructor".into(), &constructor).unwrap();
+            }
+            Reflect::set(&env, &(*binding_name).into(), &binding).unwrap();
+        }
+        worker::Env::unchecked_from_js(env.unchecked_into())
+    }
+}
+
 pub mod bindings {
     /// `Var` binding can also be accessed via associated const
     /// of the same name.
@@ -12,6 +54,7 @@ pub mod bindings {
     pub type Service       = ::worker::Fetcher;
     pub type DurableObject = ::worker::ObjectNamespace;
     pub type D1            = ::worker::d1::D1Database;
+    pub type Hyperdrive    = ::worker::Hyperdrive;
     /// `Queue` may cause a lot of *WARNING*s on `npm run dev`, but
     /// it's not an actual problem and `Queue` binding does work.
     pub type Queue         = ::worker::Queue;

@@ -17,7 +17,7 @@ tasks:
   test:core:
     deps:
       - task: test:no_rt
-      - for:  [tokio, async-std, smol, nio, glommio, lambda, worker]
+      - for:  [tokio, smol, nio, glommio, lambda, worker]
         task: test:rt
         vars: { rt: '{{.ITEM}}' }
   test:other:
@@ -30,23 +30,23 @@ tasks:
   check:
     deps:
       - task: check:no_rt
-      - for:  [tokio, async-std, smol, nio, glommio, lambda]
-        task: check:rt-native_target
+      - for:  [tokio, smol, nio, glommio, lambda]
+        task: check:rt-native
         vars: { rt: '{{.ITEM}}' }
       - task: check:rt_worker
 
   bench:dryrun:
     status:
-      - (! cargo version | grep -q 'nightly')
+      - '[ "{{.maybe_nightly}}" != nightly ]' # skip if not nightly
     cmds:
       - cd benches && cargo bench --features DEBUG --no-run
       - cd benches_rt/vs_actix-web && cargo check
-      - for: [tokio, async-std, smol, nio, glommio]
+      - for: [tokio, smol, nio, glommio]
         cmd: cd benches_rt/{{.ITEM}} && cargo check
 
   bench:
     status:
-      - (! cargo version | grep -q 'nightly')
+      - '[ "{{.maybe_nightly}}" != nightly ]' # skip if not nightly
     dir: ./benches
     cmds:
       - task: bench:dryrun
@@ -61,13 +61,14 @@ tasks:
   test:doc:
     dir: ./ohkami
     cmds:
-      - cargo test --doc --no-default-features --features DEBUG,rt_tokio,sse,ws,{{.maybe_nightly}}
+      - cargo test --doc --no-default-features --features DEBUG,rt_tokio,sse,ws,tls,{{.maybe_nightly}}
       # not activating `openapi` feature for testability of README sample codes
 
   test:examples:
     dir: ./examples
     cmds:
-      - cargo test
+      - chmod +x ./test.sh
+      - ./test.sh
 
   test:samples:
     dir: ./samples
@@ -90,6 +91,8 @@ tasks:
       - cargo test --lib --features rt_{{.rt}},DEBUG,sse,{{.maybe_nightly}}
       - cargo test --lib --features rt_{{.rt}},DEBUG,ws,{{.maybe_nightly}}
       - cargo test --lib --features rt_{{.rt}},DEBUG,sse,ws,openapi,{{.maybe_nightly}}
+      - cargo test --lib --features rt_{{.rt}},DEBUG,tls,{{.maybe_nightly}}
+      - cargo test --lib --features rt_{{.rt}},DEBUG,sse,ws,tls,{{.maybe_nightly}}
 
 #### checks ####
   # Assure buildability without "DEBUG" feature
@@ -105,13 +108,15 @@ tasks:
       - cargo check --lib --features ws,{{.maybe_nightly}}
       - cargo check --lib --features sse,ws,openapi,{{.maybe_nightly}}
 
-  check:rt-native_target:
+  check:rt-native:
     dir: ./ohkami
     cmds:
       - cargo check --lib --features rt_{{.rt}},{{.maybe_nightly}}
       - cargo check --lib --features rt_{{.rt}},sse,{{.maybe_nightly}}
       - cargo check --lib --features rt_{{.rt}},ws,{{.maybe_nightly}}
       - cargo check --lib --features rt_{{.rt}},sse,ws,openapi,{{.maybe_nightly}}
+      - cargo check --lib --features rt_{{.rt}},tls,{{.maybe_nightly}}
+      - cargo check --lib --features rt_{{.rt}},sse,ws,tls,{{.maybe_nightly}}
 
   check:rt_worker:
     dir: ./ohkami

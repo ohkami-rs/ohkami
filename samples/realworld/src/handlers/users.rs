@@ -1,5 +1,5 @@
 use ohkami::prelude::*;
-use ohkami::typed::status::Created;
+use ohkami::claw::status::Created;
 use sqlx::PgPool;
 use crate::{
     models::User,
@@ -22,10 +22,10 @@ pub fn users_ohkami() -> Ohkami {
 
 async fn login(
     Context(pool): Context<'_, PgPool>,
-    JSON(LoginRequest {
+    Json(LoginRequest {
         user: LoginRequestUser { email, password },
-    }): JSON<LoginRequest<'_>>,
-) -> Result<JSON<UserResponse>, RealWorldError> {
+    }): Json<LoginRequest<'_>>,
+) -> Result<Json<UserResponse>, RealWorldError> {
     let credential = sqlx::query!(r#"
         SELECT password, salt
         FROM users
@@ -44,15 +44,15 @@ async fn login(
         .fetch_one(pool).await
         .map_err(RealWorldError::DB)?;
 
-    Ok(JSON(u.into_user_response()?))
+    Ok(Json(u.into_user_response()?))
 }
 
 async fn register(
     Context(pool): Context<'_, PgPool>,
-    JSON(RegisterRequest {
+    Json(RegisterRequest {
         user: RegisterRequestUser { username, email, password }
-    }): JSON<RegisterRequest<'_>>,
-) -> Result<Created<JSON<UserResponse>>, RealWorldError> {
+    }): Json<RegisterRequest<'_>>,
+) -> Result<Created<Json<UserResponse>>, RealWorldError> {
     let already_exists = sqlx::query!(r#"
         SELECT EXISTS (
             SELECT id
@@ -82,7 +82,7 @@ async fn register(
         .map_err(RealWorldError::DB)?
         .id;
 
-    Ok(Created(JSON(
+    Ok(Created(Json(
         UserResponse {
             user: User {
                 email: email.into(),

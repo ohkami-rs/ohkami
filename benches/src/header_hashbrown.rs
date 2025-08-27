@@ -349,31 +349,23 @@ mod table {
         /// SAFETY: `buf` has enough remaining capacity
         #[inline]
         pub unsafe fn write_unchecked_to(&self, buf: &mut Vec<u8>) {
-            //let mut push_unchecked = |bytes: &[u8]| unsafe {
-            //    std::ptr::copy_nonoverlapping(
-            //        bytes.as_ptr(),
-            //        buf.as_mut_ptr().add(buf.len()),
-            //        bytes.len()
-            //    );
-            //    buf.set_len(
-            //        buf.len() + bytes.len()
-            //    );
-            //};
             macro_rules! push_unchecked {
                 ($bytes:expr) => {
-                    let (buf_len, bytes_len) = (buf.len(), $bytes.len());
-                    std::ptr::copy_nonoverlapping(
-                        $bytes.as_ptr(),
-                        buf.as_mut_ptr().add(buf_len),
-                        bytes_len
-                    );
-                    buf.set_len(
-                        buf_len + bytes_len
-                    );
+                    unsafe {
+                        let (buf_len, bytes_len) = (buf.len(), $bytes.len());
+                        std::ptr::copy_nonoverlapping(
+                            $bytes.as_ptr(),
+                            buf.as_mut_ptr().add(buf_len),
+                            bytes_len
+                        );
+                        buf.set_len(
+                            buf_len + bytes_len
+                        );
+                    }
                 };
             }
-            for bucket in self.table.iter() {
-                let (k, v) = bucket.as_ref();
+            for bucket in unsafe {self.table.iter()} {
+                let (k, v) = unsafe {bucket.as_ref()};
                 push_unchecked!(k.as_bytes());
                 push_unchecked!(b": ");
                 push_unchecked!(v.as_bytes());

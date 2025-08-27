@@ -1,11 +1,14 @@
 [package]
 name    = "websocket"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
-ohkami = { workspace = true }
-tokio  = { workspace = true }
+ohkami         = { workspace = true }
+tokio          = { workspace = true }
+rustls         = { optional = true, version = "0.23", features = ["ring"] }
+rustls-pemfile = { optional = true, version = "2.2" }
 
 [features]
+tls   = ["ohkami/tls", "dep:rustls", "dep:rustls-pemfile"]
 DEBUG = ["ohkami/DEBUG"]

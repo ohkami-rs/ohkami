@@ -1,7 +1,7 @@
 [package]
-name    = "worker-with-openapi"
+name    = "worker-bindings-test"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
@@ -9,4 +9,5 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 # set `default-features = false` to assure "DEBUG" feature be off even when DEBUGing `../ohkami`
 ohkami = { path = "../../ohkami", default-features = false, features = ["rt_worker"] }
-worker = { version = "0.5", features = ["queue", "d1"] }
+worker = { version = "0.6", features = ["queue", "d1"] }
+console_error_panic_hook = "0.1"

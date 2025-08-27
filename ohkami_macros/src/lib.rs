@@ -54,7 +54,7 @@ mod worker;
 /// }
 /// 
 /// async fn hello(
-///     JSON(req): JSON<HelloRequest<'_>>,
+///     Json(req): Json<HelloRequest<'_>>,
 /// ) -> String {
 ///     let name = req.name.unwrap_or("world");
 ///     let repeat = req.name.repeat.unwrap_or(1);
@@ -121,10 +121,11 @@ pub fn operation(args: proc_macro::TokenStream, handler: proc_macro::TokenStream
 /// Create an worker Ohkami, running on Cloudflare Workers !
 /// 
 /// - This only handle `fetch` event.
-/// - Expected signature: `() -> Ohkami` ( both sync/async are available )
+/// - Expected signature: `() -> Ohkami` or `(bindings) -> Ohkami` ( both sync/async are available )
+/// 
+/// `(bindings) -> Ohkami` pattern is called **global bindings**.
 /// 
 /// ---
-/// *lib.rs*
 /// ```ignore
 /// use ohkami::prelude::*;
 /// 
@@ -132,6 +133,34 @@ pub fn operation(args: proc_macro::TokenStream, handler: proc_macro::TokenStream
 /// fn my_ohkami() -> Ohkami {
 ///     Ohkami::new((
 ///         "/".GET(|| async {"Hello, world!"})
+///     ))
+/// }
+/// ```
+/// ---
+/// ```ignore
+/// use ohkami::{prelude::*, worker, bindings};
+/// 
+/// #[bindings]
+/// struct Bindings {
+///     MY_KV: bindings::KV,
+/// }
+/// 
+/// async fn get_from_kv(
+///     Path(key): Path<String>,
+///     Context(kv): Context<'_, bindings::KV>,
+/// ) -> Result<String, worker::Error> {
+///     kv.get(&key).text().await?.ok_or_else(|| worker::Error::RustError(
+///         format!("Key '{}' not found in KV", key)
+///     ))
+/// }
+/// 
+/// #[worker]
+///              // global bindings
+/// fn my_ohkami(b: Bindings) -> Ohkami {
+///     Ohkami::new((
+///         Context::new(b.MY_KV),
+///         "/".GET(|| async {"Hello, world!"}),
+///         "/kv/:key".GET(get_from_kv),
 ///     ))
 /// }
 /// ```
@@ -158,7 +187,38 @@ pub fn operation(args: proc_macro::TokenStream, handler: proc_macro::TokenStream
 /// }
 /// ```
 /// 
-/// Actually **every field is optional** and **any other fields are acceptable**,
+/// Every field is optional.
+/// 
+/// example:
+/// 
+/// ---
+/// *lib.rs*
+/// ```ignore
+/// use ohkami::prelude::*;
+/// 
+/// #[ohkami::worker({
+///     title: "My Ohkami Worker",
+///     version: "1.0.0",
+///     servers: [
+///         {
+///             url: "https://my-worker.example.com",
+///             description: "My Ohkami Worker server",
+///         },
+///         {
+///             url: "http://localhost:8787",
+///             description: "My Ohkami Worker server for local development",
+///         }
+///     ]
+/// })]
+/// fn my_ohkami() -> Ohkami {
+///     Ohkami::new((
+///         "/".GET(|| async {"Hello, world!"})
+///     ))
+/// }
+/// ```
+/// ---
+/// 
+/// **Every field is optional** and **any other fields are acceptable**,
 /// but when `openapi` feature is activated, these fields are used for the
 /// document generation ( if missing, some default values will be used ).
 #[proc_macro_attribute]
@@ -296,7 +356,7 @@ pub fn DurableObject(args: proc_macro::TokenStream, input: proc_macro::TokenStre
 /// 
 /// ## Note
 /// 
-/// - `#[bindings]` currently supports
+/// - `#[bindings]` currently supports:
 ///   - AI
 ///   - KV
 ///   - R2
@@ -305,6 +365,7 @@ pub fn DurableObject(args: proc_macro::TokenStream, input: proc_macro::TokenStre
 ///   - Service
 ///   - Variables
 ///   - Durable Objects
+///   - Hyperdrive
 /// - `Queue` may cause a lot of *WARNING*s on `npm run dev`, but
 ///   it's not an actual problem and `Queue` binding does work.
 /// 

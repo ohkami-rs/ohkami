@@ -2,7 +2,7 @@ use ohkami::prelude::*;
 
 
 #[inline(always)]
-async fn echo_id(id: String) -> String {
+async fn echo_id(Path(id): Path<String>) -> String {
     id
 }
 

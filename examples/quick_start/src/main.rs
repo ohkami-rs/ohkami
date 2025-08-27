@@ -1,11 +1,11 @@
-use ohkami::prelude::*;
-use ohkami::typed::status;
+use ohkami::{Ohkami, Route};
+use ohkami::claw::{status, Path};
 
 async fn health_check() -> status::NoContent {
     status::NoContent
 }
 
-async fn hello(name: &str) -> String {
+async fn hello(Path(name): Path<&str>) -> String {
     format!("Hello, {name}!")
 }
 

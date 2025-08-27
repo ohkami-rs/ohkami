@@ -1,6 +1,9 @@
 #[cfg(test)]
 mod _test;
 
+#[cfg(feature="__rt_native__")]
+mod dir;
+
 pub(crate) mod routing;
 pub use routing::{Route, Routing};
 
@@ -9,7 +12,7 @@ use crate::router::base::Router;
 use std::sync::Arc;
 
 #[cfg(feature="__rt_native__")]
-use crate::{__rt__, Session};
+use crate::{__rt__, session};
 
 /// # Ohkami - a smart wolf who serves your web app
 /// 
@@ -19,26 +22,30 @@ use crate::{__rt__, Session};
 /// 
 /// *example.rs*
 /// ```
-/// use ohkami::prelude::*;
+/// use ohkami::{fang::FangAction, IntoResponse, Response, Request};
 /// # use ohkami::serde::Serialize;
-/// # use ohkami::typed::status::{OK, Created};
-/// # use ohkami::format::JSON;
-/// # use ohkami::{Fang, FangProc};
+/// # use ohkami::claw::{status, Path, Json};
 /// 
+/// // custom fangs
+/// #[derive(Clone)]
 /// struct Auth;
-/// impl<I: FangProc> Fang<I> for Auth {
-///     /* 〜 */
-/// #   type Proc = AuthProc;
-/// #   fn chain(&self, inner: I) -> Self::Proc {
-/// #       AuthProc
-/// #   }
-/// # }
-/// # struct AuthProc;
-/// # impl FangProc for AuthProc {
-/// #     async fn bite<'b>(&'b self, req: &'b mut Request) -> Response {
-/// #         Response::NotImplemented()
-/// #     }
-/// # }
+/// impl FangAction for Auth {
+///     async fn fore<'b>(&'b self, req: &'b mut Request) -> Result<(), Response> {
+///         Err(Response::NotImplemented())
+///     }
+/// }
+/// 
+/// // custom error
+/// enum ApiError {
+///     UserNotFound,
+/// }
+/// impl IntoResponse for ApiError {
+///     fn into_response(self) -> Response {
+///         match self {
+///             Self::UserNotFound => Response::InternalServerError()
+///         }
+///     }
+/// }
 /// 
 /// # #[derive(Serialize)]
 /// # struct User {
@@ -47,40 +54,33 @@ use crate::{__rt__, Session};
 /// #     age:  Option<usize>,
 /// # }
 /// # 
-/// # enum APIError {
-/// #     UserNotFound
-/// # }
-/// # impl IntoResponse for APIError {
-/// #     fn into_response(self) -> Response {
-/// #         match self {
-/// #             Self::UserNotFound => Response::InternalServerError()
-/// #         }
-/// #     }
+/// # async fn health_check() -> status::NoContent {
+/// #     status::NoContent
 /// # }
 /// # 
-/// # async fn health_check() -> impl IntoResponse {
-/// #     Status::NoContent
-/// # }
-/// # 
-/// # async fn create_user() -> Created<JSON<User>> {
-/// #     Created(JSON(User {
+/// # async fn create_user() -> status::Created<Json<User>> {
+/// #     status::Created(Json(User {
 /// #         id:   42,
 /// #         name: String::from("ohkami"),
 /// #         age:  None,
 /// #     }))
 /// # }
 /// # 
-/// # async fn get_user_by_id(id: usize) -> Result<JSON<User>, APIError> {
-/// #     Ok(JSON(User {
+/// # async fn get_user_by_id(Path(id): Path<usize>) -> Result<Json<User>, ApiError> {
+/// #     Ok(Json(User {
 /// #         id,
 /// #         name: String::from("ohkami"),
 /// #         age:  Some(2),
 /// #     }))
 /// # }
 /// # 
-/// # async fn update_user(id: usize) -> impl IntoResponse {
-/// #     Status::OK
+/// # async fn update_user(Path(id): Path<usize>) -> status::NoContent {
+/// #     status::NoContent
 /// # }
+/// 
+/// // Ohkami definition
+/// 
+/// use ohkami::{Ohkami, Route};
 /// 
 /// fn my_ohkami() -> Ohkami {
 ///     let api_ohkami = Ohkami::new((
@@ -93,7 +93,7 @@ use crate::{__rt__, Session};
 ///     ));
 /// 
 ///     Ohkami::new((
-///         "/hc" .GET(health_check),
+///         "/hc".GET(health_check),
 ///         "/api".By(api_ohkami),
 ///     ))
 /// }
@@ -103,19 +103,66 @@ use crate::{__rt__, Session};
 /// 
 /// ### handler signature
 /// 
-/// `async ({path params}?, {FromRequest<'_> type}s...) -> {IntoResponse type}`
+/// `async ({FromRequest<'_> type}s...) -> {IntoResponse type}`
 /// 
-/// On native runtimes or `rt_lambda`,
+/// - handler itself must be `Send` + `Sync` + 'static
+/// - returned `Future` must be `Send` + 'static
 /// 
-/// - handler itself must be `Send` + `Sync`
-/// - returned `Future` must be `Send`
+/// excpet for `rt_worker`, where `Send` or `Sync` bound is not required.
 /// 
-/// ### path params
+/// For example:
 /// 
-/// A tuple of types that implement `FromParam` trait e.g. `(&str, usize)`.\
-/// If the path contains only one parameter, then you can omit the tuple \
-/// e.g. just `param: &str`.\
-/// (Current ohkami handles at most *2* path params.)
+/// ```
+/// # enum ApiError {}
+/// # impl ohkami::IntoResponse for ApiError {
+/// #    fn into_response(self) -> ohkami::Response {todo!()}
+/// # }
+/// 
+/// use ohkami::serde::Serialize;
+/// use ohkami::claw::{status, Path, Json};
+/// 
+/// #[derive(Serialize)]
+/// struct User {
+///     id:   usize,
+///     name: String,
+///     age:  Option<usize>,
+/// }
+/// 
+/// async fn health_check() -> status::NoContent {
+///     status::NoContent
+/// }
+/// 
+/// async fn create_user() -> status::Created<Json<User>> {
+///     status::Created(Json(User {
+///         id:   42,
+///         name: String::from("ohkami"),
+///         age:  None,
+///     }))
+/// }
+/// 
+/// async fn get_user_by_id(
+///     Path(id): Path<usize>
+/// ) -> Result<Json<User>, ApiError> {
+///     Ok(Json(User {
+///         id,
+///         name: String::from("ohkami"),
+///         age:  Some(2),
+///     }))
+/// }
+/// 
+/// async fn update_user(Path(id): Path<usize>) -> status::NoContent {
+///     status::NoContent
+/// }
+/// 
+/// # /// assert `IntoHandler` impl
+/// # fn __assert__() {
+/// #     fn assert_impl_into_handler<T, H: ohkami::fang::handler::IntoHandler<T>>(h: H) {}
+/// #     assert_impl_into_handler(health_check);
+/// #     assert_impl_into_handler(create_user);
+/// #     assert_impl_into_handler(get_user_by_id);
+/// #     assert_impl_into_handler(update_user);
+/// # }
+/// ```
 /// 
 /// <br>
 /// 
@@ -179,8 +226,6 @@ use crate::{__rt__, Session};
 /// running by `npm run dev`.
 /// 
 /// ```
-/// use ohkami::prelude::*;
-/// # 
 /// # fn my_ohkami() -> ohkami::Ohkami {
 /// #     ohkami::Ohkami::new(())
 /// # }
@@ -204,6 +249,101 @@ use crate::{__rt__, Session};
 ///         let res = t.oneshot(req).await;
 ///         assert_eq!(res.status(), Status::NotFound);
 ///     }
+/// }
+/// ```
+/// 
+/// <br>
+/// 
+/// ## Generics DI
+/// 
+/// A way of DI is **generics** :
+/// 
+/// ```no_run
+/// use ohkami::{Ohkami, Route};
+/// use ohkami::claw::{Path, Json};
+/// use ohkami::fang::Context;
+/// use ohkami::serde::Serialize;
+/// 
+/// # use ohkami::{IntoResponse, Response};
+/// # //////////////////////////////////////////////////////////////////////
+/// # /// errors
+/// # 
+/// # enum MyError {
+/// #     Sqlx(sqlx::Error),
+/// # }
+/// # impl IntoResponse for MyError {
+/// #     fn into_response(self) -> Response {
+/// #         match self {
+/// #             Self::Sqlx(e) => Response::InternalServerError(),
+/// #         }
+/// #     }
+/// # }
+/// # 
+/// //////////////////////////////////////////////////////////////////////
+/// /// repository
+/// 
+/// trait UserRepository: Send + Sync + 'static {
+///     fn get_user_name_by_id(
+///         &self,
+///         id: i64,
+///     ) -> impl Future<Output = Result<String, MyError>> + Send;
+/// }
+/// 
+/// #[derive(Clone)]
+/// struct PostgresUserRepository(sqlx::PgPool);
+/// impl UserRepository for PostgresUserRepository {
+///     async fn get_user_name_by_id(&self, id: i64) -> Result<String, MyError> {
+///         let sql = r#"
+///             SELECT name FROM users WHERE id = $1
+///         "#;
+///         sqlx::query_scalar::<_, String>(sql)
+///             .bind(id)
+///             .fetch_one(&self.0)
+///             .await
+///             .map_err(MyError::Sqlx)
+///     }
+/// }
+/// 
+/// //////////////////////////////////////////////////////////////////////
+/// /// routes
+/// 
+/// #[derive(Serialize)]
+/// struct User {
+///     id: u32,
+///     name: String,
+/// }
+/// 
+/// async fn get_user<R: UserRepository>(
+///     Path(id): Path<u32>,
+///     Context(r): Context<'_, R>,
+/// ) -> Result<Json<User>, MyError> {
+///     let user_name = r.get_user_name_by_id(id as i64).await?;
+/// 
+///     Ok(Json(User {
+///         id: id as u32,
+///         name: user_name,
+///     }))
+/// }
+/// 
+/// fn users_ohkami<R: UserRepository>() -> Ohkami {
+///     Ohkami::new((
+///         "/:id".GET(get_user::<R>),
+///     ))
+/// }
+/// 
+/// //////////////////////////////////////////////////////////////////////
+/// /// entry point
+/// 
+/// #[tokio::main]
+/// async fn main() {
+///     let pool = sqlx::PgPool::connect("postgres://ohkami:password@localhost:5432/db")
+///         .await
+///         .expect("failed to connect to database");
+///     
+///     Ohkami::new((
+///         Context::new(PostgresUserRepository(pool)),
+///         "/users".By(users_ohkami::<PostgresUserRepository>()),
+///     )).howl("0.0.0.0:4040").await
 /// }
 /// ```
 pub struct Ohkami {
@@ -256,39 +396,12 @@ impl Ohkami {
     /// 
     /// ### handler signature
     /// 
-    /// `async ({path params}?, {FromRequest<'_> type}s...) -> {IntoResponse type}`
+    /// `async ({FromRequest<'_> type}s...) -> {IntoResponse type}`
     /// 
     /// On native runtimes or `rt_lambda`,
     /// 
     /// - handler itself must be `Send` + `Sync`
     /// - returned `Future` must be `Send`
-    /// 
-    /// ### path params
-    /// 
-    /// A tuple of types that implement `FromParam` trait e.g. `(&str, usize)`.\
-    /// If the path contains only one parameter, then you can omit the tuple \
-    /// e.g. just `param: &str`.\
-    /// (Current ohkami handles at most *2* path params.)
-    /// 
-    /// ```
-    /// use ohkami::prelude::*;
-    /// 
-    /// struct MyParam;
-    /// impl<'p> ohkami::FromParam<'p> for MyParam {
-    ///     type Error = std::convert::Infallible;
-    ///     fn from_param(param: std::borrow::Cow<'p, str>) -> Result<Self, Self::Error> {
-    ///         Ok(MyParam)
-    ///     }
-    /// }
-    /// 
-    /// async fn handler_1(param: (MyParam,)) -> Response {
-    ///     todo!()
-    /// }
-    /// 
-    /// async fn handler_2(param: &str) -> Response {
-    ///     todo!()
-    /// }
-    /// ```
     /// 
     /// ### nesting
     /// 
@@ -307,8 +420,7 @@ impl Ohkami {
     /// 
     /// ### static directory serving
     /// 
-    /// `.Dir` mounts a directory and generates handlers
-    /// for serving each static file in it.
+    /// `.Mount({directory_path})` mounts a directory and serves all files in it/its sub directories.
     /// 
     /// This doesn't work on `rt_worker` ( of course because there Ohkami can't
     /// touch your local file system ). Consider using `asset` of wrangler.{toml/json}
@@ -320,7 +432,7 @@ impl Ohkami {
     /// # fn __() -> Ohkami {
     /// # let another_ohkami = Ohkami::new(());
     /// Ohkami::new(
-    ///     "/public".Dir("./path/to/dir"),
+    ///     "/public".Mount("./path/to/dir"),
     /// )
     /// # }
     /// ```
@@ -377,32 +489,87 @@ impl Ohkami {
             router.apply_fangs(router.id(), fangs);
         }
 
-        #[cfg(feature="DEBUG")]
-        println!("{router:#?}");
+        crate::DEBUG!("{router:#?}");
 
         router
     }
 
     #[cfg(feature="__rt_native__")]
-    /// Start serving at `address`!
+    async fn howl_core<T>(
+        self,
+        bind: impl __rt__::IntoTcpListener<T>,
+        #[cfg(feature="tls")]
+        tls_config: Option<rustls::ServerConfig>,
+    ) {
+        let (router, _) = self.into_router().finalize();
+        let router = Arc::new(router);
+
+        let listener = bind.into_tcp_listener().await;
+        let (wg, ctrl_c) = (sync::WaitGroup::new(), sync::CtrlC::new());
+        
+        #[cfg(feature="tls")]
+        let tls_acceptor = tls_config.map(|it| anysc_rustls::TlsAcceptor::from(Arc::new(it)));
+        
+        crate::INFO!("start serving on {}", listener.local_addr().unwrap());
+        while let Some(accept) = ctrl_c.until_interrupt(__rt__::accept(&listener)).await {
+            let Ok((connection, address)) = accept else {continue};
+
+            #[cfg(feature="tls")]
+            let connection: session::Connection = match &tls_acceptor {
+                None => connection.into(),
+                Some(tls_acceptor) => match ctrl_c.until_interrupt(tls_acceptor.accept(connection)).await {
+                    None => break,
+                    Some(Ok(tls_stream)) => tls_stream.into(),
+                    Some(Err(e)) => {
+                        crate::ERROR!("TLS accept error: {e}");
+                        continue;
+                    }
+                }
+            };
+
+            let session = session::Session::new(
+                connection,
+                address.ip(),
+                router.clone(),
+            );
+            
+            let wg = wg.add();
+            __rt__::spawn(async move {
+                session.manage().await;
+                wg.done();
+            });
+        }
+
+        crate::INFO!("interrupted, trying graceful shutdown...");
+        drop(listener);
+
+        crate::INFO!("waiting {} session(s) to finish...", wg.count());
+        wg.await;
+    }
+    
+    /// Bind this `Ohkami` to an address and start serving !
     /// 
-    /// `address` is：
+    /// `bind` is：
     /// 
-    /// - `tokio::net::ToSocketAddrs` if using `tokio`
-    /// - `async_std::net::ToSocketAddrs` if using `async-std`
-    /// - `smol::net::AsyncToSocketAddrs` if using `smol`
-    /// - `std::net::ToSocketAddrs` if using `nio` or `glommio`
+    /// - `tokio::net::ToSocketAddrs` item or `tokio::net::TcpListener`
+    /// - `async_std::net::ToSocketAddrs` item or `async_std::net::TcpListener`
+    /// - `smol::net::AsyncToSocketAddrs` item or `smol::net::TcpListener`
+    /// - `std::net::ToSocketAddrs` item or `{glommio, nio}::net::TcpListener`
     /// 
-    /// *note* : Keep-Alive timeout is 42 seconds by default.
-    /// This is configureable by `OHKAMI_KEEPALIVE_TIMEOUT`
+    /// depending on the async runtime.
+    /// 
+    /// *note* : Keep-Alive timeout is 39 seconds by default.
+    /// This can be configured by `OHKAMI_KEEPALIVE_TIMEOUT`
     /// environment variable.
     /// 
-    /// <br>
+    /// ## Examples
+    /// 
+    /// ---
     /// 
     /// *example.rs*
     /// ```no_run
-    /// use ohkami::prelude::*;
-    /// use ohkami::typed::status;
+    /// use ohkami::{Ohkami, Route};
+    /// use ohkami::claw::status;
     /// 
     /// async fn hello() -> &'static str {
     ///     "Hello, ohkami!"
@@ -423,66 +590,123 @@ impl Ohkami {
     /// 
     /// ---
     /// 
-    /// *example_glommio.rs*
-    /// ```ignore
-    /// use ohkami::prelude::*;
-    /// use ohkami::util::num_cpus;
-    /// use glommio::{LocalExecutorPoolBuilder, PoolPlacement, CpuSet};
+    /// *example_with_tcp_listener.rs*
+    /// ```no_run
+    /// use ohkami::{Ohkami, Route};
+    /// use tokio::net::TcpSocket;
     /// 
-    /// async fn hello() -> &'static str {
-    ///     "Hello, ohkami!"
-    /// }
+    /// #[tokio::main]
+    /// async fn main() -> std::io::Result<()> {
+    ///     let socket = TcpSocket::new_v4()?;
+    ///     socket.bind("0.0.0.0:5000".parse().unwrap())?;
+    ///     let listener = socket.listen(1024)?;
     /// 
-    /// fn main() {
-    ///     LocalExecutorPoolBuilder::new(PoolPlacement::MaxSpread(
-    ///         num_cpus::get(), CpuSet::online().ok()
-    ///     )).on_all_shards(|| {
-    ///         Ohkami::new((
-    ///             "/user/:id"
-    ///                 .GET(echo_id),
-    ///         )).howl("0.0.0.0:3000")
-    ///     }).unwrap().join_all();
+    ///     Ohkami::new((
+    ///         "/".GET(async || {
+    ///             "Hello, TcpListener!"
+    ///         }),
+    ///     )).howl(listener).await;
+    /// 
+    ///     Ok(())
     /// }
     /// ```
-    pub async fn howl(self, address: impl __rt__::ToSocketAddrs) {
-        let (router, _) = self.into_router().finalize();
-        let router = Arc::new(router);
-
-        let listener = __rt__::bind(address).await;
-
-        let (wg, ctrl_c) = (sync::WaitGroup::new(), sync::CtrlC::new());
-
-        while let Some(accept) = ctrl_c.until_interrupt(listener.accept()).await {
-            let (connection, addr) = {
-                #[cfg(any(feature="rt_tokio", feature="rt_async-std", feature="rt_smol", feature="rt_nio"))] {
-                    let Ok((connection, addr)) = accept else {continue};
-                    (connection, addr)
-                }
-                #[cfg(any(feature="rt_glommio"))] {
-                    let Ok(connection) = accept else {continue};
-                    let Ok(addr) = connection.peer_addr() else {continue};
-                    (connection, addr)
-                }
-            };
-
-            let session = Session::new(
-                router.clone(),
-                connection,
-                addr.ip()
-            );
-
-            let wg = wg.add();
-            __rt__::spawn(async move {
-                session.manage().await;
-                wg.done();
-            });
-        }
-
-        crate::DEBUG!("interrupted, trying graceful shutdown...");
-        drop(listener);
-
-        crate::DEBUG!("waiting {} session(s) to finish...", wg.count());
-        wg.await;
+    #[cfg(feature="__rt_native__")]
+    pub async fn howl<T>(
+        self,
+        bind: impl __rt__::IntoTcpListener<T>,
+    ) {
+        self.howl_core(bind, #[cfg(feature="tls")] None).await
+    }
+    
+    /// Bind this `Ohkami` to an address and start serving with TLS support
+    /// (**`tls` feature is required**).
+    /// 
+    /// `howls` takes an additional parameter than `howl`:
+    /// A `rutsls::ServerConfig` containing your certificates and keys.
+    /// 
+    /// See [`howl`] for the `bind` argument.
+    /// 
+    /// Example:
+    /// 
+    /// ```toml
+    /// [dependencies]
+    /// ohkami = { version = "0.24", features = ["rt_tokio", "tls"] }
+    /// tokio  = { version = "1",    features = ["full"] }
+    /// rustls = { version = "0.23", features = ["ring"] }
+    /// rustls-pemfile = "2.2"
+    /// ```
+    /// 
+    /// ```no_run
+    /// use ohkami::{Ohkami, Route};
+    /// use rustls::ServerConfig;
+    /// use rustls::pki_types::{CertificateDer, PrivateKeyDer};
+    /// 
+    /// use std::fs::File;
+    /// use std::io::BufReader;
+    /// 
+    /// async fn hello() -> &'static str {
+    ///     "Hello, secure ohkami!"
+    /// }
+    /// 
+    /// #[tokio::main]
+    /// async fn main() -> std::io::Result<()> {
+    ///     // Initialize rustls crypto provider
+    ///     rustls::crypto::ring::default_provider().install_default()
+    ///         .expect("Failed to install rustls crypto provider");
+    /// 
+    ///     // Load certificates and private key
+    ///     let cert_file = File::open("server.crt")?;
+    ///     let key_file = File::open("server.key")?;
+    ///     
+    ///     let cert_chain = rustls_pemfile::certs(&mut BufReader::new(cert_file))
+    ///         .map(|cd| cd.map(CertificateDer::from))
+    ///         .collect::<Result<Vec<_>, _>>()?;
+    ///     
+    ///     let key = rustls_pemfile::read_one(&mut BufReader::new(key_file))?
+    ///         .map(|p| match p {
+    ///             rustls_pemfile::Item::Pkcs1Key(k) => PrivateKeyDer::Pkcs1(k),
+    ///             rustls_pemfile::Item::Pkcs8Key(k) => PrivateKeyDer::Pkcs8(k),
+    ///             _ => panic!("Unexpected private key type"),
+    ///         })
+    ///         .expect("Failed to read private key");
+    /// 
+    ///     // Build TLS configuration
+    ///     let tls_config = ServerConfig::builder()
+    ///         .with_no_client_auth()
+    ///         .with_single_cert(cert_chain, key)
+    ///         .expect("Failed to build TLS configuration");
+    /// 
+    ///     // Create and run Ohkami with HTTPS
+    ///     Ohkami::new((
+    ///         "/".GET(hello),
+    ///     )).howls("0.0.0.0:8443", tls_config).await;
+    ///     
+    ///     Ok(())
+    /// }
+    /// ```
+    /// 
+    /// ```sh
+    /// $ openssl req -x509 -newkey rsa:4096 -nodes -keyout server.key -out server.crt -days 365 -subj "/CN=localhost"
+    /// 
+    /// $ cargo run
+    /// ```
+    /// 
+    /// ```sh
+    /// $ curl --insecure https://localhost:8443
+    /// Hello, secure ohkami!
+    /// ```
+    /// 
+    /// For localhost-testing with browser (or `curl` without `--insecure`),
+    /// [`mkcert`](https://github.com/FiloSottile/mkcert) is highly recommended.
+    #[cfg(feature="__rt_native__")]
+    #[cfg(feature="tls")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "tls")))]
+    pub async fn howls<T>(
+        self,
+        bind: impl __rt__::IntoTcpListener<T>,
+        tls_config: rustls::ServerConfig,
+    ) {
+        self.howl_core(bind, Some(tls_config)).await
     }
 
     #[cfg(feature="rt_worker")]
@@ -492,32 +716,33 @@ impl Ohkami {
         env: ::worker::Env,
         ctx: ::worker::Context,
     ) -> ::worker::Response {
-        #[cfg(feature="DEBUG")] ::worker::console_debug!("Called `#[ohkami::worker]`; req: {req:?}");
+        crate::DEBUG!("Called `#[ohkami::worker]`; req: {req:?}");
 
-        let mut ohkami_req = crate::Request::init();
-        #[cfg(feature="DEBUG")] ::worker::console_debug!("Done `ohkami::Request::init`");
+        let mut ohkami_req = crate::Request::uninit();
+        crate::DEBUG!("Done `ohkami::Request::init`");
 
-        let mut ohkami_req = unsafe {std::pin::Pin::new_unchecked(&mut ohkami_req)};
-        #[cfg(feature="DEBUG")] ::worker::console_debug!("Put request in `Pin`");
+        let mut ohkami_req = std::pin::Pin::new(&mut ohkami_req);
+        crate::DEBUG!("Put request in `Pin`");
 
         let take_over = ohkami_req.as_mut().take_over(req, env, ctx).await;
-        #[cfg(feature="DEBUG")] ::worker::console_debug!("Done `ohkami::Request::take_over`: {ohkami_req:?}");
+        crate::DEBUG!("Done `ohkami::Request::take_over`: {ohkami_req:?}");
 
         let ohkami_res = match take_over {
-            Ok(()) => {#[cfg(feature="DEBUG")] ::worker::console_debug!("`take_over` succeed");
+            Ok(()) => {
+                crate::DEBUG!("`take_over` succeed");
                 let (router, _) = self.into_router().finalize();
-                #[cfg(feature="DEBUG")] ::worker::console_debug!("Done `self.router.finalize`");
-                
+                crate::DEBUG!("Done `self.router.finalize`");
                 router.handle(&mut ohkami_req).await
             }
-            Err(e) => {#[cfg(feature="DEBUG")] ::worker::console_debug!("`take_over` returned an error response: {e:?}");
+            Err(e) => {
+                crate::DEBUG!("`take_over` returned an error response: {e:?}");
                 e
             }
         };
-        #[cfg(feature="DEBUG")] ::worker::console_debug!("Successfully generated ohkami::Response: {ohkami_res:?}");
+        crate::DEBUG!("Successfully generated ohkami::Response: {ohkami_res:?}");
 
         let res = ohkami_res.into();
-        #[cfg(feature="DEBUG")] ::worker::console_debug!("Done `ohkami::Response` --into--> `worker::Response`: {res:?}");
+        crate::DEBUG!("Done `ohkami::Response` --into--> `worker::Response`: {res:?}");
 
         res
     }
@@ -539,7 +764,7 @@ impl Ohkami {
     /// ### example
     /// 
     /// ```no_run
-    /// use ohkami::prelude::*;
+    /// use ohkami::{Ohkami, Route};
     /// use ohkami::openapi::{OpenAPI, Server};
     /// 
     /// // An ordinal Ohkami definition, not special
@@ -640,8 +865,8 @@ const _: () = {
             req: lambda_runtime::LambdaEvent<crate::x_lambda::LambdaHTTPRequest>
         ) -> Self::Future {
             let f = async move {
-                let mut ohkami_req = crate::Request::init();
-                let mut ohkami_req = unsafe {std::pin::Pin::new_unchecked(&mut ohkami_req)};
+                let mut ohkami_req = crate::Request::uninit();
+                let mut ohkami_req = std::pin::Pin::new(&mut ohkami_req);
                 ohkami_req.as_mut().take_over(req)?;
 
                 let mut ohkami_res = ROUTER.get().unwrap().handle(&mut ohkami_req).await;
@@ -678,7 +903,6 @@ mod sync {
                 Self(NonNull::new(n).unwrap())
             }
 
-            #[cfg(feature="DEBUG")]
             pub fn count(&self) -> usize {
                 unsafe {self.0.as_ref()}.load(Ordering::Relaxed)
             }
@@ -704,6 +928,8 @@ mod sync {
 
         impl Future for WaitGroup {
             type Output = ();
+            
+            #[inline(always)]
             fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
                 if unsafe {self.0.as_ref()}.load(Ordering::Acquire) == 0 {
                     crate::DEBUG!("[WaitGroup::poll] Ready");
@@ -716,83 +942,112 @@ mod sync {
         }
     };
 
-    pub struct CtrlC;
+    pub struct CtrlC { index: usize }
     const _: () = {
-        use std::sync::atomic::{AtomicBool, Ordering};
-        use std::future::Future;
+        use std::sync::atomic::{AtomicBool, AtomicUsize, AtomicPtr, Ordering};
         use std::task::{Context, Poll, Waker};
         use std::pin::Pin;
+        use std::ptr::null_mut;
 
-        #[cfg(any(feature="rt_tokio", feature="rt_async-std", feature="rt_smol", feature="rt_nio"))]
-        use std::{sync::atomic::AtomicPtr, ptr::null_mut};
-        #[cfg(any(feature="rt_glommio"))]
-        use std::sync::Mutex;
-    
-        #[cfg(any(feature="rt_tokio", feature="rt_async-std", feature="rt_smol", feature="rt_nio"))]
-        static WAKER: AtomicPtr<Waker> = AtomicPtr::new(null_mut());
-        #[cfg(any(feature="rt_glommio"))]
-        static WAKER: Mutex<Vec<(usize, Waker)>> = Mutex::new(Vec::new());
+        static INTERRUPTED: AtomicBool = AtomicBool::new(false);
 
-        static CATCH: AtomicBool = AtomicBool::new(false);
+        /* write access is used when pushing initial (null) AtomicPtr in `Ctrlc::new` */
+        static WAKERS: std::sync::RwLock<Vec<AtomicPtr<Waker>>> = std::sync::RwLock::new(Vec::new());
 
         impl CtrlC {
             pub fn new() -> Self {
-                #[cfg(any(feature="rt_tokio", feature="rt_async-std", feature="rt_smol", feature="rt_nio"))]
-                ::ctrlc::set_handler(|| {
-                    CATCH.store(true, Ordering::SeqCst);
-                    let waker = WAKER.swap(null_mut(), Ordering::SeqCst);
-                    if !waker.is_null() {
-                        unsafe {Box::from_raw(waker)}.wake();
-                    }
-                }).expect("Something went wrong with Ctrl-C");
+                /*
+                    When finally get Ctrl-C signal, let's set `INTERRUPTED` to true and
+                    wake all wakers for Ohkamis on one or more threads.
 
-                #[cfg(any(feature="rt_glommio"))]
-                ::ctrlc::try_set_handler(|| {
-                    CATCH.store(true, Ordering::SeqCst);
-                    let lock = &mut *WAKER.lock().unwrap();
-                    crate::DEBUG!("Finally {} executors on {} CPU(s)", lock.len(), num_cpus::get());
-                    for (_, w) in std::mem::take(lock) {
-                        w.wake();
+                    This is intended to work correctly in both :
+
+                    1. A single Ohkami is running on multi-thread async runtime.
+                    2. Spawning some threads and single-thread Ohkami is running on
+                       each thread with single-thread async runtime.
+                       - glommio is designed to do so
+                       - even in other runtimes, sometimes this way of entrypoint
+                         with `SO_REUSEADDR` may work in better performance than ordinary
+                         one with multi-thread runtime.
+
+                    For case 1., we only have to hold the single `AtomicPtr<Waker>`
+                    corresponded to the Ohkami in `static WAKER`, and here retrieve/wake it :
+
+                    ```
+                    ::ctrlc::set_handler(|| {
+                        INTERRUPTED.store(true, Ordering::SeqCst);
+                        let waker = WAKER.swap(null_mut(), Ordering::SeqCst);
+                        if !waker.is_null() {
+                            unsafe {Box::from_raw(waker)}.wake();
+                        }
+                    }).expect("Something went wrong with Ctrl-C");
+
+                    ```
+
+                    But taking case 2. into consideration, we must terminate other threads
+                    together with the main thread in this handler. So we have to hold
+                    all `Waker`s in `WAKERS` and wake each them.
+                */
+                ::ctrlc::set_handler(|| {
+                    INTERRUPTED.store(true, Ordering::SeqCst);
+
+                    let wakers = WAKERS.read().unwrap();
+                    crate::DEBUG!("CtrlC handler: Waiting for {} Ohkami(s)", wakers.len());
+                    for w in &*wakers {
+                        let w = w.swap(null_mut(), Ordering::SeqCst);
+                        if !w.is_null() {
+                            (unsafe {Box::from_raw(w)}).wake();
+                        }
                     }
                 }).ok();
 
-                Self
+                let index = {
+                    static WAKER_INDEX: AtomicUsize = AtomicUsize::new(0);
+                    WAKER_INDEX.fetch_add(1, Ordering::Relaxed)
+                };
+
+                #[cfg(debug_assertions)] {
+                    assert_eq!(index, WAKERS.read().unwrap().len());
+                }
+
+                /* ensure that `WAKERS` has the same numbers of `Waker`s as `CtrlC` instances */
+                WAKERS.write().unwrap().push(AtomicPtr::new(null_mut()));
+
+                Self { index }
             }
 
+            #[inline(always)]
             pub fn until_interrupt<T>(&self, task: impl Future<Output = T>) -> impl Future<Output = Option<T>> {
-                return UntilInterrupt(task);
+                return UntilInterrupt { index: self.index, task };
 
-                struct UntilInterrupt<F: Future>(F);
+                struct UntilInterrupt<F: Future> {
+                    index: usize,
+                    task:  F,
+                }
                 impl<F: Future> Future for UntilInterrupt<F> {
                     type Output = Option<F::Output>;
 
                     #[inline]
                     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-                        match unsafe {Pin::new_unchecked(&mut self.get_unchecked_mut().0)}.poll(cx) {
+                        let UntilInterrupt { index, task } = unsafe {self.get_unchecked_mut()};
+
+                        match unsafe {Pin::new_unchecked(task)}.poll(cx) {
                             Poll::Ready(t) => Poll::Ready(Some(t)),
-                            Poll::Pending  => if CATCH.load(Ordering::SeqCst) {
-                                crate::DEBUG!("[CtrlC::catch] Ready");
-                                Poll::Ready(None)
-                            } else {
-                                #[cfg(any(feature="rt_tokio", feature="rt_async-std", feature="rt_smol", feature="rt_nio"))] {
-                                    let prev_waker = WAKER.swap(
+                            Poll::Pending => match INTERRUPTED.load(Ordering::SeqCst) {
+                                true => {
+                                    crate::DEBUG!("[CtrlC::catch] Ready");
+                                    Poll::Ready(None)
+                                }
+                                false => {
+                                    let prev_waker = WAKERS.read().unwrap()[*index].swap(
                                         Box::into_raw(Box::new(cx.waker().clone())),
                                         Ordering::SeqCst
                                     );
                                     if !prev_waker.is_null() {
                                         unsafe {prev_waker.drop_in_place()}
                                     }
+                                    Poll::Pending
                                 }
-                                #[cfg(any(feature="rt_glommio"))] {
-                                    let current_id = glommio::executor().id();
-                                    let current_waker = cx.waker().clone();
-                                    let mut lock = WAKER.lock().unwrap();
-                                    match lock.iter_mut().find(|(id, _)| (*id == current_id)) {
-                                        Some(prev) => *prev = (current_id, current_waker),
-                                        None       => lock.push((current_id, current_waker)),
-                                    }
-                                }
-                                Poll::Pending
                             }
                         }
                     }
@@ -802,13 +1057,109 @@ mod sync {
     };
 }
 
-#[cfg(all(debug_assertions, feature="__rt_native__"))]
+#[cfg(feature="__rt_native__")]
 #[cfg(test)]
-#[test] fn can_howl_on_any_native_async_runtime() {
-    __rt__::testing::block_on(async {
-        crate::util::timeout_in(
-            std::time::Duration::from_secs(3),
-            Ohkami::new(()).howl(("localhost", __rt__::testing::PORT))
-        ).await
-    });
+mod test {
+    use super::*;
+
+    #[cfg(not(feature="tls"))]
+    #[test]
+    fn can_howl_on_any_native_async_runtime() {
+        __rt__::testing::block_on(async {
+            crate::util::with_timeout(
+                std::time::Duration::from_secs(3),
+                Ohkami::new(()).howl(("localhost", __rt__::testing::PORT))
+            ).await
+        });
+    }
+    
+    #[cfg(feature="tls")]
+    #[test]
+    fn can_howl_with_tls_on_any_native_async_runtime() {
+        let openssl_x509_newkey = |out_path: &str, keyout_path: &str| -> std::io::Result<()> {
+            std::process::Command::new("openssl")
+                .args([
+                    "req", "-x509", "-newkey", "rsa:4096", "-nodes",
+                    "-out", out_path, "-keyout", keyout_path,
+                    "-days", "365", "-subj", "/CN=localhost"
+                ])
+                .status()
+                .map(|status| status.success().then_some(()).ok_or_else(|| {
+                    std::io::Error::new(
+                        std::io::ErrorKind::Other,
+                        "Failed to generate test certificate and key with OpenSSL"
+                    )
+                }))
+                .flatten()
+        };
+        
+        let is_pem_alive = |path: &std::path::Path| -> bool {
+            if !path.exists() {
+                return false;
+            }
+            
+            if {
+                let now = std::time::SystemTime::now();
+                let created = path.metadata().unwrap().created().unwrap();
+                now.duration_since(created).unwrap().as_secs() >= 60 * 60 * 24 * 365
+            } {
+                return false;
+            }
+            
+            true
+        };
+        
+        __rt__::testing::block_on(async {
+            rustls::crypto::ring::default_provider().install_default().ok();
+        
+            let (cert_file_path, key_file_path) = {
+                let target_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                    .parent().unwrap()
+                    .join("target");
+                (target_dir.join("test-cert.pem"), target_dir.join("test-key.pem"))
+            };
+            
+            if !{is_pem_alive(&cert_file_path) && is_pem_alive(&key_file_path)} {
+                openssl_x509_newkey(
+                    cert_file_path.to_str().unwrap(),
+                    key_file_path.to_str().unwrap()
+                ).expect("`openssl` failed");
+            }
+            
+            let cert_chain = rustls_pemfile::certs(&mut std::io::BufReader::new(std::fs::File::open(cert_file_path).unwrap()))
+                .map(|cd| cd.map(rustls::pki_types::CertificateDer::from))
+                .collect::<Result<Vec<_>, _>>()
+                .expect("Failed to read certificate chain");            
+            let key = rustls_pemfile::read_one(&mut std::io::BufReader::new(std::fs::File::open(key_file_path).unwrap()))
+                .expect("Failed to read private key")
+                .map(|p| match p {
+                    rustls_pemfile::Item::Pkcs1Key(k) => rustls::pki_types::PrivateKeyDer::Pkcs1(k),
+                    rustls_pemfile::Item::Pkcs8Key(k) => rustls::pki_types::PrivateKeyDer::Pkcs8(k),
+                    _ => panic!("Unexpected private key type"),
+                })
+                .expect("Failed to read private key");
+        
+            let tls_config = rustls::ServerConfig::builder()
+                .with_no_client_auth()
+                .with_single_cert(cert_chain, key)
+                .expect("Failed to build TLS configuration");
+
+            crate::util::with_timeout(
+                std::time::Duration::from_secs(3),
+                Ohkami::new(()).howls(("localhost", __rt__::testing::PORT), tls_config)
+            ).await
+        });
+    }
+
+    #[test]
+    fn ohkami_is_send_sync_static_on_native() {
+        fn is_send_sync_static<T: Send + Sync + 'static>(_: T) {}
+
+        let o = Ohkami::new((
+            crate::fang::Context::new(String::from("resource")),
+            "/".GET(async || {"Hello, world!"})
+        ));
+
+        is_send_sync_static(o);
+    }
 }

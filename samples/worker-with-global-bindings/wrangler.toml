@@ -1,0 +1,18 @@
+name = "worker-bindings-test"
+main = "build/worker/shim.mjs"
+compatibility_date = "2025-02-26"
+
+# `worker-build` and `wasm-pack` is required
+# (run `cargo install wasm-pack worker-build` to install)
+
+[build]
+command = "test $OHKAMI_WORKER_DEV && worker-build --dev || worker-build -- --no-default-features"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "db"
+database_id = "xxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+
+[[kv_namespaces]]
+binding = "MY_KV"
+id = "<BINDING_ID>"

@@ -1,6 +1,5 @@
 use ohkami::prelude::*;
-use ohkami::format::{JSON, Query};
-use ohkami::typed::status;
+use ohkami::claw::{Json, Path, Query, status};
 use ohkami::openapi;
 use std::sync::Arc;
 
@@ -72,13 +71,13 @@ async fn main() {
 async fn list_pets(
     Query(q): Query<ListPetsMeta>,
     Context(db): Context<'_, Arc<mock::DB>>,
-) -> Result<JSON<Vec<Pet>>, Error> {
+) -> Result<Json<Vec<Pet>>, Error> {
     let mut pets = db.read().await.values().cloned().collect::<Vec<_>>();
     if let Some(limit) = q.limit {
         pets.truncate(limit);
     }
     
-    Ok(JSON(pets))
+    Ok(Json(pets))
 }
 #[derive(Deserialize, openapi::Schema)]
 /// metadata for `list_pets` operation
@@ -87,11 +86,15 @@ struct ListPetsMeta {
     limit: Option<usize>,
 }
 
-#[openapi::operation(createPet)]
+#[openapi::operation(createPet {
+    // 500 is not defined in `Error::openapi_responses`,
+    // but this *overrides* it to this description
+    500: "an internal error",
+})]
 async fn create_pet(
-    JSON(req): JSON<CreatePetRequest<'_>>,
+    Json(req): Json<CreatePetRequest<'_>>,
     Context(db): Context<'_, Arc<mock::DB>>,
-) -> Result<status::Created<JSON<Pet>>, Error> {
+) -> Result<status::Created<Json<Pet>>, Error> {
     if db.read().await.values().any(|p| p.name == req.name) {
         return Err(Error {
             status_code: 400,
@@ -111,7 +114,7 @@ async fn create_pet(
         created
     };
 
-    Ok(status::Created(JSON(created_pet)))
+    Ok(status::Created(Json(created_pet)))
 }
 #[derive(Deserialize, openapi::Schema)]
 #[openapi(component)]
@@ -129,19 +132,19 @@ struct CreatePetRequest<'req> {
 /// Find a pet of the `id`.
 /// The parameter `id` must be unsigned 64-bit integer.
 async fn show_pet_by_id(
-    id: u64,
+    Path(id): Path<u64>,
     Context(db): Context<'_, Arc<mock::DB>>,
-) -> Result<JSON<Pet>, Error> {
+) -> Result<Json<Pet>, Error> {
     let pet = db.read().await.get(&id)
         .cloned()
         .ok_or_else(|| Error {
             status_code: 404,
             message: format!("A pet of id `{id}` not found"),
         })?;
-    Ok(JSON(pet))
+    Ok(Json(pet))
 }
 
-async fn edit_pet_profile(_id: u64) {}
+async fn edit_pet_profile(Path(_id): Path<u64>) {}
 
 async fn show_pets_detail() {}
 

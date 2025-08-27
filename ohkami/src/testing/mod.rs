@@ -1,4 +1,5 @@
 #![cfg(debug_assertions)]
+#![cfg(feature="__rt__")]
 
 //! Ohkami testing tools
 //! 
@@ -29,66 +30,75 @@
 //! }
 //! ```
 
-use crate::{Response, Request, Ohkami, Status, Method};
+pub use crate::{Response, Request, Ohkami, Status, Method};
 use crate::router::r#final::Router;
-
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::{pin::Pin, future::Future, format as f};
 
-
-pub trait Testing {
-    fn test(self) -> TestingOhkami;
+pub trait Tester {
+    fn test(self) -> TestOhkami;
 }
 
-pub struct TestingOhkami(Arc<Router>);
-
-impl Testing for Ohkami {
-    fn test(self) -> TestingOhkami {
+impl Tester for Ohkami {
+    fn test(self) -> TestOhkami {
         let (f, _) = self.into_router().finalize();
-        TestingOhkami(Arc::new(f))
+        TestOhkami(Arc::new(f))
     }
 }
 
-impl TestingOhkami {
+pub struct TestOhkami(Arc<Router>);
+
+impl TestOhkami {
     #[must_use]
-    pub fn oneshot(&self, req: TestRequest) -> Oneshot {
+    pub fn oneshot(&self, test_req: TestRequest) -> Oneshot {
         let router = self.0.clone();
         
-        let res = async move {
-            let mut request = Request::init(#[cfg(feature="__rt_native__")] crate::util::IP_0000);
-            let mut request = unsafe {Pin::new_unchecked(&mut request)};
+        let test_res = async move {
+            let mut req = Request::uninit(#[cfg(feature="__rt_native__")] crate::util::IP_0000);
+            let mut req = Pin::new(&mut req);
             
-            let res = match request.as_mut().read(&mut &req.encode()[..]).await {
-                Ok(Some(())) => router.handle(&mut request).await,
-                Ok(None) => panic!("No request"),
+            let res = match req.as_mut().read(&mut &test_req.encode()[..]).await {
                 Err(res) => res,
+                Ok(None) => panic!("No request"),
+                Ok(Some(())) => {
+                    if req.headers.host().is_none() {
+                        req.headers.set().host("ohkami.test");
+                    }
+                    if req.headers.date().is_none() {
+                        req.headers.set().date(ohkami_lib::imf_fixdate(crate::util::unix_timestamp()));
+                    }
+                    router.handle(&mut req).await
+                }
             };
 
-            TestResponse::new(res)
+            TestResponse(res)
         };
 
-        Oneshot(Box::new(res))
+        Oneshot(Box::new(test_res))
     }
 }
 
 pub struct Oneshot(
     Box<dyn Future<Output = TestResponse>>
-); impl Future for Oneshot {
+);
+impl Future for Oneshot {
     type Output = TestResponse;
     fn poll(self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> std::task::Poll<Self::Output> {
         unsafe {self.map_unchecked_mut(|this| this.0.as_mut())}.poll(cx)
     }
 }
 
+#[derive(Debug)]
 pub struct TestRequest {
     method:  Method,
     path:    Cow<'static, str>,
     queries: HashMap<Cow<'static, str>, Cow<'static, str>>,
     headers: HashMap<Cow<'static, str>, Cow<'static, str>>,
     content: Option<Cow<'static, [u8]>>,
-} impl TestRequest {
+}
+impl TestRequest {
     pub(crate) fn encode(self) -> Vec<u8> {
         let Self { method, path, queries, headers, content } = self;
 
@@ -175,15 +185,8 @@ impl TestRequest {
     }
 }
 
-
-pub struct TestResponse(
-    Response
-);
-impl TestResponse {
-    fn new(response: Response) -> Self {
-        Self(response)
-    }
-}
+#[derive(Debug)]
+pub struct TestResponse(Response);
 impl TestResponse {
     pub fn status(&self) -> Status {
         self.0.status
@@ -196,22 +199,37 @@ impl TestResponse {
         self.0.headers.iter()
     }
 
+    pub fn content(&self, content_type: &'static str) -> Option<&[u8]> {
+        let _= self.0.headers.content_type()?.starts_with(content_type)
+            .then_some(())?;
+        let bytes = self.0.content.as_bytes()?;
+        assert_eq!(
+            bytes.len(),
+            self.0.headers.content_length()?.parse::<usize>().unwrap(),
+            "Content-Length does not match the actual content length"
+        );
+        Some(bytes)
+    }
     pub fn text(&self) -> Option<&str> {
-        if self.0.headers.ContentType()?.starts_with("text/plain") {
-            let body = self.0.content.as_bytes()?;
-            Some(std::str::from_utf8(body).expect(&f!("Response content is not UTF-8: {}", body.escape_ascii())))
-        } else {None}
+        self.content("text/plain")
+            .map(|bytes| std::str::from_utf8(bytes).expect(&f!(
+                "Response content is not UTF-8: {}",
+                bytes.escape_ascii()
+            )))
     }
     pub fn html(&self) -> Option<&str> {
-        if self.0.headers.ContentType()?.starts_with("text/html") {
-            let body = self.0.content.as_bytes()?;
-            Some(std::str::from_utf8(body).expect(&f!("Response content is not UTF-8: {}", body.escape_ascii())))
-        } else {None}
+        self.content("text/html")
+            .map(|bytes| std::str::from_utf8(bytes).expect(&f!(
+                "Response content is not UTF-8: {}",
+                bytes.escape_ascii()
+            )))
     }
-    pub fn json<'d, JSON: serde::Deserialize<'d>>(&'d self) -> Option<serde_json::Result<JSON>> {
-        if self.0.headers.ContentType()?.starts_with("application/json") {
-            let body = self.0.content.as_bytes()?;
-            Some(serde_json::from_slice(body))
-        } else {None}
+    pub fn json<'d, T: serde::Deserialize<'d>>(&'d self) -> Option<T> {
+        self.content("application/json")
+            .map(|bytes| serde_json::from_slice(bytes).expect(&f!(
+                "Failed to deserialize json payload as {}: {}",
+                std::any::type_name::<T>(),
+                bytes.escape_ascii()
+            )))
     }
 }

@@ -28,7 +28,7 @@ use crate::fang::{FangAction, SendSyncOnNative};
 ///     format!("Hello, {name}!")
 /// }
 /// ```
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Context<'req, T: SendSyncOnNative + 'static>(pub &'req T);
 
 impl<T: SendSyncOnNative + 'static> Context<'static, T>
@@ -60,7 +60,7 @@ impl<'req, T: SendSyncOnNative + 'static> FromRequest<'req> for Context<'req, T>
             Some(d) => Some(Ok(Self(d))),
             None => {
                 #[cfg(debug_assertions)] {
-                    crate::warning!(
+                    crate::WARNING!(
                         "Context of `{}` doesn't exist",
                         std::any::type_name::<T>()
                     )

@@ -1,5 +1,5 @@
 mod health_handler {
-    use ohkami::typed::status::NoContent;
+    use ohkami::claw::status::NoContent;
 
     pub async fn health_check() -> NoContent {
         NoContent
@@ -8,7 +8,7 @@ mod health_handler {
 
 
 mod hello_handler {
-    use ohkami::format::{Query, JSON};
+    use ohkami::claw::{Query, Json};
     use ohkami::serde::Deserialize;
 
     #[derive(Deserialize)]
@@ -50,7 +50,7 @@ mod hello_handler {
     }
 
     pub async fn hello_by_json(
-        JSON(HelloRequest { name, repeat }): JSON<HelloRequest<'_>>
+        Json(HelloRequest { name, repeat }): Json<HelloRequest<'_>>
     ) -> String {
         tracing::info!("\
             Called `hello_by_json`\
@@ -68,8 +68,7 @@ mod fangs {
     pub struct SetServer;
     impl FangAction for SetServer {
         fn back<'a>(&'a self, res: &'a mut Response) -> impl std::future::Future<Output = ()> + Send {
-            res.headers.set()
-                .Server("ohkami");
+            res.headers.set().server("ohkami");
 
             tracing::info!("\
                 Called `SetServer`\n\
@@ -94,13 +93,11 @@ mod fangs {
 
 #[tokio::main]
 async fn main() {
-    use ohkami::prelude::*;
+    use ohkami::{Ohkami, Route};
 
     tracing_subscriber::fmt()
         .with_max_level(tracing::Level::INFO)
         .init();
-
-    tracing::info!("Started listening on http://localhost:3000");
 
     Ohkami::new((
         fangs::LogRequest,

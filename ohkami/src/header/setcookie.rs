@@ -17,9 +17,9 @@ impl SameSitePolicy {
     }
     const fn from_bytes(bytes: &[u8]) -> Option<Self> {
         match bytes {
-            b"Strict" => Some(Self::Strict),
-            b"Lax"    => Some(Self::Lax),
-            b"None"   => Some(Self::None),
+            b"Strict" | b"strict" => Some(Self::Strict),
+            b"Lax" | b"lax" => Some(Self::Lax),
+            b"None" | b"none" => Some(Self::None),
             _ => None
         }
     }
@@ -27,41 +27,41 @@ impl SameSitePolicy {
 
 #[derive(Debug, PartialEq)]
 pub struct SetCookie<'c> {
-    pub(crate) Cookie:   (&'c str, Cow<'c, str>),
-    pub(crate) Expires:  Option<Cow<'c, str>>,
-    pub(crate) MaxAge:   Option<u64>,
-    pub(crate) Domain:   Option<Cow<'c, str>>,
-    pub(crate) Path:     Option<Cow<'c, str>>,
-    pub(crate) Secure:   Option<bool>,
-    pub(crate) HttpOnly: Option<bool>,
-    pub(crate) SameSite: Option<SameSitePolicy>,
+    pub(crate) cookie:   (&'c str, Cow<'c, str>),
+    pub(crate) expires:  Option<Cow<'c, str>>,
+    pub(crate) max_age:   Option<u64>,
+    pub(crate) domain:   Option<Cow<'c, str>>,
+    pub(crate) path:     Option<Cow<'c, str>>,
+    pub(crate) secure:   Option<bool>,
+    pub(crate) http_only: Option<bool>,
+    pub(crate) same_site: Option<SameSitePolicy>,
 }
 impl<'c> SetCookie<'c> {
-    pub fn Cookie(&self) -> (&str, &str) {
-        let (name, value) = &self.Cookie;
+    pub fn cookie(&self) -> (&str, &str) {
+        let (name, value) = &self.cookie;
         (name, &value)
     }
-    pub fn Expires(&self) -> Option<&str> {
-        self.Expires.as_deref()
+    pub fn expires(&self) -> Option<&str> {
+        self.expires.as_deref()
     }
-    pub const fn MaxAge(&self) -> Option<u64> {
-        self.MaxAge
+    pub const fn max_age(&self) -> Option<u64> {
+        self.max_age
     }
-    pub fn Domain(&self) -> Option<&str> {
-        self.Domain.as_deref()
+    pub fn domain(&self) -> Option<&str> {
+        self.domain.as_deref()
     }
-    pub fn Path(&self) -> Option<&str> {
-        self.Path.as_deref()
+    pub fn path(&self) -> Option<&str> {
+        self.path.as_deref()
     }
-    pub const fn Secure(&self) -> Option<bool> {
-        self.Secure
+    pub const fn secure(&self) -> Option<bool> {
+        self.secure
     }
-    pub const fn HttpOnly(&self) -> Option<bool> {
-        self.HttpOnly
+    pub const fn http_only(&self) -> Option<bool> {
+        self.http_only
     }
     /// `Some`: `"Lax" | "None" | "Strict"`
-    pub const fn SameSite(&self) -> Option<&'static str> {
-        match &self.SameSite {
+    pub const fn same_site(&self) -> Option<&'static str> {
+        match &self.same_site {
             None         => None,
             Some(policy) => Some(policy.as_str())
         }
@@ -83,14 +83,14 @@ impl<'c> SetCookie<'c> {
             }).map_err(|e| format!("Invalid Cookie value: {e}"))?;
 
             Self {
-                Cookie: (name, value),
-                Expires:  None,
-                MaxAge:   None,
-                Domain:   None,
-                Path:     None,
-                SameSite: None,
-                Secure:   None,
-                HttpOnly: None,
+                cookie: (name, value),
+                expires: None,
+                max_age: None,
+                domain: None,
+                path: None,
+                same_site: None,
+                secure: None,
+                http_only: None,
             }
         };
 
@@ -103,29 +103,29 @@ impl<'c> SetCookie<'c> {
                 Some(0) => {
                     r.consume("=").ok_or_else(|| format!("Invalid `Expires`: No `=` found"))?;
                     let value = std::str::from_utf8(r.read_until(b"; ")).map_err(|e| format!("Invalid `Expires`: {e}"))?;
-                    this.Expires = Some(Cow::Borrowed(value))
+                    this.expires = Some(Cow::Borrowed(value))
                 },
                 Some(1) => {
                     r.consume("=").ok_or_else(|| format!("Invalid `Max-Age`: No `=` found"))?;
                     let value = r.read_until(b"; ").iter().fold(0, |secs, d| 10*secs + (*d - b'0') as u64);
-                    this.MaxAge = Some(value)
+                    this.max_age = Some(value)
                 }
                 Some(2) => {
                     r.consume("=").ok_or_else(|| format!("Invalid `Domain`: No `=` found"))?;
                     let value = std::str::from_utf8(r.read_until(b"; ")).map_err(|e| format!("Invalid `Domain`: {e}"))?;
-                    this.Domain = Some(Cow::Borrowed(value))
+                    this.domain = Some(Cow::Borrowed(value))
                 },
                 Some(3) => {
                     r.consume("=").ok_or_else(|| format!("Invalid `Path`: No `=` found"))?;
                     let value = std::str::from_utf8(r.read_until(b"; ")).map_err(|e| format!("Invalid `Path`: {e}"))?;
-                    this.Path = Some(Cow::Borrowed(value))
+                    this.path = Some(Cow::Borrowed(value))
                 }
                 Some(4) => {
                     r.consume("=").ok_or_else(|| format!("Invalid `SameSite`: No `=` found"))?;
-                    this.SameSite = SameSitePolicy::from_bytes(r.read_until(b"; "));
+                    this.same_site = SameSitePolicy::from_bytes(r.read_until(b"; "));
                 }
-                Some(5) => this.Secure = Some(true),
-                Some(6) => this.HttpOnly = Some(true),
+                Some(5) => this.secure = Some(true),
+                Some(6) => this.http_only = Some(true),
                 _ => return Err((|| format!("Unkown directive: `{}`", r.remaining().escape_ascii()))())
             }
         }
@@ -139,41 +139,41 @@ impl SetCookieBuilder {
     #[inline]
     pub(crate) fn new(cookie_name: &'static str, cookie_value: impl Into<Cow<'static, str>>) -> Self {
         Self(SetCookie {
-            Cookie: (cookie_name, cookie_value.into()),
-            Expires: None, MaxAge: None, Domain: None, Path: None, Secure: None, HttpOnly: None, SameSite: None,
+            cookie: (cookie_name, cookie_value.into()),
+            expires: None, max_age: None, domain: None, path: None, secure: None, http_only: None, same_site: None,
         })
     }
     pub(crate) fn build(self) -> String {
         let mut bytes = Vec::new();
 
-        let (name, value) = self.0.Cookie; {
+        let (name, value) = self.0.cookie; {
             bytes.extend_from_slice(name.as_bytes());
             bytes.push(b'=');
             bytes.extend_from_slice(ohkami_lib::percent_encode(&value).as_bytes());
         }
-        if let Some(Expires) = self.0.Expires {
+        if let Some(Expires) = self.0.expires {
             bytes.extend_from_slice(b"; Expires=");
             bytes.extend_from_slice(Expires.as_bytes());
         }
-        if let Some(MaxAge) = self.0.MaxAge {
+        if let Some(MaxAge) = self.0.max_age {
             bytes.extend_from_slice(b"; Max-Age=");
             bytes.extend_from_slice(MaxAge.to_string().as_bytes());
         }
-        if let Some(Domain) = self.0.Domain {
+        if let Some(Domain) = self.0.domain {
             bytes.extend_from_slice(b"; Domain=");
             bytes.extend_from_slice(Domain.as_bytes());
         }
-        if let Some(Path) = self.0.Path {
+        if let Some(Path) = self.0.path {
             bytes.extend_from_slice(b"; Path=");
             bytes.extend_from_slice(Path.as_bytes());
         }
-        if let Some(true) = self.0.Secure {
+        if let Some(true) = self.0.secure {
             bytes.extend_from_slice(b"; Secure");
         }
-        if let Some(true) = self.0.HttpOnly {
+        if let Some(true) = self.0.http_only {
             bytes.extend_from_slice(b"; HttpOnly");
         }
-        if let Some(SameSite) = self.0.SameSite {
+        if let Some(SameSite) = self.0.same_site {
             bytes.extend_from_slice(b"; SameSite=");
             bytes.extend_from_slice(SameSite.as_str().as_bytes());
         }
@@ -184,48 +184,48 @@ impl SetCookieBuilder {
     }
 
     #[inline]
-    pub fn Expires(mut self, Expires: impl Into<Cow<'static, str>>) -> Self {
-        self.0.Expires = Some(Expires.into());
+    pub fn expires(mut self, expires: impl Into<Cow<'static, str>>) -> Self {
+        self.0.expires = Some(expires.into());
         self
     }
     #[inline]
-    pub const fn MaxAge(mut self, MaxAge: u64) -> Self {
-        self.0.MaxAge = Some(MaxAge);
+    pub const fn max_age(mut self, max_age: u64) -> Self {
+        self.0.max_age = Some(max_age);
         self
     }
     #[inline]
-    pub fn Domain(mut self, Domain: impl Into<Cow<'static, str>>) -> Self {
-        self.0.Domain = Some(Domain.into());
+    pub fn domain(mut self, domain: impl Into<Cow<'static, str>>) -> Self {
+        self.0.domain = Some(domain.into());
         self
     }
     #[inline]
-    pub fn Path(mut self, Path: impl Into<Cow<'static, str>>) -> Self {
-        self.0.Path = Some(Path.into());
+    pub fn path(mut self, path: impl Into<Cow<'static, str>>) -> Self {
+        self.0.path = Some(path.into());
         self
     }
     #[inline]
-    pub const fn Secure(mut self) -> Self {
-        self.0.Secure = Some(true);
+    pub const fn secure(mut self, yes: bool) -> Self {
+        self.0.secure = Some(yes);
         self
     }
     #[inline]
-    pub const fn HttpOnly(mut self) -> Self {
-        self.0.HttpOnly = Some(true);
+    pub const fn http_only(mut self) -> Self {
+        self.0.http_only = Some(true);
         self
     }
     #[inline]
-    pub const fn SameSiteLax(mut self) -> Self {
-        self.0.SameSite = Some(SameSitePolicy::Lax);
+    pub const fn same_site_lax(mut self) -> Self {
+        self.0.same_site = Some(SameSitePolicy::Lax);
         self
     }
     #[inline]
-    pub const fn SameSiteNone(mut self) -> Self {
-        self.0.SameSite = Some(SameSitePolicy::None);
+    pub const fn same_site_none(mut self) -> Self {
+        self.0.same_site = Some(SameSitePolicy::None);
         self
     }
     #[inline]
-    pub const fn SameSiteStrict(mut self) -> Self {
-        self.0.SameSite = Some(SameSitePolicy::Strict);
+    pub const fn same_site_strict(mut self) -> Self {
+        self.0.same_site = Some(SameSitePolicy::Strict);
         self
     }
 }
