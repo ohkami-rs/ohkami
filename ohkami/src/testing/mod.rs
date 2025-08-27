@@ -57,7 +57,7 @@ impl TestingOhkami {
         
         let test_res = async move {
             let mut req = Request::uninit(#[cfg(feature="__rt_native__")] crate::util::IP_0000);
-            let mut req = unsafe {Pin::new_unchecked(&mut req)};
+            let mut req = Pin::new(&mut req);
             
             let res = match req.as_mut().read(&mut &test_req.encode()[..]).await {
                 Err(res) => res,
