@@ -305,7 +305,7 @@ impl Headers {
     }
 
     pub(crate) fn remove(&mut self, name: Header) {
-        unsafe {self.standard.delete(name as u8)}
+        unsafe {self.standard.delete(name as u8)};
     }
 
     #[inline]

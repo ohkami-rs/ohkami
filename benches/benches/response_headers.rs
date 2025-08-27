@@ -14,7 +14,8 @@ use ohkami_benches::response_headers::{
     // heap_ohkami_headers_nosize::HeapOhkamiHeadersWithoutSize,
 };
 
-#[bench] fn insert_ohkami(b: &mut test::Bencher) {
+#[bench]
+fn ohkami_insert(b: &mut test::Bencher) {
     b.iter(|| -> ResponseHeaders {
         let mut h = ResponseHeaders::_new();
         h.set()
@@ -39,7 +40,8 @@ use ohkami_benches::response_headers::{
     });
 }
 /*
-#[bench] fn insert_ohkami_only_standard(b: &mut test::Bencher) {
+#[bench]
+fn ohkami_only_standard_insert(b: &mut test::Bencher) {
     b.iter(|| -> ResponseHeaders {
         let mut h = ResponseHeaders::_new();
         h.set()
@@ -62,7 +64,8 @@ use ohkami_benches::response_headers::{
     });
 }
 
-#[bench] fn insert_heap_ohkami_nosize(b: &mut test::Bencher) {
+#[bench]
+fn heap_ohkami_nosize_insert(b: &mut test::Bencher) {
     b.iter(|| -> ResponseHeaders {
         let mut h = HeapOhkamiHeadersWithoutSize::new();
         h.set()
@@ -86,7 +89,8 @@ use ohkami_benches::response_headers::{
         h
     });
 }
-#[bench] fn insert_heap_ohkami_only_standard(b: &mut test::Bencher) {
+#[bench]
+fn heap_ohkami_only_standard_insert(b: &mut test::Bencher) {
     b.iter(|| -> HeapOhkamiHeaders {
         let mut h = HeapOhkamiHeaders::new();
         h.set()
@@ -110,7 +114,8 @@ use ohkami_benches::response_headers::{
 }
 */
 
-#[bench] fn insert_http_crate(b: &mut test::Bencher) {
+#[bench]
+fn http_crate_insert(b: &mut test::Bencher) {
     b.iter(|| -> HeaderMap {
         let mut h = HeaderMap::new();
         h.insert(header::ACCESS_CONTROL_ALLOW_CREDENTIALS, HeaderValue::from_static(black_box("true")));
@@ -133,7 +138,8 @@ use ohkami_benches::response_headers::{
     });
 }
 
-#[bench] fn insert_fxmap(b: &mut test::Bencher) {
+#[bench]
+fn fxmap_insert(b: &mut test::Bencher) {
     b.iter(|| -> FxMap {
         let mut h = FxMap::new();
         h
@@ -157,7 +163,8 @@ use ohkami_benches::response_headers::{
     });
 }
 
-#[bench] fn insert_headermap(b: &mut test::Bencher) {
+#[bench]
+fn headermap_insert(b: &mut test::Bencher) {
     b.iter(|| -> MyHeaderMap {
         let mut h = MyHeaderMap::new();
         h.set()
@@ -181,7 +188,8 @@ use ohkami_benches::response_headers::{
     });
 }
 
-#[bench] fn insert_header_hashbrown(b: &mut test::Bencher) {
+#[bench]
+fn header_hashbrown_insert(b: &mut test::Bencher) {
     b.iter(|| -> HeaderHashBrown<true> {
         let mut h = HeaderHashBrown::<true>::new();
         h
@@ -208,7 +216,8 @@ use ohkami_benches::response_headers::{
 
 
 
-#[bench] fn insert_and_remove_ohkami(b: &mut test::Bencher) {
+#[bench]
+fn ohkami_insert_and_remove(b: &mut test::Bencher) {
     b.iter(|| -> ResponseHeaders {
         let mut h = ResponseHeaders::_new();
         h.set()
@@ -251,7 +260,8 @@ use ohkami_benches::response_headers::{
     });
 }
 /*
-#[bench] fn insert_and_remove_heap_ohkami_nosize(b: &mut test::Bencher) {
+#[bench]
+fn heap_ohkami_nosize_insert_and_remove(b: &mut test::Bencher) {
     b.iter(|| -> HeapOhkamiHeadersWithoutSize {
         let mut h = HeapOhkamiHeadersWithoutSize::new();
         h.set()
@@ -295,7 +305,8 @@ use ohkami_benches::response_headers::{
 }
 */
 
-#[bench] fn insert_and_remove_http_crate(b: &mut test::Bencher) {
+#[bench]
+fn http_crate_insert_and_remove(b: &mut test::Bencher) {
     b.iter(|| -> HeaderMap {
         let mut h = HeaderMap::new();
         
@@ -337,7 +348,8 @@ use ohkami_benches::response_headers::{
     });
 }
 
-#[bench] fn insert_and_remove_fxmap(b: &mut test::Bencher) {
+#[bench]
+fn fxmap_insert_and_remove(b: &mut test::Bencher) {
     b.iter(|| -> FxMap {
         let mut h = FxMap::new();
         h
@@ -378,7 +390,8 @@ use ohkami_benches::response_headers::{
     });
 }
 
-#[bench] fn insert_and_remove_headermap(b: &mut test::Bencher) {
+#[bench]
+fn headermap_insert_and_remove(b: &mut test::Bencher) {
     b.iter(|| -> MyHeaderMap {
         let mut h = MyHeaderMap::new();
         h.set()
@@ -420,7 +433,8 @@ use ohkami_benches::response_headers::{
     });
 }
 
-#[bench] fn insert_and_remove_header_hashbrown(b: &mut test::Bencher) {
+#[bench]
+fn header_hashbrown_insert_and_remove(b: &mut test::Bencher) {
     b.iter(|| -> HeaderHashBrown<true> {
         let mut h = HeaderHashBrown::<true>::new();
         h
@@ -464,7 +478,8 @@ use ohkami_benches::response_headers::{
 
 
 
-#[bench] fn write_ohkami(b: &mut test::Bencher) {
+#[bench]
+fn write_ohkami(b: &mut test::Bencher) {
     let mut h = ResponseHeaders::_new();
     h.set()
         .access_control_allow_credentials(black_box("true"))
@@ -492,7 +507,8 @@ use ohkami_benches::response_headers::{
     });
 }
 /*
-#[bench] fn write_heap_ohkami_only_standards(b: &mut test::Bencher) {
+#[bench]
+fn write_heap_ohkami_only_standards(b: &mut test::Bencher) {
     let mut h = HeapOhkamiHeaders::new();
     h.set()
         .AccessControlAllowCredentials(black_box("true"))
@@ -519,7 +535,8 @@ use ohkami_benches::response_headers::{
         buf
     });
 }
-#[bench] fn write_heap_ohkami_nosize(b: &mut test::Bencher) {
+#[bench]
+fn write_heap_ohkami_nosize(b: &mut test::Bencher) {
     let mut h = HeapOhkamiHeadersWithoutSize::new();
     h.set()
         .AccessControlAllowCredentials(black_box("true"))
@@ -546,7 +563,8 @@ use ohkami_benches::response_headers::{
         buf
     });
 }
-#[bench] fn write_heap_ohkami_only_standards_nosize(b: &mut test::Bencher) {
+#[bench]
+fn write_heap_ohkami_only_standards_nosize(b: &mut test::Bencher) {
     let mut h = HeapOhkamiHeadersWithoutSize::new();
     h.set()
         .AccessControlAllowCredentials(black_box("true"))
@@ -575,7 +593,8 @@ use ohkami_benches::response_headers::{
 }
 */
 
-#[bench] fn write_http_crate(b: &mut test::Bencher) {
+#[bench]
+fn write_http_crate(b: &mut test::Bencher) {
     let mut h = HeaderMap::new();
     h.insert(header::ACCESS_CONTROL_ALLOW_CREDENTIALS, HeaderValue::from_static(black_box("true")));
     h.insert(header::ACCESS_CONTROL_ALLOW_HEADERS, HeaderValue::from_static(black_box("X-Custom-Header,Upgrade-Insecure-Requests")));
@@ -607,7 +626,8 @@ use ohkami_benches::response_headers::{
     });
 }
 
-#[bench] fn write_fxmap(b: &mut test::Bencher) {
+#[bench]
+fn write_fxmap(b: &mut test::Bencher) {
     let mut h = FxMap::new();
     h
         .insert("Access-Control-Allow-Credentials", black_box("true"))
@@ -634,7 +654,8 @@ use ohkami_benches::response_headers::{
     });
 }
 
-#[bench] fn write_headermap(b: &mut test::Bencher) {
+#[bench]
+fn write_headermap(b: &mut test::Bencher) {
     let mut h = MyHeaderMap::new();
     h.set()
         .AccessControlAllowCredentials(black_box("true"))
@@ -661,7 +682,8 @@ use ohkami_benches::response_headers::{
     });
 }
 
-#[bench] fn write_header_hashbrown(b: &mut test::Bencher) {
+#[bench]
+fn write_header_hashbrown(b: &mut test::Bencher) {
     let mut h = HeaderHashBrown::<true>::new();
     h
         .insert_standard_from_reqbytes(StandardHeader::AccessControlAllowCredentials, black_box(b"true"))

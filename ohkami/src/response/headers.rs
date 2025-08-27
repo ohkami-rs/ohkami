@@ -313,8 +313,8 @@ impl Headers {
         let (name_len, value_len) = (name.len(), value.len());
         match unsafe {self.standard.get_mut(name as u8)} {
             None => {
+                unsafe {self.standard.insert_new(name as u8, value)};
                 self.size += name_len + ": ".len() + value_len + "\r\n".len();
-                unsafe {self.standard.insert_new(name as u8, value)}
             }
             Some(old) => {
                 self.size -= old.len(); self.size += value_len;
@@ -344,9 +344,9 @@ impl Headers {
     pub(crate) fn remove(&mut self, name: Header) {
         let name_len = name.len();
         if let Some(v) = unsafe {self.standard.get(name as u8)} {
-            self.size -= name_len + ": ".len() + v.len() + "\r\n".len()
+            self.size -= name_len + ": ".len() + v.len() + "\r\n".len();
+            unsafe {self.standard.delete(name as u8)};
         }
-        unsafe {self.standard.delete(name as u8)}
     }
     pub(crate) fn remove_custom(&mut self, name: &'static str) {
         if let Some(c) = self.custom.as_mut() {

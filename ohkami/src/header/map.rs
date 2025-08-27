@@ -3,11 +3,15 @@ type Byte = u8;
 const NULL: Byte = Byte::MAX;
 
 pub(crate) struct ByteArrayMap<const N: usize, Value> {
-    indices: [u8; N], // using `u8` to save memory space, max capacity is 255
+    /// using `u8` instead of `usize` to save memory space,
+    /// with implicitly limiting the capacity to 255
+    /// (0-254, since 255 is used as `NULL` to indicate non-existence).
+    indices: [u8; N],
     entries: Vec<(Byte, Value)>,
 }
 
 impl<const N: usize, Value> ByteArrayMap<N, Value> {
+    /// SAFETY: `N` must be <= 255.
     #[inline]
     pub(crate) fn new() -> Self {
         Self {
@@ -23,6 +27,7 @@ impl<const N: usize, Value> ByteArrayMap<N, Value> {
         self.entries.clear();
     }
 
+    /// SAFETY: the `byte` must be in the range of `0..N`.
     #[inline(always)]
     pub(crate) unsafe fn get(&self, byte: Byte) -> Option<&Value> {
         match unsafe {*self.indices.get_unchecked(byte as usize)} {
@@ -30,6 +35,7 @@ impl<const N: usize, Value> ByteArrayMap<N, Value> {
             index => Some(unsafe {&self.entries.get_unchecked(index as usize).1})
         }
     }
+    /// SAFETY: the `byte` must be in the range of `0..N`.
     #[inline(always)]
     pub(crate) unsafe fn get_mut(&mut self, byte: Byte) -> Option<&mut Value> {
         match unsafe {*self.indices.get_unchecked(byte as usize)} {
@@ -38,25 +44,26 @@ impl<const N: usize, Value> ByteArrayMap<N, Value> {
         }
     }
 
+    /// SAFETY: the `byte` must be in the range of `0..N`.
     #[inline(always)]
     pub(crate) unsafe fn delete(&mut self, byte: Byte) {
-        let prev_index = std::mem::replace(
-            unsafe {self.indices.get_unchecked_mut(byte as usize)},
-            NULL
-        );
-        if prev_index != NULL {
-            let prev_index = prev_index as usize;
-            self.entries.swap_remove(prev_index);
-            if prev_index == self.entries.len() {
-                // removed the last element; do nothing
-            } else {
-                // the last entry is now moved to `prev_index`; update its index
-                let moved_byte = unsafe {self.entries.get_unchecked(prev_index).0};
-                unsafe {*self.indices.get_unchecked_mut(moved_byte as usize) = prev_index as u8};
+        match std::mem::replace(unsafe {self.indices.get_unchecked_mut(byte as usize)}, NULL) {
+            NULL => (),
+            prev_index => {
+                let prev_index = prev_index as usize;
+                self.entries.swap_remove(prev_index);
+                if prev_index == self.entries.len() {
+                    // removed the last element; do nothing
+                } else {
+                    // the last entry is now moved to `prev_index`; update its index
+                    let moved_byte = unsafe {self.entries.get_unchecked(prev_index).0};
+                    unsafe {*self.indices.get_unchecked_mut(moved_byte as usize) = prev_index as u8};
+                }
             }
         }
     }
 
+    /// SAFETY: the `byte` must be in the range of `0..N`.
     #[inline(always)]
     pub(crate) unsafe fn insert(&mut self, byte: Byte, value: Value) {
         let index_mut = unsafe {self.indices.get_unchecked_mut(byte as usize)};
@@ -70,7 +77,10 @@ impl<const N: usize, Value> ByteArrayMap<N, Value> {
             }
         }
     }
-    /// Additional SAFETY requirement from `insert`: the `byte` must not already exist in the map.
+    /// SAFETY:
+    /// 
+    /// 1. the `byte` must be in the range of `0..N`.
+    /// 2. the `byte` must not already exist in the map.
     #[inline(always)]
     pub(crate) unsafe fn insert_new(&mut self, byte: Byte, value: Value) {
         #[cfg(debug_assertions)] {
