@@ -1,9 +1,11 @@
 //! Most parts are based on [chrono](https://github.com/chronotope/chrono); MIT.
 
-/// Current datetime by **IMF-fixdate** format like `Sun, 06 Nov 1994 08:49:37 GMT`, used in `Date` header.
+/// format a unix timestamp by **IMF-fixdate** like `Sun, 06 Nov 1994 08:49:37 GMT`,
+/// mainly intended for `Date` header.
 /// 
 /// (reference：[https://datatracker.ietf.org/doc/html/rfc9110#name-date-time-formats](https://datatracker.ietf.org/doc/html/rfc9110#name-date-time-formats))
-#[inline(always)] pub fn imf_fixdate(unix_timestamp: u64) -> String {
+#[inline(always)]
+pub fn imf_fixdate(unix_timestamp: u64) -> String {
     UTCDateTime::from_unix_timestamp(unix_timestamp).into_imf_fixdate()
 }
 

@@ -52,23 +52,31 @@ impl Testing for Ohkami {
 
 impl TestingOhkami {
     #[must_use]
-    pub fn oneshot(&self, req: TestRequest) -> Oneshot {
+    pub fn oneshot(&self, test_req: TestRequest) -> Oneshot {
         let router = self.0.clone();
         
-        let res = async move {
-            let mut request = Request::uninit(#[cfg(feature="__rt_native__")] crate::util::IP_0000);
-            let mut request = unsafe {Pin::new_unchecked(&mut request)};
+        let test_res = async move {
+            let mut req = Request::uninit(#[cfg(feature="__rt_native__")] crate::util::IP_0000);
+            let mut req = Pin::new(&mut req);
             
-            let res = match request.as_mut().read(&mut &req.encode()[..]).await {
-                Ok(Some(())) => router.handle(&mut request).await,
-                Ok(None) => panic!("No request"),
+            let res = match req.as_mut().read(&mut &test_req.encode()[..]).await {
                 Err(res) => res,
+                Ok(None) => panic!("No request"),
+                Ok(Some(())) => {
+                    if req.headers.host().is_none() {
+                        req.headers.set().host("ohkami.test");
+                    }
+                    if req.headers.date().is_none() {
+                        req.headers.set().date(ohkami_lib::imf_fixdate(crate::util::unix_timestamp()));
+                    }
+                    router.handle(&mut req).await
+                }
             };
 
             TestResponse(res)
         };
 
-        Oneshot(Box::new(res))
+        Oneshot(Box::new(test_res))
     }
 }
 
