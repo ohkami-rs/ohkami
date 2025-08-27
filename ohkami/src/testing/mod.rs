@@ -37,20 +37,20 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::{pin::Pin, future::Future, format as f};
 
-pub trait Testing {
-    fn test(self) -> TestingOhkami;
+pub trait Tester {
+    fn test(self) -> TestOhkami;
 }
 
-pub struct TestingOhkami(Arc<Router>);
-
-impl Testing for Ohkami {
-    fn test(self) -> TestingOhkami {
+impl Tester for Ohkami {
+    fn test(self) -> TestOhkami {
         let (f, _) = self.into_router().finalize();
-        TestingOhkami(Arc::new(f))
+        TestOhkami(Arc::new(f))
     }
 }
 
-impl TestingOhkami {
+pub struct TestOhkami(Arc<Router>);
+
+impl TestOhkami {
     #[must_use]
     pub fn oneshot(&self, test_req: TestRequest) -> Oneshot {
         let router = self.0.clone();
