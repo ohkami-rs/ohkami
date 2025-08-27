@@ -66,23 +66,23 @@ impl Csrf {
         
         for origin in &trusted_origins {
             let Some(("http" | "https", rest)) = origin.split_once("://") else {
-                panic!("invalid origin `{origin}`: 'http' or 'https' scheme is required")
+                panic!("[Csrf::with_trusted_origins] invalid origin `{origin}`: 'http' or 'https' scheme is required")
             };
             let (host, port) = rest.split_once(':').map_or((rest, None), |(h, p)| (h, Some(p)));
             if port.is_some_and(|p| !p.chars().all(|c| c.is_ascii_digit())) {
-                panic!("invalid origin `{origin}`: port must be a number");
+                panic!("[Csrf::with_trusted_origins] invalid origin `{origin}`: port must be a number");
             }
             if !host.starts_with(|c: char| c.is_ascii_alphabetic()) {
-                panic!("invalid origin `{origin}`: host must start with an alphabetic character");
+                panic!("[Csrf::with_trusted_origins] invalid origin `{origin}`: host must start with an alphabetic character");
             }
             if !host.split('.').all(|part|
                 !part.is_empty() && part.chars().all(|c| matches!(c, 'a'..='z' | 'A'..='Z' | '0'..='9' | '-' | '_'))
             ) {
                 if host.contains(['/', '?', '#']) {
                     // helpful error message for common mistake
-                    panic!("invalid origin `{origin}`: path, query and fragment are not allowed");
+                    panic!("[Csrf::with_trusted_origins] invalid origin `{origin}`: path, query and fragment are not allowed");
                 } else {
-                    panic!("invalid origin `{origin}`: invalid host");
+                    panic!("[Csrf::with_trusted_origins] invalid origin `{origin}`: invalid host");
                 }
             }
         }
