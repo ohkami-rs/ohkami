@@ -1,7 +1,7 @@
 use crate::{Request, Response, IntoResponse, Fang, FangProc};
 use std::sync::Arc;
 
-/// # Built-in CSRF protection fang.
+/// # Built-in CSRF protection fang
 /// 
 /// The implementation is based on  the way of Go 1.25 net/http's `CrossOriginProtection`:
 /// 
@@ -32,6 +32,8 @@ use std::sync::Arc;
 /// 
 /// If you have multiple servers, you can use `Csrf::with_trusted_origins`
 /// to specify trusted origins.
+/// 
+/// **NOTE**: wildcards (like `https://*.a.domain`) are not supported in trusted origins.
 /// 
 /// ```no_run
 /// use ohkami::{Ohkami, Route, fang::Csrf};
@@ -76,11 +78,13 @@ impl Csrf {
             if port.is_some_and(|p| !p.chars().all(|c| c.is_ascii_digit())) {
                 panic!("invalid origin `{origin}`: port must be a number");
             }
-            if !host.chars().all(|c| matches!(c, 'a'..='z' | 'A'..='Z' | '0'..='9' | '-' | '.' | '_')) {
-                panic!("invalid origin `{origin}`: invalid host");
-            }
             if !host.starts_with(|c: char| c.is_ascii_alphabetic()) {
                 panic!("invalid origin `{origin}`: host must start with an alphabetic character");
+            }
+            if !host.split('.').all(|part|
+                !part.is_empty() && part.chars().all(|c| matches!(c, 'a'..='z' | 'A'..='Z' | '0'..='9' | '-' | '_'))
+            ) {
+                panic!("invalid origin `{origin}`: invalid host");
             }
         }
         
