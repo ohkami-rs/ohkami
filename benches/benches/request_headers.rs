@@ -84,34 +84,32 @@ fn input() -> Vec<u8> {
 #[bench] fn ohkami_parse(b: &mut test::Bencher) {
     let input = input();
 
-    b.iter(|| {
+    b.iter(|| -> RequestHeaders {
         let mut r = byte_reader::Reader::new(black_box(input.as_slice()));
 
         let mut h = RequestHeaders::_init();
         while r.consume("\r\n").is_none() {
             let key_bytes = r.read_while(|b| b != &b':');
             r.consume(": ").unwrap();
+
+            let value = CowSlice::Ref(Slice::from_bytes(r.read_while(|b| b != &b'\r')));
+            r.consume("\r\n").unwrap();
+
             if let Some(key) = RequestHeader::from_bytes(key_bytes) {
-                h._insert(key, CowSlice::Ref(
-                    Slice::from_bytes(r.read_while(|b| b != &b'\r'))
-                ));
+                h._append(key, value);
             } else {
-                match key_bytes {
-                    b"Cookie" | b"cookie" => (/* skip now */),
-                    _ => h._insert_custom(Slice::from_bytes(key_bytes), CowSlice::Ref(
-                        Slice::from_bytes(r.read_while(|b| b != &b'\r'))
-                    ))
-                }
+                h._insert_custom(Slice::from_bytes(key_bytes), value)
             }
-            r.consume("\r\n");
         }
+
+        h
     })
 }
 
 #[bench] fn fxmap_parse(b: &mut test::Bencher) {
     let input = input();
 
-    b.iter(|| {
+    b.iter(|| -> FxMap {
         let mut r = byte_reader::Reader::new(black_box(input.as_slice()));
 
         let mut h = FxMap::new();
@@ -124,13 +122,15 @@ fn input() -> Vec<u8> {
             ));
             r.consume("\r\n");
         }
+        
+        h
     })
 }
 
 #[bench] fn headerhashmap_parse(b: &mut test::Bencher) {
     let input = input();
 
-    b.iter(|| {
+    b.iter(|| -> HeaderHashMap {
         let mut r = byte_reader::Reader::new(black_box(input.as_slice()));
 
         let mut h = HeaderHashMap::default();
@@ -143,13 +143,15 @@ fn input() -> Vec<u8> {
             ));
             r.consume("\r\n");
         }
+        
+        h
     })
 }
 
 #[bench] fn http_crate_parse(b: &mut test::Bencher) {
     let input = input();
 
-    b.iter(|| {
+    b.iter(|| -> HeaderMap {
         let mut r = byte_reader::Reader::new(black_box(input.as_slice()));
         
         let mut h = HeaderMap::new();
@@ -162,13 +164,15 @@ fn input() -> Vec<u8> {
             );
             r.consume("\r\n");
         }
+        
+        h
     })
 }
 
 #[bench] fn header_hashbrown_parse(b: &mut test::Bencher) {
     let input = input();
 
-    b.iter(|| {
+    b.iter(|| -> HeaderHashBrown::<false> {
         let mut r = byte_reader::Reader::new(black_box(input.as_slice()));
         
         let mut h = HeaderHashBrown::<false>::new();
@@ -183,5 +187,7 @@ fn input() -> Vec<u8> {
                 None    => h.insert_from_reqbytes(key_bytes, value_bytes),
             };
         }
+        
+        h
     })
 }
