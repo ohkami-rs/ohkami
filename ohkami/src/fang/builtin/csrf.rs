@@ -65,15 +65,9 @@ impl Csrf {
         let trusted_origins = trusted_origins.into_iter().collect::<Vec<_>>();
         
         for origin in &trusted_origins {
-            let Some((scheme, rest)) = origin.split_once("://") else {
-                panic!("invalid origin `{origin}`: scheme is required")
+            let Some(("http" | "https", rest)) = origin.split_once("://") else {
+                panic!("invalid origin `{origin}`: 'http' or 'https' scheme is required")
             };
-            if !matches!(scheme, "http" | "https") {
-                panic!("invalid origin `{origin}`: scheme must be 'http' or 'https'");
-            }
-            if rest.contains(['/', '?', '#']) {
-                panic!("invalid origin `{origin}`: path, query and fragment are not allowed");
-            }
             let (host, port) = rest.split_once(':').map_or((rest, None), |(h, p)| (h, Some(p)));
             if port.is_some_and(|p| !p.chars().all(|c| c.is_ascii_digit())) {
                 panic!("invalid origin `{origin}`: port must be a number");
@@ -84,7 +78,12 @@ impl Csrf {
             if !host.split('.').all(|part|
                 !part.is_empty() && part.chars().all(|c| matches!(c, 'a'..='z' | 'A'..='Z' | '0'..='9' | '-' | '_'))
             ) {
-                panic!("invalid origin `{origin}`: invalid host");
+                if host.contains(['/', '?', '#']) {
+                    // helpful error message for common mistake
+                    panic!("invalid origin `{origin}`: path, query and fragment are not allowed");
+                } else {
+                    panic!("invalid origin `{origin}`: invalid host");
+                }
             }
         }
         
