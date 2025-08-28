@@ -67,6 +67,35 @@ Hello, your_name!
     
 ## Core APIs
 
+### `Ohkami`
+
+`Ohkami` is the main entry point of Ohkami application:
+a collection of `Route`s and `Fang`s, and provides `.howl()`/`.howls()` method to run the application.
+
+```rust,ignore
+Ohkami::new((
+    // global fangs
+    Fang1,
+    Fang2,
+    // routes
+    "/hello"
+        .GET(hello_handler)
+        .POST(hello_post_handler),
+    "/goodbye"
+        .GET((
+            // local fangs
+            Fang3,
+            Fang4,
+            goodbye_handler // handler
+        )),
+)).howl("localhost:3000").await;
+```
+
+`.howls()` (`tls` feature only) is used to run Ohkami with TLS (HTTPS) support
+upon [`rustls`](https://github.com/rustls) ecosystem.
+
+`howl(s)` supports graceful shutdown by `Ctrl-C` ( `SIGINT` ) on native runtimes.
+
 ### `Route`
 
 `Route` is the core trait to define Ohkami's routing:
@@ -85,19 +114,64 @@ async fn({FromRequest type},*) -> {IntoResponse type}
 On native runtimes, whole a handler must be `Send + Sync + 'static`
 and the return future must be `Send + 'static`.
 
+### `fang`s
+
+Ohkami's request handling system is called `fang`; all handlers and middlewares are built on it.
+
+```rust,ignore
+/* simplified for description */
+
+pub trait Fang<Inner: FangProc> {
+    type Proc: FangProc;
+    fn chain(&self, inner: Inner) -> Self::Proc;
+}
+
+pub trait FangProc {
+    async fn bite<'b>(&'b self, req: &'b mut Request) -> Response;
+}
+```
+
+built-ins:
+
+- `BasicAuth`, `Cors`, `Csrf`, `Jwt` (authentication/security)
+- `Context` (reuqest context)
+- `Enamel` (security headers; experimantal)
+- `Timeout` (handling timeout; native runtimes only)
+- `openapi::Tag` (tag for OpenAPI document generation; `openapi` feature only)
+
+Ohkami provides `FangAction` utility trait to implement `Fang` trait easily:
+
+```rust,ignore
+/* simplified for description */
+
+pub trait FangAction {
+    async fn fore<'a>(&'a self, req: &'a mut Request) -> Result<(), Response> {
+        // default implementation is empty
+        Ok(())
+    }
+    
+    async fn back<'a>(&'a self, res: &'a mut Response) {
+        // default implementation is empty
+    }
+}
+```
+
+Additionally, you can apply fangs both as **global fangs** to an `Ohkami` or
+as **local fangs** to a specific handler (described below).
+
 ### `claw`s
 
-Ohkami provides `claw` API: handler parts for declarative way to
-extract request data and construct response data.
+Ohkami provides `claw` API: handler parts designed for declarative way to
+extract request data and construct response data:
 
 - `content` - typed content {extracted from request / for response} of specific format
-  - built-in: `Json<T>`, `Text<T>`, `Html<T>`, `UrlEncoded<T>`, `Multipart<T>`
+  - built-ins: `Json<T>`, `Text<T>`, `Html<T>`, `UrlEncoded<T>`, `Multipart<T>`
 - `param` - typed parameters extracted from request
-  - built-in: `Path<P>`, `Query<T>`
+  - built-ins: `Path<P>`, `Query<T>`
 - `header` - types for specific header extracted from request
-  - built-in: types for standard request headers
+  - built-ins: types for standard request headers
 - `status` - types for response with specific status code
-  - built-in: types for standard response status codes
+  - built-ins: types for standard response status codes
 
 <sm><i>(
 here <code>T</code> means a type that implements
@@ -127,79 +201,6 @@ async fn handler1(
     // ...
 }
 ```
-
-### `fang`s
-
-Ohkami's request handling system is called `fang`; all handlers and middlewares are built on it.
-
-```rust,ignore
-/* simplified for description */
-
-pub trait Fang<Inner: FangProc> {
-    type Proc: FangProc;
-    fn chain(&self, inner: Inner) -> Self::Proc;
-}
-
-pub trait FangProc {
-    async fn bite<'b>(&'b self, req: &'b mut Request) -> Response;
-}
-```
-
-built-in:
-
-- `BasicAuth`, `Cors`, `Csrf`, `Jwt` (authentication/security)
-- `Context` (reuqest context)
-- `Enamel` (security headers; experimantal)
-- `Timeout` (handling timeout; native runtime only)
-- `openapi::Tag` (tag for OpenAPI document generation; `openapi` feature only)
-
-Ohkami provides `FangAction` utility trait to implement `Fang` trait easily:
-
-```rust,ignore
-/* simplified for description */
-
-pub trait FangAction {
-    async fn fore<'a>(&'a self, req: &'a mut Request) -> Result<(), Response> {
-        // default implementation is empty
-        Ok(())
-    }
-    async fn back<'a>(&'a self, res: &'a mut Response) {
-        // default implementation is empty
-    }
-}
-```
-
-Additionally, you can apply fangs both as **global fangs** to an `Ohkami` or
-as **local fangs** to a specific handler (described below).
-
-### `Ohkami`
-
-`Ohkami` is the main entry point of Ohkami application:
-a collection of `Route`s and `Fang`s, and provides `.howl()`/`.howls()` method to run the application.
-
-```rust,ignore
-Ohkami::new((
-    // global fangs
-    Fang1,
-    Fang2,
-    // routes
-    "/hello"
-        .GET(hello_handler)
-        .POST(hello_post_handler),
-    "/goodbye"
-        .GET((
-            // local fangs
-            Fang3,
-            Fang4,
-            goodbye_handler // handler
-        )),
-)).howl("localhost:3000").await;
-```
-
-`.howls()` (`tls` feature only) is used to run Ohkami with TLS (HTTPS) support
-upon [`rustls`](https://github.com/rustls) ecosystem.
-
-`howl(s)` supports graceful shutdown by `Ctrl-C` ( `SIGINT` ) on native runtimes.
 
 <br>
 
@@ -238,8 +239,8 @@ Local dev by `npm run dev` and deploy by `npm run deploy` !
 
 See
 
-- `worker.*` temaplates in [template repository](https://github.com/ohkami-rs/templates)
-- `worker.*` samples in [samples directory](https://github.com/ohkami-rs/ohkami/tree/main/samples)
+- `worker*` temaplates in [template repository](https://github.com/ohkami-rs/templates)
+- `worker*` samples in [samples directory](https://github.com/ohkami-rs/ohkami/tree/main/samples)
 - `#[worker]`'s documentation comment in [macro definitions](https://github.com/ohkami-rs/ohkami/tree/main/ohkami_macros/src/lib.rs)
 
 for wokring examples and detailed usage of `#[worker]` (and/or `openapi`).
@@ -629,7 +630,7 @@ async fn main() {
 }
 ```
 
-### Database connection management with `Context`
+### Database connection management with `Context` fang
 
 ```rust,no_run
 use ohkami::{Ohkami, Route};
