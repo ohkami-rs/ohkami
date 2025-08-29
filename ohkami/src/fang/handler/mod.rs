@@ -2,7 +2,7 @@ mod into_handler;
 
 pub use self::into_handler::IntoHandler;
 use super::{FangProcCaller, BoxedFPC};
-use super::{SendOnNative, SendSyncOnNative, SendOnNativeFuture};
+use super::{SendOnThreaded, SendSyncOnThreaded, SendOnThreadedFuture};
 use crate::{Request, Response};
 use std::pin::Pin;
 
@@ -28,16 +28,16 @@ const _: () = {
 
 impl Handler {
     pub(crate) fn new(
-        proc: impl Fn(&mut Request) -> Pin<Box<dyn SendOnNativeFuture<Response> + '_>> + SendSyncOnNative + 'static,
+        proc: impl Fn(&mut Request) -> Pin<Box<dyn SendOnThreadedFuture<Response> + '_>> + SendSyncOnThreaded + 'static,
         #[cfg(feature="openapi")] openapi_operation: openapi::Operation
     ) -> Self {
         struct HandlerProc<F>(F);
         const _: () = {
             impl<F> FangProcCaller for HandlerProc<F>
             where
-                F: Fn(&mut Request) -> Pin<Box<dyn SendOnNativeFuture<Response> + '_>> + SendSyncOnNative + 'static
+                F: Fn(&mut Request) -> Pin<Box<dyn SendOnThreadedFuture<Response> + '_>> + SendSyncOnThreaded + 'static
             {
-                fn call_bite<'b>(&'b self, req: &'b mut Request) -> Pin<Box<dyn SendOnNativeFuture<Response> + 'b>> {
+                fn call_bite<'b>(&'b self, req: &'b mut Request) -> Pin<Box<dyn SendOnThreadedFuture<Response> + 'b>> {
                     // SAFETY: trait upcasting
                     // trait upcasting coercion is experimental <https://github.com/rust-lang/rust/issues/65991>
                     unsafe {std::mem::transmute((self.0)(req))}
@@ -54,8 +54,8 @@ impl Handler {
     }
 }
 
-#[cfg(feature="rt_worker")]
-const _: () = {
+#[cfg(not(feature="__rt_threaded__"))]
+const _: (/* for NOT FOUND Handler cache */) = {
     unsafe impl Send for Handler {}
     unsafe impl Sync for Handler {}
 };

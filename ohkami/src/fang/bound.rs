@@ -4,27 +4,27 @@ use std::future::Future;
 
 pub use dispatch::*;
 
-#[cfg(not(feature="rt_worker"))]
+#[cfg(feature="__rt_threaded__")]
 mod dispatch {
-    pub trait SendSyncOnNative: Send + Sync {}
-    impl<T: Send + Sync> SendSyncOnNative for T {}
+    pub trait SendSyncOnThreaded: Send + Sync {}
+    impl<T: Send + Sync> SendSyncOnThreaded for T {}
 
     #[allow(unused)]
-    pub trait SendOnNative: Send {}
-    impl<T: Send> SendOnNative for T {}
+    pub trait SendOnThreaded: Send {}
+    impl<T: Send> SendOnThreaded for T {}
 }
-#[cfg(feature="rt_worker")]
+#[cfg(not(feature="__rt_threaded__"))]
 mod dispatch {
-    pub trait SendSyncOnNative {}
-    impl<T> SendSyncOnNative for T {}
+    pub trait SendSyncOnThreaded {}
+    impl<T> SendSyncOnThreaded for T {}
 
-    pub trait SendOnNative {}
-    impl<T> SendOnNative for T {}
+    pub trait SendOnThreaded {}
+    impl<T> SendOnThreaded for T {}
 }
 
 #[allow(unused)]
-pub trait SendOnNativeFuture<T>: Future<Output = T> + SendOnNative {}
-impl<T, F: Future<Output = T> + SendOnNative> SendOnNativeFuture<T> for F {}
+pub trait SendOnThreadedFuture<T>: Future<Output = T> + SendOnThreaded {}
+impl<T, F: Future<Output = T> + SendOnThreaded> SendOnThreadedFuture<T> for F {}
 
-pub(crate) trait FPCBound: FangProcCaller + SendSyncOnNative {}
-impl<T: FangProcCaller + SendSyncOnNative> FPCBound for T {}
+pub(crate) trait FPCBound: FangProcCaller + SendSyncOnThreaded {}
+impl<T: FangProcCaller + SendSyncOnThreaded> FPCBound for T {}

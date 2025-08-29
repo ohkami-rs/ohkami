@@ -85,7 +85,8 @@ const _: () = {
 
 #[cfg(not(feature="rt_worker"))]
 #[cfg(test)]
-#[test] fn query_iter() {
+#[test]
+fn query_iter() {
     let case = QueryParams(Slice::from_bytes(b"abc=def&xyz=123"));
     assert_eq!(case.iter().collect::<Vec<_>>(), [
         ("abc".into(), "def".into()),

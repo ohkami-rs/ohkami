@@ -4,6 +4,9 @@ set -Ceu
 
 SAMPLES=$(pwd)
 
+cd $SAMPLES/issue_550_glommio && \
+    cargo check
+
 cd $SAMPLES/openapi-schema-enums && \
     cargo run && \
     diff openapi.json openapi.json.sample

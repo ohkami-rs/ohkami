@@ -1,11 +1,11 @@
-use crate::fang::SendSyncOnNative;
+use crate::fang::SendSyncOnThreaded;
 use ohkami_lib::map::TupleMap;
 use std::any::{Any, TypeId};
 
-#[cfg(feature="rt_worker")]
-type StoreItem = Box<dyn Any>;
-#[cfg(not(feature="rt_worker"))]
+#[cfg(feature="__rt_threaded__")]
 type StoreItem = Box<dyn Any + Send + Sync>;
+#[cfg(not(feature="__rt_threaded__"))]
+type StoreItem = Box<dyn Any>;
 
 pub struct Context {
     store: Option<Box<TupleMap<TypeId, StoreItem>>>,
@@ -51,7 +51,7 @@ impl Context {
 
 impl Context {
     #[inline]
-    pub fn set<Data: SendSyncOnNative + 'static>(&mut self, value: Data) {
+    pub fn set<Data: SendSyncOnThreaded + 'static>(&mut self, value: Data) {
         if self.store.is_none() {
             self.store = Some(Box::new(TupleMap::new()));
         }
@@ -60,7 +60,7 @@ impl Context {
     }
 
     #[inline]
-    pub fn get<Data: SendSyncOnNative + 'static>(&self) -> Option<&Data> {
+    pub fn get<Data: SendSyncOnThreaded + 'static>(&self) -> Option<&Data> {
         self.store.as_ref().and_then(|map| map
             .get(&TypeId::of::<Data>())
             .map(|boxed| {

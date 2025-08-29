@@ -52,15 +52,15 @@ anysc-rustls = { version = "0.1", optional = true }
 
 
 [features]
-rt_tokio = ["__rt_native__", "__io_tokio__",
+rt_tokio = ["__rt_native__", "__rt_threaded__", "__io_tokio__",
     "dep:tokio","tokio/rt","tokio/net","tokio/time",
     "mews?/rt_tokio",
 ]
-rt_smol = ["__rt_native__", "__io_futures__",
+rt_smol = ["__rt_native__", "__rt_threaded__", "__io_futures__",
     "dep:smol",
     "mews?/rt_smol",
 ]
-rt_nio = ["__rt_native__", "__io_tokio__",
+rt_nio = ["__rt_native__", "__rt_threaded__", "__io_tokio__",
     "dep:nio",
     "mews?/rt_nio",
 ]
@@ -73,7 +73,7 @@ rt_worker = ["__rt__",
     "dep:worker", "worker/d1", "worker/queue",
     "ohkami_macros/worker",
 ]
-rt_lambda = ["__rt__",
+rt_lambda = ["__rt__", "__rt_threaded__",
     "dep:lambda_runtime",
     "dep:tokio", "tokio/rt", # lambda_runtime internally depends on tokio runtime
     "ohkami_lib/stream",     # lambda_runtime's interface always requires stream
@@ -85,10 +85,11 @@ ws      = ["ohkami_lib/stream", "dep:mews", "dep:futures-util", "futures-util/io
 tls     = ["dep:rustls", "dep:anysc-rustls"]
 
 ##### internal #####
-__rt__         = []
-__rt_native__  = ["__rt__", "dep:mime_guess", "dep:ctrlc"]
-__io_tokio__   = ["dep:tokio","tokio/io-util", "anysc-rustls?/io_tokio"]
-__io_futures__ = ["dep:futures-util","futures-util/io", "anysc-rustls?/io_futures"]
+__rt__          = []
+__rt_threaded__ = ["__rt__"]
+__rt_native__   = ["__rt__", "dep:mime_guess", "dep:ctrlc"]
+__io_tokio__    = ["dep:tokio","tokio/io-util", "anysc-rustls?/io_tokio"]
+__io_futures__  = ["dep:futures-util","futures-util/io", "anysc-rustls?/io_futures"]
 
 ##### DEBUG #####
 DEBUG = ["tokio?/rt-multi-thread", "tokio?/macros"]

@@ -3,9 +3,8 @@ use ohkami::util::num_cpus;
 use glommio::{LocalExecutorPoolBuilder, PoolPlacement, CpuSet, executor};
 
 async fn echo_id(Path(id): Path<String>) -> String {
-    // let executor = executor();
-    // executor.spawn_blocking(move || id).await
-    id
+    let executor = executor();
+    executor.spawn_blocking(move || id).await
 }
 
 fn main() {

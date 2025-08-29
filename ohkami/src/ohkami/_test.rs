@@ -185,11 +185,11 @@ fn my_ohkami() -> Ohkami {
     }
     struct IncrementProc<Inner: FangProc>(Inner);
     impl<Inner: FangProc> FangProc for IncrementProc<Inner> {
-        fn bite<'b>(&'b self, req: &'b mut Request) -> impl std::future::Future<Output = Response> + Send {
+        async fn bite<'b>(&'b self, req: &'b mut Request) -> Response {
             crate::DEBUG!("Called `Increment`");
 
             *N().lock().unwrap() += 1;
-            self.0.bite(req)
+            self.0.bite(req).await
         }
     }
 

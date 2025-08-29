@@ -1147,8 +1147,9 @@ mod test {
         });
     }
 
+    #[cfg(feature="__rt_threaded__")]
     #[test]
-    fn ohkami_is_send_sync_static_on_native() {
+    fn ohkami_is_send_sync_static_on_rt_native_threaded() {
         fn is_send_sync_static<T: Send + Sync + 'static>(_: T) {}
 
         let o = Ohkami::new((
