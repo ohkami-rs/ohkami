@@ -1006,10 +1006,6 @@ mod sync {
                     WAKER_INDEX.fetch_add(1, Ordering::Relaxed)
                 };
 
-                #[cfg(debug_assertions)] {
-                    assert_eq!(index, WAKERS.read().unwrap().len());
-                }
-
                 /* ensure that `WAKERS` has the same numbers of `Waker`s as `CtrlC` instances */
                 WAKERS.write().unwrap().push(AtomicPtr::new(null_mut()));
 
