@@ -62,7 +62,7 @@ macro_rules! push_unchecked {
 
 pub use crate::fang::FangAction;
 
-pub use crate::fang::bound::{SendOnNative, SendSyncOnNative};
+pub use crate::fang::bound::{SendOnThreaded, SendSyncOnThreaded};
 
 pub use ohkami_lib::{percent_decode, percent_decode_utf8, percent_encode};
 

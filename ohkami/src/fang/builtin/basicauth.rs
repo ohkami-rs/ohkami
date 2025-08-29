@@ -1,5 +1,5 @@
 use crate::prelude::*;
-use crate::fang::SendSyncOnNative;
+use crate::fang::SendSyncOnThreaded;
 
 #[cfg(feature="openapi")]
 use crate::openapi;
@@ -46,7 +46,7 @@ use crate::openapi;
 #[derive(Clone, Debug)]
 pub struct BasicAuth<S>
 where
-    S: AsRef<str> + Clone + SendSyncOnNative + 'static
+    S: AsRef<str> + Clone + SendSyncOnThreaded + 'static
 {
     pub username: S,
     pub password: S
@@ -54,7 +54,7 @@ where
 
 impl<S> BasicAuth<S>
 where
-    S: AsRef<str> + Clone + SendSyncOnNative + 'static
+    S: AsRef<str> + Clone + SendSyncOnThreaded + 'static
 {
     #[inline]
     fn matches(&self,
@@ -82,7 +82,7 @@ const _: () = {
 
     impl<S> FangAction for BasicAuth<S>
     where
-        S: AsRef<str> + Clone + SendSyncOnNative + 'static
+        S: AsRef<str> + Clone + SendSyncOnThreaded + 'static
     {
         #[inline]
         async fn fore<'a>(&'a self, req: &'a mut Request) -> Result<(), Response> {
@@ -105,7 +105,7 @@ const _: () = {
 
     impl<S, const N: usize> FangAction for [BasicAuth<S>; N]
     where
-        S: AsRef<str> + Clone + SendSyncOnNative + 'static
+        S: AsRef<str> + Clone + SendSyncOnThreaded + 'static
     {
         #[inline]
         async fn fore<'a>(&'a self, req: &'a mut Request) -> Result<(), Response> {

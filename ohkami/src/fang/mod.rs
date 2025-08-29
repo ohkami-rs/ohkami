@@ -50,7 +50,7 @@ use crate::openapi;
 ///     }
 /// }
 /// ```
-pub trait Fang<Inner: FangProc>: SendSyncOnNative + 'static {
+pub trait Fang<Inner: FangProc>: SendSyncOnThreaded + 'static {
     type Proc: FangProc;
     fn chain(&self, inner: Inner) -> Self::Proc;
 
@@ -60,21 +60,16 @@ pub trait Fang<Inner: FangProc>: SendSyncOnNative + 'static {
     }
 }
 
-pub trait FangProc: SendSyncOnNative + 'static {
-    // Here not using `-> impl SendOnNativeFuture` for
+pub trait FangProc: SendSyncOnThreaded + 'static {
+    // Here not using `-> impl SendOnThreadedFuture` for
     // rust-analyzer's completion.
-    // Currently rust-analyzer can complete `-> Future` methods
-    // as `async fn ...` **only when** it returns exactly one of:
-    // 
-    // * `-> impl Future<Output = T>`
-    // * `-> impl Future<Output = T> + Send`
-    // * `-> impl Future<Output = T> + Send + 'lifetime`
-    // 
-    // so `-> impl SendOnNativeFuture<T>` prevents his completion...
+    // Currently rust-analyzer can perform completion for `-> impl Future` methods
+    // as `async fn ...` **only when** it returns exactly `impl Future (+ something)*`,
+    // and he can't do it for `-> impl SendOnThreadedFuture<T>`.
 
-    #[cfg(any(feature="rt_worker",))]
+    #[cfg(not(feature="__rt_threaded__"))]
     fn bite<'b>(&'b self, req: &'b mut Request) -> impl Future<Output = Response>;
-    #[cfg(not(any(feature="rt_worker",)))]
+    #[cfg(feature="__rt_threaded__")]
     fn bite<'b>(&'b self, req: &'b mut Request) -> impl Future<Output = Response> + Send;
 
     /// Mainly used for override `bite` when itself returns `Pin<Box<dyn Future>>`.
@@ -82,18 +77,18 @@ pub trait FangProc: SendSyncOnNative + 'static {
     /// ### default
     /// just `Box::pin(self.bite(req))`
     #[inline(always)]
-    fn bite_boxed<'b>(&'b self, req: &'b mut Request) -> Pin<Box<dyn SendOnNativeFuture<Response> + 'b>> {
+    fn bite_boxed<'b>(&'b self, req: &'b mut Request) -> Pin<Box<dyn SendOnThreadedFuture<Response> + 'b>> {
         Box::pin(self.bite(req))
     }
 }
 
 /// `FangProc` but object-safe, returning `Pin<Box<dyn Future>>`.
 pub(crate) trait FangProcCaller {
-    fn call_bite<'b>(&'b self, req: &'b mut Request) -> Pin<Box<dyn SendOnNativeFuture<Response> + 'b>>;
+    fn call_bite<'b>(&'b self, req: &'b mut Request) -> Pin<Box<dyn SendOnThreadedFuture<Response> + 'b>>;
 }
 impl<Proc: FangProc> FangProcCaller for Proc {
     #[inline(always)]
-    fn call_bite<'b>(&'b self, req: &'b mut Request) -> Pin<Box<dyn SendOnNativeFuture<Response> + 'b>> {
+    fn call_bite<'b>(&'b self, req: &'b mut Request) -> Pin<Box<dyn SendOnThreadedFuture<Response> + 'b>> {
         self.bite_boxed(req)
     }
 }
@@ -126,12 +121,12 @@ const _: () = {
     impl FangProc for BoxedFPC {
         #[allow(refining_impl_trait)]
         #[inline(always)]
-        fn bite<'b>(&'b self, req: &'b mut Request) -> impl SendOnNativeFuture<Response> {
+        fn bite<'b>(&'b self, req: &'b mut Request) -> impl SendOnThreadedFuture<Response> {
             self.0.call_bite(req)
         }
 
         #[inline]
-        fn bite_boxed<'b>(&'b self, req: &'b mut Request) -> Pin<Box<dyn SendOnNativeFuture<Response> + 'b>> {
+        fn bite_boxed<'b>(&'b self, req: &'b mut Request) -> Pin<Box<dyn SendOnThreadedFuture<Response> + 'b>> {
             self.0.call_bite(req)
         }
     }

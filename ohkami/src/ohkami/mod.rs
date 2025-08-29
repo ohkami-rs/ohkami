@@ -1006,10 +1006,6 @@ mod sync {
                     WAKER_INDEX.fetch_add(1, Ordering::Relaxed)
                 };
 
-                #[cfg(debug_assertions)] {
-                    assert_eq!(index, WAKERS.read().unwrap().len());
-                }
-
                 /* ensure that `WAKERS` has the same numbers of `Waker`s as `CtrlC` instances */
                 WAKERS.write().unwrap().push(AtomicPtr::new(null_mut()));
 
@@ -1151,8 +1147,9 @@ mod test {
         });
     }
 
+    #[cfg(feature="__rt_threaded__")]
     #[test]
-    fn ohkami_is_send_sync_static_on_native() {
+    fn ohkami_is_send_sync_static_on_rt_native_threaded() {
         fn is_send_sync_static<T: Send + Sync + 'static>(_: T) {}
 
         let o = Ohkami::new((

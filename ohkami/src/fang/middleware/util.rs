@@ -1,5 +1,5 @@
 use super::super::{Fang, FangProc};
-use super::super::bound::SendSyncOnNative;
+use super::super::bound::SendSyncOnThreaded;
 use crate::{Request, Response};
 use std::future::Future;
 
@@ -67,18 +67,18 @@ use crate::openapi;
 ///     }
 /// }
 /// ```
-pub trait FangAction: Clone + SendSyncOnNative + 'static {
-    // Here not using `-> impl SendOnNativeFuture` for
+pub trait FangAction: Clone + SendSyncOnThreaded + 'static {
+    // Here not using `-> impl SendOnThreadedFuture` for
     // rust-analyzer's completion.
     // Currently rust-analyzer can perform completion for `-> impl Future` methods
     // as `async fn ...` **only when** it returns exactly `impl Future (+ something)*`,
-    // and he can't do it for `-> impl SendOnNativeFuture<T>`.
+    // and he can't do it for `-> impl SendOnThreadedFuture<T>`.
 
     /// *fore fang*, that bites a request before a handler.
     /// 
     /// ### default
     /// just return `Ok(())`
-    #[cfg(any(feature="rt_worker",))]
+    #[cfg(not(feature="__rt_threaded__"))]
     #[allow(unused_variables)]
     #[inline(always)]
     fn fore<'a>(&'a self, req: &'a mut Request) -> impl Future<Output = Result<(), Response>> {
@@ -88,7 +88,7 @@ pub trait FangAction: Clone + SendSyncOnNative + 'static {
     /// 
     /// ### default
     /// just return `Ok(())`
-    #[cfg(not(any(feature="rt_worker",)))]
+    #[cfg(feature="__rt_threaded__")]
     #[allow(unused_variables)]
     #[inline(always)]
     fn fore<'a>(&'a self, req: &'a mut Request) -> impl Future<Output = Result<(), Response>> + Send {
@@ -99,7 +99,7 @@ pub trait FangAction: Clone + SendSyncOnNative + 'static {
     /// 
     /// ### default
     /// just return `()`
-    #[cfg(any(feature="rt_worker",))]
+    #[cfg(not(feature="__rt_threaded__"))]
     #[allow(unused_variables)]
     #[inline(always)]
     fn back<'a>(&'a self, res: &'a mut Response) -> impl Future<Output = ()> {
@@ -109,7 +109,7 @@ pub trait FangAction: Clone + SendSyncOnNative + 'static {
     /// 
     /// ### default
     /// just return `()`
-    #[cfg(not(any(feature="rt_worker",)))]
+    #[cfg(feature="__rt_threaded__")]
     #[allow(unused_variables)]
     #[inline(always)]
     fn back<'a>(&'a self, res: &'a mut Response) -> impl Future<Output = ()> + Send {

@@ -1,7 +1,7 @@
 #![allow(non_snake_case, non_camel_case_types)]
 
 use crate::{Fang, FangProc, IntoResponse, Request, Response};
-use crate::fang::{SendSyncOnNative, SendOnNative};
+use crate::fang::{SendSyncOnThreaded, SendOnThreaded};
 use std::{borrow::Cow, marker::PhantomData};
 use serde::{Serialize, Deserialize};
 
@@ -84,7 +84,7 @@ use serde::{Serialize, Deserialize};
 ///     )).howl("localhost:3000").await
 /// }
 /// ```
-pub struct Jwt<Payload: Serialize + for<'de> Deserialize<'de> + SendSyncOnNative + 'static> {
+pub struct Jwt<Payload: Serialize + for<'de> Deserialize<'de> + SendSyncOnThreaded + 'static> {
     _payload:  PhantomData<Payload>,
     secret:    Cow<'static, str>,
     alg:       VerifyingAlgorithm,
@@ -101,7 +101,7 @@ enum VerifyingAlgorithm {
 }
 
 const _: () = {
-    impl<Payload: Serialize + for<'de> Deserialize<'de> + SendSyncOnNative + 'static> Clone for Jwt<Payload> {
+    impl<Payload: Serialize + for<'de> Deserialize<'de> + SendSyncOnThreaded + 'static> Clone for Jwt<Payload> {
         fn clone(&self) -> Self {
             Self {
                 _payload:  PhantomData,
@@ -115,7 +115,7 @@ const _: () = {
         }
     }
     
-    impl<Payload: Serialize + for<'de> Deserialize<'de> + SendSyncOnNative + 'static> std::fmt::Debug for Jwt<Payload> {
+    impl<Payload: Serialize + for<'de> Deserialize<'de> + SendSyncOnThreaded + 'static> std::fmt::Debug for Jwt<Payload> {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             f.debug_struct("Jwt")
                 .field("alg", &self.alg_str())
@@ -126,8 +126,8 @@ const _: () = {
     }
 
     impl<
-        Inner: FangProc + SendOnNative,
-        Payload: Serialize + for<'de> Deserialize<'de> + SendSyncOnNative + 'static,
+        Inner: FangProc + SendOnThreaded,
+        Payload: Serialize + for<'de> Deserialize<'de> + SendSyncOnThreaded + 'static,
     > Fang<Inner> for Jwt<Payload> {
         type Proc = JwtProc<Inner, Payload>;
         fn chain(&self, inner: Inner) -> Self::Proc {
@@ -142,14 +142,14 @@ const _: () = {
 
     pub struct JwtProc<
         Inner: FangProc,
-        Payload: Serialize + for<'de> Deserialize<'de> + SendSyncOnNative + 'static,
+        Payload: Serialize + for<'de> Deserialize<'de> + SendSyncOnThreaded + 'static,
     > {
         inner: Inner,
         jwt:   Jwt<Payload>,
     }
     impl<
-        Inner: FangProc + SendOnNative,
-        Payload: Serialize + for<'de> Deserialize<'de> + SendSyncOnNative + 'static,
+        Inner: FangProc + SendOnThreaded,
+        Payload: Serialize + for<'de> Deserialize<'de> + SendSyncOnThreaded + 'static,
     > FangProc for JwtProc<Inner, Payload> {
         async fn bite<'b>(&'b self, req: &'b mut Request) -> Response {
             let jwt_payload = match self.jwt.verified(req) {
@@ -163,7 +163,7 @@ const _: () = {
     }
 };
 
-impl<Payload: Serialize + for<'de> Deserialize<'de> + SendSyncOnNative + 'static> Jwt<Payload> {
+impl<Payload: Serialize + for<'de> Deserialize<'de> + SendSyncOnThreaded + 'static> Jwt<Payload> {
     /// Just `new_256`; use HMAC-SHA256 as verifying algorithm
     #[inline] pub fn default(secret: impl Into<Cow<'static, str>>) -> Self {
         Self::new_256(secret)
@@ -268,7 +268,7 @@ const _: () = {
     }
 };
 
-impl<Payload: Serialize + for<'de> Deserialize<'de> + SendSyncOnNative + 'static> Jwt<Payload> {
+impl<Payload: Serialize + for<'de> Deserialize<'de> + SendSyncOnThreaded + 'static> Jwt<Payload> {
     /// Build JWT token with the payload.
     #[inline] pub fn issue(self, payload: Payload) -> JwtToken {
         let unsigned_token = {
@@ -308,7 +308,7 @@ impl<Payload: Serialize + for<'de> Deserialize<'de> + SendSyncOnNative + 'static
     }
 }
 
-impl<Payload: Serialize + for<'de> Deserialize<'de> + SendSyncOnNative + 'static> Jwt<Payload> {
+impl<Payload: Serialize + for<'de> Deserialize<'de> + SendSyncOnThreaded + 'static> Jwt<Payload> {
     /// Verify JWT in requests' `Authorization` header and early return error response if
     /// it's missing or malformed.
     pub fn verify(&self, req: &Request) -> Result<(), Response> {

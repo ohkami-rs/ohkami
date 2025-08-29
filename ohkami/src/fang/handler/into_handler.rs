@@ -1,5 +1,5 @@
 use std::{future::Future, pin::Pin};
-use super::{Handler, SendOnNative, SendSyncOnNative, SendOnNativeFuture};
+use super::{Handler, SendOnThreaded, SendSyncOnThreaded, SendOnThreadedFuture};
 use super::super::{Fang, BoxedFPC, middleware::Fangs};
 use crate::{Request, Response, FromRequest, IntoResponse};
 
@@ -13,7 +13,7 @@ pub trait IntoHandler<T> {
 
 #[cold]
 #[inline(never)]
-fn error_response(e: Response) -> Pin<Box<dyn SendOnNativeFuture<Response>>> {
+fn error_response(e: Response) -> Pin<Box<dyn SendOnThreadedFuture<Response>>> {
     Box::pin(async {e})
 }
 
@@ -68,9 +68,9 @@ fn with_default_operation_id<F>(op: openapi::Operation) -> openapi::Operation {
 
 impl<'req, F, Fut, Res> IntoHandler<fn() -> Res> for F
 where
-    F:   Fn() -> Fut + SendSyncOnNative + 'static,
+    F:   Fn() -> Fut + SendSyncOnThreaded + 'static,
     Res: IntoResponse,
-    Fut: Future<Output = Res> + SendOnNative + 'static,
+    Fut: Future<Output = Res> + SendOnThreaded + 'static,
 {
     fn n_pathparams(&self) -> usize {0}
 
@@ -86,9 +86,9 @@ where
 
 impl<'req, F, Fut, Res, Req1> IntoHandler<fn(Req1) -> Res> for F
 where
-    F:   Fn(Req1) -> Fut + SendSyncOnNative + 'static,
+    F:   Fn(Req1) -> Fut + SendSyncOnThreaded + 'static,
     Res: IntoResponse,
-    Fut: Future<Output = Res> + SendOnNative + 'static,
+    Fut: Future<Output = Res> + SendOnThreaded + 'static,
     Req1: FromRequest<'req>,
 {
     fn n_pathparams(&self) -> usize {
@@ -113,9 +113,9 @@ where
 
 impl<'req, F, Fut, Res, Req1, Req2> IntoHandler<fn(Req1, Req2) -> Res> for F
 where
-    F:   Fn(Req1, Req2) -> Fut + SendSyncOnNative + 'static,
+    F:   Fn(Req1, Req2) -> Fut + SendSyncOnThreaded + 'static,
     Res: IntoResponse,
-    Fut: Future<Output = Res> + SendOnNative + 'static,
+    Fut: Future<Output = Res> + SendOnThreaded + 'static,
     Req1: FromRequest<'req>,
     Req2: FromRequest<'req>,
 {
@@ -142,9 +142,9 @@ where
 
 impl<'req, F, Fut, Res, Req1, Req2, Req3> IntoHandler<fn(Req1, Req2, Req3) -> Res> for F
 where
-    F:   Fn(Req1, Req2, Req3) -> Fut + SendSyncOnNative + 'static,
+    F:   Fn(Req1, Req2, Req3) -> Fut + SendSyncOnThreaded + 'static,
     Res: IntoResponse,
-    Fut: Future<Output = Res> + SendOnNative + 'static,
+    Fut: Future<Output = Res> + SendOnThreaded + 'static,
     Req1: FromRequest<'req>,
     Req2: FromRequest<'req>,
     Req3: FromRequest<'req>,
@@ -173,9 +173,9 @@ where
 
 impl<'req, F, Fut, Res, Req1, Req2, Req3, Req4> IntoHandler<fn(Req1, Req2, Req3, Req4) -> Res> for F
 where
-    F:   Fn(Req1, Req2, Req3, Req4) -> Fut + SendSyncOnNative + 'static,
+    F:   Fn(Req1, Req2, Req3, Req4) -> Fut + SendSyncOnThreaded + 'static,
     Res: IntoResponse,
-    Fut: Future<Output = Res> + SendOnNative + 'static,
+    Fut: Future<Output = Res> + SendOnThreaded + 'static,
     Req1: FromRequest<'req>,
     Req2: FromRequest<'req>,
     Req3: FromRequest<'req>,
@@ -206,9 +206,9 @@ where
 
 impl<'req, F, Fut, Body, Req1, Req2, Req3, Req4, Req5> IntoHandler<fn(Req1, Req2, Req3, Req4, Req5) -> Body> for F
 where
-    F:   Fn(Req1, Req2, Req3, Req4, Req5) -> Fut + SendSyncOnNative + 'static,
+    F:   Fn(Req1, Req2, Req3, Req4, Req5) -> Fut + SendSyncOnThreaded + 'static,
     Body: IntoResponse,
-    Fut: Future<Output = Body> + SendOnNative + 'static,
+    Fut: Future<Output = Body> + SendOnThreaded + 'static,
     Req1: FromRequest<'req>,
     Req2: FromRequest<'req>,
     Req3: FromRequest<'req>,
@@ -241,9 +241,9 @@ where
 
 impl<'req, F, Fut, Body, Req1, Req2, Req3, Req4, Req5, Req6> IntoHandler<fn(Req1, Req2, Req3, Req4, Req5, Req6) -> Body> for F
 where
-    F:   Fn(Req1, Req2, Req3, Req4, Req5, Req6) -> Fut + SendSyncOnNative + 'static,
+    F:   Fn(Req1, Req2, Req3, Req4, Req5, Req6) -> Fut + SendSyncOnThreaded + 'static,
     Body: IntoResponse,
-    Fut: Future<Output = Body> + SendOnNative + 'static,
+    Fut: Future<Output = Body> + SendOnThreaded + 'static,
     Req1: FromRequest<'req>,
     Req2: FromRequest<'req>,
     Req3: FromRequest<'req>,
@@ -384,6 +384,13 @@ where
         }
     }
     async fn h4(Path(_param): Path<P1<'_>>) -> String {format!("")}
+    
+    /// https://github.com/ohkami-rs/ohkami/issues/550
+    #[cfg(feature="rt_glommio")]
+    async fn echo_id(Path(id): Path<String>) -> String {
+        let executor = glommio::executor();
+        executor.spawn_blocking(move || id).await
+    }
 
     #[cfg(feature="rt_worker")]
     struct SomeJS {_ptr: *const u8}
@@ -404,6 +411,9 @@ where
     }
 
     assert_handlers! { h0 h1 h2 h3 h4 }
+    
+    #[cfg(feature="rt_glommio")]
+    assert_handlers! { echo_id }
 
     #[cfg(feature="rt_worker")]
     assert_handlers! { h5 }

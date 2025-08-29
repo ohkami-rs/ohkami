@@ -1,9 +1,9 @@
 pub mod util;
-use super::{Fang, BoxedFPC, SendSyncOnNative};
+use super::{Fang, BoxedFPC, SendSyncOnThreaded};
 
 
 #[allow(private_interfaces)]
-pub trait Fangs: SendSyncOnNative + 'static {
+pub trait Fangs: SendSyncOnThreaded + 'static {
     // returning box for object-safety
     fn build(&self, inner: BoxedFPC) -> BoxedFPC;
 

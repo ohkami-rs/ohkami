@@ -91,25 +91,7 @@ mod __rt__ {
     #[cfg(feature="rt_nio")]
     pub(crate) use nio::time::sleep;
     #[cfg(feature="rt_glommio")]
-    pub(crate) fn sleep(duration: std::time::Duration) -> impl std::future::Future<Output = ()> + Send {
-        return SendFuture(glommio::timer::sleep(duration));
-
-        ///////////////////////////////////////////////////////////
-
-        use std::{future::Future, pin::Pin, task::{Context, Poll}};
-
-        struct SendFuture<F>(F);
-
-        // SAFETY: sleep is executed on the same thread in glommio
-        unsafe impl<F> Send for SendFuture<F> {}
-
-        impl<F: Future<Output = ()>> Future for SendFuture<F> {
-            type Output = ();
-            fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-                unsafe {self.map_unchecked_mut(|this| &mut this.0)}.poll(cx)
-            }
-        }
-    }
+    pub(crate) use glommio::timer::sleep;
 
     #[cfg(any(feature="rt_tokio", feature="rt_smol", feature="rt_nio"))]
     mod task {
