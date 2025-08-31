@@ -9,7 +9,7 @@
 //! <br>
 //! 
 //! - *macro-less and type-safe* APIs for declarative, ergonomic code
-//! - *runtime-flexible* ： `tokio`, `smol`, `nio`, `glommio`, `monoio` and `worker` (Cloudflare Workers), `lambda` (AWS Lambda)
+//! - *runtime-flexible* ： `tokio`, `smol`, `nio`, `glommio`, `monoio`, `compio` and `worker` (Cloudflare Workers), `lambda` (AWS Lambda)
 //! - good performance, no-network testing, well-structured middlewares, Server-Sent Events, WebSocket, highly integrated OpenAPI document generation, ...
 //! 
 //! See [GitHub repo](https://github.com/ohkami-rs/ohkami) for details!
@@ -25,12 +25,13 @@
 
 
 #[cfg(any(
-    all(feature="rt_tokio",      any(feature="rt_smol",      feature="rt_nio",       feature="rt_glommio",   feature="rt_monoio",    feature="rt_worker"   )),
-    all(feature="rt_smol",       any(feature="rt_nio",       feature="rt_glommio",   feature="rt_monoio",    feature="rt_worker",    feature="rt_tokio"    )),
-    all(feature="rt_nio",        any(feature="rt_glommio",   feature="rt_monoio",    feature="rt_worker",    feature="rt_tokio",     feature="rt_smol"     )),
-    all(feature="rt_glommio",    any(feature="rt_monoio",    feature="rt_worker",    feature="rt_tokio",     feature="rt_smol",      feature="rt_nio"      )),
-    all(feature="rt_monoio",     any(feature="rt_worker",    feature="rt_tokio",     feature="rt_smol",      feature="rt_nio",       feature="rt_glommio"  )),
-    all(feature="rt_worker",     any(feature="rt_tokio",     feature="rt_smol",      feature="rt_nio",       feature="rt_glommio",   feature="rt_monoio"   )),
+    all(feature="rt_tokio",      any(feature="rt_smol",      feature="rt_nio",       feature="rt_glommio",   feature="rt_monoio",    feature="rt_compio",    feature="rt_worker"   )),
+    all(feature="rt_smol",       any(feature="rt_nio",       feature="rt_glommio",   feature="rt_monoio",    feature="rt_compio",    feature="rt_worker",    feature="rt_tokio"    )),
+    all(feature="rt_nio",        any(feature="rt_glommio",   feature="rt_monoio",    feature="rt_compio",    feature="rt_worker",    feature="rt_tokio",     feature="rt_smol"     )),
+    all(feature="rt_glommio",    any(feature="rt_monoio",    feature="rt_compio",    feature="rt_worker",    feature="rt_tokio",     feature="rt_smol",      feature="rt_nio"      )),
+    all(feature="rt_monoio",     any(feature="rt_compio",    feature="rt_worker",    feature="rt_tokio",     feature="rt_smol",      feature="rt_nio",       feature="rt_glommio"  )),
+    all(feature="rt_compio",     any(feature="rt_worker",    feature="rt_tokio",     feature="rt_smol",      feature="rt_nio",       feature="rt_glommio",   feature="rt_monoio"   )),
+    all(feature="rt_worker",     any(feature="rt_tokio",     feature="rt_smol",      feature="rt_nio",       feature="rt_glommio",   feature="rt_monoio",    feature="rt_compio"   )),
 ))] compile_error! {"
     Can't activate multiple `rt_*` features at once!
 "}
@@ -53,6 +54,11 @@ mod __rt__ {
     pub(crate) use {glommio::net::{TcpListener, TcpStream}, std::net::ToSocketAddrs};
     #[cfg(feature="rt_monoio")]
     pub(crate) use {monoio::net::TcpListener, monoio_compat::TcpStreamCompat as TcpStream, std::net::ToSocketAddrs};
+    #[cfg(feature="rt_compio")]
+    pub(crate) use compio::net::{TcpListener, ToSocketAddrsAsync as ToSocketAddrs};
+
+    #[cfg(feature="rt_compio")]
+    pub(crate) type TcpStream = compio::io::compat::AsyncStream<compio::net::TcpStream>;
 
     #[inline(always)]
     pub(crate) async fn accept(listener: &TcpListener) -> std::io::Result<(TcpStream, std::net::SocketAddr)> {
@@ -64,7 +70,7 @@ mod __rt__ {
             let addr = connection.peer_addr()?;
             Ok((connection, addr))
         }
-        #[cfg(any(feature="rt_monoio"))] {
+        #[cfg(any(feature="rt_monoio", feature="rt_compio"))] {
             let (conn, addr) = listener.accept().await?;
             Ok((TcpStream::new(conn), addr))
         }
@@ -101,13 +107,15 @@ mod __rt__ {
     pub(crate) use glommio::timer::sleep;
     #[cfg(feature="rt_monoio")]
     pub(crate) use monoio::time::sleep;
+    #[cfg(feature="rt_compio")]
+    pub(crate) use compio::runtime::time::sleep;
 
     #[cfg(any(feature="rt_tokio", feature="rt_smol", feature="rt_nio"))]
     mod task {
         pub trait Task: std::future::Future<Output: Send + 'static> + Send + 'static {}
         impl<F: std::future::Future<Output: Send + 'static> + Send + 'static> Task for F {}
     }
-    #[cfg(any(feature="rt_glommio", feature="rt_monoio"))]
+    #[cfg(any(feature="rt_glommio", feature="rt_monoio", feature="rt_compio"))]
     mod task {
         pub trait Task: std::future::Future {}
         impl<F: std::future::Future> Task for F {}
@@ -127,6 +135,9 @@ mod __rt__ {
 
         #[cfg(feature="rt_monoio")]
         monoio::spawn(task);
+
+        #[cfg(feature="rt_compio")]
+        compio::runtime::spawn(task).detach();
     }
 
     #[cfg(test)]
@@ -158,6 +169,9 @@ mod __rt__ {
                 .build()
                 .unwrap()
                 .block_on(future);
+
+            #[cfg(feature="rt_compio")]
+            return compio::runtime::Runtime::new().unwrap().block_on(future);
         }
 
         pub(crate) const PORT: u16 = {
@@ -166,6 +180,7 @@ mod __rt__ {
             #[cfg(feature="rt_nio")    ] {3004}
             #[cfg(feature="rt_glommio")] {3005}
             #[cfg(feature="rt_monoio")]  {3006}
+            #[cfg(feature="rt_compio")]  {3007}
         };
     }
 }
