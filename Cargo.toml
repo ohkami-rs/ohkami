@@ -15,6 +15,7 @@ exclude  = [
     "benches_rt/smol",
     "benches_rt/tokio",
     "benches_rt/monoio",
+    "benches_rt/compio",
     "benches_rt/vs_actix-web",
 ]
 
