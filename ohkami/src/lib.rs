@@ -25,11 +25,12 @@
 
 
 #[cfg(any(
-    all(feature="rt_tokio",      any(feature="rt_smol",      feature="rt_nio",       feature="rt_glommio",   feature="rt_worker"   )),
-    all(feature="rt_smol",       any(feature="rt_nio",       feature="rt_glommio",   feature="rt_worker",    feature="rt_tokio"    )),
-    all(feature="rt_nio",        any(feature="rt_glommio",   feature="rt_worker",    feature="rt_tokio",     feature="rt_smol"     )),
-    all(feature="rt_glommio",    any(feature="rt_worker",    feature="rt_tokio",     feature="rt_smol",      feature="rt_nio"      )),
-    all(feature="rt_worker",     any(feature="rt_tokio",     feature="rt_smol",      feature="rt_nio",       feature="rt_glommio"  )),
+    all(feature="rt_tokio",      any(feature="rt_smol",      feature="rt_nio",       feature="rt_glommio",   feature="rt_monoio",    feature="rt_worker"   )),
+    all(feature="rt_smol",       any(feature="rt_nio",       feature="rt_glommio",   feature="rt_monoio",    feature="rt_worker",    feature="rt_tokio"    )),
+    all(feature="rt_nio",        any(feature="rt_glommio",   feature="rt_monoio",    feature="rt_worker",    feature="rt_tokio",     feature="rt_smol"     )),
+    all(feature="rt_glommio",    any(feature="rt_monoio",    feature="rt_worker",    feature="rt_tokio",     feature="rt_smol",      feature="rt_nio"      )),
+    all(feature="rt_monoio",     any(feature="rt_worker",    feature="rt_tokio",     feature="rt_smol",      feature="rt_nio",       feature="rt_glommio"  )),
+    all(feature="rt_worker",     any(feature="rt_tokio",     feature="rt_smol",      feature="rt_nio",       feature="rt_glommio",   feature="rt_monoio"   )),
 ))] compile_error! {"
     Can't activate multiple `rt_*` features at once!
 "}
@@ -50,7 +51,67 @@ mod __rt__ {
     pub(crate) use {nio::net::{TcpListener, TcpStream}, std::net::ToSocketAddrs};
     #[cfg(feature="rt_glommio")]
     pub(crate) use {glommio::net::{TcpListener, TcpStream}, std::net::ToSocketAddrs};
-    
+    #[cfg(feature="rt_monoio")]
+    pub(crate) use {monoio::net::TcpListener, std::net::ToSocketAddrs};
+
+    #[cfg(feature="rt_monoio")]
+    use monoio_compat::StreamWrapper;
+
+    #[cfg(feature="rt_monoio")]
+    pub(crate) struct TcpStream {
+        inner: StreamWrapper<monoio::net::TcpStream>
+    }
+    #[cfg(feature="rt_monoio")]
+    impl TcpStream {
+        pub fn new(stream: monoio::net::TcpStream) -> Self {
+            TcpStream { inner: StreamWrapper::new(stream) }
+        }
+    }
+    #[cfg(feature="rt_monoio")]
+    impl std::fmt::Debug for TcpStream {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            f.debug_struct("TcpStream").field("inner", &"TcpStream").finish()
+        }
+    }
+    #[cfg(feature="rt_monoio")]
+    impl tokio::io::AsyncRead for TcpStream {
+        fn poll_read(
+            self: std::pin::Pin<&mut Self>,
+            cx: &mut std::task::Context<'_>,
+            buf: &mut tokio::io::ReadBuf<'_>,
+        ) -> std::task::Poll<std::io::Result<()>> {
+            let stream = unsafe { self.map_unchecked_mut(|s| &mut s.inner) };
+            stream.poll_read(cx, buf)
+        }
+    }
+    #[cfg(feature="rt_monoio")]
+    impl tokio::io::AsyncWrite for TcpStream {
+        fn poll_write(
+            self: std::pin::Pin<&mut Self>,
+            cx: &mut std::task::Context<'_>,
+            buf: &[u8],
+        ) -> std::task::Poll<Result<usize, std::io::Error>> {
+            let stream = unsafe { self.map_unchecked_mut(|s| &mut s.inner) };
+            stream.poll_write(cx, buf)
+        }
+
+        fn poll_flush(
+            self: std::pin::Pin<&mut Self>,
+            cx: &mut std::task::Context<'_>
+        ) -> std::task::Poll<Result<(), std::io::Error>> {
+            let stream = unsafe { self.map_unchecked_mut(|s| &mut s.inner) };
+            stream.poll_flush(cx)
+        }
+
+        fn poll_shutdown(
+            self: std::pin::Pin<&mut Self>,
+            cx: &mut std::task::Context<'_>
+        ) -> std::task::Poll<Result<(), std::io::Error>> {
+            let stream = unsafe { self.map_unchecked_mut(|s| &mut s.inner) };
+            stream.poll_shutdown(cx)
+        }
+    }
+
     #[inline(always)]
     pub(crate) async fn accept(listener: &TcpListener) -> std::io::Result<(TcpStream, std::net::SocketAddr)> {
         #[cfg(any(feature="rt_tokio", feature="rt_smol", feature="rt_nio"))] {
@@ -60,6 +121,10 @@ mod __rt__ {
             let connection = listener.accept().await?;
             let addr = connection.peer_addr()?;
             Ok((connection, addr))
+        }
+        #[cfg(any(feature="rt_monoio"))] {
+            let (conn, addr) = listener.accept().await?;
+            Ok((TcpStream::new(conn), addr))
         }
     }
 
@@ -75,7 +140,7 @@ mod __rt__ {
         async fn into_tcp_listener(self) -> TcpListener {
             let binded = TcpListener::bind(self);
 
-            #[cfg(not(feature="rt_glommio"))]
+            #[cfg(not(any(feature="rt_glommio", feature="rt_monoio")))]
             let binded = binded.await;
 
             binded.expect("Failed to bind TCP listener")
@@ -92,13 +157,15 @@ mod __rt__ {
     pub(crate) use nio::time::sleep;
     #[cfg(feature="rt_glommio")]
     pub(crate) use glommio::timer::sleep;
+    #[cfg(feature="rt_monoio")]
+    pub(crate) use monoio::time::sleep;
 
     #[cfg(any(feature="rt_tokio", feature="rt_smol", feature="rt_nio"))]
     mod task {
         pub trait Task: std::future::Future<Output: Send + 'static> + Send + 'static {}
         impl<F: std::future::Future<Output: Send + 'static> + Send + 'static> Task for F {}
     }
-    #[cfg(any(feature="rt_glommio"))]
+    #[cfg(any(feature="rt_glommio", feature="rt_monoio"))]
     mod task {
         pub trait Task: std::future::Future {}
         impl<F: std::future::Future> Task for F {}
@@ -115,6 +182,9 @@ mod __rt__ {
 
         #[cfg(feature="rt_glommio")]
         glommio::spawn_local(task).detach();
+
+        #[cfg(feature="rt_monoio")]
+        monoio::spawn(task);
     }
 
     #[cfg(test)]
@@ -139,6 +209,13 @@ mod __rt__ {
 
             #[cfg(feature="rt_glommio")]
             return glommio::LocalExecutor::default().run(future);
+
+            #[cfg(feature="rt_monoio")]
+            return monoio::RuntimeBuilder::<monoio::FusionDriver>::new()
+                .enable_all()
+                .build()
+                .unwrap()
+                .block_on(future);
         }
 
         pub(crate) const PORT: u16 = {
@@ -146,6 +223,7 @@ mod __rt__ {
             #[cfg(feature="rt_smol")   ] {3003}
             #[cfg(feature="rt_nio")    ] {3004}
             #[cfg(feature="rt_glommio")] {3005}
+            #[cfg(feature="rt_monoio")]  {3006}
         };
     }
 }
