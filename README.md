@@ -206,12 +206,13 @@ async fn handler1(
 
 ## Feature flags
 
-### `"rt_tokio"`, `"rt_smol"`, `"rt_nio"`, `"rt_glommio"` : native async runtime
+### `"rt_tokio"`, `"rt_smol"`, `"rt_nio"`, `"rt_glommio"`, `"rt_monoio"` : native async runtime
 
 - [tokio](https://github.com/tokio-rs/tokio) _v1.\*.\*_
 - [smol](https://github.com/smol-rs/smol) _v2.\*.\*_
 - [nio](https://github.com/nurmohammed840/nio) _v0.0.\*_
 - [glommio](https://github.com/DataDog/glommio) _v0.9.\*_
+- [monoio](https://github.com/bytedance/monoio) _v0.2.\*_
 
 ### `"rt_worker"` : Cloudflare Workers
 
