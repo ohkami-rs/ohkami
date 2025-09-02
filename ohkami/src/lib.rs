@@ -52,65 +52,7 @@ mod __rt__ {
     #[cfg(feature="rt_glommio")]
     pub(crate) use {glommio::net::{TcpListener, TcpStream}, std::net::ToSocketAddrs};
     #[cfg(feature="rt_monoio")]
-    pub(crate) use {monoio::net::TcpListener, std::net::ToSocketAddrs};
-
-    #[cfg(feature="rt_monoio")]
-    use monoio_compat::StreamWrapper;
-
-    #[cfg(feature="rt_monoio")]
-    pub(crate) struct TcpStream {
-        inner: StreamWrapper<monoio::net::TcpStream>
-    }
-    #[cfg(feature="rt_monoio")]
-    impl TcpStream {
-        pub fn new(stream: monoio::net::TcpStream) -> Self {
-            TcpStream { inner: StreamWrapper::new(stream) }
-        }
-    }
-    #[cfg(feature="rt_monoio")]
-    impl std::fmt::Debug for TcpStream {
-        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            f.debug_struct("TcpStream").field("inner", &"TcpStream").finish()
-        }
-    }
-    #[cfg(feature="rt_monoio")]
-    impl tokio::io::AsyncRead for TcpStream {
-        fn poll_read(
-            self: std::pin::Pin<&mut Self>,
-            cx: &mut std::task::Context<'_>,
-            buf: &mut tokio::io::ReadBuf<'_>,
-        ) -> std::task::Poll<std::io::Result<()>> {
-            let stream = unsafe { self.map_unchecked_mut(|s| &mut s.inner) };
-            stream.poll_read(cx, buf)
-        }
-    }
-    #[cfg(feature="rt_monoio")]
-    impl tokio::io::AsyncWrite for TcpStream {
-        fn poll_write(
-            self: std::pin::Pin<&mut Self>,
-            cx: &mut std::task::Context<'_>,
-            buf: &[u8],
-        ) -> std::task::Poll<Result<usize, std::io::Error>> {
-            let stream = unsafe { self.map_unchecked_mut(|s| &mut s.inner) };
-            stream.poll_write(cx, buf)
-        }
-
-        fn poll_flush(
-            self: std::pin::Pin<&mut Self>,
-            cx: &mut std::task::Context<'_>
-        ) -> std::task::Poll<Result<(), std::io::Error>> {
-            let stream = unsafe { self.map_unchecked_mut(|s| &mut s.inner) };
-            stream.poll_flush(cx)
-        }
-
-        fn poll_shutdown(
-            self: std::pin::Pin<&mut Self>,
-            cx: &mut std::task::Context<'_>
-        ) -> std::task::Poll<Result<(), std::io::Error>> {
-            let stream = unsafe { self.map_unchecked_mut(|s| &mut s.inner) };
-            stream.poll_shutdown(cx)
-        }
-    }
+    pub(crate) use {monoio::net::TcpListener, monoio_compat::TcpStreamCompat as TcpStream, std::net::ToSocketAddrs};
 
     #[inline(always)]
     pub(crate) async fn accept(listener: &TcpListener) -> std::io::Result<(TcpStream, std::net::SocketAddr)> {
