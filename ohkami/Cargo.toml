@@ -74,6 +74,7 @@ rt_glommio = ["__rt_native__", "__io_futures__",
 rt_monoio = ["__rt_native__", "__io_tokio__",
     "dep:monoio",
     "dep:monoio-compat",
+    "mews?/io_tokio",
 ]
 rt_worker = ["__rt__",
     "dep:worker", "worker/d1", "worker/queue",
