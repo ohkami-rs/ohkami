@@ -9,7 +9,7 @@
 //! <br>
 //! 
 //! - *macro-less and type-safe* APIs for declarative, ergonomic code
-//! - *runtime-flexible* ： `tokio`, `smol`, `nio`, `glommio` and `worker` (Cloudflare Workers), `lambda` (AWS Lambda)
+//! - *runtime-flexible* ： `tokio`, `smol`, `nio`, `glommio`, `monoio` and `worker` (Cloudflare Workers), `lambda` (AWS Lambda)
 //! - good performance, no-network testing, well-structured middlewares, Server-Sent Events, WebSocket, highly integrated OpenAPI document generation, ...
 //! 
 //! See [GitHub repo](https://github.com/ohkami-rs/ohkami) for details!
