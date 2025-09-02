@@ -123,7 +123,7 @@ impl Session {
                 crate::DEBUG!("WebSocket session started");
 
                 let aborted = ws.manage_with_timeout(
-                    Duration::from_secs(crate::CONFIG.websocket_timeout()),
+                    crate::__rt__::sleep(Duration::from_secs(crate::CONFIG.websocket_timeout())),
                     self.connection
                 ).await;
                 if aborted {
