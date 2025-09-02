@@ -1,14 +1,12 @@
 use ohkami::prelude::*;
 
-fn runtime() -> monoio::Runtime {
-    monoio::RuntimeBuilder::<monoio::IoUringDriver>::new()
-        .enable_all()
-        .build()
-        .unwrap()
-}
-
 fn main() {
     let ncpus = std::thread::available_parallelism().map_or(1, |x| x.get());
+    
+    let runtime = || monoio::RuntimeBuilder::<monoio::IoUringDriver>::new()
+        .enable_all()
+        .build()
+        .unwrap();
 
     for core in 1..dbg!(ncpus) {
         std::thread::spawn(move || {
