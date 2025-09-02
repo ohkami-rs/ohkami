@@ -1,20 +1,32 @@
 use ohkami::prelude::*;
 
-
-#[inline(always)]
-async fn echo_id(Path(id): Path<String>) -> String {
-    id
-}
-
-fn main() {
-    monoio::RuntimeBuilder::<monoio::FusionDriver>::new()
+fn runtime() -> monoio::Runtime {
+    monoio::RuntimeBuilder::<monoio::IoUringDriver>::new()
         .enable_all()
         .build()
         .unwrap()
-        .block_on({
-            Ohkami::new((
-                "/user/:id"
-                .GET(echo_id),
-            )).howl("0.0.0.0:3000")
-        })
+}
+
+fn main() {
+    let ncpus = std::thread::available_parallelism().map_or(1, |x| x.get());
+
+    for core in 1..dbg!(ncpus) {
+        std::thread::spawn(move || {
+            monoio::utils::bind_to_cpu_set([core]).unwrap();            
+            runtime().block_on({
+                Ohkami::new((
+                    "/user/:id"
+                        .GET(async |Path(id): Path<String>| id),
+                )).howl("0.0.0.0:3000")
+            });
+        });
+    }
+    
+    monoio::utils::bind_to_cpu_set([0]).unwrap();            
+    runtime().block_on({
+        Ohkami::new((
+            "/user/:id"
+                .GET(async |Path(id): Path<String>| id),
+        )).howl("0.0.0.0:3000")
+    });
 }
