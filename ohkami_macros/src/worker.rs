@@ -365,11 +365,11 @@ pub fn DurableObject(args: TokenStream, object: TokenStream) -> Result<TokenStre
             // `#[wasm_bindgen]` attribute fully uses this module
             use ::worker::wasm_bindgen;
 
-            #[::worker::wasm_bindgen::prelude::wasm_bindgen]
+            #[::worker::wasm_bindgen::prelude::wasm_bindgen(wasm_bindgen = ::worker::wasm_bindgen)]
             #[::ohkami::__internal__::consume_struct]
             #object
 
-            #[::worker::wasm_bindgen::prelude::wasm_bindgen]
+            #[::worker::wasm_bindgen::prelude::wasm_bindgen(wasm_bindgen = ::worker::wasm_bindgen)]
             impl #name {
                 #(#methods)*
             }
