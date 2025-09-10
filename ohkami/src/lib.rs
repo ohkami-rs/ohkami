@@ -102,17 +102,17 @@ mod __rt__ {
     #[cfg(feature="rt_monoio")]
     pub(crate) use monoio::time::sleep;
 
-    #[cfg(any(feature="rt_tokio", feature="rt_smol", feature="rt_nio"))]
+    #[cfg(feature="__rt_threaded__")]
     mod task {
         pub trait Task: std::future::Future<Output: Send + 'static> + Send + 'static {}
         impl<F: std::future::Future<Output: Send + 'static> + Send + 'static> Task for F {}
     }
-    #[cfg(any(feature="rt_glommio", feature="rt_monoio"))]
+    #[cfg(not(feature="__rt_threaded__"))]
     mod task {
-        pub trait Task: std::future::Future {}
-        impl<F: std::future::Future> Task for F {}
+        pub trait Task: std::future::Future + 'static {}
+        impl<F: std::future::Future + 'static> Task for F {}
     }
-    pub(crate) fn spawn(task: impl task::Task + 'static) {
+    pub(crate) fn spawn(task: impl task::Task) {
         #[cfg(feature="rt_tokio")]
         tokio::task::spawn(task);
 
