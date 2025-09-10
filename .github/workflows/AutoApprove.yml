@@ -1,6 +1,7 @@
 # This will be removed when ohkami has more than one maintainers
 
-name: auto_approve
+name: AutoApprove
+
 on:
   pull_request:
     types:
@@ -10,7 +11,7 @@ on:
       - ready_for_review
 
 jobs:
-  auto_approve:
+  approve:
     if: |
       github.event.pull_request.user.login == 'kanarus' &&
       !github.event.pull_request.draft
