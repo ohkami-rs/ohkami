@@ -56,25 +56,20 @@ anysc-rustls = { version = "0.1", optional = true }
 [features]
 rt_tokio = ["__rt_native__", "__rt_threaded__", "__io_tokio__",
     "dep:tokio","tokio/rt","tokio/net","tokio/time",
-    "mews?/io_tokio",
 ]
 rt_smol = ["__rt_native__", "__rt_threaded__", "__io_futures__",
     "dep:smol",
-    "mews?/io_futures",
 ]
 rt_nio = ["__rt_native__", "__rt_threaded__", "__io_tokio__",
     "dep:nio",
-    "mews?/io_tokio",
 ]
 rt_glommio = ["__rt_native__", "__io_futures__",
     "dep:glommio",
-    "mews?/io_futures",
     "dep:num_cpus",
 ]
 rt_monoio = ["__rt_native__", "__io_tokio__",
     "dep:monoio",
     "dep:monoio-compat",
-    "mews?/io_tokio",
 ]
 rt_worker = ["__rt__",
     "dep:worker", "worker/d1", "worker/queue",
@@ -95,8 +90,8 @@ tls     = ["dep:rustls", "dep:anysc-rustls"]
 __rt__          = []
 __rt_threaded__ = ["__rt__"]
 __rt_native__   = ["__rt__", "dep:mime_guess", "dep:ctrlc"]
-__io_tokio__    = ["dep:tokio","tokio/io-util", "anysc-rustls?/io_tokio"]
-__io_futures__  = ["dep:futures-util","futures-util/io", "anysc-rustls?/io_futures"]
+__io_tokio__    = ["dep:tokio","tokio/io-util", "mews?/io_tokio", "anysc-rustls?/io_tokio"]
+__io_futures__  = ["dep:futures-util","futures-util/io", "mews?/io_futures", "anysc-rustls?/io_futures"]
 
 ##### DEBUG #####
 DEBUG = ["tokio?/rt-multi-thread", "tokio?/macros"]
