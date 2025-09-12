@@ -1,0 +1,51 @@
+name: Publish
+
+on:
+  push:
+    tags: ['v*']
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    
+    environment:
+      name: publishing
+      
+    permissions:
+      contents: write # for creating GitHub Release
+      id-token: write # for OIDC authentication
+    
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 0
+      
+      - name: Ensure main branch
+        run: |
+          BRANCHS=$(git branch --contains ${{ github.ref_name }})
+          set -- $BRANCHS
+          for BRANCH in $BRANCHS; do
+            if [[ "$BRANCH" == "main" ]]; then
+              exit 0
+            fi
+          done
+          exit 1
+      
+      - uses: rust-lang/crates-io-auth-action@v1
+        id: cratesio_auth
+      
+      - name: Trusted Publish to crates.io
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ steps.cratesio_auth.outputs.token }}
+        run: |
+          cargo publish --package ohkami_openapi
+          cargo publish --package ohkami_macros
+          cargo publish --package ohkami_lib
+          cargo publish --package ohkami
+
+      - name: Create GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create ${{ github.ref_name }} --generate-notes

@@ -3,7 +3,7 @@ name: CI
 on:
   pull_request:
   push:
-    branches: [main, v*]
+    branches: ['main', 'v*']
 
 jobs:
   CI:
@@ -15,7 +15,7 @@ jobs:
         task: ['check', 'test:core', 'test:other', 'bench:dryrun']
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Setup mold
         run:  |
