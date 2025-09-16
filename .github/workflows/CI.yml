@@ -5,6 +5,8 @@ on:
   push:
     branches: ['main', 'v*']
 
+permissions: {}
+
 jobs:
   CI:
     runs-on: ubuntu-latest
