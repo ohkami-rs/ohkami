@@ -6,7 +6,7 @@
 <br>
 
 - *macro-less and type-safe* APIs for declarative, ergonomic code
-- *runtime-flexible* ： `tokio`, `smol`, `nio`, `glommio`, `monoio` and `worker` (Cloudflare Workers), `lambda` (AWS Lambda)
+- *runtime-flexible* ： `tokio`, `smol`, `nio`, `glommio`, `monoio`, `compio` and `worker` (Cloudflare Workers), `lambda` (AWS Lambda)
 - good performance, no-network testing, well-structured middlewares, Server-Sent Events, WebSocket, highly integrated OpenAPI document generation, ...
 
 <div align="right">
@@ -206,13 +206,14 @@ async fn handler1(
 
 ## Feature flags
 
-### `"rt_tokio"`, `"rt_smol"`, `"rt_nio"`, `"rt_glommio"`, `"rt_monoio"` : native async runtime
+### `"rt_tokio"`, `"rt_smol"`, `"rt_nio"`, `"rt_glommio"`, `"rt_monoio"`, `"rt_compio"` : native async runtime
 
 - [tokio](https://github.com/tokio-rs/tokio) _v1.\*.\*_
 - [smol](https://github.com/smol-rs/smol) _v2.\*.\*_
 - [nio](https://github.com/nurmohammed840/nio) _v0.0.\*_
 - [glommio](https://github.com/DataDog/glommio) _v0.9.\*_
 - [monoio](https://github.com/bytedance/monoio) _v0.2.\*_
+- [compio](https://github.com/compio-rs/compio) _v0.15.\*_
 
 ### `"rt_worker"` : Cloudflare Workers
 
