@@ -54,10 +54,9 @@ impl<'header> ETag<'header> {
                 .then(|| &raw[1..raw.len() - 1])
                 .ok_or(ETagError::InvalidFormat)?;
 
-            let _ = raw
-                .is_ascii()
-                .then_some(())
-                .ok_or(ETagError::InvalidCharactor)?;
+            if !raw.is_ascii() {
+                return Err(ETagError::InvalidCharactor);
+            }
 
             Ok(if is_weak {
                 ETag::Weak(Cow::Borrowed(raw))

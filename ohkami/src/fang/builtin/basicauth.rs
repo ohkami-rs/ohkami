@@ -108,8 +108,7 @@ const _: () = {
             let (username, password) = credential.split_once(':').ok_or_else(unauthorized)?;
 
             self.iter()
-                .map(|candidate| candidate.matches(username, password))
-                .any(|matched| matched)
+                .any(|candidate| candidate.matches(username, password))
                 .then_some(())
                 .ok_or_else(unauthorized)?;
 

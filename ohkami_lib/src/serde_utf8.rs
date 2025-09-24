@@ -17,13 +17,11 @@ pub fn to_string(value: &impl serde::Serialize) -> Result<String, Error> {
 pub fn from_str<'de, D: serde::Deserialize<'de>>(input: &'de str) -> Result<D, Error> {
     let mut d = de::UTF8Deserializer { input };
     let t = D::deserialize(&mut d)?;
-    if d.input.is_empty() {
-        Ok(t)
-    } else {
-        Err((|| {
-            serde::de::Error::custom(format!("Unexpected trailing charactors: {}", d.input))
-        })())
-    }
+    d.input.is_empty()
+        .then_some(t)
+        .ok_or_else(|| {
+            serde::de::Error::custom(format!("Unexpected trailing charactors: `{}`", d.input))
+        })
 }
 
 #[derive(Debug)]
@@ -60,16 +58,16 @@ const _: () = {
         type Ok = ();
         type Error = Error;
 
-        fn serialize_key<T: ?Sized>(&mut self, _: &T) -> Result<(), Self::Error>
+        fn serialize_key<T>(&mut self, _: &T) -> Result<(), Self::Error>
         where
-            T: serde::Serialize,
+            T: ?Sized + serde::Serialize,
         {
             match *self {}
         }
 
-        fn serialize_value<T: ?Sized>(&mut self, _: &T) -> Result<(), Self::Error>
+        fn serialize_value<T>(&mut self, _: &T) -> Result<(), Self::Error>
         where
-            T: serde::Serialize,
+            T: ?Sized + serde::Serialize,
         {
             match *self {}
         }
@@ -83,9 +81,9 @@ const _: () = {
         type Ok = ();
         type Error = Error;
 
-        fn serialize_element<T: ?Sized>(&mut self, _: &T) -> Result<(), Self::Error>
+        fn serialize_element<T>(&mut self, _: &T) -> Result<(), Self::Error>
         where
-            T: serde::Serialize,
+            T: ?Sized + serde::Serialize,
         {
             match *self {}
         }
@@ -99,9 +97,9 @@ const _: () = {
         type Ok = ();
         type Error = Error;
 
-        fn serialize_field<T: ?Sized>(&mut self, _: &'static str, _: &T) -> Result<(), Self::Error>
+        fn serialize_field<T>(&mut self, _: &'static str, _: &T) -> Result<(), Self::Error>
         where
-            T: serde::Serialize,
+            T: ?Sized + serde::Serialize,
         {
             match *self {}
         }
@@ -115,9 +113,9 @@ const _: () = {
         type Ok = ();
         type Error = Error;
 
-        fn serialize_field<T: ?Sized>(&mut self, _: &'static str, _: &T) -> Result<(), Self::Error>
+        fn serialize_field<T>(&mut self, _: &'static str, _: &T) -> Result<(), Self::Error>
         where
-            T: serde::Serialize,
+            T: ?Sized + serde::Serialize,
         {
             match *self {}
         }
@@ -131,9 +129,9 @@ const _: () = {
         type Ok = ();
         type Error = Error;
 
-        fn serialize_element<T: ?Sized>(&mut self, _: &T) -> Result<(), Self::Error>
+        fn serialize_element<T>(&mut self, _: &T) -> Result<(), Self::Error>
         where
-            T: serde::Serialize,
+            T: ?Sized + serde::Serialize,
         {
             match *self {}
         }
@@ -147,9 +145,9 @@ const _: () = {
         type Ok = ();
         type Error = Error;
 
-        fn serialize_field<T: ?Sized>(&mut self, _: &T) -> Result<(), Self::Error>
+        fn serialize_field<T>(&mut self, _: &T) -> Result<(), Self::Error>
         where
-            T: serde::Serialize,
+            T: ?Sized + serde::Serialize,
         {
             match *self {}
         }

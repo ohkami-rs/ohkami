@@ -149,7 +149,7 @@ macro_rules! Route {
                 // Check `self` is valid route
                 let _ = RouteSegments::from_literal(self);
 
-                Dir::new(self, path.as_ref()).expect(&format!("invalid path to serve: `{}`", path.as_ref().display()))
+                Dir::new(self, path.as_ref()).unwrap_or_else(|_| panic!("invalid path to serve: `{}`", path.as_ref().display()))
             }
         }
     };
@@ -191,7 +191,7 @@ const _: () = {
                     .iter()
                     .map(|s| {
                         s.to_str()
-                            .expect(&format!("invalid path to serve: `{}`", s.to_string_lossy()))
+                            .unwrap_or_else(|| panic!("invalid path to serve: `{}`", s.to_string_lossy()))
                     })
                     .filter(|s| !matches!(*s, "" | "/"))
                     .collect::<Vec<_>>()
@@ -216,13 +216,13 @@ const _: () = {
 
             for (mut path, files) in self.files.into_iter() {
                 let handler = StaticFileHandler::new(&path, files, self.etag)
-                    .expect(&format!("can't serve file: `{}`", path.display()));
+                    .unwrap_or_else(|_| panic!("can't serve file: `{}`", path.display()));
 
                 let file_name = path
                     .file_name()
                     .unwrap()
                     .to_str()
-                    .expect(&format!("invalid path to serve: `{}`", path.display()))
+                    .unwrap_or_else(|| panic!("invalid path to serve: `{}`", path.display()))
                     .to_string();
 
                 if (!self.serve_dotfiles) && file_name.starts_with('.') {

@@ -41,10 +41,7 @@ pub(crate) enum AccessControlAllowOrigin {
 impl AccessControlAllowOrigin {
     #[inline(always)]
     pub(crate) const fn is_any(&self) -> bool {
-        match self {
-            Self::Any => true,
-            _ => false,
-        }
+        matches!(self, Self::Any)
     }
 
     #[inline(always)]

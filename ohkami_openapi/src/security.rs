@@ -202,7 +202,7 @@ impl SecurityScheme {
             __name__: scheme_name,
             auth_type: "http",
             scheme: Some("bearer"),
-            bearer_format: token_format.into(),
+            bearer_format: token_format,
             name: None,
             apikey_in: None,
             openidconnect_url: None,

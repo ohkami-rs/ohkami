@@ -62,7 +62,7 @@ fn with_default_operation_id<F>(op: openapi::Operation) -> openapi::Operation {
  * `IntoHandler` implementations for async functions
  */
 
-impl<'req, F, Fut, Res> IntoHandler<fn() -> Res> for F
+impl<F, Fut, Res> IntoHandler<fn() -> Res> for F
 where
     F: Fn() -> Fut + SendSyncOnThreaded + 'static,
     Res: IntoResponse,

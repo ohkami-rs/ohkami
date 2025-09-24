@@ -38,7 +38,7 @@ pub struct SetCookie<'c> {
 impl<'c> SetCookie<'c> {
     pub fn cookie(&self) -> (&str, &str) {
         let (name, value) = &self.cookie;
-        (name, &value)
+        (name, value)
     }
     pub fn expires(&self) -> Option<&str> {
         self.expires.as_deref()
@@ -139,11 +139,7 @@ impl<'c> SetCookie<'c> {
                 }
                 Some(5) => this.secure = Some(true),
                 Some(6) => this.http_only = Some(true),
-                _ => {
-                    return Err((|| {
-                        format!("Unkown directive: `{}`", r.remaining().escape_ascii())
-                    })());
-                }
+                _ => return Err(format!("Unkown directive: `{}`", r.remaining().escape_ascii()))
             }
         }
 

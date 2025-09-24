@@ -80,7 +80,7 @@ impl Handler {
         });
 
         Handler {
-            proc: (&*NOT_FOUND).proc.clone(),
+            proc: NOT_FOUND.proc.clone(),
 
             #[cfg(feature = "openapi")]
             openapi_operation: openapi::Operation::with(openapi::Responses::new([(

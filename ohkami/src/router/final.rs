@@ -198,12 +198,12 @@ impl Node {
 
         if let Some(remaining) = self.pattern.take_through(bytes, path) {
             if remaining.is_empty() {
-                return (&self, true);
+                return (self, true);
             } else {
                 bytes = remaining
             }
         } else {
-            return (&self, false);
+            return (self, false);
         }
 
         let mut target = self;
@@ -211,7 +211,7 @@ impl Node {
             for child in target.children {
                 if let Some(remaining) = child.pattern.take_through(bytes, path) {
                     if remaining.is_empty() {
-                        return (&child, true);
+                        return (child, true);
                     } else {
                         bytes = remaining;
                         target = child;
@@ -219,7 +219,7 @@ impl Node {
                     }
                 }
             }
-            return (&target, false);
+            return (target, false);
         }
     }
 }

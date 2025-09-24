@@ -102,9 +102,9 @@ const _: () = {
         }
     }
 
-    impl<K: PartialEq + PartialOrd, V> Into<Vec<(K, V)>> for Map<K, V> {
-        fn into(self) -> Vec<(K, V)> {
-            self.0
+    impl<K: PartialEq + PartialOrd, V> From<Map<K, V>> for Vec<(K, V)> {
+        fn from(this: Map<K, V>) -> Vec<(K, V)> {
+            this.0
         }
     }
 

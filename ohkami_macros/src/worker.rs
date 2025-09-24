@@ -231,7 +231,7 @@ pub fn bindings(
                 }),
             })
             .map(|(name, value, doc)| {
-                let value = LitStr::new(&value, Span::call_site());
+                let value = LitStr::new(value, Span::call_site());
                 let doc = doc.as_ref().map(|d| {
                     let d = LitStr::new(d, Span::call_site());
                     quote! { #[doc = #d] }

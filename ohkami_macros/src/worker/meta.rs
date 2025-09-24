@@ -73,14 +73,14 @@ const _: (/* TryDefault */) = {
             if let Some(routes) = wrangler_config.routes {
                 for route in routes {
                     servers.push(Server {
-                        url:         to_url(route.pattern.trim_end_matches(&['/', '*'])),
+                        url:         to_url(route.pattern.trim_end_matches(['/', '*'])),
                         description: None,
                         variables:   None,
                     });
                 }
             } else if let Some(route) = wrangler_config.route {
                 servers.push(Server {
-                    url:         to_url(route.trim_end_matches(&['/', '*'])),
+                    url:         to_url(route.trim_end_matches(['/', '*'])),
                     description: None,
                     variables:   None,
                 });

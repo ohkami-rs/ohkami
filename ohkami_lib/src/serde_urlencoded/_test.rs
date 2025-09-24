@@ -88,9 +88,10 @@ fn deserialize_map() {
     );
 
     #[derive(Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+    #[serde(rename_all = "UPPERCASE")]
     enum ABCorXYZ {
-        ABC,
-        XYZ,
+        Abc,
+        Xyz,
     }
 
     assert_eq!(
@@ -98,8 +99,8 @@ fn deserialize_map() {
             b"ABC=value&XYZ=%E3%81%93%E3%82%93%E3%81%AB%E3%81%A1%E3%81%AF%E3%80%81%E4%B8%96%E7%95%8C%EF%BC%81"
         ).unwrap(),
         HashMap::from([
-            (ABCorXYZ::ABC, format!("value")),
-            (ABCorXYZ::XYZ, format!("こんにちは、世界！")),
+            (ABCorXYZ::Abc, format!("value")),
+            (ABCorXYZ::Xyz, format!("こんにちは、世界！")),
         ])
     );
 }

@@ -345,6 +345,7 @@ pub mod sandbox {
         }
     }
 
+    #[allow(clippy::derivable_impls)]
     impl Default for Sandbox {
         fn default() -> Self {
             Self(0b0000000000u16)
@@ -559,7 +560,7 @@ pub mod src {
             if !self.list.is_empty() {
                 for s in &self.list {
                     result.push(' ');
-                    result.push_str(&*s);
+                    result.push_str(s);
                 }
             }
             result

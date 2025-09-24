@@ -7,7 +7,9 @@ use ohkami_lib::Stream;
 #[cfg(all(feature = "ws", feature = "__rt__"))]
 use crate::ws::Session;
 
+#[derive(Default)]
 pub enum Content {
+    #[default]
     None,
 
     Payload(CowSlice),
@@ -20,12 +22,6 @@ pub enum Content {
     WebSocket(Session),
 }
 const _: () = {
-    impl Default for Content {
-        fn default() -> Self {
-            Self::None
-        }
-    }
-
     impl PartialEq for Content {
         fn eq(&self, other: &Self) -> bool {
             match (self, other) {
@@ -69,7 +65,7 @@ impl Content {
     #[inline(always)]
     pub fn as_bytes(&self) -> Option<&[u8]> {
         match self {
-            Self::Payload(bytes) => Some(&bytes),
+            Self::Payload(bytes) => Some(bytes),
             _ => None,
         }
     }

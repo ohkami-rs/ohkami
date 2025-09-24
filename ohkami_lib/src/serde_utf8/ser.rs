@@ -9,9 +9,9 @@ const _: () = {
         type Ok = ();
         type Error = super::Error;
 
-        fn serialize_field<T: ?Sized>(&mut self, field: &T) -> Result<(), Self::Error>
+        fn serialize_field<T>(&mut self, field: &T) -> Result<(), Self::Error>
         where
-            T: serde::Serialize,
+            T: ?Sized + serde::Serialize,
         {
             field.serialize(&mut **self)
         }
@@ -54,9 +54,9 @@ impl serde::Serializer for &mut UTF8Serializer {
         Ok(())
     }
     #[inline]
-    fn serialize_some<T: ?Sized>(self, value: &T) -> Result<Self::Ok, Self::Error>
+    fn serialize_some<T>(self, value: &T) -> Result<Self::Ok, Self::Error>
     where
-        T: serde::Serialize,
+        T: ?Sized + serde::Serialize,
     {
         value.serialize(self)
     }
@@ -146,17 +146,17 @@ impl serde::Serializer for &mut UTF8Serializer {
     }
 
     #[inline(always)]
-    fn serialize_newtype_struct<T: ?Sized>(
+    fn serialize_newtype_struct<T>(
         self,
         _name: &'static str,
         value: &T,
     ) -> Result<Self::Ok, Self::Error>
     where
-        T: serde::Serialize,
+        T: ?Sized + serde::Serialize,
     {
         value.serialize(self)
     }
-    fn serialize_newtype_variant<T: ?Sized>(
+    fn serialize_newtype_variant<T>(
         self,
         _name: &'static str,
         _variant_index: u32,
@@ -164,7 +164,7 @@ impl serde::Serializer for &mut UTF8Serializer {
         value: &T,
     ) -> Result<Self::Ok, Self::Error>
     where
-        T: serde::Serialize,
+        T: ?Sized + serde::Serialize,
     {
         value.serialize(self)
     }

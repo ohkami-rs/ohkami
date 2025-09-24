@@ -18,6 +18,9 @@ license       = { workspace = true }
 [package.metadata.docs.rs]
 features      = ["worker", "openapi"]
 
+[lints]
+workspace = true
+
 [dependencies]
 proc-macro2  = "1.0"
 quote        = "1.0"

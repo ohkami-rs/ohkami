@@ -501,6 +501,7 @@ impl Ohkami {
         #[cfg(feature = "tls")] tls_config: Option<rustls::ServerConfig>,
     ) {
         let (router, _) = self.into_router().finalize();
+        #[cfg_attr(not(feature = "__rt_threaded__"), allow(clippy::arc_with_non_send_sync))]
         let router = Arc::new(router);
 
         let listener = bind.into_tcp_listener().await;
@@ -809,10 +810,11 @@ impl Ohkami {
         metadata: crate::openapi::OpenAPI,
     ) {
         let file_path = file_path.as_ref();
-        std::fs::write(file_path, self.__openapi_document_bytes__(metadata)).expect(&format!(
-            "failed to write OpenAPI document JSON to {}",
-            file_path.display()
-        ))
+        std::fs::write(file_path, self.__openapi_document_bytes__(metadata))
+            .unwrap_or_else(|_| panic!(
+                "failed to write OpenAPI document JSON to {}",
+                file_path.display()
+            ))
     }
 
     #[cfg(feature = "openapi")]
@@ -873,7 +875,6 @@ const _: () = {
 
                 ROUTER
                     .set(router)
-                    .ok()
                     .expect("`ROUTER.set()` was called more than once for an `Ohkami` instance");
             }
 
@@ -1125,15 +1126,11 @@ mod test {
                     "/CN=localhost",
                 ])
                 .status()
-                .map(|status| {
+                .and_then(|status| {
                     status.success().then_some(()).ok_or_else(|| {
-                        std::io::Error::new(
-                            std::io::ErrorKind::Other,
-                            "Failed to generate test certificate and key with OpenSSL",
-                        )
+                        std::io::Error::other("Failed to generate test certificate and key with OpenSSL")
                     })
                 })
-                .flatten()
         };
 
         let is_pem_alive = |path: &std::path::Path| -> bool {
@@ -1141,6 +1138,7 @@ mod test {
                 return false;
             }
 
+            #[allow(clippy::blocks_in_conditions)]
             if {
                 let now = std::time::SystemTime::now();
                 let created = path.metadata().unwrap().created().unwrap();
@@ -1179,7 +1177,6 @@ mod test {
             let cert_chain = rustls_pemfile::certs(&mut std::io::BufReader::new(
                 std::fs::File::open(cert_file_path).unwrap(),
             ))
-            .map(|cd| cd.map(rustls::pki_types::CertificateDer::from))
             .collect::<Result<Vec<_>, _>>()
             .expect("Failed to read certificate chain");
             let key = rustls_pemfile::read_one(&mut std::io::BufReader::new(

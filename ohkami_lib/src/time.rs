@@ -198,7 +198,7 @@ impl UTCDateTime {
                 // * `MaybeUninit<T>` and T are guaranteed to have the same layout
                 // * `MaybeUninit` does not drop, so there are no double-frees
                 // And thus the conversion is safe
-                std::mem::transmute::<_, [u8; IMF_FIXDATE_LEN]>(buf),
+                std::mem::transmute::<[std::mem::MaybeUninit<u8>; IMF_FIXDATE_LEN], [u8; IMF_FIXDATE_LEN]>(buf),
             ))
         }
     }
@@ -256,7 +256,7 @@ impl Date {
             const MAX_YEAR: i32 = i32::MAX >> 13;
             const MIN_YEAR: i32 = i32::MIN >> 13;
 
-            year >= MIN_YEAR && year <= MAX_YEAR && YearFlag::from_year(year).0 == flag.0
+            (MIN_YEAR..=MAX_YEAR).contains(&year) && YearFlag::from_year(year).0 == flag.0
         });
 
         let of = Of::new(ordinal, flag);
@@ -378,8 +378,8 @@ impl Of {
         Weekday::from_u32_mod7((of >> 4) + (of & 0b111))
     }
     #[inline]
-    fn to_mdf(&self) -> Mdf {
-        Mdf::from_of(*self)
+    fn to_mdf(self) -> Mdf {
+        Mdf::from_of(self)
     }
 }
 

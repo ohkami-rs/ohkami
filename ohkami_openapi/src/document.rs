@@ -132,7 +132,7 @@ impl Document {
         let schema: RawSchema = schema.into();
         if let Some(name) = schema.__name__ {
             match self.components.schemas.get(&name) {
-                Some(it) if *it == schema => return,
+                Some(it) if *it == schema => (),
                 Some(_) => panic!(
                     "[OpenAPI] `components.schemas`: contradict registrations of multiple `{name}`s"
                 ),
@@ -147,7 +147,7 @@ impl Document {
             .security_schemes
             .get(&securityScheme.__name__)
         {
-            Some(it) if *it == securityScheme => return,
+            Some(it) if *it == securityScheme => (),
             Some(_) => panic!(
                 "[OpenAPI] `components.security_schemes`: contradict registrations of multiple `{}`s",
                 securityScheme.__name__

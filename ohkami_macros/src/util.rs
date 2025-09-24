@@ -139,12 +139,9 @@ fn find_file_at_workspace_root(file_path: impl AsRef<Path>) -> Result<Option<Fil
     match (matching_files.pop(), matching_files.is_empty()) {
         (Some(file), true) => Ok(Some(file)),
         (None, _) => Ok(None),
-        (Some(_), false) => Err(io::Error::new(
-            ErrorKind::Other,
-            format!(
-                "Multiple workspace members have `{}`, this is not supported",
-                file_path.display()
-            ),
-        )),
+        (Some(_), false) => Err(io::Error::other(format!(
+            "Multiple workspace members have `{}`, this is not supported",
+            file_path.display()
+        ))),
     }
 }

@@ -19,7 +19,7 @@ impl<'de> CookieDeserializer<'de> {
         }
     }
     pub(crate) const fn remaining(&self) -> &'de [u8] {
-        &self.input
+        self.input
     }
 }
 
@@ -72,7 +72,7 @@ impl<'de> CookieDeserializer<'de> {
     }
     #[inline(always)]
     fn next(&mut self) -> Result<u8, super::Error> {
-        let next = self.peek()?.clone();
+        let next = *self.peek()?;
         self.input = &self.input[1..];
         Ok(next)
     }
@@ -128,7 +128,7 @@ impl<'de> CookieDeserializer<'de> {
     }
 }
 
-impl<'u, 'de> serde::Deserializer<'de> for &'u mut CookieDeserializer<'de> {
+impl<'de> serde::Deserializer<'de> for &mut CookieDeserializer<'de> {
     type Error = super::Error;
 
     fn deserialize_any<V>(self, visitor: V) -> Result<V::Value, Self::Error>
@@ -246,11 +246,11 @@ impl<'u, 'de> serde::Deserializer<'de> for &'u mut CookieDeserializer<'de> {
         let section = self.next_section()?;
         let mut chars = section.chars();
         let (Some(ch), None) = (chars.next(), chars.next()) else {
-            return Err((|| {
+            return Err({
                 serde::de::Error::custom(format!(
                     "Expected a single charactor, but got `{section}`"
                 ))
-            })());
+            });
         };
         visitor.visit_char(ch)
     }
@@ -298,7 +298,7 @@ impl<'u, 'de> serde::Deserializer<'de> for &'u mut CookieDeserializer<'de> {
         {
             visitor.visit_unit()
         } else {
-            Err((|| {
+            Err({
                 serde::de::Error::custom(format!(
                     "Expected an empty value for an unit, but got `{}`",
                     match self.next_section() {
@@ -306,7 +306,7 @@ impl<'u, 'de> serde::Deserializer<'de> for &'u mut CookieDeserializer<'de> {
                         Err(e) => e.to_string(),
                     }
                 ))
-            })())
+            })
         }
     }
     fn deserialize_unit_struct<V>(
@@ -547,10 +547,10 @@ const _: () = {
             }
             if !self.first {
                 if self.de.next()? != b';' {
-                    return Err((|| serde::de::Error::custom("missing `;`"))());
+                    return Err(serde::de::Error::custom("missing `;`"));
                 }
                 if self.de.next()? != b' ' {
-                    return Err((|| serde::de::Error::custom("missing ` ` after `;`"))());
+                    return Err(serde::de::Error::custom("missing ` ` after `;`"));
                 }
             }
             self.first = false;
@@ -563,7 +563,7 @@ const _: () = {
             V: serde::de::DeserializeSeed<'de>,
         {
             if self.de.next()? != b'=' {
-                return Err((|| serde::de::Error::custom("missing `=`"))());
+                return Err(serde::de::Error::custom("missing `=`"));
             }
             self.de.side = ParsingSide::Value;
             seed.deserialize(&mut *self.de)

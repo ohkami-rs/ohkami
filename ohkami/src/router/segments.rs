@@ -38,9 +38,9 @@ impl RouteSegments {
             segments.push_back(
                 RouteSegment::new(match &literal {
                     Cow::Borrowed(s) => Cow::Borrowed(&s[prev_slash..slash]),
-                    Cow::Owned(s) => Cow::Owned((&s[prev_slash..slash]).to_owned()),
+                    Cow::Owned(s) => Cow::Owned((s[prev_slash..slash]).to_owned()),
                 })
-                .expect(&format!("invalid route `{literal}`")),
+                .unwrap_or_else(|_| panic!("invalid route `{literal}`")),
             );
 
             prev_slash = slash;
@@ -84,7 +84,7 @@ impl std::ops::Deref for RouteSegments {
 }
 impl std::fmt::Display for RouteSegments {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        f.write_str(&**self)
+        f.write_str(self)
     }
 }
 
@@ -111,18 +111,18 @@ impl RouteSegment {
         let mut segment_chars = segment
             .starts_with('/')
             .then_some(&segment[1..])
-            .ok_or_else(|| "path segment must start with '/'")?
+            .ok_or("path segment must start with '/'")?
             .chars()
             .peekable();
         match segment_chars.peek() {
             None => Err(format!("Found an empty route segment")),
             Some(':') => {
                 let _/* colon */ = segment_chars.next();
-                let _/* validation */ = validate_segment_name(segment_chars)?;
+                validate_segment_name(segment_chars)?;
                 Ok(Self::Param(segment))
             }
             _ => {
-                let _/* validation */ = validate_segment_name(segment_chars)?;
+                validate_segment_name(segment_chars)?;
                 Ok(Self::Static(segment))
             }
         }

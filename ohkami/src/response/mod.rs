@@ -133,7 +133,7 @@ impl Response {
     pub(crate) fn complete(&mut self) {
         match (&self.content, &self.status) {
             (_, Status::NoContent) => {
-                if !/* not */self.headers.content_length().is_none() {
+                if self.headers.content_length().is_some() {
                     self.headers.set().content_length(None);
                 }
                 if !/* not */matches!(self.content, Content::None) {
@@ -142,14 +142,14 @@ impl Response {
             }
             #[cfg(feature = "sse")]
             (Content::Stream(_), _) => {
-                if !/* not */self.headers.content_length().is_none() {
+                if self.headers.content_length().is_some() {
                     self.headers.set().content_length(None);
                 }
             }
             #[cfg(not(feature="rt_lambda"/* currently */))]
             #[cfg(all(feature = "ws", feature = "__rt__"))]
             (Content::WebSocket(_), _) => {
-                if !/* not */self.headers.content_length().is_none() {
+                if self.headers.content_length().is_some() {
                     self.headers.set().content_length(None);
                 }
             }
@@ -252,7 +252,9 @@ impl Response {
         self
     }
 
-    /// SAFETY: argument `json_lit` must be **valid JSON**
+    /// ## SAFETY
+    /// 
+    /// argument `json_lit` must be **valid JSON**
     pub unsafe fn set_json_lit<JSONLiteral: Into<Cow<'static, str>>>(
         &mut self,
         json_lit: JSONLiteral,
@@ -268,7 +270,9 @@ impl Response {
             .content_length(ohkami_lib::num::itoa(body.len()));
         self.content = Content::Payload(body.into());
     }
-    /// SAFETY: argument `json_lit` must be **valid JSON**
+    /// ## SAFETY
+    /// 
+    /// argument `json_lit` must be **valid JSON**
     pub unsafe fn with_json_lit<JSONLiteral: Into<Cow<'static, str>>>(
         mut self,
         json_lit: JSONLiteral,
@@ -464,13 +468,13 @@ const _: () = {
 
 #[cfg(feature = "rt_worker")]
 const _: () = {
-    impl Into<::worker::Response> for Response {
+    impl From<Response> for ::worker::Response {
         #[inline(always)]
-        fn into(self) -> ::worker::Response {
-            self.content
+        fn from(this: Response) -> ::worker::Response {
+            this.content
                 .into_worker_response()
-                .with_status(self.status.code())
-                .with_headers(self.headers.into())
+                .with_status(this.status.code())
+                .with_headers(this.headers.into())
         }
     }
 
@@ -488,21 +492,15 @@ const _: () = {
     use ohkami_lib::Stream;
     use std::{convert::Infallible, pin::Pin};
 
-    impl
-        Into<
-            FunctionResponse<
-                LambdaResponse,
-                Pin<Box<dyn Stream<Item = Result<String, Infallible>> + Send>>,
-            >,
-        > for Response
-    {
-        fn into(
-            self,
-        ) -> FunctionResponse<
+    impl From<Response> for FunctionResponse<
+        LambdaResponse,
+        Pin<Box<dyn Stream<Item = Result<String, Infallible>> + Send>>,
+    > {
+        fn from(this: Response) -> FunctionResponse<
             LambdaResponse,
             Pin<Box<dyn Stream<Item = Result<String, Infallible>> + Send>>,
         > {
-            let mut headers = self.headers;
+            let mut headers = this.headers;
 
             let cookies = headers
                 .setcookie
@@ -515,9 +513,9 @@ const _: () = {
                     vec_string
                 });
 
-            match self.content {
+            match this.content {
                 Content::None => FunctionResponse::BufferedResponse(LambdaResponse {
-                    statusCode: self.status.code(),
+                    statusCode: this.status.code(),
                     headers,
                     cookies,
                     body: None,
@@ -525,14 +523,14 @@ const _: () = {
                 }),
 
                 Content::Payload(p) => {
-                    let (encoded, body) = if let Ok(s) = std::str::from_utf8(&*p) {
+                    let (encoded, body) = if let Ok(s) = std::str::from_utf8(&p) {
                         (false, s.into())
                     } else {
                         (true, crate::util::base64_encode(&*p))
                     };
 
                     FunctionResponse::BufferedResponse(LambdaResponse {
-                        statusCode: self.status.code(),
+                        statusCode: this.status.code(),
                         headers,
                         cookies,
                         body: Some(body),
@@ -547,7 +545,7 @@ const _: () = {
                         metadata_prelude: ::lambda_runtime::MetadataPrelude {
                             // `StatusCode` of `http` crate
                             status_code: unsafe {
-                                TryFrom::<u16>::try_from(self.status.code()).unwrap_unchecked()
+                                TryFrom::<u16>::try_from(this.status.code()).unwrap_unchecked()
                             },
                             // `HeaderMap` of `http` crate
                             headers: FromIterator/*::<HeaderName, HeaderValue>*/::from_iter(
@@ -560,6 +558,7 @@ const _: () = {
                                     },
                                 ),
                             ),
+                            #[allow(clippy::unwrap_or_default)]
                             cookies: cookies.unwrap_or_else(Vec::new),
                         },
                     })

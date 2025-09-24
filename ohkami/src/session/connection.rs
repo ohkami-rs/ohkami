@@ -1,7 +1,9 @@
 pub enum Connection {
     Tcp(crate::__rt__::TcpStream),
+    /// Boxing is used to reduce the size of the enum variant,
+    /// in order to keep the difference between the smallest and largest variant small.
     #[cfg(feature = "tls")]
-    Tls(anysc_rustls::server::TlsStream<crate::__rt__::TcpStream>),
+    Tls(Box<anysc_rustls::server::TlsStream<crate::__rt__::TcpStream>>),
 }
 
 impl From<crate::__rt__::TcpStream> for Connection {
@@ -14,7 +16,7 @@ impl From<crate::__rt__::TcpStream> for Connection {
 impl From<anysc_rustls::server::TlsStream<crate::__rt__::TcpStream>> for Connection {
     #[inline]
     fn from(stream: anysc_rustls::server::TlsStream<crate::__rt__::TcpStream>) -> Self {
-        Self::Tls(stream)
+        Self::Tls(Box::new(stream))
     }
 }
 

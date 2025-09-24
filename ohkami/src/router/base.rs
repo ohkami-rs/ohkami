@@ -41,7 +41,7 @@ impl FangsList {
     }
 
     fn add(&mut self, id: ID, fangs: Arc<dyn Fangs>) {
-        if self.0.iter().find(|(_id, _)| *_id == id).is_none() {
+        if self.0.iter().any(|(_id, _)| *_id == id) {
             self.0.push((id, fangs));
         }
     }
@@ -259,12 +259,10 @@ impl Node {
     }
 
     fn machable_child_mut(&mut self, pattern: Pattern) -> Option<&mut Node> {
-        for child in &mut self.children {
-            if child.pattern.as_ref().unwrap().matches(&pattern) {
-                return Some(child);
-            }
-        }
-        None
+        self.children
+            .iter_mut()
+            .find(|child| child.pattern.as_ref().unwrap().matches(&pattern))
+            .map(|v| v as _)
     }
 
     fn register_handler(
@@ -280,10 +278,10 @@ impl Node {
             }
             Some(segment) => {
                 let pattern = Pattern::from(segment);
-                match self.machable_child_mut(pattern.clone().into()) {
+                match self.machable_child_mut(pattern.clone()) {
                     Some(child) => child.register_handler(route, handler, allow_override),
                     None => {
-                        let mut child = Node::new(pattern.into());
+                        let mut child = Node::new(pattern);
                         child.register_handler(route, handler, allow_override)?;
                         self.append_child(child)?;
                         Ok(())
@@ -307,14 +305,12 @@ impl Node {
                 if self
                     .children
                     .iter()
-                    .find(|c| {
-                        c.pattern
-                            .as_ref()
-                            .unwrap()
-                            .to_static()
-                            .is_some_and(|p| p == *s)
-                    })
-                    .is_some()
+                    .any(|c| c.pattern
+                        .as_ref()
+                        .unwrap()
+                        .to_static()
+                        .is_some_and(|p| p == *s)
+                    )
                 {
                     let __position__ = match &self.pattern {
                         None => format!("For the first part of route"),

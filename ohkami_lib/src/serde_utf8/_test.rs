@@ -1,6 +1,7 @@
 use crate::serde_utf8;
 
 #[test]
+#[allow(clippy::bool_assert_comparison)]
 fn serialize_bool() {
     assert_eq!(serde_utf8::to_string(&true).unwrap(), "true");
     assert_eq!(serde_utf8::to_string(&false).unwrap(), "false");
@@ -69,6 +70,7 @@ fn serialize_non_newtype_struct_makes_err() {
 }
 
 #[test]
+#[allow(clippy::bool_assert_comparison)]
 fn deserialize_bool() {
     assert_eq!(serde_utf8::from_str::<bool>("true").unwrap(), true);
 

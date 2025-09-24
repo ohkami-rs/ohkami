@@ -30,6 +30,7 @@ tasks:
   check:
     deps:
       - task: check:fmt
+      - task: check:clippy
       - task: check:no_rt
       - for:  [tokio, smol, nio, glommio, monoio, lambda]
         task: check:rt-native
@@ -98,7 +99,14 @@ tasks:
 #### checks ####
   check:fmt:
     cmds:
-      - cargo fmt --che
+      - cargo fmt --check
+  
+  check:clippy:
+    cmds:
+      - cargo clippy --all-targets --features DEBUG,rt_tokio,sse,ws,openapi,tls -- --deny warnings   # threaded runtime
+      - cargo clippy --all-targets --features DEBUG,rt_glommio,sse,ws,openapi,tls -- --deny warnings # thread-per-core runtime
+      - cargo clippy --all-targets --features DEBUG,rt_worker,sse,ws,openapi -- --deny warnings      # Cloudflare Workers
+      - cargo clippy --all-targets --features DEBUG,rt_lambda,sse,ws,openapi -- --deny warnings      # AWS Lambda
 
   # Assure buildability without "DEBUG" feature
 

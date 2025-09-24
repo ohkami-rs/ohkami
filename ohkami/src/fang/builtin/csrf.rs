@@ -54,6 +54,12 @@ pub struct Csrf {
     trusted_origins: Arc<Vec<&'static str>>,
 }
 
+impl Default for Csrf {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Csrf {
     pub fn new() -> Self {
         Csrf {

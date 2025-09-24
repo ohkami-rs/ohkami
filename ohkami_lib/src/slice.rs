@@ -7,7 +7,9 @@ pub struct Slice {
     size: usize,
 }
 impl Slice {
-    /// SAFETY: `head` is non-null pointer
+    /// ## SAFETY
+    /// 
+    /// `head` must be a non-null pointer
     #[inline(always)]
     pub unsafe fn new_unchecked(head: *const u8, size: usize) -> Self {
         Self {
@@ -23,6 +25,10 @@ impl Slice {
         }
     }
 
+    /// ## SAFETY
+    /// 
+    /// `self.head` must be always valid for `self.size` bytes
+    /// and not be mutated for the returned lifetime.
     #[inline(always)]
     pub const unsafe fn as_bytes<'b>(&self) -> &'b [u8] {
         unsafe { std::slice::from_raw_parts(self.head.as_ptr(), self.size) }
@@ -43,7 +49,7 @@ const _: () = {
     impl PartialOrd for Slice {
         #[inline]
         fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-            unsafe { PartialOrd::partial_cmp(self.as_bytes(), other.as_bytes()) }
+            Some(Ord::cmp(unsafe { self.as_bytes() }, unsafe { other.as_bytes() }))
         }
     }
     impl Ord for Slice {
@@ -67,14 +73,22 @@ pub enum CowSlice {
     Own(Box<[u8]>),
 }
 impl CowSlice {
+    /// ## SAFETY
+    /// 
+    /// - for `Own`: no requirement
+    /// - for `Ref`: same as [`Slice::as_bytes`]
     #[inline(always)]
     pub unsafe fn as_bytes(&self) -> &[u8] {
         match self {
-            Self::Own(array) => &array,
+            Self::Own(array) => array,
             Self::Ref(slice) => unsafe { slice.as_bytes() },
         }
     }
 
+    /// ## SAFETY
+    /// 
+    /// - for `Own`: no requirement
+    /// - for `Ref`: same as [`Slice::as_bytes`]
     #[cold]
     pub unsafe fn extend_from_slice(&mut self, bytes: &[u8]) {
         match self {
@@ -95,6 +109,10 @@ impl CowSlice {
         }
     }
 
+    /// ## SAFETY
+    /// 
+    /// - for `Own`: no requirement
+    /// - for `Ref`: same as [`Slice::as_bytes`]
     #[inline]
     pub unsafe fn into_cow_static_bytes_uncheked(self) -> Cow<'static, [u8]> {
         match self {
@@ -145,12 +163,12 @@ const _: () = {
             Self::Own(vec.into_boxed_slice())
         }
     }
-    impl Into<Vec<u8>> for CowSlice {
+    impl From<CowSlice> for Vec<u8> {
         #[inline]
-        fn into(self) -> Vec<u8> {
-            match self {
-                Self::Own(array) => array.into(),
-                Self::Ref(slice) => Vec::from(unsafe { slice.as_bytes() }),
+        fn from(this: CowSlice) -> Vec<u8> {
+            match this {
+                CowSlice::Own(array) => array.into(),
+                CowSlice::Ref(slice) => Vec::from(unsafe { slice.as_bytes() }),
             }
         }
     }

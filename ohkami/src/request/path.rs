@@ -150,12 +150,12 @@ const _: () = {
             };
 
             #[allow(unused_unsafe/* I don't know why but rustc sometimes put warnings to this unsafe as unnecessary */)]
-            Ok({
-                self.0.write(PathInner {
-                    raw: unsafe { Slice::new_unchecked(bytes.as_ptr(), len) },
-                    params: Params::init(),
-                });
-            })
+            self.0.write(PathInner {
+                raw: unsafe { Slice::new_unchecked(bytes.as_ptr(), len) },
+                params: Params::init(),
+            });
+            
+            Ok(())
         }
 
         #[inline]

@@ -154,9 +154,9 @@ impl<T: Type::SchemaType> From<RawSchema> for Schema<T> {
         }
     }
 }
-impl Into<SchemaRef> for RawSchema {
-    fn into(self) -> SchemaRef {
-        SchemaRef::Inline(Box::new(self))
+impl From<RawSchema> for SchemaRef {
+    fn from(this: RawSchema) -> SchemaRef {
+        SchemaRef::Inline(Box::new(this))
     }
 }
 impl RawSchema {
@@ -208,29 +208,27 @@ impl SchemaRef {
 
     pub(crate) fn refize(&mut self) -> impl Iterator<Item = RawSchema> {
         let mut component_schemas = vec![];
-        match self {
-            SchemaRef::Inline(raw) => {
-                raw.properties
-                    .values_mut()
-                    .for_each(|s| component_schemas.extend(s.refize()));
-                raw.any_of
-                    .iter_mut()
-                    .for_each(|s| component_schemas.extend(s.refize()));
-                raw.all_of
-                    .iter_mut()
-                    .for_each(|s| component_schemas.extend(s.refize()));
-                raw.one_of
-                    .iter_mut()
-                    .for_each(|s| component_schemas.extend(s.refize()));
-                raw.items
-                    .as_mut()
-                    .map(|s| component_schemas.extend(s.refize()));
-                if let Some(name) = raw.__name__ {
-                    let raw = std::mem::replace(self, SchemaRef::Reference(name));
-                    component_schemas.push(raw.into_inline().unwrap());
-                }
+        if let SchemaRef::Inline(raw) = self {
+            #[allow(clippy::option_map_unit_fn)]
+            raw.items
+                .as_mut()
+                .map(|s| component_schemas.extend(s.refize()));
+            raw.properties
+                .values_mut()
+                .for_each(|s| component_schemas.extend(s.refize()));
+            raw.any_of
+                .iter_mut()
+                .for_each(|s| component_schemas.extend(s.refize()));
+            raw.all_of
+                .iter_mut()
+                .for_each(|s| component_schemas.extend(s.refize()));
+            raw.one_of
+                .iter_mut()
+                .for_each(|s| component_schemas.extend(s.refize()));
+            if let Some(name) = raw.__name__ {
+                let raw = std::mem::replace(self, SchemaRef::Reference(name));
+                component_schemas.push(raw.into_inline().unwrap());
             }
-            _ => (),
         }
         component_schemas.into_iter()
     }

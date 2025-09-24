@@ -15,6 +15,9 @@ license       = { workspace = true }
 [package.metadata.docs.rs]
 features      = ["stream"]
 
+[lints]
+workspace = true
+
 [dependencies]
 serde            = { workspace = true }
 byte_reader      = { workspace = true }

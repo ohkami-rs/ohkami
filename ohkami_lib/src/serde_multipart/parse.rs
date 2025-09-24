@@ -127,7 +127,7 @@ impl<'de> Multipart<'de> {
                                 )
                             })
                         else {
-                            return Err((|| Error::MissingCRLF())());
+                            return Err(Error::MissingCRLF());
                         };
 
                         r.consume(boundary).ok_or_else(Error::ExpectedBoundary)?;
@@ -164,12 +164,12 @@ const _: () = {
         type Deserializer = DeserializeFilesOrField<'de>;
         fn into_deserializer(self) -> Self::Deserializer {
             DeserializeFilesOrField {
-                text_ot_files: self,
+                text_or_files: self,
             }
         }
     }
     pub(super) struct DeserializeFilesOrField<'de> {
-        text_ot_files: TextOrFiles<'de>,
+        text_or_files: TextOrFiles<'de>,
     }
 
     impl<'de> serde::de::Deserializer<'de> for DeserializeFilesOrField<'de> {
@@ -179,7 +179,7 @@ const _: () = {
         where
             V: serde::de::Visitor<'de>,
         {
-            match &self.text_ot_files {
+            match &self.text_or_files {
                 TextOrFiles::Text(_) => self.deserialize_str(visitor),
                 TextOrFiles::Files(_) => self.deserialize_map(visitor),
             }
@@ -199,10 +199,10 @@ const _: () = {
         where
             V: serde::de::Visitor<'de>,
         {
-            if let TextOrFiles::Text(text) = self.text_ot_files {
+            if let TextOrFiles::Text(text) = self.text_or_files {
                 visitor.visit_borrowed_str(text)
             } else {
-                Err((|| Error::ExpectedNonFileField())())
+                Err(Error::ExpectedNonFileField())
             }
         }
         fn deserialize_string<V>(self, visitor: V) -> Result<V::Value, Self::Error>
@@ -227,8 +227,8 @@ const _: () = {
         where
             V: serde::de::Visitor<'de>,
         {
-            let TextOrFiles::Files(files) = &mut self.text_ot_files else {
-                return Err((|| Error::ExpectedFile())());
+            let TextOrFiles::Files(files) = &mut self.text_or_files else {
+                return Err(Error::ExpectedFile());
             };
             (files.len() == 1)
                 .then_some({
@@ -242,8 +242,8 @@ const _: () = {
         where
             V: serde::de::Visitor<'de>,
         {
-            let TextOrFiles::Files(_) = &self.text_ot_files else {
-                return Err((|| Error::ExpectedFile())());
+            let TextOrFiles::Files(_) = &self.text_or_files else {
+                return Err(Error::ExpectedFile());
             };
             visitor.visit_seq(self)
         }
@@ -252,12 +252,12 @@ const _: () = {
         where
             V: serde::de::Visitor<'de>,
         {
-            match &mut self.text_ot_files {
+            match &mut self.text_or_files {
                 TextOrFiles::Files(files) => match files.len() {
                     0 => visitor.visit_none(),
                     1 => visitor
                         .visit_some(unsafe { files.pop().unwrap_unchecked() }.into_deserializer()),
-                    _ => Err((|| Error::UnexpectedMultipleFiles())()),
+                    _ => Err(Error::UnexpectedMultipleFiles()),
                 },
                 TextOrFiles::Text(text) => match text.len() {
                     0 => visitor.visit_none(),
@@ -287,13 +287,10 @@ const _: () = {
             {
                 // This SHOULD be already checked in `deserialize_map`,
                 // BEFORE `next_entry_seed` here
-                assert!(match &self.text_ot_files {
-                    TextOrFiles::Files(_) => true,
-                    _ => false,
-                });
+                matches!(self.text_or_files, TextOrFiles::Files(_));
             }
 
-            let TextOrFiles::Files(files) = &mut self.text_ot_files else {
+            let TextOrFiles::Files(files) = &mut self.text_or_files else {
                 unsafe { std::hint::unreachable_unchecked() }
             };
 

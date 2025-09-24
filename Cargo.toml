@@ -33,3 +33,7 @@ license    = "MIT"
 byte_reader = { version = "3.1", features = ["text"] }
 serde       = { version = "1.0", features = ["derive"] }
 serde_json  = { version = "1.0" }
+
+[workspace.lints.clippy]
+useless_format        = "allow"
+duplicated_attributes = "allow"

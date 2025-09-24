@@ -182,7 +182,7 @@ impl Connection {
             crate::DEBUG!("[ws::Connection::recv] initial call: setting events");
 
             self.events = Some(match self.ws.events() {
-                Ok(events) => unsafe { unchecked_static(events) },
+                Ok(events) => unsafe { unchecked_static::<worker::EventStream<'_>, worker::EventStream<'static>>(events) },
                 Err(error) => return Err(error),
             });
         }
@@ -231,11 +231,9 @@ impl Connection {
             Message::Close(None) => self.ws.close::<&str>(None, None),
             Message::Close(Some(frame)) => self.ws.close(Some(frame.code.as_u16()), frame.reason),
             Message::Ping(_) | Message::Pong(_) => {
-                Err(worker::Error::RustError((|message| {
-                    format!(
-                        "`Connection::send` got `{message:?}`, but sending ping/pong is not supported on `rt_worker`"
-                    )
-                })(message)))
+                Err(worker::Error::RustError(format!(
+                    "`Connection::send` got `{message:?}`, but sending ping/pong is not supported on `rt_worker`"
+                )))
             }
         }
     }
@@ -272,11 +270,9 @@ pub mod split {
                     self.0.close(Some(frame.code.as_u16()), frame.reason)
                 }
                 Message::Ping(_) | Message::Pong(_) => {
-                    Err(worker::Error::RustError((|message| {
-                        format!(
-                            "`WriteHalf::send` got `{message:?}`, but sending ping/pong is not supported on `rt_worker`"
-                        )
-                    })(message)))
+                    Err(worker::Error::RustError(format!(
+                        "`WriteHalf::send` got `{message:?}`, but sending ping/pong is not supported on `rt_worker`"
+                    )))
                 }
             }
         }
@@ -306,6 +302,13 @@ impl crate::IntoResponse for WebSocket {
 /// A utility struct for storing *session* instances of type `S` associated with `worker::WebSocket`s.
 /// Primarily used in implementations of a Durable Object with WebSocket.
 pub struct SessionMap<S>(Vec<(worker::WebSocket, S)>);
+
+impl<S> Default for SessionMap<S> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<S> SessionMap<S> {
     pub fn new() -> Self {
         Self(Vec::new())
@@ -332,11 +335,11 @@ impl<S> SessionMap<S> {
     }
 
     pub fn get(&self, ws: &worker::WebSocket) -> Option<&S> {
-        let index = self.index_of(&ws)?;
+        let index = self.index_of(ws)?;
         Some(&self.0[index].1)
     }
     pub fn get_mut(&mut self, ws: &worker::WebSocket) -> Option<&mut S> {
-        let index = self.index_of(&ws)?;
+        let index = self.index_of(ws)?;
         Some(&mut self.0[index].1)
     }
 

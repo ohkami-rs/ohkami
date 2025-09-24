@@ -124,7 +124,7 @@ impl<B: IntoContent> IntoResponse for B {
     #[cfg(feature = "openapi")]
     fn openapi_responses() -> openapi::Responses {
         let mut res = openapi::Response::when("OK");
-        if Self::CONTENT_TYPE != "" {
+        if !Self::CONTENT_TYPE.is_empty() {
             let mime_type = match Self::CONTENT_TYPE.split_once(';') {
                 None => Self::CONTENT_TYPE,
                 Some((mime_type, _)) => mime_type,

@@ -35,6 +35,8 @@ impl<T: SendSyncOnThreaded + 'static> Context<'static, T>
 where
     T: Clone,
 {
+    /// Initialize a `FangAction` that sets the context data.
+    #[allow(clippy::new_ret_no_self)]
     pub fn new(data: T) -> impl FangAction {
         return ContextAction(data);
 

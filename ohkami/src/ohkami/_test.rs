@@ -455,7 +455,7 @@ fn with_global_fangs() {
 
     fn count() -> &'static Mutex<usize> {
         static COUNT: LazyLock<Mutex<usize>> = LazyLock::new(|| Mutex::new(0));
-        &*COUNT
+        &COUNT
     }
 
     #[derive(Clone)]
@@ -538,12 +538,12 @@ fn method_dependent_fang_applying() {
 
         fn global_count() -> &'static Mutex<usize> {
             static GLOBAL_COUNT: LazyLock<Mutex<usize>> = LazyLock::new(|| Mutex::new(0));
-            &*GLOBAL_COUNT
+            &GLOBAL_COUNT
         }
 
         fn local_count() -> &'static Mutex<usize> {
             static LOCAL_COUNT: LazyLock<Mutex<usize>> = LazyLock::new(|| Mutex::new(0));
-            &*LOCAL_COUNT
+            &LOCAL_COUNT
         }
 
         #[derive(Clone)]

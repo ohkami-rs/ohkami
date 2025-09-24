@@ -53,7 +53,7 @@ pub(super) fn derive_schema(input: TokenStream) -> syn::Result<TokenStream> {
                     name.span(),
                 );
                 if let Some((span, rename)) = container_attrs.serde.rename.value()? {
-                    component_name = LitStr::new(&rename, span);
+                    component_name = LitStr::new(rename, span);
                 }
                 quote! {
                     ::ohkami::openapi::component(#component_name, #struct_schema)
@@ -113,7 +113,7 @@ pub(super) fn derive_schema(input: TokenStream) -> syn::Result<TokenStream> {
                     name.span(),
                 );
                 if let Some((span, rename)) = container_attrs.serde.rename.value()? {
-                    component_name = LitStr::new(&rename, span);
+                    component_name = LitStr::new(rename, span);
                 }
                 quote! {
                     ::ohkami::openapi::component(#component_name, #enum_schema)
@@ -123,7 +123,7 @@ pub(super) fn derive_schema(input: TokenStream) -> syn::Result<TokenStream> {
 
         if let Some(description) = extract_doc_comment(&e.attrs) {
             enum_schema = {
-                let description = LitStr::new(&*description, Span::call_site());
+                let description = LitStr::new(&description, Span::call_site());
                 quote! {
                     #enum_schema.description(#description)
                 }
@@ -167,7 +167,7 @@ pub(super) fn derive_schema(input: TokenStream) -> syn::Result<TokenStream> {
                         ident = Ident::new(&case.apply_to_field(&ident.to_string()), span);
                     }
                     if let Some((span, rename)) = field_attrs.serde.rename.value()? {
-                        ident = Ident::new(&rename, span);
+                        ident = Ident::new(rename, span);
                     }
 
                     if let Some(schema_with) = &field_attrs.openapi.schema_with {
@@ -287,7 +287,7 @@ pub(super) fn derive_schema(input: TokenStream) -> syn::Result<TokenStream> {
             Fields::Unnamed(FieldsUnnamed {
                 paren_token: _,
                 unnamed,
-            }) if unnamed.len() == 0 => {
+            }) if unnamed.is_empty() => {
                 /* empty */
                 Ok(quote! {
                     ::ohkami::openapi::object()
@@ -374,7 +374,7 @@ pub(super) fn derive_schema(input: TokenStream) -> syn::Result<TokenStream> {
                         ident = Ident::new(&case.apply_to_variant(&ident.to_string()), span);
                     }
                     if let Some((span, name)) = variant_attrs.serde.rename.value()? {
-                        ident = Ident::new(&*name, span);
+                        ident = Ident::new(name, span);
                     };
 
                     LitStr::new(&ident.to_string(), ident.span())
@@ -405,7 +405,7 @@ pub(super) fn derive_schema(input: TokenStream) -> syn::Result<TokenStream> {
                         ident = Ident::new(&case.apply_to_variant(&ident.to_string()), span);
                     }
                     if let Some((span, name)) = variant_attrs.serde.rename.value()? {
-                        ident = Ident::new(&*name, span);
+                        ident = Ident::new(name, span);
                     }
                     LitStr::new(&ident.to_string(), ident.span())
                 };
@@ -435,7 +435,7 @@ pub(super) fn derive_schema(input: TokenStream) -> syn::Result<TokenStream> {
                         #schema_with()
                     }
                 } else {
-                    schema_of_fields(v.fields, &container_attrs)?
+                    schema_of_fields(v.fields, container_attrs)?
                 };
 
                 schema = match (

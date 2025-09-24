@@ -63,9 +63,9 @@ impl<'de> serde::Deserializer<'de> for &mut UTF8Deserializer<'de> {
         match self.input() {
             "true" => visitor.visit_bool(true),
             "false" => visitor.visit_bool(false),
-            other => Err((|| {
+            other => Err({
                 serde::de::Error::custom(format!("Expected `true` or `false`, but found `{other}`"))
-            })()),
+            }),
         }
     }
 
@@ -92,9 +92,9 @@ impl<'de> serde::Deserializer<'de> for &mut UTF8Deserializer<'de> {
                 self.input = "";
                 visitor.visit_char(c)
             }
-            _ => Err((|| {
+            _ => Err({
                 serde::de::Error::custom(format!("Expected a single char, but got single"))
-            })()),
+            }),
         }
     }
 

@@ -44,6 +44,7 @@ pub trait Tester {
 impl Tester for Ohkami {
     fn test(self) -> TestOhkami {
         let (f, _) = self.into_router().finalize();
+        #[cfg_attr(not(feature = "__rt_threaded__"), allow(clippy::arc_with_non_send_sync))]
         TestOhkami(Arc::new(f))
     }
 }
@@ -241,12 +242,9 @@ impl TestResponse {
     }
 
     pub fn content(&self, content_type: &'static str) -> Option<&[u8]> {
-        let _ = self
-            .0
-            .headers
-            .content_type()?
-            .starts_with(content_type)
-            .then_some(())?;
+        if !self.0.headers.content_type()?.starts_with(content_type) {
+            return None;
+        }
         let bytes = self.0.content.as_bytes()?;
         assert_eq!(
             bytes.len(),
@@ -257,7 +255,7 @@ impl TestResponse {
     }
     pub fn text(&self) -> Option<&str> {
         self.content("text/plain").map(|bytes| {
-            std::str::from_utf8(bytes).expect(&f!(
+            std::str::from_utf8(bytes).unwrap_or_else(|_| panic!(
                 "Response content is not UTF-8: {}",
                 bytes.escape_ascii()
             ))
@@ -265,7 +263,7 @@ impl TestResponse {
     }
     pub fn html(&self) -> Option<&str> {
         self.content("text/html").map(|bytes| {
-            std::str::from_utf8(bytes).expect(&f!(
+            std::str::from_utf8(bytes).unwrap_or_else(|_| panic!(
                 "Response content is not UTF-8: {}",
                 bytes.escape_ascii()
             ))
@@ -273,7 +271,7 @@ impl TestResponse {
     }
     pub fn json<'d, T: serde::Deserialize<'d>>(&'d self) -> Option<T> {
         self.content("application/json").map(|bytes| {
-            serde_json::from_slice(bytes).expect(&f!(
+            serde_json::from_slice(bytes).unwrap_or_else(|_| panic!(
                 "Failed to deserialize json payload as {}: {}",
                 std::any::type_name::<T>(),
                 bytes.escape_ascii()

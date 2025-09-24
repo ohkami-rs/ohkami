@@ -9,9 +9,6 @@ impl<K: PartialEq, V> TupleMap<K, V> {
     pub fn new() -> Self {
         Self(Vec::new())
     }
-    pub fn from_iter<const N: usize>(iter: [(K, V); N]) -> Self {
-        Self(Vec::from(iter))
-    }
 
     #[inline]
     pub fn get<Q>(&self, key: &Q) -> Option<&V>
@@ -56,7 +53,7 @@ impl<K: PartialEq, V> TupleMap<K, V> {
     #[inline]
     pub fn remove(&mut self, key: K) -> Option<V> {
         for i in 0..self.0.len() {
-            if &key == &unsafe { self.0.get_unchecked(i) }.0 {
+            if key == unsafe { self.0.get_unchecked(i) }.0 {
                 return Some(self.0.swap_remove(i).1);
             }
         }
@@ -76,11 +73,32 @@ impl<K: PartialEq, V> TupleMap<K, V> {
     pub fn iter(&self) -> impl Iterator<Item = &(K, V)> {
         self.0.iter()
     }
-    pub fn into_iter(self) -> impl Iterator<Item = (K, V)> {
-        self.0.into_iter()
-    }
+    
     pub fn keys(&self) -> impl Iterator<Item = &K> {
         self.iter().map(|(k, _)| k)
+    }
+    pub fn values(&self) -> impl Iterator<Item = &V> {
+        self.iter().map(|(_, v)| v)
+    }
+}
+
+impl<K: PartialEq, V> Default for TupleMap<K, V> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<K: PartialEq, V> FromIterator<(K, V)> for TupleMap<K, V> {
+    fn from_iter<T: IntoIterator<Item = (K, V)>>(iter: T) -> Self {
+        Self(iter.into_iter().collect())
+    }
+}
+
+impl<K: PartialEq, V> std::iter::IntoIterator for TupleMap<K, V> {
+    type Item = (K, V);
+    type IntoIter = std::vec::IntoIter<(K, V)>;
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
     }
 }
 
@@ -103,7 +121,7 @@ where
 {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         f.debug_map()
-            .entries(self.iter().map(|&(ref k, ref v)| (k, v)))
+            .entries(self.iter().map(|(k, v)| (k, v)))
             .finish()
     }
 }

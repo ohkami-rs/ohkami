@@ -104,13 +104,18 @@ impl<const N: usize, Value> ByteArrayMap<N, Value> {
     pub(crate) fn iter(&self) -> impl Iterator<Item = &(Byte, Value)> {
         self.entries.iter()
     }
-    #[inline(always)]
-    pub(crate) fn into_iter(self) -> impl Iterator<Item = (Byte, Value)> {
-        self.entries.into_iter()
-    }
 }
 
 const _: () = {
+    impl<const N: usize, Value> IntoIterator for ByteArrayMap<N, Value> {
+        type Item = (Byte, Value);
+        type IntoIter = std::vec::IntoIter<(Byte, Value)>;
+        #[inline(always)]
+        fn into_iter(self) -> Self::IntoIter {
+            self.entries.into_iter()
+        }
+    }
+    
     impl<const N: usize, Value: PartialEq> PartialEq for ByteArrayMap<N, Value> {
         fn eq(&self, other: &Self) -> bool {
             for i in 0..N as u8 {
@@ -125,7 +130,7 @@ const _: () = {
     impl<const N: usize, Value: Clone> Clone for ByteArrayMap<N, Value> {
         fn clone(&self) -> Self {
             Self {
-                indices: self.indices.clone(),
+                indices: self.indices,
                 entries: self.entries.clone(),
             }
         }

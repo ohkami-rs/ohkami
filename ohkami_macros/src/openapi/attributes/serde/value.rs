@@ -99,11 +99,11 @@ where
     pub(crate) fn value(&self) -> syn::Result<Option<(Span, &T)>> {
         match (&self.serialize, &self.deserialize) {
             (None, None) => Ok(None),
-            (Some(s), None) => Ok(Some((self.span.clone(), s))),
-            (None, Some(d)) => Ok(Some((self.span.clone(), d))),
-            (Some(s), Some(d)) if s == d => Ok(Some((self.span.clone(), s))),
+            (Some(s), None) => Ok(Some((self.span, s))),
+            (None, Some(d)) => Ok(Some((self.span, d))),
+            (Some(s), Some(d)) if s == d => Ok(Some((self.span, s))),
             _ => Err(syn::Error::new(
-                self.span.clone(),
+                self.span,
                 "#[derive(Schema)] doesn't support \
                 #[serde(rename())] with both `serialize = ...` and `deserialize = ...`",
             )),

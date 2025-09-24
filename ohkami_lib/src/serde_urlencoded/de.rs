@@ -21,7 +21,7 @@ impl<'de> URLEncodedDeserializer<'de> {
         }
     }
     pub(crate) fn remaining(&self) -> &'de [u8] {
-        &self.input
+        self.input
     }
 }
 
@@ -34,7 +34,7 @@ impl<'de> URLEncodedDeserializer<'de> {
     }
     #[inline(always)]
     fn next(&mut self) -> Result<u8, super::Error> {
-        let next = self.peek()?.clone();
+        let next = *self.peek()?;
         self.input = &self.input[1..];
         Ok(next)
     }
@@ -86,7 +86,7 @@ impl<'de> URLEncodedDeserializer<'de> {
     }
 }
 
-impl<'u, 'de> serde::Deserializer<'de> for &'u mut URLEncodedDeserializer<'de> {
+impl<'de> serde::Deserializer<'de> for &mut URLEncodedDeserializer<'de> {
     type Error = super::Error;
 
     fn deserialize_any<V>(self, visitor: V) -> Result<V::Value, Self::Error>
@@ -216,12 +216,12 @@ impl<'u, 'de> serde::Deserializer<'de> for &'u mut URLEncodedDeserializer<'de> {
         })?;
         let mut chars = decoded.chars();
         let (Some(ch), None) = (chars.next(), chars.next()) else {
-            return Err((|| {
+            return Err({
                 serde::de::Error::custom(format!(
                     "Expected a single charactor, but got `{}`",
                     section.escape_ascii()
                 ))
-            })());
+            });
         };
         visitor.visit_char(ch)
     }
@@ -269,7 +269,7 @@ impl<'u, 'de> serde::Deserializer<'de> for &'u mut URLEncodedDeserializer<'de> {
         {
             visitor.visit_unit()
         } else {
-            Err((|| {
+            Err({
                 serde::de::Error::custom(format!(
                     "Expected an empty value for an unit, but got `{}`",
                     match self.next_section() {
@@ -277,7 +277,7 @@ impl<'u, 'de> serde::Deserializer<'de> for &'u mut URLEncodedDeserializer<'de> {
                         Err(e) => e.to_string(),
                     }
                 ))
-            })())
+            })
         }
     }
     fn deserialize_unit_struct<V>(
@@ -586,7 +586,7 @@ const _: () = {
                 return Ok(None);
             }
             if !self.first && self.de.next()? != b'&' {
-                return Err((|| serde::de::Error::custom("missing `&`"))());
+                return Err(serde::de::Error::custom("missing `&`"));
             }
             self.first = false;
 
@@ -599,7 +599,7 @@ const _: () = {
             V: serde::de::DeserializeSeed<'de>,
         {
             if self.de.next()? != b'=' {
-                return Err((|| serde::de::Error::custom("missing `=`"))());
+                return Err(serde::de::Error::custom("missing `=`"));
             }
 
             self.de.side = ParsingSide::Value;

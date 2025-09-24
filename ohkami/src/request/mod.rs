@@ -225,15 +225,15 @@ impl Request {
     ) -> Result<Option<()>, crate::Response> {
         use crate::Response;
 
-        match stream.read(&mut *self.__buf__).await {
+        match stream.read(&mut self.__buf__).await {
             Ok(0) => return Ok(None),
             Err(e) => {
                 return match e.kind() {
                     std::io::ErrorKind::ConnectionReset => Ok(None),
-                    _ => Err((|err| {
-                        crate::WARNING!("Failed to read stream: {err}");
+                    _ => Err({
+                        crate::WARNING!("Failed to read stream: {e}");
                         Response::InternalServerError()
-                    })(e)),
+                    }),
                 };
             }
             _ => (),
@@ -244,7 +244,7 @@ impl Request {
             // to resolve immutable/mutable borrowing
             //
             // SAFETY: `self.__buf__` itself is immutable
-            Slice::from_bytes(&*self.__buf__).as_bytes()
+            Slice::from_bytes(&self.__buf__).as_bytes()
         });
 
         match Method::from_bytes(r.read_while(|b| b != &b' ')) {
@@ -302,13 +302,13 @@ impl Request {
 
         let content_length = match self.headers.get_raw(RequestHeader::ContentLength) {
             Some(v) => unsafe { v.as_bytes() }
-                .into_iter()
+                .iter()
                 .fold(0, |len, b| 10 * len + (*b - b'0') as usize),
             None => 0,
         };
         match content_length {
             0 => (),
-            PAYLOAD_LIMIT.. => return Err((|| Response::PayloadTooLarge())()),
+            PAYLOAD_LIMIT.. => return Err(Response::PayloadTooLarge()),
             _ => {
                 self.payload =
                     Some(Request::read_payload(stream, r.remaining(), content_length).await)
@@ -456,7 +456,7 @@ impl Request {
 
         let content_length = match self.headers.get_raw(RequestHeader::ContentLength) {
             Some(v) => unsafe { v.as_bytes() }
-                .into_iter()
+                .iter()
                 .fold(0, |len, b| 10 * len + (*b - b'0') as usize),
             None => 0,
         };

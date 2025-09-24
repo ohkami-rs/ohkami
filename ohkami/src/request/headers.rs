@@ -291,7 +291,7 @@ impl Headers {
             .iter()
             .filter_map(|(i, v)| {
                 Some((
-                    unsafe { std::mem::transmute::<_, Header>(*i).as_str() },
+                    unsafe { std::mem::transmute::<u8, Header>(*i).as_str() },
                     std::str::from_utf8(v).ok()?,
                 ))
             })
@@ -326,7 +326,7 @@ impl Headers {
     pub(crate) fn get_standard(&self, name: Header) -> Option<&str> {
         unsafe {
             match self.standard.get(name as u8) {
-                Some(cs) => std::str::from_utf8(&cs).ok(),
+                Some(cs) => std::str::from_utf8(cs).ok(),
                 None => None,
             }
         }

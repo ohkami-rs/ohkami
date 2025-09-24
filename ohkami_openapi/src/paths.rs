@@ -65,6 +65,12 @@ pub struct ExternalDoc {
     pub description: Option<&'static str>,
 }
 
+impl Default for Paths {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Paths {
     pub fn new() -> Self {
         Self(Map::new())
@@ -73,6 +79,12 @@ impl Paths {
     pub fn at(mut self, path: impl Into<String>, operations: Operations) -> Self {
         self.0.insert(path.into(), operations);
         self
+    }
+}
+
+impl Default for Operations {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -245,8 +257,7 @@ impl Operation {
             .chain(
                 self.parameters
                     .iter_mut()
-                    .map(|p| p.schema.refize())
-                    .flatten(),
+                    .flat_map(|p| p.schema.refize()),
             )
             .chain(
                 self.requestbody

@@ -223,7 +223,7 @@ impl StaticFileHandler {
             .transpose()
             .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
 
-        let mime = ::mime_guess::from_path(&path)
+        let mime = ::mime_guess::from_path(path)
             .first_raw()
             .unwrap_or("application/octet-stream");
 

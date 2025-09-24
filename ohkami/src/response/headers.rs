@@ -6,6 +6,9 @@ use std::borrow::Cow;
 pub struct Headers {
     standard: ByteArrayMap<N_SERVER_HEADERS, Cow<'static, str>>,
     custom: Option<Box<TupleMap<&'static str, Cow<'static, str>>>>,
+    /// using `Option<Box<Vec<...>>>` to reduce the size to 1 word
+    /// by the niche optimization.
+    #[allow(clippy::box_collection)]
     pub(super) setcookie: Option<Box<Vec<Cow<'static, str>>>>,
     pub(super) size: usize,
 }
@@ -365,10 +368,8 @@ impl Headers {
         }
     }
     pub(crate) fn remove_custom(&mut self, name: &'static str) {
-        if let Some(c) = self.custom.as_mut() {
-            if let Some(v) = c.remove(name) {
-                self.size -= name.len() + ": ".len() + v.len() + "\r\n".len()
-            }
+        if let Some(c) = self.custom.as_mut() && let Some(v) = c.remove(name) {
+            self.size -= name.len() + ": ".len() + v.len() + "\r\n".len();
         }
     }
 
@@ -467,7 +468,7 @@ impl Headers {
     pub(crate) fn iter_standard(&self) -> impl Iterator<Item = (&str, &str)> {
         self.standard.iter().map(|(i, v)| {
             (
-                unsafe { std::mem::transmute::<_, Header>(*i) }.as_str(),
+                unsafe { std::mem::transmute::<u8, Header>(*i) }.as_str(),
                 &**v,
             )
         })
@@ -490,25 +491,13 @@ impl Headers {
                     .map(|sc| ("Set-Cookie", sc)),
             )
     }
-    pub fn into_iter(self) -> impl Iterator<Item = (&'static str, Cow<'static, str>)> {
-        let standard = self
-            .standard
-            .into_iter()
-            .map(|(i, v)| (unsafe { std::mem::transmute::<_, Header>(i) }.as_str(), v));
-        let custom = self.custom.into_iter().flat_map(|tm| tm.into_iter());
-        let setcookie = self
-            .setcookie
-            .into_iter()
-            .flat_map(|sc| sc.into_iter().map(|sc| ("Set-Cookie", sc)));
-        standard.chain(custom).chain(setcookie)
-    }
 
     #[cfg(any(feature = "__rt_native__", feature = "DEBUG"))]
     /// SAFETY: `buf` has remaining capacity of at least `self.size`
     pub(crate) unsafe fn write_unchecked_to(&self, buf: &mut Vec<u8>) {
         unsafe {
             for (i, v) in self.standard.iter() {
-                let h = std::mem::transmute::<_, Header>(*i);
+                let h = std::mem::transmute::<u8, Header>(*i);
                 {
                     crate::push_unchecked!(buf <- h.as_bytes());
                     crate::push_unchecked!(buf <- b": ");
@@ -565,10 +554,8 @@ const _: () = {
         }
     }
 
-    impl Headers {
-        pub fn from_iter(
-            iter: impl IntoIterator<Item = (&'static str, impl Into<Cow<'static, str>>)>,
-        ) -> Self {
+    impl<A: Into<Cow<'static, str>>> FromIterator<(&'static str, A)> for Headers {
+        fn from_iter<T: IntoIterator<Item = (&'static str, A)>>(iter: T) -> Self {
             let mut this = Headers::new();
             for (k, v) in iter {
                 match Header::from_bytes(k.as_bytes()) {
@@ -581,15 +568,46 @@ const _: () = {
             this
         }
     }
+    
+    impl IntoIterator for Headers {
+        type Item = (&'static str, Cow<'static, str>);
+        type IntoIter = HeadersIntoIter;
+        fn into_iter(self) -> Self::IntoIter {
+            HeadersIntoIter {
+                standard: self.standard.into_iter(),
+                custom: self.custom.map(|tm| tm.into_iter()),
+                setcookie: self.setcookie.map(|sc| sc.into_iter()),
+            }
+        }
+    }    
+    pub struct HeadersIntoIter {
+        standard: std::vec::IntoIter<(u8, Cow<'static, str>)>,
+        custom: Option<std::vec::IntoIter<(&'static str, Cow<'static, str>)>>,
+        setcookie: Option<std::vec::IntoIter<Cow<'static, str>>>,
+    }
+    impl Iterator for HeadersIntoIter {
+        type Item = (&'static str, Cow<'static, str>);
+        fn next(&mut self) -> Option<Self::Item> {
+            if let Some((i, v)) = self.standard.next() {
+                Some((unsafe { std::mem::transmute::<u8, Header>(i) }.as_str(), v))
+            } else if let Some(custom) = self.custom.as_mut().and_then(|c| c.next()) {
+                Some(custom)
+            } else if let Some(setcookie) = self.setcookie.as_mut().and_then(|c| c.next()) {
+                Some(("Set-Cookie", setcookie))
+            } else {
+                None
+            }
+        }
+    }
 };
 
 #[cfg(feature = "rt_worker")]
 const _: () = {
-    impl Into<::worker::Headers> for Headers {
+    impl From<Headers> for ::worker::Headers {
         #[inline(always)]
-        fn into(self) -> ::worker::Headers {
+        fn from(this: Headers) -> ::worker::Headers {
             let h = ::worker::Headers::new();
-            for (k, v) in self.iter() {
+            for (k, v) in this.iter() {
                 if let Err(_e) = h.append(k, v) {
                     crate::DEBUG!("`worker::Headers::append` failed: {_e:?}");
                 }

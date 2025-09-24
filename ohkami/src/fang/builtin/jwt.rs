@@ -108,7 +108,7 @@ const _: () = {
                 _payload: PhantomData,
                 secret: self.secret.clone(),
                 alg: self.alg.clone(),
-                get_token: self.get_token.clone(),
+                get_token: self.get_token,
 
                 #[cfg(feature = "openapi")]
                 openapi_security: self.openapi_security.clone(),
@@ -275,9 +275,9 @@ const _: () = {
         }
     }
 
-    impl Into<String> for JwtToken {
-        fn into(self) -> String {
-            self.0
+    impl From<JwtToken> for String {
+        fn from(this: JwtToken) -> String {
+            this.0
         }
     }
 };
@@ -411,21 +411,21 @@ impl<Payload: Serialize + for<'de> Deserialize<'de> + SendSyncOnThreaded + 'stat
                     hs.update(header_part.as_bytes());
                     hs.update(b".");
                     hs.update(payload_part.as_bytes());
-                    hs.finalize().into_bytes().as_slice() == &requested_signature
+                    hs.finalize().into_bytes().as_slice() == requested_signature
                 }
                 VerifyingAlgorithm::HS384 => {
                     let mut hs = Hmac::<Sha384>::new_from_slice(self.secret.as_bytes()).unwrap();
                     hs.update(header_part.as_bytes());
                     hs.update(b".");
                     hs.update(payload_part.as_bytes());
-                    hs.finalize().into_bytes().as_slice() == &requested_signature
+                    hs.finalize().into_bytes().as_slice() == requested_signature
                 }
                 VerifyingAlgorithm::HS512 => {
                     let mut hs = Hmac::<Sha512>::new_from_slice(self.secret.as_bytes()).unwrap();
                     hs.update(header_part.as_bytes());
                     hs.update(b".");
                     hs.update(payload_part.as_bytes());
-                    hs.finalize().into_bytes().as_slice() == &requested_signature
+                    hs.finalize().into_bytes().as_slice() == requested_signature
                 }
             }
         };
@@ -490,7 +490,7 @@ mod test {
         let mut req_bytes = &req_bytes[..];
         let mut req = Request::uninit(crate::util::IP_0000);
         let mut req = Pin::new(&mut req);
-        crate::__rt__::testing::block_on({ req.as_mut().read(&mut req_bytes) }).unwrap();
+        crate::__rt__::testing::block_on(req.as_mut().read(&mut req_bytes)).unwrap();
 
         assert_eq!(
             my_jwt.verified(&req.as_ref()).unwrap(),
@@ -504,7 +504,7 @@ mod test {
         let mut req_bytes = &req_bytes[..];
         let mut req = Request::uninit(crate::util::IP_0000);
         let mut req = Pin::new(&mut req);
-        crate::__rt__::testing::block_on({ req.as_mut().read(&mut req_bytes) }).unwrap();
+        crate::__rt__::testing::block_on(req.as_mut().read(&mut req_bytes)).unwrap();
 
         assert_eq!(
             my_jwt.verified(&req.as_ref()).unwrap_err().status,
@@ -613,7 +613,7 @@ mod test {
 
             let user = r
                 .get(&jwt_payload.user_id)
-                .ok_or_else(|| APIError::UserNotFound)?;
+                .ok_or(APIError::UserNotFound)?;
 
             Ok(Json(user.profile()))
         }

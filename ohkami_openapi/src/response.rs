@@ -81,7 +81,7 @@ impl Responses {
     }
 
     pub(crate) fn refize_schemas(&mut self) -> impl Iterator<Item = RawSchema> + '_ {
-        self.0.values_mut().map(Response::refize_schemas).flatten()
+        self.0.values_mut().flat_map(Response::refize_schemas)
     }
 
     pub(crate) fn override_response_description(
@@ -94,7 +94,7 @@ impl Responses {
             response.description = new_description;
         } else {
             self.0
-                .insert(status.into(), Response::when(new_description));
+                .insert(status, Response::when(new_description));
         }
     }
 }
@@ -109,7 +109,7 @@ impl Response {
     }
 
     pub fn content(mut self, media_type: &'static str, schema: impl Into<SchemaRef>) -> Self {
-        if media_type != "" {
+        if !media_type.is_empty() {
             self.content
                 .insert(media_type, Content::from(schema.into()));
         }
