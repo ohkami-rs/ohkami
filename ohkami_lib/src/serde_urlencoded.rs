@@ -15,14 +15,12 @@ pub fn to_string(value: &impl serde::Serialize) -> Result<String, Error> {
 pub fn from_bytes<'de, D: serde::Deserialize<'de>>(input: &'de [u8]) -> Result<D, Error> {
     let mut d = de::URLEncodedDeserializer::new(input);
     let t = D::deserialize(&mut d)?;
-    d.remaining().is_empty()
-        .then_some(t)
-        .ok_or_else(|| {
-            serde::de::Error::custom(format!(
-                "Unexpected trailing charactors: `{}`",
-                d.remaining().escape_ascii()
-            ))
-        })
+    d.remaining().is_empty().then_some(t).ok_or_else(|| {
+        serde::de::Error::custom(format!(
+            "Unexpected trailing charactors: `{}`",
+            d.remaining().escape_ascii()
+        ))
+    })
 }
 
 #[derive(Debug)]
@@ -59,11 +57,7 @@ const _: () = {
         type Ok = ();
         type Error = Error;
 
-        fn serialize_field<T>(
-            &mut self,
-            _key: &'static str,
-            _value: &T,
-        ) -> Result<(), Self::Error>
+        fn serialize_field<T>(&mut self, _key: &'static str, _value: &T) -> Result<(), Self::Error>
         where
             T: ?Sized + serde::Serialize,
         {

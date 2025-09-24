@@ -368,7 +368,9 @@ impl Headers {
         }
     }
     pub(crate) fn remove_custom(&mut self, name: &'static str) {
-        if let Some(c) = self.custom.as_mut() && let Some(v) = c.remove(name) {
+        if let Some(c) = self.custom.as_mut()
+            && let Some(v) = c.remove(name)
+        {
             self.size -= name.len() + ": ".len() + v.len() + "\r\n".len();
         }
     }
@@ -568,7 +570,7 @@ const _: () = {
             this
         }
     }
-    
+
     impl IntoIterator for Headers {
         type Item = (&'static str, Cow<'static, str>);
         type IntoIter = HeadersIntoIter;
@@ -579,7 +581,7 @@ const _: () = {
                 setcookie: self.setcookie.map(|sc| sc.into_iter()),
             }
         }
-    }    
+    }
     pub struct HeadersIntoIter {
         standard: std::vec::IntoIter<(u8, Cow<'static, str>)>,
         custom: Option<std::vec::IntoIter<(&'static str, Cow<'static, str>)>>,

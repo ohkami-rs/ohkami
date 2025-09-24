@@ -42,25 +42,21 @@ impl Config {
             }),
 
             #[cfg(feature = "__rt_native__")]
-            keepalive_timeout: std::sync::LazyLock::new(
-                || {
-                    std::env::var("OHKAMI_KEEPALIVE_TIMEOUT")
-                        .ok()
-                        .and_then(|v| v.parse().ok())
-                        .unwrap_or(30) // 30 seconds
-                },
-            ),
+            keepalive_timeout: std::sync::LazyLock::new(|| {
+                std::env::var("OHKAMI_KEEPALIVE_TIMEOUT")
+                    .ok()
+                    .and_then(|v| v.parse().ok())
+                    .unwrap_or(30) // 30 seconds
+            }),
 
             #[cfg(feature = "__rt_native__")]
             #[cfg(feature = "ws")]
-            websocket_timeout: std::sync::LazyLock::new(
-                || {
-                    std::env::var("OHKAMI_WEBSOCKET_TIMEOUT")
-                        .ok()
-                        .and_then(|v| v.parse().ok())
-                        .unwrap_or(60 * 60) // 1 hour
-                },
-            ),
+            websocket_timeout: std::sync::LazyLock::new(|| {
+                std::env::var("OHKAMI_WEBSOCKET_TIMEOUT")
+                    .ok()
+                    .and_then(|v| v.parse().ok())
+                    .unwrap_or(60 * 60) // 1 hour
+            }),
         }
     }
 }

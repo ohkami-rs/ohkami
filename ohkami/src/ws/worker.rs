@@ -182,7 +182,11 @@ impl Connection {
             crate::DEBUG!("[ws::Connection::recv] initial call: setting events");
 
             self.events = Some(match self.ws.events() {
-                Ok(events) => unsafe { unchecked_static::<worker::EventStream<'_>, worker::EventStream<'static>>(events) },
+                Ok(events) => unsafe {
+                    unchecked_static::<worker::EventStream<'_>, worker::EventStream<'static>>(
+                        events,
+                    )
+                },
                 Err(error) => return Err(error),
             });
         }
@@ -230,11 +234,9 @@ impl Connection {
             Message::Binary(binary) => self.ws.send_with_bytes(binary),
             Message::Close(None) => self.ws.close::<&str>(None, None),
             Message::Close(Some(frame)) => self.ws.close(Some(frame.code.as_u16()), frame.reason),
-            Message::Ping(_) | Message::Pong(_) => {
-                Err(worker::Error::RustError(format!(
-                    "`Connection::send` got `{message:?}`, but sending ping/pong is not supported on `rt_worker`"
-                )))
-            }
+            Message::Ping(_) | Message::Pong(_) => Err(worker::Error::RustError(format!(
+                "`Connection::send` got `{message:?}`, but sending ping/pong is not supported on `rt_worker`"
+            ))),
         }
     }
 }
@@ -269,11 +271,9 @@ pub mod split {
                 Message::Close(Some(frame)) => {
                     self.0.close(Some(frame.code.as_u16()), frame.reason)
                 }
-                Message::Ping(_) | Message::Pong(_) => {
-                    Err(worker::Error::RustError(format!(
-                        "`WriteHalf::send` got `{message:?}`, but sending ping/pong is not supported on `rt_worker`"
-                    )))
-                }
+                Message::Ping(_) | Message::Pong(_) => Err(worker::Error::RustError(format!(
+                    "`WriteHalf::send` got `{message:?}`, but sending ping/pong is not supported on `rt_worker`"
+                ))),
             }
         }
     }

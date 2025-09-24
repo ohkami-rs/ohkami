@@ -253,7 +253,7 @@ impl Response {
     }
 
     /// ## SAFETY
-    /// 
+    ///
     /// argument `json_lit` must be **valid JSON**
     pub unsafe fn set_json_lit<JSONLiteral: Into<Cow<'static, str>>>(
         &mut self,
@@ -271,7 +271,7 @@ impl Response {
         self.content = Content::Payload(body.into());
     }
     /// ## SAFETY
-    /// 
+    ///
     /// argument `json_lit` must be **valid JSON**
     pub unsafe fn with_json_lit<JSONLiteral: Into<Cow<'static, str>>>(
         mut self,
@@ -492,11 +492,15 @@ const _: () = {
     use ohkami_lib::Stream;
     use std::{convert::Infallible, pin::Pin};
 
-    impl From<Response> for FunctionResponse<
-        LambdaResponse,
-        Pin<Box<dyn Stream<Item = Result<String, Infallible>> + Send>>,
-    > {
-        fn from(this: Response) -> FunctionResponse<
+    impl From<Response>
+        for FunctionResponse<
+            LambdaResponse,
+            Pin<Box<dyn Stream<Item = Result<String, Infallible>> + Send>>,
+        >
+    {
+        fn from(
+            this: Response,
+        ) -> FunctionResponse<
             LambdaResponse,
             Pin<Box<dyn Stream<Item = Result<String, Infallible>> + Send>>,
         > {

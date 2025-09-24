@@ -254,11 +254,7 @@ impl Operation {
     pub fn refize_schemas(&mut self) -> impl Iterator<Item = RawSchema> + '_ {
         [/* RawSchema */]
             .into_iter()
-            .chain(
-                self.parameters
-                    .iter_mut()
-                    .flat_map(|p| p.schema.refize()),
-            )
+            .chain(self.parameters.iter_mut().flat_map(|p| p.schema.refize()))
             .chain(
                 self.requestbody
                     .as_mut()

@@ -194,8 +194,6 @@ impl RequestBody {
     }
 
     pub(crate) fn refize_schemas(&mut self) -> impl Iterator<Item = RawSchema> + '_ {
-        self.content
-            .values_mut()
-            .flat_map(Content::refize_schema)
+        self.content.values_mut().flat_map(Content::refize_schema)
     }
 }

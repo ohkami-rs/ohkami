@@ -115,7 +115,7 @@ const _: () = {
             self.entries.into_iter()
         }
     }
-    
+
     impl<const N: usize, Value: PartialEq> PartialEq for ByteArrayMap<N, Value> {
         fn eq(&self, other: &Self) -> bool {
             for i in 0..N as u8 {

@@ -7,14 +7,12 @@ mod _test;
 pub fn from_str<'de, D: serde::Deserialize<'de>>(input: &'de str) -> Result<D, Error> {
     let mut d = de::CookieDeserializer::new(input);
     let t = D::deserialize(&mut d)?;
-    d.remaining().is_empty()
-        .then_some(t)
-        .ok_or_else(|| {
-            serde::de::Error::custom(format!(
-                "Unexpected trailing charactors: `{}`",
-                d.remaining().escape_ascii()
-            ))
-        })
+    d.remaining().is_empty().then_some(t).ok_or_else(|| {
+        serde::de::Error::custom(format!(
+            "Unexpected trailing charactors: `{}`",
+            d.remaining().escape_ascii()
+        ))
+    })
 }
 
 #[derive(Debug)]

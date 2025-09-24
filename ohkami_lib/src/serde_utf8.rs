@@ -17,11 +17,9 @@ pub fn to_string(value: &impl serde::Serialize) -> Result<String, Error> {
 pub fn from_str<'de, D: serde::Deserialize<'de>>(input: &'de str) -> Result<D, Error> {
     let mut d = de::UTF8Deserializer { input };
     let t = D::deserialize(&mut d)?;
-    d.input.is_empty()
-        .then_some(t)
-        .ok_or_else(|| {
-            serde::de::Error::custom(format!("Unexpected trailing charactors: `{}`", d.input))
-        })
+    d.input.is_empty().then_some(t).ok_or_else(|| {
+        serde::de::Error::custom(format!("Unexpected trailing charactors: `{}`", d.input))
+    })
 }
 
 #[derive(Debug)]

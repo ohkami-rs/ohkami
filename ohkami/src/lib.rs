@@ -20,7 +20,6 @@
     feature = "nightly",
     feature(specialization, try_trait_v2, impl_trait_in_assoc_type,)
 )]
-
 #![allow(
     clippy::non_minimal_cfg, // for `cfg(any(...))` for various `rt_*` features
     clippy::result_large_err, // TODO: reduce the size of `Response` (and also `Request`) (most parts are their headers!)

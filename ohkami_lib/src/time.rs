@@ -198,7 +198,10 @@ impl UTCDateTime {
                 // * `MaybeUninit<T>` and T are guaranteed to have the same layout
                 // * `MaybeUninit` does not drop, so there are no double-frees
                 // And thus the conversion is safe
-                std::mem::transmute::<[std::mem::MaybeUninit<u8>; IMF_FIXDATE_LEN], [u8; IMF_FIXDATE_LEN]>(buf),
+                std::mem::transmute::<
+                    [std::mem::MaybeUninit<u8>; IMF_FIXDATE_LEN],
+                    [u8; IMF_FIXDATE_LEN],
+                >(buf),
             ))
         }
     }

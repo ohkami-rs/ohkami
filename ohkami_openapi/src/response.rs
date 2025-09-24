@@ -93,8 +93,7 @@ impl Responses {
         if let Some(response) = self.0.get_mut(&status) {
             response.description = new_description;
         } else {
-            self.0
-                .insert(status, Response::when(new_description));
+            self.0.insert(status, Response::when(new_description));
         }
     }
 }

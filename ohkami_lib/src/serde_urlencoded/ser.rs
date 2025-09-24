@@ -52,11 +52,7 @@ const _: () = {
         type Error = super::Error;
 
         #[inline(always)]
-        fn serialize_field<T>(
-            &mut self,
-            key: &'static str,
-            value: &T,
-        ) -> Result<(), Self::Error>
+        fn serialize_field<T>(&mut self, key: &'static str, value: &T) -> Result<(), Self::Error>
         where
             T: ?Sized + serde::Serialize,
         {

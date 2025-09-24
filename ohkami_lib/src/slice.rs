@@ -8,7 +8,7 @@ pub struct Slice {
 }
 impl Slice {
     /// ## SAFETY
-    /// 
+    ///
     /// `head` must be a non-null pointer
     #[inline(always)]
     pub unsafe fn new_unchecked(head: *const u8, size: usize) -> Self {
@@ -26,7 +26,7 @@ impl Slice {
     }
 
     /// ## SAFETY
-    /// 
+    ///
     /// `self.head` must be always valid for `self.size` bytes
     /// and not be mutated for the returned lifetime.
     #[inline(always)]
@@ -49,7 +49,9 @@ const _: () = {
     impl PartialOrd for Slice {
         #[inline]
         fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-            Some(Ord::cmp(unsafe { self.as_bytes() }, unsafe { other.as_bytes() }))
+            Some(Ord::cmp(unsafe { self.as_bytes() }, unsafe {
+                other.as_bytes()
+            }))
         }
     }
     impl Ord for Slice {
@@ -74,7 +76,7 @@ pub enum CowSlice {
 }
 impl CowSlice {
     /// ## SAFETY
-    /// 
+    ///
     /// - for `Own`: no requirement
     /// - for `Ref`: same as [`Slice::as_bytes`]
     #[inline(always)]
@@ -86,7 +88,7 @@ impl CowSlice {
     }
 
     /// ## SAFETY
-    /// 
+    ///
     /// - for `Own`: no requirement
     /// - for `Ref`: same as [`Slice::as_bytes`]
     #[cold]
@@ -110,7 +112,7 @@ impl CowSlice {
     }
 
     /// ## SAFETY
-    /// 
+    ///
     /// - for `Own`: no requirement
     /// - for `Ref`: same as [`Slice::as_bytes`]
     #[inline]

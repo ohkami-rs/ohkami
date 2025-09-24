@@ -44,7 +44,10 @@ pub trait Tester {
 impl Tester for Ohkami {
     fn test(self) -> TestOhkami {
         let (f, _) = self.into_router().finalize();
-        #[cfg_attr(not(feature = "__rt_threaded__"), allow(clippy::arc_with_non_send_sync))]
+        #[cfg_attr(
+            not(feature = "__rt_threaded__"),
+            allow(clippy::arc_with_non_send_sync)
+        )]
         TestOhkami(Arc::new(f))
     }
 }
@@ -255,27 +258,27 @@ impl TestResponse {
     }
     pub fn text(&self) -> Option<&str> {
         self.content("text/plain").map(|bytes| {
-            std::str::from_utf8(bytes).unwrap_or_else(|_| panic!(
-                "Response content is not UTF-8: {}",
-                bytes.escape_ascii()
-            ))
+            std::str::from_utf8(bytes).unwrap_or_else(|_| {
+                panic!("Response content is not UTF-8: {}", bytes.escape_ascii())
+            })
         })
     }
     pub fn html(&self) -> Option<&str> {
         self.content("text/html").map(|bytes| {
-            std::str::from_utf8(bytes).unwrap_or_else(|_| panic!(
-                "Response content is not UTF-8: {}",
-                bytes.escape_ascii()
-            ))
+            std::str::from_utf8(bytes).unwrap_or_else(|_| {
+                panic!("Response content is not UTF-8: {}", bytes.escape_ascii())
+            })
         })
     }
     pub fn json<'d, T: serde::Deserialize<'d>>(&'d self) -> Option<T> {
         self.content("application/json").map(|bytes| {
-            serde_json::from_slice(bytes).unwrap_or_else(|_| panic!(
-                "Failed to deserialize json payload as {}: {}",
-                std::any::type_name::<T>(),
-                bytes.escape_ascii()
-            ))
+            serde_json::from_slice(bytes).unwrap_or_else(|_| {
+                panic!(
+                    "Failed to deserialize json payload as {}: {}",
+                    std::any::type_name::<T>(),
+                    bytes.escape_ascii()
+                )
+            })
         })
     }
 }

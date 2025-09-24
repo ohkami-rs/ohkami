@@ -501,7 +501,10 @@ impl Ohkami {
         #[cfg(feature = "tls")] tls_config: Option<rustls::ServerConfig>,
     ) {
         let (router, _) = self.into_router().finalize();
-        #[cfg_attr(not(feature = "__rt_threaded__"), allow(clippy::arc_with_non_send_sync))]
+        #[cfg_attr(
+            not(feature = "__rt_threaded__"),
+            allow(clippy::arc_with_non_send_sync)
+        )]
         let router = Arc::new(router);
 
         let listener = bind.into_tcp_listener().await;
@@ -810,11 +813,12 @@ impl Ohkami {
         metadata: crate::openapi::OpenAPI,
     ) {
         let file_path = file_path.as_ref();
-        std::fs::write(file_path, self.__openapi_document_bytes__(metadata))
-            .unwrap_or_else(|_| panic!(
+        std::fs::write(file_path, self.__openapi_document_bytes__(metadata)).unwrap_or_else(|_| {
+            panic!(
                 "failed to write OpenAPI document JSON to {}",
                 file_path.display()
-            ))
+            )
+        })
     }
 
     #[cfg(feature = "openapi")]
@@ -1128,7 +1132,9 @@ mod test {
                 .status()
                 .and_then(|status| {
                     status.success().then_some(()).ok_or_else(|| {
-                        std::io::Error::other("Failed to generate test certificate and key with OpenSSL")
+                        std::io::Error::other(
+                            "Failed to generate test certificate and key with OpenSSL",
+                        )
                     })
                 })
         };

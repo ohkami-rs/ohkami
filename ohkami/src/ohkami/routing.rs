@@ -190,8 +190,9 @@ const _: () = {
                 let file_path = file_path
                     .iter()
                     .map(|s| {
-                        s.to_str()
-                            .unwrap_or_else(|| panic!("invalid path to serve: `{}`", s.to_string_lossy()))
+                        s.to_str().unwrap_or_else(|| {
+                            panic!("invalid path to serve: `{}`", s.to_string_lossy())
+                        })
                     })
                     .filter(|s| !matches!(*s, "" | "/"))
                     .collect::<Vec<_>>()

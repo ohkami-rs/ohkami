@@ -139,7 +139,12 @@ impl<'c> SetCookie<'c> {
                 }
                 Some(5) => this.secure = Some(true),
                 Some(6) => this.http_only = Some(true),
-                _ => return Err(format!("Unkown directive: `{}`", r.remaining().escape_ascii()))
+                _ => {
+                    return Err(format!(
+                        "Unkown directive: `{}`",
+                        r.remaining().escape_ascii()
+                    ));
+                }
             }
         }
 

@@ -48,15 +48,21 @@ impl<'req> crate::FromRequest<'req> for WebSocketContext<'req> {
         fn reject(message: &'static str) -> crate::Response {
             crate::Response::BadRequest().with_text(message)
         }
-        
+
         if !matches!(req.headers.connection()?, "Upgrade" | "upgrade") {
-            return Some(Err(reject("upgrade request must have `Connection: Upgrade`")));
+            return Some(Err(reject(
+                "upgrade request must have `Connection: Upgrade`",
+            )));
         }
         if !(req.headers.upgrade()?.eq_ignore_ascii_case("websocket")) {
-            return Some(Err(reject("upgrade request must have `Upgrade: websocket`")));
+            return Some(Err(reject(
+                "upgrade request must have `Upgrade: websocket`",
+            )));
         }
         if req.headers.sec_websocket_version()? != "13" {
-            return Some(Err(reject("upgrade request must have `Sec-WebSocket-Version: 13`")));
+            return Some(Err(reject(
+                "upgrade request must have `Sec-WebSocket-Version: 13`",
+            )));
         }
 
         req.headers

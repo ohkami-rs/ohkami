@@ -611,9 +611,7 @@ mod test {
         ) -> Result<Json<Profile>, APIError> {
             let r = &mut *repository().await.lock().unwrap();
 
-            let user = r
-                .get(&jwt_payload.user_id)
-                .ok_or(APIError::UserNotFound)?;
+            let user = r.get(&jwt_payload.user_id).ok_or(APIError::UserNotFound)?;
 
             Ok(Json(user.profile()))
         }

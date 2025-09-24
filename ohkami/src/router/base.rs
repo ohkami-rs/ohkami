@@ -302,16 +302,13 @@ impl Node {
                 Ok(())
             }
             Pattern::Static(s) => {
-                if self
-                    .children
-                    .iter()
-                    .any(|c| c.pattern
+                if self.children.iter().any(|c| {
+                    c.pattern
                         .as_ref()
                         .unwrap()
                         .to_static()
                         .is_some_and(|p| p == *s)
-                    )
-                {
+                }) {
                     let __position__ = match &self.pattern {
                         None => format!("For the first part of route"),
                         Some(p) => format!("After {p:?}"),
