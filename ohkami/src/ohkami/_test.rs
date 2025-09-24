@@ -1,65 +1,43 @@
 #![allow(non_snake_case)]
-#![cfg(all(test, feature="__rt_native__", feature="DEBUG"))]
+#![cfg(all(test, feature = "__rt_native__", feature = "DEBUG"))]
 
 use crate::prelude::*;
 use crate::testing::*;
 
-
 fn my_ohkami() -> Ohkami {
-    let health_ohkami = Ohkami::new((
-        "/".GET(|| async {"health_check"}),
-    ));
+    let health_ohkami = Ohkami::new(("/".GET(|| async { "health_check" }),));
 
     let profiles_ohkami = Ohkami::new((
-        "/:username"
-            .GET(|Path(username): Path<String>| async  move {
-                format!("get_profile of user `{username}`")
-            }),
+        "/:username".GET(|Path(username): Path<String>| async move {
+            format!("get_profile of user `{username}`")
+        }),
         "/:username/follow"
-            .POST(|Path(username): Path<String>| async move {
-                format!("follow_user `{username}`")
-            })
-            .DELETE(|Path(username): Path<String>| async move {
-                format!("unfollow_user `{username}`")
-            })
+            .POST(|Path(username): Path<String>| async move { format!("follow_user `{username}`") })
+            .DELETE(
+                |Path(username): Path<String>| async move { format!("unfollow_user `{username}`") },
+            ),
     ));
 
     let articles_ohkami = Ohkami::new((
-        "/"
-            .GET(|| async {"get_article"})
-            .POST(|| async {"post_article"}),
-        "/feed"
-            .GET(|| async {"get_feed"}),
+        "/".GET(|| async { "get_article" })
+            .POST(|| async { "post_article" }),
+        "/feed".GET(|| async { "get_feed" }),
         "/:slug".By(Ohkami::new((
-            "/"
-                .GET(|Path(slug): Path<String>| async move {
-                    format!("get_article {slug}")
-                })
-                .PUT(|Path(slug): Path<String>| async move {
-                    format!("put_article {slug}")
-                })
-                .DELETE(|Path(slug): Path<String>| async move {
-                    format!("delete_article {slug}")
-                }),
+            "/".GET(|Path(slug): Path<String>| async move { format!("get_article {slug}") })
+                .PUT(|Path(slug): Path<String>| async move { format!("put_article {slug}") })
+                .DELETE(|Path(slug): Path<String>| async move { format!("delete_article {slug}") }),
             "/comments"
-                .POST(|Path(slug): Path<String>| async move {
-                    format!("post_comments {slug}")
-                })
-                .GET(|Path(slug): Path<String>| async move {
-                    format!("get_comments {slug}")
-                }),
-            "/comments/:id"
-                .DELETE(|Path((slug, id)): Path<(String, usize)>| async move {
-                    format!("delete_comment {slug} / {id}")
-                }),
+                .POST(|Path(slug): Path<String>| async move { format!("post_comments {slug}") })
+                .GET(|Path(slug): Path<String>| async move { format!("get_comments {slug}") }),
+            "/comments/:id".DELETE(|Path((slug, id)): Path<(String, usize)>| async move {
+                format!("delete_comment {slug} / {id}")
+            }),
             "/favorite"
-                .POST(|Path(slug): Path<String>| async move {
-                    format!("favorite_article {slug}")
-                })
-                .DELETE(|Path(slug): Path<String>| async move {
-                    format!("unfavorite_article {slug}")
-                }),
-        )))
+                .POST(|Path(slug): Path<String>| async move { format!("favorite_article {slug}") })
+                .DELETE(
+                    |Path(slug): Path<String>| async move { format!("unfavorite_article {slug}") },
+                ),
+        ))),
     ));
 
     Ohkami::new((
@@ -71,11 +49,11 @@ fn my_ohkami() -> Ohkami {
     ))
 }
 
-#[test] fn test_handler_registration() {
+#[test]
+fn test_handler_registration() {
     let t = my_ohkami().test();
 
     crate::__rt__::testing::block_on(async {
-
         /* GET /health */
 
         let req = TestRequest::GET("/health");
@@ -86,8 +64,16 @@ fn my_ohkami() -> Ohkami {
         let head_res = t.oneshot(req).await;
         assert_eq!(head_res.text(), None);
         assert_eq!(
-            {let mut h = get_res.headers().collect::<Vec<_>>(); h.sort(); h},
-            {let mut h = head_res.headers().collect::<Vec<_>>(); h.sort(); h}
+            {
+                let mut h = get_res.headers().collect::<Vec<_>>();
+                h.sort();
+                h
+            },
+            {
+                let mut h = head_res.headers().collect::<Vec<_>>();
+                h.sort();
+                h
+            }
         );
 
         /* GET /api/profiles/:username */
@@ -100,8 +86,16 @@ fn my_ohkami() -> Ohkami {
         let head_res = t.oneshot(req).await;
         assert_eq!(head_res.text(), None);
         assert_eq!(
-            {let mut h = get_res.headers().collect::<Vec<_>>(); h.sort(); h},
-            {let mut h = head_res.headers().collect::<Vec<_>>(); h.sort(); h}
+            {
+                let mut h = get_res.headers().collect::<Vec<_>>();
+                h.sort();
+                h
+            },
+            {
+                let mut h = head_res.headers().collect::<Vec<_>>();
+                h.sort();
+                h
+            }
         );
 
         let req = TestRequest::GET("/api/profiles/123");
@@ -112,10 +106,17 @@ fn my_ohkami() -> Ohkami {
         let head_res = t.oneshot(req).await;
         assert_eq!(head_res.text(), None);
         assert_eq!(
-            {let mut h = get_res.headers().collect::<Vec<_>>(); h.sort(); h},
-            {let mut h = head_res.headers().collect::<Vec<_>>(); h.sort(); h}
+            {
+                let mut h = get_res.headers().collect::<Vec<_>>();
+                h.sort();
+                h
+            },
+            {
+                let mut h = head_res.headers().collect::<Vec<_>>();
+                h.sort();
+                h
+            }
         );
-
 
         /* POST,DELETE /api/profiles/:username/follow */
 
@@ -145,7 +146,6 @@ fn my_ohkami() -> Ohkami {
         let res = t.oneshot(req).await;
         assert_eq!(res.text(), Some("get_feed"));
 
-
         /* GET,PUT,DELETE /api/articles/:slug */
 
         let req = TestRequest::GET("/api/articles/ohkami123456");
@@ -156,20 +156,18 @@ fn my_ohkami() -> Ohkami {
         let res = t.oneshot(req).await;
         assert_eq!(res.text(), Some("put_article abcdef123"));
 
-
         /* DELETE /api/articles/:slug/comments/:id */
 
         let req = TestRequest::DELETE("/api/articles/__prototype__/comments/42");
         let res = t.oneshot(req).await;
         assert_eq!(res.text(), Some("delete_comment __prototype__ / 42"));
-
     });
 }
 
-
-#[test] fn test_fang_registration() {
-    use std::sync::{OnceLock, Mutex};
+#[test]
+fn test_fang_registration() {
     use crate::{Fang, FangProc};
+    use std::sync::{Mutex, OnceLock};
 
     fn N() -> &'static Mutex<usize> {
         static N: OnceLock<Mutex<usize>> = OnceLock::new();
@@ -193,17 +191,15 @@ fn my_ohkami() -> Ohkami {
         }
     }
 
-    async fn h() -> &'static str {"h"}
+    async fn h() -> &'static str {
+        "h"
+    }
 
     crate::__rt__::testing::block_on(async {
-
         /*===== with no nests =====*/
         *N().lock().unwrap() = 0;
 
-        let t = Ohkami::new((Increment,
-            "/a"  .GET(h),
-            "/a/b".GET(h),
-        )).test();
+        let t = Ohkami::new((Increment, "/a".GET(h), "/a/b".GET(h))).test();
 
         let req = TestRequest::GET("/a");
         t.oneshot(req).await;
@@ -217,18 +213,16 @@ fn my_ohkami() -> Ohkami {
         t.oneshot(req).await;
         assert_eq!(*N().lock().unwrap(), 3);
 
-
         /*===== with nests =====*/
         *N().lock().unwrap() = 0;
 
-        let t = Ohkami::new((Increment,
-            "/a"  .GET(h),
+        let t = Ohkami::new((
+            Increment,
+            "/a".GET(h),
             "/a/b".GET(h),
-            "/a/b/c".By(Ohkami::new((
-                "/d"  .GET(h),
-                "/d/e".GET(h),
-            )))
-        )).test();
+            "/a/b/c".By(Ohkami::new(("/d".GET(h), "/d/e".GET(h)))),
+        ))
+        .test();
 
         let req = TestRequest::GET("/a");
         t.oneshot(req).await;
@@ -244,13 +238,13 @@ fn my_ohkami() -> Ohkami {
         let req = TestRequest::GET("/a/b/c/d/e");
         t.oneshot(req).await;
         assert_eq!(*N().lock().unwrap(), 4);
-
     });
 }
 
-#[test] fn test_fangs_nesting() {
-    use std::sync::{Mutex, OnceLock};
+#[test]
+fn test_fangs_nesting() {
     use crate::{Fang, FangProc, Ohkami};
+    use std::sync::{Mutex, OnceLock};
 
     #[allow(non_snake_case)]
     fn MESSAGES() -> &'static Mutex<Vec<String>> {
@@ -258,18 +252,20 @@ fn my_ohkami() -> Ohkami {
         MESSAGES.get_or_init(|| Mutex::new(Vec::new()))
     }
 
- 
     struct HelloFang {
-        name: &'static str
+        name: &'static str,
     }
     impl<I: FangProc> Fang<I> for HelloFang {
         type Proc = HelloFangProc<I>;
         fn chain(&self, inner: I) -> Self::Proc {
-            HelloFangProc { inner, name: self.name }
+            HelloFangProc {
+                inner,
+                name: self.name,
+            }
         }
     }
     struct HelloFangProc<I: FangProc> {
-        name:  &'static str,
+        name: &'static str,
         inner: I,
     }
     impl<I: FangProc> FangProc for HelloFangProc<I> {
@@ -287,8 +283,9 @@ fn my_ohkami() -> Ohkami {
         }
     }
 
-    async fn h() -> &'static str {"handler"}
-
+    async fn h() -> &'static str {
+        "handler"
+    }
 
     let t = Ohkami::new((
         HelloFang { name: "Amelia" },
@@ -297,79 +294,88 @@ fn my_ohkami() -> Ohkami {
             HelloFang { name: "Brooks" },
             HelloFang { name: "Carter" },
             "/".GET(h),
-            "/jkl".By(Ohkami::new((
-                HelloFang { name: "Daniel" },
-                "/mno".GET(h),
-            )))
+            "/jkl".By(Ohkami::new((HelloFang { name: "Daniel" }, "/mno".GET(h)))),
         ))),
-        "/pqr".By(Ohkami::new((
-            HelloFang { name: "Evelyn" },
-            "/stu".GET(h),
-        ))),
-    )).test();
+        "/pqr".By(Ohkami::new((HelloFang { name: "Evelyn" }, "/stu".GET(h)))),
+    ))
+    .test();
 
     crate::__rt__::testing::block_on(async {
-        {MESSAGES().lock().unwrap().clear();
+        {
+            MESSAGES().lock().unwrap().clear();
             let req = TestRequest::GET("/abc");
             let res = t.oneshot(req).await;
 
             assert_eq!(res.status(), Status::OK);
-            assert_eq!(&*MESSAGES().lock().unwrap(), &[
-                "Hello, Amelia!",
-                "Bye, Amelia!",
-            ]);
+            assert_eq!(
+                &*MESSAGES().lock().unwrap(),
+                &["Hello, Amelia!", "Bye, Amelia!",]
+            );
         }
 
-        {MESSAGES().lock().unwrap().clear();
+        {
+            MESSAGES().lock().unwrap().clear();
             let req = TestRequest::GET("/def");
             let res = t.oneshot(req).await;
 
             assert_eq!(res.status(), Status::OK);
-            assert_eq!(&*MESSAGES().lock().unwrap(), &[
-                "Hello, Amelia!",
-                "Hello, Brooks!",
-                "Hello, Carter!",
-                "Bye, Carter!",
-                "Bye, Brooks!",
-                "Bye, Amelia!",
-            ]);
+            assert_eq!(
+                &*MESSAGES().lock().unwrap(),
+                &[
+                    "Hello, Amelia!",
+                    "Hello, Brooks!",
+                    "Hello, Carter!",
+                    "Bye, Carter!",
+                    "Bye, Brooks!",
+                    "Bye, Amelia!",
+                ]
+            );
         }
 
-        {MESSAGES().lock().unwrap().clear();
+        {
+            MESSAGES().lock().unwrap().clear();
             let req = TestRequest::GET("/def/jklmno");
             let res = t.oneshot(req).await;
 
             assert_eq!(res.status(), Status::NotFound);
-            assert_eq!(&*MESSAGES().lock().unwrap(), &[
-                "Hello, Amelia!",
-                "Hello, Brooks!",
-                "Hello, Carter!",
-                "Bye, Carter!",
-                "Bye, Brooks!",
-                "Bye, Amelia!",
-            ]);
+            assert_eq!(
+                &*MESSAGES().lock().unwrap(),
+                &[
+                    "Hello, Amelia!",
+                    "Hello, Brooks!",
+                    "Hello, Carter!",
+                    "Bye, Carter!",
+                    "Bye, Brooks!",
+                    "Bye, Amelia!",
+                ]
+            );
         }
 
-        {MESSAGES().lock().unwrap().clear();
+        {
+            MESSAGES().lock().unwrap().clear();
             let req = TestRequest::GET("/def/jkl/mno");
             let res = t.oneshot(req).await;
 
             assert_eq!(res.status(), Status::OK);
-            assert_eq!(&*MESSAGES().lock().unwrap(), &[
-                "Hello, Amelia!",
-                "Hello, Brooks!",
-                "Hello, Carter!",
-                "Hello, Daniel!",
-                "Bye, Daniel!",
-                "Bye, Carter!",
-                "Bye, Brooks!",
-                "Bye, Amelia!",
-            ]);
+            assert_eq!(
+                &*MESSAGES().lock().unwrap(),
+                &[
+                    "Hello, Amelia!",
+                    "Hello, Brooks!",
+                    "Hello, Carter!",
+                    "Hello, Daniel!",
+                    "Bye, Daniel!",
+                    "Bye, Carter!",
+                    "Bye, Brooks!",
+                    "Bye, Amelia!",
+                ]
+            );
         }
     });
 }
 
-#[test] fn test_pararell_registering() {
+#[test]
+fn test_pararell_registering() {
     async fn hello_help() -> &'static str {
         "Hi, this is `hello` api. \
         Call me with your name as a path parameter:\n\
@@ -381,72 +387,74 @@ fn my_ohkami() -> Ohkami {
     }
 
     crate::__rt__::testing::block_on(async {
-
         /* register static pattern in ahead */
 
-        let t = Ohkami::new((
-            "/hello/help" .GET(hello_help),
-            "/hello/:name".GET(hello),
-        )).test();
+        let t = Ohkami::new(("/hello/help".GET(hello_help), "/hello/:name".GET(hello))).test();
 
         let req = TestRequest::GET("/hello/help");
         let res = t.oneshot(req).await;
         assert_eq!(res.status(), Status::OK);
-        assert_eq!(res.text(),   Some(
-            "Hi, this is `hello` api. \
+        assert_eq!(
+            res.text(),
+            Some(
+                "Hi, this is `hello` api. \
             Call me with your name as a path parameter:\n\
             \t `GET /hello/{you name here}`"
-        ));
+            )
+        );
 
         let req = TestRequest::GET("/hello/Mr.%20wolf");
         let res = t.oneshot(req).await;
         assert_eq!(res.status(), Status::OK);
-        assert_eq!(res.text(),   Some("Hello, Mr. wolf!"));
-
+        assert_eq!(res.text(), Some("Hello, Mr. wolf!"));
 
         /* register param pattern in ahead */
 
-        let t = Ohkami::new((
-            "/hello/:name".GET(hello),
-            "/hello/help" .GET(hello_help),
-        )).test();
+        let t = Ohkami::new(("/hello/:name".GET(hello), "/hello/help".GET(hello_help))).test();
 
         let req = TestRequest::GET("/hello/help");
         let res = t.oneshot(req).await;
         assert_eq!(res.status(), Status::OK);
-        assert_eq!(res.text(),   Some(
-            "Hi, this is `hello` api. \
+        assert_eq!(
+            res.text(),
+            Some(
+                "Hi, this is `hello` api. \
             Call me with your name as a path parameter:\n\
             \t `GET /hello/{you name here}`"
-        ));
+            )
+        );
 
         let req = TestRequest::GET("/hello/Mr.%20wolf");
         let res = t.oneshot(req).await;
         assert_eq!(res.status(), Status::OK);
-        assert_eq!(res.text(),   Some("Hello, Mr. wolf!"));
-
+        assert_eq!(res.text(), Some("Hello, Mr. wolf!"));
     });
 }
 
 #[test]
 fn duplcate_routes_registration() {
     let _ = Ohkami::new((
-        "/abc".GET(|| async {"GET"}),
-        "/abc".PUT(|| async {"PUT"}),
+        "/abc".GET(|| async { "GET" }),
+        "/abc".PUT(|| async { "PUT" }),
     ));
 }
 
 #[test]
 fn with_global_fangs() {
-    async fn list_pets() -> &'static str {"list"}
-    async fn create_pet() -> &'static str {"created"}
-    async fn show_pet_by_id() -> &'static str {"found"}
+    async fn list_pets() -> &'static str {
+        "list"
+    }
+    async fn create_pet() -> &'static str {
+        "created"
+    }
+    async fn show_pet_by_id() -> &'static str {
+        "found"
+    }
 
-    use std::sync::{Mutex, LazyLock};
+    use std::sync::{LazyLock, Mutex};
 
     fn count() -> &'static Mutex<usize> {
-        static COUNT: LazyLock<Mutex<usize>> =
-            LazyLock::new(|| Mutex::new(0));
+        static COUNT: LazyLock<Mutex<usize>> = LazyLock::new(|| Mutex::new(0));
         &*COUNT
     }
 
@@ -461,13 +469,12 @@ fn with_global_fangs() {
 
     /* global fangs */
     crate::__rt__::testing::block_on(async {
-        let t = Ohkami::new((Logger,
-            "/pets"
-                .GET(list_pets)
-                .POST(create_pet),
-            "/pets/:petId"
-                .GET(show_pet_by_id),
-        )).test();
+        let t = Ohkami::new((
+            Logger,
+            "/pets".GET(list_pets).POST(create_pet),
+            "/pets/:petId".GET(show_pet_by_id),
+        ))
+        .test();
         {
             let req = TestRequest::GET("/");
             let res = t.oneshot(req).await;
@@ -487,12 +494,10 @@ fn with_global_fangs() {
     /* local fangs */
     crate::__rt__::testing::block_on(async {
         let t = Ohkami::new((
-            "/pets"
-                .GET((Logger, list_pets))
-                .POST((Logger, create_pet)),
-            "/pets/:petId"
-                .GET((Logger, show_pet_by_id)),
-        )).test();
+            "/pets".GET((Logger, list_pets)).POST((Logger, create_pet)),
+            "/pets/:petId".GET((Logger, show_pet_by_id)),
+        ))
+        .test();
         {
             let req = TestRequest::GET("/");
             let res = t.oneshot(req).await;
@@ -520,34 +525,24 @@ fn method_dependent_fang_applying() {
         async fn handler() {}
 
         let _ = Ohkami::new((
-            "/users"
-                .GET(handler)
-                .POST(handler),
-            "/users/:id"
-                .GET(handler),
-            "/users/:id".By(Ohkami::new((SomeFang, "/"
-                .PUT(handler),
-            ))),
-            "/tweets"
-                .GET(handler),
-            "/tweets".By(Ohkami::new((SomeFang, "/"
-                .POST(handler),
-            )))
+            "/users".GET(handler).POST(handler),
+            "/users/:id".GET(handler),
+            "/users/:id".By(Ohkami::new((SomeFang, "/".PUT(handler)))),
+            "/tweets".GET(handler),
+            "/tweets".By(Ohkami::new((SomeFang, "/".POST(handler)))),
         )); // no panic
     }
 
     crate::__rt__::testing::block_on(async {
-        use std::sync::{Mutex, LazyLock};
+        use std::sync::{LazyLock, Mutex};
 
         fn global_count() -> &'static Mutex<usize> {
-            static GLOBAL_COUNT: LazyLock<Mutex<usize>> =
-                LazyLock::new(|| Mutex::new(0));
+            static GLOBAL_COUNT: LazyLock<Mutex<usize>> = LazyLock::new(|| Mutex::new(0));
             &*GLOBAL_COUNT
         }
 
         fn local_count() -> &'static Mutex<usize> {
-            static LOCAL_COUNT: LazyLock<Mutex<usize>> =
-                LazyLock::new(|| Mutex::new(0));
+            static LOCAL_COUNT: LazyLock<Mutex<usize>> = LazyLock::new(|| Mutex::new(0));
             &*LOCAL_COUNT
         }
 
@@ -568,7 +563,7 @@ fn method_dependent_fang_applying() {
                 Ok(())
             }
         }
-        
+
         #[derive(Clone)]
         struct Count2;
         impl FangAction for Count2 {
@@ -577,31 +572,26 @@ fn method_dependent_fang_applying() {
                 Ok(())
             }
         }
-        
-        let t = Ohkami::new((Logger, // applies `Logger` on any route
-            "/"
-                .GET(|| async {"Hello, GET"}),
+
+        let t = Ohkami::new((
+            Logger, // applies `Logger` on any route
+            "/".GET(|| async { "Hello, GET" }),
             "/".By(Ohkami::new((
                 // locally applies `Auth` for `PUT /`
-                "/"
-                    .PUT((Auth, || async {"Hello, PUT"})),
+                "/".PUT((Auth, || async { "Hello, PUT" })),
             ))),
+            "/auth".By(Ohkami::new(("/".GET(|| async { "auth page" }),))),
             "/auth".By(Ohkami::new((
-                "/"
-                    .GET(|| async {"auth page"}),
-            ))),
-            "/auth".By(Ohkami::new((Count2, // applies `Count2` on any `/auth`
-                "/"
-                    .PUT(|| async {"authed"}),
+                Count2, // applies `Count2` on any `/auth`
+                "/".PUT(|| async { "authed" }),
             ))),
             "/auth".By(Ohkami::new((
                 // locally applies `Auth` for `POST /auth`, `DELETE /auth/d`
-                "/"
-                    .POST((Auth, || async {"auth control"})),
-                "/d"
-                    .DELETE((Auth, || async {"deleted"})),
-            )))
-        )).test();
+                "/".POST((Auth, || async { "auth control" })),
+                "/d".DELETE((Auth, || async { "deleted" })),
+            ))),
+        ))
+        .test();
 
         {
             let req = TestRequest::GET("/");
@@ -687,32 +677,38 @@ fn method_dependent_fang_applying() {
     });
 }
 
-#[test] fn prefixy_routes() {
+#[test]
+fn prefixy_routes() {
     crate::__rt__::testing::block_on(async {
         let t = Ohkami::new((
-            "/abcd".GET(|| async {"This is abcd"}),
-            "/abc".GET(|| async {"This is abc"}),
-        )).test();
+            "/abcd".GET(|| async { "This is abcd" }),
+            "/abc".GET(|| async { "This is abc" }),
+        ))
+        .test();
 
         {
             let req = TestRequest::GET("/abc");
             let res = t.oneshot(req).await;
             assert_eq!(res.status(), Status::OK);
             assert_eq!(res.text(), Some("This is abc"));
-        } {
+        }
+        {
             let req = TestRequest::GET("/ab");
             let res = t.oneshot(req).await;
             assert_eq!(res.status(), Status::NotFound);
-        } {
+        }
+        {
             let req = TestRequest::GET("/abc2");
             let res = t.oneshot(req).await;
             assert_eq!(res.status(), Status::NotFound);
-        } {
+        }
+        {
             let req = TestRequest::GET("/abcd");
             let res = t.oneshot(req).await;
             assert_eq!(res.status(), Status::OK);
             assert_eq!(res.text(), Some("This is abcd"));
-        } {
+        }
+        {
             let req = TestRequest::GET("/abcde");
             let res = t.oneshot(req).await;
             assert_eq!(res.status(), Status::NotFound);
@@ -721,27 +717,33 @@ fn method_dependent_fang_applying() {
         /* reversed; MUST have the same behavior */
 
         let t = Ohkami::new((
-            "/abc".GET(|| async {"This is abc"}),
-            "/abcd".GET(|| async {"This is abcd"}),
-        )).test(); {
+            "/abc".GET(|| async { "This is abc" }),
+            "/abcd".GET(|| async { "This is abcd" }),
+        ))
+        .test();
+        {
             let req = TestRequest::GET("/abc");
             let res = t.oneshot(req).await;
             assert_eq!(res.status(), Status::OK);
             assert_eq!(res.text(), Some("This is abc"));
-        } {
+        }
+        {
             let req = TestRequest::GET("/ab");
             let res = t.oneshot(req).await;
             assert_eq!(res.status(), Status::NotFound);
-        } {
+        }
+        {
             let req = TestRequest::GET("/abc2");
             let res = t.oneshot(req).await;
             assert_eq!(res.status(), Status::NotFound);
-        } {
+        }
+        {
             let req = TestRequest::GET("/abcd");
             let res = t.oneshot(req).await;
             assert_eq!(res.status(), Status::OK);
             assert_eq!(res.text(), Some("This is abcd"));
-        } {
+        }
+        {
             let req = TestRequest::GET("/abcde");
             let res = t.oneshot(req).await;
             assert_eq!(res.status(), Status::NotFound);
@@ -750,27 +752,21 @@ fn method_dependent_fang_applying() {
 }
 
 #[test]
-#[should_panic =
-    "handler `ohkami::ohkami::_test::panics_unexpected_path_params::hello_name` \
+#[should_panic = "handler `ohkami::ohkami::_test::panics_unexpected_path_params::hello_name` \
     requires 1 path param(s) \
-    BUT the route `/hello` captures only 0 path param(s)"
-]
+    BUT the route `/hello` captures only 0 path param(s)"]
 fn panics_unexpected_path_params() {
     async fn hello_name(Path(name): Path<&str>) -> String {
         format!("Hello, {name}!")
     }
 
-    let _ = Ohkami::new((
-        "/hello".GET(hello_name),
-    )).test(); /* panics here on finalize */
+    let _ = Ohkami::new(("/hello".GET(hello_name),)).test(); /* panics here on finalize */
 }
 
 #[test]
-#[should_panic =
-    "handler `ohkami::ohkami::_test::check_path_params_counted_accumulatedly::hello_name_age` \
+#[should_panic = "handler `ohkami::ohkami::_test::check_path_params_counted_accumulatedly::hello_name_age` \
     requires 2 path param(s) \
-    BUT the route `/hello/:name` captures only 1 path param(s)"
-]
+    BUT the route `/hello/:name` captures only 1 path param(s)"]
 fn check_path_params_counted_accumulatedly() {
     async fn hello_name(Path(name): Path<&str>) -> String {
         format!("Hello, {name}!")
@@ -779,15 +775,7 @@ fn check_path_params_counted_accumulatedly() {
         format!("Hello, {name} ({age})!")
     }
 
-    let _ = Ohkami::new((
-        "/hello/:name".By(Ohkami::new((
-            "/".GET(hello_name),
-        ))),
-    )).test(); /* NOT panics here */
+    let _ = Ohkami::new(("/hello/:name".By(Ohkami::new(("/".GET(hello_name),))),)).test(); /* NOT panics here */
 
-    let _ = Ohkami::new((
-        "/hello/:name".By(Ohkami::new((
-            "/".GET(hello_name_age),
-        ))),
-    )).test(); /* panics here */
+    let _ = Ohkami::new(("/hello/:name".By(Ohkami::new(("/".GET(hello_name_age),))),)).test(); /* panics here */
 }

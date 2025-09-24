@@ -1,23 +1,22 @@
 use crate::util;
 use proc_macro2::Span;
-use syn::{token, Ident, Lit, LitStr};
-
+use syn::{Ident, Lit, LitStr, token};
 
 pub(super) struct WorkerMeta {
-    pub(super) title:   LitStr,
+    pub(super) title: LitStr,
     pub(super) version: LitStr,
     pub(super) servers: Vec<Server>,
 }
 
 pub(super) struct Server {
-    pub(super) url:         LitStr,
+    pub(super) url: LitStr,
     pub(super) description: Option<LitStr>,
-    pub(super) variables:   Option<Vec<(LitStr, ServerVariable)>>,
+    pub(super) variables: Option<Vec<(LitStr, ServerVariable)>>,
 }
 
 pub(super) struct ServerVariable {
-    pub(super) r#default:   LitStr,
-    pub(super) r#enum:      Option<Vec<LitStr>>,
+    pub(super) r#default: LitStr,
+    pub(super) r#enum: Option<Vec<LitStr>>,
     pub(super) description: Option<LitStr>,
 }
 

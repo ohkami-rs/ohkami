@@ -2,9 +2,9 @@ mod status;
 pub use status::Status;
 
 mod headers;
-pub use headers::{Headers as ResponseHeaders, SetHeaders};
-#[cfg(feature="DEBUG")]
+#[cfg(feature = "DEBUG")]
 pub use headers::Header as ResponseHeader;
+pub use headers::{Headers as ResponseHeaders, SetHeaders};
 
 mod content;
 pub use content::Content;
@@ -12,34 +12,38 @@ pub use content::Content;
 mod into_response;
 pub use into_response::IntoResponse;
 
-#[cfg(test)] mod _test;
-#[cfg(test)] mod _test_headers;
+#[cfg(test)]
+mod _test;
+#[cfg(test)]
+mod _test_headers;
 
-use std::borrow::Cow;
 use ohkami_lib::{CowSlice, Slice};
+use std::borrow::Cow;
 
-#[cfg(feature="__rt_native__")]
+#[cfg(feature = "__rt_native__")]
 use crate::__rt__::AsyncWrite;
-#[cfg(feature="sse")]
-use crate::{sse, util::{Stream, StreamExt}};
-
+#[cfg(feature = "sse")]
+use crate::{
+    sse,
+    util::{Stream, StreamExt},
+};
 
 /// # HTTP Response
-/// 
+///
 /// Composed of
-/// 
+///
 /// - `status`
 /// - `headers`
 /// - `content`
-/// 
+///
 /// <br>
-/// 
+///
 /// ## Usage
-/// 
+///
 /// *in_fang.rs*
 /// ```no_run
 /// use ohkami::prelude::*;
-/// 
+///
 /// #[derive(Clone)]
 /// struct SetHeaders;
 /// impl FangAction for SetHeaders {
@@ -49,7 +53,7 @@ use crate::{sse, util::{Stream, StreamExt}};
 ///             .vary("Origin");
 ///     }
 /// }
-/// 
+///
 /// #[tokio::main]
 /// async fn main() {
 ///     Ohkami::new((SetHeaders,
@@ -57,13 +61,13 @@ use crate::{sse, util::{Stream, StreamExt}};
 ///     )).howl("localhost:5050").await
 /// }
 /// ```
-/// 
+///
 /// ---
-/// 
+///
 /// *into_response.rs*
 /// ```
 /// use ohkami::{Response, IntoResponse, Status};
-/// 
+///
 /// enum AppError {
 ///     A(String),
 ///     B(String),
@@ -76,12 +80,12 @@ use crate::{sse, util::{Stream, StreamExt}};
 ///         }
 ///     }
 /// }
-/// 
+///
 /// async fn handler(id: usize) -> Result<String, AppError> {
 ///     if id == 0 {
 ///         return Err(AppError::B("id must be positive".into()))
 ///     }
-/// 
+///
 ///     Ok("Hello, Response!".into())
 /// }
 /// ```
@@ -90,17 +94,17 @@ pub struct Response {
     pub status: Status,
 
     /// Headers of this response
-    /// 
+    ///
     /// - `.{name}()`, `.get("{name}")` to get value
     /// - `.set().{name}({action})`, `.set().x("{name}", {action})` to mutate values
-    /// 
+    ///
     /// ---
-    /// 
+    ///
     /// `{action}`:
     /// - just `{value}` to insert
     /// - `None` to remove
     /// - `header::append({value})` to append
-    /// 
+    ///
     /// `{value}`:
     /// - `String`
     /// - `&'static str`
@@ -122,9 +126,9 @@ impl Response {
     }
 
     /// complete HTTP spec
-    /// 
+    ///
     /// should be called, like, just after router's handling
-    #[cfg(feature="__rt__")]
+    #[cfg(feature = "__rt__")]
     #[inline(always)]
     pub(crate) fn complete(&mut self) {
         match (&self.content, &self.status) {
@@ -136,27 +140,27 @@ impl Response {
                     self.content = Content::None;
                 }
             }
-            #[cfg(feature="sse")]
+            #[cfg(feature = "sse")]
             (Content::Stream(_), _) => {
                 if !/* not */self.headers.content_length().is_none() {
                     self.headers.set().content_length(None);
                 }
             }
             #[cfg(not(feature="rt_lambda"/* currently */))]
-            #[cfg(all(feature="ws", feature="__rt__"))]
+            #[cfg(all(feature = "ws", feature = "__rt__"))]
             (Content::WebSocket(_), _) => {
                 if !/* not */self.headers.content_length().is_none() {
                     self.headers.set().content_length(None);
                 }
             }
-            _ => (/* let it go by user's responsibility */)
+            _ => (/* let it go by user's responsibility */),
         }
     }
 }
 
 impl Response {
     #[inline]
-    pub fn with_headers(mut self, f: impl FnOnce(SetHeaders)->SetHeaders) -> Self {
+    pub fn with_headers(mut self, f: impl FnOnce(SetHeaders) -> SetHeaders) -> Self {
         f(self.headers.set());
         self
     }
@@ -172,20 +176,23 @@ impl Response {
     }
 
     #[inline]
-    pub fn set_payload(&mut self,
+    pub fn set_payload(
+        &mut self,
         content_type: &'static str,
-        content:      impl Into<Cow<'static, [u8]>>,
+        content: impl Into<Cow<'static, [u8]>>,
     ) {
         let content: Cow<'static, [u8]> = content.into();
-        self.headers.set()
+        self.headers
+            .set()
             .content_type(content_type)
             .content_length(ohkami_lib::num::itoa(content.len()));
         self.content = Content::Payload(content.into());
     }
     #[inline]
-    pub fn with_payload(mut self,
+    pub fn with_payload(
+        mut self,
         content_type: &'static str,
-        content:      impl Into<Cow<'static, [u8]>>,
+        content: impl Into<Cow<'static, [u8]>>,
     ) -> Self {
         self.set_payload(content_type, content);
         self
@@ -198,7 +205,8 @@ impl Response {
     pub fn set_text<Text: Into<Cow<'static, str>>>(&mut self, text: Text) {
         let body: Cow<'static, str> = text.into();
 
-        self.headers.set()
+        self.headers
+            .set()
             .content_type("text/plain; charset=UTF-8")
             .content_length(ohkami_lib::num::itoa(body.len()));
         self.content = Content::Payload(match body {
@@ -215,7 +223,8 @@ impl Response {
     pub fn set_html<HTML: Into<Cow<'static, str>>>(&mut self, html: HTML) {
         let body: Cow<'static, str> = html.into();
 
-        self.headers.set()
+        self.headers
+            .set()
             .content_type("text/html; charset=UTF-8")
             .content_length(ohkami_lib::num::itoa(body.len()));
         self.content = Content::Payload(match body {
@@ -231,7 +240,8 @@ impl Response {
     #[inline(always)]
     pub fn set_json<JSON: serde::Serialize>(&mut self, json: JSON) {
         let body = ::serde_json::to_vec(&json).unwrap();
-        self.headers.set()
+        self.headers
+            .set()
             .content_type("application/json")
             .content_length(ohkami_lib::num::itoa(body.len()));
         self.content = Content::Payload(body.into());
@@ -243,30 +253,39 @@ impl Response {
     }
 
     /// SAFETY: argument `json_lit` must be **valid JSON**
-    pub unsafe fn set_json_lit<JSONLiteral: Into<Cow<'static, str>>>(&mut self, json_lit: JSONLiteral) {
+    pub unsafe fn set_json_lit<JSONLiteral: Into<Cow<'static, str>>>(
+        &mut self,
+        json_lit: JSONLiteral,
+    ) {
         let body = match json_lit.into() {
             Cow::Borrowed(str) => Cow::Borrowed(str.as_bytes()),
             Cow::Owned(string) => Cow::Owned(string.into_bytes()),
         };
 
-        self.headers.set()
+        self.headers
+            .set()
             .content_type("application/json")
             .content_length(ohkami_lib::num::itoa(body.len()));
         self.content = Content::Payload(body.into());
     }
     /// SAFETY: argument `json_lit` must be **valid JSON**
-    pub unsafe fn with_json_lit<JSONLiteral: Into<Cow<'static, str>>>(mut self, json_lit: JSONLiteral) -> Self {
-        unsafe {self.set_json_lit(json_lit);}
+    pub unsafe fn with_json_lit<JSONLiteral: Into<Cow<'static, str>>>(
+        mut self,
+        json_lit: JSONLiteral,
+    ) -> Self {
+        unsafe {
+            self.set_json_lit(json_lit);
+        }
         self
     }
 }
 
-#[cfg(feature="sse")]
+#[cfg(feature = "sse")]
 #[cfg_attr(docsrs, doc(cfg(feature = "sse")))]
 impl Response {
     pub fn with_stream<T: sse::Data>(
         mut self,
-        stream: impl Stream<Item = T> + Unpin + Send + 'static
+        stream: impl Stream<Item = T> + Unpin + Send + 'static,
     ) -> Self {
         self.set_stream(stream);
         self
@@ -274,16 +293,14 @@ impl Response {
 
     pub fn set_stream<T: sse::Data>(
         &mut self,
-        stream: impl Stream<Item = T> + Unpin + Send + 'static
+        stream: impl Stream<Item = T> + Unpin + Send + 'static,
     ) {
         self.set_stream_raw(Box::pin(stream.map(sse::Data::encode)));
     }
 
-    pub fn set_stream_raw(
-        &mut self,
-        stream: std::pin::Pin<Box<dyn Stream<Item = String> + Send>>
-    ) {
-        self.headers.set()
+    pub fn set_stream_raw(&mut self, stream: std::pin::Pin<Box<dyn Stream<Item = String> + Send>>) {
+        self.headers
+            .set()
             .content_length(None)
             .content_type("text/event-stream")
             .cache_control("no-cache, must-revalidate")
@@ -292,33 +309,32 @@ impl Response {
     }
 }
 
-#[cfg(feature="__rt_native__")]
+#[cfg(feature = "__rt_native__")]
 pub(super) enum Upgrade {
     None,
 
-    #[cfg(feature="ws")]
+    #[cfg(feature = "ws")]
     WebSocket(mews::WebSocket<crate::session::Connection>),
 }
-#[cfg(feature="__rt_native__")]
+#[cfg(feature = "__rt_native__")]
 impl Upgrade {
     #[inline(always)]
     pub(super) const fn is_none(&self) -> bool {
         matches!(self, Self::None)
     }
 }
-#[cfg(feature="__rt_native__")]
+#[cfg(feature = "__rt_native__")]
 impl Response {
-    #[cfg_attr(not(feature="sse"), inline)]
+    #[cfg_attr(not(feature = "sse"), inline)]
     pub(crate) async fn send(
         self,
-        conn: &mut (impl AsyncWrite + Unpin)
+        conn: &mut (impl AsyncWrite + Unpin),
     ) -> std::io::Result<Upgrade> {
         match self.content {
             Content::None => {
-                let mut buf = Vec::<u8>::with_capacity(
-                    self.status.line().len() +
-                    self.headers.size
-                ); unsafe {
+                let mut buf =
+                    Vec::<u8>::with_capacity(self.status.line().len() + self.headers.size);
+                unsafe {
                     crate::push_unchecked!(buf <- self.status.line());
                     self.headers.write_unchecked_to(&mut buf);
                 }
@@ -330,10 +346,9 @@ impl Response {
 
             Content::Payload(bytes) => {
                 let mut buf = Vec::<u8>::with_capacity(
-                    self.status.line().len() +
-                    self.headers.size +
-                    bytes.len()
-                ); unsafe {
+                    self.status.line().len() + self.headers.size + bytes.len(),
+                );
+                unsafe {
                     crate::push_unchecked!(buf <- self.status.line());
                     self.headers.write_unchecked_to(&mut buf);
                     crate::push_unchecked!(buf <- bytes);
@@ -344,12 +359,11 @@ impl Response {
                 Ok(Upgrade::None)
             }
 
-            #[cfg(feature="sse")]
+            #[cfg(feature = "sse")]
             Content::Stream(mut stream) => {
-                let mut buf = Vec::<u8>::with_capacity(
-                    self.status.line().len() +
-                    self.headers.size
-                ); unsafe {
+                let mut buf =
+                    Vec::<u8>::with_capacity(self.status.line().len() + self.headers.size);
+                unsafe {
                     crate::push_unchecked!(buf <- self.status.line());
                     self.headers.write_unchecked_to(&mut buf);
                 }
@@ -359,7 +373,7 @@ impl Response {
                 while let Some(chunk) = stream.next().await {
                     let mut message = Vec::with_capacity(
                         /* capacity for a single line */
-                        "data: ".len() + chunk.len() + "\n\n".len()
+                        "data: ".len() + chunk.len() + "\n\n".len(),
                     );
                     for line in chunk.split('\n') {
                         message.extend_from_slice(b"data: ");
@@ -370,7 +384,9 @@ impl Response {
 
                     let size_hex_bytes = ohkami_lib::num::hexized_bytes(message.len());
 
-                    let mut chunk = Vec::from(&size_hex_bytes[size_hex_bytes.iter().position(|b| *b!=b'0').unwrap()..]);
+                    let mut chunk = Vec::from(
+                        &size_hex_bytes[size_hex_bytes.iter().position(|b| *b != b'0').unwrap()..],
+                    );
                     chunk.extend_from_slice(b"\r\n");
                     chunk.append(&mut message);
                     chunk.extend_from_slice(b"\r\n");
@@ -386,12 +402,11 @@ impl Response {
                 Ok(Upgrade::None)
             }
 
-            #[cfg(all(feature="ws", feature="__rt_native__"))]
+            #[cfg(all(feature = "ws", feature = "__rt_native__"))]
             Content::WebSocket(ws) => {
-                let mut buf = Vec::<u8>::with_capacity(
-                    self.status.line().len() +
-                    self.headers.size
-                ); unsafe {
+                let mut buf =
+                    Vec::<u8>::with_capacity(self.status.line().len() + self.headers.size);
+                unsafe {
                     crate::push_unchecked!(buf <- self.status.line());
                     self.headers.write_unchecked_to(&mut buf);
                 }
@@ -408,7 +423,7 @@ const _: () = {
     impl std::fmt::Debug for Response {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             f.debug_struct("Response")
-                .field("status",  &self.status)
+                .field("status", &self.status)
                 .field("headers", &self.headers)
                 .field("content", &self.content)
                 .finish()
@@ -417,29 +432,29 @@ const _: () = {
 
     impl PartialEq for Response {
         fn eq(&self, other: &Self) -> bool {
-            self.status  == other.status  &&
-            self.headers == other.headers &&
-            self.content == other.content
+            self.status == other.status
+                && self.headers == other.headers
+                && self.content == other.content
         }
     }
 };
 
-#[cfg(feature="nightly")]
+#[cfg(feature = "nightly")]
 #[cfg_attr(docsrs, doc(cfg(feature = "nightly")))]
 const _: () = {
-    use std::{ops::FromResidual, convert::Infallible};
+    use std::{convert::Infallible, ops::FromResidual};
 
     impl FromResidual<Result<Infallible, Response>> for Response {
         fn from_residual(residual: Result<Infallible, Response>) -> Self {
-            unsafe {residual.unwrap_err_unchecked()}
+            unsafe { residual.unwrap_err_unchecked() }
         }
     }
 
     #[cfg(test)]
-    fn _try_response() {// compiles
+    fn _try_response() {
+        // compiles
         fn payload_serde_json_value(req: &crate::Request) -> Result<::serde_json::Value, Response> {
-            let payload = req.payload.as_deref()
-                .ok_or_else(Response::BadRequest)?;
+            let payload = req.payload.as_deref().ok_or_else(Response::BadRequest)?;
             let value = serde_json::from_slice::<serde_json::Value>(payload)
                 .map_err(|_| Response::BadRequest())?;
             Ok(value)
@@ -447,12 +462,13 @@ const _: () = {
     }
 };
 
-#[cfg(feature="rt_worker")]
+#[cfg(feature = "rt_worker")]
 const _: () = {
     impl Into<::worker::Response> for Response {
         #[inline(always)]
         fn into(self) -> ::worker::Response {
-            self.content.into_worker_response()
+            self.content
+                .into_worker_response()
                 .with_status(self.status.code())
                 .with_headers(self.headers.into())
         }
@@ -465,20 +481,26 @@ const _: () = {
     }
 };
 
-#[cfg(feature="rt_lambda")]
+#[cfg(feature = "rt_lambda")]
 const _: () = {
     use crate::x_lambda::LambdaResponse;
-    use ohkami_lib::Stream;
     use ::lambda_runtime::FunctionResponse;
-    use std::{pin::Pin, convert::Infallible};
+    use ohkami_lib::Stream;
+    use std::{convert::Infallible, pin::Pin};
 
-    impl Into<FunctionResponse<
-        LambdaResponse,
-        Pin<Box<dyn Stream<Item = Result<String, Infallible>> + Send>>
-    >> for Response {
-        fn into(self) -> FunctionResponse<
+    impl
+        Into<
+            FunctionResponse<
+                LambdaResponse,
+                Pin<Box<dyn Stream<Item = Result<String, Infallible>> + Send>>,
+            >,
+        > for Response
+    {
+        fn into(
+            self,
+        ) -> FunctionResponse<
             LambdaResponse,
-            Pin<Box<dyn Stream<Item = Result<String, Infallible>> + Send>>
+            Pin<Box<dyn Stream<Item = Result<String, Infallible>> + Send>>,
         > {
             let mut headers = self.headers;
 
@@ -494,15 +516,13 @@ const _: () = {
                 });
 
             match self.content {
-                Content::None => {
-                    FunctionResponse::BufferedResponse(LambdaResponse {
-                        statusCode: self.status.code(),
-                        headers,
-                        cookies,
-                        body: None,
-                        isBase64Encoded: None,
-                    })
-                }
+                Content::None => FunctionResponse::BufferedResponse(LambdaResponse {
+                    statusCode: self.status.code(),
+                    headers,
+                    cookies,
+                    body: None,
+                    isBase64Encoded: None,
+                }),
 
                 Content::Payload(p) => {
                     let (encoded, body) = if let Ok(s) = std::str::from_utf8(&*p) {
@@ -519,8 +539,8 @@ const _: () = {
                         isBase64Encoded: Some(encoded),
                     })
                 }
-                
-                #[cfg(feature="sse")]
+
+                #[cfg(feature = "sse")]
                 Content::Stream(stream) => {
                     FunctionResponse::StreamingResponse(::lambda_runtime::StreamResponse {
                         stream: Box::pin(stream.map(Result::<_, Infallible>::Ok)),
@@ -531,14 +551,17 @@ const _: () = {
                             },
                             // `HeaderMap` of `http` crate
                             headers: FromIterator/*::<HeaderName, HeaderValue>*/::from_iter(
-                                headers.into_iter()
-                                    .map(|(n, v): (&'static str, Cow<'static, str>)| (
-                                        TryFrom::<&str>::try_from(n).unwrap(),
-                                        TryFrom::<String>::try_from(v.into_owned()).unwrap()
-                                    ))
+                                headers.into_iter().map(
+                                    |(n, v): (&'static str, Cow<'static, str>)| {
+                                        (
+                                            TryFrom::<&str>::try_from(n).unwrap(),
+                                            TryFrom::<String>::try_from(v.into_owned()).unwrap(),
+                                        )
+                                    },
+                                ),
                             ),
-                            cookies: cookies.unwrap_or_else(Vec::new)
-                        }
+                            cookies: cookies.unwrap_or_else(Vec::new),
+                        },
                     })
                 }
             }

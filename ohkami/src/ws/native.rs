@@ -1,13 +1,7 @@
-#![cfg(feature="__rt_native__")]
+#![cfg(feature = "__rt_native__")]
 
 pub use mews::{
-    Message,
-    CloseCode, CloseFrame,
-    Config,
-    Connection,
-    ReadHalf, WriteHalf,
-    connection,
-    split,
+    CloseCode, CloseFrame, Config, Connection, Message, ReadHalf, WriteHalf, connection, split,
 };
 
 /// used in `crate::response::content::Content::WebSocket`
@@ -16,14 +10,11 @@ pub(crate) type Session = mews::WebSocket<crate::session::Connection>;
 impl<'ctx> super::WebSocketContext<'ctx> {
     /// create a `WebSocket` with the handler and default `Config`.
     /// use [`upgrade_with`](crate::ws::WebSocketContext::upgrade_with) to provide a custom config.
-    /// 
+    ///
     /// ## handler
-    /// 
+    ///
     /// any 'static `FnOnce(Connection) -> {impl Future<Output = ()> + Send} + Send + Sync`
-    pub fn upgrade<H, F>(
-        self,
-        handler: H
-    ) -> WebSocket
+    pub fn upgrade<H, F>(self, handler: H) -> WebSocket
     where
         H: FnOnce(Connection<crate::session::Connection>) -> F + Send + Sync + 'static,
         F: std::future::Future<Output = ()> + Send + 'static,
@@ -32,14 +23,11 @@ impl<'ctx> super::WebSocketContext<'ctx> {
     }
 
     /// create a `WebSocket` with the config and handler.
-    /// 
+    ///
     /// ## handler
-    /// 
+    ///
     /// any 'static `FnOnce(Connection) -> {impl Future<Output = ()> + Send} + Send + Sync`
-    pub fn upgrade_with<H, F>(self,
-        config:  Config,
-        handler: H
-    ) -> WebSocket
+    pub fn upgrade_with<H, F>(self, config: Config, handler: H) -> WebSocket
     where
         H: FnOnce(Connection<crate::session::Connection>) -> F + Send + Sync + 'static,
         F: std::future::Future<Output = ()> + Send + 'static,
@@ -52,17 +40,17 @@ impl<'ctx> super::WebSocketContext<'ctx> {
 }
 
 /// # Response for upgrading to WebSocket
-/// 
+///
 /// Perform handshake with a `WebSocketContext`,
 /// establish a WebSocket connection,
 /// and run the given handler.
-/// 
+///
 /// <br>
-/// 
+///
 /// *example.rs*
 /// ```
 /// use ohkami::ws::{WebSocketContext, WebSocket};
-/// 
+///
 /// async fn ws(ctx: WebSocketContext<'_>) -> WebSocket {
 ///     ctx.upgrade(|mut conn| async move {
 ///         conn.send("Hello, WebSocket! and bye...").await
@@ -70,16 +58,16 @@ impl<'ctx> super::WebSocketContext<'ctx> {
 ///     })
 /// }
 /// ```
-/// 
+///
 /// <br>
-/// 
+///
 /// *split_example.rs*
 /// ```
 /// # use tokio::{join, spawn};
 /// # use tokio::time::{Duration, sleep};
-/// # 
+/// #
 /// use ohkami::ws::{WebSocketContext, WebSocket, Message};
-/// 
+///
 /// async fn ws(ctx: WebSocketContext<'_>) -> WebSocket {
 ///     ctx.upgrade(|c| async {
 ///         let (mut r, mut w) = c.split();
@@ -113,25 +101,25 @@ impl<'ctx> super::WebSocketContext<'ctx> {
 /// }
 /// ```
 pub struct WebSocket {
-    sign:    String,
+    sign: String,
     session: Session,
 }
 impl crate::IntoResponse for WebSocket {
     fn into_response(self) -> crate::Response {
         let mut res = crate::Response::SwitchingProtocols();
         res.content = crate::response::Content::WebSocket(self.session);
-        res.with_headers(|h|h
-            .connection("Upgrade")
-            .upgrade("websocket")
-            .sec_websocket_accept(self.sign)
-        )
+        res.with_headers(|h| {
+            h.connection("Upgrade")
+                .upgrade("websocket")
+                .sec_websocket_accept(self.sign)
+        })
     }
 
-    #[cfg(feature="openapi")]
+    #[cfg(feature = "openapi")]
     fn openapi_responses() -> crate::openapi::Responses {
         crate::openapi::Responses::new([(
             101,
-            crate::openapi::Response::when("Upgrade to WebSocket")
+            crate::openapi::Response::when("Upgrade to WebSocket"),
         )])
     }
 }

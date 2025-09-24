@@ -1,5 +1,4 @@
-use super::{Response, ResponseHeaders, Content};
-
+use super::{Content, Response, ResponseHeaders};
 
 macro_rules! status {
     (
@@ -59,7 +58,8 @@ macro_rules! status {
             )*
         }
     };
-} status! {
+}
+status! {
     100 Continue                      : "100 Continue",
     101 SwitchingProtocols            : "101 Switching Protocols",
     102 Processing                    : "102 Processing",

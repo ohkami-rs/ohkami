@@ -47,17 +47,11 @@ macro_rules! DEBUG {
 #[doc(hidden)]
 #[macro_export]
 macro_rules! push_unchecked {
-    ($buf:ident <- $bytes:expr) => {
-        {
-            let (buf_len, bytes_len) = ($buf.len(), $bytes.len());
-            std::ptr::copy_nonoverlapping(
-                $bytes.as_ptr(),
-                $buf.as_mut_ptr().add(buf_len),
-                bytes_len
-            );
-            $buf.set_len(buf_len + bytes_len);
-        }
-    };
+    ($buf:ident <- $bytes:expr) => {{
+        let (buf_len, bytes_len) = ($buf.len(), $bytes.len());
+        std::ptr::copy_nonoverlapping($bytes.as_ptr(), $buf.as_mut_ptr().add(buf_len), bytes_len);
+        $buf.set_len(buf_len + bytes_len);
+    }};
 }
 
 pub use crate::fang::FangAction;
@@ -94,10 +88,10 @@ pub fn base64_url_encode(input: impl AsRef<[u8]>) -> String {
     URL_SAFE_NO_PAD.encode(input)
 }
 
-#[cfg(feature="sse")]
+#[cfg(feature = "sse")]
 pub use ohkami_lib::stream::{self, Stream, StreamExt};
 
-#[cfg(not(feature="rt_worker"))]
+#[cfg(not(feature = "rt_worker"))]
 /// ```
 /// # let _ =
 /// {
@@ -108,32 +102,34 @@ pub use ohkami_lib::stream::{self, Stream, StreamExt};
 /// }
 /// # ;
 /// ```
-#[inline] pub fn unix_timestamp() -> u64 {
+#[inline]
+pub fn unix_timestamp() -> u64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap()
         .as_secs()
 }
-#[cfg(feature="rt_worker")]
+#[cfg(feature = "rt_worker")]
 /// JavaScript `Date.now() / 1000` --as--> Rust `u64`
-#[inline] pub fn unix_timestamp() -> u64 {
+#[inline]
+pub fn unix_timestamp() -> u64 {
     (worker::js_sys::Date::now() / 1000.) as _
 }
 
 /// Parse semicolon-separated Cookies into an iterator of`(name, value)`.
-/// 
+///
 /// ## Note
-/// 
+///
 /// Invalid Cookie that doesn't contain `=` or contains multiple `=`s is just ignored.
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```
 /// # fn main() {
 /// let mut cookies = ohkami::util::iter_cookies(
 ///     "PHPSESSID=298zf09hf012fh2; csrftoken=u32t4o3tb3gg43; _gat=1"
 /// );
-/// 
+///
 /// assert_eq!(cookies.next(), Some(("PHPSESSID", "298zf09hf012fh2")));
 /// assert_eq!(cookies.next(), Some(("csrftoken", "u32t4o3tb3gg43")));
 /// assert_eq!(cookies.next(), Some(("_gat", "1")));
@@ -143,7 +139,7 @@ pub use ohkami_lib::stream::{self, Stream, StreamExt};
 pub fn iter_cookies(raw: &str) -> impl Iterator<Item = (&str, &str)> {
     raw.split("; ").filter_map(|key_value| {
         let mut key_value = key_value.split('=');
-        let key   = key_value.next()?;
+        let key = key_value.next()?;
         let value = key_value.next()?;
         key_value.next().is_none().then_some((key, value))
     })
@@ -167,48 +163,54 @@ const _: () = {
             crate::Response::InternalServerError().with_text(self.0)
         }
 
-        #[cfg(feature="openapi")]
+        #[cfg(feature = "openapi")]
         fn openapi_responses() -> crate::openapi::Responses {
             crate::openapi::Responses::new([(
                 500,
                 crate::openapi::Response::when("Something went wrong")
-                    .content("text/plain", crate::openapi::string())
+                    .content("text/plain", crate::openapi::string()),
             )])
         }
     }
 };
 
-#[cfg(feature="__rt_native__")]
+#[cfg(feature = "__rt_native__")]
 pub fn with_timeout<T>(
     duration: std::time::Duration,
-    proc:     impl std::future::Future<Output = T>
+    proc: impl std::future::Future<Output = T>,
 ) -> impl std::future::Future<Output = Option<T>> {
-    use std::task::Poll;
     use std::pin::Pin;
+    use std::task::Poll;
 
-    struct Timeout<Sleep, Proc> { sleep: Sleep, proc: Proc }
+    struct Timeout<Sleep, Proc> {
+        sleep: Sleep,
+        proc: Proc,
+    }
 
     impl<Sleep, Proc, T> std::future::Future for Timeout<Sleep, Proc>
     where
         Sleep: std::future::Future<Output = ()>,
-        Proc:  std::future::Future<Output = T>,
+        Proc: std::future::Future<Output = T>,
     {
         type Output = Option<T>;
 
         #[inline]
         fn poll(self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> Poll<Self::Output> {
-            let Timeout { sleep, proc } = unsafe {self.get_unchecked_mut()};
-            match unsafe {Pin::new_unchecked(proc)}.poll(cx) {
+            let Timeout { sleep, proc } = unsafe { self.get_unchecked_mut() };
+            match unsafe { Pin::new_unchecked(proc) }.poll(cx) {
                 Poll::Ready(t) => Poll::Ready(Some(t)),
-                Poll::Pending  => unsafe {Pin::new_unchecked(sleep)}.poll(cx).map(|_| None)
+                Poll::Pending => unsafe { Pin::new_unchecked(sleep) }.poll(cx).map(|_| None),
             }
         }
     }
 
-    Timeout { proc, sleep: crate::__rt__::sleep(duration) }
+    Timeout {
+        proc,
+        sleep: crate::__rt__::sleep(duration),
+    }
 }
 
 pub const IP_0000: std::net::IpAddr = std::net::IpAddr::V4(std::net::Ipv4Addr::new(0, 0, 0, 0));
 
-#[cfg(feature="rt_glommio")]
+#[cfg(feature = "rt_glommio")]
 pub use num_cpus;

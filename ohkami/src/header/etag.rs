@@ -23,7 +23,9 @@ impl std::fmt::Display for ETagError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(match self {
             ETagError::InvalidFormat => "InvalidFormat(Etag must be * or a strong/weak tag)",
-            ETagError::InvalidCharactor => "InvalidCharactor(Etag can only contain ASCII characters)",
+            ETagError::InvalidCharactor => {
+                "InvalidCharactor(Etag can only contain ASCII characters)"
+            }
         })
     }
 }
@@ -52,7 +54,8 @@ impl<'header> ETag<'header> {
                 .then(|| &raw[1..raw.len() - 1])
                 .ok_or(ETagError::InvalidFormat)?;
 
-            let _ = raw.is_ascii()
+            let _ = raw
+                .is_ascii()
                 .then_some(())
                 .ok_or(ETagError::InvalidCharactor)?;
 
@@ -66,28 +69,30 @@ impl<'header> ETag<'header> {
 
     /// Parse comma-separated ETags into an iterator of `Result<ETag, ETagError>`.
     /// Invalid ETag is returned as `Err`.
-    pub fn try_iter_from(raw: &'header str) -> impl Iterator<Item = Result<Self, ETagError>> + 'header {
+    pub fn try_iter_from(
+        raw: &'header str,
+    ) -> impl Iterator<Item = Result<Self, ETagError>> + 'header {
         raw.split(", ").map(ETag::parse)
     }
 
     /// Parse comma-separated ETags into an iterator of `ETag`.
     /// Invalid ETag is just ignored.
-    /// 
+    ///
     /// ## Example
-    /// 
+    ///
     /// ```
     /// use ohkami::header::ETag;
-    /// 
+    ///
     /// # fn main() {
     /// let mut etags = ETag::iter_from(
     ///     r#""abc123", W/"def456", "ghi789""#
     /// );
-    /// 
+    ///
     /// assert_eq!(etags.next(), Some(ETag::Strong("abc123".into())));
     /// assert_eq!(etags.next(), Some(ETag::Weak("def456".into())));
     /// assert_eq!(etags.next(), Some(ETag::Strong("ghi789".into())));
     /// assert_eq!(etags.next(), None);
-    /// 
+    ///
     /// let mut etags = ETag::iter_from("*");
     /// assert_eq!(etags.next(), Some(ETag::Any));
     /// assert_eq!(etags.next(), None);
@@ -100,11 +105,10 @@ impl<'header> ETag<'header> {
     pub fn matches(&self, other: &ETag<'_>) -> bool {
         match (self, other) {
             (ETag::Any, _) | (_, ETag::Any) => true,
-            | (ETag::Strong(a), ETag::Strong(b))
+            (ETag::Strong(a), ETag::Strong(b))
             | (ETag::Strong(a), ETag::Weak(b))
-            | (ETag::Weak(a),   ETag::Strong(b))
-            | (ETag::Weak(a),   ETag::Weak(b))
-            => a == b,
+            | (ETag::Weak(a), ETag::Strong(b))
+            | (ETag::Weak(a), ETag::Weak(b)) => a == b,
         }
     }
 
@@ -119,7 +123,8 @@ impl<'header> ETag<'header> {
 
 impl ETag<'static> {
     pub fn new(value: String) -> Result<Self, ETagError> {
-        value.is_ascii()
+        value
+            .is_ascii()
             .then_some(Self::Strong(value.into()))
             .ok_or(ETagError::InvalidCharactor)
     }

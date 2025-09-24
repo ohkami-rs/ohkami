@@ -1,16 +1,14 @@
+use ohkami_lib::{Slice, percent_decode_utf8};
 use std::{borrow::Cow, mem::MaybeUninit};
-use ohkami_lib::{percent_decode_utf8, Slice};
 
-pub struct Path(
-    MaybeUninit<PathInner>
-);
+pub struct Path(MaybeUninit<PathInner>);
 pub(crate) struct PathInner {
-    raw:    Slice,
+    raw: Slice,
     params: Params,
 }
 struct Params {
     next: usize,
-    list: [MaybeUninit<Slice>; Self::LIMIT]
+    list: [MaybeUninit<Slice>; Self::LIMIT],
 }
 impl Params {
     const LIMIT: usize = 2;
@@ -19,51 +17,72 @@ impl Params {
 const _: () = {
     impl Params {
         fn iter(&self) -> impl Iterator<Item = &Slice> {
-            (0..self.next).map(|i| unsafe {
-                self.list
-                    .get_unchecked(i)
-                    .assume_init_ref()
-            })
+            (0..self.next).map(|i| unsafe { self.list.get_unchecked(i).assume_init_ref() })
         }
     }
 
     impl Path {
         pub fn params(&self) -> impl Iterator<Item = Cow<'_, str>> {
-            (unsafe {self.0.assume_init_ref()})
+            (unsafe { self.0.assume_init_ref() })
                 .params
                 .iter()
-                .map(|slice| percent_decode_utf8(unsafe {slice.as_bytes()})
-                    .unwrap_or_else(|_| String::from_utf8_lossy(unsafe {slice.as_bytes()}))
-                )
+                .map(|slice| {
+                    percent_decode_utf8(unsafe { slice.as_bytes() })
+                        .unwrap_or_else(|_| String::from_utf8_lossy(unsafe { slice.as_bytes() }))
+                })
         }
 
         #[inline]
         pub fn as_bytes(&self) -> &[u8] {
-            let bytes = unsafe {self.0.assume_init_ref().raw.as_bytes()};
-            if bytes.is_empty() {b"/"} else {bytes}
+            let bytes = unsafe { self.0.assume_init_ref().raw.as_bytes() };
+            if bytes.is_empty() { b"/" } else { bytes }
         }
         /// Get request path as `Cow::Borrowed(&str)` if it's not percent-encoded, or,
         /// decode it into `Cow::Owned(String)` if encoded in the original request.
-        /// 
+        ///
         /// Or if the path is not valid UTF-8, it returns `Cow::Owned(String)` with
         /// lossy conversion.
         #[inline]
         pub fn str(&self) -> Cow<'_, str> {
-            let bytes = unsafe {self.0.assume_init_ref().raw.as_bytes()};
-            if bytes.is_empty() {return Cow::Borrowed("/")}
+            let bytes = unsafe { self.0.assume_init_ref().raw.as_bytes() };
+            if bytes.is_empty() {
+                return Cow::Borrowed("/");
+            }
             percent_decode_utf8(bytes).unwrap_or_else(|_| String::from_utf8_lossy(bytes))
         }
 
         #[inline]
         pub(crate) unsafe fn assume_one_param<'p>(&self) -> &'p [u8] {
-            unsafe {self.0.assume_init_ref().params.list.get_unchecked(0).assume_init_ref().as_bytes()}
+            unsafe {
+                self.0
+                    .assume_init_ref()
+                    .params
+                    .list
+                    .get_unchecked(0)
+                    .assume_init_ref()
+                    .as_bytes()
+            }
         }
         #[inline]
         pub(crate) unsafe fn assume_two_params<'p>(&self) -> (&'p [u8], &'p [u8]) {
-            unsafe {(
-                self.0.assume_init_ref().params.list.get_unchecked(0).assume_init_ref().as_bytes(),
-                self.0.assume_init_ref().params.list.get_unchecked(1).assume_init_ref().as_bytes()
-            )}
+            unsafe {
+                (
+                    self.0
+                        .assume_init_ref()
+                        .params
+                        .list
+                        .get_unchecked(0)
+                        .assume_init_ref()
+                        .as_bytes(),
+                    self.0
+                        .assume_init_ref()
+                        .params
+                        .list
+                        .get_unchecked(1)
+                        .assume_init_ref()
+                        .as_bytes(),
+                )
+            }
         }
     }
 
@@ -79,34 +98,41 @@ const _: () = {
     }
 };
 
-#[cfg(feature="__rt__")]
+#[cfg(feature = "__rt__")]
 const _: () = {
     impl Params {
         const fn init() -> Self {
-            Params { next: 0, list: [const {MaybeUninit::uninit()}; Params::LIMIT] }
+            Params {
+                next: 0,
+                list: [const { MaybeUninit::uninit() }; Params::LIMIT],
+            }
         }
-        
+
         #[inline(always)]
         fn push(&mut self, param: Slice) {
-            #[cfg(debug_assertions)] {
+            #[cfg(debug_assertions)]
+            {
                 assert!(self.next < Self::LIMIT);
             }
-            unsafe {self.list
-                .get_unchecked_mut(self.next)
-                .write(param);
+            unsafe {
+                self.list.get_unchecked_mut(self.next).write(param);
             }
             self.next += 1;
         }
     }
-    
+
     impl Path {
         pub(crate) const fn uninit() -> Self {
             Self(MaybeUninit::uninit())
         }
 
         #[inline(always)]
-        pub(crate) fn init_with_request_bytes(&mut self, bytes: &[u8]) -> Result<(), crate::Response> {
-            (bytes.first() == Some(&b'/')).then_some(())
+        pub(crate) fn init_with_request_bytes(
+            &mut self,
+            bytes: &[u8],
+        ) -> Result<(), crate::Response> {
+            (bytes.first() == Some(&b'/'))
+                .then_some(())
                 .ok_or_else(crate::Response::NotImplemented)?;
 
             /*
@@ -119,39 +145,44 @@ const _: () = {
             returns `b"/"` if that bytes is `b"/"`.
             */
             let mut len = bytes.len();
-            if unsafe {*bytes.get_unchecked(len-1) == b'/'} {len -= 1};
+            if unsafe { *bytes.get_unchecked(len - 1) == b'/' } {
+                len -= 1
+            };
 
             #[allow(unused_unsafe/* I don't know why but rustc sometimes put warnings to this unsafe as unnecessary */)]
-            Ok({self.0.write(PathInner {
-                raw:    unsafe {Slice::new_unchecked(bytes.as_ptr(), len)},
-                params: Params::init(),
-            });})
+            Ok({
+                self.0.write(PathInner {
+                    raw: unsafe { Slice::new_unchecked(bytes.as_ptr(), len) },
+                    params: Params::init(),
+                });
+            })
         }
 
-        #[inline] pub(crate) unsafe fn push_param(&mut self, param: Slice) {
-            unsafe {self.0.assume_init_mut().params.push(param)}
+        #[inline]
+        pub(crate) unsafe fn push_param(&mut self, param: Slice) {
+            unsafe { self.0.assume_init_mut().params.push(param) }
         }
 
-        #[inline] pub(crate) unsafe fn normalized_bytes<'req>(&self) -> &'req [u8] {
-            unsafe {self.0.assume_init_ref().raw.as_bytes()}
+        #[inline]
+        pub(crate) unsafe fn normalized_bytes<'req>(&self) -> &'req [u8] {
+            unsafe { self.0.assume_init_ref().raw.as_bytes() }
         }
     }
-    
+
     impl Path {
-        #[cfg(all(feature="__rt_native__", feature="DEBUG", test))]
+        #[cfg(all(feature = "__rt_native__", feature = "DEBUG", test))]
         pub(crate) fn from_literal(literal: &'static str) -> Self {
             // SAFETY: `literal` is 'static
-            unsafe {Self::from_str_unchecked(literal)}
+            unsafe { Self::from_str_unchecked(literal) }
         }
-    
+
         #[allow(unused)]
         /// SAFETY: `s` outlives the actual (used) lifetime of `Path`
         pub(crate) unsafe fn from_str_unchecked(s: &str) -> Self {
             Self(MaybeUninit::new(PathInner {
-                raw:    Slice::from_bytes(s.trim_end_matches('/').as_bytes()),
+                raw: Slice::from_bytes(s.trim_end_matches('/').as_bytes()),
                 params: Params::init(),
             }))
         }
     }
 };
-    

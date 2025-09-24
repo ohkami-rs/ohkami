@@ -1,12 +1,12 @@
 mod into_handler;
 
 pub use self::into_handler::IntoHandler;
-use super::{FangProcCaller, BoxedFPC};
-use super::{SendOnThreaded, SendSyncOnThreaded, SendOnThreadedFuture};
+use super::{BoxedFPC, FangProcCaller};
+use super::{SendOnThreaded, SendOnThreadedFuture, SendSyncOnThreaded};
 use crate::{Request, Response};
 use std::pin::Pin;
 
-#[cfg(feature="openapi")]
+#[cfg(feature = "openapi")]
 use crate::openapi;
 
 #[derive(Clone)]
@@ -14,8 +14,8 @@ pub struct Handler {
     #[allow(dead_code/* read only in router */)]
     pub(crate) proc: BoxedFPC,
 
-    #[cfg(feature="openapi")]
-    pub(crate) openapi_operation: openapi::Operation
+    #[cfg(feature = "openapi")]
+    pub(crate) openapi_operation: openapi::Operation,
 }
 
 const _: () = {
@@ -28,19 +28,26 @@ const _: () = {
 
 impl Handler {
     pub(crate) fn new(
-        proc: impl Fn(&mut Request) -> Pin<Box<dyn SendOnThreadedFuture<Response> + '_>> + SendSyncOnThreaded + 'static,
-        #[cfg(feature="openapi")] openapi_operation: openapi::Operation
+        proc: impl Fn(&mut Request) -> Pin<Box<dyn SendOnThreadedFuture<Response> + '_>>
+        + SendSyncOnThreaded
+        + 'static,
+        #[cfg(feature = "openapi")] openapi_operation: openapi::Operation,
     ) -> Self {
         struct HandlerProc<F>(F);
         const _: () = {
             impl<F> FangProcCaller for HandlerProc<F>
             where
-                F: Fn(&mut Request) -> Pin<Box<dyn SendOnThreadedFuture<Response> + '_>> + SendSyncOnThreaded + 'static
+                F: Fn(&mut Request) -> Pin<Box<dyn SendOnThreadedFuture<Response> + '_>>
+                    + SendSyncOnThreaded
+                    + 'static,
             {
-                fn call_bite<'b>(&'b self, req: &'b mut Request) -> Pin<Box<dyn SendOnThreadedFuture<Response> + 'b>> {
+                fn call_bite<'b>(
+                    &'b self,
+                    req: &'b mut Request,
+                ) -> Pin<Box<dyn SendOnThreadedFuture<Response> + 'b>> {
                     // SAFETY: trait upcasting
                     // trait upcasting coercion is experimental <https://github.com/rust-lang/rust/issues/65991>
-                    unsafe {std::mem::transmute((self.0)(req))}
+                    unsafe { std::mem::transmute((self.0)(req)) }
                 }
             }
         };
@@ -48,19 +55,19 @@ impl Handler {
         Self {
             proc: BoxedFPC::from_proc(HandlerProc(proc)),
 
-            #[cfg(feature="openapi")]
-            openapi_operation
+            #[cfg(feature = "openapi")]
+            openapi_operation,
         }
     }
 }
 
-#[cfg(not(feature="__rt_threaded__"))]
+#[cfg(not(feature = "__rt_threaded__"))]
 const _: (/* for NOT FOUND Handler cache */) = {
     unsafe impl Send for Handler {}
     unsafe impl Sync for Handler {}
 };
 
-#[cfg(feature="__rt__")]
+#[cfg(feature = "__rt__")]
 impl Handler {
     pub(crate) fn default_not_found() -> Self {
         use std::sync::LazyLock;
@@ -75,10 +82,11 @@ impl Handler {
         Handler {
             proc: (&*NOT_FOUND).proc.clone(),
 
-            #[cfg(feature="openapi")]
+            #[cfg(feature = "openapi")]
             openapi_operation: openapi::Operation::with(openapi::Responses::new([(
-                404, openapi::Response::when("default not found")
-            )]))
+                404,
+                openapi::Response::when("default not found"),
+            )])),
         }
     }
 
@@ -90,64 +98,66 @@ impl Handler {
             }
             methods.push("OPTIONS");
             methods
-        }.leak();
+        }
+        .leak();
 
-        let available_methods_str: &'static str =
-            available_methods.join(", ").leak();
+        let available_methods_str: &'static str = available_methods.join(", ").leak();
 
         /* see `fang::Cors` for more detail about what to do here */
-        Handler::new(move |req| {
-            Box::pin(async move {
-                #[cfg(debug_assertions)] {
-                    assert_eq!(req.method, crate::Method::OPTIONS);
-                }
-
-                match req.headers.access_control_request_method() {
-                    Some(method) => {
-                        /*
-                            Ohkami, by default, does nothing more than setting
-                            `Access-Control-Allow-Methods` to preflight request.
-                            CORS fang must override `Not Implemented` response,
-                            whitch is the default for a valid preflight request,
-                            by a successful one in its proc.
-                        */
-                        (if available_methods.contains(&method) {
-                            crate::Response::NotImplemented()
-                        } else {
-                            crate::Response::BadRequest()
-                        }).with_headers(|h| h
-                            .access_control_allow_methods(available_methods_str)
-                        )
+        Handler::new(
+            move |req| {
+                Box::pin(async move {
+                    #[cfg(debug_assertions)]
+                    {
+                        assert_eq!(req.method, crate::Method::OPTIONS);
                     }
-                    None => {
-                        /*
-                            For security reasons, Ohkami doesn't support the
-                            normal behavior to OPTIONS request like
 
-                            ```
-                            crate::Response::NoContent()
-                                .with_headers(|h| h
-                                    .allow(available_methods_str)
-                                )
-                            ```
-                        */
-                        crate::Response::NotFound()
+                    match req.headers.access_control_request_method() {
+                        Some(method) => {
+                            /*
+                                Ohkami, by default, does nothing more than setting
+                                `Access-Control-Allow-Methods` to preflight request.
+                                CORS fang must override `Not Implemented` response,
+                                whitch is the default for a valid preflight request,
+                                by a successful one in its proc.
+                            */
+                            (if available_methods.contains(&method) {
+                                crate::Response::NotImplemented()
+                            } else {
+                                crate::Response::BadRequest()
+                            })
+                            .with_headers(|h| h.access_control_allow_methods(available_methods_str))
+                        }
+                        None => {
+                            /*
+                                For security reasons, Ohkami doesn't support the
+                                normal behavior to OPTIONS request like
+
+                                ```
+                                crate::Response::NoContent()
+                                    .with_headers(|h| h
+                                        .allow(available_methods_str)
+                                    )
+                                ```
+                            */
+                            crate::Response::NotFound()
+                        }
                     }
-                }
-            })
-        }, #[cfg(feature="openapi")] openapi::Operation::with(
-            openapi::Responses::new([
+                })
+            },
+            #[cfg(feature = "openapi")]
+            openapi::Operation::with(openapi::Responses::new([
                 /* NEVER generate spec of OPTIONS operations */
-            ])
-        ))
+            ])),
+        )
     }
 }
 
-#[cfg(feature="openapi")]
+#[cfg(feature = "openapi")]
 impl Handler {
     pub fn map_openapi_operation(
         mut self,
-        map: impl FnOnce(openapi::Operation)->openapi::Operation
+        map: impl FnOnce(openapi::Operation) -> openapi::Operation,
     ) -> Self {
         self.openapi_operation = map(self.openapi_operation);
         self

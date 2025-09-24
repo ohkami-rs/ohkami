@@ -1,10 +1,9 @@
 use super::FangProcCaller;
 use std::future::Future;
 
-
 pub use dispatch::*;
 
-#[cfg(feature="__rt_threaded__")]
+#[cfg(feature = "__rt_threaded__")]
 mod dispatch {
     pub trait SendSyncOnThreaded: Send + Sync {}
     impl<T: Send + Sync> SendSyncOnThreaded for T {}
@@ -13,7 +12,7 @@ mod dispatch {
     pub trait SendOnThreaded: Send {}
     impl<T: Send> SendOnThreaded for T {}
 }
-#[cfg(not(feature="__rt_threaded__"))]
+#[cfg(not(feature = "__rt_threaded__"))]
 mod dispatch {
     pub trait SendSyncOnThreaded {}
     impl<T> SendSyncOnThreaded for T {}

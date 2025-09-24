@@ -10,7 +10,12 @@ pub fn from_str<'de, D: serde::Deserialize<'de>>(input: &'de str) -> Result<D, E
     if d.remaining().is_empty() {
         Ok(t)
     } else {
-        Err((||serde::de::Error::custom(format!("Unexpected trailing charactors: {}", d.remaining().escape_ascii())))())
+        Err((|| {
+            serde::de::Error::custom(format!(
+                "Unexpected trailing charactors: {}",
+                d.remaining().escape_ascii()
+            ))
+        })())
     }
 }
 
@@ -25,12 +30,18 @@ const _: () = {
     impl std::error::Error for Error {}
 
     impl serde::ser::Error for Error {
-        fn custom<T>(msg:T) -> Self where T:std::fmt::Display {
+        fn custom<T>(msg: T) -> Self
+        where
+            T: std::fmt::Display,
+        {
             Self(msg.to_string())
         }
     }
     impl serde::de::Error for Error {
-        fn custom<T>(msg:T) -> Self where T:std::fmt::Display {
+        fn custom<T>(msg: T) -> Self
+        where
+            T: std::fmt::Display,
+        {
             Self(msg.to_string())
         }
     }

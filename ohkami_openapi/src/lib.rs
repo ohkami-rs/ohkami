@@ -1,7 +1,8 @@
 #![allow(non_snake_case, non_camel_case_types)]
 
+#[cfg(test)]
+mod _test;
 mod _util;
-#[cfg(test)] mod _test;
 
 pub mod schema;
 pub use schema::SchemaRef;
@@ -13,7 +14,7 @@ pub mod request;
 pub use request::{Parameter, RequestBody};
 
 pub mod response;
-pub use response::{Responses, Response, Status};
+pub use response::{Response, Responses, Status};
 
 pub mod paths;
 pub use paths::Operation;
@@ -25,12 +26,18 @@ pub enum Inbound {
     Param(Parameter),
     Params(Vec<Parameter>),
     Body(RequestBody),
-    Security { scheme: SecurityScheme, scopes: &'static [&'static str] },
+    Security {
+        scheme: SecurityScheme,
+        scopes: &'static [&'static str],
+    },
 }
 
 /// handle the `schema` as a component schema named `name`.
 /// This is useful for reusing schemas in the OpenAPI document.
-pub fn component<T: schema::Type::SchemaType>(name: &'static str, schema: schema::Schema<T>) -> schema::Schema<T> {
+pub fn component<T: schema::Type::SchemaType>(
+    name: &'static str,
+    schema: schema::Schema<T>,
+) -> schema::Schema<T> {
     schema::Schema::component(name, schema)
 }
 
@@ -76,20 +83,20 @@ pub fn one_of(schemas: impl schema::SchemaList) -> schema::Schema<schema::Type::
 }
 
 /// # OpenAPI Schema trait
-/// 
+///
 /// ## Required
-/// 
+///
 /// - `schema() -> impl Into<schema::SchemaRef>`
 ///   - this `impl Into<schema::SchemaRef>` mostly means `schema::Schema<{something}>`.
-/// 
+///
 /// ## Implementation Notes
-/// 
+///
 /// Generally, you can implement this trait for your types by `#[derive(Schema)]`.
 /// See it's documentation for more details.
-/// 
+///
 /// But of course, you can implement it manually if you want to.
 /// In that case, start from **base schemas**:
-/// 
+///
 /// - [`string()`](fn@string)
 /// - [`number()`](fn@number)
 /// - [`integer()`](fn@integer)
@@ -99,15 +106,15 @@ pub fn one_of(schemas: impl schema::SchemaList) -> schema::Schema<schema::Type::
 /// - [`any_of({schemas})`](fn@any_of)
 /// - [`all_of({schemas})`](fn@all_of)
 /// - [`one_of({schemas})`](fn@one_of)
-/// 
+///
 /// and, [`component({name}, {schema})`](fn@component) if you want to name and reuse
 /// the schema in the OpenAPI document.
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```rust,ignore
 /// use ohkami::openapi;
-/// 
+///
 /// #[derive(openapi::Schema)]
 /// struct MySchema {
 ///     pub id: u32,
@@ -123,7 +130,7 @@ pub fn one_of(schemas: impl schema::SchemaList) -> schema::Schema<schema::Type::
 ///             .optional("age", openapi::integer().format("uint8"))
 ///     }
 /// }
-/// 
+///
 /// #[derive(openapi::Schema)]
 /// #[openapi(component)]
 /// struct MyComponentSchema {
@@ -142,9 +149,9 @@ pub fn one_of(schemas: impl schema::SchemaList) -> schema::Schema<schema::Type::
 ///     }
 /// }
 /// ```
-/// 
+///
 /// ## Default Implementations
-/// 
+///
 /// - `str`, `String`
 /// - `u8`, `u16`, `u32`, `u64`, `usize`
 /// - `i8`, `i16`, `i32`, `i64`, `isize`
@@ -228,7 +235,7 @@ const _: () = {
             number().format("double")
         }
     }
-    
+
     impl Schema for uuid::Uuid {
         fn schema() -> impl Into<schema::SchemaRef> {
             string().format("uuid")
@@ -244,7 +251,7 @@ const _: () = {
         fn schema() -> impl Into<schema::SchemaRef> {
             array(S::schema())
         }
-    }    
+    }
     impl<const N: usize, S: Schema> Schema for [S; N] {
         fn schema() -> impl Into<schema::SchemaRef> {
             array(S::schema())

@@ -1,39 +1,39 @@
-//! # Claws - handler parts for desclarative request/response handling 
-//! 
+//! # Claws - handler parts for desclarative request/response handling
+//!
 //! Claws provides various components for typed, declarative way to
 //! extract request data and construct response data:
-//! 
+//!
 //! - [`body`]: for handling request and response bodies
 //! - [`header`]: for handling request headers
 //! - [`param`]: for handling request parameters (path and query)
 //! - [`status`]: for handling response HTTP status codes
-//! 
+//!
 //! See individual modules or each component's documentation for details.
-//! 
+//!
 //! ## Example
-//! 
+//!
 //! ```
 //! use ohkami::claw::{Path, Json, status};
 //! use ohkami::serde::{Serialize, Deserialize};
-//! 
+//!
 //! #[derive(Deserialize)]
 //! struct CreateUserRequest<'req> {
 //!     name: &'req str,
 //! }
-//! 
+//!
 //! #[derive(Serialize)]
 //! struct User {
 //!     id: u64,
 //!     name: String,
 //! }
-//! 
+//!
 //! # enum AppError {}
 //! # impl ohkami::IntoResponse for AppError {
 //! #     fn into_response(self) -> ohkami::Response {
 //! #         todo!()
 //! #     }
 //! # }
-//! 
+//!
 //! async fn get_user(
 //!     // Extract a path parameter as `u64`
 //!     Path(id): Path<u64>,
@@ -44,7 +44,7 @@
 //!         name: todo!(),
 //!     }))
 //! }
-//! 
+//!
 //! async fn create_user(
 //!     // Extract `application/json` request body
 //!     Json(body): Json<CreateUserRequest<'_>>,
@@ -67,15 +67,16 @@ pub use content::Json;
 pub use header::Cookie;
 pub use param::{Path, Query};
 
-#[cold] #[inline(never)]
+#[cold]
+#[inline(never)]
 fn reject(msg: impl std::fmt::Display) -> crate::Response {
     crate::Response::BadRequest().with_text(msg.to_string())
 }
 
-#[cfg(feature="openapi")]
+#[cfg(feature = "openapi")]
 mod bound {
     use crate::openapi;
-    use serde::{Serialize, Deserialize};
+    use serde::{Deserialize, Serialize};
 
     pub trait Schema: openapi::Schema {}
     impl<S: openapi::Schema> Schema for S {}
@@ -86,11 +87,11 @@ mod bound {
     pub trait Outgoing: Serialize + openapi::Schema {}
     impl<T> Outgoing for T where T: Serialize + openapi::Schema {}
 }
-#[cfg(not(feature="openapi"))]
+#[cfg(not(feature = "openapi"))]
 mod bound {
-    use serde::{Serialize, Deserialize};
+    use serde::{Deserialize, Serialize};
 
-    pub trait Schema: {}
+    pub trait Schema {}
     impl<S> Schema for S {}
 
     pub trait Incoming<'req>: Deserialize<'req> {}

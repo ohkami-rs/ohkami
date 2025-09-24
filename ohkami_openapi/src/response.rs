@@ -1,5 +1,5 @@
-use super::schema::{SchemaRef, Schema, RawSchema, Type::SchemaType};
 use super::_util::{Content, Map, is_false};
+use super::schema::{RawSchema, Schema, SchemaRef, Type::SchemaType};
 use serde::Serialize;
 
 #[derive(Serialize, Clone)]
@@ -14,18 +14,21 @@ impl Serialize for Status {
     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         (match self {
             Self::Code(code) => std::borrow::Cow::Owned(code.to_string()),
-            Self::Default    => std::borrow::Cow::Borrowed("default")
-        }).serialize(serializer)
+            Self::Default => std::borrow::Cow::Borrowed("default"),
+        })
+        .serialize(serializer)
     }
 }
 impl From<u16> for Status {
-    fn from(code: u16) -> Self {Self::Code(code)}
+    fn from(code: u16) -> Self {
+        Self::Code(code)
+    }
 }
 impl From<&str> for Status {
     fn from(s: &str) -> Self {
         match s {
             "default" => Self::Default,
-            _ => Self::Code(s.parse().expect("invalid status code"))
+            _ => Self::Code(s.parse().expect("invalid status code")),
         }
     }
 }
@@ -38,7 +41,7 @@ pub struct Response {
     content: Map<&'static str, Content>,
 
     #[serde(skip_serializing_if = "Map::is_empty")]
-    headers: Map<&'static str, ResponseHeader>
+    headers: Map<&'static str, ResponseHeader>,
 }
 
 #[derive(Serialize, Clone, PartialEq)]
@@ -47,16 +50,18 @@ pub struct ResponseHeader {
     description: Option<&'static str>,
 
     required: bool,
-    
+
     #[serde(skip_serializing_if = "is_false")]
     deprecated: bool,
 
-    schema: SchemaRef
+    schema: SchemaRef,
 }
 
 impl Responses {
     pub fn new<const N: usize>(code_responses: [(u16, Response); N]) -> Self {
-        Self(Map::from_iter(code_responses.map(|(code, res)| (Status::Code(code), res))))
+        Self(Map::from_iter(
+            code_responses.map(|(code, res)| (Status::Code(code), res)),
+        ))
     }
 
     pub fn or(mut self, code: u16, response: Response) -> Self {
@@ -79,12 +84,17 @@ impl Responses {
         self.0.values_mut().map(Response::refize_schemas).flatten()
     }
 
-    pub(crate) fn override_response_description(&mut self, status: impl Into<Status>, new_description: &'static str) {
+    pub(crate) fn override_response_description(
+        &mut self,
+        status: impl Into<Status>,
+        new_description: &'static str,
+    ) {
         let status = status.into();
         if let Some(response) = self.0.get_mut(&status) {
             response.description = new_description;
         } else {
-            self.0.insert(status.into(), Response::when(new_description));
+            self.0
+                .insert(status.into(), Response::when(new_description));
         }
     }
 }
@@ -100,7 +110,8 @@ impl Response {
 
     pub fn content(mut self, media_type: &'static str, schema: impl Into<SchemaRef>) -> Self {
         if media_type != "" {
-            self.content.insert(media_type, Content::from(schema.into()));
+            self.content
+                .insert(media_type, Content::from(schema.into()));
         }
         self
     }
@@ -125,17 +136,17 @@ impl ResponseHeader {
     pub fn of(schema: impl Into<SchemaRef>) -> Self {
         Self {
             description: None,
-            required:    true,
-            deprecated:  false,
-            schema: schema.into()
+            required: true,
+            deprecated: false,
+            schema: schema.into(),
         }
     }
     pub fn optional(schema: impl Into<SchemaRef>) -> Self {
         Self {
             description: None,
-            required:    false,
-            deprecated:  false,
-            schema: schema.into()
+            required: false,
+            deprecated: false,
+            schema: schema.into(),
         }
     }
 

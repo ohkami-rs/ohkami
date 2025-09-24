@@ -1,4 +1,4 @@
-#![cfg(all(test, feature="__rt_native__", feature="DEBUG"))]
+#![cfg(all(test, feature = "__rt_native__", feature = "DEBUG"))]
 
 use crate::Response;
 
@@ -34,49 +34,65 @@ macro_rules! assert_response_bytes_eq {
 #[test]
 fn test_response_into_bytes() {
     let mut res = Response::NoContent();
-    assert_response_bytes_eq!(res, "\
+    assert_response_bytes_eq!(
+        res,
+        "\
         HTTP/1.1 204 No Content\r\n\
         Date: {NOW}\r\n\
         \r\n\
-    ");
+    "
+    );
 
     let mut res = Response::NoContent();
     res.headers.set().server("ohkami");
-    assert_response_bytes_eq!(res, "\
+    assert_response_bytes_eq!(
+        res,
+        "\
         HTTP/1.1 204 No Content\r\n\
         Date: {NOW}\r\n\
         Server: ohkami\r\n\
         \r\n\
-    ");
+    "
+    );
 
     let mut res = Response::NotFound();
-    assert_response_bytes_eq!(res, "\
+    assert_response_bytes_eq!(
+        res,
+        "\
         HTTP/1.1 404 Not Found\r\n\
         Date: {NOW}\r\n\
         Content-Length: 0\r\n\
         \r\n\
-    ");
+    "
+    );
 
     let mut res = Response::NotFound();
-    res.headers.set()
+    res.headers
+        .set()
         .server("ohkami")
         .x("Hoge-Header", "Something-Custom");
-    assert_response_bytes_eq!(res, "\
+    assert_response_bytes_eq!(
+        res,
+        "\
         HTTP/1.1 404 Not Found\r\n\
         Date: {NOW}\r\n\
         Content-Length: 0\r\n\
         Server: ohkami\r\n\
         Hoge-Header: Something-Custom\r\n\
         \r\n\
-    ");
+    "
+    );
 
     let mut res = Response::NotFound();
-    res.headers.set()
+    res.headers
+        .set()
         .server("ohkami")
         .x("Hoge-Header", "Something-Custom")
-        .set_cookie("id", "42", |d|d.path("/").same_site_lax())
-        .set_cookie("name", "John", |d|d.path("/where").same_site_strict());
-    assert_response_bytes_eq!(res, "\
+        .set_cookie("id", "42", |d| d.path("/").same_site_lax())
+        .set_cookie("name", "John", |d| d.path("/where").same_site_strict());
+    assert_response_bytes_eq!(
+        res,
+        "\
         HTTP/1.1 404 Not Found\r\n\
         Date: {NOW}\r\n\
         Content-Length: 0\r\n\
@@ -85,15 +101,19 @@ fn test_response_into_bytes() {
         Set-Cookie: id=42; Path=/; SameSite=Lax\r\n\
         Set-Cookie: name=John; Path=/where; SameSite=Strict\r\n\
         \r\n\
-    ");
+    "
+    );
 
     let mut res = Response::NotFound().with_text("sample text");
-    res.headers.set()
+    res.headers
+        .set()
         .server("ohkami")
         .x("Hoge-Header", "Something-Custom")
-        .set_cookie("id", "42", |d|d.path("/").same_site_lax())
-        .set_cookie("name", "John", |d|d.path("/where").same_site_strict());
-    assert_response_bytes_eq!(res, "\
+        .set_cookie("id", "42", |d| d.path("/").same_site_lax())
+        .set_cookie("name", "John", |d| d.path("/where").same_site_strict());
+    assert_response_bytes_eq!(
+        res,
+        "\
         HTTP/1.1 404 Not Found\r\n\
         Date: {NOW}\r\n\
         Content-Length: 11\r\n\
@@ -104,26 +124,31 @@ fn test_response_into_bytes() {
         Set-Cookie: name=John; Path=/where; SameSite=Strict\r\n\
         \r\n\
         sample text\
-    ");
+    "
+    );
 }
 
-#[cfg(feature="sse")]
+#[cfg(feature = "sse")]
 #[test]
 fn test_stream_response() {
     let __now__ = ::ohkami_lib::imf_fixdate(crate::util::unix_timestamp());
 
     fn repeat_by<T, F: Fn(usize) -> T + Unpin>(
         n: usize,
-        f: F
+        f: F,
     ) -> impl ohkami_lib::Stream<Item = T> {
         struct Repeat<F> {
             f: F,
             n: usize,
             count: usize,
-        } const _: () = {
+        }
+        const _: () = {
             impl<T, F: Fn(usize) -> T + Unpin> ohkami_lib::Stream for Repeat<F> {
                 type Item = T;
-                fn poll_next(mut self: std::pin::Pin<&mut Self>, _cx: &mut std::task::Context<'_>) -> std::task::Poll<Option<Self::Item>> {
+                fn poll_next(
+                    mut self: std::pin::Pin<&mut Self>,
+                    _cx: &mut std::task::Context<'_>,
+                ) -> std::task::Poll<Option<Self::Item>> {
                     if self.count < self.n {
                         let item = std::task::Poll::Ready(Some((self.f)(self.count)));
                         self.as_mut().count += 1;
@@ -139,15 +164,15 @@ fn test_stream_response() {
     }
 
     let mut res = Response::OK()
-        .with_stream(
-            repeat_by(3, |i| format!("This is message#{i} !"))
-        )
-        .with_headers(|h| h
-            .server("ohkami")
-            .x("is-stream", "true")
-            .set_cookie("name", "John", |d|d.path("/where").same_site_strict())
-        );
-    assert_response_bytes_eq!(res, "\
+        .with_stream(repeat_by(3, |i| format!("This is message#{i} !")))
+        .with_headers(|h| {
+            h.server("ohkami")
+                .x("is-stream", "true")
+                .set_cookie("name", "John", |d| d.path("/where").same_site_strict())
+        });
+    assert_response_bytes_eq!(
+        res,
+        "\
         HTTP/1.1 200 OK\r\n\
         Date: {NOW}\r\n\
         Content-Type: text/event-stream\r\n\
@@ -171,18 +196,19 @@ fn test_stream_response() {
         \r\n\
         0\r\n\
         \r\n\
-    ");
+    "
+    );
 
     let mut res = Response::OK()
-        .with_stream(
-            repeat_by(3, |i| format!("This is message#{i}\nです"))
-        )
-        .with_headers(|h| h
-            .server("ohkami")
-            .set_cookie("name", "John", |d|d.path("/where").same_site_strict())
-            .x("is-stream", "true")
-        );
-    assert_response_bytes_eq!(res, "\
+        .with_stream(repeat_by(3, |i| format!("This is message#{i}\nです")))
+        .with_headers(|h| {
+            h.server("ohkami")
+                .set_cookie("name", "John", |d| d.path("/where").same_site_strict())
+                .x("is-stream", "true")
+        });
+    assert_response_bytes_eq!(
+        res,
+        "\
         HTTP/1.1 200 OK\r\n\
         Date: {NOW}\r\n\
         Content-Type: text/event-stream\r\n\
@@ -209,5 +235,6 @@ fn test_stream_response() {
         \r\n\
         0\r\n\
         \r\n\
-    ");
+    "
+    );
 }

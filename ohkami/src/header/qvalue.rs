@@ -21,7 +21,7 @@ impl QValue {
                     }
                 }
                 Some(Self(q))
-            },
+            }
             1 => Some(Self(1000)),
             _ => unreachable!(),
         }

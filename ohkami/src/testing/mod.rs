@@ -1,15 +1,15 @@
 #![cfg(debug_assertions)]
-#![cfg(feature="__rt__")]
+#![cfg(feature = "__rt__")]
 
 //! Ohkami testing tools
-//! 
+//!
 //! <br>
-//! 
+//!
 //! *test_example.rs*
 //! ```
 //! use ohkami::prelude::*;
 //! use ohkami::testing::*;
-//! 
+//!
 //! fn my_ohkami() -> Ohkami {
 //!     Ohkami::new(
 //!         "/".GET(|| async {
@@ -17,12 +17,12 @@
 //!         })
 //!     )
 //! }
-//! 
+//!
 //! #[cfg(test)]
 //! #[tokio::test]
 //! async fn test_my_ohkami() {
 //!     let t = my_ohkami().test();
-//! 
+//!
 //!     let req = TestRequest::GET("/");
 //!     let res = t.oneshot(req).await;
 //!     assert_eq!(res.status(), Status::OK);
@@ -30,12 +30,12 @@
 //! }
 //! ```
 
-pub use crate::{Response, Request, Ohkami, Status, Method};
 use crate::router::r#final::Router;
+pub use crate::{Method, Ohkami, Request, Response, Status};
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::{pin::Pin, future::Future, format as f};
+use std::{format as f, future::Future, pin::Pin};
 
 pub trait Tester {
     fn test(self) -> TestOhkami;
@@ -54,11 +54,14 @@ impl TestOhkami {
     #[must_use]
     pub fn oneshot(&self, test_req: TestRequest) -> Oneshot {
         let router = self.0.clone();
-        
+
         let test_res = async move {
-            let mut req = Request::uninit(#[cfg(feature="__rt_native__")] crate::util::IP_0000);
+            let mut req = Request::uninit(
+                #[cfg(feature = "__rt_native__")]
+                crate::util::IP_0000,
+            );
             let mut req = Pin::new(&mut req);
-            
+
             let res = match req.as_mut().read(&mut &test_req.encode()[..]).await {
                 Err(res) => res,
                 Ok(None) => panic!("No request"),
@@ -67,7 +70,9 @@ impl TestOhkami {
                         req.headers.set().host("ohkami.test");
                     }
                     if req.headers.date().is_none() {
-                        req.headers.set().date(ohkami_lib::imf_fixdate(crate::util::unix_timestamp()));
+                        req.headers
+                            .set()
+                            .date(ohkami_lib::imf_fixdate(crate::util::unix_timestamp()));
                     }
                     router.handle(&mut req).await
                 }
@@ -80,48 +85,71 @@ impl TestOhkami {
     }
 }
 
-pub struct Oneshot(
-    Box<dyn Future<Output = TestResponse>>
-);
+pub struct Oneshot(Box<dyn Future<Output = TestResponse>>);
 impl Future for Oneshot {
     type Output = TestResponse;
-    fn poll(self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> std::task::Poll<Self::Output> {
-        unsafe {self.map_unchecked_mut(|this| this.0.as_mut())}.poll(cx)
+    fn poll(
+        self: Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Self::Output> {
+        unsafe { self.map_unchecked_mut(|this| this.0.as_mut()) }.poll(cx)
     }
 }
 
 #[derive(Debug)]
 pub struct TestRequest {
-    method:  Method,
-    path:    Cow<'static, str>,
+    method: Method,
+    path: Cow<'static, str>,
     queries: HashMap<Cow<'static, str>, Cow<'static, str>>,
     headers: HashMap<Cow<'static, str>, Cow<'static, str>>,
     content: Option<Cow<'static, [u8]>>,
 }
 impl TestRequest {
     pub(crate) fn encode(self) -> Vec<u8> {
-        let Self { method, path, queries, headers, content } = self;
+        let Self {
+            method,
+            path,
+            queries,
+            headers,
+            content,
+        } = self;
 
-        let queries = queries.into_iter()
-            .map(|(k, v)| f!("{k}={v}"))
-            .fold(Vec::new(), |mut q, kv| if q.is_empty() {
-                q.push(b'?'); q.extend_from_slice(kv.as_bytes()); q
-            } else {
-                q.push(b'&'); q.extend_from_slice(kv.as_bytes()); q
-            });
+        let queries =
+            queries
+                .into_iter()
+                .map(|(k, v)| f!("{k}={v}"))
+                .fold(Vec::new(), |mut q, kv| {
+                    if q.is_empty() {
+                        q.push(b'?');
+                        q.extend_from_slice(kv.as_bytes());
+                        q
+                    } else {
+                        q.push(b'&');
+                        q.extend_from_slice(kv.as_bytes());
+                        q
+                    }
+                });
 
-        let headers = headers.into_iter()
-            .map(|(k, v)| f!("{k}: {v}\r\n"))
-            .fold(Vec::new(), |mut h, kv| {
-                h.extend_from_slice(kv.as_bytes()); h
-            });
+        let headers =
+            headers
+                .into_iter()
+                .map(|(k, v)| f!("{k}: {v}\r\n"))
+                .fold(Vec::new(), |mut h, kv| {
+                    h.extend_from_slice(kv.as_bytes());
+                    h
+                });
 
         [
-            method.as_str().as_bytes(), b" ", path.as_bytes(), &queries, b" HTTP/1.1\r\n",
+            method.as_str().as_bytes(),
+            b" ",
+            path.as_bytes(),
+            &queries,
+            b" HTTP/1.1\r\n",
             &headers,
             b"\r\n",
-            &content.unwrap_or(Cow::Borrowed(b""))
-        ].concat()
+            &content.unwrap_or(Cow::Borrowed(b"")),
+        ]
+        .concat()
     }
 }
 
@@ -140,23 +168,32 @@ macro_rules! new_test_request {
             }
         }
     )*};
-} new_test_request! {
+}
+new_test_request! {
     GET PUT POST PATCH DELETE HEAD OPTIONS
 }
 
 impl TestRequest {
-    pub fn query(mut self, key: impl Into<Cow<'static, str>>, value: impl Into<Cow<'static, str>>) -> Self {
+    pub fn query(
+        mut self,
+        key: impl Into<Cow<'static, str>>,
+        value: impl Into<Cow<'static, str>>,
+    ) -> Self {
         self.queries.insert(key.into(), value.into());
         self
     }
-    pub fn header(mut self, key: impl Into<Cow<'static, str>>, value: impl Into<Cow<'static, str>>) -> Self {
+    pub fn header(
+        mut self,
+        key: impl Into<Cow<'static, str>>,
+        value: impl Into<Cow<'static, str>>,
+    ) -> Self {
         self.headers.insert(key.into(), value.into());
         self
     }
 }
 impl TestRequest {
     pub fn json(mut self, json: impl serde::Serialize) -> Self {
-        let content       = serde_json::to_vec(&json).expect("Failed to serialize json");
+        let content = serde_json::to_vec(&json).expect("Failed to serialize json");
         let content_lenth = content.len();
 
         self.content = Some(Cow::Owned(content));
@@ -175,7 +212,11 @@ impl TestRequest {
             .header("Content-Length", content_lenth.to_string())
     }
 
-    pub fn content(mut self, content_type: &'static str, content: impl Into<Cow<'static, [u8]>>) -> Self {
+    pub fn content(
+        mut self,
+        content_type: &'static str,
+        content: impl Into<Cow<'static, [u8]>>,
+    ) -> Self {
         let content: Cow<'static, [u8]> = content.into();
         let content_lenth = content.len();
 
@@ -200,7 +241,11 @@ impl TestResponse {
     }
 
     pub fn content(&self, content_type: &'static str) -> Option<&[u8]> {
-        let _= self.0.headers.content_type()?.starts_with(content_type)
+        let _ = self
+            .0
+            .headers
+            .content_type()?
+            .starts_with(content_type)
             .then_some(())?;
         let bytes = self.0.content.as_bytes()?;
         assert_eq!(
@@ -211,25 +256,28 @@ impl TestResponse {
         Some(bytes)
     }
     pub fn text(&self) -> Option<&str> {
-        self.content("text/plain")
-            .map(|bytes| std::str::from_utf8(bytes).expect(&f!(
+        self.content("text/plain").map(|bytes| {
+            std::str::from_utf8(bytes).expect(&f!(
                 "Response content is not UTF-8: {}",
                 bytes.escape_ascii()
-            )))
+            ))
+        })
     }
     pub fn html(&self) -> Option<&str> {
-        self.content("text/html")
-            .map(|bytes| std::str::from_utf8(bytes).expect(&f!(
+        self.content("text/html").map(|bytes| {
+            std::str::from_utf8(bytes).expect(&f!(
                 "Response content is not UTF-8: {}",
                 bytes.escape_ascii()
-            )))
+            ))
+        })
     }
     pub fn json<'d, T: serde::Deserialize<'d>>(&'d self) -> Option<T> {
-        self.content("application/json")
-            .map(|bytes| serde_json::from_slice(bytes).expect(&f!(
+        self.content("application/json").map(|bytes| {
+            serde_json::from_slice(bytes).expect(&f!(
                 "Failed to deserialize json payload as {}: {}",
                 std::any::type_name::<T>(),
                 bytes.escape_ascii()
-            )))
+            ))
+        })
     }
 }

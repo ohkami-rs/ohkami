@@ -1,8 +1,6 @@
 #[inline]
 pub fn hexized(n: usize) -> String {
-    unsafe {String::from_utf8_unchecked(
-        hexized_bytes(n).into()
-    )}
+    unsafe { String::from_utf8_unchecked(hexized_bytes(n).into()) }
 }
 
 #[inline(always)]
@@ -11,29 +9,32 @@ pub fn hexized_bytes(n: usize) -> [u8; std::mem::size_of::<usize>() * 2] {
 
     unsafe {
         transmute::<_, [u8; size_of::<usize>() * 2]>(
-            n.to_be_bytes().map(|byte| [byte>>4, byte&0b1111])
-        ).map(|h| h + match h {
-            0..=9   => b'0'-0,
-            10..=15 => b'a'-10,
-            _ => std::hint::unreachable_unchecked()
+            n.to_be_bytes().map(|byte| [byte >> 4, byte & 0b1111]),
+        )
+        .map(|h| {
+            h + match h {
+                0..=9 => b'0' - 0,
+                10..=15 => b'a' - 10,
+                _ => std::hint::unreachable_unchecked(),
+            }
         })
     }
 }
 
 #[cfg(test)]
-#[test] fn test_hexize() {
+#[test]
+fn test_hexize() {
     for (n, expected) in [
-        (1,   "1"),
-        (9,   "9"),
-        (12,  "c"),
-        (16,  "10"),
-        (42,  "2a"),
+        (1, "1"),
+        (9, "9"),
+        (12, "c"),
+        (16, "10"),
+        (42, "2a"),
         (314, "13a"),
     ] {
         assert_eq!(hexized(n).trim_start_matches('0'), expected)
     }
 }
-
 
 #[inline]
 pub fn itoa(mut n: usize) -> String {
@@ -41,7 +42,7 @@ pub fn itoa(mut n: usize) -> String {
 
     #[cfg(target_pointer_width = "64")]
     const _/* static assert */: [(); 19] = [(); MAX];
-    
+
     let mut buf = Vec::<u8>::with_capacity(1 + MAX);
 
     {
@@ -66,16 +67,19 @@ pub fn itoa(mut n: usize) -> String {
             };
         }
 
-        unroll!(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19);
+        unroll!(
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19
+        );
 
         push_unchecked(b'0' + n as u8);
     }
-    
-    unsafe {String::from_utf8_unchecked(buf)}
+
+    unsafe { String::from_utf8_unchecked(buf) }
 }
 
 #[cfg(test)]
-#[test] fn test_itoa() {
+#[test]
+fn test_itoa() {
     for n in [
         0,
         1,

@@ -1,7 +1,6 @@
 use proc_macro2::{Span, TokenStream};
-use syn::{Field, ItemStruct, GenericParam, LifetimeParam, Lifetime};
 use quote::quote;
-
+use syn::{Field, GenericParam, ItemStruct, Lifetime, LifetimeParam};
 
 pub(super) fn derive_from_request(target: TokenStream) -> syn::Result<TokenStream> {
     let s: ItemStruct = syn::parse2(target)?;
@@ -10,22 +9,30 @@ pub(super) fn derive_from_request(target: TokenStream) -> syn::Result<TokenStrea
 
     let generics_params_r = &s.generics.params;
     let generics_params_l = &mut generics_params_r.clone();
-    let generics_where    = &s.generics.where_clause;
+    let generics_where = &s.generics.where_clause;
 
     let impl_lifetime = match s.generics.lifetimes().count() {
         0 => {
-            let il = GenericParam::Lifetime(LifetimeParam::new(
-                Lifetime::new("'__impl_from_request_lifetime", Span::call_site())
-            ));
+            let il = GenericParam::Lifetime(LifetimeParam::new(Lifetime::new(
+                "'__impl_from_request_lifetime",
+                Span::call_site(),
+            )));
             generics_params_l.push(il.clone());
             il
         }
         1 => s.generics.params.first().unwrap().clone(),
-        _ => return Err(syn::Error::new(Span::call_site(), "#[derive(FromRequest)] doesn't support multiple lifetime params")),
+        _ => {
+            return Err(syn::Error::new(
+                Span::call_site(),
+                "#[derive(FromRequest)] doesn't support multiple lifetime params",
+            ));
+        }
     };
 
-    let build = if s.semi_token.is_none() {/* struct S { 〜 } */
-        let fields = s.fields.into_iter()
+    let build =
+        if s.semi_token.is_none() {
+            /* struct S { 〜 } */
+            let fields = s.fields.into_iter()
             .map(|Field { ident, ty, .. }| quote! {
                 #ident: {
                     match <#ty as ::ohkami::FromRequest>::from_request(req)? {
@@ -36,10 +43,10 @@ pub(super) fn derive_from_request(target: TokenStream) -> syn::Result<TokenStrea
                     }
                 }
             });
-        quote![ Self { #( #fields ),* } ]
-
-    } else {/* struct T(); */
-        let fields = s.fields.into_iter()
+            quote![ Self { #( #fields ),* } ]
+        } else {
+            /* struct T(); */
+            let fields = s.fields.into_iter()
             .map(|Field { ty, .. }| quote! {
                 {
                     match <#ty as ::ohkami::FromRequest>::from_request(req)? {
@@ -50,8 +57,8 @@ pub(super) fn derive_from_request(target: TokenStream) -> syn::Result<TokenStrea
                     }
                 }
             });
-        quote![ Self(#( #fields ),*) ]
-    };
+            quote![ Self(#( #fields ),*) ]
+        };
 
     Ok(quote! {
         impl<#generics_params_l> ::ohkami::FromRequest<#impl_lifetime> for #name<#generics_params_r>

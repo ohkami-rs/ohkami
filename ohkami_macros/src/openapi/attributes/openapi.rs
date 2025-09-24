@@ -1,4 +1,4 @@
-use syn::{token, Ident, LitStr};
+use syn::{Ident, LitStr, token};
 
 #[derive(Default)]
 pub(crate) struct ContainerAttributes {
@@ -6,7 +6,7 @@ pub(crate) struct ContainerAttributes {
 }
 #[derive(Default)]
 pub(crate) struct ComponentConfig {
-    pub(crate) yes:  bool,
+    pub(crate) yes: bool,
     pub(crate) name: Option<String>,
 }
 impl syn::parse::Parse for ContainerAttributes {
@@ -20,11 +20,18 @@ impl syn::parse::Parse for ContainerAttributes {
                         let _ = input.parse::<token::Eq>()?;
                         this.component.name = Some(input.parse::<LitStr>()?.value());
                     }
-                },
-                other => return Err(syn::Error::new(i.span(), format!("\
+                }
+                other => {
+                    return Err(syn::Error::new(
+                        i.span(),
+                        format!(
+                            "\
                     Unexpected specifier `{other}` in #[openapi]. Expected one of: \n\
                     - component \n\
-                ")))
+                "
+                        ),
+                    ));
+                }
             }
             if input.peek(token::Comma) {
                 let _ = input.parse::<token::Comma>()?;
@@ -47,11 +54,18 @@ impl syn::parse::Parse for FieldAttributes {
                     let _ = input.parse::<token::Eq>()?;
                     let l = input.parse::<LitStr>()?;
                     this.schema_with = Some(l.value());
-                },
-                other => return Err(syn::Error::new(i.span(), format!("\
+                }
+                other => {
+                    return Err(syn::Error::new(
+                        i.span(),
+                        format!(
+                            "\
                     Unexpected specifier `{other}` in #[openapi]. Expected one of: \n\
                     - schema_with \n\
-                ")))
+                "
+                        ),
+                    ));
+                }
             }
             if input.peek(token::Comma) {
                 let _ = input.parse::<token::Comma>()?;
@@ -74,11 +88,18 @@ impl syn::parse::Parse for VariantAttributes {
                     let _ = input.parse::<token::Eq>()?;
                     let l = input.parse::<LitStr>()?;
                     this.schema_with = Some(l.value());
-                },
-                other => return Err(syn::Error::new(i.span(), format!("\
+                }
+                other => {
+                    return Err(syn::Error::new(
+                        i.span(),
+                        format!(
+                            "\
                     Unexpected specifier `{other}` in #[openapi]. Expected one of: \n\
                     - schema_with \n\
-                ")))
+                "
+                        ),
+                    ));
+                }
             }
             if input.peek(token::Comma) {
                 let _ = input.parse::<token::Comma>()?;

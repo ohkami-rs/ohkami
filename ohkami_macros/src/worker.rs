@@ -1,16 +1,15 @@
-#![cfg(feature="worker")]
+#![cfg(feature = "worker")]
 
-mod wrangler;
-mod meta;
-mod durable;
 mod binding;
+mod durable;
+mod meta;
+mod wrangler;
 
 use crate::util;
 
 use proc_macro2::{Span, TokenStream};
 use quote::quote;
-use syn::{spanned::Spanned, Error, Ident, ItemFn, FnArg, ItemStruct, Fields, LitStr};
-
+use syn::{Error, Fields, FnArg, Ident, ItemFn, ItemStruct, LitStr, spanned::Spanned};
 
 pub fn worker(args: TokenStream, ohkami_fn: TokenStream) -> Result<TokenStream, syn::Error> {
     let worker_meta: meta::WorkerMeta = syn::parse2(args)?;
@@ -20,8 +19,8 @@ pub fn worker(args: TokenStream, ohkami_fn: TokenStream) -> Result<TokenStream, 
         return Err(syn::Error::new(
             ohkami_fn.span(),
             "`#[worker]` doesn't support multiple arguments of the fn, \
-            accepting 0 args or single arg which impls `FromEnv`."
-        ))
+            accepting 0 args or single arg which impls `FromEnv`.",
+        ));
     }
 
     let gen_ohkami = {
@@ -38,30 +37,40 @@ pub fn worker(args: TokenStream, ohkami_fn: TokenStream) -> Result<TokenStream, 
         }
     };
 
-    let openapi_fn = cfg!(feature="openapi").then_some({
-        let title   = worker_meta.title;
+    let openapi_fn = cfg!(feature = "openapi").then_some({
+        let title = worker_meta.title;
         let version = worker_meta.version;
-        let servers = worker_meta.servers.into_iter().map(|meta::Server {
-            url, description, variables
-        }| {
-            let mut def = quote! {
-                ::ohkami::openapi::Server::at(#url)
-            };
-            if let Some(description) = description {
-                def.extend(quote! {
-                    .description(#description)
-                });
-            }
-            if let Some(variables) = variables {
-                for (name, meta::ServerVariable { r#default, r#enum, .. }) in variables {
-                    let candidates = r#enum.unwrap_or_else(Vec::new);
+        let servers = worker_meta.servers.into_iter().map(
+            |meta::Server {
+                 url,
+                 description,
+                 variables,
+             }| {
+                let mut def = quote! {
+                    ::ohkami::openapi::Server::at(#url)
+                };
+                if let Some(description) = description {
                     def.extend(quote! {
-                        .var(#name, #r#default, [ #(#candidates),* ])
+                        .description(#description)
                     });
                 }
-            }
-            def
-        });
+                if let Some(variables) = variables {
+                    for (
+                        name,
+                        meta::ServerVariable {
+                            r#default, r#enum, ..
+                        },
+                    ) in variables
+                    {
+                        let candidates = r#enum.unwrap_or_else(Vec::new);
+                        def.extend(quote! {
+                            .var(#name, #r#default, [ #(#candidates),* ])
+                        });
+                    }
+                }
+                def
+            },
+        );
 
         let dummy_env_def = ohkami_fn.sig.inputs.first().map(|a| {
             let ty = match a {
@@ -110,7 +119,10 @@ pub fn worker(args: TokenStream, ohkami_fn: TokenStream) -> Result<TokenStream, 
     })
 }
 
-pub fn bindings(env_name: TokenStream, bindings_struct: TokenStream) -> Result<TokenStream, syn::Error> {
+pub fn bindings(
+    env_name: TokenStream,
+    bindings_struct: TokenStream,
+) -> Result<TokenStream, syn::Error> {
     use self::binding::Binding;
 
     let bindings: Vec<(Ident, Binding)> = {
@@ -120,43 +132,52 @@ pub fn bindings(env_name: TokenStream, bindings_struct: TokenStream) -> Result<T
         Binding::collect_from_env(env_name)?
     };
 
-    let bindings_struct: ItemStruct = syn::parse2(bindings_struct)?; {
+    let bindings_struct: ItemStruct = syn::parse2(bindings_struct)?;
+    {
         if !bindings_struct.generics.params.is_empty() {
             return Err(Error::new(
                 bindings_struct.generics.params.span(),
-                "`#[bindings]` doesn't support generics"
-            ))
+                "`#[bindings]` doesn't support generics",
+            ));
         }
     }
-    let vis  = &bindings_struct.vis;
+    let vis = &bindings_struct.vis;
     let name = &bindings_struct.ident;
 
     let named_fields = match &bindings_struct.fields {
         Fields::Unit => None,
-        Fields::Named(n) => Some(n.named
-            .iter()
-            .map(|field| (
-                field.ident.as_ref().unwrap(),
-                util::extract_doc_comment(&field.attrs)
-            ))
-            .collect::<Vec<_>>()
+        Fields::Named(n) => Some(
+            n.named
+                .iter()
+                .map(|field| {
+                    (
+                        field.ident.as_ref().unwrap(),
+                        util::extract_doc_comment(&field.attrs),
+                    )
+                })
+                .collect::<Vec<_>>(),
         ),
-        Fields::Unnamed(u) => return Err(Error::new(
-            u.span(),
-            "`#[bindings]` doesn't support unnamed fields"
-        )),
+        Fields::Unnamed(u) => {
+            return Err(Error::new(
+                u.span(),
+                "`#[bindings]` doesn't support unnamed fields",
+            ));
+        }
     };
 
     let declare_struct = match &named_fields {
         Some(n) => {
             let mut var_field_indexes = Vec::with_capacity(n.len());
             for (i, (field_name, _)) in n.iter().enumerate() {
-                let binding_type = bindings.iter()
+                let binding_type = bindings
+                    .iter()
                     .find_map(|(name, b)| (name == *field_name).then_some(b))
-                    .ok_or_else(|| syn::Error::new(
-                        field_name.span(),
-                        format!("No binding named `{field_name}` found")
-                    ))?;
+                    .ok_or_else(|| {
+                        syn::Error::new(
+                            field_name.span(),
+                            format!("No binding named `{field_name}` found"),
+                        )
+                    })?;
                 if matches!(binding_type, Binding::Variable(_)) {
                     var_field_indexes.push(i);
                 }
@@ -164,12 +185,14 @@ pub fn bindings(env_name: TokenStream, bindings_struct: TokenStream) -> Result<T
 
             let mut bindings_struct = bindings_struct.clone();
             for i in var_field_indexes {
-                let Fields::Named(n) = &mut bindings_struct.fields else {unreachable!()};
+                let Fields::Named(n) = &mut bindings_struct.fields else {
+                    unreachable!()
+                };
                 n.named.get_mut(i).unwrap().attrs.push(syn::Attribute {
                     pound_token: Default::default(),
                     style: syn::AttrStyle::Outer,
                     bracket_token: Default::default(),
-                    meta: syn::parse_str("allow(unused)")?
+                    meta: syn::parse_str("allow(unused)")?,
                 });
             }
 
@@ -195,26 +218,24 @@ pub fn bindings(env_name: TokenStream, bindings_struct: TokenStream) -> Result<T
     };
 
     let const_vars = {
-        let consts = bindings.iter()
-            .filter_map(|(name, binding)|
-                match binding {
-                    Binding::Variable(value) => Some((name, value)),
-                    _ => None
-                }
-            )
+        let consts = bindings
+            .iter()
+            .filter_map(|(name, binding)| match binding {
+                Binding::Variable(value) => Some((name, value)),
+                _ => None,
+            })
             .filter_map(|(name, value)| match &named_fields {
                 None => Some((name, value, None)),
-                Some(n) => n.iter().find_map(|(field_name, doc)|
+                Some(n) => n.iter().find_map(|(field_name, doc)| {
                     (name == *field_name).then_some((name, value, doc.as_ref()))
-                )
+                }),
             })
             .map(|(name, value, doc)| {
                 let value = LitStr::new(&value, Span::call_site());
-                let doc = doc.as_ref()
-                    .map(|d| {
-                        let d = LitStr::new(d, Span::call_site());
-                        quote! { #[doc = #d] }
-                    });
+                let doc = doc.as_ref().map(|d| {
+                    let d = LitStr::new(d, Span::call_site());
+                    quote! { #[doc = #d] }
+                });
                 quote! {
                     #doc
                     #vis const #name: &'static str = #value;
@@ -230,14 +251,13 @@ pub fn bindings(env_name: TokenStream, bindings_struct: TokenStream) -> Result<T
     };
 
     let impl_new = {
-        let extract = bindings.iter()
+        let extract = bindings
+            .iter()
             .filter(|(name, _)| match &named_fields {
                 None => true,
-                Some(n) => n.iter().any(|(field_name, _)| name == *field_name)
+                Some(n) => n.iter().any(|(field_name, _)| name == *field_name),
             })
-            .map(|(name, binding)| {
-                binding.tokens_extract_from_env(name)
-            });
+            .map(|(name, binding)| binding.tokens_extract_from_env(name));
 
         quote! {
             impl #name {
@@ -269,10 +289,13 @@ pub fn bindings(env_name: TokenStream, bindings_struct: TokenStream) -> Result<T
     };
 
     let impl_from_env = {
-        let bindings_meta = bindings.iter()
-            .filter(|(name, _)| named_fields.as_ref().is_none_or(
-                |n| n.iter().any(|(field_name, _)| *field_name == name)
-            ))
+        let bindings_meta = bindings
+            .iter()
+            .filter(|(name, _)| {
+                named_fields
+                    .as_ref()
+                    .is_none_or(|n| n.iter().any(|(field_name, _)| *field_name == name))
+            })
             .map(|(name, binding)| {
                 let binding_name = LitStr::new(&name.to_string(), name.span());
                 let binding_type = match binding.binding_type() {
@@ -302,9 +325,7 @@ pub fn bindings(env_name: TokenStream, bindings_struct: TokenStream) -> Result<T
         }
     };
 
-    let impl_send_sync = if
-        bindings.is_empty() || named_fields.is_some_and(|n| n.is_empty())
-    {
+    let impl_send_sync = if bindings.is_empty() || named_fields.is_some_and(|n| n.is_empty()) {
         None
     } else {
         Some(quote! {
@@ -330,7 +351,7 @@ pub fn DurableObject(args: TokenStream, object: TokenStream) -> Result<TokenStre
     let durable_object_type = (!args.is_empty())
         .then(|| syn::parse2::<DurableObjectType>(args))
         .transpose()?;
-    
+
     let object = syn::parse2::<ItemStruct>(object)?;
 
     let methods = match durable_object_type {
@@ -342,17 +363,11 @@ pub fn DurableObject(args: TokenStream, object: TokenStream) -> Result<TokenStre
         ],
 
         // if specified, bindgen only related methods.
-        Some(DurableObjectType::Fetch) => vec![
-            bindgen_methods::core(),
-        ],
-        Some(DurableObjectType::Alarm) => vec![
-            bindgen_methods::core(),
-            bindgen_methods::alarm(),
-        ],
-        Some(DurableObjectType::WebSocket) => vec![
-            bindgen_methods::core(),
-            bindgen_methods::websocket(),
-        ],
+        Some(DurableObjectType::Fetch) => vec![bindgen_methods::core()],
+        Some(DurableObjectType::Alarm) => vec![bindgen_methods::core(), bindgen_methods::alarm()],
+        Some(DurableObjectType::WebSocket) => {
+            vec![bindgen_methods::core(), bindgen_methods::websocket()]
+        }
     };
 
     let name = &object.ident;

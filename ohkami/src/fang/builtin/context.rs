@@ -1,27 +1,27 @@
-use crate::{Request, Response, FromRequest};
 use crate::fang::{FangAction, SendSyncOnThreaded};
+use crate::{FromRequest, Request, Response};
 
 /// # Request Context
-/// 
+///
 /// Memorize and retrieve any data within a request.
-/// 
+///
 /// <br>
-/// 
+///
 /// ```no_run
 /// use ohkami::prelude::*;
 /// use std::sync::Arc;
-/// 
+///
 /// #[tokio::main]
 /// async fn main() {
 ///     let sample_data = Arc::new(String::from("ohkami"));
-/// 
+///
 ///     Ohkami::new((
 ///         Context::new(sample_data), // <--
 ///         "/hello"
 ///             .GET(hello),
 ///     )).howl("0.0.0.0:8080").await
 /// }
-/// 
+///
 /// async fn hello(
 ///     Context(name): Context<'_, Arc<String>>, // <--
 /// ) -> String {
@@ -33,7 +33,7 @@ pub struct Context<'req, T: SendSyncOnThreaded + 'static>(pub &'req T);
 
 impl<T: SendSyncOnThreaded + 'static> Context<'static, T>
 where
-    T: Clone
+    T: Clone,
 {
     pub fn new(data: T) -> impl FangAction {
         return ContextAction(data);
@@ -59,11 +59,9 @@ impl<'req, T: SendSyncOnThreaded + 'static> FromRequest<'req> for Context<'req, 
         match req.context.get::<T>() {
             Some(d) => Some(Ok(Self(d))),
             None => {
-                #[cfg(debug_assertions)] {
-                    crate::WARNING!(
-                        "Context of `{}` doesn't exist",
-                        std::any::type_name::<T>()
-                    )
+                #[cfg(debug_assertions)]
+                {
+                    crate::WARNING!("Context of `{}` doesn't exist", std::any::type_name::<T>())
                 }
                 None
             }
@@ -71,12 +69,11 @@ impl<'req, T: SendSyncOnThreaded + 'static> FromRequest<'req> for Context<'req, 
     }
 }
 
-
 #[cfg(test)]
 mod test {
     #[test]
     fn context_fang_bount() {
-        use crate::fang::{Fang, BoxedFPC};
+        use crate::fang::{BoxedFPC, Fang};
         fn assert_fang<T: Fang<BoxedFPC>>(_: T) {}
 
         assert_fang(super::Context::new(String::new()));

@@ -1,11 +1,11 @@
-use crate::{Request, FromRequest};
+use crate::{FromRequest, Request};
 
-#[cfg(not(feature="openapi"))]
+#[cfg(not(feature = "openapi"))]
 mod bound {
     pub trait FromHeaderBound: Sized {}
     impl<T: Sized> FromHeaderBound for T {}
 }
-#[cfg(feature="openapi")]
+#[cfg(feature = "openapi")]
 mod bound {
     pub trait FromHeaderBound: Sized + crate::openapi::Schema {}
     impl<T: Sized + crate::openapi::Schema> FromHeaderBound for T {}
@@ -40,17 +40,17 @@ macro_rules! typed_header {
         /// Extract the request header value as an type implementing
         /// [`FromHeader<'_>`](crate::typed::header::FromHeader) trait
         /// ( By default, `&str` and `String` implement it ) .
-        /// 
+        ///
         /// ## Note
-        /// 
+        ///
         /// ## Example
-        /// 
+        ///
         /// here extracting `Authorization` header value as `&str`.
-        /// 
+        ///
         /// ```no_run
         /// use ohkami::{Ohkami, Route};
         /// use ohkami::claw::header;
-        /// 
+        ///
         /// async fn private_handler(
         ///     header::Authorization(a): header::Authorization<&str>,
         ///     r: Option<header::Referer<&str>>,
@@ -60,7 +60,7 @@ macro_rules! typed_header {
         ///        .expect("expected `Bearer <token>`");
         ///     format!("got Authorization: `{token}`")
         /// }
-        /// 
+        ///
         /// #[tokio::main]
         /// async fn main() {
         ///     Ohkami::new((
@@ -147,25 +147,25 @@ typed_header! {
 }
 
 /// Extract `Cookie` header value and parse to a type implementing `Deserialize<'_>`.
-/// 
+///
 /// ## Note
-/// 
+///
 /// When `openapi` feature activated, the type is also required to impl `openapi::Schema`.
-/// 
+///
 /// ## Example
-/// 
+///
 /// ```no_run
 /// use ohkami::prelude::*;
 /// use ohkami::claw::header;
-/// 
+///
 /// #[derive(Deserialize)]
 /// struct CookieSchema<'req> {
 ///     session_id: &'req str,
 ///     metadata: Option<&'req str>,
 /// }
-/// 
+///
 /// /// expecting request headers contains something like:
-/// /// 
+/// ///
 /// /// - `Cookie: session_id=ABCDEFG`
 /// /// - `Cookie: metadata="Hello, 世界!"; session_id=XYZ123`
 /// async fn private_handler(
@@ -174,7 +174,7 @@ typed_header! {
 ///     println!("session_id: `{}`", c.session_id);
 ///     println!("metadata: `{:?}`", c.metadata);
 /// }
-/// 
+///
 /// #[tokio::main]
 /// async fn main() {
 ///     Ohkami::new((
@@ -188,34 +188,39 @@ impl<'req, Fields: super::bound::Incoming<'req>> FromRequest<'req> for Cookie<Fi
     type Error = crate::claw::status::Unauthorized<&'static str>;
 
     fn from_request(req: &'req Request) -> Option<Result<Self, Self::Error>> {
-        req.headers.cookie()
-            .map(|raw| ohkami_lib::serde_cookie::from_str::<Fields>(raw)
-            .map(Cookie)
-            .map_err(|_e| {
-                #[cfg(debug_assertions)] {
-                    crate::WARNING!(
-                        "{_e:?}: failed to parse Cookie header as `{}`: `{raw}`",
-                        std::any::type_name::<Fields>()
-                    );
-                }
-                crate::claw::status::Unauthorized("missing or invalid Cookie")
-            })
-        )
+        req.headers.cookie().map(|raw| {
+            ohkami_lib::serde_cookie::from_str::<Fields>(raw)
+                .map(Cookie)
+                .map_err(|_e| {
+                    #[cfg(debug_assertions)]
+                    {
+                        crate::WARNING!(
+                            "{_e:?}: failed to parse Cookie header as `{}`: `{raw}`",
+                            std::any::type_name::<Fields>()
+                        );
+                    }
+                    crate::claw::status::Unauthorized("missing or invalid Cookie")
+                })
+        })
     }
 
-    #[cfg(feature="openapi")]
+    #[cfg(feature = "openapi")]
     fn openapi_inbound() -> crate::openapi::Inbound {
         let Some(schema) = Fields::schema().into().into_inline() else {
-            return crate::openapi::Inbound::None
+            return crate::openapi::Inbound::None;
         };
         crate::openapi::Inbound::Params(
-            schema.into_properties().into_iter().map(|(name, schema, required)|
-                if required {
-                    crate::openapi::Parameter::in_cookie(name, schema)
-                } else {
-                    crate::openapi::Parameter::in_cookie_optional(name, schema)
-                }
-            ).collect()
+            schema
+                .into_properties()
+                .into_iter()
+                .map(|(name, schema, required)| {
+                    if required {
+                        crate::openapi::Parameter::in_cookie(name, schema)
+                    } else {
+                        crate::openapi::Parameter::in_cookie_optional(name, schema)
+                    }
+                })
+                .collect(),
         )
     }
 }

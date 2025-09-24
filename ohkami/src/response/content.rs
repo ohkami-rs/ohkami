@@ -1,23 +1,22 @@
 use ohkami_lib::CowSlice;
 
-#[cfg(feature="sse")]
+#[cfg(feature = "sse")]
 use ohkami_lib::Stream;
 
 #[cfg(not(feature="rt_lambda"/* currently */))]
-#[cfg(all(feature="ws", feature="__rt__"))]
+#[cfg(all(feature = "ws", feature = "__rt__"))]
 use crate::ws::Session;
-
 
 pub enum Content {
     None,
 
     Payload(CowSlice),
 
-    #[cfg(feature="sse")]
+    #[cfg(feature = "sse")]
     Stream(std::pin::Pin<Box<dyn Stream<Item = String> + Send>>),
 
     #[cfg(not(feature="rt_lambda"/* currently */))]
-    #[cfg(all(feature="ws", feature="__rt__"))]
+    #[cfg(all(feature = "ws", feature = "__rt__"))]
     WebSocket(Session),
 }
 const _: () = {
@@ -34,7 +33,7 @@ const _: () = {
 
                 (Content::Payload(p1), Content::Payload(p2)) => p1 == p2,
 
-                _ => false
+                _ => false,
             }
         }
     }
@@ -42,16 +41,16 @@ const _: () = {
     impl std::fmt::Debug for Content {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             match self {
-                Self::None           => f.write_str("None"),
+                Self::None => f.write_str("None"),
 
                 Self::Payload(bytes) => f.write_str(&bytes.escape_ascii().to_string()),
 
-                #[cfg(feature="sse")]
-                Self::Stream(_)      => f.write_str("{stream}"),
+                #[cfg(feature = "sse")]
+                Self::Stream(_) => f.write_str("{stream}"),
 
                 #[cfg(not(feature="rt_lambda"/* currently */))]
-                #[cfg(all(feature="ws", feature="__rt__"))]
-                Self::WebSocket(_)   => f.write_str("{websocket}"),
+                #[cfg(all(feature = "ws", feature = "__rt__"))]
+                Self::WebSocket(_) => f.write_str("{websocket}"),
             }
         }
     }
@@ -71,34 +70,34 @@ impl Content {
     pub fn as_bytes(&self) -> Option<&[u8]> {
         match self {
             Self::Payload(bytes) => Some(&bytes),
-            _ => None
+            _ => None,
         }
     }
     pub fn into_bytes(self) -> Option<std::borrow::Cow<'static, [u8]>> {
         match self {
-            Self::Payload(bytes) => Some(unsafe {bytes.into_cow_static_bytes_uncheked()}),
-            _ => None
+            Self::Payload(bytes) => Some(unsafe { bytes.into_cow_static_bytes_uncheked() }),
+            _ => None,
         }
     }
 }
 
-#[cfg(feature="rt_worker")]
+#[cfg(feature = "rt_worker")]
 impl Content {
     pub(crate) fn into_worker_response(self) -> ::worker::Response {
         match self {
-            Self::None           => ::worker::Response::empty(),
+            Self::None => ::worker::Response::empty(),
 
             Self::Payload(bytes) => ::worker::Response::from_bytes(bytes.into()),
 
-            #[cfg(feature="sse")]
+            #[cfg(feature = "sse")]
             Self::Stream(stream) => ::worker::Response::from_stream({
                 use {ohkami_lib::StreamExt, std::convert::Infallible};
                 stream.map(Result::<_, Infallible>::Ok)
             }),
 
-            #[cfg(feature="ws")]
-            Self::WebSocket(ws)  => ::worker::Response::from_websocket(ws),
-            
-        }.expect("failed to convert Ohkami Response to Workers one")
+            #[cfg(feature = "ws")]
+            Self::WebSocket(ws) => ::worker::Response::from_websocket(ws),
+        }
+        .expect("failed to convert Ohkami Response to Workers one")
     }
 }

@@ -1,44 +1,44 @@
 use super::{FromContent, IntoContent};
 use std::borrow::Cow;
 
-#[cfg(feature="openapi")]
+#[cfg(feature = "openapi")]
 use crate::openapi;
 
 /// # plain text format
-/// 
+///
 /// ## Request
-/// 
+///
 /// - content type: `text/html; charset=UTF-8`
 /// - schema bound: `From<&'_ str>`
-/// 
+///
 /// ### example
-/// 
+///
 /// ```
 /// use ohkami::claw::content::Text;
-/// 
+///
 /// async fn accept_text(
 ///     Text(text): Text<&str>,
 /// ) {
 ///     println!("got plain text request: {text}");
 /// }
 /// ```
-/// 
+///
 /// ## Response
-/// 
+///
 /// - content type: `text/html; charset=UTF-8`
 /// - schema bound: `Into<Cow<'static, str>>`
-/// 
+///
 /// ### note
-/// 
+///
 /// For `&'static str`, `String` and `Cow<'static, str>`, this is
 /// useless because they can be directly available as plain text
 /// response.
-/// 
+///
 /// ### example
-/// 
+///
 /// ```
 /// use ohkami::claw::content::Text;
-/// 
+///
 /// async fn handler() -> Text<&'static str> {
 ///     Text(r#"
 ///         <html>
@@ -61,7 +61,7 @@ impl<'req, T: From<&'req str>> FromContent<'req> for Text<T> {
         std::str::from_utf8(body).map(|s| Text(s.into()))
     }
 
-    #[cfg(feature="openapi")]
+    #[cfg(feature = "openapi")]
     fn openapi_requestbody() -> impl Into<openapi::schema::SchemaRef> {
         openapi::string()
     }
@@ -77,7 +77,7 @@ impl<T: Into<Cow<'static, str>>> IntoContent for Text<T> {
         })
     }
 
-    #[cfg(feature="openapi")]
+    #[cfg(feature = "openapi")]
     fn openapi_responsebody() -> impl Into<openapi::schema::SchemaRef> {
         openapi::string()
     }

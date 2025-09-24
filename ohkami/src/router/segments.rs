@@ -2,23 +2,32 @@ use std::{borrow::Cow, collections::VecDeque};
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub(crate) struct RouteSegments {
-    literal:  Cow<'static, str>,
+    literal: Cow<'static, str>,
     segments: VecDeque<RouteSegment>,
 }
 impl RouteSegments {
     pub(crate) fn from_literal(literal: impl Into<Cow<'static, str>>) -> Self {
         let literal: Cow<'static, str> = literal.into();
 
-        if literal.is_empty() {panic!("found an empty route")}
-
-        if literal == "/" {
-            return Self { literal, segments: VecDeque::new() }
+        if literal.is_empty() {
+            panic!("found an empty route")
         }
 
-        if !literal.starts_with('/') {panic!("routes must start with '/': `{literal}`")}
-        if literal.ends_with('/') {panic!("routes must not ends with '/' except for \"/\": `{literal}`")}
+        if literal == "/" {
+            return Self {
+                literal,
+                segments: VecDeque::new(),
+            };
+        }
 
-        let mut segments   = VecDeque::new();
+        if !literal.starts_with('/') {
+            panic!("routes must start with '/': `{literal}`")
+        }
+        if literal.ends_with('/') {
+            panic!("routes must not ends with '/' except for \"/\": `{literal}`")
+        }
+
+        let mut segments = VecDeque::new();
         let mut prev_slash = 0;
         for slash in literal
             .char_indices()
@@ -26,10 +35,13 @@ impl RouteSegments {
             .skip(1)
             .chain(Some(literal.len()))
         {
-            segments.push_back(RouteSegment::new(match &literal {
-                Cow::Borrowed(s) => Cow::Borrowed(&s[prev_slash..slash]),
-                Cow::Owned(s) => Cow::Owned((&s[prev_slash..slash]).to_owned())
-            }).expect(&format!("invalid route `{literal}`")));
+            segments.push_back(
+                RouteSegment::new(match &literal {
+                    Cow::Borrowed(s) => Cow::Borrowed(&s[prev_slash..slash]),
+                    Cow::Owned(s) => Cow::Owned((&s[prev_slash..slash]).to_owned()),
+                })
+                .expect(&format!("invalid route `{literal}`")),
+            );
 
             prev_slash = slash;
         }
@@ -42,7 +54,8 @@ impl RouteSegments {
     }
 
     pub(crate) fn n_pathparams(&self) -> usize {
-        self.segments.iter()
+        self.segments
+            .iter()
             .filter(|s| matches!(s, RouteSegment::Param(_)))
             .count()
     }
@@ -78,21 +91,27 @@ impl std::fmt::Display for RouteSegments {
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub(crate) enum RouteSegment {
     Static(Cow<'static, str>),
-    Param (Cow<'static, str>),
+    Param(Cow<'static, str>),
 }
 impl RouteSegment {
     pub(crate) fn new(segment: Cow<'static, str>) -> Result<Self, String> {
-        fn validate_segment_name(mut name: impl DoubleEndedIterator<Item = char>) -> Result<(), String> {
-            name.all(|c| matches!(
-                c,
-                'a'..='z' | 'A'..='Z' | '0'..='9' | '-' | '.' | '_' | '~'
-            )).then_some(()).ok_or_else(|| format!(
-                "path can only contain: [a-zA-Z0-9-\\._~]"
-            ))
+        fn validate_segment_name(
+            mut name: impl DoubleEndedIterator<Item = char>,
+        ) -> Result<(), String> {
+            name.all(|c| {
+                matches!(
+                    c,
+                    'a'..='z' | 'A'..='Z' | '0'..='9' | '-' | '.' | '_' | '~'
+                )
+            })
+            .then_some(())
+            .ok_or_else(|| format!("path can only contain: [a-zA-Z0-9-\\._~]"))
         }
 
-        let mut segment_chars = segment.starts_with('/')
-            .then_some(&segment[1..]).ok_or_else(|| "path segment must start with '/'")?
+        let mut segment_chars = segment
+            .starts_with('/')
+            .then_some(&segment[1..])
+            .ok_or_else(|| "path segment must start with '/'")?
             .chars()
             .peekable();
         match segment_chars.peek() {
@@ -101,7 +120,7 @@ impl RouteSegment {
                 let _/* colon */ = segment_chars.next();
                 let _/* validation */ = validate_segment_name(segment_chars)?;
                 Ok(Self::Param(segment))
-            },
+            }
             _ => {
                 let _/* validation */ = validate_segment_name(segment_chars)?;
                 Ok(Self::Static(segment))
@@ -112,15 +131,13 @@ impl RouteSegment {
 impl std::fmt::Debug for RouteSegment {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Param (name) => f.write_str(name),
-            Self::Static(s)    => f.write_str(s),
+            Self::Param(name) => f.write_str(name),
+            Self::Static(s) => f.write_str(s),
         }
     }
 }
 
-pub(crate) struct RouteSegmentsIterator(
-    std::collections::vec_deque::IntoIter<RouteSegment>
-);
+pub(crate) struct RouteSegmentsIterator(std::collections::vec_deque::IntoIter<RouteSegment>);
 impl Iterator for RouteSegmentsIterator {
     type Item = RouteSegment;
     fn next(&mut self) -> Option<Self::Item> {

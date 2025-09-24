@@ -1,11 +1,11 @@
-#![cfg(all(test, feature="__rt_native__", feature="DEBUG"))]
+#![cfg(all(test, feature = "__rt_native__", feature = "DEBUG"))]
 
 #[allow(unused)]
-use super::{Request, Method, Path, QueryParams, Context};
+use super::{Context, Method, Path, QueryParams, Request};
 
 use super::{RequestHeader, RequestHeaders};
+use ohkami_lib::{CowSlice, Slice};
 use std::pin::Pin;
-use ohkami_lib::{Slice, CowSlice};
 
 #[test]
 fn parse_path() {
@@ -28,25 +28,25 @@ macro_rules! assert_parse {
 
         let mut actual = Request::uninit(crate::util::IP_0000);
         let mut actual = Pin::new(&mut actual);
-        
-        let result = crate::__rt__::testing::block_on({
-            actual.as_mut().read(&mut case)
-        });
+
+        let result = crate::__rt__::testing::block_on({ actual.as_mut().read(&mut case) });
 
         assert_eq!(result, Ok(Some(())));
-        
+
         let expected = $expected;
 
         println!("<assert_parse>");
 
-        let __panic_message = format!("\n\
+        let __panic_message = format!(
+            "\n\
             =====  actual  =====\n\
             {actual:#?}\n\
             \n\
             ===== expected =====\n\
             {expected:#?}\n\
             \n\
-        ");
+        "
+        );
 
         if actual.get_mut() != &expected {
             panic!("{__panic_message}")
@@ -62,7 +62,8 @@ fn metadataize(input: &str) -> Box<[u8]> {
     buf.into_boxed_slice()
 }
 
-#[test] fn test_parse_request() {
+#[test]
+fn test_parse_request() {
     const CASE_1: &str = "\
         GET /hello.html HTTP/1.1\r\n\
         User-Agent: Mozilla/4.0\r\n\
@@ -73,23 +74,28 @@ fn metadataize(input: &str) -> Box<[u8]> {
         \r\n\
     ";
     const _CASE_1_LEN: usize = CASE_1.len();
-    assert_parse!(CASE_1, Request {
-        __buf__: metadataize(CASE_1),
-        method:  Method::GET,
-        path:    Path::from_literal("/hello.html"),
-        query:   QueryParams::new(b""),
-        headers: RequestHeaders::from_iters([
-            (RequestHeader::Host,           "www.tutorialspoint.com"),
-            (RequestHeader::UserAgent,      "Mozilla/4.0"),
-            (RequestHeader::Connection,     "Keep-Alive"),
-            (RequestHeader::AcceptLanguage, "en-us"),
-            (RequestHeader::AcceptEncoding, "gzip, deflate"),
-        ], None),
-        payload: None,
-        context: Context::init(),
-        ip:      crate::util::IP_0000
-    });
-
+    assert_parse!(
+        CASE_1,
+        Request {
+            __buf__: metadataize(CASE_1),
+            method: Method::GET,
+            path: Path::from_literal("/hello.html"),
+            query: QueryParams::new(b""),
+            headers: RequestHeaders::from_iters(
+                [
+                    (RequestHeader::Host, "www.tutorialspoint.com"),
+                    (RequestHeader::UserAgent, "Mozilla/4.0"),
+                    (RequestHeader::Connection, "Keep-Alive"),
+                    (RequestHeader::AcceptLanguage, "en-us"),
+                    (RequestHeader::AcceptEncoding, "gzip, deflate"),
+                ],
+                None
+            ),
+            payload: None,
+            context: Context::init(),
+            ip: crate::util::IP_0000
+        }
+    );
 
     const CASE_2: &str = "\
         POST /signup HTTP/1.1\r\n\
@@ -102,24 +108,30 @@ fn metadataize(input: &str) -> Box<[u8]> {
         {\"name\":\"kanarus\",\"age\":20}\
     ";
     const _CASE_2_LEN: usize = CASE_2.len();
-    assert_parse!(CASE_2, Request {
-        __buf__: metadataize(CASE_2),
-        method:  Method::POST,
-        path:    Path::from_literal("/signup"),
-        query:   QueryParams::new(b""),
-        headers: RequestHeaders::from_iters([
-            (RequestHeader::Host,           "www.tutorialspoint.com"),
-            (RequestHeader::UserAgent,      "Mozilla/4.0"),
-            (RequestHeader::AcceptLanguage, "en-us"),
-            (RequestHeader::ContentLength,  "27"),
-            (RequestHeader::ContentType,    "application/json"),
-        ], None),
-        payload: Some(CowSlice::Ref(Slice::from_bytes(
-            br#"{"name":"kanarus","age":20}"#
-        ))),
-        context: Context::init(),
-        ip:      crate::util::IP_0000
-    });
+    assert_parse!(
+        CASE_2,
+        Request {
+            __buf__: metadataize(CASE_2),
+            method: Method::POST,
+            path: Path::from_literal("/signup"),
+            query: QueryParams::new(b""),
+            headers: RequestHeaders::from_iters(
+                [
+                    (RequestHeader::Host, "www.tutorialspoint.com"),
+                    (RequestHeader::UserAgent, "Mozilla/4.0"),
+                    (RequestHeader::AcceptLanguage, "en-us"),
+                    (RequestHeader::ContentLength, "27"),
+                    (RequestHeader::ContentType, "application/json"),
+                ],
+                None
+            ),
+            payload: Some(CowSlice::Ref(Slice::from_bytes(
+                br#"{"name":"kanarus","age":20}"#
+            ))),
+            context: Context::init(),
+            ip: crate::util::IP_0000
+        }
+    );
 
     {
         const CASE_3: &str = "\
@@ -138,33 +150,42 @@ fn metadataize(input: &str) -> Box<[u8]> {
             first_name=John&last_name=Doe&action=Submit\
         ";
         const _CASE_3_LEN: usize = CASE_3.len();
-        assert_parse!(CASE_3, Request {
-            __buf__: metadataize(CASE_3),
-            method:  Method::POST,
-            path:    Path::from_literal("/foo.php"),
-            query:   QueryParams::from([
-                ("query", "1"),
-                ("q2",    "xxx"),
-            ]),
-            headers: RequestHeaders::from_iters(
-                [
-                    (RequestHeader::Host,           "localhost"),
-                    (RequestHeader::UserAgent,      "Mozilla/5.0 (Windows; U; Windows NT 6.1; en-US; rv:1.9.1.5) Gecko/20091102 Firefox/3.5.5 (.NET CLR 3.5.30729)"),
-                    (RequestHeader::Accept,         "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"),
-                    (RequestHeader::AcceptLanguage, "en-us,en;q=0.5"),
-                    (RequestHeader::AcceptEncoding, "gzip,deflate"),
-                    (RequestHeader::Connection,     "keep-alive"),
-                    (RequestHeader::Referer,        "http://localhost/test.php"),
-                    (RequestHeader::ContentType,    "application/x-www-form-urlencoded"),
-                    (RequestHeader::ContentLength,  "43"),
-                ],
-                [
-                    ("X-Request-Id", "300"),
-                ]
-            ),
-            payload: Some(CowSlice::Own(Vec::from("first_name=John&last_name=Doe&action=Submit").into())),
-            context: Context::init(),
-            ip:      crate::util::IP_0000
-        });
+        assert_parse!(
+            CASE_3,
+            Request {
+                __buf__: metadataize(CASE_3),
+                method: Method::POST,
+                path: Path::from_literal("/foo.php"),
+                query: QueryParams::from([("query", "1"), ("q2", "xxx"),]),
+                headers: RequestHeaders::from_iters(
+                    [
+                        (RequestHeader::Host, "localhost"),
+                        (
+                            RequestHeader::UserAgent,
+                            "Mozilla/5.0 (Windows; U; Windows NT 6.1; en-US; rv:1.9.1.5) Gecko/20091102 Firefox/3.5.5 (.NET CLR 3.5.30729)"
+                        ),
+                        (
+                            RequestHeader::Accept,
+                            "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+                        ),
+                        (RequestHeader::AcceptLanguage, "en-us,en;q=0.5"),
+                        (RequestHeader::AcceptEncoding, "gzip,deflate"),
+                        (RequestHeader::Connection, "keep-alive"),
+                        (RequestHeader::Referer, "http://localhost/test.php"),
+                        (
+                            RequestHeader::ContentType,
+                            "application/x-www-form-urlencoded"
+                        ),
+                        (RequestHeader::ContentLength, "43"),
+                    ],
+                    [("X-Request-Id", "300"),]
+                ),
+                payload: Some(CowSlice::Own(
+                    Vec::from("first_name=John&last_name=Doe&action=Submit").into()
+                )),
+                context: Context::init(),
+                ip: crate::util::IP_0000
+            }
+        );
     }
 }

@@ -1,6 +1,5 @@
 use std::{borrow::Cow, ptr::NonNull};
 
-
 /// A byte slice with **MANUALLY HANDLE** the *lifetime*
 #[derive(Clone)]
 pub struct Slice {
@@ -9,21 +8,24 @@ pub struct Slice {
 }
 impl Slice {
     /// SAFETY: `head` is non-null pointer
-    #[inline(always)] pub unsafe fn new_unchecked(head: *const u8, size: usize) -> Self {
+    #[inline(always)]
+    pub unsafe fn new_unchecked(head: *const u8, size: usize) -> Self {
         Self {
-            head: unsafe {NonNull::new_unchecked(head as _)},
+            head: unsafe { NonNull::new_unchecked(head as _) },
             size,
         }
     }
-    #[inline(always)] pub const fn from_bytes(bytes: &[u8]) -> Self {
+    #[inline(always)]
+    pub const fn from_bytes(bytes: &[u8]) -> Self {
         Self {
-            head: unsafe {NonNull::new_unchecked(bytes.as_ptr() as _)},
+            head: unsafe { NonNull::new_unchecked(bytes.as_ptr() as _) },
             size: bytes.len(),
         }
     }
-    
-    #[inline(always)] pub const unsafe fn as_bytes<'b>(&self) -> &'b [u8] {
-        unsafe {std::slice::from_raw_parts(self.head.as_ptr(), self.size)}
+
+    #[inline(always)]
+    pub const unsafe fn as_bytes<'b>(&self) -> &'b [u8] {
+        unsafe { std::slice::from_raw_parts(self.head.as_ptr(), self.size) }
     }
 }
 const _: () = {
@@ -33,7 +35,7 @@ const _: () = {
     impl PartialEq for Slice {
         #[inline]
         fn eq(&self, other: &Self) -> bool {
-            unsafe {self.as_bytes() == other.as_bytes()}
+            unsafe { self.as_bytes() == other.as_bytes() }
         }
     }
     impl Eq for Slice {}
@@ -41,24 +43,23 @@ const _: () = {
     impl PartialOrd for Slice {
         #[inline]
         fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-            unsafe {PartialOrd::partial_cmp(self.as_bytes(), other.as_bytes())}
+            unsafe { PartialOrd::partial_cmp(self.as_bytes(), other.as_bytes()) }
         }
     }
     impl Ord for Slice {
         #[inline]
         fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-            unsafe {Ord::cmp(self.as_bytes(), other.as_bytes())}
+            unsafe { Ord::cmp(self.as_bytes(), other.as_bytes()) }
         }
     }
 
     impl std::hash::Hash for Slice {
         #[inline]
         fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-            std::hash::Hash::hash(unsafe {self.as_bytes()}, state)
+            std::hash::Hash::hash(unsafe { self.as_bytes() }, state)
         }
     }
 };
-
 
 #[derive(Clone)]
 pub enum CowSlice {
@@ -70,7 +71,7 @@ impl CowSlice {
     pub unsafe fn as_bytes(&self) -> &[u8] {
         match self {
             Self::Own(array) => &array,
-            Self::Ref(slice) => unsafe {slice.as_bytes()},
+            Self::Ref(slice) => unsafe { slice.as_bytes() },
         }
     }
 
@@ -78,7 +79,7 @@ impl CowSlice {
     pub unsafe fn extend_from_slice(&mut self, bytes: &[u8]) {
         match self {
             Self::Own(array) => {
-                let current = std::mem::take(array);                
+                let current = std::mem::take(array);
                 let mut appended = {
                     let mut current = current.into_vec();
                     current.extend_from_slice(bytes);
@@ -87,7 +88,7 @@ impl CowSlice {
                 std::mem::swap(&mut appended, array)
             }
             Self::Ref(slice) => {
-                let mut vec: Vec<_> = unsafe {slice.as_bytes()}.into();
+                let mut vec: Vec<_> = unsafe { slice.as_bytes() }.into();
                 vec.extend_from_slice(bytes);
                 *self = Self::Own(vec.into_boxed_slice());
             }
@@ -98,7 +99,7 @@ impl CowSlice {
     pub unsafe fn into_cow_static_bytes_uncheked(self) -> Cow<'static, [u8]> {
         match self {
             Self::Own(array) => Cow::Owned(array.into()),
-            Self::Ref(slice) => Cow::Borrowed(unsafe {slice.as_bytes()}),
+            Self::Ref(slice) => Cow::Borrowed(unsafe { slice.as_bytes() }),
         }
     }
 }
@@ -108,7 +109,7 @@ const _: () = {
         fn as_ref(&self) -> &[u8] {
             match self {
                 Self::Own(array) => array,
-                Self::Ref(slice) => unsafe {slice.as_bytes()},
+                Self::Ref(slice) => unsafe { slice.as_bytes() },
             }
         }
     }
@@ -124,7 +125,7 @@ const _: () = {
         #[inline]
         fn from(cow: Cow<'static, str>) -> Self {
             match cow {
-                Cow::Borrowed(s)   => Self::Ref(Slice::from_bytes(s.as_bytes())),
+                Cow::Borrowed(s) => Self::Ref(Slice::from_bytes(s.as_bytes())),
                 Cow::Owned(string) => Self::Own(string.into_bytes().into_boxed_slice()),
             }
         }
@@ -134,7 +135,7 @@ const _: () = {
         fn from(cow: Cow<'static, [u8]>) -> Self {
             match cow {
                 Cow::Borrowed(s) => Self::Ref(Slice::from_bytes(s)),
-                Cow::Owned(vec)  => Self::Own(vec.into_boxed_slice()),
+                Cow::Owned(vec) => Self::Own(vec.into_boxed_slice()),
             }
         }
     }
@@ -149,7 +150,7 @@ const _: () = {
         fn into(self) -> Vec<u8> {
             match self {
                 Self::Own(array) => array.into(),
-                Self::Ref(slice) => Vec::from(unsafe {slice.as_bytes()}),
+                Self::Ref(slice) => Vec::from(unsafe { slice.as_bytes() }),
             }
         }
     }
@@ -163,7 +164,7 @@ const _: () = {
     impl PartialEq for CowSlice {
         #[inline]
         fn eq(&self, other: &Self) -> bool {
-            unsafe {self.as_bytes() == other.as_bytes()}
+            unsafe { self.as_bytes() == other.as_bytes() }
         }
     }
     impl Eq for CowSlice {}
@@ -172,7 +173,7 @@ const _: () = {
     impl Hash for CowSlice {
         #[inline]
         fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-            unsafe {self.as_bytes()}.hash(state)
+            unsafe { self.as_bytes() }.hash(state)
         }
     }
 };

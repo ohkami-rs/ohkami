@@ -1,8 +1,8 @@
 use super::content::IntoContent;
+use crate::response::{Content, ResponseHeaders, SetHeaders};
 use crate::{IntoResponse, Response, Status};
-use crate::response::{ResponseHeaders, SetHeaders, Content};
 
-#[cfg(feature="openapi")]
+#[cfg(feature = "openapi")]
 use crate::openapi;
 
 macro_rules! generate_statuses_as_types_containing_value {
@@ -11,9 +11,9 @@ macro_rules! generate_statuses_as_types_containing_value {
             /// Generate`
             #[doc = $message]
             /// ` response type with the `content: C`.
-            /// 
+            ///
             /// Use `()` to represent an empty content.
-            /// 
+            ///
             /// This is an alias of `typed::{TheStatus}::new(content)`.
             #[allow(non_snake_case)]
             pub fn $status<C: IntoContent>(content: C) -> $status<C> {
@@ -60,7 +60,7 @@ macro_rules! generate_statuses_as_types_containing_value {
                     headers.set()
                         .content_type(C::CONTENT_TYPE)
                         .content_length(ohkami_lib::num::itoa(content.len()));
-                    
+
                     Response {
                         status: Status::$status,
                         headers,
@@ -83,7 +83,8 @@ macro_rules! generate_statuses_as_types_containing_value {
             }
         )*
     };
-} generate_statuses_as_types_containing_value! {
+}
+generate_statuses_as_types_containing_value! {
     OK                            : "200 OK",
     Created                       : "201 Created",
     NonAuthoritativeInformation   : "203 Non-Authoritative Information",
@@ -159,7 +160,8 @@ macro_rules! generate_statuses_as_types_with_no_value {
             }
         )*
     };
-} generate_statuses_as_types_with_no_value! {
+}
+generate_statuses_as_types_with_no_value! {
     Continue           : "100 Continue",
     SwitchingProtocols : "101 Switching Protocols",
     Processing         : "102 Processing",
@@ -217,7 +219,8 @@ macro_rules! generate_redirects {
             }
         )*
     };
-} generate_redirects! {
+}
+generate_redirects! {
     MovedPermanently / to  : "301 Moved Permanently",
     Found / at             : "302 Found",
     SeeOther / at          : "303 See Other",
@@ -233,50 +236,32 @@ mod test {
     #[test]
     fn typed_success_status() {
         assert_eq!(
-            Created("Hello, world!")
-                .into_response(),
-            Response::Created()
-                .with_text("Hello, world!")
+            Created("Hello, world!").into_response(),
+            Response::Created().with_text("Hello, world!")
         );
 
         assert_eq!(
             Created("Hello, world!")
-                .with_headers(|h| h
-                    .server("ohkami")
-                    .vary("origin")
-                )
+                .with_headers(|h| h.server("ohkami").vary("origin"))
                 .into_response(),
             Response::Created()
                 .with_text("Hello, world!")
-                .with_headers(|h| h
-                    .server("ohkami")
-                    .vary("origin")
-                )
+                .with_headers(|h| h.server("ohkami").vary("origin"))
         );
     }
 
     #[test]
     fn typed_redirect() {
         assert_eq!(
-            Found::at("https://example.com")
-                .into_response(),
-            Response::Found()
-                .with_headers(|h| h
-                    .location("https://example.com")
-                )
+            Found::at("https://example.com").into_response(),
+            Response::Found().with_headers(|h| h.location("https://example.com"))
         );
 
         assert_eq!(
             Found::at("https://example.com")
-                .with_headers(|h| h
-                    .server("ohkami")
-                )
+                .with_headers(|h| h.server("ohkami"))
                 .into_response(),
-            Response::Found()
-                .with_headers(|h| h
-                    .location("https://example.com")
-                    .server("ohkami")
-                )
+            Response::Found().with_headers(|h| h.location("https://example.com").server("ohkami"))
         );
     }
 }

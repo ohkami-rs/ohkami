@@ -1,28 +1,28 @@
 use super::IntoContent;
 use std::borrow::Cow;
 
-#[cfg(feature="openapi")]
+#[cfg(feature = "openapi")]
 use crate::openapi;
 
 /// # HTML format
-/// 
+///
 /// ## Request
-/// 
+///
 /// not supported
-/// 
+///
 /// ## Response
-/// 
+///
 /// - content type: `text/html; charset=UTF-8`
 /// - schema bound: `Into<Cow<'static, str>>`
-/// 
+///
 /// note: This doesn't validate the content to be a valid HTML document,
 /// it just sets the content type to `text/html` and returns the content as is.
-/// 
+///
 /// ### example
-/// 
+///
 /// ```
 /// use ohkami::claw::content::Html;
-/// 
+///
 /// async fn handler() -> Html<&'static str> {
 ///     Html(r#"
 ///         <html>
@@ -48,7 +48,7 @@ impl<T: Into<Cow<'static, str>>> IntoContent for Html<T> {
         })
     }
 
-    #[cfg(feature="openapi")]
+    #[cfg(feature = "openapi")]
     fn openapi_responsebody() -> impl Into<openapi::schema::SchemaRef> {
         openapi::string()
     }

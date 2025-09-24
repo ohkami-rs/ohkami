@@ -1,12 +1,12 @@
 #![allow(non_snake_case, unused_mut)]
 
-use crate::router::{base::Router, segments::RouteSegments};
-use crate::fang::{Fang, BoxedFPC};
-use crate::fang::handler::{Handler, IntoHandler};
 use crate::Ohkami;
+use crate::fang::handler::{Handler, IntoHandler};
+use crate::fang::{BoxedFPC, Fang};
+use crate::router::{base::Router, segments::RouteSegments};
 use std::sync::Arc;
 
-#[cfg(feature="__rt_native__")]
+#[cfg(feature = "__rt_native__")]
 use super::dir::{Dir, StaticFileHandler};
 
 #[derive(Clone)]
@@ -39,7 +39,7 @@ macro_rules! HandlerSet {
                 pub(crate) $method: Option<(Handler, HandlerMeta)>,
             )*
         }
-        
+
         impl HandlerSet {
             pub(crate) fn new(route_str: &'static str) -> Self {
                 Self {
@@ -61,35 +61,36 @@ macro_rules! HandlerSet {
             )*
         }
     };
-} HandlerSet! { GET, PUT, POST, PATCH, DELETE }
+}
+HandlerSet! { GET, PUT, POST, PATCH, DELETE }
 
 pub struct ByAnother {
-    pub(crate) route:  RouteSegments,
+    pub(crate) route: RouteSegments,
     pub(crate) ohkami: Ohkami,
 }
 
 macro_rules! Route {
     ($( $method:ident ),*) => {
         /// Core trait for Ohkami's routing definition.
-        /// 
+        ///
         /// <br>
-        /// 
+        ///
         /// *example.rs*
         /// ```no_run
         /// use ohkami::{Ohkami, Route};
-        /// 
+        ///
         /// async fn index() -> &'static str {
         ///     "ohkami"
         /// }
-        /// 
+        ///
         /// async fn greet() -> &'static str {
         ///     "I'm fine."
         /// }
-        /// 
+        ///
         /// async fn hello() -> String {
         ///     format!("Hello!!!")
         /// }
-        /// 
+        ///
         /// #[tokio::main]
         /// async fn main() {
         ///     Ohkami::new((
@@ -111,17 +112,17 @@ macro_rules! Route {
 
             #[cfg(feature="__rt_native__")]
             /// Serve static files from a directory.
-            /// 
+            ///
             /// Common comprssion formats ( `gzip`, `deflate`, `br`, `zstd` )
             /// are supported : pre-compressed files by these algorithms are
             /// automatically detected by the file extension and used by handler
             /// at the original file name, not directly by the file name.
             /// (e.g. not served at `GET /index.js.gz`, but used for response for `GET /index.js`)
             /// Both pre-compressed file(s) and the original file are required to be in the directory.
-            /// 
+            ///
             /// See methods's docs for options.
             fn Mount(self, directory_path: impl AsRef<std::path::Path>) -> Dir;
-            
+
             #[deprecated(note = "Use `Mount` instead")]
             #[cfg(feature="__rt_native__")]
             fn Dir(self, path: &'static str) -> Dir {
@@ -147,12 +148,13 @@ macro_rules! Route {
             fn Mount(self, path: impl AsRef<std::path::Path>) -> Dir {
                 // Check `self` is valid route
                 let _ = RouteSegments::from_literal(self);
-                
+
                 Dir::new(self, path.as_ref()).expect(&format!("invalid path to serve: `{}`", path.as_ref().display()))
             }
         }
     };
-} Route! { GET, PUT, POST, PATCH, DELETE }
+}
+Route! { GET, PUT, POST, PATCH, DELETE }
 
 trait RoutingItem {
     fn apply(self, router: &mut Router);
@@ -173,13 +175,13 @@ const _: () = {
     impl RoutingItem for Ohkami {
         fn apply(self, router: &mut Router) {
             router.merge_another(ByAnother {
-                route:  RouteSegments::from_literal("/"),
+                route: RouteSegments::from_literal("/"),
                 ohkami: self,
             })
         }
     }
 
-    #[cfg(feature="__rt_native__")]
+    #[cfg(feature = "__rt_native__")]
     impl RoutingItem for Dir {
         fn apply(self, router: &mut Router) {
             crate::DEBUG!("[Dir] entries: {:?}", self.files.keys().collect::<Vec<_>>());
@@ -187,7 +189,10 @@ const _: () = {
             let mut register = |file_path: std::path::PathBuf, handler: StaticFileHandler| {
                 let file_path = file_path
                     .iter()
-                    .map(|s| s.to_str().expect(&format!("invalid path to serve: `{}`", s.to_string_lossy())))
+                    .map(|s| {
+                        s.to_str()
+                            .expect(&format!("invalid path to serve: `{}`", s.to_string_lossy()))
+                    })
                     .filter(|s| !matches!(*s, "" | "/"))
                     .collect::<Vec<_>>()
                     .join("/");
@@ -195,32 +200,39 @@ const _: () = {
                 let path = {
                     let base_path = self.route.trim_end_matches('/').to_string();
                     match &*file_path {
-                        "" => if !base_path.is_empty() {base_path} else {"/".into()},
+                        "" => {
+                            if !base_path.is_empty() {
+                                base_path
+                            } else {
+                                "/".into()
+                            }
+                        }
                         fp => base_path + "/" + fp,
                     }
                 };
 
-                router.register_handlers(
-                    HandlerSet::new(path.leak()).GET(handler)
-                )
+                router.register_handlers(HandlerSet::new(path.leak()).GET(handler))
             };
 
             for (mut path, files) in self.files.into_iter() {
                 let handler = StaticFileHandler::new(&path, files, self.etag)
                     .expect(&format!("can't serve file: `{}`", path.display()));
 
-                let file_name = path.file_name().unwrap().to_str()
+                let file_name = path
+                    .file_name()
+                    .unwrap()
+                    .to_str()
                     .expect(&format!("invalid path to serve: `{}`", path.display()))
                     .to_string();
 
                 if (!self.serve_dotfiles) && file_name.starts_with('.') {
-                    continue
+                    continue;
                 }
 
                 for ext_to_omit in self.omit_extensions {
                     // normalize it
                     let ext_to_omit = ext_to_omit.trim_start_matches('.');
-                    
+
                     if let Some(without_ext) = file_name.strip_suffix(&format!(".{ext_to_omit}")) {
                         let _ = path.pop();
 
@@ -232,7 +244,7 @@ const _: () = {
                             path.push(without_ext);
                         }
 
-                        break
+                        break;
                     }
                 }
 
@@ -242,10 +254,10 @@ const _: () = {
     }
 
     /// This is for better developer experience.
-    /// 
+    ///
     /// If we don't impl `Routes` `&str`, ohkami users
     /// will see following situations：
-    /// 
+    ///
     /// ---
     /// fn my_ohkami() -> Ohkami {
     ///     Ohkami::new((
@@ -253,11 +265,11 @@ const _: () = {
     /// /*          ↑ cursor */
     ///     ))
     /// }
-    /// 
+    ///
     /// // Here rust-analyzer puts red underlines for all lines of `Ohkami::new(( 〜 ))`
     /// // because the type of argument of `new` is `&str` **AT NOW** and `Routes` trait is
     /// // NOT IMPLEMENTED for this.
-    /// // 
+    /// //
     /// // This must be so annoying!!!
     /// ---
     impl RoutingItem for &'static str {

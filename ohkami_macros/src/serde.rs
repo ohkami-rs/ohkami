@@ -1,7 +1,6 @@
-use proc_macro2::{TokenStream};
-use quote::{quote};
-use syn::{Result};
-
+use proc_macro2::TokenStream;
+use quote::quote;
+use syn::Result;
 
 #[allow(non_snake_case)]
 pub(super) fn Serialize(data: TokenStream) -> Result<TokenStream> {

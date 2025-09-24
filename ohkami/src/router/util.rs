@@ -1,20 +1,20 @@
 /// returning `(next_section, remaining <starting with '/'>)` or `(path, empty)`
 #[inline(always)]
-pub(super) fn split_next_section(
-    path: &[u8]
-) -> (&[u8], &[u8]) {
+pub(super) fn split_next_section(path: &[u8]) -> (&[u8], &[u8]) {
     let ptr = path.as_ptr();
     let len = path.len();
     for i in 0..len {
-        if &b'/' == unsafe {path.get_unchecked(i)} {
-            return unsafe {(
-                std::slice::from_raw_parts(ptr,        i),
-                std::slice::from_raw_parts(ptr.add(i), len - i),
-            )}
+        if &b'/' == unsafe { path.get_unchecked(i) } {
+            return unsafe {
+                (
+                    std::slice::from_raw_parts(ptr, i),
+                    std::slice::from_raw_parts(ptr.add(i), len - i),
+                )
+            };
         }
-    }; (path, b"")
+    }
+    (path, b"")
 }
-
 
 #[derive(Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub(crate) struct ID(usize);
@@ -32,25 +32,21 @@ impl std::fmt::Debug for ID {
     }
 }
 
-#[cfg(feature="DEBUG")]
-pub(super) struct DebugSimpleOption<'option, T: std::fmt::Debug>(
-    pub(super) &'option Option<T>
-);
-#[cfg(feature="DEBUG")]
+#[cfg(feature = "DEBUG")]
+pub(super) struct DebugSimpleOption<'option, T: std::fmt::Debug>(pub(super) &'option Option<T>);
+#[cfg(feature = "DEBUG")]
 impl<'option, T: std::fmt::Debug> std::fmt::Debug for DebugSimpleOption<'option, T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self.0 {
             Some(t) => write!(f, "Some({t:?})"),
-            None    => f.write_str("None")
+            None => f.write_str("None"),
         }
     }
 }
 
-#[cfg(feature="DEBUG")]
-pub(super) struct DebugSimpleIterator<I: Iterator<Item: std::fmt::Debug> + Clone>(
-    pub(super) I
-);
-#[cfg(feature="DEBUG")]
+#[cfg(feature = "DEBUG")]
+pub(super) struct DebugSimpleIterator<I: Iterator<Item: std::fmt::Debug> + Clone>(pub(super) I);
+#[cfg(feature = "DEBUG")]
 impl<I: Iterator<Item: std::fmt::Debug> + Clone> std::fmt::Debug for DebugSimpleIterator<I> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(&{
@@ -60,7 +56,9 @@ impl<I: Iterator<Item: std::fmt::Debug> + Clone> std::fmt::Debug for DebugSimple
                 buf.push_str(&format!("{item:?}"));
                 buf.push(',');
             }
-            if buf.ends_with(',') {buf.pop();}
+            if buf.ends_with(',') {
+                buf.pop();
+            }
             buf.push(']');
             buf
         })

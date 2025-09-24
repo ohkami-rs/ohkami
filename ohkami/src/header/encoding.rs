@@ -68,7 +68,7 @@ impl std::fmt::Debug for CompressionEncoding {
 impl CompressionEncoding {
     /// Create a `CompressionEncoding` from a file path and return it with
     /// the original path with compression-extensions removed.
-    /// 
+    ///
     /// The file path must be a file, and the encoding is determined by the file extension.
     /// For example, if the file path is `foo.txt.gz`, the encoding will be `Gzip`.
     /// If the file path has no encoding, `None` is returned.
@@ -98,11 +98,13 @@ impl CompressionEncoding {
 
     pub fn to_extension(&self) -> std::borrow::Cow<'static, str> {
         match self {
-            Self::Single(encoding) => {
-                encoding.extension().unwrap_or_default().into()
-            }
+            Self::Single(encoding) => encoding.extension().unwrap_or_default().into(),
             Self::Multiple(encodings) => {
-                let ext = encodings.iter().flat_map(Encoding::extension).collect::<Vec<_>>().join(".");
+                let ext = encodings
+                    .iter()
+                    .flat_map(Encoding::extension)
+                    .collect::<Vec<_>>()
+                    .join(".");
                 ext.into()
             }
         }
@@ -112,7 +114,11 @@ impl CompressionEncoding {
         match self {
             Self::Single(encoding) => encoding.name().into(),
             Self::Multiple(encodings) => {
-                let enc = encodings.iter().map(Encoding::name).collect::<Vec<_>>().join(", ");
+                let enc = encodings
+                    .iter()
+                    .map(Encoding::name)
+                    .collect::<Vec<_>>()
+                    .join(", ");
                 enc.into()
             }
         }
@@ -164,16 +170,26 @@ impl AcceptEncoding {
                 Some(EncodingOrAny::Encoding(Encoding::Zstd)) => zstd = Some(q),
                 Some(EncodingOrAny::Encoding(Encoding::Identity)) => identity = Some(q),
                 Some(EncodingOrAny::Any) => any = Some(q),
-                None => () // ignore unknown encodings
+                None => (), // ignore unknown encodings
             }
         }
 
         if let Some(q) = any {
-            if gzip.is_none() {gzip = Some(q);}
-            if deflate.is_none() {deflate = Some(q);}
-            if br.is_none() {br = Some(q);}
-            if zstd.is_none() {zstd = Some(q);}
-            if identity.is_none() {identity = Some(q);}
+            if gzip.is_none() {
+                gzip = Some(q);
+            }
+            if deflate.is_none() {
+                deflate = Some(q);
+            }
+            if br.is_none() {
+                br = Some(q);
+            }
+            if zstd.is_none() {
+                zstd = Some(q);
+            }
+            if identity.is_none() {
+                identity = Some(q);
+            }
         }
 
         Self {
@@ -197,7 +213,9 @@ impl AcceptEncoding {
             (self.identity, Encoding::Identity),
         ];
         encodings.sort_unstable_by(|(q1, _), (q2, _)| q2.cmp(q1));
-        encodings.into_iter().filter_map(|(q, encoding)| (!q.is_zero()).then_some(encoding))
+        encodings
+            .into_iter()
+            .filter_map(|(q, encoding)| (!q.is_zero()).then_some(encoding))
     }
 
     pub const fn accepts(&self, encoding: Encoding) -> bool {
@@ -277,7 +295,9 @@ mod tests {
 
         // gzip and deflate have the same qvalue, so the order is not guaranteed
         let accept_encoding = AcceptEncoding::parse("gzip, deflate, br");
-        let encodings = accept_encoding.iter_in_preferred_order().collect::<Vec<_>>();
+        let encodings = accept_encoding
+            .iter_in_preferred_order()
+            .collect::<Vec<_>>();
         assert_eq!(encodings.len(), 4);
         assert!(encodings.contains(&Encoding::Gzip));
         assert!(encodings.contains(&Encoding::Deflate));
