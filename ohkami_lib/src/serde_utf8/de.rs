@@ -92,9 +92,9 @@ impl<'de> serde::Deserializer<'de> for &mut UTF8Deserializer<'de> {
                 self.input = "";
                 visitor.visit_char(c)
             }
-            _ => {
-                Err({ serde::de::Error::custom(format!("Expected a single char, but got single")) })
-            }
+            _ => Err(serde::de::Error::custom(format!(
+                "Expected a single char, but got single"
+            ))),
         }
     }
 

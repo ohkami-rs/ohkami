@@ -877,8 +877,10 @@ const _: () = {
                 let o = std::mem::replace(self, Ohkami::new(()));
                 let (router, _) = o.into_router().finalize();
 
+                #[allow(clippy::ok_expect)] // to avoid `Router: Debug`
                 ROUTER
                     .set(router)
+                    .ok()
                     .expect("`ROUTER.set()` was called more than once for an `Ohkami` instance");
             }
 
