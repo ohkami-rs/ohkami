@@ -101,7 +101,7 @@ impl Router {
     }
 
     pub(crate) fn id(&self) -> ID {
-        self.id.clone()
+        self.id
     }
 
     pub(crate) fn register_handlers(&mut self, handlers: HandlerSet) {
