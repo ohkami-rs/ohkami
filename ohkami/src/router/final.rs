@@ -1,47 +1,45 @@
-use super::{util, base};
-use crate::fang::{FangProcCaller, BoxedFPC, handler::Handler};
-use crate::{request::Path, response::Content};
+use super::{base, util};
+use crate::fang::{BoxedFPC, FangProcCaller, handler::Handler};
 use crate::{Method, Request, Response};
+use crate::{request::Path, response::Content};
 use ohkami_lib::Slice;
-
 
 #[allow(non_snake_case)]
 pub(crate) struct Router {
-    GET:     Node,
-    PUT:     Node,
-    POST:    Node,
-    PATCH:   Node,
-    DELETE:  Node,
+    GET: Node,
+    PUT: Node,
+    POST: Node,
+    PATCH: Node,
+    DELETE: Node,
     OPTIONS: Node,
 }
 
 pub(super) struct Node {
-    pattern:  Pattern,
-    proc:     BoxedFPC,
-    catch:    BoxedFPC,
+    pattern: Pattern,
+    proc: BoxedFPC,
+    catch: BoxedFPC,
     children: &'static [Node],
 
-    #[cfg(feature="openapi")]
-    openapi_operation: Option<crate::openapi::Operation>
+    #[cfg(feature = "openapi")]
+    openapi_operation: Option<crate::openapi::Operation>,
 }
 
 #[derive(PartialEq)]
 enum Pattern {
     Static(&'static [u8]),
-    Param
+    Param,
 }
-
 
 impl Router {
     #[inline(always)]
     pub(crate) async fn handle(&self, req: &mut Request) -> Response {
         let mut res = 'handle: {
             (match req.method {
-                Method::GET     => &self.GET,
-                Method::PUT     => &self.PUT,
-                Method::POST    => &self.POST,
-                Method::PATCH   => &self.PATCH,
-                Method::DELETE  => &self.DELETE,
+                Method::GET => &self.GET,
+                Method::PUT => &self.PUT,
+                Method::POST => &self.POST,
+                Method::PATCH => &self.PATCH,
+                Method::DELETE => &self.DELETE,
                 Method::OPTIONS => &self.OPTIONS,
 
                 Method::HEAD => {
@@ -50,10 +48,12 @@ impl Router {
                     /* not `res.drop_content()` to keep `Content-Type`, `Content-Length` */
                     res.content = Content::None;
 
-                    break 'handle res
+                    break 'handle res;
                 }
-
-            }).search(&mut req.path).call_bite(req).await
+            })
+            .search(&mut req.path)
+            .call_bite(req)
+            .await
         };
 
         res.complete();
@@ -61,7 +61,7 @@ impl Router {
         res
     }
 
-    #[cfg(feature="openapi")]
+    #[cfg(feature = "openapi")]
     pub(crate) fn gen_openapi_doc<'r>(
         &self,
         routes: impl Iterator<Item = (&'r str, impl Iterator<Item = Method>)>,
@@ -70,7 +70,7 @@ impl Router {
         let mut doc = crate::openapi::document::Document::new(
             metadata.title,
             metadata.version,
-            metadata.servers
+            metadata.servers,
         );
 
         for (route, methods) in routes {
@@ -80,7 +80,7 @@ impl Router {
 
             let (openapi_path, openapi_path_param_names) = {
                 let (mut path, mut params) = (String::new(), Vec::new());
-                for segment in route.split('/').skip(1/* head empty */) {
+                for segment in route.split('/').skip(1 /* head empty */) {
                     path += "/";
                     if let Some(param) = segment.strip_prefix(':') {
                         path += &["{", param, "}"].concat();
@@ -95,31 +95,33 @@ impl Router {
             let mut operations = crate::openapi::paths::Operations::new();
             for method in methods {
                 let (openapi_method, router) = match method {
-                    Method::GET    => ("get",    &self.GET),
-                    Method::PUT    => ("put",    &self.PUT),
-                    Method::POST   => ("post",   &self.POST),
-                    Method::PATCH  => ("patch",  &self.PATCH),
+                    Method::GET => ("get", &self.GET),
+                    Method::PUT => ("put", &self.PUT),
+                    Method::POST => ("post", &self.POST),
+                    Method::PATCH => ("patch", &self.PATCH),
                     Method::DELETE => ("delete", &self.DELETE),
-                    _ => continue
+                    _ => continue,
                 };
-                
-                let mut path = unsafe {crate::request::Path::from_str_unchecked(
-                    // this is intended even when route == "/", then to "",
-                    // samely as `Path::init_with_request_bytes`
-                    route.trim_end_matches('/')
-                )};
+
+                let mut path = unsafe {
+                    crate::request::Path::from_str_unchecked(
+                        // this is intended even when route == "/", then to "",
+                        // samely as `Path::init_with_request_bytes`
+                        route.trim_end_matches('/'),
+                    )
+                };
 
                 crate::DEBUG!("[gen_openapi_doc] searching `{openapi_method} {route}`");
 
                 let (target, true) = router.search_target(&mut path) else {
-                    continue
+                    continue;
                 };
                 let Some(mut operation) = target.openapi_operation.clone() else {
-                    continue
+                    continue;
                 };
 
                 crate::DEBUG!("[gen_openapi_doc] found");
-                        
+
                 for param_name in &openapi_path_param_names {
                     operation.assign_path_param_name(param_name.to_string());
                 }
@@ -141,23 +143,23 @@ impl Router {
 
 impl Node {
     /// ## Precondition
-    /// 
+    ///
     /// `patterns`s of all `Node`s belonging to this tree MUST be:
-    /// 
+    ///
     /// 1. all `Pattern::Static`s are sorted in reversed alphabetical order
     /// 2. zero or one `Pattern::Param` exists at the end
     #[inline(always)]
     fn search(&self, path: &mut Path) -> &dyn FangProcCaller {
         let (target, hit) = self.search_target(path);
-        if hit {&target.proc} else {&target.catch}
+        if hit { &target.proc } else { &target.catch }
     }
 
     pub(super) fn search_target(&self, path: &mut Path) -> (&Self, bool) {
-        let mut bytes = unsafe {path.normalized_bytes()};
+        let mut bytes = unsafe { path.normalized_bytes() };
 
         /*
             When `GET / HTTP/1.1` is coming, here
-            
+
             * `bytes` is `b""` (by the normalization).
             * `self.pattern` is, an any pattern if compressed single-child,
               or `Static(b"")` by default.
@@ -193,15 +195,15 @@ impl Node {
             successes with `Some(b"/abc")`, then we just perform `bytes = b"/abc"`
             and go to `'next_target` loop.
         */
-        
+
         if let Some(remaining) = self.pattern.take_through(bytes, path) {
             if remaining.is_empty() {
-                return (&self, true)
+                return (self, true);
             } else {
                 bytes = remaining
             }
         } else {
-            return (&self, false)
+            return (self, false);
         }
 
         let mut target = self;
@@ -209,43 +211,46 @@ impl Node {
             for child in target.children {
                 if let Some(remaining) = child.pattern.take_through(bytes, path) {
                     if remaining.is_empty() {
-                        return (&child, true)
+                        return (child, true);
                     } else {
-                        bytes  = remaining;
+                        bytes = remaining;
                         target = child;
-                        continue 'next_target
+                        continue 'next_target;
                     }
                 }
-            }; return (&target, false)
+            }
+            return (target, false);
         }
     }
 }
 
 impl Pattern {
     /// ## Precondition
-    /// 
+    ///
     /// `self`, if `Static`, must hold bytes starting with `/` e.g. `/abc`, `/`, `/abc/xyz`
     #[inline(always)]
     fn take_through<'b>(
         &self,
         bytes: &'b [u8],
-        path:  &mut Path
-    ) -> Option<&'b [u8]/* remaining part of `bytes` */> {
+        path: &mut Path,
+    ) -> Option<&'b [u8] /* remaining part of `bytes` */> {
         match self {
             Pattern::Static(s) => {
                 let size = s.len();
-                if bytes.len() >= size && *s == unsafe {bytes.get_unchecked(..size)} {
-                    Some(unsafe {bytes.get_unchecked(size..)})
+                if bytes.len() >= size && *s == unsafe { bytes.get_unchecked(..size) } {
+                    Some(unsafe { bytes.get_unchecked(size..) })
                 } else {
                     None
                 }
             }
             Pattern::Param => {
                 if bytes.len() >= 2
-                && *unsafe {bytes.get_unchecked(0)} == b'/'
-                && *unsafe {bytes.get_unchecked(1)} != b'/' {
-                    let (param, remaining) = util::split_next_section(unsafe {bytes.get_unchecked(1..)});
-                    unsafe {path.push_param(Slice::from_bytes(param))};
+                    && *unsafe { bytes.get_unchecked(0) } == b'/'
+                    && *unsafe { bytes.get_unchecked(1) } != b'/'
+                {
+                    let (param, remaining) =
+                        util::split_next_section(unsafe { bytes.get_unchecked(1..) });
+                    unsafe { path.push_param(Slice::from_bytes(param)) };
                     Some(remaining)
                 } else {
                     None
@@ -254,7 +259,6 @@ impl Pattern {
         }
     }
 }
-
 
 const _: (/* conversions */) = {
     impl From<base::Router> for Router {
@@ -269,7 +273,7 @@ const _: (/* conversions */) = {
             }
         }
     }
-    
+
     impl From<base::Node> for Node {
         fn from(mut base: base::Node) -> Self {
             /* skip compression on edge runtimes */
@@ -334,7 +338,7 @@ const _: (/* conversions */) = {
     }
 };
 
-#[cfg(feature="DEBUG")]
+#[cfg(feature = "DEBUG")]
 const _: (/* Debugs */) = {
     impl std::fmt::Debug for Router {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -369,7 +373,7 @@ const _: (/* Debugs */) = {
                 }
                 d.field("operation", &DebugOperaion(self.openapi_operation.as_ref()));
             }
-            
+
             d.finish()
         }
     }

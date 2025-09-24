@@ -1,16 +1,14 @@
-use crate::header::{ByteArrayMap, Append};
-use std::borrow::Cow;
+use crate::header::{Append, ByteArrayMap};
 use ohkami_lib::{CowSlice, Slice, map::TupleMap};
-
+use std::borrow::Cow;
 
 pub struct Headers {
     standard: ByteArrayMap<N_CLIENT_HEADERS, CowSlice>,
-    custom:   Option<Box<TupleMap<Slice, CowSlice>>>,
+    custom: Option<Box<TupleMap<Slice, CowSlice>>>,
 }
 
-pub struct SetHeaders<'set>(
-    &'set mut Headers
-); impl Headers {
+pub struct SetHeaders<'set>(&'set mut Headers);
+impl Headers {
     #[inline]
     pub fn set(&mut self) -> SetHeaders<'_> {
         SetHeaders(self)
@@ -19,7 +17,8 @@ pub struct SetHeaders<'set>(
 
 pub trait HeaderAction<'set> {
     fn perform(self, set: SetHeaders<'set>, key: Header) -> SetHeaders<'set>;
-} const _: () = {
+}
+const _: () = {
     // append
     impl<'set> HeaderAction<'set> for Append {
         #[inline]
@@ -31,20 +30,25 @@ pub trait HeaderAction<'set> {
 
     // insert
     impl<'set> HeaderAction<'set> for &'static str {
-        #[inline] fn perform(self, set: SetHeaders<'set>, key: Header) -> SetHeaders<'set> {
-            set.0.insert(key, CowSlice::Ref(Slice::from_bytes(self.as_bytes())));
+        #[inline]
+        fn perform(self, set: SetHeaders<'set>, key: Header) -> SetHeaders<'set> {
+            set.0
+                .insert(key, CowSlice::Ref(Slice::from_bytes(self.as_bytes())));
             set
         }
     }
     impl<'set> HeaderAction<'set> for String {
-        #[inline] fn perform(self, set: SetHeaders<'set>, key: Header) -> SetHeaders<'set> {
-            set.0.insert(key, CowSlice::Own(self.into_bytes().into_boxed_slice()));
+        #[inline]
+        fn perform(self, set: SetHeaders<'set>, key: Header) -> SetHeaders<'set> {
+            set.0
+                .insert(key, CowSlice::Own(self.into_bytes().into_boxed_slice()));
             set
         }
     }
     impl<'set> HeaderAction<'set> for std::borrow::Cow<'static, str> {
         fn perform(self, set: SetHeaders<'set>, key: Header) -> SetHeaders<'set> {
-            set.0.insert(key, CowSlice::Ref(Slice::from_bytes(self.as_bytes())));
+            set.0
+                .insert(key, CowSlice::Ref(Slice::from_bytes(self.as_bytes())));
             set
         }
     }
@@ -64,11 +68,13 @@ pub trait HeaderAction<'set> {
 
 pub trait CustomHeadersAction<'set> {
     fn perform(self, set: SetHeaders<'set>, key: &'static str) -> SetHeaders<'set>;
-} const _: () = {
+}
+const _: () = {
     // append
     impl<'set> CustomHeadersAction<'set> for Append {
         fn perform(self, set: SetHeaders<'set>, key: &'static str) -> SetHeaders<'set> {
-            set.0.append_custom(Slice::from_bytes(key.as_bytes()), self.0.into());
+            set.0
+                .append_custom(Slice::from_bytes(key.as_bytes()), self.0.into());
             set
         }
     }
@@ -78,7 +84,7 @@ pub trait CustomHeadersAction<'set> {
         fn perform(self, set: SetHeaders<'set>, key: &'static str) -> SetHeaders<'set> {
             set.0.insert_custom(
                 Slice::from_bytes(key.as_bytes()),
-                CowSlice::Ref(Slice::from_bytes(self.as_bytes()))
+                CowSlice::Ref(Slice::from_bytes(self.as_bytes())),
             );
             set
         }
@@ -87,17 +93,15 @@ pub trait CustomHeadersAction<'set> {
         fn perform(self, set: SetHeaders<'set>, key: &'static str) -> SetHeaders<'set> {
             set.0.insert_custom(
                 Slice::from_bytes(key.as_bytes()),
-                CowSlice::Own(self.into_bytes().into_boxed_slice())
+                CowSlice::Own(self.into_bytes().into_boxed_slice()),
             );
             set
         }
     }
     impl<'set> CustomHeadersAction<'set> for Cow<'static, str> {
         fn perform(self, set: SetHeaders<'set>, key: &'static str) -> SetHeaders<'set> {
-            set.0.insert_custom(
-                Slice::from_bytes(key.as_bytes()),
-                CowSlice::from(self)
-            );
+            set.0
+                .insert_custom(Slice::from_bytes(key.as_bytes()), CowSlice::from(self));
             set
         }
     }
@@ -106,13 +110,14 @@ pub trait CustomHeadersAction<'set> {
     impl<'set> CustomHeadersAction<'set> for Option<Cow<'static, str>> {
         fn perform(self, set: SetHeaders<'set>, key: &'static str) -> SetHeaders<'set> {
             match self {
-                None => if let Some(c) = &mut set.0.custom {
-                    c.remove(Slice::from_bytes(key.as_bytes()));
+                None => {
+                    if let Some(c) = &mut set.0.custom {
+                        c.remove(Slice::from_bytes(key.as_bytes()));
+                    }
                 }
-                Some(v) => set.0.insert_custom(
-                    Slice::from_bytes(key.as_bytes()),
-                    CowSlice::from(v)
-                )
+                Some(v) => set
+                    .0
+                    .insert_custom(Slice::from_bytes(key.as_bytes()), CowSlice::from(v)),
             }
             set
         }
@@ -181,7 +186,7 @@ macro_rules! Header {
         impl Headers {
             $(
                 /// See the header value(s).
-                /// 
+                ///
                 /// Multiple values are conbined into a comma-separated string, that can be iterated just by `.split(", ")`,\
                 /// except for `Cookie` that by semicolon (see `Cookies` helper method).
                 #[inline(always)]
@@ -218,7 +223,8 @@ macro_rules! Header {
             )*
         }
     };
-} Header! {46;
+}
+Header! {46;
     accept(Accept): b"Accept" | b"accept",
     accept_encoding(AcceptEncoding): b"Accept-Encoding" | b"accept-encoding",
     accept_language(AcceptLanguage): b"Accept-Language" | b"accept-language",
@@ -271,24 +277,32 @@ macro_rules! Header {
 impl Headers {
     /// Util method to parse semicolon-separated Cookies into an iterator of
     /// `(name, value)`.
-    /// 
+    ///
     /// internally uses [`ohkami::util::iter_cookies`](crate::util::iter_cookies).
     pub fn Cookies(&self) -> impl Iterator<Item = (&str, &str)> {
-        self.cookie().map(crate::util::iter_cookies).into_iter().flatten()
+        self.cookie()
+            .map(crate::util::iter_cookies)
+            .into_iter()
+            .flatten()
     }
 
     pub(crate) fn iter(&self) -> impl Iterator<Item = (&str, &str)> {
-        self.standard.iter()
-            .filter_map(|(i, v)| Some((
-                unsafe {std::mem::transmute::<_, Header>(*i).as_str()},
-                std::str::from_utf8(v).ok()?
-            )))
-            .chain(self.custom.as_ref().into_iter()
-                .flat_map(|hm| hm.iter().filter_map(|(k, v)| Some((
-                    std::str::from_utf8(unsafe {k.as_bytes()}).ok()?,
-                    std::str::from_utf8(unsafe {v.as_bytes()}).ok()?,
-                ))))
-            )
+        self.standard
+            .iter()
+            .filter_map(|(i, v)| {
+                Some((
+                    unsafe { std::mem::transmute::<u8, Header>(*i).as_str() },
+                    std::str::from_utf8(v).ok()?,
+                ))
+            })
+            .chain(self.custom.as_ref().into_iter().flat_map(|hm| {
+                hm.iter().filter_map(|(k, v)| {
+                    Some((
+                        std::str::from_utf8(unsafe { k.as_bytes() }).ok()?,
+                        std::str::from_utf8(unsafe { v.as_bytes() }).ok()?,
+                    ))
+                })
+            }))
             .chain(self.cookie().map(|c| ("Cookie", c)))
     }
 }
@@ -296,37 +310,41 @@ impl Headers {
 impl Headers {
     #[inline(always)]
     pub(crate) fn insert(&mut self, name: Header, value: CowSlice) {
-        unsafe {self.standard.insert(name as u8, value)}
+        unsafe { self.standard.insert(name as u8, value) }
     }
-    #[cfg(feature="DEBUG")]
+    #[cfg(feature = "DEBUG")]
     #[inline(always)]
     pub fn _insert(&mut self, name: Header, value: CowSlice) {
         self.insert(name, value)
     }
 
     pub(crate) fn remove(&mut self, name: Header) {
-        unsafe {self.standard.delete(name as u8)};
+        unsafe { self.standard.delete(name as u8) };
     }
 
     #[inline]
     pub(crate) fn get_standard(&self, name: Header) -> Option<&str> {
-        unsafe {match self.standard.get(name as u8) {
-            Some(cs) => std::str::from_utf8(&cs).ok(),
-            None => None
-        }}
+        unsafe {
+            match self.standard.get(name as u8) {
+                Some(cs) => std::str::from_utf8(cs).ok(),
+                None => None,
+            }
+        }
     }
 
     #[inline(always)]
     pub(crate) fn append(&mut self, name: Header, value: CowSlice) {
-        unsafe {match self.standard.get_mut(name as u8) {
-            None => self.standard.insert_new(name as u8, value),
-            Some(v) => {
-                v.extend_from_slice(b", ");
-                v.extend_from_slice(&value);
+        unsafe {
+            match self.standard.get_mut(name as u8) {
+                None => self.standard.insert_new(name as u8, value),
+                Some(v) => {
+                    v.extend_from_slice(b", ");
+                    v.extend_from_slice(&value);
+                }
             }
-        }}
+        }
     }
-    #[cfg(feature="DEBUG")]
+    #[cfg(feature = "DEBUG")]
     #[inline]
     pub fn _append(&mut self, name: Header, value: CowSlice) {
         self.append(name, value)
@@ -337,13 +355,13 @@ impl Headers {
     #[inline]
     pub(crate) fn insert_custom(&mut self, name: Slice, value: CowSlice) {
         match &mut self.custom {
-            Some(c) => {c.insert(name, value);}
-            None => self.custom = Some(Box::new(TupleMap::from_iter([
-                (name, value)
-            ])))
+            Some(c) => {
+                c.insert(name, value);
+            }
+            None => self.custom = Some(Box::new(TupleMap::from_iter([(name, value)]))),
         }
     }
-    #[cfg(feature="DEBUG")]
+    #[cfg(feature = "DEBUG")]
     #[inline]
     pub fn _insert_custom(&mut self, name: Slice, value: CowSlice) {
         self.insert_custom(name, value)
@@ -355,13 +373,13 @@ impl Headers {
             self.custom = Some(Box::new(TupleMap::new()))
         }
 
-        let c = unsafe {self.custom.as_mut().unwrap_unchecked()};
+        let c = unsafe { self.custom.as_mut().unwrap_unchecked() };
 
         match c.get_mut(&name) {
             Some(v) => unsafe {
                 v.extend_from_slice(b", ");
                 v.extend_from_slice(value.as_bytes());
-            }
+            },
             None => {
                 c.insert(name, value);
             }
@@ -369,21 +387,21 @@ impl Headers {
     }
 }
 
-#[cfg(feature="__rt__")]
+#[cfg(feature = "__rt__")]
 impl Headers {
     #[inline]
     pub(crate) fn new() -> Self {
         Self {
             standard: ByteArrayMap::new(),
-            custom:   None,
+            custom: None,
         }
     }
-    #[cfg(feature="DEBUG")]
+    #[cfg(feature = "DEBUG")]
     pub fn _init() -> Self {
         Self::new()
     }
 
-    #[cfg(feature="__rt_native__")]
+    #[cfg(feature = "__rt_native__")]
     #[inline]
     pub(crate) fn clear(&mut self) {
         self.standard.clear();
@@ -393,19 +411,18 @@ impl Headers {
     }
 
     #[cfg(any(
-        feature="__rt_native__",
-        all(debug_assertions, any(
-            feature="rt_worker",
-            feature="rt_lambda",
-        ))
+        feature = "__rt_native__",
+        all(debug_assertions, any(feature = "rt_worker", feature = "rt_lambda",))
     ))]
-    #[inline] pub(crate) fn get_raw(&self, name: Header) -> Option<&CowSlice> {
-        unsafe {self.standard.get(name as u8)}
+    #[inline]
+    pub(crate) fn get_raw(&self, name: Header) -> Option<&CowSlice> {
+        unsafe { self.standard.get(name as u8) }
     }
 
     #[allow(unused)]
-    #[cfg(test)] pub(crate) fn from_iters(
-        iter:   impl IntoIterator<Item = (Header, &'static str)>,
+    #[cfg(test)]
+    pub(crate) fn from_iters(
+        iter: impl IntoIterator<Item = (Header, &'static str)>,
         custom: impl IntoIterator<Item = (&'static str, &'static str)>,
     ) -> Self {
         let mut this = Self::new();
@@ -415,26 +432,23 @@ impl Headers {
         for (k, v) in custom {
             this.insert_custom(
                 Slice::from_bytes(k.as_bytes()),
-                CowSlice::Ref(Slice::from_bytes(v.as_bytes()))
+                CowSlice::Ref(Slice::from_bytes(v.as_bytes())),
             );
         }
         this
     }
 }
 
-#[cfg(feature="rt_worker")]
+#[cfg(feature = "rt_worker")]
 impl Headers {
     pub(crate) fn take_over(&mut self, w: &::worker::Headers) {
         for (k, v) in w.entries() {
             match Header::from_bytes(k.as_bytes()) {
-                Some(standard) => self.insert(
-                    standard,
-                    CowSlice::Own(v.into_boxed_str().into())
-                ),
+                Some(standard) => self.insert(standard, CowSlice::Own(v.into_boxed_str().into())),
                 None => self.insert_custom(
                     Slice::from_bytes(Box::leak(k.into_boxed_str()).as_bytes()),
-                    CowSlice::Own(v.into_boxed_str().into())
-                )
+                    CowSlice::Own(v.into_boxed_str().into()),
+                ),
             }
         }
     }
@@ -449,8 +463,7 @@ const _: () = {
 
     impl PartialEq for Headers {
         fn eq(&self, other: &Self) -> bool {
-            self.custom == other.custom &&
-            self.standard == other.standard
+            self.custom == other.custom && self.standard == other.standard
         }
     }
 };

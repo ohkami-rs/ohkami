@@ -1,11 +1,11 @@
-use super::_util::{is_false, Map};
-use std::marker::PhantomData;
+use super::_util::{Map, is_false};
 use serde::Serialize;
 use serde_json::Value;
+use std::marker::PhantomData;
 
 pub struct Schema<T: SchemaType> {
-    datatype: PhantomData<fn()->T>,
-    raw: RawSchema
+    datatype: PhantomData<fn() -> T>,
+    raw: RawSchema,
 }
 
 use Type::SchemaType;
@@ -19,17 +19,37 @@ pub mod Type {
     pub struct any;
 
     #[allow(private_bounds)]
-    pub trait SchemaType: Sealed {const NAME: &'static str;}
-    trait Sealed {const NAME: &'static str;}
-    impl<S: Sealed> SchemaType for S {const NAME: &'static str = <S as Sealed>::NAME;}
+    pub trait SchemaType: Sealed {
+        const NAME: &'static str;
+    }
+    trait Sealed {
+        const NAME: &'static str;
+    }
+    impl<S: Sealed> SchemaType for S {
+        const NAME: &'static str = <S as Sealed>::NAME;
+    }
 
-    impl Sealed for string {const NAME: &'static str = "string";}
-    impl Sealed for number {const NAME: &'static str = "number";}
-    impl Sealed for integer {const NAME: &'static str = "integer";}
-    impl Sealed for bool {const NAME: &'static str = "bool";}
-    impl Sealed for array {const NAME: &'static str = "array";}
-    impl Sealed for object {const NAME: &'static str = "object";}
-    impl Sealed for any {const NAME: &'static str = "";}
+    impl Sealed for string {
+        const NAME: &'static str = "string";
+    }
+    impl Sealed for number {
+        const NAME: &'static str = "number";
+    }
+    impl Sealed for integer {
+        const NAME: &'static str = "integer";
+    }
+    impl Sealed for bool {
+        const NAME: &'static str = "bool";
+    }
+    impl Sealed for array {
+        const NAME: &'static str = "array";
+    }
+    impl Sealed for object {
+        const NAME: &'static str = "object";
+    }
+    impl Sealed for any {
+        const NAME: &'static str = "";
+    }
 }
 
 #[derive(Serialize, PartialEq, Clone)]
@@ -128,18 +148,22 @@ impl<T: Type::SchemaType> From<Schema<T>> for RawSchema {
 }
 impl<T: Type::SchemaType> From<RawSchema> for Schema<T> {
     fn from(raw: RawSchema) -> Self {
-        Self { raw, datatype:PhantomData }
+        Self {
+            raw,
+            datatype: PhantomData,
+        }
     }
 }
-impl Into<SchemaRef> for RawSchema {
-    fn into(self) -> SchemaRef {
-        SchemaRef::Inline(Box::new(self))
+impl From<RawSchema> for SchemaRef {
+    fn from(this: RawSchema) -> SchemaRef {
+        SchemaRef::Inline(Box::new(this))
     }
 }
 impl RawSchema {
     #[doc(hidden)]
     pub fn into_properties(self) -> Vec<(&'static str, SchemaRef, bool)> {
-        self.properties.into_iter()
+        self.properties
+            .into_iter()
             .map(|(name, schema)| (name, schema, self.required.contains(&name)))
             .collect()
     }
@@ -149,21 +173,19 @@ impl RawSchema {
 #[allow(private_interfaces/* construct only via `From` */)]
 pub enum SchemaRef {
     Inline(Box<RawSchema>),
-    Reference(&'static str)
+    Reference(&'static str),
 }
 impl Serialize for SchemaRef {
-    fn serialize<S: serde::Serializer>(
-        &self,
-        serializer: S
-    ) -> Result<S::Ok, S::Error> {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match self {
-            SchemaRef::Inline(schema)  => schema.serialize(serializer),
-            SchemaRef::Reference(name) => {use serde::ser::SerializeMap;
+            SchemaRef::Inline(schema) => schema.serialize(serializer),
+            SchemaRef::Reference(name) => {
+                use serde::ser::SerializeMap;
                 let mut s = serializer.serialize_map(None)?;
                 s.serialize_entry("$ref", &format!("#/components/schemas/{name}"))?;
                 s.end()
             }
-        }    
+        }
     }
 }
 impl<T: SchemaType> From<Schema<T>> for SchemaRef {
@@ -179,26 +201,34 @@ impl From<&'static str> for SchemaRef {
 impl SchemaRef {
     pub fn into_inline(self) -> Option<RawSchema> {
         match self {
-            SchemaRef::Inline(raw)  => Some(*raw),
-            SchemaRef::Reference(_) => None
+            SchemaRef::Inline(raw) => Some(*raw),
+            SchemaRef::Reference(_) => None,
         }
     }
 
     pub(crate) fn refize(&mut self) -> impl Iterator<Item = RawSchema> {
         let mut component_schemas = vec![];
-        match self {
-            SchemaRef::Inline(raw) => {
-                raw.properties.values_mut().for_each(|s| component_schemas.extend(s.refize()));
-                raw.any_of.iter_mut().for_each(|s| component_schemas.extend(s.refize()));
-                raw.all_of.iter_mut().for_each(|s| component_schemas.extend(s.refize()));
-                raw.one_of.iter_mut().for_each(|s| component_schemas.extend(s.refize()));
-                raw.items.as_mut().map(|s| component_schemas.extend(s.refize()));
-                if let Some(name) = raw.__name__ {
-                    let raw = std::mem::replace(self, SchemaRef::Reference(name));
-                    component_schemas.push(raw.into_inline().unwrap());
-                }
+        if let SchemaRef::Inline(raw) = self {
+            #[allow(clippy::option_map_unit_fn)]
+            raw.items
+                .as_mut()
+                .map(|s| component_schemas.extend(s.refize()));
+            raw.properties
+                .values_mut()
+                .for_each(|s| component_schemas.extend(s.refize()));
+            raw.any_of
+                .iter_mut()
+                .for_each(|s| component_schemas.extend(s.refize()));
+            raw.all_of
+                .iter_mut()
+                .for_each(|s| component_schemas.extend(s.refize()));
+            raw.one_of
+                .iter_mut()
+                .for_each(|s| component_schemas.extend(s.refize()));
+            if let Some(name) = raw.__name__ {
+                let raw = std::mem::replace(self, SchemaRef::Reference(name));
+                component_schemas.push(raw.into_inline().unwrap());
             }
-            _ => ()
         }
         component_schemas.into_iter()
     }
@@ -343,7 +373,9 @@ pub trait SchemaList {
     fn collect(self) -> Vec<SchemaRef>;
 }
 impl<S: Into<SchemaRef>> SchemaList for S {
-    fn collect(self) -> Vec<SchemaRef> {vec![self.into()]}
+    fn collect(self) -> Vec<SchemaRef> {
+        vec![self.into()]
+    }
 }
 macro_rules! tuple_schemalist {
     ($($S:ident),*) => {
@@ -368,17 +400,19 @@ impl<T: Type::SchemaType> Schema<T> {
         self
     }
     pub fn default(mut self, default: impl Serialize) -> Self {
-        self.raw.default = Some(serde_json::to_value(default).expect("can't serialize given `default` value"));
+        self.raw.default =
+            Some(serde_json::to_value(default).expect("can't serialize given `default` value"));
         self
     }
     pub fn example(mut self, example: impl Serialize) -> Self {
-        self.raw.example = Some(serde_json::to_value(example).expect("can't serialize given `example` value"));
+        self.raw.example =
+            Some(serde_json::to_value(example).expect("can't serialize given `example` value"));
         self
     }
     pub fn enumerates<const N: usize, V: Serialize>(mut self, enumerates: [V; N]) -> Self {
-        self.raw.enumerates = enumerates.map(
-            |v| serde_json::to_value(v).expect("can't serialize given `enum` values")
-        ).into();
+        self.raw.enumerates = enumerates
+            .map(|v| serde_json::to_value(v).expect("can't serialize given `enum` values"))
+            .into();
         self
     }
     pub fn deprecated(mut self) -> Self {

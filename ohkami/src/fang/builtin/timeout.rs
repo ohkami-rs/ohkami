@@ -1,23 +1,22 @@
-#![cfg(feature="__rt_native__")]
+#![cfg(feature = "__rt_native__")]
 
 use std::time::Duration;
 
-
 /// # Builtin fang for timeout config
-/// 
+///
 /// <br>
-/// 
+///
 /// Set timeout of request handling when a request was handled by that `Ohkami`.
-/// 
+///
 /// <br>
-/// 
+///
 /// ---
 /// *example.rs*
 /// ```no_run
 /// use ohkami::{Ohkami, Route};
 /// use ohkami::{claw::Path, fang::Timeout};
 /// use std::time::Duration;
-/// 
+///
 /// #[tokio::main]
 /// async fn main() {
 ///     Ohkami::new((
@@ -25,7 +24,7 @@ use std::time::Duration;
 ///         "/hello/:sleep".GET(sleeping_hello),
 ///     )).howl("0.0.0.0:3000").await
 /// }
-/// 
+///
 /// async fn sleeping_hello(
 ///     Path(sleep): Path<u64>
 /// ) -> &'static str {
@@ -60,31 +59,33 @@ const _: () = {
     impl<Inner: FangProc> Fang<Inner> for Timeout {
         type Proc = TimeoutProc<Inner>;
         fn chain(&self, inner: Inner) -> Self::Proc {
-            TimeoutProc { time: self.0, inner }
+            TimeoutProc {
+                time: self.0,
+                inner,
+            }
         }
     }
 
     pub struct TimeoutProc<Inner: FangProc> {
         inner: Inner,
-        time:  Duration,
+        time: Duration,
     }
     impl<Inner: FangProc> FangProc for TimeoutProc<Inner> {
         async fn bite<'b>(&'b self, req: &'b mut Request) -> Response {
-            crate::util::with_timeout(self.time, self.inner.bite(req)).await
+            crate::util::with_timeout(self.time, self.inner.bite(req))
+                .await
                 .unwrap_or_else(|| Response::InternalServerError().with_text("timeout"))
         }
     }
 };
 
-
-#[cfg(all(test, debug_assertions, feature="__rt_native__", feature="DEBUG"))]
-#[test] fn test_timeout() {
+#[cfg(all(test, debug_assertions, feature = "__rt_native__", feature = "DEBUG"))]
+#[test]
+fn test_timeout() {
     use crate::prelude::*;
     use crate::testing::*;
 
-    async fn lazy_greeting(
-        Path((name, sleep)): Path<(&str, u64)>
-    ) -> String {
+    async fn lazy_greeting(Path((name, sleep)): Path<(&str, u64)>) -> String {
         crate::__rt__::sleep(Duration::from_secs(sleep)).await;
 
         format!("Hello, {name}!")
@@ -93,7 +94,8 @@ const _: () = {
     let t = Ohkami::new((
         Timeout::by_secs(2),
         "/greet/:name/:sleep".GET(lazy_greeting),
-    )).test();
+    ))
+    .test();
 
     crate::__rt__::testing::block_on(async {
         {
@@ -110,13 +112,13 @@ const _: () = {
             let req = TestRequest::GET("/greet/ohkami/1");
             let res = t.oneshot(req).await;
             assert_eq!(res.status(), Status::OK);
-            assert_eq!(res.text(),   Some("Hello, ohkami!"));
+            assert_eq!(res.text(), Some("Hello, ohkami!"));
         }
         {
             let req = TestRequest::GET("/greet/ohkami/3");
             let res = t.oneshot(req).await;
             assert_eq!(res.status(), Status::InternalServerError);
-            assert_eq!(res.text(),   Some("timeout"));
+            assert_eq!(res.text(), Some("timeout"));
         }
     });
 }

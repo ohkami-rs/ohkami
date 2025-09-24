@@ -1,17 +1,13 @@
-use super::{Parameter, RequestBody, Responses, security::SecurityScheme};
+use super::_util::{Map, is_false};
 use super::schema::RawSchema;
-use super::_util::{is_false, Map};
+use super::{Parameter, RequestBody, Responses, security::SecurityScheme};
 use serde::Serialize;
 
 #[derive(Serialize)]
-pub struct Paths(
-    Map<String, Operations>
-);
+pub struct Paths(Map<String, Operations>);
 
 #[derive(Serialize)]
-pub struct Operations(
-    Map<&'static str, Operation>
-);
+pub struct Operations(Map<&'static str, Operation>);
 
 #[derive(Serialize, Clone)]
 pub struct Operation {
@@ -22,9 +18,9 @@ pub struct Operation {
     tags: Vec<&'static str>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    summary:      Option<&'static str>,
+    summary: Option<&'static str>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    description:  Option<&'static str>,
+    description: Option<&'static str>,
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "externalDocs")]
     external_docs: Option<ExternalDoc>,
@@ -66,7 +62,13 @@ pub struct ExternalDoc {
     pub url: &'static str,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub description: Option<&'static str>
+    pub description: Option<&'static str>,
+}
+
+impl Default for Paths {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Paths {
@@ -77,6 +79,12 @@ impl Paths {
     pub fn at(mut self, path: impl Into<String>, operations: Operations) -> Self {
         self.0.insert(path.into(), operations);
         self
+    }
+}
+
+impl Default for Operations {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -112,7 +120,10 @@ impl Operations {
 
     #[doc(hidden)]
     pub fn register(&mut self, method: &'static str, operation: Operation) {
-        if matches!(method, "get" | "put" | "post" | "patch" | "delete" | "options") {
+        if matches!(
+            method,
+            "get" | "put" | "post" | "patch" | "delete" | "options"
+        ) {
             self.0.insert(method, operation);
         }
     }
@@ -123,14 +134,14 @@ impl Operation {
         Self {
             responses,
             operation_id: None,
-            tags:         Vec::new(),
-            summary:      None,
-            description:  None,
+            tags: Vec::new(),
+            summary: None,
+            description: None,
             external_docs: None,
-            deprecated:   false,
-            parameters:   Vec::new(),
-            requestbody:  None,
-            security:     Vec::new(),
+            deprecated: false,
+            parameters: Vec::new(),
+            requestbody: None,
+            security: Vec::new(),
         }
     }
 
@@ -145,7 +156,10 @@ impl Operation {
     }
 
     pub fn security(mut self, securityScheme: SecurityScheme, scopes: &[&'static str]) -> Self {
-        self.security.push(Map::from_iter([(SecuritySchemeName(securityScheme), scopes.into())]));
+        self.security.push(Map::from_iter([(
+            SecuritySchemeName(securityScheme),
+            scopes.into(),
+        )]));
         self
     }
 
@@ -181,26 +195,21 @@ impl Operation {
             crate::Inbound::Body(body) => self.requestbody(body),
             crate::Inbound::Param(param) => self.param(param),
             crate::Inbound::Params(params) => {
-                for param in params {self = self.param(param)}
+                for param in params {
+                    self = self.param(param)
+                }
                 self
-            },
+            }
         }
     }
 
-    pub fn param_description(
-        mut self,
-        name: &'static str,
-        new_description: &'static str
-    ) -> Self {
+    pub fn param_description(mut self, name: &'static str, new_description: &'static str) -> Self {
         if let Some(param) = self.parameters.iter_mut().find(|p| p.name == name) {
             param.set_description(new_description);
         }
         self
     }
-    pub fn requestbody_description(
-        mut self,
-        new_description: &'static str
-    ) -> Self {
+    pub fn requestbody_description(mut self, new_description: &'static str) -> Self {
         if let Some(requestbody) = &mut self.requestbody {
             requestbody.set_description(new_description);
         }
@@ -209,15 +218,18 @@ impl Operation {
     pub fn response_description(
         mut self,
         status: impl Into<super::response::Status>,
-        new_description: &'static str
+        new_description: &'static str,
     ) -> Self {
-        self.responses.override_response_description(status, new_description);
+        self.responses
+            .override_response_description(status, new_description);
         self
     }
 
     #[doc(hidden)]
     pub fn assign_path_param_name(&mut self, name: impl Into<std::borrow::Cow<'static, str>>) {
-        if let Some(empty_param) = self.parameters.iter_mut()
+        if let Some(empty_param) = self
+            .parameters
+            .iter_mut()
             .filter(|p| p.is_path())
             .find(|p| p.name.is_empty())
         {
@@ -227,33 +239,43 @@ impl Operation {
 
     #[doc(hidden)]
     pub fn iter_security_schemes(&self) -> impl Iterator<Item = SecurityScheme> {
-        self.security.clone().into_iter()
-            .map(|map| {
-                let [SecuritySchemeName(ss)] = map.clone()
-                    .into_keys()
-                    .collect::<Vec<_>>()
-                    .try_into().ok()
-                    .expect("[OpenAPI] Unexpected multiple keys in one element of SecurityRequirement");
-                ss
-            })
+        self.security.clone().into_iter().map(|map| {
+            let [SecuritySchemeName(ss)] = map
+                .clone()
+                .into_keys()
+                .collect::<Vec<_>>()
+                .try_into()
+                .ok()
+                .expect("[OpenAPI] Unexpected multiple keys in one element of SecurityRequirement");
+            ss
+        })
     }
     #[doc(hidden)]
     pub fn refize_schemas(&mut self) -> impl Iterator<Item = RawSchema> + '_ {
-        [/* RawSchema */].into_iter()
-            .chain(self.parameters.iter_mut().map(|p| p.schema.refize()).flatten())
-            .chain(self.requestbody.as_mut().map(RequestBody::refize_schemas).into_iter().flatten())
+        [/* RawSchema */]
+            .into_iter()
+            .chain(self.parameters.iter_mut().flat_map(|p| p.schema.refize()))
+            .chain(
+                self.requestbody
+                    .as_mut()
+                    .map(RequestBody::refize_schemas)
+                    .into_iter()
+                    .flatten(),
+            )
             .chain(self.responses.refize_schemas())
     }
 }
 
 #[cfg(test)]
-#[test] fn map_openapi_operation_compiles() {
+#[test]
+fn map_openapi_operation_compiles() {
     #[allow(unused)]
     fn map_openapi_operation(op: Operation) -> Operation {
-        op
-        .operation_id("list_users")
-        .description("This doc comment is used for the\n`description` field of OpenAPI document")
-        .summary("...")
-        .response_description(200, "List of all users")
+        op.operation_id("list_users")
+            .description(
+                "This doc comment is used for the\n`description` field of OpenAPI document",
+            )
+            .summary("...")
+            .response_description(200, "List of all users")
     }
 }

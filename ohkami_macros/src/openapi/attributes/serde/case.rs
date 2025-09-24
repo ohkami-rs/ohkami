@@ -23,15 +23,15 @@ impl From<String> for Case {
 impl Case {
     pub(crate) const fn from_str(s: &str) -> Option<Self> {
         match s.as_bytes() {
-            b"lowercase"            => Some(Self::Lower),
-            b"UPPERCASE"            => Some(Self::Upper),
-            b"PascalCase"           => Some(Self::Pascal),
-            b"camelCase"            => Some(Self::Camel),
-            b"snake_case"           => Some(Self::Snake),
+            b"lowercase" => Some(Self::Lower),
+            b"UPPERCASE" => Some(Self::Upper),
+            b"PascalCase" => Some(Self::Pascal),
+            b"camelCase" => Some(Self::Camel),
+            b"snake_case" => Some(Self::Snake),
             b"SCREAMING_SNAKE_CASE" => Some(Self::ScreamingSnake),
-            b"kebab-case"           => Some(Self::Kebab),
+            b"kebab-case" => Some(Self::Kebab),
             b"SCREAMING-KEBAB-CASE" => Some(Self::ScreamingKebab),
-            _ => None
+            _ => None,
         }
     }
 
@@ -49,9 +49,7 @@ impl Case {
             }
             Self::ScreamingSnake => Self::Upper.apply_to_field(field),
             Self::Kebab => field.replace('_', "-"),
-            Self::ScreamingKebab => Self::ScreamingSnake
-                .apply_to_field(field)
-                .replace('_', "-"),
+            Self::ScreamingKebab => Self::ScreamingSnake.apply_to_field(field).replace('_', "-"),
         }
     }
 
@@ -64,13 +62,10 @@ impl Case {
             Self::Snake => variant
                 .split(char::is_uppercase)
                 .map(str::to_ascii_lowercase)
-                .collect::<Vec<_>>().join("_"),
-            Self::ScreamingSnake => Self::Snake
-                .apply_to_variant(variant)
-                .to_ascii_uppercase(),
-            Self::Kebab => Self::Snake
-                .apply_to_variant(variant)
-                .replace('_', "-"),
+                .collect::<Vec<_>>()
+                .join("_"),
+            Self::ScreamingSnake => Self::Snake.apply_to_variant(variant).to_ascii_uppercase(),
+            Self::Kebab => Self::Snake.apply_to_variant(variant).replace('_', "-"),
             Self::ScreamingKebab => Self::ScreamingSnake
                 .apply_to_variant(variant)
                 .replace('_', "-"),

@@ -1,15 +1,15 @@
-#![cfg(feature="rt_worker")]
+#![cfg(feature = "rt_worker")]
 
-pub use ::ohkami_macros::{worker, bindings, DurableObject};
+pub use ::ohkami_macros::{DurableObject, bindings, worker};
 
 pub trait FromEnv: Sized {
     fn from_env(env: &worker::Env) -> Result<Self, worker::Error>;
 
     #[doc(hidden)]
     /// list of bindings: `(BindingName, Option<BindingType>)`
-    /// 
+    ///
     /// `Option<BindingType>` is `None` for KV binding and `Some` holding :
-    /// 
+    ///
     /// - `"String"` for Variable binding (ref: https://github.com/cloudflare/workers-rs/blob/38af58acc4e54b29c73336c1720188f3c3e86cc4/worker/src/env.rs#L138-L140)
     /// - `"Ai"` for AI binding (ref: https://github.com/cloudflare/workers-rs/blob/38af58acc4e54b29c73336c1720188f3c3e86cc4/worker/src/ai.rs#L63-L79)
     /// - `"R2Bucket"` for R2 binding (ref: https://github.com/cloudflare/workers-rs/blob/38af58acc4e54b29c73336c1720188f3c3e86cc4/worker/src/r2/mod.rs#L131-L133)
@@ -23,14 +23,15 @@ pub trait FromEnv: Sized {
     }
     #[doc(hidden)]
     fn dummy_env() -> worker::Env {
+        use worker::js_sys::{Function, Object, Reflect};
         use worker::wasm_bindgen::{JsCast, closure::Closure};
-        use worker::js_sys::{Object, Reflect, Function};
 
         let env = Object::new();
         for (binding_name, binding_type) in Self::bindings_meta() {
             let binding = Object::new();
             if let Some(binding_type) = binding_type {
-                let constructor = Function::unchecked_from_js(Closure::<dyn Fn()>::new(|| {}).into_js_value());
+                let constructor =
+                    Function::unchecked_from_js(Closure::<dyn Fn()>::new(|| {}).into_js_value());
                 {
                     let attributes = Object::new();
                     Reflect::set(&attributes, &"value".into(), &(*binding_type).into()).unwrap();
@@ -47,17 +48,17 @@ pub trait FromEnv: Sized {
 pub mod bindings {
     /// `Var` binding can also be accessed via associated const
     /// of the same name.
-    pub type Var           = &'static str;
-    pub type AI            = ::worker::Ai;
-    pub type KV            = ::worker::kv::KvStore;
-    pub type R2            = ::worker::Bucket;
-    pub type Service       = ::worker::Fetcher;
+    pub type Var = &'static str;
+    pub type AI = ::worker::Ai;
+    pub type KV = ::worker::kv::KvStore;
+    pub type R2 = ::worker::Bucket;
+    pub type Service = ::worker::Fetcher;
     pub type DurableObject = ::worker::ObjectNamespace;
-    pub type D1            = ::worker::d1::D1Database;
-    pub type Hyperdrive    = ::worker::Hyperdrive;
+    pub type D1 = ::worker::d1::D1Database;
+    pub type Hyperdrive = ::worker::Hyperdrive;
     /// `Queue` may cause a lot of *WARNING*s on `npm run dev`, but
     /// it's not an actual problem and `Queue` binding does work.
-    pub type Queue         = ::worker::Queue;
+    pub type Queue = ::worker::Queue;
 }
 
 #[doc(hidden)]
@@ -67,15 +68,15 @@ pub trait has_DurableObject_attribute {}
 /// **Note:** Implement this trait with a standard `impl DurableObject for YourType` block, but in order to
 /// integrate them with the Workers Runtime, you must also add the **`#[DurableObject]`** attribute
 /// to the struct.
-/// 
+///
 /// ### Example
-/// 
+///
 /// ```no_run
 /// use ohkami::DurableObject;
-/// 
+///
 /// # struct User;
 /// # struct Message;
-/// 
+///
 /// #[DurableObject]
 /// pub struct Chatroom {
 ///     users: Vec<User>,
@@ -83,7 +84,7 @@ pub trait has_DurableObject_attribute {}
 ///     state: worker::State,
 ///     env: worker::Env, // access `Env` across requests, use inside `fetch`
 /// }
-/// 
+///
 /// impl DurableObject for Chatroom {
 ///     fn new(state: worker::State, env: worker::Env) -> Self {
 ///         Self {
@@ -93,24 +94,26 @@ pub trait has_DurableObject_attribute {}
 ///             env,
 ///         }
 ///     }
-/// 
+///
 ///     async fn fetch(&mut self, req: worker::Request) -> worker::Result<worker::Response> {
 ///         // do something when a worker makes a request to this DO
 ///         worker::Response::ok(&format!("{} active users.", self.users.len()))
 ///     }
 /// }
 /// ```
-#[allow(async_fn_in_trait/* `Send` is not needed */)] 
+#[allow(async_fn_in_trait/* `Send` is not needed */)]
 pub trait DurableObject: has_DurableObject_attribute {
     fn new(state: worker::State, env: worker::Env) -> Self;
-    
+
     async fn fetch(&mut self, req: worker::Request) -> worker::Result<worker::Response>;
-    
+
     async fn alarm(&mut self) -> worker::Result<worker::Response> {
         worker::console_error!("alarm() handler is not implemented");
-        Err(worker::Error::RustError("alarm() handler is not implemented".into()))
+        Err(worker::Error::RustError(
+            "alarm() handler is not implemented".into(),
+        ))
     }
-    
+
     #[allow(unused_variables)]
     async fn websocket_message(
         &mut self,
@@ -119,7 +122,7 @@ pub trait DurableObject: has_DurableObject_attribute {
     ) -> worker::Result<()> {
         Ok(())
     }
-    
+
     #[allow(unused_variables)]
     async fn websocket_close(
         &mut self,
@@ -130,7 +133,7 @@ pub trait DurableObject: has_DurableObject_attribute {
     ) -> worker::Result<()> {
         Ok(())
     }
-    
+
     #[allow(unused_variables)]
     async fn websocket_error(
         &mut self,

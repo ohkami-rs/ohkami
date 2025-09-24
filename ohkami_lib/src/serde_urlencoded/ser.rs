@@ -1,6 +1,5 @@
-use serde::Serialize as _;
 use crate::percent_encode;
-
+use serde::Serialize as _;
 
 pub(crate) struct URLEncodedSerializer {
     output: String,
@@ -13,7 +12,7 @@ impl URLEncodedSerializer {
     pub(crate) const fn new() -> Self {
         Self {
             output: String::new(),
-            init:   true,
+            init: true,
         }
     }
 
@@ -28,15 +27,19 @@ const _: () = {
         type Ok = ();
         type Error = super::Error;
 
-        fn serialize_key<T: ?Sized>(&mut self, key: &T) -> Result<(), Self::Error>
-        where T: serde::Serialize {
+        fn serialize_key<T>(&mut self, key: &T) -> Result<(), Self::Error>
+        where
+            T: ?Sized + serde::Serialize,
+        {
             if !self.output.is_empty() {
                 self.output.push('&');
             }
             key.serialize(&mut **self)
         }
-        fn serialize_value<T: ?Sized>(&mut self, value: &T) -> Result<(), Self::Error>
-        where T: serde::Serialize {
+        fn serialize_value<T>(&mut self, value: &T) -> Result<(), Self::Error>
+        where
+            T: ?Sized + serde::Serialize,
+        {
             self.output.push('=');
             value.serialize(&mut **self)
         }
@@ -45,16 +48,14 @@ const _: () = {
         }
     }
     impl serde::ser::SerializeStruct for &mut URLEncodedSerializer {
-        type Ok    = ();
+        type Ok = ();
         type Error = super::Error;
 
         #[inline(always)]
-        fn serialize_field<T: ?Sized>(
-            &mut self,
-            key: &'static str,
-            value: &T,
-        ) -> Result<(), Self::Error>
-        where T: serde::Serialize {
+        fn serialize_field<T>(&mut self, key: &'static str, value: &T) -> Result<(), Self::Error>
+        where
+            T: ?Sized + serde::Serialize,
+        {
             if !self.output.is_empty() {
                 self.output.push('&');
             }
@@ -70,11 +71,13 @@ const _: () = {
     }
 
     impl serde::ser::SerializeSeq for &mut URLEncodedSerializer {
-        type Ok    = ();
+        type Ok = ();
         type Error = super::Error;
 
-        fn serialize_element<T: ?Sized>(&mut self, value: &T) -> Result<(), Self::Error>
-        where T: serde::Serialize {
+        fn serialize_element<T>(&mut self, value: &T) -> Result<(), Self::Error>
+        where
+            T: ?Sized + serde::Serialize,
+        {
             if !self.output.ends_with('=') {
                 self.output.push(',');
             }
@@ -85,11 +88,13 @@ const _: () = {
         }
     }
     impl serde::ser::SerializeTuple for &mut URLEncodedSerializer {
-        type Ok    = ();
+        type Ok = ();
         type Error = super::Error;
 
-        fn serialize_element<T: ?Sized>(&mut self, value: &T) -> Result<(), Self::Error>
-        where T: serde::Serialize {
+        fn serialize_element<T>(&mut self, value: &T) -> Result<(), Self::Error>
+        where
+            T: ?Sized + serde::Serialize,
+        {
             if !self.output.ends_with('=') {
                 self.output.push(',');
             }
@@ -100,11 +105,13 @@ const _: () = {
         }
     }
     impl serde::ser::SerializeTupleStruct for &mut URLEncodedSerializer {
-        type Ok    = ();
+        type Ok = ();
         type Error = super::Error;
 
-        fn serialize_field<T: ?Sized>(&mut self, value: &T) -> Result<(), Self::Error>
-        where T: serde::Serialize {
+        fn serialize_field<T>(&mut self, value: &T) -> Result<(), Self::Error>
+        where
+            T: ?Sized + serde::Serialize,
+        {
             if !self.output.ends_with('=') {
                 self.output.push(',');
             }
@@ -115,11 +122,13 @@ const _: () = {
         }
     }
     impl serde::ser::SerializeTupleVariant for &mut URLEncodedSerializer {
-        type Ok    = ();
+        type Ok = ();
         type Error = super::Error;
 
-        fn serialize_field<T: ?Sized>(&mut self, value: &T) -> Result<(), Self::Error>
-        where T: serde::Serialize {
+        fn serialize_field<T>(&mut self, value: &T) -> Result<(), Self::Error>
+        where
+            T: ?Sized + serde::Serialize,
+        {
             if !self.output.ends_with('=') {
                 self.output.push(',');
             }
@@ -132,26 +141,28 @@ const _: () = {
 };
 
 impl serde::Serializer for &mut URLEncodedSerializer {
-    type Ok    = ();
+    type Ok = ();
     type Error = super::Error;
 
-    type SerializeMap           = Self;
-    type SerializeStruct        = Self;
+    type SerializeMap = Self;
+    type SerializeStruct = Self;
 
-    type SerializeSeq           = Self;
-    type SerializeTuple         = Self;
-    type SerializeTupleStruct   = Self;
+    type SerializeSeq = Self;
+    type SerializeTuple = Self;
+    type SerializeTupleStruct = Self;
 
-    type SerializeTupleVariant  = super::Infallible;
+    type SerializeTupleVariant = super::Infallible;
     type SerializeStructVariant = super::Infallible;
 
     fn serialize_bool(self, v: bool) -> Result<Self::Ok, Self::Error> {
-        self.output.push_str(if v {"true"} else {"false"});
+        self.output.push_str(if v { "true" } else { "false" });
         Ok(())
     }
 
     fn serialize_bytes(self, _: &[u8]) -> Result<Self::Ok, Self::Error> {
-        Err(serde::ser::Error::custom("ohkami's builtin urlencoded serializer doesn't support raw byte data !"))
+        Err(serde::ser::Error::custom(
+            "ohkami's builtin urlencoded serializer doesn't support raw byte data !",
+        ))
     }
 
     #[inline(always)]
@@ -187,7 +198,7 @@ impl serde::Serializer for &mut URLEncodedSerializer {
     }
     fn serialize_i64(self, v: i64) -> Result<Self::Ok, Self::Error> {
         self.output.push_str(&v.to_string());
-        Ok(())        
+        Ok(())
     }
 
     fn serialize_u8(self, v: u8) -> Result<Self::Ok, Self::Error> {
@@ -204,22 +215,26 @@ impl serde::Serializer for &mut URLEncodedSerializer {
     }
     fn serialize_u64(self, v: u64) -> Result<Self::Ok, Self::Error> {
         self.output.push_str(&v.to_string());
-        Ok(())        
+        Ok(())
     }
 
     #[inline]
-    fn serialize_newtype_struct<T: ?Sized>(
+    fn serialize_newtype_struct<T>(
         self,
         _name: &'static str,
         value: &T,
     ) -> Result<Self::Ok, Self::Error>
-    where T: serde::Serialize {
+    where
+        T: ?Sized + serde::Serialize,
+    {
         value.serialize(self)
     }
 
     #[inline]
-    fn serialize_some<T: ?Sized>(self, value: &T) -> Result<Self::Ok, Self::Error>
-    where T: serde::Serialize {
+    fn serialize_some<T>(self, value: &T) -> Result<Self::Ok, Self::Error>
+    where
+        T: ?Sized + serde::Serialize,
+    {
         value.serialize(self)
     }
     #[inline]
@@ -263,14 +278,16 @@ impl serde::Serializer for &mut URLEncodedSerializer {
     }
 
     #[inline]
-    fn serialize_newtype_variant<T: ?Sized>(
+    fn serialize_newtype_variant<T>(
         self,
         _name: &'static str,
         _variant_index: u32,
         variant: &'static str,
         value: &T,
     ) -> Result<Self::Ok, Self::Error>
-    where T: serde::Serialize {
+    where
+        T: ?Sized + serde::Serialize,
+    {
         if !self.output.is_empty() {
             self.output.push('&');
         }
@@ -286,7 +303,9 @@ impl serde::Serializer for &mut URLEncodedSerializer {
         _variant: &'static str,
         _len: usize,
     ) -> Result<Self::SerializeStructVariant, Self::Error> {
-        Err(serde::ser::Error::custom("ohkami's builtin urlencoded serializer doesn't support enum with struct variants !"))
+        Err(serde::ser::Error::custom(
+            "ohkami's builtin urlencoded serializer doesn't support enum with struct variants !",
+        ))
     }
     fn serialize_tuple_variant(
         self,
@@ -295,7 +314,9 @@ impl serde::Serializer for &mut URLEncodedSerializer {
         _variant: &'static str,
         _len: usize,
     ) -> Result<Self::SerializeTupleVariant, Self::Error> {
-        Err(serde::ser::Error::custom("ohkami's builtin urlencoded serializer doesn't support enum with tuple variants !"))
+        Err(serde::ser::Error::custom(
+            "ohkami's builtin urlencoded serializer doesn't support enum with tuple variants !",
+        ))
     }
     fn serialize_unit_variant(
         self,

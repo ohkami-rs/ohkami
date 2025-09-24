@@ -1,12 +1,17 @@
-use super::{paths::{Paths, Operations}, schema::RawSchema, security::SecurityScheme, _util::Map};
+use super::{
+    _util::Map,
+    paths::{Operations, Paths},
+    schema::RawSchema,
+    security::SecurityScheme,
+};
 use serde::Serialize;
 
 #[derive(Serialize)]
 pub struct Document {
-    openapi:    &'static str,
-    info:       Info,
-    servers:    Vec<Server>,
-    paths:      Paths,
+    openapi: &'static str,
+    info: Info,
+    servers: Vec<Server>,
+    paths: Paths,
 
     #[serde(skip_serializing_if = "Components::is_empty")]
     components: Components,
@@ -14,7 +19,7 @@ pub struct Document {
 
 #[derive(Serialize)]
 struct Info {
-    title:   &'static str,
+    title: &'static str,
     version: &'static str,
 
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -29,7 +34,7 @@ pub struct Server {
     description: Option<&'static str>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    variables: Option<Box<Map<&'static str, ServerVariable>>>
+    variables: Option<Box<Map<&'static str, ServerVariable>>>,
 }
 #[derive(Serialize, Clone)]
 struct ServerVariable {
@@ -44,7 +49,11 @@ struct ServerVariable {
 }
 impl Server {
     pub fn at(url: &'static str) -> Self {
-        Self { url, description:None, variables:None }
+        Self {
+            url,
+            description: None,
+            variables: None,
+        }
     }
 
     pub fn description(mut self, description: &'static str) -> Self {
@@ -56,7 +65,7 @@ impl Server {
         mut self,
         name: &'static str,
         default: &'static str,
-        candidates: [&'static str; N]
+        candidates: [&'static str; N],
     ) -> Self {
         if self.variables.is_none() {
             self.variables = Some(Box::new(Map::new()))
@@ -65,9 +74,10 @@ impl Server {
             name,
             ServerVariable {
                 default,
-                enumerates:  candidates.into(),
-                description: None
-            });
+                enumerates: candidates.into(),
+                description: None,
+            },
+        );
         self
     }
 }
@@ -88,16 +98,23 @@ impl Components {
 
 impl Document {
     pub fn new(
-        title:   &'static str,
+        title: &'static str,
         version: &'static str,
-        servers: impl Into<Vec<Server>>
+        servers: impl Into<Vec<Server>>,
     ) -> Self {
         Self {
-            openapi:    "3.1.0",
-            info:       Info { title, version, description:None },
-            servers:    servers.into(),
-            paths:      Paths::new(),
-            components: Components { schemas:Map::new(), security_schemes:Map::new() }
+            openapi: "3.1.0",
+            info: Info {
+                title,
+                version,
+                description: None,
+            },
+            servers: servers.into(),
+            paths: Paths::new(),
+            components: Components {
+                schemas: Map::new(),
+                security_schemes: Map::new(),
+            },
         }
     }
 
@@ -109,24 +126,36 @@ impl Document {
         self.paths = self.paths.at(path, operations);
         self
     }
-    
+
     #[doc(hidden)]
     pub fn register_schema_component(&mut self, schema: impl Into<RawSchema>) {
         let schema: RawSchema = schema.into();
         if let Some(name) = schema.__name__ {
             match self.components.schemas.get(&name) {
-                Some(it) if *it == schema => return,
-                Some(_) => panic!("[OpenAPI] `components.schemas`: contradict registrations of multiple `{name}`s"),
+                Some(it) if *it == schema => (),
+                Some(_) => panic!(
+                    "[OpenAPI] `components.schemas`: contradict registrations of multiple `{name}`s"
+                ),
                 None => self.components.schemas.insert(name, schema),
             }
         }
     }
     #[doc(hidden)]
     pub fn register_securityScheme_component(&mut self, securityScheme: SecurityScheme) {
-        match self.components.security_schemes.get(&securityScheme.__name__) {
-            Some(it) if *it == securityScheme => return,
-            Some(_) => panic!("[OpenAPI] `components.security_schemes`: contradict registrations of multiple `{}`s", securityScheme.__name__),
-            None => self.components.security_schemes.insert(securityScheme.__name__, securityScheme),
+        match self
+            .components
+            .security_schemes
+            .get(&securityScheme.__name__)
+        {
+            Some(it) if *it == securityScheme => (),
+            Some(_) => panic!(
+                "[OpenAPI] `components.security_schemes`: contradict registrations of multiple `{}`s",
+                securityScheme.__name__
+            ),
+            None => self
+                .components
+                .security_schemes
+                .insert(securityScheme.__name__, securityScheme),
         }
     }
 }

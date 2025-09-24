@@ -3,7 +3,7 @@ use std::borrow::Cow;
 
 pub(crate) struct CookieDeserializer<'de> {
     input: &'de [u8],
-    side:  ParsingSide,
+    side: ParsingSide,
 }
 #[derive(Debug, PartialEq, Clone, Copy)]
 enum ParsingSide {
@@ -13,10 +13,13 @@ enum ParsingSide {
 
 impl<'de> CookieDeserializer<'de> {
     pub(crate) const fn new(input: &'de str) -> Self {
-        Self { input: input.as_bytes(), side: ParsingSide::Name }
+        Self {
+            input: input.as_bytes(),
+            side: ParsingSide::Name,
+        }
     }
     pub(crate) const fn remaining(&self) -> &'de [u8] {
-        &self.input
+        self.input
     }
 }
 
@@ -33,7 +36,7 @@ pub mod valid {
             }
         }
         // SAFETY: `bytes` here is obviously ASCII
-        Ok(unsafe {std::str::from_utf8_unchecked(bytes)})
+        Ok(unsafe { std::str::from_utf8_unchecked(bytes) })
     }
 
     #[inline]
@@ -54,8 +57,8 @@ pub mod valid {
         }
         // SAFETY: `bytes` here os obviously ASCII
         Ok(match crate::percent_decode(bytes) {
-            Cow::Borrowed(b) => Cow::Borrowed(unsafe {std::str::from_utf8_unchecked(b)}),
-            Cow::Owned(b) => Cow::Owned(unsafe {String::from_utf8_unchecked(b)})
+            Cow::Borrowed(b) => Cow::Borrowed(unsafe { std::str::from_utf8_unchecked(b) }),
+            Cow::Owned(b) => Cow::Owned(unsafe { String::from_utf8_unchecked(b) }),
         })
     }
 }
@@ -63,11 +66,13 @@ pub mod valid {
 impl<'de> CookieDeserializer<'de> {
     #[inline(always)]
     fn peek(&self) -> Result<&u8, super::Error> {
-        self.input.first().ok_or_else(|| serde::de::Error::custom("can't peek: unexpected end of input"))
+        self.input
+            .first()
+            .ok_or_else(|| serde::de::Error::custom("can't peek: unexpected end of input"))
     }
     #[inline(always)]
     fn next(&mut self) -> Result<u8, super::Error> {
-        let next = self.peek()?.clone();
+        let next = *self.peek()?;
         self.input = &self.input[1..];
         Ok(next)
     }
@@ -79,7 +84,8 @@ impl<'de> CookieDeserializer<'de> {
         let ptr = self.input.as_ptr();
 
         // SAFETY: Caller has to check that `0 <= mid <= self.len()`
-        let (take, remaining) = unsafe {(from_raw_parts(ptr, n), from_raw_parts(ptr.add(n), len - n))};
+        let (take, remaining) =
+            unsafe { (from_raw_parts(ptr, n), from_raw_parts(ptr.add(n), len - n)) };
         self.input = remaining;
 
         take
@@ -91,43 +97,54 @@ impl<'de> CookieDeserializer<'de> {
         match &self.side {
             ParsingSide::Name => match next_punc {
                 /* e.g. `name` */
-                None => Err(serde::de::Error::custom("invalid name-value: unexpected end of input")),
+                None => Err(serde::de::Error::custom(
+                    "invalid name-value: unexpected end of input",
+                )),
 
                 /* e.g. `=ohkami` */
                 Some(0) => Err(serde::de::Error::custom("invalid name-value: empty name")),
 
                 /* e.g. `name=ohkami` is ok, `name; ohkami` is err */
                 Some(n) => (self.input[n] == b'=')
-                    .then_some(Cow::Borrowed(valid::name(unsafe {self.take_n_unchecked(n)})?))
-                    .ok_or_else(|| serde::de::Error::custom("invalid name-value: missing `=`"))
+                    .then_some(Cow::Borrowed(valid::name(unsafe {
+                        self.take_n_unchecked(n)
+                    })?))
+                    .ok_or_else(|| serde::de::Error::custom("invalid name-value: missing `=`")),
             },
 
             ParsingSide::Value => match next_punc {
                 /* final value; end of whole the parsing */
-                None => Ok(valid::value(unsafe {self.take_n_unchecked(self.input.len())})?),
+                None => Ok(valid::value(unsafe {
+                    self.take_n_unchecked(self.input.len())
+                })?),
 
                 /* n = 0 is ok (e.g. `name=; age=18` is valid; empty string) */
                 /* e.g. `name=ohkami&age=4` is ok, `name=ohkami=age=4` is err */
                 Some(n) => (self.input[n] == b';')
-                    .then_some(valid::value(unsafe {self.take_n_unchecked(n)})?)
-                    .ok_or_else(|| serde::de::Error::custom("invalid name-value: missing `; `"))
-            }
+                    .then_some(valid::value(unsafe { self.take_n_unchecked(n) })?)
+                    .ok_or_else(|| serde::de::Error::custom("invalid name-value: missing `; `")),
+            },
         }
     }
 }
 
-impl<'u, 'de> serde::Deserializer<'de> for &'u mut CookieDeserializer<'de> {
+impl<'de> serde::Deserializer<'de> for &mut CookieDeserializer<'de> {
     type Error = super::Error;
 
     fn deserialize_any<V>(self, visitor: V) -> Result<V::Value, Self::Error>
-    where V: serde::de::Visitor<'de> {
+    where
+        V: serde::de::Visitor<'de>,
+    {
         self.deserialize_map(visitor)
     }
 
     /// when the visitor visits value of unkown key
     fn deserialize_ignored_any<V>(self, visitor: V) -> Result<V::Value, Self::Error>
-    where V: serde::de::Visitor<'de> {
-        #[cfg(debug_assertions)] {
+    where
+        V: serde::de::Visitor<'de>,
+    {
+        #[cfg(debug_assertions)]
+        {
             assert!(matches!(self.side, ParsingSide::Value));
         }
         let _ = self.next_section();
@@ -139,8 +156,11 @@ impl<'u, 'de> serde::Deserializer<'de> for &'u mut CookieDeserializer<'de> {
 
     #[inline(always)]
     fn deserialize_map<V>(self, visitor: V) -> Result<V::Value, Self::Error>
-    where V: serde::de::Visitor<'de> {
-        #[cfg(debug_assertions)] {
+    where
+        V: serde::de::Visitor<'de>,
+    {
+        #[cfg(debug_assertions)]
+        {
             assert!(self.side == ParsingSide::Name);
         }
 
@@ -153,7 +173,9 @@ impl<'u, 'de> serde::Deserializer<'de> for &'u mut CookieDeserializer<'de> {
         _fields: &'static [&'static str],
         visitor: V,
     ) -> Result<V::Value, Self::Error>
-    where V: serde::de::Visitor<'de> {
+    where
+        V: serde::de::Visitor<'de>,
+    {
         self.deserialize_map(visitor)
     }
 
@@ -164,13 +186,17 @@ impl<'u, 'de> serde::Deserializer<'de> for &'u mut CookieDeserializer<'de> {
         _variants: &'static [&'static str],
         visitor: V,
     ) -> Result<V::Value, Self::Error>
-    where V: serde::de::Visitor<'de> {
+    where
+        V: serde::de::Visitor<'de>,
+    {
         visitor.visit_enum(Enum::new(self))
     }
 
     #[inline(always)]
     fn deserialize_identifier<V>(self, visitor: V) -> Result<V::Value, Self::Error>
-    where V: serde::de::Visitor<'de> {
+    where
+        V: serde::de::Visitor<'de>,
+    {
         /*
             Here we don't put
 
@@ -187,35 +213,44 @@ impl<'u, 'de> serde::Deserializer<'de> for &'u mut CookieDeserializer<'de> {
     }
     #[inline(always)]
     fn deserialize_str<V>(self, visitor: V) -> Result<V::Value, Self::Error>
-    where V: serde::de::Visitor<'de> {
+    where
+        V: serde::de::Visitor<'de>,
+    {
         match self.next_section()? {
             Cow::Borrowed(str) => visitor.visit_borrowed_str(str),
-            Cow::Owned(string) => visitor.visit_string(string)
-                .map_err(|e: Self::Error| {
-                    #[cfg(debug_assertions)] {
-                        serde::de::Error::custom(format!(
-                            "{e}. [DEBUG] maybe you need to use `String` or `Cow<str>` \
+            Cow::Owned(string) => visitor.visit_string(string).map_err(|e: Self::Error| {
+                #[cfg(debug_assertions)]
+                {
+                    serde::de::Error::custom(format!(
+                        "{e}. [DEBUG] maybe you need to use `String` or `Cow<str>` \
                             instead of `&str` to accept percent-decoded value"
-                        ))
-                    }
-                    #[cfg(not(debug_assertions))] {
-                        e
-                    }
-                })
+                    ))
+                }
+                #[cfg(not(debug_assertions))]
+                {
+                    e
+                }
+            }),
         }
     }
     fn deserialize_string<V>(self, visitor: V) -> Result<V::Value, Self::Error>
-    where V: serde::de::Visitor<'de> {
+    where
+        V: serde::de::Visitor<'de>,
+    {
         self.deserialize_str(visitor)
     }
     fn deserialize_char<V>(self, visitor: V) -> Result<V::Value, Self::Error>
-    where V: serde::de::Visitor<'de> {
+    where
+        V: serde::de::Visitor<'de>,
+    {
         let section = self.next_section()?;
         let mut chars = section.chars();
         let (Some(ch), None) = (chars.next(), chars.next()) else {
-            return Err((|| serde::de::Error::custom(
-                format!("Expected a single charactor, but got `{section}`")
-            ))())
+            return Err({
+                serde::de::Error::custom(format!(
+                    "Expected a single charactor, but got `{section}`"
+                ))
+            });
         };
         visitor.visit_char(ch)
     }
@@ -226,14 +261,24 @@ impl<'u, 'de> serde::Deserializer<'de> for &'u mut CookieDeserializer<'de> {
         _name: &'static str,
         visitor: V,
     ) -> Result<V::Value, Self::Error>
-    where V: serde::de::Visitor<'de> {
+    where
+        V: serde::de::Visitor<'de>,
+    {
         visitor.visit_newtype_struct(self)
     }
 
     #[inline]
     fn deserialize_option<V>(self, visitor: V) -> Result<V::Value, Self::Error>
-    where V: serde::de::Visitor<'de> {
-        if self.input.iter().position(|b| b==&b'&').unwrap_or(self.input.len()) == 0 {
+    where
+        V: serde::de::Visitor<'de>,
+    {
+        if self
+            .input
+            .iter()
+            .position(|b| b == &b'&')
+            .unwrap_or(self.input.len())
+            == 0
+        {
             visitor.visit_none()
         } else {
             visitor.visit_some(self)
@@ -241,17 +286,27 @@ impl<'u, 'de> serde::Deserializer<'de> for &'u mut CookieDeserializer<'de> {
     }
 
     fn deserialize_unit<V>(self, visitor: V) -> Result<V::Value, Self::Error>
-    where V: serde::de::Visitor<'de> {
-        if self.input.iter().position(|b| b==&b'&').unwrap_or(self.input.len()) == 0 {
+    where
+        V: serde::de::Visitor<'de>,
+    {
+        if self
+            .input
+            .iter()
+            .position(|b| b == &b'&')
+            .unwrap_or(self.input.len())
+            == 0
+        {
             visitor.visit_unit()
         } else {
-            Err((|| serde::de::Error::custom(format!(
-                "Expected an empty value for an unit, but got `{}`",
-                match self.next_section() {
-                    Ok(section) => section.to_string(),
-                    Err(e) => e.to_string()
-                }
-            )))())
+            Err({
+                serde::de::Error::custom(format!(
+                    "Expected an empty value for an unit, but got `{}`",
+                    match self.next_section() {
+                        Ok(section) => section.to_string(),
+                        Err(e) => e.to_string(),
+                    }
+                ))
+            })
         }
     }
     fn deserialize_unit_struct<V>(
@@ -259,16 +314,24 @@ impl<'u, 'de> serde::Deserializer<'de> for &'u mut CookieDeserializer<'de> {
         _name: &'static str,
         visitor: V,
     ) -> Result<V::Value, Self::Error>
-    where V: serde::de::Visitor<'de> {
+    where
+        V: serde::de::Visitor<'de>,
+    {
         self.deserialize_unit(visitor)
     }
 
     fn deserialize_seq<V>(self, _visitor: V) -> Result<V::Value, Self::Error>
-    where V: serde::de::Visitor<'de> {
-        Err(serde::de::Error::custom("Deserializing to sequence-like type is not supported"))
+    where
+        V: serde::de::Visitor<'de>,
+    {
+        Err(serde::de::Error::custom(
+            "Deserializing to sequence-like type is not supported",
+        ))
     }
     fn deserialize_tuple<V>(self, _len: usize, visitor: V) -> Result<V::Value, Self::Error>
-    where V: serde::de::Visitor<'de> {
+    where
+        V: serde::de::Visitor<'de>,
+    {
         self.deserialize_seq(visitor)
     }
     fn deserialize_tuple_struct<V>(
@@ -277,13 +340,18 @@ impl<'u, 'de> serde::Deserializer<'de> for &'u mut CookieDeserializer<'de> {
         _len: usize,
         visitor: V,
     ) -> Result<V::Value, Self::Error>
-    where V: serde::de::Visitor<'de> {
+    where
+        V: serde::de::Visitor<'de>,
+    {
         self.deserialize_seq(visitor)
     }
 
     fn deserialize_bytes<V>(self, visitor: V) -> Result<V::Value, Self::Error>
-    where V: serde::de::Visitor<'de> {
-        #[cfg(debug_assertions)] {
+    where
+        V: serde::de::Visitor<'de>,
+    {
+        #[cfg(debug_assertions)]
+        {
             assert!(self.side == ParsingSide::Value);
         }
 
@@ -293,8 +361,11 @@ impl<'u, 'de> serde::Deserializer<'de> for &'u mut CookieDeserializer<'de> {
         }
     }
     fn deserialize_byte_buf<V>(self, visitor: V) -> Result<V::Value, Self::Error>
-    where V: serde::de::Visitor<'de> {
-        #[cfg(debug_assertions)] {
+    where
+        V: serde::de::Visitor<'de>,
+    {
+        #[cfg(debug_assertions)]
+        {
             assert!(self.side == ParsingSide::Value);
         }
 
@@ -302,147 +373,159 @@ impl<'u, 'de> serde::Deserializer<'de> for &'u mut CookieDeserializer<'de> {
     }
 
     fn deserialize_bool<V>(self, visitor: V) -> Result<V::Value, Self::Error>
-    where V: serde::de::Visitor<'de> {
-        #[cfg(debug_assertions)] {
+    where
+        V: serde::de::Visitor<'de>,
+    {
+        #[cfg(debug_assertions)]
+        {
             assert!(self.side == ParsingSide::Value);
         }
 
         match &*self.next_section()? {
-            "true"  => visitor.visit_bool(true),
+            "true" => visitor.visit_bool(true),
             "false" => visitor.visit_bool(false),
             other => Err(serde::de::Error::custom(format!(
                 "Expected `true` or `false`, but got `{other}`"
-            )))
+            ))),
         }
     }
 
     fn deserialize_f32<V>(self, visitor: V) -> Result<V::Value, Self::Error>
-    where V: serde::de::Visitor<'de> {
-        #[cfg(debug_assertions)] {
+    where
+        V: serde::de::Visitor<'de>,
+    {
+        #[cfg(debug_assertions)]
+        {
             assert!(self.side == ParsingSide::Value);
         }
         let section = self.next_section()?;
-        visitor.visit_f32(
-            section.parse().map_err(|_| serde::de::Error::custom(
-                format!("Expected a number, but got `{section}`")
-            ))?
-        )
+        visitor.visit_f32(section.parse().map_err(|_| {
+            serde::de::Error::custom(format!("Expected a number, but got `{section}`"))
+        })?)
     }
     fn deserialize_f64<V>(self, visitor: V) -> Result<V::Value, Self::Error>
-    where V: serde::de::Visitor<'de> {
-        #[cfg(debug_assertions)] {
+    where
+        V: serde::de::Visitor<'de>,
+    {
+        #[cfg(debug_assertions)]
+        {
             assert!(self.side == ParsingSide::Value);
         }
         let section = self.next_section()?;
-        visitor.visit_f64(
-            section.parse().map_err(|_| serde::de::Error::custom(
-                format!("Expected a number, but got `{section}`")
-            ))?
-        )
+        visitor.visit_f64(section.parse().map_err(|_| {
+            serde::de::Error::custom(format!("Expected a number, but got `{section}`"))
+        })?)
     }
 
     fn deserialize_i8<V>(self, visitor: V) -> Result<V::Value, Self::Error>
-    where V: serde::de::Visitor<'de> {
-        #[cfg(debug_assertions)] {
+    where
+        V: serde::de::Visitor<'de>,
+    {
+        #[cfg(debug_assertions)]
+        {
             assert!(self.side == ParsingSide::Value);
         }
         let section = self.next_section()?;
-        visitor.visit_i8(
-            section.parse().map_err(|_| serde::de::Error::custom(
-                format!("Expected an integer, but got `{section}`")
-            ))?
-        )
+        visitor.visit_i8(section.parse().map_err(|_| {
+            serde::de::Error::custom(format!("Expected an integer, but got `{section}`"))
+        })?)
     }
     fn deserialize_i16<V>(self, visitor: V) -> Result<V::Value, Self::Error>
-    where V: serde::de::Visitor<'de> {
-        #[cfg(debug_assertions)] {
+    where
+        V: serde::de::Visitor<'de>,
+    {
+        #[cfg(debug_assertions)]
+        {
             assert!(self.side == ParsingSide::Value);
         }
         let section = self.next_section()?;
-        visitor.visit_i16(
-            section.parse().map_err(|_| serde::de::Error::custom(
-                format!("Expected an integer, but got `{section}`")
-            ))?
-        )
+        visitor.visit_i16(section.parse().map_err(|_| {
+            serde::de::Error::custom(format!("Expected an integer, but got `{section}`"))
+        })?)
     }
     fn deserialize_i32<V>(self, visitor: V) -> Result<V::Value, Self::Error>
-    where V: serde::de::Visitor<'de> {
-        #[cfg(debug_assertions)] {
+    where
+        V: serde::de::Visitor<'de>,
+    {
+        #[cfg(debug_assertions)]
+        {
             assert!(self.side == ParsingSide::Value);
         }
         let section = self.next_section()?;
-        visitor.visit_i32(
-            section.parse().map_err(|_| serde::de::Error::custom(
-                format!("Expected an integer, but got `{section}`")
-            ))?
-        )
+        visitor.visit_i32(section.parse().map_err(|_| {
+            serde::de::Error::custom(format!("Expected an integer, but got `{section}`"))
+        })?)
     }
     fn deserialize_i64<V>(self, visitor: V) -> Result<V::Value, Self::Error>
-    where V: serde::de::Visitor<'de> {
-        #[cfg(debug_assertions)] {
+    where
+        V: serde::de::Visitor<'de>,
+    {
+        #[cfg(debug_assertions)]
+        {
             assert!(self.side == ParsingSide::Value);
         }
         let section = self.next_section()?;
-        visitor.visit_i64(
-            section.parse().map_err(|_| serde::de::Error::custom(
-                format!("Expected an integer, but got `{section}`")
-            ))?
-        )
+        visitor.visit_i64(section.parse().map_err(|_| {
+            serde::de::Error::custom(format!("Expected an integer, but got `{section}`"))
+        })?)
     }
 
     fn deserialize_u8<V>(self, visitor: V) -> Result<V::Value, Self::Error>
-    where V: serde::de::Visitor<'de> {
-        #[cfg(debug_assertions)] {
+    where
+        V: serde::de::Visitor<'de>,
+    {
+        #[cfg(debug_assertions)]
+        {
             assert!(self.side == ParsingSide::Value);
         }
         let section = self.next_section()?;
-        visitor.visit_u8(
-            section.parse().map_err(|_| serde::de::Error::custom(
-                format!("Expected an integer, but got `{section}`")
-            ))?
-        )
+        visitor.visit_u8(section.parse().map_err(|_| {
+            serde::de::Error::custom(format!("Expected an integer, but got `{section}`"))
+        })?)
     }
     fn deserialize_u16<V>(self, visitor: V) -> Result<V::Value, Self::Error>
-    where V: serde::de::Visitor<'de> {
-        #[cfg(debug_assertions)] {
+    where
+        V: serde::de::Visitor<'de>,
+    {
+        #[cfg(debug_assertions)]
+        {
             assert!(self.side == ParsingSide::Value);
         }
         let section = self.next_section()?;
-        visitor.visit_u16(
-            section.parse().map_err(|_| serde::de::Error::custom(
-                format!("Expected an integer, but got `{section}`")
-            ))?
-        )
+        visitor.visit_u16(section.parse().map_err(|_| {
+            serde::de::Error::custom(format!("Expected an integer, but got `{section}`"))
+        })?)
     }
     fn deserialize_u32<V>(self, visitor: V) -> Result<V::Value, Self::Error>
-    where V: serde::de::Visitor<'de> {
-        #[cfg(debug_assertions)] {
+    where
+        V: serde::de::Visitor<'de>,
+    {
+        #[cfg(debug_assertions)]
+        {
             assert!(self.side == ParsingSide::Value);
         }
         let section = self.next_section()?;
-        visitor.visit_u32(
-            section.parse().map_err(|_| serde::de::Error::custom(
-                format!("Expected an integer, but got `{section}`")
-            ))?
-        )
+        visitor.visit_u32(section.parse().map_err(|_| {
+            serde::de::Error::custom(format!("Expected an integer, but got `{section}`"))
+        })?)
     }
     fn deserialize_u64<V>(self, visitor: V) -> Result<V::Value, Self::Error>
-    where V: serde::de::Visitor<'de> {
-        #[cfg(debug_assertions)] {
+    where
+        V: serde::de::Visitor<'de>,
+    {
+        #[cfg(debug_assertions)]
+        {
             assert!(self.side == ParsingSide::Value);
         }
         let section = self.next_section()?;
-        visitor.visit_u64(
-            section.parse().map_err(|_| serde::de::Error::custom(
-                format!("Expected an integer, but got `{section}`")
-            ))?
-        )
+        visitor.visit_u64(section.parse().map_err(|_| {
+            serde::de::Error::custom(format!("Expected an integer, but got `{section}`"))
+        })?)
     }
 }
 
-
-struct AmpersandSeparated<'amp, 'de:'amp> {
-    de:    &'amp mut CookieDeserializer<'de>,
+struct AmpersandSeparated<'amp, 'de: 'amp> {
+    de: &'amp mut CookieDeserializer<'de>,
     first: bool,
 }
 impl<'amp, 'de> AmpersandSeparated<'amp, 'de> {
@@ -456,16 +539,18 @@ const _: () = {
 
         #[inline]
         fn next_key_seed<K>(&mut self, seed: K) -> Result<Option<K::Value>, Self::Error>
-        where K: serde::de::DeserializeSeed<'de> {
+        where
+            K: serde::de::DeserializeSeed<'de>,
+        {
             if self.de.input.is_empty() {
-                return Ok(None)
+                return Ok(None);
             }
             if !self.first {
                 if self.de.next()? != b';' {
-                    return Err((|| serde::de::Error::custom("missing `;`"))())
+                    return Err(serde::de::Error::custom("missing `;`"));
                 }
                 if self.de.next()? != b' ' {
-                    return Err((|| serde::de::Error::custom("missing ` ` after `;`"))())
+                    return Err(serde::de::Error::custom("missing ` ` after `;`"));
                 }
             }
             self.first = false;
@@ -474,9 +559,11 @@ const _: () = {
         }
         #[inline]
         fn next_value_seed<V>(&mut self, seed: V) -> Result<V::Value, Self::Error>
-        where V: serde::de::DeserializeSeed<'de> {
+        where
+            V: serde::de::DeserializeSeed<'de>,
+        {
             if self.de.next()? != b'=' {
-                return Err((|| serde::de::Error::custom("missing `=`"))())
+                return Err(serde::de::Error::custom("missing `=`"));
             }
             self.de.side = ParsingSide::Value;
             seed.deserialize(&mut *self.de)
@@ -484,8 +571,8 @@ const _: () = {
     }
 };
 
-struct Enum<'e, 'de:'e> {
-    de: &'e mut CookieDeserializer<'de>
+struct Enum<'e, 'de: 'e> {
+    de: &'e mut CookieDeserializer<'de>,
 }
 impl<'e, 'de> Enum<'e, 'de> {
     fn new(de: &'e mut CookieDeserializer<'de>) -> Self {
@@ -495,10 +582,12 @@ impl<'e, 'de> Enum<'e, 'de> {
 const _: () = {
     impl<'e, 'de> serde::de::EnumAccess<'de> for Enum<'e, 'de> {
         type Variant = Self;
-        type Error   = super::Error;
+        type Error = super::Error;
 
         fn variant_seed<V>(self, seed: V) -> Result<(V::Value, Self::Variant), Self::Error>
-        where V: serde::de::DeserializeSeed<'de> {
+        where
+            V: serde::de::DeserializeSeed<'de>,
+        {
             Ok((
                 seed.deserialize(self.de.next_section().unwrap().into_deserializer())?,
                 self,
@@ -514,8 +603,12 @@ const _: () = {
         }
 
         fn newtype_variant_seed<T>(self, _seed: T) -> Result<T::Value, Self::Error>
-        where T: serde::de::DeserializeSeed<'de> {
-            Err(serde::de::Error::custom("ohkami's builtin Cookie deserializer doesn't support enum with newtype variants !"))
+        where
+            T: serde::de::DeserializeSeed<'de>,
+        {
+            Err(serde::de::Error::custom(
+                "ohkami's builtin Cookie deserializer doesn't support enum with newtype variants !",
+            ))
         }
 
         fn struct_variant<V>(
@@ -523,13 +616,21 @@ const _: () = {
             _fields: &'static [&'static str],
             _visitor: V,
         ) -> Result<V::Value, Self::Error>
-        where V: serde::de::Visitor<'de> {
-            Err(serde::de::Error::custom("ohkami's builtin Cookie deserializer doesn't support enum with struct variants !"))
+        where
+            V: serde::de::Visitor<'de>,
+        {
+            Err(serde::de::Error::custom(
+                "ohkami's builtin Cookie deserializer doesn't support enum with struct variants !",
+            ))
         }
 
         fn tuple_variant<V>(self, _len: usize, _visitor: V) -> Result<V::Value, Self::Error>
-        where V: serde::de::Visitor<'de> {
-            Err(serde::de::Error::custom("ohkami's builtin Cookie deserializer doesn't support enum with tuple variants !"))
+        where
+            V: serde::de::Visitor<'de>,
+        {
+            Err(serde::de::Error::custom(
+                "ohkami's builtin Cookie deserializer doesn't support enum with tuple variants !",
+            ))
         }
     }
 };

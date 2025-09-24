@@ -1,14 +1,14 @@
 #![allow(non_snake_case)]
 
 mod append;
-pub use append::append;
 pub(crate) use append::Append;
+pub use append::append;
 
 mod etag;
 pub use etag::ETag;
 
 mod encoding;
-pub use encoding::{Encoding, CompressionEncoding, AcceptEncoding};
+pub use encoding::{AcceptEncoding, CompressionEncoding, Encoding};
 
 mod qvalue;
 pub use qvalue::QValue;

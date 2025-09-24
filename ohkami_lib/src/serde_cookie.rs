@@ -7,11 +7,12 @@ mod _test;
 pub fn from_str<'de, D: serde::Deserialize<'de>>(input: &'de str) -> Result<D, Error> {
     let mut d = de::CookieDeserializer::new(input);
     let t = D::deserialize(&mut d)?;
-    if d.remaining().is_empty() {
-        Ok(t)
-    } else {
-        Err((||serde::de::Error::custom(format!("Unexpected trailing charactors: {}", d.remaining().escape_ascii())))())
-    }
+    d.remaining().is_empty().then_some(t).ok_or_else(|| {
+        serde::de::Error::custom(format!(
+            "Unexpected trailing charactors: `{}`",
+            d.remaining().escape_ascii()
+        ))
+    })
 }
 
 #[derive(Debug)]
@@ -25,12 +26,18 @@ const _: () = {
     impl std::error::Error for Error {}
 
     impl serde::ser::Error for Error {
-        fn custom<T>(msg:T) -> Self where T:std::fmt::Display {
+        fn custom<T>(msg: T) -> Self
+        where
+            T: std::fmt::Display,
+        {
             Self(msg.to_string())
         }
     }
     impl serde::de::Error for Error {
-        fn custom<T>(msg:T) -> Self where T:std::fmt::Display {
+        fn custom<T>(msg: T) -> Self
+        where
+            T: std::fmt::Display,
+        {
             Self(msg.to_string())
         }
     }

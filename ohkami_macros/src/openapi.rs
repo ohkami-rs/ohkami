@@ -1,18 +1,24 @@
-#![cfg(feature="openapi")]
+#![cfg(feature = "openapi")]
 
 mod attributes;
 
 use self::attributes::{ContainerAttributes, FieldAttributes, VariantAttributes};
-use crate::util::{inner_Option, extract_doc_comment, extract_doc_attrs};
-use proc_macro2::{TokenStream, Span};
+use crate::util::{extract_doc_attrs, extract_doc_comment, inner_Option};
+use proc_macro2::{Span, TokenStream};
 use quote::quote;
-use syn::{Item, ItemFn, ItemStruct, ItemEnum, Fields, FieldsNamed, FieldsUnnamed, Variant, Visibility, Ident, LitInt, LitStr, Type, Path, token, Token, punctuated::Punctuated};
+use syn::{
+    Fields, FieldsNamed, FieldsUnnamed, Ident, Item, ItemEnum, ItemFn, ItemStruct, LitInt, LitStr,
+    Path, Token, Type, Variant, Visibility, punctuated::Punctuated, token,
+};
 
 pub(super) fn derive_schema(input: TokenStream) -> syn::Result<TokenStream> {
     return match syn::parse2::<Item>(input)? {
         Item::Struct(s) => derive_schema_for_struct(s),
-        Item::Enum  (e) => derive_schema_for_enum  (e),
-        _ => Err(syn::Error::new(Span::call_site(), "#[derive(Schema)] takes struct or enum"))
+        Item::Enum(e) => derive_schema_for_enum(e),
+        _ => Err(syn::Error::new(
+            Span::call_site(),
+            "#[derive(Schema)] takes struct or enum",
+        )),
     };
 
     fn derive_schema_for_struct(s: ItemStruct) -> syn::Result<TokenStream> {
@@ -38,11 +44,16 @@ pub(super) fn derive_schema(input: TokenStream) -> syn::Result<TokenStream> {
         if container_attrs.openapi.component.yes {
             struct_schema = {
                 let mut component_name = LitStr::new(
-                    container_attrs.openapi.component.name.as_ref().unwrap_or(&name.to_string()),
-                    name.span()
+                    container_attrs
+                        .openapi
+                        .component
+                        .name
+                        .as_ref()
+                        .unwrap_or(&name.to_string()),
+                    name.span(),
                 );
                 if let Some((span, rename)) = container_attrs.serde.rename.value()? {
-                    component_name = LitStr::new(&rename, span);
+                    component_name = LitStr::new(rename, span);
                 }
                 quote! {
                     ::ohkami::openapi::component(#component_name, #struct_schema)
@@ -93,11 +104,16 @@ pub(super) fn derive_schema(input: TokenStream) -> syn::Result<TokenStream> {
         if container_attrs.openapi.component.yes {
             enum_schema = {
                 let mut component_name = LitStr::new(
-                    container_attrs.openapi.component.name.as_ref().unwrap_or(&name.to_string()),
-                    name.span()
+                    container_attrs
+                        .openapi
+                        .component
+                        .name
+                        .as_ref()
+                        .unwrap_or(&name.to_string()),
+                    name.span(),
                 );
                 if let Some((span, rename)) = container_attrs.serde.rename.value()? {
-                    component_name = LitStr::new(&rename, span);
+                    component_name = LitStr::new(rename, span);
                 }
                 quote! {
                     ::ohkami::openapi::component(#component_name, #enum_schema)
@@ -107,7 +123,7 @@ pub(super) fn derive_schema(input: TokenStream) -> syn::Result<TokenStream> {
 
         if let Some(description) = extract_doc_comment(&e.attrs) {
             enum_schema = {
-                let description = LitStr::new(&*description, Span::call_site());
+                let description = LitStr::new(&description, Span::call_site());
                 quote! {
                     #enum_schema.description(#description)
                 }
@@ -125,18 +141,25 @@ pub(super) fn derive_schema(input: TokenStream) -> syn::Result<TokenStream> {
         })
     }
 
-    fn schema_of_fields(fields: Fields, container_attrs: &ContainerAttributes) -> syn::Result<TokenStream> {
+    fn schema_of_fields(
+        fields: Fields,
+        container_attrs: &ContainerAttributes,
+    ) -> syn::Result<TokenStream> {
         match fields {
-            Fields::Named(FieldsNamed { brace_token:_, named }) => {/* object */
+            Fields::Named(FieldsNamed {
+                brace_token: _,
+                named,
+            }) => {
+                /* object */
                 let mut properties = Vec::with_capacity(named.len());
                 for f in named {
                     let field_attrs = FieldAttributes::new(&f.attrs)?;
 
                     if field_attrs.serde.skip
-                    || field_attrs.serde.skip_serializing
-                    || field_attrs.serde.skip_deserializing
+                        || field_attrs.serde.skip_serializing
+                        || field_attrs.serde.skip_deserializing
                     {
-                        continue
+                        continue;
                     }
 
                     let mut ident = f.ident.clone().unwrap(/* Named */);
@@ -144,7 +167,7 @@ pub(super) fn derive_schema(input: TokenStream) -> syn::Result<TokenStream> {
                         ident = Ident::new(&case.apply_to_field(&ident.to_string()), span);
                     }
                     if let Some((span, rename)) = field_attrs.serde.rename.value()? {
-                        ident = Ident::new(&rename, span);
+                        ident = Ident::new(rename, span);
                     }
 
                     if let Some(schema_with) = &field_attrs.openapi.schema_with {
@@ -153,7 +176,7 @@ pub(super) fn derive_schema(input: TokenStream) -> syn::Result<TokenStream> {
                         properties.push(quote! {
                             schema = schema.property(#property_name, #schema_with());
                         });
-                        continue
+                        continue;
                     }
 
                     let ty = &f.ty;
@@ -164,17 +187,21 @@ pub(super) fn derive_schema(input: TokenStream) -> syn::Result<TokenStream> {
                         || field_attrs.serde.skip_serializing_if.is_some();
 
                     let mut property_schema = {
-                        if let Some(inner_option) = inner_option {quote! {
-                            ::ohkami::openapi::schema::Schema::<::ohkami::openapi::schema::Type::any>::from(
-                                <#inner_option as ::ohkami::openapi::Schema>::schema()
-                                    .into(/* SchemaRef */).into_inline().unwrap()
-                            )
-                        }} else {quote! {
-                            ::ohkami::openapi::schema::Schema::<::ohkami::openapi::schema::Type::any>::from(
-                                <#ty as ::ohkami::openapi::Schema>::schema()
-                                    .into(/* SchemaRef */).into_inline().unwrap()
-                            )
-                        }}
+                        if let Some(inner_option) = inner_option {
+                            quote! {
+                                ::ohkami::openapi::schema::Schema::<::ohkami::openapi::schema::Type::any>::from(
+                                    <#inner_option as ::ohkami::openapi::Schema>::schema()
+                                        .into(/* SchemaRef */).into_inline().unwrap()
+                                )
+                            }
+                        } else {
+                            quote! {
+                                ::ohkami::openapi::schema::Schema::<::ohkami::openapi::schema::Type::any>::from(
+                                    <#ty as ::ohkami::openapi::Schema>::schema()
+                                        .into(/* SchemaRef */).into_inline().unwrap()
+                                )
+                            }
+                        }
                     };
 
                     if let Some(description) = extract_doc_comment(&f.attrs) {
@@ -199,11 +226,15 @@ pub(super) fn derive_schema(input: TokenStream) -> syn::Result<TokenStream> {
                     } else {
                         let property_name = LitStr::new(&ident.to_string(), ident.span());
 
-                        properties.push(if is_optional_field {quote! {
-                            schema = schema.optional(#property_name, #property_schema);
-                        }} else {quote! {
-                            schema = schema.property(#property_name, #property_schema);
-                        }});
+                        properties.push(if is_optional_field {
+                            quote! {
+                                schema = schema.optional(#property_name, #property_schema);
+                            }
+                        } else {
+                            quote! {
+                                schema = schema.property(#property_name, #property_schema);
+                            }
+                        });
                     }
                 }
 
@@ -216,12 +247,18 @@ pub(super) fn derive_schema(input: TokenStream) -> syn::Result<TokenStream> {
                 })
             }
 
-            Fields::Unnamed(FieldsUnnamed { paren_token:_, unnamed }) if unnamed.len() == 1 => {/* newtype */
+            Fields::Unnamed(FieldsUnnamed {
+                paren_token: _,
+                unnamed,
+            }) if unnamed.len() == 1 => {
+                /* newtype */
                 let f = unnamed.into_iter().next().unwrap(/* unnamed.len() == 1 */);
 
                 let ty = &f.ty;
 
-                let mut schema = if let Some(schema_with) = &FieldAttributes::new(&f.attrs)?.openapi.schema_with {
+                let mut schema = if let Some(schema_with) =
+                    &FieldAttributes::new(&f.attrs)?.openapi.schema_with
+                {
                     let schema_with = syn::parse_str::<Path>(schema_with)?;
                     quote! {
                         #schema_with()
@@ -247,27 +284,36 @@ pub(super) fn derive_schema(input: TokenStream) -> syn::Result<TokenStream> {
                 Ok(schema)
             }
 
-            Fields::Unnamed(FieldsUnnamed { paren_token:_, unnamed }) if unnamed.len() == 0 => {/* empty */
+            Fields::Unnamed(FieldsUnnamed {
+                paren_token: _,
+                unnamed,
+            }) if unnamed.is_empty() => {
+                /* empty */
                 Ok(quote! {
                     ::ohkami::openapi::object()
                 })
             }
-            Fields::Unit => {/* empty */
+            Fields::Unit => {
+                /* empty */
                 Ok(quote! {
                     ::ohkami::openapi::object()
                 })
             }
 
-            Fields::Unnamed(FieldsUnnamed { paren_token:_, unnamed }) => {assert!(unnamed.len() >= 2);/* array of oneOf */
+            Fields::Unnamed(FieldsUnnamed {
+                paren_token: _,
+                unnamed,
+            }) => {
+                assert!(unnamed.len() >= 2); /* array of oneOf */
                 let mut type_schemas = Vec::with_capacity(unnamed.len());
                 for u in unnamed {
                     let field_attrs = FieldAttributes::new(&u.attrs)?;
 
                     if field_attrs.serde.skip
-                    || field_attrs.serde.skip_serializing
-                    || field_attrs.serde.skip_deserializing
+                        || field_attrs.serde.skip_serializing
+                        || field_attrs.serde.skip_deserializing
                     {
-                        continue
+                        continue;
                     }
 
                     if let Some(schema_with) = &field_attrs.openapi.schema_with {
@@ -275,12 +321,12 @@ pub(super) fn derive_schema(input: TokenStream) -> syn::Result<TokenStream> {
                         type_schemas.push(quote! {
                             #schema_with()
                         });
-                        continue
+                        continue;
                     }
 
                     let ty = match inner_Option(&u.ty) {
                         Some(inner_option) => inner_option,
-                        None => u.ty.clone()
+                        None => u.ty.clone(),
                     };
 
                     let mut schema = quote! {
@@ -311,7 +357,10 @@ pub(super) fn derive_schema(input: TokenStream) -> syn::Result<TokenStream> {
         }
     }
 
-    fn schema_of_variants(variants: Punctuated<Variant, token::Comma>, container_attrs: &ContainerAttributes) -> syn::Result<TokenStream> {
+    fn schema_of_variants(
+        variants: Punctuated<Variant, token::Comma>,
+        container_attrs: &ContainerAttributes,
+    ) -> syn::Result<TokenStream> {
         if variants.iter().all(|v| matches!(v.fields, Fields::Unit)) {
             /* when like `enum Color { Red, Blue, Green }` */
 
@@ -319,36 +368,35 @@ pub(super) fn derive_schema(input: TokenStream) -> syn::Result<TokenStream> {
             for v in variants.iter() {
                 variant_names.push({
                     let variant_attrs = VariantAttributes::new(&v.attrs)?;
-                    
+
                     let mut ident = v.ident.clone();
                     if let Some((span, case)) = container_attrs.serde.rename_all.value()? {
                         ident = Ident::new(&case.apply_to_variant(&ident.to_string()), span);
                     }
                     if let Some((span, name)) = variant_attrs.serde.rename.value()? {
-                        ident = Ident::new(&*name, span);
+                        ident = Ident::new(name, span);
                     };
-                    
+
                     LitStr::new(&ident.to_string(), ident.span())
                 });
             }
-            
+
             Ok(quote! {
                 ::ohkami::openapi::string().enumerates([
                     #( #variant_names ),*
                 ])
             })
-
         } else {
             let mut variant_schemas = Vec::with_capacity(variants.len());
             for mut v in variants {
                 let variant_attrs = VariantAttributes::new(&v.attrs)?;
 
                 if variant_attrs.serde.skip
-                || variant_attrs.serde.skip_serializing
-                || variant_attrs.serde.skip_deserializing
-                || variant_attrs.serde.skip_serializing_if.is_some()
+                    || variant_attrs.serde.skip_serializing
+                    || variant_attrs.serde.skip_deserializing
+                    || variant_attrs.serde.skip_serializing_if.is_some()
                 {
-                    continue
+                    continue;
                 }
 
                 let tag = {
@@ -357,23 +405,26 @@ pub(super) fn derive_schema(input: TokenStream) -> syn::Result<TokenStream> {
                         ident = Ident::new(&case.apply_to_variant(&ident.to_string()), span);
                     }
                     if let Some((span, name)) = variant_attrs.serde.rename.value()? {
-                        ident = Ident::new(&*name, span);
+                        ident = Ident::new(name, span);
                     }
                     LitStr::new(&ident.to_string(), ident.span())
                 };
 
                 /* preprocess `#[serde(rename_all_fields)]` of enum */
                 if let (
-                    Fields::Named(FieldsNamed { brace_token:_, named }),
-                    Some((span, case))
+                    Fields::Named(FieldsNamed {
+                        brace_token: _,
+                        named,
+                    }),
+                    Some((span, case)),
                 ) = (
                     &mut v.fields,
-                    container_attrs.serde.rename_all_fields.value()?
+                    container_attrs.serde.rename_all_fields.value()?,
                 ) {
                     for f in named {
                         f.ident = Some(Ident::new(
                             &case.apply_to_field(&f.ident.as_ref().unwrap(/* Named */).to_string()),
-                            span
+                            span,
                         ));
                     }
                 }
@@ -384,26 +435,29 @@ pub(super) fn derive_schema(input: TokenStream) -> syn::Result<TokenStream> {
                         #schema_with()
                     }
                 } else {
-                    schema_of_fields(v.fields, &container_attrs)?
+                    schema_of_fields(v.fields, container_attrs)?
                 };
 
                 schema = match (
                     &*container_attrs.serde.tag,
                     &*container_attrs.serde.content,
-                    container_attrs.serde.untagged
+                    container_attrs.serde.untagged,
                 ) {
-                    (_, _, true) => {/* Untagged */
+                    (_, _, true) => {
+                        /* Untagged */
                         schema
                     }
 
-                    (None, _, _) => {/* Externally tagged */
+                    (None, _, _) => {
+                        /* Externally tagged */
                         quote! {
                             ::ohkami::openapi::object()
                                 .property(#tag, #schema)
                         }
                     }
 
-                    (Some(t), None, _) => {/* Internally tagged */
+                    (Some(t), None, _) => {
+                        /* Internally tagged */
                         let t = LitStr::new(t, Span::call_site());
                         quote! {
                             #schema
@@ -411,7 +465,8 @@ pub(super) fn derive_schema(input: TokenStream) -> syn::Result<TokenStream> {
                         }
                     }
 
-                    (Some(t), Some(c), _) => {/* Adjacently tagged */
+                    (Some(t), Some(c), _) => {
+                        /* Adjacently tagged */
                         let t = LitStr::new(t, Span::call_site());
                         let c = LitStr::new(c, Span::call_site());
                         quote! {
@@ -419,7 +474,6 @@ pub(super) fn derive_schema(input: TokenStream) -> syn::Result<TokenStream> {
                                 .property(#t, #tag)
                                 .property(#c, #schema)
                         }
-
                     }
                 };
 
@@ -447,12 +501,12 @@ pub(super) fn derive_schema(input: TokenStream) -> syn::Result<TokenStream> {
 pub(super) fn operation(meta: TokenStream, handler: TokenStream) -> syn::Result<TokenStream> {
     #[allow(non_snake_case)]
     struct OperationMeta {
-        operation_id:  Option<String>,
+        operation_id: Option<String>,
         descriptions: Vec<DescriptionOverride>,
     }
 
     struct DescriptionOverride {
-        key:   DescriptionTarget,
+        key: DescriptionTarget,
         value: String,
     }
     enum DescriptionTarget {
@@ -473,25 +527,23 @@ pub(super) fn operation(meta: TokenStream, handler: TokenStream) -> syn::Result<
             let key = if input.peek(override_keyword::summary) {
                 input.parse::<override_keyword::summary>()?;
                 DescriptionTarget::Summary
-
             } else if input.peek(override_keyword::requestBody) {
                 input.parse::<override_keyword::requestBody>()?;
                 DescriptionTarget::RequestBody
-
             } else if input.peek(Token![default]) {
                 input.parse::<Token![default]>()?;
                 DescriptionTarget::DefaultResponse
-
             } else if input.peek(LitInt) {
                 let status = input.parse::<LitInt>()?.base10_parse()?;
                 DescriptionTarget::Response { status }
-                
             } else if input.peek(Ident) {
                 let name = input.parse::<Ident>()?.to_string();
                 DescriptionTarget::Param { name }
-
             } else {
-                return Err(syn::Error::new(input.span(), format!("\
+                return Err(syn::Error::new(
+                    input.span(),
+                    format!(
+                        "\
                     Unepected description key: `{}`. Expected one of\n\
                     - summary       (.summary)\n\
                     - requestBody   (.requestBody.description)\n\
@@ -499,8 +551,9 @@ pub(super) fn operation(meta: TokenStream, handler: TokenStream) -> syn::Result<
                     - <status:int>  (.responses.<status>.description)\n\
                     - <param:ident> (.parameters.<param>.description)\n\
                 ",
-                    input.parse::<TokenStream>()?
-                )))
+                        input.parse::<TokenStream>()?
+                    ),
+                ));
             };
 
             input.parse::<Token![:]>()?;
@@ -514,13 +567,16 @@ pub(super) fn operation(meta: TokenStream, handler: TokenStream) -> syn::Result<
     impl syn::parse::Parse for OperationMeta {
         fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
             #[allow(non_snake_case)]
-            let operation_id = input.peek(Ident)
+            let operation_id = input
+                .peek(Ident)
                 .then(|| input.parse::<Ident>().map(|i| i.to_string()))
                 .transpose()?;
 
-            let descriptions = input.peek(token::Brace)
+            let descriptions = input
+                .peek(token::Brace)
                 .then(|| {
-                    let descriptions; syn::braced!(descriptions in input);
+                    let descriptions;
+                    syn::braced!(descriptions in input);
                     descriptions
                         .parse_terminated(DescriptionOverride::parse, Token![,])
                         .map(|punctuated| punctuated.into_iter().collect::<Vec<_>>())
@@ -528,8 +584,10 @@ pub(super) fn operation(meta: TokenStream, handler: TokenStream) -> syn::Result<
                 .transpose()?
                 .unwrap_or_default();
 
-
-            Ok(Self { operation_id, descriptions })
+            Ok(Self {
+                operation_id,
+                descriptions,
+            })
         }
     }
 
@@ -539,7 +597,7 @@ pub(super) fn operation(meta: TokenStream, handler: TokenStream) -> syn::Result<
 
     let handler = syn::parse2::<ItemFn>(handler)?;
 
-    let handler_vis  = &handler.vis;
+    let handler_vis = &handler.vis;
     let handler_name = &handler.sig.ident;
 
     // for generated struct
@@ -556,7 +614,7 @@ pub(super) fn operation(meta: TokenStream, handler: TokenStream) -> syn::Result<
 
         let operation_id = match meta.operation_id {
             Some(operation_id) => LitStr::new(&operation_id, Span::call_site()),
-            None => LitStr::new(&handler.sig.ident.to_string(), handler.sig.ident.span())
+            None => LitStr::new(&handler.sig.ident.to_string(), handler.sig.ident.span()),
         };
         modify_op.extend(quote! {
             op = op.operation_id(#operation_id);
@@ -574,28 +632,28 @@ pub(super) fn operation(meta: TokenStream, handler: TokenStream) -> syn::Result<
                     quote! {
                         op = op.summary(#value);
                     }
-                },
+                }
                 DescriptionTarget::RequestBody => {
                     quote! {
                         op = op.requestbody_description(#value);
                     }
-                },
+                }
                 DescriptionTarget::DefaultResponse => {
                     quote! {
                         op = op.response_description("default", #value);
                     }
-                },
+                }
                 DescriptionTarget::Response { status } => {
                     quote! {
                         op = op.response_description(#status, #value);
                     }
-                },
+                }
                 DescriptionTarget::Param { name } => {
                     let name = LitStr::new(&name, Span::call_site());
                     quote! {
                         op = op.param_description(#name, #value);
                     }
-                },
+                }
             });
         }
 

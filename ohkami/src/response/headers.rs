@@ -1,19 +1,19 @@
-use crate::header::{ByteArrayMap, Append, SetCookie, SetCookieBuilder};
+use crate::header::{Append, ByteArrayMap, SetCookie, SetCookieBuilder};
 use ohkami_lib::map::TupleMap;
 use std::borrow::Cow;
 
-
 #[derive(Clone)]
 pub struct Headers {
-    standard:  ByteArrayMap<N_SERVER_HEADERS, Cow<'static, str>>,
-    custom:    Option<Box<TupleMap<&'static str, Cow<'static, str>>>>,
+    standard: ByteArrayMap<N_SERVER_HEADERS, Cow<'static, str>>,
+    custom: Option<Box<TupleMap<&'static str, Cow<'static, str>>>>,
+    /// using `Option<Box<Vec<...>>>` to reduce the size to 1 word
+    /// by the niche optimization.
+    #[allow(clippy::box_collection)]
     pub(super) setcookie: Option<Box<Vec<Cow<'static, str>>>>,
     pub(super) size: usize,
 }
 
-pub struct SetHeaders<'set>(
-    &'set mut Headers
-);
+pub struct SetHeaders<'set>(&'set mut Headers);
 impl Headers {
     #[inline]
     pub fn set(&mut self) -> SetHeaders<'_> {
@@ -23,10 +23,12 @@ impl Headers {
 
 pub trait HeaderAction<'action> {
     fn perform(self, set: SetHeaders<'action>, key: Header) -> SetHeaders<'action>;
-} const _: () = {
+}
+const _: () = {
     // append
     impl<'a> HeaderAction<'a> for Append {
-        #[inline] fn perform(self, set: SetHeaders<'a>, key: Header) -> SetHeaders<'a> {
+        #[inline]
+        fn perform(self, set: SetHeaders<'a>, key: Header) -> SetHeaders<'a> {
             set.0.append(key, self.0);
             set
         }
@@ -34,13 +36,15 @@ pub trait HeaderAction<'action> {
 
     // insert
     impl<'a> HeaderAction<'a> for &'static str {
-        #[inline(always)] fn perform(self, set: SetHeaders<'a>, key: Header) -> SetHeaders<'a> {
+        #[inline(always)]
+        fn perform(self, set: SetHeaders<'a>, key: Header) -> SetHeaders<'a> {
             set.0.insert(key, Cow::Borrowed(self));
             set
         }
     }
     impl<'a> HeaderAction<'a> for String {
-        #[inline(always)] fn perform(self, set: SetHeaders<'a>, key: Header) -> SetHeaders<'a> {
+        #[inline(always)]
+        fn perform(self, set: SetHeaders<'a>, key: Header) -> SetHeaders<'a> {
             set.0.insert(key, Cow::Owned(self));
             set
         }
@@ -54,7 +58,8 @@ pub trait HeaderAction<'action> {
 
     // remove or insert
     impl<'a> HeaderAction<'a> for Option<Cow<'static, str>> {
-        #[inline] fn perform(self, set: SetHeaders<'a>, key: Header) -> SetHeaders<'a> {
+        #[inline]
+        fn perform(self, set: SetHeaders<'a>, key: Header) -> SetHeaders<'a> {
             match self {
                 None => set.0.remove(key),
                 Some(v) => set.0.insert(key, v),
@@ -66,7 +71,8 @@ pub trait HeaderAction<'action> {
 
 pub trait CustomHeadersAction<'action> {
     fn perform(self, set: SetHeaders<'action>, key: &'static str) -> SetHeaders<'action>;
-} const _: () = {
+}
+const _: () = {
     /* append */
     impl<'set> CustomHeadersAction<'set> for Append {
         fn perform(self, set: SetHeaders<'set>, key: &'static str) -> SetHeaders<'set> {
@@ -77,13 +83,15 @@ pub trait CustomHeadersAction<'action> {
 
     /* insert */
     impl<'set> CustomHeadersAction<'set> for &'static str {
-        #[inline(always)] fn perform(self, set: SetHeaders<'set>, key: &'static str) -> SetHeaders<'set> {
+        #[inline(always)]
+        fn perform(self, set: SetHeaders<'set>, key: &'static str) -> SetHeaders<'set> {
             set.0.insert_custom(key, Cow::Borrowed(self));
             set
         }
     }
     impl<'set> CustomHeadersAction<'set> for String {
-        #[inline(always)] fn perform(self, set: SetHeaders<'set>, key: &'static str) -> SetHeaders<'set> {
+        #[inline(always)]
+        fn perform(self, set: SetHeaders<'set>, key: &'static str) -> SetHeaders<'set> {
             set.0.insert_custom(key, Cow::Owned(self));
             set
         }
@@ -200,7 +208,8 @@ macro_rules! Header {
             }
         }
     };
-} Header! {48;
+}
+Header! {48;
     accept_ranges(AcceptRanges): b"Accept-Ranges",
     access_control_allow_credentials(AccessControlAllowCredentials): b"Access-Control-Allow-Credentials",
     access_control_allow_headers(AccessControlAllowHeaders): b"Access-Control-Allow-Headers",
@@ -255,34 +264,39 @@ const _: () = {
     #[allow(non_snake_case)]
     impl Headers {
         pub fn set_cookie(&self) -> impl Iterator<Item = SetCookie<'_>> {
-            self.setcookie.as_ref().map(|setcookies|
-                setcookies.iter().filter_map(|raw| match SetCookie::from_raw(raw) {
-                    Ok(valid) => Some(valid),
-                    Err(_err) => {
-                        #[cfg(debug_assertions)] crate::WARNING!(
-                            "Invalid `Set-Cookie`: {_err}"
-                        );
-                        None
-                    }
+            self.setcookie
+                .as_ref()
+                .map(|setcookies| {
+                    setcookies
+                        .iter()
+                        .filter_map(|raw| match SetCookie::from_raw(raw) {
+                            Ok(valid) => Some(valid),
+                            Err(_err) => {
+                                #[cfg(debug_assertions)]
+                                crate::WARNING!("Invalid `Set-Cookie`: {_err}");
+                                None
+                            }
+                        })
                 })
-            ).into_iter().flatten()
+                .into_iter()
+                .flatten()
         }
     }
 
     #[allow(non_snake_case)]
     impl<'s> SetHeaders<'s> {
         /// Add new `Set-Cookie` header to the response.
-        /// 
+        ///
         /// - When you call this N times, the response has N different
         ///   `Set-Cookie` headers.
         /// - Cookie value (second argument) is percent-encoded when the
         ///   response is sended.
-        /// 
+        ///
         /// ---
         /// *example.rs*
         /// ```
         /// use ohkami::Response;
-        /// 
+        ///
         /// fn mutate_header(res: &mut Response) {
         ///     res.headers.set()
         ///         .server("ohkami")
@@ -291,15 +305,18 @@ const _: () = {
         /// }
         /// ```
         #[inline]
-        pub fn set_cookie(self,
-            name:  &'static str,
+        pub fn set_cookie(
+            self,
+            name: &'static str,
             value: impl Into<Cow<'static, str>>,
-            directives: impl FnOnce(SetCookieBuilder)->SetCookieBuilder
+            directives: impl FnOnce(SetCookieBuilder) -> SetCookieBuilder,
         ) -> Self {
-            let setcookie: Cow<'static, str> = directives(SetCookieBuilder::new(name, value)).build().into();
+            let setcookie: Cow<'static, str> = directives(SetCookieBuilder::new(name, value))
+                .build()
+                .into();
             self.0.size += "Set-Cookie: ".len() + setcookie.len() + "\r\n".len();
             match self.0.setcookie.as_mut() {
-                None             => self.0.setcookie = Some(Box::new(vec![setcookie])),
+                None => self.0.setcookie = Some(Box::new(vec![setcookie])),
                 Some(setcookies) => setcookies.push(setcookie),
             }
             self
@@ -311,13 +328,14 @@ impl Headers {
     #[inline(always)]
     pub(crate) fn insert(&mut self, name: Header, value: Cow<'static, str>) {
         let (name_len, value_len) = (name.len(), value.len());
-        match unsafe {self.standard.get_mut(name as u8)} {
+        match unsafe { self.standard.get_mut(name as u8) } {
             None => {
-                unsafe {self.standard.insert_new(name as u8, value)};
+                unsafe { self.standard.insert_new(name as u8, value) };
                 self.size += name_len + ": ".len() + value_len + "\r\n".len();
             }
             Some(old) => {
-                self.size -= old.len(); self.size += value_len;
+                self.size -= old.len();
+                self.size += value_len;
                 *old = value
             }
         }
@@ -332,7 +350,8 @@ impl Headers {
             }
             Some(custom) => {
                 if let Some(old) = custom.insert(name, value) {
-                    self.size -= old.len(); self.size += self_len;
+                    self.size -= old.len();
+                    self.size += self_len;
                 } else {
                     self.size += name.len() + ": ".len() + self_len + "\r\n".len()
                 }
@@ -343,33 +362,31 @@ impl Headers {
     #[inline]
     pub(crate) fn remove(&mut self, name: Header) {
         let name_len = name.len();
-        if let Some(v) = unsafe {self.standard.get(name as u8)} {
+        if let Some(v) = unsafe { self.standard.get(name as u8) } {
             self.size -= name_len + ": ".len() + v.len() + "\r\n".len();
-            unsafe {self.standard.delete(name as u8)};
+            unsafe { self.standard.delete(name as u8) };
         }
     }
     pub(crate) fn remove_custom(&mut self, name: &'static str) {
-        if let Some(c) = self.custom.as_mut() {
-            if let Some(v) = c.remove(name) {
-                self.size -= name.len() + ": ".len() + v.len() + "\r\n".len()
-            }
+        if let Some(c) = self.custom.as_mut()
+            && let Some(v) = c.remove(name)
+        {
+            self.size -= name.len() + ": ".len() + v.len() + "\r\n".len();
         }
     }
 
     #[inline(always)]
     pub(crate) fn get_standard(&self, name: Header) -> Option<&str> {
-        unsafe {self.standard.get(name as u8)}.map(Cow::as_ref)
+        unsafe { self.standard.get(name as u8) }.map(Cow::as_ref)
     }
     #[inline]
     pub(crate) fn get_custom(&self, name: &'static str) -> Option<&str> {
-        self.custom.as_ref()?
-            .get(&name)
-            .map(Cow::as_ref)
+        self.custom.as_ref()?.get(&name).map(Cow::as_ref)
     }
 
     pub(crate) fn append(&mut self, name: Header, value: Cow<'static, str>) {
         let value_len = value.len();
-        let target = unsafe {self.standard.get_mut(name as u8)};
+        let target = unsafe { self.standard.get_mut(name as u8) };
 
         self.size += match target {
             Some(v) => {
@@ -389,7 +406,7 @@ impl Headers {
                 ", ".len() + value_len
             }
             None => {
-                unsafe {self.standard.insert_new(name as u8, value)}
+                unsafe { self.standard.insert_new(name as u8, value) }
                 name.len() + ": ".len() + value_len + "\r\n".len()
             }
         };
@@ -401,7 +418,7 @@ impl Headers {
             if self.custom.is_none() {
                 self.custom = Some(Box::new(TupleMap::new()));
             }
-            unsafe {self.custom.as_mut().unwrap_unchecked()}
+            unsafe { self.custom.as_mut().unwrap_unchecked() }
         };
 
         self.size += match custom.get_mut(&name) {
@@ -432,10 +449,10 @@ impl Headers {
     #[inline]
     pub(crate) fn new() -> Self {
         let mut this = Self {
-            standard:  ByteArrayMap::new(),
-            custom:    None,
+            standard: ByteArrayMap::new(),
+            custom: None,
             setcookie: None,
-            size:      "\r\n".len(),
+            size: "\r\n".len(),
         };
 
         this.set()
@@ -444,56 +461,46 @@ impl Headers {
 
         this
     }
-    #[cfg(feature="DEBUG")]
+    #[cfg(feature = "DEBUG")]
     #[doc(hidden)]
-    pub fn _new() -> Self {Self::new()}
+    pub fn _new() -> Self {
+        Self::new()
+    }
 
     pub(crate) fn iter_standard(&self) -> impl Iterator<Item = (&str, &str)> {
-        self.standard.iter()
-            .map(|(i, v)| (
-                unsafe {std::mem::transmute::<_, Header>(*i)}.as_str(),
-                &**v
-            ))
+        self.standard.iter().map(|(i, v)| {
+            (
+                unsafe { std::mem::transmute::<u8, Header>(*i) }.as_str(),
+                &**v,
+            )
+        })
     }
 
     pub fn iter(&self) -> impl Iterator<Item = (&str, &str)> {
         self.iter_standard()
-            .chain(self.custom.as_ref()
-                .into_iter()
-                .flat_map(|hm| hm.iter().map(|(k, v)| (*k, &**v)))
+            .chain(
+                self.custom
+                    .as_ref()
+                    .into_iter()
+                    .flat_map(|hm| hm.iter().map(|(k, v)| (*k, &**v))),
             )
-            .chain(self.setcookie.as_ref()
-                .map(|sc| sc.iter().map(Cow::as_ref)).into_iter()
-                .flatten()
-                .map(|sc| ("Set-Cookie", sc))
+            .chain(
+                self.setcookie
+                    .as_ref()
+                    .map(|sc| sc.iter().map(Cow::as_ref))
+                    .into_iter()
+                    .flatten()
+                    .map(|sc| ("Set-Cookie", sc)),
             )
-    }
-    pub fn into_iter(self) -> impl Iterator<Item = (&'static str, Cow<'static, str>)> {
-        let standard = self.standard.into_iter()
-            .map(|(i, v)| (
-                unsafe {std::mem::transmute::<_, Header>(i)}.as_str(),
-                v
-            ));
-        let custom = self.custom.into_iter()
-            .flat_map(|tm|
-                tm.into_iter()
-            );
-        let setcookie = self.setcookie.into_iter()
-            .flat_map(|sc|
-                sc.into_iter().map(|sc| ("Set-Cookie", sc))
-            );
-        standard.chain(custom).chain(setcookie)
     }
 
-    #[cfg(any(
-        feature="__rt_native__",
-        feature="DEBUG"
-    ))]
+    #[cfg(any(feature = "__rt_native__", feature = "DEBUG"))]
     /// SAFETY: `buf` has remaining capacity of at least `self.size`
     pub(crate) unsafe fn write_unchecked_to(&self, buf: &mut Vec<u8>) {
         unsafe {
             for (i, v) in self.standard.iter() {
-                let h = std::mem::transmute::<_, Header>(*i); {
+                let h = std::mem::transmute::<u8, Header>(*i);
+                {
                     crate::push_unchecked!(buf <- h.as_bytes());
                     crate::push_unchecked!(buf <- b": ");
                     crate::push_unchecked!(buf <- v.as_bytes());
@@ -519,19 +526,17 @@ impl Headers {
         }
     }
 
-    #[cfg(any(feature="DEBUG", feature="__rt_native__"))]
+    #[cfg(any(feature = "DEBUG", feature = "__rt_native__"))]
     pub fn _write_to(&self, buf: &mut Vec<u8>) {
         buf.reserve(self.size);
-        unsafe {self.write_unchecked_to(buf)}
+        unsafe { self.write_unchecked_to(buf) }
     }
 }
 
 const _: () = {
     impl std::fmt::Debug for Headers {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            f.debug_map()
-                .entries(self.iter())
-                .finish()
+            f.debug_map().entries(self.iter()).finish()
         }
     }
 
@@ -539,42 +544,72 @@ const _: () = {
         fn eq(&self, other: &Self) -> bool {
             for (k, v) in self.iter_standard() {
                 if other.get_standard(Header::from_bytes(k.as_bytes()).unwrap()) != Some(v) {
-                    return false
+                    return false;
                 }
             }
 
             if self.custom != other.custom {
-                return false
+                return false;
             }
 
             true
         }
     }
 
-    impl Headers {
-        pub fn from_iter(iter: impl IntoIterator<Item = (
-            &'static str,
-            impl Into<Cow<'static, str>
-        >)>) -> Self {
+    impl<A: Into<Cow<'static, str>>> FromIterator<(&'static str, A)> for Headers {
+        fn from_iter<T: IntoIterator<Item = (&'static str, A)>>(iter: T) -> Self {
             let mut this = Headers::new();
             for (k, v) in iter {
                 match Header::from_bytes(k.as_bytes()) {
                     Some(h) => this.insert(h, v.into()),
-                    None    => {this.set().x(k, v.into());}
+                    None => {
+                        this.set().x(k, v.into());
+                    }
                 }
             }
             this
         }
     }
+
+    impl IntoIterator for Headers {
+        type Item = (&'static str, Cow<'static, str>);
+        type IntoIter = HeadersIntoIter;
+        fn into_iter(self) -> Self::IntoIter {
+            HeadersIntoIter {
+                standard: self.standard.into_iter(),
+                custom: self.custom.map(|tm| tm.into_iter()),
+                setcookie: self.setcookie.map(|sc| sc.into_iter()),
+            }
+        }
+    }
+    pub struct HeadersIntoIter {
+        standard: std::vec::IntoIter<(u8, Cow<'static, str>)>,
+        custom: Option<std::vec::IntoIter<(&'static str, Cow<'static, str>)>>,
+        setcookie: Option<std::vec::IntoIter<Cow<'static, str>>>,
+    }
+    impl Iterator for HeadersIntoIter {
+        type Item = (&'static str, Cow<'static, str>);
+        fn next(&mut self) -> Option<Self::Item> {
+            if let Some((i, v)) = self.standard.next() {
+                Some((unsafe { std::mem::transmute::<u8, Header>(i) }.as_str(), v))
+            } else if let Some(custom) = self.custom.as_mut().and_then(|c| c.next()) {
+                Some(custom)
+            } else if let Some(setcookie) = self.setcookie.as_mut().and_then(|c| c.next()) {
+                Some(("Set-Cookie", setcookie))
+            } else {
+                None
+            }
+        }
+    }
 };
 
-#[cfg(feature="rt_worker")]
+#[cfg(feature = "rt_worker")]
 const _: () = {
-    impl Into<::worker::Headers> for Headers {
+    impl From<Headers> for ::worker::Headers {
         #[inline(always)]
-        fn into(self) -> ::worker::Headers {
+        fn from(this: Headers) -> ::worker::Headers {
             let h = ::worker::Headers::new();
-            for (k, v) in self.iter() {
+            for (k, v) in this.iter() {
                 if let Err(_e) = h.append(k, v) {
                     crate::DEBUG!("`worker::Headers::append` failed: {_e:?}");
                 }

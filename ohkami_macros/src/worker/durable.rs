@@ -10,7 +10,10 @@ impl syn::parse::Parse for DurableObjectType {
             "fetch" => Ok(Self::Fetch),
             "alarm" => Ok(Self::Alarm),
             "websocket" => Ok(Self::WebSocket),
-            _ => Err(syn::Error::new(ident.span(), "must have either 'fetch', 'alarm' or 'websocket' attribute, e.g. #[durable_object(websocket)]"))
+            _ => Err(syn::Error::new(
+                ident.span(),
+                "must have either 'fetch', 'alarm' or 'websocket' attribute, e.g. #[durable_object(websocket)]",
+            )),
         }
     }
 }

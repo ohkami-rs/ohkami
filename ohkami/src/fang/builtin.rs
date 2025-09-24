@@ -16,7 +16,7 @@ pub use context::Context;
 pub mod enamel;
 pub use enamel::Enamel;
 
-#[cfg(feature="__rt_native__")]
+#[cfg(feature = "__rt_native__")]
 mod timeout;
-#[cfg(feature="__rt_native__")]
+#[cfg(feature = "__rt_native__")]
 pub use timeout::Timeout;

@@ -32,15 +32,12 @@ jobs:
 
       - run: npm install -g wrangler
 
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: ${{ matrix.toolchain }}
-          targets:   wasm32-unknown-unknown
-      - name: WORKAROUND-FOR-nightly-2025-08-12
-        if:   ${{ matrix.toolchain == 'nightly' }}
+      - name: Setup Rust toolchain
         run:  |
-          rustup default nightly-2025-08-08
+          rustup update
+          rustup default ${{ matrix.toolchain }}
           rustup target add wasm32-unknown-unknown
+          rustup component add rustfmt clippy
 
       - name: Cache cargo bin
         id:   cache_cargo_bin

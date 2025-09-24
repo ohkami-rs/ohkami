@@ -1,51 +1,51 @@
 //! # `content` claws
-//! 
+//!
 //! These claws provides typed handling of request and response bodies
 //! via the `FromContent` and `IntoContent` traits.
-//! 
+//!
 //! Built-in content claws:
-//! 
+//!
 //! - `Json`: `application/json` request/response body
 //! - `UrlEncoded`: `application/x-www-form-urlencoded` request/response body
 //! - `Text`: `text/plain` request/response body
 //! - `Html`: `text/html` response body
 //! - `Multipart`: `multipart/form-data` request body
-//! 
+//!
 //! ## Example
-//! 
+//!
 //! ```
 //! use ohkami::claw::Json;
 //! use ohkami::serde::{Serialize, Deserialize};
-//! 
+//!
 //! #[derive(Deserialize)]
 //! struct CreateUserRequest<'req> {
 //!     name: &'req str,
 //! }
-//! 
+//!
 //! #[derive(Serialize)]
 //! struct User {
 //!     id: u64,
 //!     name: String,
 //! }
-//! 
+//!
 //! # enum AppError {}
 //! # impl ohkami::IntoResponse for AppError {
 //! #     fn into_response(self) -> ohkami::Response {
 //! #         todo!()
 //! #     }
 //! # }
-//! 
+//!
 //! async fn create_user(
 //!     // Extract `application/json` request body
 //!     // and deserialize it into `CreateUserRequest`,
 //!     // rejecting when the request doesn't have such body.
 //!     Json(body): Json<CreateUserRequest<'_>>,
-//! 
+//!
 //!             // Serialize `User` into a response body
 //!             // of `application/json`.
 //! ) -> Result<Json<User>, AppError> {
 //!     let some_id = 42; // Simulate user creation here...
-//! 
+//!
 //!     Ok(Json(User {
 //!         id: some_id,
 //!         name: body.name.to_owned(),
@@ -53,10 +53,10 @@
 //! }
 //! ```
 
-use crate::{Request, Response, FromRequest, IntoResponse};
+use crate::{FromRequest, IntoResponse, Request, Response};
 use std::borrow::Cow;
 
-#[cfg(feature="openapi")]
+#[cfg(feature = "openapi")]
 use crate::openapi;
 
 pub trait FromContent<'req>: Sized {
@@ -65,12 +65,12 @@ pub trait FromContent<'req>: Sized {
 
     fn from_content(body: &'req [u8]) -> Result<Self, impl std::fmt::Display>;
 
-    #[cfg(feature="openapi")]
+    #[cfg(feature = "openapi")]
     fn openapi_requestbody() -> impl Into<openapi::schema::SchemaRef>;
 }
 impl<'req, B: FromContent<'req>> FromRequest<'req> for B {
     type Error = Response;
-    
+
     fn from_request(req: &'req Request) -> Option<Result<Self, Self::Error>> {
         if req.headers.content_type()?.starts_with(B::MIME_TYPE) {
             Some(B::from_content(req.payload()?).map_err(super::reject))
@@ -79,10 +79,11 @@ impl<'req, B: FromContent<'req>> FromRequest<'req> for B {
         }
     }
 
-    #[cfg(feature="openapi")]
+    #[cfg(feature = "openapi")]
     fn openapi_inbound() -> openapi::Inbound {
         openapi::Inbound::Body(openapi::RequestBody::of(
-            B::MIME_TYPE, B::openapi_requestbody()
+            B::MIME_TYPE,
+            B::openapi_requestbody(),
         ))
     }
 }
@@ -93,21 +94,24 @@ pub trait IntoContent {
 
     fn into_content(self) -> Result<Cow<'static, [u8]>, impl std::fmt::Display>;
 
-    #[cfg(feature="openapi")]
+    #[cfg(feature = "openapi")]
     fn openapi_responsebody() -> impl Into<openapi::schema::SchemaRef>;
 }
 impl<B: IntoContent> IntoResponse for B {
     #[inline]
     fn into_response(self) -> Response {
-        if const {Self::CONTENT_TYPE.is_empty()} {// removed by optimization if it's not ""
-            return Response::OK()
+        if const { Self::CONTENT_TYPE.is_empty() } {
+            // removed by optimization if it's not ""
+            return Response::OK();
         }
 
         match self.into_content() {
             Ok(body) => Response::OK().with_payload(Self::CONTENT_TYPE, body),
             Err(_err) => {
-                #[cfg(debug_assertions)] {
-                    eprintln!("Failed to serialize `{}` as `{}` in `IntoContent`: {_err}",
+                #[cfg(debug_assertions)]
+                {
+                    eprintln!(
+                        "Failed to serialize `{}` as `{}` in `IntoContent`: {_err}",
                         std::any::type_name::<B>(),
                         Self::CONTENT_TYPE
                     )
@@ -117,13 +121,13 @@ impl<B: IntoContent> IntoResponse for B {
         }
     }
 
-    #[cfg(feature="openapi")]
+    #[cfg(feature = "openapi")]
     fn openapi_responses() -> openapi::Responses {
         let mut res = openapi::Response::when("OK");
-        if Self::CONTENT_TYPE != "" {
+        if !Self::CONTENT_TYPE.is_empty() {
             let mime_type = match Self::CONTENT_TYPE.split_once(';') {
                 None => Self::CONTENT_TYPE,
-                Some((mime_type, _)) => mime_type
+                Some((mime_type, _)) => mime_type,
             };
             res = res.content(mime_type, Self::openapi_responsebody());
         }
@@ -133,17 +137,24 @@ impl<B: IntoContent> IntoResponse for B {
 impl IntoContent for () {
     const CONTENT_TYPE: &'static str = "";
 
-    #[cold] #[inline(never)]
+    #[cold]
+    #[inline(never)]
     fn into_content(self) -> Result<Cow<'static, [u8]>, impl std::fmt::Display> {
         #[allow(unreachable_code)]
-        {unreachable!("`into_body` of `()`") as Result<Cow<'static, [u8]>, std::convert::Infallible>}
+        {
+            unreachable!("`into_body` of `()`")
+                as Result<Cow<'static, [u8]>, std::convert::Infallible>
+        }
     }
 
-    #[cfg(feature="openapi")]
-    #[cold] #[inline(never)]
+    #[cfg(feature = "openapi")]
+    #[cold]
+    #[inline(never)]
     fn openapi_responsebody() -> impl Into<openapi::schema::SchemaRef> {
         #[allow(unreachable_code)]
-        {unreachable!("`openapi_responsebody` of `()`") as openapi::schema::SchemaRef}
+        {
+            unreachable!("`openapi_responsebody` of `()`") as openapi::schema::SchemaRef
+        }
     }
 }
 macro_rules! text_response {
@@ -163,7 +174,8 @@ macro_rules! text_response {
             }
         }
     )*};
-} text_response! {
+}
+text_response! {
     &'static str:      s => Cow::Borrowed(s.as_bytes()),
     String:            s => Cow::Owned(s.into_bytes()),
     Cow<'static, str>: s => match s {
@@ -176,7 +188,7 @@ mod json;
 pub use json::Json;
 
 mod multipart;
-pub use multipart::{Multipart, File};
+pub use multipart::{File, Multipart};
 
 mod urlencoded;
 pub use urlencoded::UrlEncoded;

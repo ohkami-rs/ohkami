@@ -1,9 +1,8 @@
 #![cfg(test)]
 
 use crate::serde_urlencoded;
+use ::serde::{Deserialize, Serialize};
 use std::borrow::Cow;
-use ::serde::{Serialize, Deserialize};
-
 
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
 struct Age(u8);
@@ -20,8 +19,8 @@ enum Gender {
 
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
 struct User<'s> {
-    name:   Cow<'s, str>,
-    age:    Option<Age>,
+    name: Cow<'s, str>,
+    age: Option<Age>,
     gender: Option<Gender>,
 }
 
@@ -36,46 +35,46 @@ struct HelloConfig<'req> {
     repeat: Option<usize>,
 }
 
-
-#[test] fn serialize_struct() {
+#[test]
+fn serialize_struct() {
     assert_eq!(
         serde_urlencoded::to_string(&User {
-            name:   Cow::Borrowed("ohkami"),
-            age:    None,
+            name: Cow::Borrowed("ohkami"),
+            age: None,
             gender: None,
-        }).unwrap(),
+        })
+        .unwrap(),
         "name=ohkami&age=&gender="
     );
 
     assert_eq!(
         serde_urlencoded::to_string(&User {
-            name:   Cow::Owned(String::from("ohkami")),
-            age:    None,
+            name: Cow::Owned(String::from("ohkami")),
+            age: None,
             gender: Some(Gender::Other),
-        }).unwrap(),
+        })
+        .unwrap(),
         "name=ohkami&age=&gender=other"
     );
 
     assert_eq!(
         serde_urlencoded::to_string(&User {
-            name:   Cow::Borrowed("ohkami -狼 (おおかみ)-"),
-            age:    None,
+            name: Cow::Borrowed("ohkami -狼 (おおかみ)-"),
+            age: None,
             gender: Some(Gender::Other),
-        }).unwrap(),
+        })
+        .unwrap(),
         "name=ohkami%20%2D%E7%8B%BC%20%28%E3%81%8A%E3%81%8A%E3%81%8B%E3%81%BF%29%2D&age=&gender=other"
     );
 }
 
-#[test] fn deserialize_map() {
+#[test]
+fn deserialize_map() {
     use std::collections::HashMap;
 
     assert_eq!(
-        serde_urlencoded::from_bytes::<HashMap<String, String>>(
-            b"key=value"
-        ).unwrap(),
-        HashMap::from([
-            (format!("key"), format!("value")),
-        ])
+        serde_urlencoded::from_bytes::<HashMap<String, String>>(b"key=value").unwrap(),
+        HashMap::from([(format!("key"), format!("value")),])
     );
 
     assert_eq!(
@@ -89,8 +88,10 @@ struct HelloConfig<'req> {
     );
 
     #[derive(Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+    #[serde(rename_all = "UPPERCASE")]
     enum ABCorXYZ {
-        ABC, XYZ
+        Abc,
+        Xyz,
     }
 
     assert_eq!(
@@ -98,8 +99,8 @@ struct HelloConfig<'req> {
             b"ABC=value&XYZ=%E3%81%93%E3%82%93%E3%81%AB%E3%81%A1%E3%81%AF%E3%80%81%E4%B8%96%E7%95%8C%EF%BC%81"
         ).unwrap(),
         HashMap::from([
-            (ABCorXYZ::ABC, format!("value")),
-            (ABCorXYZ::XYZ, format!("こんにちは、世界！")),
+            (ABCorXYZ::Abc, format!("value")),
+            (ABCorXYZ::Xyz, format!("こんにちは、世界！")),
         ])
     );
 }
@@ -111,18 +112,12 @@ fn deserialize_map_with_empty_fields() {
     /* empty field to empty string */
 
     assert_eq!(
-        serde_urlencoded::from_bytes::<HashMap<String, String>>(
-            b"key="
-        ).unwrap(),
-        HashMap::from([
-            (format!("key"), format!("")),
-        ])
+        serde_urlencoded::from_bytes::<HashMap<String, String>>(b"key=").unwrap(),
+        HashMap::from([(format!("key"), format!("")),])
     );
 
     assert_eq!(
-        serde_urlencoded::from_bytes::<HashMap<String, String>>(
-            b"key1=&key2=value2"
-        ).unwrap(),
+        serde_urlencoded::from_bytes::<HashMap<String, String>>(b"key1=&key2=value2").unwrap(),
         HashMap::from([
             (format!("key1"), format!("")),
             (format!("key2"), format!("value2")),
@@ -130,9 +125,7 @@ fn deserialize_map_with_empty_fields() {
     );
 
     assert_eq!(
-        serde_urlencoded::from_bytes::<HashMap<String, String>>(
-            b"key1=value1&key2="
-        ).unwrap(),
+        serde_urlencoded::from_bytes::<HashMap<String, String>>(b"key1=value1&key2=").unwrap(),
         HashMap::from([
             (format!("key1"), format!("value1")),
             (format!("key2"), format!("")),
@@ -142,28 +135,22 @@ fn deserialize_map_with_empty_fields() {
     /* empty field to None */
 
     assert_eq!(
-        serde_urlencoded::from_bytes::<HashMap<String, Option<String>>>(
-            b"key="
-        ).unwrap(),
-        HashMap::from([
-            (format!("key"), None),
-        ])
+        serde_urlencoded::from_bytes::<HashMap<String, Option<String>>>(b"key=").unwrap(),
+        HashMap::from([(format!("key"), None),])
     );
-    
+
     assert_eq!(
-        serde_urlencoded::from_bytes::<HashMap<String, Option<String>>>(
-            b"key1=value1&key2="
-        ).unwrap(),
+        serde_urlencoded::from_bytes::<HashMap<String, Option<String>>>(b"key1=value1&key2=")
+            .unwrap(),
         HashMap::from([
             (format!("key1"), Some(format!("value1"))),
             (format!("key2"), None),
         ])
     );
-    
+
     assert_eq!(
-        serde_urlencoded::from_bytes::<HashMap<String, Option<String>>>(
-            b"key1=&key2=value2"
-        ).unwrap(),
+        serde_urlencoded::from_bytes::<HashMap<String, Option<String>>>(b"key1=&key2=value2")
+            .unwrap(),
         HashMap::from([
             (format!("key1"), None),
             (format!("key2"), Some(format!("value2"))),
@@ -171,53 +158,44 @@ fn deserialize_map_with_empty_fields() {
     );
 }
 
-#[test] fn deserialize_struct() {
+#[test]
+fn deserialize_struct() {
     assert_eq!(
         None,
-        serde_urlencoded::from_bytes::<Option<User>>(
-            b""
-        ).unwrap()
+        serde_urlencoded::from_bytes::<Option<User>>(b"").unwrap()
     );
-    assert_eq!( 
+    assert_eq!(
         User {
-            name:   Cow::Borrowed("ohkami"),
-            age:    None,
+            name: Cow::Borrowed("ohkami"),
+            age: None,
             gender: None,
         },
-        serde_urlencoded::from_bytes(
-            b"name=ohkami&age=&gender="
-        ).unwrap()
+        serde_urlencoded::from_bytes(b"name=ohkami&age=&gender=").unwrap()
     );
-    assert_eq!( 
+    assert_eq!(
         User {
-            name:   Cow::Borrowed("ohkami"),
-            age:    None,
+            name: Cow::Borrowed("ohkami"),
+            age: None,
             gender: None,
         },
-        serde_urlencoded::from_bytes(
-            b"age=&name=ohkami&gender="
-        ).unwrap()
+        serde_urlencoded::from_bytes(b"age=&name=ohkami&gender=").unwrap()
     );
 
     assert_eq!(
         User {
-            name:   Cow::Owned(String::from("ohkami")),
-            age:    None,
+            name: Cow::Owned(String::from("ohkami")),
+            age: None,
             gender: Some(Gender::Other),
         },
-        serde_urlencoded::from_bytes(
-            b"name=ohkami&age=&gender=other"
-        ).unwrap()
+        serde_urlencoded::from_bytes(b"name=ohkami&age=&gender=other").unwrap()
     );
     assert_eq!(
         User {
-            name:   Cow::Owned(String::from("ohkami")),
-            age:    None,
+            name: Cow::Owned(String::from("ohkami")),
+            age: None,
             gender: Some(Gender::Other),
         },
-        serde_urlencoded::from_bytes(
-            b"gender=other&name=ohkami&age="
-        ).unwrap()
+        serde_urlencoded::from_bytes(b"gender=other&name=ohkami&age=").unwrap()
     );
 
     assert_eq!(
@@ -254,9 +232,7 @@ fn deserialize_map_with_empty_fields() {
 #[test]
 fn unknown_fields() {
     assert_eq!(
-        serde_urlencoded::from_bytes::<HelloConfig>(
-            b""
-        ).unwrap(),
+        serde_urlencoded::from_bytes::<HelloConfig>(b"").unwrap(),
         HelloConfig {
             name: None,
             repeat: None,
@@ -264,9 +240,7 @@ fn unknown_fields() {
     );
 
     assert_eq!(
-        serde_urlencoded::from_bytes::<HelloConfig>(
-            b"name=ohkami"
-        ).unwrap(),
+        serde_urlencoded::from_bytes::<HelloConfig>(b"name=ohkami").unwrap(),
         HelloConfig {
             name: Some("ohkami"),
             repeat: None,
@@ -274,9 +248,7 @@ fn unknown_fields() {
     );
 
     assert_eq!(
-        serde_urlencoded::from_bytes::<HelloConfig>(
-            b"repeat=4"
-        ).unwrap(),
+        serde_urlencoded::from_bytes::<HelloConfig>(b"repeat=4").unwrap(),
         HelloConfig {
             name: None,
             repeat: Some(4),
@@ -284,9 +256,7 @@ fn unknown_fields() {
     );
 
     assert_eq!(
-        serde_urlencoded::from_bytes::<HelloConfig>(
-            b"name=ohkami&repeat=4"
-        ).unwrap(),
+        serde_urlencoded::from_bytes::<HelloConfig>(b"name=ohkami&repeat=4").unwrap(),
         HelloConfig {
             name: Some("ohkami"),
             repeat: Some(4),
@@ -296,9 +266,7 @@ fn unknown_fields() {
     /* with unknown query fields */
 
     assert_eq!(
-        serde_urlencoded::from_bytes::<HelloConfig>(
-            b"unkown=true"
-        ).unwrap(),
+        serde_urlencoded::from_bytes::<HelloConfig>(b"unkown=true").unwrap(),
         HelloConfig {
             name: None,
             repeat: None,
@@ -306,9 +274,7 @@ fn unknown_fields() {
     );
 
     assert_eq!(
-        serde_urlencoded::from_bytes::<HelloConfig>(
-            b"name=&unkown=true"
-        ).unwrap(),
+        serde_urlencoded::from_bytes::<HelloConfig>(b"name=&unkown=true").unwrap(),
         HelloConfig {
             name: None,
             repeat: None,
@@ -316,9 +282,7 @@ fn unknown_fields() {
     );
 
     assert_eq!(
-        serde_urlencoded::from_bytes::<HelloConfig>(
-            b"name=x&unkown=true"
-        ).unwrap(),
+        serde_urlencoded::from_bytes::<HelloConfig>(b"name=x&unkown=true").unwrap(),
         HelloConfig {
             name: Some("x"),
             repeat: None,
@@ -326,9 +290,7 @@ fn unknown_fields() {
     );
 
     assert_eq!(
-        serde_urlencoded::from_bytes::<HelloConfig>(
-            b"name=x&unkown="
-        ).unwrap(),
+        serde_urlencoded::from_bytes::<HelloConfig>(b"name=x&unkown=").unwrap(),
         HelloConfig {
             name: Some("x"),
             repeat: None,
@@ -342,60 +304,44 @@ mod error_case {
     #[test]
     #[should_panic = "invalid key-value: unexpected end of input"]
     fn unexpected_end_of_input_1() {
-        let _ = serde_urlencoded::from_bytes::<HelloConfig>(
-            b"name"
-        ).unwrap();
+        let _ = serde_urlencoded::from_bytes::<HelloConfig>(b"name").unwrap();
     }
     #[test]
     #[should_panic = "invalid key-value: unexpected end of input"]
     fn unexpected_end_of_input_2() {
-        let _ = serde_urlencoded::from_bytes::<HelloConfig>(
-            b"name=ohkami&age"
-        ).unwrap();
+        let _ = serde_urlencoded::from_bytes::<HelloConfig>(b"name=ohkami&age").unwrap();
     }
 
     #[test]
     #[should_panic = "invalid key-value: empty key"]
     fn empty_key_1() {
-        let _ = serde_urlencoded::from_bytes::<HelloConfig>(
-            b"=ohkami"
-        ).unwrap();
+        let _ = serde_urlencoded::from_bytes::<HelloConfig>(b"=ohkami").unwrap();
     }
     #[test]
     #[should_panic = "invalid key-value: empty key"]
     fn empty_key_2() {
-        let _ = serde_urlencoded::from_bytes::<HelloConfig>(
-            b"name=ohkami&=4"
-        ).unwrap();
+        let _ = serde_urlencoded::from_bytes::<HelloConfig>(b"name=ohkami&=4").unwrap();
     }
 
     #[test]
     #[should_panic = "invalid key-value: missing `=`"]
     fn missing_eq_1() {
-        let _ = serde_urlencoded::from_bytes::<HelloConfig>(
-            b"ohkami&"
-        ).unwrap();
+        let _ = serde_urlencoded::from_bytes::<HelloConfig>(b"ohkami&").unwrap();
     }
     #[test]
     #[should_panic = "invalid key-value: missing `=`"]
     fn missing_eq_2() {
-        let _ = serde_urlencoded::from_bytes::<HelloConfig>(
-            b"ohkami&age=4"
-        ).unwrap();
+        let _ = serde_urlencoded::from_bytes::<HelloConfig>(b"ohkami&age=4").unwrap();
     }
 
     #[test]
     #[should_panic = "invalid key-value: missing `&`"]
     fn missing_amp_1() {
-        let _ = serde_urlencoded::from_bytes::<HelloConfig>(
-            b"name=ohkami="
-        ).unwrap();
+        let _ = serde_urlencoded::from_bytes::<HelloConfig>(b"name=ohkami=").unwrap();
     }
     #[test]
     #[should_panic = "invalid key-value: missing `&`"]
     fn missing_amp_2() {
-        let _ = serde_urlencoded::from_bytes::<HelloConfig>(
-            b"name=ohkami=age=4"
-        ).unwrap();
+        let _ = serde_urlencoded::from_bytes::<HelloConfig>(b"name=ohkami=age=4").unwrap();
     }
 }

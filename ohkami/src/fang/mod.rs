@@ -10,29 +10,28 @@ pub mod bound;
 pub(crate) use bound::*;
 
 use crate::{Request, Response};
-use std::{pin::Pin, ops::Deref, future::Future};
+use std::{future::Future, ops::Deref, pin::Pin};
 
-#[cfg(feature="openapi")]
+#[cfg(feature = "openapi")]
 use crate::openapi;
 
-
 /// # Core trait for Ohkami's Fang system
-/// 
+///
 /// See `FangAction` for simple cases!
-/// 
+///
 /// <br>
-/// 
+///
 /// ### required
 /// - `type Proc` ー associated type implementing `FangProc`, the behavior as a fang
 /// - `fn chain` ー how to associate with `inner: Inner: FangProc`
-/// 
+///
 /// <br>
-/// 
+///
 /// *impl_example.rs*
 /// ```
 /// use ohkami::prelude::*;
 /// use ohkami::{Fang, FangProc};
-/// 
+///
 /// struct HelloFang;
 /// struct HelloFangProc<I: FangProc> {
 ///     inner: I
@@ -54,7 +53,7 @@ pub trait Fang<Inner: FangProc>: SendSyncOnThreaded + 'static {
     type Proc: FangProc;
     fn chain(&self, inner: Inner) -> Self::Proc;
 
-    #[cfg(feature="openapi")]
+    #[cfg(feature = "openapi")]
     fn openapi_map_operation(&self, operation: openapi::Operation) -> openapi::Operation {
         operation
     }
@@ -67,36 +66,43 @@ pub trait FangProc: SendSyncOnThreaded + 'static {
     // as `async fn ...` **only when** it returns exactly `impl Future (+ something)*`,
     // and he can't do it for `-> impl SendOnThreadedFuture<T>`.
 
-    #[cfg(not(feature="__rt_threaded__"))]
+    #[cfg(not(feature = "__rt_threaded__"))]
     fn bite<'b>(&'b self, req: &'b mut Request) -> impl Future<Output = Response>;
-    #[cfg(feature="__rt_threaded__")]
+    #[cfg(feature = "__rt_threaded__")]
     fn bite<'b>(&'b self, req: &'b mut Request) -> impl Future<Output = Response> + Send;
 
     /// Mainly used for override `bite` when itself returns `Pin<Box<dyn Future>>`.
-    /// 
+    ///
     /// ### default
     /// just `Box::pin(self.bite(req))`
     #[inline(always)]
-    fn bite_boxed<'b>(&'b self, req: &'b mut Request) -> Pin<Box<dyn SendOnThreadedFuture<Response> + 'b>> {
+    fn bite_boxed<'b>(
+        &'b self,
+        req: &'b mut Request,
+    ) -> Pin<Box<dyn SendOnThreadedFuture<Response> + 'b>> {
         Box::pin(self.bite(req))
     }
 }
 
 /// `FangProc` but object-safe, returning `Pin<Box<dyn Future>>`.
 pub(crate) trait FangProcCaller {
-    fn call_bite<'b>(&'b self, req: &'b mut Request) -> Pin<Box<dyn SendOnThreadedFuture<Response> + 'b>>;
+    fn call_bite<'b>(
+        &'b self,
+        req: &'b mut Request,
+    ) -> Pin<Box<dyn SendOnThreadedFuture<Response> + 'b>>;
 }
 impl<Proc: FangProc> FangProcCaller for Proc {
     #[inline(always)]
-    fn call_bite<'b>(&'b self, req: &'b mut Request) -> Pin<Box<dyn SendOnThreadedFuture<Response> + 'b>> {
+    fn call_bite<'b>(
+        &'b self,
+        req: &'b mut Request,
+    ) -> Pin<Box<dyn SendOnThreadedFuture<Response> + 'b>> {
         self.bite_boxed(req)
     }
 }
 
-#[derive(Clone/* copy pointer */)]
-pub(crate) struct BoxedFPC(&'static (dyn
-    FPCBound + 'static
-));
+#[derive(Clone /* copy pointer */)]
+pub(crate) struct BoxedFPC(&'static (dyn FPCBound + 'static));
 const _: () = {
     impl BoxedFPC {
         pub(crate) fn from_proc(proc: impl FPCBound + 'static) -> Self {
@@ -126,7 +132,10 @@ const _: () = {
         }
 
         #[inline]
-        fn bite_boxed<'b>(&'b self, req: &'b mut Request) -> Pin<Box<dyn SendOnThreadedFuture<Response> + 'b>> {
+        fn bite_boxed<'b>(
+            &'b self,
+            req: &'b mut Request,
+        ) -> Pin<Box<dyn SendOnThreadedFuture<Response> + 'b>> {
             self.0.call_bite(req)
         }
     }

@@ -1,5 +1,5 @@
-use super::schema::{SchemaRef, RawSchema};
 use super::_util::{Content, Map, is_false};
+use super::schema::{RawSchema, SchemaRef};
 use serde::Serialize;
 
 #[derive(Serialize, Clone)]
@@ -14,7 +14,7 @@ pub struct Parameter {
     description: Option<&'static str>,
 
     required: bool,
-    
+
     #[serde(skip_serializing_if = "is_false")]
     deprecated: bool,
 
@@ -45,7 +45,10 @@ impl Parameter {
             name: "".into(), // initialize with empty name (will be assigned later by `Operation::assign_path_param_name`)
             schema: schema.into(),
             required: true,
-            description:None, deprecated:false, style:None, explode:false,
+            description: None,
+            deprecated: false,
+            style: None,
+            explode: false,
         }
     }
     pub fn in_path_optional(schema: impl Into<SchemaRef>) -> Self {
@@ -54,7 +57,10 @@ impl Parameter {
             name: "".into(), // initialize with empty name (will be assigned later by `Operation::assign_path_param_name`)
             schema: schema.into(),
             required: false,
-            description:None, deprecated:false, style:None, explode:false,
+            description: None,
+            deprecated: false,
+            style: None,
+            explode: false,
         }
     }
 
@@ -64,7 +70,10 @@ impl Parameter {
             name: name.into(),
             schema: schema.into(),
             required: true,
-            description:None, deprecated:false, style:None, explode:false,
+            description: None,
+            deprecated: false,
+            style: None,
+            explode: false,
         }
     }
     pub fn in_query_optional(name: &'static str, schema: impl Into<SchemaRef>) -> Self {
@@ -73,17 +82,23 @@ impl Parameter {
             name: name.into(),
             schema: schema.into(),
             required: false,
-            description:None, deprecated:false, style:None, explode:false,
+            description: None,
+            deprecated: false,
+            style: None,
+            explode: false,
         }
     }
-    
+
     pub fn in_header(name: &'static str, schema: impl Into<SchemaRef>) -> Self {
         Self {
             kind: ParameterKind::header,
             name: name.into(),
             schema: schema.into(),
             required: true,
-            description:None, deprecated:false, style:None, explode:false,
+            description: None,
+            deprecated: false,
+            style: None,
+            explode: false,
         }
     }
     pub fn in_header_optional(name: &'static str, schema: impl Into<SchemaRef>) -> Self {
@@ -92,17 +107,23 @@ impl Parameter {
             name: name.into(),
             schema: schema.into(),
             required: false,
-            description:None, deprecated:false, style:None, explode:false,
+            description: None,
+            deprecated: false,
+            style: None,
+            explode: false,
         }
     }
-    
+
     pub fn in_cookie(name: &'static str, schema: impl Into<SchemaRef>) -> Self {
         Self {
             kind: ParameterKind::cookie,
             name: name.into(),
             schema: schema.into(),
             required: true,
-            description:None, deprecated:false, style:None, explode:false,
+            description: None,
+            deprecated: false,
+            style: None,
+            explode: false,
         }
     }
     pub fn in_cookie_optional(name: &'static str, schema: impl Into<SchemaRef>) -> Self {
@@ -111,7 +132,10 @@ impl Parameter {
             name: name.into(),
             schema: schema.into(),
             required: false,
-            description:None, deprecated:false, style:None, explode:false,
+            description: None,
+            deprecated: false,
+            style: None,
+            explode: false,
         }
     }
 
@@ -136,28 +160,22 @@ pub struct RequestBody {
 
     required: bool,
 
-    content: Map<&'static str, Content>
+    content: Map<&'static str, Content>,
 }
 
 impl RequestBody {
     pub fn of(media_type: &'static str, schema: impl Into<SchemaRef>) -> Self {
         Self {
             description: None,
-            required:    true,
-            content:     Map::from_iter([(
-                media_type,
-                Content::from(schema.into())
-            )])
+            required: true,
+            content: Map::from_iter([(media_type, Content::from(schema.into()))]),
         }
     }
     pub fn optional(media_type: &'static str, schema: impl Into<SchemaRef>) -> Self {
         Self {
             description: None,
-            required:    false,
-            content:     Map::from_iter([(
-                media_type,
-                Content::from(schema.into())
-            )])
+            required: false,
+            content: Map::from_iter([(media_type, Content::from(schema.into()))]),
         }
     }
 
@@ -170,11 +188,12 @@ impl RequestBody {
     }
 
     pub fn another(mut self, media_type: &'static str, schema: impl Into<SchemaRef>) -> Self {
-        self.content.insert(media_type, Content::from(schema.into()));
+        self.content
+            .insert(media_type, Content::from(schema.into()));
         self
     }
 
     pub(crate) fn refize_schemas(&mut self) -> impl Iterator<Item = RawSchema> + '_ {
-        self.content.values_mut().map(Content::refize_schema).flatten()
+        self.content.values_mut().flat_map(Content::refize_schema)
     }
 }
