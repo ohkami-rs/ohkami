@@ -494,7 +494,10 @@ impl Ohkami {
             router.apply_fangs(router.id(), fangs);
         }
 
-        crate::DEBUG!("[Ohkami::into_router] done(id = {:?}): {router:#?}", router.id());
+        crate::DEBUG!(
+            "[Ohkami::into_router] done(id = {:?}): {router:#?}",
+            router.id()
+        );
 
         router
     }
