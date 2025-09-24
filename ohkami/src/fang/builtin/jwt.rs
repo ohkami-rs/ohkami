@@ -449,8 +449,7 @@ fn jwt_fang_bound() {
     assert_fang::<Jwt<String>>();
 }
 
-#[cfg(debug_assertions)]
-#[cfg(all(feature = "__rt_native__", feature = "DEBUG"))]
+#[cfg(feature = "__rt_native__")]
 #[cfg(test)]
 mod test {
     use super::{Jwt, JwtToken};

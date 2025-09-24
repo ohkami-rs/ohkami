@@ -466,6 +466,11 @@ impl Ohkami {
             router: Router::new(),
             fangs: None,
         };
+        crate::DEBUG!(
+            "[Ohkami::new] Fangs for Router({:?}) is `{}`",
+            this.router.id(),
+            std::any::type_name::<Fangs>(),
+        );
         routing.apply(&mut this);
         this
     }
@@ -489,7 +494,7 @@ impl Ohkami {
             router.apply_fangs(router.id(), fangs);
         }
 
-        crate::DEBUG!("{router:#?}");
+        crate::DEBUG!("[Ohkami::into_router] done(id = {:?}): {router:#?}", router.id());
 
         router
     }

@@ -6,3 +6,6 @@ edition = "2024"
 [dependencies]
 ohkami = { workspace = true }
 tokio  = { workspace = true }
+
+[features]
+DEBUG = ["ohkami/DEBUG"]

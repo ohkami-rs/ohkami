@@ -41,7 +41,7 @@ impl FangsList {
     }
 
     fn add(&mut self, id: ID, fangs: Arc<dyn Fangs>) {
-        if self.0.iter().any(|(_id, _)| *_id == id) {
+        if self.0.iter().all(|(_id, _)| *_id != id) {
             self.0.push((id, fangs));
         }
     }
@@ -392,7 +392,7 @@ impl Node {
     /// MUST be called after all handlers are registered
     fn apply_fangs(&mut self, id: ID, fangs: Arc<dyn Fangs>) {
         for child in &mut self.children {
-            child.apply_fangs(id.clone(), fangs.clone())
+            child.apply_fangs(id, fangs.clone())
         }
 
         // Add even when `self.handler.is_none()`. They are used later

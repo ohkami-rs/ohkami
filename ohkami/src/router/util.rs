@@ -16,7 +16,7 @@ pub(super) fn split_next_section(path: &[u8]) -> (&[u8], &[u8]) {
     (path, b"")
 }
 
-#[derive(Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub(crate) struct ID(usize);
 impl ID {
     pub(super) fn new() -> Self {
