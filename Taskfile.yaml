@@ -29,6 +29,7 @@ tasks:
 
   check:
     deps:
+      - task: check:fmt
       - task: check:no_rt
       - for:  [tokio, smol, nio, glommio, monoio, lambda]
         task: check:rt-native
@@ -95,6 +96,10 @@ tasks:
       - cargo test --lib --features rt_{{.rt}},DEBUG,sse,ws,tls,{{.maybe_nightly}}
 
 #### checks ####
+  check:fmt:
+    cmds:
+      - cargo fmt --che
+
   # Assure buildability without "DEBUG" feature
 
   check:no_rt:
