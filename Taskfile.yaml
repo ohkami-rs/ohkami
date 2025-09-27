@@ -17,7 +17,7 @@ tasks:
   test:core:
     deps:
       - task: test:no_rt
-      - for:  [tokio, smol, nio, glommio, monoio, lambda, worker]
+      - for:  [tokio, smol, nio, glommio, monoio, compio, lambda, worker]
         task: test:rt
         vars: { rt: '{{.ITEM}}' }
   test:other:
@@ -32,7 +32,7 @@ tasks:
       - task: check:fmt
       - task: check:clippy
       - task: check:no_rt
-      - for:  [tokio, smol, nio, glommio, monoio, lambda]
+      - for:  [tokio, smol, nio, glommio, monoio, compio, lambda]
         task: check:rt-native
         vars: { rt: '{{.ITEM}}' }
       - task: check:rt_worker
@@ -43,7 +43,7 @@ tasks:
     cmds:
       - cd benches && cargo bench --features DEBUG --no-run
       - cd benches_rt/vs_actix-web && cargo check
-      - for: [tokio, smol, nio, glommio, monoio]
+      - for: [tokio, smol, nio, glommio, monoio, compio]
         cmd: cd benches_rt/{{.ITEM}} && cargo check
 
   bench:
@@ -100,7 +100,7 @@ tasks:
   check:fmt:
     cmds:
       - cargo fmt --check
-  
+
   check:clippy:
     cmds:
       - cargo clippy --all-targets --features DEBUG,rt_tokio,sse,ws,openapi,tls -- --deny warnings   # threaded runtime

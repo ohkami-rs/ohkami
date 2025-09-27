@@ -36,6 +36,7 @@ nio            = { version = "0.0",  optional = true }
 glommio        = { version = "0.9",  optional = true }
 monoio         = { version = "0.2",  optional = true, features = ["signal"] }
 monoio-compat  = { version = "0.2",  optional = true }
+compio         = { version = "0.16", optional = true, features = ["io-compat", "time"] }
 worker         = { version = "0.6",  optional = true }
 lambda_runtime = { version = "0.14", optional = true }
 
@@ -72,6 +73,9 @@ rt_glommio = ["__rt_native__", "__io_futures__",
 rt_monoio = ["__rt_native__", "__io_tokio__",
     "dep:monoio",
     "dep:monoio-compat",
+]
+rt_compio = ["__rt_native__", "__io_futures__",
+    "dep:compio",
 ]
 rt_worker = ["__rt__",
     "dep:worker", "worker/d1", "worker/queue",
