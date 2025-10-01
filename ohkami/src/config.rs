@@ -3,6 +3,9 @@ pub(crate) struct Config {
     request_bufsize: std::sync::LazyLock<usize>,
 
     #[cfg(feature = "__rt_native__")]
+    request_payload_limit: std::sync::LazyLock<usize>,
+
+    #[cfg(feature = "__rt_native__")]
     keepalive_timeout: std::sync::LazyLock<u64>,
 
     #[cfg(feature = "__rt_native__")]
@@ -15,6 +18,12 @@ impl Config {
     #[inline]
     pub(crate) fn request_bufsize(&self) -> usize {
         *self.request_bufsize
+    }
+
+    #[cfg(feature = "__rt_native__")]
+    #[inline]
+    pub(crate) fn request_payload_limit(&self) -> usize {
+        *self.request_payload_limit
     }
 
     #[cfg(feature = "__rt_native__")]
@@ -39,6 +48,14 @@ impl Config {
                     .ok()
                     .and_then(|v| v.parse().ok())
                     .unwrap_or(1 << 11)
+            }),
+
+            #[cfg(feature = "__rt_native__")]
+            request_payload_limit: std::sync::LazyLock::new(|| {
+                std::env::var("OHKAMI_REQUEST_PAYLOAD_LIMIT")
+                    .ok()
+                    .and_then(|v| v.parse().ok())
+                    .unwrap_or(32)
             }),
 
             #[cfg(feature = "__rt_native__")]
