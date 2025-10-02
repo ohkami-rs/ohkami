@@ -35,6 +35,11 @@ use crate::__rt__::AsyncRead;
 #[allow(unused)]
 use {byte_reader::Reader, std::borrow::Cow, std::pin::Pin};
 
+#[cfg(feature = "__rt_native__")]
+/// reject requests having `Content-Length` larger than this limit
+/// (as `413 Payload Too Large`) for resource security reason
+pub(crate) const PAYLOAD_LIMIT: usize = 1 << 32;
+
 /// # HTTP Request
 ///
 /// Composed of
@@ -301,14 +306,12 @@ impl Request {
                 .fold(0, |len, b| 10 * len + (*b - b'0') as usize),
             None => 0,
         };
-        /// Reject requests having `Content-Length` larger than this limit
-        /// as `413 Payload Too Large` for security reasons
-        if content_length > 0 {
-            if content_length <= crate::CONFIG.request_payload_limit() {
+        match content_length {
+            0 => (),
+            PAYLOAD_LIMIT.. => return Err(Response::PayloadTooLarge()),
+            _ => {
                 self.payload =
-                    Some(Request::read_payload(stream, r.remaining(), content_length).await);
-            } else {
-                return Err(Response::PayloadTooLarge());
+                    Some(Request::read_payload(stream, r.remaining(), content_length).await)
             }
         }
 
