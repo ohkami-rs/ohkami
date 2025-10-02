@@ -462,8 +462,7 @@ impl Request {
             match self.method {
                 Method::GET | Method::HEAD | Method::OPTIONS => {
                     return Err(Response::BadRequest()
-                        .with_text("GET/HEAD/OPTIONS methods must have no body")
-                    );
+                        .with_text("GET/HEAD/OPTIONS methods must have no body"));
                 }
                 #[cfg(feature = "__rt_native__")]
                 _ => {
