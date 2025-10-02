@@ -52,10 +52,10 @@ impl Config {
 
             #[cfg(feature = "__rt_native__")]
             request_payload_limit: std::sync::LazyLock::new(|| {
-                std::env::var("OHKAMI_PAYLOAD_LIMIT")
+                std::env::var("OHKAMI_REQUEST_PAYLOAD_LIMIT")
                     .ok()
                     .and_then(|v| v.parse().ok())
-                    .unwrap_or(32)
+                    .unwrap_or(1 << 32)
             }),
 
             #[cfg(feature = "__rt_native__")]

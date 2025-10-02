@@ -32,14 +32,8 @@ use ohkami_lib::Slice;
 #[cfg(feature = "__rt_native__")]
 use crate::__rt__::AsyncRead;
 
-use crate::config::Config;
 #[allow(unused)]
 use {byte_reader::Reader, std::borrow::Cow, std::pin::Pin};
-
-#[cfg(feature = "__rt_native__")]
-/// reject requests having `Content-Length` larger than this limit
-/// (as `413 Payload Too Large`) for resource security reason
-/// pub(crate) const PAYLOAD_LIMIT: usize = 1 << 32; <-- Moved to crate::CONFIG
 
 /// # HTTP Request
 ///
@@ -307,12 +301,14 @@ impl Request {
                 .fold(0, |len, b| 10 * len + (*b - b'0') as usize),
             None => 0,
         };
-        match content_length {
-            0 => (),
-            Config::request_payload_limit() => return Err(Response::PayloadTooLarge()),
-            _ => {
+        /// Reject requests having `Content-Length` larger than this limit
+        /// as `413 Payload Too Large` for security reasons
+        if content_length > 0 {
+            if content_length <= crate::CONFIG.request_payload_limit() {
                 self.payload =
-                    Some(Request::read_payload(stream, r.remaining(), content_length).await)
+                    Some(Request::read_payload(stream, r.remaining(), content_length).await);
+            } else {
+                return Err(Response::PayloadTooLarge());
             }
         }
 
