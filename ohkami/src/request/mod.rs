@@ -464,13 +464,15 @@ impl Request {
                     return Err(Response::BadRequest()
                         .with_text("GET/HEAD/OPTIONS methods must have no body"));
                 }
-                #[cfg(feature = "__rt_native__")]
-                Method::DELETE | Method::PATCH | Method::POST | Method::PUT => {
-                    if content_length <= crate::CONFIG.request_payload_limit() {
-                        self.payload =
-                            (content_length > 0).then(|| CowSlice::Own(r.remaining().into()));
-                    } else {
-                        return Err(Response::PayloadTooLarge());
+                _ => {
+                    #[cfg(feature = "__rt_native__")]
+                    {
+                        if content_length <= crate::CONFIG.request_payload_limit() {
+                            self.payload =
+                                (content_length > 0).then(|| CowSlice::Own(r.remaining().into()));
+                        } else {
+                            return Err(Response::PayloadTooLarge());
+                        }
                     }
                 }
             }
