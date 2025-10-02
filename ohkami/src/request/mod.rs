@@ -461,9 +461,11 @@ impl Request {
         if content_length > 0 {
             match self.method {
                 Method::GET | Method::HEAD | Method::OPTIONS => {
-                    return Err(Response::BadRequest())
-                        .with_text("GET/HEAD/OPTIONS methods must have no body");
+                    return Err(Response::BadRequest()
+                        .with_text("GET/HEAD/OPTIONS methods must have no body")
+                    );
                 }
+                #[cfg(feature = "__rt_native__")]
                 _ => {
                     if content_length <= crate::CONFIG.request_payload_limit() {
                         self.payload =
