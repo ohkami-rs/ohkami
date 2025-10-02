@@ -301,8 +301,8 @@ impl Request {
                 .fold(0, |len, b| 10 * len + (*b - b'0') as usize),
             None => 0,
         };
-        /// Reject requests having `Content-Length` larger than this limit
-        /// as `413 Payload Too Large` for security reasons
+        // Reject requests having `Content-Length` larger than this limit
+        // as `413 Payload Too Large` for security reasons
         if content_length > 0 {
             if content_length <= crate::CONFIG.request_payload_limit() {
                 self.payload =
