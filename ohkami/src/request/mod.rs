@@ -457,7 +457,23 @@ impl Request {
                 .fold(0, |len, b| 10 * len + (*b - b'0') as usize),
             None => 0,
         };
-        self.payload = (content_length > 0).then(|| CowSlice::Own(r.remaining().into()));
+
+        if content_length > 0 {
+            match self.method {
+                Method::GET | Method::HEAD | Method::OPTIONS => {
+                    return Err(Response::BadRequest())
+                        .with_text("GET/HEAD/OPTIONS methods must have no body");
+                }
+                _ => {
+                    if content_length <= crate::CONFIG.request_payload_limit() {
+                        self.payload =
+                            (content_length > 0).then(|| CowSlice::Own(r.remaining().into()));
+                    } else {
+                        return Err(Response::PayloadTooLarge());
+                    }
+                }
+            }
+        }
 
         Ok(Some(()))
     }
