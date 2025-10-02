@@ -32,9 +32,9 @@ use ohkami_lib::Slice;
 #[cfg(feature = "__rt_native__")]
 use crate::__rt__::AsyncRead;
 
+use crate::config::Config;
 #[allow(unused)]
 use {byte_reader::Reader, std::borrow::Cow, std::pin::Pin};
-use crate::config::Config;
 
 #[cfg(feature = "__rt_native__")]
 /// reject requests having `Content-Length` larger than this limit
