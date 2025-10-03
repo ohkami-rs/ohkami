@@ -66,7 +66,9 @@ impl Session {
             match with_timeout(
                 Duration::from_secs(crate::CONFIG.keepalive_timeout()),
                 req.as_mut().read(&mut self.connection),
-            ).await {
+            )
+            .await
+            {
                 None => {
                     crate::DEBUG!(
                         "\
