@@ -171,6 +171,35 @@ pub struct Request {
 }
 
 impl Request {
+
+    // Reject requests having `Content-Length` larger than this limit
+    // as `413 Payload Too Large` for security reasons
+    #[cfg(feature = "__rt__")]
+    #[inline]
+    fn validate_content_length(&self, content_length: usize) -> Result<(), crate::Response> {
+        use crate::Response;
+
+        if content_length == 0 {
+            return Ok(());
+        }
+
+        match self.method {
+            Method::GET | Method::HEAD | Method::OPTIONS => {
+                Err(Response::BadRequest()
+                    .with_text("GET/HEAD/OPTIONS methods must have no body"))
+            }
+            _ => {
+                #[cfg(feature = "__rt_native__")]
+                {
+                    if content_length > crate::CONFIG.request_payload_limit() {
+                        return Err(Response::PayloadTooLarge());
+                    }
+                }
+                Ok(())
+            }
+        }
+    }
+
     #[cfg(feature = "__rt__")]
     #[inline]
     pub(crate) fn uninit(#[cfg(feature = "__rt_native__")] ip: std::net::IpAddr) -> Self {
@@ -195,6 +224,7 @@ impl Request {
             context: Context::init(),
         }
     }
+
     #[cfg(feature = "__rt_native__")]
     #[inline(always)]
     pub(crate) fn clear(&mut self) {
@@ -301,15 +331,13 @@ impl Request {
                 .fold(0, |len, b| 10 * len + (*b - b'0') as usize),
             None => 0,
         };
-        // Reject requests having `Content-Length` larger than this limit
-        // as `413 Payload Too Large` for security reasons
+
+        self.validate_content_length(content_length)?;
+
         if content_length > 0 {
-            if content_length <= crate::CONFIG.request_payload_limit() {
-                self.payload =
-                    Some(Request::read_payload(stream, r.remaining(), content_length).await);
-            } else {
-                return Err(Response::PayloadTooLarge());
-            }
+            self.payload = Some(
+                Request::read_payload(stream, r.remaining(), content_length).await
+            );
         }
 
         Ok(Some(()))
@@ -458,25 +486,22 @@ impl Request {
             None => 0,
         };
 
+        self.validate_content_length(content_length)?;
+        
         if content_length > 0 {
-            match self.method {
-                Method::GET | Method::HEAD | Method::OPTIONS => {
-                    return Err(Response::BadRequest()
-                        .with_text("GET/HEAD/OPTIONS methods must have no body"));
-                }
-                _ => {
-                    #[cfg(feature = "__rt_native__")]
-                    {
-                        if content_length <= crate::CONFIG.request_payload_limit() {
-                            self.payload =
-                                (content_length > 0).then(|| CowSlice::Own(r.remaining().into()));
-                        } else {
-                            return Err(Response::PayloadTooLarge());
-                        }
-                    }
-                }
+            #[cfg(feature = "__rt_native__")]
+            {
+                self.payload = Some(
+                    Request::read_payload(stream, r.remaining(), content_length).await
+                );
+            }
+
+            #[cfg(any(feature = "rt_worker", feature = "rt_lambda"))]
+            {
+                self.payload = Some(CowSlice::Own(r.remaining().into()));
             }
         }
+
 
         Ok(Some(()))
     }
