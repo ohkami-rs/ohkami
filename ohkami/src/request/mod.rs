@@ -171,7 +171,6 @@ pub struct Request {
 }
 
 impl Request {
-
     // Reject requests having `Content-Length` larger than this limit
     // as `413 Payload Too Large` for security reasons
     #[cfg(feature = "__rt__")]
@@ -185,8 +184,7 @@ impl Request {
 
         match self.method {
             Method::GET | Method::HEAD | Method::OPTIONS => {
-                Err(Response::BadRequest()
-                    .with_text("GET/HEAD/OPTIONS methods must have no body"))
+                Err(Response::BadRequest().with_text("GET/HEAD/OPTIONS methods must have no body"))
             }
             _ => {
                 #[cfg(feature = "__rt_native__")]
@@ -335,9 +333,7 @@ impl Request {
         self.validate_content_length(content_length)?;
 
         if content_length > 0 {
-            self.payload = Some(
-                Request::read_payload(stream, r.remaining(), content_length).await
-            );
+            self.payload = Some(Request::read_payload(stream, r.remaining(), content_length).await);
         }
 
         Ok(Some(()))
@@ -487,13 +483,11 @@ impl Request {
         };
 
         self.validate_content_length(content_length)?;
-        
+
         if content_length > 0 {
             #[cfg(feature = "__rt_native__")]
             {
-                self.payload = Some(
-                    Request::read_payload(stream, r.remaining(), content_length).await
-                );
+                self.payload = (content_length > 0).then(|| CowSlice::Own(r.remaining().into()));
             }
 
             #[cfg(any(feature = "rt_worker", feature = "rt_lambda"))]
@@ -501,7 +495,6 @@ impl Request {
                 self.payload = Some(CowSlice::Own(r.remaining().into()));
             }
         }
-
 
         Ok(Some(()))
     }
