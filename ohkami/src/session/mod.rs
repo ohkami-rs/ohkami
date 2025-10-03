@@ -66,9 +66,7 @@ impl Session {
             match with_timeout(
                 Duration::from_secs(crate::CONFIG.keepalive_timeout()),
                 req.as_mut().read(&mut self.connection),
-            )
-            .await
-            {
+            ).await {
                 None => {
                     crate::DEBUG!(
                         "\
@@ -79,44 +77,41 @@ impl Session {
                     );
                     break Upgrade::None;
                 }
-                Some(result) => {
-                    match result {
-                        Ok(Some(())) => {
-                            let close = matches!(req.headers.connection(), Some("close" | "Close"));
+                Some(read_result) => match read_result {
+                    Ok(Some(())) => {
+                        let close = matches!(req.headers.connection(), Some("close" | "Close"));
 
-                            let res = match catch_unwind(AssertUnwindSafe({
-                                let req = req.as_mut();
-                                || self.router.handle(req.get_mut())
-                            })) {
-                                Ok(future) => future.await,
-                                Err(panic) => panicking(panic),
-                            };
-                            let upgrade = match res.send(&mut self.connection).await {
-                                Ok(upgrade) => upgrade,
-                                Err(e) => {
-                                    handle_send_failure(e);
-                                    break Upgrade::None;
-                                }
-                            };
-
-                            if !upgrade.is_none() {
-                                break upgrade;
-                            }
-                            if close {
-                                break Upgrade::None;
-                            }
-                        }
-                        Ok(None) => break Upgrade::None,
-                        Err(res) => {
-                            if let Err(e) = res.send(&mut self.connection).await {
+                        let res = match catch_unwind(AssertUnwindSafe({
+                            let req = req.as_mut();
+                            || self.router.handle(req.get_mut())
+                        })) {
+                            Ok(future) => future.await,
+                            Err(panic) => panicking(panic),
+                        };
+                        let upgrade = match res.send(&mut self.connection).await {
+                            Ok(upgrade) => upgrade,
+                            Err(e) => {
                                 handle_send_failure(e);
                                 break Upgrade::None;
                             }
-                            // here response was sent, so assuming just request was malformed and we can continue
-                            continue;
+                        };
+
+                        if !upgrade.is_none() {
+                            break upgrade;
+                        }
+                        if close {
+                            break Upgrade::None;
                         }
                     }
-                }
+                    Ok(None) => break Upgrade::None,
+                    Err(mut res) => {
+                        res.headers.set().connection("close");
+                        if let Err(e) = res.send(&mut self.connection).await {
+                            handle_send_failure(e);
+                        }
+                        break Upgrade::None;
+                    }
+                },
             }
         };
 
