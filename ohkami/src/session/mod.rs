@@ -105,7 +105,9 @@ impl Session {
                             break Upgrade::None;
                         }
                     }
-                    Ok(None) => break Upgrade::None,
+                    Ok(None) => {
+                        break Upgrade::None;
+                    }
                     Err(mut res) => {
                         res.headers.set().connection("close");
                         if let Err(e) = res.send(&mut self.connection).await {
