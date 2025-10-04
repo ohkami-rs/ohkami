@@ -66,6 +66,19 @@ struct Installer {
     allow_env: bool,
 }
 
+/*
+ * MEMO:
+ * 
+ * - This system relying on 2 static values seems a bit hacky, too **complicated**
+ * - `.install()` and `.install_or_env()` is too **imperative** for Ohkami's design philosophy
+ * 
+ * If a more declarative design is possible, it will automatically make
+ * the environment variable override more natural, and
+ * remove the need for `install_or_env()` and `INSTALLER`.
+ * 
+ * - Pass `Config` to `Ohkami` instance directly?
+ * - Use `OnceCell<Config>` and `get_or_init()` in `CONFIG` directly?
+ */
 impl Config {
     /// Install the configuration.
     /// This must be called only once, and before any server is started.
