@@ -290,10 +290,10 @@ mod __rt__ {
 
 pub mod util;
 
-#[cfg(feature = "__rt_native__")]
 mod config;
 #[cfg(feature = "__rt_native__")]
-pub(crate) static CONFIG: config::Config = config::Config::new();
+pub(crate) use config::CONFIG;
+pub use config::Config;
 
 #[cfg(debug_assertions)]
 #[cfg(feature = "__rt__")]

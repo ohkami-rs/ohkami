@@ -181,7 +181,7 @@ impl Request {
             ip: crate::util::IP_0000, /* tetative */
 
             #[cfg(feature = "__rt_native__")]
-            __buf__: vec![0u8; crate::CONFIG.request_bufsize()].into_boxed_slice(),
+            __buf__: vec![0u8; crate::CONFIG.request_bufsize].into_boxed_slice(),
             #[cfg(feature = "rt_worker")]
             __url__: std::mem::MaybeUninit::uninit(),
             #[cfg(feature = "rt_lambda")]
@@ -304,7 +304,7 @@ impl Request {
         // Reject requests having `Content-Length` larger than this limit
         // as `413 Payload Too Large` for security reasons
         if content_length > 0 {
-            if content_length <= crate::CONFIG.request_payload_limit() {
+            if content_length <= crate::CONFIG.request_payload_limit {
                 self.payload =
                     Some(Request::read_payload(stream, r.remaining(), content_length).await);
             } else {

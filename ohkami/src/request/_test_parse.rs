@@ -55,7 +55,7 @@ macro_rules! assert_parse {
 }
 
 fn metadataize(input: &str) -> Box<[u8]> {
-    let buf_size = crate::CONFIG.request_bufsize();
+    let buf_size = crate::CONFIG.request_bufsize;
     let mut buf = vec![0; buf_size];
     buf[..input.len().min(buf_size)]
         .copy_from_slice(&input.as_bytes()[..input.len().min(buf_size)]);

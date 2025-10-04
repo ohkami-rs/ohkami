@@ -64,7 +64,7 @@ impl Session {
             req.clear();
             // Apply a fresh timeout for each read, thus resetting the timer on activity.
             match with_timeout(
-                Duration::from_secs(crate::CONFIG.keepalive_timeout()),
+                Duration::from_secs(crate::CONFIG.keepalive_timeout),
                 req.as_mut().read(&mut self.connection),
             )
             .await
@@ -130,9 +130,7 @@ impl Session {
 
                 let aborted = ws
                     .manage_with_timeout(
-                        crate::__rt__::sleep(Duration::from_secs(
-                            crate::CONFIG.websocket_timeout(),
-                        )),
+                        crate::__rt__::sleep(Duration::from_secs(crate::CONFIG.websocket_timeout)),
                         self.connection,
                     )
                     .await;
