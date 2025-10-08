@@ -59,7 +59,7 @@ impl TestOhkami {
     pub fn oneshot(&self, test_req: TestRequest) -> Oneshot {
         self.oneshot_with(crate::Config::default(), test_req)
     }
-    
+
     #[must_use]
     pub fn oneshot_with(&self, config: crate::Config, test_req: TestRequest) -> Oneshot {
         let router = self.0.clone();
@@ -73,7 +73,11 @@ impl TestOhkami {
             );
             let mut req = Pin::new(&mut req);
 
-            let res = match req.as_mut().read(&mut &test_req.encode()[..], &config).await {
+            let res = match req
+                .as_mut()
+                .read(&mut &test_req.encode()[..], &config)
+                .await
+            {
                 Err(res) => res,
                 Ok(None) => panic!("No request"),
                 Ok(Some(())) => {

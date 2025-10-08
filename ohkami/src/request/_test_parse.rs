@@ -25,7 +25,7 @@ fn parse_path() {
 macro_rules! assert_parse {
     ($case:expr, $expected:expr) => {
         let config = crate::Config::default();
-        
+
         let mut case = $case.as_bytes();
 
         let mut actual = Request::uninit(crate::util::IP_0000, &config);

@@ -479,7 +479,7 @@ mod test {
     fn test_jwt_verify() {
         use crate::{Request, Status, testing::TestRequest};
         use std::pin::Pin;
-        
+
         let config = crate::Config::default();
 
         let my_jwt =

@@ -1,5 +1,5 @@
 /// Configuration for Ohkami server.
-/// 
+///
 /// 1. By default, [the default values](Self::default) will be used.
 /// 2. Each field can be overridden by the corresponding environment variable.
 #[derive(Clone, Copy)]
