@@ -271,9 +271,11 @@ impl Request {
                     "\
                     [Request::read] Unexpected end of headers! \
                     Maybe request buffer size is not enough. \
-                    Try to set `OHKAMI_REQUEST_BUFSIZE` to larger value \
-                    (default: 2048).\
-                "
+                    Try setting `request_bufsize` of Config, \
+                    or `OHKAMI_REQUEST_BUFSIZE` environment variable, \
+                    to a larger value (default: {}).\
+                ",
+                    crate::Config::default().request_bufsize
                 );
                 Response::RequestHeaderFieldsTooLarge()
             })?;
@@ -284,9 +286,11 @@ impl Request {
                     "\
                     [Request::read] Unexpected end of headers! \
                     Maybe request buffer size is not enough. \
-                    Try to set `OHKAMI_REQUEST_BUFSIZE` to larger value \
-                    (default: 2048).\
-                "
+                    Try setting `request_bufsize` of Config, \
+                    or `OHKAMI_REQUEST_BUFSIZE` environment variable, \
+                    to a larger value (default: {}).\
+                ",
+                    crate::Config::default().request_bufsize
                 );
                 Response::RequestHeaderFieldsTooLarge()
             })?;
@@ -312,6 +316,17 @@ impl Request {
                 self.payload =
                     Some(Request::read_payload(stream, r.remaining(), content_length).await);
             } else {
+                crate::WARNING!(
+                    "\
+                    [Request::read] Request payload size ({content_length} bytes) \
+                    is larger than the configured limit ({} bytes)! \
+                    Try setting `request_payload_limit` of Config, \
+                    or `OHKAMI_REQUEST_PAYLOAD_LIMIT` environment variable, \
+                    to a larger value (default: {}).\
+                ",
+                    config.request_payload_limit,
+                    crate::Config::default().request_payload_limit
+                );
                 return Err(Response::PayloadTooLarge());
             }
         }
@@ -427,9 +442,11 @@ impl Request {
                     "\
                     [Request::read] Unexpected end of headers! \
                     Maybe request buffer size is not enough. \
-                    Try to set `OHKAMI_REQUEST_BUFSIZE` to larger value \
-                    (default: 2048).\
-                "
+                    Try setting `request_bufsize` of Config, \
+                    or `OHKAMI_REQUEST_BUFSIZE` environment variable, \
+                    to a larger value (default: {}).\
+                ",
+                    crate::Config::default().request_bufsize
                 );
                 Response::RequestHeaderFieldsTooLarge()
             })?;
@@ -439,9 +456,11 @@ impl Request {
                     "\
                     [Request::read] Unexpected end of headers! \
                     Maybe request buffer size is not enough. \
-                    Try to set `OHKAMI_REQUEST_BUFSIZE` to larger value \
-                    (default: 2048).\
-                "
+                    Try setting `request_bufsize` of Config, \
+                    or `OHKAMI_REQUEST_BUFSIZE` environment variable, \
+                    to a larger value (default: {}).\
+                ",
+                    crate::Config::default().request_bufsize
                 );
                 Response::RequestHeaderFieldsTooLarge()
             })?;
