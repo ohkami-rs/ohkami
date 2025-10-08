@@ -12,6 +12,7 @@ use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::{any::Any, pin::Pin, sync::Arc, time::Duration};
 
 pub(crate) struct Session {
+    config: crate::Config,
     connection: Connection,
     router: Arc<Router>,
     ip: std::net::IpAddr,
@@ -19,11 +20,13 @@ pub(crate) struct Session {
 
 impl Session {
     pub(crate) fn new(
+        config: crate::Config,
         connection: impl Into<Connection>,
         ip: std::net::IpAddr,
         router: Arc<Router>,
     ) -> Self {
         Self {
+            config,
             connection: connection.into(),
             ip,
             router,
@@ -58,14 +61,14 @@ impl Session {
             }
         }
 
-        let mut req = Request::uninit(self.ip);
+        let mut req = Request::uninit(self.ip, &self.config);
         let mut req = Pin::new(&mut req);
         let upgrade = loop {
             req.clear();
             // Apply a fresh timeout for each read, thus resetting the timer on activity.
             match with_timeout(
-                Duration::from_secs(crate::CONFIG.keepalive_timeout),
-                req.as_mut().read(&mut self.connection),
+                Duration::from_secs(self.config.keepalive_timeout),
+                req.as_mut().read(&mut self.connection, &self.config),
             )
             .await
             {
@@ -130,7 +133,7 @@ impl Session {
 
                 let aborted = ws
                     .manage_with_timeout(
-                        crate::__rt__::sleep(Duration::from_secs(crate::CONFIG.websocket_timeout)),
+                        crate::__rt__::sleep(Duration::from_secs(self.config.websocket_timeout)),
                         self.connection,
                     )
                     .await;

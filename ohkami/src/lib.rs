@@ -291,8 +291,6 @@ mod __rt__ {
 pub mod util;
 
 mod config;
-#[cfg(feature = "__rt_native__")]
-pub(crate) use config::CONFIG;
 pub use config::Config;
 
 #[cfg(debug_assertions)]

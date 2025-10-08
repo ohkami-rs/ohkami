@@ -24,12 +24,14 @@ fn parse_path() {
 
 macro_rules! assert_parse {
     ($case:expr, $expected:expr) => {
+        let config = crate::Config::default();
+        
         let mut case = $case.as_bytes();
 
-        let mut actual = Request::uninit(crate::util::IP_0000);
+        let mut actual = Request::uninit(crate::util::IP_0000, &config);
         let mut actual = Pin::new(&mut actual);
 
-        let result = crate::__rt__::testing::block_on({ actual.as_mut().read(&mut case) });
+        let result = crate::__rt__::testing::block_on({ actual.as_mut().read(&mut case, &config) });
 
         assert_eq!(result, Ok(Some(())));
 
@@ -55,7 +57,7 @@ macro_rules! assert_parse {
 }
 
 fn metadataize(input: &str) -> Box<[u8]> {
-    let buf_size = crate::CONFIG.request_bufsize;
+    let buf_size = crate::Config::default().request_bufsize;
     let mut buf = vec![0; buf_size];
     buf[..input.len().min(buf_size)]
         .copy_from_slice(&input.as_bytes()[..input.len().min(buf_size)]);

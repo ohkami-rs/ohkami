@@ -1,32 +1,32 @@
 /// Configuration for Ohkami server.
 /// 
-/// This configuration can be installed only once by [`Config::install`] or [`Config::install_or_env`].
-/// If not installed, the default configuration will be used.
-/// Each field can be overridden by the corresponding environment variable.
+/// 1. By default, [the default values](Self::default) will be used.
+/// 2. Each field can be overridden by the corresponding environment variable.
+#[derive(Clone, Copy)]
 pub struct Config {
     /// [bytes] size of the internal buffer used to read requests.
-    /// 
+    ///
     /// - default: 2048 (2 KiB)
     /// - env: `OHKAMI_REQUEST_BUFSIZE`
     #[cfg(feature = "__rt_native__")]
     pub request_bufsize: usize,
 
     /// [bytes] maximum size of the request payload.
-    /// 
+    ///
     /// - default: 4294967296 (4 GiB)
     /// - env: `OHKAMI_REQUEST_PAYLOAD_LIMIT`
     #[cfg(feature = "__rt_native__")]
     pub request_payload_limit: usize,
 
     /// [secs] duration of the keep-alive timeout.
-    /// 
+    ///
     /// - default: 30 (30 seconds)
     /// - env: `OHKAMI_KEEPALIVE_TIMEOUT`
     #[cfg(feature = "__rt_native__")]
     pub keepalive_timeout: u64,
 
     /// [secs] duration of the WebSocket session timeout.
-    /// 
+    ///
     /// - default: 3600 (1 hour)
     /// - env: `OHKAMI_WEBSOCKET_TIMEOUT`
     #[cfg(feature = "__rt_native__")]
@@ -37,6 +37,7 @@ pub struct Config {
     pub __private__: (),
 }
 
+#[allow(clippy::derivable_impls)]
 impl Default for Config {
     fn default() -> Self {
         Self {
@@ -58,6 +59,44 @@ impl Default for Config {
     }
 }
 
+impl Config {
+    pub fn new() -> Self {
+        #[allow(unused)]
+        fn parse_env<T: std::str::FromStr>(key: &str) -> Option<T> {
+            std::env::var(key).ok().map(|val| {
+                val.parse().unwrap_or_else(|err| {
+                    panic!(
+                        "failed to parse environment variable `{key}` as {}: `{val}`",
+                        std::any::type_name::<T>(),
+                    )
+                })
+            })
+        }
+
+        Self {
+            #[cfg(feature = "__rt_native__")]
+            request_bufsize: parse_env("OHKAMI_REQUEST_BUFSIZE")
+                .unwrap_or(Config::default().request_bufsize),
+
+            #[cfg(feature = "__rt_native__")]
+            request_payload_limit: parse_env("OHKAMI_REQUEST_PAYLOAD_LIMIT")
+                .unwrap_or(Config::default().request_payload_limit),
+
+            #[cfg(feature = "__rt_native__")]
+            keepalive_timeout: parse_env("OHKAMI_KEEPALIVE_TIMEOUT")
+                .unwrap_or(Config::default().keepalive_timeout),
+
+            #[cfg(feature = "__rt_native__")]
+            #[cfg(feature = "ws")]
+            websocket_timeout: parse_env("OHKAMI_WEBSOCKET_TIMEOUT")
+                .unwrap_or(Config::default().websocket_timeout),
+
+            __private__: (),
+        }
+    }
+}
+
+/*
 static INSTALLER: std::sync::OnceLock<Installer> = std::sync::OnceLock::new();
 
 #[allow(unused)]
@@ -68,14 +107,14 @@ struct Installer {
 
 /*
  * MEMO:
- * 
+ *
  * - This system relying on 2 static values seems a bit hacky, too **complicated**
  * - `.install()` and `.install_or_env()` is too **imperative** for Ohkami's design philosophy
- * 
+ *
  * If a more declarative design is possible, it will automatically make
  * the environment variable override more natural, and
  * remove the need for `install_or_env()` and `INSTALLER`.
- * 
+ *
  * - Pass `Config` to `Ohkami` instance directly?
  * - Use `OnceCell<Config>` and `get_or_init()` in `CONFIG` directly?
  */
@@ -157,3 +196,4 @@ pub(crate) static CONFIG: std::sync::LazyLock<Config> = std::sync::LazyLock::new
         __private__: (),
     }
 });
+*/

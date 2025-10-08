@@ -173,7 +173,10 @@ pub struct Request {
 impl Request {
     #[cfg(feature = "__rt__")]
     #[inline]
-    pub(crate) fn uninit(#[cfg(feature = "__rt_native__")] ip: std::net::IpAddr) -> Self {
+    pub(crate) fn uninit(
+        #[cfg(feature = "__rt_native__")] ip: std::net::IpAddr,
+        #[cfg(feature = "__rt_native__")] config: &crate::Config,
+    ) -> Self {
         Self {
             #[cfg(feature = "__rt_native__")]
             ip,
@@ -181,7 +184,7 @@ impl Request {
             ip: crate::util::IP_0000, /* tetative */
 
             #[cfg(feature = "__rt_native__")]
-            __buf__: vec![0u8; crate::CONFIG.request_bufsize].into_boxed_slice(),
+            __buf__: vec![0u8; config.request_bufsize].into_boxed_slice(),
             #[cfg(feature = "rt_worker")]
             __url__: std::mem::MaybeUninit::uninit(),
             #[cfg(feature = "rt_lambda")]
@@ -217,6 +220,7 @@ impl Request {
     pub(crate) async fn read(
         mut self: Pin<&mut Self>,
         stream: &mut (impl AsyncRead + Unpin),
+        config: &crate::Config,
     ) -> Result<Option<()>, crate::Response> {
         use crate::Response;
 
@@ -304,7 +308,7 @@ impl Request {
         // Reject requests having `Content-Length` larger than this limit
         // as `413 Payload Too Large` for security reasons
         if content_length > 0 {
-            if content_length <= crate::CONFIG.request_payload_limit {
+            if content_length <= config.request_payload_limit {
                 self.payload =
                     Some(Request::read_payload(stream, r.remaining(), content_length).await);
             } else {
@@ -361,6 +365,7 @@ impl Request {
     pub(crate) async fn read(
         mut self: Pin<&mut Self>,
         raw_bytes: &mut &[u8],
+        _: &crate::Config,
     ) -> Result<Option<()>, crate::Response> {
         use crate::Response;
 
