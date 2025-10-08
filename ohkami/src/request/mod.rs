@@ -437,33 +437,9 @@ impl Request {
 
         while r.consume("\r\n").is_none() {
             let key_bytes = r.read_while(|b| b != &b':');
-            r.consume(": ").ok_or_else(|| {
-                crate::WARNING!(
-                    "\
-                    [Request::read] Unexpected end of headers! \
-                    Maybe request buffer size is not enough. \
-                    Try setting `request_bufsize` of Config, \
-                    or `OHKAMI_REQUEST_BUFSIZE` environment variable, \
-                    to a larger value (default: {}).\
-                ",
-                    crate::Config::default().request_bufsize
-                );
-                Response::RequestHeaderFieldsTooLarge()
-            })?;
+            r.consume(": ").unwrap(); // here `r` holds a complete HTTP request
             let value = CowSlice::Own(r.read_while(|b| b != &b'\r').to_owned().into_boxed_slice());
-            r.consume("\r\n").ok_or_else(|| {
-                crate::WARNING!(
-                    "\
-                    [Request::read] Unexpected end of headers! \
-                    Maybe request buffer size is not enough. \
-                    Try setting `request_bufsize` of Config, \
-                    or `OHKAMI_REQUEST_BUFSIZE` environment variable, \
-                    to a larger value (default: {}).\
-                ",
-                    crate::Config::default().request_bufsize
-                );
-                Response::RequestHeaderFieldsTooLarge()
-            })?;
+            r.consume("\r\n").unwrap(); // here `r` holds a complete HTTP request
 
             if let Some(key) = RequestHeader::from_bytes(key_bytes) {
                 self.headers.append(key, value);
