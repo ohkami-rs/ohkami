@@ -81,7 +81,7 @@ impl Session {
                         (default: {})\
                     ",
                         self.config.keepalive_timeout,
-                        const { crate::Config::DEFAULT.keepalive_timeout }
+                        crate::Config::default().keepalive_timeout
                     );
                     break Upgrade::None;
                 }
@@ -149,7 +149,7 @@ impl Session {
                         (default: {})\
                     ",
                         self.config.websocket_timeout,
-                        const { crate::Config::DEFAULT.websocket_timeout }
+                        crate::Config::default().websocket_timeout
                     );
                 }
 
