@@ -75,7 +75,7 @@ pub struct Config {
 
 impl Default for Config {
     /// **Note**:
-    /// This does not read from environment variables.
+    /// This provides a pure, haed-coded default values.
     /// Use [`Config::new()`](Config::new) to correctly apply the env-overrides.
     fn default() -> Self {
         Self {
