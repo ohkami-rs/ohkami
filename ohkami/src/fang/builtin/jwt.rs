@@ -480,7 +480,7 @@ mod test {
         use crate::{Request, Status, testing::TestRequest};
         use std::pin::Pin;
 
-        let config = crate::Config::default();
+        let config = crate::Config::new();
 
         let my_jwt =
             Jwt::<::serde_json::Value>::default("ohkami-realworld-jwt-authorization-secret-key");

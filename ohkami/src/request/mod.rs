@@ -275,7 +275,7 @@ impl Request {
                     or `OHKAMI_REQUEST_BUFSIZE` environment variable, \
                     to a larger value (default: {}).\
                 ",
-                    crate::Config::default().request_bufsize
+                    const { crate::Config::DEFAULT.request_bufsize }
                 );
                 Response::RequestHeaderFieldsTooLarge()
             })?;
@@ -290,7 +290,7 @@ impl Request {
                     or `OHKAMI_REQUEST_BUFSIZE` environment variable, \
                     to a larger value (default: {}).\
                 ",
-                    crate::Config::default().request_bufsize
+                    const { crate::Config::DEFAULT.request_bufsize }
                 );
                 Response::RequestHeaderFieldsTooLarge()
             })?;
@@ -325,7 +325,7 @@ impl Request {
                     to a larger value (default: {}).\
                 ",
                     config.request_payload_limit,
-                    crate::Config::default().request_payload_limit
+                    const { crate::Config::DEFAULT.request_payload_limit }
                 );
                 return Err(Response::PayloadTooLarge());
             }

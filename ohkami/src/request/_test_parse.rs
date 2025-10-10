@@ -24,7 +24,7 @@ fn parse_path() {
 
 macro_rules! assert_parse {
     ($case:expr, $expected:expr) => {
-        let config = crate::Config::default();
+        let config = crate::Config::new();
 
         let mut case = $case.as_bytes();
 
@@ -57,7 +57,7 @@ macro_rules! assert_parse {
 }
 
 fn metadataize(input: &str) -> Box<[u8]> {
-    let buf_size = crate::Config::default().request_bufsize;
+    let buf_size = crate::Config::new().request_bufsize;
     let mut buf = vec![0; buf_size];
     buf[..input.len().min(buf_size)]
         .copy_from_slice(&input.as_bytes()[..input.len().min(buf_size)]);

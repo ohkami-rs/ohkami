@@ -627,7 +627,7 @@ impl Ohkami {
     pub async fn howl<T>(self, bind: impl __rt__::IntoTcpListener<T>) {
         self.howl_core(
             bind,
-            crate::Config::default(),
+            crate::Config::new(),
             #[cfg(feature = "tls")]
             None,
         )
@@ -735,7 +735,7 @@ impl Ohkami {
         bind: impl __rt__::IntoTcpListener<T>,
         tls_config: rustls::ServerConfig,
     ) {
-        self.howl_core(bind, crate::Config::default(), Some(tls_config))
+        self.howl_core(bind, crate::Config::new(), Some(tls_config))
             .await
     }
 

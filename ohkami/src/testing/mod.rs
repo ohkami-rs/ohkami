@@ -57,7 +57,7 @@ pub struct TestOhkami(Arc<Router>);
 impl TestOhkami {
     #[must_use]
     pub fn oneshot(&self, test_req: TestRequest) -> Oneshot {
-        self.oneshot_with(crate::Config::default(), test_req)
+        self.oneshot_with(crate::Config::new(), test_req)
     }
 
     #[must_use]

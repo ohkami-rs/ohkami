@@ -75,10 +75,13 @@ impl Session {
                 None => {
                     crate::DEBUG!(
                         "\
-                        Reached Keep-Alive timeout (by 30s in default config). \
+                        Reached Keep-Alive timeout ({} secs). \
                         The timeout can be configured via `keepalive_timeout` of `Config`, \
                         or `OHKAMI_KEEPALIVE_TIMEOUT` environment variable.\
-                    "
+                        (default: {})\
+                    ",
+                        self.config.keepalive_timeout,
+                        const { crate::Config::DEFAULT.keepalive_timeout }
                     );
                     break Upgrade::None;
                 }
@@ -140,10 +143,13 @@ impl Session {
                 if aborted {
                     crate::WARNING!(
                         "\
-                        WebSocket session aborted by timeout (1 hour in default config). \
+                        WebSocket session aborted by timeout ({} secs). \
                         This can be configured by `websocket_timeout` of `Config`, or \
                         `OHKAMI_WEBSOCKET_TIMEOUT` environment variable.\
-                    "
+                        (default: {})\
+                    ",
+                        self.config.websocket_timeout,
+                        const { crate::Config::DEFAULT.websocket_timeout }
                     );
                 }
 
