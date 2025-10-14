@@ -12,6 +12,7 @@ use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::{any::Any, pin::Pin, sync::Arc, time::Duration};
 
 pub(crate) struct Session {
+    config: crate::Config,
     connection: Connection,
     router: Arc<Router>,
     ip: std::net::IpAddr,
@@ -19,11 +20,13 @@ pub(crate) struct Session {
 
 impl Session {
     pub(crate) fn new(
+        config: crate::Config,
         connection: impl Into<Connection>,
         ip: std::net::IpAddr,
         router: Arc<Router>,
     ) -> Self {
         Self {
+            config,
             connection: connection.into(),
             ip,
             router,
@@ -58,24 +61,27 @@ impl Session {
             }
         }
 
-        let mut req = Request::uninit(self.ip);
+        let mut req = Request::uninit(self.ip, &self.config);
         let mut req = Pin::new(&mut req);
         let upgrade = loop {
             req.clear();
             // Apply a fresh timeout for each read, thus resetting the timer on activity.
             match with_timeout(
-                Duration::from_secs(crate::CONFIG.keepalive_timeout()),
-                req.as_mut().read(&mut self.connection),
+                Duration::from_secs(self.config.keepalive_timeout),
+                req.as_mut().read(&mut self.connection, &self.config),
             )
             .await
             {
                 None => {
                     crate::DEBUG!(
                         "\
-                        Reached Keep-Alive timeout. In Ohkami, Keep-Alive timeout \
-                        is set to 30 seconds by default and is configurable \
-                        by `OHKAMI_KEEPALIVE_TIMEOUT` environment variable.\
-                    "
+                        Reached Keep-Alive timeout ({} secs). \
+                        The timeout can be configured via `keepalive_timeout` of `Config`, \
+                        or `OHKAMI_KEEPALIVE_TIMEOUT` environment variable.\
+                        (default: {})\
+                    ",
+                        self.config.keepalive_timeout,
+                        crate::Config::default().keepalive_timeout
                     );
                     break Upgrade::None;
                 }
@@ -130,20 +136,20 @@ impl Session {
 
                 let aborted = ws
                     .manage_with_timeout(
-                        crate::__rt__::sleep(Duration::from_secs(
-                            crate::CONFIG.websocket_timeout(),
-                        )),
+                        crate::__rt__::sleep(Duration::from_secs(self.config.websocket_timeout)),
                         self.connection,
                     )
                     .await;
                 if aborted {
                     crate::WARNING!(
                         "\
-                        WebSocket session aborted by timeout. In Ohkami, \
-                        WebSocket timeout is set to 3600 seconds (1 hour) \
-                        by default and is configurable by `OHKAMI_WEBSOCKET_TIMEOUT` \
-                        environment variable.\
-                    "
+                        WebSocket session aborted by timeout ({} secs). \
+                        This can be configured by `websocket_timeout` of `Config`, or \
+                        `OHKAMI_WEBSOCKET_TIMEOUT` environment variable.\
+                        (default: {})\
+                    ",
+                        self.config.websocket_timeout,
+                        crate::Config::default().websocket_timeout
                     );
                 }
 

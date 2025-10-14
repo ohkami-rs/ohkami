@@ -57,16 +57,27 @@ pub struct TestOhkami(Arc<Router>);
 impl TestOhkami {
     #[must_use]
     pub fn oneshot(&self, test_req: TestRequest) -> Oneshot {
+        self.oneshot_with(crate::Config::new(), test_req)
+    }
+
+    #[must_use]
+    pub fn oneshot_with(&self, config: crate::Config, test_req: TestRequest) -> Oneshot {
         let router = self.0.clone();
 
         let test_res = async move {
             let mut req = Request::uninit(
                 #[cfg(feature = "__rt_native__")]
                 crate::util::IP_0000,
+                #[cfg(feature = "__rt_native__")]
+                &config,
             );
             let mut req = Pin::new(&mut req);
 
-            let res = match req.as_mut().read(&mut &test_req.encode()[..]).await {
+            let res = match req
+                .as_mut()
+                .read(&mut &test_req.encode()[..], &config)
+                .await
+            {
                 Err(res) => res,
                 Ok(None) => panic!("No request"),
                 Ok(Some(())) => {

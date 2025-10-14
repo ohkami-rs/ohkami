@@ -60,8 +60,6 @@ mod test {
     use ohkami::testing::*;
 
     /// regression test for https://github.com/ohkami-rs/ohkami/issues/433
-    /// 
-    /// run with `OHKAMI_REQUEST_BUFSIZE=4096` or larger
     #[tokio::test]
     async fn test_large_jwt() {
         struct LargeJwtSub;
@@ -85,20 +83,44 @@ mod test {
                 sub
             }
         }
-        
+
         dotenvy::dotenv().ok();
-
         let t = ohkami::<LargeJwtSub>().test();
-
-        let req = TestRequest::GET("/auth");
-        let res = t.oneshot(req).await;
-        let AuthResponse { token } = res.json()
-            .expect("`/auth` response doesn't contain a token");
-
-        let req = TestRequest::GET("/private")
-            .header("Authorization", format!("Bearer {token}"));
-        let res = t.oneshot(req).await;
-        assert_eq!(res.status().code(), 200);
-        assert_eq!(res.text(), Some("Hello, private!"));
+        {            
+            let req = TestRequest::GET("/auth");
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status(), Status::OK);
+        }
+        let token = {
+            let req = TestRequest::GET("/auth");
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status(), Status::OK);
+            let AuthResponse { token } = res.json()
+                .expect("`/auth` response doesn't contain a token");  
+            token
+        };
+        {
+            let req = TestRequest::GET("/private").header(
+                "Authorization",
+                format!("Bearer {token}") // <-- very large header field
+            );
+            let res = t.oneshot(req).await;
+            assert_eq!(res.status(), Status::RequestHeaderFieldsTooLarge);
+        }
+        {
+            let req = TestRequest::GET("/private").header(
+                "Authorization",
+                format!("Bearer {token}") // <-- very large header field
+            );
+            let res = t.oneshot_with(
+                ohkami::Config {
+                    request_bufsize: 1 << 14, // <-- set larger `request_bufsize` (16 KiB for example)
+                    ..ohkami::Config::default()
+                },
+                req
+            ).await;
+            assert_eq!(res.status(), Status::OK);
+            assert_eq!(res.text(), Some("Hello, private!"));
+        };
     }
 }

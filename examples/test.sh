@@ -19,13 +19,8 @@ cd $EXAMPLES/static_files && \
     cargo test
 
 cd $EXAMPLES/jwt && \
-    cp .env.sample .env
-cd $EXAMPLES/jwt && \
-    cargo test 2>&1 | grep 'Unexpected end of headers' \
-    && echo '---> expected error' \
-    || exit 1
-cd $EXAMPLES/jwt && \
-    OHKAMI_REQUEST_BUFSIZE=4096 cargo test
+    cp .env.sample .env && \
+    cargo test
 
 cd $EXAMPLES/uibeam && \
     cargo build && \

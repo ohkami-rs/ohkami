@@ -174,7 +174,10 @@ pub struct Request {
 impl Request {
     #[cfg(feature = "__rt__")]
     #[inline]
-    fn get_payload_size(&self) -> Result<Option<std::num::NonZeroUsize>, crate::Response> {
+    fn get_payload_size(
+        &self,
+        #[cfg(feature = "__rt_native__")] config: &crate::Config,
+    ) -> Result<Option<std::num::NonZeroUsize>, crate::Response> {
         use crate::Response;
 
         let Some(size) = self
@@ -196,7 +199,7 @@ impl Request {
         #[cfg(feature = "__rt_native__")]
         // reject requests having `Content-Length` larger than this limit
         // as `413 Payload Too Large` for security reasons
-        if size.get() > crate::CONFIG.request_payload_limit() {
+        if size.get() > config.request_payload_limit {
             return Err(Response::PayloadTooLarge());
         }
 
@@ -205,7 +208,10 @@ impl Request {
 
     #[cfg(feature = "__rt__")]
     #[inline]
-    pub(crate) fn uninit(#[cfg(feature = "__rt_native__")] ip: std::net::IpAddr) -> Self {
+    pub(crate) fn uninit(
+        #[cfg(feature = "__rt_native__")] ip: std::net::IpAddr,
+        #[cfg(feature = "__rt_native__")] config: &crate::Config,
+    ) -> Self {
         Self {
             #[cfg(feature = "__rt_native__")]
             ip,
@@ -213,7 +219,7 @@ impl Request {
             ip: crate::util::IP_0000, /* tetative */
 
             #[cfg(feature = "__rt_native__")]
-            __buf__: vec![0u8; crate::CONFIG.request_bufsize()].into_boxed_slice(),
+            __buf__: vec![0u8; config.request_bufsize].into_boxed_slice(),
             #[cfg(feature = "rt_worker")]
             __url__: std::mem::MaybeUninit::uninit(),
             #[cfg(feature = "rt_lambda")]
@@ -250,6 +256,7 @@ impl Request {
     pub(crate) async fn read(
         mut self: Pin<&mut Self>,
         stream: &mut (impl AsyncRead + Unpin),
+        config: &crate::Config,
     ) -> Result<Option<()>, crate::Response> {
         use crate::Response;
 
@@ -300,9 +307,11 @@ impl Request {
                     "\
                     [Request::read] Unexpected end of headers! \
                     Maybe request buffer size is not enough. \
-                    Try to set `OHKAMI_REQUEST_BUFSIZE` to larger value \
-                    (default: 2048).\
-                "
+                    Try setting `request_bufsize` of Config, \
+                    or `OHKAMI_REQUEST_BUFSIZE` environment variable, \
+                    to a larger value (default: {}).\
+                ",
+                    crate::Config::default().request_bufsize
                 );
                 Response::RequestHeaderFieldsTooLarge()
             })?;
@@ -313,9 +322,11 @@ impl Request {
                     "\
                     [Request::read] Unexpected end of headers! \
                     Maybe request buffer size is not enough. \
-                    Try to set `OHKAMI_REQUEST_BUFSIZE` to larger value \
-                    (default: 2048).\
-                "
+                    Try setting `request_bufsize` of Config, \
+                    or `OHKAMI_REQUEST_BUFSIZE` environment variable, \
+                    to a larger value (default: {}).\
+                ",
+                    crate::Config::default().request_bufsize
                 );
                 Response::RequestHeaderFieldsTooLarge()
             })?;
@@ -328,7 +339,7 @@ impl Request {
             }
         }
 
-        if let Some(payload_size) = self.get_payload_size()? {
+        if let Some(payload_size) = self.get_payload_size(config)? {
             self.payload =
                 Some(Request::read_payload(stream, r.remaining(), payload_size.get()).await);
         }
@@ -382,6 +393,7 @@ impl Request {
     pub(crate) async fn read(
         mut self: Pin<&mut Self>,
         raw_bytes: &mut &[u8],
+        _: &crate::Config,
     ) -> Result<Option<()>, crate::Response> {
         use crate::Response;
 
@@ -438,29 +450,9 @@ impl Request {
 
         while r.consume("\r\n").is_none() {
             let key_bytes = r.read_while(|b| b != &b':');
-            r.consume(": ").ok_or_else(|| {
-                crate::WARNING!(
-                    "\
-                    [Request::read] Unexpected end of headers! \
-                    Maybe request buffer size is not enough. \
-                    Try to set `OHKAMI_REQUEST_BUFSIZE` to larger value \
-                    (default: 2048).\
-                "
-                );
-                Response::RequestHeaderFieldsTooLarge()
-            })?;
+            r.consume(": ").unwrap(); // here `r` holds a complete HTTP request
             let value = CowSlice::Own(r.read_while(|b| b != &b'\r').to_owned().into_boxed_slice());
-            r.consume("\r\n").ok_or_else(|| {
-                crate::WARNING!(
-                    "\
-                    [Request::read] Unexpected end of headers! \
-                    Maybe request buffer size is not enough. \
-                    Try to set `OHKAMI_REQUEST_BUFSIZE` to larger value \
-                    (default: 2048).\
-                "
-                );
-                Response::RequestHeaderFieldsTooLarge()
-            })?;
+            r.consume("\r\n").unwrap(); // here `r` holds a complete HTTP request
 
             if let Some(key) = RequestHeader::from_bytes(key_bytes) {
                 self.headers.append(key, value);

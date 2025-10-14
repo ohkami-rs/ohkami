@@ -506,6 +506,7 @@ impl Ohkami {
     async fn howl_core<T>(
         self,
         bind: impl __rt__::IntoTcpListener<T>,
+        config: crate::Config,
         #[cfg(feature = "tls")] tls_config: Option<rustls::ServerConfig>,
     ) {
         let (router, _) = self.into_router().finalize();
@@ -543,7 +544,7 @@ impl Ohkami {
                 },
             };
 
-            let session = session::Session::new(connection, address.ip(), router.clone());
+            let session = session::Session::new(config, connection, address.ip(), router.clone());
 
             let wg = wg.add();
             __rt__::spawn(async move {
@@ -626,6 +627,20 @@ impl Ohkami {
     pub async fn howl<T>(self, bind: impl __rt__::IntoTcpListener<T>) {
         self.howl_core(
             bind,
+            crate::Config::new(),
+            #[cfg(feature = "tls")]
+            None,
+        )
+        .await
+    }
+
+    /// Same as [`howl`](crate::Ohkami::howl) but uses the given `Config`
+    /// instead of the [default one](crate::Config::new).
+    #[cfg(feature = "__rt_native__")]
+    pub async fn howl_with<T>(self, config: crate::Config, bind: impl __rt__::IntoTcpListener<T>) {
+        self.howl_core(
+            bind,
+            config,
             #[cfg(feature = "tls")]
             None,
         )
@@ -720,7 +735,22 @@ impl Ohkami {
         bind: impl __rt__::IntoTcpListener<T>,
         tls_config: rustls::ServerConfig,
     ) {
-        self.howl_core(bind, Some(tls_config)).await
+        self.howl_core(bind, crate::Config::new(), Some(tls_config))
+            .await
+    }
+
+    /// Same as [`howls`](crate::Ohkami::howls) but uses the given `Config`
+    /// instead the [default one](crate::Config::new).
+    #[cfg(feature = "__rt_native__")]
+    #[cfg(feature = "tls")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "tls")))]
+    pub async fn howls_with<T>(
+        self,
+        config: crate::Config,
+        bind: impl __rt__::IntoTcpListener<T>,
+        tls_config: rustls::ServerConfig,
+    ) {
+        self.howl_core(bind, config, Some(tls_config)).await
     }
 
     #[cfg(feature = "rt_worker")]

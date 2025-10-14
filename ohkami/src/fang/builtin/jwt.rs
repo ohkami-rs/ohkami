@@ -480,6 +480,8 @@ mod test {
         use crate::{Request, Status, testing::TestRequest};
         use std::pin::Pin;
 
+        let config = crate::Config::new();
+
         let my_jwt =
             Jwt::<::serde_json::Value>::default("ohkami-realworld-jwt-authorization-secret-key");
 
@@ -487,9 +489,9 @@ mod test {
             .header("Authorization", "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE3MDY4MTEwNzUsInVzZXJfaWQiOiI5ZmMwMDViMi1mODU4LTQzMzYtODkwYS1mMWEyYWVmNjBhMjQifQ.AKp-0zvKK4Hwa6qCgxskckD04Snf0gpSG7U1LOpcC_I")
             .encode();
         let mut req_bytes = &req_bytes[..];
-        let mut req = Request::uninit(crate::util::IP_0000);
+        let mut req = Request::uninit(crate::util::IP_0000, &config);
         let mut req = Pin::new(&mut req);
-        crate::__rt__::testing::block_on(req.as_mut().read(&mut req_bytes)).unwrap();
+        crate::__rt__::testing::block_on(req.as_mut().read(&mut req_bytes, &config)).unwrap();
 
         assert_eq!(
             my_jwt.verified(&req.as_ref()).unwrap(),
@@ -501,9 +503,9 @@ mod test {
             .header("Authorization", "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE3MDY4MTEwNzUsInVzZXJfaWQiOiI5ZmMwMDViMi1mODU4LTQzMzYtODkwYS1mMWEyYWVmNjBhMjQifQ.AKp-0zvKK4Hwa6qCgxskckD04Snf0gpSG7U1LOpcC_X")
             .encode();
         let mut req_bytes = &req_bytes[..];
-        let mut req = Request::uninit(crate::util::IP_0000);
+        let mut req = Request::uninit(crate::util::IP_0000, &config);
         let mut req = Pin::new(&mut req);
-        crate::__rt__::testing::block_on(req.as_mut().read(&mut req_bytes)).unwrap();
+        crate::__rt__::testing::block_on(req.as_mut().read(&mut req_bytes, &config)).unwrap();
 
         assert_eq!(
             my_jwt.verified(&req.as_ref()).unwrap_err().status,
