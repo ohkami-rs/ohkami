@@ -1,4 +1,5 @@
 mod method;
+
 pub use method::Method;
 
 mod path;
@@ -173,6 +174,37 @@ pub struct Request {
 impl Request {
     #[cfg(feature = "__rt__")]
     #[inline]
+    fn get_payload_size(&self) -> Result<Option<std::num::NonZeroUsize>, crate::Response> {
+        use crate::Response;
+
+        let Some(size) = self
+            .headers
+            .content_length()
+            .map(|s| s.parse().map_err(|_| Response::BadRequest()))
+            .transpose()?
+            .and_then(std::num::NonZeroUsize::new)
+        else {
+            return Ok(None);
+        };
+
+        // reject GET/HEAD/OPTIONS requests having positive `Content-Length`
+        // as `400 Bad Request` for security reasons
+        if matches!(self.method, Method::GET | Method::HEAD | Method::OPTIONS) {
+            return Err(Response::BadRequest());
+        }
+
+        #[cfg(feature = "__rt_native__")]
+        // reject requests having `Content-Length` larger than this limit
+        // as `413 Payload Too Large` for security reasons
+        if size.get() > crate::CONFIG.request_payload_limit() {
+            return Err(Response::PayloadTooLarge());
+        }
+
+        Ok(Some(size))
+    }
+
+    #[cfg(feature = "__rt__")]
+    #[inline]
     pub(crate) fn uninit(
         #[cfg(feature = "__rt_native__")] ip: std::net::IpAddr,
         #[cfg(feature = "__rt_native__")] config: &crate::Config,
@@ -198,6 +230,7 @@ impl Request {
             context: Context::init(),
         }
     }
+
     #[cfg(feature = "__rt_native__")]
     #[inline(always)]
     pub(crate) fn clear(&mut self) {
@@ -303,32 +336,9 @@ impl Request {
             }
         }
 
-        let content_length = match self.headers.get_raw(RequestHeader::ContentLength) {
-            Some(v) => unsafe { v.as_bytes() }
-                .iter()
-                .fold(0, |len, b| 10 * len + (*b - b'0') as usize),
-            None => 0,
-        };
-        // Reject requests having `Content-Length` larger than this limit
-        // as `413 Payload Too Large` for security reasons
-        if content_length > 0 {
-            if content_length <= config.request_payload_limit {
-                self.payload =
-                    Some(Request::read_payload(stream, r.remaining(), content_length).await);
-            } else {
-                crate::WARNING!(
-                    "\
-                    [Request::read] Request payload size ({content_length} bytes) \
-                    is larger than the configured limit ({} bytes)! \
-                    Try setting `request_payload_limit` of Config, \
-                    or `OHKAMI_REQUEST_PAYLOAD_LIMIT` environment variable, \
-                    to a larger value (default: {}).\
-                ",
-                    config.request_payload_limit,
-                    crate::Config::default().request_payload_limit
-                );
-                return Err(Response::PayloadTooLarge());
-            }
+        if let Some(payload_size) = self.get_payload_size()? {
+            self.payload =
+                Some(Request::read_payload(stream, r.remaining(), payload_size.get()).await);
         }
 
         Ok(Some(()))
@@ -451,13 +461,9 @@ impl Request {
             }
         }
 
-        let content_length = match self.headers.get_raw(RequestHeader::ContentLength) {
-            Some(v) => unsafe { v.as_bytes() }
-                .iter()
-                .fold(0, |len, b| 10 * len + (*b - b'0') as usize),
-            None => 0,
-        };
-        self.payload = (content_length > 0).then(|| CowSlice::Own(r.remaining().into()));
+        if self.get_payload_size()?.is_some() {
+            self.payload = Option::from(CowSlice::Own(r.remaining().into()));
+        }
 
         Ok(Some(()))
     }
