@@ -174,7 +174,10 @@ pub struct Request {
 impl Request {
     #[cfg(feature = "__rt__")]
     #[inline]
-    fn get_payload_size(&self) -> Result<Option<std::num::NonZeroUsize>, crate::Response> {
+    fn get_payload_size(
+        &self,
+        #[cfg(feature = "__rt_native__")] config: &crate::Config,
+    ) -> Result<Option<std::num::NonZeroUsize>, crate::Response> {
         use crate::Response;
 
         let Some(size) = self
@@ -196,7 +199,7 @@ impl Request {
         #[cfg(feature = "__rt_native__")]
         // reject requests having `Content-Length` larger than this limit
         // as `413 Payload Too Large` for security reasons
-        if size.get() > crate::CONFIG.request_payload_limit() {
+        if size.get() > config.request_payload_limit {
             return Err(Response::PayloadTooLarge());
         }
 
@@ -336,7 +339,7 @@ impl Request {
             }
         }
 
-        if let Some(payload_size) = self.get_payload_size()? {
+        if let Some(payload_size) = self.get_payload_size(config)? {
             self.payload =
                 Some(Request::read_payload(stream, r.remaining(), payload_size.get()).await);
         }
