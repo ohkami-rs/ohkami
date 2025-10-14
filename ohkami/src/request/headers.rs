@@ -410,15 +410,6 @@ impl Headers {
         }
     }
 
-    #[cfg(any(
-        feature = "__rt_native__",
-        all(debug_assertions, any(feature = "rt_worker", feature = "rt_lambda",))
-    ))]
-    #[inline]
-    pub(crate) fn get_raw(&self, name: Header) -> Option<&CowSlice> {
-        unsafe { self.standard.get(name as u8) }
-    }
-
     #[allow(unused)]
     #[cfg(test)]
     pub(crate) fn from_iters(
