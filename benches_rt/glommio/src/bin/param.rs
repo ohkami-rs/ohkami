@@ -9,7 +9,7 @@ async fn echo_id(Path(id): Path<String>) -> String {
 
 fn main() {
     LocalExecutorPoolBuilder::new(PoolPlacement::MaxSpread(
-        dbg!(std::thread::available_parallelism().unwrap_or(1).get()),
+        dbg!(std::thread::available_parallelism().map_or(1, |n| n.get())),
         dbg!(CpuSet::online().ok())
     )).on_all_shards(|| {
         Ohkami::new((
