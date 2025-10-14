@@ -211,6 +211,3 @@ pub fn with_timeout<T>(
 }
 
 pub const IP_0000: std::net::IpAddr = std::net::IpAddr::V4(std::net::Ipv4Addr::new(0, 0, 0, 0));
-
-#[cfg(feature = "rt_glommio")]
-pub use num_cpus;

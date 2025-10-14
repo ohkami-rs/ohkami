@@ -7,7 +7,6 @@ authors = ["kanarus <kanarus786@gmail.com>"]
 [dependencies]
 ohkami   = { workspace = true }
 tokio    = { workspace = true }
-num_cpus = "1.17"
 
 [features]
 DEBUG = ["ohkami/DEBUG"]

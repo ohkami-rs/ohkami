@@ -24,7 +24,7 @@ fn main() {
             .unwrap()
     }
 
-    for _ in 0..(num_cpus::get() - 1/*for main thread*/) {
+    for _ in 0..(std::thread::available_parallelism().unwrap_or(1).get() - 1/*for main thread*/) {
         std::thread::spawn(|| {
             runtime().block_on(serve(ohkami())).expect("serving error")
         });
