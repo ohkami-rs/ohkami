@@ -411,21 +411,21 @@ impl<Payload: Serialize + for<'de> Deserialize<'de> + SendSyncOnThreaded + 'stat
                     hs.update(header_part.as_bytes());
                     hs.update(b".");
                     hs.update(payload_part.as_bytes());
-                    hs.finalize().into_bytes().as_slice() == requested_signature
+                    hs.verify_slice(&requested_signature).is_ok()
                 }
                 VerifyingAlgorithm::HS384 => {
                     let mut hs = Hmac::<Sha384>::new_from_slice(self.secret.as_bytes()).unwrap();
                     hs.update(header_part.as_bytes());
                     hs.update(b".");
                     hs.update(payload_part.as_bytes());
-                    hs.finalize().into_bytes().as_slice() == requested_signature
+                    hs.verify_slice(&requested_signature).is_ok()
                 }
                 VerifyingAlgorithm::HS512 => {
                     let mut hs = Hmac::<Sha512>::new_from_slice(self.secret.as_bytes()).unwrap();
                     hs.update(header_part.as_bytes());
                     hs.update(b".");
                     hs.update(payload_part.as_bytes());
-                    hs.finalize().into_bytes().as_slice() == requested_signature
+                    hs.verify_slice(&requested_signature).is_ok()
                 }
             }
         };

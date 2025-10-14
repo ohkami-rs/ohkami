@@ -1,7 +1,6 @@
 mod method;
 
 pub use method::Method;
-use std::num::NonZeroUsize;
 
 mod path;
 pub(crate) use path::Path;
@@ -34,7 +33,6 @@ use ohkami_lib::Slice;
 #[cfg(feature = "__rt_native__")]
 use crate::__rt__::AsyncRead;
 
-use crate::Response;
 #[allow(unused)]
 use {byte_reader::Reader, std::borrow::Cow, std::pin::Pin};
 
@@ -176,13 +174,15 @@ pub struct Request {
 impl Request {
     #[cfg(feature = "__rt__")]
     #[inline]
-    fn get_payload_size(&self) -> Result<Option<NonZeroUsize>, Response> {
+    fn get_payload_size(&self) -> Result<Option<std::num::NonZeroUsize>, crate::Response> {
+        use crate::Response;
+
         let Some(size) = self
             .headers
             .content_length()
             .map(|s| s.parse().map_err(|_| Response::BadRequest()))
             .transpose()?
-            .and_then(NonZeroUsize::new)
+            .and_then(std::num::NonZeroUsize::new)
         else {
             return Ok(None);
         };
@@ -472,7 +472,7 @@ impl Request {
             }
         }
 
-        if let Some(_) = self.get_payload_size()? {
+        if self.get_payload_size()?.is_some() {
             self.payload = Option::from(CowSlice::Own(r.remaining().into()));
         }
 
