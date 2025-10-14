@@ -1,5 +1,4 @@
 use ohkami::prelude::*;
-use ohkami::util::num_cpus;
 use glommio::{LocalExecutorPoolBuilder, PoolPlacement, CpuSet, executor};
 
 async fn echo_id(Path(id): Path<String>) -> String {
@@ -9,7 +8,8 @@ async fn echo_id(Path(id): Path<String>) -> String {
 
 fn main() {
     LocalExecutorPoolBuilder::new(PoolPlacement::MaxSpread(
-        dbg!(num_cpus::get()), dbg!(CpuSet::online().ok())
+        dbg!(std::thread::available_parallelism().map_or(1, |n| n.get())),
+        dbg!(CpuSet::online().ok())
     )).on_all_shards(|| {
         Ohkami::new((
             "/user/:id"
