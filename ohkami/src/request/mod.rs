@@ -389,7 +389,7 @@ impl Request {
                     "[Request::read_payload] Impossible to the the stream buf: {}",
                     e
                 );
-                CowSlice::Empty
+                CowSlice::Ref(&[])
             } else {
                 CowSlice::Own(bytes)
             }
