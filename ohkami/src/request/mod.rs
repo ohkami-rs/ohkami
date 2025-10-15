@@ -401,7 +401,7 @@ impl Request {
                         "[Request::read_payload] Impossible to the the stream buf: {}",
                         e
                     );
-                    return Err(crate::Response::BadRequest());
+                    Err(crate::Response::BadRequest());
                 }
             }
         }
