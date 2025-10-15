@@ -365,20 +365,20 @@ impl Request {
             let stream_read = stream.read_exact(&mut bytes).await;
 
             match stream_read {
-                Ok(_) => CowSlice::Own(bytes),
+                Ok(_) => Ok(CowSlice::Own(bytes)),
                 Err(e) => {
                     crate::WARNING!(
-                        "[Request::read_payload] Impossible to the the stream buf: {}",
+                        "[Request::read_payload] Impossible to read the stream buf: {}",
                         e
                     );
-                    return Err(crate::Response::BadRequest());
+                    Err(crate::Response::BadRequest())
                 }
             }
         } else if size <= remaining_buf_len {
             crate::DEBUG!("\n[read_payload] case: starts_at + size <= BUF_SIZE\n");
 
             #[allow(unused_unsafe/* I don't know why but rustc sometimes put warnings to this unsafe as unnecessary */)]
-            CowSlice::Ref(unsafe { Slice::new_unchecked(remaining_buf.as_ptr(), size) })
+            Ok(CowSlice::Ref(unsafe { Slice::new_unchecked(remaining_buf.as_ptr(), size) }))
         } else {
             crate::DEBUG!("\n[read_payload] case: else\n");
 
@@ -395,13 +395,13 @@ impl Request {
             };
 
             match stream_read {
-                Ok(_) => CowSlice::Own(bytes),
+                Ok(_) => Ok(CowSlice::Own(bytes)),
                 Err(e) => {
                     crate::WARNING!(
-                        "[Request::read_payload] Impossible to the the stream buf: {}",
+                        "[Request::read_payload] Impossible to read the stream buf: {}",
                         e
                     );
-                    Err(crate::Response::BadRequest());
+                    Err(crate::Response::BadRequest())
                 }
             }
         }
