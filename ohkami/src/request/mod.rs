@@ -382,7 +382,6 @@ impl Request {
                 stream
                     .read_exact(bytes.get_unchecked_mut(remaining_buf_len..))
                     .await
-                    .unwrap();
             };
 
             if let Err(e) = stream_read{
