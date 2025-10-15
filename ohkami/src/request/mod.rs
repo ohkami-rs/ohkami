@@ -378,7 +378,9 @@ impl Request {
             crate::DEBUG!("\n[read_payload] case: starts_at + size <= BUF_SIZE\n");
 
             #[allow(unused_unsafe/* I don't know why but rustc sometimes put warnings to this unsafe as unnecessary */)]
-            Ok(CowSlice::Ref(unsafe { Slice::new_unchecked(remaining_buf.as_ptr(), size) }))
+            Ok(CowSlice::Ref(unsafe {
+                Slice::new_unchecked(remaining_buf.as_ptr(), size)
+            }))
         } else {
             crate::DEBUG!("\n[read_payload] case: else\n");
 
