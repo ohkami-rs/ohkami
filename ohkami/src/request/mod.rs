@@ -341,7 +341,7 @@ impl Request {
 
         if let Some(payload_size) = self.get_payload_size(config)? {
             self.payload =
-                Some(Request::read_payload(stream, r.remaining(), payload_size.get()).await);
+                Some(Request::read_payload(stream, r.remaining(), payload_size.get()).await?);
         }
 
         Ok(Some(()))
