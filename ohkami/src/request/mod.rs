@@ -70,7 +70,7 @@ use {byte_reader::Reader, std::borrow::Cow, std::pin::Pin};
 /// async fn main() {
 ///     Ohkami::new((LogRequest,
 ///         "/".GET(|| async {"Hello, world!"})
-///     )).howl("localhost:8000").await
+///     )).run("localhost:8000").await
 /// }
 /// ```
 ///

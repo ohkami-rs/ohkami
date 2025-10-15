@@ -11,6 +11,6 @@ fn main() {
         Ohkami::new((
             "/user/:id"
             .GET(echo_id),
-        )).howl("0.0.0.0:3000")
+        )).run("0.0.0.0:3000")
     })
 }

@@ -23,7 +23,7 @@ async fn main() {
         api_key,
         "/chat-once"
             .POST(relay_chat_completion),
-    )).howl("localhost:5050").await
+    )).run("localhost:5050").await
 }
 
 pub async fn relay_chat_completion(

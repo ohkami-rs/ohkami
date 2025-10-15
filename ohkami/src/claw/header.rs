@@ -65,7 +65,7 @@ macro_rules! typed_header {
         /// async fn main() {
         ///     Ohkami::new((
         ///         "/private".GET(private_handler),
-        ///     )).howl("localhost:5050").await
+        ///     )).run("localhost:5050").await
         /// }
         /// ```
         pub struct $Name<Value>(pub Value);
@@ -179,7 +179,7 @@ typed_header! {
 /// async fn main() {
 ///     Ohkami::new((
 ///         "/private".GET(private_handler),
-///     )).howl("localhost:5050").await
+///     )).run("localhost:5050").await
 /// }
 /// ```
 pub struct Cookie<Fields>(pub Fields);

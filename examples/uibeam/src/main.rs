@@ -100,5 +100,5 @@ async fn main() {
     Ohkami::new((
         Layout::fang_with_title("Counter Example"),
         "/".GET(index),
-    )).howl("localhost:5555").await
+    )).run("localhost:5555").await
 }

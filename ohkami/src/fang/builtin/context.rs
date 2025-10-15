@@ -19,7 +19,7 @@ use crate::{FromRequest, Request, Response};
 ///         Context::new(sample_data), // <--
 ///         "/hello"
 ///             .GET(hello),
-///     )).howl("0.0.0.0:8080").await
+///     )).run("0.0.0.0:8080").await
 /// }
 ///
 /// async fn hello(
