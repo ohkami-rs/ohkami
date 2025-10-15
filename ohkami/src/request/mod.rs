@@ -384,8 +384,11 @@ impl Request {
                     .await
             };
 
-            if let Err(e) = stream_read{
-                crate::WARNING!("[Request::read_payload] Impossible to the the stream buf: {}", e);
+            if let Err(e) = stream_read {
+                crate::WARNING!(
+                    "[Request::read_payload] Impossible to the the stream buf: {}",
+                    e
+                );
             } else {
                 CowSlice::Own(bytes)
             }
