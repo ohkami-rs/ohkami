@@ -373,7 +373,8 @@ impl Request {
             crate::DEBUG!("\n[read_payload] case: else\n");
 
             let mut bytes = vec![0; size].into_boxed_slice();
-            unsafe {
+
+            let stream_read = unsafe {
                 // SAFETY: Here size > remaining_buf_len
                 bytes
                     .get_unchecked_mut(..remaining_buf_len)
@@ -382,8 +383,13 @@ impl Request {
                     .read_exact(bytes.get_unchecked_mut(remaining_buf_len..))
                     .await
                     .unwrap();
+            };
+
+            if let Err(e) = stream_read{
+                crate::WARNING!("[Request::read_payload] Impossible to the the stream buf: {}", e);
+            } else {
+                CowSlice::Own(bytes)
             }
-            CowSlice::Own(bytes)
         }
     }
 
