@@ -373,7 +373,6 @@ impl Request {
             } else {
                 CowSlice::Own(bytes)
             }
-
         } else if size <= remaining_buf_len {
             crate::DEBUG!("\n[read_payload] case: starts_at + size <= BUF_SIZE\n");
 
