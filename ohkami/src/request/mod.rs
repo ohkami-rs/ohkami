@@ -353,7 +353,7 @@ impl Request {
         stream: &mut (impl AsyncRead + Unpin),
         remaining_buf: &[u8],
         size: usize,
-    ) -> CowSlice {
+    ) -> Result<CowSlice, crate::Response> {
         let remaining_buf_len = remaining_buf.len();
 
         if remaining_buf_len == 0 || *unsafe { remaining_buf.get_unchecked(0) } == 0 {
