@@ -364,14 +364,15 @@ impl Request {
             let mut bytes = vec![0; size].into_boxed_slice();
             let stream_read = stream.read_exact(&mut bytes).await;
 
-            if let Err(e) = stream_read {
-                crate::WARNING!(
-                    "[Request::read_payload] Impossible to the the stream buf: {}",
-                    e
-                );
-                CowSlice::Ref(Slice::from_bytes(&[]))
-            } else {
-                CowSlice::Own(bytes)
+            match stream_read {
+                Ok(_) => CowSlice::Own(bytes),
+                Err(e) => {
+                    crate::WARNING!(
+                        "[Request::read_payload] Impossible to the the stream buf: {}",
+                        e
+                    );
+                    return Err(crate::Response::BadRequest());
+                }
             }
         } else if size <= remaining_buf_len {
             crate::DEBUG!("\n[read_payload] case: starts_at + size <= BUF_SIZE\n");
@@ -393,14 +394,15 @@ impl Request {
                     .await
             };
 
-            if let Err(e) = stream_read {
-                crate::WARNING!(
-                    "[Request::read_payload] Impossible to the the stream buf: {}",
-                    e
-                );
-                CowSlice::Ref(Slice::from_bytes(&[]))
-            } else {
-                CowSlice::Own(bytes)
+            match stream_read {
+                Ok(_) => CowSlice::Own(bytes),
+                Err(e) => {
+                    crate::WARNING!(
+                        "[Request::read_payload] Impossible to the the stream buf: {}",
+                        e
+                    );
+                    return Err(crate::Response::BadRequest());
+                }
             }
         }
     }
