@@ -120,7 +120,6 @@ tasks:
       - cargo clippy --all-targets --features rt_{{.rt}},sse,ws,tls,{{.maybe_nightly}} -- --deny warnings
 
   check:rt_worker:
-    dir: ./ohkami
     cmds:
       - cargo clippy --target wasm32-unknown-unknown --features rt_worker,{{.maybe_nightly}} -- --deny warnings
       - cargo clippy --target wasm32-unknown-unknown --features rt_worker,sse,{{.maybe_nightly}} -- --deny warnings
