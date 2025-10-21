@@ -20,7 +20,7 @@ exclude  = [
 ]
 
 [workspace.package]
-version    = "0.24.1"
+version    = "0.24.2"
 edition    = "2024"
 authors    = ["kanarus <kanarus786@gmail.com>"]
 homepage   = "https://crates.io/crates/ohkami"
