@@ -788,7 +788,7 @@ impl Ohkami {
 
         let res = ohkami_res.into();
         crate::DEBUG!("Done `ohkami::Response` --into--> `worker::Response`: {res:?}");
-
+        #[cfg_attr(not(feature = "DEBUG"), allow(clippy::let_and_return))]
         res
     }
 

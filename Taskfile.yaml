@@ -30,10 +30,9 @@ tasks:
   check:
     deps:
       - task: check:fmt
-      - task: check:clippy
       - task: check:no_rt
       - for:  [tokio, smol, nio, glommio, monoio, compio, lambda]
-        task: check:rt-native
+        task: check:rt-native-and-lambda
         vars: { rt: '{{.ITEM}}' }
       - task: check:rt_worker
 
@@ -106,12 +105,12 @@ tasks:
       MAYBE_NIGHTLY_FEATURES:
         sh: cargo version | grep -q 'nightly' && echo '--features nightly' || echo ''
     cmds:
-      - cargp clippy --all-targets  {{.MAYBE_NIGHTLY_FEATURES}} -- --deny warnings
+      - cargo clippy --all-targets {{.MAYBE_NIGHTLY_FEATURES}} -- --deny warnings
       - cargo clippy --all-targets --features sse,{{.maybe_nightly}} -- --deny warnings
       - cargo clippy --all-targets --features ws,{{.maybe_nightly}} -- --deny warnings
       - cargo clippy --all-targets --features sse,ws,openapi,{{.maybe_nightly}} -- --deny warnings
 
-  check:rt-native:
+  check:rt-native-and-lambda:
     cmds:
       - cargo clippy --all-targets --features rt_{{.rt}},{{.maybe_nightly}} -- --deny warnings
       - cargo clippy --all-targets --features rt_{{.rt}},sse,{{.maybe_nightly}} -- --deny warnings
@@ -123,11 +122,7 @@ tasks:
   check:rt_worker:
     dir: ./ohkami
     cmds:
-      - cargo check --target wasm32-unknown-unknown --lib --features rt_worker,{{.maybe_nightly}}
-      - cargo check --target wasm32-unknown-unknown --lib --features rt_worker,sse,{{.maybe_nightly}}
-      - cargo check --target wasm32-unknown-unknown --lib --features rt_worker,ws,{{.maybe_nightly}}
-      - cargo check --target wasm32-unknown-unknown --lib --features rt_worker,sse,ws,openapi,{{.maybe_nightly}}
-      - cargo clippy --features rt_worker,{{.maybe_nightly}} -- --deny warnings
-      - cargo clippy --features rt_worker,sse,{{.maybe_nightly}} -- --deny warnings
-      - cargo clippy --features rt_worker,ws,{{.maybe_nightly}} -- --deny warnings
-      - cargo clippy --features rt_worker,sse,ws,openapi,{{.maybe_nightly}} -- --deny warnings
+      - cargo clippy --target wasm32-unknown-unknown --features rt_worker,{{.maybe_nightly}} -- --deny warnings
+      - cargo clippy --target wasm32-unknown-unknown --features rt_worker,sse,{{.maybe_nightly}} -- --deny warnings
+      - cargo clippy --target wasm32-unknown-unknown --features rt_worker,ws,{{.maybe_nightly}} -- --deny warnings
+      - cargo clippy --target wasm32-unknown-unknown --features rt_worker,sse,ws,openapi,{{.maybe_nightly}} -- --deny warnings
