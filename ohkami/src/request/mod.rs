@@ -341,7 +341,7 @@ impl Request {
 
         if let Some(payload_size) = self.get_payload_size(config)? {
             self.payload =
-                Some(Request::read_payload(stream, r.remaining(), payload_size.get()).await);
+                Some(Request::read_payload(stream, r.remaining(), payload_size.get()).await?);
         }
 
         Ok(Some(()))
@@ -353,7 +353,7 @@ impl Request {
         stream: &mut (impl AsyncRead + Unpin),
         remaining_buf: &[u8],
         size: usize,
-    ) -> CowSlice {
+    ) -> Result<CowSlice, crate::Response> {
         let remaining_buf_len = remaining_buf.len();
 
         if remaining_buf_len == 0 || *unsafe { remaining_buf.get_unchecked(0) } == 0 {
@@ -362,18 +362,31 @@ impl Request {
             );
 
             let mut bytes = vec![0; size].into_boxed_slice();
-            stream.read_exact(&mut bytes).await.unwrap();
-            CowSlice::Own(bytes)
+            let stream_read = stream.read_exact(&mut bytes).await;
+
+            match stream_read {
+                Ok(_) => Ok(CowSlice::Own(bytes)),
+                Err(e) => {
+                    crate::WARNING!(
+                        "[Request::read_payload] Impossible to read the stream buf: {}",
+                        e
+                    );
+                    Err(crate::Response::BadRequest())
+                }
+            }
         } else if size <= remaining_buf_len {
             crate::DEBUG!("\n[read_payload] case: starts_at + size <= BUF_SIZE\n");
 
             #[allow(unused_unsafe/* I don't know why but rustc sometimes put warnings to this unsafe as unnecessary */)]
-            CowSlice::Ref(unsafe { Slice::new_unchecked(remaining_buf.as_ptr(), size) })
+            Ok(CowSlice::Ref(unsafe {
+                Slice::new_unchecked(remaining_buf.as_ptr(), size)
+            }))
         } else {
             crate::DEBUG!("\n[read_payload] case: else\n");
 
             let mut bytes = vec![0; size].into_boxed_slice();
-            unsafe {
+
+            let stream_read = unsafe {
                 // SAFETY: Here size > remaining_buf_len
                 bytes
                     .get_unchecked_mut(..remaining_buf_len)
@@ -381,9 +394,18 @@ impl Request {
                 stream
                     .read_exact(bytes.get_unchecked_mut(remaining_buf_len..))
                     .await
-                    .unwrap();
+            };
+
+            match stream_read {
+                Ok(_) => Ok(CowSlice::Own(bytes)),
+                Err(e) => {
+                    crate::WARNING!(
+                        "[Request::read_payload] Impossible to read the stream buf: {}",
+                        e
+                    );
+                    Err(crate::Response::BadRequest())
+                }
             }
-            CowSlice::Own(bytes)
         }
     }
 
