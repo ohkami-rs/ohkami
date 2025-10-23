@@ -41,17 +41,15 @@ tasks:
       - '[ "{{.maybe_nightly}}" != nightly ]' # skip if not nightly
     cmds:
       - cd benches && cargo bench --features DEBUG --no-run
-      - cd benches_rt/vs_actix-web && cargo check
       - for: [tokio, smol, nio, glommio, monoio, compio]
         cmd: cd benches_rt/{{.ITEM}} && cargo check
 
   bench:
     status:
       - '[ "{{.maybe_nightly}}" != nightly ]' # skip if not nightly
-    dir: ./benches
     cmds:
       - task: bench:dryrun
-      - cargo bench --features DEBUG
+      - cd benches && cargo bench --features DEBUG
 
 #### tests ####
   test:deps:

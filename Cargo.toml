@@ -9,7 +9,7 @@ members  = [
 exclude  = [
     "samples",
     "benches",
-    "benches_rt/*",
+    "benches_rt",
 ]
 
 [workspace.package]
