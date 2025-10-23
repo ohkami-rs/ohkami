@@ -1,6 +1,9 @@
 version: 3
 
 vars:
+  native_rts: 'tokio smol nio glommio monoio compio'
+  non_wasm_rts: 'lambda {{.native_rts}}'
+  all_rts: 'worker {{.non_wasm_rts}}'
   maybe_nightly: { sh: cargo version | grep -q 'nightly' && echo 'nightly' || echo ''  }
 
 tasks:
@@ -17,9 +20,9 @@ tasks:
   test:core:
     deps:
       - task: test:no_rt
-      - for:  [tokio, smol, nio, glommio, monoio, compio, lambda, worker]
-        task: test:rt
+      - for:  { var: all_rts }
         vars: { rt: '{{.ITEM}}' }
+        task: test:rt
   test:other:
     deps:
       - task: test:deps
@@ -31,9 +34,9 @@ tasks:
     deps:
       - task: check:fmt
       - task: check:no_rt
-      - for:  [tokio, smol, nio, glommio, monoio, compio, lambda]
-        task: check:rt-native-and-lambda
+      - for:  { var: non_wasm_rts }
         vars: { rt: '{{.ITEM}}' }
+        task: check:non_wasm_rt
       - task: check:rt_worker
 
   bench:dryrun:
@@ -41,7 +44,7 @@ tasks:
       - '[ "{{.maybe_nightly}}" != nightly ]' # skip if not nightly
     cmds:
       - cd benches && cargo bench --features DEBUG --no-run
-      - for: [tokio, smol, nio, glommio, monoio, compio]
+      - for: { var: native_rts }
         cmd: cd benches_rt/{{.ITEM}} && cargo check
 
   bench:
@@ -100,15 +103,15 @@ tasks:
 
   check:no_rt:
     vars:
-      MAYBE_NIGHTLY_FEATURES:
-        sh: cargo version | grep -q 'nightly' && echo '--features nightly' || echo ''
+      features_nightly_or_empty:
+        sh: test "{{.maybe_nightly}}" && echo '--features nightly' || echo ''
     cmds:
-      - cargo clippy --all-targets {{.MAYBE_NIGHTLY_FEATURES}} -- --deny warnings
+      - cargo clippy --all-targets {{.features_nightly_or_empty}} -- --deny warnings
       - cargo clippy --all-targets --features sse,{{.maybe_nightly}} -- --deny warnings
       - cargo clippy --all-targets --features ws,{{.maybe_nightly}} -- --deny warnings
       - cargo clippy --all-targets --features sse,ws,openapi,{{.maybe_nightly}} -- --deny warnings
 
-  check:rt-native-and-lambda:
+  check:non_wasm_rt:
     cmds:
       - cargo clippy --all-targets --features rt_{{.rt}},{{.maybe_nightly}} -- --deny warnings
       - cargo clippy --all-targets --features rt_{{.rt}},sse,{{.maybe_nightly}} -- --deny warnings
