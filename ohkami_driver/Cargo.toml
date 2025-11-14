@@ -1,0 +1,32 @@
+[package]
+name          = "ohkami_driver"
+description   = "async runtime driver for Ohkami - A performant, declarative, and runtime-flexible web framework for Rust"
+documentation = "https://docs.rs/ohkami"
+version       = { workspace = true }
+edition       = { workspace = true }
+authors       = { workspace = true }
+homepage      = { workspace = true }
+repository    = { workspace = true }
+readme        = { workspace = true }
+keywords      = { workspace = true }
+categories    = { workspace = true }
+license       = { workspace = true }
+
+[package.metadata.docs.rs]
+features = []
+
+[lints]
+workspace = true
+
+[dependencies]
+tokio        = { optional = true, version = "1", features = ["io-util"] }
+futures-util = { optional = true, version = "0.3", features = ["io"], default-features = false }
+
+[features]
+threaded-tokio-io        = ["__threaded__", "__tokio_io__"]
+threaded-futures-io      = ["__threaded__", "__futures_io__"]
+threadpercore-tokio-io   = ["__tokio_io__"]
+threadpercore-futures-io = ["__futures_io__"]
+__threaded__   = []
+__tokio_io__   = []
+__futures_io__ = []

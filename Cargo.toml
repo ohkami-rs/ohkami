@@ -2,6 +2,7 @@
 resolver = "3"
 members  = [
     "ohkami",
+    "ohkami_driver",
     "ohkami_lib",
     "ohkami_macros",
     "ohkami_openapi",
