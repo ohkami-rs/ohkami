@@ -53,5 +53,5 @@ async fn main() {
         ]
     });
 
-    o.howl("localhost:5000").await;
+    o.run("localhost:5000").await;
 }

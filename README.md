@@ -48,7 +48,7 @@ async fn main() {
             .GET(health_check),
         "/hello/:name"
             .GET(hello),
-    )).howl("localhost:3000").await
+    )).run("localhost:3000").await
 }
 ```
 
@@ -70,7 +70,7 @@ Hello, your_name!
 ### `Ohkami`
 
 `Ohkami` is the main entry point of Ohkami application:
-a collection of `Route`s and `Fang`s, and provides `.howl()`/`.howls()` method to run the application.
+a collection of `Route`s and `Fang`s, and provides `.run()`/`.runs()` method to run the application.
 
 ```rust,ignore
 Ohkami::new((
@@ -88,13 +88,13 @@ Ohkami::new((
             Fang4,
             goodbye_handler // handler
         )),
-)).howl("localhost:3000").await;
+)).run("localhost:3000").await;
 ```
 
-`.howls()` (`tls` feature only) is used to run Ohkami with TLS (HTTPS) support
+`.runs()` (`tls` feature only) is used to run Ohkami with TLS (HTTPS) support
 upon [`rustls`](https://github.com/rustls) ecosystem.
 
-`howl(s)` supports graceful shutdown by `Ctrl-C` ( `SIGINT` ) on native runtimes.
+`run(s)` supports graceful shutdown by `Ctrl-C` ( `SIGINT` ) on native runtimes.
 
 ### `Route`
 
@@ -306,7 +306,7 @@ async fn handler() -> DataStream {
 async fn main() {
     Ohkami::new((
         "/sse".GET(handler),
-    )).howl("localhost:3020").await
+    )).run("localhost:3020").await
 }
 ```
 
@@ -328,7 +328,7 @@ async fn echo_text(ctx: WebSocketContext<'_>) -> WebSocket {
 async fn main() {
     Ohkami::new((
         "/ws".GET(echo_text),
-    )).howl("localhost:3030").await
+    )).run("localhost:3030").await
 }
 ```
 
@@ -416,7 +416,7 @@ async fn main() {
         ]
     });
 
-    o.howl("localhost:5000").await;
+    o.run("localhost:5000").await;
 }
 ```
 
@@ -428,7 +428,7 @@ async fn main() {
 
 HTTPS support up on [rustls](https://github.com/rustls) ecosystem.
 
-- Call `howls` ( as `https` to `http`, `wss` to `ws` ) instead of `howl` to run with TLS.
+- Call `runs` ( as `https` to `http`, `wss` to `ws` ) instead of `run` to run with TLS.
 - You must prepare your own certificate and private key files.
 - Currently, only HTTP/1.1 over TLS is supported.
 
@@ -488,7 +488,7 @@ async fn main() -> std::io::Result<()> {
     // Create and run Ohkami with HTTPS
     Ohkami::new((
         "/".GET(hello),
-    )).howls("0.0.0.0:8443", tls_config).await;
+    )).runs("0.0.0.0:8443", tls_config).await;
     
     Ok(())
 }
@@ -561,7 +561,7 @@ async fn main() {
             .GET(hello),
         "/search"
             .GET(search),
-    )).howl("localhost:5000").await
+    )).run("localhost:5000").await
 }
 
 async fn hello(Path(name): Path<&str>) -> String {
@@ -628,7 +628,7 @@ async fn main() {
                 GreetingFang(2),
                 || async {"I'm `POST /hello`!"}
             ))
-    )).howl("localhost:3000").await
+    )).run("localhost:3000").await
 }
 ```
 
@@ -649,7 +649,7 @@ async fn main() {
     Ohkami::new((
         Context::new(pool),
         "/users".POST(create_user),
-    )).howl("localhost:5050").await
+    )).run("localhost:5050").await
 }
 
 async fn create_user(
@@ -723,7 +723,7 @@ use ohkami::{Ohkami, Route};
 async fn main() {
     Ohkami::new((
         "/".Mount("./dist"),
-    )).howl("0.0.0.0:3030").await
+    )).run("0.0.0.0:3030").await
 }
 ```
 
@@ -804,7 +804,7 @@ async fn main() {
             .GET(health_check),
         "/api/users"
             .By(users_ohkami), // nest by `By`
-    )).howl("localhost:5000").await
+    )).run("localhost:5000").await
 }
 ```
 
@@ -928,7 +928,7 @@ async fn main() {
     Ohkami::new((
         Context::new(PostgresUserRepository(pool)),
         "/users".By(users_ohkami::<PostgresUserRepository>()),
-    )).howl("0.0.0.0:4040").await
+    )).run("0.0.0.0:4040").await
 }
 ```
 

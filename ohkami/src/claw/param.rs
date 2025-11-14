@@ -125,7 +125,7 @@ impl<'req, T: bound::Incoming<'req>> FromRequest<'req> for Query<T> {
 ///             .GET(get_team_info),
 ///         "/teams/:team_id/users/:user_id"
 ///             .GET(get_user_info),
-///     )).howl("localhost:5050").await
+///     )).run("localhost:5050").await
 /// }
 /// ```
 pub struct Path<T>(pub T);

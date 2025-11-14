@@ -64,7 +64,7 @@ async fn main() {
         ]
     });
 
-    o.howl("localhost:5050").await
+    o.run("localhost:5050").await
 }
 
 #[openapi::operation({200: "All pets stored in this pet store"})]

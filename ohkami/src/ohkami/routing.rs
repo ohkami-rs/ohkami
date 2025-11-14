@@ -99,7 +99,7 @@ macro_rules! Route {
         ///         "/hello"  // <-- `Route` works here...
         ///             .GET(greet)
         ///             .PUT(hello),
-        ///     )).howl("localhost:3000").await
+        ///     )).run("localhost:3000").await
         /// }
         /// ```
         pub trait Route: Sized {

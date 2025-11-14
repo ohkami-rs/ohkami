@@ -10,5 +10,5 @@ async fn large_response() -> String {
 async fn main() {
     Ohkami::new((
         "/".GET(large_response),
-    )).howl("localhost:3000").await
+    )).run("localhost:3000").await
 }

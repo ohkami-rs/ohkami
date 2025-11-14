@@ -29,7 +29,7 @@
 /// async fn main() {
 ///     Ohkami::new((Enamel::default(),
 ///         "/hello".GET(|| async {"Hello, Enamel!"}),
-///     )).howl("localhost:4040").await
+///     )).run("localhost:4040").await
 /// }
 /// ```
 #[derive(Debug)]
@@ -216,7 +216,7 @@ const _: () = {
 ///                 sandbox: allow_forms | allow_same_origin,
 ///                 ..Default::default()
 ///             }),
-///     )).howl("localhost:4040").await
+///     )).run("localhost:4040").await
 /// }
 /// ```
 #[derive(Debug, Default)]
@@ -319,7 +319,7 @@ const _: () = {
 ///                 sandbox: allow_forms | allow_same_origin,
 ///                 ..Default::default()
 ///             }),
-///     )).howl("localhost:4040").await
+///     )).run("localhost:4040").await
 /// }
 /// ```
 #[allow(non_upper_case_globals)]
@@ -420,7 +420,7 @@ pub mod sandbox {
 ///                 ..Default::default()
 ///             }),
 ///         "/hello".GET(|| async {"Hello, enamel!"})
-///     )).howl("localhost:3000").await
+///     )).run("localhost:3000").await
 /// }
 /// ```
 #[allow(non_upper_case_globals)]

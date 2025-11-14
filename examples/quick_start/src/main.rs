@@ -16,5 +16,5 @@ async fn main() {
             .GET(health_check),
         "/hello/:name"
             .GET(hello),
-    )).howl("localhost:3000").await
+    )).run("localhost:3000").await
 }

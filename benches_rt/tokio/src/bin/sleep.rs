@@ -9,5 +9,5 @@ async fn sleeping_hello(Path(secs): Path<u64>) -> &'static str {
 async fn main() {
     Ohkami::new((
         "/sleep/:secs".GET(sleeping_hello),
-    )).howl("localhost:8888").await
+    )).run("localhost:8888").await
 }

@@ -16,5 +16,5 @@ async fn hello(Path(name): Path<&str>) -> Json<Message> {
 async fn main() {
     Ohkami::new((
         "/hello/:name".GET(hello),
-    )).howl("localhost:3000").await
+    )).run("localhost:3000").await
 }

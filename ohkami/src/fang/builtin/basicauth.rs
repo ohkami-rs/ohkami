@@ -39,7 +39,7 @@ use crate::openapi;
 ///             "/hello"
 ///                 .GET(|| async {"Hello, private :)"})
 ///         )))
-///     )).howl("localhost:8888").await
+///     )).run("localhost:8888").await
 /// }
 /// ```
 #[derive(Clone, Debug)]

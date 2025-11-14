@@ -429,7 +429,7 @@ pub mod openapi {
     ///         "/users".By(users_ohkami),
     ///
     ///         // ...
-    ///     )).howl("localhost:5050").await
+    ///     )).run("localhost:5050").await
     /// }
     /// # async fn list_users() {}
     /// # async fn create_user() {}
