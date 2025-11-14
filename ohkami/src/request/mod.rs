@@ -364,16 +364,12 @@ impl Request {
             let mut bytes = vec![0; size].into_boxed_slice();
             let stream_read = stream.read_exact(&mut bytes).await;
 
-            match stream_read {
-                Ok(_) => Ok(CowSlice::Own(bytes)),
-                Err(e) => {
-                    crate::WARNING!(
-                        "[Request::read_payload] Impossible to read the stream buf: {}",
-                        e
-                    );
-                    Err(crate::Response::BadRequest())
-                }
+            let mut bytes = vec![0; size].into_boxed_slice();
+            if let Err(err) = stream.read_exact(&mut bytes).await {
+                crate::ERROR!("[Request::read_payload] Failed to read payload from stream: {err}");
+                return Err(crate::Response::BadRequest());
             }
+            Ok(CowSlice::Own(bytes))
         } else if size <= remaining_buf_len {
             crate::DEBUG!("\n[read_payload] case: starts_at + size <= BUF_SIZE\n");
 
@@ -385,9 +381,8 @@ impl Request {
             crate::DEBUG!("\n[read_payload] case: else\n");
 
             let mut bytes = vec![0; size].into_boxed_slice();
-
-            let stream_read = unsafe {
-                // SAFETY: Here size > remaining_buf_len
+            let read_result = unsafe {
+                // SAFETY: size > remaining_buf_len
                 bytes
                     .get_unchecked_mut(..remaining_buf_len)
                     .copy_from_slice(remaining_buf);
@@ -396,16 +391,11 @@ impl Request {
                     .await
             };
 
-            match stream_read {
-                Ok(_) => Ok(CowSlice::Own(bytes)),
-                Err(e) => {
-                    crate::WARNING!(
-                        "[Request::read_payload] Impossible to read the stream buf: {}",
-                        e
-                    );
-                    Err(crate::Response::BadRequest())
-                }
+            if let Err(err) = read_result {
+                crate::ERROR!("[Request::read_payload] Failed to read payload from stream: {err}");
+                return Err(crate::Response::BadRequest());
             }
+            Ok(CowSlice::Own(bytes))
         }
     }
 
