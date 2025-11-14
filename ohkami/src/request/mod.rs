@@ -362,9 +362,6 @@ impl Request {
             );
 
             let mut bytes = vec![0; size].into_boxed_slice();
-            let stream_read = stream.read_exact(&mut bytes).await;
-
-            let mut bytes = vec![0; size].into_boxed_slice();
             if let Err(err) = stream.read_exact(&mut bytes).await {
                 crate::ERROR!("[Request::read_payload] Failed to read payload from stream: {err}");
                 return Err(crate::Response::BadRequest());
