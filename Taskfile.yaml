@@ -1,6 +1,9 @@
 version: 3
 
 vars:
+  native_rts: 'tokio smol nio glommio monoio compio'
+  non_wasm_rts: 'lambda {{.native_rts}}'
+  all_rts: 'worker {{.non_wasm_rts}}'
   maybe_nightly: { sh: cargo version | grep -q 'nightly' && echo 'nightly' || echo ''  }
 
 tasks:
@@ -17,9 +20,9 @@ tasks:
   test:core:
     deps:
       - task: test:no_rt
-      - for:  [tokio, smol, nio, glommio, monoio, compio, lambda, worker]
-        task: test:rt
+      - for:  { var: all_rts }
         vars: { rt: '{{.ITEM}}' }
+        task: test:rt
   test:other:
     deps:
       - task: test:deps
@@ -30,11 +33,10 @@ tasks:
   check:
     deps:
       - task: check:fmt
-      - task: check:clippy
       - task: check:no_rt
-      - for:  [tokio, smol, nio, glommio, monoio, compio, lambda]
-        task: check:rt-native
+      - for:  { var: non_wasm_rts }
         vars: { rt: '{{.ITEM}}' }
+        task: check:non_wasm_rt
       - task: check:rt_worker
 
   bench:dryrun:
@@ -42,17 +44,15 @@ tasks:
       - '[ "{{.maybe_nightly}}" != nightly ]' # skip if not nightly
     cmds:
       - cd benches && cargo bench --features DEBUG --no-run
-      - cd benches_rt/vs_actix-web && cargo check
-      - for: [tokio, smol, nio, glommio, monoio, compio]
+      - for: { var: native_rts }
         cmd: cd benches_rt/{{.ITEM}} && cargo check
 
   bench:
     status:
       - '[ "{{.maybe_nightly}}" != nightly ]' # skip if not nightly
-    dir: ./benches
     cmds:
       - task: bench:dryrun
-      - cargo bench --features DEBUG
+      - cd benches && cargo bench --features DEBUG
 
 #### tests ####
   test:deps:
@@ -99,42 +99,30 @@ tasks:
 #### checks ####
   check:fmt:
     cmds:
-      - cargo fmt --check
-
-  check:clippy:
-    cmds:
-      - cargo clippy --all-targets --features DEBUG,rt_tokio,sse,ws,openapi,tls -- --deny warnings   # threaded runtime
-      - cargo clippy --all-targets --features DEBUG,rt_glommio,sse,ws,openapi,tls -- --deny warnings # thread-per-core runtime
-      - cargo clippy --all-targets --features DEBUG,rt_worker,sse,ws,openapi -- --deny warnings      # Cloudflare Workers
-      - cargo clippy --all-targets --features DEBUG,rt_lambda,sse,ws,openapi -- --deny warnings      # AWS Lambda
-
-  # Assure buildability without "DEBUG" feature
+      - cargo fmt --all --check
 
   check:no_rt:
     vars:
-      MAYBE_NIGHTLY_FEATURES:
-        sh: cargo version | grep -q 'nightly' && echo '--features nightly' || echo ''
-    dir: ./ohkami
+      features_nightly_or_empty:
+        sh: test "{{.maybe_nightly}}" && echo '--features nightly' || echo ''
     cmds:
-      - cargo check --lib {{.MAYBE_NIGHTLY_FEATURES}}
-      - cargo check --lib --features sse,{{.maybe_nightly}}
-      - cargo check --lib --features ws,{{.maybe_nightly}}
-      - cargo check --lib --features sse,ws,openapi,{{.maybe_nightly}}
+      - cargo clippy --all-targets {{.features_nightly_or_empty}} -- --deny warnings
+      - cargo clippy --all-targets --features sse,{{.maybe_nightly}} -- --deny warnings
+      - cargo clippy --all-targets --features ws,{{.maybe_nightly}} -- --deny warnings
+      - cargo clippy --all-targets --features sse,ws,openapi,{{.maybe_nightly}} -- --deny warnings
 
-  check:rt-native:
-    dir: ./ohkami
+  check:non_wasm_rt:
     cmds:
-      - cargo check --lib --features rt_{{.rt}},{{.maybe_nightly}}
-      - cargo check --lib --features rt_{{.rt}},sse,{{.maybe_nightly}}
-      - cargo check --lib --features rt_{{.rt}},ws,{{.maybe_nightly}}
-      - cargo check --lib --features rt_{{.rt}},sse,ws,openapi,{{.maybe_nightly}}
-      - cargo check --lib --features rt_{{.rt}},tls,{{.maybe_nightly}}
-      - cargo check --lib --features rt_{{.rt}},sse,ws,tls,{{.maybe_nightly}}
+      - cargo clippy --all-targets --features rt_{{.rt}},{{.maybe_nightly}} -- --deny warnings
+      - cargo clippy --all-targets --features rt_{{.rt}},sse,{{.maybe_nightly}} -- --deny warnings
+      - cargo clippy --all-targets --features rt_{{.rt}},ws,{{.maybe_nightly}} -- --deny warnings
+      - cargo clippy --all-targets --features rt_{{.rt}},sse,ws,openapi,{{.maybe_nightly}} -- --deny warnings
+      - cargo clippy --all-targets --features rt_{{.rt}},tls,{{.maybe_nightly}} -- --deny warnings
+      - cargo clippy --all-targets --features rt_{{.rt}},sse,ws,tls,{{.maybe_nightly}} -- --deny warnings
 
   check:rt_worker:
-    dir: ./ohkami
     cmds:
-      - cargo check --target wasm32-unknown-unknown --lib --features rt_worker,{{.maybe_nightly}}
-      - cargo check --target wasm32-unknown-unknown --lib --features rt_worker,sse,{{.maybe_nightly}}
-      - cargo check --target wasm32-unknown-unknown --lib --features rt_worker,ws,{{.maybe_nightly}}
-      - cargo check --target wasm32-unknown-unknown --lib --features rt_worker,sse,ws,openapi,{{.maybe_nightly}}
+      - cargo clippy --target wasm32-unknown-unknown --features rt_worker,{{.maybe_nightly}} -- --deny warnings
+      - cargo clippy --target wasm32-unknown-unknown --features rt_worker,sse,{{.maybe_nightly}} -- --deny warnings
+      - cargo clippy --target wasm32-unknown-unknown --features rt_worker,ws,{{.maybe_nightly}} -- --deny warnings
+      - cargo clippy --target wasm32-unknown-unknown --features rt_worker,sse,ws,openapi,{{.maybe_nightly}} -- --deny warnings
