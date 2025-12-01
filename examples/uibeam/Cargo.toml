@@ -6,4 +6,4 @@ edition = "2024"
 [dependencies]
 ohkami = { workspace = true }
 tokio  = { workspace = true }
-uibeam = "0.2"
+uibeam = "0.3"
