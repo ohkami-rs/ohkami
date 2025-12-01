@@ -23,7 +23,7 @@
 
 ```toml
 [dependencies]
-ohkami = { version = "0.24", features = ["rt_tokio"] }
+ohkami = { version = "0.25", features = ["rt_tokio"] }
 tokio  = { version = "1",    features = ["full"] }
 ```
 
@@ -440,7 +440,7 @@ $ openssl req -x509 -newkey rsa:4096 -nodes -keyout server.key -out server.crt -
 
 ```toml
 [dependencies]
-ohkami = { version = "0.24", features = ["rt_tokio", "tls"] }
+ohkami = { version = "0.25", features = ["rt_tokio", "tls"] }
 tokio  = { version = "1",    features = ["full"] }
 rustls = { version = "0.23", features = ["ring"] }
 rustls-pemfile = "2.2"
