@@ -341,7 +341,7 @@ impl Request {
 
         if let Some(payload_size) = self.get_payload_size(config)? {
             self.payload =
-                Some(Request::read_payload(stream, r.remaining(), payload_size.get()).await);
+                Some(Request::read_payload(stream, r.remaining(), payload_size.get()).await?);
         }
 
         Ok(Some(()))
@@ -353,7 +353,7 @@ impl Request {
         stream: &mut (impl AsyncRead + Unpin),
         remaining_buf: &[u8],
         size: usize,
-    ) -> CowSlice {
+    ) -> Result<CowSlice, crate::Response> {
         let remaining_buf_len = remaining_buf.len();
 
         if remaining_buf_len == 0 || *unsafe { remaining_buf.get_unchecked(0) } == 0 {
@@ -362,28 +362,37 @@ impl Request {
             );
 
             let mut bytes = vec![0; size].into_boxed_slice();
-            stream.read_exact(&mut bytes).await.unwrap();
-            CowSlice::Own(bytes)
+            if let Err(err) = stream.read_exact(&mut bytes).await {
+                crate::ERROR!("[Request::read_payload] Failed to read payload from stream: {err}");
+                return Err(crate::Response::BadRequest());
+            }
+            Ok(CowSlice::Own(bytes))
         } else if size <= remaining_buf_len {
             crate::DEBUG!("\n[read_payload] case: starts_at + size <= BUF_SIZE\n");
 
             #[allow(unused_unsafe/* I don't know why but rustc sometimes put warnings to this unsafe as unnecessary */)]
-            CowSlice::Ref(unsafe { Slice::new_unchecked(remaining_buf.as_ptr(), size) })
+            Ok(CowSlice::Ref(unsafe {
+                Slice::new_unchecked(remaining_buf.as_ptr(), size)
+            }))
         } else {
             crate::DEBUG!("\n[read_payload] case: else\n");
 
             let mut bytes = vec![0; size].into_boxed_slice();
-            unsafe {
-                // SAFETY: Here size > remaining_buf_len
+            let read_result = unsafe {
+                // SAFETY: size > remaining_buf_len
                 bytes
                     .get_unchecked_mut(..remaining_buf_len)
                     .copy_from_slice(remaining_buf);
                 stream
                     .read_exact(bytes.get_unchecked_mut(remaining_buf_len..))
                     .await
-                    .unwrap();
+            };
+
+            if let Err(err) = read_result {
+                crate::ERROR!("[Request::read_payload] Failed to read payload from stream: {err}");
+                return Err(crate::Response::BadRequest());
             }
-            CowSlice::Own(bytes)
+            Ok(CowSlice::Own(bytes))
         }
     }
 
