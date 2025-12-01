@@ -80,7 +80,7 @@ use std::{borrow::Cow, marker::PhantomData};
 ///             our_jwt(),
 ///             "/hello/:name".GET(hello),
 ///         )))
-///     )).howl("localhost:3000").await
+///     )).run("localhost:3000").await
 /// }
 /// ```
 pub struct Jwt<Payload: Serialize + for<'de> Deserialize<'de> + SendSyncOnThreaded + 'static> {

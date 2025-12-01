@@ -65,7 +65,7 @@ mod worker;
 /// async fn main() {
 ///     Ohkami::new((
 ///         "/hello".GET(hello),
-///     )).howl("localhost:3000").await
+///     )).run("localhost:3000").await
 /// }
 /// ```
 #[proc_macro_derive(Schema, attributes(openapi))]

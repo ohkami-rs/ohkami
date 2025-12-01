@@ -20,7 +20,7 @@ use crate::{Fang, FangProc, Request, Response, Status, header::append};
 ///             .max_age(None),
 ///         "/api"
 ///             .GET(|| async {"Hello, CORS!"}),
-///     )).howl("localhost:8080").await
+///     )).run("localhost:8080").await
 /// }
 /// ```
 #[derive(Clone, Debug)]

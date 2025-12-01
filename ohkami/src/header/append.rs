@@ -28,7 +28,7 @@ pub struct Append(pub(crate) Cow<'static, str>);
 ///         
 ///         "/".GET(|| async {"Hello, append!"})
 ///
-///     )).howl("localhost:3000").await
+///     )).run("localhost:3000").await
 /// }
 /// ```
 #[inline]

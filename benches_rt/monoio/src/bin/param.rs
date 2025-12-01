@@ -15,7 +15,7 @@ fn main() {
                 Ohkami::new((
                     "/user/:id"
                         .GET(async |Path(id): Path<String>| id),
-                )).howl("0.0.0.0:3000")
+                )).run("0.0.0.0:3000")
             });
         });
     }
@@ -25,6 +25,6 @@ fn main() {
         Ohkami::new((
             "/user/:id"
                 .GET(async |Path(id): Path<String>| id),
-        )).howl("0.0.0.0:3000")
+        )).run("0.0.0.0:3000")
     });
 }

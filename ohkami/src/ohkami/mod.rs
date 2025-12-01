@@ -170,7 +170,7 @@ use crate::{__rt__, session};
 ///
 /// ### native async runtimes
 ///
-/// `.howl(address)` to start serving.
+/// `.run(address)` to start serving.
 ///
 /// ```no_run
 /// # fn my_ohkami() -> ohkami::Ohkami {ohkami::Ohkami::new(())}
@@ -179,7 +179,7 @@ use crate::{__rt__, session};
 /// async fn main() {
 ///     let o = my_ohkami();
 ///     
-///     o.howl("localhost:5000").await
+///     o.run("localhost:5000").await
 /// }
 /// ```
 ///
@@ -343,12 +343,12 @@ use crate::{__rt__, session};
 ///     Ohkami::new((
 ///         Context::new(PostgresUserRepository(pool)),
 ///         "/users".By(users_ohkami::<PostgresUserRepository>()),
-///     )).howl("0.0.0.0:4040").await
+///     )).run("0.0.0.0:4040").await
 /// }
 /// ```
 pub struct Ohkami {
     router: Router,
-    /// apply just before merged to another, or just before `howl`ing
+    /// apply just before merged to another, or just before `run`ing
     fangs: Option<Arc<dyn Fangs>>,
 }
 
@@ -503,7 +503,7 @@ impl Ohkami {
     }
 
     #[cfg(feature = "__rt_native__")]
-    async fn howl_core<T>(
+    async fn run_core<T>(
         self,
         bind: impl __rt__::IntoTcpListener<T>,
         config: crate::Config,
@@ -597,7 +597,7 @@ impl Ohkami {
     ///     Ohkami::new((
     ///         "/".GET(hello),
     ///         "/healthz".GET(health_check),
-    ///     )).howl("localhost:5000").await
+    ///     )).run("localhost:5000").await
     /// }
     /// ```
     ///
@@ -618,14 +618,14 @@ impl Ohkami {
     ///         "/".GET(async || {
     ///             "Hello, TcpListener!"
     ///         }),
-    ///     )).howl(listener).await;
+    ///     )).run(listener).await;
     ///
     ///     Ok(())
     /// }
     /// ```
     #[cfg(feature = "__rt_native__")]
-    pub async fn howl<T>(self, bind: impl __rt__::IntoTcpListener<T>) {
-        self.howl_core(
+    pub async fn run<T>(self, bind: impl __rt__::IntoTcpListener<T>) {
+        self.run_core(
             bind,
             crate::Config::new(),
             #[cfg(feature = "tls")]
@@ -634,11 +634,11 @@ impl Ohkami {
         .await
     }
 
-    /// Same as [`howl`](crate::Ohkami::howl) but uses the given `Config`
+    /// Same as [`run`](crate::Ohkami::run) but uses the given `Config`
     /// instead of the [default one](crate::Config::new).
     #[cfg(feature = "__rt_native__")]
-    pub async fn howl_with<T>(self, config: crate::Config, bind: impl __rt__::IntoTcpListener<T>) {
-        self.howl_core(
+    pub async fn run_with<T>(self, config: crate::Config, bind: impl __rt__::IntoTcpListener<T>) {
+        self.run_core(
             bind,
             config,
             #[cfg(feature = "tls")]
@@ -650,10 +650,10 @@ impl Ohkami {
     /// Bind this `Ohkami` to an address and start serving with TLS support
     /// (**`tls` feature is required**).
     ///
-    /// `howls` takes an additional parameter than `howl`:
+    /// `runs` takes an additional parameter than `run`:
     /// A `rutsls::ServerConfig` containing your certificates and keys.
     ///
-    /// See [`howl`] for the `bind` argument.
+    /// See [`run`] for the `bind` argument.
     ///
     /// Example:
     ///
@@ -708,7 +708,7 @@ impl Ohkami {
     ///     // Create and run Ohkami with HTTPS
     ///     Ohkami::new((
     ///         "/".GET(hello),
-    ///     )).howls("0.0.0.0:8443", tls_config).await;
+    ///     )).runs("0.0.0.0:8443", tls_config).await;
     ///     
     ///     Ok(())
     /// }
@@ -730,27 +730,27 @@ impl Ohkami {
     #[cfg(feature = "__rt_native__")]
     #[cfg(feature = "tls")]
     #[cfg_attr(docsrs, doc(cfg(feature = "tls")))]
-    pub async fn howls<T>(
+    pub async fn runs<T>(
         self,
         bind: impl __rt__::IntoTcpListener<T>,
         tls_config: rustls::ServerConfig,
     ) {
-        self.howl_core(bind, crate::Config::new(), Some(tls_config))
+        self.run_core(bind, crate::Config::new(), Some(tls_config))
             .await
     }
 
-    /// Same as [`howls`](crate::Ohkami::howls) but uses the given `Config`
+    /// Same as [`runs`](crate::Ohkami::runs) but uses the given `Config`
     /// instead the [default one](crate::Config::new).
     #[cfg(feature = "__rt_native__")]
     #[cfg(feature = "tls")]
     #[cfg_attr(docsrs, doc(cfg(feature = "tls")))]
-    pub async fn howls_with<T>(
+    pub async fn runs_with<T>(
         self,
         config: crate::Config,
         bind: impl __rt__::IntoTcpListener<T>,
         tls_config: rustls::ServerConfig,
     ) {
-        self.howl_core(bind, config, Some(tls_config)).await
+        self.run_core(bind, config, Some(tls_config)).await
     }
 
     #[cfg(feature = "rt_worker")]
@@ -836,7 +836,7 @@ impl Ohkami {
     ///         ]
     ///      });
     ///
-    ///     o.howl("localhost:5000").await
+    ///     o.run("localhost:5000").await
     /// }
     /// ```
     pub fn generate(&self, metadata: crate::openapi::OpenAPI) {
@@ -1139,11 +1139,11 @@ mod test {
 
     #[cfg(not(feature = "tls"))]
     #[test]
-    fn can_howl_on_any_native_async_runtime() {
+    fn can_run_on_any_native_async_runtime() {
         __rt__::testing::block_on(async {
             crate::util::with_timeout(
                 std::time::Duration::from_secs(3),
-                Ohkami::new(()).howl(("localhost", __rt__::testing::PORT)),
+                Ohkami::new(()).run(("localhost", __rt__::testing::PORT)),
             )
             .await
         });
@@ -1151,7 +1151,7 @@ mod test {
 
     #[cfg(feature = "tls")]
     #[test]
-    fn can_howl_with_tls_on_any_native_async_runtime() {
+    fn can_run_with_tls_on_any_native_async_runtime() {
         let openssl_x509_newkey = |out_path: &str, keyout_path: &str| -> std::io::Result<()> {
             std::process::Command::new("openssl")
                 .args([
@@ -1243,7 +1243,7 @@ mod test {
 
             crate::util::with_timeout(
                 std::time::Duration::from_secs(3),
-                Ohkami::new(()).howls(("localhost", __rt__::testing::PORT), tls_config),
+                Ohkami::new(()).runs(("localhost", __rt__::testing::PORT), tls_config),
             )
             .await
         });
