@@ -357,9 +357,7 @@ impl Request {
         let remaining_buf_len = remaining_buf.len();
 
         if remaining_buf_len == 0 || *unsafe { remaining_buf.get_unchecked(0) } == 0 {
-            crate::DEBUG!(
-                "\n[read_payload] case: remaining_buf.is_empty() || remaining_buf[0] == 0\n"
-            );
+            crate::DEBUG!("[read_payload] case: remaining_buf.is_empty() || remaining_buf[0] == 0");
 
             let mut bytes = vec![0; size].into_boxed_slice();
             if let Err(err) = stream.read_exact(&mut bytes).await {
@@ -368,14 +366,13 @@ impl Request {
             }
             Ok(CowSlice::Own(bytes))
         } else if size <= remaining_buf_len {
-            crate::DEBUG!("\n[read_payload] case: starts_at + size <= BUF_SIZE\n");
+            crate::DEBUG!("[read_payload] case: starts_at + size <= BUF_SIZE");
 
-            #[allow(unused_unsafe/* I don't know why but rustc sometimes put warnings to this unsafe as unnecessary */)]
             Ok(CowSlice::Ref(unsafe {
                 Slice::new_unchecked(remaining_buf.as_ptr(), size)
             }))
         } else {
-            crate::DEBUG!("\n[read_payload] case: else\n");
+            crate::DEBUG!("[read_payload] case: else");
 
             let mut bytes = vec![0; size].into_boxed_slice();
             let read_result = unsafe {
@@ -459,9 +456,9 @@ impl Request {
 
         while r.consume("\r\n").is_none() {
             let key_bytes = r.read_while(|b| b != &b':');
-            r.consume(": ").unwrap(); // here `r` holds a complete HTTP request
+            r.consume(": ").unwrap();
             let value = CowSlice::Own(r.read_while(|b| b != &b'\r').to_owned().into_boxed_slice());
-            r.consume("\r\n").unwrap(); // here `r` holds a complete HTTP request
+            r.consume("\r\n").unwrap();
 
             if let Some(key) = RequestHeader::from_bytes(key_bytes) {
                 self.headers.append(key, value);
@@ -474,7 +471,7 @@ impl Request {
         }
 
         if self.get_payload_size()?.is_some() {
-            self.payload = Option::from(CowSlice::Own(r.remaining().into()));
+            self.payload = Some(CowSlice::Own(r.remaining().into()));
         }
 
         Ok(Some(()))
