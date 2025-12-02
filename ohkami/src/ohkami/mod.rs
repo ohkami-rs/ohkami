@@ -659,7 +659,7 @@ impl Ohkami {
     ///
     /// ```toml
     /// [dependencies]
-    /// ohkami = { version = "0.24", features = ["rt_tokio", "tls"] }
+    /// ohkami = { version = "0.25", features = ["rt_tokio", "tls"] }
     /// tokio  = { version = "1",    features = ["full"] }
     /// rustls = { version = "0.23", features = ["ring"] }
     /// rustls-pemfile = "2.2"
