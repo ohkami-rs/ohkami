@@ -122,12 +122,6 @@ macro_rules! Route {
             ///
             /// See methods's docs for options.
             fn Mount(self, directory_path: impl AsRef<std::path::Path>) -> Dir;
-
-            #[deprecated(note = "Use `Mount` instead")]
-            #[cfg(feature="__rt_native__")]
-            fn Dir(self, path: &'static str) -> Dir {
-                self.Mount(path)
-            }
         }
 
         impl Route for &'static str {
