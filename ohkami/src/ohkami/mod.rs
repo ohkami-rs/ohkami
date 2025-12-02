@@ -633,6 +633,11 @@ impl Ohkami {
         )
         .await
     }
+    #[deprecated(since = "0.25.0", note = "use `run` instead")]
+    #[cfg(feature = "__rt_native__")]
+    pub async fn howl<T>(self, bind: impl __rt__::IntoTcpListener<T>) {
+        self.run(bind).await
+    }
 
     /// Same as [`run`](crate::Ohkami::run) but uses the given `Config`
     /// instead of the [default one](crate::Config::new).
@@ -645,6 +650,11 @@ impl Ohkami {
             None,
         )
         .await
+    }
+    #[deprecated(since = "0.25.0", note = "use `run_with` instead")]
+    #[cfg(feature = "__rt_native__")]
+    pub async fn howl_with<T>(self, config: crate::Config, bind: impl __rt__::IntoTcpListener<T>) {
+        self.run_with(config, bind).await
     }
 
     /// Bind this `Ohkami` to an address and start serving with TLS support
@@ -738,6 +748,17 @@ impl Ohkami {
         self.run_core(bind, crate::Config::new(), Some(tls_config))
             .await
     }
+    #[deprecated(since = "0.25.0", note = "use `runs` instead")]
+    #[cfg(feature = "__rt_native__")]
+    #[cfg(feature = "tls")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "tls")))]
+    pub async fn howls<T>(
+        self,
+        bind: impl __rt__::IntoTcpListener<T>,
+        tls_config: rustls::ServerConfig,
+    ) {
+        self.runs(bind, tls_config).await
+    }
 
     /// Same as [`runs`](crate::Ohkami::runs) but uses the given `Config`
     /// instead the [default one](crate::Config::new).
@@ -751,6 +772,18 @@ impl Ohkami {
         tls_config: rustls::ServerConfig,
     ) {
         self.run_core(bind, config, Some(tls_config)).await
+    }
+    #[deprecated(since = "0.25.0", note = "use `runs_with` instead")]
+    #[cfg(feature = "__rt_native__")]
+    #[cfg(feature = "tls")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "tls")))]
+    pub async fn howls_with<T>(
+        self,
+        config: crate::Config,
+        bind: impl __rt__::IntoTcpListener<T>,
+        tls_config: rustls::ServerConfig,
+    ) {
+        self.runs_with(config, bind, tls_config).await
     }
 
     #[cfg(feature = "rt_worker")]
