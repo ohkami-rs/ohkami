@@ -75,11 +75,11 @@ rt_monoio = ["__rt_native__", "__io_tokio__",
 rt_compio = ["__rt_native__", "__io_futures__",
     "dep:compio",
 ]
-rt_worker = ["__rt__",
+rt_worker = ["__rt_edge__",
     "dep:worker", "worker/d1", "worker/queue",
     "ohkami_macros/worker",
 ]
-rt_lambda = ["__rt__", "__rt_threaded__",
+rt_lambda = ["__rt_edge__", "__rt_threaded__",
     "dep:lambda_runtime",
     "dep:tokio", "tokio/rt", # lambda_runtime internally depends on tokio runtime
     "ohkami_lib/stream",     # lambda_runtime's interface always requires stream
@@ -94,24 +94,26 @@ tls     = ["dep:rustls", "dep:anysc-rustls"]
 __rt__          = []
 __rt_threaded__ = ["__rt__"]
 __rt_native__   = ["__rt__", "dep:mime_guess", "dep:ctrlc"]
+__rt_edge__     = ["__rt__"]
 __io_tokio__    = ["dep:tokio","tokio/io-util", "mews?/io_tokio", "anysc-rustls?/io_tokio"]
 __io_futures__  = ["dep:futures-util","futures-util/io", "mews?/io_futures", "anysc-rustls?/io_futures"]
 
 ##### DEBUG #####
 DEBUG = ["tokio?/rt-multi-thread", "tokio?/macros"]
-#default = [
-#    "nightly",
-#    "openapi",
-#    "sse",
-#    "ws",
-#    "tls",
-#    "rt_tokio",
-#    #"rt_smol",
-#    #"rt_nio",
-#    #"rt_glommio",
-#    #"rt_worker",
-#    "DEBUG",
-#]
+default = [
+    #"nightly",
+    #"openapi",
+    #"sse",
+    #"ws",
+    #"tls",
+    #"rt_tokio",
+    #"rt_smol",
+    #"rt_nio",
+    #"rt_glommio",
+    #"rt_worker",
+    #"rt_lambda",
+    #"DEBUG",
+]
 
 
 [dev-dependencies] # for doc test

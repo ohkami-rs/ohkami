@@ -30,11 +30,28 @@ use ohkami_lib::CowSlice;
 #[cfg(feature = "__rt__")]
 use ohkami_lib::Slice;
 
-#[cfg(feature = "__rt_native__")]
-use crate::__rt__::AsyncRead;
-
 #[allow(unused)]
-use {byte_reader::Reader, std::borrow::Cow, std::pin::Pin};
+use {crate::Response, byte_reader::Reader, std::borrow::Cow, std::pin::Pin};
+
+#[cfg(feature = "__rt_native__")]
+use crate::__rt__::AsyncRead as ReadableStream;
+#[cfg(all(feature = "__rt_edge__", debug_assertions))]
+use testing::ReadableStream; /* **only for testing** for edge runtimes */
+#[cfg(all(feature = "__rt_edge__", debug_assertions))]
+mod testing {
+    pub(crate) trait ReadableStream {
+        async fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize>;
+        async fn read_exact(&mut self, buf: &mut [u8]) -> std::io::Result<()>;
+    }
+    impl<T: std::io::Read + ?Sized> ReadableStream for T {
+        async fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+            std::io::Read::read(self, buf)
+        }
+        async fn read_exact(&mut self, buf: &mut [u8]) -> std::io::Result<()> {
+            std::io::Read::read_exact(self, buf)
+        }
+    }
+}
 
 /// # HTTP Request
 ///
@@ -92,14 +109,7 @@ use {byte_reader::Reader, std::borrow::Cow, std::pin::Pin};
 /// }
 /// ```
 pub struct Request {
-    #[cfg(feature = "__rt_native__")]
     pub(super) __buf__: Box<[u8]>,
-
-    #[cfg(feature = "rt_worker")]
-    pub(super) __url__: std::mem::MaybeUninit<::worker::Url>,
-
-    #[cfg(feature = "rt_lambda")]
-    pub(super) __query__: std::mem::MaybeUninit<Box<str>>,
 
     /// HTTP method of this request
     ///
@@ -178,8 +188,6 @@ impl Request {
         &self,
         #[cfg(feature = "__rt_native__")] config: &crate::Config,
     ) -> Result<Option<std::num::NonZeroUsize>, crate::Response> {
-        use crate::Response;
-
         let Some(size) = self
             .headers
             .content_length()
@@ -212,19 +220,38 @@ impl Request {
         #[cfg(feature = "__rt_native__")] ip: std::net::IpAddr,
         #[cfg(feature = "__rt_native__")] config: &crate::Config,
     ) -> Self {
+        let ip = {
+            #[cfg(feature = "__rt_native__")]
+            {
+                ip
+            }
+            #[cfg(all(feature = "__rt_edge__", debug_assertions))]
+            {
+                // tenatively use (will be replaced with real ip later (e.g., in `take_over`))
+                crate::util::IP_0000
+            }
+        };
+
+        let buf_size = {
+            #[cfg(feature = "__rt_native__")]
+            {
+                config.request_bufsize
+            }
+            #[cfg(all(feature = "__rt_edge__", debug_assertions))]
+            {
+                // 4 KiB **only for testing** implementation for edge runtimes
+                1 << 12
+            }
+            #[cfg(all(feature = "__rt_edge__", not(debug_assertions)))]
+            {
+                // `__buf__` is never actually used in edge runtimes
+                0
+            }
+        };
+
         Self {
-            #[cfg(feature = "__rt_native__")]
             ip,
-            #[cfg(any(feature = "rt_worker", feature = "rt_lambda"))]
-            ip: crate::util::IP_0000, /* tetative */
-
-            #[cfg(feature = "__rt_native__")]
-            __buf__: vec![0u8; config.request_bufsize].into_boxed_slice(),
-            #[cfg(feature = "rt_worker")]
-            __url__: std::mem::MaybeUninit::uninit(),
-            #[cfg(feature = "rt_lambda")]
-            __query__: std::mem::MaybeUninit::uninit(),
-
+            __buf__: vec![0u8; buf_size].into_boxed_slice(),
             method: Method::GET,
             path: Path::uninit(),
             query: QueryParams::new(b""),
@@ -252,14 +279,16 @@ impl Request {
         } /* else: just after `init`ed or `clear`ed */
     }
 
-    #[cfg(feature = "__rt_native__")]
+    #[cfg(any(
+        feature = "__rt_native__",
+        all(feature = "__rt_edge__", debug_assertions)
+    ))]
     pub(crate) async fn read(
         mut self: Pin<&mut Self>,
-        stream: &mut (impl AsyncRead + Unpin),
+        stream: &mut (impl ReadableStream + Unpin),
+        #[cfg_attr(all(feature = "__rt_edge__", debug_assertions), allow(unused))]
         config: &crate::Config,
-    ) -> Result<Option<()>, crate::Response> {
-        use crate::Response;
-
+    ) -> Result<Option<()>, Response> {
         match stream.read(&mut self.__buf__).await {
             Ok(0) => return Ok(None),
             Err(e) => {
@@ -276,9 +305,9 @@ impl Request {
 
         let mut r = Reader::new(unsafe {
             // pass detouched bytes
-            // to resolve immutable/mutable borrowing
+            // to avoid compile-errors around immutable/mutable borrowing
             //
-            // SAFETY: `self.__buf__` itself is immutable
+            // SAFETY: `self.__buf__` itself is immutable after this point
             Slice::from_bytes(&self.__buf__).as_bytes()
         });
 
@@ -303,6 +332,7 @@ impl Request {
         while r.consume("\r\n").is_none() {
             let key_bytes = r.read_while(|b| b != &b':');
             r.consume(": ").ok_or_else(|| {
+                #[cfg(feature = "__rt_native__")]
                 crate::WARNING!(
                     "\
                     [Request::read] Unexpected end of headers! \
@@ -318,6 +348,7 @@ impl Request {
 
             let value = CowSlice::Ref(Slice::from_bytes(r.read_while(|b| b != &b'\r')));
             r.consume("\r\n").ok_or_else(|| {
+                #[cfg(feature = "__rt_native__")]
                 crate::WARNING!(
                     "\
                     [Request::read] Unexpected end of headers! \
@@ -339,7 +370,10 @@ impl Request {
             }
         }
 
-        if let Some(payload_size) = self.get_payload_size(config)? {
+        if let Some(payload_size) = self.get_payload_size(
+            #[cfg(feature = "__rt_native__")]
+            config,
+        )? {
             self.payload =
                 Some(Request::read_payload(stream, r.remaining(), payload_size.get()).await?);
         }
@@ -347,19 +381,17 @@ impl Request {
         Ok(Some(()))
     }
 
-    #[cfg(feature = "__rt_native__")]
+    #[cfg(feature = "__rt__")]
     #[inline]
     async fn read_payload(
-        stream: &mut (impl AsyncRead + Unpin),
+        stream: &mut (impl ReadableStream + Unpin),
         remaining_buf: &[u8],
         size: usize,
     ) -> Result<CowSlice, crate::Response> {
         let remaining_buf_len = remaining_buf.len();
 
         if remaining_buf_len == 0 || *unsafe { remaining_buf.get_unchecked(0) } == 0 {
-            crate::DEBUG!(
-                "\n[read_payload] case: remaining_buf.is_empty() || remaining_buf[0] == 0\n"
-            );
+            crate::DEBUG!("[read_payload] case: remaining_buf.is_empty() || remaining_buf[0] == 0");
 
             let mut bytes = vec![0; size].into_boxed_slice();
             if let Err(err) = stream.read_exact(&mut bytes).await {
@@ -368,14 +400,13 @@ impl Request {
             }
             Ok(CowSlice::Own(bytes))
         } else if size <= remaining_buf_len {
-            crate::DEBUG!("\n[read_payload] case: starts_at + size <= BUF_SIZE\n");
+            crate::DEBUG!("[read_payload] case: starts_at + size <= BUF_SIZE");
 
-            #[allow(unused_unsafe/* I don't know why but rustc sometimes put warnings to this unsafe as unnecessary */)]
             Ok(CowSlice::Ref(unsafe {
                 Slice::new_unchecked(remaining_buf.as_ptr(), size)
             }))
         } else {
-            crate::DEBUG!("\n[read_payload] case: else\n");
+            crate::DEBUG!("[read_payload] case: else");
 
             let mut bytes = vec![0; size].into_boxed_slice();
             let read_result = unsafe {
@@ -396,90 +427,6 @@ impl Request {
         }
     }
 
-    #[cfg(any(feature = "rt_worker", feature = "rt_lambda"))]
-    #[cfg(debug_assertions/* for `ohkami::testing` */)]
-    /// Used in `testing` module
-    pub(crate) async fn read(
-        mut self: Pin<&mut Self>,
-        raw_bytes: &mut &[u8],
-        _: &crate::Config,
-    ) -> Result<Option<()>, crate::Response> {
-        use crate::Response;
-
-        self.ip = crate::util::IP_0000;
-
-        let mut r = Reader::new(raw_bytes);
-
-        match Method::from_bytes(r.read_while(|b| b != &b' ')) {
-            None => return Ok(None),
-            Some(method) => self.method = method,
-        }
-
-        r.next_if(|b| *b == b' ').ok_or_else(Response::BadRequest)?;
-
-        #[cfg(feature = "rt_worker")]
-        {
-            self.__url__.write({
-                let mut url = String::from("http://test.ohkami");
-                url.push_str(std::str::from_utf8(r.read_while(|b| b != &b' ')).unwrap());
-                ::worker::Url::parse(&url).unwrap()
-            });
-            // SAFETY: calling after `self.__url__` is already initialized
-            unsafe {
-                let __url__ = self.__url__.assume_init_ref();
-                let path = Slice::from_bytes(__url__.path().as_bytes()).as_bytes();
-                self.query = QueryParams::new(__url__.query().unwrap_or_default().as_bytes());
-                self.path.init_with_request_bytes(path)?;
-            }
-        }
-
-        #[cfg(feature = "rt_lambda")]
-        {
-            let path_bytes = r.read_while(|b| b != &b' ' && b != &b'?');
-            self.path.init_with_request_bytes(path_bytes)?;
-
-            if r.next_if(|b| *b == b'?').is_some() {
-                self.__query__.write(
-                    std::str::from_utf8(r.read_while(|b| b != &b' '))
-                        .unwrap()
-                        .to_owned()
-                        .into_boxed_str(),
-                );
-                // SAFETY: calling after `self.__query__` is already initialized
-                unsafe {
-                    self.query = QueryParams::new(self.__query__.assume_init_ref().as_bytes());
-                }
-            }
-
-            r.next_if(|b| *b == b' ').ok_or_else(Response::BadRequest)?;
-        }
-
-        r.consume("HTTP/1.1\r\n")
-            .ok_or_else(Response::HTTPVersionNotSupported)?;
-
-        while r.consume("\r\n").is_none() {
-            let key_bytes = r.read_while(|b| b != &b':');
-            r.consume(": ").unwrap(); // here `r` holds a complete HTTP request
-            let value = CowSlice::Own(r.read_while(|b| b != &b'\r').to_owned().into_boxed_slice());
-            r.consume("\r\n").unwrap(); // here `r` holds a complete HTTP request
-
-            if let Some(key) = RequestHeader::from_bytes(key_bytes) {
-                self.headers.append(key, value);
-            } else {
-                self.headers.insert_custom(
-                    Slice::from_bytes(Box::leak(key_bytes.to_owned().into_boxed_slice())),
-                    value,
-                )
-            }
-        }
-
-        if self.get_payload_size()?.is_some() {
-            self.payload = Option::from(CowSlice::Own(r.remaining().into()));
-        }
-
-        Ok(Some(()))
-    }
-
     #[cfg(feature = "rt_worker")]
     pub(crate) async fn take_over(
         mut self: Pin<&mut Self>,
@@ -487,25 +434,44 @@ impl Request {
         env: ::worker::Env,
         ctx: ::worker::Context,
     ) -> Result<(), crate::Response> {
-        use crate::Response;
         self.context.load((ctx, env));
 
-        self.method = Method::from_worker(req.method()).ok_or_else(|| {
-            Response::NotImplemented().with_text("ohkami doesn't support `CONNECT`, `TRACE` method")
-        })?;
+        self.method = Method::from_worker(req.method()).ok_or_else(Response::NotImplemented)?;
 
-        self.__url__.write(
-            req.url()
-                .map_err(|_| Response::BadRequest().with_text("Invalid request URL"))?,
-        );
-        crate::DEBUG!("Load __url__: {:?}", self.__url__);
+        {
+            let url = req.url().map_err(|e| {
+                crate::ERROR!("[Request::take_over] got invalid url, error: {e}");
+                Response::BadRequest()
+            })?;
 
-        // SAFETY: Just calling for request bytes and `self.__url__` is already initialized
-        unsafe {
-            let __url__ = self.__url__.assume_init_ref();
-            let path = Slice::from_bytes(__url__.path().as_bytes()).as_bytes();
-            self.query = QueryParams::new(__url__.query().unwrap_or_default().as_bytes());
+            let path = match url.path() {
+                "" => "/",
+                p => p,
+            };
+            self.__buf__[..path.len()].copy_from_slice(path.as_bytes());
+            // avoiding the immutable/mutable borrow conflict
+            //
+            // SAFETY:
+            // - `self.__buf__` lives as long as `self`
+            // - this part of `self.__buf__` is never modified after this
+            let path = unsafe { std::mem::transmute::<&[u8], &[u8]>(&self.__buf__[..path.len()]) };
             self.path.init_with_request_bytes(path)?;
+
+            if let Some(query) = url.query() {
+                self.__buf__[path.len()..path.len() + query.len()]
+                    .copy_from_slice(query.as_bytes());
+                // avoiding the immutable/mutable borrow conflict
+                //
+                // SAFETY:
+                // - `self.__buf__` lives as long as `self`
+                // - this part of `self.__buf__` is never modified after this
+                let query = unsafe {
+                    std::mem::transmute::<&[u8], &[u8]>(
+                        &self.__buf__[path.len()..path.len() + query.len()],
+                    )
+                };
+                self.query = QueryParams::new(query);
+            }
         }
 
         self.headers.take_over(req.headers());
@@ -513,14 +479,12 @@ impl Request {
         self.payload = Some(CowSlice::Own(
             req.bytes()
                 .await
-                .map_err(|_| {
-                    Response::InternalServerError().with_text("Failed to read request payload")
-                })?
+                .map_err(|_| Response::InternalServerError())?
                 .into(),
         ));
 
         if let Some(ip) = self.headers.get("cf-connecting-ip") {
-            self.ip = ip.parse().unwrap(/* We think Cloudflare provides valid value here... */);
+            self.ip = ip.parse().unwrap(/* We believe Cloudflare provides a valid value here... */);
         }
 
         Ok(())
@@ -534,16 +498,15 @@ impl Request {
             context: _,
         }: ::lambda_runtime::LambdaEvent<crate::x_lambda::LambdaHTTPRequest>,
     ) -> Result<(), lambda_runtime::Error> {
-        self.__query__.write(req.rawQueryString.into_boxed_str());
-        unsafe {
-            self.query = QueryParams::new(self.__query__.assume_init_ref().as_bytes());
-        }
-
         self.context.load(req.requestContext);
         {
             let path_bytes = unsafe {
-                let bytes = self.context.lambda().http.path.as_bytes();
-                std::slice::from_raw_parts(bytes.as_ptr(), bytes.len())
+                // avoiding the immutable/mutable borrow conflict
+                //
+                // SAFETY:
+                // - `self.context` lives as long as `self`
+                // - `self.context.lambda().http.path` is never modified after this
+                std::mem::transmute::<&[u8], &[u8]>(self.context.lambda().http.path.as_bytes())
             };
             self.path
                 .init_with_request_bytes(path_bytes)
@@ -551,6 +514,9 @@ impl Request {
             self.method = self.context.lambda().http.method;
             self.ip = self.context.lambda().http.sourceIp;
         }
+
+        self.__buf__[..req.rawQueryString.len()].copy_from_slice(req.rawQueryString.as_bytes());
+        self.query = QueryParams::new(&self.__buf__[..req.rawQueryString.len()]);
 
         self.headers = req.headers;
         if !req.cookies.is_empty() {
@@ -568,7 +534,7 @@ impl Request {
             ));
         }
 
-        Result::<(), lambda_runtime::Error>::Ok(())
+        Ok(())
     }
 }
 
