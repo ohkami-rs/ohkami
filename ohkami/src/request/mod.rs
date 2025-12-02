@@ -436,8 +436,7 @@ impl Request {
     ) -> Result<(), crate::Response> {
         self.context.load((ctx, env));
 
-        self.method =
-            Method::from_worker(req.method()).ok_or_else(|| Response::NotImplemented())?;
+        self.method = Method::from_worker(req.method()).ok_or_else(Response::NotImplemented)?;
 
         {
             let url = req.url().map_err(|e| {
@@ -503,13 +502,11 @@ impl Request {
         {
             let path_bytes = unsafe {
                 // avoiding the immutable/mutable borrow conflict
-                // 
+                //
                 // SAFETY:
                 // - `self.context` lives as long as `self`
                 // - `self.context.lambda().http.path` is never modified after this
-                std::mem::transmute::<&[u8], &[u8]>(
-                    self.context.lambda().http.path.as_bytes()
-                )
+                std::mem::transmute::<&[u8], &[u8]>(self.context.lambda().http.path.as_bytes())
             };
             self.path
                 .init_with_request_bytes(path_bytes)
