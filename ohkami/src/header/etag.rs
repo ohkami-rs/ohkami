@@ -1,7 +1,9 @@
 use std::borrow::Cow;
 
+pub struct ETag<'header>(ETagVariant<'header>);
+
 #[derive(Clone, Debug, PartialEq)]
-pub enum ETag<'header> {
+enum ETagVariant<'header> {
     Any,
     Strong(Cow<'header, str>),
     Weak(Cow<'header, str>),
@@ -31,19 +33,49 @@ impl std::fmt::Display for ETagError {
 }
 impl std::error::Error for ETagError {}
 
+impl<'a> ETag<'a> {
+    pub const fn is_any(&self) -> bool {
+        matches!(self.0, ETagVariant::Any)
+    }
+    pub const fn is_strong(&self) -> bool {
+        matches!(self.0, ETagVariant::Strong(_))
+    }
+    pub const fn is_weak(&self) -> bool {
+        matches!(self.0, ETagVariant::Weak(_))
+    }
+
+    pub const fn any() -> Self {
+        Self(ETagVariant::Any)
+    }
+    pub fn strong(value: impl Into<Cow<'a, str>>) -> Result<Self, ETagError> {
+        let value = value.into();
+        value
+            .is_ascii()
+            .then_some(Self(ETagVariant::Strong(value)))
+            .ok_or(ETagError::InvalidCharactor)
+    }
+    pub fn weak(value: impl Into<Cow<'a, str>>) -> Result<Self, ETagError> {
+        let value = value.into();
+        value
+            .is_ascii()
+            .then_some(Self(ETagVariant::Weak(value)))
+            .ok_or(ETagError::InvalidCharactor)
+    }
+}
+
 impl<'header> ETag<'header> {
     pub fn serialize(&self) -> Cow<'static, str> {
-        match self {
-            ETag::Any => Cow::Borrowed("*"),
-            ETag::Strong(value) => Cow::Owned(format!("\"{value}\"")),
-            ETag::Weak(value) => Cow::Owned(format!("W/\"{value}\"")),
+        match &self.0 {
+            ETagVariant::Any => Cow::Borrowed("*"),
+            ETagVariant::Strong(value) => Cow::Owned(format!("\"{value}\"")),
+            ETagVariant::Weak(value) => Cow::Owned(format!("W/\"{value}\"")),
         }
     }
 
     /// Parse a single ETag.
     pub fn parse(mut raw: &'header str) -> Result<Self, ETagError> {
         if raw == "*" {
-            Ok(ETag::Any)
+            Ok(Self(ETagVariant::Any))
         } else {
             let is_weak = raw.starts_with("W/");
             if is_weak {
@@ -59,9 +91,9 @@ impl<'header> ETag<'header> {
             }
 
             Ok(if is_weak {
-                ETag::Weak(Cow::Borrowed(raw))
+                Self(ETagVariant::Weak(Cow::Borrowed(raw)))
             } else {
-                ETag::Strong(Cow::Borrowed(raw))
+                Self(ETagVariant::Strong(Cow::Borrowed(raw)))
             })
         }
     }
@@ -102,29 +134,20 @@ impl<'header> ETag<'header> {
     }
 
     pub fn matches(&self, other: &ETag<'_>) -> bool {
-        match (self, other) {
-            (ETag::Any, _) | (_, ETag::Any) => true,
-            (ETag::Strong(a), ETag::Strong(b))
-            | (ETag::Strong(a), ETag::Weak(b))
-            | (ETag::Weak(a), ETag::Strong(b))
-            | (ETag::Weak(a), ETag::Weak(b)) => a == b,
+        match (&self.0, &other.0) {
+            (ETagVariant::Any, _) | (_, ETagVariant::Any) => true,
+            (ETagVariant::Strong(a), ETagVariant::Strong(b))
+            | (ETagVariant::Strong(a), ETagVariant::Weak(b))
+            | (ETagVariant::Weak(a), ETagVariant::Strong(b))
+            | (ETagVariant::Weak(a), ETagVariant::Weak(b)) => a == b,
         }
     }
 
     pub fn into_owned(self) -> ETag<'static> {
-        match self {
-            ETag::Any => ETag::Any,
-            ETag::Strong(cow) => ETag::Strong(Cow::Owned(cow.into_owned())),
-            ETag::Weak(cow) => ETag::Weak(Cow::Owned(cow.into_owned())),
+        match self.0 {
+            ETagVariant::Any => ETag::any(),
+            ETagVariant::Strong(cow) => ETag::strong(cow.into_owned()).unwrap(),
+            ETagVariant::Weak(cow) => ETag::weak(cow.into_owned()).unwrap(),
         }
-    }
-}
-
-impl ETag<'static> {
-    pub fn new(value: String) -> Result<Self, ETagError> {
-        value
-            .is_ascii()
-            .then_some(Self::Strong(value.into()))
-            .ok_or(ETagError::InvalidCharactor)
     }
 }

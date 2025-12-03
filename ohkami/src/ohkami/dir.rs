@@ -219,7 +219,7 @@ impl StaticFileHandler {
             .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
 
         let etag = get_etag
-            .map(|f| ETag::new(f(&source_file)))
+            .map(|f| ETag::strong(f(&source_file)))
             .transpose()
             .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
 

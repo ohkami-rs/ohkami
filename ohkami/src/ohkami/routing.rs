@@ -108,9 +108,10 @@ macro_rules! Route {
             )*
 
             /// Route to another Ohkami instance.
-            fn By(self, another: Ohkami) -> ByAnother;
+            fn By(self, another: impl Into<Ohkami>) -> ByAnother;
 
-            #[cfg(feature="__rt_native__")]
+            #[deprecated(since = "0.25.0", note = "Use `.By(ohkami::ServeDir::new())` instead.")]
+            #[cfg(feature = "__rt_native__")]
             /// Serve static files from a directory.
             ///
             /// Common comprssion formats ( `gzip`, `deflate`, `br`, `zstd` )
@@ -131,10 +132,10 @@ macro_rules! Route {
                 }
             )*
 
-            fn By(self, another: Ohkami) -> ByAnother {
+            fn By(self, another: impl Into<Ohkami>) -> ByAnother {
                 ByAnother {
                     route:  RouteSegments::from_literal(self),
-                    ohkami: another,
+                    ohkami: another.into(),
                 }
             }
 

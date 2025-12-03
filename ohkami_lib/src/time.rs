@@ -1,5 +1,7 @@
 //! Most parts are based on [chrono](https://github.com/chronotope/chrono); MIT.
 
+use std::num::NonZero;
+
 /// format a unix timestamp by **IMF-fixdate** like `Sun, 06 Nov 1994 08:49:37 GMT`,
 /// mainly intended for `Date` header.
 ///
@@ -16,10 +18,21 @@ const SHORT_MONTHS: [&[u8; 3]; 12] = [
 
 const IMF_FIXDATE_LEN: usize = str::len("Sun, 06 Nov 1994 08:49:37 GMT");
 
-#[derive(PartialEq, Eq, Clone, Copy, Debug)]
+fn get_weekday_by_sakamoto_algorithm(year: u16, month: NonZero<u8>, day: u8) -> &'static [u8; 3] {
+    const T: [u8; 12] = [0, 3, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4];
+
+    let d = day as u32;
+    let m = month.get() as usize;
+    let y = if m < 3 { year - 1 } else { year } as u32;
+
+    let w = (y + y / 4 - y / 100 + y / 400 + T[m - 1] as u32 + d) % 7;
+    unsafe { SHORT_WEEKDAYS.get_unchecked(w as usize) }
+}
+
+#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Debug)]
 pub struct ImfFixdate {
     year: u16,
-    month: u8,
+    month: NonZero<u8>,
     day: u8,
     hour: u8,
     min: u8,
@@ -44,10 +57,15 @@ impl ImfFixdate {
         r.consume(b" ")
             .ok_or_else(|| format!("invalid separator: `{s}`"))?;
 
-        let month = r
-            .consume_oneof(SHORT_MONTHS)
-            .and_then(|index| u8::try_from(index).ok())
-            .ok_or_else(|| format!("invalid month: `{s}`"))?;
+        // SAFETY: `1 + {u8}` is always non-zero
+        let month = unsafe {
+            std::num::NonZero::<u8>::new_unchecked(
+                1 + r
+                    .consume_oneof(SHORT_MONTHS)
+                    .and_then(|index| u8::try_from(index).ok())
+                    .ok_or_else(|| format!("invalid month: `{s}`"))?,
+            )
+        };
 
         r.consume(b" ")
             .ok_or_else(|| format!("invalid separator: `{s}`"))?;
@@ -93,45 +111,8 @@ impl ImfFixdate {
             sec,
         })
     }
-}
-impl PartialOrd for ImfFixdate {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(other))
-    }
-}
-impl Ord for ImfFixdate {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        std::cmp::Ordering::Equal
-            .then(self.year.cmp(&other.year))
-            .then(self.month.cmp(&other.month))
-            .then(self.day.cmp(&other.day))
-            .then(self.hour.cmp(&other.hour))
-            .then(self.min.cmp(&other.min))
-            .then(self.sec.cmp(&other.sec))
-    }
-}
 
-/// date time on UTC *to the second*
-#[derive(Clone, Copy)]
-pub struct UTCDateTime {
-    date: Date,
-    time: Time,
-}
-impl UTCDateTime {
-    #[inline]
-    pub fn from_unix_timestamp(unix_timestamp: u64) -> Self {
-        let secs = unix_timestamp as i64;
-
-        let days = secs.div_euclid(86_400);
-        let secs = secs.rem_euclid(86_400);
-
-        let date = Date::from_days(days as i32 + 719_163);
-        let time = Time::from_seconds(secs as u32);
-
-        Self { date, time }
-    }
-
-    pub fn into_imf_fixdate(self) -> String {
+    pub fn serialize(&self) -> String {
         let mut buf = [std::mem::MaybeUninit::<u8>::uninit(); IMF_FIXDATE_LEN];
         let mut i = 0;
 
@@ -157,14 +138,16 @@ impl UTCDateTime {
             }};
         }
 
-        let UTCDateTime { date, time } = self;
-        let day = date.day() as u8;
-        let year = date.year();
-        let (hour, min, sec) = time.hms();
+        let Self {
+            year,
+            month,
+            day,
+            hour,
+            min,
+            sec,
+        } = *self;
 
-        fill!(*unsafe {
-            SHORT_WEEKDAYS.get_unchecked(date.weekday().num_days_from_sunday() as usize)
-        });
+        fill!(get_weekday_by_sakamoto_algorithm(year, month, day));
         fill!(b", ");
         if day < 10 {
             fill!(@b'0');
@@ -173,7 +156,7 @@ impl UTCDateTime {
             fill!(@100> day)
         }
         fill!(@b' ');
-        fill!(*unsafe { SHORT_MONTHS.get_unchecked(date.month_index() as usize) });
+        fill!(*unsafe { SHORT_MONTHS.get_unchecked((month.get() - 1) as usize) });
         fill!(@b' ');
         fill!(@100> (year/100) as u8);
         fill!(@100> (year%100) as u8);
@@ -186,9 +169,7 @@ impl UTCDateTime {
         fill!(b" GMT");
 
         #[cfg(debug_assertions)]
-        {
-            assert_eq!(i, buf.len())
-        }
+        assert_eq!(i, buf.len());
 
         unsafe {
             // SAFETY: Here `buf` is obviously valid UTF-8 byte array
@@ -204,6 +185,49 @@ impl UTCDateTime {
                 >(buf),
             ))
         }
+    }
+
+    pub fn from_unix_timestamp(unix_timestamp: u64) -> Self {
+        UTCDateTime::from_unix_timestamp(unix_timestamp).to_imf_fixdate()
+    }
+}
+
+/// date time on UTC *to the second*
+#[derive(Clone, Copy)]
+pub struct UTCDateTime {
+    date: Date,
+    time: Time,
+}
+impl UTCDateTime {
+    #[inline]
+    pub fn from_unix_timestamp(unix_timestamp: u64) -> Self {
+        let secs = unix_timestamp as i64;
+
+        let days = secs.div_euclid(86_400);
+        let secs = secs.rem_euclid(86_400);
+
+        let date = Date::from_days(days as i32 + 719_163);
+        let time = Time::from_seconds(secs as u32);
+
+        Self { date, time }
+    }
+
+    #[inline]
+    pub fn to_imf_fixdate(&self) -> ImfFixdate {
+        let (hour, min, sec) = self.time.hms();
+        ImfFixdate {
+            year: self.date.year() as u16,
+            // SAFETY: `1 + month_index` is always non-zero
+            month: unsafe { NonZero::new_unchecked(1 + self.date.month_index() as u8) },
+            day: self.date.day() as u8,
+            hour: hour as u8,
+            min: min as u8,
+            sec: sec as u8,
+        }
+    }
+
+    pub fn into_imf_fixdate(self) -> String {
+        self.to_imf_fixdate().serialize()
     }
 }
 

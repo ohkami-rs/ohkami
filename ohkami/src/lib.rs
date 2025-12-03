@@ -314,6 +314,8 @@ mod router;
 mod ohkami;
 #[cfg(feature = "__rt__")]
 pub use ohkami::{Ohkami, Route};
+#[cfg(feature = "__rt_native__")]
+pub use ohkami::{ServeDir, ServeFile};
 
 pub mod fang;
 pub use fang::{Fang, FangAction, FangProc, handler};

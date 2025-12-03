@@ -3,6 +3,10 @@ mod _test;
 
 #[cfg(feature = "__rt_native__")]
 mod dir;
+#[cfg(feature = "__rt_native__")]
+mod fs;
+#[cfg(feature = "__rt_native__")]
+pub use fs::*;
 
 pub(crate) mod routing;
 pub use routing::{Route, Routing};

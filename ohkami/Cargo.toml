@@ -106,7 +106,7 @@ default = [
     #"sse",
     #"ws",
     #"tls",
-    #"rt_tokio",
+    "rt_tokio",
     #"rt_smol",
     #"rt_nio",
     #"rt_glommio",

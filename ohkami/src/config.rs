@@ -19,8 +19,8 @@
 ///
 /// ## Note
 ///
-/// `Config::default()` provides a pure, haed-coded default values;
-/// it does NOT read from environment variables:
+/// `Config::default()` provides a pure, hard-coded default values;
+/// it does NOT read anything from environment variables:
 ///
 /// ```ignore
 /// ohkami::Config {
@@ -29,7 +29,7 @@
 /// }
 /// ```
 ///
-/// Use `Config::new()` to correctly apply the env-overrides if needed:
+/// Use `Config::new()` to apply your environment variables if needed:
 ///
 /// ```ignore
 /// ohkami::Config {
