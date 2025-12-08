@@ -67,6 +67,7 @@ jobs:
           path: ~/.cache/sccache
 
       - name: Run tasks
+        if: ${{ !(matrix.toolchain == 'nightly' && matrix.task == 'check') }} # WORKAROUND for https://github.com/rust-lang/rust/issues/149692
         run:  |
           sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
           task ${{ matrix.task }}
