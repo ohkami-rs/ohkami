@@ -61,7 +61,7 @@ jobs:
         # cache sccache directory after the most large task
         # in order to maximize cache hit
         if:   ${{ matrix.task == 'test:other' }}
-        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c46c3ee24c4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
         with:
           key:  ${{ runner.os }}-sccahe-dir
           path: ~/.cache/sccache
