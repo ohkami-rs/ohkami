@@ -17,7 +17,7 @@ jobs:
         task: ['check', 'test:core', 'test:other', 'bench:dryrun']
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@cd7d8b573c21c9e8e3e324b923ea1d3f4c3b0981
 
       - name: Setup mold
         run:  |
@@ -26,7 +26,7 @@ jobs:
           echo 'linker    = "clang"'                                   >> $HOME/.cargo/config.toml
           echo 'rustflags = ["-C", "link-arg=-fuse-ld=/usr/bin/mold"]' >> $HOME/.cargo/config.toml
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@8f152f67b3a4eaf56d06a7577e1a3bb817f6e2aa
         with:
           node-version: latest
 
@@ -41,7 +41,7 @@ jobs:
 
       - name: Cache cargo bin
         id:   cache_cargo_bin
-        uses: actions/cache@v4
+        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c46c3ee24c4
         with:
           key:  ${{ runner.os }}-cargo-bin
           path: ~/.cargo/bin
@@ -61,7 +61,7 @@ jobs:
         # cache sccache directory after the most large task
         # in order to maximize cache hit
         if:   ${{ matrix.task == 'test:other' }}
-        uses: actions/cache@v4
+        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c46c3ee24c4
         with:
           key:  ${{ runner.os }}-sccahe-dir
           path: ~/.cache/sccache
