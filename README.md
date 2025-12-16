@@ -213,11 +213,11 @@ async fn handler1(
 - [nio](https://github.com/nurmohammed840/nio) _v0.0.\*_
 - [glommio](https://github.com/DataDog/glommio) _v0.9.\*_
 - [monoio](https://github.com/bytedance/monoio) _v0.2.\*_
-- [compio](https://github.com/compio-rs/compio) _v0.15.\*_
+- [compio](https://github.com/compio-rs/compio) _v0.17.\*_
 
 ### `"rt_worker"` : Cloudflare Workers
 
-- [worker](https://github.com/cloudflare/workers-rs) _v0.6.\*_
+- [worker](https://github.com/cloudflare/workers-rs) _v0.7.\*_
 
 Ohkami has first-class support for Cloudflare Workers:
 
@@ -249,7 +249,7 @@ for wokring examples and detailed usage of `#[worker]` (and/or `openapi`).
 
 ### `"rt_lambda"` : AWS Lambda
 
-- [lambda_runtime](https://github.com/awslabs/aws-lambda-rust-runtime) _v0.14.\*_ with `tokio`
+- [lambda_runtime](https://github.com/awslabs/aws-lambda-rust-runtime) _v1.0.\*_ with `tokio`
 
 Both `Function URLs` and `API Gateway` are supported, and WebSocket is not supported.
 
