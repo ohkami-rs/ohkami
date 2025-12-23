@@ -14,7 +14,6 @@
 //!
 //! See [GitHub repo](https://github.com/ohkami-rs/ohkami) for details!
 
-#![feature(let_chains)]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![allow(incomplete_features)]
 #![cfg_attr(
