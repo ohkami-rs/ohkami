@@ -367,6 +367,7 @@ impl Headers {
             unsafe { self.standard.delete(name as u8) };
         }
     }
+
     pub(crate) fn remove_custom(&mut self, name: &'static str) {
         if let Some(c) = self.custom.as_mut()
             && let Some(v) = c.remove(name)
