@@ -593,6 +593,7 @@ impl Ohkami {
                 unsafe impl Send for crate::router::r#final::Router {}
                 unsafe impl Sync for crate::router::r#final::Router {}
             }
+            #[cfg(feature = "tls")]
             let tls_acceptor = tls_acceptor.clone();
             let router = router.clone();
 
@@ -602,7 +603,7 @@ impl Ohkami {
                 let stream = conn.connect().await?;
 
                 #[cfg(feature = "tls")]
-                let connection: session::Connection = match tls_acceptor {
+                let stream: session::Connection = match tls_acceptor {
                     None => stream.into(),
                     Some(tls_acceptor) => match tls_acceptor.accept(stream).await {
                         Ok(tls_stream) => tls_stream.into(),
@@ -613,7 +614,7 @@ impl Ohkami {
                     },
                 };
 
-                let session = session::Session::new(config, connection, address.ip(), router);
+                let session = session::Session::new(config, stream, address.ip(), router);
                 session.manage().await;
 
                 drop(wg);
