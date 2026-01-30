@@ -32,7 +32,7 @@ serde_json  = { workspace = true }
 # runtimes
 tokio          = { version = "1",    optional = true }
 smol           = { version = "2",    optional = true }
-nio            = { version = "0.0",  optional = true }
+nio            = { version = "0.1.3",  optional = true, features = ["tokio-io"] }
 glommio        = { version = "0.9",  optional = true }
 monoio         = { version = "0.2",  optional = true, features = ["signal"] }
 monoio-compat  = { version = "0.2",  optional = true }
@@ -62,7 +62,7 @@ rt_tokio = ["__rt_native__", "__rt_threaded__", "__io_tokio__",
 rt_smol = ["__rt_native__", "__rt_threaded__", "__io_futures__",
     "dep:smol",
 ]
-rt_nio = ["__rt_native__", "__rt_threaded__", "__io_tokio__",
+rt_nio = ["__rt_native__", "__io_tokio__",
     "dep:nio",
 ]
 rt_glommio = ["__rt_native__", "__io_futures__",
@@ -99,19 +99,19 @@ __io_futures__  = ["dep:futures-util","futures-util/io", "mews?/io_futures", "an
 
 ##### DEBUG #####
 DEBUG = ["tokio?/rt-multi-thread", "tokio?/macros"]
-#default = [
+# default = [
 #    "nightly",
 #    "openapi",
 #    "sse",
 #    "ws",
 #    "tls",
-#    "rt_tokio",
+#    #"rt_tokio",
 #    #"rt_smol",
-#    #"rt_nio",
+#    "rt_nio",
 #    #"rt_glommio",
 #    #"rt_worker",
 #    "DEBUG",
-#]
+# ]
 
 
 [dev-dependencies] # for doc test

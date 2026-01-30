@@ -110,6 +110,8 @@ compile_error! {"
 
 #[cfg(feature = "__rt_native__")]
 mod __rt__ {
+    #![allow(unused)]
+
     #[cfg(feature = "__io_futures__")]
     pub(crate) use futures_util::{AsyncReadExt as AsyncRead, AsyncWriteExt as AsyncWrite};
     #[cfg(feature = "__io_tokio__")]
@@ -140,11 +142,12 @@ mod __rt__ {
     #[cfg(feature = "rt_compio")]
     pub(crate) type TcpStream = compio::io::compat::AsyncStream<compio::net::TcpStream>;
 
+    #[cfg(not(feature = "rt_nio"))]
     #[inline(always)]
     pub(crate) async fn accept(
         listener: &TcpListener,
     ) -> std::io::Result<(TcpStream, std::net::SocketAddr)> {
-        #[cfg(any(feature = "rt_tokio", feature = "rt_smol", feature = "rt_nio"))]
+        #[cfg(any(feature = "rt_tokio", feature = "rt_smol"))]
         {
             listener.accept().await
         }
@@ -193,7 +196,7 @@ mod __rt__ {
     #[cfg(feature = "rt_monoio")]
     pub(crate) use monoio::time::sleep;
     #[cfg(feature = "rt_nio")]
-    pub(crate) use nio::time::sleep;
+    pub(crate) use nio::sleep;
 
     #[cfg(feature = "__rt_threaded__")]
     mod task {
@@ -205,15 +208,13 @@ mod __rt__ {
         pub trait Task: std::future::Future + 'static {}
         impl<F: std::future::Future + 'static> Task for F {}
     }
+
     pub(crate) fn spawn(task: impl task::Task) {
         #[cfg(feature = "rt_tokio")]
         tokio::task::spawn(task);
 
         #[cfg(feature = "rt_smol")]
         smol::spawn(task).detach();
-
-        #[cfg(feature = "rt_nio")]
-        nio::spawn(task);
 
         #[cfg(feature = "rt_glommio")]
         glommio::spawn_local(task).detach();
@@ -239,11 +240,7 @@ mod __rt__ {
             return smol::block_on(future);
 
             #[cfg(feature = "rt_nio")]
-            return nio::runtime::Builder::new_multi_thread()
-                .enable_all()
-                .build()
-                .unwrap()
-                .block_on(future);
+            return nio::RuntimeBuilder::new().build().unwrap().block_on(future);
 
             #[cfg(feature = "rt_glommio")]
             return glommio::LocalExecutor::default().run(future);
