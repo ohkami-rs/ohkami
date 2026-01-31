@@ -1,3 +1,6 @@
+#[cfg(feature = "rt_nio")]
+mod specialize;
+
 #[cfg(test)]
 mod _test;
 
@@ -502,6 +505,7 @@ impl Ohkami {
         router
     }
 
+    #[cfg(not(feature = "rt_nio"))]
     #[cfg(feature = "__rt_native__")]
     async fn howl_core<T>(
         self,
