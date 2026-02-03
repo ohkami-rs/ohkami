@@ -116,5 +116,5 @@ DEBUG = ["tokio?/rt-multi-thread", "tokio?/macros"]
 
 [dev-dependencies] # for doc test
 sqlx = { version = "0.8", features = ["runtime-tokio", "postgres", "macros"] }
-rustls = { version = "0.26", features = ["ring"] }
+rustls = { version = "0.23", features = ["ring"] }
 rustls-pemfile = { version = "2.2" }
