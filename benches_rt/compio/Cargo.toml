@@ -7,7 +7,7 @@ authors = ["kanarus <kanarus786@gmail.com>"]
 [dependencies]
 # set `default-features = false` to assure "DEBUG" feature be off even when DEBUGing `../ohkami`
 ohkami  = { path = "../../ohkami", default-features = false, features = ["rt_compio"] }
-compio = { version = "0.15" }
+compio = { version = "0.18" }
 
 [features]
 DEBUG = ["ohkami/DEBUG"]
