@@ -26,7 +26,7 @@ proc-macro2  = "1.0"
 quote        = "1.0"
 syn          = { version = "2.0", features = ["full"] }
 toml         = { optional = true, version = "0.9",  features = ["serde", "parse"], default-features = false }
-jsonc-parser = { optional = true, version = "0.28", features = ["serde"] }
+jsonc-parser = { optional = true, version = "0.29", features = ["serde"] }
 serde        = { optional = true, workspace = true }
 serde_json   = { optional = true, workspace = true }
 

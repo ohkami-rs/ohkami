@@ -13,9 +13,9 @@ exclude  = [
 ]
 
 [workspace.package]
-version    = "0.24.3"
+version    = "0.24.4"
 edition    = "2024"
-authors    = ["kanarus <kanarus786@gmail.com>"]
+authors    = ["kanarus <mail@kanarus.dev>"]
 homepage   = "https://crates.io/crates/ohkami"
 repository = "https://github.com/ohkami-rs/ohkami"
 readme     = "README.md"
