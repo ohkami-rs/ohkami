@@ -73,7 +73,7 @@ rt_monoio = ["__rt_native__", "__io_tokio__",
     "dep:monoio-compat",
 ]
 rt_compio = ["__rt_native__", "__io_futures__",
-    "dep:compio",
+    "dep:compio","compio/net",
 ]
 rt_worker = ["__rt__",
     "dep:worker", "worker/d1", "worker/queue",
