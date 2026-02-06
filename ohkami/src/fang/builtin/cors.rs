@@ -1,5 +1,3 @@
-#![allow(non_snake_case)]
-
 use crate::{Fang, FangProc, Request, Response, Status, header::append};
 
 /// # Builtin fang for CORS config
@@ -36,6 +34,8 @@ pub struct Cors {
 #[derive(Clone, Debug)]
 pub(crate) enum AccessControlAllowOrigin {
     Any,
+    // This sould be `&'static _` in order to avoid repeated allocations
+    // in `.access_control_allow_origin(...)` in the [`bite` impl](CorsProc::bite).
     Only(&'static str),
 }
 impl AccessControlAllowOrigin {
@@ -44,11 +44,13 @@ impl AccessControlAllowOrigin {
         matches!(self, Self::Any)
     }
 
-    #[inline(always)]
-    pub(crate) const fn from_literal(lit: &'static str) -> Self {
-        match lit.as_bytes() {
-            b"*" => Self::Any,
-            origin => Self::Only(unsafe { std::str::from_utf8_unchecked(origin) }),
+    pub(crate) fn new(s: impl Into<String>) -> Result<Self, &'static str> {
+        // This is safe and standard practice, since `Cors` (the only user of `AccessControlAllowOrigin`)
+        // is created only once at startup and persist for the entire serving process.
+        let s: &'static str = String::leak(s.into());
+        match s {
+            "*" => Ok(Self::Any),
+            _ => super::validate_origin(s).map(|_| Self::Only(s))
         }
     }
 
@@ -62,12 +64,13 @@ impl AccessControlAllowOrigin {
 }
 
 impl Cors {
-    /// Create `ors` fang using given `origin` as `Access-Control-Allow-Origin` header value.\
+    /// Create `Cors` fang using given `origin` as `Access-Control-Allow-Origin` header value.\
     /// (Both `"*"` and a speciffic origin are available)
     #[allow(non_snake_case)]
-    pub fn new(origin: &'static str) -> Self {
+    pub fn new(origin: impl Into<String>) -> Self {
         Self {
-            allow_origin: AccessControlAllowOrigin::from_literal(origin),
+            allow_origin: AccessControlAllowOrigin::new(origin)
+                .unwrap_or_else(|err| panic!("[Cors::new] {err}")),
             allow_credentials: false,
             allow_headers: None,
             expose_headers: None,
@@ -110,21 +113,21 @@ impl Cors {
 }
 
 impl<Inner: FangProc> Fang<Inner> for Cors {
-    type Proc = CORSProc<Inner>;
+    type Proc = CorsProc<Inner>;
     fn chain(&self, inner: Inner) -> Self::Proc {
-        CORSProc {
+        CorsProc {
             inner,
             cors: self.clone(),
         }
     }
 }
 
-pub struct CORSProc<Inner: FangProc> {
+pub struct CorsProc<Inner: FangProc> {
     cors: Cors,
     inner: Inner,
 }
 /* Based on https://github.com/honojs/hono/blob/main/src/middleware/cors/index.ts; MIT */
-impl<Inner: FangProc> FangProc for CORSProc<Inner> {
+impl<Inner: FangProc> FangProc for CorsProc<Inner> {
     async fn bite<'b>(&'b self, req: &'b mut Request) -> Response {
         let mut res = self.inner.bite(req).await;
 
@@ -167,6 +170,12 @@ impl<Inner: FangProc> FangProc for CORSProc<Inner> {
 
 #[cfg(test)]
 mod test {
+    #[test]
+    fn cors_new_with_str_or_string() {
+        let _: super::Cors = super::Cors::new("https://example.com");
+        let _: super::Cors = super::Cors::new(String::from("https://") + "example.com");
+    }
+
     #[test]
     fn cors_fang_bound() {
         use crate::fang::{BoxedFPC, Fang};
