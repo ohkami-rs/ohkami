@@ -10,7 +10,7 @@ pub trait FromEnv: Sized {
     ///
     /// `Option<BindingType>` is `None` for KV binding and `Some` holding :
     ///
-    /// - `"String"` for Variable binding (ref: https://github.com/cloudflare/workers-rs/blob/38af58acc4e54b29c73336c1720188f3c3e86cc4/worker/src/env.rs#L138-L140)
+    /// - `"String"` for Variable and Secret binding (https://github.com/cloudflare/workers-rs/blob/5f06bb0732b8593f234ff34c0e752bf3685189dd/worker/src/env.rs#L201-L236)
     /// - `"Ai"` for AI binding (ref: https://github.com/cloudflare/workers-rs/blob/38af58acc4e54b29c73336c1720188f3c3e86cc4/worker/src/ai.rs#L63-L79)
     /// - `"R2Bucket"` for R2 binding (ref: https://github.com/cloudflare/workers-rs/blob/38af58acc4e54b29c73336c1720188f3c3e86cc4/worker/src/r2/mod.rs#L131-L133)
     /// - `"Fetcher"` for Service binding (ref: https://github.com/cloudflare/workers-rs/blob/38af58acc4e54b29c73336c1720188f3c3e86cc4/worker/src/fetcher.rs#L94-L96)
@@ -18,6 +18,11 @@ pub trait FromEnv: Sized {
     /// - `"D1Database"` for D1 binding (ref: https://github.com/cloudflare/workers-rs/blob/38af58acc4e54b29c73336c1720188f3c3e86cc4/worker/src/d1/mod.rs#L83-L101)
     /// - `"Hyperdrive"` for Hyperdrive binding (ref: https://github.com/cloudflare/workers-rs/blob/3e4d7cd2b511b39994be0ad111554c773405d3e4/worker/src/hyperdrive.rs#L12-L14)
     /// - `"WorkerQueue"` for Queue binding (ref: https://github.com/cloudflare/workers-rs/blob/3e4d7cd2b511b39994be0ad111554c773405d3e4/worker/src/queue.rs#L318-L320)
+    /// - `"AnalyticsEngineDataset"` for Analytics Engine (https://github.com/cloudflare/workers-rs/blob/5f06bb0732b8593f234ff34c0e752bf3685189dd/worker/src/analytics_engine.rs#L15)
+    /// - `"DynamicDispatcher"` for Dynamic Dispatcher (https://github.com/cloudflare/workers-rs/blob/5f06bb0732b8593f234ff34c0e752bf3685189dd/worker/src/dynamic_dispatch.rs#L29)
+    /// - `"Fetcher"` for Assets (https://github.com/cloudflare/workers-rs/blob/5f06bb0732b8593f234ff34c0e752bf3685189dd/worker/src/env.rs#L114)
+    /// - `"Fetcher"` for Secret Store (https://github.com/cloudflare/workers-rs/blob/5f06bb0732b8593f234ff34c0e752bf3685189dd/worker/src/secret_store.rs#L17)
+    /// - `"Ratelimit"` for Rate Limiter (https://github.com/cloudflare/workers-rs/blob/5f06bb0732b8593f234ff34c0e752bf3685189dd/worker/src/rate_limit.rs#L24)
     fn bindings_meta() -> &'static [(&'static str, Option<&'static str>)] {
         &[]
     }
@@ -46,9 +51,9 @@ pub trait FromEnv: Sized {
 }
 
 pub mod bindings {
-    /// `Var` binding can also be accessed via associated const
-    /// of the same name.
+    /// `Var` binding can also be accessed via associated const of the same name.
     pub type Var = &'static str;
+    pub type Secret = String;
     pub type AI = ::worker::Ai;
     pub type KV = ::worker::kv::KvStore;
     pub type R2 = ::worker::Bucket;
@@ -59,6 +64,12 @@ pub mod bindings {
     /// `Queue` may cause a lot of *WARNING*s on `npm run dev`, but
     /// it's not an actual problem and `Queue` binding does work.
     pub type Queue = ::worker::Queue;
+    pub type AnalyticsEngine = ::worker::AnalyticsEngineDataset;
+    pub type DynamicDispatcher = ::worker::DynamicDispatcher;
+    // ref: https://github.com/cloudflare/workers-rs/blob/5f06bb0732b8593f234ff34c0e752bf3685189dd/worker/src/env.rs#L114
+    pub type Assets = ::worker::Fetcher;
+    pub type SecretStore = ::worker::SecretStore;
+    pub type RateLimiter = ::worker::RateLimiter;
 }
 
 #[doc(hidden)]
