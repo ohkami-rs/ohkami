@@ -19,19 +19,19 @@ pub struct Document {
 
 #[derive(Serialize)]
 struct Info {
-    title: &'static str,
-    version: &'static str,
+    title: String,
+    version: String,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    description: Option<&'static str>,
+    description: Option<String>,
 }
 
 #[derive(Serialize, Clone)]
 pub struct Server {
-    url: &'static str,
+    url: String,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    description: Option<&'static str>,
+    description: Option<String>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     variables: Option<Box<Map<&'static str, ServerVariable>>>,
@@ -48,16 +48,16 @@ struct ServerVariable {
     description: Option<&'static str>,
 }
 impl Server {
-    pub fn at(url: &'static str) -> Self {
+    pub fn at(url: impl Into<String>) -> Self {
         Self {
-            url,
+            url: url.into(),
             description: None,
             variables: None,
         }
     }
 
-    pub fn description(mut self, description: &'static str) -> Self {
-        self.description = Some(description);
+    pub fn description(mut self, description: impl Into<String>) -> Self {
+        self.description = Some(description.into());
         self
     }
 
@@ -98,15 +98,15 @@ impl Components {
 
 impl Document {
     pub fn new(
-        title: &'static str,
-        version: &'static str,
+        title: impl Into<String>,
+        version: impl Into<String>,
         servers: impl Into<Vec<Server>>,
     ) -> Self {
         Self {
             openapi: "3.1.0",
             info: Info {
-                title,
-                version,
+                title: title.into(),
+                version: version.into(),
                 description: None,
             },
             servers: servers.into(),
@@ -118,8 +118,8 @@ impl Document {
         }
     }
 
-    pub fn description(mut self, description: &'static str) -> Self {
-        self.info.description = Some(description);
+    pub fn description(mut self, description: impl Into<String>) -> Self {
+        self.info.description = Some(description.into());
         self
     }
     pub fn path(mut self, path: impl Into<String>, operations: Operations) -> Self {
@@ -157,5 +157,30 @@ impl Document {
                 .security_schemes
                 .insert(securityScheme.__name__, securityScheme),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    
+    #[test]
+    fn test_server_at_with_str_or_string() {
+        let _: Server = Server::at("http://localhost:3000");
+        let _: Server = Server::at(String::from("https://localhost") + ":3000");
+    }
+    
+    #[test]
+    fn test_document_new_with_str_or_string() {
+        let _: Document = Document::new(
+            "title",
+            "version",
+            &[Server::at("http://localhost:3000")],
+        );
+        let _: Document = Document::new(
+            format!("title"),
+            format!("version"),
+            &[Server::at(format!("https://localhost:3000"))],
+        );
     }
 }

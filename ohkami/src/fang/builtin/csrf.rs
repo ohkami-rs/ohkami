@@ -51,7 +51,7 @@ use std::sync::Arc;
 /// ```
 #[derive(Clone, Debug)]
 pub struct Csrf {
-    trusted_origins: Arc<Vec<&'static str>>,
+    trusted_origins: Arc<Vec<String>>,
 }
 
 impl Default for Csrf {
@@ -67,41 +67,15 @@ impl Csrf {
         }
     }
 
-    pub fn with_trusted_origins(trusted_origins: impl IntoIterator<Item = &'static str>) -> Self {
-        let trusted_origins = trusted_origins.into_iter().collect::<Vec<_>>();
+    pub fn with_trusted_origins(trusted_origins: impl IntoIterator<Item = impl Into<String>>) -> Self {
+        let trusted_origins = trusted_origins
+            .into_iter()
+            .map(Into::<String>::into)
+            .collect::<Vec<_>>();
 
         for origin in &trusted_origins {
-            let Some(("http" | "https", rest)) = origin.split_once("://") else {
-                panic!(
-                    "[Csrf::with_trusted_origins] invalid origin: 'http' or 'https' scheme is required"
-                )
-            };
-            let (host, port) = rest
-                .split_once(':')
-                .map_or((rest, None), |(h, p)| (h, Some(p)));
-            if port.is_some_and(|p| !p.chars().all(|c| c.is_ascii_digit())) {
-                panic!("[Csrf::with_trusted_origins] invalid origin: port must be a number");
-            }
-            if !host.starts_with(|c: char| c.is_ascii_alphabetic()) {
-                panic!(
-                    "[Csrf::with_trusted_origins] invalid origin: host must start with an alphabetic character"
-                );
-            }
-            if !host.split('.').all(|part| {
-                !part.is_empty()
-                    && part
-                        .chars()
-                        .all(|c| matches!(c, 'a'..='z' | 'A'..='Z' | '0'..='9' | '-' | '_'))
-            }) {
-                if host.contains(['/', '?', '#']) {
-                    // helpful error message for common mistake
-                    panic!(
-                        "[Csrf::with_trusted_origins] invalid origin: path, query and fragment are not allowed"
-                    );
-                } else {
-                    panic!("[Csrf::with_trusted_origins] invalid origin: invalid host");
-                }
-            }
+            super::validate_origin(origin)
+                .unwrap_or_else(|err| panic!("[Csrf::with_trusted_origins] {err}"))
         }
 
         Csrf {
@@ -132,7 +106,7 @@ impl Csrf {
         let is_trusted = || {
             req.headers
                 .origin()
-                .is_some_and(|it| self.trusted_origins.contains(&it))
+                .is_some_and(|it| self.trusted_origins.iter().any(|x| x == it))
         };
 
         if req.method.is_safe() {
@@ -197,6 +171,12 @@ mod tests {
     use crate::testing::*;
     use crate::{Ohkami, Route};
 
+    #[test]
+    fn test_csrf_with_trusted_origins_with_str_or_string() {
+        let _: Csrf = Csrf::with_trusted_origins(["https://example.com"]);
+        let _: Csrf = Csrf::with_trusted_origins([format!("https://example.com")]);
+    }
+    
     macro_rules! x {
         ($method:ident) => {
             TestRequest::$method("/").header("host", "example.com")
