@@ -375,6 +375,11 @@ pub fn DurableObject(
 ///   - Variables
 ///   - Durable Objects
 ///   - Hyperdrive
+///   - Analytics Engine
+///   - Dynamic Dispatcher
+///   - Assets
+///   - Secret Store
+///   - Rate Limit
 /// - `Queue` may cause a lot of *WARNING*s on `npm run dev`, but
 ///   it's not an actual problem and `Queue` binding does work.
 ///
