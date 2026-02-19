@@ -30,8 +30,8 @@ jobs:
 
       - name: Generate coverage
         run: |
-          cargo llvm-cov --ignore-filename-regex "main.rs" --json > coverage.json
-          cargo llvm-cov --ignore-filename-regex "main.rs" --html
+          cargo llvm-cov --json --workspace --features openapi,ws,rt_worker,sse > coverage.json
+          cargo llvm-cov --html --workspace --features openapi,ws,rt_worker,sse
 
       - name: Build Pages site
         run: |
