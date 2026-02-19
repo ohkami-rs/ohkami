@@ -38,7 +38,7 @@ jobs:
           mkdir -p site/coverage
           cp -r target/llvm-cov/html/* site/coverage/
           
-          cat > site/index.html << 'EOF'
+          cat > site/cov.html << 'EOF'
               <!DOCTYPE html>
               <html lang="en">
               <head>
