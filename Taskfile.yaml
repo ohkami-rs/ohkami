@@ -13,6 +13,12 @@ tasks:
       - task: check
       - task: bench:dryrun
 
+  coverage:html:
+    cmds:
+      - rustup component add llvm-tools-preview
+      - cargo install cargo-llvm-cov
+      - cargo llvm-cov --html --workspace --features DEBUG,rt_tokio,sse,ws,tls,openapi
+
   test:
     deps:
       - task: test:core
@@ -126,3 +132,33 @@ tasks:
       - cargo clippy --target wasm32-unknown-unknown --features rt_worker,sse,{{.maybe_nightly}} -- --deny warnings
       - cargo clippy --target wasm32-unknown-unknown --features rt_worker,ws,{{.maybe_nightly}} -- --deny warnings
       - cargo clippy --target wasm32-unknown-unknown --features rt_worker,sse,ws,openapi,{{.maybe_nightly}} -- --deny warnings
+
+#### pages ####
+  pages:build:
+    cmds:
+      - cargo llvm-cov --json --workspace --features DEBUG,rt_tokio,sse,ws,tls,openapi > coverage.json
+
+      - mkdir -p site/coverage
+      - cp -r target/llvm-cov/html/* site/coverage/
+
+      - |
+        LINE=$(jq '.data[0].totals.lines.percent' coverage.json)
+        FUNC=$(jq '.data[0].totals.functions.percent' coverage.json)
+        REGION=$(jq '.data[0].totals.regions.percent' coverage.json)
+        
+        PERCENT=$(echo "($LINE + $FUNC + $REGION)/3" | bc -l | xargs printf "%.2f")
+        PERCENT_INT=$(printf "%.0f" "$PERCENT")
+        
+        if [ "$PERCENT_INT" -ge 90 ]; then COLOR="brightgreen";
+        elif [ "$PERCENT_INT" -ge 75 ]; then COLOR="yellowgreen";
+        else COLOR="red";
+        fi
+        
+        cat > site/coverage_badge.json <<EOF
+        {
+          "schemaVersion": 1,
+          "label": "coverage",
+          "message": "${PERCENT}%",
+          "color": "${COLOR}"
+        }
+        EOF
