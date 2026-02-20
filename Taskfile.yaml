@@ -136,26 +136,27 @@ tasks:
 
 #### pages ####
   pages:build:
-    deps: [ coverage:html ]
+    deps: [ tools ]
     cmds:
-      - cargo llvm-cov --json --workspace --features DEBUG,rt_tokio,sse,ws,tls,openapi > coverage.json
-
       - mkdir -p site/coverage
-      - cp -r target/llvm-cov/html/* site/coverage/
+
+      - cargo llvm-cov --workspace --features DEBUG,rt_tokio,sse,ws,tls,openapi \
+        --html --output-dir site/coverage \
+        --json --output-path coverage.json
 
       - |
         LINE=$(jq '.data[0].totals.lines.percent' coverage.json)
         FUNC=$(jq '.data[0].totals.functions.percent' coverage.json)
         REGION=$(jq '.data[0].totals.regions.percent' coverage.json)
-          
+  
         PERCENT=$(echo "($LINE + $FUNC + $REGION)/3" | bc -l | xargs printf "%.2f")
         PERCENT_INT=$(printf "%.0f" "$PERCENT")
-          
+  
         if [ "$PERCENT_INT" -ge 90 ]; then COLOR="brightgreen";
         elif [ "$PERCENT_INT" -ge 75 ]; then COLOR="yellowgreen";
         else COLOR="red";
         fi
-          
+  
         cat > site/coverage_badge.json <<EOF
         {
           "schemaVersion": 1,
@@ -166,7 +167,6 @@ tasks:
         EOF
 
 #### tools ####
-
   tools:
     cmds:
       - rustup component add llvm-tools-preview
