@@ -140,7 +140,9 @@ tasks:
     cmds:
       - mkdir -p site/coverage
 
-      - cargo llvm-cov --workspace --features DEBUG,rt_tokio,sse,ws,tls,openapi --html --output-dir site/coverage --json --output-path coverage.json
+      - cargo llvm-cov --workspace --features DEBUG,rt_tokio,sse,ws,tls,openapi --html --output-dir site/coverage
+
+      - cargo llvm-cov --workspace --features DEBUG,rt_tokio,sse,ws,tls,openapi --json > coverage.json
 
       - |
         LINE=$(jq '.data[0].totals.lines.percent' coverage.json)
