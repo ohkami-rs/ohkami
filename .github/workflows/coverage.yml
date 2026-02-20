@@ -18,17 +18,15 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # 6.0.2
 
+      # GitHub-hosted runners already provide rustup
       - name: Use Rust stable
         run: rustup default stable
 
       - name: Install Task
         uses: go-task/setup-task@v1
 
-      - name: Generate coverage HTML
-        run: task coverage:html
-
       - name: Build Pages site (coverage + badge)
-        run: task pages:build
+        run: task ci:pages:build
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # 4.0.0
