@@ -141,7 +141,7 @@ tasks:
       - mkdir -p site/coverage
       - cargo llvm-cov --workspace --features DEBUG,rt_tokio,sse,ws,tls,openapi --html --output-dir site/coverage
       - cargo llvm-cov --workspace --features DEBUG,rt_tokio,sse,ws,tls,openapi --json > coverage.json
-      - ./.github/scripts/generate_coverage_badge.sh coverage.json site
+      - bash ./.github/scripts/generate_coverage_badge.sh coverage.json site
 
 #### tools ####
   tools:
