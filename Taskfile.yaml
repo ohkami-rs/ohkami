@@ -14,7 +14,7 @@ tasks:
       - task: bench:dryrun
 
   coverage:html:
-    deps: [ ci:tools ]
+    deps: [ tools ]
     cmds:
       - cargo llvm-cov --html --workspace --features DEBUG,rt_tokio,sse,ws,tls,openapi
     generates:
@@ -164,3 +164,13 @@ tasks:
           "color": "${COLOR}"
         }
         EOF
+
+#### tools ####
+
+  tools:
+    cmds:
+      - rustup component add llvm-tools-preview
+      - cargo install cargo-llvm-cov
+    status:
+      - rustup component list --installed | grep -q '^llvm-tools-preview'
+      - command -v cargo-llvm-cov >/dev/null 2>&1
