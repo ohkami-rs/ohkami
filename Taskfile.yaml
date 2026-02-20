@@ -134,37 +134,14 @@ tasks:
       - cargo clippy --target wasm32-unknown-unknown --features rt_worker,ws,{{.maybe_nightly}} -- --deny warnings
       - cargo clippy --target wasm32-unknown-unknown --features rt_worker,sse,ws,openapi,{{.maybe_nightly}} -- --deny warnings
 
-#### pages ####
+  #### pages ####
   pages:build:
     deps: [ tools ]
     cmds:
       - mkdir -p site/coverage
-
       - cargo llvm-cov --workspace --features DEBUG,rt_tokio,sse,ws,tls,openapi --html --output-dir site/coverage
-
       - cargo llvm-cov --workspace --features DEBUG,rt_tokio,sse,ws,tls,openapi --json > coverage.json
-
-      - |
-        LINE=$(jq -r '.data[0].totals.lines.percent' coverage.json)
-        FUNC=$(jq -r '.data[0].totals.functions.percent' coverage.json)
-        REGION=$(jq -r '.data[0].totals.regions.percent' coverage.json)
-        
-        PERCENT=$(echo "scale=2; ($LINE + $FUNC + $REGION)/3" | bc)
-        PERCENT_INT=$(printf "%.0f" "$PERCENT")
-        
-        if [ "$PERCENT_INT" -ge 90 ]; then COLOR="brightgreen";
-        elif [ "$PERCENT_INT" -ge 75 ]; then COLOR="yellowgreen";
-        else COLOR="red";
-        fi
-  
-        cat > site/coverage_badge.json <<EOF
-        {
-          "schemaVersion": 1,
-          "label": "coverage",
-          "message": "${PERCENT}%",
-          "color": "${COLOR}"
-        }
-        EOF
+      - ./.github/scripts/generate_coverage_badge.sh coverage.json site
 
 #### tools ####
   tools:
