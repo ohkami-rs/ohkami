@@ -95,7 +95,7 @@ pub fn handle_dummy_env() {
     let dummy_db = {
         let o = Object::new();
         {
-            let constructor = Function::unchecked_from_js(Closure::<dyn Fn()>::new(|| {}).into_js_value());
+            let constructor = Function::<fn() -> worker::js_sys::Undefined>::unchecked_from_js(Closure::<dyn Fn()>::new(|| {}).into_js_value());
             {
                 let attributes = Object::new();
                 Reflect::set(&attributes, &"value".into(), &"D1Database".into()).unwrap();
