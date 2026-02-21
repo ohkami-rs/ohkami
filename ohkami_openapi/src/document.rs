@@ -163,20 +163,16 @@ impl Document {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_server_at_with_str_or_string() {
         let _: Server = Server::at("http://localhost:3000");
         let _: Server = Server::at(String::from("https://localhost") + ":3000");
     }
-    
+
     #[test]
     fn test_document_new_with_str_or_string() {
-        let _: Document = Document::new(
-            "title",
-            "version",
-            &[Server::at("http://localhost:3000")],
-        );
+        let _: Document = Document::new("title", "version", &[Server::at("http://localhost:3000")]);
         let _: Document = Document::new(
             format!("title"),
             format!("version"),

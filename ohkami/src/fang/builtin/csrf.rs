@@ -67,7 +67,9 @@ impl Csrf {
         }
     }
 
-    pub fn with_trusted_origins(trusted_origins: impl IntoIterator<Item = impl Into<String>>) -> Self {
+    pub fn with_trusted_origins(
+        trusted_origins: impl IntoIterator<Item = impl Into<String>>,
+    ) -> Self {
         let trusted_origins = trusted_origins
             .into_iter()
             .map(Into::<String>::into)
@@ -176,7 +178,7 @@ mod tests {
         let _: Csrf = Csrf::with_trusted_origins(["https://example.com"]);
         let _: Csrf = Csrf::with_trusted_origins([format!("https://example.com")]);
     }
-    
+
     macro_rules! x {
         ($method:ident) => {
             TestRequest::$method("/").header("host", "example.com")

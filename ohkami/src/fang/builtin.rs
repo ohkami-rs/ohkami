@@ -23,9 +23,7 @@ pub use timeout::Timeout;
 
 fn validate_origin(origin: &str) -> Result<(), &'static str> {
     let Some(("http" | "https", rest)) = origin.split_once("://") else {
-        return Err(
-            "invalid origin: 'http' or 'https' scheme is required"
-        )
+        return Err("invalid origin: 'http' or 'https' scheme is required");
     };
     let (host, port) = rest
         .split_once(':')
@@ -34,9 +32,7 @@ fn validate_origin(origin: &str) -> Result<(), &'static str> {
         return Err("invalid origin: port must be a number");
     }
     if !host.starts_with(|c: char| c.is_ascii_alphabetic()) {
-        return Err(
-            "invalid origin: host must start with an alphabetic character"
-        );
+        return Err("invalid origin: host must start with an alphabetic character");
     }
     if !host.split('.').all(|part| {
         !part.is_empty()
@@ -46,9 +42,7 @@ fn validate_origin(origin: &str) -> Result<(), &'static str> {
     }) {
         if host.contains(['/', '?', '#']) {
             // helpful error message for common mistake
-            return Err(
-                "invalid origin: path, query and fragment are not allowed"
-            );
+            return Err("invalid origin: path, query and fragment are not allowed");
         } else {
             return Err("invalid origin: invalid host");
         }
