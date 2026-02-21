@@ -34,7 +34,7 @@ tasks:
 
   check:
     deps:
-      # - task: check:fmt  #### WORKAROUND for rustfmt panic ####
+      - task: check:fmt
       - task: check:no_rt
       - for:  { var: non_wasm_rts }
         vars: { rt: '{{.ITEM}}' }
