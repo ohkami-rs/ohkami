@@ -50,7 +50,7 @@ impl AccessControlAllowOrigin {
         let s: &'static str = String::leak(s.into());
         match s {
             "*" => Ok(Self::Any),
-            _ => super::validate_origin(s).map(|_| Self::Only(s))
+            _ => super::validate_origin(s).map(|_| Self::Only(s)),
         }
     }
 
