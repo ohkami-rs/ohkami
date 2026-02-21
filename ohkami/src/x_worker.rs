@@ -35,7 +35,7 @@ pub trait FromEnv: Sized {
         for (binding_name, binding_type) in Self::bindings_meta() {
             let binding = Object::new();
             if let Some(binding_type) = binding_type {
-                let constructor = Function::<fn() -> js_sys::Undfined>::unchecked_from_js(
+                let constructor = Function::<fn() -> worker::js_sys::Undefined>::unchecked_from_js(
                     Closure::<dyn Fn()>::new(|| {}).into_js_value(),
                 );
                 {
