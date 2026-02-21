@@ -4,7 +4,9 @@ vars:
   native_rts: 'tokio smol nio glommio monoio compio'
   non_wasm_rts: 'lambda {{.native_rts}}'
   all_rts: 'worker {{.non_wasm_rts}}'
-  maybe_nightly: { sh: cargo version | grep -q 'nightly' && echo 'nightly' || echo ''  }
+  maybe_nightly: { sh: cargo version | grep -q 'nightly' && echo 'nightly' || echo '' }
+  coverage_features: 'DEBUG,rt_tokio,sse,ws,tls,openapi'
+  github_pages_dir: 'site'
 
 tasks:
   CI:
@@ -12,13 +14,6 @@ tasks:
       - task: test
       - task: check
       - task: bench:dryrun
-
-  coverage:html:
-    deps: [ tools ]
-    cmds:
-      - cargo llvm-cov --html --workspace --features DEBUG,rt_tokio,sse,ws,tls,openapi
-    generates:
-      - target/llvm-cov/html/index.html
 
   test:
     deps:
@@ -53,7 +48,6 @@ tasks:
       - cd benches && cargo bench --features DEBUG --no-run
       - for: { var: native_rts }
         cmd: cd benches_rt/{{.ITEM}} && cargo check
-
   bench:
     status:
       - '[ "{{.maybe_nightly}}" != nightly ]' # skip if not nightly
@@ -134,20 +128,47 @@ tasks:
       - cargo clippy --target wasm32-unknown-unknown --features rt_worker,ws,{{.maybe_nightly}} -- --deny warnings
       - cargo clippy --target wasm32-unknown-unknown --features rt_worker,sse,ws,openapi,{{.maybe_nightly}} -- --deny warnings
 
-  #### pages ####
-  pages:build:
-    deps: [ tools ]
+#### coverage ####
+  coverage:html:
+    deps: [ tools:coverage ]
     cmds:
-      - mkdir -p site/coverage
-      - cargo llvm-cov --workspace --features DEBUG,rt_tokio,sse,ws,tls,openapi --html --output-dir site/coverage
-      - cargo llvm-cov --workspace --features DEBUG,rt_tokio,sse,ws,tls,openapi --json > coverage.json
-      - bash ./.github/scripts/generate_coverage_badge.sh coverage.json site
+      - cargo llvm-cov clean --workspace
+      - cargo llvm-cov --html --workspace --features {{.coverage_features}}
+    generates:
+      - target/llvm-cov/html/index.html
+
+#### GiHub Pages ####
+  pages:build:
+    cmds:
+      - task: pages:build:coverage
+
+  pages:build:coverage:
+    deps: [ tools:coverage ]
+    vars:
+      coverage_dir: '{{.github_pages_dir}}/coverage'
+    cmds:
+      # setup
+      - rm -rf {{.coverage_dir}}; mkdir -p {{.coverage_dir}}
+      - chmod +x ./scripts/generate_coverage_badge.sh
+      - cargo llvm-cov clean --workspace
+      # file generation
+      - |
+        cargo llvm-cov --workspace --features {{.coverage_features}} --html --output-dir {{.coverage_dir}} \
+          && mv {{.coverage_dir}}/html/* {{.coverage_dir}}/ \
+          && rm -rf {{.coverage_dir}}/html
+      - |
+        cargo llvm-cov --workspace --features {{.coverage_features}} --json \
+          | ./scripts/generate_coverage_badge.sh -o {{.github_pages_dir}}/coverage_badge.json
 
 #### tools ####
   tools:
+    deps:
+      - tools:coverage
+      
+  tools:coverage:
     cmds:
       - rustup component add llvm-tools-preview
       - cargo install cargo-llvm-cov
     status:
-      - rustup component list --installed | grep -q '^llvm-tools-preview'
-      - command -v cargo-llvm-cov >/dev/null 2>&1
+      - rustup component list --installed | grep -q 'llvm-tools'
+      - command -qv cargo-llvm-cov
