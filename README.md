@@ -9,7 +9,10 @@
 - *runtime-flexible* ： `tokio`, `smol`, `nio`, `glommio`, `monoio`, `compio` and `worker` (Cloudflare Workers), `lambda` (AWS Lambda)
 - good performance, no-network testing, well-structured middlewares, Server-Sent Events, WebSocket, highly integrated OpenAPI document generation, ...
 
-<div align="right">
+<div align="center">
+    <a href="https://ohkami.rs/ohkami/coverage/">
+        <img src="https://img.shields.io/endpoint?url=https://ohkami.rs/ohkami/coverage_badge.json" alt="Coverage">
+    </a>
     <a href="https://docs.rs/ohkami"><img alt="docs.rs" src="https://img.shields.io/badge/docs.rs-ohkami-blue.svg" /></a>
     <a href="https://github.com/ohkami-rs/ohkami/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/crates/l/ohkami.svg" /></a>
     <a href="https://github.com/ohkami-rs/ohkami/actions"><img alt="build check status of ohkami" src="https://github.com/ohkami-rs/ohkami/actions/workflows/CI.yml/badge.svg"/></a>
