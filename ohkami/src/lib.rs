@@ -294,7 +294,7 @@ pub use config::Config;
 #[cfg(feature = "__rt__")]
 pub mod testing;
 
-mod request;
+pub mod request;
 pub use ::ohkami_macros::FromRequest;
 pub use request::{FromRequest, Method, Request};
 
