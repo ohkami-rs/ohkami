@@ -6,8 +6,3 @@ authors = ["kanarus <kanarus786@gmail.com>"]
 
 [dependencies]
 actix-web = { version = "4" }
-
-[profile.release]
-lto           = true
-panic         = "abort"
-codegen-units = 1

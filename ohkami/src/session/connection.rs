@@ -1,3 +1,4 @@
+#[cfg_attr(feature = "rt_monoio", allow(clippy::large_enum_variant))]
 pub enum Connection {
     Tcp(crate::__rt__::TcpStream),
     /// Boxing is used to reduce the size of the enum variant,

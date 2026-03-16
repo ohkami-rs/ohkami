@@ -9,10 +9,5 @@ authors = ["kanarus <kanarus786@gmail.com>"]
 ohkami  = { path = "../../ohkami", default-features = false, features = ["rt_tokio"] }
 tokio   = { version = "1", features = ["full"] }
 
-[profile.release]
-lto           = true
-panic         = "abort"
-codegen-units = 1
-
 [features]
 DEBUG = ["ohkami/DEBUG"]

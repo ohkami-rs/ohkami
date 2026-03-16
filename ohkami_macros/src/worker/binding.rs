@@ -12,6 +12,11 @@ pub enum Binding {
     Queue,
     DurableObject,
     Hyperdrive,
+    AnalyticsEngine,
+    DynamicDispatcher,
+    Assets,
+    SecretStore,
+    RateLimiter,
 }
 
 impl Binding {
@@ -26,6 +31,11 @@ impl Binding {
             Self::Queue => Some("WorkerQueue"),
             Self::DurableObject => Some("DurableObjectNamespace"),
             Self::Hyperdrive => Some("Hyperdrive"),
+            Self::AnalyticsEngine => Some("AnalyticsEngineDataset"),
+            Self::DynamicDispatcher => Some("DynamicDispatcher"),
+            Self::Assets => Some("Fetcher"),
+            Self::SecretStore => Some("Fetcher"),
+            Self::RateLimiter => Some("Ratelimit"),
         }
     }
 
@@ -40,6 +50,11 @@ impl Binding {
             Self::Service => quote!(::worker::Fetcher),
             Self::DurableObject => quote!(::worker::ObjectNamespace),
             Self::Hyperdrive => quote!(::worker::Hyperdrive),
+            Self::AnalyticsEngine => quote!(::worker::AnalyticsEngineDataset),
+            Self::DynamicDispatcher => quote!(::worker::DynamicDispatcher),
+            Self::Assets => quote!(::worker::Fetcher),
+            Self::SecretStore => quote!(::worker::SecretStore),
+            Self::RateLimiter => quote!(::worker::RateLimiter),
         }
     }
 
@@ -62,12 +77,17 @@ impl Binding {
             Self::Service => from_env(quote! { service(#name_str) }),
             Self::DurableObject => from_env(quote! { durable_object(#name_str) }),
             Self::Hyperdrive => from_env(quote! { hyperdrive(#name_str) }),
+            Self::AnalyticsEngine => from_env(quote! { analytics_engine(#name_str) }),
+            Self::DynamicDispatcher => from_env(quote! { dynamic_dispatcher(#name_str) }),
+            Self::Assets => from_env(quote! { assets(#name_str) }),
+            Self::SecretStore => from_env(quote! { secret_store(#name_str) }),
+            Self::RateLimiter => from_env(quote! { rate_limiter(#name_str) }),
         }
     }
 }
 
 #[derive(serde::Deserialize, Default)]
-struct EnvBindingCollection {
+struct EnvBindingsDef {
     vars: Option<std::collections::BTreeMap<String, String>>,
     ai: Option<BindingDeclare>,
     d1_databases: Option<Vec<BindingDeclare>>,
@@ -77,9 +97,14 @@ struct EnvBindingCollection {
     queues: Option<QueueProducers>,
     durable_objects: Option<BindingsArray>,
     hyperdrive: Option<Vec<BindingDeclare>>,
+    analytics_engine_datasets: Option<Vec<BindingDeclare>>,
+    dispatch_namespaces: Option<Vec<BindingDeclare>>,
+    assets: Option<BindingDeclare>,
+    secrets_store_secrets: Option<Vec<BindingDeclare>>,
+    ratelimits: Option<Vec<BindingName>>,
 
     #[serde(default)]
-    env: std::collections::BTreeMap<String, EnvBindingCollection>,
+    env: std::collections::BTreeMap<String, EnvBindingsDef>,
 }
 
 #[derive(serde::Deserialize)]
@@ -104,7 +129,7 @@ struct BindingName {
 
 impl Binding {
     pub fn collect_from_env(env_name: Option<Ident>) -> Result<Vec<(Ident, Self)>, syn::Error> {
-        let mut config = super::wrangler::parse_wrangler::<EnvBindingCollection>()
+        let mut config = super::wrangler::parse_wrangler::<EnvBindingsDef>()
             .map_err(|e| syn::Error::new(Span::call_site(), e))?;
         let config = match env_name.as_ref() {
             None => config,
@@ -162,6 +187,29 @@ impl Binding {
             if let Some(hyperdrive) = config.hyperdrive {
                 for BindingDeclare { binding } in hyperdrive {
                     collection.push((binding, Self::Hyperdrive));
+                }
+            }
+            if let Some(analytics_engine_datasets) = config.analytics_engine_datasets {
+                for BindingDeclare { binding } in analytics_engine_datasets {
+                    collection.push((binding, Self::AnalyticsEngine));
+                }
+            }
+            if let Some(dispatch_namespaces) = config.dispatch_namespaces {
+                for BindingDeclare { binding } in dispatch_namespaces {
+                    collection.push((binding, Self::DynamicDispatcher));
+                }
+            }
+            if let Some(BindingDeclare { binding }) = config.assets {
+                collection.push((binding, Self::Assets));
+            }
+            if let Some(secrets_store_secrets) = config.secrets_store_secrets {
+                for BindingDeclare { binding } in secrets_store_secrets {
+                    collection.push((binding, Self::SecretStore));
+                }
+            }
+            if let Some(ratelimits) = config.ratelimits {
+                for BindingName { name } in ratelimits {
+                    collection.push((name, Self::RateLimiter));
                 }
             }
         }

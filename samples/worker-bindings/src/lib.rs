@@ -56,6 +56,16 @@ fn __test_auto_bindings__(bindings: AutoBindings) {
     let _: worker::ObjectNamespace = bindings.RATE_LIMITER;
     
     let _: worker::Hyperdrive = bindings.HYPERDRIVE;
+        
+    let _: worker::AnalyticsEngineDataset = bindings.ANALYTICS_ENGINE;
+    
+    let _: worker::DynamicDispatcher = bindings.DISPATCHER;
+    
+    let _: worker::Fetcher = bindings.ASSETS;
+    
+    let _: worker::SecretStore = bindings.MY_SECRET_STORE;
+    
+    let _: worker::RateLimiter = bindings.MY_RATE_LIMITER;
 }
 
 fn __test_manual_bindings__(bindings: ManualBindings) {
@@ -85,7 +95,7 @@ pub fn handle_dummy_env() {
     let dummy_db = {
         let o = Object::new();
         {
-            let constructor = Function::unchecked_from_js(Closure::<dyn Fn()>::new(|| {}).into_js_value());
+            let constructor = Function::<fn() -> worker::js_sys::Undefined>::unchecked_from_js(Closure::<dyn Fn()>::new(|| {}).into_js_value());
             {
                 let attributes = Object::new();
                 Reflect::set(&attributes, &"value".into(), &"D1Database".into()).unwrap();

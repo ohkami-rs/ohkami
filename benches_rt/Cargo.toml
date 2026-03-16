@@ -1,0 +1,9 @@
+[workspace]
+resolver = "3"
+members  = ["*"]
+exclude  = ["target"]
+
+[profile.release]
+lto           = true
+panic         = "abort"
+codegen-units = 1

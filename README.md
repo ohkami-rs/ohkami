@@ -9,7 +9,11 @@
 - *runtime-flexible* ： `tokio`, `smol`, `nio`, `glommio`, `monoio`, `compio` and `worker` (Cloudflare Workers), `lambda` (AWS Lambda)
 - good performance, no-network testing, well-structured middlewares, Server-Sent Events, WebSocket, highly integrated OpenAPI document generation, ...
 
-<div align="right">
+<div align="center">
+    <a href="https://ohkami.rs/ohkami/coverage/">
+        <img src="https://img.shields.io/endpoint?url=https://ohkami.rs/ohkami/coverage_badge.json" alt="Coverage">
+    </a>
+    <a href="https://docs.rs/ohkami"><img alt="docs.rs" src="https://img.shields.io/badge/docs.rs-ohkami-blue.svg" /></a>
     <a href="https://github.com/ohkami-rs/ohkami/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/crates/l/ohkami.svg" /></a>
     <a href="https://github.com/ohkami-rs/ohkami/actions"><img alt="build check status of ohkami" src="https://github.com/ohkami-rs/ohkami/actions/workflows/CI.yml/badge.svg"/></a>
     <a href="https://crates.io/crates/ohkami"><img alt="crates.io" src="https://img.shields.io/crates/v/ohkami" /></a>
@@ -210,14 +214,14 @@ async fn handler1(
 
 - [tokio](https://github.com/tokio-rs/tokio) _v1.\*.\*_
 - [smol](https://github.com/smol-rs/smol) _v2.\*.\*_
-- [nio](https://github.com/nurmohammed840/nio) _v0.0.\*_
+- [nio](https://github.com/nurmohammed840/nio) _v0.1.3\*_
 - [glommio](https://github.com/DataDog/glommio) _v0.9.\*_
 - [monoio](https://github.com/bytedance/monoio) _v0.2.\*_
-- [compio](https://github.com/compio-rs/compio) _v0.15.\*_
+- [compio](https://github.com/compio-rs/compio) _v0.17.\*_
 
 ### `"rt_worker"` : Cloudflare Workers
 
-- [worker](https://github.com/cloudflare/workers-rs) _v0.6.\*_
+- [worker](https://github.com/cloudflare/workers-rs) _v0.7.\*_
 
 Ohkami has first-class support for Cloudflare Workers:
 
@@ -249,7 +253,7 @@ for wokring examples and detailed usage of `#[worker]` (and/or `openapi`).
 
 ### `"rt_lambda"` : AWS Lambda
 
-- [lambda_runtime](https://github.com/awslabs/aws-lambda-rust-runtime) _v0.14.\*_ with `tokio`
+- [lambda_runtime](https://github.com/awslabs/aws-lambda-rust-runtime) _v1.0.\*_ with `tokio`
 
 Both `Function URLs` and `API Gateway` are supported, and WebSocket is not supported.
 

@@ -35,3 +35,27 @@ class_name = "RateLimiter"
 [[hyperdrive]]
 binding = "HYPERDRIVE"
 id = "<YOUR_DATABASE_ID>"
+
+[[analytics_engine_datasets]]
+binding = "ANALYTICS_ENGINE"
+dataset = "<DATASET_NAME>"
+
+[[dispatch_namespaces]]
+binding = "DISPATCHER"
+namespace = "my-dispatch-namespace"
+
+[assets]
+directory = "./dist"
+binding = "ASSETS"
+
+[[secrets_store_secrets]]
+binding = "MY_SECRET_STORE"
+store_id = "<STORE_ID>"
+secret_name = "<MY_SECRET_NAME>"
+
+[[ratelimits]]
+name = "MY_RATE_LIMITER"
+namespace_id = "1001"
+  [ratelimits.simple]
+  limit = 100
+  period = 60

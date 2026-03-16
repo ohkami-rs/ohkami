@@ -551,6 +551,7 @@ mod tests {
 
     #[test]
     fn lambda_runtime_run_ohkami_compiles() {
+        #[allow(clippy::let_underscore_future/* just checking compilablity */)]
         let _/* : impl Future */ = lambda_runtime::run(Ohkami::new(()));
     }
 
