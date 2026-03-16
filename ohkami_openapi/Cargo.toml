@@ -20,7 +20,7 @@ serde      = { workspace = true }
 serde_json = { workspace = true }
 
 # for built-in utility impl of `Schema` trait
-uuid = { version = "1.21" }
+uuid = { version = "1.22" }
 
 [features]
 no-release-serialize = []
