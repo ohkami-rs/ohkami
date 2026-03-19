@@ -21,9 +21,16 @@ impl QueryParams {
         ohkami_lib::serde_urlencoded::from_bytes(unsafe { self.0.as_bytes() })
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = (Cow<'_, str>, Cow<'_, str>)> {
+    #[inline(always)]
+    ///Returns whether query params has anything to it, even if it is invalid
+    pub fn is_empty(&self) -> bool {
+        unsafe { self.0.as_bytes().is_empty() }
+    }
+
+    ///Returns iterator over the query params, if any was set
+    pub fn non_empty_iter(&self) -> Option<impl Iterator<Item = (Cow<'_, str>, Cow<'_, str>)>> {
         let bytes = unsafe { self.0.as_bytes() };
-        (if bytes.is_empty() {
+        if bytes.is_empty() {
             None
         } else {
             Some(bytes.split(|b| b == &b'&').filter_map(|kv| {
@@ -52,9 +59,12 @@ impl QueryParams {
                     )),
                 }
             }))
-        })
-        .into_iter()
-        .flatten()
+        }
+    }
+
+    #[inline(always)]
+    pub fn iter(&self) -> impl Iterator<Item = (Cow<'_, str>, Cow<'_, str>)> {
+        self.non_empty_iter().into_iter().flatten()
     }
 }
 
