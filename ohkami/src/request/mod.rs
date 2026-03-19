@@ -161,7 +161,6 @@ pub struct Request {
     /// - `.lambda()` to get `requestContext` of Lambda request
     pub context: Context,
 
-    #[cfg(feature = "__rt__")]
     /// Remote ( directly connected ) peer's IP address
     ///
     /// Default value is `0.0.0.0`. this will be seen in testing or when Cloudlare Workers
