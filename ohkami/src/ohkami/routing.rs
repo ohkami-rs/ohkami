@@ -4,7 +4,6 @@ use crate::Ohkami;
 use crate::fang::handler::{Handler, IntoHandler};
 use crate::fang::{BoxedFPC, Fang};
 use crate::router::{base::Router, segments::RouteSegments};
-use std::borrow::Cow;
 use std::sync::Arc;
 
 #[cfg(feature = "__rt_native__")]
@@ -206,16 +205,16 @@ const _: () = {
                     match &*file_path {
                         "" => {
                             if !base_path.is_empty() {
-                                Cow::Borrowed(base_path)
+                                std::borrow::Cow::Borrowed(base_path)
                             } else {
-                                Cow::Borrowed("/")
+                                std::borrow::Cow::Borrowed("/")
                             }
                         }
                         fp => {
                             let mut path = base_path.to_owned();
                             path.push('/');
                             path.push_str(fp);
-                            Cow::Owned(path)
+                            std::borrow::Cow::Owned(path)
                         }
                     }
                 };
