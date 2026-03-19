@@ -197,6 +197,7 @@ const _: () = {
                     .filter(|s| !matches!(*s, "" | "/"))
                     .fold(String::new(), |mut acc, component| {
                         acc.push_str(component);
+                        acc.push('/');
                         acc
                     });
 
