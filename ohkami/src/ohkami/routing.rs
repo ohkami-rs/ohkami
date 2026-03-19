@@ -4,6 +4,7 @@ use crate::Ohkami;
 use crate::fang::handler::{Handler, IntoHandler};
 use crate::fang::{BoxedFPC, Fang};
 use crate::router::{base::Router, segments::RouteSegments};
+use std::borrow::Cow;
 use std::sync::Arc;
 
 #[cfg(feature = "__rt_native__")]
@@ -41,7 +42,7 @@ macro_rules! HandlerSet {
         }
 
         impl HandlerSet {
-            pub(crate) fn new(route_str: &'static str) -> Self {
+            pub(crate) fn new(route_str: impl Into<std::borrow::Cow<'static, str>>) -> Self {
                 Self {
                     route: RouteSegments::from_literal(route_str),
                     $(
@@ -195,24 +196,31 @@ const _: () = {
                         })
                     })
                     .filter(|s| !matches!(*s, "" | "/"))
-                    .collect::<Vec<_>>()
-                    .join("/");
+                    .fold(String::new(), |mut acc, component| {
+                        acc.push_str(component);
+                        acc
+                    });
 
                 let path = {
-                    let base_path = self.route.trim_end_matches('/').to_string();
+                    let base_path = self.route.trim_end_matches('/');
                     match &*file_path {
                         "" => {
                             if !base_path.is_empty() {
-                                base_path
+                                Cow::Borrowed(base_path)
                             } else {
-                                "/".into()
+                                Cow::Borrowed("/")
                             }
                         }
-                        fp => base_path + "/" + fp,
+                        fp => {
+                            let mut path = base_path.to_owned();
+                            path.push('/');
+                            path.push_str(fp);
+                            Cow::Owned(path)
+                        }
                     }
                 };
 
-                router.register_handlers(HandlerSet::new(path.leak()).GET(handler))
+                router.register_handlers(HandlerSet::new(path).GET(handler))
             };
 
             for (mut path, files) in self.files.into_iter() {
