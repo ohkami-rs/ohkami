@@ -68,7 +68,7 @@ Hello, your_name!
 ```
 
 <br>
-    
+
 ## Core APIs
 
 ### `Ohkami`
@@ -153,7 +153,7 @@ pub trait FangAction {
         // default implementation is empty
         Ok(())
     }
-    
+
     async fn back<'a>(&'a self, res: &'a mut Response) {
         // default implementation is empty
     }
@@ -470,11 +470,11 @@ async fn main() -> std::io::Result<()> {
     // Load certificates and private key
     let cert_file = File::open("server.crt")?;
     let key_file = File::open("server.key")?;
-    
+
     let cert_chain = rustls_pemfile::certs(&mut BufReader::new(cert_file))
         .map(|cd| cd.map(CertificateDer::from))
         .collect::<Result<Vec<_>, _>>()?;
-    
+
     let key = rustls_pemfile::read_one(&mut BufReader::new(key_file))?
         .map(|p| match p {
             rustls_pemfile::Item::Pkcs1Key(k) => PrivateKeyDer::Pkcs1(k),
@@ -493,7 +493,7 @@ async fn main() -> std::io::Result<()> {
     Ohkami::new((
         "/".GET(hello),
     )).howls("0.0.0.0:8443", tls_config).await;
-    
+
     Ok(())
 }
 ```
@@ -928,7 +928,7 @@ async fn main() {
     let pool = sqlx::PgPool::connect("postgres://ohkami:password@localhost:5432/db")
         .await
         .expect("failed to connect to database");
-    
+
     Ohkami::new((
         Context::new(PostgresUserRepository(pool)),
         "/users".By(users_ohkami::<PostgresUserRepository>()),
@@ -946,6 +946,13 @@ async fn main() {
 - [x] HTTPS
 - [x] Server-Sent Events
 - [x] WebSocket
+
+## Logging
+
+By default ohkami uses internal logger to write to stdout or cloud worker logger.
+If you prefer to use [tracing](https://crates.io/crates/tracing) to control all logs, then you can enable feature `internal-log-tracing` for this purpose
+
+In addition to that you can enable debug logs via feature `DEBUG` at compile
 
 ## MSRV ( Minimum Supported Rust Version )
 

@@ -2,10 +2,15 @@
 #[macro_export]
 macro_rules! INFO {
     ( $( $t:tt )* ) => {{
-        #[cfg(not(feature = "rt_worker"))]
-        std::println!("[ohkami:INFO] {}", format_args!($($t)*));
-        #[cfg(feature="rt_worker")]
-        worker::console_info!("[ohkami:INFO] {}", format_args!($($t)*));
+        #[cfg(feature = "internal-log-tracing")] {
+            tracing::info!($($t)*);
+        }
+        #[cfg(not(feature = "internal-log-tracing"))] {
+            #[cfg(not(feature = "rt_worker"))]
+            std::println!("[ohkami:INFO] {}", format_args!($($t)*));
+            #[cfg(feature="rt_worker")]
+            worker::console_info!("[ohkami:INFO] {}", format_args!($($t)*));
+        }
     }};
 }
 
@@ -13,10 +18,15 @@ macro_rules! INFO {
 #[macro_export]
 macro_rules! WARNING {
     ( $( $t:tt )* ) => {{
-        #[cfg(not(feature = "rt_worker"))]
-        std::println!("[ohkami:WARNING] {}", format_args!($($t)*));
-        #[cfg(feature="rt_worker")]
-        worker::console_warn!("[ohkami:WARNING] {}", format_args!($($t)*));
+        #[cfg(feature = "internal-log-tracing")] {
+            tracing::warn!($($t)*);
+        }
+        #[cfg(not(feature = "internal-log-tracing"))] {
+            #[cfg(not(feature = "rt_worker"))]
+            std::println!("[ohkami:WARNING] {}", format_args!($($t)*));
+            #[cfg(feature="rt_worker")]
+            worker::console_warn!("[ohkami:WARNING] {}", format_args!($($t)*));
+        }
     }};
 }
 
@@ -24,10 +34,15 @@ macro_rules! WARNING {
 #[macro_export]
 macro_rules! ERROR {
     ( $($t:tt)* ) => {{
-        #[cfg(not(feature = "rt_worker"))]
-        std::eprintln!("[ohkami:ERROR] {}", format_args!($($t)*));
-        #[cfg(feature="rt_worker")]
-        worker::console_error!("[ohkami:ERROR] {}", format_args!($($t)*));
+        #[cfg(feature = "internal-log-tracing")] {
+            tracing::error!($($t)*);
+        }
+        #[cfg(not(feature = "internal-log-tracing"))] {
+            #[cfg(not(feature = "rt_worker"))]
+            std::eprintln!("[ohkami:ERROR] {}", format_args!($($t)*));
+            #[cfg(feature="rt_worker")]
+            worker::console_error!("[ohkami:ERROR] {}", format_args!($($t)*));
+        }
     }};
 }
 
@@ -36,10 +51,15 @@ macro_rules! ERROR {
 macro_rules! DEBUG {
     ( $( $t:tt )* ) => {
         #[cfg(feature="DEBUG")] {
-            #[cfg(not(feature = "rt_worker"))]
-            std::println!("[ohkami:DEBUG] {}:{}:{} {}", file!(), line!(), column!(), format_args!($($t)*));
-            #[cfg(feature="rt_worker")]
-            worker::console_debug!("[ohkami:DEBUG] {}:{}:{} {}", file!(), line!(), column!(), format_args!($($t)*));
+            #[cfg(feature = "internal-log-tracing")] {
+                tracing::debug!($($t)*);
+            }
+            #[cfg(not(feature = "internal-log-tracing"))] {
+                #[cfg(not(feature = "rt_worker"))]
+                std::println!("[ohkami:DEBUG] {}:{}:{} {}", file!(), line!(), column!(), format_args!($($t)*));
+                #[cfg(feature="rt_worker")]
+                worker::console_debug!("[ohkami:DEBUG] {}:{}:{} {}", file!(), line!(), column!(), format_args!($($t)*));
+            }
         }
     };
 }
