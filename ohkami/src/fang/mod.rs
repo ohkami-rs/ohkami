@@ -10,7 +10,6 @@ pub mod bound;
 pub(crate) use bound::*;
 
 use crate::{Request, Response};
-use std::sync::Arc;
 use std::{future::Future, ops::Deref, pin::Pin};
 
 #[cfg(feature = "openapi")]
@@ -102,13 +101,11 @@ impl<Proc: FangProc> FangProcCaller for Proc {
     }
 }
 
-//This Clone is imposed by Handler, but Handler doesn't really use Clone so overhead of Arc should be minimal
-#[derive(Clone)]
-pub(crate) struct BoxedFPC(Arc<dyn FPCBound + 'static>);
+pub(crate) struct BoxedFPC(Box<dyn FPCBound + 'static>);
 const _: () = {
     impl BoxedFPC {
         pub(crate) fn from_proc(proc: impl FPCBound + 'static) -> Self {
-            Self(Arc::new(proc))
+            Self(Box::new(proc))
         }
     }
 

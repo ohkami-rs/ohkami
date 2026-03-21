@@ -9,7 +9,6 @@ use std::pin::Pin;
 #[cfg(feature = "openapi")]
 use crate::openapi;
 
-#[derive(Clone)]
 pub struct Handler {
     #[allow(dead_code/* read only in router */)]
     pub(crate) proc: BoxedFPC,
@@ -70,24 +69,14 @@ const _: (/* for NOT FOUND Handler cache */) = {
 #[cfg(feature = "__rt__")]
 impl Handler {
     pub(crate) fn default_not_found() -> Self {
-        use std::sync::LazyLock;
-
-        static NOT_FOUND: LazyLock<Handler> = LazyLock::new(|| {
-            async fn not_found() -> Response {
-                Response::NotFound()
-            }
-            not_found.into_handler()
-        });
-
-        Handler {
-            proc: NOT_FOUND.proc.clone(),
-
+        Handler::new(
+            |_| Box::pin(async {Response::NotFound()}),
             #[cfg(feature = "openapi")]
-            openapi_operation: openapi::Operation::with(openapi::Responses::new([(
+            openapi::Operation::with(openapi::Responses::new([(
                 404,
                 openapi::Response::when("default not found"),
             )])),
-        }
+        )
     }
 
     pub(crate) fn default_options_with(available_methods: Vec<&'static str>) -> Self {
