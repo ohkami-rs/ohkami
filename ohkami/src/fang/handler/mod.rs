@@ -60,6 +60,21 @@ impl Handler {
     }
 }
 
+#[cfg(feature = "openapi")]
+impl Handler {
+    /// A utility to create an owned `Handler` instance,
+    /// with `openapi_operation` cloned and `proc` replaced to a dummy (meaningless thing),
+    /// from a `&Handler`.
+    ///
+    /// (used in [`crate::router::base::Router::to_dummy_owned_for_openapi`])
+    pub(crate) fn to_dummy_owned_for_openapi(&self) -> Self {
+        Self::new(
+            |_| Box::pin(async {Response::OK()}),
+            self.openapi_operation.clone(),
+        )
+    }
+}
+
 #[cfg(not(feature = "__rt_threaded__"))]
 const _: (/* for NOT FOUND Handler cache */) = {
     unsafe impl Send for Handler {}
