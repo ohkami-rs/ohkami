@@ -1,4 +1,5 @@
 use crate::{Fang, FangProc, Request, Response, Status, header::append};
+use std::borrow::Cow;
 
 /// # Builtin fang for CORS config
 ///
@@ -34,31 +35,31 @@ pub struct Cors {
 #[derive(Clone, Debug)]
 pub(crate) enum AccessControlAllowOrigin {
     Any,
-    // This sould be `&'static _` in order to avoid repeated allocations
-    // in `.access_control_allow_origin(...)` in the [`bite` impl](CorsProc::bite).
-    Only(&'static str),
+    // `.access_control_allow_origin(...)` in the [`bite` impl](CorsProc::bite) requires accepts `Cow<'static, str>` so
+    // it will be cheap copy if user supplies as with static string ahead of time
+    Only(Cow<'static, str>),
 }
+
 impl AccessControlAllowOrigin {
     #[inline(always)]
     pub(crate) const fn is_any(&self) -> bool {
         matches!(self, Self::Any)
     }
 
-    pub(crate) fn new(s: impl Into<String>) -> Result<Self, &'static str> {
-        // This is safe and standard practice, since `Cors` (the only user of `AccessControlAllowOrigin`)
-        // is created only once at startup and persist for the entire serving process.
-        let s: &'static str = String::leak(s.into());
-        match s {
+    pub(crate) fn new(s: impl Into<Cow<'static, str>>) -> Result<Self, &'static str> {
+        let s = s.into();
+        match s.as_ref() {
             "*" => Ok(Self::Any),
-            _ => super::validate_origin(s).map(|_| Self::Only(s)),
+            _ => super::validate_origin(&s).map(|_| Self::Only(s)),
         }
     }
 
     #[inline(always)]
-    pub(crate) const fn as_str(&self) -> &'static str {
+    //This will perform expensive copy only if user provided dynamic string
+    pub(crate) fn get_cow(&self) -> Cow<'static, str> {
         match self {
-            Self::Any => "*",
-            Self::Only(origin) => origin,
+            Self::Any => Cow::Borrowed("*"),
+            Self::Only(origin) => origin.clone(),
         }
     }
 }
@@ -66,11 +67,22 @@ impl AccessControlAllowOrigin {
 impl Cors {
     /// Create `Cors` fang using given `origin` as `Access-Control-Allow-Origin` header value.\
     /// (Both `"*"` and a speciffic origin are available)
-    #[allow(non_snake_case)]
-    pub fn new(origin: impl Into<String>) -> Self {
+    pub fn new(origin: impl Into<Cow<'static, str>>) -> Self {
         Self {
             allow_origin: AccessControlAllowOrigin::new(origin)
                 .unwrap_or_else(|err| panic!("[Cors::new] {err}")),
+            allow_credentials: false,
+            allow_headers: None,
+            expose_headers: None,
+            max_age: None,
+        }
+    }
+
+    #[inline]
+    /// Creates `Cors` with any origin allowed
+    pub const fn any() -> Self {
+        Self {
+            allow_origin: AccessControlAllowOrigin::Any,
             allow_credentials: false,
             allow_headers: None,
             expose_headers: None,
@@ -133,7 +145,7 @@ impl<Inner: FangProc> FangProc for CorsProc<Inner> {
 
         res.headers
             .set()
-            .access_control_allow_origin(self.cors.allow_origin.as_str())
+            .access_control_allow_origin(self.cors.allow_origin.get_cow())
             .vary(self.cors.allow_origin.is_any().then_some("Origin".into()))
             .access_control_allow_credentials(self.cors.allow_credentials.then_some("true".into()))
             .access_control_expose_headers(
