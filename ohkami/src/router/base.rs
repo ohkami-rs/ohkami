@@ -26,7 +26,7 @@ impl Router {
     /// without consuming an existing `Router` or `Ohkami` instance.
     pub(crate) fn to_dummy_owned_for_openapi(&self) -> Self {
         Self {
-            id: self.id.clone(),
+            id: self.id,
             routes: self.routes.clone(),
             GET: self.GET.to_dummy_owned_for_openapi(),
             PUT: self.PUT.to_dummy_owned_for_openapi(),
