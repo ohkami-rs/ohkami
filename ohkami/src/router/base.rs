@@ -47,12 +47,19 @@ pub(super) struct Node {
 #[cfg(feature = "openapi")]
 impl Node {
     fn to_dummy_owned_for_openapi(&self) -> Self {
-        let dummy_handler_for_openapi = self.handler.as_ref().map(Handler::to_dummy_owned_for_openapi);
+        let dummy_handler_for_openapi = self
+            .handler
+            .as_ref()
+            .map(Handler::to_dummy_owned_for_openapi);
         Self {
             pattern: self.pattern.clone(),
             handler: dummy_handler_for_openapi,
             fangses: self.fangses.clone(),
-            children: self.children.iter().map(Self::to_dummy_owned_for_openapi).collect(),
+            children: self
+                .children
+                .iter()
+                .map(Self::to_dummy_owned_for_openapi)
+                .collect(),
         }
     }
 }

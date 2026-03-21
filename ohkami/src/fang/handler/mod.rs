@@ -69,7 +69,7 @@ impl Handler {
     /// (used in [`crate::router::base::Router::to_dummy_owned_for_openapi`])
     pub(crate) fn to_dummy_owned_for_openapi(&self) -> Self {
         Self::new(
-            |_| Box::pin(async {Response::OK()}),
+            |_| Box::pin(async { Response::OK() }),
             self.openapi_operation.clone(),
         )
     }
@@ -85,7 +85,7 @@ const _: (/* for NOT FOUND Handler cache */) = {
 impl Handler {
     pub(crate) fn default_not_found() -> Self {
         Handler::new(
-            |_| Box::pin(async {Response::NotFound()}),
+            |_| Box::pin(async { Response::NotFound() }),
             #[cfg(feature = "openapi")]
             openapi::Operation::with(openapi::Responses::new([(
                 404,
