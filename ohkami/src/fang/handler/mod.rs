@@ -9,7 +9,6 @@ use std::pin::Pin;
 #[cfg(feature = "openapi")]
 use crate::openapi;
 
-#[derive(Clone)]
 pub struct Handler {
     #[allow(dead_code/* read only in router */)]
     pub(crate) proc: BoxedFPC,
@@ -59,6 +58,20 @@ impl Handler {
             openapi_operation,
         }
     }
+
+    /// A utility to create an owned `Handler` instance,
+    /// with `openapi_operation` cloned and `proc` replaced to a dummy (meaningless thing),
+    /// from a `&Handler`.
+    ///
+    /// (used in [`crate::router::base::Router::to_dummy_owned_for_openapi`])
+    #[cfg(feature = "openapi")]
+    #[cfg(feature = "__rt__")]
+    pub(crate) fn to_dummy_owned_for_openapi(&self) -> Self {
+        Self::new(
+            |_| Box::pin(async { Response::OK() }),
+            self.openapi_operation.clone(),
+        )
+    }
 }
 
 #[cfg(not(feature = "__rt_threaded__"))]
@@ -70,24 +83,14 @@ const _: (/* for NOT FOUND Handler cache */) = {
 #[cfg(feature = "__rt__")]
 impl Handler {
     pub(crate) fn default_not_found() -> Self {
-        use std::sync::LazyLock;
-
-        static NOT_FOUND: LazyLock<Handler> = LazyLock::new(|| {
-            async fn not_found() -> Response {
-                Response::NotFound()
-            }
-            not_found.into_handler()
-        });
-
-        Handler {
-            proc: NOT_FOUND.proc.clone(),
-
+        Handler::new(
+            |_| Box::pin(async { Response::NotFound() }),
             #[cfg(feature = "openapi")]
-            openapi_operation: openapi::Operation::with(openapi::Responses::new([(
+            openapi::Operation::with(openapi::Responses::new([(
                 404,
                 openapi::Response::when("default not found"),
             )])),
-        }
+        )
     }
 
     pub(crate) fn default_options_with(available_methods: Vec<&'static str>) -> Self {

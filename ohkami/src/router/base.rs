@@ -6,7 +6,6 @@ use crate::ohkami::routing::{ByAnother, HandlerMeta, HandlerSet};
 use ohkami_lib::map::TupleMap;
 use std::{borrow::Cow, collections::HashMap, sync::Arc};
 
-#[cfg_attr(feature = "openapi", derive(Clone))]
 #[allow(non_snake_case)]
 pub struct Router {
     id: ID,
@@ -18,13 +17,51 @@ pub struct Router {
     pub(super) DELETE: Node,
     pub(super) OPTIONS: Node,
 }
+#[cfg(feature = "openapi")]
+impl Router {
+    /// A utility to create an owned `Router`,
+    /// with all handlers replaced to dummy (meaningless) handlers,
+    /// from a `&Router`.
+    /// Just for enabling to use [`crate::router::r#final::Router::gen_openapi_doc`]
+    /// without consuming an existing `Router` or `Ohkami` instance.
+    pub(crate) fn to_dummy_owned_for_openapi(&self) -> Self {
+        Self {
+            id: self.id,
+            routes: self.routes.clone(),
+            GET: self.GET.to_dummy_owned_for_openapi(),
+            PUT: self.PUT.to_dummy_owned_for_openapi(),
+            POST: self.POST.to_dummy_owned_for_openapi(),
+            PATCH: self.PATCH.to_dummy_owned_for_openapi(),
+            DELETE: self.DELETE.to_dummy_owned_for_openapi(),
+            OPTIONS: self.OPTIONS.to_dummy_owned_for_openapi(),
+        }
+    }
+}
 
-#[cfg_attr(feature = "openapi", derive(Clone))]
 pub(super) struct Node {
     pub(super) pattern: Option<Pattern>,
     pub(super) handler: Option<Handler>,
     pub(super) fangses: FangsList,
     pub(super) children: Vec<Node>,
+}
+#[cfg(feature = "openapi")]
+impl Node {
+    fn to_dummy_owned_for_openapi(&self) -> Self {
+        let dummy_handler_for_openapi = self
+            .handler
+            .as_ref()
+            .map(Handler::to_dummy_owned_for_openapi);
+        Self {
+            pattern: self.pattern.clone(),
+            handler: dummy_handler_for_openapi,
+            fangses: self.fangses.clone(),
+            children: self
+                .children
+                .iter()
+                .map(Self::to_dummy_owned_for_openapi)
+                .collect(),
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -218,8 +255,9 @@ impl Router {
         HashMap<RouteSegments, TupleMap<Method, HandlerMeta>>,
     ) {
         let routes = std::mem::take(&mut self.routes);
-        for (route, handlers_meta) in &routes {
-            for (_method, handler_meta) in handlers_meta.iter() {
+
+        routes.iter().for_each(|(route, handlers_meta)| {
+            handlers_meta.iter().for_each(|(_method, handler_meta)| {
                 assert!(
                     handler_meta.n_pathparams <= route.n_pathparams(),
                     "handler `{}` requires {} path param(s) \
@@ -229,8 +267,8 @@ impl Router {
                     route.literal(),
                     route.n_pathparams()
                 );
-            }
-        }
+            });
+        });
 
         let r#final = super::r#final::Router::from(self);
 

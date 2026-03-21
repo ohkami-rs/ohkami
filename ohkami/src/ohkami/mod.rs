@@ -867,7 +867,7 @@ impl Ohkami {
     #[doc(hidden)]
     pub fn __openapi_document_bytes__(&self, openapi: crate::openapi::OpenAPI) -> Vec<u8> {
         let (router, routes) = (Self {
-            router: self.router.clone(),
+            router: self.router.to_dummy_owned_for_openapi(),
             fangs: self.fangs.clone(),
         })
         .into_router()
