@@ -647,9 +647,8 @@ mod test {
             };
         }
 
-        let j = Jwt::<::serde_json::Value>::new_hs256(
-            "ohkami-realworld-jwt-authorization-secret-key",
-        );
+        let j =
+            Jwt::<::serde_json::Value>::new_hs256("ohkami-realworld-jwt-authorization-secret-key");
         {
             assert_eq!(
                 verified!(j, GET "/" {
