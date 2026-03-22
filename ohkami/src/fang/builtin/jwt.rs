@@ -17,7 +17,7 @@ use std::{borrow::Cow, marker::PhantomData};
 ///
 /// - get token: from `Authorization: Bearer ＜here＞`
 ///   - customizable by `.get_token_by( 〜 )`
-/// - verifying algorithm: `HMAC-SHA256`
+/// - verification algorithm: `HMAC-SHA256`
 ///   - `HMAC-SHA{256, 384, 512}` are available now
 /// - issuer: `None`
 ///   - configured by `.with_issuer(...)`
@@ -48,7 +48,7 @@ use std::{borrow::Cow, marker::PhantomData};
 /// }
 ///
 /// fn our_jwt() -> Jwt<OurJwtPayload> {
-///     Jwt::default("OUR_JWT_SECRET_KEY")
+///     Jwt::new_default("OUR_JWT_SECRET_KEY")
 /// }
 ///
 /// async fn hello(
@@ -183,22 +183,38 @@ const _: () = {
 };
 
 impl<Payload: Serialize + for<'de> Deserialize<'de> + SendSyncOnThreaded + 'static> Jwt<Payload> {
-    /// Just `new_256`; use HMAC-SHA256 as verifying algorithm
+    /// use default verification algorithm (currently HMAC-SHA256)
     #[inline]
-    pub fn default(secret: impl Into<Cow<'static, str>>) -> Self {
-        Self::new_256(secret)
+    pub fn new_default(secret: impl Into<Cow<'static, str>>) -> Self {
+        Self::new_hs256(secret)
     }
-    /// Use HMAC-SHA256 as verifying algorithm
-    pub fn new_256(secret: impl Into<Cow<'static, str>>) -> Self {
+    #[deprecated(since = "0.24.8", note = "use `Jwt::new_default` instead.")]
+    pub fn default(secret: impl Into<Cow<'static, str>>) -> Self {
+        Self::new_default(secret)
+    }
+    /// Use HMAC-SHA256 as verification algorithm
+    pub fn new_hs256(secret: impl Into<Cow<'static, str>>) -> Self {
         Self::new(VerifyingAlgorithm::HS256, secret)
     }
-    /// Use HMAC-SHA384 as verifying algorithm
-    pub fn new_384(secret: impl Into<Cow<'static, str>>) -> Self {
+    #[deprecated(since = "0.24.8", note = "use `Jwt::new_hs256` instead.")]
+    pub fn new_256(secret: impl Into<Cow<'static, str>>) -> Self {
+        Self::new_hs256(secret)
+    }
+    /// Use HMAC-SHA384 as verification algorithm
+    pub fn new_hs384(secret: impl Into<Cow<'static, str>>) -> Self {
         Self::new(VerifyingAlgorithm::HS384, secret)
     }
-    /// Use HMAC-SHA512 as verifying algorithm
-    pub fn new_512(secret: impl Into<Cow<'static, str>>) -> Self {
+    #[deprecated(since = "0.24.8", note = "use `Jwt::new_hs384` instead.")]
+    pub fn new_384(secret: impl Into<Cow<'static, str>>) -> Self {
+        Self::new_hs384(secret)
+    }
+    /// Use HMAC-SHA512 as verification algorithm
+    pub fn new_hs512(secret: impl Into<Cow<'static, str>>) -> Self {
         Self::new(VerifyingAlgorithm::HS512, secret)
+    }
+    #[deprecated(since = "0.24.8", note = "use `Jwt::new_hs512` instead.")]
+    pub fn new_512(secret: impl Into<Cow<'static, str>>) -> Self {
+        Self::new_hs512(secret)
     }
 
     /// Set issuer; used for `iss` claim verification
@@ -218,7 +234,6 @@ impl<Payload: Serialize + for<'de> Deserialize<'de> + SendSyncOnThreaded + 'stat
     pub fn get_token_by(
         mut self,
         get_token: fn(&Request) -> Option<&str>,
-
         #[cfg(feature = "openapi")] openapi_security: crate::openapi::security::SecurityScheme,
     ) -> Self {
         #[cfg(feature = "openapi")]
@@ -551,7 +566,7 @@ mod test {
         }
 
         assert_eq! {
-            &*Jwt::default("secret").issue(Payload {
+            &*Jwt::new_default("secret").issue(Payload {
                 iat: 1516239022,
                 id: 42,
                 name: "kanarus".to_string()
@@ -560,14 +575,14 @@ mod test {
         }
 
         assert_eq! {
-            Jwt::default("secret")
+            Jwt::new_default("secret")
                 .with_issuer("https://auth.example.com")
                 .issue(Payload {
                     iat: 1516239022,
                     id: 42,
                     name: "kanarus".to_string()
                 }),
-            Jwt::default("secret")
+            Jwt::new_default("secret")
                 .issue(PayloadWithIss {
                     iss: "https://auth.example.com".to_string(),
                     iat: 1516239022,
@@ -577,14 +592,14 @@ mod test {
         }
 
         assert_eq! {
-            Jwt::default("secret")
+            Jwt::new_default("secret")
                 .with_audience("https://auth.example.com")
                 .issue(Payload {
                     iat: 1516239022,
                     id: 42,
                     name: "kanarus".to_string()
                 }),
-            Jwt::default("secret")
+            Jwt::new_default("secret")
                 .issue(PayloadWithAud {
                     aud: "https://auth.example.com".to_string(),
                     iat: 1516239022,
@@ -594,7 +609,7 @@ mod test {
         }
 
         assert_eq! {
-            Jwt::default("secret")
+            Jwt::new_default("secret")
                 .with_issuer("https://auth.example.com")
                 .with_audience("https://auth.example.com")
                 .issue(Payload {
@@ -602,7 +617,7 @@ mod test {
                     id: 42,
                     name: "kanarus".to_string()
                 }),
-            Jwt::default("secret")
+            Jwt::new_default("secret")
                 .issue(PayloadWithIssAud {
                     iss: "https://auth.example.com".to_string(),
                     aud: "https://auth.example.com".to_string(),
@@ -638,7 +653,7 @@ mod test {
         }
 
         let j =
-            Jwt::<::serde_json::Value>::default("ohkami-realworld-jwt-authorization-secret-key");
+            Jwt::<::serde_json::Value>::new_default("ohkami-realworld-jwt-authorization-secret-key");
         {
             assert_eq!(
                 verified!(j, GET "/" {
@@ -765,7 +780,7 @@ mod test {
         use crate::openapi;
 
         fn my_jwt() -> Jwt<MyJwtPayload> {
-            Jwt::default("myverysecretjwtsecretkey")
+            Jwt::new_default("myverysecretjwtsecretkey")
         }
 
         #[derive(serde::Serialize, serde::Deserialize)]
