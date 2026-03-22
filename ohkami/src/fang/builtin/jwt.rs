@@ -1,7 +1,7 @@
 #![allow(non_snake_case, non_camel_case_types)]
 
-use crate::fang::{SendOnThreaded, SendSyncOnThreaded};
-use crate::{Fang, FangProc, IntoResponse, Request, Response};
+use crate::fang::{SendSyncOnThreaded};
+use crate::{Request, Response};
 use serde::{Deserialize, Serialize};
 use std::{borrow::Cow, marker::PhantomData};
 
@@ -89,8 +89,8 @@ use std::{borrow::Cow, marker::PhantomData};
 ///     )).howl("localhost:3000").await
 /// }
 /// ```
-pub struct Jwt<Payload: Serialize + for<'de> Deserialize<'de> + SendSyncOnThreaded + 'static> {
-    _payload: PhantomData<Payload>,
+pub struct Jwt<P> {
+    _payload: PhantomData<P>,
     secret: Cow<'static, str>,
     alg: VerifyingAlgorithm,
     issuer: Option<Box<str>>,
@@ -107,9 +107,7 @@ enum VerifyingAlgorithm {
 }
 
 const _: () = {
-    impl<Payload: Serialize + for<'de> Deserialize<'de> + SendSyncOnThreaded + 'static> Clone
-        for Jwt<Payload>
-    {
+    impl<P> Clone for Jwt<P> {
         fn clone(&self) -> Self {
             Self {
                 _payload: PhantomData,
@@ -124,9 +122,7 @@ const _: () = {
         }
     }
 
-    impl<Payload: Serialize + for<'de> Deserialize<'de> + SendSyncOnThreaded + 'static>
-        std::fmt::Debug for Jwt<Payload>
-    {
+    impl<P> std::fmt::Debug for Jwt<P> {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             f.debug_struct("Jwt")
                 .field("alg", &self.alg_str())
@@ -136,17 +132,14 @@ const _: () = {
         }
     }
 
-    impl<
-        Inner: FangProc + SendOnThreaded,
-        Payload: Serialize + for<'de> Deserialize<'de> + SendSyncOnThreaded + 'static,
-    > Fang<Inner> for Jwt<Payload>
+    impl<P> crate::FangAction for Jwt<P>
+    where 
+        P: SendSyncOnThreaded + serde::de::DeserializeOwned + 'static,
     {
-        type Proc = JwtProc<Inner, Payload>;
-        fn chain(&self, inner: Inner) -> Self::Proc {
-            JwtProc {
-                inner,
-                jwt: self.clone(),
-            }
+        async fn fore<'b>(&'b self, req: &'b mut Request) -> Result<(), Response> {
+            let jwt_payload = self.verified(req)?;
+            req.context.set(jwt_payload);
+            Ok(())
         }
 
         #[cfg(feature = "openapi")]
@@ -157,32 +150,9 @@ const _: () = {
             operation.security(self.openapi_security(), &[])
         }
     }
-
-    pub struct JwtProc<
-        Inner: FangProc,
-        Payload: Serialize + for<'de> Deserialize<'de> + SendSyncOnThreaded + 'static,
-    > {
-        inner: Inner,
-        jwt: Jwt<Payload>,
-    }
-    impl<
-        Inner: FangProc + SendOnThreaded,
-        Payload: Serialize + for<'de> Deserialize<'de> + SendSyncOnThreaded + 'static,
-    > FangProc for JwtProc<Inner, Payload>
-    {
-        async fn bite<'b>(&'b self, req: &'b mut Request) -> Response {
-            let jwt_payload = match self.jwt.verified(req) {
-                Ok(payload) => payload,
-                Err(errres) => return errres,
-            };
-            req.context.set(jwt_payload);
-
-            self.inner.bite(req).await.into_response()
-        }
-    }
 };
 
-impl<Payload: Serialize + for<'de> Deserialize<'de> + SendSyncOnThreaded + 'static> Jwt<Payload> {
+impl<P> Jwt<P> {
     #[deprecated(since = "0.24.8", note = "use `Jwt::new_hs256` instead.")]
     pub fn default(secret: impl Into<Cow<'static, str>>) -> Self {
         Self::new_hs256(secret)
@@ -313,10 +283,10 @@ const _: () = {
     }
 };
 
-impl<Payload: Serialize + for<'de> Deserialize<'de> + SendSyncOnThreaded + 'static> Jwt<Payload> {
+impl<P: Serialize> Jwt<P> {
     /// Build JWT token with the payload.
     #[inline]
-    pub fn issue(self, payload: Payload) -> JwtToken {
+    pub fn issue(self, payload: P) -> JwtToken {
         #[derive(Serialize)]
         struct JwtPayload<U> {
             #[serde(skip_serializing_if = "Option::is_none")]
@@ -371,7 +341,7 @@ impl<Payload: Serialize + for<'de> Deserialize<'de> + SendSyncOnThreaded + 'stat
     }
 }
 
-impl<Payload: Serialize + for<'de> Deserialize<'de> + SendSyncOnThreaded + 'static> Jwt<Payload> {
+impl<P: serde::de::DeserializeOwned> Jwt<P> {
     /// Verify JWT in requests' `Authorization` header and early return error response if
     /// it's missing or malformed.
     pub fn verify(&self, req: &Request) -> Result<(), Response> {
@@ -383,7 +353,7 @@ impl<Payload: Serialize + for<'de> Deserialize<'de> + SendSyncOnThreaded + 'stat
     /// it's missing or malformed.
     ///
     /// Then it's valid, this returns decoded paylaod of the JWT as `Payload`.
-    pub fn verified(&self, req: &Request) -> Result<Payload, Response> {
+    pub fn verified(&self, req: &Request) -> Result<P, Response> {
         (!req.method.isOPTIONS())
             .then_some(())
             .ok_or_else(Response::OK)?;
@@ -535,36 +505,36 @@ mod test {
         struct Payload {
             iat: u64,
             id: u64,
-            name: String,
+            name: &'static str,
         }
         #[derive(serde::Serialize, serde::Deserialize)]
         struct PayloadWithIss {
-            iss: String,
+            iss: &'static str,
             iat: u64,
             id: u64,
-            name: String,
+            name: &'static str,
         }
         #[derive(serde::Serialize, serde::Deserialize)]
         struct PayloadWithAud {
-            aud: String,
+            aud: &'static str,
             iat: u64,
             id: u64,
-            name: String,
+            name: &'static str,
         }
         #[derive(serde::Serialize, serde::Deserialize)]
         struct PayloadWithIssAud {
-            iss: String,
-            aud: String,
+            iss: &'static str,
+            aud: &'static str,
             iat: u64,
             id: u64,
-            name: String,
+            name: &'static str,
         }
 
         assert_eq! {
             &*Jwt::new_hs256("secret").issue(Payload {
                 iat: 1516239022,
                 id: 42,
-                name: "kanarus".to_string()
+                name: "kanarus"
             }),
             "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE1MTYyMzkwMjIsImlkIjo0MiwibmFtZSI6ImthbmFydXMifQ.dt43rLwmy4_GA_84LMC1m5CwVc59P9as_nRFldVCH7g"
         }
@@ -575,14 +545,14 @@ mod test {
                 .issue(Payload {
                     iat: 1516239022,
                     id: 42,
-                    name: "kanarus".to_string()
+                    name: "kanarus"
                 }),
             Jwt::new_hs256("secret")
                 .issue(PayloadWithIss {
-                    iss: "https://auth.example.com".to_string(),
+                    iss: "https://auth.example.com",
                     iat: 1516239022,
                     id: 42,
-                    name: "kanarus".to_string()
+                    name: "kanarus"
                 })
         }
 
@@ -592,14 +562,14 @@ mod test {
                 .issue(Payload {
                     iat: 1516239022,
                     id: 42,
-                    name: "kanarus".to_string()
+                    name: "kanarus"
                 }),
             Jwt::new_hs256("secret")
                 .issue(PayloadWithAud {
-                    aud: "https://auth.example.com".to_string(),
+                    aud: "https://auth.example.com",
                     iat: 1516239022,
                     id: 42,
-                    name: "kanarus".to_string()
+                    name: "kanarus"
                 })
         }
 
@@ -610,15 +580,15 @@ mod test {
                 .issue(Payload {
                     iat: 1516239022,
                     id: 42,
-                    name: "kanarus".to_string()
+                    name: "kanarus"
                 }),
             Jwt::new_hs256("secret")
                 .issue(PayloadWithIssAud {
-                    iss: "https://auth.example.com".to_string(),
-                    aud: "https://auth.example.com".to_string(),
+                    iss: "https://auth.example.com",
+                    aud: "https://auth.example.com",
                     iat: 1516239022,
                     id: 42,
-                    name: "kanarus".to_string()
+                    name: "kanarus"
                 })
         }
     }
