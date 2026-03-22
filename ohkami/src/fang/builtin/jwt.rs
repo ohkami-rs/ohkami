@@ -1,6 +1,6 @@
 #![allow(non_snake_case, non_camel_case_types)]
 
-use crate::fang::{SendSyncOnThreaded};
+use crate::fang::SendSyncOnThreaded;
 use crate::{Request, Response};
 use serde::{Deserialize, Serialize};
 use std::{borrow::Cow, marker::PhantomData};
@@ -136,7 +136,7 @@ const _: () = {
     }
 
     impl<P> crate::FangAction for Jwt<P>
-    where 
+    where
         P: SendSyncOnThreaded + serde::de::DeserializeOwned + 'static,
     {
         async fn fore<'b>(&'b self, req: &'b mut Request) -> Result<(), Response> {
