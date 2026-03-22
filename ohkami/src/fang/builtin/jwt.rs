@@ -13,16 +13,6 @@ use std::{borrow::Cow, marker::PhantomData};
 ///
 /// For each request, get JWT token and verify based on given config and `Payload: for<'de> Deserialize<'de>`.
 ///
-/// ## helper
-///
-/// `.issue(/* Payload: Serialize */)` generates a JWT token on the config.
-///
-/// **NOTE**: `Payload` itself MUST NOT contain fields named `iss` or `aud`,
-/// which should be configured via `.with_issuer(...)` or `.with_audience(...)`
-/// methods of `Jwt`.
-///
-/// <br>
-///
 /// ## default config
 ///
 /// - get token: from `Authorization: Bearer ＜here＞`
@@ -33,6 +23,14 @@ use std::{borrow::Cow, marker::PhantomData};
 ///   - configured by `.with_issuer(...)`
 /// - audience: `None`
 ///   - configured by `.with_audience(...)`
+///
+/// ## helper
+///
+/// `.issue(/* Payload: Serialize */)` generates a JWT token on the config.
+///
+/// **NOTE**: When `.with_{issuer, audience}` are configured,
+/// `Payload` itself MUST NOT contain fields named `iss` or `aud`,
+/// where the behavior is undefined.
 ///
 /// <br>
 ///
@@ -522,61 +520,96 @@ mod test {
 
     #[test]
     fn test_jwt_issue() {
-        let payload = ::serde_json::json!({
-            "iat":1516239022,
-            "id":42,
-            "name":"kanarus"
-        });
+        /* defining structs, instead of using `serde_json::json!`, to control fields order */
+        #[derive(serde::Serialize, serde::Deserialize)]
+        struct Payload {
+            iat: u64,
+            id: u64,
+            name: String,
+        }
+        #[derive(serde::Serialize, serde::Deserialize)]
+        struct PayloadWithIss {
+            iss: String,
+            iat: u64,
+            id: u64,
+            name: String,
+        }
+        #[derive(serde::Serialize, serde::Deserialize)]
+        struct PayloadWithAud {
+            aud: String,
+            iat: u64,
+            id: u64,
+            name: String,
+        }
+        #[derive(serde::Serialize, serde::Deserialize)]
+        struct PayloadWithIssAud {
+            iss: String,
+            aud: String,
+            iat: u64,
+            id: u64,
+            name: String,
+        }
 
-        let j = Jwt::default("secret");
         assert_eq! {
-            &*j.issue(payload.clone()),
+            &*Jwt::default("secret").issue(Payload {
+                iat: 1516239022,
+                id: 42,
+                name: "kanarus".to_string()
+            }),
             "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE1MTYyMzkwMjIsImlkIjo0MiwibmFtZSI6ImthbmFydXMifQ.dt43rLwmy4_GA_84LMC1m5CwVc59P9as_nRFldVCH7g"
         }
 
-        let j = Jwt::default("secret").with_issuer("https://auth.example.com");
         assert_eq! {
-            &*j.issue(payload.clone()),
-            /* payload:
-             * {
-             *   "iss":"https://auth.example.com",
-             *   "iat":1516239022,
-             *   "id":42,
-             *   "name":"kanarus"
-             * }
-             */
-            "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczovL2F1dGguZXhhbXBsZS5jb20iLCJpYXQiOjE1MTYyMzkwMjIsImlkIjo0MiwibmFtZSI6ImthbmFydXMifQ.yXpdT_9ec6qiPH-oER9rkafWQgqpISxmDbpTF7Aulig"
+            Jwt::default("secret")
+                .with_issuer("https://auth.example.com")
+                .issue(Payload {
+                    iat: 1516239022,
+                    id: 42,
+                    name: "kanarus".to_string()
+                }),
+            Jwt::default("secret")
+                .issue(PayloadWithIss {
+                    iss: "https://auth.example.com".to_string(),
+                    iat: 1516239022,
+                    id: 42,
+                    name: "kanarus".to_string()
+                })
         }
 
-        let j = Jwt::default("secret").with_audience("https://auth.example.com");
         assert_eq! {
-            &*j.issue(payload.clone()),
-            /* payload:
-             * {
-             *   "aud":"https://auth.example.com",
-             *   "iat":1516239022,
-             *   "id":42,
-             *   "name":"kanarus"
-             * }
-             */
-            "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJodHRwczovL2F1dGguZXhhbXBsZS5jb20iLCJpYXQiOjE1MTYyMzkwMjIsImlkIjo0MiwibmFtZSI6ImthbmFydXMifQ.Ck9Jebbjr8M_yDbB8sKy9xL3hYkygrdaPlRvb_2n9jI"
+            Jwt::default("secret")
+                .with_audience("https://auth.example.com")
+                .issue(Payload {
+                    iat: 1516239022,
+                    id: 42,
+                    name: "kanarus".to_string()
+                }),
+            Jwt::default("secret")
+                .issue(PayloadWithAud {
+                    aud: "https://auth.example.com".to_string(),
+                    iat: 1516239022,
+                    id: 42,
+                    name: "kanarus".to_string()
+                })
         }
 
-        let j = Jwt::default("secret")
-            .with_issuer("https://auth.example.com")
-            .with_audience("https://auth.example.com");
         assert_eq! {
-            &*j.issue(payload.clone()),
-            /* payload:
-             * {
-             *   "iss":"https://auth.example.com",
-             *   "aud":"https://auth.example.com",
-             *   "iat":1516239022,
-             *   "id":42,
-             *   "name":"kanarus"
-             * }
-             */
-            "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczovL2F1dGguZXhhbXBsZS5jb20iLCJhdWQiOiJodHRwczovL2F1dGguZXhhbXBsZS5jb20iLCJpYXQiOjE1MTYyMzkwMjIsImlkIjo0MiwibmFtZSI6ImthbmFydXMifQ.XvbbU-vivYfygjOBkFFzXCupMtSoPUa3kZVdiQiCk9M"
+            Jwt::default("secret")
+                .with_issuer("https://auth.example.com")
+                .with_audience("https://auth.example.com")
+                .issue(Payload {
+                    iat: 1516239022,
+                    id: 42,
+                    name: "kanarus".to_string()
+                }),
+            Jwt::default("secret")
+                .issue(PayloadWithIssAud {
+                    iss: "https://auth.example.com".to_string(),
+                    aud: "https://auth.example.com".to_string(),
+                    iat: 1516239022,
+                    id: 42,
+                    name: "kanarus".to_string()
+                })
         }
     }
 
