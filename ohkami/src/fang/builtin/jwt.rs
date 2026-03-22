@@ -183,14 +183,9 @@ const _: () = {
 };
 
 impl<Payload: Serialize + for<'de> Deserialize<'de> + SendSyncOnThreaded + 'static> Jwt<Payload> {
-    /// use default verification algorithm (currently HMAC-SHA256)
-    #[inline]
-    pub fn new_default(secret: impl Into<Cow<'static, str>>) -> Self {
-        Self::new_hs256(secret)
-    }
-    #[deprecated(since = "0.24.8", note = "use `Jwt::new_default` instead.")]
+    #[deprecated(since = "0.24.8", note = "use `Jwt::new_hs256` instead.")]
     pub fn default(secret: impl Into<Cow<'static, str>>) -> Self {
-        Self::new_default(secret)
+        Self::new_hs256(secret)
     }
     /// Use HMAC-SHA256 as verification algorithm
     pub fn new_hs256(secret: impl Into<Cow<'static, str>>) -> Self {
@@ -652,8 +647,9 @@ mod test {
             };
         }
 
-        let j =
-            Jwt::<::serde_json::Value>::new_default("ohkami-realworld-jwt-authorization-secret-key");
+        let j = Jwt::<::serde_json::Value>::new_default(
+            "ohkami-realworld-jwt-authorization-secret-key",
+        );
         {
             assert_eq!(
                 verified!(j, GET "/" {
