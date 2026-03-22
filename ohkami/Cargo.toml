@@ -20,9 +20,9 @@ workspace = true
 
 [dependencies]
 # workspace members
-ohkami_lib     = { version = "=0.24.7", path = "../ohkami_lib" }
-ohkami_macros  = { version = "=0.24.7", path = "../ohkami_macros" }
-ohkami_openapi = { optional = true, version = "=0.24.7", path = "../ohkami_openapi" }
+ohkami_lib     = { version = "=0.24.8", path = "../ohkami_lib" }
+ohkami_macros  = { version = "=0.24.8", path = "../ohkami_macros" }
+ohkami_openapi = { optional = true, version = "=0.24.8", path = "../ohkami_openapi" }
 
 # workspace dependencies
 byte_reader = { workspace = true }
@@ -107,16 +107,12 @@ DEBUG = ["tokio?/rt-multi-thread", "tokio?/macros"]
 #    "sse",
 #    "ws",
 #    "tls",
-#    #"rt_tokio",
-#    #"rt_smol",
-#    "rt_nio",
-#    #"rt_glommio",
-#    #"rt_worker",
+#    "rt_tokio",
 #    "DEBUG",
 # ]
 
 ##### Logging customization #####
-internal-log-tracing = ["tracing"]
+internal-log-tracing = ["dep:tracing"]
 
 [dev-dependencies] # for doc test
 sqlx = { version = "0.8", features = ["runtime-tokio", "postgres", "macros"] }
