@@ -9,10 +9,6 @@ use std::{borrow::Cow, marker::PhantomData};
 ///
 /// <br>
 ///
-/// ## fang
-///
-/// For each request, get JWT token and verify based on given config and `Payload: for<'de> Deserialize<'de>`.
-///
 /// ## default config
 ///
 /// - get token: from `Authorization: Bearer ＜here＞`
@@ -24,13 +20,20 @@ use std::{borrow::Cow, marker::PhantomData};
 /// - audience: `None`
 ///   - configured by `.with_audience(...)`
 ///
+/// ## as fang (middleware)
+///
+/// Gets a JWT token from each request and verify it.
+/// `Jwt`'s type parameter means the payload type and it must implements `DeserializeOwned` (for<'de> Deserialize<'de>).
+///
 /// ## helper
 ///
-/// `.issue(/* Payload: Serialize */)` generates a JWT token on the config.
-///
-/// **NOTE**: When `.with_{issuer, audience}` are configured,
-/// `Payload` itself MUST NOT contain fields named `iss` or `aud`,
-/// where the behavior is undefined.
+/// - `.issue(/* P: Serialize */)` generates a JWT token with the `Jwt` config and given payload: `P`.
+///   - **NOTE**: When `.with_{issuer, audience}` are configured,
+///     `Payload` itself MUST NOT contain fields named `iss` or `aud`,
+///     where the behavior is undefined.
+/// - `.verify(/* &Request */) -> Result<(), Response>` verifies a `Request` based on the `Jwt`.
+/// - `.verified(/* &Request */) -> Result<P, Response>` (`P: DeserializeOwned`) verifies a `Request`
+///   based on the `Jwt` and then returns a parsed `P`.
 ///
 /// <br>
 ///
