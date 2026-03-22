@@ -13,18 +13,24 @@ use std::{borrow::Cow, marker::PhantomData};
 ///
 /// For each request, get JWT token and verify based on given config and `Payload: for<'de> Deserialize<'de>`.
 ///
-/// ## helper
-///
-/// `.issue(/* Payload: Serialize */)` generates a JWT token on the config.
-///
-/// <br>
-///
 /// ## default config
 ///
 /// - get token: from `Authorization: Bearer ＜here＞`
 ///   - customizable by `.get_token_by( 〜 )`
 /// - verifying algorithm: `HMAC-SHA256`
 ///   - `HMAC-SHA{256, 384, 512}` are available now
+/// - issuer: `None`
+///   - configured by `.with_issuer(...)`
+/// - audience: `None`
+///   - configured by `.with_audience(...)`
+///
+/// ## helper
+///
+/// `.issue(/* Payload: Serialize */)` generates a JWT token on the config.
+///
+/// **NOTE**: When `.with_{issuer, audience}` are configured,
+/// `Payload` itself MUST NOT contain fields named `iss` or `aud`,
+/// where the behavior is undefined.
 ///
 /// <br>
 ///
@@ -87,8 +93,9 @@ pub struct Jwt<Payload: Serialize + for<'de> Deserialize<'de> + SendSyncOnThread
     _payload: PhantomData<Payload>,
     secret: Cow<'static, str>,
     alg: VerifyingAlgorithm,
+    issuer: Option<Box<str>>,
+    audience: Option<Box<str>>,
     get_token: fn(&Request) -> Option<&str>,
-
     #[cfg(feature = "openapi")]
     openapi_security: crate::openapi::security::SecurityScheme,
 }
@@ -108,8 +115,9 @@ const _: () = {
                 _payload: PhantomData,
                 secret: self.secret.clone(),
                 alg: self.alg.clone(),
+                issuer: None,
+                audience: None,
                 get_token: self.get_token,
-
                 #[cfg(feature = "openapi")]
                 openapi_security: self.openapi_security.clone(),
             }
@@ -193,6 +201,17 @@ impl<Payload: Serialize + for<'de> Deserialize<'de> + SendSyncOnThreaded + 'stat
         Self::new(VerifyingAlgorithm::HS512, secret)
     }
 
+    /// Set issuer; used for `iss` claim verification
+    pub fn with_issuer(mut self, iss: impl Into<String>) -> Self {
+        self.issuer = Some(iss.into().into_boxed_str());
+        self
+    }
+    /// Set audience; used for `aud` claim verification
+    pub fn with_audience(mut self, aud: impl Into<String>) -> Self {
+        self.audience = Some(aud.into().into_boxed_str());
+        self
+    }
+
     /// Customize get-token process in JWT verifying.
     ///
     /// *default*: `req.headers.authorization()?.strip_prefix("Bearer ")`
@@ -228,6 +247,8 @@ impl<Payload: Serialize + for<'de> Deserialize<'de> + SendSyncOnThreaded + 'stat
         Self {
             alg,
             get_token,
+            issuer: None,
+            audience: None,
 
             _payload: PhantomData,
             secret: secret.into(),
@@ -286,11 +307,26 @@ impl<Payload: Serialize + for<'de> Deserialize<'de> + SendSyncOnThreaded + 'stat
     /// Build JWT token with the payload.
     #[inline]
     pub fn issue(self, payload: Payload) -> JwtToken {
+        #[derive(Serialize)]
+        struct JwtPayload<U> {
+            #[serde(skip_serializing_if = "Option::is_none")]
+            iss: Option<Box<str>>,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            aud: Option<Box<str>>,
+            #[serde(flatten)]
+            user_payload: U,
+        }
+
         let unsigned_token = {
             let mut ut = crate::util::base64_url_encode(self.header_str());
             ut.push('.');
             ut.push_str(&crate::util::base64_url_encode(
-                ::serde_json::to_vec(&payload).expect("Failed to serialze payload"),
+                ::serde_json::to_vec(&JwtPayload {
+                    iss: self.issuer,
+                    aud: self.audience,
+                    user_payload: payload,
+                })
+                .expect("Failed to serialze payload"),
             ));
             ut
         };
@@ -396,6 +432,31 @@ impl<Payload: Serialize + for<'de> Deserialize<'de> + SendSyncOnThreaded + 'stat
         {
             return Err(Response::Unauthorized().with_text(UNAUTHORIZED_MESSAGE));
         }
+        if let Some(issuer) = &self.issuer {
+            let is_valid_iss = payload
+                .get("iss")
+                .is_some_and(|v| v.as_str() == Some(&**issuer));
+            if !is_valid_iss {
+                return Err(Response::Unauthorized().with_text(UNAUTHORIZED_MESSAGE));
+            }
+        }
+        if let Some(audience) = &self.audience {
+            let is_valid_aud = payload.get("aud").is_some_and(|aud| {
+                if let Some(aud) = aud.as_str() {
+                    aud == &**audience
+                } else if let Some(auds) = aud.as_array() {
+                    auds.iter()
+                        .filter_map(|v| v.as_str())
+                        .find(|&aud| aud == &**audience)
+                        .is_some()
+                } else {
+                    false
+                }
+            });
+            if !is_valid_aud {
+                return Err(Response::Unauthorized().with_text(UNAUTHORIZED_MESSAGE));
+            }
+        }
 
         let signature_part = parts.next().ok_or_else(Response::Unauthorized)?;
         let requested_signature =
@@ -429,8 +490,11 @@ impl<Payload: Serialize + for<'de> Deserialize<'de> + SendSyncOnThreaded + 'stat
                 }
             }
         };
-
         if !is_correct_signature {
+            return Err(Response::Unauthorized().with_text(UNAUTHORIZED_MESSAGE));
+        }
+
+        if parts.next().is_some() {
             return Err(Response::Unauthorized().with_text(UNAUTHORIZED_MESSAGE));
         }
 
@@ -456,22 +520,96 @@ mod test {
 
     #[test]
     fn test_jwt_issue() {
-        /* NOTE:
-            `serde_json::to_vec` automatically sorts original object's keys
-            in alphabetical order. e.t., here
+        /* defining structs, instead of using `serde_json::json!`, to control fields order */
+        #[derive(serde::Serialize, serde::Deserialize)]
+        struct Payload {
+            iat: u64,
+            id: u64,
+            name: String,
+        }
+        #[derive(serde::Serialize, serde::Deserialize)]
+        struct PayloadWithIss {
+            iss: String,
+            iat: u64,
+            id: u64,
+            name: String,
+        }
+        #[derive(serde::Serialize, serde::Deserialize)]
+        struct PayloadWithAud {
+            aud: String,
+            iat: u64,
+            id: u64,
+            name: String,
+        }
+        #[derive(serde::Serialize, serde::Deserialize)]
+        struct PayloadWithIssAud {
+            iss: String,
+            aud: String,
+            iat: u64,
+            id: u64,
+            name: String,
+        }
 
-            ```
-            json!({"name":"kanarus","id":42,"iat":1516239022})
-            ```
-            is serialzed to
-
-            ```raw literal
-            {"iat":1516239022,"id":42,"name":"kanarus"}
-            ```
-        */
         assert_eq! {
-            &*Jwt::default("secret").issue(::serde_json::json!({"name":"kanarus","id":42,"iat":1516239022})),
+            &*Jwt::default("secret").issue(Payload {
+                iat: 1516239022,
+                id: 42,
+                name: "kanarus".to_string()
+            }),
             "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE1MTYyMzkwMjIsImlkIjo0MiwibmFtZSI6ImthbmFydXMifQ.dt43rLwmy4_GA_84LMC1m5CwVc59P9as_nRFldVCH7g"
+        }
+
+        assert_eq! {
+            Jwt::default("secret")
+                .with_issuer("https://auth.example.com")
+                .issue(Payload {
+                    iat: 1516239022,
+                    id: 42,
+                    name: "kanarus".to_string()
+                }),
+            Jwt::default("secret")
+                .issue(PayloadWithIss {
+                    iss: "https://auth.example.com".to_string(),
+                    iat: 1516239022,
+                    id: 42,
+                    name: "kanarus".to_string()
+                })
+        }
+
+        assert_eq! {
+            Jwt::default("secret")
+                .with_audience("https://auth.example.com")
+                .issue(Payload {
+                    iat: 1516239022,
+                    id: 42,
+                    name: "kanarus".to_string()
+                }),
+            Jwt::default("secret")
+                .issue(PayloadWithAud {
+                    aud: "https://auth.example.com".to_string(),
+                    iat: 1516239022,
+                    id: 42,
+                    name: "kanarus".to_string()
+                })
+        }
+
+        assert_eq! {
+            Jwt::default("secret")
+                .with_issuer("https://auth.example.com")
+                .with_audience("https://auth.example.com")
+                .issue(Payload {
+                    iat: 1516239022,
+                    id: 42,
+                    name: "kanarus".to_string()
+                }),
+            Jwt::default("secret")
+                .issue(PayloadWithIssAud {
+                    iss: "https://auth.example.com".to_string(),
+                    aud: "https://auth.example.com".to_string(),
+                    iat: 1516239022,
+                    id: 42,
+                    name: "kanarus".to_string()
+                })
         }
     }
 
@@ -481,36 +619,140 @@ mod test {
         use std::pin::Pin;
 
         let config = crate::Config::new();
+        macro_rules! verified {
+            ($jwt:expr, $method:ident $path:literal { $($headername:literal: $headervalue:expr),* }) => {
+                {
+                    let test_req = TestRequest::$method($path);
+                    $(
+                        let test_req = test_req.header($headername, $headervalue);
+                    )*
+                    let req_bytes = test_req.encode();
 
-        let my_jwt =
+                    let mut req = Request::uninit(crate::util::IP_0000, &config);
+                    let mut req = Pin::new(&mut req);
+                    crate::__rt__::testing::block_on(req.as_mut().read(&mut &req_bytes[..], &config)).unwrap();
+
+                    $jwt.verified(&req.as_ref())
+                }
+            };
+        }
+
+        let j =
             Jwt::<::serde_json::Value>::default("ohkami-realworld-jwt-authorization-secret-key");
+        {
+            assert_eq!(
+                verified!(j, GET "/" {
+                    "Authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE3MDY4MTEwNzUsInVzZXJfaWQiOiI5ZmMwMDViMi1mODU4LTQzMzYtODkwYS1mMWEyYWVmNjBhMjQifQ.AKp-0zvKK4Hwa6qCgxskckD04Snf0gpSG7U1LOpcC_I"
+                }).unwrap(),
+                ::serde_json::json!({
+                    "iat": 1706811075,
+                    "user_id": "9fc005b2-f858-4336-890a-f1a2aef60a24"
+                })
+            );
 
-        let req_bytes = TestRequest::GET("/")
-            .header("Authorization", "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE3MDY4MTEwNzUsInVzZXJfaWQiOiI5ZmMwMDViMi1mODU4LTQzMzYtODkwYS1mMWEyYWVmNjBhMjQifQ.AKp-0zvKK4Hwa6qCgxskckD04Snf0gpSG7U1LOpcC_I")
-            .encode();
-        let mut req_bytes = &req_bytes[..];
-        let mut req = Request::uninit(crate::util::IP_0000, &config);
-        let mut req = Pin::new(&mut req);
-        crate::__rt__::testing::block_on(req.as_mut().read(&mut req_bytes, &config)).unwrap();
+            assert_eq!(
+                verified!(j, GET "/" {
+                    // modifed last `I` of the value above to `X`
+                    "Authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE3MDY4MTEwNzUsInVzZXJfaWQiOiI5ZmMwMDViMi1mODU4LTQzMzYtODkwYS1mMWEyYWVmNjBhMjQifQ.AKp-0zvKK4Hwa6qCgxskckD04Snf0gpSG7U1LOpcC_X"
+                }).unwrap_err().status,
+                Status::Unauthorized
+            );
+        }
 
-        assert_eq!(
-            my_jwt.verified(&req.as_ref()).unwrap(),
-            ::serde_json::json!({ "iat": 1706811075, "user_id": "9fc005b2-f858-4336-890a-f1a2aef60a24" })
-        );
+        let j = j.with_issuer("https://auth.example.com");
+        {
+            assert_eq!(
+                verified!(j, GET "/" {
+                    // the same value as the first Request!()
+                    "Authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE3MDY4MTEwNzUsInVzZXJfaWQiOiI5ZmMwMDViMi1mODU4LTQzMzYtODkwYS1mMWEyYWVmNjBhMjQifQ.AKp-0zvKK4Hwa6qCgxskckD04Snf0gpSG7U1LOpcC_I"
+                }).unwrap_err().status,
+                Status::Unauthorized /* no iss */
+            );
 
-        let req_bytes = TestRequest::GET("/")
-            // Modifed last `I` of the value above to `X`
-            .header("Authorization", "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE3MDY4MTEwNzUsInVzZXJfaWQiOiI5ZmMwMDViMi1mODU4LTQzMzYtODkwYS1mMWEyYWVmNjBhMjQifQ.AKp-0zvKK4Hwa6qCgxskckD04Snf0gpSG7U1LOpcC_X")
-            .encode();
-        let mut req_bytes = &req_bytes[..];
-        let mut req = Request::uninit(crate::util::IP_0000, &config);
-        let mut req = Pin::new(&mut req);
-        crate::__rt__::testing::block_on(req.as_mut().read(&mut req_bytes, &config)).unwrap();
+            assert_eq!(
+                verified!(j, GET "/" {
+                    "Authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE3MDY4MTEwNzUsImlzcyI6Imh0dHBzOi8vYXV0aC5leGFtcGxlLmNvbSIsInVzZXJfaWQiOiI5ZmMwMDViMi1mODU4LTQzMzYtODkwYS1mMWEyYWVmNjBhMjQifQ.JNiqosTtnQPDz5KcrvJO2KO-qBf__RKPUr8HA_-NlCU"
+                }).unwrap(),
+                ::serde_json::json!({
+                    "iat": 1706811075,
+                    "iss": "https://auth.example.com", // <-- iss
+                    "user_id": "9fc005b2-f858-4336-890a-f1a2aef60a24"
+                })
+            );
+        }
 
-        assert_eq!(
-            my_jwt.verified(&req.as_ref()).unwrap_err().status,
-            Status::Unauthorized
-        );
+        let j = j.with_issuer("https://auth2.example.com");
+        {
+            assert_eq!(
+                verified!(j, GET "/" {
+                    // the sample value as the previous valid one (with "iss": "https://auth.example.com")
+                    "Authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE3MDY4MTEwNzUsImlzcyI6Imh0dHBzOi8vYXV0aC5leGFtcGxlLmNvbSIsInVzZXJfaWQiOiI5ZmMwMDViMi1mODU4LTQzMzYtODkwYS1mMWEyYWVmNjBhMjQifQ.JNiqosTtnQPDz5KcrvJO2KO-qBf__RKPUr8HA_-NlCU"
+                }).unwrap_err().status,
+                Status::Unauthorized /* iss exists but invalid */
+            );
+
+            assert_eq!(
+                verified!(j, GET "/" {
+                    "Authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE3MDY4MTEwNzUsImlzcyI6Imh0dHBzOi8vYXV0aDIuZXhhbXBsZS5jb20iLCJ1c2VyX2lkIjoiOWZjMDA1YjItZjg1OC00MzM2LTg5MGEtZjFhMmFlZjYwYTI0In0.gt7tuj2ouxaVjHJm0kizhF-be3z79AELGtfLAx69pjE"
+                }).unwrap(),
+                ::serde_json::json!({
+                    "iat": 1706811075,
+                    "iss": "https://auth2.example.com", // <-- new iss
+                    "user_id": "9fc005b2-f858-4336-890a-f1a2aef60a24"
+                })
+            );
+        }
+
+        let j = j.with_audience("https://auth2.example.com");
+        {
+            assert_eq!(
+                verified!(j, GET "/" {
+                    // the sample value as the previous valid one (with "iss": "https://auth2.example.com")
+                    "Authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE3MDY4MTEwNzUsImlzcyI6Imh0dHBzOi8vYXV0aDIuZXhhbXBsZS5jb20iLCJ1c2VyX2lkIjoiOWZjMDA1YjItZjg1OC00MzM2LTg5MGEtZjFhMmFlZjYwYTI0In0.gt7tuj2ouxaVjHJm0kizhF-be3z79AELGtfLAx69pjE"
+                }).unwrap_err().status,
+                Status::Unauthorized /* missing aud */
+            );
+
+            assert_eq!(
+                verified!(j, GET "/" {
+                    "Authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJodHRwczovL2F1dGgyLmV4YW1wbGUuY29tIiwiaWF0IjoxNzA2ODExMDc1LCJpc3MiOiJodHRwczovL2F1dGgyLmV4YW1wbGUuY29tIiwidXNlcl9pZCI6IjlmYzAwNWIyLWY4NTgtNDMzNi04OTBhLWYxYTJhZWY2MGEyNCJ9.7F8ZeHeunaJc9wEKxU3-t3N-YcypZ6H4T3CgcTWPj9c"
+                }).unwrap(),
+                ::serde_json::json!({
+                    "aud": "https://auth2.example.com", // <-- aud
+                    "iat": 1706811075,
+                    "iss": "https://auth2.example.com",
+                    "user_id": "9fc005b2-f858-4336-890a-f1a2aef60a24"
+                })
+            );
+
+            assert_eq!(
+                verified!(j, GET "/" {
+                    "Authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJhdWQiOlsiaHR0cHM6Ly9hdXRoMi5leGFtcGxlLmNvbSIsImh0dHBzOi8vYXV0aC5leGFtcGxlLmNvbSJdLCJpYXQiOjE3MDY4MTEwNzUsImlzcyI6Imh0dHBzOi8vYXV0aDIuZXhhbXBsZS5jb20iLCJ1c2VyX2lkIjoiOWZjMDA1YjItZjg1OC00MzM2LTg5MGEtZjFhMmFlZjYwYTI0In0.3MoJtxjO9QII5syDE8X2C1g9kCcCU7mVyH1PXtN78Zg"
+                }).unwrap(),
+                ::serde_json::json!({
+                    "aud": ["https://auth2.example.com", "https://auth.example.com"], // <-- array aud
+                    "iat": 1706811075,
+                    "iss": "https://auth2.example.com",
+                    "user_id": "9fc005b2-f858-4336-890a-f1a2aef60a24"
+                })
+            );
+
+            assert_eq!(
+                verified!(j, GET "/" {
+                    // same as above, but set "aud": []
+                    "Authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJhdWQiOltdLCJpYXQiOjE3MDY4MTEwNzUsImlzcyI6Imh0dHBzOi8vYXV0aDIuZXhhbXBsZS5jb20iLCJ1c2VyX2lkIjoiOWZjMDA1YjItZjg1OC00MzM2LTg5MGEtZjFhMmFlZjYwYTI0In0.y5pAokOSPEKVWtTxjCj9U-YGI_ylIxM3F0uDpkXl_oQ"
+                }).unwrap_err().status,
+                Status::Unauthorized // aud exists but invalid (array uncontaining matching string)
+            );
+
+            assert_eq!(
+                verified!(j, GET "/" {
+                    // same as above, but set "aud": "http://auth2.example.com" (modified `https` -> `http`)
+                    "Authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJodHRwOi8vYXV0aDIuZXhhbXBsZS5jb20iLCJpYXQiOjE3MDY4MTEwNzUsImlzcyI6Imh0dHBzOi8vYXV0aDIuZXhhbXBsZS5jb20iLCJ1c2VyX2lkIjoiOWZjMDA1YjItZjg1OC00MzM2LTg5MGEtZjFhMmFlZjYwYTI0In0.86zygyt_ex-sj9mQe2bY3ZuNZXURUCnTP0wkasE0-GQ"
+                }).unwrap_err().status,
+                Status::Unauthorized // aud exists but inlvaid (string unmatch)
+            );
+        }
     }
 
     #[test]
