@@ -48,7 +48,7 @@ use std::{borrow::Cow, marker::PhantomData};
 /// }
 ///
 /// fn our_jwt() -> Jwt<OurJwtPayload> {
-///     Jwt::new_default("OUR_JWT_SECRET_KEY")
+///     Jwt::new_hs256("OUR_JWT_SECRET_KEY")
 /// }
 ///
 /// async fn hello(
@@ -561,7 +561,7 @@ mod test {
         }
 
         assert_eq! {
-            &*Jwt::new_default("secret").issue(Payload {
+            &*Jwt::new_hs256("secret").issue(Payload {
                 iat: 1516239022,
                 id: 42,
                 name: "kanarus".to_string()
@@ -570,14 +570,14 @@ mod test {
         }
 
         assert_eq! {
-            Jwt::new_default("secret")
+            Jwt::new_hs256("secret")
                 .with_issuer("https://auth.example.com")
                 .issue(Payload {
                     iat: 1516239022,
                     id: 42,
                     name: "kanarus".to_string()
                 }),
-            Jwt::new_default("secret")
+            Jwt::new_hs256("secret")
                 .issue(PayloadWithIss {
                     iss: "https://auth.example.com".to_string(),
                     iat: 1516239022,
@@ -587,14 +587,14 @@ mod test {
         }
 
         assert_eq! {
-            Jwt::new_default("secret")
+            Jwt::new_hs256("secret")
                 .with_audience("https://auth.example.com")
                 .issue(Payload {
                     iat: 1516239022,
                     id: 42,
                     name: "kanarus".to_string()
                 }),
-            Jwt::new_default("secret")
+            Jwt::new_hs256("secret")
                 .issue(PayloadWithAud {
                     aud: "https://auth.example.com".to_string(),
                     iat: 1516239022,
@@ -604,7 +604,7 @@ mod test {
         }
 
         assert_eq! {
-            Jwt::new_default("secret")
+            Jwt::new_hs256("secret")
                 .with_issuer("https://auth.example.com")
                 .with_audience("https://auth.example.com")
                 .issue(Payload {
@@ -612,7 +612,7 @@ mod test {
                     id: 42,
                     name: "kanarus".to_string()
                 }),
-            Jwt::new_default("secret")
+            Jwt::new_hs256("secret")
                 .issue(PayloadWithIssAud {
                     iss: "https://auth.example.com".to_string(),
                     aud: "https://auth.example.com".to_string(),
@@ -647,7 +647,7 @@ mod test {
             };
         }
 
-        let j = Jwt::<::serde_json::Value>::new_default(
+        let j = Jwt::<::serde_json::Value>::new_hs256(
             "ohkami-realworld-jwt-authorization-secret-key",
         );
         {
@@ -776,7 +776,7 @@ mod test {
         use crate::openapi;
 
         fn my_jwt() -> Jwt<MyJwtPayload> {
-            Jwt::new_default("myverysecretjwtsecretkey")
+            Jwt::new_hs256("myverysecretjwtsecretkey")
         }
 
         #[derive(serde::Serialize, serde::Deserialize)]
