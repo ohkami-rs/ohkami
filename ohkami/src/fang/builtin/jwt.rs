@@ -17,6 +17,10 @@ use std::{borrow::Cow, marker::PhantomData};
 ///
 /// `.issue(/* Payload: Serialize */)` generates a JWT token on the config.
 ///
+/// **NOTE**: `Payload` itself MUST NOT contain fields named `iss` or `aud`,
+/// which should be configured via `.with_issuer(...)` or `.with_audience(...)`
+/// methods of `Jwt`.
+///
 /// <br>
 ///
 /// ## default config
@@ -25,6 +29,10 @@ use std::{borrow::Cow, marker::PhantomData};
 ///   - customizable by `.get_token_by( 〜 )`
 /// - verifying algorithm: `HMAC-SHA256`
 ///   - `HMAC-SHA{256, 384, 512}` are available now
+/// - issuer: `None`
+///   - configured by `.with_issuer(...)`
+/// - audience: `None`
+///   - configured by `.with_audience(...)`
 ///
 /// <br>
 ///
@@ -514,32 +522,61 @@ mod test {
 
     #[test]
     fn test_jwt_issue() {
-        let payload = ::serde_json::json!({"name":"kanarus","id":42,"iat":1516239022});
+        let payload = ::serde_json::json!({
+            "iat":1516239022,
+            "id":42,
+            "name":"kanarus"
+        });
 
-        /* NOTE:
-            `serde_json::to_vec` automatically sorts original object's keys
-            in alphabetical order. e.t., here
-
-            ```
-            json!({"name":"kanarus","id":42,"iat":1516239022})
-            ```
-            is serialzed to
-
-            ```raw literal
-            {"iat":1516239022,"id":42,"name":"kanarus"}
-            ```
-        */
-
-        let j = &Jwt::default("secret");
+        let j = Jwt::default("secret");
         assert_eq! {
-            &*j.issue(&payload),
+            &*j.issue(payload.clone()),
             "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE1MTYyMzkwMjIsImlkIjo0MiwibmFtZSI6ImthbmFydXMifQ.dt43rLwmy4_GA_84LMC1m5CwVc59P9as_nRFldVCH7g"
         }
 
-        let j = &Jwt::default("secret").with_issuer("https://auth.example.com");
+        let j = Jwt::default("secret").with_issuer("https://auth.example.com");
         assert_eq! {
-            &*j.issue(&payload),
-            "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE1MTYyMzkwMjIsImlkIjo0MiwiaXNzIjoiaHR0cHM6Ly9hdXRoLmV4YW1wbGUuY29tIiwibmFtZSI6ImthbmFydXMifQ.enf44tmxbn_stUn7SDEVn6_O5RmhRh7C_JS3Sfrifzs"
+            &*j.issue(payload.clone()),
+            /* payload:
+             * {
+             *   "iss":"https://auth.example.com",
+             *   "iat":1516239022,
+             *   "id":42,
+             *   "name":"kanarus"
+             * }
+             */
+            "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczovL2F1dGguZXhhbXBsZS5jb20iLCJpYXQiOjE1MTYyMzkwMjIsImlkIjo0MiwibmFtZSI6ImthbmFydXMifQ.yXpdT_9ec6qiPH-oER9rkafWQgqpISxmDbpTF7Aulig"
+        }
+
+        let j = Jwt::default("secret").with_audience("https://auth.example.com");
+        assert_eq! {
+            &*j.issue(payload.clone()),
+            /* payload:
+             * {
+             *   "aud":"https://auth.example.com",
+             *   "iat":1516239022,
+             *   "id":42,
+             *   "name":"kanarus"
+             * }
+             */
+            "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJodHRwczovL2F1dGguZXhhbXBsZS5jb20iLCJpYXQiOjE1MTYyMzkwMjIsImlkIjo0MiwibmFtZSI6ImthbmFydXMifQ.Ck9Jebbjr8M_yDbB8sKy9xL3hYkygrdaPlRvb_2n9jI"
+        }
+
+        let j = Jwt::default("secret")
+            .with_issuer("https://auth.example.com")
+            .with_audience("https://auth.example.com");
+        assert_eq! {
+            &*j.issue(payload.clone()),
+            /* payload:
+             * {
+             *   "iss":"https://auth.example.com",
+             *   "aud":"https://auth.example.com",
+             *   "iat":1516239022,
+             *   "id":42,
+             *   "name":"kanarus"
+             * }
+             */
+            "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczovL2F1dGguZXhhbXBsZS5jb20iLCJhdWQiOiJodHRwczovL2F1dGguZXhhbXBsZS5jb20iLCJpYXQiOjE1MTYyMzkwMjIsImlkIjo0MiwibmFtZSI6ImthbmFydXMifQ.XvbbU-vivYfygjOBkFFzXCupMtSoPUa3kZVdiQiCk9M"
         }
     }
 
@@ -549,60 +586,60 @@ mod test {
         use std::pin::Pin;
 
         let config = crate::Config::new();
-        macro_rules! Request {
-            ($method:ident $path:literal { $($headername:literal: $headervalue:expr)* }) => {
-                let req_bytes = TestRequest::$method($path);
-                $(
-                    let req_bytes = req_bytes.header($headername, $headervalue);
-                )*
-                let mut req_bytes = &req_bytes[..];
-                let mut req = Request::uninit(crate::util::IP_0000, &config);
-                let mut req = Pin::new(&mut req);
-                crate::__rt__::testing::block_on(req.as_mut().read(&mut req_bytes, &config)).unwrap();
-                req
+        macro_rules! verified {
+            ($jwt:expr, $method:ident $path:literal { $($headername:literal: $headervalue:expr),* }) => {
+                {
+                    let test_req = TestRequest::$method($path);
+                    $(
+                        let test_req = test_req.header($headername, $headervalue);
+                    )*
+                    let req_bytes = test_req.encode();
+
+                    let mut req = Request::uninit(crate::util::IP_0000, &config);
+                    let mut req = Pin::new(&mut req);
+                    crate::__rt__::testing::block_on(req.as_mut().read(&mut &req_bytes[..], &config)).unwrap();
+
+                    $jwt.verified(&req.as_ref())
+                }
             };
         }
 
         let j =
             Jwt::<::serde_json::Value>::default("ohkami-realworld-jwt-authorization-secret-key");
         {
-            let req = Request!(GET "/" {
-                "Authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE3MDY4MTEwNzUsInVzZXJfaWQiOiI5ZmMwMDViMi1mODU4LTQzMzYtODkwYS1mMWEyYWVmNjBhMjQifQ.AKp-0zvKK4Hwa6qCgxskckD04Snf0gpSG7U1LOpcC_I"
-            });
             assert_eq!(
-                j.verified(&req.as_ref()).unwrap(),
+                verified!(j, GET "/" {
+                    "Authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE3MDY4MTEwNzUsInVzZXJfaWQiOiI5ZmMwMDViMi1mODU4LTQzMzYtODkwYS1mMWEyYWVmNjBhMjQifQ.AKp-0zvKK4Hwa6qCgxskckD04Snf0gpSG7U1LOpcC_I"
+                }).unwrap(),
                 ::serde_json::json!({
                     "iat": 1706811075,
                     "user_id": "9fc005b2-f858-4336-890a-f1a2aef60a24"
                 })
             );
 
-            let req = Request!(GET "/" {
-                // modifed last `I` of the value above to `X`
-                "Authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE3MDY4MTEwNzUsInVzZXJfaWQiOiI5ZmMwMDViMi1mODU4LTQzMzYtODkwYS1mMWEyYWVmNjBhMjQifQ.AKp-0zvKK4Hwa6qCgxskckD04Snf0gpSG7U1LOpcC_X"
-            });
             assert_eq!(
-                j.verified(&req.as_ref()).unwrap_err().status,
+                verified!(j, GET "/" {
+                    // modifed last `I` of the value above to `X`
+                    "Authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE3MDY4MTEwNzUsInVzZXJfaWQiOiI5ZmMwMDViMi1mODU4LTQzMzYtODkwYS1mMWEyYWVmNjBhMjQifQ.AKp-0zvKK4Hwa6qCgxskckD04Snf0gpSG7U1LOpcC_X"
+                }).unwrap_err().status,
                 Status::Unauthorized
             );
         }
 
         let j = j.with_issuer("https://auth.example.com");
         {
-            let req = Request!(GET "/" {
-                // the same value as the first Request!()
-                "Authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE3MDY4MTEwNzUsInVzZXJfaWQiOiI5ZmMwMDViMi1mODU4LTQzMzYtODkwYS1mMWEyYWVmNjBhMjQifQ.AKp-0zvKK4Hwa6qCgxskckD04Snf0gpSG7U1LOpcC_I"
-            });
             assert_eq!(
-                j.verified(&req.as_ref()).unwrap_err().status,
+                verified!(j, GET "/" {
+                    // the same value as the first Request!()
+                    "Authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE3MDY4MTEwNzUsInVzZXJfaWQiOiI5ZmMwMDViMi1mODU4LTQzMzYtODkwYS1mMWEyYWVmNjBhMjQifQ.AKp-0zvKK4Hwa6qCgxskckD04Snf0gpSG7U1LOpcC_I"
+                }).unwrap_err().status,
                 Status::Unauthorized /* no iss */
             );
 
-            let req = Request!(GET "/" {
-                "Authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE3MDY4MTEwNzUsImlzcyI6Imh0dHBzOi8vYXV0aC5leGFtcGxlLmNvbSIsInVzZXJfaWQiOiI5ZmMwMDViMi1mODU4LTQzMzYtODkwYS1mMWEyYWVmNjBhMjQifQ.JNiqosTtnQPDz5KcrvJO2KO-qBf__RKPUr8HA_-NlCU"
-            });
             assert_eq!(
-                j.verified(&req.as_ref()).unwrap(),
+                verified!(j, GET "/" {
+                    "Authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE3MDY4MTEwNzUsImlzcyI6Imh0dHBzOi8vYXV0aC5leGFtcGxlLmNvbSIsInVzZXJfaWQiOiI5ZmMwMDViMi1mODU4LTQzMzYtODkwYS1mMWEyYWVmNjBhMjQifQ.JNiqosTtnQPDz5KcrvJO2KO-qBf__RKPUr8HA_-NlCU"
+                }).unwrap(),
                 ::serde_json::json!({
                     "iat": 1706811075,
                     "iss": "https://auth.example.com", // <-- iss
@@ -613,20 +650,18 @@ mod test {
 
         let j = j.with_issuer("https://auth2.example.com");
         {
-            let req = Request!(GET "/" {
-                // the sample value as the previous valid one (with "iss": "https://auth.example.com")
-                "Authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE3MDY4MTEwNzUsImlzcyI6Imh0dHBzOi8vYXV0aC5leGFtcGxlLmNvbSIsInVzZXJfaWQiOiI5ZmMwMDViMi1mODU4LTQzMzYtODkwYS1mMWEyYWVmNjBhMjQifQ.JNiqosTtnQPDz5KcrvJO2KO-qBf__RKPUr8HA_-NlCU"
-            });
             assert_eq!(
-                j.verified(&req.as_ref()).unwrap_err().status,
+                verified!(j, GET "/" {
+                    // the sample value as the previous valid one (with "iss": "https://auth.example.com")
+                    "Authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE3MDY4MTEwNzUsImlzcyI6Imh0dHBzOi8vYXV0aC5leGFtcGxlLmNvbSIsInVzZXJfaWQiOiI5ZmMwMDViMi1mODU4LTQzMzYtODkwYS1mMWEyYWVmNjBhMjQifQ.JNiqosTtnQPDz5KcrvJO2KO-qBf__RKPUr8HA_-NlCU"
+                }).unwrap_err().status,
                 Status::Unauthorized /* iss exists but invalid */
             );
 
-            let req = Request!(GET "/" {
-                "Authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE3MDY4MTEwNzUsImlzcyI6Imh0dHBzOi8vYXV0aDIuZXhhbXBsZS5jb20iLCJ1c2VyX2lkIjoiOWZjMDA1YjItZjg1OC00MzM2LTg5MGEtZjFhMmFlZjYwYTI0In0.gt7tuj2ouxaVjHJm0kizhF-be3z79AELGtfLAx69pjE"
-            });
             assert_eq!(
-                j.verified(&req.as_ref()).unwrap_err().status,
+                verified!(j, GET "/" {
+                    "Authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE3MDY4MTEwNzUsImlzcyI6Imh0dHBzOi8vYXV0aDIuZXhhbXBsZS5jb20iLCJ1c2VyX2lkIjoiOWZjMDA1YjItZjg1OC00MzM2LTg5MGEtZjFhMmFlZjYwYTI0In0.gt7tuj2ouxaVjHJm0kizhF-be3z79AELGtfLAx69pjE"
+                }).unwrap(),
                 ::serde_json::json!({
                     "iat": 1706811075,
                     "iss": "https://auth2.example.com", // <-- new iss
@@ -637,55 +672,53 @@ mod test {
 
         let j = j.with_audience("https://auth2.example.com");
         {
-            let req = Request!(GET "/" {
-                // the sample value as the previous valid one (with "iss": "https://auth2.example.com")
-                "Authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE3MDY4MTEwNzUsImlzcyI6Imh0dHBzOi8vYXV0aDIuZXhhbXBsZS5jb20iLCJ1c2VyX2lkIjoiOWZjMDA1YjItZjg1OC00MzM2LTg5MGEtZjFhMmFlZjYwYTI0In0.gt7tuj2ouxaVjHJm0kizhF-be3z79AELGtfLAx69pjE"
-            });
             assert_eq!(
-                j.verified(&req.as_ref()).unwrap_err().status,
-                Status::Unauthorized /* iss exists but invalid */
+                verified!(j, GET "/" {
+                    // the sample value as the previous valid one (with "iss": "https://auth2.example.com")
+                    "Authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE3MDY4MTEwNzUsImlzcyI6Imh0dHBzOi8vYXV0aDIuZXhhbXBsZS5jb20iLCJ1c2VyX2lkIjoiOWZjMDA1YjItZjg1OC00MzM2LTg5MGEtZjFhMmFlZjYwYTI0In0.gt7tuj2ouxaVjHJm0kizhF-be3z79AELGtfLAx69pjE"
+                }).unwrap_err().status,
+                Status::Unauthorized /* missing aud */
             );
 
-            let req = Request!(GET "/" {
-                "Authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJodHRwczovL2F1dGgyLmV4YW1wbGUuY29tIiwiaWF0IjoxNzA2ODExMDc1LCJpc3MiOiJodHRwczovL2F1dGgyLmV4YW1wbGUuY29tIiwidXNlcl9pZCI6IjlmYzAwNWIyLWY4NTgtNDMzNi04OTBhLWYxYTJhZWY2MGEyNCJ9.7F8ZeHeunaJc9wEKxU3-t3N-YcypZ6H4T3CgcTWPj9c"
-            });
             assert_eq!(
-                j.verified(&req.as_ref()).unwrap(),
+                verified!(j, GET "/" {
+                    "Authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJodHRwczovL2F1dGgyLmV4YW1wbGUuY29tIiwiaWF0IjoxNzA2ODExMDc1LCJpc3MiOiJodHRwczovL2F1dGgyLmV4YW1wbGUuY29tIiwidXNlcl9pZCI6IjlmYzAwNWIyLWY4NTgtNDMzNi04OTBhLWYxYTJhZWY2MGEyNCJ9.7F8ZeHeunaJc9wEKxU3-t3N-YcypZ6H4T3CgcTWPj9c"
+                }).unwrap(),
                 ::serde_json::json!({
-                    "aud": "https://auth2.example.com",
+                    "aud": "https://auth2.example.com", // <-- aud
                     "iat": 1706811075,
                     "iss": "https://auth2.example.com",
                     "user_id": "9fc005b2-f858-4336-890a-f1a2aef60a24"
                 })
             );
 
-            let req = Request!(GET "/" {
-                "Authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJhdWQiOlsiaHR0cHM6Ly9hdXRoMi5leGFtcGxlLmNvbSIsImh0dHBzOi8vYXV0aC5leGFtcGxlLmNvbSJdLCJpYXQiOjE3MDY4MTEwNzUsImlzcyI6Imh0dHBzOi8vYXV0aDIuZXhhbXBsZS5jb20iLCJ1c2VyX2lkIjoiOWZjMDA1YjItZjg1OC00MzM2LTg5MGEtZjFhMmFlZjYwYTI0In0.3MoJtxjO9QII5syDE8X2C1g9kCcCU7mVyH1PXtN78Zg"
-            });
             assert_eq!(
-                j.verified(&req.as_ref()).unwrap(),
+                verified!(j, GET "/" {
+                    "Authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJhdWQiOlsiaHR0cHM6Ly9hdXRoMi5leGFtcGxlLmNvbSIsImh0dHBzOi8vYXV0aC5leGFtcGxlLmNvbSJdLCJpYXQiOjE3MDY4MTEwNzUsImlzcyI6Imh0dHBzOi8vYXV0aDIuZXhhbXBsZS5jb20iLCJ1c2VyX2lkIjoiOWZjMDA1YjItZjg1OC00MzM2LTg5MGEtZjFhMmFlZjYwYTI0In0.3MoJtxjO9QII5syDE8X2C1g9kCcCU7mVyH1PXtN78Zg"
+                }).unwrap(),
                 ::serde_json::json!({
-                    "aud": ["https://auth2.example.com", "https://auth.example.com"],
+                    "aud": ["https://auth2.example.com", "https://auth.example.com"], // <-- array aud
                     "iat": 1706811075,
                     "iss": "https://auth2.example.com",
                     "user_id": "9fc005b2-f858-4336-890a-f1a2aef60a24"
                 })
             );
 
-            let req = Request!(GET "/" {
-                // same as above, but set "aud": []
-                "Authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJhdWQiOltdLCJpYXQiOjE3MDY4MTEwNzUsImlzcyI6Imh0dHBzOi8vYXV0aDIuZXhhbXBsZS5jb20iLCJ1c2VyX2lkIjoiOWZjMDA1YjItZjg1OC00MzM2LTg5MGEtZjFhMmFlZjYwYTI0In0.y5pAokOSPEKVWtTxjCj9U-YGI_ylIxM3F0uDpkXl_oQ"
-            });
             assert_eq!(
-                j.verified(&req.as_ref()).unwrap_err().status,
-                Status::Unauthorized
+                verified!(j, GET "/" {
+                    // same as above, but set "aud": []
+                    "Authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJhdWQiOltdLCJpYXQiOjE3MDY4MTEwNzUsImlzcyI6Imh0dHBzOi8vYXV0aDIuZXhhbXBsZS5jb20iLCJ1c2VyX2lkIjoiOWZjMDA1YjItZjg1OC00MzM2LTg5MGEtZjFhMmFlZjYwYTI0In0.y5pAokOSPEKVWtTxjCj9U-YGI_ylIxM3F0uDpkXl_oQ"
+                }).unwrap_err().status,
+                Status::Unauthorized // aud exists but invalid (array uncontaining matching string)
             );
 
-            let req = Request!(GET "/" {
-                // same as above, but set "aud": "http://auth2.example.com" (not `https://`)
-                "Authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJodHRwOi8vYXV0aDIuZXhhbXBsZS5jb20iLCJpYXQiOjE3MDY4MTEwNzUsImlzcyI6Imh0dHBzOi8vYXV0aDIuZXhhbXBsZS5jb20iLCJ1c2VyX2lkIjoiOWZjMDA1YjItZjg1OC00MzM2LTg5MGEtZjFhMmFlZjYwYTI0In0.86zygyt_ex-sj9mQe2bY3ZuNZXURUCnTP0wkasE0-GQ"
-            });
-            assert_eq!(j.verified().unwrap_err().status, Status::Unauthorized);
+            assert_eq!(
+                verified!(j, GET "/" {
+                    // same as above, but set "aud": "http://auth2.example.com" (modified `https` -> `http`)
+                    "Authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJodHRwOi8vYXV0aDIuZXhhbXBsZS5jb20iLCJpYXQiOjE3MDY4MTEwNzUsImlzcyI6Imh0dHBzOi8vYXV0aDIuZXhhbXBsZS5jb20iLCJ1c2VyX2lkIjoiOWZjMDA1YjItZjg1OC00MzM2LTg5MGEtZjFhMmFlZjYwYTI0In0.86zygyt_ex-sj9mQe2bY3ZuNZXURUCnTP0wkasE0-GQ"
+                }).unwrap_err().status,
+                Status::Unauthorized // aud exists but inlvaid (string unmatch)
+            );
         }
     }
 
