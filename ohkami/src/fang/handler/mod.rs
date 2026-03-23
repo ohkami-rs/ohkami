@@ -94,59 +94,61 @@ impl Handler {
     }
 
     pub(crate) fn default_options_with(available_methods: Vec<&'static str>) -> Self {
-        let available_methods: &'static [&'static str] = {
+        let available_methods = {
             let mut methods = available_methods;
             if methods.contains(&"GET") {
                 methods.push("HEAD")
             }
             methods.push("OPTIONS");
             methods
-        }
-        .leak();
+        };
 
         let available_methods_str: &'static str = available_methods.join(", ").leak();
 
         /* see `fang::Cors` for more detail about what to do here */
         Handler::new(
             move |req| {
-                Box::pin(async move {
-                    #[cfg(debug_assertions)]
-                    {
-                        assert_eq!(req.method, crate::Method::OPTIONS);
-                    }
+                #[cfg(debug_assertions)]
+                {
+                    assert_eq!(req.method, crate::Method::OPTIONS);
+                }
 
-                    match req.headers.access_control_request_method() {
-                        Some(method) => {
-                            /*
-                                Ohkami, by default, does nothing more than setting
-                                `Access-Control-Allow-Methods` to preflight request.
-                                CORS fang must override `Not Implemented` response,
-                                whitch is the default for a valid preflight request,
-                                by a successful one in its proc.
-                            */
-                            (if available_methods.contains(&method) {
-                                crate::Response::NotImplemented()
-                            } else {
-                                crate::Response::BadRequest()
-                            })
+                let response = match req.headers.access_control_request_method() {
+                    Some(method) => {
+                        /*
+                        Ohkami, by default, does nothing more than setting
+                        `Access-Control-Allow-Methods` to preflight request.
+                        CORS fang must override `Not Implemented` response,
+                        whitch is the default for a valid preflight request,
+                        by a successful one in its proc.
+                        */
+
+                        let response = if available_methods.contains(&method) {
+                            crate::Response::NotImplemented()
+                        } else {
+                            crate::Response::BadRequest()
+                        };
+
+                        response
                             .with_headers(|h| h.access_control_allow_methods(available_methods_str))
-                        }
-                        None => {
-                            /*
-                                For security reasons, Ohkami doesn't support the
-                                normal behavior to OPTIONS request like
-
-                                ```
-                                crate::Response::NoContent()
-                                    .with_headers(|h| h
-                                        .allow(available_methods_str)
-                                    )
-                                ```
-                            */
-                            crate::Response::NotFound()
-                        }
                     }
-                })
+                    None => {
+                        /*
+                        For security reasons, Ohkami doesn't support the
+                        normal behavior to OPTIONS request like
+
+                        ```
+                        crate::Response::NoContent()
+                        .with_headers(|h| h
+                        .allow(available_methods_str)
+                        )
+                        ```
+                        */
+                        crate::Response::NotFound()
+                    }
+                };
+
+                Box::pin(core::future::ready(response))
             },
             #[cfg(feature = "openapi")]
             openapi::Operation::with(openapi::Responses::new([
