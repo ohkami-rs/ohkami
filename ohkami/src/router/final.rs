@@ -287,7 +287,10 @@ const _: (/* conversions */) = {
                 let child = base.children.pop().unwrap(/* base.children.len() == 1 */);
                 base.children = child.children;
                 base.handler = child.handler;
-                base.fangses.append(child.fangses);
+                // Preserve outer/inner order: child fangs should be inner, base fangs outer.
+                let mut merged_fangses = child.fangses;
+                merged_fangses.append(base.fangses);
+                base.fangses = merged_fangses;
                 base.pattern = Some(match base.pattern {
                     None    => child.pattern.unwrap(/* not root */),
                     Some(p) => p.merge_statics(child.pattern.unwrap(/* not root */)).unwrap(/* both are Pattern::Static */)

@@ -1266,3 +1266,208 @@ mod test {
         is_send_sync_static(o);
     }
 }
+
+#[cfg(test)]
+mod nested_fang_regression_test {
+    use crate::{Ohkami, Request, Response, Route};
+    use crate::claw::status;
+    use crate::fang::{FangAction, Context};
+    use crate::testing::{Status, TestRequest, Tester};
+
+    #[derive(Clone, Debug, PartialEq, Eq)]
+    struct Principal(&'static str);
+
+    #[derive(Clone)]
+    struct ParentAuthFang;
+
+    impl FangAction for ParentAuthFang {
+        async fn fore<'a>(&'a self, req: &'a mut Request) -> Result<(), Response> {
+            match req.headers.authorization() {
+                Some("Bearer ops-token") => {
+                    req.context.set(Principal("ops-user"));
+                    Ok(())
+                }
+                _ => Err(Response::Unauthorized()),
+            }
+        }
+    }
+
+    #[derive(Clone)]
+    struct OpsAuthorizationFang;
+
+    impl FangAction for OpsAuthorizationFang {
+        async fn fore<'a>(&'a self, req: &'a mut Request) -> Result<(), Response> {
+            match req.context.get::<Principal>() {
+                Some(Principal("ops-user")) => Ok(()),
+                _ => Err(Response::Unauthorized()),
+            }
+        }
+    }
+
+    async fn routing_health_handler() -> &'static str {
+        "health"
+    }
+
+    async fn routing_override_set_handler() -> &'static str {
+        "set"
+    }
+
+    async fn routing_override_clear_handler() -> status::NoContent {
+        status::NoContent
+    }
+
+    async fn metrics_handler() -> &'static str {
+        "metrics"
+    }
+
+    async fn accounting_reconciliation_handler() -> &'static str {
+        "reconciliation"
+    }
+
+    #[test]
+    fn parent_context_auth_is_visible_to_nested_top_level_fang_in_realistic_order() {
+        crate::__rt__::testing::block_on(async {
+            let ops_routes = Ohkami::new((
+                OpsAuthorizationFang,
+                "/routing/health".GET(routing_health_handler),
+                "/routing/override".POST(routing_override_set_handler),
+                "/routing/override".DELETE(routing_override_clear_handler),
+                "/metrics".GET(metrics_handler),
+                "/accounting/reconciliation".GET(accounting_reconciliation_handler),
+            ));
+
+            let protected_routes = Ohkami::new((
+                ParentAuthFang,
+                "/ops".By(ops_routes),
+            ));
+
+            let app = Ohkami::new((
+                Context::new(()),
+                "/api".By(protected_routes),
+            ));
+
+            let tester = app.test();
+
+            let health_res = tester
+                .oneshot(
+                    TestRequest::GET("/api/ops/routing/health")
+                        .header("Authorization", "Bearer ops-token"),
+                )
+                .await;
+            assert_eq!(health_res.status(), Status::OK);
+
+            let set_override_res = tester
+                .oneshot(
+                    TestRequest::POST("/api/ops/routing/override")
+                        .header("Authorization", "Bearer ops-token"),
+                )
+                .await;
+            assert_eq!(set_override_res.status(), Status::OK);
+
+            let clear_override_res = tester
+                .oneshot(
+                    TestRequest::DELETE("/api/ops/routing/override")
+                        .header("Authorization", "Bearer ops-token"),
+                )
+                .await;
+            assert_eq!(clear_override_res.status(), Status::NoContent);
+
+            let metrics_res = tester
+                .oneshot(
+                    TestRequest::GET("/api/ops/metrics")
+                        .header("Authorization", "Bearer ops-token"),
+                )
+                .await;
+            assert_eq!(metrics_res.status(), Status::OK);
+
+            let accounting_res = tester
+                .oneshot(
+                    TestRequest::GET("/api/ops/accounting/reconciliation")
+                        .header("Authorization", "Bearer ops-token"),
+                )
+                .await;
+            assert_eq!(accounting_res.status(), Status::OK);
+        });
+    }
+
+
+    #[test]
+    fn parent_context_auth_is_visible_to_nested_local_route_fangs_in_realistic_order() {
+        crate::__rt__::testing::block_on(async {
+            let ops_routes = Ohkami::new((
+                "/routing/health".GET((
+                    OpsAuthorizationFang,
+                    routing_health_handler,
+                )),
+                "/routing/override".POST((
+                    OpsAuthorizationFang,
+                    routing_override_set_handler,
+                )),
+                "/routing/override".DELETE((
+                    OpsAuthorizationFang,
+                    routing_override_clear_handler,
+                )),
+                "/metrics".GET((
+                    OpsAuthorizationFang,
+                    metrics_handler,
+                )),
+                "/accounting/reconciliation".GET((
+                    OpsAuthorizationFang,
+                    accounting_reconciliation_handler,
+                )),
+            ));
+
+            let protected_routes = Ohkami::new((
+                ParentAuthFang,
+                "/ops".By(ops_routes),
+            ));
+
+            let app = Ohkami::new((
+                Context::new(()),
+                "/api".By(protected_routes),
+            ));
+
+            let tester = app.test();
+
+            let health_res = tester
+                .oneshot(
+                    TestRequest::GET("/api/ops/routing/health")
+                        .header("Authorization", "Bearer ops-token"),
+                )
+                .await;
+            assert_eq!(health_res.status(), Status::OK);
+
+            let set_override_res = tester
+                .oneshot(
+                    TestRequest::POST("/api/ops/routing/override")
+                        .header("Authorization", "Bearer ops-token"),
+                )
+                .await;
+            assert_eq!(set_override_res.status(), Status::OK);
+
+            let clear_override_res = tester
+                .oneshot(
+                    TestRequest::DELETE("/api/ops/routing/override")
+                        .header("Authorization", "Bearer ops-token"),
+                )
+                .await;
+            assert_eq!(clear_override_res.status(), Status::NoContent);
+
+            let metrics_res = tester
+                .oneshot(
+                    TestRequest::GET("/api/ops/metrics")
+                        .header("Authorization", "Bearer ops-token"),
+                )
+                .await;
+            assert_eq!(metrics_res.status(), Status::OK);
+
+            let accounting_res = tester
+                .oneshot(
+                    TestRequest::GET("/api/ops/accounting/reconciliation")
+                        .header("Authorization", "Bearer ops-token"),
+                )
+                .await;
+            assert_eq!(accounting_res.status(), Status::OK);
+        });
+    }
+}
