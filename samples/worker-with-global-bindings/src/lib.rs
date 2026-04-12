@@ -18,7 +18,7 @@ async fn ohkami(Bindings { DB, MY_KV }: Bindings) -> Ohkami {
     ))
 }
 
-enum Error {
+pub enum Error {
     Worker(worker::Error),
     Repository(String),
     UserIdNotFound { id: u32 },
