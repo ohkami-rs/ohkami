@@ -43,7 +43,7 @@ struct EnamelFields {
     content_security_policy: Option<CSP>,
     content_security_policy_report_only: Option<CSP>,
     cross_origin_embedder_policy: &'static str,
-    corss_origin_resource_policy: &'static str,
+    cross_origin_resource_policy: &'static str,
     referrer_policy: &'static str,
     strict_transport_security: &'static str,
     x_content_type_options: &'static str,
@@ -56,7 +56,7 @@ const _: () = {
                 content_security_policy: None,
                 content_security_policy_report_only: None,
                 cross_origin_embedder_policy: "require-corp",
-                corss_origin_resource_policy: "same-origin",
+                cross_origin_resource_policy: "same-origin",
                 referrer_policy: "no-referrer",
                 strict_transport_security: "max-age=15552000; includeSubDomains",
                 x_content_type_options: "nosniff",
@@ -95,11 +95,11 @@ const _: () = {
         /// default: `"same-origin"`
         ///
         /// set to `""` ( empty string ) for disabling the header
-        pub fn corss_origin_resource_policy(
+        pub fn cross_origin_resource_policy(
             mut self,
-            corss_origin_resource_policy: &'static str,
+            cross_origin_resource_policy: &'static str,
         ) -> Self {
-            inner_mut(&mut self).corss_origin_resource_policy = corss_origin_resource_policy;
+            inner_mut(&mut self).cross_origin_resource_policy = cross_origin_resource_policy;
             self
         }
         /// default: `"no-referrer"`
@@ -150,10 +150,10 @@ const _: () = {
                     .set()
                     .cross_origin_embedder_policy(self.0.cross_origin_embedder_policy);
             }
-            if !self.0.corss_origin_resource_policy.is_empty() {
+            if !self.0.cross_origin_resource_policy.is_empty() {
                 res.headers
                     .set()
-                    .cross_origin_resource_policy(self.0.corss_origin_resource_policy);
+                    .cross_origin_resource_policy(self.0.cross_origin_resource_policy);
             }
             if !self.0.referrer_policy.is_empty() {
                 res.headers.set().referrer_policy(self.0.referrer_policy);
@@ -754,7 +754,7 @@ mod test {
         let t = Ohkami::new((
             Enamel::default()
                 .cross_origin_embedder_policy("")
-                .corss_origin_resource_policy(""),
+                .cross_origin_resource_policy(""),
             "/hello".GET(|| async { "Hello, enamel!" }),
         ))
         .test();
