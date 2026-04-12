@@ -287,7 +287,7 @@ const _: (/* conversions */) = {
                 let child = base.children.pop().unwrap(/* base.children.len() == 1 */);
                 base.children = child.children;
                 base.handler = child.handler;
-                base.fangses.append(child.fangses);
+                base.fangses.append_inner(child.fangses);
                 base.pattern = Some(match base.pattern {
                     None    => child.pattern.unwrap(/* not root */),
                     Some(p) => p.merge_statics(child.pattern.unwrap(/* not root */)).unwrap(/* both are Pattern::Static */)

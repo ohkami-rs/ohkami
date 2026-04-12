@@ -20,9 +20,9 @@ workspace = true
 
 [dependencies]
 # workspace members
-ohkami_lib     = { version = "=0.24.8", path = "../ohkami_lib" }
-ohkami_macros  = { version = "=0.24.8", path = "../ohkami_macros" }
-ohkami_openapi = { optional = true, version = "=0.24.8", path = "../ohkami_openapi" }
+ohkami_lib     = { version = "=0.24.9", path = "../ohkami_lib" }
+ohkami_macros  = { version = "=0.24.9", path = "../ohkami_macros" }
+ohkami_openapi = { optional = true, version = "=0.24.9", path = "../ohkami_openapi" }
 
 # workspace dependencies
 byte_reader = { workspace = true }
@@ -37,7 +37,7 @@ glommio        = { version = "0.9",  optional = true }
 monoio         = { version = "0.2",  optional = true, features = ["signal"] }
 monoio-compat  = { version = "0.2",  optional = true }
 compio         = { version = "0.18", optional = true, features = ["io-compat", "time"] }
-worker         = { version = "0.7",  optional = true }
+worker         = { version = "0.8",  optional = true }
 lambda_runtime = { version = "1.1", optional = true }
 
 # encoding / crypto
