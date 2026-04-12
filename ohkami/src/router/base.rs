@@ -109,7 +109,7 @@ impl FangsList {
                 |(proc, op), (_, most_inner_fangs)| {
                     (
                         most_inner_fangs.build(proc),
-                        most_inner_fangs.openapi_map_operation(operation),
+                        most_inner_fangs.openapi_map_operation(op),
                     )
                 },
             )
