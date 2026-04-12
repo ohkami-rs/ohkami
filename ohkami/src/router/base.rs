@@ -77,44 +77,42 @@ impl FangsList {
         Self(Vec::new())
     }
 
-    fn add(&mut self, id: ID, fangs: Arc<dyn Fangs>) {
+    fn add_inner(&mut self, id: ID, fangs: Arc<dyn Fangs>) {
         if self.0.iter().all(|(_id, _)| *_id != id) {
             self.0.push((id, fangs));
         }
     }
-    pub(super) fn append(&mut self, another: Self) {
-        for (id, fangs) in another.0.into_iter() {
-            self.add(id, fangs)
+    fn add_outer(&mut self, id: ID, fangs: Arc<dyn Fangs>) {
+        if self.0.iter().all(|(_id, _)| *_id != id) {
+            self.0.insert(0, (id, fangs));
         }
     }
-
-    /// yield from most inner fangs
-    fn into_iter(self) -> impl Iterator<Item = Arc<dyn Fangs>> {
-        self.0.into_iter().map(|(_, fangs)| fangs)
+    pub(super) fn append_inner(&mut self, another: Self) {
+        for (id, fangs) in another.0.into_iter() {
+            self.add_inner(id, fangs);
+        }
     }
 
     pub(super) fn into_proc_with(self, h: Handler) -> IntoProcWith {
-        let mut iter = self.into_iter();
-
         #[cfg(not(feature = "openapi"))]
-        match iter.next() {
-            None => h.proc,
-            Some(most_inner) => {
-                iter.fold(most_inner.build(h.proc), |proc, fangs| fangs.build(proc))
-            }
+        {
+            self.0
+                .into_iter()
+                .rfold(h.proc, |proc, (_, most_inner_fangs)| {
+                    most_inner_fangs.build(proc)
+                })
         }
         #[cfg(feature = "openapi")]
-        match iter.next() {
-            None => (h.proc, h.openapi_operation),
-            Some(most_inner) => iter.fold(
-                (
-                    most_inner.build(h.proc),
-                    most_inner.openapi_map_operation(h.openapi_operation),
-                ),
-                |(proc, operation), fangs| {
-                    (fangs.build(proc), fangs.openapi_map_operation(operation))
+        {
+            self.0.into_iter().rfold(
+                (h.proc, h.openapi_operation),
+                |(proc, op), (_, most_inner_fangs)| {
+                    (
+                        most_inner_fangs.build(proc),
+                        most_inner_fangs.openapi_map_operation(operation),
+                    )
                 },
-            ),
+            )
         }
     }
 }
@@ -362,10 +360,6 @@ impl Node {
         }
     }
 
-    fn append_fangs(&mut self, fangs: FangsList) {
-        self.fangses.append(fangs);
-    }
-
     fn set_handler(&mut self, new_handler: Handler, allow_override: bool) -> Result<(), String> {
         if self.handler.is_some() && !allow_override {
             return Err(format!("Conflicting handler registering"));
@@ -414,7 +408,7 @@ impl Node {
             panic!("Unexpectedly called `Node::merge_here` where `another_root` is not root node")
         };
 
-        self.append_fangs(another_root_fangses);
+        self.fangses.append_inner(another_root_fangses);
 
         if let Some(h) = another_root_handler {
             self.set_handler(h, allow_override_handler)?;
@@ -432,10 +426,10 @@ impl Node {
         for child in &mut self.children {
             child.apply_fangs(id, fangs.clone())
         }
-
         // Add even when `self.handler.is_none()`. They are used later
         // for applying to `Handler::default_notfound`s in `finalize`.
-        self.fangses.add(id, fangs);
+        // This `fangses` must be added by `_outer` to *wrap* existing fangs.
+        self.fangses.add_outer(id, fangs);
     }
 }
 

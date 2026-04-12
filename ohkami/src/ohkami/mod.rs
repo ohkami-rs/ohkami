@@ -1268,11 +1268,12 @@ mod test {
 }
 
 #[cfg(test)]
+#[cfg(feature = "__rt_native__")]
 mod nested_fang_regression_test {
-    use crate::{Ohkami, Request, Response, Route};
     use crate::claw::status;
-    use crate::fang::{FangAction, Context};
+    use crate::fang::{Context, FangAction};
     use crate::testing::{Status, TestRequest, Tester};
+    use crate::{Ohkami, Request, Response, Route};
 
     #[derive(Clone, Debug, PartialEq, Eq)]
     struct Principal(&'static str);
@@ -1336,15 +1337,9 @@ mod nested_fang_regression_test {
                 "/accounting/reconciliation".GET(accounting_reconciliation_handler),
             ));
 
-            let protected_routes = Ohkami::new((
-                ParentAuthFang,
-                "/ops".By(ops_routes),
-            ));
+            let protected_routes = Ohkami::new((ParentAuthFang, "/ops".By(ops_routes)));
 
-            let app = Ohkami::new((
-                Context::new(()),
-                "/api".By(protected_routes),
-            ));
+            let app = Ohkami::new((Context::new(()), "/api".By(protected_routes)));
 
             let tester = app.test();
 
@@ -1390,42 +1385,21 @@ mod nested_fang_regression_test {
         });
     }
 
-
     #[test]
     fn parent_context_auth_is_visible_to_nested_local_route_fangs_in_realistic_order() {
         crate::__rt__::testing::block_on(async {
             let ops_routes = Ohkami::new((
-                "/routing/health".GET((
-                    OpsAuthorizationFang,
-                    routing_health_handler,
-                )),
-                "/routing/override".POST((
-                    OpsAuthorizationFang,
-                    routing_override_set_handler,
-                )),
-                "/routing/override".DELETE((
-                    OpsAuthorizationFang,
-                    routing_override_clear_handler,
-                )),
-                "/metrics".GET((
-                    OpsAuthorizationFang,
-                    metrics_handler,
-                )),
-                "/accounting/reconciliation".GET((
-                    OpsAuthorizationFang,
-                    accounting_reconciliation_handler,
-                )),
+                "/routing/health".GET((OpsAuthorizationFang, routing_health_handler)),
+                "/routing/override".POST((OpsAuthorizationFang, routing_override_set_handler)),
+                "/routing/override".DELETE((OpsAuthorizationFang, routing_override_clear_handler)),
+                "/metrics".GET((OpsAuthorizationFang, metrics_handler)),
+                "/accounting/reconciliation"
+                    .GET((OpsAuthorizationFang, accounting_reconciliation_handler)),
             ));
 
-            let protected_routes = Ohkami::new((
-                ParentAuthFang,
-                "/ops".By(ops_routes),
-            ));
+            let protected_routes = Ohkami::new((ParentAuthFang, "/ops".By(ops_routes)));
 
-            let app = Ohkami::new((
-                Context::new(()),
-                "/api".By(protected_routes),
-            ));
+            let app = Ohkami::new((Context::new(()), "/api".By(protected_routes)));
 
             let tester = app.test();
 
