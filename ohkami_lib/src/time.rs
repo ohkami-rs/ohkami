@@ -489,7 +489,7 @@ mod test {
     #[test]
     fn test_now() {
         fn correct_now() -> String {
-            let mut output_bytes = std::process::Command::new("/usr/bin/date")
+            let mut output_bytes = std::process::Command::new("date")
                 .env("LANG", "en_US")
                 .arg("+'%a, %d %b %Y %H:%M:%S GMT'")
                 .arg("-u")
