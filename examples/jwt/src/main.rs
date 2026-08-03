@@ -2,7 +2,7 @@ use ohkami::prelude::*;
 use ohkami::fang::{Jwt, JwtToken};
 
 fn jwt() -> Jwt<JwtPayload> {
-    Jwt::default(std::env::var("JWT_SECRET").unwrap())
+    Jwt::new_hs256(std::env::var("JWT_SECRET").unwrap())
 }
 
 #[derive(Serialize, Deserialize)]

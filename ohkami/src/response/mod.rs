@@ -141,17 +141,14 @@ impl Response {
                 }
             }
             #[cfg(feature = "sse")]
-            (Content::Stream(_), _) => {
-                if self.headers.content_length().is_some() {
-                    self.headers.set().content_length(None);
-                }
+            (Content::Stream(_), _) if self.headers.content_length().is_some() => {
+                self.headers.set().content_length(None);
             }
+
             #[cfg(not(feature="rt_lambda"/* currently */))]
             #[cfg(all(feature = "ws", feature = "__rt__"))]
-            (Content::WebSocket(_), _) => {
-                if self.headers.content_length().is_some() {
-                    self.headers.set().content_length(None);
-                }
+            (Content::WebSocket(_), _) if self.headers.content_length().is_some() => {
+                self.headers.set().content_length(None);
             }
             _ => (/* let it go by user's responsibility */),
         }
