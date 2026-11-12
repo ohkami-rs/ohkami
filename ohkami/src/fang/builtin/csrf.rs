@@ -76,8 +76,8 @@ impl Csrf {
             .collect::<Vec<_>>();
 
         for origin in &trusted_origins {
-            super::validate_origin(origin)
-                .unwrap_or_else(|err| panic!("[Csrf::with_trusted_origins] {err}"))
+            super::Origin::new(origin)
+                .unwrap_or_else(|err| panic!("[Csrf::with_trusted_origins] {err}"));
         }
 
         Csrf {
