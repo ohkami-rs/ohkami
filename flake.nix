@@ -39,6 +39,7 @@
             nodejs
             wrangler
             wasm-pack
+            wasm-bindgen-cli
             (worker-build.overrideAttrs (old: {
               buildInputs = (old.buildInputs or []) ++ [ zstd ];
             }))
