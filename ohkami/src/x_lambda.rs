@@ -511,7 +511,6 @@ mod ws {
 }
 */
 
-#[cfg(feature="nightly"/* `noop_waker` is stabilized in 1.85.0 and then remove this cfg */)]
 #[cfg(test)]
 mod tests {
     use super::*;
