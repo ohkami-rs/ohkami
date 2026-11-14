@@ -20,18 +20,28 @@
 
       devShells.default =
         let
-          rustToolchain = pkgs.rust-bin.stable.latest.default.override {
-            extensions = [ "rust-src" ];
+          rustToolchain = pkgs.rust-bin.stable."1.100.0".default.override {
+            extensions = [ "rust-src" "llvm-tools-preview" ];
+            targets = [ "wasm32-unknown-unknown" ];
           };
         in
         pkgs.mkShell {
           RUST_SRC_PATH = "${rustToolchain}/lib/rustlib/src/rust/library";
+          nativeBuildInputs = [ pkgs.pkg-config ];
+          buildInputs = [ pkgs.openssl ];
           packages = with pkgs; [
             rustToolchain
             go-task
             cargo-expand
+            cargo-llvm-cov
+            sqlx-cli
+            sccache
             nodejs
             wrangler
+            wasm-pack
+            (worker-build.overrideAttrs (old: {
+              buildInputs = (old.buildInputs or []) ++ [ zstd ];
+            }))
           ];
         };
     };
