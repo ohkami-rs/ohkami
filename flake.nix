@@ -20,10 +20,9 @@
 
       devShells.default =
         let
-          rustToolchain = pkgs.rust-bin.stable."1.100.0".default.override {
-            extensions = [ "rust-src" "llvm-tools-preview" ];
-            targets = [ "wasm32-unknown-unknown" ];
-          };
+          rustToolchain = (pkgs.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml).overrideAttrs (raw: {
+            extensions = (raw.extensions or []) ++ [ "rust-src" ];
+          });
         in
         pkgs.mkShell {
           RUST_SRC_PATH = "${rustToolchain}/lib/rustlib/src/rust/library";
