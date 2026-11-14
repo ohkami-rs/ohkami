@@ -21,7 +21,7 @@
       devShells.default =
         let
           rustToolchain = pkgs.rust-bin.stable."1.100.0".default.override {
-            extensions = [ "rust-src" ];
+            extensions = [ "rust-src" "llvm-tools-preview" ];
             targets = [ "wasm32-unknown-unknown" ];
           };
         in
@@ -33,6 +33,7 @@
             rustToolchain
             go-task
             cargo-expand
+            cargo-llvm-cov
             sqlx-cli
             sccache
             nodejs
