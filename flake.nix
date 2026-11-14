@@ -27,6 +27,8 @@
         in
         pkgs.mkShell {
           RUST_SRC_PATH = "${rustToolchain}/lib/rustlib/src/rust/library";
+          nativeBuildInputs = [ pkgs.pkg-config ];
+          buildInputs = [ pkgs.openssl ];
           packages = with pkgs; [
             rustToolchain
             go-task
