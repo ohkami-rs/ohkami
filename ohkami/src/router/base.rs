@@ -15,6 +15,7 @@ pub struct Router {
     pub(super) POST: Node,
     pub(super) PATCH: Node,
     pub(super) DELETE: Node,
+    pub(super) QUERY: Node,
     pub(super) OPTIONS: Node,
 }
 #[cfg(feature = "openapi")]
@@ -33,6 +34,7 @@ impl Router {
             POST: self.POST.to_dummy_owned_for_openapi(),
             PATCH: self.PATCH.to_dummy_owned_for_openapi(),
             DELETE: self.DELETE.to_dummy_owned_for_openapi(),
+            QUERY: self.QUERY.to_dummy_owned_for_openapi(),
             OPTIONS: self.OPTIONS.to_dummy_owned_for_openapi(),
         }
     }
@@ -131,6 +133,7 @@ impl Router {
             POST: Node::root(),
             PATCH: Node::root(),
             DELETE: Node::root(),
+            QUERY: Node::root(),
             OPTIONS: Node::root(),
         }
     }
@@ -147,6 +150,7 @@ impl Router {
             POST,
             PATCH,
             DELETE,
+            QUERY,
         } = handlers;
 
         let methods = {
@@ -161,7 +165,7 @@ impl Router {
                     methods
                 }}
             }
-            allow_methods! { GET, PUT, POST, PATCH, DELETE }
+            allow_methods! { GET, PUT, POST, PATCH, DELETE, QUERY }
         };
 
         macro_rules! register {
@@ -179,7 +183,7 @@ impl Router {
                 }
             )*};
         }
-        register! { GET, PUT, POST, PATCH, DELETE }
+        register! { GET, PUT, POST, PATCH, DELETE, QUERY }
 
         self.OPTIONS
             .register_handler(
@@ -228,7 +232,7 @@ impl Router {
             };
         }
         merge! {
-            GET, PUT, POST, PATCH, DELETE,
+            GET, PUT, POST, PATCH, DELETE, QUERY,
             OPTIONS(allow_override_handler = true)
         }
 
@@ -507,6 +511,7 @@ const _: (/* Debugs */) = {
                 .field("POST", &self.POST)
                 .field("PATCH", &self.PATCH)
                 .field("DELETE", &self.DELETE)
+                .field("QUERY", &self.QUERY)
                 .field("OPTIONS", &self.OPTIONS)
                 .field("id", &self.id)
                 .field("routes", &self.routes)

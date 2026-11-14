@@ -11,6 +11,7 @@ pub(crate) struct Router {
     POST: Node,
     PATCH: Node,
     DELETE: Node,
+    QUERY: Node,
     OPTIONS: Node,
 }
 
@@ -40,8 +41,8 @@ impl Router {
                 Method::POST => &self.POST,
                 Method::PATCH => &self.PATCH,
                 Method::DELETE => &self.DELETE,
+                Method::QUERY => &self.QUERY,
                 Method::OPTIONS => &self.OPTIONS,
-
                 Method::HEAD => {
                     let mut res = self.GET.search(&mut req.path).call_bite(req).await;
 
@@ -55,9 +56,7 @@ impl Router {
             .call_bite(req)
             .await
         };
-
         res.complete();
-
         res
     }
 
@@ -100,6 +99,7 @@ impl Router {
                     Method::POST => ("post", &self.POST),
                     Method::PATCH => ("patch", &self.PATCH),
                     Method::DELETE => ("delete", &self.DELETE),
+                    Method::QUERY => ("query", &self.QUERY),
                     _ => continue,
                 };
 
@@ -269,6 +269,7 @@ const _: (/* conversions */) = {
                 POST:    Node::from(base.POST),
                 PATCH:   Node::from(base.PATCH),
                 DELETE:  Node::from(base.DELETE),
+                QUERY:   Node::from(base.QUERY),
                 OPTIONS: Node::from(base.OPTIONS),
             }
         }
@@ -348,6 +349,7 @@ const _: (/* Debugs */) = {
                 .field("POST", &self.POST)
                 .field("PATCH", &self.PATCH)
                 .field("DELETE", &self.DELETE)
+                .field("QUERY", &self.QUERY)
                 .field("OPTIONS", &self.OPTIONS)
                 .finish()
         }
