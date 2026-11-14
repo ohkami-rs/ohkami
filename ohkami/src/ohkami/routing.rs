@@ -62,7 +62,7 @@ macro_rules! HandlerSet {
         }
     };
 }
-HandlerSet! { GET, PUT, POST, PATCH, DELETE }
+HandlerSet! { GET, PUT, POST, PATCH, DELETE, QUERY }
 
 pub struct ByAnother {
     pub(crate) route: RouteSegments,

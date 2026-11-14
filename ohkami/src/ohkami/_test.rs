@@ -20,6 +20,7 @@ fn my_ohkami() -> Ohkami {
 
     let articles_ohkami = Ohkami::new((
         "/".GET(|| async { "get_article" })
+            .QUERY(|| async { "QUERY article" })
             .POST(|| async { "post_article" }),
         "/feed".GET(|| async { "get_feed" }),
         "/:slug".By(Ohkami::new((
@@ -139,6 +140,11 @@ fn test_handler_registration() {
         let req = TestRequest::DELETE("/api/profiles/the_user/follow");
         let res = t.oneshot(req).await;
         assert_eq!(res.text(), Some("unfollow_user `the_user`"));
+
+        /* QUERY /api/articles */
+        let req = TestRequest::QUERY("/api/articles");
+        let res = t.oneshot(req).await;
+        assert_eq!(res.text(), Some("QUERY article"));
 
         /* GET /api/articles/feed */
 

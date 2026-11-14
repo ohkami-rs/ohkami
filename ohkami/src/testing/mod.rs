@@ -185,7 +185,7 @@ macro_rules! new_test_request {
     )*};
 }
 new_test_request! {
-    GET PUT POST PATCH DELETE HEAD OPTIONS
+    GET PUT POST PATCH DELETE QUERY HEAD OPTIONS
 }
 
 impl TestRequest {
