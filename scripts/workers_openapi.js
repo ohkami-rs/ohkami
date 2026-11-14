@@ -1,6 +1,6 @@
 #! /usr/bin/env node
 
-import { writeFileSync, readFileSync, existsSync, rmSync } from 'node:fs';
+import { writeFileSync, readFileSync, existsSync, rmSync, readdirSync, stat, statSync } from 'node:fs';
 import { execSync, spawn } from 'node:child_process';
 import { cwd, exit as __raw_exit__ } from 'node:process';
 import { join } from 'node:path';
@@ -20,9 +20,7 @@ const app = (() => {
         #additionalOptions = [];
 
         constructor() {
-            try {
-                const wrangler_toml = readFileSync("wrangler.toml");
-            } catch (e) {
+            if (!(existsSync("wrangler.toml") || existsSync("wrangler.jsonc"))) {
                 this.exit(150, `Expected a wrangler project, but ${e}`)
             }
 
@@ -166,11 +164,29 @@ try {
 }
 
 try {
-    const wasmpack_js = await import(join(
+    const wasmpack_js_path = join(
         cwd(),
         app.WASMPACK_OUT_DIR,
         `${app.WASMPACK_OUT_NAME}.js`
-    ));
+    );
+    {
+        writeFileSync(wasmpack_js_path, readFileSync(wasmpack_js_path, 'utf-8')
+          .replace(/^.+cloudflare:workers.+$/gm, ""));
+        if (existsSync(join(wasmpack_js_path, '..', 'snippets'))) {
+            for (const snippet_entry of readdirSync(join(wasmpack_js_path, '..', 'snippets'), {
+                recursive: true,
+                withFileTypes: true,
+            })) {
+                if (snippet_entry.isFile()) {
+                    const path = join(snippet_entry.parentPath, snippet_entry.name);
+                    writeFileSync(path, readFileSync(path, 'utf-8')
+                      .replace(/^.+cloudflare:workers.+$/gm, ""));
+                }
+            }
+        }
+    }
+
+    const wasmpack_js = await import(wasmpack_js_path);
     if (!wasmpack_js.OpenAPIDocumentBytes) {
         throw new Error("Not activating Ohkami's `openapi` feature flag");
     }
