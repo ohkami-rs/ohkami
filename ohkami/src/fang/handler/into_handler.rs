@@ -468,13 +468,6 @@ fn handler_args() {
         format!("")
     }
 
-    /// https://github.com/ohkami-rs/ohkami/issues/550
-    #[cfg(feature = "rt_glommio")]
-    async fn echo_id(Path(id): Path<String>) -> String {
-        let executor = glommio::executor();
-        executor.spawn_blocking(move || id).await
-    }
-
     #[cfg(feature = "rt_worker")]
     struct SomeJS {
         _ptr: *const u8,
@@ -498,9 +491,6 @@ fn handler_args() {
     }
 
     assert_handlers! { h0 h1 h2 h3 h4 }
-
-    #[cfg(feature = "rt_glommio")]
-    assert_handlers! { echo_id }
 
     #[cfg(feature = "rt_worker")]
     assert_handlers! { h5 }

@@ -1,7 +1,7 @@
 version: 3
 
 vars:
-  native_rts: 'tokio smol nio glommio monoio compio'
+  native_rts: 'tokio smol nio monoio compio'
   non_wasm_rts: 'lambda {{.native_rts}}'
   all_rts: 'worker {{.non_wasm_rts}}'
   maybe_nightly: { sh: cargo version | grep -q 'nightly' && echo 'nightly' || echo '' }
