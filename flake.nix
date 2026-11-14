@@ -20,8 +20,9 @@
 
       devShells.default =
         let
-          rustToolchain = pkgs.rust-bin.stable.latest.default.override {
+          rustToolchain = pkgs.rust-bin.stable."1.100.0".default.override {
             extensions = [ "rust-src" ];
+            targets = [ "wasm32-unknown-unknown" ];
           };
         in
         pkgs.mkShell {
@@ -30,8 +31,14 @@
             rustToolchain
             go-task
             cargo-expand
+            sqlx-cli
+            sccache
             nodejs
             wrangler
+            wasm-pack
+            (worker-build.overrideAttrs (old: {
+              buildInputs = (old.buildInputs or []) ++ [ zstd ];
+            }))
           ];
         };
     };
