@@ -220,7 +220,7 @@ async fn handler1(
 
 ### `"rt_worker"` : Cloudflare Workers
 
-- [worker](https://github.com/cloudflare/workers-rs) _v0.7.\*_
+- [worker](https://github.com/cloudflare/workers-rs) _v0.9.\*_
 
 Ohkami has first-class support for Cloudflare Workers:
 
