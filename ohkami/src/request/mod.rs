@@ -5,8 +5,8 @@ pub use method::Method;
 mod path;
 pub use path::Path;
 
-mod query;
-pub use query::QueryParams;
+mod queryparams;
+pub use queryparams::QueryParams;
 
 mod headers;
 #[allow(unused)]

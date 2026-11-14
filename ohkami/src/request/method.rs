@@ -5,6 +5,7 @@ pub enum Method {
     POST,
     PATCH,
     DELETE,
+    QUERY,
     HEAD,
     OPTIONS,
 }
@@ -17,11 +18,13 @@ impl Method {
             b"POST" => Some(Self::POST),
             b"PATCH" => Some(Self::PATCH),
             b"DELETE" => Some(Self::DELETE),
+            b"QUERY" => Some(Self::QUERY),
             b"HEAD" => Some(Self::HEAD),
             b"OPTIONS" => Some(Self::OPTIONS),
             _ => None,
         }
     }
+    // NOTE: `worker` v0.9.0 does not support `QUERY`.
     #[cfg(feature = "rt_worker")]
     #[inline(always)]
     pub(crate) const fn from_worker(w: ::worker::Method) -> Option<Self> {
@@ -45,6 +48,7 @@ impl Method {
             Self::POST => "POST",
             Self::PATCH => "PATCH",
             Self::DELETE => "DELETE",
+            Self::QUERY => "QUERY",
             Self::HEAD => "HEAD",
             Self::OPTIONS => "OPTIONS",
         }
@@ -84,29 +88,13 @@ impl Method {
 const _: () = {
     impl std::fmt::Display for Method {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            f.write_str(match self {
-                Self::GET => "GET",
-                Self::PUT => "PUT",
-                Self::POST => "POST",
-                Self::PATCH => "PATCH",
-                Self::DELETE => "DELETE",
-                Self::HEAD => "HEAD",
-                Self::OPTIONS => "OPTIONS",
-            })
+            f.write_str(self.as_str())
         }
     }
 
     impl std::fmt::Debug for Method {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            f.write_str(match self {
-                Self::GET => "GET",
-                Self::PUT => "PUT",
-                Self::POST => "POST",
-                Self::PATCH => "PATCH",
-                Self::DELETE => "DELETE",
-                Self::HEAD => "HEAD",
-                Self::OPTIONS => "OPTIONS",
-            })
+            f.write_str(self.as_str())
         }
     }
 
