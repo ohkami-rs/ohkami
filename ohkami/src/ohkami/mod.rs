@@ -571,7 +571,7 @@ impl Ohkami {
     /// - `tokio::net::ToSocketAddrs` item or `tokio::net::TcpListener`
     /// - `async_std::net::ToSocketAddrs` item or `async_std::net::TcpListener`
     /// - `smol::net::AsyncToSocketAddrs` item or `smol::net::TcpListener`
-    /// - `std::net::ToSocketAddrs` item or `{glommio, nio}::net::TcpListener`
+    /// - `std::net::ToSocketAddrs` item or `nio::net::TcpListener`
     ///
     /// depending on the async runtime.
     ///
@@ -1038,13 +1038,12 @@ mod sync {
 
                     This is intended to work correctly in both :
 
-                    1. A single Ohkami is running on multi-thread async runtime.
-                    2. Spawning some threads and single-thread Ohkami is running on
-                       each thread with single-thread async runtime.
-                       - glommio is designed to do so
-                       - even in other runtimes, sometimes this way of entrypoint
-                         with `SO_REUSEADDR` may work in better performance than ordinary
-                         one with multi-thread runtime.
+                    1. When a single Ohkami is running over a single multi-thread async runtime.
+                    2. Spawning several threads and each thread has a single-thread async runtime
+                       running an Ohkami on each.
+                       - Thread-per-core runtimes like `monoio` is originally designed for that use.
+                       - Even in other runtimes, sometimes this way with `SO_REUSEADDR` may work in
+                         better performance than 1.
 
                     For case 1., we only have to hold the single `AtomicPtr<Waker>`
                     corresponded to the Ohkami in `static WAKER`, and here retrieve/wake it :

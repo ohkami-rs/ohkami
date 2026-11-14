@@ -33,7 +33,6 @@ serde_json  = { workspace = true }
 tokio          = { version = "1",    optional = true }
 smol           = { version = "2",    optional = true }
 nio            = { version = "0.1.3",  optional = true, features = ["tokio-io"] }
-glommio        = { version = "0.9",  optional = true }
 monoio         = { version = "0.2",  optional = true, features = ["signal"] }
 monoio-compat  = { version = "0.2",  optional = true }
 compio         = { version = "0.18", optional = true, features = ["io-compat", "time"] }
@@ -69,9 +68,6 @@ rt_smol = ["__rt_native__", "__rt_threaded__", "__io_futures__",
 ]
 rt_nio = ["__rt_native__", "__io_tokio__",
     "dep:nio",
-]
-rt_glommio = ["__rt_native__", "__io_futures__",
-    "dep:glommio",
 ]
 rt_monoio = ["__rt_native__", "__io_tokio__",
     "dep:monoio",

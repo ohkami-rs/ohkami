@@ -9,7 +9,7 @@
 //! <br>
 //!
 //! - *macro-less and type-safe* APIs for declarative, ergonomic code
-//! - *runtime-flexible* ： `tokio`, `smol`, `nio`, `glommio`, `monoio`, `compio` and `worker` (Cloudflare Workers), `lambda` (AWS Lambda)
+//! - *runtime-flexible* ： `tokio`, `smol`, `nio`, `monoio`, `compio` and `worker` (Cloudflare Workers), `lambda` (AWS Lambda)
 //! - good performance, no-network testing, well-structured middlewares, Server-Sent Events, WebSocket, highly integrated OpenAPI document generation, ...
 //!
 //! See [GitHub repo](https://github.com/ohkami-rs/ohkami) for details!
@@ -31,7 +31,6 @@
         any(
             feature = "rt_smol",
             feature = "rt_nio",
-            feature = "rt_glommio",
             feature = "rt_monoio",
             feature = "rt_compio",
             feature = "rt_worker"
@@ -41,7 +40,6 @@
         feature = "rt_smol",
         any(
             feature = "rt_nio",
-            feature = "rt_glommio",
             feature = "rt_monoio",
             feature = "rt_compio",
             feature = "rt_worker",
@@ -51,23 +49,11 @@
     all(
         feature = "rt_nio",
         any(
-            feature = "rt_glommio",
             feature = "rt_monoio",
             feature = "rt_compio",
             feature = "rt_worker",
             feature = "rt_tokio",
             feature = "rt_smol"
-        )
-    ),
-    all(
-        feature = "rt_glommio",
-        any(
-            feature = "rt_monoio",
-            feature = "rt_compio",
-            feature = "rt_worker",
-            feature = "rt_tokio",
-            feature = "rt_smol",
-            feature = "rt_nio"
         )
     ),
     all(
@@ -78,7 +64,6 @@
             feature = "rt_tokio",
             feature = "rt_smol",
             feature = "rt_nio",
-            feature = "rt_glommio"
         )
     ),
     all(
@@ -88,7 +73,6 @@
             feature = "rt_tokio",
             feature = "rt_smol",
             feature = "rt_nio",
-            feature = "rt_glommio",
             feature = "rt_monoio"
         )
     ),
@@ -98,7 +82,6 @@
             feature = "rt_tokio",
             feature = "rt_smol",
             feature = "rt_nio",
-            feature = "rt_glommio",
             feature = "rt_monoio",
             feature = "rt_compio"
         )
@@ -123,11 +106,6 @@ mod __rt__ {
     pub(crate) use smol::net::{AsyncToSocketAddrs as ToSocketAddrs, TcpListener, TcpStream};
     #[cfg(feature = "rt_tokio")]
     pub(crate) use tokio::net::{TcpListener, TcpStream, ToSocketAddrs};
-    #[cfg(feature = "rt_glommio")]
-    pub(crate) use {
-        glommio::net::{TcpListener, TcpStream},
-        std::net::ToSocketAddrs,
-    };
     #[cfg(feature = "rt_monoio")]
     pub(crate) use {
         monoio::net::TcpListener, monoio_compat::TcpStreamCompat as TcpStream,
@@ -151,12 +129,6 @@ mod __rt__ {
         {
             listener.accept().await
         }
-        #[cfg(any(feature = "rt_glommio"))]
-        {
-            let connection = listener.accept().await?;
-            let addr = connection.peer_addr()?;
-            Ok((connection, addr))
-        }
         #[cfg(any(feature = "rt_monoio", feature = "rt_compio"))]
         {
             let (conn, addr) = listener.accept().await?;
@@ -176,7 +148,7 @@ mod __rt__ {
         async fn into_tcp_listener(self) -> TcpListener {
             let binded = TcpListener::bind(self);
 
-            #[cfg(not(any(feature = "rt_glommio", feature = "rt_monoio")))]
+            #[cfg(not(any(feature = "rt_monoio")))]
             let binded = binded.await;
 
             binded.expect("Failed to bind TCP listener")
@@ -191,8 +163,6 @@ mod __rt__ {
     }
     #[cfg(feature = "rt_compio")]
     pub(crate) use compio::runtime::time::sleep;
-    #[cfg(feature = "rt_glommio")]
-    pub(crate) use glommio::timer::sleep;
     #[cfg(feature = "rt_monoio")]
     pub(crate) use monoio::time::sleep;
     #[cfg(feature = "rt_nio")]
@@ -215,9 +185,6 @@ mod __rt__ {
 
         #[cfg(feature = "rt_smol")]
         smol::spawn(task).detach();
-
-        #[cfg(feature = "rt_glommio")]
-        glommio::spawn_local(task).detach();
 
         #[cfg(feature = "rt_monoio")]
         monoio::spawn(task);
@@ -242,9 +209,6 @@ mod __rt__ {
             #[cfg(feature = "rt_nio")]
             return nio::RuntimeBuilder::new().build().unwrap().block_on(future);
 
-            #[cfg(feature = "rt_glommio")]
-            return glommio::LocalExecutor::default().run(future);
-
             #[cfg(feature = "rt_monoio")]
             return monoio::RuntimeBuilder::<monoio::FusionDriver>::new()
                 .enable_all()
@@ -268,10 +232,6 @@ mod __rt__ {
             #[cfg(feature = "rt_nio")]
             {
                 3004
-            }
-            #[cfg(feature = "rt_glommio")]
-            {
-                3005
             }
             #[cfg(feature = "rt_monoio")]
             {
