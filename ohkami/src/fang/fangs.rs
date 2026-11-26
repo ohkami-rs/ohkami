@@ -1,4 +1,3 @@
-pub mod util;
 use super::{BoxedFPC, Fang, SendSyncOnThreaded};
 
 #[allow(private_interfaces)]

@@ -1,5 +1,5 @@
-use super::super::bound::SendSyncOnThreaded;
-use super::super::{Fang, FangProc};
+use super::bound::SendSyncOnThreaded;
+use super::{Fang, FangProc};
 use crate::{Request, Response};
 use std::future::Future;
 

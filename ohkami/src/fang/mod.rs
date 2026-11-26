@@ -1,12 +1,28 @@
-mod middleware;
-pub use middleware::{Fangs, util::FangAction};
+//! # Fang - Ohkami's underlying request handling system
+//!
+//! All handlers and middlewares in Ohkami are built on the `Fang` system:
+//!
+//! - [`Fang`] ー how to chain a process into an inner `FangProc`
+//! - [`FangProc`] ー the process actually *biting* a request and returning a response
+//! - [`FangAction`] ー utility trait to implement `Fang` easily
+//!
+//! Ohkami's built-in fangs are provided in [`middleware`](crate::middleware) module.
 
-mod builtin;
-pub use builtin::*;
+mod fangs;
+pub use fangs::Fangs;
+
+mod action;
+pub use action::FangAction;
 
 pub mod bound;
 pub(crate) use bound::*;
 
+/* backward compatibility: built-in fangs and `handler` were exposed here until v0.24 */
+#[doc(hidden)]
+pub use crate::middleware::{BasicAuth, Context, Cors, Csrf, Enamel, Jwt, JwtToken, enamel};
+#[cfg(feature = "__rt_native__")]
+#[doc(hidden)]
+pub use crate::middleware::Timeout;
 #[deprecated(since = "0.25.0", note = "use `ohkami::handler` instead")]
 #[doc(hidden)]
 pub mod handler {

@@ -23,7 +23,7 @@
 ///
 /// ```no_run
 /// use ohkami::prelude::*;
-/// use ohkami::fang::Enamel;
+/// use ohkami::middleware::Enamel;
 ///
 /// #[tokio::main]
 /// async fn main() {
@@ -198,7 +198,7 @@ const _: () = {
     }
 };
 
-/// # Typed `Content-Security-Policy` for `fang::Enamel`
+/// # Typed `Content-Security-Policy` for `middleware::Enamel`
 ///
 /// Based on <https://content-security-policy.com>
 ///
@@ -206,7 +206,7 @@ const _: () = {
 ///
 /// ```no_run
 /// use ohkami::prelude::*;
-/// use ohkami::fang::enamel::{Enamel, CSP, sandbox::{allow_forms, allow_same_origin}};
+/// use ohkami::middleware::enamel::{Enamel, CSP, sandbox::{allow_forms, allow_same_origin}};
 ///
 /// #[tokio::main]
 /// async fn main() {
@@ -309,7 +309,7 @@ const _: () = {
 ///
 /// ```no_run
 /// use ohkami::prelude::*;
-/// use ohkami::fang::enamel::{Enamel, CSP, sandbox::{allow_forms, allow_same_origin}};
+/// use ohkami::middleware::enamel::{Enamel, CSP, sandbox::{allow_forms, allow_same_origin}};
 ///
 /// #[tokio::main]
 /// async fn main() {
@@ -409,7 +409,7 @@ pub mod sandbox {
 ///
 /// ```no_run
 /// use ohkami::prelude::*;
-/// use ohkami::fang::enamel::{Enamel, CSP, src::{self_origin, data}};
+/// use ohkami::middleware::enamel::{Enamel, CSP, src::{self_origin, data}};
 ///
 /// #[tokio::main]
 /// async fn main() {

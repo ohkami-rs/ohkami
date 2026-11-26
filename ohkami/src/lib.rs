@@ -318,6 +318,8 @@ pub use ohkami::{Ohkami, Route};
 pub mod fang;
 pub use fang::{Fang, FangAction, FangProc};
 
+pub mod middleware;
+
 pub mod handler;
 pub use handler::component::{Cookie, Json, Path, Query};
 
@@ -351,7 +353,7 @@ mod x_worker;
 pub use x_worker::*;
 
 pub mod prelude {
-    pub use crate::fang::Context;
+    pub use crate::middleware::Context;
     pub use crate::serde::{Deserialize, Serialize};
     pub use crate::util::FangAction;
     pub use crate::{IntoResponse, Json, Method, Path, Query, Request, Response, Status};
