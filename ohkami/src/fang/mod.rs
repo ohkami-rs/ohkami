@@ -18,11 +18,11 @@ pub mod bound;
 pub(crate) use bound::*;
 
 /* backward compatibility: built-in fangs and `handler` were exposed here until v0.24 */
-#[doc(hidden)]
-pub use crate::middleware::{BasicAuth, Context, Cors, Csrf, Enamel, Jwt, JwtToken, enamel};
 #[cfg(feature = "__rt_native__")]
 #[doc(hidden)]
 pub use crate::middleware::Timeout;
+#[doc(hidden)]
+pub use crate::middleware::{BasicAuth, Context, Cors, Csrf, Enamel, Jwt, JwtToken, enamel};
 #[deprecated(since = "0.25.0", note = "use `ohkami::handler` instead")]
 #[doc(hidden)]
 pub mod handler {
