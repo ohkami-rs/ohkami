@@ -548,11 +548,7 @@ const _: () = {
                 }
             }
 
-            if self.custom != other.custom {
-                return false;
-            }
-
-            true
+            self.custom == other.custom
         }
     }
 
