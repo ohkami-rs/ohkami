@@ -14,7 +14,7 @@ use crate::openapi;
 /// ### example
 ///
 /// ```
-/// use ohkami::claw::content::Text;
+/// use ohkami::handler::component::content::Text;
 ///
 /// async fn accept_text(
 ///     Text(text): Text<&str>,
@@ -37,7 +37,7 @@ use crate::openapi;
 /// ### example
 ///
 /// ```
-/// use ohkami::claw::content::Text;
+/// use ohkami::handler::component::content::Text;
 ///
 /// async fn handler() -> Text<&'static str> {
 ///     Text(r#"

@@ -1,5 +1,3 @@
-pub mod handler;
-
 mod middleware;
 pub use middleware::{Fangs, util::FangAction};
 
@@ -8,6 +6,12 @@ pub use builtin::*;
 
 pub mod bound;
 pub(crate) use bound::*;
+
+#[deprecated(since = "0.25.0", note = "use `ohkami::handler` instead")]
+#[doc(hidden)]
+pub mod handler {
+    pub use crate::handler::*;
+}
 
 use crate::{Request, Response};
 use std::{future::Future, ops::Deref, pin::Pin};

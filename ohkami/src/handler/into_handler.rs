@@ -1,5 +1,5 @@
-use super::super::{BoxedFPC, Fang, middleware::Fangs};
 use super::{Handler, SendOnThreaded, SendOnThreadedFuture, SendSyncOnThreaded};
+use crate::fang::{BoxedFPC, Fang, Fangs};
 use crate::{FromRequest, IntoResponse, Request, Response};
 use std::{future::Future, pin::Pin};
 
@@ -436,7 +436,7 @@ where
 #[cfg(test)]
 #[test]
 fn handler_args() {
-    use crate::claw::param::{FromParam, Path};
+    use crate::handler::component::param::{FromParam, Path};
 
     async fn h0() -> &'static str {
         ""

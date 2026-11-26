@@ -316,12 +316,19 @@ mod ohkami;
 pub use ohkami::{Ohkami, Route};
 
 pub mod fang;
-pub use fang::{Fang, FangAction, FangProc, handler};
+pub use fang::{Fang, FangAction, FangProc};
+
+pub mod handler;
+pub use handler::component::{Cookie, Json, Path, Query};
 
 pub mod header;
 
-pub mod claw;
-pub use claw::{Cookie, Json, Path, Query};
+#[deprecated(since = "0.25.0", note = "use `ohkami::handler::component` instead")]
+#[doc(hidden)]
+pub mod claw {
+    //! deprecated: moved to [`handler::component`](crate::handler::component).
+    pub use crate::handler::component::*;
+}
 
 #[cfg(feature = "sse")]
 #[cfg_attr(docsrs, doc(cfg(feature = "sse")))]

@@ -1,8 +1,8 @@
 #![allow(non_snake_case, unused_mut)]
 
 use crate::Ohkami;
-use crate::fang::handler::{Handler, IntoHandler};
 use crate::fang::{BoxedFPC, Fang};
+use crate::handler::{Handler, IntoHandler};
 use crate::router::{base::Router, segments::RouteSegments};
 use std::sync::Arc;
 

@@ -1,9 +1,9 @@
-//! # `content` claws
+//! # `content` components
 //!
-//! These claws provides typed handling of request and response bodies
+//! These components provide typed handling of request and response bodies
 //! via the `FromContent` and `IntoContent` traits.
 //!
-//! Built-in content claws:
+//! Built-in content components:
 //!
 //! - `Json`: `application/json` request/response body
 //! - `UrlEncoded`: `application/x-www-form-urlencoded` request/response body
@@ -14,7 +14,7 @@
 //! ## Example
 //!
 //! ```
-//! use ohkami::claw::Json;
+//! use ohkami::handler::component::Json;
 //! use ohkami::serde::{Serialize, Deserialize};
 //!
 //! #[derive(Deserialize)]

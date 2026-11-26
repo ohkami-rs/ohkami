@@ -46,7 +46,7 @@ pub trait FromRequest<'req>: Sized {
     }
 
     #[doc(hidden)]
-    /// intent to be used by `claw::param::Path` and by the assertion in `router::base::Router::finalize`
+    /// intent to be used by `handler::component::param::Path` and by the assertion in `router::base::Router::finalize`
     fn n_pathparams() -> usize {
         0
     }
