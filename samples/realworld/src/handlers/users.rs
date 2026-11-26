@@ -1,5 +1,5 @@
 use ohkami::prelude::*;
-use ohkami::claw::status::Created;
+use ohkami::handler::component::status::Created;
 use sqlx::PgPool;
 use crate::{
     models::User,

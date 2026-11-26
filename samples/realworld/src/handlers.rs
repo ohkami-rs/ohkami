@@ -5,7 +5,7 @@ mod articles;
 mod tags;
 
 use sqlx::PgPool;
-use ohkami::{Ohkami, Route, fang::Context};
+use ohkami::{Ohkami, Route, middleware::Context};
 use crate::fangs::Logger;
 
 pub fn realworld_ohkami(

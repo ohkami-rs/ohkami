@@ -449,7 +449,7 @@ pub fn Deserialize(data: proc_macro::TokenStream) -> proc_macro::TokenStream {
 ///
 /// *example.rs*
 /// ```ignore
-/// use ohkami::fang::Context;
+/// use ohkami::middleware::Context;
 /// use sqlx::PgPool;
 ///
 /// #[derive(ohkami::FromRequest)]

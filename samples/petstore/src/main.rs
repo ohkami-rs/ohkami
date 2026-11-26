@@ -1,5 +1,5 @@
 use ohkami::prelude::*;
-use ohkami::claw::{Json, Path, Query, status};
+use ohkami::handler::component::{Json, Path, Query, status};
 use ohkami::openapi;
 use std::sync::Arc;
 

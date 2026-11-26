@@ -1,5 +1,5 @@
 use ohkami::prelude::*;
-use ohkami::fang::{Jwt, JwtToken};
+use ohkami::middleware::{Jwt, JwtToken};
 
 fn jwt() -> Jwt<JwtPayload> {
     Jwt::default(std::env::var("JWT_SECRET").unwrap())
