@@ -16,9 +16,10 @@
 
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![allow(incomplete_features)]
+#![cfg_attr(feature = "nightly", feature(specialization, try_trait_v2))]
 #![cfg_attr(
-    feature = "nightly",
-    feature(specialization, try_trait_v2, impl_trait_in_assoc_type,)
+    all(feature = "nightly", feature = "rt_lambda"),
+    feature(impl_trait_in_assoc_type) // only used by `rt_lambda`
 )]
 #![allow(
     clippy::non_minimal_cfg, // for `cfg(any(...))` for various `rt_*` features
