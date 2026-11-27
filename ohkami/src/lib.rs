@@ -16,7 +16,7 @@
 
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![allow(incomplete_features)]
-#![cfg_attr(feature = "nightly", feature(specialization, try_trait_v2))]
+#![cfg_attr(feature = "nightly", feature(try_trait_v2))]
 #![cfg_attr(
     all(feature = "nightly", feature = "rt_lambda"),
     feature(impl_trait_in_assoc_type) // only used by `rt_lambda`
