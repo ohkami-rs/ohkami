@@ -4,7 +4,7 @@ use chrono::{DateTime, Utc};
 use sqlx::PgPool;
 use crate::{config::JwtPayload, errors::RealWorldError};
 use crate::fangs::Auth;
-use crate::db::{article_id_by_slug, UserAndFollowings, ArticleEntity, CommentEntity};
+use crate::db::{article_id_by_slug, UserAndFollowings, ArticleEntity};
 use crate::models::{
     Article, Profile, Comment,
     request::{ListArticlesQuery, FeedArticleQuery},

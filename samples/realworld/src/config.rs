@@ -34,7 +34,7 @@ pub struct JwtPayload {
 
 pub fn issue_jwt_for_user_of_id(user_id: Uuid) -> Result<JwtToken, RealWorldError> {
     let secret = JWT_SECRET_KEY()?;
-    Ok(Jwt::default(secret).clone().issue(JwtPayload {
+    Ok(Jwt::new_hs256(secret).clone().issue(JwtPayload {
         user_id,
         iat: unix_timestamp(),
     }))

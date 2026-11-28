@@ -70,7 +70,7 @@ async fn register(
         })
     }
 
-    let (hased_password, salt) = db::hash_password(password)?;
+    let (hased_password, salt) = db::hash_password_with_salt(password)?;
 
     let new_user_id = sqlx::query!(r#"
         INSERT INTO
