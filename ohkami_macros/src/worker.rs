@@ -74,8 +74,21 @@ pub fn worker(args: TokenStream, ohkami_fn: TokenStream) -> Result<TokenStream, 
 
         let dummy_env_def = ohkami_fn.sig.inputs.first().map(|a| {
             let ty = match a {
-                FnArg::Receiver(r) => &r.ty,
-                FnArg::Typed(p) => &p.ty,
+                FnArg::Typed(p) => &*p.ty,
+                FnArg::Receiver(r) => match &r.kind {
+                    ::syn::ReceiverKind::Value => &::syn::parse_quote!(Self),
+                    ::syn::ReceiverKind::Typed(_, ty) => &**ty,
+                    ::syn::ReceiverKind::Reference(_, _, mut_) => {
+                        if mut_.is_some() {
+                            &::syn::parse_quote!(<&mut Self>)
+                        } else {
+                            &::syn::parse_quote!(<&Self>)
+                        }
+                    }
+                    _ => unreachable!("\
+                        ReceiverKind in syn v3.0.10 is non_exaustive for reserving ReceiverKind::Pin \
+                        (https://docs.rs/syn/3.0.10/src/syn/item.rs.html#1040-1055)")
+                },
             };
             quote! {
                 let env = <#ty as ::ohkami::FromEnv>::dummy_env();

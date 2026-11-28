@@ -2,31 +2,28 @@ use crate::{config, errors::RealWorldError};
 use crate::models::{Article, Profile, User, Comment};
 use crate::models::response::{UserResponse, ProfileResponse};
 use argon2::{Algorithm, Argon2, Params, PasswordHasher,  Version};
-use argon2::password_hash::{PasswordHashString, Salt, SaltString};
 use chrono::{DateTime, Utc};
 use sqlx::PgPool;
 use uuid::Uuid;
 
-
-pub fn hash_password(
+pub fn hash_password_with_salt(
     raw_password: &str,
-) -> Result<(PasswordHashString, SaltString), RealWorldError> {
-    let salt = SaltString::generate(::argon2::password_hash::rand_core::OsRng);
-    let hash = __hash_password_with(raw_password, &salt)?;
-
+) -> Result<(String, [u8; 16]), RealWorldError> {
+    let salt = ::argon2::password_hash::try_generate_salt()
+        .map_err(|e| RealWorldError::Config(e.to_string()))?;
+    let hash = __hash_password_with(raw_password, salt)?;
     Ok((hash, salt))
 }
 
 pub fn verify_password(
     raw_password:    &str,
-    salt:            &str,
+    salt:            [u8; 16],
     hashed_password: &str,
 ) -> Result<(), RealWorldError> {
     let correct_hash = __hash_password_with(
         raw_password,
-        &SaltString::from_b64(salt).unwrap(),
+        salt,
     )?;
-
     if correct_hash.as_str() != hashed_password {
         return Err(RealWorldError::Unauthorized(std::borrow::Cow::Borrowed(
             "Wrong email or password"
@@ -38,8 +35,8 @@ pub fn verify_password(
 
 fn __hash_password_with(
     raw_password: &str,
-    salt: &SaltString,
-) -> Result<PasswordHashString, RealWorldError> {
+    salt: [u8; 16],
+) -> Result<String, RealWorldError> {
     let pepper = config::PEPPER()?;
 
     let a = Argon2::new_with_secret(
@@ -49,12 +46,12 @@ fn __hash_password_with(
         Params::DEFAULT,
     ).map_err(|e| RealWorldError::Config(e.to_string()))?;
 
-    let hash = a.hash_password(
+    let hash = a.hash_password_with_salt(
         raw_password.as_bytes(),
-        Salt::from(salt),
+        salt.as_slice(),
     ).map_err(|e| RealWorldError::Config(e.to_string()))?;
 
-    Ok(hash.serialize())
+    Ok(hash.to_string())
 }
 
 pub async fn article_id_by_slug(slug: &str, pool: &PgPool) -> Result<Uuid, RealWorldError> {
@@ -79,7 +76,7 @@ pub enum UserAndFollowings {
     }
     pub fn followings(&self) -> &[Uuid] {
         match self {
-            Self::None => &[],
+            Self::None => &[][..],
             Self::Some { followings, .. } => followings,
         }
     }

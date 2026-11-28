@@ -25,7 +25,7 @@ impl FangAction for Auth {
 
         let secret = crate::config::JWT_SECRET_KEY()
             .map_err(IntoResponse::into_response)?;
-        let payload = Jwt::<crate::config::JwtPayload>::default(secret)
+        let payload = Jwt::<crate::config::JwtPayload>::new_hs256(secret)
             .verified(req)
             .map_err(IntoResponse::into_response)?;
         req.context.set(payload);

@@ -34,7 +34,11 @@ async fn login(
         .fetch_one(pool).await
         .map_err(RealWorldError::DB)?;
 
-    db::verify_password(password, &credential.salt, &credential.password)?;
+    db::verify_password(
+        password,
+        credential.salt.as_slice().try_into().map_err(|_| RealWorldError::Unauthorized("".into()))?,
+        &credential.password
+    )?;
 
     let u = sqlx::query_as!(db::UserEntity, r#"
         SELECT id, email, name, bio, image_url
@@ -70,14 +74,14 @@ async fn register(
         })
     }
 
-    let (hased_password, salt) = db::hash_password(password)?;
+    let (hased_password, salt) = db::hash_password_with_salt(password)?;
 
     let new_user_id = sqlx::query!(r#"
         INSERT INTO
             users  (email, name, password, salt)
             VALUES ($1,    $2,   $3,       $4  )
         RETURNING id
-    "#, email, username, hased_password.as_str(), salt.as_str())
+    "#, email, username, hased_password.as_str(), salt.as_slice())
         .fetch_one(pool).await
         .map_err(RealWorldError::DB)?
         .id;

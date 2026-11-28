@@ -7,7 +7,7 @@ use crate::{
     models::request::{UpdateProfileRequest, UpdateProfileRequestUser},
     errors::RealWorldError,
     config::JwtPayload,
-    db::{UserEntity, hash_password},
+    db::{UserEntity, hash_password_with_salt},
 };
 
 
@@ -39,7 +39,7 @@ async fn update(
                 email, username, image, bio, password:raw_password
             }
         } = req;
-        let new_password_and_salt = raw_password.map(|rp| hash_password(&rp)).transpose()?;
+        let new_password_and_salt = raw_password.map(|rp| hash_password_with_salt(&rp)).transpose()?;
 
         let mut set_once = false;
         macro_rules! set_if_some {
@@ -60,7 +60,7 @@ async fn update(
         if let Some((hash, salt)) = new_password_and_salt {
             if set_once {query.push(',');}
             query.push(" password = ").push_bind(hash.as_str().to_string());
-            query.push(" salt = ").push_bind(salt.as_str().to_string());
+            query.push(" salt = ").push_bind(salt.as_slice().to_vec());
         }
         query.push(" WHERE id = ").push_bind(auth.user_id);
         query.push(" RETURNING id, email, name, image_url, bio");
