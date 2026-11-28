@@ -104,7 +104,7 @@ upon [`rustls`](https://github.com/rustls) ecosystem.
 
 `Route` is the core trait to define Ohkami's routing:
 
-- `.GET()`, `.POST()`, `.PUT()`, `.PATCH()`, `.DELETE()`, `.OPTIONS()` to define API endpoints
+- `.GET()`, `.POST()`, `.PUT()`, `.PATCH()`, `.DELETE()`, `.QUERY()`, `.OPTIONS()` to define API endpoints
 - `.By({another Ohkami})` to nest `Ohkami`s
 - `.Mount({directory path})` to serve static directory
   (pre-compressed files with `gzip`, `deflate`, `br`, `zstd` are supported)
