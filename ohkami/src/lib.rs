@@ -16,9 +16,10 @@
 
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![allow(incomplete_features)]
+#![cfg_attr(feature = "nightly", feature(try_trait_v2))]
 #![cfg_attr(
-    feature = "nightly",
-    feature(specialization, try_trait_v2, impl_trait_in_assoc_type,)
+    all(feature = "nightly", feature = "rt_lambda"),
+    feature(impl_trait_in_assoc_type) // only used by `rt_lambda`
 )]
 #![allow(
     clippy::non_minimal_cfg, // for `cfg(any(...))` for various `rt_*` features
@@ -273,12 +274,21 @@ mod ohkami;
 pub use ohkami::{Ohkami, Route};
 
 pub mod fang;
-pub use fang::{Fang, FangAction, FangProc, handler};
+pub use fang::{Fang, FangAction, FangProc};
+
+pub mod middleware;
+
+pub mod handler;
+pub use handler::component::{Cookie, Json, Path, Query};
 
 pub mod header;
 
-pub mod claw;
-pub use claw::{Cookie, Json, Path, Query};
+#[deprecated(since = "0.25.0", note = "use `ohkami::handler::component` instead")]
+#[doc(hidden)]
+pub mod claw {
+    //! deprecated: moved to [`handler::component`](crate::handler::component).
+    pub use crate::handler::component::*;
+}
 
 #[cfg(feature = "sse")]
 #[cfg_attr(docsrs, doc(cfg(feature = "sse")))]
@@ -301,7 +311,7 @@ mod x_worker;
 pub use x_worker::*;
 
 pub mod prelude {
-    pub use crate::fang::Context;
+    pub use crate::middleware::Context;
     pub use crate::serde::{Deserialize, Serialize};
     pub use crate::util::FangAction;
     pub use crate::{IntoResponse, Json, Method, Path, Query, Request, Response, Status};
@@ -386,7 +396,7 @@ pub mod openapi {
     ///         "/users".By(users_ohkami),
     ///
     ///         // ...
-    ///     )).howl("localhost:5050").await
+    ///     )).run("localhost:5050").await
     /// }
     /// # async fn list_users() {}
     /// # async fn create_user() {}

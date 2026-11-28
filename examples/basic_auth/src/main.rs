@@ -1,5 +1,5 @@
 use ohkami::prelude::*;
-use ohkami::fang::BasicAuth;
+use ohkami::middleware::BasicAuth;
 
 #[tokio::main]
 async fn main() {
@@ -14,5 +14,5 @@ async fn main() {
     Ohkami::new((
         "/hello".GET(|| async {"Hello, public!"}),
         "/private".By(private_ohkami)
-    )).howl("localhost:8888").await
+    )).run("localhost:8888").await
 }

@@ -1,6 +1,6 @@
 #![cfg(all(test, feature = "__rt_native__", feature = "DEBUG"))]
 
-use crate::claw::{Json, Query, status};
+use crate::handler::component::{Json, Query, status};
 use crate::prelude::*;
 use crate::testing::*;
 use ::serde::Deserialize;

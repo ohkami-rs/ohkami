@@ -10,7 +10,7 @@
 /// #
 /// #[tokio::main]
 /// async fn main() {
-///     my_ohkami().howl_with(ohkami::Config {
+///     my_ohkami().run_with(ohkami::Config {
 ///         request_bufsize: 4096, // 4 KiB
 ///         ..ohkami::Config::new()
 ///     }, "0.0.0.0:5000").await;

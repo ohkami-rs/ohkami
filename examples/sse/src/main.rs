@@ -17,5 +17,5 @@ async fn handler() -> DataStream {
 async fn main() {
     Ohkami::new((
         "/sse".GET(handler),
-    )).howl("localhost:3020").await
+    )).run("localhost:3020").await
 }

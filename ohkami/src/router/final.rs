@@ -1,5 +1,6 @@
 use super::{base, util};
-use crate::fang::{BoxedFPC, FangProcCaller, handler::Handler};
+use crate::fang::{BoxedFPC, FangProcCaller};
+use crate::handler::Handler;
 use crate::{Method, Request, Response};
 use crate::{request::Path, response::Content};
 use ohkami_lib::Slice;

@@ -168,7 +168,7 @@ impl AllowOriginConfig {
 /// *example.rs*
 /// ```no_run
 /// use ohkami::prelude::*;
-/// use ohkami::fang::Cors;
+/// use ohkami::middleware::Cors;
 ///
 /// #[tokio::main]
 /// async fn main() {
@@ -179,7 +179,7 @@ impl AllowOriginConfig {
 ///             .max_age(None),
 ///         "/api"
 ///             .GET(|| async {"Hello, CORS!"}),
-///     )).howl("localhost:8080").await
+///     )).run("localhost:8080").await
 /// }
 /// ```
 #[derive(Clone, Debug)]
@@ -325,8 +325,7 @@ impl<Inner: FangProc> FangProc for CorsProc<Inner> {
 
 #[cfg(test)]
 mod test {
-    use super::{AllowOriginConfig, CorsOriginError, Origin};
-    use crate::fang::OriginError;
+    use super::{AllowOriginConfig, CorsOriginError, Origin, OriginError};
 
     #[test]
     fn cors_accept_regular_origin_ip() {

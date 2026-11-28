@@ -2,7 +2,7 @@ use super::*;
 
 impl Ohkami {
     #[cfg(feature = "__rt_native__")]
-    pub(crate) async fn howl_core<T>(
+    pub(crate) async fn run_core<T>(
         self,
         bind: impl __rt__::IntoTcpListener<T>,
         config: crate::Config,

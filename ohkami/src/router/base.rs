@@ -1,7 +1,8 @@
 use super::segments::{RouteSegment, RouteSegments, RouteSegmentsIterator};
 use super::util::ID;
 use crate::Method;
-use crate::fang::{BoxedFPC, Fangs, handler::Handler};
+use crate::fang::{BoxedFPC, Fangs};
+use crate::handler::Handler;
 use crate::ohkami::routing::{ByAnother, HandlerMeta, HandlerSet};
 use ohkami_lib::map::TupleMap;
 use std::{borrow::Cow, collections::HashMap, sync::Arc};

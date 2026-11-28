@@ -1,4 +1,4 @@
-use ohkami::fang::{Jwt, FangAction};
+use ohkami::{FangAction, middleware::Jwt};
 use ohkami::{IntoResponse, Request, Response};
 
 

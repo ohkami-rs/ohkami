@@ -1,5 +1,5 @@
 use ohkami::{Ohkami, Route};
-use ohkami::claw::Json;
+use ohkami::handler::component::Json;
 use ohkami::serde::Serialize;
 
 
@@ -34,5 +34,5 @@ async fn main() {
     Ohkami::new((
         "/single"  .GET(single_user),
         "/multiple".GET(multiple_users),
-    )).howl("localhost:5000").await
+    )).run("localhost:5000").await
 }

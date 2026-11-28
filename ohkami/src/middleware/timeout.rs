@@ -14,7 +14,7 @@ use std::time::Duration;
 /// *example.rs*
 /// ```no_run
 /// use ohkami::{Ohkami, Route};
-/// use ohkami::{claw::Path, fang::Timeout};
+/// use ohkami::{handler::component::Path, middleware::Timeout};
 /// use std::time::Duration;
 ///
 /// #[tokio::main]
@@ -22,7 +22,7 @@ use std::time::Duration;
 ///     Ohkami::new((
 ///         Timeout::by_secs(10),
 ///         "/hello/:sleep".GET(sleeping_hello),
-///     )).howl("0.0.0.0:3000").await
+///     )).run("0.0.0.0:3000").await
 /// }
 ///
 /// async fn sleeping_hello(

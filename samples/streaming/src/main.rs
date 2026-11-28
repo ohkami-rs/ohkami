@@ -15,7 +15,7 @@ async fn main() {
         servers: &[Server::at("http://localhost:8080")]
     });
 
-    o.howl("localhost:8080").await
+    o.run("localhost:8080").await
 }
 
 async fn hello_once() -> &'static str {

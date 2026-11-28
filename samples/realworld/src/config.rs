@@ -1,7 +1,7 @@
 use std::sync::OnceLock;
 use ohkami::util::unix_timestamp;
 use ohkami::serde::{Serialize, Deserialize};
-use ohkami::fang::{Jwt, JwtToken};
+use ohkami::middleware::{Jwt, JwtToken};
 use uuid::Uuid;
 use crate::errors::RealWorldError;
 

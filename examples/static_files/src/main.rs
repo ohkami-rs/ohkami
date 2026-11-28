@@ -35,7 +35,7 @@ fn ohkami(Options { omit_html, omit_dot_html, serve_dotfiles, etag }: Options) -
 
 #[tokio::main]
 async fn main() {
-    ohkami(Default::default()).howl("0.0.0.0:3000").await
+    ohkami(Default::default()).run("0.0.0.0:3000").await
 }
 
 #[cfg(test)]

@@ -1,8 +1,8 @@
 #![allow(non_snake_case, unused_mut)]
 
 use crate::Ohkami;
-use crate::fang::handler::{Handler, IntoHandler};
 use crate::fang::{BoxedFPC, Fang};
+use crate::handler::{Handler, IntoHandler};
 use crate::router::{base::Router, segments::RouteSegments};
 use std::sync::Arc;
 
@@ -99,7 +99,7 @@ macro_rules! Route {
         ///         "/hello"  // <-- `Route` works here...
         ///             .GET(greet)
         ///             .PUT(hello),
-        ///     )).howl("localhost:3000").await
+        ///     )).run("localhost:3000").await
         /// }
         /// ```
         pub trait Route: Sized {
@@ -122,12 +122,6 @@ macro_rules! Route {
             ///
             /// See methods's docs for options.
             fn Mount(self, directory_path: impl AsRef<std::path::Path>) -> Dir;
-
-            #[deprecated(note = "Use `Mount` instead")]
-            #[cfg(feature="__rt_native__")]
-            fn Dir(self, path: &'static str) -> Dir {
-                self.Mount(path)
-            }
         }
 
         impl Route for &'static str {

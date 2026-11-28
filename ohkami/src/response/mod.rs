@@ -58,7 +58,7 @@ use crate::{
 /// async fn main() {
 ///     Ohkami::new((SetHeaders,
 ///         "/".GET(|| async {"Hello, ohkami!"})
-///     )).howl("localhost:5050").await
+///     )).run("localhost:5050").await
 /// }
 /// ```
 ///

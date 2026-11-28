@@ -65,7 +65,7 @@ mod worker;
 /// async fn main() {
 ///     Ohkami::new((
 ///         "/hello".GET(hello),
-///     )).howl("localhost:3000").await
+///     )).run("localhost:3000").await
 /// }
 /// ```
 #[proc_macro_derive(Schema, attributes(openapi))]
@@ -454,7 +454,7 @@ pub fn Deserialize(data: proc_macro::TokenStream) -> proc_macro::TokenStream {
 ///
 /// *example.rs*
 /// ```ignore
-/// use ohkami::fang::Context;
+/// use ohkami::middleware::Context;
 /// use sqlx::PgPool;
 ///
 /// #[derive(ohkami::FromRequest)]

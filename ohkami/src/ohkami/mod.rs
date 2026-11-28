@@ -27,7 +27,7 @@ use crate::{__rt__, session};
 /// ```
 /// use ohkami::{fang::FangAction, IntoResponse, Response, Request};
 /// # use ohkami::serde::Serialize;
-/// # use ohkami::claw::{status, Path, Json};
+/// # use ohkami::handler::component::{status, Path, Json};
 ///
 /// // custom fangs
 /// #[derive(Clone)]
@@ -122,7 +122,7 @@ use crate::{__rt__, session};
 /// # }
 ///
 /// use ohkami::serde::Serialize;
-/// use ohkami::claw::{status, Path, Json};
+/// use ohkami::handler::component::{status, Path, Json};
 ///
 /// #[derive(Serialize)]
 /// struct User {
@@ -159,7 +159,7 @@ use crate::{__rt__, session};
 ///
 /// # /// assert `IntoHandler` impl
 /// # fn __assert__() {
-/// #     fn assert_impl_into_handler<T, H: ohkami::fang::handler::IntoHandler<T>>(h: H) {}
+/// #     fn assert_impl_into_handler<T, H: ohkami::handler::IntoHandler<T>>(h: H) {}
 /// #     assert_impl_into_handler(health_check);
 /// #     assert_impl_into_handler(create_user);
 /// #     assert_impl_into_handler(get_user_by_id);
@@ -173,7 +173,7 @@ use crate::{__rt__, session};
 ///
 /// ### native async runtimes
 ///
-/// `.howl(address)` to start serving.
+/// `.run(address)` to start serving.
 ///
 /// ```no_run
 /// # fn my_ohkami() -> ohkami::Ohkami {ohkami::Ohkami::new(())}
@@ -182,7 +182,7 @@ use crate::{__rt__, session};
 /// async fn main() {
 ///     let o = my_ohkami();
 ///     
-///     o.howl("localhost:5000").await
+///     o.run("localhost:5000").await
 /// }
 /// ```
 ///
@@ -263,8 +263,8 @@ use crate::{__rt__, session};
 ///
 /// ```no_run
 /// use ohkami::{Ohkami, Route};
-/// use ohkami::claw::{Path, Json};
-/// use ohkami::fang::Context;
+/// use ohkami::handler::component::{Path, Json};
+/// use ohkami::middleware::Context;
 /// use ohkami::serde::Serialize;
 ///
 /// # use ohkami::{IntoResponse, Response};
@@ -346,12 +346,12 @@ use crate::{__rt__, session};
 ///     Ohkami::new((
 ///         Context::new(PostgresUserRepository(pool)),
 ///         "/users".By(users_ohkami::<PostgresUserRepository>()),
-///     )).howl("0.0.0.0:4040").await
+///     )).run("0.0.0.0:4040").await
 /// }
 /// ```
 pub struct Ohkami {
     router: Router,
-    /// apply just before merged to another, or just before `howl`ing
+    /// apply just before merged to another, or just before `run`ing
     fangs: Option<Arc<dyn Fangs>>,
 }
 
@@ -507,7 +507,7 @@ impl Ohkami {
 
     #[cfg(not(feature = "rt_nio"))]
     #[cfg(feature = "__rt_native__")]
-    async fn howl_core<T>(
+    async fn run_core<T>(
         self,
         bind: impl __rt__::IntoTcpListener<T>,
         config: crate::Config,
@@ -586,7 +586,7 @@ impl Ohkami {
     /// *example.rs*
     /// ```no_run
     /// use ohkami::{Ohkami, Route};
-    /// use ohkami::claw::status;
+    /// use ohkami::handler::component::status;
     ///
     /// async fn hello() -> &'static str {
     ///     "Hello, ohkami!"
@@ -601,7 +601,7 @@ impl Ohkami {
     ///     Ohkami::new((
     ///         "/".GET(hello),
     ///         "/healthz".GET(health_check),
-    ///     )).howl("localhost:5000").await
+    ///     )).run("localhost:5000").await
     /// }
     /// ```
     ///
@@ -622,14 +622,14 @@ impl Ohkami {
     ///         "/".GET(async || {
     ///             "Hello, TcpListener!"
     ///         }),
-    ///     )).howl(listener).await;
+    ///     )).run(listener).await;
     ///
     ///     Ok(())
     /// }
     /// ```
     #[cfg(feature = "__rt_native__")]
-    pub async fn howl<T>(self, bind: impl __rt__::IntoTcpListener<T>) {
-        self.howl_core(
+    pub async fn run<T>(self, bind: impl __rt__::IntoTcpListener<T>) {
+        self.run_core(
             bind,
             crate::Config::new(),
             #[cfg(feature = "tls")]
@@ -637,12 +637,17 @@ impl Ohkami {
         )
         .await
     }
+    #[deprecated(since = "0.25.0", note = "use `run` instead")]
+    #[cfg(feature = "__rt_native__")]
+    pub async fn howl<T>(self, bind: impl __rt__::IntoTcpListener<T>) {
+        self.run(bind).await
+    }
 
-    /// Same as [`howl`](crate::Ohkami::howl) but uses the given `Config`
+    /// Same as [`run`](crate::Ohkami::run) but uses the given `Config`
     /// instead of the [default one](crate::Config::new).
     #[cfg(feature = "__rt_native__")]
-    pub async fn howl_with<T>(self, config: crate::Config, bind: impl __rt__::IntoTcpListener<T>) {
-        self.howl_core(
+    pub async fn run_with<T>(self, config: crate::Config, bind: impl __rt__::IntoTcpListener<T>) {
+        self.run_core(
             bind,
             config,
             #[cfg(feature = "tls")]
@@ -650,20 +655,25 @@ impl Ohkami {
         )
         .await
     }
+    #[deprecated(since = "0.25.0", note = "use `run_with` instead")]
+    #[cfg(feature = "__rt_native__")]
+    pub async fn howl_with<T>(self, config: crate::Config, bind: impl __rt__::IntoTcpListener<T>) {
+        self.run_with(config, bind).await
+    }
 
     /// Bind this `Ohkami` to an address and start serving with TLS support
     /// (**`tls` feature is required**).
     ///
-    /// `howls` takes an additional parameter than `howl`:
+    /// `runs` takes an additional parameter than `run`:
     /// A `rutsls::ServerConfig` containing your certificates and keys.
     ///
-    /// See [`howl`] for the `bind` argument.
+    /// See [`run`] for the `bind` argument.
     ///
     /// Example:
     ///
     /// ```toml
     /// [dependencies]
-    /// ohkami = { version = "0.24", features = ["rt_tokio", "tls"] }
+    /// ohkami = { version = "0.25", features = ["rt_tokio", "tls"] }
     /// tokio  = { version = "1",    features = ["full"] }
     /// rustls = { version = "0.23", features = ["ring"] }
     /// rustls-pemfile = "2.2"
@@ -712,7 +722,7 @@ impl Ohkami {
     ///     // Create and run Ohkami with HTTPS
     ///     Ohkami::new((
     ///         "/".GET(hello),
-    ///     )).howls("0.0.0.0:8443", tls_config).await;
+    ///     )).runs("0.0.0.0:8443", tls_config).await;
     ///     
     ///     Ok(())
     /// }
@@ -734,17 +744,40 @@ impl Ohkami {
     #[cfg(feature = "__rt_native__")]
     #[cfg(feature = "tls")]
     #[cfg_attr(docsrs, doc(cfg(feature = "tls")))]
+    pub async fn runs<T>(
+        self,
+        bind: impl __rt__::IntoTcpListener<T>,
+        tls_config: rustls::ServerConfig,
+    ) {
+        self.run_core(bind, crate::Config::new(), Some(tls_config))
+            .await
+    }
+    #[deprecated(since = "0.25.0", note = "use `runs` instead")]
+    #[cfg(feature = "__rt_native__")]
+    #[cfg(feature = "tls")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "tls")))]
     pub async fn howls<T>(
         self,
         bind: impl __rt__::IntoTcpListener<T>,
         tls_config: rustls::ServerConfig,
     ) {
-        self.howl_core(bind, crate::Config::new(), Some(tls_config))
-            .await
+        self.runs(bind, tls_config).await
     }
 
-    /// Same as [`howls`](crate::Ohkami::howls) but uses the given `Config`
+    /// Same as [`runs`](crate::Ohkami::runs) but uses the given `Config`
     /// instead the [default one](crate::Config::new).
+    #[cfg(feature = "__rt_native__")]
+    #[cfg(feature = "tls")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "tls")))]
+    pub async fn runs_with<T>(
+        self,
+        config: crate::Config,
+        bind: impl __rt__::IntoTcpListener<T>,
+        tls_config: rustls::ServerConfig,
+    ) {
+        self.run_core(bind, config, Some(tls_config)).await
+    }
+    #[deprecated(since = "0.25.0", note = "use `runs_with` instead")]
     #[cfg(feature = "__rt_native__")]
     #[cfg(feature = "tls")]
     #[cfg_attr(docsrs, doc(cfg(feature = "tls")))]
@@ -754,7 +787,7 @@ impl Ohkami {
         bind: impl __rt__::IntoTcpListener<T>,
         tls_config: rustls::ServerConfig,
     ) {
-        self.howl_core(bind, config, Some(tls_config)).await
+        self.runs_with(config, bind, tls_config).await
     }
 
     #[cfg(feature = "rt_worker")]
@@ -840,7 +873,7 @@ impl Ohkami {
     ///         ]
     ///      });
     ///
-    ///     o.howl("localhost:5000").await
+    ///     o.run("localhost:5000").await
     /// }
     /// ```
     pub fn generate(&self, metadata: crate::openapi::OpenAPI) {
@@ -1142,11 +1175,11 @@ mod test {
 
     #[cfg(not(feature = "tls"))]
     #[test]
-    fn can_howl_on_any_native_async_runtime() {
+    fn can_run_on_any_native_async_runtime() {
         __rt__::testing::block_on(async {
             crate::util::with_timeout(
                 std::time::Duration::from_secs(3),
-                Ohkami::new(()).howl(("localhost", __rt__::testing::PORT)),
+                Ohkami::new(()).run(("localhost", __rt__::testing::PORT)),
             )
             .await
         });
@@ -1154,7 +1187,7 @@ mod test {
 
     #[cfg(feature = "tls")]
     #[test]
-    fn can_howl_with_tls_on_any_native_async_runtime() {
+    fn can_run_with_tls_on_any_native_async_runtime() {
         let openssl_x509_newkey = |out_path: &str, keyout_path: &str| -> std::io::Result<()> {
             std::process::Command::new("openssl")
                 .args([
@@ -1246,7 +1279,7 @@ mod test {
 
             crate::util::with_timeout(
                 std::time::Duration::from_secs(3),
-                Ohkami::new(()).howls(("localhost", __rt__::testing::PORT), tls_config),
+                Ohkami::new(()).runs(("localhost", __rt__::testing::PORT), tls_config),
             )
             .await
         });
@@ -1258,7 +1291,7 @@ mod test {
         fn is_send_sync_static<T: Send + Sync + 'static>(_: T) {}
 
         let o = Ohkami::new((
-            crate::fang::Context::new(String::from("resource")),
+            crate::middleware::Context::new(String::from("resource")),
             "/".GET(async || "Hello, world!"),
         ));
 

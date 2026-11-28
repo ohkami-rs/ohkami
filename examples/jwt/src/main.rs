@@ -1,5 +1,5 @@
 use ohkami::prelude::*;
-use ohkami::fang::{Jwt, JwtToken};
+use ohkami::middleware::{Jwt, JwtToken};
 
 fn jwt() -> Jwt<JwtPayload> {
     Jwt::new_hs256(std::env::var("JWT_SECRET").unwrap())
@@ -51,7 +51,7 @@ fn ohkami<S: JwtSub>() -> Ohkami {
 #[tokio::main]
 async fn main() {
     dotenvy::dotenv().ok();
-    ohkami::<DefaultJwtSub>().howl("0.0.0.0:3000").await
+    ohkami::<DefaultJwtSub>().run("0.0.0.0:3000").await
 }
 
 #[cfg(test)]

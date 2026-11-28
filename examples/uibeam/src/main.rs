@@ -1,6 +1,6 @@
 use ohkami::prelude::*;
 use ohkami::serde::Deserialize;
-use ohkami::claw::{Query, content::Html};
+use ohkami::handler::component::{Query, content::Html};
 use uibeam::{UI, Beam};
 
 struct Layout {
@@ -100,5 +100,5 @@ async fn main() {
     Ohkami::new((
         Layout::fang_with_title("Counter Example"),
         "/".GET(index),
-    )).howl("localhost:5555").await
+    )).run("localhost:5555").await
 }

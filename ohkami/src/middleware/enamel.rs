@@ -23,13 +23,13 @@
 ///
 /// ```no_run
 /// use ohkami::prelude::*;
-/// use ohkami::fang::Enamel;
+/// use ohkami::middleware::Enamel;
 ///
 /// #[tokio::main]
 /// async fn main() {
 ///     Ohkami::new((Enamel::default(),
 ///         "/hello".GET(|| async {"Hello, Enamel!"}),
-///     )).howl("localhost:4040").await
+///     )).run("localhost:4040").await
 /// }
 /// ```
 #[derive(Debug)]
@@ -198,7 +198,7 @@ const _: () = {
     }
 };
 
-/// # Typed `Content-Security-Policy` for `fang::Enamel`
+/// # Typed `Content-Security-Policy` for `middleware::Enamel`
 ///
 /// Based on <https://content-security-policy.com>
 ///
@@ -206,7 +206,7 @@ const _: () = {
 ///
 /// ```no_run
 /// use ohkami::prelude::*;
-/// use ohkami::fang::enamel::{Enamel, CSP, sandbox::{allow_forms, allow_same_origin}};
+/// use ohkami::middleware::enamel::{Enamel, CSP, sandbox::{allow_forms, allow_same_origin}};
 ///
 /// #[tokio::main]
 /// async fn main() {
@@ -216,7 +216,7 @@ const _: () = {
 ///                 sandbox: allow_forms | allow_same_origin,
 ///                 ..Default::default()
 ///             }),
-///     )).howl("localhost:4040").await
+///     )).run("localhost:4040").await
 /// }
 /// ```
 #[derive(Debug, Default)]
@@ -309,7 +309,7 @@ const _: () = {
 ///
 /// ```no_run
 /// use ohkami::prelude::*;
-/// use ohkami::fang::enamel::{Enamel, CSP, sandbox::{allow_forms, allow_same_origin}};
+/// use ohkami::middleware::enamel::{Enamel, CSP, sandbox::{allow_forms, allow_same_origin}};
 ///
 /// #[tokio::main]
 /// async fn main() {
@@ -319,7 +319,7 @@ const _: () = {
 ///                 sandbox: allow_forms | allow_same_origin,
 ///                 ..Default::default()
 ///             }),
-///     )).howl("localhost:4040").await
+///     )).run("localhost:4040").await
 /// }
 /// ```
 #[allow(non_upper_case_globals)]
@@ -409,7 +409,7 @@ pub mod sandbox {
 ///
 /// ```no_run
 /// use ohkami::prelude::*;
-/// use ohkami::fang::enamel::{Enamel, CSP, src::{self_origin, data}};
+/// use ohkami::middleware::enamel::{Enamel, CSP, src::{self_origin, data}};
 ///
 /// #[tokio::main]
 /// async fn main() {
@@ -420,7 +420,7 @@ pub mod sandbox {
 ///                 ..Default::default()
 ///             }),
 ///         "/hello".GET(|| async {"Hello, enamel!"})
-///     )).howl("localhost:3000").await
+///     )).run("localhost:3000").await
 /// }
 /// ```
 #[allow(non_upper_case_globals)]

@@ -1,5 +1,5 @@
 use ohkami::{Ohkami, Route};
-use ohkami::claw::{status, Path};
+use ohkami::handler::component::{status, Path};
 
 async fn health_check() -> status::NoContent {
     status::NoContent
@@ -16,5 +16,5 @@ async fn main() {
             .GET(health_check),
         "/hello/:name"
             .GET(hello),
-    )).howl("localhost:3000").await
+    )).run("localhost:3000").await
 }

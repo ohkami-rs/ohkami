@@ -7,8 +7,8 @@ use fang::{TokenAuth, TokenAuthed, Logger};
 use model::*;
 
 use ohkami::{Ohkami, Route};
-use ohkami::fang::{BasicAuth, Context};
-use ohkami::claw::{status, Path, Json};
+use ohkami::middleware::{BasicAuth, Context};
+use ohkami::handler::component::{status, Path, Json};
 
 #[ohkami::bindings]
 struct Bindings;

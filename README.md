@@ -27,7 +27,7 @@
 
 ```toml
 [dependencies]
-ohkami = { version = "0.24", features = ["rt_tokio"] }
+ohkami = { version = "0.25", features = ["rt_tokio"] }
 tokio  = { version = "1",    features = ["full"] }
 ```
 
@@ -35,7 +35,7 @@ tokio  = { version = "1",    features = ["full"] }
 
 ```rust,no_run
 use ohkami::{Ohkami, Route};
-use ohkami::claw::{Path, status};
+use ohkami::handler::component::{Path, status};
 
 async fn health_check() -> status::NoContent {
     status::NoContent
@@ -52,7 +52,7 @@ async fn main() {
             .GET(health_check),
         "/hello/:name"
             .GET(hello),
-    )).howl("localhost:3000").await
+    )).run("localhost:3000").await
 }
 ```
 
@@ -74,7 +74,7 @@ Hello, your_name!
 ### `Ohkami`
 
 `Ohkami` is the main entry point of Ohkami application:
-a collection of `Route`s and `Fang`s, and provides `.howl()`/`.howls()` method to run the application.
+a collection of `Route`s and `Fang`s, and provides `.run()`/`.runs()` method to run the application.
 
 ```rust,ignore
 Ohkami::new((
@@ -92,13 +92,13 @@ Ohkami::new((
             Fang4,
             goodbye_handler // handler
         )),
-)).howl("localhost:3000").await;
+)).run("localhost:3000").await;
 ```
 
-`.howls()` (`tls` feature only) is used to run Ohkami with TLS (HTTPS) support
+`.runs()` (`tls` feature only) is used to run Ohkami with TLS (HTTPS) support
 upon [`rustls`](https://github.com/rustls) ecosystem.
 
-`howl(s)` supports graceful shutdown by `Ctrl-C` ( `SIGINT` ) on native runtimes.
+`run(s)` supports graceful shutdown by `Ctrl-C` ( `SIGINT` ) on native runtimes.
 
 ### `Route`
 
@@ -118,9 +118,9 @@ async fn({FromRequest type},*) -> {IntoResponse type}
 On native runtimes, whole a handler must be `Send + Sync + 'static`
 and the return future must be `Send + 'static`.
 
-### `fang`s
+### `fang`s and `middleware`
 
-Ohkami's request handling system is called `fang`; all handlers and middlewares are built on it.
+Ohkami's underlying request handling system is called `fang`; all handlers and middlewares are built on it.
 
 ```rust,ignore
 /* simplified for description */
@@ -135,13 +135,14 @@ pub trait FangProc {
 }
 ```
 
-built-ins:
+built-in fangs are provided in `middleware` module:
 
 - `BasicAuth`, `Cors`, `Csrf`, `Jwt` (authentication/security)
-- `Context` (reuqest context)
-- `Enamel` (security headers; experimantal)
+- `Context` (request context)
+- `Enamel` (security headers; experimental)
 - `Timeout` (handling timeout; native runtimes only)
-- `openapi::Tag` (tag for OpenAPI document generation; `openapi` feature only)
+
+and additionally `openapi::Tag` (tag for OpenAPI document generation; `openapi` feature only).
 
 Ohkami provides `FangAction` utility trait to implement `Fang` trait easily:
 
@@ -163,9 +164,9 @@ pub trait FangAction {
 Additionally, you can apply fangs both as **global fangs** to an `Ohkami` or
 as **local fangs** to a specific handler (described below).
 
-### `claw`s
+### `handler::component`s
 
-Ohkami provides `claw` API: handler parts designed for declarative way to
+Ohkami provides `handler::component` API: handler parts designed for declarative way to
 extract request data and construct response data:
 
 - `content` - typed content {extracted from request / for response} of specific format
@@ -216,7 +217,7 @@ async fn handler1(
 - [smol](https://github.com/smol-rs/smol) _v2.\*.\*_
 - [nio](https://github.com/nurmohammed840/nio) _v0.1.3\*_
 - [monoio](https://github.com/bytedance/monoio) _v0.2.\*_
-- [compio](https://github.com/compio-rs/compio) _v0.17.\*_
+- [compio](https://github.com/compio-rs/compio) _v0.18.\*_
 
 ### `"rt_worker"` : Cloudflare Workers
 
@@ -252,7 +253,7 @@ for wokring examples and detailed usage of `#[worker]` (and/or `openapi`).
 
 ### `"rt_lambda"` : AWS Lambda
 
-- [lambda_runtime](https://github.com/awslabs/aws-lambda-rust-runtime) _v1.0.\*_ with `tokio`
+- [lambda_runtime](https://github.com/awslabs/aws-lambda-rust-runtime) _v1.1.\*_ with `tokio`
 
 Both `Function URLs` and `API Gateway` are supported, and WebSocket is not supported.
 
@@ -309,7 +310,7 @@ async fn handler() -> DataStream {
 async fn main() {
     Ohkami::new((
         "/sse".GET(handler),
-    )).howl("localhost:3020").await
+    )).run("localhost:3020").await
 }
 ```
 
@@ -331,7 +332,7 @@ async fn echo_text(ctx: WebSocketContext<'_>) -> WebSocket {
 async fn main() {
     Ohkami::new((
         "/ws".GET(echo_text),
-    )).howl("localhost:3030").await
+    )).run("localhost:3030").await
 }
 ```
 
@@ -361,7 +362,7 @@ Of course, you can flexibly
 
 ```rust,ignore
 use ohkami::{Ohkami, Route};
-use ohkami::claw::{Json, status};
+use ohkami::handler::component::{Json, status};
 use ohkami::openapi;
 
 // Derive `Schema` trait to generate
@@ -419,7 +420,7 @@ async fn main() {
         ]
     });
 
-    o.howl("localhost:5000").await;
+    o.run("localhost:5000").await;
 }
 ```
 
@@ -431,7 +432,7 @@ async fn main() {
 
 HTTPS support up on [rustls](https://github.com/rustls) ecosystem.
 
-- Call `howls` ( as `https` to `http`, `wss` to `ws` ) instead of `howl` to run with TLS.
+- Call `runs` ( as `https` to `http`, `wss` to `ws` ) instead of `run` to run with TLS.
 - You must prepare your own certificate and private key files.
 - Currently, only HTTP/1.1 over TLS is supported.
 
@@ -443,7 +444,7 @@ $ openssl req -x509 -newkey rsa:4096 -nodes -keyout server.key -out server.crt -
 
 ```toml
 [dependencies]
-ohkami = { version = "0.24", features = ["rt_tokio", "tls"] }
+ohkami = { version = "0.25", features = ["rt_tokio", "tls"] }
 tokio  = { version = "1",    features = ["full"] }
 rustls = { version = "0.23", features = ["ring"] }
 rustls-pemfile = "2.2"
@@ -491,8 +492,8 @@ async fn main() -> std::io::Result<()> {
     // Create and run Ohkami with HTTPS
     Ohkami::new((
         "/".GET(hello),
-    )).howls("0.0.0.0:8443", tls_config).await;
-
+    )).runs("0.0.0.0:8443", tls_config).await;
+    
     Ok(())
 }
 ```
@@ -521,7 +522,7 @@ For localhost-testing with browser (or `curl` without `--insecure`),
 ### Typed content
 
 ```rust
-use ohkami::claw::{Json, status};
+use ohkami::handler::component::{Json, status};
 use ohkami::serde::{Deserialize, Serialize};
 
 /* Deserialize for request */
@@ -552,7 +553,7 @@ async fn create_user(
 
 ```rust,no_run
 use ohkami::{Ohkami, Route};
-use ohkami::claw::{Path, Query, Json};
+use ohkami::handler::component::{Path, Query, Json};
 use ohkami::serde::{Deserialize, Serialize};
 
 #[tokio::main]
@@ -564,7 +565,7 @@ async fn main() {
             .GET(hello),
         "/search"
             .GET(search),
-    )).howl("localhost:5000").await
+    )).run("localhost:5000").await
 }
 
 async fn hello(Path(name): Path<&str>) -> String {
@@ -631,7 +632,7 @@ async fn main() {
                 GreetingFang(2),
                 || async {"I'm `POST /hello`!"}
             ))
-    )).howl("localhost:3000").await
+    )).run("localhost:3000").await
 }
 ```
 
@@ -639,8 +640,8 @@ async fn main() {
 
 ```rust,no_run
 use ohkami::{Ohkami, Route};
-use ohkami::claw::status;
-use ohkami::fang::Context;
+use ohkami::handler::component::status;
+use ohkami::middleware::Context;
 use sqlx::postgres::{PgPoolOptions, PgPool};
 
 #[tokio::main]
@@ -652,7 +653,7 @@ async fn main() {
     Ohkami::new((
         Context::new(pool),
         "/users".POST(create_user),
-    )).howl("localhost:5050").await
+    )).run("localhost:5050").await
 }
 
 async fn create_user(
@@ -668,9 +669,9 @@ async fn create_user(
 
 ```rust,no_run
 use ohkami::{Response, IntoResponse};
-use ohkami::claw::{Path, Json};
+use ohkami::handler::component::{Path, Json};
 use ohkami::serde::Serialize;
-use ohkami::fang::Context;
+use ohkami::middleware::Context;
 
 enum MyError {
     Sqlx(sqlx::Error),
@@ -726,16 +727,16 @@ use ohkami::{Ohkami, Route};
 async fn main() {
     Ohkami::new((
         "/".Mount("./dist"),
-    )).howl("0.0.0.0:3030").await
+    )).run("0.0.0.0:3030").await
 }
 ```
 
 ### File upload
 
-`Multipart` built-in claw and `File` helper:
+`Multipart` built-in component and `File` helper:
 
 ```rust,no_run
-use ohkami::claw::{status, content::{Multipart, File}};
+use ohkami::handler::component::{status, content::{Multipart, File}};
 use ohkami::serde::Deserialize;
 
 #[derive(Deserialize)]
@@ -766,7 +767,7 @@ async fn post_submit(
 
 ```rust,no_run
 use ohkami::{Ohkami, Route};
-use ohkami::claw::{Json, status};
+use ohkami::handler::component::{Json, status};
 use serde::Serialize;
 
 #[derive(Serialize)]
@@ -807,7 +808,7 @@ async fn main() {
             .GET(health_check),
         "/api/users"
             .By(users_ohkami), // nest by `By`
-    )).howl("localhost:5000").await
+    )).run("localhost:5000").await
 }
 ```
 
@@ -843,8 +844,8 @@ async fn test_my_ohkami() {
 
 ```rust,no_run
 use ohkami::{Ohkami, Route, Response, IntoResponse};
-use ohkami::claw::{Json, Path};
-use ohkami::fang::Context;
+use ohkami::handler::component::{Json, Path};
+use ohkami::middleware::Context;
 use ohkami::serde::Serialize;
 
 //////////////////////////////////////////////////////////////////////
@@ -931,7 +932,7 @@ async fn main() {
     Ohkami::new((
         Context::new(PostgresUserRepository(pool)),
         "/users".By(users_ohkami::<PostgresUserRepository>()),
-    )).howl("0.0.0.0:4040").await
+    )).run("0.0.0.0:4040").await
 }
 ```
 

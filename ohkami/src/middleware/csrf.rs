@@ -17,14 +17,14 @@ use std::sync::Arc;
 /// Just `Csrf::new()` and add it to your Ohkami app.
 ///
 /// ```no_run
-/// use ohkami::{Ohkami, Route, fang::Csrf};
+/// use ohkami::{Ohkami, Route, middleware::Csrf};
 ///
 /// #[tokio::main]
 /// async fn main() {
 ///     Ohkami::new((
 ///         Csrf::new(),
 ///         "/".GET(|| async {"Hello, CSRF!"}),
-///     )).howl("0.0.0.0:3000").await
+///     )).run("0.0.0.0:3000").await
 /// }
 /// ```
 ///
@@ -36,7 +36,7 @@ use std::sync::Arc;
 /// **NOTE**: wildcards (like `https://*.a.domain`) are not supported in trusted origins.
 ///
 /// ```no_run
-/// use ohkami::{Ohkami, Route, fang::Csrf};
+/// use ohkami::{Ohkami, Route, middleware::Csrf};
 ///
 /// #[tokio::main]
 /// async fn main() {
@@ -46,7 +46,7 @@ use std::sync::Arc;
 ///             "https://example.org",
 ///         ]),
 ///         "/".GET(|| async {"Hello, CSRF!"}),
-///     )).howl("0.0.0.0:5000").await
+///     )).run("0.0.0.0:5000").await
 /// }
 /// ```
 #[derive(Clone, Debug)]
@@ -217,7 +217,7 @@ mod tests {
                 (
                     x!(OPTIONS).header("sec-fetch-site", "cross-site"),
                     Status::NotFound,
-                ), // see `fang::handler::Handler::default_options_with`
+                ), // see `handler::Handler::default_options_with`
                 (
                     x!(PUT).header("sec-fetch-site", "cross-site"),
                     Status::Forbidden,

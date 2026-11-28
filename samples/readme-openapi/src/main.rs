@@ -1,5 +1,5 @@
 use ohkami::prelude::*;
-use ohkami::claw::status;
+use ohkami::handler::component::status;
 use ohkami::openapi;
 
 // Derive `Schema` trait to generate the schema of this struct in OpenAPI document.
@@ -53,5 +53,5 @@ async fn main() {
         ]
     });
 
-    o.howl("localhost:5000").await;
+    o.run("localhost:5000").await;
 }

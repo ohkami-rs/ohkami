@@ -32,7 +32,7 @@ use crate::openapi;
 /// async fn main() {
 ///     Ohkami::new(
 ///         "/".GET(handler)
-///     ).howl("localhost:5050").await
+///     ).run("localhost:5050").await
 /// }
 /// ```
 pub trait IntoResponse {

@@ -8,6 +8,6 @@
 		"openapi": "node ../../scripts/workers_openapi.js"
 	},
 	"devDependencies": {
-		"wrangler": "^3.50"
+		"wrangler": "^4.14"
 	}
 }

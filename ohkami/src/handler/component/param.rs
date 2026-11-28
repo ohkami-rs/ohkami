@@ -17,7 +17,7 @@ use crate::openapi;
 ///
 /// ```
 /// # enum MyError {}
-/// use ohkami::claw::{Json, Query};
+/// use ohkami::handler::component::{Json, Query};
 /// use ohkami::serde::Deserialize;
 ///
 /// #[derive(Deserialize)]
@@ -95,7 +95,7 @@ impl<'req, T: bound::Incoming<'req>> FromRequest<'req> for Query<T> {
 ///
 /// ```no_run
 /// use ohkami::{Ohkami, Route};
-/// use ohkami::claw::{Json, Path};
+/// use ohkami::handler::component::{Json, Path};
 ///
 /// # enum MyError {}
 /// # impl ohkami::IntoResponse for MyError {
@@ -125,7 +125,7 @@ impl<'req, T: bound::Incoming<'req>> FromRequest<'req> for Query<T> {
 ///             .GET(get_team_info),
 ///         "/teams/:team_id/users/:user_id"
 ///             .GET(get_user_info),
-///     )).howl("localhost:5050").await
+///     )).run("localhost:5050").await
 /// }
 /// ```
 pub struct Path<T>(pub T);

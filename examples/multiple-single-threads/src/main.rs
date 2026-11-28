@@ -12,7 +12,7 @@ fn main() {
 
         let listener = socket.listen(1024)?;
 
-        o.howl(listener).await;
+        o.run(listener).await;
 
         Ok(())
     }

@@ -7,7 +7,7 @@ use error::Error;
 use models::{ChatMessage, ChatCompletions, Role};
 
 use ohkami::prelude::*;
-use ohkami::claw::content::Text;
+use ohkami::handler::component::content::Text;
 use ohkami::sse::DataStream;
 use ohkami::util::StreamExt;
 
@@ -23,7 +23,7 @@ async fn main() {
         api_key,
         "/chat-once"
             .POST(relay_chat_completion),
-    )).howl("localhost:5050").await
+    )).run("localhost:5050").await
 }
 
 pub async fn relay_chat_completion(
