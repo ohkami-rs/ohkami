@@ -36,7 +36,7 @@ async fn login(
 
     db::verify_password(
         password,
-        credential.salt.as_slice().try_into().map_err(|_| RealWorldError::Unauthorized("".into())),
+        credential.salt.as_slice().try_into().map_err(|_| RealWorldError::Unauthorized("".into()))?,
         &credential.password
     )?;
 
