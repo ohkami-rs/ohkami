@@ -24,7 +24,7 @@ use crate::{__rt__, session};
 /// ```
 /// use ohkami::{fang::FangAction, IntoResponse, Response, Request};
 /// # use ohkami::serde::Serialize;
-/// # use ohkami::claw::{status, Path, Json};
+/// # use ohkami::handler::component::{status, Path, Json};
 ///
 /// // custom fangs
 /// #[derive(Clone)]
@@ -119,7 +119,7 @@ use crate::{__rt__, session};
 /// # }
 ///
 /// use ohkami::serde::Serialize;
-/// use ohkami::claw::{status, Path, Json};
+/// use ohkami::handler::component::{status, Path, Json};
 ///
 /// #[derive(Serialize)]
 /// struct User {
@@ -156,7 +156,7 @@ use crate::{__rt__, session};
 ///
 /// # /// assert `IntoHandler` impl
 /// # fn __assert__() {
-/// #     fn assert_impl_into_handler<T, H: ohkami::fang::handler::IntoHandler<T>>(h: H) {}
+/// #     fn assert_impl_into_handler<T, H: ohkami::handler::IntoHandler<T>>(h: H) {}
 /// #     assert_impl_into_handler(health_check);
 /// #     assert_impl_into_handler(create_user);
 /// #     assert_impl_into_handler(get_user_by_id);
@@ -260,8 +260,8 @@ use crate::{__rt__, session};
 ///
 /// ```no_run
 /// use ohkami::{Ohkami, Route};
-/// use ohkami::claw::{Path, Json};
-/// use ohkami::fang::Context;
+/// use ohkami::handler::component::{Path, Json};
+/// use ohkami::middleware::Context;
 /// use ohkami::serde::Serialize;
 ///
 /// # use ohkami::{IntoResponse, Response};
@@ -582,7 +582,7 @@ impl Ohkami {
     /// *example.rs*
     /// ```no_run
     /// use ohkami::{Ohkami, Route};
-    /// use ohkami::claw::status;
+    /// use ohkami::handler::component::status;
     ///
     /// async fn hello() -> &'static str {
     ///     "Hello, ohkami!"
@@ -1288,7 +1288,7 @@ mod test {
         fn is_send_sync_static<T: Send + Sync + 'static>(_: T) {}
 
         let o = Ohkami::new((
-            crate::fang::Context::new(String::from("resource")),
+            crate::middleware::Context::new(String::from("resource")),
             "/".GET(async || "Hello, world!"),
         ));
 

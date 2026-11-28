@@ -14,7 +14,7 @@ use std::time::Duration;
 /// *example.rs*
 /// ```no_run
 /// use ohkami::{Ohkami, Route};
-/// use ohkami::{claw::Path, fang::Timeout};
+/// use ohkami::{handler::component::Path, middleware::Timeout};
 /// use std::time::Duration;
 ///
 /// #[tokio::main]

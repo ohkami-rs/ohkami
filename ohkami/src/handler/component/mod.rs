@@ -1,9 +1,9 @@
-//! # Claws - handler parts for desclarative request/response handling
+//! # Handler components - typed parts for declarative request/response handling
 //!
-//! Claws provides various components for typed, declarative way to
+//! Handler components provide typed, declarative way to
 //! extract request data and construct response data:
 //!
-//! - [`body`]: for handling request and response bodies
+//! - [`content`]: for handling request and response bodies
 //! - [`header`]: for handling request headers
 //! - [`param`]: for handling request parameters (path and query)
 //! - [`status`]: for handling response HTTP status codes
@@ -13,7 +13,7 @@
 //! ## Example
 //!
 //! ```
-//! use ohkami::claw::{Path, Json, status};
+//! use ohkami::handler::component::{Path, Json, status};
 //! use ohkami::serde::{Serialize, Deserialize};
 //!
 //! #[derive(Deserialize)]

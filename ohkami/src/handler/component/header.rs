@@ -49,7 +49,7 @@ macro_rules! typed_header {
         ///
         /// ```no_run
         /// use ohkami::{Ohkami, Route};
-        /// use ohkami::claw::header;
+        /// use ohkami::handler::component::header;
         ///
         /// async fn private_handler(
         ///     header::Authorization(a): header::Authorization<&str>,
@@ -156,7 +156,7 @@ typed_header! {
 ///
 /// ```no_run
 /// use ohkami::prelude::*;
-/// use ohkami::claw::header;
+/// use ohkami::handler::component::header;
 ///
 /// #[derive(Deserialize)]
 /// struct CookieSchema<'req> {
@@ -185,7 +185,7 @@ typed_header! {
 pub struct Cookie<Fields>(pub Fields);
 
 impl<'req, Fields: super::bound::Incoming<'req>> FromRequest<'req> for Cookie<Fields> {
-    type Error = crate::claw::status::Unauthorized<&'static str>;
+    type Error = crate::handler::component::status::Unauthorized<&'static str>;
 
     fn from_request(req: &'req Request) -> Option<Result<Self, Self::Error>> {
         req.headers.cookie().map(|raw| {
@@ -199,7 +199,7 @@ impl<'req, Fields: super::bound::Incoming<'req>> FromRequest<'req> for Cookie<Fi
                             std::any::type_name::<Fields>()
                         );
                     }
-                    crate::claw::status::Unauthorized("missing or invalid Cookie")
+                    crate::handler::component::status::Unauthorized("missing or invalid Cookie")
                 })
         })
     }

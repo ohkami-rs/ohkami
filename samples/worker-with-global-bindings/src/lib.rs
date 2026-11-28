@@ -1,5 +1,5 @@
 use ohkami::prelude::*;
-use ohkami::fang::Context;
+use ohkami::middleware::Context;
 
 #[ohkami::bindings]
 struct Bindings {
@@ -18,7 +18,7 @@ async fn ohkami(Bindings { DB, MY_KV }: Bindings) -> Ohkami {
     ))
 }
 
-enum Error {
+pub enum Error {
     Worker(worker::Error),
     Repository(String),
     UserIdNotFound { id: u32 },
@@ -114,8 +114,8 @@ mod repository {
 mod routes {
     use crate::repository::{self, UserRepository};
     use ohkami::{Ohkami, Route};
-    use ohkami::claw::{Path, Json, status};
-    use ohkami::fang::Context;
+    use ohkami::handler::component::{Path, Json, status};
+    use ohkami::middleware::Context;
     use ohkami::serde::{Serialize, Deserialize};
 
     pub fn users_ohkami<U: UserRepository>() -> Ohkami {

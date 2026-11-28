@@ -1,5 +1,5 @@
 mod health_handler {
-    use ohkami::claw::status::NoContent;
+    use ohkami::handler::component::status::NoContent;
 
     pub async fn health_check() -> NoContent {
         NoContent
@@ -8,7 +8,7 @@ mod health_handler {
 
 
 mod hello_handler {
-    use ohkami::claw::{Query, Json};
+    use ohkami::handler::component::{Query, Json};
     use ohkami::serde::Deserialize;
 
     #[derive(Deserialize)]

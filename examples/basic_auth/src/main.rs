@@ -1,5 +1,5 @@
 use ohkami::prelude::*;
-use ohkami::fang::BasicAuth;
+use ohkami::middleware::BasicAuth;
 
 #[tokio::main]
 async fn main() {

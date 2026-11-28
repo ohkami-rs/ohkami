@@ -1,5 +1,5 @@
 use ohkami::prelude::*;
-use ohkami::claw::{status::NoContent, content::{Multipart, File}};
+use ohkami::handler::component::{status::NoContent, content::{Multipart, File}};
 use ohkami::serde::Deserialize;
 
 struct FormTemplate;

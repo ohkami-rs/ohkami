@@ -1,5 +1,5 @@
 use ohkami::{Ohkami, Route};
-use ohkami::claw::Json;
+use ohkami::handler::component::Json;
 use ohkami::serde::Serialize;
 
 

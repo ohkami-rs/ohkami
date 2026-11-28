@@ -1,8 +1,10 @@
+pub mod component;
+
 mod into_handler;
 
 pub use self::into_handler::IntoHandler;
-use super::{BoxedFPC, FangProcCaller};
-use super::{SendOnThreaded, SendOnThreadedFuture, SendSyncOnThreaded};
+use crate::fang::{BoxedFPC, FangProcCaller};
+use crate::fang::{SendOnThreaded, SendOnThreadedFuture, SendSyncOnThreaded};
 use crate::{Request, Response};
 use std::pin::Pin;
 
@@ -103,7 +105,7 @@ impl Handler {
 
         let available_methods_str: &'static str = available_methods.join(", ").leak();
 
-        /* see `fang::Cors` for more detail about what to do here */
+        /* see `middleware::Cors` for more detail about what to do here */
         Handler::new(
             move |req| {
                 Box::pin(async move {

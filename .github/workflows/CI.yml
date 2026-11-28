@@ -9,7 +9,9 @@ permissions: {}
 
 jobs:
   CI:
-    runs-on: ubuntu-latest
+    # Pinned instead of `ubuntu-latest` (Ubuntu 26.04): with glibc >= 2.43, `glommio` v0.9.0
+    # fails to build its bundled liburing (`struct open_how` incomplete type).
+    runs-on: ubuntu-24.04
 
     strategy:
       matrix:

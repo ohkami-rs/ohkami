@@ -31,7 +31,7 @@ tokio  = { version = "1",    features = ["full"] }
 
 ```rust,no_run
 use ohkami::{Ohkami, Route};
-use ohkami::claw::{Path, status};
+use ohkami::handler::component::{Path, status};
 
 async fn health_check() -> status::NoContent {
     status::NoContent
@@ -114,9 +114,9 @@ async fn({FromRequest type},*) -> {IntoResponse type}
 On native runtimes, whole a handler must be `Send + Sync + 'static`
 and the return future must be `Send + 'static`.
 
-### `fang`s
+### `fang`s and `middleware`
 
-Ohkami's request handling system is called `fang`; all handlers and middlewares are built on it.
+Ohkami's underlying request handling system is called `fang`; all handlers and middlewares are built on it.
 
 ```rust,ignore
 /* simplified for description */
@@ -131,13 +131,14 @@ pub trait FangProc {
 }
 ```
 
-built-ins:
+built-in fangs are provided in `middleware` module:
 
 - `BasicAuth`, `Cors`, `Csrf`, `Jwt` (authentication/security)
-- `Context` (reuqest context)
-- `Enamel` (security headers; experimantal)
+- `Context` (request context)
+- `Enamel` (security headers; experimental)
 - `Timeout` (handling timeout; native runtimes only)
-- `openapi::Tag` (tag for OpenAPI document generation; `openapi` feature only)
+
+and additionally `openapi::Tag` (tag for OpenAPI document generation; `openapi` feature only).
 
 Ohkami provides `FangAction` utility trait to implement `Fang` trait easily:
 
@@ -159,9 +160,9 @@ pub trait FangAction {
 Additionally, you can apply fangs both as **global fangs** to an `Ohkami` or
 as **local fangs** to a specific handler (described below).
 
-### `claw`s
+### `handler::component`s
 
-Ohkami provides `claw` API: handler parts designed for declarative way to
+Ohkami provides `handler::component` API: handler parts designed for declarative way to
 extract request data and construct response data:
 
 - `content` - typed content {extracted from request / for response} of specific format
@@ -358,7 +359,7 @@ Of course, you can flexibly
 
 ```rust,ignore
 use ohkami::{Ohkami, Route};
-use ohkami::claw::{Json, status};
+use ohkami::handler::component::{Json, status};
 use ohkami::openapi;
 
 // Derive `Schema` trait to generate
@@ -518,7 +519,7 @@ For localhost-testing with browser (or `curl` without `--insecure`),
 ### Typed content
 
 ```rust
-use ohkami::claw::{Json, status};
+use ohkami::handler::component::{Json, status};
 use ohkami::serde::{Deserialize, Serialize};
 
 /* Deserialize for request */
@@ -549,7 +550,7 @@ async fn create_user(
 
 ```rust,no_run
 use ohkami::{Ohkami, Route};
-use ohkami::claw::{Path, Query, Json};
+use ohkami::handler::component::{Path, Query, Json};
 use ohkami::serde::{Deserialize, Serialize};
 
 #[tokio::main]
@@ -636,8 +637,8 @@ async fn main() {
 
 ```rust,no_run
 use ohkami::{Ohkami, Route};
-use ohkami::claw::status;
-use ohkami::fang::Context;
+use ohkami::handler::component::status;
+use ohkami::middleware::Context;
 use sqlx::postgres::{PgPoolOptions, PgPool};
 
 #[tokio::main]
@@ -665,9 +666,9 @@ async fn create_user(
 
 ```rust,no_run
 use ohkami::{Response, IntoResponse};
-use ohkami::claw::{Path, Json};
+use ohkami::handler::component::{Path, Json};
 use ohkami::serde::Serialize;
-use ohkami::fang::Context;
+use ohkami::middleware::Context;
 
 enum MyError {
     Sqlx(sqlx::Error),
@@ -729,10 +730,10 @@ async fn main() {
 
 ### File upload
 
-`Multipart` built-in claw and `File` helper:
+`Multipart` built-in component and `File` helper:
 
 ```rust,no_run
-use ohkami::claw::{status, content::{Multipart, File}};
+use ohkami::handler::component::{status, content::{Multipart, File}};
 use ohkami::serde::Deserialize;
 
 #[derive(Deserialize)]
@@ -763,7 +764,7 @@ async fn post_submit(
 
 ```rust,no_run
 use ohkami::{Ohkami, Route};
-use ohkami::claw::{Json, status};
+use ohkami::handler::component::{Json, status};
 use serde::Serialize;
 
 #[derive(Serialize)]
@@ -840,8 +841,8 @@ async fn test_my_ohkami() {
 
 ```rust,no_run
 use ohkami::{Ohkami, Route, Response, IntoResponse};
-use ohkami::claw::{Json, Path};
-use ohkami::fang::Context;
+use ohkami::handler::component::{Json, Path};
+use ohkami::middleware::Context;
 use ohkami::serde::Serialize;
 
 //////////////////////////////////////////////////////////////////////

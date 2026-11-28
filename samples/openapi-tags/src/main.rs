@@ -1,7 +1,7 @@
 #![allow(unused/* just for demo of `openapi::Tag` */)]
 
 use ohkami::prelude::*;
-use ohkami::claw::status;
+use ohkami::handler::component::status;
 use ohkami::openapi;
 
 mod users {

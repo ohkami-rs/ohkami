@@ -31,8 +31,8 @@ use std::{borrow::Cow, marker::PhantomData};
 /// *example.rs*
 /// ```no_run
 /// use ohkami::{Ohkami, Route, Response};
-/// use ohkami::claw::{Path, Json, status};
-/// use ohkami::fang::{Context, Jwt, JwtToken};
+/// use ohkami::handler::component::{Path, Json, status};
+/// use ohkami::middleware::{Context, Jwt, JwtToken};
 /// use ohkami::serde::{Serialize, Deserialize};
 ///
 /// #[derive(Serialize, Deserialize)]
