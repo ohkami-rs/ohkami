@@ -315,7 +315,7 @@ impl<P: Serialize> Jwt<P> {
         };
 
         let signature = {
-            use ::hmac::{Hmac, Mac};
+            use ::hmac::{Hmac, KeyInit, Mac};
             use ::sha2::{Sha256, Sha384, Sha512};
 
             match &self.alg {
@@ -446,7 +446,7 @@ impl<P: serde::de::DeserializeOwned> Jwt<P> {
             crate::util::base64_url_decode(signature_part).map_err(|_| Response::Unauthorized())?;
 
         let is_correct_signature = {
-            use ::hmac::{Hmac, Mac};
+            use ::hmac::{Hmac, KeyInit, Mac};
             use ::sha2::{Sha256, Sha384, Sha512};
 
             match self.alg {

@@ -31,8 +31,7 @@ pub fn parse_wrangler<T: serde::de::DeserializeOwned>() -> Result<T, std::io::Er
         (None, Some(mut wrangler_jsonc)) => {
             wrangler_jsonc.read_to_string(&mut buf)?;
             let config = jsonc_parser::parse_to_serde_value(&buf, &Default::default())
-                .map_err(parse_error)?
-                .ok_or_else(|| parse_error("invalid `.jsonc`"))?;
+                .map_err(parse_error)?;
             let config = serde_json::from_value(config).map_err(parse_error)?;
             Ok(config)
         }
